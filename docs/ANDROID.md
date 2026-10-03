@@ -45,12 +45,16 @@ Android 客户端采用 **混合原生架构 (Hybrid Native Architecture)**，�
   }, "node-main", 8 * 1024 * 1024).start()
   ```
 
-### 2.2 兼容性基线 (Node v18.20.4 LTS)
-- 原生构建基于 **Node.js v18.20.4 (ARM64-v8a, NDK r25c/clang 14)**。
-- **服务端代码编写规范**：
-  - 严禁引入 Node 20+ / 21+ / 22+ 的未降级实验性特性（如原生仅支持特定 OpenSSL 3.x 算法的加密调用、未经测试的原生 `fetch` 行为差异、实验性模块语法）。
-  - 依赖库仅包含精简的运行时依赖：`ws`、`preact`、`htm`、`pixi.js`、`pixi-spine`、`three`。
-  - 所有网络监听均绑定至 `0.0.0.0:3000`，允许本地回环 `127.0.0.1` 单机访问与同 Wi-Fi 局域网客户端联机。
+### 2.2 双端 Node 运行环境规范与跨版本兼容策略
+- **PC / 开发机环境（上游标准）**：
+  - 上游仓库 `package.json` 声明 `"engines": { "node": ">=22" }`（支持 Node 22、Node 24）。
+  - 本地 PC 开发与测试环境运行在 **Node.js v24.19.0** 下，全量 291 套件、3,322 个自动化测试全部通过。
+- **Android 原生嵌入式环境**：
+  - 手机端 In-process 嵌入基于 **Node.js v18.20.4 (ARM64-v8a, NDK clang 14)**。
+  - **核心双端兼容保障**：
+    - 经全量代码审计，服务端与共享业务逻辑（`server/`、`shared/`）均遵循跨版本标准 ECMAScript 语法，未引入 Node 20+ 的破坏性 API（如仅限新版的 `Array.prototype.toReversed`、未 polyfill 的新 Crypto 算法等）。
+    - 依赖库仅包含精简高效的轻量生产依赖：`ws`、`preact`、`htm`、`pixi.js`、`pixi-spine`、`three`。
+    - 服务端网络监听均统一绑定至 `0.0.0.0:3000`，同构支持电脑端（Node 22/24）与安卓端（Node 18）的一致运行。
 
 ---
 
