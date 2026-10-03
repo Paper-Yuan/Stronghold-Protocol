@@ -77,7 +77,7 @@
 .brief-bond { position: relative; width: 1rem; display: flex; justify-content: center; }
 .brief-bond .bond { --disc: .66rem; }
 .brief-bond .bond__name { font-size: .16rem; }
-.brief-bond__ban { position: absolute; top: -.04rem; right: .08rem; display: inline-flex; align-items: center; gap: .01rem; font-size: .12rem; font-weight: 700; padding: 0 .05rem; background: var(--red); color: #fff; line-height: 1.5; box-shadow: 0 0 0 1px #000; }
+.brief-bond__ban { position: absolute; top: -.20rem; right: .14rem; display: inline-flex; align-items: center; gap: .01rem; font-size: .12rem; font-weight: 700; padding: 0 .05rem; background: var(--red); color: #fff; line-height: 1.5; box-shadow: 0 0 0 1px #000; }
 .brief-bond__ban .icon { width: .12rem; height: .12rem; }
 .brief-bond.is-partial .bond__core { box-shadow: 0 0 0 2px rgba(255, 84, 84, .5); }
 .brief-legend { display: flex; align-items: center; gap: .08rem; flex-wrap: wrap; font-size: .14rem; color: var(--text-dim); margin-top: -.06rem; }
