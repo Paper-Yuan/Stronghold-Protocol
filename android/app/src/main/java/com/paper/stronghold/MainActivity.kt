@@ -21,6 +21,7 @@ class MainActivity : AppCompatActivity() {
         private const val PREFS_NAME = "stronghold_prefs"
         private const val KEY_SERVER_MODE = "server_mode" // "local" or "remote"
         private const val KEY_REMOTE_URL = "remote_url"
+        private const val KEY_BOARD_MODE = "board_mode"   // "3d" or "2d"
         private const val DEFAULT_LOCAL_URL = "http://127.0.0.1:3000"
     }
 
@@ -91,6 +92,8 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun setupWebView() {
+        webView.setLayerType(View.LAYER_TYPE_HARDWARE, null)
+
         webView.settings.apply {
             javaScriptEnabled = true
             domStorageEnabled = true
@@ -131,6 +134,19 @@ class MainActivity : AppCompatActivity() {
                 }
             }
         }
+    }
+
+    override fun onPause() {
+        super.onPause()
+        webView.onPause()
+        webView.pauseTimers()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        webView.onResume()
+        webView.resumeTimers()
+        enableFullscreen()
     }
 
     private fun setupServerReceiver() {
@@ -190,15 +206,25 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun loadServerUrl(url: String) {
+    private fun loadServerUrl(rawUrl: String) {
+        val targetUrl = buildUrlWithBoardMode(rawUrl)
         runOnUiThread {
-            webView.loadUrl(url)
+            webView.loadUrl(targetUrl)
         }
+    }
+
+    private fun buildUrlWithBoardMode(baseUrl: String): String {
+        val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        val boardMode = prefs.getString(KEY_BOARD_MODE, "3d") ?: "3d"
+        val cleanUrl = baseUrl.replace(Regex("[?&]board=[^&]+"), "")
+        val separator = if (cleanUrl.contains("?")) "&" else "?"
+        return "$cleanUrl${separator}board=$boardMode"
     }
 
     fun reloadWebView() {
         runOnUiThread {
-            webView.reload()
+            val currentUrl = webView.url ?: DEFAULT_LOCAL_URL
+            webView.loadUrl(buildUrlWithBoardMode(currentUrl))
         }
     }
 
@@ -206,11 +232,15 @@ class MainActivity : AppCompatActivity() {
         val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         val currentMode = prefs.getString(KEY_SERVER_MODE, "local")
         val currentRemoteUrl = prefs.getString(KEY_REMOTE_URL, "")
+        val currentBoardMode = prefs.getString(KEY_BOARD_MODE, "3d")
 
         val dialogView = layoutInflater.inflate(R.layout.dialog_server_switch, null)
         val rbLocal = dialogView.findViewById<RadioButton>(R.id.rbLocalMode)
         val rbRemote = dialogView.findViewById<RadioButton>(R.id.rbRemoteMode)
         val etAddress = dialogView.findViewById<EditText>(R.id.etServerAddress)
+        val rbBoard3D = dialogView.findViewById<RadioButton>(R.id.rbBoard3D)
+        val rbBoard2D = dialogView.findViewById<RadioButton>(R.id.rbBoard2D)
+
         val btnRestart = dialogView.findViewById<Button>(R.id.btnRestartServer)
         val btnCancel = dialogView.findViewById<Button>(R.id.btnCancelDialog)
         val btnApply = dialogView.findViewById<Button>(R.id.btnApplyDialog)
@@ -222,6 +252,12 @@ class MainActivity : AppCompatActivity() {
         } else {
             rbLocal.isChecked = true
             etAddress.visibility = View.GONE
+        }
+
+        if (currentBoardMode == "2d") {
+            rbBoard2D.isChecked = true
+        } else {
+            rbBoard3D.isChecked = true
         }
 
         rbLocal.setOnCheckedChangeListener { _, isChecked ->
@@ -247,6 +283,7 @@ class MainActivity : AppCompatActivity() {
         btnApply.setOnClickListener {
             val isRemote = rbRemote.isChecked
             val url = etAddress.text.toString().trim()
+            val selectedBoardMode = if (rbBoard2D.isChecked) "2d" else "3d"
 
             if (isRemote && (url.isBlank() || (!url.startsWith("http://") && !url.startsWith("https://")))) {
                 Toast.makeText(this, "请输入合法的 http:// 或 https:// 服务器地址", Toast.LENGTH_SHORT).show()
@@ -256,6 +293,7 @@ class MainActivity : AppCompatActivity() {
             prefs.edit().apply {
                 putString(KEY_SERVER_MODE, if (isRemote) "remote" else "local")
                 putString(KEY_REMOTE_URL, url)
+                putString(KEY_BOARD_MODE, selectedBoardMode)
                 apply()
             }
 
@@ -275,6 +313,13 @@ class MainActivity : AppCompatActivity() {
         super.onDestroy()
         serverReadyReceiver?.let {
             unregisterReceiver(it)
+        }
+        webView.apply {
+            loadUrl("about:blank")
+            stopLoading()
+            clearHistory()
+            removeAllViews()
+            destroy()
         }
     }
 

@@ -14,11 +14,12 @@
         android:textSize="18sp"
         android:textStyle="bold" />
 
+    <!-- 运行模式设置 -->
     <RadioGroup
         android:id="@+id/rgServerMode"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="16dp">
+        android:layout_marginTop="12dp">
 
         <RadioButton
             android:id="@+id/rbLocalMode"
@@ -32,7 +33,7 @@
             android:id="@+id/rbRemoteMode"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
+            android:layout_marginTop="4dp"
             android:text="@string/remote_mode"
             android:textColor="@color/text_white" />
     </RadioGroup>
@@ -41,14 +42,48 @@
         android:id="@+id/etServerAddress"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="12dp"
+        android:layout_marginTop="8dp"
         android:background="@color/bg_dark"
         android:hint="@string/server_address_hint"
-        android:padding="12dp"
+        android:padding="10dp"
         android:textColor="@color/text_white"
         android:textColorHint="#60706a"
-        android:textSize="14sp"
+        android:textSize="13sp"
         android:visibility="gone" />
+
+    <!-- 渲染画质切换 -->
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:text="战场棋盘渲染模式"
+        android:textColor="@color/theme_teal"
+        android:textSize="14sp"
+        android:textStyle="bold" />
+
+    <RadioGroup
+        android:id="@+id/rgBoardMode"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="6dp"
+        android:orientation="horizontal">
+
+        <RadioButton
+            android:id="@+id/rbBoard3D"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:checked="true"
+            android:text="3D 官方贴图 (高保真)"
+            android:textColor="@color/text_white" />
+
+        <RadioButton
+            android:id="@+id/rbBoard2D"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="16dp"
+            android:text="2D 极速省电 (保帧稳 60fps)"
+            android:textColor="@color/text_white" />
+    </RadioGroup>
 
     <LinearLayout
         android:layout_width="match_parent"
