@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Native binaries and dynamic library dependencies for Stronghold Protocol Android runtime",
+  "libraries": [
+    {
+      "name": "libnode.so",
+      "version": "18.20.4",
+      "abi": "arm64-v8a",
+      "path": "app/src/main/jniLibs/arm64-v8a/libnode.so",
+      "size": 62475584,
+      "sha256": "7c907316beb6e78e34495926c9ac1befe079369b14650d508ea812929258250c",
+      "license": "MIT",
+      "url": "https://nodejs.org/dist/v18.20.4/node-v18.20.4.tar.gz"
+    },
+    {
+      "name": "libc++_shared.so",
+      "version": "NDK r25b (LLVM 14)",
+      "abi": "arm64-v8a",
+      "path": "app/src/main/jniLibs/arm64-v8a/libc++_shared.so",
+      "size": 6764968,
+      "sha256": "73a8cb7f0529d2dcc22089c6cf30c86383d708451ecfafe1cd6ecc4f0e661df2",
+      "license": "Apache-2.0 with LLVM Exception",
+      "url": "https://dl.google.com/android/repository/android-ndk-r25b-windows.zip"
+    },
+    {
+      "name": "libnode.so",
+      "version": "18.20.4",
+      "abi": "x86_64",
+      "path": "app/src/main/jniLibs/x86_64/libnode.so",
+      "size": 65361944,
+      "sha256": "9acba7e26a1e864f13b78f1b7121773643f3f33a4c6a2fe7d4f63eb06d4d3af1",
+      "license": "MIT",
+      "url": "https://nodejs.org/dist/v18.20.4/node-v18.20.4.tar.gz"
+    },
+    {
+      "name": "libc++_shared.so",
+      "version": "NDK r25b (LLVM 14)",
+      "abi": "x86_64",
+      "path": "app/src/main/jniLibs/x86_64/libc++_shared.so",
+      "size": 6447640,
+      "sha256": "9024189fa4baa1943e1fc3393d3507715ec0831202560a45b05ffff7abd88c12",
+      "license": "Apache-2.0 with LLVM Exception",
+      "url": "https://dl.google.com/android/repository/android-ndk-r25b-windows.zip"
+    }
+  ]
+}

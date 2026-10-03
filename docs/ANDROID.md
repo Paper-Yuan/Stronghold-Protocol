@@ -99,3 +99,35 @@ PosixLib.INSTANCE.close(logFd)
    node scripts/build-android.mjs
    ```
    自动完成 Web 资源与服务端依赖打包（`app_bundle.zip`）并调用 Gradle 编译生成 `app-debug.apk`。
+
+---
+
+## 5. 原生二进制依赖溯源与校验规范 (Native Dependencies & Verification)
+
+Android 壳内嵌的原生动态链接库清单由 [`android/NATIVE_DEPS.json`](../android/NATIVE_DEPS.json) 统一定义并受到自动化构建门禁保护：
+
+| 库名称 | 架构 (ABI) | 版本 | 来源 URL (HTTPS) | SHA256 哈希 | 许可证 |
+|---|---|---|---|---|---|
+| `libnode.so` | `arm64-v8a` | 18.20.4 | `https://nodejs.org/dist/v18.20.4/node-v18.20.4.tar.gz` | `7c907316beb6e78e34495926c9ac1befe079369b14650d508ea812929258250c` | MIT |
+| `libc++_shared.so` | `arm64-v8a` | NDK r25b (LLVM 14) | `https://dl.google.com/android/repository/android-ndk-r25b-windows.zip` | `73a8cb7f0529d2dcc22089c6cf30c86383d708451ecfafe1cd6ecc4f0e661df2` | Apache-2.0 with LLVM Exception |
+| `libnode.so` | `x86_64` | 18.20.4 | `https://nodejs.org/dist/v18.20.4/node-v18.20.4.tar.gz` | `9acba7e26a1e864f13b78f1b7121773643f3f33a4c6a2fe7d4f63eb06d4d3af1` | MIT |
+| `libc++_shared.so` | `x86_64` | NDK r25b (LLVM 14) | `https://dl.google.com/android/repository/android-ndk-r25b-windows.zip` | `9024189fa4baa1943e1fc3393d3507715ec0831202560a45b05ffff7abd88c12` | Apache-2.0 with LLVM Exception |
+
+- **构建前哈希门禁**：`scripts/build-android.mjs` 在调用 Gradle 之前自动计算上述二进制的 SHA256，与清单不符即刻熔断。
+- **随包分发**：上述库文件及所有运行依赖模块的开源许可证文本均同步打包于 `app_bundle.zip` 的 `licenses/` 目录中。
+
+---
+
+## 6. 游戏素材与版权归属声明 (Arknights Copyright Notice)
+
+1. **非商业同人性质**：本项目属于非官方同人联机复刻项目，遵循非商业同人衍生作品惯例。
+2. **知识产权归属**：《明日方舟》及「卫戍协议：盟约」涉及的所有干员名称、美术立绘、Spine 骨骼动画模型、场景 UI 纹理、音乐音频及官方原始数值体系的知识产权均归 **上海鹰角网络科技有限公司** (Shanghai Hypergryph Network Technology Co., Ltd.) 及其许可方所有。
+3. **开源许可隔离**：本项目自身代码遵循 **GPL-3.0-or-later** 许可，**游戏素材绝不属于 GPL 授权范畴**，本项目亦不对任何官方美术与音频资产授予商业或许可权利。详细第三方组件许可证清单请参见根目录 [`THIRD-PARTY-NOTICES.md`](../THIRD-PARTY-NOTICES.md)。
+
+---
+
+## 7. Windows 路径编码与 Daemon 文件锁排查
+
+若将工程放置在包含中文字符的路径下（如 `E:\Workbox\系统`），在 Windows 命令行下可能导致 Gradle 输出乱码，或由于后台 Daemon 常驻导致 `mergeDebugResources` 报「另一个程序正在使用此文件」锁死。
+- **解决方法**：在 `android/` 目录下执行 `./gradlew.bat --stop` 彻底释放常驻锁即可恢复；推荐将工程克隆放置在纯英文字符路径下进行日常打包构建。
+

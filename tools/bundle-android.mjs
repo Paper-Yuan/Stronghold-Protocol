@@ -7,7 +7,7 @@ import crypto from 'node:crypto';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
-import { syncVoicesManifest } from './sync-voices-manifest.mjs';
+import { verifyVoicesManifest } from './sync-voices-manifest.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const ANDROID_ASSETS_DIR = path.join(ROOT, 'android', 'app', 'src', 'main', 'assets');
@@ -16,20 +16,16 @@ const STAGING_DIR = path.join(ROOT, '.cache', 'android-bundle-staging');
 
 console.log('[bundle-android] Preparing Android app_bundle...');
 
-// 0. Ensure voice manifest is synced with disk voice assets and verify gate
-console.log('[bundle-android] Verifying voice manifest and assets...');
-syncVoicesManifest();
-const voiceDir = path.join(ROOT, 'public', 'assets', 'audio', 'voice');
-if (fs.existsSync(voiceDir)) {
-  const diskVoices = fs.readdirSync(voiceDir).filter((f) => f.endsWith('.mp3'));
-  const manifest = JSON.parse(fs.readFileSync(path.join(ROOT, 'data', 'assets.json'), 'utf8'));
-  const manifestVoiceCount = Object.keys(manifest?.audio?.voice || {}).length;
-  if (manifestVoiceCount !== diskVoices.length) {
-    console.error(`✘ [bundle-android] 打包门禁失败: assets.json 语音数 (${manifestVoiceCount}) 与磁盘数 (${diskVoices.length}) 不符！`);
-    process.exit(1);
-  }
-  console.log(`[bundle-android] 语音资产门禁通过: ${manifestVoiceCount}/${diskVoices.length} 条已核对。`);
+// 0. READ-ONLY Voice asset gate (P0-1: never write tracked files during build)
+console.log('[bundle-android] Verifying voice manifest and assets (read-only)...');
+const voiceCheck = verifyVoicesManifest();
+if (!voiceCheck.ok) {
+  console.error(`✘ [bundle-android] 打包门禁失败: 发现 ${voiceCheck.missing.length} 条磁盘语音未在 data/assets.json 登记！`);
+  console.error(`  缺少条目: ${voiceCheck.missing.slice(0, 5).join(', ')}${voiceCheck.missing.length > 5 ? '...' : ''}`);
+  console.error('  打包器禁止自动修改受控文件。如需同步，请手动执行: node tools/sync-voices-manifest.mjs --write');
+  process.exit(1);
 }
+console.log(`[bundle-android] 语音资产门禁通过: ${voiceCheck.diskCount}/${voiceCheck.manifestCount} 条已核对 (未触碰任何受跟踪文件)。`);
 
 // 1. Ensure vendor files are built
 console.log('[bundle-android] Running vendor check...');
@@ -65,6 +61,24 @@ copyRecursive(path.join(ROOT, 'shared'), path.join(STAGING_DIR, 'shared'));
 copyRecursive(path.join(ROOT, 'data'), path.join(STAGING_DIR, 'data'));
 copyRecursive(path.join(ROOT, 'public'), path.join(STAGING_DIR, 'public'));
 copyRecursive(path.join(ROOT, 'package.json'), path.join(STAGING_DIR, 'package.json'));
+
+// P0-2: Bundle root licenses and notices for in-app distribution
+console.log('[bundle-android] Bundling distribution licenses and third-party notices...');
+const licensesStaging = path.join(STAGING_DIR, 'licenses');
+fs.mkdirSync(licensesStaging, { recursive: true });
+if (fs.existsSync(path.join(ROOT, 'LICENSE'))) {
+  fs.copyFileSync(path.join(ROOT, 'LICENSE'), path.join(licensesStaging, 'LICENSE.txt'));
+}
+if (fs.existsSync(path.join(ROOT, 'NOTICE.md'))) {
+  fs.copyFileSync(path.join(ROOT, 'NOTICE.md'), path.join(licensesStaging, 'NOTICE.txt'));
+}
+if (fs.existsSync(path.join(ROOT, 'THIRD-PARTY-NOTICES.md'))) {
+  fs.copyFileSync(path.join(ROOT, 'THIRD-PARTY-NOTICES.md'), path.join(licensesStaging, 'THIRD-PARTY-NOTICES.txt'));
+  // Also expose to Web client static directory
+  const publicLicenses = path.join(STAGING_DIR, 'public', 'licenses');
+  fs.mkdirSync(publicLicenses, { recursive: true });
+  fs.copyFileSync(path.join(ROOT, 'THIRD-PARTY-NOTICES.md'), path.join(publicLicenses, 'THIRD-PARTY-NOTICES.txt'));
+}
 
 // Set Android bundle engines to >=18 for embedded runtime compatibility
 const bundledPkgPath = path.join(STAGING_DIR, 'package.json');
@@ -107,6 +121,38 @@ print(f"Compressed {target} successfully.")
 const zipRes = spawnSync('python', ['-c', pyScript, STAGING_DIR, ZIP_TARGET], { stdio: 'inherit' });
 if (zipRes.status !== 0) {
   console.error('[bundle-android] Failed to compress staging directory');
+  process.exit(1);
+}
+
+// P0-2 Gate: Verify license files exist inside the generated zip archive
+console.log('[bundle-android] Verifying license files gate inside app_bundle.zip...');
+const verifyPyScript = `
+import zipfile, sys
+
+target = sys.argv[1]
+required_licenses = [
+    'licenses/THIRD-PARTY-NOTICES.txt',
+    'licenses/LICENSE.txt',
+    'node_modules/ws/LICENSE',
+    'node_modules/preact/LICENSE',
+    'node_modules/htm/LICENSE',
+    'node_modules/pixi.js/LICENSE',
+    'node_modules/pixi-spine/SPINE-LICENSE',
+    'node_modules/three/LICENSE',
+]
+
+with zipfile.ZipFile(target, 'r') as z:
+    names = set(z.namelist())
+    missing = [f for f in required_licenses if f not in names and f.replace('/', '\\\\') not in names]
+    if missing:
+        print(f"ERROR: Missing license files in bundle: {missing}", file=sys.stderr)
+        sys.exit(1)
+    print(f"All {len(required_licenses)} required license notices verified in app_bundle.zip.")
+`;
+
+const verifyRes = spawnSync('python', ['-c', verifyPyScript, ZIP_TARGET], { stdio: 'inherit' });
+if (verifyRes.status !== 0) {
+  console.error('✘ [bundle-android] 许可证打包门禁校验失败！');
   process.exit(1);
 }
 

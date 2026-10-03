@@ -18,6 +18,8 @@ them (with `node_modules/`, which keeps each package's own licence file).
 | [htm](https://github.com/developit/htm) | 3.1.1 | Apache-2.0 | UI templates — `public/vendor/htm.module.js` | no (npm) | yes |
 | [three.js](https://github.com/mrdoob/three.js) | 0.186.1 | MIT | official 3D board — `public/vendor/three.core.js`, `three.module.js` | no (npm) | yes |
 | [ws](https://github.com/websockets/ws) | 8.22.0 | MIT | WebSocket server (`server/`) | no (npm) | yes (`node_modules/`) |
+| [Node.js](https://nodejs.org/) (`libnode.so`) | 18.20.4 | MIT (Node core) & multi-license dependencies | Android in-process game server runtime — `android/app/src/main/jniLibs/{arm64-v8a,x86_64}/libnode.so` | **yes** | yes (APK `lib/`) |
+| [LLVM libc++](https://libcxx.llvm.org/) (`libc++_shared.so`) | NDK r25b (LLVM 14) | Apache-2.0 with LLVM Exception | Android C++ runtime support for Node.js — `android/app/src/main/jniLibs/{arm64-v8a,x86_64}/libc++_shared.so` | **yes** | yes (APK `lib/`) |
 | [puppeteer-core](https://github.com/puppeteer/puppeteer) | 25.12.0 | Apache-2.0 | optional browser tests (dev dependency) | no (npm) | no |
 | [Ark-Unpacker](https://github.com/isHarryh/Ark-Unpacker) LZ4AK decoder | — | BSD-3-Clause | `tools/local-extract/aklz4.py` (optional local extraction) | **yes** — keeps its notice; full text also in `tools/local-extract/LICENSE-Ark-Unpacker.txt` | yes |
 | [UnityPy](https://github.com/K0lb3/UnityPy) (via MooncellWiki/UnityPy), [lz4](https://github.com/python-lz4/python-lz4), [Pillow](https://github.com/python-pillow/Pillow) | see `tools/local-extract/requirements.txt` | MIT / BSD-3-Clause / MIT-CMU | optional local extraction; installed by pip into `.venv-extract` only when the host opts in | no | no |
@@ -453,4 +455,69 @@ SOFTWARE.
    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
    See the License for the specific language governing permissions and
    limitations under the License.
+```
+
+### Node.js (libnode.so) — MIT & Dependencies
+
+```text
+Node.js is licensed for use as follows:
+
+Copyright Node.js contributors. All rights reserved.
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to
+deal in the Software without restriction, including without limitation the
+rights to use, copy, modify, merge, publish, distribute, sublicense, and/or
+sell copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+IN THE SOFTWARE.
+
+Node.js includes third-party software components licensed under different terms:
+- V8 (Google Inc.): BSD-3-Clause
+- libuv (Joyent, Inc. and Node.js contributors): MIT
+- OpenSSL (OpenSSL Project): Apache-2.0
+- zlib (Jean-loup Gailly and Mark Adler): zlib License
+- c-ares: MIT
+- nghttp2: MIT
+Full dependency license notices: https://github.com/nodejs/node/blob/v18.20.4/LICENSE
+```
+
+### LLVM libc++ (libc++_shared.so) — Apache-2.0 with LLVM Exception
+
+```text
+==============================================================================
+The LLVM Project is under the Apache License v2.0 with LLVM Exceptions:
+==============================================================================
+
+                                 Apache License
+                           Version 2.0, January 2004
+                        http://www.apache.org/licenses/
+
+    Licensed under the Apache License, Version 2.0 (the "License");
+    you may not use this file except in compliance with the License.
+    You may obtain a copy of the License at
+
+        http://www.apache.org/licenses/LICENSE-2.0
+
+    Unless required by applicable law or agreed to in writing, software
+    distributed under the License is distributed on an "AS IS" BASIS,
+    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+    See the License for the specific language governing permissions and
+    limitations under the License.
+
+--- LLVM Exceptions to the Apache 2.0 License ---
+
+As an exception, if you use this Software to compile your code and bear
+to runtime the standard library, you do not need to provide an attribution
+notice in your binaries or documentation.
 ```
