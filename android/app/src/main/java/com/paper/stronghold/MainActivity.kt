@@ -193,21 +193,40 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private fun handleServerReady() {
+        val lanIp = NetworkUtils.getLocalIpAddress(this@MainActivity)
+        val statusMsg = if (lanIp != "127.0.0.1") {
+            "本地引擎已就绪！\n本机局域网地址: http://$lanIp:3000\n(其他手机填入此地址可联机)"
+        } else {
+            getString(R.string.server_ready)
+        }
+        tvLoadingStatus.text = statusMsg
+        loadServerUrl(DEFAULT_LOCAL_URL)
+    }
+
     private fun setupServerReceiver() {
+        // Direct in-process callback listener (avoids broadcast delivery latency or filters)
+        NodeServerService.stateListener = ServerStateListener { action, extras ->
+            runOnUiThread {
+                when (action) {
+                    NodeServerService.ACTION_SERVER_READY -> handleServerReady()
+                    NodeServerService.ACTION_SERVER_FAILED -> {
+                        val reason = (extras?.get("reason") as? String) ?: "本地引擎未启动"
+                        showConnectionError("本地独立服务启动失败: $reason\n可点击上方【诊断与日志】查看具体报错，或在设置中切换为连接其他手机/电脑。")
+                    }
+                    NodeServerService.ACTION_SERVER_EXITED -> {
+                        val exitCode = (extras?.get("exitCode") as? Int) ?: -1
+                        showConnectionError("本地独立服务已异常退出 (代码: $exitCode)\n可点击上方【诊断与日志】查看崩溃堆栈。")
+                    }
+                }
+            }
+        }
+
         serverReadyReceiver = object : BroadcastReceiver() {
             override fun onReceive(context: Context?, intent: Intent?) {
                 when (intent?.action) {
                     NodeServerService.ACTION_SERVER_READY -> {
-                        runOnUiThread {
-                            val lanIp = NetworkUtils.getLocalIpAddress(this@MainActivity)
-                            val statusMsg = if (lanIp != "127.0.0.1") {
-                                "本地引擎已就绪！\n本机局域网地址: http://$lanIp:3000\n(其他手机填入此地址可联机)"
-                            } else {
-                                getString(R.string.server_ready)
-                            }
-                            tvLoadingStatus.text = statusMsg
-                            loadServerUrl(DEFAULT_LOCAL_URL)
-                        }
+                        runOnUiThread { handleServerReady() }
                     }
                     NodeServerService.ACTION_SERVER_FAILED -> {
                         val reason = intent.getStringExtra("reason") ?: "本地引擎未启动"
@@ -519,8 +538,37 @@ class MainActivity : AppCompatActivity() {
         dialog.show()
     }
 
+    override fun onResume() {
+        super.onResume()
+        val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        val mode = prefs.getString(KEY_SERVER_MODE, "local")
+        if (mode == "local" && layoutLoading.visibility == View.VISIBLE) {
+            // Self-healing: if returning from background/HOME and UI is stuck in loading, probe :3000/healthz
+            Thread {
+                try {
+                    val client = OkHttpClient.Builder()
+                        .connectTimeout(500, TimeUnit.MILLISECONDS)
+                        .readTimeout(500, TimeUnit.MILLISECONDS)
+                        .build()
+                    val req = Request.Builder().url("http://127.0.0.1:3000/healthz").build()
+                    client.newCall(req).execute().use { resp ->
+                        if (resp.isSuccessful) {
+                            runOnUiThread {
+                                if (layoutLoading.visibility == View.VISIBLE) {
+                                    Log.i(TAG, "Self-healing onResume: local server is healthy, navigating WebView")
+                                    handleServerReady()
+                                }
+                            }
+                        }
+                    }
+                } catch (_: Exception) {}
+            }.start()
+        }
+    }
+
     override fun onDestroy() {
         super.onDestroy()
+        NodeServerService.stateListener = null
         serverReadyReceiver?.let {
             try {
                 unregisterReceiver(it)

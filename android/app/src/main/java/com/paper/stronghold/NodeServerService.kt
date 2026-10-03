@@ -32,6 +32,10 @@ interface PosixLib : Library {
     fun close(fd: Int): Int
 }
 
+fun interface ServerStateListener {
+    fun onServerStateChanged(action: String, extras: Map<String, Any>?)
+}
+
 class NodeServerService : Service() {
     companion object {
         private const val TAG = "NodeServerService"
@@ -43,6 +47,9 @@ class NodeServerService : Service() {
         const val ACTION_SERVER_READY = "com.paper.stronghold.SERVER_READY"
         const val ACTION_SERVER_FAILED = "com.paper.stronghold.SERVER_FAILED"
         const val ACTION_SERVER_EXITED = "com.paper.stronghold.SERVER_EXITED"
+
+        @Volatile
+        var stateListener: ServerStateListener? = null
 
         val serverLogs = ArrayDeque<String>(250)
         @Synchronized
@@ -60,6 +67,7 @@ class NodeServerService : Service() {
 
     private val binder = LocalBinder()
     private val isRunning = AtomicBoolean(false)
+    private val isStopped = AtomicBoolean(false)
     private val httpClient = OkHttpClient.Builder()
         .connectTimeout(1, TimeUnit.SECONDS)
         .readTimeout(1, TimeUnit.SECONDS)
@@ -68,6 +76,21 @@ class NodeServerService : Service() {
     private val nodeStartFunction: Function by lazy {
         NativeLibrary.getInstance("node")
             .getFunction("_ZN4node5StartEiPPc") // node::Start(int argc, char** argv)
+    }
+
+    private fun notifyServerReady() {
+        sendBroadcast(Intent(ACTION_SERVER_READY).setPackage(packageName))
+        stateListener?.onServerStateChanged(ACTION_SERVER_READY, null)
+    }
+
+    private fun notifyServerFailed(reason: String) {
+        sendBroadcast(Intent(ACTION_SERVER_FAILED).setPackage(packageName).putExtra("reason", reason))
+        stateListener?.onServerStateChanged(ACTION_SERVER_FAILED, mapOf("reason" to reason))
+    }
+
+    private fun notifyServerExited(code: Int) {
+        sendBroadcast(Intent(ACTION_SERVER_EXITED).setPackage(packageName).putExtra("exitCode", code))
+        stateListener?.onServerStateChanged(ACTION_SERVER_EXITED, mapOf("exitCode" to code))
     }
 
     inner class LocalBinder : Binder() {
@@ -90,10 +113,13 @@ class NodeServerService : Service() {
     }
 
     private fun startNodeServer() {
-        if (isRunning.get()) {
+        if (isRunning.get() && !isStopped.get()) {
             checkHealthAndNotify()
             return
         }
+
+        isStopped.set(false)
+        isRunning.set(true)
 
         try {
             val notification = buildNotification("正在启动作战模拟服务…")
@@ -118,7 +144,9 @@ class NodeServerService : Service() {
             val msg = "Server script not found in ${serverScript.absolutePath}"
             Log.e(TAG, msg)
             addLog("[ERROR] $msg")
-            sendBroadcast(Intent(ACTION_SERVER_FAILED).putExtra("reason", msg))
+            isStopped.set(true)
+            isRunning.set(false)
+            notifyServerFailed(msg)
             return
         }
 
@@ -135,7 +163,9 @@ class NodeServerService : Service() {
             val msg = "Failed to load libnode.so: ${e.message}"
             Log.e(TAG, msg, e)
             addLog("[ERROR] $msg")
-            sendBroadcast(Intent(ACTION_SERVER_FAILED).putExtra("reason", msg))
+            isStopped.set(true)
+            isRunning.set(false)
+            notifyServerFailed(msg)
             return
         }
 
@@ -178,23 +208,24 @@ class NodeServerService : Service() {
         val nodeThread = Thread(null, {
             try {
                 addLog("[BOOT] Calling node::Start(_ZN4node5StartEiPPc) with args: ${argv.joinToString(" ")}")
-                isRunning.set(true)
 
                 val exitCode = nodeStartFunction.invokeInt(arrayOf(argv.size, argv))
 
                 isRunning.set(false)
+                isStopped.set(true)
                 Log.i(TAG, "In-process Node engine stopped with code $exitCode")
                 addLog("[EXIT] Node server stopped with code $exitCode")
-                sendBroadcast(Intent(ACTION_SERVER_EXITED).putExtra("exitCode", exitCode))
+                notifyServerExited(exitCode)
                 if (exitCode != 0) {
-                    sendBroadcast(Intent(ACTION_SERVER_FAILED).putExtra("reason", "引擎异常退出 (code $exitCode)"))
+                    notifyServerFailed("引擎异常退出 (code $exitCode)")
                 }
             } catch (t: Throwable) {
                 isRunning.set(false)
+                isStopped.set(true)
                 val msg = "In-process Node execution failed: ${t.message}"
                 Log.e(TAG, msg, t)
                 addLog("[ERROR] $msg")
-                sendBroadcast(Intent(ACTION_SERVER_FAILED).putExtra("reason", msg))
+                notifyServerFailed(msg)
             }
         }, "node-main", 8 * 1024 * 1024)
 
@@ -204,7 +235,7 @@ class NodeServerService : Service() {
     private fun startLogTailer(logFile: File) {
         Thread({
             var lastPos = 0L
-            while (isRunning.get() || !logFile.exists()) {
+            while (!isStopped.get()) {
                 if (logFile.exists() && logFile.length() > lastPos) {
                     try {
                         RandomAccessFile(logFile, "r").use { raf ->
@@ -235,7 +266,7 @@ class NodeServerService : Service() {
         Thread({
             val maxAttempts = 30
             var attempt = 0
-            while (attempt < maxAttempts && isRunning.get()) {
+            while (!isStopped.get() && attempt < maxAttempts) {
                 Thread.sleep(500)
                 attempt++
                 try {
@@ -249,7 +280,7 @@ class NodeServerService : Service() {
                             val notif = buildNotification("本地服务已就绪 · 端口 3000")
                             val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
                             manager.notify(NOTIFICATION_ID, notif)
-                            sendBroadcast(Intent(ACTION_SERVER_READY))
+                            notifyServerReady()
                             return@Thread
                         }
                     }
@@ -257,10 +288,11 @@ class NodeServerService : Service() {
                     // Server still booting up
                 }
             }
-            if (isRunning.get()) {
+            if (!isStopped.get()) {
                 val timeoutReason = "15 秒内 /healthz 未响应，服务启动超时"
+                Log.e(TAG, timeoutReason)
                 addLog("[ERROR] $timeoutReason")
-                sendBroadcast(Intent(ACTION_SERVER_FAILED).putExtra("reason", timeoutReason))
+                notifyServerFailed(timeoutReason)
             }
         }, "health-checker").start()
     }
@@ -273,7 +305,7 @@ class NodeServerService : Service() {
                     .build()
                 httpClient.newCall(request).execute().use { response ->
                     if (response.isSuccessful) {
-                        sendBroadcast(Intent(ACTION_SERVER_READY))
+                        notifyServerReady()
                     }
                 }
             } catch (_: Exception) {}
@@ -281,6 +313,7 @@ class NodeServerService : Service() {
     }
 
     private fun stopNodeServer() {
+        isStopped.set(true)
         isRunning.set(false)
         try {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {

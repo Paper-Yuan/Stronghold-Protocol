@@ -10,7 +10,19 @@ object AssetManagerHelper {
     private const val TAG = "AssetManagerHelper"
     private const val BUNDLE_DIR_NAME = "bundle"
     private const val VERSION_FILE_NAME = ".bundle_version"
-    private const val CURRENT_BUNDLE_VERSION = "0.1.0-r2"
+
+    fun getExpectedBundleVersion(context: Context): String {
+        return try {
+            context.assets.open("bundle.sha256").bufferedReader().use { it.readText().trim() }
+        } catch (_: Exception) {
+            try {
+                val pInfo = context.packageManager.getPackageInfo(context.packageName, 0)
+                "${pInfo.versionName}"
+            } catch (_: Exception) {
+                "0.1.1-default"
+            }
+        }
+    }
 
     fun getBundleDir(context: Context): File {
         return File(context.filesDir, BUNDLE_DIR_NAME)
@@ -22,17 +34,18 @@ object AssetManagerHelper {
     fun ensureAssetsExtracted(context: Context, onProgress: (String) -> Unit): Boolean {
         val targetDir = getBundleDir(context)
         val versionFile = File(targetDir, VERSION_FILE_NAME)
+        val expectedVersion = getExpectedBundleVersion(context)
 
         if (versionFile.exists()) {
             val installedVersion = versionFile.readText().trim()
-            if (installedVersion == CURRENT_BUNDLE_VERSION) {
+            if (installedVersion == expectedVersion) {
                 Log.d(TAG, "Assets already up-to-date ($installedVersion)")
                 return true
             }
         }
 
         onProgress("正在解压游戏运行环境与资源…")
-        Log.i(TAG, "Extracting bundled assets to ${targetDir.absolutePath}")
+        Log.i(TAG, "Extracting bundled assets to ${targetDir.absolutePath} (version: $expectedVersion)")
 
         if (targetDir.exists()) {
             targetDir.deleteRecursively()
@@ -43,8 +56,8 @@ object AssetManagerHelper {
         try {
             val zipStream = context.assets.open("app_bundle.zip")
             unzip(zipStream, targetDir, onProgress)
-            versionFile.writeText(CURRENT_BUNDLE_VERSION)
-            Log.i(TAG, "Unzipped app_bundle.zip successfully")
+            versionFile.writeText(expectedVersion)
+            Log.i(TAG, "Unzipped app_bundle.zip successfully ($expectedVersion)")
             return true
         } catch (e: FileNotFoundException) {
             Log.d(TAG, "app_bundle.zip not present, falling back to direct asset copy")
@@ -55,7 +68,7 @@ object AssetManagerHelper {
         // 2. Fallback: Copy directly from assets/bundle folder if present
         try {
             copyAssetFolder(context, "bundle", targetDir)
-            versionFile.writeText(CURRENT_BUNDLE_VERSION)
+            versionFile.writeText(expectedVersion)
             return true
         } catch (e: Throwable) {
             Log.e(TAG, "Error copying assets", e)

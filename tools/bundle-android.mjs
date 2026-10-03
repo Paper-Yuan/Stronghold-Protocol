@@ -3,6 +3,7 @@
 
 import fs from 'node:fs';
 import path from 'node:path';
+import crypto from 'node:crypto';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
@@ -96,4 +97,14 @@ if (zipRes.status !== 0) {
 fs.rmSync(STAGING_DIR, { recursive: true, force: true });
 const stats = fs.statSync(ZIP_TARGET);
 console.log(`[bundle-android] app_bundle.zip generated: ${(stats.size / 1024 / 1024).toFixed(2)} MB`);
+
+// 4. Generate bundle.sha256 hash marker for Android asset extractor
+const zipBuffer = fs.readFileSync(ZIP_TARGET);
+const hash = crypto.createHash('sha256').update(zipBuffer).digest('hex');
+const rootPkg = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8'));
+const versionContent = `${rootPkg.version}-${hash.slice(0, 16)}`;
+const versionFile = path.join(ANDROID_ASSETS_DIR, 'bundle.sha256');
+fs.writeFileSync(versionFile, versionContent, 'utf8');
+console.log(`[bundle-android] Generated bundle.sha256: ${versionContent}`);
+
 console.log('[bundle-android] Done!');
