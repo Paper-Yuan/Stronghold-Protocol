@@ -747,6 +747,10 @@ function MatchScreen() {
           return;
         }
         await runIntent(intent);
+        if (t?.area === 'board') {
+          const charId = entry?.piece?.charId || entry?.piece?.id;
+          if (charId) audio.voice(charId);
+        }
       }),
       view.on('pieceDragEnd', (e) => {
         // a cancelled drag (no pieceDrop) must not leave the highlights behind; a release on a tile that takes nothing
@@ -767,6 +771,8 @@ function MatchScreen() {
       view.on('pieceClick', (e) => {
         if (!e) return;
         audio.sfx('click', { volume: 0.4 });
+        const charId = e.piece?.charId || e.piece?.id || (e.uid != null ? live.current.placeCtx?.pieces.get(e.uid)?.piece?.id : null);
+        if (charId) audio.voice(charId);
         // an enemy of the preview pen (research 09 §2.2 "Intel": tap it for its detail card)
         const penKey = previewEnemyKey(e);
         if (penKey) { setDetail({ kind: 'enemy', id: penKey }); return; }

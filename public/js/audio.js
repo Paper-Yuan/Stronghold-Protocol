@@ -553,6 +553,22 @@ export class AudioManager {
     } catch { return false; }
   }
 
+  /**
+   * Play an operator's core Japanese voice line (exclusive singleton channel).
+   * @param {string} defId operator charId (e.g. 'char_002_amiya')
+   * @param {{ volume?: number }} [o]
+   */
+  voice(defId, o = {}) {
+    try {
+      if (!defId) return;
+      const m = this.getManifest();
+      const url = m?.audio?.voice?.[defId] || m?.chars?.[defId]?.voice;
+      if (typeof url === 'string') {
+        this._play(url, { volume: o.volume ?? 0.85, limited: true, unitKey: 'operator_voice' });
+      }
+    } catch { /* ignore */ }
+  }
+
   // ---- battle events ------------------------------------------------------------------------------------------
 
   /** Reset the unit map for a new field (m.field.units = UnitInfo[]). */
@@ -624,6 +640,7 @@ export class AudioManager {
           if (!url) continue;
           const own = url === m?.audio?.sfx?.units?.[u.def]?.born;
           this._playUnitUrl(url, own ? `${e[1]}:born` : 'deploy', own ? 0.8 : 0.5);
+          this.voice(u.def);
         } else if (kind === 'fx') {
           // a summon used up by its own effect (香槟炸弹 exploding: `consumed`): its impact sound now, no death sound
           const ex = e[4];
