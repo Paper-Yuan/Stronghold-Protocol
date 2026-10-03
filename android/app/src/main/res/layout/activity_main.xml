@@ -35,6 +35,16 @@
             android:textSize="14sp"
             android:gravity="center" />
 
+        <Button
+            android:id="@+id/btnShowDiagLogs"
+            style="?android:attr/borderlessButtonStyle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="[查看运行诊断与引擎日志]"
+            android:textColor="#a0b5ad"
+            android:textSize="11sp" />
+
         <!-- Fallback action buttons (shown if local server not found or connection failed) -->
         <LinearLayout
             android:id="@+id/layoutFailedActions"

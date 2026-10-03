@@ -10,22 +10,14 @@ import android.util.Log
 import androidx.core.app.NotificationCompat
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import com.sun.jna.Function
 import com.sun.jna.Library
 import com.sun.jna.Native
-import java.io.BufferedReader
+import com.sun.jna.NativeLibrary
 import java.io.File
-import java.io.InputStreamReader
+import java.io.RandomAccessFile
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
-
-interface NodeNativeLib : Library {
-    companion object {
-        val INSTANCE: NodeNativeLib by lazy {
-            Native.load("node", NodeNativeLib::class.java)
-        }
-    }
-    fun node_start(argc: Int, argv: Array<String>): Int
-}
 
 interface PosixLib : Library {
     companion object {
@@ -35,6 +27,9 @@ interface PosixLib : Library {
     }
     fun setenv(name: String, value: String, overwrite: Int): Int
     fun chdir(path: String): Int
+    fun open(path: String, flags: Int, mode: Int): Int
+    fun dup2(oldfd: Int, newfd: Int): Int
+    fun close(fd: Int): Int
 }
 
 class NodeServerService : Service() {
@@ -47,6 +42,7 @@ class NodeServerService : Service() {
         const val ACTION_STOP = "com.paper.stronghold.STOP_SERVER"
         const val ACTION_SERVER_READY = "com.paper.stronghold.SERVER_READY"
         const val ACTION_SERVER_FAILED = "com.paper.stronghold.SERVER_FAILED"
+        const val ACTION_SERVER_EXITED = "com.paper.stronghold.SERVER_EXITED"
 
         val serverLogs = ArrayDeque<String>(250)
         @Synchronized
@@ -54,15 +50,25 @@ class NodeServerService : Service() {
             if (serverLogs.size >= 250) serverLogs.removeFirst()
             serverLogs.addLast(line)
         }
+
+        @Synchronized
+        fun getRecentLogs(limit: Int = 100): List<String> {
+            val count = minOf(limit, serverLogs.size)
+            return serverLogs.toList().takeLast(count)
+        }
     }
 
     private val binder = LocalBinder()
-    private var nodeProcess: Process? = null
     private val isRunning = AtomicBoolean(false)
     private val httpClient = OkHttpClient.Builder()
         .connectTimeout(1, TimeUnit.SECONDS)
         .readTimeout(1, TimeUnit.SECONDS)
         .build()
+
+    private val nodeStartFunction: Function by lazy {
+        NativeLibrary.getInstance("node")
+            .getFunction("_ZN4node5StartEiPPc") // node::Start(int argc, char** argv)
+    }
 
     inner class LocalBinder : Binder() {
         fun getService(): NodeServerService = this@NodeServerService
@@ -104,154 +110,163 @@ class NodeServerService : Service() {
             Log.w(TAG, "Foreground service start caught: ${e.message}")
         }
 
-        Thread {
+        val bundleDir = AssetManagerHelper.getBundleDir(this)
+        val serverScript = File(bundleDir, "server/index.js")
+        val serverLogFile = File(filesDir, "server.log")
+
+        if (!serverScript.exists()) {
+            val msg = "Server script not found in ${serverScript.absolutePath}"
+            Log.e(TAG, msg)
+            addLog("[ERROR] $msg")
+            sendBroadcast(Intent(ACTION_SERVER_FAILED).putExtra("reason", msg))
+            return
+        }
+
+        // 1. Ensure C++ shared runtime and libnode.so are loaded
+        try {
+            System.loadLibrary("c++_shared")
+        } catch (e: Throwable) {
+            Log.w(TAG, "c++_shared load note: ${e.message}")
+        }
+        try {
+            System.loadLibrary("node")
+            Log.i(TAG, "libnode.so loaded via System.loadLibrary successfully")
+        } catch (e: Throwable) {
+            val msg = "Failed to load libnode.so: ${e.message}"
+            Log.e(TAG, msg, e)
+            addLog("[ERROR] $msg")
+            sendBroadcast(Intent(ACTION_SERVER_FAILED).putExtra("reason", msg))
+            return
+        }
+
+        // 2. Redirect stdout (fd 1) and stderr (fd 2) to filesDir/server.log
+        try {
+            // O_WRONLY(1) | O_CREAT(64) | O_TRUNC(512) = 577, mode 0644 (420)
+            val logFd = PosixLib.INSTANCE.open(serverLogFile.absolutePath, 577, 420)
+            if (logFd >= 0) {
+                PosixLib.INSTANCE.dup2(logFd, 1)
+                PosixLib.INSTANCE.dup2(logFd, 2)
+                PosixLib.INSTANCE.close(logFd)
+                addLog("[BOOT] stdio redirected to ${serverLogFile.absolutePath}")
+            } else {
+                addLog("[WARN] Posix open server.log returned $logFd")
+            }
+        } catch (e: Throwable) {
+            Log.w(TAG, "Stdio redirection warning: ${e.message}")
+            addLog("[WARN] Stdio redirection failed: ${e.message}")
+        }
+
+        // 3. Set POSIX environment variables: bind to 0.0.0.0 for LAN co-op + local solo
+        try {
+            PosixLib.INSTANCE.setenv("PORT", "3000", 1)
+            PosixLib.INSTANCE.setenv("HOST", "0.0.0.0", 1)
+            PosixLib.INSTANCE.setenv("NODE_ENV", "production", 1)
+            PosixLib.INSTANCE.chdir(bundleDir.absolutePath)
+        } catch (e: Throwable) {
+            Log.w(TAG, "Posix env configuration warning: ${e.message}")
+        }
+
+        // 4. Start log tailer thread to mirror server.log into serverLogs deque
+        startLogTailer(serverLogFile)
+
+        // 5. Start healthcheck poller
+        startHealthChecker()
+
+        val argv = arrayOf("node", "--no-warnings", serverScript.absolutePath)
+
+        // 6. Launch in-process Node on an expanded 8 MB stack thread (prevents V8 StackOverflow)
+        val nodeThread = Thread(null, {
             try {
-                val bundleDir = AssetManagerHelper.getBundleDir(this)
-                val serverScript = File(bundleDir, "server/index.js")
-
-                if (!serverScript.exists()) {
-                    val msg = "Server script not found in ${serverScript.absolutePath}"
-                    Log.e(TAG, msg)
-                    addLog("[ERROR] $msg")
-                    sendBroadcast(Intent(ACTION_SERVER_FAILED).putExtra("reason", msg))
-                    return@Thread
-                }
-
-                // 1. Ensure C++ shared runtime and libnode.so are loaded into the process
-                try {
-                    System.loadLibrary("c++_shared")
-                } catch (e: Throwable) {
-                    Log.w(TAG, "c++_shared load note: ${e.message}")
-                }
-                try {
-                    System.loadLibrary("node")
-                    Log.i(TAG, "libnode.so loaded via System.loadLibrary successfully")
-                } catch (e: Throwable) {
-                    Log.w(TAG, "libnode load note: ${e.message}")
-                }
-
-                // 2. Set POSIX environment variables: bind to 0.0.0.0 for LAN co-op + local solo
-                try {
-                    PosixLib.INSTANCE.setenv("PORT", "3000", 1)
-                    PosixLib.INSTANCE.setenv("HOST", "0.0.0.0", 1)
-                    PosixLib.INSTANCE.setenv("NODE_ENV", "production", 1)
-                    PosixLib.INSTANCE.chdir(bundleDir.absolutePath)
-                } catch (e: Throwable) {
-                    Log.w(TAG, "Posix env configuration warning: ${e.message}")
-                }
-
-                val args = arrayOf(
-                    "node",
-                    "--no-warnings",
-                    serverScript.absolutePath
-                )
-
-                Log.i(TAG, "Launching in-process Node engine: ${serverScript.absolutePath}")
-                addLog("[BOOT] Starting in-process Node.js game engine (0.0.0.0:3000)...")
+                addLog("[BOOT] Calling node::Start(_ZN4node5StartEiPPc) with args: ${argv.joinToString(" ")}")
                 isRunning.set(true)
 
-                // Background thread to poll healthcheck
-                Thread {
-                    waitForHealth()
-                }.start()
+                val exitCode = nodeStartFunction.invokeInt(arrayOf(argv.size, argv))
 
-                var exitCode: Int
-                try {
-                    exitCode = NodeNativeLib.INSTANCE.node_start(args.size, args)
-                    Log.i(TAG, "In-process Node engine stopped with code $exitCode")
-                    addLog("[EXIT] Node server stopped with code $exitCode")
-                } catch (jnaErr: Throwable) {
-                    Log.e(TAG, "In-process Node execution failed, falling back to process launcher", jnaErr)
-                    addLog("[WARN] In-process invoke error: ${jnaErr.message}. Attempting ProcessBuilder...")
+                isRunning.set(false)
+                Log.i(TAG, "In-process Node engine stopped with code $exitCode")
+                addLog("[EXIT] Node server stopped with code $exitCode")
+                sendBroadcast(Intent(ACTION_SERVER_EXITED).putExtra("exitCode", exitCode))
+                if (exitCode != 0) {
+                    sendBroadcast(Intent(ACTION_SERVER_FAILED).putExtra("reason", "引擎异常退出 (code $exitCode)"))
+                }
+            } catch (t: Throwable) {
+                isRunning.set(false)
+                val msg = "In-process Node execution failed: ${t.message}"
+                Log.e(TAG, msg, t)
+                addLog("[ERROR] $msg")
+                sendBroadcast(Intent(ACTION_SERVER_FAILED).putExtra("reason", msg))
+            }
+        }, "node-main", 8 * 1024 * 1024)
 
-                    val nativeLibDir = applicationInfo.nativeLibraryDir
-                    val nodeBinary = File(nativeLibDir, "libnode.so")
+        nodeThread.start()
+    }
 
-                    if (!nodeBinary.exists()) {
-                        val msg = "Native libnode.so not found in $nativeLibDir: ${jnaErr.message}"
-                        Log.e(TAG, msg)
-                        addLog("[ERROR] $msg")
-                        sendBroadcast(Intent(ACTION_SERVER_FAILED).putExtra("reason", msg))
-                        isRunning.set(false)
-                        return@Thread
-                    }
-
-                    val pb = ProcessBuilder(
-                        nodeBinary.absolutePath,
-                        serverScript.absolutePath
-                    )
-                    pb.directory(bundleDir)
-                    pb.environment()["PORT"] = "3000"
-                    pb.environment()["HOST"] = "0.0.0.0"
-                    pb.environment()["NODE_ENV"] = "production"
-                    pb.redirectErrorStream(true)
-
-                    val process = pb.start()
-                    nodeProcess = process
-
-                    // Background thread to consume stdout/stderr
-                    Thread {
-                        try {
-                            BufferedReader(InputStreamReader(process.inputStream)).use { reader ->
-                                var line: String?
-                                while (reader.readLine().also { line = it } != null) {
-                                    line?.let {
-                                        Log.d(TAG, "[Node] $it")
-                                        addLog(it)
+    private fun startLogTailer(logFile: File) {
+        Thread({
+            var lastPos = 0L
+            while (isRunning.get() || !logFile.exists()) {
+                if (logFile.exists() && logFile.length() > lastPos) {
+                    try {
+                        RandomAccessFile(logFile, "r").use { raf ->
+                            raf.seek(lastPos)
+                            var line: String?
+                            while (raf.readLine().also { line = it } != null) {
+                                line?.let {
+                                    val decoded = String(it.toByteArray(Charsets.ISO_8859_1), Charsets.UTF_8)
+                                    if (decoded.isNotBlank()) {
+                                        addLog(decoded)
                                     }
                                 }
                             }
-                        } catch (e: Exception) {
-                            Log.e(TAG, "Error reading Node output", e)
+                            lastPos = raf.filePointer
                         }
-                    }.start()
-
-                    exitCode = process.waitFor()
-                    Log.w(TAG, "ProcessBuilder Node process exited with code $exitCode")
-                    addLog("[EXIT] Node process stopped with code $exitCode")
+                    } catch (_: Exception) {}
                 }
-                isRunning.set(false)
-            } catch (e: Exception) {
-                Log.e(TAG, "Exception running Node server", e)
-                addLog("[ERROR] ${e.message}")
-                sendBroadcast(Intent(ACTION_SERVER_FAILED).putExtra("reason", e.message))
-                isRunning.set(false)
+                try {
+                    Thread.sleep(300)
+                } catch (_: InterruptedException) {
+                    break
+                }
             }
-        }.start()
+        }, "server-log-tailer").start()
     }
 
-    private fun waitForHealth() {
-        val maxAttempts = 30
-        var attempt = 0
-        while (attempt < maxAttempts && isRunning.get()) {
-            Thread.sleep(500)
-            attempt++
-            try {
-                val request = Request.Builder()
-                    .url("http://127.0.0.1:3000/healthz")
-                    .build()
-                httpClient.newCall(request).execute().use { response ->
-                    if (response.isSuccessful) {
-                        Log.i(TAG, "Local server is healthy and responding!")
-                        addLog("[READY] Local game server running at http://127.0.0.1:3000")
-                        val notif = buildNotification("本地服务已就绪 · 端口 3000")
-                        val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-                        manager.notify(NOTIFICATION_ID, notif)
-                        sendBroadcast(Intent(ACTION_SERVER_READY))
-                        return
+    private fun startHealthChecker() {
+        Thread({
+            val maxAttempts = 30
+            var attempt = 0
+            while (attempt < maxAttempts && isRunning.get()) {
+                Thread.sleep(500)
+                attempt++
+                try {
+                    val request = Request.Builder()
+                        .url("http://127.0.0.1:3000/healthz")
+                        .build()
+                    httpClient.newCall(request).execute().use { response ->
+                        if (response.isSuccessful) {
+                            Log.i(TAG, "Local server is healthy and responding!")
+                            addLog("[READY] Local game server running at http://127.0.0.1:3000 (code ${response.code})")
+                            val notif = buildNotification("本地服务已就绪 · 端口 3000")
+                            val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+                            manager.notify(NOTIFICATION_ID, notif)
+                            sendBroadcast(Intent(ACTION_SERVER_READY))
+                            return@Thread
+                        }
                     }
+                } catch (_: Exception) {
+                    // Server still booting up
                 }
-            } catch (_: Exception) {
-                // Server still booting up
             }
-        }
-        if (isRunning.get()) {
-            addLog("[WARN] Healthcheck timed out after 15s")
-        }
+            if (isRunning.get()) {
+                val timeoutReason = "15 秒内 /healthz 未响应，服务启动超时"
+                addLog("[ERROR] $timeoutReason")
+                sendBroadcast(Intent(ACTION_SERVER_FAILED).putExtra("reason", timeoutReason))
+            }
+        }, "health-checker").start()
     }
 
     private fun checkHealthAndNotify() {
-        Thread {
+        Thread({
             try {
                 val request = Request.Builder()
                     .url("http://127.0.0.1:3000/healthz")
@@ -262,17 +277,11 @@ class NodeServerService : Service() {
                     }
                 }
             } catch (_: Exception) {}
-        }.start()
+        }, "health-check-instant").start()
     }
 
     private fun stopNodeServer() {
         isRunning.set(false)
-        try {
-            nodeProcess?.destroy()
-            nodeProcess = null
-        } catch (e: Exception) {
-            Log.e(TAG, "Error stopping Node process", e)
-        }
         try {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
                 stopForeground(STOP_FOREGROUND_REMOVE)

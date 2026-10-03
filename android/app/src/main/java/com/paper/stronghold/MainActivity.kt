@@ -2,6 +2,8 @@ package com.paper.stronghold
 
 import android.app.AlertDialog
 import android.content.BroadcastReceiver
+import android.content.ClipData
+import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
@@ -16,6 +18,10 @@ import android.view.WindowManager
 import android.webkit.*
 import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import java.io.File
+import java.util.concurrent.TimeUnit
 
 class MainActivity : AppCompatActivity() {
     companion object {
@@ -37,6 +43,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var btnQuickConnectLan: Button
     private lateinit var btnDirectSettings: Button
     private lateinit var btnRetryConnect: Button
+    private lateinit var btnShowDiagLogs: Button
 
     private var serverReadyReceiver: BroadcastReceiver? = null
 
@@ -65,9 +72,11 @@ class MainActivity : AppCompatActivity() {
         btnQuickConnectLan = findViewById(R.id.btnQuickConnectLan)
         btnDirectSettings = findViewById(R.id.btnDirectSettings)
         btnRetryConnect = findViewById(R.id.btnRetryConnect)
+        btnShowDiagLogs = findViewById(R.id.btnShowDiagLogs)
 
         btnOpenSettings.setOnClickListener { showServerSwitchDialog() }
         btnDirectSettings.setOnClickListener { showServerSwitchDialog() }
+        btnShowDiagLogs.setOnClickListener { showLogsAndDiagnosticsDialog() }
         btnQuickConnectLan.setOnClickListener {
             val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
             prefs.edit().apply {
@@ -203,7 +212,13 @@ class MainActivity : AppCompatActivity() {
                     NodeServerService.ACTION_SERVER_FAILED -> {
                         val reason = intent.getStringExtra("reason") ?: "本地引擎未启动"
                         runOnUiThread {
-                            showConnectionError("本地独立服务提示: $reason\n可在设置中切换为单机重试或连接其他手机/电脑。")
+                            showConnectionError("本地独立服务启动失败: $reason\n可点击上方【诊断与日志】查看具体报错，或在设置中切换为连接其他手机/电脑。")
+                        }
+                    }
+                    NodeServerService.ACTION_SERVER_EXITED -> {
+                        val exitCode = intent.getIntExtra("exitCode", -1)
+                        runOnUiThread {
+                            showConnectionError("本地独立服务已异常退出 (代码: $exitCode)\n可点击上方【诊断与日志】查看崩溃堆栈。")
                         }
                     }
                 }
@@ -212,6 +227,7 @@ class MainActivity : AppCompatActivity() {
         val filter = IntentFilter().apply {
             addAction(NodeServerService.ACTION_SERVER_READY)
             addAction(NodeServerService.ACTION_SERVER_FAILED)
+            addAction(NodeServerService.ACTION_SERVER_EXITED)
         }
         try {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -336,7 +352,7 @@ class MainActivity : AppCompatActivity() {
             "本机局域网地址: 未连接 Wi-Fi (单机离线可用)"
         }
 
-        val btnRestart = dialogView.findViewById<Button>(R.id.btnRestartServer)
+        val btnShowLogs = dialogView.findViewById<Button>(R.id.btnShowLogsSwitch)
         val btnCancel = dialogView.findViewById<Button>(R.id.btnCancelDialog)
         val btnApply = dialogView.findViewById<Button>(R.id.btnApplyDialog)
 
@@ -367,9 +383,8 @@ class MainActivity : AppCompatActivity() {
             .setView(dialogView)
             .create()
 
-        btnRestart.setOnClickListener {
-            dialog.dismiss()
-            startLocalServer()
+        btnShowLogs?.setOnClickListener {
+            showLogsAndDiagnosticsDialog()
         }
 
         btnCancel.setOnClickListener {
@@ -400,6 +415,105 @@ class MainActivity : AppCompatActivity() {
             } else {
                 startLocalFlow()
             }
+        }
+
+        dialog.show()
+    }
+
+    fun showLogsAndDiagnosticsDialog() {
+        val dialogView = layoutInflater.inflate(R.layout.dialog_server_logs, null)
+        val tvStatus = dialogView.findViewById<TextView>(R.id.tvDiagServerStatus)
+        val tvLanIp = dialogView.findViewById<TextView>(R.id.tvDiagLanIp)
+        val tvLogContent = dialogView.findViewById<TextView>(R.id.tvLogContent)
+        val scrollLogs = dialogView.findViewById<ScrollView>(R.id.scrollLogs)
+        val btnCopy = dialogView.findViewById<Button>(R.id.btnCopyLogs)
+        val btnRefresh = dialogView.findViewById<Button>(R.id.btnRefreshDiag)
+        val btnClose = dialogView.findViewById<Button>(R.id.btnCloseDiag)
+
+        val lanIp = NetworkUtils.getLocalIpAddress(this)
+        tvLanIp.text = if (lanIp != "127.0.0.1") {
+            "本机局域网 IP: http://$lanIp:3000 (支持同 Wi-Fi 联机)"
+        } else {
+            "本机局域网 IP: 127.0.0.1 (当前未连接 Wi-Fi，仅单机可用)"
+        }
+
+        fun updateLogs() {
+            val memoryLogs = NodeServerService.getRecentLogs(100)
+            if (memoryLogs.isNotEmpty()) {
+                tvLogContent.text = memoryLogs.joinToString("\n")
+            } else {
+                val logFile = File(filesDir, "server.log")
+                if (logFile.exists() && logFile.length() > 0) {
+                    try {
+                        val text = logFile.readText(Charsets.UTF_8).takeLast(8192)
+                        tvLogContent.text = text
+                    } catch (e: Exception) {
+                        tvLogContent.text = "读取日志文件失败: ${e.message}"
+                    }
+                } else {
+                    tvLogContent.text = "暂无运行日志 (服务未启动或尚未产生输出)"
+                }
+            }
+            scrollLogs.post {
+                scrollLogs.fullScroll(View.FOCUS_DOWN)
+            }
+        }
+
+        fun checkServerHealth() {
+            tvStatus.text = "服务连接状态: 正在探测 http://127.0.0.1:3000/healthz …"
+            tvStatus.setTextColor(0xFFE0E0E0.toInt())
+            Thread {
+                try {
+                    val client = OkHttpClient.Builder()
+                        .connectTimeout(1, TimeUnit.SECONDS)
+                        .readTimeout(1, TimeUnit.SECONDS)
+                        .build()
+                    val req = Request.Builder()
+                        .url("http://127.0.0.1:3000/healthz")
+                        .build()
+                    client.newCall(req).execute().use { resp ->
+                        val code = resp.code
+                        val body = resp.body?.string() ?: ""
+                        runOnUiThread {
+                            if (resp.isSuccessful) {
+                                tvStatus.text = "服务连接状态: 正常运行 (HTTP $code: $body)"
+                                tvStatus.setTextColor(0xFF00E676.toInt())
+                            } else {
+                                tvStatus.text = "服务连接状态: 异常响应 (HTTP $code: $body)"
+                                tvStatus.setTextColor(0xFFFFAB00.toInt())
+                            }
+                        }
+                    }
+                } catch (e: Exception) {
+                    runOnUiThread {
+                        tvStatus.text = "服务连接状态: 无法连通 (${e.javaClass.simpleName}: ${e.message})"
+                        tvStatus.setTextColor(0xFFFF5252.toInt())
+                    }
+                }
+            }.start()
+        }
+
+        updateLogs()
+        checkServerHealth()
+
+        val dialog = AlertDialog.Builder(this)
+            .setView(dialogView)
+            .create()
+
+        btnCopy.setOnClickListener {
+            val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+            val clip = ClipData.newPlainText("Stronghold Server Logs", tvLogContent.text)
+            clipboard.setPrimaryClip(clip)
+            Toast.makeText(this, "日志已复制到剪贴板", Toast.LENGTH_SHORT).show()
+        }
+
+        btnRefresh.setOnClickListener {
+            updateLogs()
+            checkServerHealth()
+        }
+
+        btnClose.setOnClickListener {
+            dialog.dismiss()
         }
 
         dialog.show()

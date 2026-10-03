@@ -37,3 +37,12 @@ desktop.ini
 .idea/
 .vscode/
 .claude/
+
+# --- Android build artifacts -----------------------------------------------------------------------
+*.apk
+*.aab
+android/app/build/
+android/.gradle/
+android/local.properties
+android/app/src/main/assets/app_bundle.zip
+

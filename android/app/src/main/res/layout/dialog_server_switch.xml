@@ -103,12 +103,12 @@
         android:orientation="horizontal">
 
         <Button
-            android:id="@+id/btnRestartServer"
+            android:id="@+id/btnShowLogsSwitch"
             style="?android:attr/borderlessButtonStyle"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="@string/btn_restart_service"
-            android:textColor="#ff7a7a" />
+            android:text="诊断与日志"
+            android:textColor="@color/theme_teal" />
 
         <Button
             android:id="@+id/btnCancelDialog"
