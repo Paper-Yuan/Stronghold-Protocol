@@ -56,12 +56,12 @@ html:not(.sp-in-match) .toast-host { margin-top: var(--sa-t); }
 /* An invisible hit area of at least --tap-min around small controls on touch screens: centred, never smaller than the
    control, no layout change. Only controls that do not use ::before themselves are listed. */
 :where(.sp-coarse) :where(.tapx, .gtop__exit, .gtop__iconbtn, .enemybtn, .readybtn, .gm__gear, .fsbtn, .ewheel__btn, .ewheel__nav,
-  .toolbtn, .funds__collapse, .team__btn, .effect, .bslot .bond, .vswitch__arrow, .edrawer__close, .dpanel__close, .bpop__close,
+  .toolbtn, .funds__collapse, .team__btn, .effect, .vswitch__arrow, .edrawer__close, .dpanel__close, .bpop__close,
   .modal__close, .uf__btn, .chud__back, .tabs__tab, .btn, .pill-btn, .title-guide, .stephead__guide, .set-toggle, .set-seg button) {
   position: relative;
 }
 .sp-coarse :is(.tapx, .gtop__exit, .gtop__iconbtn, .enemybtn, .readybtn, .gm__gear, .fsbtn, .ewheel__btn, .ewheel__nav,
-  .toolbtn, .funds__collapse, .team__btn, .effect, .bslot .bond, .vswitch__arrow, .edrawer__close, .dpanel__close, .bpop__close,
+  .toolbtn, .funds__collapse, .team__btn, .effect, .vswitch__arrow, .edrawer__close, .dpanel__close, .bpop__close,
   .modal__close, .uf__btn, .chud__back, .tabs__tab, .btn, .pill-btn, .title-guide, .stephead__guide, .set-toggle, .set-seg button)::before {
   content: '';
   position: absolute; left: 50%; top: 50%; z-index: 0;
@@ -132,10 +132,14 @@ html:not(.sp-in-match) .toast-host { margin-top: var(--sa-t); }
 /* Mobile detail panel dimensions & clearance (vivo V2520A: 761x360 dpr 3) */
 :is(.sp-touch, .sp-coarse) .rwtag__micro { display: none; }
 @media (max-width: 767px), (max-height: 460px) {
+  .brief-stage { flex-wrap: wrap; gap: .06rem .12rem; }
+  .brief-stage__k { width: 100%; justify-content: space-between; }
+  .brief-stage__name { width: 100%; }
+  .gm__bonds { top: max(1.1rem, 36px); }
   .dpanel {
     width: max(4.9rem, 210px);
     left: max(2.3rem, 76px);
-    top: max(2.1rem, 84px);
+    top: max(2.1rem, 90px);
   }
   .dstat__k { font-size: max(.12rem, 8px); }
   .dstat__k-full { display: none; }

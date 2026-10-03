@@ -769,7 +769,12 @@ async function boot() {
   installDeviceSupport();
   installAudio({ getManifest: () => data.get('assets'), subscribe: store.subscribe, getState: store.get, selectRoute, settings: settingsStore.get() });
   const phase = params.get('phase') || 'PREP';
+  const stageParam = params.get('stage');
   setPhase(PHASE[phase] || PHASE.PREP, params.get('variant') || '');
+  if (stageParam && S?.pub) {
+    S.pub.stageId = stageParam;
+    pushPublic();
+  }
   render(html`<div class="app-root"><div class="app-bg" aria-hidden="true"></div><${GameScreen} /><${ConnectionBanner} /><${ToastHost} /><${UiHosts} /><${GuideHost} /></div>`, document.getElementById('app'));
   renderBar();
   store.subscribe(() => renderBar());

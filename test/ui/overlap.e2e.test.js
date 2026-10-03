@@ -13,7 +13,7 @@
 
 import { test, describe, before, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { existsSync, mkdirSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -120,9 +120,20 @@ describe('phone layout overlaps (briefing stage line, bond badges, bond strip, s
 
   for (const dev of Object.keys(DEVICES)) {
     test(`${dev}: briefing — the stage pool label never paints over the stage name`, async (t) => {
-      const h = await openPhoneMock(dev, 'phase=INFO_CHECK');
+      // Use the real longest stage from data/stages.json (max by [...name].length)
+      const stagesRaw = JSON.parse(readFileSync(path.join(ROOT, 'data', 'stages.json'), 'utf8'));
+      const stageList = Array.isArray(stagesRaw) ? stagesRaw : Object.values(stagesRaw);
+      const longest = stageList.slice().sort((a, b) => [...(b.name || '')].length - [...(a.name || '')].length)[0];
+      const longestId = longest?.stageId || longest?.id || 'act1autochess_m05';
+
+      const h = await openPhoneMock(dev, `phase=INFO_CHECK&stage=${longestId}`);
       if (!h) return t.skip('not in touch layout');
       const { page, problems } = h;
+
+      // Verify the longest stage name is really loaded on page
+      const renderedName = await page.$eval('.brief-stage__name', (el) => el.textContent.trim());
+      assert.ok(renderedName.includes(longest.name), `briefing must test with longest stage name "${longest.name}", got "${renderedName}"`);
+
       const r = await rects(page, ['.brief-stage', '.brief-stage__pool', '.brief-stage__name']);
       await page.screenshot({ path: path.join(OUT, `overlap-${dev}-briefing.png`) });
 
@@ -131,6 +142,30 @@ describe('phone layout overlaps (briefing stage line, bond badges, bond strip, s
         assert.ok(area <= TOL, `.brief-stage__pool overlaps .brief-stage__name by ${area.toFixed(1)}px^2 (briefing.css:61-64 — nowrap pool with no min-width:0)`);
         assert.ok(r['.brief-stage__pool'].right <= r['.brief-stage'].right + 1, 'the pool label escapes the .brief-stage box');
       }
+
+      // Typography floors in briefing
+      const typo = await page.evaluate(() => {
+        const out = [];
+        const poolEl = document.querySelector('.brief-stage__pool');
+        const nameEl = document.querySelector('.brief-stage__name');
+        if (poolEl) {
+          const px = parseFloat(getComputedStyle(poolEl).fontSize);
+          if (px < 10) out.push(`pool font-size ${px.toFixed(1)}px < 10px`);
+        }
+        if (nameEl) {
+          const px = parseFloat(getComputedStyle(nameEl).fontSize);
+          if (px < 13) out.push(`name font-size ${px.toFixed(1)}px < 13px`);
+        }
+        for (const ban of document.querySelectorAll('.brief-bond__ban')) {
+          const cs = getComputedStyle(ban);
+          const px = parseFloat(cs.fontSize);
+          const w = parseFloat(cs.width);
+          if (px < 10) out.push(`ban font-size ${px.toFixed(1)}px < 10px`);
+          if (w < 18) out.push(`ban width ${w.toFixed(1)}px < 18px`);
+        }
+        return out;
+      });
+      assert.deepEqual(typo, [], `${dev} briefing typography floors`);
 
       const bans = await page.$$eval('.brief-bond__ban', (els) => els.map((e) => {
         const g = (x) => x ? { left: x.left, top: x.top, right: x.right, bottom: x.bottom } : null;
@@ -163,6 +198,28 @@ describe('phone layout overlaps (briefing stage line, bond badges, bond strip, s
         const group = { left: Math.min(...slots.map((s) => s.left)), right: Math.max(...slots.map((s) => s.right)) };
         const drift = Math.abs((group.left + group.right) / 2 - (host.left + host.right) / 2);
         assert.ok(drift <= host.w * 0.08, `bond strip is off-centre by ${drift.toFixed(1)}px in a ${host.w.toFixed(0)}px host (>8%) — centre .gm__bonds`);
+
+        // Check bond dimensions & typography floor: --disc >= 26px, name font >= 11px, slot width >= 34px
+        const bondMetrics = await page.evaluate(() => {
+          const out = [];
+          const slot = document.querySelector('.gm__bonds .bslot');
+          if (slot) {
+            const r = slot.getBoundingClientRect();
+            if (r.width < 34) out.push(`slot width ${r.width.toFixed(1)}px < 34px`);
+            const nameEl = slot.querySelector('.bond__name');
+            if (nameEl) {
+              const px = parseFloat(getComputedStyle(nameEl).fontSize);
+              if (px < 11) out.push(`bond__name font-size ${px.toFixed(1)}px < 11px`);
+            }
+            const discEl = slot.querySelector('.bond__core') || slot.querySelector('.bond__disc');
+            if (discEl) {
+              const rDisc = discEl.getBoundingClientRect();
+              if (rDisc.width < 25) out.push(`bond disc width ${rDisc.width.toFixed(1)}px < 26px`);
+            }
+          }
+          return out;
+        });
+        assert.deepEqual(bondMetrics, [], `${dev} bond strip dimensions and typography`);
       }
       assert.deepEqual(problems, [], `${dev} prep page errors`);
       await page.close();

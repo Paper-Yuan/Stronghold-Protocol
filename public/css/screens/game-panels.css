@@ -51,7 +51,7 @@
 /* ---- detail panel ---- */
 .dpanel {
   --bk-c: var(--mint-500);
-  position: absolute; left: 2.3rem; top: 2.1rem; bottom: 1.02rem; width: 4.9rem; max-height: 8.4rem; z-index: 9;
+  position: absolute; left: 2.3rem; top: 2.22rem; bottom: 1.02rem; width: 4.9rem; max-height: 8.4rem; z-index: 9;
   display: flex; flex-direction: column;
   background: rgba(11, 15, 13, .97); border: 1px solid var(--line-2); box-shadow: 0 .14rem .4rem rgba(0, 0, 0, .65);
   animation: panel-in var(--t-slow) var(--ease-out);
