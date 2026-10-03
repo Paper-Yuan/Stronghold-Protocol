@@ -25,6 +25,10 @@ if (bundleRes.status !== 0) {
 
 // 2. Invoke Gradle to assemble APK
 console.log('\n[2/2] 正在执行 Gradle 构建 APK...');
+const apkOutput = path.join(ANDROID_DIR, 'app', 'build', 'outputs', 'apk', 'debug', 'app-debug.apk');
+if (fs.existsSync(apkOutput)) {
+  fs.rmSync(apkOutput, { force: true });
+}
 const gradlewCmd = IS_WIN ? path.join(ANDROID_DIR, 'gradlew.bat') : path.join(ANDROID_DIR, 'gradlew');
 const gradleArgs = ['assembleDebug'];
 
@@ -48,7 +52,6 @@ if (buildRes.status !== 0) {
   process.exit(1);
 }
 
-const apkOutput = path.join(ANDROID_DIR, 'app', 'build', 'outputs', 'apk', 'debug', 'app-debug.apk');
 if (fs.existsSync(apkOutput)) {
   const stat = fs.statSync(apkOutput);
   console.log('\n✔ 构建完成！');
