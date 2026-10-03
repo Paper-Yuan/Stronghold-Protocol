@@ -11,7 +11,7 @@
 //    item onto a unit (equip), 机变 pick, band pick, briefing ready, emote, exit → 暂离 → 返回.
 // 3. Regressions: tooltip after a click, toasts / reconnect banner placement, refused watch targets, battle unit
 //    panel closing at the next prep, no Hidden Core medal before R15, equipment dropped on an operator's upper body
-//    (engine), illegal drops toasting their reason.
+//    (engine), illegal drops toasting their reason, the folded shop's prep camera (public issue #5).
 
 import { test, describe, before, after } from 'node:test';
 import assert from 'node:assert/strict';
@@ -517,6 +517,46 @@ describe('in-match UI (mock harness, headless Chrome)', { skip: !ENABLED && 'set
     assert.deepEqual(problems, []);
     await page.close();
   });
+
+  for (const [w, h] of [[1920, 1080], [844, 390]]) {
+    test(`fold (public issue #5): the own prep board grows with the shop folded, every bench pad stays free, unfolding returns (${w}×${h})`, async (t) => {
+      if (RENDER !== 'engine') { t.skip('SP_RENDER=fallback'); return; }
+      const { page, problems } = await open('phase=PREP', { w, h });
+      await page.waitForFunction(() => !!globalThis.__SP_VIEW__?.raw?.debug?.cam, { timeout: 15000 });
+      await sleep(900);
+      const look = () => page.evaluate(() => {
+        const V = globalThis.__SP_VIEW__; const raw = V.raw; const cam = raw.debug.cam;
+        const tile = cam.project(5.5, 9.5).x - cam.project(4.5, 9.5).x;
+        let worst = 1;
+        for (let c = 0; c <= 9; c++) {
+          const q = V.tileScreen(7, c);
+          if (!q) continue;
+          const cx = q.poly.reduce((s, p) => s + p[0], 0) / 4, cy = q.poly.reduce((s, p) => s + p[1], 0) / 4;
+          const pts = [[cx, cy], ...q.poly.map(([x, y]) => [x + (cx - x) * 0.12, y + (cy - y) * 0.12])];
+          const free = pts.filter(([x, y]) => document.elementFromPoint(x, y) === raw.debug.app.view).length / pts.length;
+          worst = Math.min(worst, free);
+        }
+        return { tile, worst, kind: raw.debug.camKind, params: JSON.stringify(cam.params()) };
+      });
+      const open1 = await look();
+      await page.click('.funds__collapse');
+      await page.waitForSelector('.shopbar-tab', { timeout: 3000 });
+      await sleep(1200); // the 0.75 s camera flight
+      const folded = await look();
+      assert.equal(folded.kind, 'prep');
+      assert.ok(folded.tile > open1.tile * 1.15, `tile ${open1.tile.toFixed(1)} → ${folded.tile.toFixed(1)} px`);
+      assert.equal(folded.worst, 1, 'every bench pad fully pressable under the folded camera');
+      await page.screenshot({ path: path.join(OUT, `ui-prep-folded-${w}.png`) });
+      await page.click('.shopbar-tab__btn');
+      await page.waitForSelector('.shopbar', { timeout: 3000 });
+      await sleep(1200);
+      const back = await look();
+      assert.equal(back.params, open1.params, 'unfolded: exactly the shop camera again');
+      assert.equal(back.worst, 1);
+      assert.deepEqual(problems, []);
+      await page.close();
+    });
+  }
 
   for (const [w, h] of [[1920, 1080], [1366, 768]]) {
     test(`toasts clear the top bar capsule; the reconnect banner clears the view switcher (${w}×${h})`, async () => {

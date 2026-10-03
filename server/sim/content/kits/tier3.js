@@ -82,7 +82,7 @@ function profileMul(battle, unit, target) {
 }
 /** Targetable enemies within `r` tiles of (x, y), nearest first (spawn order breaks ties), excluding `skip`. */
 function enemiesAround(battle, unit, x, y, r, skip = null) {
-  const out = battle.enemiesInRadius(x, y, r).filter((e) => !(skip && skip.has(e)) && canTargetEnemy(unit, e, { canHitFly: true }));
+  const out = battle.foesInRadius(x, y, r).filter((e) => !(skip && skip.has(e)) && canTargetEnemy(unit, e, { canHitFly: true }));
   const d = (e) => bodyDist(e, x, y);
   return out.sort((a, b) => d(a) - d(b) || (a.spawnSeq ?? a.id) - (b.spawnSeq ?? b.id));
 }
@@ -113,6 +113,8 @@ const gridKeys = (grid, u, ext = 0) => absoluteRangeKeys(grid || [[0, 0]], u.til
 const fx = (battle, kind, u, extra = {}) => battle.fx(kind, { x: u.x, y: u.y, id: u.id, ...extra });
 const copyGrid = (g) => (Array.isArray(g) && g.length ? g.map((p) => [p[0], p[1]]) : null);
 const NINE = [[1, -1], [1, 0], [1, 1], [0, -1], [0, 0], [0, 1], [-1, -1], [-1, 0], [-1, 1]];
+/** 琳琅诗怀雅 S3's coin range (PRTS 备注 "前方范围2-4"; range_table "2-4", facing right). */
+const SWIRE2_COIN_GRID = Object.freeze([[1, 1], [0, 0], [0, 1], [0, 2], [-1, 1]]);
 /** Two enemy bodies touch within this distance (tiles) — 见行者 collision stun. */
 const COLLIDE = 0.6;
 /** 忍冬 S3's 迷彩 (until her next cast): its own buff key, never merged with another unit status. */
@@ -125,24 +127,24 @@ function textNum(text, re, fallback) {
   return /^\d+(\.\d+)?$/.test(m[1]) ? +m[1] : (CN_NUM[m[1]] ?? fallback);
 }
 /**
- * A tile a summon may take: inside the field, nobody on it, and not the home tile of an ally that has not deployed
- * yet / waits to redeploy (the initial deployment runs top→bottom: a summon placed while it runs must not steal a
- * later board unit's tile — that unit would never deploy; a dead operator must be able to come back).
+ * A tile a summon may take: inside the field and not reserved (Battle.isReservedTile: nobody on it, no knocked-out
+ * operator lying there, not the home tile of an ally that has not deployed yet / waits to redeploy — the initial
+ * deployment runs top→bottom: a summon placed while it runs must not steal a later board unit's tile).
  */
 function freeTile(battle, r, c) {
-  if (!Number.isInteger(r) || !Number.isInteger(c) || !battle.grid.inRect(r, c) || battle.unitAt(r, c)) return false;
-  for (const u of battle.allyUnits) if (!u.alive && !u.removed && u.kind !== 'device' && u.homeR === r && u.homeC === c) return false;
-  return true;
+  return Number.isInteger(r) && Number.isInteger(c) && battle.grid.inRect(r, c) && !battle.isReservedTile(r, c);
 }
 /** Walkable ground tile a melee summon can stand on. */
 const groundTile = (battle, r, c) => battle.grid.groundPassable(r, c) && battle.grid.canStand(r, c);
 /**
- * Tactical point (战术点) of a tactician: `prefer` (the board piece's tile, i.e. the player's choice) when usable,
- * else the shared tactical point (tokens.js tacticalPoint = Battle.findTacticalPoint: a free walkable tile of its
- * initial range on an enemy ground path first, then the nearest one).
+ * Tactical point (战术点) of a tactician: `prefer` (the board piece's tile, i.e. the player's choice) when usable —
+ * free, standable ground (never 深水区: grid.canStand) inside her initial range ("只能部署在召唤者攻击范围内"; the prep
+ * already keeps the piece there, PlayerState._legal) —, else the shared tactical point (tokens.js tacticalPoint =
+ * Battle.findTacticalPoint: a free walkable tile of its initial range on an enemy ground path first, then the nearest).
  */
 function tacticalPoint(battle, unit, prefer = null) {
-  if (prefer && freeTile(battle, prefer[0], prefer[1]) && groundTile(battle, prefer[0], prefer[1])) return prefer;
+  const inRange = (r, c) => (unit.baseRangeKeys || unit.rangeKeys || []).includes(r * COLS + c);
+  if (prefer && freeTile(battle, prefer[0], prefer[1]) && groundTile(battle, prefer[0], prefer[1]) && inRange(prefer[0], prefer[1])) return prefer;
   return sharedTacticalPoint(battle, unit);
 }
 /** Tokens `tokenId` summoned by / placed for `owner` (board pieces included). */
@@ -399,10 +401,11 @@ const KITS = {
   //      大买家: coin at skill start + coin & ATK stack per trait payment; 破财消灾: DP-paid revive (cost doubles)
   //      S1 仗义疏财 (passive, 2 coins): an attack spends a coin to heal the most injured ally (< 70 % HP) of the 8
   //      surrounding tiles for attack@heal_scale × ATK. S3 千金一掷 (持续时间无限): attacks hit twice, kills give a coin;
-  //      closing it spends every coin on random ground enemies of the front range (atk_scale phys + small push forward;
-  //      PRTS 备注: 地面敌方单位, 弹道不可对空).
-  //      Auto-close (the mode casts everything itself; the player's "主动关闭" is not available): once the purse is full
-  //      (10) and an enemy stands in range. 精锐 module MER-Y: ATK +4 % per trait payment (≤ 5 stacks).
+  //      closing it spends every coin on random ground enemies of range 2-4 in front and those she blocks (atk_scale phys +
+  //      a small push, radial despite the text's 向前 — PRTS 备注 "推开效果为径向推动"; client charpack char_1033_swire2:
+  //      the RandomGold ability (Skill_3_End) carries swire2_s_3[knockback] of template knockback[relative]; 地面敌方单位,
+  //      弹道不可对空). Auto-close (the mode casts everything itself; the player's "主动关闭" is not available): once the
+  //      purse is full (10) and a coin target stands there. 精锐 module MER-Y: ATK +4 % per trait payment (≤ 5 stacks).
   chess_char_3_04_a: (bb, chess, def) => {
     const d = defOf(chess, def);
     const t0 = talentBb(d, 0), t1 = talentBb(d, 1);
@@ -473,27 +476,36 @@ const KITS = {
         [S1]: () => ({ kind: 'passive' }), // (coins → heals: installS1)
         [S3]: (s) => {
           const cash = num(s.bb.atk_scale, 1), force = num(s.bb.force, 0), full = num(s.bb.sp, 10);
+          // the 【金币标记】 targets: ground enemies on range 2-4 in front of her (range_table "2-4") and every unit she blocks
+          const coinMarks = (battle, unit) => {
+            const list = enemiesOn(battle, unit, gridKeys(SWIRE2_COIN_GRID, unit), 0, { ...unit.profile, canHitFly: false });
+            for (const e of unit.blocking || []) if (e.alive && !e.isFlying && !list.includes(e)) list.push(e);
+            return list;
+          };
           return {
             kind: 'toggle',
             attack: { hits: 2 },
             onTick({ battle, unit, skill }) {
-              if ((unit.mem.coins ?? 0) >= full && enemiesOn(battle, unit, unit.rangeKeys, 0, { ...unit.profile, canHitFly: false }).length) skill.end('manual');
+              if ((unit.mem.coins ?? 0) >= full && coinMarks(battle, unit).length) skill.end('manual');
             },
             onEnd({ battle, unit, reason }) {
               if (reason !== 'manual' || !unit.alive) return;
               const n = unit.mem.coins ?? 0;
               unit.mem.coins = 0;
               let spent = 0;
-              // PRTS 备注: 【金币标记】 goes on "前方范围内的地面敌方单位与自身阻挡的所有单位" and the coins are "弹道（不可对空）" —
-              // air units (FLY, 近地悬浮, 浮空) are never paid
-              const ground = { ...unit.profile, canHitFly: false };
+              // PRTS 备注: closing it "立即对前方范围2-4内的地面敌方单位与自身阻挡的所有单位施加【金币标记】", the coins going to
+              // marked units at random — 弹道（不可对空）: air units (FLY, 近地悬浮, 浮空) are never paid. Until 0.1.1 the
+              // coins went to her attack range (1-1) instead of range 2-4.
+              const marked = coinMarks(battle, unit);
               for (let i = 0; i < n; i++) {
-                const e = battle.rng.pick(enemiesOn(battle, unit, unit.rangeKeys, 0, ground));
+                const e = battle.rng.pick(marked.filter((x) => x.alive && !x.isFlying));
                 if (!e) break;
                 spent++;
                 battle.dealDamage(unit, e, { amount: unit.s.atk * cash, type: 'phys', isSkill: true, tags: ['skill', 'swire2Cash'] });
-                // "将目标小力地向前推开": a directional push along her direction (Battle.push, official 力度 − 重量 distance)
-                if (e.alive) battle.push(e, force, { from: unit, dir: { x: unit.fwd[1], y: unit.fwd[0] } });
+                // "将目标小力地向前推开" — PRTS 备注 "金币弹道…推开效果为径向推动", client knockback[relative]: a radial push
+                // away from her centre (not along her direction, so no 45° / 0.25-tile 特殊修正), official 力度 − 重量
+                // distance (Battle.push)
+                if (e.alive) battle.push(e, force, { from: unit });
               }
               fx(battle, 'coin', unit, { n: 0, spent, skill: 'swire2_3' });
             },
@@ -708,7 +720,7 @@ const KITS = {
 
   // ---- 3_07 见行者 · 推击手 (hidden) — S2 惊爆射击: push every enemy in the skill range forward + stun (longer when
   //      slammed into a wall, collided enemies stunned too; air units too [ASSUMED: "范围内所有敌人", no 对空 note on
-  //      PRTS] — a 失衡免疫 enemy is not pushed but still stunned); 技巧射击: ignore DEF vs heavy enemies;
+  //      PRTS] — a 失衡免疫 enemy or a 静态刚体 (the drones) is not pushed but still stunned); 技巧射击: ignore DEF vs heavy enemies;
   //      精锐 module PUS-X: redeployed on a ranged tile ⇒ half the deployment cost back
   chess_char_3_07_a: (bb, chess, def) => {
     const d = defOf(chess, def);
@@ -768,10 +780,11 @@ const KITS = {
     return kit;
   },
 
-  // ---- 3_08 薄绿 · 阵法术师 — S2 聚能涡旋: each hit pushes the target towards her (splash arts), end-of-skill burst on
+  // ---- 3_08 薄绿 · 阵法术师 — S2 聚能涡旋: each attack strikes every enemy on her range (the trait's 群体法术伤害) and
+  //      pushes each one towards her, end-of-skill burst on
   //      every enemy in range; 地质学者: DEF aura (skill off) / less likely targeted (skill on);
   //      精锐 module PLX-X: keeps part of the guard (DEF/RES) while the skill runs
-  //      S1 风语: wider range (skill grid), attacks at attack@atk_scale (群体 arts splash of the trait). Auto-cast: the data
+  //      S1 风语: wider range (skill grid), attacks every enemy on it at attack@atk_scale. Auto-cast: the data
   //      rule SEARCH is the 阵法术师 row (PRTS 卫戍协议/帮助 "不受基础策略影响，在初始攻击范围内存在敌人时释放技能"; it
   //      covers every MANUAL skill of the class — user playtest #6) = an enemy inside her INITIAL range — the engine's
   //      DEFAULT rule, checked every tick for a unit that does not attack while its skill is off — not any enemy on the
@@ -816,7 +829,9 @@ const KITS = {
           onHit({ battle, unit, target }) {
             if (!target || !target.alive || target.side !== 'enemy') return;
             // PRTS 备注: "此技能的“拖拽”机制实际为反方向（指向薄绿方向）的推开" — a radial push towards her by the
-            // official 力度 − 重量 push distance (小力 vs weight 1: 0.44 tiles), never past her (Battle.push inward)
+            // official 力度 − 重量 push distance (小力 vs weight 1: 0.44 tiles), never past her (Battle.push inward). Her
+            // attack reaches air units (阵法术师 "攻击时可对空"), but the drones of the mode are 静态刚体 (PRTS 特殊机制): hit,
+            // never dragged (player report after 0.1.0, "飞机可以被薄绿的技能拉走")
             if (battle.push(target, pullForce, { from: unit, inward: true }) > 0) fx(battle, 'pull', target, { src: unit.id });
           },
         },

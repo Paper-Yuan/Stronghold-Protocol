@@ -334,9 +334,10 @@ describe('§16: chessLoadout (m.private.loadout → skill / module shown)', () =
         const h = makeBattle({ units: [{ chessId: c.chessId, row: 10, col: 3, moduleId }], enemies: [], autoFinish: false, timeLimit: 5 });
         h.step();
         const u = h.unit(c.chessId);
-        assert.equal(key(g), key(u.rangeGrid), `${c.chessId} ${moduleId}: card range = battle range`);
+        // the range it starts with: its grid + a module's permanent 攻击距离 (信仰搅拌机 SPT-Y; community report E1 review)
+        assert.equal(key(g), key(u.liveRangeGrid), `${c.chessId} ${moduleId}: card range = battle range`);
         const wheel = previewGrid({ getChess: get2, chessRecord: (r) => chessLoadout(r, lo, get2).record }, { kind: 'chess', id: c.chessId });
-        assert.equal(key(wheel), key(u.rangeGrid), `${c.chessId} ${moduleId}: wheel preview = battle range`);
+        assert.equal(key(wheel), key(u.liveRangeGrid), `${c.chessId} ${moduleId}: wheel preview = battle range`);
         if (key(g) !== key(c.rangeGrid)) changed++;
       }
     }

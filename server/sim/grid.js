@@ -5,6 +5,13 @@
 // Stage input: `{ id, rows: string[19] (bottom-first), legend?: {glyph: {...}}, devices?: [...] }`.
 // Legend entries are normalised from either the research format (heightType/buildableType/passableMask/tileKey)
 // or the build-data format (height/build/passable/terrain); missing glyphs fall back to DEFAULT_LEGEND.
+// `build` is the EFFECTIVE deploy type: a tile whose mechanism refuses deployment (DEPLOY_REFUSED_TILES: 深水区
+// tile_deepsea — PRTS 深水区 地形信息 "地形机制：拒绝部署（待补充）"; player report after 0.1.0: operators stood in
+// 战场#08's pool and 突袭 members jumped into it) is NONE whatever its level buildableType (ALL), so `canStand` — every
+// automatic placement: the 突袭 landing tile, tactical points, summon tiles — and the path tie-break below treat it as
+// ground no operator can stand on. data/stages.json legends already carry the effective value (tools/build-data.mjs).
+// Known limit [ASSUMED]: the 特制水上平台 that makes a 深水区 deployable (act1 m05, weight 0 this season) exists only in
+// the match's deploy map; the sim does not model those canoes (content/devices.js), so here their tiles stay NONE.
 //
 // Pathfinding = the official client's (`Torappu.Battle.SPFA`, research 08 §3.1/§3.4): one FLOW FIELD per destination,
 // a FIFO SPFA from the destination over the rect with the 4 neighbours UP (row+1), RIGHT, DOWN, LEFT (in that order,
@@ -14,19 +21,28 @@
 // tile on the line walkable and not a crate; a diagonal step needs both orthogonal neighbours clear). A ground enemy
 // walks straight toward `next[tile]` of its current tile (ai.js). Fields are cached per (destination, grid version).
 //
-// Blockable-ground preference (user playtest: "the lower-gate enemies of 战场#01 walk up the col-9 floor lane where no
-// operator can block them"). Two refinements on top of the official algorithm; `dist` (so the crate cost 1000 and
-// every grid route length) stays exactly the official one:
-//   * tie-break: the SPFA relaxes on (dist, pen) lexicographically, `pen` = number of NON-BLOCKABLE walkable tiles
-//     (floor / gate / goal / teleport tiles — `blockable()` false: not LOW ground buildable for melee) on the chain.
-//     Among equal-length chains the one with the fewest non-blockable tiles wins; remaining ties go to the first
-//     parent in SPFA order (the official order unless a pen improvement re-queued a tile).
-//   * smoothing: a line of sight may only cross a non-blockable tile (including the corner tiles of a diagonal step)
-//     that lies on the tile's own raw chain between its two ends — a smoothed segment never cuts across floor the grid
-//     route does not walk, so an enemy never slips past an operator standing on the road next to the floor lane.
-//     This one also bends routes whose raw chain is the official one (a diagonal that would clip off-chain floor
-//     becomes an L, mostly inside the boss arena's central floor): the smoothed polyline can be up to 2 tiles
-//     longer than the official one (test/sim/pathing-blockable.test.js bounds it).
+// Blockable-ground preference (user playtest #2: "the lower-gate enemies of 战场#01 walk up the col-9 floor lane where
+// no operator can block them"), kept to where the official route really walks over more floor (community report after
+// 0.1.0: on 战场#04 活性源石 the lower-gate enemies must cross diagonally from row 9 into row 10 as officially, not
+// walk two tiles left of the gate and then straight up). A tile is non-blockable when it is walkable but not LOW
+// ground buildable for melee (floor / gate / goal / teleport / 深水区 tiles — `blockable()` false; no gate route of 战场#08
+// changed when its 深水区 became non-buildable, a few off-route smoothed steps of its boss field, rows 4–5, go around the
+// water instead of cutting across it). Each field holds two candidate
+// pointers per tile, both with the official `dist` (so the crate cost 1000 and every grid route length stay official):
+//   * official: the plain algorithm above;
+//   * preference (0.1.0's): the SPFA relaxes on (dist, pen) lexicographically, `pen` = non-blockable tiles on the chain
+//     (among equal-length chains the fewest wins; remaining ties go to the first parent in SPFA order), and the line of
+//     sight may cover a non-blockable tile — its Bresenham footprint, the corner tiles of a diagonal step included —
+//     only on the tile's own raw chain between its two ends, so it never slips past a road tile beside floor its grid
+//     route does not walk.
+// `next[tile]` is the official pointer unless the preference pointer leads to a route CROSSING strictly fewer
+// non-blockable tiles (`cost`, counted to the destination in increasing `dist` order). A segment crosses the tiles
+// whose interior it passes through (`crossTiles`, exact geometry); one it only touches at a corner point is not crossed
+// — the first version counted the corner tiles there too and so bent official diagonals into L shapes (D5). On equal
+// counts the official pointer stays, except where the preference one merely skips it (the official waypoint lies on
+// the straight line to it and leads there: the same walk, one waypoint fewer). So the route from every tile crosses
+// no more floor than the official one and leaves it only for a step that crosses less (test/sim/pathing-official.test.js
+// lists the routes that still differ on every stage).
 // Unavoidable non-blockable tiles (gates, goals, teleports and single-exit floor, e.g. (12,9) next to the upper
 // gate) stay on the route; test/sim/pathing-blockable.test.js lists them per stage, gate and field.
 //
@@ -67,9 +83,18 @@ export const DEFAULT_LEGEND = Object.freeze({
   O: { height: 'LOW', build: 'NONE', pass: 'ALL', key: 'tile_telout', special: 'telout' },
   m: { height: 'LOW', build: 'ALL', pass: 'ALL', key: 'tile_mire', terrain: 'mire' },
   g: { height: 'LOW', build: 'ALL', pass: 'ALL', key: 'tile_smog', terrain: 'smog' },
-  d: { height: 'LOW', build: 'ALL', pass: 'ALL', key: 'tile_deepsea', terrain: 'deepsea' },
+  d: { height: 'LOW', build: 'NONE', pass: 'ALL', key: 'tile_deepsea', terrain: 'deepsea' },
   i: { height: 'LOW', build: 'ALL', pass: 'ALL', key: 'tile_infection', terrain: 'infection' },
 });
+
+/**
+ * Tile keys whose mechanism refuses deployment although the level's buildableType allows it: 深水区 tile_deepsea (PRTS
+ * 深水区 地形信息 "部署类型 全部位 … 地形机制 拒绝部署（待补充）"; PRTS 作战机制: the 地形标记 AdvancedBuildableMask —
+ * 深水 among them — "限制玩家仅能部署匹配的单位于其上"; the season-1 战场#05 puts a 特制水上平台 — "在水上建立可以部署
+ * 任意单位的平台" — on every one of its 深水区 tiles). Shared with tools/build-data.mjs (the stages.json legend's
+ * `buildable`).
+ */
+export const DEPLOY_REFUSED_TILES = Object.freeze(new Set(['tile_deepsea']));
 
 const TERRAIN_BY_KEY = { tile_mire: 'mire', tile_smog: 'smog', tile_deepsea: 'deepsea', tile_infection: 'infection', tile_deepwater: 'deepsea' };
 const SPECIAL_BY_KEY = { tile_start: 'start', tile_end: 'end', tile_telin: 'telin', tile_telout: 'telout' };
@@ -92,7 +117,8 @@ export function normalizeLegendEntry(glyph, e) {
   const heightRaw = e.height ?? e.heightType;
   const height = heightRaw == null ? base.height : (/HIGH/i.test(String(heightRaw)) ? 'HIGH' : 'LOW');
   const buildRaw = e.build ?? e.buildable ?? e.buildableType;
-  const build = buildRaw == null ? base.build : (buildRaw === true ? 'ALL' : buildRaw === false ? 'NONE' : String(buildRaw).toUpperCase());
+  const build = DEPLOY_REFUSED_TILES.has(key) ? 'NONE'
+    : buildRaw == null ? base.build : (buildRaw === true ? 'ALL' : buildRaw === false ? 'NONE' : String(buildRaw).toUpperCase());
   let pass;
   if (e.pass != null) pass = normPass(e.pass);
   else if (e.passable != null || e.passableMask != null) pass = normPass(e.passable ?? e.passableMask);
@@ -105,7 +131,10 @@ export function normalizeLegendEntry(glyph, e) {
 
 const EMPTY_TILE = Object.freeze({ glyph: 'X', key: 'tile_forbidden', height: 'HIGH', build: 'NONE', pass: 'NONE', terrain: null, special: null });
 
-/** A melee operator may stand (and block) on this terrain: LOW ground buildable for ALL or MELEE. */
+/**
+ * A melee operator may stand on this terrain: LOW ground buildable for ALL or MELEE. It blocks ground enemies there only
+ * where ground units can pass — never on a fenced 围墙 / 围栏 tile (Battle._blockerFor, DESIGN §21.23).
+ */
 function isBlockableTile(t) { return t.height === 'LOW' && (t.build === 'ALL' || t.build === 'MELEE'); }
 
 export class Grid {
@@ -171,17 +200,23 @@ export class Grid {
 
   flyPassable(r, c) { return this.inRect(r, c) && this.tile(r, c).pass !== 'NONE'; }
 
-  /** Whether a unit may stand on this tile. `ranged` units may also use LOW ALL/MELEE tiles (DESIGN §3). */
+  /**
+   * Whether a unit may be placed on this tile (every automatic placement: the 突袭 landing tile, tactical points, summon
+   * tiles). `ranged` units may also use LOW ALL/MELEE tiles (DESIGN §3). The effective `build` refuses the 深水区
+   * (DEPLOY_REFUSED_TILES); a hard-blocked tile (OB_BLOCK: a 射击台 switched on by a map card, a mound) takes no melee
+   * unit — the match's deploy map makes a 射击台 ranged-only (server/match/board.js).
+   */
   canStand(r, c, { ranged = false } = {}) {
     const t = this.tile(r, c);
     if (t.build === 'NONE') return false;
     if (ranged) return t.build === 'ALL' || t.build === 'RANGED' || (t.height === 'LOW' && t.build === 'MELEE');
+    if (this.inBounds(r, c) && (this.obstacle[r * COLS + c] & OB_BLOCK)) return false;
     return t.height === 'LOW' && (t.build === 'ALL' || t.build === 'MELEE');
   }
 
   isLow(r, c) { return this.tile(r, c).height === 'LOW'; }
 
-  /** Ground a melee operator can be deployed on and block from (LOW, buildable ALL / MELEE) — terrain only. */
+  /** Ground a melee operator can be deployed on (LOW, buildable ALL / MELEE) — terrain only; blocking: isBlockableTile. */
   blockable(r, c) { return isBlockableTile(this.tile(r, c)); }
 
   /**
@@ -236,18 +271,66 @@ export class Grid {
 
   _buildField(er, ec, allowDiagonal, ignore) {
     const N = ROWS * COLS;
-    const dist = new Int32Array(N).fill(-1);
-    const parent = new Int32Array(N).fill(-1);
-    /** non-blockable tiles on the raw chain (tile included, destination excluded) — the equal-length tie-break */
-    const pen = new Int32Array(N);
-    const f = { dest: -1, dist, parent, pen, next: parent, len: null, version: this.version, allowDiagonal, ignore };
-    if (!this.inBounds(er, ec)) return f;
+    const f = { dest: -1, dist: null, parent: null, pen: null, next: null, official: null, cost: null, len: null, version: this.version, allowDiagonal, ignore };
+    if (!this.inBounds(er, ec)) {
+      const none = new Int32Array(N).fill(-1);
+      return Object.assign(f, { dist: none, parent: none, next: none, official: none, pen: new Int32Array(N), cost: new Int32Array(N) });
+    }
     const dest = er * COLS + ec;
     f.dest = dest;
-    const inQ = new Uint8Array(N);
     const unb = this.unblockable;
-    const crate = (k) => !ignore && (this.obstacle[k] & OB_CRATE) !== 0;
-    // SPFA (FIFO), seeded with the destination (walkable or not); relaxation on (dist, pen) lexicographically
+    const official = this._spfa(dest, ignore, null);
+    const pref = this._spfa(dest, ignore, unb);
+    const dist = pref.dist; // the lexicographic relaxation leaves every distance the official one
+    const walk = (r, c) => this.walkable(r, c, ignore) && (ignore || !(this.obstacle[r * COLS + c] & OB_CRATE));
+    const ray = allowDiagonal ? bresenhamClear : segmentClear;
+    const nextO = smoothChains(official.parent, dist, (a, b) => ray(a, b, walk), null);
+    // preference smoothing (0.1.0's, playtest #2): the line of sight from n toward ancestor `to` may also cover a
+    // non-blockable tile — the Bresenham footprint, corner tiles of a diagonal step included — only when that tile is on
+    // n's own raw chain between n and `to`; the jump stops at the first ancestor not visible under that rule
+    const onChain = new Int32Array(N).fill(-1);
+    let from = -1, to = -1;
+    const walkP = (r, c) => {
+      if (!walk(r, c)) return false;
+      const k = r * COLS + c;
+      return !unb[k] || (onChain[k] === from && dist[k] >= dist[to]);
+    };
+    const nextP = smoothChains(pref.parent, dist, (a, b) => { from = a; to = b; return ray(a, b, walkP); },
+      (n) => { for (let x = n, g = N; x >= 0 && g-- > 0; x = pref.parent[x]) onChain[x] = n; });
+    // per tile, in increasing distance: the official pointer unless the preference one crosses strictly fewer
+    // non-blockable tiles on the way to the destination — or as few while only skipping the official waypoint o, which
+    // then lies on the straight line to it and leads there (the same walk, one waypoint fewer)
+    const order = [];
+    for (let k = 0; k < N; k++) if (dist[k] >= 0) order.push(k);
+    order.sort((a, b) => dist[a] - dist[b] || a - b);
+    const through = (a, b) => { let n = -unb[a]; crossTiles(a, b, (r, c) => { n += unb[r * COLS + c]; }); return n; };
+    const next = new Int32Array(N).fill(-1);
+    const cost = new Int32Array(N);
+    for (const k of order) {
+      const o = nextO[k], p = nextP[k];
+      if (o < 0) continue; // the destination
+      let use = o, best = through(k, o) + cost[o];
+      if (p >= 0 && p !== o) {
+        const cp = through(k, p) + cost[p];
+        if (cp < best || (cp === best && next[o] === p && onSegment(k, o, p))) { use = p; best = cp; }
+      }
+      next[k] = use;
+      cost[k] = best;
+    }
+    return Object.assign(f, { dist, parent: pref.parent, pen: pref.pen, next, official: nextO, cost });
+  }
+
+  /**
+   * FIFO SPFA from `dest` (walkable or not) with the official neighbour order and move costs. With `penalty` (per-tile
+   * 0/1) the relaxation is lexicographic on (dist, pen): equal-length chains keep the fewest penalised tiles.
+   */
+  _spfa(dest, ignore, penalty) {
+    const N = ROWS * COLS;
+    const dist = new Int32Array(N).fill(-1);
+    const parent = new Int32Array(N).fill(-1);
+    /** penalised tiles on the raw chain (tile included, destination excluded) */
+    const pen = new Int32Array(N);
+    const inQ = new Uint8Array(N);
     const q = new Int32Array(N * 4 + 8);
     let qh = 0, qt = 0;
     const push = (k) => {
@@ -265,8 +348,8 @@ export class Grid {
         const nr = r + FOUR_WAYS[i][0], nc = c + FOUR_WAYS[i][1];
         if (!this.walkable(nr, nc, ignore)) continue;
         const nb = nr * COLS + nc;
-        const nd = dist[cur] + (crate(nb) ? OBSTACLE_COST : 1);
-        const np = pen[cur] + unb[nb];
+        const nd = dist[cur] + (!ignore && (this.obstacle[nb] & OB_CRATE) ? OBSTACLE_COST : 1);
+        const np = penalty ? pen[cur] + penalty[nb] : 0;
         if (dist[nb] < 0 || nd < dist[nb] || (nd === dist[nb] && np < pen[nb])) {
           dist[nb] = nd;
           pen[nb] = np;
@@ -275,32 +358,7 @@ export class Grid {
         }
       }
     }
-    // smoothing: row-major, in place (client `_PostprocessAndMakeNextMapSmoothly`); a line from n toward ancestor a
-    // may cross a non-blockable tile only when that tile is on n's raw chain between n and a (onChain / minDist)
-    const next = new Int32Array(parent);
-    const onChain = new Int32Array(N).fill(-1);
-    let from = -1, minDist = 0;
-    const clear = (r, c) => {
-      if (!this.walkable(r, c, ignore)) return false;
-      const k = r * COLS + c;
-      if (crate(k)) return false;
-      return !unb[k] || (onChain[k] === from && dist[k] >= minDist);
-    };
-    const los = allowDiagonal ? (a, b) => bresenhamClear(a, b, clear) : (a, b) => segmentClear(a, b, clear);
-    for (let n = 0; n < N; n++) {
-      if (dist[n] < 0 || next[n] < 0) continue;
-      for (let x = n, guard = N; x >= 0 && guard-- > 0; x = parent[x]) onChain[x] = n;
-      from = n;
-      let b = next[n];
-      while (next[b] >= 0) {
-        minDist = dist[next[b]];
-        if (!los(n, next[b])) break;
-        b = next[b];
-      }
-      next[n] = b;
-    }
-    f.next = next;
-    return f;
+    return { dist, parent, pen };
   }
 
   /** Geometric length (tiles) of the smoothed route from tile key k to the field's destination (memoised). */
@@ -370,12 +428,39 @@ export class Grid {
 /**
  * @typedef {object} FlowField
  * @property {number} dest destination tile key (-1 outside the grid)
- * @property {Int32Array} dist SPFA distance to the destination (-1 = unreachable)
- * @property {Int32Array} parent raw BFS parent
- * @property {Int32Array} pen non-blockable tiles on the raw chain (tie-break among equal `dist`)
- * @property {Int32Array} next smoothed parent (the tile to walk straight toward)
+ * @property {Int32Array} dist SPFA distance to the destination (-1 = unreachable; the official one)
+ * @property {Int32Array} parent raw SPFA parent of the preference chain (fewest non-blockable tiles among equal `dist`)
+ * @property {Int32Array} pen non-blockable tiles on that raw chain (tile included, destination excluded)
+ * @property {Int32Array} official smoothed parent of the pure official algorithm
+ * @property {Int32Array} next the tile to walk straight toward (official, or the preference pointer when it crosses fewer
+ *   non-blockable tiles — see the module header)
+ * @property {Int32Array} cost non-blockable tiles the route of `next` crosses from the tile (excluded) to the destination
  * @property {Float64Array|null} len memoised smoothed length (fieldLength)
  */
+
+/**
+ * Row-major, in-place smoothing (client `_PostprocessAndMakeNextMapSmoothly`): each tile's pointer jumps along its chain
+ * (already smoothed pointers for tiles processed earlier) while `los(tile, ancestor)` holds; `begin(tile)`, when given,
+ * runs before the tile's jump. Returns the smoothed pointers.
+ */
+function smoothChains(parent, dist, los, begin) {
+  const N = parent.length;
+  const next = new Int32Array(parent);
+  for (let n = 0; n < N; n++) {
+    if (dist[n] < 0 || next[n] < 0) continue;
+    if (begin) begin(n);
+    let b = next[n];
+    while (next[b] >= 0 && los(n, next[b])) b = next[b];
+    next[n] = b;
+  }
+  return next;
+}
+
+/** Whether tile key b lies strictly inside the straight segment between tile keys a and c. */
+function onSegment(a, b, c) {
+  const ar = (a / COLS) | 0, ac = a - ar * COLS, br = (b / COLS) | 0, bc = b - br * COLS, cr = (c / COLS) | 0, cc = c - cr * COLS;
+  return (br - ar) * (cc - ac) === (bc - ac) * (cr - ar) && (br - ar) * (cr - br) + (bc - ac) * (cc - bc) > 0;
+}
 
 /** Bresenham line of sight between tile keys a → b (client `_RaycastBresenhamLine`). */
 function bresenhamClear(a, b, clear) {
@@ -426,6 +511,35 @@ export function bresenhamTiles(a, b) {
     if (e2 < dc) { err += dc; r += sr; }
     out.push([r, c]);
   }
+  return out;
+}
+
+/**
+ * Exact traversal of the straight segment between the centres of tile keys a → b: calls `fn(r, c)` for every tile whose
+ * interior the segment crosses, a and b included, in order — a tile it only touches at a corner point (the segment
+ * passes exactly through a lattice corner) is skipped. Stops early and returns false when `fn` returns false.
+ * Integer arithmetic: the k-th column boundary is crossed at t = (2k − 1) / 2dx, the m-th row boundary at
+ * (2m − 1) / 2dy.
+ */
+function crossTiles(a, b, fn) {
+  let r = (a / COLS) | 0, c = a - r * COLS;
+  const r1 = (b / COLS) | 0, c1 = b - r1 * COLS;
+  const dy = Math.abs(r1 - r), dx = Math.abs(c1 - c);
+  const sr = r1 > r ? 1 : -1, sc = c1 > c ? 1 : -1;
+  if (fn(r, c) === false) return false;
+  for (let kx = 1, ky = 1; r !== r1 || c !== c1;) {
+    const tx = kx <= dx ? (2 * kx - 1) * dy : Infinity;
+    const ty = ky <= dy ? (2 * ky - 1) * dx : Infinity;
+    if (tx === ty) { c += sc; r += sr; kx++; ky++; } else if (tx < ty) { c += sc; kx++; } else { r += sr; ky++; }
+    if (fn(r, c) === false) return false;
+  }
+  return true;
+}
+
+/** Tiles [[r,c]…] whose interior the segment between the centres of tiles a = [r,c] and b crosses (crossTiles). */
+export function segmentTiles(a, b) {
+  const out = [];
+  crossTiles(a[0] * COLS + a[1], b[0] * COLS + b[1], (r, c) => { out.push([r, c]); });
   return out;
 }
 

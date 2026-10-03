@@ -469,6 +469,28 @@ test('chess: skills[] = every skill unlocked at the status, at the chess skill l
   assert.deepEqual(chess.chess_char_1_08_a.skills[1].trigger.customRangeGrid, chess.chess_char_1_08_a.skills[1].rangeGrid);
   assert.deepEqual(rules('chess_char_4_22_a'), ['DEFAULT', 'DEFAULT', 'DEFAULT']);      // 银灰: "攻击范围缩小 / 扩大" = attack range
   assert.deepEqual(rules('chess_char_3_18_a'), ['DEFAULT', 'SKILL_RANGE', 'DEFAULT']);  // 忍冬: S2 对周围…, S3 攻击距离+1
+  // the deliberate deviation from the 重装 row (DESIGN §21.29, the owner's decision; tools/build-data.mjs
+  // TRIGGER_DEVIATIONS, per chess): six skills cast with an enemy in range, rawRule keeps the official TAKE_DAMAGE
+  const raws = (id) => chess[id].skills.map((s) => s.trigger.rawRule);
+  for (const id of ['chess_char_1_04_a', 'chess_char_1_04_b']) {                       // 深巡: S1 keeps the row, S2 deviates
+    assert.deepEqual(rules(id), ['TAKE_DAMAGE', 'DEFAULT']);
+    assert.deepEqual(raws(id), ['TAKE_DAMAGE', 'TAKE_DAMAGE']);
+  }
+  for (const id of ['chess_char_1_20_a', 'chess_char_1_20_b']) {                       // 雷蛇: S1 AUTO, S2 deviates
+    assert.deepEqual(rules(id), ['DEFAULT', 'DEFAULT']);
+    assert.deepEqual(raws(id), ['DEFAULT', 'TAKE_DAMAGE']);
+  }
+  for (const id of ['chess_char_5_08_a', 'chess_char_5_08_b']) {                       // 号角: S1 AUTO, S2 / S3 deviate
+    assert.deepEqual(rules(id), ['DEFAULT', 'DEFAULT', 'DEFAULT']);
+    assert.deepEqual(raws(id), ['DEFAULT', 'TAKE_DAMAGE', 'TAKE_DAMAGE']);
+  }
+  for (const id of ['chess_char_2_18_a', 'chess_char_2_18_b']) {                       // 灰毫: S1 (generic skcom_atk_up[3]) and S2
+    assert.deepEqual(rules(id), ['DEFAULT', 'DEFAULT']);
+    assert.deepEqual(raws(id), ['TAKE_DAMAGE', 'TAKE_DAMAGE']);
+  }
+  const deviated = Object.values(chess).flatMap((c) => (c.skills || []).filter((s) => s.trigger.rawRule === 'TAKE_DAMAGE' && s.trigger.rule !== 'TAKE_DAMAGE').map((s) => `${c.baseId} ${s.skillId}`));
+  assert.equal(deviated.length, 12, 'exactly the six skills, normal + elite');
+  assert.deepEqual([...new Set(deviated)].sort(), ['chess_char_1_04_a skchr_udflow_2', 'chess_char_1_20_a skchr_liskam_2', 'chess_char_2_18_a skchr_ashlok_2', 'chess_char_2_18_a skcom_atk_up[3]', 'chess_char_5_08_a skchr_horn_2', 'chess_char_5_08_a skchr_horn_3']);
   for (const c of Object.values(chess)) {
     for (const s of c.skills || []) {
       if (s.skillType !== 'MANUAL') assert.ok(!['TAKE_DAMAGE', 'SEARCH', 'SKILL_RANGE'].includes(s.trigger.rule), `${c.chessId} ${s.skillId}: an AUTO / PASSIVE skill takes no strategy row`);
@@ -686,6 +708,11 @@ test('independent re-derivation of every chess and enemy stat from the raw offic
   const db = new Map(raw('levels/enemydata/enemy_database.json').enemies.map((e) => [e.Key, e.Value]));
   const ov = new Map((raw('levels/activities/act1autochess/level_autochess_enemy_data.json').enemyDbRefs || [])
     .filter((r) => r.overwrittenData).map((r) => [r.id, r.overwrittenData]));
+  // the 鸭爵 strategy's swapped-in enemies cost 1 LP at the protection point (PRTS 卫戍协议：盟约 下半/PRTS盟约记录 鸭爵 备注
+  // "但进入保护目标点将减少1点目标生命值"; the database's lifePointReduce 0 is the roguelike rule)
+  const swapped = new Set(Object.values(act.effectBuffInfoDataDict).flat().filter((b) => b.key === 'round_start_all_player_change_enemy_2')
+    .flatMap((b) => b.blackboard.filter((kv) => kv.key === 'enemylist').flatMap((kv) => kv.valueStr.split(','))));
+  assert.equal(swapped.size, 4);
   for (const e of Object.values(enemies)) {
     const base = db.get(e.key).find((l) => l.level === 0).enemyData;
     const o = ov.get(e.key);
@@ -700,7 +727,7 @@ test('independent re-derivation of every chess and enemy stat from the raw offic
       maxHp: pick((x) => x.attributes?.maxHp, 0), atk: pick((x) => x.attributes?.atk, 0), def: pick((x) => x.attributes?.def, 0),
       res: pick((x) => x.attributes?.magicResistance, 0), moveSpeed: pick((x) => x.attributes?.moveSpeed, 1),
       bat: pick((x) => x.attributes?.baseAttackTime, 1), aspd: pick((x) => x.attributes?.attackSpeed, 100),
-      lpr: pick((x) => x.lifePointReduce, 1), massLevel: pick((x) => x.attributes?.massLevel, 0),
+      lpr: swapped.has(e.key) ? 1 : pick((x) => x.lifePointReduce, 1), massLevel: pick((x) => x.attributes?.massLevel, 0),
       motion: pick((x) => x.motion, 'WALK'),
     };
     for (const [key, v] of Object.entries(exp)) {

@@ -89,7 +89,7 @@ export function dmgStyleKey(type) {
 export const HIT_TINT = Object.freeze({ phys: 0xffd9a0, arts: 0xc77dff, true: 0xffffff, heal: 0x62f08a, elem: 0xff7b3a });
 
 /**
- * Projectile visuals per b.ev 'atk' projKind (sim: none | arrow | bolt | bomb | lob | orb | drone | enemy | boomerang;
+ * Projectile visuals per b.ev 'atk' projKind (sim: none | arrow | bolt | bomb | lob | orb | drone | enemy | boomerang | droneBomb;
  * chain / chainHeal / beam are beams). Drawn by render/fx.js:
  *   look   tracer (bullet streak + muzzle flash) | orb (glowing ball, particle trail) | shell (lobbed on an arc with a
  *          ground shadow, smoke trail) | dart (small fast bolt) | boomerang (spins to the target and back to the thrower)
@@ -101,6 +101,8 @@ export const HIT_TINT = Object.freeze({ phys: 0xffd9a0, arts: 0xc77dff, true: 0x
  *          diameter; `arc` peak height of a lob over a 3-tile throw (scales with the range)
  *   colours `tint` hot core, `glow` halo, `trail` trail particles, `muzzle` flash at the shooter
  *   hit    arrival burst (fx.js _impact): spark | arts | heal | boom | splash | zap | enemy
+ *   once   a one-off cast, not an attack rhythm: the shooter's attack clip plays once at its own speed (render/spine.js
+ *          SpineActor.attack / windUp) — 暴鸰's bomb drop
  */
 export const PROJ = Object.freeze({
   arrow: { look: 'tracer', speed: 14, tint: 0xfff6dc, glow: 0xffc45a, len: 1.05, width: 0.2, head: 0.36, muzzle: 0xffd27a, hit: 'spark' },
@@ -111,6 +113,9 @@ export const PROJ = Object.freeze({
   drone: { look: 'dart', speed: 16, tint: 0xe4fbff, glow: 0x57c9ff, len: 0.7, width: 0.16, head: 0.3, trail: 0x57c9ff, hit: 'zap' },
   enemy: { look: 'orb', speed: 10, tint: 0xffe2da, glow: 0xff3b30, len: 0.55, width: 0.28, head: 0.44, trail: 0xff4a3a, muzzle: 0xff6a5a, hit: 'enemy' },
   boomerang: { look: 'boomerang', speed: 15, back: 3.75, tint: 0xfff4d6, glow: 0x9ff0dc, len: 0.4, width: 0.3, head: 0.5, trail: 0x9ff0dc, hit: 'spark' },
+  // 暴鸰's bomb (sim content/enemies.js kitBombd; official projectile_bombd, speed 5): dropped from the drone, it falls
+  // onto its target with a low arc and bursts where the sim's 'explode' blast goes off
+  droneBomb: { look: 'shell', speed: 5, once: true, tint: 0xffe2c8, glow: 0xff5a3a, len: 0.6, width: 0.3, head: 0.5, trail: 0xff7a4a, arc: 0.35, smoke: 0x2e2824, hit: 'boom' },
 });
 
 /** Status keys (b.ev 'status' + UF flags) → icon atlas key (render/textures.js) and colour. */

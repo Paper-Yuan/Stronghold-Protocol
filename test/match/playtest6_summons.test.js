@@ -115,7 +115,7 @@ test('moving an owner on the board sends its placed summons back to its card (PR
   assert.deepEqual(move(m, cat.uid, { area: 'board', row: 10, col: 4 }, 'UP'), { ok: true });
   assert.equal([...ps.board.values()].filter((p) => p.kind === 'token').length, 2);
   // a real move: both devices leave the board and go back onto one card of 2
-  assert.deepEqual(move(m, cat.uid, { area: 'board', row: 10, col: 6 }), { ok: true });
+  assert.deepEqual(move(m, cat.uid, { area: 'board', row: 10, col: 7 }), { ok: true });
   assert.equal([...ps.board.values()].filter((p) => p.kind === 'token').length, 0, 'no device left on the board');
   const back = tokensOf(ps, DEVICE);
   assert.equal(back.length, 1);
@@ -216,26 +216,26 @@ test('a summon dragged onto an operator swaps it away: that operator\'s other pl
   const cat = give(m, ps, CATHY);
   const hm = give(m, ps, SILENCE);
   assert.deepEqual(move(m, cat.uid, { area: 'board', row: 10, col: 4 }), { ok: true });
-  assert.deepEqual(move(m, hm.uid, { area: 'board', row: 10, col: 6 }), { ok: true });
+  assert.deepEqual(move(m, hm.uid, { area: 'board', row: 10, col: 7 }), { ok: true });
   const devCard = stackOf(ps, DEVICE);
   assert.deepEqual(move(m, devCard.uid, { area: 'board', row: 10, col: 3 }), { ok: true });
   assert.deepEqual(move(m, devCard.uid, { area: 'board', row: 11, col: 4 }, 'UP'), { ok: true });
-  assert.deepEqual(move(m, stackOf(ps, DRONE).uid, { area: 'board', row: 10, col: 7 }), { ok: true });
-  // 凯瑟琳's device (10,3) dropped onto 赫默 (10,6): 赫默 takes 10,3, so her drone goes back to her card; 凯瑟琳 did not move
+  assert.deepEqual(move(m, stackOf(ps, DRONE).uid, { area: 'board', row: 10, col: 8 }), { ok: true });
+  // 凯瑟琳's device (10,3) dropped onto 赫默 (10,7): 赫默 takes 10,3, so her drone goes back to her card; 凯瑟琳 did not move
   const devA = ps.board.get('10,3');
-  assert.deepEqual(move(m, devA.uid, { area: 'board', row: 10, col: 6 }), { ok: true });
+  assert.deepEqual(move(m, devA.uid, { area: 'board', row: 10, col: 7 }), { ok: true });
   assert.equal(ps.board.get('10,3')?.uid, hm.uid);
-  assert.equal(ps.board.get('10,6')?.uid, devA.uid, 'the dragged device is where it was dropped');
-  assert.equal(ps.board.get('10,7'), undefined, '赫默\'s placed drone left the board');
+  assert.equal(ps.board.get('10,7')?.uid, devA.uid, 'the dragged device is where it was dropped');
+  assert.equal(ps.board.get('10,8'), undefined, '赫默\'s placed drone left the board');
   assert.equal(stackOf(ps, DRONE)?.count, 1, '… back onto her card');
   assert.equal(ps.board.get('11,4')?.id, DEVICE, '凯瑟琳\'s other device stays');
   // the other device (11,4) dropped onto its own owner (10,4): 凯瑟琳 takes 11,4; the dropped device stays at 10,4, her
-  // remaining placed device (10,6) goes back onto her card
+  // remaining placed device (10,7) goes back onto her card
   const devB = ps.board.get('11,4');
   assert.deepEqual(move(m, devB.uid, { area: 'board', row: 10, col: 4 }), { ok: true });
   assert.equal(ps.board.get('11,4')?.uid, cat.uid);
   assert.equal(ps.board.get('10,4')?.uid, devB.uid);
-  assert.equal(ps.board.get('10,6'), undefined);
+  assert.equal(ps.board.get('10,7'), undefined);
   assert.equal(stackOf(ps, DEVICE)?.count, 1);
   assert.equal(tokensOf(ps, DEVICE).reduce((n, p) => n + (p.count || 1), 0), 2, 'still 2 devices in all');
   checkInvariants(m);
@@ -263,7 +263,7 @@ test('a summon stack left in temp at the prep deadline comes back next round (PR
   assert.deepEqual(move(m, card.uid, { area: 'board', row: 11, col: 4 }, 'UP'), { ok: true });
   for (let i = 0; ps.hand.some((x) => x == null); i++) giveItem(m, ps, PLAIN[i]);
   // moving 凯瑟琳 with a full hand: her devices go back as one card of 2, which overflows into temp and blocks Ready
-  assert.deepEqual(move(m, cat.uid, { area: 'board', row: 10, col: 6 }), { ok: true });
+  assert.deepEqual(move(m, cat.uid, { area: 'board', row: 10, col: 7 }), { ok: true });
   const inTemp = ps.temp.find((p) => p && p.kind === 'token' && p.id === DEVICE);
   assert.equal(inTemp?.count, 2);
   assert.deepEqual(m.handle('p_0', { t: 'g.ready', ready: true }), { error: ERR.TEMP_NOT_EMPTY });
@@ -277,7 +277,7 @@ test('a summon stack left in temp at the prep deadline comes back next round (PR
   assert.equal(back[0].count, 2, 'the deploy limit again');
   assert.equal(back[0].ownerUid, cat.uid);
   assert.deepEqual(move(m, back[0].uid, { area: 'board', row: 10, col: 5 }, 'RIGHT'), { ok: true });
-  assert.deepEqual(move(m, back[0].uid, { area: 'board', row: 11, col: 6 }, 'UP'), { ok: true });
+  assert.deepEqual(move(m, back[0].uid, { area: 'board', row: 11, col: 7 }, 'UP'), { ok: true });
   assert.ok(ps.tempEmpty, 'placing both cleared temp');
   // a later round start grants nothing more: both devices are on the board
   h.drive(() => m.phase === PHASE.PREP && m.round === 3);

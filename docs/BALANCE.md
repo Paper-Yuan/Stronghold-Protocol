@@ -333,6 +333,57 @@ Official-waves column: `node tools/balance.mjs --mode all --difficulty ALL --bot
 seed), measured before the review's leader-multiplier / 联防-timing fixes (§2; not re-run); the other columns are the
 previous pass (old generator), kept for history. \* the bot code of this pass (§5) with the old time reading and no tuning; the originally reported bots (old bot code) survived ≈ 6.5 rounds on 险境 and won 1/20 on 标准.
 
+**Player feedback after 0.1.0 (#10 "人机有点太笨了").** Measured first (`tools/botbench.mjs`): the 0.1.0 bots refreshed
+0–2 times a prep and bought side-grade singles they sold again at a loss (every sale returns 1), so they merged ≈ 2
+times a match and fielded ≈ 2 elites at R13; in co-op 绝境 ≈ 1 in 2 of their bounty picks leaked (solo 10 of 80; the
+old score ignored the enemy); 信标 went on the best operator (it destroys its carrier) and a level-up could spend the
+funds a third copy in the shop needed. Changes (server/match/bot.js header, META §1.5): refresh-vs-buy by the shop odds
+of completing held pairs, the freeze for an unaffordable third copy, merges before level-ups, a committed focus /
+second bond (a teammate's main bond read from its bond strip), armour-aware DPS, bounty picks by expected value from
+the exposure model, item carriers by effect, 坎诺特 banking its interest capital, a tactician's 援军 inside its range.
+Same seeds (1–40) old → new, the match's default rehearsal (3):
+
+| config | wins | rounds passed | LP left | leaks / match | bounty enemies leaked | merges / bot | elites at R13 |
+|---|---|---|---|---|---|---|---|
+| 独立 标准 (1 AI) | 35 → 35 / 40 | 8.80 → 8.80 | 29.9 → 28.6 | 2.5 → 3.3 | 1 → 1 | 1.40 → 2.25 | – (R7: 0.7 → 1.0) |
+| 独立 绝境 (1 AI) | 19 → 26 / 40 | 13.05 → 13.35 | 14.3 → 16.6 | 26.5 → 19.7 | 10 → 8 of 80 picks | 2.33 → 4.10 | 1.8 → 2.2 |
+| 同盟 标准 (4 AI) | 40 → 40 / 40 | 14.00 → 14.00 | 110.0 → 112.2 | 39.4 → 33.1 | 6 → 6 | 2.59 → 4.10 | 1.9 → 2.3 |
+| 同盟 绝境 (4 AI) | 5 → 12 / 40 | 11.85 → 12.32 | 5.1 → 12.7 | 224.6 → 212.6 | 155 → 148 of ≈ 310 picks | 2.00 → 2.97 | 2.3 → 2.8 |
+
+绝境 leaks per alive bot in R12 / R13: solo 8.0 / 9.2 → 5.7 / 4.8, co-op 20.5 / 20.7 → 18.5 / 15.8. Co-op bounty leaks
+are bound by the drafts, not the pick: in 223 of the 312 co-op 绝境 bounty picks no card still on offer had a kill
+chance ≥ 0.5 (solo 22 of 80), and only 5 picks (solo 0) took a card below 0.5 while one ≥ 0.5 was on offer — re-measure
+after the bounty-half fix (player report #2). Strategies played alone (solo 绝境, seeds 201–220, forced with `--band`):
+坎诺特 9 → 14 wins of 20, 昆图斯 9 → 11, 杜宾 8 → 9 (keeping an unused 教鞭 vs dropping it: 11 vs 11 wins over 24 杜宾
+matches — kept, as it costs nothing but a hand slot). Decision time per bot prep is unchanged (one thread, back to back
+on a quiet host, seeds 1–6, solo 绝境 / co-op 绝境; the rehearsal included): wall clock p50 / p95 94 / 191 → 89 / 205 ms
+and 86 / 175 → 83 / 162 ms, CPU 131 / 314 → 124 / 329 ms and 97 / 209 → 91 / 188 ms; the heuristics alone (CPU) 31 / 74
+→ 28 / 70 ms and 17 / 39 → 17 / 38 ms (the lineup search tries identical pieces once and reuses the lineup across
+refreshes); a 机变 pick 0.07 → 0.15 ms (p50). Over the 40-seed A/B the summed prep CPU per match moved −6 % … +2 %. The
+tuning sweeps used seeds 101–148 with the rehearsal off; the tables above are separate seed ranges.
+
+**0.1.1 integration (DESIGN §21.6).** With all 18 workstreams merged (the official bounty draft structures, the AoE,
+displacement and enemy fixes) the same bot on the same seeds wins 27 / 40 solo 绝境 and 9 / 40 co-op 绝境 (co-op bounty
+enemies leaked 120 of 380 picks: 232 drafts offered no card at a kill chance ≥ 0.5 — the R9 boss groups). The bot was
+then reconciled with the merged rules: it plans each unit with the range it is deployed with (`rangeRec`:
+`attackRangeGrid`, the server's `summonRange` grid — no outcome changed on these seeds) and values an attack on every
+enemy in range ×2 (阵法术师 / 轰击术师, now `rangeAoe`), a splash ×1.3 and a chain ×1.4 [ASSUMED] (`CROWD`). Seeds 1–40,
+rehearsal 3, before → after: solo 绝境 27 → 27 wins, LP left 17.9 → 18.4, bounty enemies leaked 8 → 5 of 104; co-op 绝境
+9 → 11 wins, LP left 14.8 → 14.1, leaks per match 215 → 220 — within the noise of 40 seeds (the ×2-only variant: 25 /
+11 wins). Decision time stays at the WF numbers (one thread, back to back, seeds 1–6): heuristics CPU p50 / p95 25 / 59
+→ 24 / 57 ms solo and 16 / 36 → 16 / 36 ms co-op; the whole prep with its rehearsal wall clock 80 / 148 → 78 / 153 ms and
+74 / 152 → 73 / 151 ms.
+
+**0.1.1 after the QA (DESIGN §21.6, §21.19).** Seeds 1–40, rehearsal 3 (wins solo 绝境 / co-op 绝境, 4 AI): the merged
+build `dbd45c8` 27 / 11; with WB's 22-match bounty lists (a rule change: R11 is a 悬赏决策 in 14 of 22 and every R11 bounty
+list holds a 特异III giant) the same bot 22 / 9 (LP left 16.3 / 10.9); the residual sim fixes change no outcome (22 / 9);
+the bench-shed fix (the buy loop's shed never sells a piece that came this prep) 24 / 10 (LP left 17.4 / 13.1, co-op
+leaks per match 217 → 210). 0.1.0 on the same seeds: 19 / 5; 0.1.0's bot on the final 0.1.1 rules: 23 / 7 (LP left
+14.6 / 5.2, merges per bot 2.2 / 2.0 — the solo gain over 0.1.0 is mostly the rules, the co-op one the bot). The 29 same-prep buy → sell of co-op 绝境 (2 AI 托管 + 2
+bots, seeds 21–26) drop to 3 (a reward pick's room, `arrange`, `sellJunk`). Decision time unchanged (one thread, seeds
+1–3, both builds side by side): the whole prep p50 / p95 81 / 187 → 81 / 184 ms solo and 71 / 153 → 71 / 129 ms co-op,
+heuristics CPU 36 / 88 → 35 / 86 ms and 16 / 40 → 16 / 40 ms.
+
 ---
 
 ## 6. Match follow-ups shipped with this pass

@@ -300,6 +300,19 @@ test('untimed phases show no countdown: the "无倒计时" placeholder of Countd
   assert.ok(/'无倒计时'/.test(fn) || /return null/.test(fn), 'Countdown marks (or skips) the untimed state');
 });
 
+test('the background layer (.lo__bg: mint glow + grid) keeps position: absolute — no later rule of the same specificity overrides it (PR #14)', () => {
+  const css = readFileSync(path.join(ROOT, 'public/css/screens/loadout.css'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
+  assert.match(css, /\.lo__bg\s*\{[^}]*position:\s*absolute;/);
+  // `.lo > *` (one class, after .lo__bg) used to set position: relative on it, a 0-px flex item that never drew
+  assert.ok(!/\.lo\s*>\s*\*\s*\{[^}]*position/.test(css), 'no universal child rule setting position');
+  assert.match(css, /\.lo > :where\(:not\(\.lo__bg\)\) \{ position: relative; \}/, 'the other layers still stack above it, at one class of specificity');
+  const after = css.slice(css.indexOf('.lo__bg'));
+  for (const m of after.matchAll(/([^{}]+)\{([^}]*)\}/g)) {
+    if (!/\.lo__bg\b/.test(m[1]) || /:not\(\.lo__bg\)/.test(m[1])) continue;
+    for (const v of m[2].matchAll(/position:\s*([a-z-]+)/g)) assert.equal(v[1], 'absolute', `${m[1].trim()} changes the layer's position`);
+  }
+});
+
 // ---- review fixes (adversarial review of the loadout workstream) -------------------------------------------------------
 
 /** A net whose replies are released by hand (the socket is ordered: replies come back in request order). */

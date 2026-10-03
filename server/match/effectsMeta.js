@@ -22,7 +22,14 @@
 // 投资人 (investShip) active ⇒ SERVER_GAIN garrisons run ×2 (×3 at ≥ 100 layers) — owned by the dispatcher.
 // ctx.triggerGarrisons(uid, eventType) re-runs another piece's garrisons (铃兰, "触发…的获得时效果", 特质相同).
 // Items: onEquip / onArt / onDestroy go to the item's own handler only; every other hook runs for items equipped on
-// owned chess (ev.source.holder). Dispatch order per player: global → band → bonds → garrisons (board reading order,
+// owned chess (ev.source.holder). That step walks a snapshot — the owned chess and each holder's items as they stand
+// when it begins (every [holder, item] pair, taken before the first item runs) — and runs an item only if, when its
+// turn comes, it is still equipped on that holder and the holder is still owned: handlers move and destroy pieces
+// mid-walk (突变细胞 destroys its holder, returns the equipment to the hand and gains an operator; normal 博士投影
+// destroys itself, which splices holder.items), and a live walk skipped the next item or ran it with a holder that was
+// gone. Pieces gained or equipped during the walk wait for the next dispatch; an item moved during it runs at most once
+// (on the holder it stood on, if its turn came before the move).
+// Dispatch order per player: global → band → bonds → garrisons (board reading order,
 // then hand) → equipped items → effects (insertion order); onPrice runs the priced chess's own 特质 first (购买价格为N
 // sets the price the discounts and caps of bonds / strategies then act on — user playtest #5). Every call is
 // try/catch-guarded; nested dispatch depth is capped (MAX_DEPTH) so content can never loop the server.
@@ -207,14 +214,17 @@ export class EffectDispatcher {
       }
       // 4. garrisons (onPrice: already run as step 0)
       if (hook !== 'onPrice') this._garrisons(ps, hook, ev);
-      // 5. equipped items (not for the item-specific hooks)
+      // 5. equipped items (not for the item-specific hooks): every [holder, item] pair of the owned chess, taken before
+      // the first item runs; each runs only while still equipped on its still-owned holder — handlers move / destroy
+      // pieces (header). Taking the pairs per holder as the walk reached it ran an item equipped meanwhile onto a later
+      // holder, and twice an item moved from a holder already walked to a later one.
       if (hook !== 'onEquip' && hook !== 'onArt' && hook !== 'onDestroy') {
-        for (const holder of ownedChess(ps)) {
-          for (const it of holder.items || []) {
-            const key = `item:${itemKey(it.id)}`;
-            const h = reg.get(key);
-            if (h) this._call(ps, key, h, hook, { kind: 'item', key, piece: it, holder, item: this.m.gd.item(it.id) }, ev);
-          }
+        const pairs = [];
+        for (const holder of ownedChess(ps)) for (const it of holder.items || []) pairs.push([holder, it]);
+        for (const [holder, it] of pairs) {
+          const key = `item:${itemKey(it.id)}`;
+          const h = reg.get(key);
+          if (h && stillEquipped(ps, holder, it)) this._call(ps, key, h, hook, { kind: 'item', key, piece: it, holder, item: this.m.gd.item(it.id) }, ev);
         }
       }
       // 6. persistent effects
@@ -346,10 +356,33 @@ function ownedChess(ps) {
   return out;
 }
 
+/** Dispatch step 5: is `it` still equipped on `holder`, and `holder` still an owned chess of `ps`? */
+function stillEquipped(ps, holder, it) {
+  if (!Array.isArray(holder.items) || !holder.items.includes(it)) return false;
+  const loc = ps.find(holder.uid);
+  return !!loc && loc.piece === holder;
+}
+
 // =====================================================================================================
 // handler context — the ONLY way content mutates player state (see docs/META.md)
 
 const finiteInt = (n) => (Number.isFinite(n) ? Math.trunc(n) : 0);
+
+/**
+ * What a pick-one offer made by an effect is called on the shop bar (m.private shop.rewardOffer.label; player report #6
+ * after 0.1.0 — 凯瑟琳's three items came under the promotion reward's 晋升奖励 header): a strategy's effect name
+ * (定向投放, 见者有份), an item's name (寻呼模块, 信标), the operator whose 特质 it is (松果), else null.
+ * @param {import('./gamedata.js').GameData} gd
+ * @param {object} source the dispatch source (kind band / item / garrison …)
+ * @returns {string|null}
+ */
+export function offerLabel(gd, source) {
+  if (!source || typeof source !== 'object') return null;
+  if (source.kind === 'band') { const b = source.band || gd.band(source.bandId); return (b && (b.effectName || b.name)) || null; }
+  if (source.kind === 'item') { const it = source.item || (source.piece ? gd.item(source.piece.id) : null); return (it && it.name) || null; }
+  if (source.kind === 'garrison' && source.piece) { const c = gd.chess(source.piece.id); return (c && c.name) || null; }
+  return null;
+}
 
 /**
  * @param {import('./Match.js').Match} m
@@ -424,6 +457,10 @@ export function makeCtx(m, ps, source, hook, ev = null) {
     counter: (k) => (Number.isFinite(ps.counters[k]) ? ps.counters[k] : 0),
     setCounter: (k, v) => { if (typeof k === 'string' && Number.isFinite(v)) ps.counters[k] = v; return ps.counters[k] ?? 0; },
     incCounter: (k, n = 1) => { if (typeof k !== 'string' || !Number.isFinite(n)) return 0; ps.counters[k] = (Number.isFinite(ps.counters[k]) ? ps.counters[k] : 0) + n; return ps.counters[k]; },
+    /** Per-piece counter of the current round (0 in a new round / for a new piece; an elite merged this round keeps the
+     *  highest of its copies' — PlayerState.pieceRoundCount). */
+    pieceCounter: (uid, k) => { const l = ps.find(uid); return l ? ps.pieceRoundCount(l.piece, k) : 0; },
+    incPieceCounter: (uid, k, n = 1) => { const l = ps.find(uid); return l ? ps.bumpPieceRoundCount(l.piece, k, n) : 0; },
 
     // ---- economy
     addFunds: (n, reason = '') => ps.addFunds(finiteInt(n), { reason }),
@@ -482,7 +519,9 @@ export function makeCtx(m, ps, source, hook, ev = null) {
       return m.dispatcher.triggerGarrisons(ps, l.piece, eventType, { asPiece: as ? as.piece : null, triggeredBy: source.key || null });
     },
     promote: (uid) => { const l = ps.find(uid); return l ? ps.promote(l.piece) : false; },
-    /** Replace a chess piece by another chess (keeps its tile when legal, keeps its equipment). */
+    /** 突变细胞's transformation: destroy a chess piece wherever it stands (its equipment returns to the hand first), then
+     *  gain `chessId` like any gained operator — hand, overflow temp, a completed merge as usual
+     *  (PlayerState.transformChess). Returns the gained piece's view (the elite after a merge) or null. */
     transform: (uid, chessId) => { const l = ps.find(uid); if (!l || l.piece.kind !== 'chess') return null; const p = ps.transformChess(l.piece, chessId); return p ? view(p) : null; },
     /** Normal item piece → its golden version in place. */
     upgradeItem: (uid) => { const l = ps.find(uid); return l && l.piece.kind === 'item' ? ps.upgradeItem(l.piece) : false; },
@@ -506,13 +545,15 @@ export function makeCtx(m, ps, source, hook, ev = null) {
         for (const it of l.piece.items || []) ps.stow(it, { allowTemp: true });
         l.piece.items = [];
         ps.returnCopies(l.piece);
+        ps.checkItemMerges(); // the returned equipment auto-merges like any gain
       }
       ps.recompute();
       return true;
     },
-    offerChess: (ids, opts = {}) => !!ps.pushRewardOffer(opts.source || source.key || 'effect', { ids, tier: opts.tier ?? null }),
+    /** Queue a free pick-one offer of chess (shop.rewardOffer; `label` defaults to offerLabel(source), the bar's header). */
+    offerChess: (ids, opts = {}) => !!ps.pushRewardOffer(opts.source || source.key || 'effect', { ids, tier: opts.tier ?? null, label: opts.label ?? offerLabel(gd, source) }),
     /** Queue a free pick-one offer of items (shop.rewardOffer with slots of kind 'item'). */
-    offerItems: (ids, opts = {}) => !!ps.pushItemOffer(ids, { source: opts.source || source.key || 'effect', tier: opts.tier ?? null }),
+    offerItems: (ids, opts = {}) => !!ps.pushItemOffer(ids, { source: opts.source || source.key || 'effect', tier: opts.tier ?? null, label: opts.label ?? offerLabel(gd, source) }),
     setShopSlot: (i, slot) => {
       if (!Number.isInteger(i) || i < 0 || i >= ps.shop.slots.length) return false;
       if (slot == null) { ps.shop.slots[i] = null; ps.dirty(); return true; }

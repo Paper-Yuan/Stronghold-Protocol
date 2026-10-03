@@ -17,8 +17,9 @@
 //   prep handlers buy / sell / refresh / levelUp pay exactly price / +sell price / refresh price (free first) / level
 //                 price, the level rises by one and its price resets to the next base; Ready only with an empty temp
 //   merges        a merge consuming a deployed copy puts the elite on that copy's tile (of several, the first in deploy
-//                 order legal for it — board.js mergeTile; a transformed piece's own tile counts) with its facing, else
-//                 into the hand / temp; the deploy count never grows (PRTS 卫戍协议/帮助, user playtest #6 follow-up)
+//                 order legal for it — board.js mergeTile; a 突变细胞 carrier destroyed before the gain is no copy) with
+//                 its facing, else into the hand / temp; the deploy count never grows (PRTS 卫戍协议/帮助, user playtest
+//                 #6 follow-up)
 //   combat start  nothing overdue in temp, everyone ready, funds lost (carry bands excepted), unfrozen shop cleared,
 //                 one field per alive player
 //   drafts        every seat holds an allowed band with LP = totalHp; 机变: one card per alive player, card ↔ picker
@@ -227,15 +228,14 @@ export function attachAudit(m, { invariants = true, limit = 200 } = {}) {
     });
     // merges (PRTS 卫戍协议/帮助 "若消耗已部署至作战区的干员，则发送至作战区对应位置", user playtest #6 follow-up): with a
     // deployed copy among the consumed ones the elite stands on the first such tile in deploy order that is legal for
-    // it (the incoming piece's own tile when a transformation merged it in place), with that copy's facing; else in the
-    // hand / temp. A merge never grows the deploy count. Every owned normal copy is consumed (merges are immediate).
-    wrap(ps, '_mergeChess', function (orig, baseId, incoming, opts) {
+    // it, with that copy's facing; else in the hand / temp (the incoming copy is never deployed: a 突变细胞
+    // transformation destroyed its carrier before the gain, so that freed tile is no copy's). A merge never grows the
+    // deploy count. Every owned normal copy is consumed (merges are immediate).
+    wrap(ps, '_mergeChess', function (orig, baseId, incoming) {
       const tiles = new Map(); // tile key → facing of the copy standing there
       for (const [k, p] of ps.board) if (p.kind === 'chess' && !gd.isGolden(p.id) && gd.baseIdOf(p.id) === baseId) tiles.set(k, pieceDir(p));
-      if (opts && opts.fromKey) tiles.set(opts.fromKey, pieceDir({ dir: opts.fromDir }));
-      // a transformation (transformChess) detached its deployed carrier before the merge: it still counts as deployed
-      const deployed0 = ps.deployCount + (opts && opts.fromKey ? 1 : 0);
-      const elite = orig(baseId, incoming, opts);
+      const deployed0 = ps.deployCount;
+      const elite = orig(baseId, incoming);
       if (elite) check('merge', () => {
         const id = ps.playerId;
         const loc = ps.find(elite.uid);

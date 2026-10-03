@@ -19,11 +19,16 @@
 // core bond is active). Combo partners (bbStr.equip_chess_id / other_equip) are item keys without the _a/_b suffix:
 // either quality satisfies them; lent items count as carried. Both are evaluated live, at the moment of use.
 //
-// Hook priorities (non-default): 'fatal' — consumable death savers (坚固维式重锤's first lethal hit, M3茧甲 revives)
-// run LAST (PRIO_REVIVE −100: "被击倒时" = nothing else prevented the knock-down, so a skill's / talent's own undying
-// (kits use 10 … −60) never wastes a charge); 骑士戒律's free in-skill undying runs early (20). Flat damage reduction
-// 'hit' −10 (after the other damage modifiers). Proc damage dealt by items carries the tag 'item' and never
-// re-triggers item procs.
+// Hook priorities (non-default): 'fatal' — consumable death savers run LAST, so a skill's / talent's own undying (kits
+// use 10 … −60) never wastes a charge: 坚固维式重锤's lock (异常效果 不死, once per deployment — deploymentOf; its running
+// windows held by one battle-level hook) at PRIO_REVIVE −100, then the M3茧甲 revive at PRIO_RESPAWN −101 — PRTS
+// 卫戍协议：盟约 下半/PRTS盟约记录 备注 "“复活”的实现方式为：受益者因移动之外的原因退场时下次部署的再部署时间和费用归零": a
+// revive acts on a knock-out, which a 不死 prevents, so the lock always comes first whatever the equip order (player
+// report F1 after 0.1.0: with the 茧甲 equipped first the revive ran first and the first lethal hit showed no lock);
+// 埃芒加德's band revive follows (bands/battle.js PRIO_BAND_REVIVE −110). Both revives stand in place for that redeploy,
+// so each opens a new deployment for the lock (revivedInPlace).
+// 骑士戒律's free in-skill undying runs early (20). Flat damage reduction 'hit' −10 (after the other damage modifiers).
+// Proc damage dealt by items carries the tag 'item' and never re-triggers item procs.
 //
 // 蒸汽之心 (Victoria carrier) — LIVE model: the hammer types (灼燃/坚固/加速/战栗维式重锤) carried by the owner's operators
 // that are on the field right now (cached ≤ 0.5 s, dropped whenever an operator deploys or leaves) are granted to the
@@ -36,7 +41,7 @@ import {
   num, itemRecord, itemKeyOf, buffsOf, isOp, onField, unitBonds, isMember, bondActive, isGroundOp, frontTile,
   alliesAround, passiveBuff, fxOn, battleStore, contentInfo, itemsOf, directMods,
 } from '../support/index.js';
-import { mitigate, hasHp } from '../../damage.js';
+import { mitigate, hasHp, periodicDamage, isHpLoss } from '../../damage.js';
 
 // =====================================================================================================================
 // data helpers
@@ -56,8 +61,12 @@ function partnerOf(p) {
 const isProc = (dmg) => !!(dmg && dmg.tags && dmg.tags.indexOf('item') >= 0);
 const procTags = (k) => ['item', `item:${k}`];
 const chance = (battle, p) => p > 0 && (p >= 1 || battle.rng() < p);
+/** An ally built from an enemy record — PRTS's 敌人类我方单位 (炎佑 enemy_9012_acloon). */
+const ENEMY_RECORD = /^enemy_/;
 /** 'fatal' priorities (see header). */
 export const PRIO_REVIVE = -100;
+/** The items' 复活 (M3茧甲): acts on a knock-out, so after every 不死 (PRIO_REVIVE) — see header. */
+export const PRIO_RESPAWN = PRIO_REVIVE - 1;
 const PRIO_FREE_UNDYING = 20;
 
 /** Stat keys of a stat buff → mods (直接乘算, see header). */
@@ -212,10 +221,37 @@ function fieldHammers(battle, rt, pid) {
 function hammerState(battle, rt, u) {
   let hs = rt.hammers.get(u);
   if (!hs) {
-    hs = { own: { burn: 0, undying: 0, aspd: 0, tremble: 0 }, params: {}, steam: 0, steamP: null, refs: 0, scope: null, aspdCur: 0, undyingUsed: false, undyingUntil: -Infinity };
+    // lockAt: the deployment (deploymentOf) whose 坚固 lock is spent — kept here, not in the grant's Scope, so a lend
+    // that ends and comes back never resets it, and a redeploy while no hammer is held still re-arms it
+    hs = { own: { burn: 0, undying: 0, aspd: 0, tremble: 0 }, params: {}, steam: 0, steamP: null, refs: 0, scope: null, aspdCur: 0, lockAt: null };
     rt.hammers.set(u, hs);
   }
   return hs;
+}
+
+// 坚固维式重锤's 不死 lock — once per DEPLOYMENT (the user's first-hand memory of the official mode, 2026-10-03: "每次部署
+// 一次"; the text only says 首次). The lock belongs to the deployment, not to the grant that gave it: a borrower (萨尔贡 ×
+// 娜仁图亚's 60 s lend) follows the same rule as an owner.
+
+/**
+ * The deployment `u` is in: every deploy bumps `deploySeq` (the redeploy after a knock-out, a 突袭 retreat + redeploy
+ * [ASSUMED a deployment], 阿戈尔's 立刻复活), and an in-place 复活 (M3茧甲, 埃芒加德: revivedInPlace) opens a new one too
+ * [ASSUMED] — PRTS (M3茧甲 / 埃芒加德 / 阿戈尔 备注) "“复活”的实现方式为：受益者因移动之外的原因退场时下次部署的再部署时间和
+ * 费用归零": officially a revive is a 0-time / 0-cost redeploy; the remake keeps the unit standing instead.
+ */
+function deploymentOf(u) { return `${u.deploySeq}:${u.mem.revives | 0}`; }
+
+/** An in-place 复活 (M3茧甲, 埃芒加德) happened: a new deployment for the once-per-deployment lock (deploymentOf). */
+export function revivedInPlace(u) { if (u && u.mem) u.mem.revives = (u.mem.revives | 0) + 1; }
+
+/**
+ * Does `u` hold 坚固维式重锤's 不死 right now — a window started in this deployment that has not run out? The window lives
+ * on the unit (`mem.undyingUntil`, `mem.undyingAt`) and a battle-level hook holds it (hammerAcquire), so it outlives the
+ * grant that started it — a lend running out mid-window leaves the 不死 for its 8 s [ASSUMED: the 异常效果 outlasts its
+ * source] — and ends with the deployment. 信仰搅拌机 S2 steps aside while it holds (kits/tier4.js).
+ */
+export function holdsUndying(battle, u) {
+  return !!u && u.mem.undyingAt != null && battle.time < u.mem.undyingUntil && u.mem.undyingAt === deploymentOf(u);
 }
 /** Effective multiplier of a hammer type on `u` and its params (null when the type does not apply). */
 function hammerMul(battle, rt, u, hs, type) {
@@ -240,6 +276,10 @@ function hammerAcquire(battle, rt, u) {
   const hs = hammerState(battle, rt, u);
   hs.refs++;
   if (hs.scope) return hs;
+  // every running 坚固 window of the battle (holdsUndying): one hook that no grant owns, registered before any lock hook
+  if (!rt.undyingHook) {
+    rt.undyingHook = battle.on('fatal', (c) => { if (!c.prevented && holdsUndying(battle, c.unit)) c.prevented = true; }, { priority: PRIO_REVIVE });
+  }
   const S = new Scope(battle, u, `item:hammer#${u.id}`);
   hs.scope = S;
   hs.aspdCur = 0;
@@ -265,18 +305,22 @@ function hammerAcquire(battle, rt, u) {
       if (t && t.side === 'enemy' && t.alive && chance(battle, pr)) battle.applyStatus(t, 'tremble', { duration: num(p.disarmed_duration, 2), source: u });
     }
   });
-  // 坚固: first lethal hit per battle ⇒ HP never below 1 for undeadable_duration × m s
+  // 坚固: the first lethal hit of each deployment (deploymentOf) ⇒ HP never below 1 for undeadable_duration × m s — the
+  // window, held by the battle-level hook above. A new deployment re-arms the lock and leaves a window still running
+  // behind (the retreat ends the unit's states). Any lethal HP loss sets it off, an ally's (the 阿戈尔 battle-start
+  // devour, "造成5000点物理伤害") or the carrier's own (源石溶剂) included.
   S.on('fatal', (c) => {
     if (c.unit !== u || c.prevented) return;
-    if (battle.time < hs.undyingUntil) { c.prevented = true; return; }
-    if (hs.undyingUsed) return;
+    const at = deploymentOf(u);
+    if (hs.lockAt === at) return;
     const p = hammerParams(hs, 'undying');
     if (!p) return;
     const m = hammerMul(battle, rt, u, hs, 'undying');
     if (!(m > 0)) return;
-    hs.undyingUsed = true;
+    hs.lockAt = at;
     const dur = num(p.undeadable_duration, 8) * m;
-    hs.undyingUntil = battle.time + dur;
+    u.mem.undyingUntil = battle.time + dur;             // the carrier holds 不死 (holdsUndying)
+    u.mem.undyingAt = at;
     c.prevented = true;
     fxOn(battle, 'undying', u, 'item:hammer', 'chess_item_3_09_e', { duration: dur });
   }, PRIO_REVIVE);
@@ -315,16 +359,43 @@ function onAttackEnemies(S, u, fn) {
 
 /** Generic buff-key behaviours (shared by several items). */
 const BY_BUFF = {
-  // 源石溶剂: 每秒流失 damage 点生命值 (HP loss, may kill)
+  // 源石溶剂: the text's "每秒流失 damage 点生命值" is officially 每秒受到 damage 点真实伤害 (PRTS 盟约记录 修正 "并非流失", 备注
+  // "造成无来源真实持续环境伤害"; the `periodic_damage` template — also 狂暴宿主 "自身每秒受到N无来源真实伤害"): a damage instance,
+  // not a 流失 — shields, damage-taken modifiers and the target-side `hit` effects apply, and it is a "受到伤害" for 受击回复
+  // SP, the 重装 TAKE_DAMAGE trigger and 信仰搅拌机 S3's counters (player report D1). 无来源: hooks see no source; the carrier
+  // keeps the credit (a carrier the drain finishes off is its own kill, as before). May kill.
+  // The same 备注: "携带后，全场范围内的所有敌人类我方单位也会获得此装备的“每秒受到60真实伤害”效果（该效果的付与为我方阵营索敌，
+  // 可对空，无视目标可选性）" — every enemy-record unit on our side of the whole field (炎佑 enemy_9012_acloon, a partner's
+  // too; flying, 孤立) takes the same tick, credited to nobody, while a carrier is on the field [ASSUMED: it ends with its
+  // carriers]; one effect per unit however many carriers (PRTS 作战机制 "同名buff的默认叠加策略buff只能表现出一个").
   periodic_damage(battle, u, p, S) {
     const d = num(p.damage);
     if (!(d > 0)) return;
-    S.stat('drain', null, { interval: 1, onTick: ({ unit }) => { if (unit.deployed) battle.loseHp(unit, d, { source: unit }); } });
+    S.stat('drain', null, { interval: 1, onTick: ({ unit }) => {
+      if (!unit.deployed) return;
+      battle.dealDamage(unit, unit, periodicDamage(d));
+      for (const a of battle.allies()) {
+        if (a === unit || !ENEMY_RECORD.test(a.defId ?? '') || battle.time - (a.mem.solventAt ?? -Infinity) < 1 - 1e-6) continue;
+        a.mem.solventAt = battle.time;
+        battle.dealDamage(null, a, periodicDamage(d));
+      }
+    } });
   },
-  // 奥术法阵: 攻击使目标失去特殊能力 silence s
+  // 奥术法阵: 攻击使目标失去特殊能力 silence s. PRTS 盟约记录 备注 (as 源石溶剂's): "携带后，全场范围内的所有敌人类我方单位也会获得
+  // 此装备的“造成伤害时使目标失去特殊能力5秒”效果（该效果的付与为我方阵营索敌，可对空，无视目标可选性）" — the damage of every
+  // enemy-record unit on our side (炎佑, a partner's too) silences its target while a carrier is on the field [ASSUMED: it
+  // ends with its carriers]; one effect per damage instance however many carriers.
   silence_attachment(battle, u, p, S) {
     const d = num(p.silence);
-    if (d > 0) onAttackEnemies(S, u, (t) => battle.applyStatus(t, 'silence', { duration: d, source: u }));
+    if (!(d > 0)) return;
+    onAttackEnemies(S, u, (t) => battle.applyStatus(t, 'silence', { duration: d, source: u }));
+    S.on('damaged', (c) => {
+      const a = c.source, t = c.target;
+      if (!a || a === u || a.side !== 'ally' || !ENEMY_RECORD.test(a.defId ?? '') || !t || t.side !== 'enemy' || !t.alive || !onField(u)) return;
+      if (c.type === 'element') return; // an element 损伤 (the gauge) is no damage instance
+      if (c.dmg) { if (c.dmg.arcaneSilence) return; c.dmg.arcaneSilence = true; }
+      battle.applyStatus(t, 'silence', { duration: d, source: a });
+    });
   },
   // 海沟实验体: 伤害减免 value per damage instance (after DEF/RES)
   halfidle_block_fixed_damage(battle, u, p, S) {
@@ -439,14 +510,14 @@ const BY_ITEM = {
       S.buff(u, { key, mods, refresh: 'stack', stacks: 1, maxStacks: cap, persist: true, allowDead: true });
     });
   },
-  // 伪装服: first damage taken in the battle ⇒ 隐匿 `duration` s
+  // 伪装服: first damage taken in the battle ⇒ 隐匿 `duration` s (a 流失 is not 受到伤害: damage.js isHpLoss)
   chess_item_4_04_e(battle, u, rec, S) {
     const p = bp(rec, 'act2autochess_equip_acarm055_global_buff');
     const d = p ? num(p.duration) : 0;
     if (!(d > 0)) return;
     let used = false;
     S.on('damaged', (c) => {
-      if (used || c.target !== u || !(c.amount > 0) || !u.alive) return;
+      if (used || c.target !== u || !(c.amount > 0) || !u.alive || isHpLoss(c.dmg)) return;
       used = true;
       battle.applyStatus(u, 'stealth', { duration: d, source: u });
       fxOn(battle, 'camouflage', u, 'item:chess_item_4_04_e', rec.id, { duration: d });
@@ -520,7 +591,8 @@ const BY_ITEM = {
       if (addShieldLayer(battle, c.target, SHIELD_KEY, cap)) fxOn(battle, 'shield', c.target, 'item:chess_item_4_11_e', rec.id);
     });
   },
-  // M3茧甲: knocked down in battle ⇒ revive at full HP (max_respawn_cnt per battle)
+  // M3茧甲: knocked down in battle ⇒ revive at full HP (max_respawn_cnt per battle), in place — PRTS's form (退场, then a
+  // 0-time / 0-cost redeploy) is not modelled, but it counts as a new deployment for 坚固维式重锤's lock (revivedInPlace)
   chess_item_4_12_e(battle, u, rec, S) {
     const p = bp(rec, 'act1autochess_equip_acarm068_global_buff');
     const max = p ? Math.floor(num(p.max_respawn_cnt, 1)) : 0;
@@ -531,8 +603,9 @@ const BY_ITEM = {
       used++;
       c.prevented = true;
       u.hp = u.s.maxHp;
+      revivedInPlace(u);
       fxOn(battle, 'revive', u, 'item:chess_item_4_12_e', rec.id, { left: max - used });
-    }, PRIO_REVIVE);
+    }, PRIO_RESPAWN); // after the hammer's 不死 lock, whatever the equip order (header)
   },
   // 催泪瓦斯: on attack prob ⇒ 1 麻痹 stack
   chess_item_5_01_e(battle, u, rec, S) {

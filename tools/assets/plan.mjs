@@ -5,7 +5,8 @@
 //   { alts: [{ rel, urls[], kind, bytes? }, …] }  one file; the first alternative
 //        that ends up on disk wins (later alts are fallbacks: other URLs for the
 //        same file, or other sounds of the same bank);
-//   { model: '<key>' }  a Spine model (skel + atlas + page PNGs) from plan.models.
+//   { model: '<key>' }  a Spine model (skel + atlas + page PNGs) from plan.models;
+//   literal(value)  a value emitted as it is (no files: enemies[id].spineLocal).
 // Inputs are the research JSONs (docs/research/03, 05, 07), the official
 // audio_data.json and Ark-Models' models_data.json.
 //
@@ -19,8 +20,14 @@
 import { RAW, joinUrl, safeName, urlBase, urlDir } from './sources.mjs';
 import { kindOf } from './formats.mjs';
 import { pickUnitSfx, UI_SFX, BATTLE_SFX, resolveSpec } from './audio.mjs';
+import { literal } from './manifest.mjs';
 
-/** Enemies with no Spine anywhere: render them with another enemy's model (research 07 §5.6). */
+/**
+ * Enemies whose Spine no community dump carries: the web model is another enemy's (research 07 §5.6). Their official
+ * models come from the local client only (tools/local-extract ENEMY_SPINES): `localEnemySpines` adds them as the
+ * optional `spineLocal` overlay, which the client draws when data/local-assets.json lists its files (user feedback
+ * after 0.1.0, D3: 灼热源石虫 / 炽焰源石虫 were drawn as the plain 源石虫 everywhere).
+ */
 export const ENEMY_SPINE_ALIAS = Object.freeze({
   enemy_1305_mhslim: 'enemy_1007_slime',
   enemy_1305_mhslim_2: 'enemy_1007_slime',
@@ -200,9 +207,12 @@ export function collectEnemyIds({ assets07, enemies05, maps05, ops03 }) {
  * @param {string[]} [p.extraEnemyIds] more enemy ids that can spawn (e.g. keys of data/enemies.json)
  * @param {string[]} [p.extraTokenIds] more token ids (e.g. token_* keys of data/tokens.json)
  * @param {Record<string,string>} [p.extraHandbook] enemyId → handbook/model id (e.g. from data/bosses.json)
+ * @param {Record<string, import('./spine.mjs').LocalSpineMeta>} [p.localEnemySpines] metadata of the enemy models the
+ *   local client has (the committed tools/assets/local-enemy-spines.json, never the disk): each planned enemy listed
+ *   gets `spineLocal` = { group: 'spine/enemy/<id>', ...meta } beside its web `spine`
  * @returns {{ template: any, models: Map<string, any>, notes: string[] }}
  */
-export function buildPlan({ assets07, ops03, enemies05, maps05, audio, modelsData, extraEnemyIds = [], extraTokenIds = [], extraHandbook = {} }) {
+export function buildPlan({ assets07, ops03, enemies05, maps05, audio, modelsData, extraEnemyIds = [], extraTokenIds = [], extraHandbook = {}, localEnemySpines = {} }) {
   const notes = [];
   /** @type {Map<string, any>} */
   const models = new Map();
@@ -362,6 +372,12 @@ export function buildPlan({ assets07, ops03, enemies05, maps05, audio, modelsDat
       else notes.push(`${id}: Spine aliased to ${e.spineAliasOf}`);
     }
     e.spine = spine;
+    // the official model from the local client, drawn instead of `spine` when the extraction is installed (optional)
+    const loc = localEnemySpines && Object.hasOwn(localEnemySpines, id) ? localEnemySpines[id] : null;
+    if (loc && typeof loc === 'object') {
+      e.spineLocal = literal({ group: `spine/enemy/${id}`, ...loc });
+      notes.push(`${id}: official Spine from the local client when extracted (spineLocal)`);
+    }
     enemies[id] = e;
     let banks = audio.unitBanks.get(id);
     for (const other of [handbookOf.get(id), e.spineAliasOf, baseIdOf(id)]) {

@@ -402,7 +402,7 @@ test('佩佩: S3 ATK +150 %, main target stunned, stacks up to 4 with a growing 
   checkInvariants(h.b);
 });
 
-test('维娜·维多利亚: first hit trembles, S3 summons 黄金盟誓, deals true damage to +1 target', () => {
+test('维娜·维多利亚: first hit trembles, S3 summons 黄金盟誓 (one per free tile around her), deals true damage to +1 target', () => {
   const h = battle({
     units: [{ chessId: 'chess_char_6_07_a', row: 9, col: 5, carryState: { sp: 64 } }],
     enemies: [{ key: 'enemy_armored', pos: [9, 6] }],
@@ -411,17 +411,18 @@ test('维娜·维多利亚: first hit trembles, S3 summons 黄金盟誓, deals t
   h.step();
   const e = enemyAt(h, 'enemy_armored');
   assert.ok(h.runUntil(() => u.skill.active, 10));
-  const lion = h.b.allyUnits.find((x) => x.defId === 'token_10040_siege2_vlion');
-  assert.ok(lion && lion.alive, '黄金盟誓 summoned');
-  assert.ok(Math.max(Math.abs(lion.tileR - u.tileR), Math.abs(lion.tileC - u.tileC)) <= 1);
+  const lions = h.b.allyUnits.filter((x) => x.defId === 'token_10040_siege2_vlion');
+  assert.ok(lions.length >= 2 && lions.every((l) => l.alive), `黄金盟誓 summoned on the free tiles around her (${lions.length})`);
+  for (const l of lions) assert.ok(Math.max(Math.abs(l.tileR - u.tileR), Math.abs(l.tileC - u.tileC)) <= 1);
+  assert.equal(new Set(lions.map((l) => l.tileR * 100 + l.tileC)).size, lions.length, 'one per tile');
   h.run(3);
   assert.ok(h.dmg.some((d) => d.src === u.id && d.attack && d.type === 'true'), 'true damage');
-  assert.ok(h.dmg.some((d) => d.src === lion.id && d.type === 'true'), 'lion hits with true damage');
+  assert.ok(h.dmg.some((d) => lions.some((l) => l.id === d.src) && d.type === 'true'), 'a lion hits with true damage');
   assert.equal(u.profile.maxTargets + u.def.skill.bb['attack@max_target'] - 1 >= 2, true);
   assert.ok(h.hooksOf('statusApplied').some((c) => c.status === 'tremble' && c.target === e), '无拘的锋芒');
   h.runUntil(() => !u.skill.active, 30);
   h.step();
-  assert.equal(lion.alive, false, 'lion leaves with the skill');
+  assert.ok(lions.every((l) => !l.alive), 'the lions leave with the skill');
   checkInvariants(h.b);
 });
 
@@ -884,10 +885,22 @@ test('summon tiles skip reserved home tiles: 黄金盟誓 never takes the tile o
   h.step();
   h.b.dealDamage(null, g, { amount: 1e9, type: 'true' });
   assert.equal(g.alive, false);
-  assert.ok(h.runUntil(() => u.skill.active, 5));
-  const lion = h.b.allyUnits.find((x) => x.defId === 'token_10040_siege2_vlion' && x.alive);
-  assert.ok(lion, '黄金盟誓 summoned');
-  assert.ok(!(lion.tileR === 10 && lion.tileC === 5), 'not on the dead guard\'s home tile (closest to the enemy)');
+  // the free deployable melee tiles of her 3×3 area just before the cast — the dead guard's home tile among them
+  const HOME = 10 * 100 + 5;
+  let free = [];
+  for (let i = 0; i < 100 && !u.skill.active; i++) {
+    free = [];
+    for (let dr = -1; dr <= 1; dr++) for (let dc = -1; dc <= 1; dc++) {
+      const r = u.tileR + dr, c = u.tileC + dc;
+      if ((dr || dc) && h.b.grid.inRect(r, c) && h.b.grid.canStand(r, c, { ranged: false }) && !h.b.unitAt(r, c)) free.push(r * 100 + c);
+    }
+    h.step();
+  }
+  assert.ok(u.skill.active, 'S3 cast');
+  assert.ok(free.includes(HOME) && free.length >= 2, `the scenario: the guard's home tile is one of the free tiles (${free})`);
+  const lions = h.b.allyUnits.filter((x) => x.defId === 'token_10040_siege2_vlion' && x.alive);
+  assert.ok(lions.every((l) => !(l.tileR === 10 && l.tileC === 5)), 'no lion on the dead guard\'s home tile');
+  assert.deepEqual(lions.map((l) => l.tileR * 100 + l.tileC).sort((a, b) => a - b), free.filter((k) => k !== HOME).sort((a, b) => a - b), 'a lion on every other free tile');
   assert.ok(h.runUntil(() => g.alive, g.base.respawnTime + 2), 'the guard redeploys on its tile');
   checkInvariants(h.b);
 });

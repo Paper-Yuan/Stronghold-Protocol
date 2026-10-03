@@ -337,7 +337,7 @@ test('坎诺特 利滚利: leftover funds are kept; ≥ 5 left ⇒ +1 at round s
   cover('band_cannot');
 });
 
-test('鸭爵 “神秘顾客”: from R5, 0–2 normal ground enemies in the last 40 % of every teammate\'s wave become 鸭爵 & co. worth 1 fund to the killer', () => {
+test('鸭爵 “神秘顾客”: from R5, 0–2 ground enemies in the last 40 % of every teammate\'s wave become 鸭爵 & co. worth 1 fund to the killer', () => {
   const p = DATA.bands.band_ducklord.buffs[0];
   const ducks = p.bbStr.enemylist.split(',');
   const normalKey = Object.values(DATA.enemies).find((e) => e.rank === 'NORMAL' && e.stats.motion === 'WALK').key;
@@ -360,8 +360,9 @@ test('鸭爵 “神秘顾客”: from R5, 0–2 normal ground enemies in the las
     assert.ok(ev.spawns.some((sp) => sp.enemyKey === flyKey), 'flyers are never replaced');
   }
   assert.deepEqual(Object.keys(counts).map(Number).sort(), [0, 1, 2]);
-  // before R5, in boss rounds, or when nobody holds the band: nothing
-  for (const [r, kind, band] of [[4, 'normal', 'band_ducklord'], [5, 'boss', 'band_ducklord'], [5, 'normal', null]]) {
+  // before R5, in the 联防 phase (its enemies are leaks), or when nobody holds the band: nothing (the Final Assault and
+  // the Hidden Core swap too: test/match/feedback1-ducklord.test.js)
+  for (const [r, kind, band] of [[4, 'normal', 'band_ducklord'], [5, 'unite', 'band_ducklord'], [5, 'normal', null]]) {
     h.ps('p_1').bandId = band;
     m.round = r;
     const ev = { input: p0.battleInput({ side: 'L', colOffset: 0 }), kind, round: r, spawns: wave() };
@@ -375,6 +376,16 @@ test('鸭爵 “神秘顾客”: from R5, 0–2 normal ground enemies in the las
   const out = duckReplace(ctx, spawns, { ...p.bb, ...p.bbStr }, 'p_0');
   assert.equal(out.length, 2);
   assert.equal(spawns.reduce((n, sp) => n + (sp.count || 1), 0), 10);
+  // a pair boss field (`side` + `routes`): only the enemies heading for the player's half (route end left / right of
+  // the middle column), the 60–99 % share taken over that half — here the left half's enemies all come first
+  const routes = [{ motion: 'WALK', end: [1, 3] }, { motion: 'WALK', end: [1, 17] }];
+  for (const [side, route, times] of [['L', 0, [6, 7]], ['R', 1, [16, 17]], [null, 1, [12, 13]]]) {
+    const field = Array.from({ length: 20 }, (_, i) => ({ time: i, enemyKey: normalKey, routeIndex: i < 10 ? 0 : 1, count: 1 }));
+    const got = duckReplace(ctx, field, { ...p.bb, ...p.bbStr }, 'p_0', { routes, side });
+    assert.deepEqual(got.map((d) => d.time), times, `side ${side}`);
+    for (const d of got) assert.equal(d.routeIndex, route);
+    assert.equal(field.length, 20);
+  }
   cover('band_ducklord');
 });
 

@@ -26,7 +26,10 @@
     linear-gradient(90deg, rgba(78, 216, 175, .035) 1px, transparent 1px) 0 0 / .6rem .6rem,
     linear-gradient(180deg, #0f1312, #090b0a);
 }
-.lo > * { position: relative; }
+/* every layer but the background stacks above it. :where() keeps this at the specificity of the old `.lo > *` (one
+   class), so the rules after it still win where they did, and it never matches .lo__bg: as `.lo > *` (same specificity,
+   later rule) it beat the layer's `position: absolute`, which left a 0-px tall flex item that never drew (PR #14). */
+.lo > :where(:not(.lo__bg)) { position: relative; }
 
 /* ---- top bar ---------------------------------------------------------------------------------------------------- */
 .lo-top {

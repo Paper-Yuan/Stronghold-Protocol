@@ -3,8 +3,13 @@
 // UnitView = shadow sprite (shadow layer) + body container (depth-sorted unit layer: elite aura, Spine actor or
 // the avatar-in-rarity-diamond fallback) + HUD container (bar layer: HP bar with delayed "ghost" damage, SP bar
 // with ready glow / draining skill bar, tier chip, status icons, blocked marker). The fallback shows at once and
-// cross-fades to the Spine model when it has loaded; missing or failed models keep the fallback forever (the
-// game never blocks on Spine). Every bar is a tinted Texture.WHITE sprite, so HUDs batch into few draw calls.
+// cross-fades to the Spine model when it has loaded (the game never blocks on Spine); an optional local-client model
+// (assets.js spineEntry `fallback`, DESIGN §13: 灼热源石虫 / 炽焰源石虫) falls back to the web model first; that web alias
+// (the plain 源石虫) is drawn tinted toward the slug's own colours (ALIAS_TINT). A model that failed or timed out is
+// loaded again after SPINE_RETRY_MS (bounded), and `retryAssets()` re-resolves a view's picture and model when the
+// asset manifest arrives after the view was built or the tab is shown again (render/app.js; public issue #8 item 5:
+// after a reload whose manifest was slow or failed, every operator stayed the image-less placeholder for good). Every
+// bar is a tinted Texture.WHITE sprite, so HUDs batch into few draw calls.
 //
 // Placement: feet anchored at world (x, y, z); scale = camera px-per-tile at the feet × UNIT.modelScale, so
 // chibis shrink with distance like the original. An enemy's model is also scaled by its official prefab factor
@@ -16,16 +21,20 @@
 // plane). `setDir(dir)` re-orients a live view (swapping Front ⇄ Back without a fallback flash). Enemies flip by the
 // sign of their horizontal velocity (with hysteresis).
 //
-// Knocked-out operators (user playtest #4 item 9, b.snap `down`): `setDown([id, respawnAt, respawnTime, state])`
-// keeps a dead operator on its tile in its knocked-down pose — the Spine Die clip played once and held on its last
+// Knocked-out operators (user playtest #4 item 9, b.snap `down`): `setDown([id, respawnAt, respawnTime, state, row,
+// col])` keeps a dead operator on the tile it lies on (row / col: where it fell, or its home — sim Battle._layBody,
+// player report F5 after 0.1.0) in its knocked-down pose — the Spine Die clip played once and held on its last
 // frame (the collapsed / kneeling pose with closed eyes), slightly greyed — with a redeploy ring above its head:
 // a dark disc, a mint arc filling as the respawn timer runs and the seconds left; once the timer is done and it still
 // waits, a full amber ring with "DP" (not enough DP) or a red ring with "!" (its tile is taken). `onDeploy` (the
 // redeploy) plays the deploy clip and restores the normal look; `setDown(null)` on a dead view lets it fade out.
 // An operator that enters a battle already knocked out (联防, user playtest #5 item 2: sim 'die' reason 'forcedExit')
 // goes down with `die(true)`: straight to the held end of the clip, no fall.
-// Enemy modes (sim fx 'phase' { id, kind } → `setForm(kind)`): 掠海漂移体 dropping to 爬行模式 (user playtest #5 item 1)
-// plays its skeleton's 'Change' clip once, then the crawl set (*_02) — FORMS; a view built later keeps the mode.
+// Enemy modes (the `form` of a sim fx — shared/protocol.js fxForm — → `setForm(form, fx)`): 掠海漂移体 dropping to 爬行模式
+// (user playtest #5 item 1) plays its skeleton's 'Change' clip once, then the crawl set (*_02); 暴鸰 flies on without its
+// bomb (*_2) after the drop (feedback D4); 转译基底's forms, the 逐火 embers, 再生's puppet, the leaders' 重生 and 守墓石像
+// likewise (user report after 0.1.0) — FORMS. A view built later (`info.form` = UnitInfo `form`, the sim's current form,
+// through render/app.js renderInfo) starts in the mode.
 // Element gauges (b.snap `elem` → sample `el` / `elFill` / `elUntil` / `elDur`), the official form (PRTS 元素: "模型
 // 下部会显示对应的元素图标，并以白条显示剩余的元素值"; enemies "小尺寸图标（不显示元素图标，仅根据元素种类改变背景色）"): a row
 // right under the unit's own HP / SP bars and inside their span — the element's disc at the left (operators with its
@@ -53,7 +62,7 @@
 import { UF, ANIM } from '../../../shared/constants.js';
 import { SpineActor } from './spine.js';
 import { diamondTexture, shadowTexture, fxAtlas, tierChip, statusTexture, itemTexture, hudRings, ringArc, HUD_DISC, ELEMENT_RING } from './textures.js';
-import { COLORS, TIER_COLORS, ENEMY_FRAME, UNIT, statusIconKey } from './style.js';
+import { COLORS, TIER_COLORS, ENEMY_FRAME, UNIT, PROJ, statusIconKey } from './style.js';
 import { drawCrate, rowDepthKey, ROW_KEY, deviceBoxOf, DEVICE_BOX } from './tiles.js';
 
 const clamp = (v, lo, hi) => (v < lo ? lo : v > hi ? hi : v);
@@ -77,6 +86,12 @@ export const DIR_STEP = Object.freeze({ UP: [0, 1], RIGHT: [1, 0], DOWN: [0, -1]
 const nowMs = () => (globalThis.performance ? globalThis.performance.now() : Date.now());
 /** How long a view waits for its avatar before showing the image-less placeholder diamond. */
 const PIC_WAIT_MS = 400;
+/**
+ * Waits (ms, real time) before a view loads its Spine model again after the load failed or timed out (assets.js, 20 s)
+ * — bounded: after the last one the view keeps its diamond until `retryAssets` (a manifest that arrived late, the tab
+ * shown again). Counted from the failure; a hidden tab runs no frames, so nothing is retried while hidden.
+ */
+export const SPINE_RETRY_MS = Object.freeze([2000, 6000, 15000, 30000]);
 
 /** Heights above this count as standing on a raised top (bench pads are the lowest raised tiles, 0.16). */
 const RAISED_Z = 0.12;
@@ -92,6 +107,13 @@ export const DOWN_LOOK = Object.freeze({
   size: 0.42, height: 1.02,
 });
 /**
+ * An enemy drawn with another enemy's web model because its own is only in the local client (manifest `spineAliasOf`
+ * + `spineLocal`: 灼热 / 炽焰源石虫 → the plain 源石虫's skeleton, feedback D3 after 0.1.0): a multiply tint toward its own
+ * lava colours (orange / red-orange), so it reads apart from the plain slug where the local art was not extracted
+ * (research 07 §5.6 "a hue shift") [ASSUMED look]. Never on its official (local) model; status tints win over it.
+ */
+export const ALIAS_TINT = Object.freeze({ enemy_1305_mhslim: 0xffc48a, enemy_1305_mhslim_2: 0xff9070 });
+/**
  * Element gauge row under the bars (see header): the disc's diameter in tiles and its pixel clamp (enemies × `enemy`),
  * the gap under the bars (px). The white bar is as tall as the SP bar and fills the rest of the bars' width. During a
  * 爆发冷却 the refilling bar takes the element's colour (textures.js ELEMENT_RING `tint`) and the disc's alpha pulses
@@ -100,22 +122,83 @@ export const DOWN_LOOK = Object.freeze({
 export const EL_BAR = Object.freeze({ icon: 0.15, min: 8, max: 15, enemy: 0.8, gap: 1, pulse: 0.45, pulseHz: 1.5 });
 
 /**
- * Enemy modes drawn with another clip set of the same skeleton (sim fx 'phase' kind → UnitView.setForm), per Spine
- * id: 掠海漂移体 (PRTS: 受晕眩/沉睡/冻结影响后进入爬行模式 — for good) crawls on its *_02 clips after 'Change'. The mode's
- * roles override the manifest's (data/assets.json anims); 吉兆飞鳞's 晕眩模式 is its Stun clip already.
+ * Enemy modes drawn with another clip set of the same skeleton (the `form` of a sim fx — shared/protocol.js fxForm —
+ * → UnitView.setForm), per Spine id; the mode's roles override the manifest's (data/assets.json anims), `change` plays
+ * once first:
+ * - 掠海漂移体 (PRTS: 受晕眩/沉睡/冻结影响后进入爬行模式 — for good) crawls on its *_02 clips after 'Change';
+ * - 暴鸰 flies on its bomb-less *_2 clips once its one bomb left (the official prefab's mode S1: Move→Move_2, Idle→Idle_2,
+ *   Die→Die_2; user feedback after 0.1.0, D4: the bomb used to stay under the drone — no change clip, the drop is its
+ *   Attack clip);
+ * - 转译基底·α (user report after 0.1.0, #5): its 2 s change clip A_Die_B / _C / _D, then 寻仇者 B_*, 幽灵 C_* (no attack
+ *   clip: it never attacks) or 特战术师 D_* — its manifest roles are the original form's A_Idle / A_Move;
+ * - 深池逐火战士 / 精锐战士 / 护卫 (#8): knocked out → 'Die' (the 1 s 重生), the 余烬 on Idle_2 / Move_2 and its death on
+ *   Die_2 (also while 'Revive' plays: the ember can still be beaten); standing up again → 'Revive', then the warrior's
+ *   manifest clips;
+ * - 假想敌：再生: knocked out → A_Die, the 傀儡 on B_Idle / B_Move / B_Die; back → B_Revive, then the A_* manifest clips;
+ *   (both: the stand-up clip (`end`) is timed from the 'ember' fx's `dur` to end as the husk stands up — the 'revive'
+ *   fx then only lands in the manifest clips);
+ * - the leaders' 重生 (sim reborn(): forms 'reborn' → 'form2'): 锏 Revive1, Revive2 held, Revive3, then B_*; 扎罗 A_revive_1 /
+ *   _2 / _3, then B_* (its double-hit attack); “复仇者” Revive_Begin / _Loop / _End; 杰斯顿 C1_Die (its 4 s 重生), then
+ *   C2_* — their manifests mix the forms (锏 / 扎罗 died on B_Die from the A model, the look of report #5). The closing
+ *   clip (`end`) is timed from the 重生's `dur` (the 'telegraph' fx) to end with it, so the second form walks and
+ *   attacks on its own clips at once (a view that missed the timing — built mid-重生 — skips the closing clip);
+ * - 守墓石像 (forms 'stone' → 'fly'): the statue on Sleep [ASSUMED by name], then the flyer's *_2 clips.
+ * A kind without a clip set of this skeleton (barriers, charges, …) changes nothing. 吉兆飞鳞's 晕眩模式 is its Stun clip.
  */
+const loop = (name, via = null) => Object.freeze(via ? { begin: null, loop: name, end: null, via } : { begin: null, loop: name, end: null });
+const clipSet = (idle, move, die, attack = null) => Object.freeze({
+  idle, deploy: idle, die, move: loop(move),
+  attack: attack ? loop(attack, 'attackAny') : null,
+  skill: attack ? Object.freeze({ begin: null, loop: attack, end: null, via: 'attack', index: 0, idle: null }) : null,
+});
+const EMBER = Object.freeze({
+  husk: Object.freeze({ change: 'Die', end: 'Revive', next: 'revived', roles: clipSet('Idle_2', 'Move_2', 'Die_2') }),
+  revived: Object.freeze({ change: null, roles: Object.freeze({}) }),
+});
+/** A 重生 held on `hold` (also while the sim reports the rebirth's stun) after `begin`, closing on `end` as the 重生 ends,
+ *  then the second form. */
+const rebirth = (begin, hold, end, form2 = Object.freeze({})) => Object.freeze({
+  reborn: Object.freeze({ change: begin, end, next: 'form2', roles: Object.freeze({ idle: hold, deploy: hold, move: loop(hold), stun: loop(hold), attack: null, skill: null }) }),
+  form2: Object.freeze({ change: null, roles: form2 }),
+});
+const STATUE = Object.freeze({
+  stone: Object.freeze({ change: null, roles: Object.freeze({ idle: 'Sleep', deploy: 'Sleep', move: loop('Sleep'), stun: loop('Sleep'), attack: null, skill: null }) }),
+  fly: Object.freeze({ change: null, roles: clipSet('Idle_2', 'Move_2', 'Die_2', 'Attack_2') }),
+});
+const JAKILL2 = clipSet('C2_Idle', 'C2_Move', 'C2_Die', 'C2_Attack');
 export const FORMS = Object.freeze({
-  enemy_2025_syufo: Object.freeze({
-    crawl: Object.freeze({
-      change: 'Change',
+  enemy_1040_bombd: Object.freeze({
+    bombed: Object.freeze({
       roles: Object.freeze({
-        idle: 'Idle_02', deploy: 'Idle_02', die: 'Die_02',
-        move: Object.freeze({ begin: null, loop: 'Move_02', end: null }),
-        attack: Object.freeze({ begin: null, loop: 'Attack_02', end: null, via: 'attackAny' }),
-        skill: Object.freeze({ begin: null, loop: 'Attack_02', end: null, via: 'attack', index: 0, idle: null }),
+        idle: 'Idle_2', deploy: 'Idle_2', die: 'Die_2',
+        move: Object.freeze({ begin: 'Move_Begin_2', loop: 'Move_Loop_2', end: 'Move_End_2' }),
       }),
     }),
   }),
+  enemy_2025_syufo: Object.freeze({
+    crawl: Object.freeze({ change: 'Change', roles: clipSet('Idle_02', 'Move_02', 'Die_02', 'Attack_02') }),
+  }),
+  enemy_10081_mpplai: Object.freeze({
+    translator_fuchou: Object.freeze({ change: 'A_Die_B', roles: clipSet('B_Idle', 'B_Move', 'B_Die', 'B_Attack') }),
+    translator_youling: Object.freeze({ change: 'A_Die_C', roles: clipSet('C_Idle', 'C_Move', 'C_Die') }),
+    translator_shushi: Object.freeze({ change: 'A_Die_D', roles: clipSet('D_Idle', 'D_Move', 'D_Die', 'D_Attack') }),
+  }),
+  enemy_1288_duskls: EMBER,
+  enemy_1288_duskls_2: EMBER,
+  enemy_1292_duskld: EMBER,
+  enemy_9010_acpupp: Object.freeze({
+    husk: Object.freeze({ change: 'A_Die', end: 'B_Revive', next: 'revived', roles: clipSet('B_Idle', 'B_Move', 'B_Die') }),
+    revived: Object.freeze({ change: null, roles: Object.freeze({}) }),
+  }),
+  enemy_1525_blkswb: rebirth('Revive1', 'Revive2', 'Revive3', clipSet('B_Idle', 'B_Move', 'B_Die', 'B_Attack')),
+  enemy_1535_wlfmster: rebirth('A_revive_1', 'A_revive_2', 'A_revive_3', clipSet('B_Idle', 'B_Move', 'B_Die', 'B_Attack')),
+  enemy_1539_reid: rebirth('Revive_Begin', 'Revive_Loop', 'Revive_End'),
+  enemy_1516_jakill: Object.freeze({
+    reborn: Object.freeze({ change: 'C1_Die', roles: JAKILL2 }),
+    form2: Object.freeze({ change: null, roles: JAKILL2 }),
+  }),
+  enemy_1172_dugago: STATUE,
+  enemy_1172_dugago_2: STATUE,
 });
 
 /**
@@ -242,6 +325,10 @@ export class UnitView {
     this.body.addChild(this.fallback);
     this.actor = null;
     this.spineReady = false;
+    this._spineBusy = false;             // a Spine load of this view is in flight
+    this._spineTries = 0;                // failed loads since the last model (SPINE_RETRY_MS)
+    this._retryAt = 0;                   // when the next retry is due (ms, performance clock; 0 = none)
+    this.baseTint = 0xffffff;            // the drawn model's own tint (ALIAS_TINT), under the status tints
 
     this.hud = new P.Container();
     ctx.layers.bars.addChild(this.hud);
@@ -289,7 +376,8 @@ export class UnitView {
     pic.shown = want;
   }
 
-  _loadSpine() {
+  /** @param {boolean} [retry] load again even after a remembered failure (assets.js acquire `{ retry }`) */
+  _loadSpine(retry = false) {
     const a = this.ctx.assets;
     if (!a || !a.spineEntry || !a.spine) return;
     const id = this.info.spine || this.info.defId;
@@ -297,13 +385,39 @@ export class UnitView {
     const back = this._wantsBack();
     const entry = id ? a.spineEntry(id, { back }) : null;
     if (!entry || this.ctx.settings?.quality === 'low' && this.isEnemy && !this.isBoss && this.ctx.crowded?.()) return;
-    // every acquire is paired with exactly one release: a superseded / failed / post-destroy load releases its own
-    // entry; the displayed model's entry (`_actorEntry`) is released when that model is replaced or destroyed
-    this.entry = entry;
     this.entryBack = back;
+    this._acquireSpine(entry, id, retry);
+  }
+
+  /**
+   * Re-resolve what this view could not draw yet (public issue #8 item 5): the picture when it has none (no avatar URL —
+   * the asset manifest arrived after the view was built — or the image failed) and, at once, the Spine model when none
+   * is shown and none is loading (no manifest entry then, or a load that failed / timed out). render/app.js calls it for
+   * every view when a manifest arrives (assets.js onChange) and when the tab is shown again. Nothing to do otherwise.
+   */
+  retryAssets() {
+    if (this.destroyed) return;
+    if (!this._pic || this._pic.state === 'none') this._loadPicture();
+    if (!this.actor && !this._spineBusy) { this._retryAt = 0; this._loadSpine(true); }
+  }
+
+  /**
+   * Load `entry` and show it. Every acquire is paired with exactly one release: a superseded / failed / post-destroy
+   * load releases its own entry; the displayed model's entry (`_actorEntry`) is released when that model is replaced or
+   * destroyed. A model that fails to load falls back to the entry's `fallback` (an optional local-client model,
+   * assets.js spineEntry: DESIGN §13) when it names one; otherwise the view keeps its fallback diamond and — while no
+   * model is shown — loads again after SPINE_RETRY_MS (a timed-out or failed download used to stay a diamond for good).
+   */
+  _acquireSpine(entry, id, retry = false) {
+    const a = this.ctx.assets;
+    this.entry = entry;
     const req = this._spineReq = (this._spineReq || 0) + 1;
-    a.spine.acquire(entry).then((data) => {
+    this._spineBusy = true;
+    a.spine.acquire(entry, retry ? { retry: true } : undefined).then((data) => {
+      if (req === this._spineReq) this._spineBusy = false;
       if (this.destroyed || req !== this._spineReq) { this._releaseEntry(entry); return; }
+      this._spineTries = 0;
+      this._retryAt = 0;
       let actor = null;
       try {
         actor = new SpineActor(data, entry);
@@ -318,6 +432,7 @@ export class UnitView {
       if (swap) this._dropActor();
       this.actor = actor;
       this._actorEntry = entry;
+      this.baseTint = (!entry.local && ALIAS_TINT[id]) || 0xffffff;   // the web alias of a local-only model
       this.body.addChild(this.actor.spine);
       this.spineReady = true;
       this.swapT = swap ? 1 : 0;
@@ -334,7 +449,14 @@ export class UnitView {
         if (this.flags & UF.SKILL) this.actor.setSkill(true);
         this.actor.setBase(this._baseFromAnim());
       }
-    }, () => { this._releaseEntry(entry); /* keep the fallback */ });
+    }, () => {
+      if (req === this._spineReq) this._spineBusy = false;
+      this._releaseEntry(entry);
+      if (this.destroyed || req !== this._spineReq) return;
+      if (entry.fallback) { this._acquireSpine(entry.fallback, id, retry); return; }
+      // keep the fallback diamond (or the model already shown: a failed Front ⇄ Back swap) — and try again later
+      if (!this.actor && this._spineTries < SPINE_RETRY_MS.length) this._retryAt = nowMs() + SPINE_RETRY_MS[this._spineTries++];
+    });
   }
 
   _formSpec() {
@@ -342,18 +464,28 @@ export class UnitView {
   }
 
   /**
-   * The unit changed mode (sim fx 'phase' { id, kind }): the mode's clip set (FORMS) after its change clip; a kind with
-   * no clip set of its own goes back to the manifest clips. Kept for a model built later.
+   * The unit changed mode (the `form` of a sim fx — shared/protocol.js fxForm; `fx` = that fx's extra): the mode's clip
+   * set (FORMS) after its change clip, and its closing clip (`end`, landing in the `next` form's clips) timed to end
+   * `fx.dur` game s later — the unit is still in this mode while it plays (an ember can be beaten in its last second),
+   * so this mode's death clip stays until the next mode's fx; null goes back to the manifest clips; a kind this skeleton
+   * has no clip set for (an arts barrier, a broken charge …) changes nothing. Kept for a model built later.
    */
-  setForm(kind) {
+  setForm(kind, fx = null) {
     const k = typeof kind === 'string' ? kind : null;
     if (k === this.form) return;
+    if (k && !FORMS[this.info.spine || this.info.defId]?.[k]) return;
     const had = !!this._formSpec();
     this.form = k;
     this.info.form = k;
     const f = this._formSpec();
     if (!this.actor) return;
-    if (f) this.actor.setForm(f.roles, f.change || null);
+    const dur = fx && Number(fx.dur);
+    let next = f && f.next ? FORMS[this.info.spine || this.info.defId]?.[f.next]?.roles || null : null;
+    if (next && typeof f.roles.die === 'string') next = { ...next, die: f.roles.die };
+    // an fx handed out late (render/app.js: a stall, a hidden tab) skips a change clip that would already have ended
+    const late = fx && Number(fx.late) > 0 ? Number(fx.late) : 0;
+    const change = f && f.change && !(late > 0 && late >= (this.actor.dur?.(f.change) ?? Infinity)) ? f.change : null;
+    if (f) this.actor.setForm(f.roles, change, f.end && dur > 0 ? { clip: f.end, in: dur, roles: next } : null);
     else if (had) this.actor.setForm(null);
   }
 
@@ -514,13 +646,17 @@ export class UnitView {
   }
 
   /** An attack was made (b.ev 'atk'). `target` = view or null. */
-  onAttack(target, now) {
+  onAttack(target, now, kind) {
     if (!this.alive) return;
-    if (this.lastAtk >= 0) {
-      const d = now - this.lastAtk;
-      if (d > 0.05 && d < 6) this.atkInterval = this.atkInterval * 0.6 + d * 0.4;
+    // a one-off cast (PROJ[kind].once: 暴鸰's bomb drop) is no attack rhythm: its clip plays once at its own speed
+    const once = !!PROJ[kind]?.once;
+    if (!once) {
+      if (this.lastAtk >= 0) {
+        const d = now - this.lastAtk;
+        if (d > 0.05 && d < 6) this.atkInterval = this.atkInterval * 0.6 + d * 0.4;
+      }
+      this.lastAtk = now;
     }
-    this.lastAtk = now;
     if (target && !this.isEnemy && this.info.kind !== 'device') {
       // operators keep their deploy direction (research 09 §1.2); enemies may turn towards their target
     } else if (target && this.isEnemy) {
@@ -532,17 +668,18 @@ export class UnitView {
       this.lungeDir.x = dx / len; this.lungeDir.y = dy / len;
     }
     this.lunge = 1;
-    if (this.actor) this.actor.attack(this.atkInterval); // game seconds: the actor's clock runs in game time
+    if (this.actor) this.actor.attack(this.atkInterval, once); // game seconds: the actor's clock runs in game time
     if (this.imp) this.imp.dirty = true;
   }
 
   /**
    * An attack by this unit is `lead` game seconds ahead in the snapshot buffer: start the Spine attack wind-up now
-   * so the strike frame lines up with the attack. True once started (then stop calling for that attack).
+   * so the strike frame lines up with the attack. True once started (then stop calling for that attack). `kind` = the
+   * 'atk' projKind (a one-off cast winds up at the clip's own speed).
    */
-  windUp(lead) {
+  windUp(lead, kind) {
     if (!this.alive || !this.actor || !this.spineReady) return false;
-    const ok = this.actor.windUp(this.atkInterval, lead);
+    const ok = this.actor.windUp(this.atkInterval, lead, !!PROJ[kind]?.once);
     if (ok && this.imp) this.imp.dirty = true;
     return ok;
   }
@@ -589,11 +726,13 @@ export class UnitView {
   }
 
   /**
-   * Knocked-out state (b.snap `down` entry `[id, respawnAt, respawnTime, state]`, render/interp.js downAt) or null;
-   * `t` = the render clock's game time. A living view is knocked down first (its Die clip plays; `instant`: a view made
-   * for a unit that is already down — a field joined mid-battle — starts on the held end of the clip). While down the
-   * view never fades: the Die clip's last frame stays on the tile under the redeploy ring. null on a view still down
-   * (it left for good) starts the fade; the redeploy itself comes through onDeploy / revive.
+   * Knocked-out state (b.snap `down` entry `[id, respawnAt, respawnTime, state, row?, col?]`, render/interp.js downAt)
+   * or null; `t` = the render clock's game time. A living view is knocked down first (its Die clip plays; `instant`: a
+   * view made for a unit that is already down — a field joined mid-battle — starts on the held end of the clip). While
+   * down the view never fades: the Die clip's last frame stays on the tile the entry names (the view moves there when
+   * it stands elsewhere: a body that went back to its home, a view built from the unit's deploy info) under the
+   * redeploy ring. null on a view still down (it left for good) starts the fade; the redeploy itself comes through
+   * onDeploy / revive.
    */
   setDown(d, t, instant = false) {
     if (Number.isFinite(t)) this.gameT = t;
@@ -604,6 +743,10 @@ export class UnitView {
       return;
     }
     if (this.alive) this.die(instant);
+    if (Number.isInteger(d[4]) && Number.isInteger(d[5]) && (this.x !== d[5] || this.y !== d[4])) {
+      this.x = d[5]; this.y = d[4];
+      this.z = this.zTarget = groundZ(this.ctx, this.x, this.y);
+    }
     if (this.zTarget == null) this.z = this.zTarget = groundZ(this.ctx, this.x, this.y); // never synced: its tile top
     this.dying = 0; // no death fade while down
     const dn = this.down || (this.down = { until: 0, total: 0, state: DOWN_STATE.COUNTING });
@@ -618,6 +761,8 @@ export class UnitView {
   update(dt, cam, t) {
     if (this.destroyed) return;
     const P = this.P;
+    // a failed / timed-out model load is tried again once its wait is over (SPINE_RETRY_MS; frames only: never hidden)
+    if (this._retryAt && nowMs() >= this._retryAt) { this._retryAt = 0; if (!this.actor && !this._spineBusy) this._loadSpine(true); }
     if (this.zTarget != null && this.z !== this.zTarget) {
       const d = this.zTarget - this.z;
       this.z = Math.abs(d) < 1e-3 ? this.zTarget : this.z + d * Math.min(1, dt * 12);
@@ -673,7 +818,7 @@ export class UnitView {
       this.fallback.visible = this.swapT < 1;
       const sc = s * UNIT.modelScale * this.modelK;
       const flashK = this.flash > 0 ? this.flash : 0;
-      let tint = 0xffffff;
+      let tint = this.baseTint;
       if (this.down) tint = DOWN_LOOK.tint;
       else if (this.flags & UF.FROZEN) tint = 0x9fd4ff;
       else if (this.flags & UF.COLD) tint = 0xcfe6ff;
@@ -1186,9 +1331,16 @@ export class ItemView {
     this.plate = new P.Sprite(itemTexture(String(info.defId || 'item'), null, info.color || 0x9aa5a0));
     this.plate.anchor.set(0.5, 1);
     this.root.addChild(this.plate);
-    const url = info.icon;
-    if (url && ctx.assets?.image) ctx.assets.image(url).then((img) => { if (!this.destroyed && img) this.plate.texture = itemTexture(String(info.defId), img, info.color || 0x9aa5a0); }, () => {});
+    this.info.icon = null;
+    this.setIcon(info.icon);
     this.hud = null;
+  }
+  /** Show the item's icon (an URL; the plain plate until it loads) — again when the asset manifest named it late. */
+  setIcon(url) {
+    if (this.destroyed || !url || url === this.info.icon) return;
+    this.info.icon = url;
+    const a = this.ctx.assets;
+    if (a?.image) a.image(url).then((img) => { if (!this.destroyed && img && this.info.icon === url) this.plate.texture = itemTexture(String(this.info.defId), img, this.info.color || 0x9aa5a0); }, () => {});
   }
   setWorld(x, y, z = 0) { this.x = x; this.y = y; this.z = z; }
   update(dt, cam, t) {

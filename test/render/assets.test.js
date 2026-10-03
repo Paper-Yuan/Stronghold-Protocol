@@ -485,10 +485,13 @@ describe('createAssets store', () => {
     assert.equal(a.audio.sfx('battle', 'deploy'), '/sfx/dep.mp3');
     const warn = console.warn; console.warn = () => {};
     try {
+      // a failure resolves ready() (fallbacks meanwhile) but is not kept as the manifest (public issue #8 item 5;
+      // test/render/issue8-placeholders.test.js covers the retries)
       const b = createAssets({ fetch: async () => ({ ok: false, status: 404 }) });
-      await b.ready();
+      assert.deepEqual(await b.ready(), {});
       assert.equal(b.avatar('char_002_amiya'), null);
-      assert.deepEqual(b.manifest, {});
+      assert.equal(b.manifest, null);
+      assert.equal(b.loaded, false);
     } finally { console.warn = warn; }
   });
 

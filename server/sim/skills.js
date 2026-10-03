@@ -32,7 +32,8 @@
 //   instant (onStart + optional one-shot attack override for the next attack), charges (= instant with charges),
 //   passive (always on from deployment, no SP), toggle (stays on until death once activated).
 // SkillSpec fields (all optional): kind, duration, ammo, spCost, initSp, charges, spType, trigger,
-//   mods, flags, targeting {maxTargets, rangeGrid, priority, allInRange, rangeExtend},
+//   mods, flags, targeting {maxTargets, rangeGrid, priority, allInRange, rangeExtend, noRangeExtend (the range ignores
+//   the unit's 攻击距离), showOwnRange (rangeGrid only selects targets: the detail card keeps the unit's own range)},
 //   attack {dmgType, atkScale, splashRadius, splashScale, hits, projectile, maxTargets, dmgMul, onHit, heal…},
 //   heal (bool: heal-type skill for the trigger rule), onStart(ctx), onEnd(ctx), onHit(ctx), onAttack(ctx), onTick(ctx).
 // ctx passed to spec callbacks: { battle, unit, skill, bb, target?, dealt?, targets?, dt?, reason? }; onAttack's ctx
@@ -43,6 +44,8 @@ import { absoluteRangeKeys, canTargetEnemy } from './targeting.js';
 import { AUTO_OP_COOLDOWN, COLS, ROWS } from './constants.js';
 
 const TICK_RULES = new Set(['SP_FULL', 'SEARCH', 'CUSTOM_RANGE', 'SKILL_RANGE', 'GDGLOW_SKILL_2']);
+/** True when a SkillSpec `targeting` changes the unit's range while the skill runs (Battle._refreshRange). */
+const changesRange = (tg) => !!(tg && (tg.rangeGrid || tg.rangeExtend || tg.noRangeExtend));
 /** Enemies that satisfy a content trigger range (any targetable enemy, flyers included). */
 const TRIGGER_PROFILE = Object.freeze({ canHitFly: true });
 /** Every tile of the stage (GDGLOW_SKILL_2: the whole field). */
@@ -194,12 +197,12 @@ export class SkillRuntime {
     if (s.mods || s.flags) {
       this.battle.addBuff(this.unit, { key: this._buffKey, mods: s.mods || null, flags: s.flags || null, tags: ['skill'] });
     }
-    if (s.targeting && (s.targeting.rangeGrid || s.targeting.rangeExtend)) this.battle._refreshRange(this.unit);
+    if (changesRange(s.targeting)) this.battle._refreshRange(this.unit);
   }
 
   _removeMods() {
     this.battle.removeBuff(this.unit, this._buffKey);
-    if (this.spec.targeting && (this.spec.targeting.rangeGrid || this.spec.targeting.rangeExtend)) this.battle._refreshRange(this.unit);
+    if (changesRange(this.spec.targeting)) this.battle._refreshRange(this.unit);
   }
 
   /** Add SP (fires the `spGain` hook). Ignored while a duration/ammo/toggle skill runs (its bar shows the skill). */

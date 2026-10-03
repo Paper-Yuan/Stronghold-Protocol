@@ -24,7 +24,9 @@
 // the field only (unite / boss fields hold both halves); Battle opts.deviceOverrides switch every half.
 // `deviceOverridesOf(battle)` is the union (informational).
 // Terrain numbers come from `stage.special` (fallback: the device's skill blackboard, then research 05 values).
-// Not implemented: the devices of act1 m05–m07 (canoe platforms, sandstorm + mounds, bushes) — weight 0 this season.
+// Not implemented: the devices of act1 m05–m07 (canoe platforms, sandstorm + mounds, bushes) — weight 0 this season. The
+// canoe (特制水上平台) makes its 深水区 deployable in the prep's deploy map only (server/match/board.js); the sim's Grid
+// keeps those tiles NONE (grid.js DEPLOY_REFUSED_TILES), so automatic placements never use them [ASSUMED].
 
 import { COLS, ROWS } from '../constants.js';
 import { performAttack } from '../ai.js';

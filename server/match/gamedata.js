@@ -90,6 +90,8 @@ export class GameData {
     for (const k of Object.keys(this.shopItemsByTier)) this.shopItemsByTier[k].sort();
     this.bondIds = Object.keys(this._bonds).sort((a, b) => (numOr(this._bonds[a].identifier, 99) - numOr(this._bonds[b].identifier, 99)) || (a < b ? -1 : 1));
     this.modeInactiveBonds = new Set(Array.isArray(this.mode.inactiveBondIds) ? this.mode.inactiveBondIds : []);
+    /** bandBondIds memo */
+    this._bandBonds = new Map();
     this.inactiveEnemies = new Set(Array.isArray(this.mode.inactiveEnemyKeys) ? this.mode.inactiveEnemyKeys : []);
     /** data/tuning.json (titles only, see the header) */
     this.tuning = this.raw.tuning && typeof this.raw.tuning === 'object' ? this.raw.tuning : {};
@@ -456,6 +458,24 @@ export class GameData {
   startLp(bandId) {
     const b = this.band(bandId);
     return b && Number.isInteger(b.totalHp) && b.totalHp > 0 ? b.totalHp : this.defaultStartLp;
+  }
+
+  /**
+   * The bonds a strategy's mechanic is built around (DESIGN §21.26): bands.json `bondIds`, written at build time by
+   * shared/bandBonds.js from the band's own text and blackboards (潘格尼尼 → 拉特兰, 克莱门莎 → 阿戈尔, 玛恩纳 → 卡西米尔 …) —
+   * the field the strategy draft's 本局禁用 mark reads too. Known bond ids in data order; [] for an unknown band, one tied to
+   * no bond (华法琳, 阿米娅 …) or data without the field. The bot never picks a strategy tied to a bond the mode switches
+   * off (bot.js botPickBand).
+   * @param {string} bandId
+   * @returns {string[]}
+   */
+  bandBondIds(bandId) {
+    if (this._bandBonds.has(bandId)) return this._bandBonds.get(bandId);
+    const listed = this.band(bandId)?.bondIds;
+    const set = new Set(Array.isArray(listed) ? listed : []);
+    const out = Object.freeze(this.bondIds.filter((id) => set.has(id)));
+    this._bandBonds.set(bandId, out);
+    return out;
   }
 
   /**

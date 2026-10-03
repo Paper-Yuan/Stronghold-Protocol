@@ -2,11 +2,11 @@
 // official game): "官方就是合成精锐时，如果消耗了场上的干员，精锐会出现在场上那个位置". PRTS 卫戍协议/帮助 §干员的获得与精锐化:
 // "不获得第3名干员，销毁已有的2名初始干员，发送1名【精锐】状态的该干员至手牌区（若消耗已部署至作战区的干员，则发送至作战区
 // 对应位置）". Remake (server/match/PlayerState.js _mergeChess, board.js mergeTile): the elite takes the tile and facing of the
-// consumed copy that deploys first (row desc, col asc — [ASSUMED] when several stood on the board); a transformed deployed
-// piece's own tile counts; with no deployed copy it goes to the hand (overflow temp). Equipment returns to the hand
-// ("干员晋级后已配发装备会回收至整备区"), the copies' summons are removed and the elite on the board gets its own stack
-// (its loadout), the deploy count never grows, the reward offer is unchanged — for buys, rewards, effect grants, SETTLE
-// merges and the boss-field prep alike. audit.js checks the rule in every audited match.
+// consumed copy that deploys first (row desc, col asc — [ASSUMED] when several stood on the board); a 突变细胞 carrier is
+// destroyed before its gain, so its tile never counts; with no deployed copy it goes to the hand (overflow temp).
+// Equipment returns to the hand ("干员晋级后已配发装备会回收至整备区"), the copies' summons are removed and the elite on
+// the board gets its own stack (its loadout), the deploy count never grows, the reward offer is unchanged — for buys,
+// rewards, effect grants, SETTLE merges and the boss-field prep alike. audit.js checks the rule in every audited match.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { ERR, PHASE } from '../../shared/constants.js';
@@ -112,20 +112,22 @@ test('buy: two deployed copies → the copy that deploys first (row desc, then c
   }
 });
 
-test('three deployed copies (a deployed operator transformed into the third, 突变细胞-style) → the first of the three tiles in deploy order', () => {
+test('a deployed operator transformed into the third copy (突变细胞) → the first deployed COPY\'s tile, never the carrier\'s (destroyed first)', () => {
   const { m, ps } = prep({ seed: 43 });
   const [id, other] = meleeTier1(m);
+  // the carrier deploys first: under the 0.1.1 WA rule its tile won; the official destroy-then-gain frees it instead
   const carrier = deploy(m, ps, other, 'UP');
   const c1 = deploy(m, ps, id, 'LEFT');
   const c2 = deploy(m, ps, id, 'DOWN');
-  const tiles = [carrier, c1, c2].map((p) => keyOf(ps, p));
-  const dirOf = { [tiles[0]]: 'UP', [tiles[1]]: 'LEFT', [tiles[2]]: 'DOWN' };
+  const [ct, t1, t2] = [carrier, c1, c2].map((p) => keyOf(ps, p));
+  assert.equal(mergeTile([ct, t1, t2].map((key) => ({ key }))).key, ct, 'the carrier\'s tile is the first in deploy order');
   const elite = ps.transformChess(carrier, id);
-  assert.ok(elite && elite.id === chess(id).goldenId, 'the transformation completed the merge');
-  const want = mergeTile(tiles.map((key) => ({ key })));
-  assert.equal(keyOf(ps, elite), want.key, 'the elite takes the first deployed tile');
-  assert.equal(elite.dir, dirOf[want.key]);
-  assert.equal(ps.deployCount, 1, 'three deployed → one');
+  assert.ok(elite && elite.id === chess(id).goldenId, 'the gain completed the merge');
+  const want = mergeTile([t1, t2].map((key) => ({ key })));
+  assert.equal(keyOf(ps, elite), want.key, 'the elite takes the first deployed copy\'s tile');
+  assert.equal(elite.dir, want.key === t1 ? 'LEFT' : 'DOWN', 'with that copy\'s facing');
+  assert.ok(!ps.board.has(ct), 'the carrier\'s tile is empty');
+  assert.equal(ps.deployCount, 1, 'carrier + two copies deployed → the elite alone');
   assert.equal(ps.stats.merges, 1);
   checkInvariants(m);
   m.dispose();
@@ -420,7 +422,7 @@ test('audit.js flags an elite that misses the deployed copy\'s tile (and passes 
   m.dispose();
 });
 
-test('audit.js passes transformations that complete a merge (突变细胞 ctx.transform; a deployed carrier is detached first), in PREP and SETTLE', () => {
+test('audit.js passes transformations that complete a merge (突变细胞 ctx.transform: the carrier is destroyed before the gain, its tile no copy\'s), in PREP and SETTLE', () => {
   // carrier / the two copies: 'board' or 'hand'
   const layouts = [['board', 'hand', 'hand'], ['board', 'board', 'hand'], ['board', 'board', 'board'], ['hand', 'board', 'board'], ['hand', 'hand', 'hand']];
   for (const phase of ['PREP', 'SETTLE']) {
@@ -436,23 +438,26 @@ test('audit.js passes transformations that complete a merge (突变细胞 ctx.tr
       const [id, other] = meleeTier1(m);
       const place = (cid, at, dir) => (at === 'board' ? deploy(m, ps, cid, dir) : give(m, ps, cid));
       const carrier = place(other, carrierAt, 'UP');
+      const carrierTile = keyOf(ps, carrier);
       const copies = copiesAt.map((at, j) => place(id, at, j ? 'DOWN' : 'LEFT'));
-      const dirOf = new Map([carrier, ...copies].filter((p) => keyOf(ps, p)).map((p) => [keyOf(ps, p), p.dir]));
+      // only the copies' tiles count (PRTS: a destroy, then a gain — the carrier is no copy of the merge)
+      const dirOf = new Map(copies.filter((p) => keyOf(ps, p)).map((p) => [keyOf(ps, p), p.dir]));
       const before = ps.deployCount;
       if (phase === 'SETTLE') h.drive(() => m.phase === PHASE.SETTLE);
       assert.equal(m.phase, PHASE[phase]);
       const ctx = makeCtx(m, ps, { kind: 'item', key: 'item:test' }, phase === 'SETTLE' ? 'onSettle' : 'onBuy');
       const got = ctx.transform(carrier.uid, id);
-      assert.ok(got && got.id === chess(id).goldenId, `${label}: the transformation completed the merge`);
+      assert.ok(got && got.id === chess(id).goldenId, `${label}: the gain completed the merge`);
       const want = mergeTile([...dirOf.keys()].map((key) => ({ key })));
       const loc = ps.find(got.uid);
+      if (carrierTile) assert.ok(!ps.board.has(carrierTile), `${label}: the carrier's tile is empty`);
       if (want) {
-        assert.equal(loc.key, want.key, `${label}: the elite on the first deployed tile`);
+        assert.equal(loc.key, want.key, `${label}: the elite on the first deployed copy's tile`);
         assert.equal(loc.piece.dir, dirOf.get(want.key), `${label}: with that copy's facing`);
         assert.equal(ps.deployCount, 1, `${label}: ${before} deployed → 1`);
       } else {
         assert.equal(loc.area, 'hand', `${label}: no deployed copy → the hand`);
-        assert.equal(ps.deployCount, 0);
+        assert.equal(ps.deployCount, 0, `${label}: ${before} deployed → 0`);
       }
       assert.deepEqual(audit.violations, [], `${label}: no audit violation`);
       m.dispose();

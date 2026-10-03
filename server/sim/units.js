@@ -43,6 +43,9 @@ export class Unit {
     this.tileC = init.tileC ?? Math.round(this.x);
     this.homeR = this.tileR;
     this.homeC = this.tileC;
+    // knocked-out operators (Battle.isDown): [r, c] of the tile the body lies on and the unit comes back on — where it
+    // fell, or its home (Battle._layBody); x / y / tileR / tileC keep where it fell
+    this.body = null;
     // deploy direction (sim/dir.js; allies: from the board piece, default RIGHT); `facing` is its derived horizontal
     // sign (sprite flip only) — a legacy `init.facing` ±1 still maps to RIGHT / LEFT
     this.dir = normDir(init.dir ?? init.facing);
@@ -81,6 +84,8 @@ export class Unit {
     this.trait = {};            // profession runtime state
     this.stats = { dmg: 0, kills: 0, heal: 0, taken: 0, attacks: 0 };
     this.hidden = false;        // enemies inside a DISAPPEAR segment
+    this.moving = false;        // enemies: walked this tick (drawn on the move clip; ai.js updateEnemy)
+    this.form = null;           // enemies: the model's current form (content/enemies.js setForm → snapshot.js unitInfo)
     this.anim = 0;
     this.persist = { redeployMul: 1, freeRedeploys: 0 };
     this.isBoss = false;

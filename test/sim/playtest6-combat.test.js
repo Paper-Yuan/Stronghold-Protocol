@@ -410,7 +410,8 @@ test('#14 特效 pushes (PRTS 推与拉: one frame less of travel than 弹道 on
   approx(e.x, 4 + PUSH_TILES_EFFECT[1], 1e-6, '特效 column');
 });
 
-test('#14 锏 S3 归于宁静 slashes and pulls air units too (PRTS 备注 "※可对空。不会拖拽自身中心半径0.6708范围内的敌人")', REAL, () => {
+test('#14 锏 S3 归于宁静 slashes air units and pulls a non-static one (PRTS 备注 "※可对空。不会拖拽自身中心半径0.6708范围内的敌人")', REAL, () => {
+  // a synthetic dynamic flyer: the air units of the mode are all 静态刚体 — hit, never moved (test/sim/feedback1b-displacement.test.js)
   const id = 'chess_char_6_19_a';
   const h = makeBattle({
     defs: { enemies: { enemy_fly: foe('enemy_fly', { speed: 0, mass: 0, motion: 'FLY' }), enemy_near: foe('enemy_near', { speed: 0, mass: 0 }) } },

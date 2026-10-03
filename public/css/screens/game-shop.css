@@ -126,6 +126,7 @@
 .scard__bonds { display: flex; flex-wrap: wrap; gap: .02rem .08rem; }
 .scard__bond { display: inline-flex; align-items: center; gap: .03rem; font-size: .13rem; color: var(--mint-400); }
 .scard__bond .bglyph { width: .18rem; height: .18rem; }
+.scard__bond.is-off { color: var(--text-dim); text-decoration: line-through; text-decoration-color: rgba(255, 84, 84, .6); } /* the mode never activates it (标准) */
 .scard__class { display: flex; align-items: center; gap: .05rem; font-size: .13rem; color: var(--text-lo); }
 .scard__prof { width: .18rem; height: .18rem; object-fit: contain; opacity: .85; }
 .scard__mergetag { position: absolute; z-index: 3; right: 0; top: .38rem; font-size: .12rem; font-weight: 700; padding: .01rem .06rem; background: var(--gold); color: #1d1400; letter-spacing: .08em; }
@@ -187,6 +188,7 @@
 .rwtag__title { writing-mode: vertical-rl; font-size: .22rem; font-weight: 900; letter-spacing: .2em; line-height: 1; }
 .rwtag__micro { font-family: var(--font-display); font-size: .09rem; letter-spacing: .14em; opacity: .75; }
 .rwtag__sub { font-size: .12rem; color: var(--text-md); line-height: 1.3; }
+.rwtag__more { color: var(--gold); }
 .rwtag__later { display: flex; align-items: center; gap: .02rem; margin-top: .04rem; padding: .02rem .08rem; font-size: .13rem; color: var(--text-lo);
   background: rgba(0, 0, 0, .35); border: 1px solid var(--line-2); }
 .rwtag__later .icon { width: .12rem; height: .12rem; }
@@ -200,6 +202,7 @@
   animation: pulse-gold 1.6s ease-in-out infinite;
 }
 .rewardpill .icon { width: .2rem; height: .2rem; }
+.rewardpill__more { padding: 0 .06rem; border: 1px solid var(--gold); font-size: .13rem; line-height: 1.4; }
 @keyframes pulse-gold { 50% { box-shadow: 0 0 .24rem rgba(255, 198, 0, .5); } }
 
 /* ---- two-tap buy / upgrade (research 09 §5): the first tap lifts + enlarges the card and shows 确认购买 ---- */

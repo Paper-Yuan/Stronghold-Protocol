@@ -385,7 +385,7 @@ Members (11 chess, 10 in current shop pool; by tier in shop: {'1': 1, '2': 1, '3
 - Caps: 3 revives per battle
 - How layers are gained: Devour (tier per devoured unit, every battle); 幽灵鲨 被击倒 +3; 归溟幽灵鲨 被击倒/替身切换 +5 阿戈尔 +5 不屈; 斯卡蒂 each 2 kills +1 阿戈尔/坚守/突袭; 海霓 first kill (enemy or ally) +3 阿戈尔/奥术; 机变 "斯卡蒂的盟誓" +8. Strategy 克莱门莎: an 阿戈尔 knocked out adds layers = its tier.
 - How it plays: Put cheap/high-tier fodder in front of 阿戈尔 carries: they steal base ATK and block, gain layers, and (5) revive. Tier-6 fodder gives +6 layers per battle.
-- [ASSUMED] 5000 physical 流失 ignores DEF and shields
+- 5000 physical 流失: less the target's DEF (PRTS 作战机制: a 物理/法术流失 "会受到目标当前防御力/法术抗性影响而相应衰减"; DEF-free [ASSUMED] until 0.1.1), no shields, dodge or damage multipliers (a 流失)
 - [ASSUMED] marked allied units are the player's own operators (devour hits allies)
 - Bond item (with 变形同构体 grants this bond): 阿戈尔重刃 `chess_item_3_07_e` (2 gold: 攻击力+40%，攻击速度-10)
 - Garrisons that explicitly add layers to this bond: `garrison_38`, `garrison_40`, `garrison_46`, `garrison_131` (see section 4; plus the generic ones)

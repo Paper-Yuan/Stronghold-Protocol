@@ -217,6 +217,9 @@ describe('placement mirror (canPlace)', () => {
     const board = [];
     const tiles = [[9, 3], [9, 4], [9, 5], [9, 7], [9, 8], [9, 9], [10, 5], [10, 7]];
     for (const [row, col] of tiles) board.push({ ...piece(MELEE), row, col });
+    // the 狼群's owner: 伺夜 facing UP on (9,4) — her range (rows 9–12 × cols 3–5) covers the tiles tried below
+    // ("只能部署在召唤者攻击范围内", player report #9 after 0.1.0)
+    board[1] = { ...piece('chess_char_3_19_a'), row: 9, col: 4, dir: 'UP' };
     const extra = piece(MELEE);
     const ctx = ctxFor(privWith({ board, hand: [extra] }));
     const full = canPlace(ctx, extra.uid, { area: 'board', row: 11, col: 5 });
@@ -225,7 +228,7 @@ describe('placement mirror (canPlace)', () => {
     const onBoard = board[0];
     assert.equal(canPlace(ctx, onBoard.uid, { area: 'board', row: 11, col: 5 }).ok, true, 'moving on the board never hits the cap');
     // tokens don't use deploy slots
-    const tok = { uid: ++uid, kind: 'token', id: 'token_10028_vigil_wolf', count: 1, ownerUid: board[0].uid };
+    const tok = { uid: ++uid, kind: 'token', id: 'token_10028_vigil_wolf', count: 1, ownerUid: board[1].uid };
     const ctx2 = ctxFor(privWith({ board, hand: [tok] }));
     assert.equal(canPlace(ctx2, tok.uid, { area: 'board', row: 11, col: 5 }).ok, true);
     assert.equal(canPlace(ctx2, tok.uid, { area: 'board', row: 10, col: 4 }).ok, false, 'MELEE token not on high ground');
@@ -234,7 +237,7 @@ describe('placement mirror (canPlace)', () => {
     const ctx3 = ctxFor(privWith({ board, hand: [orphan] }));
     assert.equal(canPlace(ctx3, orphan.uid, { area: 'board', row: 11, col: 5 }).code, 'BAD_TARGET', 'summoner must be deployed');
     // a hand chess swapping with a board token takes a deploy slot (cap applies)
-    const bTok = { uid: ++uid, kind: 'token', id: 'token_10028_vigil_wolf', count: 1, ownerUid: board[0].uid, row: 11, col: 5 };
+    const bTok = { uid: ++uid, kind: 'token', id: 'token_10028_vigil_wolf', count: 1, ownerUid: board[1].uid, row: 11, col: 5 };
     const ctx4 = ctxFor(privWith({ board: [...board, bTok], hand: [extra] }));
     assert.equal(canPlace(ctx4, extra.uid, { area: 'board', row: 11, col: 5 }).code, 'BOARD_FULL');
   });

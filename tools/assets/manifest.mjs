@@ -1,7 +1,8 @@
 // Manifest assembly: walks the plan template (tools/assets/plan.mjs), collects
 // the single-file download alternatives, and resolves the template against the
 // files that actually exist on disk into data/assets.json. Entries whose files
-// are missing are dropped (never emitted as broken URLs).
+// are missing are dropped (never emitted as broken URLs); a `literal(value)` node
+// is emitted as it is (no files behind it).
 
 import { existsSync, statSync } from 'node:fs';
 import { createHash } from 'node:crypto';
@@ -13,6 +14,15 @@ export const MANIFEST_VERSION = 1;
 
 const isLeaf = (n) => !!n && typeof n === 'object' && Array.isArray(n.alts);
 const isModelRef = (n) => !!n && typeof n === 'object' && typeof n.model === 'string' && Object.keys(n).length === 1;
+const LITERAL = Symbol('literal');
+const isLiteral = (n) => !!n && typeof n === 'object' && Object.hasOwn(n, LITERAL);
+
+/**
+ * A template node emitted as it is (a JSON copy; null fields kept): data that is no file to download or resolve, e.g.
+ * the metadata of a local-client Spine model (plan.mjs enemies[id].spineLocal).
+ * @param {any} value JSON value
+ */
+export function literal(value) { return { [LITERAL]: JSON.parse(JSON.stringify(value)) }; }
 
 /**
  * Collect every leaf of the template with its dotted path.
@@ -23,7 +33,7 @@ const isModelRef = (n) => !!n && typeof n === 'object' && typeof n.model === 'st
  */
 export function collectLeaves(node, path = '', out = []) {
   if (isLeaf(node)) { out.push({ path, leaf: node }); return out; }
-  if (isModelRef(node) || !node || typeof node !== 'object') return out;
+  if (isModelRef(node) || isLiteral(node) || !node || typeof node !== 'object') return out;
   for (const [k, v] of Object.entries(node)) collectLeaves(v, path ? `${path}.${k}` : k, out);
   return out;
 }
@@ -78,6 +88,7 @@ export function resolveTemplate(template, { root, spine, sourceOf = () => undefi
   const files = new Set();
   const walk = (node, path) => {
     if (node === null || node === undefined) return undefined;
+    if (isLiteral(node)) return JSON.parse(JSON.stringify(node[LITERAL]));
     if (isLeaf(node)) {
       for (let i = 0; i < node.alts.length; i++) {
         const a = node.alts[i];
@@ -110,7 +121,7 @@ export function resolveTemplate(template, { root, spine, sourceOf = () => undefi
     }
     return out;
   };
-  const isContainer = (v) => v && typeof v === 'object' && !isLeaf(v) && !isModelRef(v);
+  const isContainer = (v) => v && typeof v === 'object' && !isLeaf(v) && !isModelRef(v) && !isLiteral(v);
   const value = walk(template, '');
   return { value, misses, fallbacks, files };
 }
@@ -134,4 +145,36 @@ export function totalBytes(root, rels) {
  */
 export function contentHash(value) {
   return createHash('sha1').update(JSON.stringify(value)).digest('hex').slice(0, 12);
+}
+
+/** Top-level manifest fields that describe the build, not assets: never counted as dropped entries. */
+const BUILD_FIELDS = new Set(['version', 'hash', 'generator', 'stats']);
+
+/**
+ * Entries of the manifest `prev` that `next` no longer has, as sorted dotted paths. An entry is a leaf value (a URL
+ * string, a number, a flag, null or an array — an array is one entry); an object entry missing from `next` contributes
+ * all its leaves. A path that changed shape (a leaf became an object or the reverse) is still there, not dropped.
+ * The build fields (version, hash, generator, stats) are left out.
+ * @param {object} prev the current data/assets.json
+ * @param {object} next the manifest about to replace it
+ * @returns {string[]}
+ */
+export function droppedEntries(prev, next) {
+  const out = [];
+  const isObj = (v) => !!v && typeof v === 'object' && !Array.isArray(v);
+  const leaves = (v, path) => {
+    if (!isObj(v)) { out.push(path); return; }
+    for (const [k, x] of Object.entries(v)) leaves(x, `${path}.${k}`);
+  };
+  const walk = (p, n, path) => {
+    if (n === undefined) { leaves(p, path); return; }
+    if (!isObj(p) || !isObj(n)) return;
+    for (const [k, v] of Object.entries(p)) walk(v, Object.hasOwn(n, k) ? n[k] : undefined, `${path}.${k}`);
+  };
+  if (!isObj(prev)) return out;
+  const nx = isObj(next) ? next : {};
+  for (const [k, v] of Object.entries(prev)) {
+    if (!BUILD_FIELDS.has(k)) walk(v, Object.hasOwn(nx, k) ? nx[k] : undefined, k);
+  }
+  return out.sort();
 }

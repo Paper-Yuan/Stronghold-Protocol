@@ -12,17 +12,19 @@
 // but walks the ground. An unblocked enemy touching an ally with free block capacity — within its block radius (0.7071
 // ground, 0.8944 air, devices 0.4472; Battle._checkBlock) — is blocked, moving or not, so an enemy overlapping an
 // operator is taken over once its blocker is gone. Blocked enemies fight their blocker (ranged ones may pick anyone in
-// range, blocker first); every blocker — a ranged operator on a melee tile included — may always target the enemies
-// it blocks, in range or not, whatever its facing, and targets them first (acquireTargets, Battle.blockedTargets;
-// user playtest #6: "阻挡了就一定要能打到").
+// range, blocker first); every blocker whose attack hits enemies — a ranged operator on a melee tile included — may
+// always target the enemies it blocks, in range or not, whatever its facing, and targets them first (acquireTargets,
+// Battle.blockedTargets; user playtest #6: "阻挡了就一定要能打到"); a heal attack keeps selecting injured allies while
+// its unit blocks (PRTS 卫戍协议/帮助 "对于医疗干员（咒愈师分支除外），攻击目标为需要治疗的单位").
 // Unblocked ranged enemies attack allies within their radius and pause ATTACK_PAUSE seconds after each attack; the
 // candidates pass the enemy's own rule (`e.profile.canTarget`) and are ordered blocker → taunt → latest deployed
-// (targeting.js sortAllyTargets). Reaching the final leg's end = leak. A `fear` (恐惧) status suspends the route: the
+// (targeting.js sortAllyTargets). An enemy's damage type is its data's unless content arms it (`e.profile.dmgType`:
+// 转译基底's forms, whose data never attacks). Reaching the final leg's end = leak. A `fear` (恐惧) status suspends the route: the
 // enemy runs between random checkpoints away from the fear's source (fear.js moveFeared; a self-inflicted fear
 // flutters inside its own tile); an `attract` (诱导) status walks it to the status point instead (moveAttracted);
 // both re-plan the route when released (恐惧 outranks 诱导).
 
-import { ATTACK_PAUSE, ALLY_COLLIDER_RADIUS, MOVE_SCALE, PROJECTILE_SPEEDS, PROJECTILE_SPEED, BOOMERANG_RETURN_SPEED, COLS } from './constants.js';
+import { ATTACK_PAUSE, ALLY_COLLIDER_RADIUS, MOVE_SCALE, PROJECTILE_SPEEDS, PROJECTILE_SPEED, BOOMERANG_RETURN_SPEED, COLS, CHAIN_RADIUS } from './constants.js';
 import { sortEnemyTargets, sortAllyTargets, canTargetEnemy, canTargetAlly, tileKeyOf } from './targeting.js';
 import { reduceElement } from './damage.js';
 import { straightClear } from './grid.js';
@@ -102,6 +104,9 @@ export function enforceBlockCapacity(b, u) {
 
 /** Collect targets for an ally with profile `prof`. */
 export function acquireTargets(b, u, prof) {
+  // a heal attack (医师 / 群愈师 / 疗养师 / 链愈师 / 行医, a skill attack turned into a heal) selects injured allies only,
+  // never the enemies its unit blocks — a blocking healer keeps healing: PRTS 卫戍协议/帮助 "对于医疗干员（咒愈师分支除外），
+  // 攻击目标为需要治疗的单位" (the blocked-first rule below is for attackers of enemies; community feedback after 0.1.0, E2)
   if (prof.heal && prof.dmgType === 'heal') {
     let cands = b.injuredAlliesInKeys(u.rangeKeys, u, !!prof.heal.elementHealRatio);
     // a heal restricted to allies at or below an HP ratio (塞雷娅 S1 急救 "血量小于等于一半")
@@ -230,7 +235,7 @@ export function resolveHit(b, u, prof, target, info, x, y) {
   if (prof.splashRadius > 0) {
     const r = prof.splashRadius;
     const sc = prof.splashScale ?? 1;
-    for (const e of b.enemiesInRadius(x, y, r, true)) {
+    for (const e of b.foesInRadius(x, y, r, true)) {
       if (e === target) continue;
       if (prof.groundOnly && e.isFlying) continue;
       if (!prof.canHitFly && e.isFlying && !prof.splashHitsFly) continue;
@@ -247,7 +252,7 @@ export function resolveHit(b, u, prof, target, info, x, y) {
     const n = Math.max(1, prof.chain.count || 3);
     for (let k = 1; k < n; k++) {
       let best = null, bd = Infinity;
-      for (const e of b.enemiesInRadius(prev.x, prev.y, prof.chain.radius || 1.8)) {
+      for (const e of b.enemiesInRadius(prev.x, prev.y, prof.chain.radius || CHAIN_RADIUS)) {
         if (hit.has(e.id) || !canTargetEnemy(u, e, prof)) continue;
         const d = Math.hypot(e.x - prev.x, e.y - prev.y);
         if (d < bd - 1e-9 || (Math.abs(d - bd) <= 1e-9 && best && e.spawnSeq < best.spawnSeq)) { bd = d; best = e; }
@@ -456,7 +461,7 @@ export function updateEnemy(b, e, dt) {
   }
   if (!e.hidden && b._checkBlock(e)) return;
   if (b.time < e.pauseUntil) return;
-  if (e.s.flags.noMove) return;
+  if (e.s.flags.noMove) { e.moving = false; return; }   // standing (a 重生, a form change): drawn idle, not walking
   // 恐惧 (ba.fear "无法被阻挡并四散逃跑"; PRTS 诱发移动: 恐惧 outranks 诱导): runs to random tiles of the fan away from
   // its source — a self-inflicted fear flutters inside its own tile (fear.js); the route re-plans once it ends
   if (e.s.flags.fear && !e.hidden) { moveFeared(b, e, dt); return; }
@@ -570,11 +575,12 @@ function advanceRoute(b, e, dt, R) {
 function enemyAttack(b, e) {
   const def = e.def;
   if (e.profile && e.profile.noAttack) return;
-  if (def.dmgType === 'none' || e.s.atk <= 0) return;
+  const dmgType = (e.profile && e.profile.dmgType) || def.dmgType;
+  if (dmgType === 'none' || e.s.atk <= 0) return;
   if (e.s.flags.fear || e.s.flags.disarm) return;
   if (e.s.flags.tremble && e.blockedBy) return; // 战栗: 被阻挡后无法进行普通攻击
   if (e.atkCd > 0) return;
-  if (def.dmgType === 'heal') { enemyHeal(b, e, e.base.rangeRadius); return; }
+  if (dmgType === 'heal') { enemyHeal(b, e, e.base.rangeRadius); return; }
   // applyWay MELEE enemies only ever hit their blocker, even when their data carries a rangeRadius (粉碎攻坚手 2.5,
   // 宿主士兵 2.5, 深池伙友卫队 1.4 … — that radius belongs to their abilities/splash, handled by content).
   // Content may flip it with `e.profile.melee = false`.
@@ -618,7 +624,7 @@ function enemyAttack(b, e) {
   e.lastAttackAt = b.time;
   e.stats.attacks++;
   const attackId = ++b._attackSeq;
-  const type = def.dmgType === 'heal' ? 'arts' : def.dmgType;
+  const type = dmgType === 'heal' ? 'arts' : dmgType;
   const rangedShot = radius > 0 && !(e.blockedBy && targets[0] === e.blockedBy && radius < 1);
   // content-resolved attacks (`e.profile.deferHit`: 帝国炮火先兆者's shell landing 3 s later): the attack itself happens
   // — the 'atk' event (kind `e.profile.shot`, drawn by the content's own fx), cooldown, pause, the 'attack' hook — and

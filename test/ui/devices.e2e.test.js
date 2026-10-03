@@ -250,10 +250,14 @@ describe('multi-device (Chrome device emulation)', { skip: !ENABLED && 'set SP_E
   for (const dev of ['phone-min', 'iphone14']) {
     test(`${dev}: the left detail card leaves the corner buttons (⚙ 📖 ⛶) usable`, async () => {
       const { page, problems } = await open(dev, 'phase=PREP');
-      const card = await page.$eval('.shopbar__cards .scard:not(.scard--sold):not(.is-disabled)', (el) => { const b = el.getBoundingClientRect(); return { x: b.left + b.width / 2, y: b.top + b.height / 2 }; });
+      // not a card that completes a merge: it lights its elite's board tile, and the card moves to the right slot when that
+      // tile lies under the left one (screens/game.js dSide, DESIGN §20.11) — 20–40 ms after it opened on the left, at
+      // 640×360 for the mock's first card, so the left card was caught only sometimes and the check below saw the right one
+      const card = await page.$eval('.shopbar__cards .scard:not(.scard--sold):not(.is-disabled):not(.is-merge)', (el) => { const b = el.getBoundingClientRect(); return { x: b.left + b.width / 2, y: b.top + b.height / 2 }; });
       await page.touchscreen.tap(card.x, card.y);
       await page.waitForSelector('.dpanel:not(.dpanel--right)', { timeout: 3000 });
       await sleep(400);
+      assert.equal(await page.$('.dpanel.dpanel--right'), null, `${dev}: the card stays in the left slot`);
       const covered = await page.evaluate(() => [...document.querySelectorAll('.gm__corner .gm__gear')].map((el) => {
         const r = el.getBoundingClientRect();
         const t = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);

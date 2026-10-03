@@ -189,22 +189,14 @@ describe('shots', () => {
       assert.equal(fx.projs.length, 1, kind);
       const pr = fx.projs[0];
       fx.update(DT);
-      assert.equal(pr.shadow.visible, kind === 'bomb' || kind === 'lob' || kind === 'boomerang', `${kind} shadow`);
-      if (kind === 'bomb') {
+      assert.equal(pr.shadow.visible, PROJ[kind].look === 'shell' || kind === 'boomerang', `${kind} shadow`);
+      if (kind === 'bomb' || kind === 'droneBomb') {
         run(fx, pr.dur);
         assert.ok(fx.rings.some((r) => r.sp.texture === fx.tex.shock), 'bomb explosion shockwave');
       }
       run(fx, 3);
       assert.equal(fx.projs.length, 0, `${kind} done`);
     }
-  });
-
-  test("an arts blastcaster's bomb explodes purple", () => {
-    const a = unit(1, 3, 10, { info: { defId: 'char_blast' } }), b = unit(2, 6, 10, { isEnemy: true });
-    const { fx } = makeFx({ views: [a, b] });
-    fx.ctx.subProfOf = (id) => (id === 'char_blast' ? 'blastcaster' : null);
-    fx.attack(a, b, 'bomb');
-    assert.equal(fx.projs[0].glow, 0xb36bff);
   });
 
   test('chain / beam kinds are beams, melee shots are no projectile', () => {

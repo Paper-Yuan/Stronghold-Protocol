@@ -30,6 +30,15 @@
 //     the one that deploys first — board.js mergeTile, [ASSUMED]); it replaces a deployed copy, so the deploy count
 //     never grows, and it gets its own summon stack (grantTokensFor). Otherwise to the hand, overflow temp — also
 //     outside PREP (a SETTLE merge's elite waits in temp for the next prep).
+//   * Per-piece round counters (pieceRoundCount, piece.meta.round): an operator's own counts of the current round
+//     (拉普兰德: the manual refreshes she witnessed — player feedback after 0.1.0); a new piece starts at 0, an elite
+//     merged this round keeps the highest of its copies' [ASSUMED].
+//   * Transformations (transformChess, 突变细胞 — PRTS 备注 "生效时，原干员销毁，获得一名高一阶的随机初始干员"): a destroy
+//     followed by a gain. The carrier leaves wherever it stands (a board tile is freed, the deploy count drops), its
+//     equipment — the cell included — returns to the hand first (overflow temp), then the new chess is gained like any
+//     other (acquireChess: hand, overflow temp, the no-room rule; a merge it completes puts the elite on a consumed
+//     deployed copy's tile — never the carrier's —, else in the hand). Official footage: the tile is empty at the next
+//     prep and the new operator waits in the 整备区 (pointed out in PR #2).
 //   * Items: equip max 2 (a 3rd replaces the equipped item the player picks — g.equip replaceUid, the oldest when
 //     absent; equipped items are otherwise locked: g.destroy refuses them),
 //     2 identical normal items (hand/temp/equipped) merge into the golden item in the hand, items are never sold
@@ -42,12 +51,19 @@
 //     it swaps it away) sends its placed summons back onto their stack ("移动干员时，其所属召唤物全部退场并重置至手牌区");
 //     a summon stack removed from temp at a prep deadline comes back at the next round start (startRound tops every
 //     board owner's summons up to the deploy limit, "干员所属召唤物会于下一回合返还"). In battle a skill's summon takes its
-//     tile when the skill fires (sim/content/tokens.js dockSkillSummons).
+//     tile when the skill fires (sim/content/tokens.js dockSkillSummons). A summon whose text reads "只能部署在召唤者
+//     攻击范围内" (tokens.json `ownerRange`: the tacticians' 狼群 / 流形 — their tactical point; player report #9 after
+//     0.1.0) only goes on a tile of its owner's attack range (_legal / summonRange: the loadout's grid rotated by the
+//     owner's facing); a swap with its owner is checked from the owner's new tile, and one an in-place re-orientation
+//     (or a promotion) leaves outside goes back onto its stack (recompute → _liftOutOfRange) [ASSUMED: kept when still
+//     inside]. A re-orientation that would leave such a summon with no stack and no free hand / temp slot is refused
+//     (HAND_FULL); elsewhere (a promotion, an owner moved with no room) it leaves the board and its stack comes back at
+//     the next round start (grantTokensFor) — no out-of-range placement reaches the battle.
 //   * Facing (DESIGN §3, research 09 §1.2): every board piece has `dir` ∈ UP|RIGHT|DOWN|LEFT (server/sim/dir.js), set
 //     by g.move {…, dir} (absent ⇒ RIGHT) and kept across rounds. g.move onto the piece's OWN tile re-orients it in
-//     place; a swap keeps the occupant's dir; pieces put on the board by effects (a merge elite taking a consumed
-//     copy's tile, a transformation keeping the tile) keep that tile's dir, anything else defaults to RIGHT
-//     (`pieceDir`). g.art {…, dir} rotates the Art's range (画卷 1-1: its tile + the tile in front).
+//     place; a swap keeps the occupant's dir; a piece put on the board by an effect (a merge elite taking a consumed
+//     copy's tile) keeps that tile's dir, anything else defaults to RIGHT (`pieceDir`). g.art {…, dir} rotates the
+//     Art's range (画卷 1-1: its tile + the tile in front).
 //   * Operator loadout (DESIGN §16): the human's checked `seat.loadout` ({ [baseChessId]: { skill, module } }, entries
 //     equal to the defaults dropped) is re-checked against this match's data (shared/protocol.js checkLoadout; a
 //     mismatch falls back to the defaults) and kept frozen; bots always use the defaults. Match.setLoadout may replace
@@ -56,7 +72,8 @@
 
 import { ERR, GEO, PHASE, layerGainRoom } from '../../shared/constants.js';
 import { checkLoadout, resolveLoadout } from '../../shared/protocol.js';
-import { FIELD, tileKey, parseKey, inField, canPlace, positionClass, boardOrder, freeSlot, pieceDir, parseDir, mergeTile } from './board.js';
+import { FIELD, tileKey, parseKey, inField, canPlace, positionClass, boardOrder, freeSlot, pieceDir, parseDir, mergeTile, ownerRangeKeys } from './board.js';
+import { attackRangeGrid, loadoutRecord, resolveRecordLoadout } from '../../shared/loadoutRecord.js';
 import { offsetTile } from '../sim/dir.js';
 import { computeBonds, bondList, bondSnapshot, activatedLayers, bondsWithGains } from './bondsMeta.js';
 import { itemKey } from './gamedata.js';
@@ -96,7 +113,7 @@ export class PlayerState {
     this.loadout = Object.freeze({});
     if (!this.isBot && seat.loadout) this.setLoadout(seat.loadout);
     this.shop = { level: 1, upgradePrice: this.gd.upgradeBase(1) ?? 0, slots: [], frozen: false, freeRefreshes: 0 };
-    /** reward offers queue (merge rewards, special refreshes): { tier, source, slots: [{ kind, id, price, sold }] } */
+    /** reward offers queue (merge rewards, special refreshes): { tier, source, label, slots: [{ kind, id, price, sold }] } */
     this.offers = [];
     /** @type {Array<any>} */
     this.hand = new Array(HAND_SIZE).fill(null);
@@ -353,6 +370,27 @@ export class PlayerState {
     return null;
   }
 
+  /**
+   * Per-piece counter of the current round (`piece.meta.round` = { r, n: { key: count } }): 0 for a key not counted yet
+   * this round. The counters belong to the operator: a move keeps them, a new piece (bought, granted, transformed)
+   * starts at 0, and an elite merged this round keeps the highest count of its copies (_mergeChess) — 拉普兰德's
+   * "本回合首次主动刷新" is the first manual refresh she witnesses (player feedback after 0.1.0, garrisons/meta.js).
+   */
+  pieceRoundCount(piece, key) {
+    const rc = piece && piece.meta && piece.meta.round;
+    return rc && rc.r === this.m.round && Number.isFinite(rc.n[key]) ? rc.n[key] : 0;
+  }
+
+  /** Add `n` to a piece's counter of the current round (pieceRoundCount); returns the new count. */
+  bumpPieceRoundCount(piece, key, n = 1) {
+    if (!piece || typeof key !== 'string' || !Number.isFinite(n)) return 0;
+    if (!piece.meta || typeof piece.meta !== 'object') piece.meta = {};
+    const v = this.pieceRoundCount(piece, key) + n;
+    if (!piece.meta.round || piece.meta.round.r !== this.m.round) piece.meta.round = { r: this.m.round, n: {} };
+    piece.meta.round.n[key] = v;
+    return v;
+  }
+
   /** Return a piece's pool copies (and its equipped items are handled by the caller). */
   returnCopies(piece) {
     if (piece && piece.kind === 'chess' && piece.poolCopies > 0) {
@@ -472,25 +510,25 @@ export class PlayerState {
    * the elite — PRTS 卫戍协议/帮助 §干员的获得与精锐化: "发送1名【精锐】状态的该干员至手牌区（若消耗已部署至作战区的干员，
    * 则发送至作战区对应位置）" (the user's playtest #6 follow-up confirms it). The tile (`mergeTile`): when a consumed copy
    * stood on the board the elite takes its tile and facing — of several, the one that deploys first (board reading
-   * order: top → bottom, then left → right) [ASSUMED]; `fromKey` / `fromDir` = the tile the incoming piece stood on (a
-   * transformation of a deployed operator) counts as such a copy. It replaces a deployed copy, so the deploy count never
-   * grows. Otherwise the elite goes to the hand, overflow temp — outside PREP too (a SETTLE merge's elite waits in temp
-   * through the next prep, tempDue). The copies' equipment returns to the hand ("干员晋级后已配发装备会回收至整备区";
+   * order: top → bottom, then left → right) [ASSUMED]. The incoming copy is never deployed (a 突变细胞 transformation
+   * destroyed its carrier before the gain: that tile is no copy's). It replaces a deployed copy, so the deploy count
+   * never grows. Otherwise the elite goes to the hand, overflow temp — outside PREP too (a SETTLE merge's elite waits in
+   * temp through the next prep, tempDue). The copies' equipment returns to the hand ("干员晋级后已配发装备会回收至整备区";
    * overflow temp; with both full it stays on the elite, up to its equipPerChess (2) slots — any further item is
-   * destroyed with a log warning, as before the official rule); their summons are removed, and an elite on the board
+   * destroyed with a log warning, as before the official rule) and an identical normal pair among it merges like any gain
+   * (checkItemMerges); their summons are removed, and an elite on the board
    * gets its own summon stack (grantTokensFor: its loadout, like any deployment). Returns the elite piece (or null if
    * the elite could not be stored).
    * @param {string} baseId
    * @param {any} incoming the acquired, not yet stowed copy (null: only owned copies)
-   * @param {{ fromKey?: string|null, fromDir?: string }} [opts]
    */
-  _mergeChess(baseId, incoming, { fromKey = null, fromDir = undefined } = {}) {
+  _mergeChess(baseId, incoming) {
     const need = this.gd.mergeCount(baseId);
     const goldenId = this.gd.goldenIdOf(baseId);
     if (!(need > 1) || !goldenId) return null;
     const locs = this._chessLocations().filter((l) => !this.gd.isGolden(l.piece.id) && this.gd.baseIdOf(l.piece.id) === baseId);
     const consumed = [];
-    if (incoming) consumed.push({ piece: incoming, area: 'new', key: fromKey || undefined, dir: fromDir });
+    if (incoming) consumed.push({ piece: incoming, area: 'new' });
     for (const l of locs) { if (consumed.length >= need) break; consumed.push(l); }
     if (consumed.length < need) return null;
     let copies = 0;
@@ -503,7 +541,13 @@ export class PlayerState {
       l.piece.items = [];
     }
     const elite = this.newPiece('chess', goldenId, { poolCopies: copies });
-    const deployed = consumed.filter((l) => l.key && !this.board.has(l.key)).map((l) => ({ key: l.key, dir: l.area === 'new' ? l.dir : pieceDir(l.piece) }));
+    // this round's per-piece counters: the highest of the copies' (an elite made from 拉普兰德 that already saw their
+    // first refresh this round does not fire again this round — [ASSUMED] conservative, pieceRoundCount)
+    for (const l of consumed) {
+      const rc = l.piece.meta && l.piece.meta.round;
+      if (rc && rc.r === this.m.round) for (const [k, v] of Object.entries(rc.n)) this.bumpPieceRoundCount(elite, k, Math.max(0, v - this.pieceRoundCount(elite, k)));
+    }
+    const deployed = consumed.filter((l) => l.key && !this.board.has(l.key)).map((l) => ({ key: l.key, dir: pieceDir(l.piece) }));
     const toTile = (t) => { elite.dir = parseDir(t.dir) || 'RIGHT'; this.board.set(t.key, elite); return 'board'; };
     const tile = mergeTile(deployed, (r, c) => this._legal(elite, r, c));
     let where = tile ? toTile(tile) : this.stow(elite, { allowTemp: true });
@@ -515,6 +559,8 @@ export class PlayerState {
       if (where && elite.items.length < this.gd.equipPerChess) { elite.items.push(it); continue; }
       this.m.log.warn?.(`[match ${this.m.roomCode}] ${this.playerId}: returned item ${it.id} destroyed (no space)`);
     }
+    // the returned equipment follows the auto-merge rule like any other gain ("已拥有2件同一初始装备时…自动合并")
+    this.checkItemMerges();
     // deployed like any operator placed by hand: its manually deployable summons join the hand (after the returned
     // equipment, which would be lost in temp — a summon stack removed there comes back at the next round start)
     if (where === 'board') this.grantTokensFor(elite);
@@ -547,32 +593,43 @@ export class PlayerState {
   }
 
   /**
-   * Replace a chess piece by another chess (突变细胞 and similar). The new piece keeps the tile when legal (else goes
-   * to the hand/temp) and keeps the equipment; pool copies are swapped; completes a merge when possible — a deployed
-   * piece's tile then counts as a consumed copy's for the elite (_mergeChess fromKey, when legal for it).
+   * Transformation (突变细胞 "战斗结束后，装备者替换为高一阶的随机干员"; PRTS 卫戍协议：盟约 下半/PRTS盟约记录 备注 "生效时，原
+   * 干员销毁，获得一名高一阶的随机初始干员（最高六阶）"): a destroy followed by a gain. The carrier is destroyed wherever it
+   * stands — a board tile is freed (the deploy count drops), its summons are removed, its pool copies return. Its
+   * equipment, the cell included, comes off first (PRTS 卫戍协议/帮助 "在失去该干员（干员出售、销毁、合并等）…时自动卸除"): to
+   * the hand, overflowing into temp, auto-merging like any gain. Then `newId` is gained like any other gained operator
+   * (acquireChess, onGain source 'transform'): the hand, overflow temp ("被发送至手牌区的物资优先从右到左填充空位"), and with
+   * both full it goes back to the pool ("整备区已满，获得的干员已返还"); it gets no summon card in the hand (only a deployment
+   * brings one), and a merge it completes follows the ordinary rule (_mergeChess: the elite on a consumed deployed copy's
+   * tile, else the hand — the carrier's freed tile is no copy's). An item that found no slot takes one the gain freed (a
+   * merge consumes copies), else stays on the gained operator up to its equipPerChess slots, else it is destroyed with a
+   * log warning (as in a merge). Official footage (bilibili BV1vzyVBuEN9, BV1Qkw1zMEoR; pointed out in PR #2): at the
+   * next prep the carrier's tile is empty, one more deployment is left and the new operator waits in the 整备区.
+   * @param {any} piece the carrier (an owned chess piece)
+   * @param {string} newId chess id gained in its place
+   * @returns {any} the gained piece (the elite when it completed a merge) or null
    */
   transformChess(piece, newId) {
     const loc = this.find(piece.uid);
-    const rec = this.gd.chess(newId);
-    if (!loc || loc.piece.kind !== 'chess' || !rec) return null;
+    if (!loc || loc.piece.kind !== 'chess' || !this.gd.chess(newId)) return null;
+    // 原干员销毁: off its tile / slot, its summons removed, its copies back to the pool
     this._detach(loc);
     this.removeTokensOf(piece.uid);
     const items = piece.items || [];
     piece.items = [];
     this.returnCopies(piece);
-    const base = this.gd.baseIdOf(newId);
-    const taken = this.m.pool.take(base, rec.isGolden ? this.gd.goldenCopies : 1);
-    let np = this.newPiece('chess', newId, { poolCopies: taken });
-    np.items = items;
-    if (!rec.isGolden && this.completesChessMerge(newId)) {
-      np = this._mergeChess(base, np, loc.area === 'board' ? { fromKey: loc.key, fromDir: pieceDir(piece) } : undefined);
-      if (!np) { this.recompute(); return null; }
-    } else if (loc.area === 'board') {
-      const [r, c] = parseKey(loc.key);
-      if (this._legal(np, r, c)) { np.dir = pieceDir(piece); this.board.set(loc.key, np); this.grantTokensFor(np); } else if (!this.stow(np, { allowTemp: true })) { this.returnCopies(np); np = null; }
-    } else if (!this._putBack(loc, np)) { this.returnCopies(np); np = null; }
+    // its equipment comes off first (the returned pair auto-merges, which may free a slot for the gain)
+    const left = items.filter((it) => !this.stow(it, { allowTemp: true }));
+    this.checkItemMerges();
+    // 获得一名…干员: gained like any other gained operator
+    const np = this.acquireChess(newId, { source: 'transform' });
+    for (const it of left) {
+      if (this.stow(it, { allowTemp: true })) continue;
+      if (np && this.find(np.uid) && np.items.length < this.gd.equipPerChess) { np.items.push(it); continue; }
+      this.m.log.warn?.(`[match ${this.m.roomCode}] ${this.playerId}: returned item ${it.id} destroyed (no space)`);
+    }
+    if (left.length) this.checkItemMerges();
     this.recompute();
-    if (np) this.m.dispatch(this, 'onGain', { piece: np, kind: 'chess', source: 'transform' });
     return np;
   }
 
@@ -593,7 +650,7 @@ export class PlayerState {
    * up from the tier below (user playtest #6 item 19: the official promotion reward never offers one operator twice —
    * the user's first-hand report; the normal shop's slots may repeat). The offer reserves no copies (the pick takes one).
    */
-  pushRewardOffer(source = 'merge', { tier = null, ids = null } = {}) {
+  pushRewardOffer(source = 'merge', { tier = null, ids = null, label = null } = {}) {
     const ro = this.gd.rewardOffer();
     const t = Number.isInteger(tier) ? tier : Math.min(this.shop.level + ro.tierOffset, ro.maxTier);
     // an offer never shows one operator twice, whoever built the list (user playtest #6 item 19)
@@ -608,17 +665,20 @@ export class PlayerState {
       }
     }
     if (!list.length) return null;
-    const offer = { tier: t, source, slots: list.slice(0, MAX_OFFER_SLOTS).map((id) => ({ kind: 'chess', id, price: ro.price, sold: false })) };
+    const offer = { tier: t, source, label: typeof label === 'string' && label ? label : null, slots: list.slice(0, MAX_OFFER_SLOTS).map((id) => ({ kind: 'chess', id, price: ro.price, sold: false })) };
     this.offers.push(offer);
     this.dirty();
     return offer;
   }
 
-  /** Queue a free pick-one offer of items (凯瑟琳 定向投放 and similar); shown as shop.rewardOffer with kind 'item'. */
-  pushItemOffer(ids, { source = 'effect', tier = null } = {}) {
-    const list = (Array.isArray(ids) ? ids : []).filter((id) => this.gd.item(id)).slice(0, MAX_OFFER_SLOTS);
+  /**
+   * Queue a free pick-one offer of items (凯瑟琳 定向投放, 娜仁图亚 见者有份); shown as shop.rewardOffer with slots of kind
+   * 'item' under its `label` (the effect's name; player report #6 after 0.1.0).
+   */
+  pushItemOffer(ids, { source = 'effect', tier = null, label = null } = {}) {
+    const list = [...new Set(Array.isArray(ids) ? ids : [])].filter((id) => this.gd.item(id)).slice(0, MAX_OFFER_SLOTS);
     if (!list.length) return null;
-    const offer = { tier: Number.isInteger(tier) ? tier : null, source, slots: list.map((id) => ({ kind: 'item', id, price: 0, sold: false })) };
+    const offer = { tier: Number.isInteger(tier) ? tier : null, source, label: typeof label === 'string' && label ? label : null, slots: list.map((id) => ({ kind: 'item', id, price: 0, sold: false })) };
     this.offers.push(offer);
     this.dirty();
     return offer;
@@ -948,7 +1008,78 @@ export class PlayerState {
     return positionClass(rec);
   }
 
-  _legal(piece, r, c) { return canPlace(this.deployMap(), this._placementOf(piece), r, c); }
+  /**
+   * Where piece may stand on (r, c): the deploy map of its position class (board.js canPlace) and, for a summon whose
+   * text reads "只能部署在召唤者攻击范围内" (tokens.json `ownerRange`: 伺夜's 狼群, 缪尔赛思's 流形), a tile of its owner's
+   * attack range (summonRange). `owner` = the owner's position after the move being checked ({ key, piece, dir }: a
+   * summon swapped with its own owner).
+   */
+  _legal(piece, r, c, owner = null) {
+    if (!canPlace(this.deployMap(), this._placementOf(piece), r, c)) return false;
+    const range = this.summonRange(piece, owner);
+    return !range || range.has(tileKey(r, c));
+  }
+
+  /**
+   * The 'r,c' keys of the attack range of a range-bound summon's owner (player report #9 after 0.1.0: 伺夜's tactical
+   * point could be placed anywhere; PRTS 狼群 特性 "只能部署在召唤者攻击范围内"): the owner's loadout-resolved range grid
+   * (shared/loadoutRecord.js attackRangeGrid — what the deploy wheel previews) rotated by its facing around its board
+   * tile (board.js ownerRangeKeys). Null when the piece is not range-bound or its owner is not on the board (the other
+   * rules refuse such a placement).
+   * @param {any} piece
+   * @param {{ key: string, piece: any, dir: string } | null} [owner] the owner's position to use instead of its current one
+   * @returns {Set<string> | null}
+   */
+  summonRange(piece, owner = null) {
+    if (!piece || piece.kind !== 'token' || this.gd.token(piece.id)?.ownerRange !== true) return null;
+    let at = owner;
+    if (!at) for (const [key, p] of this.board) if (p.uid === piece.ownerUid && p.kind === 'chess') { at = { key, piece: p, dir: pieceDir(p) }; break; }
+    const rec = at && this.gd.chess(at.piece.id);
+    if (!rec) return null;
+    const grid = attackRangeGrid(loadoutRecord(rec, resolveRecordLoadout(rec, this.loadoutFor(rec)))) || rec.rangeGrid;
+    const [r, c] = parseKey(at.key);
+    return ownerRangeKeys(grid, r, c, at.dir);
+  }
+
+  /**
+   * Range-bound summons left outside their owner's attack range (the owner re-oriented in place, promoted, its loadout
+   * changed, moved with no room to take its summons back) go back onto their stack — a summon still inside stays
+   * [ASSUMED: the official moves every summon of a MOVED owner back, PRTS 卫戍协议/帮助 "移动干员时，其所属召唤物全部退场
+   * 并重置至手牌区"; an in-place re-orientation keeps the ones it can]. One with no stack and no free hand / temp slot
+   * leaves the board: its stack comes back at the next round start like a summon stack removed from temp at a prep
+   * deadline (startRound → grantTokensFor, "干员所属召唤物会于下一回合返还"), so no illegal placement reaches the
+   * battle. Returns the number taken off the board; a toast names them.
+   */
+  _liftOutOfRange() {
+    const back = [], gone = [];
+    for (const [k, p] of [...this.board]) {
+      if (p.kind !== 'token') continue;
+      const range = this.summonRange(p);
+      if (!range || range.has(k)) continue;
+      this.board.delete(k);
+      (this._returnToken(p, null, { allowTemp: true }) ? back : gone).push(this.gd.token(p.id)?.name || p.id);
+    }
+    if (back.length) this.m.toast(this, 'warn', `${back.join('、')}只能部署在召唤者攻击范围内，已退回整备区`);
+    if (gone.length) this.m.toast(this, 'warn', `${gone.join('、')}只能部署在召唤者攻击范围内，整备区已满，下回合返还`);
+    return back.length + gone.length;
+  }
+
+  /**
+   * Whether every range-bound summon of `owner` that the range from (ownerKey, dir) leaves out can go back onto its
+   * stack or into a free hand / temp slot (_reorient refuses otherwise: the player's own re-orientation never costs a
+   * summon, like withdrawing one into a full hand gives HAND_FULL).
+   */
+  _roomForOutOfRange(owner, ownerKey, dir) {
+    const at = { key: ownerKey, piece: owner, dir };
+    const stacks = [...this.hand, ...this.temp].filter((p) => p && p.kind === 'token' && p.ownerUid === owner.uid);
+    const needSlot = new Set();
+    for (const [k, p] of this.board) {
+      if (p.kind !== 'token' || p.ownerUid !== owner.uid || stacks.some((s) => s.id === p.id)) continue;
+      const range = this.summonRange(p, at);
+      if (range && !range.has(k)) needSlot.add(p.id);
+    }
+    return needSlot.size <= [...this.hand, ...this.temp].filter((p) => p == null).length;
+  }
 
   _moveChessToBoard(loc, r, c, dir = 'RIGHT') {
     const piece = loc.piece;
@@ -958,10 +1089,12 @@ export class PlayerState {
     if (occ === piece) return this._reorient(piece, dir);
     if (loc.area === 'board') {
       // board → board: move or swap (the occupant must be legal on the source tile and keeps its own facing); an
-      // operator that changes its tile takes its summons off the board (back onto their stacks, _liftTokensOf)
+      // operator that changes its tile takes its summons off the board (back onto their stacks, _liftTokensOf) — its
+      // own summon swapped onto its old tile included, so that one needs no tile check
       if (occ) {
         const [sr, sc] = parseKey(loc.key);
-        if (!this._legal(occ, sr, sc)) return fail(ERR.BAD_TILE);
+        const ownSummon = occ.kind === 'token' && occ.ownerUid === piece.uid;
+        if (!ownSummon && !this._legal(occ, sr, sc)) return fail(ERR.BAD_TILE);
         this.board.set(loc.key, occ);
         if (occ.kind === 'chess') this._liftTokensOf(occ.uid);
       } else {
@@ -994,9 +1127,19 @@ export class PlayerState {
     return OK;
   }
 
-  /** In-place re-orientation (g.move onto the piece's own tile with a new direction). */
+  /**
+   * In-place re-orientation (g.move onto the piece's own tile with a new direction). An owner's range-bound summons the
+   * new range leaves out go back onto their stack (recompute → _liftOutOfRange); HAND_FULL (nothing changes) when one
+   * of them would have nowhere to go.
+   */
   _reorient(piece, dir) {
-    if (pieceDir(piece) !== dir) { piece.dir = dir; this.dirty(); }
+    if (pieceDir(piece) === dir) return OK;
+    if (piece.kind === 'chess') {
+      const loc = this.find(piece.uid);
+      if (loc && loc.area === 'board' && !this._roomForOutOfRange(piece, loc.key, dir)) return fail(ERR.HAND_FULL);
+    }
+    piece.dir = dir;
+    this.recompute();
     return OK;
   }
 
@@ -1022,9 +1165,13 @@ export class PlayerState {
 
   _moveTokenToBoard(loc, r, c, dir = 'RIGHT') {
     const piece = loc.piece;
-    if (!inField(r, c) || !this._legal(piece, r, c)) return fail(ERR.BAD_TILE);
+    if (!inField(r, c)) return fail(ERR.BAD_TILE);
     const key = tileKey(r, c);
     const occ = this.board.get(key) || null;
+    // a summon dragged onto its own owner swaps with it: a range-bound one must be inside the owner's range from the
+    // tile the owner takes (the summon's, with the owner's facing)
+    const ownerAfter = loc.area === 'board' && occ && occ !== piece && occ.uid === piece.ownerUid ? { key: loc.key, piece: occ, dir: pieceDir(occ) } : null;
+    if (!this._legal(piece, r, c, ownerAfter)) return fail(ERR.BAD_TILE);
     if (occ === piece) return this._reorient(piece, dir);
     if (loc.area === 'board') {
       // board → board: move or swap; an operator swapped onto the summon's old tile changed its tile, so its other
@@ -1366,6 +1513,7 @@ export class PlayerState {
   recompute() {
     this.deployMap(); // a change of the deploy field (a boss round's prep) marks the legality stale
     if (this._legalityStale) this._evictIllegal();
+    this._liftOutOfRange();
     this.bonds = computeBonds(this.gd, this);
     this.dirty();
   }
@@ -1481,7 +1629,9 @@ export class PlayerState {
         freeRefreshes: this.shop.freeRefreshes,
         frozen: this.shop.frozen,
         slots,
-        rewardOffer: offer ? { tier: offer.tier, slots: offer.slots.map((s) => ({ kind: s.kind === 'item' ? 'item' : 'chess', id: s.id, price: s.price, sold: !!s.sold })) } : null,
+        // `source` 'merge' = the promotion reward (晋升奖励); any other offer (a strategy, an item, a 特质) carries the
+        // `label` the bar shows instead; `queued` = offers waiting behind it (player report #6 after 0.1.0)
+        rewardOffer: offer ? { tier: offer.tier, source: offer.source === 'merge' ? 'merge' : 'special', label: offer.label || null, queued: this.offers.length - 1, slots: offer.slots.map((s) => ({ kind: s.kind === 'item' ? 'item' : 'chess', id: s.id, price: s.price, sold: !!s.sold })) } : null,
       },
       hand: this.hand.map((p) => (p ? this.pieceView(p) : null)),
       temp: this.temp.map((p) => (p ? this.pieceView(p) : null)),

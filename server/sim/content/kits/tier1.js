@@ -12,17 +12,18 @@
 // Operator loadouts (DESIGN §16): every selectable non-default skill of the 16 visible chess is authored in the kit's
 // `skills: { [skillId]: SkillSpec }` map from its own SkillRecord (skillRec / skillBbOf — Lv4 normal, Lv7 elite);
 // talents / traits read the resolved record, so a module choice ('none' ⇒ traitBase / talentsBase, module.active
-// false) is honoured. Per-skill triggers come from data (the official 技能策略: every MANUAL 重装 skill ⇒ TAKE_DAMAGE, a
-// MANUAL skill with its own 技能范围 ⇒ SKILL_RANGE, AUTO skills keep their own rule); the few spec overrides are documented
-// at the skill (冲锋号令 AUTO ⇒ SP_FULL, 花香疗法 heal-type DEFAULT; the two 哨戒铁卫 S2s 深巡 行动能力剥夺 and 雷蛇 反击电弧
-// override the 重装 TAKE_DAMAGE row ⇒ DEFAULT — an offensive skill fires with an enemy in range, research 03 §1.4).
+// false) is honoured. Per-skill triggers come from data (the official 技能策略: every MANUAL 重装 skill ⇒ TAKE_DAMAGE —
+// but the six of the owner's deliberate deviation, DESIGN §21.29 / tools/build-data.mjs TRIGGER_DEVIATIONS, which are
+// DEFAULT —, a MANUAL skill with its own 技能范围 ⇒ SKILL_RANGE, AUTO skills keep their own rule); the few spec rules are
+// documented at the skill (冲锋号令 AUTO ⇒ SP_FULL, 花香疗法 heal-type DEFAULT; the two 哨戒铁卫 S2s 深巡 行动能力剥夺 and
+// 雷蛇 反击电弧 state the DEFAULT their data carries since that deviation — GitHub issue #4, PR #12).
 // Tests: test/content/kits_alt_t1.test.js.
 //
 // fx kinds emitted (battle.fx(kind, {x, y, …})): aoe {radius, id, skill} · zone {radius, dur, id, skill} ·
 // counter {id} · crit {id} · dp {n, id} · heal {id} · taunt {id} · summon {id, token} · pull {id} · sonic {radius} ·
 // shield {id} · overload {id} · takeoff {id} · sleep {id} · buff {id, kind} · reveal {id} · dodge (engine kind).
 
-import { COLS } from '../../constants.js';
+import { COLS, CHAIN_RADIUS } from '../../constants.js';
 import { absoluteRangeKeys, sortEnemyTargets } from '../../targeting.js';
 import { frontOf, offsetTile } from '../../dir.js';
 import { bodyInKeys, bodyOnTile, bodyTileReach } from '../../body.js';
@@ -63,6 +64,11 @@ export const cheb = (a, b) => (b.hitArea ? bodyTileReach(b, Math.round(a.y), Mat
 export const isMainHit = (dmg) => !!dmg && dmg.isAttack && !dmg.isSplash && !(dmg.tags && dmg.tags.includes('chain'));
 /** Damage ctx caused by an enemy's attack. */
 export const byEnemyAttack = (ctx) => !!ctx.source && ctx.source.side === 'enemy' && !!ctx.dmg && ctx.dmg.isAttack;
+/**
+ * `damaged` ctx of a damage that removed HP and can give 受击回复 SP — the engine's rule (damage.js applyHpLoss: not a 流失
+ * (`noSp`, Battle.loseHp), not an element 损伤), whatever its source: an attack, a zone, the 无来源 源石溶剂 tick.
+ */
+export const hurtSpDamage = (ctx) => !!ctx.dmg && !ctx.dmg.noSp && ctx.type !== 'element' && ctx.amount > 0;
 /** A timed skill is running (no SP may be gained). */
 export const skillBusy = (u) => !!(u.skill && u.skill.active && u.skill.isTimed);
 /** Give SP unless a timed skill is running (AK: no SP gain during a skill). */
@@ -183,16 +189,12 @@ export function makeZone(battle, caster, { x, y, radius, duration, interval = 1,
 }
 
 /**
- * A tile a summon may take: inside the field, nobody on it, and not the home tile of a board unit that has not
- * deployed yet / waits to redeploy (a summon there would stop that operator from redeploying until it leaves).
+ * A tile a summon may take: inside the field and not reserved (Battle.isReservedTile: nobody on it, no knocked-out
+ * operator lying there, not the home tile of a board unit that has not deployed yet / waits to redeploy — a summon
+ * there would stop that operator from redeploying until it leaves).
  */
 export function summonTileFree(battle, r, c) {
-  if (!Number.isInteger(r) || !Number.isInteger(c) || !battle.grid.inRect(r, c) || battle.unitAt(r, c)) return false;
-  for (const u of battle.allyUnits) {
-    if (u.alive || u.removed || u.kind === 'device') continue;
-    if (u.homeR === r && u.homeC === c) return false;
-  }
-  return true;
+  return Number.isInteger(r) && Number.isInteger(c) && battle.grid.inRect(r, c) && !battle.isReservedTile(r, c);
 }
 
 /** First free tile around `unit` (Chebyshev ring 1, front first — offsets rotated by its direction) where `ok(r, c)` holds. */
@@ -273,7 +275,7 @@ export function tinmanKit(bb, chess, def) {
         unit.mem.tinZones = (unit.mem.tinZones ?? 0) + 1;
         makeZone(battle, unit, {
           x, y, radius, duration: dur, skill: 'tinman', onPulse(b) {
-            for (const e of b.enemiesInRadius(x, y, radius)) {
+            for (const e of b.foesInRadius(x, y, radius)) {
               if (e.isFlying || e.s.flags.untargetable) continue;
               if (wither > 1) b.addBuff(e, { key: witherKey, duration: 1.05, data: { mul: wither }, source: unit });
               b.dealDamage(unit, e, { amount: atk * dmgScale, type: 'arts', isSkill: true, canDodge: false, tags: ['dot', 'zone'] });
@@ -387,7 +389,7 @@ export default {
       } }],
       install(battle, unit) {
         // the chain shape (count / sluggish, elite module included) comes from the resolved chain profile
-        const ch = unit.profile.chain || { count: num(traitBb(chess)['attack@max_target'], 3), radius: 1.8, sluggish: num(traitBb(chess)['attack@sluggish'], 0.5) };
+        const ch = unit.profile.chain || { count: num(traitBb(chess)['attack@max_target'], 3), radius: CHAIN_RADIUS, sluggish: num(traitBb(chess)['attack@sluggish'], 0.5) };
         if (unit.skill && unit.skill.spec.attack) unit.skill.spec.attack.chain = { ...ch, falloff: 0 };
       },
     };
@@ -396,10 +398,11 @@ export default {
   // ---------------------------------------------------------------------------------------------------------------
   // 1_04 深巡 行动能力剥夺: longer line range (skill grid), ATK +atk, ASPD +attack_speed, fin darts pierce
   // attack@max_target enemies on the line and cause attack@sluggish s of 停顿.
-  // 技能策略 override → DEFAULT: the official class row hands a 重装 S2 TAKE_DAMAGE, which makes a 2-2 ranged 哨戒铁卫
-  // wait until something hits her — in practice until she blocks (issue #4). 行动能力剥夺 is an offensive ranged skill,
-  // so the basic strategy (SP ready + about to attack + an enemy inside the initial range) is the right rule. Only the
-  // rule changes: spCost / initSp / spType still come from data.
+  // 技能策略 → DEFAULT (PR #12; DESIGN §21.29): the official 下半 class row hands every MANUAL 重装 skill TAKE_DAMAGE,
+  // which makes a 2-2 ranged 哨戒铁卫 wait until something hits her — in practice until she blocks (GitHub issue #4). By
+  // the owner's deliberate deviation from that row (2026-10-03, community feedback) this offensive ranged skill takes
+  // the basic strategy (SP ready + about to attack + an enemy inside the initial range); her data says DEFAULT too
+  // (rawRule keeps the official TAKE_DAMAGE). Only the rule changes: spCost / initSp / spType still come from data.
   // 细胞活性抑制剂: attacks inflict `damage` arts per `interval` s for `duration` s (damage_seamonster vs 【海怪】).
   // Elite module (SPT-X): stealth of enemies inside the range is cancelled.
   // Alternate S1 侵袭破坏应对 (重装 ⇒ TAKE_DAMAGE trigger from data): ATK +atk, DEF +def.
@@ -592,7 +595,7 @@ export default {
         battle.addDp(unit.ownerId, num(bb.cost));
         battle.fx('dp', { x: unit.x, y: unit.y, n: num(bb.cost), id: unit.id });
         const grid = def?.skill?.rangeGrid;
-        const foes = grid ? enemiesInGrid(battle, unit, grid) : battle.enemiesInRadius(unit.x, unit.y, RING1).filter((e) => !e.s.flags.untargetable);
+        const foes = grid ? enemiesInGrid(battle, unit, grid) : battle.foesInRadius(unit.x, unit.y, RING1).filter((e) => !e.s.flags.untargetable);
         battle.fx('aoe', { x: unit.x, y: unit.y, radius: 2, id: unit.id, skill: 'swordRain' });
         for (const e of foes) {
           for (let i = 0; i < 2 && e.alive; i++) battle.dealDamage(unit, e, { amount: unit.s.atk * num(bb.atk_scale), type: 'arts', isSkill: true, tags: ['skill'] });
@@ -778,7 +781,7 @@ export default {
           const atk = unit.s.atk;
           makeZone(battle, unit, {
             x, y, radius: SPORE_RADIUS, duration: dur, skill: 'spores', onPulse(b) {
-              for (const e of b.enemiesInRadius(x, y, SPORE_RADIUS)) {
+              for (const e of b.foesInRadius(x, y, SPORE_RADIUS)) {
                 if (e.s.flags.untargetable) continue;
                 b.applyStatus(e, 'sluggish', { duration: 1.05, source: unit });
                 b.applyStatus(e, 'silence', { duration: 1.05, source: unit });
@@ -934,9 +937,15 @@ export default {
   },
 
   // ---------------------------------------------------------------------------------------------------------------
-  // 1_19 野鬃 夹枪冲锋: wider range (skill grid), ATK +atk, hits push the target away (attack@force 1 = 中力; radial — away
-  // from her centre, PRTS 推与拉: every push but the 推击手' is radial) by the official 力度 − 重量 distance (Battle.push:
-  // weight 0 → 2.14 tiles, 1 → 1.7, 2 → 0.44, 3 → 0.12, ≥ 4 → none; user playtest #6 item 14).
+  // 1_19 野鬃 夹枪冲锋: wider range (skill grid), ATK +atk, "攻击会把目标往攻击方向中等力度地推开" (attack@force 1 = 中力) by
+  // the official 力度 − 重量 distance (Battle.push: weight 0 → 2.14 tiles, 1 → 1.7, 2 → 0.44, 3 → 0.12, ≥ 4 → none; user
+  // playtest #6 item 14). A directional push (方向力, PRTS 推与拉): the client's S2 attack ability (charpack
+  // char_496_wildmn, anim Skill_2) carries buff wildmn_s_2[force] of template knockback[dir] — buff_template_data:
+  // Knockback {_useSourceDirection: true, _decreaseForceLevelWhenNotInDirection: 2} — i.e. along her deploy direction,
+  // radial at 受力等级 −2 for a target > 45° off it or < 0.25 tile away (特殊修正); the radial pushes are
+  // knockback[relative] (琳琅诗怀雅 S3, 山 S3, 莫斯提马 S3). Her text uses the 推击手 wording "往攻击方向". So an enemy she
+  // grabs behind her centre (the hand-over after a push freed her block) is not thrown 1.7 tiles towards the objective
+  // (player feedback D2, "往攻击方向相反方向推"; it was a radial push before).
   // 一致向前: after deploying (normal flag 0: first deployment only; elite flag 1: every deployment) every undeployed
   // 【近卫】 operator of the player costs `value` less DP to deploy (≤ max_stack_cnt per operator until it deploys).
   // Alternate S1 骑枪刺击 (PASSIVE, ON_DEPLOY): for `duration` s after every deployment ASPD +attack_speed.
@@ -961,7 +970,7 @@ export default {
         attack: {
           onHit({ battle, unit, target }) {
             if (!target || !target.alive || target.side !== 'enemy') return;
-            battle.push(target, force, { from: unit });
+            battle.push(target, force, { from: unit, dir: { x: unit.fwd[1], y: unit.fwd[0] } });
           },
         },
       },
@@ -992,10 +1001,10 @@ export default {
   // 1_20 雷蛇 反击电弧 (hurt SP): attack interval ×(1 + base_attack_time) (PRTS "攻击间隔增大(+70%)": a RATIO for this skill,
   // 1.2 → 2.04 s — not +0.7 s), ATK +atk, arts attacks on up to attack@max_target enemies,
   // attack@buff_prob to stun attack@stun s; afterwards 雷蛇 is stunned `stun` s.
-  // 技能策略 override → DEFAULT: 反击电弧 is an offensive skill (ATK +125 %, arts hits on up to 3 enemies, stun), and the
-  // mode's rule is "offensive skills activate when an enemy is in their skill range" (research 03 §1.4, the in-game
-  // help). The TANK row is a TAKE_DAMAGE row documented for skillIndex 0; reading it as a wildcard made this S2 — and
-  // 深巡's — wait for a hit instead (issue #4). Both 哨戒铁卫 S2s therefore override it here.
+  // 技能策略 → DEFAULT (PR #12; DESIGN §21.29): 反击电弧 is an offensive skill (ATK +125 %, arts hits on up to 3 enemies,
+  // stun); the official 下半 TANK row (TAKE_DAMAGE for every MANUAL 重装 skill) made it — and 深巡's S2 — wait for a hit
+  // (GitHub issue #4). The owner's deliberate deviation from that row (2026-10-03, community feedback) gives both
+  // 哨戒铁卫 S2s the basic strategy; the data says DEFAULT too (rawRule keeps the official TAKE_DAMAGE).
   // 战术防御: when attacked, +sp SP to herself and to one random ally in the talent grid. Elite 雷抗: RES +magic_resistance.
   // Elite module (SPT-X): stealth of enemies inside the range is cancelled.
   // Alternate S1 充能防御 (AUTO, hurt SP, "技能自动开启" — an AUTO skill takes no 技能策略: SP_FULL, so the hit that fills SP
@@ -1045,8 +1054,10 @@ export default {
       talents: [{ install(battle, unit) {
         const sp = num(t.sp);
         if (sp > 0) {
+          // PRTS 备注 "仅伤害量不为0且能够触发受击回复的伤害才能触发此天赋": any such damage, not only an enemy attack
+          // (a zone tick, the 源石溶剂 drain — player report D1 audit)
           onDamagedOn(battle, unit, (ctx) => {
-            if (!byEnemyAttack(ctx) || !up(unit)) return;
+            if (!hurtSpDamage(ctx) || !up(unit)) return;
             giveSp(unit, sp);
             const mates = alliesInGridOf(battle, unit, grid ?? [[1, 0], [0, -1], [0, 1], [-1, 0]]).filter((a) => a !== unit && a.skill && !a.skill.noSkill);
             const m = battle.rng.pick(mates);

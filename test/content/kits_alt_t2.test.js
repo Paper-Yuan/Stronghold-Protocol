@@ -362,7 +362,8 @@ test('2_13 蒂比 S1 专业喷绘技巧: DEFAULT trigger, takes off (skill range
     const range0 = u.baseRangeKeys.length;
     h.runUntil(() => u.skill.active, 3);
     assert.equal(started(h, u)[0].reason, 'DEFAULT');
-    assert.equal(u.ground, false, 'airborne');
+    assert.equal(u.s.flags.liftoff, true, 'airborne (起飞)');
+    assert.equal(u.ground, true, 'still a ground unit on her low tile');
     approx(u.s.atk, u.base.atk * (1 + bb.atk));
     assert.ok(u.rangeKeys.length > range0, 'skill range');
     const fl = h.spawn('f', { pos: [9, 5] });
@@ -374,7 +375,7 @@ test('2_13 蒂比 S1 专业喷绘技巧: DEFAULT trigger, takes off (skill range
     assert.equal(hits.length, atk.reduce((n, c) => n + c.targets.length, 0), 'one shot per target (no 3 连射)');
     h.runUntil(() => !u.skill.active, 40);
     h.step();
-    assert.equal(u.ground, true, 'landed');
+    assert.ok(!u.s.flags.liftoff, 'landed');
     done(h);
     // an enemy attack from outside her range never sets S1 off (S2's 受到攻击后触发 is not hers)
     const h2 = run({ defs: { enemies: { r: dummy('r', { atk: 300, bat: 1, range: 3.2 }) } }, units: [U(id, 9, 5, { carryState: READY })], enemies: [{ key: 'r', pos: [9, 8] }] });
@@ -455,7 +456,7 @@ test('2_17 折桠 S1 绝境抵抗: TAKE_DAMAGE; DEF +def and 抵抗 (control sta
   }
 });
 
-test('2_18 灰毫 S2 专注轰击: cast when hit (重装 TAKE_DAMAGE), then blocks nothing, ranged splash bombs only, shorter interval, ATK +atk', () => {
+test('2_18 灰毫 S2 专注轰击: cast with an enemy in range (DEFAULT, the deliberate deviation from the 重装 row — DESIGN §21.29), then blocks nothing, ranged splash bombs only, shorter interval, ATK +atk', () => {
   for (const id of both('chess_char_2_18')) {
     const bb = bbAlt(id);
     const enemies = { w: enemyRec({ key: 'w', hp: 1e7, speed: 2, atk: 50, bat: 1 }) };
@@ -464,15 +465,18 @@ test('2_18 灰毫 S2 专注轰击: cast when hit (重装 TAKE_DAMAGE), then bloc
     assert.ok(c.runUntil(() => c.enemies()[0]?.blockedBy === c.unit(id), 10), 'default: blocked');
     done(c);
 
-    // (a second walker comes by while the skill runs: she bombs it from range, unblocked)
-    const h = run({ defs: { enemies }, units: [U(id, 9, 5, { carryState: READY })], enemies: [{ key: 'w', route: 0 }, { key: 'w', route: 0, time: 5 }] });
+    // (a second walker, 2 s behind the first, comes by while the skill runs — 10 s from the cast, made as the first one
+    // comes into range: she bombs it from range, unblocked)
+    const h = run({ defs: { enemies }, units: [U(id, 9, 5, { carryState: READY })], enemies: [{ key: 'w', route: 0 }, { key: 'w', route: 0, time: 2 }] });
     const u = h.unit(id);
     usesAlt(u, id);
-    assert.equal(u.skill.rule, 'TAKE_DAMAGE', 'a MANUAL 重装 skill: "不受技能范围影响，受到伤害时释放技能"');
+    // the official 下半 重装 row (TAKE_DAMAGE) is overridden for this skill by the owner's decision (data rawRule keeps it)
+    assert.equal(u.skill.rule, 'DEFAULT', 'an offensive 重装 skill of the deviation: the basic strategy');
     assert.ok(h.runUntil(() => u.skill.active, 8));
     const st = h.b.time;
     const atk0 = h.eventsOf('atk').length;
-    assert.ok(h.hooksOf('damaged').some((x) => x.target === u), 'cast by the hit of the enemy she blocked');
+    assert.equal(started(h, u)[0].reason, 'DEFAULT', 'cast by the basic strategy');
+    assert.ok(!h.hooksOf('damaged').some((x) => x.target === u), 'with the walker in range, before anything hit her');
     assert.ok(u.s.flags.noBlock);
     approx(u.s.atk, u.base.atk * (1 + u.findBuff('talent:ashlok').mods.atkPct + bb.atk), 'ATK (+ 炮术研习)');
     approx(u.s.interval, (u.base.bat + bb.base_attack_time) * 100 / u.s.aspd, 'base attack time shortened');

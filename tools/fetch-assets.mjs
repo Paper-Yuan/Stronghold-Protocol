@@ -5,24 +5,39 @@
 //   public/fonts/**    Bender / Novecento (.otf/.ttf + .woff2) and fonts.css
 //   data/assets.json   manifest used by the client (schema: docs/ASSETS.md)
 //
+// Enemy models no dump carries get another enemy's model (ASSETS.md "Enemy
+// aliases"); the official ones the local client has (tools/local-extract/
+// extract.py ENEMY_SPINES, optional) are added as `spineLocal` from the
+// committed tools/assets/local-enemy-spines.json — never from the disk, so the
+// manifest is the same with or without the extraction. --local-spines rewrites
+// that file from the extracted models (after a game update).
+//
 // Idempotent: existing files with the right size are skipped, so re-running is
 // cheap. Downloads use ~16 parallel connections, 3 retries per source and a
 // jsDelivr mirror fallback. Spine atlases get `size:` (and `pma: true` for
 // enemies); every skeleton is parsed to resolve animation roles.
 //
+// The committed data/assets.json never shrinks by accident: an entry whose files
+// are missing here is left out of a rebuilt manifest, so a run on a machine where
+// some downloads failed (or whose upstream index lost them) would drop entries
+// every other install still has. The run then keeps the current manifest, lists
+// the entries it would drop and exits 1; --allow-shrink (or --prune) writes the
+// smaller manifest.
+//
 // Usage: node tools/fetch-assets.mjs [--concurrency=16] [--force] [--offline]
-//                                    [--dry-run] [--refresh-index] [--prune] [--help]
+//                                    [--dry-run] [--refresh-index] [--prune]
+//                                    [--allow-shrink] [--local-spines] [--help]
 
 import { readFile, writeFile, mkdir, rename, readdir, unlink } from 'node:fs/promises';
-import { existsSync } from 'node:fs';
+import { existsSync, realpathSync } from 'node:fs';
 import { dirname, join, relative, sep } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { Downloader } from './assets/downloader.mjs';
 import { loadIndexes } from './assets/cache.mjs';
 import { indexAudio } from './assets/audio.mjs';
 import { buildPlan } from './assets/plan.mjs';
-import { processModels } from './assets/spine.mjs';
-import { collectLeaves, downloadLeaves, resolveTemplate, totalBytes, contentHash, MANIFEST_VERSION } from './assets/manifest.mjs';
+import { processModels, findLocalEnemyModels, localEnemySpineMeta, loadLocalEnemySpines, LOCAL_ENEMY_SPINES_FILE } from './assets/spine.mjs';
+import { collectLeaves, downloadLeaves, resolveTemplate, totalBytes, contentHash, droppedEntries, MANIFEST_VERSION } from './assets/manifest.mjs';
 import { fontJobs, buildFonts } from './assets/fonts.mjs';
 import { skelParserAvailable } from './assets/skel.mjs';
 
@@ -32,6 +47,7 @@ const FONTS = join(ROOT, 'public', 'fonts');
 const CACHE = join(ROOT, '.cache');
 const MANIFEST = join(ROOT, 'data', 'assets.json');
 const REPORT = join(CACHE, 'assets-report.json');
+const LOCAL_SPINES = join(ROOT, LOCAL_ENEMY_SPINES_FILE);
 
 const HELP = `Usage: node tools/fetch-assets.mjs [options]
   --concurrency=N   parallel downloads (default 16)
@@ -40,15 +56,20 @@ const HELP = `Usage: node tools/fetch-assets.mjs [options]
   --dry-run         print the plan and exit
   --refresh-index   re-download audio_data.json / models_data.json indexes
   --prune           delete files under public/assets that the manifest no longer references
+                    (public/assets/local/** of tools/local-extract is never deleted); implies --allow-shrink
+  --allow-shrink    write data/assets.json even when it loses entries the current one has
+                    (without it such a run keeps the current manifest, lists the entries and exits 1)
+  --local-spines    rewrite ${LOCAL_ENEMY_SPINES_FILE} from the enemy models extracted
+                    by tools/local-extract/extract.py (public/assets/local/spine/enemy/)
   --help            this text`;
 
 /**
  * Parse CLI flags.
  * @param {string[]} argv
- * @returns {{concurrency:number, force:boolean, offline:boolean, dryRun:boolean, refreshIndex:boolean, prune:boolean, help:boolean}}
+ * @returns {{concurrency:number, force:boolean, offline:boolean, dryRun:boolean, refreshIndex:boolean, prune:boolean, allowShrink:boolean, localSpines:boolean, help:boolean}}
  */
-function parseArgs(argv) {
-  const o = { concurrency: 16, force: false, offline: false, dryRun: false, refreshIndex: false, prune: false, help: false };
+export function parseArgs(argv) {
+  const o = { concurrency: 16, force: false, offline: false, dryRun: false, refreshIndex: false, prune: false, allowShrink: false, localSpines: false, help: false };
   for (const a of argv) {
     const [k, v] = a.split('=');
     if (k === '--concurrency') o.concurrency = Math.max(1, Math.min(64, parseInt(v, 10) || 16));
@@ -57,10 +78,26 @@ function parseArgs(argv) {
     else if (k === '--dry-run') o.dryRun = true;
     else if (k === '--refresh-index') o.refreshIndex = true;
     else if (k === '--prune') o.prune = true;
+    else if (k === '--allow-shrink') o.allowShrink = true;
+    else if (k === '--local-spines') o.localSpines = true;
     else if (k === '--help' || k === '-h') o.help = true;
     else throw new Error(`unknown option ${a}\n${HELP}`);
   }
   return o;
+}
+
+/**
+ * The shrink guard of data/assets.json (header): the entries of the current manifest `prev` that `next` would drop,
+ * and whether `next` may be written — always when nothing is dropped (or there is no current manifest), otherwise
+ * only with --allow-shrink or --prune.
+ * @param {object|null} prev
+ * @param {object} next
+ * @param {{allowShrink?:boolean, prune?:boolean}} opts
+ * @returns {{dropped:string[], write:boolean}}
+ */
+export function shrinkGuard(prev, next, { allowShrink = false, prune = false } = {}) {
+  const dropped = prev ? droppedEntries(prev, next) : [];
+  return { dropped, write: dropped.length === 0 || !!allowShrink || !!prune };
 }
 
 const mb = (n) => `${(n / 1048576).toFixed(1)} MB`;
@@ -136,6 +173,38 @@ function requiredMisses(m, charIds) {
   return out;
 }
 
+/**
+ * Metadata of the local-client enemy models (the committed LOCAL_SPINES). With --local-spines it is rewritten from the
+ * models extracted under public/assets/local/spine/enemy/ (read only); otherwise extracted models whose metadata differs
+ * from the committed one only get a warning — the manifest never depends on what this machine extracted.
+ */
+async function syncLocalEnemySpines(opts) {
+  const committed = await loadLocalEnemySpines(LOCAL_SPINES);
+  const found = await findLocalEnemyModels(ASSETS);
+  if (!Object.keys(found).length) {
+    if (opts.localSpines) log(`[local-spines] no extracted enemy model under public/assets/local/spine/enemy/ — ${LOCAL_ENEMY_SPINES_FILE} kept`);
+    return committed;
+  }
+  const { meta, problems } = await localEnemySpineMeta(ASSETS, found);
+  for (const p of problems) log(`[local-spines] ${p}`);
+  if (opts.localSpines && !opts.dryRun) {
+    const models = { ...committed, ...meta };
+    const sorted = Object.fromEntries(Object.keys(models).sort().map((k) => [k, models[k]]));
+    const doc = {
+      about: 'Spine metadata of the enemy models only the local client has (tools/local-extract/extract.py ENEMY_SPINES); '
+        + 'data/assets.json enemies[id].spineLocal. Written by node tools/fetch-assets.mjs --local-spines (docs/ASSETS.md "Enemy aliases").',
+      models: sorted,
+    };
+    await writeJsonAtomic(LOCAL_SPINES, doc, 2);
+    log(`[local-spines] ${Object.keys(meta).length} model(s) → ${LOCAL_ENEMY_SPINES_FILE}`);
+    return sorted;
+  }
+  for (const [id, m] of Object.entries(meta)) {
+    if (JSON.stringify(m) !== JSON.stringify(committed[id])) log(`[local-spines] ${id}: the extracted model differs from ${LOCAL_ENEMY_SPINES_FILE} (re-run with --local-spines to update it)`);
+  }
+  return committed;
+}
+
 async function main() {
   const opts = parseArgs(process.argv.slice(2));
   if (opts.help) { log(HELP); return 0; }
@@ -157,11 +226,13 @@ async function main() {
     ['data/enemies.json', 'data/tokens.json', 'data/bosses.json'].map((f) => readJson(f).catch(() => null)));
   const extraHandbook = {};
   for (const b of Object.values(dataBosses || {})) if (b?.enemyKey && typeof b.handbookId === 'string') extraHandbook[b.enemyKey] = b.handbookId;
+  const localEnemySpines = await syncLocalEnemySpines(opts);
   const plan = buildPlan({
     assets07, ops03, enemies05, maps05, audio, modelsData,
     extraEnemyIds: Object.keys(dataEnemies || {}),
     extraTokenIds: Object.keys(dataTokens || {}),
     extraHandbook,
+    localEnemySpines,
   });
   const leaves = collectLeaves(plan.template);
   log(`[plan] ${leaves.length} files + ${plan.models.size} Spine models ` +
@@ -212,10 +283,16 @@ async function main() {
     stats: countStats(body, bytes, resolved.files.size),
     ...body,
   };
-  await writeJsonAtomic(MANIFEST, manifest);
+  let current = null;
+  if (existsSync(MANIFEST)) {
+    try { current = JSON.parse(await readFile(MANIFEST, 'utf8')); } catch (e) { log(`[manifest] the current ${relative(ROOT, MANIFEST)} is unreadable (${e.message}): replaced`); }
+  }
+  const guard = shrinkGuard(current, manifest, opts);
+  if (guard.write) await writeJsonAtomic(MANIFEST, manifest);
 
-  // Orphans: files on disk that the manifest does not reference (e.g. after a mapping change).
-  const orphans = (await listFiles(ASSETS)).filter((r) => !resolved.files.has(r));
+  // Orphans: files on disk that the manifest does not reference (e.g. after a mapping change). public/assets/local/**
+  // belongs to tools/local-extract (data/local-assets.json) and is never an orphan: --prune used to delete all of it.
+  const orphans = (await listFiles(ASSETS)).filter((r) => !resolved.files.has(r) && !r.startsWith('local/'));
   if (opts.prune) for (const r of orphans) { try { await unlink(join(ASSETS, r)); } catch { /* ignore */ } }
 
   const charIds = Object.keys(assets07.operators || {});
@@ -232,6 +309,8 @@ async function main() {
     fontErrors,
     orphans: opts.prune ? [] : orphans,
     pruned: opts.prune ? orphans : [],
+    manifestWritten: guard.write,
+    droppedEntries: guard.dropped, // entries of the previous data/assets.json the rebuilt one lacks
     notes: plan.notes,
   };
   await writeJsonAtomic(REPORT, report, 1);
@@ -256,15 +335,26 @@ async function main() {
   if (spine.problems.length) { log(`spine notes (${spine.problems.length}):`); for (const p of spine.problems.slice(0, 20)) log(`  ${p}`); }
   for (const e of fontErrors) log(`font error: ${e}`);
   if (orphans.length) log(opts.prune ? `pruned ${orphans.length} unreferenced files` : `${orphans.length} unreferenced files on disk (run with --prune to delete)`);
-  log(`manifest: ${MANIFEST} · report: ${REPORT} · ${((Date.now() - t0) / 1000).toFixed(0)} s`);
+  if (guard.dropped.length) {
+    log(guard.write
+      ? `data/assets.json lost ${guard.dropped.length} entries (${opts.prune ? '--prune' : '--allow-shrink'}):`
+      : `ERROR: data/assets.json NOT written — it would lose ${guard.dropped.length} entries the current one has (their files are missing here):`);
+    for (const k of guard.dropped) log(`  ${k}`);
+    if (!guard.write) log('  re-run to retry the downloads (--refresh-index for the audio/model indexes), or pass --allow-shrink (or --prune) to write the smaller manifest');
+  }
+  log(`manifest: ${MANIFEST}${guard.write ? '' : ' (kept)'} · report: ${REPORT} · ${((Date.now() - t0) / 1000).toFixed(0)} s`);
   if (required.length) {
     log(`ERROR: ${required.length} required assets missing: ${required.slice(0, 10).join(', ')}`);
     return 1;
   }
-  return 0;
+  return guard.write ? 0 : 1;
 }
 
-main().then((code) => { process.exitCode = code; }, (e) => {
-  console.error(`[assets] FAILED: ${process.env.DEBUG ? e?.stack || e : e?.message || e}`);
-  process.exitCode = 1;
-});
+// run only as a script (tests import parseArgs / shrinkGuard)
+const invoked = (() => { try { return pathToFileURL(realpathSync(process.argv[1] || '')).href; } catch { return null; } })();
+if (invoked === import.meta.url) {
+  main().then((code) => { process.exitCode = code; }, (e) => {
+    console.error(`[assets] FAILED: ${process.env.DEBUG ? e?.stack || e : e?.message || e}`);
+    process.exitCode = 1;
+  });
+}

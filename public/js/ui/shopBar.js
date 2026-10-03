@@ -1,5 +1,6 @@
 // Bottom shop bar (research 06 §11.2 / D3): LEVEL card (upgrade price hex, 升级), 3–5 operator cards
-// (tier chip, price hex with discount/markup colours, portrait, bonds, class, frozen overlay, sold state,
+// (tier chip, price hex with discount/markup colours, portrait, bonds — a bond the mode never activates struck through,
+// 本局禁用 — class, frozen overlay, sold state,
 // merge progress), the item card, the funds card with ✕ 收起; above it 剩余可放置角色, 冻结/解冻 and 刷新.
 // Buying and upgrading take two taps (research 09 §5 / §6.5, official `EventOnFirstClick` → `EventOnConfirm` /
 // `EventOnUpgrade`): the first tap selects a card — it lifts and enlarges, its detail opens and it shows 确认购买
@@ -11,7 +12,9 @@
 // detail); a card that cannot be bought right now (the bar is not editable: ready, round start) opens its detail. The
 // D / R / F keys stay one-press shortcuts. There is no drag-to-sell zone: selling is the 出售 +N button of a tapped
 // unit's underframe (ui/underframe.js). After a promotion the operator cards are replaced by
-// the 晋升奖励 cards (3 free operators, pick 1 — also two taps) until picked or put off (稍后 → rewardOverlay.js pill).
+// the 晋升奖励 cards (3 free operators, pick 1 — also two taps) until picked or put off (稍后 → rewardOverlay.js pill);
+// a special refresh (凯瑟琳 定向投放's 3 items, 娜仁图亚, 寻呼模块, 信标, 松果) takes the same place under its own name, an
+// item slot drawn as an item card (player report #6 after 0.1.0).
 // Every operator card shows the skill it will fight with — the player's 干员调配 loadout (m.private.loadout, DESIGN
 // §16): the skill icon above the name, mint-framed with 已调配 in its title when it is not the default skill (and the
 // module type of an elite card, with its official type icon when the local-client art has it).
@@ -19,7 +22,7 @@
 import { useEffect, useState } from '../../vendor/hooks.module.js';
 import { html, Icon, HexBadge, TierChip, Tooltip, MicroLabel } from './components.js';
 import { Img, BondGlyph, CoinGlyph, GIcon, RichText } from './gameComponents.js';
-import { priceTone, mergeProgress, mergeTarget, shopBlockReason, chessLoadout } from './gameLogic.js';
+import { priceTone, mergeProgress, mergeTarget, shopBlockReason, chessLoadout, offerHeader, briefingBondTip } from './gameLogic.js';
 import { chessPortraitUrl, itemIconUrl, profIconUrl, uiUrl, skillIconUrl, skillRecordIconUrl, moduleTypeIconUrl } from './assetUrls.js';
 import { data } from '../data.js';
 
@@ -58,7 +61,7 @@ function ArmedTag({ reason, free }) {
  * @param {{ slot:any, idx:number, priv:any, frozen?:boolean, reason?:string|null, free?:boolean, armed?:boolean,
  *   onTap?:(idx:number)=>void, onBuy:Function, onDetail:Function }} props
  */
-export function ChessCard({ slot, idx, priv, frozen = false, reason = null, free = false, armed = false, onTap = null, onBuy, onDetail }) {
+export function ChessCard({ slot, idx, priv, frozen = false, reason = null, free = false, armed = false, onTap = null, onBuy, onDetail, offBonds = null }) {
   const c = data.lookup('chess', slot.id);
   const m = data.get('assets');
   const tier = c?.tier ?? 1;
@@ -86,7 +89,11 @@ export function ChessCard({ slot, idx, priv, frozen = false, reason = null, free
       ${lo?.skill ? html`<${SkillBadge} chess=${c} lo=${lo} />` : null}
       <span class="scard__name">${c?.name || slot.id}</span>
       <span class="scard__bonds">
-        ${bonds.slice(0, 3).map((b) => html`<span key=${b} class="scard__bond"><${BondGlyph} bondId=${b} /><span>${data.lookup('bonds', b)?.name || b}</span></span>`)}
+        ${bonds.slice(0, 3).map((b) => {
+          const name = data.lookup('bonds', b)?.name || b;
+          const off = !!(offBonds && offBonds.has(b)); // a bond this mode never activates (gameLogic modeOffBonds)
+          return html`<span key=${b} class=${cx('scard__bond', off && 'is-off')} title=${off ? briefingBondTip(name, 'off') : undefined}><${BondGlyph} bondId=${b} /><span>${name}</span></span>`;
+        })}
       </span>
       <span class="scard__class">
         <${Img} src=${profIconUrl(m, c?.profession)} class="scard__prof" />
@@ -120,7 +127,7 @@ function SkillBadge({ chess, lo }) {
  * @param {{ slot:any, idx:number, frozen?:boolean, reason?:string|null, armed?:boolean, onTap?:(idx:number)=>void,
  *   onBuy:Function, onDetail:Function }} props
  */
-export function ItemCard({ slot, idx, frozen = false, reason = null, armed = false, onTap = null, onBuy, onDetail }) {
+export function ItemCard({ slot, idx, frozen = false, reason = null, free = false, armed = false, onTap = null, onBuy, onDetail }) {
   const it = data.lookup('items', slot.id);
   const m = data.get('assets');
   const disabled = !!reason;
@@ -132,7 +139,7 @@ export function ItemCard({ slot, idx, frozen = false, reason = null, armed = fal
     <span class="scard__bg" aria-hidden="true"></span>
     <span class="scard__top">
       <${TierChip} tier=${it?.tier ?? 1} size="md" />
-      <${PriceHex} slot=${slot} poor=${reason === '资金不足'} />
+      <${PriceHex} slot=${slot} free=${free} poor=${reason === '资金不足'} />
     </span>
     <span class="scard__itemart"><${Img} src=${itemIconUrl(m, it)} fallback=${html`<${GIcon} name="bolt" />`} /></span>
     <span class="scard__body">
@@ -140,7 +147,7 @@ export function ItemCard({ slot, idx, frozen = false, reason = null, armed = fal
       <span class="scard__idesc"><${RichText} text=${it?.descRaw || it?.desc || ''} /></span>
     </span>
     ${frozen ? html`<span class="scard__ice" aria-hidden="true"><${Icon} name="snow" /></span>` : null}
-    ${armed ? html`<${ArmedTag} reason=${reason} />` : null}
+    ${armed ? html`<${ArmedTag} reason=${reason} free=${free} />` : null}
   </button>`;
   return reason && reason !== '已售出' && !armed ? html`<${Tooltip} text=${reason} block=${true} class="scard-wrap">${card}<//>` : card;
 }
@@ -210,24 +217,33 @@ export function useTwoTap({ editable, keys }) {
 }
 
 /**
- * Promotion reward (research 00 §3): after a merge the operator cards of the bar are replaced by 3 free operators of
- * tier min(level+1, 6); pick 1 (g.reward idx) or put it off (稍后选择 → the normal shop + a reminder pill).
+ * A free pick-one offer in place of the bar's operator cards (pick 1 — g.reward idx — or put it off: 稍后选择 → the
+ * normal shop + a reminder pill): the promotion reward (research 00 §3: 3 free operators of tier min(level+1, 6)) and
+ * the special refreshes of strategies, items and 特质 — e.g. 凯瑟琳 【定向投放】 "在调度中心刷新随机3件装备，可以选择并获得
+ * 其中1件". Each slot is drawn by its kind: an item slot is an item card (icon, name, tier, description, FREE) — player
+ * report #6 after 0.1.0, the items used to be drawn as nameless operator cards — and the header names the offer
+ * (gameLogic.offerHeader: 晋升奖励 / the strategy's effect name …; "之后还有 N 项" while more offers wait behind it).
  */
-function RewardCards({ offer, priv, editable, onPick, onDetail, onLater, armed, onTap }) {
-  return html`<div class="shopbar__reward" role="group" aria-label="晋升奖励">
+export function RewardCards({ offer, priv, editable, onPick, onDetail, onLater, armed, onTap, offBonds = null }) {
+  const head = offerHeader(offer);
+  return html`<div class=${cx('shopbar__reward', head.items && 'is-items')} role="group" aria-label=${head.title}>
     <div class="rwtag">
-      <${Icon} name="crown" class="rwtag__icon" />
-      <b class="rwtag__title">晋升奖励</b>
-      <span class="rwtag__micro">PROMOTION</span>
-      <span class="rwtag__sub">免费选择 1 名</span>
+      <${Icon} name=${head.icon} class="rwtag__icon" />
+      <b class="rwtag__title">${head.title}</b>
+      <span class="rwtag__micro">${head.micro}</span>
+      <span class="rwtag__sub">${head.sub}</span>
+      ${head.more ? html`<span class="rwtag__sub rwtag__more">${head.more}</span>` : null}
       <button type="button" class="rwtag__later" onClick=${onLater} title="稍后选择（回合结束后消失）"><${Icon} name="minus" />稍后</button>
     </div>
     <div class="shopbar__rwcards">
-      ${offer.slots.map((s, i) => (s && !s.sold
-        ? html`<${ChessCard} key=${`rw${i}:${s.id}`} slot=${{ ...s, price: 0 }} idx=${i} priv=${priv} free=${true}
-            armed=${armed === armKey('r', i, s)} onTap=${(idx) => onTap('r', idx, s, 'chess', shopBlockReason('reward', { priv, editable, slot: s, ...LOOKUPS }), onPick)}
-            reason=${shopBlockReason('reward', { priv, editable, slot: s, ...LOOKUPS })} onBuy=${onPick} onDetail=${onDetail} />`
-        : html`<div key=${`rw${i}`} class="scard scard--sold"><span class="scard__soldtxt"><span>已选择</span></span></div>`))}
+      ${offer.slots.map((s, i) => {
+        if (!s || s.sold) return html`<div key=${`rw${i}`} class=${cx('scard', 'scard--sold', s && s.kind === 'item' && 'scard--item')}><span class="scard__soldtxt"><span>已选择</span></span></div>`;
+        const kind = s.kind === 'item' ? 'item' : 'chess';
+        const reason = shopBlockReason('reward', { priv, editable, slot: s, ...LOOKUPS });
+        const props = { slot: { ...s, price: 0 }, idx: i, free: true, reason, armed: armed === armKey('r', i, s), onBuy: onPick, onDetail,
+          onTap: (idx) => onTap('r', idx, s, kind, reason, onPick) };
+        return kind === 'item' ? html`<${ItemCard} key=${`rw${i}:${s.id}`} ...${props} />` : html`<${ChessCard} key=${`rw${i}:${s.id}`} priv=${priv} offBonds=${offBonds} ...${props} />`;
+      })}
     </div>
   </div>`;
 }
@@ -237,10 +253,11 @@ function RewardCards({ offer, priv, editable, onPick, onDetail, onLater, armed, 
  * @param {{ priv:any, editable:boolean, collapsed:boolean, onCollapse:(c:boolean)=>void,
  *   onBuy:(i:number)=>void, onLevel:Function, onRefresh:Function, onFreeze:Function, onDetail:(id:string, kind?:string, hint?:string|null)=>void,
  *   onDetailClose?: () => void, onRefuse?: (reason: string) => void, barRef:any,
- *   reward?: any, onReward?: (idx:number)=>void, onRewardLater?: Function }} props
+ *   reward?: any, onReward?: (idx:number)=>void, onRewardLater?: Function, offBonds?: Set<string>|null }} props — offBonds:
+ *   the bonds this mode never activates (gameLogic modeOffBonds), struck through on the operator cards
  */
 export function ShopBar({ priv, editable, collapsed, onCollapse, onBuy, onLevel, onRefresh, onFreeze, onDetail, onDetailClose, onRefuse, barRef,
-  reward = null, onReward, onRewardLater, onArm = null }) {
+  reward = null, onReward, onRewardLater, onArm = null, offBonds = null }) {
   const shop = priv?.shop || {};
   const slots = Array.isArray(shop.slots) ? shop.slots : [];
   const chessSlots = slots.map((s, i) => ({ s, i })).filter(({ s }) => !s || s.kind !== 'item');
@@ -308,12 +325,12 @@ export function ShopBar({ priv, editable, collapsed, onCollapse, onBuy, onLevel,
     <div class="shopbar__row">
       <${LevelCard} shop=${shop} reason=${lvReason} armed=${armed === 'lv'} onTap=${tapLevel} />
       ${showReward ? html`<${RewardCards} offer=${reward} priv=${priv} editable=${editable} onPick=${onReward} onDetail=${onDetail} onLater=${onRewardLater}
-          armed=${armed} onTap=${tapCard} />`
+          armed=${armed} onTap=${tapCard} offBonds=${offBonds} />`
         : html`<div class="shopbar__cards">
         ${chessSlots.map(({ s, i }) => {
           if (!s || s.sold) return html`<${SoldCard} key=${`s${i}`} />`;
           const reason = shopBlockReason('buy', { priv, editable, slot: s, ...LOOKUPS });
-          return html`<${ChessCard} key=${`c${i}:${s.id}`} slot=${s} idx=${i} priv=${priv} frozen=${frozen} onBuy=${onBuy} onDetail=${onDetail}
+          return html`<${ChessCard} key=${`c${i}:${s.id}`} slot=${s} idx=${i} priv=${priv} frozen=${frozen} onBuy=${onBuy} onDetail=${onDetail} offBonds=${offBonds}
               reason=${reason} armed=${armed === armKey('c', i, s)} onTap=${editable ? (idx) => tapCard('c', idx, s, 'chess', reason, onBuy) : null} />`;
         })}
       </div>`}

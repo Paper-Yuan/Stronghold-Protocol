@@ -132,7 +132,8 @@ test('1_04 深巡: fin darts pierce attack@max_target enemies on the line + 1 s 
   });
   const u = h.unit(id);
   h.step();
-  // 技能策略 (issue #4): an enemy inside her initial 2-2 range is enough — the basic strategy casts it, no hit required
+  // 技能策略 (issue #4; the deliberate deviation of DESIGN §21.29): an enemy inside her initial 2-2 range is enough — the
+  // basic strategy casts it, no hit required
   assert.equal(u.skill.rule, 'DEFAULT', '行动能力剥夺 is an offensive ranged skill, not a 重装 TAKE_DAMAGE one');
   h.run(3.5);
   assert.ok(u.skill.active);
@@ -150,9 +151,9 @@ test('1_04 深巡: fin darts pierce attack@max_target enemies on the line + 1 s 
 });
 
 test('1_04 深巡 / 1_20 雷蛇 S2 技能策略: both 哨戒铁卫 S2s cast with an enemy in range, no hit needed (issue #4)', () => {
-  // both S2s are offensive (深巡: range up + ATK/ASPD + piercing darts; 雷蛇: ATK +125 % + arts on 3 + stun), and the
-  // mode's rule is "offensive skills activate when an enemy is in their skill range". The 重装 TAKE_DAMAGE row is
-  // documented for skillIndex 0 only — reading it as a wildcard made both wait for a hit.
+  // both S2s are offensive (深巡: range up + ATK/ASPD + piercing darts; 雷蛇: ATK +125 % + arts on 3 + stun); the official
+  // 下半 重装 row (TAKE_DAMAGE for every MANUAL 重装 skill) made both wait for a hit, and the owner's deliberate deviation
+  // from it (DESIGN §21.29, after community feedback) gives them the basic strategy — the data and the kit say DEFAULT.
   for (const id of ['chess_char_1_04_a', 'chess_char_1_04_b', 'chess_char_1_20_a', 'chess_char_1_20_b']) {
     const h = run({ units: [{ chessId: id, row: 9, col: 4, carryState: READY }], enemies: [{ key: 'e', pos: [9, 6] }] });
     const u = h.unit(id);
@@ -978,7 +979,8 @@ test('2_13 蒂比: an incoming attack triggers 紧急赶场通知 and is dodged;
   assert.equal(h.hooksOf('skillStart').find((c) => c.unit === u).reason, 'TAKE_DAMAGE');
   assert.equal(u.stats.taken, 0, 'the triggering hit was dodged');
   approx(u.s.atk, u.base.atk * (1 + bb.atk));
-  assert.equal(u.ground, false);
+  assert.equal(u.s.flags.liftoff, true, 'airborne (起飞)');
+  assert.equal(u.ground, true, 'still a ground unit on her low tile');
   h.step();
   assert.equal(e.blockedBy, null, 'airborne: ground enemies are released');
   const fl = h.spawn('f', { pos: [9, 5] });
@@ -1115,7 +1117,7 @@ test('2_17 折桠: 生存决心 trembles ground enemies around, ATK/DEF up, hits
   done(h2);
 });
 
-test('2_18 灰毫: 炮术研习 ATK +atk (ground surroundings: ashlok_t_1.atk); TAKE_DAMAGE skill ATK +atk; elite ×1.1 vs blocked', () => {
+test('2_18 灰毫: 炮术研习 ATK +atk (ground surroundings: ashlok_t_1.atk); skill ATK +atk cast with an enemy in range (DEFAULT, DESIGN §21.29); elite ×1.1 vs blocked', () => {
   const id = 'chess_char_2_18_a', bb = bbOf(id), t = tal(id);
   const h = run({ units: [{ chessId: id, row: 10, col: 5 }, { chessId: 'chess_char_2_18_b', row: 10, col: 3 }] });
   h.step();
@@ -1125,7 +1127,11 @@ test('2_18 灰毫: 炮术研习 ATK +atk (ground surroundings: ashlok_t_1.atk); 
   const h2 = run({ defs: { enemies: { e: dummy('e', { atk: 400 }) } }, units: [{ chessId: id, row: 10, col: 5, carryState: READY }], enemies: [{ key: 'e', pos: [10, 5] }] });
   const u = h2.unit(id);
   h2.runUntil(() => u.skill.active, 5);
-  assert.equal(h2.hooksOf('skillStart').find((c) => c.unit === u).reason, 'TAKE_DAMAGE');
+  // the owner's deliberate deviation from the 重装 TAKE_DAMAGE row: the basic strategy, no hit needed — she casts before the
+  // enemy she holds has hit her
+  assert.equal(u.skill.rule, 'DEFAULT');
+  assert.equal(h2.hooksOf('skillStart').find((c) => c.unit === u).reason, 'DEFAULT');
+  assert.ok(!h2.hooksOf('damaged').some((c) => c.target === u), 'not hit before the cast');
   approx(u.s.atk, u.base.atk * (1 + t['ashlok_t_1.atk'] + bb.atk));
   done(h2);
   const idb = 'chess_char_2_18_b', tb = tbOf(idb);
@@ -1308,14 +1314,22 @@ test('2_11 风丸: while substituted she fights with the <替身> ATK/DEF (+modu
   }
 });
 
-test('2_13 蒂比: only enemy attacks set off 紧急赶场通知; a true-damage attack triggers it but is not dodged', () => {
+test('2_13 蒂比: any damage instance sets off 紧急赶场通知 (PRTS 修正 "受到伤害前触发") and a physical one is dodged; a 流失 does not; a true-damage attack triggers it but is not dodged', () => {
   const id = 'chess_char_2_13_a';
+  const g = run({ units: [{ chessId: id, row: 9, col: 5, carryState: READY }] });
+  const v = g.unit(id);
+  g.step();
+  g.b.loseHp(v, 50);
+  g.step();
+  assert.equal(v.skill.active, false, 'a 流失 never triggers it');
+  const hp = v.hp;
+  g.b.dealDamage(null, v, { amount: 50, type: 'phys' });
+  assert.ok(v.skill.active, 'a non-attack (sourceless) damage instance triggers it');
+  assert.equal(v.hp, hp, '…and the physical damage is dodged');
+  done(g);
   const h = run({ defs: { enemies: { e: dummy('e', { atk: 300, bat: 1, dmgType: 'true' }) } }, units: [{ chessId: id, row: 9, col: 5, carryState: READY }] });
   const u = h.unit(id);
   h.step();
-  h.b.dealDamage(null, u, { amount: 50, type: 'phys' });
-  h.step();
-  assert.equal(u.skill.active, false, 'non-attack damage never triggers it');
   h.spawn('e', { pos: [9, 5] });
   h.runUntil(() => u.skill.active, 3);
   assert.ok(u.skill.active, 'the attack triggered it');

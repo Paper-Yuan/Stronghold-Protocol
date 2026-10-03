@@ -8,6 +8,11 @@ aklz4.py registers a decoder for it. This script pulls the art the web sources l
   - the 6 in-match emoticon themes of 盟约 (activity_table autoChessData.enabledEmoticonThemeIdList; only the
     *_battle sprites, keyed by display_meta_table picId: emoticon/<dir>/<picId>.png, see data/emotes.json)
   - the autochess guidebook pages, battle projectile sprites and a few token/skin Spine models missing upstream
+  - the enemy battle Spine models no community dump carries (ENEMY_SPINES: 灼热源石虫 / 炽焰源石虫), from the enemy art
+    bundles (refs/arts/enm_art_*.ab) → spine/enemy/<enemyId>/<stem>.skel|.atlas + page PNGs with the [alpha] texture
+    merged in (premultiplied RGB + A, the Ark-Models format; the atlas gets `size:` / `pma: true` like the fetched
+    enemies); the client draws them instead of the web alias once this manifest lists them (data/assets.json
+    enemies[id].spineLocal, docs/ASSETS.md "Enemy aliases")
   - for the official 3D board (DESIGN §15): the map theme's Material parameters (map/<theme>/materials.json; shader
     names resolved through the shaders/*.ab bundles), the background / device meshes as Wavefront OBJ
     (mesh/<bundle>/<mesh>.obj; UnityPy's exporter, X mirrored into a right-handed frame) and their GameObject
@@ -90,6 +95,19 @@ JOBS = [
     ('arts/maps/effect.ab', 'map/water', {'Texture2D'}, r'water_normal|Caustics|WaterNoise|noise_clouds|Water_Foam|SmoothWaves'),
 ]
 
+# Enemy battle Spine models that no community dump carries (isHarryh/Ark-Models lists them with an empty assetList, so
+# tools/fetch-assets.mjs aliases them to another enemy's skeleton — the web model): every enemy of data/enemies.json whose
+# official battle prefab draws a skeleton of its own that is missing upstream (audited against the client's prefabs, user
+# feedback after 0.1.0 report D3: 灼热源石虫 / 炽焰源石虫 — the ELEMENT faction's slugs — were drawn as the plain 源石虫).
+# Read from the enemy art bundles: Assets/Torappu/Arts/Enemies/Spines/<…>/<id>_SkeletonData.asset → its skeleton
+# TextAsset, the atlas TextAsset of its atlas asset and every page texture of the atlas materials (_MainTex, with its
+# _AlphaTex merged in as A). Output: spine/enemy/<id>/ (manifest group spine/enemy/<id>); the client draws the model
+# when the group lists every file of data/assets.json enemies[id].spineLocal (whose metadata
+# tools/assets/local-enemy-spines.json keeps: `node tools/fetch-assets.mjs --local-spines` after a game update).
+ENEMY_SPINES = ['enemy_1305_mhslim', 'enemy_1305_mhslim_2']
+ENEMY_ART = 'refs/arts/enm_art_*.ab'
+ENEMY_SPINE_SUB = 'spine/enemy'
+
 # Derived three.js maps: (output subdir, source texture, kind, output name). 'normal_rg' rebuilds Z of a two-channel
 # (BC5) normal map into an RGB tangent-space map; 'rough_from_gloss' turns Unity's metallic/gloss map (smoothness in
 # A) into a roughness (G) / metalness (B) map. Written after the job that exported the source texture.
@@ -120,11 +138,26 @@ def job_parts(job):
     return rel, sub, kinds, keep
 
 
+def wants_sub(only, sub):
+    """Whether output subdir `sub` runs under --only: no prefixes, or one prefix is `sub`, a parent of it or below it."""
+    if not only:
+        return True
+    return any(sub == p.rstrip('/') or sub.startswith(p.rstrip('/') + '/') or p.rstrip('/').startswith(sub + '/')
+               for p in only)
+
+
 def select_jobs(only):
     """The jobs whose output subdir starts with one of the `only` prefixes (all jobs when `only` is empty)."""
     if not only:
         return list(JOBS)
     return [j for j in JOBS if any(j[1] == p.rstrip('/') or j[1].startswith(p.rstrip('/') + '/') for p in only)]
+
+
+def enemy_spine_id(container, wanted):
+    """The enemy id of an enemy SkeletonData container path (Assets/Torappu/Arts/Enemies/Spines/<dir>[/<n>]/<id>_
+    SkeletonData.asset) when it is one of `wanted`, else None."""
+    m = re.search(r'/Enemies/Spines/(?:[^/]+/)+([^/]+)_SkeletonData\.asset$', container or '', re.I)
+    return m.group(1) if m and m.group(1) in wanted else None
 
 
 def _num(v, nd=6):
@@ -383,6 +416,135 @@ def export_bundle(ab_root, job, out_root, manifest, log):
     return n
 
 
+def _text_bytes(text_asset):
+    raw = text_asset.m_Script
+    return raw.encode('utf-8', 'surrogateescape') if isinstance(raw, str) else bytes(raw)
+
+
+def merge_alpha(rgb, alpha):
+    """RGBA page of a split texture: RGB of the main texture (premultiplied: the client's Spine material has
+    _StraightAlphaInput 0) and A from its [alpha] texture; RGB is clamped to A (block-compression bleed)."""
+    from PIL import Image, ImageChops
+    r, g, b = rgb.convert('RGB').split()
+    a = alpha.convert('L').resize(rgb.size) if alpha is not None else Image.new('L', rgb.size, 255)
+    return Image.merge('RGBA', tuple(ImageChops.darker(ch, a) for ch in (r, g, b)) + (a,))
+
+
+def normalize_atlas(text, sizes):
+    """Spine atlas text with every page header carrying its real `size: w,h` (`sizes`: page name → (w, h)) and
+    `pma: true` (the pages are premultiplied: merge_alpha) — what tools/assets/atlas.mjs normalizeAtlas gives the fetched
+    enemy atlases, so the client loads the extracted model as it is. Page fields are the unindented `key: value` lines
+    right after a page name (a line after a blank line, or the first line); everything else is kept."""
+    lines = text.replace('\r\n', '\n').replace('\r', '\n').lstrip('\ufeff').split('\n')
+    out, i, n = [], 0, len(lines)
+    while i < n:
+        line = lines[i]
+        starts_page = line.strip() and ':' not in line and not line[:1].isspace() and (i == 0 or not lines[i - 1].strip())
+        if not starts_page:
+            out.append(line)
+            i += 1
+            continue
+        name = line.strip()
+        fields, j = [], i + 1
+        while j < n and lines[j].strip() and not lines[j][:1].isspace() and ':' in lines[j]:
+            fields.append(lines[j])
+            j += 1
+        keys = [f.split(':', 1)[0].strip() for f in fields]
+        size = sizes.get(name)
+        if size:
+            sz = f'size: {size[0]},{size[1]}'
+            if 'size' in keys:
+                fields[keys.index('size')] = sz
+            else:
+                fields.insert(0, sz)
+        if 'pma' not in keys:
+            fields.append('pma: true')
+        out.append(line)
+        out.extend(fields)
+        i = j
+    return '\n'.join(out)
+
+
+def write_enemy_spine(objects, sda, eid, out_root, manifest, log):
+    """Write one enemy model (skeleton, atlas, merged pages) of a SkeletonDataAsset typetree; returns the file count."""
+    get = lambda pptr: objects.get(pptr['m_PathID']) if pptr and not pptr.get('m_FileID') else None  # noqa: E731
+    sub = f'{ENEMY_SPINE_SUB}/{eid}'
+    out_dir = Path(out_root) / sub
+    out_dir.mkdir(parents=True, exist_ok=True)
+    files = {}
+    skel = get(sda.get('skeletonJSON'))
+    if skel is None:
+        log(f'  warn {eid}: skeleton TextAsset not in this bundle')
+        return 0
+    ta = skel.read()
+    stem = safe_name(getattr(ta, 'm_Name', '') or eid).removesuffix('.skel')
+    files[f'{stem}.skel'] = _text_bytes(ta)
+    pages = {}
+    for aref in sda.get('atlasAssets') or []:
+        aa = get(aref)
+        if aa is None:
+            continue
+        at = aa.read_typetree()
+        af = get(at.get('atlasFile'))
+        if af is not None:
+            files[f'{stem}.atlas'] = _text_bytes(af.read())
+        for mref in at.get('materials') or []:
+            mo = get(mref)
+            if mo is None:
+                continue
+            texs = dict(mo.read_typetree()['m_SavedProperties']['m_TexEnvs'])
+            main, alpha = get(texs.get('_MainTex', {}).get('m_Texture')), get(texs.get('_AlphaTex', {}).get('m_Texture'))
+            if main is None:
+                continue
+            mt = main.read()
+            pages[safe_name(mt.m_Name) + '.png'] = merge_alpha(mt.image, alpha.read().image if alpha is not None else None)
+    if f'{stem}.atlas' not in files or not pages:
+        log(f'  warn {eid}: atlas or page textures missing')
+        return 0
+    sizes = {name: img.size for name, img in pages.items()}
+    files[f'{stem}.atlas'] = normalize_atlas(files[f'{stem}.atlas'].decode('utf-8'), sizes).encode('utf-8')
+    for fname, blob in files.items():
+        (out_dir / fname).write_bytes(blob)
+        manifest.setdefault(sub, {})[fname] = {'path': f'/assets/local/{sub}/{fname}', 'kind': 'TextAsset'}
+    for fname, img in pages.items():
+        img.save(out_dir / fname)
+        manifest.setdefault(sub, {})[fname] = {'path': f'/assets/local/{sub}/{fname}', 'w': img.width, 'h': img.height,
+                                               'kind': 'Texture2D'}
+    return len(files) + len(pages)
+
+
+def export_enemy_spines(ab_root, out_root, manifest, log, ids=None):
+    """ENEMY_SPINES from the enemy art bundles (each bundle loaded on its own; stops once every model was found)."""
+    import aklz4  # noqa: F401  (registers the LZ4AK decoder)
+    import UnityPy
+    wanted, n = set(ids or ENEMY_SPINES), 0
+    for f in sorted(Path(ab_root).glob(ENEMY_ART)):
+        if not wanted:
+            break
+        try:
+            env = UnityPy.load(str(f))
+        except Exception as e:  # corrupt or unsupported bundle: report and continue
+            log(f'FAIL load {f.name}: {e}')
+            continue
+        objects = {o.path_id: o for o in env.objects}
+        for name, ref in env.container.items():
+            eid = enemy_spine_id(name, wanted)
+            if not eid:
+                continue
+            try:
+                k = write_enemy_spine(objects, ref.read_typetree(), eid, out_root, manifest, log)
+            except Exception as e:
+                log(f'  warn {eid}: {e}')
+                continue
+            if k:
+                wanted.discard(eid)
+                n += k
+                log(f'{f.relative_to(ab_root).as_posix()}: {eid} -> {ENEMY_SPINE_SUB}/{eid} ({k} files)')
+    for eid in sorted(wanted):
+        log(f'skip (not found) enemy Spine {eid}')
+    return n
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument('--game', help='AssetBundle root (…/StreamingAssets/AB/Windows or …/Documents/Bundles)')
@@ -398,7 +560,8 @@ def main():
                 for rel, sub, kinds, keep in map(job_parts, JOBS)]
         derived = [{'sub': sub, 'from': src, 'derive': kind, 'name': name} for sub, src, kind, name in DERIVED]
         print(json.dumps({'emoteThemes': [{'themeId': t, 'dir': d} for t, d in EMOTE_THEMES], 'jobs': jobs,
-                          'derived': derived}, ensure_ascii=False))
+                          'derived': derived, 'enemySpines': {'bundles': ENEMY_ART, 'sub': ENEMY_SPINE_SUB,
+                                                              'ids': ENEMY_SPINES}}, ensure_ascii=False))
         return 0
 
     ab_root = Path(args.game) if args.game else next((p for p in CANDIDATES if p.exists()), None)
@@ -406,7 +569,8 @@ def main():
         print('No Arknights install found. Pass --game <AssetBundle root>.', file=sys.stderr)
         return 2
     jobs = select_jobs(args.only)
-    if not jobs:
+    enemy_spines = wants_sub(args.only, ENEMY_SPINE_SUB)
+    if not jobs and not enemy_spines:
         print(f'--only {args.only}: no job matches', file=sys.stderr)
         return 2
     out_root = Path(args.out)
@@ -415,6 +579,8 @@ def main():
     print(f'AB root: {ab_root}')
     for job in jobs:
         total += export_bundle(ab_root, job, out_root, manifest, print)
+    if enemy_spines:
+        total += export_enemy_spines(ab_root, out_root, manifest, print)
     old = {}
     if args.only and Path(args.manifest).exists():
         try:

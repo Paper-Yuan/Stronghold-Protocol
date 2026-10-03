@@ -35,17 +35,21 @@ function onDefaultSkill(chess) {
   return !d || !chess?.skill || d.skillId === chess.skill.skillId;
 }
 
-/** 蒂比 take-off (起飞): airborne — blocks flyers only (flags.blockFly of the skill), releases ground enemies. */
+/**
+ * 起飞 of 蒂比's skills (gamedata_const ba.liftoff "不阻挡地面敌人且不会被地面敌人攻击，可以阻挡飞行敌人"): the skill's flags
+ * `liftoff` (no ground enemy blocked — Battle._blockerFor; 对地规避 — targeting.js evadesGround: no ground enemy selects
+ * her, while what selects nobody still lands — 无视无法选择 abilities, direct picks, flying units' blasts, 无来源 damage, the
+ * ticks of a debuff already on her) and `blockFly` (blocks flyers at the air radius). She stays a ground unit on her tile (PRTS 行动方式 "起飞的
+ * 干员仍然是地面单位": `unit.ground` unchanged — 隐德来希's 血镰, 地面干员 bonds / items still count her).
+ */
+const LIFTOFF_FLAGS = Object.freeze({ blockFly: true, liftoff: true });
+/** 蒂比 take-off: the ground enemies she blocked walk on. */
 function tippiTakeOff({ battle, unit }) {
-  unit.mem.tippiGround = unit.ground;
-  unit.ground = false;
   battle.releaseBlocked(unit);
   battle.fx('takeoff', { x: unit.x, y: unit.y, id: unit.id });
 }
-/** 蒂比 landing when the airborne skill ends. */
+/** 蒂比 landing when the airborne skill ends: the flyers she held are released. */
 function tippiLand({ battle, unit }) {
-  if (unit.mem.tippiGround != null) unit.ground = unit.mem.tippiGround;
-  unit.mem.tippiGround = null;
   battle.releaseBlocked(unit);
 }
 
@@ -592,13 +596,17 @@ export default {
   },
 
   // ---------------------------------------------------------------------------------------------------------------
-  // 2_13 蒂比 紧急赶场通知 (AUTO): "受到攻击后触发" — any incoming enemy attack sets it off (the kit is the only
-  // trigger: the engine rule is disabled so non-attack damage never fires it) and a physical/arts one is dodged; takes
-  // off for the duration: skill range, ATK +atk, attacks become 3 shots, blocks flying (not ground) enemies. Trait
-  // "起飞后能够阻挡2个飞行敌人": flying enemies are blocked only while airborne. 片场工作指南: if not attacked for
-  // stack_time s, the next physical/arts attack is dodged (prob); every attack restarts that timer.
+  // 2_13 蒂比 紧急赶场通知 (AUTO): "受到攻击后触发" is officially "受到伤害前触发" (PRTS 修正 原因 6; 备注 "在受到伤害前自动
+  // 触发技能…若本次伤害为物理或法术，再将本次伤害闪避") — any incoming damage instance (an attack, a zone tick, the 源石溶剂
+  // drain; never a 流失, which has no `hit`) sets it off (the kit is the only trigger: the engine rule is disabled) and a
+  // physical/arts one is dodged; takes off for the duration: skill range, ATK +atk, attacks become 3 shots, blocks flying
+  // (not ground) enemies. Trait "起飞后能够阻挡2个飞行敌人": flying enemies are blocked only while airborne. 片场工作指南
+  // ("若最近N秒内未受伤害" — 修正 原文 攻击): if no damage for stack_time s, the next physical/arts damage is dodged (prob);
+  // every damage instance restarts that timer (dodged or not; a 流失 does not — PRTS 备注).
   // S1 专业喷绘技巧 (alt, DEFAULT trigger from data): takes off at once for its duration — skill range, ATK +atk, blocks
   // flyers only; no triple shot, and incoming attacks never set it off.
+  // Both take off as 起飞 (LIFTOFF_FLAGS): she blocks no ground enemy and none selects her (对地规避), so a ground enemy's
+  // selected damage refused on the way never reaches her `hit` and neither sets off S2 nor restarts 片场工作指南.
   chess_char_2_13_a: (bb, chess, def) => {
     const t = talentBb(chess, 0);
     const s2 = onDefaultSkill(chess);
@@ -606,7 +614,7 @@ export default {
       trait: { blockFly: false },
       skill: {
         kind: 'duration', trigger: { rule: 'CUSTOM_RANGE', grid: [] }, // never by the engine: the hit handler below
-        mods: { atkPct: num(bb.atk) }, flags: { blockFly: true },
+        mods: { atkPct: num(bb.atk) }, flags: LIFTOFF_FLAGS,
         targeting: { rangeGrid: def?.skill?.rangeGrid ?? null },
         attack: { hits: 3 },
         onStart: tippiTakeOff,
@@ -614,7 +622,7 @@ export default {
       },
       skills: {
         skchr_tippi_1: {
-          kind: 'duration', mods: { atkPct: num(bb.atk) }, flags: { blockFly: true },
+          kind: 'duration', mods: { atkPct: num(bb.atk) }, flags: LIFTOFF_FLAGS,
           targeting: { rangeGrid: def?.skill?.rangeGrid ?? null },
           onStart: tippiTakeOff,
           onEnd: tippiLand,
@@ -627,7 +635,7 @@ export default {
         battle.on('deploy', ({ unit: u }) => { if (u === unit) last = battle.time - st; }, { owner: unit });
         onHitOn(battle, unit, (ctx) => {
           const { dmg } = ctx;
-          if (!byEnemyAttack(ctx) || dmg.cancel || !up(unit)) return;
+          if (!dmg || dmg.cancel || !up(unit)) return;
           const dodgeable = dmg.type === 'phys' || dmg.type === 'arts';
           const sk = unit.skill;
           let dodged = false;
@@ -679,7 +687,7 @@ export default {
           for (const a of alliesInGridOf(battle, unit)) {
             if (a === unit || a.kind !== 'op') continue;
             battle.fx('sonic', { x: a.x, y: a.y, radius: rad, id: unit.id });
-            for (const e of battle.enemiesInRadius(a.x, a.y, rad)) {
+            for (const e of battle.foesInRadius(a.x, a.y, rad)) {
               if (!e.s.flags.untargetable) battle.dealDamage(unit, e, { amount: unit.s.atk * sc, type: 'arts', isSkill: true, isSplash: true, tags: ['sonic'] });
             }
           }
@@ -754,7 +762,7 @@ export default {
         kind: 'duration', mods: { atkPct: num(bb.atk), defPct: num(bb.def) }, attack: { hitAllBlocked: true },
         onStart({ battle, unit }) {
           const grid = def?.skill?.rangeGrid;
-          const foes = grid ? enemiesInGrid(battle, unit, grid, { canHitFly: false, groundOnly: true }) : battle.enemiesInRadius(unit.x, unit.y, 1.5).filter((e) => !e.isFlying);
+          const foes = grid ? enemiesInGrid(battle, unit, grid, { canHitFly: false, groundOnly: true }) : battle.foesInRadius(unit.x, unit.y, 1.5).filter((e) => !e.isFlying);
           battle.fx('aoe', { x: unit.x, y: unit.y, radius: 1.5, id: unit.id, skill: 'resolve' });
           for (const e of foes) battle.applyStatus(e, 'tremble', { duration: num(bb.not_combat), source: unit });
         },
@@ -781,7 +789,8 @@ export default {
   },
 
   // ---------------------------------------------------------------------------------------------------------------
-  // 2_18 灰毫 攻击力强化·γ型 (TAKE_DAMAGE): ATK +atk. 炮术研习: ATK +atk, or +ashlok_t_1.atk when the `cnt` orthogonal
+  // 2_18 灰毫 攻击力强化·γ型 (DEFAULT, like S2: the owner's deliberate deviation from the 重装 TAKE_DAMAGE row, data
+  // TRIGGER_DEVIATIONS, DESIGN §21.29): ATK +atk. 炮术研习: ATK +atk, or +ashlok_t_1.atk when the `cnt` orthogonal
   // tiles around her are all ground (LOW). Elite module (FOR-X, trait atk_scale): vs blocked enemies ATK ×atk_scale.
   // S2 专注轰击 (alt): block count 0 (noBlock: releases what she holds), only ranged (splash) attacks, base attack time
   // +base_attack_time s (−0.4 / −0.5 on 2.8), ATK +atk.
@@ -838,7 +847,7 @@ export default {
             battle.fx('zone', { x, y, radius, dur, id: unit.id, skill: 'tinman1' });
             battle.every(STEP, (b, sc) => {
               const pulse = i % per === 0;
-              for (const e of b.enemiesInRadius(x, y, radius)) {
+              for (const e of b.foesInRadius(x, y, radius)) {
                 if (e.isFlying || e.s.flags.untargetable) continue;
                 if (weak > 0) b.applyStatus(e, 'weaken', { duration: STEP + 0.05, value: weak, source: unit });
                 if (wither > 1) b.addBuff(e, { key: 'tinman:wither', duration: STEP + 0.05, data: { mul: wither }, source: unit });

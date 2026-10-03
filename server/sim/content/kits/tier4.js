@@ -16,8 +16,9 @@
 //   groupId `abyssal` (data/chess.json has no groupId: charIds from docs/research/03-operators.json).
 // - "友方干员" effects touch operators only (summons/devices excluded); SP gifts skip units whose timed skill runs
 //   (AK: no SP gain during a skill — the engine's gainSp enforces it too; the kits skip such units when picking).
-// - On-hit statuses of AoE skill attacks (卡涅利安) apply to every enemy the attack damages (a SkillSpec
-//   `attack.onHit` only sees the main target), via a `damaged` hook.
+// - On-hit effects of 卡涅利安's attacks land on every enemy the attack strikes — the 阵法术师 trait strikes every enemy
+//   on her range at once (professions.js `allInRange` / `rangeAoe`, community report E3): S2's 停顿 / 束缚 via a
+//   `damaged` hook, the charged S3 mark via a `hit` hook (it applies before the damage, PRTS 备注).
 // - Dodge from a skill that adds to other dodge sources (焰尾 S3) is rolled independently in a `hit` hook, so the
 //   sources combine as 1 − Π(1 − p) (the same rule the engine now applies to stacked dodge mods).
 // - Operator loadouts (DESIGN §16): every selectable non-default skill of the 22 visible chess is authored in the kit's
@@ -31,12 +32,21 @@ import { absoluteRangeKeys, canTargetEnemy, sortEnemyTargets } from '../../targe
 import { normalizeChess } from '../../simdata.js';
 import { aggregateMods } from '../../buffs.js';
 import { CAT_SHIELD_KEY } from '../tokens.js';
+import { isHpLoss } from '../../damage.js';
+import { holdsUndying } from '../items/battle.js';
 
 const TICK_EPS = 0.01;     // minimal status duration (s)
 const AURA = 0.2;          // aura refresh period (s)
 const AURA_DUR = 0.25;     // aura buff lifetime (s): lapses ~1 tick after the source stops refreshing it
 const ABYSSAL = new Set(['char_143_ghost', 'char_263_skadi', 'char_474_glady', 'char_4145_ulpia', 'char_1023_ghost2']);
 const LINE = Object.freeze(Array.from({ length: COLS }, (_, i) => Object.freeze([0, i])));
+/** 卡涅利安 S3 食噬之印: the ATK bonus climbs in 1 s steps over 20 s (PRTS 备注; the blackboard has no ramp time). */
+const BILLRO_S3_RAMP = 20;
+/** 卡涅利安 S3 charged mark: one buff per enemy, shared by every 卡涅利安 (PRTS 备注), ≤ 5 stacks (skill text). */
+const BILLRO_MARK = 'billro:mark';
+/** 阿罗玛's 非首次标记 (talent 起泡性能测试): one per enemy, shared by every 阿罗玛 (PRTS 备注). */
+const AROMA_MARK = 'aroma:bubbled';
+const BILLRO_MARK_MAX = 5;
 
 // ---------------------------------------------------------------------------------------------------------------
 // helpers
@@ -119,10 +129,13 @@ const reveal = (battle, enemies) => { for (const e of enemies) if (e.s.flags.ste
 function shove(battle, e, from, force) {
   return e && e.alive ? battle.push(e, num(force, 0), { from }) : 0;
 }
-/** Free tile for a summon/device: in the rect, standable, empty and not the home tile of any ally (dead ones redeploy there). */
+/**
+ * Free tile for a summon/device: in the rect, standable, not reserved (Battle.isReservedTile: empty, no knocked-out
+ * operator lying there) and not the home tile of any ally (dead ones redeploy there).
+ */
 function freeTile(battle, r, c, { ranged = false, ground = false } = {}) {
   if (!Number.isInteger(r) || !Number.isInteger(c) || !battle.grid.inRect(r, c)) return false;
-  if (battle.unitAt(r, c)) return false;
+  if (battle.isReservedTile(r, c)) return false;
   if (!battle.grid.canStand(r, c, { ranged })) return false;
   if (ground && !battle.grid.groundPassable(r, c)) return false;
   for (const u of battle.allyUnits) if (!u.removed && u.homeR === r && u.homeC === c && u.kind !== 'device') return false;
@@ -166,7 +179,11 @@ function lonely(battle, unit, diag = false) {
   }
   return true;
 }
-/** Permanent forward range extension ("攻击距离+1（不受技能攻击范围变化影响）": every range, skill ranges included). */
+/**
+ * Permanent forward range extension (攻击距离 +n): every range, skill ranges included — except a skill whose range ignores
+ * 攻击距离 (`targeting.noRangeExtend`). SPT-Y's "攻击距离+1（不受技能攻击范围变化影响）" reads, as PRTS 修正 it, "（部分技能不受
+ * 此影响）" (原因: 语序颠倒、表述模糊) — 信仰搅拌机 S3 备注 "此技能的攻击范围不受'攻击距离'属性影响".
+ */
 const rangeUp = (battle, unit, n = 1) => battle.addBuff(unit, { key: 'module:range', mods: { rangeExtend: n }, persist: true, allowDead: true });
 /**
  * Module "攻击范围扩大" given as a new range (the selected module's data-only talent `rangeGrid`, e.g. SPC-X / RIN-X:
@@ -197,7 +214,7 @@ function pullToFront(battle, unit, e, force) {
 const kits = {
   // ===== 信仰搅拌机 (shotprotector) S3 退休前布道 — ammo 30 counters; talents 扫射迎宾仪礼 / 架盾送客仪礼; module: reveal
   //       S1 铳骑主考官 (自动触发 ⇒ DEFAULT: next attack ×3 hits + reload an adjacent 拉特兰 ammo skill), S2 八臂电锯侠 (ammo;
-  //       a fatal hit is blocked for `ammo_cost` bullets); module SPT-Y 老朋友: range +1
+  //       a fatal hit is blocked for `ammo_cost` bullets); module SPT-Y 老朋友: range +1 (not on S3's range, PRTS 备注)
   chess_char_4_01_a: (bb, chess, def) => {
     const t0 = tbb(def, 0), t1 = tbb(def, 1);
     const counterMax = Math.max(1, Math.floor(num(bb['attack@max_target'], 3)));
@@ -233,7 +250,8 @@ const kits = {
       skill: {
         kind: 'ammo', ammo: num(bb['attack@trigger_time'], 30),
         mods: { hpPct: num(bb.max_hp), atkPct: num(bb.atk), defPct: num(bb.def) },
-        targeting: g ? { rangeGrid: g } : undefined,
+        // 3-13 exactly: SPT-Y's 攻击距离+1 does not reach it (PRTS 备注; reviewer of community report E1 after 0.1.0)
+        targeting: g ? { rangeGrid: g, noRangeExtend: true } : undefined,
         attack: { noAttack: true },                 // 停止主动攻击敌人 (ammo is spent by counters)
         onStart({ battle, unit }) {
           unit.mem.counterReady = -Infinity;
@@ -267,37 +285,51 @@ const kits = {
       install(battle, unit) {
         if (S2) {
           // S2 "技能期间若受到致命伤害，立即消耗N发弹药抵挡这次伤害": the lethal hit is negated (HP back to its value
-          // before the hit) while at least N bullets are left ([ASSUMED]: fewer bullets ⇒ no guard); 0 left ends the skill
+          // before the hit) and N bullets go; with fewer left it still blocks, spends them all and the skill ends (PRTS 备注
+          // "弹药量不足时仍可抵挡致命伤害，此时将消耗所有剩余弹药并退出技能状态"). "自身持有不死时此效果不会生效": a 不死
+          // that runs before it (骑士戒律, priority 20) has already prevented the hit; 坚固维式重锤's held window
+          // (items/battle.js holdsUndying: this deployment's, not run out) runs last, so the guard steps aside while it lasts
           const cost = Math.max(1, Math.floor(num(bb.ammo_cost, 30)));
           battle.on('hit', (c) => { if (c.target === unit) unit.mem.rmixerPre = { dmg: c.dmg, hp: unit.hp }; }, { owner: unit, priority: -100 });
           battle.on('fatal', (c) => {
             const sk = unit.skill;
-            if (c.unit !== unit || c.prevented || !sk || !sk.active || sk.kind !== 'ammo' || sk.ammoLeft < cost) return;
+            if (c.unit !== unit || c.prevented || !sk || !sk.active || sk.kind !== 'ammo' || !(sk.ammoLeft > 0)) return;
+            if (holdsUndying(battle, unit)) return;
             c.prevented = true;
             const pre = unit.mem.rmixerPre;
             unit.hp = pre && pre.dmg === c.dmg ? Math.max(1, Math.min(unit.s.maxHp, pre.hp)) : 1;
-            sk.ammoLeft -= cost;
-            battle.fx('shield', { x: unit.x, y: unit.y, id: unit.id, n: cost });
+            const spent = Math.min(cost, sk.ammoLeft);
+            sk.ammoLeft -= spent;
+            battle.fx('shield', { x: unit.x, y: unit.y, id: unit.id, n: spent });
             if (sk.ammoLeft <= 0) sk.end('ammo');
           }, { owner: unit });
         }
-        // module SPT-Y (elite, 老朋友): 攻击距离+1 (kept whatever range the skill sets)
+        // module SPT-Y (elite, 老朋友): 攻击距离+1 — S1 / S2 keep it, S3's 3-13 does not (noRangeExtend above)
         if (num(def.traitBb?.ability_range_forward_extend, 0) > 0) rangeUp(battle, unit, num(def.traitBb.ability_range_forward_extend, 1));
         // module SPT-X (elite default): 攻击范围内敌人的隐匿效果失效
         if (moduleIs(def, 'uniequip_002_rmixer')) whileDeployed(battle, unit, AURA, () => reveal(battle, enemiesOnRange(battle, unit)));
         if (!S3) return;
-        // S3 counter: when hit, fire one volley at ≤ 3 enemies in range (min interval = interval × ratio)
+        // S3 counter (PRTS 备注 "反击受到任何伤害后均可触发，无需目标，视为普通攻击，受各类无法触发普通攻击效果的影响"): ANY damage
+        // she takes — an enemy's attack, a zone, the 无来源 源石溶剂 tick (items/battle.js periodic_damage) — fires one volley at
+        // ≤ 3 enemies in range (the attacker first), at most once per actual interval × ratio. With no enemy in range the
+        // counter still happens and spends its bullet (无需目标: the drain alone empties the skill — 莫斯提马's 特质 turns those
+        // bullets into 拉特兰 layers, player report D1). A 流失 (Battle.loseHp, tag 'hpLoss': it skips every damage event —
+        // PRTS 作战机制) and an element 损伤 never counter; stunned / disarmed: no counter
         battle.on('damaged', (c) => {
-          if (c.target !== unit || !unit.canAct || !skillActive(unit) || !c.source || c.source.side !== 'enemy' || !c.dmg?.isAttack) return;
+          const d = c.dmg;
+          if (c.target !== unit || !unit.canAct || unit.s.flags.disarm || !skillActive(unit) || !d || c.type === 'element') return;
+          if (isHpLoss(d)) return;
           if (battle.time < (unit.mem.counterReady ?? -Infinity) - 1e-9) return;
           const list = targetsInRange(battle, unit);
-          const i = list.indexOf(c.source);
+          const i = c.source ? list.indexOf(c.source) : -1;
           if (i > 0) { list.splice(i, 1); list.unshift(c.source); }
           const targets = list.slice(0, counterMax);
-          if (!targets.length) return;
           unit.mem.counterReady = battle.time + unit.s.interval * counterRatio;
           unit.mem.inCounter = true;
-          try { battle.forceAttack(unit, targets); } finally { unit.mem.inCounter = false; }
+          try {
+            if (targets.length) battle.forceAttack(unit, targets);
+            else { unit.stats.attacks++; unit.skill.onAttackPerformed([], true); } // a counter into nothing: its bullet goes
+          } finally { unit.mem.inCounter = false; }
           battle.fx('counter', { x: unit.x, y: unit.y, id: unit.id, n: targets.length });
         }, { owner: unit });
       },
@@ -834,7 +866,7 @@ const kits = {
           kind: instantKind(def),
           attack: {
             atkScale: num(bb.atk_scale, 1.5),
-            onEachHit({ battle, unit, target }) { // every victim of the blast (main + splash) that flies
+            onEachHit({ battle, unit, target }) { // every enemy of her line the blast strikes that flies
               if (target && target.alive && target.isFlying) battle.dealDamage(unit, target, { amount: unit.s.atk * num(bb.atk_scale_to_fly, 0.55), type: 'arts', isSkill: true, tags: ['skill', 'antiAir'] });
             },
           },
@@ -842,13 +874,25 @@ const kits = {
       }),
       skill: { kind: 'duration', mods: { atkPct: num(bb.atk) }, onStart({ battle, unit }) { battle.fx('slippery', { x: unit.x, y: unit.y, id: unit.id }); } },
       talents: [{ install(battle, unit) { // first attack on each enemy: ×1.1 and levitate 2.5 s
-        unit.mem.bubbled = new Set();
+        // PRTS 阿罗玛 备注: "天赋采用施加非首次标记的方式判断是否为'首次进行攻击'，自身离场时移除自身已施加的标记，不同阿罗玛之间的
+        // 非首次标记通用" — one mark per enemy (AROMA_MARK, the setter as source) for every 阿罗玛; hers go when she leaves
+        // the field (until 0.1.1 each 阿罗玛 kept her own list, so two of them both triggered on one enemy)
+        unit.mem.bubbled = new Set(); // the enemies she marked
         battle.on('hit', (c) => {
           const e = c.target;
-          if (c.source !== unit || !c.dmg.isAttack || e.side !== 'enemy' || unit.mem.bubbled.has(e.id)) return;
+          if (c.source !== unit || !c.dmg.isAttack || e.side !== 'enemy' || e.findBuff(AROMA_MARK)) return;
+          battle.addBuff(e, { key: AROMA_MARK, source: unit });
           unit.mem.bubbled.add(e.id);
           c.dmg.mul *= num(t0.damage_scale, 1.1);
           if (battle.applyStatus(e, 'levitate', { duration: num(t0.levitate_duration, 2.5), source: unit })) battle.fx('levitate', { x: e.x, y: e.y, id: e.id });
+        }, { owner: unit });
+        battle.on('death', (c) => {
+          if (c.unit !== unit) return;
+          for (const id of unit.mem.bubbled) {
+            const e = battle.unitById(id);
+            if (e && e.findBuff(AROMA_MARK)?.source === unit) battle.removeBuff(e, AROMA_MARK);
+          }
+          unit.mem.bubbled.clear();
         }, { owner: unit });
       } }],
       install(battle, unit) {
@@ -958,7 +1002,7 @@ const kits = {
         onTick({ battle, unit, dt }) {
           const T = unit.mem.tornado;
           if (!T) return;
-          const inside = battle.enemiesInRadius(T.x, T.y, R);
+          const inside = battle.foesInRadius(T.x, T.y, R);
           for (const e of inside) pulse(battle, e, `glady:slow:${unit.id}`, { moveMul: Math.max(0, 1 + num(bb.move_speed, -0.5)) });
           T.acc += dt;
           if (T.acc + 1e-9 < iv) return;
@@ -975,7 +1019,7 @@ const kits = {
           const T = unit.mem.tornado;
           unit.mem.tornado = null;
           if (!T || reason === 'death' || !unit.alive) return;
-          for (const e of battle.enemiesInRadius(T.x, T.y, R)) pullSelf(battle, unit, e, force);
+          for (const e of battle.foesInRadius(T.x, T.y, R)) pullSelf(battle, unit, e, force);
           battle.fx('pull', { x: T.x, y: T.y, id: unit.id });
         },
       },
@@ -1151,7 +1195,7 @@ const kits = {
       install(battle, unit) {
         battle.on('damaged', (c) => {
           const t = c.target;
-          if (t.side !== 'ally' || !t.alive || !(c.amount > 0) || !t.findBuff(`reckpr:guard:${unit.id}`)) return;
+          if (t.side !== 'ally' || !t.alive || !(c.amount > 0) || isHpLoss(c.dmg) || !t.findBuff(`reckpr:guard:${unit.id}`)) return;
           battle.heal(unit, t, num(bb['attack@fixed_heal_value'], 80));
         }, { owner: unit });
         installLowHpHealBonus(battle, unit, tb);
@@ -1544,7 +1588,7 @@ const kits = {
         onStart({ battle, unit }) { battle.fx('featherArrow', { x: unit.x, y: unit.y, id: unit.id }); } },
       talents: [
         { install(battle, unit) { // 凝神: ATK +15 % when not hurt for 10 s
-          battle.on('damaged', (c) => { if (c.target === unit && c.amount > 0) unit.mem.lastHurt = battle.time; }, { owner: unit });
+          battle.on('damaged', (c) => { if (c.target === unit && c.amount > 0 && !isHpLoss(c.dmg)) unit.mem.lastHurt = battle.time; }, { owner: unit }); // (a 流失 is not 受伤害)
           battle.on('deploy', (c) => { if (c.unit === unit) unit.mem.lastHurt = -Infinity; }, { owner: unit });
           whileDeployed(battle, unit, 0.1, () => toggleBuff(battle, unit, 'fartth:focus', battle.time - (unit.mem.lastHurt ?? -Infinity) >= num(t0.delay, 10) - 1e-9, { atkPct: num(t0.atk, 0.15) }));
         } },
@@ -1712,11 +1756,17 @@ const kits = {
     };
   },
 
-  // ===== 卡涅利安 (phalanx) S2 沙缚镣锁 — faster AoE, 0.3 s sluggish; charged: ATK +10 % and bind; talents
-  //       S1 沙暴守卫 (SEARCH: ATK/DEF up; charged — cast with every charge stored — the trait's DEF/RES guard stays on);
-  //       S3 食噬之印 (wider range, ATK ramps to +140 %/+200 % over the skill; charged: every hit marks the target, +20 %
-  //       damage from her per mark, ≤ 5, until the skill ends). Talent 生命之餐 heals on every skill; module PLX-X keeps
-  //       part of the guard during any skill, PLX-Y (乡音): +3 % damage per enemy in range (≤ 5)
+  // ===== 卡涅利安 (phalanx) S2 沙缚镣锁 — faster attacks on every enemy in range (the trait's 群体法术伤害), 0.3 s
+  //       sluggish on each; charged: ATK +10 % and bind; talents
+  //       S1 沙暴守卫 (SEARCH: ATK/DEF up; charged — cast with every charge stored — "特性效果在技能期间继续生效", PRTS 备注
+  //       "应用蓄力时：应用技能未开启时的特性": the skill-off trait stays in force, the DEF/RES guard AND 不攻击 — she makes
+  //       no attack until the skill ends, a pure guard);
+  //       S3 食噬之印 (wider range, ATK +0 % → +140 %/+200 % in 1 s steps over 20 s — PRTS 备注; charged: each attack adds a
+  //       stack of the mark BEFORE its damage — PRTS 备注 "于攻击造成伤害前生效，多层效果之间加算叠加" — +20 % damage from
+  //       her per stack, ≤ 5, so ×1.2 on the first hit and ×2.0 from the 5th, until the skill ends; one mark per enemy:
+  //       another 卡涅利安 only adds stacks to it, the bonus is the setter's — PRTS 备注 popup). Talent 生命之餐 heals on
+  //       every skill; module PLX-X keeps part of the guard during any skill, PLX-Y (乡音): +3 % damage per enemy in range
+  //       (≤ 5)
   chess_char_4_24_a: (bb, chess, def) => {
     const t0 = tbb(def, 0), t1 = tbb(def, 1), mb = moduleBb(def);
     const tb = def.traitBb || {};
@@ -1724,15 +1774,17 @@ const kits = {
     const S1 = isSel(def, 'skchr_billro_1'), S2 = isSel(def, 'skchr_billro_2'), S3 = isSel(def, 'skchr_billro_3');
     const g = grid(def.skill?.rangeGrid);
     const isCharged = (skill) => skill.maxCharges > 1 && skill.charges + 1 >= skill.maxCharges; // cast with every charge stored
-    const markKey = (unit) => `billro:mark:${unit.id}`;
     return {
+      // charged S1: the skill-off trait's 不攻击 stays in force while the skill lasts (PRTS S1 备注) — no attack at all
+      trait: S1 ? { canAttack: (battle, u) => !(skillActive(u) && u.mem.billroCharged) } : null,
       skills: alt(def, {
         skchr_billro_1: () => ({
           kind: 'duration',
           mods: { atkPct: num(bb.atk), defPct: num(bb.def) },
           onStart({ battle, unit, skill }) {
             unit.mem.billroCharged = isCharged(skill);
-            // 蓄力额外效果：特性效果在技能期间继续生效 (the profession removes its own guard buff when a skill starts)
+            // 蓄力额外效果：特性效果在技能期间继续生效 (the profession removes its own guard buff when a skill starts; the
+            // kit trait's canAttack keeps the trait's 不攻击)
             if (unit.mem.billroCharged) battle.addBuff(unit, { key: 'billro:s1guard', mods: { defPct: num(unit.profile?.guardDef, 2), resFlat: num(unit.profile?.guardRes, 20) } });
             battle.fx('shell', { x: unit.x, y: unit.y, id: unit.id });
           },
@@ -1748,14 +1800,19 @@ const kits = {
             battle.addBuff(unit, { key: 'billro:s3atk', mods: { atkPct: 0 } });
             battle.fx('devour', { x: unit.x, y: unit.y, id: unit.id });
           },
-          onTick({ unit, skill, dt }) { // 攻击力逐渐增至+N% (linear over the skill duration)
+          onTick({ unit, dt }) { // 攻击力逐渐增至+N%: PRTS 备注 "从+0%开始在20秒内线性增加，攻击力每1秒更新1次"
             unit.mem.billroRamp = (unit.mem.billroRamp ?? 0) + dt;
+            const steps = Math.min(BILLRO_S3_RAMP, Math.floor(unit.mem.billroRamp + 1e-9));
             const b = unit.findBuff('billro:s3atk');
-            if (b) { b.mods = { atkPct: num(bb.atk) * Math.min(1, unit.mem.billroRamp / Math.max(0.1, skill.duration)) }; unit.markDirty(); }
+            if (b && b.mods.atkPct !== num(bb.atk) * steps / BILLRO_S3_RAMP) { b.mods = { atkPct: num(bb.atk) * steps / BILLRO_S3_RAMP }; unit.markDirty(); }
           },
           onEnd({ battle, unit }) {
             battle.removeBuff(unit, 'billro:s3atk');
-            for (const id of unit.mem.billroMarked || []) { const e = battle.unitById(id); if (e) battle.removeBuff(e, markKey(unit)); }
+            // "持续至技能结束": the marks she set end with her skill (stacks another 卡涅利安 added to them included)
+            for (const id of unit.mem.billroMarked || []) {
+              const e = battle.unitById(id);
+              if (e && e.findBuff(BILLRO_MARK)?.source === unit) battle.removeBuff(e, BILLRO_MARK);
+            }
             unit.mem.billroMarked = null;
             unit.mem.billroCharged = false;
           },
@@ -1803,22 +1860,26 @@ const kits = {
           }, { owner: unit });
         }
         if (S3) {
-          // charged S3: each hit adds a mark (≤ 5) — +20 % damage taken from her per mark until the skill ends
+          // charged S3 食噬之印: each attack adds a stack BEFORE its damage (PRTS 备注 "于攻击造成伤害前生效"); stacks add up,
+          // +20 % damage taken from the mark's setter per stack. One mark per enemy (PRTS 备注 popup: "存在则为已有的BUFF叠加
+          // 一次加成，不存在则给与敌人仅对此卡涅利安的伤害生效的一个食噬之印BUFF"): another 卡涅利安 stacks it without the bonus
+          const per = num(bb['attack@damage_scale'], 0.2);
           battle.on('hit', (c) => {
-            if (c.source !== unit) return;
-            const m = c.target.findBuff?.(markKey(unit));
-            if (m) c.dmg.mul *= 1 + num(bb['attack@damage_scale'], 0.2) * (m.stacks || 1);
-          }, { owner: unit });
-          battle.on('damaged', (c) => {
             const e = c.target;
-            if (c.source !== unit || !c.dmg?.isAttack || e.side !== 'enemy' || !e.alive || !skillActive(unit) || !unit.mem.billroCharged) return;
-            battle.addBuff(e, { key: markKey(unit), refresh: 'stack', maxStacks: 5, duration: Math.max(0.1, (unit.skill?.timeLeft ?? 0) + 0.1), source: unit, visible: true });
-            unit.mem.billroMarked?.add(e.id);
+            if (c.source !== unit || e.side !== 'enemy') return;
+            let m = e.findBuff?.(BILLRO_MARK) || null;
+            if (c.dmg.isAttack && skillActive(unit) && unit.mem.billroCharged) {
+              if (m) battle.addBuff(e, { key: BILLRO_MARK, refresh: 'stack', maxStacks: BILLRO_MARK_MAX, duration: m.timeLeft });
+              else {
+                m = battle.addBuff(e, { key: BILLRO_MARK, refresh: 'stack', maxStacks: BILLRO_MARK_MAX, duration: Math.max(0.1, (unit.skill?.timeLeft ?? 0) + 0.1), source: unit, visible: true });
+                if (m) unit.mem.billroMarked?.add(e.id);
+              }
+            }
+            if (m && m.source === unit) c.dmg.mul *= 1 + per * (m.stacks || 1);
           }, { owner: unit });
         }
         if (!S2) return;
-        // "每次攻击对目标造成0.3秒停顿" (charged: 束缚): every enemy damaged by her AoE skill attack — the splash victims
-        // too (a SkillSpec attack.onHit only sees the main target)
+        // "每次攻击对目标造成0.3秒停顿" (charged: 束缚): every enemy her attack damages — each one on her range
         battle.on('damaged', (c) => {
           const e = c.target;
           if (c.source !== unit || !c.dmg || !c.dmg.isAttack || e.side !== 'enemy' || !e.alive || !skillActive(unit)) return;
@@ -1908,7 +1969,7 @@ const kits = {
             if (S2 && skillActive(unit)) {
               // S2: motes orbit wider and hit enemies instead of operators
               const hitAt = unit.mem.moteHit || (unit.mem.moteHit = new Map());
-              const foes = battle.enemiesInRadius(unit.x, unit.y, num(bb.outside_radius, 2)).filter((e) => canTargetEnemy(unit, e, { canHitFly: true }))
+              const foes = battle.foesInRadius(unit.x, unit.y, num(bb.outside_radius, 2)).filter((e) => canTargetEnemy(unit, e, { canHitFly: true }))
                 .sort((a, b) => a.id - b.id);
               for (const e of foes) {
                 if ((hitAt.get(e.id) ?? -Infinity) > battle.time + 1e-9) continue;

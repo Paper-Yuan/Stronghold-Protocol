@@ -9,7 +9,10 @@
 // an item that has a `giveBondId` (research 02 §2.1).
 // Special rules:
 //   调和 (maniShip): while active, every CORE bond that already has ≥ 1 real member on the board gets count +1
-//                    (one +1 total, research 02 §2.1 [ASSUMED]).
+//                    (one +1 total, research 02 §2.1 [ASSUMED]). Such a state carries `harmony: 1` — the views send it
+//                    (bondList: m.private bonds, m.public players[].bonds), so the client's bond popup can say where the
+//                    extra count comes from without re-deriving the rule (DESIGN §21.26); the battle input does not
+//                    (bondSnapshot).
 //   助力 (deputShip): tier 1 needs `thresholds[0]` distinct operators; the upper tiers count operators that differ
 //                    in name OR elite state (PRTS 修正).
 //   独行 (soloShip, count_threshold_downward): active iff 1 ≤ count ≤ maxCount (distinct 独行 operators).
@@ -45,10 +48,10 @@ export function pieceBonds(gd, piece) {
 }
 
 /**
- * Compute every bond's state for a player.
+ * Compute every bond's state for a player. `harmony` (only present when it applies) = the +1 that 调和 added to `count`.
  * @param {import('./gamedata.js').GameData} gd
  * @param {{ board: Map<string, any>, hand: Array<any>, layers: Record<string, number>, bondCountBonus?: Record<string, number> }} ps
- * @returns {Record<string, { count: number, active: boolean, tier: number, layers: number }>}
+ * @returns {Record<string, { count: number, active: boolean, tier: number, layers: number, harmony?: number }>}
  */
 export function computeBonds(gd, ps) {
   const boardChess = [];
@@ -71,7 +74,7 @@ export function computeBonds(gd, ps) {
   }
   const goldenOnBoard = boardChess.filter((p) => gd.isGolden(p.id)).length;
 
-  /** @type {Record<string, { count: number, active: boolean, tier: number, layers: number }>} */
+  /** @type {Record<string, { count: number, active: boolean, tier: number, layers: number, harmony?: number }>} */
   const out = {};
   const layersOf = (id) => {
     const v = ps.layers && ps.layers[id];
@@ -101,8 +104,8 @@ export function computeBonds(gd, ps) {
   const harmonyActive = harmony && raw[HARMONY_BOND] != null && tierFor(harmony, raw[HARMONY_BOND]) >= 1;
   for (const id of Object.keys(raw)) {
     const bond = gd.bond(id);
-    let count = raw[id];
-    if (harmonyActive && bond.isCore && (onBoard.get(id)?.size ?? 0) >= 1) count += 1;
+    const harmonyBonus = harmonyActive && bond.isCore && (onBoard.get(id)?.size ?? 0) >= 1 ? 1 : 0;
+    const count = raw[id] + harmonyBonus;
     let tier = tierFor(bond, count);
     if (id === DEPUTY_BOND && tier >= 1) {
       // upper tiers: operators differing in name OR elite state
@@ -113,6 +116,7 @@ export function computeBonds(gd, ps) {
       tier = t;
     }
     out[id] = { count, active: tier >= 1, tier, layers: layersOf(id) };
+    if (harmonyBonus) out[id].harmony = harmonyBonus;
   }
   return out;
 }
@@ -145,6 +149,7 @@ export function activatedLayers(bonds) {
 
 /**
  * View list for m.private / m.public: bonds with members or layers, active first, then layers desc, then data order.
+ * An entry whose count includes 调和's +1 carries `harmony: 1` (both views; absent otherwise).
  * @param {import('./gamedata.js').GameData} gd
  * @param {ReturnType<typeof computeBonds>} bonds
  * @param {{ full?: boolean }} [opts] full → include thresholds/countsHand (m.private)
@@ -155,6 +160,7 @@ export function bondList(gd, bonds, { full = false } = {}) {
   for (const [bondId, b] of Object.entries(bonds || {})) {
     if (!(b.count > 0 || b.layers > 0 || b.active)) continue;
     const e = { bondId, count: b.count, active: b.active, tier: b.tier, layers: b.layers };
+    if (b.harmony > 0) e.harmony = b.harmony;
     if (full) {
       const bond = gd.bond(bondId);
       e.thresholds = bond ? thresholdsOf(bond) : [];

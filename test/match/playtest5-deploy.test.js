@@ -219,7 +219,9 @@ describe('#7 audit: every stage × deploy field (server = official level data = 
   });
 
   test('independent check against the raw official level files (buildableType / heightType + non-hidden devices)', { skip: !HAS_LEVELS && 'no .cache/gamedata level files (run node tools/build-data.mjs once)' }, () => {
-    const ROLE = { trap_1105_accrate: 'block', trap_032_mound: 'block', trap_1106_achplat: 'platform' };
+    // trap_040_canoe 特制水上平台 "在水上建立可以部署任意单位的平台"; tile_deepsea refuses deployment whatever its
+    // buildableType (PRTS 深水区 地形信息 "地形机制：拒绝部署（待补充）" — player report #3 after 0.1.0, 战场#08's pool)
+    const ROLE = { trap_1105_accrate: 'block', trap_032_mound: 'block', trap_1106_achplat: 'platform', trap_040_canoe: 'water' };
     for (const [id, st] of Object.entries(DATA.stages)) {
       const lv = JSON.parse(readFileSync(levelFile(id), 'utf8'));
       const map = lv.mapData.map, tiles = lv.mapData.tiles, H = map.length;
@@ -231,6 +233,8 @@ describe('#7 audit: every stage × deploy field (server = official level data = 
         if (!t || d === 'block') return null;
         // 射击台: ranged only [ASSUMED, DATA §15.11] (the remake's rule for a raised platform)
         if (d === 'platform') return 'ranged';
+        if (d === 'water') return 'melee';
+        if (t.tileKey === 'tile_deepsea') return null;
         if (t.heightType === 'LOWLAND' && (t.buildableType === 'ALL' || t.buildableType === 'MELEE')) return 'melee';
         if (t.buildableType === 'RANGED' || (t.heightType === 'HIGHLAND' && t.buildableType === 'ALL')) return 'ranged';
         return null;

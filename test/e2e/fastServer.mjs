@@ -20,6 +20,8 @@
 // the hand: the seat keeps no board and leaks).
 // SP_ELIMINATE=<humanIdx,…>: those humans (seat order) are eliminated at the jump, before the round's boss pairing — an
 // eliminated spectator from the first round on (test/ui/watch-bonds.e2e.test.js, the Final Assault).
+// SP_STAGE=<stageId>: every match is played on this stage instead of the drawn one (test/ui/feedback1-placement.e2e.test.js:
+// 战场#08's pool).
 // Not a test file (node --test runs it as a no-op module when NODE_TEST_CONTEXT is set).
 
 import { startServer } from '../../server/index.js';
@@ -43,12 +45,18 @@ if (!process.env.NODE_TEST_CONTEXT) {
   const botChess = String(process.env.SP_BOT_CHESS || '').split(',').map((x) => x.trim()).filter(Boolean);
   const autoPlace = process.env.SP_AUTO_PLACE === '1';
   const eliminate = String(process.env.SP_ELIMINATE || '').split(',').map((x) => x.trim()).filter(Boolean).map(Number);
+  const forcedStage = String(process.env.SP_STAGE || '').trim();
 
   class FastMatch extends Match {
     constructor(opts) {
       super({ ...opts, timerScale, combatSpeed });
       this._jumped = !startAt;
       this._placeRound = null;
+      if (forcedStage && this.gd.stage(forcedStage)) {
+        this.stageId = forcedStage;
+        this.stage = this.gd.stage(forcedStage);
+        for (const ps of this.players.values()) ps.invalidateDeployMap();
+      }
     }
 
     startRound(r) {

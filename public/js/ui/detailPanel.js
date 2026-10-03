@@ -1,12 +1,19 @@
 // Detail panel (click / right-click a piece, shop card, bond member, battle unit or previewed enemy):
 // operators — portrait, name, tier, elite, class/subclass and, right under them in the header's right column (no
 // scrolling, user playtest #2 item 9), the unit's bonds (阵营 / 盟约: icon, name, member count / next threshold,
-// reached tier, active state — tap one for its popup); right under the header the operator's own effect (特质 —
+// reached tier, active state — tap one for its popup; a bond the mode never activates reads 本局禁用, gameLogic
+// modeOffBonds; a bond its 变形同构体 pairing grants (gameLogic pieceBondIds: its piece's items, a teammate's unit:
+// UnitInfo `items`, a bond popup's 同构 row: the wearer's) has a dashed chip tagged 同构 — the wearer counts for it);
+// right under the header the operator's own effect (特质 —
 // garrison: type chip (its official type icon + eventTypeDesc such as 整备能力, garrisonTypeIconKey) + description,
 // compact, visible without scrolling: user playtest #3 items 8 / 9), the class trait (特性), stats + range mini-map, skill (the one chosen in the loadout, DESIGN §16: icon, SP
 // info, rich description, 已调配 when not the default), elite module (模组: official type icon from the local-client
-// art, else its letter), equipped items, talents (CHESS_SECTIONS); items — icon, tier,
-// effect; tokens — the owner's variant (a golden owner's summon: its `_b` stats / skill), how a placed summon takes
+// art, else its letter), equipped items (read-only from those `items` when the card has no own piece), talents
+// (CHESS_SECTIONS); items — icon, tier,
+// effect; 变形同构体 (`canGiveBond`) also its 天赋栏 list (MorphPairings, gameLogic morphPairings: per bond the items that
+// make the wearer its member, 本局禁用 marked; on a wearer's card the pairing it wears highlighted, 生效中 — GitHub issue
+// #1, DESIGN §21.26) and a bond item (`giveBondId`) the line "与变形同构体一同装备时，携带者视为【X】成员" (MorphGrantLine);
+// tokens — the owner's variant (a golden owner's summon: its `_b` stats / skill), how a placed summon takes
 // the field (shared/constants.js SKILL_SUMMON_START_DEPLOY), its token skill and talents; enemies — stats, rank,
 // faction tags, abilities. Selling / destroying is the underframe's job in the
 // match (research 09 §5, ui/underframe.js): the panel's own 出售 / 销毁 buttons only render for callers that pass
@@ -17,11 +24,14 @@
 // getter re-read 4× a second: current HP, max HP, ATK, DEF, RES, attack interval, block), in prep the stats the own
 // board's units start their next battle with (m.unitStats: equipment, bonds / layers, 特质, band and 机变 effects). Each
 // value is coloured against the unit's base like the official card — green when it helps (higher, or a shorter attack
-// interval) with the difference beside it, red when it hurts — and a 实时 / 开战时 tag says which it is.
+// interval) with the difference beside it, red when it hurts — and a 实时 / 开战时 tag says which it is. The 攻击范围
+// mini-map follows the live entry's `range` too (cardRangeGrid: the grid the unit attacks with now — a running skill's
+// range such as 烛煌 S3's 4-11, rangeExtend included; community report E1 after 0.1.0, it used to stay the base grid);
+// a grid larger than the box (RANGE_FIT) draws smaller cells (rangeGridStyle), a whole-field one reads 全场.
 
 import { html, Icon, TierChip, MicroLabel, Button, confirmDialog, useTicker } from './components.js';
 import { Img, RichText, UnitThumb, BondGlyph, GIcon } from './gameComponents.js';
-import { attackInterval, rangeGridBox, fmtNum, tileKey, chessLoadout, nextThreshold, bondTier } from './gameLogic.js';
+import { attackInterval, rangeGridBox, fmtNum, tileKey, chessLoadout, nextThreshold, bondTier, briefingBondTip, pieceBondIds, grantedBonds, morphPairings } from './gameLogic.js';
 import { chessPortraitUrl, skillIconUrl, skillRecordIconUrl, profIconUrl, subProfIconUrl, itemIconUrl, enemyIconUrl, tokenAvatarUrl, factionIconUrl, uiUrl, moduleTypeIconUrl } from './assetUrls.js';
 import { data } from '../data.js';
 import { attackRangeGrid } from '../../../shared/loadoutRecord.js';
@@ -38,8 +48,40 @@ const EVENT_ICON = { IN_BATTLE: 's_icon_battle', SERVER_GAIN: 's_icon_bond', SER
 const RANK = { NORMAL: '普通', ELITE: '精英', BOSS: '领袖' };
 const DMG = { phys: '物理', arts: '法术', heal: '治疗', true: '真实', none: '无' };
 
+/** A range grid of at least this many tiles covers the field (纯烬艾雅法拉 S3 "攻击范围扩大至整个战场"): named, not drawn. */
+export const FIELD_WIDE_CELLS = 400;
+/**
+ * Columns × rows of the mini-map's own cells (.14rem, 2px apart) the card's range box holds without growing: the widest
+ * record attack range (灰毫's 6 columns) and the tallest live one (银灰 S3's 7 rows). A larger grid — a live skill range
+ * such as 远牙 S3's line to the field's edge (21 tiles) — draws smaller cells, edge to edge, in that space, so the box keeps
+ * its size and the stats beside it stay readable.
+ */
+export const RANGE_FIT = Object.freeze({ cols: 6, rows: 7 });
+
+/** Inline style of the mini-map (rangeGridBox `box`): its columns, and smaller cells when the grid exceeds RANGE_FIT. */
+export function rangeGridStyle(box) {
+  const cols = `grid-template-columns:repeat(${box.cols}, var(--rg))`;
+  if (box.cols <= RANGE_FIT.cols && box.rows <= RANGE_FIT.rows) return cols;
+  const fit = (n, k) => `calc((${k} * .14rem + ${(k - 1) * 2}px) / ${n})`;
+  return `${cols};gap:0;--rg:max(1px, min(.14rem, ${fit(box.cols, RANGE_FIT.cols)}, ${fit(box.rows, RANGE_FIT.rows)}))`;
+}
+
+/**
+ * The grid the card's 攻击范围 shows: the live entry's `range` (shared/protocol.js unitStatsEntry — what the unit attacks
+ * with now: a running skill's range, rangeExtend included), else the loadout record's attack range at deployment
+ * (shared/loadoutRecord.js attackRangeGrid: an elite's module grid, a passive range skill, the 特性's 攻击距离 — the same
+ * tiles as the board overlay and the deploy wheel), else the record's own.
+ * @param {any} live unitStatsEntry (+ src) or null @param {any} rec loadout-resolved record @param {any} chess
+ * @returns {number[][]|null}
+ */
+export function cardRangeGrid(live, rec, chess) {
+  if (live && Array.isArray(live.range) && live.range.length) return live.range;
+  return attackRangeGrid(rec) || chess?.rangeGrid || null;
+}
+
 /** Mini range map. */
 export function RangeGrid({ grid, class: cls }) {
+  if (Array.isArray(grid) && grid.length >= FIELD_WIDE_CELLS) return html`<span class=${cx('rgrid-all', cls)} aria-label="攻击范围">全场</span>`;
   const box = rangeGridBox(grid);
   if (!box.cells.size) return html`<span class="t-dim">—</span>`;
   const cells = [];
@@ -49,7 +91,7 @@ export function RangeGrid({ grid, class: cls }) {
       cells.push(html`<i key=${`${r},${c}`} class=${cx(box.cells.has(tileKey(r, c)) && 'on', self && 'self')}></i>`);
     }
   }
-  return html`<div class=${cx('rgrid', cls)} style=${`grid-template-columns:repeat(${box.cols}, var(--rg))`} aria-label="攻击范围">${cells}</div>`;
+  return html`<div class=${cx('rgrid', cls)} style=${rangeGridStyle(box)} aria-label="攻击范围">${cells}</div>`;
 }
 
 function Stat({ k, v, sub, tone = null, title }) {
@@ -119,42 +161,106 @@ function Section({ title, micro, children, class: cls }) {
   </section>`;
 }
 
-function ItemRow({ itemId }) {
+const isOffIn = (off, bondId) => !!(off && typeof off.has === 'function' && off.has(bondId));
+
+/**
+ * The 变形同构体's 天赋栏 (gameLogic morphPairings): "搭配以下装备时，携带者视为对应盟约的成员：", then one line per bond — 【bond】
+ * and the items that pair with it; a bond the mode never activates (`off`, gameLogic modeOffBonds) struck through with
+ * 本局禁用. `carried` (the wearer's items — the card shows the item on an operator): the pairing it wears is highlighted
+ * (生效中; 已搭配 when that bond is off), and a wearer without one reads 暂未生效.
+ * @param {{ off?: Set<string>|null, carried?: Array<string|{id:string}>|null }} props
+ */
+export function MorphPairings({ off = null, carried = null }) {
+  const rows = morphPairings(data.list('items'), data.list('bonds'), { off, carried });
+  if (!rows.length) return null;
+  const wearer = Array.isArray(carried);
+  return html`<div class=${cx('dmorph', wearer && 'is-wearer')}>
+    <p class="dmorph__lead">搭配以下装备时，携带者视为对应盟约的成员：</p>
+    <ul class="dmorph__list" aria-label="变形同构体对应关系">
+      ${rows.map((r) => html`<li key=${r.bondId} class=${cx('dmorph__row', r.off && 'is-off', r.worn && 'is-worn')} data-bond=${r.bondId}
+          title=${`${r.items.map((it) => it.name).join('、')} → 【${r.name}】${r.off ? '（本局禁用）' : ''}`}>
+        <span class="dmorph__bond">【${r.name}】</span>
+        <span class="dmorph__items">${r.items.map((it, i) => html`<span key=${it.id} class=${cx('dmorph__item', it.worn && 'is-worn')}>${i ? '、' : ''}${it.name}</span>`)}${r.worn
+          ? html`<span class="dmorph__tag is-on">${r.off ? '已搭配' : '生效中'}</span>` : null}${r.off ? html`<span class="dmorph__tag is-off">本局禁用</span>` : null}</span>
+      </li>`)}
+    </ul>
+    ${wearer && !rows.some((r) => r.worn) ? html`<p class="dmorph__none">暂未生效：需与上表中的一件装备一同携带</p>` : null}
+  </div>`;
+}
+
+/**
+ * A bond item's own line (items.json `giveBondId`): "与变形同构体一同装备时，携带者视为【X】成员" — 本局禁用 when the mode never
+ * activates X; on a wearer that also carries a 变形同构体 (`carried`) it is in effect (生效中).
+ * @param {{ item: any, off?: Set<string>|null, carried?: Array<string|{id:string}>|null }} props
+ */
+export function MorphGrantLine({ item, off = null, carried = null }) {
+  const bond = item && !item.canGiveBond && typeof item.giveBondId === 'string' ? data.lookup('bonds', item.giveBondId) : null;
+  if (!bond) return null;
+  const morph = data.list('items').find((r) => r && r.canGiveBond);
+  if (!morph) return null;
+  const isOff = isOffIn(off, item.giveBondId);
+  const worn = grantedBonds(carried, (id) => data.lookup('items', id)).includes(item.giveBondId);
+  return html`<p class=${cx('dhint', 'dhint--morph', worn && 'is-worn', isOff && 'is-off')} data-bond=${item.giveBondId}>
+    <${Icon} name="info" /><span>与${morph.name}一同装备时，携带者视为【${bond.name}】成员${isOff ? html`<span class="dmorph__tag is-off">本局禁用</span>` : null}${worn
+      ? html`<span class="dmorph__tag is-on">${isOff ? '已搭配' : '生效中'}</span>` : null}</span>
+  </p>`;
+}
+
+/** An equipped item of the card: icon, name, effect — and for 变形同构体 / a bond item its pairing (`carried`: the wearer's items). */
+function ItemRow({ itemId, carried = null, off = null }) {
   const it = data.lookup('items', itemId);
   return html`<div class="ditem">
     <${UnitThumb} kind="item" id=${itemId} size="sm" />
-    <div class="ditem__text"><b>${it?.name || itemId}</b><${RichText} text=${it?.descRaw || it?.desc || ''} class="ditem__desc" /></div>
+    <div class="ditem__text"><b>${it?.name || itemId}</b><${RichText} text=${it?.descRaw || it?.desc || ''} class="ditem__desc" />
+      ${it?.canGiveBond ? html`<${MorphPairings} off=${off} carried=${carried || []} />` : it?.giveBondId ? html`<${MorphGrantLine} item=${it} off=${off} carried=${carried} />` : null}</div>
   </div>`;
 }
 
 /**
  * The unit's bonds right under the header: icon, name, the player's member count / next threshold, reached tier.
- * @param {{ bondIds: string[], bonds?: any[], onBond?: (bondId: string) => void }} props
+ * `granted`: the bonds among them the unit holds through 变形同构体 (dashed chip, 同构 tag).
+ * @param {{ bondIds: string[], bonds?: any[], onBond?: (bondId: string) => void, off?: Set<string>|null, granted?: string[] }} props —
+ *   off: the bonds the mode never activates (gameLogic modeOffBonds): 本局禁用 instead of the count
  */
-export function BondChips({ bondIds, bonds = [], onBond = null }) {
+export function BondChips({ bondIds, bonds = [], onBond = null, off = null, granted = [] }) {
   const ids = Array.isArray(bondIds) ? bondIds.filter((b) => typeof b === 'string') : [];
   if (!ids.length) return null;
+  const iso = new Set(Array.isArray(granted) ? granted : []);
   const mine = new Map((Array.isArray(bonds) ? bonds : []).filter((b) => b && typeof b.bondId === 'string').map((b) => [b.bondId, b]));
   return html`<div class="dbonds dbonds--top" role="list" aria-label="所属盟约">
     ${ids.map((id) => {
       const rec = data.lookup('bonds', id);
+      // a bond this mode never activates (gameLogic modeOffBonds): 本局禁用, no count or tier pips
+      const isOff = !!(off && typeof off.has === 'function' && off.has(id));
       const e = mine.get(id) || null;
       const th = Array.isArray(e?.thresholds) && e.thresholds.length ? e.thresholds : Array.isArray(rec?.thresholds) ? rec.thresholds : [];
       const count = Number.isFinite(e?.count) ? e.count : 0;
-      const tier = Number.isFinite(e?.tier) ? e.tier : bondTier(count, th, rec?.maxCount ?? null);
-      const active = e ? !!e.active : tier > 0;
+      const tier = isOff ? 0 : Number.isFinite(e?.tier) ? e.tier : bondTier(count, th, rec?.maxCount ?? null);
+      const active = !isOff && (e ? !!e.active : tier > 0);
       const next = nextThreshold(count, th);
       const cap = next ?? th[th.length - 1] ?? null;
-      const label = `${rec?.name || id}：在场 ${count}${cap != null ? `/${cap}` : ''}${active ? `，已激活 ${tier} 阶` : '，未激活'}`;
-      const body = html`
+      const isoTag = iso.has(id) ? '（变形同构体）' : '';
+      // the count holds 调和's +1 (the server's bond entry says so, DESIGN §21.26)
+      const harmonyTag = !isOff && Number.isInteger(e?.harmony) && e.harmony > 0 ? `（含调和 +${e.harmony}）` : '';
+      const label = isOff ? briefingBondTip(rec?.name || id, 'off')
+        : `${rec?.name || id}${isoTag}：在场 ${count}${cap != null ? `/${cap}` : ''}${harmonyTag}${active ? `，已激活 ${tier} 阶` : '，未激活'}`;
+      const body = isOff
+        ? html`
         <${BondGlyph} bondId=${id} class="dbond__icon" />
         <span class="dbond__name">${rec?.name || id}</span>
+        ${iso.has(id) ? html`<span class="dbond__iso">同构</span>` : null}
+        <span class="dbond__off">本局禁用</span>`
+        : html`
+        <${BondGlyph} bondId=${id} class="dbond__icon" />
+        <span class="dbond__name">${rec?.name || id}</span>
+        ${iso.has(id) ? html`<span class="dbond__iso">同构</span>` : null}
         <span class=${cx('dbond__count', 'num', next == null && count > 0 && 'is-max')}>${count}${cap != null ? html`<small>/${cap}</small>` : null}</span>
         ${th.length ? html`<span class="dbond__tiers" aria-hidden="true">${th.map((_, i) => html`<i key=${i} class=${i < tier ? 'on' : ''}></i>`)}</span>` : null}`;
+      const cls = cx('dbond', active && 'is-active', isOff && 'is-off', rec?.isCore && 'is-core', iso.has(id) && 'is-granted');
       return onBond
-        ? html`<button key=${id} type="button" role="listitem" class=${cx('dbond', active && 'is-active', rec?.isCore && 'is-core')} title=${label} aria-label=${label}
-            data-bond=${id} onClick=${() => onBond(id)}>${body}</button>`
-        : html`<span key=${id} role="listitem" class=${cx('dbond', active && 'is-active', rec?.isCore && 'is-core')} title=${label} data-bond=${id}>${body}</span>`;
+        ? html`<button key=${id} type="button" role="listitem" class=${cls} title=${label} aria-label=${label}
+            data-bond=${id} data-granted=${iso.has(id) ? '1' : null} onClick=${() => onBond(id)}>${body}</button>`
+        : html`<span key=${id} role="listitem" class=${cls} title=${label} data-bond=${id} data-granted=${iso.has(id) ? '1' : null}>${body}</span>`;
     })}
   </div>`;
 }
@@ -204,7 +310,7 @@ function GarrisonBlock({ garrison, m }) {
   </section>`;
 }
 
-export function ChessDetail({ chess, piece, unit, snapHp, editable, onSell, bonds, loadout, onBond, live = null, hint = null }) {
+export function ChessDetail({ chess, piece, unit, snapHp, editable, onSell, bonds, offBonds = null, loadout, onBond, live = null, hint = null, unitItems = null }) {
   const m = data.get('assets');
   const hp = hpOf(live, snapHp);
   const lo = chessLoadout(chess, loadout, (id) => data.lookup('chess', id));
@@ -220,6 +326,12 @@ export function ChessDetail({ chess, piece, unit, snapHp, editable, onSell, bond
   const skSlot = sk && Number.isInteger(sk.index) ? `S${sk.index + 1}` : null;
   const garrison = Array.isArray(c.garrisonIds) && c.garrisonIds[0] ? data.lookup('garrisons', c.garrisonIds[0]) : null;
   const items = Array.isArray(piece?.items) ? piece.items : [];
+  // the bonds the unit counts for: its own + a 变形同构体 pairing's (its piece's items; without one: `unitItems` — a
+  // teammate's unit's UnitInfo items, a bond popup 同构 row's wearer's)
+  const carried = piece ? items : (Array.isArray(unitItems) ? unitItems : []);
+  const getItem = (id) => data.lookup('items', id);
+  const bondIds = pieceBondIds(c, carried, getItem);
+  const grantedIds = bondIds.filter((b) => !(Array.isArray(c.bonds) && c.bonds.includes(b)));
   const sell = c.sellPrice ?? 1;
   const blocks = {};
   blocks.head = html`
@@ -244,7 +356,7 @@ export function ChessDetail({ chess, piece, unit, snapHp, editable, onSell, bond
           <span class="dhead__pos">${c.position === 'MELEE' ? '近战位' : '远程位'}</span>
         </div>
         ${hp ? html`<div class="dhp"><i style=${`width:${Math.max(0, Math.min(100, (hp.hp / Math.max(1, hp.max)) * 100))}%`}></i><span class="num">${fmtNum(hp.hp)} / ${fmtNum(hp.max)}</span></div>` : null}
-        <${BondChips} bondIds=${c.bonds} bonds=${bonds} onBond=${onBond} />
+        <${BondChips} bondIds=${bondIds} bonds=${bonds} off=${offBonds} onBond=${onBond} granted=${grantedIds} />
       </div>
     </div>`;
   blocks.garrison = garrison ? html`<${GarrisonBlock} key="garrison" garrison=${garrison} m=${m} />` : null;
@@ -268,7 +380,7 @@ export function ChessDetail({ chess, piece, unit, snapHp, editable, onSell, bond
         <${Stat} k="部署费用" v=${s.cost ?? '—'} />
         <${Stat} k="再部署" v=${s.respawnTime != null ? `${s.respawnTime}s` : '—'} />
       </div>
-      <div class="drange"><span class="dstat__k">攻击范围</span><${RangeGrid} grid=${attackRangeGrid(fr) || c.rangeGrid} /></div>
+      <div class="drange"><span class="dstat__k">攻击范围</span><${RangeGrid} grid=${cardRangeGrid(live, fr, c)} /></div>
     </div>`;
   blocks.skill = sk ? html`<${Section} key="skill" title="技能" micro="SKILL" class="dsec--skill">
       <div class="dskill" data-skill=${sk.skillId || ''}>
@@ -295,8 +407,13 @@ export function ChessDetail({ chess, piece, unit, snapHp, editable, onSell, bond
         ${!lo.defaultModule ? html`<span class="dtag-loadout" title="干员调配中选择的模组">已调配</span>` : null}
       </div>
     <//>` : null;
+  // (a 变形同构体 / bond item row shows its pairing against what this operator carries: ItemRow `carried`)
   blocks.equip = piece?.kind === 'chess' ? html`<${Section} key="equip" title="装备" micro=${`EQUIP ${items.length}/2`} class="dsec--equip">
-      ${items.length ? items.map((it) => html`<${ItemRow} key=${it.uid} itemId=${it.id} />`) : html`<p class="t-dim dempty">拖拽装备至该干员以配发（最多 2 件）</p>`}
+      ${items.length ? items.map((it) => html`<${ItemRow} key=${it.uid} itemId=${it.id} carried=${items} off=${offBonds} />`) : html`<p class="t-dim dempty">拖拽装备至该干员以配发（最多 2 件）</p>`}
+    <//>`
+    // no own piece (a teammate's unit, a bond popup's 变形同构体 row): what it carries, read-only
+    : !piece && carried.length ? html`<${Section} key="equip" title="装备" micro=${`EQUIP ${carried.length}/2`} class="dsec--equip">
+      ${carried.map((id, i) => html`<${ItemRow} key=${`${i}:${id}`} itemId=${id} carried=${carried} off=${offBonds} />`)}
     <//>` : null;
   blocks.talents = Array.isArray(fr.talents) && fr.talents.some((t) => t && t.name && !t.hidden) ? html`<${Section} key="talents" title="天赋" micro="TALENT" class="dsec--talent">
       ${fr.talents.filter((t) => t && t.name && !t.hidden).map((t, i) => html`<div key=${i} class="dtalent"><b>${t.name}</b><${RichText} text=${t.descRaw || t.desc} class="dtext" /></div>`)}
@@ -311,10 +428,13 @@ export function ChessDetail({ chess, piece, unit, snapHp, editable, onSell, bond
 }
 
 /**
- * An item's card (hand / temp / shop / equipped). An effect-only item (items.json `shopExcluded`: the special 维式重锤,
- * 突变细胞 — user playtest #4 item 5) says it is never sold and where it comes from (`shopExcludedBy`).
+ * An item's card (hand / temp / shop / reward card). An effect-only item (items.json `shopExcluded`: the special 维式重锤,
+ * 突变细胞 — user playtest #4 item 5) says it is never sold and where it comes from (`shopExcludedBy`); a rule the
+ * official text leaves out (items.json `note`: 突变细胞 returns to the hand after each use) is shown under the effect.
+ * 变形同构体 lists its pairings (its 天赋栏: MorphPairings, `offBonds` marks 本局禁用); a bond item says which bond it gives
+ * a 变形同构体 wearer (MorphGrantLine). (An equipped item is shown on its wearer's card: ChessDetail's 装备 rows.)
  */
-export function ItemDetail({ item, piece, editable, onDestroy }) {
+export function ItemDetail({ item, piece, editable, onDestroy, offBonds = null }) {
   const m = data.get('assets');
   return html`
     <div class="dhead dhead--item">
@@ -327,6 +447,9 @@ export function ItemDetail({ item, piece, editable, onDestroy }) {
       </div>
     </div>
     <${Section} title="效果" micro="EFFECT"><${RichText} as="p" text=${item.descRaw || item.desc} class="dtext" /><//>
+    ${item.canGiveBond ? html`<${Section} title="天赋" micro="TALENT" class="dsec--morph"><${MorphPairings} off=${offBonds} /><//>` : null}
+    ${!item.canGiveBond && item.giveBondId ? html`<${MorphGrantLine} item=${item} off=${offBonds} />` : null}
+    ${item.note ? html`<p class="dhint dhint--rule"><${Icon} name="info" />${item.note}</p>` : null}
     ${item.itemType === 'MAGIC'
       ? html`<p class="dhint"><${Icon} name="info" />将其拖拽至战场上的格子使用</p>`
       : html`<p class="dhint"><${Icon} name="info" />拖拽至干员身上进行配发（每名干员最多 2 件，配发后无法取下）${item.mergeable ? '；2 件相同装备自动合成进阶装备' : ''}</p>`}
@@ -470,7 +593,12 @@ export function resolveDetail(target, pieces) {
     const c = data.lookup('chess', p.id);
     return c ? { type: 'chess', chess: c, piece: p } : null;
   }
-  if (target.kind === 'chess') { const c = data.lookup('chess', target.id); return c ? { type: 'chess', chess: c, hint: target.hint || null } : null; }
+  if (target.kind === 'chess') {
+    // a bond popup's 变形同构体 row hands the wearer's item ids on (bondStrip onMember): the card shows the pair and the chip
+    const c = data.lookup('chess', target.id);
+    const items = Array.isArray(target.items) ? target.items.filter((x) => typeof x === 'string') : [];
+    return c ? { type: 'chess', chess: c, hint: target.hint || null, ...(items.length ? { unitItems: items } : {}) } : null;
+  }
   if (target.kind === 'item') { const it = data.lookup('items', target.id); return it ? { type: 'item', item: it } : null; }
   if (target.kind === 'enemy') { const en = data.lookup('enemies', target.id); return en ? { type: 'enemy', enemy: en, count: target.count } : null; }
   if (target.kind === 'token') { const t = data.lookup('tokens', target.id); return t ? { type: 'token', token: t } : null; }
@@ -479,7 +607,7 @@ export function resolveDetail(target, pieces) {
     const own = Number.isInteger(u.uid) ? pieces?.get(u.uid) : null;
     if (u.side === 'enemy') { const en = data.lookup('enemies', u.defId); return en ? { type: 'enemy', enemy: en, unitId: u.id } : null; }
     const c = data.lookup('chess', u.defId);
-    if (c) return { type: 'chess', chess: c, piece: own?.piece || null, unitId: u.id };
+    if (c) return { type: 'chess', chess: c, piece: own?.piece || null, unitId: u.id, unitItems: Array.isArray(u.items) ? u.items : null };
     const t = data.lookup('tokens', u.defId);
     if (t) return { type: 'token', token: t, unitId: u.id, ownerId: tokenOwnerId(own?.piece, pieces) };
     const en = data.lookup('enemies', u.defId);
@@ -491,14 +619,15 @@ export function resolveDetail(target, pieces) {
 /**
  * The panel.
  * @param {{ detail:any, editable:boolean, snapHp?:{hp:number,max:number}|null, onClose:Function, onSell:(piece:any)=>void, onDestroy:(piece:any)=>void,
- *   bonds?: any[], loadout?: any, onBond?: (bondId:string)=>void, side?: 'left'|'right', shopOpen?: boolean }} props
- *   bonds: the owner's m.private.bonds (counts / tiers of the bond chips); loadout: m.private.loadout (DESIGN §16) for
+ *   bonds?: any[], offBonds?: Set<string>|null, loadout?: any, onBond?: (bondId:string)=>void, side?: 'left'|'right', shopOpen?: boolean }} props
+ *   bonds: the owner's m.private.bonds (counts / tiers of the bond chips); offBonds: the bonds this mode never activates
+ *   (gameLogic modeOffBonds — their chips and the 变形同构体 pairing lines read 本局禁用); loadout: m.private.loadout (DESIGN §16) for
  *   the player's own operators and shop cards; a teammate's unit gets its owner's choice (gameLogic unitLoadout); null
  *   = the defaults
  *   live: the unit's live stats (unitStatsEntry + src 'battle' | 'prep') — an object, or a getter the panel re-reads 4×
  *   a second (the battle's own sim, battle/runner.js unitStats); null ⇒ the record's numbers
  */
-export function DetailPanel({ detail, editable, snapHp, onClose, onSell, onDestroy, bonds = [], loadout = null, onBond = null, side = 'left', shopOpen = false, live = null }) {
+export function DetailPanel({ detail, editable, snapHp, onClose, onSell, onDestroy, bonds = [], offBonds = null, loadout = null, onBond = null, side = 'left', shopOpen = false, live = null }) {
   const getter = typeof live === 'function' ? live : null;
   useTicker(detail && getter ? 250 : 0);
   if (!detail) return null;
@@ -521,8 +650,8 @@ export function DetailPanel({ detail, editable, snapHp, onClose, onSell, onDestr
     <button type="button" class="dpanel__close" aria-label="关闭" onClick=${onClose}><${Icon} name="close" /></button>
     <div class="dpanel__scroll">
       ${detail.type === 'chess' ? html`<${ChessDetail} chess=${detail.chess} piece=${detail.piece} snapHp=${snapHp} editable=${editable} onSell=${sellIt}
-        bonds=${bonds} loadout=${loadout} onBond=${onBond} live=${liveNow} hint=${detail.hint || null} />` : null}
-      ${detail.type === 'item' ? html`<${ItemDetail} item=${detail.item} piece=${detail.piece} editable=${editable} onDestroy=${destroyIt} />` : null}
+        bonds=${bonds} offBonds=${offBonds} loadout=${loadout} onBond=${onBond} live=${liveNow} hint=${detail.hint || null} unitItems=${detail.unitItems || null} />` : null}
+      ${detail.type === 'item' ? html`<${ItemDetail} item=${detail.item} piece=${detail.piece} editable=${editable} onDestroy=${destroyIt} offBonds=${offBonds} />` : null}
       ${detail.type === 'enemy' ? html`<${EnemyDetail} enemy=${detail.enemy} snapHp=${snapHp} count=${detail.count} live=${liveNow} />` : null}
       ${detail.type === 'token' ? html`<${TokenDetail} token=${detail.token} piece=${detail.piece} ownerId=${detail.ownerId ?? null} snapHp=${snapHp} live=${liveNow} />` : null}
     </div>

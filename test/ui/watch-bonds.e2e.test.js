@@ -101,9 +101,10 @@ async function chipPopup(c, ownerId) {
     await c.page.mouse.click(pt.x, pt.y);
     const card = await c.page.waitForSelector('.dpanel button.dbond[data-bond]', { timeout: 2500 }).then(() => true).catch(() => false);
     if (!card) continue;
+    // a bond the mode switches off (标准: 本局禁用, since 0.1.1) shows no count on its chip: take a live one when there is one
     const chip = await c.page.evaluate(() => {
-      const el = document.querySelector('.dpanel button.dbond[data-bond]');
-      return { bondId: el.getAttribute('data-bond'), count: el.querySelector('.dbond__count')?.firstChild?.textContent ?? null };
+      const el = document.querySelector('.dpanel button.dbond[data-bond]:not(.is-off)') || document.querySelector('.dpanel button.dbond[data-bond]');
+      return { bondId: el.getAttribute('data-bond'), count: el.querySelector('.dbond__count')?.firstChild?.textContent ?? null, off: el.classList.contains('is-off') };
     });
     await c.page.click(`.dpanel button.dbond[data-bond="${chip.bondId}"]`);
     await c.page.waitForSelector('.bpop', { timeout: 3000 });
@@ -112,7 +113,7 @@ async function chipPopup(c, ownerId) {
       return { owner: el.getAttribute('data-owner'), label: el.getAttribute('aria-label'), tag: el.querySelector('.bpop__owner')?.textContent || '',
         count: el.querySelector('.bpop__facts b.num')?.textContent ?? null, on: el.querySelectorAll('.bpop__member.is-on').length };
     });
-    return { ...pop, bondId: chip.bondId, chipCount: chip.count, defId: pt.defId };
+    return { ...pop, bondId: chip.bondId, chipCount: chip.count, off: chip.off, defId: pt.defId };
   }
   return null;
 }
@@ -334,7 +335,7 @@ describe('DESIGN §20.15 — the bond strip shows the watched teammate\'s bonds 
       assert.equal(chip.owner, '阿米娅', `全景: the guest's unit chip opens the guest's popup (${JSON.stringify(chip)})`);
       assert.match(chip.tag, /阿米娅.*的盟约/);
       assert.equal(chip.count, guestNow.counts[chip.bondId] ?? '0', `the guest's member count (${JSON.stringify({ chip, guestNow })})`);
-      assert.equal(chip.chipCount, chip.count, 'the chip and its popup agree');
+      if (!chip.off) assert.equal(chip.chipCount, chip.count, 'the chip and its popup agree');
       if (Number(chip.count) > 0) assert.ok(chip.on >= 1, `the guest's operators in play are listed as members (${JSON.stringify(chip)})`);
       st = await stripOf(host);
       assert.equal(st.owner, null, 'the strip stays the host\'s on 全景');
@@ -361,7 +362,7 @@ describe('DESIGN §20.15 — the bond strip shows the watched teammate\'s bonds 
       assert.equal(chip.owner, null, `the partner's half: an own unit's chip opens the host's own popup (${JSON.stringify(chip)})`);
       assert.equal(chip.tag, '');
       assert.equal(chip.count, hostNow.counts[chip.bondId] ?? '0', `the host's member count (${JSON.stringify({ chip, hostNow })})`);
-      assert.equal(chip.chipCount, chip.count, 'the chip and its popup agree');
+      if (!chip.off) assert.equal(chip.chipCount, chip.count, 'the chip and its popup agree');
       st = await stripOf(host);
       assert.equal(st.owner, '阿米娅', 'the strip stays the guest\'s on that half');
       await closeCard(host);
@@ -590,7 +591,7 @@ describe('DESIGN §20.15 — the bond strip shows the watched teammate\'s bonds 
       const secondNow = await bondsOf(guest, second);
       assert.equal(chip.owner, second, `全景: ${second}'s unit chip opens ${second}'s popup (${JSON.stringify(chip)})`);
       assert.equal(chip.count, secondNow.counts[chip.bondId] ?? '0', `${second}'s member count (${JSON.stringify({ chip, secondNow })})`);
-      assert.equal(chip.chipCount, chip.count, 'the chip and its popup agree');
+      if (!chip.off) assert.equal(chip.chipCount, chip.count, 'the chip and its popup agree');
       if (Number(chip.count) > 0) assert.ok(chip.on >= 1, `${second}'s operators in play are listed as members (${JSON.stringify(chip)})`);
       assert.equal((await stripOf(guest)).owner, first, 'the strip stays on the first player');
       await guest.shot('chip-second');

@@ -305,7 +305,7 @@ test('拉特兰: ammo ×(1.05+0.015L) floored; 6: every ammo used → all member
 // ---------------------------------------------------------------------------------------------------------------------
 // 阿戈尔
 
-test('阿戈尔: HP ×(1.35+0.01L); devour chain (left first): 5000 phys, base ATK + block, layers = devoured tiers', () => {
+test('阿戈尔: HP ×(1.35+0.01L); devour chain (left first): 5000 物理流失 less the target\'s DEF, base ATK + block, layers = devoured tiers', () => {
   const list = [
     ['g1_a', ['egirShip']], ['g2_a', ['egirShip']], ['g3_a', ['egirShip']],
     ['fod_a', ['preciShip'], { tier: 4, stats: { atk: 700, blockCnt: 3, maxHp: 20000, def: 900 } }],
@@ -319,13 +319,14 @@ test('阿戈尔: HP ×(1.35+0.01L); devour chain (left first): 5000 phys, base A
   const [g1, g2, g3, f] = ['g1_a', 'g2_a', 'g3_a', 'fod_a'].map((id) => h.unit(id));
   const devours = tagged(h, 'bond:egir:devour');
   assert.deepEqual(devours.map((c) => [c.source.defId, c.target.defId]), [['g1_a', 'g2_a'], ['g1_a', 'fod_a'], ['g2_a', 'fod_a']]);
-  for (const c of devours) close(c.amount, 5000);
+  // PRTS 盟约记录 "造成5000点物理流失"; PRTS 作战机制: a 物理流失 is reduced by the target's DEF
+  for (const c of devours) close(c.amount, Math.max(5000 - c.target.s.def, 5000 * 0.05));
   close(g1.s.atk, 1000 + 1000 + 700, 1e-6, 'g1 gains g2 + fodder base ATK');
   close(g2.s.atk, 1000 + 700);
   close(g3.s.atk, 1000);
   assert.equal(g1.s.blockCnt, 2 + 2 + 3);
   assert.equal(g2.s.blockCnt, 2 + 3);
-  close(f.hp, 20000 - 10000, 1e-6, '流失: DEF 900 ignored');
+  close(f.hp, 20000 - 2 * (5000 - 900), 1e-6, '物理流失: less DEF 900 (DEF-free until 0.1.1)');
   const Lnow = L + 1 + 4;                                   // g2 tier 1 + fodder tier 4, once each
   assert.equal(h.b.getPlayer('p1').bonds.egirShip.layers, Lnow);
   h.step(2);
@@ -334,7 +335,7 @@ test('阿戈尔: HP ×(1.35+0.01L); devour chain (left first): 5000 phys, base A
   checkInvariants(h.b);
 });
 
-test('阿戈尔 devour: 流失 ignores the marker’s damage bonuses and the target’s shields; a dead marker’s marks are cancelled; kill → marker', () => {
+test('阿戈尔 devour: 物理流失 ignores the marker’s damage bonuses and the target’s shields; a dead marker’s marks are cancelled; kill → marker', () => {
   const list = [
     ['g1_a', ['egirShip', 'kjeragShip']], ['g2_a', ['egirShip'], { stats: { maxHp: 3000 } }], ['g3_a', ['egirShip']],
     ['fod_a', ['preciShip'], { tier: 2, stats: { maxHp: 20000, def: 500 } }],
@@ -353,7 +354,7 @@ test('阿戈尔 devour: 流失 ignores the marker’s damage bonuses and the tar
   assert.ok(h.hooksOf('kill').some((c) => c.victim === g2 && c.killer === g1), 'kill credited to the marker');
   const dv = tagged(h, 'bond:egir:devour');
   assert.deepEqual(dv.map((c) => [c.source.defId, c.target.defId]), [['g1_a', 'g2_a'], ['g1_a', 'fod_a']], 'g2’s own mark on the fodder is cancelled');
-  close(f.hp, 20000 - 5000, 1e-6, 'exactly 5000: no ×1.25, no DEF, shield untouched');
+  close(f.hp, 20000 - (5000 - 500), 1e-6, '5000 less its DEF 500: no ×1.25, shield untouched');
   assert.equal(f.buffs.find((b) => b.key === 'test:shield')?.shield, 3000);
   close(g1.s.atk, 1000 + 1000 + 1000, 1e-6, 'the base ATK of everything it marked stays');
   assert.equal(h.b.getPlayer('p1').bonds.egirShip.layers, 1 + 2, 'layers = tiers of the devoured units');

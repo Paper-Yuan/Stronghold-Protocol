@@ -1,7 +1,9 @@
 // test/sim/bossfield.browser.test.js — the Final Assault / Hidden Core fields in the BROWSER sim (DESIGN §14: the
 // clients simulate the boss fields; the server re-simulates them for SP_VERIFY and takeovers). A real bot co-op match
-// (终极, seed 12: both pair fields carry two 奥术 players) is played to the Hidden Core with every active bond at the
-// official 999 layers (DESIGN §20.12); its four captured boss specs (R14 假想敌：胄 boss_1, R15 隐秘核心 boss_8) run to
+// (终极, seed 22 since 0.1.1 — the bots and the rules of 0.1.1 play seed 12 to boards without a 麻痹 or a 剑 / 锤
+// transfer on every field, and seed 14 since the 22-match R11 drafts to boards without a 麻痹; seed 22's pair fields
+// carry 奥术, 催泪瓦斯 and 限伤-sized hits) is played to the Hidden Core
+// with every active bond at the official 999 layers (DESIGN §20.12); its four captured boss specs (R14 假想敌：胄 boss_1, R15 隐秘核心 boss_8) run to
 // the end in Node and in headless Chrome through the client's own loader (public/js/battle/runner.js loadBrowserSim)
 // with the field's LocalBossPool, and must give the same result digest, the same pool and the same fx per kind.
 // The fields exercise the playtest-6b sim paths: 直接乘算 bonus sums (§20.10), one 奥术 instance per target
@@ -26,10 +28,10 @@ const enabled = (process.env.RENDER_E2E === '1' || process.env.SIM_E2E === '1') 
 const skip = enabled ? false : 'set SIM_E2E=1 or RENDER_E2E=1 (needs Chrome)';
 const MAX_SECONDS = 600; // game seconds (Battle.runToEnd): every captured field clears long before
 
-/** The boss / hidden specs of a 4-bot co-op match (终极, seed 12, boss_1 then boss_8), every active bond at 999. */
+/** The boss / hidden specs of a 4-bot co-op match (终极, seed 22, boss_1 then boss_8), every active bond at 999. */
 function captureBossSpecs() {
   const seats = [0, 1, 2, 3].map((i) => ({ seat: i, playerId: `ai_${i}`, name: `AI${i}`, isBot: true, connected: true }));
-  const h = makeMatch({ mode: 'coop', difficulty: 'ABYSS', seats, seed: 12, captureFrames: false, instant: false, clientCombat: true });
+  const h = makeMatch({ mode: 'coop', difficulty: 'ABYSS', seats, seed: 22, captureFrames: false, instant: false, clientCombat: true });
   const m = h.m;
   m.bossId = 'boss_1';
   m.hiddenBossId = 'boss_8';

@@ -26,6 +26,9 @@
 //     follows the same rule, server/sim/spec.js). Before, the per-player crediting of a report could leave 3.6e-12 that
 //     the browser could never deal (user playtest #6 item 5).
 //   * No IN_BATTLE layer gains (flags.layerGainsEnabled = false).
+//   * BOSS_HIT tickers (BOSS_HIT_STEPS 20 / 50 / 80 %): a player's damage to the round's pool (SharedBossPool.byPlayer)
+//     over its size, each threshold once per boss round — the Hidden Core never counts the Final Assault's damage
+//     (player report after 0.1.0: "隐藏boss还没打就出了造成50%伤害播报").
 //   * Hidden Core eligibility (after an R14 win): difficulty in hiddenCore.difficulties, the mode has a hidden round,
 //     Σ activated layers of the alive players measured at the end of the boss round's prep > threshold (solo 350 /
 //     co-op 1200) and team LP > minTeamLpExclusive (1).
@@ -33,6 +36,11 @@
 import { BOSS_ROW_OFFSET, COLS, BOSS_POOL_MIN_HP } from '../sim/constants.js';
 import { mirrorDir, normDir } from '../sim/dir.js';
 
+/**
+ * BOSS_HIT ticker thresholds (activity_table autoChessData.broadcastList comment_boss_hit_1..3, paramList 0.2 / 0.5 /
+ * 0.8: "{0}博士对敌方领袖造成的伤害超过20%!"): a player's damage to the current leader's pool over that pool
+ * (SharedBossPool.byPlayer — one pool per boss round, so the Final Assault and the Hidden Core count apart).
+ */
 export const BOSS_HIT_STEPS = [0.2, 0.5, 0.8];
 
 /**
@@ -80,7 +88,7 @@ export class SharedBossPool {
   constructor(hp, { onHit = null } = {}) {
     this.maxHp = Math.max(1, hp);
     this.hp = this.maxHp;
-    /** playerId → damage dealt */
+    /** playerId → damage dealt to this pool (this boss round only; the BOSS_HIT tickers' share) */
     this.byPlayer = new Map();
     this.onHit = onHit;
   }

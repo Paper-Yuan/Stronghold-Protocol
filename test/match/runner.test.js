@@ -444,6 +444,16 @@ test('live unit stats (user playtest #4 item 7): unitStats(id) reads the battle 
   assert.equal(r.runner.unitIdOf(ally.uid, ally.ownerId, 'n:someone_else'), null, 'another field');
   assert.equal(r.runner.unitIdOf(null, ally.ownerId), null);
   assert.equal(r.runner.unitStats('x'), null);
+  // a teammate's bond popup reads the owner's operators with their equipment (a 变形同构体 wearer is a member of the bond
+  // it grants: test/ui/morph-bonds.test.js); an operator without items keeps the plain shape
+  const saved = ally.items;
+  ally.items = ['chess_item_6_09_e_a', 'chess_item_1_01_e_a'];
+  const op = r.runner.ownerOps(ally.ownerId, start.fieldId).find((o) => o.defId === ally.defId);
+  assert.deepEqual(op, { kind: 'op', ownerId: ally.ownerId, defId: ally.defId, items: ['chess_item_6_09_e_a', 'chess_item_1_01_e_a'] });
+  ally.items = [];
+  assert.deepEqual(r.runner.ownerOps(ally.ownerId, start.fieldId).find((o) => o.defId === ally.defId), { kind: 'op', ownerId: ally.ownerId, defId: ally.defId });
+  ally.items = saved;
+  assert.deepEqual(r.runner.ownerOps(ally.ownerId, 'n:someone_else'), [], 'another field');
   // enemies too, once one is out
   for (let i = 0; i < 60 && !e.battle.enemies.some((x) => x.alive); i++) r.advance(500, 50);
   const foe = e.battle.enemies.find((x) => x.alive);

@@ -261,6 +261,7 @@ export function normalizeEnemy(key, e) {
     hpRecoveryPerSec: num(st.hpRecoveryPerSec ?? extra.hpRecoveryPerSec ?? e.hpRecoveryPerSec, 0),
     notCountInTotal: !!(e.notCountInTotal),
     hitArea: normHitArea(e.hitArea),   // huge units only (body.js); null = a point
+    staticBody: !!e.staticBody,        // 静态刚体: pushes / pulls never move it (Battle._displaceable)
     tags: e.tags ?? [],
     abilities: e.abilities ?? [],
     skills: e.skills ?? [],

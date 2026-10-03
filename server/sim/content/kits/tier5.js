@@ -12,10 +12,11 @@
 //   × elementalTakenMul = 元素脆弱), with `element` set for the client colour.
 // - Mechanics missing from the chess text follow the PRTS 备注 of the base operator (verified 2026-09-28): 号角 S3 overload
 //   is the second half of the 24 s duration; 圣约送葬人's extra attack consumes no ammo; 夕 S1 splash 1.7; 烛煌 revive stun
-//   radius 1.7; 寒檀 icicles splash 1.5 and cycle left row → right row → own row; 失重 = weight −1 level; 魔王 motes orbit
-//   at 1.15 (30°/s, hit radius 0.4); 铃兰 T2 is an aura (sluggish enemies in range are 脆弱 while sluggish); 缇缇's chain
-//   sleep picks the highest-aggro enemy within 1.5; 乌尔比安 lands on the anchor tile > the tile beyond > his own tile;
-//   引星棘刺 throws at the farthest forward tile when no enemy is in range; 夕 T2 summons only on a deployable target tile.
+//   radius 1.7, S3 splash 1.7 and its refilled ammo capped at the skill's ammo; 寒檀 icicles splash 1.5 and cycle left
+//   row → right row → own row; 失重 = weight −1 level; 魔王 motes orbit at 1.15 (30°/s, hit radius 0.4); 铃兰 T2 is an
+//   aura (sluggish enemies in range are 脆弱 while sluggish); 缇缇's chain sleep picks the highest-aggro enemy within
+//   1.5; 乌尔比安 lands on the anchor tile > the tile beyond > his own tile; 引星棘刺 throws at the farthest forward tile
+//   when no enemy is in range; 夕 T2 summons only on a deployable target tile.
 // - Non-stacking auras refresh a short buff with a fixed key every 0.25 s while the source is on the field.
 //   SP auras ("同类效果取最高") share the buff key `aura:spRecovery` (mods.spRecoveryFlat): the highest value wins.
 // - Skills whose auto-cast needs a condition the engine rules can't express use the NEVER trigger (CUSTOM_RANGE with an
@@ -35,7 +36,7 @@ import { COLS } from '../../constants.js';
 import { bodyInKeys, bodyInRadius, bodyKeys } from '../../body.js';
 import { absoluteRangeKeys, sortEnemyTargets } from '../../targeting.js';
 import { frontOf, rotateOffset, toLocal } from '../../dir.js';
-import { mitigate, hasHp } from '../../damage.js';
+import { mitigate, hasHp, isHpLoss } from '../../damage.js';
 
 // ---- text-only constants (the official blackboards carry no key for these) --------------------------------------
 /** 华法琳 S1 "只当目标生命值不满一半时才会触发"; 塞雷娅 S1 "血量小于等于一半"; 山 module "生命值高于50%时". */
@@ -48,6 +49,8 @@ const CANDLE_MIN_ATK = 0.35;
 const CANDLE_KEY = 'enemy_5601_entlec';
 /** 烛煌 绝处重燃 "使附近的敌人晕眩" radius (tiles). PRTS 备注: 1.7. */
 const NEARBY_RADIUS = 1.7;
+/** 烛煌 S3 "攻击变为群体攻击": splash radius around the target (tiles). PRTS 技能3 备注 "攻击溅射半径1.7". */
+const BLAZE_S3_SPLASH = 1.7;
 /** 玛恩纳 游侠 "周围存在3名及以上敌人" radius (8-neighbourhood). */
 const AROUND_RADIUS = 1.5;
 /** 安洁莉娜 S3 失重: weight (massLevel) reduction while weightless. PRTS: "重量下降一个等级". */
@@ -443,7 +446,7 @@ const KITS = {
             unit.mem.titiWardAcc = 0;
             for (const a of unit.mem.titiWard || []) {
               if (!a.alive || !a.deployed || !a.findBuff('titi:ward')) continue;
-              for (const e of battle.enemiesInRadius(a.x, a.y, RING1)) if (e.alive) battle.applyStatus(e, 'sleep', { duration: AURA_DUR, source: unit });
+              for (const e of battle.foesInRadius(a.x, a.y, RING1)) if (e.alive) battle.applyStatus(e, 'sleep', { duration: AURA_DUR, source: unit });
             }
           },
           onEnd({ battle, unit }) {
@@ -504,7 +507,7 @@ const KITS = {
         const asleep = new Map();
         // PRTS 备注: "向1.5半径内除该单位外仇恨值最高的敌方单位施加沉睡" — highest aggro (taunt) first, then the nearest
         const sleepOthers = (from) => {
-          const cands = battle.enemiesInRadius(from.x, from.y, radius).filter((o) => o !== from && !o.s.flags.sleep && !o.mem?.candleOwner)
+          const cands = battle.foesInRadius(from.x, from.y, radius).filter((o) => o !== from && !o.s.flags.sleep && !o.mem?.candleOwner)
             .sort((a, b) => (b.s.taunt || 0) - (a.s.taunt || 0) || dist(a, from) - dist(b, from) || a.spawnSeq - b.spawnSeq);
           let n = 0;
           for (const o of cands) {
@@ -556,8 +559,13 @@ const KITS = {
   },
 
   // ---------------------------------------------------------------------------------------------------------------
-  // 烛煌 — S3 众恶的焚场 (ammo): skill range, ATK +, BAT −1.3 s, hits every enemy in range, +attack@atk_scale ATK
-  // elemental damage vs targets in a burn burst; loses 3 % max HP/s; any burn burst on the field refills ammo.
+  // 烛煌 — S3 众恶的焚场 (ammo): skill range 4-11 (the targets; the DEFAULT cast still needs an enemy in 3-1), ATK +,
+  // BAT −1.3 s, "攻击变为群体攻击" = one target + a BLAZE_S3_SPLASH (1.7) splash around it (PRTS 备注 "攻击溅射半径1.7",
+  // 中点判定 — so the fire reaches past the diamond; it used to hit every enemy inside it instead, community report E1
+  // after 0.1.0), +attack@atk_scale ATK elemental damage to every enemy of the attack in a burn burst (main and splash),
+  // dealt BEFORE the attack's own damage ("于攻击造成伤害前判定元素爆发并造成元素伤害": a 'hit' hook — so a hit that kills
+  // or starts the burst keeps / does not get it); loses 3 % max HP/s; any burn burst on the field refills ammo_recover
+  // bullets, never above the skill's ammo ("补充后的弹药数量无法超过上限"). Each landed bolt shows its splash (fx 'splash' r 1.7).
   // T1 熔点引爆: burn burst anywhere → 350 % ATK elemental damage to it + heal 12 % max HP. T2 绝处重燃: downed instead of
   // dying (6000 shield, no attack, no heal, 3 %/s regen) → revives at full HP and stuns nearby enemies.
   // Module (elite): ×damage_scale vs enemies in an element burst.
@@ -596,7 +604,7 @@ const KITS = {
             battle.addBuff(t, {
               key: `blaze2:aid:${unit.id}`, duration: num(bb.max_duration, 20), interval: Math.max(0.1, num(bb.interval, 1)), visible: true, data: { src: unit },
               onTick: ({ unit: x }) => {
-                for (const e of battle.enemiesInRadius(x.x, x.y, r)) {
+                for (const e of battle.foesInRadius(x.x, x.y, r)) {
                   const d = battle.dealDamage(unit, e, { amount: unit.s.atk * num(bb.atk_scale), type: 'arts', isSkill: true, tags: ['skill', 'blazeAid'] });
                   if (d > 0 && e.alive) battle.dealDamage(unit, e, { type: 'element', element: 'burn', amount: d * num(bb.element_multiplier), tags: ['skill', 'blazeAid'] });
                 }
@@ -624,9 +632,11 @@ const KITS = {
         mods: mods({ atkPct: num(bb.atk), batPct: batPct(bb.base_attack_time, chess) }),
         targeting: skillGrid(chess, def) ? { rangeGrid: skillGrid(chess, def) } : undefined,
         attack: {
-          allInRange: true,
-          onHit({ battle, unit, target }) {
-            if (target && target.alive && target.findBuff('burnBurst')) elementHit(battle, unit, target, unit.s.atk * num(bb['attack@atk_scale']), 'blazeBurn', 'burn');
+          splashRadius: BLAZE_S3_SPLASH,
+          // the fire of each landed bolt (the screen rings splash attacks by sub-profession; 本源术师 is not one): once
+          // per attack at the main target / its spot — from the profile it was fired with, so the last bolt too
+          onHit({ battle, unit, target, x, y }) {
+            battle.fx('splash', { x, y, ...(target && target.alive ? { id: target.id } : {}), src: unit.id, r: BLAZE_S3_SPLASH, element: 'burn' });
           },
         },
         onStart({ unit }) { unit.mem.blazeAcc = 0; },
@@ -666,7 +676,7 @@ const KITS = {
                 if (u.deploySeq !== dep || u.hp < u.s.maxHp - 1e-6) return;
                 battle.removeBuff(u, buff);
                 u.mem.downed = false;
-                for (const e of battle.enemiesInRadius(u.x, u.y, NEARBY_RADIUS)) if (e.alive) battle.applyStatus(e, 'stun', { duration: num(t1.stun), source: u });
+                for (const e of battle.foesInRadius(u.x, u.y, NEARBY_RADIUS)) if (e.alive) battle.applyStatus(e, 'stun', { duration: num(t1.stun), source: u });
                 battle.fx('revive', { x: u.x, y: u.y, id: u.id, r: NEARBY_RADIUS });
               },
             });
@@ -679,8 +689,20 @@ const KITS = {
         burstSpUp(battle, unit, 'blaze2:module', num(tm.sp_recovery_per_sec));
         if (sid === 'skchr_blaze2_2') whileOn(battle, unit, AURA_IV, () => burnTiles(battle, unit));
         if (sid && sid !== 'skchr_blaze2_3') return;
-        battle.on('elementBurst', (c) => { // S3: burn bursts refill ammo
-          if (c.element === 'burn' && unit.skill?.active && unit.skill.kind === 'ammo' && on(unit)) unit.skill.addAmmo(num(bb.ammo_recover));
+        // S3: each hit of her skill attack (main and splash) on an enemy in a burn burst deals the bonus first (PRTS 备注).
+        // Gated on the attack's own isSkill (captured when the bolt was fired), not on the live skill: her bolts land after
+        // the last bullet's end('ammo') / an early end (downed), and those still carry it. Only S3 runs here (sid gate).
+        battle.on('hit', (c) => {
+          const d = c.dmg, t = c.target;
+          if (c.source !== unit || !d.isAttack || !d.isSkill || d.cancel) return;
+          if (t.side === 'enemy' && t.alive && t.findBuff('burnBurst')) elementHit(battle, unit, t, unit.s.atk * num(bb['attack@atk_scale']), 'blazeBurn', 'burn');
+        }, { owner: unit });
+        const maxAmmo = num(bb['attack@trigger_time'], 18);
+        battle.on('elementBurst', (c) => { // S3: burn bursts refill ammo, up to the skill's ammo
+          const sk = unit.skill;
+          if (c.element !== 'burn' || !sk?.active || sk.kind !== 'ammo' || !on(unit)) return;
+          const n = Math.min(num(bb.ammo_recover), maxAmmo - sk.ammoLeft);
+          if (n > 0) sk.addAmmo(n);
         }, { owner: unit });
       },
     };
@@ -771,7 +793,7 @@ const KITS = {
             // for this one: it never lands on or catches air units (FLY, 近地悬浮, 浮空)
             const main = list.find((e) => !reach(e) && !e.blockedBy && !e.isFlying) ?? list.find((e) => !e.blockedBy && !e.isFlying) ?? list.find((e) => !e.isFlying);
             if (!main) return;
-            const near = battle.enemiesInRadius(main.x, main.y, RING1).filter((e) => !e.isFlying && !e.s.flags.untargetable && !e.s.flags.sleep)
+            const near = battle.foesInRadius(main.x, main.y, RING1).filter((e) => !e.isFlying && !e.s.flags.untargetable && !e.s.flags.sleep)
               .sort((a, b) => (a === main ? -1 : b === main ? 1 : 0) || dist(a, main) - dist(b, main) || a.spawnSeq - b.spawnSeq)
               .slice(0, Math.max(1, num(bb.max_target, 2)));
             const force = num(bb.force, 1);
@@ -805,7 +827,7 @@ const KITS = {
           const [sr, sc] = frontOf(unit.tileR, unit.tileC, unit.dir, stop ?? 0);
           const fromX = unit.x, fromY = unit.y;
           battle.fx('anchor', { x: sc, y: sr, id: unit.id, fromX, fromY, r: radius });
-          for (const e of battle.enemiesInRadius(sc, sr, radius)) {
+          for (const e of battle.foesInRadius(sc, sr, radius)) {
             battle.dealDamage(unit, e, { amount: unit.s.atk * num(bb.atk_scale), type: 'phys', isSkill: true, tags: ['skill', 'anchor'] });
             if (e.alive) battle.applyStatus(e, 'stun', { duration: num(bb.stun), source: unit });
           }
@@ -834,7 +856,7 @@ const KITS = {
       talents: [
         { install(battle, unit) { // 本性的坚守
           battle.on('damaged', (c) => {
-            if (c.target !== unit || !on(unit) || unit.hp <= 0 || !(c.amount > 0) || c.type === 'element') return;
+            if (c.target !== unit || !on(unit) || unit.hp <= 0 || !(c.amount > 0) || c.type === 'element' || isHpLoss(c.dmg)) return; // (not a 流失)
             const v = (unit.hpRatio < num(t0.hp_ratio, 0.5) ? num(t0.value2) : num(t0.value1)) * (unit.skill?.active ? t0Scale : 1);
             if (v > 0) battle.heal(unit, unit, v, { self: true });
           }, { owner: unit });
@@ -872,7 +894,7 @@ const KITS = {
     const hpScale = num(bb['attack@max_hp_scale'], 0.6), defScale = num(bb['attack@def_scale'], 1), resScale = num(bb['attack@magic_resistance_scale'], 1);
     const nCandles = Math.max(1, num(bb['attack@max_target'], 3));
     const candleKey = talentRec(chess, 2)?.bbStr?.take_extra_enemy_key ?? CANDLE_KEY;
-    const aroundN = (battle, a) => battle.enemiesInRadius(a.x, a.y, RING1).length;
+    const aroundN = (battle, a) => battle.foesInRadius(a.x, a.y, RING1).length;
     return {
       skills: lazySkills({
         skchr_etlchi_1: () => ({ kind: instantKind(chess, def), attack: { atkScale: num(bb.atk_scale, 1), hits: 2 } }),
@@ -893,9 +915,9 @@ const KITS = {
               for (const a of unit.mem.sickles || []) {
                 if (!a.alive || !a.deployed) continue;
                 // PRTS 备注 "被添加血镰的单位处于起飞时，血镰可对空": a sickle on the ground spares air units (FLY, 近地悬浮, 浮空);
-                // 起飞 = an airborne skywalker (蒂比's skill: off the ground, flag blockFly)
-                const air = !a.ground && !!a.s.flags.blockFly;
-                for (const e of battle.enemiesInRadius(a.x, a.y, RING1)) {
+                // 起飞 = an airborne skywalker (蒂比's skills: flag `liftoff`; still a 地面单位, so she can carry one)
+                const air = !!a.s.flags.liftoff;
+                for (const e of battle.foesInRadius(a.x, a.y, RING1)) {
                   if (e.isFlying && !air) continue;
                   battle.dealDamage(unit, e, { amount: unit.s.atk * num(bb.atk_scale), type: 'phys', isSkill: true, tags: ['skill', 'bloodSickle'] });
                 }
@@ -933,6 +955,7 @@ const KITS = {
             cd.hp = cd.s.maxHp;
             cd.mem.candleOwner = unit;
             cd.mem.candleOf = e;
+            cd.mem.noLeak = true;                           // never a leak at the time limit (Battle._timeout)
             battle.addBuff(cd, { key: 'etlchi:candle', flags: { unblockable: true, noMove: true } });
             unit.mem.candles.push(cd);
             battle.fx('candle', { x: cd.x, y: cd.y, id: cd.id, of: e.id });
@@ -1127,6 +1150,8 @@ const KITS = {
   // 隐匿). S2 暴风号令 (ammo 10): every attack attack@s2.atk_scale × ATK phys splash; 过载 for the second half of the
   // ammo [ASSUMED like S3]: + attack@s2.magic_atk_scale × ATK arts to every enemy hit (manual close never happens in the
   // auto battle). Module FOR-Y (elite): ASPD +10 while not blocking.
+  // S2 and S3 cast with an enemy in range (data DEFAULT, rawRule TAKE_DAMAGE): the owner's deliberate deviation from the
+  // official 重装 TAKE_DAMAGE row (DESIGN §21.29, tools/build-data.mjs TRIGGER_DEVIATIONS).
   chess_char_5_08_a: (bb, chess, def) => {
     const t0 = talent(chess, 0), t1 = talent(chess, 1), tb = traitBb(chess), tm = talent(chess, -1);
     const sid = selectedId(chess, def);
@@ -1916,7 +1941,7 @@ const KITS = {
       if (z.anchor && z.anchor.alive && z.anchor.deployed) { z.x = z.anchor.x; z.y = z.anchor.y; }
       const iv = Math.max(0.1, num(bb.interval, 1));
       const steps = Math.min(Math.max(0, num(bb.max_stack_cnt, 15)), Math.floor((z.t - AURA_IV + 1e-9) / iv));
-      const foes = battle.enemiesInRadius(z.x, z.y, RING1);
+      const foes = battle.foesInRadius(z.x, z.y, RING1);
       for (const e of foes) seaHits.set(e, Math.max(seaHits.get(e) ?? -1, steps));
       if (z.acc >= iv - 1e-9) {
         z.acc -= iv;
@@ -2014,7 +2039,7 @@ const KITS = {
             z.x = Math.max(R.c0, Math.min(R.c1, z.x + z.vx * AURA_IV));
             z.y = Math.max(R.r0, Math.min(R.r1, z.y + z.vy * AURA_IV));
             const r = r0 + grow * z.t;
-            const foes = battle.enemiesInRadius(z.x, z.y, r).filter((e) => !e.isFlying);
+            const foes = battle.foesInRadius(z.x, z.y, r).filter((e) => !e.isFlying);
             for (const e of foes) battle.addBuff(e, { key: 'thorn2:rot', duration: AURA_DUR, mods: { healingTakenMul: healMul } });
             if (z.acc >= 1 - 1e-9) {
               z.acc -= 1;
@@ -2167,20 +2192,42 @@ const KITS = {
   },
 
   // ---------------------------------------------------------------------------------------------------------------
-  // 玛恩纳 — librator (ramp to +200 % ATK while idle). S3 未照耀的荣光 (26 s, CUSTOM_RANGE): skill range, trait ×2 (−10 %
-  // per kill), 5 targets at 125/150 % ATK phys; enemies in range take +10/11 % of his ATK true damage from every Kazimierz
-  // attack. T1 游侠: ×1.1 ATK on attacks (×1.15 and −15 % damage taken with ≥3 enemies around). T2 无动于衷: taunt +1,
-  // Kazimierz ops reflect 15 % of his ATK as true damage when attacked.
+  // 玛恩纳 — librator (ramp to +200 % ATK while idle). S3 未照耀的荣光 (26 s, CUSTOM_RANGE): skill range, trait ×2, 5
+  // targets at 125/150 % ATK phys, air units too (PRTS 备注 "※可对空"; player report B4 after 0.1.0: on a flying wave the
+  // cast hit nothing for 26 s); enemies in range take +10/11 % of his ATK true damage from every Kazimierz attack. Per
+  // PRTS 备注 the trait bonus drops by 10 % (per_kill_reduce, absolute: +400 % → +390 %) for each enemy knocked out by
+  // his own attack (or the damage it carries — not 无动于衷's reflection, not a mark another operator's attack set off),
+  // settled after that attack, never below +0 %. T1 游侠: ×1.1 ATK on attacks (×1.15 and −15 % damage taken with ≥3
+  // enemies around). T2 无动于衷: taunt +1, Kazimierz ops reflect 15 % of his ATK as true damage when attacked.
   // S1 未声张的怒火 (duration, SEARCH): attacks attack@atk_scale × ATK, DEF +. S2 未宽解的悲哀 (duration): skill range,
-  // BAT +0.3 s, attacks attack@atk_scale × ATK twice; a kill during the skill keeps the trait ramp when it ends.
+  // BAT +0.3 s, attacks attack@atk_scale × ATK twice; a kill of his own attacks during the skill keeps the trait ramp
+  // when it ends. S1 / S2 have no 对空 note: ground only, like his trait.
   chess_char_5_19_a: (bb, chess, def) => {
     const t0 = talent(chess, 0), t1 = talent(chess, 1);
     const sid = selectedId(chess, def);
     const up = num(bb.trait_up, 1), perKill = num(bb.per_kill_reduce);
+    // S3: the trait bonus = ramp × trait_up + per_kill_reduce × kills, ≥ 0 — the trait's own ramp buff stays, the
+    // difference goes into `mlynar:traitUp` (negative once the kills take the bonus below the ramp)
     const applyUp = (battle, unit) => {
-      const extra = num(unit.trait.ramp) * Math.max(0, num(unit.mem.mlyMult, 1) - 1);
-      if (extra > 0) battle.addBuff(unit, { key: 'mlynar:traitUp', mods: { atkPct: extra } });
+      const ramp = num(unit.trait.ramp);
+      const extra = unit.mem.mlyUp ? Math.max(0, ramp * up + perKill * num(unit.mem.mlyKills)) - ramp : 0;
+      if (extra) battle.addBuff(unit, { key: 'mlynar:traitUp', mods: { atkPct: extra } });
       else battle.removeBuff(unit, 'mlynar:traitUp');
+    };
+    /**
+     * "仅自身普通攻击（与该次攻击附带的伤害）击倒非角色类单位" (PRTS S2 / S3 备注): `onKill(victim)` for each enemy he
+     * knocks out, while his skill runs, that his current attack hit (or the mark it set off, tagged 'mlynarOwn') — so a
+     * kill by the damage that attack carries (天马之枪, the 卡西米尔 bond's true damage, the mark) counts too, in any
+     * hook order; `onAttack()` after each of his attacks ("加成降低于当次攻击后统一结算"), which also closes the set.
+     * 无动于衷's reflection and a mark another operator's attack set off happen outside his attack: never counted.
+     */
+    const ownKills = (battle, unit, onKill, onAttack = null) => {
+      const hit = new Set();
+      battle.on('damaged', (c) => {
+        if (c.source === unit && (c.dmg?.isAttack || (c.dmg?.tags || []).includes('mlynarOwn'))) hit.add(c.target);
+      }, { owner: unit, priority: 1000 });
+      battle.on('kill', (c) => { if (c.killer === unit && hit.has(c.victim) && c.victim.side === 'enemy' && unit.skill?.active) onKill(c.victim); }, { owner: unit });
+      battle.on('attack', (c) => { if (c.attacker !== unit) return; hit.clear(); if (onAttack) onAttack(); }, { owner: unit });
     };
     return {
       skills: lazySkills({
@@ -2193,17 +2240,21 @@ const KITS = {
       }),
       skill: {
         kind: 'duration',
-        targeting: skillGrid(chess, def) ? { rangeGrid: skillGrid(chess, def) } : undefined,
+        targeting: { ...(skillGrid(chess, def) ? { rangeGrid: skillGrid(chess, def) } : {}), canHitFly: true },
         attack: { atkScale: num(bb['attack@atk_scale'], 1), maxTargets: Math.max(1, num(bb['attack@max_target'], 1)) },
-        onStart({ battle, unit }) { unit.mem.mlyMult = up; applyUp(battle, unit); battle.fx('aoe', { x: unit.x, y: unit.y, id: unit.id, r: 2, skill: 'mlynar' }); },
-        onEnd({ battle, unit }) { unit.mem.mlyMult = 1; battle.removeBuff(unit, 'mlynar:traitUp'); },
+        onStart({ battle, unit }) {
+          unit.mem.mlyUp = true; unit.mem.mlyKills = 0; unit.mem.mlyPending = 0;
+          applyUp(battle, unit);
+          battle.fx('aoe', { x: unit.x, y: unit.y, id: unit.id, r: 2, skill: 'mlynar' });
+        },
+        onEnd({ battle, unit }) { unit.mem.mlyUp = false; unit.mem.mlyPending = 0; battle.removeBuff(unit, 'mlynar:traitUp'); },
       },
       trait: { dmgMul: (b, u) => (num(u.mem.mlyNear) >= num(t0.cnt, 3) ? num(t0.atk_scale_up, 1) : num(t0.atk_scale_base, 1)) },
       talents: [
         { install(battle, unit) { // 游侠
           const dr = num(t0.damage_resistance);
           whileOn(battle, unit, 0.2, () => {
-            unit.mem.mlyNear = battle.enemiesInRadius(unit.x, unit.y, AROUND_RADIUS).length;
+            unit.mem.mlyNear = battle.foesInRadius(unit.x, unit.y, AROUND_RADIUS).length;
             if (dr > 0 && unit.mem.mlyNear >= num(t0.cnt, 3)) battle.addBuff(unit, { key: 'mlynar:ranger', duration: 0.3, mods: { dmgTakenMul: 1 - dr } });
           });
         } },
@@ -2224,7 +2275,7 @@ const KITS = {
           // 技能期间若击倒敌人，技能结束时特性效果不重置: the librator trait resets the ramp on skillEnd (priority 0) —
           // remember it before and put it back after
           battle.on('skillStart', (c) => { if (c.unit === unit) unit.mem.mlyKeep = false; }, { owner: unit });
-          battle.on('kill', (c) => { if (c.killer === unit && c.victim.side === 'enemy' && unit.skill?.active) unit.mem.mlyKeep = true; }, { owner: unit });
+          ownKills(battle, unit, () => { unit.mem.mlyKeep = true; });
           battle.on('skillEnd', (c) => {
             if (c.unit === unit) unit.mem.mlyRamp = unit.mem.mlyKeep && c.reason !== 'death' ? num(unit.trait.ramp) : null;
           }, { owner: unit, priority: 100 });
@@ -2236,18 +2287,20 @@ const KITS = {
           }, { owner: unit, priority: -100 });
         }
         if (sid && sid !== 'skchr_mlynar_3') return;
-        battle.on('kill', (c) => {
-          if (c.killer !== unit || c.victim.side !== 'enemy' || !unit.skill?.active) return;
-          unit.mem.mlyMult = Math.max(1, num(unit.mem.mlyMult, 1) + perKill);
+        ownKills(battle, unit, () => { unit.mem.mlyPending = num(unit.mem.mlyPending) + 1; }, () => {
+          if (!unit.mem.mlyPending || !unit.mem.mlyUp) return;
+          unit.mem.mlyKills = num(unit.mem.mlyKills) + unit.mem.mlyPending;
+          unit.mem.mlyPending = 0;
           applyUp(battle, unit);
-        }, { owner: unit });
+        });
         const extra = num(bb.atk_scale);
         if (!(extra > 0)) return;
         battle.on('damaged', (c) => {
           const src = c.source, e = c.target;
           if (!src || src.side !== 'ally' || !isOp(src) || !isKazimierz(src) || !c.dmg?.isAttack || c.type === 'element') return;
           if (e.side !== 'enemy' || !e.alive || !unit.skill?.active || !on(unit) || !inRange(unit, e)) return;
-          battle.dealDamage(unit, e, { amount: unit.s.atk * extra, type: 'true', canDodge: false, isSkill: true, tags: ['skill', 'mlynarMark'] });
+          const tags = src === unit ? ['skill', 'mlynarMark', 'mlynarOwn'] : ['skill', 'mlynarMark'];
+          battle.dealDamage(unit, e, { amount: unit.s.atk * extra, type: 'true', canDodge: false, isSkill: true, tags });
         }, { owner: unit });
       },
     };
@@ -2348,7 +2401,7 @@ const KITS = {
           battle.fx('iceSpike', { x: c, y: r, id: unit.id, r: ICICLE_RADIUS });
           battle.after(ICICLE_DELAY, () => {
             const hit = [];
-            for (const e of battle.enemiesInRadius(c, r, ICICLE_RADIUS)) {
+            for (const e of battle.foesInRadius(c, r, ICICLE_RADIUS)) {
               battle.dealDamage(unit, e, { amount: unit.s.atk * scale, type: 'arts', isAttack: true, isSkill: true, isSplash: true, tags: ['skill', 'iceSpike'] });
               if (e.alive && cold > 0) battle.applyStatus(e, 'cold', { duration: cold, source: unit });
               if (e.alive) hit.push(e);
@@ -2495,7 +2548,7 @@ const KITS = {
       install(battle, unit) {
         battle.on('damaged', (c) => {
           const a = c.target;
-          if (a.side !== 'ally' || !(c.amount > 0) || a.hp <= 0 || c.type === 'element') return;
+          if (a.side !== 'ally' || !(c.amount > 0) || a.hp <= 0 || c.type === 'element' || isHpLoss(c.dmg)) return; // (not a 流失)
           const b = a.findBuff('reckpr:guard');
           if (b && b.data.src === unit) battle.heal(unit, a, num(b.data.value));
         }, { owner: unit });

@@ -189,11 +189,15 @@ export function checkAssets() {
   return { ok: present && missing.length === 0 && urls.length > 0, present, manifest: true, total: urls.length, missing: missing.length, sample: missing.slice(0, 5), bytes: Number(m.stats?.bytes) || 0 };
 }
 
-/** Local-client art (optional): manifest entry count and whether the 3D board atlas is on disk. */
+/**
+ * Local-client art (optional): manifest entry count, whether the 3D board atlas is on disk and whether the extraction
+ * has the enemy models only the client has (`spine/enemy/*` groups, extract.py ENEMY_SPINES — added after 0.1.0).
+ */
 export function checkLocal() {
   const m = readJson(LOCAL_MANIFEST);
   const count = m && m.groups ? Object.values(m.groups).reduce((n, g) => n + Object.keys(g || {}).length, 0) : 0;
-  return { manifest: !!m, count, board3d: exists(LOCAL_BOARD_ATLAS), tiles: exists(LOCAL_BOARD_TILES), dirPresent: exists(path.join(ROOT, 'public', 'assets', 'local')) };
+  const enemySpines = !!(m && m.groups && Object.keys(m.groups).some((g) => g.startsWith('spine/enemy/')));
+  return { manifest: !!m, count, board3d: exists(LOCAL_BOARD_ATLAS), tiles: exists(LOCAL_BOARD_TILES), enemySpines, dirPresent: exists(path.join(ROOT, 'public', 'assets', 'local')) };
 }
 
 /**
@@ -423,7 +427,7 @@ async function main() {
       add(already ? 'ok' : 'warn', '本地客户端美术（可选）', `${client.kind} 客户端缺少卫戍协议资源（请在游戏内下载全部资源）：${client.path}`);
     } else if (already && opts.local !== 'force') {
       if (local.board3d && !local.tiles && !opts.check) cropBoardTiles(log);
-      add('ok', '本地客户端美术（可选）', `已提取 ${local.count} 项${local.board3d ? '，3D 棋盘可用' : ''}（重新提取：--local）`);
+      add('ok', '本地客户端美术（可选）', `已提取 ${local.count} 项${local.board3d ? '，3D 棋盘可用' : ''}${local.enemySpines ? '' : '，缺少新版的灼热/炽焰源石虫模型'}（重新提取：--local）`);
     } else if (opts.check) {
       add('skip', '本地客户端美术（可选）', `检测到 ${client.kind} 客户端，可运行 node tools/setup.mjs --local 提取`);
     } else {

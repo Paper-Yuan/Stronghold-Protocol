@@ -113,7 +113,7 @@ test('信仰搅拌机 S1 铳骑主考官 (自动触发 ⇒ DEFAULT: hurt SP, fir
   }
 });
 
-test('信仰搅拌机 S2 八臂电锯侠: ammo skill, ATK/DEF up; a lethal hit is negated for ammo_cost bullets (not with fewer)', () => {
+test('信仰搅拌机 S2 八臂电锯侠: ammo skill, ATK/DEF up; a lethal hit is negated for ammo_cost bullets; with fewer it is still negated, every bullet goes and the skill ends (PRTS 备注)', () => {
   for (const id of pair('chess_char_4_01_a')) {
     const bb = D(id, 1).skill.bb;
     for (const enough of [true, false]) {
@@ -136,7 +136,11 @@ test('信仰搅拌机 S2 八臂电锯侠: ammo skill, ATK/DEF up; a lethal hit i
         const shots = h.hooksOf('attack').filter((c) => c.attacker === u).length;
         assert.equal(u.skill.ammoLeft, before - bb.ammo_cost - shots, `${bb.ammo_cost} bullets spent`);
       } else {
-        assert.ok(!u.alive, `${id}: fewer than ${bb.ammo_cost} bullets ⇒ no guard`);
+        // PRTS 备注 "弹药量不足时仍可抵挡致命伤害，此时将消耗所有剩余弹药并退出技能状态" (0.1.0: [ASSUMED] no guard)
+        assert.ok(u.alive, `${id}: fewer than ${bb.ammo_cost} bullets still block the lethal hit`);
+        approx(u.hp, 500, 1e-9, 'HP kept');
+        assert.equal(u.skill.ammoLeft, 0, 'every bullet spent');
+        assert.equal(u.skill.active, false, 'the skill ends');
       }
     }
   }
@@ -1053,13 +1057,13 @@ test('卡涅利安 S3 食噬之印: wider range, ATK ramps to +atk over the skil
     assert.ok(u.rangeKeys.length > n0);
     h.run(sk.duration / 2);
     approx(u.findBuff('billro:s3atk').mods.atkPct, bb.atk * 0.5, 0.02, `${id}: half-way ramp`);
-    const m = e.findBuff(`billro:mark:${u.id}`);
-    assert.ok(m && m.stacks === 5, `${id}: marks capped at 5 (${m?.stacks})`);
+    const m = e.findBuff('billro:mark');
+    assert.ok(m && m.stacks === 5 && m.source === u, `${id}: marks capped at 5 (${m?.stacks})`);
     const hits = dmgBy(h, u, (c) => c.dmg.isAttack && c.target === e);
     const last = hits[hits.length - 1];
     approx(last.amount / (u.s.atk), 1 + bb['attack@damage_scale'] * 5, 0.05, '+100 % with 5 marks');
     h.runUntil(() => !u.skill.active, sk.duration);
-    assert.ok(!e.findBuff(`billro:mark:${u.id}`), 'marks end with the skill');
+    assert.ok(!e.findBuff('billro:mark'), 'marks end with the skill');
     assert.ok(!u.findBuff('billro:s3atk'));
   }
 });

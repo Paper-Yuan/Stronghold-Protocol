@@ -34,7 +34,8 @@ import { mkdir, readFile, writeFile, rename } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { Grid } from '../server/sim/grid.js';
+import { Grid, DEPLOY_REFUSED_TILES } from '../server/sim/grid.js';
+import { bandBondIds } from '../shared/bandBonds.js';
 
 // ===== CLI & IO ==================================================================================
 
@@ -425,6 +426,23 @@ const TRIGGER_RENAME = { ALWAYS: 'SP_FULL', CUSTOM_RANGE_SEARCH_ENEMY: 'CUSTOM_R
 const ATTACK_RANGE_CHANGE = /攻击(?:范围|距离)(?:与溅射范围)?(?:扩大|改变|缩小|缩短|加长|增加|\+)/;
 
 /**
+ * A deliberate deviation from the official 技能策略 (DESIGN §21.29): the owner's decision of 2026-10-03 after community
+ * feedback ("反馈的人太多了"; GitHub issue #4, PR #12). The 下半 data's TANK class row (`TANK | | | 0 | TAKE_DAMAGE`,
+ * added with 下半 — 上半 had no TANK row) makes every MANUAL 重装 skill wait for a hit; these six offensive skills cast
+ * with an enemy in range instead — the basic strategy, DEFAULT. Keyed by the NORMAL chess id (the elite follows through
+ * its baseId) and the skill id, never by the skill id alone: 灰毫 S1 skcom_atk_up[3] is a generic skill other chess
+ * carry too (惊蛰, 幽灵鲨, 耶拉, 莫斯提马, 莱恩哈特). The record keeps the official row in `rawRule` (TAKE_DAMAGE) for
+ * traceability; validateAll fails the build when an entry no longer meets a TAKE_DAMAGE row or its skill. 深巡 S1
+ * 侵袭破坏应对 keeps TAKE_DAMAGE.
+ */
+const TRIGGER_DEVIATIONS = Object.freeze({
+  chess_char_1_04_a: { skchr_udflow_2: 'DEFAULT' },                                // 深巡 S2 行动能力剥夺
+  chess_char_1_20_a: { skchr_liskam_2: 'DEFAULT' },                                // 雷蛇 S2 反击电弧
+  chess_char_2_18_a: { 'skcom_atk_up[3]': 'DEFAULT', skchr_ashlok_2: 'DEFAULT' },  // 灰毫 S1 攻击力强化·γ型, S2 专注轰击
+  chess_char_5_08_a: { skchr_horn_2: 'DEFAULT', skchr_horn_3: 'DEFAULT' },         // 号角 S2 暴风号令, S3 终极防线
+});
+
+/**
  * Resolve the auto-cast rule of a skill record (PRTS 卫戍协议/帮助 §作战阶段 技能操作 — the official skill strategies;
  * DESIGN §5.6):
  * - charId rows first (exact skillIndex, or −1 = every skill of the operator);
@@ -436,11 +454,14 @@ const ATTACK_RANGE_CHANGE = /攻击(?:范围|距离)(?:与溅射范围)?(?:扩�
  *   an AUTO skill fires by its own rule (PRTS 古米 S1 备注: "此技能在存在生命值不满的可治疗角色时可触发");
  * - else, for an operator's MANUAL skill with a 技能范围 (a rangeId that is not an attack-range change): SKILL_RANGE,
  *   "不通过普通攻击/治疗触发技能，仅在技能范围内存在敌人（无视其不可选中）时释放技能", customRangeGrid = the skill range;
- * - else DEFAULT (the basic strategy: ready + about to attack / heal).
+ * - else DEFAULT (the basic strategy: ready + about to attack / heal);
+ * - last, the deliberate deviations (TRIGGER_DEVIATIONS, per chess and skill): `rule` from the table, `rawRule` the
+ *   official row.
  * @param {object} skill record from buildSkill (skillId, skillType, desc, rangeGrid)
- * @param {{operator?: boolean}} opts operator = a chess (the 技能范围 strategy is written for 干员; summons keep DEFAULT)
+ * @param {{operator?: boolean, chessId?: string}} opts operator = a chess (the 技能范围 strategy is written for 干员;
+ *   summons keep DEFAULT); chessId = the chess's NORMAL id (TRIGGER_DEVIATIONS key)
  */
-function resolveTrigger(ctx, char, charId, skillIdx, skill, { operator = false } = {}) {
+function resolveTrigger(ctx, char, charId, skillIdx, skill, { operator = false, chessId = null } = {}) {
   const rows = Object.values(ctx.ac.skillTriggerDataList || {});
   const manual = skill.skillType === 'MANUAL';
   const pick =
@@ -452,6 +473,8 @@ function resolveTrigger(ctx, char, charId, skillIdx, skill, { operator = false }
     return { rule: 'SKILL_RANGE', rawRule: 'DEFAULT', customRangeGrid: skill.rangeGrid.map((p) => p.slice()) };
   }
   const rawRule = pick ? pick.skillTriggerType : 'DEFAULT';
+  const deviation = chessId ? TRIGGER_DEVIATIONS[chessId]?.[skill.skillId] : null;
+  if (deviation) return { rule: deviation, rawRule, customRangeGrid: null };
   const rule = TRIGGER_RENAME[rawRule] || rawRule;
   let customRangeGrid = null;
   if (rawRule === 'CUSTOM_RANGE_SEARCH_ENEMY') {
@@ -807,7 +830,8 @@ function buildChess(ctx) {
     Object.assign(rec, traitDefault.classify);
 
     // Every skill unlocked at the chess status (DESIGN §16), at the chess skill level; the trigger is
-    // resolved per skill (resolveTrigger: charId rows by index, class rows for every MANUAL skill, 技能范围).
+    // resolved per skill (resolveTrigger: charId rows by index, class rows for every MANUAL skill, 技能范围, and the
+    // deliberate deviations of TRIGGER_DEVIATIONS keyed by the normal chess id).
     const sIdx = shop.defaultSkillIndex ?? 0;
     const sEntry = char.skills?.[sIdx];
     const skillLevel = status.skillLevel || 1;
@@ -816,7 +840,7 @@ function buildChess(ctx) {
       if (!se?.skillId || (i !== sIdx && !unlocked(se.unlockCond, phase, level))) return;
       const s = buildSkill(ctx, se.skillId, skillLevel, null, `chess ${chessId}`);
       if (!s) return;
-      s.trigger = resolveTrigger(ctx, char, shop.charId, i, s, { operator: true });
+      s.trigger = resolveTrigger(ctx, char, shop.charId, i, s, { operator: true, chessId: baseId });
       s.index = i;
       s.overrideTokenKey = se.overrideTokenKey || null;
       skillRecs.push(s);
@@ -1095,11 +1119,15 @@ function buildTokens(ctx, chess, tokenOwners, enemies) {
     // SKILL_SUMMON_START_DEPLOY).
     const makes = (list) => (list || []).some((s) => s === 'talent' || s === 'skill');
     const produced = owners.some((o) => makes(o.sources) || (o.skillAlts || []).some((a) => makes(a.sources)));
+    // `ownerRange`: the token text "只能部署在召唤者攻击范围内" (the tacticians' 援军 — 伺夜's 狼群, 缪尔赛思's 流形; PRTS 狼群
+    // 特性): its hand piece may only be placed on a tile of its owner's attack range (server/match/board.js
+    // ownerRangeKeys, PlayerState._legal; player report #9 after 0.1.0: 伺夜's tactical point could go anywhere)
+    const ownerRange = /只能部署在\S*攻击范围内/.test(stripRich(first.trait.desc) || '');
     out[tokenId] = {
       tokenId, kind: 'summon', name: char.name, appellation: char.appellation || null,
       desc: stripRich(first.trait.desc), descRaw: first.trait.descRaw,
       profession: char.profession, subProfessionId: char.subProfessionId, position: char.position,
-      displayType: displayType(tokenId), placeable: displayType(tokenId) !== 'HIDDEN' && produced,
+      displayType: displayType(tokenId), placeable: displayType(tokenId) !== 'HIDDEN' && produced, ownerRange,
       owners: owners.map((o) => o.chessId),
       // Defaults = first owner's variant; per-owner data in variants[chessId].
       stats: first.stats, rangeGrid: first.rangeGrid, dmgType: first.dmgType, attackKind: first.attackKind,
@@ -1120,7 +1148,7 @@ function buildTokens(ctx, chess, tokenOwners, enemies) {
       tokenId: 'enemy_9012_acloon', kind: 'bondSummon', bondId: 'yanShip', name: loon.name, appellation: null,
       desc: '【炎】6名成员激活时召唤的友方单位；开战时攻击力/生命值增加【炎】干员攻击力/生命值总和的30%（见 bonds.json yanShip）',
       descRaw: null, profession: 'TOKEN', subProfessionId: null, position: 'NONE', motion: loon.stats.motion,
-      displayType: null, placeable: false, owners: [],
+      displayType: null, placeable: false, ownerRange: false, owners: [],
       stats: enemyAsTokenStats(loon), rangeGrid: null, dmgType: loon.stats.dmgType, attackKind: 'ranged',
       projectile: 'bolt', canHitFly: true, skill: loon.skills?.[0] ? { skillId: loon.skills[0].prefabKey, bb: loon.skills[0].bb } : null,
       skills: loon.skills, talents: loon.talents, deployLimit: 2, count: 1,
@@ -1152,7 +1180,7 @@ function buildTokens(ctx, chess, tokenOwners, enemies) {
     out[charId] = {
       tokenId: charId, kind: 'mapChar', name: char.name, appellation: char.appellation || null,
       desc: v.trait.desc, descRaw: v.trait.descRaw, profession: char.profession, subProfessionId: char.subProfessionId,
-      position: char.position, displayType: null, placeable: false, owners: [],
+      position: char.position, displayType: null, placeable: false, ownerRange: false, owners: [],
       stats: v.stats, rangeGrid: v.rangeGrid, dmgType: v.dmgType, attackKind: v.attackKind, projectile: v.projectile,
       canHitFly: v.canHitFly, skill: v.skill, talents: v.talents, trait: v.trait, phase: v.phase, level: v.level,
       deployLimit: 1, count: 1, abnormal: [], positions: positions.sort((a, b) => naturalCmp(a.alias, b.alias)), variants: {},
@@ -1357,6 +1385,28 @@ const SHOP_EXCLUDED_ITEMS = Object.freeze({
 });
 
 /**
+ * Rules the official item text leaves out, by normal item id (both qualities): `note` = a player-facing line shown under
+ * the effect in the item card (items.json `note`), `implFormula` replaces research 04's formula.
+ *   突变细胞 — not consumed (player feedback after 0.1.0): PRTS 卫戍协议：盟约 下半/PRTS盟约记录 备注 "生效时，原干员销毁，
+ *     获得一名高一阶的随机初始干员（最高六阶）", and a destroyed operator's equipment comes off (PRTS 卫戍协议/帮助 "佩戴的
+ *     装备无法手动卸除，在失去该干员（干员出售、销毁、合并等）或装备合并为进阶品质时自动卸除"); the text never says 销毁 for
+ *     the cell (every consumable item's does), and players re-inject it every round ("之后就是一直打针，扎到核心卡或者叠层
+ *     手干员就换人扎", bilibili cv47000418; "这个道具可以无限使用", cg.163.com guide 2025-11-15). The new operator is gained
+ *     into the 整备区, never onto the carrier's tile — official footage (bilibili BV1vzyVBuEN9 ≈ 8:24, BV1Qkw1zMEoR ≈ 7:25):
+ *     at the next prep the tile is empty, one more deployment is left and the new operator waits on the bench (PRTS 帮助:
+ *     what a player gains goes to the 手牌区; pointed out in PR #2).
+ */
+const ITEM_RULES = Object.freeze({
+  chess_item_5_08_e_a: {
+    note: '生效时原干员销毁，突变细胞与其他装备退回整备区，可再次配发；随后获得一名高一阶的随机初始干员（最高6阶），进入整备区，需要重新部署',
+    implFormula: 'After the battle: the carrier is destroyed wherever it stands (a board tile is freed); its equipment, the '
+      + 'cell included, returns to the hand first (overflow temp; the cell is not consumed); then a random NORMAL operator '
+      + 'one tier higher (max 6; an elite carrier too) is gained like any gained operator: the hand, overflow temp, a '
+      + 'completed merge as usual (the elite on a consumed deployed copy\'s tile, never the carrier\'s). Never merges.',
+  },
+});
+
+/**
  * Build data/items.json: every item chess (EQUIP normal + golden, MAGIC Arts), keyed by chessId.
  */
 function buildItems(ctx, effects) {
@@ -1381,6 +1431,7 @@ function buildItems(ctx, effects) {
     const isGolden = !!t.isGolden;
     const upgradeNum = t.upgradeNum;
     const excluded = Object.hasOwn(SHOP_EXCLUDED_ITEMS, baseId) ? SHOP_EXCLUDED_ITEMS[baseId] : null;
+    const rule = Object.hasOwn(ITEM_RULES, baseId) ? ITEM_RULES[baseId] : null;
     out[chessId] = {
       id: chessId, baseId, goldenId: shop?.goldenItemId || null, isGolden,
       trapId: t.charId, iconId: t.charId, identifier: t.identifier,
@@ -1398,7 +1449,8 @@ function buildItems(ctx, effects) {
       buffs: (eff?.buffs || []).map((b) => ({ key: b.key, countType: b.countType, bb: b.bb, bbStr: b.bbStr })),
       params: eff?.params || {},
       category: ri?.category || null, kind: ri?.kind || null, family: ri?.family || null,
-      implFormula: ri?.implFormula || null,
+      implFormula: rule?.implFormula || ri?.implFormula || null,
+      note: rule?.note || null,
       rangeGrid: Array.isArray(ri?.rangeGrids) ? ri.rangeGrids.map((g) => [g.row, g.col]) : null,
       flavor: ri?.flavor || null,
     };
@@ -1409,7 +1461,10 @@ function buildItems(ctx, effects) {
 
 // ===== bands (策略) ===============================================================================
 
-/** Build data/bands.json: the 40 season strategies. */
+/**
+ * Build data/bands.json: the 40 season strategies. `bondIds` (the bonds a strategy is built around: shared/bandBonds.js
+ * over its text and blackboards, needing bonds.json and choices.json pools) is added in main() once those are built.
+ */
 function buildBands(ctx, effects) {
   const { act, ac } = ctx;
   const out = {};
@@ -1629,6 +1684,28 @@ const HIT_AREAS = Object.freeze({
 });
 
 /**
+ * 静态刚体 (static rigidbody) enemies → enemies.json `staticBody: true`: pushes and pulls never move them (player report
+ * after 0.1.0, "飞机可以被薄绿的技能拉走"). PRTS 特殊机制 静态刚体: "该单位的Unity刚体的刚体类型为部分静态（Kinematic）或静态
+ * （Static）。使用该类刚体的单位可以进入失衡状态并启用物理，但物理层面上无法产生任何速度或移动 … ※与失衡免疫不同 … ※是否为静态
+ * 刚体与单位的行动方式无关" (example: 妖怪). Like HIT_AREAS the rigidbody lives in the prefab, not in the game tables: the
+ * keys whose PRTS page lists "{{特殊机制|静态刚体}}" in its 天赋 (the page of every enemy of data/enemies.json, read 2026-10-03) —
+ * every air unit of the mode except “炎佑” (its page lists none; weight 10, so no push or pull moves it anyway), plus
+ * the ground boss 盐风主教昆图斯.
+ */
+const STATIC_BODIES = Object.freeze(new Set([
+  'enemy_1005_yokai', 'enemy_1005_yokai_2', 'enemy_1005_yokai_3',   // 妖怪 / 妖怪MKII / 威龙
+  'enemy_1017_defdrn', 'enemy_1040_bombd', 'enemy_1041_lazerd', 'enemy_1041_lazerd_2', 'enemy_1042_frostd', // 御4 / 暴鸰 / 法术大师A1 / A2 / 寒霜
+  'enemy_1112_emppnt', 'enemy_1112_emppnt_2',                        // 帝国炮火先兆者 / 帝国炮火中枢先兆者
+  'enemy_1269_nhfly', 'enemy_1321_wdarft',                           // 枯朽之种 / 枯朽萃聚使徒
+  'enemy_1355_mrfly', 'enemy_1355_mrfly_2', 'enemy_1407_hummbd',     // 护障 / 护障·P / 远眺
+  'enemy_1430_lrrook', 'enemy_1521_dslily',                          // 愧悔魂灵圣杯 / 盐风主教昆图斯 (WALK)
+  'enemy_9009_acfort', 'enemy_9014_acstma', 'enemy_9015_acstmb', 'enemy_9016_acstmr', // 假想敌：黑云 / “斩胄之剑” / “破胄之锤” / 刺胄之弹
+  'enemy_10028_vtswd', 'enemy_10029_vtshld', 'enemy_10030_vtwand',   // 未装配刀片 / 防护背心 / 冲击式施术单元
+  'enemy_10040_cnvbln',                                              // 节日气球
+  'enemy_10083_hlbird', 'enemy_10084_hlegle', 'enemy_10085_hllevi_2', // “萨科塔之翼” / “萨科塔之眼” / “萨科塔昂首”
+]));
+
+/**
  * Official drawn size of enemy models (user playtest #6 item 9: 威龙 far too large) → enemies.json `modelScale`.
  * The official client scales every Spine model in its battle prefab (`dyn/battle/prefabs/enemies/<prefab>.prefab`,
  * bundles battle/enm_pfb_*.ab): world size = skeleton units × SkeletonDataAsset.scale (0.01 for all 1731 enemy
@@ -1674,11 +1751,29 @@ const MODEL_SCALE_BY_PREFAB = new Map();
 for (const [v, list] of MODEL_SCALES) for (const k of list) MODEL_SCALE_BY_PREFAB.set(`enemy_${k}`, Math.round((v / MODEL_SCALE_STANDARD) * 1e4) / 1e4);
 
 /**
+ * The 鸭爵 strategy's swapped-in enemies (`round_start_all_player_change_enemy_2` enemylist — the act2 versions, *_2)
+ * cost BAND_SWAP_LPR at the protection point, not the database's lifePointReduce 0 (the roguelike 宝藏 rule): PRTS
+ * 卫戍协议：盟约 下半/PRTS盟约记录 §策略 鸭爵 备注 "…但进入保护目标点将减少1点目标生命值，且在最终回合和隐秘核心回合中仍然生效"
+ * (player feedback after 0.1.0, #7). Normal rounds count leaks whatever their `lpr`; the Final Assault / Hidden Core
+ * LP and the detail card's 目标价值 read it.
+ */
+const BAND_SWAP_LPR = 1;
+function bandSwapEnemyKeys(act) {
+  const out = new Set();
+  for (const buffs of Object.values(act.effectBuffInfoDataDict || {})) for (const b of buffs || []) {
+    if (b?.key !== 'round_start_all_player_change_enemy_2') continue;
+    for (const kv of b.blackboard || []) if (kv.key === 'enemylist') for (const k of String(kv.valueStr || '').split(',')) if (k.trim()) out.add(k.trim());
+  }
+  return out;
+}
+
+/**
  * Build data/enemies.json: base stats at the season level (randomEnemyAttributeDict.level, 0 for
  * all), with the season-wide override level (level_autochess_enemy_data) applied.
  */
 function buildEnemies(ctx) {
   const { ac, act, handbook } = ctx;
+  const swapKeys = bandSwapEnemyKeys(act);
   const c = ac.constData;
   const hpF = c.enemyMaxHpFactor ?? 1, atkF = c.enemyAtkFactor ?? 5, defF = c.enemyDefFactor ?? 3, resF = c.enemyMagicResistanceFactor ?? 3;
   const globalOverrides = new Map();
@@ -1736,6 +1831,7 @@ function buildEnemies(ctx) {
       otherImmunities: ['disarmedCombat', 'feared', 'palsy', 'attract', 'teleport', 'groundBound'].filter((k) => !!mv(at[`${k}Immune`], false)),
       tauntLevel: mv(at.tauntLevel, 0),
     };
+    if (swapKeys.has(key)) stats.lpr = BAND_SWAP_LPR;
     const beFactor = rand?.enemyBattleEffectivenessFactor ?? 1;
     const be = beFactor > 0 ? Math.round((stats.maxHp * hpF + stats.atk * atkF + stats.def * defF + stats.res * resF) / beFactor) : null;
     const talents = flattenBB(data.talentBlackboard, `enemy ${key} talents`);
@@ -1764,9 +1860,11 @@ function buildEnemies(ctx) {
       seasonOverride: override ? Object.keys(definedFields(override)) : null,
       iconId: key, spine: mv(data.prefabKey) || key,
       ...(hitArea ? { hitArea: { ...hitArea } } : {}),
+      ...(STATIC_BODIES.has(key) ? { staticBody: true } : {}),
       ...(modelScale != null && modelScale !== 1 ? { modelScale } : {}),
     };
   }
+  for (const k of STATIC_BODIES) if (!out[k]) warn(`STATIC_BODIES: ${k} is not an enemy of the mode`);
   return out;
 }
 
@@ -1947,7 +2045,7 @@ const TILE_LEGEND = {
   O: { tileKey: 'tile_telout', desc: '传送出口/领袖区出生点' },
   m: { tileKey: 'tile_mire', special: 'mire', desc: '沼泽：停留叠加减速减攻速' },
   g: { tileKey: 'tile_smog', special: 'smog', desc: '排气格栅：其上干员不会成为敌方远程攻击目标' },
-  d: { tileKey: 'tile_deepsea', special: 'deepsea', desc: '深水：敌人持续受伤、减速、减攻速' },
+  d: { tileKey: 'tile_deepsea', special: 'deepsea', desc: '深水区：不可部署（拒绝部署），敌人持续受伤、减速、减攻速' },
   i: { tileKey: 'tile_infection', special: 'infection', desc: '活性源石：单位受持续真实伤害，攻击力与攻速提升' },
 };
 
@@ -1999,6 +2097,14 @@ const DEVICE_ROLES = {
 };
 /** Roles that block ground movement while active ([ASSUMED] for platform/mound). */
 const BLOCKING_ROLES = new Set(['crate', 'platform', 'mound']);
+
+/**
+ * The deploy type the game applies to a level tile: its buildableType, except tiles whose mechanism refuses deployment
+ * (server/sim/grid.js DEPLOY_REFUSED_TILES — 深水区 tile_deepsea: PRTS 深水区 地形信息 "地形机制：拒绝部署（待补充）";
+ * player report after 0.1.0: operators could be placed in 战场#08's pool), which are NONE. The stages.json legend's
+ * `buildable` is this value; `buildableType` keeps the level's own where they differ.
+ */
+const effectiveBuildable = (t) => (DEPLOY_REFUSED_TILES.has(t.tileKey) ? 'NONE' : t.buildableType);
 
 /**
  * Is a predefined device active at match start? Exactly the non-hidden ones: the 下半 act1 m02 has all its crates
@@ -2092,8 +2198,10 @@ function buildStages(ctx, modesById) {
         line += g;
         if (t && !glyphTiles[g]) {
           const { bb } = flattenBB(t.blackboard);
+          const buildable = effectiveBuildable(t);
           glyphTiles[g] = {
-            tileKey: t.tileKey, height: t.heightType === 'HIGHLAND' ? 'HIGH' : 'LOW', buildable: t.buildableType,
+            tileKey: t.tileKey, height: t.heightType === 'HIGHLAND' ? 'HIGH' : 'LOW', buildable,
+            ...(buildable !== t.buildableType ? { buildableType: t.buildableType } : {}),
             passable: t.passableMask, groundPassable: t.passableMask === 'ALL', flyPassable: t.passableMask !== 'NONE',
             special: TILE_LEGEND[g]?.special || null, bb,
           };
@@ -2124,21 +2232,25 @@ function buildStages(ctx, modesById) {
     const runes = (lv.runes || []).map((r) => ({ key: r.key, ...flattenBB(r.blackboard) }));
     const globalBuffs = (lv.globalBuffs || []).map((g) => ({ key: g.key, ...flattenBB(g.blackboard) }));
 
-    // Deployable tiles at match start (active crates/mounds remove a tile, platforms make it ranged-only).
+    // Deployable tiles at match start (active crates/mounds remove a tile, platforms make it ranged-only, a 特制水上平台
+    // makes its 深水区 tile deployable for any unit: "在水上建立可以部署任意单位的平台", sktok_canoe_1).
     const activeBlocking = devices.filter((d) => d.active && BLOCKING_ROLES.has(d.role));
     const blocked = new Set(activeBlocking.map((d) => d.pos.join(',')));
     const platformAt = new Set(activeBlocking.filter((d) => d.role === 'platform').map((d) => d.pos.join(',')));
+    const waterPlatformAt = new Set(devices.filter((d) => d.active && d.role === 'waterPlatform').map((d) => d.pos.join(',')));
     const deployIn = (r0, r1, c0, c1) => {
       const melee = [], rangedOnly = [], byDevice = [];
       for (let r = r0; r <= r1; r++) for (let c = c0; c <= c1; c++) {
         const t = tileAt(r, c);
         if (!t) continue;
         const k = `${r},${c}`;
-        const buildable = t.buildableType !== 'NONE';
+        const bt = effectiveBuildable(t);
+        const buildable = bt !== 'NONE';
         if (platformAt.has(k)) { rangedOnly.push([r, c]); if (buildable) byDevice.push([r, c]); continue; }
         if (blocked.has(k)) { if (buildable) byDevice.push([r, c]); continue; }
-        if (t.heightType === 'LOWLAND' && (t.buildableType === 'ALL' || t.buildableType === 'MELEE')) melee.push([r, c]);
-        else if (t.buildableType === 'RANGED' || (t.heightType === 'HIGHLAND' && t.buildableType === 'ALL' && t.tileKey !== 'tile_achand')) rangedOnly.push([r, c]);
+        if (waterPlatformAt.has(k)) { melee.push([r, c]); if (!buildable) byDevice.push([r, c]); continue; }
+        if (t.heightType === 'LOWLAND' && (bt === 'ALL' || bt === 'MELEE')) melee.push([r, c]);
+        else if (bt === 'RANGED' || (t.heightType === 'HIGHLAND' && bt === 'ALL' && t.tileKey !== 'tile_achand')) rangedOnly.push([r, c]);
       }
       return { melee, rangedOnly, changedByDevices: byDevice };
     };
@@ -2319,11 +2431,15 @@ const ROMAN = { I: 1, II: 2, III: 3 };
  *              "※以下悬赏任务仅由法术教鞭生成"
  *   'hidden'   鸭爵 / 高普尼克 / 流泪小子 / 圆仔·悬赏 (enemyeffect_5..8): commented out of the table (the 鸭爵 strategy
  *              “神秘顾客” swaps those enemies into the waves instead)
- * Everything else is drafted, as the table lists it: the "下场作战" and "接下来两场作战" kill bounties, 源石虫·特训
- * ("但不获得资金") and the 7 multi-round cards ("之后 / 后续的每场作战": 山海众头目·多轮悬赏, 多轮悬赏·假想敌 ×6), whose
+ *   'unseen'   kill bounties no official draft showed (66 screenshots of 22 official matches, player feedback after
+ *              0.1.0 report #2 — see BOUNTY_INITIAL_SETS below): the 7 multi-round cards ("之后 / 后续的每场作战": 山海众头目·
+ *              多轮悬赏, 多轮悬赏·假想敌 ×6), the pre-series cards enemyeffect_3_* and the boss bounties of no seen R9 group
+ *              (凋零骑士, “遗弃者”, 锏, 扎罗, 迷路的巨像) [ASSUMED: not offered]
+ * The rest is drafted, by the kind of draft it belongs to (`draftPool`, bountyDraftPool): the "接下来两场作战" cards at R3,
+ * the boss bounties and 源石虫·特训 ("但不获得资金") at R9, the faction / 特异 "下场战斗" cards at R11. A multi-round card's
  * official text carries the red "每场" (`multiRound`, `rounds` 99 kept as the data has them; the server makes such a
  * card last MULTI_ROUND_BOUNTY_BATTLES = 2 battles and rewrites its text — server/match/choices.js bountyBattles /
- * bountyText, the user's call after playtest #6). The 战术特训 cards are what the
+ * bountyText, the user's call after playtest #6; 教鞭's 法术大师A2·多轮战术特训 is one). The 战术特训 cards are what the
  * 教鞭 Art offers (PRTS 法术 教鞭 "于3个战术特训的悬赏任务中选择一项"; server/sim/content/items/meta.js); nothing in
  * act2 offers the 鸭爵 set.
  */
@@ -2332,6 +2448,162 @@ function bountyDraftExclusion(e, main) {
   if (main.payout !== 'kill') return 'perfect';
   if (HIDDEN_BOUNTY_IDS.has(e.effectId)) return 'hidden';
   return null;
+}
+
+/**
+ * The official 悬赏决策 drafts (player feedback after 0.1.0, report #2: "本来应该后期出的悬赏的怪物在前期的悬赏就出现了，导致选了
+ * 打不过"), read from 66 screenshots of 22 official co-op 绝境 / 终极 matches at the start of rounds 3, 9 and 11 (collected
+ * by the user, 2026-10-03, from videos of this season recorded at the end of March 2026; the readings are
+ * test/fixtures/official-bounty-drafts.json, `seen` below = its match numbers). Every card's title, enemy and coin value is
+ * an act2autochess (下半) effect. A card's enemy is fixed by its effect (blackboard `enemy_id`); the title only names the
+ * category and tier, so 悬赏·损伤I is 底海滑动者 in enemyeffect_12_4 and 临时收音师 in enemyeffect_18_1. The players pick
+ * in turn from ONE shared draft (a taken card stays greyed with the taker's avatar: match 17 R3, match 21 R9).
+ *
+ * One rule covers all three rounds: the draft's event is a fixed list of cards, and the draft shows 6 different cards of
+ * it (positions shuffled): R3 lists hold 6 cards (all shown), R9 lists up to 9 (every R9 group seen in 3 or more drafts —
+ * and only those — shows exactly 9 different cards: 鼠王 group, 喷气人 group, 复仇者 group), R11 lists 7 (the three R11 groups
+ * seen in 2–4 drafts show exactly 7: matches 1 / 6 / 21 / 22 each leave out a different one of the same 7 cards). Within a
+ * list a card is drawn with weight 1 + the drafts of its group it appeared in (`hits`; a card no draft of the group has
+ * shown yet, 1) [ASSUMED: smooths the official counts — in the 鼠王 group 鼠王 showed in 4 of 14, 杰斯顿 in 12].
+ *   initial  R3 (enemy_initial_1..10): six "接下来两场作战" cards, always 3 × I (1 coin) + 2 × II + 1 × III (22 of 22).
+ *            9 of the 10 fixed sets seen (BOUNTY_INITIAL_SETS: 18 ×5, 19 / the 10_5 set / the 17_6 set ×3, 17 / two more
+ *            ×2, two ×1 — consistent with a uniform pick among 10). Hand-made: a set can hold two series-20 cards (12) or
+ *            one card of series 17 (13 / 19 / 21). The unseen 10th set: BOUNTY_INITIAL_RULE [ASSUMED] — its III is one of
+ *            the only two two-battle cards no draft showed (法术大师A1 10_6, 鼎沸 20_6).
+ *   boss     R9 (bossInitial_1..6): the boss bounties "X·悬赏" and 源石虫·特训 (16 of 22), all "下场作战". Six groups, one
+ *            per event (BOUNTY_BOSS_GROUPS); 庞贝 and 鼠王 are never in one draft. The 鼠王 group (W 碎骨 弑君者 大鲍勃 源石虫
+ *            鼠王 杰斯顿 “自在” 陷落雪祀) came in 14 of the 22 matches, so the event is not picked uniformly: something of
+ *            the match decides — every match on the dark grey board (7) had it (if independent of the board, 2 %); the
+ *            leader, the map or the difficulty (终极 opened 2026-03-27) are candidates. Picked by the matches each group
+ *            came in [ASSUMED]. A named boss does not always come with its partners (杰斯顿 alone in 12 / 15 / 21, 复仇者
+ *            and 萨卡兹百夫长 without 邪魔的利刃 in 20). The groups hold 9, 9, 9, 9, 8 and 6 cards: the three seen in 3 or
+ *            more drafts show 9 (the 庞贝 / 鼠王 base of 6 + three named bosses); the three single-draft groups are
+ *            completed only with the base cards they lack [ASSUMED] — 腐败骑士 group 9, 泥岩 + 澪 group 8, and match 4
+ *            (the base alone) 6, so that one always shows the same six. Match 4 may instead be a draft of another group
+ *            (most likely the 泥岩 group: 1 in 28 for a uniform 6 of 8), leaving one event unseen — open.
+ *            凋零骑士, “遗弃者”, 锏, 扎罗 and 迷路的巨像 never appeared: not offered [ASSUMED].
+ *   hunter   R11 (R11 is a 悬赏决策 in 14 of the 22 matches): six "下场战斗" cards, the faction _7 / _8 cards and series 16
+ *            (16_1..8 the 特异III giants), at most one per faction series 10–15 (14 of 14). 7 groups seen
+ *            (BOUNTY_HUNTER_GROUPS): three complete (7 cards), four with 6 cards seen and a 7th drawn by the rule (`open`;
+ *            the group of match 15 shows no giant, so its 7th is one). The list is one of these 7, uniform [ASSUMED],
+ *            because that invents no list. The data does not say which of the 15 events bounty_hunter_1..15 R11 fires:
+ *            in effectChoiceInfoDict bounty_hunter_1..7 sit after bossInitial_1..6, and bounty_hunter_8..15 sit after
+ *            artifact_paid_4 / 5 and right before hardbuff_select (the tactic event only 绝境 / 终极 have, the modes
+ *            with an R11) — read by blocks, as SHOP_DRAFT reads the shop events, R11 would be the 8 events 8..15. The
+ *            sample fits 7, 8 or 9 events about equally (14 drafts showing exactly 7 lists: 7 events 37 %, 8 events
+ *            45 %, 9 events 39 %) but not 15 (7 lists or fewer 6 %); the counts 4 / 2 / 3 / 1 / 2 / 1 / 1 fit a uniform
+ *            pick (χ² = 4, 6 df). With 8 events, a list nobody has seen would come in about 1 R11 bounty draft in 8 —
+ *            open. No list is built from nothing: the R11 cards no draft showed (12_8 异光体孽生者, 16_2 “越长尘”, 16_6
+ *            高准度伦蒂尼姆城防自行炮) come only as an `open` card (BOUNTY_HUNTER_RULE: one giant for a list without one,
+ *            else tier I / II cards of the free faction series, at most two of 16_9..12), in about 1 R11 bounty draft in
+ *            15.
+ * In none of the 59 bounty drafts: the 7 multi-round cards (山海众头目·多轮悬赏, 多轮悬赏·假想敌 ×6), the pre-series cards
+ * enemyeffect_3_* (法术大师A2·悬赏 …), 战术特训 (法术教鞭 only) and the 鸭爵 set; no card twice in one draft.
+ */
+const EE = (s) => `enemyeffect_${s}`;
+const seriesIds = (n) => [1, 2, 3, 4, 5, 6].map((i) => EE(`${n}_${i}`));
+/** The R3 sets seen. */
+const BOUNTY_INITIAL_SETS = [
+  { cards: seriesIds(18), seen: [1, 3, 5, 9, 17] },
+  { cards: seriesIds(19), seen: [2, 15, 22] },
+  { cards: seriesIds(17), seen: [7, 14] },
+  { cards: ['10_5', '11_4', '12_5', '13_6', '15_4', '20_3'].map(EE), seen: [4, 10, 16] },
+  { cards: ['10_4', '11_5', '12_6', '14_4', '15_5', '20_2'].map(EE), seen: [6, 18] },
+  { cards: ['10_4', '11_5', '12_4', '14_6', '15_4', '20_4'].map(EE), seen: [8] },
+  { cards: ['10_4', '11_6', '12_4', '13_4', '14_5', '15_5'].map(EE), seen: [11, 20] },
+  { cards: ['10_4', '11_4', '12_5', '15_6', '20_1', '20_5'].map(EE), seen: [12] },
+  { cards: ['11_4', '12_4', '13_5', '14_4', '15_5', '17_6'].map(EE), seen: [13, 19, 21] },
+];
+/**
+ * The unseen R3 set [ASSUMED]: six two-battle cards of these series with the seen sets' tiers, at most `perSeries` of one
+ * series (the 20_1 / 20_5 set has two), its tier-III card one of `prefer` (the two-battle cards no draft showed).
+ */
+const BOUNTY_INITIAL_RULE = { series: [10, 11, 12, 13, 14, 15, 20], tiers: [1, 1, 1, 2, 2, 3], perSeries: 2, prefer: ['10_6', '20_6'].map(EE) };
+// R9 cards by name (enemyeffect_b_N, 源石虫·特训 enemyeffect_5_1)
+const R9 = {
+  W: 'b_10', 碎骨: 'b_1', 弑君者: 'b_3', 大鲍勃: 'b_13', 庞贝: 'b_12', 鼠王: 'b_11', 源石虫: '5_1', 杰斯顿: 'b_9', 自在: 'b_14', 陷落雪祀: 'b_23',
+  喷气人: 'b_8', 纠缠藤蔓: 'b_24', 澪: 'b_19', 邪魔的利刃: 'b_22', 复仇者: 'b_21', 萨卡兹百夫长: 'b_2', 腐败骑士: 'b_5', 墓碑: 'b_17', 巨大的丑东西: 'b_20', 泥岩: 'b_4',
+};
+/** A group from [name, hits] pairs (hits = the drafts of the group the card appeared in). */
+const r9Group = (pairs, seen) => ({ cards: pairs.map(([n]) => EE(R9[n])), hits: pairs.map(([, h]) => h), seen });
+/** The R9 groups (one per bossInitial event), picked by the matches they came in. */
+const BOUNTY_BOSS_GROUPS = [
+  r9Group([['W', 11], ['碎骨', 12], ['弑君者', 11], ['大鲍勃', 11], ['源石虫', 10], ['鼠王', 4], ['杰斯顿', 12], ['自在', 7], ['陷落雪祀', 6]], [7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 21]),
+  r9Group([['W', 3], ['碎骨', 1], ['弑君者', 1], ['大鲍勃', 3], ['庞贝', 1], ['源石虫', 2], ['喷气人', 3], ['纠缠藤蔓', 3], ['澪', 1]], [1, 5, 22]),
+  r9Group([['W', 3], ['碎骨', 2], ['弑君者', 1], ['庞贝', 2], ['源石虫', 1], ['澪', 1], ['邪魔的利刃', 2], ['复仇者', 3], ['萨卡兹百夫长', 3]], [6, 20, 'bahamut-12294']),
+  r9Group([['W', 1], ['碎骨', 1], ['弑君者', 0], ['大鲍勃', 0], ['庞贝', 0], ['源石虫', 1], ['腐败骑士', 1], ['墓碑', 1], ['巨大的丑东西', 1]], [3]),
+  r9Group([['W', 0], ['碎骨', 0], ['弑君者', 1], ['大鲍勃', 1], ['庞贝', 1], ['源石虫', 1], ['泥岩', 1], ['澪', 1]], [2]),
+  r9Group([['W', 1], ['碎骨', 1], ['弑君者', 1], ['大鲍勃', 1], ['庞贝', 1], ['源石虫', 1]], [4]),
+];
+/** The R11 groups seen: 7 cards, or 6 + `open` cards drawn by BOUNTY_HUNTER_RULE. */
+const hunterGroup = (ids, hits, seen, open = 0) => ({ cards: ids.map(EE), hits, seen, ...(open ? { open } : {}) });
+const BOUNTY_HUNTER_GROUPS = [
+  hunterGroup(['16_4', '16_10', '15_7', '12_7', '13_8', '10_7', '11_7'], [4, 4, 3, 3, 4, 3, 3], [1, 6, 21, 22]), // 温顺的武装大驮兽 …
+  hunterGroup(['16_3', '15_7', '13_8', '16_9', '14_7', '11_7', '10_7'], [2, 2, 2, 1, 2, 2, 1], [3, 13]), // 狂暴宿主组长 …
+  hunterGroup(['16_5', '15_8', '12_7', '14_8', '10_7', '16_11', '11_7'], [3, 3, 3, 2, 3, 3, 1], [10, 12, 16]), // 萨卡兹骸骨拷打者 …
+  hunterGroup(['16_7', '16_9', '14_7', '16_11', '11_7', '13_7'], [1, 1, 1, 1, 1, 1], [11], 1), // 乌顶巨角卢鲁 …
+  hunterGroup(['16_8', '16_10', '14_8', '10_7', '16_12', '13_7'], [2, 2, 2, 2, 2, 2], [14, 19], 1), // 伊利昂的木驮兽 …
+  hunterGroup(['16_1', '10_8', '11_8', '15_7', '13_7', '14_7'], [1, 1, 1, 1, 1, 1], [17], 1), // 泥岩巨像 …
+  hunterGroup(['10_8', '12_7', '13_7', '14_7', '11_7', '16_12'], [1, 1, 1, 1, 1, 1], [15], 1), // no giant seen (枯朽萃聚使徒 …)
+];
+/**
+ * The `open` card of a seen R11 list [ASSUMED]: up to `size` cards — one tier-III giant (a list without one gets one) +
+ * tier I / II cards, at most one per series of `onePerSeries` and `maxSeries16` of 16_9..12 — over the R11 cards by tier
+ * (buildChoices).
+ */
+const BOUNTY_HUNTER_RULE = { size: 7, onePerSeries: [10, 11, 12, 13, 14, 15], maxSeries16: 2 };
+/**
+ * The official 机密商店 (R11 of matches 2, 4, 5 and 8; the user: "机密商店按官方改成可以重复吧"): six item cards, free, and
+ * the same item can be offered twice (盟约之币 ×2 in 4 and 5, 变形同构体 ×2 in 8). Every one of the 4 has exactly two tier-VI
+ * items, at least one tier V and at least one 盟约之币 — never a tier-I / II item besides 盟约之币; the other two cards came
+ * out V ×3, IV ×2, III ×1, 盟约之币 ×2. So: six slots, each drawn on its own (with replacement) — VI, VI, V, 盟约之币 and
+ * twice a pick of V 3 / IV 2 / III 1 / 盟约之币 2 [ASSUMED: the slot split]; an item within its tier with weight 1 + the
+ * official 机密商店 cards it showed on (`seen`: 变形同构体 on 4 of the 8 tier-VI cards) [ASSUMED]. Solo shows 3 of the 6
+ * [ASSUMED]. Only at R11 (`rounds`; R11 is 绝境 / 终极 only, the rounds of the screenshots): the 机密商店 of 标准 R3 / R9
+ * and 险境 R3 / R6 / R9 has no screenshot, and the data's shop events sit in three blocks (artifact_paid_1 by the R3
+ * events, _2 / _3 by bossInitial / bounty_hunter_1..7, _4 / _5 by bounty_hunter_8..15 and hardbuff_select — the same
+ * block reading leaves open which hunter events R11 fires, see `hunter` above), so those keep the previous draw —
+ * any normal shop item of tiers I–VI per card, with replacement (the same item can come twice there too) [ASSUMED].
+ */
+const SHOP_DRAFT = {
+  rounds: [11],
+  slots: [{ 6: 1 }, { 6: 1 }, { 5: 1 }, { coin: 1 }, { 5: 3, 4: 2, 3: 1, coin: 2 }, { 5: 3, 4: 2, 3: 1, coin: 2 }],
+  coin: '盟约之币',
+  seen: { 变形同构体: 4, 天师古鼎: 1, 人事部文档: 1, 家族徽章: 1, 铳骑之威: 1, 天马之盔: 2, 双模机械臂: 2, 商业包装方案: 2, 博士投影: 1, 护盾无人机: 1, 寻呼模块: 1, 骑士储蓄罐: 1, 盟约之币: 6 },
+  matches: [2, 4, 5, 8],
+};
+/**
+ * The official 战术决策 (R11 of matches 7, 9, 18 and 20; the user: "战术决策也按官方改成可以重复吧"): six cards, and the same
+ * card can be offered twice (补给 ×2 in match 7; the other three show six different cards). All 24 cards are ally cards
+ * (allybuff_select_*: 盟誓, 驰援, 列装 / 财富 / 补给 / 整备 / 升华, 锐利): no 排斥 / 责罚 / 裁决 debuff (four drafts without
+ * one: about 0.04 % for the previous draw, 6 different cards of the 26 ally + 9 debuff cards) and no 模拟战场演变 terrain
+ * card. 列装 / 财富 / 补给 / 整备 / 升华 made 12 of the 24 cards (a uniform draw of the 26 ally cards: about 0.07 %), so
+ * the draw is weighted. At R11 (`rounds`; 绝境 / 终极 only, the round of the screenshots): each card drawn on its own (with
+ * replacement) from the ally cards (`kinds`), weight 1 + the official cards it showed on (`seen`) [ASSUMED: the weights;
+ * terrain cards left out — the maps of the 4 matches are unknown]; solo shows 3 [ASSUMED]. Other rounds (标准 / 险境, no
+ * screenshot) keep every card, uniform, terrain cards only for the match stage — with replacement too [ASSUMED].
+ * Open: a slot structure like SHOP_DRAFT's. Every one of the 4 drafts has at least one 驰援, at least one 盟誓 and at least
+ * two of 列装 / 财富 / 补给 / 整备 / 升华; under these independent draws a draft has 驰援 + 盟誓 about 70 % of the time (all
+ * four: about 24 %) and all three about 41 % (all four: about 3 %). The pattern was spotted after the fact, so it is kept as
+ * a question rather than slots [ASSUMED: independent draws]; more R11 战术决策 screenshots would settle it.
+ */
+const TACTIC_DRAFT = {
+  rounds: [11],
+  kinds: ['ally'],
+  seen: { 补给: 3, 列装: 3, 升华: 3, 莫斯提马的盟誓: 2, 银灰的盟誓: 2, 阿戈尔驰援: 2, 财富: 2, 谢拉格驰援: 1, 锐利: 1, 整备: 1, 玛恩纳的盟誓: 1, 斯卡蒂的盟誓: 1, 萨尔贡驰援: 1, 叙拉古驰援: 1 },
+  matches: [7, 9, 18, 20],
+};
+/** The kind of a round's 悬赏决策: R3 (and 险境 R6, [ASSUMED]) initial, R9 boss, R11 hunter. */
+const bountyDraftOf = (r) => (r < 8 ? 'initial' : r < 11 ? 'boss' : 'hunter');
+
+/** The draft kind a bounty card belongs to by its shape, null when no draft offers it (see above). */
+function bountyDraftPool(e, main, draftExcluded) {
+  if (draftExcluded) return null;
+  if (main.rounds === 2) return 'initial';
+  if (main.rounds !== 1) return null; // multi-round
+  if (/^enemyeffect_b_\d+$/.test(e.effectId) || e.effectId === 'enemyeffect_5_1') return 'boss';
+  if (/^enemyeffect_1[0-5]_[78]$/.test(e.effectId) || /^enemyeffect_16_\d+$/.test(e.effectId)) return 'hunter';
+  return null; // the pre-series cards enemyeffect_3_*
 }
 
 /** Classify a 机变 choice event id into a family. */
@@ -2382,15 +2654,39 @@ function buildChoices(ctx, effects, items, chess) {
     if (multiRound) tier = 2;
     for (const a of adds) if (a.enemyKey && !ctx.enemyDb.has(a.enemyKey)) warn(`bounty ${e.effectId}: unknown enemy ${a.enemyKey}`);
     const coin = e.enemyPrice || main.coin;
-    const draftExcluded = bountyDraftExclusion(e, main);
+    let draftExcluded = bountyDraftExclusion(e, main);
     if (draftExcluded === 'hidden' && !/鸭爵|高普尼克|流泪小子|圆仔/.test(e.name || '')) warn(`bounty ${e.effectId} "${e.name}": expected one of the 鸭爵 set`);
+    let draftPool = bountyDraftPool(e, main, draftExcluded);
+    // a boss bounty is offered only through a seen R9 group (BOUNTY_BOSS_GROUPS)
+    if (draftPool === 'boss' && !BOUNTY_BOSS_GROUPS.some((g) => g.cards.includes(e.effectId))) draftPool = null;
+    if (!draftExcluded && !draftPool) draftExcluded = 'unseen';
+    const sm = /^enemyeffect_(\d+)_\d+$/.exec(e.effectId);
     bounty.push({
       effectId: e.effectId, name: e.name, desc: e.desc, tier, coin,
       payout: main.payout, rounds: main.rounds, multiRound, enemyKey: main.enemyKey, count: main.count, adds,
-      draft: !draftExcluded, draftExcluded,
+      draft: !draftExcluded, draftExcluded, draftPool, series: sm ? Number(sm[1]) : null,
     });
   }
   bounty.sort((a, b) => naturalCmp(a.effectId, b.effectId));
+  // the official draft structures (see BOUNTY_INITIAL_SETS) only name cards of their own kind
+  const bountyById = new Map(bounty.map((c) => [c.effectId, c]));
+  const checkKind = (ids, kind, what) => { for (const id of ids) if (bountyById.get(id)?.draftPool !== kind) warn(`bounty draft ${what}: ${id} is not a "${kind}" card`); };
+  for (const s of BOUNTY_INITIAL_SETS) checkKind(s.cards, 'initial', 'R3 set');
+  for (const g of BOUNTY_BOSS_GROUPS) checkKind(g.cards, 'boss', 'R9 group');
+  for (const g of BOUNTY_HUNTER_GROUPS) checkKind(g.cards, 'hunter', 'R11 group');
+  for (const g of [...BOUNTY_INITIAL_SETS, ...BOUNTY_BOSS_GROUPS, ...BOUNTY_HUNTER_GROUPS]) {
+    if (new Set(g.cards).size !== g.cards.length) warn(`bounty draft group ${g.cards.join(' ')}: a card twice`);
+    if (g.hits && g.hits.length !== g.cards.length) warn(`bounty draft group ${g.cards.join(' ')}: hits do not match the cards`);
+  }
+  for (const s of BOUNTY_INITIAL_SETS) if (s.cards.map((id) => bountyById.get(id)?.tier).sort().join('') !== '111223') warn(`bounty draft R3 set ${s.cards.join(' ')}: not I I I II II III`);
+  for (const g of BOUNTY_HUNTER_GROUPS) {
+    const giants = g.cards.filter((id) => bountyById.get(id)?.tier === 3).length;
+    if (giants > 1 || g.cards.length + (g.open || 0) !== BOUNTY_HUNTER_RULE.size) warn(`bounty draft R11 group ${g.cards.join(' ')}: not ${BOUNTY_HUNTER_RULE.size} cards with at most one giant`);
+  }
+  // the R11 rule draws over the R11 cards by tier: III the giants, II / I the rest
+  const hunterTier = (t) => bounty.filter((c) => c.draftPool === 'hunter' && c.tier === t).map((c) => c.effectId);
+  if (hunterTier(1).length + hunterTier(2).length + hunterTier(3).length !== bounty.filter((c) => c.draftPool === 'hunter').length) warn('bounty: an R11 card of no tier I–III');
+  const withWeights = ({ hits, ...g }) => ({ ...g, weights: hits.map((h) => h + 1) });
 
   // Tactic cards (BUFF_GAIN effects).
   const tactic = [];
@@ -2403,6 +2699,13 @@ function buildChoices(ctx, effects, items, chess) {
     tactic.push({ effectId: e.effectId, name: e.name, desc: e.desc, kind, stageId, team });
   }
   tactic.sort((a, b) => naturalCmp(a.effectId, b.effectId));
+  // the official 战术决策 (TACTIC_DRAFT) names cards of its `kinds` only
+  const tacticByName = (name) => {
+    const hits = tactic.filter((c) => c.name === name);
+    if (hits.length !== 1) warn(`tactic draft card "${name}": ${hits.length} cards of that name`);
+    if (hits[0] && !TACTIC_DRAFT.kinds.includes(hits[0].kind)) warn(`tactic draft card "${name}" is a ${hits[0].kind} card`);
+    return hits[0]?.effectId ?? null;
+  };
 
   const equipNormal = Object.values(items).filter((i) => i.itemType === 'EQUIP' && !i.isGolden);
   const itemByName = (name) => equipNormal.find((i) => i.name === name)?.id || (warn(`pool item "${name}" not found`), null);
@@ -2412,7 +2715,8 @@ function buildChoices(ctx, effects, items, chess) {
   // Per-mode schedule of families (research 01 A4).
   const schedule = {};
   const supplyWindow = { 3: [1, 4], 6: [2, 5], 9: [3, 6], 11: [4, 6] };
-  const bountyTiers = { 3: [1, 2], 6: [1, 2, 3], 9: [2, 3], 11: [2, 3] };
+  // the 悬赏决策 of a round is the kind of official draft its round has (bountyDraftOf: R3 initial, R9 boss, R11 hunter)
+  const bountyEventRe = { initial: /^enemy_initial_/, boss: /^bossInitial_/, hunter: /^bounty_hunter_/ };
   for (const [modeId, rounds] of Object.entries(act.battleDataDict)) {
     const mode = act.modeDataDict[modeId];
     const solo = mode.modeType === 'SINGLE';
@@ -2423,16 +2727,21 @@ function buildChoices(ctx, effects, items, chess) {
       let families;
       if (diff === 'TRAINING') families = [{ family: 'supply', weight: 100 }];
       else if (diff === 'HARD' || diff === 'ABYSS') {
-        families = r === 11 ? [{ family: 'supply', weight: 50 }, { family: 'shop', weight: 50 }] : [{ family: 'bounty', weight: 100 }];
+        // R11 of the 22 official co-op matches (player feedback after 0.1.0 report #2, the screenshots of BOUNTY_INITIAL_SETS):
+        // 悬赏决策 14, 机密商店 4, 战术决策 4, 道具补给 0 — the weights are those counts [ASSUMED]. Solo 绝境 / 终极 take the
+        // same weights [ASSUMED: no solo screenshot; extrapolated from co-op — the data has solo 悬赏决策 events for R11,
+        // bounty_hunter_*_s, which the previous supply 50 / shop 50 never used]
+        families = r === 11 ? [{ family: 'bounty', weight: 14 }, { family: 'shop', weight: 4 }, { family: 'tactic', weight: 4 }] : [{ family: 'bounty', weight: 100 }];
       } else if (diff === 'NORMAL') {
         families = solo
           ? [{ family: r === 9 ? 'tactic' : 'supply', weight: 100 }]
           : [{ family: 'bounty', weight: 50 }, { family: 'supply', weight: 25 }, { family: 'shop', weight: 10 }, { family: 'tactic', weight: 15 }];
       } else families = [{ family: 'supply', weight: 45 }, { family: 'tactic', weight: 35 }, { family: 'shop', weight: 20 }];
-      const bountyEvents = r <= 3 ? eventsOf('bounty', (e) => /^enemy_initial/.test(e.id) && e.solo === solo) : eventsOf('bounty', (e) => /^(bounty_hunter|bossInitial)/.test(e.id) && e.solo === solo);
+      const bountyDraft = bountyDraftOf(r);
+      const bountyEvents = eventsOf('bounty', (e) => bountyEventRe[bountyDraft].test(e.id) && e.solo === solo);
       m[r] = {
         families, cards: solo ? 3 : 6,
-        supplyTiers: supplyWindow[r] || [1, 6], bountyTiers: bountyTiers[r] || [1, 3],
+        supplyTiers: supplyWindow[r] || [1, 6], bountyDraft,
         events: {
           bounty: bountyEvents,
           supply: diff === 'TRAINING' ? eventsOf('supply', (e) => e.training) : eventsOf('supply', (e) => !e.training && e.solo === solo),
@@ -2448,10 +2757,11 @@ function buildChoices(ctx, effects, items, chess) {
   return {
     events,
     families: {
-      bounty: { name: '悬赏决策', desc: '选定悬赏目标，获取额外奖励。', cards: 'cards.bounty entries with draft: true (PRTS 敌人轮选: no 战术特训 — the 教鞭 Art offers those — and no 鸭爵 set)' },
+      bounty: { name: '悬赏决策', desc: '选定悬赏目标，获取额外奖励。', cards: 'bountyDrafts[schedule[*].bountyDraft] — one official card list of the round (initial: an R3 set of 6; boss: an R9 group of up to 9; hunter: one of the 7 seen R11 lists of 7), six different cards of it drawn by weight, over cards.bounty entries with draft: true and that draftPool' },
       supply: { name: '道具补给', desc: '无需消耗资金，获得装备补给。', cards: 'random normal EQUIP items in schedule[*].supplyTiers (duplicates allowed)' },
-      shop: { name: '机密商店', desc: '无需消耗资金，获得装备补给。', cards: 'random normal EQUIP items of any tier I–VI (duplicates allowed)' },
-      tactic: { name: '战术决策', desc: '选择战术增益。', cards: 'cards.tactic (terrain cards only for the match stage)' },
+      shop: { name: '机密商店', desc: '无需消耗资金，获得装备补给。', cards: 'at shopDraft.rounds (R11): six slots drawn with replacement (VI, VI, V, 盟约之币, 2 × V / IV / III / 盟约之币); other rounds: random normal EQUIP shop items of tiers I–VI (duplicates allowed) — the same item can come twice' },
+      // desc = the official header (effectChoiceInfoDict buff_select_* / hardbuff_select_* "进行协同调整，做好迎战准备。")
+      tactic: { name: '战术决策', desc: '进行协同调整，做好迎战准备。', cards: 'cards.tactic, each card drawn on its own (with replacement) — the same card can come twice; at tacticDraft.rounds (R11) the ally cards by tacticDraft.weights, other rounds every card uniform (terrain cards only for the match stage)' },
     },
     format: {
       multi: { cards: 6, pickOrder: 'random', firstPickSec: 30, otherPickSec: 16, onTimeout: 'autoPickRandom', eachPlayerPicks: 1 },
@@ -2459,6 +2769,44 @@ function buildChoices(ctx, effects, items, chess) {
       opensAfterIncome: true,
     },
     cards: { bounty, tactic },
+    // the official 悬赏决策 structures by kind (tools/build-data.mjs BOUNTY_INITIAL_SETS; `seen` = the match numbers of
+    // test/fixtures/official-bounty-drafts.json; `slots` = the official events, the unseen ones built by `rule`)
+    bountyDrafts: {
+      initial: {
+        events: eventsOf('bounty', (e) => bountyEventRe.initial.test(e.id) && !e.solo), slots: eventsOf('bounty', (e) => bountyEventRe.initial.test(e.id) && !e.solo).length,
+        pick: 'slot', groups: BOUNTY_INITIAL_SETS, rule: BOUNTY_INITIAL_RULE, count: 6,
+        assumed: ['a uniform pick among the 10 events', 'the unseen 10th set built by `rule`', '险境 R6 drafts like R3'],
+      },
+      boss: {
+        events: eventsOf('bounty', (e) => bountyEventRe.boss.test(e.id) && !e.solo), slots: BOUNTY_BOSS_GROUPS.length,
+        pick: 'seen', groups: BOUNTY_BOSS_GROUPS.map(withWeights), count: 6,
+        assumed: ['a group picked by the matches it came in (the per-match cause is open)', 'card weights 1 + hits', 'the single-draft groups completed with their base cards', 'boss bounties of no seen group are not offered'],
+      },
+      hunter: {
+        events: eventsOf('bounty', (e) => bountyEventRe.hunter.test(e.id) && !e.solo), slots: BOUNTY_HUNTER_GROUPS.length,
+        // one of the 7 seen lists, uniform [ASSUMED]: `slots` 7, so no list is built from nothing (which of the 15 events
+        // R11 fires is open — by the data's blocks it would be 8..15); `rule` builds the `open` cards only
+        pick: 'slot', groups: BOUNTY_HUNTER_GROUPS.map(withWeights),
+        rule: { ...BOUNTY_HUNTER_RULE, giants: hunterTier(3), cards: [...hunterTier(2), ...hunterTier(1)] }, count: 6,
+        assumed: ['one of the 7 seen lists, picked uniformly (which of the 15 events R11 fires is open)', 'card weights 1 + hits', 'the `open` cards built by `rule`'],
+      },
+    },
+    // the official 机密商店 (SHOP_DRAFT) at `rounds`: `slots` tier → weight (`coin` = 盟约之币), each drawn on its own;
+    // `itemWeights` = 1 + the official cards an item showed on (other shop items 1)
+    shopDraft: {
+      rounds: SHOP_DRAFT.rounds, slots: SHOP_DRAFT.slots, coin: itemByName(SHOP_DRAFT.coin),
+      itemWeights: Object.fromEntries(Object.entries(SHOP_DRAFT.seen).filter(([n]) => n !== SHOP_DRAFT.coin).map(([n, k]) => [itemByName(n), 1 + k]).sort((a, b) => naturalCmp(a[0], b[0]))),
+      seen: SHOP_DRAFT.matches, count: 6,
+      assumed: ['the slot split', 'item weights 1 + seen', 'solo shows 3 of the 6', 'other rounds (标准 / 险境) keep the previous draw: tiers I–VI with replacement'],
+    },
+    // the official 战术决策 (TACTIC_DRAFT) at `rounds`: each card drawn on its own (with replacement) from the cards.tactic
+    // entries of `kinds`, by `weights` (1 + the official cards it showed on; other cards of those kinds 1)
+    tacticDraft: {
+      rounds: TACTIC_DRAFT.rounds, kinds: TACTIC_DRAFT.kinds,
+      weights: Object.fromEntries(Object.entries(TACTIC_DRAFT.seen).map(([n, k]) => [tacticByName(n), 1 + k]).filter(([id]) => id).sort((a, b) => naturalCmp(a[0], b[0]))),
+      seen: TACTIC_DRAFT.matches, count: 6,
+      assumed: ['card weights 1 + seen', 'independent draws (no slot structure)', 'no terrain card at R11', 'solo shows 3', 'other rounds (标准 / 险境) keep every card, uniform, with replacement'],
+    },
     schedule,
     pools: {
       pool_equip_normal: { kind: 'equip', rule: 'shopEligible', maxTier: 'shopLevel', assumed: true },
@@ -2743,6 +3091,19 @@ function validateAll(f) {
     if (!Array.isArray(c.skills) || c.skills.filter((s) => s.isDefault).length !== 1 || c.skills.find((s) => s.isDefault)?.skillId !== c.skill?.skillId) err(`chess ${c.chessId}: skills[] without exactly one default = skill`);
     if (c.modules && (c.modules.filter((m) => m.isDefault).length !== (c.module?.active ? 1 : 0) || !c.statsBase || !c.traitBase || !c.talentsBase)) err(`chess ${c.chessId}: inconsistent module choices`);
   }
+  // the deliberate trigger deviations (DESIGN §21.29) still override an official TAKE_DAMAGE row, on the normal chess
+  // and its elite alike
+  for (const [baseId, skillsOf] of Object.entries(TRIGGER_DEVIATIONS)) {
+    const recs = Object.values(chess).filter((c) => c.baseId === baseId);
+    if (recs.length !== 2) err(`trigger deviation ${baseId}: expected the normal and the elite record, got ${recs.length}`);
+    for (const [skillId, rule] of Object.entries(skillsOf)) {
+      for (const c of recs) {
+        const s = (c.skills || []).find((x) => x.skillId === skillId);
+        if (!s) err(`trigger deviation ${c.chessId}: no skill ${skillId}`);
+        else if (s.trigger.rawRule !== 'TAKE_DAMAGE' || s.trigger.rule !== rule) err(`trigger deviation ${c.chessId} ${skillId}: ${s.trigger.rawRule} → ${s.trigger.rule}, expected TAKE_DAMAGE → ${rule}`);
+      }
+    }
+  }
   for (const b of Object.values(bonds)) {
     for (const m of b.members) if (!chess[m]) err(`bond ${b.bondId}: member ${m} missing`);
     if (!b.thresholds.length) err(`bond ${b.bondId}: no thresholds`);
@@ -2755,6 +3116,7 @@ function validateAll(f) {
     if (it.requiresBondId && !bonds[it.requiresBondId]) err(`item ${it.id}: requiresBond ${it.requiresBondId} missing`);
   }
   for (const b of Object.values(bands)) if (!effects[b.effectId]) err(`band ${b.bandId}: effect missing`);
+  for (const b of Object.values(bands)) for (const id of b.bondIds || []) if (!bonds[id]) err(`band ${b.bandId}: bond ${id} missing`);
   for (const w of Object.values(waves)) {
     for (const sp of w.spawns) {
       if (sp.action) continue;
@@ -2828,6 +3190,9 @@ async function main() {
   const factions = buildFactions(ctx, enemies);
   const bosses = buildBosses(ctx, enemies, waves);
   const choices = buildChoices(ctx, effects, items, chess);
+  // the bonds each strategy is built around (DESIGN §21.26): the bot skips, and the strategy draft marks 本局禁用, a band
+  // whose bond the mode switches off
+  for (const b of Object.values(bands)) b.bondIds = bandBondIds(b, { bonds, pools: choices.pools });
   const config = buildConfig(ctx, waves, stages, bands);
   const files = { config, chess, bonds, garrisons, items, bands, effects, choices, enemies, factions, waves, stages, bosses, tokens };
 

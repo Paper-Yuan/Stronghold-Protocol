@@ -5,10 +5,15 @@
 //   data fields (dmgType/attackKind/projectile/canHitFly/targetPriority from data/chess.json) → kit.trait overrides.
 // Profile fields:
 //   attack 'melee'|'ranged'   dmgType 'phys'|'arts'|'true'|'heal'|'none'
-//   projectile 'none'|'arrow'|'bolt'|'bomb'|'lob'|'orb'|'drone'|'boomerang' ('boomerang': out to the target and back to
-//                             the thrower, ai.js throwBoomerang)        boomerang bool (回环射手: keeps 'boomerang')
+//   projectile 'none'|'beam'|'arrow'|'bolt'|'bomb'|'lob'|'orb'|'drone'|'boomerang' ('beam': an instant hit drawn as a
+//                             line; 'boomerang': out to the target and back to the thrower, ai.js throwBoomerang)
+//                             boomerang bool (回环射手: keeps 'boomerang')
 //   canHitFly bool            maxTargets n (≥1)          hitAllBlocked bool (attack every blocked enemy)
-//   allInRange bool           splashRadius tiles         splashScale (× damage for splash victims)
+//   allInRange bool (every enemy on the range at once)   splashRadius tiles (around the struck target)
+//   rangeAoe bool (a 锁定攻击范围 AoE without a projectile — SUB table or kit trait, applied by resolveProfile after
+//                  every override: allInRange + instant 'beam' hits on a ranged profile; only selectable enemies are
+//                  struck — a stealthed one is not, unless revealed or blocked; PRTS 作战机制 §AOE伤害判定)
+//   splashScale (× damage for splash victims)
 //   splashOthersOnly bool     groundOnly bool            hits n (damage instances per attack)
 //   chain {count, falloff, radius, sluggish}              heal {mode:'single'|'multi'|'chain', count, falloff, farMul, elementHealRatio}
 //   priority 'fly'|'lowDef'|'ranged'|'lowestHp'|'highestHp'|'nearest'|'farthest'|'notBurst'|null
@@ -24,7 +29,7 @@
 import { toLocal, frontOf } from './dir.js';
 import { absoluteRangeKeys } from './targeting.js';
 import { bodyInKeys, bodyKeys, bodyOnTile } from './body.js';
-import { COLS } from './constants.js';
+import { COLS, CHAIN_RADIUS } from './constants.js';
 
 const P = (o) => Object.freeze(o);
 const num = (v, d) => (typeof v === 'number' && Number.isFinite(v) ? v : d);
@@ -271,13 +276,14 @@ export const SUB = Object.freeze({
   closerange: P({}),
   longrange: P({ priority: 'lowDef' }),
   aoesniper: P({ splashRadius: 1.1, projectile: 'bomb' }),
-  bombarder: P({ splashRadius: 1.0, projectile: 'bomb', groundOnly: true, canHitFly: false,
+  // PRTS 溅射半径一览 (特性): 投掷手 0.9, 扩散术师 1.1 (格雷伊 1.0, TUNE below), 链术师 1.7 jumps; 炮手 1.0 (none in the pool)
+  bombarder: P({ splashRadius: 0.9, projectile: 'bomb', groundOnly: true, canHitFly: false,
     afterHit: (battle, unit, target, info) => {
       // aftershocks: (times − 1) extra hits at append_atk_scale × ATK (default one hit at 50 %)
       const n = Math.max(1, (unit.profile.shockTimes ?? 2) - 1);
       for (let i = 1; i <= n; i++) {
         battle.after(0.3 * i, () => {
-          for (const e of battle.enemiesInRadius(info.x, info.y, unit.profile.splashRadius || 1, true)) { // splash: 中点判定
+          for (const e of battle.foesInRadius(info.x, info.y, unit.profile.splashRadius || 1, true)) { // splash: 中点判定
             if (e.isFlying) continue;
             battle.dealDamage(unit, e, { amount: unit.s.atk * (unit.profile.shockScale ?? 0.5), type: 'phys', isSplash: true, tags: ['aftershock'] });
           }
@@ -297,9 +303,15 @@ export const SUB = Object.freeze({
       return front ? (unit.profile.frontScale ?? 1.5) : 1;
     } }),
   // --- CASTER
+  // "群体法术伤害" names two shapes: the 扩散术师 splash 1.1 tiles around the struck target (PRTS 溅射半径一览; Arknights
+  // Terra Wiki, Splash Caster), while the 轰击术师 ("超远距离的群体法术伤害") and the 阵法术师 strike every enemy inside the
+  // attack range at once, the same damage near and far — community report E3 after 0.1.0. Primary for the 轰击术师: PRTS
+  // 作战机制 §AOE伤害判定 names 伊芙利特's 炎爆 a 锁定攻击范围 AoE, and 炎爆 is her next-attack skill ("下次攻击造成…",
+  // PRTS 伊芙利特 S2); for the 阵法术师: Terra Wiki, Phalanx Caster (secondary) and PRTS 林 S3 备注. PRTS 溅射半径一览
+  // documents no splash radius for either (supporting only: it omits the 撼地者 too)
   splashcaster: P({ splashRadius: 1.1 }),
-  blastcaster: P({ splashRadius: 1.1, projectile: 'bomb' }),
-  chain: P({ chain: { count: 3, falloff: 0.15, radius: 1.8, sluggish: 0.5 } }),
+  blastcaster: P({ rangeAoe: true }),
+  chain: P({ chain: { count: 3, falloff: 0.15, radius: CHAIN_RADIUS, sluggish: 0.5 } }),
   funnel: P({ projectile: 'drone', install: installFunnel,
     dmgMul: (battle, unit, target) => {
       const f = unit.profile.funnel || { init: 0.2, delta: 0.15, max: 1.1 };
@@ -309,7 +321,7 @@ export const SUB = Object.freeze({
     } }),
   mystic: P({ install: installMystic,
     hitsFn: (battle, unit) => { const n = 1 + (unit.trait.stored ?? 0); unit.trait.stored = 0; return n; } }),
-  phalanx: P({ noAttackUnlessSkill: true, splashRadius: 1.1, install: installPhalanx }),
+  phalanx: P({ noAttackUnlessSkill: true, rangeAoe: true, install: installPhalanx }),
   primcaster: P({}),
   corecaster: P({}),
   // --- MEDIC
@@ -386,6 +398,8 @@ export const SUB = Object.freeze({
 const TUNE = {
   fastshot: (tb) => ({ flyScale: num(tb.atk_scale, 1) }),
   bombarder: (tb) => ({ shockScale: num(tb['attack@append_atk_scale'], 0.5), shockTimes: num(tb['attack@times'], 2) }),
+  // PRTS 溅射半径一览 特殊: 格雷伊 1.0 (the branch's 1.1 otherwise)
+  splashcaster: (tb, def) => ((def.charId ?? def.raw?.charId) === 'char_253_greyy' ? { splashRadius: 1.0 } : {}),
   hunter: (tb) => ({ ammoMax: num(tb.value, 8), ammoScale: num(tb.atk_scale, 1.2) }),
   reaperrange: (tb, def) => ({ frontScale: num(tb.atk_scale, 1.5), frontGrid: def.raw?.trait?.rangeGrid ?? null }),
   funnel: (tb) => ({ funnel: { init: num(tb.init_atk_scale, 0.2), delta: num(tb.delta_atk_scale, 0.15), max: num(tb.max_atk_scale, 1.1) } }),
@@ -485,6 +499,13 @@ export function resolveProfile(def, kitTrait = null) {
   if (p.dmgType === 'none') p.noAttack = true;
   if (p.fortress || p.groundOnly) { p.canHitFly = false; p.groundOnly = true; }
   if (kitTrait) Object.assign(p, kitTrait);
+  // a 锁定攻击范围 AoE (阵法术师, 轰击术师) strikes every enemy on its range and has no projectile: they are struck at the
+  // same moment ('beam' = instant hits, drawn as a line to each victim — PRTS 作战机制 "在攻击前摇结束时选取范围内的全体
+  // 目标，同时造成伤害"); the data's generic ranged projectile ('bolt') would land them one by one
+  if (p.rangeAoe) {
+    p.allInRange = true;
+    if (p.attack === 'ranged') p.projectile = 'beam';
+  }
   return p;
 }
 

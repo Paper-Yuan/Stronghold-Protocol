@@ -108,13 +108,14 @@ test('flow fields are cached per destination and grid version', () => {
 });
 
 test('real stages: the official lanes of research 08 §3.2 (crates = non-hidden level predefines, platforms blocking) + blockable-ground preference', REAL, () => {
-  // m01 / m04 lower gate: equal-length choice between the col-9 floor lane and the col-8 road — the road (blockable)
-  // wins (official: (9,9) → (12,8) over the floor of (10,9) / (11,9), and (9,10) → (10,7) over (10,9))
+  // m01 lower gate: equal-length choice between the col-9 floor lane and the col-8 road — the road (blockable) wins
+  // (official: (9,9) → (12,8) through the floor of (10,9)); m04 lower gate: the official diagonal (9,10) → (10,7) only
+  // brushes the corner of the floor (10,9) and stays (community report D5, test/sim/pathing-official.test.js)
   const lanes = {
     act1autochess_m01: ['(12,10) (12,4) (9,4) (9,2)', '(9,10) (9,8) (12,8) (12,4) (9,4) (9,2)'],
     act1autochess_m02: ['(12,10) (12,3) (9,3) (9,2)', '(9,10) (9,9) (11,9) (11,6) (9,6) (9,2)'],
     act1autochess_m03: ['(12,10) (12,6) (11,6) (9,5) (9,2)', '(9,10) (9,2)'], // 射击台 on (10,3)/(10,4) block [ASSUMED]
-    act1autochess_m04: ['(12,10) (12,9) (11,9) (11,4) (9,4) (9,2)', '(9,10) (9,8) (10,8) (10,4) (9,4) (9,2)'],
+    act1autochess_m04: ['(12,10) (12,9) (11,9) (11,4) (9,4) (9,2)', '(9,10) (10,7) (10,4) (9,4) (9,2)'],
     act2autochess_m01: ['(12,10) (12,9) (9,9) (9,7) (12,7) (12,5) (9,5) (9,2)', '(9,10) (9,7) (12,7) (12,5) (9,5) (9,2)'],
     act2autochess_m02: ['(12,10) (12,7) (9,7) (9,2)', '(9,10) (9,2)'],
     act2autochess_m03: ['(12,10) (12,4) (9,4) (9,2)', '(9,10) (9,9) (10,9) (10,6) (9,6) (9,2)'],

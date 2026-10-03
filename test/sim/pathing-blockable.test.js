@@ -1,12 +1,14 @@
-// Blockable-ground preference of the ground pathing (grid.js header; user playtest: on 战场#01 the lower-gate enemies
-// walked up the col-9 floor lane, where no operator can stand, instead of the col-8 road). Among equal-length routes the
-// flow field takes the one with the fewest non-blockable tiles, and smoothing never cuts across floor the grid route
-// does not walk. Audit: every active stage × gate × field (normal, 联防 both halves, boss both halves incl. the solo
-// `_s` templates) — the non-blockable tiles an enemy still crosses are listed and proven unavoidable (no route of equal
-// or near-equal length, up to +2 tiles, crosses fewer).
+// Blockable-ground preference of the ground pathing (grid.js header; user playtest #2: on 战场#01 the lower-gate enemies
+// walked up the col-9 floor lane, where no operator can stand, instead of the col-8 road). The flow field keeps the
+// official route unless the preference route — the fewest non-blockable tiles among equal-length chains, smoothing
+// that never cuts across floor its grid route does not walk — crosses fewer non-blockable tiles. "Crosses" = the
+// segment passes through the tile's interior (grid.js segmentTiles; brushing a corner is not crossing — the D5 report
+// after 0.1.0, test/sim/pathing-official.test.js). Audit: every active stage × gate × field (normal, 联防 both halves,
+// boss both halves incl. the solo `_s` templates) — the non-blockable tiles an enemy still crosses are listed and
+// proven unavoidable (no 4-connected route of equal or near-equal length, up to +2 tiles, crosses fewer).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { Grid, bresenhamTiles } from '../../server/sim/grid.js';
+import { Grid, bresenhamTiles, segmentTiles } from '../../server/sim/grid.js';
 import { getDefaultSource, hasGeneratedData, normalizeRoute } from '../../server/sim/simdata.js';
 import { GEO } from '../../shared/constants.js';
 import { makeBattle, flatStage, chessRec, enemyRec } from '../helpers/battleHarness.js';
@@ -29,7 +31,7 @@ function stageGrid(id, rect) {
   return g;
 }
 
-/** Every tile the enemy's rounded position can take on the smoothed route: Bresenham tiles + diagonal-step corners. */
+/** The official line-of-sight footprint of the smoothed route: Bresenham tiles + diagonal-step corners (all walkable). */
 function covered(wp) {
   const out = [wp[0]];
   for (let i = 1; i < wp.length; i++) {
@@ -43,12 +45,20 @@ function covered(wp) {
   return out;
 }
 
+/** Every tile the enemy's position crosses on the smoothed route (exact segments; a corner touch is not a crossing). */
+function crossed(wp) {
+  const out = [wp[0]];
+  for (let i = 1; i < wp.length; i++) out.push(...segmentTiles(wp[i - 1], wp[i]).slice(1));
+  return out;
+}
+
 /** Non-blockable tiles crossed from s to e (start and goal excluded), in route order. */
 function nbCrossed(g, s, e) {
   const wp = g.waypoints(s[0], s[1], e[0], e[1]);
   assert.ok(wp, `(${s}) → (${e}) reachable`);
+  for (const [r, c] of covered(wp)) assert.ok(g.walkable(r, c), `(${s}) → (${e}) line of sight over unwalkable (${r},${c})`);
   const seen = new Set();
-  for (const [r, c] of covered(wp)) {
+  for (const [r, c] of crossed(wp)) {
     const k = `${r},${c}`;
     if ((r === s[0] && c === s[1]) || (r === e[0] && c === e[1]) || g.blockable(r, c)) continue;
     assert.ok(g.walkable(r, c), `(${s}) → (${e}) crosses unwalkable (${k})`);
@@ -128,10 +138,33 @@ test('smoothing never cuts a corner across floor that the grid route does not wa
   const g = new Grid(flatStage({ rows }), GEO.NORMAL_RECT);
   for (const s of [[9, 9], [9, 10]]) {
     const wp = g.waypoints(s[0], s[1], 12, 3);
-    for (const [r, c] of covered(wp)) assert.ok(g.blockable(r, c) || (r === s[0] && c === s[1]), `(${s}) → (12,3) crosses (${r},${c}): ${JSON.stringify(wp)}`);
+    for (const [r, c] of crossed(wp)) assert.ok(g.blockable(r, c) || (r === s[0] && c === s[1]), `(${s}) → (12,3) crosses (${r},${c}): ${JSON.stringify(wp)}`);
   }
   // the straight line stays when it only crosses blockable ground
   assert.deepEqual(g.waypoints(9, 9, 12, 3), [[9, 9], [12, 3]]);
+});
+
+test('a diagonal that only brushes a floor tile\'s corner is the official one (D5); one through the floor is not', () => {
+  //         col 0123456789 10
+  // row 10  ##hrrrrrrf#      floor (10,9) right of the road; the route turns from row 9 into row 10
+  // row  9  ##Er###rrS#      gate (9,10) → (9,2) via row 10
+  const rows = { 12: '##hhhhhhhhh##########', 11: '##hhhhhhhhh##########', 10: '##hrrrrrrf###########', 9: '##Err###rrS##########' };
+  const g = new Grid(flatStage({ rows }), GEO.NORMAL_RECT);
+  const p = new Grid(flatStage({ rows }), GEO.NORMAL_RECT);
+  p.unblockable.fill(0);
+  // official: (9,10) → (10,7) touches (10,9) only at the corner point (8.5, 9.5)
+  assert.deepEqual(g.waypoints(9, 10, 9, 2), p.waypoints(9, 10, 9, 2));
+  assert.deepEqual(g.waypoints(9, 10, 9, 2)[1], [10, 7]);
+  assert.deepEqual(nbCrossed(g, [9, 10], [9, 2]), []);
+  // a floor column next to a road column (战场#01): the official (9,9) → (12,8) runs through the floor (10,9); the road
+  // route crosses none, so it wins
+  const rows1 = { 12: '##hrrrrrrrfS#########', 11: '##hhhhhhrf###########', 10: '##hhhhhhrf###########', 9: '##Er###rrS###########' };
+  const g1 = new Grid(flatStage({ rows: rows1 }), GEO.NORMAL_RECT), p1 = new Grid(flatStage({ rows: rows1 }), GEO.NORMAL_RECT);
+  p1.unblockable.fill(0);
+  assert.deepEqual(p1.waypoints(9, 9, 12, 3), [[9, 9], [12, 8], [12, 3]], 'official');
+  assert.deepEqual(nbCrossed(p1, [9, 9], [12, 3]), ['10,9'], 'the official diagonal runs through the floor (10,9)');
+  assert.deepEqual(g1.waypoints(9, 9, 12, 3), [[9, 9], [9, 8], [12, 8], [12, 3]]);
+  assert.deepEqual(nbCrossed(g1, [9, 9], [12, 3]), []);
 });
 
 test('the preference is only a tie-break: crates keep cost 1000, route lengths stay the official ones', REAL, () => {
@@ -184,11 +217,16 @@ const UNAVOIDABLE = {
   act1autochess_m01: { low: '', up: '12,9', uLow: '9,10', uUp: '12,17 9,10', b5: '5,9|5,11', b2: '|' },
   act1autochess_m02: { low: '10,9 11,9', up: '12,9', uLow: '10,17 11,17 12,10 12,9', uUp: '12,17 12,10 12,9', b5: '5,9|5,11', b2: '3,9 4,9|3,11 4,11' },
   act1autochess_m03: { low: '', up: '12,9', uLow: '9,10', uUp: '12,17 9,10', b5: '5,9|5,11', b2: '|' },
-  act1autochess_m04: { low: '', up: '12,9 11,9', uLow: '9,10', uUp: '12,17 11,17 9,10', b5: '5,9 4,9|5,11 4,11', b2: '|' },
-  act2autochess_m01: { low: '', up: '12,9 11,9 10,9', uLow: '9,10', uUp: '12,17 11,17 10,17 9,10', b5: '5,9 4,9 3,9|5,11 4,11 3,11', b2: '|' },
+  act1autochess_m04: { low: '', up: '12,9 11,9', uLow: '9,10', uUp: '12,17 11,17 9,10', b5: '4,9|4,11', b2: '|' },
+  act2autochess_m01: { low: '', up: '12,9 11,9 10,9', uLow: '9,10', uUp: '12,17 11,17 10,17 9,10', b5: '4,10 3,9|4,10 3,11', b2: '|' },
   act2autochess_m02: { low: '', up: '12,9', uLow: '9,10', uUp: '12,17 9,10', b5: '5,9|5,11', b2: '|' },
   act2autochess_m03: { low: '10,9', up: '12,9', uLow: '10,17 9,10 10,9', uUp: '12,17 9,10 10,9', b5: '5,9|5,11', b2: '3,9|3,11' },
-  act2autochess_m04: { low: '', up: '12,9', uLow: '9,10', uUp: '12,17 9,10', b5: '5,9|5,11', b2: '|' },
+  // the 深水区 (cols 6 / 14 between the fences) refuses deployment (player report #3 after 0.1.0): non-blockable, and
+  // every route crosses it — the routes themselves did not change
+  act2autochess_m04: {
+    low: '10,6 11,6', up: '12,9 12,6', uLow: '10,14 11,14 9,10 10,6 11,6', uUp: '12,17 12,14 9,10 10,6 11,6',
+    b5: '5,9 5,6|5,11 5,14', b2: '3,6 4,6|3,14 4,14',
+  },
 };
 
 test('audit: every active stage × gate × field — the non-blockable tiles crossed are exactly the listed unavoidable ones', REAL, () => {
@@ -201,7 +239,7 @@ test('audit: every active stage × gate × field — the non-blockable tiles cro
       assert.equal(got.join(' '), want, `${sid} ${what} (${s}) → (${e}): non-blockable tiles crossed`);
       const m = fewestNb(g, s, e, 2);
       assert.ok(m, `${sid} ${what}: reachable without crates`);
-      assert.equal(got.length, m.min, `${sid} ${what} (${s}) → (${e}): a route of length ≤ ${m.best}+2 crosses only ${m.min}`);
+      assert.ok(got.length <= m.min, `${sid} ${what} (${s}) → (${e}): a route of length ≤ ${m.best}+2 crosses only ${m.min}`);
       n++;
     };
     check(nrm, [9, 10], [9, 2], exp.low, 'normal lower gate');
@@ -246,7 +284,8 @@ test('audit: every WALK leg of every wave template (normal / 联防 / boss / hid
   // the boss arena's central floor (rows 3–5 × cols 9–11: the (5,10) / (2,10) teleport exits, boss_8's parts and
   // patrols); a blockable detour around that floor is ≥ 2 tiles longer, and the official route length is kept.
   const arena = (t) => { const [r, c] = t.split(',').map(Number); return r >= 3 && r <= 5 && c >= 9 && c <= 11; };
-  let n = 0, extra = 0, accepted = 0;
+  let n = 0, extra = 0;
+  const accepted = [];
   for (const sid of STAGES) {
     const grids = new Map();
     for (const { rect, from, to, id } of legs.values()) {
@@ -258,18 +297,20 @@ test('audit: every WALK leg of every wave template (normal / 联防 / boss / hid
       if (!eq) continue;
       const got = nbCrossed(g, from, to);
       const what = `${sid} ${id} (${from}) → (${to}) crosses ${got.join(' ')}`;
-      assert.equal(got.length, eq.min, `${what}, an equal-length route only ${eq.min}`);
+      assert.ok(got.length <= eq.min, `${what}, an equal-length route only ${eq.min}`);
       const near = fewestNb(g, from, to, 2);
       if (near.min < got.length) {
         assert.ok(rect === GEO.BOSS_RECT && got.every(arena), `${what}: a route of length ≤ ${near.best}+2 crosses only ${near.min}`);
-        accepted++;
+        accepted.push(what);
       }
       extra += got.length;
       n++;
     }
   }
   assert.ok(n > 200, `${n} legs audited (${extra} unavoidable non-blockable crossings)`);
-  assert.equal(accepted, 17, 'accepted boss-arena exceptions (update the count only after reviewing a new one)');
+  // (16 with D5's official diagonals alone; 战场#08's 深水区 is non-blockable since player report #3 after 0.1.0, so on its
+  // boss field the two +2 detours around the arena floor cross the water as well and are no longer exceptions)
+  assert.equal(accepted.length, 14, `accepted boss-arena exceptions (update the count only after reviewing a new one):\n${accepted.join('\n')}`);
 });
 
 // ---------------------------------------------------------------------------------------------------------------
@@ -323,7 +364,7 @@ test('map cards (移除全部阻隔工事 / 阻隔工事变为射击台): with t
         }
         const got = nbCrossed(g, s, e);
         const m = fewestNb(g, s, e, 0);
-        assert.equal(got.length, m.min, `${sid} crates ${mode} ${kind} (${s}) → (${e}) crosses ${got.join(' ')}; an equal-length route only ${m.min}`);
+        assert.ok(got.length <= m.min, `${sid} crates ${mode} ${kind} (${s}) → (${e}) crosses ${got.join(' ')}; an equal-length route only ${m.min}`);
         n++;
       }
     }
@@ -359,7 +400,7 @@ test('deviation from the official route is bounded: same grid length everywhere,
   assert.ok(n > 2000 && longer > 0 && worst > 1, `${n} tiles, ${longer} longer, worst +${worst.toFixed(2)}`);
 });
 
-test('random layouts: official lengths, fewest non-blockable tiles among equal-length chains, no off-chain floor / crate / wall on a smoothed segment', () => {
+test('random layouts: official lengths, fewest non-blockable tiles among equal-length chains, official line of sight, never more floor than the official route', () => {
   let seed = 20260929;
   const rnd = () => ((seed = (Math.imul(seed, 1103515245) + 12345) >>> 0) / 4294967296);
   const RECT = GEO.UNITE_RECT;
@@ -387,23 +428,34 @@ test('random layouts: official lengths, fewest non-blockable tiles among equal-l
       }
       assert.equal(f.pen[k], best[k], `${what}: (${r},${c}) pen`);
     }
-    // smoothed chains: strictly closer each hop; segments cross only walkable, crate-free tiles and on-chain floor
+    // routes: strictly closer each hop; every segment is official line of sight (walkable, crate-free Bresenham
+    // footprint); `cost` = the non-blockable tiles the route crosses; never more than the pure official route, nor than
+    // the fewest-floor chain (pen); a pointer other than the official one crosses strictly less floor, or as little
+    // while it only skips the official waypoint (which lies on the straight line to it and leads there)
+    assert.deepEqual([...f.official], [...fp.next], `${what}: the official pointers`);
+    const nbSeg = (x, y) => segmentTiles([(x / COLS) | 0, x % COLS], [(y / COLS) | 0, y % COLS]).slice(1).filter(([r, c]) => g.unblockable[r * COLS + c]).length;
+    const offNb = new Int32Array(N);
     for (const k of order) {
       if (k === dest) continue;
-      const chain = new Set();
-      for (let x = k; x >= 0; x = f.parent[x]) chain.add(x);
-      for (let x = k; x !== dest;) {
-        const y = f.next[x];
-        assert.ok(y >= 0 && f.dist[y] < f.dist[x], `${what}: next of ${x}`);
-        const a = [(x / COLS) | 0, x % COLS], b = [(y / COLS) | 0, y % COLS];
-        const hop = Math.abs(a[0] - b[0]) + Math.abs(a[1] - b[1]) === 1;
+      const y = f.next[k];
+      assert.ok(y >= 0 && f.dist[y] < f.dist[k], `${what}: next of ${k}`);
+      const a = [(k / COLS) | 0, k % COLS], b = [(y / COLS) | 0, y % COLS];
+      if (Math.abs(a[0] - b[0]) + Math.abs(a[1] - b[1]) > 1) {
         for (const [r, c] of covered([a, b])) {
-          const kk = r * COLS + c;
-          if (kk === dest || hop) continue;
-          assert.ok(g.walkable(r, c) && !g.isCrate(r, c), `${what}: (${a}) → (${b}) crosses (${r},${c})`);
-          assert.ok(!g.unblockable[kk] || chain.has(kk), `${what}: (${a}) → (${b}) cuts across off-chain floor (${r},${c})`);
+          if (r * COLS + c !== dest) assert.ok(g.walkable(r, c) && !g.isCrate(r, c), `${what}: (${a}) → (${b}) crosses (${r},${c})`);
         }
-        x = y;
+      }
+      assert.equal(f.cost[k], nbSeg(k, y) + f.cost[y], `${what}: (${a}) cost`);
+      const o = fp.next[k];
+      offNb[k] = nbSeg(k, o) + offNb[o];
+      assert.ok(f.cost[k] <= offNb[k], `${what}: (${a}) crosses ${f.cost[k]} non-blockable tiles, the official route ${offNb[k]}`);
+      assert.ok(f.cost[k] <= f.pen[k] - g.unblockable[k] + g.unblockable[dest], `${what}: (${a}) more floor than its fewest-floor chain`);
+      if (y !== o) {
+        const co = nbSeg(k, o) + f.cost[o];
+        const oo = [(o / COLS) | 0, o % COLS];
+        const skips = f.next[o] === y && (oo[0] - a[0]) * (b[1] - a[1]) === (oo[1] - a[1]) * (b[0] - a[0])
+          && segmentTiles(a, b).some(([r, c]) => r === oo[0] && c === oo[1]);
+        assert.ok(f.cost[k] < co || (f.cost[k] === co && skips), `${what}: (${a}) leaves the official pointer without less floor`);
       }
     }
   }

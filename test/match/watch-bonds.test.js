@@ -1,8 +1,9 @@
 // The data behind the watched player's bond strip (DESIGN §20.15, user report after playtest #6): what the server
 // sends of every player's bonds and what the browser's battle runner adds live.
 //   * m.public players[].bonds = every bond with members, layers or an active tier — the player's own m.private list
-//     without the per-bond extras the client reads from bonds.json (thresholds / countsHand); nothing else — and nothing
-//     at all for an eliminated player (nobody can watch them).
+//     without the per-bond extras the client reads from bonds.json (thresholds / countsHand); nothing else (but `harmony`
+//     on an entry whose count holds 调和's +1, DESIGN §21.26: test/match/feedback1-gaps.test.js) — and nothing at all for
+//     an eliminated player (nobody can watch them).
 //   * From the end of COMBAT until the settlement the views (m.private and m.public) carry the finished normal battle's
 //     in-battle gains (PlayerState.bondsView / bondsMeta.bondsWithGains, capped at 999): the strip of a player — and of a
 //     teammate watching him in the 联防 — keeps the layers his battle reached. The persistent state is untouched and the

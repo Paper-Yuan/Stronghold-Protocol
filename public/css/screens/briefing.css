@@ -1,6 +1,8 @@
 /* ==========================================================================================
    screens/briefing.css — INFO_CHECK briefing (js/screens/briefing.js) + the pre-game step header
    shared with the band draft (js/ui/matchChrome.js StepHeader). Research 06 §4.1 / §11.6.
+   The bond rows, the legend and the banned operators (.brief-bonds / .brief-legend / .brief-banned) are
+   js/ui/matchInfo.js MatchInfo — also shown by the band draft's 本局信息 dialog (css/screens/draft.css .minfo-dlg).
    ========================================================================================== */
 
 /* ---- shared pre-game backdrop + header ---- */

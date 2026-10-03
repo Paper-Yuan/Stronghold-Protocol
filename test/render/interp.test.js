@@ -5,6 +5,7 @@ import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 import { SnapshotBuffer, normalizeSnapshot, isCosmeticEvent, frameTime } from '../../public/js/render/interp.js';
 
+const fxFormOf = (e) => (e && e[0] === 'fx' && e[4] && Object.hasOwn(e[4], 'form') ? e[4].form : undefined);
 const near = (a, b, eps = 1e-6) => Math.abs(a - b) <= eps;
 const snap = (t, units) => ({ fieldId: 'n:1', t, units, dp: 10, killed: 0, total: 5 });
 const U = (id, x, y, hp = 100, anim = 0, flags = 0) => [id, x, y, hp, 100, 5, 10, flags, anim];
@@ -186,6 +187,30 @@ describe('SnapshotBuffer', () => {
     assert.ok(isCosmeticEvent(['atk']) && !isCosmeticEvent(['leak']) && !isCosmeticEvent(null));
     b.pushEvents([['leak', 4]], 0, 50);
     assert.deepEqual(b.flushEvents().map((e) => e[0]), ['leak']);
+  });
+
+  test('an enemy\'s form fx is state (player report #5 after 0.1.0): it survives the stale drop and the full-queue shed, a plain fx does not', () => {
+    const form = (id, f) => ['fx', 'phase', 1, 1, { id, kind: f, form: f, dur: 2 }];
+    assert.ok(!isCosmeticEvent(form(3, 'translator_youling')), 'a form fx is never cosmetic');
+    assert.ok(!isCosmeticEvent(['fx', 'revive', 1, 1, { id: 3, form: null }]), 'back to the base clips (form null) too');
+    assert.ok(isCosmeticEvent(['fx', 'phase', 1, 1, { id: 3, kind: 'artsBarrier' }]), 'a barrier phase stays cosmetic');
+    // a 1 s stall at 2×: the render clock jumps past the 1.5 game s window
+    const b = new SnapshotBuffer();
+    b.pushEvents([['dmg', 3, 5, 'phys'], form(3, 'translator_youling'), ['fx', 'burst', 1, 1, {}]], 0, 1);
+    const late = new Map();
+    const out = b.takeEvents(10, [], 10 - 1.5, late);
+    assert.deepEqual(out.map((e) => e[4]?.form ?? e[0]), ['translator_youling'], 'only the form fx is handed out');
+    assert.ok(Math.abs(late.get(out[0]) - 9) < 1e-9, 'with its lateness (game s)');
+    // replayed without a stamp right after a reset (screens/game.js early buffer: stamped 0)
+    const r = new SnapshotBuffer();
+    r.pushEvents([form(4, 'husk'), ['fx', 'ember', 1, 1, { r: 1 }]], 0);
+    assert.deepEqual(r.takeEvents(30, [], 28.5).map(fxFormOf), ['husk']);
+    // a hidden-tab flood: the shed keeps it
+    const q = new SnapshotBuffer();
+    q.pushEvents([form(5, 'reborn')], 0, 0.5);
+    for (let i = 0; i < 70; i++) q.pushEvents(Array.from({ length: 100 }, () => ['fx', 'burst', 1, 1, {}]), 0, 1 + i * 0.01);
+    assert.ok(q.events.length <= 6000, `bounded (${q.events.length})`);
+    assert.equal(q.events.filter((e) => e.ev[4]?.form === 'reborn').length, 1, 'never shed');
   });
 
   test('sample before any snapshot / with NaN time is empty; update before snapshots is NaN', () => {

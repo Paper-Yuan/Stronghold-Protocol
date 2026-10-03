@@ -8,7 +8,7 @@ import { makeMatch, give, giveItem, chessOfTier, legalTileFor, checkInvariants a
 import { FakeBattle } from '../match/fakeBattle.js';
 import { makeBattle, chessRec, enemyRec, checkInvariants } from '../helpers/battleHarness.js';
 import { createRegistry } from '../../server/match/effectsMeta.js';
-import { applyCard, generateDraft } from '../../server/match/choices.js';
+import { applyCard, generateDraft, tacticCard } from '../../server/match/choices.js';
 import { withBounties } from '../../server/match/waves.js';
 import { Battle } from '../../server/sim/Battle.js';
 import { bountyOf, battlePlanOf, choiceCardIds, gateOf, hasBattlePart, mapAliases, BUILTIN_REFS } from '../../server/sim/content/choices.js';
@@ -27,8 +27,9 @@ function dataWith(modeId, round, family, { tactic = null, bounty = null, cards =
   const out = { ...DATA, choices: { ...ch, schedule: { ...ch.schedule, [modeId]: { ...sch, rounds: { ...sch.rounds, [String(round)]: r } } }, cards: { ...ch.cards } } };
   if (tactic) out.choices.cards.tactic = ch.cards.tactic.filter((c) => tactic.includes(c.effectId));
   // the listed bounty cards are offered by this draft even when the real one would not (战术特训 comes from 法术教鞭
-  // only — choices.json `draft`, user playtest #6 item 4): these tests drive the payouts through the draft
-  if (bounty) out.choices.cards.bounty = ch.cards.bounty.filter((c) => bounty.includes(c.effectId)).map((c) => ({ ...c, draft: true }));
+  // only — choices.json `draft`, user playtest #6 item 4; each card belongs to one kind of official draft —
+  // `draftPool`, player feedback #2; a card without one fits every draft): these tests drive the payouts through the draft
+  if (bounty) out.choices.cards.bounty = ch.cards.bounty.filter((c) => bounty.includes(c.effectId)).map(({ draftPool, ...c }) => ({ ...c, draft: true }));
   return out;
 }
 
@@ -37,6 +38,17 @@ function toDraft(h, r) {
   const m = h.m;
   const ok = h.drive(() => m.phase === 'SP_DRAFT' && m.round === r, { band: BAND });
   assert.ok(ok, `no 机变 at R${r} (phase ${m.phase} R${m.round})`);
+  return m.sp;
+}
+
+/**
+ * Lay out the open 战术决策 as exactly the tactic cards `ids` (each its own index). The draft draws every card on its own,
+ * with replacement (the official 补给 ×2), so a small test pool can repeat one card and miss another: the tests that
+ * drive a card's effect through g.choice offer their cards this way, after checking what the generator drew.
+ */
+function offerTactic(m, ids) {
+  m.sp.cards = ids.map((id, idx) => ({ ...tacticCard(DATA.choices.cards.tactic.find((c) => c.effectId === id)), idx, family: 'tactic' }));
+  m.markPublic();
   return m.sp;
 }
 
@@ -147,7 +159,7 @@ const KILL2 = 'enemyeffect_12_4'; // 悬赏·损伤I: 1 enemy, killer +1, next 2
 const PERF = 'enemyeffect_11_1';  // 战术特训·频次I: 1 enemy, +1 when the own phase is perfect
 
 test('悬赏决策 E2E (co-op, real battles): the picker\'s own battle gets the enemy; the killer earns the kill coins, 战术特训 pays a perfect own phase', () => {
-  const data = dataWith('mode_multi_normal', 3, 'bounty', { bounty: [KILL, PERF], extra: { bountyTiers: [1, 2, 3] } });
+  const data = dataWith('mode_multi_normal', 3, 'bounty', { bounty: [KILL, PERF] });
   const h = makeMatch({ mode: 'coop', difficulty: 'NORMAL', humans: 2, seed: 31, data, registry: REG });
   const m = h.m;
   // real battles where every enemy of a player is struck down by that player's operator the tick it appears
@@ -349,7 +361,7 @@ test('道具补给 E2E (co-op): 6 free normal items within the round window; the
   m.dispose();
 });
 
-test('机密商店 E2E (solo HARD R11): 3 free normal items of any tier I–VI; a second copy merges into the 进阶 item', () => {
+test('机密商店 E2E (solo HARD R11): 3 free normal items of the official composition; a second copy merges into the 进阶 item', () => {
   const data = dataWith('mode_single_hard', 11, 'shop');
   const h = makeMatch({ mode: 'solo', difficulty: 'HARD', humans: 1, seed: 42, data, registry: REG, fake: true });
   const m = h.m;
@@ -371,20 +383,120 @@ test('机密商店 E2E (solo HARD R11): 3 free normal items of any tier I–VI; 
   m.dispose();
 });
 
-test('机密商店 draws every tier I–VI with duplicates allowed (generation, 30 drafts)', () => {
+test('机密商店 draws the official composition with duplicates allowed (generation, 30 drafts; the evidence is test/match/feedback1-secret-shop.test.js)', () => {
   const h = makeMatch({ mode: 'coop', difficulty: 'HARD', humans: 1, seed: 5, data: dataWith('mode_multi_hard', 11, 'shop'), registry: REG, fake: true });
+  const coin = DATA.choices.shopDraft.coin;
   const tiers = new Set();
   let dupes = 0;
   for (let i = 0; i < 30; i++) {
     const d = generateDraft(h.m.gd, h.m.rngDraft, 11, { stageId: h.m.stageId });
     assert.equal(d.family, 'shop');
     assert.equal(d.cards.length, 6);
+    assert.equal(d.cards.filter((c) => DATA.items[c.id].tier === 6).length, 2, 'two tier-VI items');
+    assert.ok(d.cards.some((c) => c.id === coin), 'a 盟约之币');
     for (const c of d.cards) tiers.add(DATA.items[c.id].tier);
     if (new Set(d.cards.map((c) => c.id)).size < d.cards.length) dupes++;
   }
   h.m.dispose();
-  assert.deepEqual([...tiers].sort(), [1, 2, 3, 4, 5, 6]);
+  assert.deepEqual([...tiers].sort(), [1, 3, 4, 5, 6], 'tiers III–VI and the tier-I 盟约之币');
   assert.ok(dupes > 0, 'duplicates allowed');
+});
+
+test('机密商店 E2E (co-op): two identical cards are two cards — both can be taken, by index, and each picker gets the item', () => {
+  // six 变形同构体: every slot draws the one item `coin` names
+  const one = Object.values(DATA.items).find((i) => i.name === '变形同构体' && !i.isGolden).id;
+  const data = dataWith('mode_multi_hard', 3, 'shop');
+  data.choices = { ...data.choices, shopDraft: { ...data.choices.shopDraft, rounds: [3], slots: Array.from({ length: 6 }, () => ({ coin: 1 })), coin: one } };
+  const h = makeMatch({ mode: 'coop', difficulty: 'HARD', humans: 2, bots: 2, seed: 43, data, registry: REG, fake: true });
+  const m = h.m;
+  h.start();
+  const sp = toDraft(h, 3);
+  assert.equal(sp.family, 'shop');
+  const pub = m.publicView().sp;
+  assert.deepEqual(pub.cards.map((c) => c.id), Array(6).fill(one), 'six identical offers');
+  assert.deepEqual(pub.cards.map((c) => c.idx), [0, 1, 2, 3, 4, 5], 'each its own index');
+  const funds = { p_0: h.ps('p_0').funds, p_1: h.ps('p_1').funds };
+  const picked = {};
+  for (let guard = 0; guard < 1000 && m.phase === 'SP_DRAFT'; guard++) {
+    const pid = m.spTurn();
+    if (pid !== 'p_0' && pid !== 'p_1') { h.sched.runNext(); continue; }
+    // a taken card is refused even though an identical one is still free
+    const taken = Object.keys(m.sp.taken).map(Number);
+    if (taken.length) assert.deepEqual(m.handle(pid, { t: 'g.choice', idx: taken[0] }), { error: 'SOLD_OUT' }, 'a taken index stays taken');
+    const idx = m.sp.cards.find((c) => m.sp.taken[c.idx] == null).idx;
+    assert.deepEqual(m.handle(pid, { t: 'g.choice', idx }), { ok: true });
+    picked[pid] = idx;
+  }
+  assert.equal(m.phase, 'PREP');
+  assert.notEqual(picked.p_0, picked.p_1, 'two different cards of the same item');
+  assert.equal(Object.keys(sp.taken).length, 4, 'every player took one of the identical cards');
+  for (const pid of ['p_0', 'p_1']) {
+    const ps = h.ps(pid);
+    assert.ok([...ps.hand, ...ps.temp].some((p) => p && (p.id === one || p.id === DATA.items[one].goldenId)), `${pid} holds the item`);
+    assert.equal(ps.funds, funds[pid], 'free');
+  }
+  matchInvariants(m);
+  m.dispose();
+});
+
+test('战术决策 E2E (co-op): identical cards are separate cards — one pick applies its card exactly once, the twin stays pickable, picks stack', () => {
+  // a pool of one card: every place draws 补给 (with replacement; the official match 7 R11 offered 补给 twice)
+  const one = 'allybuff_select_4';
+  const data = dataWith('mode_multi_normal', 3, 'tactic', { tactic: [one] });
+  const h = makeMatch({ mode: 'coop', difficulty: 'NORMAL', humans: 2, bots: 2, seed: 44, data, registry: REG, fake: true });
+  const m = h.m;
+  h.start();
+  const sp = toDraft(h, 3);
+  assert.equal(sp.family, 'tactic');
+  const pub = m.publicView().sp;
+  assert.deepEqual(pub.cards.map((c) => c.id), Array(6).fill(one), 'six 补给');
+  assert.deepEqual(pub.cards.map((c) => c.idx), [0, 1, 2, 3, 4, 5], 'each its own index');
+  assert.equal(new Set(sp.cards).size, 6, 'six card objects, not one shared');
+  const all = [...m.players.values()];
+  const free0 = new Map(all.map((ps) => [ps.playerId, ps.shop.freeRefreshes]));
+  const freeNow = () => all.map((ps) => ps.shop.freeRefreshes - free0.get(ps.playerId));
+  const picked = {};
+  for (let guard = 0; guard < 1000 && m.phase === 'SP_DRAFT'; guard++) {
+    const pid = m.spTurn();
+    if (pid !== 'p_0' && pid !== 'p_1') { h.sched.runNext(); continue; }
+    const taken = Object.keys(m.sp.taken).map(Number);
+    if (taken.length) assert.deepEqual(m.handle(pid, { t: 'g.choice', idx: taken[0] }), { error: 'SOLD_OUT' }, 'a taken index stays taken while a twin is free');
+    const before = freeNow();
+    const idx = m.sp.cards.find((c) => m.sp.taken[c.idx] == null).idx;
+    assert.deepEqual(m.handle(pid, { t: 'g.choice', idx }), { ok: true });
+    picked[pid] = idx;
+    assert.deepEqual(m.sp.taken[idx], pid, 'that index alone is taken');
+    assert.equal(Object.values(m.sp.taken).filter((x) => x === pid).length, 1, 'one card per pick');
+    // 补给 is a team card: +2 free refreshes for every alive player, once — not once per identical card
+    assert.deepEqual(freeNow().map((x, i) => x - before[i]), all.map(() => 2), `${pid}: one 补给 applied once`);
+  }
+  assert.equal(m.phase, 'PREP');
+  assert.notEqual(picked.p_0, picked.p_1, 'two different cards of the same tactic');
+  assert.equal(Object.keys(sp.taken).length, 4, 'every player took one of the identical cards');
+  assert.deepEqual(freeNow(), all.map(() => 8), 'four picks of 补给 stack (+2 each)');
+  matchInvariants(m);
+  m.dispose();
+});
+
+test('战术决策 E2E (solo): of three identical personal cards the one picked applies once; the other two stay untaken', () => {
+  const one = 'allybuff_select_6'; // 升华: the next purchased operator becomes elite
+  const data = dataWith('mode_single_normal', 9, 'tactic', { tactic: [one] });
+  const h = makeMatch({ mode: 'solo', difficulty: 'NORMAL', humans: 1, seed: 45, data, registry: REG, fake: true });
+  const m = h.m;
+  h.start();
+  const sp = toDraft(h, 9);
+  assert.deepEqual(sp.cards.map((c) => [c.idx, c.id]), [[0, one], [1, one], [2, one]]);
+  assert.deepEqual(m.handle('p_0', { t: 'g.choice', idx: 1 }), { ok: true });
+  assert.deepEqual(sp.taken, { 1: 'p_0' });
+  assert.deepEqual(sp.picks, { p_0: 1 });
+  const refs = h.ps('p_0').effects.filter((e) => e.key === BUILTIN_REFS.eliteChess);
+  assert.equal(refs.length, 1, 'one 升华');
+  assert.equal(refs[0].counter, 1);
+  for (let guard = 0; guard < 50 && m.phase === 'SP_DRAFT'; guard++) h.sched.runNext();
+  assert.equal(m.phase, 'PREP');
+  assert.equal(h.ps('p_0').effects.filter((e) => e.key === BUILTIN_REFS.eliteChess).length, 1, 'still one after the draft closed');
+  matchInvariants(m);
+  m.dispose();
 });
 
 // =====================================================================================================================
@@ -400,7 +512,10 @@ test('战术决策 E2E (co-op 3): team cards reach every teammate (AI included),
   const sp = toDraft(h, 3);
   assert.equal(sp.family, 'tactic');
   assert.equal(m.publicView().sp.name, '战术决策');
-  assert.deepEqual(sp.cards.map((c) => c.id).sort(), [...TEAM_PREP].sort());
+  assert.equal(m.publicView().sp.desc, '进行协同调整，做好迎战准备。', 'the official header');
+  assert.equal(sp.cards.length, 6);
+  assert.ok(sp.cards.every((c) => TEAM_PREP.includes(c.id)), 'drawn from the pool (with replacement)');
+  offerTactic(m, TEAM_PREP);
   const view = m.publicView().sp.cards;
   for (const c of view) assert.equal(c.team, DATA.choices.cards.tactic.find((x) => x.effectId === c.id).team, `${c.id} team flag`);
   const all = [...m.players.values()];
@@ -491,6 +606,7 @@ test('战术决策 升华 / 整备: the next purchased operator becomes elite, t
   const m = h.m;
   h.start();
   toDraft(h, 9);
+  offerTactic(m, ['allybuff_select_5', 'allybuff_select_6', 'allybuff_select_3']);
   draftPicks(h, { p_0: 'allybuff_select_6' });
   const ps = h.ps('p_0');
   const ref = ps.effects.find((e) => e.key === BUILTIN_REFS.eliteChess);
@@ -534,6 +650,7 @@ test('战术决策 E2E: 火力 / 锐利 evaluate the 手牌区 at every prep end
   const m = h.m;
   h.start();
   const sp = toDraft(h, 3);
+  offerTactic(m, ['allybuff_select_13', 'allybuff_select_19']);
   const [a, b] = sp.order;
   draftPicks(h, { [a]: 'allybuff_select_13', [b]: 'allybuff_select_19' });
   const A = h.ps(a);
@@ -596,6 +713,7 @@ test('战术决策 E2E (real battles): 排斥 debuffs every enemy of the picker\
   };
   h.start();
   const sp = toDraft(h, 3);
+  offerTactic(m, [id, 'allybuff_select_3']);
   const [a, b] = sp.order;
   draftPicks(h, { [a]: id, [b]: 'allybuff_select_3' });
   assert.ok(h.ps(a).effects.some((e) => e.key === `choice:${id}` && e.iconId === 'icon_enemy_debuff'));
@@ -746,6 +864,7 @@ test('模拟战场演变 E2E (act1 m01): the card clears the picker\'s crates fo
   h.setStage('act1autochess_m01');
   const sp = toDraft(h, 3);
   assert.ok(!sp.cards.some((c) => c.id === 'map_m02_1'), 'terrain cards only for the match stage');
+  offerTactic(m, ['map_m01_1', 'allybuff_select_3']);
   const [a, b] = sp.order;
   draftPicks(h, { [a]: 'map_m01_1', [b]: 'allybuff_select_3' });
   const A = h.ps(a);

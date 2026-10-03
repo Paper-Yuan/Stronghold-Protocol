@@ -60,6 +60,7 @@
 
 import { gameData, num, buffsOf, passiveBuff, effectRecord, directMods } from './support/index.js';
 import { isShopItem } from '../simdata.js';
+import { isHpLoss } from '../damage.js';
 
 // =====================================================================================================================
 // data helpers
@@ -472,7 +473,7 @@ export function install(battle) {
       if (!t || t.side !== 'ally' || (t.kind !== 'op' && t.kind !== 'token')) return;
       // 自愈: every damage instance an own unit takes (not HP loss 流失, not element gauge fills, not under 禁疗)
       const amt = heal.get(t.ownerId);
-      if (amt > 0 && ctx.amount > 0 && ctx.type !== 'element' && !(ctx.dmg && Array.isArray(ctx.dmg.tags) && ctx.dmg.tags.includes('hpLoss'))
+      if (amt > 0 && ctx.amount > 0 && ctx.type !== 'element' && !isHpLoss(ctx.dmg)
         && t.alive && t.deployed && t.hp > 0 && !t.s.flags.noHeal) {
         battle.heal(null, t, amt, { self: true });
       }

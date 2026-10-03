@@ -1670,7 +1670,7 @@
    ],
    "flavor": "“经典的工业材料军事化应用案例。”",
    "talentNotes": [],
-   "implFormula": "ATK% += atk; in battle carrier loses `damage` HP per second (periodic self-damage, true/unmitigated [ASSUMED], can kill the carrier [ASSUMED]).",
+   "implFormula": "ATK% += atk; in battle the carrier takes `damage` true damage per second — 无来源 持续 damage, not a 流失 (PRTS 盟约记录 修正 \"并非流失\", 备注 \"造成无来源真实持续环境伤害\"): shields and damage-taken modifiers apply, it counts as 受到伤害 (受击回复 SP, the 重装 skill trigger, 信仰搅拌机 S3 counters); can kill the carrier. Every 敌人类我方单位 of the field (炎佑, a partner's too) takes the same tick while a carrier is on the field — once per second however many carriers (PRTS 备注 \"全场范围内的所有敌人类我方单位也会获得此装备的…效果\").",
    "normal": {
     "chessId": "chess_item_1_05_e_a",
     "isGolden": false,
@@ -5493,7 +5493,7 @@
    "talentNotes": [
     "本装备不会合并为进阶品质"
    ],
-   "implFormula": "After the battle ends: replace the carrier with a random operator one tier higher (max tier 6); item consumed [ASSUMED]. Keeps elite status? [ASSUMED: result is NORMAL quality; other equipped item returns to hand]. Never merges.",
+   "implFormula": "After the battle ends: the carrier is destroyed wherever it stands (a board tile is freed); its equipment, the cell included, returns to the hand first (the cell is not consumed); then a random NORMAL operator one tier higher (max tier 6; an elite carrier too) is gained like any gained operator, into the 整备区 (overflow temp), never onto the carrier's tile. Never merges. [Corrected after 0.1.0 — the first reading was 'item consumed [ASSUMED]': PRTS 下半 记录 备注 '生效时，原干员销毁，获得一名高一阶的随机初始干员（最高六阶）'; official footage bilibili BV1vzyVBuEN9 / BV1Qkw1zMEoR (the tile empty, the operator on the bench; PR #2); see the 04-items.md addenda.]",
    "normal": {
     "chessId": "chess_item_5_08_e_a",
     "isGolden": false,

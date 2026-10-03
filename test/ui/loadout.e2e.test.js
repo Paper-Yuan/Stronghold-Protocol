@@ -68,6 +68,24 @@ describe('干员调配 overlay (real server, headless Chrome)', { skip: !ENABLED
     while (Date.now() - t0 < timeout) { last = await st(page); if (pred(last)) return last; await sleep(150); }
     throw new Error(`timed out waiting for ${what}: ${JSON.stringify(last)}`);
   }
+  /** The overlay's background layer (css/screens/loadout.css .lo__bg — the mint glow and the grid): out of the flex flow
+   *  and as large as the overlay, every other layer stacked above it. It used to be a 0-px flex item: `.lo > *` (same
+   *  specificity, a later rule) overrode its position: absolute (PR #14). */
+  const bgLayer = (page) => page.evaluate(() => {
+    const lo = document.querySelector('.lo');
+    const el = lo.querySelector(':scope > .lo__bg');
+    const a = lo.getBoundingClientRect(), b = el.getBoundingClientRect();
+    return {
+      position: getComputedStyle(el).position, first: lo.firstElementChild === el, rect: [b.x, b.y, b.width, b.height], lo: [a.x, a.y, a.width, a.height],
+      others: [...lo.children].filter((c) => c !== el).map((c) => getComputedStyle(c).position),
+    };
+  });
+  const assertBgLayer = async (page) => {
+    const bg = await bgLayer(page);
+    assert.equal(bg.position, 'absolute', `the background layer is out of the flex flow ${JSON.stringify(bg)}`);
+    assert.ok(bg.first && bg.rect[3] > 0 && JSON.stringify(bg.rect) === JSON.stringify(bg.lo), `it covers the whole overlay ${JSON.stringify(bg)}`);
+    assert.ok(bg.others.length >= 3 && bg.others.every((p) => p === 'relative'), `every other layer stacks above it ${JSON.stringify(bg)}`);
+  };
   const clickSel = async (page, sel) => {
     await page.waitForSelector(sel, { visible: true, timeout: 10000 });
     await page.click(sel);
@@ -78,6 +96,7 @@ describe('干员调配 overlay (real server, headless Chrome)', { skip: !ENABLED
     await clickSel(page, '.lobby-screen [data-testid="loadout-open"]');
     await page.waitForSelector('.lo .lo-card', { visible: true, timeout: 15000 });
     assert.equal(await page.$$eval('.lo-card', (els) => els.length), 112, 'every visible chess');
+    await assertBgLayer(page);
     await page.screenshot({ path: path.join(OUT, 'loadout-desktop.png') });
     // search → one card
     await page.type('.lo-search input', '隐现');
@@ -210,6 +229,7 @@ describe('干员调配 overlay (real server, headless Chrome)', { skip: !ENABLED
     const { ctx, page, problems } = await open({ w: 844, h: 390, touch: true });
     await page.tap('.lobby-screen [data-testid="loadout-open"]');
     await page.waitForSelector('.lo .lo-card', { visible: true, timeout: 15000 });
+    await assertBgLayer(page);
     await page.screenshot({ path: path.join(OUT, 'loadout-phone.png') });
     // review fix: the shared Button / TextField shrink to 6–7 px text on phones — the overlay's own controls stay readable
     // and tappable (返回, 全部恢复默认, the detail's 恢复默认, the search input)

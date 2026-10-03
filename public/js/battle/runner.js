@@ -13,6 +13,14 @@
 //     and b.result (compactResult) at the end; applies b.pool (LocalBossPool.sync) and b.end (forceEnd / takeover),
 //   * keeps an authoritative battle running while the tab is hidden (a 250 ms interval pump; browsers throttle it to
 //     ~1 Hz, the bounded fast-forward absorbs that); the server deadline + takeover cover anything worse.
+// A frame that fast-forwards (catch-up) passes on only the state-bearing events (keepsState: spawns, deaths, deploys,
+// statuses, skills, leaks and the fx that change an enemy's model form — shared/protocol.js fxForm); while the tab is
+// hidden the battle on screen keeps the same events (compacted past HELD_MAX; a backlog still past it makes the view
+// re-enter from the field meta) and the first frame back delivers them — or, for a battle that ended while hidden, the
+// visibilitychange itself — so the view still knows every unit and every enemy's current form (player report #5 after
+// 0.1.0: a 转译基底·α that changed form during a stall or in a background tab died in its first-form model). Such a
+// frame or step covers seconds of play, so it drains the events every EV_SLICE ticks and each batch keeps its own game
+// time (`gt`): the render engine then knows how late a form fx is and skips a change clip that has already ended.
 // Display replicas (a teammate's field after the own battle, 联防 observers, the partner of a boss pair) run the same
 // spec fast-forwarded to the server's clock (`elapsed`) and never report.
 // A b.result lost with the socket (the request failed DISCONNECTED / OFFLINE, or timed out twice) is kept and sent
@@ -41,19 +49,22 @@
 //   battleRunner.stats()  → { ticks, stepMs, avgTickMs, maxFrameMs, catchups, errors, battles }
 //   battleRunner.unitStats(unitId, fieldId?) → the live stats of a unit of the battle on screen (shared/protocol.js
 //                           unitStatsEntry: current HP, effective max HP / ATK / DEF / RES / interval / block / move
-//                           speed next to its base) | null — the detail card reads it a few times a second (user
-//                           playtest #4 item 7). Read-only: it takes the stats the sim computed last (`unit._s`) and
-//                           never makes the unit recompute them, so looking never changes the battle's floats.
+//                           speed next to its base; an ally also its live attack range `range` — unit.liveRangeGrid,
+//                           facing RIGHT, never a kit's target-selection grid) | null — the detail card reads it a few
+//                           times a second (user playtest #4 item 7; the range mini-map, community report E1 after
+//                           0.1.0). Read-only: it takes the stats the sim computed last (`unit._s`) and the range grid it
+//                           keeps, and never makes the unit recompute them, so looking never changes the battle's floats.
 //   battleRunner.unitIdOf(uid, ownerId, fieldId?) → the id of an own board piece's unit in that battle | null
-//   battleRunner.ownerOps(ownerId, fieldId?) → [{ kind: 'op', ownerId, defId }] that player's operators in the battle on
-//                           screen (a teammate's bond popup: the members in play, DESIGN §20.15) | []
+//   battleRunner.ownerOps(ownerId, fieldId?) → [{ kind: 'op', ownerId, defId, items? }] that player's operators in the
+//                           battle on screen with their equipment (a teammate's bond popup: the members in play, DESIGN
+//                           §20.15, 变形同构体 wearers included) | []
 //
 // createBattleRunner(deps) builds an instance with injectable net / store / clock / frame scheduler / sim loader
 // (test/match/runner.test.js drives it under Node).
 
 import { net as appNet } from '../net.js';
 import { store as appStore } from '../store.js';
-import { unitStatsEntry } from '../../../shared/protocol.js';
+import { unitStatsEntry, fxForm } from '../../../shared/protocol.js';
 
 const TICK = 1 / 30;
 /** Fast-forward budget per frame (ticks) when far behind. */
@@ -62,6 +73,36 @@ export const CATCHUP_TICKS = 240;
 const PREPARE_SLICE = 600;
 const MAX_ENTRIES = 4;
 const STATE_EV = new Set(['spawn', 'die', 'deploy', 'status', 'skill', 'leak']);
+/**
+ * The b.ev tuples a catch-up frame or the hidden-tab backlog keeps: the state-bearing kinds, and every fx that sets an
+ * enemy's model form (shared/protocol.js fxForm — dropped, the view kept the old model: player report #5 after 0.1.0).
+ */
+export const keepsState = (x) => Array.isArray(x) && (STATE_EV.has(x[0]) || fxForm(x) !== undefined);
+/**
+ * Hidden-tab backlog cap (tuples) of the battle on screen. Past it the backlog is compacted (compactHeld: only the last
+ * 'status' per unit and status, the last 'skill' per unit — what the view ends up showing); only a backlog still past it
+ * (thousands of spawns) makes the view re-enter from the field meta.
+ */
+export const HELD_MAX = 3000;
+/**
+ * Ticks per event batch of a step that covers more than one frame of play (a catch-up frame of up to CATCHUP_TICKS, a
+ * hidden-tab step): its events are drained every EV_SLICE ticks and stamped with that game time, not the frame's.
+ */
+export const EV_SLICE = 15;
+
+/**
+ * A hidden-tab backlog without the superseded toggles: of the 'status' tuples only the last per (unit, status), of the
+ * 'skill' tuples only the last per unit, every other tuple (spawn / die / deploy / leak / form fx — bounded by the units)
+ * kept; order preserved. A long hidden boss fight toggles statuses thousands of times, the rest stays small.
+ */
+export function compactHeld(list) {
+  const last = new Map();
+  list.forEach((x, i) => {
+    if (x[0] === 'status') last.set(`s:${x[1]}:${x[2]}`, i);
+    else if (x[0] === 'skill') last.set(`k:${x[1]}`, i);
+  });
+  return list.filter((x, i) => (x[0] === 'status' ? last.get(`s:${x[1]}:${x[2]}`) === i : x[0] === 'skill' ? last.get(`k:${x[1]}`) === i : true));
+}
 /** Data files the simulation reads (DataSource + content/support gameData()). */
 export const SIM_DATA_FILES = Object.freeze(['chess', 'enemies', 'tokens', 'stages', 'waves', 'bonds', 'items', 'garrisons', 'bands', 'effects']);
 
@@ -156,6 +197,8 @@ export function createBattleRunner(deps) {
   /** a normal field's leak count (or a battle's bond layers) changed since the last publishState() */
   let leaksDirty = false;
   const stats = { ticks: 0, stepMs: 0, maxFrameMs: 0, catchups: 0, errors: 0, battles: 0, frames: 0 };
+  /** Hidden-tab backlog tuple → the game time it was drained at (emitFrame batches the backlog by it). */
+  const heldAt = new WeakMap();
 
   const hidden = () => !!(doc && doc.hidden);
   /** The battle clock: frozen at the pause instant while the solo battle is paused. */
@@ -280,12 +323,22 @@ export function createBattleRunner(deps) {
   /** Target tick of an entry on its clock. */
   const targetTick = (e, t) => Math.max(0, Math.floor((((t - e.t0) / 1000) * e.speed) / TICK + 1e-9));
 
-  function stepEntry(e, n) {
+  /**
+   * Step `n` ticks. `sliced` (a catch-up frame, a hidden-tab step): every EV_SLICE ticks the events drained so far go to
+   * `e.slices` as { gt, ev } with that game time, for emitFrame / hold.
+   */
+  function stepEntry(e, n, sliced = false) {
     const b = e.battle;
     const t = now();
     let k = 0;
     try {
-      for (; k < n && !b.finished; k++) b.step();
+      for (; k < n && !b.finished; k++) {
+        b.step();
+        if (sliced && (k + 1) % EV_SLICE === 0 && k + 1 < n) {
+          const ev = b.drainEvents() || [];
+          if (ev.length) e.slices.push({ gt: Number(b.time) || 0, ev });
+        }
+      }
     } catch (err) {
       stats.errors++;
       console.warn('[runner] battle step failed', err);
@@ -303,15 +356,59 @@ export function createBattleRunner(deps) {
     return { ...rest, t: 'b.snap', fieldId: e.fieldId, gt: Number.isFinite(gt) ? gt : 0 };
   }
 
-  function emitFrame(e, catchingUp) {
+  /** The steps' events, each batch with its own game time: the sliced ones (stepEntry), then the rest at `gt`. */
+  function drainSlices(e, gt) {
     let ev = [];
     try { ev = e.battle.drainEvents() || []; } catch { ev = []; }
+    const out = e.slices;
+    e.slices = [];
+    if (ev.length) out.push({ gt, ev });
+    return out;
+  }
+
+  function emitFrame(e, catchingUp) {
+    // the hidden-tab backlog overflowed: the view starts again from the field meta (UnitInfo carries every unit's form)
+    if (e.stale) { show(e); return; }
     const gt = Number(e.battle.time) || 0;
-    if (ev.length) {
-      const list = catchingUp ? ev.filter((x) => Array.isArray(x) && STATE_EV.has(x[0])) : ev;
-      if (list.length) emit('ev', { t: 'b.ev', fieldId: e.fieldId, gt, ev: list });
+    // the hidden-tab backlog first, batched by the game time each tuple was drained at (a tuple put there by hand: now)
+    const held = e.held;
+    if (held.length) e.held = [];
+    let run = null;
+    for (const x of held) {
+      const at = heldAt.get(x) ?? gt;
+      if (!run || run.gt !== at) { if (run) emit('ev', run); run = { t: 'b.ev', fieldId: e.fieldId, gt: at, ev: [] }; }
+      run.ev.push(x);
+    }
+    if (run) emit('ev', run);
+    for (const s of drainSlices(e, gt)) {
+      const list = catchingUp ? s.ev.filter(keepsState) : s.ev;
+      if (list.length) emit('ev', { t: 'b.ev', fieldId: e.fieldId, gt: s.gt, ev: list });
     }
     try { emit('snap', frameOf(e)); } catch (err) { console.warn('[runner] snapshot failed', err); }
+  }
+
+  /**
+   * Events of a step that is not rendered (hidden tab): the battle on screen keeps its state-bearing ones for the next
+   * rendered frame (keepsState, ≤ HELD_MAX — beyond that it is re-entered from the field meta); any other battle starts
+   * from its field meta when shown (show()), so its events go.
+   */
+  function hold(e) {
+    const batches = drainSlices(e, Number(e.battle.time) || 0);
+    if (e !== cur || e.stale) return;
+    for (const s of batches) for (const x of s.ev) if (keepsState(x)) { e.held.push(x); heldAt.set(x, s.gt); }
+    if (e.held.length > HELD_MAX) {
+      e.held = compactHeld(e.held);
+      if (e.held.length > HELD_MAX) { e.held = []; e.stale = true; }
+    }
+  }
+
+  /**
+   * The tab is visible again: the battle on screen that ended while it was hidden (advance() no longer runs for it)
+   * delivers its backlog and last snapshot now — else the view kept the pre-hide state for the rest of the phase.
+   */
+  function flushHidden() {
+    const e = cur;
+    if (e && e.battle.finished && (e.held.length || e.stale)) emitFrame(e, false);
   }
 
   function progress(e, force = false) {
@@ -417,10 +514,10 @@ export function createBattleRunner(deps) {
     const catchingUp = behind > cap * 4;
     if (catchingUp) stats.catchups++;
     const n = Math.min(behind, catchingUp ? CATCHUP_TICKS : cap);
-    const dt = stepEntry(e, n);
+    const dt = stepEntry(e, n, catchingUp || !render);
     if (dt > stats.maxFrameMs) stats.maxFrameMs = dt;
     if (render) emitFrame(e, catchingUp);
-    else { try { e.battle.drainEvents(); } catch { /* ignore */ } }
+    else hold(e);
     noteLeaks(e);
     progress(e);
     if (e.battle.finished) finished(e);
@@ -456,6 +553,9 @@ export function createBattleRunner(deps) {
   /** Put an entry on screen: field meta into the store (the game screen enters it), then its current frame. */
   function show(e) {
     cur = e;
+    e.held = [];
+    e.slices = [];
+    e.stale = false;
     let meta = null;
     try { meta = e.battle.fieldMeta(); } catch { meta = { units: [] }; }
     const field = {
@@ -538,6 +638,10 @@ export function createBattleRunner(deps) {
       leaks: 0, leakMark: '', left: null,
       // live bond layers grown in this battle { [playerId]: { [bondId]: n } } and their total gain (noteLayers)
       live: null, layerSum: 0,
+      // state-bearing events of the steps run while the tab was hidden (hold(); delivered by the next rendered frame;
+      // heldAt = the game time each was drained at), and whether that backlog overflowed (the next frame re-enters the
+      // view from the field meta); the event batches of the current sliced step (stepEntry)
+      held: [], stale: false, slices: [],
     };
     if (lastPool && battle.sharedBoss && typeof battle.sharedBoss.sync === 'function') {
       battle.sharedBoss.sync(lastPool.hp, lastPool.acked ? lastPool.acked[e.fieldId] : undefined);
@@ -634,7 +738,7 @@ export function createBattleRunner(deps) {
     }));
   }
   if (doc && typeof doc.addEventListener === 'function') {
-    doc.addEventListener('visibilitychange', () => { if (!hidden()) schedule(); });
+    doc.addEventListener('visibilitychange', () => { if (hidden()) return; flushHidden(); schedule(); });
   }
 
   return {
@@ -686,7 +790,7 @@ export function createBattleRunner(deps) {
       if (!e || typeof ownerId !== 'string' || !ownerId || (fieldId != null && e.fieldId !== fieldId)) return [];
       const list = Array.isArray(e.battle.allyUnits) ? e.battle.allyUnits : [];
       return list.filter((u) => u && u.kind === 'op' && u.ownerId === ownerId && typeof u.defId === 'string')
-        .map((u) => ({ kind: 'op', ownerId, defId: u.defId }));
+        .map((u) => (Array.isArray(u.items) && u.items.length ? { kind: 'op', ownerId, defId: u.defId, items: [...u.items] } : { kind: 'op', ownerId, defId: u.defId }));
     },
     /** Re-show the current battle (the game screen remounted). */
     reshow() { if (cur) show(cur); },

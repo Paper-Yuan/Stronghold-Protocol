@@ -29,7 +29,10 @@
 // comes back as it was. Tapping an enemy in the pen (view pieceClick with `enemyKey` / a `preview` enemy unit) opens its
 // detail card; the old enemy list lives on as the 敌方情报 tab of the 本局信息 dialog (left 🔍).
 // Every camera request of this screen goes through setCam (it remembers the camera the pen returns to);
-// `.gm[data-camera]` mirrors the current camera kind (E2E / styling).
+// `.gm[data-camera]` mirrors the current camera kind (E2E / styling). Folding the shop bar (收起) on the own prep board
+// flies the camera to the official shop-collapsed framing and unfolding back to the shop camera (public issue #5:
+// gameLogic prepCameraFor / foldCamera — never over the pen, a teammate's board or a battle; deferred while a piece is
+// dragged or its direction is chosen).
 // Equipment dropped on an operator whose two slots are used opens the equip-replace dialog (ui/equipReplace.js): the
 // player picks the equipped item to destroy → g.equip {itemUid, targetUid, replaceUid}; 取消 sends nothing. 销毁 is only
 // offered for loose items (equipped ones are locked, ui/facing.js itemDestroyable).
@@ -58,6 +61,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from '../../vendor/hooks.module.js';
 import { PHASE, GEO } from '../../../shared/constants.js';
+import { fxForm } from '../../../shared/protocol.js';
 import { html, Spinner, PhaseBanner, Icon, Button, MicroLabel, confirmDialog, useTicker } from '../ui/components.js';
 import { useGameData, GIcon } from '../ui/gameComponents.js';
 import { useFieldView } from '../ui/fieldHost.js';
@@ -87,7 +91,8 @@ import {
   phaseMode, phaseBanner, isCombatPhase, showDeadPill, isBossPhase, placementContext, canPlace, boardTargets, dropIntent,
   snapHud, activeBubbles, shortcutFor, shortcutBlocked, closesOnFieldPress, phaseTotalSeconds, homeFieldId, ownFieldId, normalizeSp, sortedPlayers,
   countdownState, shopBlockReason, stageOverrides, effectiveStage, watchTarget, dropFailureReason,
-  previewEnemyKey, prepCamera, deployFieldOf, panelSide, panelSlots, bondPopupPlace, chessLoadout, unitLoadout, mergeTarget,
+  previewEnemyKey, prepCamera, prepCameraFor, foldCamera, deployFieldOf, panelSide, panelSlots, bondPopupPlace, chessLoadout, unitLoadout,
+  mergeTarget, modeOffBonds,
 } from '../ui/gameLogic.js';
 import { toast } from '../ui/toasts.js';
 import { BriefingScreen } from './briefing.js';
@@ -98,7 +103,7 @@ import { store, useStore, shallowEqual, serverNow, emptyMatch } from '../store.j
 import { battleRunner } from '../battle/runner.js';
 import { isClientCombat, observeTarget, teammateProgress, cameraLayers, layerCamera, sidesOf, resumedWatch } from '../battle/observe.js';
 import { screenStrip, playerBonds, playerLayer, detailBondOwner, toggleBond, popupView } from '../ui/watchBonds.js';
-import { data, localAsset } from '../data.js';
+import { data, localAsset, getMode } from '../data.js';
 import { audio } from '../audio.js';
 import { useDocClass, FullscreenButton } from '../ui/device.js';
 
@@ -109,6 +114,9 @@ const SEL_RANGE = Object.freeze({ group: 'selRange', color: 0xff9c33, fill: 0.3,
 /** The tile an armed merge-completing card's elite will take (its own group; gold like the promotion cue, render/fx.js). */
 const MERGE_HL = Object.freeze({ group: 'mergeTile', color: 0xffd45a, fill: 0.34, line: 1 });
 const STATE_EV = new Set(['spawn', 'die', 'deploy', 'status', 'skill']);
+/** Event tuples replayed when a field is entered late: the state-bearing kinds and the fx that change an enemy's model
+ *  form (shared/protocol.js fxForm — the field meta's UnitInfo `form` predates them). */
+const keepEarly = (e) => Array.isArray(e) && (STATE_EV.has(e[0]) || fxForm(e) !== undefined);
 
 /** Router for the in-match screens. */
 export function GameScreen() {
@@ -221,6 +229,7 @@ function MatchScreen() {
   const home = homeFieldId(pub, myId);
   const watchingOther = !!watching && watching !== home && watching !== ownFieldId(myId);
   const editable = phase === PHASE.PREP && !!priv && alive && !priv.ready && !watchingOther;
+  const showShop = !!priv && alive && (phase === PHASE.PREP || phase === PHASE.SP_DRAFT || phase === PHASE.ROUND_START) && !watchingOther;
   const layersDisabled = phase === PHASE.UNITE || isBossPhase(phase);
   const sp = phase === PHASE.SP_DRAFT ? normalizeSp(pub?.sp, players) : null;
   const total = phaseTotalSeconds(pub, gd.config, myId);
@@ -270,6 +279,9 @@ function MatchScreen() {
   const prepCamSeen = useRef(prepCamKey);                // the prep camera last requested
   const camRef = useRef({ kind: 'prep', opts: { rect: { ...GEO.NORMAL_RECT }, side: 'L' } });
   const penRef = useRef({ on: false, collapsed: false });
+  // the shop bar is shown folded (收起; the pen folds it for itself: the player's own state is the one it returns to) —
+  // the own prep board then takes the official shop-collapsed camera (public issue #5, gameLogic prepCameraFor)
+  const shopFolded = showShop && (pen ? penRef.current.collapsed : collapsed);
   const cancelFacingRef = useRef(() => {});
   const setCam = useCallback((kind, opts) => {
     camRef.current = { kind, opts: opts || {} };
@@ -324,6 +336,10 @@ function MatchScreen() {
   // m.field re-render): kept per fieldId and replayed on enter so no unit's 'spawn' UnitInfo is ever lost.
   const evBufRef = useRef(new Map());   // fieldId → ev tuples since that field's m.field
   const snapBufRef = useRef(new Map()); // fieldId → latest snapshot
+  // a new m.field for the field already on screen (a resync, or the runner re-showing it after a hidden-tab backlog
+  // overflowed): its frames are buffered like a new field's until the enter effect re-enters it — enterBattle resets
+  // the view, so a 'spawn' or form fx pushed in between used to be lost (placeholder views, the old model)
+  const reentryRef = useRef(null);
 
   // prep rendering (own board) vs battle rendering (m.field). The field object present when prep starts is stale
   // (last round's battle): combat only enters an m.field pushed after that (a new object), and every new m.field
@@ -352,11 +368,13 @@ function MatchScreen() {
         // the battle we just left (or whatever was stored before mount) must not be re-entered next combat;
         // an m.field that arrives during prep (the upcoming battle) is a new object and will be entered
         staleFieldRef.current = field;
-        setCam(prepCam.kind, prepCam.opts);
+        const pc = prepCameraFor(pub, myId, shopFolded);
+        setCam(pc.kind, pc.opts);
         prepCamSeen.current = prepCamKey;
         viewModeRef.current = 'prep';
         lastFieldRef.current = null;
         enteredFieldRef.current = null;
+        reentryRef.current = null;
         setHud(null);
       }
       if (priv) {
@@ -372,6 +390,7 @@ function MatchScreen() {
     if (lastFieldRef.current && lastFieldRef.current !== field.fieldId) setDetail((d) => (d?.kind === 'unit' ? null : d));
     enteredFieldRef.current = field;
     lastFieldRef.current = field.fieldId;
+    reentryRef.current = null;
     viewModeRef.current = 'battle';
     snapUnitsRef.current = new Map();
     view.enterBattle(field);
@@ -419,10 +438,15 @@ function MatchScreen() {
     let pending = null;
     const flush = () => { pending = null; last = performance.now(); setHud(hudRef.current); };
     const onFieldMeta = (msg) => {
-      if (msg && typeof msg.fieldId === 'string') { evBufRef.current.set(msg.fieldId, []); snapBufRef.current.delete(msg.fieldId); }
+      if (!msg || typeof msg.fieldId !== 'string') return;
+      evBufRef.current.set(msg.fieldId, []);
+      snapBufRef.current.delete(msg.fieldId);
+      if (msg.fieldId === lastFieldRef.current) reentryRef.current = msg.fieldId;
     };
+    // the field the view shows now (null while a re-entry of it is pending: its frames are buffered)
+    const shownId = () => (reentryRef.current && reentryRef.current === lastFieldRef.current ? null : lastFieldRef.current);
     const onSnap = (snap) => {
-      const cur = lastFieldRef.current;
+      const cur = shownId();
       if (!snap || typeof snap !== 'object') return;
       if (!cur || (snap.fieldId && snap.fieldId !== cur)) {
         if (typeof snap.fieldId === 'string') snapBufRef.current.set(snap.fieldId, snap);
@@ -440,13 +464,13 @@ function MatchScreen() {
       else if (!pending) pending = setTimeout(flush, HUD_HZ_MS - dt);
     };
     const onEv = (msg) => {
-      const cur = lastFieldRef.current;
+      const cur = shownId();
       if (!msg || !Array.isArray(msg.ev)) return;
       if (!cur || (msg.fieldId && msg.fieldId !== cur)) {
         if (typeof msg.fieldId !== 'string') return;
         const buf = evBufRef.current.get(msg.fieldId) || [];
         // only state-bearing tuples are replayed later (see the enter effect)
-        for (const e of msg.ev) if (Array.isArray(e) && STATE_EV.has(e[0])) buf.push(e);
+        for (const e of msg.ev) if (keepEarly(e)) buf.push(e);
         if (buf.length > 1500) buf.splice(0, buf.length - 1500);
         evBufRef.current.set(msg.fieldId, buf);
         if (evBufRef.current.size > 8) evBufRef.current.delete(evBufRef.current.keys().next().value);
@@ -468,8 +492,22 @@ function MatchScreen() {
     if (!view || viewModeRef.current !== 'prep' || !showPrep) return;
     if (live.current.facing) cancelFacingRef.current();
     setSel(null);
-    setCam(prepCam.kind, prepCam.opts);
+    const pc = prepCameraFor(pub, myId, shopFolded);
+    setCam(pc.kind, pc.opts);
   }, [view, prepCamKey, showPrep]);
+
+  // the shop bar folded (收起) or unfolded on the own prep board (public issue #5: the board did not grow, while the
+  // battle and scouting views had no bar to make room for): the official shop-collapsed camera or the shop camera
+  // again, flown like any camera change. Never over the pen or a teammate's board or in battle; deferred while a piece
+  // is dragged or its direction is chosen (the drop target and the wheel sit on tiles of the camera in use) — this
+  // effect runs again when that ends (gameLogic foldCamera). Picking reads the camera of every frame (render/pick.js).
+  useEffect(() => {
+    const next = foldCamera({
+      pub, myId, folded: shopFolded, ownPrep: !!view && viewModeRef.current === 'prep' && showPrep,
+      pen, busy: !!drag || !!facing, current: camRef.current,
+    });
+    if (next) setCam(next.kind, next.opts);
+  }, [view, shopFolded, showPrep, pen, !!drag, !!facing, prepCamKey]);
 
   // 联防 / 最终攻势: the ‹ › pill moves the camera between the field's halves and 全景 (research 09 §3.1)
   useEffect(() => {
@@ -559,9 +597,10 @@ function MatchScreen() {
   const spMine = !!sp && !solo && sp.turnPid === myId && !sp.pickOf.has(myId);
   useEffect(() => { if (spMine) audio.sfx('yourTurn'); }, [spMine]);
 
-  // promotion (merge reward offered) and bond activation cues
-  const hasOffer = !!priv?.shop?.rewardOffer;
-  useEffect(() => { if (hasOffer) audio.sfx('merge'); }, [hasOffer]);
+  // promotion (merge reward offered) and bond activation cues; a special refresh's offer (凯瑟琳 定向投放 …) plays the
+  // shop's refresh sound instead of the promotion cue
+  const offerCue = priv?.shop?.rewardOffer ? (priv.shop.rewardOffer.source === 'special' ? 'refresh' : 'merge') : null;
+  useEffect(() => { if (offerCue) audio.sfx(offerCue); }, [offerCue]);
   // a shop / reward card armed for a purchase that completes a merge lights the tile its elite will take (the deployed
   // copy that deploys first — PRTS 卫戍协议/帮助 "若消耗已部署至作战区的干员，则发送至作战区对应位置", gameLogic.mergeTarget)
   const mergeAt = armedCard?.kind === 'chess' && editable && showPrep ? mergeTarget(priv, armedCard.id, gd.chess) : null;
@@ -1040,7 +1079,6 @@ function MatchScreen() {
   // ---- render ---------------------------------------------------------------------------------------------------
   const readyCount = players.filter((p) => p.ready || p.status === 'ready').length;
   const aliveCount = players.filter((p) => p.alive !== false && p.status !== 'left').length;
-  const showShop = !!priv && alive && (phase === PHASE.PREP || phase === PHASE.SP_DRAFT || phase === PHASE.ROUND_START) && !watchingOther;
   // the own battle is over: the server says so (status done) or — client-side combat — the local simulation just ended
   const localDone = cc && !!battleState && battleState.own && !battleState.watch && battleState.done && battleState.fieldId === ownFieldId(myId);
   // (client-side combat: only in 各自行动 — 联防 observers just watch the 联防 field, research 09 §3.1)
@@ -1141,6 +1179,8 @@ function MatchScreen() {
   // cards read the strip's (ui/watchBonds.js detailBondOwner)
   const detailOwner = detailBondOwner(detailTarget, { pub, myId, stripOwnerId: strip.ownerId });
   const detailBonds = detailOwner === strip.ownerId ? stripBonds : playerBonds({ pub, priv, myId, ownerId: detailOwner, live: liveLayers });
+  // bonds this mode never activates (标准: 10 of 23, 奥术 among them) — shown 本局禁用 on cards, chips and the popup
+  const offBonds = modeOffBonds(getMode(pub?.modeId));
 
   return html`<div class=${cx('screen', 'gm', `gm--${mode}`, drag && 'is-dragging', collapsed && 'is-collapsed', sp && 'has-sp', pen && 'is-pen', readyWhy && 'has-readywhy')}
       data-camera=${pen ? 'pen' : camKind}>
@@ -1175,7 +1215,7 @@ function MatchScreen() {
       </div>` : null}
 
       ${showShop ? html`<${ShopBar} priv=${priv} editable=${editable} collapsed=${collapsed} onCollapse=${setCollapsed}
-        barRef=${barRef}
+        barRef=${barRef} offBonds=${offBonds}
         onBuy=${buy} onLevel=${() => actions.levelUp()} onRefresh=${() => actions.refresh()} onFreeze=${() => actions.freeze()}
         onDetail=${(id, kind, hint) => setDetail({ kind: kind === 'item' ? 'item' : 'chess', id, hint: hint || null })}
         onDetailClose=${() => setDetail((d) => (d?.kind === 'chess' || d?.kind === 'item' ? null : d))}
@@ -1205,11 +1245,12 @@ function MatchScreen() {
         onEnemy=${(k, n) => setDetail({ kind: 'enemy', id: k, count: n })} onChess=${(id) => setDetail({ kind: 'chess', id })} />` : null}
 
       ${bondPop ? html`<${BondPopup} bondId=${bondPop.bondId} entry=${bondPop.entry} priv=${bondPop.priv} banned=${pub?.bannedChess || []} owner=${bondPop.name}
+        off=${offBonds.has(bondPop.bondId)}
         place=${bpPlace} over=${!!resolved && bpPlace === dSide}
-        onClose=${() => setBondOpen(null)} onMember=${(id) => setDetail({ kind: 'chess', id, owner: bondPop.ownerId })} />` : null}
+        onClose=${() => setBondOpen(null)} onMember=${(id, items) => setDetail({ kind: 'chess', id, owner: bondPop.ownerId, items: items || null })} />` : null}
 
       ${resolved ? html`<${DetailPanel} detail=${resolved} snapHp=${snapHp} onClose=${() => { setDetail(null); setSel(null); }}
-        bonds=${detailBonds} loadout=${detailLoadout} side=${dSide} shopOpen=${shopOpen} live=${liveStats}
+        bonds=${detailBonds} offBonds=${offBonds} loadout=${detailLoadout} side=${dSide} shopOpen=${shopOpen} live=${liveStats}
         onBond=${(id) => openBond(id, detailOwner, 'detail')} />` : null}
 
       ${selEntry && editable && !facing && !drag && showPrep ? html`<${Underframe} key=${sel.uid} view=${view} uid=${sel.uid}

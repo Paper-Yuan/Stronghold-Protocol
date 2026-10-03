@@ -193,16 +193,23 @@ const statView = (x) => ({
  * or the last ones the sim computed) next to its own `unit.base` (no buffs) — max HP, ATK, DEF, RES, attack interval
  * (s), block, move speed — rounded for display (the sim keeps floats), plus the current HP. The shape of the
  * `m.unitStats` units (Match.unitStats: what the board's units start their next battle with) and of the browser
- * runner's live battle stats (public/js/battle/runner.js unitStats).
- * @param {{ id?: number, uid?: number|null, defId?: string, hp?: number, alive?: boolean, base?: any } | null} u
+ * runner's live battle stats (public/js/battle/runner.js unitStats). An ally with a range also carries `range`: the grid
+ * (`[dRow, dCol]`, facing RIGHT) it attacks with now — a running skill's range, rangeExtend included, not a kit's
+ * target-selection grid (the sim's `unit.liveRangeGrid`, Battle._refreshRange; community report E1 after 0.1.0: 烛煌
+ * S3's 4-11 never reached the card).
+ * @param {{ id?: number, uid?: number|null, defId?: string, hp?: number, alive?: boolean, base?: any, liveRangeGrid?: any } | null} u
  * @param {any} [s] aggregated stats (missing ⇒ the base)
  * @returns {{ id: number|null, uid: number|null, defId: string|null, hp: number, alive: boolean, maxHp: number, atk: number,
  *   def: number, res: number, interval: number|null, blockCnt: number, moveSpeed: number,
- *   base: { maxHp: number, atk: number, def: number, res: number, interval: number|null, blockCnt: number, moveSpeed: number } }}
+ *   base: { maxHp: number, atk: number, def: number, res: number, interval: number|null, blockCnt: number, moveSpeed: number },
+ *   range?: Array<[number, number]> }}
  */
 export function unitStatsEntry(u, s = null) {
   const base = u && u.base && typeof u.base === 'object' ? u.base : {};
   const cur = s && typeof s === 'object' ? s : base;
+  const range = u?.side !== 'enemy' && Array.isArray(u?.liveRangeGrid)
+    ? u.liveRangeGrid.filter((p) => Array.isArray(p) && Number.isInteger(p[0]) && Number.isInteger(p[1])).map((p) => [p[0], p[1]])
+    : null;
   return {
     id: Number.isInteger(u?.id) ? u.id : null,
     uid: Number.isInteger(u?.uid) ? u.uid : null,
@@ -211,6 +218,7 @@ export function unitStatsEntry(u, s = null) {
     alive: u?.alive !== false,
     ...statView(cur),
     base: statView(base),
+    ...(range ? { range } : {}),
   };
 }
 
@@ -326,3 +334,17 @@ export const EV = Object.freeze({
   SPAWN: 'spawn', ATK: 'atk', DMG: 'dmg', HEAL: 'heal', SKILL: 'skill', DIE: 'die', LEAK: 'leak',
   STATUS: 'status', FX: 'fx', LAYER: 'layer', BOUNTY: 'bounty', DEPLOY: 'deploy',
 });
+
+/**
+ * The model form a `b.ev` 'fx' tuple ['fx', kind, x, y, extra] puts its unit in: `extra.form` (sim content/enemies.js
+ * setForm — 转译基底·α's forms, a 逐火 余烬 and its revival, a leader's 重生, 守墓石像's modes, 掠海漂移体's crawl; a string is
+ * that clip set, null the base one), undefined for any other tuple. A form is state, not decoration: a view that misses
+ * the fx keeps drawing the old model (player report #5 after 0.1.0), so the client's catch-up frames, its hidden-tab
+ * backlog (battle/runner.js) and the events buffered before a field is entered (screens/game.js) keep these tuples.
+ */
+export function fxForm(ev) {
+  if (!Array.isArray(ev) || ev[0] !== EV.FX) return undefined;
+  const x = ev[4];
+  if (!x || typeof x !== 'object' || x.id == null || !Object.hasOwn(x, 'form')) return undefined;
+  return typeof x.form === 'string' ? x.form : null;
+}

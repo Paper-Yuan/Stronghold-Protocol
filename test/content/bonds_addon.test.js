@@ -307,7 +307,7 @@ test('突袭: idle member relocates next to a ground enemy (SP kept) with ATK/HP
   checkInvariants(h2.b);
 });
 
-test('突袭: the jump is a redeployment — deploy fires (部署时 effects), full HP, SP kept; later redeploys use the board tile', () => {
+test('突袭: the jump is a redeployment — deploy fires (部署时 effects), full HP, SP kept; knocked out there, it comes back there', () => {
   const bb = bondBb('raidShip');
   const defs = { chess: { r_m: chessRec({ id: 'r_m', bonds: ['raidShip'], skill: { spCost: 40, initSp: 0, duration: 10 } }) }, enemies: DUMMY };
   let spAtJump = null;
@@ -329,10 +329,15 @@ test('突袭: the jump is a redeployment — deploy fires (部署时 effects), f
   close(u.hp, u.s.maxHp, 'fresh deployment: full HP');
   close(u.s.maxHp, 2000 * (1 + bb.base_max_hp), 'raid HP bonus');
   assert.equal(h.result?.().perPlayer?.p1?.deaths ?? 0, 0, 'not counted as a death');
-  // knocked out later: the auto-redeploy goes back to its board tile, without the raid bonus
+  // knocked out later: it lies on its landing tile and comes back there ("原地留下一个“倒地干员”…满足再部署条件时…
+  // 自动部署至该位置", PRTS 卫戍协议/帮助 — player report F5 after 0.1.0), without the raid bonus; its home stays the
+  // board tile
+  const landed = [u.tileR, u.tileC];
   h.b.dealDamage(null, u, { amount: 1e9, type: 'true' });
+  assert.deepEqual([u.tileR, u.tileC], landed, 'lies where it fell');
   h.b.redeploy(u);
-  assert.deepEqual([u.tileR, u.tileC], [12, 3], 'home tile unchanged');
+  assert.deepEqual([u.tileR, u.tileC], landed, 'redeployed where it lay');
+  assert.deepEqual([u.homeR, u.homeC], [12, 3], 'home tile unchanged');
   close(u.s.maxHp, 2000, 'bonus gone after leaving the field');
   checkInvariants(h.b);
 });

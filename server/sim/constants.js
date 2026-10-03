@@ -36,9 +36,10 @@ export const PROJECTILE_SPEED = 12;
 /**
  * Projectile speeds per visual kind (tiles/s). `none`/`beam` are instant. `boomerang` (回环射手 跃跃) is the OUTBOUND
  * flight to the target — PRTS 跃跃 特性 note "投射物飞行速度15，返回时飞行速度3.75"; the way back is
- * BOOMERANG_RETURN_SPEED (ai.js throwBoomerang).
+ * BOOMERANG_RETURN_SPEED (ai.js throwBoomerang). `droneBomb` = 暴鸰's bomb (the official projectile_bombd `_speed` 5;
+ * content/enemies.js kitBombd).
  */
-export const PROJECTILE_SPEEDS = Object.freeze({ arrow: 14, bolt: 11, bomb: 8, lob: 8, orb: 10, drone: 16, enemy: 10, boomerang: 15 });
+export const PROJECTILE_SPEEDS = Object.freeze({ arrow: 14, bolt: 11, bomb: 8, lob: 8, orb: 10, drone: 16, enemy: 10, boomerang: 15, droneBomb: 5 });
 /** 回环射手: speed (tiles/s) of a boomerang flying back from its hit point to its thrower (PRTS "返回时飞行速度3.75"). */
 export const BOOMERANG_RETURN_SPEED = 3.75;
 
@@ -99,8 +100,9 @@ export const PALSY_MAX = 3;
  * ≥ 0 → all the way to the pull point (必定拉至身前), −1 → PULL_WEAK_SHARE of the starting distance, −2 → PULL_CRAWL
  * tiles, ≤ −3 → nothing. A pull "至面前" aims at the point PULL_ORIGIN tiles in front of the puller (拉力起点 "干员前方0.5格
  * 距离处") and stops once the target is within PULL_STOP_RADIUS of the puller's centre (急停 "拖拽者中心半径0.6708").
- * A directional push (推击手 / 朝部署方向) on a target more than 45° off the direction or nearer than
- * PUSH_DIRECTIONAL_MIN_DIST becomes radial with 受力等级 −2 (推与拉 "特殊修正").
+ * A directional push (推击手, 野鬃 S2 — the client buff template knockback[dir] —, 朝部署方向) on a target more than 45°
+ * off the direction or nearer than PUSH_DIRECTIONAL_MIN_DIST becomes radial with 受力等级 −2 (推与拉 "特殊修正";
+ * knockback[dir] _decreaseForceLevelWhenNotInDirection 2).
  * PRTS 推与拉 gives two columns of 理想移动距离: 弹道 (a push carried by a projectile — "温蒂的23技能、阿消的12技能"; equal
  * to the 游戏数据基础 table above) and 特效 (an effect push, one frame less of travel — "食铁兽的12技能、见行者的12技能"):
  * PUSH_TILES_EFFECT, used by the skills in PUSH_EFFECT_SKILLS (见行者 S1 护身射击 / S2 惊爆射击, the only 特效 pushers of
@@ -139,9 +141,9 @@ export const DP_DEFAULTS = Object.freeze({ dpInit: 10, dpPerSec: 1, dpMax: 99 })
  */
 export const AUTO_OP_COOLDOWN = 3;
 /**
- * State of a knocked-out operator waiting to redeploy on its own tile (b.snap `down` entries, Battle.snapshot): its
- * respawn timer runs (COUNTING), then it waits for the player's DP to reach its cost (WAIT_DP) or for its tile to be
- * free (WAIT_TILE). render/units.js mirrors these codes.
+ * State of a knocked-out operator waiting to redeploy on the tile it lies on (b.snap `down` entries, Battle.snapshot):
+ * its respawn timer runs (COUNTING), then it waits for the player's DP to reach its cost (WAIT_DP) or for its tile to be
+ * free (WAIT_TILE — a safeguard: no ally deploys on a body's tile, Battle.downOn). render/units.js mirrors these codes.
  */
 export const DOWN_STATE = Object.freeze({ COUNTING: 0, WAIT_DP: 1, WAIT_TILE: 2 });
 /**
@@ -214,3 +216,6 @@ export const BOSS_POOL_MIN_HP = 1;
  * the base attributes) stay multipliers.
  */
 export const DIRECT_BONUS_STACKING = 'add';
+
+/** 链术师 jump radius (PRTS 溅射半径一览, 特性: "链术师 … 1.7"; 1.8 until 0.1.1). */
+export const CHAIN_RADIUS = 1.7;

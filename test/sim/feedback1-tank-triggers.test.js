@@ -1,0 +1,143 @@
+// The owner's decision after 0.1.1's community feedback (2026-10-03, "反馈的人太多了"; GitHub issue #4, PR #12): six 重装
+// skills cast with an enemy in range — the basic strategy, DEFAULT — instead of the official 下半 TANK class row's
+// TAKE_DAMAGE. A deliberate, documented deviation (DESIGN §21.29): 深巡 S2 行动能力剥夺, 雷蛇 S2 反击电弧, 号角 S2 暴风号令
+// and S3 终极防线, 灰毫 S1 攻击力强化·γ型 and S2 专注轰击. It lives in the data (tools/build-data.mjs TRIGGER_DEVIATIONS,
+// keyed per chess: 灰毫 S1 is the generic skcom_atk_up[3] other chess carry too), `rawRule` keeps the official TAKE_DAMAGE.
+// Every other MANUAL 重装 skill — 深巡 S1 侵袭破坏应对 among them — still waits for a hit.
+//
+// The battle check is real: the chess records of data/chess.json with their kits, the stage 战场#01(下半)
+// (act2autochess_m01), a real enemy (萨卡兹枯朽前锋, melee, 0.8 tiles/s) walking the lane from the gate (9,10) to the
+// objective; the operator stands on (9,5) facing the gate with its skill fully charged.
+
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import { makeBattle, checkInvariants } from '../helpers/battleHarness.js';
+import { getDefaultSource } from '../../server/sim/simdata.js';
+import { bodyInKeys } from '../../server/sim/body.js';
+
+const CHESS = JSON.parse(fs.readFileSync(new URL('../../data/chess.json', import.meta.url), 'utf8'));
+const ds = getDefaultSource();
+
+/** [normal chess id, skill id] — both records (normal + elite) of each chess. */
+const DEVIATED = [
+  ['chess_char_1_04_a', 'skchr_udflow_2'],   // 深巡 S2 行动能力剥夺
+  ['chess_char_1_20_a', 'skchr_liskam_2'],   // 雷蛇 S2 反击电弧
+  ['chess_char_5_08_a', 'skchr_horn_2'],     // 号角 S2 暴风号令
+  ['chess_char_5_08_a', 'skchr_horn_3'],     // 号角 S3 终极防线
+  ['chess_char_2_18_a', 'skcom_atk_up[3]'],  // 灰毫 S1 攻击力强化·γ型
+  ['chess_char_2_18_a', 'skchr_ashlok_2'],   // 灰毫 S2 专注轰击
+];
+const both = (normalId) => [normalId, CHESS[normalId].goldenId];
+const isDeviated = (c, skillId) => DEVIATED.some(([id, s]) => id === c.baseId && s === skillId);
+const ENEMY = 'enemy_1422_lrsldr';
+
+/**
+ * One real battle: `chessId` with skill `skillId` on (9,5) facing RIGHT, SP full; one 萨卡兹枯朽前锋 on the lane from
+ * `spawnAt` s. Returns the first cast (time, reason, whether an enemy stood on the unit's initial range then, whether
+ * the unit blocked it) and the time the unit first took damage (any `damaged` event: what TAKE_DAMAGE listens to).
+ */
+function firstCast(chessId, skillId, { spawnAt = 0, seconds = 40 } = {}) {
+  const index = CHESS[chessId].skills.find((s) => s.skillId === skillId).index;
+  const h = makeBattle({
+    stageId: 'act2autochess_m01', seed: 3, timeLimit: 120, autoFinish: false,
+    units: [{ chessId, row: 9, col: 5, dir: 'RIGHT', skillIndex: index, carryState: { sp: 999 } }],
+    enemies: [{ key: ENEMY, route: 0, time: spawnAt }],
+  });
+  const u = h.unit(chessId);
+  assert.equal(u.skill.id, skillId, `${chessId} runs ${skillId}`);
+  const out = { rule: u.skill.rule, cast: null, reason: null, enemyInRange: false, blocking: false, hurt: null };
+  h.b.on('damaged', (ctx) => { if (ctx.target === u && out.hurt == null) out.hurt = h.b.time; }, { priority: 1000 });
+  h.b.on('skillStart', (ctx) => {
+    if (ctx.unit !== u || out.cast != null) return;
+    out.cast = h.b.time;
+    out.reason = ctx.reason;
+    const keys = new Set(u.baseRangeKeys || u.rangeKeys);
+    out.enemyInRange = h.b.enemies.some((e) => e.alive && e.deployed && bodyInKeys(e, keys));
+    out.blocking = u.blocking.length > 0;
+  }, { priority: 1000 });
+  h.runUntil(() => out.cast != null && out.hurt != null, seconds);
+  checkInvariants(h.b);
+  assert.equal(h.b.errors.length, 0, JSON.stringify(h.b.errors[0]));
+  return out;
+}
+
+test('data: the six deviated 重装 skills are DEFAULT on the normal and the elite record, rawRule the official TAKE_DAMAGE', () => {
+  let n = 0;
+  for (const [normalId, skillId] of DEVIATED) {
+    for (const id of both(normalId)) {
+      const s = CHESS[id].skills.find((x) => x.skillId === skillId);
+      assert.ok(s, `${id} ${skillId}`);
+      assert.equal(CHESS[id].profession, 'TANK');
+      assert.deepEqual(s.trigger, { rule: 'DEFAULT', rawRule: 'TAKE_DAMAGE', customRangeGrid: null }, `${id} ${skillId}`);
+      // the sim's loadout def carries the data rule
+      assert.equal(ds.getChess(id, { skillIndex: s.index }).skill.trigger.rule, 'DEFAULT', `${id} ${skillId} loadout def`);
+      n++;
+    }
+  }
+  assert.equal(n, 12);
+  // nothing else changed: every other MANUAL 重装 skill keeps the row (深巡 S1 included), and the generic
+  // skcom_atk_up[3] keeps each other carrier's own rule (the deviation is keyed per chess, never per skill id)
+  for (const c of Object.values(CHESS)) {
+    for (const s of c.skills || []) {
+      if (isDeviated(c, s.skillId)) continue;
+      if (s.trigger.rawRule === 'TAKE_DAMAGE') assert.equal(s.trigger.rule, 'TAKE_DAMAGE', `${c.chessId} ${s.skillId}`);
+      if (c.profession === 'TANK' && s.skillType === 'MANUAL' && s.trigger.rawRule !== 'CUSTOM_RANGE_SEARCH_ENEMY') assert.equal(s.trigger.rule, 'TAKE_DAMAGE', `${c.chessId} ${s.skillId}`);
+    }
+  }
+  for (const id of both('chess_char_1_04_a')) assert.equal(CHESS[id].skills.find((s) => s.skillId === 'skchr_udflow_1').trigger.rule, 'TAKE_DAMAGE', `${id} 深巡 S1`);
+  const others = Object.values(CHESS).filter((c) => c.baseId !== 'chess_char_2_18_a' && c.skills?.some((s) => s.skillId === 'skcom_atk_up[3]'));
+  assert.ok(others.length >= 10, 'skcom_atk_up[3] is shared');
+  for (const c of others) assert.deepEqual(c.skills.find((s) => s.skillId === 'skcom_atk_up[3]').trigger, { rule: 'DEFAULT', rawRule: 'DEFAULT', customRangeGrid: null }, c.chessId);
+});
+
+test('PR #12\'s kit lines agree with the data: 深巡 / 雷蛇 S2 specs say DEFAULT, the other four deviated skills read the data', async () => {
+  const { KITS } = await import('../../server/sim/content/index.js');
+  for (const [normalId, skillId] of DEVIATED) {
+    for (const id of both(normalId)) {
+      const rec = CHESS[id];
+      const s = rec.skills.find((x) => x.skillId === skillId);
+      const def = ds.getChess(id, { skillIndex: s.index });
+      const kit = KITS[rec.baseId]?.(def.skill.bb, def.raw, def);
+      const spec = s.isDefault ? kit?.skill : kit?.skills?.[skillId];
+      const specRule = typeof spec?.trigger === 'string' ? spec.trigger : spec?.trigger?.rule;
+      assert.ok(specRule == null || specRule === s.trigger.rule, `${id} ${skillId}: kit ${specRule} vs data ${s.trigger.rule}`);
+      if (skillId === 'skchr_udflow_2' || skillId === 'skchr_liskam_2') assert.equal(specRule, 'DEFAULT', `${id} ${skillId}: PR #12's trigger line`);
+    }
+  }
+});
+
+test('real battle: each deviated skill casts with an enemy in range before anything hits the operator (normal + elite)', () => {
+  for (const [normalId, skillId] of DEVIATED) {
+    for (const id of both(normalId)) {
+      const r = firstCast(id, skillId, { spawnAt: 3 });
+      const where = `${id} ${skillId}: ${JSON.stringify(r)}`;
+      assert.equal(r.rule, 'DEFAULT', where);
+      assert.ok(r.cast != null, `never cast — ${where}`);
+      assert.ok(r.cast >= 3, `no cast before an enemy is on the field — ${where}`);
+      assert.equal(r.reason, 'DEFAULT', where);
+      assert.ok(r.enemyInRange, `an enemy on its initial range at the cast — ${where}`);
+      assert.ok(r.hurt == null || r.hurt > r.cast, `cast before the first hit — ${where}`);
+    }
+  }
+});
+
+test('real battle: 深巡 S1 and every other MANUAL 重装 skill still wait for a hit (TAKE_DAMAGE)', () => {
+  let n = 0;
+  for (const c of Object.values(CHESS)) {
+    if (c.profession !== 'TANK' || c.isDiy) continue;
+    for (const s of c.skills) {
+      if (s.skillType !== 'MANUAL' || s.trigger.rule !== 'TAKE_DAMAGE') continue;
+      const r = firstCast(c.chessId, s.skillId);
+      const where = `${c.chessId} ${c.name} ${s.skillId}: ${JSON.stringify(r)}`;
+      assert.equal(r.rule, 'TAKE_DAMAGE', where);
+      assert.ok(r.hurt != null && r.cast != null, `hit and cast — ${where}`);
+      assert.equal(r.reason, 'TAKE_DAMAGE', where);
+      assert.equal(r.cast, r.hurt, `cast by the first hit, not before — ${where}`);
+      n++;
+    }
+  }
+  assert.ok(n >= 40, `${n} TAKE_DAMAGE records checked`);
+  const udflowS1 = firstCast('chess_char_1_04_a', 'skchr_udflow_1');
+  assert.ok(udflowS1.cast > 10, `深巡 S1 waits for the enemy to reach and hit her: ${JSON.stringify(udflowS1)}`);
+});

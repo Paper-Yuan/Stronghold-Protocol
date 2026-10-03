@@ -32,6 +32,7 @@
 import { TICK, SNAPSHOT_EVERY } from '../sim/constants.js';
 import { layerGainRoom } from '../../shared/constants.js';
 import { uniteLeft } from '../sim/spec.js';
+import { GRANTED_CAP_OVERRIDE } from '../sim/content/garrisons/battle.js';
 
 export const MAX_TICKS_PER_INTERVAL = 8;
 export const INTERVAL_MS = 1000 / 30;
@@ -572,6 +573,47 @@ function layerBondsOf(p, gd) {
 }
 
 /**
+ * What the player's IN_BATTLE layer 特质 can add to each bond in one battle on top of the flat 60 + 4·round (DESIGN
+ * §21.26): the traits of its units (garrisons with `bond_add_count` / `bond_add_count_multi`) and the ones their ADD_BOND
+ * traits hand out (`give_garrison_id`, counted for every operator of the player — "所有【X】" reaches them all), each on
+ * the bonds it names (`bond_by_id` ids; `bond_self` / `bond_actived_maxstack`: every bond of the player's snapshot and
+ * units), up to the per-battle cap the sim applies (content/garrisons/battle.js: `max_add_count_per_battle`, the handed-out
+ * 华法琳 trait's GRANTED_CAP_OVERRIDE). A trait the data gives no cap (初雪 / 银灰's freeze trait, 菲莱 / 百炼嘉维尔's per-skill
+ * 萨尔贡, 斯卡蒂's per-kill …) — or a 魔王, whose +extra on every trait gain counts toward no cap — leaves its bonds bounded
+ * only by the room under 999 (Infinity here): such boards legitimately gain hundreds of layers a battle.
+ * @returns {Map<string, number>} bondId → extra allowance (Infinity: uncapped)
+ */
+function layerAllowanceOf(p, gd) {
+  const out = new Map();
+  if (typeof gd.garrison !== 'function' || typeof gd.chess !== 'function' || typeof gd.bond !== 'function') return out;
+  const units = (Array.isArray(p.units) ? p.units : []).filter((u) => u && u.kind !== 'token' && typeof u.chessId === 'string');
+  const lineup = new Set(Object.keys(p.bonds && typeof p.bonds === 'object' ? p.bonds : {}));
+  for (const u of units) for (const b of gd.chess(u.chessId)?.bonds || []) lineup.add(b);
+  let extra = false;
+  const credit = (g, times, handedOut) => {
+    const bb = g.bb || {};
+    if (Number.isFinite(bb.extra_cnt)) { extra = true; return; }
+    if (!Number.isFinite(bb.bond_add_count) && !Number.isFinite(bb.bond_add_count_multi)) return;
+    const s = g.bbStr || {};
+    const bonds = s.bond_type === 'bond_by_id' ? String(s.bond_id ?? '').split(',').map((x) => x.trim()).filter((x) => gd.bond(x)) : [...lineup];
+    const override = handedOut ? GRANTED_CAP_OVERRIDE[g.garrisonId] : undefined;
+    const cap = override ?? (Number(bb.max_add_count_per_battle) > 0 ? Number(bb.max_add_count_per_battle) : Infinity);
+    for (const b of bonds) out.set(b, (out.get(b) || 0) + cap * times);
+  };
+  for (const u of units) {
+    for (const gid of gd.chess(u.chessId)?.garrisonIds || []) {
+      const g = gd.garrison(gid);
+      if (!g || g.eventType !== 'IN_BATTLE') continue;
+      if (g.effectKey !== 'ADD_BOND') { credit(g, 1, false); continue; }
+      const given = gd.garrison(g.bbStr?.give_garrison_id);
+      if (given && given.eventType === 'IN_BATTLE') credit(given, units.length, true);
+    }
+  }
+  if (extra) for (const b of out.keys()) out.set(b, Infinity);
+  return out;
+}
+
+/**
  * Bounds of a battle derived from its spec: spawn counts per enemy key, keys content may add, bounty coins, the
  * player ids and each player's unit uids.
  */
@@ -640,7 +682,7 @@ export function specBounds(spec, gd = null) {
       const v = Number(b && b.layers);
       if (Number.isFinite(v) && v > 0) startLayers.set(id, v);
     }
-    players.set(p.playerId, { chess, all, defIds, bonds: gd ? layerBondsOf(p, gd) : null, startLayers });
+    players.set(p.playerId, { chess, all, defIds, bonds: gd ? layerBondsOf(p, gd) : null, startLayers, layerAllow: gd ? layerAllowanceOf(p, gd) : new Map() });
   }
   const round = Number(spec && spec.round) || 0;
   return {
@@ -686,8 +728,9 @@ const sameMods = (a, b) => {
  * `counted: false` only for enemies that never count (data notCountInTotal, countInTotal false, boss / part entries,
  * content spawns); 联防: leaks + never-spawned re-entries per (enemy, leaker) ≤ what that leaker sent in, and a split /
  * summon only on a leaker who sent in its parent, ≤ the parents' data offspring count (offspringPerParent); per-bond layer
- * gains ≤ 60 + 4·round and ≤ the room left under BOND_LAYER_CAP (999) from the bond's starting layers, only on bonds the
- * player's lineup / band / effects / items name, none when the spec disables gains; coins ≤ the spawns' bounty coins;
+ * gains ≤ 60 + 4·round + what the player's layer 特质 can add to that bond (layerAllowanceOf: their per-battle caps, no
+ * flat bound when one is uncapped) and ≤ the room left under BOND_LAYER_CAP (999) from the bond's starting layers, only
+ * on bonds the player's lineup / band / effects / items name, none when the spec disables gains; coins ≤ the spawns' bounty coins;
  * perfect consistent with the counted leaks; unit states only for the player's own units, within range.
  * @returns {{ ok: true, result: object } | { ok: false, reason: string }}
  */
@@ -770,8 +813,10 @@ export function validateClientResult(spec, raw, { gd = null } = {}) {
       if (typeof p.perfect !== 'boolean' || p.perfect !== (countedLeaks === 0)) return bad('perfect');
       const layerGains = {};
       for (const [bondId, n] of Object.entries(p.layerGains || {})) {
-        // ≤ 60 + 4·round, and never past BOND_LAYER_CAP from the layers the bond started with (Battle.addLayers clamps)
-        if (!finiteIn(n, 0, Math.min(B.layerCap, layerGainRoom(own.startLayers.get(bondId) || 0, Infinity)))) return bad('layer bound');
+        // ≤ 60 + 4·round + what the player's layer 特质 can add to the bond (layerAllowanceOf; uncapped ones: no flat
+        // bound), and never past BOND_LAYER_CAP from the layers the bond started with (Battle.addLayers clamps)
+        const bound = Math.min(B.layerCap + (own.layerAllow.get(bondId) || 0), layerGainRoom(own.startLayers.get(bondId) || 0, Infinity));
+        if (!finiteIn(n, 0, bound)) return bad('layer bound');
         if (n > 0 && spec.flags && spec.flags.layerGainsEnabled === false) return bad('layers disabled');
         if (gd && typeof gd.bond === 'function' && !gd.bond(bondId)) return bad('bond');
         if (n > 0 && own.bonds && !own.bonds.has(bondId)) return bad('layer bond');

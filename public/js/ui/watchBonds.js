@@ -102,7 +102,8 @@ export function playerLayer(field, pub, myId, playerId) {
 
 /**
  * A player's bond list as the views carry it: your own m.private bonds (thresholds / countsHand included), a teammate's
- * m.public players[].bonds ({ bondId, count, active, tier, layers }).
+ * m.public players[].bonds ({ bondId, count, active, tier, layers, harmony? } — `harmony`: 调和's +1 is in `count`, the
+ * popup's 调和 row; DESIGN §21.26).
  * @returns {any[]}
  */
 export function ownerBonds({ pub, priv = null, myId, ownerId }) {
@@ -151,8 +152,9 @@ export function withLiveLayers(bonds, live) {
  * (gameLogic bondMembers): their operators on the field meta on screen (the prep scouting board, a server-run battle
  * field's units) and, under client-side combat, the battle on screen's (`extra` = battle/runner.js ownerOps: the meta
  * the runner publishes is taken before the operators deploy). Their hand is never sent — members count as owned only
- * when they are on the field. null without a field or battle.
- * @param {any} field @param {string} ownerId @param {any[]|null} [extra] UnitInfo-like { kind, ownerId, defId }
+ * when they are on the field. Their operators keep the items the unit info carries (UnitInfo `items`), so a 变形同构体
+ * wearer is listed as a member of the bond it grants (gameLogic grantedBonds). null without a field or battle.
+ * @param {any} field @param {string} ownerId @param {any[]|null} [extra] UnitInfo-like { kind, ownerId, defId, items? }
  */
 export function ownerBoard(field, ownerId, extra = null) {
   const fromField = isObj(field) && Array.isArray(field.units) ? field.units : null;
@@ -160,7 +162,7 @@ export function ownerBoard(field, ownerId, extra = null) {
   if (!fromField && !fromBattle) return null;
   const board = [...(fromField || []), ...(fromBattle || [])]
     .filter((u) => isObj(u) && u.ownerId === ownerId && u.kind === 'op' && typeof u.defId === 'string')
-    .map((u) => ({ kind: 'chess', id: u.defId }));
+    .map((u) => (Array.isArray(u.items) && u.items.length ? { kind: 'chess', id: u.defId, items: u.items.filter((x) => typeof x === 'string') } : { kind: 'chess', id: u.defId }));
   return { board, hand: [], temp: [] };
 }
 

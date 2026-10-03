@@ -3,17 +3,17 @@
 // The engine built-ins (server/match/builtinMeta.js) already implement most consume-on-equip items and Arts from the
 // concrete item's params; they are reviewed and kept (盟约之币, 骑士储蓄罐, 随身身份牌, 精打细算玩偶, 简易通讯机 (tier ≤
 // shop level), 见钱眼开玩偶, 人事部文档 (cap 9), 博士投影 (golden now / normal at the next round start), 拟态物质, 信标,
-// 商业包装方案 (count from the concrete record: 8 / golden 7)). The Arts' rangeGrid (画卷 = placed tile + the tile in
-// front) and the per-round limit are engine rules.
+// 商业包装方案 (count from the concrete record: 8 / golden 7), 突变细胞 (after the battle the carrier is destroyed, its
+// equipment — the cell too, which is not consumed (player feedback after 0.1.0) — returns to the hand, then a NORMAL
+// random tier+1 operator, max 6, is gained into the hand, not onto the carrier's tile (PR #2)). The Arts' rangeGrid
+// (画卷 = placed tile + the tile in front) and the per-round limit are engine rules.
 // Overridden / added here (a built-in, when present, is wrapped — never re-implemented):
 //   画卷         the copy keeps the target's items; a copied normal item that pairs with an owned one merges and the
 //               golden stays in the hand (the built-in equipped the merged golden on the copy, and its live loop over
 //               the target's items skipped the item after a merge)
 //   紧急调度券   a shop operator leaves its slot only when it was actually granted (built-in cleared the slot first)
 //   寻呼模块     the special refresh shows `refresh_cnt` DIFFERENT operators (fewer when the pool has no more)
-//   突变细胞     after the battle the carrier becomes a NORMAL random tier+1 operator; its other equipment goes back to
-//               the hand (built-in kept it on the new operator)
-//   教鞭        trap_create_self_choice {choice_event: hunter_band_1}: the bounty is a 战术特训 card (choices.json
+//   教鞭       trap_create_self_choice {choice_event: hunter_band_1}: the bounty is a 战术特训 card (choices.json
 //               cards.bounty payout `perfect`, e.g. 战术特训·飞行I "若各自行动阶段就达成完美作战，获得1资金") — PRTS
 //               卫戍协议：盟约 下半/PRTS盟约记录 §法术 教鞭 "于3个战术特训的悬赏任务中选择一项", §机变阶段 "※以下悬赏任务仅由
 //               法术教鞭生成", and 杜宾 加练！ "<教鞭>：使用后为下场战斗添加额外敌人，若自身战斗完美作战可获得资金" (user
@@ -100,23 +100,6 @@ export function registerMeta(registry) {
         if (id) ids.push(id);
       }
       if (ids.length) ctx.offerChess(ids, { source: 'item' });
-    },
-  }));
-
-  // 突变细胞 — char_chess_transformation_equip
-  wrap(registry, 'chess_item_5_08_e', () => ({
-    onBattleResult(ctx) {
-      const { piece, holder } = ctx.source;
-      if (!piece || !holder) return;
-      const tier = Math.min(6, ctx.gd.tierOf(holder.id) + 1);
-      const id = ctx.rollChess({ tier });
-      if (!id) return;
-      const others = (ctx.piece(holder.uid)?.items || holder.items || []).filter((it) => it && it.uid !== piece.uid);
-      ctx.destroyPiece(piece.uid);
-      for (const it of others) {
-        if (ctx.destroyPiece(it.uid)) ctx.grantItem(it.id, { source: 'mutation' });
-      }
-      ctx.transform(holder.uid, ctx.gd.baseIdOf(id));
     },
   }));
 

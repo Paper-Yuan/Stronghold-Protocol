@@ -125,7 +125,7 @@ test('缇缇 T2 勇气的报偿: Sargon/Minos ops above 50 % HP get +20 ASPD', (
 });
 
 // ------------------------------------------------------------------------------------------------------------------
-test('烛煌 S3: hits every enemy in the skill range, BAT −1.3 s, burn bursts refill ammo; T1 熔点引爆 350 % + heal; T2 downed → revive', () => {
+test('烛煌 S3: its target and the enemies within the 1.7 splash, BAT −1.3 s, burn bursts refill ammo; T1 熔点引爆 350 % + heal; T2 downed → revive', () => {
   const h = makeBattle({
     defs: { enemies: { enemy_dummy: dummy() } },
     units: [{ chessId: 'chess_char_5_03_a', row: 10, col: 3 }],
@@ -142,7 +142,7 @@ test('烛煌 S3: hits every enemy in the skill range, BAT −1.3 s, burn bursts 
   approx(u.s.interval, u.base.bat + bb.base_attack_time, 1e-6, 'BAT 1.6 − 1.3 s');
   h.run(1);
   const hitIds = new Set(h.hooksOf('damaged').filter((c) => c.source === u && c.dmg.isSkill && c.dmg.isAttack).map((c) => c.target.id));
-  assert.equal(hitIds.size, 3, 'group attack');
+  assert.equal(hitIds.size, 3, 'group attack: the three stand within 1.7 of each other (PRTS 备注 "攻击溅射半径1.7")');
   // a burn burst anywhere: +ammo, 熔点引爆 elemental damage and heal
   const e = h.b.enemies[0];
   u.hp = 100;
@@ -364,7 +364,7 @@ test('史尔特尔 S3 黄昏: full heal, max HP +5000, ATK +210 %, range +2, 3 t
 });
 
 // ------------------------------------------------------------------------------------------------------------------
-test('号角 S3: ATK +25 %, BAT −1.2 s, then overload ATK +50 % with HP loss; T1 Defenders ATK +20 %; T2 血战', () => {
+test('号角 S3: cast with an enemy in range (DEFAULT, DESIGN §21.29); ATK +25 %, BAT −1.2 s, then overload ATK +50 % with HP loss; T1 Defenders ATK +20 %; T2 血战', () => {
   const h = makeBattle({
     defs: { enemies: { enemy_dummy: dummy() }, chess: { t_tank: ally('t_tank', { profession: 'TANK', stats: { atk: 100 } }) } },
     units: [{ chessId: 'chess_char_5_08_a', row: 9, col: 3 }, { chessId: 't_tank', row: 12, col: 3 }],
@@ -376,10 +376,12 @@ test('号角 S3: ATK +25 %, BAT −1.2 s, then overload ATK +50 % with HP loss; 
   approx(h.unit('t_tank').s.atk, 100 * (1 + t0.atk), 1e-6, '军事要塞 on another Defender');
   approx(u.s.atk, u.base.atk * (1 + t0.atk), 1e-6, '… and on herself');
   u.skill.gainSp(1000);
-  h.run(1);
-  assert.equal(u.skill.activations, 0, '重装 TAKE_DAMAGE: not before a hit');
-  h.b.dealDamage(h.enemies()[0], u, { amount: 10, type: 'phys' });
+  // cast at her next attack with the enemy in range, no hit needed: DEFAULT — the owner's deliberate deviation from the
+  // 重装 TAKE_DAMAGE row (DESIGN §21.29)
+  assert.equal(u.skill.rule, 'DEFAULT');
   assert.ok(h.runUntil(() => u.skill.active, 5));
+  assert.equal(h.hooksOf('skillStart').find((c) => c.unit === u).reason, 'DEFAULT');
+  assert.equal(u.stats.taken, 0, 'nothing hit her');
   const start = h.b.time;
   const total = u.def.skill.duration, ov = bb['horn_s_3[overload_start].damage_duration'];
   approx(u.s.atk, u.base.atk * (1 + t0.atk + bb.atk));

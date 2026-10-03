@@ -7,7 +7,8 @@
 //   act1autochess_band2_buff  阿米娅 众志合一   ≥ value_i active bonds (highest i) ⇒ every operator ATK +atk_i,
 //                                               HP +max_hp_i (直接乘算 — support directMods —, bonds snapshot at combat start)
 //   act1autochess_band28_buff 埃芒加德 命结之秘 the first max_respawn_cnt operator knock-downs of the battle revive at
-//                                               once at full HP (runs after every other death saver, items included)
+//                                               once at full HP (runs after every other death saver, items included;
+//                                               a new deployment for 坚固维式重锤's lock — items revivedInPlace)
 //   act1autochess_band13_buff 克莱门莎 崇高牺牲 a <bond_id> operator knocked down ⇒ +its tier (等阶) <bond_id> layers
 //                                               (bond_add_type by_charlevel; no "已激活" in the text ⇒ requireActive false)
 //   act1autochess_band16_buff 大帝 加急调派     "每次部署后再部署时间减少50%": every deployment of an operator stacks one
@@ -36,11 +37,11 @@ import {
   num, buffsOf, bandRecord, isOp, onField, isElite, tierOf, unitBonds, activeBondIds, playerOps, passiveBuff, fxOn,
   matchBands, gainLayers, alliesAround, N4, baseChessId, isGroundOp, directMods,
 } from '../support/index.js';
-import { weaknessRetype, addShieldLayer, PRIO_REVIVE } from '../items/battle.js';
+import { weaknessRetype, addShieldLayer, PRIO_REVIVE, revivedInPlace } from '../items/battle.js';
 import { spawnMapChar } from '../tokens.js';
 
 export const AMEDIC_BAND = 'band_amedic';
-/** 'fatal' priority of 埃芒加德: after the operators' own items (PRIO_REVIVE) and every talent / skill saver. */
+/** 'fatal' priority of 埃芒加德: after the operators' own items (PRIO_REVIVE / PRIO_RESPAWN) and every talent / skill saver. */
 export const PRIO_BAND_REVIVE = PRIO_REVIVE - 10;
 
 const keyOf = (bandId, part = '') => `band:${bandId}${part ? `:${part}` : ''}`;
@@ -73,6 +74,7 @@ const BY_KEY = {
       used++;
       c.prevented = true;
       u.hp = u.s.maxHp;
+      revivedInPlace(u); // in place for PRTS's 0-time / 0-cost redeploy: a new deployment for 坚固维式重锤's lock (items)
       fxOn(battle, 'revive', u, keyOf(bandId), bandId, { left: max - used });
     }, { priority: PRIO_BAND_REVIVE });
   },

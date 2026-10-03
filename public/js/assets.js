@@ -2,15 +2,37 @@
 // Spine loader (LRU + refcount + memory budget + timeout + concurrency cap) used by the battlefield renderer. A
 // skeleton is never handed out while its unload is in flight (RefLru; user playtest #3 item 1: invisible models).
 //
+// Manifest (public issue #8 item 5: after a page reload every operator was drawn as the image-less placeholder): seeded
+// from the game data's copy when there is one (`seed`, ui/fieldHost.js), else fetched by `ready()` with retries; a
+// failure is never kept as an empty manifest (the next `ready()` and a bounded background backoff fetch again), and
+// `onChange` listeners hear when it arrives late (render/app.js re-resolves its views' models then).
+//
+// Spine memory policy (phones have little memory; a parsed skeleton holds ~0.1–12 MB, `spineDataWeight`):
+//   * a skeleton a view references is never evicted;
+//   * idle (unreferenced) skeletons are kept up to SPINE_IDLE_BYTES while a scene is on screen, each safe for
+//     SPINE_IDLE_GRACE_MS after its release (a prep ⇄ battle switch takes its models back); beyond the budget the least
+//     recently used go, in one pass SPINE_EVICT_DELAY_MS after the release;
+//   * quiet — no scene on screen (lobby, room, result: nothing referenced and no scene holding the cache for
+//     SPINE_QUIET_DELAY_MS) — every idle skeleton goes after its grace: the memory goes back to the phone;
+//   * a match view in battle mode holds the cache (`spine.hold()`, render/app.js): its battle views are built in
+//     animation frames, which a hidden tab does not run, so a battle that began in a background tab referenced nothing
+//     and the quiet budget emptied the cache ≈ 18 s later — back in the tab every unit was an avatar diamond until its
+//     model downloaded again (public issue #8 item 5). The idle budget still applies while it holds.
+// A model that fails or times out is retried by its view (bounded, render/units.js), `acquire(entry, { retry: true })`.
+//
 // Pure at import time: no PIXI, no DOM access until a loader actually runs (Node tests import this file).
 //
-//   import { assets } from './assets.js';          // browser singleton (manifest fetched on first use)
-//   await assets.ready();                           // manifest loaded (or failed → every helper returns null)
+//   import { assets } from './assets.js';          // browser singleton (manifest fetched on first use, or seeded)
+//   await assets.ready();                           // manifest loaded (or failed for now → every helper returns null)
+//   assets.seed(data.get('assets'));                // adopt an already loaded copy of /data/assets.json
+//   assets.onChange((what) => …);                   // 'manifest' | 'local' arrived (late)
 //   assets.avatar('char_002_amiya', { e2: true })   // URL or null
 //   const data = await assets.spine.acquire(entry); // spineData (PIXI.spine) — throws on failure/timeout
 //   assets.spine.release(entry);
 //   await assets.local();                           // optional local-client art manifest (data/local-assets.json,
 //   assets.localUrl('map/autochess', 'TX_autochessi_D')   DESIGN §13) → URL or null (never required)
+//   assets.spineEntry('enemy_1305_mhslim')          // its official model from the local client once local() listed
+//                                                   // it (manifest spineLocal), else the web model; `.fallback`
 //
 // Every URL helper is also exported as a pure function taking the manifest first (`avatarUrl(manifest, …)`),
 // so it can be unit tested without a browser. Helpers never throw on unknown ids — they return null and the
@@ -116,6 +138,10 @@ export function subProfIconUrl(m, sub) {
  * Spine manifest entry for a unit asset id (operator charId, token id, enemy id). `opts.back` asks for the Back
  * model (operators only; falls back to Front). Enemy aliases are resolved transparently. Returns the Spine
  * object of docs/ASSETS.md or null.
+ * `opts.local` (the data/local-assets.json manifest): an enemy whose official model only the local client has
+ * (`spineLocal`, e.g. 灼热源石虫 — user feedback after 0.1.0, D3) gets that model when the manifest lists every one of
+ * its files; the returned entry's `fallback` is the web model (aliased), for a load failure (DESIGN §13: local art is
+ * optional, everything works without it).
  */
 export function spineEntry(m, id, opts) {
   const s = str(id);
@@ -129,12 +155,40 @@ export function spineEntry(m, id, opts) {
   if (tk) return validSpine(tk.spine) ? tk.spine : null;
   const en = get(get(m, 'enemies'), s);
   if (en) {
-    if (validSpine(en.spine)) return en.spine;
-    const alias = str(en.spineAliasOf);
-    const al = alias ? get(get(m, 'enemies'), alias) : null;
-    return al && validSpine(al.spine) ? al.spine : null;
+    let web = null;
+    if (validSpine(en.spine)) web = en.spine;
+    else {
+      const alias = str(en.spineAliasOf);
+      const al = alias ? get(get(m, 'enemies'), alias) : null;
+      web = al && validSpine(al.spine) ? al.spine : null;
+    }
+    return (opts && opts.local && localSpineEntry(en.spineLocal, opts.local, web)) || web;
   }
   return null;
+}
+
+const localSpines = new WeakMap(); // spineLocal record → { local, web, entry } (one entry object per manifest pair)
+
+/**
+ * A manifest `spineLocal` (`{ group, skel, atlas, textures[], pma, anims, … }`, file names in the data/local-assets.json
+ * group) as a Spine entry with URLs, when `local` lists every file — skeleton and atlas side by side (pixi-spine finds
+ * the atlas by the skeleton's name); else null. `fallback` = `web`.
+ */
+export function localSpineEntry(sl, local, web) {
+  if (!isObj(sl) || !isObj(local)) return null;
+  const c = localSpines.get(sl);
+  if (c && c.local === local && c.web === web) return c.entry;
+  const g = str(sl.group);
+  const url = (name) => (g ? localAssetUrl(local, g, name) : null);
+  const skel = url(sl.skel), atlas = url(sl.atlas);
+  const textures = Array.isArray(sl.textures) ? sl.textures.map(url) : [];
+  let entry = null;
+  if (skel && atlas && skel.replace(/\.skel$/, '.atlas') === atlas && textures.length && textures.every(Boolean)) {
+    entry = { skel, atlas, textures, pma: !!sl.pma, anims: sl.anims, animations: sl.animations, events: sl.events, hits: sl.hits, bounds: sl.bounds, local: true, fallback: web || null };
+    if (!validSpine(entry)) entry = null;
+  }
+  localSpines.set(sl, { local, web, entry });
+  return entry;
 }
 
 /** Whether an operator/token/enemy has a Back model. */
@@ -181,12 +235,17 @@ export function unitSfxUrl(m, id, kind, skillIndex) {
  * LRU cache of refcounted async resources. `load(key, arg)` → Promise<value>; `unload(key, value, record)` frees it
  * (`record` is the cache record the value belonged to) and may return a promise that settles once it is freed.
  * Entries with refs > 0 are never evicted; the cache may exceed `max` while everything is in use.
- * Failures are remembered for `failTtl` ms (so a missing model is not refetched every frame) and rethrown.
+ * Failures are remembered for `failTtl` ms (so a missing model is not refetched every frame) and rethrown — except for
+ * `acquire(key, arg, { retry: true })`, which drops a remembered failure nobody references and loads again (a view
+ * retrying a failed or timed-out model: render/units.js).
  * Memory budget (optional): `weigh(key, value, arg)` → cost of a ready value; idle (refs 0) ready entries are evicted,
  * least recently used first, while their total weight exceeds `maxIdleWeight` — or `quietWeight` once nothing at all
- * has been referenced for `quietDelay` ms (no scene on screen; the instant zero in the middle of a scene switch is not
- * quiet) — once they have been idle for `idleGrace` ms (a scene switch releases and re-acquires its models within that
- * window, so it never reloads them); a timer sweeps what the grace held back.
+ * has been referenced and no scene holds the cache (`hold()`) for `quietDelay` ms (no scene on screen; the instant zero
+ * in the middle of a scene switch is not quiet) — once they have been idle for `idleGrace` ms (a scene switch releases
+ * and re-acquires its models within that window, so it never reloads them); a timer sweeps what the grace held back.
+ * `hold()` → release function: a scene that will reference its values again although it references none right now
+ * (render/app.js in battle mode: the battle's views are built in animation frames, which a hidden tab does not run)
+ * keeps the quiet budget off while it holds; the `maxIdleWeight` budget still applies.
  * `evictDelay` > 0: a release (or a finished load) schedules the eviction pass that much later instead of running it
  * at once, so a scene rebuilt in one go (every view destroyed, then the next scene's views built) never drops a value
  * it takes again.
@@ -221,7 +280,8 @@ export class RefLru {
     /** @type {Map<string, { key, promise, value, state: 'loading'|'ready'|'failed', refs: number, used: number, weight: number, idleSince: number|null, error?, failedAt? }>} */
     this.map = new Map();
     this._refs = 0;             // Σ refs of every entry
-    this._quietAt = this.now(); // since when nothing has been referenced (null while something is)
+    this._holds = 0;            // scenes holding the cache (hold()): never quiet meanwhile
+    this._quietAt = this.now(); // since when nothing has been referenced nor held (null while something is)
     /** @type {Map<string, Promise<void>>} key → unload still in flight (settles, never rejects) */
     this._unloading = new Map();
     this._active = 0;
@@ -238,10 +298,14 @@ export class RefLru {
   has(key) { return this.map.has(key); }
   get size() { return this.map.size; }
 
-  /** Acquire a reference; resolves to the value (or rejects). Always pair with release(key). */
-  acquire(key, arg) {
+  /**
+   * Acquire a reference; resolves to the value (or rejects). Always pair with release(key). `opts.retry`: a remembered
+   * failure that nobody references any more is dropped and the value loaded again (a failure still referenced — a
+   * caller that has not released it yet — is shared: dropping it would make that release hit the new entry).
+   */
+  acquire(key, arg, opts) {
     let e = this.map.get(key);
-    if (e && e.state === 'failed' && this.now() - e.failedAt > this.failTtl) { this.map.delete(key); e = null; }
+    if (e && e.state === 'failed' && (this.now() - e.failedAt > this.failTtl || (opts && opts.retry && e.refs === 0))) { this.map.delete(key); e = null; }
     if (!e) {
       e = { key, promise: null, value: null, state: 'loading', refs: 0, used: ++this._tick, weight: 0, idleSince: null };
       this.map.set(key, e);
@@ -279,10 +343,27 @@ export class RefLru {
     if (!e) return;
     if (e.refs > 0) {
       if (--e.refs === 0) e.idleSince = this.now();
-      if (--this._refs <= 0) { this._refs = 0; this._quietAt = this.now(); }
+      if (--this._refs <= 0) { this._refs = 0; if (this._holds === 0) this._quietAt = this.now(); }
     }
     e.used = ++this._tick;
     this._requestEvict();
+  }
+
+  /**
+   * Hold the cache for a scene that will reference its values again (see the header): no quiet budget until the
+   * returned function is called (once; later calls do nothing). The quiet delay then counts from the release.
+   * @returns {() => void}
+   */
+  hold() {
+    this._holds++;
+    this._quietAt = null;
+    let held = true;
+    return () => {
+      if (!held) return;
+      held = false;
+      if (--this._holds <= 0) { this._holds = 0; if (this._refs === 0) this._quietAt = this.now(); }
+      this._requestEvict();
+    };
   }
 
   /** Is an unload of `key` still in flight (a new load of it waits for it)? */
@@ -316,7 +397,7 @@ export class RefLru {
     const now = this.now();
     let budget = this.maxIdleWeight;
     let wait = Infinity;
-    if (this._refs === 0) {
+    if (this._refs === 0 && this._holds === 0) {
       const quietFor = now - (this._quietAt ?? now);
       if (quietFor >= this.quietDelay) budget = this.quietWeight;
       else if (idleWeight > this.quietWeight) wait = this.quietDelay - quietFor; // re-check once the quiet has lasted
@@ -359,13 +440,13 @@ export class RefLru {
     this._sweep = { timer, at };
   }
 
-  /** Unload everything (refs ignored). */
+  /** Unload everything (refs ignored; a scene's hold stays). */
   clear() {
     if (this._sweep) { this._timers.clear(this._sweep.timer); this._sweep = null; }
     const all = [...this.map.values()];
     this.map.clear();
     this._refs = 0;
-    this._quietAt = this.now();
+    this._quietAt = this._holds > 0 ? null : this.now();
     for (const e of all) if (e.state === 'ready') this._unloadNow(e.key, e.value, e);
   }
 
@@ -377,7 +458,7 @@ export class RefLru {
       weight += e.weight || 0;
       if (e.refs === 0) idleWeight += e.weight || 0;
     }
-    return { size: this.map.size, ready, loading, failed, refs, weight, idleWeight, active: this._active, queued: this._queue.length, unloading: this._unloading.size };
+    return { size: this.map.size, ready, loading, failed, refs, holds: this._holds, weight, idleWeight, active: this._active, queued: this._queue.length, unloading: this._unloading.size };
   }
 
   _schedule(fn) {
@@ -528,16 +609,38 @@ export const SPINE_IDLE_GRACE_MS = 15000;
  * before anything is dropped (user playtest #3 item 1: the bench models were unloaded and re-loaded in one go).
  */
 export const SPINE_EVICT_DELAY_MS = 1000;
-/** Nothing referenced for this long = no scene on screen (lobby / room): the idle skeletons may all go. */
+/** Nothing referenced (and no scene holding the cache) for this long = no scene on screen (lobby / room): the idle skeletons may all go. */
 export const SPINE_QUIET_DELAY_MS = 3000;
+/** Waits (ms) before the manifest is fetched again within one `ready()` after a transient failure (like data.js). */
+export const MANIFEST_RETRY_MS = Object.freeze([600, 2000]);
+/** Waits (ms) before the store tries again by itself after a `ready()` whose fetches all failed transiently. */
+export const MANIFEST_BACKOFF_MS = Object.freeze([5000, 15000, 30000, 60000]);
+
+/** A fetch failure worth retrying (data.js): network error, HTTP 5xx / 408 / 429 — not a 404 or a body that is no JSON. */
+const transientFetch = (err) => {
+  if (!err || err.badJson) return false;
+  const s = err.status;
+  return !(Number.isInteger(s) && s >= 400 && s < 500 && s !== 408 && s !== 429);
+};
 
 /**
  * Create an asset store.
- * @param {{ url?: string, fetch?: typeof fetch, manifest?: object, loadImage?: (url) => Promise<any>,
+ *
+ * Manifest (public issue #8 item 5: after a page reload — a phone browser discarding a background tab, Chrome's Memory
+ * Saver — every operator was drawn as the image-less placeholder): the game data already holds /data/assets.json (the
+ * match screen waits for it, ui/gameComponents.js GAME_FILES), so `seed(manifest)` adopts that copy (ui/fieldHost.js) and
+ * the store fetches nothing. Fetched by `ready()` (no seed yet): a transient failure is retried after MANIFEST_RETRY_MS;
+ * when every try fails `ready()` resolves with an empty object — every helper returns null meanwhile, the views draw
+ * their fallbacks — but the failure is never kept: the next `ready()` fetches again and the store tries again by itself
+ * after MANIFEST_BACKOFF_MS (bounded; a 404 or a body that is no JSON only on the next `ready()`). `onChange(fn)` is told
+ * when the manifest (`'manifest'`) or the optional local-client manifest (`'local'`) arrives, so views built without it
+ * resolve their models then (render/app.js → UnitView.retryAssets).
+ * @param {{ url?: string, fetch?: typeof fetch, manifest?: object, localManifest?: object, loadImage?: (url) => Promise<any>,
  *           loadSpine?: (entry) => Promise<any>, unloadSpine?: (entry, value, keepPages:Set<string>) => (Promise<void>|void),
  *           spineMax?: number, spineTimeout?: number, spineWeigh?: (key, spineData) => number, spineIdleBytes?: number,
  *           spineQuietBytes?: number, spineIdleGrace?: number, spineEvictDelay?: number, spineQuietDelay?: number,
- *           spineTimers?: { set, clear }, spineNow?: () => number }} [opts]
+ *           spineTimers?: { set, clear }, spineNow?: () => number, retryDelays?: number[], backoff?: number[],
+ *           wait?: (ms: number) => Promise<void>, timers?: { set, clear } }} [opts]
  */
 export function createAssets(options) {
   const opts = options && typeof options === 'object' ? options : {};
@@ -550,20 +653,68 @@ export function createAssets(options) {
   let readyPromise = manifest ? Promise.resolve(manifest) : null;
   const loadImage = opts.loadImage || loadImageElement;
   const images = new Map(); // url → { promise, value }
+  const retryDelays = Array.isArray(opts.retryDelays) ? opts.retryDelays : MANIFEST_RETRY_MS;
+  const backoff = Array.isArray(opts.backoff) ? opts.backoff : MANIFEST_BACKOFF_MS;
+  const wait = opts.wait || ((ms) => new Promise((resolve) => setTimeout(resolve, ms)));
+  const timers = opts.timers && typeof opts.timers.set === 'function' ? opts.timers : {
+    set: (fn, ms) => { const t = setTimeout(fn, ms); t?.unref?.(); return t; },
+    clear: (t) => clearTimeout(t),
+  };
+  const listeners = new Set();
+  let warned = false;
+  let backoffN = 0;          // background tries used since the last success
+  let backoffTimer = null;
+
+  const notify = (what) => {
+    for (const fn of [...listeners]) { try { fn(what); } catch (err) { console.warn('[assets] change listener failed', err); } }
+  };
+
+  /** Adopt a manifest (fetched or seeded): resolves `ready()`, stops the background tries, tells the listeners. */
+  function adopt(m) {
+    if (manifest || !isObj(m)) return false;
+    manifest = m;
+    readyPromise = Promise.resolve(m);
+    backoffN = 0;
+    if (backoffTimer != null) { timers.clear(backoffTimer); backoffTimer = null; }
+    notify('manifest');
+    return true;
+  }
+
+  /** One fetch of the manifest → the JSON object, or throws (err.status / err.badJson as data.js). */
+  async function fetchOnce() {
+    const res = await doFetch(url, { cache: 'no-cache' });
+    if (!res || !res.ok) throw Object.assign(new Error(`HTTP ${res ? res.status : '???'}`), { status: res ? res.status : null });
+    let json;
+    try { json = await res.json(); } catch (err) { throw Object.assign(err instanceof Error ? err : new Error(String(err)), { badJson: true }); }
+    if (!isObj(json)) throw Object.assign(new Error('not a manifest'), { badJson: true });
+    return json;
+  }
+
+  function scheduleBackoff() {
+    if (manifest || backoffTimer != null || backoffN >= backoff.length) return;
+    const ms = backoff[backoffN++];
+    backoffTimer = timers.set(() => { backoffTimer = null; if (!manifest) ready(); }, ms);
+  }
 
   function ready() {
+    if (manifest) return Promise.resolve(manifest);
     if (!readyPromise) {
-      readyPromise = (async () => {
-        try {
-          const res = await doFetch(url, { cache: 'no-cache' });
-          if (!res || !res.ok) throw new Error(`HTTP ${res ? res.status : '???'}`);
-          const json = await res.json();
-          manifest = isObj(json) ? json : {};
-        } catch (err) {
-          console.warn(`[assets] ${url} unavailable (${err?.message || err}); using fallbacks`);
-          manifest = {};
+      const p = readyPromise = (async () => {
+        for (let attempt = 0; ; attempt++) {
+          try {
+            const json = await fetchOnce();
+            adopt(json);
+            return manifest;
+          } catch (err) {
+            if (manifest) return manifest; // seeded meanwhile
+            if (transientFetch(err) && attempt < retryDelays.length) { await wait(retryDelays[attempt]); if (manifest) return manifest; continue; }
+            if (!warned) { warned = true; console.warn(`[assets] ${url} unavailable (${err?.message || err}); using fallbacks until it loads`); }
+            // not kept: the next ready() fetches again; the store tries again by itself after a transient failure
+            if (readyPromise === p) readyPromise = null;
+            if (transientFetch(err)) scheduleBackoff();
+            return {};
+          }
         }
-        return manifest;
       })();
     }
     return readyPromise;
@@ -588,9 +739,9 @@ export function createAssets(options) {
     timeout: opts.spineTimeout ?? 20000,
     concurrency: opts.spineConcurrency ?? 6,
     // memory budget (a parsed skeleton holds ~0.1–12 MB): idle skeletons beyond SPINE_IDLE_BYTES go, and all of
-    // them once no scene has referenced any for SPINE_QUIET_DELAY_MS (lobby / room), each after a grace that covers a
-    // prep ⇄ battle switch; evictions run SPINE_EVICT_DELAY_MS after the release that allows them (a scene switch
-    // takes its models back first)
+    // them once no scene has referenced or held any for SPINE_QUIET_DELAY_MS (lobby / room / result; a field view in
+    // battle mode holds the cache — see the header), each after a grace that covers a prep ⇄ battle switch; evictions
+    // run SPINE_EVICT_DELAY_MS after the release that allows them (a scene switch takes its models back first)
     weigh: opts.spineWeigh || ((key, value) => spineDataWeight(value)),
     maxIdleWeight: opts.spineIdleBytes ?? SPINE_IDLE_BYTES,
     quietWeight: opts.spineQuietBytes ?? 0,
@@ -617,16 +768,16 @@ export function createAssets(options) {
     return e.promise;
   }
 
-  /** Optional local-client art manifest (null when absent: every consumer falls back). Fetched once. */
+  /** Optional local-client art manifest (null when absent: every consumer falls back). Fetched once (or seeded). */
   function local() {
     if (!localPromise) {
       localPromise = (async () => {
         try {
           const res = await doFetch(localUrl, { cache: 'no-cache' });
-          if (!res || !res.ok) return null;
+          if (!res || !res.ok) return localManifest;
           const json = await res.json();
-          localManifest = isObj(json) && isObj(json.groups) ? json : null;
-        } catch { localManifest = null; }
+          if (!localManifest && isObj(json) && isObj(json.groups)) { localManifest = json; notify('local'); }
+        } catch { /* optional art: absent */ }
         return localManifest;
       })();
     }
@@ -637,6 +788,25 @@ export function createAssets(options) {
   return {
     ready,
     local,
+    /**
+     * Adopt the game data's copy of /data/assets.json (data.js 'assets', already loaded by the match screen) unless a
+     * manifest is loaded: no second download, nothing to wait for. Returns whether it was adopted.
+     */
+    seed: (mf) => adopt(mf),
+    /** The same for the optional local-client manifest (data.js 'local'; `{ groups }`), unless one is known. */
+    seedLocal(lm) {
+      if (localManifest || !isObj(lm) || !isObj(lm.groups)) return false;
+      localManifest = lm;
+      localPromise = Promise.resolve(lm);
+      notify('local');
+      return true;
+    },
+    /** `fn('manifest' | 'local')` when a manifest arrives (seeded or fetched, also late); returns the unsubscribe. */
+    onChange(fn) {
+      if (typeof fn !== 'function') return () => {};
+      listeners.add(fn);
+      return () => listeners.delete(fn);
+    },
     localUrl: (group, name) => localAssetUrl(localManifest, group, name),
     get manifest() { return manifest; },
     get loaded() { return !!manifest; },
@@ -652,7 +822,7 @@ export function createAssets(options) {
     subProfIcon: (s) => subProfIconUrl(m(), s),
     ui: (name) => uiUrl(m(), name),
     picture: (id) => unitPictureUrl(m(), id),
-    spineEntry: (id, o) => spineEntry(m(), id, o),
+    spineEntry: (id, o) => spineEntry(m(), id, localManifest ? { ...o, local: localManifest } : o),
     hasBack: (id) => hasBackSpine(m(), id),
     audio: {
       bgm: (kind) => bgmEntry(m(), kind),
@@ -676,11 +846,15 @@ export function createAssets(options) {
       })));
       return { ok, failed: list.length - ok, total: list.length };
     },
-    /** Spine data LRU: acquire(entry) → Promise<spineData>; release(entry); peek(entry). */
+    /**
+     * Spine data LRU: acquire(entry, { retry }) → Promise<spineData> (`retry`: load again after a remembered failure);
+     * release(entry); peek(entry); hold() → release function (a scene that will need its skeletons again: RefLru).
+     */
     spine: {
-      acquire: (entry) => (validSpine(entry) ? spine.acquire(entry.skel, entry) : Promise.reject(new Error('no spine entry'))),
+      acquire: (entry, o) => (validSpine(entry) ? spine.acquire(entry.skel, entry, o) : Promise.reject(new Error('no spine entry'))),
       release: (entry) => { if (entry && entry.skel) spine.release(entry.skel); },
       peek: (entry) => (entry && entry.skel ? spine.peek(entry.skel) : null),
+      hold: () => spine.hold(),
       stats: () => spine.stats(),
       clear: () => spine.clear(),
       cache: spine,

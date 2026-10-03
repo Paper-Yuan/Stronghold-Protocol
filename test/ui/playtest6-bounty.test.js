@@ -10,7 +10,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { DATA } from '../match/harness.js';
 import { GameData } from '../../server/match/gamedata.js';
-import { generateDraft, cardView } from '../../server/match/choices.js';
+import { generateDraft, cardView, bountyCard } from '../../server/match/choices.js';
 import { createRng } from '../../server/sim/rng.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
@@ -37,10 +37,15 @@ test('#4 the draft overlay shows each bounty card\'s battles in the official col
   // the official multi-round cards: two battles, in the two-battle cards' blue (the user's call after playtest #6)
   const MULTI = new Set(DATA.choices.cards.bounty.filter((c) => c.multiRound).map((c) => c.effectId));
   const seen = new Set();
-  for (let seed = 1; seed <= 40 && seen.size < 3; seed++) {
-    const d = generateDraft(gd, createRng(seed * 977 + 3), 3, { stageId: 'act2autochess_m02' });
-    assert.equal(d.family, 'bounty', 'co-op 绝境 R3 is a bounty draft');
-    const sp = normalizeSp({ family: d.family, cards: d.cards.map(cardView), order: ['p_0'], turn: 'p_0', picks: {}, taken: {} }, [{ playerId: 'p_0' }]);
+  // R3 offers the two-battle cards, R9 the next-battle ones (player feedback #2: the official drafts); no draft offers a
+  // multi-round card any more, so one (教鞭's 法术大师A2·多轮战术特训) goes through the same card view on its own
+  const multiCard = bountyCard(gd, DATA.choices.cards.bounty.find((c) => c.effectId === 'enemyeffect_2'));
+  for (let seed = 1; seed <= 80 && seen.size < 3; seed++) {
+    const round = seed % 2 ? 3 : 9;
+    const d = generateDraft(gd, createRng(seed * 977 + 3), round, { stageId: 'act2autochess_m02' });
+    assert.equal(d.family, 'bounty', `co-op 绝境 R${round} is a bounty draft`);
+    const cards = seed === 1 ? [...d.cards.slice(0, 5), { ...multiCard, idx: 5, family: 'bounty' }] : d.cards;
+    const sp = normalizeSp({ family: d.family, cards: cards.map(cardView), order: ['p_0'], turn: 'p_0', picks: {}, taken: {} }, [{ playerId: 'p_0' }]);
     for (const card of sp.cards) {
       const view = resolveSpCard(card, sp.family);
       const segs = parseRichText(view.desc).filter((s) => s.text);

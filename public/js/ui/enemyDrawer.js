@@ -1,13 +1,16 @@
 // 本局信息 dialog under the top bar (opened by the left 🔍, official btn_check_player / autochess_hud_player_info_dialog,
 // research 09 §2.1) with two tabs:
-//   本局信息 — own strategy, stage, disabled bonds with banned-member counts and the banned operator list (default);
+//   本局信息 — own strategy, stage, disabled bonds with banned-member counts and the banned operator list (default) —
+//              the same bonds, states and banned operators (by tier) as the briefing and the strategy draft's 本局信息
+//              dialog: ui/matchInfo.js matchInfoModel, drawn here as compact chips and avatars;
 //   敌方情报 — the secondary enemy list: m.private.nextEnemies (icons, names, counts, tags, 特训 faction tags) + this
 //              match's factions and the enemy leader on boss rounds. The primary enemy preview is the pen on the board
 //              (the right 🔍▶▶ pans the camera there; tapping an enemy in the pen opens its detail card) — research 09 §6.2.
 
 import { html, Icon, Tabs, MicroLabel } from './components.js';
 import { Img, UnitThumb, BondGlyph, BandIcon, RichText, GIcon } from './gameComponents.js';
-import { groupEnemies, factionTypes, bannedPerBond, disabledBondSets, briefingBondTip } from './gameLogic.js';
+import { groupEnemies, factionTypes, briefingBondTip } from './gameLogic.js';
+import { matchInfoModel } from './matchInfo.js';
 import { factionIconUrl } from './assetUrls.js';
 import { data } from '../data.js';
 
@@ -57,12 +60,10 @@ function EnemiesTab({ pub, priv, onEnemy }) {
 }
 
 function InfoTab({ pub, priv, onChess }) {
-  const sets = disabledBondSets(pub, data.get('config')?.modes?.[pub?.modeId]?.inactiveBondIds);
-  const disabled = new Set([...sets.drawn, ...sets.off]);
-  const stateOf = (id) => (sets.off.has(id) ? 'off' : sets.drawn.has(id) ? 'drawn' : null);
-  const bonds = data.list('bonds');
-  const banned = Array.isArray(pub?.bannedChess) ? pub.bannedChess : [];
-  const perBond = bannedPerBond(bonds, banned);
+  const { bonds, banned, perBond, stateOf } = matchInfoModel(pub, {
+    bonds: data.list('bonds'), chess: (id) => data.lookup('chess', id), mode: data.get('config')?.modes?.[pub?.modeId],
+  });
+  const disabled = new Set(bonds.filter((b) => stateOf(b.bondId)).map((b) => b.bondId));
   const band = priv?.bandId ? data.lookup('bands', priv.bandId) : null;
   const stage = pub?.stageId ? data.lookup('stages', pub.stageId) : null;
   const withBans = bonds.filter((b) => disabled.has(b.bondId) || (perBond.get(b.bondId) || 0) > 0)

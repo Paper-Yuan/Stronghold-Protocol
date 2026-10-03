@@ -30,7 +30,8 @@
 //                the storm stops when she leaves the field.
 //  6_06 佩佩     splash stun via `damaged` (isSplash) hook; module ×1.15 when ≥3 enemies in the splash area.
 //  6_07 维娜     "attack enemies blocked by allies in talent range" = those enemies' tiles are added to her range;
-//                黄金盟誓 lasts the skill duration on the tile nearest to an enemy.
+//                S3 puts a 黄金盟誓 on every free deployable melee tile of her talent-1 area (fences too), each for
+//                the skill duration (the token's maxDeployCount 1 is its hand limit — tokens.js).
 //  6_08 焰影苇草 灼痕 = marker (ATK −20 %) + the 法术脆弱 status (同名效果取最高); applied during S3 it lasts until the
 //                skill ends (duration = remaining skill time).
 //  6_09 塑心     cannot normal attack; each skill charge is one attack; 精神逆构 multiplies every apoptosis gauge fill on
@@ -42,7 +43,8 @@
 //                in a (copied) 流形's range. An uncopied 流形 never attacks and its copy skill waits (ready) until someone
 //                can be copied. "被击败后25秒后自动刷新": one pending respawn at a time, only while she is on the field
 //                and no 流形 of hers stands (her knock-out cancels it; her redeploy re-summons it as her 援军).
-//  6_12 迷迭香   "溅射范围扩大" ×1.3 (not in data); 感知稳定 picks among the owner's deployed casters (none ⇒ no buff).
+//  6_12 迷迭香   "溅射范围扩大": S2 radius 1.5 (PRTS 溅射半径一览; ×1.3 [ASSUMED] until 0.1.1); 感知稳定 picks among the
+//                owner's deployed casters (none ⇒ no buff).
 //  6_13 新约能天使 bombardment radius 1 tile (not in data).
 //  6_14 流明     S3 heals an abnormal ally even at full HP (forced heal); 抵抗 = the engine `resist` status.
 //  6_15 仇白     入隙 reads the target's sluggish/bind statuses; module adds 10 % ATK arts per hit.
@@ -53,7 +55,8 @@
 //                while they roam; 头狼 stage 2 "特殊能力失效" = silence; stage 3 = +1 drone (normal attacks hit once
 //                more, S3 releases one more drone). Base drone count 1.
 //  6_19 锏       10 slashes every d_hit_interval, pulls every p_hit_interval, final blow (skill range) at the end;
-//                S3 slashes and pulls air units too (PRTS 备注 "可对空").
+//                S3 slashes and pulls air units too (PRTS 备注 "可对空"; a 静态刚体 — every drone of the mode — is hit
+//                but stays put: Battle._displaceable).
 //  6_20 纯烬艾雅法拉 5 shots are padded by cycling targets when fewer injured allies exist.
 //
 // Operator loadouts (DESIGN §16): every visible chess also authors its selectable NON-default skills in `skills`
@@ -101,7 +104,7 @@
 
 import { absoluteRangeKeys, sortEnemyTargets, canTargetEnemy, aggroCmp } from '../../targeting.js';
 import { aggregateMods } from '../../buffs.js';
-import { COLS, ROWS, PULL_STOP_RADIUS } from '../../constants.js';
+import { COLS, ROWS, PULL_STOP_RADIUS, CHAIN_RADIUS } from '../../constants.js';
 import { rotateOffset } from '../../dir.js';
 import { bodyDist, bodyInKeys, bodyInRadius, bodyKeys } from '../../body.js';
 import { hasHp } from '../../damage.js';
@@ -196,10 +199,12 @@ function cleanseAbnormal(battle, u) {
 }
 /**
  * "传送至自身位置": a ground enemy that can reach `unit`'s tile on the ground grid is moved onto it (unblocked, its
- * route re-planned from there — the engine then blocks it on that tile when capacity allows). Flyers / bosses stay.
+ * route re-planned from there — the engine then blocks it on that tile when capacity allows). Flyers / bosses stay, and
+ * so does a 自缚 unit (flag `selfBound`, e.g. 守墓石像's 转换模式): PRTS 余 S2 备注 "处于消失状态的/持有自缚的单位不视为可达
+ * 目标" (束缚 alone does not exempt it, so not `noMove`).
  */
 function teleportEnemy(battle, unit, e) {
-  if (!e || !e.alive || e.isFlying || e.isBoss) return false;
+  if (!e || !e.alive || e.isFlying || e.isBoss || e.s.flags.selfBound) return false;
   const r = unit.tileR, c = unit.tileC;
   if (!battle.grid.groundPassable(r, c)) return false;
   const er = Math.round(e.y), ec = Math.round(e.x);
@@ -447,7 +452,7 @@ function lemuen(bb, chess, def) {
   };
   const blast = (battle, unit, atk, x, y) => {
     battle.fx('bombard', { x, y, id: unit.id, r: d2 });
-    for (const e of battle.enemiesInRadius(x, y, d2)) {
+    for (const e of battle.foesInRadius(x, y, d2)) {
       if (e.s.flags.untargetable) continue;
       const d = bodyDist(e, x, y);
       battle.dealDamage(unit, e, { amount: atk * (d <= d1 + 1e-9 ? s1 : s2), type: 'phys', isSkill: true, isSplash: true, tags: ['skill', 'bombard'] });
@@ -1076,7 +1081,7 @@ function pasngr(bb, chess, def) {
   const t0 = tbb(def, 0), t1 = tbb(def, 1), tb = def?.traitBb || {};
   const skillGrid = def?.skill?.rangeGrid?.length ? def.skill.rangeGrid : null;
   const strike = (battle, unit, first, scale) => {
-    const ch0 = unit.profile?.chain || { count: 4, falloff: 0.15, radius: 1.8 };
+    const ch0 = unit.profile?.chain || { count: 4, falloff: 0.15, radius: CHAIN_RADIUS };
     // elite module (电磁调节器) upgrades the skill's chain too: skill@chain.atk_scale / skill@sluggish
     const ch = { ...ch0, falloff: tb['skill@chain.atk_scale'] != null ? 1 - num(tb['skill@chain.atk_scale']) : num(ch0.falloff, 0.15) };
     const count = Math.max(1, Math.floor(num(bb['chain.max_target'], ch.count || 4)));
@@ -1089,7 +1094,7 @@ function pasngr(bb, chess, def) {
       battle.dealDamage(unit, prev, { amount: unit.s.atk * scale * Math.pow(1 - num(ch.falloff, 0.15), i), type: 'arts', isSkill: true, isAttack: true, tags: ['skill', 'storm'] });
       if (slug > 0 && prev.alive) battle.applyStatus(prev, 'sluggish', { duration: slug, source: unit });
       let best = null, bd = Infinity;
-      for (const x of battle.enemiesInRadius(prev.x, prev.y, ch.radius || 1.8)) {
+      for (const x of battle.foesInRadius(prev.x, prev.y, ch.radius || CHAIN_RADIUS)) {
         if (hit.has(x.id) || !canTargetEnemy(unit, x, ANY)) continue;
         const d = bodyDist(x, prev.x, prev.y);
         if (d < bd - 1e-9) { bd = d; best = x; }
@@ -1098,7 +1103,7 @@ function pasngr(bb, chess, def) {
     }
   };
   // the chain of her profile (trait / module: bounce count, falloff, 停顿) with skill overrides
-  const chainOf = (unit, o) => ({ ...(unit.profile?.chain || { count: 4, falloff: 0.15, radius: 1.8, sluggish: 0.5 }), ...o });
+  const chainOf = (unit, o) => ({ ...(unit.profile?.chain || { count: 4, falloff: 0.15, radius: CHAIN_RADIUS, sluggish: 0.5 }), ...o });
   const skills = {
     // S1 电能之触: next attack at atk_scale × ATK, bouncing over max_target enemies with a sluggish-s 停顿 (the module's
     // skill@pasngr_s_1.chain.atk_scale sets its falloff)
@@ -1138,7 +1143,7 @@ function pasngr(bb, chess, def) {
         const h = battle.every(iv, () => {
           if (!live(unit) || unit.deploySeq !== seq) { h.cancel(); return; } // the storm ends when she leaves the field
           if (++k >= n) h.cancel();
-          const zone = battle.enemiesInRadius(cx, cy, STORM_RADIUS).filter((e) => canTargetEnemy(unit, e, ANY));
+          const zone = battle.foesInRadius(cx, cy, STORM_RADIUS).filter((e) => canTargetEnemy(unit, e, ANY));
           const e = battle.rng.pick(zone);
           if (e) strike(battle, unit, e, scale);
         }, { owner: unit });
@@ -1269,7 +1274,7 @@ function pepe(bb, chess, def) {
           if (ctx.attacker !== unit) return;
           const t = ctx.targets[0];
           const r = num(ctx.profile?.splashRadius, 1);
-          unit.mem.pepeBoost = !!t && battle.enemiesInRadius(t.x, t.y, r).length >= cnt;
+          unit.mem.pepeBoost = !!t && battle.foesInRadius(t.x, t.y, r).length >= cnt;
         }, { owner: unit });
         battle.on('hit', (ctx) => { if (ctx.source === unit && ctx.dmg.isAttack && unit.mem.pepeBoost) ctx.dmg.mul *= sc; }, { owner: unit });
         battle.on('attack', (ctx) => { if (ctx.attacker === unit) unit.mem.pepeBoost = false; }, { owner: unit, priority: -100 });
@@ -1336,21 +1341,24 @@ function siege2(bb, chess, def) {
       mods: { atkPct: num(bb.atk), batPct: batOf(bb.base_attack_time, def) },
       targeting: { maxTargets: Math.max(1, Math.floor(num(bb['attack@max_target'], 1))) },
       attack: { dmgType: 'true' },
+      // "立即在天赋一生效范围内可部署地面召唤“黄金盟誓”" (EN client "Summons Golden Vows on deployable tiles within
+      // Talent 1's range"): one on EVERY free tile of the talent-1 area a melee piece could be deployed on — fences
+      // (low, deployable, not walkable) included [ASSUMED: the EN wiki's "open low ground tiles"]; player report B3
       onStart({ battle, unit, skill }) {
-        const tile = bestTile(battle, freeTiles(battle, unit, tGrid));
-        if (tile) {
+        const lions = [];
+        for (const tile of freeTiles(battle, unit, tGrid, { ground: false })) {
           const lion = battle.spawnToken(unit, tokId, tile[0], tile[1], { duration: skill.timeLeft });
-          unit.mem.vlion = lion;
-          if (lion) {
-            if (!lion.kit?.fromTokens && lion.profile) lion.profile.dmgType = 'true'; // "攻击造成真实伤害" without a token kit
-            battle.fx('summon', { x: lion.x, y: lion.y, id: lion.id, src: unit.id });
-          }
+          if (!lion) continue;
+          lions.push(lion);
+          if (!lion.kit?.fromTokens && lion.profile) lion.profile.dmgType = 'true'; // "攻击造成真实伤害" without a token kit
+          battle.fx('summon', { x: lion.x, y: lion.y, id: lion.id, src: unit.id });
         }
+        unit.mem.vlions = lions;
       },
       onEnd({ battle, unit }) {
-        const lion = unit.mem.vlion;
-        unit.mem.vlion = null;
-        if (lion && lion.alive) battle.retreat(lion, { reason: 'expired', permanent: true });
+        const lions = unit.mem.vlions || [];
+        unit.mem.vlions = null;
+        for (const lion of lions) if (lion.alive) battle.retreat(lion, { reason: 'expired', permanent: true });
         battle.setExtraRange(unit, null);
       },
     },
@@ -1500,7 +1508,7 @@ function reed2(bb, chess, def) {
           battle.after(0, () => {
             if (!live(unit)) return;
             battle.fx('scorchBurst', { x, y, id: unit.id, r: aoeR });
-            for (const e of battle.enemiesInRadius(x, y, aoeR, true)) { // splash around the victim: 中点判定
+            for (const e of battle.foesInRadius(x, y, aoeR, true)) { // splash around the victim: 中点判定
               if (!e.alive) continue;
               battle.dealDamage(unit, e, { amount: unit.s.atk * aoe, type: 'arts', isSkill: true, isSplash: true, tags: ['skill', 'scorch'] });
               scorch(battle, unit, e);
@@ -1749,7 +1757,8 @@ function copyInto(battle, t, src, scale, ranged) {
   const p = t.profile;
   if (p) {
     p.attack = ranged ? 'ranged' : 'melee';
-    p.projectile = ranged ? (sp.projectile && sp.projectile !== 'none' && sp.projectile !== 'orb' ? sp.projectile : 'bolt') : 'none';
+    // (a 阵法术师 / 轰击术师's instant 'beam' is their every-enemy-in-range shape: the copy fires a plain bolt)
+    p.projectile = ranged ? (sp.projectile && sp.projectile !== 'none' && sp.projectile !== 'orb' && sp.projectile !== 'beam' ? sp.projectile : 'bolt') : 'none';
     p.canHitFly = ranged ? true : !!sp.canHitFly;
     if (!(sp.dmgType === 'heal' || sp.dmgType === 'none' || sp.noAttack || sp.noAttackUnlessSkill)) p.dmgType = sp.dmgType;
     p.heal = null;
@@ -2018,7 +2027,8 @@ function mlyss(bb, chess, def) {
 // ------------------------------------------------------------------------------------------------------------------
 // 迷迭香 chess_char_6_12 (投掷手) — S2 末梢阻断; 歼灭战装备; 感知稳定
 
-const ROSMON_SPLASH_MUL = 1.3; // [ASSUMED] "溅射范围扩大" (not in data)
+/** S2 末梢阻断 "溅射范围扩大": radius 1.5 (PRTS 溅射半径一览, 技能: 迷迭香 末梢阻断 1.5; ×1.3 [ASSUMED] until 0.1.1). */
+const ROSMON_S2_SPLASH = 1.5;
 
 function rosmon(bb, chess, def) {
   const t0 = tbb(def, 0), t1 = tbb(def, 1);
@@ -2069,7 +2079,7 @@ function rosmon(bb, chess, def) {
       onStart({ unit }) {
         const p = unit.profile;
         unit.mem.rosSaved = { r: p.splashRadius, n: p.shockTimes };
-        p.splashRadius = num(p.splashRadius, 1) * ROSMON_SPLASH_MUL;
+        p.splashRadius = Math.max(num(p.splashRadius, 0.9), ROSMON_S2_SPLASH);
         p.shockTimes = num(p.shockTimes, 2) + Math.floor(num(bb.add_times));
       },
       onEnd({ unit }) {
@@ -2170,7 +2180,7 @@ function angel2(bb, chess, def) {
         if (!c) return;
         const r = c.tileR, col = c.tileC;
         battle.fx('airstrike', { x: col, y: r, id: unit.id, r: AIRSTRIKE_RADIUS });
-        for (const e of battle.enemiesInRadius(col, r, AIRSTRIKE_RADIUS)) {
+        for (const e of battle.foesInRadius(col, r, AIRSTRIKE_RADIUS)) {
           if (e.alive && !e.s.flags.untargetable) battle.dealDamage(unit, e, { amount: unit.s.atk * num(bb['attack@cannon_atk_scale'], 1), type: 'phys', isSkill: true, isSplash: true, tags: ['skill', 'delivery'] });
         }
         const waiting = battle.allyUnits.filter((a) => a.kind === 'op' && a.ownerId === unit.ownerId && !a.alive && !a.removed && a !== unit
@@ -2245,7 +2255,7 @@ function angel2(bb, chess, def) {
           sortEnemyTargets(battle, u, cands, null);
           const c = cands[0];
           battle.fx('airstrike', { x: c.x, y: c.y, id: unit.id, r: AIRSTRIKE_RADIUS });
-          for (const e of battle.enemiesInRadius(c.x, c.y, AIRSTRIKE_RADIUS, true)) { // splash around the target: 中点判定
+          for (const e of battle.foesInRadius(c.x, c.y, AIRSTRIKE_RADIUS, true)) { // splash around the target: 中点判定
             if (e.alive && !e.s.flags.untargetable) battle.dealDamage(unit, e, { amount: unit.s.atk * sc, type: 'phys', isSkill: true, isSplash: true, tags: ['talent', 'airstrike'] });
           }
         }, { owner: unit });
@@ -2414,7 +2424,7 @@ function qiubai(bb, chess, def) {
             if (!unit.alive || unit.deploySeq !== seq) return;
             const x = target.x, y = target.y; // (a fallen target keeps its last position)
             battle.fx('aoe', { x, y, id: unit.id });
-            for (const e of battle.enemiesInRadius(x, y, 1.2, true)) { // splash around the target: 中点判定
+            for (const e of battle.foesInRadius(x, y, 1.2, true)) { // splash around the target: 中点判定
               if (e.alive && !e.s.flags.untargetable) battle.dealDamage(unit, e, { amount: unit.s.atk * num(bb.aoe_scale, 1), type: 'arts', isSkill: true, isSplash: e !== target, tags: ['skill'] });
             }
           }, { owner: unit });
@@ -2501,7 +2511,7 @@ function halo2(bb, chess, def) {
           let prev = target, px = target.x, py = target.y;
           for (let i = 0; i < jumps; i++) {
             let best = null, bd = Infinity;
-            for (const e of battle.enemiesInRadius(px, py, R)) {
+            for (const e of battle.foesInRadius(px, py, R)) {
               if (e === prev || !canTargetEnemy(unit, e, ANY)) continue;
               const d = bodyDist(e, px, py);
               if (d < bd - 1e-9) { bd = d; best = e; }
@@ -2526,7 +2536,7 @@ function halo2(bb, chess, def) {
         onHit({ battle, unit, target }) {
           if (!target) return;
           const R = num(bb.ability_range_radius, 2), k = Math.max(0, Math.floor(num(bb.max_target, 2)));
-          const near = battle.enemiesInRadius(target.x, target.y, R).filter((e) => e !== target && canTargetEnemy(unit, e, ANY))
+          const near = battle.foesInRadius(target.x, target.y, R).filter((e) => e !== target && canTargetEnemy(unit, e, ANY))
             .sort((a, b) => bodyDist(a, target.x, target.y) - bodyDist(b, target.x, target.y) || a.spawnSeq - b.spawnSeq)
             .slice(0, k);
           for (const e of near) {
@@ -2754,11 +2764,12 @@ function whitw2(bb, chess, def) {
   const skillGridW = skillGridOf(def);
   const skills = {
     // S1 慵怠者悲鸣: passive 浮游单元+1 (trait: one more hit per attack); toggled on: ATK +atk and the drones lock a random
-    // non-moving enemy anywhere on the field (re-locking when it moves or falls; install), else her range
+    // non-moving enemy anywhere on the field (re-locking when it moves or falls; install), else her range. The whole-field
+    // grid only selects those targets — no rangeId, no 攻击范围 in the text — so the card keeps her 3-1 (showOwnRange)
     skchr_whitw2_1: {
       kind: 'toggle',
       mods: { atkPct: num(bb.atk) },
-      targeting: { rangeGrid: WHOLE_FIELD },
+      targeting: { rangeGrid: WHOLE_FIELD, showOwnRange: true },
       onStart({ unit }) { unit.mem.lazyLock = null; },
     },
     // S2 逐猎狂飙: 浮游单元+attack@cnt, skill range, ATK +atk: every drone locks a random enemy of the range until it falls
@@ -2863,7 +2874,7 @@ function whitw2(bb, chess, def) {
           }
         }
         const near = new Set();
-        for (const d of D) for (const e of battle.enemiesInRadius(d.x, d.y, R)) if (ok(e)) near.add(e);
+        for (const d of D) for (const e of battle.foesInRadius(d.x, d.y, R)) if (ok(e)) near.add(e);
         if (slow) for (const e of near) battle.addBuff(e, { key: 'whitw2:slow', duration: 0.2, refresh: 'replace', mods: { moveMul: Math.max(0, 1 + slow) }, source: unit });
         unit.mem.droneAcc += dt;
         if (unit.mem.droneAcc + 1e-9 >= 1) {
@@ -2939,7 +2950,7 @@ function blkkgt(bb, chess, def) {
   // removes the skill's range
   const skillKeys = (unit) => unit.rangeKeys || [];
   // S3 hits and pulls air units too — PRTS 锏 S3 备注 "※可对空。不会拖拽自身中心半径0.6708范围内的敌人" (her attacks and S1 /
-  // S2 stay ground-only: "地面敌人")
+  // S2 stay ground-only: "地面敌人"); the air units of the mode are 静态刚体, so the pull leaves them in place (Battle.pull)
   const victims = (battle, unit) => {
     const c = battle.enemiesInKeys(skillKeys(unit), unit, { ...unit.profile, canHitFly: true, groundOnly: false });
     sortEnemyTargets(battle, unit, c, null);

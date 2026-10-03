@@ -4,7 +4,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { makeBattle, chessRec, enemyRec, checkInvariants } from '../helpers/battleHarness.js';
-import { makeMatch, give, giveItem, DATA } from '../match/harness.js';
+import { makeMatch, give, giveItem, DATA, legalTileFor } from '../match/harness.js';
 import { createRegistry } from '../../server/match/effectsMeta.js';
 import { lendItemEffects, itemGrants, PRIO_REVIVE } from '../../server/sim/content/items/battle.js';
 import { unitBonds } from '../../server/sim/content/support/index.js';
@@ -96,7 +96,7 @@ test('stat equipment: percentages are 直接乘算 — additive with each other 
   checkInvariants(h2.b);
 });
 
-test('源石溶剂: −60 HP per second on the field (流失), ATK +40 %', () => {
+test('源石溶剂: −60 HP per second on the field (无来源真实伤害, not 流失 — feedback1d-solvent.test.js), ATK +40 %', () => {
   for (const id of [A('1_05'), B('1_05')]) {
     const h = fight({ units: [{ chessId: 't_op', row: 10, col: 4, items: [id] }] });
     h.step(1);
@@ -964,7 +964,9 @@ test('商业包装方案: every 8 / 7 operators sold ⇒ 1 normal operator shari
   }
 });
 
-test('突变细胞: after a battle the carrier becomes a random NORMAL tier+1 operator, the cell is consumed, other equipment returns', () => {
+test('突变细胞: after a battle the carrier becomes a random NORMAL tier+1 operator; its equipment, the cell included, returns to the hand', () => {
+  // PRTS 下半 记录 备注 "生效时，原干员销毁，获得一名高一阶的随机初始干员（最高六阶）"; the cell is not consumed (player
+  // feedback after 0.1.0 — players re-inject it every round; test/match/feedback1-meta.test.js)
   const { m, ps, equip } = setup({ seed: 3 });
   const cid = plain((c) => c.tier === 2)[0];
   const holder = give(m, ps, cid, 'hand');
@@ -978,9 +980,35 @@ test('突变细胞: after a battle the carrier becomes a random NORMAL tier+1 op
   assert.ok(!DATA.chess[p.id].isGolden);
   assert.deepEqual(p.items, [], 'no equipment left on it');
   assert.ok(handIds(ps, 'item').includes(A('1_01')), 'other item back in the hand');
-  assert.ok(!handIds(ps, 'item').includes(A('5_08')), 'cell consumed');
+  assert.ok(handIds(ps, 'item').includes(A('5_08')), 'the cell back in the hand (not consumed)');
   assert.equal(DATA.items[A('5_08')].upgradeNum, 100);
+  // the golden record (same buff) behaves the same
+  const g = ps.hand.find((x) => x && x.id === A('5_08'));
+  g.id = B('5_08');
+  assert.deepEqual(equip(g, p), OK);
+  m.dispatch(ps, 'onBattleResult', { result: {}, lpLoss: 0, perfect: true });
+  const q = ps.hand.find((x) => x && x.kind === 'chess');
+  assert.equal(DATA.chess[q.id].tier, 4);
+  assert.ok(handIds(ps, 'item').includes(B('5_08')));
   cover(A('5_08'), B('5_08'));
+});
+
+test('突变细胞: a DEPLOYED carrier leaves the field — the new operator is gained into the 整备区, the deploy slot comes back (PR #2)', () => {
+  // official footage (bilibili BV1vzyVBuEN9, BV1Qkw1zMEoR): the tile is empty at the next prep and the new operator waits
+  // on the bench; the case added by the closed PR #2, on the destroy-then-gain rule (DESIGN §21.1)
+  const { m, ps, equip } = setup({ seed: 3 });
+  const cid = plain((c) => c.tier === 2)[0];
+  const holder = give(m, ps, cid, 'board', legalTileFor(m, ps, cid));
+  assert.deepEqual(equip(giveItem(m, ps, A('5_08')), holder), OK);
+  assert.equal(ps.deployCount, 1, 'the carrier is deployed');
+  m.dispatch(ps, 'onBattleResult', { result: {}, lpLoss: 0, perfect: true });
+  assert.equal(ps.board.size, 0, 'the carrier left the field');
+  assert.equal(ps.deployCount, 0, 'the deploy slot came back');
+  const chess = ps.hand.filter((p) => p && p.kind === 'chess');
+  assert.equal(chess.length, 1, 'the new operator waits in the 整备区');
+  assert.equal(DATA.chess[chess[0].id].tier, 3, 'the random tier+1 operator');
+  assert.equal(DATA.chess[chess[0].id].isGolden, false);
+  assert.ok(handIds(ps, 'item').includes(A('5_08')), 'the cell back in the hand');
 });
 
 test('人事部文档: deploy cap becomes 9 (a second copy adds nothing)', () => {

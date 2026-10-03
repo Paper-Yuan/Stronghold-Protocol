@@ -16,20 +16,33 @@
 //                      two players of a pair field compete for it, the strongest wins (battle.applyStrongest, 同名效果取最高:
 //                      PRTS 作战机制 "同名buff的默认叠加策略buff只能表现出一个"; 巴哈姆特 12316 first-hand: "共享型buff會跟對面搶
 //                      如果對面層數比你高就不需要再特別激活直接吃他的奧術buff"). v2.5 kept one per player, so two players'
-//                      instances multiplied (×5.4 × ×5.6 on a leader at ~250 layers, DESIGN §20.10)
+//                      instances multiplied (×5.4 × ×5.6 on a leader at ~250 layers, DESIGN §20.10). PRTS 盟约记录's own
+//                      note "※同一单位仅可对同一目标同时施加1个该盟约法术伤害提升效果" (one instance per unit and target)
+//                      fits it under the engine default (a newer same-named buff waits until the earlier ends, PRTS
+//                      常见同名状态); strongest vs earliest is [ASSUMED]. Known deviation [ASSUMED]: an earlier revision
+//                      (oldid 386936) forbade a unit re-applying while its own instance lasts; an equal hit here
+//                      refreshes it to a fresh 3 s (slightly stronger). Re-measured after the 0.1.0 report
+//                      "奥术盟约不生效": it works on the real and the browser path (test/sim/feedback1b-arcane.test.js);
+//                      标准 never activates it (modeDataDict inactiveBondIdList)
 //   坚守 steadShip     all operators max HP +(base + per·L); tier 2: 40 % of a non-member operator's damage is borne by
 //                      the members on the field (split evenly, sourceless true damage — already mitigated), members’ thorns
-//                      (base + per·L arts, sourceless but credited to the member hit, ≤ 1 per cd_duration per member)
+//                      (base + per·L arts, sourceless but credited to the member hit, ≤ 1 per cd_duration per member;
+//                      无来源 damage uses the chance and hits nobody, a 流失 never does — PRTS 备注 / 作战机制)
 //                      + 脆弱 ×damage_scale for weak[limit] s
 //   助力 deputShip     all operators DEF +(base + per·L), redeploy time ×(1 + respawn_time)
 //   突袭 raidShip      member idle ≥ no_attack_duration s (or skill ready) with no enemy in range → "保留技力立即再部署"
-//                      next to the most advanced ground enemy: a real redeployment (retreat + free redeploy on the
-//                      landing tile, full HP, `deploy` fires — 部署时 traits such as 史尔特尔, 突袭手雷, 卡西米尔, 叙拉古)
-//                      with its SP / charges kept (engine redeploy tile + keepSp); ATK/HP +(base + per·L)
-//                      until it leaves the field; later redeploys use its board tile again;
+//                      next to the most advanced ground enemy, on a free tile its position may be deployed on
+//                      (grid.canStand: never the 深水区 — player report #3 after 0.1.0, members dropped into 战场#08's
+//                      pool after an enemy wading in it; Battle.isReservedTile: never a tile a knocked-out operator
+//                      lies on — player report F5, members landed on a fallen teammate): a real redeployment (retreat +
+//                      free redeploy on the landing tile, full HP, `deploy` fires — 部署时 traits such as 史尔特尔,
+//                      突袭手雷, 卡西米尔, 叙拉古) with its SP / charges kept (engine redeploy tile + keepSp); ATK/HP
+//                      +(base + per·L) until it leaves the field; knocked out after a jump it lies where it fell and
+//                      comes back there (the engine's rest tile, Battle._layBody — PRTS 卫戍协议/帮助 "原地留下一个
+//                      “倒地干员”…自动部署至该位置"; its own home when it fell on another board piece's home);
 //                      L ≥ power_bond_stack_cnt: every operator ASPD +power_attack_speed
-//   不屈 indomShip     ground operator knocked out → p = min(1, base + per·L) immediate free redeploy; tier 2: every
-//                      operator on the field +sp SP
+//   不屈 indomShip     ground operator knocked out → p = min(1, base + per·L) immediate free redeploy where it lies
+//                      (the engine's rest tile); tier 2: every operator on the field +sp SP
 //   协防 emptyShip     all operators phys/arts taken ×(1 − damage_resistance); members dealt ×damage_scale_normal
 //                      (elite ×damage_scale_extra)
 //   独行 soloShip      the member(s) ATK +atk, HP +max_hp, +sp SP on every deploy
@@ -41,6 +54,7 @@
 
 import { absoluteRangeKeys, canTargetEnemy } from '../../../targeting.js';
 import { localOrder, localBefore } from '../../../dir.js';
+import { isHpLoss } from '../../../damage.js';
 import {
   num, bondRecord, buffParams, bondTier, bondLayers, isMember, isElite, isGroundOp, onField, playerOps, passiveBuff,
   fxOn, N4, N8, bodyInKeys, directMods,
@@ -287,8 +301,9 @@ function raidPoll(battle, st) {
 
 /**
  * "保留技力立即再部署": retreat the unit and redeploy it for free on (r, c) with its SP / charges kept (engine redeploy
- * `tile` + `keepSp`: restored before the `deploy` handlers run; the board tile stays the home of later redeploys).
- * Should the landing fail, the unit goes straight back to its home tile (never stranded off the field).
+ * `tile` + `keepSp`: restored before the `deploy` handlers run; the board tile stays its home). Should the landing fail
+ * (raidTile skips taken, reserved and body tiles, so only content refusing it), the unit goes straight back to its home
+ * tile (never stranded off the field).
  * Returns 'raid' | 'home' | false.
  */
 function raidRedeploy(battle, u, r, c) {
@@ -440,7 +455,9 @@ export function install(battle) {
           }
           return;
         }
-        if (dmg.steadShare || dmg.steadThorn || c.type === 'element' || !st.members[ID.stead].has(t)) return;
+        // a 流失 never uses a thorn chance (PRTS 作战机制 "生命流失不会触发反伤"); 无来源 damage does, hitting nobody (备注
+        // "可被无来源伤害消耗反伤机会")
+        if (dmg.steadShare || dmg.steadThorn || c.type === 'element' || isHpLoss(dmg) || !st.members[ID.stead].has(t)) return;
         const bb = st.bb[ID.stead];
         const last = t.mem[STEAD_CD] ?? -Infinity;
         if (battle.time - last < num(bb.cd_duration) - 1e-9) return;

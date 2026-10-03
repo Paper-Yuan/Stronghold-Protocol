@@ -5,10 +5,13 @@
 //
 //   Board = own normal field (GEO.FIELD rows 9–12, cols 2–10). Melee chess stand on `melee` deploy tiles
 //   (LOW, buildable ALL/MELEE); ranged chess on `melee ∪ rangedOnly` (stages.json → deployTiles.normal,
-//   derived from the tile legend when missing). Tokens follow their own `position`. In the prep of a boss round
-//   (最终攻势 / 隐秘核心) the tiles are the player's half of the boss field (`deployFieldOf`: 'bossL' / mirrored
-//   'bossR', board (r, c) = stage tile (r − 7, c) / (r − 7, 20 − c)) like the server's deploy map (server/match/
-//   board.js field; user playtest #5 item 7) — board coordinates stay the same.
+//   derived from the tile legend when missing — the legend's `buildable` is the effective type: 深水区 tile_deepsea
+//   refuses deployment, PRTS 深水区 地形信息 "拒绝部署（待补充）", player report #3 after 0.1.0). Tokens follow their
+//   own `position`; a summon whose text reads "只能部署在召唤者攻击范围内" (tokens.json `ownerRange`: 伺夜's 狼群,
+//   缪尔赛思's 流形) also needs a tile of its owner's attack range (`summonRange`, player report #9). In the prep of a
+//   boss round (最终攻势 / 隐秘核心) the tiles are the player's half of the boss field (`deployFieldOf`: 'bossL' /
+//   mirrored 'bossR', board (r, c) = stage tile (r − 7, c) / (r − 7, 20 − c)) like the server's deploy map
+//   (server/match/board.js field; user playtest #5 item 7) — board coordinates stay the same.
 //   Hand = 10 slots (index = col). Temp slots are server-filled only (no move target).
 //   Dropping onto an occupied tile/slot swaps (both pieces must be legal at their new spots);
 //   an EQUIP item dropped onto a chess piece equips it (tokens can't carry items); an Arts (MAGIC) item
@@ -19,7 +22,8 @@
 
 import { GEO, PHASE, UF } from '../../../shared/constants.js';
 import { resolveLoadout, loadoutOptions, MODULE_NONE } from '../../../shared/protocol.js';
-import { resolveRecordLoadout, loadoutRecord } from '../../../shared/loadoutRecord.js';
+import { resolveRecordLoadout, loadoutRecord, attackRangeGrid } from '../../../shared/loadoutRecord.js';
+import { rangeTiles, pieceDir } from './facing.js';
 import { layoutPen } from '../render/pen.js';
 import { BOSS_ROW_SHIFT, MAX_COL } from '../render/prepfield.js';
 import { bossLevelSeconds } from './matchStatus.js';
@@ -85,6 +89,37 @@ export function prepCamera(pub, myId) {
   const idx = alive.findIndex((p) => p.playerId === myId);
   if (idx < 0) return normal; // eliminated / unknown: no board of its own on the boss field
   return { kind: 'bossPrep', opts: { side: idx % 2 === 1 ? 'R' : 'L' } };
+}
+
+/**
+ * The own prep board's camera request with the shop bar's state (public issue #5 "准备阶段，收起商店界面时，界面并不会进行
+ * 缩放"): `prepCamera` plus `shop: !folded` — a folded shop (收起) takes the official shop-collapsed camera
+ * (configBlackBoard left_prepare_camera_param / *_boss_prepare_*, render/projection.js presetCamera `shop: false`) and
+ * the folded shop's HUD band (ui/fieldHost.js hudBands), an open one the shop camera. `folded` = the shop bar is shown
+ * and folded (an eliminated player's board, which shows no bar, keeps the shop camera).
+ * @returns {{ kind: 'prep'|'bossPrep', opts: { rect?: object, side: 'L'|'R', shop: boolean } }}
+ */
+export function prepCameraFor(pub, myId, folded = false) {
+  const c = prepCamera(pub, myId);
+  return { kind: c.kind, opts: { ...c.opts, shop: !folded } };
+}
+
+/**
+ * The camera request a fold / unfold of the shop bar needs right now (public issue #5), or null: only while the own prep
+ * board is on screen (`ownPrep`: prep, not a teammate's scouted board, not a battle), never over the enemy pen (`pen`: it
+ * folds the shop itself and returns to the camera it left), deferred while a piece is dragged or its direction is chosen
+ * (`busy`: the drop target and the wheel sit on tiles of the camera in use — the caller asks again once that ends), and
+ * nothing when the current request (`current` { kind, opts }) already has that shop state.
+ * @param {{ pub: any, myId: string|null, ownPrep: boolean, folded: boolean, pen?: boolean, busy?: boolean,
+ *   current?: { kind: string, opts?: { shop?: boolean } }|null }} s
+ * @returns {{ kind: 'prep'|'bossPrep', opts: object }|null}
+ */
+export function foldCamera(s) {
+  if (!s || !s.ownPrep || s.pen || s.busy) return null;
+  const want = prepCameraFor(s.pub, s.myId, !!s.folded);
+  const cur = s.current;
+  if (cur && cur.kind === want.kind && (cur.opts?.shop !== false) === want.opts.shop) return null;
+  return want;
 }
 
 /**
@@ -371,26 +406,150 @@ export function nextThreshold(count, thresholds) {
 }
 
 /**
- * Member rows of a bond popup: every visible member with owned / on-board / banned state.
+ * Bonds granted by 变形同构体: an item with `canGiveBond` worn together with an item that has a `giveBondId` makes the
+ * wearer a member of that other item's bond (band 变形者集群 "与特定装备一同装备时装备者将视为特定盟约成员"; the item's
+ * talent, character_table trap_1073_acarm073, lists the 14 pairings). The same rule as the server's count
+ * (server/match/bondsMeta.js pieceBonds) and the battle's (server/sim/content/support unitBonds).
+ * @param {Array<string|{id:string}>|null|undefined} items the carried items (ids or { id } pieces)
+ * @param {(id:string)=>any} [getItem] items.json lookup
+ * @returns {string[]}
+ */
+export function grantedBonds(items, getItem = () => null) {
+  const list = Array.isArray(items) ? items : [];
+  if (list.length < 2) return [];
+  const recs = list.map((it) => getItem(typeof it === 'string' ? it : it?.id)).filter(isObj);
+  if (!recs.some((r) => r.canGiveBond)) return [];
+  const out = [];
+  for (const r of recs) if (!r.canGiveBond && typeof r.giveBondId === 'string' && r.giveBondId && !out.includes(r.giveBondId)) out.push(r.giveBondId);
+  return out;
+}
+
+/**
+ * A chess piece's bonds: its record's + those its 变形同构体 pairing grants (grantedBonds) — the detail card's chips.
+ * @param {any} chess chess.json record @param {Array<string|{id:string}>|null|undefined} items @param {(id:string)=>any} [getItem]
+ * @returns {string[]}
+ */
+export function pieceBondIds(chess, items, getItem = () => null) {
+  const out = (Array.isArray(chess?.bonds) ? chess.bonds : []).filter((b) => typeof b === 'string');
+  for (const b of grantedBonds(items, getItem)) if (!out.includes(b)) out.push(b);
+  return out;
+}
+
+/**
+ * The 变形同构体 pairings — the list its 天赋栏 shows (the item text: "具体对应关系可在模拟中查看本装备天赋栏"; character_table
+ * trap_1073_acarm073 "“炎国短刀”→【炎】盟约 …", 14 bonds; GitHub issue #1: without it the item read as doing nothing).
+ * Built from the same `giveBondId` the server counts with (server/match/bondsMeta.js pieceBonds, grantedBonds here): every
+ * bond an item grants, in bonds.json order, with the items that grant it (one entry per item family — the normal and 进阶
+ * copies share a name —, by tier, then data order). `off`: the mode never activates the bond (modeOffBonds: 本局禁用 — 标准
+ * leaves 5 of the 14 off). `worn`: the wearer's items (`carried`, the card shows the 变形同构体 on an operator) pair it with
+ * one of the bond's items — the pairing in effect on that operator (that item `worn` too).
+ * @param {Iterable<any>} itemRecs items.json records (data.list('items'))
+ * @param {Iterable<any>} bondRecs bonds.json records in data order (data.list('bonds'))
+ * @param {{ off?: Set<string>|null, carried?: Array<string|{id:string}>|null }} [opts]
+ * @returns {Array<{ bondId: string, name: string, off: boolean, worn: boolean, items: Array<{ id: string, name: string, worn: boolean }> }>}
+ */
+export function morphPairings(itemRecs, bondRecs, { off = null, carried = null } = {}) {
+  const recs = [...(itemRecs || [])].filter(isObj);
+  const byId = new Map(recs.map((r) => [r.id, r]));
+  const getItem = (id) => byId.get(id) || null;
+  const worn = new Set(grantedBonds(carried, getItem));
+  const carriedIds = new Set((Array.isArray(carried) ? carried : []).map((it) => (typeof it === 'string' ? it : it?.id)).filter((x) => typeof x === 'string'));
+  const famOf = (r) => (typeof r.baseId === 'string' && r.baseId ? r.baseId : r.id);
+  /** bondId → family id → { id, name, tier, order, ids } */
+  const groups = new Map();
+  recs.forEach((r, order) => {
+    if (r.canGiveBond || typeof r.giveBondId !== 'string' || !r.giveBondId) return;
+    let g = groups.get(r.giveBondId);
+    if (!g) groups.set(r.giveBondId, (g = new Map()));
+    const fam = famOf(r);
+    const e = g.get(fam);
+    if (e) { e.ids.push(r.id); return; }
+    g.set(fam, { id: fam, name: typeof r.name === 'string' && r.name ? r.name : fam, tier: int(r.tier, 99), order, ids: [r.id] });
+  });
+  const out = [];
+  for (const b of bondRecs || []) {
+    const g = isObj(b) ? groups.get(b.bondId) : null;
+    if (!g) continue;
+    const bondWorn = worn.has(b.bondId);
+    const items = [...g.values()].sort((x, y) => (x.tier - y.tier) || (x.order - y.order))
+      .map((e) => ({ id: e.id, name: e.name, worn: bondWorn && e.ids.some((id) => carriedIds.has(id)) }));
+    out.push({ bondId: b.bondId, name: typeof b.name === 'string' && b.name ? b.name : b.bondId, off: !!(off && typeof off.has === 'function' && off.has(b.bondId)), worn: bondWorn, items });
+  }
+  return out;
+}
+
+/**
+ * Bond id of 调和 (bonds.json maniShip, "激活时使场上核心盟约的激活人数+1") — server/match/bondsMeta.js HARMONY_BOND; a test
+ * pins the two. Only to name the 调和 operators: whether a bond's count holds the +1 is the server's word (the view
+ * entry's `harmony`, DESIGN §21.26).
+ */
+export const HARMONY_BOND = 'maniShip';
+
+/**
+ * The 调和 operators on a board, distinct (normal and elite copies of one operator once): who activates the +1 a bond
+ * entry's `harmony` reports (the bond popup's 调和 row names them — 缪尔赛思, the Pith strategy's 盟约·辅助干员).
+ * @param {any} priv m.private — or a teammate's field operators (ui/watchBonds.js ownerBoard)
+ * @param {(id:string)=>any} [getChess]
+ * @returns {Array<{ id: string, name: string }>} base chess ids
+ */
+export function harmonyMembers(priv, getChess = () => null) {
+  const out = [];
+  const seen = new Set();
+  for (const p of Array.isArray(priv?.board) ? priv.board : []) {
+    if (p?.kind !== 'chess') continue;
+    const c = getChess(p.id);
+    if (!Array.isArray(c?.bonds) || !c.bonds.includes(HARMONY_BOND)) continue;
+    const base = c.baseId || (typeof p.id === 'string' ? p.id.replace(/_b$/, '_a') : p.id);
+    if (seen.has(base)) continue;
+    seen.add(base);
+    out.push({ id: base, name: getChess(base)?.name || c.name || base });
+  }
+  return out;
+}
+
+/**
+ * Member rows of a bond popup: every visible member with owned / on-board / banned state, plus the player's operators
+ * that are members through 变形同构体 (grantedBonds; `granted: true` and `items`: the item ids of the copy that wears the
+ * pair — the card the row opens shows them; one row per operator — normal and elite copies are one member, like the
+ * count's distinct members), so "成员 x/y" agrees with the count the server reports (在场).
  * @param {any} bond bonds.json record
- * @param {any} priv m.private (hand/board/temp)
+ * @param {any} priv m.private (hand/board/temp) — or a teammate's field operators (ui/watchBonds.js ownerBoard)
  * @param {Set<string>|string[]} [banned] banned base chess ids
  * @param {(id:string)=>any} [getChess]
+ * @param {(id:string)=>any} [getItem] items.json lookup (the 变形同构体 pairings)
  */
-export function bondMembers(bond, priv, banned = [], getChess = () => null) {
+export function bondMembers(bond, priv, banned = [], getChess = () => null, getItem = () => null) {
   const bannedSet = banned instanceof Set ? banned : new Set(Array.isArray(banned) ? banned : []);
   const members = Array.isArray(bond?.visibleMembers) && bond.visibleMembers.length ? bond.visibleMembers : (Array.isArray(bond?.members) ? bond.members : []);
   const baseOf = (id) => getChess(id)?.baseId || (typeof id === 'string' ? id.replace(/_b$/, '_a') : id);
   const onBoard = new Set();
   const owned = new Set();
-  for (const p of Array.isArray(priv?.board) ? priv.board : []) if (p?.kind === 'chess') { onBoard.add(baseOf(p.id)); owned.add(baseOf(p.id)); }
-  for (const p of [...(Array.isArray(priv?.hand) ? priv.hand : []), ...(Array.isArray(priv?.temp) ? priv.temp : [])]) {
-    if (p?.kind === 'chess') owned.add(baseOf(p.id));
+  const memberSet = new Set(members);
+  /** base id → { on: on the board?, items: the wearer's item ids } — operators of the player that join this bond through 变形同构体 */
+  const granted = new Map();
+  const grants = (p) => typeof bond?.bondId === 'string' && grantedBonds(p.items, getItem).includes(bond.bondId);
+  const itemIds = (p) => p.items.map((it) => (typeof it === 'string' ? it : it?.id)).filter((x) => typeof x === 'string');
+  for (const p of Array.isArray(priv?.board) ? priv.board : []) {
+    if (p?.kind !== 'chess') continue;
+    const base = baseOf(p.id);
+    onBoard.add(base); owned.add(base);
+    if (!memberSet.has(base) && !granted.has(base) && grants(p)) granted.set(base, { on: true, items: itemIds(p) });
   }
-  return members.map((id) => {
+  for (const p of [...(Array.isArray(priv?.hand) ? priv.hand : []), ...(Array.isArray(priv?.temp) ? priv.temp : [])]) {
+    if (p?.kind !== 'chess') continue;
+    const base = baseOf(p.id);
+    owned.add(base);
+    if (!memberSet.has(base) && !granted.has(base) && grants(p)) granted.set(base, { on: false, items: itemIds(p) });
+  }
+  const rows = members.map((id) => {
     const c = getChess(id);
     return { id, tier: c?.tier ?? 0, name: c?.name ?? id, onBoard: onBoard.has(id), owned: owned.has(id), banned: bannedSet.has(id) };
-  }).sort((a, b) => (b.onBoard - a.onBoard) || (b.owned - a.owned) || (a.tier - b.tier) || (a.id < b.id ? -1 : 1));
+  });
+  for (const [id, g] of granted) {
+    const c = getChess(id);
+    rows.push({ id, tier: c?.tier ?? 0, name: c?.name ?? id, onBoard: g.on, owned: true, banned: false, granted: true, items: g.items });
+  }
+  return rows.sort((a, b) => (b.onBoard - a.onBoard) || (b.owned - a.owned) || (a.tier - b.tier) || (a.id < b.id ? -1 : 1));
 }
 
 /**
@@ -437,6 +596,42 @@ export function briefingBondTip(name, state, bannedN = 0) {
   if (state === 'off') return `${name}：本局禁用（该盟约不会激活）`;
   if (state === 'drawn' || bannedN > 0) return `${name}：部分盟约所含干员阵容不完整${bannedN ? `（${bannedN} 名干员无法出现）` : ''}`;
   return name;
+}
+
+/**
+ * The bonds a mode never activates (config.json modes[modeId].inactiveBondIds = the official modeDataDict
+ * inactiveBondIdList: 标准模拟 leaves 拉特兰 阿戈尔 卡西米尔 灵巧 奥术 奇迹 投资人 突袭 独行 绝技 off). Operators that also carry an
+ * enabled bond stay in the pool (server pool.js drawDisabledBonds) — 标准's 深靛 洛洛 阿罗玛 夕 圣聆初雪 still show 奥术 — and
+ * the server leaves such a bond out of m.private.bonds, so without a mark a card read "奥术 0/2 未激活" with three 奥术
+ * operators deployed (player report after 0.1.0: "奥术盟约不生效"). The shop / reward cards, the detail card's bond chips
+ * and the bond popup mark these 本局禁用 (briefingBondTip 'off').
+ * @param {any} mode config.json modes[modeId] (data.js getMode), or null
+ * @returns {Set<string>}
+ */
+export function modeOffBonds(mode) {
+  const list = isObj(mode) && Array.isArray(mode.inactiveBondIds) ? mode.inactiveBondIds : [];
+  return new Set(list.filter((b) => typeof b === 'string'));
+}
+
+/**
+ * The bonds a strategy is built around that this mode switches off: bands.json `bondIds` (shared/bandBonds.js at build
+ * time — the field the server's bot reads too, GameData.bandBondIds) ∩ `off` (modeOffBonds). 标准: 潘格尼尼 → 拉特兰,
+ * 克莱门莎 → 阿戈尔, 玛恩纳 → 卡西米尔; the strategy draft marks such a band 本局禁用 (still selectable, DESIGN §21.26).
+ * @param {any} band bands.json record @param {Set<string>|null} off
+ * @returns {string[]}
+ */
+export function bandOffBonds(band, off) {
+  if (!(off instanceof Set) || !off.size || !Array.isArray(band?.bondIds)) return [];
+  return band.bondIds.filter((b) => typeof b === 'string' && off.has(b));
+}
+
+/**
+ * The strategy draft's note for such a band: "本局禁用【拉特兰】盟约，此策略效果可能无法发挥".
+ * @param {string[]} names the switched-off bonds' names
+ */
+export function bandOffLine(names) {
+  const list = (Array.isArray(names) ? names : []).filter((n) => typeof n === 'string' && n);
+  return list.length ? `本局禁用${list.map((n) => `【${n}】`).join('')}盟约，此策略效果可能无法发挥` : '';
 }
 
 // ---- shop ---------------------------------------------------------------------------------------------
@@ -539,6 +734,29 @@ export function completesMerge(priv, slot, { getChess = () => null, getItem = ()
 }
 
 /**
+ * How the shop bar names a free pick-one offer (m.private shop.rewardOffer): the promotion reward (`source` 'merge')
+ * reads 晋升奖励 / PROMOTION; any other offer — a strategy's special refresh (凯瑟琳 定向投放, 娜仁图亚 见者有份), an item
+ * (寻呼模块, 信标) or a 特质 (松果) — reads its `label` with the refresh icon (player report #6 after 0.1.0: 凯瑟琳's three
+ * items showed up as nameless operator cards under 晋升奖励). `items` = the offer holds items (cards drawn as item cards).
+ * `queued` = offers waiting behind this one (shop.rewardOffer.queued, e.g. a 定向投放 behind a promotion reward put
+ * off): `more` (header) and the pill's "+N" say so, null / no suffix when none.
+ * @param {any} offer
+ * @returns {{ title: string, micro: string, sub: string, icon: string, items: boolean, pill: string, queued: number, more: string|null }}
+ */
+export function offerHeader(offer) {
+  const slots = isObj(offer) && Array.isArray(offer.slots) ? offer.slots : [];
+  const items = slots.some((s) => isObj(s) && s.kind === 'item');
+  const label = isObj(offer) && typeof offer.label === 'string' && offer.label ? offer.label : null;
+  const queued = isObj(offer) && Number.isInteger(offer.queued) && offer.queued > 0 ? offer.queued : 0;
+  const tail = { queued, more: queued ? `之后还有 ${queued} 项` : null };
+  if (!items && (!isObj(offer) || offer.source === 'merge' || offer.source == null) && !label) {
+    return { title: '晋升奖励', micro: 'PROMOTION', sub: '免费选择 1 名', icon: 'crown', items: false, pill: '晋升奖励待选择', ...tail };
+  }
+  const title = label || (items ? '装备补给' : '特殊招募');
+  return { title, micro: 'SPECIAL', sub: items ? '免费选择 1 件' : '免费选择 1 名', icon: 'refresh', items, pill: `${title}待选择`, ...tail };
+}
+
+/**
  * Why a shop action is unavailable (null when available).
  * @param {'buy'|'reward'|'refresh'|'freeze'|'levelUp'|'ready'} kind
  * @param {{ priv:any, editable:boolean, slot?:any, getChess?:(id:string)=>any, getItem?:(id:string)=>any }} ctx
@@ -614,6 +832,8 @@ export function deploySets(stage, field = 'normal', overrides = {}) {
 
 const OBSTACLE_ROLES = new Set(['crate', 'mound']);
 const PLATFORM_ROLES = new Set(['platform']);
+/** 特制水上平台 (act1 m05, weight 0 this season): its 深水区 tile takes any unit ("在水上建立可以部署任意单位的平台"). */
+const WATER_PLATFORM_ROLES = new Set(['waterPlatform']);
 const hasKeys = (o) => isObj(o) && Object.keys(o).length > 0;
 
 /**
@@ -689,6 +909,7 @@ export function deployMap(stage, { deviceOverrides = {}, tileOverrides = {}, fie
     if (!active) continue;
     if (OBSTACLE_ROLES.has(d.role)) map.delete(tileKey(r, c));
     else if (PLATFORM_ROLES.has(d.role)) map.set(tileKey(r, c), 'ranged');
+    else if (WATER_PLATFORM_ROLES.has(d.role)) map.set(tileKey(r, c), 'melee');
   }
   for (const [k, v] of Object.entries(isObj(tileOverrides) ? tileOverrides : {})) {
     const [r, c] = String(k).split(',').map(Number);
@@ -786,6 +1007,33 @@ export function tileAllows(ctx, piece, row, col) {
 }
 
 /**
+ * Board tiles ('r,c') where a summon whose text reads "只能部署在召唤者攻击范围内" may stand (tokens.json `ownerRange`:
+ * 伺夜's 狼群, 缪尔赛思's 流形 — the tactical point; player report #9 after 0.1.0): its owner's attack range (the
+ * loadout's grid, shared/loadoutRecord.js attackRangeGrid, rotated by the owner's facing around its tile). Null when
+ * the piece is not range-bound or its owner is not on the board. `owner` ({ row, col, piece }) replaces the owner's
+ * current position (a summon swapped with its own owner). Mirror of server/match/PlayerState.js summonRange.
+ * @param {ReturnType<typeof placementContext>} ctx
+ * @returns {Set<string> | null}
+ */
+export function summonRange(ctx, piece, owner = null) {
+  if (!isObj(piece) || piece.kind !== 'token' || ctx?.getToken?.(piece.id)?.ownerRange !== true) return null;
+  let at = owner;
+  if (!at) for (const e of ctx.boardAt.values()) if (e.piece.uid === piece.ownerUid && e.piece.kind === 'chess') { at = e; break; }
+  const rec = at && ctx.getChess(at.piece.id);
+  if (!rec) return null;
+  let grid = null;
+  try { grid = attackRangeGrid(chessLoadout(rec, ctx.priv?.loadout ?? null, ctx.getChess)?.record || rec); } catch { /* the data grid */ }
+  return new Set(rangeTiles(grid || rec.rangeGrid, at.row, at.col, pieceDir(at.piece)).map(([r, c]) => tileKey(r, c)));
+}
+
+/** tileAllows plus the owner-range rule of a range-bound summon (summonRange). */
+function unitAllowed(ctx, piece, row, col, owner = null) {
+  if (!tileAllows(ctx, piece, row, col)) return false;
+  const range = summonRange(ctx, piece, owner);
+  return !range || range.has(tileKey(row, col));
+}
+
+/**
  * Placement legality of dropping piece `uid` on `target` (mirror of server/match/PlayerState.js move / equip /
  * useArt and server/match/board.js canPlace):
  *   board ← chess: legal tile for its position; empty tile or a chess occupant (swap; from the board the occupant
@@ -849,9 +1097,16 @@ export function canPlace(ctx, uid, target) {
       const deployable = ctx.deploy.ranged.has(tileKey(row, col));
       return no('BAD_TILE', deployable && piecePosition(ctx, piece) === 'MELEE' ? '近战单位只能部署在地面' : '无法部署在该位置');
     }
+    // a range-bound summon (战术点): inside its owner's attack range — seen from the summon's old tile when it is
+    // dropped onto its own owner (the two swap)
+    const ownerSwap = src.area === 'board' && occ && occ.piece.uid === piece.ownerUid ? { row: src.row, col: src.col, piece: occ.piece } : null;
+    const range = summonRange(ctx, piece, ownerSwap);
+    if (range && !range.has(tileKey(row, col))) return no('BAD_TILE', '只能部署在召唤者攻击范围内');
     if (src.area === 'board') {
-      // board → board: move or swap (the occupant must be legal on the source tile)
-      if (occ && !tileAllows(ctx, occ.piece, src.row, src.col)) return no('BAD_TILE', '交换后的单位无法部署在原位置');
+      // board → board: move or swap (the occupant must be legal on the source tile — the mover's own summon excepted:
+      // a moved operator's summons go back to the hand anyway)
+      const ownSummon = occ && occ.piece.kind === 'token' && occ.piece.ownerUid === piece.uid;
+      if (occ && !ownSummon && !unitAllowed(ctx, occ.piece, src.row, src.col)) return no('BAD_TILE', '交换后的单位无法部署在原位置');
       return { ok: true, action: occ ? 'swap' : 'move' };
     }
     if (piece.kind === 'token') {

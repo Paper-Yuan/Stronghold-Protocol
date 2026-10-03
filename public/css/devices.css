@@ -129,6 +129,11 @@ html:not(.sp-in-match) .toast-host { margin-top: var(--sa-t); }
   .gm__corner { width: max(96px, calc(3 * max(.56rem, 34px) + .2rem)); }
   .dpanel:not(.dpanel--right) { bottom: calc(.44rem + max(1.51rem, 96px) * 55 / 151 + max(.56rem, 34px)); }
 }
+/* With the shop folded (收起) no bar covers the corner: one row again, so the folded shop's prep camera, which keeps the
+   bench above the corner's hit areas (ui/fieldHost.js hudBands), grows the board on narrow phones too (public issue #5). */
+@media (max-width: 767px) {
+  .gm.is-collapsed .gm__corner { flex-wrap: nowrap; width: auto; }
+}
 
 /* Short landscape phones (≤ 460 CSS px tall, 1rem = 40 px): the lobby's two columns are compressed so the
    创建同盟 button and the join panel stay on screen without scrolling. The detail card's header is shorter (no

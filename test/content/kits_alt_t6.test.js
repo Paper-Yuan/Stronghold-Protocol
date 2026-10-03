@@ -691,7 +691,8 @@ test('6_11 缪尔赛思 S2 生态耦合: +cost DP; melee copies regenerate and t
 test('6_12 迷迭香 S1 思维膨大: the next attack adds extra_atk_scale × ATK arts to every enemy it hits', () => {
   for (const id of both('chess_char_6_12')) {
     const sid = 'skchr_rosmon_1', bb = bbOf(id, sid);
-    const h = run({ defs: { enemies: { e: dummy('e') } }, units: [U(id, sid, 10, 4, { carryState: READY })], enemies: [{ key: 'e', pos: [10, 7] }, { key: 'e', pos: [10, 8] }] });
+    // the second enemy inside the 投掷手 splash (PRTS 溅射半径一览 0.9) of the first
+    const h = run({ defs: { enemies: { e: dummy('e') } }, units: [U(id, sid, 10, 4, { carryState: READY })], enemies: [{ key: 'e', pos: [10, 7] }, { key: 'e', pos: [10, 7.6] }] });
     const u = h.unit(id);
     usesSkill(u, sid);
     assert.ok(h.runUntil(() => dealt(h, u, (c) => c.type === 'arts').length >= 2, 6));

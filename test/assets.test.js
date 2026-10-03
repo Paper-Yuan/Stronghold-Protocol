@@ -2,7 +2,8 @@
 // data/assets.json. The pure helpers (animation-role resolver, atlas
 // normalizer, PNG/WOFF2/audio helpers, plan id sets) are always tested; the
 // on-disk checks run only when public/assets exists (it is git-ignored and
-// produced by `npm run assets`).
+// produced by `npm run assets`); the optional local-client enemy models
+// (spineLocal, tools/local-extract) only when data/local-assets.json lists them.
 
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
@@ -19,6 +20,7 @@ import { assetToPath, pickUnitSfx, indexAudio } from '../tools/assets/audio.mjs'
 import { mirrorUrl, safeName, encodePath } from '../tools/assets/sources.mjs';
 import { collectEnemyIds, skillIndicesByChar } from '../tools/assets/plan.mjs';
 import { resolveTemplate, collectLeaves } from '../tools/assets/manifest.mjs';
+import { spineEntry } from '../public/js/assets.js';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const PUBLIC = join(ROOT, 'public');
@@ -583,6 +585,13 @@ describe('generated manifest data/assets.json', () => {
     for (const e of Object.values(manifest.enemies)) if (e.spine) models.set(e.spine.skel, e.spine);
     for (const t of Object.values(manifest.tokens)) if (t.spine) models.set(t.spine.skel, t.spine);
     assert.ok(models.size > 400);
+    // the official enemy models of the local client, as the client resolves them (DESIGN §13: only when listed)
+    const localPath = join(ROOT, 'data', 'local-assets.json');
+    const local = existsSync(localPath) ? JSON.parse(readFileSync(localPath, 'utf8')) : null;
+    for (const id of Object.keys(manifest.enemies)) {
+      const s = local ? spineEntry(manifest, id, { local }) : null;
+      if (s?.local && [s.skel, s.atlas, ...s.textures].every((u) => existsSync(join(PUBLIC, u)))) models.set(s.skel, s);
+    }
     for (const s of models.values()) {
       const dir = dirname(s.atlas);
       // pixi-spine finds the atlas by swapping the extension of the skel URL

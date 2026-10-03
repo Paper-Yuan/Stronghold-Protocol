@@ -7,7 +7,8 @@
 //   pieces   unique uids; hand 10 / temp 5 slots; chess carry ≤ equipPerChess known items; a normal piece holds ≤ 1
 //            copy, an elite ≤ goldenCopies; merges are immediate (never `mergeCount` normal copies of one chess, never
 //            two copies of a mergeable normal item); every token's owner chess is deployed
-//   board    tiles inside the own region and legal for the piece; no items on the board; chess count ≤ deploy cap
+//   board    tiles inside the own region and legal for the piece (a range-bound summon inside its owner's attack
+//            range); no items on the board; chess count ≤ deploy cap
 //            (where a merge's elite goes — a consumed deployed copy's tile, else the hand — needs the state before the
 //            merge: audit.js checks it per merge)
 //   bonds    ps.bonds equals a fresh computeBonds() (every mutation recomputed them); every bond's layers 0 … BOND_LAYER_CAP
@@ -111,6 +112,9 @@ export function collectViolations(m, { limit = 25 } = {}) {
       if (p.kind === 'item') { fail(`${id}: item ${p.id} stands on the board`); continue; }
       const rec = p.kind === 'token' ? gd.token(p.id) : gd.chess(p.id);
       if (rec && !canPlace(dmap, positionClass(rec), r, c)) fail(`${id}: ${p.id} on an illegal tile ${k}`);
+      // a "只能部署在召唤者攻击范围内" summon inside its owner's attack range (PlayerState.summonRange: a pure read)
+      const range = p.kind === 'token' && typeof ps.summonRange === 'function' ? ps.summonRange(p) : null;
+      if (range && !range.has(k)) fail(`${id}: ${p.id} on ${k}, outside its owner's attack range`);
       if (p.kind === 'chess') deployed++;
     }
     if (deployed > ps.deployCap) fail(`${id}: ${deployed} chess deployed > cap ${ps.deployCap}`);
