@@ -48,6 +48,14 @@ copyRecursive(path.join(ROOT, 'data'), path.join(STAGING_DIR, 'data'));
 copyRecursive(path.join(ROOT, 'public'), path.join(STAGING_DIR, 'public'));
 copyRecursive(path.join(ROOT, 'package.json'), path.join(STAGING_DIR, 'package.json'));
 
+// Set Android bundle engines to >=18 for embedded runtime compatibility
+const bundledPkgPath = path.join(STAGING_DIR, 'package.json');
+if (fs.existsSync(bundledPkgPath)) {
+  const pkgData = JSON.parse(fs.readFileSync(bundledPkgPath, 'utf8'));
+  pkgData.engines = { node: ">=18" };
+  fs.writeFileSync(bundledPkgPath, JSON.stringify(pkgData, null, 2), 'utf8');
+}
+
 // Copy only necessary production node_modules
 console.log('[bundle-android] Copying production node_modules (ws, preact, htm, pixi.js, pixi-spine, three)...');
 const prodModules = ['ws', 'preact', 'htm', 'pixi.js', 'pixi-spine', 'three'];
