@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="@color/card_bg"
+    android:orientation="vertical"
+    android:padding="20dp">
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/switch_server_title"
+        android:textColor="@color/theme_teal"
+        android:textSize="18sp"
+        android:textStyle="bold" />
+
+    <RadioGroup
+        android:id="@+id/rgServerMode"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp">
+
+        <RadioButton
+            android:id="@+id/rbLocalMode"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:checked="true"
+            android:text="@string/local_mode"
+            android:textColor="@color/text_white" />
+
+        <RadioButton
+            android:id="@+id/rbRemoteMode"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="@string/remote_mode"
+            android:textColor="@color/text_white" />
+    </RadioGroup>
+
+    <EditText
+        android:id="@+id/etServerAddress"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:background="@color/bg_dark"
+        android:hint="@string/server_address_hint"
+        android:padding="12dp"
+        android:textColor="@color/text_white"
+        android:textColorHint="#60706a"
+        android:textSize="14sp"
+        android:visibility="gone" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="20dp"
+        android:gravity="end"
+        android:orientation="horizontal">
+
+        <Button
+            android:id="@+id/btnRestartServer"
+            style="?android:attr/borderlessButtonStyle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/btn_restart_service"
+            android:textColor="#ff7a7a" />
+
+        <Button
+            android:id="@+id/btnCancelDialog"
+            style="?android:attr/borderlessButtonStyle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/btn_cancel"
+            android:textColor="@color/text_white" />
+
+        <Button
+            android:id="@+id/btnApplyDialog"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:backgroundTint="@color/theme_teal"
+            android:text="@string/btn_confirm"
+            android:textColor="@color/bg_dark" />
+    </LinearLayout>
+
+</LinearLayout>

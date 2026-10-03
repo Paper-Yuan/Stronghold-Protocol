@@ -1,0 +1,91 @@
+#!/usr/bin/env node
+// tools/bundle-android.mjs — package server, public, data, and node_modules into android/app/src/main/assets/app_bundle.zip
+
+import fs from 'node:fs';
+import path from 'node:path';
+import { spawnSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
+
+const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+const ANDROID_ASSETS_DIR = path.join(ROOT, 'android', 'app', 'src', 'main', 'assets');
+const ZIP_TARGET = path.join(ANDROID_ASSETS_DIR, 'app_bundle.zip');
+const STAGING_DIR = path.join(ROOT, '.cache', 'android-bundle-staging');
+
+console.log('[bundle-android] Preparing Android app_bundle...');
+
+// 1. Ensure vendor files are built
+console.log('[bundle-android] Running vendor check...');
+const vendorRes = spawnSync(process.execPath, [path.join(ROOT, 'tools', 'vendor.mjs')], { stdio: 'inherit' });
+if (vendorRes.status !== 0) {
+  console.error('[bundle-android] vendor.mjs failed');
+  process.exit(1);
+}
+
+// 2. Prepare staging directory
+if (fs.existsSync(STAGING_DIR)) {
+  fs.rmSync(STAGING_DIR, { recursive: true, force: true });
+}
+fs.mkdirSync(STAGING_DIR, { recursive: true });
+
+function copyRecursive(src, dest) {
+  if (!fs.existsSync(src)) return;
+  const stat = fs.statSync(src);
+  if (stat.isDirectory()) {
+    fs.mkdirSync(dest, { recursive: true });
+    for (const file of fs.readdirSync(src)) {
+      copyRecursive(path.join(src, file), path.join(dest, file));
+    }
+  } else {
+    fs.mkdirSync(path.dirname(dest), { recursive: true });
+    fs.copyFileSync(src, dest);
+  }
+}
+
+console.log('[bundle-android] Copying server, shared, data, and public assets...');
+copyRecursive(path.join(ROOT, 'server'), path.join(STAGING_DIR, 'server'));
+copyRecursive(path.join(ROOT, 'shared'), path.join(STAGING_DIR, 'shared'));
+copyRecursive(path.join(ROOT, 'data'), path.join(STAGING_DIR, 'data'));
+copyRecursive(path.join(ROOT, 'public'), path.join(STAGING_DIR, 'public'));
+copyRecursive(path.join(ROOT, 'package.json'), path.join(STAGING_DIR, 'package.json'));
+
+// Copy only necessary production node_modules
+console.log('[bundle-android] Copying production node_modules (ws, preact, htm, pixi.js, pixi-spine, three)...');
+const prodModules = ['ws', 'preact', 'htm', 'pixi.js', 'pixi-spine', 'three'];
+fs.mkdirSync(path.join(STAGING_DIR, 'node_modules'), { recursive: true });
+for (const mod of prodModules) {
+  const modPath = path.join(ROOT, 'node_modules', mod);
+  if (fs.existsSync(modPath)) {
+    copyRecursive(modPath, path.join(STAGING_DIR, 'node_modules', mod));
+  }
+}
+
+// 3. Compress into app_bundle.zip using python zipfile
+fs.mkdirSync(ANDROID_ASSETS_DIR, { recursive: true });
+console.log(`[bundle-android] Creating zip archive at ${ZIP_TARGET}...`);
+
+const pyScript = `
+import zipfile, os, sys
+
+staging = sys.argv[1]
+target = sys.argv[2]
+
+with zipfile.ZipFile(target, 'w', zipfile.ZIP_DEFLATED) as z:
+    for root, dirs, files in os.walk(staging):
+        for file in files:
+            full_path = os.path.join(root, file)
+            rel_path = os.path.relpath(full_path, staging)
+            z.write(full_path, rel_path)
+print(f"Compressed {target} successfully.")
+`;
+
+const zipRes = spawnSync('python', ['-c', pyScript, STAGING_DIR, ZIP_TARGET], { stdio: 'inherit' });
+if (zipRes.status !== 0) {
+  console.error('[bundle-android] Failed to compress staging directory');
+  process.exit(1);
+}
+
+// Clean up staging
+fs.rmSync(STAGING_DIR, { recursive: true, force: true });
+const stats = fs.statSync(ZIP_TARGET);
+console.log(`[bundle-android] app_bundle.zip generated: ${(stats.size / 1024 / 1024).toFixed(2)} MB`);
+console.log('[bundle-android] Done!');

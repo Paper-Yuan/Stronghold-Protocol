@@ -32,7 +32,9 @@
     "postinstall": "node tools/vendor.mjs",
     "setup": "node tools/setup.mjs",
     "doctor": "node tools/doctor.mjs",
-    "launch": "node scripts/launch.mjs"
+    "launch": "node scripts/launch.mjs",
+    "bundle:android": "node tools/bundle-android.mjs",
+    "build:android": "node scripts/build-android.mjs"
   },
   "engines": {
     "node": ">=22"

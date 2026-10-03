@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="bg_dark">#0c0f0e</color>
+    <color name="theme_teal">#4ed8af</color>
+    <color name="text_white">#f0f4f2</color>
+    <color name="card_bg">#181e1c</color>
+    <color name="border_gray">#2a3531</color>
+</resources>
