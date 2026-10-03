@@ -52,7 +52,7 @@
                 android:backgroundTint="@color/theme_teal"
                 android:textColor="@color/bg_dark"
                 android:textSize="12sp"
-                android:text="快速直连电脑端服务" />
+                android:text="重启手机本地引擎" />
 
             <Button
                 android:id="@+id/btnDirectSettings"
@@ -62,7 +62,7 @@
                 android:backgroundTint="@color/card_bg"
                 android:textColor="@color/text_white"
                 android:textSize="12sp"
-                android:text="网络与画质设置" />
+                android:text="局域网与画质设置" />
 
             <Button
                 android:id="@+id/btnRetryConnect"
@@ -72,7 +72,7 @@
                 android:backgroundTint="@color/card_bg"
                 android:textColor="@color/text_white"
                 android:textSize="12sp"
-                android:text="重试" />
+                android:text="重试连接" />
         </LinearLayout>
     </LinearLayout>
 

@@ -10,11 +10,32 @@ import android.util.Log
 import androidx.core.app.NotificationCompat
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import com.sun.jna.Library
+import com.sun.jna.Native
 import java.io.BufferedReader
 import java.io.File
 import java.io.InputStreamReader
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
+
+interface NodeNativeLib : Library {
+    companion object {
+        val INSTANCE: NodeNativeLib by lazy {
+            Native.load("node", NodeNativeLib::class.java)
+        }
+    }
+    fun node_start(argc: Int, argv: Array<String>): Int
+}
+
+interface PosixLib : Library {
+    companion object {
+        val INSTANCE: PosixLib by lazy {
+            Native.load("c", PosixLib::class.java)
+        }
+    }
+    fun setenv(name: String, value: String, overwrite: Int): Int
+    fun chdir(path: String): Int
+}
 
 class NodeServerService : Service() {
     companion object {
@@ -88,18 +109,6 @@ class NodeServerService : Service() {
                 val bundleDir = AssetManagerHelper.getBundleDir(this)
                 val serverScript = File(bundleDir, "server/index.js")
 
-                // Locate libnode.so in native library directory (executable permission guaranteed by OS installer)
-                val nativeLibDir = applicationInfo.nativeLibraryDir
-                val nodeBinary = File(nativeLibDir, "libnode.so")
-
-                if (!nodeBinary.exists()) {
-                    val msg = "Native libnode.so not found in $nativeLibDir. Please build with Node.js runtime or use Remote Server mode."
-                    Log.w(TAG, msg)
-                    addLog("[WARN] $msg")
-                    sendBroadcast(Intent(ACTION_SERVER_FAILED).putExtra("reason", msg))
-                    return@Thread
-                }
-
                 if (!serverScript.exists()) {
                     val msg = "Server script not found in ${serverScript.absolutePath}"
                     Log.e(TAG, msg)
@@ -108,46 +117,99 @@ class NodeServerService : Service() {
                     return@Thread
                 }
 
-                Log.i(TAG, "Launching Node server: ${nodeBinary.absolutePath} ${serverScript.absolutePath}")
-                addLog("[BOOT] Starting Node.js game server on 127.0.0.1:3000...")
+                // 1. Ensure C++ shared runtime and libnode.so are loaded into the process
+                try {
+                    System.loadLibrary("c++_shared")
+                } catch (e: Throwable) {
+                    Log.w(TAG, "c++_shared load note: ${e.message}")
+                }
+                try {
+                    System.loadLibrary("node")
+                    Log.i(TAG, "libnode.so loaded via System.loadLibrary successfully")
+                } catch (e: Throwable) {
+                    Log.w(TAG, "libnode load note: ${e.message}")
+                }
 
-                val pb = ProcessBuilder(
-                    nodeBinary.absolutePath,
+                // 2. Set POSIX environment variables: bind to 0.0.0.0 for LAN co-op + local solo
+                try {
+                    PosixLib.INSTANCE.setenv("PORT", "3000", 1)
+                    PosixLib.INSTANCE.setenv("HOST", "0.0.0.0", 1)
+                    PosixLib.INSTANCE.setenv("NODE_ENV", "production", 1)
+                    PosixLib.INSTANCE.chdir(bundleDir.absolutePath)
+                } catch (e: Throwable) {
+                    Log.w(TAG, "Posix env configuration warning: ${e.message}")
+                }
+
+                val args = arrayOf(
+                    "node",
+                    "--no-warnings",
                     serverScript.absolutePath
                 )
-                pb.directory(bundleDir)
-                pb.environment()["PORT"] = "3000"
-                pb.environment()["HOST"] = "127.0.0.1"
-                pb.environment()["NODE_ENV"] = "production"
-                pb.redirectErrorStream(true)
 
-                val process = pb.start()
-                nodeProcess = process
+                Log.i(TAG, "Launching in-process Node engine: ${serverScript.absolutePath}")
+                addLog("[BOOT] Starting in-process Node.js game engine (0.0.0.0:3000)...")
                 isRunning.set(true)
 
-                // Background thread to consume stdout/stderr
+                // Background thread to poll healthcheck
                 Thread {
-                    try {
-                        BufferedReader(InputStreamReader(process.inputStream)).use { reader ->
-                            var line: String?
-                            while (reader.readLine().also { line = it } != null) {
-                                line?.let {
-                                    Log.d(TAG, "[Node] $it")
-                                    addLog(it)
-                                }
-                            }
-                        }
-                    } catch (e: Exception) {
-                        Log.e(TAG, "Error reading Node output", e)
-                    }
+                    waitForHealth()
                 }.start()
 
-                // Health check poller
-                waitForHealth()
+                var exitCode: Int
+                try {
+                    exitCode = NodeNativeLib.INSTANCE.node_start(args.size, args)
+                    Log.i(TAG, "In-process Node engine stopped with code $exitCode")
+                    addLog("[EXIT] Node server stopped with code $exitCode")
+                } catch (jnaErr: Throwable) {
+                    Log.e(TAG, "In-process Node execution failed, falling back to process launcher", jnaErr)
+                    addLog("[WARN] In-process invoke error: ${jnaErr.message}. Attempting ProcessBuilder...")
 
-                val exitCode = process.waitFor()
-                Log.w(TAG, "Node process exited with code $exitCode")
-                addLog("[EXIT] Node process stopped with code $exitCode")
+                    val nativeLibDir = applicationInfo.nativeLibraryDir
+                    val nodeBinary = File(nativeLibDir, "libnode.so")
+
+                    if (!nodeBinary.exists()) {
+                        val msg = "Native libnode.so not found in $nativeLibDir: ${jnaErr.message}"
+                        Log.e(TAG, msg)
+                        addLog("[ERROR] $msg")
+                        sendBroadcast(Intent(ACTION_SERVER_FAILED).putExtra("reason", msg))
+                        isRunning.set(false)
+                        return@Thread
+                    }
+
+                    val pb = ProcessBuilder(
+                        nodeBinary.absolutePath,
+                        serverScript.absolutePath
+                    )
+                    pb.directory(bundleDir)
+                    pb.environment()["PORT"] = "3000"
+                    pb.environment()["HOST"] = "0.0.0.0"
+                    pb.environment()["NODE_ENV"] = "production"
+                    pb.redirectErrorStream(true)
+
+                    val process = pb.start()
+                    nodeProcess = process
+
+                    // Background thread to consume stdout/stderr
+                    Thread {
+                        try {
+                            BufferedReader(InputStreamReader(process.inputStream)).use { reader ->
+                                var line: String?
+                                while (reader.readLine().also { line = it } != null) {
+                                    line?.let {
+                                        Log.d(TAG, "[Node] $it")
+                                        addLog(it)
+                                    }
+                                }
+                            }
+                        } catch (e: Exception) {
+                            Log.e(TAG, "Error reading Node output", e)
+                        }
+                    }.start()
+
+                    exitCode = process.waitFor()
+                    Log.w(TAG, "ProcessBuilder Node process exited with code $exitCode")
+                    addLog("[EXIT] Node process stopped with code $exitCode")
+                }
                 isRunning.set(false)
             } catch (e: Exception) {
                 Log.e(TAG, "Exception running Node server", e)

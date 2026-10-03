@@ -29,6 +29,16 @@
             android:text="@string/local_mode"
             android:textColor="@color/text_white" />
 
+        <TextView
+            android:id="@+id/tvLocalIpHint"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="32dp"
+            android:layout_marginBottom="4dp"
+            android:textColor="@color/theme_teal"
+            android:textSize="12sp"
+            android:text="本机局域网地址: 正在获取…" />
+
         <RadioButton
             android:id="@+id/rbRemoteMode"
             android:layout_width="match_parent"

@@ -10,7 +10,7 @@ object AssetManagerHelper {
     private const val TAG = "AssetManagerHelper"
     private const val BUNDLE_DIR_NAME = "bundle"
     private const val VERSION_FILE_NAME = ".bundle_version"
-    private const val CURRENT_BUNDLE_VERSION = "0.1.0-r1"
+    private const val CURRENT_BUNDLE_VERSION = "0.1.0-r2"
 
     fun getBundleDir(context: Context): File {
         return File(context.filesDir, BUNDLE_DIR_NAME)
@@ -42,7 +42,7 @@ object AssetManagerHelper {
         // 1. Try extracting zip bundle if exists
         try {
             val zipStream = context.assets.open("app_bundle.zip")
-            unzip(zipStream, targetDir)
+            unzip(zipStream, targetDir, onProgress)
             versionFile.writeText(CURRENT_BUNDLE_VERSION)
             Log.i(TAG, "Unzipped app_bundle.zip successfully")
             return true
@@ -63,8 +63,9 @@ object AssetManagerHelper {
         }
     }
 
-    private fun unzip(inputStream: InputStream, targetDir: File) {
+    private fun unzip(inputStream: InputStream, targetDir: File, onProgress: (String) -> Unit) {
         val buffer = ByteArray(65536)
+        var fileCount = 0
         ZipInputStream(BufferedInputStream(inputStream, 65536)).use { zis ->
             var entry: ZipEntry? = zis.nextEntry
             while (entry != null) {
@@ -73,17 +74,22 @@ object AssetManagerHelper {
                     file.mkdirs()
                 } else {
                     file.parentFile?.mkdirs()
-                    FileOutputStream(file).use { fos ->
+                    BufferedOutputStream(FileOutputStream(file), 65536).use { fos ->
                         var len: Int
                         while (zis.read(buffer).also { len = it } > 0) {
                             fos.write(buffer, 0, len)
                         }
+                    }
+                    fileCount++
+                    if (fileCount % 300 == 0) {
+                        onProgress("正在释放作战资源包 ($fileCount / 9200)…")
                     }
                 }
                 zis.closeEntry()
                 entry = zis.nextEntry
             }
         }
+        onProgress("作战资源释放完成，正在启动引擎…")
     }
 
     private fun copyAssetFolder(context: Context, assetPath: String, targetDir: File) {

@@ -71,11 +71,10 @@ class MainActivity : AppCompatActivity() {
         btnQuickConnectLan.setOnClickListener {
             val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
             prefs.edit().apply {
-                putString(KEY_SERVER_MODE, "remote")
-                putString(KEY_REMOTE_URL, DEFAULT_LAN_URL)
+                putString(KEY_SERVER_MODE, "local")
                 apply()
             }
-            loadServerUrl(DEFAULT_LAN_URL)
+            startLocalFlow()
         }
         btnRetryConnect.setOnClickListener {
             startStartupFlow()
@@ -191,14 +190,20 @@ class MainActivity : AppCompatActivity() {
                 when (intent?.action) {
                     NodeServerService.ACTION_SERVER_READY -> {
                         runOnUiThread {
-                            tvLoadingStatus.text = getString(R.string.server_ready)
+                            val lanIp = NetworkUtils.getLocalIpAddress(this@MainActivity)
+                            val statusMsg = if (lanIp != "127.0.0.1") {
+                                "本地引擎已就绪！\n本机局域网地址: http://$lanIp:3000\n(其他手机填入此地址可联机)"
+                            } else {
+                                getString(R.string.server_ready)
+                            }
+                            tvLoadingStatus.text = statusMsg
                             loadServerUrl(DEFAULT_LOCAL_URL)
                         }
                     }
                     NodeServerService.ACTION_SERVER_FAILED -> {
                         val reason = intent.getStringExtra("reason") ?: "本地引擎未启动"
                         runOnUiThread {
-                            showConnectionError("本地独立服务提示: $reason\n推荐直接连接电脑局域网端运行。")
+                            showConnectionError("本地独立服务提示: $reason\n可在设置中切换为单机重试或连接其他手机/电脑。")
                         }
                     }
                 }
@@ -319,9 +324,17 @@ class MainActivity : AppCompatActivity() {
         val dialogView = layoutInflater.inflate(R.layout.dialog_server_switch, null)
         val rbLocal = dialogView.findViewById<RadioButton>(R.id.rbLocalMode)
         val rbRemote = dialogView.findViewById<RadioButton>(R.id.rbRemoteMode)
+        val tvLocalIpHint = dialogView.findViewById<TextView>(R.id.tvLocalIpHint)
         val etAddress = dialogView.findViewById<EditText>(R.id.etServerAddress)
         val rbBoard3D = dialogView.findViewById<RadioButton>(R.id.rbBoard3D)
         val rbBoard2D = dialogView.findViewById<RadioButton>(R.id.rbBoard2D)
+
+        val lanIp = NetworkUtils.getLocalIpAddress(this)
+        tvLocalIpHint.text = if (lanIp != "127.0.0.1") {
+            "本机局域网地址: http://$lanIp:3000\n(如果作为房主，好友填入此地址即可联机)"
+        } else {
+            "本机局域网地址: 未连接 Wi-Fi (单机离线可用)"
+        }
 
         val btnRestart = dialogView.findViewById<Button>(R.id.btnRestartServer)
         val btnCancel = dialogView.findViewById<Button>(R.id.btnCancelDialog)
