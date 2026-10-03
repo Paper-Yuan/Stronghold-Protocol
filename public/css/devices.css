@@ -129,6 +129,38 @@ html:not(.sp-in-match) .toast-host { margin-top: var(--sa-t); }
   .gm__corner { width: max(96px, calc(3 * max(.56rem, 34px) + .2rem)); }
   .dpanel:not(.dpanel--right) { bottom: calc(.44rem + max(1.51rem, 96px) * 55 / 151 + max(.56rem, 34px)); }
 }
+/* Mobile detail panel dimensions & clearance (vivo V2520A: 761x360 dpr 3) */
+:is(.sp-touch, .sp-coarse) .rwtag__micro { display: none; }
+@media (max-width: 767px), (max-height: 460px) {
+  .dpanel {
+    width: max(4.9rem, 210px);
+    left: max(2.3rem, 76px);
+    top: max(2.1rem, 84px);
+  }
+  .dstat__k { font-size: max(.12rem, 8px); }
+  .dstat__k-full { display: none; }
+  .dstat__k-short { display: inline; }
+  .dstat__v { font-size: max(.17rem, 10px); }
+  .dstat small { font-size: max(.11rem, 8px); }
+  .dhead__name { font-size: max(.32rem, 12px); }
+  .dhead__class, .dhead__pos, .dtag-elite, .dtag-token, .dtag-kind, .drank { font-size: max(.13rem, 8px); }
+  .dtrait, .dtext, .dsec__title, .dskill__name, .dmodule__name, .ditem__text b, .ditem__desc, .dtalent b { font-size: max(.14rem, 8px); }
+  .dsp, .dsp__num, .dmodule__type, .dtag-loadout { font-size: max(.11rem, 8px); }
+  .dbond__name, .dbond__count { font-size: max(.12rem, 8px); }
+  .dbond__count small, .dskill__slot { font-size: max(.11rem, 8px); }
+  .rt-vup, .rt-rem, .rt-kw { font-size: max(.12rem, 8px); }
+  .scard__free, .scard__name, .scard__bond, .scard__class { font-size: max(.13rem, 8px); }
+  .dstats__tag { font-size: max(.11rem, 8px); }
+  .dgarrison__k, .dgarrison__v { font-size: max(.13rem, 8px); }
+  .dpanel .micro { font-size: max(.11rem, 8px); }
+  .gm.has-dpanel .gm__bonds {
+    opacity: .35;
+    transition: opacity var(--t-fast);
+  }
+  .gm.has-dpanel .gm__bonds:hover {
+    opacity: 1;
+  }
+}
 /* With the shop folded (收起) no bar covers the corner: one row again, so the folded shop's prep camera, which keeps the
    bench above the corner's hit areas (ui/fieldHost.js hudBands), grows the board on narrow phones too (public issue #5). */
 @media (max-width: 767px) {

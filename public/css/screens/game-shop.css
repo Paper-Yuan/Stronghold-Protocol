@@ -103,7 +103,7 @@
 .scard__water .bglyph { width: 100%; height: 100%; }
 .scard__art { position: absolute; right: -.14rem; top: 0; height: 100%; width: auto; max-width: none; object-fit: cover; pointer-events: none;
   -webkit-mask-image: linear-gradient(180deg, #000 55%, transparent 88%); mask-image: linear-gradient(180deg, #000 55%, transparent 88%); }
-.scard__top { position: absolute; left: .06rem; right: .06rem; top: .06rem; display: flex; align-items: flex-start; justify-content: space-between; z-index: 2; }
+.scard__top { position: absolute; left: .06rem; right: .06rem; top: .06rem; display: flex; align-items: flex-start; justify-content: space-between; z-index: 2; min-height: max(.32rem, 16px); }
 .scard__price { position: absolute; left: 50%; top: 0; transform: translateX(-50%); filter: drop-shadow(0 1px 3px #000); }
 .scard__free { position: absolute; left: 50%; top: .02rem; transform: translateX(-50%); font-family: var(--font-num); font-weight: 700; font-size: .16rem; letter-spacing: .1em; color: var(--text-on-mint); background: var(--mint-400); padding: 0 .1rem; clip-path: polygon(.08rem 0, calc(100% - .08rem) 0, 100% 50%, calc(100% - .08rem) 100%, .08rem 100%, 0 50%); }
 .scard__pips { display: flex; gap: .03rem; padding: .03rem .04rem; background: rgba(0, 0, 0, .6); }
@@ -177,20 +177,20 @@
 /* (no drag-to-sell zone: selling is the underframe's 出售 +N button — research 09 §5) */
 
 /* ---- merge reward (inline: replaces the operator cards) ---- */
-.shopbar__reward { display: flex; gap: .08rem; padding: 0 .08rem 0 0; position: relative; animation: pop-in var(--t-slow) var(--ease-out); }
-.shopbar__reward::before { content: ''; position: absolute; inset: -.06rem -.04rem; border: 1px solid rgba(255, 198, 0, .55);
+.shopbar__reward { display: flex; gap: .08rem; padding: 0 .08rem 0 0; position: relative; min-width: 0; flex: none; animation: pop-in var(--t-slow) var(--ease-out); }
+.shopbar__reward::before { content: ''; position: absolute; inset: 0; border: 1px solid rgba(255, 198, 0, .55);
   box-shadow: 0 0 .24rem rgba(255, 198, 0, .18), inset 0 0 .3rem rgba(255, 198, 0, .08); pointer-events: none; }
 .rwtag {
-  width: .92rem; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: .06rem; padding: .08rem .04rem;
+  width: auto; min-width: max(.92rem, 34px); flex: none; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: .06rem; padding: .08rem max(.04rem, 4px);
   background: linear-gradient(180deg, rgba(255, 198, 0, .22), rgba(255, 198, 0, .06)); color: var(--gold); text-align: center;
 }
 .rwtag__icon { width: .34rem; height: .34rem; filter: drop-shadow(0 0 .08rem rgba(255, 198, 0, .6)); }
-.rwtag__title { writing-mode: vertical-rl; font-size: .22rem; font-weight: 900; letter-spacing: .2em; line-height: 1; }
-.rwtag__micro { font-family: var(--font-display); font-size: .09rem; letter-spacing: .14em; opacity: .75; }
-.rwtag__sub { font-size: .12rem; color: var(--text-md); line-height: 1.3; }
-.rwtag__more { color: var(--gold); }
-.rwtag__later { display: flex; align-items: center; gap: .02rem; margin-top: .04rem; padding: .02rem .08rem; font-size: .13rem; color: var(--text-lo);
-  background: rgba(0, 0, 0, .35); border: 1px solid var(--line-2); }
+.rwtag__title { writing-mode: vertical-rl; font-size: max(.22rem, 9px); font-weight: 900; letter-spacing: .2em; line-height: 1; }
+.rwtag__micro { font-family: var(--font-display); font-size: max(.09rem, 8px); letter-spacing: .14em; opacity: .75; }
+.rwtag__sub { font-size: max(.12rem, 9px); color: var(--text-md); line-height: 1.3; white-space: nowrap; }
+.rwtag__more { color: var(--gold); font-size: max(.12rem, 9px); }
+.rwtag__later { display: flex; align-items: center; gap: .02rem; margin-top: .04rem; padding: .02rem .08rem; font-size: max(.13rem, 9px); color: var(--text-lo);
+  background: rgba(0, 0, 0, .35); border: 1px solid var(--line-2); white-space: nowrap; }
 .rwtag__later .icon { width: .12rem; height: .12rem; }
 .rwtag__later:hover { color: var(--text-hi); border-color: var(--line-3); }
 .shopbar__rwcards { display: flex; gap: .08rem; }

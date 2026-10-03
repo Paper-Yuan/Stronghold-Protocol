@@ -886,6 +886,19 @@ function MatchScreen() {
     return () => host.removeEventListener('pointerdown', onDown, true);
   }, []);
 
+  // click outside detail panel on non-interactive backdrop/hud space closes the panel
+  useEffect(() => {
+    const onDocDown = (e) => {
+      if (!live.current.detail) return;
+      if (e.target.closest('.dpanel, .uframe, .scard, .lvcard, .toolbtn, .funds, .shopbar-tab, .fwheel, .bpop, .modal, .edrawer, .gm__corner, .gtop')) {
+        return;
+      }
+      setDetail(null);
+    };
+    window.addEventListener('pointerdown', onDocDown, true);
+    return () => window.removeEventListener('pointerdown', onDocDown, true);
+  }, []);
+
   // ---- direction step (research 09 §1.2) and the selected piece's underframe ------------------------------------
   // DESIGN §16: previews show the range the unit fights with under the player's loadout (an elite's module grid)
   const lookups = useMemo(() => ({ getChess: gd.chess, getToken: gd.token, getItem: gd.item,
@@ -1182,7 +1195,7 @@ function MatchScreen() {
   // bonds this mode never activates (标准: 10 of 23, 奥术 among them) — shown 本局禁用 on cards, chips and the popup
   const offBonds = modeOffBonds(getMode(pub?.modeId));
 
-  return html`<div class=${cx('screen', 'gm', `gm--${mode}`, drag && 'is-dragging', collapsed && 'is-collapsed', sp && 'has-sp', pen && 'is-pen', readyWhy && 'has-readywhy')}
+  return html`<div class=${cx('screen', 'gm', `gm--${mode}`, drag && 'is-dragging', collapsed && 'is-collapsed', sp && 'has-sp', pen && 'is-pen', readyWhy && 'has-readywhy', detail && 'has-dpanel')}
       data-camera=${pen ? 'pen' : camKind}>
     <div class="gm__field" ref=${hostRef} onContextMenu=${(e) => e.preventDefault()}></div>
     ${viewKind === 'loading' ? html`<div class="gm__loading"><${Spinner} label="LOADING FIELD" /></div>` : null}

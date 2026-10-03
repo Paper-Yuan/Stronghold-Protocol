@@ -94,8 +94,23 @@ export function RangeGrid({ grid, class: cls }) {
   return html`<div class=${cx('rgrid', cls)} style=${rangeGridStyle(box)} aria-label="攻击范围">${cells}</div>`;
 }
 
+const STAT_SHORT = {
+  '生命上限': '生命',
+  '法术抗性': '法抗',
+  '攻击间隔': '间隔',
+  '阻挡数': '阻挡',
+  '部署费用': '费用',
+  '再部署': '再部署',
+  '移动速度': '移速',
+  '攻击': '攻击',
+  '防御': '防御',
+  '目标价值': '价值',
+};
+
 function Stat({ k, v, sub, tone = null, title }) {
-  return html`<div class=${cx('dstat', tone && `is-${tone}`)} title=${title}><span class="dstat__k">${k}</span><span class="dstat__row"><b class="dstat__v num">${v}</b>${sub ? html`<small>${sub}</small>` : null}</span></div>`;
+  const shortK = STAT_SHORT[k] || k;
+  const fullTitle = title ? (k !== shortK ? `${k}（${title}）` : title) : k;
+  return html`<div class=${cx('dstat', tone && `is-${tone}`)} title=${fullTitle} aria-label=${k}><span class="dstat__k"><span class="dstat__k-full">${k}</span><span class="dstat__k-short">${shortK}</span></span><span class="dstat__row"><b class="dstat__v num">${v}</b>${sub ? html`<small>${sub}</small>` : null}</span></div>`;
 }
 
 /** Tolerance below which a live stat counts as its base (display rounding). */

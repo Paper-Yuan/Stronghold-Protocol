@@ -36,6 +36,7 @@ const ANDROID_UA = 'Mozilla/5.0 (Linux; Android 14; Pixel 7) AppleWebKit/537.36 
 // sub-pixel rounding) without overlapping.
 const TOL = Number(process.env.SP_OVERLAP_TOL || 4);
 const ALL_DEVICES = {
+  'vivo-v2520a': { viewport: { width: 761, height: 360, deviceScaleFactor: 3, isMobile: true, hasTouch: true, isLandscape: true }, userAgent: ANDROID_UA, minSlot: 16 },
   'vivo-2376': { viewport: { width: 2376, height: 1080, deviceScaleFactor: 1, isMobile: true, hasTouch: true, isLandscape: true }, userAgent: ANDROID_UA, minSlot: 20 },
   'pixel7': { viewport: { width: 915, height: 412, deviceScaleFactor: 2.625, isMobile: true, hasTouch: true, isLandscape: true }, userAgent: ANDROID_UA, minSlot: 18 },
   'phone-min': { viewport: { width: 640, height: 360, deviceScaleFactor: 2, isMobile: true, hasTouch: true, isLandscape: true }, userAgent: ANDROID_UA, minSlot: 16 },
@@ -187,6 +188,87 @@ describe('phone layout overlaps (briefing stage line, bond badges, bond strip, s
           `card #${i}: .scard__price escapes the card frame (top:0 bites the border)`);
       }
       assert.deepEqual(problems, [], `${dev} shop page errors`);
+      await page.close();
+    });
+
+    test(`${dev}: phone typography floors and no text overflow (reward)`, async (t) => {
+      const h = await openPhoneMock(dev, 'phase=PREP&variant=reward');
+      if (!h) return t.skip('not in touch layout');
+      const { page, problems } = h;
+      const bad = await page.evaluate(() => {
+        const out = [];
+        for (const el of document.querySelectorAll('.shopbar__reward *')) {
+          const cs = getComputedStyle(el);
+          if (cs.display === 'none' || cs.visibility === 'hidden' || !el.textContent.trim()) continue;
+          if (el.children.length) continue;                       // leaves only
+          const px = parseFloat(cs.fontSize);
+          const b = el.getBoundingClientRect(), p = el.parentElement?.getBoundingClientRect();
+          if (px < 8) out.push(`small ${px.toFixed(1)}px: ${el.className} "${el.textContent.trim().slice(0, 10)}"`);
+          if (p && (b.right > p.right + 1.5 || b.bottom > p.bottom + 1.5)) out.push(`overflow: ${el.className} "${el.textContent.trim().slice(0, 10)}"`);
+          if (el.scrollWidth > el.clientWidth + 1 && cs.textOverflow !== 'ellipsis') out.push(`clipped: ${el.className}`);
+        }
+        return out;
+      });
+      assert.deepEqual(bad, [], `${dev} reward typography`);
+      // Also verify that .shopbar__reward does not overlap .lvcard
+      const r = await rects(page, ['.shopbar__reward', '.lvcard']);
+      if (r['.shopbar__reward'] && r['.lvcard']) {
+        const collision = overlapArea(r['.shopbar__reward'], r['.lvcard']);
+        assert.ok(collision <= TOL, `.shopbar__reward overlaps .lvcard by ${collision.toFixed(1)}px^2`);
+      }
+      assert.deepEqual(problems, [], `${dev} reward typography errors`);
+      await page.close();
+    });
+
+    test(`${dev}: detail panel — 8 stats without ellipsis and no collision with bond strip`, async (t) => {
+      const h = await openPhoneMock(dev, 'phase=PREP&variant=detail');
+      if (!h) return t.skip('not in touch layout');
+      const { page, problems } = h;
+      await page.waitForSelector('.dpanel', { timeout: 8000 });
+      // Typography floors & overflow inside dpanel
+      const bad = await page.evaluate(() => {
+        const out = [];
+        for (const el of document.querySelectorAll('.dpanel *')) {
+          const cs = getComputedStyle(el);
+          if (cs.display === 'none' || cs.visibility === 'hidden' || !el.textContent.trim()) continue;
+          if (el.children.length) continue;
+          const px = parseFloat(cs.fontSize);
+          const b = el.getBoundingClientRect(), p = el.parentElement?.getBoundingClientRect();
+          if (px < 8) out.push(`small ${px.toFixed(1)}px: ${el.className} "${el.textContent.trim().slice(0, 10)}"`);
+          if (p && (b.right > p.right + 1.5 || b.bottom > p.bottom + 1.5)) out.push(`overflow: ${el.className} "${el.textContent.trim().slice(0, 10)}"`);
+          if (el.scrollWidth > el.clientWidth + 1 && cs.textOverflow !== 'ellipsis') out.push(`clipped: ${el.className}`);
+        }
+        return out;
+      });
+      assert.deepEqual(bad, [], `${dev} detail panel typography`);
+
+      // Check that none of the 8 stats has ellipsis (...)
+      const statLabels = await page.$$eval('.dpanel .dstat__k', (els) => els.map((e) => ({
+        text: e.textContent.trim(),
+        hasEllipsis: e.scrollWidth > e.clientWidth + 1 || e.textContent.includes('…')
+      })));
+      for (const st of statLabels) {
+        assert.equal(st.hasEllipsis, false, `stat label "${st.text}" is truncated with ellipsis`);
+      }
+      // Check that .dpanel does not overlap .gm__bonds
+      const dpanelBox = await page.$eval('.dpanel', (e) => {
+        const b = e.getBoundingClientRect();
+        return { left: b.left, top: b.top, right: b.right, bottom: b.bottom };
+      });
+      const bondsBox = await page.$eval('.gm__bonds', (e) => {
+        const b = e.getBoundingClientRect();
+        return { left: b.left, top: b.top, right: b.right, bottom: b.bottom };
+      });
+      const collision = overlapArea(dpanelBox, bondsBox);
+      assert.ok(collision <= TOL, `.dpanel overlaps .gm__bonds by ${collision.toFixed(1)}px^2`);
+
+      // Test click empty field closes the panel (x: 450, y: 160 is empty ground on the board)
+      await page.mouse.click(450, 160);
+      await new Promise((r) => setTimeout(r, 200));
+      const closed = await page.$('.dpanel');
+      assert.equal(closed, null, '.dpanel should close after tapping empty field area');
+
+      assert.deepEqual(problems, [], `${dev} detail panel page errors`);
       await page.close();
     });
   }

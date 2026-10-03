@@ -108,6 +108,8 @@
 .dstats-wrap > .dstats { flex: 1; }
 .dstat { display: flex; flex-direction: column; justify-content: center; gap: .01rem; min-width: 0; padding: .04rem .07rem; background: #0f1311; }
 .dstat__k { font-size: .12rem; color: var(--text-lo); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dstat__k-short { display: none; }
+.dstat__k-full { display: inline; }
 .dstat__row { display: flex; align-items: baseline; min-width: 0; white-space: nowrap; }
 .dstat__v { font-size: .17rem; line-height: 1.15; color: #fff; }
 .dstat small { font-size: .11rem; color: var(--text-dim); margin-left: .04rem; }
