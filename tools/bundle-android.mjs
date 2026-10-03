@@ -7,12 +7,29 @@ import crypto from 'node:crypto';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
+import { syncVoicesManifest } from './sync-voices-manifest.mjs';
+
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const ANDROID_ASSETS_DIR = path.join(ROOT, 'android', 'app', 'src', 'main', 'assets');
 const ZIP_TARGET = path.join(ANDROID_ASSETS_DIR, 'app_bundle.zip');
 const STAGING_DIR = path.join(ROOT, '.cache', 'android-bundle-staging');
 
 console.log('[bundle-android] Preparing Android app_bundle...');
+
+// 0. Ensure voice manifest is synced with disk voice assets and verify gate
+console.log('[bundle-android] Verifying voice manifest and assets...');
+syncVoicesManifest();
+const voiceDir = path.join(ROOT, 'public', 'assets', 'audio', 'voice');
+if (fs.existsSync(voiceDir)) {
+  const diskVoices = fs.readdirSync(voiceDir).filter((f) => f.endsWith('.mp3'));
+  const manifest = JSON.parse(fs.readFileSync(path.join(ROOT, 'data', 'assets.json'), 'utf8'));
+  const manifestVoiceCount = Object.keys(manifest?.audio?.voice || {}).length;
+  if (manifestVoiceCount !== diskVoices.length) {
+    console.error(`✘ [bundle-android] 打包门禁失败: assets.json 语音数 (${manifestVoiceCount}) 与磁盘数 (${diskVoices.length}) 不符！`);
+    process.exit(1);
+  }
+  console.log(`[bundle-android] 语音资产门禁通过: ${manifestVoiceCount}/${diskVoices.length} 条已核对。`);
+}
 
 // 1. Ensure vendor files are built
 console.log('[bundle-android] Running vendor check...');

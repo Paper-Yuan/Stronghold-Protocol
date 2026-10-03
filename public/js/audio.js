@@ -554,19 +554,77 @@ export class AudioManager {
   }
 
   /**
-   * Play an operator's core Japanese voice line (exclusive singleton channel).
+   * Suspend all audio processing (e.g. Activity onPause or AudioFocus loss).
+   */
+  suspend() {
+    try {
+      if (this.ctx && this.ctx.state === 'running') {
+        return this.ctx.suspend().catch(() => {});
+      }
+    } catch { /* ignore */ }
+  }
+
+  /**
+   * Resume audio processing (e.g. Activity onResume or AudioFocus gain).
+   */
+  resume() {
+    try {
+      if (this.ctx && this.ctx.state !== 'running') {
+        this._armUnlock();
+        return this.ctx.resume().then(() => {
+          if (this.ctx?.state === 'running') this._dropUnlock();
+        }, () => {});
+      }
+    } catch { /* ignore */ }
+  }
+
+  /**
+   * Temporarily duck BGM volume to make voice lines pop (~0.35 volume for durationMs, then restore).
+   */
+  duckBgm(durationMs = 1800) {
+    if (!this.ctx || !this.bgmGain) return;
+    try {
+      const t = this.ctx.currentTime;
+      const normal = this.volumes.bgm ** 2 * 0.55;
+      const ducked = normal * 0.35;
+      this.bgmGain.gain.setTargetAtTime(ducked, t, 0.08);
+      clearTimeout(this._duckTimer);
+      this._duckTimer = setTimeout(() => {
+        if (this.ctx && this.bgmGain) {
+          const t2 = this.ctx.currentTime;
+          this.bgmGain.gain.setTargetAtTime(this.volumes.bgm ** 2 * 0.55, t2, 0.3);
+        }
+      }, durationMs);
+    } catch { /* ignore */ }
+  }
+
+  /**
+   * Play an operator's core Japanese voice line (per-operator cooldown slot, with BGM ducking).
    * @param {string} defId operator charId (e.g. 'char_002_amiya')
    * @param {{ volume?: number }} [o]
    */
   voice(defId, o = {}) {
     try {
       if (!defId) return;
+      if (!this.ctx) {
+        this._warn('voice_no_ctx', 'AudioContext not active for voice');
+      }
       const m = this.getManifest();
       const url = m?.audio?.voice?.[defId] || m?.chars?.[defId]?.voice;
       if (typeof url === 'string') {
-        this._play(url, { volume: o.volume ?? 0.85, limited: true, unitKey: 'operator_voice' });
+        const played = this._play(url, { volume: o.volume ?? 0.95, limited: true, unitKey: `voice:${defId}` });
+        if (played !== false) {
+          this.duckBgm(2000);
+        }
+      } else {
+        if (this.ctx && !this.warned.has(`voice_missing_${defId}`)) {
+          this.warned.add(`voice_missing_${defId}`);
+          console.debug(`[audio] Voice line not configured for ${defId}`);
+        }
       }
-    } catch { /* ignore */ }
+    } catch (err) {
+      console.warn(`[audio] Error playing voice for ${defId}:`, err);
+    }
   }
 
   // ---- battle events ------------------------------------------------------------------------------------------

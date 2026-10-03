@@ -8,6 +8,9 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.ActivityInfo
+import android.media.AudioAttributes
+import android.media.AudioFocusRequest
+import android.media.AudioManager
 import android.os.Build
 import android.os.Bundle
 import android.util.Log
@@ -46,6 +49,67 @@ class MainActivity : AppCompatActivity() {
     private lateinit var btnShowDiagLogs: Button
 
     private var serverReadyReceiver: BroadcastReceiver? = null
+    private var audioManager: AudioManager? = null
+    private var audioFocusRequest: AudioFocusRequest? = null
+
+    private val audioFocusChangeListener = AudioManager.OnAudioFocusChangeListener { focusChange ->
+        when (focusChange) {
+            AudioManager.AUDIOFOCUS_LOSS,
+            AudioManager.AUDIOFOCUS_LOSS_TRANSIENT,
+            AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK -> {
+                runOnUiThread {
+                    try {
+                        webView.evaluateJavascript("globalThis.__SP__?.audio?.suspend?.()", null)
+                    } catch (_: Exception) {}
+                }
+            }
+            AudioManager.AUDIOFOCUS_GAIN -> {
+                runOnUiThread {
+                    try {
+                        webView.evaluateJavascript("globalThis.__SP__?.audio?.resume?.()", null)
+                    } catch (_: Exception) {}
+                }
+            }
+        }
+    }
+
+    private fun requestAudioFocus() {
+        if (audioManager == null) {
+            audioManager = getSystemService(Context.AUDIO_SERVICE) as? AudioManager
+        }
+        val am = audioManager ?: return
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            if (audioFocusRequest == null) {
+                val playbackAttributes = AudioAttributes.Builder()
+                    .setUsage(AudioAttributes.USAGE_GAME)
+                    .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
+                    .build()
+                audioFocusRequest = AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN)
+                    .setAudioAttributes(playbackAttributes)
+                    .setAcceptsDelayedFocusGain(true)
+                    .setOnAudioFocusChangeListener(audioFocusChangeListener)
+                    .build()
+            }
+            audioFocusRequest?.let { am.requestAudioFocus(it) }
+        } else {
+            @Suppress("DEPRECATION")
+            am.requestAudioFocus(
+                audioFocusChangeListener,
+                AudioManager.STREAM_MUSIC,
+                AudioManager.AUDIOFOCUS_GAIN
+            )
+        }
+    }
+
+    private fun abandonAudioFocus() {
+        val am = audioManager ?: return
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            audioFocusRequest?.let { am.abandonAudioFocusRequest(it) }
+        } else {
+            @Suppress("DEPRECATION")
+            am.abandonAudioFocus(audioFocusChangeListener)
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -540,6 +604,12 @@ class MainActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
+        try {
+            webView.onResume()
+            requestAudioFocus()
+            webView.evaluateJavascript("globalThis.__SP__?.audio?.resume?.()", null)
+        } catch (_: Exception) {}
+
         val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         val mode = prefs.getString(KEY_SERVER_MODE, "local")
         if (mode == "local" && layoutLoading.visibility == View.VISIBLE) {
@@ -566,8 +636,18 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    override fun onPause() {
+        super.onPause()
+        abandonAudioFocus()
+        try {
+            webView.evaluateJavascript("globalThis.__SP__?.audio?.suspend?.()", null)
+            webView.onPause()
+        } catch (_: Exception) {}
+    }
+
     override fun onDestroy() {
         super.onDestroy()
+        abandonAudioFocus()
         NodeServerService.stateListener = null
         serverReadyReceiver?.let {
             try {
