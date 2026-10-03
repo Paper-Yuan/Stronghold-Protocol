@@ -5,4 +5,5 @@
     <color name="text_white">#f0f4f2</color>
     <color name="card_bg">#181e1c</color>
     <color name="border_gray">#2a3531</color>
+    <color name="ic_launcher_background">#06080D</color>
 </resources>

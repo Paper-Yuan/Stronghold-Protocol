@@ -357,7 +357,7 @@ class NodeServerService : Service() {
         return NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle("卫戍协议：盟约")
             .setContentText(statusText)
-            .setSmallIcon(android.R.drawable.sym_def_app_icon)
+            .setSmallIcon(R.drawable.ic_stat_stronghold)
             .setContentIntent(pendingIntent)
             .setOngoing(true)
             .build()
