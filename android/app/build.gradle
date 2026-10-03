@@ -53,6 +53,10 @@ android {
             useLegacyPackaging = true
         }
     }
+
+    aaptOptions {
+        noCompress 'zip', 'mp3', 'png', 'skel', 'atlas'
+    }
 }
 
 dependencies {

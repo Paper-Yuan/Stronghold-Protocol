@@ -48,7 +48,7 @@ object AssetManagerHelper {
             return true
         } catch (e: FileNotFoundException) {
             Log.d(TAG, "app_bundle.zip not present, falling back to direct asset copy")
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
             Log.e(TAG, "Failed to unzip app_bundle.zip", e)
         }
 
@@ -57,14 +57,15 @@ object AssetManagerHelper {
             copyAssetFolder(context, "bundle", targetDir)
             versionFile.writeText(CURRENT_BUNDLE_VERSION)
             return true
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
             Log.e(TAG, "Error copying assets", e)
             return false
         }
     }
 
     private fun unzip(inputStream: InputStream, targetDir: File) {
-        ZipInputStream(BufferedInputStream(inputStream)).use { zis ->
+        val buffer = ByteArray(65536)
+        ZipInputStream(BufferedInputStream(inputStream, 65536)).use { zis ->
             var entry: ZipEntry? = zis.nextEntry
             while (entry != null) {
                 val file = File(targetDir, entry.name)
@@ -73,7 +74,10 @@ object AssetManagerHelper {
                 } else {
                     file.parentFile?.mkdirs()
                     FileOutputStream(file).use { fos ->
-                        zis.copyTo(fos)
+                        var len: Int
+                        while (zis.read(buffer).also { len = it } > 0) {
+                            fos.write(buffer, 0, len)
+                        }
                     }
                 }
                 zis.closeEntry()

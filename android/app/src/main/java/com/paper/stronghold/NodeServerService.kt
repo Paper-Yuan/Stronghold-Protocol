@@ -68,7 +68,20 @@ class NodeServerService : Service() {
             return
         }
 
-        startForeground(NOTIFICATION_ID, buildNotification("正在启动作战模拟服务…"))
+        try {
+            val notification = buildNotification("正在启动作战模拟服务…")
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                startForeground(
+                    NOTIFICATION_ID,
+                    notification,
+                    android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE
+                )
+            } else {
+                startForeground(NOTIFICATION_ID, notification)
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "Foreground service start caught: ${e.message}")
+        }
 
         Thread {
             try {
@@ -198,7 +211,16 @@ class NodeServerService : Service() {
         } catch (e: Exception) {
             Log.e(TAG, "Error stopping Node process", e)
         }
-        stopForeground(STOP_FOREGROUND_REMOVE)
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                stopForeground(STOP_FOREGROUND_REMOVE)
+            } else {
+                @Suppress("DEPRECATION")
+                stopForeground(true)
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "stopForeground caught: ${e.message}")
+        }
         stopSelf()
     }
 

@@ -107,10 +107,10 @@
 
 /* ---- root scale ----------------------------------------------------------------------------- */
 html {
-  font-size: clamp(40px, min(calc(100vw / 19.2), calc(100vh / 10.8)), 240px);
+  font-size: clamp(24px, min(calc(100vw / 19.2), calc(100vh / 10.8)), 240px);
   /* mobile browsers: 100vh is the height with the toolbars hidden — the small viewport (svh; Safari 15.4+, Chrome 108+,
      Firefox 101+) is what is really visible while they show; older browsers keep the line above */
-  font-size: clamp(40px, min(calc(100vw / 19.2), calc(100svh / 10.8)), 240px);
+  font-size: clamp(24px, min(calc(100vw / 19.2), calc(100svh / 10.8)), 240px);
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
   height: 100%;

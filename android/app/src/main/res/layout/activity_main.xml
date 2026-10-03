@@ -9,19 +9,20 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent" />
 
-    <!-- Splash loading screen while Node.js local server or remote connects -->
+    <!-- Splash loading & terminal connection dashboard -->
     <LinearLayout
         android:id="@+id/layoutLoading"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:gravity="center"
         android:orientation="vertical"
+        android:padding="24dp"
         android:background="@color/bg_dark">
 
         <ProgressBar
             android:id="@+id/progressLoading"
-            android:layout_width="48dp"
-            android:layout_height="48dp"
+            android:layout_width="44dp"
+            android:layout_height="44dp"
             android:indeterminateTint="@color/theme_teal" />
 
         <TextView
@@ -31,18 +32,59 @@
             android:layout_marginTop="16dp"
             android:text="@string/server_starting"
             android:textColor="@color/text_white"
-            android:textSize="14sp" />
+            android:textSize="14sp"
+            android:gravity="center" />
+
+        <!-- Fallback action buttons (shown if local server not found or connection failed) -->
+        <LinearLayout
+            android:id="@+id/layoutFailedActions"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="20dp"
+            android:orientation="horizontal"
+            android:gravity="center"
+            android:visibility="gone">
+
+            <Button
+                android:id="@+id/btnQuickConnectLan"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:backgroundTint="@color/theme_teal"
+                android:textColor="@color/bg_dark"
+                android:textSize="12sp"
+                android:text="快速直连电脑端服务" />
+
+            <Button
+                android:id="@+id/btnDirectSettings"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="12dp"
+                android:backgroundTint="@color/card_bg"
+                android:textColor="@color/text_white"
+                android:textSize="12sp"
+                android:text="网络与画质设置" />
+
+            <Button
+                android:id="@+id/btnRetryConnect"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="12dp"
+                android:backgroundTint="@color/card_bg"
+                android:textColor="@color/text_white"
+                android:textSize="12sp"
+                android:text="重试" />
+        </LinearLayout>
     </LinearLayout>
 
-    <!-- Floating minimal settings button in top-right corner -->
+    <!-- Floating settings button in top-right corner -->
     <ImageView
         android:id="@+id/btnOpenSettings"
-        android:layout_width="32dp"
-        android:layout_height="32dp"
+        android:layout_width="36dp"
+        android:layout_height="36dp"
         android:layout_gravity="top|end"
         android:layout_marginTop="8dp"
         android:layout_marginEnd="16dp"
-        android:alpha="0.4"
+        android:alpha="0.6"
         android:background="?attr/selectableItemBackgroundBorderless"
         android:clickable="true"
         android:focusable="true"

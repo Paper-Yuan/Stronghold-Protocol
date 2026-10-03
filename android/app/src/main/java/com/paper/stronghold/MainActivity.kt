@@ -8,6 +8,7 @@ import android.content.IntentFilter
 import android.content.pm.ActivityInfo
 import android.os.Build
 import android.os.Bundle
+import android.util.Log
 import android.view.View
 import android.view.WindowInsets
 import android.view.WindowInsetsController
@@ -18,72 +19,77 @@ import androidx.appcompat.app.AppCompatActivity
 
 class MainActivity : AppCompatActivity() {
     companion object {
+        private const val TAG = "MainActivity"
         private const val PREFS_NAME = "stronghold_prefs"
         private const val KEY_SERVER_MODE = "server_mode" // "local" or "remote"
         private const val KEY_REMOTE_URL = "remote_url"
         private const val KEY_BOARD_MODE = "board_mode"   // "3d" or "2d"
         private const val DEFAULT_LOCAL_URL = "http://127.0.0.1:3000"
+        private const val DEFAULT_LAN_URL = "http://192.168.10.25:3000"
     }
 
     private lateinit var webView: WebView
     private lateinit var layoutLoading: LinearLayout
+    private lateinit var layoutFailedActions: LinearLayout
     private lateinit var tvLoadingStatus: TextView
+    private lateinit var progressLoading: ProgressBar
     private lateinit var btnOpenSettings: ImageView
+    private lateinit var btnQuickConnectLan: Button
+    private lateinit var btnDirectSettings: Button
+    private lateinit var btnRetryConnect: Button
 
     private var serverReadyReceiver: BroadcastReceiver? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE)
-        enableFullscreen()
+
+        // Cutout support for Android 9+ (display notch edge-to-edge)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            try {
+                window.attributes.layoutInDisplayCutoutMode =
+                    WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
+            } catch (e: Exception) {
+                Log.w(TAG, "Failed to set display cutout mode: ${e.message}")
+            }
+        }
 
         setContentView(R.layout.activity_main)
 
         webView = findViewById(R.id.webView)
         layoutLoading = findViewById(R.id.layoutLoading)
+        layoutFailedActions = findViewById(R.id.layoutFailedActions)
         tvLoadingStatus = findViewById(R.id.tvLoadingStatus)
+        progressLoading = findViewById(R.id.progressLoading)
         btnOpenSettings = findViewById(R.id.btnOpenSettings)
+        btnQuickConnectLan = findViewById(R.id.btnQuickConnectLan)
+        btnDirectSettings = findViewById(R.id.btnDirectSettings)
+        btnRetryConnect = findViewById(R.id.btnRetryConnect)
 
-        btnOpenSettings.setOnClickListener {
-            showServerSwitchDialog()
+        btnOpenSettings.setOnClickListener { showServerSwitchDialog() }
+        btnDirectSettings.setOnClickListener { showServerSwitchDialog() }
+        btnQuickConnectLan.setOnClickListener {
+            val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            prefs.edit().apply {
+                putString(KEY_SERVER_MODE, "remote")
+                putString(KEY_REMOTE_URL, DEFAULT_LAN_URL)
+                apply()
+            }
+            loadServerUrl(DEFAULT_LAN_URL)
+        }
+        btnRetryConnect.setOnClickListener {
+            startStartupFlow()
         }
 
         setupWebView()
         setupServerReceiver()
 
-        val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        val mode = prefs.getString(KEY_SERVER_MODE, "local")
-
-        if (mode == "remote") {
-            val remoteUrl = prefs.getString(KEY_REMOTE_URL, "")
-            if (!remoteUrl.isNullOrBlank()) {
-                loadServerUrl(remoteUrl)
-            } else {
-                startLocalFlow()
-            }
-        } else {
-            startLocalFlow()
-        }
+        startStartupFlow()
     }
 
-    private fun enableFullscreen() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            window.insetsController?.let { controller ->
-                controller.hide(WindowInsets.Type.statusBars() or WindowInsets.Type.navigationBars())
-                controller.systemBarsBehavior = WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
-            }
-        } else {
-            @Suppress("DEPRECATION")
-            window.decorView.systemUiVisibility = (
-                View.SYSTEM_UI_FLAG_FULLSCREEN
-                or View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
-                or View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
-                or View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
-                or View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
-                or View.SYSTEM_UI_FLAG_LAYOUT_STABLE
-            )
-        }
-        window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+    override fun onAttachedToWindow() {
+        super.onAttachedToWindow()
+        enableFullscreen()
     }
 
     override fun onWindowFocusChanged(hasFocus: Boolean) {
@@ -91,8 +97,36 @@ class MainActivity : AppCompatActivity() {
         if (hasFocus) enableFullscreen()
     }
 
+    private fun enableFullscreen() {
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                window.insetsController?.let { controller ->
+                    controller.hide(WindowInsets.Type.statusBars() or WindowInsets.Type.navigationBars())
+                    controller.systemBarsBehavior = WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+                }
+            } else {
+                @Suppress("DEPRECATION")
+                window.decorView.systemUiVisibility = (
+                    View.SYSTEM_UI_FLAG_FULLSCREEN
+                    or View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
+                    or View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
+                    or View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+                    or View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
+                    or View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+                )
+            }
+            window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        } catch (e: Exception) {
+            Log.w(TAG, "Fullscreen setup error: ${e.message}")
+        }
+    }
+
     private fun setupWebView() {
-        webView.setLayerType(View.LAYER_TYPE_HARDWARE, null)
+        try {
+            webView.setLayerType(View.LAYER_TYPE_HARDWARE, null)
+        } catch (e: Exception) {
+            Log.w(TAG, "Hardware acceleration layer error: ${e.message}")
+        }
 
         webView.settings.apply {
             javaScriptEnabled = true
@@ -105,6 +139,7 @@ class MainActivity : AppCompatActivity() {
             displayZoomControls = false
             useWideViewPort = true
             loadWithOverviewMode = true
+            textZoom = 100 // Prevent Android system accessibility font scaling from breaking layout
             cacheMode = WebSettings.LOAD_DEFAULT
             mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
         }
@@ -114,7 +149,7 @@ class MainActivity : AppCompatActivity() {
         webView.webChromeClient = object : WebChromeClient() {
             override fun onConsoleMessage(consoleMessage: ConsoleMessage?): Boolean {
                 consoleMessage?.let {
-                    android.util.Log.d("WebViewConsole", "${it.message()} -- From line ${it.lineNumber()} of ${it.sourceId()}")
+                    Log.d("WebViewConsole", "${it.message()} -- From line ${it.lineNumber()} of ${it.sourceId()}")
                 }
                 return true
             }
@@ -124,29 +159,30 @@ class MainActivity : AppCompatActivity() {
             override fun onPageFinished(view: WebView?, url: String?) {
                 super.onPageFinished(view, url)
                 layoutLoading.visibility = View.GONE
+                layoutFailedActions.visibility = View.GONE
             }
 
             override fun onReceivedError(view: WebView?, request: WebResourceRequest?, error: WebResourceError?) {
                 super.onReceivedError(view, request, error)
                 if (request?.isForMainFrame == true) {
-                    tvLoadingStatus.text = "连接服务失败，请点击右上角齿轮设置服务器地址。"
-                    layoutLoading.visibility = View.VISIBLE
+                    showConnectionError("连接游戏服务超时或未响应。\n若使用电脑服务端，请确保手机与电脑在同一 Wi-Fi。")
                 }
             }
+
+            override fun onRenderProcessGone(view: WebView?, detail: RenderProcessGoneDetail?): Boolean {
+                Log.e(TAG, "WebView render process gone. Did crash: ${detail?.didCrash()}")
+                runOnUiThread {
+                    layoutLoading.visibility = View.VISIBLE
+                    tvLoadingStatus.text = "显存渲染已重置，正在恢复战场…"
+                    try {
+                        reloadWebView()
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Failed to reload after render process crash", e)
+                    }
+                }
+                return true // Prevent host process from being killed
+            }
         }
-    }
-
-    override fun onPause() {
-        super.onPause()
-        webView.onPause()
-        webView.pauseTimers()
-    }
-
-    override fun onResume() {
-        super.onResume()
-        webView.onResume()
-        webView.resumeTimers()
-        enableFullscreen()
     }
 
     private fun setupServerReceiver() {
@@ -160,10 +196,9 @@ class MainActivity : AppCompatActivity() {
                         }
                     }
                     NodeServerService.ACTION_SERVER_FAILED -> {
-                        val reason = intent.getStringExtra("reason") ?: "未知错误"
+                        val reason = intent.getStringExtra("reason") ?: "本地引擎未启动"
                         runOnUiThread {
-                            tvLoadingStatus.text = "本地引擎启动提示: $reason\n可点击右上角设置切换至远程服务器。"
-                            Toast.makeText(this@MainActivity, reason, Toast.LENGTH_LONG).show()
+                            showConnectionError("本地独立服务提示: $reason\n推荐直接连接电脑局域网端运行。")
                         }
                     }
                 }
@@ -173,21 +208,50 @@ class MainActivity : AppCompatActivity() {
             addAction(NodeServerService.ACTION_SERVER_READY)
             addAction(NodeServerService.ACTION_SERVER_FAILED)
         }
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            registerReceiver(serverReadyReceiver, filter, Context.RECEIVER_NOT_EXPORTED)
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                registerReceiver(serverReadyReceiver, filter, Context.RECEIVER_NOT_EXPORTED)
+            } else {
+                registerReceiver(serverReadyReceiver, filter)
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "Register receiver error: ${e.message}")
+        }
+    }
+
+    private fun startStartupFlow() {
+        layoutLoading.visibility = View.VISIBLE
+        layoutFailedActions.visibility = View.GONE
+        progressLoading.visibility = View.VISIBLE
+
+        val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        val mode = prefs.getString(KEY_SERVER_MODE, "local")
+
+        if (mode == "remote") {
+            val remoteUrl = prefs.getString(KEY_REMOTE_URL, "")
+            if (!remoteUrl.isNullOrBlank()) {
+                tvLoadingStatus.text = "正在连接目标服务器: $remoteUrl …"
+                loadServerUrl(remoteUrl)
+            } else {
+                startLocalFlow()
+            }
         } else {
-            registerReceiver(serverReadyReceiver, filter)
+            startLocalFlow()
         }
     }
 
     private fun startLocalFlow() {
-        layoutLoading.visibility = View.VISIBLE
         tvLoadingStatus.text = "正在准备本地运行资源…"
 
         Thread {
-            AssetManagerHelper.ensureAssetsExtracted(this) { msg ->
-                runOnUiThread { tvLoadingStatus.text = msg }
+            try {
+                AssetManagerHelper.ensureAssetsExtracted(this) { msg ->
+                    runOnUiThread { tvLoadingStatus.text = msg }
+                }
+            } catch (t: Throwable) {
+                Log.e(TAG, "Asset extraction error", t)
             }
+
             runOnUiThread {
                 startLocalServer()
             }
@@ -196,19 +260,34 @@ class MainActivity : AppCompatActivity() {
 
     fun startLocalServer() {
         tvLoadingStatus.text = getString(R.string.server_starting)
-        val intent = Intent(this, NodeServerService::class.java).apply {
-            action = NodeServerService.ACTION_START
+        try {
+            val intent = Intent(this, NodeServerService::class.java).apply {
+                action = NodeServerService.ACTION_START
+            }
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                startForegroundService(intent)
+            } else {
+                startService(intent)
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to start NodeServerService: ${e.message}")
+            showConnectionError("启动本地后台服务受限: ${e.message}\n请使用电脑服务端局域网直连模式。")
         }
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            startForegroundService(intent)
-        } else {
-            startService(intent)
+    }
+
+    private fun showConnectionError(msg: String) {
+        runOnUiThread {
+            progressLoading.visibility = View.GONE
+            layoutLoading.visibility = View.VISIBLE
+            layoutFailedActions.visibility = View.VISIBLE
+            tvLoadingStatus.text = msg
         }
     }
 
     private fun loadServerUrl(rawUrl: String) {
         val targetUrl = buildUrlWithBoardMode(rawUrl)
         runOnUiThread {
+            Log.i(TAG, "Loading target URL in WebView: $targetUrl")
             webView.loadUrl(targetUrl)
         }
     }
@@ -223,15 +302,18 @@ class MainActivity : AppCompatActivity() {
 
     fun reloadWebView() {
         runOnUiThread {
-            val currentUrl = webView.url ?: DEFAULT_LOCAL_URL
-            webView.loadUrl(buildUrlWithBoardMode(currentUrl))
+            val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            val mode = prefs.getString(KEY_SERVER_MODE, "local")
+            val remoteUrl = prefs.getString(KEY_REMOTE_URL, DEFAULT_LAN_URL)
+            val currentUrl = if (mode == "remote" && !remoteUrl.isNullOrBlank()) remoteUrl else (webView.url ?: DEFAULT_LOCAL_URL)
+            loadServerUrl(currentUrl)
         }
     }
 
     fun showServerSwitchDialog() {
         val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         val currentMode = prefs.getString(KEY_SERVER_MODE, "local")
-        val currentRemoteUrl = prefs.getString(KEY_REMOTE_URL, "")
+        val currentRemoteUrl = prefs.getString(KEY_REMOTE_URL, DEFAULT_LAN_URL)
         val currentBoardMode = prefs.getString(KEY_BOARD_MODE, "3d")
 
         val dialogView = layoutInflater.inflate(R.layout.dialog_server_switch, null)
@@ -252,6 +334,7 @@ class MainActivity : AppCompatActivity() {
         } else {
             rbLocal.isChecked = true
             etAddress.visibility = View.GONE
+            etAddress.setText(if (!currentRemoteUrl.isNullOrBlank()) currentRemoteUrl else DEFAULT_LAN_URL)
         }
 
         if (currentBoardMode == "2d") {
@@ -312,15 +395,19 @@ class MainActivity : AppCompatActivity() {
     override fun onDestroy() {
         super.onDestroy()
         serverReadyReceiver?.let {
-            unregisterReceiver(it)
+            try {
+                unregisterReceiver(it)
+            } catch (_: Exception) {}
         }
-        webView.apply {
-            loadUrl("about:blank")
-            stopLoading()
-            clearHistory()
-            removeAllViews()
-            destroy()
-        }
+        try {
+            webView.apply {
+                loadUrl("about:blank")
+                stopLoading()
+                clearHistory()
+                removeAllViews()
+                destroy()
+            }
+        } catch (_: Exception) {}
     }
 
     @Deprecated("Deprecated in Java")

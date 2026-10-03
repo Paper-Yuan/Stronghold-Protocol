@@ -148,3 +148,48 @@ html:not(.sp-in-match) .toast-host { margin-top: var(--sa-t); }
   .create-box { margin-top: .18rem; }
   .create-box .btn--xl { height: .8rem; }
 }
+
+/* ---- 5. Multi-Aspect-Ratio & Screen Size Adaptations --------------------------------------------- */
+
+/* Ultra-wide screens (19:9, 19.5:9, 20:9, 21:9 modern flagship phones):
+   Keep central stage centered and prevent edge controls from being obscured by curved corners or camera cutouts */
+@media (min-aspect-ratio: 19/9) {
+  .gm__hud {
+    padding-left: max(var(--sa-l), 16px);
+    padding-right: max(var(--sa-r), 16px);
+  }
+  .screen:not(.gm) {
+    padding-left: max(var(--sa-l), 20px);
+    padding-right: max(var(--sa-r), 20px);
+  }
+}
+
+/* Narrow aspect-ratio screens (4:3, 16:10, 3:2 tablets, iPads, foldable phones unfolded):
+   Give more vertical breathing room to the central chessboard and scale shop/topbar gracefully */
+@media (max-aspect-ratio: 16/10) {
+  .gm__hud > .shopbar {
+    bottom: calc(.1rem + var(--sa-b));
+  }
+  .lobby-body {
+    flex-direction: column;
+    overflow-y: auto;
+    max-height: 90vh;
+  }
+}
+
+/* Compact low-profile phone screens (≤ 380px CSS height, e.g. 720p/1080p landscape with 3x scale):
+   Ensure all modals, drawers, and battle action overlays stay 100% visible without clipping */
+@media (max-height: 380px) {
+  .modal__box {
+    max-height: 96vh;
+    padding: .2rem .24rem;
+  }
+  .shopbar {
+    scale: 0.95;
+    transform-origin: center bottom;
+  }
+  .topbar {
+    height: max(.48rem, 30px);
+  }
+}
+
