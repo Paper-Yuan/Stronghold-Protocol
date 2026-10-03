@@ -6,7 +6,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { bgmKeyFor, resolveBgm, SfxLimiter, AudioManager, normalAttackSfx } from '../../public/js/audio.js';
+import { bgmKeyFor, resolveBgm, SfxLimiter, AudioManager, normalAttackSfx, voiceKey } from '../../public/js/audio.js';
 import { PHASE } from '../../shared/constants.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
@@ -258,5 +258,36 @@ describe('impact sounds (user playtest #4 item 6)', () => {
       await settle();
       assert.ok(!urls.includes(manifest.audio.sfx.units[charId].hit), '4 s later: not that attack\'s impact');
     } finally { globalThis.performance = perf; restore(); }
+  });
+});
+
+describe('voice mapping and voiceKey resolution', () => {
+  test('every voice key in manifest must start with char_', () => {
+    // every voice key must be a charId that some chess record points at
+    const bad = Object.keys(manifest.audio?.voice || {}).filter((k) => !/^char_/.test(k));
+    assert.deepEqual(bad, []);
+  });
+
+  test('voiceKey handles charId, chessId, piece, unit and def objects', () => {
+    const mockGd = {
+      getChess: (id) => (id === 'p_ami_a' ? { charId: 'char_002_amiya' } : null),
+    };
+    assert.equal(voiceKey(null), null);
+    assert.equal(voiceKey('char_002_amiya'), 'char_002_amiya');
+    assert.equal(voiceKey('p_ami_a', mockGd), 'char_002_amiya');
+    assert.equal(voiceKey({ chessId: 'p_ami_a' }, mockGd), 'char_002_amiya');
+    assert.equal(voiceKey({ id: 'p_ami_a' }, mockGd), 'char_002_amiya');
+    assert.equal(voiceKey({ piece: { id: 'p_ami_a' } }, mockGd), 'char_002_amiya');
+    assert.equal(voiceKey({ charId: 'char_002_amiya' }), 'char_002_amiya');
+    assert.equal(voiceKey({ def: 'char_002_amiya' }), 'char_002_amiya');
+    assert.equal(voiceKey({ defId: 'char_002_amiya' }), 'char_002_amiya');
+    assert.equal(voiceKey({ spine: 'char_002_amiya' }), 'char_002_amiya');
+    assert.equal(voiceKey('unknown_id', mockGd), null);
+  });
+
+  test('voice method records missing voice line into warned Set', () => {
+    const a = new AudioManager({ win: null, getManifest: () => manifest });
+    a.voice('char_nonexistent_xyz');
+    assert.ok(a.warned.has('voice_missing_char_nonexistent_xyz'));
   });
 });

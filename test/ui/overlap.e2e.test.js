@@ -271,5 +271,60 @@ describe('phone layout overlaps (briefing stage line, bond badges, bond strip, s
       assert.deepEqual(problems, [], `${dev} detail panel page errors`);
       await page.close();
     });
+
+    test(`${dev}: deploy operator does not trigger voice_missing_ in audio.warned`, async (t) => {
+      const h = await openPhoneMock(dev, 'phase=PREP');
+      if (!h) return t.skip('not in touch layout');
+      const { page, problems } = h;
+      await page.waitForSelector('.screen:not(.gload)', { timeout: 8000 });
+
+      // Find an operator piece in hand
+      const pieceUid = await page.evaluate(() => {
+        const p = globalThis.__SP__?.store?.get()?.match?.private;
+        const hc = (p?.hand || []).find((x) => x && x.kind === 'chess');
+        return hc?.uid ?? null;
+      });
+      assert.ok(pieceUid != null, 'must have a chess piece in hand');
+
+      // Clear any prior audio warnings before deployment
+      await page.evaluate(() => {
+        globalThis.__SP__?.audio?.warned?.clear();
+      });
+
+      // Find a free board tile and drop the piece from hand onto board
+      await page.evaluate(async (uid) => {
+        const store = globalThis.__SP__?.store;
+        const priv = store?.get()?.match?.private;
+        const occupied = new Set((priv?.board || []).map((x) => `${x.row},${x.col}`));
+        const free = [[9, 9], [9, 8], [12, 6], [11, 7], [10, 7], [9, 7], [10, 4], [11, 4]].find(([r, c]) => !occupied.has(`${r},${c}`));
+        if (!free) return false;
+
+        const pieceEl = document.querySelector(`.ff-piece[data-uid="${uid}"]`);
+        const tileEl = document.querySelector(`.ff-tile[data-row="${free[0]}"][data-col="${free[1]}"]`);
+        if (pieceEl && tileEl) {
+          const r1 = pieceEl.getBoundingClientRect();
+          const r2 = tileEl.getBoundingClientRect();
+          pieceEl.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, clientX: r1.left + 5, clientY: r1.top + 5, pointerId: 1, button: 0 }));
+          window.dispatchEvent(new PointerEvent('pointermove', { bubbles: true, clientX: r2.left + 5, clientY: r2.top + 5, pointerId: 1 }));
+          window.dispatchEvent(new PointerEvent('pointerup', { bubbles: true, clientX: r2.left + 5, clientY: r2.top + 5, pointerId: 1 }));
+          return true;
+        }
+        return false;
+      }, pieceUid);
+
+      await new Promise((r) => setTimeout(r, 600));
+
+      // Read audio.warned via globalThis.__SP__.audio
+      const warned = await page.evaluate(() => {
+        const a = globalThis.__SP__?.audio;
+        return a?.warned ? Array.from(a.warned) : [];
+      });
+
+      const missing = warned.filter((w) => w.startsWith('voice_missing_'));
+      assert.deepEqual(missing, [], `${dev}: audio.warned must not contain voice_missing_ after deploying operator`);
+
+      assert.deepEqual(problems, [], `${dev} operator deploy page errors`);
+      await page.close();
+    });
   }
 });

@@ -104,7 +104,7 @@ import { battleRunner } from '../battle/runner.js';
 import { isClientCombat, observeTarget, teammateProgress, cameraLayers, layerCamera, sidesOf, resumedWatch } from '../battle/observe.js';
 import { screenStrip, playerBonds, playerLayer, detailBondOwner, toggleBond, popupView } from '../ui/watchBonds.js';
 import { data, localAsset, getMode } from '../data.js';
-import { audio } from '../audio.js';
+import { audio, voiceKey } from '../audio.js';
 import { useDocClass, FullscreenButton } from '../ui/device.js';
 
 const cx = (...p) => p.flat().filter(Boolean).join(' ');
@@ -787,8 +787,8 @@ function MatchScreen() {
         }
         await runIntent(intent);
         if (t?.area === 'board') {
-          const charId = entry?.piece?.charId || entry?.piece?.id;
-          if (charId) audio.voice(charId);
+          const vk = voiceKey(entry?.piece, gd);
+          if (vk) audio.voice(vk);
         }
       }),
       view.on('pieceDragEnd', (e) => {
@@ -810,8 +810,8 @@ function MatchScreen() {
       view.on('pieceClick', (e) => {
         if (!e) return;
         audio.sfx('click', { volume: 0.4 });
-        const charId = e.piece?.charId || e.piece?.id || (e.uid != null ? live.current.placeCtx?.pieces.get(e.uid)?.piece?.id : null);
-        if (charId) audio.voice(charId);
+        const vk = voiceKey(e.piece || (e.uid != null ? live.current.placeCtx?.pieces.get(e.uid)?.piece : null) || e.unit, gd);
+        if (vk) audio.voice(vk);
         // an enemy of the preview pen (research 09 §2.2 "Intel": tap it for its detail card)
         const penKey = previewEnemyKey(e);
         if (penKey) { setDetail({ kind: 'enemy', id: penKey }); return; }

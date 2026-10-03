@@ -33,6 +33,7 @@ export function makeLookups(ready = true) {
     m: data.get('assets'),
     config: data.get('config'),
     chess: (id) => data.lookup('chess', id),
+    getChess: (id) => data.lookup('chess', id),
     bond: (id) => data.lookup('bonds', id),
     item: (id) => data.lookup('items', id),
     band: (id) => data.lookup('bands', id),

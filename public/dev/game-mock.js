@@ -14,7 +14,7 @@ import { GameScreen } from '/js/screens/game.js';
 import { store, emptyMatch, selectRoute } from '/js/store.js';
 import { net, NetError } from '/js/net.js';
 import { data } from '/js/data.js';
-import { installAudio } from '/js/audio.js';
+import { installAudio, audio } from '/js/audio.js';
 import { settingsStore } from '/js/ui/settings.js';
 import { awayStore } from '/js/ui/matchChrome.js';
 import { GAME_FILES } from '/js/ui/gameComponents.js';
@@ -774,5 +774,6 @@ async function boot() {
   renderBar();
   store.subscribe(() => renderBar());
   globalThis.__MOCK__ = { store, S: () => S, setPhase, mutate: (fn) => { fn(S); refreshPrivate(); }, pushPublic: () => pushPublic() };
+  globalThis.__SP__ = { store, net, data, audio, version: 1 };
 }
 boot().catch((err) => console.error('[mock] boot failed', err));

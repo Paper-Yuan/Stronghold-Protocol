@@ -136,13 +136,32 @@ export function deathSfxUrl(manifest, info, { consumed = false, reason = null } 
 }
 
 /**
+ * Audio.js — the voice table is keyed by charId; units carry a def object, prep pieces carry a chessId.
+ * @param {any} x charId, chessId, unit object or piece object
+ * @param {any} [gd] gameData lookup handle (getChess)
+ * @returns {string|null}
+ */
+export function voiceKey(x, gd = null) {
+  if (!x) return null;
+  if (typeof x === 'string') {
+    if (x.startsWith('char_')) return x;                       // already a charId
+    const getFn = gd?.getChess || gd?.chess || (typeof gd === 'function' ? gd : null);
+    const rec = getFn ? getFn(x) : null;
+    return rec?.charId || null; // chessId -> charId
+  }
+  if (x.piece) return voiceKey(x.piece, gd);
+  return x.charId || voiceKey(x.id || x.chessId || x.defId || x.def || x.spine, gd) || null;  // def object / unit
+}
+
+/**
  * Deployment sound of an allied unit ('deploy' event): its own ON_UNIT_BORN sound, else operators b_char_set
  * (sfx.battle.deploy), summons b_char_tokenset (tokenDeploy); stage devices have none.
  * @returns {string|null}
  */
-export function deploySfxUrl(manifest, info) {
+export function deploySfxUrl(manifest, info, gd = null) {
   if (!info || info.side === 'enemy') return null;
-  const own = manifest?.audio?.sfx?.units?.[info.def]?.born;
+  const key = voiceKey(info, gd) || (typeof info.def === 'string' ? voiceKey(info.def, gd) : null) || info.def;
+  const own = (key && manifest?.audio?.sfx?.units?.[key]?.born) || (info.def && manifest?.audio?.sfx?.units?.[info.def]?.born);
   if (typeof own === 'string') return own;
   const b = manifest?.audio?.sfx?.battle ?? {};
   const cls = unitSoundClass(info);
@@ -599,27 +618,31 @@ export class AudioManager {
   }
 
   /**
-   * Play an operator's core Japanese voice line (per-operator cooldown slot, with BGM ducking).
-   * @param {string} defId operator charId (e.g. 'char_002_amiya')
+   * Play an operator's core Japanese voice line (global operator voice concurrency 1, with BGM ducking).
+   * @param {string|any} defId operator charId (e.g. 'char_002_amiya') or piece / unit
    * @param {{ volume?: number }} [o]
    */
   voice(defId, o = {}) {
     try {
       if (!defId) return;
+      const key = typeof defId === 'string' ? (defId.startsWith('char_') ? defId : voiceKey(defId)) : voiceKey(defId);
+      const warnKey = key || (typeof defId === 'object' ? (defId?.id || defId?.chessId || defId?.charId || typeof defId) : String(defId));
       if (!this.ctx) {
         this._warn('voice_no_ctx', 'AudioContext not active for voice');
       }
       const m = this.getManifest();
-      const url = m?.audio?.voice?.[defId] || m?.chars?.[defId]?.voice;
+      const url = key ? (m?.audio?.voice?.[key] || m?.chars?.[key]?.voice) : null;
       if (typeof url === 'string') {
-        const played = this._play(url, { volume: o.volume ?? 0.95, limited: true, unitKey: `voice:${defId}` });
+        const played = this._play(url, { volume: o.volume ?? 0.95, limited: true, unitKey: 'operator_voice' });
         if (played !== false) {
           this.duckBgm(2000);
         }
       } else {
-        if (this.ctx && !this.warned.has(`voice_missing_${defId}`)) {
-          this.warned.add(`voice_missing_${defId}`);
-          console.debug(`[audio] Voice line not configured for ${defId}`);
+        if (!this.warned.has(`voice_missing_${warnKey}`)) {
+          this.warned.add(`voice_missing_${warnKey}`);
+          const type = typeof defId;
+          const keys = defId && typeof defId === 'object' ? Object.keys(defId).slice(0, 3).join(', ') : '';
+          console.warn(`[audio] Voice line missing: type=${type}${keys ? ` keys=[${keys}]` : ''} key=${warnKey}`);
         }
       }
     } catch (err) {
@@ -696,9 +719,10 @@ export class AudioManager {
           const m = this.getManifest();
           const url = deploySfxUrl(m, u);
           if (!url) continue;
-          const own = url === m?.audio?.sfx?.units?.[u.def]?.born;
+          const key = voiceKey(u);
+          const own = (key && url === m?.audio?.sfx?.units?.[key]?.born) || (u.def && url === m?.audio?.sfx?.units?.[u.def]?.born);
           this._playUnitUrl(url, own ? `${e[1]}:born` : 'deploy', own ? 0.8 : 0.5);
-          this.voice(u.def);
+          this.voice(key || u.def);
         } else if (kind === 'fx') {
           // a summon used up by its own effect (香槟炸弹 exploding: `consumed`): its impact sound now, no death sound
           const ex = e[4];
