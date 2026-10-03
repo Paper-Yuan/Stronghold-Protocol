@@ -139,7 +139,7 @@ const downed = (u) => (u.bossPool ? !(u.bossPool.hp > 0) : !(u.hp > 0));
 // install / talent logic that belongs to ONE skill is gated on that skill being the selected one.
 
 /** Id of the selected skill. */
-const selId = (def) => def?.skill?.id ?? def?.raw?.skill?.skillId ?? null;
+const selId = (def) => def?.skill?.skillId ?? def?.skill?.id ?? def?.raw?.skill?.skillId ?? def?.raw?.skill?.id ?? null;
 /** Is `id` the selected skill? */
 const isSel = (def, id) => selId(def) === id;
 /** `skills` map of a kit: the spec of the selected skill when a builder exists for it (DESIGN §16 kit contract). */
@@ -354,7 +354,7 @@ const kits = {
         { install(battle, unit) { // 主观缓时: enemies in range −15 % move speed (×talent_scale during S3)
           whileDeployed(battle, unit, AURA, () => {
             const v = num(t1.move_speed, -0.15) * (S3 && skillActive(unit) ? num(bb.talent_scale, 3) : 1);
-            for (const e of enemiesOnRange(battle, unit)) pulse(battle, e, `mostma:slow:${unit.id}`, { moveMul: Math.max(0, 1 + v) });
+            for (const e of enemiesOnRange(battle, unit)) pulse(battle, e, `mostma:slow:${unit.id}`, { moveMul: Math.max(0, 1 + v) }, { status: 'slow', visible: true });
           });
         } },
       ],

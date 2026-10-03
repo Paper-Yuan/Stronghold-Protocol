@@ -338,7 +338,7 @@ export const SUB = Object.freeze({
   primprotector: P({}),
   unyield: P({ noHeal: true }),
   duelist: P({}),
-  fortress: P({ fortress: true, splashRadius: 1.0, projectile: 'bomb' }),
+  fortress: P({ fortress: true, splashRadius: 1.0, projectile: 'bomb', canHitFly: false, groundOnly: true }),
   // --- WARRIOR
   centurion: P({ hitAllBlocked: true }),
   crusher: P({ hitAllBlocked: true }),
@@ -483,6 +483,7 @@ export function resolveProfile(def, kitTrait = null) {
   if (p.dmgType === 'heal' && !p.heal && !p.noAttack) p.heal = { mode: 'single' };
   if (p.dmgType !== 'heal' && p.heal) p.heal = null;
   if (p.dmgType === 'none') p.noAttack = true;
+  if (p.fortress || p.groundOnly) { p.canHitFly = false; p.groundOnly = true; }
   if (kitTrait) Object.assign(p, kitTrait);
   return p;
 }

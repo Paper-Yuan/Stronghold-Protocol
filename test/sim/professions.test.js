@@ -351,3 +351,35 @@ test('resolveProfile: data fields win over table defaults; kit trait overrides w
   const bard = resolveProfile(ds.getChess('chess_char_4_25_a'));
   assert.equal(bard.noAttack, true);
 });
+
+test('fortress (灰毫, 号角) never hits FLY enemies (groundOnly, canHitFly: false)', () => {
+  const ds = getDefaultSource();
+  for (const id of ['chess_char_2_18_a', 'chess_char_2_18_b', 'chess_char_5_08_a', 'chess_char_5_08_b']) {
+    const c = ds.getChess(id);
+    const p = resolveProfile(c);
+    assert.equal(p.canHitFly, false, `${id} cannot hit fly`);
+    assert.equal(p.groundOnly, true, `${id} is groundOnly`);
+  }
+  const h = makeBattle({
+    stageId: 'act2autochess_m01',
+    defs: {
+      enemies: {
+        fly_dummy: enemyRec({ key: 'fly_dummy', hp: 1e5, motion: 'FLY', speed: 0 }),
+        ground_dummy: enemyRec({ key: 'ground_dummy', hp: 1e5, motion: 'WALK', speed: 0 }),
+      },
+    },
+    units: [{ chessId: 'chess_char_5_08_a', row: 10, col: 2 }],
+    enemies: [
+      { key: 'fly_dummy', pos: [10, 5] },
+      { key: 'ground_dummy', pos: [10, 6] },
+    ],
+    timeLimit: 10, content: 'full',
+  });
+  h.run(3);
+  const fly = h.b.units.find((u) => u.side === 'enemy' && u.isFlying);
+  const ground = h.b.units.find((u) => u.side === 'enemy' && !u.isFlying);
+  assert.ok(fly && ground, 'both enemies spawned');
+  assert.equal(fly.stats.taken, 0, 'flying enemy took no damage from fortress');
+  assert.ok(ground.stats.taken > 0, 'ground enemy took damage');
+});
+
