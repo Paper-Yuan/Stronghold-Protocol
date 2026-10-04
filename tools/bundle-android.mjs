@@ -170,4 +170,26 @@ const versionFile = path.join(ANDROID_ASSETS_DIR, 'bundle.sha256');
 fs.writeFileSync(versionFile, versionContent, 'utf8');
 console.log(`[bundle-android] Generated bundle.sha256: ${versionContent}`);
 
+// 5. Assets whitelist gate: everything in src/main/assets ships inside the APK, so anything that
+//    landed there by accident (editor backups, cloud-drive resume markers, stray APKs) would be
+//    distributed silently with the release.
+const ALLOWED_ASSETS = new Set(['app_bundle.zip', 'bundle.sha256']);
+const ALLOWED_ASSET_DIRS = new Set(['licenses']);
+
+function assertAssetsWhitelist() {
+  if (!fs.existsSync(ANDROID_ASSETS_DIR)) return;
+  const strays = fs.readdirSync(ANDROID_ASSETS_DIR, { withFileTypes: true })
+    .filter((e) => (e.isDirectory() ? !ALLOWED_ASSET_DIRS.has(e.name) : !ALLOWED_ASSETS.has(e.name)))
+    .map((e) => e.name + (e.isDirectory() ? '/' : ''));
+  if (strays.length) {
+    console.error('✘ [bundle-android] assets 目录混入了非本工具生成的文件，它们会被原样打进 APK：');
+    for (const s of strays) console.error(`    - ${path.join(ANDROID_ASSETS_DIR, s)}`);
+    console.error('  请删除后重试；确需随包分发的文件请加进 tools/bundle-android.mjs 的白名单。');
+    process.exit(1);
+  }
+  console.log(`[bundle-android] assets 白名单校验通过: ${[...ALLOWED_ASSETS].join(', ')}`);
+}
+
+assertAssetsWhitelist();
+
 console.log('[bundle-android] Done!');

@@ -10,6 +10,68 @@ import { fileURLToPath } from 'node:url';
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const ANDROID_DIR = path.join(ROOT, 'android');
 const IS_WIN = process.platform === 'win32';
+const RELEASE = process.argv.includes('--release');
+
+/** Read `key=value` pairs from android/local.properties (git-ignored; holds sdk.dir and signing creds). */
+function readLocalProps() {
+  const file = path.join(ANDROID_DIR, 'local.properties');
+  const out = {};
+  if (!fs.existsSync(file)) return out;
+  for (const line of fs.readFileSync(file, 'utf8').split(/\r?\n/)) {
+    const m = line.match(/^([A-Za-z_][A-Za-z0-9_.]*)=(.*)$/);
+    // Java properties escaping: a backslash escapes the following char (`C\:\\Users` -> `C:\Users`)
+    if (m && !line.startsWith('#')) out[m[1]] = m[2].replace(/\\(.)/g, '$1').trim();
+  }
+  return out;
+}
+
+/** Locate a build-tools executable (zipalign / apksigner), newest installed version first. */
+function findBuildTool(name, props) {
+  const sdk = props['sdk.dir'] || process.env.ANDROID_HOME || process.env.ANDROID_SDK_ROOT;
+  if (!sdk) return null;
+  const btDir = path.join(sdk, 'build-tools');
+  if (!fs.existsSync(btDir)) return null;
+  const versions = fs.readdirSync(btDir).sort((a, b) => {
+    const pa = a.split('.').map(Number), pb = b.split('.').map(Number);
+    for (let i = 0; i < 3; i++) if ((pa[i] || 0) !== (pb[i] || 0)) return (pb[i] || 0) - (pa[i] || 0);
+    return 0;
+  });
+  // apksigner ships as a .bat wrapper, zipalign as a native .exe — try both, then the bare name.
+  const exts = IS_WIN ? ['.bat', '.exe', ''] : [''];
+  for (const v of versions) {
+    for (const ext of exts) {
+      const p = path.join(btDir, v, name + ext);
+      if (fs.existsSync(p)) return p;
+    }
+  }
+  return null;
+}
+
+/**
+ * Resolve how to invoke apksigner. The .bat wrapper is unreliable when the shell cwd contains
+ * non-ASCII characters (it fails with "找不到指定的路径" on Windows), so prefer the bundled jar
+ * running on java when available.
+ */
+function resolveApksigner(props) {
+  const sdk = props['sdk.dir'] || process.env.ANDROID_HOME || process.env.ANDROID_SDK_ROOT;
+  if (!sdk) return null;
+  const btDir = path.join(sdk, 'build-tools');
+  if (!fs.existsSync(btDir)) return null;
+  const versions = fs.readdirSync(btDir).sort((a, b) => {
+    const pa = a.split('.').map(Number), pb = b.split('.').map(Number);
+    for (let i = 0; i < 3; i++) if ((pa[i] || 0) !== (pb[i] || 0)) return (pb[i] || 0) - (pa[i] || 0);
+    return 0;
+  });
+  if (spawnSync('java', ['-version'], { encoding: 'utf8' }).status === 0) {
+    for (const v of versions) {
+      const jar = path.join(btDir, v, 'lib', 'apksigner.jar');
+      if (fs.existsSync(jar)) return { cmd: 'java', prefix: ['-jar', jar] };
+    }
+  }
+  const bat = findBuildTool('apksigner', props);
+  return bat ? { cmd: bat, prefix: [] } : null;
+}
+
 
 console.log('======================================================');
 console.log('  卫戍协议：盟约 · Android APK 打包构建工具');
@@ -82,13 +144,16 @@ if (bundleRes.status !== 0) {
 }
 
 // 2. Invoke Gradle to assemble APK
-console.log('\n[2/2] 正在执行 Gradle 构建 APK...');
-const apkOutput = path.join(ANDROID_DIR, 'app', 'build', 'outputs', 'apk', 'debug', 'app-debug.apk');
+console.log(`\n[2/3] 正在执行 Gradle 构建 ${RELEASE ? 'release' : 'debug'} APK...`);
+const VARIANT = RELEASE ? 'release' : 'debug';
+const outDir = path.join(ANDROID_DIR, 'app', 'build', 'outputs', 'apk', VARIANT);
+// AGP emits `app-release-unsigned.apk` when the release buildType has no signingConfig; we sign it in step 3.
+const apkOutput = RELEASE ? path.join(outDir, 'app-release-unsigned.apk') : path.join(outDir, 'app-debug.apk');
 if (fs.existsSync(apkOutput)) {
   fs.rmSync(apkOutput, { force: true });
 }
 const gradlewCmd = IS_WIN ? path.join(ANDROID_DIR, 'gradlew.bat') : path.join(ANDROID_DIR, 'gradlew');
-const gradleArgs = ['assembleDebug'];
+const gradleArgs = [RELEASE ? 'assembleRelease' : 'assembleDebug'];
 
 // If gradlew doesn't exist, check dists
 let finalCmd = gradlewCmd;
@@ -123,11 +188,96 @@ if (gitStatusBefore !== null) {
   console.log('✔ [P0-1 门禁通过] 打包过程未污染或修改任何 Git 工作树文件。');
 }
 
-if (fs.existsSync(apkOutput)) {
-  const stat = fs.statSync(apkOutput);
+// 3. Release signing (post-build): zipalign then APK Signature Scheme v2/v3 via build-tools apksigner.
+//    Done outside Gradle so that android/app/build.gradle needs no signingConfig, and so the keystore
+//    password never appears in a command line (it is passed through the environment only).
+let finalApk = apkOutput;
+if (RELEASE) {
+  console.log('\n[3/3] 正在对齐并签名 release APK...');
+  const props = readLocalProps();
+  const creds = {
+    storeFile: process.env.SP_STORE_FILE || props.SP_STORE_FILE,
+    storePass: process.env.SP_STORE_PASSWORD || props.SP_STORE_PASSWORD,
+    alias: process.env.SP_KEY_ALIAS || props.SP_KEY_ALIAS,
+    keyPass: process.env.SP_KEY_PASSWORD || props.SP_KEY_PASSWORD,
+  };
+  const missing = Object.entries(creds).filter(([, v]) => !v).map(([k]) => k);
+  if (missing.length) {
+    console.error('✘ release 签名配置缺失，无法继续。');
+    console.error(`  缺少: ${missing.join(', ')}`);
+    console.error('  请在 android/local.properties（已被 git 忽略）中补全，或用同名环境变量提供：');
+    console.error('    SP_STORE_FILE=keystore/stronghold-release.keystore');
+    console.error('    SP_STORE_PASSWORD=…  SP_KEY_ALIAS=…  SP_KEY_PASSWORD=…');
+    console.error('  密钥库请用 keytool 自行生成，不要提交、也不要写进任何受版本控制的文件。');
+    process.exit(1);
+  }
+  const storePath = path.isAbsolute(creds.storeFile) ? creds.storeFile : path.resolve(ANDROID_DIR, creds.storeFile);
+  if (!fs.existsSync(storePath)) {
+    console.error(`✘ 找不到密钥库: ${storePath}`);
+    process.exit(1);
+  }
+  const zipalign = findBuildTool('zipalign', props);
+  const signer = resolveApksigner(props);
+  if (!zipalign || !signer) {
+    console.error('✘ 未在 Android SDK 中找到 build-tools 的 zipalign / apksigner（或 java），无法签名。');
+    process.exit(1);
+  }
+  // java is exec'd directly; the .bat wrapper needs a shell.
+  const signShell = IS_WIN && signer.cmd !== 'java';
+
+  const aligned = path.join(outDir, 'app-release-aligned.apk');
+  const signed = path.join(outDir, 'Stronghold-Protocol-release.apk');
+  for (const f of [aligned, signed]) if (fs.existsSync(f)) fs.rmSync(f, { force: true });
+
+  // -p: page-align uncompressed .so (required for targetSdk >= 23); 4 = alignment in bytes
+  const alignRes = spawnSync(zipalign, ['-f', '-p', '4', apkOutput, aligned], { stdio: 'inherit', shell: false });
+  if (alignRes.status !== 0) {
+    console.error('✘ zipalign 失败。');
+    process.exit(1);
+  }
+
+  const signEnv = { ...process.env, SP_STORE_PASSWORD: creds.storePass, SP_KEY_PASSWORD: creds.keyPass };
+  const signRes = spawnSync(signer.cmd, [
+    ...signer.prefix,
+    'sign',
+    '--ks', storePath,
+    '--ks-key-alias', creds.alias,
+    '--ks-pass', 'env:SP_STORE_PASSWORD',
+    '--key-pass', 'env:SP_KEY_PASSWORD',
+    '--v2-signing-enabled', 'true',
+    '--v3-signing-enabled', 'true',
+    '--out', signed,
+    aligned,
+  ], { stdio: 'inherit', shell: signShell, env: signEnv });
+  if (signRes.status !== 0) {
+    console.error('✘ apksigner 签名失败。');
+    process.exit(1);
+  }
+
+  const verifyRes = spawnSync(signer.cmd, [...signer.prefix, 'verify', '--print-certs', signed], { encoding: 'utf8', shell: signShell });
+  if (verifyRes.status !== 0) {
+    console.error('✘ [签名门禁失败] 产出的 APK 未通过 apksigner verify：');
+    console.error(verifyRes.stdout || '');
+    console.error(verifyRes.stderr || '');
+    process.exit(1);
+  }
+  const dn = (verifyRes.stdout || '').split(/\r?\n/).find((l) => /certificate DN/.test(l)) || '';
+  console.log('✔ [签名门禁通过] release APK 已通过 apksigner verify。');
+  if (dn) console.log(`  ${dn.trim()}`);
+  fs.rmSync(aligned, { force: true });
+  finalApk = signed;
+} else {
+  console.log('\n[3/3] debug 构建，跳过签名步骤。');
+}
+
+if (fs.existsSync(finalApk)) {
+  const buf = fs.readFileSync(finalApk);
+  const stat = fs.statSync(finalApk);
   console.log('\n✔ 构建完成！');
-  console.log(`  APK 路径: ${apkOutput}`);
+  console.log(`  APK 路径: ${finalApk}`);
   console.log(`  文件大小: ${(stat.size / 1024 / 1024).toFixed(2)} MB`);
+  console.log(`  SHA-256 : ${crypto.createHash('sha256').update(buf).digest('hex')}`);
+  console.log('  （分发时请把 SHA-256 一并公布，玩家可自查下载是否被篡改）');
 } else {
   console.log('\n✔ Gradle 运行成功，请前往 android/app/build/outputs/apk/ 查看产物。');
 }
