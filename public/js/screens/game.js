@@ -786,10 +786,13 @@ function MatchScreen() {
           return;
         }
         await runIntent(intent);
-        if (t?.area === 'board') {
-          const vk = voiceKey(entry?.piece, gd);
-          if (vk) audio.voice(vk);
-        }
+      }),
+      // The deploy voice line hangs off the unit actually reaching the board (render/app.js
+      // announceDeploy) instead of off the manual drop, so combat auto-deploy, a merge's elite and a
+      // raid redeploy speak too — it used to sound only when the player tapped a piece into place.
+      view.on('unitDeploy', (e) => {
+        const vk = voiceKey(e?.defId || e?.chessId, gd);
+        if (vk) audio.voice(vk);
       }),
       view.on('pieceDragEnd', (e) => {
         // a cancelled drag (no pieceDrop) must not leave the highlights behind; a release on a tile that takes nothing

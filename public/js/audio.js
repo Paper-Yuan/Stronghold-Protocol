@@ -633,7 +633,10 @@ export class AudioManager {
       const m = this.getManifest();
       const url = key ? (m?.audio?.voice?.[key] || m?.chars?.[key]?.voice) : null;
       if (typeof url === 'string') {
-        const played = this._play(url, { volume: o.volume ?? 0.95, limited: true, unitKey: 'operator_voice' });
+        // The slot used to be the constant 'operator_voice', i.e. shared by every operator: deploying
+        // a row muted all but the first, which read as "the voice only works when I tap one unit".
+        // Each operator gets its own cooldown; the global cap stays maxVoices.
+        const played = this._play(url, { volume: o.volume ?? 0.95, limited: true, unitKey: `voice:${key}` });
         if (played !== false) {
           this.duckBgm(2000);
         }

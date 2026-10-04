@@ -290,4 +290,16 @@ describe('voice mapping and voiceKey resolution', () => {
     a.voice('char_nonexistent_xyz');
     assert.ok(a.warned.has('voice_missing_char_nonexistent_xyz'));
   });
+
+  test('each operator gets its own voice cooldown slot (a row deploying at once is not muted after the first)', () => {
+    const voiced = Object.keys(manifest.audio?.voice || {}).filter((k) => /^char_/.test(k)).slice(0, 4);
+    assert.ok(voiced.length >= 3, 'need several voiced operators in the manifest');
+    const a = new AudioManager({ win: null, getManifest: () => manifest });
+    a.duckBgm = () => {};
+    const slots = [];
+    a._play = (url, o) => { slots.push(o.unitKey); return true; };
+    for (const k of voiced) a.voice(k);
+    assert.equal(new Set(slots).size, voiced.length, `one slot per operator expected, got ${slots.join(',')}`);
+    assert.ok(slots.every((s) => typeof s === 'string' && s.startsWith('voice:char_')), `slots must be keyed by operator: ${slots.join(',')}`);
+  });
 });
