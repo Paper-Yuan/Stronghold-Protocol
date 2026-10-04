@@ -155,7 +155,9 @@ class MainActivity : AppCompatActivity() {
         setupWebView()
         setupServerReceiver()
 
-        startStartupFlow()
+        // The chooser is the launcher: it also serves as the escape hatch when a stored address
+        // stops working, so it shows on every start with the previous choice pre-selected.
+        showServerSwitchDialog(asLauncher = true)
     }
 
     override fun onAttachedToWindow() {
@@ -438,19 +440,45 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    fun showServerSwitchDialog() {
+    /**
+     * The connection chooser. On the very first launch it replaces [startStartupFlow], so the player
+     * decides where to play before the WebView ever navigates; the in-game gear opens the same dialog
+     * with the board-quality block and a "cancel" that keeps the stored choice.
+     */
+    fun showServerSwitchDialog(asLauncher: Boolean = false) {
         val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         val currentMode = prefs.getString(KEY_SERVER_MODE, "local")
         val currentRemoteUrl = prefs.getString(KEY_REMOTE_URL, DEFAULT_LAN_URL)
         val currentBoardMode = prefs.getString(KEY_BOARD_MODE, "3d")
 
         val dialogView = layoutInflater.inflate(R.layout.dialog_server_switch, null)
-        val rbLocal = dialogView.findViewById<RadioButton>(R.id.rbLocalMode)
-        val rbRemote = dialogView.findViewById<RadioButton>(R.id.rbRemoteMode)
+        val tvTitle = dialogView.findViewById<TextView>(R.id.tvDialogTitle)
+        val tvSub = dialogView.findViewById<TextView>(R.id.tvDialogSub)
+        val cards = listOf(
+            "solo" to dialogView.findViewById<View>(R.id.cardSolo),
+            "lan" to dialogView.findViewById<View>(R.id.cardLan),
+            "remote" to dialogView.findViewById<View>(R.id.cardRemote),
+        )
+        val strips = mapOf(
+            "solo" to dialogView.findViewById<View>(R.id.cardSoloStrip),
+            "lan" to dialogView.findViewById<View>(R.id.cardLanStrip),
+            "remote" to dialogView.findViewById<View>(R.id.cardRemoteStrip),
+        )
+        val cardTitles = mapOf(
+            "solo" to dialogView.findViewById<TextView>(R.id.cardSoloTitle),
+            "lan" to dialogView.findViewById<TextView>(R.id.cardLanTitle),
+            "remote" to dialogView.findViewById<TextView>(R.id.cardRemoteTitle),
+        )
         val tvLocalIpHint = dialogView.findViewById<TextView>(R.id.tvLocalIpHint)
         val etAddress = dialogView.findViewById<EditText>(R.id.etServerAddress)
+        val tvUrlPreview = dialogView.findViewById<TextView>(R.id.tvUrlPreview)
+        val boardBlock = dialogView.findViewById<View>(R.id.boardBlock)
         val rbBoard3D = dialogView.findViewById<RadioButton>(R.id.rbBoard3D)
         val rbBoard2D = dialogView.findViewById<RadioButton>(R.id.rbBoard2D)
+        val btnFirstRunSolo = dialogView.findViewById<Button>(R.id.btnFirstRunSolo)
+        val btnShowLogs = dialogView.findViewById<Button>(R.id.btnShowLogsSwitch)
+        val btnCancel = dialogView.findViewById<Button>(R.id.btnCancelDialog)
+        val btnApply = dialogView.findViewById<Button>(R.id.btnApplyDialog)
 
         val lanIp = NetworkUtils.getLocalIpAddress(this)
         tvLocalIpHint.text = if (lanIp != "127.0.0.1") {
@@ -459,72 +487,110 @@ class MainActivity : AppCompatActivity() {
             "本机局域网地址: 未连接 Wi-Fi (单机离线可用)"
         }
 
-        val btnShowLogs = dialogView.findViewById<Button>(R.id.btnShowLogsSwitch)
-        val btnCancel = dialogView.findViewById<Button>(R.id.btnCancelDialog)
-        val btnApply = dialogView.findViewById<Button>(R.id.btnApplyDialog)
-
-        if (currentMode == "remote") {
-            rbRemote.isChecked = true
-            etAddress.visibility = View.VISIBLE
-            etAddress.setText(currentRemoteUrl)
-        } else {
-            rbLocal.isChecked = true
-            etAddress.visibility = View.GONE
-            etAddress.setText(if (!currentRemoteUrl.isNullOrBlank()) currentRemoteUrl else DEFAULT_LAN_URL)
+        if (asLauncher) {
+            tvTitle.text = "这局怎么开始？"
+            tvSub.visibility = View.VISIBLE
+                        tvSub.text = if (currentMode == "remote" && !currentRemoteUrl.isNullOrBlank())
+                "上次连的是 $currentRemoteUrl · 点「连接」继续，或换一台"
+            else "选一个进入。每次启动都会先问这个。"
+            boardBlock.visibility = View.GONE
+            btnShowLogs.visibility = View.GONE
+            btnCancel.visibility = View.GONE
+            btnFirstRunSolo.visibility = View.VISIBLE
+            btnApply.text = "连接"
         }
 
-        if (currentBoardMode == "2d") {
-            rbBoard2D.isChecked = true
-        } else {
-            rbBoard3D.isChecked = true
+        if (currentBoardMode == "2d") rbBoard2D.isChecked = true else rbBoard3D.isChecked = true
+        etAddress.setText(if (!currentRemoteUrl.isNullOrBlank()) currentRemoteUrl else DEFAULT_LAN_URL)
+
+        // "同一 Wi-Fi" and "本机单人" both run the embedded engine; they differ only in what the
+        // player is told to do next, so neither needs a preference of its own.
+        var picked = if (currentMode == "remote") "remote" else "solo"
+
+        fun preview() {
+            val url = normalizeServerUrl(etAddress.text.toString())
+            tvUrlPreview.text = url?.let { "将连接 $it" }
+                ?: "填房主的地址即可，形如 100.127.8.41:3000，也可以直接粘贴邀请链接"
         }
 
-        rbLocal.setOnCheckedChangeListener { _, isChecked ->
-            if (isChecked) etAddress.visibility = View.GONE
-        }
-        rbRemote.setOnCheckedChangeListener { _, isChecked ->
-            if (isChecked) etAddress.visibility = View.VISIBLE
-        }
-
-        val dialog = AlertDialog.Builder(this)
-            .setView(dialogView)
-            .create()
-
-        btnShowLogs?.setOnClickListener {
-            showLogsAndDiagnosticsDialog()
+        fun paint() {
+            for ((key, card) in cards) {
+                val on = key == picked
+                card.setBackgroundColor(if (on) 0xFF16211D.toInt() else 0xFF131817.toInt())
+                strips[key]?.setBackgroundColor(if (on) 0xFF4ED8AF.toInt() else 0xFF2A3531.toInt())
+                cardTitles[key]?.setTextColor(if (on) 0xFF4ED8AF.toInt() else 0xFFF0F4F2.toInt())
+            }
+            val remote = picked == "remote"
+            etAddress.visibility = if (remote) View.VISIBLE else View.GONE
+            tvUrlPreview.visibility = if (remote) View.VISIBLE else View.GONE
+            if (remote) preview()
         }
 
-        btnCancel.setOnClickListener {
+        for ((key, card) in cards) card.setOnClickListener { picked = key; paint() }
+        etAddress.addTextChangedListener(object : android.text.TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
+            override fun afterTextChanged(s: android.text.Editable?) = preview()
+        })
+
+        val dialog = AlertDialog.Builder(this).setView(dialogView).create()
+        btnShowLogs.setOnClickListener { showLogsAndDiagnosticsDialog() }
+        btnFirstRunSolo.setOnClickListener {
+            // Deliberately stores nothing: a player who backs out of choosing gets asked again.
             dialog.dismiss()
+            startLocalFlow()
         }
+        btnCancel.setOnClickListener { dialog.dismiss() }
+        if (asLauncher) dialog.setOnCancelListener { startLocalFlow() }
 
         btnApply.setOnClickListener {
-            val isRemote = rbRemote.isChecked
-            val url = etAddress.text.toString().trim()
-            val selectedBoardMode = if (rbBoard2D.isChecked) "2d" else "3d"
-
-            if (isRemote && (url.isBlank() || (!url.startsWith("http://") && !url.startsWith("https://")))) {
-                Toast.makeText(this, "请输入合法的 http:// 或 https:// 服务器地址", Toast.LENGTH_SHORT).show()
-                return@setOnClickListener
-            }
-
-            prefs.edit().apply {
-                putString(KEY_SERVER_MODE, if (isRemote) "remote" else "local")
-                putString(KEY_REMOTE_URL, url)
-                putString(KEY_BOARD_MODE, selectedBoardMode)
-                apply()
-            }
-
-            dialog.dismiss()
-
-            if (isRemote) {
+            val boardMode = if (rbBoard2D.isChecked) "2d" else "3d"
+            val editor = prefs.edit().putString(KEY_BOARD_MODE, boardMode)
+            if (picked == "remote") {
+                val url = normalizeServerUrl(etAddress.text.toString())
+                if (url == null) {
+                    Toast.makeText(this, "请填写房主地址，形如 100.127.8.41:3000", Toast.LENGTH_SHORT).show()
+                    return@setOnClickListener
+                }
+                editor.putString(KEY_SERVER_MODE, "remote").putString(KEY_REMOTE_URL, url)
+                editor.apply()
+                dialog.dismiss()
                 loadServerUrl(url)
             } else {
+                editor.putString(KEY_SERVER_MODE, "local")
+                editor.apply()
+                dialog.dismiss()
                 startLocalFlow()
             }
         }
 
+        paint()
         dialog.show()
+    }
+
+    /**
+     * Accept what a player actually pastes — a bare IP, an `ip:port`, or a whole invite link — instead
+     * of demanding a full `http://…`. Adds the scheme and the default port, and rejects anything that
+     * cannot be a server address.
+     */
+    private fun normalizeServerUrl(input: String): String? {
+        val trimmed = input.trim()
+        if (trimmed.isEmpty()) return null
+        val lower = trimmed.lowercase()
+        val scheme = if (lower.startsWith("https://")) "https://" else "http://"
+        val body = when {
+            lower.startsWith("http://") -> trimmed.substring(7)
+            lower.startsWith("https://") -> trimmed.substring(8)
+            else -> trimmed
+        }
+        if (body.isBlank() || body.any(Char::isWhitespace)) return null
+        val slash = body.indexOf('/')
+        val authority = if (slash >= 0) body.substring(0, slash) else body
+        val path = if (slash >= 0) body.substring(slash) else ""
+        if (authority.isEmpty()) return null
+        if (!authority.all { it.isLetterOrDigit() || it == '.' || it == ':' || it == '-' || it == '_' }) return null
+        val withPort = if (authority.contains(':')) authority else "$authority:3000"
+        return "$scheme$withPort$path"
     }
 
     fun showLogsAndDiagnosticsDialog() {
