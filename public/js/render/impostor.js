@@ -22,7 +22,10 @@
 //   imp.flush()                             // once per frame, after every unit update, before the main render
 //   imp.free(slot) ; imp.destroy()
 
-const MAX_PAGES = { main: 3, clip: 2 };
+// A page's GPU size is PAGE_PX² whatever the render ratio; its CSS capacity is (PAGE_PX / res)². At res 3 (a dpr-3
+// phone on 'high') one page holds 44 % less of the board than at res 2, so the page budget grows to keep a full
+// field batched — otherwise dense boards fall back to one render target per unit exactly when the fill cost peaks.
+const MAX_PAGES = { main: 4, clip: 3 };
 const PAGE_PX = { main: 2048, clip: 1024 };
 const GRID = 16;
 
@@ -31,7 +34,8 @@ export class ImpostorAtlas {
   constructor(renderer) {
     this.P = globalThis.PIXI;
     this.R = renderer;
-    this.res = Math.max(1, Math.min(2, renderer.resolution || 1));
+    // The baked page has to match the canvas resolution, or the sprites stay soft after the canvas is lifted.
+    this.res = Math.max(1, Math.min(3, renderer.resolution || 1));
     this.pages = [];
     this.parked = new this.P.Container(); // skeletons of impostor units (never rendered directly)
     this.parked.visible = false;

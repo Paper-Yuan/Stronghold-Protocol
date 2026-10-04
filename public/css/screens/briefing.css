@@ -34,7 +34,9 @@
 
 /* ---- briefing layout ---- */
 .brief__main { position: relative; z-index: 1; flex: 1; min-height: 0; display: grid; grid-template-columns: 6.2rem 1fr; gap: .36rem; padding: .3rem .5rem .1rem; }
-.brief__left { display: flex; flex-direction: column; gap: .2rem; min-height: 0; }
+/* Both columns scroll independently: the left one holds the leader's abilities, and a long description used to push
+   战场 / 特训敌人 out of the clipped bottom of the row (min-height: 0 alone only shrinks the box). */
+.brief__left { display: flex; flex-direction: column; gap: .2rem; min-height: 0; overflow: auto; padding-right: .06rem; overscroll-behavior: contain; }
 .brief__right { display: flex; flex-direction: column; gap: .2rem; min-height: 0; overflow: auto; padding-right: .06rem; }
 
 .brief-boss {
@@ -73,12 +75,21 @@
 .brief-faction__text span { font-size: .15rem; color: var(--text-lo); }
 
 .brief-bonds { padding: .16rem .2rem .2rem; background: rgba(12, 15, 14, .8); border: 1px solid var(--line); }
-.brief-bonds__row { display: flex; flex-wrap: wrap; gap: .16rem .1rem; }
-.brief-bond { position: relative; width: 1rem; display: flex; justify-content: center; }
-.brief-bond .bond { --disc: .66rem; }
-.brief-bond .bond__name { font-size: .16rem; }
-.brief-bond__ban { position: absolute; top: calc(-1 * max(.20rem, 16px)); right: .14rem; display: inline-flex; align-items: center; justify-content: center; gap: .02rem; font-size: max(.12rem, 10px); min-width: max(.24rem, 18px); font-weight: 700; padding: 0 max(.05rem, 3px); background: var(--red); color: #fff; line-height: 1.5; box-shadow: 0 0 0 1px #000; }
-.brief-bond__ban .icon { width: max(.12rem, 9px); height: max(.12rem, 9px); flex: none; }
+.brief-bonds__row { display: flex; flex-wrap: wrap; gap: max(.16rem, 5px) max(.1rem, 6px); }
+/* The official bond emblems are 96-110 px of dense detail; at .66rem (22 px on a phone) the 66 % icon lands on ~14 px
+   and the marks stop being distinguishable — they read as "the wrong emblem". The floors below keep the disc, its icon
+   and the name legible on a phone's ~33 px rem. As in the in-game strip, the cell is sized by its label so a 4-glyph
+   name never spills onto its neighbour. */
+.brief-bond { --brief-disc: max(.66rem, 30px); position: relative; min-width: max(1rem, 40px); display: flex; justify-content: center; }
+.brief-bond .bond { --disc: var(--brief-disc); }
+.brief-bond .bond__name { font-size: max(.16rem, 11px); }
+/* The banned-operator count sits on its disc's top-right corner. The disc is centred in the cell, so the corner is
+   half a disc right of the centre — anchoring by the cell's right edge would drift once a long name widens the cell.
+   Anything more negative than -.12rem lifts the badge out of the row and onto the 核心盟约 / CORE BONDS heading above
+   it. The 10px / 18px floors are the phone legibility rule (test/ui/overlap.e2e.test.js) — the pill is shrunk by
+   position and by a smaller icon, not by the type size. */
+.brief-bond__ban { position: absolute; top: max(-.12rem, -5px); right: calc(50% - var(--brief-disc) / 2 - 2px); z-index: 1; display: inline-flex; align-items: center; justify-content: center; gap: .01rem; font-size: max(.12rem, 10px); min-width: max(.24rem, 18px); font-weight: 700; padding: 0 max(.03rem, 2px); background: var(--red); color: #fff; line-height: 1.3; box-shadow: 0 0 0 1px #000; }
+.brief-bond__ban .icon { width: max(.10rem, 8px); height: max(.10rem, 8px); flex: none; }
 .brief-bond.is-partial .bond__core { box-shadow: 0 0 0 2px rgba(255, 84, 84, .5); }
 .brief-legend { display: flex; align-items: center; gap: .08rem; flex-wrap: wrap; font-size: .14rem; color: var(--text-dim); margin-top: -.06rem; }
 .brief-legend__off { width: .16rem; height: .16rem; border-radius: 50%; background: #3a403d; border: 2px solid #555; }

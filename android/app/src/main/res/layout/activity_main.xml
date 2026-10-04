@@ -86,20 +86,7 @@
         </LinearLayout>
     </LinearLayout>
 
-    <!-- Floating settings button in top-right corner -->
-    <ImageView
-        android:id="@+id/btnOpenSettings"
-        android:layout_width="36dp"
-        android:layout_height="36dp"
-        android:layout_gravity="top|end"
-        android:layout_marginTop="8dp"
-        android:layout_marginEnd="16dp"
-        android:alpha="0.6"
-        android:background="?attr/selectableItemBackgroundBorderless"
-        android:clickable="true"
-        android:focusable="true"
-        android:padding="6dp"
-        android:src="@android:drawable/ic_menu_preferences"
-        android:tint="@color/text_white" />
+    <!-- No floating native button here: an overlay at top|end lands on the page's own 玩法说明 button. The shell's
+         settings now live in the in-game 设置 → 本机服务 section, reached through the AndroidNative bridge. -->
 
 </FrameLayout>

@@ -226,7 +226,7 @@
    to swallow the taps and drags on them (review of user playtest #2 item 8: every own unit reachable). */
 .gm__bonds > *, .gm__bonds .bstrip { pointer-events: none; }
 .gm__bonds .bslot, .gm__bonds .bstrip__more { pointer-events: auto; }
-.bstrip { display: flex; align-items: flex-start; justify-content: center; gap: .1rem; flex-wrap: nowrap; }
+.bstrip { display: flex; align-items: flex-start; justify-content: center; gap: max(.06rem, 4px) max(.1rem, 6px); flex-wrap: wrap; }
 .bstrip.is-frozen .bslot { opacity: .5; filter: saturate(.4); }
 .bstrip--empty { display: inline-flex; align-items: center; gap: .12rem; padding: .08rem .16rem; font-size: .15rem; color: var(--text-dim); background: rgba(8, 11, 10, .6); border: 1px dashed var(--line-2); }
 /* a watched teammate's bonds (DESIGN §20.15): an amber "👁 name" pill in front of the discs, amber rings. Horizontal at
@@ -245,11 +245,17 @@
 }
 .bstrip.is-other .bond__core { box-shadow: 0 0 0 1px rgba(246, 163, 41, .45); }
 .bstrip__more { align-self: center; font-size: .16rem; color: var(--text-lo); padding: .04rem .08rem; border: 1px solid var(--line-2); background: rgba(8, 11, 10, .7); }
-.bslot { position: relative; display: flex; flex-direction: column; align-items: center; width: max(.74rem, 34px); }
-.bslot .bond { --disc: max(.52rem, 26px); }
+/* The slot is sized by its label, not by the disc: bond names run to 4 CJK glyphs (维多利亚 / 协防干员), which at the
+   11 px phone floor measure ~44 px — a fixed 27 px box let each label spill into its neighbour's, so the names printed
+   on top of each other (user report 2026-10-04). min-width keeps the old footprint for short names, and the disc stays
+   centred by align-items. */
+.bslot { --bslot-disc: max(.52rem, 21px); position: relative; display: flex; flex-direction: column; align-items: center; min-width: max(.74rem, 27px); }
+.bslot .bond { --disc: var(--bslot-disc); }
 .bslot .bond__name { font-size: max(.16rem, 11px); font-weight: 500; text-shadow: 0 1px 3px #000, 0 0 6px #000; }
+/* Anchored to the disc's corner, not the slot's edge — the slot is now as wide as the label, so a right offset would
+   walk the counter away from the disc it counts. */
 .bslot__count {
-  position: absolute; top: -.04rem; right: .02rem; font-size: .13rem; font-weight: 700; color: var(--text-hi);
+  position: absolute; top: -.04rem; right: calc(50% - var(--bslot-disc) / 2 - 2px); font-size: .13rem; font-weight: 700; color: var(--text-hi);
   background: rgba(8, 11, 10, .92); border: 1px solid var(--line-2); padding: 0 .04rem; line-height: 1.35;
 }
 .bslot__count small { color: var(--text-dim); font-size: .11rem; }

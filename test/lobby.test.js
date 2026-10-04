@@ -330,6 +330,18 @@ describe('static http server', () => {
     assert.equal(health.headers['cache-control'], 'no-store');
   });
 
+  test('/lan/room: one key in, no enumeration out', async () => {
+    const missing = await httpReq(srv.port, '/lan/room?code=ZZZZ');
+    assert.equal(missing.status, 404, 'a key with no room is a plain 404');
+    for (const bad of ['/lan/room', '/lan/room?code=AB', '/lan/room?code=ABCDEFGH', '/lan/room?code=AB%2DCD']) {
+      const r = await httpReq(srv.port, bad);
+      assert.equal(r.status, 404, `${bad} must not be answered`);
+    }
+    // The guest holds one key and gets one yes/no back; there is deliberately no way to list what is open.
+    assert.equal((await httpReq(srv.port, '/lan/rooms')).status, 404);
+    assert.equal((await httpReq(srv.port, '/lan/room?code=ZZZZ&list=1')).status, 404);
+  });
+
   test('WebSocket upgrade only on /ws', async () => {
     await assert.rejects(TestClient.connect(`ws://127.0.0.1:${srv.port}/other`));
     const ok = await TestClient.connect(`ws://127.0.0.1:${srv.port}/ws?x=1`);

@@ -41,6 +41,11 @@ android {
         jvmTarget = '17'
     }
 
+    buildFeatures {
+        // AGP 8 does not generate BuildConfig unless asked; the bridge reports VERSION_NAME through it.
+        buildConfig = true
+    }
+
     sourceSets {
         main {
             jniLibs.srcDirs = ['src/main/jniLibs']

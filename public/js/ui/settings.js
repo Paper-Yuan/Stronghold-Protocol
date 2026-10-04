@@ -55,6 +55,8 @@ export function SettingsModal({ open, onClose }) {
   const s = useSettings();
   const [tested, setTested] = useState(false);
   const [touchUi] = useState(() => detectFeatures().coarse && !detectFeatures().fine);
+  // The Android shell exposes itself as AndroidNative; the same page in a browser has none of it.
+  const nativeShell = globalThis.AndroidNative?.isNativeApp?.() ? globalThis.AndroidNative : null;
   return html`<${Modal} open=${open} onClose=${onClose} title="设置" micro="SETTINGS" width="7.4rem"
     actions=${html`<${Button} variant="secondary" icon="book" class="set-guide" onClick=${() => openGuide(0)}>玩法说明<//>
       <${Button} variant="primary" icon="check" onClick=${onClose}>完成<//>`}>
@@ -71,6 +73,15 @@ export function SettingsModal({ open, onClose }) {
             class=${s.quality === id ? 'is-on' : ''} onClick=${() => updateSettings({ quality: id })}>${label}</button>`)}
         </div>
       </div>
+      ${nativeShell ? html`<div class="set-row">
+            <span class="set-row__label">本机服务<${MicroLabel}>LOCAL ENGINE<//></span>
+            <div class="set-seg">
+              <button type="button" onClick=${() => nativeShell.openServerSettings()}>服务器设置</button>
+              <button type="button" onClick=${() => nativeShell.restartLocalServer()}>重启引擎</button>
+              <button type="button" onClick=${() => nativeShell.showLogs()}>运行日志</button>
+              <button type="button" onClick=${() => nativeShell.reloadClient()}>重载页面</button>
+            </div>
+          </div>` : null}
       ${touchUi
         ? html`<p class="set-hint">触屏操作：点击单位选中（撤退 / 出售）· 长按单位或卡牌查看详情 · 拖动部署后滑动选择朝向</p>`
         : html`<p class="set-hint">快捷键：<kbd>R</kbd> 刷新 · <kbd>F</kbd> 冻结 · <kbd>D</kbd> 升级 · <kbd>Space</kbd> 准备就绪 · <kbd>Esc</kbd> 关闭弹窗 · 右键查看详情</p>`}

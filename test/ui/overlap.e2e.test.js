@@ -167,19 +167,49 @@ describe('phone layout overlaps (briefing stage line, bond badges, bond strip, s
       });
       assert.deepEqual(typo, [], `${dev} briefing typography floors`);
 
+      // Phone contract (user report 2026-10-04): the count sits ON the disc's top-right corner — an overlap with the
+      // disc is now expected. What must never happen is covering the disc's centre (the emblem becomes unreadable) or
+      // lifting out of the row onto the 核心盟约 / CORE BONDS heading above it, which is what the old -16px offset did.
       const bans = await page.$$eval('.brief-bond__ban', (els) => els.map((e) => {
         const g = (x) => x ? { left: x.left, top: x.top, right: x.right, bottom: x.bottom } : null;
         const b = e.getBoundingClientRect();
         const disc = e.closest('.brief-bond')?.querySelector('.bond__core')?.getBoundingClientRect();
+        const row = e.closest('.brief-bonds__row')?.getBoundingClientRect();
         const panel = e.closest('.brief-bonds')?.getBoundingClientRect();
-        return { ban: g(b), disc: g(disc), panel: g(panel) };
+        return { ban: g(b), disc: g(disc), row: g(row), panel: g(panel) };
       }));
       for (const [i, x] of bans.entries()) {
-        const area = overlapArea(x.ban, x.disc);
-        assert.ok(area <= TOL, `ban badge #${i} sits on its bond disc by ${area.toFixed(1)}px^2 (briefing.css:80 — badge is positioned against the 1rem slot, not the .66rem disc)`);
+        if (x.disc) {
+          const cx = (x.disc.left + x.disc.right) / 2, cy = (x.disc.top + x.disc.bottom) / 2;
+          assert.ok(!(cx > x.ban.left && cx < x.ban.right && cy > x.ban.top && cy < x.ban.bottom),
+            `ban badge #${i} covers the bond disc's centre — it must sit on the corner only`);
+        }
+        // The heading sits above .brief-bonds' own padding, so staying inside the panel is what proves the badge did
+        // not lift onto it — a few px of overhang past the row is intended (it clears the disc's centre).
         if (x.panel) assert.ok(x.ban.top >= x.panel.top - 1 && x.ban.left >= x.panel.left - 1, `ban badge #${i} is clipped by .brief-bonds padding (negative offsets)`);
       }
       if (bans.length) assert.equal(await hitSelf(page, '.brief-bond__ban'), 'ok', 'the first ban badge is not hittable (covered or clipped)');
+
+      // Same label-collision rule as the in-game strip: .brief-bond is sized by its name, and the ban badge keeps the
+      // disc's corner instead of the cell's right edge.
+      const cells = await page.evaluate(() => [...document.querySelectorAll('.brief-bond')].map((c) => {
+        const r = (sel) => c.querySelector(sel)?.getBoundingClientRect();
+        const name = r('.bond__name'), disc = r('.bond__disc'), ban = r('.brief-bond__ban');
+        return { text: c.querySelector('.bond__name')?.textContent.trim() || '', left: name?.left ?? 0, right: name?.right ?? 0, top: name?.top ?? 0,
+          discRight: disc?.right ?? null, banRight: ban?.right ?? null };
+      }));
+      const cellCollide = [];
+      for (let i = 1; i < cells.length; i++) {
+        const a = cells[i - 1], b = cells[i];
+        if (Math.abs(a.top - b.top) > 2) continue;
+        const over = a.right - b.left;
+        if (over > 0) cellCollide.push(`"${a.text}" / "${b.text}" overlap by ${over.toFixed(1)}px`);
+      }
+      assert.deepEqual(cellCollide, [], `${dev} briefing bond labels collide — .brief-bond must be sized by its name`);
+      const banOff = cells.filter((c) => c.banRight != null && c.discRight != null)
+        .map((c) => +(c.banRight - c.discRight).toFixed(1))
+        .filter((d) => !(d >= -2 && d <= 6));
+      assert.deepEqual(banOff, [], `${dev} .brief-bond__ban walked off the disc's corner (badge − disc right edge must stay in −2..6px)`);
       assert.deepEqual(problems, [], `${dev} briefing page errors`);
       await page.close();
     });
@@ -194,18 +224,18 @@ describe('phone layout overlaps (briefing stage line, bond badges, bond strip, s
 
       if (slots.length) {
         const min = Math.min(...slots.map((s) => Math.min(s.w, s.h)));
-        assert.ok(min >= DEVICES[dev].minSlot, `.bslot shrinks to ${min.toFixed(1)}px on ${dev} — phone floor is ${DEVICES[dev].minSlot}px (game.css:243 media query + .bslot{width:.74rem})`);
+        assert.ok(min >= DEVICES[dev].minSlot, `.bslot shrinks to ${min.toFixed(1)}px on ${dev} — phone floor is ${DEVICES[dev].minSlot}px (game.css .bslot{min-width:max(.74rem,27px)})`);
         const group = { left: Math.min(...slots.map((s) => s.left)), right: Math.max(...slots.map((s) => s.right)) };
         const drift = Math.abs((group.left + group.right) / 2 - (host.left + host.right) / 2);
         assert.ok(drift <= host.w * 0.08, `bond strip is off-centre by ${drift.toFixed(1)}px in a ${host.w.toFixed(0)}px host (>8%) — centre .gm__bonds`);
 
-        // Check bond dimensions & typography floor: --disc >= 26px, name font >= 11px, slot width >= 34px
+        // Check bond dimensions & typography floor: --disc >= 21px, name font >= 11px, slot width >= 27px
         const bondMetrics = await page.evaluate(() => {
           const out = [];
           const slot = document.querySelector('.gm__bonds .bslot');
           if (slot) {
             const r = slot.getBoundingClientRect();
-            if (r.width < 34) out.push(`slot width ${r.width.toFixed(1)}px < 34px`);
+            if (r.width < 27) out.push(`slot width ${r.width.toFixed(1)}px < 27px`);
             const nameEl = slot.querySelector('.bond__name');
             if (nameEl) {
               const px = parseFloat(getComputedStyle(nameEl).fontSize);
@@ -214,12 +244,35 @@ describe('phone layout overlaps (briefing stage line, bond badges, bond strip, s
             const discEl = slot.querySelector('.bond__core') || slot.querySelector('.bond__disc');
             if (discEl) {
               const rDisc = discEl.getBoundingClientRect();
-              if (rDisc.width < 25) out.push(`bond disc width ${rDisc.width.toFixed(1)}px < 26px`);
+              if (rDisc.width < 20) out.push(`bond disc width ${rDisc.width.toFixed(1)}px < 21px`);
             }
           }
           return out;
         });
         assert.deepEqual(bondMetrics, [], `${dev} bond strip dimensions and typography`);
+
+        // User report 2026-10-04: names run to 4 CJK glyphs (~44 px at the 11 px phone floor) while .bslot was a fixed
+        // 27 px box, so every label spilled into its neighbour's and the strip read as overlapping text. Adjacent
+        // labels on the same row must have clear space, and the counter still has to sit on its disc's corner now that
+        // the slot grows with the label.
+        const labels = await page.evaluate(() => [...document.querySelectorAll('.gm__bonds .bslot')].map((s) => {
+          const r = (sel) => s.querySelector(sel)?.getBoundingClientRect();
+          const name = r('.bond__name'), disc = r('.bond__disc'), badge = r('.bslot__count');
+          return { text: s.querySelector('.bond__name')?.textContent.trim() || '', left: name?.left ?? 0, right: name?.right ?? 0, top: name?.top ?? 0,
+            discRight: disc?.right ?? null, badgeRight: badge?.right ?? null };
+        }));
+        const collide = [];
+        for (let i = 1; i < labels.length; i++) {
+          const a = labels[i - 1], b = labels[i];
+          if (Math.abs(a.top - b.top) > 2) continue; // wrapped onto a second row
+          const over = a.right - b.left;
+          if (over > 0) collide.push(`"${a.text}" / "${b.text}" overlap by ${over.toFixed(1)}px`);
+        }
+        assert.deepEqual(collide, [], `${dev} bond labels collide — .bslot must be sized by its label (game.css .bslot{min-width})`);
+        const offCorner = labels.filter((l) => l.badgeRight != null && l.discRight != null)
+          .map((l) => +(l.badgeRight - l.discRight).toFixed(1))
+          .filter((d) => !(d >= -2 && d <= 6));
+        assert.deepEqual(offCorner, [], `${dev} .bslot__count walked off the disc's corner (badge right edge − disc right edge must stay in −2..6px)`);
       }
       assert.deepEqual(problems, [], `${dev} prep page errors`);
       await page.close();

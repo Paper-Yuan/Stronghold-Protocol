@@ -248,6 +248,24 @@ p{margin:8px 0}a{color:#4ed8af}</style></head><body><main><h1>${status}</h1><p>$
 ${detail ? `<p style="opacity:.6">${escapeHtml(detail)}</p>` : ''}<p><a href="/">返回首页 · Back to home</a></p></main></body></html>`;
 }
 
+/**
+ * Whether a socket peer is this machine or a private network. `/lan/room` answers only to these, so a client
+ * reaching the server through a tunnel or a public interface cannot probe which room codes exist.
+ */
+function isPrivateAddress(addr) {
+  if (!addr) return false;
+  const a = String(addr).toLowerCase().replace(/^::ffff:/, '');
+  if (a === '::1') return true;
+  const v4 = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/.exec(a);
+  if (v4) {
+    const o1 = +v4[1];
+    const o2 = +v4[2];
+    return o1 === 10 || o1 === 127 || (o1 === 192 && o2 === 168) || (o1 === 172 && o2 >= 16 && o2 <= 31)
+      || (o1 === 169 && o2 === 254);
+  }
+  return /^f[cd][0-9a-f]{1,2}:/.test(a); // IPv6 unique-local (fc00::/7)
+}
+
 function sendError(req, res, status, title, detail) {
   if (res.headersSent) { res.destroy(); return; }
   const body = Buffer.from(errorPage(status, title, detail));
@@ -542,6 +560,20 @@ export async function startServer(opts = {}) {
       sendJson(req, res, 200, {
         ok: true, version: PROTOCOL_VERSION, app: APP_VERSION, uptimeSec: Math.round((Date.now() - startedAt) / 1000),
         sockets: network.connectionCount, sessions: registry.size, ...lobby.stats(),
+      });
+      return;
+    }
+    // LAN room probe, so a guest can join with only the 4-letter key: the phone sweeps its own /24 and asks each
+    // server it finds whether that room is open. It answers with a yes/no plus seat counts — never a room list, and
+    // nothing at all to a peer outside the private ranges, so a public or tunnelled client cannot enumerate codes.
+    if (parts.rawPath === '/lan/room') {
+      if (!isPrivateAddress(req.socket?.remoteAddress)) { sendError(req, res, 404, '未找到 · Not found'); return; }
+      const code = String(new URLSearchParams(parts.query).get('code') || '').toUpperCase();
+      const room = /^[A-Z0-9]{4}$/.test(code) ? lobby.getRoom(code) : null;
+      if (!room || room.mode !== 'coop') { sendError(req, res, 404, '未找到 · Not found'); return; }
+      sendJson(req, res, 200, {
+        ok: true, code: room.code, mode: room.mode, difficulty: room.difficulty,
+        seats: room.seats.length, humans: room.seats.filter((s) => s && !s.isBot).length, inMatch: !!room.match,
       });
       return;
     }

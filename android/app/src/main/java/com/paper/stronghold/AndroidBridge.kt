@@ -1,6 +1,8 @@
 package com.paper.stronghold
 
 import android.webkit.JavascriptInterface
+import org.json.JSONArray
+import org.json.JSONObject
 
 class AndroidBridge(private val activity: MainActivity) {
 
@@ -8,7 +10,34 @@ class AndroidBridge(private val activity: MainActivity) {
     fun isNativeApp(): Boolean = true
 
     @JavascriptInterface
-    fun getAppVersion(): String = "0.1.0"
+    fun getAppVersion(): String = BuildConfig.VERSION_NAME
+
+    /** This device's LAN address, so the page can label the room it is hosting itself. */
+    @JavascriptInterface
+    fun getLocalIp(): String = NetworkUtils.getLocalIpAddress(activity)
+
+    /** Join a room hosted by another phone found by [findRoom]. */
+    @JavascriptInterface
+    fun connectToHost(ip: String, room: String) {
+        activity.connectToHost(ip, room)
+    }
+
+    /**
+     * Ask the local network which machine hosts the room [room], so the guest only ever types the key. Results come
+     * back on `window.__onRoomFound(json)`. Asynchronous for the same reason as [scanLanHosts].
+     */
+    @JavascriptInterface
+    fun findRoom(room: String) {
+        val own = NetworkUtils.lanAddresses(activity)
+        Thread {
+            val hosts = NetworkUtils.findRoom(own, room)
+            val arr = JSONArray()
+            for (h in hosts) {
+                arr.put(JSONObject().put("ip", h.ip).put("app", h.app).put("humans", h.rooms).put("self", h.self))
+            }
+            activity.deliverRoomFound(arr.toString())
+        }.start()
+    }
 
     @JavascriptInterface
     fun openServerSettings() {
@@ -27,6 +56,12 @@ class AndroidBridge(private val activity: MainActivity) {
     @JavascriptInterface
     fun getLogs(): String {
         return NodeServerService.serverLogs.joinToString("\n")
+    }
+
+    /** The shell's own diagnostics sheet: it tails filesDir/server.log, which the page cannot read. */
+    @JavascriptInterface
+    fun showLogs() {
+        activity.runOnUiThread { activity.showLogsAndDiagnosticsDialog() }
     }
 
     @JavascriptInterface

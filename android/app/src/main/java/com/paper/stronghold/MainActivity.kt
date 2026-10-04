@@ -32,6 +32,8 @@ class MainActivity : AppCompatActivity() {
         private const val PREFS_NAME = "stronghold_prefs"
         private const val KEY_SERVER_MODE = "server_mode" // "local" or "remote"
         private const val KEY_REMOTE_URL = "remote_url"
+        private val IP_V4 = Regex("""^\d{1,3}(\.\d{1,3}){3}$""")
+        private const val ROOM_CODE_MAX = 8
         private const val KEY_BOARD_MODE = "board_mode"   // "3d" or "2d"
         private const val DEFAULT_LOCAL_URL = "http://127.0.0.1:3000"
         private const val DEFAULT_LAN_URL = "http://192.168.10.25:3000"
@@ -42,7 +44,6 @@ class MainActivity : AppCompatActivity() {
     private lateinit var layoutFailedActions: LinearLayout
     private lateinit var tvLoadingStatus: TextView
     private lateinit var progressLoading: ProgressBar
-    private lateinit var btnOpenSettings: ImageView
     private lateinit var btnQuickConnectLan: Button
     private lateinit var btnDirectSettings: Button
     private lateinit var btnRetryConnect: Button
@@ -132,13 +133,11 @@ class MainActivity : AppCompatActivity() {
         layoutFailedActions = findViewById(R.id.layoutFailedActions)
         tvLoadingStatus = findViewById(R.id.tvLoadingStatus)
         progressLoading = findViewById(R.id.progressLoading)
-        btnOpenSettings = findViewById(R.id.btnOpenSettings)
         btnQuickConnectLan = findViewById(R.id.btnQuickConnectLan)
         btnDirectSettings = findViewById(R.id.btnDirectSettings)
         btnRetryConnect = findViewById(R.id.btnRetryConnect)
         btnShowDiagLogs = findViewById(R.id.btnShowDiagLogs)
 
-        btnOpenSettings.setOnClickListener { showServerSwitchDialog() }
         btnDirectSettings.setOnClickListener { showServerSwitchDialog() }
         btnShowDiagLogs.setOnClickListener { showLogsAndDiagnosticsDialog() }
         btnQuickConnectLan.setOnClickListener {
@@ -388,6 +387,24 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    /**
+     * Point the client at another phone's server (found by [AndroidBridge.scanLanHosts]) and open its room. The page
+     * cannot switch the shell's server mode itself, so this stays the one entry point for it. Both arguments come from
+     * JavaScript, so each is validated before it reaches a URL.
+     */
+    fun connectToHost(ip: String, room: String) {
+        if (!IP_V4.matches(ip)) return
+        val code = room.filter { it.isLetterOrDigit() }.uppercase().take(ROOM_CODE_MAX)
+        val base = "http://$ip:3000/"
+        runOnUiThread {
+            getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE).edit()
+                .putString(KEY_SERVER_MODE, "remote")
+                .putString(KEY_REMOTE_URL, base)
+                .apply()
+            loadServerUrl(if (code.isEmpty()) base else "$base?room=$code")
+        }
+    }
+
     private fun loadServerUrl(rawUrl: String) {
         val targetUrl = buildUrlWithBoardMode(rawUrl)
         runOnUiThread {
@@ -402,6 +419,13 @@ class MainActivity : AppCompatActivity() {
         val cleanUrl = baseUrl.replace(Regex("[?&]board=[^&]+"), "")
         val separator = if (cleanUrl.contains("?")) "&" else "?"
         return "$cleanUrl${separator}board=$boardMode"
+    }
+
+    /** Hand a "which host has this room code" answer back; see [AndroidBridge.findRoom]. */
+    fun deliverRoomFound(json: String) {
+        runOnUiThread {
+            webView.evaluateJavascript("window.__onRoomFound && window.__onRoomFound($json)", null)
+        }
     }
 
     fun reloadWebView() {

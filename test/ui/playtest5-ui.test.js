@@ -117,9 +117,12 @@ describe('9: the prep camera keeps the bench clear of the shop bar on phones in 
   test('HUD_REM mirrors the CSS it measures (bond strip bottom, shop bar top, the notched-phone rule)', () => {
     const game = read('public/css/screens/game.css');
     const shop = read('public/css/screens/game-shop.css');
-    // bond strip: top 1.36rem + a .52rem disc and its name line → measured 2.14–2.15rem in Chrome; 2.16rem kept
+    // bond strip: top 1.36rem + a .52rem disc and its name line → measured 2.14–2.15rem in Chrome; 2.16rem kept. The px
+    // floors are what a phone lands on, so hudBands measures the strip instead of trusting the rem budget alone.
     assert.match(game, /\.gm__bonds \{ position: absolute; left: 1\.56rem; top: 1\.36rem;/);
-    assert.match(game, /\.bslot \.bond \{ --disc: \.52rem; \}/);
+    assert.match(game, /\.bslot \{ --bslot-disc: max\(\.52rem, 21px\);/);
+    assert.match(game, /\.bslot \.bond \{ --disc: var\(--bslot-disc\); \}/);
+    assert.match(read('public/js/ui/fieldHost.js'), /querySelector\('\.gm__bonds'\)/);
     assert.equal(HUD_REM.bondStripBottom, 2.16);
     // shop bar: bottom .2rem + row padding .1rem × 2 + 2.24rem cards (level / operator / item) + 2 px + 1 px borders
     assert.match(shop, /\.shopbar \{\n {2}position: absolute; right: \.26rem; bottom: \.2rem;/);
