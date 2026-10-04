@@ -225,6 +225,14 @@ export function immuneSet(v, extra = null) {
   return out;
 }
 
+/** data/enemies.json `attackAnim` → { dur, hit } (hit null = none: half the clip), or null when malformed / absent. */
+function normAttackAnim(a) {
+  const dur = Number(a?.dur);
+  if (!(Number.isFinite(dur) && dur > 0)) return null;
+  const hit = Number(a.hit);
+  return { dur, hit: a.hit != null && Number.isFinite(hit) ? Math.min(dur, Math.max(0, hit)) : null };
+}
+
 /** Normalise an enemy record (research 05 shape or data/enemies.json shape) into an EnemyDef. */
 export function normalizeEnemy(key, e) {
   const st = e.stats ?? e;
@@ -262,6 +270,8 @@ export function normalizeEnemy(key, e) {
     notCountInTotal: !!(e.notCountInTotal),
     hitArea: normHitArea(e.hitArea),   // huge units only (body.js); null = a point
     staticBody: !!e.staticBody,        // 静态刚体: pushes / pulls never move it (Battle._displaceable)
+    attackAnim: normAttackAnim(e.attackAnim),   // its attack clip { dur, hit } (ai.js attackStand); null = none known
+    attackMoves: !!e.attackMoves,      // 「不停止移动」: never stops to attack (ai.js attackStand)
     tags: e.tags ?? [],
     abilities: e.abilities ?? [],
     skills: e.skills ?? [],

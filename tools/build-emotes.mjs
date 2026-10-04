@@ -14,7 +14,8 @@
 //     themes: [{ themeId, dir, sortId, isBasic, name, emotes: [id…] }],             pages, enabled-list order
 //     emotes: [{ id, themeId, sortId, picId, art, label }] }                          36, page order then sortId
 // `art` = /assets/local/emoticon/<dir>/<picId>.png (tools/local-extract; key by picId — fooldoctor_03…06 use pics
-// 04/05/06/08). Official emotes carry no text (desc is null); `label` is ours and only ever an aria-label.
+// 04/05/06/08); the mirror copy that tools/fetch-assets.mjs downloads is data/assets.json ui['emoticon/<dir>/<picId>'].
+// Official emotes carry no text (desc is null); `label` is ours and only ever an aria-label.
 // shared/constants.js EMOTE_THEMES mirrors this file (test/ui/emotes.test.js keeps them identical).
 //
 // Usage: node tools/build-emotes.mjs [--offline] [--check] [--out data/emotes.json] [--cache .cache/gamedata]

@@ -281,6 +281,44 @@ describe('static http server', () => {
     assert.equal(textRange.body.toString(), js.slice(0, 2));
   });
 
+  test('extension-less /media audio route (download managers sniff .mp3 URLs)', async () => {
+    const direct = await httpReq(srv.port, '/assets/audio/bgm.mp3');
+    const media = await httpReq(srv.port, '/media/bgm');
+    assert.equal(media.status, 200);
+    assert.equal(media.headers['content-type'], 'audio/mpeg', 'resolved from the real .mp3 on disk');
+    assert.equal(media.headers['accept-ranges'], 'bytes');
+    assert.deepEqual(media.body, mp3, 'same bytes as the direct URL');
+    assert.equal(media.headers['cache-control'], direct.headers['cache-control'], 'same 1-day policy as /assets/…');
+    assert.equal(media.headers.etag, direct.headers.etag, 'ETag is the file validator, not the URL');
+
+    const range = await httpReq(srv.port, '/media/bgm', { headers: { range: 'bytes=0-9' } });
+    assert.equal(range.status, 206);
+    assert.equal(range.headers['content-range'], `bytes 0-9/${mp3.length}`);
+    assert.deepEqual(range.body, mp3.subarray(0, 10));
+    const head = await httpReq(srv.port, '/media/bgm', { method: 'HEAD' });
+    assert.equal(head.status, 200);
+    assert.equal(head.body.length, 0);
+
+    // The extension may still be given, and the other audio extension resolves too.
+    assert.equal((await httpReq(srv.port, '/media/bgm.mp3')).status, 200);
+    const ogg = await httpReq(srv.port, '/media/bgm.ogg');
+    assert.equal(ogg.status, 200);
+    assert.equal(ogg.headers['content-type'], 'audio/ogg');
+    assert.equal(ogg.body.length, 64);
+
+    // …and it only ever reaches public/assets/audio.
+    for (const p of ['/media/nope', '/media/bgm/', '/media/', '/media/.hidden', '/media/bgm.mp3/nope', '/media/js/app']) {
+      const r = await httpReq(srv.port, p);
+      assert.equal(r.status, 404, `${p} → 404`);
+      assert.doesNotMatch(r.body.toString(), /TOP-SECRET-CONTENT/, `${p} must not leak files outside public/assets/audio`);
+    }
+    for (const p of ['/media/..%2f..%2fsecret.txt', '/media/bgm/../..%2f..%2fsecret.txt']) {
+      const r = await httpReq(srv.port, p);
+      assert.equal(r.status, 403, `${p} → 403 (same as the rest of the server)`);
+      assert.doesNotMatch(r.body.toString(), /TOP-SECRET-CONTENT/);
+    }
+  });
+
   test('path traversal and dotfiles are blocked', async () => {
     const attempts = [
       '/../secret.txt', '/%2e%2e/secret.txt', '/..%2fsecret.txt', '/%2e%2e%2fsecret.txt', '/data/../../secret.txt',

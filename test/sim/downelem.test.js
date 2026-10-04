@@ -50,23 +50,25 @@ test('a knocked-out operator is `down` until it redeploys: its timer, then waiti
   assert.ok(h.eventsOf('deploy').some((e) => e[1] === a.id));
 });
 
-test('summons, devices, enemies and withdrawn / removed operators are never `down`', () => {
+test('summons, devices, enemies, operators removed for good and the 突袭 retreat are never `down`; an operator forced out is (GitHub #60)', () => {
   const h = makeBattle({
-    defs: { chess: { t_a: op('t_a'), t_b: op('t_b'), t_c: op('t_c') }, enemies: { enemy_dummy: enemyRec({ key: 'enemy_dummy', hp: 100, speed: 0 }) } },
-    units: [{ chessId: 't_a', row: 9, col: 5 }, { chessId: 't_b', row: 10, col: 5 }, { chessId: 't_c', row: 11, col: 5 }],
+    defs: { chess: { t_a: op('t_a'), t_b: op('t_b'), t_c: op('t_c'), t_d: op('t_d') }, enemies: { enemy_dummy: enemyRec({ key: 'enemy_dummy', hp: 100, speed: 0 }) } },
+    units: [{ chessId: 't_a', row: 9, col: 5 }, { chessId: 't_b', row: 10, col: 5 }, { chessId: 't_c', row: 11, col: 5 }, { chessId: 't_d', row: 9, col: 6 }],
     enemies: [{ key: 'enemy_dummy', pos: [11, 8] }], content: 'none', autoFinish: false, timeLimit: 120,
   });
   h.step();
   const tok = h.b.spawnToken('p1', 'token_test', 12, 5, { def: TOKEN });
   h.b.kill(tok);
-  h.b.retreat(h.unit('t_a'), { reason: 'retreat' });
   h.b.retreat(h.unit('t_b'), { reason: 'expired', permanent: true });
+  h.b.retreat(h.unit('t_d'), { reason: 'raid' });      // 突袭: redeployed at once on its landing tile (here: nowhere)
   h.b.kill(h.enemy('enemy_dummy'));
   assert.equal(h.snapshot().down, undefined);
+  // PRTS 卫戍协议/帮助 "干员退场后…原地留下一个“倒地干员”…": a forced exit (史尔特尔's 余烬 …) lies down like a knock-out
+  h.b.retreat(h.unit('t_a'), { reason: 'retreat' });
   h.b.kill(h.unit('t_c'));
-  assert.deepEqual(h.snapshot().down.map((d) => d[0]), [h.unit('t_c').id], 'only the knocked-out operator');
+  assert.deepEqual(h.snapshot().down.map((d) => d[0]), [h.unit('t_a').id, h.unit('t_c').id], 'the forced-out and the knocked-out operator');
   const ids = new Set(h.b.fieldMeta().units.map((u) => u.id));
-  assert.ok(ids.has(h.unit('t_c').id) && !ids.has(h.unit('t_a').id) && !ids.has(tok.id));
+  assert.ok(ids.has(h.unit('t_c').id) && ids.has(h.unit('t_a').id) && !ids.has(h.unit('t_b').id) && !ids.has(h.unit('t_d').id) && !ids.has(tok.id));
 });
 
 test('carryState.down (联防): deployed with everyone, forced out at once — down on its tile without the knock-out hooks — then back after its timer', () => {

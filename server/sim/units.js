@@ -85,7 +85,7 @@ export class Unit {
     this.stats = { dmg: 0, kills: 0, heal: 0, taken: 0, attacks: 0 };
     this.hidden = false;        // enemies inside a DISAPPEAR segment
     this.moving = false;        // enemies: walked this tick (drawn on the move clip; ai.js updateEnemy)
-    this.form = null;           // enemies: the model's current form (content/enemies.js setForm → snapshot.js unitInfo)
+    this.form = null;           // the model's current form (content/enemies.js setForm, a 傀儡师's 替身 'doll' → snapshot.js unitInfo)
     this.anim = 0;
     this.persist = { redeployMul: 1, freeRedeploys: 0 };
     this.isBoss = false;

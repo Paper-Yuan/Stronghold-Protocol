@@ -33,7 +33,9 @@
 //      the ground path but count as flyers) and weighted by their enemies; an exposure model (tile time × DPS of the
 //      covering units against the round's DEF / RES, blocker hold time, flyers only for anti-air) is maximized
 //      greedily — blockers first, then damage dealers by DPS, then healers — over every
-//      (legal tile, direction) pair of the server's deploy map (no 深水区): each unit's range grid — the one it is
+//      (legal tile, direction) pair of the server's deploy map (no 深水区; a 钩索师 / 推击手, which may also stand on
+//      a 高台 — placement 'all', DESIGN §22.6 —, is planned on the ground tiles like any blocker, as in 0.1.1
+//      [ASSUMED: the lineup counts it as a blocker]): each unit's range grid — the one it is
 //      deployed with, rangeRec (loadoutRecord attackRangeGrid) — is rotated per direction (DESIGN §3; RIGHT is tried first
 //      and kept on ties, so symmetric ranges and melee units whose front adds nothing stay facing the gates), so
 //      ranged units turn toward the enemy path tiles they cover best and blockers toward the road; on 气流 tiles
@@ -75,7 +77,7 @@
 import { GEO } from '../../shared/constants.js';
 import { deriveSeed } from '../sim/rng.js';
 import { ASPD_MIN } from '../sim/constants.js';
-import { freeSlot, countFree, legalTiles, canPlace, positionClass, parseKey, tileKey, FIELD, pieceDir, boardTileOf, BOSS_MIRROR_COL } from './board.js';
+import { freeSlot, countFree, legalTiles, canPlace, positionClass, basePositionClass, parseKey, tileKey, FIELD, pieceDir, boardTileOf, BOSS_MIRROR_COL } from './board.js';
 import { rotateOffset, normDir, mirrorDir, oppositeDir } from '../sim/dir.js';
 import { itemKey } from './gamedata.js';
 import { computeBonds } from './bondsMeta.js';
@@ -274,7 +276,8 @@ function tacticScore(m, ps, card) {
 
 const chessRec = (m, id) => m.gd.chess(id);
 const isHealer = (c) => !!c && (c.dmgType === 'heal' || c.attackKind === 'heal');
-const isBlocker = (c) => !!c && positionClass(c) === 'melee' && (c.stats?.blockCnt ?? 1) > 0 && c.attackKind !== 'none';
+// the record's own position: a 钩索师 / 推击手 (placement 'all', DESIGN §22.6) is a MELEE blocker like any other
+const isBlocker = (c) => !!c && basePositionClass(c) === 'melee' && (c.stats?.blockCnt ?? 1) > 0 && c.attackKind !== 'none';
 /** 近地悬浮 enemies walk a ground route but are air units (no block, anti-air only — DESIGN §19). */
 const HOVER = new Set(HOVER_KEYS);
 const hitsFly = (c) => !!c && !!c.canHitFly && !isHealer(c) && c.attackKind !== 'none';
@@ -946,7 +949,8 @@ export function* planLayoutSteps(m, ps, pieces, params = LAYOUT_PARAMS, { occupi
     let bestV = -Infinity;
     // a "只能部署在召唤者攻击范围内" summon (伺夜's 狼群, 缪尔赛思's 流形): only the tiles of its owner's range
     const within = p.kind === 'token' && typeof ps.summonRange === 'function' ? ps.summonRange(p) : null;
-    for (const [r, c] of legalTiles(map, positionClass(r0))) {
+    // the record's own position class: a 钩索师 / 推击手 (placement 'all') stays on the ground tiles, where it blocks
+    for (const [r, c] of legalTiles(map, basePositionClass(r0))) {
       const k = tileKey(r, c);
       if (taken.has(k) || (within && !within.has(k))) continue;
       const noise = m.rngBots() * 1e-6;

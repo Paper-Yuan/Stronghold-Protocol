@@ -29,7 +29,7 @@
 //   every MANUAL skill; AUTO skills never take a class row).
 // - fx kinds emitted (battle.fx(kind, {x, y, id, …})): 'aoe' {r, skill}, 'healAoe' {r}, 'summon' {token}, 'anchor'
 //   {fromX, fromY, r}, 'teleport', 'zone' {r, duration}, 'iceSpike' {r}, 'extraAttack', 'downed', 'revive' {r},
-//   'overload', 'ember', 'bloodBattle', 'reborn', 'candle', 'wake' {scale}, 'mote', 'hpShare', 'knockout', 'crit',
+//   'overload', 'ember', 'bloodBattle', 'reborn', 'candle', 'wake' {scale}, 'mote', 'hpShare', 'crit',
 //   'meltdown', 'soul', 'sleepGuard', 'weightless'; engine kinds used: 'dodge'.
 
 import { COLS } from '../../constants.js';
@@ -763,8 +763,9 @@ const KITS = {
 
   // ---------------------------------------------------------------------------------------------------------------
   // 乌尔比安 — S3 必须开辟的通路 (25 s, CUSTOM_RANGE row ahead): max HP/ATK +, throws an anchor forward that stops on the
-  // first enemy or at max distance: 135 % ATK phys + 6 s stun around it (projectile_range); moves onto the anchor tile when
-  // deployable (a 从不混淆的方向 marker keeps his tile) and returns at skill end.
+  // first enemy or at max distance — on his own tile while he blocks: 135 % ATK phys + 6 s stun around it
+  // (projectile_range); moves onto the anchor tile when deployable and not his own (a 从不混淆的方向 marker keeps his tile)
+  // and returns at skill end.
   // T1 本性的坚守: heal 100 (160 below 50 %) on every hit taken. T2 血脉的哺养: per kill +120 max HP / +30 ATK (×9),
   // other Abyssal Hunters +50 %. Module (elite): healing received ×1.2.
   // S1 必须促成的接触 (instant): the anchor lands on the best enemy of the skill range (beyond his own range, unblocked
@@ -815,23 +816,31 @@ const KITS = {
         kind: 'duration',
         mods: mods({ hpPct: num(bb.max_hp), atkPct: num(bb.atk) }),
         onStart({ battle, unit }) {
-          // the anchor flies straight ahead along his direction
-          let stop = null;
-          for (let d = 1; d <= reach; d++) {
-            const [r, c] = frontOf(unit.tileR, unit.tileC, unit.dir, d);
-            // the anchor stops at the field edge and in front of a ground obstacle (crates, roadblocks)
-            if (!battle.grid.inRect(r, c) || battle.grid.isObstacle(r, c)) break;
-            stop = d;
-            if (battle.enemiesInKeys([r * COLS + c], unit, { canHitFly: true }).length) break;
+          // PRTS 备注 ② — the anchor's target: his own tile while he blocks an enemy (e.g. just after a 突袭 landing),
+          // else the nearest tile ahead in the skill range (straight along his direction) with an enemy on it, else the
+          // farthest one. His own tile is a candidate only while he blocks ("自身所在地块（仅阻挡敌人时）"); not taken: the
+          // reading of the range's own tile (6-1 starts at [0,0]) as distance 0 for the second rule (a flyer over him)
+          let stop = 0;
+          if (!unit.blocking.some((e) => e.alive && e.blockedBy === unit)) {
+            for (let d = 1; d <= reach; d++) {
+              const [r, c] = frontOf(unit.tileR, unit.tileC, unit.dir, d);
+              // the anchor stops at the field edge and in front of a ground obstacle (crates, roadblocks)
+              if (!battle.grid.inRect(r, c) || battle.grid.isObstacle(r, c)) break;
+              stop = d;
+              if (battle.enemiesInKeys([r * COLS + c], unit, { canHitFly: true }).length) break;
+            }
           }
-          const [sr, sc] = frontOf(unit.tileR, unit.tileC, unit.dir, stop ?? 0);
+          const [sr, sc] = frontOf(unit.tileR, unit.tileC, unit.dir, stop);
           const fromX = unit.x, fromY = unit.y;
           battle.fx('anchor', { x: sc, y: sr, id: unit.id, fromX, fromY, r: radius });
           for (const e of battle.foesInRadius(sc, sr, radius)) {
             battle.dealDamage(unit, e, { amount: unit.s.atk * num(bb.atk_scale), type: 'phys', isSkill: true, tags: ['skill', 'anchor'] });
             if (e.alive) battle.applyStatus(e, 'stun', { duration: num(bb.stun), source: unit });
           }
-          if (stop == null || !unit.alive) return;
+          // ③ 【移动】 — only a change of tile moves him and leaves the 从不混淆的方向 ("若目标地块不为当前地块，会在原地部署"): an
+          // anchor on his own tile leaves him where he stands, no marker, nothing to return from [ASSUMED: the "tile one
+          // beyond the landing" is not tried when the landing is his own tile]
+          if (stop === 0 || !unit.alive) return;
           // PRTS 备注: landing tile > the tile one beyond it > his own tile (a deployable, free, unreserved melee tile)
           const ok = ([r, c]) => (r !== unit.tileR || c !== unit.tileC) && battle.grid.inRect(r, c) && battle.grid.canStand(r, c) && !battle.grid.isObstacle(r, c) && !battle.isReservedTile(r, c);
           const dest = [[sr, sc], frontOf(unit.tileR, unit.tileC, unit.dir, stop + 1)].find(ok);
@@ -1050,7 +1059,8 @@ const KITS = {
 
   // ---------------------------------------------------------------------------------------------------------------
   // 史尔特尔 — S3 黄昏 (toggle, 持续时间无限): full heal, ATK +, range +2, 3 targets, max HP +5000 (flat), HP loss ramping
-  // to 20 % max HP/s over 60 s. T1 熔火: ignores 20 RES. T2 余烬: lethal damage keeps HP ≥ 1 for 8 s, then she withdraws.
+  // to 20 % max HP/s over 60 s. T1 熔火: ignores 20 RES. T2 余烬: lethal damage keeps HP ≥ 1 for 8 s (不死 + 禁疗), then she
+  // withdraws.
   // Module (elite): ASPD +8 while not blocking.
   // S1 烈焰魔剑 (instant, attack SP): next attack atk_scale × ATK; a kill refills all SP at once.
   // S2 熔核巨影 (duration): ATK +, range +1, 2 targets; an attack that hits a single enemy is ×critical atk_scale.
@@ -1084,7 +1094,8 @@ const KITS = {
         onStart({ battle, unit }) {
           unit.mem.twilightT = 0;
           unit.mem.twilightAcc = 0;
-          battle.heal(unit, unit, unit.s.maxHp, { self: true });
+          // "立即恢复所有生命" — PRTS 技能3 备注 "（无视禁疗）": it reaches her during 余烬 too
+          battle.heal(unit, unit, unit.s.maxHp, { self: true, ignoreHealFree: true });
           battle.fx('aoe', { x: unit.x, y: unit.y, id: unit.id, r: 1, skill: 'surtr' });
         },
         onTick({ battle, unit, dt }) {
@@ -1101,6 +1112,14 @@ const KITS = {
       talents: [
         { install(battle, unit) { permBuff(battle, unit, 'surtr:magma', { resIgnoreFlat: num(t0.magic_resist_penetrate_fixed) }); } },
         { install(battle, unit) { // 余烬
+          // PRTS 天赋备注: "持有不死的情况下不会触发此天赋" (a 不死 that prevented the blow first: `c.prevented` — 坚固维式重锤's
+          // lock, PRIO_REVIVE −100, runs after this −60 on the same first lethal blow [ASSUMED order], so it never starts
+          // while 余烬 is unused). "触发本天赋后，获得禁疗与不死": 不死 = every later lethal blow is prevented (`mem.ember`);
+          // 禁疗 (异常效果 HEAL_FREE "无法成为治疗类能力的目标，且受到的治疗量变为0", an HP-regen attribute excepted) = flags
+          // noHeal (no heal pick, no heal from others) + healFree (her own heals too; S3's start heal "无视禁疗"), shown as
+          // the status 'healFree' until she leaves. "强制退出战场视为撤回干员": a retreat (Battle.retreat drops the buff) — she
+          // lies down where she stood and redeploys there, like every operator that leaves the field (PRTS 卫戍协议/帮助
+          // "干员退场后…原地留下一个“倒地干员”…自动部署至该位置"; Battle.isDown, GitHub #60).
           const wait = num(t1['surtr_t_2[withdraw].interval'], 8);
           battle.on('deploy', (c) => { if (c.unit === unit) unit.mem.ember = false; }, { owner: unit });
           battle.on('fatal', (c) => {
@@ -1109,6 +1128,7 @@ const KITS = {
             if (unit.mem.ember) return;
             unit.mem.ember = true;
             const dep = unit.deploySeq;
+            battle.addBuff(unit, { key: 'surtr:ember', status: 'healFree', flags: { noHeal: true, healFree: true } });
             battle.fx('ember', { x: unit.x, y: unit.y, id: unit.id });
             battle.after(wait, () => { if (unit.alive && unit.deploySeq === dep) battle.retreat(unit, { reason: 'retreat' }); }, { owner: unit });
           }, { owner: unit, priority: -60 });
@@ -1633,10 +1653,13 @@ const KITS = {
   },
 
   // ---------------------------------------------------------------------------------------------------------------
-  // 归溟幽灵鲨 — dollkeeper. S2 生存的渴望 (15/17 s): ATK/ASPD +, HP never below 1; afterwards she counts as knocked out
-  // (→ substitute, or death if already one). T1 拥抱自我: the substitute slows nearby enemies −40 % and deals 40 % ATK
-  // arts/s to them (PRTS 备注 "伤害与减速不可对空": ground enemies only). T2 阿戈尔的深邃: Abyssal Hunters in the team
-  // max HP +20 %. Module (elite): substitute ATK +15 %.
+  // 归溟幽灵鲨 — dollkeeper (professions.js installDollkeeper: the 替身 form, its switch animations, 阻回). Her <替身> makes
+  // no normal attack (PRTS 特性备注 "<替身>不进行普通攻击") and so casts no skill (kit trait `dollNoAttack`).
+  // S2 生存的渴望 (15/17 s): ATK/ASPD +, HP never below 1 (PRTS 备注: 不死 — a lethal hit does not switch her meanwhile);
+  // when it ends she switches to the 替身 at once (PRTS 修正 "技能结束后立刻切换为<替身>", the text's 视为被击倒: no lethal
+  // HP loss, so no 不死 / 复活 effect takes it). T1 拥抱自我: the 替身 slows nearby enemies −40 % and deals 40 % ATK
+  // arts/s to them (PRTS 备注 "伤害与减速不可对空": ground enemies only) — once it fights (not during its switch
+  // animation). T2 阿戈尔的深邃: Abyssal Hunters in the team max HP +20 %. Module (elite): substitute ATK +15 %.
   // S1 生存的技巧 (duration): swaps HP ratios with the other operator of the skill area (周围) with the lowest HP ratio,
   // ATK +. S3 生存的重压 (duration): BAT +1 s, hits every blocked enemy, ATK +, max HP +; an attacked enemy whose HP ratio
   // is ≥ hers takes attack@atk_scale_ex × ATK phys more, otherwise she loses attack@hp_ratio of her max HP.
@@ -1676,21 +1699,23 @@ const KITS = {
       skill: {
         kind: 'duration',
         mods: mods({ atkPct: num(bb.atk), aspd: num(bb.attack_speed) }),
+        // "技能结束后立刻切换为<替身>": nothing when the skill ended with her (death) or by her switch to the 替身, or she
+        // already is one
         onEnd({ battle, unit, reason }) {
-          if (reason === 'death' || !unit.alive || !unit.deployed) return;
-          battle.fx('knockout', { x: unit.x, y: unit.y, id: unit.id });
-          battle.loseHp(unit, unit.hp + 1, { source: unit });
+          if (reason === 'death' || reason === 'substitute' || !unit.alive || !unit.deployed || unit.trait.doll) return;
+          battle.emit('dollSwitch', { unit, reason: 'skill', done: false });
         },
       },
+      trait: { dollNoAttack: true },
       talents: [
-        { install(battle, unit) { // 拥抱自我
+        { install(battle, unit) { // 拥抱自我 (the 替身 fighting: not during a switch animation)
           const slow = num(t0.move_speed), scale = num(t0.atk_scale);
           whileOn(battle, unit, AURA_IV, () => {
-            if (!unit.trait.doll || !slow) return;
+            if (!unit.trait.doll || unit.trait.dollSwitching || !slow) return;
             for (const e of battle.unitsInGrid(unit, aroundGrid, { side: 'enemy' })) if (!e.isFlying) battle.addBuff(e, { key: 'ghost2:embrace', duration: AURA_DUR, mods: { moveMul: Math.max(0, 1 + slow) } });
           });
           whileOn(battle, unit, 1, () => {
-            if (!unit.trait.doll || !(scale > 0)) return;
+            if (!unit.trait.doll || unit.trait.dollSwitching || !(scale > 0)) return;
             for (const e of battle.unitsInGrid(unit, aroundGrid, { side: 'enemy' })) if (!e.isFlying) battle.dealDamage(unit, e, { amount: unit.s.atk * scale, type: 'arts', tags: ['talent', 'embrace'] });
           });
         } },

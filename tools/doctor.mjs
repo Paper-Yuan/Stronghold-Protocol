@@ -18,22 +18,28 @@ import { fileURLToPath } from 'node:url';
 import {
   ROOT, MIN_NODE, IS_WIN, IS_MAC, c, mark, capture, padDisplay, displayWidth,
   checkNode, checkDeps, checkVendor, checkData, checkAssets, checkLocal, findClient, findPython,
+  LOCAL_ART_FALLBACK, LOCAL_ART_COPY_HINT,
 } from './setup.mjs';
 
 // ---------------------------------------------------------------------------------------------------
 // LAN addresses (also used by scripts/launch.mjs)
 // ---------------------------------------------------------------------------------------------------
 
-const VIRTUAL_IF = /(vethernet|virtualbox|vmware|vmnet|docker|^br-|^veth|wsl|hyper-v|vboxnet|bridge\d|utun|awdl|llw|parallels|loopback)/i;
-const VPN_IF = /(tailscale|zerotier|^zt|wireguard|^wg\d|tun\d|tap)/i;
+// 名字里带这些的网卡不对局域网开放：虚拟机 / 容器 / WSL / 代理软件的 TUN 适配器（Mihomo、Clash）。
+// tun0 / tap0 不归这一类：classifyAddresses 先判下面的 VPN_IF，它的 `tun\d` / `tap` 是子串匹配，
+// tun0 / tap0 先被它命中，归为 vpn（那正是同组好友互连用的地址）。
+const VIRTUAL_IF = /(vethernet|virtualbox|vmware|vmnet|docker|^br-|^veth|wsl|hyper-v|vboxnet|bridge\d|utun|awdl|llw|parallels|loopback|mihomo|clash|sing-?box)/i;
+// 点对点 VPN：这些地址就是同组好友互相访问用的（Tailscale / ZeroTier / WireGuard / Radmin VPN / Hamachi）。
+const VPN_IF = /(tailscale|zerotier|^zt|wireguard|^wg\d|tun\d|tap|radmin|hamachi)/i;
 
 function ipv4ToInt(ip) { return ip.split('.').reduce((n, x) => (n << 8) + Number(x), 0) >>> 0; }
 function inCidr(ip, base, bits) { const mask = bits === 0 ? 0 : (~0 << (32 - bits)) >>> 0; return (ipv4ToInt(ip) & mask) === (ipv4ToInt(base) & mask); }
 
 /**
  * Classify every non-internal IPv4 address: 'lan' (RFC 1918, what friends at home use), 'vpn' (Tailscale / ZeroTier /
- * CGNAT 100.64/10), 'virtual' (Hyper-V, WSL, Docker, VirtualBox … — usually not reachable from other machines),
- * 'public' (a public address directly on this machine), 'linklocal' (169.254 — no DHCP, useless).
+ * Radmin / Hamachi / CGNAT 100.64/10), 'virtual' (Hyper-V, WSL, Docker, VirtualBox, a Clash/Mihomo TUN adapter … —
+ * not reachable from other machines, sharing them only confuses people), 'public' (a public address directly on this
+ * machine), 'linklocal' (169.254 — no DHCP, useless).
  * @returns {{ name: string, address: string, kind: string }[]} best first
  */
 export function classifyAddresses(ifaces = os.networkInterfaces()) {
@@ -44,6 +50,9 @@ export function classifyAddresses(ifaces = os.networkInterfaces()) {
       const ip = a.address;
       let kind;
       if (inCidr(ip, '169.254.0.0', 16)) kind = 'linklocal';
+      // 198.18.0.0/15 是 RFC 2544 的基准测试段：代理软件（Clash / Mihomo 的 fake-ip 池）拿它做本地 TUN 地址，
+      // 绝对不是能发给朋友的「公网 IP」。
+      else if (inCidr(ip, '198.18.0.0', 15)) kind = 'virtual';
       else if (VPN_IF.test(name) || inCidr(ip, '100.64.0.0', 10)) kind = 'vpn';
       else if (VIRTUAL_IF.test(name)) kind = 'virtual';
       else if (inCidr(ip, '10.0.0.0', 8) || inCidr(ip, '172.16.0.0', 12) || inCidr(ip, '192.168.0.0', 16)) kind = 'lan';
@@ -184,7 +193,7 @@ async function main() {
   const client = findClient(null);
   row(local.manifest ? 'ok' : 'skip', '本地客户端美术（可选）', local.manifest
     ? `${local.count} 项${local.board3d ? '，3D 棋盘可用' : '，无棋盘贴图（2D 棋盘）'}${local.board3d && !local.tiles ? '；缺 tiles.json → node tools/setup.mjs' : ''}`
-    : client ? `检测到 ${client.kind} 客户端 → node tools/setup.mjs --local` : '未提取（不影响游戏）');
+    : client ? `检测到 ${client.kind} 客户端 → node tools/setup.mjs --local` : `未提取：${LOCAL_ART_FALLBACK}（${LOCAL_ART_COPY_HINT}）`);
   if (client || local.manifest) {
     const py = findPython();
     row(py ? 'ok' : 'skip', 'Python（仅提取用）', py ? `${py.cmd} ${py.version}` : '未找到 Python 3.8+');

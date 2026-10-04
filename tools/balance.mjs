@@ -51,7 +51,7 @@ import { getData } from '../server/data.js';
 import { buildNormalWave, buildBossWave } from '../server/match/waves.js';
 import { arrange } from '../server/match/bot.js';
 import { computeBonds } from '../server/match/bondsMeta.js';
-import { positionClass } from '../server/match/board.js';
+import { basePositionClass } from '../server/match/board.js';
 import { pairPlayers, bossPoolHp, SharedBossPool } from '../server/match/finalAssault.js';
 import { planUnite, uniteBattleOpts, uniteSurvivors } from '../server/match/unite.js';
 import { createRng, deriveSeed } from '../server/sim/rng.js';
@@ -92,7 +92,8 @@ const frac = (x, rng) => Math.max(0, Math.floor(x + rng()));
 
 // ---- chess helpers ----------------------------------------------------------------------------------------------
 const isHealer = (c) => !!c && (c.dmgType === 'heal' || c.attackKind === 'heal');
-const isBlocker = (c) => !!c && positionClass(c) === 'melee' && (c.stats?.blockCnt ?? 1) > 0 && c.attackKind !== 'none' && !isHealer(c);
+// the record's own position (bot.js isBlocker): a 钩索师 / 推击手 (placement 'all', DESIGN §22.6) still blocks
+const isBlocker = (c) => !!c && basePositionClass(c) === 'melee' && (c.stats?.blockCnt ?? 1) > 0 && c.attackKind !== 'none' && !isHealer(c);
 const hitsFly = (c) => !!c && !!c.canHitFly && !isHealer(c) && c.attackKind !== 'none';
 const isDealer = (c) => !!c && !isHealer(c) && c.attackKind !== 'none';
 

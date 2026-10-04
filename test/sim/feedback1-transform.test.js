@@ -572,7 +572,7 @@ describe('a blocked 隐匿 enemy is drawn solid (b.snap stealth bit: PRTS 作战
     const tuple = () => h.b.snapshot().units.find((t) => t[0] === e.id);
     assert.ok(tuple()[7] & UF.STEALTH, 'in b.snap too');
     assert.ok(h.runUntil(() => !!e.blockedBy, 10), 'walks into the wall');
-    assert.ok(e.s.flags.stealth, 'the sim keeps the 隐匿 flag (it returns once the block ends)');
+    assert.ok(e.s.flags.stealth, 'the sim keeps the 隐匿 flag (it returns 3 s after the block ends, §22.8)');
     assert.equal(flagsOf(e) & UF.STEALTH, 0, 'blocked: drawn solid');
     assert.equal(tuple()[7] & UF.STEALTH, 0);
     assert.ok(flagsOf(e) & UF.BLOCKED);

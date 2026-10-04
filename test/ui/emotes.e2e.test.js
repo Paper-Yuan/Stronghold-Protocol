@@ -39,7 +39,7 @@ describe('official emotes in the browser', { skip: !ENABLED && 'set SP_E2E=1 (an
     await srv?.close();
   });
 
-  async function open(url, { w = 1600, h = 900, manifest = null, ignore = [] } = {}) {
+  async function open(url, { w = 1600, h = 900, manifest = null, ignore = [], block = null } = {}) {
     const page = await browser.newPage();
     await page.setViewport({ width: w, height: h });
     const problems = [];
@@ -49,11 +49,14 @@ describe('official emotes in the browser', { skip: !ENABLED && 'set SP_E2E=1 (an
     // a reload cancels the images still in flight (net::ERR_ABORTED): not a failure of the page
     page.on('requestfailed', (r) => { if (bad(r.url()) && r.failure()?.errorText !== 'net::ERR_ABORTED') problems.push(`requestfailed: ${r.url()} ${r.failure()?.errorText}`); });
     page.on('response', (r) => { if (r.status() >= 400 && bad(r.url())) problems.push(`http ${r.status()}: ${r.url()}`); });
-    if (manifest) {
+    if (manifest || block) {
       await page.setRequestInterception(true);
-      page.on('request', (req) => (req.url().endsWith('/data/local-assets.json')
-        ? req.respond({ status: 200, contentType: 'application/json', body: JSON.stringify(manifest) })
-        : req.continue()));
+      page.on('request', (req) => {
+        // `block`: answer 404 for these URLs (e.g. the emote copies setup downloads, GitHub #42 — the second link of the chain)
+        if (block && block.test(req.url())) return req.respond({ status: 404, contentType: 'text/plain', body: 'blocked' });
+        if (manifest && req.url().endsWith('/data/local-assets.json')) return req.respond({ status: 200, contentType: 'application/json', body: JSON.stringify(manifest) });
+        return req.continue();
+      });
     }
     await page.goto(`${base}${url}`, { waitUntil: 'networkidle0' });
     return { page, problems };
@@ -276,9 +279,11 @@ describe('official emotes in the browser', { skip: !ENABLED && 'set SP_E2E=1 (an
   });
 
   test('missing art: neutral glyphs, never text', async () => {
+    // neither the local-client art nor the copies setup downloads (GitHub #42) load: the glyph is the last link
     const { page, problems } = await open('/dev/uikit.html', {
       manifest: { version: 1, groups: { 'emoticon/basic': { pic_happy_battle: { path: '/assets/local/emoticon/basic/nope_404.png', w: 120, h: 120 } } } },
-      ignore: [/nope_404\.png/, /Failed to load resource/],
+      block: /\/assets\/ui\/emoticon\//,
+      ignore: [/nope_404\.png/, /\/assets\/ui\/emoticon\//, /Failed to load resource/],
     });
     await page.evaluate(() => localStorage.removeItem('sp.pref.emoteTheme'));
     await page.reload({ waitUntil: 'networkidle0' });

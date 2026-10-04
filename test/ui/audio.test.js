@@ -7,10 +7,19 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { bgmKeyFor, resolveBgm, SfxLimiter, AudioManager, normalAttackSfx, voiceKey } from '../../public/js/audio.js';
+import { mediaUrl } from '../../public/js/media.js';
 import { PHASE } from '../../shared/constants.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const manifest = JSON.parse(readFileSync(path.join(ROOT, 'data', 'assets.json'), 'utf8'));
+
+// audio.js 取音频时**先请求无扩展名的 /media/…**（正是为了躲开下载管理器对 .mp3 后缀的嗅探），
+// 只有那样 404 了才回退到 manifest 里的原始地址。所以「某个音效响了没有」不能拿原始地址去比对——
+// 那样断言的是一个客户端永远不会请求的 URL。下面两个助手把比对放到同一条换算上。
+/** 这个 manifest 地址被请求过吗（/media/ 形式或 404 后的原始形式）。 */
+const asked = (urls, raw) => urls.includes(mediaUrl(raw)) || urls.includes(raw);
+/** 这个 manifest 地址被请求了几次。 */
+const askedCount = (urls, raw) => urls.filter((u) => u === mediaUrl(raw) || u === raw).length;
 
 describe('bgm selection', () => {
   test('route and phase → key', () => {
@@ -129,11 +138,11 @@ describe('AudioManager', () => {
       fw.fire('pointerdown');
       assert.equal(a.unlocked, true);
       await new Promise((r) => setTimeout(r, 10));
-      assert.ok(urls.includes(manifest.audio.bgm.prep.loop), 'BGM fetched after unlock');
+      assert.ok(asked(urls, manifest.audio.bgm.prep.loop), 'BGM fetched after unlock');
       a.sfx('buy');
       a.sfx('nonexistent');
       await new Promise((r) => setTimeout(r, 10));
-      assert.ok(urls.includes(manifest.audio.sfx.ui.buy));
+      assert.ok(asked(urls, manifest.audio.sfx.ui.buy));
       // same loop URL ⇒ no restart
       const before = fw.made.started;
       a.playBgm('combat');
@@ -144,8 +153,8 @@ describe('AudioManager', () => {
       a.setFieldUnits([{ id: 1, side: 'ally', spine: charId }, { id: 2, side: 'enemy', spine: 'enemy_nope' }]);
       a.handleBattleEvents([['atk', 1, 2, 'arrow'], ['dmg', 2, 100, 'phys'], ['die', 2], ['spawn', { id: 3, side: 'enemy', spine: 'x' }], ['bounty', 'p', 1]]);
       await new Promise((r) => setTimeout(r, 10));
-      assert.ok(urls.includes(manifest.audio.sfx.units[charId].attack));
-      assert.ok(urls.includes(manifest.audio.sfx.battle.enemyDie), 'fallback death sound');
+      assert.ok(asked(urls, manifest.audio.sfx.units[charId].attack));
+      assert.ok(asked(urls, manifest.audio.sfx.battle.enemyDie), 'fallback death sound');
       assert.ok(a.limiter.active <= a.limiter.maxVoices);
       a.setVolumes({ muted: true });
       const n = urls.length;
@@ -174,6 +183,107 @@ describe('AudioManager', () => {
     } finally {
       globalThis.fetch = origFetch;
       console.warn = origWarn;
+    }
+  });
+  test('音频先走无扩展名的 /media/ 路由；只有它 404 才回退到带扩展名的原地址', async () => {
+    const raw = manifest.audio.bgm.prep.loop;
+    const media = mediaUrl(raw);
+    assert.notEqual(media, raw, '前提：manifest 地址确实会被换算成 /media/ 路径');
+
+    // 第一发 404：必须看到 /media/ 在前、原地址在后，两者都请求过
+    {
+      const fw = fakeWindow();
+      const urls = [];
+      const origFetch = globalThis.fetch;
+      globalThis.fetch = async (u) => {
+        urls.push(u);
+        return u === media ? { ok: false, status: 404 } : { ok: true, arrayBuffer: async () => new ArrayBuffer(8) };
+      };
+      try {
+        const a = new AudioManager({ win: fw.win, getManifest: () => manifest });
+        a.install();
+        fw.fire('pointerdown');
+        a.playBgm('prep');
+        await new Promise((r) => setTimeout(r, 25));
+        const first = urls.indexOf(media);
+        const fallback = urls.indexOf(raw);
+        assert.ok(first !== -1, '先试无扩展名路径');
+        assert.ok(fallback !== -1, '404 后回退到原地址');
+        assert.ok(first < fallback, '顺序必须是先 /media/ 再原地址');
+      } finally { globalThis.fetch = origFetch; }
+    }
+
+    // 第一发 200：不该再去碰带扩展名的地址（否则白白多一次请求，也正是 IDM 会拦的那个 URL）
+    {
+      const fw = fakeWindow();
+      const urls = [];
+      const origFetch = globalThis.fetch;
+      globalThis.fetch = async (u) => { urls.push(u); return { ok: true, arrayBuffer: async () => new ArrayBuffer(8) }; };
+      try {
+        const a = new AudioManager({ win: fw.win, getManifest: () => manifest });
+        a.install();
+        fw.fire('pointerdown');
+        a.playBgm('prep');
+        await new Promise((r) => setTimeout(r, 25));
+        assert.ok(urls.includes(media), '走了 /media/');
+        assert.ok(!urls.includes(raw), '/media/ 成功就不该再请求 .mp3 地址');
+      } finally { globalThis.fetch = origFetch; }
+    }
+
+    // 第一发 200 但内容不是音频：有些静态托管对不存在的路径回 200 + index.html，解码会静默失败，也要回退。
+    {
+      const fw = fakeWindow();
+      const urls = [];
+      let cancelled = 0;
+      const origFetch = globalThis.fetch;
+      globalThis.fetch = async (u) => {
+        urls.push(u);
+        if (u !== media) return { ok: true, arrayBuffer: async () => new ArrayBuffer(8) };
+        return {
+          ok: true,
+          status: 200,
+          headers: { get: (n) => (n.toLowerCase() === 'content-type' ? 'text/html; charset=utf-8' : null) },
+          body: { cancel: async () => { cancelled += 1; } },
+          arrayBuffer: async () => new ArrayBuffer(8),
+        };
+      };
+      try {
+        const a = new AudioManager({ win: fw.win, getManifest: () => manifest });
+        a.install();
+        fw.fire('pointerdown');
+        a.playBgm('prep');
+        await new Promise((r) => setTimeout(r, 25));
+        assert.ok(urls.includes(raw), '内容不是音频时回退到原地址');
+        assert.equal(cancelled, 1, '丢掉那个用不上的响应，别把连接挂着');
+      } finally { globalThis.fetch = origFetch; }
+    }
+
+    // /media/ 直接给出 audio/*（服务端真实行为）：不回退，也不去 cancel 一个能用的响应
+    {
+      const fw = fakeWindow();
+      const urls = [];
+      let cancelled = 0;
+      const origFetch = globalThis.fetch;
+      globalThis.fetch = async (u) => {
+        urls.push(u);
+        return {
+          ok: true,
+          status: 200,
+          headers: { get: (n) => (n.toLowerCase() === 'content-type' ? 'audio/mpeg' : null) },
+          body: { cancel: async () => { cancelled += 1; } },
+          arrayBuffer: async () => new ArrayBuffer(8),
+        };
+      };
+      try {
+        const a = new AudioManager({ win: fw.win, getManifest: () => manifest });
+        a.install();
+        fw.fire('pointerdown');
+        a.playBgm('prep');
+        await new Promise((r) => setTimeout(r, 25));
+        assert.ok(urls.includes(media));
+        assert.ok(!urls.includes(raw), 'audio/* 就是成功，不该再回退');
+        assert.equal(cancelled, 0);
+      } finally { globalThis.fetch = origFetch; }
     }
   });
 });
@@ -218,23 +328,26 @@ describe('impact sounds (user playtest #4 item 6)', () => {
       { id: 3, side: 'enemy', kind: 'enemy', spine: enemyId },
     ]);
     try {
-      const own = new Set(Object.values(manifest.audio.sfx.units[AGOAT2]).filter((x) => typeof x === 'string'));
+      // 她的技能形态（_s）文件：这条断言要盯住它们一个都没响，所以先确认音效表里真的有 _s ——
+      // 否则集合为空，断言会永远成立、形同虚设。
+      const ownSkill = Object.values(manifest.audio.sfx.units[AGOAT2]).filter((x) => typeof x === 'string' && /_s\.mp3$/.test(x));
+      assert.ok(ownSkill.length > 0, '前提：她的音效表里确实有 _s（技能形态）文件');
       a.handleBattleEvents([['atk', 1, 2, 'orb'], ['heal', 2, 300], ['dmg', 2, 120, 'phys'], ['dmg', 2, 80, 'arts']]);
       await settle();
-      assert.ok(urls.includes(manifest.audio.sfx.units[AGOAT2].attack), 'her cast sound');
-      assert.ok(!urls.some((x) => x === manifest.audio.sfx.units[AGOAT2].hit), 'no impact sound of hers on the ally');
-      assert.ok(!urls.some((x) => own.has(x) && /_s\.mp3$/.test(x)), 'nothing of her S3');
+      assert.ok(asked(urls, manifest.audio.sfx.units[AGOAT2].attack), 'her cast sound');
+      assert.ok(!asked(urls, manifest.audio.sfx.units[AGOAT2].hit), 'no impact sound of hers on the ally');
+      assert.ok(!ownSkill.some((p) => asked(urls, p)), 'nothing of her S3');
       // a hostile attack still authors its impact — once, and only for a real hit (not an element gauge fill)
       a.handleBattleEvents([['atk', 3, 2, 'none'], ['dmg', 2, 900, 'burn']]);
       await settle();
-      assert.ok(!urls.includes(manifest.audio.sfx.units[enemyId].hit), 'a gauge fill is no impact');
+      assert.ok(!asked(urls, manifest.audio.sfx.units[enemyId].hit), 'a gauge fill is no impact');
       a.handleBattleEvents([['dmg', 2, 200, 'phys']]);
       await settle();
-      assert.equal(urls.filter((x) => x === manifest.audio.sfx.units[enemyId].hit).length, 1, 'the impact');
+      assert.equal(askedCount(urls, manifest.audio.sfx.units[enemyId].hit), 1, 'the impact');
       a.limiter.lastByUnit.clear(); a.limiter.lastByUrl.clear();
       a.handleBattleEvents([['dmg', 2, 50, 'phys']]);
       await settle();
-      assert.equal(urls.filter((x) => x === manifest.audio.sfx.units[enemyId].hit).length, 1, 'a later tick is not the same attack\'s impact');
+      assert.equal(askedCount(urls, manifest.audio.sfx.units[enemyId].hit), 1, 'a later tick is not the same attack\'s impact');
     } finally { restore(); }
   });
 
@@ -251,12 +364,12 @@ describe('impact sounds (user playtest #4 item 6)', () => {
     try {
       a.handleBattleEvents([['atk', 5, 6, 'chain']]);
       await settle();
-      assert.ok(!urls.includes(manifest.audio.sfx.units[enemyId].attack), 'the bounce is not an enemy attack');
+      assert.ok(!asked(urls, manifest.audio.sfx.units[enemyId].attack), 'the bounce is not an enemy attack');
       a.handleBattleEvents([['atk', 1, 5, 'arrow']]);
       fakeNow += 4000;
       a.handleBattleEvents([['dmg', 5, 100, 'phys']]);
       await settle();
-      assert.ok(!urls.includes(manifest.audio.sfx.units[charId].hit), '4 s later: not that attack\'s impact');
+      assert.ok(!asked(urls, manifest.audio.sfx.units[charId].hit), '4 s later: not that attack\'s impact');
     } finally { globalThis.performance = perf; restore(); }
   });
 });

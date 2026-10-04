@@ -18,9 +18,10 @@ import { pngSize, isCompletePng, isMp3, validate } from '../tools/assets/formats
 import { encodeWoff2, decodeWoff2Tables, readSfnt, uintBase128 } from '../tools/assets/woff2.mjs';
 import { assetToPath, pickUnitSfx, indexAudio } from '../tools/assets/audio.mjs';
 import { mirrorUrl, safeName, encodePath } from '../tools/assets/sources.mjs';
-import { collectEnemyIds, skillIndicesByChar } from '../tools/assets/plan.mjs';
+import { collectEnemyIds, skillIndicesByChar, buildPlan, GUIDE_PAGES, UI_EXTRAS } from '../tools/assets/plan.mjs';
 import { resolveTemplate, collectLeaves } from '../tools/assets/manifest.mjs';
 import { spineEntry } from '../public/js/assets.js';
+import { EMOTE_CATALOG, emoteArtGroup } from '../shared/constants.js';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const PUBLIC = join(ROOT, 'public');
@@ -465,6 +466,66 @@ describe('downloader (fake network)', () => {
     assert.ok(readFileSync(join(dir, 'out', 'g.png')).equals(PNG), '404 primary → fallback used');
     assert.equal(existsSync(join(dir, 'out', 'f.png')), false, 'transient failure → no fallback on the primary path');
     assert.equal(calls.filter((u) => u.endsWith('fallback.png')).length, 1);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// GitHub issue #42: a source deploy on a server without the Arknights client had no public/assets/local, so the battle
+// emotes showed default icons and 玩法说明 showed text tips. The public mirror has both (checked 2026-10-03: all 55
+// URLs answer 200 on raw.githubusercontent.com and on jsDelivr, same pictures and sizes as the local extraction), so the
+// plan downloads them like any other UI sprite, keyed by the data/local-assets.json group and name.
+describe('emotes and 玩法说明 pages from the public mirror (GitHub issue #42)', () => {
+  const AA2 = 'https://raw.githubusercontent.com/ArknightsAssets/ArknightsAssets2/cn/assets/dyn/';
+  const plan = () => buildPlan({ assets07: {}, ops03: {}, enemies05: {}, maps05: {}, audio: indexAudio({}), modelsData: {} }).template;
+
+  test('the plan fetches the 36 battle emotes and the 19 guide pages from ArknightsAssets2 cn, keyed like the local art', () => {
+    const ui = plan().ui;
+    assert.equal(EMOTE_CATALOG.length, 36);
+    for (const e of EMOTE_CATALOG) {
+      const key = `${emoteArtGroup(e.id)}/${e.picId}`; // the local manifest's group + name (emoticon/<dir>/<picId>)
+      assert.deepEqual(ui[key]?.alts, [{ rel: `ui/${key}.png`, urls: [`${AA2}ui/emoticon/theme/%5Buc%5D${e.themeId}/icon/${e.picId}.png`], kind: 'png' }], key);
+    }
+    assert.ok(ui['emoticon/fooldoctor/pic_fooldoctor_08_battle'], 'keyed by picId, not by the emote id (fooldoctor_06 → pic 08)');
+    assert.notEqual(ui['emoticon/slug/pic_thanks_battle'].alts[0].rel, ui['emoticon/basic/pic_thanks_battle'].alts[0].rel, 'same picId, two themes');
+    assert.deepEqual(GUIDE_PAGES.slice(0, 2), ['autochess_home_1', 'autochess_home_2']);
+    assert.equal(GUIDE_PAGES.length, 19);
+    for (const k of GUIDE_PAGES) {
+      assert.deepEqual(ui[`guide/${k}`]?.alts, [{ rel: `ui/guide/${k}.png`, urls: [`${AA2}arts/guidebookpages/%5Bpack%5Dautochess/${k}.png`], kind: 'png' }], k);
+    }
+    const rels = Object.values(ui).map((l) => l.alts[0].rel);
+    assert.equal(new Set(rels).size, rels.length, 'no two UI entries share a file');
+    assert.ok(rels.every((r) => !r.startsWith('local/')), 'public/assets/local belongs to tools/local-extract');
+    assert.equal(mirrorUrl(ui['emoticon/fooldoctor/pic_fooldoctor_08_battle'].alts[0].urls[0]),
+      'https://cdn.jsdelivr.net/gh/ArknightsAssets/ArknightsAssets2@cn/assets/dyn/ui/emoticon/theme/%5Buc%5Demoticon_foolsday_doctor/icon/pic_fooldoctor_08_battle.png',
+      'the jsDelivr fallback (downloader) serves the same path');
+    assert.ok(Object.isFrozen(UI_EXTRAS) && UI_EXTRAS.every(Object.isFrozen));
+  });
+
+  test('a rebuilt manifest lists the copies that are on disk under /assets/ui/…; a missing one is left out', async () => {
+    const { mkdtemp, mkdir, writeFile } = await import('node:fs/promises');
+    const { tmpdir } = await import('node:os');
+    const root = await mkdtemp(join(tmpdir(), 'sp-mirror-art-'));
+    const ui = plan().ui;
+    const keys = ['emoticon/basic/pic_happy_battle', 'guide/autochess_home_1', 'emoticon/slug/pic_bye_battle'];
+    for (const k of keys.slice(0, 2)) {
+      await mkdir(join(root, dirname(ui[k].alts[0].rel)), { recursive: true });
+      await writeFile(join(root, ui[k].alts[0].rel), 'x');
+    }
+    const r = resolveTemplate({ ui: Object.fromEntries(keys.map((k) => [k, ui[k]])) }, { root, spine: new Map() });
+    assert.deepEqual(r.value.ui, {
+      'emoticon/basic/pic_happy_battle': '/assets/ui/emoticon/basic/pic_happy_battle.png',
+      'guide/autochess_home_1': '/assets/ui/guide/autochess_home_1.png',
+    });
+    assert.deepEqual(r.misses, ['ui.emoticon/slug/pic_bye_battle']);
+  });
+
+  test('the committed data/assets.json lists all 55, so setup on an install made before them downloads them', () => {
+    // tools/setup.mjs runs fetch-assets when data/assets.json lists a file that is not on disk (checkAssets)
+    const m = readJson('data/assets.json');
+    for (const e of EMOTE_CATALOG) assert.equal(m.ui[`emoticon/${e.dir}/${e.picId}`], `/assets/ui/emoticon/${e.dir}/${e.picId}.png`, e.id);
+    for (const k of GUIDE_PAGES) assert.equal(m.ui[`guide/${k}`], `/assets/ui/guide/${k}.png`, k);
+    assert.equal(m.stats.ui, Object.keys(m.ui).length);
+    assert.ok(!JSON.stringify(m).includes('/assets/local/'), 'never a local-client path');
   });
 });
 

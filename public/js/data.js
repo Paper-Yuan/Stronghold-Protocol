@@ -31,6 +31,7 @@ export const DATA_FILES = Object.freeze({
   config: 'config.json',
   assets: 'assets.json',
   // Optional art extracted from a local game client (DESIGN §13): { groups: { '<subdir>': { name: { path, w, h } } } }.
+  // The emotes and the 玩法说明 pages are in data/assets.json too (downloaded from the mirror): artUrls().
   local: 'local-assets.json',
 });
 
@@ -227,6 +228,39 @@ export function localAsset(group, name) {
   const g = data.get('local')?.groups?.[group];
   const e = g && typeof g === 'object' ? g[name] : null;
   return e && typeof e.path === 'string' && e.path ? e.path : null;
+}
+
+/**
+ * Candidate URLs, best first, of art that both the local client and the public mirror have — the 36 battle emotes and
+ * the 19 玩法说明 pages (GitHub issue #42: a server without the client showed default emote icons): the local-client
+ * entry (`localAsset(group, name)`), then the copy tools/fetch-assets.mjs downloads, which data/assets.json lists under
+ * the same group and name as `ui['<group>/<name>']` (tools/assets/plan.mjs UI_EXTRAS). Empty when neither manifest
+ * lists it (callers draw their own fallback); a caller skips a URL that fails to load and tries the next. Load both
+ * files first (`useData('local', 'assets')`).
+ * @param {string} group e.g. 'emoticon/basic', 'guide'
+ * @param {string} name entry name without extension
+ * @returns {string[]}
+ */
+export function artUrls(group, name) {
+  const out = [];
+  const local = localAsset(group, name);
+  if (local) out.push(local);
+  const ui = data.get('assets')?.ui;
+  const key = `${group}/${name}`;
+  const web = ui && typeof ui === 'object' && Object.hasOwn(ui, key) ? ui[key] : null;
+  if (typeof web === 'string' && web && web !== local) out.push(web);
+  return out;
+}
+
+/**
+ * The URL to show from an artUrls() list: the first one that has not failed to load (a local file listed by a copied
+ * data/local-assets.json without its files falls through to the mirror copy), or null when none is left.
+ * @param {string[]} urls
+ * @param {Set<string>} [failed] URLs whose image fired an error
+ */
+export function nextArtUrl(urls, failed) {
+  for (const u of Array.isArray(urls) ? urls : []) if (typeof u === 'string' && u && !failed?.has(u)) return u;
+  return null;
 }
 
 /**

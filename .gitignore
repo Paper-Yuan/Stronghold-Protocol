@@ -4,11 +4,11 @@ node_modules/
 public/vendor/
 
 # --- game assets: (c) Hypergryph / Yostar, fetched or extracted locally, NEVER committed ----------
-# tools/fetch-assets.mjs → public/assets/** (~250 MB) and public/fonts/** (+ fonts.css)
+# tools/fetch-assets.mjs → public/assets/** (~270 MB) and public/fonts/** (+ fonts.css)
 public/assets/
 public/fonts/
 # tools/local-extract/extract.py → public/assets/local/** and this per-machine manifest
-# (optional: the client and the tests work without it)
+# (optional: the client and the tests work without it; docs/DEPLOY.md §6 lists what falls back)
 data/local-assets.json
 # download caches, upstream tables, ledgers, reports, setup state
 .cache/

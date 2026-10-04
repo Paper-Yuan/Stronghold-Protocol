@@ -3,7 +3,7 @@
 export const PROTOCOL_VERSION = 1;
 /** Release version shown to players (title screen, server banner, /healthz). Kept equal to package.json "version"
  * (test/version.test.js); PROTOCOL_VERSION above is the separate wire-format number. */
-export const APP_VERSION = '0.1.1';
+export const APP_VERSION = '0.1.2';
 
 export const MAX_SEATS = 4;
 export const ROOM_CODE_LEN = 4;
@@ -152,7 +152,9 @@ export const ERR_TEXT = {
 // (tools/build-emotes.mjs); test/ui/emotes.test.js keeps this table identical to it.
 // Official emotes have no text (desc is null): `label` is ours and only ever an aria-label, never displayed.
 // Art: extracted from a local client (tools/local-extract) to /assets/local/emoticon/<dir>/<picId>.png and listed in
-// data/local-assets.json group `emoticon/<dir>`; the UI shows a neutral glyph when it is absent. The picId is not
+// data/local-assets.json group `emoticon/<dir>`; also downloaded from the public mirror by tools/fetch-assets.mjs
+// (tools/assets/plan.mjs UI_EXTRAS → data/assets.json ui['emoticon/<dir>/<picId>'], GitHub issue #42). The UI takes the
+// local picture first, then the mirror copy, and shows a neutral glyph when neither is there. The picId is not
 // derived from the id (autochess_battle_fooldoctor_03…06 → pic_fooldoctor_04/05/06/08_battle).
 const emo = (id, sortId, picId, label) => Object.freeze({ id, sortId, picId, label });
 export const EMOTE_THEMES = Object.freeze([

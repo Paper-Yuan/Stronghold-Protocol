@@ -4,7 +4,8 @@
 // stage legend (data/stages.json `tiles[glyph]`: height + buildable) and the stage devices:
 //   'melee'  — LOW tile with buildable ALL/MELEE, or a 深水区 under an active 特制水上平台 (waterPlatform, "在水上建立可以
 //              部署任意单位的平台"): melee AND ranged chess may stand here ("所有行动内远程干员可部署在近战位").
-//   'ranged' — HIGH tile with buildable ALL/RANGED, or a tile under an active platform (射击台): ranged only.
+//   'ranged' — HIGH tile with buildable ALL/RANGED, or a tile under an active platform (射击台): ranged only (and the
+//              钩索师 / 推击手, placement 'all' below).
 //   (absent) — not deployable (NONE, forbidden, road lanes, tiles under active crates/mounds, the 深水区 — the legend's
 //              `buildable` is the effective type: tile_deepsea refuses deployment, PRTS 深水区 地形信息
 //              "拒绝部署（待补充）", although its level buildableType is ALL; player report #3 after 0.1.0, 战场#08's
@@ -22,6 +23,9 @@
 // (10–12, 8), which are '#' on the normal field. The result equals stages[id].deployTiles.bossLeft / bossRight
 // mapped to board coordinates (test/match/playtest5-deploy.test.js).
 //
+// Chess follow their `position` (MELEE ⇒ melee tiles, RANGED ⇒ any deployable), except a MELEE operator whose branch
+// trait reads "可以放置于远程位" (钩索师, 推击手: chess.json `placement` 'all' ⇒ any deployable tile, `positionClass`;
+// GitHub issue #32 item 4, DESIGN §22.6 [ASSUMED]: the branch trait read as no 部署效果, which the mode would switch off).
 // Tokens follow their own `position` (ALL ⇒ any deployable tile, MELEE ⇒ melee tiles, RANGED ⇒ any deployable).
 // A token whose text reads "只能部署在召唤者攻击范围内" (tokens.json `ownerRange`: the tacticians' 援军 — 伺夜's 狼群,
 // 缪尔赛思's 流形; PRTS 狼群 特性) also needs a tile of its owner's attack range: `ownerRangeKeys` = the owner's range
@@ -128,8 +132,21 @@ export function buildDeployMap(stage, { deviceOverrides = {}, tileOverrides = {}
   return map;
 }
 
-/** Placement class of a chess / token record: 'melee' | 'ranged' | 'all'. */
+/**
+ * Placement class of a chess / token record: 'melee' | 'ranged' | 'all' — its position class, widened to 'all' for a
+ * chess whose branch trait reads "可以放置于远程位" (钩索师, 推击手: chess.json `placement` 'all', DESIGN §22.6), which may
+ * stand on the ranged (高台) tiles too.
+ */
 export function positionClass(rec) {
+  return rec && rec.placement === 'all' ? 'all' : basePositionClass(rec);
+}
+
+/**
+ * The record's own position class ('melee' | 'ranged' | 'all'), without the placement widening — the class the battle
+ * plays (a MELEE operator still blocks on a ground tile; on a 高台 it blocks nothing): the bots' blocker test and the
+ * tiles they plan for it (bot.js).
+ */
+export function basePositionClass(rec) {
   const p = rec && typeof rec.position === 'string' ? rec.position.toUpperCase() : 'ALL';
   if (p === 'MELEE') return 'melee';
   if (p === 'RANGED') return 'ranged';

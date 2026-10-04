@@ -2,8 +2,10 @@
 // EMOTE_THEMES / EMOTES, generated reference data/emotes.json). Official emotes are pictures only: nothing here ever
 // renders an emote's text (our labels are aria-labels only).
 //
-//   EmoteArt    the emote picture (local-client art, data/local-assets.json → emoticon/<dir>/<picId>); a neutral glyph
-//               when the art is missing or fails to load, an empty box while the manifest is still loading.
+//   EmoteArt    the emote picture: the local-client art (data/local-assets.json → emoticon/<dir>/<picId>) first, else
+//               the copy setup downloads from the public mirror (data/assets.json → ui['emoticon/<dir>/<picId>'];
+//               GitHub issue #42), each tried in turn when one fails to load; a neutral glyph when neither is there,
+//               an empty box while a manifest is still loading.
 //   EmoteBubble the pop bubble beside the sender's avatar in the team panel (official emoji_bubble_bkg: a dark rounded
 //               square with a tail pointing left + the icon only); pop-in, 3 s, fade. The parent keys it by the emote's
 //               seq so a newer emote replaces the old one and pops again, and passes the arrival time (`at`) so a
@@ -20,7 +22,7 @@ import { useEffect, useRef, useState } from '../../vendor/hooks.module.js';
 import { EMOTE_THEMES, EMOTE_COOLDOWN_MS, EMOTE_BUBBLE_MS, emoteInfo, emoteArtGroup } from '../../../shared/constants.js';
 import { html } from './components.js';
 import { GIcon } from './gameComponents.js';
-import { data, useData, localAsset } from '../data.js';
+import { data, useData, localAsset, artUrls, nextArtUrl } from '../data.js';
 import { loadPref, savePref } from '../store.js';
 
 const cx = (...p) => p.flat().filter(Boolean).join(' ');
@@ -48,14 +50,26 @@ export function ensureEmoteCss(doc = globalThis.document) {
 }
 
 /**
- * URL of an emote's official art, or null when the id is unknown or the local manifest does not list the picture
- * (a path that is not listed is never requested).
+ * URLs of an emote's official art, best first: the local-client picture, then the mirror copy (data.js artUrls). Empty
+ * when the id is unknown or neither manifest lists the picture (a path that is not listed is never requested).
+ * @param {string} id official emoji id
+ * @returns {string[]}
+ */
+export function emoteArtUrls(id) {
+  const e = emoteInfo(id);
+  return e ? artUrls(emoteArtGroup(id), e.picId) : [];
+}
+
+/**
+ * URL of an emote's official art (the first of emoteArtUrls), or null.
  * @param {string} id official emoji id
  */
 export function emoteArtUrl(id) {
-  const e = emoteInfo(id);
-  return e ? localAsset(emoteArtGroup(id), e.picId) : null;
+  return emoteArtUrls(id)[0] || null;
 }
+
+/** True while the local-art manifest or the asset manifest has not settled (EmoteArt shows an empty box meanwhile). */
+const artManifestsPending = () => ['local', 'assets'].some((n) => { const st = data.status(n); return st === 'loading' || st === 'idle'; });
 
 /** Official emote UI sprite (ui/battle: emoji_bubble_bkg, emoji_bkg, emoji_cell_bkg, emoji_btn, emoji_btn_disable). */
 export const emoteUiSprite = (name) => localAsset('ui/battle', name);
@@ -149,18 +163,19 @@ function EmoteGlyph({ class: cls }) {
 }
 
 /**
- * Official emote picture; neutral glyph when unavailable.
+ * Official emote picture (the local-client art, else the mirror copy; the next one when a picture fails to load);
+ * neutral glyph when unavailable.
  * @param {{ id: string, class?: string }} props
  */
 export function EmoteArt({ id, class: cls }) {
-  useData('local');
-  const [bad, setBad] = useState(null);
-  const src = emoteArtUrl(id);
-  if (src && bad !== src) {
-    return html`<img class=${cx('eart', cls)} src=${src} alt="" draggable=${false} decoding="async" onError=${() => setBad(src)} />`;
+  useData('local', 'assets');
+  const [bad, setBad] = useState(() => new Set()); // URLs that failed to load
+  const src = nextArtUrl(emoteArtUrls(id), bad);
+  if (src) {
+    return html`<img key=${src} class=${cx('eart', cls)} src=${src} alt="" draggable=${false} decoding="async"
+      onError=${() => setBad((s) => new Set(s).add(src))} />`;
   }
-  const st = data.status('local');
-  if (!src && emoteInfo(id) && (st === 'loading' || st === 'idle')) return html`<span class=${cx('eart', 'eart--pending', cls)} aria-hidden="true"></span>`;
+  if (emoteInfo(id) && artManifestsPending()) return html`<span class=${cx('eart', 'eart--pending', cls)} aria-hidden="true"></span>`;
   return html`<${EmoteGlyph} class=${cls} />`;
 }
 

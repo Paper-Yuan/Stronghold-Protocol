@@ -101,7 +101,9 @@ test('a whole-field skill (纯烬艾雅法拉 S3 "攻击范围扩大至整个战
 
 test('the game screen hands the card the live entry it already reads (battle runner / m.unitStats)', () => {
   const src = readFileSync(path.join(ROOT, 'public/js/ui/detailPanel.js'), 'utf8');
-  assert.match(src, /grid=\$\{cardRangeGrid\(live, fr, c\)\}/);
+  // (the stats block moved into the shared chessStatsBlock — also the 干员调配 screen's 局内数值, GitHub issue #64)
+  assert.match(src, /grid=\$\{cardRangeGrid\(live, rec, chess\)\}/);
+  assert.match(src, /blocks\.stats = chessStatsBlock\(\{ rec: fr, chess: c, live \}\)/, 'the card draws it through the shared block');
   const game = readFileSync(path.join(ROOT, 'public/js/screens/game.js'), 'utf8');
   assert.match(game, /battleRunner\.unitStats\(uid, fid\)/);
 });

@@ -72,7 +72,11 @@
   position: absolute;
   inset: 0;
   border-radius: 50%;
-  background: conic-gradient(from 0deg, rgba(23, 249, 183, .28), rgba(23, 249, 183, 0) 22%, transparent 100%);
+  /* The bright edge must LEAD and the glow must trail BEHIND it. A conic gradient's angle grows
+     clockwise from 0deg (12 o'clock), and radar-sweep rotates clockwise too — so the bright end has
+     to sit at 100% (== 0deg) and fade counter-clockwise from there. Written the other way round
+     (bright at 0% fading to 22%) the glow fans out AHEAD of the beam and the sweep reads backwards. */
+  background: conic-gradient(from 0deg, transparent 0 78%, rgba(23, 249, 183, .28) 100%);
   animation: radar-sweep 6s linear infinite;
 }
 @keyframes radar-sweep { to { transform: rotate(360deg); } }

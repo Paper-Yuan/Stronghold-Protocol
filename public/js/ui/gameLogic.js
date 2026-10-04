@@ -4,7 +4,8 @@
 // light legal tiles while dragging; the server stays authoritative and may still refuse a move.
 //
 //   Board = own normal field (GEO.FIELD rows 9–12, cols 2–10). Melee chess stand on `melee` deploy tiles
-//   (LOW, buildable ALL/MELEE); ranged chess on `melee ∪ rangedOnly` (stages.json → deployTiles.normal,
+//   (LOW, buildable ALL/MELEE) — a 钩索师 / 推击手 ("可以放置于远程位", chess.json `placement` 'all') on any deploy
+//   tile, the 高台 included (piecePosition 'ALL'); ranged chess on `melee ∪ rangedOnly` (stages.json → deployTiles.normal,
 //   derived from the tile legend when missing — the legend's `buildable` is the effective type: 深水区 tile_deepsea
 //   refuses deployment, PRTS 深水区 地形信息 "拒绝部署（待补充）", player report #3 after 0.1.0). Tokens follow their
 //   own `position`; a summon whose text reads "只能部署在召唤者攻击范围内" (tokens.json `ownerRange`: 伺夜's 狼群,
@@ -989,10 +990,18 @@ export function placementContext({ priv, stage, editable, field = 'normal', getC
   return { priv, pieces, boardAt, handAt, deploy, cap, count, field, editable: !!editable, getChess, getToken, getItem };
 }
 
-/** Deploy position ('MELEE'|'RANGED') of a chess/token piece, or null for items. */
+/**
+ * Deploy position ('MELEE'|'RANGED'|'ALL') of a chess/token piece, or null for items. A MELEE operator whose branch
+ * trait reads "可以放置于远程位" (钩索师, 推击手: chess.json `placement` 'all') is 'ALL': any deployable tile, the 高台
+ * included (server/match/board.js positionClass; GitHub issue #32 item 4, DESIGN §22.6 [ASSUMED]).
+ */
 export function piecePosition(ctx, piece) {
   if (!isObj(piece)) return null;
-  if (piece.kind === 'chess') return ctx.getChess(piece.id)?.position === 'MELEE' ? 'MELEE' : 'RANGED';
+  if (piece.kind === 'chess') {
+    const rec = ctx.getChess(piece.id);
+    if (rec?.placement === 'all') return 'ALL';
+    return rec?.position === 'MELEE' ? 'MELEE' : 'RANGED';
+  }
   // tokens: MELEE → ground only; RANGED / ALL → any deployable tile
   if (piece.kind === 'token') return ctx.getToken(piece.id)?.position === 'MELEE' ? 'MELEE' : 'RANGED';
   return null;

@@ -373,12 +373,12 @@ Members (11 chess, 10 in current shop pool; by tier in shop: {'1': 1, '2': 1, '3
 
 - **[3 distinct]** 阿戈尔 members maxHP x(1 + 0.35 + 0.01*L).
 - **[3 distinct (battle start)]** Devour (吞噬): see algorithm.
-- **[5 distinct]** The first 3 阿戈尔 members to be knocked out (first time each) revive immediately (max_free_respawn_cnt 3).
+- **[5 distinct]** The first 3 阿戈尔 members to be knocked out (first time each) revive immediately (max_free_respawn_cnt 3). Devour knock-outs count: a chain that knocks out 3 members spends the 3 revives at battle start (and those members stay standing, step 4).
 - Algorithm:
   1. Order: 阿戈尔 members sorted leftmost first, then topmost ("更靠左和靠上").
   2. Each 阿戈尔 in order marks the unit on the tile directly in front of it (its facing direction) and also the front-tile unit of every 阿戈尔 it has marked (chain). It never marks itself, a unit it already marked, or a unit that marked it.
   3. The marker immediately gains the base ATK of every unit it marked (added to base ATK at the final stage) and their block counts.
-  4. After all marks are placed, each mark makes its target suffer one 5000-point physical 流失 (HP loss, source = the target itself; if it dies, the kill is credited to the marker), resolved in marking order. A target that dies cancels its remaining pending marks.
+  4. After all marks are placed, each mark makes its target suffer one 5000-point physical 流失 (HP loss, source = the target itself; if it dies, the kill is credited to the marker), resolved in marking order. A target knocked out for the first time has its pending marks cancelled ("目标首次被击倒后解除自身被付与但还未触发的【吞噬】效果") — also when it is back at once (the 5-tier revive, 不屈's 立刻重新部署, 埃芒加德, M3茧甲), so a revived member is not devoured again. DESIGN §22.3.
   5. Each devoured unit adds layers to 阿戈尔 equal to its tier (1-6), once per unit per battle.
   6. (5-member tier) Revive is implemented as: when the unit leaves the field for any reason other than being moved, its next deployment has 0 redeploy time and 0 cost (PRTS). Devour layers: each devoured unit adds its tier once per battle (refreshes next round).
 - Formulas: `hpMultiplier = 1.35 + 0.01*L`; `devourDamage = 5000`; `layersPerDevoured = tier of devoured unit`
@@ -924,7 +924,7 @@ Members (5 chess, 4 in current shop pool; by tier in shop: {'2': 1, '3': 1, '5':
 - **[L >= 50]** ALL operators ASPD +50.
 - Formulas: `atkHpMultiplier = 1.25 + 0.01*L`; `idleSec = 10`; `aspdAll(L>=50) = 50`
 - How layers are gained: 史尔特尔 部署时 +8 (<=50/battle); 休谟斯 each 2 kills +1; 瑕光 +4/deploy; 斯卡蒂; 伊内丝 +5; 机变 "斯卡蒂的盟誓" +8, "德克萨斯的盟誓" +10.
-- [ASSUMED] target enemy = the ground enemy closest to the player's objective; landing tile = nearest free deployable tile adjacent to it
+- [ASSUMED] target enemy = the ground enemy closest to the player's objective (its own field's; another field's only while its own has none) that the member can reach; landing tile = the nearest free deployable tile within 2 tiles of it from which the member's attack range covers it. No such tile for any of the 8 most advanced → no jump; the poll looks again every 0.25 s (GitHub issue #51 — up to 0.1.1 the idle trigger landed out of reach and hopped every 10 s; DESIGN §22.2)
 - [ASSUMED] the buff lasts until the operator leaves the field
 - Bond item (with 变形同构体 grants this bond): 突袭手雷 `chess_item_3_11_e` (1 gold: 每次部署后的10秒内，攻击时使目标晕眩2秒)
 - Garrisons that explicitly add layers to this bond: `garrison_38`, `garrison_64`, `garrison_74`, `garrison_77`, `garrison_107` (see section 4; plus the generic ones)

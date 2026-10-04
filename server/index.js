@@ -8,6 +8,9 @@
 //                                /data.js → a generated browser stand-in of server/data.js (the sim's content modules
 //                                           import `../../../data.js`; in the browser it serves the data injected with
 //                                           /sim/simdata.js setSimData). No other server file is ever served.
+//                                /media/bgm/act1 → public/assets/audio/bgm/act1.mp3 — the same audio files, addressed
+//                                           **without** an extension so download managers (IDM / 迅雷 …) stop popping a
+//                                           "下载文件信息" dialog for every BGM track (shared/media.js, public/js/media.js)
 //     MIME types incl. .mjs/.js text/javascript, .skel application/octet-stream, .atlas text/plain;
 //     gzip for text-like types, .skel and uncompressed fonts when the client accepts it (small files are
 //     compressed once and cached in memory); strong ETag + Last-Modified with 304s; Cache-Control
@@ -31,6 +34,7 @@ import fsp from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import zlib from 'node:zlib';
+import { createHash } from 'node:crypto';
 import { promisify } from 'node:util';
 import { pipeline } from 'node:stream/promises';
 import { fileURLToPath } from 'node:url';
@@ -39,6 +43,7 @@ import { Network, SessionRegistry, NET_DEFAULTS } from './net.js';
 import { Lobby } from './lobby.js';
 import { getData, loadData } from './data.js';
 import { PROTOCOL_VERSION, APP_VERSION } from '../shared/constants.js';
+import { MEDIA_PREFIX, AUDIO_EXTS } from '../shared/media.js';
 
 /** Repository root. */
 export const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -113,6 +118,70 @@ const LONG_CACHE = 'public, max-age=86400';          // 1 day
 const IMMUTABLE_CACHE = 'public, max-age=31536000, immutable';
 const LONG_CACHE_DIRS = ['assets', 'fonts', 'vendor']; // first path segment under public/
 const MAX_URL_LENGTH = 4096;
+
+// ---------------------------------------------------------------------------------------------------
+// build tag — the "your page is stale" signal (public/js/ui/buildGuard.js)
+// ---------------------------------------------------------------------------------------------------
+
+/**
+ * The files that make up the runtime the BROWSER loads. A change in any of them is a new build: an already-open page
+ * keeps the modules it imported at load time (ES modules live in the page's module map for its whole lifetime), so
+ * without this signal a deployed fix could never reach a player who does not reload — a client-only battle fix
+ * shipped exactly that way and stayed invisible on a page that had been opened before the deploy.
+ *
+ * `server/`, `data/` and `shared/` are deliberately NOT in here: this process read them once at startup, so when they
+ * change without a restart the server still runs the old simulation and data — a page that reloaded into the new files
+ * would be out of step with the server that validates its battles (and DEPLOY.md restarts the server for every update).
+ */
+export const BUILD_INPUTS = Object.freeze(['public/index.html', 'public/js', 'public/css']);
+
+/** Names the static server never serves: dot files (`.DS_Store`, `.main.js.swp`) and editor backups (`main.js~`). */
+const isIgnoredBuildName = (name) => name.startsWith('.') || name.endsWith('~');
+
+/** @type {{ tag: string|null }|null} */
+let buildCache = null;
+
+/** Every file under `abs` (or `abs` itself), as `[relative path, size, mtimeMs]`, sorted by path. Missing → []. */
+function buildEntries(abs, rel, out) {
+  let stat;
+  try { stat = fs.statSync(abs); } catch { return; }
+  if (stat.isFile()) { out.push([rel, stat.size, stat.mtimeMs]); return; }
+  if (!stat.isDirectory()) return;
+  let names;
+  try { names = fs.readdirSync(abs, { withFileTypes: true }); } catch { return; }
+  for (const d of names.sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0))) {
+    if (isIgnoredBuildName(d.name)) continue;
+    const child = path.join(abs, d.name);
+    const childRel = rel ? `${rel}/${d.name}` : d.name;
+    if (d.isDirectory()) buildEntries(child, childRel, out);
+    else if (d.isFile()) { try { const s = fs.statSync(child); out.push([childRel, s.size, s.mtimeMs]); } catch { /* ignore */ } }
+  }
+}
+
+/** Short hash of the served browser runtime (size + mtime of every BUILD_INPUTS file); null when nothing is readable. */
+export function computeBuildTag(root = ROOT) {
+  const out = [];
+  for (const rel of BUILD_INPUTS) buildEntries(path.join(root, rel), rel, out);
+  if (!out.length) return null;
+  out.sort((a, b) => (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0));
+  const h = createHash('sha1');
+  for (const [rel, size, mtime] of out) h.update(`${rel}\0${size}\0${Math.floor(mtime)}\n`);
+  return h.digest('hex').slice(0, 12);
+}
+
+/**
+ * The build tag of THIS process. Computed once (`startServer` warms it at startup): the tag describes the files the
+ * process is actually serving, every update restarts the server (DEPLOY.md), and re-reading the tree on a timer would
+ * let a half-finished deploy — or a file that changed while the process kept running — move the tag under a page.
+ * @param {string} [root] used by the first call only (tests)
+ */
+export function buildTag(root = ROOT) {
+  if (buildCache === null) buildCache = { tag: computeBuildTag(root) };
+  return buildCache.tag;
+}
+
+/** Drop the cache: the next `buildTag()` re-reads the tree (tests, and `startServer`). */
+export function resetBuildTag() { buildCache = null; }
 
 const gzipAsync = promisify(zlib.gzip);
 const noopLog = { info() {}, warn() {}, error() {}, debug() {} };
@@ -329,6 +398,11 @@ export function createStaticHandler({ publicDir, dataDir, sharedDir, simDir = pa
       res.end(req.method === 'HEAD' ? undefined : shimBody);
       return;
     }
+    // Extension-less audio (download-manager avoidance): /media/bgm/act1 → /assets/audio/bgm/act1.mp3
+    if (decoded.startsWith(MEDIA_PREFIX)) {
+      await serveMedia(req, res, decoded.slice(MEDIA_PREFIX.length), query, publicDir, gzipCache, log);
+      return;
+    }
     // Bare mount paths (e.g. "/data") → treat as the mount directory.
     const mount = mounts.find((m) => decoded.startsWith(m.prefix) || decoded === m.prefix.slice(0, -1)) || mounts[mounts.length - 1];
     const rest = decoded.length > mount.prefix.length ? decoded.slice(mount.prefix.length) : '';
@@ -388,6 +462,51 @@ export function createStaticHandler({ publicDir, dataDir, sharedDir, simDir = pa
     }
     await serveFile(req, res, absPath, stat, mount.name, segments, query, gzipCache, log);
   };
+}
+
+/**
+ * Extension-less audio route: `/media/bgm/act1` → `public/assets/audio/bgm/act1.mp3`.
+ *
+ * Clients ask for audio through this path because download managers (IDM, 迅雷, FDM …) hijack XHR/fetch whose
+ * URL ends in a media extension and pop a "下载文件信息" dialog for every BGM track — see `public/js/media.js`.
+ * Requests for the direct `/assets/audio/…` URLs keep working (they are the fallback for plain static hosts).
+ * `MEDIA_PREFIX` / `AUDIO_EXTS` live in `shared/media.js`: the browser decides which URLs to rewrite with the
+ * same two values, and they must not drift apart.
+ */
+async function serveMedia(req, res, rest, query, publicDir, gzipCache, log) {
+  const root = path.join(path.resolve(publicDir), 'assets', 'audio');
+  const segments = String(rest || '').split('/').filter((s) => s.length > 0);
+  if (!segments.length || rest.endsWith('/')) { sendError(req, res, 404, '页面不存在 · Not found'); return; }
+  if (segments.some((s) => s === '..' || s === '.')) { sendError(req, res, 403, '禁止访问 · Forbidden'); return; }
+  // A leading or trailing dot would address something else (dotfiles, "x..mp3") — and the client never asks for it.
+  if (segments.some((s) => s.startsWith('.') || s.endsWith('.'))) { sendError(req, res, 404, '页面不存在 · Not found'); return; }
+
+  const last = segments[segments.length - 1];
+  const given = path.extname(last).toLowerCase();
+  const wanted = AUDIO_EXTS.includes(given) ? given : '';
+  const stem = wanted ? last.slice(0, -wanted.length) : last;
+  if (!stem || stem.startsWith('.')) { sendError(req, res, 404, '页面不存在 · Not found'); return; }
+  const dir = path.join(root, ...segments.slice(0, -1));
+  if (dir !== root && !dir.startsWith(root + path.sep)) { sendError(req, res, 403, '禁止访问 · Forbidden'); return; }
+
+  // An explicit extension wins (`/media/bgm.ogg` → bgm.ogg), otherwise the usual order decides.
+  const order = wanted ? [wanted, ...AUDIO_EXTS.filter((e) => e !== wanted)] : AUDIO_EXTS;
+  for (const ext of order) {
+    const absPath = path.join(dir, stem + ext);
+    if (!absPath.startsWith(root + path.sep)) continue;
+    let stat;
+    try {
+      // eslint-disable-next-line no-await-in-loop
+      stat = await fsp.stat(absPath);
+    } catch { continue; }
+    if (!stat.isFile()) continue;
+    // serveFile decides Content-Type from the resolved name (`.mp3` → audio/mpeg) — Range/ETag handling is shared.
+    // Cache policy is that of the public path the client would otherwise have asked for (`/assets/audio/…`, 1 day).
+    // eslint-disable-next-line no-await-in-loop
+    await serveFile(req, res, absPath, stat, 'public', ['assets', 'audio', ...segments], query, gzipCache, log);
+    return;
+  }
+  sendError(req, res, 404, '页面不存在 · Not found');
 }
 
 async function serveFile(req, res, absPath, stat, mountName, segments, query, gzipCache, log) {
@@ -536,6 +655,9 @@ export async function startServer(opts = {}) {
   const network = new Network({ registry, handler: lobby, log, options: netOptions });
   const serveStatic = createStaticHandler({ publicDir, dataDir, sharedDir, log });
   const startedAt = Date.now();
+  // The tag is per process (see buildTag): read the browser runtime once, here, not on every /healthz.
+  resetBuildTag();
+  buildTag();
 
   const server = http.createServer((req, res) => {
     res.setHeader('X-Content-Type-Options', 'nosniff');
@@ -559,6 +681,9 @@ export async function startServer(opts = {}) {
     if (parts.rawPath === '/healthz') {
       sendJson(req, res, 200, {
         ok: true, version: PROTOCOL_VERSION, app: APP_VERSION, uptimeSec: Math.round((Date.now() - startedAt) / 1000),
+        // the runtime the server is serving right now (public/js/ui/buildGuard.js): a page whose own build is
+        // older than this reloads itself, so a deploy reaches clients that never reload
+        build: buildTag(),
         sockets: network.connectionCount, sessions: registry.size, ...lobby.stats(),
       });
       return;
@@ -671,7 +796,7 @@ async function main() {
     else console.error('[boot] failed to start', e);
     process.exit(1);
   }
-  console.log(`\n  卫戍协议：盟约 · Stronghold Protocol: Covenant v${APP_VERSION}`);
+  console.log(`\n  卫戍协议：盟约 · Stronghold Protocol: Alliance v${APP_VERSION}`);
   console.log(`  Local:   ${srv.url}`);
   if (srv.host === '0.0.0.0' || srv.host === '::') {
     for (const u of lanUrls(srv.port)) console.log(`  LAN:     ${u}`);

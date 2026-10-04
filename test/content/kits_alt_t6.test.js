@@ -261,7 +261,7 @@ test('6_03 余 S1 今日做东: taunt +1 while carried; TAKE_DAMAGE cast, HP/DEF
   assert.equal(d.unit('chess_char_6_03_a').s.taunt, 0);
 });
 
-test('6_03 余 S2 厚礼上宾: cast when hit (重装 TAKE_DAMAGE); atk_scale × ATK arts around him, reachable ground enemies teleported onto his tile; block +2, HP/ATK +, arts attacks', () => {
+test('6_03 余 S2 厚礼上宾: cast with an enemy on its x-1 (SKILL_RANGE — a deliberate deviation from the 重装 TAKE_DAMAGE, DESIGN §22.10); atk_scale × ATK arts around him, reachable ground enemies teleported onto his tile; block +2, HP/ATK +, arts attacks', () => {
   for (const id of both('chess_char_6_03')) {
     const sid = 'skchr_yu_2', bb = bbOf(id, sid);
     const h = run({
@@ -272,6 +272,7 @@ test('6_03 余 S2 厚礼上宾: cast when hit (重装 TAKE_DAMAGE); atk_scale ×
     const u = h.unit(id);
     usesSkill(u, sid);
     assert.ok(h.runUntil(() => u.skill.active, 10));
+    assert.equal(started(h, u)[0].reason, 'SKILL_RANGE');
     const t0 = started(h, u)[0].t;
     const burst = dealt(h, u, (c) => c.t === t0 && c.dmg.isSkill && !c.dmg.isAttack);
     assert.equal(burst.length, 3);
@@ -1160,7 +1161,7 @@ test('default-skill-only hooks do not run under an alternate skill (余 / 维娜
   // 余 S2 active: 闲云隐市 is NOT given to every operator (S3 only)
   {
     const h = run({
-      defs: { chess: { o1: plain('o1'), o2: plain('o2'), o3: plain('o3') }, enemies: { e: dummy('e', { atk: 100, bat: 1 }) } }, // (重装: TAKE_DAMAGE)
+      defs: { chess: { o1: plain('o1'), o2: plain('o2'), o3: plain('o3') }, enemies: { e: dummy('e', { atk: 100, bat: 1 }) } }, // (S2: an enemy on x-1)
       units: [U('chess_char_6_03_a', 'skchr_yu_2', 10, 4, { carryState: READY }), { chessId: 'o1', row: 9, col: 6 }, { chessId: 'o2', row: 11, col: 6 }, { chessId: 'o3', row: 12, col: 6 }],
       enemies: [{ key: 'e', pos: [10, 4] }],
     });

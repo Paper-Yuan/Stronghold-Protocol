@@ -258,8 +258,9 @@ export const showsDeathFx = (info, consumed = false, reason = null) => !consumed
 
 /**
  * The views' info of a battle unit from its UnitInfo (m.field / fieldMeta `units`, a 'spawn' event; snapshot.js
- * unitInfo), sanitised; null for a malformed entry. `form` — an enemy's current model form (content/enemies.js setForm:
- * 转译基底·α's forms, a 逐火 余烬, a leader after its 重生, 掠海漂移体's crawl) — makes a view built mid-battle (a teammate's
+ * unitInfo), sanitised; null for a malformed entry. `form` — the unit's current model form (an enemy's, content/enemies.js
+ * setForm: 转译基底·α's forms, a 逐火 余烬, a leader after its 重生, 掠海漂移体's crawl; a 傀儡师 fighting as its 替身, sim
+ * professions.js) — makes a view built mid-battle (a teammate's
  * field watched later, 联防 observers, a reconnect, server-run watchers: no fx of the change is replayed) start on that
  * clip set (render/units.js FORMS); it used to be dropped here, so such views drew the first form (player report #5).
  */
@@ -273,7 +274,7 @@ export function renderInfo(u) {
     // deploy direction of allies (UnitInfo.dir, DESIGN §3): the model (Back for UP, mirrored for LEFT) and the
     // ground wedge follow it; absent = unknown (legacy frames) → derived from `facing`, no wedge
     dir: typeof u.dir === 'string' ? u.dir : undefined,
-    // an enemy's current model form (UnitInfo.form): the view starts in it (UnitView reads info.form)
+    // the unit's current model form (UnitInfo.form: an enemy's mode, a 傀儡师's 替身): the view starts in it (UnitView reads info.form)
     form: typeof u.form === 'string' ? u.form : undefined,
     // DESIGN §16 loadout of an ally (UnitInfo.skillIndex / moduleId): the Spine actor plays that skill's clip, and a
     // tap hands them to the detail card (a teammate's unit shows its owner's skill / module)

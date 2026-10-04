@@ -1,6 +1,6 @@
 /* ==========================================================================================
    screens/loadout.css — 干员调配 (Operator loadout, DESIGN §16; js/screens/loadout.js): full-screen overlay with a
-   filterable roster of the visible chess (left) and the selected chess's skills and elite modules (right).
+   filterable roster of the visible chess (left) and the selected chess's skills, 局内数值 and elite modules (right).
    Official preset sprites (ui/outer: operator_preset, image_skill_select_outline, skill_select_deco, icon_equip_non)
    are used when the local-client art is present; every piece has a CSS fallback.
    Sizes are design px ÷ 100 (theme.css root scale); text that must stay readable on phones uses max(.xxrem, N px).
@@ -308,6 +308,21 @@
 .lo-attr b { font-family: var(--font-num); font-size: max(.15rem, 10px); }
 .lo-attr.is-up b { color: var(--mint-400); }
 .lo-attr.is-down b { color: var(--red-premium); }
+
+/* 局内数值 (the chosen variant's stats, 攻击范围, 特性 and 天赋 — GitHub issue #64): the detail card's own block
+   (ui/detailPanel.js chessStatsBlock: .dstats / .dstat / .drange / .rgrid / .rgrid-all from game-panels.css, drawn there in
+   board-sized units) at this screen's reading sizes — a px floor on every text size (1 rem is 40 px on phones), the range box
+   dropping under the numbers when the column is too narrow for both */
+.lo-sec--stats .dstats-wrap { flex-wrap: wrap; gap: .1rem; }
+.lo-sec--stats .dstats-wrap > .dstats { flex: 1 1 max(3.2rem, 190px); }
+.lo-sec--stats .dstat { padding: .05rem .08rem; }
+.lo-sec--stats .dstat__k { font-size: max(.13rem, 9px); }
+.lo-sec--stats .dstat__v { font-size: max(.2rem, 12px); }
+.lo-sec--stats .drange { min-width: max(1.1rem, 56px); }
+.lo-sec--stats .rgrid { --rg: max(.14rem, 7px); } /* (a grid wider than the box keeps its inline, shrunk --rg) */
+.lo-sec--stats .rgrid-all { font-size: max(.16rem, 11px); }
+.lo-minfo--kit { margin-top: 0; border-left-color: var(--mint-500); }
+.lo-stats__cap { margin: 0; font-size: max(.13rem, 9px); line-height: 1.5; color: var(--text-dim); }
 .lo-locknote { display: flex; align-items: center; gap: .06rem; margin: .16rem 0 0; font-size: max(.14rem, 10px); color: var(--amber); }
 .lo-locknote .icon { width: .16rem; height: .16rem; }
 
@@ -362,3 +377,24 @@
 .sp-coarse .lo-chip, .sp-coarse .lo-toggle, .sp-coarse .lo-select { min-height: 30px; }
 .sp-coarse .lo-seg button { min-height: 28px; }
 @media (prefers-reduced-motion: reduce) { .lo, .lo-card { animation: none; transition: none; } }
+
+/* 导出 / 导入 (干员调配 presets): the dialog is the shared Modal, rendered NEXT TO `.lo` (a sibling) rather than inside
+   it — so components.css `.modal { position: fixed }` and its z-index above the overlay apply as they do everywhere
+   else, and `.lo > *` needs no exception for it. Below: the payload textarea + the hidden input behind 选择文件. */
+.lo-io__hint { margin: 0 0 max(.1rem, 8px); font-size: max(.18rem, 12px); line-height: 1.55; color: var(--text-md); }
+.lo-io__hint b { color: var(--mint-400); font-size: max(.22rem, 13px); margin: 0 .02rem; }
+.lo-io__hint strong { color: var(--gold); }
+.lo-io__text {
+  box-sizing: border-box; width: 100%; height: max(2.4rem, 160px); min-height: 120px; resize: vertical;
+  padding: max(.1rem, 8px) max(.12rem, 10px);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  /* 16 px: iOS zooms into a focused field below that (same reason as ui/clipboard.js) */
+  font-size: max(.2rem, 16px); line-height: 1.45;
+  color: var(--text-hi); background: rgba(4, 10, 8, .55);
+  border: 1px solid var(--line-2); border-radius: 2px; outline: none;
+  /* wrap instead of a horizontal scrollbar: phones are narrow and the payload is meant to be read/copied whole */
+  white-space: pre-wrap; overflow-wrap: anywhere; overflow-y: auto;
+}
+.lo-io__text:focus { border-color: var(--mint-700); }
+.lo-io__text::placeholder { color: var(--text-lo); }
+.lo-io__file { display: none; }

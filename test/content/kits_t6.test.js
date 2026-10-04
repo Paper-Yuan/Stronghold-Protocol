@@ -715,9 +715,11 @@ test('耀骑士临光: S3 summons 耀阳 (90 % true + stun 3 s around it), true 
 });
 
 test('荒芜拉普兰德: S3 drones chase enemies anywhere, fear on catch, 100 % ATK arts per second around them', () => {
+  // (one enemy, far outside her range: every drone picks the enemy nearest to itself — PRTS S3 备注 ② — so a second,
+  // nearer enemy would draw all of them; the full flight is in test/sim/feedback2-whitw2-yu.test.js)
   const h = battle({
     units: [{ chessId: 'chess_char_6_18_a', row: 10, col: 3, carryState: { sp: 68 } }],
-    enemies: [{ key: 'enemy_dummy', pos: [10, 4] }, { key: 'enemy_dummy2', pos: [12, 9] }],
+    enemies: [{ key: 'enemy_dummy2', pos: [12, 9] }],
   });
   const u = h.unit('chess_char_6_18_a');
   const bb = u.def.skill.bb;

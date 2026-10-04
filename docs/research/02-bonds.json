@@ -8373,7 +8373,7 @@
     },
     "layerGain": "史尔特尔 部署时 +8 (<=50/battle); 休谟斯 each 2 kills +1; 瑕光 +4/deploy; 斯卡蒂; 伊内丝 +5; 机变 \"斯卡蒂的盟誓\" +8, \"德克萨斯的盟誓\" +10.",
     "assumed": [
-     "target enemy = the ground enemy closest to the player's objective; landing tile = nearest free deployable tile adjacent to it",
+     "target enemy = the ground enemy closest to the player's objective (its own field's; another field's only while its own has none) that the member can reach; landing tile = the nearest free deployable tile within 2 tiles of it from which the member's attack range covers it. No such tile for any of the 8 most advanced -> no jump; the poll looks again every 0.25 s (GitHub issue #51 - up to 0.1.1 the idle trigger landed out of reach and hopped every 10 s; DESIGN §22.2)",
      "the buff lasts until the operator leaves the field"
     ]
    },

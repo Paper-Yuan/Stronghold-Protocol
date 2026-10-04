@@ -2,7 +2,7 @@
 // 绝技 and the prep side of 助力 远见 奇迹 投资人 调和 (numbers from data/bonds.json, research 02 §3.9–§3.23).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { makeBattle, chessRec, enemyRec, checkInvariants } from '../helpers/battleHarness.js';
+import { makeBattle, chessRec, enemyRec, checkInvariants, flatStage } from '../helpers/battleHarness.js';
 import { gainLayers, inRange } from '../../server/sim/content/support/index.js';
 import { bondBb, procChance } from '../../server/sim/content/bonds/addon/battle.js';
 import { registerMeta } from '../../server/sim/content/bonds/addon.js';
@@ -339,6 +339,76 @@ test('突袭: the jump is a redeployment — deploy fires (部署时 effects), f
   assert.deepEqual([u.tileR, u.tileC], landed, 'redeployed where it lay');
   assert.deepEqual([u.homeR, u.homeC], [12, 3], 'home tile unchanged');
   close(u.s.maxHp, 2000, 'bonus gone after leaving the field');
+  checkInvariants(h.b);
+});
+
+// GitHub issue #51 (reported on 0.1.0, still so in 0.1.1): the 10 s idle jump landed where no enemy was in range and
+// then hopped between such tiles every 10 s, and it ignored a second enemy it could have reached. Either trigger now jumps only to a landing tile
+// with its target in range — the first candidate that has one — else the member stays and the next poll looks again
+// [ASSUMED: the text says only "再部署至一名地面敌人周围"]. Row 9 here: cols 8–9 plain floor (not deployable); a
+// RIGHT-facing melee member (its own tile + the tile in front) reaches a speed-0 enemy on (9,9) only from (9,9) or
+// (9,8) — neither deployable.
+const RAID51_STAGE = flatStage({ rows: { 9: '##Errrrrff' + 'S' + 'rrrrrrr' + 'S##' } });
+const RAID51_ENEMY = { enemy_raid51: enemyRec({ key: 'enemy_raid51', hp: 1e7, speed: 0 }) };
+const raidJumps = (h) => h.hooksOf('deploy').filter((c) => c.unit.kind === 'op' && !c.initial); // (an enemy spawn is a deploy too)
+
+test('突袭 #51: no landing tile reaches the enemy → neither trigger jumps (no hopping); once one can, the jump comes at once', () => {
+  const defs = {
+    chess: { r_m: op('r_m', ['raidShip']), r_s: chessRec({ id: 'r_s', bonds: ['raidShip'], skill: { spCost: 10, initSp: 10 } }) },
+    enemies: RAID51_ENEMY,
+  };
+  const h = makeBattle({
+    stage: RAID51_STAGE, defs, bonds: { raidShip: bond(1, 10) }, enemies: [{ key: 'enemy_raid51', pos: [9, 9] }],
+    units: [{ chessId: 'r_m', row: 12, col: 3 }, { chessId: 'r_s', row: 11, col: 3 }], hooks: ['deploy', 'death'],
+    autoFinish: false, timeLimit: 120,
+  });
+  const m = h.unit('r_m'), s = h.unit('r_s');
+  h.run(45);
+  assert.equal(m.lastAttackAt, -Infinity, 'r_m idle the whole time (the 10 s trigger, four times over)');
+  assert.ok(s.skill.ready, 'r_s: its skill stays ready the whole time (the 技能就绪 trigger)');
+  assert.deepEqual(raidJumps(h), [], 'no jump: no landing tile has the enemy in range');
+  assert.deepEqual(h.hooksOf('death').filter((c) => c.reason === 'raid'), [], 'no 突袭 retreat');
+  assert.deepEqual([m.tileR, m.tileC, s.tileR, s.tileC], [12, 3, 11, 3], 'both stay where they are');
+  // a ground enemy that can be reached: both jump at the next poll (the idle time kept counting) and land with it in range
+  const t0 = h.b.time;
+  const e2 = h.spawn('enemy_raid51', { pos: [12, 7] });
+  h.run(0.3);
+  assert.equal(raidJumps(h).length, 2, 'both members jumped');
+  for (const c of raidJumps(h)) assert.ok(c.t - t0 <= 0.25 + 1e-6, `within one poll (${(c.t - t0).toFixed(2)} s)`);
+  for (const u of [m, s]) {
+    assert.ok(inRange(u, e2), `${u.defId}: the new enemy in range after the jump (${u.tileR},${u.tileC})`);
+    assert.ok(Math.max(Math.abs(u.tileR - 12), Math.abs(u.tileC - 7)) <= 2, `${u.defId}: next to it`);
+  }
+  checkInvariants(h.b);
+});
+
+test('突袭 #51: the most advanced enemy out of reach → the jump goes to the next one it can reach and fights there; idle time restarts', () => {
+  const defs = { chess: { r_m: op('r_m', ['raidShip']) }, enemies: RAID51_ENEMY };
+  const idle = bondBb('raidShip').no_attack_duration;
+  const h = makeBattle({
+    stage: RAID51_STAGE, defs, bonds: { raidShip: bond(1, 10) }, hooks: ['deploy', 'death'], autoFinish: false, timeLimit: 120,
+    enemies: [{ key: 'enemy_raid51', pos: [9, 9] }, { key: 'enemy_raid51', pos: [12, 9] }], units: [{ chessId: 'r_m', row: 12, col: 3 }],
+  });
+  h.step();
+  const [e1, e2] = h.enemies();
+  assert.deepEqual([e1.y, e1.x, e2.y, e2.x], [9, 9, 12, 9]);
+  assert.ok(h.b.remainingDistance(e1) < h.b.remainingDistance(e2), 'the one out of reach is the more advanced (first candidate)');
+  const u = h.unit('r_m');
+  assert.ok(h.runUntil(() => raidJumps(h).length > 0, idle + 1), 'jumped after the idle time');
+  const t1 = h.b.time;
+  assert.ok(inRange(u, e2) && !inRange(u, e1), `landed on ${u.tileR},${u.tileC} with the second enemy in range`);
+  h.run(5);
+  assert.ok(u.lastAttackAt > t1 && e2.hp < e2.s.maxHp, 'it attacks the enemy it jumped to');
+  assert.equal(raidJumps(h).length, 1, 'busy there: no further jump');
+  // its enemy gone, a reachable one elsewhere: the next jump comes the idle time after its last attack, not at once
+  h.b.dealDamage(null, e2, { amount: 1e9, type: 'true' });
+  const last = u.lastAttackAt;
+  const e3 = h.spawn('enemy_raid51', { pos: [10, 5] });
+  assert.ok(!inRange(u, e3));
+  assert.ok(h.runUntil(() => raidJumps(h).length === 2, idle + 1), 'jumped again');
+  const dt = h.b.time - last;
+  assert.ok(dt >= idle - 1e-6 && dt <= idle + 0.25 + 1e-6, `${dt.toFixed(2)} s after its last attack`);
+  assert.ok(inRange(u, e3), 'the new enemy in range');
   checkInvariants(h.b);
 });
 

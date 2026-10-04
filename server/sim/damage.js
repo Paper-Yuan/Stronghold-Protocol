@@ -500,11 +500,17 @@ export function reduceElement(target, amount, el = null) {
   return removed;
 }
 
-/** Heal pipeline. Returns the HP actually restored. */
+/**
+ * Heal pipeline. Returns the HP actually restored. `noHeal` stops heals from others (`self` heals pass); `healFree` (禁疗,
+ * PRTS 异常效果 HEAL_FREE "受到的治疗量变为0") stops the unit's own too — except an HP-regeneration attribute (`regen`:
+ * "增减生命回复速度或生命回复速度（百分比）属性的效果不会被识别为治疗类能力") and a heal that ignores it (`ignoreHealFree`:
+ * 史尔特尔 S3's start heal, PRTS "无视禁疗").
+ */
 export function heal(battle, source, target, amount, opts = {}) {
   if (!target || !target.alive || target.removed || !target.deployed || target.bossPool) return 0;
   const self = source === target || !!opts.self;
   if (!self && (target.s.flags.noHeal || (target.profile && target.profile.noHeal))) return 0;
+  if (target.s.flags.healFree && !opts.regen && !opts.ignoreHealFree) return 0;
   let amt = amount * (source && source.s ? source.s.healingDealtMul : 1) * target.s.healingTakenMul;
   if (!(amt > 0) || !Number.isFinite(amt)) return 0;
   if (battle._hooks.heal) {

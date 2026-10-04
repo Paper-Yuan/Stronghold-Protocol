@@ -20,8 +20,10 @@
 // either quality satisfies them; lent items count as carried. Both are evaluated live, at the moment of use.
 //
 // Hook priorities (non-default): 'fatal' — consumable death savers run LAST, so a skill's / talent's own undying (kits
-// use 10 … −60) never wastes a charge: 坚固维式重锤's lock (异常效果 不死, once per deployment — deploymentOf; its running
-// windows held by one battle-level hook) at PRIO_REVIVE −100, then the M3茧甲 revive at PRIO_RESPAWN −101 — PRTS
+// use 10 … −60) never wastes a charge: 坚固维式重锤's lock (异常效果 不死, once per deployment — deploymentOf) at
+// PRIO_REVIVE −100 and its running windows, held by one battle-level hook, at PRIO_UNDYING_HELD −99 — before a 傀儡师's
+// switch to its 替身 (professions.js, −100: PRTS 分支特性信息 傀儡师 "受到足以致命的伤害且未持有不死的情况下"), while the
+// lock itself still comes after that switch (as in 0.1.1); then the M3茧甲 revive at PRIO_RESPAWN −101 — PRTS
 // 卫戍协议：盟约 下半/PRTS盟约记录 备注 "“复活”的实现方式为：受益者因移动之外的原因退场时下次部署的再部署时间和费用归零": a
 // revive acts on a knock-out, which a 不死 prevents, so the lock always comes first whatever the equip order (player
 // report F1 after 0.1.0: with the 茧甲 equipped first the revive ran first and the first lethal hit showed no lock);
@@ -65,6 +67,8 @@ const chance = (battle, p) => p > 0 && (p >= 1 || battle.rng() < p);
 const ENEMY_RECORD = /^enemy_/;
 /** 'fatal' priorities (see header). */
 export const PRIO_REVIVE = -100;
+/** A running 坚固 window (不死 held): before a 傀儡师's switch to its 替身 at −100 — see header. */
+export const PRIO_UNDYING_HELD = PRIO_REVIVE + 1;
 /** The items' 复活 (M3茧甲): acts on a knock-out, so after every 不死 (PRIO_REVIVE) — see header. */
 export const PRIO_RESPAWN = PRIO_REVIVE - 1;
 const PRIO_FREE_UNDYING = 20;
@@ -238,8 +242,9 @@ function hammerState(battle, rt, u) {
  * [ASSUMED a deployment], 阿戈尔's 立刻复活), and an in-place 复活 (M3茧甲, 埃芒加德: revivedInPlace) opens a new one too
  * [ASSUMED] — PRTS (M3茧甲 / 埃芒加德 / 阿戈尔 备注) "“复活”的实现方式为：受益者因移动之外的原因退场时下次部署的再部署时间和
  * 费用归零": officially a revive is a 0-time / 0-cost redeploy; the remake keeps the unit standing instead.
+ * Also read by 阿戈尔's devour (bonds/core.js): a unit whose deployment changed during the pass was knocked out.
  */
-function deploymentOf(u) { return `${u.deploySeq}:${u.mem.revives | 0}`; }
+export function deploymentOf(u) { return `${u.deploySeq}:${u.mem.revives | 0}`; }
 
 /** An in-place 复活 (M3茧甲, 埃芒加德) happened: a new deployment for the once-per-deployment lock (deploymentOf). */
 export function revivedInPlace(u) { if (u && u.mem) u.mem.revives = (u.mem.revives | 0) + 1; }
@@ -276,9 +281,10 @@ function hammerAcquire(battle, rt, u) {
   const hs = hammerState(battle, rt, u);
   hs.refs++;
   if (hs.scope) return hs;
-  // every running 坚固 window of the battle (holdsUndying): one hook that no grant owns, registered before any lock hook
+  // every running 坚固 window of the battle (holdsUndying): one hook that no grant owns, ahead of every lock hook and of a
+  // 傀儡师's switch to its 替身 (PRIO_UNDYING_HELD: a 本体 holding 不死 does not switch)
   if (!rt.undyingHook) {
-    rt.undyingHook = battle.on('fatal', (c) => { if (!c.prevented && holdsUndying(battle, c.unit)) c.prevented = true; }, { priority: PRIO_REVIVE });
+    rt.undyingHook = battle.on('fatal', (c) => { if (!c.prevented && holdsUndying(battle, c.unit)) c.prevented = true; }, { priority: PRIO_UNDYING_HELD });
   }
   const S = new Scope(battle, u, `item:hammer#${u.id}`);
   hs.scope = S;

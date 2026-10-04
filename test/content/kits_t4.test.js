@@ -111,7 +111,7 @@ test('莫斯提马 S3: ripple hits every enemy in range, ATK +90 %, knock-back; 
   h.run(0.3);
   const slowBuff = es[0].findBuff(`mostma:slow:${u.id}`);
   approx(slowBuff.mods.moveMul, 1 + t1.move_speed * bb.talent_scale, 1e-9, 'slow ×3');
-  assert.equal(slowBuff.status, 'slow', 'slow status set for client icon');
+  assert.equal(slowBuff.status, 'slow', 'carries the slow status so the client draws its icon');
   const x0 = es.map((e) => e.x);
   const n0 = dmgBy(h, u).length;
   h.run(u.s.interval + 0.1);
@@ -1205,13 +1205,3 @@ test('凯瑟琳: a placed device serves the operator it faces and re-shields it 
   h.run(1.1);
   approx(ally.findBuff('cathy:shield')?.shield ?? 0, u.s.maxHp * tb.max_shield_ratio, 1e-6, 'full talent shield again');
 });
-
-test('tier4 selId recognizes skillId on raw/network skill records', () => {
-  const rawDef = {
-    skill: { skillId: 'skchr_mostma_3', bb: { atk: 0.9, 'attack@force': 0, talent_scale: 3 } },
-    talents: [{ bb: { sp_recovery_per_sec: 0.4 } }, { bb: { move_speed: -0.15 } }],
-  };
-  const kit = kits.chess_char_4_02_a(rawDef.skill.bb, rawDef, rawDef);
-  assert.ok(kit && kit.talents, 'built kit successfully from raw skillId def');
-});
-

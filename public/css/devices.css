@@ -143,7 +143,7 @@ html:not(.sp-in-match) .toast-host { margin-top: var(--sa-t); }
   }
   .dstat__k { font-size: max(.12rem, 8px); }
   .dstat__k-full { display: none; }
-  .dstat__k-short { display: inline; }
+  .dstat__k::after { content: attr(data-short); }
   .dstat__v { font-size: max(.17rem, 10px); }
   .dstat small { font-size: max(.11rem, 8px); }
   .dhead__name { font-size: max(.32rem, 12px); }

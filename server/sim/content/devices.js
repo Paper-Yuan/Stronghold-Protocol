@@ -9,12 +9,16 @@
 //              RIGHT|DOWN|LEFT) equals the blower's dir / is its opposite / is perpendicular get ATK +
 //              blower_s_character[equal|opposite|vertical].atk (the m01 blowers blow DOWN); enemies moving with /
 //              against the flow get move speed × (1 + blower_s_enemy[equal|opposite].move_speed)
-//   沼泽 m      +1 stack on entering and every intervalSec s on the tile (max maxStacks): ASPD aspdPerStack (fractions
-//              are ×100 ASPD), move speed × (1 + moveMulPerStack × stacks); cleared on leaving (allies and ground enemies)
+//   沼泽 m      a unit on it (allies and ground enemies) triggers 【陷入沼泽】 on entering and every intervalSec (1) s
+//              there: an enemy gains 1 layer — 2 at 重量 ≥ heavyWeight (the device's `value`, 3) — of ASPD aspdPerStack
+//              (fractions are ×100 ASPD) and move speed × (1 + moveMulPerStack × layers), an operator 1 layer of the
+//              ASPD part only; at most maxStacks layers; cleared on leaving
 //   烟雾 g      operators on it cannot be targeted by enemy ranged attacks (stealth flag: blocked enemies still hit them)
-//   深水 d      ground enemies on it: sea_drown[enemy].damage true dmg/s, ASPD attack_speed (×100), move × move_speed
-//   活性源石 i  units on it (allies and ground enemies): damage true dmg/s, ATK + atk, ASPD + attack_speed, for
-//              `duration` s of battle time
+//   深水 d      ground enemies on it: sea_drown[enemy].damage dmg/s (无来源 true 持续伤害, not 环境伤害: tags dot /
+//              periodic / deepsea), ASPD attack_speed (×100), move × move_speed
+//   活性源石 i  a unit on it (allies and ground enemies) gets a timed effect: damage true dmg/s, ATK + atk, ASPD +
+//              attack_speed for `duration` s from its last contact — an enemy keeps it after walking off; one effect
+//              per unit, its time starts again while the unit is on the tile; the tiles never switch off
 //   “双眼皮”   turrets (`trap_1104_aclasert`, band 机械援助 / `deviceOverrides` alias on): ranged arts shooter on its data
 //              range; ASPD + attack_speed_per_stack × L (≤ max_attack_speed), hits apply fragile 1 + damage_scale_per_stack
 //              × L (≤ max_damage_scale) for the text's duration; L = the owner's highest bond layers (live)
@@ -45,7 +49,7 @@ const CRATE_KEY = 'trap_1105_accrate';
 const TURRET_KEY = 'trap_1104_aclasert';
 /** Research 05 §2.3 values, used only when a stage has no `special` block / device blackboard. */
 const RESEARCH = Object.freeze({
-  mire: { intervalSec: 3, aspdPerStack: -0.05, moveMulPerStack: -0.05, maxStacks: 10 },
+  mire: { intervalSec: 1, aspdPerStack: -0.05, moveMulPerStack: -0.05, maxStacks: 10, heavyWeight: 3 },
   deepsea: { damage: 40, attack_speed: -0.6, move_speed: 0.6 },
   infection: { damage: 70, atk: 0.2, attack_speed: 20, duration: 300 },
 });
@@ -287,11 +291,14 @@ function buildTerrain(battle, st) {
   // mire
   const m = sp.mire || {};
   const mdev = devSkill('mireController') || {};
+  // the device skill's `value` (3) is the 重量 from which an enemy gains 2 layers, not an interval (PRTS 沼泽控制)
+  const mInterval = num(m.intervalSec, RESEARCH.mire.intervalSec);
   st.mire = {
-    interval: num(m.intervalSec ?? mdev.value, RESEARCH.mire.intervalSec),
+    interval: mInterval > 0 ? mInterval : RESEARCH.mire.intervalSec,
     aspdPer: aspdOf(num(m.aspdPerStack ?? mdev.attack_speed, RESEARCH.mire.aspdPerStack)),
     movePer: num(m.moveMulPerStack ?? mdev.move_speed, RESEARCH.mire.moveMulPerStack),
     max: Math.max(1, Math.floor(num(m.maxStacks ?? mdev.max_stack_cnt, RESEARCH.mire.maxStacks))),
+    heavyWeight: num(m.heavyWeight ?? mdev.value, RESEARCH.mire.heavyWeight),
   };
   // deep sea
   const ds = sp.deepsea?.bb || devSkill('tideController') || {};
@@ -300,13 +307,15 @@ function buildTerrain(battle, st) {
     aspd: aspdOf(num(ds['sea_drown[enemy].attack_speed'], RESEARCH.deepsea.attack_speed)),
     moveMul: num(ds['sea_drown[enemy].move_speed'], RESEARCH.deepsea.move_speed),
   };
-  // active originium
+  // active originium: `duration` is how long the effect lasts on a unit (PRTS tile template "部署于其上的我军和经过的
+  // 敌军在{duration}s内…"), not a lifetime of the tiles
   const inf = sp.infection?.bb || {};
+  const infDur = num(inf.duration, RESEARCH.infection.duration);
   st.infection = {
     damage: num(inf.damage, RESEARCH.infection.damage),
     atk: num(inf.atk, RESEARCH.infection.atk),
     aspd: aspdOf(num(inf.attack_speed, RESEARCH.infection.attack_speed)),
-    until: num(inf.duration, RESEARCH.infection.duration),
+    duration: infDur > 0 ? infDur : RESEARCH.infection.duration,
   };
   // blowers
   for (const d of battle.stage?.devices || []) {
@@ -325,35 +334,80 @@ function buildTerrain(battle, st) {
   }
 }
 
-const terrainDamage = (battle, amount) => (ctx) => {
+/** 活性源石's tick: true damage no unit deals (无来源), tagged 'terrain' = 环境伤害 ("受到来自自然环境的伤害" content reads it). */
+const infectionDamage = (battle, amount) => (ctx) => {
   if (amount > 0 && ctx.unit.alive) battle.dealDamage(null, ctx.unit, { amount, type: 'true', canDodge: false, tags: ['terrain'] });
+};
+
+/**
+ * 深水区's 【水蚀】 tick (PRTS 涨潮控制 技能3 深水: "每秒受到40点无来源真实持续伤害（不属于环境伤害，不会触发受击回复）"; PRTS 伤害分类
+ * lists 深水区/涨潮水蚀 as BUFF damage): 无来源 true 持续伤害 — tags 'dot' (锡人's 凋敝魂灵 raises it), 'periodic' and
+ * 'deepsea' (the 免疫水蚀 swimmers cancel it), no 'terrain' (not 环境伤害), no 受击回复 (noSp).
+ */
+const deepWaterDamage = (battle, amount) => (ctx) => {
+  if (amount > 0 && ctx.unit.alive) battle.dealDamage(null, ctx.unit, { amount, type: 'true', canDodge: false, sourceless: true, noSp: true, tags: ['dot', 'periodic', 'deepsea'] });
 };
 
 function enterTerrain(battle, st, u, code) {
   const m = u.mem;
   if (m.terrain === code) return;
-  if (m.terrain) battle.removeBuff(u, BUFF[m.terrain]);
+  // leaving a tile ends its effect — except 活性源石's, which runs out on its own (touchInfection)
+  if (m.terrain && m.terrain !== TERRAIN.infection) battle.removeBuff(u, BUFF[m.terrain]);
   m.terrain = code;
   m.terrainSince = battle.time;
   m.mireStacks = 0;
+  m.mireTriggers = 0;
   if (!code) return;
   if (code === TERRAIN.smog) battle.addBuff(u, { key: BUFF[code], flags: { stealth: true } });
   else if (code === TERRAIN.deepsea) {
     const D = st.deepsea;
-    battle.addBuff(u, { key: BUFF[code], mods: { aspd: D.aspd, moveMul: D.moveMul }, interval: 1, onTick: terrainDamage(battle, D.damage) });
-  } else if (code === TERRAIN.infection) {
-    const I = st.infection;
-    battle.addBuff(u, { key: BUFF[code], mods: { atkPct: I.atk, aspd: I.aspd }, interval: 1, onTick: terrainDamage(battle, I.damage) });
+    battle.addBuff(u, { key: BUFF[code], mods: { aspd: D.aspd, moveMul: D.moveMul }, interval: 1, onTick: deepWaterDamage(battle, D.damage) });
   }
-  // mire stacks are applied by tickMire
+  // mire layers are applied by tickMire, 活性源石 by touchInfection (every tick on the tile)
 }
 
+/**
+ * 活性源石 contact (every tick on the tile). The tile gives a timed effect — damage true dmg/s, ATK + atk, ASPD +
+ * attack_speed for `duration` s (PRTS 特殊地形 tile template: "部署于其上的我军和经过的敌军在{duration}s内每秒受到{damage}
+ * 真实伤害，攻击力提升…，攻击速度增加…") — that stays on an enemy after it walks off: PRTS 危机合约 tag
+ * global_tile_infection_1 「目标：可控感染」 "踏过活性源石地块的敌人不再持续损失生命值" switches the lasting HP loss off,
+ * so without it the loss continues. One effect per unit (PRTS 作战机制: "同名buff的默认叠加策略buff只能表现出一个"): a
+ * unit that already carries it gets its full `duration` back and keeps its per-second rhythm — no second effect, no
+ * extra tick [ASSUMED: the time counts from the last contact — so an operator deployed on it, always in contact, drains
+ * past `duration`]. An operator moved off the tile (Battle.relocate: 乌尔比安 S3, 夕's 小自在 …) keeps it for its time;
+ * leaving the field drops it with every buff; a 重生 clears it (enemies.js rebirthCleanse: PRTS 特殊机制 §重生 "清空自身
+ * 身上除白名单外所有Buff") and contact gives it again while the unit is on the tile [ASSUMED]. The tick (infectionDamage)
+ * is true damage no unit deals (无来源), tagged 'terrain' = 环境伤害 (PRTS 自然环境 lists 活性源石), not 'dot' [ASSUMED:
+ * PRTS 伤害分类's list of BUFF damage does not name it].
+ */
+function touchInfection(battle, st, u) {
+  const I = st.infection;
+  const key = BUFF[TERRAIN.infection];
+  const b = u.findBuff(key);
+  if (b) { if (b.timeLeft < I.duration) b.timeLeft = I.duration; return; }
+  battle.addBuff(u, { key, duration: I.duration, mods: { atkPct: I.atk, aspd: I.aspd }, interval: 1, onTick: infectionDamage(battle, I.damage) });
+}
+
+/** Layers an enemy gains per 【陷入沼泽】 trigger at 重量 ≥ heavyWeight (PRTS 沼泽控制: "若其重量大于等于3，改为获得2层"). */
+const MIRE_HEAVY_LAYERS = 2;
+
+/**
+ * 沼泽 (PRTS 沼泽控制 备注): a unit in the mire triggers its 【陷入沼泽】 "每秒…一次" (the device skill charges in 1 s) — an
+ * enemy gains 1 layer of ASPD −5 % and move speed −5 % (2 layers at 重量 ≥ heavyWeight, the skill's `value` 3), any other
+ * unit 1 layer of ASPD −5 % only; at most 10 layers; "上述减益于单位不再位于沼泽之中时解除" (enterTerrain).
+ * [ASSUMED] the first trigger comes on entering, then one every second.
+ */
 function tickMire(battle, st, u) {
-  const M = st.mire;
-  const n = Math.min(M.max, 1 + Math.floor((battle.time - u.mem.terrainSince + 1e-9) / M.interval));
-  if (n === u.mem.mireStacks) return;
-  u.mem.mireStacks = n;
-  battle.addBuff(u, { key: BUFF[TERRAIN.mire], refresh: 'replace', mods: { aspd: M.aspdPer * n, moveMul: Math.max(0, 1 + M.movePer * n) } });
+  const M = st.mire, m = u.mem;
+  const due = 1 + Math.floor((battle.time - m.terrainSince + 1e-9) / M.interval);
+  if (due <= m.mireTriggers) return;
+  const enemy = u.side === 'enemy';
+  const per = enemy && num(u.s.massLevel, 0) >= M.heavyWeight ? MIRE_HEAVY_LAYERS : 1;
+  const n = Math.min(M.max, m.mireStacks + per * (due - m.mireTriggers));
+  m.mireTriggers = due;
+  if (n === m.mireStacks) return;
+  m.mireStacks = n;
+  battle.addBuff(u, { key: BUFF[TERRAIN.mire], refresh: 'replace', mods: enemy ? { aspd: M.aspdPer * n, moveMul: Math.max(0, 1 + M.movePer * n) } : { aspd: M.aspdPer * n } });
 }
 
 /**
@@ -372,7 +426,6 @@ function terrainFor(battle, st, u) {
   let code = st.terrain[k];
   if (code === TERRAIN.smog && u.side !== 'ally') code = 0;
   if (code === TERRAIN.deepsea && u.side === 'ally') code = 0;
-  if (code === TERRAIN.infection && battle.time >= st.infection.until) code = 0;
   return code;
 }
 
@@ -420,6 +473,7 @@ function refreshUnit(battle, st, u) {
   if (st.hasTerrain) {
     enterTerrain(battle, st, u, terrainFor(battle, st, u));
     if (u.mem.terrain === TERRAIN.mire) tickMire(battle, st, u);
+    else if (u.mem.terrain === TERRAIN.infection) touchInfection(battle, st, u);
   }
   if (st.flow.size) { if (u.side === 'ally') tickAirflowAlly(battle, st, u); else tickAirflowEnemy(battle, st, u); }
 }

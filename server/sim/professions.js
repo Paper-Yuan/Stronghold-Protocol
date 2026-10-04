@@ -22,6 +22,7 @@
 //   dmgMul(battle, unit, target) → number      afterHit(battle, unit, target, {dealt,x,y})
 //   canAttack(battle, unit) → bool             afterAttack(battle, unit, targets)
 //   hitsFn(battle, unit) → n                   install(battle, unit) — per-unit hooks, called once at setup
+//   dollNoAttack bool (傀儡师: its <替身> makes no normal attack and casts no skill — 归溟幽灵鲨, kit trait)
 //   tb — the unit's trait blackboard (data `trait.bb`), used for tunables (module upgrades included on elites)
 // Behaviour per subprofession is documented in docs/SIM.md §Professions. Front / side tests use the unit's direction
 // (`dir`, sim/dir.js): offsets are compared in its facing-RIGHT frame.
@@ -90,33 +91,102 @@ const installCharger = (battle, unit) => {
   }, { owner: unit });
 };
 
+/**
+ * 傀儡师 (dollkeeper) trait "受到致命伤时不撤退，切换成<替身>作战（替身阻挡数为0），持续20秒后自身再次替换<替身>" with the
+ * branch rules of PRTS 分支特性信息 傀儡师: a lethal hit on the <本体> (one it survives with 不死 does not count: "受到足以致命的
+ * 伤害且未持有不死的情况下" — a skill's / talent's own 不死 runs earlier, a running 坚固维式重锤 window just before this hook,
+ * items/battle.js PRIO_UNDYING_HELD −99) starts a switch animation, after which the operator fights as its <替身> for the
+ * trait's 20 s (bb duration) holding 阻回; then it switches back the same way. A switch animation clears the operator's
+ * Buffs and resets its HP to the max of the form it switches to; during one the operator holds 不死, 无敌, 阻回, 禁疗, 孤立,
+ * 强制缴械 and is immune to 眩晕 / 冻结 / 睡眠.
+ * The 替身 blocks nothing from the start of the switch to it until the switch back starts; a lethal hit on it knocks the
+ * operator out. Content may switch the operator at once (hook `dollSwitch` { unit, reason, done }: 归溟幽灵鲨 S2 "技能结束
+ * 后立刻切换为<替身>"). A kit's `dollNoAttack` profile flag (归溟幽灵鲨, PRTS 特性备注 "<替身>不进行普通攻击") disarms the 替身
+ * and keeps it from casting (the basic 技能策略 casts on an attack the 替身 never makes; [ASSUMED] every other rule — S1's
+ * 技能范围 — likewise); 风丸's 替身 attacks (PRTS: "<替身>状态下可对空").
+ * The form is the unit's model state (`unit.form` 'doll', snapshot.js unitInfo; fx 'substitute' / 'swap' / 'dollEnd' with
+ * `form`, shared/protocol.js fxForm): the client draws the 替身 on the skeleton's *_B clips (render/units.js FORMS).
+ * The 替身's max HP is the operator's own (PRTS: HP "重设…至最大值"; the trait blackboard's 替身 HP bonus `max_hp` is 0 for
+ * both 傀儡师 — the elite PUM-Y module's +20 % aside — and 风丸's 纸偶 token has her max HP at every level), or its 替身
+ * token's (风丸).
+ * [ASSUMED]: a switch animation lasts DOLL_SWITCH (the skeletons' 1 s Start_B — the 替身 appearing — and Start_2 — the
+ * 本体 back), also on a direct switch (`dollSwitch`); "清除自身一切Buff" ends the running skill and removes the statuses
+ * (buffs with a catalogue `status`) — every other buff stays, the remake's bond / item / talent effects (buffs too)
+ * and other units' timed buffs and shields alike; 无敌 is damage immunity only (as for every ally 无敌 here — PRTS's
+ * "无法被不同阵营选中" is not modelled for it).
+ */
+export const DOLL_SWITCH = 1;
+const DOLL_SWITCH_IMMUNE = new Set(['stun', 'freeze', 'sleep']);
+
 const installDollkeeper = (battle, unit) => {
-  // the substitute's HP comes from the unit's own substitute token (风丸 纸偶) for its selected skill / module
-  // (DESIGN §16); a dollkeeper without one (归溟幽灵鲨) must not borrow another operator's token stats → 50 % of its
-  // own max HP
-  const dollHp = () => {
+  // the 替身's max HP comes from the unit's own 替身 token (风丸 纸偶) for its selected skill / module (DESIGN §16); a
+  // dollkeeper without one (归溟幽灵鲨) must not borrow another operator's token stats: its own max HP (header)
+  const dollHpMul = () => {
     const tokId = (unit.def.tokens || []).map((t) => (typeof t === 'string' ? t : t?.tokenId)).find((t) => t && /shadow|doll/.test(t));
     const tok = tokId ? battle.data.getToken?.(tokId, unit.defId, unit.def?.loadout ?? null) : null;
-    return tok && tok.stats.maxHp > 0 ? tok.stats.maxHp : unit.base.maxHp * 0.5;
+    return tok && tok.stats.maxHp > 0 ? Math.max(0.05, tok.stats.maxHp / Math.max(1, unit.base.maxHp)) : 1;
   };
-  battle.on('fatal', (ctx) => {
-    if (ctx.unit !== unit || ctx.prevented || unit.trait.doll) return;
-    ctx.prevented = true;
-    unit.trait.doll = true;
+  const at = (extra) => ({ x: unit.x, y: unit.y, id: unit.id, ...extra });
+  // a switch animation: "切换动画开始时会清除自身一切Buff" (header: the running skill and the statuses), then 1 s of 不死
+  // (the fatal hook below) 无敌 阻回 禁疗 孤立 强制缴械 and 眩晕 / 冻结 / 睡眠 immunity (beforeStatus below)
+  const startSwitch = () => {
+    const sk = unit.skill;
+    if (sk && sk.active && sk.kind !== 'passive') sk.end('substitute');
+    for (const b of unit.buffs.slice()) if (b.status) battle.removeBuff(unit, b);
+    unit.trait.dollSwitching = true;
+    const done = () => { unit.trait.dollSwitching = false; };
     battle.addBuff(unit, {
-      key: 'trait:substitute', duration: unit.profile.dollDuration ?? 20, visible: true,
-      mods: { blockCnt: -99, hpMul: Math.max(0.05, dollHp() / Math.max(1, unit.base.maxHp)) },
-      onExpire: () => {
-        unit.trait.doll = false;
-        if (unit.alive) { unit.markDirty(); unit.hp = unit.s.maxHp; battle.fx('swap', { x: unit.x, y: unit.y, id: unit.id }); }
-      },
+      key: 'trait:dollSwitching', duration: DOLL_SWITCH, onExpire: done, onRemove: done,
+      flags: { invulnerable: true, noSp: true, noHeal: true, isolated: true, disarm: true },
     });
-    battle.releaseBlocked(unit);
+  };
+  const leave = () => {
+    if (!unit.trait.doll) return;
+    unit.trait.doll = false;
+    unit.form = null;
+    if (!unit.alive || !unit.deployed) return;
+    startSwitch();
     unit.markDirty();
     unit.hp = unit.s.maxHp;
-    battle.fx('substitute', { x: unit.x, y: unit.y, id: unit.id });
+    battle.fx('swap', at({ form: null }));
+  };
+  const enter = () => {
+    if (unit.trait.doll || !unit.alive || !unit.deployed) return false;
+    unit.trait.doll = true;
+    startSwitch();
+    const dur = DOLL_SWITCH + (unit.profile.dollDuration ?? 20);
+    const mul = dollHpMul();
+    battle.addBuff(unit, {
+      key: 'trait:substitute', duration: dur, visible: true, onExpire: leave, onRemove: leave,
+      mods: { blockCnt: -99, ...(mul !== 1 ? { hpMul: mul } : null) },
+      // 阻回 for the whole form; a 替身 that makes no normal attack casts no skill either (header)
+      flags: { noSp: true, ...(unit.profile.dollNoAttack ? { disarm: true, silence: true } : null) },
+    });
+    battle.releaseBlocked(unit);
+    unit.form = 'doll';
+    unit.markDirty();
+    unit.hp = unit.s.maxHp;
+    // `dur`: until the switch back (the client times the 替身's closing clip with it)
+    battle.fx('substitute', at({ form: 'doll', dur }));
+    return true;
+  };
+  battle.on('fatal', (ctx) => {
+    if (ctx.unit !== unit || ctx.prevented) return;
+    if (unit.trait.dollSwitching) { ctx.prevented = true; return; } // 不死 while switching (a 流失 ignores 无敌)
+    if (unit.trait.doll) return;                                   // the 替身 is knocked out
+    ctx.prevented = enter();
   }, { owner: unit, priority: -100 });
-  battle.on('death', (ctx) => { if (ctx.unit === unit) unit.trait.doll = false; }, { owner: unit });
+  battle.on('dollSwitch', (ctx) => { if (ctx.unit === unit && !ctx.done) ctx.done = enter(); }, { owner: unit });
+  battle.on('beforeStatus', (ctx) => {
+    if (ctx.target === unit && unit.trait.dollSwitching && DOLL_SWITCH_IMMUNE.has(ctx.status)) ctx.cancel = true;
+  }, { owner: unit });
+  battle.on('death', (ctx) => {
+    if (ctx.unit !== unit) return;
+    unit.trait.doll = false;
+    unit.trait.dollSwitching = false;
+    // knocked out as the 替身: its death clip has played (the 'die' event came first); the redeploy is the 本体 again
+    if (unit.form) { unit.form = null; battle.fx('dollEnd', at({ form: null })); }
+  }, { owner: unit });
 };
 
 const installLibrator = (battle, unit) => {
@@ -497,6 +567,7 @@ export function resolveProfile(def, kitTrait = null) {
   if (p.dmgType === 'heal' && !p.heal && !p.noAttack) p.heal = { mode: 'single' };
   if (p.dmgType !== 'heal' && p.heal) p.heal = null;
   if (p.dmgType === 'none') p.noAttack = true;
+  // a 要塞 (fortress) branch throws ground-only splash: the data's generic ranged default would let it hit FLY enemies
   if (p.fortress || p.groundOnly) { p.canHitFly = false; p.groundOnly = true; }
   if (kitTrait) Object.assign(p, kitTrait);
   // a 锁定攻击范围 AoE (阵法术师, 轰击术师) strikes every enemy on its range and has no projectile: they are struck at the

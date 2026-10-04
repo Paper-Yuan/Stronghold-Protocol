@@ -20,6 +20,7 @@ them (with `node_modules/`, which keeps each package's own licence file).
 | [ws](https://github.com/websockets/ws) | 8.22.0 | MIT | WebSocket server (`server/`) | no (npm) | yes (`node_modules/`) |
 | [Node.js](https://nodejs.org/) (`libnode.so`) | 18.20.4 | MIT (Node core) & multi-license dependencies | Android in-process game server runtime — `android/app/src/main/jniLibs/{arm64-v8a,x86_64}/libnode.so` | **yes** | yes (APK `lib/`) |
 | [LLVM libc++](https://libcxx.llvm.org/) (`libc++_shared.so`) | NDK r25b (LLVM 14) | Apache-2.0 with LLVM Exception | Android C++ runtime support for Node.js — `android/app/src/main/jniLibs/{arm64-v8a,x86_64}/libc++_shared.so` | **yes** | yes (APK `lib/`) |
+| [Node.js](https://nodejs.org/) | v22.23.3 (pinned in `scripts/make-windows-bundle.mjs`) | MIT | the portable `node\node.exe` (**Windows portable package only** — the integration bundle in [Releases](../../releases/latest) ships no `node.exe`) | no (downloaded from nodejs.org at package time, sha256 verified) | **Windows portable package only** (`node\node.exe`, with `node\LICENSE-node.txt`) |
 | [puppeteer-core](https://github.com/puppeteer/puppeteer) | 25.12.0 | Apache-2.0 | optional browser tests (dev dependency) | no (npm) | no |
 | [Ark-Unpacker](https://github.com/isHarryh/Ark-Unpacker) LZ4AK decoder | — | BSD-3-Clause | `tools/local-extract/aklz4.py` (optional local extraction) | **yes** — keeps its notice; full text also in `tools/local-extract/LICENSE-Ark-Unpacker.txt` | yes |
 | [UnityPy](https://github.com/K0lb3/UnityPy) (via MooncellWiki/UnityPy), [lz4](https://github.com/python-lz4/python-lz4), [Pillow](https://github.com/python-pillow/Pillow) | see `tools/local-extract/requirements.txt` | MIT / BSD-3-Clause / MIT-CMU | optional local extraction; installed by pip into `.venv-extract` only when the host opts in | no | no |
@@ -189,6 +190,38 @@ COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
 IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ```
+
+### Node.js — MIT
+
+The Windows portable package (`scripts/make-windows-bundle.mjs`) redistributes the official Node.js binary
+(`node\node.exe`). The integration bundle in Releases does **not** contain it — this row applies to the portable
+package only. Its complete licence file, taken verbatim from the same official archive, ships next to the binary as
+`node\LICENSE-node.txt`; the core MIT grant is reproduced here for convenience.
+
+```text
+Copyright Node.js contributors. All rights reserved.
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to
+deal in the Software without restriction, including without limitation the
+rights to use, copy, modify, merge, publish, distribute, sublicense, and/or
+sell copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+IN THE SOFTWARE.
+```
+
+The official archive also carries notices for the software bundled inside Node.js (V8, OpenSSL, npm, …); those are
+included in the same `LICENSE-node.txt`.
 
 ### Ark-Unpacker (tools/local-extract/aklz4.py) — BSD-3-Clause
 

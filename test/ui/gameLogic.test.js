@@ -208,6 +208,18 @@ describe('placement mirror (canPlace)', () => {
     assert.equal(canPlace(ctx, m.uid, null).ok, false);
     assert.equal(canPlace(ctx, m.uid, { area: 'temp', idx: 0 }).ok, false, 'no temp target');
   });
+  test('a 钩索师 / 推击手 (chess.json placement all: "可以放置于远程位") may also use the high ground; a plain melee keeps the refusal', () => {
+    const glad = piece('chess_char_4_12_a'); // 歌蕾蒂娅 (钩索师)
+    const forcer = piece('chess_char_3_07_b'); // 见行者 (推击手), elite
+    const m = piece(MELEE);
+    const ctx = ctxFor(privWith({ hand: [glad, forcer, m] }));
+    for (const p of [glad, forcer]) {
+      for (const [row, col] of [[10, 4], [11, 4], [12, 4], [9, 3]]) assert.equal(canPlace(ctx, p.uid, { area: 'board', row, col }).ok, true, `${p.id} on ${row},${col}`);
+      const lit = boardTargets(ctx, p.uid).legal.map(([a, b]) => tileKey(a, b));
+      assert.equal(lit.length, STAGE.deployTiles.normal.melee.length + STAGE.deployTiles.normal.rangedOnly.length, `${p.id}: every deploy tile lit`);
+    }
+    assert.deepEqual(canPlace(ctx, m.uid, { area: 'board', row: 10, col: 4 }), { ok: false, code: 'BAD_TILE', reason: '近战单位只能部署在地面' });
+  });
   test('not editable ⇒ nothing is legal', () => {
     const m = piece(MELEE);
     assert.equal(canPlace(ctxFor(privWith({ hand: [m] }), false), m.uid, { area: 'board', row: 9, col: 3 }).code, 'WRONG_PHASE');

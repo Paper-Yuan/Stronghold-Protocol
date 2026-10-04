@@ -289,6 +289,8 @@ All in `StreamingAssets/AB/Windows/ui/emoticon/theme/`:
 
 The autochess **room** pics (pic_hello, pic_question, pic_waiting, pic_working, pic_sorry_2, …) are **not** in any local bundle. Keep room emotes out of scope, or reuse the battle glyphs.
 
+The public mirror (ArknightsAssets2 `cn`, `ui/emoticon/theme/[uc]<themeId>/icon/<picId>.png`) has the same 36 battle sprites, at the same sizes (checked 2026-10-03); since v0.1.2 `tools/fetch-assets.mjs` downloads them and the client uses them when the local art is absent (DESIGN §22.5, GitHub issue #42).
+
 ---
 
 ## 5. Other prep interactions we may have missed

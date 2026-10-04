@@ -16,6 +16,8 @@ import { spawn, spawnSync } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import fs from 'node:fs';
+// 打开浏览器只有一份实现（走 shell 关联 = 默认浏览器，且不会把浏览器拉成提权）
+import { openBrowser as openInBrowser } from './open-browser.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const IS_WIN = process.platform === 'win32';
@@ -46,21 +48,7 @@ function parseArgs(argv) {
 }
 
 function openBrowser(url) {
-  try {
-    let cmd; let args;
-    if (IS_WIN) { cmd = 'rundll32'; args = ['url.dll,FileProtocolHandler', url]; }
-    else if (process.platform === 'darwin') { cmd = 'open'; args = [url]; }
-    else {
-      if (!process.env.DISPLAY && !process.env.WAYLAND_DISPLAY) return false;
-      cmd = 'xdg-open'; args = [url];
-    }
-    const child = spawn(cmd, args, { stdio: 'ignore', detached: true, windowsHide: true });
-    child.on('error', () => {});
-    child.unref();
-    return true;
-  } catch {
-    return false;
-  }
+  return openInBrowser(url) !== null;
 }
 
 function printShare(port) {
@@ -132,4 +120,12 @@ async function main() {
   return exited;
 }
 
-main().then((code) => { process.exitCode = code; }, (e) => { console.error(e?.stack || e); process.exitCode = 1; });
+// Same convention as tools/setup.mjs: the helpers above are importable, but only running this file starts anything.
+// Without the guard, importing launch.mjs would fall through to main() in the background and bind a port.
+function isMain() {
+  try { return !!process.argv[1] && fs.realpathSync(process.argv[1]) === fs.realpathSync(fileURLToPath(import.meta.url)); } catch { return false; }
+}
+
+if (isMain()) {
+  main().then((code) => { process.exitCode = code; }, (e) => { console.error(e?.stack || e); process.exitCode = 1; });
+}

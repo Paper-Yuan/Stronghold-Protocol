@@ -337,7 +337,18 @@ async function loadContext() {
   return {
     act, ac, charTable, skillTable, rangeTable, uniequip, battleEquip, handbook, enemyDb,
     levels, templateIds: [...templateIds].sort(naturalCmp), stageIds, enemyDataLevelId, research,
+    manifest: await loadManifest(),
   };
+}
+
+/**
+ * The committed asset manifest data/assets.json (tools/fetch-assets.mjs; docs/ASSETS.md) — the enemies' attack clip
+ * lengths (enemyAttackAnim); null when absent or unreadable (no `attackAnim` then, with a warning).
+ */
+async function loadManifest() {
+  const abs = join(ROOT, 'data', 'assets.json');
+  if (!existsSync(abs)) { warn('data/assets.json not found; enemies get no attackAnim'); return null; }
+  try { return JSON.parse(await readFile(abs, 'utf8')); } catch (e) { warn(`data/assets.json unreadable: ${e.message}`); return null; }
 }
 
 // ===== shared game-object helpers ===============================================================
@@ -434,12 +445,17 @@ const ATTACK_RANGE_CHANGE = /攻击(?:范围|距离)(?:与溅射范围)?(?:扩�
  * carry too (惊蛰, 幽灵鲨, 耶拉, 莫斯提马, 莱恩哈特). The record keeps the official row in `rawRule` (TAKE_DAMAGE) for
  * traceability; validateAll fails the build when an entry no longer meets a TAKE_DAMAGE row or its skill. 深巡 S1
  * 侵袭破坏应对 keeps TAKE_DAMAGE.
+ * 余 S2 厚礼上宾 joined on 2026-10-04 (the owner's decision after GitHub issue #32 item 1, DESIGN §22.10: players saw it fire
+ * from a ranged hit with nobody to pull). His attack range is his own tile (0-1), so the basic strategy would not see an
+ * enemy he could pull: his S2 takes SKILL_RANGE on its own 技能范围 (x-1) — the official strategy of a MANUAL skill with a
+ * 技能范围 when no class row applies, "仅在技能范围内存在敌人（无视其不可选中）时释放技能" — `customRangeGrid` = that range.
  */
 const TRIGGER_DEVIATIONS = Object.freeze({
   chess_char_1_04_a: { skchr_udflow_2: 'DEFAULT' },                                // 深巡 S2 行动能力剥夺
   chess_char_1_20_a: { skchr_liskam_2: 'DEFAULT' },                                // 雷蛇 S2 反击电弧
   chess_char_2_18_a: { 'skcom_atk_up[3]': 'DEFAULT', skchr_ashlok_2: 'DEFAULT' },  // 灰毫 S1 攻击力强化·γ型, S2 专注轰击
   chess_char_5_08_a: { skchr_horn_2: 'DEFAULT', skchr_horn_3: 'DEFAULT' },         // 号角 S2 暴风号令, S3 终极防线
+  chess_char_6_03_a: { skchr_yu_2: 'SKILL_RANGE' },                                // 余 S2 厚礼上宾 (its x-1)
 });
 
 /**
@@ -456,7 +472,7 @@ const TRIGGER_DEVIATIONS = Object.freeze({
  *   "不通过普通攻击/治疗触发技能，仅在技能范围内存在敌人（无视其不可选中）时释放技能", customRangeGrid = the skill range;
  * - else DEFAULT (the basic strategy: ready + about to attack / heal);
  * - last, the deliberate deviations (TRIGGER_DEVIATIONS, per chess and skill): `rule` from the table, `rawRule` the
- *   official row.
+ *   official row (a SKILL_RANGE deviation takes the skill's own range as `customRangeGrid`).
  * @param {object} skill record from buildSkill (skillId, skillType, desc, rangeGrid)
  * @param {{operator?: boolean, chessId?: string}} opts operator = a chess (the 技能范围 strategy is written for 干员;
  *   summons keep DEFAULT); chessId = the chess's NORMAL id (TRIGGER_DEVIATIONS key)
@@ -474,6 +490,10 @@ function resolveTrigger(ctx, char, charId, skillIdx, skill, { operator = false, 
   }
   const rawRule = pick ? pick.skillTriggerType : 'DEFAULT';
   const deviation = chessId ? TRIGGER_DEVIATIONS[chessId]?.[skill.skillId] : null;
+  if (deviation === 'SKILL_RANGE') {
+    if (!skill.rangeGrid) warn(`trigger deviation ${chessId} ${skill.skillId}: SKILL_RANGE without a 技能范围`);
+    return { rule: deviation, rawRule, customRangeGrid: skill.rangeGrid ? skill.rangeGrid.map((p) => p.slice()) : null };
+  }
   if (deviation) return { rule: deviation, rawRule, customRangeGrid: null };
   const rule = TRIGGER_RENAME[rawRule] || rawRule;
   let customRangeGrid = null;
@@ -725,6 +745,22 @@ function hasE2Art(ctx, charId, kind) {
 }
 
 /**
+ * The branch-trait line that lets a MELEE operator stand on the ranged (高台) tiles too: 钩索师 "技能可以使敌人产生位移\n
+ * 可以放置于远程位" and 推击手 "同时攻击阻挡的所有敌人\n可以放置于远程位" (character_table description; PRTS 新人入门:
+ * both branches "可部署在高台和地面"). Chess records get `placement: 'all'` (server/match/board.js positionClass); the
+ * position stays MELEE for the battle. Only the no-module trait counts: the Y-module 教官's "可以额外部署在远程位" is a
+ * module talent (buildable_type), a 部署效果 the mode switches off in the prep placement (PRTS 卫戍协议/帮助 §战斗部署
+ * "携带Y模组的教官仍无法部署至高台位"). [ASSUMED] that the branch trait still applies in this prep: the 帮助 switches off
+ * only 部署效果 and no source names the 钩索师 / 推击手 case for 卫戍协议 (DESIGN §22.6).
+ */
+const PLACE_ON_RANGED_RE = /可以放置于远程位/;
+
+/** The branch trait text of a character at (phase, level), without module parts (traitRecord's template). */
+function branchTraitText(char, phase, level) {
+  return bestCandidate(char.trait?.candidates, phase, level)?.overrideDescripton || char.description || '';
+}
+
+/**
  * Build data/chess.json: every chess (normal + golden) of the season, keyed by chessId, with its loadout
  * choices (DESIGN §16: `skills[]`; golden `modules[]` + `statsBase`/`traitBase`/`talentsBase`).
  * `tokenOwners` entries carry `skillAlts` ({index, count, sources} per non-default skill) and `moduleAlts`
@@ -788,6 +824,8 @@ function buildChess(ctx) {
     rec.subProfessionName = uniequip.subProfDict?.[char.subProfessionId]?.subProfessionName || null;
     rec.position = char.position;
     rec.nationId = char.nationId || null;
+    // 可以放置于远程位 (钩索师, 推击手): the prep placement also allows the ranged tiles (DESIGN §22.6)
+    if (PLACE_ON_RANGED_RE.test(branchTraitText(char, phase, level))) rec.placement = 'all';
 
     // Module (only active on golden chess: equipLevel > 0).
     const modId = shop.defaultUniEquipId || null;
@@ -1751,6 +1789,28 @@ const MODEL_SCALE_BY_PREFAB = new Map();
 for (const [v, list] of MODEL_SCALES) for (const k of list) MODEL_SCALE_BY_PREFAB.set(`enemy_${k}`, Math.round((v / MODEL_SCALE_STANDARD) * 1e4) / 1e4);
 
 /**
+ * An enemy's attack clip → enemies.json `attackAnim` { clip, dur, hit } (GitHub #58: an unblocked ranged enemy stands for
+ * its attack clip, server/sim/ai.js attackStand): the clip the client plays for its attacks (the asset manifest's
+ * `anims.attack.loop` of the enemy's model — not an Idle stand-in, `via: 'idle'`), its length and its first strike
+ * frame (`hits`: the clip's OnAttack event; absent when it has none — the sim then takes half the clip). Read from the
+ * committed data/assets.json (written by tools/fetch-assets.mjs from the Spine skeletons; docs/ASSETS.md), so the sim
+ * never reads client files; an enemy whose model the manifest lacks gets none (the sim falls back to ATTACK_PAUSE).
+ */
+function enemyAttackAnim(manifest, spineId) {
+  const sp = manifest?.enemies?.[spineId]?.spine;
+  const a = sp?.anims?.attack;
+  if (!a || typeof a.loop !== 'string' || a.via === 'idle') return null;
+  const dur = sp.animations?.[a.loop];
+  if (!(typeof dur === 'number' && dur > 0)) return null;
+  const h = sp.hits?.[a.loop];
+  const hit = Array.isArray(h) && Number.isFinite(h[0]) ? Math.min(dur, Math.max(0, h[0])) : null;
+  return hit != null ? { clip: a.loop, dur, hit } : { clip: a.loop, dur };
+}
+
+/** The handbook's 「不停止移动」 attack (“十字路口”量产型's 四向攻击) → enemies.json `attackMoves`: it never stops to attack. */
+const attacksOnTheMove = (abilities) => abilities.some((a) => a.text.includes('不停止移动'));
+
+/**
  * The 鸭爵 strategy's swapped-in enemies (`round_start_all_player_change_enemy_2` enemylist — the act2 versions, *_2)
  * cost BAND_SWAP_LPR at the protection point, not the database's lifePointReduce 0 (the roguelike 宝藏 rule): PRTS
  * 卫戍协议：盟约 下半/PRTS盟约记录 §策略 鸭爵 备注 "…但进入保护目标点将减少1点目标生命值，且在最终回合和隐秘核心回合中仍然生效"
@@ -1840,6 +1900,7 @@ function buildEnemies(ctx) {
     const descRaw = mv(data.description);
     const hitArea = HIT_AREAS[mv(data.prefabKey) || key] || null;
     const modelScale = MODEL_SCALE_BY_PREFAB.get(mv(data.prefabKey) || key) ?? null;
+    const attackAnim = enemyAttackAnim(ctx.manifest, mv(data.prefabKey) || key);
     out[key] = {
       key, name, level: wantLevel, rank: mv(data.levelType, 'NORMAL'), handbookIndex: hb?.enemyIndex || null,
       desc: stripRich(descRaw), descRaw: richRaw(descRaw),
@@ -1862,6 +1923,8 @@ function buildEnemies(ctx) {
       ...(hitArea ? { hitArea: { ...hitArea } } : {}),
       ...(STATIC_BODIES.has(key) ? { staticBody: true } : {}),
       ...(modelScale != null && modelScale !== 1 ? { modelScale } : {}),
+      ...(attackAnim ? { attackAnim } : {}),
+      ...(attacksOnTheMove(abilities) ? { attackMoves: true } : {}),
     };
   }
   for (const k of STATIC_BODIES) if (!out[k]) warn(`STATIC_BODIES: ${k} is not an enemy of the mode`);
@@ -2219,7 +2282,12 @@ function buildStages(ctx, modesById) {
     const byKey = (k) => devices.find((d) => d.key === k);
     if (rows.some((l) => l.includes('m'))) {
       const d = byKey('trap_098_mire');
-      special.mire = { source: d ? d.key : null, intervalSec: d?.skill?.bb?.value ?? 3, aspdPerStack: d?.skill?.bb?.attack_speed ?? -0.05, moveMulPerStack: d?.skill?.bb?.move_speed ?? -0.05, maxStacks: d?.skill?.bb?.max_stack_cnt ?? 10, clearedOnLeave: true };
+      // PRTS 沼泽控制: a unit in the mire triggers 【陷入沼泽】 "每秒…一次" (the device skill's charge time, spData
+      // maxChargeTime 1) and an enemy "若其重量大于等于3，改为获得2层" — the skill's `value` (3) is that 重量, not an
+      // interval; "上述减益于单位不再位于沼泽之中时解除" (clearedOnLeave)
+      const mireSk = d?.skill ? ctx.skillTable[d.skill.skillId]?.levels?.[Math.max(0, (d.skill.level || 1) - 1)] : null;
+      const charge = mireSk?.spData?.maxChargeTime;
+      special.mire = { source: d ? d.key : null, intervalSec: typeof charge === 'number' && charge > 0 ? charge : 1, aspdPerStack: d?.skill?.bb?.attack_speed ?? -0.05, moveMulPerStack: d?.skill?.bb?.move_speed ?? -0.05, maxStacks: d?.skill?.bb?.max_stack_cnt ?? 10, heavyWeight: d?.skill?.bb?.value ?? 3, clearedOnLeave: true };
     }
     if (rows.some((l) => l.includes('d'))) {
       const d = byKey('trap_042_tidectrl');
@@ -3090,9 +3158,11 @@ function validateAll(f) {
     // DESIGN §16 loadout choices
     if (!Array.isArray(c.skills) || c.skills.filter((s) => s.isDefault).length !== 1 || c.skills.find((s) => s.isDefault)?.skillId !== c.skill?.skillId) err(`chess ${c.chessId}: skills[] without exactly one default = skill`);
     if (c.modules && (c.modules.filter((m) => m.isDefault).length !== (c.module?.active ? 1 : 0) || !c.statsBase || !c.traitBase || !c.talentsBase)) err(`chess ${c.chessId}: inconsistent module choices`);
+    // DESIGN §22.6: only a MELEE operator is widened to every deployable tile
+    if (c.placement !== undefined && (c.placement !== 'all' || c.position !== 'MELEE')) err(`chess ${c.chessId}: placement ${c.placement} on position ${c.position}`);
   }
-  // the deliberate trigger deviations (DESIGN §21.29) still override an official TAKE_DAMAGE row, on the normal chess
-  // and its elite alike
+  // the deliberate trigger deviations (DESIGN §21.29, §22.10) still override an official TAKE_DAMAGE row, on the normal
+  // chess and its elite alike
   for (const [baseId, skillsOf] of Object.entries(TRIGGER_DEVIATIONS)) {
     const recs = Object.values(chess).filter((c) => c.baseId === baseId);
     if (recs.length !== 2) err(`trigger deviation ${baseId}: expected the normal and the elite record, got ${recs.length}`);
@@ -3101,6 +3171,7 @@ function validateAll(f) {
         const s = (c.skills || []).find((x) => x.skillId === skillId);
         if (!s) err(`trigger deviation ${c.chessId}: no skill ${skillId}`);
         else if (s.trigger.rawRule !== 'TAKE_DAMAGE' || s.trigger.rule !== rule) err(`trigger deviation ${c.chessId} ${skillId}: ${s.trigger.rawRule} → ${s.trigger.rule}, expected TAKE_DAMAGE → ${rule}`);
+        else if (rule === 'SKILL_RANGE' && (!s.rangeGrid?.length || JSON.stringify(s.trigger.customRangeGrid) !== JSON.stringify(s.rangeGrid))) err(`trigger deviation ${c.chessId} ${skillId}: SKILL_RANGE needs the skill's own range as customRangeGrid`);
       }
     }
   }

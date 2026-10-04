@@ -488,9 +488,16 @@ test('chess: skills[] = every skill unlocked at the status, at the chess skill l
     assert.deepEqual(rules(id), ['DEFAULT', 'DEFAULT']);
     assert.deepEqual(raws(id), ['TAKE_DAMAGE', 'TAKE_DAMAGE']);
   }
+  // 余 S2 厚礼上宾 (DESIGN §22.10, the owner's decision of 2026-10-04): SKILL_RANGE on its own x-1, S1 keeps the row, S3 its
+  // official charId row
+  for (const id of ['chess_char_6_03_a', 'chess_char_6_03_b']) {
+    assert.deepEqual(rules(id), ['TAKE_DAMAGE', 'SKILL_RANGE', 'CUSTOM_RANGE']);
+    assert.deepEqual(raws(id), ['TAKE_DAMAGE', 'TAKE_DAMAGE', 'CUSTOM_RANGE_SEARCH_ENEMY']);
+    assert.deepEqual(chess[id].skills[1].trigger.customRangeGrid, chess[id].skills[1].rangeGrid);
+  }
   const deviated = Object.values(chess).flatMap((c) => (c.skills || []).filter((s) => s.trigger.rawRule === 'TAKE_DAMAGE' && s.trigger.rule !== 'TAKE_DAMAGE').map((s) => `${c.baseId} ${s.skillId}`));
-  assert.equal(deviated.length, 12, 'exactly the six skills, normal + elite');
-  assert.deepEqual([...new Set(deviated)].sort(), ['chess_char_1_04_a skchr_udflow_2', 'chess_char_1_20_a skchr_liskam_2', 'chess_char_2_18_a skchr_ashlok_2', 'chess_char_2_18_a skcom_atk_up[3]', 'chess_char_5_08_a skchr_horn_2', 'chess_char_5_08_a skchr_horn_3']);
+  assert.equal(deviated.length, 14, 'exactly the six skills of §21.29 and 余 S2, normal + elite');
+  assert.deepEqual([...new Set(deviated)].sort(), ['chess_char_1_04_a skchr_udflow_2', 'chess_char_1_20_a skchr_liskam_2', 'chess_char_2_18_a skchr_ashlok_2', 'chess_char_2_18_a skcom_atk_up[3]', 'chess_char_5_08_a skchr_horn_2', 'chess_char_5_08_a skchr_horn_3', 'chess_char_6_03_a skchr_yu_2']);
   for (const c of Object.values(chess)) {
     for (const s of c.skills || []) {
       if (s.skillType !== 'MANUAL') assert.ok(!['TAKE_DAMAGE', 'SEARCH', 'SKILL_RANGE'].includes(s.trigger.rule), `${c.chessId} ${s.skillId}: an AUTO / PASSIVE skill takes no strategy row`);

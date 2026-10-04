@@ -253,14 +253,16 @@ test('librator module (玛恩纳 elite init_atk): +100 % ATK right after deploym
   approx(n.unit('chess_char_5_19_a').s.atk, n.unit('chess_char_5_19_a').base.atk, 1e-6);
 });
 
-test('dollkeeper without a substitute token (归溟幽灵鲨) uses half its own HP, not 风丸\'s 纸偶', { skip: !hasGeneratedData() }, () => {
+test('dollkeeper without a substitute token (归溟幽灵鲨) keeps its own max HP, not 风丸\'s 纸偶', { skip: !hasGeneratedData() }, () => {
   const h = makeBattle({ defs: { enemies: { enemy_dummy: dummy() } }, units: [{ chessId: 'chess_char_5_13_a', row: 9, col: 5 }], content: 'none', autoFinish: false, timeLimit: 30 });
   h.step();
   const u = h.unit('chess_char_5_13_a');
   const full = u.s.maxHp;
   h.b.dealDamage(null, u, { amount: 1e7, type: 'true' });
   assert.ok(u.alive && u.hasBuff('trait:substitute'));
-  approx(u.s.maxHp, full * 0.5, 1e-6);
+  // PRTS 分支特性信息 傀儡师 "重设自身生命至最大值"; the trait's 替身 HP bonus (bb max_hp) is 0 and 风丸's 纸偶 has her own HP
+  approx(u.s.maxHp, full, 1e-6);
+  approx(u.hp, full, 1e-6);
 });
 
 // ---------------------------------------------------------------------------------------------------------------

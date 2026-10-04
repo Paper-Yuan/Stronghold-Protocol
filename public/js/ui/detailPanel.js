@@ -28,6 +28,8 @@
 // mini-map follows the live entry's `range` too (cardRangeGrid: the grid the unit attacks with now — a running skill's
 // range such as 烛煌 S3's 4-11, rangeExtend included; community report E1 after 0.1.0, it used to stay the base grid);
 // a grid larger than the box (RANGE_FIT) draws smaller cells (rangeGridStyle), a whole-field one reads 全场.
+// The stats block (chessStatsBlock), the 特性 text (traitText) and the talent list (chessTalents) are exported: the 干员调配
+// screen's 局内数值 section draws the same ones for the chosen skill / module, without a live entry (GitHub issue #64).
 
 import { html, Icon, TierChip, MicroLabel, Button, confirmDialog, useTicker } from './components.js';
 import { Img, RichText, UnitThumb, BondGlyph, GIcon } from './gameComponents.js';
@@ -110,7 +112,10 @@ const STAT_SHORT = {
 function Stat({ k, v, sub, tone = null, title }) {
   const shortK = STAT_SHORT[k] || k;
   const fullTitle = title ? (k !== shortK ? `${k}（${title}）` : title) : k;
-  return html`<div class=${cx('dstat', tone && `is-${tone}`)} title=${fullTitle} aria-label=${k}><span class="dstat__k"><span class="dstat__k-full">${k}</span><span class="dstat__k-short">${shortK}</span></span><span class="dstat__row"><b class="dstat__v num">${v}</b>${sub ? html`<small>${sub}</small>` : null}</span></div>`;
+  // The cell's text is always the full label — views and tests key stats by it. On a phone the label
+  // is too wide for the fixed cell at the readable floor, so CSS swaps in the short form from
+  // data-short; the hidden span still counts as this node's text, which is what keeps both true.
+  return html`<div class=${cx('dstat', tone && `is-${tone}`)} title=${fullTitle} aria-label=${k}><span class="dstat__k" data-short=${shortK}><span class="dstat__k-full">${k}</span></span><span class="dstat__row"><b class="dstat__v num">${v}</b>${sub ? html`<small>${sub}</small>` : null}</span></div>`;
 }
 
 /** Tolerance below which a live stat counts as its base (display rounding). */
@@ -282,12 +287,14 @@ export function BondChips({ bondIds, bonds = [], onBond = null, off = null, gran
 
 /**
  * 特性 text of the record the unit fights with (DESIGN §16: `lo.record` = the chosen module's traitOverride, or the
- * no-module traitBase for 不装备 — data `trait` is the default module's).
+ * no-module traitBase for 不装备 — data `trait` is the default module's). Also the 干员调配 screen's (screens/loadout.js).
  */
-function traitText(c, golden, lo) {
+export function traitText(c, golden, lo) {
   const t = (lo?.record || c).trait || {};
   const base = t.descRaw || t.desc || '';
-  if (!golden || lo?.record !== c) return base;
+  if (!golden) return base;
+  // the record's own module line, also for a record cloned for another skill or module (a 不装备 record carries none) —
+  // until 0.1.2 a clone fell back to the class trait (Grok review of GitHub #64; the in-match card had it too)
   return t.moduleDescRaw || base;
 }
 
@@ -325,6 +332,45 @@ function GarrisonBlock({ garrison, m }) {
   </section>`;
 }
 
+/** The talents the card lists (天赋): the loadout record's named, not hidden ones. */
+export function chessTalents(rec) {
+  return (Array.isArray(rec?.talents) ? rec.talents : []).filter((t) => t && t.name && !t.hidden);
+}
+
+/**
+ * The card's stats block (block key "stats"): the eight stats and the 攻击范围 mini-map. `rec` = the loadout-resolved
+ * record the unit fights with (chessLoadout `.record`: the chosen module's stats, the chosen skill's passive range),
+ * `chess` the chess record (the range's fallback), `live` the live / start-of-battle entry (liveStat) or null — the
+ * record's own numbers, untagged. A plain function (its root node keeps the key), shared by the detail card and the
+ * 干员调配 screen (screens/loadout.js 局内数值, GitHub issue #64): one block, so the two never disagree.
+ * @param {{ rec: any, chess: any, live?: any }} p
+ */
+export function chessStatsBlock({ rec, chess, live = null }) {
+  const s = rec?.stats || {};
+  const interval = attackInterval(s.bat, s.aspd);
+  // live (battle) / start-of-battle (prep) values against the base, else the record's (liveStat)
+  const st = {
+    maxHp: liveStat(live, 'maxHp', s.maxHp), atk: liveStat(live, 'atk', s.atk), def: liveStat(live, 'def', s.def),
+    res: liveStat(live, 'res', s.res ?? 0, fmtRes), interval: liveStat(live, 'interval', interval, fmtInterval),
+    blockCnt: liveStat(live, 'blockCnt', s.blockCnt, (v) => String(v)),
+  };
+  return html`
+    <div key="stats" class=${cx('dstats-wrap', live && 'is-live')} data-live=${live ? live.src || 'prep' : undefined}>
+      <div class="dstats">
+        <${LiveTag} live=${live} />
+        <${Stat} k="生命上限" ...${st.maxHp} />
+        <${Stat} k="攻击" ...${st.atk} />
+        <${Stat} k="防御" ...${st.def} />
+        <${Stat} k="法术抗性" ...${st.res} />
+        <${Stat} k="攻击间隔" ...${st.interval} />
+        <${Stat} k="阻挡数" ...${st.blockCnt} />
+        <${Stat} k="部署费用" v=${s.cost ?? '—'} />
+        <${Stat} k="再部署" v=${s.respawnTime != null ? `${s.respawnTime}s` : '—'} />
+      </div>
+      <div class="drange"><span class="dstat__k">攻击范围</span><${RangeGrid} grid=${cardRangeGrid(live, rec, chess)} /></div>
+    </div>`;
+}
+
 export function ChessDetail({ chess, piece, unit, snapHp, editable, onSell, bonds, offBonds = null, loadout, onBond, live = null, hint = null, unitItems = null }) {
   const m = data.get('assets');
   const hp = hpOf(live, snapHp);
@@ -332,9 +378,7 @@ export function ChessDetail({ chess, piece, unit, snapHp, editable, onSell, bond
   const c = chess;
   // stats / talents the unit fights with: the chosen module's (or none — statsBase) for an elite (DESIGN §16)
   const fr = lo?.record || c;
-  const s = fr.stats || {};
   const golden = !!(c.isGolden || piece?.golden);
-  const interval = attackInterval(s.bat, s.aspd);
   const sk = lo?.skill || c.skill || null;
   // a chosen skill the manifest has no icon for (only the default skills' icons are fetched): its slot letter
   const skIcon = sk && lo && !lo.defaultSkill ? skillRecordIconUrl(m, sk, { empty: false }) : skillIconUrl(m, c);
@@ -376,27 +420,7 @@ export function ChessDetail({ chess, piece, unit, snapHp, editable, onSell, bond
     </div>`;
   blocks.garrison = garrison ? html`<${GarrisonBlock} key="garrison" garrison=${garrison} m=${m} />` : null;
   blocks.trait = c.trait?.desc ? html`<p key="trait" class="dtrait"><${Icon} name="info" /><${RichText} text=${traitText(c, golden, lo)} /></p>` : null;
-  // live (battle) / start-of-battle (prep) values against the base, else the record's (liveStat)
-  const st = {
-    maxHp: liveStat(live, 'maxHp', s.maxHp), atk: liveStat(live, 'atk', s.atk), def: liveStat(live, 'def', s.def),
-    res: liveStat(live, 'res', s.res ?? 0, fmtRes), interval: liveStat(live, 'interval', interval, fmtInterval),
-    blockCnt: liveStat(live, 'blockCnt', s.blockCnt, (v) => String(v)),
-  };
-  blocks.stats = html`
-    <div key="stats" class=${cx('dstats-wrap', live && 'is-live')} data-live=${live ? live.src || 'prep' : undefined}>
-      <div class="dstats">
-        <${LiveTag} live=${live} />
-        <${Stat} k="生命上限" ...${st.maxHp} />
-        <${Stat} k="攻击" ...${st.atk} />
-        <${Stat} k="防御" ...${st.def} />
-        <${Stat} k="法术抗性" ...${st.res} />
-        <${Stat} k="攻击间隔" ...${st.interval} />
-        <${Stat} k="阻挡数" ...${st.blockCnt} />
-        <${Stat} k="部署费用" v=${s.cost ?? '—'} />
-        <${Stat} k="再部署" v=${s.respawnTime != null ? `${s.respawnTime}s` : '—'} />
-      </div>
-      <div class="drange"><span class="dstat__k">攻击范围</span><${RangeGrid} grid=${cardRangeGrid(live, fr, c)} /></div>
-    </div>`;
+  blocks.stats = chessStatsBlock({ rec: fr, chess: c, live });
   blocks.skill = sk ? html`<${Section} key="skill" title="技能" micro="SKILL" class="dsec--skill">
       <div class="dskill" data-skill=${sk.skillId || ''}>
         <${Img} src=${skIcon} class="dskill__icon" fallback=${html`<span class="dskill__icon dskill__icon--empty">${skSlot ? html`<b class="num">${skSlot}</b>` : null}</span>`} />
@@ -430,8 +454,9 @@ export function ChessDetail({ chess, piece, unit, snapHp, editable, onSell, bond
     : !piece && carried.length ? html`<${Section} key="equip" title="装备" micro=${`EQUIP ${carried.length}/2`} class="dsec--equip">
       ${carried.map((id, i) => html`<${ItemRow} key=${`${i}:${id}`} itemId=${id} carried=${carried} off=${offBonds} />`)}
     <//>` : null;
-  blocks.talents = Array.isArray(fr.talents) && fr.talents.some((t) => t && t.name && !t.hidden) ? html`<${Section} key="talents" title="天赋" micro="TALENT" class="dsec--talent">
-      ${fr.talents.filter((t) => t && t.name && !t.hidden).map((t, i) => html`<div key=${i} class="dtalent"><b>${t.name}</b><${RichText} text=${t.descRaw || t.desc} class="dtext" /></div>`)}
+  const talents = chessTalents(fr);
+  blocks.talents = talents.length ? html`<${Section} key="talents" title="天赋" micro="TALENT" class="dsec--talent">
+      ${talents.map((t, i) => html`<div key=${i} class="dtalent"><b>${t.name}</b><${RichText} text=${t.descRaw || t.desc} class="dtext" /></div>`)}
     <//>` : null;
   blocks.actions = piece && editable && piece.kind !== 'item' ? html`<div key="actions" class="dactions">
       <${Button} variant="amber" icon="close" class="dpanel__sell" onClick=${() => onSell(piece, c)}>出售<span class="dsell num">+${sell}</span><//>

@@ -8,6 +8,8 @@ aklz4.py registers a decoder for it. This script pulls the art the web sources l
   - the 6 in-match emoticon themes of 盟约 (activity_table autoChessData.enabledEmoticonThemeIdList; only the
     *_battle sprites, keyed by display_meta_table picId: emoticon/<dir>/<picId>.png, see data/emotes.json)
   - the autochess guidebook pages, battle projectile sprites and a few token/skin Spine models missing upstream
+  (the emotes and the guidebook pages are on the public mirror too: tools/fetch-assets.mjs downloads them, and the
+  client uses these local copies first — GitHub issue #42)
   - the enemy battle Spine models no community dump carries (ENEMY_SPINES: 灼热源石虫 / 炽焰源石虫), from the enemy art
     bundles (refs/arts/enm_art_*.ab) → spine/enemy/<enemyId>/<stem>.skel|.atlas + page PNGs with the [alpha] texture
     merged in (premultiplied RGB + A, the Ark-Models format; the atlas gets `size:` / `pma: true` like the fetched

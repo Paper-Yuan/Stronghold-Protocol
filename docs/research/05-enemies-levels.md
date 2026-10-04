@@ -73,10 +73,10 @@ Boss board:
 | `b` | fence_bound | LOW | ALL | no (fly only) | deployable, but ground enemies path around it |
 | `a` / `A` | achand | HIGH | – | – | bench slot / non-bench hand tile |
 | `S` `E` `I` `O` | start / end / telin / telout | LOW | NONE | yes | |
-| `m` | mire | LOW | ALL | yes | +1 stack every 3 s: atk-speed −5, move −5 %; max 10; cleared on leaving |
+| `m` | mire | LOW | ALL | yes | a trigger every 1 s on it (PRTS 沼泽控制; the first on entering): enemies +1 layer of atk-speed −5 / move −5 % (重量 ≥ 3, the skill's `value`: +2 layers), operators +1 layer of atk-speed −5 only; max 10; cleared on leaving |
 | `g` | smog | LOW | ALL | yes | an operator here cannot be targeted by enemy **ranged** attacks |
-| `d` | deepsea | LOW | ALL | yes | enemies take 40 dmg/s, atk-speed −60, move ×0.6 |
-| `i` | infection | LOW | ALL | yes | 70 true dmg/s to allies on it and enemies crossing it; +20 % ATK, +20 ASPD; 300 s |
+| `d` | deepsea | LOW | ALL | yes | enemies take 40 dmg/s (无来源 true 持续伤害, not 环境伤害), atk-speed −60, move ×0.6 |
+| `i` | infection | LOW | ALL | yes | allies on it and enemies crossing it get 70 true dmg/s, +20 % ATK, +20 ASPD for 300 s from their last contact (an enemy keeps it after leaving the tile; the tiles never switch off) |
 
 ### 2.4 Stage pool (`stageDatasDict`)
 

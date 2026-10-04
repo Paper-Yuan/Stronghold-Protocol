@@ -1,7 +1,7 @@
 // Board placement legality (stage legend), deploy cap, move semantics, placeable summons (DESIGN §3, research 03 C2).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { buildDeployMap, canPlace, legalTiles, tileKey } from '../../server/match/board.js';
+import { buildDeployMap, canPlace, legalTiles, tileKey, positionClass, basePositionClass } from '../../server/match/board.js';
 import { applyCard } from '../../server/match/choices.js';
 import { ERR } from '../../shared/constants.js';
 import { DATA, makeMatch, give, giveItem, checkInvariants, chessOfTier } from './harness.js';
@@ -53,6 +53,18 @@ test('glyph rules: melee only on LOW buildable ALL/MELEE; ranged also on HIGH/RA
   assert.deepEqual(legalTiles(map, 'melee').length, st.deployTiles.normal.melee.length);
   // missing stage data: an open board (degraded mode)
   assert.ok(canPlace(buildDeployMap(null), 'melee', 10, 5));
+});
+
+test('positionClass: the position class, widened to \'all\' by chess.json placement (钩索师 / 推击手, DESIGN §22.6); basePositionClass ignores it', () => {
+  assert.equal(positionClass({ position: 'MELEE' }), 'melee');
+  assert.equal(positionClass({ position: 'MELEE', placement: 'all' }), 'all');
+  assert.equal(basePositionClass({ position: 'MELEE', placement: 'all' }), 'melee');
+  assert.equal(positionClass({ position: 'RANGED' }), 'ranged');
+  assert.equal(positionClass({ position: 'ALL' }), 'all');
+  assert.equal(positionClass(null), 'all');
+  const map = buildDeployMap(DATA.stages.act2autochess_m01);
+  assert.ok(canPlace(map, positionClass(DATA.chess.chess_char_4_12_a), 10, 4), '歌蕾蒂娅 on the 高台');
+  assert.ok(!canPlace(map, positionClass(DATA.chess.chess_char_1_02_a), 10, 4), '角峰 (重装) not');
 });
 
 test('g.move: legality per chess position, BAD_TILE outside, deploy cap 8, swaps allowed at cap', () => {

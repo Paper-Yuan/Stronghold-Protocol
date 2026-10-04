@@ -220,6 +220,27 @@ test('变形同构体 grants the bond of the other equipped item (bond counting)
   m.dispose();
 });
 
+// The 调和 operator herself as the wearer (case from PR #40 by @shanzhaikabi; GitHub issue #1): the granted membership
+// counts once and, 维多利亚 being a core bond with a member on the board, 调和 adds its +1 (bondsMeta `harmony`).
+test('缪尔赛思 wearing 变形同构体 + 维式重锤 counts twice for 维多利亚: the granted member + 调和\'s +1', () => {
+  const MIRA = 'chess_char_6_11_a'; // 缪尔赛思: own bond 调和 (maniShip, thresholds [1])
+  const { m, ps } = prep(28);
+  const tile = legalTileFor(m, ps, MIRA);
+  assert.ok(tile, 'a legal tile for 缪尔赛思');
+  const mira = give(m, ps, MIRA, 'board', tile);
+  const iso = giveItem(m, ps, 'chess_item_6_09_e_a');
+  const hammer = giveItem(m, ps, 'chess_item_1_01_e_a');
+  assert.equal(ps.bonds.maniShip.active, true, '调和 is active with one 调和 operator on the board');
+  assert.equal(ps.bonds.victoriaShip?.count ?? 0, 0, 'no 维多利亚 member before the second item');
+  m.handle('p_0', { t: 'g.equip', itemUid: iso.uid, targetUid: mira.uid });
+  m.handle('p_0', { t: 'g.equip', itemUid: hammer.uid, targetUid: mira.uid });
+  assert.equal(ps.bonds.victoriaShip.count, 2, 'one from the granted membership, one from 调和');
+  assert.equal(ps.bonds.victoriaShip.harmony, 1, 'the state says which +1 came from 调和');
+  assert.equal(ps.bonds.victoriaShip.active, false, 'tier 1 still needs 3');
+  checkInvariants(m);
+  m.dispose();
+});
+
 test('consume-on-equip built-ins: 盟约之币 funds, 随身身份牌 layers, 人事部文档 cap 9, 博士投影 promote; Arts limit', () => {
   const { m, ps } = prep(27);
   const id = chessOfTier(2).find((c) => m.pool.has(c));

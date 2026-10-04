@@ -31,6 +31,7 @@
 // which follows the store).
 
 import { PHASE } from '../../shared/constants.js';
+import { mediaUrl } from './media.js';
 
 const MAX_VOICES = 8;
 const UNIT_COOLDOWN_MS = 160;
@@ -234,6 +235,20 @@ export class SfxLimiter {
 
 // ---- manager -----------------------------------------------------------------------------------------------
 
+/**
+ * Could Web Audio decode this response? A host without the `/media/` route answers 404; some static hosts answer a
+ * missing path with 200 + the SPA's index.html instead, and fetching *that* would fail to decode as silently as a
+ * 404 would — so the fallback looks at the declared type too.
+ *
+ * A response that declares no type at all is not treated as wrong: absence of a header is not evidence of an HTML
+ * page, and fetch stubs / minimal hosts legitimately omit it.
+ * @param {{ ok?: boolean, headers?: { get?: (n: string) => string | null } }} res
+ */
+function isAudioResponse(res) {
+  if (!res || !res.ok) return false;
+  const type = res.headers?.get?.('content-type');
+  return !type || /^\s*audio\//i.test(type);
+}
 export class AudioManager {
   /**
    * @param {{ getManifest?: () => any, win?: any }} [opts]
@@ -402,7 +417,14 @@ export class AudioManager {
     }
     const p = (async () => {
       try {
-        const res = await fetch(url);
+        // Extension-less URL first so download managers leave the BGM alone; a host without /media/ still works.
+        const media = mediaUrl(url);
+        let res = await fetch(media);
+        if (media !== url && !isAudioResponse(res)) {
+          // Drop the unusable response (404, or a 200 that is really index.html) before trying the original URL.
+          try { await res.body?.cancel?.(); } catch { /* the fallback request matters more than draining this one */ }
+          res = await fetch(url);
+        }
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const ab = await res.arrayBuffer();
         return await new Promise((resolve) => {

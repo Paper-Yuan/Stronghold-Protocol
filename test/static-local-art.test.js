@@ -1,5 +1,6 @@
 // The optional local-client art manifest (data/local-assets.json, DESIGN §13): an install without it must get an
-// empty manifest (200) instead of a 404, and an install with it must get the real file.
+// empty manifest (200) instead of a 404, and an install with it must get the real file. The docs and the setup /
+// doctor messages say what falls back without it (GitHub issue #42, DESIGN §22.5).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -68,4 +69,27 @@ test('present data/local-assets.json is served as-is', async () => {
     srv.close();
     fs.rmSync(dir, { recursive: true, force: true });
   }
+});
+
+test('docs and messages say what falls back without the local art and how a server without the client gets it (GitHub issue #42)', async () => {
+  const read = (p) => fs.readFileSync(path.join(ROOT, p), 'utf8');
+  const { LOCAL_ART_FALLBACK, LOCAL_ART_COPY_HINT } = await import('../tools/setup.mjs');
+  for (const f of ['README.md', 'docs/DEPLOY.md', 'tools/setup.mjs', 'tools/doctor.mjs']) {
+    assert.ok(!/不影响游戏|其他功能不受影响|游戏不受影响/.test(read(f)), `${f}: never "the local art does not matter"`);
+  }
+  for (const re of [/3D 棋盘/, /界面图标/, /源石虫/]) assert.match(LOCAL_ART_FALLBACK, re);
+  assert.ok(!/表情|玩法说明/.test(LOCAL_ART_FALLBACK), 'the emotes and the 玩法说明 pages are downloaded, not local-only');
+  assert.match(LOCAL_ART_COPY_HINT, /同一版本的整合包/);
+  // setup's row is printed on every start (scripts/launch.mjs): it names the fallbacks and points to DEPLOY §6; doctor adds the hint
+  const noClientRow = read('tools/setup.mjs').split('\n').find((l) => l.includes("'未检测到本机明日方舟客户端'"));
+  assert.ok(noClientRow && noClientRow.includes('LOCAL_ART_FALLBACK') && noClientRow.includes('DEPLOY.md 第 6 节') && !noClientRow.includes('LOCAL_ART_COPY_HINT'), noClientRow);
+  assert.match(read('tools/doctor.mjs'), /未提取：\$\{LOCAL_ART_FALLBACK\}（\$\{LOCAL_ART_COPY_HINT\}）/);
+  const deploy = read('docs/DEPLOY.md');
+  const s6 = deploy.slice(deploy.indexOf('## 6. 本地客户端素材'));
+  assert.ok(deploy.includes('## 6. 本地客户端素材') && s6.length > 200, 'DEPLOY §6');
+  for (const re of [/同一版本/, /public\/assets\/local\//, /data\/local-assets\.json/, /3D 棋盘/, /源石虫/, /表情/, /玩法说明/]) assert.match(s6, re);
+  const readme = read('README.md');
+  assert.match(readme, /表情和「玩法说明」的教程图随上面的素材一起从公开镜像下载/);
+  assert.match(readme, /\*\*同一版本\*\*的整合包/);
+  assert.ok(!/需本地提取/.test(read('docs/PLAYING.md')), 'PLAYING: the 玩法说明 pages come with the download');
 });

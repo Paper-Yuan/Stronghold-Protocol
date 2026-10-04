@@ -7,6 +7,7 @@ import { hasGeneratedData, getDefaultSource } from '../../server/sim/simdata.js'
 import { genericKit } from '../../server/sim/content/generic.js';
 import { spawnYanyou, spawnMapChar, TOKEN_IDS, wolfShadows, tileFree, findSummonTile, summonToken } from '../../server/sim/content/tokens.js';
 import { startColdWind, kjeragColdWind, activateTurrets, terrainAt, deviceOverridesOf } from '../../server/sim/content/devices.js';
+import { HUSK_REBIRTH } from '../../server/sim/content/enemies.js';
 
 const REAL = { skip: !hasGeneratedData() };
 const ds = getDefaultSource();
@@ -607,17 +608,40 @@ test('气流 (act2 m01 blowers): enemies moving with the flow ×(1+equal), again
   assert.ok(up.has(Math.round((1 + bb['blower_s_enemy[opposite].move_speed']) * 100) / 100), `against the flow ${[...up]}`);
 });
 
-test('沼泽 (act2 m02): +1 stack on entering and every intervalSec (ASPD −5, move −5 % each), max stacks, cleared on leaving', REAL, () => {
+test('沼泽 (act2 m02): a trigger on entering and every second — 1 layer (an enemy of 重量 ≥ 3: 2) of ASPD −5 / move −5 %, at most 10; operators ASPD only; cleared on leaving', REAL, () => {
   const mire = ds.getStage('act2autochess_m02').special.mire;
+  // PRTS 沼泽控制: "每秒将会触发一次" (sktok_mire spData maxChargeTime 1); "若其重量大于等于3，改为获得2层" (the skill's value 3)
+  assert.equal(mire.intervalSec, 1);
+  assert.equal(mire.heavyWeight, 3);
   const h = makeBattle({ stageId: 'act2autochess_m02', defs: { chess: { test_guard: guard() } }, units: [{ chessId: 'test_guard', row: 11, col: 7 }], autoFinish: false, timeLimit: 60 });
   h.step(2);
   assert.equal(terrainAt(h.b, 11, 7), 'mire');
   const g = h.unit('test_guard');
-  approx(g.s.aspd, 100 + mire.aspdPerStack * 100, 1e-9, '1 stack');
+  approx(g.s.aspd, 100 + mire.aspdPerStack * 100, 1e-9, '1 layer');
+  assert.equal(g.findBuff('terrain:mire').mods.moveMul, undefined, 'an operator gets the ASPD part only');
   h.run(mire.intervalSec);
-  approx(g.s.aspd, 100 + 2 * mire.aspdPerStack * 100, 1e-9, '2 stacks');
+  approx(g.s.aspd, 100 + 2 * mire.aspdPerStack * 100, 1e-9, '2 layers');
   h.run(mire.intervalSec * mire.maxStacks);
-  approx(g.s.aspd, 100 + mire.maxStacks * mire.aspdPerStack * 100, 1e-9, 'max stacks');
+  approx(g.s.aspd, 100 + mire.maxStacks * mire.aspdPerStack * 100, 1e-9, 'max layers');
+  // enemies standing in the mire: 重量 1 gains 1 layer a second, 重量 3 two (heavyWeight), both capped at maxStacks
+  const layersOver = (mass) => {
+    const key = `enemy_mass${mass}`;
+    const h3 = makeBattle({ stageId: 'act2autochess_m02', defs: { enemies: { [key]: walker({ key, mass }) } }, enemies: [{ key, pos: [10, 7], route: { motion: 'WALK', start: [10, 7], end: [10, 7], checkpoints: [{ type: 'WAIT', time: 99 }] } }], autoFinish: false, timeLimit: 60 });
+    h3.step();
+    const e = h3.enemy(key);
+    assert.equal(terrainAt(h3.b, 10, 7), 'mire');
+    const t0 = e.mem.terrainSince;
+    const out = [0.5, 1.5, 2.5, 4.5, 9.5, 20].map((t) => {
+      h3.run(t0 + t - h3.b.time);
+      const n = Math.round((e.s.aspd - 100) / (mire.aspdPerStack * 100));
+      approx(e.s.moveSpeed, 1 + n * mire.moveMulPerStack, 1e-9, `move ×(1 − 5 % × ${n})`);
+      return n;
+    });
+    checkInvariants(h3.b);
+    return out;
+  };
+  assert.deepEqual(layersOver(1), [1, 2, 3, 5, 10, 10], 'weight 1: a layer per second');
+  assert.deepEqual(layersOver(3), [2, 4, 6, 10, 10, 10], 'weight 3: two layers per second');
   // an enemy walking down col 7 (mire) is slowed there and recovers once it leaves
   const h2 = makeBattle({ stageId: 'act2autochess_m02', defs: { enemies: { enemy_walker: walker() } }, enemies: [{ key: 'enemy_walker', route: { motion: 'WALK', start: [12, 7], end: [9, 2], checkpoints: [] } }], autoFinish: false, timeLimit: 60 });
   let slowed = false;
@@ -658,6 +682,32 @@ test('深水 (act2 m04): ground enemies in deep water take damage/s, ASPD −60,
   checkInvariants(h.b);
 });
 
+// PRTS 涨潮控制 技能3 深水: "【水蚀】的敌方单位每秒受到40点无来源真实持续伤害（不属于环境伤害，不会触发受击回复）"
+test('深水: the 【水蚀】 tick is 无来源 true 持续伤害, not 环境伤害 (tags dot / periodic / deepsea, no terrain, no 受击回复) — 纠缠藤蔓 does not turn fragile in it', REAL, () => {
+  const bb = ds.getStage('act2autochess_m04').special.deepsea.bb;
+  const dmg = bb['sea_drown[enemy].damage'];
+  const wait = (pos) => ({ motion: 'WALK', start: pos, end: [9, 2], checkpoints: [{ type: 'WAIT', time: 99 }] });
+  const ticks = [];
+  const h = makeBattle({ stageId: 'act2autochess_m04', defs: { enemies: { enemy_dummy: dummy({ speed: 1 }) } },
+    enemies: [{ key: 'enemy_dummy', pos: [11, 6], route: wait([11, 6]) }, { key: 'enemy_2052_smgia', pos: [10, 6], route: wait([10, 6]) }], autoFinish: false, timeLimit: 30,
+    setup: (b) => b.on('hit', ({ source, target, dmg: d }) => { if (target.defId === 'enemy_dummy') ticks.push({ source, type: d.type, tags: [...d.tags], sourceless: d.sourceless, noSp: d.noSp }); }) });
+  h.step();
+  h.run(5);
+  const e = h.enemy('enemy_dummy'), vine = h.enemy('enemy_2052_smgia');
+  assert.deepEqual([terrainAt(h.b, 11, 6), terrainAt(h.b, 10, 6)], ['deepsea', 'deepsea']);
+  assert.equal(ticks.length, 5);
+  for (const t of ticks) {
+    assert.equal(t.source, null);
+    assert.equal(t.type, 'true');
+    assert.deepEqual(t.tags, ['dot', 'periodic', 'deepsea']);
+    assert.ok(t.sourceless && t.noSp);
+  }
+  approx(1e7 - e.hp, 5 * dmg, 1e-9);
+  assert.equal(vine.findBuff('ab:natureWeak'), null, '受到来自自然环境的伤害 does not fire');
+  approx(vine.s.maxHp - vine.hp, 5 * dmg, 1e-9, '40/s, not ×2');
+  checkInvariants(h.b);
+});
+
 test('活性源石 (act1 m04): units on it take damage/s and gain ATK/ASPD (allies and ground enemies)', REAL, () => {
   const bb = ds.getStage('act1autochess_m04').special.infection.bb;
   const g = guard({ stats: { atk: 1000, maxHp: 1e5 } });
@@ -671,6 +721,112 @@ test('活性源石 (act1 m04): units on it take damage/s and gain ATK/ASPD (alli
   approx(u.stats.taken, 2 * bb.damage, 1e-9, 'ally damage');
   approx(e.s.atk, 500 * (1 + bb.atk), 1e-9);
   assert.ok(e.stats.taken >= 2 * bb.damage - 1e-9);
+  checkInvariants(h.b);
+});
+
+// GitHub #33 item 6: the effect is timed (PRTS tile template "经过的敌军在{duration}s内…"), not tied to standing on the tile
+test('活性源石: an enemy keeps the effect after leaving the tile — damage/s, ATK and ASPD go on for `duration` s', REAL, () => {
+  const bb = ds.getStage('act1autochess_m04').special.infection.bb;
+  // a harmless walker crosses (11,6) going left, then waits on (11,4), off the tile
+  const route = { motion: 'WALK', start: [11, 8], end: [9, 2], checkpoints: [{ type: 'MOVE', pos: [11, 4] }, { type: 'WAIT', time: 99 }] };
+  const h = makeBattle({ stageId: 'act1autochess_m04', defs: { enemies: { enemy_walker: walker({ atk: 500 }) } }, enemies: [{ key: 'enemy_walker', route }], autoFinish: false, timeLimit: 120 });
+  h.step();
+  const e = h.enemy('enemy_walker');
+  const onTile = () => Math.round(e.y) === 11 && Math.round(e.x) === 6;
+  assert.ok(h.runUntil(onTile, 10), 'steps on (11,6)');
+  assert.ok(h.runUntil(() => !onTile(), 10), 'walks off');
+  assert.ok(e.findBuff('terrain:infection'), 'still carries the effect after leaving');
+  const hp0 = e.hp;
+  h.run(20);
+  assert.deepEqual([Math.round(e.y), Math.round(e.x)], [11, 4], 'waits off the tile');
+  const loss = hp0 - e.hp;
+  assert.ok(Math.abs(loss - 20 * bb.damage) <= bb.damage + 1e-6, `20 s after leaving: lost ${loss}, ≈ 20 × ${bb.damage}`);
+  approx(e.s.atk, 500 * (1 + bb.atk), 1e-9);
+  approx(e.s.aspd, 100 + bb.attack_speed, 1e-9);
+  const b = e.findBuff('terrain:infection');
+  assert.ok(Math.abs(b.timeLeft - (bb.duration - 20)) <= 3 * h.TICK, `${b.timeLeft} s left of ${bb.duration}`);
+  checkInvariants(h.b);
+});
+
+test('活性源石: one effect per unit — contact restarts its duration, it ends `duration` s after the last contact; the tiles never switch off', REAL, () => {
+  const stage = structuredClone(ds.getStage('act1autochess_m04'));
+  const bb = stage.special.infection.bb;
+  bb.duration = 10; // short, so that the end is inside the test
+  // the walker crosses (11,6) to (11,4), walks straight back over it to (11,8) and waits there
+  const route = { motion: 'WALK', start: [11, 8], end: [9, 2], checkpoints: [{ type: 'MOVE', pos: [11, 4] }, { type: 'MOVE', pos: [11, 8] }, { type: 'WAIT', time: 99 }] };
+  const h = makeBattle({ stage, defs: { enemies: { enemy_walker: walker({ atk: 500 }) } }, enemies: [{ key: 'enemy_walker', route }], autoFinish: false, timeLimit: 120 });
+  h.step();
+  const e = h.enemy('enemy_walker');
+  const onTile = () => Math.round(e.y) === 11 && Math.round(e.x) === 6;
+  const hp0 = e.hp;
+  let first = null, lastOn = null, end = null, contacts = 0, was = false, most = 0, atkMax = 0;
+  while (h.b.time < 40 && end == null) {
+    h.step();
+    const on = onTile();
+    if (on && !was) contacts++;
+    was = on;
+    const n = e.buffs.filter((x) => x.key === 'terrain:infection').length;
+    most = Math.max(most, n);
+    atkMax = Math.max(atkMax, e.s.atk);
+    if (on) { lastOn = h.b.time; first ??= h.b.time; }
+    if (first != null && n === 0) end = h.b.time;
+  }
+  assert.equal(contacts, 2, 'walked over the tile twice');
+  assert.equal(most, 1, 'never a second effect');
+  approx(atkMax, 500 * (1 + bb.atk), 1e-9, 'ATK + atk once');
+  assert.ok(end != null && end > first + bb.duration, `outlived its first ${bb.duration} s: the second contact restarted it (${first} → ${end})`);
+  assert.ok(Math.abs(end - (lastOn + bb.duration)) <= 2 * h.TICK, `ends ${bb.duration} s after the last contact (${lastOn} → ${end})`);
+  const loss = hp0 - e.hp;
+  assert.ok(Math.abs(loss - bb.damage * (end - first)) <= bb.damage + 1e-6, `${bb.damage}/s while it lasted: lost ${loss} in ${end - first} s`);
+  h.run(3);
+  assert.equal(e.hp, hp0 - loss, 'nothing after the end');
+  approx(e.s.atk, 500, 1e-9);
+  // an operator deployed on it is always in contact: it keeps draining past `duration` (no lifetime of the tiles; 3 ×
+  // `duration`, so that a shut-off at `duration` followed by the effect's own `duration` would still show)
+  const g = guard({ stats: { atk: 1000, maxHp: 1e5 } });
+  const h2 = makeBattle({ stage, defs: { chess: { test_guard: g } }, units: [{ chessId: 'test_guard', row: 11, col: 6 }], autoFinish: false, timeLimit: 120 });
+  h2.step();
+  h2.run(3 * bb.duration);
+  const u = h2.unit('test_guard');
+  approx(u.stats.taken, 3 * bb.duration * bb.damage, 1e-9, 'ally damage');
+  approx(u.s.atk, 1000 * (1 + bb.atk), 1e-9);
+  // moved off the tile (Battle.relocate, as 乌尔比安 S3 does), it keeps the effect for its time, then it ends
+  assert.ok(h2.b.relocate(u, 11, 7));
+  const taken0 = u.stats.taken;
+  h2.run(3);
+  assert.ok(u.findBuff('terrain:infection'), 'kept after the move');
+  approx(u.stats.taken - taken0, 3 * bb.damage, 1e-9, 'still draining');
+  h2.run(bb.duration);
+  assert.equal(u.findBuff('terrain:infection'), null, `gone ${bb.duration} s after the move`);
+  approx(u.s.atk, 1000, 1e-9);
+  checkInvariants(h.b);
+  checkInvariants(h2.b);
+});
+
+test('活性源石: a 重生 clears the lasting effect — a 深池逐火战士 that crossed the tile, knocked out off it, stands up from its ember after 1 + 10 s', REAL, () => {
+  const key = 'enemy_1288_duskls';
+  const delay = ds.getEnemy(key).talent['Revive[Trigger].interval'];
+  // it crosses (11,6) going left, then waits on (11,4), off the tile
+  const route = { motion: 'WALK', start: [11, 8], end: [9, 2], checkpoints: [{ type: 'MOVE', pos: [11, 4] }, { type: 'WAIT', time: 99 }] };
+  const h = makeBattle({ stageId: 'act1autochess_m04', enemies: [{ key, route }], autoFinish: false, timeLimit: 120 });
+  h.step();
+  const e = h.enemy(key);
+  const onTile = () => Math.round(e.y) === 11 && Math.round(e.x) === 6;
+  assert.ok(h.runUntil(onTile, 20), 'steps on (11,6)');
+  assert.ok(h.runUntil(() => Math.round(e.x) === 4, 20), 'waits on (11,4)');
+  assert.ok(e.findBuff('terrain:infection'), 'carries the effect off the tile');
+  const max = e.s.maxHp;
+  h.b.dealDamage(null, e, { amount: e.hp + 1e6, type: 'true', canDodge: false });
+  assert.ok(e.alive, 'knocked out into its ember');
+  assert.equal(e.findBuff('terrain:infection'), null, 'the 重生 cleared it');
+  h.run(HUSK_REBIRTH + delay - 0.5);
+  assert.ok(e.alive && e.s.maxHp < max, 'still the ember');
+  assert.equal(e.hp, e.s.maxHp, 'no tick took one of its hits');
+  h.run(1);
+  assert.ok(e.alive);
+  assert.equal(e.s.maxHp, max, `stood up ${HUSK_REBIRTH} + ${delay} s after the knock-out`);
+  assert.equal(e.hp, max);
+  assert.equal(e.findBuff('terrain:infection'), null);
   checkInvariants(h.b);
 });
 

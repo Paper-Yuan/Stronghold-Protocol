@@ -177,7 +177,9 @@
   border-radius: 50%;
   background:
     repeating-radial-gradient(circle, transparent 0 .2rem, rgba(78, 216, 175, .14) .2rem .21rem),
-    conic-gradient(from 0deg, rgba(23, 249, 183, .2), transparent 25%);
+    /* same geometry as .title-bg__sweep: bright edge at 100% (== 0deg) so it leads the clockwise
+       rotation and the glow trails behind; see the comment in screens/title.css. */
+    conic-gradient(from 0deg, transparent 0 75%, rgba(23, 249, 183, .2) 100%);
   -webkit-mask-image: radial-gradient(circle, #000 60%, transparent 71%);
   mask-image: radial-gradient(circle, #000 60%, transparent 71%);
   animation: radar-sweep 4s linear infinite;

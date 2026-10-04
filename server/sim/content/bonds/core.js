@@ -339,7 +339,10 @@ function installLaterano(battle, pid, bb, members) {
  * 物理流失 (PRTS 盟约记录: "造成5000点物理流失", 修正 "【吞噬】的物理流失来源为被付与目标自身；单位被【吞噬】击杀时，击杀来源始终为
  * 对应标记的付与来源"; PRTS 作战机制: a 物理流失 "会受到目标当前防御力…影响而相应衰减") — less the target's DEF as a physical hit
  * (its own source: no DEF ignore), then battle.loseHp: no shields, dodge or damage multipliers (DEF-free until 0.1.1); the
- * kill is credited to the marker — in marking order. A unit that died cancels its remaining marks (as target and as marker).
+ * kill is credited to the marker — in marking order. A target knocked out during the pass has its remaining marks
+ * cancelled, also when it is back at once (the 5-tier 立刻复活, 不屈's 立刻重新部署, 埃芒加德 / M3茧甲): PRTS 盟约记录 "目标首次被
+ * 击倒后解除自身被付与但还未触发的【吞噬】效果". A marker off the field gives no further mark (the rule since 0.1.0; one knocked
+ * out and back in the same pass still gives its marks).
  * Each devoured operator adds its tier to 阿戈尔 once (IN_BATTLE gain, disabled in 联防 / boss fields).
  * Tokens / devices / empty tiles are never devoured.
  */
@@ -382,8 +385,14 @@ function devour(battle, pid, bb, members) {
   }
   const amount = num(bb.damage_value, 0);
   const layered = new Set();
+  // a target knocked out during the pass = off the field, or in another deployment than when the marks were placed (items
+  // deploymentOf: the 5-tier revive and 不屈 redeploy it, 埃芒加德 / M3茧甲 revive it in place) — a revived member was
+  // standing again when its pending marks used to knock it out a second time and spend every revive at t = 0 (GitHub #33)
+  const dep = new Map();
+  for (const [, t] of marks) if (!dep.has(t)) dep.set(t, items.deploymentOf(t));
+  const knocked = (t) => !t.alive || items.deploymentOf(t) !== dep.get(t);
   for (const [m, t] of marks) {
-    if (!t.alive || !m.alive) continue;
+    if (knocked(t) || !m.alive) continue;
     S.fxOn(battle, 'devour', t, 'bond:egirShip', 'devour', { from: m.id });
     if (amount > 0) battle.loseHp(t, mitigate(amount, 'phys', t.s), { source: m, tags: ['bond:egir:devour'] });
     if (!layered.has(t)) {
@@ -408,6 +417,8 @@ function installEgir(battle, pid, bb, members) {
   // fell —, or its own home when it fell on another board piece's home; PRTS 卫戍协议/帮助 §作战阶段 单位部署) with full
   // HP, SP reset and `deploy` effects (卡西米尔 / 叙拉古). Death priority 11: before 不屈 (10),
   // whose redeploy "also consumes a 复活 charge" — with this order the charge is always the one used, same outcome.
+  // A member the battle-start devour knocks out spends a charge like any other first knock-out; the marks still pending
+  // on it are cancelled (devour), so it stays standing.
   const memberSet = new Set(members);
   const max = Math.max(0, Math.floor(num(bb.max_free_respawn_cnt, 0)));
   const st = { knocked: new Set(), revives: 0 };
