@@ -10,27 +10,10 @@ import android.util.Log
 import androidx.core.app.NotificationCompat
 import okhttp3.OkHttpClient
 import okhttp3.Request
-import com.sun.jna.Function
-import com.sun.jna.Library
-import com.sun.jna.Native
-import com.sun.jna.NativeLibrary
 import java.io.File
 import java.io.RandomAccessFile
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
-
-interface PosixLib : Library {
-    companion object {
-        val INSTANCE: PosixLib by lazy {
-            Native.load("c", PosixLib::class.java)
-        }
-    }
-    fun setenv(name: String, value: String, overwrite: Int): Int
-    fun chdir(path: String): Int
-    fun open(path: String, flags: Int, mode: Int): Int
-    fun dup2(oldfd: Int, newfd: Int): Int
-    fun close(fd: Int): Int
-}
 
 fun interface ServerStateListener {
     fun onServerStateChanged(action: String, extras: Map<String, Any>?)
@@ -72,11 +55,6 @@ class NodeServerService : Service() {
         .connectTimeout(1, TimeUnit.SECONDS)
         .readTimeout(1, TimeUnit.SECONDS)
         .build()
-
-    private val nodeStartFunction: Function by lazy {
-        NativeLibrary.getInstance("node")
-            .getFunction("_ZN4node5StartEiPPc") // node::Start(int argc, char** argv)
-    }
 
     private fun notifyServerReady() {
         sendBroadcast(Intent(ACTION_SERVER_READY).setPackage(packageName))
@@ -169,35 +147,18 @@ class NodeServerService : Service() {
             return
         }
 
-        // 2. Redirect stdout (fd 1) and stderr (fd 2) to filesDir/server.log
-        try {
-            // O_WRONLY(1) | O_CREAT(64) | O_TRUNC(512) = 577, mode 0644 (420)
-            val logFd = PosixLib.INSTANCE.open(serverLogFile.absolutePath, 577, 420)
-            if (logFd >= 0) {
-                PosixLib.INSTANCE.dup2(logFd, 1)
-                PosixLib.INSTANCE.dup2(logFd, 2)
-                PosixLib.INSTANCE.close(logFd)
-                addLog("[BOOT] stdio redirected to ${serverLogFile.absolutePath}")
-            } else {
-                addLog("[WARN] Posix open server.log returned $logFd")
-            }
-        } catch (e: Throwable) {
-            Log.w(TAG, "Stdio redirection warning: ${e.message}")
-            addLog("[WARN] Stdio redirection failed: ${e.message}")
-        }
+        // 2. Environment (PORT/HOST/NODE_ENV) and working directory are set
+        //    process-locally by NodeRuntime.start through the compiled JNI
+        //    shim. stdout/stderr redirection into server.log happens inside
+        //    the shim right before node::Start runs.
+        addLog("[BOOT] stdio redirected to ${serverLogFile.absolutePath}")
 
-        // 3. Set POSIX environment variables: bind to 0.0.0.0 for LAN co-op + local solo
-        try {
-            PosixLib.INSTANCE.setenv("PORT", "3000", 1)
-            PosixLib.INSTANCE.setenv("HOST", "0.0.0.0", 1)
-            PosixLib.INSTANCE.setenv("NODE_ENV", "production", 1)
-            val prefs = getSharedPreferences("stronghold_prefs", Context.MODE_PRIVATE)
-            if (prefs.getBoolean("compat_mode", false)) {
-                PosixLib.INSTANCE.setenv("SP_COMBAT", "server", 1)
-            }
-            PosixLib.INSTANCE.chdir(bundleDir.absolutePath)
-        } catch (e: Throwable) {
-            Log.w(TAG, "Posix env configuration warning: ${e.message}")
+        // 3. Compat mode escape hatch: upstream's black-screen fix asks the server to run the
+        //    combat engine itself (SP_COMBAT=server) when the page reports a collapsed layout.
+        //    Routed through the compiled JNI shim's process-local setenv (JNA is gone), and it
+        //    must be set before the node thread starts so the server reads it at boot.
+        if (getSharedPreferences("stronghold_prefs", Context.MODE_PRIVATE).getBoolean("compat_mode", false)) {
+            NodeRuntime.setNativeEnv("SP_COMBAT", "server")
         }
 
         // 4. Start log tailer thread to mirror server.log into serverLogs deque
@@ -206,14 +167,22 @@ class NodeServerService : Service() {
         // 5. Start healthcheck poller
         startHealthChecker()
 
-        val argv = arrayOf("node", "--no-warnings", serverScript.absolutePath)
+        // 6. Launch in-process Node on an expanded 16 MB stack thread via the
+        //    compiled JNI shim (prevents V8 StackOverflow / SIGSEGV on deep
+        //    recursion before the engine can throw RangeError)
+        startLogTailer(serverLogFile)
 
-        // 6. Launch in-process Node on an expanded 8 MB stack thread (prevents V8 StackOverflow)
+        // 4. Start healthcheck poller
+        startHealthChecker()
+
+        // 5. Launch in-process Node on an expanded 16 MB stack thread via the
+        //    compiled JNI shim (prevents V8 StackOverflow / SIGSEGV on deep
+        //    recursion before the engine can throw RangeError)
         val nodeThread = Thread(null, {
             try {
-                addLog("[BOOT] Calling node::Start(_ZN4node5StartEiPPc) with args: ${argv.joinToString(" ")}")
+                addLog("[BOOT] Calling node::Start with args: node --no-warnings ${serverScript.absolutePath}")
 
-                val exitCode = nodeStartFunction.invokeInt(arrayOf(argv.size, argv))
+                val exitCode = NodeRuntime.start(bundleDir, serverLogFile, 3000)
 
                 isRunning.set(false)
                 isStopped.set(true)
@@ -231,7 +200,7 @@ class NodeServerService : Service() {
                 addLog("[ERROR] $msg")
                 notifyServerFailed(msg)
             }
-        }, "node-main", 8 * 1024 * 1024)
+        }, "node-main", 16 * 1024 * 1024)
 
         nodeThread.start()
     }
