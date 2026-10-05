@@ -123,6 +123,17 @@ function deepFreeze(root) {
   return root;
 }
 
+/** Retry cadence for a failed sim load, and how many times before the player is asked to reload. */
+export const SIM_RETRY_MS = 2500;
+export const SIM_RETRIES_MAX = 4;
+
+/** The engine the page runs on, short enough for a banner: a report from an Android WebView needs this to be visible. */
+function engineTag() {
+  const ua = typeof navigator !== 'undefined' && navigator.userAgent ? navigator.userAgent : '';
+  const m = ua.match(/(?:Chrome|Chromium|CriOS)\/(\d+)/) || ua.match(/Version\/(\d+)[^)]*Safari/);
+  return m ? `引擎 Chromium ${m[1]}` : '引擎未知';
+}
+
 /**
  * Browser sim loader: the /sim/ modules + the data files (own frozen copies — the server's data is frozen too, so a
  * content bug that writes into a record fails identically on both sides).
@@ -189,6 +200,9 @@ export function createBattleRunner(deps) {
   let simP = null;
   let startSeq = 0;
   let loading = null;          // b.start being prepared
+  // the last ensureSim() failure ({ text, tries }) — a page that cannot build the sim shows a combat with no enemies
+  // and nothing else, so ui/connBanner.js says it out loud (see SIM_RETRY_MS below for the automatic part)
+  let simError = null;
   let rafH = null;
   let ivH = null;
   let lastPool = null;
@@ -243,10 +257,12 @@ export function createBattleRunner(deps) {
 
   function state() {
     const e = cur;
-    if (!e) return loading ? { loading: true, battleId: loading.battleId, fieldId: loading.fieldId, kind: loading.kind, leaks: leakMap(), uniteLeft: uniteLeftMap(), bondLayers: layerMap() } : null;
+    if (!e) return loading || simError
+      ? { loading: !!loading, ...(loading ? { battleId: loading.battleId, fieldId: loading.fieldId, kind: loading.kind } : null), simError, leaks: leakMap(), uniteLeft: uniteLeftMap(), bondLayers: layerMap() }
+      : null;
     return {
       battleId: e.battleId, fieldId: e.fieldId, kind: e.kind, authoritative: e.authoritative, watch: e.watch,
-      done: e.done, own: e.own, members: e.members.slice(), loading: !!loading, speed: e.speed, paused: pausedAt != null,
+      done: e.done, own: e.own, members: e.members.slice(), loading: !!loading, simError, speed: e.speed, paused: pausedAt != null,
       leaks: leakMap(), uniteLeft: uniteLeftMap(), bondLayers: layerMap(),
     };
   }
@@ -612,10 +628,18 @@ export function createBattleRunner(deps) {
     let sim;
     try { sim = await ensureSim(); } catch (err) {
       console.warn('[runner] simulation unavailable', err);
-      if (seq === startSeq) { loading = null; publishState(); }
+      simError = { text: `${String(err?.message || err).slice(0, 160)} · ${engineTag()}`, tries: (simError?.tries || 0) + 1, max: SIM_RETRIES_MAX };
+      if (seq === startSeq) {
+        loading = null;
+        publishState();
+        // retry the same b.start a few times (a dropped fetch or a cold module graph usually clears by itself); past
+        // that only a reload helps, because a page's module map is fixed for its lifetime (ui/buildGuard.js)
+        if (simError.tries < SIM_RETRIES_MAX) setTimeout(() => { onStart(msg); }, SIM_RETRY_MS);
+      }
       return;
     }
     if (seq !== startSeq) return; // superseded by a newer b.start
+    simError = null;
     let battle;
     try {
       battle = sim.spec.createBattleFromSpec(msg.spec, sim.ds, { logger });

@@ -11,9 +11,9 @@ import { useStore, shallowEqual } from '../store.js';
 import { useDocClass } from './device.js';
 
 /** Whether the banner shows for this connection state (mirrors the early returns below). */
-export function bannerVisible(conn, entered, restoring, buildStale = false) {
+export function bannerVisible(conn, entered, restoring, buildStale = false, simError = null) {
   if (!entered || !conn) return false;
-  if (conn.status === 'online') return !!restoring || !!buildStale;
+  if (conn.status === 'online') return !!restoring || !!buildStale || !!simError;
   if (!conn.everOnline && (conn.status === 'connecting' || conn.status === 'handshaking' || conn.status === 'idle')) return false;
   return true;
 }
@@ -23,12 +23,22 @@ export function ConnectionBanner() {
   const entered = useStore((s) => s.session.entered);
   const restoring = useStore((s) => s.ui.restoring);
   const buildStale = useStore((s) => !!s.ui.buildStale);
+  const simError = useStore((s) => s.match?.battle?.simError || null);
   useTicker(conn.status === 'reconnecting' ? 500 : 0);
-  useDocClass('sp-conn', bannerVisible(conn, entered, restoring, buildStale));
+  useDocClass('sp-conn', bannerVisible(conn, entered, restoring, buildStale, simError));
   if (!entered) return null;
-  if (conn.status === 'online' && !restoring && !buildStale) return null;
+  if (conn.status === 'online' && !restoring && !buildStale && !simError) return null;
   if (conn.status === 'online' && restoring) {
     return html`<div class="conn-banner" role="status"><${Icon} name="refresh" /><span>正在同步同盟状态…</span></div>`;
+  }
+  if (conn.status === 'online' && simError) {
+    // the battle could not be built on this page: without this the player just sees a combat with no enemies
+    const exhausted = (simError.tries || 1) >= (simError.max || 4);
+    return html`<div class="conn-banner" role="alert">
+      <${Icon} name="refresh" />
+      <span>${exhausted ? '战斗引擎加载失败，请刷新页面重试' : `战斗引擎加载中，正在自动重试（${simError.tries}/${simError.max || 4}）`} · ${simError.text}</span>
+      <${Button} size="sm" variant="secondary" icon="refresh" onClick=${() => location.reload()}>刷新页面<//>
+    </div>`;
   }
   if (conn.status === 'online' && buildStale) {
     // the server has a newer build than this page: the guard reloads by itself once the match is over, the button is

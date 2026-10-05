@@ -5,7 +5,7 @@
 // leak count of normal fields (state().leaks, user playtest #3 item 2).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { createBattleRunner, ticksPerFrameCap } from '../../public/js/battle/runner.js';
+import { createBattleRunner, ticksPerFrameCap, SIM_RETRIES_MAX } from '../../public/js/battle/runner.js';
 import { createStore, initialState } from '../../public/js/store.js';
 import * as specMod from '../../server/sim/spec.js';
 import { DataSource } from '../../server/sim/simdata.js';
@@ -28,7 +28,7 @@ function fakeNet() {
   return n;
 }
 
-function rig({ hidden = false } = {}) {
+function rig({ hidden = false, loadSim = async () => ({ spec: specMod, ds: DS }) } = {}) {
   let t = 1000;
   const frames = [];
   const intervals = [];
@@ -42,7 +42,7 @@ function rig({ hidden = false } = {}) {
     caf: () => {},
     setInterval: (fn) => { intervals.push(fn); return intervals.length; },
     clearInterval: () => {},
-    loadSim: async () => ({ spec: specMod, ds: DS }),
+    loadSim,
     logger: { error() {}, warn() {}, info() {}, debug() {} },
   });
   const feed = { snaps: [], evs: [], fields: [] };
@@ -465,5 +465,28 @@ test('live unit stats (user playtest #4 item 7): unitStats(id) reads the battle 
   r.runner.clear();
   assert.equal(r.runner.unitStats(ally.id), null, 'nothing on screen after the battles were dropped');
   assert.equal(r.runner.unitIdOf(ally.uid, ally.ownerId), null);
+  r.runner.dispose();
+});
+
+test('a sim that cannot load is reported instead of showing an empty battlefield (Android WebView report: combat with no enemies)', async () => {
+  const start = realStart();
+  let ok = false;
+  const r = rig({ loadSim: async () => { if (!ok) throw new Error('simulation data unavailable: chess, waves'); return { spec: specMod, ds: DS }; } });
+  r.net.emit('b.start', start);
+  await r.settle();
+  const bad = r.store.get().match.battle;
+  assert.ok(bad?.simError, 'the failed load reaches the store, where the banner can show it');
+  assert.match(bad.simError.text, /simulation data unavailable: chess, waves/, 'the message names what is missing');
+  assert.equal(bad.simError.max, SIM_RETRIES_MAX);
+  assert.equal(r.runner._entries.get(start.battleId), undefined, 'no battle was built');
+  const tries = bad.simError.tries;
+  await r.runner.onStart(start);
+  await r.settle();
+  assert.equal(r.store.get().match.battle.simError.tries, tries + 1, 'every failed attempt counts, so the retries stop out loud');
+  ok = true;
+  await r.runner.onStart(start);
+  await r.settle();
+  assert.equal(r.store.get().match.battle.simError, null, 'a load that works clears the banner');
+  assert.ok(r.feed.fields.length, 'and the battle runs');
   r.runner.dispose();
 });
