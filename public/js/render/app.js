@@ -1556,12 +1556,18 @@ export async function createFieldView(host, options = {}) {
       case 'deploy': {
         gone.delete(e[1]);
         const v = battleView(e[1]);
-        if (v) { v.onDeploy?.(); announceDeploy(v, e); if (v.info?.kind !== 'device') fx.deploy(v); }
+        const initial = !!e[2]?.initial || (renderT0Battle != null && now - renderT0Battle <= 0.05);
+        if (v) {
+          v.onDeploy?.();
+          if (!initial) announceDeploy(v, e);
+          if (!initial && v.info?.kind !== 'device') fx.deploy(v);
+        }
         break;
       }
       case 'atk': {
         const src = views.get(e[1]) || battleView(e[1]);
         const tgt = views.get(e[2]) || battleView(e[2]);
+        if (tgt && (!tgt.alive || tgt.dead || tgt.dying)) break;
         // chain / chainHeal bounces: the "source" is the previous target of the bounce, not an attacker
         if (src && !CHAIN_KINDS.has(e[3])) src.onAttack?.(tgt, now, e[3]);
         if (e[3] === 'none' || !e[3]) { if (tgt && src) meleePending.set(tgt.id, { src, t: now }); }
@@ -1584,6 +1590,10 @@ export async function createFieldView(host, options = {}) {
         const v = views.get(e[1]);
         const used = consumedIds.delete(e[1]);
         if (v && v.alive) { v.die(e[2] === FORCED_EXIT); if (showsDeathFx(v.info, used, e[2])) fx.death(v); }
+        for (const u of views.values()) {
+          // only operators loop their attack clip (enemies are clip-per-attack), so only they need the early exit
+          if (u.info?.side === 'ally' && u.lastTargetId === e[1]) u.finishAttack?.();
+        }
         break;
       }
       case 'leak': {

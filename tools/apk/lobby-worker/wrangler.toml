@@ -29,12 +29,10 @@ new_sqlite_classes = ["Board"]
 tag = "v2"
 new_sqlite_classes = ["MatchQueue"]
 
-# Custom domain (2026-10-04): *.workers.dev is frequently unreachable from mainland China, which made
-# the lobby's room submit fail with a network error on phones. Serving the same Worker from our own
-# zone fixes reachability (CF provisions the DNS record + certificate automatically on deploy).
-[[routes]]
-pattern = "sp-lobby.jiangjiangze.icu"
-custom_domain = true
+# Custom domain (optional): if you have your domain on Cloudflare, uncomment to bind:
+# [[routes]]
+# pattern = "lobby.yourdomain.com"
+# custom_domain = true
 
 # ---------------------------------------------------------------------------------------------------
 # DEPLOY (run from tools/apk/lobby-worker/)

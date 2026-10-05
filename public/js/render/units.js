@@ -343,6 +343,7 @@ export class UnitView {
     this.bob = Math.random() * Math.PI * 2;
     this.hovered = false; this.dimmed = false; this.lift = 0;
     this.lastAtk = -1; this.atkInterval = defaultInterval(ctx, info);
+    this.lastTargetId = null;
     this.shake = 0;
     this.screen = { x: 0, y: 0, s: 1, top: 0 };
     this.destroyed = false;
@@ -736,6 +737,7 @@ export class UnitView {
   /** An attack was made (b.ev 'atk'). `target` = view or null. */
   onAttack(target, now, kind) {
     if (!this.alive) return;
+    this.lastTargetId = target?.id ?? null;
     // a one-off cast (PROJ[kind].once: 暴鸰's bomb drop) is no attack rhythm: its clip plays once at its own speed
     const once = !!PROJ[kind]?.once;
     if (!once) {
@@ -758,6 +760,12 @@ export class UnitView {
     this.lunge = 1;
     if (this.actor) this.actor.attack(this.atkInterval, once); // game seconds: the actor's clock runs in game time
     if (this.imp) this.imp.dirty = true;
+  }
+
+  /** Finish the current attack stroke without looping into another (target died). */
+  finishAttack() {
+    this.lastTargetId = null;
+    if (this.actor) this.actor.finishAttack?.();
   }
 
   /**

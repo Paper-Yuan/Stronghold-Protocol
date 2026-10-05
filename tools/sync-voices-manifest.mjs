@@ -60,6 +60,10 @@ export function syncVoicesManifest() {
     const charId = path.basename(f, '.mp3');
     const relPath = `/assets/audio/voice/${f}`;
     manifest.audio.voice[charId] = relPath;
+    const m = charId.match(/^(.+)_s(\d+)$/);
+    if (m) {
+      manifest.audio.voice[`${m[1]}:s${m[2]}`] = relPath;
+    }
     if (manifest.chars && manifest.chars[charId]) {
       manifest.chars[charId].voice = relPath;
     }
