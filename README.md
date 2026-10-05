@@ -27,7 +27,7 @@ English summary: [below](#english).
 ## 目录
 
 - [声明](#声明) · [简介](#简介) · [功能一览](#功能一览)
-- [快速开始](#快速开始)：[整合包](#方式一整合包推荐) · [从源码运行](#方式二从源码运行) · [系统要求](#系统要求) · [端口与配置](#端口与配置) · [局域网联机](#和朋友一起玩局域网)
+- [快速开始](#快速开始)：[整合包](#方式一整合包推荐) · [从源码运行](#方式二从源码运行) · [安卓 APK](#方式三安卓手机apk手机自己开服) · [系统要求](#系统要求) · [端口与配置](#端口与配置) · [局域网联机](#和朋友一起玩局域网)
 - [联机方式](#联机方式) · [操作](#操作) · [文档](#文档) · [开发与测试](#开发与测试) · [项目结构](#项目结构)
 - [许可证](#许可证) · [致谢与数据来源](#致谢与数据来源) · [贡献](#贡献)
 
@@ -90,13 +90,34 @@ npm start          # 启动服务器：http://localhost:3000
 - 素材下载优先使用 GitHub，失败时自动改用 jsDelivr 镜像。
 - `npm run doctor`（即 `node tools/doctor.mjs`）可以随时诊断：Node 版本、素材是否完整、端口占用、局域网地址和防火墙。
 
+### 方式三：安卓手机（APK，手机自己开服）
+
+不想开电脑，也可以让安卓手机当房主：APK 把服务器（Node.js）嵌在 App 里，**没有 PC、不连网也能单人玩**，同一 Wi-Fi 下的朋友直接连这台手机。
+
+1. **下载**：[Releases](../../releases/latest) 里的 `Stronghold-Protocol-v<版本>-android.apk`（约 285 MB）。要求 **Android 7.0（API 24）及以上**、arm64-v8a，磁盘留出 1 GB 以上。
+2. **安装**：安装包来自 GitHub，需要允许「安装未知应用」。装过旧版的话直接覆盖安装即可（各版本用同一把签名密钥；每个包的 SHA-256 与证书指纹都写在 Release 说明里，可自行核对）。
+3. **首次启动**会解压约 400 MB 资源（十几秒），之后每次启动都会先问「这局怎么开始」：
+   - **本机单人** —— 手机自己开服，不连网也能玩。
+   - **同一 Wi-Fi** —— 进大厅只填 4 位同盟密钥，自动找到房主的手机。
+   - **填地址连接** —— 房主不在同一网段时用：UU 加速器、Tailscale 这类虚拟局域网，或者电脑开服（这时手机只是客户端）。
+
+   选择框上会印出本机的局域网地址（形如 `http://192.168.x.x:3000`），朋友用**浏览器**打开它就能进来玩，不需要装 APK。
+4. **自己打包**：切到 `feature/android-client` 分支后 `npm run build:android` 出 debug 包；加 `--release` 需要自备签名密钥（`android/local.properties` 里的 `SP_STORE_FILE` 等）。壳层架构、内嵌 Node 的约束与诊断方式见 [docs/ANDROID.md](https://github.com/Paper-Yuan/Stronghold-Protocol/blob/feature/android-client/docs/ANDROID.md)（该文件也在这个分支上）。
+
+**演示视频**：[《基于 B站 @Ausevay 大佬的安卓端卫戍协议又一适配》](https://www.bilibili.com/video/BV1bDHH6PEzN)，UP 主 [纸鸢安好](https://space.bilibili.com/99201674)（即本仓库维护者）。安卓端这条思路最早参考了 B 站 **@Ausevay** 的移动端适配，这里一并致谢。
+
+> **关于视频里那份 APK**：视频说明写明它是「重新编译打包」并经网盘分发。本仓库**只对 [Releases](../../releases/latest) 里的包公布 SHA-256 与签名证书指纹**，其他渠道的包我们无法校验、也不为其内容背书；装之前请自行核对签名与哈希。视频和本仓库一样，都是玩家自制的**非官方同人作品**，与鹰角网络 / Yostar 无关，仅供学习交流、严禁任何形式盈利（完整条款见上面的[声明](#声明)）。
+
+> 安卓端代码在 `feature/android-client` 分支上开发，`master` 里还没有 `android/` 目录；APK 只从 Releases 分发。
+
 ### 系统要求
 
 | 项目 | 要求 |
 |---|---|
 | 开服的电脑 | Windows / macOS / Linux，Node.js 22 或 24（LTS）；磁盘约 400–500 MB（素材、依赖与可选的本地提取贴图）；内存空闲约 100 MB，每局再加几 MB |
+| 或：开服的手机 | Android 7.0+（arm64-v8a），APK 约 285 MB，首次启动解压约 400 MB 资源；见上面的方式三 |
 | 玩家 | 支持 WebGL 的现代浏览器（Chrome / Edge / Firefox / Safari 最新版），电脑、手机或平板（横屏） |
-| 网络 | 首次进入游戏时，每位玩家要从开服的电脑下载几十 MB 素材（之后走浏览器缓存）；对局中流量很小 |
+| 网络 | 首次进入游戏时，每位玩家要从开服的那台设备（电脑或手机）下载几十 MB 素材（之后走浏览器缓存）；对局中流量很小 |
 
 显卡较弱时可以在「设置」里调低画质，或在网址后加 `?board=2d`（强制 2D 棋盘）/ `?render=fallback`（不用 WebGL 的简化画面）。
 
@@ -166,6 +187,7 @@ npm start          # 启动服务器：http://localhost:3000
 |---|---|
 | [docs/PLAYING.md](docs/PLAYING.md) | 玩法指南：流程、经济、招募与晋升、摆阵、联防、盟约、最终攻势、结算称号 |
 | [docs/DEPLOY.md](docs/DEPLOY.md) | 部署指南：Windows 开服与开机自启、防火墙、组网 / 隧道、反向代理与 HTTPS、Docker、systemd、排错 |
+| [docs/ANDROID.md](https://github.com/Paper-Yuan/Stronghold-Protocol/blob/feature/android-client/docs/ANDROID.md) | 安卓端（在 `feature/android-client` 分支）：壳层架构、内嵌 Node 的约束与双端版本兼容、打包与签名、日志诊断 |
 | [docs/DESIGN.md](docs/DESIGN.md) | 架构与契约（英文）：技术栈、目录分工、网络协议、渲染与 UI、各次试玩后的规则修订 |
 | [docs/SIM.md](docs/SIM.md) | 战斗模拟引擎参考（英文）：钩子、技能描述格式、职业默认行为 |
 | [docs/META.md](docs/META.md) | 对局与经济引擎（英文）：回合流程、商店、联防、最终攻势的实现细节 |
@@ -211,6 +233,7 @@ RENDER_E2E=1 node --test 'test/render/*.browser.test.js'   # 渲染测试，部�
 - 游戏数据：[Kengxxiao/ArknightsGameData](https://github.com/Kengxxiao/ArknightsGameData)。
 - 素材来源：[yuanyan3060/ArknightsGameResource](https://github.com/yuanyan3060/ArknightsGameResource)、[fexli/ArknightsResource](https://github.com/fexli/ArknightsResource)、[isHarryh/Ark-Models](https://github.com/isHarryh/Ark-Models)、[ArknightsAssets/ArknightsAssets2](https://github.com/ArknightsAssets/ArknightsAssets2)；字体来自 [TimWangZi/The-font-of-Arknights](https://github.com/TimWangZi/The-font-of-Arknights) 与 Google Fonts（Noto Sans SC）。详见 [docs/ASSETS.md](docs/ASSETS.md)。
 - 规则核对参考：[PRTS 明日方舟中文 Wiki](https://prts.wiki/)。
+- 安卓端适配的思路参考了 B 站 **@Ausevay** 的移动端适配，演示视频与账号：[纸鸢安好](https://space.bilibili.com/99201674)（本仓库维护者）。
 - LZ4AK 解包：`tools/local-extract/aklz4.py` 的算法来自 [isHarryh/Ark-Unpacker](https://github.com/isHarryh/Ark-Unpacker)（BSD-3-Clause，经 MooncellWiki/UnityPy）；解析 Unity 资源使用 [UnityPy](https://github.com/K0lb3/UnityPy)（MIT）。
 - 库：[PixiJS](https://pixijs.com/)（MIT）、[pixi-spine](https://github.com/pixijs/spine)（MIT；其中包含的 Spine Runtime 另受 [Spine Runtimes License](https://esotericsoftware.com/spine-runtimes-license) 约束）、[three.js](https://threejs.org/)（MIT）、[Preact](https://preactjs.com/) + [htm](https://github.com/developit/htm)（MIT）、[ws](https://github.com/websockets/ws)（MIT）。
 
@@ -232,6 +255,7 @@ RENDER_E2E=1 node --test 'test/render/*.browser.test.js'   # 渲染测试，部�
 An **unofficial, non-commercial fan remake** of Arknights' seasonal auto-chess tower-defense mode *Stronghold Protocol: Covenant*, played in the browser: solo, or 1–4 player co-op (AI teammates can fill seats). Combat is simulated in each player's browser, so a low-power PC can host.
 
 - **Run:** download the all-in-one bundle from [Releases](../../releases/latest), install Node.js 22 or 24, then double-click `scripts\start-windows.bat` (Windows) or run `./scripts/start.sh` (macOS / Linux) and open <http://localhost:3000>. From source: `npm install && npm run setup && npm start` (setup downloads ~250 MB of art from public mirrors; the official 3D board needs a local Arknights client to extract, otherwise the 2D board is used).
+- **Android:** an APK ships from [Releases](../../releases/latest) (~285 MB, Android 7.0+ / arm64-v8a). It embeds the Node.js server, so the phone hosts the game — solo with no network at all, and friends on the same Wi-Fi connect to it (from a browser, no APK needed). Each release publishes the SHA-256 and the certificate fingerprint. Built from the `feature/android-client` branch; see [docs/ANDROID.md](https://github.com/Paper-Yuan/Stronghold-Protocol/blob/feature/android-client/docs/ANDROID.md). Demo video (Chinese): [Bilibili BV1bDHH6PEzN](https://www.bilibili.com/video/BV1bDHH6PEzN) by [纸鸢安好](https://space.bilibili.com/99201674), the maintainer of this repository.
 - **Play with friends:** create a co-op room and share the 4-letter key or the `?room=KEY` link. On a LAN, use the address printed at start; otherwise use a virtual-LAN tool, a tunnel or a VPS — see [docs/DEPLOY.md](docs/DEPLOY.md).
 - **Disclaimer:** not affiliated with or endorsed by Hypergryph or Yostar. All Arknights names, art, audio, text and data are © their respective owners and are **not** covered by this project's GPL licence. For study and personal non-commercial use only — no selling, paid distribution, paid servers or monetisation of any kind. Content will be removed on request of the rights holders. Provided "as is", without warranty.
 - **License:** code GPL-3.0-or-later ([LICENSE](LICENSE)); game assets excluded.
