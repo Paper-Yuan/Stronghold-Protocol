@@ -3,11 +3,11 @@
 
 import fs from 'node:fs';
 import path from 'node:path';
-import crypto from 'node:crypto';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
 import { verifyVoicesManifest } from './sync-voices-manifest.mjs';
+import { computeBuildTag } from './build-tag.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const ANDROID_ASSETS_DIR = path.join(ROOT, 'android', 'app', 'src', 'main', 'assets');
@@ -161,11 +161,10 @@ fs.rmSync(STAGING_DIR, { recursive: true, force: true });
 const stats = fs.statSync(ZIP_TARGET);
 console.log(`[bundle-android] app_bundle.zip generated: ${(stats.size / 1024 / 1024).toFixed(2)} MB`);
 
-// 4. Generate bundle.sha256 hash marker for Android asset extractor
-const zipBuffer = fs.readFileSync(ZIP_TARGET);
-const hash = crypto.createHash('sha256').update(zipBuffer).digest('hex');
+// 4. Generate the extractor's version marker (assets/bundle.sha256). This is the tag UpdateManager
+//    compares against a hot-update manifest, so it MUST come from the same helper as the publisher.
 const rootPkg = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8'));
-const versionContent = `${rootPkg.version}-${hash.slice(0, 16)}`;
+const versionContent = computeBuildTag(ROOT, rootPkg.version);
 const versionFile = path.join(ANDROID_ASSETS_DIR, 'bundle.sha256');
 fs.writeFileSync(versionFile, versionContent, 'utf8');
 console.log(`[bundle-android] Generated bundle.sha256: ${versionContent}`);
