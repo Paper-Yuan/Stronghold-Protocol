@@ -7,8 +7,30 @@ import { html, Button, Icon, MicroLabel, Panel, Spinner, DifficultyTag, Difficul
 import { toast, toastError } from './toasts.js';
 import { DIFFICULTY_NAMES, DIFFICULTY_COLORS } from '../../../shared/constants.js';
 
-export const BOARD_API = 'https://sp-lobby.jiangjiangze.icu/api/rooms';
-export const RELAY_API = 'https://sp-lobby.jiangjiangze.icu/api/community?src=rainya';
+export const DEFAULT_LOBBY_ORIGIN = 'https://sp-lobby.jiangjiangze.icu';
+
+export function getLobbyEndpoint() {
+  try {
+    const custom = localStorage.getItem('sp.lobby.endpoint');
+    if (custom && custom.trim()) return custom.trim().replace(/\/+$/, '');
+  } catch {}
+  return DEFAULT_LOBBY_ORIGIN;
+}
+
+export function setLobbyEndpoint(url) {
+  try {
+    if (!url || !url.trim()) localStorage.removeItem('sp.lobby.endpoint');
+    else localStorage.setItem('sp.lobby.endpoint', url.trim().replace(/\/+$/, ''));
+  } catch {}
+}
+
+export function getBoardApi() {
+  return `${getLobbyEndpoint()}/api/rooms`;
+}
+
+export function getRelayApi() {
+  return `${getLobbyEndpoint()}/api/community?src=rainya`;
+}
 
 const TOKENS_KEY = 'sp.lobby.tokens';
 const FETCH_TIMEOUT_MS = 6000;
@@ -83,7 +105,7 @@ export async function toggleRoomPublic(code, meta = {}) {
   if (currentToken) {
     // Withdraw room
     try {
-      const url = `${BOARD_API}?code=${encodeURIComponent(c)}&serverId=${encodeURIComponent(meta.serverId || location.host)}`;
+      const url = `${getBoardApi()}?code=${encodeURIComponent(c)}&serverId=${encodeURIComponent(meta.serverId || location.host)}`;
       const res = await fetch(url, {
         method: 'DELETE',
         headers: { 'X-Token': currentToken },
@@ -119,7 +141,7 @@ export async function toggleRoomPublic(code, meta = {}) {
   };
 
   try {
-    const res = await fetch(BOARD_API, {
+    const res = await fetch(getBoardApi(), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
@@ -155,8 +177,8 @@ export async function fetchPublicRooms() {
   };
 
   const [boardData, relayData] = await Promise.all([
-    fetchWithTimeout(BOARD_API),
-    fetchWithTimeout(RELAY_API),
+    fetchWithTimeout(getBoardApi()),
+    fetchWithTimeout(getRelayApi()),
   ]);
 
   const roomsMap = new Map();

@@ -57,6 +57,7 @@ export function resolveSpCard(card, family) {
   const m = data.get('assets');
   const kind = card.kind === 'item' || item ? 'item' : card.kind === 'bounty' || bounty || family === 'bounty' ? 'bounty' : 'tactic';
   const enemyKey = card.enemyKey || bounty?.enemyKey || eff?.params?.enemy_id || null;
+  const enemy = enemyKey ? data.lookup('enemies', enemyKey) : null;
   const team = card.team ?? tactic?.team ?? (eff?.decoIconId === 'icon_team_buff');
   let icon = null;
   if (item) icon = itemIconUrl(m, item);
@@ -72,6 +73,8 @@ export function resolveSpCard(card, family) {
     icon,
     team: !!team,
     coin: card.coin ?? bounty?.coin ?? eff?.enemyPrice ?? null,
+    enemyKey,
+    enemyName: enemy?.name || null,
   };
 }
 
@@ -211,16 +214,18 @@ export function ChoiceView({ pub, sp, myId, solo, busyIdx = null, total = null, 
           const busy = pickBusy(busyIdx, card, mine);
           const isArmed = can && armed === card.idx;
           const takerName = taker ? (card.takenBy === myId ? '你' : taker.name) : null;
+          const labelName = r.kind === 'bounty' && r.enemyName ? `${r.name}【${r.enemyName}】` : r.name;
           return html`<button key=${card.idx} type="button" class=${cx('spcard', `spcard--${r.kind}`, card.takenBy && 'is-taken', card.takenBy === myId && 'is-mine', can && 'is-pickable', isArmed && 'is-armed', busy && 'is-busy')}
               aria-busy=${busy ? 'true' : undefined} aria-pressed=${can ? String(isArmed) : undefined} disabled=${!can} onClick=${() => can && onTap(card.idx)}
-              aria-label=${isArmed ? `${r.name}，已选中，再次点击确认` : takerName ? `${r.name}，${takerName}已选择` : r.name} title=${`${r.name}\n${richTextPlain(r.desc)}`}>
+              aria-label=${isArmed ? `${labelName}，已选中，再次点击确认` : takerName ? `${labelName}，${takerName}已选择` : labelName} title=${`${labelName}\n${richTextPlain(r.desc)}`}>
             <span class="spcard__glow" aria-hidden="true"></span>
             <span class="spcard__head">
               <span class="spcard__icon"><${Img} src=${r.icon} fallback=${html`<${GIcon} name=${r.kind === 'bounty' ? 'target' : 'bolt'} />`} /></span>
               <span class="spcard__title">
-                <b class="spcard__name">${r.name}</b>
-                ${r.team || (r.kind === 'bounty' && r.coin) ? html`<span class="spcard__tags">
+                <b class="spcard__name">${r.name}${r.kind === 'bounty' && r.enemyName ? html`<span class="spcard__target-name">【${r.enemyName}】</span>` : null}</b>
+                ${r.team || (r.kind === 'bounty' && (r.coin || r.enemyName)) ? html`<span class="spcard__tags">
                   ${r.team ? html`<span class="spcard__tag spcard__tag--team">全队获得</span>` : null}
+                  ${r.kind === 'bounty' && r.enemyName ? html`<span class="spcard__tag spcard__tag--enemy">目标: ${r.enemyName}</span>` : null}
                   ${r.kind === 'bounty' && r.coin ? html`<span class="spcard__tag spcard__tag--coin">赏金 ${r.coin}</span>` : null}
                 </span>` : null}
               </span>

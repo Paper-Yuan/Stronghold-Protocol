@@ -1459,12 +1459,16 @@ export function factionTypes(factions) {
  * HUD numbers from a b.snap: { killed, total, dp, boss } (boss: { hp, max } when present).
  * @param {any} snap
  */
-export function snapHud(snap) {
+export function snapHud(snap, myId = null) {
   if (!isObj(snap)) return null;
   const n = (v) => (Number.isFinite(v) ? v : null);
   let boss = null;
   if (isObj(snap.boss) && Number.isFinite(snap.boss.hp)) boss = { hp: snap.boss.hp, max: n(snap.boss.max) ?? n(snap.boss.maxHp) };
-  return { killed: n(snap.killed), total: n(snap.total), dp: n(snap.dp), boss };
+  let dpVal = n(snap.dp);
+  if (myId && snap.dps && typeof snap.dps === 'object' && Number.isFinite(snap.dps[myId])) {
+    dpVal = snap.dps[myId];
+  }
+  return { killed: n(snap.killed), total: n(snap.total), dp: dpVal, boss };
 }
 
 /** Boss HP fraction 0..1 (null when unknown). */

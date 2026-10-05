@@ -153,16 +153,26 @@ export function deathSfxUrl(manifest, info, { consumed = false, reason = null } 
  * @param {any} [gd] gameData lookup handle (getChess)
  * @returns {string|null}
  */
-export function voiceKey(x, gd = null) {
+export function voiceKey(x, gd = null, skillIndex = null) {
   if (!x) return null;
+  let baseKey = null;
   if (typeof x === 'string') {
-    if (x.startsWith('char_')) return x;                       // already a charId
-    const getFn = gd?.getChess || gd?.chess || (typeof gd === 'function' ? gd : null);
-    const rec = getFn ? getFn(x) : null;
-    return rec?.charId || null; // chessId -> charId
+    if (x.startsWith('char_')) baseKey = x;
+    else {
+      const getFn = gd?.getChess || gd?.chess || (typeof gd === 'function' ? gd : null);
+      const rec = getFn ? getFn(x) : null;
+      baseKey = rec?.charId || null; // chessId -> charId
+    }
+  } else if (x.piece) {
+    baseKey = voiceKey(x.piece, gd);
+  } else {
+    baseKey = x.charId || voiceKey(x.id || x.chessId || x.defId || x.def || x.spine, gd) || null;  // def object / unit
   }
-  if (x.piece) return voiceKey(x.piece, gd);
-  return x.charId || voiceKey(x.id || x.chessId || x.defId || x.def || x.spine, gd) || null;  // def object / unit
+  if (!baseKey) return null;
+  if (Number.isInteger(skillIndex) && skillIndex >= 0) {
+    return `${baseKey}:s${skillIndex + 1}`;
+  }
+  return baseKey;
 }
 
 /**
@@ -303,6 +313,7 @@ export class AudioManager {
     this.units = new Map();   // battle unit id → defId
     this.lastAttacker = new Map(); // target id → { def, at } of the hostile attack last aimed at it (its impact sound)
     this.consumed = new Set();     // summons used up by their own effect (香槟炸弹 exploded): no death sound
+    this._lastSkillVoice = new Map(); // unitId/key -> timestamp (cooldown)
     this.installed = false;
     this._unlock = this._unlock.bind(this);
     this._onVis = this._onVis.bind(this);
@@ -567,6 +578,15 @@ export class AudioManager {
     if (limited) { if (!this.limiter.tryAcquire(now, unitKey, url)) return; }
     else if (this.uiVoices >= 12) return;
     else this.uiVoices += 1;
+    const isVoice = typeof unitKey === 'string' && unitKey.startsWith('voice:');
+    if (isVoice && this._activeVoiceNode) {
+      try {
+        const t = this.ctx.currentTime;
+        this._activeVoiceNode.gain.gain.linearRampToValueAtTime(0, t + 0.05);
+        this._activeVoiceNode.src.stop(t + 0.05);
+      } catch { /* ignore */ }
+      this._activeVoiceNode = null;
+    }
     const release = () => { if (limited) this.limiter.release(url); else this.uiVoices = Math.max(0, this.uiVoices - 1); };
     this._buffer(url).then((buf) => {
       if (!buf || !this.ctx) { release(); return; }
@@ -578,8 +598,21 @@ export class AudioManager {
         g.gain.value = Math.max(0, Math.min(1.5, volume));
         s.connect(g); g.connect(this.sfxGain);
         let done = false;
-        const end = () => { if (!done) { done = true; release(); try { g.disconnect(); } catch { /* ignore */ } } };
+        const end = () => {
+          if (!done) {
+            done = true;
+            if (this._activeVoiceNode?.src === s) this._activeVoiceNode = null;
+            release();
+            try { g.disconnect(); } catch { /* ignore */ }
+          }
+        };
         s.onended = end;
+        if (isVoice) {
+          if (this._activeVoiceNode) {
+            try { this._activeVoiceNode.src.stop(); } catch { /* ignore */ }
+          }
+          this._activeVoiceNode = { src: s, gain: g };
+        }
         setTimeout(end, (buf.duration / rate) * 1000 + 250); // safety if onended never fires
         s.start();
       } catch { release(); }
@@ -705,20 +738,34 @@ export class AudioManager {
   voice(defId, o = {}) {
     try {
       if (!defId) return;
-      const key = typeof defId === 'string' ? (defId.startsWith('char_') ? defId : voiceKey(defId)) : voiceKey(defId);
+      const sIdx = Number.isInteger(o.skillIndex) ? o.skillIndex : null;
+      let key = typeof defId === 'string'
+        ? (defId.startsWith('char_') ? (Number.isInteger(sIdx) ? `${defId}:s${sIdx + 1}` : defId) : voiceKey(defId, o.gd, sIdx))
+        : voiceKey(defId, o.gd, sIdx);
       const warnKey = key || (typeof defId === 'object' ? (defId?.id || defId?.chessId || defId?.charId || typeof defId) : String(defId));
       if (!this.ctx) {
         this._warn('voice_no_ctx', 'AudioContext not active for voice');
       }
+      const now = typeof performance !== 'undefined' ? performance.now() : Date.now();
+      const lastT = this._lastVoiceTimes?.get(warnKey);
+      if (lastT != null && now - lastT < 1800) return;
+      if (!this._lastVoiceTimes) this._lastVoiceTimes = new Map();
+      this._lastVoiceTimes.set(warnKey, now);
+      if (this._lastVoiceTimes.size > 200) this._lastVoiceTimes.clear();
       const m = this.getManifest();
-      const url = key ? (m?.audio?.voice?.[key] || m?.chars?.[key]?.voice) : null;
+      let url = key ? (m?.audio?.voice?.[key] || m?.chars?.[key]?.voice) : null;
+      // If a specific skill voice was requested but missing, fallback to default operator voice
+      if (!url && key && key.includes(':s')) {
+        const baseKey = key.split(':')[0];
+        url = m?.audio?.voice?.[baseKey] || m?.chars?.[baseKey]?.voice || null;
+      }
       if (typeof url === 'string') {
         // The slot used to be the constant 'operator_voice', i.e. shared by every operator: deploying
         // a row muted all but the first, which read as "the voice only works when I tap one unit".
         // Each operator gets its own cooldown; the global cap stays maxVoices.
-        const played = this._play(url, { volume: o.volume ?? 0.95, limited: true, unitKey: `voice:${key}` });
+        const played = this._play(url, { volume: o.volume ?? 0.95, limited: true, unitKey: `voice:${key || warnKey}` });
         if (played !== false) {
-          this.duckBgm(2000);
+          this.duckBgm(o.duckDuration ?? 2000);
         }
       } else {
         if (!this.warned.has(`voice_missing_${warnKey}`)) {
@@ -733,6 +780,25 @@ export class AudioManager {
     }
   }
 
+  /**
+   * Play an operator's skill activation voice line (with 6s per-unit cooldown and BGM ducking).
+   * @param {any} u tracked UnitInfo
+   * @param {number} [skillIndex] 0 for S1, 1 for S2, 2 for S3
+   */
+  skillVoice(u, skillIndex) {
+    if (!u || u.side === 'enemy') return;
+    const now = typeof performance !== 'undefined' ? performance.now() : Date.now();
+    const unitKey = u.def || u.defId || u.id;
+    const last = this._lastSkillVoice.get(unitKey);
+    if (last != null && now - last < 6000) return; // 单干员 6 秒防吵耳冷却
+    this._lastSkillVoice.set(unitKey, now);
+
+    const baseId = typeof u.def === 'string' ? u.def : (u.defId || u.spine || '');
+    if (!baseId) return;
+    const sIdx = Number.isInteger(skillIndex) ? skillIndex : (Number.isInteger(u.skillIndex) ? u.skillIndex : null);
+    this.voice(baseId, { skillIndex: sIdx, volume: 0.98, duckDuration: 1800 });
+  }
+
   // ---- battle events ------------------------------------------------------------------------------------------
 
   /** Reset the unit map for a new field (m.field.units = UnitInfo[]). */
@@ -740,15 +806,20 @@ export class AudioManager {
     this.units.clear();
     this.lastAttacker.clear();
     this.consumed.clear();
+    this._lastSkillVoice.clear();
     for (const u of Array.isArray(units) ? units : []) this._track(u);
   }
 
   _track(u) {
     if (!u || typeof u !== 'object' || u.id == null) return;
-    // UnitInfo.spine is the model id (charId / tokenId / enemyId) — the key of sfx.units; kind/defId pick the
-    // official class sounds (operator vs summon vs device)
-    this.units.set(u.id, { def: u.spine || u.defId, defId: u.defId ?? null, kind: u.kind ?? null, side: u.side, boss: !!u.boss,
-      skillIndex: Number.isInteger(u.skillIndex) ? u.skillIndex : null });
+    this.units.set(u.id, {
+      def: u.spine || u.defId || u.def,
+      defId: u.defId ?? u.def ?? null,
+      kind: u.kind ?? null,
+      side: u.side,
+      boss: !!u.boss,
+      skillIndex: Number.isInteger(u.skillIndex) ? u.skillIndex : null,
+    });
   }
 
   /** Play a resolved battle sound for a unit event, limited like unit sounds. */
@@ -786,7 +857,15 @@ export class AudioManager {
           this.battle('heal', { unitKey: `heal:${e[1]}`, volume: 0.35 });
         } else if (kind === 'skill' && e[2]) {
           const u = this.units.get(e[1]);
-          if (u) this.unit(u.def, 'skill', e[1], u.skillIndex ?? undefined);
+          if (u) {
+            const hasOwnSfx = this.unit(u.def, 'skill', e[1], u.skillIndex ?? undefined);
+            if (!hasOwnSfx) {
+              const b = this.getManifest()?.audio?.sfx?.battle;
+              const genericSkill = b?.skill || '/assets/audio/sfx/customse/act1autochess/act1autochess_b_ui_buffup.mp3';
+              this._play(genericSkill, { volume: 0.75, limited: true, unitKey: `skill:${e[1]}` });
+            }
+            this.skillVoice(u, u.skillIndex ?? undefined);
+          }
         } else if (kind === 'die') {
           const u = this.units.get(e[1]);
           if (!u) continue;
@@ -799,6 +878,7 @@ export class AudioManager {
           if (!unitSoundPlays(mix, this.random())) continue;
           this._playUnitUrl(url, own ? `${e[1]}:die` : `die:${e[1]}`, own ? unitGain(0.8, mix) : 0.7);
         } else if (kind === 'deploy') {
+          if (e[2]?.initial) continue;
           const u = this.units.get(e[1]);
           if (!u || u.side === 'enemy') continue;
           const m = this.getManifest();

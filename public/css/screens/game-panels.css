@@ -23,7 +23,11 @@
 .uthumb--t1 { --tc: var(--tier-1); } .uthumb--t2 { --tc: var(--tier-2); } .uthumb--t3 { --tc: var(--tier-3); }
 .uthumb--t4 { --tc: var(--tier-4); } .uthumb--t5 { --tc: var(--tier-5); } .uthumb--t6 { --tc: var(--tier-6); }
 .uthumb__art {
-  position: absolute; inset: 0; overflow: hidden; display: grid; place-items: center;
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  width: 100%; height: 100%;
+  inset: 0;
+  overflow: hidden; display: grid; place-items: center;
   background: linear-gradient(160deg, #1a201d, #111513); background: linear-gradient(160deg, color-mix(in srgb, var(--tc) 30%, #1a201d), #111513);
   border: 1px solid var(--tc); border: 1px solid color-mix(in srgb, var(--tc) 60%, var(--line-2));
   clip-path: polygon(0 0, 100% 0, 100% calc(100% - var(--ut) * .16), calc(100% - var(--ut) * .16) 100%, 0 100%);
@@ -365,9 +369,21 @@ button.bpop__harmony:hover { border-style: solid; color: #fff; }
 .ibanned__one { padding: 0; background: none; border: 0; }
 
 /* ---- 机变 overlay ---- */
-.spov { position: absolute; inset: 0 0 0 2.8rem; z-index: 20; }
+.spov {
+  position: absolute;
+  top: 0; left: 2.8rem; right: 0; bottom: 0;
+  width: calc(100% - 2.8rem); height: 100%;
+  inset: 0 0 0 2.8rem;
+  z-index: 20;
+}
 .gm.has-sp .gm__bonds, .gm.has-sp .gm__effects { opacity: 0; pointer-events: none; transition: opacity var(--t-med); }
-.spov__veil { position: absolute; inset: 0; background: linear-gradient(90deg, rgba(4, 7, 6, .6) 0, rgba(4, 7, 6, .9) .5rem, rgba(4, 7, 6, .92)); -webkit-backdrop-filter: blur(2px); backdrop-filter: blur(2px); border-left: 1px solid var(--line); }
+.spov__veil {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  width: 100%; height: 100%;
+  inset: 0;
+  background: linear-gradient(90deg, rgba(4, 7, 6, .6) 0, rgba(4, 7, 6, .9) .5rem, rgba(4, 7, 6, .92)); -webkit-backdrop-filter: blur(2px); backdrop-filter: blur(2px); border-left: 1px solid var(--line);
+}
 .spov__inner { position: absolute; left: .3rem; right: .5rem; top: 1.14rem; bottom: .5rem; display: flex; flex-direction: column; gap: .16rem; animation: screen-in var(--t-slow) var(--ease-out); }
 .spov__head { display: flex; align-items: flex-end; justify-content: space-between; gap: .3rem; }
 .spov__titles { display: flex; flex-direction: column; gap: .04rem; }
@@ -405,7 +421,7 @@ button.bpop__harmony:hover { border-style: solid; color: #fff; }
   background: linear-gradient(180deg, rgba(210, 224, 219, .12), rgba(120, 140, 132, .06)); border: 1px solid rgba(200, 220, 212, .25); color: var(--text-hi);
   transition: transform var(--t-fast) var(--ease-out), border-color var(--t-fast), background var(--t-fast), opacity var(--t-med);
 }
-.spcard__glow { position: absolute; inset: 0; background: radial-gradient(70% 50% at 50% 0%, rgba(78, 216, 175, .16), transparent 70%); pointer-events: none; }
+.spcard__glow { position: absolute; top: 0; left: 0; right: 0; bottom: 0; width: 100%; height: 100%; inset: 0; background: radial-gradient(70% 50% at 50% 0%, rgba(78, 216, 175, .16), transparent 70%); pointer-events: none; }
 .spcard.is-pickable { cursor: pointer; }
 .spcard.is-pickable:hover { transform: translateY(-.06rem); border-color: var(--mint-400); background: linear-gradient(180deg, rgba(78, 216, 175, .18), rgba(78, 216, 175, .05)); box-shadow: 0 0 0 1px var(--mint-400), 0 .1rem .3rem rgba(23, 249, 183, .2); }
 .spcard:disabled { cursor: default; }
@@ -420,9 +436,12 @@ button.bpop__harmony:hover { border-style: solid; color: #fff; }
 .spcard__icon img { width: 100%; height: 100%; object-fit: contain; filter: drop-shadow(0 .06rem .12rem rgba(0, 0, 0, .6)); }
 .spcard__icon .icon { width: 60%; height: 60%; color: var(--mint-500); }
 .spcard--bounty .spcard__icon { padding: 0; border-color: rgba(255, 90, 74, .55); background: radial-gradient(circle, #3a1c18, #140d0c); }
-.spcard--bounty .spcard__icon img { object-fit: cover; }
+.spcard--bounty .spcard__icon img { object-fit: contain; }
 .spcard__title { display: flex; flex-direction: column; align-items: flex-start; gap: .06rem; min-width: 0; }
 .spcard__name { font-size: .28rem; font-weight: 900; letter-spacing: .04em; line-height: 1.25; }
+/* a bounty card names its category (悬赏·飞行I); the enemy it actually pays out is annotated beside it, sized down so a
+   long Chinese name never out-competes the card title */
+.spcard__target-name { font-size: .15rem; font-weight: 700; letter-spacing: .02em; color: #ff5a4a; }
 /* the effect text: the official rich text (highlighted numbers, set bonuses, line breaks), clamped by lines — 7 fit a 3×2
    card (the longest item, 信标, takes 7 at 16:9 and on phones narrower than ≈ 740 px); it never shrinks below them
    (flex: none) */
@@ -432,6 +451,7 @@ button.bpop__harmony:hover { border-style: solid; color: #fff; }
 .spcard__tag { font-size: .13rem; font-weight: 700; padding: .01rem .08rem; }
 .spcard__tag--team { background: var(--mint-500); color: var(--text-on-mint); }
 .spcard__tag--coin { background: var(--gold); color: #1d1400; }
+.spcard__tag--enemy { background: #b8340d; color: #fff; }
 /* the taker's badge: the round avatar alone at the card's top-right corner, as in the official screenshots (the player's
    name is its tooltip and part of the card's accessible name); a taken card's head keeps clear of it, so a long name
    wraps before the badge instead of running under it (the avatar + name pill of v2.4.1 covered long names once the name
@@ -556,9 +576,9 @@ button.bpop__harmony:hover { border-style: solid; color: #fff; }
 /* ---- the temp overflow row's notice (ui/underframe.js TempRowNotice, user playtest #3 item 3): a dashed red frame
    around 临时整备区 and a label at its end. Over the field, under every HUD panel (.gm__hud z 3), never takes the
    pointer (the pieces under it stay draggable). ---- */
-.tempnote { position: fixed; inset: 0; z-index: 2; pointer-events: none; }
+.tempnote { position: fixed; top: 0; left: 0; right: 0; bottom: 0; width: 100%; height: 100%; inset: 0; z-index: 2; pointer-events: none; }
 .tempnote * { pointer-events: none; }
-.tempnote__frame { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.tempnote__frame { position: absolute; top: 0; left: 0; right: 0; bottom: 0; width: 100%; height: 100%; inset: 0; overflow: visible; }
 .tempnote__frame polygon {
   fill: rgba(255, 60, 40, .1); stroke: #ff5a47; stroke-width: 2.2px; stroke-dasharray: 9 5; stroke-linejoin: round;
   vector-effect: non-scaling-stroke; filter: drop-shadow(0 0 .05rem rgba(255, 60, 40, .7)); animation: tempnote-pulse 1.6s ease-in-out infinite;
@@ -582,7 +602,7 @@ button.bpop__harmony:hover { border-style: solid; color: #fff; }
    It sits above every HUD panel (detail card z 9, bond popup, drawer, shop bar): only its buttons take pointer events,
    so they are never covered (user playtest #2 item 8); overlays that must win (机变, modals, the drag ghost) are higher. */
 .gm__hud > .uframe { position: absolute; transform: translate(-50%, -50%); pointer-events: none; z-index: 12; }
-.uframe__dia { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; animation: uframe-in 180ms var(--ease-out); }
+.uframe__dia { position: absolute; top: 0; left: 0; right: 0; bottom: 0; width: 100%; height: 100%; inset: 0; overflow: visible; animation: uframe-in 180ms var(--ease-out); }
 @keyframes uframe-in { from { opacity: 0; transform: scale(.85); } }
 .uframe__outer { fill: rgba(78, 216, 175, .05); stroke: rgba(255, 255, 255, .88); stroke-width: 1.6px; stroke-dasharray: 7 5; vector-effect: non-scaling-stroke; }
 .uframe__corner { fill: none; stroke: var(--mint-400); stroke-width: 2.4px; vector-effect: non-scaling-stroke; }
@@ -605,7 +625,7 @@ button.bpop__harmony:hover { border-style: solid; color: #fff; }
   position: relative; display: grid; place-items: center; padding: 0; background: var(--uf-ink); }
 .uframe__plate--destroy { --uf-tone: linear-gradient(180deg, #ff6a4f 0%, #e73118 60%, #b8200d 100%); --uf-ink: #230703; }
 .uframe__plate.has-mask::after {
-  content: ''; position: absolute; inset: 0; background: var(--uf-tone);
+  content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0; width: 100%; height: 100%; inset: 0; background: var(--uf-tone);
   -webkit-mask: var(--uf-mask) center / 100% 100% no-repeat; mask: var(--uf-mask) center / 100% 100% no-repeat;
 }
 .uframe__plate.is-glyph { background: var(--uf-tone); }
@@ -676,7 +696,7 @@ button.bpop__harmony:hover { border-style: solid; color: #fff; }
 .eqr__opt:focus-visible { outline: 2px solid var(--mint-400); outline-offset: 2px; }
 .eqr__opt.is-sel { border-color: #e2262a; box-shadow: 0 0 .2rem rgba(226, 38, 42, .45); }
 .eqr__opt.is-sel::after {
-  content: ''; position: absolute; inset: 0; pointer-events: none;
+  content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0; width: 100%; height: 100%; inset: 0; pointer-events: none;
   background: var(--eqr-sel, linear-gradient(225deg, rgba(226, 38, 42, .55), transparent 38%)) center / 100% 100% no-repeat;
 }
 .eqr__flag {

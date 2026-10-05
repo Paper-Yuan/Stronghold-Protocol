@@ -7,8 +7,12 @@
    ========================================================================================== */
 
 .lo {
-  position: fixed; inset: 0; z-index: 55; /* above every screen (1) and the in-match banners (40), below the connection
-                                             banner (60), modals / confirm dialogs (80), toasts and tooltips */
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  width: 100%; height: 100%;
+  inset: 0;
+  z-index: 55; /* above every screen (1) and the in-match banners (40), below the connection
+                  banner (60), modals / confirm dialogs (80), toasts and tooltips */
   display: flex; flex-direction: column;
   padding: var(--sa-t, 0px) var(--sa-r, 0px) var(--sa-b, 0px) var(--sa-l, 0px);
   background: var(--bg-0);
@@ -18,7 +22,11 @@
 }
 @keyframes lo-in { from { opacity: 0; } }
 .lo__bg {
-  position: absolute; inset: 0; pointer-events: none;
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  width: 100%; height: 100%;
+  inset: 0;
+  pointer-events: none;
   background:
     radial-gradient(70% 90% at 18% 10%, rgba(78, 216, 175, .07), transparent 60%),
     radial-gradient(60% 70% at 100% 100%, rgba(52, 184, 216, .06), transparent 60%),
@@ -72,7 +80,7 @@
 
 /* ---- body layout -------------------------------------------------------------------------------------------------- */
 .lo-body {
-  flex: 1 1 auto; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 7rem);
+  flex: 1 1 auto; min-height: 0; height: 100%; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 7rem);
   gap: .22rem; padding: .18rem .3rem .22rem;
 }
 .lo-roster { min-width: 0; min-height: 0; display: flex; flex-direction: column; gap: .12rem; }
@@ -132,7 +140,11 @@
 
 /* ---- roster grid ------------------------------------------------------------------------------------------------------------ */
 .lo-grid {
-  flex: 1 1 auto; min-height: 0; overflow: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain;
+  flex: 1 1 auto; min-height: 0;
+  overflow-y: auto; overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
+  overscroll-behavior: contain;
   display: grid; grid-template-columns: repeat(auto-fill, minmax(max(1.16rem, 64px), 1fr)); grid-auto-rows: max-content;
   align-content: start; gap: .1rem; padding: .06rem .08rem .2rem .02rem;
   scrollbar-width: thin; scrollbar-color: var(--line-3) transparent;
@@ -186,8 +198,8 @@
 .lo-sicon--md { width: max(.72rem, 38px); height: max(.72rem, 38px); }
 .lo-sicon__glyph { font-family: var(--font-num); font-size: max(.2rem, 12px); font-weight: 700; color: var(--text-lo); letter-spacing: .04em; }
 .lo-sicon.is-on { border-color: #1ea0ff; }
-.lo-sicon__outline { position: absolute; inset: -.05rem; width: calc(100% + .1rem) !important; height: calc(100% + .1rem) !important; object-fit: fill; pointer-events: none; }
-.lo-sicon__ring { position: absolute; inset: -.05rem; border: 2px solid #1ea0ff; pointer-events: none; }
+.lo-sicon__outline { position: absolute; top: -.05rem; left: -.05rem; right: -.05rem; bottom: -.05rem; inset: -.05rem; width: calc(100% + .1rem) !important; height: calc(100% + .1rem) !important; object-fit: fill; pointer-events: none; }
+.lo-sicon__ring { position: absolute; top: -.05rem; left: -.05rem; right: -.05rem; bottom: -.05rem; inset: -.05rem; border: 2px solid #1ea0ff; pointer-events: none; }
 
 .lo-mglyph { position: relative; flex: none; display: inline-grid; place-items: center; width: max(.56rem, 30px); height: max(.56rem, 30px);
   background: linear-gradient(180deg, #2a322f, #151a18); border: 1px solid var(--line-3); }
@@ -224,7 +236,7 @@
 .lo-bond__dot { width: .1rem; height: .1rem; border-radius: 50%; background: var(--mint-700); }
 .lo-dhead__reset { position: absolute; right: .12rem; top: .12rem; }
 
-.lo-detail__body { flex: 1 1 auto; min-height: 0; overflow: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; padding: .12rem .18rem .2rem; scrollbar-width: thin; scrollbar-color: var(--line-3) transparent; }
+.lo-detail__body { flex: 1 1 auto; min-height: 0; overflow-y: auto; overflow-x: hidden; -webkit-overflow-scrolling: touch; touch-action: pan-y; overscroll-behavior: contain; padding: .12rem .18rem .2rem; scrollbar-width: thin; scrollbar-color: var(--line-3) transparent; }
 .lo-sec { display: flex; flex-direction: column; gap: .08rem; }
 .lo-sec + .lo-sec { margin-top: .18rem; }
 .lo-sec__head { display: flex; align-items: center; gap: .12rem; min-height: max(.36rem, 22px); }

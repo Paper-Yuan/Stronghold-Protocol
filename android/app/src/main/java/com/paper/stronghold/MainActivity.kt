@@ -143,6 +143,9 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
+        // Self-healing: if an unfinalized hot update was interrupted or crashed, roll back immediately
+        UpdateManager.rollbackIfPending(this)
+
         setContentView(R.layout.activity_main)
 
         webView = findViewById(R.id.webView)
@@ -171,6 +174,13 @@ class MainActivity : AppCompatActivity() {
 
         setupWebView()
         setupServerReceiver()
+
+        // Non-blocking background check for hot update
+        UpdateManager.checkForUpdate(this, manual = false) { manifest, _ ->
+            if (manifest != null && !isFinishing) {
+                runOnUiThread { promptUpdateDialog(manifest) }
+            }
+        }
 
         // The chooser is the launcher: it also serves as the escape hatch when a stored address
         // stops working, so it shows on every start with the previous choice pre-selected.
@@ -267,6 +277,7 @@ class MainActivity : AppCompatActivity() {
                 layoutLoading.visibility = View.GONE
                 layoutFailedActions.visibility = View.GONE
                 scheduleBlankScreenWatchdog()
+                UpdateManager.markHealthy(this@MainActivity)
             }
 
             override fun onReceivedError(view: WebView?, request: WebResourceRequest?, error: WebResourceError?) {
@@ -697,6 +708,7 @@ class MainActivity : AppCompatActivity() {
 
         paint()
         dialog.show()
+        dialog.window?.setBackgroundDrawableResource(android.R.color.transparent)
     }
 
     /**
@@ -732,14 +744,16 @@ class MainActivity : AppCompatActivity() {
         val scrollLogs = dialogView.findViewById<ScrollView>(R.id.scrollLogs)
         val btnCopy = dialogView.findViewById<Button>(R.id.btnCopyLogs)
         val btnRefresh = dialogView.findViewById<Button>(R.id.btnRefreshDiag)
+        val btnCheckUpdate = dialogView.findViewById<Button>(R.id.btnCheckUpdate)
         val btnClose = dialogView.findViewById<Button>(R.id.btnCloseDiag)
 
         val lanIp = NetworkUtils.getLocalIpAddress(this)
-        tvLanIp.text = if (lanIp != "127.0.0.1") {
+        val currentTag = UpdateManager.getCurrentBuildTag(this)
+        tvLanIp.text = (if (lanIp != "127.0.0.1") {
             "本机局域网 IP: http://$lanIp:$defaultLocalPort (支持同 Wi-Fi 联机)"
         } else {
             "本机局域网 IP: 127.0.0.1 (当前未连接 Wi-Fi，仅单机可用)"
-        }
+        }) + "\n运行时版本: $currentTag"
 
         fun updateLogs() {
             val memoryLogs = NodeServerService.getRecentLogs(100)
@@ -816,11 +830,71 @@ class MainActivity : AppCompatActivity() {
             checkServerHealth()
         }
 
+        btnCheckUpdate.setOnClickListener {
+            checkUpdateManual()
+        }
+
         btnClose.setOnClickListener {
             dialog.dismiss()
         }
 
         dialog.show()
+        dialog.window?.setBackgroundDrawableResource(android.R.color.transparent)
+    }
+
+    fun checkUpdateManual() {
+        Toast.makeText(this, "正在检查云端热更新…", Toast.LENGTH_SHORT).show()
+        UpdateManager.checkForUpdate(this, manual = true) { manifest, msg ->
+            if (manifest != null) {
+                promptUpdateDialog(manifest)
+            } else if (msg != null) {
+                Toast.makeText(this, msg, Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    fun promptUpdateDialog(manifest: UpdateManager.UpdateManifest) {
+        val sizeMb = if (manifest.bundleSize > 0) " (约 %.1f MB)".format(manifest.bundleSize / (1024.0 * 1024.0)) else ""
+        AlertDialog.Builder(this)
+            .setTitle("发现新版本 (Web 热更新)")
+            .setMessage("版本: ${manifest.buildTag}$sizeMb\n\n更新说明:\n${manifest.changelog}")
+            .setPositiveButton("立即更新") { _, _ ->
+                val progressDialog = AlertDialog.Builder(this)
+                    .setTitle("正在更新")
+                    .setMessage("准备中…")
+                    .setCancelable(false)
+                    .create()
+                progressDialog.show()
+
+                UpdateManager.downloadAndApply(
+                    context = this,
+                    manifest = manifest,
+                    onProgress = { stage, percent ->
+                        progressDialog.setMessage("$stage ($percent%)")
+                    },
+                    onComplete = { success, msg ->
+                        progressDialog.dismiss()
+                        if (success) {
+                            AlertDialog.Builder(this)
+                                .setTitle("更新完成")
+                                .setMessage(msg)
+                                .setPositiveButton("重启应用") { _, _ ->
+                                    val intent = packageManager.getLaunchIntentForPackage(packageName)
+                                    intent?.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_NEW_TASK)
+                                    startActivity(intent)
+                                    finishAffinity()
+                                    System.exit(0)
+                                }
+                                .setCancelable(false)
+                                .show()
+                        } else {
+                            Toast.makeText(this, msg, Toast.LENGTH_LONG).show()
+                        }
+                    }
+                )
+            }
+            .setNegativeButton("稍后", null)
+            .show()
     }
 
     override fun onResume() {

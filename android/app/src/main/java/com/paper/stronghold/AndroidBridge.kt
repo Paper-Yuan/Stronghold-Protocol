@@ -91,4 +91,14 @@ class AndroidBridge(private val activity: MainActivity) {
             activity.reloadWebView()
         }
     }
+
+    @JavascriptInterface
+    fun getBuildTag(): String = UpdateManager.getCurrentBuildTag(activity)
+
+    @JavascriptInterface
+    fun checkForUpdate() {
+        activity.runOnUiThread {
+            activity.checkUpdateManual()
+        }
+    }
 }
