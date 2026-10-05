@@ -395,8 +395,8 @@ class MainActivity : AppCompatActivity() {
 
         Thread {
             try {
-                AssetManagerHelper.ensureAssetsExtracted(this) { msg ->
-                    runOnUiThread { tvLoadingStatus.text = msg }
+                AssetManagerHelper.ensureAssetsExtracted(this) { progress ->
+                    runOnUiThread { tvLoadingStatus.text = assetProgressText(progress) }
                 }
             } catch (t: Throwable) {
                 Log.e(TAG, "Asset extraction error", t)
@@ -406,6 +406,13 @@ class MainActivity : AppCompatActivity() {
                 startLocalServer()
             }
         }.start()
+    }
+
+    /** Human-readable line for the per-phase progress reported by [AssetManagerHelper]. */
+    private fun assetProgressText(p: AssetManagerHelper.Progress): String = when (p.phase) {
+        "core" -> "正在释放核心运行环境 (${p.entriesDone} / ${p.entriesTotal})…"
+        "assets" -> "正在释放美术与音频资源 (${p.entriesDone} / ${p.entriesTotal})…"
+        else -> "作战资源释放完成，正在启动引擎…"
     }
 
     fun startLocalServer() {

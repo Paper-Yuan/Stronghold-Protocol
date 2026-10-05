@@ -98,7 +98,7 @@ PosixLib.INSTANCE.close(logFd)
    ```bash
    node scripts/build-android.mjs
    ```
-   自动完成 Web 资源与服务端依赖打包（`app_bundle.zip`）并调用 Gradle 编译生成 `app-debug.apk`。
+   自动完成 Web 资源与服务端依赖打包（`core.zip` + `assets.zip` + `pack.json`，按内容哈希增量安装）并调用 Gradle 编译生成 `app-debug.apk`。
 
 ---
 
@@ -114,7 +114,7 @@ Android 壳内嵌的原生动态链接库清单由 [`android/NATIVE_DEPS.json`](
 | `libc++_shared.so` | `x86_64` | NDK r25b (LLVM 14) | `https://dl.google.com/android/repository/android-ndk-r25b-windows.zip` | `9024189fa4baa1943e1fc3393d3507715ec0831202560a45b05ffff7abd88c12` | Apache-2.0 with LLVM Exception |
 
 - **构建前哈希门禁**：`scripts/build-android.mjs` 在调用 Gradle 之前自动计算上述二进制的 SHA256，与清单不符即刻熔断。
-- **随包分发**：上述库文件及所有运行依赖模块的开源许可证文本均同步打包于 `app_bundle.zip` 的 `licenses/` 目录中。
+- **随包分发**：上述库文件及所有运行依赖模块的开源许可证文本均同步打包于 `core.zip` 的 `licenses/` 目录中。
 
 ---
 

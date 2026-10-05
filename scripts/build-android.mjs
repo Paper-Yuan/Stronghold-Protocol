@@ -139,7 +139,7 @@ console.log('\n[1/2] 正在打包 Web 资源与服务端脚本到 Android 资源
 const bundleScript = path.join(ROOT, 'tools', 'bundle-android.mjs');
 const bundleRes = spawnSync(process.execPath, [bundleScript], { stdio: 'inherit' });
 if (bundleRes.status !== 0) {
-  console.error('✘ 打包 app_bundle.zip 失败，请检查上方日志。');
+  console.error('✘ 打包 Android 资源包 (core.zip / assets.zip / pack.json) 失败，请检查上方日志。');
   process.exit(1);
 }
 
