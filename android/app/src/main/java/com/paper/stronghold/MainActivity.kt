@@ -41,9 +41,14 @@ class MainActivity : AppCompatActivity() {
         private const val KEY_COMPAT_MODE = "compat_mode"   // simplified view + 2D + no forced hardware layer
         private const val BLANK_SCREEN_WATCHDOG_MS = 12_000L
         private const val MIN_WEBVIEW_CHROME = 87   // CSS `inset` shorthand; `replaceChildren` needs 86
-        private const val DEFAULT_LOCAL_URL = "http://127.0.0.1:3000"
         private const val DEFAULT_LAN_URL = "http://192.168.10.25:3000"
     }
+
+    val defaultLocalPort: Int
+        get() = if (packageName.endsWith(".debug")) 3001 else 3000
+
+    val defaultLocalUrl: String
+        get() = "http://127.0.0.1:$defaultLocalPort"
 
     private lateinit var webView: WebView
     private lateinit var layoutLoading: LinearLayout
@@ -241,6 +246,10 @@ class MainActivity : AppCompatActivity() {
             mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
         }
 
+        if (BuildConfig.DEBUG) {
+            WebView.setWebContentsDebuggingEnabled(true)
+        }
+
         webView.addJavascriptInterface(AndroidBridge(this), "AndroidNative")
 
         webView.webChromeClient = object : WebChromeClient() {
@@ -286,12 +295,12 @@ class MainActivity : AppCompatActivity() {
     private fun handleServerReady() {
         val lanIp = NetworkUtils.getLocalIpAddress(this@MainActivity)
         val statusMsg = if (lanIp != "127.0.0.1") {
-            "本地引擎已就绪！\n本机局域网地址: http://$lanIp:3000\n(其他手机填入此地址可联机)"
+            "本地引擎已就绪！\n本机局域网地址: http://$lanIp:$defaultLocalPort\n(其他手机填入此地址可联机)"
         } else {
             getString(R.string.server_ready)
         }
         tvLoadingStatus.text = statusMsg
-        loadServerUrl(DEFAULT_LOCAL_URL)
+        loadServerUrl(defaultLocalUrl)
     }
 
     private fun setupServerReceiver() {
@@ -551,7 +560,7 @@ class MainActivity : AppCompatActivity() {
             val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
             val mode = prefs.getString(KEY_SERVER_MODE, "local")
             val remoteUrl = prefs.getString(KEY_REMOTE_URL, DEFAULT_LAN_URL)
-            val currentUrl = if (mode == "remote" && !remoteUrl.isNullOrBlank()) remoteUrl else (webView.url ?: DEFAULT_LOCAL_URL)
+            val currentUrl = if (mode == "remote" && !remoteUrl.isNullOrBlank()) remoteUrl else (webView.url ?: defaultLocalUrl)
             loadServerUrl(currentUrl)
         }
     }
@@ -598,7 +607,7 @@ class MainActivity : AppCompatActivity() {
 
         val lanIp = NetworkUtils.getLocalIpAddress(this)
         tvLocalIpHint.text = if (lanIp != "127.0.0.1") {
-            "本机局域网地址: http://$lanIp:3000\n(如果作为房主，好友填入此地址即可联机)"
+            "本机局域网地址: http://$lanIp:$defaultLocalPort\n(如果作为房主，好友填入此地址即可联机)"
         } else {
             "本机局域网地址: 未连接 Wi-Fi (单机离线可用)"
         }
@@ -727,7 +736,7 @@ class MainActivity : AppCompatActivity() {
 
         val lanIp = NetworkUtils.getLocalIpAddress(this)
         tvLanIp.text = if (lanIp != "127.0.0.1") {
-            "本机局域网 IP: http://$lanIp:3000 (支持同 Wi-Fi 联机)"
+            "本机局域网 IP: http://$lanIp:$defaultLocalPort (支持同 Wi-Fi 联机)"
         } else {
             "本机局域网 IP: 127.0.0.1 (当前未连接 Wi-Fi，仅单机可用)"
         }
@@ -755,7 +764,7 @@ class MainActivity : AppCompatActivity() {
         }
 
         fun checkServerHealth() {
-            tvStatus.text = "服务连接状态: 正在探测 http://127.0.0.1:3000/healthz …"
+            tvStatus.text = "服务连接状态: 正在探测 $defaultLocalUrl/healthz …"
             tvStatus.setTextColor(0xFFE0E0E0.toInt())
             Thread {
                 try {
@@ -764,7 +773,7 @@ class MainActivity : AppCompatActivity() {
                         .readTimeout(1, TimeUnit.SECONDS)
                         .build()
                     val req = Request.Builder()
-                        .url("http://127.0.0.1:3000/healthz")
+                        .url("$defaultLocalUrl/healthz")
                         .build()
                     client.newCall(req).execute().use { resp ->
                         val code = resp.code
@@ -825,14 +834,14 @@ class MainActivity : AppCompatActivity() {
         val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         val mode = prefs.getString(KEY_SERVER_MODE, "local")
         if (mode == "local" && layoutLoading.visibility == View.VISIBLE) {
-            // Self-healing: if returning from background/HOME and UI is stuck in loading, probe :3000/healthz
+            // Self-healing: if returning from background/HOME and UI is stuck in loading, probe :$defaultLocalPort/healthz
             Thread {
                 try {
                     val client = OkHttpClient.Builder()
                         .connectTimeout(500, TimeUnit.MILLISECONDS)
                         .readTimeout(500, TimeUnit.MILLISECONDS)
                         .build()
-                    val req = Request.Builder().url("http://127.0.0.1:3000/healthz").build()
+                    val req = Request.Builder().url("$defaultLocalUrl/healthz").build()
                     client.newCall(req).execute().use { resp ->
                         if (resp.isSuccessful) {
                             runOnUiThread {

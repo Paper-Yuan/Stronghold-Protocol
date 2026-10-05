@@ -68,6 +68,8 @@ class NodeServerService : Service() {
     private val binder = LocalBinder()
     private val isRunning = AtomicBoolean(false)
     private val isStopped = AtomicBoolean(false)
+    val localPort: Int
+        get() = if (packageName.endsWith(".debug")) 3001 else 3000
     private val httpClient = OkHttpClient.Builder()
         .connectTimeout(1, TimeUnit.SECONDS)
         .readTimeout(1, TimeUnit.SECONDS)
@@ -186,11 +188,44 @@ class NodeServerService : Service() {
             addLog("[WARN] Stdio redirection failed: ${e.message}")
         }
 
+        val targetPort = localPort
+        // 0. Pre-flight check: if port is ALREADY running and healthy, attach directly!
+        try {
+            val req = Request.Builder().url("http://127.0.0.1:$targetPort/healthz").build()
+            httpClient.newCall(req).execute().use { response ->
+                if (response.isSuccessful) {
+                    Log.i(TAG, "Port $targetPort is already active and healthy, attaching to existing server.")
+                    addLog("[READY] 本地服务已在运行 (端口 $targetPort)，直接连接。")
+                    isRunning.set(true)
+                    isStopped.set(false)
+                    notifyServerReady()
+                    return
+                }
+            }
+        } catch (_: Exception) {}
+
+        // Check if port is occupied by an unresponsive process
+        val portInUse = try {
+            java.net.Socket("127.0.0.1", targetPort).use { true }
+        } catch (_: Exception) {
+            false
+        }
+        if (portInUse) {
+            val msg = "本地端口 $targetPort 已被占用，请先关闭占用该端口的其他进程或应用"
+            Log.e(TAG, msg)
+            addLog("[ERROR] $msg")
+            isStopped.set(true)
+            isRunning.set(false)
+            notifyServerFailed(msg)
+            return
+        }
+
         // 3. Set POSIX environment variables: bind to 0.0.0.0 for LAN co-op + local solo
         try {
-            PosixLib.INSTANCE.setenv("PORT", "3000", 1)
+            PosixLib.INSTANCE.setenv("PORT", targetPort.toString(), 1)
             PosixLib.INSTANCE.setenv("HOST", "0.0.0.0", 1)
             PosixLib.INSTANCE.setenv("NODE_ENV", "production", 1)
+            PosixLib.INSTANCE.setenv("SP_EMBEDDED", "1", 1)
             val prefs = getSharedPreferences("stronghold_prefs", Context.MODE_PRIVATE)
             if (prefs.getBoolean("compat_mode", false)) {
                 PosixLib.INSTANCE.setenv("SP_COMBAT", "server", 1)
@@ -268,6 +303,7 @@ class NodeServerService : Service() {
 
     private fun startHealthChecker() {
         Thread({
+            val port = localPort
             val maxAttempts = 30
             var attempt = 0
             while (!isStopped.get() && attempt < maxAttempts) {
@@ -275,13 +311,13 @@ class NodeServerService : Service() {
                 attempt++
                 try {
                     val request = Request.Builder()
-                        .url("http://127.0.0.1:3000/healthz")
+                        .url("http://127.0.0.1:$port/healthz")
                         .build()
                     httpClient.newCall(request).execute().use { response ->
                         if (response.isSuccessful) {
                             Log.i(TAG, "Local server is healthy and responding!")
-                            addLog("[READY] Local game server running at http://127.0.0.1:3000 (code ${response.code})")
-                            val notif = buildNotification("本地服务已就绪 · 端口 3000")
+                            addLog("[READY] Local game server running at http://127.0.0.1:$port (code ${response.code})")
+                            val notif = buildNotification("本地服务已就绪 · 端口 $port")
                             val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
                             manager.notify(NOTIFICATION_ID, notif)
                             notifyServerReady()
@@ -304,8 +340,9 @@ class NodeServerService : Service() {
     private fun checkHealthAndNotify() {
         Thread({
             try {
+                val port = localPort
                 val request = Request.Builder()
-                    .url("http://127.0.0.1:3000/healthz")
+                    .url("http://127.0.0.1:$port/healthz")
                     .build()
                 httpClient.newCall(request).execute().use { response ->
                     if (response.isSuccessful) {
