@@ -102,7 +102,7 @@ npm start          # 启动服务器：http://localhost:3000
    - **填地址连接** —— 房主不在同一网段时用：UU 加速器、Tailscale 这类虚拟局域网，或者电脑开服（这时手机只是客户端）。
 
    选择框上会印出本机的局域网地址（形如 `http://192.168.x.x:3000`），朋友用**浏览器**打开它就能进来玩，不需要装 APK。
-4. **自己打包**：`npm run build:android` 出 debug 包；加 `--release` 需要自备签名密钥（`android/local.properties` 里的 `SP_STORE_FILE` 等）。壳层架构、内嵌 Node 的约束与诊断方式见 [docs/ANDROID.md](docs/ANDROID.md)。
+4. **自己打包**：切到 `feature/android-client` 分支后 `npm run build:android` 出 debug 包；加 `--release` 需要自备签名密钥（`android/local.properties` 里的 `SP_STORE_FILE` 等）。壳层架构、内嵌 Node 的约束与诊断方式见 [docs/ANDROID.md](https://github.com/Paper-Yuan/Stronghold-Protocol/blob/feature/android-client/docs/ANDROID.md)（该文件也在这个分支上）。
 
 **演示视频**：[《基于 B站 @Ausevay 大佬的安卓端卫戍协议又一适配》](https://www.bilibili.com/video/BV1bDHH6PEzN)，UP 主 [纸鸢安好](https://space.bilibili.com/99201674)（即本仓库维护者）。安卓端这条思路最早参考了 B 站 **@Ausevay** 的移动端适配，这里一并致谢。
 
@@ -189,7 +189,7 @@ npm start          # 启动服务器：http://localhost:3000
 | [docs/PLAYING.md](docs/PLAYING.md) | 玩法指南：流程、经济、招募与晋升、摆阵、联防、盟约、最终攻势、结算称号 |
 | [docs/DEPLOY.md](docs/DEPLOY.md) | 部署指南：Windows 开服与开机自启、防火墙、组网 / 隧道、反向代理与 HTTPS、Docker、systemd、排错 |
 | [docs/WINDOWS.md](docs/WINDOWS.md) | Windows 便携包：怎么打一份「零安装」包（`scripts/make-windows-bundle.mjs`）、包里放了什么、授权注意事项 |
-| [docs/ANDROID.md](docs/ANDROID.md) | 安卓端：壳层架构、内嵌 Node 的约束与双端版本兼容、打包与签名、日志诊断 |
+| [docs/ANDROID.md](https://github.com/Paper-Yuan/Stronghold-Protocol/blob/feature/android-client/docs/ANDROID.md) | 安卓端（在 `feature/android-client` 分支）：壳层架构、内嵌 Node 的约束与双端版本兼容、打包与签名、日志诊断 |
 | [docs/DESIGN.md](docs/DESIGN.md) | 架构与契约（英文）：技术栈、目录分工、网络协议、渲染与 UI、各次试玩后的规则修订 |
 | [docs/SIM.md](docs/SIM.md) | 战斗模拟引擎参考（英文）：钩子、技能描述格式、职业默认行为 |
 | [docs/META.md](docs/META.md) | 对局与经济引擎（英文）：回合流程、商店、联防、最终攻势的实现细节 |
@@ -257,7 +257,7 @@ RENDER_E2E=1 node --test 'test/render/*.browser.test.js'   # 渲染测试，部�
 An **unofficial, non-commercial fan remake** of Arknights' seasonal auto-chess tower-defense mode *Stronghold Protocol: Alliance*, played in the browser: solo, or 1–4 player co-op (AI teammates can fill seats). Combat is simulated in each player's browser, so a low-power PC can host.
 
 - **Run:** download the all-in-one bundle from [Releases](../../releases/latest), install Node.js 22 or 24, then double-click `scripts\start-windows.bat` (Windows) or run `./scripts/start.sh` (macOS / Linux) and open <http://localhost:3000>. From source: `npm install && npm run setup && npm start` (setup downloads ~270 MB of art from public mirrors, the emotes and the how-to-play pages included; the official 3D board, some official HUD icons and two enemy models are extracted from a local Arknights client — without one the game uses the 2D board and look-alike stand-ins, and a server can copy `public/assets/local/` and `data/local-assets.json` from the release bundle of the same version).
-- **Android:** an APK ships from [Releases](../../releases/latest) (~285 MB, Android 7.0+ / arm64-v8a). It embeds the Node.js server, so the phone hosts the game — solo with no network at all, and friends on the same Wi-Fi connect to it (from a browser, no APK needed). Each release publishes the SHA-256 and the certificate fingerprint. Built from the `feature/android-client` branch; see [docs/ANDROID.md](docs/ANDROID.md).
+- **Android:** an APK ships from [Releases](../../releases/latest) (~285 MB, Android 7.0+ / arm64-v8a). It embeds the Node.js server, so the phone hosts the game — solo with no network at all, and friends on the same Wi-Fi connect to it (from a browser, no APK needed). Each release publishes the SHA-256 and the certificate fingerprint. Built from the `feature/android-client` branch; see [docs/ANDROID.md](https://github.com/Paper-Yuan/Stronghold-Protocol/blob/feature/android-client/docs/ANDROID.md).
 - **Play with friends:** create a co-op room and share the 4-letter key or the `?room=KEY` link. On a LAN, use the address printed at start; otherwise use a virtual-LAN tool, a tunnel or a VPS — see [docs/DEPLOY.md](docs/DEPLOY.md).
 - **Disclaimer:** not affiliated with or endorsed by Hypergryph or Yostar. All Arknights names, art, audio, text and data are © their respective owners and are **not** covered by this project's GPL licence. For study and personal non-commercial use only — no selling, paid distribution, paid servers or monetisation of any kind. Content will be removed on request of the rights holders. Provided "as is", without warranty.
 - **License:** code GPL-3.0-or-later ([LICENSE](LICENSE)); game assets excluded.
