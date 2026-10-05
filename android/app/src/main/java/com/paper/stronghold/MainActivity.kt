@@ -24,8 +24,8 @@ import android.webkit.*
 import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
 import okhttp3.OkHttpClient
-import okhttp3.Request
 import java.io.File
+import java.net.Proxy
 import java.util.concurrent.TimeUnit
 
 class MainActivity : AppCompatActivity() {
@@ -44,11 +44,19 @@ class MainActivity : AppCompatActivity() {
         private const val DEFAULT_LAN_URL = "http://192.168.10.25:3000"
     }
 
-    val defaultLocalPort: Int
-        get() = if (packageName.endsWith(".debug")) 3001 else 3000
+    /**
+     * URL of the embedded server on the port the runtime actually committed to. Port fallback
+     * (see NodeServerService.pickFreePort) can move the server off 3000, so nothing may hardcode it.
+     */
+    private fun localServerUrl(port: Int = NodeServerService.committedPort) = "http://127.0.0.1:$port"
 
-    val defaultLocalUrl: String
-        get() = "http://127.0.0.1:$defaultLocalPort"
+    // Direct (NO_PROXY) short-timeout client for local health probes; see
+    // NodeServerService.firstHealthyAddress for why every candidate address gets a vote.
+    private val healthClient = OkHttpClient.Builder()
+        .connectTimeout(700, TimeUnit.MILLISECONDS)
+        .readTimeout(700, TimeUnit.MILLISECONDS)
+        .proxy(Proxy.NO_PROXY)
+        .build()
 
     private lateinit var webView: WebView
     private lateinit var layoutLoading: LinearLayout
@@ -303,15 +311,15 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun handleServerReady() {
+    private fun handleServerReady(port: Int = NodeServerService.committedPort) {
         val lanIp = NetworkUtils.getLocalIpAddress(this@MainActivity)
         val statusMsg = if (lanIp != "127.0.0.1") {
-            "本地引擎已就绪！\n本机局域网地址: http://$lanIp:$defaultLocalPort\n(其他手机填入此地址可联机)"
+            "本地引擎已就绪！\n本机局域网地址: http://$lanIp:$port\n(其他手机填入此地址可联机)"
         } else {
             getString(R.string.server_ready)
         }
         tvLoadingStatus.text = statusMsg
-        loadServerUrl(defaultLocalUrl)
+        loadServerUrl(localServerUrl(port))
     }
 
     private fun setupServerReceiver() {
@@ -319,7 +327,8 @@ class MainActivity : AppCompatActivity() {
         NodeServerService.stateListener = ServerStateListener { action, extras ->
             runOnUiThread {
                 when (action) {
-                    NodeServerService.ACTION_SERVER_READY -> handleServerReady()
+                    NodeServerService.ACTION_SERVER_READY ->
+                        handleServerReady((extras?.get("port") as? Int) ?: NodeServerService.committedPort)
                     NodeServerService.ACTION_SERVER_FAILED -> {
                         val reason = (extras?.get("reason") as? String) ?: "本地引擎未启动"
                         showConnectionError("本地独立服务启动失败: $reason\n可点击上方【诊断与日志】查看具体报错，或在设置中切换为连接其他手机/电脑。")
@@ -336,7 +345,8 @@ class MainActivity : AppCompatActivity() {
             override fun onReceive(context: Context?, intent: Intent?) {
                 when (intent?.action) {
                     NodeServerService.ACTION_SERVER_READY -> {
-                        runOnUiThread { handleServerReady() }
+                        val port = intent.getIntExtra("port", NodeServerService.committedPort)
+                        runOnUiThread { handleServerReady(port) }
                     }
                     NodeServerService.ACTION_SERVER_FAILED -> {
                         val reason = intent.getStringExtra("reason") ?: "本地引擎未启动"
@@ -394,6 +404,21 @@ class MainActivity : AppCompatActivity() {
         tvLoadingStatus.text = "正在准备本地运行资源…"
 
         Thread {
+            // Fast re-entry: the foreground service may still hold a healthy server from the last
+            // session (the user backed out of the game without stopping it). Re-enter that one
+            // directly instead of booting a second server, which would fall back to a different
+            // port and look like a connection failure. Always poll the port the runtime actually
+            // committed to (see NodeServerService.pickFreePort), and try every candidate address
+            // so a VPN/TUN intercepting loopback cannot hide a live server.
+            val port = NodeServerService.committedPort
+            if (NodeServerService.firstHealthyAddress(healthClient, port) != null) {
+                runOnUiThread {
+                    tvLoadingStatus.text = "检测到本地服务仍在运行，直接进入 (端口 $port)…"
+                    handleServerReady(port)
+                }
+                return@Thread
+            }
+
             try {
                 AssetManagerHelper.ensureAssetsExtracted(this) { msg ->
                     runOnUiThread { tvLoadingStatus.text = msg }
@@ -571,7 +596,7 @@ class MainActivity : AppCompatActivity() {
             val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
             val mode = prefs.getString(KEY_SERVER_MODE, "local")
             val remoteUrl = prefs.getString(KEY_REMOTE_URL, DEFAULT_LAN_URL)
-            val currentUrl = if (mode == "remote" && !remoteUrl.isNullOrBlank()) remoteUrl else (webView.url ?: defaultLocalUrl)
+            val currentUrl = if (mode == "remote" && !remoteUrl.isNullOrBlank()) remoteUrl else (webView.url ?: localServerUrl())
             loadServerUrl(currentUrl)
         }
     }
@@ -617,8 +642,10 @@ class MainActivity : AppCompatActivity() {
         val btnApply = dialogView.findViewById<Button>(R.id.btnApplyDialog)
 
         val lanIp = NetworkUtils.getLocalIpAddress(this)
+        // Show the port the runtime actually committed to: port fallback may have moved the server off 3000.
+        val displayPort = NodeServerService.committedPort
         tvLocalIpHint.text = if (lanIp != "127.0.0.1") {
-            "本机局域网地址: http://$lanIp:$defaultLocalPort\n(如果作为房主，好友填入此地址即可联机)"
+            "本机局域网地址: http://$lanIp:$displayPort\n(如果作为房主，好友填入此地址即可联机)"
         } else {
             "本机局域网地址: 未连接 Wi-Fi (单机离线可用)"
         }
@@ -749,8 +776,9 @@ class MainActivity : AppCompatActivity() {
 
         val lanIp = NetworkUtils.getLocalIpAddress(this)
         val currentTag = UpdateManager.getCurrentBuildTag(this)
+        val diagPort = NodeServerService.committedPort
         tvLanIp.text = (if (lanIp != "127.0.0.1") {
-            "本机局域网 IP: http://$lanIp:$defaultLocalPort (支持同 Wi-Fi 联机)"
+            "本机局域网 IP: http://$lanIp:$diagPort (支持同 Wi-Fi 联机)"
         } else {
             "本机局域网 IP: 127.0.0.1 (当前未连接 Wi-Fi，仅单机可用)"
         }) + "\n运行时版本: $currentTag"
@@ -778,33 +806,19 @@ class MainActivity : AppCompatActivity() {
         }
 
         fun checkServerHealth() {
-            tvStatus.text = "服务连接状态: 正在探测 $defaultLocalUrl/healthz …"
+            // Probe the committed port across loopback AND every LAN IPv4: a VPN/TUN can intercept
+            // plain-http loopback traffic and make a live server look dead from the diag view too.
+            val port = NodeServerService.committedPort
+            tvStatus.text = "服务连接状态: 正在探测 :$port/healthz (127.0.0.1 + 本机局域网地址) …"
             tvStatus.setTextColor(0xFFE0E0E0.toInt())
             Thread {
-                try {
-                    val client = OkHttpClient.Builder()
-                        .connectTimeout(1, TimeUnit.SECONDS)
-                        .readTimeout(1, TimeUnit.SECONDS)
-                        .build()
-                    val req = Request.Builder()
-                        .url("$defaultLocalUrl/healthz")
-                        .build()
-                    client.newCall(req).execute().use { resp ->
-                        val code = resp.code
-                        val body = resp.body?.string() ?: ""
-                        runOnUiThread {
-                            if (resp.isSuccessful) {
-                                tvStatus.text = "服务连接状态: 正常运行 (HTTP $code: $body)"
-                                tvStatus.setTextColor(0xFF00E676.toInt())
-                            } else {
-                                tvStatus.text = "服务连接状态: 异常响应 (HTTP $code: $body)"
-                                tvStatus.setTextColor(0xFFFFAB00.toInt())
-                            }
-                        }
-                    }
-                } catch (e: Exception) {
-                    runOnUiThread {
-                        tvStatus.text = "服务连接状态: 无法连通 (${e.javaClass.simpleName}: ${e.message})"
+                val answeredBy = NodeServerService.firstHealthyAddress(healthClient, port)
+                runOnUiThread {
+                    if (answeredBy != null) {
+                        tvStatus.text = "服务连接状态: 正常运行 (http://$answeredBy:$port · ok:true)"
+                        tvStatus.setTextColor(0xFF00E676.toInt())
+                    } else {
+                        tvStatus.text = "服务连接状态: 无法连通 (端口 $port · 已尝试 127.0.0.1 与本机全部局域网 IPv4)"
                         tvStatus.setTextColor(0xFFFF5252.toInt())
                     }
                 }
@@ -908,21 +922,15 @@ class MainActivity : AppCompatActivity() {
         val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         val mode = prefs.getString(KEY_SERVER_MODE, "local")
         if (mode == "local" && layoutLoading.visibility == View.VISIBLE) {
-            // Self-healing: if returning from background/HOME and UI is stuck in loading, probe :$defaultLocalPort/healthz
+            // Self-healing: if returning from background/HOME and UI is stuck in loading, probe the
+            // committed port across all candidate addresses (loopback can be intercepted by a VPN).
             Thread {
                 try {
-                    val client = OkHttpClient.Builder()
-                        .connectTimeout(500, TimeUnit.MILLISECONDS)
-                        .readTimeout(500, TimeUnit.MILLISECONDS)
-                        .build()
-                    val req = Request.Builder().url("$defaultLocalUrl/healthz").build()
-                    client.newCall(req).execute().use { resp ->
-                        if (resp.isSuccessful) {
-                            runOnUiThread {
-                                if (layoutLoading.visibility == View.VISIBLE) {
-                                    Log.i(TAG, "Self-healing onResume: local server is healthy, navigating WebView")
-                                    handleServerReady()
-                                }
+                    if (NodeServerService.firstHealthyAddress(healthClient, NodeServerService.committedPort) != null) {
+                        runOnUiThread {
+                            if (layoutLoading.visibility == View.VISIBLE) {
+                                Log.i(TAG, "Self-healing onResume: local server is healthy, navigating WebView")
+                                handleServerReady()
                             }
                         }
                     }
