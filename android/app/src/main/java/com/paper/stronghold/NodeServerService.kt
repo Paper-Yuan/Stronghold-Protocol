@@ -16,6 +16,10 @@ import com.sun.jna.Native
 import com.sun.jna.NativeLibrary
 import java.io.File
 import java.io.RandomAccessFile
+import java.net.InetSocketAddress
+import java.net.NetworkInterface
+import java.net.Proxy
+import java.net.ServerSocket
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
 
@@ -48,6 +52,53 @@ class NodeServerService : Service() {
         const val ACTION_SERVER_FAILED = "com.paper.stronghold.SERVER_FAILED"
         const val ACTION_SERVER_EXITED = "com.paper.stronghold.SERVER_EXITED"
 
+        /** The port the embedded server is configured to start on; fallback may move it up (see pickFreePort). */
+        const val DEFAULT_PORT = 3000
+
+        /**
+         * The port the embedded server actually committed to. Every health probe and every URL the UI
+         * builds must poll this — never a hardcoded 3000 — because OEM port squatters can push the
+         * server onto a fallback port.
+         */
+        @Volatile
+        var committedPort: Int = DEFAULT_PORT
+
+        /**
+         * WHY multi-address: a VPN/TUN interface can intercept plain-http loopback traffic and make a
+         * LIVE server look dead from inside the app. So a health probe must try 127.0.0.1 AND every
+         * other IPv4 the device currently holds, and succeed if ANY of them answers ok:true.
+         */
+        fun healthCandidates(): List<String> {
+            val out = mutableListOf("127.0.0.1")
+            try {
+                val interfaces = NetworkInterface.getNetworkInterfaces() ?: return out
+                while (interfaces.hasMoreElements()) {
+                    interfaces.nextElement().inetAddresses.asSequence()
+                        // Skip loopback (already first); address.size == 4 keeps IPv4 only.
+                        .filter { !it.isLoopbackAddress && it.address.size == 4 }
+                        .forEach { out.add(it.hostAddress ?: "") }
+                }
+            } catch (_: Exception) {}
+            return out.filter { it.isNotEmpty() }.distinct()
+        }
+
+        /**
+         * The first candidate address (see [healthCandidates]) whose /healthz answers ok:true on
+         * [port], or null when none does. Call on a background thread — it can block for a timeout
+         * per candidate.
+         */
+        fun firstHealthyAddress(client: OkHttpClient, port: Int): String? =
+            healthCandidates().firstOrNull { host -> probeHost(client, host, port) }
+
+        private fun probeHost(client: OkHttpClient, host: String, port: Int): Boolean = try {
+            val request = Request.Builder().url("http://$host:$port/healthz").build()
+            client.newCall(request).execute().use { response ->
+                response.isSuccessful && response.body?.string()?.contains("\"ok\":true") == true
+            }
+        } catch (_: Exception) {
+            false // connect refused/timeout: server booting, or this address is intercepted
+        }
+
         @Volatile
         var stateListener: ServerStateListener? = null
 
@@ -68,9 +119,13 @@ class NodeServerService : Service() {
     private val binder = LocalBinder()
     private val isRunning = AtomicBoolean(false)
     private val isStopped = AtomicBoolean(false)
+    // WHY NO_PROXY: a VPN profile or system-wide proxy can divert plain-http requests — loopback
+    // ones included — into a tunnel where the embedded server is unreachable, so a LIVE server
+    // looks dead. Health probes must always go direct.
     private val httpClient = OkHttpClient.Builder()
         .connectTimeout(1, TimeUnit.SECONDS)
         .readTimeout(1, TimeUnit.SECONDS)
+        .proxy(Proxy.NO_PROXY)
         .build()
 
     private val nodeStartFunction: Function by lazy {
@@ -79,8 +134,9 @@ class NodeServerService : Service() {
     }
 
     private fun notifyServerReady() {
-        sendBroadcast(Intent(ACTION_SERVER_READY).setPackage(packageName))
-        stateListener?.onServerStateChanged(ACTION_SERVER_READY, null)
+        // The port rides along so the UI enters on the port the runtime actually committed to.
+        sendBroadcast(Intent(ACTION_SERVER_READY).setPackage(packageName).putExtra("port", committedPort))
+        stateListener?.onServerStateChanged(ACTION_SERVER_READY, mapOf("port" to committedPort))
     }
 
     private fun notifyServerFailed(reason: String) {
@@ -186,11 +242,36 @@ class NodeServerService : Service() {
             addLog("[WARN] Stdio redirection failed: ${e.message}")
         }
 
-        // 3. Set POSIX environment variables: bind to 0.0.0.0 for LAN co-op + local solo
+        // 0. Pre-flight: if the preferred port already serves a healthy server, attach to it
+        //    (covers relaunches after the user backed out of the game).
         try {
-            PosixLib.INSTANCE.setenv("PORT", "3000", 1)
+            val req = Request.Builder().url("http://127.0.0.1:$DEFAULT_PORT/healthz").build()
+            httpClient.newCall(req).execute().use { response ->
+                if (response.isSuccessful) {
+                    committedPort = DEFAULT_PORT
+                    Log.i(TAG, "Port $DEFAULT_PORT is already active and healthy, attaching to existing server.")
+                    addLog("[READY] 本地服务已在运行 (端口 $DEFAULT_PORT)，直接连接。")
+                    isRunning.set(true)
+                    isStopped.set(false)
+                    notifyServerReady()
+                    return
+                }
+            }
+        } catch (_: Exception) {}
+
+        // 3. Set POSIX environment variables: bind to 0.0.0.0 for LAN co-op + local solo.
+        // WHY port fallback: some OEM images run squatters on common ports (ColorOS occupies
+        // loopback 3000 on the test device), which used to kill startup outright. Pick the first
+        // bindable port at/above the configured one and setenv("PORT") BEFORE node starts.
+        committedPort = pickFreePort(DEFAULT_PORT)
+        if (committedPort != DEFAULT_PORT) {
+            addLog("[BOOT] Port $DEFAULT_PORT is occupied — falling back to $committedPort")
+        }
+        try {
+            PosixLib.INSTANCE.setenv("PORT", committedPort.toString(), 1)
             PosixLib.INSTANCE.setenv("HOST", "0.0.0.0", 1)
             PosixLib.INSTANCE.setenv("NODE_ENV", "production", 1)
+            PosixLib.INSTANCE.setenv("SP_EMBEDDED", "1", 1)
             val prefs = getSharedPreferences("stronghold_prefs", Context.MODE_PRIVATE)
             if (prefs.getBoolean("compat_mode", false)) {
                 PosixLib.INSTANCE.setenv("SP_COMBAT", "server", 1)
@@ -268,28 +349,25 @@ class NodeServerService : Service() {
 
     private fun startHealthChecker() {
         Thread({
+            // Poll the port the runtime actually committed to, not a hardcoded 3000 (see pickFreePort).
+            val port = committedPort
             val maxAttempts = 30
             var attempt = 0
             while (!isStopped.get() && attempt < maxAttempts) {
                 Thread.sleep(500)
                 attempt++
-                try {
-                    val request = Request.Builder()
-                        .url("http://127.0.0.1:3000/healthz")
-                        .build()
-                    httpClient.newCall(request).execute().use { response ->
-                        if (response.isSuccessful) {
-                            Log.i(TAG, "Local server is healthy and responding!")
-                            addLog("[READY] Local game server running at http://127.0.0.1:3000 (code ${response.code})")
-                            val notif = buildNotification("本地服务已就绪 · 端口 3000")
-                            val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-                            manager.notify(NOTIFICATION_ID, notif)
-                            notifyServerReady()
-                            return@Thread
-                        }
-                    }
-                } catch (_: Exception) {
-                    // Server still booting up
+                // WHY multi-address: a VPN/TUN can intercept plain-http loopback traffic and make a
+                // LIVE server look dead — so 127.0.0.1 AND every LAN IPv4 get a vote, and any one
+                // answering ok:true means the server is up (see healthCandidates).
+                val answeredBy = firstHealthyAddress(httpClient, port)
+                if (answeredBy != null) {
+                    Log.i(TAG, "Local server is healthy and responding on $answeredBy:$port!")
+                    addLog("[READY] Local game server running at http://$answeredBy:$port (ok:true)")
+                    val notif = buildNotification("本地服务已就绪 · 端口 $port")
+                    val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+                    manager.notify(NOTIFICATION_ID, notif)
+                    notifyServerReady()
+                    return@Thread
                 }
             }
             if (!isStopped.get()) {
@@ -303,17 +381,35 @@ class NodeServerService : Service() {
 
     private fun checkHealthAndNotify() {
         Thread({
-            try {
-                val request = Request.Builder()
-                    .url("http://127.0.0.1:3000/healthz")
-                    .build()
-                httpClient.newCall(request).execute().use { response ->
-                    if (response.isSuccessful) {
-                        notifyServerReady()
-                    }
-                }
-            } catch (_: Exception) {}
+            // Same multi-address rule as the boot poller (see startHealthChecker): a VPN/TUN can
+            // intercept loopback, so a live server must be recognized via its LAN address too.
+            if (firstHealthyAddress(httpClient, committedPort) != null) {
+                notifyServerReady()
+            }
         }, "health-check-instant").start()
+    }
+
+    /**
+     * First port at or above [preferred] this process can actually bind, walking up [tries] slots.
+     * WHY: some OEM images squat on common ports (ColorOS occupies loopback 3000 on the test
+     * device), so blindly starting on the configured port breaks startup. SO_REUSEADDR keeps
+     * leftover TIME_WAIT sockets from faking "busy". Must run BEFORE node starts so the result
+     * can be pushed into the PORT environment variable.
+     */
+    private fun pickFreePort(preferred: Int, tries: Int = 20): Int {
+        for (offset in 0 until tries) {
+            val candidate = preferred + offset
+            try {
+                ServerSocket().use { socket ->
+                    socket.reuseAddress = true
+                    socket.bind(InetSocketAddress(candidate))
+                    return candidate
+                }
+            } catch (_: Exception) {
+                // Port busy — try the next one.
+            }
+        }
+        return preferred // nothing free in range: let node fail visibly on the configured port
     }
 
     private fun stopNodeServer() {
@@ -335,6 +431,18 @@ class NodeServerService : Service() {
     override fun onDestroy() {
         stopNodeServer()
         super.onDestroy()
+    }
+
+    override fun onTaskRemoved(rootIntent: Intent?) {
+        super.onTaskRemoved(rootIntent)
+        // WHY deterministic exit: the Node server lives inside this process, so swiping the app
+        // away used to leave a headless process with a live server behind — a zombie holding its
+        // port that blocked an immediate relaunch. Tear the foreground service down and kill the
+        // process outright instead of hoping the OS reaps it (START_NOT_STICKY alone is not
+        // enough: the process itself would still be alive).
+        addLog("[EXIT] Task removed: stopping service and exiting process")
+        stopNodeServer()
+        android.os.Process.killProcess(android.os.Process.myPid())
     }
 
     private fun createNotificationChannel() {

@@ -18,6 +18,7 @@ import { LoadoutButton } from './loadout.js';
 import { net, identity } from '../net.js';
 import { store, useStore, shallowEqual, loadPref, savePref } from '../store.js';
 import { getConfig, getMode, getStage, useData } from '../data.js';
+import { LobbyBoard } from '../ui/lobbyBoard.js';
 
 /** Official mode texts (activity_table act2autochess.modeDataDict), fallback when config.json is absent. */
 export const MODE_TEXT = {
@@ -312,6 +313,24 @@ export function LobbyScreen() {
       throw err;
     }));
   };
+  const onDirectJoin = (room) => {
+    if (!room || !room.code) return;
+    setCode(room.code);
+    if (room.url) {
+      try {
+        const u = new URL(room.url);
+        if (u.origin !== location.origin) {
+          if (nativeShell && typeof nativeShell.connectToHost === 'function' && /^\d+\.\d+\.\d+\.\d+$/.test(u.hostname)) {
+            nativeShell.connectToHost(u.hostname, room.code);
+            return;
+          }
+          location.href = room.url;
+          return;
+        }
+      } catch (_) {}
+    }
+    join(room.code);
+  };
   const backToTitle = () => {
     identity.setEntered(false);
     store.set((s) => ({ session: { ...s.session, entered: false } }));
@@ -368,6 +387,7 @@ export function LobbyScreen() {
               : html`<span class="t-dim">向同伴索取 ${ROOM_CODE_LEN} 位同盟密钥，或直接打开邀请链接</span>`}
           </div>
         <//>
+        <${LobbyBoard} onSelectCode=${(c) => setCode(c)} onDirectJoin=${onDirectJoin} />
         <${TipsPanel} />
       </section>
 

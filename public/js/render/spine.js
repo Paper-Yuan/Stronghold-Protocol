@@ -317,6 +317,24 @@ export class SpineActor {
     }
   }
 
+  /**
+   * Complete the current attack stroke and return to base without looping further (target died or out of range).
+   */
+  finishAttack() {
+    if (this.mode !== 'attack') return;
+    this.wound = false;
+    const e = this.spine?.state?.tracks?.[0];
+    if (e) {
+      e.loop = false;
+      const clip = this._attackClip() || this.roles.attack;
+      const loopDur = clip ? this.dur(clip.loop) : 1;
+      const ts = e.timeScale || 1;
+      const t = (e.trackTime || 0) % (loopDur || 1);
+      const rem = Math.max(0, loopDur - t) / ts;
+      this.attackUntil = Math.min(this.attackUntil, this.clock + rem);
+    }
+  }
+
   _attackClip() {
     const sk = this.roles.skill;
     if (this.skillOn && sk && this.has(sk.loop) && sk.via !== 'attack' && !this._skillIsBuffOnly()) return sk;

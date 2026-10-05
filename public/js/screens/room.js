@@ -22,6 +22,7 @@ import { LoadoutButton } from './loadout.js';
 import { net } from '../net.js';
 import { store, useStore, shallowEqual, emptyMatch, isSpectating } from '../store.js';
 import { difficultyInfo } from './lobby.js';
+import { isRoomPublic, toggleRoomPublic } from '../ui/lobbyBoard.js';
 
 /**
  * Seats padded to the room's capacity (co-op 4, solo 1), each null or a seat record.
@@ -153,18 +154,44 @@ function SpectatorBar({ facts, myId, busy, onRemove, onSit }) {
   </section>`;
 }
 
-function InviteBox({ code }) {
+function InviteBox({ code, isHost, room }) {
+  const [isPublic, setIsPublic] = useState(() => isRoomPublic(code));
+  const [publishing, setPublishing] = useState(false);
+
   const copy = async (what) => {
     const ok = await copyText(what === 'code' ? code : inviteLink(code));
     if (ok) toast(what === 'code' ? `已复制同盟密钥 ${code}` : '已复制邀请链接', 'success');
     else toast('复制失败，请手动复制', 'warn');
   };
+
+  const togglePublic = async () => {
+    if (publishing) return;
+    setPublishing(true);
+    try {
+      const res = await toggleRoomPublic(code, {
+        difficulty: room?.difficulty,
+        mode: room?.mode,
+      });
+      if (res.ok) {
+        setIsPublic(res.isPublic);
+        toast(res.text, 'success');
+      } else {
+        toast(res.error || '操作失败', 'warn');
+      }
+    } catch {
+      toast('网络异常，请重试', 'warn');
+    } finally {
+      setPublishing(false);
+    }
+  };
+
   return html`<div class="invite brackets">
     <div class="invite__label"><${Icon} name="key" /><span>同盟密钥</span><${MicroLabel}>ALLIANCE KEY<//></div>
     <div class="invite__code num selectable" aria-label=${`同盟密钥 ${code}`}>${[...String(code)].map((ch, i) => html`<span key=${i}>${ch}</span>`)}</div>
     <div class="invite__btns">
       <${Button} size="sm" icon="copy" onClick=${() => copy('code')}>复制密钥<//>
       <${Button} size="sm" icon="link" onClick=${() => copy('link')}>复制链接<//>
+      ${isHost && room?.mode !== 'solo' ? html`<${Button} size="sm" icon="signal" variant=${isPublic ? 'mint' : 'secondary'} loading=${publishing} onClick=${togglePublic}>${isPublic ? '已公开' : '公开到大厅'}<//>` : null}
     </div>
   </div>`;
 }
@@ -280,7 +307,7 @@ export function RoomScreen() {
         <h1 class="topbar__title">${coop ? '同盟模拟' : '独立模拟'}<span class="topbar__sep"></span><${DifficultyTag} difficulty=${room.difficulty} size="lg" /></h1>
       </div>
       <div class="topbar__right">
-        ${coop ? html`<${InviteBox} code=${room.code} />` : html`<div class="solo-note"><${MicroLabel}>SINGLE OPERATOR<//><span>仅限 1 名博士</span></div>`}
+        ${coop ? html`<${InviteBox} code=${room.code} isHost=${facts.isHost} room=${room} />` : html`<div class="solo-note"><${MicroLabel}>SINGLE OPERATOR<//><span>仅限 1 名博士</span></div>`}
       </div>
     </header>
 

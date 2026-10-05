@@ -913,7 +913,7 @@ export class Battle {
       if (sk.charges >= sk.maxCharges) sk.sp = sk.spCost;
     }
     if (first) this._ev(['spawn', unitInfo(u)]);
-    this._ev(['deploy', u.id]);
+    this._ev(initial ? ['deploy', u.id, { initial: true }] : ['deploy', u.id]);
     if (this._hooks.deploy) this.emit('deploy', { unit: u, initial });
     // 联防: "部署完成后，将对应单位的…技力修改至与上一阶段结束时相同" — the carried SP is set again once the deployment is
     // done, so a deploy-time SP gift (独行, 黄沙罗盘 …) does not come on top of it; later redeploys keep those gifts
