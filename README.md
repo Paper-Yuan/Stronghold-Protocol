@@ -98,8 +98,8 @@ npm start          # 启动服务器：http://localhost:3000
 2. **安装**：安装包来自 GitHub，需要允许「安装未知应用」。装过旧版的话直接覆盖安装即可（各版本用同一把签名密钥；每个包的 SHA-256 与证书指纹都写在 Release 说明里，可自行核对）。
 3. **首次启动**会解压约 400 MB 资源（十几秒），之后每次启动都会先问「这局怎么开始」：
    - **本机单人** —— 手机自己开服，不连网也能玩。
-   - **同一 Wi-Fi** —— 进大厅只填 4 位同盟密钥，自动找到房主的手机。
-   - **填地址连接** —— 房主不在同一网段时用：UU 加速器、Tailscale 这类虚拟局域网，或者电脑开服（这时手机只是客户端）。
+   - **同一 Wi-Fi** —— 手机开服进大厅，朋友只填 4 位同盟密钥就能进来。**用 UU 加速器、Tailscale 这类虚拟局域网开服时也选这个。**
+   - **填地址连接** —— 只用于**加入别人已经开好的服务器**：粘贴房主发来的地址或邀请链接，这时手机是客户端。自己开服不要选它——填自己的地址等于去连一个还不存在的服务器（会报 `ECONNREFUSED`）。
 
    选择框上会印出本机的局域网地址（形如 `http://192.168.x.x:3000`），朋友用**浏览器**打开它就能进来玩，不需要装 APK。
 4. **自己打包**：切到 `feature/android-client` 分支后 `npm run build:android` 出 debug 包；加 `--release` 需要自备签名密钥（`android/local.properties` 里的 `SP_STORE_FILE` 等）。壳层架构、内嵌 Node 的约束与诊断方式见 [docs/ANDROID.md](https://github.com/Paper-Yuan/Stronghold-Protocol/blob/feature/android-client/docs/ANDROID.md)（该文件也在这个分支上）。
