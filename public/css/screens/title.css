@@ -252,6 +252,12 @@
   display: flex;
   justify-content: space-between;
   align-items: flex-end;
-  font-size: .13rem;
+  gap: .1rem;
+  /* px floors: the root is only 33 px on a phone in landscape (css/theme.css), so a bare .13rem measured 4.3 px
+     and the disclaimer was unreadable there — same trap as the other phone floors in css/devices.css */
+  font-size: max(.13rem, 10px);
   color: var(--text-dim);
 }
+.title-foot .micro { font-size: max(.12rem, 10px); }
+.title-foot__col { display: flex; flex-direction: column; gap: .03rem; min-width: 0; }
+.title-foot__credit { color: var(--text-lo); }
