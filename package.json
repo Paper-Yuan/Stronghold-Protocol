@@ -33,8 +33,8 @@
     "setup": "node tools/setup.mjs",
     "doctor": "node tools/doctor.mjs",
     "launch": "node scripts/launch.mjs",
-    "bundle:android": "node tools/bundle-android.mjs",
-    "build:android": "node scripts/build-android.mjs"
+    "pack:android": "node scripts/pack-android.mjs",
+    "build:android": "node scripts/pack-android.mjs && (cd android && gradlew assembleDebug)"
   },
   "engines": {
     "node": ">=22"

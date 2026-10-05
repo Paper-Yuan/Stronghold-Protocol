@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Shield / gate glyph for the adaptive launcher icon (108dp canvas, 66dp safe zone). -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:fillColor="#35D0BA"
+        android:pathData="M54,24 L76,32 L76,54 C76,68 66,79 54,85 C42,79 32,68 32,54 L32,32 Z" />
+    <path
+        android:fillColor="#0E1A1E"
+        android:pathData="M50,50 L58,50 L58,72 L50,72 Z M46,42 L50,42 L50,48 L46,48 Z M58,42 L62,42 L62,48 L58,48 Z" />
+</vector>

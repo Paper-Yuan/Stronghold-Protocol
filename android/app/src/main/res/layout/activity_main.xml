@@ -1,92 +1,146 @@
 <?xml version="1.0" encoding="utf-8"?>
-<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/rootScroll"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/bg_dark">
+    android:fillViewport="true"
+    android:scrollbars="none">
 
-    <WebView
-        android:id="@+id/webView"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent" />
-
-    <!-- Splash loading & terminal connection dashboard -->
     <LinearLayout
-        android:id="@+id/layoutLoading"
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:gravity="center"
+        android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:padding="24dp"
-        android:background="@color/bg_dark">
-
-        <ProgressBar
-            android:id="@+id/progressLoading"
-            android:layout_width="44dp"
-            android:layout_height="44dp"
-            android:indeterminateTint="@color/theme_teal" />
+        android:paddingLeft="24dp"
+        android:paddingRight="24dp"
+        android:paddingTop="14dp"
+        android:paddingBottom="14dp">
 
         <TextView
-            android:id="@+id/tvLoadingStatus"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
-            android:text="@string/server_starting"
-            android:textColor="@color/text_white"
-            android:textSize="14sp"
-            android:gravity="center" />
+            android:text="@string/app_title"
+            android:textColor="@color/accent"
+            android:textSize="20sp"
+            android:textStyle="bold" />
 
-        <Button
-            android:id="@+id/btnShowDiagLogs"
-            style="?android:attr/borderlessButtonStyle"
+        <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:text="[查看运行诊断与引擎日志]"
-            android:textColor="#a0b5ad"
+            android:layout_marginTop="2dp"
+            android:text="@string/app_subtitle"
+            android:textColor="@color/textDim"
             android:textSize="11sp" />
 
-        <!-- Fallback action buttons (shown if local server not found or connection failed) -->
-        <LinearLayout
-            android:id="@+id/layoutFailedActions"
+        <TextView
+            android:id="@+id/status"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:fontFamily="monospace"
+            android:text="@string/status_checking"
+            android:textColor="@color/textPrimary"
+            android:textIsSelectable="true"
+            android:textSize="12sp" />
+
+        <ProgressBar
+            android:id="@+id/progress"
+            style="?android:attr/progressBarStyleHorizontal"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:visibility="gone" />
+
+        <TextView
+            android:id="@+id/progressText"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="20dp"
-            android:orientation="horizontal"
-            android:gravity="center"
-            android:visibility="gone">
+            android:textColor="@color/textDim"
+            android:textSize="11sp"
+            android:visibility="gone" />
 
-            <Button
-                android:id="@+id/btnQuickConnectLan"
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <androidx.appcompat.widget.SwitchCompat
+                android:id="@+id/swHighRefresh"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="@string/high_refresh_toggle"
+                android:textColor="@color/textPrimary"
+                android:textSize="12sp"
+                app:switchPadding="6dp" />
+
+            <TextView
+                android:id="@+id/btnShareLogs"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:backgroundTint="@color/theme_teal"
-                android:textColor="@color/bg_dark"
-                android:textSize="12sp"
-                android:text="重启手机本地引擎" />
-
-            <Button
-                android:id="@+id/btnDirectSettings"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="12dp"
-                android:backgroundTint="@color/card_bg"
-                android:textColor="@color/text_white"
-                android:textSize="12sp"
-                android:text="局域网与画质设置" />
-
-            <Button
-                android:id="@+id/btnRetryConnect"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="12dp"
-                android:backgroundTint="@color/card_bg"
-                android:textColor="@color/text_white"
-                android:textSize="12sp"
-                android:text="重试连接" />
+                android:background="?attr/selectableItemBackground"
+                android:padding="6dp"
+                android:text="@string/share_logs"
+                android:textColor="@color/accent"
+                android:textSize="12sp" />
         </LinearLayout>
+
+        <TextView
+            android:id="@+id/lblEdge"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:text="@string/edge_padding_label"
+            android:textColor="@color/textDim"
+            android:textSize="12sp" />
+
+        <SeekBar
+            android:id="@+id/sbEdge"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:max="200" />
+
+        <Button
+            android:id="@+id/btnHost"
+            android:layout_width="match_parent"
+            android:layout_height="44dp"
+            android:layout_marginTop="8dp"
+            android:backgroundTint="@color/accent"
+            android:text="@string/btn_host"
+            android:textColor="#08110F"
+            android:textSize="14sp"
+            android:textStyle="bold" />
+
+        <Button
+            android:id="@+id/btnJoin"
+            android:layout_width="match_parent"
+            android:layout_height="44dp"
+            android:layout_marginTop="6dp"
+            android:backgroundTint="@color/surface"
+            android:text="@string/btn_join"
+            android:textColor="@color/textPrimary"
+            android:textSize="14sp" />
+
+        <TextView
+            android:id="@+id/hostHint"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:textColor="@color/textDim"
+            android:textSize="11sp" />
+
+        <TextView
+            android:id="@+id/btnReinstall"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginTop="6dp"
+            android:background="?attr/selectableItemBackground"
+            android:padding="6dp"
+            android:text="@string/reinstall_assets"
+            android:textColor="@color/textDim"
+            android:textSize="11sp" />
     </LinearLayout>
-
-    <!-- No floating native button here: an overlay at top|end lands on the page's own 玩法说明 button. The shell's
-         settings now live in the in-game 设置 → 本机服务 section, reached through the AndroidNative bridge. -->
-
-</FrameLayout>
+</ScrollView>

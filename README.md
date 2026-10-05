@@ -102,20 +102,20 @@ npm start          # 启动服务器：http://localhost:3000
    - **填地址连接** —— 只用于**加入别人已经开好的服务器**：粘贴房主发来的地址或邀请链接，这时手机是客户端。自己开服不要选它——填自己的地址等于去连一个还不存在的服务器（会报 `ECONNREFUSED`）。
 
    选择框上会印出本机的局域网地址（形如 `http://192.168.x.x:3000`），朋友用**浏览器**打开它就能进来玩，不需要装 APK。
-4. **自己打包**：切到 `feature/android-client` 分支后 `npm run build:android` 出 debug 包；加 `--release` 需要自备签名密钥（`android/local.properties` 里的 `SP_STORE_FILE` 等）。壳层架构、内嵌 Node 的约束与诊断方式见 [docs/ANDROID.md](https://github.com/Paper-Yuan/Stronghold-Protocol/blob/feature/android-client/docs/ANDROID.md)（该文件也在这个分支上）。
+4. **自己打包**：`npm install && npm run assets && npm run pack:android`，然后 `cd android && ./gradlew assembleDebug`（wrapper 钉在 Gradle 9.5.0；AGP 8.13 不兼容 Gradle 9.6+）。要求 JDK 17+ 与 Android SDK（platform 36、NDK、CMake）。壳层架构、内嵌 Node 的约束与诊断方式见 [docs/ANDROID.md](docs/ANDROID.md)。
 
 **演示视频**：[《基于 B站 @Ausevay 大佬的安卓端卫戍协议又一适配》](https://www.bilibili.com/video/BV1bDHH6PEzN)，UP 主 [纸鸢安好](https://space.bilibili.com/99201674)（即本仓库维护者）。安卓端这条思路最早参考了 B 站 **@Ausevay** 的移动端适配，这里一并致谢。
 
 > **关于视频里那份 APK**：视频说明写明它是「重新编译打包」并经网盘分发。本仓库**只对 [Releases](../../releases/latest) 里的包公布 SHA-256 与签名证书指纹**，其他渠道的包我们无法校验、也不为其内容背书；装之前请自行核对签名与哈希。视频和本仓库一样，都是玩家自制的**非官方同人作品**，与鹰角网络 / Yostar 无关，仅供学习交流、严禁任何形式盈利（完整条款见上面的[声明](#声明)）。
 
-> 安卓端目前在 `feature/android-client` 分支上开发，`master` 里还没有 `android/` 目录；APK 只从 Releases 分发。
+> 安卓端壳层已重构为 CMake JNI 直连方案（详见 [docs/ANDROID.md](docs/ANDROID.md)）：不再向仓库提交 libnode 二进制（打包脚本自动下载并校验 SHA-256），素材 zip 按内容哈希增量解压。
 
 ### 系统要求
 
 | 项目 | 要求 |
 |---|---|
 | 开服的电脑 | Windows / macOS / Linux，Node.js 22 或 24（LTS）；磁盘约 400–500 MB（素材、依赖与可选的本地提取贴图）；内存空闲约 100 MB，每局再加几 MB |
-| 或：开服的手机 | Android 7.0+（arm64-v8a），APK 约 285 MB，首次启动解压约 400 MB 资源；见上面的方式三 |
+| 或：开服的手机 | Android 8.0+（目标 Android 16；arm64-v8a），APK 约 400 MB（素材全打包）；见上面的方式三 |
 | 玩家 | 支持 WebGL 的现代浏览器（Chrome / Edge / Firefox / Safari 最新版），电脑、手机或平板（横屏） |
 | 网络 | 首次进入游戏时，每位玩家要从开服的那台设备（电脑或手机）下载几十 MB 素材（之后走浏览器缓存）；对局中流量很小 |
 

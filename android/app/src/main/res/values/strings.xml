@@ -1,14 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">卫戍协议：盟约</string>
-    <string name="server_starting">正在启动本地作战引擎…</string>
-    <string name="server_ready">本地服务已就绪</string>
-    <string name="switch_server_title">网络与服务器设置</string>
-    <string name="local_mode">单人单机模式 (内置服务 127.0.0.1:3000)</string>
-    <string name="remote_mode">远程联机模式 (连接到指定服务器)</string>
-    <string name="server_address_hint">例如: http://192.168.1.100:3000</string>
-    <string name="btn_confirm">确认切换</string>
-    <string name="btn_cancel">取消</string>
-    <string name="btn_restart_service">重启本地服务</string>
-    <string name="notification_title">卫戍协议 运行中</string>
-    <string name="notification_content">本地对局模拟引擎正在后台运行</string>
+    <string name="app_name">卫戍协议</string>
+    <string name="app_title">卫戍协议：盟约</string>
+    <string name="app_subtitle">安卓版 · 内置服务器 · 局域网联机 · 120Hz · 非官方同人</string>
+
+    <string name="status_checking">正在检查资源…</string>
+    <string name="status_installing">正在安装游戏资源（首次约 1 分钟）…</string>
+    <string name="status_ready">资源已就绪。</string>
+    <string name="status_starting_server">正在启动本机服务器…</string>
+    <string name="status_start_failed">服务器启动失败，node.log 末尾：\n%1$s</string>
+
+    <string name="high_refresh_toggle">120Hz 高刷新率（关闭可省电）</string>
+    <string name="edge_padding_label">异形屏适配：UI 距两侧各 %1$d px（约 %2$d dp）</string>
+    <string name="share_logs">分享日志</string>
+    <string name="reinstall_assets">重装资源包（排查用）</string>
+
+    <string name="btn_host">开始游戏（本机开服）</string>
+    <string name="btn_join">加入同一 Wi-Fi 的对局（客机）</string>
+    <string name="host_hint_no_lan">未检测到局域网地址（未联网也可以单机游玩）。</string>
+    <string name="host_hint">朋友的浏览器打开 %1$s 即可加入（无需安装 App）；同装本 App 的客机用「加入对局」自动发现。</string>
+
+    <string name="join_discovered">已发现的房主（自动搜索中）：</string>
+    <string name="join_refresh">↻ 重新搜索</string>
+    <string name="join_manual_label">或手动输入房主地址：</string>
+    <string name="join_manual_hint">192.168.x.x:3000</string>
+    <string name="join_hint">客机也可以不装 App：直接用浏览器打开房主屏幕上显示的地址。开虚拟局域网（UU 加速器 / Tailscale 等）时请用手动输入。</string>
+
+    <string name="overlay_title">加载异常</string>
+    <string name="overlay_reload">重新加载</string>
+    <string name="overlay_compat">兼容模式</string>
+    <string name="overlay_copy">复制诊断</string>
 </resources>

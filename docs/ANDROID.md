@@ -1,148 +1,112 @@
-# 卫戍协议：盟约 — Android 独立运行端技术文档与运行时规范
+# 卫戍协议：盟约 — 安卓端（内置服务器 · 局域网联机）
 
-本文档记录 Android 客户端壳层架构、Node.js 原生嵌入式运行时策略、日志诊断机制及兼容性规范。
+把整套游戏（Node.js 服务器 + 浏览器客户端）装进一个 APK：**手机自己开服**，同一 Wi-Fi 下的朋友用浏览器或本 App 直接加入；完全没有网络也能单机游玩。目标平台 **Android 16（API 36）**，兼容 Android 8.0（API 26）及以上。
+
+实测（OnePlus Ace 5，Android 16 / PKG110）：首次安装后资源解压 **约 2.4 秒**（UFS4）；服务器自动落位到可用端口（部分 ColorOS 系统服务占用 loopback 3000 时自动改用 3001+，启动器与 NSD 广播跟随实际端口）；浏览器经局域网访问 `http://192.168.3.85:3001` — healthz 正常、素材可下载、WebSocket 可连接。
+
+> 致谢：安卓端思路参考了 [Paper-Yuan/Stronghold-Protocol](https://github.com/Paper-Yuan/Stronghold-Protocol)（`feature/android-client` 分支，B 站 @纸鸢安好）与 B 站 @Ausevay 的先行实践。本实现在其经验上做了若干工程优化（见 §6）。
 
 ---
 
-## 1. 架构概览
-
-Android 客户端采用 **混合原生架构 (Hybrid Native Architecture)**，完全脱离 PC 服务端依赖，具备离线单机作战与局域网多机联机能力：
+## 1. 架构
 
 ```
-+-------------------------------------------------------------+
-|                     Android 宿主进程 (单进程)                |
-|                                                             |
-|  +-----------------------+     +-------------------------+  |
-|  |   MainActivity        |     |   NodeServerService     |  |
-|  |   - 全屏沉浸式 WebView| <-> |   - 前台保活服务        |  |
-|  |   - 状态/错误引导 UI  | IPC |   - JNA 绑定 libnode.so |  |
-|  |   - 诊断与日志弹窗    |     |   - 8MB 栈独立线程执行  |  |
-|  +-----------------------+     +-------------------------+  |
-|              ^                              |               |
-|              | HTTP/WS :3000                | POSIX dup2    |
-|              v                              v               |
-|  +-----------------------+     +-------------------------+  |
-|  | 游戏前端客户端 (Web)  |     |   server.log            |  |
-|  | PixiJS / Three.js     |     |   (stdout/stderr 完整流)|  |
-|  +-----------------------+     +-------------------------+  |
-+-------------------------------------------------------------+
++---------------------------------------------------------------------+
+|                        Android 宿主进程                              |
+|                                                                     |
+|  MainActivity（启动器）          NodeService（前台服务，保活）        |
+|   ├ 资源解压（首次约 1 分钟）     NodeRuntime ── JNI: node::Start     |
+|   ├ 「开始游戏」→ 本机开服   →    └ libnode.so（Node 18.20.4，进程内） |
+|   ├ 「加入对局」→ NSD 发现/手动IP                                     |
+|   └ 120Hz / 异形屏滑块 / 日志    DebugLog（files/logs/*.log 全量落盘） |
+|          |                                                          |
+|          v  http://127.0.0.1:3000（或房主 LAN IP）                    |
+|  GameActivity：全屏沉浸 WebView（不改一行网页端代码）                  |
+|   PixiJS / Three.js 客户端，战斗在 WebView 内本地模拟                  |
++---------------------------------------------------------------------+
+             ↑ WebSocket（同一 Wi-Fi，延迟 ≈ 1–5 ms）
+   朋友的浏览器 / 朋友手机上的本 App
 ```
 
----
+与网页版完全同构：服务器只管经济与回合，战斗在各玩家端模拟，所以联机体感延迟极低；本机开服时服务器走 loopback，零网络延迟。
 
-## 2. 原生 Node.js 运行时执行策略
+## 2. 目录结构
 
-### 2.1 符号绑定与执行模型
-- **避免子进程 `exec` 限制**：Android SELinux 策略在目标 SDK 29+ 及 Android 10+ 严格限制在 `filesDir` 等应用私有目录下执行二进制可执行文件（报 `ENOEXEC` 或 `EACCES`）。
-- **动态链接库嵌入**：采用 `libnode.so`（ELF shared object, ARM64-v8a），通过 JNA 的 `NativeLibrary` 动态解析 C++ 导出符号：
-  ```
-  _ZN4node5StartEiPPc  ->  node::Start(int argc, char** argv)
-  ```
-- **线程栈扩容**：Android 默认的 JVM 线程栈较小（通常约 1MB），容易在 V8 引擎解析复杂 AST 或递归时触发 `SIGSEGV` (StackOverflow)。因此，Node 实例必须运行在显式指定栈大小为 **8 MB** 的原生 POSIX 线程中：
-  ```kotlin
-  Thread(null, {
-      nodeStartFunction.invokeInt(arrayOf(argv.size, argv))
-  }, "node-main", 8 * 1024 * 1024).start()
-  ```
-
-### 2.2 双端 Node 运行环境规范与跨版本兼容策略
-- **PC / 开发机环境（上游标准）**：
-  - 上游仓库 `package.json` 声明 `"engines": { "node": ">=22" }`（支持 Node 22、Node 24）。
-  - 本地 PC 开发与测试环境运行在 **Node.js v24.19.0** 下，全量 291 套件、3,322 个自动化测试全部通过。
-- **Android 原生嵌入式环境**：
-  - 手机端 In-process 嵌入基于 **Node.js v18.20.4 (ARM64-v8a, NDK clang 14)**。
-  - **核心双端兼容保障**：
-    - 经全量代码审计，服务端与共享业务逻辑（`server/`、`shared/`）均遵循跨版本标准 ECMAScript 语法，未引入 Node 20+ 的破坏性 API（如仅限新版的 `Array.prototype.toReversed`、未 polyfill 的新 Crypto 算法等）。
-    - 依赖库仅包含精简高效的轻量生产依赖：`ws`、`preact`、`htm`、`pixi.js`、`pixi-spine`、`three`。
-    - 服务端网络监听均统一绑定至 `0.0.0.0:3000`，同构支持电脑端（Node 22/24）与安卓端（Node 18）的一致运行。
-
----
-
-## 3. 日志重定向与诊断排查机制
-
-### 3.1 厂商 Logcat 过滤对抗
-在特定厂商设备（如 vivo OriginOS / Android 16）上，系统安全管理机制会过滤屏蔽普通三方应用自身的 `android.util.Log` 输出，导致开发阶段或用户排查时 `logcat` 无法捕获任何有用堆栈。
-
-### 3.2 POSIX 文件描述符重定向
-在调用 `node::Start` 之前，通过 libc 底层系统调用将进程的标准输出 (fd 1) 与标准错误 (fd 2) 硬重定向到应用内部日志文件：
-```kotlin
-val logFd = PosixLib.INSTANCE.open(serverLogFile.absolutePath, O_WRONLY or O_CREAT or O_TRUNC, 0644)
-PosixLib.INSTANCE.dup2(logFd, 1)
-PosixLib.INSTANCE.dup2(logFd, 2)
-PosixLib.INSTANCE.close(logFd)
 ```
-搭配 `server-log-tailer` 后台守护线程，将 `server.log` 的增量内容 Mirror 至内存环形队列（保留最新 250 行）。
+android/                     安卓工程（Gradle + Kotlin + 一个 60 行的 JNI 胶水）
+  app/src/main/cpp/          node_start.cpp — setenv + freopen + node::Start
+  app/src/main/java/…/       NodeRuntime / AssetInstaller / LanDiscovery /
+                             NodeService / DisplayHelper / DebugLog / 两个 Activity
+  app/src/main/assets/       core.zip + assets.zip + pack.json   ← scripts/pack-android.mjs 生成
+  app/src/main/jniLibs/      libnode.so（arm64-v8a / x86_64）    ← 同上
+scripts/pack-android.mjs     打包脚本（构建 APK 前必须先跑）
+docs/ANDROID.md              本文档
+```
 
-### 3.3 应用内可视化诊断面板
-在主界面转圈等待与设置弹窗中均集成了「**诊断与日志**」面板：
-- **连通性实时探测**：向 `http://127.0.0.1:3000/healthz` 发起 HTTP 请求，即时显示连通状态与状态码。
-- **局域网 IP 展示**：展示本机分配的 Wi-Fi 局域网 IP，便于好友输入连接。
-- **控制台日志视图**：等宽字体展示 Node 服务端启动堆栈、模块加载与战斗心跳日志。
-- **一键复制日志**：用户可一键将完整日志拷贝至剪贴板，方便问题排查与反馈。
+## 3. 从源码构建 APK
 
----
+要求：JDK 17+、Android SDK（platform 36、build-tools、NDK + CMake）、Node.js 22/24（仅 PC 打包用）。
 
-## 4. 构建与包体积优化
+```bash
+git clone <你的 fork>
+cd Stronghold-Protocol
+npm install                 # 生成 public/vendor（postinstall）
+npm run assets              # 下载约 280 MB 素材到 public/assets（可续传）
+node scripts/pack-android.mjs
+                            # 产出 core.zip / assets.zip / libnode.so / pack.json
+cd android
+./gradlew assembleDebug     # wrapper 钉在 Gradle 9.5.0（AGP 8.13.2 不兼容 Gradle 9.6+）
+# 产物：android/app/build/outputs/apk/debug/app-debug.apk（约 400 MB）
+```
 
-1. **ABI 单构架收敛**：
-   - 现代 Android 真实物理机 100% 均为 64 位 ARM 架构。
-   - 在 `android/app/build.gradle` 中配置：
-     ```groovy
-     ndk {
-         abiFilters "arm64-v8a"
-     }
-     ```
-   - 剥离 x86_64 二进制库，可直接节省 **~65 MB** 的 APK 包体积。
+`pack-android.mjs` 首次运行会从 [nodejs-mobile releases](https://github.com/nodejs-mobile/nodejs-mobile/releases) 下载 Node 18.20.4 运行时并校验 SHA-256（arm64 / x86_64），并从本机 NDK 拷贝 `libc++_shared.so`（libnode.so 依赖 NDK 共享 STL —— 缺了它会在启动时报 `UnsatisfiedLinkError`）。若你的网络对该下载做了 TLS 中间人，用 `NODE_USE_SYSTEM_CA=1 node scripts/pack-android.mjs` 重跑。
 
-2. **构建脚本**：
-   ```bash
-   node scripts/build-android.mjs
-   ```
-   自动完成 Web 资源与服务端依赖打包（`app_bundle.zip`）并调用 Gradle 编译生成 `app-debug.apk`。
+素材内容不变时（`data/assets.json` 签名一致），重复打包会复用旧的 assets.zip —— 改代码不会触发 280 MB 重打包。
 
----
+## 4. 使用与联机
 
-## 5. 原生二进制依赖溯源与校验规范 (Native Dependencies & Verification)
+- **本机开服**：启动 App → 「开始游戏（本机开服）」→ 自动进入游戏。启动器会显示本机地址（形如 `http://192.168.x.x:3000`）。
+- **朋友加入（浏览器，无需安装）**：打开房主屏幕上显示的地址 → 输入昵称 → 同盟模拟 → 输入房主创建的 4 位密钥。
+- **朋友加入（装有本 App）**：「加入同一 Wi-Fi 的对局」→ 列表里点选自动发现的房主 → 连接 → 输入密钥。
+- **虚拟局域网（UU 加速器 / Tailscale 等）**：mDNS 不可跨网段，请在「加入对局」里手动输入房主的虚拟网 IP。
+- **端口**：默认 3000，被占用时自动向上找一个空闲端口（启动器提示与 NSD 广播显示实际端口；手输地址时注意用实际端口）。
+- **游戏内操作**：与网页版一致（触摸拖拽、长按详情，推荐横屏）；返回键/侧滑直接退出游戏页，服务器继续在前台服务里运行，再次点「开始游戏」秒进；划掉任务卡 = 整体退出（含服务器）。画质可在游戏内「设置」调低；加载异常时壳层提供「兼容模式」（`?board=2d&render=fallback`）。
 
-Android 壳内嵌的原生动态链接库清单由 [`android/NATIVE_DEPS.json`](../android/NATIVE_DEPS.json) 统一定义并受到自动化构建门禁保护：
+### 适配设置（启动器）
 
-| 库名称 | 架构 (ABI) | 版本 | 来源 URL (HTTPS) | SHA256 哈希 | 许可证 |
-|---|---|---|---|---|---|
-| `libnode.so` | `arm64-v8a` | 18.20.4 | `https://nodejs.org/dist/v18.20.4/node-v18.20.4.tar.gz` | `7c907316beb6e78e34495926c9ac1befe079369b14650d508ea812929258250c` | MIT |
-| `libc++_shared.so` | `arm64-v8a` | NDK r25b (LLVM 14) | `https://dl.google.com/android/repository/android-ndk-r25b-windows.zip` | `73a8cb7f0529d2dcc22089c6cf30c86383d708451ecfafe1cd6ecc4f0e661df2` | Apache-2.0 with LLVM Exception |
-| `libnode.so` | `x86_64` | 18.20.4 | `https://nodejs.org/dist/v18.20.4/node-v18.20.4.tar.gz` | `9acba7e26a1e864f13b78f1b7121773643f3f33a4c6a2fe7d4f63eb06d4d3af1` | MIT |
-| `libc++_shared.so` | `x86_64` | NDK r25b (LLVM 14) | `https://dl.google.com/android/repository/android-ndk-r25b-windows.zip` | `9024189fa4baa1943e1fc3393d3507715ec0831202560a45b05ffff7abd88c12` | Apache-2.0 with LLVM Exception |
+| 设置 | 说明 |
+|---|---|
+| 120Hz 高刷新率 | 开启后锁定设备最高刷新率模式（Ace5 实测 120Hz）；关闭回退 60Hz 省电 |
+| 异形屏适配滑块 | 游戏 UI 与屏幕**两侧**的距离（px），刘海/打孔屏横屏时按需加大 |
+| 分享日志 | 导出全部调试日志（见 §5） |
+| 重装资源包 | 清除解压标记并重新解压（升级失败/文件损坏时排查用） |
 
-- **构建前哈希门禁**：`scripts/build-android.mjs` 在调用 Gradle 之前自动计算上述二进制的 SHA256，与清单不符即刻熔断。
-- **随包分发**：上述库文件及所有运行依赖模块的开源许可证文本均同步打包于 `app_bundle.zip` 的 `licenses/` 目录中。
+## 5. 日志与诊断
 
----
+全部落盘在应用私有目录 `files/logs/`（部分国产 ROM 会过滤第三方 logcat，文件日志才是完整真相）：
 
-## 6. 游戏素材与版权归属声明 (Arknights Copyright Notice)
+- `debug.log`（滚动保留 3 代）：App 生命周期、解压进度、Node 启动/健康检查、NSD 发现、**WebView 全部 console 输出**、主框架加载错误、渲染进程崩溃、启动看门狗探针结果。
+- `node.log`：嵌入式服务器的 stdout/stderr（fd 级重定向，含启动横幅与端口占用报错）。
 
-1. **非商业同人性质**：本项目属于非官方同人联机复刻项目，遵循非商业同人衍生作品惯例。
-2. **知识产权归属**：《明日方舟》及「卫戍协议：盟约」涉及的所有干员名称、美术立绘、Spine 骨骼动画模型、场景 UI 纹理、音乐音频及官方原始数值体系的知识产权均归 **上海鹰角网络科技有限公司** (Shanghai Hypergryph Network Technology Co., Ltd.) 及其许可方所有。
-3. **开源许可隔离**：本项目自身代码遵循 **GPL-3.0-or-later** 许可，**游戏素材绝不属于 GPL 授权范畴**，本项目亦不对任何官方美术与音频资产授予商业或许可权利。详细第三方组件许可证清单请参见根目录 [`THIRD-PARTY-NOTICES.md`](../THIRD-PARTY-NOTICES.md)。
+启动器右上「分享日志」通过系统分享面板导出全部文件。游戏页面 8 秒未启动时，壳层注入探针（不改网页代码）读取 `__SP__` 引导状态 / canvas 数量 / WebGL 支持并弹原生诊断框，可一键复制或进入兼容模式。
 
----
+## 6. 相对 Paper-Yuan 版的优化点
 
-## 7. Windows 路径编码与 Daemon 文件锁排查
+1. **JNI 胶水替代 JNA 符号绑定**：CMake 编译 60 行 C++ 直接链接 `node::Start`，不依赖脆弱的 C++ 名字修饰（`_ZN4node5StartEiPPc`）与 JNA 运行时；无 `libc++_shared.so`、无 okhttp、无 JNA 依赖（c++_static）。
+2. **内容哈希增量解压**：以 core/assets 两个 zip 的 SHA-256 为标记，代码升级不再重新解压 280MB 素材（原版按 versionName 标记，每次升级全量重解压）。
+3. **NSD/mDNS 房主自动发现**：客机两击入局；HTTP 扫网段仅作手动输入兜底。
+4. **不改网页端代码**：自检探针、音频后台挂起（`__SP__.audio.suspend`）、Esc 注入全部由壳层 `evaluateJavascript` 完成，网页目录与上游逐字节一致，跟上游更新零冲突。
+5. **面向 Android 16（API 36）**：target/compileSdk 36，处理 edge-to-edge、cutout、前台服务 `specialUse` 类型声明；minSdk 26。
+6. **120Hz+ 支持**：`preferredDisplayModeId` 锁最高刷新模式 + API 30 `SurfaceControl.setFrameRate` 声明；可关（60Hz 省电）。
+7. **双 ABI**：arm64-v8a + x86_64（模拟器/ChromeOS 可用）；libnode 解包安装（非 legacy packaging）。
 
-若将工程放置在包含中文字符的路径下（如 `E:\Workbox\系统`），在 Windows 命令行下可能导致 Gradle 输出乱码，或由于后台 Daemon 常驻导致 `mergeDebugResources` 报「另一个程序正在使用此文件」锁死。
-- **解决方法**：在 `android/` 目录下执行 `./gradlew.bat --stop` 彻底释放常驻锁即可恢复；推荐将工程克隆放置在纯英文字符路径下进行日常打包构建。
+## 7. 已知限制
 
----
+- **Node 18 与上游 `engines: >=22`**：服务端运行时代码经全量审计 + Node 18.20.4 实测（3595 个测试 3578 通过；5 个失败均为测试基建层面 —— `node:test` mock timers 在 18/22 之间的 API 差异，及一个受构建负载影响的性能断言 —— 与服务器逻辑无关；healthz / 房间 / 对局流程正常）。上游未来若使用 Node 20+ 专属 API，需要跟进 nodejs-mobile 的版本（其长期停留在 18.x）。
+- **16KB 内存页设备**：预编译 libnode.so 按 4KB 页对齐，Tensor/天玑新平台若启用 16KB 页将无法加载——这些设备请用浏览器连接 PC/其他手机开服。
+- **后台**：前台服务保活服务器，但宿主熄屏后自身战斗仍需回前台操作；对局经济推进由服务器完成，客机不受影响。
+- **APK 体积**：约 400 MB（素材全打包，离线即玩）；安装后解压约占 1 GB 磁盘。首次解压在 UFS4 机型上约 2–3 秒，低端机约 1 分钟。
 
-## 8. 黑屏排查：页面回报与兼容模式 (blank screen)
+## 8. 许可
 
-用户反馈里最难处理的一类是「服务器已就绪、加载条消失、然后纯黑且没有任何提示」。这类黑屏**页面自己救不了**：任何提示都画在同一块坏掉的表面上，所以判断和补救都必须落在原生侧。
-
-- **不再强制硬件层**：`MainActivity.setupWebView()` 里的 `setLayerType(LAYER_TYPE_HARDWARE)` 现在由 `webview_hw_layer` 这个偏好项控制，**默认关闭**。给承载 WebGL canvas 的 WebView 强套硬件层，在部分老 OEM GPU 驱动上会出黑面（页面在画、合成不出来），而窗口底色是 `@color/bg_dark`，玩家看到的就是纯黑。
-- **页面回报**：`public/js/main.js` 的 `reportClientState()` 在 boot 结束时（以及捕获到未处理异常时）通过 `AndroidNative.reportClientState(json)` 把自身状态交给壳层：是否 boot、`#app` 子节点数、canvas 数、`webgl2` / `webgl` 是否可用、dpr、视口、UA、错误文本。原生侧只留最新一份（`MainActivity.clientState`，可用 `AndroidNative.getClientState()` 取回）。
-- **黑屏看门狗**：`onPageFinished` 起 12 秒内没有收到任何回报，弹**原生** `AlertDialog`（原生视图不走 WebView 合成，黑面也看得见），提供「兼容模式重启 / 查看日志 / 继续等」。
-- **兼容模式**：写 `compat_mode=true`、`webview_hw_layer=false`、`board_mode=2d`，并给 URL 追加 `?render=fallback`，让客户端走 DOM 版简易棋盘（`ui/fieldHost.js` 读 `render` 参数）。这条路径不需要 WebGL。
-- **已经存在的降级链**（实测确认，不是猜测）：缺 `webgl2` → 自动用 2D 棋盘；完全没有 WebGL → `[field] render engine unavailable, using the simplified view`；3D 上下文丢失 → `2D board until it can be rebuilt`。所以新反馈来了先看 `clientState`，别再从渲染器猜起。
-- **启动即提示过旧的 WebView**：`outdatedWebViewWarning()` 读 `WebView.getCurrentWebViewPackage().versionName` 的主版本号，低于 `MIN_WEBVIEW_CHROME = 87` 时把它写进启动选择框的副标题（Android 12 才自带 Chromium 91；更老的机器常年停在 77–87，且没有 Play 就升不动——正是黑屏反馈集中的人群）。客户端对 Chrome 86/87 的硬依赖是 CSS `inset` 简写与 `Element.replaceChildren`。
-- **兼容模式也可以由页面触发**：`AndroidNative.enableCompatMode()`（看门狗对话框与游戏内设置行都能走这条），避免用户只能等 12 秒。
-- **回报给开发者**：诊断面板（`showLogsAndDiagnosticsDialog`）里已能看到 `server.log` 尾部；`clientState` 同时写进 logcat 的 `MainActivity` tag（部分厂商会屏蔽应用日志，此时以对话框上的内容为准）。
-
+安卓壳层代码遵循仓库的 GPL-3.0-or-later；libnode.so 为 Node.js（MIT 风格）许可；游戏素材版权归鹰角网络/Yostar（见 NOTICE.md），仅随整合包分发、不得单独再分发。
