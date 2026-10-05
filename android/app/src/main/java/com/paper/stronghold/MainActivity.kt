@@ -238,7 +238,7 @@ class MainActivity : AppCompatActivity() {
             override fun onReceivedError(view: WebView?, request: WebResourceRequest?, error: WebResourceError?) {
                 super.onReceivedError(view, request, error)
                 if (request?.isForMainFrame == true) {
-                    showConnectionError("连接游戏服务超时或未响应。\n若使用电脑服务端，请确保手机与电脑在同一 Wi-Fi。")
+                    showConnectionError("连接不上这个地址。\n自己开服请改选「本机单人」或「同一 Wi-Fi」；连电脑则确认在同一网络 / 同一加速器房间。")
                 }
             }
 

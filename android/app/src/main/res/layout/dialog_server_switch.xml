@@ -107,7 +107,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="4dp"
-                    android:text="进大厅只填 4 位同盟密钥，自动找到房主的手机。"
+                    android:text="手机开服进大厅，朋友只填 4 位同盟密钥就能进来。UU 加速器 / Tailscale 这类虚拟局域网开服也选这个。"
                     android:textColor="#9fb0a9"
                     android:textSize="11sp" />
             </LinearLayout>
@@ -144,7 +144,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="4dp"
-                    android:text="UU 加速器 / Tailscale / 电脑开服：房主不在同一网段时选这个。"
+                    android:text="加入别人开好的服务器：粘贴房主发来的地址或邀请链接。自己开服别选这个，填自己的地址会连不上。"
                     android:textColor="#9fb0a9"
                     android:textSize="11sp" />
             </LinearLayout>
