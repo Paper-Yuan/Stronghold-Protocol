@@ -131,3 +131,18 @@ Android 壳内嵌的原生动态链接库清单由 [`android/NATIVE_DEPS.json`](
 若将工程放置在包含中文字符的路径下（如 `E:\Workbox\系统`），在 Windows 命令行下可能导致 Gradle 输出乱码，或由于后台 Daemon 常驻导致 `mergeDebugResources` 报「另一个程序正在使用此文件」锁死。
 - **解决方法**：在 `android/` 目录下执行 `./gradlew.bat --stop` 彻底释放常驻锁即可恢复；推荐将工程克隆放置在纯英文字符路径下进行日常打包构建。
 
+---
+
+## 8. 黑屏排查：页面回报与兼容模式 (blank screen)
+
+用户反馈里最难处理的一类是「服务器已就绪、加载条消失、然后纯黑且没有任何提示」。这类黑屏**页面自己救不了**：任何提示都画在同一块坏掉的表面上，所以判断和补救都必须落在原生侧。
+
+- **不再强制硬件层**：`MainActivity.setupWebView()` 里的 `setLayerType(LAYER_TYPE_HARDWARE)` 现在由 `webview_hw_layer` 这个偏好项控制，**默认关闭**。给承载 WebGL canvas 的 WebView 强套硬件层，在部分老 OEM GPU 驱动上会出黑面（页面在画、合成不出来），而窗口底色是 `@color/bg_dark`，玩家看到的就是纯黑。
+- **页面回报**：`public/js/main.js` 的 `reportClientState()` 在 boot 结束时（以及捕获到未处理异常时）通过 `AndroidNative.reportClientState(json)` 把自身状态交给壳层：是否 boot、`#app` 子节点数、canvas 数、`webgl2` / `webgl` 是否可用、dpr、视口、UA、错误文本。原生侧只留最新一份（`MainActivity.clientState`，可用 `AndroidNative.getClientState()` 取回）。
+- **黑屏看门狗**：`onPageFinished` 起 12 秒内没有收到任何回报，弹**原生** `AlertDialog`（原生视图不走 WebView 合成，黑面也看得见），提供「兼容模式重启 / 查看日志 / 继续等」。
+- **兼容模式**：写 `compat_mode=true`、`webview_hw_layer=false`、`board_mode=2d`，并给 URL 追加 `?render=fallback`，让客户端走 DOM 版简易棋盘（`ui/fieldHost.js` 读 `render` 参数）。这条路径不需要 WebGL。
+- **已经存在的降级链**（实测确认，不是猜测）：缺 `webgl2` → 自动用 2D 棋盘；完全没有 WebGL → `[field] render engine unavailable, using the simplified view`；3D 上下文丢失 → `2D board until it can be rebuilt`。所以新反馈来了先看 `clientState`，别再从渲染器猜起。
+- **启动即提示过旧的 WebView**：`outdatedWebViewWarning()` 读 `WebView.getCurrentWebViewPackage().versionName` 的主版本号，低于 `MIN_WEBVIEW_CHROME = 87` 时把它写进启动选择框的副标题（Android 12 才自带 Chromium 91；更老的机器常年停在 77–87，且没有 Play 就升不动——正是黑屏反馈集中的人群）。客户端对 Chrome 86/87 的硬依赖是 CSS `inset` 简写与 `Element.replaceChildren`。
+- **兼容模式也可以由页面触发**：`AndroidNative.enableCompatMode()`（看门狗对话框与游戏内设置行都能走这条），避免用户只能等 12 秒。
+- **回报给开发者**：诊断面板（`showLogsAndDiagnosticsDialog`）里已能看到 `server.log` 尾部；`clientState` 同时写进 logcat 的 `MainActivity` tag（部分厂商会屏蔽应用日志，此时以对话框上的内容为准）。
+

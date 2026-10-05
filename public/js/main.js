@@ -306,7 +306,34 @@ function installGlobalErrorHandlers() {
   window.addEventListener('error', (ev) => {
     if (!(ev instanceof ErrorEvent)) return; // resource load errors are not script errors
     console.error('[app] uncaught error', ev.error || ev.message);
+    // An uncaught throw after boot leaves nothing on screen (the toast path only covers rejections), and on a device
+    // whose WebView surface is broken even a toast would be invisible — so the shell has to hear about it.
+    reportClientState({ error: String((ev.error && ev.error.message) || ev.message || 'unknown').slice(0, 200) });
   });
+}
+
+/**
+ * One line of "what the page can see about itself", handed to the Android shell (AndroidBridge.reportClientState).
+ * A WebView that fails to composite shows a black screen the page cannot annotate — the message would be painted on
+ * the same broken surface — so the native side keeps this and complains when it never arrives.
+ */
+function reportClientState(extra = {}) {
+  const native = globalThis.AndroidNative;
+  if (typeof native?.reportClientState !== 'function') return;
+  const gl = (type) => { try { return !!document.createElement('canvas').getContext(type); } catch { return false; } };
+  try {
+    native.reportClientState(JSON.stringify({
+      at: Date.now(),
+      booted: !!globalThis.__SP__,
+      rootChildren: document.getElementById('app')?.childElementCount ?? -1,
+      canvases: document.querySelectorAll('canvas').length,
+      webgl2: gl('webgl2'), webgl: gl('webgl'),
+      dpr: globalThis.devicePixelRatio || 1,
+      vw: globalThis.innerWidth || 0, vh: globalThis.innerHeight || 0,
+      ua: String(navigator.userAgent).slice(0, 160),
+      ...extra,
+    }));
+  } catch { /* the shell is already on its own timeout path */ }
 }
 
 async function boot() {
@@ -352,6 +379,7 @@ async function boot() {
     setTimeout(() => splash.remove(), 300);
   }
   globalThis.__SP__ = { store, net, data, audio, version: 1 };
+  reportClientState();
   // A page keeps the modules it imported at load time for its whole lifetime, so a deploy cannot reach an open tab
   // (ui/buildGuard.js): watch `/healthz.build`. Outside a match the page reloads itself; during a match the guard says
   // so instead (the connection banner offers 刷新页面) and reloads once the match — settlement screen included — is over,
