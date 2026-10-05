@@ -104,6 +104,10 @@ npm start          # 启动服务器：http://localhost:3000
    选择框上会印出本机的局域网地址（形如 `http://192.168.x.x:3000`），朋友用**浏览器**打开它就能进来玩，不需要装 APK。
 4. **自己打包**：`npm run build:android` 出 debug 包；加 `--release` 需要自备签名密钥（`android/local.properties` 里的 `SP_STORE_FILE` 等）。壳层架构、内嵌 Node 的约束与诊断方式见 [docs/ANDROID.md](docs/ANDROID.md)。
 
+**演示视频**：[《基于 B站 @Ausevay 大佬的安卓端卫戍协议又一适配》](https://www.bilibili.com/video/BV1bDHH6PEzN)，UP 主 [纸鸢安好](https://space.bilibili.com/99201674)（即本仓库维护者）。安卓端这条思路最早参考了 B 站 **@Ausevay** 的移动端适配，这里一并致谢。
+
+> **关于视频里那份 APK**：视频说明写明它是「重新编译打包」并经网盘分发。本仓库**只对 [Releases](../../releases/latest) 里的包公布 SHA-256 与签名证书指纹**，其他渠道的包我们无法校验、也不为其内容背书；装之前请自行核对签名与哈希。视频和本仓库一样，都是玩家自制的**非官方同人作品**，与鹰角网络 / Yostar 无关，仅供学习交流、严禁任何形式盈利（完整条款见上面的[声明](#声明)）。
+
 > 安卓端目前在 `feature/android-client` 分支上开发，`master` 里还没有 `android/` 目录；APK 只从 Releases 分发。
 
 ### 系统要求
@@ -231,6 +235,7 @@ RENDER_E2E=1 node --test 'test/render/*.browser.test.js'   # 渲染测试，部�
 - 游戏数据：[Kengxxiao/ArknightsGameData](https://github.com/Kengxxiao/ArknightsGameData)。
 - 素材来源：[yuanyan3060/ArknightsGameResource](https://github.com/yuanyan3060/ArknightsGameResource)、[fexli/ArknightsResource](https://github.com/fexli/ArknightsResource)、[isHarryh/Ark-Models](https://github.com/isHarryh/Ark-Models)、[ArknightsAssets/ArknightsAssets2](https://github.com/ArknightsAssets/ArknightsAssets2)；字体来自 [TimWangZi/The-font-of-Arknights](https://github.com/TimWangZi/The-font-of-Arknights) 与 Google Fonts（Noto Sans SC）。详见 [docs/ASSETS.md](docs/ASSETS.md)。
 - 规则核对参考：[PRTS 明日方舟中文 Wiki](https://prts.wiki/)。
+- 安卓端适配的思路参考了 B 站 **@Ausevay** 的移动端适配，演示视频与账号：[纸鸢安好](https://space.bilibili.com/99201674)（本仓库维护者）。
 - LZ4AK 解包：`tools/local-extract/aklz4.py` 的算法来自 [isHarryh/Ark-Unpacker](https://github.com/isHarryh/Ark-Unpacker)（BSD-3-Clause，经 MooncellWiki/UnityPy）；解析 Unity 资源使用 [UnityPy](https://github.com/K0lb3/UnityPy)（MIT）。
 - 库：[PixiJS](https://pixijs.com/)（MIT）、[pixi-spine](https://github.com/pixijs/spine)（MIT；其中包含的 Spine Runtime 另受 [Spine Runtimes License](https://esotericsoftware.com/spine-runtimes-license) 约束）、[three.js](https://threejs.org/)（MIT）、[Preact](https://preactjs.com/) + [htm](https://github.com/developit/htm)（MIT）、[ws](https://github.com/websockets/ws)（MIT）。
 
