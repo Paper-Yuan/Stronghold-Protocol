@@ -17,12 +17,14 @@ import android.os.Handler
 import android.os.Looper
 import android.util.Log
 import android.view.View
+import android.view.ViewGroup
 import android.view.WindowInsets
 import android.view.WindowInsetsController
 import android.view.WindowManager
 import android.webkit.*
 import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
+import androidx.appcompat.widget.SwitchCompat
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import java.io.File
@@ -41,6 +43,8 @@ class MainActivity : AppCompatActivity() {
         private const val KEY_COMPAT_MODE = "compat_mode"   // simplified view + 2D + no forced hardware layer
         private const val BLANK_SCREEN_WATCHDOG_MS = 12_000L
         private const val MIN_WEBVIEW_CHROME = 87   // CSS `inset` shorthand; `replaceChildren` needs 86
+        private const val KEY_HIGH_REFRESH = "high_refresh"      // true = pin the highest refresh mode (120 Hz+)
+        private const val KEY_EDGE_PADDING = "edge_padding_px"   // 0-200 px inset from each side (notch/punch-hole)
         private const val DEFAULT_LOCAL_URL = "http://127.0.0.1:3000"
         private const val DEFAULT_LAN_URL = "http://192.168.10.25:3000"
     }
@@ -128,6 +132,8 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE)
 
+        FileLogger.init(applicationContext)
+
         // Cutout support for Android 9+ (display notch edge-to-edge)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
             try {
@@ -137,6 +143,10 @@ class MainActivity : AppCompatActivity() {
                 Log.w(TAG, "Failed to set display cutout mode: ${e.message}")
             }
         }
+
+        // Pin the highest refresh mode the panel supports (ColorOS and other OEM skins park
+        // apps at 60 Hz unless the app opts in); the toggle falls back to ~60 Hz for battery.
+        applyHighRefresh()
 
         setContentView(R.layout.activity_main)
 
@@ -164,6 +174,9 @@ class MainActivity : AppCompatActivity() {
             startStartupFlow()
         }
 
+        // Irregular screens: pull the game UI in from both sides by the persisted amount.
+        applyEdgePadding(prefs().getInt(KEY_EDGE_PADDING, 0))
+
         setupWebView()
         setupServerReceiver()
 
@@ -179,7 +192,36 @@ class MainActivity : AppCompatActivity() {
 
     override fun onWindowFocusChanged(hasFocus: Boolean) {
         super.onWindowFocusChanged(hasFocus)
-        if (hasFocus) enableFullscreen()
+        if (hasFocus) {
+            enableFullscreen()
+            // Re-assert the refresh mode after focus changes (the system can switch modes while
+            // we are paused); DisplayHelper only touches the window when the mode id differs.
+            applyHighRefresh()
+        }
+    }
+
+    private fun prefs() = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+
+    private fun applyHighRefresh() {
+        DisplayHelper.apply(window, prefs().getBoolean(KEY_HIGH_REFRESH, true))
+    }
+
+    /**
+     * Irregular-screen padding: distance from each side, in px (0-200). Applies to the WebView
+     * (the game UI itself) and to the loading/error dashboard that covers it, so the slider in
+     * the chooser previews live while the launcher overlay is still up.
+     */
+    private fun applyEdgePadding(px: Int) {
+        if (!::webView.isInitialized) return
+        for (target in listOf(webView, layoutLoading)) {
+            (target.layoutParams as? ViewGroup.MarginLayoutParams)?.let { lp ->
+                if (lp.leftMargin != px || lp.rightMargin != px) {
+                    lp.leftMargin = px
+                    lp.rightMargin = px
+                    target.layoutParams = lp
+                }
+            }
+        }
     }
 
     private fun enableFullscreen() {
@@ -246,7 +288,12 @@ class MainActivity : AppCompatActivity() {
         webView.webChromeClient = object : WebChromeClient() {
             override fun onConsoleMessage(consoleMessage: ConsoleMessage?): Boolean {
                 consoleMessage?.let {
-                    Log.d("WebViewConsole", "${it.message()} -- From line ${it.lineNumber()} of ${it.sourceId()}")
+                    // Mirror game console output into the file log (logcat is filtered on some OEM skins).
+                    FileLogger.console(
+                        it.messageLevel()?.name,
+                        it.message(),
+                        "${it.sourceId()}:${it.lineNumber()}"
+                    )
                 }
                 return true
             }
@@ -255,6 +302,7 @@ class MainActivity : AppCompatActivity() {
         webView.webViewClient = object : WebViewClient() {
             override fun onPageFinished(view: WebView?, url: String?) {
                 super.onPageFinished(view, url)
+                FileLogger.i("webview", "page finished: $url")
                 layoutLoading.visibility = View.GONE
                 layoutFailedActions.visibility = View.GONE
                 scheduleBlankScreenWatchdog()
@@ -263,11 +311,13 @@ class MainActivity : AppCompatActivity() {
             override fun onReceivedError(view: WebView?, request: WebResourceRequest?, error: WebResourceError?) {
                 super.onReceivedError(view, request, error)
                 if (request?.isForMainFrame == true) {
+                    FileLogger.e("webview", "main frame error: ${error?.description} (${error?.errorCode}) url=${request?.url}")
                     showConnectionError("连接不上这个地址。\n自己开服请改选「本机单人」或「同一 Wi-Fi」；连电脑则确认在同一网络 / 同一加速器房间。")
                 }
             }
 
             override fun onRenderProcessGone(view: WebView?, detail: RenderProcessGoneDetail?): Boolean {
+                FileLogger.e("webview", "render process gone, didCrash=${detail?.didCrash()}")
                 Log.e(TAG, "WebView render process gone. Did crash: ${detail?.didCrash()}")
                 runOnUiThread {
                     layoutLoading.visibility = View.VISIBLE
@@ -285,6 +335,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun handleServerReady() {
         val lanIp = NetworkUtils.getLocalIpAddress(this@MainActivity)
+        FileLogger.i("server", "local server ready (lan=$lanIp)")
         val statusMsg = if (lanIp != "127.0.0.1") {
             "本地引擎已就绪！\n本机局域网地址: http://$lanIp:3000\n(其他手机填入此地址可联机)"
         } else {
@@ -302,10 +353,12 @@ class MainActivity : AppCompatActivity() {
                     NodeServerService.ACTION_SERVER_READY -> handleServerReady()
                     NodeServerService.ACTION_SERVER_FAILED -> {
                         val reason = (extras?.get("reason") as? String) ?: "本地引擎未启动"
+                        FileLogger.e("server", "local server failed: $reason")
                         showConnectionError("本地独立服务启动失败: $reason\n可点击上方【诊断与日志】查看具体报错，或在设置中切换为连接其他手机/电脑。")
                     }
                     NodeServerService.ACTION_SERVER_EXITED -> {
                         val exitCode = (extras?.get("exitCode") as? Int) ?: -1
+                        FileLogger.e("server", "local server exited (code $exitCode)")
                         showConnectionError("本地独立服务已异常退出 (代码: $exitCode)\n可点击上方【诊断与日志】查看崩溃堆栈。")
                     }
                 }
@@ -380,6 +433,7 @@ class MainActivity : AppCompatActivity() {
                 }
             } catch (t: Throwable) {
                 Log.e(TAG, "Asset extraction error", t)
+                FileLogger.e("assets", "asset extraction failed", t)
             }
 
             runOnUiThread {
@@ -390,6 +444,7 @@ class MainActivity : AppCompatActivity() {
 
     fun startLocalServer() {
         tvLoadingStatus.text = getString(R.string.server_starting)
+        FileLogger.i("server", "local server start requested")
         try {
             val intent = Intent(this, NodeServerService::class.java).apply {
                 action = NodeServerService.ACTION_START
@@ -596,6 +651,43 @@ class MainActivity : AppCompatActivity() {
         val btnCancel = dialogView.findViewById<Button>(R.id.btnCancelDialog)
         val btnApply = dialogView.findViewById<Button>(R.id.btnApplyDialog)
 
+        // Display adaptation controls (share the dialog with the board-quality block).
+        val swHighRefresh = dialogView.findViewById<SwitchCompat>(R.id.swHighRefresh)
+        val lblEdge = dialogView.findViewById<TextView>(R.id.lblEdge)
+        val sbEdge = dialogView.findViewById<SeekBar>(R.id.sbEdge)
+
+        swHighRefresh.isChecked = prefs.getBoolean(KEY_HIGH_REFRESH, true)
+        swHighRefresh.setOnCheckedChangeListener { _, checked ->
+            prefs.edit().putBoolean(KEY_HIGH_REFRESH, checked).apply()
+            DisplayHelper.apply(window, checked)
+            FileLogger.i("settings", "high refresh = $checked")
+        }
+
+        var edgePreview = prefs.getInt(KEY_EDGE_PADDING, 0)
+        fun updateEdgeLabel(px: Int) {
+            lblEdge.text = getString(R.string.edge_padding_label, px)
+        }
+        sbEdge.max = 200
+        sbEdge.progress = edgePreview
+        updateEdgeLabel(edgePreview)
+        sbEdge.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+            override fun onProgressChanged(bar: SeekBar?, value: Int, fromUser: Boolean) {
+                updateEdgeLabel(value)
+                // Live preview: the launcher UI behind the dialog pulls in from both sides.
+                applyEdgePadding(value)
+            }
+            override fun onStartTrackingTouch(bar: SeekBar?) {}
+            override fun onStopTrackingTouch(bar: SeekBar?) {
+                val v = bar?.progress ?: 0
+                if (v != edgePreview) {
+                    edgePreview = v
+                    prefs.edit().putInt(KEY_EDGE_PADDING, v).apply()
+                    FileLogger.i("settings", "edge padding = $v px")
+                    Toast.makeText(this@MainActivity, "已应用到游戏画面（进游戏即可看到）", Toast.LENGTH_SHORT).show()
+                }
+            }
+        })
+
         val lanIp = NetworkUtils.getLocalIpAddress(this)
         tvLocalIpHint.text = if (lanIp != "127.0.0.1") {
             "本机局域网地址: http://$lanIp:3000\n(如果作为房主，好友填入此地址即可联机)"
@@ -658,12 +750,19 @@ class MainActivity : AppCompatActivity() {
         val dialog = AlertDialog.Builder(this).setView(dialogView).create()
         btnShowLogs.setOnClickListener { showLogsAndDiagnosticsDialog() }
         btnFirstRunSolo.setOnClickListener {
+            FileLogger.i("ui", "chooser decision: first-run solo")
             // Deliberately stores nothing: a player who backs out of choosing gets asked again.
             dialog.dismiss()
             startLocalFlow()
         }
-        btnCancel.setOnClickListener { dialog.dismiss() }
-        if (asLauncher) dialog.setOnCancelListener { startLocalFlow() }
+        btnCancel.setOnClickListener {
+            FileLogger.i("ui", "chooser decision: cancelled (keeping stored choice)")
+            dialog.dismiss()
+        }
+        if (asLauncher) dialog.setOnCancelListener {
+            FileLogger.i("ui", "chooser decision: cancelled via back (defaulting to local flow)")
+            startLocalFlow()
+        }
 
         btnApply.setOnClickListener {
             val boardMode = if (rbBoard2D.isChecked) "2d" else "3d"
@@ -674,11 +773,13 @@ class MainActivity : AppCompatActivity() {
                     Toast.makeText(this, "请填写房主地址，形如 100.127.8.41:3000", Toast.LENGTH_SHORT).show()
                     return@setOnClickListener
                 }
+                FileLogger.i("ui", "chooser decision: remote url=$url board=$boardMode")
                 editor.putString(KEY_SERVER_MODE, "remote").putString(KEY_REMOTE_URL, url)
                 editor.apply()
                 dialog.dismiss()
                 loadServerUrl(url)
             } else {
+                FileLogger.i("ui", "chooser decision: local (solo/lan) board=$boardMode")
                 editor.putString(KEY_SERVER_MODE, "local")
                 editor.apply()
                 dialog.dismiss()
@@ -722,6 +823,7 @@ class MainActivity : AppCompatActivity() {
         val tvLogContent = dialogView.findViewById<TextView>(R.id.tvLogContent)
         val scrollLogs = dialogView.findViewById<ScrollView>(R.id.scrollLogs)
         val btnCopy = dialogView.findViewById<Button>(R.id.btnCopyLogs)
+        val btnShare = dialogView.findViewById<Button>(R.id.btnShareLogs)
         val btnRefresh = dialogView.findViewById<Button>(R.id.btnRefreshDiag)
         val btnClose = dialogView.findViewById<Button>(R.id.btnCloseDiag)
 
@@ -733,10 +835,19 @@ class MainActivity : AppCompatActivity() {
         }
 
         fun updateLogs() {
+            // In-memory ring first (unchanged), then the rotating file log tail — the file is
+            // the source of truth on OEM skins that filter logcat, and outlives the process.
+            val sb = StringBuilder()
             val memoryLogs = NodeServerService.getRecentLogs(100)
             if (memoryLogs.isNotEmpty()) {
-                tvLogContent.text = memoryLogs.joinToString("\n")
-            } else {
+                sb.append(memoryLogs.joinToString("\n"))
+            }
+            val fileTail = FileLogger.tail()
+            if (fileTail.isNotBlank()) {
+                if (sb.isNotEmpty()) sb.append("\n")
+                sb.append("---- 文件日志 files/logs/debug.log（末尾）----\n").append(fileTail)
+            }
+            if (sb.isEmpty()) {
                 val logFile = File(filesDir, "server.log")
                 if (logFile.exists() && logFile.length() > 0) {
                     try {
@@ -748,6 +859,8 @@ class MainActivity : AppCompatActivity() {
                 } else {
                     tvLogContent.text = "暂无运行日志 (服务未启动或尚未产生输出)"
                 }
+            } else {
+                tvLogContent.text = sb.toString()
             }
             scrollLogs.post {
                 scrollLogs.fullScroll(View.FOCUS_DOWN)
@@ -790,6 +903,7 @@ class MainActivity : AppCompatActivity() {
 
         updateLogs()
         checkServerHealth()
+        FileLogger.i("ui", "diagnostics dialog opened")
 
         val dialog = AlertDialog.Builder(this)
             .setView(dialogView)
@@ -800,6 +914,11 @@ class MainActivity : AppCompatActivity() {
             val clip = ClipData.newPlainText("Stronghold Server Logs", tvLogContent.text)
             clipboard.setPrimaryClip(clip)
             Toast.makeText(this, "日志已复制到剪贴板", Toast.LENGTH_SHORT).show()
+        }
+
+        btnShare.setOnClickListener {
+            FileLogger.i("ui", "share logs requested")
+            FileLogger.share(this)
         }
 
         btnRefresh.setOnClickListener {
@@ -860,6 +979,7 @@ class MainActivity : AppCompatActivity() {
     override fun onDestroy() {
         super.onDestroy()
         cancelBlankScreenWatchdog()
+        FileLogger.i("lifecycle", "MainActivity onDestroy (finishing=$isFinishing)")
         abandonAudioFocus()
         NodeServerService.stateListener = null
         serverReadyReceiver?.let {

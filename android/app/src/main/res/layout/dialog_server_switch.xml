@@ -4,6 +4,7 @@
      board-quality block is a preference, not a first-run decision, so the code hides it on first run.
      Landscape gives ~360dp of height, hence the ScrollView and the tight paddings. -->
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:background="@color/card_bg">
@@ -222,6 +223,35 @@
                     android:textColor="@color/text_white" />
             </RadioGroup>
         </LinearLayout>
+
+        <!-- Display adaptations: high refresh rate + irregular-screen padding. Both are display
+             preferences (not per-connection choices), so they stay visible in every mode of the
+             chooser, including the first-run launcher. -->
+        <androidx.appcompat.widget.SwitchCompat
+            android:id="@+id/swHighRefresh"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:text="@string/high_refresh_toggle"
+            android:textColor="@color/text_white"
+            android:textSize="13sp"
+            app:switchPadding="6dp" />
+
+        <TextView
+            android:id="@+id/lblEdge"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="@string/edge_padding_label"
+            android:textColor="#9fb0a9"
+            android:textSize="12sp" />
+
+        <SeekBar
+            android:id="@+id/sbEdge"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:max="200" />
 
         <LinearLayout
             android:layout_width="match_parent"

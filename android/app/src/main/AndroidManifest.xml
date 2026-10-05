@@ -43,6 +43,17 @@
                 android:value="Local Node.js backend game server loopback daemon" />
         </service>
 
+        <!-- Serves files/logs/* to the 「分享日志」 share sheet (see res/xml/file_paths.xml). -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.logs"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
+
     </application>
 
 </manifest>
