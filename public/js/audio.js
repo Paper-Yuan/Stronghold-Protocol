@@ -630,6 +630,29 @@ export class AudioManager {
   }
 
   /**
+   * Play the landing/deployment sound of an operator or token.
+   * Uses the unit's own born SFX if present, falling back to battle.deploy (b_char_set) or battle.tokenDeploy.
+   * @param {any} unitOrPiece piece, unit, defId, or event payload
+   * @param {any} [gd]
+   * @param {{ volume?: number }} [o]
+   */
+  deploy(unitOrPiece, gd = null, o = {}) {
+    try {
+      const m = this.getManifest();
+      const u = typeof unitOrPiece === 'string' ? { def: unitOrPiece, defId: unitOrPiece } : (unitOrPiece || {});
+      const url = deploySfxUrl(m, u, gd) || m?.audio?.sfx?.battle?.deploy || '/assets/audio/sfx/battle/b_char/b_char_set.mp3';
+      if (!url) return;
+      const key = voiceKey(u, gd) || u.defId || u.chessId || u.def;
+      const rec = (key && m?.audio?.sfx?.units?.[key]) || (u.def && m?.audio?.sfx?.units?.[u.def]);
+      const own = !!rec && url === rec.born;
+      const mix = own ? rec.mix?.born : null;
+      if (!unitSoundPlays(mix, this.random())) return;
+      const vol = o.volume ?? (own ? unitGain(0.9, mix) : 0.85);
+      this._play(url, { volume: vol, limited: true, unitKey: own ? `${key}:born` : 'deploy' });
+    } catch { /* ignore */ }
+  }
+
+  /**
    * Suspend all audio processing (e.g. Activity onPause or AudioFocus loss).
    */
   suspend() {

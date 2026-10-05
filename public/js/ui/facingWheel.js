@@ -25,6 +25,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from '../../vendor/hooks
 import { html } from './components.js';
 import { LocalSprite } from './gameComponents.js';
 import { DIRS, DIR_LABEL, DEAD_ZONE_TILES, dirFromDelta, dirFromKey, rangeTiles, normDir, boardDir, viewMirrored } from './facing.js';
+import { audio } from '../audio.js';
 
 const cx = (...p) => p.flat().filter(Boolean).join(' ');
 const rawOf = (view) => (view && view.raw) || view || null;
@@ -169,10 +170,26 @@ const CHEV = { UP: [0, -64, -90], RIGHT: [64, 0, 0], DOWN: [0, 64, 90], LEFT: [-
 
 function Chevron({ dir, on, onClick }) {
   const [x, y, rot] = CHEV[dir];
+  const isDown = useRef(false);
   return html`<g class=${cx('fwheel__chev', on && 'is-on')} transform=${`translate(${x} ${y}) rotate(${rot})`}
-      onPointerDown=${(e) => { e.stopPropagation(); onClick?.(dir); }}
-      onClick=${(e) => { e.stopPropagation(); onClick?.(dir); }}>
-    <circle cx="0" cy="0" r="32" fill="transparent" />
+      onPointerDown=${(e) => {
+        e.stopPropagation();
+        isDown.current = true;
+        onClick?.preview?.(dir);
+      }}
+      onPointerUp=${(e) => {
+        e.stopPropagation();
+        if (isDown.current) {
+          isDown.current = false;
+          onClick?.(dir);
+        }
+      }}
+      onPointerCancel=${() => { isDown.current = false; }}
+      onClick=${(e) => {
+        e.stopPropagation();
+        onClick?.(dir);
+      }}>
+    <circle cx="0" cy="0" r="22" fill="transparent" />
     <path d="M-9 -15 L3 0 L-9 15 L-3 15 L9 0 L-3 -15 Z" />
   </g>`;
 }
@@ -206,6 +223,9 @@ export function FacingWheel({ view, row, col, grid, name = '', onPreview, onComm
     const L = live.current;
     if (!L.g) return null;
     const d = dirFromDelta(clientX - L.g.x, clientY - L.g.y, L.dead);
+    if (d && d !== L.dir) {
+      audio.sfx('tab', { volume: 0.35 });
+    }
     setDir(d);
     return d;
   };
@@ -219,6 +239,14 @@ export function FacingWheel({ view, row, col, grid, name = '', onPreview, onComm
     if (!selectedDir) return;
     setDir(selectedDir);
     onCommit(boardDir(selectedDir, live.current.mirror));
+  };
+  onDirectCommit.preview = (selectedDir) => {
+    if (!selectedDir) return;
+    if (selectedDir !== live.current.dir) {
+      audio.sfx('tab', { volume: 0.35 });
+    }
+    setDir(selectedDir);
+    live.current.hadDir = true;
   };
 
   const onDown = (e) => {
@@ -239,19 +267,12 @@ export function FacingWheel({ view, row, col, grid, name = '', onPreview, onComm
   };
   const onUp = (e) => {
     if (!drag || e.pointerId !== drag.id) return;
-    const sDrag = drag;
     setDrag(null);
-    const d = choose(e.clientX, e.clientY);
+    const d = choose(e.clientX, e.clientY) || live.current.dir;
     if (d) {
       onCommit(boardDir(d, live.current.mirror));
     } else {
-      const dt = Date.now() - (sDrag.t0 || 0);
-      const dist = Math.hypot(e.clientX - (sDrag.x0 || 0), e.clientY - (sDrag.y0 || 0));
-      if (!live.current.hadDir && dt < 450 && dist < live.current.dead * 1.5) {
-        onCommit(boardDir('RIGHT', live.current.mirror));
-      } else {
-        onCancel();
-      }
+      onCancel();
     }
   };
   const onPointerCancel = () => { setDrag(null); setDir(null); };

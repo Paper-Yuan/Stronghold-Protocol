@@ -150,8 +150,10 @@ describe('AudioManager', () => {
       assert.ok(asked(urls, manifest.audio.bgm.prep.loop), 'BGM fetched after unlock');
       a.sfx('buy');
       a.sfx('nonexistent');
+      a.deploy({ defId: 'char_002_amiya' });
       await new Promise((r) => setTimeout(r, 10));
       assert.ok(asked(urls, manifest.audio.sfx.ui.buy));
+      assert.ok(asked(urls, manifest.audio.sfx.battle.deploy) || asked(urls, manifest.audio.sfx.units?.char_002_amiya?.born), 'operator deploy sfx played');
       // same loop URL ⇒ no restart
       const before = fw.made.started;
       a.playBgm('combat');

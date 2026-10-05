@@ -532,13 +532,12 @@ button.bpop__harmony:hover { border-style: solid; color: #fff; }
 }
 .fwheel__outer { fill: rgba(8, 12, 10, .1); stroke: #fff; stroke-width: 2.4px; vector-effect: non-scaling-stroke; }
 .fwheel__quad { fill: transparent; transition: fill var(--t-fast); }
-/* only the chevron lights (research 09 §1.2): a tinted quadrant would wash out the units standing under the diamond */
-.fwheel__quad.is-on { fill: transparent; }
+.fwheel__quad.is-on { fill: rgba(255, 174, 61, .28); stroke: rgba(255, 174, 61, .7); stroke-width: 1.5px; }
 .fwheel__inner { fill: rgba(255, 255, 255, .06); stroke: rgba(255, 255, 255, .9); stroke-width: 1.6px; vector-effect: non-scaling-stroke; }
 .fwheel.is-pressed .fwheel__inner { fill: rgba(255, 255, 255, .1); }
 .fwheel__chev { pointer-events: auto; cursor: pointer; }
 .fwheel__chev path { fill: rgba(255, 255, 255, .92); transform-box: fill-box; transform-origin: center; transition: transform var(--t-fast), fill var(--t-fast); }
-.fwheel__chev.is-on path, .fwheel__chev:active path { fill: #ffae3d; transform: scale(1.4); filter: drop-shadow(0 0 3px rgba(255, 156, 51, .9)); }
+.fwheel__chev.is-on path, .fwheel__chev:active path { fill: #ffae3d; transform: scale(1.45); filter: drop-shadow(0 0 5px rgba(255, 174, 61, .95)); }
 .fwheel__cancel {
   position: absolute; left: 25%; top: 25%; transform: translate(-92%, -118%); pointer-events: auto;
   display: inline-flex; align-items: center; gap: .05rem; padding: .03rem .1rem .03rem .05rem; white-space: nowrap;

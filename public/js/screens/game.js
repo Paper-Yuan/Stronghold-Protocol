@@ -832,6 +832,7 @@ function MatchScreen() {
       // announceDeploy) instead of off the manual drop, so combat auto-deploy, a merge's elite and a
       // raid redeploy speak too — it used to sound only when the player tapped a piece into place.
       view.on('unitDeploy', (e) => {
+        audio.deploy(e, gd);
         const vk = voiceKey(e?.defId || e?.chessId, gd);
         if (vk) audio.voice(vk);
       }),
@@ -971,6 +972,7 @@ function MatchScreen() {
     const f = live.current.facing;
     if (!f) return;
     setFacing(null);
+    audio.sfx('click', { volume: 0.5 });
     const intent = facingIntent(f.piece, { row: f.row, col: f.col }, dir);
     heldRef.current.set(f.uid, { row: f.row, col: f.col, t: Date.now() });
     const ok = intent.t === 'g.art'
