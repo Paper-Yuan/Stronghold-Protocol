@@ -212,12 +212,18 @@ class MainActivity : AppCompatActivity() {
         // because the window background is dark the player sees pure black with no message — and the page cannot put
         // one up, since it would be drawn on that same broken surface. So this is opt-in now; the blank-screen
         // watchdog below is what tells the player about it and offers 兼容模式.
+        val isCompat = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE).getBoolean(KEY_COMPAT_MODE, false)
         val hwLayer = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE).getBoolean(KEY_HW_LAYER, false)
         try {
-            webView.setLayerType(if (hwLayer) View.LAYER_TYPE_HARDWARE else View.LAYER_TYPE_NONE, null)
+            if (isCompat) {
+                webView.setLayerType(View.LAYER_TYPE_SOFTWARE, null)
+            } else {
+                webView.setLayerType(if (hwLayer) View.LAYER_TYPE_HARDWARE else View.LAYER_TYPE_NONE, null)
+            }
         } catch (e: Exception) {
             Log.w(TAG, "WebView layer type error: ${e.message}")
         }
+        webView.setBackgroundColor(0xFF2A2F2E.toInt())
 
         webView.settings.apply {
             javaScriptEnabled = true
@@ -461,8 +467,13 @@ class MainActivity : AppCompatActivity() {
      * seeing nothing, so an error report also stops the watchdog and is shown with the diagnostics.
      */
     fun reportClientState(json: String) {
-        clientState = json
-        cancelBlankScreenWatchdog()
+        val isHealthy = json.contains("\"booted\":true") && !json.contains("\"layoutCollapsed\":true")
+        if (isHealthy) {
+            clientState = json
+            cancelBlankScreenWatchdog()
+        } else {
+            Log.w(TAG, "client state reported unready or collapsed: $json")
+        }
         Log.i(TAG, "client state: $json")
     }
 
@@ -528,7 +539,7 @@ class MainActivity : AppCompatActivity() {
             .putString(KEY_BOARD_MODE, "2d")
             .apply()
         try {
-            webView.setLayerType(View.LAYER_TYPE_NONE, null)
+            webView.setLayerType(View.LAYER_TYPE_SOFTWARE, null)
         } catch (e: Exception) {
             Log.w(TAG, "layer reset before compat reload failed: ${e.message}")
         }

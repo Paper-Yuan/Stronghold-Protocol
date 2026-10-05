@@ -315,7 +315,8 @@ function raidPoll(battle, st) {
     const idleOk = battle.time - since >= idle - 1e-9;
     if (!(ready || idleOk)) continue;
     if (battle.enemiesInKeys(u.rangeKeys || [], u, u.profile).length) continue;
-    const list = (targets ??= raidTargets(battle, u, st.pid));
+    if (targets == null) targets = raidTargets(battle, u, st.pid);
+    const list = targets;
     if (!list.length) continue;
     // either trigger: raidTile only offers tiles with the target in range (without that a ready skill that finds no
     // target would redeploy — firing every 部署时 effect — at every poll; the idle trigger, which lacked it up to

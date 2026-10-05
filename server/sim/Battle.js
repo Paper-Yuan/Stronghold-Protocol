@@ -1893,7 +1893,8 @@ export class Battle {
         // (does not block) — the match lets ranged operators deploy there (deployTiles.rangedOnly).
         if (!this.grid.inRect(d.row, d.col)) continue;
         this.grid.setObstacle(d.row, d.col, true);
-        (this._elevated ??= new Set()).add(d.row * COLS + d.col);
+        if (this._elevated == null) this._elevated = new Set();
+        this._elevated.add(d.row * COLS + d.col);
         continue;
       }
       const spec = OBSTACLE_DEVICES[d.key] ?? (d.role === 'crate' ? { hp: d.stats?.maxHp ?? 100, name: d.name } : null);
@@ -2179,7 +2180,8 @@ export class Battle {
    */
   groundPathTiles() {
     const ver = this.grid.version ?? 0;
-    const used = (this._pathRoutesUsed ??= new Set());
+    if (this._pathRoutesUsed == null) this._pathRoutesUsed = new Set();
+    const used = this._pathRoutesUsed;
     const before = used.size;
     for (const p of this._pending || []) if (!p.route && Number.isInteger(p.routeIndex)) used.add(p.routeIndex);
     if (this._pathTiles && this._pathTilesVer === ver && used.size === before) return this._pathTiles;

@@ -314,7 +314,10 @@ const KITS = {
           onStart({ unit }) {
             unit.mem.verdict = new Set();
             // 特性的回复生命效果提高至2倍 (the reaper profile reads profile.selfHeal on every attack)
-            if (unit.profile) { unit.mem.verdictHeal0 ??= num(unit.profile.selfHeal, 50); unit.profile.selfHeal = unit.mem.verdictHeal0 * num(bb.trait_ratio, 1); }
+            if (unit.profile) {
+              if (unit.mem.verdictHeal0 == null) unit.mem.verdictHeal0 = num(unit.profile.selfHeal, 50);
+              unit.profile.selfHeal = unit.mem.verdictHeal0 * num(bb.trait_ratio, 1);
+            }
           },
           onEnd({ battle, unit }) {
             const hit = unit.mem.verdict;
@@ -1199,7 +1202,8 @@ const KITS = {
             onHit({ battle, unit, x, y }) {
               if (!unit.mem.hornFlare) return;
               unit.mem.hornFlare = false;
-              (unit.mem.flares ??= []).push({ x, y, until: battle.time + num(bb.projectile_delay_time, 6) });
+              if (unit.mem.flares == null) unit.mem.flares = [];
+              unit.mem.flares.push({ x, y, until: battle.time + num(bb.projectile_delay_time, 6) });
               battle.fx('zone', { x, y, id: unit.id, r: num(bb.projectile_range, 1.7), duration: num(bb.projectile_delay_time, 6) });
             },
           },
@@ -1787,7 +1791,7 @@ const KITS = {
     };
     const cutCost = (a, v) => {
       if (!a || !(v > 0)) return;
-      a.mem.svashCostBase ??= a.base.cost;
+      if (a.mem.svashCostBase == null) a.mem.svashCostBase = a.base.cost;
       a.base.cost = Math.max(0, a.base.cost - v);
     };
     const slash = (battle, caster, atk) => {
@@ -1989,7 +1993,8 @@ const KITS = {
             const t = battle.alliesInGrid(unit).filter((a) => a.hp > 0).sort((a, b) => a.hpRatio - b.hpRatio || b.blocking.length - a.blocking.length || dist(a, unit) - dist(b, unit) || a.id - b.id)[0];
             if (!t) return;
             const z = { type: 'guard', r: t.tileR, c: t.tileC, x: t.x, y: t.y, t: 0, acc: 0, dur: num(bb.projectile_delay_time, 6) + extend(battle, unit) };
-            (unit.mem.zones ??= []).push(z);
+            if (unit.mem.zones == null) unit.mem.zones = [];
+            unit.mem.zones.push(z);
             battle.fx('zone', { x: z.x, y: z.y, id: unit.id, r: RING1, duration: z.dur });
           },
         }),
@@ -2000,8 +2005,9 @@ const KITS = {
               .sort((a, b) => a.s.blockCnt - b.s.blockCnt || dist(a, unit) - dist(b, unit) || a.id - b.id)
               .slice(0, Math.max(1, num(bb.max_target_token, 3)));
             const dur = num(bb.projectile_delay_time, 19) + extend(battle, unit);
+            if (unit.mem.zones == null) unit.mem.zones = [];
             for (const a of ops) {
-              (unit.mem.zones ??= []).push({ type: 'sea', anchor: a, x: a.x, y: a.y, t: 0, acc: Math.max(0.1, num(bb.interval, 1)) - AURA_IV, dur });
+              unit.mem.zones.push({ type: 'sea', anchor: a, x: a.x, y: a.y, t: 0, acc: Math.max(0.1, num(bb.interval, 1)) - AURA_IV, dur });
               battle.fx('zone', { x: a.x, y: a.y, id: unit.id, r: RING1, duration: dur });
             }
           },
@@ -2030,7 +2036,8 @@ const KITS = {
           // it drifts away from her deployment tile ("移动方向始终为远离棘刺部署位置中心的方向")
           const dx = t.x - unit.x, dy = t.y - unit.y, len = Math.hypot(dx, dy) || 1;
           const z = { x: t.x, y: t.y, vx: (dx / len) * speed, vy: (dy / len) * speed, t: 0, acc: 0, dur: baseDur + extra };
-          (unit.mem.zones ??= []).push(z);
+          if (unit.mem.zones == null) unit.mem.zones = [];
+          unit.mem.zones.push(z);
           battle.fx('zone', { x: z.x, y: z.y, id: unit.id, r: r0, duration: z.dur });
         },
       },
@@ -2541,7 +2548,8 @@ const KITS = {
             c.dmg.type = 'elemental';
             c.dmg.element = 'apoptosis';
             c.dmg.canDodge = false;
-            (c.dmg.tags ||= []).push('nymphBreak');
+            if (!c.dmg.tags) c.dmg.tags = [];
+            c.dmg.tags.push('nymphBreak');
           }, { owner: unit, priority: -10 });
         }
       },

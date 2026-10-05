@@ -219,6 +219,12 @@ h1, h2, h3, h4, p { margin: 0; }
 /* ---- global app backdrop (behind every screen) ------------------------------------------------- */
 .app-root {
   position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100%;
+  height: 100%;
   inset: 0;
   overflow: hidden;
   isolation: isolate;
@@ -226,6 +232,12 @@ h1, h2, h3, h4, p { margin: 0; }
 
 .app-bg {
   position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100%;
+  height: 100%;
   inset: 0;
   z-index: 0;
   pointer-events: none;
@@ -238,6 +250,12 @@ h1, h2, h3, h4, p { margin: 0; }
   /* faint survey grid */
   content: '';
   position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100%;
+  height: 100%;
   inset: 0;
   background:
     linear-gradient(rgba(78, 216, 175, .045) 1px, transparent 1px) 0 0 / .8rem .8rem,
@@ -249,6 +267,12 @@ h1, h2, h3, h4, p { margin: 0; }
   /* grain + scanlines + vignette */
   content: '';
   position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100%;
+  height: 100%;
   inset: 0;
   background:
     repeating-linear-gradient(0deg, rgba(255, 255, 255, .02) 0 1px, transparent 1px 3px),
@@ -260,6 +284,12 @@ h1, h2, h3, h4, p { margin: 0; }
 /* ---- screens ------------------------------------------------------------------------------------ */
 .screen {
   position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100%;
+  height: 100%;
   inset: 0;
   z-index: var(--z-screen);
   display: flex;

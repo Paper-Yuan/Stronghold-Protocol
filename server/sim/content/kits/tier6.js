@@ -1926,7 +1926,7 @@ function mlyss(bb, chess, def) {
       { install(battle, unit) { // 净水即生命: 流形 copy / respawn / melee steal / ranged split
         unit.mem.mlyssPending = [];
         const S = bstate(battle);
-        S.robbed ??= new WeakMap(); // enemy → { atk, def } stolen by any 流形
+        if (S.robbed == null) S.robbed = new WeakMap(); // enemy → { atk, def } stolen by any 流形
         const mine = (t) => isTok(t, tokId, unit);
         // her 流形 on the field (split clones aside: deployLimit 1 counts the 流形 itself)
         const standing = () => battle.allyUnits.some((t) => mine(t) && live(t) && !t.mem.mlyssClone);
@@ -2037,7 +2037,7 @@ function mlyss(bb, chess, def) {
       } },
       { install(battle, unit) { // 开源节流: 莱茵生命 ops of the owner cost less DP to redeploy
         const S = bstate(battle);
-        S.rhine ??= new Set();
+        if (S.rhine == null) S.rhine = new Set();
         if (S.rhine.has(unit.ownerId)) return;
         S.rhine.add(unit.ownerId);
         const cut = num(t1.cost), first = num(t1.runtime_cost);
@@ -3048,7 +3048,7 @@ function whitw2(bb, chess, def) {
       } },
       { install(battle, unit) { // 叙拉古的荣幸: one team effect per player, the strongest copy's numbers
         const S = bstate(battle);
-        S.siracusa ??= new Map();
+        if (S.siracusa == null) S.siracusa = new Map();
         const cur = S.siracusa.get(unit.ownerId);
         const sp = num(t1.sp), as = num(t1.attack_speed);
         if (cur) { cur.sp = Math.max(cur.sp, sp); cur.as = Math.max(cur.as, as); return; }
@@ -3238,7 +3238,7 @@ function agoat2(bb, chess, def) {
           if (a.hp < a.s.maxHp) battle.heal(unit, a, unit.s.atk, { skillHeal: true });
         }
         const S = bstate(battle);
-        S.agoatVeils ??= [];
+        if (S.agoatVeils == null) S.agoatVeils = [];
         S.agoatVeils.push({ keys: new Set(unit.rangeKeys || []), pool: unit.s.atk * bv(bb, 'atk_scale', 5), until: battle.time + num(bb.duration, 12), src: unit });
         battle.fx('shield', { x: unit.x, y: unit.y, id: unit.id, duration: num(bb.duration, 12) });
         if (!S.agoatVeilHook) {

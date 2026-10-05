@@ -321,16 +321,24 @@ function reportClientState(extra = {}) {
   const native = globalThis.AndroidNative;
   if (typeof native?.reportClientState !== 'function') return;
   const gl = (type) => { try { return !!document.createElement('canvas').getContext(type); } catch { return false; } };
+  const root = document.querySelector('.app-root');
+  const renderedW = root?.clientWidth || 0;
+  const renderedH = root?.clientHeight || 0;
+  const layoutCollapsed = renderedW === 0 || renderedH === 0;
   try {
     native.reportClientState(JSON.stringify({
       at: Date.now(),
-      booted: !!globalThis.__SP__,
+      booted: !!globalThis.__SP__ && !layoutCollapsed,
+      layoutCollapsed,
+      renderedW,
+      renderedH,
       rootChildren: document.getElementById('app')?.childElementCount ?? -1,
       canvases: document.querySelectorAll('canvas').length,
       webgl2: gl('webgl2'), webgl: gl('webgl'),
       dpr: globalThis.devicePixelRatio || 1,
       vw: globalThis.innerWidth || 0, vh: globalThis.innerHeight || 0,
       ua: String(navigator.userAgent).slice(0, 160),
+      ...(layoutCollapsed ? { error: `UI layout collapsed (w=${renderedW}, h=${renderedH})` } : {}),
       ...extra,
     }));
   } catch { /* the shell is already on its own timeout path */ }

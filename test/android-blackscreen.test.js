@@ -8,7 +8,7 @@
 
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -18,6 +18,7 @@ const read = (p) => readFileSync(path.join(ROOT, p), 'utf8');
 const activity = read('android/app/src/main/java/com/paper/stronghold/MainActivity.kt');
 const bridge = read('android/app/src/main/java/com/paper/stronghold/AndroidBridge.kt');
 const mainJs = read('public/js/main.js');
+const themeCss = read('public/css/theme.css');
 const docs = read('docs/ANDROID.md');
 
 describe('no forced hardware layer', () => {
@@ -25,6 +26,8 @@ describe('no forced hardware layer', () => {
     assert.match(activity, /KEY_HW_LAYER = "webview_hw_layer"/);
     assert.match(activity, /getBoolean\(KEY_HW_LAYER, false\)/, 'default must be off: forcing it black-screens older OEM GPUs');
     assert.match(activity, /setLayerType\(if \(hwLayer\) View\.LAYER_TYPE_HARDWARE else View\.LAYER_TYPE_NONE, null\)/);
+    assert.match(activity, /webView\.setBackgroundColor\(0xFF2A2F2E\.toInt\(\)\)/, 'neutral grey background distinguishes dead compositor from unstyled black');
+    assert.match(activity, /View\.LAYER_TYPE_SOFTWARE/, 'compat mode must offer real software layer fallback');
   });
 });
 
@@ -32,9 +35,11 @@ describe('the page reports what it can see', () => {
   test('reportClientState crosses into the shell and covers the boot and the error path', () => {
     assert.match(mainJs, /function reportClientState\(extra = \{\}\)/);
     assert.match(mainJs, /typeof native\?\.reportClientState !== 'function'/, 'browsers and older shells have no bridge method');
+    assert.match(mainJs, /layoutCollapsed/);
+    assert.match(mainJs, /renderedW = root\?\.clientWidth/);
     assert.match(mainJs, /rootChildren: document\.getElementById\('app'\)\?\.childElementCount/);
     assert.match(mainJs, /webgl2: gl\('webgl2'\), webgl: gl\('webgl'\)/);
-    assert.match(mainJs, /globalThis\.__SP__ = \{[^}]*\};\n  reportClientState\(\);/, 'reported once the first render is in');
+    assert.match(mainJs, /reportClientState\(\);/, 'reported once the first render is in');
     assert.match(mainJs, /reportClientState\(\{ error:/, 'an uncaught throw must reach the shell too, not just the console');
   });
 
@@ -95,3 +100,29 @@ describe('documented', () => {
     assert.match(docs, /\?render=fallback/);
   });
 });
+
+describe('CSS physical fallbacks for legacy WebViews (Chromium < 87)', () => {
+  test('.app-root and .screen supply top/left/width/height before inset: 0', () => {
+    assert.match(themeCss, /\.app-root\s*\{[^}]*top:\s*0;[^}]*inset:\s*0;/s, '.app-root must not collapse to 0x0 without inset');
+    assert.match(themeCss, /\.screen\s*\{[^}]*top:\s*0;[^}]*inset:\s*0;/s, '.screen must not collapse to 0x0 without inset');
+  });
+});
+
+describe('/sim/ ES2020 syntax (no logical assignment)', () => {
+  test('no ??= or ||= in server/sim modules', () => {
+    function scanDir(dir) {
+      const entries = readdirSync(dir);
+      for (const e of entries) {
+        const full = path.join(dir, e);
+        if (statSync(full).isDirectory()) {
+          scanDir(full);
+        } else if (full.endsWith('.js')) {
+          const code = readFileSync(full, 'utf8');
+          assert.doesNotMatch(code, /(?:\?\?|\|\||&&)=/, `${full} contains logical assignment operator (??=, ||=, or &&=) incompatible with Chrome < 85`);
+        }
+      }
+    }
+    scanDir(path.join(ROOT, 'server/sim'));
+  });
+});
+

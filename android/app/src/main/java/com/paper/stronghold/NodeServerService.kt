@@ -191,6 +191,10 @@ class NodeServerService : Service() {
             PosixLib.INSTANCE.setenv("PORT", "3000", 1)
             PosixLib.INSTANCE.setenv("HOST", "0.0.0.0", 1)
             PosixLib.INSTANCE.setenv("NODE_ENV", "production", 1)
+            val prefs = getSharedPreferences("stronghold_prefs", Context.MODE_PRIVATE)
+            if (prefs.getBoolean("compat_mode", false)) {
+                PosixLib.INSTANCE.setenv("SP_COMBAT", "server", 1)
+            }
             PosixLib.INSTANCE.chdir(bundleDir.absolutePath)
         } catch (e: Throwable) {
             Log.w(TAG, "Posix env configuration warning: ${e.message}")

@@ -7,17 +7,17 @@
 
 /* ---- screen shell ---------------------------------------------------------------------------- */
 .gm { background: transparent; }
-.gm__field { position: absolute; inset: 0; z-index: 0; overflow: hidden; }
+.gm__field { position: absolute; top: 0; left: 0; right: 0; bottom: 0; width: 100%; height: 100%; inset: 0; z-index: 0; overflow: hidden; }
 .gm__field canvas { display: block; }
 .gm__vignette {
-  position: absolute; inset: 0; z-index: 1; pointer-events: none;
+  position: absolute; top: 0; left: 0; right: 0; bottom: 0; width: 100%; height: 100%; inset: 0; z-index: 1; pointer-events: none;
   background:
     linear-gradient(180deg, rgba(6, 9, 8, .78) 0%, rgba(6, 9, 8, 0) 18%),
     linear-gradient(0deg, rgba(6, 9, 8, .6) 0%, rgba(6, 9, 8, 0) 22%),
     radial-gradient(120% 90% at 45% 50%, transparent 60%, rgba(0, 0, 0, .5) 100%);
 }
-.gm__loading { position: absolute; inset: 0; z-index: 2; display: grid; place-items: center; pointer-events: none; }
-.gm__hud { position: absolute; inset: 0; z-index: 3; pointer-events: none; }
+.gm__loading { position: absolute; top: 0; left: 0; right: 0; bottom: 0; width: 100%; height: 100%; inset: 0; z-index: 2; display: grid; place-items: center; pointer-events: none; }
+.gm__hud { position: absolute; top: 0; left: 0; right: 0; bottom: 0; width: 100%; height: 100%; inset: 0; z-index: 3; pointer-events: none; }
 .gm__hud > * { pointer-events: auto; }
 .gload { align-items: center; justify-content: center; gap: .2rem; }
 
@@ -522,8 +522,8 @@
 .awayov__box h2 { font-size: .34rem; letter-spacing: .12em; }
 
 /* ---- simplified (DOM) field view ---------------------------------------------------------------------------------------- */
-.ff { position: absolute; inset: 0; overflow: hidden; user-select: none; }
-.ff::before { content: ''; position: absolute; inset: 0; background: radial-gradient(70% 60% at 45% 48%, rgba(40, 60, 52, .35), transparent 70%); }
+.ff { position: absolute; top: 0; left: 0; right: 0; bottom: 0; width: 100%; height: 100%; inset: 0; overflow: hidden; user-select: none; }
+.ff::before { content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0; width: 100%; height: 100%; inset: 0; background: radial-gradient(70% 60% at 45% 48%, rgba(40, 60, 52, .35), transparent 70%); }
 .ff-board { position: absolute; }
 .ff-tile, .ff-slot, .ff-piece, .ff-unit { position: absolute; left: 0; top: 0; }
 .ff-tile { box-sizing: border-box; border: 1px solid rgba(0, 0, 0, .35); }
