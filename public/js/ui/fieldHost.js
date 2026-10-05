@@ -55,6 +55,9 @@ export const HUD_REM = Object.freeze({
   // Rem budget for the bond strip's bottom edge. `hudBands` takes the larger of this and the strip's measured
   // bottom, because .bslot carries px floors that make it taller than this on a phone.
   bondStripBottom: 2.16, shopBarTop: 2.64, shopBarBorderPx: 3, shopTabTop: 0.8, shopTabBorderPx: 3, cornerTop: 0.8,
+  // Extra air between the measured strip and the field's back row on a touch screen, where the strip lands flush on
+  // it (1 px at 761×360): the top board row and the bond discs compete for the same pixels.
+  bondStripGapPx: 10,
 });
 
 /**
@@ -88,12 +91,14 @@ export function hudBands(kind, size, opts) {
   let safeBottom = 0;
   let corner = 0;
   let stripBottom = 0;
+  let coarse = false;
   try {
     rem = parseFloat(getComputedStyle(document.documentElement).fontSize) || 100;
     // The bond strip's slots and labels carry px floors (css/screens/game.css .bslot), so on a phone it is taller than
     // its rem budget suggests and would cover the field's back row. Measure the strip itself; fall back to the rem
     // constant when it is not on the page (a player with no bonds yet).
     stripBottom = document.querySelector('.gm__bonds')?.getBoundingClientRect()?.bottom || 0;
+    coarse = !!document.documentElement?.classList?.contains('sp-coarse');
     // the HUD layer starts below the top safe-area inset and ends above the bottom one (css/devices.css .gm__hud)
     const hud = document.querySelector('.gm__hud')?.getBoundingClientRect();
     safeTop = Math.max(0, hud?.top || 0);
@@ -106,7 +111,7 @@ export function hudBands(kind, size, opts) {
     ? Math.max(safeBottom + rem * HUD_REM.shopTabTop + HUD_REM.shopTabBorderPx, corner || safeBottom + rem * HUD_REM.cornerTop)
     : rem * HUD_REM.shopBarTop + HUD_REM.shopBarBorderPx;
   return {
-    top: Math.min(h * 0.4, Math.max(safeTop + rem * HUD_REM.bondStripBottom, stripBottom)),
+    top: Math.min(h * 0.4, Math.max(safeTop + rem * HUD_REM.bondStripBottom, stripBottom + (stripBottom && coarse ? HUD_REM.bondStripGapPx : 0))),
     bottom: Math.min(h * 0.4, bottom),
   };
 }

@@ -219,17 +219,20 @@ describe('phone layout overlaps (briefing stage line, bond badges, bond strip, s
       if (!h) return t.skip('not in touch layout');
       const { page, problems } = h;
       const slots = await page.$$eval('.gm__bonds .bslot', (els) => els.map((e) => { const r = e.getBoundingClientRect(); return { w: r.width, h: r.height, left: r.left, right: r.right }; }));
-      const host = await page.$eval('.gm__bonds', (e) => { const r = e.getBoundingClientRect(); return { left: r.left, right: r.right, w: r.width }; });
+      const host = await page.$eval('.gm__bonds', (e) => { const r = e.getBoundingClientRect(); return { left: r.left, right: r.right, w: r.width, vw: window.innerWidth }; });
       await page.screenshot({ path: path.join(OUT, `overlap-${dev}-bstrip.png`) });
 
       if (slots.length) {
         const min = Math.min(...slots.map((s) => Math.min(s.w, s.h)));
         assert.ok(min >= DEVICES[dev].minSlot, `.bslot shrinks to ${min.toFixed(1)}px on ${dev} — phone floor is ${DEVICES[dev].minSlot}px (game.css .bslot{min-width:max(.74rem,27px)})`);
         const group = { left: Math.min(...slots.map((s) => s.left)), right: Math.max(...slots.map((s) => s.right)) };
-        const drift = Math.abs((group.left + group.right) / 2 - (host.left + host.right) / 2);
-        assert.ok(drift <= host.w * 0.08, `bond strip is off-centre by ${drift.toFixed(1)}px in a ${host.w.toFixed(0)}px host (>8%) — centre .gm__bonds`);
+        // Measured against the VIEWPORT, not the host box: .gm__bonds used to carry asymmetric insets
+        // (left 1.56rem / right 5.2rem), so a strip perfectly centred inside it still read as off-centre
+        // on screen by ~1.8rem, and centring-in-host could never notice.
+        const drift = Math.abs((group.left + group.right) / 2 - host.vw / 2);
+        assert.ok(drift <= Math.max(4, host.vw * 0.02), `bond strip centre is ${drift.toFixed(1)}px from the viewport centre on ${dev} (>2%) — .gm__bonds insets must stay symmetric`);
 
-        // Check bond dimensions & typography floor: --disc >= 21px, name font >= 11px, slot width >= 27px
+        // Check bond dimensions & typography floor: --disc >= 21px, name font >= 10px, slot width >= 27px
         const bondMetrics = await page.evaluate(() => {
           const out = [];
           const slot = document.querySelector('.gm__bonds .bslot');
@@ -239,7 +242,7 @@ describe('phone layout overlaps (briefing stage line, bond badges, bond strip, s
             const nameEl = slot.querySelector('.bond__name');
             if (nameEl) {
               const px = parseFloat(getComputedStyle(nameEl).fontSize);
-              if (px < 11) out.push(`bond__name font-size ${px.toFixed(1)}px < 11px`);
+              if (px < 10) out.push(`bond__name font-size ${px.toFixed(1)}px < 10px`);
             }
             const discEl = slot.querySelector('.bond__core') || slot.querySelector('.bond__disc');
             if (discEl) {

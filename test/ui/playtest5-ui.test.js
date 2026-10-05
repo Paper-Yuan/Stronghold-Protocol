@@ -104,12 +104,17 @@ describe('8: the settings gear is a clean, regular icon', () => {
 /** Root font size of css/theme.css: clamp(40px, min(100vw / 19.2, 100vh / 10.8), 240px). */
 const remAt = (w, h) => Math.max(40, Math.min(w / 19.2, h / 10.8, 240));
 
-/** Run `fn` with a stubbed DOM: the root font size, and the HUD layer's top (safe-area inset). */
-function withDom(rem, hudTop, fn) {
+/** Run `fn` with a stubbed DOM: the root font size, and the HUD layer's top (safe-area inset). `opts` feeds what
+ *  hudBands measures off the live page: the bond strip's bottom edge and the coarse-pointer class on <html>. */
+function withDom(rem, hudTop, fn, { stripBottom = 0, coarse = false } = {}) {
   const g = globalThis;
   const saved = { document: g.document, getComputedStyle: g.getComputedStyle };
   g.getComputedStyle = () => ({ fontSize: `${rem}px` });
-  g.document = { documentElement: {}, querySelector: (s) => (s === '.gm__hud' ? { getBoundingClientRect: () => ({ top: hudTop }) } : null) };
+  g.document = {
+    documentElement: { classList: { contains: (c) => c === 'sp-coarse' && coarse } },
+    querySelector: (s) => (s === '.gm__hud' ? { getBoundingClientRect: () => ({ top: hudTop }) }
+      : s === '.gm__bonds' && stripBottom ? { getBoundingClientRect: () => ({ bottom: stripBottom }) } : null),
+  };
   try { return fn(); } finally { g.document = saved.document; g.getComputedStyle = saved.getComputedStyle; }
 }
 
@@ -148,6 +153,14 @@ describe('9: the prep camera keeps the bench clear of the shop bar on phones in 
     withDom(40, 0, () => assert.deepEqual(hudBands('prep', { width: 640, height: 200 }), { top: 80, bottom: 80 }), 'clamped at 40 % of the height');
   });
 
+  test('a thumb gets air under the bond strip: the measured bottom only, on a coarse pointer', () => {
+    const strip = 75.8; // .gm__bonds bottom at 761×360 (px floors put it past the 2.16rem budget)
+    const band = (o) => withDom(33.3, 0, () => hudBands('prep', { width: 761, height: 360 }).top, o);
+    assert.ok(Math.abs(band({ stripBottom: strip }) - 75.8) < 1e-9, 'a fine pointer keeps today\'s flush framing (no desktop change)');
+    assert.ok(Math.abs(band({ stripBottom: strip, coarse: true }) - (75.8 + HUD_REM.bondStripGapPx)) < 1e-9, 'the back row starts below the discs, not under them');
+    assert.ok(Math.abs(band({ coarse: true }) - 33.3 * HUD_REM.bondStripBottom) < 1e-9, 'no strip on the page (no bonds yet): the rem budget alone');
+  });
+
   test('wiring: the game hands hudBands to the view, the view to the prep cameras', () => {
     assert.match(read('public/js/ui/fieldHost.js'), /padding: hudPadding, hud: hudBands \}/);
     const app = read('public/js/render/app.js');
@@ -183,6 +196,11 @@ describe('9: the prep camera keeps the bench clear of the shop bar on phones in 
         assert.ok(after.benchBottom <= shopTop + 1e-6, `${tag}: bench ${after.benchBottom} ≤ shop bar ${shopTop}`);
         assert.ok(after.tempBottom < after.benchBottom, `${tag}: temp row above the bench`);
         assert.ok(after.backTop >= hud.top - 1e-6, `${tag}: back row ${after.backTop} ≥ bond strip ${hud.top}`);
+        // the phone case hudBands actually takes: the strip's measured bottom (px floors, ≈ 2.28rem) plus the thumb gap
+        const touch = withDom(rem, 0, () => hudBands(kind, { width: w, height: h }), { stripBottom: rem * 2.28, coarse: true });
+        const spent = extents(presetCamera(kind, { width: w, height: h }, { hud: touch }), rows);
+        assert.ok(spent.benchBottom <= shopTop + 1e-6, `${tag}: the bench dives under the shop bar once the strip gap is spent (${spent.benchBottom} > ${shopTop})`);
+        assert.ok(spent.backTop >= touch.top - 1e-6, `${tag}: back row ${spent.backTop} still below the strip + gap ${touch.top}`);
       }
     }
   });
