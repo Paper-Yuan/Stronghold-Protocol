@@ -22,24 +22,28 @@
 import { genericKit } from './generic.js';
 import { withUnitLoadouts } from '../simdata.js';
 
-// Content files are loaded with guarded dynamic imports: a module that fails to load (syntax error, throwing
-// top-level code, missing file) is logged and replaced by an empty module instead of breaking the server.
-async function safeImport(path) {
-  try {
-    return await import(path);
-  } catch (e) {
-    console.error(`[content] failed to load ${path}: ${e && e.stack ? e.stack.split('\n').slice(0, 3).join(' | ') : e}`);
-    return {};
-  }
-}
+import tier1 from './kits/tier1.js';
+import tier2 from './kits/tier2.js';
+import tier3 from './kits/tier3.js';
+import tier4 from './kits/tier4.js';
+import tier5 from './kits/tier5.js';
+import tier6 from './kits/tier6.js';
+import * as tokens from './tokens.js';
+import * as devices from './devices.js';
+import * as enemies from './enemies.js';
+import * as bosses from './bosses.js';
+import * as bonds from './bonds.js';
+import * as garrisons from './garrisons.js';
+import * as items from './items.js';
+import * as bands from './bands.js';
+import * as choices from './choices.js';
 
-const TIERS = await Promise.all([1, 2, 3, 4, 5, 6].map((t) => safeImport(`./kits/tier${t}.js`)));
+const TIERS = [tier1, tier2, tier3, tier4, tier5, tier6];
 const DOMAIN_NAMES = ['tokens', 'devices', 'enemies', 'bosses', 'bonds', 'garrisons', 'items', 'bands', 'choices'];
-const DOMAINS = await Promise.all(DOMAIN_NAMES.map((n) => safeImport(`./${n}.js`)));
-const tokens = DOMAINS[0];
+const DOMAINS = [tokens, devices, enemies, bosses, bonds, garrisons, items, bands, choices];
 
 /** Merged kit registry: baseChessId → (bb, chess, def) => Kit */
-export const KITS = Object.freeze(Object.assign({}, ...TIERS.map((m) => (m && m.default && typeof m.default === 'object' ? m.default : {}))));
+export const KITS = Object.freeze(Object.assign({}, ...TIERS.map((m) => (m && typeof m === 'object' ? (m.default && typeof m.default === 'object' ? m.default : m) : {}))));
 
 /** Domain modules in install order: tokens, devices, enemies, bosses, bonds, garrisons, items, bands, choices. */
 export const MODULES = Object.freeze(DOMAIN_NAMES.map((n, i) => [n, DOMAINS[i]]));

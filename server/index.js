@@ -398,6 +398,22 @@ export function createStaticHandler({ publicDir, dataDir, sharedDir, simDir = pa
       res.end(req.method === 'HEAD' ? undefined : shimBody);
       return;
     }
+    if (decoded === '/sim/simdata.js') {
+      try {
+        const rawCode = await fsp.readFile(path.join(simDir, 'simdata.js'), 'utf8');
+        // Strip Node-only top-level await block so Chrome < 89 (e.g. Chrome 80-88 WebView) parses cleanly without 'Unexpected reserved word'
+        const browserCode = rawCode.replace(/if\s*\(\s*IS_NODE\s*\)\s*\{[\s\S]*?\n\}/, '/* browser: nodeLoader omitted (setSimData injects data) */');
+        const bBody = Buffer.from(browserCode);
+        const bTag = `"simdata-${bBody.length.toString(16)}"`;
+        const headers = { 'Content-Type': MIME['.js'], 'Cache-Control': 'no-cache', ETag: bTag, 'Content-Length': bBody.length };
+        if (isNotModified(req, bTag, new Date(0))) { delete headers['Content-Length']; res.writeHead(304, headers); res.end(); return; }
+        res.writeHead(200, headers);
+        res.end(req.method === 'HEAD' ? undefined : bBody);
+        return;
+      } catch (err) {
+        log.warn?.('[static] failed to serve browser simdata', err);
+      }
+    }
     // Extension-less audio (download-manager avoidance): /media/bgm/act1 → /assets/audio/bgm/act1.mp3
     if (decoded.startsWith(MEDIA_PREFIX)) {
       await serveMedia(req, res, decoded.slice(MEDIA_PREFIX.length), query, publicDir, gzipCache, log);

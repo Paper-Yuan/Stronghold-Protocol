@@ -9,16 +9,10 @@
 // content/index.js records it in battle.errors / the server log).
 // Membership (own bonds, 变形同构体 grants, 调和 enjoying active core bonds) lives in support/index.js.
 
-async function load(path) {
-  try {
-    return await import(path);
-  } catch (e) {
-    console.error(`[content] failed to load ${path}: ${e && e.stack ? e.stack.split('\n').slice(0, 3).join(' | ') : e}`);
-    return {};
-  }
-}
+import * as core from './bonds/core.js';
+import * as addon from './bonds/addon.js';
+import * as supportMeta from './support/meta.js';
 
-const [core, addon, supportMeta] = await Promise.all([load('./bonds/core.js'), load('./bonds/addon.js'), load('./support/meta.js')]);
 const PARTS = Object.freeze([['bonds/core', core], ['bonds/addon', addon]]);
 
 function runAll(fnName, arg, pre = null) {

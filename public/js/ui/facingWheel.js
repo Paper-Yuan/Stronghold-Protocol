@@ -167,9 +167,12 @@ export function useTileScreen(view, row, col) {
 /** Chevron centre (viewBox units, diamond half-diagonal = 100) and rotation per direction. */
 const CHEV = { UP: [0, -64, -90], RIGHT: [64, 0, 0], DOWN: [0, 64, 90], LEFT: [-64, 0, 180] };
 
-function Chevron({ dir, on }) {
+function Chevron({ dir, on, onClick }) {
   const [x, y, rot] = CHEV[dir];
-  return html`<g class=${cx('fwheel__chev', on && 'is-on')} transform=${`translate(${x} ${y}) rotate(${rot})`}>
+  return html`<g class=${cx('fwheel__chev', on && 'is-on')} transform=${`translate(${x} ${y}) rotate(${rot})`}
+      onPointerDown=${(e) => { e.stopPropagation(); onClick?.(dir); }}
+      onClick=${(e) => { e.stopPropagation(); onClick?.(dir); }}>
+    <circle cx="0" cy="0" r="32" fill="transparent" />
     <path d="M-9 -15 L3 0 L-9 15 L-3 15 L9 0 L-3 -15 Z" />
   </g>`;
 }
@@ -192,7 +195,7 @@ export function FacingWheel({ view, row, col, grid, name = '', onPreview, onComm
   // the committed g.move / g.art use the BOARD direction (render/prepfield.js maps it back for display).
   const mirror = viewMirrored(view) || !!(g && g.mirror);
   const bdir = boardDir(dir, mirror);
-  live.current = { g, half, dead, dir, bdir, mirror, onCommit, onCancel, onPreview };
+  live.current = { g, half, dead, dir, bdir, mirror, onCommit, onCancel, onPreview, hadDir: live.current?.hadDir || false };
 
   // preview: model / wedge direction and the rotated range under the units
   const tiles = useRangeHighlight(view, grid, row, col, bdir);
@@ -209,7 +212,13 @@ export function FacingWheel({ view, row, col, grid, name = '', onPreview, onComm
   const inside = (clientX, clientY) => {
     const L = live.current;
     if (!L.g) return true;
-    return Math.abs(clientX - L.g.x) + Math.abs(clientY - L.g.y) <= L.half * 1.18;
+    return Math.hypot(clientX - L.g.x, clientY - L.g.y) <= L.half * 2.2;
+  };
+
+  const onDirectCommit = (selectedDir) => {
+    if (!selectedDir) return;
+    setDir(selectedDir);
+    onCommit(boardDir(selectedDir, live.current.mirror));
   };
 
   const onDown = (e) => {
@@ -218,18 +227,32 @@ export function FacingWheel({ view, row, col, grid, name = '', onPreview, onComm
     e.preventDefault();
     if (!inside(e.clientX, e.clientY)) { onCancel(); return; }
     try { e.currentTarget.setPointerCapture(e.pointerId); } catch { /* ignore */ }
-    setDrag({ id: e.pointerId });
-    choose(e.clientX, e.clientY);
+    setDrag({ id: e.pointerId, t0: Date.now(), x0: e.clientX, y0: e.clientY });
+    live.current.hadDir = false;
+    const d = choose(e.clientX, e.clientY);
+    if (d) live.current.hadDir = true;
   };
   const onMove = (e) => {
     if (!drag || e.pointerId !== drag.id) return;
-    choose(e.clientX, e.clientY);
+    const d = choose(e.clientX, e.clientY);
+    if (d) live.current.hadDir = true;
   };
   const onUp = (e) => {
     if (!drag || e.pointerId !== drag.id) return;
+    const sDrag = drag;
     setDrag(null);
     const d = choose(e.clientX, e.clientY);
-    if (d) onCommit(boardDir(d, live.current.mirror)); else onCancel();
+    if (d) {
+      onCommit(boardDir(d, live.current.mirror));
+    } else {
+      const dt = Date.now() - (sDrag.t0 || 0);
+      const dist = Math.hypot(e.clientX - (sDrag.x0 || 0), e.clientY - (sDrag.y0 || 0));
+      if (!live.current.hadDir && dt < 450 && dist < live.current.dead * 1.5) {
+        onCommit(boardDir('RIGHT', live.current.mirror));
+      } else {
+        onCancel();
+      }
+    }
   };
   const onPointerCancel = () => { setDrag(null); setDir(null); };
 
@@ -261,7 +284,7 @@ export function FacingWheel({ view, row, col, grid, name = '', onPreview, onComm
         <path class=${cx('fwheel__quad', dir === 'DOWN' && 'is-on')} d="M0 100 L-50 50 L0 0 L50 50 Z" />
         <path class=${cx('fwheel__quad', dir === 'LEFT' && 'is-on')} d="M-100 0 L-50 -50 L0 0 L-50 50 Z" />
         <path class="fwheel__inner" d=${`M0 ${-DEAD_ZONE_TILES / 1.5 * 100} L${DEAD_ZONE_TILES / 1.5 * 100} 0 L0 ${DEAD_ZONE_TILES / 1.5 * 100} L${-DEAD_ZONE_TILES / 1.5 * 100} 0 Z`} />
-        ${DIRS.map((d) => html`<${Chevron} key=${d} dir=${d} on=${dir === d} />`)}
+        ${DIRS.map((d) => html`<${Chevron} key=${d} dir=${d} on=${dir === d} onClick=${onDirectCommit} />`)}
       </svg>
       <button type="button" class="fwheel__cancel" onPointerDown=${(e) => e.stopPropagation()}
         onClick=${(e) => { e.stopPropagation(); onCancel(); }} aria-label="点击取消">

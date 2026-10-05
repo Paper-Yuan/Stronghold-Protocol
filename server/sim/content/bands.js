@@ -7,16 +7,8 @@
 // Parts are loaded with guarded dynamic imports and run in isolation: one failing part never disables the other
 // (the first error is re-thrown afterwards so content/index.js records it in battle.errors / the server log).
 
-async function load(path) {
-  try {
-    return await import(path);
-  } catch (e) {
-    console.error(`[content] failed to load ${path}: ${e && e.stack ? e.stack.split('\n').slice(0, 3).join(' | ') : e}`);
-    return {};
-  }
-}
-
-const [battlePart, metaPart] = await Promise.all([load('./bands/battle.js'), load('./bands/meta.js')]);
+import * as battlePart from './bands/battle.js';
+import * as metaPart from './bands/meta.js';
 
 export function install(battle) {
   if (typeof battlePart.install === 'function') battlePart.install(battle);
@@ -25,3 +17,4 @@ export function install(battle) {
 export function registerMeta(registry) {
   if (typeof metaPart.registerMeta === 'function') metaPart.registerMeta(registry);
 }
+

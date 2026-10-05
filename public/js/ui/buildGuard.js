@@ -19,9 +19,9 @@
 // Kept dependency-free and injectable (fetch / reload / inMatch / timers) so test/ui/buildGuard.test.js can drive it.
 
 /** How often a page re-asks the server for its build tag. */
-export const BUILD_CHECK_MS = 60_000;
+export const BUILD_CHECK_MS = 60000;
 /** Give up on a `/healthz` that does not answer: a request left hanging must not stop the guard from ever checking again. */
-export const BUILD_FETCH_TIMEOUT_MS = 5_000;
+export const BUILD_FETCH_TIMEOUT_MS = 5000;
 /** How many checks in a row must report the same NEW build before the page acts on it. */
 export const BUILD_CONFIRMATIONS = 2;
 

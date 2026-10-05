@@ -106,9 +106,24 @@ describe('CSS physical fallbacks for legacy WebViews (Chromium < 87)', () => {
     assert.match(themeCss, /\.app-root\s*\{[^}]*top:\s*0;[^}]*inset:\s*0;/s, '.app-root must not collapse to 0x0 without inset');
     assert.match(themeCss, /\.screen\s*\{[^}]*top:\s*0;[^}]*inset:\s*0;/s, '.screen must not collapse to 0x0 without inset');
   });
+
+  test('.fwheel supplies top/left/width/height before inset: 0 to prevent 0x0 collapse', () => {
+    const panelsCss = read('public/css/screens/game-panels.css');
+    assert.match(panelsCss, /\.fwheel\s*\{[^}]*top:\s*0;[^}]*inset:\s*0;/s, '.fwheel must not collapse to 0x0 without inset');
+    assert.match(panelsCss, /\.fwheel__stripes\s*\{[^}]*top:\s*0;[^}]*inset:\s*0;/s, '.fwheel__stripes must not collapse to 0x0 without inset');
+    assert.match(panelsCss, /\.fwheel__chev\s*\{[^}]*pointer-events:\s*auto;/, '.fwheel__chev must be interactive');
+  });
 });
 
-describe('/sim/ ES2020 syntax (no logical assignment)', () => {
+describe('FacingWheel mobile touch and direct commit support', () => {
+  test('FacingWheel supports chevron tap commit and centre quick tap commit', () => {
+    const wheelJs = read('public/js/ui/facingWheel.js');
+    assert.match(wheelJs, /function Chevron\(\{\s*dir,\s*on,\s*onClick\s*\}\)/, 'Chevron must receive onClick handler');
+    assert.match(wheelJs, /onDirectCommit/, 'FacingWheel must provide onDirectCommit for mobile tapping');
+  });
+});
+
+describe('/sim/ ES2020 syntax and no top-level await for browser clients', () => {
   test('no ??= or ||= in server/sim modules', () => {
     function scanDir(dir) {
       const entries = readdirSync(dir);
@@ -124,5 +139,19 @@ describe('/sim/ ES2020 syntax (no logical assignment)', () => {
     }
     scanDir(path.join(ROOT, 'server/sim'));
   });
+
+  test('no top-level await in content modules (bands, bonds, index)', () => {
+    for (const f of ['server/sim/content/bands.js', 'server/sim/content/bonds.js', 'server/sim/content/index.js']) {
+      const code = read(f);
+      assert.doesNotMatch(code, /await\s+Promise\.all/, `${f} must not contain top-level await Promise.all`);
+    }
+  });
+
+  test('server/index.js provides browser-safe simdata.js without top-level await', () => {
+    const serverIndex = read('server/index.js');
+    assert.match(serverIndex, /if\s*\(decoded\s*===\s*['"]\/sim\/simdata\.js['"]\)/, 'server/index.js must handle /sim/simdata.js for browser');
+    assert.match(serverIndex, /nodeLoader omitted/, 'server/index.js must strip top-level await for browser clients');
+  });
 });
+
 
