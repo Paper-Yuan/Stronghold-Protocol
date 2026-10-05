@@ -5,6 +5,14 @@ plugins {
 
 android {
     namespace 'com.paper.stronghold'
+
+    externalNativeBuild {
+        cmake {
+            path "src/main/cpp/CMakeLists.txt"
+            version "3.22.1"
+        }
+    }
+
     compileSdk 34
     buildToolsVersion "34.0.0"
 
@@ -18,6 +26,13 @@ android {
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         ndk {
             abiFilters "arm64-v8a"
+        }
+
+        externalNativeBuild {
+            cmake {
+                cppFlags "-std=c++17 -fno-exceptions -fno-rtti"
+                arguments "-DANDROID_STL=c++_shared"
+            }
         }
     }
 
@@ -70,5 +85,4 @@ dependencies {
     implementation 'com.google.android.material:material:1.11.0'
     implementation 'androidx.webkit:webkit:1.10.0'
     implementation 'com.squareup.okhttp3:okhttp:4.12.0'
-    implementation 'net.java.dev.jna:jna:5.14.0@aar'
 }
