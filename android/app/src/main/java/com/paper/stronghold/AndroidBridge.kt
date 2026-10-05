@@ -64,6 +64,27 @@ class AndroidBridge(private val activity: MainActivity) {
         activity.runOnUiThread { activity.showLogsAndDiagnosticsDialog() }
     }
 
+    /**
+     * The page telling the shell what it can see (main.js reportClientState). A WebView whose surface fails to
+     * composite cannot show the player anything, so this has to cross into native land for anyone to notice.
+     */
+    @JavascriptInterface
+    fun reportClientState(json: String) {
+        activity.reportClientState(json)
+    }
+
+    @JavascriptInterface
+    fun getClientState(): String = activity.getClientState()
+
+    /**
+     * Switch to the DOM board (no WebGL, no forced hardware layer) and reload. Reachable from the page so a player
+     * whose screen is fine but broken can fix it from the in-game settings without waiting for the watchdog dialog.
+     */
+    @JavascriptInterface
+    fun enableCompatMode() {
+        activity.runOnUiThread { activity.enableCompatMode() }
+    }
+
     @JavascriptInterface
     fun reloadClient() {
         activity.runOnUiThread {

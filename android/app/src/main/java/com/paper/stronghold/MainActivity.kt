@@ -13,6 +13,8 @@ import android.media.AudioFocusRequest
 import android.media.AudioManager
 import android.os.Build
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
 import android.view.View
 import android.view.WindowInsets
@@ -35,6 +37,10 @@ class MainActivity : AppCompatActivity() {
         private val IP_V4 = Regex("""^\d{1,3}(\.\d{1,3}){3}$""")
         private const val ROOM_CODE_MAX = 8
         private const val KEY_BOARD_MODE = "board_mode"   // "3d" or "2d"
+        private const val KEY_HW_LAYER = "webview_hw_layer" // opt-in; forcing it black-screens some OEM GPU drivers
+        private const val KEY_COMPAT_MODE = "compat_mode"   // simplified view + 2D + no forced hardware layer
+        private const val BLANK_SCREEN_WATCHDOG_MS = 12_000L
+        private const val MIN_WEBVIEW_CHROME = 87   // CSS `inset` shorthand; `replaceChildren` needs 86
         private const val DEFAULT_LOCAL_URL = "http://127.0.0.1:3000"
         private const val DEFAULT_LAN_URL = "http://192.168.10.25:3000"
     }
@@ -52,6 +58,12 @@ class MainActivity : AppCompatActivity() {
     private var serverReadyReceiver: BroadcastReceiver? = null
     private var audioManager: AudioManager? = null
     private var audioFocusRequest: AudioFocusRequest? = null
+
+    private val mainHandler = Handler(Looper.getMainLooper())
+    private var blankWatchdog: Runnable? = null
+
+    /** The page's own "this is what I see" report; null means the WebView never said anything at all. */
+    @Volatile private var clientState: String? = null
 
     private val audioFocusChangeListener = AudioManager.OnAudioFocusChangeListener { focusChange ->
         when (focusChange) {
@@ -195,10 +207,16 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun setupWebView() {
+        // Forcing a hardware layer on a WebView that hosts WebGL canvases leaves a black surface on several older
+        // OEM GPU drivers (Kirin/Mali, Adreno on Android 10): the page is alive and painting, nothing composites, and
+        // because the window background is dark the player sees pure black with no message — and the page cannot put
+        // one up, since it would be drawn on that same broken surface. So this is opt-in now; the blank-screen
+        // watchdog below is what tells the player about it and offers 兼容模式.
+        val hwLayer = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE).getBoolean(KEY_HW_LAYER, false)
         try {
-            webView.setLayerType(View.LAYER_TYPE_HARDWARE, null)
+            webView.setLayerType(if (hwLayer) View.LAYER_TYPE_HARDWARE else View.LAYER_TYPE_NONE, null)
         } catch (e: Exception) {
-            Log.w(TAG, "Hardware acceleration layer error: ${e.message}")
+            Log.w(TAG, "WebView layer type error: ${e.message}")
         }
 
         webView.settings.apply {
@@ -233,6 +251,7 @@ class MainActivity : AppCompatActivity() {
                 super.onPageFinished(view, url)
                 layoutLoading.visibility = View.GONE
                 layoutFailedActions.visibility = View.GONE
+                scheduleBlankScreenWatchdog()
             }
 
             override fun onReceivedError(view: WebView?, request: WebResourceRequest?, error: WebResourceError?) {
@@ -409,6 +428,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun loadServerUrl(rawUrl: String) {
         val targetUrl = buildUrlWithBoardMode(rawUrl)
+        clientState = null
         runOnUiThread {
             Log.i(TAG, "Loading target URL in WebView: $targetUrl")
             webView.loadUrl(targetUrl)
@@ -418,9 +438,15 @@ class MainActivity : AppCompatActivity() {
     private fun buildUrlWithBoardMode(baseUrl: String): String {
         val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         val boardMode = prefs.getString(KEY_BOARD_MODE, "3d") ?: "3d"
-        val cleanUrl = baseUrl.replace(Regex("[?&]board=[^&]+"), "")
-        val separator = if (cleanUrl.contains("?")) "&" else "?"
-        return "$cleanUrl${separator}board=$boardMode"
+        var url = withParam(baseUrl, "board", boardMode)
+        // Compat mode asks the client for the DOM board (ui/fieldHost.js reads ?render=), which needs no WebGL.
+        if (prefs.getBoolean(KEY_COMPAT_MODE, false)) url = withParam(url, "render", "fallback")
+        return url
+    }
+
+    private fun withParam(url: String, key: String, value: String): String {
+        val clean = url.replace(Regex("[?&]$key=[^&]+"), "")
+        return clean + (if (clean.contains("?")) "&" else "?") + "$key=$value"
     }
 
     /** Hand a "which host has this room code" answer back; see [AndroidBridge.findRoom]. */
@@ -428,6 +454,85 @@ class MainActivity : AppCompatActivity() {
         runOnUiThread {
             webView.evaluateJavascript("window.__onRoomFound && window.__onRoomFound($json)", null)
         }
+    }
+
+    /**
+     * Receive the page's self-report (see main.js reportClientState). Anything it says is better than the player
+     * seeing nothing, so an error report also stops the watchdog and is shown with the diagnostics.
+     */
+    fun reportClientState(json: String) {
+        clientState = json
+        cancelBlankScreenWatchdog()
+        Log.i(TAG, "client state: $json")
+    }
+
+    fun getClientState(): String = clientState ?: "null"
+
+    private fun scheduleBlankScreenWatchdog() {
+        cancelBlankScreenWatchdog()
+        val watchdog = Runnable {
+            blankWatchdog = null
+            if (isFinishing || clientState != null) return@Runnable
+            showBlankScreenDialog()
+        }
+        blankWatchdog = watchdog
+        mainHandler.postDelayed(watchdog, BLANK_SCREEN_WATCHDOG_MS)
+    }
+
+    private fun cancelBlankScreenWatchdog() {
+        blankWatchdog?.let { mainHandler.removeCallbacks(it) }
+        blankWatchdog = null
+    }
+
+    /** A native dialog is the only thing that can reach the player when the WebView surface itself is dead. */
+    private fun showBlankScreenDialog() {
+        val webviewVersion = try {
+            WebView.getCurrentWebViewPackage()?.versionName ?: "未知"
+        } catch (e: Exception) { "读不到" }
+        AlertDialog.Builder(this)
+            .setTitle("画面可能没有出来")
+            .setMessage(
+                "页面已加载完成，但游戏没有回报「已在绘制」。如果屏幕是黑的，试试「兼容模式重启」：" +
+                    "改用简易棋盘、不加载 3D、并关闭强制硬件加速层。\n\n" +
+                    "WebView 版本：$webviewVersion\n" +
+                    "（重启后仍有问题，请点「查看日志」把信息发给我们。）",
+            )
+            .setPositiveButton("兼容模式重启") { _, _ -> enableCompatModeAndReload() }
+            .setNeutralButton("查看日志") { _, _ -> showLogsAndDiagnosticsDialog() }
+            .setNegativeButton("继续等", null)
+            .show()
+    }
+
+    /** Entry point for the watchdog dialog and the page's own settings row. */
+    fun enableCompatMode() = enableCompatModeAndReload()
+
+    /**
+     * Android 12 is where WebView reached Chromium 91; older devices sit on 77-87 and, without Play Store, usually
+     * cannot move. That is also the population reporting a black screen (the client needs Chrome 87 for the CSS
+     * `inset` shorthand and 86 for `replaceChildren`), so the launcher says it before the player hits 开始 rather
+     * than waiting for the watchdog. Null means the WebView is new enough.
+     */
+    private fun outdatedWebViewWarning(): String? {
+        val version = try { WebView.getCurrentWebViewPackage()?.versionName } catch (e: Exception) { null }
+        val major = version?.substringBefore('.')?.toIntOrNull() ?: return null
+        if (major >= MIN_WEBVIEW_CHROME) return null
+        return "本机 WebView 为 Chrome $major，低于本游戏所需的 $MIN_WEBVIEW_CHROME，可能黑屏或排版错位。" +
+            "请到系统设置/应用商店更新「Android System WebView」。"
+    }
+
+    /** Flip the switches that get a device out of a black surface, and reload with them applied. */
+    private fun enableCompatModeAndReload() {
+        getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE).edit()
+            .putBoolean(KEY_COMPAT_MODE, true)
+            .putBoolean(KEY_HW_LAYER, false)
+            .putString(KEY_BOARD_MODE, "2d")
+            .apply()
+        try {
+            webView.setLayerType(View.LAYER_TYPE_NONE, null)
+        } catch (e: Exception) {
+            Log.w(TAG, "layer reset before compat reload failed: ${e.message}")
+        }
+        reloadWebView()
     }
 
     fun reloadWebView() {
@@ -490,9 +595,15 @@ class MainActivity : AppCompatActivity() {
         if (asLauncher) {
             tvTitle.text = "这局怎么开始？"
             tvSub.visibility = View.VISIBLE
-                        tvSub.text = if (currentMode == "remote" && !currentRemoteUrl.isNullOrBlank())
-                "上次连的是 $currentRemoteUrl · 点「连接」继续，或换一台"
-            else "选一个进入。每次启动都会先问这个。"
+            val webviewWarning = outdatedWebViewWarning()
+            tvSub.text = buildString {
+                append(
+                    if (currentMode == "remote" && !currentRemoteUrl.isNullOrBlank())
+                        "上次连的是 $currentRemoteUrl · 点「连接」继续，或换一台"
+                    else "选一个进入。每次启动都会先问这个。"
+                )
+                if (webviewWarning != null) append("\n⚠ ").append(webviewWarning)
+            }
             boardBlock.visibility = View.GONE
             btnShowLogs.visibility = View.GONE
             btnCancel.visibility = View.GONE
@@ -737,6 +848,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onDestroy() {
         super.onDestroy()
+        cancelBlankScreenWatchdog()
         abandonAudioFocus()
         NodeServerService.stateListener = null
         serverReadyReceiver?.let {
