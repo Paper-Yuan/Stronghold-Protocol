@@ -810,7 +810,36 @@ function MatchScreen() {
         window.addEventListener('pointerup', onUp, { passive: true, capture: true });
         moveOff = () => window.removeEventListener('pointerup', onUp, { capture: true });
       }),
-      view.on('tileHover', (t) => { ptr.tile = t && typeof t === 'object' ? t : null; }),
+      // 道具拖动 (user report, Arknights-style): while an item is dragged, the camera eases onto the operator
+      // under the pointer — the receiver is always the piece in focus, so a mis-give is hard to make; the drop
+      // then selects the receiver (equip) or the placed item (bare tile) and the drag-zoom hands over to it
+      view.on('pieceDragStart', (e) => {
+        ptr.dragZoomUid = e?.piece?.kind === 'item' ? null : undefined; itemDragRef.current = ptr.dragZoomUid === null;
+        // 拖动即放大 (user report): picking an item up eases the camera onto the board's operators at
+        // the selection scale, so every possible receiver is big and readable before the pointer even
+        // reaches one; the hover-follow then retargets per operator. The board's empty → nothing.
+        if (ptr.dragZoomUid !== null) return;
+        const L = live.current;
+        let R = null;
+        for (const p of L.placeCtx?.pieces?.values() || []) {
+          if (p.piece?.kind !== 'chess' || p.area !== 'board') continue;
+          R = R ? { r0: Math.min(R.r0, p.row), r1: Math.max(R.r1, p.row), c0: Math.min(R.c0, p.col), c1: Math.max(R.c1, p.col) }
+                : { r0: p.row, r1: p.row, c0: p.col, c1: p.col };
+        }
+        if (R) { R.r0--; R.r1++; R.c0--; R.c1++; view.focusTile?.(Math.round((R.r0 + R.r1) / 2), Math.round((R.c0 + R.c1) / 2), R); }
+      }),
+      view.on('tileHover', (t) => {
+        ptr.tile = t && typeof t === 'object' ? t : null;
+        if (ptr.dragZoomUid === undefined || !t || t.area !== 'board') return;
+        const L = live.current;
+        let occ = null;
+        for (const p of L.placeCtx?.pieces?.values() || []) {
+          if (p.piece?.kind !== 'chess' || p.area !== 'board' || p.row !== t.row || p.col !== t.col) continue;
+          occ = p; break;
+        }
+        const uid = occ ? occ.uid : null;
+        if (uid && uid !== ptr.dragZoomUid) { ptr.dragZoomUid = uid; view.focusTile?.(t.row, t.col); }
+      }),
       view.on('pieceDrop', async (e) => {
         endDrag();
         const L = live.current;
@@ -827,6 +856,10 @@ function MatchScreen() {
           return;
         }
         await runIntent(intent);
+        // 松手即恢复 (user report): the equip happens in the sim regardless — the camera just returns
+        // to the view in use; no selection, no hold on the zoom
+        if (entry.piece.kind === 'item' && ptr.dragZoomUid !== undefined) view.focusTile?.(null);
+        ptr.dragZoomUid = undefined;
       }),
       // The deploy voice line hangs off the unit actually reaching the board (render/app.js
       // announceDeploy) instead of off the manual drop, so combat auto-deploy, a merge's elite and a
@@ -837,6 +870,9 @@ function MatchScreen() {
         if (vk) audio.voice(vk);
       }),
       view.on('pieceDragEnd', (e) => {
+        if (ptr.dragZoomUid !== undefined) view.focusTile?.(null); // the release restores at once — equip or cancel alike
+        ptr.dragZoomUid = undefined;
+        itemDragRef.current = false;
         // a cancelled drag (no pieceDrop) must not leave the highlights behind; a release on a tile that takes nothing
         // (the drag controller found no legal target there) says why
         const released = ptr.released;
@@ -1010,6 +1046,30 @@ function MatchScreen() {
     showRange(view, previewGrid(lookups, selEntry.piece), selEntry.row, selEntry.col, pieceDir(selEntry.piece), SEL_RANGE);
     return () => showRange(view, null, 0, 0, null, SEL_RANGE);
   }, [view, selRangeKey]);
+  // the selected piece's camera (official behaviour): the framing eases onto the piece's tile so the retreat / direction
+  // actions are reachable on a crowded board, and back to the camera in use on deselect (app.js focusTile — a detour
+  // that never touches the shop camera or the 联防 half framings; a fold / unfold of the shop bar re-frames and the
+  // zoom re-asserts). Own prep board only (sel exists nowhere else) and board pieces only: the bench keeps the shop
+  // camera that already frames it. The ref keeps a re-render from flying back and forth: a placeCtx rebuilt by an
+  // m.private push re-zooms the same tile instead of restoring first.
+  const selFocusRef = useRef(null);                      // { uid, row, col } the camera is zoomed to
+  const itemDragRef = useRef(false);                     // an item drag owns the camera: the selection effect stands down
+  useEffect(() => {
+    if (!view) return undefined;
+    const prev = selFocusRef.current;
+    const t = editable && showPrep && selEntry && selEntry.area === 'board'
+      ? { uid: selEntry.piece.uid, row: selEntry.row, col: selEntry.col } : null;
+    if (prev && (!t || prev.uid !== t.uid || prev.row !== t.row || prev.col !== t.col)) {
+      selFocusRef.current = null;
+      // an item drag owns the camera: selecting the dragged bench piece on the way must not yank
+      // the zoom back to the big map mid-drag (the drag's own start/hover/restore drives it)
+      if (!itemDragRef.current) view.focusTile?.(null); // deselect / another piece: the camera in use again
+    }
+    if (!t) return undefined;
+    selFocusRef.current = t;
+    view.focusTile?.(t.row, t.col);
+    return undefined;
+  }, [view, selEntry, editable, showPrep, shopFolded]);
   // the selected piece's underframe on screen: the detail card docks on the side away from it (user playtest #2
   // item 8 — at some aspect ratios a bench unit's 出售 sat under the left card); the underframe is drawn above every
   // panel anyway (css z-index), this keeps it visible too
