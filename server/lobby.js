@@ -119,6 +119,21 @@ function freezeLoadout(loadout) {
   return Object.freeze(out);
 }
 
+/**
+ * Frozen copy of a skin selection, keeping only entries whose chess the game data knows (docs/SKINS.md).
+ * @param {Record<string, string>} skins `{ [baseChessId]: skinId }`
+ * @param {(id: string) => any} getChess
+ */
+function freezeSkins(skins, getChess) {
+  const out = {};
+  for (const [id, skinId] of Object.entries(skins || {})) {
+    const rec = getChess(id);
+    if (!rec || rec.isGolden || rec.visible === false || rec.isHidden || rec.isDiy || (rec.baseId && rec.baseId !== id)) continue;
+    out[id] = String(skinId);
+  }
+  return Object.freeze(out);
+}
+
 /** One room: 4 seat slots, host, difficulty, optional running match. */
 export class Room {
   /** @param {string} code @param {'solo'|'coop'} mode @param {string} difficulty @param {number} now */
@@ -289,6 +304,7 @@ export class Lobby {
       case 'room.kick': return this.kick(session, msg);
       case 'room.start': return this.start(session);
       case 'room.loadout': return this.loadout(session, msg);
+      case 'room.skins': return this.skins(session, msg);
       case 'room.spectate': return this.spectate(session, msg);
       case 'room.removeSpectator': return this.removeSpectator(session, msg);
       default:
@@ -575,6 +591,33 @@ export class Lobby {
     return OK;
   }
 
+  /**
+   * room.skins (docs/SKINS.md): store the player's chosen operator skins on the session and the seat,
+   * and hand them to a running match.
+   */
+  skins(session, { skins }) {
+    const data = this.safeData();
+    const cleaned = freezeSkins(skins, (id) => lookup('chess', id, data));
+    session.skins = cleaned;
+    const room = this.roomOf(session);
+    if (!room) return OK;
+    const seat = room.seatOf(session.playerId);
+    if (seat) seat.skins = cleaned;
+    if (!room.match) return OK;
+    if (typeof room.match.setSkins !== 'function') return fail(ERR.ROOM_STARTED, 'stored for the next match');
+    let r;
+    try {
+      r = room.match.setSkins(session.playerId, cleaned);
+    } catch (e) {
+      this.log.error(`[lobby] ${room.code} match.setSkins threw`, e);
+      return fail(ERR.INTERNAL);
+    }
+    if (r && typeof r === 'object' && r.error) {
+      return fail(isErrCode(r.error) ? r.error : ERR.INTERNAL, typeof r.detail === 'string' ? r.detail : undefined);
+    }
+    return OK;
+  }
+
   // ---------------------------------------------------------------------------------------------------
   // Match wiring
   // ---------------------------------------------------------------------------------------------------
@@ -587,6 +630,7 @@ export class Lobby {
       seat: s.seat, playerId: s.playerId, name: s.name, isBot: s.isBot, connected: s.connected,
       // DESIGN §16: the human's checked operator loadout (bots fight with the defaults)
       loadout: s.isBot ? null : s.loadout || null,
+      skins: s.isBot ? null : s.skins || null,
     }));
     // lastPublic / results: the latest m.public broadcast and the m.result frames (encoded), kept for the replay.
     const ctx = { live: true, ended: false, disposed: false, match: null, lastPublic: null, sharedResult: null, results: new Map() };
@@ -845,6 +889,7 @@ export class Lobby {
     return {
       seat: idx, playerId: session.playerId, name: session.name, isBot: false, ready: false, connected: session.connected, left: false,
       loadout: session.loadout || null,
+      skins: session.skins || null,
     };
   }
 

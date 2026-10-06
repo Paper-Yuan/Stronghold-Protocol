@@ -154,4 +154,36 @@ describe('/sim/ ES2020 syntax and no top-level await for browser clients', () =>
   });
 });
 
+describe('Chromium 80-84 full-scope runtime and CSS compatibility', () => {
+  test('compat.js provides String.prototype.replaceAll and Promise.any polyfills', () => {
+    const compatJs = read('public/js/ui/compat.js');
+    assert.match(compatJs, /def\(\(g\.String \|\| String\)\.prototype,\s*'replaceAll'/, 'compat.js must polyfill replaceAll (Chrome 85)');
+    assert.match(compatJs, /def\(P,\s*'any'/, 'compat.js must polyfill Promise.any (Chrome 85)');
+  });
+
+  test('critical UI panels provide physical top/left/width/height before inset', () => {
+    const loadoutCss = read('public/css/screens/loadout.css');
+    assert.match(loadoutCss, /\.lo\s*\{[^}]*top:\s*0;[^}]*inset:\s*0;/s, '.lo must have physical fallbacks');
+    assert.match(loadoutCss, /\.lo-grid\s*\{[^}]*touch-action:\s*pan-y;/s, '.lo-grid must support touch scrolling');
+
+    const gameCss = read('public/css/screens/game.css');
+    assert.match(gameCss, /\.ff-piece__art\s*\{[^}]*top:\s*7%;[^}]*inset:\s*7%;/s, '.ff-piece__art must have physical coordinates');
+    assert.match(gameCss, /\.chud\s*\{[^}]*top:\s*0;[^}]*inset:\s*0;/s, '.chud must have physical coordinates');
+
+    const panelsCss = read('public/css/screens/game-panels.css');
+    assert.match(panelsCss, /\.spov\s*\{[^}]*top:\s*0;[^}]*inset:\s*0 0 0 2\.8rem;/s, '.spov must have physical coordinates');
+    assert.match(panelsCss, /\.uthumb__art\s*\{[^}]*top:\s*0;[^}]*inset:\s*0;/s, '.uthumb__art must have physical coordinates');
+  });
+
+  test('ghost attack interruption: UnitView and SpineActor provide finishAttack', () => {
+    const spineJs = read('public/js/render/spine.js');
+    assert.match(spineJs, /finishAttack\(\)\s*\{/, 'SpineActor must define finishAttack');
+    const unitsJs = read('public/js/render/units.js');
+    assert.match(unitsJs, /finishAttack\(\)\s*\{/, 'UnitView must define finishAttack');
+    const appJs = read('public/js/render/app.js');
+    assert.match(appJs, /u\.finishAttack\?\.\(\)/, 'app.js must call finishAttack on target death');
+  });
+});
+
+
 

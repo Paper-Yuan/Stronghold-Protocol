@@ -7,8 +7,16 @@ import java.net.NetworkInterface
 import java.util.concurrent.Executors
 
 object NetworkUtils {
-    // Cellular / point-to-point / bridge adapters: never the LAN the friends are on.
-    private val IGNORED_IFACES = setOf("lo", "tun0", "tap0", "ppp0", "ifb0", "dummy0", "br0", "rndis0", "usb0")
+    // Cellular / bridge adapters: not useful for hosting
+    private val HARD_IGNORED_IFACES = setOf("lo", "ppp", "ifb", "dummy", "br", "rndis")
+
+    /** Address description for host UI showing Wi-Fi / VPN / LAN IPs. */
+    data class HostAddress(
+        val ip: String,
+        val ifaceName: String,
+        val typeLabel: String, // "Wi-Fi 局域网", "虚拟专网 (UU/Tailscale/ZeroTier)", "以太网/热点"
+        val isVpnOrVirtual: Boolean,
+    )
 
     /**
      * The device's best LAN IPv4 — the one to publish for co-op — or "127.0.0.1" when there is none.
@@ -16,43 +24,88 @@ object NetworkUtils {
      */
     fun getLocalIpAddress(context: Context): String = lanAddresses(context).firstOrNull() ?: "127.0.0.1"
 
+    /**
+     * Checks if an IPv4 address is in RFC 6598 CGNAT range (100.64.0.0/10),
+     * heavily used by Tailscale, ZeroTier, UU, and mobile carriers.
+     */
+    private fun isCgnat(addr: Inet4Address): Boolean {
+        val bytes = addr.address
+        if (bytes.size != 4) return false
+        val b0 = bytes[0].toInt() and 0xff
+        val b1 = bytes[1].toInt() and 0xff
+        return b0 == 100 && (b1 in 64..127)
+    }
+
+    /**
+     * Returns all usable IPv4 addresses for hosting a game, categorized by interface type.
+     * Includes Wi-Fi LAN as well as virtual LANs (Tailscale, ZeroTier, UU booster).
+     */
+    fun allUsableAddresses(context: Context): List<HostAddress> {
+        val result = mutableListOf<HostAddress>()
+        val seenIps = mutableSetOf<String>()
+
+        // 1. Check Wi-Fi manager first (standard Wi-Fi IP)
+        try {
+            val wifiManager = context.applicationContext.getSystemService(Context.WIFI_SERVICE) as? WifiManager
+            val ipInt = wifiManager?.connectionInfo?.ipAddress ?: 0
+            if (ipInt != 0) {
+                val ip = "%d.%d.%d.%d".format(ipInt and 0xff, ipInt shr 8 and 0xff, ipInt shr 16 and 0xff, ipInt shr 24 and 0xff)
+                if (seenIps.add(ip)) {
+                    result.add(HostAddress(ip, "wlan0", "Wi-Fi 局域网", false))
+                }
+            }
+        } catch (_: Exception) {
+        }
+
+        // 2. Enumerate all active network interfaces
+        try {
+            val interfaces = NetworkInterface.getNetworkInterfaces()
+            while (interfaces != null && interfaces.hasMoreElements()) {
+                val iface = interfaces.nextElement()
+                if (iface.isLoopback || !iface.isUp) continue
+                val name = iface.name.lowercase()
+                if (name.startsWith("rmnet") || HARD_IGNORED_IFACES.any { name.startsWith(it) }) continue
+
+                val isVpn = name.startsWith("tun") || name.startsWith("tap") || name.contains("vpn") ||
+                        name.contains("tailscale") || name.contains("wg")
+                val isWifi = name.startsWith("wlan") || name.startsWith("swlan") || name.startsWith("ap") || name.startsWith("ath")
+                val isEth = name.startsWith("eth") || name.startsWith("usb")
+
+                val typeLabel = when {
+                    isVpn -> "虚拟专网 (异地联机/UU/Tailscale)"
+                    isWifi -> "Wi-Fi 局域网"
+                    isEth -> "以太网 / 共享网络"
+                    else -> "网络接口 ($name)"
+                }
+
+                val addresses = iface.inetAddresses
+                while (addresses.hasMoreElements()) {
+                    val addr = addresses.nextElement()
+                    if (addr !is Inet4Address || addr.isLoopbackAddress || addr.isLinkLocalAddress) continue
+                    // Accept site-local (10.x, 172.16-31.x, 192.168.x) or CGNAT (100.64.0.0/10) or any valid IPv4 on VPN
+                    if (addr.isSiteLocalAddress || isCgnat(addr) || isVpn) {
+                        val host = addr.hostAddress ?: continue
+                        if (seenIps.add(host)) {
+                            result.add(HostAddress(host, iface.name, typeLabel, isVpn))
+                        }
+                    }
+                }
+            }
+        } catch (_: Exception) {
+        }
+
+        // Wi-Fi first, then Ethernet, then VPN
+        return result.sortedWith(compareBy({ if (it.isVpnOrVirtual) 1 else 0 }, { rank(it.ifaceName) }))
+    }
+
     /** One Stronghold server answered on the local network. `app` is the server's release, `protocol` the wire version. */
     data class LanHost(val ip: String, val app: String, val protocol: Int, val rooms: Int, val self: Boolean)
 
     /**
      * Every site-local IPv4 the device currently holds, Wi-Fi first.
-     *
-     * Two things make this more than "ask Wi-Fi": without a location permission `WifiManager.connectionInfo`
-     * reports 0 on Android 12+, and `NetworkInterface` enumeration order is not guaranteed — taking the first
-     * address lands on a hotspot / USB-tethering / VPN adapter often enough to break LAN play, which then shows
-     * friends an unreachable host and sweeps the wrong /24.
      */
     fun lanAddresses(context: Context): List<String> {
-        val out = LinkedHashMap<String, Int>()
-        try {
-            val wifiManager = context.applicationContext.getSystemService(Context.WIFI_SERVICE) as? WifiManager
-            val ipInt = wifiManager?.connectionInfo?.ipAddress ?: 0
-            if (ipInt != 0) {
-                out["%d.%d.%d.%d".format(ipInt and 0xff, ipInt shr 8 and 0xff, ipInt shr 16 and 0xff, ipInt shr 24 and 0xff)] = 0
-            }
-        } catch (_: Exception) {
-        }
-        try {
-            val interfaces = NetworkInterface.getNetworkInterfaces()
-            while (interfaces != null && interfaces.hasMoreElements()) {
-                val iface = interfaces.nextElement()
-                if (iface.isLoopback || !iface.isUp || iface.name in IGNORED_IFACES || iface.name.startsWith("rmnet")) continue
-                val addresses = iface.inetAddresses
-                while (addresses.hasMoreElements()) {
-                    val addr = addresses.nextElement()
-                    if (addr !is Inet4Address || !addr.isSiteLocalAddress) continue
-                    val host = addr.hostAddress ?: continue
-                    out.putIfAbsent(host, rank(iface.name))
-                }
-            }
-        } catch (_: Exception) {
-        }
-        return out.entries.sortedBy { it.value }.map { it.key }
+        return allUsableAddresses(context).map { it.ip }
     }
 
     private fun rank(name: String): Int = when {
@@ -60,6 +113,7 @@ object NetworkUtils {
         name.startsWith("wlan") || name.startsWith("swlan") -> 1
         name.startsWith("ap") || name.startsWith("ath") -> 2
         name.startsWith("eth") -> 3
+        name.startsWith("tun") || name.startsWith("tap") -> 4
         else -> 5
     }
 

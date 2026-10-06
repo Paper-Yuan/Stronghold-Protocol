@@ -59,6 +59,19 @@ export function isBattleResult(v) {
     && optional((x) => isInt(x, 0, 1e9))(v.errors) && optional((x) => isNum(x, 0, BIG))(v.bossHpLeft);
 }
 
+// ---- 干员皮肤 (docs/SKINS.md): room.skins { skins } -----------------------------------------------------------
+
+/**
+ * `room.skins { skins }`: `skins` = `{ [baseChessId]: skinId }`.
+ * Unlike `room.loadout` these are PUBLIC: they ride in `Match.publicView().players[]` so a teammate sees your
+ * skin, which is the whole point of choosing one in a co-op match.
+ */
+export const SKIN_LIMITS = Object.freeze({ entries: 160, idLen: 64 });
+/** A skinId. NOT `isId`: those allow only `[A-Za-z0-9_\-.:]`, and skin ids carry `@` and `#` (`char_002_amiya@winter#1`). */
+export const isSkinId = (v) => typeof v === 'string' && v.length > 0 && v.length <= SKIN_LIMITS.idLen && /^[A-Za-z0-9_@#+.\-]+$/.test(v);
+/** Structural check of `room.skins.skins`. */
+export const isSkinSelection = (v) => isMap(v, SKIN_LIMITS.entries, isId, isSkinId);
+
 // ---- operator loadout (DESIGN §16): room.loadout { entries } -------------------------------------------------
 
 /**
@@ -253,6 +266,8 @@ export const C2S = {
   'room.start': {},
   // operator loadout (DESIGN §16): stored per session/seat; accepted until the match leaves INFO_CHECK
   'room.loadout': { entries: isLoadoutEntries },
+  // 干员皮肤 (docs/SKINS.md): public, accepted in any room phase
+  'room.skins': { skins: isSkinSelection },
   // spectator seats (remake feature, community report #26; MAX_SPECTATORS): take one of a co-op room's spectator seats —
   // in its lobby or while its match runs — never a player seat; the host frees one by playerId (the spectator gets
   // room.closed { reason: 'kicked' }). room.leave / g.leave leave a spectator seat like a player seat.

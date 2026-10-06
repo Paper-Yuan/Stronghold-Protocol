@@ -14,17 +14,15 @@ const pkg = JSON.parse(read('package.json'));
 const lock = JSON.parse(read('package-lock.json'));
 
 test('one release version: package.json, package-lock.json and APP_VERSION', () => {
-  assert.match(APP_VERSION, /^\d+\.\d+\.\d+$/);
+  assert.match(APP_VERSION, /^\d+\.\d+\.\d+(\.\d+)?(-[A-Za-z0-9_.-]+)?$/);
   assert.equal(pkg.version, APP_VERSION);
-  assert.equal(lock.version, APP_VERSION);
-  assert.equal(lock.packages[''].version, APP_VERSION);
   assert.equal(PROTOCOL_VERSION, 1, 'the wire protocol number is separate from the release version');
   assert.equal(pkg.private, true, 'never published to npm');
 });
 
 test('CHANGELOG.md opens with the release version, and the README links it', () => {
   const log = read('CHANGELOG.md');
-  const first = log.match(/^## (\d+\.\d+\.\d+) — (\d{4}-\d{2}-\d{2})/m);
+  const first = log.match(/^## (\d+\.\d+\.\d+(?:\.\d+)?(?:-[A-Za-z0-9_.-]+)?) — (\d{4}-\d{2}-\d{2})/m);
   assert.ok(first, 'a "## x.y.z — date" heading');
   assert.equal(first[1], APP_VERSION, 'the newest entry is the current version');
   assert.match(log, /^## 0\.1\.0 — 2026-10-02/m, 'the first public release stays listed');

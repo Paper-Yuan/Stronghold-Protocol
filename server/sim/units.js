@@ -36,6 +36,7 @@ export class Unit {
     this.name = init.name ?? init.def?.name ?? this.defId;
     this.ownerId = init.ownerId ?? null;  // playerId (enemies: field owner)
     this.uid = init.uid ?? null;          // match piece uid (ops/tokens from the board)
+    this.skin = init.skin ?? null;        // chosen skinId (docs/SKINS.md)
     this.ownerUnit = init.ownerUnit ?? null; // summoner (tokens)
     this.x = init.x ?? 0;
     this.y = init.y ?? 0;

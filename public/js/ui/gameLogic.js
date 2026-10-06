@@ -1459,12 +1459,13 @@ export function factionTypes(factions) {
  * HUD numbers from a b.snap: { killed, total, dp, boss } (boss: { hp, max } when present).
  * @param {any} snap
  */
-export function snapHud(snap) {
+export function snapHud(snap, myId = null) {
   if (!isObj(snap)) return null;
   const n = (v) => (Number.isFinite(v) ? v : null);
   let boss = null;
   if (isObj(snap.boss) && Number.isFinite(snap.boss.hp)) boss = { hp: snap.boss.hp, max: n(snap.boss.max) ?? n(snap.boss.maxHp) };
-  return { killed: n(snap.killed), total: n(snap.total), dp: n(snap.dp), boss };
+  const dpVal = myId && isObj(snap.dps) && Number.isFinite(snap.dps[myId]) ? snap.dps[myId] : snap.dp;
+  return { killed: n(snap.killed), total: n(snap.total), dp: n(dpVal), boss };
 }
 
 /** Boss HP fraction 0..1 (null when unknown). */
@@ -1581,24 +1582,27 @@ export function shortcutBlocked(act, { modal = false, drawer = false } = {}) {
 
 // ---- settings ------------------------------------------------------------------------------------------------------
 
-export const DEFAULT_SETTINGS = Object.freeze({ bgm: 0.6, sfx: 0.8, muted: false, damageNumbers: true, quality: 'high' });
+export const DEFAULT_SETTINGS = Object.freeze({ bgm: 0.6, sfx: 0.8, voice: 0.8, muted: false, damageNumbers: true, quality: 'high' });
 const QUALITIES = ['high', 'medium', 'low'];
 
 /**
  * Sanitize persisted settings.
  * @param {any} raw
- * @returns {{ bgm: number, sfx: number, muted: boolean, damageNumbers: boolean, quality: 'high'|'medium'|'low' }}
+ * @returns {{ bgm: number, sfx: number, voice: number, voiceLang?: 'jp'|'cn', muted: boolean, damageNumbers: boolean, quality: 'high'|'medium'|'low' }}
  */
 export function sanitizeSettings(raw) {
   const r = isObj(raw) ? raw : {};
   const vol = (v, d) => (Number.isFinite(v) ? clamp(Math.round(v * 100) / 100, 0, 1) : d);
-  return {
+  const out = {
     bgm: vol(r.bgm, DEFAULT_SETTINGS.bgm),
     sfx: vol(r.sfx, DEFAULT_SETTINGS.sfx),
+    voice: vol(r.voice, DEFAULT_SETTINGS.voice),
     muted: typeof r.muted === 'boolean' ? r.muted : DEFAULT_SETTINGS.muted,
     damageNumbers: typeof r.damageNumbers === 'boolean' ? r.damageNumbers : DEFAULT_SETTINGS.damageNumbers,
     quality: QUALITIES.includes(r.quality) ? r.quality : DEFAULT_SETTINGS.quality,
   };
+  if (r.voiceLang === 'jp' || r.voiceLang === 'cn') out.voiceLang = r.voiceLang;
+  return out;
 }
 
 // ---- result -----------------------------------------------------------------------------------------------------------

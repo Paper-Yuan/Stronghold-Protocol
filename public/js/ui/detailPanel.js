@@ -31,6 +31,7 @@
 // The stats block (chessStatsBlock), the 特性 text (traitText) and the talent list (chessTalents) are exported: the 干员调配
 // screen's 局内数值 section draws the same ones for the chosen skill / module, without a live entry (GitHub issue #64).
 
+import { useEffect } from '../../vendor/hooks.module.js';
 import { html, Icon, TierChip, MicroLabel, Button, confirmDialog, useTicker } from './components.js';
 import { Img, RichText, UnitThumb, BondGlyph, GIcon } from './gameComponents.js';
 import { attackInterval, rangeGridBox, fmtNum, tileKey, chessLoadout, nextThreshold, bondTier, briefingBondTip, pieceBondIds, grantedBonds, morphPairings } from './gameLogic.js';
@@ -40,6 +41,7 @@ import { data } from '../data.js';
 import { attackRangeGrid } from '../../../shared/loadoutRecord.js';
 import { SKILL_SUMMON_START_DEPLOY } from '../../../shared/constants.js';
 import { moduleBadge } from './loadoutModel.js';
+import { audio } from '../audio.js';
 
 const cx = (...p) => p.flat().filter(Boolean).join(' ');
 
@@ -670,9 +672,15 @@ export function resolveDetail(target, pieces) {
  *   live: the unit's live stats (unitStatsEntry + src 'battle' | 'prep') — an object, or a getter the panel re-reads 4×
  *   a second (the battle's own sim, battle/runner.js unitStats); null ⇒ the record's numbers
  */
-export function DetailPanel({ detail, editable, snapHp, onClose, onSell, onDestroy, bonds = [], offBonds = null, loadout = null, onBond = null, side = 'left', shopOpen = false, live = null }) {
+export function DetailPanel({ detail, editable, snapHp, onClose, onSell, onDestroy, bonds = [], offBonds = null, loadout = null, onBond = null, side = 'left', shopOpen = false, live = null, voice = true }) {
   const getter = typeof live === 'function' ? live : null;
   useTicker(detail && getter ? 250 : 0);
+  const isOwnedOrDeployed = Boolean(detail?.piece || detail?.unitId);
+  const selectKey = voice && isOwnedOrDeployed && detail?.type === 'chess' ? `${detail.chess?.chessId || ''}:${detail.unitId ?? detail.piece?.uid ?? ''}` : null;
+  const selectChar = voice && isOwnedOrDeployed && detail?.type === 'chess' ? detail.chess?.charId || null : null;
+  useEffect(() => {
+    if (selectKey && selectChar) audio.voice(selectChar, 'select');
+  }, [selectKey, selectChar]);
   if (!detail) return null;
   let liveNow = null;
   try { liveNow = getter ? getter() : live && typeof live === 'object' ? live : null; } catch { liveNow = null; }

@@ -41,6 +41,10 @@
   /* hover bracket corners */
   content: '';
   position: absolute;
+  top: -4px;
+  left: -4px;
+  right: -4px;
+  bottom: -4px;
   inset: -4px;
   pointer-events: none;
   opacity: 0;
@@ -286,6 +290,10 @@
 .tier::before {
   content: '';
   position: absolute;
+  top: max(1.5px, calc(var(--tier-h) * .08));
+  left: max(1.5px, calc(var(--tier-h) * .08));
+  right: max(1.5px, calc(var(--tier-h) * .08));
+  bottom: max(1.5px, calc(var(--tier-h) * .08));
   inset: max(1.5px, calc(var(--tier-h) * .08));
   z-index: -1;
   background: #2a2f2d;
@@ -322,6 +330,10 @@
 .bond__disc { position: relative; width: var(--disc); height: var(--disc); display: grid; place-items: center; }
 .bond__ring {
   position: absolute;
+  top: calc(var(--disc) * -.1);
+  left: calc(var(--disc) * -.1);
+  right: calc(var(--disc) * -.1);
+  bottom: calc(var(--disc) * -.1);
   inset: calc(var(--disc) * -.1);
   width: calc(var(--disc) * 1.2);
   height: calc(var(--disc) * 1.2);
@@ -436,6 +448,12 @@
 /* ---- modal ---------------------------------------------------------------------------------------- */
 .modal {
   position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100%;
+  height: 100%;
   inset: 0;
   z-index: var(--z-modal);
   display: grid;
@@ -527,6 +545,12 @@
 }
 .pbar__segs {
   position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100%;
+  height: 100%;
   inset: 0;
   background: repeating-linear-gradient(90deg, transparent 0 calc(100% / var(--segs) - 2px), #080a09 calc(100% / var(--segs) - 2px) calc(100% / var(--segs)));
 }

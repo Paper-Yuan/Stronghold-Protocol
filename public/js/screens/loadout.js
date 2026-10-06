@@ -25,9 +25,11 @@ import { useStore } from '../store.js';
 import { PHASE } from '../../../shared/constants.js';
 import {
   MODULE_NONE, PROF_ORDER, PROF_NAME, rosterOf, filterRoster, recordsOf, chessOptions, effectiveChoice, setChoice, resetChoice,
-  changedCount, skillLabel, moduleBadge, attrRows, skillTags, serializeExport, parseImport, LOADOUT_IMPORT_MAX_BYTES,
+  changedCount, skillLabel, moduleBadge, attrRows, skillTags, serializeExport, parseImport, LOADOUT_IMPORT_MAX_BYTES, mergeSkins,
 } from '../ui/loadoutModel.js';
 import { loadoutStore, openLoadout, closeLoadout, setEntries, applyLoadoutEntries } from '../ui/loadoutSync.js';
+import { skinsStore, setSkins } from '../ui/skins.js';
+import { SkinSection } from '../ui/skinPicker.js';
 import { copyText } from '../ui/clipboard.js';
 import { toast } from '../ui/toasts.js';
 
@@ -201,7 +203,7 @@ function ModuleInfo({ m, golden, opt }) {
   const rows = attrRows(rec.attr);
   const trait = rec.traitOverride;
   const traitText = trait ? (trait.moduleDescRaw || trait.moduleDesc || trait.descRaw || trait.desc) : null;
-  const talents = (Array.isArray(rec.talentChanges) ? rec.talentChanges : []).filter((t) => t && (t.name || t.desc) && !t.hidden);
+  const talents = (Array.isArray(rec.talentChanges) ? rec.talentChanges : []).filter((t) => t && (t.name || t.desc || t.descRaw) && !t.hidden);
   return html`<div class="lo-minfo">
     <div class="lo-minfo__title"><${Img} src=${moduleIconOf(m, rec)} class="lo-minfo__icon" /><span class="lo-minfo__type num">${rec.typeName || ''}</span><b>${rec.name || rec.uniEquipId}</b>
       ${opt.isDefault ? html`<span class="lo-badge lo-badge--def">默认</span>` : null}</div>
@@ -267,14 +269,18 @@ export function LoadoutStats({ base, golden, entries, level, onLevel, getChess =
 }
 
 function Detail({ m, chess, golden, entries, onChange, onReset, locked }) {
+  const [tab, setTab] = useState('skill'); // 'skill' | 'mod' | 'stats' | 'skin'
   const [level, setLevel] = useState('normal');
   const [statLevel, setStatLevel] = useState('elite'); // 局内数值: the 精锐 shows the chosen module's effect
   const bodyRef = useRef(null);
-  useEffect(() => { if (bodyRef.current) bodyRef.current.scrollTop = 0; }, [chess?.chessId]);
-  if (!chess) return html`<aside class="lo-detail lo-detail--empty"><p class="t-dim">没有符合条件的干员</p></aside>`;
   const opt = chessOptions(chess, golden);
   const choice = effectiveChoice(entries, chess, golden);
-  const modOpt = opt.moduleOptions.find((x) => x.id === choice.module) || null;
+  const modOpt = opt?.moduleOptions?.find((x) => x.id === choice.module) || null;
+  const hasMod = !!golden && (opt?.moduleOptions?.length || 0) > 0;
+  const activeTab = tab === 'mod' && !hasMod ? 'skill' : tab;
+
+  useEffect(() => { if (bodyRef.current) bodyRef.current.scrollTop = 0; }, [chess?.chessId, activeTab]);
+  if (!chess) return html`<aside class="lo-detail lo-detail--empty"><p class="t-dim">没有符合条件的干员</p></aside>`;
   const lv = (c) => c?.status?.skillLevel ?? '—';
   return html`<aside class="lo-detail" aria-label=${`${chess.name} 调配`}>
     <div class="lo-dhead">
@@ -295,40 +301,65 @@ function Detail({ m, chess, golden, entries, onChange, onReset, locked }) {
       </div>
       <${Button} variant="ghost" size="sm" icon="refresh" class="lo-dhead__reset" disabled=${!choice.changed} onClick=${onReset}>恢复默认<//>
     </div>
+    <div class="lo-dtabs" role="tablist" aria-label="调配项目">
+      <button type="button" role="tab" aria-selected=${activeTab === 'skill'} class=${cx('lo-dtab', activeTab === 'skill' && 'is-on')} onClick=${() => setTab('skill')}>
+        技能 <span class="lo-dtab__en num">SKILL</span>
+      </button>
+      ${hasMod ? html`<button type="button" role="tab" aria-selected=${activeTab === 'mod'} class=${cx('lo-dtab', activeTab === 'mod' && 'is-on')} onClick=${() => setTab('mod')}>
+        模组 <span class="lo-dtab__en num">MODULE</span>
+      </button>` : null}
+      <button type="button" role="tab" aria-selected=${activeTab === 'stats'} class=${cx('lo-dtab', activeTab === 'stats' && 'is-on')} onClick=${() => setTab('stats')}>
+        数值 <span class="lo-dtab__en num">STATS</span>
+      </button>
+      <button type="button" role="tab" aria-selected=${activeTab === 'skin'} class=${cx('lo-dtab', activeTab === 'skin' && 'is-on')} onClick=${() => setTab('skin')}>
+        换装 <span class="lo-dtab__en num">SKIN</span>
+      </button>
+    </div>
     <div class="lo-detail__body" ref=${bodyRef}>
-      <section class="lo-sec">
-        <header class="lo-sec__head">
-          <h3>技能<${MicroLabel}>SKILL<//></h3>
-          <div class="lo-seg" role="tablist" aria-label="技能等级">
-            <button type="button" role="tab" aria-selected=${level === 'normal' ? 'true' : 'false'} class=${cx(level === 'normal' && 'is-on')} onClick=${() => setLevel('normal')}>普通 <span class="num">Lv.${lv(chess)}</span></button>
-            <button type="button" role="tab" aria-selected=${level === 'elite' ? 'true' : 'false'} class=${cx(level === 'elite' && 'is-on')} disabled=${!golden} onClick=${() => setLevel('elite')}>精锐 <span class="num">Lv.${lv(golden)}</span></button>
+      ${activeTab === 'skill' ? html`
+        <section class="lo-sec">
+          <header class="lo-sec__head">
+            <h3>技能<${MicroLabel}>SKILL<//></h3>
+            <div class="lo-seg" role="tablist" aria-label="技能等级">
+              <button type="button" role="tab" aria-selected=${level === 'normal'} class=${cx(level === 'normal' && 'is-on')} onClick=${() => setLevel('normal')}>普通 <span class="num">Lv.${lv(chess)}</span></button>
+              <button type="button" role="tab" aria-selected=${level === 'elite'} class=${cx(level === 'elite' && 'is-on')} disabled=${!golden} onClick=${() => setLevel('elite')}>精锐 <span class="num">Lv.${lv(golden)}</span></button>
+            </div>
+          </header>
+          <div class="lo-skills" role="radiogroup" aria-label="选择技能">
+            ${opt.skillOptions.map((s) => html`<${SkillOption} key=${s.index} m=${m} opt=${s} level=${level} on=${s.index === choice.skill}
+              onPick=${(i) => onChange({ skill: i })} />`)}
           </div>
-        </header>
-        <div class="lo-skills" role="radiogroup" aria-label="选择技能">
-          ${opt.skillOptions.map((s) => html`<${SkillOption} key=${s.index} m=${m} opt=${s} level=${level} on=${s.index === choice.skill}
-            onPick=${(i) => onChange({ skill: i })} />`)}
-        </div>
-      </section>
-      <${LoadoutStats} base=${chess} golden=${golden} entries=${entries} level=${statLevel} onLevel=${setStatLevel} />
-      ${golden ? html`<section class="lo-sec lo-sec--mod">
-        <header class="lo-sec__head">
-          <h3>模组<${MicroLabel}>MODULE<//></h3>
-          <span class="lo-sec__note">仅精锐干员装备 · 模组等级 <b class="num">${golden.status?.equipLevel ?? 1}</b></span>
-        </header>
-        <div class="lo-mods" role="radiogroup" aria-label="选择模组">
-          ${opt.moduleOptions.map((mo) => html`<button key=${mo.id} type="button" role="radio" aria-checked=${mo.id === choice.module ? 'true' : 'false'}
-              data-module=${mo.id} class=${cx('lo-mod', mo.id === choice.module && 'is-on', mo.id === MODULE_NONE && 'lo-mod--none')}
-              onClick=${() => onChange({ module: mo.id })}>
-            <${ModuleGlyph} m=${m} rec=${mo.rec} id=${mo.id} />
-            <span class="lo-mod__text">
-              <span class="lo-mod__type num">${mo.id === MODULE_NONE ? 'NONE' : mo.rec?.typeName || ''}</span>
-              <b class="lo-mod__name">${mo.id === MODULE_NONE ? '不装备' : mo.rec?.name || mo.id}</b>
-            </span>
-            ${mo.isDefault ? html`<span class="lo-badge lo-badge--def lo-mod__def">默认</span>` : null}
-          </button>`)}
-        </div>
-        ${modOpt ? html`<${ModuleInfo} m=${m} golden=${golden} opt=${modOpt} />` : null}
-      </section>` : null}
+        </section>
+      ` : null}
+
+      ${activeTab === 'stats' ? html`
+        <${LoadoutStats} base=${chess} golden=${golden} entries=${entries} level=${statLevel} onLevel=${setStatLevel} />
+      ` : null}
+
+      ${activeTab === 'mod' && golden ? html`
+        <section class="lo-sec lo-sec--mod">
+          <header class="lo-sec__head">
+            <h3>模组<${MicroLabel}>MODULE<//></h3>
+            <span class="lo-sec__note">仅精锐干员装备 · 模组等级 <b class="num">${golden.status?.equipLevel ?? 1}</b></span>
+          </header>
+          <div class="lo-mods" role="radiogroup" aria-label="选择模组">
+            ${opt.moduleOptions.map((mo) => html`<button key=${mo.id} type="button" role="radio" aria-checked=${mo.id === choice.module}
+                data-module=${mo.id} class=${cx('lo-mod', mo.id === choice.module && 'is-on', mo.id === MODULE_NONE && 'lo-mod--none')}
+                onClick=${() => onChange({ module: mo.id })}>
+              <${ModuleGlyph} m=${m} rec=${mo.rec} id=${mo.id} />
+              <span class="lo-mod__text">
+                <span class="lo-mod__type num">${mo.id === MODULE_NONE ? 'NONE' : mo.rec?.typeName || ''}</span>
+                <b class="lo-mod__name">${mo.id === MODULE_NONE ? '不装备' : mo.rec?.name || mo.id}</b>
+              </span>
+              ${mo.isDefault ? html`<span class="lo-badge lo-badge--def lo-mod__def">默认</span>` : null}
+            </button>)}
+          </div>
+          ${modOpt ? html`<${ModuleInfo} m=${m} golden=${golden} opt=${modOpt} />` : null}
+        </section>
+      ` : null}
+
+      ${activeTab === 'skin' ? html`<${SkinSection} chess=${chess} />` : null}
+
       ${locked ? html`<p class="lo-locknote"><${Icon} name="info" />本局的调配已锁定，修改将在下一局生效</p>` : null}
     </div>
   </aside>`;
@@ -376,7 +407,7 @@ const SYNC_TEXT = {
 
 /** The overlay screen. */
 function LoadoutScreen({ st }) {
-  const ready = useData('chess', 'bonds', 'assets', 'local');
+  const ready = useData('chess', 'bonds', 'assets', 'local', 'skins');
   const phase = useStore((s) => s.match?.public?.phase || null);
   const inMatch = useStore((s) => !!s.room?.inMatch);
   // co-op briefing (INFO_CHECK, 25 s): the overlay covers the briefing's own countdown, so it shows the time left — the
@@ -412,7 +443,10 @@ function LoadoutScreen({ st }) {
 
   // 导出 / 导入 the loadout as the versioned payload (a downloaded file, the clipboard, or the textarea)
   const ioText = io?.text ?? '';
-  const openExport = () => setIo({ mode: 'export', text: serializeExport(loadoutStore.get().entries) });
+  const openExport = () => setIo({
+    mode: 'export',
+    text: serializeExport(loadoutStore.get().entries, { skins: skinsStore.get().entries }),
+  });
   const openImport = () => setIo({ mode: 'import', text: '' });
   const ioCopy = async () => {
     const ok = await copyText(ioText);
@@ -424,7 +458,7 @@ function LoadoutScreen({ st }) {
     const f = e.currentTarget.files && e.currentTarget.files[0];
     e.currentTarget.value = ''; // picking the same file twice must fire again
     if (!f) return;
-    // refuse a huge pick before reading it into memory (a real payload is a few KB)
+    // refuse a huge pick before reading it into memory (a real payload is a technical limit)
     if (f.size > LOADOUT_IMPORT_MAX_BYTES) { toast('文件过大，请选择「导出」下载的调配文件', 'error'); return; }
     try { setIo({ mode: 'import', text: await readFileText(f) }); } catch { toast('读取文件失败', 'error'); }
   };
@@ -434,12 +468,21 @@ function LoadoutScreen({ st }) {
     const res = parseImport(ioText);
     if (!res.ok) { toast(`导入失败：${res.error}`, 'error'); return; }
     const { applied, dropped } = applyLoadoutEntries(res.entries, getChess);
-    // nothing survived sanitising (unknown chess, or every choice already the default): keep the current loadout
-    if (!applied) { toast('导入失败：这份数据在当前版本没有可用的调配，未做任何改动', 'error'); return; }
+    let skinsApplied = 0;
+    if (res.skins && Object.keys(res.skins).length > 0) {
+      const merged = mergeSkins(skinsStore.get().entries, res.skins);
+      setSkins(merged);
+      skinsApplied = Object.keys(res.skins).length;
+    }
+    if (!applied && !skinsApplied) {
+      toast('导入失败：这份数据在当前版本没有可用的调配或皮肤，未做任何改动', 'error');
+      return;
+    }
     setIo(null);
-    toast(dropped
-      ? `已导入 ${applied} 名干员（另有 ${dropped} 项未导入）`
-      : `已导入 ${applied} 名干员的调配`, dropped ? 'warn' : 'success');
+    const parts = [];
+    if (applied) parts.push(`${applied} 名干员配置`);
+    if (skinsApplied) parts.push(`${skinsApplied} 款皮肤`);
+    toast(`已增量导入：${parts.join('，')}${dropped ? `（另有 ${dropped} 项未导入）` : ''}`, dropped ? 'warn' : 'success');
   };
 
   // Esc closes; ←/→ browse the filtered roster (not while typing in the search field)

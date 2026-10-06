@@ -408,8 +408,9 @@ export class UnitView {
   _loadPicture() {
     const a = this.ctx.assets;
     // (an ICE_TOKENS unit takes no picture: the token fallback would be its owner's face — assets.js tokenAvatarUrl)
-    const url = ICE_TOKENS.has(this.info.defId) ? null : a && (a.picture ? a.picture(this.info.avatar) || a.picture(this.info.defId) || a.picture(this.info.spine) : null);
-    this._pic = { key: String(this.info.avatar || this.info.defId || 'unknown'), color: this._frameColor(), img: null, state: 'none', shown: null, t0: nowMs() };
+    const skinOpt = this.info.skin ? { skin: this.info.skin } : undefined;
+    const url = ICE_TOKENS.has(this.info.defId) ? null : a && (a.picture ? a.picture(this.info.avatar, skinOpt) || a.picture(this.info.defId, skinOpt) || a.picture(this.info.spine, skinOpt) : null);
+    this._pic = { key: String(this.info.avatar || this.info.defId || 'unknown') + (this.info.skin ? `|${this.info.skin}` : ''), color: this._frameColor(), img: null, state: 'none', shown: null, t0: nowMs() };
     if (!url || !a.image) return;
     const cached = typeof a.imageNow === 'function' ? a.imageNow(url) : null;
     if (cached) { this._pic.img = cached; this._pic.state = 'img'; return; }
@@ -439,7 +440,7 @@ export class UnitView {
     // Front/Back rule (research 07 §5.5 / 09 §1.2): Front facing right/down (mirrored for left), Back facing up — while
     // standing (a knocked-out operator lies with the model that has a fall: _wantsBack).
     const back = this._wantsBack();
-    const entry = id ? a.spineEntry(id, { back }) : null;
+    const entry = id ? a.spineEntry(id, { back, skin: this.info.skin }) : null;
     if (!entry || this.ctx.settings?.quality === 'low' && this.isEnemy && !this.isBoss && this.ctx.crowded?.()) return;
     this.entryBack = back;
     this._acquireSpine(entry, id, retry);
@@ -683,8 +684,8 @@ export class UnitView {
   _wantsBack() {
     const a = this.ctx.assets;
     const id = this.info.spine || this.info.defId;
-    if (this.isEnemy || this.dir !== 'UP' || !id || !a || typeof a.hasBack !== 'function' || !a.hasBack(id)) return false;
-    return this.alive || dieClipDur(typeof a.spineEntry === 'function' ? a.spineEntry(id, { back: true }) : null) > 0;
+    if (this.isEnemy || this.dir !== 'UP' || !id || !a || typeof a.hasBack !== 'function' || !a.hasBack(id, this.info.skin)) return false;
+    return this.alive || dieClipDur(typeof a.spineEntry === 'function' ? a.spineEntry(id, { back: true, skin: this.info.skin }) : null) > 0;
   }
 
   /**
@@ -736,6 +737,7 @@ export class UnitView {
   /** An attack was made (b.ev 'atk'). `target` = view or null. */
   onAttack(target, now, kind) {
     if (!this.alive) return;
+    this.lastTargetId = target?.id ?? null;
     // a one-off cast (PROJ[kind].once: 暴鸰's bomb drop) is no attack rhythm: its clip plays once at its own speed
     const once = !!PROJ[kind]?.once;
     if (!once) {
@@ -758,6 +760,11 @@ export class UnitView {
     this.lunge = 1;
     if (this.actor) this.actor.attack(this.atkInterval, once); // game seconds: the actor's clock runs in game time
     if (this.imp) this.imp.dirty = true;
+  }
+
+  finishAttack() {
+    this.lastTargetId = null;
+    if (this.actor?.finishAttack) this.actor.finishAttack();
   }
 
   /**

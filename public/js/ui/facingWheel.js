@@ -23,6 +23,7 @@
 
 import { useEffect, useLayoutEffect, useRef, useState } from '../../vendor/hooks.module.js';
 import { html } from './components.js';
+import { audio } from '../audio.js';
 import { LocalSprite } from './gameComponents.js';
 import { DIRS, DIR_LABEL, DEAD_ZONE_TILES, dirFromDelta, dirFromKey, rangeTiles, normDir, boardDir, viewMirrored } from './facing.js';
 
@@ -168,11 +169,14 @@ export function useTileScreen(view, row, col) {
 const CHEV = { UP: [0, -64, -90], RIGHT: [64, 0, 0], DOWN: [0, 64, 90], LEFT: [-64, 0, 180] };
 
 function Chevron({ dir, on, onClick }) {
+  const { onCommit, onPreview } = arguments[0] || {};
   const [x, y, rot] = CHEV[dir];
+  const commit = onCommit || onClick;
   return html`<g class=${cx('fwheel__chev', on && 'is-on')} transform=${`translate(${x} ${y}) rotate(${rot})`}
-      onPointerDown=${(e) => { e.stopPropagation(); onClick?.(dir); }}
-      onClick=${(e) => { e.stopPropagation(); onClick?.(dir); }}>
-    <circle cx="0" cy="0" r="32" fill="transparent" />
+      onPointerDown=${(e) => { e.stopPropagation(); onPreview?.(dir); }}
+      onPointerUp=${(e) => { e.stopPropagation(); commit?.(dir); }}
+      onClick=${(e) => { e.stopPropagation(); (onClick || commit)?.(dir); }}>
+    <circle cx="0" cy="0" r="22" fill="transparent" />
     <path d="M-9 -15 L3 0 L-9 15 L-3 15 L9 0 L-3 -15 Z" />
   </g>`;
 }
@@ -206,6 +210,9 @@ export function FacingWheel({ view, row, col, grid, name = '', onPreview, onComm
     const L = live.current;
     if (!L.g) return null;
     const d = dirFromDelta(clientX - L.g.x, clientY - L.g.y, L.dead);
+    if (d && d !== dir) {
+      try { audio.sfx('tab'); } catch { /* ignore */ }
+    }
     setDir(d);
     return d;
   };
@@ -218,7 +225,15 @@ export function FacingWheel({ view, row, col, grid, name = '', onPreview, onComm
   const onDirectCommit = (selectedDir) => {
     if (!selectedDir) return;
     setDir(selectedDir);
+    try { audio.sfx('click'); } catch { /* ignore */ }
     onCommit(boardDir(selectedDir, live.current.mirror));
+  };
+  const onDirectPreview = (selectedDir) => {
+    if (!selectedDir) return;
+    if (selectedDir !== dir) {
+      try { audio.sfx('tab'); } catch { /* ignore */ }
+    }
+    setDir(selectedDir);
   };
 
   const onDown = (e) => {
@@ -243,11 +258,13 @@ export function FacingWheel({ view, row, col, grid, name = '', onPreview, onComm
     setDrag(null);
     const d = choose(e.clientX, e.clientY);
     if (d) {
+      try { audio.sfx('click'); } catch { /* ignore */ }
       onCommit(boardDir(d, live.current.mirror));
     } else {
       const dt = Date.now() - (sDrag.t0 || 0);
       const dist = Math.hypot(e.clientX - (sDrag.x0 || 0), e.clientY - (sDrag.y0 || 0));
       if (!live.current.hadDir && dt < 450 && dist < live.current.dead * 1.5) {
+        try { audio.sfx('click'); } catch { /* ignore */ }
         onCommit(boardDir('RIGHT', live.current.mirror));
       } else {
         onCancel();
@@ -284,7 +301,7 @@ export function FacingWheel({ view, row, col, grid, name = '', onPreview, onComm
         <path class=${cx('fwheel__quad', dir === 'DOWN' && 'is-on')} d="M0 100 L-50 50 L0 0 L50 50 Z" />
         <path class=${cx('fwheel__quad', dir === 'LEFT' && 'is-on')} d="M-100 0 L-50 -50 L0 0 L-50 50 Z" />
         <path class="fwheel__inner" d=${`M0 ${-DEAD_ZONE_TILES / 1.5 * 100} L${DEAD_ZONE_TILES / 1.5 * 100} 0 L0 ${DEAD_ZONE_TILES / 1.5 * 100} L${-DEAD_ZONE_TILES / 1.5 * 100} 0 Z`} />
-        ${DIRS.map((d) => html`<${Chevron} key=${d} dir=${d} on=${dir === d} onClick=${onDirectCommit} />`)}
+        ${DIRS.map((d) => html`<${Chevron} key=${d} dir=${d} on=${dir === d} onClick=${onDirectCommit} onCommit=${onDirectCommit} onPreview=${onDirectPreview} />`)}
       </svg>
       <button type="button" class="fwheel__cancel" onPointerDown=${(e) => e.stopPropagation()}
         onClick=${(e) => { e.stopPropagation(); onCancel(); }} aria-label="点击取消">

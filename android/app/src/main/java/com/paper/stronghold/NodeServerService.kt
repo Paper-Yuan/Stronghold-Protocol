@@ -56,6 +56,9 @@ class NodeServerService : Service() {
         fun addLog(line: String) {
             if (serverLogs.size >= 250) serverLogs.removeFirst()
             serverLogs.addLast(line)
+            // Mirror the embedded server's output into the rotating file log (FileLogger) so the
+            // shareable debug.log carries server stdout too; the in-memory ring stays as-is.
+            FileLogger.i("node", line)
         }
 
         @Synchronized

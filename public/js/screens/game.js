@@ -108,7 +108,7 @@ import { battleRunner } from '../battle/runner.js';
 import { isClientCombat, observeTarget, teammateProgress, cameraLayers, layerCamera, sidesOf, resumedWatch } from '../battle/observe.js';
 import { screenStrip, playerBonds, playerLayer, detailBondOwner, toggleBond, popupView } from '../ui/watchBonds.js';
 import { data, localAsset, getMode } from '../data.js';
-import { audio, voiceKey } from '../audio.js';
+import { audio, voiceKey, resultSpeaker, resultVoiceSlot } from '../audio.js';
 import { useDocClass, FullscreenButton } from '../ui/device.js';
 
 const cx = (...p) => p.flat().filter(Boolean).join(' ');
@@ -438,7 +438,7 @@ function MatchScreen() {
     }
     if (earlySnap) {
       view.pushSnapshot(earlySnap);
-      hudRef.current = snapHud(earlySnap);
+      hudRef.current = snapHud(earlySnap, myId);
       setHud(hudRef.current);
     }
   }, [view, showPrep, priv, editable, field, combat, mode, watchingOther, watching, holdSeq]);
@@ -471,7 +471,7 @@ function MatchScreen() {
         for (const t of snap.units) if (Array.isArray(t)) mp.set(t[0], t);
         snapUnitsRef.current = mp;
       }
-      hudRef.current = snapHud(snap);
+      hudRef.current = snapHud(snap, myId);
       const dt = performance.now() - last;
       if (dt >= HUD_HZ_MS) flush();
       else if (!pending) pending = setTimeout(flush, HUD_HZ_MS - dt);
@@ -492,8 +492,27 @@ function MatchScreen() {
       view?.pushEvents(msg);
       audio.handleBattleEvents(msg.ev);
     };
+    // 干员语音 (结算): the own battle's result just came in — the operator's line depends on how it went
+    const onResult = (msg) => {
+      try {
+        if (!msg || !msg.result) return;
+        const st = store.get();
+        const pid = st.me?.playerId;
+        const mine = (pid && msg.result.perPlayer && msg.result.perPlayer[pid]) || null;
+        const diff = st.match?.public?.difficulty;
+        const charId = resultSpeaker(mine);
+        if (!charId) return;
+        audio.voice(charId, resultVoiceSlot({
+          perfect: !!(mine?.perfect),
+          leaked: Array.isArray(mine?.leaked) ? mine.leaked.length : 0,
+          killed: mine?.killed ?? msg.result.killed,
+          total: mine?.total ?? msg.result.total,
+          hard: diff === 'HARD' || diff === 'ABYSS',
+        }));
+      } catch { /* ignore */ }
+    };
     const offs = [net.on('m.field', onFieldMeta), net.on('b.snap', onSnap), net.on('b.ev', onEv)];
-    if (battleRunner) offs.push(battleRunner.on('field', onFieldMeta), battleRunner.on('snap', onSnap), battleRunner.on('ev', onEv));
+    if (battleRunner) offs.push(battleRunner.on('field', onFieldMeta), battleRunner.on('snap', onSnap), battleRunner.on('ev', onEv), battleRunner.on('result', onResult));
     return () => { for (const off of offs) { try { off(); } catch { /* ignore */ } } clearTimeout(pending); };
   }, [view]);
 
@@ -832,8 +851,9 @@ function MatchScreen() {
       // announceDeploy) instead of off the manual drop, so combat auto-deploy, a merge's elite and a
       // raid redeploy speak too — it used to sound only when the player tapped a piece into place.
       view.on('unitDeploy', (e) => {
+        try { audio.deploy?.(e, gd); } catch { /* ignore */ }
         const vk = voiceKey(e?.defId || e?.chessId, gd);
-        if (vk) audio.voice(vk);
+        if (vk) audio.voice(vk, 'place');
       }),
       view.on('pieceDragEnd', (e) => {
         // a cancelled drag (no pieceDrop) must not leave the highlights behind; a release on a tile that takes nothing
@@ -855,7 +875,7 @@ function MatchScreen() {
         if (!e) return;
         audio.sfx('click', { volume: 0.4 });
         const vk = voiceKey(e.piece || (e.uid != null ? live.current.placeCtx?.pieces.get(e.uid)?.piece : null) || e.unit, gd);
-        if (vk) audio.voice(vk);
+        if (vk) audio.voice(vk, 'select');
         // an enemy of the preview pen (research 09 §2.2 "Intel": tap it for its detail card)
         const penKey = previewEnemyKey(e);
         if (penKey) { setDetail({ kind: 'enemy', id: penKey }); return; }
@@ -971,6 +991,7 @@ function MatchScreen() {
     const f = live.current.facing;
     if (!f) return;
     setFacing(null);
+    audio.sfx('click', { volume: 0.5 });
     const intent = facingIntent(f.piece, { row: f.row, col: f.col }, dir);
     heldRef.current.set(f.uid, { row: f.row, col: f.col, t: Date.now() });
     const ok = intent.t === 'g.art'
@@ -980,6 +1001,10 @@ function MatchScreen() {
       if (f.piece.kind !== 'item') setPieceDir(view, f.uid, pieceDir(f.piece));
       releaseHold(f.uid);
       return;
+    }
+    if (f.piece && f.piece.kind !== 'item') {
+      const vk = voiceKey(f.piece, gd);
+      if (vk) audio.voice(vk, 'place');
     }
     // accepted: the piece stays on the tile until m.private shows it there (or a short grace passes)
     setTimeout(() => { if (heldRef.current.has(f.uid)) releaseHold(f.uid); }, 1500);
@@ -1320,7 +1345,7 @@ function MatchScreen() {
         onClose=${() => setBondOpen(null)} onMember=${(id, items) => setDetail({ kind: 'chess', id, owner: bondPop.ownerId, items: items || null })} />` : null}
 
       ${resolved ? html`<${DetailPanel} detail=${resolved} snapHp=${snapHp} onClose=${() => { setDetail(null); setSel(null); }}
-        bonds=${detailBonds} offBonds=${offBonds} loadout=${detailLoadout} side=${dSide} shopOpen=${shopOpen} live=${liveStats}
+        bonds=${detailBonds} offBonds=${offBonds} loadout=${detailLoadout} side=${dSide} shopOpen=${shopOpen} live=${liveStats} voice=${true}
         onBond=${(id) => openBond(id, detailOwner, 'detail')} />` : null}
 
       ${selEntry && editable && !facing && !drag && showPrep ? html`<${Underframe} key=${sel.uid} view=${view} uid=${sel.uid}

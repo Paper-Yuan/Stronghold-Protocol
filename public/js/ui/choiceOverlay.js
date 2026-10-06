@@ -57,6 +57,7 @@ export function resolveSpCard(card, family) {
   const m = data.get('assets');
   const kind = card.kind === 'item' || item ? 'item' : card.kind === 'bounty' || bounty || family === 'bounty' ? 'bounty' : 'tactic';
   const enemyKey = card.enemyKey || bounty?.enemyKey || eff?.params?.enemy_id || null;
+  const enemy = enemyKey ? data.lookup('enemies', enemyKey) : null;
   const team = card.team ?? tactic?.team ?? (eff?.decoIconId === 'icon_team_buff');
   let icon = null;
   if (item) icon = itemIconUrl(m, item);
@@ -64,9 +65,13 @@ export function resolveSpCard(card, family) {
   else if ((card.tacticKind || tactic?.kind) === 'terrain') icon = uiUrl(m, 'buffIcon/icon_stage_buff');
   else if ((card.tacticKind || tactic?.kind) === 'enemyDebuff') icon = uiUrl(m, 'buffIcon/icon_enemy_debuff');
   else icon = uiUrl(m, `buffIcon/${team ? 'icon_team_buff' : 'icon_player_buff'}`);
+  const baseName = card.name || item?.name || eff?.name || bounty?.name || tactic?.name || '机变';
+  const name = kind === 'bounty' && enemy?.name && !baseName.includes(enemy.name)
+    ? `${baseName} · ${enemy.name}`
+    : baseName;
   return {
     kind,
-    name: card.name || item?.name || eff?.name || bounty?.name || tactic?.name || '机变',
+    name,
     desc: cardText(card, item?.descRaw || eff?.descRaw || '') || item?.desc || eff?.desc || bounty?.desc || tactic?.desc || '',
     tier: Number.isFinite(card.tier) ? card.tier : item?.tier ?? bounty?.tier ?? null,
     icon,

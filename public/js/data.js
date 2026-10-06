@@ -33,6 +33,7 @@ export const DATA_FILES = Object.freeze({
   choices: 'choices.json',
   config: 'config.json',
   assets: 'assets.json',
+  skins: 'skins.json',
   // Optional art extracted from a local game client (DESIGN §13): { groups: { '<subdir>': { name: { path, w, h } } } }.
   // The emotes and the 玩法说明 pages are in data/assets.json too (downloaded from the mirror): artUrls().
   local: 'local-assets.json',

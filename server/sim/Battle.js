@@ -272,7 +272,7 @@ export class Battle {
     // choice for the same chess id in a multi-player field (the per-battle data view maps id-only lookups)
     const def = this.data.getChess(inp.chessId, { skillIndex: inp.skillIndex ?? null, moduleId: inp.moduleId ?? null });
     if (!def) { this.log(`unknown chess ${inp.chessId}`); return null; }
-    const u = this._makeAlly(ps, def, 'op', r, c, { uid: inp.uid, dir });
+    const u = this._makeAlly(ps, def, 'op', r, c, { uid: inp.uid, dir, skin: inp.skin });
     u.items = [...(inp.items ?? [])];
     u.carry = inp.carryState ?? null;
     return u;
@@ -294,7 +294,7 @@ export class Battle {
     const st = def.stats;
     const u = new Unit({
       id: ++this._idSeq, side: 'ally', kind, def, defId: def.id, name: def.name, ownerId: ps ? ps.playerId : null,
-      uid: extra.uid ?? null, ownerUnit: extra.ownerUnit ?? null, x: c, y: r, tileR: r, tileC: c,
+      uid: extra.uid ?? null, ownerUnit: extra.ownerUnit ?? null, skin: extra.skin ?? null, x: c, y: r, tileR: r, tileC: c,
       dir: extra.dir != null ? normDir(extra.dir) : extra.facing != null ? normDir(extra.facing) : ps ? ps.dir : 'RIGHT',
       base: {
         maxHp: st.maxHp, atk: st.atk, def: st.def, res: st.res, aspd: st.aspd, bat: st.bat, blockCnt: st.blockCnt,
@@ -913,7 +913,7 @@ export class Battle {
       if (sk.charges >= sk.maxCharges) sk.sp = sk.spCost;
     }
     if (first) this._ev(['spawn', unitInfo(u)]);
-    this._ev(['deploy', u.id]);
+    this._ev(initial ? ['deploy', u.id, { initial: true }] : ['deploy', u.id]);
     if (this._hooks.deploy) this.emit('deploy', { unit: u, initial });
     // 联防: "部署完成后，将对应单位的…技力修改至与上一阶段结束时相同" — the carried SP is set again once the deployment is
     // done, so a deploy-time SP gift (独行, 黄沙罗盘 …) does not come on top of it; later redeploys keep those gifts

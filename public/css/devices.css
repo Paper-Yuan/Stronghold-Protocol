@@ -77,7 +77,7 @@ html:not(.sp-in-match) .toast-host { margin-top: var(--sa-t); }
 .sp-coarse .ewheel__panel .ewheel__nav::before { top: .03rem; bottom: -.15rem; height: auto; transform: none; }
 .sp-coarse .ewheel__panel .ewheel__nav.is-prev::before { left: auto; right: 0; }
 .sp-coarse .ewheel__panel .ewheel__nav.is-next::before { left: 0; right: auto; }
-.sp-coarse .ewheel__dot::before { inset: -.02rem -.05rem -.2rem; width: auto; height: auto; transform: none; }
+.sp-coarse .ewheel__dot::before { inset: -.02rem -.05rem -.2rem; top: -.02rem; left: -.05rem; right: -.05rem; bottom: -.2rem; width: auto; height: auto; transform: none; }
 
 /* Phones in landscape (short touch screens: 1rem ≈ 40 px here): the most used controls grow a little so they are
    comfortable to hit and to read, without changing the official layout. */

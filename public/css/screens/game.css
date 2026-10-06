@@ -135,8 +135,8 @@
 .capsule--combat { --cap: var(--orange-hi); }
 .capsule--boss { --cap: var(--orange-hi); min-width: 4.2rem; }
 .bossbar { position: relative; flex: 1; min-width: 2.2rem; height: .2rem; background: rgba(0, 0, 0, .6); border: 1px solid rgba(255, 122, 51, .5); overflow: hidden; }
-.bossbar__fill { position: absolute; inset: 0 auto 0 0; background: linear-gradient(90deg, #b8340d, var(--orange-hi)); box-shadow: 0 0 .1rem rgba(255, 110, 40, .8); transition: width 300ms var(--ease-out); }
-.bossbar__txt { position: absolute; inset: 0; display: grid; place-items: center; font-size: .14rem; font-weight: 700; color: #fff; text-shadow: 0 1px 2px #000; }
+.bossbar__fill { position: absolute; top: 0; left: 0; bottom: 0; right: auto; inset: 0 auto 0 0; background: linear-gradient(90deg, #b8340d, var(--orange-hi)); box-shadow: 0 0 .1rem rgba(255, 110, 40, .8); transition: width 300ms var(--ease-out); }
+.bossbar__txt { position: absolute; top: 0; left: 0; right: 0; bottom: 0; width: 100%; height: 100%; inset: 0; display: grid; place-items: center; font-size: .14rem; font-weight: 700; color: #fff; text-shadow: 0 1px 2px #000; }
 
 /* LP tower */
 .lp { display: inline-flex; align-items: center; gap: .05rem; color: var(--mint-400); white-space: nowrap; }
@@ -322,12 +322,12 @@
   border: 1px solid var(--line-2);
 }
 .pavatar--sm { --pa: .42rem; }
-.pavatar__img { position: absolute; inset: 0; overflow: hidden; display: grid; place-items: center; }
+.pavatar__img { position: absolute; top: 0; left: 0; right: 0; bottom: 0; width: 100%; height: 100%; inset: 0; overflow: hidden; display: grid; place-items: center; }
 .pavatar__img img { width: 100%; height: 100%; object-fit: cover; }
 .pavatar__glyph { font-weight: 900; font-size: calc(var(--pa) * .5); color: hsl(var(--seat-hue) 70% 72%); }
 .pavatar__bot { width: 56%; height: 56%; color: #a9c3d8; }
 .pavatar.is-dead .pavatar__img, .pavatar.is-left .pavatar__img, .pavatar.is-offline .pavatar__img { filter: grayscale(1) brightness(.4); }
-.pavatar__x, .pavatar__door { position: absolute; inset: 0; display: grid; place-items: center; color: var(--red-premium); }
+.pavatar__x, .pavatar__door { position: absolute; top: 0; left: 0; right: 0; bottom: 0; width: 100%; height: 100%; inset: 0; display: grid; place-items: center; color: var(--red-premium); }
 .pavatar__x .icon, .pavatar__door .icon { width: 60%; height: 60%; filter: drop-shadow(0 0 4px #000); }
 
 /* ---- effects ---------------------------------------------------------------------------------------------- */
@@ -440,7 +440,7 @@
 /* a spectator seat (community report #26): the same place, the watching pill's amber — nobody was eliminated */
 .gm__dead--spectator { background: rgba(24, 16, 4, .92); border-color: rgba(246, 163, 41, .6); color: var(--amber); }
 
-.chud { position: absolute; inset: 0; pointer-events: none; }
+.chud { position: absolute; top: 0; left: 0; right: 0; bottom: 0; width: 100%; height: 100%; inset: 0; pointer-events: none; }
 .chud > * { pointer-events: auto; }
 .dpbox {
   position: absolute; right: .3rem; top: 50%; transform: translateY(-50%);
@@ -516,7 +516,7 @@
 
 /* ---- exit / away ------------------------------------------------------------------------------------------------------ */
 .exitm { display: flex; flex-direction: column; gap: .1rem; font-size: .17rem; line-height: 1.7; }
-.awayov { position: fixed; inset: 0; z-index: 70; display: grid; place-items: center; background: rgba(4, 7, 6, .78); -webkit-backdrop-filter: blur(3px); backdrop-filter: blur(3px); animation: screen-in var(--t-slow) var(--ease-out); }
+.awayov { position: fixed; top: 0; left: 0; right: 0; bottom: 0; width: 100%; height: 100%; inset: 0; z-index: 70; display: grid; place-items: center; background: rgba(4, 7, 6, .78); -webkit-backdrop-filter: blur(3px); backdrop-filter: blur(3px); animation: screen-in var(--t-slow) var(--ease-out); }
 .awayov__box { display: flex; flex-direction: column; align-items: center; gap: .12rem; padding: .44rem .7rem; background: rgba(12, 16, 14, .96); border: 1px solid var(--line-2); }
 .awayov__icon { width: .8rem; height: .8rem; color: var(--ice); filter: drop-shadow(0 0 .2rem rgba(159, 212, 255, .5)); }
 .awayov__box h2 { font-size: .34rem; letter-spacing: .12em; }
@@ -554,7 +554,7 @@
 .ff-piece.is-draggable { cursor: grab; }
 .ff-piece.is-lifted { opacity: .25; }
 .ff-piece__art {
-  position: absolute; inset: 7%; overflow: hidden; display: grid; place-items: center; background: #1a201d;
+  position: absolute; top: 7%; left: 7%; right: 7%; bottom: 7%; width: 86%; height: 86%; inset: 7%; overflow: hidden; display: grid; place-items: center; background: #1a201d;
   border: 2px solid rgba(255, 255, 255, .22); clip-path: polygon(12% 0, 100% 0, 100% 88%, 88% 100%, 0 100%, 0 12%);
 }
 .ff-piece__art img { width: 100%; height: 100%; object-fit: cover; pointer-events: none; }
@@ -615,7 +615,7 @@
 
 /* solo pause overlay (screens/game.js PausedOverlay; m.public.paused): the field dims under an official matte plate */
 .pauseov {
-  position: absolute; inset: 0; z-index: 65; display: grid; place-items: center; pointer-events: auto;
+  position: absolute; top: 0; left: 0; right: 0; bottom: 0; width: 100%; height: 100%; inset: 0; z-index: 65; display: grid; place-items: center; pointer-events: auto;
   background: rgba(4, 7, 6, .62); -webkit-backdrop-filter: grayscale(.6) blur(2px); backdrop-filter: grayscale(.6) blur(2px);
   animation: screen-in var(--t-med) var(--ease-out);
 }

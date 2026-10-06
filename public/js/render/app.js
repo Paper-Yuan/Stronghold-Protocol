@@ -124,6 +124,7 @@ import { layoutPen, penSignature } from './pen.js';
 import { IDENTITY, bossPrepField, tilesToDisp, leaderStand } from './prepfield.js';
 import { pickOnTile, pickBattle, hitRectAt, hitTiles } from './pick.js';
 import { promotionsOf } from './promote.js';
+import { skinFor } from '../ui/skins.js';
 
 const VENDOR = { pixi: '/vendor/pixi.min.js', spine: '/vendor/pixi-spine.js' };
 const PIECE_DIRS = new Set(['UP', 'RIGHT', 'DOWN', 'LEFT']);
@@ -283,6 +284,7 @@ export function renderInfo(u) {
   return {
     id: u.id, uid: u.uid ?? null, kind: u.kind || 'enemy', side: u.side === 'ally' ? 'ally' : 'enemy', ownerId: u.ownerId ?? null,
     defId: u.defId ?? null, name: u.name ?? '', tier: u.tier ?? 1, golden: !!u.golden, spine: u.spine ?? u.defId ?? null,
+    skin: u.skin ?? null,
     avatar: u.avatar ?? u.defId ?? null, x: Number(u.x) || 0, y: Number(u.y) || 0, facing: u.facing === -1 ? -1 : 1,
     maxHp: Number(u.maxHp) || 1, boss: !!u.boss, motion: u.motion,
     // deploy direction of allies (UnitInfo.dir, DESIGN §3): the model (Back for UP, mirrored for LEFT) and the
@@ -896,9 +898,11 @@ export async function createFieldView(host, options = {}) {
       return { kind: 'token', side: 'ally', defId: piece.id, spine: rec?.assets?.spine || piece.id, avatar: rec?.assets?.avatar || piece.id, tier: piece.tier || 1, golden: false, dir };
     }
     const rec = data.chess(piece.id);
+    const baseId = rec?.baseId || piece.id;
     return {
       kind: 'op', side: 'ally', defId: piece.id,
       spine: rec?.assets?.spine || rec?.charId || null, avatar: rec?.assets?.avatar || rec?.charId || null,
+      skin: piece.skin ?? skinFor(baseId) ?? skinFor(piece.id) ?? null,
       tier: rec?.tier || piece.tier || 1, golden: !!(piece.golden || rec?.isGolden), dir,
     };
   }
@@ -974,7 +978,7 @@ export async function createFieldView(host, options = {}) {
       const key = 'p:' + e.uid;
       e.key = key;
       const info = pieceInfo(e.piece, e.area);
-      const sig = `${info.kind}|${info.defId}|${info.golden ? 1 : 0}`;
+      const sig = `${info.kind}|${info.defId}|${info.golden ? 1 : 0}|${info.skin || ''}`;
       let v = views.get(key);
       if (v && v._sig !== sig) { dropView(key); v = null; }
       const w = slotWorld(e);
@@ -1556,12 +1560,18 @@ export async function createFieldView(host, options = {}) {
       case 'deploy': {
         gone.delete(e[1]);
         const v = battleView(e[1]);
-        if (v) { v.onDeploy?.(); announceDeploy(v, e); if (v.info?.kind !== 'device') fx.deploy(v); }
+        const isInitial = !!(e[2]?.initial || (typeof e[2] === 'object' && e[2]?.initial));
+        if (v) {
+          v.onDeploy?.();
+          if (!isInitial) announceDeploy(v, e);
+          if (v.info?.kind !== 'device' && !isInitial) fx.deploy(v);
+        }
         break;
       }
       case 'atk': {
         const src = views.get(e[1]) || battleView(e[1]);
         const tgt = views.get(e[2]) || battleView(e[2]);
+        if (tgt && !tgt.alive) break;
         // chain / chainHeal bounces: the "source" is the previous target of the bounce, not an attacker
         if (src && !CHAIN_KINDS.has(e[3])) src.onAttack?.(tgt, now, e[3]);
         if (e[3] === 'none' || !e[3]) { if (tgt && src) meleePending.set(tgt.id, { src, t: now }); }
@@ -1583,7 +1593,15 @@ export async function createFieldView(host, options = {}) {
       case 'die': {
         const v = views.get(e[1]);
         const used = consumedIds.delete(e[1]);
-        if (v && v.alive) { v.die(e[2] === FORCED_EXIT); if (showsDeathFx(v.info, used, e[2])) fx.death(v); }
+        if (v && v.alive) {
+          v.die(e[2] === FORCED_EXIT);
+          if (showsDeathFx(v.info, used, e[2])) fx.death(v);
+          for (const u of views.values()) {
+            if (u && u !== v && u.lastTargetId === v.id) {
+              u.finishAttack?.();
+            }
+          }
+        }
         break;
       }
       case 'leak': {

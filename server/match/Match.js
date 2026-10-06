@@ -297,6 +297,9 @@ export class Match {
     this.rngBots = rng('bots');
     this.rngMeta = rng('meta');
 
+    this._pubDirty = false;
+    this._privDirty = new Set();
+
     /** @type {Map<string, PlayerState>} */
     this.players = new Map();
     const seen = new Set();
@@ -443,6 +446,23 @@ export class Match {
     this.guard(() => {
       if (!ps.setLoadout(loadout)) { res = fail(ERR.BAD_TARGET, 'loadout does not match the game data'); return; }
       this.markPrivate(ps);
+    });
+    return res;
+  }
+
+  /**
+   * room.skins during the match (docs/SKINS.md): replace a player's chosen operator skins.
+   * @param {string} playerId
+   * @param {Record<string, string> | null} skins
+   * @returns {{ ok: true } | { error: string, detail?: string }}
+   */
+  setSkins(playerId, skins) {
+    const ps = this.players.get(playerId);
+    if (!ps || ps.isBot || ps.left) return fail(ERR.NOT_IN_ROOM);
+    let res = OK;
+    this.guard(() => {
+      ps.setSkins(skins);
+      this.markPublic();
     });
     return res;
   }
@@ -897,6 +917,7 @@ export class Match {
         fieldId: this.fieldOf(ps),
         status: this.statusOf(ps),
         autoplay: ps.autoplay,
+        ...(Object.keys(ps.skins).length ? { skins: ps.skins } : {}),
         // the LP this round's own battle will cost at settlement so far (COMBAT / 联防 only, omitted when 0)
         ...this._pendingLpView(ps),
       })),
@@ -957,6 +978,7 @@ export class Match {
         id: piece.uid, uid: piece.uid, kind: piece.kind === 'token' ? 'token' : 'op', side: 'ally', ownerId: ps.playerId, defId: piece.id,
         name: rec ? rec.name : piece.id, tier: rec && Number.isInteger(rec.tier) ? rec.tier : 1, golden: !!(rec && rec.isGolden),
         spine: assets.spine || (rec && rec.charId) || piece.id, avatar: assets.avatar || (rec && rec.charId) || piece.id,
+        skin: piece.kind === 'chess' ? (ps.skins?.[rec?.baseId || piece.id] || ps.skins?.[piece.id]) : undefined,
         x: c, y: r, dir: pieceDir(piece), facing: pieceDir(piece) === 'LEFT' ? -1 : 1, maxHp: rec && rec.stats && Number.isFinite(rec.stats.maxHp) ? rec.stats.maxHp : 1,
         skillIndex: lo && Number.isInteger(lo.skillIndex) ? lo.skillIndex : undefined,
         moduleId: lo && typeof lo.moduleId === 'string' ? lo.moduleId : undefined,
@@ -978,6 +1000,7 @@ export class Match {
         side: 'ally', ownerId: ps.playerId, defId: piece.id,
         name: rec ? rec.name : piece.id, tier: rec && Number.isInteger(rec.tier) ? rec.tier : 1, golden: !!(rec && rec.isGolden),
         spine: assets.spine || (rec && rec.charId) || piece.id, avatar: assets.avatar || (rec && rec.charId) || piece.id,
+        skin: piece.kind === 'chess' ? (ps.skins?.[rec?.baseId || piece.id] || ps.skins?.[piece.id]) : undefined,
         x: i, y, maxHp: rec && rec.stats && Number.isFinite(rec.stats.maxHp) ? rec.stats.maxHp : 1,
         skillIndex: lo && Number.isInteger(lo.skillIndex) ? lo.skillIndex : undefined,
         moduleId: lo && typeof lo.moduleId === 'string' ? lo.moduleId : undefined,

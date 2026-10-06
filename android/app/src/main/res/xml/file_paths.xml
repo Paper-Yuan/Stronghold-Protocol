@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Paths served by the FileProvider (authority ${applicationId}.logs) for the
+     「分享日志」 share sheet. FileLogger writes to getExternalFilesDir(null)/logs,
+     which is the external-files-path entry; the files-path entry keeps the same
+     logs/ directory shareable when external storage is unavailable and the
+     internal filesDir fallback is used. -->
+<paths>
+    <files-path name="internal_logs" path="logs/" />
+    <external-files-path name="external_logs" path="logs/" />
+</paths>

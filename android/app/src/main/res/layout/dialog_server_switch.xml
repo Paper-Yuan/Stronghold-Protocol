@@ -4,6 +4,7 @@
      board-quality block is a preference, not a first-run decision, so the code hides it on first run.
      Landscape gives ~360dp of height, hence the ScrollView and the tight paddings. -->
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:background="@color/card_bg">
@@ -61,7 +62,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="8dp"
-                    android:text="本机单人"
+                    android:text="单人游玩"
                     android:textColor="@color/text_white"
                     android:textSize="14sp"
                     android:textStyle="bold" />
@@ -70,7 +71,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="4dp"
-                    android:text="手机自己开服，不连网也能玩。"
+                    android:text="自己玩·不连网也能玩。手机独立运行 Node 引擎。"
                     android:textColor="#9fb0a9"
                     android:textSize="11sp" />
             </LinearLayout>
@@ -98,7 +99,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="8dp"
-                    android:text="同一 Wi-Fi"
+                    android:text="开服做房主"
                     android:textColor="@color/text_white"
                     android:textSize="14sp"
                     android:textStyle="bold" />
@@ -107,7 +108,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="4dp"
-                    android:text="手机开服进大厅，朋友只填 4 位同盟密钥就能进来。UU 加速器 / Tailscale 这类虚拟局域网开服也选这个。"
+                    android:text="手机开服给同伴。同 Wi-Fi 报同盟码；异地直接一键复制本机 IP 发给好友。"
                     android:textColor="#9fb0a9"
                     android:textSize="11sp" />
             </LinearLayout>
@@ -135,7 +136,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="8dp"
-                    android:text="填地址连接"
+                    android:text="去加朋友"
                     android:textColor="@color/text_white"
                     android:textSize="14sp"
                     android:textStyle="bold" />
@@ -144,7 +145,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="4dp"
-                    android:text="加入别人开好的服务器：粘贴房主发来的地址或邀请链接。自己开服别选这个，填自己的地址会连不上。"
+                    android:text="加入同伴开的房间或远程云服务器。粘贴房主发来的 IP 或域名。"
                     android:textColor="#9fb0a9"
                     android:textSize="11sp" />
             </LinearLayout>
@@ -222,6 +223,35 @@
                     android:textColor="@color/text_white" />
             </RadioGroup>
         </LinearLayout>
+
+        <!-- Display adaptations: high refresh rate + irregular-screen padding. Both are display
+             preferences (not per-connection choices), so they stay visible in every mode of the
+             chooser, including the first-run launcher. -->
+        <androidx.appcompat.widget.SwitchCompat
+            android:id="@+id/swHighRefresh"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:text="@string/high_refresh_toggle"
+            android:textColor="@color/text_white"
+            android:textSize="13sp"
+            app:switchPadding="6dp" />
+
+        <TextView
+            android:id="@+id/lblEdge"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="@string/edge_padding_label"
+            android:textColor="#9fb0a9"
+            android:textSize="12sp" />
+
+        <SeekBar
+            android:id="@+id/sbEdge"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:max="200" />
 
         <LinearLayout
             android:layout_width="match_parent"

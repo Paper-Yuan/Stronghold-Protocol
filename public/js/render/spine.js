@@ -317,6 +317,17 @@ export class SpineActor {
     }
   }
 
+  /**
+   * Stop attack looping when target died or moved away, returning gracefully to base/idle
+   * instead of starting a phantom second swing.
+   */
+  finishAttack() {
+    if (this.mode !== 'attack' || this.dead) return;
+    const track = this.spine?.state?.tracks?.[0];
+    if (track) track.loop = false;
+    this.attackUntil = Math.min(this.attackUntil, this.clock + 0.1);
+  }
+
   _attackClip() {
     const sk = this.roles.skill;
     if (this.skillOn && sk && this.has(sk.loop) && sk.via !== 'attack' && !this._skillIsBuffOnly()) return sk;

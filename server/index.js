@@ -330,6 +330,7 @@ function isPrivateAddress(addr) {
     const o1 = +v4[1];
     const o2 = +v4[2];
     return o1 === 10 || o1 === 127 || (o1 === 192 && o2 === 168) || (o1 === 172 && o2 >= 16 && o2 <= 31)
+      || (o1 === 100 && o2 >= 64 && o2 <= 127) // RFC 6598 CGNAT (Tailscale, ZeroTier, UU 等虚拟专网)
       || (o1 === 169 && o2 === 254);
   }
   return /^f[cd][0-9a-f]{1,2}:/.test(a); // IPv6 unique-local (fc00::/7)

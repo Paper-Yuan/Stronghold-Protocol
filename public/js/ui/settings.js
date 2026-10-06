@@ -46,6 +46,7 @@ function Toggle({ label, micro, value, onChange }) {
 }
 
 const QUALITY = [['high', '高'], ['medium', '中'], ['low', '低']];
+const VOICE_LANG = [['jp', '日语 (默认)'], ['cn', '中文']];
 
 /**
  * Settings modal.
@@ -54,16 +55,26 @@ const QUALITY = [['high', '高'], ['medium', '中'], ['low', '低']];
 export function SettingsModal({ open, onClose }) {
   const s = useSettings();
   const [tested, setTested] = useState(false);
+  const [testedVoice, setTestedVoice] = useState(false);
   const [touchUi] = useState(() => detectFeatures().coarse && !detectFeatures().fine);
   // The Android shell exposes itself as AndroidNative; the same page in a browser has none of it.
   const nativeShell = globalThis.AndroidNative?.isNativeApp?.() ? globalThis.AndroidNative : null;
-  return html`<${Modal} open=${open} onClose=${onClose} title="设置" micro="SETTINGS" width="7.4rem"
+  return html`<${Modal} open=${open} onClose=${onClose} title="设置" micro="SETTINGS" width="min(8.8rem, 92vw)"
     actions=${html`<${Button} variant="secondary" icon="book" class="set-guide" onClick=${() => openGuide(0)}>玩法说明<//>
       <${Button} variant="primary" icon="check" onClick=${onClose}>完成<//>`}>
     <div class="set-list">
       <${Slider} label="背景音乐" micro="BGM" icon="play" value=${s.bgm} onInput=${(v) => updateSettings({ bgm: v })} />
       <${Slider} label="音效" micro="SFX" icon="signal" value=${s.sfx}
         onInput=${(v) => { updateSettings({ sfx: v }); if (!tested) { setTested(true); setTimeout(() => setTested(false), 400); audio.sfx('click'); } }} />
+      <${Slider} label="干员语音" micro="VOICE" icon="signal" value=${s.voice}
+        onInput=${(v) => { updateSettings({ voice: v }); if (!testedVoice) { setTestedVoice(true); setTimeout(() => setTestedVoice(false), 400); audio.sfx('tab'); } }} />
+      <div class="set-row">
+        <span class="set-row__label">语音语言<${MicroLabel}>VOICE DUB<//></span>
+        <div class="set-seg" role="radiogroup">
+          ${VOICE_LANG.map(([id, label]) => html`<button key=${id} type="button" role="radio" aria-checked=${s.voiceLang === id ? 'true' : 'false'}
+            class=${s.voiceLang === id ? 'is-on' : ''} onClick=${() => { updateSettings({ voiceLang: id }); audio.setVoiceLang?.(id); }}>${label}</button>`)}
+        </div>
+      </div>
       <${Toggle} label="静音" micro="MUTE" value=${s.muted} onChange=${(v) => updateSettings({ muted: v })} />
       <${Toggle} label="显示伤害数字" micro="DAMAGE NUMBERS" value=${s.damageNumbers} onChange=${(v) => updateSettings({ damageNumbers: v })} />
       <div class="set-row">
@@ -75,15 +86,15 @@ export function SettingsModal({ open, onClose }) {
       </div>
       ${nativeShell ? html`<div class="set-row">
             <span class="set-row__label">本机服务<${MicroLabel}>LOCAL ENGINE<//></span>
-            <div class="set-seg">
+            <div class="set-engine-grid">
               <button type="button" onClick=${() => nativeShell.openServerSettings()}>服务器设置</button>
               <button type="button" onClick=${() => nativeShell.restartLocalServer()}>重启引擎</button>
               <button type="button" onClick=${() => nativeShell.showLogs()}>运行日志</button>
               <button type="button" onClick=${() => nativeShell.reloadClient()}>重载页面</button>
             </div>
           </div>` : null}
-      ${touchUi
-        ? html`<p class="set-hint">触屏操作：点击单位选中（撤退 / 出售）· 长按单位或卡牌查看详情 · 拖动部署后滑动选择朝向</p>`
+      ${nativeShell || touchUi
+        ? null
         : html`<p class="set-hint">快捷键：<kbd>R</kbd> 刷新 · <kbd>F</kbd> 冻结 · <kbd>D</kbd> 升级 · <kbd>Q</kbd> 撤退选中干员 · <kbd>X</kbd> 出售选中干员 · <kbd>Space</kbd> 准备就绪 · <kbd>Esc</kbd> 关闭弹窗 · 右键查看详情</p>`}
     </div>
   <//>`;

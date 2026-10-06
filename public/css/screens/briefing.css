@@ -7,7 +7,7 @@
 
 /* ---- shared pre-game backdrop + header ---- */
 .brief__bg {
-  position: absolute; inset: 0; z-index: 0; pointer-events: none;
+  position: absolute; top: 0; left: 0; right: 0; bottom: 0; width: 100%; height: 100%; inset: 0; z-index: 0; pointer-events: none;
   background:
     repeating-linear-gradient(0deg, rgba(255, 255, 255, .018) 0 1px, transparent 1px 4px),
     radial-gradient(90% 70% at 20% 30%, rgba(232, 90, 26, .07), transparent 60%),
@@ -46,13 +46,13 @@
 }
 .brief-boss > .micro { position: absolute; left: .24rem; top: .1rem; }
 .brief-boss__art { position: relative; width: 2rem; height: 2rem; display: grid; place-items: center; margin-top: .12rem; }
-.brief-boss__ring { position: absolute; inset: 0; border-radius: 50%; border: 2px solid rgba(255, 110, 40, .5);
+.brief-boss__ring { position: absolute; top: 0; left: 0; right: 0; bottom: 0; width: 100%; height: 100%; inset: 0; border-radius: 50%; border: 2px solid rgba(255, 110, 40, .5);
   background: radial-gradient(circle, rgba(255, 60, 20, .25), transparent 65%); box-shadow: 0 0 .4rem rgba(255, 80, 30, .25), inset 0 0 .3rem rgba(255, 80, 30, .3); }
-.brief-boss__ring::after { content: ''; position: absolute; inset: .14rem; border-radius: 50%; border: 1px dashed rgba(255, 110, 40, .45); animation: spin 18s linear infinite; }
+.brief-boss__ring::after { content: ''; position: absolute; top: .14rem; left: .14rem; right: .14rem; bottom: .14rem; inset: .14rem; border-radius: 50%; border: 1px dashed rgba(255, 110, 40, .45); animation: spin 18s linear infinite; }
 .brief-boss__sil { position: relative; width: 74%; height: 74%; object-fit: cover; border-radius: 50%;
   filter: grayscale(1) sepia(1) hue-rotate(-28deg) saturate(3.2) brightness(.62) contrast(1.35);
   box-shadow: 0 0 0 2px rgba(255, 110, 40, .7), 0 0 .3rem rgba(255, 80, 30, .5); }
-.brief-boss__art::after { content: ''; position: absolute; inset: 13%; border-radius: 50%; pointer-events: none;
+.brief-boss__art::after { content: ''; position: absolute; top: 13%; left: 13%; right: 13%; bottom: 13%; inset: 13%; border-radius: 50%; pointer-events: none;
   background: repeating-linear-gradient(0deg, rgba(0, 0, 0, .22) 0 2px, transparent 2px 4px), radial-gradient(circle, transparent 45%, rgba(40, 8, 2, .75) 100%); }
 .brief-boss__q { font-size: 1rem; font-weight: 900; color: rgba(255, 110, 40, .6); }
 .brief-boss__text { display: flex; flex-direction: column; gap: .08rem; padding-top: .2rem; min-width: 0; }

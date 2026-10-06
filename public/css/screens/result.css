@@ -3,9 +3,9 @@
    huge "通过回合" numerals, boss medallions, per-player cards with lineup, bonds, stats and 评语.
    ========================================================================================== */
 
-.result__bg { position: absolute; inset: 0; z-index: 0; background: var(--result-bg, none) center / cover no-repeat; opacity: .55; filter: saturate(.9); }
-.result__bg::after { content: ''; position: absolute; inset: 0; background: linear-gradient(90deg, rgba(8, 11, 10, .72), rgba(8, 11, 10, .5) 40%, rgba(8, 11, 10, .88) 62%); }
-.result__grid { position: absolute; inset: 0; z-index: 0; pointer-events: none;
+.result__bg { position: absolute; top: 0; left: 0; right: 0; bottom: 0; width: 100%; height: 100%; inset: 0; z-index: 0; background: var(--result-bg, none) center / cover no-repeat; opacity: .55; filter: saturate(.9); }
+.result__bg::after { content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0; width: 100%; height: 100%; inset: 0; background: linear-gradient(90deg, rgba(8, 11, 10, .72), rgba(8, 11, 10, .5) 40%, rgba(8, 11, 10, .88) 62%); }
+.result__grid { position: absolute; top: 0; left: 0; right: 0; bottom: 0; width: 100%; height: 100%; inset: 0; z-index: 0; pointer-events: none;
   background: linear-gradient(rgba(78, 216, 175, .04) 1px, transparent 1px) 0 0 / .6rem .6rem, linear-gradient(90deg, rgba(78, 216, 175, .04) 1px, transparent 1px) 0 0 / .6rem .6rem;
   -webkit-mask-image: radial-gradient(70% 70% at 25% 50%, #000, transparent); mask-image: radial-gradient(70% 70% at 25% 50%, #000, transparent); }
 .result__main { position: relative; z-index: 1; flex: 1; min-height: 0; display: grid; grid-template-columns: 5.6rem 1fr; gap: .5rem; padding: .36rem .5rem .3rem .6rem; }

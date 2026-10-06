@@ -31,6 +31,7 @@ export function unitInfo(u) {
     tier: d.tier ?? (d.rank === 'BOSS' ? 3 : d.rank === 'ELITE' ? 2 : 1),
     golden: !!d.golden,
     spine: d.spine ?? d.charId ?? u.defId,
+    skin: u.skin ?? undefined,
     avatar: d.avatar ?? d.charId ?? u.defId,
     x: r2(u.x),
     y: r2(u.y),
