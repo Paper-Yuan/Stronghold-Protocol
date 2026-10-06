@@ -432,40 +432,22 @@ export async function createFieldView(host, options = {}) {
   const dpr = () => Math.min(globalThis.devicePixelRatio || 1, QUALITY_RES[settings.quality] || 2);
   const boardDpr = () => Math.min(globalThis.devicePixelRatio || 1, BOARD_RES[settings.quality] || 2);
   const s0 = size();
-  const app = new P.Application({
-    // MSAA only where it pays: judge the ratio the canvas is actually painted at, not the screen's dpr — a capped
-    // resolution on a dense screen was sharp enough for neither.
-    // transparent: the 3D board canvas shows through (the 2D board paints an opaque backdrop itself)
-    width: s0.width, height: s0.height, antialias: opts.antialias ?? dpr() < 2, backgroundColor: 0x0a0e0d, backgroundAlpha: 0,
-    resolution: dpr(), autoDensity: true, powerPreference: 'high-performance',
-  });
-  let thermalThrottled = false;
-  let lastTouchTime = performance.now();
-  const getTargetFps = () => {
-    // 1. Explicitly off: strictly locked to 60 FPS across all phases
-    if (settings.highRefresh === false) return 60;
-    // 2. Hardware thermal protection: clamp to 60 FPS when device is warm
-    if (thermalThrottled) return 60;
-    // 3. Combat phase: heavy pathfinding, Spine skeletons, and 3D shadows; lock 60 FPS to prevent OOM / GPU freeze
-    if (mode === 'battle') return 60;
-    // 4. Idle power saving: if user is inactive for > 8s in prep/idle, throttle to 60 FPS
-    const idleSec = (performance.now() - lastTouchTime) / 1000;
-    if (idleSec > 8 && !dragState) return 60;
-    return 0; // 0 = unthrottled (120 FPS+ for buttery drag & formation prep)
-  };
-  const updateFpsLimit = () => {
-    if (app?.ticker) {
-      app.ticker.maxFPS = getTargetFps();
-    }
-  };
-  updateFpsLimit();
+  let app;
+  try {
+    app = new P.Application({
+      width: s0.width, height: s0.height, antialias: opts.antialias ?? dpr() < 2, backgroundColor: 0x0a0e0d, backgroundAlpha: 0,
+      resolution: dpr(), autoDensity: true, powerPreference: 'high-performance',
+    });
+  } catch (err) {
+    console.warn('[render] Pixi high-performance context failed, falling back to default:', err);
+    app = new P.Application({
+      width: s0.width, height: s0.height, antialias: false, backgroundColor: 0x0a0e0d, backgroundAlpha: 0,
+      resolution: 1, autoDensity: true,
+    });
+  }
   const canvas = app.view;
-  const markTouch = () => {
-    lastTouchTime = performance.now();
-    updateFpsLimit();
-  };
-  canvas.addEventListener('pointerdown', markTouch, { passive: true });
-  canvas.addEventListener('pointermove', markTouch, { passive: true });
+  canvas.addEventListener('pointerdown', () => markTouch(), { passive: true });
+  canvas.addEventListener('pointermove', () => markTouch(), { passive: true });
   canvas.addEventListener('webglcontextlost', (e) => {
     e.preventDefault();
     console.warn('[render] Pixi WebGL context lost; preventing default to allow recovery');
@@ -563,6 +545,26 @@ export async function createFieldView(host, options = {}) {
   let canPlaceFn = null;
   let editable = false;
   let dragState = null;       // { uid, key, view, from, home: {x,y,z} }
+  let thermalThrottled = false;
+  let lastTouchTime = performance.now();
+  const getTargetFps = () => {
+    if (settings.highRefresh === false) return 60;
+    if (thermalThrottled) return 60;
+    if (mode === 'battle') return 60;
+    const idleSec = (performance.now() - lastTouchTime) / 1000;
+    if (idleSec > 8 && !dragState) return 60;
+    return 0;
+  };
+  const updateFpsLimit = () => {
+    if (app?.ticker) {
+      app.ticker.maxFPS = getTargetFps();
+    }
+  };
+  const markTouch = () => {
+    lastTouchTime = performance.now();
+    updateFpsLimit();
+  };
+  updateFpsLimit();
   const pending = new Map();  // key → { t, home } dropped pieces awaiting the server
   const held = new Map();     // uid → world { x, y, z }: prep pieces pinned to a tile by the direction step (holdPiece)
   let hoverUnit = null;
@@ -1810,16 +1812,9 @@ export async function createFieldView(host, options = {}) {
     // a struggling device (load level ≥ 2) may refresh a big crowd more rarely (10 Hz at worst)
     return Math.min(loadLevel >= 2 ? 6 : 4, Math.max(2, Math.ceil(n / (base * 0.75))));
   }
-  let lastFrameTime = 0;
   function frame() {
     if (destroyed) return;
     const now = performance.now();
-    const targetFps = getTargetFps();
-    if (targetFps > 0) {
-      const minInterval = (1000 / targetFps) - 2.0;
-      if ((now - lastFrameTime) < minInterval) return;
-    }
-    lastFrameTime = now;
     try { frameBody(now); } finally { cpuMs = cpuMs * 0.9 + (performance.now() - now) * 0.1; }
   }
   function frameBody(now) {
