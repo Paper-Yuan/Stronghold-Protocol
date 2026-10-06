@@ -5,9 +5,6 @@ services:
     plan: free
     region: singapore
     dockerfilePath: ./Dockerfile
-    dockerBuildArgs:
-      - key: FETCH_ASSETS
-        value: "1"
     envVars:
       - key: NODE_ENV
         value: production
