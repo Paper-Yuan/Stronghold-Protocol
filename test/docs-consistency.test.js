@@ -19,8 +19,9 @@
 // feedback after 0.1.0 (DESIGN §21, v0.1.1) including batch 6 (§21.21–§21.25: 坚固维式重锤 once per deployment, 起飞,
 // fenced tiles, knocked-out bodies, the dispatcher snapshot and the manifest shrink guard credited to PR #2 / PR #7) and
 // the 突变细胞 bench rule (§21.1: the carrier destroyed, its new operator gained into the 整备区 — official footage, PR #2),
-// the closing additions §21.26–§21.28 (GitHub issues #1 / #5 / #8) and the owner's deliberate trigger deviation for six
-// 重装 skills (§21.29, GitHub issue #4 / PR #12).
+// the closing additions §21.26–§21.28 (GitHub issues #1 / #5 / #8), the owner's deliberate trigger deviation for six
+// 重装 skills (§21.29, GitHub issue #4 / PR #12) and the operator battle voice the user asked for the same day (§21.30,
+// battle only — the 休整期 is silent).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -528,7 +529,7 @@ test('user playtest #6 follow-up: a merge consuming a deployed copy puts the eli
   assert.equal(promo.eliteTileAmongSeveralDeployed?.assumed, true);
   for (const [name, text] of [['research 01', R01], ['00-INDEX', INDEX], ['META', META], ['SIM', SIM], ['PlayerState', PS]]) assert.match(text.replace(/\s+|\/\/\s/g, ''), official, `${name} quotes PRTS`);
   assert.match(INDEX, /to \*\*that copy's board position\*\*/);
-  // the deployment order is by column since 0.1.3 (Battle.start; DESIGN §23.f4), so is the merge's tile among several copies
+  // the deployment order is by column since 0.1.3 (Battle.start; DESIGN §23.23), so is the merge's tile among several copies
   assert.match(META, /of several, the one that deploys first \(col asc, then row desc; `board\.js mergeTile`/);
   assert.ok(!/it takes a freed\s+board tile of a consumed copy only when the hand and temp are both full/.test(META), 'META: the old fallback-only wording is gone');
   assert.ok(!/only with the hand and temp both full does it take a/.test(PS), 'PlayerState header: the old fallback-only wording is gone');
@@ -844,4 +845,58 @@ test('the deliberate trigger deviation (DESIGN §21.29): six 重装 skills DEFAU
   assert.match(SIM, /the six of DESIGN §21\.29/);
   assert.match(PLAYING, /深巡、雷蛇的二技能，号角的二、三技能，灰毫的一、二技能按玩家反馈改为攻击范围内有敌人时就释放/);
   assert.match(doc('CHANGELOG.md'), /深巡、雷蛇的二技能，号角的二、三技能，灰毫的一、二技能改为攻击范围内有敌人时就释放/);
+});
+
+test('干员战斗语音 (DESIGN §21.30): the manifest data, the official priorities, and the 休整期 stays silent', async () => {
+  const { VOICE_PRIORITY, VOICE_COOLDOWN_MS, resultVoiceSlot } = await import('../public/js/audio.js');
+  const manifest = JSON.parse(readFileSync(join(ROOT, 'data/assets.json'), 'utf8'));
+  const voice = manifest.audio?.voice ?? {};
+  const charIds = Object.keys(voice);
+  assert.ok(charIds.length >= 100, `${charIds.length} operators carry official battle voice`);
+  assert.equal(manifest.stats.voiceChars, charIds.length, 'stats.voiceChars counts them');
+  // one operator carries every slot a battle can play — and none of the prep-only ones (plan.mjs VOICE_BATTLE_SLOTS):
+  // 干员报到 / 编入队伍 / 任命队长 are never requested by the client, so planning them only made every `npm run assets`
+  // download 360 files (19.3 MB, one per operator and slot) nobody hears. `--voice-all` brings the complete set back.
+  const slots = ['start', 'faceEnemy', 'select', 'place', 'skill1', 'skill2', 'skill3', 'skill4', 'resultFour', 'resultThree', 'resultTwo', 'resultLose'];
+  const prepOnly = ['gacha', 'squad', 'squadFirst'];
+  const lines = [];
+  const walk = (x) => {
+    if (typeof x === 'string') lines.push(x);
+    else if (Array.isArray(x)) x.forEach(walk);
+    else if (x && typeof x === 'object') Object.values(x).forEach(walk);
+  };
+  for (const id of charIds) {
+    for (const s of slots) assert.ok(voice[id][s], `${id}.${s}`);
+    for (const s of prepOnly) assert.equal(voice[id][s], undefined, `${id}.${s} is not planned by default`);
+    walk(voice[id]);
+  }
+  // a battle slot usually carries several lines (选中干员 / 部署 have two), so the battle set alone stays well above 10 each
+  assert.ok(lines.length >= charIds.length * 10, `${lines.length} voice lines for ${charIds.length} operators`);
+  for (const u of lines) assert.match(u, /^\/assets\/audio\/voice\/cn\/char_[^/]+\/cn_\d+\.mp3$/);
+  // the official scheduling numbers (audio_data.json battleVoice.voiceTypeOptions)
+  assert.equal(VOICE_PRIORITY.start, 100);
+  assert.equal(VOICE_PRIORITY.faceEnemy, 90);
+  assert.equal(VOICE_PRIORITY.skill1, 70);
+  assert.equal(VOICE_PRIORITY.place, 20);
+  assert.equal(VOICE_PRIORITY.select, 10);
+  assert.equal(VOICE_COOLDOWN_MS.skill1, 10000);
+  assert.equal(VOICE_COOLDOWN_MS.faceEnemy, 3000);
+  assert.equal(VOICE_COOLDOWN_MS.select, 1500);
+  assert.equal(resultVoiceSlot({ perfect: true }), 'resultThree');
+  // the docs
+  assert.match(DESIGN, /### 21\.30 /);
+  assert.match(DESIGN, /\*\*Where each line plays — battle only\.\*\*/);
+  assert.match(doc('docs/ASSETS.md'), /\| 干员战斗语音 \|/);
+  assert.match(doc('docs/ASSETS.md'), /voiceChars/);
+  assert.match(SIM, /\['engage', id\]/);
+  // the code: every slot the client asks for comes from a running battle's own stream — the three prep-only lines
+  // (干员报到 / 编入队伍 / 任命队长) are never requested, and 选中干员 sits behind the panel's combat flag
+  const panel = doc('public/js/ui/detailPanel.js');
+  const game = doc('public/js/screens/game.js');
+  for (const [name, src] of [['audio.js', doc('public/js/audio.js')], ['game.js', game], ['detailPanel.js', panel]]) {
+    assert.ok(!/voice\([^)]*'(gacha|squad|squadFirst)'/.test(src), `${name}: no prep slot is played`);
+  }
+  assert.match(panel, /const selectKey = voice && detail\?\.type === 'chess'/);
+  assert.match(game, /voice=\$\{combat\}/);
+  assert.match(game, /audio\.voice\(charId, resultVoiceSlot\(/);
 });
