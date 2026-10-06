@@ -556,7 +556,7 @@ button.bpop__harmony:hover { border-style: solid; color: #fff; }
 /* ---- the temp overflow row's notice (ui/underframe.js TempRowNotice, user playtest #3 item 3): a dashed red frame
    around 临时整备区 and a label at its end. Over the field, under every HUD panel (.gm__hud z 3), never takes the
    pointer (the pieces under it stay draggable). ---- */
-.tempnote { position: fixed; top: 0; left: 0; right: 0; bottom: 0; width: 100%; height: 100%; inset: 0; z-index: 2; pointer-events: none; }
+.tempnote { position: fixed; inset: 0; z-index: 2; pointer-events: none; }
 .tempnote * { pointer-events: none; }
 .tempnote__frame { position: absolute; top: 0; left: 0; right: 0; bottom: 0; width: 100%; height: 100%; inset: 0; width: 100%; height: 100%; overflow: visible; }
 .tempnote__frame polygon {
