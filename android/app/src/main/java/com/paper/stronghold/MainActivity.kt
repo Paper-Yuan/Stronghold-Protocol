@@ -743,7 +743,7 @@ class MainActivity : AppCompatActivity() {
                 )
                 if (webviewWarning != null) append("\n⚠ ").append(webviewWarning)
             }
-            boardBlock.visibility = View.GONE
+            boardBlock.visibility = View.VISIBLE
             btnShowLogs.visibility = View.GONE
             btnCancel.visibility = View.GONE
             btnFirstRunSolo.visibility = View.VISIBLE
@@ -784,7 +784,8 @@ class MainActivity : AppCompatActivity() {
         btnShowLogs.setOnClickListener { showLogsAndDiagnosticsDialog() }
         btnFirstRunSolo.setOnClickListener {
             FileLogger.i("ui", "chooser decision: first-run solo")
-            // Deliberately stores nothing: a player who backs out of choosing gets asked again.
+            val boardMode = if (rbBoard2D.isChecked) "2d" else "3d"
+            prefs.edit().putString(KEY_BOARD_MODE, boardMode).putBoolean(KEY_COMPAT_MODE, false).apply()
             dialog.dismiss()
             startLocalFlow()
         }
@@ -799,7 +800,7 @@ class MainActivity : AppCompatActivity() {
 
         btnApply.setOnClickListener {
             val boardMode = if (rbBoard2D.isChecked) "2d" else "3d"
-            val editor = prefs.edit().putString(KEY_BOARD_MODE, boardMode)
+            val editor = prefs.edit().putString(KEY_BOARD_MODE, boardMode).putBoolean(KEY_COMPAT_MODE, false)
             if (picked == "remote") {
                 val url = normalizeServerUrl(etAddress.text.toString())
                 if (url == null) {

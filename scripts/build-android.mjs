@@ -147,10 +147,12 @@ if (bundleRes.status !== 0) {
 console.log(`\n[2/3] 正在执行 Gradle 构建 ${RELEASE ? 'release' : 'debug'} APK...`);
 const VARIANT = RELEASE ? 'release' : 'debug';
 const outDir = path.join(ANDROID_DIR, 'app', 'build', 'outputs', 'apk', VARIANT);
-// AGP emits `app-release-unsigned.apk` when the release buildType has no signingConfig; we sign it in step 3.
-const apkOutput = RELEASE ? path.join(outDir, 'app-release-unsigned.apk') : path.join(outDir, 'app-debug.apk');
-if (fs.existsSync(apkOutput)) {
-  fs.rmSync(apkOutput, { force: true });
+// AGP emits `app-release.apk` when signed via signingConfig, or `app-release-unsigned.apk` when unsigned.
+const gradleSignedApk = path.join(outDir, 'app-release.apk');
+const unsignedApk = path.join(outDir, 'app-release-unsigned.apk');
+const debugApk = path.join(outDir, 'app-debug.apk');
+for (const f of [gradleSignedApk, unsignedApk, debugApk]) {
+  if (fs.existsSync(f)) fs.rmSync(f, { force: true });
 }
 const gradlewCmd = IS_WIN ? path.join(ANDROID_DIR, 'gradlew.bat') : path.join(ANDROID_DIR, 'gradlew');
 const gradleArgs = [RELEASE ? 'assembleRelease' : 'assembleDebug'];
@@ -229,28 +231,36 @@ if (RELEASE) {
   const signed = path.join(outDir, 'Stronghold-Protocol-release.apk');
   for (const f of [aligned, signed]) if (fs.existsSync(f)) fs.rmSync(f, { force: true });
 
-  // -p: page-align uncompressed .so (required for targetSdk >= 23); 4 = alignment in bytes
-  const alignRes = spawnSync(zipalign, ['-f', '-p', '4', apkOutput, aligned], { stdio: 'inherit', shell: false });
-  if (alignRes.status !== 0) {
-    console.error('✘ zipalign 失败。');
-    process.exit(1);
-  }
+  if (fs.existsSync(gradleSignedApk)) {
+    console.log('  ✔ Gradle 已自动完成签名 (signingConfigs.release)，正在转存并执行最终校验...');
+    fs.copyFileSync(gradleSignedApk, signed);
+  } else if (fs.existsSync(unsignedApk)) {
+    // -p: page-align uncompressed .so (required for targetSdk >= 23); 4 = alignment in bytes
+    const alignRes = spawnSync(zipalign, ['-f', '-p', '4', unsignedApk, aligned], { stdio: 'inherit', shell: false });
+    if (alignRes.status !== 0) {
+      console.error('✘ zipalign 失败。');
+      process.exit(1);
+    }
 
-  const signEnv = { ...process.env, SP_STORE_PASSWORD: creds.storePass, SP_KEY_PASSWORD: creds.keyPass };
-  const signRes = spawnSync(signer.cmd, [
-    ...signer.prefix,
-    'sign',
-    '--ks', storePath,
-    '--ks-key-alias', creds.alias,
-    '--ks-pass', 'env:SP_STORE_PASSWORD',
-    '--key-pass', 'env:SP_KEY_PASSWORD',
-    '--v2-signing-enabled', 'true',
-    '--v3-signing-enabled', 'true',
-    '--out', signed,
-    aligned,
-  ], { stdio: 'inherit', shell: signShell, env: signEnv });
-  if (signRes.status !== 0) {
-    console.error('✘ apksigner 签名失败。');
+    const signEnv = { ...process.env, SP_STORE_PASSWORD: creds.storePass, SP_KEY_PASSWORD: creds.keyPass };
+    const signRes = spawnSync(signer.cmd, [
+      ...signer.prefix,
+      'sign',
+      '--ks', storePath,
+      '--ks-key-alias', creds.alias,
+      '--ks-pass', 'env:SP_STORE_PASSWORD',
+      '--key-pass', 'env:SP_KEY_PASSWORD',
+      '--v2-signing-enabled', 'true',
+      '--v3-signing-enabled', 'true',
+      '--out', signed,
+      aligned,
+    ], { stdio: 'inherit', shell: signShell, env: signEnv });
+    if (signRes.status !== 0) {
+      console.error('✘ apksigner 签名失败。');
+      process.exit(1);
+    }
+  } else {
+    console.error('✘ 未找到构建产物 APK (既无 app-release.apk 也无 app-release-unsigned.apk)。');
     process.exit(1);
   }
 

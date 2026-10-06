@@ -352,7 +352,7 @@ function Detail({ m, chess, golden, entries, onChange, onReset, locked }) {
                 <b class="lo-mod__name">${mo.id === MODULE_NONE ? '不装备' : mo.rec?.name || mo.id}</b>
               </span>
               ${mo.isDefault ? html`<span class="lo-badge lo-badge--def lo-mod__def">默认</span>` : null}
-            </button>)}
+            </button>`)}
           </div>
           ${modOpt ? html`<${ModuleInfo} m=${m} golden=${golden} opt=${modOpt} />` : null}
         </section>

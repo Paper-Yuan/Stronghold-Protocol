@@ -3,6 +3,14 @@ plugins {
     id 'org.jetbrains.kotlin.android'
 }
 
+def localProperties = new Properties()
+def localPropertiesFile = rootProject.file('local.properties')
+if (localPropertiesFile.exists()) {
+    localPropertiesFile.withReader('UTF-8') { reader ->
+        localProperties.load(reader)
+    }
+}
+
 android {
     namespace 'com.paper.stronghold'
     compileSdk 34
@@ -21,10 +29,28 @@ android {
         }
     }
 
+    signingConfigs {
+        release {
+            def storeFilePath = System.getenv("SP_STORE_FILE") ?: localProperties.getProperty("SP_STORE_FILE")
+            def storePasswordVal = System.getenv("SP_STORE_PASSWORD") ?: localProperties.getProperty("SP_STORE_PASSWORD")
+            def keyAliasVal = System.getenv("SP_KEY_ALIAS") ?: localProperties.getProperty("SP_KEY_ALIAS")
+            def keyPasswordVal = System.getenv("SP_KEY_PASSWORD") ?: localProperties.getProperty("SP_KEY_PASSWORD")
+            if (storeFilePath) {
+                storeFile file(storeFilePath)
+                storePassword storePasswordVal
+                keyAlias keyAliasVal
+                keyPassword keyPasswordVal
+                v1SigningEnabled true
+                v2SigningEnabled true
+            }
+        }
+    }
+
     buildTypes {
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            signingConfig signingConfigs.release
         }
         debug {
             applicationIdSuffix ".debug"
