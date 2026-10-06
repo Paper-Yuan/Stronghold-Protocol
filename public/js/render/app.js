@@ -1440,6 +1440,20 @@ export async function createFieldView(host, options = {}) {
     clearHl();
     renderT0Battle = null;
     mode = 'battle';
+    // official re-deploy moment: after 准备就绪 the operators land one by one (deploy clip +
+    // unitDeploy announce per unit: the deploy SFX and voice line follow each landing). The
+    // route current (meta.routes, this round's real batch routes) sweeps once at the same moment.
+    landingPlan = null;
+    landingFired = false;
+    // the own units come from the FIRST battle frame's views, not meta.units: the server sends
+    // the field meta before the sim has deployed the prep board, so units there is empty
+    if (meta.prep !== true) landingPlan = { at: performance.now() };
+    console.warn('[landing] enterBattle routes=' + ((meta.routes || []).length) + ' prep=' + meta.prep);
+    try {
+      tiles.buildRoutes(meta.routes);
+      board3d?.buildRoutes(meta.routes);
+      console.warn('[landing] built routePaths=' + tiles.routePaths.length);
+    } catch (e) { console.warn('route build failed', e); }
     const rect = meta.rect ? normRect(meta.rect) : (meta.kind === 'boss' || meta.kind === 'hidden' ? { ...GEO.BOSS_RECT } : meta.kind === 'unite' ? { ...GEO.UNITE_RECT } : { ...GEO.NORMAL_RECT });
     // prep: true = a read-only scouting board (a teammate's lineup during prep): prep-style pieces, no bars
     battleMeta = { fieldId: meta.fieldId ?? null, kind: meta.kind || 'normal', rect, stageId: meta.stageId ?? null, prep: meta.prep === true };
@@ -1556,7 +1570,15 @@ export async function createFieldView(host, options = {}) {
       case 'deploy': {
         gone.delete(e[1]);
         const v = battleView(e[1]);
-        if (v) { v.onDeploy?.(); announceDeploy(v, e); if (v.info?.kind !== 'device') fx.deploy(v); }
+        // the battle-open burst (the sim deploys the whole prep board) belongs to the landing
+        // sequence: its staggered reveal plays the deploy clip, and a pillar here would draw
+        // vertical light columns over tiles whose operator has not landed yet. Mid-battle
+        // redeploys (after the presentation) keep the drop-in pillar.
+        if (v && renderT0Battle != null && now - renderT0Battle > 5) {
+          v.onDeploy?.();
+          announceDeploy(v, e);
+          if (v.info?.kind !== 'device') fx.deploy(v);
+        }
         break;
       }
       case 'atk': {
@@ -1655,6 +1677,8 @@ export async function createFieldView(host, options = {}) {
   }
 
   let renderT0Battle = null;   // game time of the first rendered battle frame (spawn puffs skip the initial wave)
+  let landingPlan = null;      // own units to land one-by-one at battle open (official re-deploy moment)
+  let landingFired = false;
   let downSeq = 0;             // syncBattle pass counter: a view still marked down after a pass left the `down` list
   function syncBattle(renderT) {
     if (renderT0Battle == null) renderT0Battle = renderT;
@@ -1668,6 +1692,7 @@ export async function createFieldView(host, options = {}) {
       if (!v) v = battleView(id) || createUnknown(id, s);
       if (!v) continue;
       if (!v._seen) { v._seen = true; v.fadeIn = 0; }
+      if (v._landingHold > performance.now()) continue; // the battle-open deploy clip plays undisturbed
       if (v.alive || v.info?.kind === 'device') v.sync(s, renderT);
       else if (v.dying > 0) { v.x = s.x; v.y = s.y; }
       else if (s.anim !== ANIM.DIE && s.hp > 0) { v.revive?.(); v.sync(s, renderT); }
@@ -1695,6 +1720,39 @@ export async function createFieldView(host, options = {}) {
       }
     }
     const now = performance.now();
+    // the landing sequence (see enterBattle): first frame settled → play each deploy clip
+    if (landingPlan && !landingFired) {
+      const all = [...views.values()];
+      const allies = all.filter((vv) => vv.alive && !vv.down && vv.onDeploy);
+      // 视图尚未从首帧快照创建（换场清空后）：保持武装，下一帧重试
+      if (allies.length > 0) {
+        landingFired = true;
+        const plan = landingPlan;
+        landingPlan = null;
+        if (performance.now() - plan.at < 8000) {
+          // 官方演出：先全部收起，再按顺序逐个落地（部署片段 + 落地光效）
+          const hide = (vv, on) => { if (vv.root) vv.root.visible = !on; }; // UnitView.root is the Pixi container
+          allies.forEach((vv) => {
+          hide(vv, true);
+          // keep the sim-sync from recreating/overriding the hidden view during the vanish window
+          vv._landingHold = performance.now() + 400 + allies.length * 220;
+        });
+          allies.forEach((vv, i) => {
+            setTimeout(() => {
+              if (!vv.alive || vv.down) { hide(vv, false); return; }
+              hide(vv, false);
+              vv.fadeIn = 0;
+              vv.onDeploy?.();
+              announceDeploy(vv);
+              setTimeout(() => { if (vv.hud) vv.hud.visible = true; }, 650);
+            }, 300 + i * 220);
+          });
+          setTimeout(() => {
+            try { tiles.playRouteSweeps(); board3d?.playRouteSweeps(); } catch (e) { console.warn('route sweep failed', e); }
+          }, 300 + allies.length * 220 + 200);
+        }
+      }
+    }
     for (const [id, v] of views) {
       if (v.down && v._downSeq !== downSeq) v.setDown(null, renderT);
       if (sample.has(id) || v.down) continue;
