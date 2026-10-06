@@ -35,7 +35,8 @@
     "launch": "node scripts/launch.mjs",
     "bundle:android": "node tools/bundle-android.mjs",
     "build:android": "node scripts/build-android.mjs",
-    "voices": "node tools/fetch-bilingual-voices.mjs"
+    "voices": "node tools/fetch-bilingual-voices.mjs",
+    "sync": "node scripts/auto-sync.mjs"
   },
   "engines": {
     "node": ">=22"
