@@ -58,6 +58,7 @@ Core (isPower, bondType SEASON): 炎 萨尔贡 维多利亚 谢拉格 拉特兰 
 ### 2.2 Layers (层数)
 
 - Each player has one integer layer counter L per bond (23 counters). All start at 0 when the simulation starts, are never reset between rounds and are never reduced (no layer-loss effect exists in the data) [ASSUMED: never reduced].
+- `noStack: true` hides layer counts for 调和 / 协防干员 / 独行 / 绝技; it does not prohibit gains or clear stored layers. Their effects depend on member thresholds, but internal layers still participate in active-layer totals and unite ordering. [PRTS 下半盟约记录](https://prts.wiki/w/卫戍协议：盟约_下半/PRTS盟约记录): hidden-layer bonds still accept trait / strategy / equipment layer gains (review correction, 2026-10-04).
 - L is kept while the bond is inactive, but bond effects only apply while the bond is active (PRTS 盟约记录).
 - Wording contract used by every source: "使已激活的【X】层数+N" -> add only if bond X is active at the moment of the trigger; "（无需激活盟约）" -> add even if X is inactive. "自身所属盟约" = every bond of that operator; "自身已激活的盟约" = only its bonds that are active.
 - No layer cap in the data. Caps are per source: max_add_count_per_battle (layers a single garrison instance may add in one battle), max_layer (per round, e.g. 安洁莉娜 12/round). The official cap is in the client, not the data: `AutoChessBattleConst.MAX_GARRISON_STACK = 999`, `AddBondCount` stores `min(L + n, 999)` per bond (research 11 §1). Since 2026-10-01 (DESIGN §20.12) the remake stops each bond at 999 (`shared/constants.js BOND_LAYER_CAP`, `layerGainRoom`); the community agrees (巴哈姆特 12534 "每把都能999层", "沒999層的盟約情況下"; 12316 "999謝").
@@ -373,12 +374,12 @@ Members (11 chess, 10 in current shop pool; by tier in shop: {'1': 1, '2': 1, '3
 
 - **[3 distinct]** 阿戈尔 members maxHP x(1 + 0.35 + 0.01*L).
 - **[3 distinct (battle start)]** Devour (吞噬): see algorithm.
-- **[5 distinct]** The first 3 阿戈尔 members by position — the devour order below (step 1), i.e. the deployment order, fixed at battle start — each revive immediately on their own first knock-out, whatever the order of knock-outs (max_free_respawn_cnt 3; PRTS 阿戈尔 备注 "从最先部署（更靠左和靠上的）的【阿戈尔】干员开始", players' videos; until 0.1.3 the remake gave them to the first 3 members knocked out). A devour knock-out of one of them spends its revive (it stays standing, step 4); any other member the devour knocks out stays down.
+- **[5 distinct]** The first 3 阿戈尔 members to be knocked out, in knock-out order, each revive immediately on that first knock-out (max_free_respawn_cnt 3; the owner's decision of 2026-10-05, following players' reports — GitHub #105, #140). The battle-start devour's knock-outs count, so the food usually takes them at t = 0 (it stands again, step 4) and survivors = uneaten members + 3. A member takes at most one, on its first knock-out of the battle, however many 阿戈尔 mark it (step 4 cancels its pending marks); a save by its own kit / item / band revive (斯卡蒂's DRE-Y, M3茧甲, 埃芒加德 [ASSUMED for the band]) is no knock-out and takes none. 0.1.3 gave them to the first 3 members by position, fixed at battle start (from PRTS's devour note "从最先部署（更靠左和靠上的）的【阿戈尔】干员开始" and players' videos), so uneaten front members held them.
 - Algorithm:
   1. Order: 阿戈尔 members sorted leftmost first, then topmost ("更靠左和靠上").
   2. Each 阿戈尔 in order marks the unit on the tile directly in front of it (its facing direction) and also the front-tile unit of every 阿戈尔 it has marked (chain). It never marks itself, a unit it already marked, or a unit that marked it.
-  3. The marker immediately gains the base ATK of every unit it marked (added to base ATK at the final stage) and their block counts.
-  4. After all marks are placed, each mark makes its target suffer one 5000-point physical 流失 (HP loss, source = the target itself; if it dies, the kill is credited to the marker), resolved in marking order. A target knocked out for the first time has its pending marks cancelled ("目标首次被击倒后解除自身被付与但还未触发的【吞噬】效果") — also when it is back at once (the 5-tier revive, 不屈's 立刻重新部署, 埃芒加德, M3茧甲), so a revived member is not devoured again. DESIGN §22.3.
+  3. The marker immediately gains the base ATK of every unit it marked — a 最终加算, added after its ATK percentages (PRTS "该付与来源获得所有标记单位的基础攻击力（最终加算）和阻挡数"; until 0.1.3 the engine added it before them, so a skill's ATK +% scaled it — DESIGN §24.7) — and their block counts.
+  4. After all marks are placed, each mark makes its target suffer one 5000-point physical 流失 (HP loss, source = the target itself; if it dies, the kill is credited to the marker), resolved in marking order. A target knocked out for the first time has its pending marks cancelled ("目标首次被击倒后解除自身被付与但还未触发的【吞噬】效果") — also when it is back at once (the 5-tier revive, 不屈's 立刻重新部署, 埃芒加德, M3茧甲), so a revived member is not devoured again. DESIGN §22.3. Only the target's state cancels a mark: a marker knocked out earlier in the pass still resolves its own marks, credited to it (DESIGN §24.7; until 0.1.3 they were dropped).
   5. Each devoured unit adds layers to 阿戈尔 equal to its tier (1-6), once per unit per battle.
   6. (5-member tier) Revive is implemented as: when the unit leaves the field for any reason other than being moved, its next deployment has 0 redeploy time and 0 cost (PRTS). Devour layers: each devoured unit adds its tier once per battle (refreshes next round).
 - Formulas: `hpMultiplier = 1.35 + 0.01*L`; `devourDamage = 5000`; `layersPerDevoured = tier of devoured unit`
@@ -386,7 +387,7 @@ Members (11 chess, 10 in current shop pool; by tier in shop: {'1': 1, '2': 1, '3
 - How layers are gained: Devour (tier per devoured unit, every battle); 幽灵鲨 被击倒 +3; 归溟幽灵鲨 被击倒/替身切换 +5 阿戈尔 +5 不屈; 斯卡蒂 each 2 kills +1 阿戈尔/坚守/突袭; 海霓 first kill (enemy or ally) +3 阿戈尔/奥术; 机变 "斯卡蒂的盟誓" +8. Strategy 克莱门莎: an 阿戈尔 knocked out adds layers = its tier.
 - How it plays: Put cheap/high-tier fodder in front of 阿戈尔 carries: they steal base ATK and block, gain layers, and (5) revive. Tier-6 fodder gives +6 layers per battle.
 - 5000 physical 流失: less the target's DEF (PRTS 作战机制: a 物理/法术流失 "会受到目标当前防御力/法术抗性影响而相应衰减"; DEF-free [ASSUMED] until 0.1.1), no shields, dodge or damage multipliers (a 流失)
-- [ASSUMED] marked allied units are the player's own operators (devour hits allies)
+- Marked units are allied operators (devour hits allies), whoever owns them: on a shared field (联防, boss) a teammate's operator in front — standing, or one that entered 联防 knocked out — is devoured too, with the same base ATK / block gains, and the chain continues through a teammate's 阿戈尔 (the owner's decision of 2026-10-05; PRTS "依次吞噬身前一格干员" has no own-side limit; GitHub #140 comment 4). Its knock-out is its owner's (their revives). The remake's two 联防 helpers stand on board cols 3–9 and 11–17 with the road column 10 between them, so on the current maps no teammate's operator is ever in front.
 - Bond item (with 变形同构体 grants this bond): 阿戈尔重刃 `chess_item_3_07_e` (2 gold: 攻击力+40%，攻击速度-10)
 - Garrisons that explicitly add layers to this bond: `garrison_38`, `garrison_40`, `garrison_46`, `garrison_131` (see section 4; plus the generic ones)
 - Garrisons that scale with this bond's layers: `garrison_07`, `garrison_09`, `garrison_10`, `garrison_12`, `garrison_84`
@@ -614,6 +615,7 @@ Members (14 chess, 12 in current shop pool; by tier in shop: {'1': 2, '2': 2, '3
 
 - **[2 distinct]** 灵巧 members and operators on their 4 orthogonally adjacent tiles: ASPD +(10 + 1*L).
 - **[L >= 40]** Area becomes the 8 surrounding tiles.
+- 灵巧干员被击倒（`removeReason === 'killed'`）、等待再部署时，仍以倒地位置为中心为周围队友提供攻速加成。主动撤退及联防 `forcedExit` 虽然也留下倒地模型，但不继续提供光环；联防强制离场不算本阶段击倒，重新部署后恢复在场光环（评审修正，2026-10-04）。
 - Formulas: `aspd = 10 + L`
 - How layers are gained: 溯光星源 休整期结束 +2 灵巧/奥术 per 3 gold spent this round ; 断崖 +3 self & behind; 空弦 +3 self & front; 蒂比 +2; 获得时 灵知 +5. (act1 灵巧 also had a 20-layer shop reward; removed in act2.)
 - [ASSUMED] a unit covered by several 灵巧 auras gets the bonus once

@@ -12,7 +12,7 @@ server/match/
                    (data/tuning.json, §3.1)
   pool.js          SharedPool (copies per base chess, across players), per-match bans, copy-weighted rolls
   board.js         placement legality from the stage legend on the deploy field (own board / boss half); a 高台
-                   also takes elite 歌蕾蒂娅 with HOK-Y (shared/highGround.js), slot helpers,
+                   also takes a melee chess whose trait reads 可以放置于远程位 (shared/highGround.js), slot helpers,
                    reading order (boardOrder), a merge's elite tile in deployment order (mergeTile)
   bondsMeta.js     bond counting modes, tiers, 调和 / 独行 / 助力 / 绝技, layers
   effectsMeta.js   MetaRegistry + EffectDispatcher + the handler ctx (this document, §2)
@@ -749,6 +749,8 @@ round was over. The official 1 s `broadcastBeginDelay` is not modelled.
 ---
 
 ## 6. Testing & tools
+
+* `test/match/lobby-integration.test.js` 的联机轮选使用固定种子 `69`，覆盖 AI 先选走默认策略的情况（GitHub #144）。模拟玩家从当前公开选牌结果中选择未被占用的策略，并断言请求成功；不依赖拒绝后的超时分配。单人和联机用例均通过 `b.start` 确认战斗开始，避免瞬间结束的模拟战斗被公开状态节流而漏掉 `COMBAT` 阶段。
 
 * `test/match/fakeBattle.js` — scriptable DESIGN §5.1 Battle (`FakeBattle.script = (battle) => plan`); inject with
   `new Match({ …, BattleClass: FakeBattle })`.

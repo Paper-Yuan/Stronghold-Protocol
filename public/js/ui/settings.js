@@ -1,4 +1,4 @@
-// Player settings (BGM/SFX volume, mute, damage numbers, render quality): a tiny observable store
+// Player settings (BGM/SFX/voice volume, mute, damage numbers, render quality): a tiny observable store
 // persisted in localStorage (`sp.pref.settings`), applied to the audio manager on every change, plus
 // the settings modal.
 
@@ -15,7 +15,7 @@ if (typeof globalThis.AndroidNative?.isHighRefresh === 'function') {
   initialPref.highRefresh = globalThis.AndroidNative.isHighRefresh();
 }
 
-/** Settings store: { bgm, sfx, muted, damageNumbers, quality, highRefresh }. */
+/** Settings store: { bgm, sfx, voice, muted, damageNumbers, quality, highRefresh, board }. */
 export const settingsStore = createStore(initialPref);
 
 settingsStore.subscribe((s) => {

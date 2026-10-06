@@ -13,9 +13,10 @@
 // that file from the extracted models (after a game update).
 //
 // Idempotent: existing files with the right size are skipped, so re-running is
-// cheap. Downloads use ~16 parallel connections, 3 retries per source and a
-// jsDelivr mirror fallback. Spine atlases get `size:` (and `pma: true` for
-// enemies); every skeleton is parsed to resolve animation roles.
+// cheap. Downloads use ~16 parallel connections, 3 retries per direct source,
+// a jsDelivr fallback and an opt-in GitHub proxy (one short attempt per URL).
+// Spine atlases get `size:` (and `pma: true` for enemies); every skeleton is
+// parsed to resolve animation roles.
 //
 // The committed data/assets.json never shrinks by accident: an entry whose files
 // are missing here is left out of a rebuilt manifest, so a run on a machine where
@@ -33,8 +34,10 @@ import { existsSync, realpathSync } from 'node:fs';
 import { dirname, join, relative, sep } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { Downloader } from './assets/downloader.mjs';
+import { MirrorPolicy, selectDownloadSource, validateSource } from './assets/network.mjs';
+import { normalizeProxyPrefix } from './assets/sources.mjs';
 import { loadIndexes } from './assets/cache.mjs';
-import { indexAudio } from './assets/audio.mjs';
+import { indexAudio, VOICE_DIRS } from './assets/audio.mjs';
 import { buildPlan } from './assets/plan.mjs';
 import { processModels, findLocalEnemyModels, localEnemySpineMeta, loadLocalEnemySpines, LOCAL_ENEMY_SPINES_FILE } from './assets/spine.mjs';
 import { collectLeaves, downloadLeaves, resolveTemplate, totalBytes, contentHash, droppedEntries, MANIFEST_VERSION } from './assets/manifest.mjs';
@@ -51,28 +54,37 @@ const LOCAL_SPINES = join(ROOT, LOCAL_ENEMY_SPINES_FILE);
 
 const HELP = `Usage: node tools/fetch-assets.mjs [options]
   --concurrency=N   parallel downloads (default 16)
+  --asset-source=M  direct (default) or mirror (opt-in; no public-IP lookup)
   --force           re-download files even when present
   --offline         no network: post-process what is on disk and rebuild data/assets.json
   --dry-run         print the plan and exit
-  --refresh-index   re-download audio_data.json / models_data.json indexes
+  --refresh-index   re-download the audio_data.json / charword_table.json / models_data.json indexes
+  --voice-lang=cn   operator battle voice language: cn (default) | jp | en | kr
+  --voice-all       plan every official voice slot, including the prep-only lines no battle plays
+                    (干员报到 / 编入队伍 / 任命队长; 360 files / 19.3 MB more per run — off by default)
   --prune           delete files under public/assets that the manifest no longer references
                     (public/assets/local/** of tools/local-extract is never deleted); implies --allow-shrink
   --allow-shrink    write data/assets.json even when it loses entries the current one has
                     (without it such a run keeps the current manifest, lists the entries and exits 1)
   --local-spines    rewrite ${LOCAL_ENEMY_SPINES_FILE} from the enemy models extracted
                     by tools/local-extract/extract.py (public/assets/local/spine/enemy/)
-  --help            this text`;
+  --help            this text
+Environment: SP_ASSET_SOURCE sets the default source; SP_GITHUB_PROXY sets the
+HTTPS mirror prefix (default https://gh-proxy.com/; empty disables the proxy).
+Mirror attempts have an 8 s response header timeout; response body has a separate idle timeout. Stops for this run after 3 consecutive
+failures. Only explicitly enabled GitHub downloads use the third-party proxy.`;
 
 /**
  * Parse CLI flags.
  * @param {string[]} argv
- * @returns {{concurrency:number, force:boolean, offline:boolean, dryRun:boolean, refreshIndex:boolean, prune:boolean, allowShrink:boolean, localSpines:boolean, help:boolean}}
+ * @returns {{concurrency:number, force:boolean, offline:boolean, dryRun:boolean, refreshIndex:boolean, prune:boolean, allowShrink:boolean, localSpines:boolean, voiceLang:string, voiceAll:boolean, help:boolean, source:string}}
  */
 export function parseArgs(argv) {
-  const o = { concurrency: 16, force: false, offline: false, dryRun: false, refreshIndex: false, prune: false, allowShrink: false, localSpines: false, help: false };
+  const o = { concurrency: 16, force: false, offline: false, dryRun: false, refreshIndex: false, prune: false, allowShrink: false, localSpines: false, voiceLang: 'cn', voiceAll: false, help: false, source: process.env.SP_ASSET_SOURCE || 'direct' };
   for (const a of argv) {
     const [k, v] = a.split('=');
     if (k === '--concurrency') o.concurrency = Math.max(1, Math.min(64, parseInt(v, 10) || 16));
+    else if (k === '--asset-source') o.source = v;
     else if (k === '--force') o.force = true;
     else if (k === '--offline') o.offline = true;
     else if (k === '--dry-run') o.dryRun = true;
@@ -80,10 +92,17 @@ export function parseArgs(argv) {
     else if (k === '--prune') o.prune = true;
     else if (k === '--allow-shrink') o.allowShrink = true;
     else if (k === '--local-spines') o.localSpines = true;
+    else if (k === '--voice-lang') { if (!VOICE_DIRS[v]) throw new Error(`unknown --voice-lang ${v} (cn | jp | en | kr)`); o.voiceLang = v; }
+    else if (k === '--voice-all') o.voiceAll = true;
     else if (k === '--help' || k === '-h') o.help = true;
     else throw new Error(`unknown option ${a}\n${HELP}`);
   }
+  if (!o.help) validateSource(o.source);
   return o;
+}
+
+export function resolveProxyPrefix(source, offline = false, value = process.env.SP_GITHUB_PROXY) {
+  return offline || source !== 'mirror' ? '' : normalizeProxyPrefix(value);
 }
 
 /**
@@ -158,6 +177,7 @@ function countStats(m, bytes, files) {
     skills: Object.keys(m.skills || {}).length,
     ui: Object.keys(m.ui || {}).length,
     sfxUnits: Object.keys(m.audio?.sfx?.units || {}).length,
+    voiceChars: Object.keys(m.audio?.voice || {}).length,
   };
 }
 
@@ -218,7 +238,11 @@ async function main() {
     readJson('docs/research/05-enemies.json'),
     readJson('docs/research/05-maps.json'),
   ]);
-  const { audioData, modelsData } = await loadIndexes(ROOT, { refresh: opts.refreshIndex && !opts.offline, offline: opts.offline, log });
+  const proxyPrefix = resolveProxyPrefix(opts.source, opts.offline);
+  const source = await selectDownloadSource({ mode: opts.source, offline: opts.offline, proxyPrefix, log });
+  const mirrorPolicy = new MirrorPolicy({ source, proxyPrefix, log });
+  const network = { source, proxyPrefix, mirrorPolicy };
+  const { audioData, modelsData, charword } = await loadIndexes(ROOT, { refresh: opts.refreshIndex && !opts.offline, offline: opts.offline, log, ...network });
   const audio = indexAudio(audioData);
   // The game data built by tools/build-data.mjs (when present) may reference more
   // spawnable enemies/tokens than research lists (e.g. 机变 enemy swaps): cover them too.
@@ -228,7 +252,9 @@ async function main() {
   for (const b of Object.values(dataBosses || {})) if (b?.enemyKey && typeof b.handbookId === 'string') extraHandbook[b.enemyKey] = b.handbookId;
   const localEnemySpines = await syncLocalEnemySpines(opts);
   const plan = buildPlan({
-    assets07, ops03, enemies05, maps05, audio, modelsData,
+    assets07, ops03, enemies05, maps05, audio, modelsData, charword, voiceLang: opts.voiceLang,
+    // default: only the slots a battle can play (plan.mjs VOICE_BATTLE_SLOTS); --voice-all takes the whole official set
+    voiceSlots: opts.voiceAll ? null : undefined,
     extraEnemyIds: Object.keys(dataEnemies || {}),
     extraTokenIds: Object.keys(dataTokens || {}),
     extraHandbook,
@@ -238,7 +264,8 @@ async function main() {
   log(`[plan] ${leaves.length} files + ${plan.models.size} Spine models ` +
     `(${Object.keys(plan.template.chars).length} chars, ${Object.keys(plan.template.enemies).length} enemies, ` +
     `${Object.keys(plan.template.tokens).length} tokens, ${Object.keys(plan.template.ui).length} UI sprites, ` +
-    `${Object.keys(plan.template.audio.sfx.units).length} units with SFX)`);
+    `${Object.keys(plan.template.audio.sfx.units).length} units with SFX, ` +
+    `${Object.keys(plan.template.audio.voice).length} operators with ${opts.voiceLang.toUpperCase()} voice)`);
   if (opts.dryRun) {
     for (const n of plan.notes) log(`  note: ${n}`);
     return 0;
@@ -246,7 +273,7 @@ async function main() {
 
   const dl = new Downloader({
     root: ASSETS, ledgerPath: join(CACHE, 'assets-ledger.json'),
-    concurrency: opts.concurrency, force: opts.force, log,
+    concurrency: opts.concurrency, force: opts.force, log, ...network,
   });
   await dl.loadLedger();
   const downloadErrors = opts.offline ? [] : await downloadLeaves(leaves, dl, ASSETS, 'files');
@@ -254,7 +281,7 @@ async function main() {
   // Fonts
   let fontErrors = [];
   if (!opts.offline) {
-    const fdl = new Downloader({ root: FONTS, ledgerPath: join(CACHE, 'fonts-ledger.json'), concurrency: 4, force: opts.force, log });
+    const fdl = new Downloader({ root: FONTS, ledgerPath: join(CACHE, 'fonts-ledger.json'), concurrency: 4, force: opts.force, log, ...network });
     await fdl.loadLedger();
     await fdl.run(fontJobs(), 'fonts');
     dl.totals.bytesDownloaded += fdl.totals.bytesDownloaded;
@@ -324,6 +351,7 @@ async function main() {
   log(`on disk (manifest)  : ${mb(s.bytes)} in ${s.files} files`);
   log(`chars ${s.chars} (Back model ${s.charsWithBack}) · enemies ${s.enemies} (Spine ${s.enemiesWithSpine}) · tokens ${s.tokens} (Spine ${s.tokensWithSpine}) · Spine models ${s.spineModels}`);
   log(`bonds ${s.bonds} · items ${s.items} · bands ${s.bands} · skill icons ${s.skills} · UI ${s.ui} · units with SFX ${s.sfxUnits}`);
+  log(`operator battle voice: ${s.voiceChars} charIds (--voice-lang=${opts.voiceLang})`);
   log(`fonts: ${Object.values(fonts.files).map((f) => f.woff2 || f.original).join(', ') || 'none'}`);
   if (resolved.fallbacks.length) { log(`fallbacks used (${resolved.fallbacks.length}):`); for (const f of resolved.fallbacks.slice(0, 20)) log(`  ${f}`); }
   if (downloadErrors.length) log(`download errors (${downloadErrors.length}, re-run to retry): ${downloadErrors.slice(0, 10).join(', ')}`);

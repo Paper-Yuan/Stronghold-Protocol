@@ -29,6 +29,7 @@ import androidx.appcompat.widget.SwitchCompat
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import java.io.File
+import java.io.FileInputStream
 import java.util.concurrent.TimeUnit
 
 class MainActivity : AppCompatActivity() {
@@ -198,6 +199,16 @@ class MainActivity : AppCompatActivity() {
         setupWebView()
         setupServerReceiver()
 
+        // Pre-extract bundled assets in background thread immediately so bundleDir is ready
+        // before the player even finishes choosing a server mode.
+        Thread {
+            try {
+                AssetManagerHelper.ensureAssetsExtracted(applicationContext) {}
+            } catch (t: Throwable) {
+                Log.w(TAG, "Background pre-extraction warning: ${t.message}")
+            }
+        }.start()
+
         // The chooser is the launcher: it also serves as the escape hatch when a stored address
         // stops working, so it shows on every start with the previous choice pre-selected.
         showServerSwitchDialog(asLauncher = true)
@@ -333,6 +344,57 @@ class MainActivity : AppCompatActivity() {
         }
 
         webView.webViewClient = object : WebViewClient() {
+            override fun shouldInterceptRequest(view: WebView?, request: WebResourceRequest?): WebResourceResponse? {
+                val uri = request?.url ?: return super.shouldInterceptRequest(view, request)
+                val path = uri.path ?: return super.shouldInterceptRequest(view, request)
+
+                // Intercept static assets to always serve from local bundled assets
+                val bundleDir = AssetManagerHelper.getBundleDir(applicationContext)
+                if (bundleDir.exists()) {
+                    try {
+                        if (path.startsWith("/assets/") || path.startsWith("/fonts/") || path.startsWith("/vendor/")) {
+                            val file = File(bundleDir, "public$path")
+                            if (file.exists() && file.isFile) {
+                                val mime = getMimeType(path)
+                                val response = WebResourceResponse(mime, "UTF-8", FileInputStream(file))
+                                response.responseHeaders = mapOf(
+                                    "Access-Control-Allow-Origin" to "*",
+                                    "Cache-Control" to "public, max-age=2592000, immutable"
+                                )
+                                return response
+                            }
+                        } else if (path.startsWith("/media/")) {
+                            val audioRel = path.removePrefix("/media/")
+                            val audioExts = listOf(".mp3", ".m4a", ".aac", ".ogg", ".oga", ".opus", ".wav")
+                            for (ext in audioExts) {
+                                val file = File(bundleDir, "public/assets/audio/$audioRel$ext")
+                                if (file.exists() && file.isFile) {
+                                    val mime = getMimeType(file.name)
+                                    val response = WebResourceResponse(mime, "UTF-8", FileInputStream(file))
+                                    response.responseHeaders = mapOf(
+                                        "Access-Control-Allow-Origin" to "*",
+                                        "Accept-Ranges" to "bytes",
+                                        "Cache-Control" to "public, max-age=2592000, immutable"
+                                    )
+                                    return response
+                                }
+                            }
+                        } else if (path == "/data/local-assets.json") {
+                            val file = File(bundleDir, "data/local-assets.json")
+                            if (file.exists() && file.isFile) {
+                                val response = WebResourceResponse("application/json", "UTF-8", FileInputStream(file))
+                                response.responseHeaders = mapOf("Access-Control-Allow-Origin" to "*")
+                                return response
+                            }
+                        }
+                    } catch (e: Exception) {
+                        FileLogger.w("webview", "intercept asset error: $path (${e.message})")
+                    }
+                }
+
+                return super.shouldInterceptRequest(view, request)
+            }
+
             override fun onPageFinished(view: WebView?, url: String?) {
                 super.onPageFinished(view, url)
                 FileLogger.i("webview", "page finished: $url")
@@ -470,6 +532,32 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private fun getMimeType(path: String): String {
+        val ext = path.substringAfterLast('.', "").lowercase()
+        return when (ext) {
+            "png" -> "image/png"
+            "jpg", "jpeg" -> "image/jpeg"
+            "webp" -> "image/webp"
+            "svg" -> "image/svg+xml"
+            "gif" -> "image/gif"
+            "mp3" -> "audio/mpeg"
+            "ogg", "oga" -> "audio/ogg"
+            "wav" -> "audio/wav"
+            "m4a", "aac" -> "audio/mp4"
+            "json" -> "application/json"
+            "js", "mjs" -> "text/javascript"
+            "css" -> "text/css"
+            "html" -> "text/html"
+            "woff" -> "font/woff"
+            "woff2" -> "font/woff2"
+            "ttf" -> "font/ttf"
+            "otf" -> "font/otf"
+            "skel" -> "application/octet-stream"
+            "atlas" -> "text/plain"
+            else -> "application/octet-stream"
+        }
+    }
+
     private fun startStartupFlow() {
         layoutLoading.visibility = View.VISIBLE
         layoutFailedActions.visibility = View.GONE
@@ -481,6 +569,11 @@ class MainActivity : AppCompatActivity() {
         if (mode == "remote") {
             val remoteUrl = prefs.getString(KEY_REMOTE_URL, "")
             if (!remoteUrl.isNullOrBlank()) {
+                Thread {
+                    try {
+                        AssetManagerHelper.ensureAssetsExtracted(this) {}
+                    } catch (_: Throwable) {}
+                }.start()
                 tvLoadingStatus.text = "正在连接目标服务器: $remoteUrl …"
                 loadServerUrl(remoteUrl)
             } else {
@@ -559,6 +652,10 @@ class MainActivity : AppCompatActivity() {
         val targetUrl = buildUrlWithBoardMode(rawUrl)
         clientState = null
         runOnUiThread {
+            layoutLoading.visibility = View.VISIBLE
+            layoutFailedActions.visibility = View.GONE
+            progressLoading.visibility = View.VISIBLE
+            tvLoadingStatus.text = "正在接入指挥链路: $rawUrl …"
             Log.i(TAG, "Loading target URL in WebView: $targetUrl")
             webView.loadUrl(targetUrl)
         }
