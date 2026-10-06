@@ -193,7 +193,7 @@ if (gitStatusBefore !== null) {
 // 3. Release signing (post-build): zipalign then APK Signature Scheme v2/v3 via build-tools apksigner.
 //    Done outside Gradle so that android/app/build.gradle needs no signingConfig, and so the keystore
 //    password never appears in a command line (it is passed through the environment only).
-let finalApk = apkOutput;
+let finalApk = RELEASE ? path.join(outDir, 'Stronghold-Protocol-release.apk') : debugApk;
 if (RELEASE) {
   console.log('\n[3/3] 正在对齐并签名 release APK...');
   const props = readLocalProps();
