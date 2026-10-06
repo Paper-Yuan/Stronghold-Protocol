@@ -39,6 +39,11 @@ desktop.ini
 .claude/
 vibe_images/
 
+# --- publish artifacts -------------------------------------------------------------------------------
+# scripts/publish-update.mjs writes the R2-ready tree here. Even the lean bundle is megabytes and a
+# --full one is 300 MB+, so none of it may ever reach the index.
+dist/
+
 # --- Android build artifacts -----------------------------------------------------------------------
 *.apk
 *.aab

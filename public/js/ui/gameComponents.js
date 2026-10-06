@@ -51,12 +51,12 @@ export function makeLookups(ready = true) {
 
 /**
  * <img> that swaps to a fallback node when the URL is missing or fails.
- * @param {{ src?: string|null, class?: string, alt?: string, fallback?: any, style?: string }} props
+ * @param {{ src?: string|null, class?: string, alt?: string, fallback?: any, style?: string, loading?: 'lazy'|'eager' }} props
  */
-export function Img({ src, class: cls, alt = '', fallback = null, style }) {
+export function Img({ src, class: cls, alt = '', fallback = null, style, loading = 'lazy' }) {
   const [bad, setBad] = useState(null);
   if (!src || bad === src) return fallback;
-  return html`<img class=${cls} src=${src} alt=${alt} draggable=${false} loading="lazy" style=${style} onError=${() => setBad(src)} />`;
+  return html`<img class=${cls} src=${src} alt=${alt} draggable=${false} loading=${loading} style=${style} onError=${() => setBad(src)} />`;
 }
 
 /** Official UI sprite by 'group/key' with a fallback. */
@@ -125,7 +125,7 @@ export function UnitThumb({ kind = 'chess', id, golden, size = 'md', tier, showT
   return html`<span class=${cx('uthumb', `uthumb--${size}`, `uthumb--${kind}`, golden && 'is-golden', dim && 'is-dim', t && `uthumb--t${Math.max(1, Math.min(6, t | 0))}`, cls)}
       title=${title ?? name}>
     <span class="uthumb__art">
-      <${Img} src=${src} fallback=${html`<span class="uthumb__glyph">${glyph}</span>`} />
+      <${Img} src=${src} loading="eager" fallback=${html`<span class="uthumb__glyph">${glyph}</span>`} />
     </span>
     ${showTier && t && kind !== 'enemy' && kind !== 'token' ? html`<${TierChip} tier=${t} golden=${golden} size="sm" class="uthumb__tier" />` : null}
     ${kind === 'token' ? html`<span class="uthumb__tag">召唤</span>` : null}

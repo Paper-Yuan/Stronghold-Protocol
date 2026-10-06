@@ -15,3 +15,8 @@ local.properties
 /keystore/
 *.jks
 *.keystore
+
+# native deps are fetched by scripts/fetch-native-deps.mjs (see NATIVE_DEPS.json)
+/third_party/
+/app/src/main/jniLibs/
+/app/src/main/cpp/include/

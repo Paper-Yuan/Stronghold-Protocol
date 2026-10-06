@@ -1,5 +1,9 @@
 #!/usr/bin/env node
 // scripts/build-android.mjs — One-command build script for Stronghold Protocol Android APK
+//
+// Native deps (libnode.so / libc++_shared.so / Node headers) are no longer committed to git;
+// they are fetched into place by scripts/fetch-native-deps.mjs, which runs automatically
+// below before packaging (see also android/NATIVE_DEPS.json).
 
 import fs from 'node:fs';
 import path from 'node:path';
@@ -99,8 +103,18 @@ function getGitStatus() {
 }
 const gitStatusBefore = getGitStatus();
 
+// Fetch native deps (libnode.so, libc++_shared.so, Node headers) if missing so a fresh
+// clone builds without any committed binaries. Idempotent; no-ops when already present.
+console.log('[0/2] Fetching native dependencies (scripts/fetch-native-deps.mjs) ...');
+const fetchScript = path.join(ROOT, 'scripts', 'fetch-native-deps.mjs');
+const fetchRes = spawnSync(process.execPath, [fetchScript, ...process.argv.slice(2).filter((a) => a === '--force')], { stdio: 'inherit' });
+if (fetchRes.status !== 0) {
+  console.error('✘ 原生依赖获取失败，请检查上方日志（网络、ANDROID_HOME 设置）。');
+  process.exit(1);
+}
+
 // P1-1: Verify native dependencies sha256 checksums before building
-console.log('[0/2] 正在校验原生动态库 (Native Binaries) 哈希与来源清单...');
+console.log('\n[0/2] 正在校验原生动态库 (Native Binaries) 哈希与来源清单...');
 const nativeDepsPath = path.join(ANDROID_DIR, 'NATIVE_DEPS.json');
 if (!fs.existsSync(nativeDepsPath)) {
   console.error(`✘ 找不到原生依赖清单: ${nativeDepsPath}`);

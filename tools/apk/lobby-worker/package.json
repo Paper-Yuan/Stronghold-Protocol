@@ -1,0 +1,15 @@
+{
+  "name": "sp-lobby-worker",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Cloudflare Worker lobby board and matchmaking queue for Stronghold Protocol",
+  "type": "module",
+  "scripts": {
+    "test": "node --test",
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy"
+  },
+  "devDependencies": {
+    "wrangler": "^3.111.0"
+  }
+}

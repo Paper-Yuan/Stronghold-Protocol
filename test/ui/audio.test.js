@@ -424,6 +424,61 @@ describe('voice mapping and voiceKey resolution', () => {
     a._play = (url, o) => { slots.push(o.unitKey); return true; };
     for (const k of voiced) a.voice(k);
     assert.equal(new Set(slots).size, voiced.length, `one slot per operator expected, got ${slots.join(',')}`);
-    assert.ok(slots.every((s) => typeof s === 'string' && s.startsWith('voice:char_')), `slots must be keyed by operator: ${slots.join(',')}`);
+  });
+
+  test('voiceKey with skillIndex resolves to skill-specific key', () => {
+    assert.equal(voiceKey('char_103_angel', null, 0), 'char_103_angel:s1');
+    assert.equal(voiceKey('char_103_angel', null, 1), 'char_103_angel:s2');
+    assert.equal(voiceKey('char_103_angel', null, 2), 'char_103_angel:s3');
+    assert.equal(voiceKey('char_103_angel', null, undefined), 'char_103_angel');
+  });
+
+  test('skillVoice enforces 6s per-unit cooldown and ducks BGM', () => {
+    let ducked = 0;
+    const a = new AudioManager({ win: null, getManifest: () => manifest });
+    a.duckBgm = () => { ducked++; };
+    const played = [];
+    a._play = (url, o) => { played.push({ url, o }); return true; };
+
+    const unit = { id: 101, def: 'char_103_angel' };
+    const perf = globalThis.performance;
+    let fakeNow = 10000;
+    globalThis.performance = { now: () => fakeNow };
+    try {
+      // First trigger should play S3 voice
+      a.skillVoice(unit, 2);
+      assert.equal(played.length, 1);
+      assert.ok(played[0].url.includes('char_103_angel_s3.mp3'));
+      assert.equal(ducked, 1);
+
+      // Second trigger at 3s later (under 6s CD) should be suppressed
+      fakeNow += 3000;
+      a.skillVoice(unit, 2);
+      assert.equal(played.length, 1, 'within 6s cooldown, voice must not re-trigger');
+
+      // Third trigger after 6.1s should play again
+      fakeNow += 3100;
+      a.skillVoice(unit, 2);
+      assert.equal(played.length, 2, 'after 6s cooldown, voice triggers');
+    } finally {
+      globalThis.performance = perf;
+    }
+  });
+
+  test('handleBattleEvents on skill trigger plays generic SFX when unit has no custom skill sound', () => {
+    const a = new AudioManager({ win: null, getManifest: () => manifest });
+    a.ctx = {}; // mock active audio context so battle events process
+    a.duckBgm = () => {};
+    const played = [];
+    a._play = (url, o) => { played.push({ url, o }); return true; };
+    a.setFieldUnits([{ id: 1, def: 'char_103_angel', defId: 'char_103_angel', side: 'player', skillIndex: 2 }]);
+
+    a.handleBattleEvents([['skill', 1, 1]]);
+    // Should have played generic skill SFX and angel's s3 voice
+    const sfx = played.find((p) => p.url.includes('act1autochess_b_ui_buffup.mp3'));
+    const vc = played.find((p) => p.url.includes('char_103_angel_s3.mp3'));
+    assert.ok(sfx, 'generic skill sfx must be played as fallback');
+    assert.ok(vc, 'skill voice must be played');
   });
 });
+

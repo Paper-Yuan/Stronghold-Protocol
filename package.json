@@ -34,7 +34,9 @@
     "doctor": "node tools/doctor.mjs",
     "launch": "node scripts/launch.mjs",
     "bundle:android": "node tools/bundle-android.mjs",
-    "build:android": "node scripts/build-android.mjs"
+    "fetch:native": "node scripts/fetch-native-deps.mjs",
+    "build:android": "node scripts/build-android.mjs",
+    "update:publish": "node scripts/publish-update.mjs"
   },
   "engines": {
     "node": ">=22"
