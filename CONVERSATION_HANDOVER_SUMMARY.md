@@ -79,3 +79,19 @@
    - 连接手机设备 ID: `10CG1A0ARF00237`
 4. **服务端口**:
    - 默认 HTTP / WebSocket 端口为 `3000`。
+
+---
+
+## 五、 关键业务红线与合并门禁（P0 级铁律）
+
+### 1. 【严禁合并上游「盟约收起 / 展开」功能（PR #149 / issue #142 / `bonds-toggle`）】
+- **硬性要求**: 用户明确指示：**以后合并上游项目时均不做这个合并，严谨限制**！
+- **背景**: 上游在 v0.1.4（commit `ede8e7e7` / PR #149）引入了战斗界面盟约栏折叠按钮（`bonds-toggle`、`bondsCollapsed`），在战场左上方生成「收起 / 盟约」切换按键。
+- **限制执行规范**:
+  1. 以后执行 `git merge upstream/...` 或同步上游任何新版本时，必须立即检查并剔除 `bonds-toggle` 与 `bondsCollapsed` 相关的改动；
+  2. 保持 `public/js/screens/game.js` 中的 `<div class="gm__bonds">` 始终直接渲染 `<BondStrip ... />`，绝不包裹折叠开关；
+  3. 保持 `public/css/screens/game.css` 干净，严禁带入 `.bonds-toggle` 样式规则。
+5. **上游同步硬门禁（PR #149 永久拉黑）**:
+   - **绝对禁止合并**：上游 PR #149（commit `ede8e7e7`，即「盟约收起 / 展开」按钮与 `bondsCollapsed` 逻辑）。
+   - 该功能存在棋盘触控漂移（≈55px）负优化，用户明确指示后续任何上游合并均做严格限制，直接舍弃。
+   - 永久规则已固化至最高优先级配置：`.agents/rules/upstream-sync.md`。
