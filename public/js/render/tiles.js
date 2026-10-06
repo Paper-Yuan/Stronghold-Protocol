@@ -245,7 +245,9 @@ export class TileField {
     this.boxes = [];               // gate / objective wire boxes { r, c, gate, g } (in the unit layer)
     this.flowGfx = new P.Graphics();
     this.flowGfx.blendMode = P.BLEND_MODES.ADD;
-    layers.overlay.addChild(this.hlGfx, this.flowGfx);
+    this.routeGfx = new P.Graphics();
+    this.routeGfx.blendMode = P.BLEND_MODES.ADD;
+    layers.overlay.addChild(this.hlGfx, this.flowGfx, this.routeGfx);
     this.animLayer = new P.Container();
     layers.anim.addChild(this.animLayer);
     this.highlights = new Map();   // group → { tiles: [[r,c]], style }
@@ -253,6 +255,8 @@ export class TileField {
     this.devBoxes = [];            // textured box props (in the row meshes) { dev, row, col, role }
     this.blowers = [];             // { dev, row, col, dir } airflow sources
     this.animSprites = [];         // { sprite, r, c, kind, phase }
+    this.routePaths = [];          // 本局批次路线（buildRoutes ← 开战消息 meta.routes）
+    this.routeSweepT0 = null;      // 一次性电流的起始时刻；null = 未播放
     this.battleRect = null;
     this.cam = null;
     this.camVersion = -1;
@@ -709,9 +713,46 @@ export class TileField {
     for (let i = this.flashes.length - 1; i >= 0; i--) { this.flashes[i].t += dt; if (this.flashes[i].t > 1.2) this.flashes.splice(i, 1); }
     this._drawBoxes();
     this._drawFlow();
+    this._drawRoutes();
   }
 
-  /** Gate / objective wire boxes: tall, so each is its own Graphics depth-sorted with the block rows and units. */
+  /** 官方样式的路线显示：微光底线 + 亮段沿路径蠕动（蚂蚁线），一次性（淡入→蠕动→淡出，~2 s）。 */
+  _drawRoutes() {
+    const g = this.routeGfx;
+    g.clear();
+    if (this.routeSweepT0 == null || !this.routePaths?.length || !this.cam) return;
+    const cam = this.cam, q = { x: 0, y: 0, s: 0, depth: 0 };
+    const T = this.time - this.routeSweepT0;
+    const FADE_IN = 0.25, HOLD = 1.3, FADE_OUT = 0.4, LIFE = FADE_IN + HOLD + FADE_OUT;
+    if (T > LIFE) { this.routeSweepT0 = null; g.clear(); return; }
+    const alpha = T < FADE_IN ? T / FADE_IN : T > FADE_IN + HOLD ? 1 - (T - FADE_IN - HOLD) / FADE_OUT : 1;
+    const w = Math.max(1.5, this._p.s / 64 * 2.2);
+    for (const path of this.routePaths) {
+      // 单段亮线（1.5 格）从红门跑向蓝门：一次过，不画完整轨迹
+      const prog = Math.min(1, T / (FADE_IN + 0.9));
+      const alpha2 = alpha * Math.sin(prog * Math.PI);
+      const LEN = 1.5, head = prog * (path.total + LEN) - LEN;
+      let prev = null;
+      const STEPS = 8;
+      for (let i = 0; i <= STEPS; i++) {
+        const dd = head + (i / STEPS) * LEN;
+        if (dd < 0 || dd > path.total) { prev = null; continue; }
+        let seg = path.nodes[0];
+        for (const sN of path.nodes) { if (dd >= sN.at) seg = sN; else break; }
+        const k = seg.d > 0 ? (dd - seg.at) / seg.d : 0;
+        const r = seg.r0 + (seg.r1 - seg.r0) * k, c = seg.c0 + (seg.c1 - seg.c0) * k;
+        cam.project(c, r, this.heightAt(Math.round(r), Math.round(c)) + 0.09, q);
+        if (prev) {
+          g.lineStyle((0.12 + 0.4 * (i / STEPS)) * w + 4, 0xd41f0f, alpha2 * (0.3 + 0.7 * (i / STEPS)));
+          g.moveTo(prev.x, prev.y);
+          g.lineTo(q.x, q.y);
+        }
+        prev = { x: q.x, y: q.y };
+      }
+    }
+  }
+
+  /** Gate / objective wire boxes  /** Gate / objective wire boxes: tall, so each is its own Graphics depth-sorted with the block rows and units. */
   _buildBoxes() {
     for (const b of this.boxes) b.g.destroy();
     this.boxes = [];
@@ -747,6 +788,41 @@ export class TileField {
   }
 
   /** Airflow streaks along the blowers' rangeTiles (the machines themselves are textured boxes). */
+  /**
+   * 本局批次路线（官方的红门→蓝门电流，2D 棋盘）：routes = 开战消息 meta.routes
+   * （[{start,end,checkpoints,motion}]，每条对应一轮怪批次）；逐格路径优先匹配
+   * stage.groundPaths 的 "r0,c0->r1,c1"，无则 start→checkpoints→end 直连。
+   */
+  buildRoutes(routes) {
+    this.routePaths = [];
+    this.routeSweepT0 = null;
+    for (const r of routes || []) {
+      if (!r || !Array.isArray(r.start) || !Array.isArray(r.end)) continue;
+      const key = `${r.start[0]},${r.start[1]}->${r.end[0]},${r.end[1]}`;
+      let pts = this.stage?.groundPaths?.[key];
+      if (!Array.isArray(pts) || pts.length < 2) {
+        pts = [r.start, ...(Array.isArray(r.checkpoints) ? r.checkpoints : []), r.end];
+      }
+      const nodes = [];
+      let total = 0;
+      for (let i = 0; i < pts.length - 1; i++) {
+        const [r0, c0] = pts[i];
+        const [r1, c1] = pts[i + 1];
+        const d = Math.abs(r1 - r0) + Math.abs(c1 - c0);
+        if (d <= 0) continue;
+        nodes.push({ r0, c0, r1, c1, at: total, d });
+        total += d;
+      }
+      if (total > 0) this.routePaths.push({ nodes, total, motion: r.motion });
+    }
+  }
+
+  /** 每条路线一道红色电流扫过一次（战斗开场调用一次；1.15 s 后完全消失）。 */
+  playRouteSweeps() {
+    if (!this.routePaths?.length || this.routeSweepT0 != null) return;
+    this.routeSweepT0 = this.time;
+  }
+
   _drawFlow() {
     const g = this.flowGfx;
     g.clear();

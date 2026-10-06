@@ -653,11 +653,17 @@ export function createBattleRunner(deps) {
       return;
     }
     stats.battles++;
+    // deploy the board right away instead of at the first tick: the field's first frame must
+    // already show the operators (the client's battle-open presentation hides them and lands
+    // them one by one — no empty-board wait). The sim clock still starts `delayMs` in the
+    // future, so ticks — and with them the first enemy spawn — wait for the presentation.
+    if (!battle.started && typeof battle.start === 'function') battle.start();
     const e = {
       battleId: msg.battleId, fieldId: msg.fieldId || msg.spec.fieldId, kind: msg.kind || msg.spec.kind, spec: msg.spec, sim, battle,
       authoritative: !!msg.authoritative, watch: !!msg.watch, own: !msg.watch, speed,
       members: (msg.spec.players || []).map((p) => p && p.playerId).filter(Boolean),
-      t0: clock() - ((Number(msg.elapsed) || 0) / speed) * 1000, lastProgressAt: -Infinity, done: false, resultSent: false,
+      // 准备就绪后先逐个落地+路线电流（渲染层 ~2 s），模拟时钟延后启动——怪在演出之后才出
+      t0: clock() + ((Number(msg.elapsed) || 0) ? 0 : 2600) - ((Number(msg.elapsed) || 0) / speed) * 1000, lastProgressAt: -Infinity, done: false, resultSent: false,
       result: null, delivery: null,
       meter: sim.spec.attachLpMeter(battle),
       // counted leaks so far (normal fields; noteLeaks) and the Battle state they were counted at; 联防 fields: each

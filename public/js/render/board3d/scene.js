@@ -47,6 +47,13 @@ export const LIGHTING = Object.freeze({
 /** Additive gain of the gate boxes at the curve's mean (tuned against the official screenshots). */
 export const GATE_GAIN = 0.6;
 
+/** The one-shot route current (buildRoutes / playRouteSweeps): total sweep time (matches the
+ * 2D board's fade-in + hold + fade-out), the comet's tail length in tiles, and how many
+ * vertices the tail is sampled with. The tail window is drawn with setDrawRange — vertices
+ * outside the path must never be joined into the polyline (they would streak in from far
+ * off the board, reading as light shooting in from the screen edge). */
+const SWEEP = 1.95, TAIL = 1.5, SAMPLES = 24;
+
 /** Gate pulse: the official clip's _TintColor.a curve (2 s loop, 0.134 → 0.229 → 0.134) scaled to our intensity. */
 export function gatePulse(t, phase = 0) {
   const k = 0.5 - 0.5 * Math.cos(((t / 2 + phase) % 1) * Math.PI * 2);
@@ -237,7 +244,63 @@ export class BoardScene {
       this.root.remove(ch);
       ch.traverse?.((o) => { if (o.geometry) o.geometry.dispose(); });
     }
+    if (this.routeSweeps) {
+      for (const l of this.routeSweeps.lines) { this.root.remove(l.line); l.line.geometry.dispose(); l.line.material.dispose(); }
+      this.routeSweeps = null;
+    }
+    this.routePaths = [];
     this.meshes = {};
+  }
+
+  /**
+   * 本局批次路线（官方的红门→蓝门电流，3D 棋盘）：routes = 开战消息 meta.routes；
+   * 逐格路径优先匹配 stage.groundPaths 的 "r0,c0->r1,c1"，无则 start→checkpoints→end 直连。
+   */
+  buildRoutes(routes) {
+    this.routePaths = [];
+    this.routeSweeps = null;
+    for (const r of routes || []) {
+      if (!r || !Array.isArray(r.start) || !Array.isArray(r.end)) continue;
+      const key = `${r.start[0]},${r.start[1]}->${r.end[0]},${r.end[1]}`;
+      let pts = this.stage?.groundPaths?.[key];
+      if (!Array.isArray(pts) || pts.length < 2) {
+        pts = [r.start, ...(Array.isArray(r.checkpoints) ? r.checkpoints : []), r.end];
+      }
+      const nodes = [];
+      let total = 0;
+      for (let i = 0; i < pts.length - 1; i++) {
+        const [r0, c0] = pts[i];
+        const [r1, c1] = pts[i + 1];
+        const d = Math.abs(r1 - r0) + Math.abs(c1 - c0);
+        if (d <= 0) continue;
+        nodes.push({ r0, c0, r1, c1, at: total, d });
+        total += d;
+      }
+      if (total > 0) this.routePaths.push({ nodes, total, motion: r.motion });
+    }
+  }
+
+  /** 每条路线一道红色电流扫过一次（战斗开场调用一次；约 2 s 后完全消失）。 */
+  playRouteSweeps() {
+    if (!this.routePaths?.length || this.routeSweeps) return;
+    const T = this.THREE;
+    const lines = [];
+    for (const path of this.routePaths) {
+      const corners = [];
+      for (const n of path.nodes) if (!corners.length || corners[corners.length - 1].r !== n.r0 || corners[corners.length - 1].c !== n.c0) corners.push([n.r0, n.c0]);
+      corners.push([path.nodes[path.nodes.length - 1].r1, path.nodes[path.nodes.length - 1].c1]);
+      const geo = new T.BufferGeometry();
+      const pos = new Float32Array(corners.length * 3);
+      corners.forEach(([r, c], i) => { pos[i * 3] = c; pos[i * 3 + 1] = r; pos[i * 3 + 2] = 0.06; });
+      geo.setAttribute('position', new T.BufferAttribute(pos, 3));
+      const mat = new T.LineBasicMaterial({ color: 0xff3a30, transparent: true, opacity: 0.6, depthWrite: false });
+      const line = new T.Line(geo, mat);
+      line.frustumCulled = false;
+      line.visible = false; // the first update sets the draw window; never draw the raw zeroed vertices
+      this.root.add(line);
+      lines.push({ path, line, pos });
+    }
+    this.routeSweeps = { t0: this.time, lines };
   }
 
   /** The crate mesh in board space (s_common_box_01 when loaded, else a unit chamfer-free box), UVs on D. */
@@ -550,6 +613,36 @@ export class BoardScene {
     for (let i = this.flashes.length - 1; i >= 0; i--) { const f = this.flashes[i]; f.t += dt; if (f.t > 1.2) this.flashes.splice(i, 1); else flash = Math.max(flash, 1 - f.t / 1.2); }
     for (const m of [this.mat.gateEndAdd, this.mat.gateEndAb]) if (m) m.uniforms.uFlash.value.setRGB(flash, flash * 0.12, flash * 0.1);
     for (const k of ['water', 'mire', 'infection', 'smog']) this.mat[k].uniforms.uTime.value = t;
+    // 路线电流（红）：每条路线一道彗尾扫过一次后消失；只画落在路径窗口内的采样点
+    if (this.routeSweeps) {
+      const done = this.time - this.routeSweeps.t0 >= SWEEP;
+      if (!done) {
+        for (const { path, line, pos } of this.routeSweeps.lines) {
+          const prog = (this.time - this.routeSweeps.t0) / SWEEP;
+          line.material.opacity = 0.9 * Math.sin(prog * Math.PI);
+          const head = prog * (path.total + TAIL) - TAIL;
+          let i0 = -1, i1 = -1;
+          for (let i = 0; i < SAMPLES; i++) {
+            const dd = head + (i / (SAMPLES - 1)) * TAIL;
+            if (dd < 0 || dd > path.total) continue;
+            let seg = path.nodes[0];
+            for (const sN of path.nodes) { if (dd >= sN.at) seg = sN; else break; }
+            const k = seg.d > 0 ? (dd - seg.at) / seg.d : 0;
+            pos[i * 3] = seg.c0 + (seg.c1 - seg.c0) * k;
+            pos[i * 3 + 1] = seg.r0 + (seg.r1 - seg.r0) * k;
+            pos[i * 3 + 2] = 0.12;
+            if (i0 < 0) i0 = i;
+            i1 = i;
+          }
+          if (i0 < 0) line.visible = false;
+          else { line.visible = true; line.geometry.setDrawRange(i0, i1 - i0 + 1); }
+          line.geometry.attributes.position.needsUpdate = true;
+        }
+      } else {
+        for (const l of this.routeSweeps.lines) { this.root.remove(l.line); l.line.geometry.dispose(); l.line.material.dispose(); }
+        this.routeSweeps = null;
+      }
+    }
     this.renderer.render(this.scene, this.camera);
     this.frames++;
     if (t0) this.lastMs = this.lastMs * 0.9 + ((typeof performance !== 'undefined' ? performance.now() : t0) - t0) * 0.1;
