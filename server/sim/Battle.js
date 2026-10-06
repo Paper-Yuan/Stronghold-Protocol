@@ -2401,6 +2401,12 @@ export class Battle {
     return {
       fieldId: this.fieldId, kind: this.kind, rect: { ...this.rect }, stageId: this.stageId,
       units: this.units.filter((u) => (u.alive && u.deployed && !u.hidden) || this.isDown(u)).map(unitInfo),
+      // the wave's real batch routes (this round's 红门→蓝门 lines): the client draws the one-shot
+      // route current from these (render/tiles.js buildRoutes; matched against stage.groundPaths)
+      routes: (this.routes || []).map((r) => ({
+        motion: r.motion, start: r.start, end: r.end,
+        checkpoints: (r.checkpoints || []).filter((c) => c.type === 'MOVE' || c.type === 'APPEAR').map((c) => c.pos),
+      })),
     };
   }
 
