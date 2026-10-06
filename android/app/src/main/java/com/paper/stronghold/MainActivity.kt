@@ -199,6 +199,16 @@ class MainActivity : AppCompatActivity() {
         setupWebView()
         setupServerReceiver()
 
+        // Pre-extract bundled assets in background thread immediately so bundleDir is ready
+        // before the player even finishes choosing a server mode.
+        Thread {
+            try {
+                AssetManagerHelper.ensureAssetsExtracted(applicationContext) {}
+            } catch (t: Throwable) {
+                Log.w(TAG, "Background pre-extraction warning: ${t.message}")
+            }
+        }.start()
+
         // The chooser is the launcher: it also serves as the escape hatch when a stored address
         // stops working, so it shows on every start with the previous choice pre-selected.
         showServerSwitchDialog(asLauncher = true)
@@ -642,6 +652,10 @@ class MainActivity : AppCompatActivity() {
         val targetUrl = buildUrlWithBoardMode(rawUrl)
         clientState = null
         runOnUiThread {
+            layoutLoading.visibility = View.VISIBLE
+            layoutFailedActions.visibility = View.GONE
+            progressLoading.visibility = View.VISIBLE
+            tvLoadingStatus.text = "正在接入指挥链路: $rawUrl …"
             Log.i(TAG, "Loading target URL in WebView: $targetUrl")
             webView.loadUrl(targetUrl)
         }
