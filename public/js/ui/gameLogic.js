@@ -124,6 +124,32 @@ export function foldCamera(s) {
   return want;
 }
 
+/** Tile-top pixel cap of a selected piece's camera (render/app.js focusTile → fitCamera maxTilePx): the shop-collapsed
+ *  prep camera frames ≈ 131 px per tile at 1920×1080, so the selection reads as a step closer, not a jump onto the model. */
+export const SEL_FOCUS_TILE_PX = 150;
+/** Board tiles of context a selected piece's camera keeps around its tile (rows × cols, per side). */
+export const SEL_FOCUS_TILES = Object.freeze({ r: 1, c: 2 });
+
+/**
+ * The rect a selected board piece's camera frames (official behaviour: tapping a placed operator eases the camera onto
+ * it so the retreat / direction actions are reachable on a crowded board): the piece's tile with `SEL_FOCUS_TILES` of
+ * context, fitted and capped by render/app.js focusTile. `toDisp` = the prep field's board → display transform
+ * (render/prepfield.js: the identity on the own board, the mirrored boss half in the Final Assault prep).
+ * @param {number} row board row of the piece
+ * @param {number} col board col of the piece
+ * @param {(row: number, col: number) => { row: number, col: number }} [toDisp]
+ * @returns {{ r0: number, r1: number, c0: number, c1: number }|null} display-space rect, or null for a malformed tile
+ */
+export function selFocusRect(row, col, toDisp = null) {
+  if (!Number.isInteger(row) || !Number.isInteger(col)) return null;
+  const d = typeof toDisp === 'function' ? toDisp(row, col) : { row, col };
+  if (!d || !Number.isInteger(d.row) || !Number.isInteger(d.col)) return null;
+  return {
+    r0: d.row - SEL_FOCUS_TILES.r, r1: d.row + SEL_FOCUS_TILES.r,
+    c0: d.col - SEL_FOCUS_TILES.c, c1: d.col + SEL_FOCUS_TILES.c,
+  };
+}
+
 /**
  * The field the own pieces are deployed on (server/match/Match.js deployFieldOf): 'bossL' / 'bossR' in the prep of a
  * boss round (the same pairing as `prepCamera`), else 'normal'. Placement legality (`placementContext` → `deployMap`
