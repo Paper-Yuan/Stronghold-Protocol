@@ -6,8 +6,8 @@ export async function onRequest(context) {
   const request = context.request;
   const upgradeHeader = request.headers.get('Upgrade');
 
-  // Fallback to Codespaces or configured backend
-  const backend = context.env?.BACKEND_WS_URL || 'https://literate-space-trout-wv9vr47jg794f94qp-3000.app.github.dev/ws';
+  // Fallback to Render backend
+  const backend = context.env?.BACKEND_WS_URL || 'https://stronghold-protocol-see7.onrender.com/ws';
 
   if (upgradeHeader && upgradeHeader.toLowerCase() === 'websocket') {
     const backendUrl = new URL(backend);

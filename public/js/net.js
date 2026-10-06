@@ -102,6 +102,9 @@ export function defaultWsUrl(loc = globalThis.location) {
     if (override) return override;
   } catch {}
   if (!loc || !loc.host) return 'ws://localhost:3000/ws';
+  if (loc.host.endsWith('.pages.dev')) {
+    return 'wss://stronghold-protocol-see7.onrender.com/ws';
+  }
   return `${loc.protocol === 'https:' ? 'wss' : 'ws'}://${loc.host}/ws`;
 }
 
