@@ -1,12 +1,15 @@
 /**
  * Cloudflare Pages Function: Hybrid Asset Resolver
- * 1. Checks if asset exists locally on Cloudflare Pages (e.g. skin_avatar).
- * 2. If 404, transparently fetches from Render backend and caches on Cloudflare CDN.
+ * 1. Checks if asset exists locally on Cloudflare Pages (e.g. skin_avatar png).
+ * 2. If missing (Pages SPA fallback returns text/html), transparently fetches from Render and caches on Cloudflare CDN.
  */
 export async function onRequest(context) {
   // 1. Try local Pages asset first
   const localRes = await context.next();
-  if (localRes.status === 200) {
+  const ctype = localRes.headers.get('content-type') || '';
+
+  // If local asset exists and is a real asset (not SPA fallback to index.html)
+  if (localRes.status === 200 && !ctype.includes('text/html')) {
     return localRes;
   }
 
@@ -20,7 +23,7 @@ export async function onRequest(context) {
       headers: context.request.headers,
       cf: {
         cacheEverything: true,
-        cacheTtl: 86400 * 30, // 30 days
+        cacheTtl: 86400 * 30, // 30 days CDN cache
       },
     });
 
