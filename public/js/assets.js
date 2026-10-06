@@ -683,8 +683,10 @@ export function unloadSpineData(entry, _value, keep) {
 
 // ---- store ---------------------------------------------------------------------------------------------------
 
+const isMobile = typeof navigator !== 'undefined' && (/Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) || (navigator.maxTouchPoints > 1 && !globalThis.matchMedia?.('(pointer: fine)').matches));
+
 /** Spine LRU memory budget: estimated bytes (`spineDataWeight`) of idle skeletons kept while a scene is shown. */
-export const SPINE_IDLE_BYTES = 48 * 1024 * 1024;
+export const SPINE_IDLE_BYTES = isMobile ? 24 * 1024 * 1024 : 48 * 1024 * 1024;
 /** How long a released skeleton is safe from the weight budget (a prep ⇄ battle switch re-acquires within it). */
 export const SPINE_IDLE_GRACE_MS = 15000;
 /**
@@ -827,7 +829,7 @@ export function createAssets(options) {
       // the promise (when the unloader returns one) holds back a new load of this skeleton until it has settled
       return (opts.unloadSpine || unloadSpineData)(e, value, keep);
     },
-    max: opts.spineMax ?? 60,
+    max: opts.spineMax ?? (isMobile ? 32 : 60),
     timeout: opts.spineTimeout ?? 20000,
     concurrency: opts.spineConcurrency ?? 6,
     // memory budget (a parsed skeleton holds ~0.1–12 MB): idle skeletons beyond SPINE_IDLE_BYTES go, and all of

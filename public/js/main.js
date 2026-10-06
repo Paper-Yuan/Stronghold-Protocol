@@ -40,7 +40,7 @@ import { LobbyScreen, rememberRoom, parseRoomParam } from './screens/lobby.js';
 import { RoomScreen } from './screens/room.js';
 import { GameScreen } from './screens/game.js';
 import { installAudio, audio } from './audio.js';
-import { settingsStore } from './ui/settings.js';
+import { settingsStore, updateSettings } from './ui/settings.js';
 import { GuideHost } from './ui/guide.js';
 import { installDeviceSupport } from './ui/device.js';
 import { LoadoutHost } from './screens/loadout.js';
@@ -389,7 +389,10 @@ async function boot() {
     splash.classList.add('is-done');
     setTimeout(() => splash.remove(), 300);
   }
-  globalThis.__SP__ = { store, net, data, audio, version: 1 };
+  globalThis.__SP__ = {
+    store, net, data, audio, version: 1, updateSettings, settings: settingsStore,
+    onThermalThrottle: (warm) => globalThis.__SP_VIEW__?.setThermalThrottle?.(warm),
+  };
   reportClientState();
   // A page keeps the modules it imported at load time for its whole lifetime, so a deploy cannot reach an open tab
   // (ui/buildGuard.js): watch `/healthz.build`. Outside a match the page reloads itself; during a match the guard says

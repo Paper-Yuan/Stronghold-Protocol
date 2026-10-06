@@ -33,8 +33,14 @@ object FileLogger {
     private const val TAIL_CHARS = 8192
 
     private lateinit var logDir: File
-    private val writer = Executors.newSingleThreadExecutor()
+    private val logQueue = java.util.concurrent.LinkedBlockingQueue<Runnable>(500)
+    private val writer = java.util.concurrent.ThreadPoolExecutor(
+        1, 1, 0L, java.util.concurrent.TimeUnit.MILLISECONDS,
+        logQueue,
+        java.util.concurrent.ThreadPoolExecutor.DiscardOldestPolicy()
+    )
     private val fmt = SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS", Locale.US)
+    @Volatile private var currentLogBytes: Long = 0L
 
     /**
      * logs/ under the app's external files dir (visible to the user over MTP / file
@@ -45,6 +51,8 @@ object FileLogger {
 
     fun init(context: Context) {
         logDir = dir(context).apply { mkdirs() }
+        val current = File(logDir, "debug.log")
+        currentLogBytes = if (current.isFile) current.length() else 0L
         rotateIfNeeded()
         i("app", "==== Stronghold Protocol Android ${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE}) ====")
         i("app", "device: ${Build.MANUFACTURER} ${Build.MODEL}, Android ${Build.VERSION.RELEASE} " +
@@ -92,23 +100,29 @@ object FileLogger {
             else -> Log.i(tag, msg)
         }
         if (!this::logDir.isInitialized) return
-        val line = "${fmt.format(Date())} [$level/$tag] $msg\n"
+        val timestamp = System.currentTimeMillis()
         writer.execute {
             try {
+                // fmt is executed strictly on the single-thread executor to prevent SimpleDateFormat race/freeze
+                val line = "${fmt.format(Date(timestamp))} [$level/$tag] $msg\n"
                 rotateIfNeeded()
-                FileWriter(File(logDir, "debug.log"), true).use { it.write(line) }
+                FileWriter(File(logDir, "debug.log"), true).use {
+                    it.write(line)
+                }
+                currentLogBytes += line.toByteArray(Charsets.UTF_8).size
             } catch (_: Exception) { /* logging must never crash the app */ }
         }
     }
 
     private fun rotateIfNeeded() {
-        val current = File(logDir, "debug.log")
-        if (current.isFile && current.length() > MAX_BYTES) {
+        if (currentLogBytes > MAX_BYTES) {
+            val current = File(logDir, "debug.log")
             File(logDir, "debug-${KEEP - 1}.log").delete()
             for (i in KEEP - 2 downTo 1) {
                 File(logDir, "debug-$i.log").renameTo(File(logDir, "debug-${i + 1}.log"))
             }
             current.renameTo(File(logDir, "debug-1.log"))
+            currentLogBytes = 0L
         }
     }
 

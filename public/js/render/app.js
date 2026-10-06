@@ -364,11 +364,13 @@ function makeData(src) {
   };
 }
 
-// 'high' follows the screen density: a cap of 2 on a 480dpi phone (dpr 3) paints the board at 2/3 native and the system
-// upscales it, which reads as soft operators. Desktop dpr is 1-2, so lifting 'high' only changes phones.
-const QUALITY_RES = { high: 3, medium: 1.5, low: 1 };
+const isMobile = typeof navigator !== 'undefined' && (/Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) || (navigator.maxTouchPoints > 1 && !globalThis.matchMedia?.('(pointer: fine)').matches));
+
+// Mobile devices have constrained VRAM and thermal envelopes; capping mobile DPR to 2.0 (board to 1.5)
+// prevents GPU OOM and render process crashes while preserving sharp display on 1080p/1440p phones.
+const QUALITY_RES = isMobile ? { high: 2, medium: 1.5, low: 1 } : { high: 3, medium: 1.5, low: 1 };
 /** Pixel-ratio cap of the 3D board canvas per quality (its fill cost is the PBR board, not the sprites). */
-const BOARD_RES = { high: 3, medium: 1.25, low: 1 };
+const BOARD_RES = isMobile ? { high: 1.5, medium: 1.25, low: 1 } : { high: 3, medium: 1.25, low: 1 };
 
 /**
  * Before a renderer is destroyed: free its GL copies of every texture / buffer / geometry / framebuffer it
@@ -411,7 +413,7 @@ export async function createFieldView(host, options = {}) {
   const P = await ensurePixi();
   const assets = resolveAssets(opts.assets);
   const data = makeData(opts.data);
-  const settings = { damageNumbers: true, quality: 'high', ...(opts.settings || {}) };
+  const settings = { damageNumbers: true, quality: 'high', highRefresh: true, ...(opts.settings || {}) };
   // the 3D board (three.js + the official art) loads in parallel with everything else
   const boardPref = boardPreference(opts.board);
   const want3d = boardPref !== '2d' && webgl2Available(boardPref === '3d');
@@ -437,7 +439,37 @@ export async function createFieldView(host, options = {}) {
     width: s0.width, height: s0.height, antialias: opts.antialias ?? dpr() < 2, backgroundColor: 0x0a0e0d, backgroundAlpha: 0,
     resolution: dpr(), autoDensity: true, powerPreference: 'high-performance',
   });
+  let thermalThrottled = false;
+  let lastTouchTime = performance.now();
+  const getTargetFps = () => {
+    // 1. Explicitly off: strictly locked to 60 FPS across all phases
+    if (settings.highRefresh === false) return 60;
+    // 2. Hardware thermal protection: clamp to 60 FPS when device is warm
+    if (thermalThrottled) return 60;
+    // 3. Combat phase: heavy pathfinding, Spine skeletons, and 3D shadows; lock 60 FPS to prevent OOM / GPU freeze
+    if (mode === 'battle') return 60;
+    // 4. Idle power saving: if user is inactive for > 8s in prep/idle, throttle to 60 FPS
+    const idleSec = (performance.now() - lastTouchTime) / 1000;
+    if (idleSec > 8 && !dragState) return 60;
+    return 0; // 0 = unthrottled (120 FPS+ for buttery drag & formation prep)
+  };
+  const updateFpsLimit = () => {
+    if (app?.ticker) {
+      app.ticker.maxFPS = getTargetFps();
+    }
+  };
+  updateFpsLimit();
   const canvas = app.view;
+  const markTouch = () => {
+    lastTouchTime = performance.now();
+    updateFpsLimit();
+  };
+  canvas.addEventListener('pointerdown', markTouch, { passive: true });
+  canvas.addEventListener('pointermove', markTouch, { passive: true });
+  canvas.addEventListener('webglcontextlost', (e) => {
+    e.preventDefault();
+    console.warn('[render] Pixi WebGL context lost; preventing default to allow recovery');
+  });
   canvas.style.display = 'block';
   canvas.style.width = '100%';
   canvas.style.height = '100%';
@@ -671,7 +703,10 @@ export async function createFieldView(host, options = {}) {
     }, delay);
   }
   if (want3d) {
-    const ready = Promise.all([threePromise, packPromise]).then(([THREE, pack]) => (THREE && pack ? enable3d(THREE, pack) : false), () => false);
+    const ready = Promise.all([threePromise, packPromise]).then(
+      ([THREE, pack]) => (THREE && pack ? enable3d(THREE, pack) : false),
+      (err) => { console.warn('[render] 3D board background load failed:', err); return false; },
+    );
     await withTimeout(ready, 6000);
   }
   // the official soft shadow sprite replaces the procedural one once loaded (may already be cached; asked again when the
@@ -1044,6 +1079,8 @@ export async function createFieldView(host, options = {}) {
 
   function enterPrepMode() {
     mode = 'prep';
+    lastTouchTime = performance.now();
+    updateFpsLimit();
     held.clear();
     clearViews();
     infos.clear();
@@ -1444,6 +1481,7 @@ export async function createFieldView(host, options = {}) {
     clearHl();
     renderT0Battle = null;
     mode = 'battle';
+    updateFpsLimit();
     const rect = meta.rect ? normRect(meta.rect) : (meta.kind === 'boss' || meta.kind === 'hidden' ? { ...GEO.BOSS_RECT } : meta.kind === 'unite' ? { ...GEO.UNITE_RECT } : { ...GEO.NORMAL_RECT });
     // prep: true = a read-only scouting board (a teammate's lineup during prep): prep-style pieces, no bars
     battleMeta = { fieldId: meta.fieldId ?? null, kind: meta.kind || 'normal', rect, stageId: meta.stageId ?? null, prep: meta.prep === true };
@@ -1772,13 +1810,21 @@ export async function createFieldView(host, options = {}) {
     // a struggling device (load level ≥ 2) may refresh a big crowd more rarely (10 Hz at worst)
     return Math.min(loadLevel >= 2 ? 6 : 4, Math.max(2, Math.ceil(n / (base * 0.75))));
   }
+  let lastFrameTime = 0;
   function frame() {
     if (destroyed) return;
     const now = performance.now();
+    const targetFps = getTargetFps();
+    if (targetFps > 0) {
+      const minInterval = (1000 / targetFps) - 2.0;
+      if ((now - lastFrameTime) < minInterval) return;
+    }
+    lastFrameTime = now;
     try { frameBody(now); } finally { cpuMs = cpuMs * 0.9 + (performance.now() - now) * 0.1; }
   }
   function frameBody(now) {
     frameNo++;
+    if (frameNo % 60 === 1) updateFpsLimit();
     if (frameNo % 30 === 1) {
       impInterval = pickImpostorInterval(); clipAllowed = pickClipping();
       culledCount = 0;
@@ -1993,7 +2039,17 @@ export async function createFieldView(host, options = {}) {
       const q = settings.quality;
       if (typeof s.damageNumbers === 'boolean') settings.damageNumbers = s.damageNumbers;
       if (s.quality === 'high' || s.quality === 'medium' || s.quality === 'low') settings.quality = s.quality;
+      if (typeof s.highRefresh === 'boolean') {
+        settings.highRefresh = s.highRefresh;
+        updateFpsLimit();
+      }
       if (q !== settings.quality) { board3d?.setQuality?.(settings.quality); resize(); }
+    },
+    setThermalThrottle(on) {
+      if (destroyed) return false;
+      thermalThrottled = !!on;
+      updateFpsLimit();
+      return true;
     },
     resize,
     /** Dev / settings: switch the board layer ('3d' loads three.js + the art when available; '2d' = atlas board). */

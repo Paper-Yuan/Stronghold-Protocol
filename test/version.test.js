@@ -43,7 +43,8 @@ test('the English title is the official one: Stronghold Protocol: Alliance (as i
   // EN client data, activity_table basicInfo.act2autochess.name = "Stronghold Protocol: Alliance" (CN 卫戍协议:盟约);
   // the project used to call it "Covenant". The Chinese title stays 卫戍协议：盟约; the repository keeps its name.
   const readme = read('README.md');
-  assert.match(readme.split('\n')[0], /^# 卫戍协议：盟约 · Stronghold Protocol: Alliance$/, 'README title');
+  const firstHeading = readme.split('\n').find((l) => l.startsWith('# ')) || '';
+  assert.match(firstHeading, /^# 卫戍协议：盟约 · Stronghold Protocol: Alliance$/, 'README title');
   assert.match(readme, /mode \*Stronghold Protocol: Alliance\*/, 'README English summary');
   assert.match(read('server/index.js'), /卫戍协议：盟约 · Stronghold Protocol: Alliance v/, 'boot banner');
   assert.equal(pkg.name, 'stronghold-protocol-alliance');

@@ -22,11 +22,11 @@
 //   imp.flush()                             // once per frame, after every unit update, before the main render
 //   imp.free(slot) ; imp.destroy()
 
-// A page's GPU size is PAGE_PX² whatever the render ratio; its CSS capacity is (PAGE_PX / res)². At res 3 (a dpr-3
-// phone on 'high') one page holds 44 % less of the board than at res 2, so the page budget grows to keep a full
-// field batched — otherwise dense boards fall back to one render target per unit exactly when the fill cost peaks.
-const MAX_PAGES = { main: 4, clip: 3 };
-const PAGE_PX = { main: 2048, clip: 1024 };
+const isMobile = typeof navigator !== 'undefined' && (/Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) || (navigator.maxTouchPoints > 1 && !globalThis.matchMedia?.('(pointer: fine)').matches));
+
+// On mobile devices, 2048² RenderTextures cost ~80MB+ of VRAM; 1024² provides sharp impostors with 75% less VRAM
+const MAX_PAGES = isMobile ? { main: 2, clip: 1 } : { main: 4, clip: 3 };
+const PAGE_PX = isMobile ? { main: 1024, clip: 512 } : { main: 2048, clip: 1024 };
 const GRID = 16;
 
 export class ImpostorAtlas {

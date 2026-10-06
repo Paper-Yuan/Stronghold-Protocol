@@ -1582,13 +1582,14 @@ export function shortcutBlocked(act, { modal = false, drawer = false } = {}) {
 
 // ---- settings ------------------------------------------------------------------------------------------------------
 
-export const DEFAULT_SETTINGS = Object.freeze({ bgm: 0.6, sfx: 0.8, voice: 0.8, muted: false, damageNumbers: true, quality: 'high' });
+export const DEFAULT_SETTINGS = Object.freeze({ bgm: 0.6, sfx: 0.8, voice: 0.8, muted: false, damageNumbers: true, quality: 'high', highRefresh: true, board: 'auto' });
 const QUALITIES = ['high', 'medium', 'low'];
+const BOARDS = ['auto', '3d', '2d'];
 
 /**
  * Sanitize persisted settings.
  * @param {any} raw
- * @returns {{ bgm: number, sfx: number, voice: number, voiceLang?: 'jp'|'cn', muted: boolean, damageNumbers: boolean, quality: 'high'|'medium'|'low' }}
+ * @returns {{ bgm: number, sfx: number, voice: number, voiceLang?: 'jp'|'cn', muted: boolean, damageNumbers: boolean, quality: 'high'|'medium'|'low', highRefresh: boolean, board: 'auto'|'3d'|'2d' }}
  */
 export function sanitizeSettings(raw) {
   const r = isObj(raw) ? raw : {};
@@ -1600,6 +1601,8 @@ export function sanitizeSettings(raw) {
     muted: typeof r.muted === 'boolean' ? r.muted : DEFAULT_SETTINGS.muted,
     damageNumbers: typeof r.damageNumbers === 'boolean' ? r.damageNumbers : DEFAULT_SETTINGS.damageNumbers,
     quality: QUALITIES.includes(r.quality) ? r.quality : DEFAULT_SETTINGS.quality,
+    highRefresh: typeof r.highRefresh === 'boolean' ? r.highRefresh : DEFAULT_SETTINGS.highRefresh,
+    board: BOARDS.includes(r.board) ? r.board : DEFAULT_SETTINGS.board,
   };
   if (r.voiceLang === 'jp' || r.voiceLang === 'cn') out.voiceLang = r.voiceLang;
   return out;

@@ -91,4 +91,14 @@ class AndroidBridge(private val activity: MainActivity) {
             activity.reloadWebView()
         }
     }
+
+    @JavascriptInterface
+    fun isHighRefresh(): Boolean = activity.isHighRefresh()
+
+    @JavascriptInterface
+    fun setHighRefresh(enabled: Boolean) {
+        activity.runOnUiThread {
+            activity.setHighRefresh(enabled)
+        }
+    }
 }

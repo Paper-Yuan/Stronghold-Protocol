@@ -106,7 +106,7 @@ export const MIME = Object.freeze({
 /** Extensions worth gzipping (text-like, .skel, uncompressed fonts). */
 export const COMPRESSIBLE = new Set([
   '.html', '.htm', '.js', '.mjs', '.css', '.json', '.map', '.webmanifest', '.txt', '.md', '.csv', '.xml',
-  '.atlas', '.skel', '.bin', '.wasm', '.svg', '.ico', '.otf', '.ttf', '.wav',
+  '.atlas', '.skel', '.bin', '.wasm', '.svg', '.ico', '.otf', '.ttf', '.wav', '.obj',
 ]);
 
 const GZIP_MIN_BYTES = 512;

@@ -15,6 +15,7 @@ import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.os.PowerManager
 import android.util.Log
 import android.view.View
 import android.view.ViewGroup
@@ -148,6 +149,23 @@ class MainActivity : AppCompatActivity() {
         // apps at 60 Hz unless the app opts in); the toggle falls back to ~60 Hz for battery.
         applyHighRefresh()
 
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            try {
+                val pm = getSystemService(Context.POWER_SERVICE) as? PowerManager
+                pm?.addThermalStatusListener { status ->
+                    val warm = status >= PowerManager.THERMAL_STATUS_MODERATE
+                    FileLogger.i("thermal", "Thermal status changed: $status (throttle=$warm)")
+                    runOnUiThread {
+                        if (::webView.isInitialized) {
+                            webView.evaluateJavascript("globalThis.__SP__?.onThermalThrottle?.($warm)", null)
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                Log.w(TAG, "Thermal listener init failed: ${e.message}")
+            }
+        }
+
         setContentView(R.layout.activity_main)
 
         webView = findViewById(R.id.webView)
@@ -200,10 +218,25 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun prefs() = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+    fun prefs() = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+
+    fun isHighRefresh(): Boolean = prefs().getBoolean(KEY_HIGH_REFRESH, true)
+
+    fun setHighRefresh(enabled: Boolean) {
+        prefs().edit().putBoolean(KEY_HIGH_REFRESH, enabled).apply()
+        DisplayHelper.apply(window, enabled)
+        notifyWebHighRefresh(enabled)
+        FileLogger.i("settings", "high refresh = $enabled")
+    }
+
+    fun notifyWebHighRefresh(enabled: Boolean) {
+        if (::webView.isInitialized) {
+            webView.evaluateJavascript("globalThis.__SP__?.updateSettings?.({ highRefresh: $enabled })", null)
+        }
+    }
 
     private fun applyHighRefresh() {
-        DisplayHelper.apply(window, prefs().getBoolean(KEY_HIGH_REFRESH, true))
+        DisplayHelper.apply(window, isHighRefresh())
     }
 
     /**
@@ -306,6 +339,7 @@ class MainActivity : AppCompatActivity() {
                 layoutLoading.visibility = View.GONE
                 layoutFailedActions.visibility = View.GONE
                 scheduleBlankScreenWatchdog()
+                notifyWebHighRefresh(isHighRefresh())
             }
 
             override fun onReceivedError(view: WebView?, request: WebResourceRequest?, error: WebResourceError?) {
@@ -317,19 +351,53 @@ class MainActivity : AppCompatActivity() {
             }
 
             override fun onRenderProcessGone(view: WebView?, detail: RenderProcessGoneDetail?): Boolean {
-                FileLogger.e("webview", "render process gone, didCrash=${detail?.didCrash()}")
-                Log.e(TAG, "WebView render process gone. Did crash: ${detail?.didCrash()}")
+                val didCrash = detail?.didCrash() ?: false
+                FileLogger.e("webview", "render process gone, didCrash=$didCrash")
+                Log.e(TAG, "WebView render process gone. Did crash: $didCrash")
                 runOnUiThread {
-                    layoutLoading.visibility = View.VISIBLE
-                    tvLoadingStatus.text = "显存渲染已重置，正在恢复战场…"
-                    try {
-                        reloadWebView()
-                    } catch (e: Exception) {
-                        Log.e(TAG, "Failed to reload after render process crash", e)
-                    }
+                    recoverFromRenderProcessGone()
                 }
                 return true // Prevent host process from being killed
             }
+        }
+    }
+
+    private fun recoverFromRenderProcessGone() {
+        layoutLoading.visibility = View.VISIBLE
+        progressLoading.visibility = View.VISIBLE
+        tvLoadingStatus.text = "显存渲染已重置，已切换轻量模式恢复战场…"
+
+        // If crash happened in 3D mode, downgrade to 2D to prevent re-crashing GPU
+        val prefs = prefs()
+        if (prefs.getString(KEY_BOARD_MODE, "3d") == "3d") {
+            prefs.edit().putString(KEY_BOARD_MODE, "2d").apply()
+            FileLogger.w("webview", "auto-downgraded board_mode to 2d after render process crash")
+        }
+
+        try {
+            val parent = webView.parent as? ViewGroup
+            parent?.removeView(webView)
+            try {
+                webView.stopLoading()
+                webView.clearHistory()
+                webView.removeAllViews()
+                webView.destroy()
+            } catch (_: Exception) {}
+
+            val newWebView = WebView(this)
+            newWebView.id = R.id.webView
+            parent?.addView(newWebView, 0, FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT
+            ))
+            webView = newWebView
+            applyEdgePadding(prefs.getInt(KEY_EDGE_PADDING, 0))
+            setupWebView()
+            reloadWebView()
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to recover from render process gone", e)
+            FileLogger.e("webview", "failed to recreate webview after crash", e)
+            showConnectionError("显存崩溃后恢复失败: ${e.message}\n请点击下方按钮重新进入。")
         }
     }
 
@@ -656,11 +724,9 @@ class MainActivity : AppCompatActivity() {
         val lblEdge = dialogView.findViewById<TextView>(R.id.lblEdge)
         val sbEdge = dialogView.findViewById<SeekBar>(R.id.sbEdge)
 
-        swHighRefresh.isChecked = prefs.getBoolean(KEY_HIGH_REFRESH, true)
+        swHighRefresh.isChecked = isHighRefresh()
         swHighRefresh.setOnCheckedChangeListener { _, checked ->
-            prefs.edit().putBoolean(KEY_HIGH_REFRESH, checked).apply()
-            DisplayHelper.apply(window, checked)
-            FileLogger.i("settings", "high refresh = $checked")
+            setHighRefresh(checked)
         }
 
         var edgePreview = prefs.getInt(KEY_EDGE_PADDING, 0)

@@ -49,13 +49,15 @@
 import { PHASE } from '../../shared/constants.js';
 import { mediaUrl } from './media.js';
 
+const isMobile = typeof navigator !== 'undefined' && (/Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) || (navigator.maxTouchPoints > 1 && !globalThis.matchMedia?.('(pointer: fine)').matches));
+
 const MAX_VOICES = 8;
 const UNIT_COOLDOWN_MS = 160;
 const URL_GAP_MS = 45;
 const MAX_PER_URL = 2;
-const BUFFER_CACHE = 180;
+const BUFFER_CACHE = isMobile ? 60 : 180;
 /** Decoded-PCM budget of the buffer cache beside its entry count: a voice line decodes to 0.4–1.3 MB (see _buffer). */
-const BUFFER_BYTES = 64 * 1024 * 1024;
+const BUFFER_BYTES = isMobile ? 24 * 1024 * 1024 : 64 * 1024 * 1024;
 const XFADE_S = 1;
 const FADE_S = 0.8;
 /** Voice: shortest gap between two lines, and the crossfade of a higher-priority line taking the channel (official 0.1 s). */

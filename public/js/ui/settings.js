@@ -10,8 +10,13 @@ import { audio } from '../audio.js';
 import { openGuide } from './guide.js';
 import { detectFeatures } from './device.js';
 
-/** Settings store: { bgm, sfx, muted, damageNumbers, quality }. */
-export const settingsStore = createStore(sanitizeSettings(loadPref('settings', null)));
+const initialPref = sanitizeSettings(loadPref('settings', null));
+if (typeof globalThis.AndroidNative?.isHighRefresh === 'function') {
+  initialPref.highRefresh = globalThis.AndroidNative.isHighRefresh();
+}
+
+/** Settings store: { bgm, sfx, muted, damageNumbers, quality, highRefresh }. */
+export const settingsStore = createStore(initialPref);
 
 settingsStore.subscribe((s) => {
   savePref('settings', sanitizeSettings(s));
@@ -21,7 +26,13 @@ audio.setVolumes(settingsStore.get());
 
 /** @param {Partial<ReturnType<typeof sanitizeSettings>>} patch */
 export function updateSettings(patch) {
-  settingsStore.set(sanitizeSettings({ ...settingsStore.get(), ...patch }));
+  const next = sanitizeSettings({ ...settingsStore.get(), ...patch });
+  settingsStore.set(next);
+  if (typeof patch?.highRefresh === 'boolean' && typeof globalThis.AndroidNative?.setHighRefresh === 'function') {
+    if (globalThis.AndroidNative.isHighRefresh?.() !== patch.highRefresh) {
+      globalThis.AndroidNative.setHighRefresh(patch.highRefresh);
+    }
+  }
 }
 
 /** Preact hook: current settings. */
@@ -47,6 +58,7 @@ function Toggle({ label, micro, value, onChange }) {
 
 const QUALITY = [['high', '高'], ['medium', '中'], ['low', '低']];
 const VOICE_LANG = [['jp', '日语 (默认)'], ['cn', '中文']];
+const BOARDS = [['auto', '自动'], ['3d', '3D 全景'], ['2d', '2D 俯视']];
 
 /**
  * Settings modal.
@@ -56,9 +68,34 @@ export function SettingsModal({ open, onClose }) {
   const s = useSettings();
   const [tested, setTested] = useState(false);
   const [testedVoice, setTestedVoice] = useState(false);
+  const [serverUrl, setServerUrl] = useState(() => globalThis.localStorage?.getItem('sp_ws_url') || '');
   const [touchUi] = useState(() => detectFeatures().coarse && !detectFeatures().fine);
   // The Android shell exposes itself as AndroidNative; the same page in a browser has none of it.
   const nativeShell = globalThis.AndroidNative?.isNativeApp?.() ? globalThis.AndroidNative : null;
+
+  const applyServerUrl = () => {
+    const raw = (serverUrl || '').trim();
+    if (!raw) {
+      globalThis.localStorage?.removeItem('sp_ws_url');
+      globalThis.location?.reload();
+      return;
+    }
+    let target = raw;
+    if (!target.includes('://')) {
+      target = (globalThis.location?.protocol === 'https:' ? 'wss://' : 'ws://') + target;
+    } else if (target.startsWith('http://')) {
+      target = 'ws://' + target.slice('http://'.length);
+    } else if (target.startsWith('https://')) {
+      target = 'wss://' + target.slice('https://'.length);
+    }
+    try {
+      const u = new URL(target);
+      if (!u.pathname || u.pathname === '/') u.pathname = '/ws';
+      target = u.toString();
+    } catch {}
+    globalThis.localStorage?.setItem('sp_ws_url', target);
+    globalThis.location?.reload();
+  };
   return html`<${Modal} open=${open} onClose=${onClose} title="设置" micro="SETTINGS" width="min(8.8rem, 92vw)"
     actions=${html`<${Button} variant="secondary" icon="book" class="set-guide" onClick=${() => openGuide(0)}>玩法说明<//>
       <${Button} variant="primary" icon="check" onClick=${onClose}>完成<//>`}>
@@ -82,6 +119,25 @@ export function SettingsModal({ open, onClose }) {
         <div class="set-seg" role="radiogroup">
           ${QUALITY.map(([id, label]) => html`<button key=${id} type="button" role="radio" aria-checked=${s.quality === id ? 'true' : 'false'}
             class=${s.quality === id ? 'is-on' : ''} onClick=${() => updateSettings({ quality: id })}>${label}</button>`)}
+        </div>
+      </div>
+      <${Toggle} label="动态高刷新率" micro="PREP 120 / BATTLE 60" value=${s.highRefresh !== false}
+        onChange=${(v) => updateSettings({ highRefresh: v })} />
+      <div class="set-row">
+        <span class="set-row__label">棋盘视角<${MicroLabel}>BOARD VIEW<//></span>
+        <div class="set-seg" role="radiogroup">
+          ${BOARDS.map(([id, label]) => html`<button key=${id} type="button" role="radio" aria-checked=${(s.board || 'auto') === id ? 'true' : 'false'}
+            class=${(s.board || 'auto') === id ? 'is-on' : ''} onClick=${() => updateSettings({ board: id })}>${label}</button>`)}
+        </div>
+      </div>
+      <div class="set-row">
+        <span class="set-row__label">联机服务器<${MicroLabel}>SERVER URL<//></span>
+        <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;justify-content:flex-end;">
+          <input type="text" placeholder="默认本机" value=${serverUrl}
+            onInput=${(e) => setServerUrl(e.target.value)}
+            style="width:145px;padding:3px 6px;font-size:11px;background:#14171a;color:#eee;border:1px solid #444;border-radius:3px;" />
+          <button type="button" class="btn" style="padding:3px 8px;font-size:11px;" onClick=${applyServerUrl}>切换并重连</button>
+          ${serverUrl ? html`<button type="button" class="btn" style="padding:3px 6px;font-size:11px;opacity:0.75;" onClick=${() => { setServerUrl(''); globalThis.localStorage?.removeItem('sp_ws_url'); globalThis.location?.reload(); }}>恢复默认</button>` : null}
         </div>
       </div>
       ${nativeShell ? html`<div class="set-row">
