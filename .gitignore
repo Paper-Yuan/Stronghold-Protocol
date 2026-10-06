@@ -39,9 +39,10 @@ desktop.ini
 .claude/
 vibe_images/
 
-# --- Android build artifacts -----------------------------------------------------------------------
+# --- Build artifacts ----------------------------------------------------------------
 *.apk
 *.aab
+*.zip
 android/app/build/
 android/.gradle/
 android/local.properties
