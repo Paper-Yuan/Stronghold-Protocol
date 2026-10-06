@@ -26,7 +26,7 @@ RUN npm ci --omit=dev --ignore-scripts --no-audit --no-fund && npm cache clean -
 
 # ---- 2. vendor libs + optional art download ---------------------------------------------------------
 FROM deps AS build
-ARG FETCH_ASSETS=0
+ARG FETCH_ASSETS=1
 COPY shared ./shared
 COPY server ./server
 COPY tools ./tools
@@ -36,6 +36,7 @@ COPY docs/research ./docs/research
 RUN node tools/vendor.mjs \
  && if [ "$FETCH_ASSETS" = "1" ]; then \
       node tools/fetch-assets.mjs || echo "WARNING: art download incomplete; the image falls back to placeholder art"; \
+      node tools/fetch-bilingual-voices.mjs || echo "WARNING: voice download incomplete"; \
     fi \
  && rm -rf .cache
 

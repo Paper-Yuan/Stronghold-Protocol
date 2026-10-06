@@ -1,3 +1,13 @@
+---
+title: Stronghold Protocol Alliance
+emoji: 🛡️
+colorFrom: green
+colorTo: indigo
+sdk: docker
+app_port: 3000
+pinned: false
+---
+
 # 卫戍协议：盟约 · Stronghold Protocol: Alliance
 
 《明日方舟》季节性自走棋塔防玩法「卫戍协议：盟约」的**非官方同人复刻**：浏览器即开即玩，单人或 1–4 人联机合作。

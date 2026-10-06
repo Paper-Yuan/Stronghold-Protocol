@@ -1,0 +1,19 @@
+services:
+  - type: web
+    name: stronghold-protocol
+    runtime: docker
+    plan: free
+    region: singapore
+    dockerfilePath: ./Dockerfile
+    dockerBuildArgs:
+      - key: FETCH_ASSETS
+        value: "1"
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: HOST
+        value: 0.0.0.0
+    healthCheckPath: /healthz
+    autoDeploy: true
