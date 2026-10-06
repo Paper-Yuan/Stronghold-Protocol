@@ -34,6 +34,26 @@ export function mirrorUrl(url) {
 }
 
 /**
+ * Return ranked candidate mirror URLs for a raw.githubusercontent.com URL.
+ * Prioritizes high-speed CDN mirrors (jsDelivr, gcore, ghfast) before raw GitHub.
+ * @param {string} url
+ * @returns {string[]}
+ */
+export function mirrorUrls(url) {
+  const m = RAW_RE.exec(String(url));
+  if (!m) return [];
+  const [, owner, repo, branch, path] = m;
+  if (owner === 'ArknightsAssets' && branch === 'voice') {
+    return [`https://ghfast.top/${url}`];
+  }
+  return [
+    `https://cdn.jsdelivr.net/gh/${owner}/${repo}@${branch}/${path}`,
+    `https://gcore.jsdelivr.net/gh/${owner}/${repo}@${branch}/${path}`,
+    `https://ghfast.top/${url}`,
+  ];
+}
+
+/**
  * Percent-encode each segment of a repo-relative path ('[uc]x/a b.png' → '%5Buc%5Dx/a%20b.png').
  * @param {string} relPath
  * @returns {string}

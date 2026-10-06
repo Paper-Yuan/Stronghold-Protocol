@@ -5,7 +5,7 @@
 
 import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
-import { RAW, mirrorUrl } from './sources.mjs';
+import { RAW, mirrorUrl, mirrorUrls } from './sources.mjs';
 
 /**
  * Read a cached JSON file, downloading it first when missing or unparsable.
@@ -24,7 +24,8 @@ export async function cachedJson({ cacheFile, url, refresh = false, offline = fa
     }
   }
   let lastErr = null;
-  for (const src of [url, mirrorUrl(url)].filter(Boolean)) {
+  const mirrors = typeof mirrorUrls === 'function' ? mirrorUrls(url) : [mirrorUrl(url)].filter(Boolean);
+  for (const src of [...mirrors, url].filter(Boolean)) {
     for (let attempt = 1; attempt <= 3; attempt++) {
       try {
         log(`[cache] downloading ${src}`);

@@ -794,6 +794,7 @@ export async function startServer(opts = {}) {
 // ---------------------------------------------------------------------------------------------------
 
 function isMain() {
+  if (process.env.pm_id !== undefined) return true;
   if (!process.argv[1]) return false;
   try {
     return fs.realpathSync(process.argv[1]) === fs.realpathSync(fileURLToPath(import.meta.url));

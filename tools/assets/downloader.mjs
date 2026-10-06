@@ -14,7 +14,7 @@
 
 import { mkdir, readFile, rename, stat, unlink, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
-import { mirrorUrl } from './sources.mjs';
+import { mirrorUrl, mirrorUrls } from './sources.mjs';
 import { validate } from './formats.mjs';
 
 /**
@@ -43,7 +43,7 @@ export class Downloader {
    * @param {typeof fetch} [o.fetchImpl]
    * @param {number} [o.backoffMs] base retry delay (doubles per attempt)
    */
-  constructor({ root, ledgerPath, concurrency = 16, retries = 3, timeoutMs = 120000, force = false, log = console.log, fetchImpl = globalThis.fetch, backoffMs = 400 }) {
+  constructor({ root, ledgerPath, concurrency = 16, retries = 3, timeoutMs = 15000, force = false, log = console.log, fetchImpl = globalThis.fetch, backoffMs = 400 }) {
     this.root = root;
     this.ledgerPath = ledgerPath;
     this.concurrency = Math.max(1, Math.min(64, Number(concurrency) || 16));
@@ -146,7 +146,8 @@ export class Downloader {
     if (kept >= 0) return { status: 'skip', bytes: kept };
     let lastError = null;
     for (const url of job.urls) {
-      const sources = [url, mirrorUrl(url)].filter(Boolean);
+      const mirrors = typeof mirrorUrls === 'function' ? mirrorUrls(url) : [mirrorUrl(url)].filter(Boolean);
+      const sources = [...mirrors, url].filter(Boolean);
       for (const src of sources) {
         const r = await this.fetchWithRetries(src, job.kind);
         if (r.notFound) continue;
