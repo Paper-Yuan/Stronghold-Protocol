@@ -74,7 +74,33 @@ function downloadFile(url, dest, retries = 3) {
 
 export async function buildVoicePlan() {
   if (!fs.existsSync(CACHE_EXCEL)) {
-    throw new Error(`Missing charword table: ${CACHE_EXCEL}`);
+    // Fallback: build queue directly from committed data/assets.json
+    const assets = JSON.parse(fs.readFileSync(ASSETS_PATH, 'utf8'));
+    const voice = assets.audio?.voice || { jp: {}, cn: {} };
+    const voiceStructure = voice;
+    const downloadQueue = [];
+    const registeredUrls = new Set();
+    for (const lang of ['jp', 'cn']) {
+      const remoteDir = LANG_DIRS[lang];
+      for (const [charId, slots] of Object.entries(voice[lang] || {})) {
+        for (const [slot, val] of Object.entries(slots)) {
+          const urls = Array.isArray(val) ? val : [val];
+          for (const u of urls) {
+            const prefix = `/assets/audio/voice/${lang}/`;
+            if (!u.startsWith(prefix)) continue;
+            const relFile = u.slice(prefix.length);
+            const url = `${RAW_VOICE_BASE}${remoteDir}/${relFile}`;
+            const dest = path.join(VOICE_ROOT, lang, ...relFile.split('/'));
+            const key = `${lang}:${relFile}`;
+            if (!registeredUrls.has(key)) {
+              registeredUrls.add(key);
+              downloadQueue.push({ lang, charId, relFile, url, dest });
+            }
+          }
+        }
+      }
+    }
+    return { voiceStructure, downloadQueue };
   }
   const charword = JSON.parse(fs.readFileSync(CACHE_EXCEL, 'utf8'));
   const assets = JSON.parse(fs.readFileSync(ASSETS_PATH, 'utf8'));

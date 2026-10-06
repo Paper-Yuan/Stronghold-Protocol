@@ -9,7 +9,7 @@
       "protocol": "http"
     }
   },
-  "postCreateCommand": "npm ci && node tools/setup.mjs --no-local",
+  "postCreateCommand": "npm ci && node tools/setup.mjs --no-local && node tools/fetch-bilingual-voices.mjs",
   "customizations": {
     "vscode": {
       "settings": {
