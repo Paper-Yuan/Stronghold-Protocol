@@ -194,3 +194,26 @@ test('matchmaking: room host party queue pulls solo queue player into the room',
   lobby.shutdown();
 });
 
+test('matchmaking: room.list returns statistics and public alliance rooms', () => {
+  const registry = new SessionRegistry();
+  const lobby = new Lobby({ registry });
+  const s1 = createMockSession('p1', 'Doctor_Host');
+  registry.byPlayerId.set('p1', s1);
+
+  // create coop room
+  lobby.onMessage(s1, { t: 'room.create', mode: 'coop', difficulty: 'ABYSS' });
+
+  const listRes = lobby.onMessage(s1, { t: 'room.list' });
+  assert.equal(listRes.ok, true);
+  assert.equal(listRes.t, 'room.list');
+  assert.equal(listRes.online, 1);
+  assert.equal(listRes.roomsCount, 1);
+  assert.equal(listRes.rooms.length, 1);
+  assert.equal(listRes.rooms[0].name, 'Doctor_Host');
+  assert.equal(listRes.rooms[0].difficulty, 'ABYSS');
+  assert.equal(listRes.rooms[0].humans, 1);
+  assert.equal(listRes.rooms[0].inMatch, false);
+
+  lobby.shutdown();
+});
+

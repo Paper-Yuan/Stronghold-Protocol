@@ -245,25 +245,365 @@
 .create-box .btn--xl { height: .92rem; font-size: .32rem; letter-spacing: .3em; }
 .create-box__hint { display: flex; align-items: center; justify-content: center; min-height: .3rem; font-size: .14rem; color: var(--text-lo); }
 
-.matchmaking-hud {
+.btn-create-alliance {
+  position: relative;
+  overflow: hidden;
+}
+.btn-create-alliance::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  width: 1.4rem;
+  background: repeating-linear-gradient(-45deg, rgba(0, 0, 0, .14) 0 8px, transparent 8px 16px);
+  pointer-events: none;
+}
+
+/* ---- online indicator pill -------------------------------------------------------------------------- */
+.online-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: .06rem;
+  padding: .04rem .14rem .04rem .12rem;
+  background: rgba(14, 28, 24, .85);
+  border: 1px solid rgba(78, 216, 175, .35);
+  border-radius: .04rem;
+  font-size: .15rem;
+  color: var(--mint-400);
+}
+.online-pill__dot {
+  width: .08rem;
+  height: .08rem;
+  border-radius: 50%;
+  background: var(--mint-400);
+  box-shadow: 0 0 .08rem var(--mint-400);
+}
+.online-pill .num {
+  font-weight: 700;
+  color: var(--text-hi);
+}
+.online-pill__label {
+  font-size: .13rem;
+  color: var(--mint-400);
+}
+
+/* ---- 02 多人匹配 MULTIPLAYER MATCHMAKING panel ---------------------------------------------------- */
+.matchmaking-panel {
+  --bk-c: var(--mint-400);
+  --bk-l: .22rem;
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: .2rem .3rem;
-  background: rgba(20, 26, 24, 0.95);
-  border: 1px solid var(--mint);
-  border-radius: var(--radius-sm);
-  box-shadow: 0 0 .2rem rgba(64, 224, 180, 0.2);
+  gap: .2rem;
+  padding: .24rem .28rem;
+  margin-bottom: .34rem;
+  background: linear-gradient(180deg, rgba(20, 26, 23, .92), rgba(12, 16, 15, .95));
+  border: 1px solid rgba(78, 216, 175, .3);
+  box-shadow: 0 0 .3rem rgba(23, 249, 183, .04);
 }
-.matchmaking-hud__info {
+.matchmaking-panel__content {
   display: flex;
-  align-items: center;
-  gap: .15rem;
-  font-size: .2rem;
+  flex-direction: column;
+  gap: .06rem;
+  min-width: 0;
+}
+.matchmaking-panel__title {
+  font-size: .28rem;
+  font-weight: 900;
+  letter-spacing: .06em;
   color: var(--text-hi);
 }
-.matchmaking-hud__time {
-  font-weight: 700;
-  color: var(--mint);
-  font-size: .22rem;
+.matchmaking-panel__desc {
+  font-size: .15rem;
+  color: var(--text-lo);
+  line-height: 1.55;
+  max-width: 4.8rem;
 }
+.matchmaking-panel__action {
+  display: flex;
+  align-items: center;
+  gap: .16rem;
+  flex-shrink: 0;
+}
+.matchmaking-online-chip {
+  display: flex;
+  align-items: center;
+  gap: .08rem;
+  padding: .06rem .14rem;
+  background: rgba(14, 28, 24, .85);
+  border: 1px solid rgba(78, 216, 175, .3);
+  border-radius: .04rem;
+  color: var(--mint-400);
+  font-size: .16rem;
+}
+.matchmaking-online-chip .icon {
+  width: .18rem;
+  height: .18rem;
+  color: var(--mint-400);
+}
+.matchmaking-online-chip .num {
+  font-weight: 700;
+  color: var(--text-hi);
+  font-size: .18rem;
+}
+.btn-matchmaking-open {
+  height: .64rem;
+  padding: 0 .26rem;
+  font-size: .2rem;
+  font-weight: 900;
+  letter-spacing: .08em;
+  background: var(--mint-500);
+  color: #0c1210;
+  border: 1px solid var(--mint-400);
+  box-shadow: 0 0 .2rem rgba(23, 249, 183, .25);
+}
+.btn-matchmaking-open:hover {
+  background: var(--mint-400);
+  box-shadow: 0 0 .3rem rgba(23, 249, 183, .45);
+}
+
+/* ---- Matchmaking Modal (图2 HUD风格房间大厅) ------------------------------------------------------- */
+.mm-modal__box {
+  --bk-c: var(--mint-400);
+  --bk-l: .25rem;
+  width: min(8.8rem, 95vw);
+  max-height: 90vh;
+  background: linear-gradient(180deg, #131917, #0c100e);
+  border: 1px solid rgba(78, 216, 175, .35);
+  box-shadow: 0 .3rem 1.2rem rgba(0, 0, 0, .8), 0 0 .5rem rgba(23, 249, 183, .12);
+}
+.mm-modal .modal__stripe {
+  height: .07rem;
+  background: repeating-linear-gradient(-45deg, var(--mint-400) 0 8px, transparent 8px 16px);
+  opacity: .8;
+}
+.mm-modal__head {
+  padding: .24rem .32rem .1rem;
+}
+.mm-modal__title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.mm-modal__title {
+  font-size: .34rem;
+  font-weight: 900;
+  letter-spacing: .06em;
+  color: var(--text-hi);
+}
+.mm-modal__close {
+  display: grid;
+  place-items: center;
+  width: .36rem;
+  height: .36rem;
+  background: transparent;
+  border: 1px solid var(--line-2);
+  color: var(--text-md);
+  cursor: pointer;
+  transition: border-color var(--t-fast), color var(--t-fast);
+}
+.mm-modal__close:hover {
+  border-color: var(--mint-400);
+  color: var(--mint-400);
+}
+.mm-modal__body {
+  padding: .14rem .32rem .24rem;
+  display: flex;
+  flex-direction: column;
+  gap: .18rem;
+}
+.mm-stats-bar {
+  display: flex;
+  align-items: center;
+  padding: .16rem .28rem;
+  background: rgba(18, 29, 25, .85);
+  border: 1px solid rgba(78, 216, 175, .2);
+  gap: .4rem;
+}
+.mm-stats-col {
+  display: flex;
+  flex-direction: column;
+  gap: .02rem;
+}
+.mm-stats-num {
+  font-size: .38rem;
+  font-weight: 900;
+  line-height: 1;
+  color: #fff;
+}
+.mm-stats-num--mint {
+  color: var(--mint-400);
+  text-shadow: 0 0 .15rem rgba(23, 249, 183, .35);
+}
+.mm-stats-label {
+  font-size: .14rem;
+  color: var(--text-lo);
+  letter-spacing: .04em;
+}
+.mm-refresh-btn {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: .08rem;
+  padding: .08rem .16rem;
+  background: rgba(0, 0, 0, .3);
+  border: 1px solid var(--line-2);
+  color: var(--text-md);
+  font-size: .16rem;
+  cursor: pointer;
+  transition: border-color var(--t-fast), color var(--t-fast);
+}
+.mm-refresh-btn:hover {
+  border-color: var(--mint-400);
+  color: var(--text-hi);
+}
+.mm-refresh-btn .icon {
+  width: .18rem;
+  height: .18rem;
+}
+.is-spinning {
+  animation: spin 1s linear infinite;
+}
+@keyframes spin {
+  100% { transform: rotate(360deg); }
+}
+.mm-room-list {
+  display: flex;
+  flex-direction: column;
+  gap: .12rem;
+  min-height: 2.2rem;
+  max-height: 4.8rem;
+  overflow-y: auto;
+}
+.mm-room-card {
+  display: flex;
+  align-items: center;
+  gap: .2rem;
+  padding: .14rem .2rem;
+  background: rgba(18, 23, 21, .9);
+  border: 1px solid var(--line-2);
+  transition: border-color var(--t-fast);
+}
+.mm-room-card:hover {
+  border-color: rgba(78, 216, 175, .3);
+}
+.mm-room-code {
+  width: 1.1rem;
+  height: .64rem;
+  display: grid;
+  place-items: center;
+  background: rgba(10, 13, 12, .9);
+  border: 1px solid var(--line);
+  font-size: .28rem;
+  font-weight: 900;
+  letter-spacing: .12em;
+  color: var(--text-md);
+}
+.mm-room-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: .06rem;
+  min-width: 0;
+}
+.mm-room-name {
+  font-size: .22rem;
+  font-weight: 700;
+  color: var(--text-hi);
+}
+.mm-room-meta {
+  display: flex;
+  align-items: center;
+  gap: .18rem;
+  font-size: .14rem;
+  color: var(--text-md);
+}
+.mm-room-diff {
+  display: flex;
+  align-items: center;
+  gap: .05rem;
+  color: var(--d-color);
+  font-weight: 700;
+}
+.mm-room-diff .diff-glyph {
+  width: .18rem;
+  height: .18rem;
+  color: var(--d-color);
+}
+.mm-room-players {
+  display: flex;
+  align-items: center;
+  gap: .05rem;
+  color: var(--text-md);
+}
+.mm-room-players .icon {
+  width: .16rem;
+  height: .16rem;
+}
+.mm-room-status {
+  padding: .02rem .08rem;
+  font-size: .12rem;
+  border: 1px solid var(--line);
+}
+.mm-room-status.is-in-match {
+  background: rgba(50, 50, 50, .4);
+  color: var(--text-dim);
+  border-color: var(--line);
+}
+.mm-room-status.is-waiting {
+  background: rgba(23, 249, 183, .12);
+  color: var(--mint-400);
+  border-color: rgba(78, 216, 175, .3);
+}
+.mm-room-actions {
+  display: flex;
+  align-items: center;
+  gap: .1rem;
+}
+.mm-btn-join {
+  min-width: 1.05rem;
+  height: .56rem;
+}
+.mm-btn-join.is-disabled-match {
+  opacity: .5;
+  cursor: not-allowed;
+  background: repeating-linear-gradient(45deg, rgba(23, 249, 183, .06) 0 6px, transparent 6px 12px) !important;
+  border-color: var(--line) !important;
+  color: var(--text-dim) !important;
+}
+.mm-btn-spectate {
+  min-width: 1.05rem;
+  height: .56rem;
+  background: rgba(14, 18, 16, .9);
+  border: 1px solid var(--line-2);
+}
+.mm-room-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: .12rem;
+  padding: .6rem 0;
+  color: var(--text-dim);
+  font-size: .16rem;
+}
+.mm-room-empty .icon {
+  width: .36rem;
+  height: .36rem;
+  color: var(--text-dim);
+}
+.mm-modal__foot {
+  display: flex;
+  align-items: center;
+  gap: .14rem;
+  padding-top: .12rem;
+  border-top: 1px solid var(--line);
+}
+.mm-foot-text {
+  font-size: .13rem;
+  color: var(--text-dim);
+  letter-spacing: .02em;
+}
+

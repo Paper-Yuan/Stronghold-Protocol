@@ -372,9 +372,11 @@ async function boot() {
   // Pick this tab's reconnect token (asks other live tabs; ≤150 ms) while fonts load.
   const identityReady = identity.init();
 
+  const urlParams = new URLSearchParams(location.search);
   const pendingJoin = parseRoomParam(location.search);
-  const savedName = sanitizeName(identity.loadName());
-  const entered = identity.wasEntered() && !!savedName;
+  const paramName = urlParams.get('name');
+  const savedName = sanitizeName(paramName || identity.loadName() || (urlParams.has('entered') ? 'Doctor #9009' : ''));
+  const entered = (identity.wasEntered() || urlParams.has('entered')) && !!savedName;
   store.set((s) => ({
     me: { ...s.me, name: savedName },
     session: { entered },
@@ -429,5 +431,5 @@ async function boot() {
 boot().catch((err) => {
   console.error('[app] boot failed', err);
   const el = document.getElementById('boot-err');
-  if (el) el.textContent = '启动失败，请刷新页面重试';
+  if (el) el.textContent = '启动失败: ' + (err?.message || String(err));
 });

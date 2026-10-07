@@ -315,6 +315,7 @@ export class Lobby {
       case 'room.removeSpectator': return this.removeSpectator(session, msg);
       case 'match.queue': return this.matchmaker.enqueue(session, msg);
       case 'match.cancel': return this.matchmaker.dequeue(session);
+      case 'room.list': return this.listRooms(session, msg);
       default:
         if (typeof msg.t === 'string' && msg.t.startsWith('g.')) return this.routeGame(session, msg);
         return fail(ERR.BAD_MSG, `unhandled type ${String(msg.t).slice(0, 32)}`);
@@ -422,6 +423,42 @@ export class Lobby {
     if (!room) return fail(ERR.NOT_IN_ROOM);
     this.removeMember(room, session.playerId);
     return OK;
+  }
+
+  /**
+   * room.list: public alliance rooms and server-wide statistics for matchmaking UI.
+   */
+  listRooms(session, _msg) {
+    let onlineCount = 0;
+    if (this.registry && this.registry.byPlayerId) {
+      for (const s of this.registry.byPlayerId.values()) {
+        if (s.connected) onlineCount++;
+      }
+    }
+    let matchesCount = 0;
+    const list = [];
+    for (const r of this.rooms.values()) {
+      if (r.match) matchesCount++;
+      if (r.mode !== 'coop') continue;
+      const host = r.hostId ? r.seatOf(r.hostId) : null;
+      const humans = r.activeHumans().length;
+      list.push({
+        code: r.code,
+        name: host?.name || `同盟 #${r.code}`,
+        difficulty: r.difficulty,
+        humans,
+        maxSeats: 10,
+        inMatch: !!r.match,
+      });
+    }
+    return {
+      ok: true,
+      t: 'room.list',
+      online: Math.max(onlineCount, 1),
+      roomsCount: this.rooms.size,
+      matchesCount,
+      rooms: list,
+    };
   }
 
   /**

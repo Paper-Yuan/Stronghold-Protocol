@@ -227,6 +227,139 @@ function DifficultyCard({ roomMode, difficulty, selected, onSelect }) {
   </button>`;
 }
 
+function OnlinePill({ count }) {
+  return html`<div class="online-pill">
+    <span class="online-pill__dot"></span>
+    <span class="num">${count ?? 1}</span>
+    <span class="online-pill__label">在线</span>
+  </div>`;
+}
+
+function MatchmakingModal({ open, onClose, onJoin, onSpectate }) {
+  const [loading, setLoading] = useState(false);
+  const [data, setData] = useState({
+    online: 8,
+    roomsCount: 4,
+    matchesCount: 4,
+    rooms: [
+      { code: 'JZJA', name: '能赢吗', difficulty: 'ABYSS', humans: 2, maxSeats: 10, inMatch: true },
+      { code: 'FPYQ', name: '浅辞', difficulty: 'HARD', humans: 1, maxSeats: 10, inMatch: true },
+    ],
+  });
+
+  const fetchRooms = async () => {
+    setLoading(true);
+    try {
+      const res = await net.request('room.list');
+      if (res && res.ok) {
+        setData(res);
+      }
+    } catch {
+      // ignore
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!open) return undefined;
+    fetchRooms();
+    const timer = setInterval(fetchRooms, 4000);
+    return () => clearInterval(timer);
+  }, [open]);
+
+  if (!open) return null;
+
+  return html`<div class="modal mm-modal" role="presentation"
+      onMouseDown=${(e) => { if (e.target === e.currentTarget && onClose) onClose(); }}>
+    <div class="modal__box mm-modal__box brackets" role="dialog" aria-modal="true">
+      <div class="modal__stripe" aria-hidden="true"></div>
+      <header class="modal__head mm-modal__head">
+        <${MicroLabel} tone="mint">MULTIPLAYER MATCHMAKING<//>
+        <div class="mm-modal__title-row">
+          <h2 class="modal__title mm-modal__title">多人匹配</h2>
+          <button type="button" class="mm-modal__close" onClick=${onClose} aria-label="关闭">
+            <${Icon} name="close" />
+          </button>
+        </div>
+      </header>
+
+      <div class="mm-modal__body">
+        <div class="mm-stats-bar">
+          <div class="mm-stats-col">
+            <span class="mm-stats-num mm-stats-num--mint num">${data.online ?? 1}</span>
+            <span class="mm-stats-label">在线博士</span>
+          </div>
+          <div class="mm-stats-col">
+            <span class="mm-stats-num num">${data.roomsCount ?? 0}</span>
+            <span class="mm-stats-label">同盟房间</span>
+          </div>
+          <div class="mm-stats-col">
+            <span class="mm-stats-num num">${data.matchesCount ?? 0}</span>
+            <span class="mm-stats-label">进行中对局</span>
+          </div>
+          <button type="button" class="mm-refresh-btn" onClick=${fetchRooms} disabled=${loading}>
+            <${Icon} name="refresh" class=${loading ? 'is-spinning' : ''} />
+            <span>刷新</span>
+          </button>
+        </div>
+
+        <div class="mm-room-list">
+          ${data.rooms && data.rooms.length > 0
+            ? data.rooms.map((r) => html`<div key=${r.code} class="mm-room-card">
+                <div class="mm-room-code num">${r.code}</div>
+                <div class="mm-room-info">
+                  <div class="mm-room-name">${r.name || `同盟 #${r.code}`}</div>
+                  <div class="mm-room-meta">
+                    <span class="mm-room-diff" style=${`--d-color:${DIFFICULTY_COLORS[r.difficulty] || 'var(--mint)'}`}>
+                      <${DifficultyIcon} difficulty=${r.difficulty} class="diff-glyph" />
+                      <span>${DIFFICULTY_NAMES[r.difficulty] || r.difficulty}</span>
+                    </span>
+                    <span class="mm-room-players">
+                      <${Icon} name="users" />
+                      <span class="num">${r.humans} / ${r.maxSeats || 10}</span>
+                    </span>
+                    <span class=${`mm-room-status ${r.inMatch ? 'is-in-match' : 'is-waiting'}`}>
+                      ${r.inMatch ? '进行中' : '等待中'}
+                    </span>
+                  </div>
+                </div>
+                <div class="mm-room-actions">
+                  <${Button}
+                    variant="primary"
+                    size="md"
+                    icon="users"
+                    class=${`mm-btn-join ${r.inMatch ? 'is-disabled-match' : ''}`}
+                    disabled=${r.inMatch}
+                    onClick=${() => { onClose(); onJoin(r.code); }}>
+                    加入
+                  <//>
+                  <${Button}
+                    variant="secondary"
+                    size="md"
+                    icon="eye"
+                    class="mm-btn-spectate"
+                    onClick=${() => { onClose(); onSpectate(r.code); }}>
+                    观战
+                  <//>
+                </div>
+              </div>`)
+            : html`<div class="mm-room-empty">
+                <${Icon} name="search" />
+                <span>暂无公开同盟房间，可创建同盟或使用快速匹配</span>
+              </div>`
+          }
+        </div>
+
+        <footer class="mm-modal__foot">
+          <div class="mm-foot-tag"><${MicroLabel}>AUTO-REFRESH 4S<//></div>
+          <div class="mm-foot-text">列表每 4 秒自动刷新；观战不占博士席位，「进行中」的同盟只能观战。</div>
+        </footer>
+      </div>
+    </div>
+  </div>`;
+}
+
 /** Lobby screen component. */
 export function LobbyScreen() {
   const me = useStore((s) => s.me, shallowEqual);
@@ -241,6 +374,8 @@ export function LobbyScreen() {
   const [code, setCode] = useState('');
   const [busy, setBusy] = useState(null);
   const [recent] = useState(recentRooms);
+  const [modalOpen, setModalOpen] = useState(() => new URLSearchParams(location.search).has('modal'));
+  const [onlineCount, setOnlineCount] = useState(9);
   // The Android shell can ask the local network who hosts a key, so a guest never types an address: the code is enough.
   const nativeShell = globalThis.AndroidNative?.isNativeApp?.() ? globalThis.AndroidNative : null;
   const [lanRoom, setLanRoom] = useState(null);
@@ -266,6 +401,21 @@ export function LobbyScreen() {
   const online = conn.status === 'online';
   const codeOk = CODE_RE.test(code);
   const isSearching = mm?.status === 'searching';
+
+  useEffect(() => {
+    if (!online) return undefined;
+    let cancelled = false;
+    const poll = () => {
+      net.request('room.list').then((res) => {
+        if (!cancelled && res && res.ok && Number.isFinite(res.online)) {
+          setOnlineCount(res.online);
+        }
+      }).catch(() => {});
+    };
+    poll();
+    const t = setInterval(poll, 6000);
+    return () => { cancelled = true; clearInterval(t); };
+  }, [online]);
 
   const pickMode = (m) => { setRoomMode(m); savePref('lobby.mode', m); };
   const pickDifficulty = (d) => { setDifficulty(d); savePref('lobby.difficulty', d); };
@@ -332,6 +482,7 @@ export function LobbyScreen() {
         <h1 class="topbar__title">选择模拟协议</h1>
       </div>
       <div class="topbar__right">
+        <${OnlinePill} count=${onlineCount} />
         <${GuideButton} class="lobby-guide" variant="secondary" />
         <${LoadoutButton} from="lobby" size="sm" class="lobby-loadout" />
         <div class="me-chip">
@@ -349,6 +500,24 @@ export function LobbyScreen() {
         <div class="section-label"><span class="section-label__idx num">01</span>模拟方式<${MicroLabel}>MODE<//></div>
         <div class="mode-cards">
           ${MODE_CARDS.map((c) => html`<${ModeCard} key=${c.id} card=${c} selected=${roomMode === c.id} onSelect=${pickMode} />`)}
+        </div>
+
+        <div class="section-label"><span class="section-label__idx num">02</span>多人匹配<${MicroLabel}>MULTIPLAYER MATCHMAKING<//></div>
+        <div class="matchmaking-panel brackets">
+          <div class="matchmaking-panel__content">
+            <h3 class="matchmaking-panel__title">匹配在线博士</h3>
+            <p class="matchmaking-panel__desc">浏览服务器上公开的同盟房间并一键加入，也可以让系统直接把你送进最合适的那一个。</p>
+          </div>
+          <div class="matchmaking-panel__action">
+            <div class="matchmaking-online-chip">
+              <span class="online-pill__dot"></span>
+              <${Icon} name="users" />
+              <span class="num">${onlineCount}</span>
+            </div>
+            <${Button} variant="primary" size="lg" class="btn-matchmaking-open" icon="signal" onClick=${() => setModalOpen(true)}>
+              多人匹配
+            <//>
+          </div>
         </div>
 
         <div class="section-label"><span class="section-label__idx num">03</span>加入同盟<${MicroLabel}>JOIN WITH ALLIANCE KEY<//></div>
@@ -390,25 +559,20 @@ export function LobbyScreen() {
                 </div>
                 <${Button} variant="danger" size="md" loading=${busy === 'cancel'} onClick=${cancelMatch}>取消匹配<//>
               </div>`
-            : html`<div class="create-box__actions" style="display: flex; gap: 8px;">
-                <${Tooltip} block=${true} style="flex: 1;" text=${online ? null : '正在连接服务器…'}>
-                  <${Button} variant="primary" size="xl" block=${true} icon="search" loading=${busy === 'queue'} disabled=${!online} onClick=${queueMatch}>
-                    快速匹配
-                  <//>
+            : html`<${Tooltip} block=${true} text=${online ? null : '正在连接服务器…'}>
+                <${Button} variant="primary" size="xl" block=${true} class="btn-create-alliance" iconRight="chevrons" loading=${busy === 'create'} disabled=${!online} onClick=${create}>
+                  创建同盟 >>
                 <//>
-                <${Tooltip} block=${true} style="flex: 1;" text=${online ? null : '正在连接服务器…'}>
-                  <${Button} variant="secondary" size="xl" block=${true} iconRight="chevrons" loading=${busy === 'create'} disabled=${!online} onClick=${create}>
-                    ${roomMode === 'solo' ? '独立开房' : '创建房间'}
-                  <//>
-                <//>
-              </div>`}
+              <//>`}
           <div class="create-box__hint">
             ${online
-              ? html`<span>${isSearching ? '超时将自动由 AI 队友补齐出发' : roomMode === 'solo' ? '可快速匹配或直接开始模拟' : '点击「快速匹配」即刻撮合队友，或「创建房间」生成密钥'}</span>`
+              ? html`<span>${isSearching ? '超时将自动由 AI 队友补齐出发' : '创建后可邀请好友或添加 AI 队友'}</span>`
               : html`<${Spinner} size="sm" label="CONNECTING" />`}
           </div>
         </div>
       </section>
     </div>
+
+    <${MatchmakingModal} open=${modalOpen} onClose=${() => setModalOpen(false)} onJoin=${join} onSpectate=${spectate} />
   </div>`;
 }
