@@ -83,6 +83,7 @@ import { checkLoadout } from '../shared/protocol.js';
 import { encode, isDroppable, isErrCode, sendRaw, sendSession } from './net.js';
 import { getData as defaultGetData, lookup } from './data.js';
 import { Match as DefaultMatch } from './match/Match.js';
+import { Matchmaker } from './matchmaking.js';
 
 /** Room code alphabet: uppercase letters without I and O (and no digits, so no 0/1). */
 export const CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
@@ -228,6 +229,8 @@ export class Lobby {
     this.resyncTimers = new Map();
     /** per-network limit warnings: at most one log line per 10 s (the rest are counted) */
     this.limitLog = { at: -Infinity, suppressed: 0 };
+    /** @type {Matchmaker} 自动撮合引擎 */
+    this.matchmaker = new Matchmaker(this, options.matchmaker || {});
   }
 
   /** @param {string} code @returns {Room | null} */
@@ -244,7 +247,7 @@ export class Lobby {
       for (const s of r.seats) if (s && !s.left) (s.isBot ? bots++ : humans++);
       spectators += r.spectators.length;
     }
-    return { rooms: this.rooms.size, matches, humans, bots, spectators };
+    return { rooms: this.rooms.size, matches, humans, bots, spectators, queue: this.matchmaker.queue.size };
   }
 
   // ---------------------------------------------------------------------------------------------------
@@ -294,8 +297,8 @@ export class Lobby {
    */
   onMessage(session, msg) {
     switch (msg.t) {
-      case 'room.create': return this.create(session, msg);
-      case 'room.join': return this.join(session, msg);
+      case 'room.create': { this.matchmaker.removePlayer(session.playerId); return this.create(session, msg); }
+      case 'room.join': { this.matchmaker.removePlayer(session.playerId); return this.join(session, msg); }
       case 'room.leave': return this.leave(session);
       case 'room.ready': return this.ready(session, msg);
       case 'room.setDifficulty': return this.setDifficulty(session, msg);
@@ -305,8 +308,10 @@ export class Lobby {
       case 'room.start': return this.start(session);
       case 'room.loadout': return this.loadout(session, msg);
       case 'room.skins': return this.skins(session, msg);
-      case 'room.spectate': return this.spectate(session, msg);
+      case 'room.spectate': { this.matchmaker.removePlayer(session.playerId); return this.spectate(session, msg); }
       case 'room.removeSpectator': return this.removeSpectator(session, msg);
+      case 'match.queue': return this.matchmaker.enqueue(session, msg);
+      case 'match.cancel': return this.matchmaker.dequeue(session);
       default:
         if (typeof msg.t === 'string' && msg.t.startsWith('g.')) return this.routeGame(session, msg);
         return fail(ERR.BAD_MSG, `unhandled type ${String(msg.t).slice(0, 32)}`);
@@ -315,6 +320,7 @@ export class Lobby {
 
   /** The session's socket closed. @param {import('./net.js').Session} session */
   onDisconnect(session) {
+    this.matchmaker.removePlayer(session.playerId);
     this.clearResync(session.playerId); // the next resume resyncs immediately
     const room = this.roomOf(session);
     // a solo run may be resumed within singleReconnectTime (24 h); everything else keeps the registry's window
@@ -330,6 +336,7 @@ export class Lobby {
 
   /** The session's reconnect window elapsed (already removed from the registry). */
   onExpire(session) {
+    this.matchmaker.removePlayer(session.playerId);
     session.notice = null;
     session.pendingResult = null;
     this.clearResync(session.playerId);
@@ -344,6 +351,7 @@ export class Lobby {
    * @param {string} [reason]
    */
   shutdown(reason = 'shutdown') {
+    this.matchmaker.stop();
     for (const room of [...this.rooms.values()]) this.disposeRoom(room, reason);
     for (const t of this.graceTimers.values()) clearTimeout(t);
     this.graceTimers.clear();

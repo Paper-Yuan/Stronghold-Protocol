@@ -231,6 +231,7 @@ function DifficultyCard({ roomMode, difficulty, selected, onSelect }) {
 export function LobbyScreen() {
   const me = useStore((s) => s.me, shallowEqual);
   const conn = useStore((s) => s.connection, shallowEqual);
+  const mm = useStore((s) => s.matchmaking, shallowEqual);
   useData('config');
   const [roomMode, setRoomMode] = useState(() => (loadPref('lobby.mode', 'coop') === 'solo' ? 'solo' : 'coop'));
   const [difficulty, setDifficulty] = useState(() => {
@@ -264,6 +265,7 @@ export function LobbyScreen() {
 
   const online = conn.status === 'online';
   const codeOk = CODE_RE.test(code);
+  const isSearching = mm?.status === 'searching';
 
   const pickMode = (m) => { setRoomMode(m); savePref('lobby.mode', m); };
   const pickDifficulty = (d) => { setDifficulty(d); savePref('lobby.difficulty', d); };
@@ -279,6 +281,8 @@ export function LobbyScreen() {
     }
   };
   const create = () => run('create', () => net.request('room.create', { mode: roomMode, difficulty }));
+  const queueMatch = () => run('queue', () => net.request('match.queue', { mode: roomMode, difficulty, fillBots: true }));
+  const cancelMatch = () => run('cancel', () => net.request('match.cancel'));
   const join = (c = code) => {
     // `onClick=${join}` hands the click EVENT as the first argument, and a default parameter only applies to
     // `undefined` — codeArg keeps an event target out of the key and falls back to the input field
@@ -377,14 +381,30 @@ export function LobbyScreen() {
           ${DIFFICULTIES.map((d) => html`<${DifficultyCard} key=${d} roomMode=${roomMode} difficulty=${d} selected=${difficulty === d} onSelect=${pickDifficulty} />`)}
         </div>
         <div class="create-box">
-          <${Tooltip} block=${true} text=${online ? null : '正在连接服务器…'}>
-            <${Button} variant="primary" size="xl" block=${true} iconRight="chevrons" loading=${busy === 'create'} disabled=${!online} onClick=${create}>
-              ${roomMode === 'solo' ? '开始独立模拟' : '创建同盟'}
-            <//>
-          <//>
+          ${isSearching
+            ? html`<div class="matchmaking-hud brackets">
+                <div class="matchmaking-hud__info">
+                  <${Spinner} size="sm" />
+                  <span class="matchmaking-hud__text">正在匹配同盟 (${mm?.matched || 1}/${mm?.target || 4})...</span>
+                  <span class="matchmaking-hud__time num">${String(Math.floor((mm?.elapsed || 0) / 60)).padStart(2, '0')}:${String((mm?.elapsed || 0) % 60).padStart(2, '0')}</span>
+                </div>
+                <${Button} variant="danger" size="md" loading=${busy === 'cancel'} onClick=${cancelMatch}>取消匹配<//>
+              </div>`
+            : html`<div class="create-box__actions" style="display: flex; gap: 8px;">
+                <${Tooltip} block=${true} style="flex: 1;" text=${online ? null : '正在连接服务器…'}>
+                  <${Button} variant="primary" size="xl" block=${true} icon="search" loading=${busy === 'queue'} disabled=${!online} onClick=${queueMatch}>
+                    快速匹配
+                  <//>
+                <//>
+                <${Tooltip} block=${true} style="flex: 1;" text=${online ? null : '正在连接服务器…'}>
+                  <${Button} variant="secondary" size="xl" block=${true} iconRight="chevrons" loading=${busy === 'create'} disabled=${!online} onClick=${create}>
+                    ${roomMode === 'solo' ? '独立开房' : '创建房间'}
+                  <//>
+                <//>
+              </div>`}
           <div class="create-box__hint">
             ${online
-              ? html`<span>${roomMode === 'solo' ? '创建后即可开始模拟' : '创建后可邀请好友或添加 AI 队友'}</span>`
+              ? html`<span>${isSearching ? '超时将自动由 AI 队友补齐出发' : roomMode === 'solo' ? '可快速匹配或直接开始模拟' : '点击「快速匹配」即刻撮合队友，或「创建房间」生成密钥'}</span>`
               : html`<${Spinner} size="sm" label="CONNECTING" />`}
           </div>
         </div>

@@ -244,3 +244,26 @@
 .create-box { margin-top: .3rem; display: flex; flex-direction: column; gap: .12rem; }
 .create-box .btn--xl { height: .92rem; font-size: .32rem; letter-spacing: .3em; }
 .create-box__hint { display: flex; align-items: center; justify-content: center; min-height: .3rem; font-size: .14rem; color: var(--text-lo); }
+
+.matchmaking-hud {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: .2rem .3rem;
+  background: rgba(20, 26, 24, 0.95);
+  border: 1px solid var(--mint);
+  border-radius: var(--radius-sm);
+  box-shadow: 0 0 .2rem rgba(64, 224, 180, 0.2);
+}
+.matchmaking-hud__info {
+  display: flex;
+  align-items: center;
+  gap: .15rem;
+  font-size: .2rem;
+  color: var(--text-hi);
+}
+.matchmaking-hud__time {
+  font-weight: 700;
+  color: var(--mint);
+  font-size: .22rem;
+}

@@ -82,6 +82,7 @@ export const initialState = Object.freeze({
   ticker: [],
   emotes: [],
   clock: { offset: 0, rtt: null, synced: false },
+  matchmaking: { status: 'idle', mode: null, difficulty: null, elapsed: 0, matched: 0, target: 4 },
   ui: { pendingJoin: null, restoring: false, buildStale: false },
 });
 

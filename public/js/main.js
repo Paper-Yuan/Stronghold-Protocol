@@ -209,6 +209,20 @@ function wireNet() {
     backToLobby();
     toast(CLOSE_REASON[msg.reason] || (typeof msg.reason === 'string' && msg.reason.length < 60 ? `同盟已关闭：${msg.reason}` : '同盟已关闭'), 'warn');
   });
+  net.on('match.status', (msg) => {
+    store.patch('matchmaking', {
+      status: msg.status || 'idle',
+      mode: msg.mode || null,
+      difficulty: msg.difficulty || null,
+      elapsed: typeof msg.elapsed === 'number' ? msg.elapsed : 0,
+      matched: typeof msg.matched === 'number' ? msg.matched : 0,
+      target: typeof msg.target === 'number' ? msg.target : 4,
+    });
+  });
+  net.on('match.found', (msg) => {
+    store.patch('matchmaking', { status: 'found', roomCode: msg.roomCode });
+    toast(`已匹配到同盟小队（${msg.roomCode}）！`, 'success', { ttl: 3000 });
+  });
   net.on('m.public', (msg) => { matchAt = Date.now(); store.patch('match', { public: payload(msg) }); maybeFinishRestore(); });
   net.on('m.private', (msg) => { matchAt = Date.now(); store.patch('match', { private: payload(msg) }); });
   net.on('m.field', (msg) => store.patch('match', { field: payload(msg) }));
