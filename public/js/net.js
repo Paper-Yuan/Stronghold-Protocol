@@ -147,6 +147,9 @@ export class Net {
     this.attempt = 0;          // consecutive failed connection attempts
     this.retryAt = 0;          // epoch ms of the next reconnect attempt (0 = none)
     this.ping = null;          // last RTT in ms
+    this.jitter = 0;           // RTT jitter estimate in ms
+    this.rttEma = null;        // exponential moving average of RTT
+    this.quality = 'unknown';  // 'good' | 'fair' | 'poor'
     this.lastError = null;     // last NetError relevant to the connection (e.g. hello rejected)
     this.clockOffset = 0;
     this.clockSynced = false;
@@ -202,6 +205,7 @@ export class Net {
   snapshot() {
     return {
       status: this.status, attempt: this.attempt, retryAt: this.retryAt, ping: this.ping,
+      jitter: this.jitter, quality: this.quality,
       lastError: this.lastError ? { code: this.lastError.code, text: this.lastError.message } : null,
       playerId: this.playerId,
     };
@@ -309,7 +313,8 @@ export class Net {
 
   _onClose(ev) {
     this._teardownSocket();
-    this._failPending('DISCONNECTED', false);
+    const canRecover = !this._manualClose && ev?.code !== CLOSE_REPLACED;
+    this._failPending('DISCONNECTED', false, canRecover);
     if (this._manualClose) { this._setStatus('closed'); return; }
     if (ev && ev.code === CLOSE_REPLACED) {
       // Another tab/socket took this session over: don't fight it; the user may reconnect manually.
@@ -497,12 +502,17 @@ export class Net {
   }
 
   /**
-   * Reject pending requests. Sent ones always fail (their reply is lost with the socket);
+   * Reject pending requests. Sent ones fail unless preserveInFlight is true (network resilience);
    * unsent (queued) ones fail only when `includeQueued` is true.
    */
-  _failPending(code, includeQueued) {
+  _failPending(code, includeQueued, preserveInFlight = false) {
     for (const [rid, entry] of [...this._pending]) {
       if (!entry.sent && !includeQueued) continue;
+      if (preserveInFlight && !includeQueued) {
+        // Network resilience: retain in-flight request in queue for re-flush upon reconnect
+        entry.sent = false;
+        continue;
+      }
       this._pending.delete(rid);
       this._clearEntryTimer(entry);
       try { entry.reject(new NetError(code)); } catch { /* ignore */ }
@@ -579,11 +589,13 @@ export class Net {
     const ws = this.ws;
     if (!ws || ws.readyState !== WS_OPEN) return;
     const live = this.status === 'online' || this.status === 'connected';
-    if (live && this._unansweredSince != null && this.now() - this._unansweredSince > DEAD_AFTER_MS) {
-      console.warn('[net] connection silent; reconnecting');
+    // Adaptive heartbeat: in high jitter or weak signal, dynamically expand dead threshold up to 25s
+    const adaptiveDeadTimeout = Math.max(DEAD_AFTER_MS, Math.min(25000, DEAD_AFTER_MS + (this.jitter || 0) * 8));
+    if (live && this._unansweredSince != null && this.now() - this._unansweredSince > adaptiveDeadTimeout) {
+      console.warn(`[net] connection silent > ${adaptiveDeadTimeout}ms; reconnecting`);
       this._teardownSocket();
       try { ws.close(4000, 'heartbeat timeout'); } catch { /* ignore */ }
-      this._failPending('DISCONNECTED', false);
+      this._failPending('DISCONNECTED', false, !this._manualClose);
       this._scheduleReconnect();
       return;
     }
@@ -608,6 +620,19 @@ export class Net {
     const rtt = now - c;
     if (!(rtt >= 0 && rtt < 60000)) return;
     this.ping = Math.round(rtt);
+    // Exponential Moving Average (EMA) and jitter estimation
+    if (this.rttEma == null) {
+      this.rttEma = rtt;
+      this.jitter = 0;
+    } else {
+      const diff = Math.abs(rtt - this.rttEma);
+      this.jitter = Math.round(this.jitter * 0.75 + diff * 0.25);
+      this.rttEma = Math.round(this.rttEma * 0.75 + rtt * 0.25);
+    }
+    if (this.ping < 80 && this.jitter < 30) this.quality = 'good';
+    else if (this.ping < 200 && this.jitter < 80) this.quality = 'fair';
+    else this.quality = 'poor';
+
     if (Number.isFinite(msg.s)) this._addClockSample(msg.s + rtt / 2 - now, rtt);
     this._emit('ping', this.ping);
     this._emit('status', this.snapshot());

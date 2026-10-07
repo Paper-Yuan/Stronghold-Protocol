@@ -749,12 +749,15 @@ export function doctorNo(id) {
 
 /**
  * Latency pill ("58ms"), coloured by research 06 §3.4 tiers (<60 mint, <200 amber, else red).
- * @param {{ ms?: number|null, online?: boolean, class?: string }} props
+ * Supports jitter indication and network quality assessment.
+ * @param {{ ms?: number|null, jitter?: number|null, quality?: string, online?: boolean, class?: string }} props
  */
-export function PingPill({ ms, online = true, class: cls }) {
+export function PingPill({ ms, jitter, quality, online = true, class: cls }) {
   const ok = online && Number.isFinite(ms);
-  const tier = !ok ? 'off' : ms < 60 ? 'low' : ms < 200 ? 'medium' : 'high';
-  return html`<span class=${cx('ping', `ping--${tier}`, cls)} title=${ok ? `当前延迟 ${ms}ms` : '未连接'}>
+  const tier = !ok ? 'off' : ms < 60 && (!jitter || jitter < 30) ? 'low' : ms < 200 ? 'medium' : 'high';
+  const jitterText = Number.isFinite(jitter) && jitter > 0 ? ` (波动 ±${Math.round(jitter)}ms)` : '';
+  const qualityText = quality === 'good' ? ' · 网络稳定' : quality === 'fair' ? ' · 轻微波动' : quality === 'poor' ? ' · 弱网抖动' : '';
+  return html`<span class=${cx('ping', `ping--${tier}`, cls)} title=${ok ? `当前延迟 ${Math.round(ms)}ms${jitterText}${qualityText}` : '未连接'}>
     <${Icon} name=${ok ? 'signal' : 'wifiOff'} class="ping__icon" />
     <span class="ping__value">${ok ? Math.min(9999, Math.round(ms)) : '--'}</span><span class="ping__unit">ms</span>
   </span>`;

@@ -195,7 +195,7 @@ function wireNet() {
     const isOnline = snap.status === 'online';
     store.set({
       connection: {
-        status: snap.status, ping: snap.ping, attempt: snap.attempt, retryAt: snap.retryAt,
+        status: snap.status, ping: snap.ping, jitter: snap.jitter, quality: snap.quality, attempt: snap.attempt, retryAt: snap.retryAt,
         lastError: snap.lastError, everOnline: cur.everOnline || isOnline,
       },
     });

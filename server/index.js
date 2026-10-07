@@ -736,6 +736,10 @@ export async function startServer(opts = {}) {
 
   server.on('upgrade', (req, socket, head) => {
     socket.on('error', () => {});
+    try {
+      socket.setKeepAlive(true, 5000);
+      socket.setNoDelay(true);
+    } catch { /* ignore */ }
     const parts = splitUrl(req.url || '/');
     const reject = (status, text) => {
       try { socket.end(`HTTP/1.1 ${status} ${text}\r\nConnection: close\r\nContent-Length: 0\r\n\r\n`); } catch { socket.destroy(); }
