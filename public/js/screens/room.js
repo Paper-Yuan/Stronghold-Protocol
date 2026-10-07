@@ -328,7 +328,7 @@ export function RoomScreen() {
                 <${Button} variant="danger" size="lg" icon="close" loading=${busy === 'cancel-match'} onClick=${cancelMatch}>取消匹配<//>
               </div>`
             : html`<div class="room-host-actions" style="display: flex; align-items: center; gap: 8px;">
-                ${coop && room.freeSeat() >= 0
+                ${coop && facts.emptySeats > 0
                   ? html`<${Button} variant="secondary" size="lg" icon="search" loading=${busy === 'match'} disabled=${!online} onClick=${queueMatch}>匹配队友<//>`
                   : null}
                 <${Tooltip} text=${facts.canStart ? null : '仍有博士未准备就绪'}>
