@@ -161,3 +161,36 @@ test('matchmaking: disconnect automatically removes from queue', () => {
 
   lobby.shutdown();
 });
+
+test('matchmaking: room host party queue pulls solo queue player into the room', () => {
+  const registry = new SessionRegistry();
+  const lobby = new Lobby({ registry });
+  const sHost = createMockSession('p_host', 'HostDoctor');
+  const sSolo = createMockSession('p_solo', 'SoloDoctor');
+  registry.byPlayerId.set('p_host', sHost);
+  registry.byPlayerId.set('p_solo', sSolo);
+
+  // 1. 房主建房
+  const created = lobby.create(sHost, { mode: 'coop', difficulty: 'HARD' });
+  assert.equal(created.ok, true);
+  const room = lobby.getRoom(sHost.roomCode);
+  assert.ok(room);
+
+  // 2. 房主在房间内开启「匹配队友」
+  const qPartyRes = lobby.onMessage(sHost, { t: 'match.queue' });
+  assert.equal(qPartyRes.ok, true);
+  assert.ok(room.matching, 'room should be in matching state');
+
+  // 3. 散人玩家在大厅匹配 HARD 难度
+  lobby.onMessage(sSolo, { t: 'match.queue', mode: 'coop', difficulty: 'HARD' });
+
+  // 4. 散人应直接被拉入该房间
+  assert.equal(sSolo.roomCode, room.code);
+  assert.equal(room.activeHumans().length, 2);
+  const found = sSolo.sent.find((m) => m.t === 'match.found');
+  assert.ok(found);
+  assert.equal(found.roomCode, room.code);
+
+  lobby.shutdown();
+});
+

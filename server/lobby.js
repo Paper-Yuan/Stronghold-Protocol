@@ -160,6 +160,8 @@ export class Room {
      * @type {{ publicFrame: string | null, frames: Map<string, string>, pending: Set<string> } | null}
      */
     this.replay = null;
+    /** @type {{ queueId: string, startedAt: number, deadlineAt: number, fillBots: boolean } | null} */
+    this.matching = null;
     /** @type {string | null} per-network limit key of the creator (net.js clientAddress) */
     this.ownerKey = null;
     /** @type {string | null} per-network limit key of whoever started the running match */
@@ -192,6 +194,7 @@ export class Room {
       mode: this.mode,
       difficulty: this.difficulty,
       inMatch: !!this.match,
+      matching: this.matching || null,
       seats: this.seats.map((s) => (s
         ? { seat: s.seat, playerId: s.playerId, name: s.name, isBot: s.isBot, ready: s.ready, connected: s.connected && !s.left }
         : null)),
@@ -923,7 +926,10 @@ export class Lobby {
       room.seats[seat.seat] = null;
     }
     if (room.disposed) return; // onLeave may have ended the match and emptied the room
-    if (room.hostId === playerId) this.migrateHost(room);
+    if (room.hostId === playerId) {
+      this.matchmaker?.cancelRoomQueue(room);
+      this.migrateHost(room);
+    }
     if (room.activeHumans().length === 0) this.disposeRoom(room, 'empty');
     else this.broadcastState(room);
   }
@@ -981,6 +987,7 @@ export class Lobby {
    */
   disposeRoom(room, reason) {
     if (room.disposed) return;
+    this.matchmaker?.cancelRoomQueue(room);
     room.disposed = true;
     if (this.rooms.get(room.code) === room) this.rooms.delete(room.code);
     const ctx = room.matchCtx;

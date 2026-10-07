@@ -215,6 +215,8 @@ export function RoomScreen() {
 
   const toggleReady = () => run('ready', () => net.request('room.ready', { ready: !myReady }));
   const start = () => run('start', () => net.request('room.start', {}));
+  const queueMatch = () => run('match', () => net.request('match.queue', { mode: room.mode, difficulty: room.difficulty, fillBots: true }));
+  const cancelMatch = () => run('cancel-match', () => net.request('match.cancel', {}));
   const addBot = () => run('add', () => net.request('room.addBot', {}));
   const removeBot = (seat) => run(`rm${seat}`, () => net.request('room.removeBot', { seat }));
   // the host removes a human before the match (community report #17): asked first; the player may join again. The
@@ -318,9 +320,21 @@ export function RoomScreen() {
       <div class="room-bar__right">
         <${LoadoutButton} from="room" size="lg" class="room-loadout" />
         ${facts.isHost
-          ? html`<${Tooltip} text=${facts.canStart ? null : '仍有博士未准备就绪'}>
-              <${Button} variant="primary" size="xl" icon="play" loading=${busy === 'start'} disabled=${!facts.canStart || !online} onClick=${start}>开始模拟<//>
-            <//>`
+          ? room.matching
+            ? html`<div class="room-match-hud" style="display: flex; align-items: center; gap: 8px;">
+                <span class="room-match-hud__text" style="color: var(--mint); font-size: .18rem; font-weight: 700;">
+                  <${Icon} name="signal" /> 正在匹配同盟队友...
+                </span>
+                <${Button} variant="danger" size="lg" icon="close" loading=${busy === 'cancel-match'} onClick=${cancelMatch}>取消匹配<//>
+              </div>`
+            : html`<div class="room-host-actions" style="display: flex; align-items: center; gap: 8px;">
+                ${coop && room.freeSeat() >= 0
+                  ? html`<${Button} variant="secondary" size="lg" icon="search" loading=${busy === 'match'} disabled=${!online} onClick=${queueMatch}>匹配队友<//>`
+                  : null}
+                <${Tooltip} text=${facts.canStart ? null : '仍有博士未准备就绪'}>
+                  <${Button} variant="primary" size="xl" icon="play" loading=${busy === 'start'} disabled=${!facts.canStart || !online} onClick=${start}>开始模拟<//>
+                <//>
+              </div>`
           : facts.spectating
             ? html`<${Button} variant="secondary" size="xl" icon="eye" disabled=${true}>观战中<//>`
           : html`<${Button} variant=${myReady ? 'primary' : 'secondary'} size="xl" icon=${myReady ? 'check' : 'hourglass'} active=${myReady}
