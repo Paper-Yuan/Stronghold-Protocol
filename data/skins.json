@@ -1,8 +1,8 @@
 {
  "version": 1,
  "counts": {
-  "chars": 115,
-  "skins": 174
+  "chars": 172,
+  "skins": 271
  },
  "chars": {
   "char_498_inside": [
@@ -1103,6 +1103,605 @@
     "id": "char_1039_thorn2@marthe#9",
     "name": "无际之帆",
     "group": "玛尔特/IX"
+   }
+  ],
+  "char_250_phatom": [
+   {
+    "id": "char_250_phatom@sale#4",
+    "name": "焦点",
+    "group": "忒斯特收藏/V"
+   },
+   {
+    "id": "char_250_phatom@ghost#1",
+    "name": "梦魇之梦",
+    "group": "缠梦古堡"
+   }
+  ],
+  "char_362_saga": [
+   {
+    "id": "char_362_saga@sale#9",
+    "name": "彼有",
+    "group": "忒斯特收藏/X"
+   }
+  ],
+  "char_010_chen": [
+   {
+    "id": "char_010_chen@sale#10",
+    "name": "初晴",
+    "group": "忒斯特收藏/XI"
+   },
+   {
+    "id": "char_010_chen@nian#2",
+    "name": "岁红霞",
+    "group": "0011制造/II"
+   }
+  ],
+  "char_1035_wisdel": [
+   {
+    "id": "char_1035_wisdel@sale#14",
+    "name": "超新星",
+    "group": "忒斯特收藏/XV"
+   },
+   {
+    "id": "char_1035_wisdel@game#9",
+    "name": "绝对主角",
+    "group": "成就之星/IX"
+   }
+  ],
+  "char_003_kalts": [
+   {
+    "id": "char_003_kalts@sale#14",
+    "name": "时遗",
+    "group": "忒斯特收藏/XVI"
+   },
+   {
+    "id": "char_003_kalts@boc#6",
+    "name": "残余",
+    "group": "斗争血脉/VI"
+   }
+  ],
+  "char_4121_zuole": [
+   {
+    "id": "char_4121_zuole@sale#16",
+    "name": "无息破局",
+    "group": "忒斯特收藏/XVIII"
+   },
+   {
+    "id": "char_4121_zuole@nian#11",
+    "name": "少年游",
+    "group": "0011制造/XI"
+   }
+  ],
+  "char_113_cqbw": [
+   {
+    "id": "char_113_cqbw@epoque#7",
+    "name": "恍惚",
+    "group": "时代/VII"
+   }
+  ],
+  "char_485_pallas": [
+   {
+    "id": "char_485_pallas@epoque#12",
+    "name": "传承",
+    "group": "时代/XII"
+   },
+   {
+    "id": "char_485_pallas@epoque#19",
+    "name": "山川的酿造",
+    "group": "时代/XIX"
+   }
+  ],
+  "char_197_poca": [
+   {
+    "id": "char_197_poca@epoque#12",
+    "name": "杰作",
+    "group": "时代/XII"
+   },
+   {
+    "id": "char_197_poca@rilakkuma#1",
+    "name": "常伴我身",
+    "group": "轻松小熊"
+   }
+  ],
+  "char_479_sleach": [
+   {
+    "id": "char_479_sleach@epoque#14",
+    "name": "识芳",
+    "group": "时代/XIV"
+   },
+   {
+    "id": "char_479_sleach@summer#11",
+    "name": "夏卉 FA317",
+    "group": "珊瑚海岸/XI"
+   }
+  ],
+  "char_1031_slent2": [
+   {
+    "id": "char_1031_slent2@epoque#32",
+    "name": "栖息",
+    "group": "时代/XXXII"
+   }
+  ],
+  "char_4065_judge": [
+   {
+    "id": "char_4065_judge@epoque#33",
+    "name": "记叙",
+    "group": "时代/XXXIII"
+   },
+   {
+    "id": "char_4065_judge@snow#6",
+    "name": "偶尔醉陶",
+    "group": "冰原信使/VI"
+   }
+  ],
+  "char_4098_vvana": [
+   {
+    "id": "char_4098_vvana@epoque#40",
+    "name": "寄自奥格尼斯科",
+    "group": "时代/XXXIX"
+   }
+  ],
+  "char_4027_heyak": [
+   {
+    "id": "char_4027_heyak@epoque#50",
+    "name": "恒久祭礼",
+    "group": "时代/XLIX"
+   },
+   {
+    "id": "char_4027_heyak@ambienceSynesthesia#4",
+    "name": "历世流风",
+    "group": "音律联觉/IV"
+   }
+  ],
+  "char_2014_nian": [
+   {
+    "id": "char_2014_nian@nian#4",
+    "name": "乐逍遥",
+    "group": "0011制造/III"
+   },
+   {
+    "id": "char_2014_nian@cfa#1",
+    "name": "霹雳导演",
+    "group": "中国电影资料馆"
+   }
+  ],
+  "char_225_haak": [
+   {
+    "id": "char_225_haak@nian#4",
+    "name": "百面郎中",
+    "group": "0011制造/III"
+   },
+   {
+    "id": "char_225_haak@nian#5",
+    "name": "妙手玄心",
+    "group": "0011制造/IV"
+   }
+  ],
+  "char_2023_ling": [
+   {
+    "id": "char_2023_ling@nian#9",
+    "name": "濯缨",
+    "group": "0011制造/VIII"
+   },
+   {
+    "id": "char_2023_ling@nian#12",
+    "name": "方遒卷",
+    "group": "0011制造/XII"
+   },
+   {
+    "id": "char_2023_ling@ncg#1",
+    "name": "崖高梦远",
+    "group": "国家地理"
+   }
+  ],
+  "char_2024_chyue": [
+   {
+    "id": "char_2024_chyue@nian#10",
+    "name": "何处栖",
+    "group": "0011制造/IX"
+   },
+   {
+    "id": "char_2024_chyue@cfa#1",
+    "name": "全能演员",
+    "group": "中国电影资料馆"
+   }
+  ],
+  "char_4080_lin": [
+   {
+    "id": "char_4080_lin@nian#10",
+    "name": "列瑶台",
+    "group": "0011制造/IX"
+   },
+   {
+    "id": "char_4080_lin@summer#19",
+    "name": "夏卉 FA137",
+    "group": "珊瑚海岸/XIX"
+   },
+   {
+    "id": "char_4080_lin@littlePony#1",
+    "name": "求知的魔法",
+    "group": "小马宝莉"
+   }
+  ],
+  "char_2025_shu": [
+   {
+    "id": "char_2025_shu@nian#11",
+    "name": "春日宴",
+    "group": "0011制造/XI"
+   }
+  ],
+  "char_2013_cerber": [
+   {
+    "id": "char_2013_cerber@whirlwind#2",
+    "name": "无拘无束",
+    "group": "0011/飙系列/II"
+   },
+   {
+    "id": "char_2013_cerber@summer#4",
+    "name": "夏卉 FA333",
+    "group": "珊瑚海岸/IV"
+   }
+  ],
+  "char_4011_lessng": [
+   {
+    "id": "char_4011_lessng@whirlwind#7",
+    "name": "幻火",
+    "group": "0011/飙系列/VII"
+   }
+  ],
+  "char_322_lmlee": [
+   {
+    "id": "char_322_lmlee@whirlwind#10",
+    "name": "鉴浮生",
+    "group": "0011/飙系列/X"
+   },
+   {
+    "id": "char_322_lmlee@witch#3",
+    "name": "手到牌来",
+    "group": "巫异盛宴/III"
+   },
+   {
+    "id": "char_322_lmlee@sanrio#1",
+    "name": "坊间凉茶铺",
+    "group": "三丽鸥家族"
+   }
+  ],
+  "char_1044_hsgma2": [
+   {
+    "id": "char_1044_hsgma2@whirlwind#11",
+    "name": "一闪极意",
+    "group": "0011/飙系列/XI"
+   }
+  ],
+  "char_147_shining": [
+   {
+    "id": "char_147_shining@summer#1",
+    "name": "静谧午夜 DN02",
+    "group": "珊瑚海岸/I"
+   }
+  ],
+  "char_134_ifrit": [
+   {
+    "id": "char_134_ifrit@summer#1",
+    "name": "日晒 SS.SP",
+    "group": "珊瑚海岸/I"
+   },
+   {
+    "id": "char_134_ifrit@kfc#1",
+    "name": "儿童派对",
+    "group": "肯德基"
+   },
+   {
+    "id": "char_134_ifrit@rilakkuma#1",
+    "name": "轻松旅途",
+    "group": "轻松小熊"
+   }
+  ],
+  "char_180_amgoat": [
+   {
+    "id": "char_180_amgoat@summer#5",
+    "name": "夏卉 FA018",
+    "group": "珊瑚海岸/V"
+   },
+   {
+    "id": "char_180_amgoat@sanrio#2",
+    "name": "绵绒小魔女",
+    "group": "三丽鸥家族/II"
+   }
+  ],
+  "char_4072_ironmn": [
+   {
+    "id": "char_4072_ironmn@summer#11",
+    "name": "沙滩护卫 GT003",
+    "group": "珊瑚海岸/XI"
+   },
+   {
+    "id": "char_4072_ironmn@ambienceSynesthesia#5",
+    "name": "空心王冠",
+    "group": "音律联觉/V"
+   }
+  ],
+  "char_377_gdglow": [
+   {
+    "id": "char_377_gdglow@summer#12",
+    "name": "夏卉 FA394",
+    "group": "珊瑚海岸/XII"
+   },
+   {
+    "id": "char_377_gdglow@snow#5",
+    "name": "喜夜侍者",
+    "group": "冰原信使/V"
+   },
+   {
+    "id": "char_377_gdglow@sanrio#1",
+    "name": "花房茶话会",
+    "group": "三丽鸥家族"
+   }
+  ],
+  "char_2012_typhon": [
+   {
+    "id": "char_2012_typhon@summer#17",
+    "name": "温差 RT.RX07",
+    "group": "珊瑚海岸/XVII"
+   },
+   {
+    "id": "char_2012_typhon@wild#9",
+    "name": "北地引路人",
+    "group": "生命之地/IX"
+   }
+  ],
+  "char_1013_chen2": [
+   {
+    "id": "char_1013_chen2@summer#20",
+    "name": "悠然假日 HD79",
+    "group": "珊瑚海岸/XX"
+   },
+   {
+    "id": "char_1013_chen2@boc#6",
+    "name": "万重山",
+    "group": "斗争血脉/VI"
+   }
+  ],
+  "char_450_necras": [
+   {
+    "id": "char_450_necras@summer#20",
+    "name": "夏卉 FA161",
+    "group": "珊瑚海岸/XX"
+   },
+   {
+    "id": "char_450_necras@ambienceSynesthesia#7",
+    "name": "晶化信念",
+    "group": "音律联觉/VIII"
+   }
+  ],
+  "char_4117_ray": [
+   {
+    "id": "char_4117_ray@summer#22",
+    "name": "夏卉 FA098",
+    "group": "珊瑚海岸/XXII"
+   },
+   {
+    "id": "char_4117_ray@shining#2",
+    "name": "梦幻高空",
+    "group": "闪耀阶梯/II"
+   }
+  ],
+  "char_179_cgbird": [
+   {
+    "id": "char_179_cgbird@witch#1",
+    "name": "挽歌",
+    "group": "巫异盛宴 "
+   },
+   {
+    "id": "char_179_cgbird@sightseer#1",
+    "name": "流辉",
+    "group": "错位巡礼/I"
+   }
+  ],
+  "char_4048_doroth": [
+   {
+    "id": "char_4048_doroth@witch#4",
+    "name": "命运主宰",
+    "group": "巫异盛宴/IV"
+   }
+  ],
+  "char_300_phenxi": [
+   {
+    "id": "char_300_phenxi@witch#4",
+    "name": "至圣誓言",
+    "group": "巫异盛宴/IV"
+   },
+   {
+    "id": "char_300_phenxi@boc#9",
+    "name": "审判日",
+    "group": "斗争血脉/IX"
+   }
+  ],
+  "char_017_huang": [
+   {
+    "id": "char_017_huang@witch#5",
+    "name": "易爆蓝焰",
+    "group": "巫异盛宴/V"
+   },
+   {
+    "id": "char_017_huang@as#1",
+    "name": "爆裂菲林",
+    "group": "音律联觉"
+   }
+  ],
+  "char_340_shwaz": [
+   {
+    "id": "char_340_shwaz@snow#1",
+    "name": "厚礼",
+    "group": "冰原信使/I"
+   },
+   {
+    "id": "char_340_shwaz@striker#1",
+    "name": "天际线",
+    "group": "雷神推进者"
+   }
+  ],
+  "char_400_weedy": [
+   {
+    "id": "char_400_weedy@snow#2",
+    "name": "糖果仙子",
+    "group": "冰原信使/II"
+   },
+   {
+    "id": "char_400_weedy@sightseer#1",
+    "name": "倾听",
+    "group": "错位巡礼/I"
+   }
+  ],
+  "char_112_siege": [
+   {
+    "id": "char_112_siege@wild#2",
+    "name": "遗石",
+    "group": "生命之地/II"
+   },
+   {
+    "id": "char_112_siege@striker#2",
+    "name": "摧城",
+    "group": "雷神推进者/II"
+   }
+  ],
+  "char_4055_bgsnow": [
+   {
+    "id": "char_4055_bgsnow@wild#7",
+    "name": "字句中的雪原",
+    "group": "生命之地/VII"
+   },
+   {
+    "id": "char_4055_bgsnow@yun#7",
+    "name": "行梦侧畔",
+    "group": "0011/韵系列/VII"
+   }
+  ],
+  "char_188_helage": [
+   {
+    "id": "char_188_helage@boc#2",
+    "name": "歧路幻影",
+    "group": "斗争血脉/II"
+   }
+  ],
+  "char_416_zumama": [
+   {
+    "id": "char_416_zumama@boc#3",
+    "name": "熔锻铸匠",
+    "group": "斗争血脉/III"
+   }
+  ],
+  "char_4046_ebnhlz": [
+   {
+    "id": "char_4046_ebnhlz@boc#6",
+    "name": "变奏",
+    "group": "斗争血脉/VI"
+   }
+  ],
+  "char_293_thorns": [
+   {
+    "id": "char_293_thorns@boc#8",
+    "name": "锋潮",
+    "group": "斗争血脉/VIII"
+   },
+   {
+    "id": "char_293_thorns@it#1",
+    "name": "惬意",
+    "group": "i.t"
+   }
+  ],
+  "char_4179_monstr": [
+   {
+    "id": "char_4179_monstr@boc#11",
+    "name": "锋锐",
+    "group": "斗争血脉/XI"
+   }
+  ],
+  "char_248_mgllan": [
+   {
+    "id": "char_248_mgllan@kitchen#1",
+    "name": "回味冰霜雪",
+    "group": "罗德厨房"
+   }
+  ],
+  "char_4009_irene": [
+   {
+    "id": "char_4009_irene@ambienceSynesthesia#3",
+    "name": "飞羽",
+    "group": "音律联觉/III"
+   },
+   {
+    "id": "char_4009_irene@game#3",
+    "name": "至高判决",
+    "group": "成就之星/III"
+   }
+  ],
+  "char_4133_logos": [
+   {
+    "id": "char_4133_logos@ambienceSynesthesia#6",
+    "name": "辉煌的静谧",
+    "group": "音律联觉/VI"
+   }
+  ],
+  "char_1043_leizi2": [
+   {
+    "id": "char_1043_leizi2@game#8",
+    "name": "血翼蔷薇",
+    "group": "成就之星/VIII"
+   }
+  ],
+  "char_4195_radian": [
+   {
+    "id": "char_4195_radian@game#8",
+    "name": "乱数法则",
+    "group": "成就之星/VIII"
+   }
+  ],
+  "char_4132_ascln": [
+   {
+    "id": "char_4132_ascln@iteration#4",
+    "name": "趋光之暗",
+    "group": "命途迭代/IV"
+   }
+  ],
+  "char_1502_crosly": [
+   {
+    "id": "char_1502_crosly@iteration#5",
+    "name": "夜之终局",
+    "group": "命途迭代/V"
+   }
+  ],
+  "char_4202_haruka": [
+   {
+    "id": "char_4202_haruka@iteration#6",
+    "name": "常世之幻",
+    "group": "命途迭代/VI"
+   }
+  ],
+  "char_4088_hodrer": [
+   {
+    "id": "char_4088_hodrer@sightseer#1",
+    "name": "沉思之庭",
+    "group": "错位巡礼/I"
+   }
+  ],
+  "char_1034_jesca2": [
+   {
+    "id": "char_1034_jesca2@cfa#1",
+    "name": "《上任达维镇》",
+    "group": "中国电影资料馆"
+   }
+  ],
+  "char_4138_narant": [
+   {
+    "id": "char_4138_narant@breaker#1",
+    "name": "链锯陪护者",
+    "group": "破格视界"
+   },
+   {
+    "id": "char_4138_narant@littlePony#1",
+    "name": "率直诚实之人",
+    "group": "小马宝莉"
    }
   ]
  }
