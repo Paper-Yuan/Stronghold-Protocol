@@ -238,6 +238,11 @@ export class Lobby {
     this.maintenance = null;
     /** @type {NodeJS.Timeout | null} 维护定时器 */
     this.maintenanceTimer = null;
+    /** @type {NodeJS.Timeout | null} 大厅动态广播节流定时器 */
+    this._statsDebounceTimer = null;
+    /** 定期大厅全量数据心跳 (4秒) */
+    this._statsPeriodicTimer = setInterval(() => this.broadcastLobbyStats(), 4000);
+    this._statsPeriodicTimer?.unref?.();
   }
 
   /** @param {string} code @returns {Room | null} */
@@ -267,6 +272,7 @@ export class Lobby {
    * @param {{ resumed: boolean, repeat: boolean }} info
    */
   onHello(session, { resumed, repeat }) {
+    this.broadcastLobbyStats();
     if (this.maintenance && session.ws) {
       sendSession(session, {
         t: 'server.maintenance',
@@ -343,6 +349,7 @@ export class Lobby {
   /** The session's socket closed. @param {import('./net.js').Session} session */
   onDisconnect(session) {
     this.matchmaker.removePlayer(session.playerId);
+    this.broadcastLobbyStats();
     this.clearResync(session.playerId); // the next resume resyncs immediately
     const room = this.roomOf(session);
     // a solo run may be resumed within singleReconnectTime (24 h); everything else keeps the registry's window
@@ -376,6 +383,14 @@ export class Lobby {
     if (this.maintenanceTimer) {
       clearTimeout(this.maintenanceTimer);
       this.maintenanceTimer = null;
+    }
+    if (this._statsPeriodicTimer) {
+      clearInterval(this._statsPeriodicTimer);
+      this._statsPeriodicTimer = null;
+    }
+    if (this._statsDebounceTimer) {
+      clearTimeout(this._statsDebounceTimer);
+      this._statsDebounceTimer = null;
     }
     this.matchmaker.stop();
     for (const room of [...this.rooms.values()]) this.disposeRoom(room, reason);
@@ -480,6 +495,7 @@ export class Lobby {
     session.pendingResult = null;
     this.log.info(`[lobby] ${code} created (${mode}/${difficulty}) by ${session.name}`);
     this.broadcastState(room);
+    this.broadcastLobbyStats();
     return OK;
   }
 
@@ -502,6 +518,7 @@ export class Lobby {
     session.pendingResult = null;
     if (!room.hostId) room.hostId = session.playerId;
     this.broadcastState(room);
+    this.broadcastLobbyStats();
     return OK;
   }
 
@@ -513,9 +530,9 @@ export class Lobby {
   }
 
   /**
-   * room.list: public alliance rooms and server-wide statistics for matchmaking UI.
+   * Return real-time lobby statistics and alliance rooms.
    */
-  listRooms(session, _msg) {
+  getLobbyStats() {
     let onlineCount = 0;
     if (this.registry && this.registry.byPlayerId) {
       for (const s of this.registry.byPlayerId.values()) {
@@ -539,12 +556,56 @@ export class Lobby {
       });
     }
     return {
-      ok: true,
-      t: 'room.list',
+      t: 'lobby.stats',
       online: Math.max(onlineCount, 1),
       roomsCount: this.rooms.size,
       matchesCount,
       rooms: list,
+    };
+  }
+
+  /**
+   * Broadcast lobby statistics to all connected clients in real time.
+   * @param {boolean} [immediate=false]
+   */
+  broadcastLobbyStats(immediate = false) {
+    const doBroadcast = () => {
+      this._statsDebounceTimer = null;
+      const stats = this.getLobbyStats();
+      const payload = encode(stats);
+      if (!this.registry?.byPlayerId || !payload) return;
+      for (const session of this.registry.byPlayerId.values()) {
+        if (session.connected && session.ws) {
+          sendRaw(session.ws, payload);
+        }
+      }
+    };
+
+    if (immediate) {
+      if (this._statsDebounceTimer) {
+        clearTimeout(this._statsDebounceTimer);
+        this._statsDebounceTimer = null;
+      }
+      doBroadcast();
+      return;
+    }
+
+    if (this._statsDebounceTimer) return;
+    this._statsDebounceTimer = setTimeout(doBroadcast, 250);
+  }
+
+  /**
+   * room.list: public alliance rooms and server-wide statistics for matchmaking UI.
+   */
+  listRooms(session, _msg) {
+    const stats = this.getLobbyStats();
+    return {
+      ok: true,
+      t: 'room.list',
+      online: stats.online,
+      roomsCount: stats.roomsCount,
+      matchesCount: stats.matchesCount,
+      rooms: stats.rooms,
     };
   }
 
@@ -1140,6 +1201,7 @@ export class Lobby {
     }
     if (ctx) this.disposeMatchCtx(ctx);
     this.log.info(`[lobby] ${room.code} disposed (${reason})`);
+    this.broadcastLobbyStats();
   }
 
   genCode() {

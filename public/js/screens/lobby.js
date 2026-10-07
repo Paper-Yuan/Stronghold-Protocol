@@ -236,16 +236,25 @@ function OnlinePill({ count }) {
 }
 
 function MatchmakingModal({ open, onClose, onJoin, onSpectate }) {
+  const lobbyStats = useStore((s) => s.lobbyStats, shallowEqual);
   const [loading, setLoading] = useState(false);
-  const [data, setData] = useState({
-    online: 8,
-    roomsCount: 4,
-    matchesCount: 4,
-    rooms: [
-      { code: 'JZJA', name: '能赢吗', difficulty: 'ABYSS', humans: 2, maxSeats: 10, inMatch: true },
-      { code: 'FPYQ', name: '浅辞', difficulty: 'HARD', humans: 1, maxSeats: 10, inMatch: true },
-    ],
-  });
+  const [data, setData] = useState(() => ({
+    online: lobbyStats?.online ?? 1,
+    roomsCount: lobbyStats?.roomsCount ?? 0,
+    matchesCount: lobbyStats?.matchesCount ?? 0,
+    rooms: lobbyStats?.rooms ?? [],
+  }));
+
+  useEffect(() => {
+    if (lobbyStats && typeof lobbyStats.online === 'number') {
+      setData({
+        online: lobbyStats.online,
+        roomsCount: lobbyStats.roomsCount,
+        matchesCount: lobbyStats.matchesCount,
+        rooms: lobbyStats.rooms,
+      });
+    }
+  }, [lobbyStats]);
 
   const fetchRooms = async () => {
     setLoading(true);
@@ -376,7 +385,8 @@ export function LobbyScreen() {
   const [busy, setBusy] = useState(null);
   const [recent] = useState(recentRooms);
   const [modalOpen, setModalOpen] = useState(() => new URLSearchParams(location.search).has('modal'));
-  const [onlineCount, setOnlineCount] = useState(9);
+  const lobbyStats = useStore((s) => s.lobbyStats, shallowEqual);
+  const [onlineCount, setOnlineCount] = useState(() => lobbyStats?.online ?? 1);
   // The Android shell can ask the local network who hosts a key, so a guest never types an address: the code is enough.
   const nativeShell = globalThis.AndroidNative?.isNativeApp?.() ? globalThis.AndroidNative : null;
   const [lanRoom, setLanRoom] = useState(null);
@@ -402,6 +412,12 @@ export function LobbyScreen() {
   const online = conn.status === 'online';
   const codeOk = CODE_RE.test(code);
   const isSearching = mm?.status === 'searching';
+
+  useEffect(() => {
+    if (lobbyStats && Number.isFinite(lobbyStats.online)) {
+      setOnlineCount(lobbyStats.online);
+    }
+  }, [lobbyStats?.online]);
 
   useEffect(() => {
     if (!online) return undefined;

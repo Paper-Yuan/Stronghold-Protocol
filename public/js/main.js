@@ -239,6 +239,17 @@ function wireNet() {
       toast(`⚠ 服务器将于 ${msg.seconds || 60} 秒后停服维护（${msg.reason || '例行维护'}）`, 'warn', { ttl: 9000 });
     }
   });
+  net.on('lobby.stats', (msg) => {
+    store.patch('connection', { onlineCount: typeof msg.online === 'number' ? msg.online : 1 });
+    store.set({
+      lobbyStats: {
+        online: typeof msg.online === 'number' ? msg.online : 1,
+        roomsCount: typeof msg.roomsCount === 'number' ? msg.roomsCount : 0,
+        matchesCount: typeof msg.matchesCount === 'number' ? msg.matchesCount : 0,
+        rooms: Array.isArray(msg.rooms) ? msg.rooms : [],
+      },
+    });
+  });
   net.on('m.public', (msg) => { matchAt = Date.now(); store.patch('match', { public: payload(msg) }); maybeFinishRestore(); });
   net.on('m.private', (msg) => { matchAt = Date.now(); store.patch('match', { private: payload(msg) }); });
   net.on('m.field', (msg) => store.patch('match', { field: payload(msg) }));

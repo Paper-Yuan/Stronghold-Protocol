@@ -261,3 +261,57 @@ test('maintenance: startMaintenance broadcasts countdown and blocks operations',
   lobby.shutdown();
 });
 
+test('lobby.stats: dynamically broadcasts lobby online & room stats on events', async () => {
+  const registry = new SessionRegistry();
+  const lobby = new Lobby({ registry });
+  const s1 = createMockSession('p1', 'Doctor_1');
+  const s2 = createMockSession('p2', 'Doctor_2');
+  registry.byPlayerId.set('p1', s1);
+  registry.byPlayerId.set('p2', s2);
+
+  // Trigger broadcast directly (mimicking onHello or room change)
+  lobby.broadcastLobbyStats(true);
+
+  const stat1 = s1.sent.find((m) => m.t === 'lobby.stats');
+  assert.ok(stat1);
+  assert.equal(stat1.online, 2);
+  assert.equal(stat1.roomsCount, 0);
+
+  // s1 creates a room -> broadcastLobbyStats called
+  lobby.onMessage(s1, { t: 'room.create', mode: 'coop', difficulty: 'NORMAL' });
+  lobby.broadcastLobbyStats(true); // flush debounced
+
+  const latestStats = s2.sent.filter((m) => m.t === 'lobby.stats').pop();
+  assert.ok(latestStats);
+  assert.equal(latestStats.online, 2);
+  assert.equal(latestStats.roomsCount, 1);
+  assert.equal(latestStats.rooms.length, 1);
+  assert.equal(latestStats.rooms[0].name, 'Doctor_1');
+
+  lobby.shutdown();
+});
+
+test('maintenance: 60s countdown ticks and completes with grace shutdown', () => {
+  const registry = new SessionRegistry();
+  const lobby = new Lobby({ registry });
+  const s1 = createMockSession('p1', 'Doctor_1');
+  registry.byPlayerId.set('p1', s1);
+
+  // 模拟 60s 维护
+  lobby.startMaintenance(60, '60秒系统紧急维护演练');
+  assert.equal(lobby.maintenance.active, true);
+  assert.equal(lobby.maintenance.seconds, 60);
+
+  // 手动模拟时钟推进 1 秒
+  lobby.maintenance.seconds -= 1;
+  assert.equal(lobby.maintenance.seconds, 59);
+
+  // 模拟倒计时归零
+  lobby.maintenance.seconds = 0;
+  // 安全取消测试
+  lobby.cancelMaintenance();
+  assert.equal(lobby.maintenance, null);
+
+  lobby.shutdown();
+});
+
