@@ -228,8 +228,10 @@
 /* Only the bond discs (and the +N chip) take the pointer: the strip's box spans the width under the top bar, where the
    top board row's units stand (row 12 at 16:9 / 21:9 / 720p / phones, the boss field's row 5 in a boss prep) — it used
    to swallow the taps and drags on them (review of user playtest #2 item 8: every own unit reachable). */
-.gm__bonds > *, .gm__bonds .bstrip, .gm__bonds .bstrip-container, .gm__bonds .bstrip-tray { pointer-events: none; }
-.gm__bonds .bslot, .gm__bonds .bstrip__more, .gm__bonds .bstrip__fold-handle { pointer-events: auto; }
+.gm__bonds > *, .gm__bonds .bstrip { pointer-events: none; }
+.gm__bonds .bstrip-container, .gm__bonds .bstrip-tray { pointer-events: none; }
+.gm__bonds .bslot, .gm__bonds .bstrip__more { pointer-events: auto; }
+.gm__bonds .bstrip__fold-handle { pointer-events: auto; }
 
 /* 盟约整体外层容器与把手 (垂直抽屉收起方案，零触控漂移) */
 .bstrip-container {
@@ -721,3 +723,139 @@
 .pauseov__plate h2 { font-size: .5rem; font-weight: 900; letter-spacing: .3em; color: #fff; text-shadow: 0 0 .2rem rgba(0, 0, 0, .8); }
 .pauseov__note { font-size: .17rem; color: var(--text-md); text-shadow: 0 1px 2px #000; }
 .pauseov__btns { display: flex; gap: .2rem; }
+
+/* =========================================================================
+   多人实时战术文字聊天组件 (ChatBox)
+   ========================================================================= */
+.chat-panel {
+  position: absolute;
+  left: 0.16rem;
+  bottom: 2.1rem;
+  width: 3.6rem;
+  pointer-events: none;
+  z-index: 105;
+  display: flex;
+  flex-direction: column;
+  gap: 0.06rem;
+}
+
+.chat-log {
+  max-height: 1.8rem;
+  overflow-y: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 0.04rem;
+  font-size: 0.13rem;
+  text-shadow: 0 1px 2px #000;
+  transition: opacity 0.25s ease-out;
+  padding-right: 0.04rem;
+}
+
+.chat-panel:not(.is-active) .chat-log {
+  opacity: 0.45;
+}
+
+.chat-panel.is-active .chat-log,
+.chat-panel:hover .chat-log {
+  opacity: 1;
+  pointer-events: auto;
+  overflow-y: auto;
+}
+
+.chat-item {
+  background: rgba(10, 15, 13, 0.78);
+  padding: 0.04rem 0.08rem;
+  border-left: 2px solid var(--mint, #17f9b7);
+  word-break: break-all;
+  border-radius: 0 2px 2px 0;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.4);
+}
+
+.chat-seat {
+  font-weight: 700;
+  margin-right: 0.06rem;
+}
+
+.chat-seat.seat-0 { color: #17f9b7; }
+.chat-seat.seat-1 { color: #f6a329; }
+.chat-seat.seat-2 { color: #45b7ff; }
+.chat-seat.seat-3 { color: #be7eff; }
+.chat-seat.seat-spec { color: #8fa29a; }
+
+.chat-text {
+  color: #f0f4f2;
+}
+
+.chat-form {
+  pointer-events: auto;
+  display: flex;
+  align-items: center;
+  gap: 0.04rem;
+  background: rgba(14, 20, 18, 0.95);
+  border: 1px solid rgba(23, 249, 183, 0.5);
+  border-radius: 2px;
+  padding: 0.04rem 0.06rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6);
+}
+
+.chat-input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  color: #fff;
+  font-size: 0.14rem;
+  outline: none;
+  font-family: inherit;
+}
+
+.chat-send-btn {
+  background: var(--mint, #17f9b7);
+  color: #0b0f0d;
+  border: none;
+  font-weight: 700;
+  font-size: 0.12rem;
+  padding: 0.04rem 0.1rem;
+  border-radius: 2px;
+  cursor: pointer;
+}
+
+.chat-send-btn:hover {
+  background: #fff;
+}
+
+.chat-trigger-btn {
+  pointer-events: auto;
+  width: 0.36rem;
+  height: 0.36rem;
+  border-radius: 50%;
+  background: rgba(18, 25, 23, 0.88);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  color: #fff;
+  font-size: 0.18rem;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+  transition: all 0.15s ease-out;
+}
+
+.chat-trigger-btn:hover {
+  background: rgba(28, 38, 35, 0.96);
+  border-color: var(--mint, #17f9b7);
+}
+
+/* 移动端视口适配 */
+@media (max-width: 767px), (max-height: 460px) {
+  .chat-panel {
+    bottom: 1.6rem;
+    width: 2.8rem;
+  }
+  .chat-log {
+    max-height: 1.2rem;
+    font-size: 0.11rem;
+  }
+  .chat-input {
+    font-size: 0.12rem;
+  }
+}
+

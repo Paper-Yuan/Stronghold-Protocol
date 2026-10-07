@@ -32,7 +32,7 @@ import { html, UiHosts, Button, Icon, MicroLabel, closeAllDialogs } from './ui/c
 import { ConnectionBanner } from './ui/connBanner.js';
 import { ToastHost, toast, toastError, describeError } from './ui/toasts.js';
 import { net, identity, NetError } from './net.js';
-import { store, useStore, emptyMatch, selectRoute, sessionResetNotice, isSpectating } from './store.js';
+import { store, useStore, emptyMatch, selectRoute, sessionResetNotice, isSpectating, pushChatMessage } from './store.js';
 import { data } from './data.js';
 import { GAME_FILES } from './ui/gameComponents.js';
 import { TitleScreen, sanitizeName } from './screens/title.js';
@@ -130,7 +130,7 @@ function backToLobby() {
   clearTimeout(restoreTimer);
   const s = store.get();
   if (s.room || s.match.public) closeAllDialogs();
-  store.set({ room: null, match: emptyMatch(), ticker: [], emotes: [] });
+  store.set({ room: null, match: emptyMatch(), ticker: [], emotes: [], chatMessages: [] });
   store.patch('ui', { restoring: false });
 }
 
@@ -238,6 +238,16 @@ function wireNet() {
     if (active) {
       toast(`⚠ 服务器将于 ${msg.seconds || 60} 秒后停服维护（${msg.reason || '例行维护'}）`, 'warn', { ttl: 9000 });
     }
+  });
+  net.on('room.chat', (msg) => {
+    pushChatMessage({
+      playerId: msg.playerId,
+      name: msg.name,
+      seat: msg.seat,
+      isSpectator: !!msg.isSpectator,
+      text: msg.text,
+      at: msg.at || Date.now(),
+    });
   });
   net.on('lobby.stats', (msg) => {
     store.patch('connection', { onlineCount: typeof msg.online === 'number' ? msg.online : 1 });

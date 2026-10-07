@@ -85,11 +85,18 @@ export const initialState = Object.freeze({
   matchmaking: { status: 'idle', mode: null, difficulty: null, elapsed: 0, matched: 0, target: 4 },
   maintenance: { active: false, deadline: 0, seconds: 0, reason: '' },
   lobbyStats: { online: 1, roomsCount: 0, matchesCount: 0, rooms: [] },
+  chatMessages: [],
   ui: { pendingJoin: null, restoring: false, buildStale: false },
 });
 
 /** The app-wide store singleton. */
 export const store = createStore(initialState);
+
+/** Add a message to chat message ring buffer (keeps last 40). */
+export function pushChatMessage(msg) {
+  const cur = store.get().chatMessages || [];
+  store.set({ chatMessages: [...cur.slice(-39), msg] });
+}
 
 /**
  * Which screen the router shows for a given app state:

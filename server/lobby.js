@@ -335,6 +335,7 @@ export class Lobby {
       case 'room.start': return this.start(session);
       case 'room.loadout': return this.loadout(session, msg);
       case 'room.skins': return this.skins(session, msg);
+      case 'room.chat': return this.chat(session, msg);
       case 'room.spectate': { this.matchmaker.removePlayer(session.playerId); return this.spectate(session, msg); }
       case 'room.removeSpectator': return this.removeSpectator(session, msg);
       case 'match.queue': return this.matchmaker.enqueue(session, msg);
@@ -665,6 +666,35 @@ export class Lobby {
       seat.ready = ready;
       this.broadcastState(room);
     }
+    return OK;
+  }
+
+  chat(session, msg) {
+    const room = this.roomOf(session);
+    if (!room) return fail(ERR.NOT_IN_ROOM, 'not in a room');
+    const now = this.now();
+    if (now - (session.lastChatAt || 0) < 1000) {
+      return fail(ERR.RATE, 'chat too fast');
+    }
+    session.lastChatAt = now;
+    const raw = typeof msg?.text === 'string' ? msg.text : '';
+    const text = raw.trim().replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '').slice(0, 80);
+    if (!text) return fail(ERR.BAD_PARAM, 'empty message');
+
+    const seat = room.seatOf(session.playerId);
+    const spectator = room.spectatorOf(session.playerId);
+    const senderName = seat?.name || spectator?.name || session.name || '博士';
+    const seatIdx = seat ? seat.seat : -1;
+
+    this.broadcastRoom(room, {
+      t: 'room.chat',
+      playerId: session.playerId,
+      name: senderName,
+      seat: seatIdx,
+      isSpectator: !seat && !!spectator,
+      text,
+      at: now,
+    });
     return OK;
   }
 
