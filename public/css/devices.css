@@ -57,18 +57,20 @@ html:not(.sp-in-match) .toast-host { margin-top: var(--sa-t); }
    control, no layout change. Only controls that do not use ::before themselves are listed. */
 :where(.sp-coarse) :where(.tapx, .gtop__exit, .gtop__iconbtn, .enemybtn, .readybtn, .gm__gear, .fsbtn, .ewheel__btn, .ewheel__nav,
   .toolbtn, .funds__collapse, .team__btn, .effect, .vswitch__arrow, .edrawer__close, .dpanel__close, .bpop__close,
-  .modal__close, .uf__btn, .chud__back, .tabs__tab, .btn, .pill-btn, .title-guide, .stephead__guide, .set-toggle, .set-seg button) {
+  .modal__close, .uf__btn, .chud__back, .tabs__tab, .btn, .pill-btn, .title-guide, .stephead__guide, .set-toggle) {
   position: relative;
 }
 .sp-coarse :is(.tapx, .gtop__exit, .gtop__iconbtn, .enemybtn, .readybtn, .gm__gear, .fsbtn, .ewheel__btn, .ewheel__nav,
   .toolbtn, .funds__collapse, .team__btn, .effect, .vswitch__arrow, .edrawer__close, .dpanel__close, .bpop__close,
-  .modal__close, .uf__btn, .chud__back, .tabs__tab, .btn, .pill-btn, .title-guide, .stephead__guide, .set-toggle, .set-seg button)::before {
+  .modal__close, .uf__btn, .chud__back, .tabs__tab, .btn, .pill-btn, .title-guide, .stephead__guide, .set-toggle)::before {
   content: '';
   position: absolute; left: 50%; top: 50%; z-index: 0;
   width: max(100%, var(--tap-min)); height: max(100%, var(--tap-min));
   transform: translate(-50%, -50%);
   background: transparent; border: 0; box-shadow: none; clip-path: none; pointer-events: auto;
 }
+.set-seg button { pointer-events: auto; position: relative; z-index: 1; touch-action: manipulation; }
+.set-seg button::before { display: none !important; }
 /* The 交流 panel's pager (‹ dots ›) sits in the strip under the emote cells (panel y 1.97–2.31rem, css/emotes.css). Its
    hit areas stay inside that strip and never overlap each other: a centred 44 px area of ‹ / › covered the centres of
    the bottom-left / bottom-right emotes (a tap there turned the page or hit the disabled ‹), and 28 px dot areas 0.21rem
@@ -122,12 +124,12 @@ html:not(.sp-in-match) .toast-host { margin-top: var(--sa-t); }
 /* The left-docked detail card then ends above that two-row corner (.24rem + 交流 + .1rem gap + ⚙ row + .1rem): at its
    desktop bottom (1.02rem) it hid ⚙ / 📖 / ⛶. (gameLogic panelSlots keeps the taller desktop slot: conservative.) */
 @media (max-width: 767px) {
-  .gm__corner { flex-wrap: wrap-reverse; align-content: flex-start; width: max(72px, calc(3 * .56rem + .2rem)); }
-  .dpanel:not(.dpanel--right) { bottom: calc(.44rem + max(1.51rem, 72px) * 55 / 151 + .56rem); }
+  .gm__corner { flex-wrap: nowrap; width: auto; gap: .08rem; align-items: flex-end; }
+  .dpanel:not(.dpanel--right) { bottom: calc(.44rem + max(.56rem, 34px)); }
 }
 @media (max-width: 767px) and (pointer: coarse), (max-width: 767px) and (any-pointer: coarse) {
-  .gm__corner { width: max(96px, calc(3 * max(.56rem, 34px) + .2rem)); }
-  .dpanel:not(.dpanel--right) { bottom: calc(.44rem + max(1.51rem, 96px) * 55 / 151 + max(.56rem, 34px)); }
+  .gm__corner { flex-wrap: nowrap; width: auto; gap: .08rem; align-items: flex-end; }
+  .dpanel:not(.dpanel--right) { bottom: calc(.44rem + max(.56rem, 34px)); }
 }
 /* Mobile detail panel dimensions & clearance (vivo V2520A: 761x360 dpr 3) */
 :is(.sp-touch, .sp-coarse) .rwtag__micro { display: none; }

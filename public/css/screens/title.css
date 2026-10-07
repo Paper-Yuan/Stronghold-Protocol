@@ -277,3 +277,184 @@
 .title-foot .micro { font-size: max(.12rem, 10px); }
 .title-foot__col { display: flex; flex-direction: column; gap: .03rem; min-width: 0; }
 .title-foot__credit { color: var(--text-lo); }
+.title-foot__right {
+  display: flex;
+  align-items: center;
+  gap: .14rem;
+}
+
+/* Preload Pill Button in Footer */
+.preload-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: .06rem;
+  padding: .04rem .1rem;
+  background: rgba(16, 22, 19, .85);
+  border: 1px solid rgba(23, 249, 183, .28);
+  border-radius: 2px;
+  color: #cfd8d3;
+  font-family: var(--font-mono);
+  font-size: max(.12rem, 11px);
+  cursor: pointer;
+  transition: all .18s var(--ease-out);
+  box-shadow: 0 .04rem .12rem rgba(0, 0, 0, .4);
+}
+.preload-pill:hover {
+  background: rgba(23, 32, 28, .95);
+  border-color: var(--mint-500);
+  color: #fff;
+  box-shadow: 0 0 .14rem rgba(23, 249, 183, .25);
+}
+.preload-pill__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: rgba(23, 249, 183, .4);
+}
+.preload-pill.is-ready .preload-pill__dot {
+  background: var(--mint-500);
+  box-shadow: 0 0 6px var(--mint-500);
+}
+.preload-pill.is-loading .preload-pill__dot {
+  background: var(--mint-500);
+  animation: pulse-dot 1s infinite alternate;
+}
+@keyframes pulse-dot {
+  from { opacity: .3; transform: scale(.8); }
+  to { opacity: 1; transform: scale(1.3); }
+}
+
+/* Preload Modal Dialog Styles */
+.preload-content {
+  display: flex;
+  flex-direction: column;
+  gap: .14rem;
+}
+.preload-desc {
+  font-size: .15rem;
+  line-height: 1.5;
+  color: var(--text-lo);
+}
+.preload-desc b {
+  color: var(--mint-400);
+  font-weight: 500;
+}
+.preload-profiles {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: .12rem;
+  margin-top: .04rem;
+}
+@media (max-width: 640px) {
+  .preload-profiles { grid-template-columns: 1fr; }
+}
+.preload-card {
+  position: relative;
+  display: flex;
+  cursor: pointer;
+  background: rgba(18, 23, 21, .85);
+  border: 1px solid var(--line-2);
+  border-radius: 3px;
+  padding: .14rem .16rem;
+  transition: all .2s ease;
+}
+.preload-card input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+.preload-card:hover {
+  background: rgba(23, 29, 27, .95);
+  border-color: rgba(23, 249, 183, .4);
+}
+.preload-card.is-selected {
+  background: rgba(20, 28, 25, .95);
+  border-color: var(--mint-500);
+  box-shadow: 0 0 .16rem rgba(23, 249, 183, .18), inset 0 0 .08rem rgba(23, 249, 183, .08);
+}
+.preload-card__body {
+  display: flex;
+  flex-direction: column;
+  gap: .06rem;
+  width: 100%;
+}
+.preload-card__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+.preload-card__title {
+  font-size: .16rem;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: .02em;
+}
+.preload-card__size {
+  font-size: .13rem;
+  font-family: var(--font-mono);
+  color: var(--mint-400);
+}
+.preload-card__detail {
+  font-size: .13rem;
+  line-height: 1.45;
+  color: var(--text-dim);
+}
+.preload-card__badge.is-ready {
+  margin-top: .04rem;
+  align-self: flex-start;
+  font-size: .12rem;
+  font-family: var(--font-mono);
+  color: var(--mint-400);
+  background: rgba(23, 249, 183, .1);
+  padding: .02rem .06rem;
+  border-radius: 2px;
+}
+
+.preload-monitor {
+  display: flex;
+  flex-direction: column;
+  gap: .08rem;
+  padding: .14rem .16rem;
+  background: rgba(12, 16, 14, .95);
+  border: 1px solid var(--line-2);
+  border-radius: 3px;
+}
+.preload-monitor__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: .14rem;
+}
+.preload-monitor__status {
+  font-weight: 500;
+  color: #e5ede9;
+}
+.preload-monitor__counts {
+  font-family: var(--font-mono);
+  color: var(--mint-400);
+  font-weight: 600;
+}
+.preload-monitor__footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: .12rem;
+}
+.preload-monitor__current {
+  max-width: 65%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.preload-monitor__bytes {
+  font-family: var(--font-mono);
+  color: var(--text-lo);
+}
+.preload-error {
+  padding: .08rem .12rem;
+  background: rgba(255, 60, 60, .12);
+  border: 1px solid rgba(255, 60, 60, .35);
+  color: #ff8585;
+  font-size: .13rem;
+  border-radius: 2px;
+}

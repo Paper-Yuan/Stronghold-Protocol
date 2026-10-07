@@ -914,12 +914,13 @@ class MainActivity : AppCompatActivity() {
         }
 
         if (currentBoardMode == "2d") rbBoard2D.isChecked = true else rbBoard3D.isChecked = true
-        etAddress.setText(if (!currentRemoteUrl.isNullOrBlank()) currentRemoteUrl else DEFAULT_LAN_URL)
+        etAddress.setText(currentRemoteUrl ?: "")
+        etAddress.hint = "例如: https://域名 或 192.168.1.100:3000"
 
         fun preview() {
             val url = normalizeServerUrl(etAddress.text.toString())
             tvUrlPreview.text = url?.let { "将连接 $it" }
-                ?: "填房主的地址即可，形如 100.127.8.41:3000，或 https://域名"
+                ?: "填房主的地址即可，形如 https://域名 或 100.127.8.41:3000"
         }
 
         fun paint() {
@@ -1001,7 +1002,6 @@ class MainActivity : AppCompatActivity() {
         val lower = trimmed.lowercase()
         val isExplicitHttps = lower.startsWith("https://")
         val isExplicitHttp = lower.startsWith("http://")
-        val scheme = if (isExplicitHttps) "https://" else "http://"
         val body = when {
             isExplicitHttp -> trimmed.substring(7)
             isExplicitHttps -> trimmed.substring(8)
@@ -1014,10 +1014,20 @@ class MainActivity : AppCompatActivity() {
         if (authority.isEmpty()) return null
         if (!authority.all { it.isLetterOrDigit() || it == '.' || it == ':' || it == '-' || it == '_' }) return null
 
+        val hostOnly = if (authority.contains(':')) authority.substringBefore(':') else authority
+        val isIp = hostOnly.matches(Regex("^\\d{1,3}(\\.\\d{1,3}){3}$"))
+
+        val scheme = when {
+            isExplicitHttps -> "https://"
+            isExplicitHttp -> "http://"
+            isIp -> "http://"                     // 纯 IP 默认采用 HTTP
+            else -> "https://"                    // 公网域名默认采用 HTTPS
+        }
+
         val withPort = when {
-            authority.contains(':') -> authority // User explicitly provided port
-            isExplicitHttps -> authority          // Standard HTTPS port 443, do NOT append :3000
-            else -> "$authority:3000"             // HTTP bare IP or host, defaults to :3000
+            authority.contains(':') -> authority // 用户显式写了端口，保留端口
+            isIp -> "$authority:3000"             // 纯 IP 未写端口，局域网/直连默认 :3000
+            else -> authority                     // 域名（默认走标准 80/443），绝不强行追加 :3000
         }
         return "$scheme$withPort$path"
     }

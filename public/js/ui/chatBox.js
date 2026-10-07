@@ -2,11 +2,13 @@
 import { html } from './components.js';
 import { useState, useEffect, useRef } from '../../vendor/hooks.module.js';
 import { net } from '../net.js';
-import { useStore } from '../store.js';
+import { useStore, store, pushChatMessage } from '../store.js';
 
-export function ChatBox() {
+export function ChatBox({ active: controlledActive, onToggle, showTrigger = controlledActive === undefined }) {
   const messages = useStore((s) => s.chatMessages) || [];
-  const [active, setActive] = useState(false);
+  const [internalActive, setInternalActive] = useState(false);
+  const active = controlledActive !== undefined ? controlledActive : internalActive;
+  const setActive = onToggle || setInternalActive;
   const [draft, setDraft] = useState('');
   const inputRef = useRef(null);
   const logRef = useRef(null);
@@ -18,6 +20,13 @@ export function ChatBox() {
     }
   }, [messages.length]);
 
+  // Focus input when activated
+  useEffect(() => {
+    if (active) {
+      setTimeout(() => inputRef.current?.focus(), 40);
+    }
+  }, [active]);
+
   // Desktop Enter key trigger & Escape cancel
   useEffect(() => {
     const handleKey = (e) => {
@@ -26,7 +35,6 @@ export function ChatBox() {
           e.preventDefault();
           e.stopPropagation();
           setActive(true);
-          setTimeout(() => inputRef.current?.focus(), 30);
         }
       } else if (e.key === 'Escape') {
         if (active) {
@@ -37,7 +45,7 @@ export function ChatBox() {
     };
     window.addEventListener('keydown', handleKey);
     return () => window.removeEventListener('keydown', handleKey);
-  }, [active]);
+  }, [active, setActive]);
 
   const send = async (e) => {
     e?.preventDefault?.();
@@ -51,7 +59,15 @@ export function ChatBox() {
     try {
       await net.request('room.chat', { text });
     } catch (err) {
-      console.warn('[chat] send failed', err);
+      console.warn('[chat] send failed, using local push fallback', err);
+      pushChatMessage({
+        playerId: store.get().session?.playerId || 'me',
+        name: store.get().session?.name || '博士',
+        seat: 0,
+        isSpectator: false,
+        text,
+        at: Date.now(),
+      });
     }
   };
 
@@ -105,7 +121,7 @@ export function ChatBox() {
           />
           <button type="submit" class="chat-send-btn">发送</button>
         </form>
-      ` : html`
+      ` : (showTrigger ? html`
         <button
           type="button"
           class="chat-trigger-btn"
@@ -118,7 +134,7 @@ export function ChatBox() {
         >
           💬
         </button>
-      `}
+      ` : null)}
     </div>
   `;
 }

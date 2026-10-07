@@ -445,14 +445,40 @@
 .efftip__kind { font-size: .12rem; color: var(--text-dim); }
 .efftip p { font-size: .15rem; line-height: 1.55; color: var(--text-md); }
 
-/* ---- corner: emote + settings --------------------------------------------------------------------------------- */
-.gm__corner { position: absolute; left: .24rem; bottom: .24rem; display: flex; align-items: flex-end; gap: .1rem; }
+/* ---- corner: emote + settings + chat -------------------------------------------------------------------------- */
+.gm__corner { position: absolute; left: .24rem; bottom: .24rem; display: flex; align-items: flex-end; gap: .08rem; z-index: 20; }
 .gm__gear {
   width: .56rem; height: .56rem; display: grid; place-items: center; background: rgba(8, 11, 10, .85);
-  border: 1px solid var(--line-2); color: var(--text-lo); transition: color var(--t-fast), border-color var(--t-fast);
+  border: 1px solid var(--line-2); border-radius: .04rem; color: var(--text-lo); transition: color var(--t-fast), border-color var(--t-fast);
 }
 .gm__gear .icon { width: .28rem; height: .28rem; }
-.gm__gear:hover { color: var(--mint-400); border-color: var(--mint-700); }
+.gm__gear:hover, .gm__gear.is-on { color: var(--mint-400); border-color: var(--mint-700); }
+.gm__gear.is-on { background: rgba(23, 249, 183, 0.15); }
+
+/* In-match chat bar */
+.chat-bar {
+  position: absolute; left: .24rem; bottom: calc(.24rem + max(.56rem, 34px) + .1rem); z-index: 50;
+  display: flex; align-items: center; background: rgba(14, 20, 24, .95); border: 1px solid var(--mint-700);
+  border-radius: .04rem; box-shadow: 0 .04rem .16rem rgba(0, 0, 0, .6); padding: .06rem;
+  animation: emo-panel-in 140ms var(--ease-out);
+}
+.chat-bar__form { display: flex; align-items: center; gap: .08rem; }
+.chat-bar__input {
+  width: max(3.6rem, 180px); height: max(.42rem, 30px); padding: 0 .12rem;
+  background: rgba(0, 0, 0, .6); border: 1px solid var(--line-2); border-radius: .03rem;
+  color: #fff; font-size: max(.16rem, 13px); outline: none;
+}
+.chat-bar__input:focus { border-color: var(--mint-500); }
+.chat-bar__send {
+  height: max(.42rem, 30px); padding: 0 max(.18rem, 12px); background: var(--mint-500);
+  border: 0; border-radius: .03rem; color: var(--text-on-mint); font-weight: 700; font-size: max(.15rem, 12px); cursor: pointer;
+}
+.chat-bar__send:disabled { opacity: .4; cursor: not-allowed; }
+.chat-bar__close {
+  display: grid; place-items: center; width: max(.42rem, 30px); height: max(.42rem, 30px);
+  background: transparent; border: 0; color: var(--text-dim); cursor: pointer;
+}
+.chat-bar__close:hover { color: #fff; }
 
 .ewheel { position: relative; }
 .ewheel__btn {
@@ -729,8 +755,8 @@
    ========================================================================= */
 .chat-panel {
   position: absolute;
-  left: 0.16rem;
-  bottom: 2.1rem;
+  left: .24rem;
+  bottom: calc(.24rem + max(.56rem, 34px) + .12rem);
   width: 3.6rem;
   pointer-events: none;
   z-index: 105;
@@ -847,7 +873,8 @@
 /* 移动端视口适配 */
 @media (max-width: 767px), (max-height: 460px) {
   .chat-panel {
-    bottom: 1.6rem;
+    left: .24rem;
+    bottom: calc(.24rem + max(.56rem, 34px) + .08rem);
     width: 2.8rem;
   }
   .chat-log {

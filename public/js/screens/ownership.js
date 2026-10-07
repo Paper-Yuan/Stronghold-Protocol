@@ -23,7 +23,7 @@ const ROMAN = ['', 'I', 'II', 'III', 'IV', 'V', 'VI'];
 
 /** The roster of the tab (data.list('chess'), memoised on the data being ready). */
 export function useOwnershipRoster(ready) {
-  return useMemo(() => ownershipRoster(data.list('chess')), [ready, data.locale()]);
+  return useMemo(() => ownershipRoster(data.list('chess')), [ready, data.locale?.() || 'zh']);
 }
 
 /** One chess: the operator → its stand-in, and the 持有 switch (the whole card is the switch). */

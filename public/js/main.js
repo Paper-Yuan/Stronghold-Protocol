@@ -28,7 +28,7 @@
 import './ui/compat.js';
 import { render } from '../vendor/preact.module.js';
 import { useErrorBoundary, useEffect, useState } from '../vendor/hooks.module.js';
-import { html, UiHosts, Button, Icon, MicroLabel, closeAllDialogs } from './ui/components.js';
+import { html, UiHosts, Button, Icon, MicroLabel, closeAllDialogs, confirmDialog, alertDialog } from './ui/components.js';
 import { ConnectionBanner } from './ui/connBanner.js';
 import { ToastHost, toast, toastError, describeError } from './ui/toasts.js';
 import { net, identity, NetError } from './net.js';
@@ -44,7 +44,7 @@ import { settingsStore, updateSettings } from './ui/settings.js';
 import { GuideHost } from './ui/guide.js';
 import { installDeviceSupport } from './ui/device.js';
 import { LoadoutHost } from './screens/loadout.js';
-import { installLoadoutSync } from './ui/loadoutSync.js';
+import { installLoadoutSync, installOwnershipSync, installDiySync } from './ui/loadoutSync.js';
 import { installSkinsSync } from './ui/skins.js';
 import { startBuildGuard } from './ui/buildGuard.js';
 
@@ -161,7 +161,46 @@ function onWelcome(msg) {
       store.patch('ui', { restoring: false });
     }, RESTORE_GRACE_MS);
   }
+  if (msg.serverLoad && typeof msg.serverLoad === 'object') {
+    store.set({ serverLoad: msg.serverLoad });
+    // Alert or warn players about server load on connection/welcome
+    checkServerLoadNotice(msg.serverLoad);
+  }
   schedulePendingJoin();
+}
+
+let hasShownLoadNotice = false;
+async function checkServerLoadNotice(load) {
+  if (hasShownLoadNotice || !load || load.status === 'normal') return;
+  hasShownLoadNotice = true;
+
+  if (load.status === 'critical') {
+    const isPreloaded = (() => {
+      try {
+        const saved = localStorage.getItem('sp_preloaded_profiles');
+        return !!(saved && (JSON.parse(saved).core || JSON.parse(saved).full));
+      } catch { return false; }
+    })();
+
+    const advice = isPreloaded
+      ? '检测到您已预载核心资源。当前服务器算力负荷极高（CPU ' + (load.cpuPercent || 0) + '%），对局中可能有轻微同步延迟。'
+      : '检测到您尚未预载资源！在当前服务器高负荷下直接进入游玩极易发生静态素材拉取超时或断线。建议立即前往主页右下角「⚡资源预载」或前往备用服务器。';
+
+    await alertDialog({
+      title: '⚠ 服务器高载荷预警',
+      text: html`<div>
+        <p style="margin: 0 0 .12rem 0; line-height: 1.5;">${load.message || '当前服务器在线人数较多，负载已逼近承载上限。'}</p>
+        <p style="margin: 0 0 .1rem 0; color: var(--amber); font-size: .13rem;">${advice}</p>
+        <div style="font-size: .12rem; color: var(--text-lo); background: rgba(0,0,0,0.25); padding: .08rem; border-radius: 4px;">
+          当前在线: <b>${load.onlineCount}</b> 人 · 算力折算点数: <b>${load.score} / ${load.maxScore || 150}</b> · CPU: <b>${load.cpuPercent}%</b>
+        </div>
+      </div>`,
+      okText: '我知道了，继续游玩',
+      tone: 'warn',
+    });
+  } else if (load.status === 'warning') {
+    toast(`⚠️ 服务器较拥挤（在线 ${load.onlineCount} 人），建议未预载玩家先进行资源预载`, 'warn', { ttl: 8000 });
+  }
 }
 
 function onRoomState(msg) {
@@ -456,6 +495,8 @@ async function boot() {
 
   wireNet();
   installLoadoutSync({ net });
+  installOwnershipSync({ net });
+  installDiySync({ net });
   installSkinsSync({ net });
   net.attachBrowserHooks();
   // Audio: unlock on first gesture, BGM follows the route / match phase (js/audio.js).

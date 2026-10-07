@@ -114,8 +114,11 @@ export function SettingsModal({ open, onClose }) {
       <div class="set-row">
         <span class="set-row__label">语音语言<${MicroLabel}>VOICE DUB<//></span>
         <div class="set-seg" role="radiogroup">
-          ${VOICE_LANG.map(([id, label]) => html`<button key=${id} type="button" role="radio" aria-checked=${s.voiceLang === id ? 'true' : 'false'}
-            class=${s.voiceLang === id ? 'is-on' : ''} onClick=${() => { updateSettings({ voiceLang: id }); audio.setVoiceLang?.(id); }}>${label}</button>`)}
+          ${VOICE_LANG.map(([id, label]) => {
+            const on = (s.voiceLang || 'jp') === id;
+            return html`<button key=${id} type="button" role="radio" aria-checked=${on ? 'true' : 'false'}
+              class=${on ? 'is-on' : ''} onClick=${() => { updateSettings({ voiceLang: id }); audio.setVoiceLang?.(id); audio.sfx?.('click'); }}>${label}</button>`;
+          })}
         </div>
       </div>
       <${Toggle} label="静音" micro="MUTE" value=${s.muted} onChange=${(v) => updateSettings({ muted: v })} />

@@ -19,6 +19,7 @@ import { data, useData } from '../data.js';
 import { FullscreenButton, detectFeatures } from '../ui/device.js';
 import { GIcon } from '../ui/gameComponents.js';
 import { SettingsModal } from '../ui/settings.js';
+import { PreloadPill, PreloadModal } from '../ui/preloadModal.js';
 
 // Same character classes as server/net.js sanitizeName (control, zero-width, bidi, BOM), so a name
 // the client accepts is never rejected by the server's hello validation.
@@ -186,6 +187,7 @@ export function TitleScreen() {
   const pendingJoin = useStore((s) => s.ui.pendingJoin);
   const [name, setName] = useState(() => store.get().me.name || identity.loadName() || '');
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [preloadOpen, setPreloadOpen] = useState(false);
   const assetsSettled = useData('assets');
   const assets = data.get('assets');
   const backdrop = findUiAsset(assets, BACKDROP_KEYS);
@@ -269,13 +271,17 @@ export function TitleScreen() {
     </main>
 
     <${SettingsModal} open=${settingsOpen} onClose=${() => setSettingsOpen(false)} />
+    <${PreloadModal} open=${preloadOpen} onClose=${() => setPreloadOpen(false)} />
 
     <footer class="title-foot">
       <div class="title-foot__col">
         <span>非官方同人复刻 · 游戏素材版权归 上海鹰角网络 / Yostar 所有</span>
         <span class="title-foot__credit">B 站 纸鸢安好 · UID 99201674 · 安卓端适配参考 B 站 @Ausevay</span>
       </div>
-      <${MicroLabel}>v${APP_VERSION} · WEB SIMULATION<//>
+      <div class="title-foot__right">
+        <${PreloadPill} onClick=${() => setPreloadOpen(true)} />
+        <${MicroLabel}>v${APP_VERSION} · WEB SIMULATION<//>
+      </div>
     </footer>
   </div>`;
 }

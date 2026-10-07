@@ -12,9 +12,10 @@ import { useEffect, useState } from '../../vendor/hooks.module.js';
 import { html, Icon, Button, TierChip } from '../ui/components.js';
 import { Img, RichText, BondGlyph } from '../ui/gameComponents.js';
 import { chessAvatarUrl, chessPortraitUrl, profIconUrl, skillRecordIconUrl, moduleTypeIconUrl } from '../ui/assetUrls.js';
-import { data } from '../data.js';
+import { data, useData } from '../data.js';
 import { PROF_NAME, skillLabel, moduleBadge, fullTraitText } from '../ui/loadoutModel.js';
 import { diySlotList, pickChoices, pickOptions, slotRecord, defaultPick } from '../ui/diyModel.js';
+import { skinsStore, availableSkins, loadSkinData, setSkin, clearSkin } from '../ui/skins.js';
 import { t } from '../../../shared/i18n.js';
 
 const cx = (...p) => p.flat().filter(Boolean).join(' ');
@@ -73,6 +74,15 @@ function SlotCard({ m, slot, pick, illegal, onOpen, onClear }) {
         ${mod ? html`<${Img} src=${moduleTypeIconUrl(data.get('local'), mod.type)} class="diy-slot__micon" fallback=${html`<b class="num">${moduleBadge({ typeName: mod.type })}</b>`} />` : html`<span class="diy-slot__micon diy-slot__micon--none">—</span>`}
         <span>${mod ? html`<b class="num">${mod.type || ''}</b> ${mod.name || ''}` : t('不装备模组')} <small class="t-dim">${t('（精锐时生效）')}</small></span>
       </span>
+      ${(() => {
+        const skinId = skinsStore.get().entries[rec.charId] || skinsStore.get().entries[slot.slotId];
+        if (!skinId) return null;
+        const skinInfo = availableSkins(rec.charId).find((s) => s.id === skinId);
+        return html`<span class="diy-slot__kit" data-skin=${skinId}>
+          <span class="diy-slot__micon" style="color: var(--mint-400); font-weight: bold; font-size: 11px;">衣</span>
+          <span style="color: var(--mint-400);">${t('时装：{name}', { name: skinInfo?.name || skinId })}</span>
+        </span>`;
+      })()}
       ${illegal ? html`<p class="diy-slot__bad"><${Icon} name="warn" />${t('这项自选在当前版本不可用，开局时会被移除')}</p>` : null}
     </div>
     <div class="diy-slot__acts">
@@ -156,6 +166,64 @@ export function DiyPicker(props) {
   return DiyPickerView({ ...props, filter, query, draft, onFilter: setFilter, onQuery: setQuery, onDraft: setDraft });
 }
 
+export const skinAvatarUrl = (skinId) => (skinId ? `/assets/char/skin_avatar/${skinId.replace(/[@#]/g, '_')}.png` : null);
+
+function DiySkinSection({ charId, slotId }) {
+  useData('skins');
+  useData('assets');
+  const [equipped, setEquipped] = useState(() => skinsStore.get().entries[charId] || skinsStore.get().entries[slotId] || null);
+  useEffect(() => {
+    loadSkinData();
+    setEquipped(skinsStore.get().entries[charId] || skinsStore.get().entries[slotId] || null);
+  }, [charId, slotId]);
+
+  const skins = availableSkins(charId);
+  if (!skins.length) return null;
+
+  const defAvatar = data.get('assets')?.chars?.[charId]?.avatar || `/assets/char/avatar/${charId}.png`;
+
+  const onChoose = (skinId) => {
+    if (skinId) {
+      setSkin(charId, skinId);
+      if (slotId) setSkin(slotId, skinId);
+      setEquipped(skinId);
+    } else {
+      clearSkin(charId);
+      if (slotId) clearSkin(slotId);
+      setEquipped(null);
+    }
+  };
+
+  return html`
+    <h4 class="diy-pick__sec" style="margin-top: 0.1rem;">
+      ${t('时装 / 皮肤')}<small>${t('{n} 款可选 · 局内与结算生效', { n: skins.length })}</small>
+    </h4>
+    <div class="diy-skin-grid" role="radiogroup" aria-label=${t('选择皮肤')}>
+      <button type="button" role="radio" aria-checked=${equipped ? 'false' : 'true'}
+        class=${cx('diy-skin-card', !equipped && 'is-on')}
+        onClick=${() => onChoose(null)}>
+        <img src=${defAvatar} class="diy-skin-card__img" alt="" loading="lazy" onError=${(e) => { e.currentTarget.style.opacity = '0.3'; }} />
+        <span class="diy-skin-card__info">
+          <b class="diy-skin-card__name">${t('默认')}</b>
+          <small class="diy-skin-card__tag">DEFAULT</small>
+        </span>
+      </button>
+      ${skins.map((sk) => {
+        const art = skinAvatarUrl(sk.id);
+        const isEquipped = equipped === sk.id;
+        return html`<button key=${sk.id} type="button" role="radio" aria-checked=${isEquipped ? 'true' : 'false'}
+          class=${cx('diy-skin-card', isEquipped && 'is-on')}
+          onClick=${() => onChoose(sk.id)}>
+          <img src=${art} class="diy-skin-card__img" alt="" loading="lazy" onError=${(e) => { e.currentTarget.src = defAvatar; }} />
+          <span class="diy-skin-card__info">
+            <b class="diy-skin-card__name">${sk.name}</b>
+            <small class="diy-skin-card__tag">${sk.group || 'SPECIAL'}</small>
+          </span>
+        </button>`;
+      })}
+    </div>`;
+}
+
 /**
  * The picker's view (no hooks: the tests draw it): `filter` 'all' | 'proto' | 'owned', `query`, `draft` the pick being
  * made (null = none chosen yet) and their setters.
@@ -213,7 +281,9 @@ export function DiyPickerView({ m, slot, picks, kitted, onDone, onClose, filter,
               : [html`<${ModuleRow} key="none" id=${null} rec=${null} on=${modOn == null} locked=${false} onPick=${() => setDraft({ ...draft, uniEquipId: null })} />`,
                 ...ch.modules.map((x) => html`<${ModuleRow} key=${x.uniEquipId} id=${x.uniEquipId} rec=${x.rec} on=${modOn === x.uniEquipId} locked=${false}
                   onPick=${(id) => setDraft({ ...draft, uniEquipId: id })} />`)]}
-          </div>` : html`<p class="lo-empty t-dim">${t('从左侧选择一名干员')}</p>`}
+          </div>
+          <${DiySkinSection} charId=${draft.charId} slotId=${slot.slotId} />
+        ` : html`<p class="lo-empty t-dim">${t('从左侧选择一名干员')}</p>`}
       </div>
     </div>
     <footer class="diy-pick__foot">

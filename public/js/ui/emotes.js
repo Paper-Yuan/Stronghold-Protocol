@@ -206,7 +206,7 @@ export function EmoteBubble({ id, class: cls, ttl = EMOTE_BUBBLE_MS, at }) {
  * @param {{ onSend: (id:string)=>void, open: boolean, onToggle: (open:boolean)=>void, disabled?: boolean,
  *   cooldownMs?: number }} props
  */
-export function EmoteWheel({ onSend, open, onToggle, disabled = false, cooldownMs = EMOTE_COOLDOWN_MS }) {
+export function EmoteWheel({ onSend, open, onToggle, disabled = false, cooldownMs = EMOTE_COOLDOWN_MS, compact = false }) {
   useData('local');
   useEffect(() => { ensureEmoteCss(); }, []);
   const [page, setPage] = useState(lastThemeIndex);
@@ -302,15 +302,15 @@ export function EmoteWheel({ onSend, open, onToggle, disabled = false, cooldownM
   };
 
   const theme = EMOTE_THEMES[clampPage(page)];
-  const btnSprite = emoteUiSprite(disabled || cooling ? 'emoji_btn_disable' : 'emoji_btn');
+  const btnSprite = compact ? null : emoteUiSprite(disabled || cooling ? 'emoji_btn_disable' : 'emoji_btn');
   const panelBg = emoteUiSprite('emoji_bkg');
   const cellBg = emoteUiSprite('emoji_cell_bkg');
   const panelStyle = [panelBg && `--ewheel-bg:url("${panelBg}")`, cellBg && `--ewheel-cell:url("${cellBg}")`].filter(Boolean).join(';');
   return html`<div class="ewheel">
-    <button type="button" class=${cx('ewheel__btn', btnSprite && 'has-sprite', open && 'is-on', cooling && 'is-cooling')}
+    <button type="button" class=${cx(compact ? 'gm__gear ewheel__btn--compact' : 'ewheel__btn', btnSprite && 'has-sprite', open && 'is-on', cooling && 'is-cooling')}
       style=${btnSprite ? `--ewheel-btn:url("${btnSprite}")` : ''} onClick=${() => onToggle(!open)}
-      aria-expanded=${open ? 'true' : 'false'} aria-haspopup="dialog" disabled=${disabled || cooling}>
-      ${btnSprite ? null : html`<${GIcon} name="emote" />`}<span class="ewheel__label">交流</span>
+      aria-expanded=${open ? 'true' : 'false'} aria-haspopup="dialog" aria-label="交流" title="交流" disabled=${disabled || cooling}>
+      ${btnSprite ? null : html`<${GIcon} name="emote" />`}${compact ? null : html`<span class="ewheel__label">交流</span>`}
     </button>
     ${open ? html`<div class=${cx('ewheel__panel', panelBg && 'has-sprite', cellBg && 'has-cell')} style=${panelStyle} role="dialog" aria-label="交流">
       <div class="ewheel__viewport" onPointerDown=${onPointerDown} onPointerMove=${onPointerMove}

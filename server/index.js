@@ -44,6 +44,22 @@ import { Lobby } from './lobby.js';
 import { getData, loadData } from './data.js';
 import { PROTOCOL_VERSION, APP_VERSION } from '../shared/constants.js';
 import { MEDIA_PREFIX, AUDIO_EXTS } from '../shared/media.js';
+import { AdminService, recordAdminLog } from './admin.js';
+
+function readJsonBody(req, limit = 64 * 1024) {
+  return new Promise((resolve, reject) => {
+    let buf = '';
+    req.on('data', (chunk) => {
+      buf += chunk;
+      if (buf.length > limit) reject(new Error('Payload too large'));
+    });
+    req.on('end', () => {
+      try { resolve(buf ? JSON.parse(buf) : {}); }
+      catch (e) { reject(e); }
+    });
+    req.on('error', reject);
+  });
+}
 
 /** Repository root. */
 export const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -668,6 +684,13 @@ export async function startServer(opts = {}) {
   for (const k of ['lobbyGraceMs', 'maxRooms', 'maxRoomsPerAddr', 'maxMatchesPerAddr', 'resyncMinGapMs', 'soloReconnectWindowMs']) {
     if (opts[k] != null) lobbyOptions[k] = opts[k];
   }
+  const origInfo = log.info;
+  const origWarn = log.warn;
+  const origError = log.error;
+  log.info = (...args) => { recordAdminLog('info', args.map(String).join(' ')); return origInfo?.apply(log, args); };
+  log.warn = (...args) => { recordAdminLog('warn', args.map(String).join(' ')); return origWarn?.apply(log, args); };
+  log.error = (...args) => { recordAdminLog('error', args.map(String).join(' ')); return origError?.apply(log, args); };
+
   const lobby = new Lobby({ registry, log, MatchClass: opts.MatchClass, getData: () => data, seedFn: opts.seedFn, options: lobbyOptions });
   const network = new Network({ registry, handler: lobby, log, options: netOptions });
   const serveStatic = createStaticHandler({ publicDir, dataDir, sharedDir, log });
@@ -675,6 +698,12 @@ export async function startServer(opts = {}) {
   // The tag is per process (see buildTag): read the browser runtime once, here, not on every /healthz.
   resetBuildTag();
   buildTag();
+
+  const admin = new AdminService({
+    lobby, network, registry, startedAt,
+    buildTag: () => buildTag(),
+    secret: opts.adminSecret || process.env.ADMIN_SECRET,
+  });
 
   const server = http.createServer((req, res) => {
     res.setHeader('X-Content-Type-Options', 'nosniff');
@@ -690,6 +719,46 @@ export async function startServer(opts = {}) {
     if (url.length > MAX_URL_LENGTH) { sendError(req, res, 414, '请求地址过长 · URI too long'); return; }
     const parts = splitUrl(url);
     if (!parts) { sendError(req, res, 400, '请求地址无效 · Bad request'); return; }
+    if (parts.rawPath === '/admin' || parts.rawPath === '/admin/') {
+      await serveStatic(req, res, '/admin/index.html', parts.query);
+      return;
+    }
+    if (parts.rawPath.startsWith('/api/admin/')) {
+      if (!admin.authenticate(req)) {
+        sendJson(req, res, 401, { ok: false, error: 'Unauthorized' });
+        return;
+      }
+      if (parts.rawPath === '/api/admin/overview' && (req.method === 'GET' || req.method === 'HEAD')) {
+        sendJson(req, res, 200, admin.getOverview());
+        return;
+      }
+      if (parts.rawPath === '/api/admin/rooms' && (req.method === 'GET' || req.method === 'HEAD')) {
+        sendJson(req, res, 200, admin.getRooms());
+        return;
+      }
+      if (parts.rawPath === '/api/admin/logs' && (req.method === 'GET' || req.method === 'HEAD')) {
+        const since = Number(new URLSearchParams(parts.query).get('since')) || 0;
+        sendJson(req, res, 200, admin.getLogs(since));
+        return;
+      }
+      if (parts.rawPath === '/api/admin/broadcast' && req.method === 'POST') {
+        try {
+          const body = await readJsonBody(req);
+          const ok = admin.broadcast(body.message);
+          sendJson(req, res, 200, { ok });
+        } catch {
+          sendJson(req, res, 400, { ok: false, error: 'Invalid JSON' });
+        }
+        return;
+      }
+      if (parts.rawPath === '/api/admin/drain' && req.method === 'POST') {
+        admin.startDrain();
+        sendJson(req, res, 200, { ok: true, draining: true });
+        return;
+      }
+      sendJson(req, res, 404, { ok: false, error: 'Not found' });
+      return;
+    }
     if (req.method !== 'GET' && req.method !== 'HEAD') {
       res.setHeader('Allow', 'GET, HEAD');
       sendError(req, res, 405, '不支持的请求方法 · Method not allowed');
@@ -790,7 +859,7 @@ export async function startServer(opts = {}) {
     return closing;
   }
 
-  return { port: actualPort, host, url, server, wss, lobby, network, registry, close };
+  return { port: actualPort, host, url, server, wss, lobby, network, registry, admin, close };
 }
 
 // ---------------------------------------------------------------------------------------------------

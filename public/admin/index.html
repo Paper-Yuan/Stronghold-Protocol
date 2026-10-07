@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>卫戍协议 · 服务端管理与监控后台</title>
+  <link rel="stylesheet" href="/admin/admin.css">
+  <link rel="icon" href="/favicon.ico">
+</head>
+<body class="admin-body">
+  <header class="adm-topbar">
+    <div class="adm-brand">
+      <span class="adm-brand__logo">🛡️</span>
+      <div class="adm-brand__title">
+        <h1>STRONGHOLD ALLIANCE</h1>
+        <small>服务端实时监控 & 运维控制台</small>
+      </div>
+    </div>
+    <div class="adm-topbar__right">
+      <span id="badge-version" class="adm-badge adm-badge--cyan">v0.2.1-fusion</span>
+      <span id="badge-status" class="adm-badge adm-badge--green">服务运行中</span>
+      <button id="btn-logout" class="adm-btn adm-btn--ghost" style="display:none;">退出登录</button>
+    </div>
+  </header>
+
+  <!-- Login Overlay -->
+  <div id="login-modal" class="adm-modal" style="display:none;">
+    <div class="adm-modal__card">
+      <h2>安全验证 · ADMIN ACCESS</h2>
+      <p>请输入管理员安全令牌 (ADMIN_SECRET) 以访问监控控制台：</p>
+      <form id="login-form">
+        <input type="password" id="input-token" class="adm-input" placeholder="输入访问密钥 (Token)..." required autofocus>
+        <div id="login-err" class="adm-err" style="display:none;">令牌无效，请重试</div>
+        <button type="submit" class="adm-btn adm-btn--primary" style="width:100%; margin-top:12px;">进入控制台</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Main Dashboard Container -->
+  <main id="dashboard" class="adm-main" style="display:none;">
+    <!-- Stat Cards Grid -->
+    <section class="adm-grid-stats">
+      <div class="adm-card adm-card--stat">
+        <span class="adm-card__label">在线连接 / 活跃会话</span>
+        <div class="adm-card__val"><span id="stat-sockets">0</span> <small>/ <span id="stat-sessions">0</span></small></div>
+        <span class="adm-card__sub" id="stat-clients">全量包: 0 | 预载: 0 | 在线: 0</span>
+      </div>
+      <div class="adm-card adm-card--stat">
+        <span class="adm-card__label">当前房间 / 对战中</span>
+        <div class="adm-card__val"><span id="stat-rooms">0</span> <small>/ <span id="stat-matches">0</span></small></div>
+        <span class="adm-card__sub">Active Rooms & In-Match</span>
+      </div>
+      <div class="adm-card adm-card--stat">
+        <span class="adm-card__label">CPU 负载 / 运行时间</span>
+        <div class="adm-card__val"><span id="stat-cpu">0.0%</span></div>
+        <span class="adm-card__sub" id="stat-uptime">在线: 0分0秒</span>
+      </div>
+      <div class="adm-card adm-card--stat">
+        <span class="adm-card__label">进程内存 (RSS / Heap)</span>
+        <div class="adm-card__val"><span id="stat-mem">0</span> <small>MB</small></div>
+        <span class="adm-card__sub" id="stat-heap">堆已用: 0 MB</span>
+      </div>
+    </section>
+
+    <!-- Hot Reload & Drain Status Banner -->
+    <section id="drain-banner" class="adm-banner adm-banner--warn" style="display:none;">
+      <div class="adm-banner__text">
+        ⚠️ <strong>服务器当前处于热切平滑排空模式 (Graceful Drain)</strong>：新房间已停止创建，正等待现有对战自然结束以完成无损热切换。
+      </div>
+    </section>
+
+    <!-- Operational Controls -->
+    <section class="adm-section">
+      <div class="adm-section__head">
+        <h2>运维控制台</h2>
+      </div>
+      <div class="adm-ops-bar">
+        <div class="adm-ops-group" style="flex:1;">
+          <input type="text" id="input-broadcast" class="adm-input" placeholder="输入全服广播内容（将实时弹窗通知所有房间）..." maxlength="80">
+          <button id="btn-broadcast" class="adm-btn adm-btn--primary">全服广播</button>
+        </div>
+        <div class="adm-ops-group">
+          <button id="btn-drain" class="adm-btn adm-btn--warn" title="开启平滑排空，拒绝新进房间，等待打完后执行平滑热切换">触发热切排空</button>
+          <button id="btn-refresh" class="adm-btn adm-btn--ghost">刷新数据</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Active Rooms Table -->
+    <section class="adm-section">
+      <div class="adm-section__head">
+        <h2>活跃房间与对局态势 (<span id="rooms-count">0</span>)</h2>
+      </div>
+      <div class="adm-table-wrap">
+        <table class="adm-table">
+          <thead>
+            <tr>
+              <th>房间号</th>
+              <th>模式 / 难度</th>
+              <th>人数</th>
+              <th>对局状态</th>
+              <th>回合 / 阶段</th>
+              <th>存活干员</th>
+            </tr>
+          </thead>
+          <tbody id="rooms-tbody">
+            <tr>
+              <td colspan="6" class="adm-td-empty">暂无活动房间</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Real-time Log Stream -->
+    <section class="adm-section">
+      <div class="adm-section__head">
+        <h2>服务端实时运行日志 (Live Log Stream)</h2>
+        <div class="adm-log-filters">
+          <button class="adm-pill is-active" data-filter="all">全部</button>
+          <button class="adm-pill" data-filter="info">INFO</button>
+          <button class="adm-pill" data-filter="warn">WARN</button>
+          <button class="adm-pill" data-filter="error">ERROR</button>
+        </div>
+      </div>
+      <div id="log-console" class="adm-console"></div>
+    </section>
+  </main>
+
+  <script type="module" src="/admin/admin.js"></script>
+</body>
+</html>

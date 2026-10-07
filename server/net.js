@@ -665,6 +665,14 @@ export class Network {
     session.lastSeen = now;
     session.addr = conn.ip;
     session.limitKey = conn.key;
+    if (msg.client && typeof msg.client === 'object') {
+      session.client = {
+        platform: String(msg.client.platform || 'web'),
+        bundle: String(msg.client.bundle || 'stream'),
+      };
+    } else if (!session.client) {
+      session.client = { platform: 'web', bundle: 'stream' };
+    }
 
     let extra = null;
     try { extra = this.handler.welcomeInfo?.() ?? null; } catch (e) { this.log.error('[net] welcomeInfo crashed', e); }

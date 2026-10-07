@@ -257,6 +257,14 @@ export function createDataStore(opts = {}) {
       listeners.add(fn);
       return () => listeners.delete(fn);
     },
+    /** Current game-text locale ('zh' or the language of the last switch). */
+    locale: () => 'zh',
+    /** The languages whose overlays apply now, best first (empty in Chinese). */
+    localeChain: () => [],
+    /** Switch the game texts' language (defaults to 'zh'). */
+    setLocale: async (lang) => 'zh',
+    /** A Chinese game-data name in the current locale. */
+    localeName: (zh) => zh,
   };
 }
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# hot-swap.sh — 阿里云全量服务端：蓝绿零停机热切换与旧物清理自动化脚本
+# deploy/hot-swap.sh — 阿里云全量服务端：蓝绿零停机热切换与旧物清理自动化脚本
 set -euo pipefail
 
 PACKAGE_FILE="${1:-}"

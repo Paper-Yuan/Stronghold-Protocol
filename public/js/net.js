@@ -373,7 +373,22 @@ export class Net {
   _sendHello() {
     if (!this.name) return;
     const rid = this._nextRid();
-    const msg = { t: 'hello', rid, name: this.name, version: PROTOCOL_VERSION };
+    const isAndroid = typeof globalThis.AndroidNative?.isNativeApp === 'function' ? globalThis.AndroidNative.isNativeApp() : false;
+    let preloaded = false;
+    if (!isAndroid) {
+      try {
+        const saved = localStorage.getItem('sp_preloaded_profiles');
+        if (saved) {
+          const p = JSON.parse(saved);
+          if (p.core || p.full) preloaded = true;
+        }
+      } catch {}
+    }
+    const client = {
+      platform: isAndroid ? 'android' : 'web',
+      bundle: isAndroid ? 'full' : (preloaded ? 'preloaded' : 'stream'),
+    };
+    const msg = { t: 'hello', rid, name: this.name, version: PROTOCOL_VERSION, client };
     let token = null;
     try { token = this.getToken(); } catch { token = null; }
     if (typeof token === 'string' && token.length > 0 && token.length <= 64) msg.token = token;

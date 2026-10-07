@@ -127,6 +127,8 @@ import { IDENTITY, bossPrepField, tilesToDisp, leaderStand } from './prepfield.j
 import { pickOnTile, pickBattle, hitRectAt, hitTiles } from './pick.js';
 import { promotionsOf } from './promote.js';
 import { skinFor } from '../ui/skins.js';
+import { diyRecordFor } from '../ui/gameLogic/diy.js';
+import { standInOf } from '../ui/gameLogic/standIn.js';
 
 const VENDOR = { pixi: '/vendor/pixi.min.js', spine: '/vendor/pixi-spine.js' };
 const PIECE_DIRS = new Set(['UP', 'RIGHT', 'DOWN', 'LEFT']);
@@ -360,9 +362,24 @@ function makeData(src) {
     } catch { /* ignore */ }
     return null;
   };
+  const getFile = (file) => {
+    try {
+      if (src && typeof src.get === 'function') return src.get(file);
+      return src?.[file] ?? null;
+    } catch { /* ignore */ }
+    return null;
+  };
   return {
     chess: (id) => look('chess', id), token: (id) => look('tokens', id), item: (id) => look('items', id),
     enemy: (id) => look('enemies', id), stage: (id) => look('stages', id), bond: (id) => look('bonds', id),
+    diy: (id, pick) => {
+      const c = look('chess', id);
+      return c && pick ? diyRecordFor(c, pick, { chess: getFile('chess'), backups: getFile('backups') }) : null;
+    },
+    standIn: (id) => {
+      const c = look('chess', id);
+      return c ? standInOf(c, getFile('backups')) : null;
+    },
   };
 }
 

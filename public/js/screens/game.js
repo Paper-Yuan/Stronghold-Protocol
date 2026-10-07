@@ -205,6 +205,7 @@ function MatchScreen() {
   const [detail, setDetail] = useState(null);            // detail target
   const [collapsed, setCollapsed] = useState(false);
   const [rewardMin, setRewardMin] = useState(false);
+  const [chatOpen, setChatOpen] = useState(false);
   const [emoteOpen, setEmoteOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [exitOpen, setExitOpen] = useState(false);
@@ -664,15 +665,33 @@ function MatchScreen() {
     prevActive.current = activeBonds;
   }, [activeBonds]);
 
-  // emote bubbles (and a sound for teammates' emotes)
+  // emote & text bubbles (and a sound for teammates' emotes)
+  const chatMessages = useStore((s) => s.chatMessages) || [];
   const bubbleMs = (gd.config?.timers?.chatBubble ?? 3) * 1000;
-  const bubbles = activeBubbles(emotes, Date.now(), bubbleMs);
+  const bubbles = useMemo(() => {
+    const map = activeBubbles(emotes, Date.now(), bubbleMs);
+    const now = Date.now();
+    for (const cm of chatMessages) {
+      if (cm?.playerId && (now - (cm.at || now) < 4000)) {
+        map.set(cm.playerId, { text: cm.text, seq: cm.at || now, at: cm.at || now });
+      }
+    }
+    return map;
+  }, [emotes, chatMessages, bubbleMs]);
   useTicker(bubbles.size ? 500 : 0); // re-render only while a bubble is showing (to expire it)
   const lastEmote = useRef(emotes.length ? emotes[emotes.length - 1].seq : 0);
   useEffect(() => {
     const e = emotes[emotes.length - 1];
     if (e && e.seq > lastEmote.current) { lastEmote.current = e.seq; if (e.playerId !== myId) audio.sfx('emote', { volume: 0.6 }); }
   }, [emotes]);
+  const lastChatAt = useRef(chatMessages.length ? (chatMessages[chatMessages.length - 1].at || 0) : 0);
+  useEffect(() => {
+    const m = chatMessages[chatMessages.length - 1];
+    if (m && (m.at || 0) > lastChatAt.current) {
+      lastChatAt.current = m.at || 0;
+      if (m.playerId !== myId) audio.sfx('tab', { volume: 0.5 });
+    }
+  }, [chatMessages]);
 
   // ---- actions ----------------------------------------------------------------------------------------------
   const buy = useCallback((i) => actions.buy(i), []);
@@ -1096,7 +1115,7 @@ function MatchScreen() {
     const u = (Array.isArray(field?.units) ? field.units : []).find((x) => x && x.id === detail.unitId);
     return u ? { ...detail, unit: u } : detail;
   }, [detail, field]);
-  const resolved = useMemo(() => resolveDetail(detailTarget, placeCtx.pieces), [detailTarget, placeCtx]);
+  const resolved = useMemo(() => resolveDetail(detailTarget, placeCtx.pieces, { priv }), [detailTarget, placeCtx, priv]);
   useEffect(() => { if (detail && !resolved && detail.kind === 'piece') setDetail(null); }, [resolved]);
   const snapHp = (() => {
     const id = resolved?.unitId;
@@ -1328,7 +1347,7 @@ function MatchScreen() {
         self=${Number.isFinite(priv?.lp) ? { lp: priv.lp, pending: liveLpNow.pending, unite: liveLpNow.unite, left: liveLpNow.left } : null}
         observe=${cc ? { canObserve: (p) => observeTarget(p, pub, myId, { observing: watchingOther, ownDone: localDone }), observing: watchingOther, onBack: backHome } : null} />
 
-      <${ChatBox} />
+      <${ChatBox} active=${chatOpen} onToggle=${setChatOpen} />
 
       <div class="gm__effects"><${EffectsList} effects=${watchingOther && field ? (field.effects ?? null) : priv?.effects} /></div>
 
@@ -1360,7 +1379,8 @@ function MatchScreen() {
       <${Ticker} />
 
       <div class="gm__corner">
-        ${spectator ? null : html`<${EmoteWheel} open=${emoteOpen} onToggle=${setEmoteOpen} onSend=${(id) => actions.emote(id)} disabled=${conn.status !== 'online'} />`}
+        <button type="button" class=${`gm__gear gm__chat ${chatOpen ? 'is-on' : ''}`} aria-label="发言" title="发言" onClick=${() => setChatOpen((v) => !v)}><${GIcon} name="chat" /></button>
+        ${spectator ? null : html`<${EmoteWheel} compact=${true} open=${emoteOpen} onToggle=${setEmoteOpen} onSend=${(id) => actions.emote(id)} disabled=${conn.status !== 'online'} />`}
         <button type="button" class="gm__gear" aria-label="设置" title="设置" onClick=${() => setSettingsOpen(true)}><${GIcon} name="gear" /></button>
         <button type="button" class="gm__gear gm__guide" aria-label="玩法说明" title="玩法说明" onClick=${() => openGuide(0)}><${Icon} name="book" /></button>
         <${FullscreenButton} class="gm__gear gm__fs" />

@@ -77,9 +77,11 @@
 //     code; a player never switches to spectating in place (ALREADY). Disconnect / grace / reconnect / expiry work as for
 //     a player seat (the seat is kept and given back on resume).
 
+import os from 'node:os';
 import { randomBytes, randomInt } from 'node:crypto';
 import { ERR, MAX_SEATS, MAX_SPECTATORS, ROOM_CODE_LEN, modeIdFor } from '../shared/constants.js';
 import { checkLoadout, checkNotOwned, checkDiyPicks } from '../shared/protocol.js';
+import { getCpuUsagePercent } from './admin.js';
 import { encode, isDroppable, isErrCode, sendRaw, sendSession } from './net.js';
 import { getData as defaultGetData, lookup } from './data.js';
 import { Match as DefaultMatch } from './match/Match.js';
@@ -487,6 +489,7 @@ export class Lobby {
   // ---------------------------------------------------------------------------------------------------
 
   create(session, { mode, difficulty }) {
+    if (this.isDraining) return fail(ERR.MAINTENANCE, '服务正在热重载更新中，暂停创建新房间，请稍候连接新节点');
     const cur = this.roomOf(session);
     if (cur && cur.match) return fail(ERR.ROOM_STARTED, 'leave your running match first');
     if (this.rooms.size >= this.opts.maxRooms) return fail(ERR.INTERNAL, 'too many rooms');
@@ -893,9 +896,49 @@ export class Lobby {
     return OK;
   }
 
-  /** Extra fields of every `welcome` (net.js): the operators a 自选 slot may field (shared/diy.js `kitted`). */
+  /** Extra fields of every `welcome` (net.js): load metrics & operator loadouts */
   welcomeInfo() {
-    return { diyKitted: KITTED_CHARS };
+    let androidFull = 0;
+    let webPreloaded = 0;
+    let webStream = 0;
+    if (this.registry?.byPlayerId) {
+      for (const s of this.registry.byPlayerId.values()) {
+        if (!s.connected) continue;
+        if (s.client?.bundle === 'full') androidFull++;
+        else if (s.client?.bundle === 'preloaded') webPreloaded++;
+        else webStream++;
+      }
+    }
+    const onlineCount = androidFull + webPreloaded + webStream;
+    // Equivalent Load Score (ELS) out of 150 capacity benchmark:
+    // Full/Preloaded: 1.0 pt, Un-preloaded Web stream: 8.0 pts
+    const loadScore = Math.round((androidFull * 1.0 + webPreloaded * 1.0 + webStream * 8.0) * 10) / 10;
+    const cpu = getCpuUsagePercent();
+    const freeMemMb = Math.round(os.freemem() / 1024 / 1024);
+
+    let status = 'normal';
+    let message = '';
+    if (loadScore >= 135 || cpu >= 85 || freeMemMb < 250) {
+      status = 'critical';
+      message = '当前服务器处于高载荷运行状态（算力/网络接近上限）。新加入玩家或未预载玩家可能会遇到明显卡顿或掉线，建议前往备用服游玩或稍后再试。';
+    } else if (loadScore >= 100 || cpu >= 75 || freeMemMb < 400) {
+      status = 'warning';
+      message = '当前服务器处于高峰拥挤状态。建议网页端玩家在主页右下角「⚡资源预载」完成缓存后再进入游戏，以获得顺畅体验。';
+    }
+
+    return {
+      diyKitted: KITTED_CHARS,
+      serverLoad: {
+        status,
+        score: loadScore,
+        maxScore: 150,
+        onlineCount,
+        cpuPercent: cpu,
+        freeMemMb,
+        clients: { androidFull, webPreloaded, webStream },
+        message,
+      },
+    };
   }
 
   // ---------------------------------------------------------------------------------------------------

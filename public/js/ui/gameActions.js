@@ -67,6 +67,7 @@ export const actions = {
   choice: (idx) => act('g.choice', { idx }),
   ready: (ready) => act('g.ready', { ready }, { sfx: ready ? 'ready' : 'back' }),
   emote: (id) => act('g.emote', { id }, { quiet: true }),
+  chat: (text) => act('g.chat', { text }, { quiet: true }),
   watch: (fieldId) => act('g.watch', { fieldId }, { sfx: 'tab' }),
   autoplay: (on) => act('g.autoplay', { on }),
   // solo battles only (ui/matchStatus.js pauseAvailable): m.public.paused follows
