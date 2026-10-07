@@ -33,5 +33,5 @@
 | 文件名 | 文件大小 | 校验 (SHA-256) | 说明 |
 |---|---|---|---|
 | `Stronghold-Protocol-v0.1.6-android.apk` | 480.00 MB | `7db030825a0371e510d5a78688f73f886476c291669a4305e8ebc097d3af582a` | Android 客户端正式版（覆盖安装升级） |
-| `Stronghold-Protocol-v0.1.6-Windows-x64.zip` | 537.5 MB | `d66e13362eb300d41a6a626608efc343d9cb656f16369fc39559840ac367b92c` | Windows 电脑桌面开箱即用整合包（带 .exe 一键启动器） |
+| `Stronghold-Protocol-v0.1.6-Windows-x64.zip` | 537.5 MB | `4a704c41aa75ece70bf9d506d88c79bb43c36dba426c88b1e24d9d365eb3317c` | Windows 电脑桌面开箱即用整合包（带 .exe 双模一键启动器） |
 | `Stronghold-Protocol-v0.1.6-Server-Headless.zip` | 54.1 MB | `1d926d9990dfe3aab6795e621194a5153151520a744517be399d4c7ec6f5f733` | 纯逻辑极简开服包（剥离静态大素材，双击启动） |
