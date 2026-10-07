@@ -50,8 +50,8 @@ export const NET_DEFAULTS = Object.freeze({
   reconnectWindowMs: 10 * 60_000, // disconnected sessions stay resumable this long
   snapDropBytes: 1 << 20,       // skip b.snap while bufferedAmount exceeds this
   hardBufferBytes: 16 << 20,    // terminate a socket whose send queue exceeds this
-  maxConnections: 2000,         // concurrent sockets (enforced by index.js at upgrade time)
-  maxConnectionsPerAddr: 64,    // concurrent sockets per client network key (0 = unlimited); see clientAddress
+  maxConnections: 5000,         // concurrent sockets (enforced by index.js at upgrade time)
+  maxConnectionsPerAddr: 512,   // concurrent sockets per client network key (0 = unlimited); see clientAddress
   maxSessions: 20_000,          // registry cap; oldest idle sessions are evicted first
   heavyPerSec: 2,               // refill of the bucket for resend-heavy intents (HEAVY_TYPES)
   heavyBurst: 6,
@@ -60,10 +60,11 @@ export const NET_DEFAULTS = Object.freeze({
 
 /**
  * Intents that also draw from the per-connection heavy bucket: g.watch (its reply is a large state resend, m.field),
- * room.loadout (a ≤ 160-entry map validated against the game data; the client debounces its edits) and room.spectate
+ * room.loadout (a ≤ 160-entry map validated against the game data; the client debounces its edits), room.ownership
+ * (a ≤ 160-id list, the same way), room.diy (≤ 8 自选 picks checked against the data, the same way) and room.spectate
  * (taking a spectator seat in a running match resends its state like a watcher's g.watch — server/lobby.js spectate).
  */
-export const HEAVY_TYPES = new Set(['g.watch', 'room.loadout', 'room.spectate']);
+export const HEAVY_TYPES = new Set(['g.watch', 'room.loadout', 'room.ownership', 'room.diy', 'room.spectate']);
 
 /** Close codes (see header). */
 export const CLOSE = Object.freeze({ REPLACED: 4001, HELLO_TIMEOUT: 4002, POLICY: 1008, SHUTDOWN: 1001 });
@@ -106,6 +107,10 @@ export class Session {
     this.resyncAt = -Infinity;
     /** @type {Record<string, { skill: number, module: string|null }> | null} checked operator loadout (lobby-owned, DESIGN §16) */
     this.loadout = null;
+    /** @type {readonly string[] | null} checked not-owned chess ids (干员持有, lobby-owned, 0.2.0 补位) */
+    this.notOwned = null;
+    /** @type {Readonly<Record<string, { charId: string, skillIndex: number, uniEquipId: string|null }>> | null} checked 自选 picks (lobby-owned, 0.2.0 自选编队) */
+    this.diy = null;
     /** @type {string} client address of the latest connection (logging) */
     this.addr = '?';
     /** @type {string | null} per-network limit key of the latest connection (null = not limited), see clientAddress */
@@ -472,6 +477,7 @@ class Connection {
     this.key = addr.key;
     this.openedAt = now;
     this.alive = true;
+    this.missedPings = 0;
     /** @type {Session | null} */
     this.session = null;
     this.bucket = new TokenBucket(opts.ratePerSec, opts.rateBurst, now);
@@ -557,7 +563,7 @@ export class Network {
     ws.on('message', (data, isBinary) => {
       try { this.onFrame(conn, data, isBinary); } catch (e) { this.log.error('[net] frame handler crashed', e); }
     });
-    ws.on('pong', () => { conn.alive = true; if (conn.session && conn.session.ws === ws) conn.session.lastSeen = this.now(); });
+    ws.on('pong', () => { conn.alive = true; conn.missedPings = 0; if (conn.session && conn.session.ws === ws) conn.session.lastSeen = this.now(); });
     ws.on('error', (e) => { this.log.debug?.('[net] socket error', e?.code || e?.message); });
     ws.on('close', () => { try { this.onClose(conn); } catch (e) { this.log.error('[net] close handler crashed', e); } });
   }
@@ -572,6 +578,7 @@ export class Network {
     if (conn.closing || this.closed) return;
     const now = this.now();
     conn.alive = true;
+    conn.missedPings = 0;
     if (conn.session && conn.session.ws === conn.ws) conn.session.lastSeen = now;
 
     if (!conn.bucket.take(now)) {
@@ -659,7 +666,9 @@ export class Network {
     session.addr = conn.ip;
     session.limitKey = conn.key;
 
-    const welcome = { t: 'welcome', playerId: session.playerId, token: session.token, name: session.name, serverNow: now, version: PROTOCOL_VERSION, resumed };
+    let extra = null;
+    try { extra = this.handler.welcomeInfo?.() ?? null; } catch (e) { this.log.error('[net] welcomeInfo crashed', e); }
+    const welcome = { ...(extra && typeof extra === 'object' ? extra : null), t: 'welcome', playerId: session.playerId, token: session.token, name: session.name, serverNow: now, version: PROTOCOL_VERSION, resumed };
     if (validRid(rid)) welcome.rid = rid;
     this.reply(conn, welcome);
     try {
@@ -712,7 +721,14 @@ export class Network {
           conn.close(CLOSE.HELLO_TIMEOUT, 'hello timeout');
           continue;
         }
-        if (!conn.alive) { conn.ws.terminate(); continue; }
+        if (!conn.alive) {
+          if (++conn.missedPings >= 2) {
+            conn.ws.terminate();
+            continue;
+          }
+        } else {
+          conn.missedPings = 0;
+        }
         conn.alive = false;
         conn.ws.ping();
       } catch (e) {

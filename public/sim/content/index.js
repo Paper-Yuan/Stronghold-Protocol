@@ -22,12 +22,7 @@
 import { genericKit } from './generic.js';
 import { withUnitLoadouts } from '../simdata.js';
 
-import tier1 from './kits/tier1.js';
-import tier2 from './kits/tier2.js';
-import tier3 from './kits/tier3.js';
-import tier4 from './kits/tier4.js';
-import tier5 from './kits/tier5.js';
-import tier6 from './kits/tier6.js';
+import { KITS } from './kits/index.js';
 import * as tokens from './tokens.js';
 import * as devices from './devices.js';
 import * as enemies from './enemies.js';
@@ -38,12 +33,10 @@ import * as items from './items.js';
 import * as bands from './bands.js';
 import * as choices from './choices.js';
 
-const TIERS = [tier1, tier2, tier3, tier4, tier5, tier6];
 const DOMAIN_NAMES = ['tokens', 'devices', 'enemies', 'bosses', 'bonds', 'garrisons', 'items', 'bands', 'choices'];
 const DOMAINS = [tokens, devices, enemies, bosses, bonds, garrisons, items, bands, choices];
 
-/** Merged kit registry: baseChessId → (bb, chess, def) => Kit */
-export const KITS = Object.freeze(Object.assign({}, ...TIERS.map((m) => (m && typeof m === 'object' ? (m.default && typeof m.default === 'object' ? m.default : m) : {}))));
+export { KITS };
 
 /** Domain modules in install order: tokens, devices, enemies, bosses, bonds, garrisons, items, bands, choices. */
 export const MODULES = Object.freeze(DOMAIN_NAMES.map((n, i) => [n, DOMAINS[i]]));
@@ -67,7 +60,7 @@ export function setupUnitKit(battle, unit, mode = 'full') {
   if (mode === 'full' || injected) {
     // DESIGN §5.6's example keys kits by the suffix-less id (`chess_char_1_01`), data/SIM.md by baseId (`…_a`): accept both
     const bare = String(def.baseId ?? def.id ?? '').replace(/_[ab]$/, '');
-    const pick = (reg) => reg?.[def.baseId] ?? reg?.[def.id] ?? reg?.[bare];
+    const pick = (reg) => (def.charId ? reg?.[def.charId] : null) ?? reg?.[def.baseId] ?? reg?.[def.id] ?? reg?.[bare];
     const f = pick(injected) ?? (mode === 'full' ? pick(KITS) : undefined);
     if (typeof f === 'function') {
       try {

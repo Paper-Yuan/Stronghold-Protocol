@@ -90,15 +90,22 @@ export class SharedPool {
     return k;
   }
 
-  /** Remaining copies of eligible chess (tier ≤ maxTier, or exactly `tier`). */
-  _eligible({ maxTier = 6, tier = null, filter = null } = {}) {
+  /**
+   * Remaining copies of eligible chess (tier ≤ maxTier, or exactly `tier`): the pool's entries, then `extra` ([id, entry]
+   * pairs of the same shape — a player's 自选 stock) under the same filters.
+   */
+  _eligible({ maxTier = 6, tier = null, filter = null, extra = null } = {}) {
     const out = [];
-    for (const [id, e] of this.entries) {
-      if (e.left <= 0) continue;
-      if (tier != null ? e.tier !== tier : e.tier > maxTier) continue;
-      if (filter && !filter(id, e)) continue;
-      out.push([id, e.left]);
-    }
+    const scan = (list) => {
+      for (const [id, e] of list) {
+        if (e.left <= 0) continue;
+        if (tier != null ? e.tier !== tier : e.tier > maxTier) continue;
+        if (filter && !filter(id, e)) continue;
+        out.push([id, e.left]);
+      }
+    };
+    scan(this.entries);
+    if (extra) scan(extra);
     return out;
   }
 

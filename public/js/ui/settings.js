@@ -5,7 +5,7 @@
 import { useState } from '../../vendor/hooks.module.js';
 import { html, Modal, Button, Icon, MicroLabel } from './components.js';
 import { createStore, useStore, loadPref, savePref } from '../store.js';
-import { sanitizeSettings } from './gameLogic.js';
+import { sanitizeSettings, hotkeyLabel } from './gameLogic.js';
 import { audio } from '../audio.js';
 import { openGuide } from './guide.js';
 import { detectFeatures } from './device.js';
@@ -23,6 +23,12 @@ settingsStore.subscribe((s) => {
   audio.setVolumes(s);
 });
 audio.setVolumes(settingsStore.get());
+
+/**
+ * The key assigned to an in-match action (ui/gameLogic/shortcuts.js; default if not set).
+ * @param {'refresh'|'freeze'|'levelUp'|'retreat'|'sell'|'ready'} action
+ */
+export const hotkeyLabelOf = (action) => hotkeyLabel(settingsStore.get().keys?.[action]);
 
 /** @param {Partial<ReturnType<typeof sanitizeSettings>>} patch */
 export function updateSettings(patch) {

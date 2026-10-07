@@ -33,6 +33,7 @@ import { TICK, SNAPSHOT_EVERY } from '../sim/constants.js';
 import { layerGainRoom } from '../../shared/constants.js';
 import { uniteLeft } from '../sim/spec.js';
 import { GRANTED_CAP_OVERRIDE } from '../sim/content/garrisons/battle.js';
+import { diyTokenOwner } from '../../shared/diy.js';
 
 export const MAX_TICKS_PER_INTERVAL = 8;
 export const INTERVAL_MS = 1000 / 30;
@@ -542,6 +543,17 @@ function summonsOf(gd, chessId) {
   for (const id of [chessId, rec && rec.baseId, rec && rec.goldenId]) for (const t of (id && idx.byOwner.get(id)) || []) out.add(t);
   return [...out];
 }
+/**
+ * Summon ids a 自选 piece (0.2.0: a DIY slot `slotId` with its `pick`) can create: data/backups.json tokens whose owners
+ * name the pick's owner form (`<charId>@<statusKey>`, shared/diy.js diyTokenOwner).
+ */
+function diySummonsOf(gd, slotId, pick) {
+  const tokens = gd.raw && gd.raw.backups && gd.raw.backups.tokens && typeof gd.raw.backups.tokens === 'object' ? gd.raw.backups.tokens : null;
+  const slot = typeof gd.chess === 'function' && typeof slotId === 'string' ? gd.chess(slotId) : null;
+  if (!tokens || !slot || !pick || typeof pick.charId !== 'string') return [];
+  const owner = diyTokenOwner(pick.charId, slot.status);
+  return Object.keys(tokens).filter((id) => Array.isArray(tokens[id] && tokens[id].owners) && tokens[id].owners.includes(owner));
+}
 /** Summons no chess owns (bond / band units every player may field: 炎佑, 预备干员-医疗, Touch). */
 function ownerlessSummons(gd) { return summonIndex(gd).ownerless; }
 
@@ -674,6 +686,7 @@ export function specBounds(spec, gd = null) {
       if (u.kind !== 'token') {
         chess.set(u.uid, defId);
         if (gd) for (const t of summonsOf(gd, defId)) defIds.add(t);
+        if (gd && u.diy) for (const t of diySummonsOf(gd, defId, u.diy)) defIds.add(t);
       }
     }
     // the layers each bond starts the battle with (PlayerBattleInput.bonds): a gain never passes BOND_LAYER_CAP

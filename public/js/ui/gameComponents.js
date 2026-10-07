@@ -5,25 +5,33 @@ import { useState, useMemo } from '../../vendor/hooks.module.js';
 import { html, Icon, TierChip, Tooltip } from './components.js';
 import { data, useData, localAsset } from '../data.js';
 import { parseRichText, rtClassName } from './richText.js';
+import { t as tr } from '../../../shared/i18n.js';
 import {
   uiUrl, chessAvatarUrl, chessPortraitUrl, itemIconUrl, tokenAvatarUrl, enemyIconUrl, bondIconUrl, bandIconUrl,
 } from './assetUrls.js';
 
 const cx = (...p) => p.flat().filter(Boolean).join(' ');
 
-/** Data files the in-match screens use. */
+/** Data files the in-match screens use (`backups`: the 补位 stand-ins' bodies — cards, the board model, the detail card). */
 export const GAME_FILES = ['config', 'assets', 'chess', 'bonds', 'items', 'bands', 'enemies', 'bosses', 'stages', 'tokens',
-  'choices', 'effects', 'garrisons', 'factions', 'local', 'skins'];
+  'choices', 'effects', 'garrisons', 'factions', 'local', 'backups'];
 
 /**
  * Load every in-match data file; returns lookups (sync, null until loaded).
  * @returns {{ ready: boolean, m: any, config: any, chess: (id:string)=>any, bond: (id:string)=>any, item: (id:string)=>any,
  *   band: (id:string)=>any, enemy: (k:string)=>any, boss: (id:string)=>any, stage: (id:string)=>any, token: (id:string)=>any,
- *   effect: (id:string)=>any, garrison: (id:string)=>any, factions: any, choices: any, list: (name:string)=>any[] }}
+ *   effect: (id:string)=>any, garrison: (id:string)=>any, factions: any, choices: any, backups: any, list: (name:string)=>any[] }}
  */
 export function useGameData() {
   const ready = useData(...GAME_FILES);
-  return useMemo(() => makeLookups(ready), [ready]);
+  // (config / factions / choices are read once per memo: a language switch reads them again in the new locale)
+  return useMemo(() => makeLookups(ready), [ready, data.locale()]);
+}
+
+/** A 自选 operator's summon record (data/backups.json `tokens`, 0.2.0), or null. */
+export function diyToken(id) {
+  const t = typeof id === 'string' ? data.get('backups')?.tokens : null;
+  return t && Object.hasOwn(t, id) ? t[id] : null;
 }
 
 /** Non-hook lookups (for event handlers). */
@@ -33,18 +41,19 @@ export function makeLookups(ready = true) {
     m: data.get('assets'),
     config: data.get('config'),
     chess: (id) => data.lookup('chess', id),
-    getChess: (id) => data.lookup('chess', id),
     bond: (id) => data.lookup('bonds', id),
     item: (id) => data.lookup('items', id),
     band: (id) => data.lookup('bands', id),
     enemy: (k) => data.lookup('enemies', k),
     boss: (id) => data.lookup('bosses', id),
     stage: (id) => data.lookup('stages', id),
-    token: (id) => data.lookup('tokens', id),
+    // (a 自选 operator's summons are data/backups.json tokens — 0.2.0, the hand piece of a placeable one)
+    token: (id) => data.lookup('tokens', id) || diyToken(id),
     effect: (id) => data.lookup('effects', id),
     garrison: (id) => data.lookup('garrisons', id),
     factions: data.get('factions'),
     choices: data.get('choices'),
+    backups: data.get('backups'),
     list: (name) => data.list(name),
   };
 }
@@ -53,10 +62,10 @@ export function makeLookups(ready = true) {
  * <img> that swaps to a fallback node when the URL is missing or fails.
  * @param {{ src?: string|null, class?: string, alt?: string, fallback?: any, style?: string }} props
  */
-export function Img({ src, class: cls, alt = '', fallback = null, style, loading = 'lazy' }) {
+export function Img({ src, class: cls, alt = '', fallback = null, style }) {
   const [bad, setBad] = useState(null);
   if (!src || bad === src) return fallback;
-  return html`<img class=${cls} src=${src} alt=${alt} draggable=${false} loading=${loading} style=${style} onError=${() => setBad(src)} />`;
+  return html`<img class=${cls} src=${src} alt=${alt} draggable=${false} loading="lazy" style=${style} onError=${() => setBad(src)} />`;
 }
 
 /** Official UI sprite by 'group/key' with a fallback. */
@@ -93,15 +102,19 @@ export const isGoldenPiece = (piece, chess) => !!(piece?.golden || chess?.isGold
 /**
  * Square unit thumbnail for a piece / chess / item / token / enemy: art + tier chip + elite frame.
  * @param {{ kind?: 'chess'|'item'|'token'|'enemy', id: string, golden?: boolean, size?: 'xs'|'sm'|'md'|'lg', tier?: number,
- *   showTier?: boolean, class?: string, dim?: boolean, badge?: any, title?: string, loading?: 'lazy'|'eager' }} props
+ *   showTier?: boolean, class?: string, dim?: boolean, badge?: any, title?: string, rec?: any }} props
+ *   `rec`: the chess record to draw instead of the data's (a 自选 piece's composed record — 0.2.0, gameLogic/diy.js; a
+ *   补位 stand-in's — gameLogic/standIn.js: drawn with a small 「替补」 mark in the corner)
  */
-export function UnitThumb({ kind = 'chess', id, golden, size = 'md', tier, showTier = true, class: cls, dim = false, badge = null, title, loading = 'eager' }) {
+export function UnitThumb({ kind = 'chess', id, golden, size = 'md', tier, showTier = true, class: cls, dim = false, badge = null, title, rec = null }) {
   const m = data.get('assets');
   let src = null;
   let name = '';
   let t = tier;
+  let si = null;
   if (kind === 'chess') {
-    const c = data.lookup('chess', id);
+    const c = rec || data.lookup('chess', id);
+    si = rec && typeof rec.standInFor === 'string' && rec.standInFor ? rec : null;
     src = chessAvatarUrl(m, c);
     name = c?.name || '';
     t = t ?? c?.tier;
@@ -125,10 +138,11 @@ export function UnitThumb({ kind = 'chess', id, golden, size = 'md', tier, showT
   return html`<span class=${cx('uthumb', `uthumb--${size}`, `uthumb--${kind}`, golden && 'is-golden', dim && 'is-dim', t && `uthumb--t${Math.max(1, Math.min(6, t | 0))}`, cls)}
       title=${title ?? name}>
     <span class="uthumb__art">
-      <${Img} src=${src} loading=${loading} fallback=${html`<span class="uthumb__glyph">${glyph}</span>`} />
+      <${Img} src=${src} fallback=${html`<span class="uthumb__glyph">${glyph}</span>`} />
     </span>
     ${showTier && t && kind !== 'enemy' && kind !== 'token' ? html`<${TierChip} tier=${t} golden=${golden} size="sm" class="uthumb__tier" />` : null}
-    ${kind === 'token' ? html`<span class="uthumb__tag">召唤</span>` : null}
+    ${kind === 'token' ? html`<span class="uthumb__tag">${tr('召唤')}</span>` : null}
+    ${si ? html`<span class="uthumb__si" data-standin=${si.charId} aria-hidden="true">${tr('替补')}</span>` : null}
     ${badge}
   </span>`;
 }
@@ -194,11 +208,11 @@ export function GIcon({ name, class: cls, title }) {
 export function LpTower({ value, size = 'md', class: cls, tone, pending = 0, note = null, tip = null }) {
   const ok = Number.isFinite(value);
   const p = ok && Number(pending) > 0 ? Math.min(value, Math.trunc(Number(pending))) : 0;
-  return html`<span class=${cx('lp', `lp--${size}`, tone && `lp--${tone}`, p > 0 && 'is-pending', cls)} title=${tip || '目标生命值'}
+  return html`<span class=${cx('lp', `lp--${size}`, tone && `lp--${tone}`, p > 0 && 'is-pending', cls)} title=${tip || tr('目标生命值')}
       data-pending=${p > 0 ? p : null}>
     <${Sprite} k="hudPanel/icon_hp" class="lp__icon" fallback=${html`<${Icon} name="rook" class="lp__icon" />`} />
     <b class="num lp__val">${ok ? Math.max(0, value - p) : '--'}</b>
-    ${p > 0 ? html`<span key=${p} class="lp__pend num" aria-label=${`结算时扣除 ${p}`}>−${p}</span>` : null}
+    ${p > 0 ? html`<span key=${p} class="lp__pend num" aria-label=${tr('结算时扣除 {p}', { p })}>−${p}</span>` : null}
     ${note ? html`<span class="lp__note">${note}</span>` : null}
   </span>`;
 }
@@ -252,7 +266,7 @@ export function PlayerAvatar({ player, size = 'md', self = false, class: cls }) 
     <span class="pavatar__img">
       <${Img} src=${src} fallback=${player?.isBot ? html`<${Icon} name="robot" class="pavatar__bot" />` : html`<span class="pavatar__glyph">${glyph}</span>`} />
     </span>
-    ${dead ? html`<span class="pavatar__x" aria-label="已淘汰"><${Icon} name="close" /></span>` : null}
-    ${left ? html`<span class="pavatar__door" aria-label="已离开"><${Icon} name="exit" /></span>` : null}
+    ${dead ? html`<span class="pavatar__x" aria-label=${tr('已淘汰')}><${Icon} name="close" /></span>` : null}
+    ${left ? html`<span class="pavatar__door" aria-label=${tr('已离开')}><${Icon} name="exit" /></span>` : null}
   </span>`;
 }

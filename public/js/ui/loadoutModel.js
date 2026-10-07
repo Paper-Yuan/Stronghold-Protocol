@@ -366,6 +366,26 @@ export function moduleBadge(rec, id = null) {
 }
 
 /**
+ * The two lines of a trait record (data `trait` / `traitBase`, ModuleRecord `traitOverride`, DATA.md §2): `base` = the
+ * 特性 the unit fights with — the class trait, or the module's own wording where the module rewrites it (official
+ * `overrideDescripton`) — and `added` = the module's extra line (official `additionalDescription`), or null.
+ * @param {any} trait
+ * @returns {{ base: string, added: string|null }}
+ */
+export function traitLines(trait) {
+  if (!isObj(trait)) return { base: '', added: null };
+  const base = String(trait.descRaw || trait.desc || '');
+  const added = trait.moduleDescRaw || trait.moduleDesc || null;
+  return { base, added: added ? String(added) : null };
+}
+
+/** The whole 特性 text of a trait record: its base line, then the module's extra line (`\n` between; RichText breaks it). */
+export function fullTraitText(trait) {
+  const { base, added } = traitLines(trait);
+  return base && added ? `${base}\n${added}` : base || added || '';
+}
+
+/**
  * Module stat bonus as display rows (non-zero entries only).
  * @param {Record<string, number> | null | undefined} attr
  * @returns {Array<{ key: string, label: string, text: string, positive: boolean }>}

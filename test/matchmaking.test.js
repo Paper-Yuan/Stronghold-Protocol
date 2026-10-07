@@ -12,6 +12,7 @@ function createMockSession(id, name = `Doctor_${id}`) {
     token: `token_${id}`,
     connected: true,
     roomCode: null,
+    wantsLobbyStats: true,
     addr: '127.0.0.1',
     limitKey: 'local',
     ws: {

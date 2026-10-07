@@ -78,6 +78,7 @@ import { offsetTile } from '../sim/dir.js';
 import { computeBonds, bondList, bondSnapshot, activatedLayers, bondsWithGains, offBondCounts } from './bondsMeta.js';
 import { itemKey } from './gamedata.js';
 import { bountyText } from './choices.js';
+import { PlayerDiy, DiyStock } from './player/diy.js';
 
 const HAND_SIZE = GEO.HAND_SIZE;
 const TEMP_SIZE = GEO.TEMP_SIZE;
@@ -115,6 +116,18 @@ export class PlayerState {
     /** 干员皮肤 (docs/SKINS.md): frozen { [chessId]: skinId }, {} = every chess on its default model. */
     this.skins = Object.freeze({});
     if (!this.isBot && seat.skins) this.setSkins(seat.skins);
+    /**
+     * 自选编队 (0.2.0): the slotted picks { [slotBaseId]: { charId, skillIndex, uniEquipId } } — the seat's when the match
+     * started, re-checked; frozen; {} = none (bots always). setDiy makes `this.gd` the player's data view.
+     */
+    this.diy = Object.freeze({});
+    /** @type {Map<string, object>} slot id (normal / elite) → composed 自选 record (setDiy) */
+    this._diyRecords = new Map();
+    /** the copies of the slotted pieces (initDiyStock, once the match's bans are drawn) */
+    this.diyStock = new DiyStock();
+    /** slotted slots without stock: every bond of the operator is switched off this match */
+    this.diyBanned = Object.freeze([]);
+    if (!this.isBot && seat.diy) this.setDiy(seat.diy);
     this.shop = { level: 1, upgradePrice: this.gd.upgradeBase(1) ?? 0, slots: [], frozen: false, freeRefreshes: 0 };
     /** reward offers queue (merge rewards, special refreshes): { tier, source, label, slots: [{ kind, id, price, sold }] } */
     this.offers = [];
@@ -245,8 +258,12 @@ export class PlayerState {
     if (skins && typeof skins === 'object' && !Array.isArray(skins)) {
       for (const [id, skinId] of Object.entries(skins)) {
         if (typeof skinId !== 'string' || !skinId) continue;
+        if (typeof id === 'string' && (id.startsWith('char_') || (id.startsWith('chess_char_') && id.includes('_diy')))) {
+          out[id] = skinId;
+          continue;
+        }
         const rec = this.gd.chess(id);
-        if (!rec || rec.isGolden || rec.visible === false || rec.isHidden || rec.isDiy || (rec.baseId && rec.baseId !== id)) continue;
+        if (!rec || rec.isGolden || rec.visible === false || rec.isHidden || (rec.baseId && rec.baseId !== id)) continue;
         out[id] = skinId;
       }
     }
@@ -257,7 +274,16 @@ export class PlayerState {
 
   /** The skill index / module a chess record fights with under this player's loadout (DESIGN §16). */
   loadoutFor(chessRecord) {
-    return resolveLoadout(this.loadout, chessRecord, (id) => this.gd.chess(id));
+    const id = chessRecord?.chessId || chessRecord?.id;
+    const pick = typeof this.diyPickOf === 'function' && id ? this.diyPickOf(id) : null;
+    if (pick) {
+      const isElite = Boolean(chessRecord?.isGolden || id?.endsWith('_b'));
+      return {
+        skillIndex: pick.skillIndex ?? null,
+        moduleId: isElite ? (pick.uniEquipId ?? null) : null,
+      };
+    }
+    return resolveLoadout(this.loadout, chessRecord, (cid) => this.gd.chess(cid));
   }
 
   /**
@@ -415,10 +441,11 @@ export class PlayerState {
     return v;
   }
 
-  /** Return a piece's pool copies (and its equipped items are handled by the caller). */
+  /** Return a piece's pool copies — to the shared pool, or a 自选 piece's to this player's stock (poolOf). */
   returnCopies(piece) {
     if (piece && piece.kind === 'chess' && piece.poolCopies > 0) {
-      this.m.pool.give(this.gd.baseIdOf(piece.id), piece.poolCopies);
+      const base = this.gd.baseIdOf(piece.id);
+      this.poolOf(base).give(base, piece.poolCopies);
       piece.poolCopies = 0;
     }
   }
@@ -505,10 +532,12 @@ export class PlayerState {
    */
   acquireChess(chessId, { source = 'grant', toTemp = false, fromPool = true, silent = false } = {}) {
     const rec = this.gd.chess(chessId);
-    if (!rec) return null;
+    // a DIY slot is only ever this player's own 自选 piece: a slot it has not filled has no body (甄选干员) to gain
+    if (!rec || (rec.isDiy && !rec.diyFor)) return null;
     const base = this.gd.baseIdOf(chessId);
     const need = rec.isGolden ? this.gd.goldenCopies : 1;
-    const taken = fromPool ? this.m.pool.take(base, need) : 0;
+    // the shared pool, or this player's stock of a slotted 自选 piece (player/diy.js poolOf)
+    const taken = fromPool ? this.poolOf(base).take(base, need) : 0;
     const piece = this.newPiece('chess', chessId, { poolCopies: taken });
     this.round.gainedChess++;
     let owned = piece;
@@ -589,7 +618,7 @@ export class PlayerState {
     // equipment, which would be lost in temp — a summon stack removed there comes back at the next round start)
     if (where === 'board') this.grantTokensFor(elite);
     if (!where) {
-      this.m.pool.give(baseId, copies);
+      this.poolOf(baseId).give(baseId, copies);
       this.m.toast(this, 'warn', '整备区已满，晋升的精锐干员无法放入');
       this.m.log.warn?.(`[match ${this.m.roomCode}] ${this.playerId}: merge result dropped (hand+temp full)`);
       this.recompute();
@@ -610,7 +639,7 @@ export class PlayerState {
     if (!goldenId) return false;
     const base = this.gd.baseIdOf(piece.id);
     const extra = Math.max(0, this.gd.goldenCopies - (piece.poolCopies || 0));
-    piece.poolCopies = (piece.poolCopies || 0) + this.m.pool.take(base, extra);
+    piece.poolCopies = (piece.poolCopies || 0) + this.poolOf(base).take(base, extra);
     piece.id = goldenId;
     this.recompute();
     return true;
@@ -682,9 +711,10 @@ export class PlayerState {
     if (!list) {
       list = [];
       const fresh = (id) => !list.includes(id);
+      const diy = typeof this.diyRollEntries === 'function' ? this.diyRollEntries() : null;
       for (let i = 0; i < ro.count; i++) {
         let id = null;
-        for (let tt = t; tt >= 1 && !id; tt--) id = this.m.pool.roll(this.m.rngShop, { tier: tt, filter: fresh });
+        for (let tt = t; tt >= 1 && !id; tt--) id = this.m.pool.roll(this.m.rngShop, { tier: tt, filter: fresh, extra: diy });
         if (id) list.push(id);
       }
     }
@@ -860,7 +890,8 @@ export class PlayerState {
   }
 
   _rollChessSlot() {
-    const id = this.m.pool.roll(this.m.rngShop, { maxTier: this.shop.level });
+    const diy = typeof this.diyRollEntries === 'function' ? this.diyRollEntries() : null;
+    const id = this.m.pool.roll(this.m.rngShop, { maxTier: this.shop.level, extra: diy });
     return id ? { kind: 'chess', id, basePrice: this.gd.chessPrice(id), frozen: false, sold: false } : null;
   }
 
@@ -921,10 +952,11 @@ export class PlayerState {
     let piece;
     if (slot.kind === 'chess') {
       const rec = this.gd.chess(slot.id);
-      if (!rec) return fail(ERR.BAD_TARGET);
+      if (!rec || (rec.isDiy && !rec.diyFor)) return fail(ERR.BAD_TARGET);
       const base = this.gd.baseIdOf(slot.id);
       const need = rec.isGolden ? this.gd.goldenCopies : 1;
-      if (this.m.pool.has(base) && this.m.pool.left(base) < need) return fail(ERR.SOLD_OUT);
+      const pool = this.poolOf(base);
+      if (pool.has(base) && pool.left(base) < need) return fail(ERR.SOLD_OUT);
       if (handFull && !this.completesChessMerge(slot.id)) return fail(ERR.HAND_FULL);
       this.spend(price);
       slot.sold = true;
@@ -1577,12 +1609,18 @@ export class PlayerState {
     for (const { r, c, piece } of boardOrder(this.board)) {
       if (piece.kind === 'chess') {
         const u = { uid: piece.uid, kind: 'chess', chessId: piece.id, row: r, col: c, dir: pieceDir(piece), items: (piece.items || []).map((i) => i.id) };
-        // DESIGN §16: the equipped skill / module (elite only) from the loadout (defaults when absent)
-        const lo = this.loadoutFor(this.gd.chess(piece.id));
-        u.skillIndex = lo.skillIndex;
-        u.moduleId = lo.moduleId;
-        const baseId = (this.gd.chess(piece.id) || {}).baseId || piece.id;
-        const skin = this.skins[baseId] || this.skins[piece.id];
+        const diy = typeof this.diyPickOf === 'function' ? this.diyPickOf(piece.id) : null;
+        if (diy) {
+          u.diy = diy;
+        } else {
+          // DESIGN §16: the equipped skill / module (elite only) from the loadout (defaults when absent)
+          const lo = this.loadoutFor(this.gd.chess(piece.id));
+          u.skillIndex = lo.skillIndex;
+          u.moduleId = lo.moduleId;
+        }
+        const rec = this.gd.chess(piece.id);
+        const baseId = (rec || {}).baseId || piece.id;
+        const skin = this.skins[baseId] || this.skins[piece.id] || (diy ? (this.skins[diy.charId] || this.skins[baseId]) : null);
         if (skin) u.skin = skin;
         if (carry && carry.has(piece.uid)) u.carryState = carry.get(piece.uid);
         units.push(u);
@@ -1613,7 +1651,8 @@ export class PlayerState {
   pieceView(p, rc = null) {
     const rec = p.kind === 'item' ? this.gd.item(p.id) : p.kind === 'token' ? this.gd.token(p.id) : this.gd.chess(p.id);
     const baseId = (rec && rec.baseId) || p.id;
-    const skin = p.kind === 'chess' ? (this.skins[baseId] || this.skins[p.id] || null) : null;
+    const diy = p.kind === 'chess' && typeof this.diyPickOf === 'function' ? this.diyPickOf(p.id) : null;
+    const skin = p.kind === 'chess' ? (this.skins[baseId] || this.skins[p.id] || (diy ? (this.skins[diy.charId] || this.skins[baseId]) : null)) : null;
     const v = {
       uid: p.uid,
       kind: p.kind,
@@ -1692,11 +1731,22 @@ export class PlayerState {
       nextEnemies: this.m.nextEnemiesFor(this),
       // DESIGN §16: the effective operator loadout ({ [baseChessId]: { skill, module } }; chess not listed use defaults)
       loadout: this.loadout,
+      // 0.2.0 自选编队: the slotted picks and banned slots
+      diy: this.diy,
+      diyBanned: this.diyBanned,
       stats: {
         dmgDealt: Math.round(this.stats.dmgDealt), kills: this.stats.kills, leaks: this.stats.leaks, gold: this.stats.gold,
         refreshes: this.stats.refreshes, merges: this.stats.merges,
       },
     };
+  }
+}
+
+// Install PlayerDiy methods onto PlayerState.prototype
+for (const key of Object.getOwnPropertyNames(PlayerDiy.prototype)) {
+  if (key === 'constructor') continue;
+  if (!Object.prototype.hasOwnProperty.call(PlayerState.prototype, key)) {
+    PlayerState.prototype[key] = PlayerDiy.prototype[key];
   }
 }
 

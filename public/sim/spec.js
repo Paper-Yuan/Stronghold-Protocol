@@ -20,6 +20,11 @@
 // the default). createBattleFromSpec hands the Battle a per-battle data view (withUnitLoadouts) that resolves each
 // operator def — and its summons — for the loadout of its chess (simdata getChess(id, loadout) / getToken(id, owner,
 // ownerLoadout)); an explicit loadout argument always wins over the view's per-chess lookup.
+// 补位 (DATA.md §18): an operator entry with `standIn: true` (kept only when exactly `true`) is fielded as its chess's
+// stand-in (simdata getChess(id, { standIn: true }); its skill / module are the chess's backup selection).
+// 自选 (DATA.md §18): an operator entry of a DIY slot (`chessId` its `_a` / `_b` id) carries `diy: { charId, skillIndex?,
+// uniEquipId? }` (kept when well-formed; the data layer checks legality — shared/diy.js checkDiyPick) and is fielded as
+// simdata getChess(id, { diy }).
 
 import { Battle } from './Battle.js';
 import { toDataSource, withUnitLoadouts } from './simdata.js';
@@ -76,11 +81,34 @@ export function buildBattleSpec(o = {}) {
 
 const LOADOUT_ID = /^[A-Za-z0-9_\-]{1,64}$/;
 
-/** Keep a unit's `skillIndex` / `moduleId` only when well-formed (the data layer checks legality). Mutates `u`. */
+/**
+ * A well-formed 自选 pick `{ charId, skillIndex?, uniEquipId? }` reduced to those fields (skill 0–9 or null, module a
+ * loadout id or null), or null.
+ */
+function cleanDiyPick(d) {
+  if (!d || typeof d !== 'object' || Array.isArray(d) || typeof d.charId !== 'string' || !LOADOUT_ID.test(d.charId)) return null;
+  const out = { charId: d.charId };
+  if (d.skillIndex != null) {
+    if (!(Number.isInteger(d.skillIndex) && d.skillIndex >= 0 && d.skillIndex <= 9)) return null;
+    out.skillIndex = d.skillIndex;
+  }
+  if (d.uniEquipId != null) {
+    if (!(typeof d.uniEquipId === 'string' && LOADOUT_ID.test(d.uniEquipId))) return null;
+    out.uniEquipId = d.uniEquipId;
+  }
+  return out;
+}
+
+/**
+ * Keep a unit's `skillIndex` / `moduleId` only when well-formed (the data layer checks legality), `standIn` only when
+ * exactly `true` (补位) and `diy` only as a well-formed pick (自选). Mutates `u`.
+ */
 export function sanitizeUnitLoadout(u) {
   if ('skillIndex' in u && !(Number.isInteger(u.skillIndex) && u.skillIndex >= 0 && u.skillIndex <= 9)) delete u.skillIndex;
   if ('moduleId' in u && !(typeof u.moduleId === 'string' && LOADOUT_ID.test(u.moduleId))) delete u.moduleId;
-  if (u.kind === 'token') { delete u.skillIndex; delete u.moduleId; }
+  if ('standIn' in u && u.standIn !== true) delete u.standIn;
+  if ('diy' in u) { const d = cleanDiyPick(u.diy); if (d) u.diy = d; else delete u.diy; }
+  if (u.kind === 'token') { delete u.skillIndex; delete u.moduleId; delete u.standIn; delete u.diy; }
   return u;
 }
 

@@ -5,15 +5,18 @@
 // stats / talents / trait / skill at the owner's phase — a golden owner gets the `_b` variant).
 // Every tokenId of data/tokens.json has a kit, so `battle.spawnToken(owner, tokenId, r, c)` works with data defaults
 // even when the summoner's kit passes no options:
-//   医疗探机      heal profile (data), untargetable, self-destructs after its withdraw skill time (10 s)
-//   诅咒娃娃      no attack, aura: enemies in its range ATK/DEF + bb.atk/bb.def (−25 %/−30 %), 15 s (skill duration);
+//   医疗探机      heal profile (data), untargetable, self-destructs after its withdraw skill time (10 s); a countdown
+//                 summon (COUNTDOWN_SUMMONS: 无敌, 禁疗, its bar = the life left)
+//   诅咒娃娃      no attack, aura: enemies in its range ATK/DEF + bb.atk/bb.def (−25 %/−30 %), 15 s (skill duration; a
+//                 countdown summon);
 //                 leaves when 巫恋 leaves (PRTS 备注) — the drone stays when 赫默 leaves (PRTS 医疗探机 备注)
 //   沙之碑        on appear: owner ATK × atk_scale arts + stun (skill range 3×3), blocks 3 (no attack), talent duration 20 s
 //   战术装备      on appear: stun around (bb.stun), blocked enemies DEF + talent def (−160), talent duration 25 s
 //   “小自在”      arts melee blocker, talent duration 25 s; kills emit `summonKill` (夕's 化境 is the 夕 kit's job)
-//   斯卡蒂的海嗣  untargetable range extension of 浊心斯卡蒂: heals allies in its range (owner ATK × trait ratio /s);
+//   斯卡蒂的海嗣  untargetable range extension of 浊心斯卡蒂: her trait's 生命回复速度 on the allies in its range (owner
+//                 ATK × trait ratio /s);
 //                 while the owner's skill runs: owner ATK × atk_scale true dmg/s to enemies + 鼓舞 owner ATK × bb.atk;
-//                 talent duration 25/30 s, then redeploys after respawnTime (30/25 s, DP cost from data)
+//                 talent duration 25/30 s (a countdown summon), then redeploys after respawnTime (30/25 s, DP cost from data)
 //   “耀阳”        on appear: owner ATK × atk_scale true + stun in the skill grid (+1 hit if the previously deployed
 //                 operator is 卡西米尔); golden trait ×atk_scale vs blocked enemies; lasts while the owner's skill runs
 //   纸偶          on appear: token ATK × damage_scale arts to the 8 surrounding tiles; does not block (data)
@@ -21,7 +24,8 @@
 //                 full HP; its and 伺夜's attacks ignore def_penetrate_fixed DEF of enemies it blocks; while 伺夜's
 //                 timed skill runs every attack damage instance (each bite) of the pack / 伺夜 on an enemy it blocks
 //                 adds 伺夜 ATK × bb scale arts; module: ×damage_scale damage from enemies it blocks; is its owner's
-//                 tactician 援军 (1.5× trait), leaves with it; respawns respawnTime s after being killed
+//                 tactician 援军 (1.5× trait), leaves with it; the fatal hit on its last shadow (or a 撤退) ⇒ 战术点形态
+//                 for the talent interval, then back on its tile with 1 shadow (installWolfTacticalPoint, both packs)
 //   流形          copy skill (SP from data, golden +sp; starts only when an operator can be copied, else waits ready):
 //                 copies scale × HP/ATK/DEF/RES, block, BAT/ASPD, range and the damage type of the nearest allied
 //                 operator; no attack before its copy; ranged copy splits every N attacks (clone lasts the talent
@@ -32,7 +36,7 @@
 //                 its blast fx carries `consumed: true` so clients play the explosion, not a death sound)
 //   从不混淆的方向 untargetable marker; when the owner's skill ends it vanishes and the owner returns to its tile
 //   黄金盟誓      attacks deal true damage (trait); lasts while the owner's skill runs; 维娜 S3 places one on every
-//                 free deployable tile around her (kits/tier6.js) — no per-owner deploy limit (SKILL_SUMMON_UNCAPPED)
+//                 free deployable tile around her (kits/ops/chess_char_6_07-siege2.js) — no per-owner deploy limit (SKILL_SUMMON_UNCAPPED)
 //   防护单元      untargetable, invulnerable device placed by the player (a hand piece, user playtest #6): shield =
 //                 凯瑟琳 max HP × max_shield_ratio on the operator in its range (range 1-1: the tile it faces; effects do
 //                 not stack — `cathy:shield`, read by 凯瑟琳 S1 岁月锻打), in full whenever it takes a new operator,
@@ -74,13 +78,18 @@
 // makes the token (Battle.spawnToken also refuses summons the owner's loadout does not produce).
 //
 // Exports for other content: spawnYanyou, spawnMapChar, findSummonTile, summonToken, tacticalPoint, wolfShadows,
-// releaseSkillSummon, SKILL_SUMMON_START_DEPLOY, CAT_SHIELD_KEY, TOKEN_IDS.
+// COUNTDOWN_SUMMONS / startCountdown (the countdown summons' 无敌 + 禁疗 and timer bar, shared with the kits that time them),
+// wolfShadowInterval, installWolfTacticalPoint, wolfTacticalPoint, wolfReturnNow (the 狼群's 战术点形态, shared with the
+// 伺夜 kit's own pack, kits/ops/chess_char_3_19-vigil.js), releaseSkillSummon, SKILL_SUMMON_START_DEPLOY, CAT_SHIELD_KEY,
+// TOKEN_IDS; mapCharTalents and touchGospel (Touch's 攫升 / 超脱 and 恳切福音, shared with the Touch 补位 stand-in kit,
+// kits/ops/standin-acmedc.js).
 
-import { COLS, ROWS, MOVE_SCALE } from '../constants.js';
+import { COLS, ROWS, MOVE_SCALE, FORCED_EXIT } from '../constants.js';
 import { absoluteRangeKeys, sortEnemyTargets, canTargetEnemy } from '../targeting.js';
 import { bodyInKeys, bodyOnTile } from '../body.js';
 import { hasHp } from '../damage.js';
 import { genericKit } from './generic.js';
+import { bardRegen } from '../professions.js';
 import { normDir, localOrder } from '../dir.js';
 import { SKILL_SUMMON_START_DEPLOY } from '../../../shared/constants.js';
 
@@ -138,10 +147,13 @@ function withLoadout(v, lo) {
   return out;
 }
 
-/** The owner's own variant of a token record (chess id, else its normal `_a` sibling) with its loadout; null if none. */
+/**
+ * The owner's own variant of a token record (chess id, else its normal `_a` sibling; a 自选 piece's: its owner form,
+ * `def.tokenOwner`) with its loadout; null if none.
+ */
 function ownVariant(raw, owner) {
   const vs = raw?.variants;
-  const oid = owner?.defId;
+  const oid = owner?.def?.tokenOwner ?? owner?.defId;
   if (!vs || typeof vs !== 'object' || !oid) return null;
   const v = vs[oid] ?? vs[String(oid).replace(/_b$/, '_a')] ?? null;
   return v ? withLoadout(v, owner.def?.loadout) : null;
@@ -183,10 +195,42 @@ function untargetable(battle, unit) {
   battle.addBuff(unit, { key: 'trait:untargetable', flags: { untargetable: true }, persist: true, allowDead: true });
 }
 
-/** Withdraw the token `seconds` after this deployment (the same deployment only). */
+/**
+ * Countdown summons — the summons that "不会受到攻击" and leave after a fixed time: 赫默's 医疗探机 (10 s, skcom_withdraw),
+ * 巫恋's 诅咒娃娃 (15 s, its skill), 浊心斯卡蒂's 斯卡蒂的海嗣 (talent 远古血亲 25 / 30 s) and, among the 自选 operators, 温蒂's
+ * 工程蓄水炮 (20 s), 莱伊's 沙地兽 (25 s), 鸿雪's “打字机” (25 s) and 酒神's 本能的召唤 (10 s). Community report of 2026-10-06
+ * (the official mode): they take no outside damage — 活性源石 included —, no operator heals them and their bar runs down
+ * like a timer, the summon leaving when it is empty. PRTS / client data: 海嗣 and 沙地兽 hold 无敌 + 禁疗 (PRTS 海嗣 备注
+ * 「持有禁疗、无敌」; token prefabs: abnormal flags 5 + 7), 工程蓄水炮 禁疗 (PRTS 备注); the others have no abnormal flag in the
+ * base-game prefabs — [ASSUMED] the report's 无敌 + 禁疗 for every one of them. startCountdown gives them both (their HP never
+ * moves) and the bar (Unit.countdown, shown by snapshot.js as the share of the life left). The other timed summons (沙之碑,
+ * 战术装备, “小自在”, 结构性原理 …) block and are attacked: their HP stays HP. Until 0.2.0 a 海嗣 on 活性源石 lost 70 HP/s (of
+ * 100) and a hurt drone drew every medic's heals.
+ */
+export const COUNTDOWN_SUMMONS = Object.freeze(new Set([
+  TOKEN_IDS.healDrone, TOKEN_IDS.curseDoll, TOKEN_IDS.seaborn,
+  'token_10009_weedy_cannon', 'token_10034_ray_sndbst', 'token_10026_bgsnow_subbow', 'token_10054_phatm2_encdool',
+]));
+const COUNTDOWN_KEY = 'token:countdown';
+
+/**
+ * A countdown summon's life on the field starts (COUNTDOWN_SUMMONS; call it from the `deploy` hook of each deployment,
+ * where its kit schedules its withdrawal): `seconds` from now its bar is empty. It holds 无敌 and 禁疗 from then on. A
+ * summon that is not a countdown one is left alone (false).
+ */
+export function startCountdown(battle, unit, seconds) {
+  const s = num(seconds, 0);
+  if (!unit || !COUNTDOWN_SUMMONS.has(unit.defId) || !(s > 0)) return false;
+  unit.countdown = { from: battle.time, until: battle.time + s };
+  if (!unit.findBuff(COUNTDOWN_KEY)) battle.addBuff(unit, { key: COUNTDOWN_KEY, flags: { invulnerable: true, noHeal: true, healFree: true }, persist: true, allowDead: true });
+  return true;
+}
+
+/** Withdraw the token `seconds` after this deployment (the same deployment only); a countdown summon's bar runs with it. */
 function scheduleLifetime(battle, unit, seconds) {
   const s = num(seconds, 0);
   if (!(s > 0)) return;
+  startCountdown(battle, unit, s);
   const seq = unit.deploySeq;
   unit.mem.expiresAt = battle.time + s;
   battle.after(s, () => { if (unit.alive && unit.deploySeq === seq) battle.retreat(unit, { reason: 'expired', permanent: true }); }, { owner: unit });
@@ -531,7 +575,11 @@ function duskDragon(bb, raw, def) {
   };
 }
 
-/** 斯卡蒂的海嗣 (浊心斯卡蒂 talent 远古血亲): range extension of its owner (heal aura / S3 damage + 鼓舞). */
+/**
+ * 斯卡蒂的海嗣 (浊心斯卡蒂 talent 远古血亲): range extension of its owner (her trait's 生命回复速度 — professions.js bardRegen,
+ * keyed by the owner: one trait effect per ally — / S3 damage + 鼓舞). Only while the owner fights with the generic kit:
+ * her own kit (kits/ops/chess_char_6_04-skadi2.js) covers the 海嗣' ranges itself.
+ */
 function seaborn(bb, raw, def) {
   const life = num(talentBb(def, 'duration').duration, 0);
   const healRatio = num(def?.traitBb?.['attack@atk_to_hp_recovery_ratio'], 0);
@@ -563,9 +611,9 @@ function seaborn(bb, raw, def) {
         } else if (healRatio > 0) {
           const ownerKeys = o && o.alive && o.deployed ? (o.rangeKeySet || new Set(o.rangeKeys || [])) : null;
           for (const a of battle.alliesInGrid(unit)) {
-            if (a === unit || a.hp >= a.s.maxHp - 1e-6) continue;
-            if (ownerKeys && ownerKeys.has(a.tileR * COLS + a.tileC)) continue; // the owner's own aura already heals it
-            battle.heal(unit, a, atk * healRatio);
+            if (a === unit) continue;
+            if (ownerKeys && ownerKeys.has(a.tileR * COLS + a.tileC)) continue; // the owner's own trait already covers it
+            bardRegen(battle, o ?? unit, a, atk * healRatio, 1.25); // refreshed every second
           }
         }
       }, { owner: unit });
@@ -606,14 +654,109 @@ function paperDoll(bb, raw, def) {
   };
 }
 
-/** Current “狼影” count of a 狼群 token (0 when not a wolf pack). */
+/** Current “狼影” count of a 狼群 token (0 when not a wolf pack, and in its 战术点形态). */
 export function wolfShadows(unit) { return unit && unit.defId === TOKEN_IDS.wolfPack ? (unit.mem.shadows ?? 0) : 0; }
+
+// ---- 狼群 战术点形态 — both packs: the board piece (wolfPack below) and the 伺夜 kit's own pack
+// (kits/ops/chess_char_3_19-vigil.js). PRTS 伺夜 天赋 狼群领袖 备注 and 狼群 召唤物信息 备注: "受到致命伤时，如果狼影层数＞1则
+// 消耗一层狼影并重设生命值至上限，为1则消耗一层狼影变为战术点形态；手动撤退、强制撤退时狼影层数归零并变为战术点形态；战术点形态的
+// 持续时间等于“狼影”恢复时间，持续时间结束后狼影层数变回1层", "战术点形态期间：不进行普通攻击，持有无敌、强制缴械、不死…",
+// "持有者离场后强制撤退场上的狼群（不触发上述效果）". The remake's 战术点形态 is its knocked-out piece: off the fight
+// (`alive` false: no block, no attack, not targetable) but kept (`removed` false: its hooks live on and its tile stays
+// reserved — Battle.isReservedTile — as the official device holds it), with 0 狼影, for the 狼影 recovery time
+// (wolfShadowInterval: the talent's interval, data); then it is redeployed on its tile, free, at full HP with 1 狼影 and a
+// fresh growth cycle (the pack's own `deploy` handler reads `mem.wolfReturn`). 伺夜 S1 领袖的呼唤 ① brings it back at
+// once (wolfReturnNow); every return timer carries the form's `seq`, so a stale one never revives a pack that came back
+// and fell again.
+
+/**
+ * Removal reasons that put a 狼群 in its 战术点形态: the fatal hit on its last 狼影 (the engine's knock-out) and a 撤退 —
+ * manual (`battle.retreat`'s default reason) or forced. No sim path retreats the pack that way today; 'expired' (its
+ * owner leaving, the deploy limit) and 'raid' (an instant redeploy) never do.
+ */
+const WOLF_TAC_EXITS = new Set(['killed', 'retreat', FORCED_EXIT]);
+/** Seconds between two return tries of a 狼群 whose tile is taken when its 战术点形态 ends (Battle.isReservedTile keeps it). */
+const WOLF_RETURN_RETRY = 0.25;
+
+/** The 狼群领袖 talent of a 狼群 def (its 狼影 stack talent), else its first talent. */
+const wolfLeader = (def) => talentWith(def, 'vigil_wolf_t_1_enhance[trigger].max_stack_cnt') ?? def?.talents?.[0] ?? null;
+
+/**
+ * “狼影” recovery time of a 狼群 def: its 狼群领袖 talent interval ("每25秒增加一只"; data — 25 s for both 伺夜 chess). The
+ * growth cycle and the length of the 战术点形态. 0 when the data has none.
+ */
+export function wolfShadowInterval(def) {
+  const lb = wolfLeader(def)?.bb ?? {};
+  return Math.max(0, num(lb['vigil_wolf_t_1_enhance[trigger].interval'] ?? lb.interval, 0));
+}
+
+/** The 战术点形态 of a 狼群 (`{ seq, since, until }`) while it is in it, else null. */
+export function wolfTacticalPoint(unit) {
+  const tp = unit?.mem?.wolfTac;
+  return tp && !unit.alive && !unit.removed ? tp : null;
+}
+
+/** The pack's owner stands on the field (no owner unit: a test spawn). */
+const wolfOwnerStands = (u) => !u.ownerUnit || (u.ownerUnit.alive && u.ownerUnit.deployed);
+
+/**
+ * Bring a 狼群 back from its 战术点形态 at once (the end of the form; 伺夜 S1 ①: "立刻切换至拥有1只狼影的召唤物形态（会更新
+ * 狼群的狼影刷新周期）"): redeployed on its tile, free, at full HP with 1 狼影 and a fresh growth cycle (its `deploy`
+ * handler reads `mem.wolfReturn` = { src }); the pending return is cancelled. False when it is not in the form, its owner
+ * is off the field or its tile is taken.
+ */
+export function wolfReturnNow(battle, unit, src = null) {
+  const tp = wolfTacticalPoint(unit);
+  if (!tp || battle.finished || !wolfOwnerStands(unit)) return false;
+  unit.mem.wolfReturn = { src };
+  let ok;
+  try { ok = battle.redeploy(unit, { free: true }); } finally { unit.mem.wolfReturn = null; }
+  if (!ok) return false;
+  if (unit.mem.wolfTac === tp) unit.mem.wolfTac = null;
+  if (tp.timer) tp.timer.cancel();
+  return true;
+}
+
+/** The end of the 战术点形态 `seq` (its timer): the pack comes back — another try shortly when its tile is taken. */
+function wolfTimerReturn(battle, unit, seq) {
+  const tp = wolfTacticalPoint(unit);
+  if (!tp || tp.seq !== seq || battle.finished) return;
+  if (wolfReturnNow(battle, unit)) return;
+  tp.timer = battle.after(WOLF_RETURN_RETRY, () => wolfTimerReturn(battle, unit, seq), { owner: unit });
+}
+
+/**
+ * The 战术点形态 of a 狼群 unit (see above). `onEnter(battle, unit)` sets its 狼影 to 0 — each pack keeps its own count,
+ * buff and fx.
+ */
+export function installWolfTacticalPoint(battle, unit, { onEnter = null } = {}) {
+  battle.on('death', (ctx) => {
+    if (ctx.unit !== unit || battle.finished || !WOLF_TAC_EXITS.has(ctx.reason) || !wolfOwnerStands(unit)) return;
+    unit.removed = false;
+    // the 狼影 recovery time from the data; a record without one falls back to the token's redeploy time (data)
+    const t = wolfShadowInterval(unit.def) || Math.max(0, num(unit.base.respawnTime, 0));
+    const seq = (unit.mem.wolfTacSeq ?? 0) + 1;
+    unit.mem.wolfTacSeq = seq;
+    const tp = { seq, since: battle.time, until: battle.time + t, timer: null };
+    unit.mem.wolfTac = tp;
+    if (onEnter) onEnter(battle, unit);
+    tp.timer = battle.after(t, () => wolfTimerReturn(battle, unit, seq), { owner: unit });
+  }, { owner: unit, priority: -10 });
+  // its owner leaving ends the form without a return ("不触发上述效果"): the piece waits for the owner's redeploy, which
+  // brings a fresh pack (its initial 狼影) — as for a standing pack, which leaves with its owner
+  battle.on('death', (ctx) => {
+    const tp = wolfTacticalPoint(unit);
+    if (!tp || !unit.ownerUnit || ctx.unit !== unit.ownerUnit) return;
+    unit.mem.wolfTac = null;
+    if (tp.timer) tp.timer.cancel();
+  }, { owner: unit });
+}
 
 /** 狼群 (伺夜 talent 狼群领袖/狼群天性; S3 bb on the token). */
 function wolfPack(bb, raw, def) {
-  const leader = talentWith(def, 'vigil_wolf_t_1_enhance[trigger].max_stack_cnt') ?? def?.talents?.[0] ?? null;
+  const leader = wolfLeader(def);
   const lb = leader?.bb ?? {};
-  const interval = num(lb['vigil_wolf_t_1_enhance[trigger].interval'] ?? lb.interval, 0);
+  const interval = wolfShadowInterval(def);
   const perBlock = num(lb['vigil_wolf_t_1_enhance[trigger].block_cnt'] ?? lb.block_cnt, 1);
   const mMax = String(leader?.description ?? '').match(/至多(\d+)只/);
   const maxShadows = mMax ? +mMax[1] : 1 + num(lb['vigil_wolf_t_1_enhance[trigger].max_stack_cnt'], 0);
@@ -634,8 +777,13 @@ function wolfPack(bb, raw, def) {
       const mi = ot.match(/初始(两|二|\d+)只/);
       const initShadows = Math.max(1, Math.min(maxShadows, mi ? (/\d/.test(mi[1]) ? +mi[1] : 2) : maxShadows - 1));
       onDeploy(battle, unit, () => {
-        setShadows(battle, unit, initShadows);
+        // back from its 战术点形态 (wolfReturnNow): 1 狼影 (PRTS 狼群 "从战术点形态转变为召唤物形态后拥有1只“狼影”") and a
+        // fresh growth cycle; any other deployment: the initial count
+        const back = unit.mem.wolfReturn;
+        setShadows(battle, unit, back ? 1 : initShadows);
         unit.hp = unit.s.maxHp;
+        // (伺夜 S1 ① shows its own summon fx)
+        if (back && back.src == null) battle.fx('wolfShadow', { x: unit.x, y: unit.y, id: unit.id, n: 1 });
         const seq = unit.deploySeq;
         if (interval > 0) {
           battle.every(interval, (b, sched) => {
@@ -649,6 +797,7 @@ function wolfPack(bb, raw, def) {
         const o = ownerOf(unit);
         if (o && o.profile?.sub === 'tactician') o.trait.reinforcement = unit;
       }, 20);
+      // fatal with more than one 狼影: one is lost, full HP; on the last one the knock-out goes through — 战术点形态
       battle.on('fatal', (ctx) => {
         if (ctx.unit !== unit || ctx.prevented || !((unit.mem.shadows ?? 0) > 1)) return;
         ctx.prevented = true;
@@ -656,6 +805,12 @@ function wolfPack(bb, raw, def) {
         unit.hp = unit.s.maxHp;
         battle.fx('wolfShadowLost', { x: unit.x, y: unit.y, id: unit.id, n: unit.mem.shadows });
       }, { owner: unit, priority: -50 });
+      installWolfTacticalPoint(battle, unit, {
+        onEnter: (b, u) => {
+          setShadows(b, u, 0);
+          b.fx('wolfShadowLost', { x: u.x, y: u.y, id: u.id, n: 0 });
+        },
+      });
       // 狼群天性 ("伺夜和狼群对其的攻击无视其175防御力") and the owner's S3 bonus ("狼群与伺夜攻击被狼群阻挡的单位造成伤害
       // 时，额外造成相当于伺夜攻击力N%的法术伤害", one per damage instance = per bite) cover the pack's and 伺夜's own
       // attacks; with a hand-authored 伺夜 kit (managed) that kit applies both. The module guard is intrinsic.
@@ -675,14 +830,14 @@ function wolfPack(bb, raw, def) {
           battle.dealDamage(ctx.source, e, { amount: o.s.atk * s3Scale, type: 'arts', isSkill: true, canDodge: false, tags: ['vigil'] });
         }, { owner: unit });
       }
-      // the 援军 leaves with its tactician (a hand-authored 伺夜 kit does the same for its pack) and a killed pack
-      // does not come back while its tactician is down (the tactician's redeploy brings it back)
+      // the 援军 leaves with its tactician (a hand-authored 伺夜 kit does the same for its pack); a pack in its 战术点形态
+      // ends it then (installWolfTacticalPoint) and the tactician's redeploy brings it back fresh. No respawn timer of
+      // its own: the token's redeploy time (data 10 s) is not the 战术点形态's length (the 狼影 interval)
       const tacticianOwner = () => ownerOf(unit)?.profile?.sub === 'tactician';
       battle.on('death', (ctx) => {
         if (ctx.unit !== unit.ownerUnit || !unit.alive || managed(unit) || !tacticianOwner()) return;
         battle.retreat(unit, { reason: 'expired', permanent: true });
       }, { owner: unit });
-      enableRespawn(battle, unit, { delay: (u) => u.base.respawnTime, requireOwner: tacticianOwner });
     },
   };
 }
@@ -691,7 +846,7 @@ function wolfPack(bb, raw, def) {
  * The operator a 流形 copies ("可复制待部署区一名干员"): the nearest (Chebyshev tiles) living operator of its player on
  * the field, not the summoner; ties → higher base ATK → lower id. (The remake deploys the whole board at battle start,
  * so the official "operator waiting to deploy" is read as the nearest deployed operator — same pick as the 缪尔赛思
- * kit, content/kits/tier6.js.) Null when there is none: the 流形 then waits with its copy skill ready.
+ * kit, content/kits/ops/chess_char_6_11-mlyss.js.) Null when there is none: the 流形 then waits with its copy skill ready.
  */
 export function pickCopyTarget(battle, unit) {
   let best = null, bs = null;
@@ -820,8 +975,7 @@ function manifold(bb, raw, def) {
         u.mem.stolenDef = (u.mem.stolenDef ?? 0) + gd;
         b.addBuff(u, { key: 'mlyss:steal', refresh: 'replace', mods: { atkFlat: u.mem.stolenAtk, defFlat: u.mem.stolenDef } });
         // the robbed enemy keeps exactly what was taken from it (a capped last steal takes less than steal_atk)
-        if (target.mem.mlyssRobbed == null) target.mem.mlyssRobbed = { atk: 0, def: 0 };
-        const robbed = target.mem.mlyssRobbed;
+        const robbed = (target.mem.mlyssRobbed ??= { atk: 0, def: 0 });
         robbed.atk += ga; robbed.def += gd;
         b.addBuff(target, { key: 'mlyss:stolen', refresh: 'replace', mods: { atkFlat: -robbed.atk, defFlat: -robbed.def }, source: u });
       },
@@ -1167,17 +1321,34 @@ function yanyouKit(bb, raw) {
   };
 }
 
-/** Free field tile for a flyer: the player's half, void/non-deployable tiles first, nearest to the half's centre. */
+/**
+ * Stage positions held for the band map characters (data/stages.json `mapChars`: the levels' predefined 预备干员-医疗 /
+ * Touch of 外勤医疗, hidden until a player holds the strategy), as tile keys.
+ */
+function mapCharKeys(battle) {
+  const list = battle.stage?.raw?.mapChars ?? battle.stage?.mapChars ?? [];
+  const out = new Set();
+  for (const m of Array.isArray(list) ? list : []) if (m && Array.isArray(m.pos)) out.add(m.pos[0] * COLS + m.pos[1]);
+  return out;
+}
+
+/**
+ * Free field tile for a flyer: the player's half, void/non-deployable tiles first, nearest to the half's centre — never a
+ * map character's position: the 炎佑 spawns at the same battle start as 外勤医疗's medic and took its tile on the maps
+ * whose free void tiles nearest the centre include it (战场#08 涨潮控制 always, 战场#07 排气格栅 with 9 炎), so the medic
+ * never stood (community report of 2026-10-06 「Touch策略给的医疗干员会跟炎盟约的炎祐冲突，无法同时出场」).
+ */
 function airTile(battle, playerId, taken) {
   const R = battle.rect;
   const ps = battle.getPlayer(playerId);
   let c0 = R.c0, c1 = R.c1;
   if (battle.players.length > 1 && ps) { if (ps.half === 'R') c0 = Math.max(c0, 11); else c1 = Math.min(c1, 10); }
   const cr = (R.r0 + R.r1) / 2, cc = (c0 + c1) / 2;
+  const held = mapCharKeys(battle);
   let best = null, bs = null;
   for (let r = R.r0; r <= R.r1; r++) {
     for (let c = c0; c <= c1; c++) {
-      if (taken.has(r * COLS + c) || !tileFree(battle, r, c)) continue;
+      if (taken.has(r * COLS + c) || held.has(r * COLS + c) || !tileFree(battle, r, c)) continue;
       const t = battle.grid.tile(r, c);
       const cls = t.build === 'NONE' && t.pass !== 'ALL' ? 0 : t.build === 'NONE' ? 1 : 2;
       const s = [cls, Math.hypot(r - cr, c - cc), r * COLS + c];
@@ -1229,12 +1400,27 @@ export function spawnYanyou(battle, playerId, { atk, hp, atkMul = 1, dmgTakenMul
 // band map characters (预备干员-医疗 / Touch)
 
 /**
- * Talents of the band map characters (data talents of the character record):
- *   plain stat talent  "攻击力+4%" (预备干员-医疗 攻击提升) → persistent ATK/DEF/HP/ASPD buff
- *   攫升  "治疗目标时使其获得3点技力" (Touch) → every heal by the character gives the healed unit `sp` SP
- *   超脱  "攻击范围内的友方干员被击倒时获得5点技力" (Touch) → an allied operator knocked out on a tile of its range: +`sp` SP
+ * Exits that give Touch's 超脱 its SP (PRTS Touch(卫戍协议) 第二天赋 备注 "部分有死亡动画的强制撤退（如史尔特尔的天赋效果）也能触发这一
+ * 天赋"): a knock-out ('killed') and a forced exit that plays the death animation — Battle.retreat `dying`, a knock-out put
+ * off by the operator's own effect: 史尔特尔's 余烬 (the PRTS example) and 骑士戒律 + 竞技旗 ("受到致命伤害时不撤退，技能结束后
+ * 退场" [ASSUMED: the same kind of exit]). Not the exits a skill plans — 耀骑士临光 S2's "技能结束后自动撤退", 伊内丝 S3's "放置
+ * 一个影哨后离场" — nor the 商人's "不足时自动撤退" ('merchant'), the 突袭 jump ('raid'), the 联防 setup (FORCED_EXIT) or a
+ * summon's end ('expired') [ASSUMED: plain 撤退 without a death animation]. A battle runs on its own — the player has no
+ * 撤退 command in it — so none of these is a player's own retreat.
  */
-function mapCharTalents(def) {
+const touchExitCounts = (ctx) => ctx.reason === 'killed' || (ctx.reason === 'retreat' && !!ctx.dying);
+
+/**
+ * Talents of the band map characters (data talents of the character record) — and of the Touch 补位 stand-in, whose kit
+ * (kits/ops/standin-acmedc.js) uses this one implementation, the module's 超脱 upgrade (8 SP) coming with the record:
+ *   plain stat talent  "攻击力+4%" (预备干员-医疗 攻击提升) → persistent ATK/DEF/HP/ASPD buff
+ *   攫升  "治疗目标时使其获得3点技力" (Touch) → every heal the character outputs gives its target `sp` SP — PRTS 备注 "本天赋只需
+ *         Touch输出治疗便能触发（无需实际产生治疗量）": herself too, and a heal that restores nothing (a full-HP target: S3's
+ *         extra heal); not a device or a unit without a skill, not her own HP-regeneration tick (no heal she outputs)
+ *   超脱  "攻击范围内的友方干员被击倒时获得5点技力" (Touch) → an allied operator knocked out (or forced out dying:
+ *         touchExitCounts) on a tile of its range: +`sp` SP
+ */
+export function mapCharTalents(def) {
   const out = [];
   for (const t of def?.talents ?? []) {
     const bb = t?.bb ?? {};
@@ -1244,7 +1430,7 @@ function mapCharTalents(def) {
       out.push({ install(battle, unit) {
         battle.on('heal', (ctx) => {
           const tg = ctx.target;
-          if (ctx.source !== unit || !tg || tg === unit || tg.kind === 'device' || !tg.skill || !(ctx.amount > 0)) return;
+          if (ctx.source !== unit || ctx.opts?.regen || !tg || tg.kind === 'device' || !tg.skill || tg.skill.noSkill) return;
           tg.skill.gainSp(sp, 'talent');
         }, { owner: unit, priority: -200 });
       } });
@@ -1252,7 +1438,7 @@ function mapCharTalents(def) {
       out.push({ install(battle, unit) {
         battle.on('death', (ctx) => {
           const d = ctx.unit;
-          if (ctx.reason !== 'killed' || !unit.alive || !unit.deployed || !unit.skill || !d || d === unit || d.kind !== 'op' || d.ownerId !== unit.ownerId) return;
+          if (!touchExitCounts(ctx) || !unit.alive || !unit.deployed || !unit.skill || !d || d === unit || d.kind !== 'op' || d.ownerId !== unit.ownerId) return;
           if ((unit.rangeKeySet || new Set(unit.rangeKeys || [])).has(d.tileR * COLS + d.tileC)) {
             unit.skill.gainSp(sp, 'talent');
             battle.fx('spGain', { x: unit.x, y: unit.y, id: unit.id, n: sp });
@@ -1279,47 +1465,62 @@ function reserveMedicKit(bb, raw, def) {
   return { ...k, talents: [...(k.talents ?? []), ...mapCharTalents(def)] };
 }
 
-/** Touch 恳切福音: +ATK, 2 heal targets in the skill range, ×heal_scale on allies ≤ hp_ratio, +addition heal. */
-function touchKit(bb, raw, def) {
-  const sk = def?.skill;
-  if (!sk) return { skill: null, talents: mapCharTalents(def) };
+/**
+ * Touch 恳切福音 (skchr_acmedc_3): +ATK, 2 heal targets in the skill range, ×heal_scale on allies below hp_ratio, +addition
+ * heal — one implementation for the 外勤医疗 map character (touchKit) and the Touch 补位 stand-in (kits/ops/
+ * standin-acmedc.js). `skill` = the skill record (`rangeGrid`, `duration`) of blackboard `bb`. Returns `{ skill:
+ * SkillSpec, install(battle, unit) }`: `install` adds the heal boost, which acts while the unit's skill runs — install it
+ * on a unit whose skill is this one only. PRTS Touch(卫戍协议) 技能3 and its 备注:
+ *   - "对生命值低于一半的友方单位治疗量提高为原来的130%": strictly below hp_ratio (PRTS 修正: 低于, not the old 不高于);
+ *   - "并额外治疗一次目标或目标相邻1个友方单位，治疗量为主目标的30%": once per heal action, at the main (first = most
+ *     injured) target's hit; 30 % of that heal's base (ATK × its scales, before the ×heal_scale the main target may get);
+ *   - 备注 "额外治疗范围 x-5…优先选择生命比例更低的单位治疗（可治疗生命值已满单位）": the main target or one of its 4
+ *     orthogonal neighbours, the lowest HP ratio first, a full-HP one included [ASSUMED: on equal ratios the main target,
+ *     then the battle's ally order]; never a 禁疗 / 孤立 / 无法被友方治疗 unit (no heal can pick it);
+ *   - 备注 "额外治疗可触发技能后半段的治疗量提高效果": the extra heal is a heal of its own, so its recipient gets the ×heal_scale
+ *     when it is below hp_ratio (and the stand-in's PHY-X ×1.15), and its target gets 攫升's SP.
+ */
+export function touchGospel(bb, skill) {
   const hpRatio = num(bb.hp_ratio, 0), boost = num(bb.heal_scale, 1), extra = num(bb['attack@addition_heal_scale'], 0);
   const targeting = {};
   if (num(bb['attack@max_target'], 0) > 1) targeting.maxTargets = Math.floor(num(bb['attack@max_target'], 1));
-  if (sk.rangeGrid && sk.rangeGrid.length) targeting.rangeGrid = sk.rangeGrid;
+  if (skill.rangeGrid && skill.rangeGrid.length) targeting.rangeGrid = skill.rangeGrid;
   return {
-    talents: mapCharTalents(def),
     skill: {
-      kind: sk.duration > 0 ? 'duration' : 'instant', heal: true,
+      kind: skill.duration > 0 ? 'duration' : 'instant', heal: true,
       mods: num(bb.atk, 0) ? { atkPct: num(bb.atk, 0) } : undefined,
       targeting,
       onHit({ battle, unit, target, heal }) {
         if (!(extra > 0) || !target || !(heal > 0)) return;
-        // "每次治疗2个目标，并额外治疗一次…治疗量为主目标的30%": one extra heal per heal action, for the main
-        // (first = most injured) target — onHit runs once per healed target
+        // onHit runs once per healed target: the extra heal comes with the first (main) one of the action
         const n = unit.stats.attacks;
         if (unit.mem.touchExtraAt === n) return;
         unit.mem.touchExtraAt = n;
-        let best = target.hp < target.s.maxHp - 1e-6 ? target : null;
-        for (const a of battle.alliesInRadius(target.x, target.y, 1, unit.ownerId)) {
-          if (a === target || a.hp >= a.s.maxHp - 1e-6 || a.s.flags.noHeal || a.profile?.noHeal) continue; // (禁疗 / 孤立)
+        let best = target;
+        for (const a of battle.alliesInRadius(target.x, target.y, 1)) {
+          if (a === target || !battle.allySelectable(a, unit) || a.s.flags.noHeal || a.profile?.noHeal) continue;
           if (Math.abs(a.tileR - target.tileR) + Math.abs(a.tileC - target.tileC) !== 1) continue;
-          if (!best || a.hpRatio < best.hpRatio) best = a;
+          if (a.hpRatio < best.hpRatio - 1e-9) best = a;
         }
-        // 30 % of the main target's heal as it was applied (×heal_scale when that target was at ≤ hp_ratio)
-        const main = unit.mem.touchMainHeal && unit.mem.touchMainHeal.target === target ? unit.mem.touchMainHeal.amount : heal;
-        unit.mem.touchExtra = true; // the extra heal is a share of the main heal: no second ×heal_scale
-        try { battle.heal(unit, best ?? target, main * extra); } finally { unit.mem.touchExtra = false; }
+        // `heal` = the main heal's base (ai.js doHeal: ATK × scales, before the heal pipeline and the ×heal_scale)
+        battle.heal(unit, best, heal * extra);
       },
     },
     install(battle, unit) {
       battle.on('heal', (ctx) => {
-        if (ctx.source !== unit || !unit.skill?.active || unit.mem.touchExtra) return;
-        if (boost !== 1 && hpRatio > 0 && ctx.target.hpRatio <= hpRatio + 1e-9) ctx.amount *= boost;
-        unit.mem.touchMainHeal = { target: ctx.target, amount: ctx.amount };
+        if (ctx.source !== unit || ctx.opts?.regen || !unit.skill?.active) return;
+        if (boost !== 1 && hpRatio > 0 && ctx.target.hpRatio < hpRatio - 1e-9) ctx.amount *= boost;
       }, { owner: unit });
     },
   };
+}
+
+/** Touch (外勤医疗 map character): 恳切福音 (touchGospel) + 攫升 / 超脱 (mapCharTalents). */
+function touchKit(bb, raw, def) {
+  const sk = def?.skill;
+  if (!sk) return { skill: null, talents: mapCharTalents(def) };
+  const g = touchGospel(bb, sk);
+  return { talents: mapCharTalents(def), skill: g.skill, install: g.install };
 }
 
 /**
@@ -1439,7 +1640,8 @@ function deployLimitOf(u) {
 /**
  * Tactical point (战术点) of a tactician when the player placed no 援军 piece: `Battle.findTacticalPoint` — a free
  * walkable tile of its initial range, on an enemy ground path first (where a player would put the blocker), then
- * nearest to the tactician. Shared by every tactician kit (tier3 伺夜, the tokens' own fallback).
+ * nearest to the tactician. Shared by every tactician kit (伺夜, kits/ops/chess_char_3_19-vigil.js; the tokens' own
+ * fallback).
  */
 export function tacticalPoint(battle, owner) {
   return battle.findTacticalPoint(owner);
@@ -1451,6 +1653,10 @@ function ensureReinforcement(battle, owner, tokenId) {
   const mine = battle.allyUnits.filter((t) => t.kind === 'token' && t.defId === tokenId && t.ownerUnit === owner && !t.mem.isClone && !t.mem.mlyssClone);
   const live = mine.find((t) => t.alive);
   if (live) { owner.trait.reinforcement = live; return live; }
+  // a 狼群 in its 战术点形态 is still the 援军 on the field: it comes back by its own timer (a 【移动】 of the owner fires
+  // `deploy` without ending the form)
+  const tac = mine.find((t) => wolfTacticalPoint(t));
+  if (tac) { owner.trait.reinforcement = tac; return tac; }
   const waiting = mine.find((t) => !t.alive && !t.removed);
   if (waiting && battle.redeploy(waiting, { free: true })) { owner.trait.reinforcement = waiting; return waiting; }
   // the tactical point the player chose (the board piece's tile, else the last one's) when still usable, else the

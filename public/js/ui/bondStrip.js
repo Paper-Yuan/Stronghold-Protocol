@@ -21,7 +21,7 @@
 
 import { html, BondDisc, Icon, MicroLabel, Tooltip } from './components.js';
 import { RichText, UnitThumb, BondGlyph, GIcon } from './gameComponents.js';
-import { sortBonds, bondMembers, nextThreshold, bondTier, harmonyMembers, HARMONY_BOND, memberHeadCount, briefingBondTip } from './gameLogic.js';
+import { sortBonds, bondMembers, nextThreshold, bondTier, harmonyMembers, HARMONY_BOND, memberHeadCount, briefingBondTip, diyGetter } from './gameLogic.js';
 import { formatBondEffect } from './richText.js';
 import { bondIconUrl } from './assetUrls.js';
 import { data } from '../data.js';
@@ -144,7 +144,9 @@ export function BondPopup({ bondId, entry, priv, banned = [], onClose, onMember,
   const th = Array.isArray(entry?.thresholds) && entry.thresholds.length ? entry.thresholds : b.thresholds || [];
   const tier = off ? 0 : entry?.tier ?? bondTier(count, th, b.maxCount);
   const active = !off && (entry ? !!entry.active : tier > 0);
-  const getChess = (id) => data.lookup('chess', id);
+  const diyData = { chess: data.get('chess'), backups: data.get('backups') };
+  const baseGetChess = (id) => data.lookup('chess', id);
+  const getChess = priv ? diyGetter(baseGetChess, priv, diyData) : baseGetChess;
   const members = bondMembers(b, priv, banned, getChess, (id) => data.lookup('items', id));
   const countsHand = entry?.countsHand ?? b.countsHand;
   const next = nextThreshold(count, th);
@@ -191,13 +193,14 @@ export function BondPopup({ bondId, entry, priv, banned = [], onClose, onMember,
         : html`<div class="bpop__harmony" role="note" data-harmony=${harmony} title=${harmonyText}>
           <${BondGlyph} bondId=${HARMONY_BOND} /><b>${harmonyName} +${harmony}</b><span>${harmonyText}</span></div>`) : null}
       <div class="bpop__members">
-        ${members.map((mb) => html`<button key=${mb.id} type="button" class=${cx('bpop__member', mb.onBoard && 'is-on', mb.owned && !mb.onBoard && 'is-owned', mb.banned && 'is-banned', mb.granted && 'is-granted')}
-            onClick=${() => onMember?.(mb.id, mb.granted && Array.isArray(mb.items) ? mb.items : null)} data-granted=${mb.granted ? '1' : null}
-            title=${`${mb.name}${mb.granted ? '（变形同构体：视为本盟约成员）' : ''}${mb.banned ? '（本局禁用）' : mb.onBoard ? '（在场）' : mb.owned ? '（整备区）' : ''}`}>
-          <${UnitThumb} kind="chess" id=${mb.id} size="sm" dim=${!mb.owned || mb.banned} />
+        ${members.map((mb) => html`<button key=${mb.id} type="button" class=${cx('bpop__member', mb.onBoard && 'is-on', mb.owned && !mb.onBoard && 'is-owned', mb.banned && 'is-banned', mb.granted && 'is-granted', mb.diy && 'is-diy')}
+            onClick=${() => onMember?.(mb.id, mb.granted && Array.isArray(mb.items) ? mb.items : null)} data-granted=${mb.granted ? '1' : null} data-diy=${mb.diy ? (mb.rec?.charId || '1') : null}
+            title=${`${mb.name}${mb.diy ? '（自选干员）' : ''}${mb.granted ? '（变形同构体：视为本盟约成员）' : ''}${mb.banned ? '（本局禁用）' : mb.onBoard ? '（在场）' : mb.owned ? '（整备区）' : ''}`}>
+          <${UnitThumb} kind="chess" id=${mb.id} rec=${mb.rec} size="sm" dim=${!mb.owned || mb.banned} />
           <span class="bpop__mname">${mb.name}</span>
           ${mb.banned ? html`<span class="bpop__ban"><${Icon} name="close" /></span>` : null}
           ${mb.granted ? html`<span class="bpop__iso" aria-hidden="true">同构</span>` : null}
+          ${mb.diy ? html`<span class="bpop__diy" aria-hidden="true">自选</span>` : null}
         </button>`)}
       </div>
     </section>

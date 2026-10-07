@@ -151,8 +151,10 @@ export function positionClass(rec) {
  * @param {object|null} _ps the player (unused)
  * @param {object|null} rec
  */
-export function placeClass(_ps, rec) {
-  return positionClass(rec);
+export function placeClass(ps, rec) {
+  const chessId = rec?.chessId || rec?.id;
+  const r = (ps && ps.gd && chessId && typeof ps.gd.chess === 'function') ? (ps.gd.chess(chessId) || rec) : rec;
+  return positionClass(r);
 }
 
 /**

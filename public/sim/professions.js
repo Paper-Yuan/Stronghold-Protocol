@@ -8,7 +8,8 @@
 //   projectile 'none'|'beam'|'arrow'|'bolt'|'bomb'|'lob'|'orb'|'drone'|'boomerang' ('beam': an instant hit drawn as a
 //                             line; 'boomerang': out to the target and back to the thrower, ai.js throwBoomerang)
 //                             boomerang bool (回环射手: keeps 'boomerang')
-//   canHitFly bool            maxTargets n (≥1)          hitAllBlocked bool (attack every blocked enemy)
+//   canHitFly bool            maxTargets n (≥1)          hitAllBlocked bool ("同时攻击阻挡的所有敌人": up to the block count of
+//                             targets, blocked ones first — ai.js targetCount)
 //   allInRange bool (every enemy on the range at once)   splashRadius tiles (around the struck target)
 //   rangeAoe bool (a 锁定攻击范围 AoE without a projectile — SUB table or kit trait, applied by resolveProfile after
 //                  every override: allInRange + instant 'beam' hits on a ranged profile; only selectable enemies are
@@ -21,7 +22,16 @@
 //   noHeal bool (cannot be healed by others)   blockFly bool   onHitStatus {key, duration, value}
 //   dmgMul(battle, unit, target) → number      afterHit(battle, unit, target, {dealt,x,y})
 //   canAttack(battle, unit) → bool             afterAttack(battle, unit, targets)
-//   hitsFn(battle, unit) → n                   install(battle, unit) — per-unit hooks, called once at setup
+//   skipEnemy(enemy) → bool (an enemy the unit never selects — targeting.js canTargetEnemy; 嵯峨 "不攻击重伤单位")
+//   healThrough(healer, ally) → bool (a healer that selects and heals that ally through its 禁疗 — Battle
+//                             injuredAlliesInKeys, damage.js heal; 凯尔希 on her Mon3tr)
+//   hitsFn(battle, unit, info) → n (info: the hit's { isSkill, index, attackId, energy })
+//   hitDmgMul n (伤害倍率 of each of the `hits` instances on the main target: DamageInfo `mul`, applied after DEF / RES
+//                and the damage multipliers, not 攻击倍率 — a 频次 enemy still loses 1 per instance; the instances after
+//                the first carry `noSp`, no 受击回复: 砾's two 50 % hits, PRTS 砾 特性备注 — ai.js resolveHit)
+//   install(battle, unit) — per-unit hooks, called once at setup
+//   storeEnergy(battle, unit) → bool / releaseEnergy(battle, unit) → n (秘术师: the attack check found no valid target ⇒
+//                             store one energy, false when full; the energies leaving with an attack — installMystic)
 //   dollNoAttack bool (傀儡师: its <替身> makes no normal attack and casts no skill — 归溟幽灵鲨, kit trait)
 //   tb — the unit's trait blackboard (data `trait.bb`), used for tunables (module upgrades included on elites)
 // Behaviour per subprofession is documented in docs/SIM.md §Professions. Front / side tests use the unit's direction
@@ -52,26 +62,46 @@ export const PROFESSION_DEFAULTS = Object.freeze({
 // install helpers (per-unit hooks). All use engine helpers only; tunables come from unit.profile.
 
 /**
- * 武者 / 收割者 self-heal ("每次攻击到敌人回复自身50生命"; 收割者 adds "最大生效数等于阻挡数"). Normal attacks arrive as one
- * 'attack' event whose `targets` are every enemy hit.
+ * 武者 (musha) trait "每次攻击到敌人后回复自身N生命" (bb value) with the branch rules of PRTS 分支特性信息 武者: "特性治疗于干员每次
+ * 输出伤害时触发（不局限于攻击）" and "常态持有禁疗；通过自身特性/天赋/技能产生的作用于自身的治疗效果会无视自身的禁疗". The official
+ * trait buffs (buff_template_data `utage_trait`, `helage_trait`, `zuole_trait`) fire on ON_OUTPUT_DAMAGE: one heal per damage
+ * instance the unit deals to an enemy — every hit of a normal attack (the second hit of a double strike, a splash or
+ * chain victim) and every skill / item / bond damage instance credited to it; a dodged hit deals none (no `damaged`).
+ * Not a 流失 (no damage dealt), not an element 损伤 (a gauge fill, no HP damage — as 咒愈师), not a buff-made damage
+ * (talent / DoT tags: attackType BUFF — [ASSUMED] as before; only 隐德来希's template filters it and no 武者 kit deals such
+ * damage). The heal ignores 禁疗 (`ignoreHealFree`: an abnormal flag is one switch whoever set it — PRTS 异常效果).
+ */
+const installMushaHeal = (battle, unit) => {
+  battle.on('damaged', (c) => {
+    if (c.source !== unit || !unit.alive || !c.target || c.target.side !== 'enemy') return;
+    const dmg = c.dmg;
+    if (!dmg || isHpLoss(dmg) || c.type === 'element') return;
+    const tags = dmg.tags || [];
+    if (tags.includes('talent') || tags.includes('dot') || tags.includes('periodic')) return;
+    battle.heal(unit, unit, unit.profile.selfHeal ?? 50, { self: true, ignoreHealFree: true });
+  }, { owner: unit, priority: -10 });
+};
+
+/**
+ * 收割者 (reaper) self-heal ("每次攻击到敌人回复自身50生命，最大生效数等于阻挡数"). Normal attacks arrive as one 'attack' event
+ * whose `targets` are every enemy hit.
  *
  * The official trait is a buff ON the operator that fires on ON_OUTPUT_DAMAGE — buff_template_data `etlchi_trait`,
- * `excu2_trait`, `utage_trait`, `helage_trait`, `zuole_trait` all react to any damage the unit outputs, and 隐德来希's
- * filters the attackType BUFF out (damage produced by a buff/talent — e.g. her own 萃血 DoT). So skill damage heals too:
- * 隐德来希's S2 blood sickles restore her life although the skill stops her attacks (`attack: { noAttack: true }`) — the
- * sickle's AOEDamage nodes are attackType NORMAL and PRTS 备注 says "伤害来源始终视为隐德来希". Every such hit arrives as
- * one 'damaged' event per enemy, so the reaper cap ("最大生效数") is applied per instant here: the official `[heal_fake]`
- * window is 0.05 s and its stack count is the block number (`SetStackCountViaBlockNum`). [ASSUMED] the sim uses the same
- * `battle.time` as its window, so simultaneous hits (both 血镰, an AoE) share the block-count cap; a normal attack has its
- * own event and its own cap, as before.
+ * `excu2_trait` react to any damage the unit outputs, and 隐德来希's filters the attackType BUFF out (damage produced by a
+ * buff/talent — e.g. her own 萃血 DoT). So skill damage heals too: 隐德来希's S2 blood sickles restore her life although the
+ * skill stops her attacks (`attack: { noAttack: true }`) — the sickle's AOEDamage nodes are attackType NORMAL and PRTS 备注
+ * says "伤害来源始终视为隐德来希". Every such hit arrives as one 'damaged' event per enemy, so the reaper cap ("最大生效数") is
+ * applied per instant here: the official `[heal_fake]` window is 0.05 s and its stack count is the block number
+ * (`SetStackCountViaBlockNum`; PRTS 分支特性信息 收割者 "触发后的0.05s内最多只能累加等于自身阻挡数的治疗次数"). [ASSUMED] the sim uses
+ * the same `battle.time` as its window, so simultaneous hits (both 血镰, an AoE) share the block-count cap; a normal attack
+ * has its own event and its own cap, as before. Like the 武者's, the heal ignores 禁疗 (PRTS 分支特性信息 收割者 "通过自身特性/
+ * 天赋/技能产生的作用于自身的治疗效果会无视自身的禁疗").
  */
-const installSelfHealOnHit = (capByBlock) => (battle, unit) => {
-  const heal = (n) => { if (n > 0 && unit.alive) battle.heal(unit, unit, (unit.profile.selfHeal ?? 50) * n, { self: true }); };
+const installReaperHeal = (battle, unit) => {
+  const heal = (n) => { if (n > 0 && unit.alive) battle.heal(unit, unit, (unit.profile.selfHeal ?? 50) * n, { self: true, ignoreHealFree: true }); };
   battle.on('attack', (ctx) => {
     if (ctx.attacker !== unit || !unit.alive) return;
-    let n = ctx.targets.length;
-    if (capByBlock) n = Math.min(n, Math.max(1, unit.s.blockCnt));
-    heal(n);
+    heal(Math.min(ctx.targets.length, Math.max(1, unit.s.blockCnt)));
   }, { owner: unit, priority: -10 });
   battle.on('damaged', (c) => {
     if (c.source !== unit || !unit.alive || !c.target || c.target.side !== 'enemy') return;
@@ -81,7 +111,7 @@ const installSelfHealOnHit = (capByBlock) => (battle, unit) => {
     if (tags.includes('talent') || tags.includes('dot') || tags.includes('periodic')) return; // attackType BUFF
     const mem = unit.mem;
     if (mem.selfHealAt !== battle.time) { mem.selfHealAt = battle.time; mem.selfHealN = 0; }
-    if (capByBlock && mem.selfHealN >= Math.max(1, unit.s.blockCnt)) return;
+    if (mem.selfHealN >= Math.max(1, unit.s.blockCnt)) return;
     mem.selfHealN++;
     heal(1);
   }, { owner: unit, priority: -10 });
@@ -359,25 +389,50 @@ const installFunnel = (battle, unit) => {
   unit.trait.funnelScale = unit.profile.funnel?.init ?? 0.2;
 };
 
+/**
+ * 秘术师 (mystic) trait "攻击造成法术伤害，在找不到攻击目标时可以将攻击能量储存起来之后一齐发射（最多3个）" (bb times; 深靛's
+ * MSC-X 4) with the branch rules of PRTS 分支特性信息 秘术师: "能量储存与攻击占用相同的攻击间隔：在进行攻击判定时，若范围内存在
+ * 有效目标，则进行普通攻击；若无有效目标且能量储存数未满，则改为储存一份攻击能量（属于攻击行为）；仅没有有效目标，且能量储存数已满的
+ * 情况下才进入待机状态". The attack loop (ai.js updateAlly) calls the profile's `storeEnergy` at its attack check — the attack
+ * ready, the unit able to act and not disarmed (PRTS 异常效果 缴械 "秘术师储存能量同样无法进行") — when it finds no valid target
+ * (no target, or the profile's `canAttack` false: a 秘术师 kit's own target rule — 深靛 never picks a bound enemy, so a bind
+ * on her only target is no valid target); a stored energy restarts the attack interval, a full store idles (the next
+ * valid target is attacked at once). The energies leave with the next attack that happens (`releaseEnergy`, called by
+ * performAttack after `beforeAttack`: "攻击被打断且弹道未能成功生成的情况下，储存的能量不会被消耗") with its main target and land
+ * with its main hit, one damage instance each (`hitsFn`; "由储存能量形成的弹道造成攻击力100%的法术普通伤害" — each as the
+ * main hit). [ASSUMED] a redeployment holds no energy (a free move — 乌尔比安 S3 — keeps them). Kits with their own store
+ * (维伊's 转置能量, 黑键's elite energies) replace `storeEnergy` and release theirs from an `attack` hook.
+ */
 const installMystic = (battle, unit) => {
   unit.trait.stored = 0;
-  const max = unit.profile.storeMax ?? 3;
-  battle.on('tick', () => {
-    if (!unit.canAct) return;
-    if (unit.atkCd <= 0 && !unit.trait.hadTarget && unit.trait.stored < max) {
-      unit.trait.storeAcc = (unit.trait.storeAcc ?? 0) + battle.dt;
-      if (unit.trait.storeAcc >= unit.s.interval) { unit.trait.storeAcc = 0; unit.trait.stored++; }
-    }
-  }, { owner: unit });
+  battle.on('deploy', (ctx) => { if (ctx.unit === unit && !ctx.move) unit.trait.stored = 0; }, { owner: unit });
 };
 
+/** Refresh period / lifetime (s) of a bard trait's 生命回复速度 buff: it lapses within BARD_REGEN_DUR once the bard stops. */
+export const BARD_REGEN_IV = 0.25;
+export const BARD_REGEN_DUR = 0.5;
+
+/**
+ * 吟游者 trait "不攻击，持续恢复范围内所有友军生命（每秒相当于自身攻击力10%的生命）": PRTS 分支特性信息 吟游者 "特性为基于自身攻击力
+ * 来增加受益者的“生命回复速度”属性" — an hpRegen buff of `value` (the bard's ATK × ratio) on `ally`, one per bard (two bards
+ * add up), which the caller refreshes before it lapses (`duration`, default BARD_REGEN_DUR). No heal: 禁疗 and 无法被友方
+ * 治疗 (收割者 / 不屈者 / 武者 noHeal) do not stop it — PRTS 异常效果 禁疗 "增减生命回复速度…的效果不会被识别为治疗类能力"; the
+ * regeneration tick is the ally's own (damage.js heal `regen`, no 治疗加成). The `bardRegen` hook { unit (the bard),
+ * target, value } may scale one ally's share (魔王's 微尘: "使该干员受到魔王特性效果提升至1.5倍"). Also the 海嗣 range of
+ * 浊心斯卡蒂 (content/tokens.js, kits/ops/chess_char_6_04-skadi2.js).
+ */
+export function bardRegen(battle, bard, ally, value, duration = BARD_REGEN_DUR) {
+  if (!bard || !ally || !ally.alive || !(value > 0)) return;
+  let v = value;
+  if (battle.hasHook('bardRegen')) v = num(battle.emit('bardRegen', { unit: bard, target: ally, value: v }).value, 0);
+  if (v > 0) battle.addBuff(ally, { key: `trait:bard:${bard.id}`, duration, source: bard, mods: { hpRegen: v } });
+}
+
 const installBard = (battle, unit) => {
-  battle.every(1, () => {
+  battle.every(BARD_REGEN_IV, () => {
     if (!unit.canAct) return;
-    const amount = unit.s.atk * (unit.profile.auraRatio ?? 0.1);
-    for (const ally of battle.alliesInGrid(unit)) {
-      if (ally.hp < ally.s.maxHp) battle.heal(unit, ally, amount, { aura: true });
-    }
+    const v = unit.s.atk * (unit.profile.auraRatio ?? 0.1);
+    for (const ally of battle.alliesInGrid(unit)) bardRegen(battle, unit, ally, v);
   }, { owner: unit });
 };
 
@@ -459,7 +514,14 @@ export const SUB = Object.freeze({
       return unit.trait.funnelScale;
     } }),
   mystic: P({ install: installMystic,
-    hitsFn: (battle, unit) => { const n = 1 + (unit.trait.stored ?? 0); unit.trait.stored = 0; return n; } }),
+    storeEnergy: (battle, unit) => {
+      const n = unit.trait.stored ?? 0;
+      if (n >= (unit.profile.storeMax ?? 3)) return false;
+      unit.trait.stored = n + 1;
+      return true;
+    },
+    releaseEnergy: (battle, unit) => { const n = unit.trait.stored ?? 0; unit.trait.stored = 0; return n; },
+    hitsFn: (battle, unit, info) => 1 + (info?.energy ?? 0) }),
   phalanx: P({ noAttackUnlessSkill: true, rangeAoe: true, install: installPhalanx }),
   primcaster: P({}),
   corecaster: P({}),
@@ -499,8 +561,8 @@ export const SUB = Object.freeze({
       const [fr, fc] = frontOf(unit.tileR, unit.tileC, unit.dir);
       return bodyOnTile(target, unit.tileR, unit.tileC) || bodyOnTile(target, fr, fc) ? 1 : (unit.profile.rangedScale ?? 0.8);
     } }),
-  musha: P({ noHeal: true, install: installSelfHealOnHit(false) }),
-  reaper: P({ noHeal: true, allInRange: true, install: installSelfHealOnHit(true) }),
+  musha: P({ noHeal: true, install: installMushaHeal }),
+  reaper: P({ noHeal: true, allInRange: true, install: installReaperHeal }),
   sword: P({ hits: 2 }),
   artsfghter: P({ dmgType: 'arts' }),
   swordmaster: P({ hits: 2 }),

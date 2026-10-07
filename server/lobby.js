@@ -79,11 +79,12 @@
 
 import { randomBytes, randomInt } from 'node:crypto';
 import { ERR, MAX_SEATS, MAX_SPECTATORS, ROOM_CODE_LEN, modeIdFor } from '../shared/constants.js';
-import { checkLoadout } from '../shared/protocol.js';
+import { checkLoadout, checkNotOwned, checkDiyPicks } from '../shared/protocol.js';
 import { encode, isDroppable, isErrCode, sendRaw, sendSession } from './net.js';
 import { getData as defaultGetData, lookup } from './data.js';
 import { Match as DefaultMatch } from './match/Match.js';
 import { Matchmaker } from './matchmaking.js';
+import { KITTED_CHARS } from './sim/content/kits/index.js';
 
 /** Room code alphabet: uppercase letters without I and O (and no digits, so no 0/1). */
 export const CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
@@ -120,16 +121,28 @@ function freezeLoadout(loadout) {
   return Object.freeze(out);
 }
 
+/** Deep-frozen copy of checked 自选 picks (shared by the session, the seat and the match's PlayerState). */
+function freezeDiy(picks) {
+  const out = {};
+  for (const [id, p] of Object.entries(picks || {})) out[id] = Object.freeze({ charId: p.charId, skillIndex: p.skillIndex, uniEquipId: p.uniEquipId ?? null });
+  return Object.freeze(out);
+}
+
 /**
- * Frozen copy of a skin selection, keeping only entries whose chess the game data knows (docs/SKINS.md).
+ * Frozen copy of a skin selection, keeping only entries whose chess the game data knows (docs/SKINS.md),
+ * and allowing DIY operator and slot skin keys (char_* and chess_char_*_diy*).
  * @param {Record<string, string>} skins `{ [baseChessId]: skinId }`
  * @param {(id: string) => any} getChess
  */
 function freezeSkins(skins, getChess) {
   const out = {};
   for (const [id, skinId] of Object.entries(skins || {})) {
+    if (typeof id === 'string' && (id.startsWith('char_') || (id.startsWith('chess_char_') && id.includes('_diy')))) {
+      out[id] = String(skinId);
+      continue;
+    }
     const rec = getChess(id);
-    if (!rec || rec.isGolden || rec.visible === false || rec.isHidden || rec.isDiy || (rec.baseId && rec.baseId !== id)) continue;
+    if (!rec || rec.isGolden || rec.visible === false || rec.isHidden || (rec.baseId && rec.baseId !== id)) continue;
     out[id] = String(skinId);
   }
   return Object.freeze(out);
@@ -240,9 +253,11 @@ export class Lobby {
     this.maintenanceTimer = null;
     /** @type {NodeJS.Timeout | null} 大厅动态广播节流定时器 */
     this._statsDebounceTimer = null;
-    /** 定期大厅全量数据心跳 (4秒) */
-    this._statsPeriodicTimer = setInterval(() => this.broadcastLobbyStats(), 4000);
-    this._statsPeriodicTimer?.unref?.();
+    /** 定期大厅全量数据心跳 (4秒，仅非单测环境启用) */
+    if (process.env.NODE_ENV !== 'test') {
+      this._statsPeriodicTimer = setInterval(() => this.broadcastLobbyStats(), 4000);
+      this._statsPeriodicTimer?.unref?.();
+    }
   }
 
   /** @param {string} code @returns {Room | null} */
@@ -272,7 +287,6 @@ export class Lobby {
    * @param {{ resumed: boolean, repeat: boolean }} info
    */
   onHello(session, { resumed, repeat }) {
-    this.broadcastLobbyStats();
     if (this.maintenance && session.ws) {
       sendSession(session, {
         t: 'server.maintenance',
@@ -334,13 +348,15 @@ export class Lobby {
       case 'room.kick': return this.kick(session, msg);
       case 'room.start': return this.start(session);
       case 'room.loadout': return this.loadout(session, msg);
+      case 'room.ownership': return this.ownership(session, msg);
+      case 'room.diy': return this.diy(session, msg);
       case 'room.skins': return this.skins(session, msg);
       case 'room.chat': return this.chat(session, msg);
       case 'room.spectate': { this.matchmaker.removePlayer(session.playerId); return this.spectate(session, msg); }
       case 'room.removeSpectator': return this.removeSpectator(session, msg);
-      case 'match.queue': return this.matchmaker.enqueue(session, msg);
+      case 'match.queue': session.wantsLobbyStats = true; return this.matchmaker.enqueue(session, msg);
       case 'match.cancel': return this.matchmaker.dequeue(session);
-      case 'room.list': return this.listRooms(session, msg);
+      case 'room.list': session.wantsLobbyStats = true; return this.listRooms(session, msg);
       default:
         if (typeof msg.t === 'string' && msg.t.startsWith('g.')) return this.routeGame(session, msg);
         return fail(ERR.BAD_MSG, `unhandled type ${String(msg.t).slice(0, 32)}`);
@@ -576,7 +592,7 @@ export class Lobby {
       const payload = encode(stats);
       if (!this.registry?.byPlayerId || !payload) return;
       for (const session of this.registry.byPlayerId.values()) {
-        if (session.connected && session.ws) {
+        if (session.connected && session.ws && session.wantsLobbyStats) {
           sendRaw(session.ws, payload);
         }
       }
@@ -844,6 +860,44 @@ export class Lobby {
     return OK;
   }
 
+  /**
+   * room.ownership (0.2.0 补位): keep the legal not-owned chess ids, store them on the session and the seat.
+   */
+  ownership(session, { notOwned }) {
+    const res = checkNotOwned(notOwned, (id) => lookup('chess', id, this.safeData()));
+    if (!res || !('ok' in res)) return fail(ERR.BAD_MSG, res && res.detail);
+    session.notOwned = Object.freeze(res.notOwned);
+    const room = this.roomOf(session);
+    if (!room) return OK;
+    const seat = room.seatOf(session.playerId);
+    if (seat) seat.notOwned = session.notOwned;
+    if (room.match && seat) return fail(ERR.ROOM_STARTED, 'stored for the next match');
+    return OK;
+  }
+
+  /**
+   * room.diy (0.2.0 自选编队): keep the legal picks (checkDiyPicks against the data and KITTED_CHARS), store them on the
+   * session and the seat (see the header). A running match never takes them: it keeps the picks its seat had at its
+   * start.
+   */
+  diy(session, { picks }) {
+    const res = checkDiyPicks(picks, { data: this.safeData(), kitted: KITTED_CHARS });
+    if (!res || !('ok' in res)) return fail(ERR.BAD_MSG, res && res.detail);
+    const kept = freezeDiy(res.picks);
+    session.diy = kept;
+    const room = this.roomOf(session);
+    if (!room) return OK;
+    const seat = room.seatOf(session.playerId);
+    if (seat) seat.diy = kept;
+    if (room.match && seat) return fail(ERR.ROOM_STARTED, 'stored for the next match');
+    return OK;
+  }
+
+  /** Extra fields of every `welcome` (net.js): the operators a 自选 slot may field (shared/diy.js `kitted`). */
+  welcomeInfo() {
+    return { diyKitted: KITTED_CHARS };
+  }
+
   // ---------------------------------------------------------------------------------------------------
   // Match wiring
   // ---------------------------------------------------------------------------------------------------
@@ -856,6 +910,8 @@ export class Lobby {
       seat: s.seat, playerId: s.playerId, name: s.name, isBot: s.isBot, connected: s.connected,
       // DESIGN §16: the human's checked operator loadout (bots fight with the defaults)
       loadout: s.isBot ? null : s.loadout || null,
+      notOwned: s.isBot ? null : s.notOwned || null,
+      diy: s.isBot ? null : s.diy || null,
       skins: s.isBot ? null : s.skins || null,
     }));
     // lastPublic / results: the latest m.public broadcast and the m.result frames (encoded), kept for the replay.
@@ -1115,6 +1171,8 @@ export class Lobby {
     return {
       seat: idx, playerId: session.playerId, name: session.name, isBot: false, ready: false, connected: session.connected, left: false,
       loadout: session.loadout || null,
+      notOwned: session.notOwned || null,
+      diy: session.diy || null,
       skins: session.skins || null,
     };
   }

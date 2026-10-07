@@ -270,7 +270,10 @@ export class Battle {
     }
     // the unit's own loadout (DESIGN §16): an entry without loadout fields is the DEFAULT — never another player's
     // choice for the same chess id in a multi-player field (the per-battle data view maps id-only lookups)
-    const def = this.data.getChess(inp.chessId, { skillIndex: inp.skillIndex ?? null, moduleId: inp.moduleId ?? null });
+    const lo = { skillIndex: inp.skillIndex ?? null, moduleId: inp.moduleId ?? null };
+    if (inp.standIn === true) lo.standIn = true;
+    if (inp.diy && typeof inp.diy === 'object') lo.diy = inp.diy;
+    const def = this.data.getChess(inp.chessId, lo);
     if (!def) { this.log(`unknown chess ${inp.chessId}`); return null; }
     const u = this._makeAlly(ps, def, 'op', r, c, { uid: inp.uid, dir, skin: inp.skin });
     u.items = [...(inp.items ?? [])];
