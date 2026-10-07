@@ -188,6 +188,9 @@ html:not(.sp-in-match) .toast-host { margin-top: var(--sa-t); }
   .diff-card { padding-top: .12rem; padding-bottom: .12rem; }
   .create-box { margin-top: .18rem; }
   .create-box .btn--xl { height: .8rem; }
+  .matchmaking-hud { padding: .12rem .2rem; }
+  .matchmaking-hud__info { font-size: .16rem; gap: .1rem; }
+  .matchmaking-hud__time { font-size: .18rem; }
 }
 
 /* ---- 5. Multi-Aspect-Ratio & Screen Size Adaptations --------------------------------------------- */

@@ -192,12 +192,16 @@ const CLOSE_REASON = {
 function wireNet() {
   net.on('status', (snap) => {
     const cur = store.get().connection;
+    const isOnline = snap.status === 'online';
     store.set({
       connection: {
         status: snap.status, ping: snap.ping, attempt: snap.attempt, retryAt: snap.retryAt,
-        lastError: snap.lastError, everOnline: cur.everOnline || snap.status === 'online',
+        lastError: snap.lastError, everOnline: cur.everOnline || isOnline,
       },
     });
+    if (!isOnline && store.get().matchmaking?.status === 'searching') {
+      store.patch('matchmaking', { status: 'idle', elapsed: 0, matched: 0 });
+    }
   });
   net.on('clock', (c) => store.set({ clock: { offset: c.offset, rtt: c.rtt, synced: c.synced } }));
   net.on('welcome', onWelcome);
