@@ -1,181 +1,246 @@
 # 卫戍协议：盟约 (Stronghold Protocol: Alliance)
-## 工程交接与运维开发全景指南 (v0.1.6.1 Patch / Matchmaking & Telemetry)
+## 工程交接与核心运维主导逻辑白皮书 (Handover & Governance Master Plan)
 
-> **文档性质**：工程研发交接 / 生产环境运维手册 / 架构设计文档  
-> **交接对象**：下一位接手研发 / 运维负责人 / 安全研究员  
-> **最后维护时间**：2026-10-07 14:30 (UTC+8)  
-> **对应分支**：`feature/matchmaking-system` (基于 `v0.1.6.1`，commit `55b0a04`+)
-
----
-
-## 目录
-1. [工程环境与分支隔离原则](#一工程环境与分支隔离原则)
-2. [阿里云生产服务器现况与拓扑](#二阿里云生产服务器现况与拓扑)
-3. [核心功能实现与模块映射](#三核心功能实现与模块映射)
-4. [踩坑记录与关键避坑防线](#四踩坑记录与关键避坑防线)
-5. [日常运维与无感热升级 SOP](#五日常运维与无感热升级-sop)
-6. [后续规划与遗留待办 (TODO)](#六后续规划与遗留待办-todo)
+> **文档性质**：工程研发主导规划 / 生产环境核心运维宪章 / 架构决策指南  
+> **面向对象**：下一任主程 / 运维负责人 / 安全研究员 (接手必读)  
+> **更新时间**：2026-10-07 14:35 (UTC+8)  
+> **执行分支**：`feature/matchmaking-system` (基于 `v0.1.6.1`，commit `5567fa98`+)  
+> **核心宗旨**：**「零炸房、零污染、数据驱动、平滑热切」**
 
 ---
 
-## 一、工程环境与分支隔离原则
+## 零、接手第一准则：主导治理思维 (Governance Philosophy)
 
-为了保障研发安全性，本地工程采用严格隔离机制：
+本工程不是简单的静态网页或单机项目，而是一个**日间常驻 120~170+ 位玩家正在打 Boss、合成装备、实时联防的在线 WebSocket 游戏集群**。
 
-| 环境 | 路径 / 地址 | 分支 / 说明 | 约束规则 |
-|---|---|---|---|
-| **主工作区 (绝对只读)** | `E:\Workbox\系统` | `0.1.6.1` (原始主干) | **严禁在此修改或提交任何代码** |
-| **独立工作树 (研发区)** | `E:\Workbox\sp-matchmaking` | `feature/matchmaking-system` | 所有代码开发、单测、打包在此进行 |
-| **阿里云生产服务器** | `101.37.150.107` | root 免密互通，目录 `/opt` | 当前承载百人在线对局，严禁暴力操作 |
-
-> [!CAUTION]
-> **Windows 环境命令行注意**：  
-> 本地开发机运行 Windows 10/11，默认终端为 PowerShell。组合命令**切勿使用 `&&`**（会导致语法错误），必须使用 `;` 分隔。
-
----
-
-## 二、阿里云生产服务器现况与拓扑
-
-### 1. 基础资源状态
-- **操作系统**：Ubuntu 24.04.2 LTS (Noble Numbat)
-- **内存使用**：总计 1.6GB，当前使用约 42%（资源充裕）
-- **磁盘使用**：`/dev/vda3` (40GB)，已用 15GB，**空闲 23GB (占用率 39%)**。
-- **活跃连接数**：日间常规维持在 **120 ~ 170+** 个并发长连接。
-
-### 2. 目录结构
+接手本项目时，你的**思考主轴与决策优先级**必须严格遵循以下铁律：
 ```text
-/opt/
-├── stronghold/             # [主服节点 - Blue] 端口 3000，PM2 进程名 stronghold (PID 46384)
-├── stronghold-green/       # [热备节点 - Green] 端口 3002，PM2 进程名 stronghold-green (PID 46424)
-├── stronghold-backup/      # [生产冷快照] 包含完整代码与静态素材 (瘦身备份)
-├── hot-swap.sh             # [蓝绿热切脚本] 生产环境零中断升级流水线脚本 (可执行)
-└── scheduled-upgrade.sh    # [定时升级脚本] 具备 10 分钟倒计时与健康探针回退机制
+【最高优先级】 保障生产当前正在进行的对局 (Players First, Zero Disruption)
+      │
+      ▼
+【次高优先级】 严守主工程与分支隔离 (Branch Isolation, No Dirty Commits)
+      │
+      ▼
+【第三优先级】 蓝绿解耦与闲置区验证 (Stage & Probe in Idle Zone)
+      │
+      ▼
+【第四优先级】 生产前置网关无感切换与平滑引流 (Drain & Hot-Swap)
 ```
 
-### 3. 网络拓扑与端口划分
+---
+
+## 一、开发环境主导逻辑：双轨隔离与分支模型
+
+### 1. 物理目录与分支界限
 ```text
-                     [ 外部客户端 / 手机端 / 浏览器 ]
-                                    │
-                    ┌───────────────┴───────────────┐
-                    ▼                               ▼
-       【端口 3000: 生产主服 (Blue)】       【端口 80: Nginx 反代网关】
-       - 当前直连对外服务                   - upstream: 127.0.0.1:3002 (Green)
-       - 承载当前全服 170+ 对局             - WebSocket 长连接超时: 3600s
-       - PM2 进程名: stronghold             - 毫秒级 reload，零丢包
+本地宿主机 (Windows 11)
+├── E:\Workbox\系统/             <-- [主工作区] 分支: 0.1.6.1 (官方冻结基准)
+│                                 【只读约束】严禁在此目录运行修改、提交或覆盖命令！
+│
+└── E:\Workbox\sp-matchmaking/   <-- [独立工作树] 分支: feature/matchmaking-system
+                                  【研发主战场】所有新特性开发、单元测试、打包均在此进行！
+```
+
+### 2. 终端交互陷阱与规约
+- **终端规范**：Windows 默认终端为 PowerShell。
+- **语法红线**：PowerShell 5.1 不支持 `&&` 语法（会直接抛出 ParserError）。**组合命令必须统一使用 `;` 分隔**。
+  - ❌ 错误：`git add . && git commit -m "..."`
+  - ✅ 正确：`git add . ; git commit -m "..."`
+
+---
+
+## 二、生产架构主导逻辑：多端口蓝绿双活热切
+
+为了彻底解决“一更新就全服闪断、在线玩家全掉线炸房”的顽疾，生产环境构建了**前置反代网关 + 蓝绿双实例热切**架构。
+
+### 1. 拓扑结构图
+```text
+                             [ 外部玩家客户端 / 移动端 / 浏览器 ]
+                                              │
+                      ┌───────────────────────┴───────────────────────┐
+                      ▼                                               ▼
+         【对外服务: 端口 3000 (主服)】                   【对外网关: 端口 80 (Nginx)】
+         - 承载当前全服 170+ 活跃对局                      - 反向代理至当前活跃后端
+         - PM2 进程名: stronghold                         - WebSocket 升级支持 (超时 3600s)
+         - 目录: /opt/stronghold                          - 配置文件: /etc/nginx/sites-available/default
+                      │                                               │
+                      │                                               ▼
+                      │                             ┌───────────────────────────────────┐
+                      │                             │  upstream stronghold_backend      │
+                      │                             └─────────────────┬─────────────────┘
+                      │                                               │ (毫秒级热切)
+                      │                        ┌──────────────────────┴──────────────────────┐
+                      ▼                        ▼                                             ▼
+         【蓝区 Blue (当前运行)】    【绿区 Green (端口 3002)】                    【备用蓝区 (端口 3001)】
+         - PM2: stronghold          - PM2: stronghold-green                       - 待命热备槽位
+         - 目录: /opt/stronghold    - 目录: /opt/stronghold-green                 - 目录: /opt/stronghold-blue
+         - 状态: 在线接客           - 状态: 备用热备 / 打补丁测试                 - 状态: 闲置
+```
+
+### 2. 日常无感升级主导流程 (核心自动化脚本 `/opt/hot-swap.sh`)
+```text
+[阶段 1: 判定空闲节点]
+  脚本自动检测当前 Nginx 反代指向。
+  若 3001 在线，则目标升级区锁定为 3002 (Green)；反之亦然。生产主服不受任何影响。
+          │
+          ▼
+[阶段 2: 闲置区打补丁]
+  新代码解压到目标闲置区目录 (如 /opt/stronghold-green)。
+          │
+          ▼
+[阶段 3: 闲置区自测与探针]
+  在目标端口 (3002) 启动 PM2 实例。
+  自动化运行 10 轮内部 HTTP 探针与 WebSocket 握手：
+  - 探针失败：自动终止流水线，报警退出。生产环境毫发无损！
+  - 探针成功：进入下一步热切。
+          │
+          ▼
+[阶段 4: Nginx 毫秒级 Reload]
+  sed 修改 Nginx upstream 端口并执行 `nginx -t && systemctl reload nginx`。
+  新进入大厅的玩家和刷新网页的玩家秒级接入新版本。
+          │
+          ▼
+[阶段 5: 老区优雅排空 (Drain)]
+  正在战斗的老玩家连接在老区保持不断线，打完一局返回大厅时自动重连进入新服。
+  老区房间数归 0 后优雅待命。
 ```
 
 ---
 
-## 三、核心功能实现与模块映射
+## 三、核心模块与协议设计主导逻辑
 
-### 1. 多人快速随机匹配引擎 (Matchmaking)
-- **核心实现**：`server/matchmaking.js`、`server/lobby.js`
-- **协议定义**：
-  - C2S: `match.queue` (`{ mode, difficulty, fillBots }`)、`match.cancel`
-  - S2C: `match.status` (`{ status, mode, difficulty, elapsed, matched, target }`)、`match.found` (`{ roomCode, mode, difficulty }`)
-- **撮合逻辑**：
-  - 单人模式（`solo`）：排队瞬间直接创建房间并下发 `match.found`。
-  - 多人模式（`coop`）：按 `difficulty` 分桶，集齐 4 人立即发车；超时 10 秒且 `fillBots=true` 时，自动补充 AI 队友开局。
-  - 房间匹配：房主可在已创建的房间中点击「匹配队友」，自动从散客池抓取玩家入座。
+### 1. 多人撮合与防超时机制 (`server/matchmaking.js`)
+- **撮合模型**：
+  - 难度分桶队列：`FUNNY`、`NORMAL`、`HARD`、`ABYSS` 互不干扰。
+  - 人数上限：正式对战席位 **严格限制为 4 人 (`MAX_SEATS = 4`)**，P1～P4。
+  - 观战席位：独立席位 **上限 2 人 (`MAX_SPECTATORS = 2`)**。
+- **补位超时规则**：
+  - 队列等待时间超过 **10 秒** 且玩家勾选了 `fillBots=true` 时，引擎自动触发 AI 补位，用虚拟博士填满剩余席位并瞬间发车。
+  - 房主在房间等待界面可随时发起「匹配队友」，直接从全局散客池中拉取同难度散客。
 
-### 2. 大厅与房间全动态监测 (Real-Time Push Broadcast)
-- **核心实现**：`server/lobby.js` (`getLobbyStats()`, `broadcastLobbyStats()`)
-- **前端集成**：`public/js/store.js`、`public/js/main.js`、`public/js/screens/lobby.js`
-- **广播机制**：
-  - 弃用 4 秒被动 HTTP 轮询，采用事件驱动型 S2C WebSocket 推送：`t: 'lobby.stats'`。
-  - 触发点：`onHello`（进大厅）、`onDisconnect`（断线）、`room.create`（建房）、`room.join`（加房）、`disposeRoom`（解散）。
-  - **250ms 防抖节流**：高频创建/解散时合并广播，并保留 4 秒全局保底心跳。
-  - 前端大厅顶栏胶囊、Mode 02 角标、模态框公开房间列表纯事件驱动毫秒级响应。
+### 2. 全动态大厅状态广播 (`server/lobby.js`)
+- **推送架构**：
+  - 摒弃前端每 4 秒向服务端发 `room.list` 请求的被动轮询模式（170 玩家时每秒产生数十次无效查询）。
+  - 改为服务端统一主动事件广播：S2C `t: 'lobby.stats'`。
+- **广播节流控制**：
+  - 高频建房/退房采用 **250ms 防抖节流定时器** (`_statsDebounceTimer`)，将瞬间多次事件合并为单次全服广播。
+  - 保留 **4 秒全局心跳广播** (`_statsPeriodicTimer`)，兜底网络异常恢复。
+- **前端响应链路**：
+  - `public/js/store.js` 统一接管 `store.lobbyStats`。
+  - 大厅顶栏在线人数胶囊、Mode 02 角标、公开房间列表纯数据驱动，无需刷新页面，实时跳动。
 
-### 3. 网络波动韧性优化 (Net Resilience)
-- **核心实现**：`public/js/net.js`、`server/net.js`
-- **算法细节**：
-  - **EMA RTT 平滑**：$\alpha = 0.25$，消除瞬时单次往返抖动。
-  - **Jitter 抖动自适应心跳**：当往返抖动增大时，动态将掉线判定超时从 `15000ms` 线性放宽至最高 `37500ms`（2.5倍），极大降低弱网/移动网络误断率。
-  - **在途请求断线缓冲 (In-Flight Queue)**：连接中断瞬间发出的请求暂存本地，待重连成功后立即批量冲刷补发。
-  - **底层 TCP 优化**：开启 TCP Keepalive 与 TCP NoDelay（禁用 Nagle 算法）。
+### 3. 网络波动韧性与重连加固 (`public/js/net.js`)
+- **EMA RTT 算法**：
+  $$RTT_{smooth} = (1 - \alpha) \cdot RTT_{prev} + \alpha \cdot RTT_{sample} \quad (\alpha = 0.25)$$
+- **Jitter 自适应超时**：
+  - 当网络抖动增加时，死连接判定门槛从默认的 $15000\text{ms}$ 动态扩容至最高 $37500\text{ms}$（2.5倍），彻底根除手机弱网切换（WiFi ⇄ 4G）导致的闪断。
+- **在途请求断线队列 (In-Flight Buffer)**：
+  - 玩家点击操作时如果刚好遭遇瞬时断网，请求不会直接被丢弃抛错，而是进入挂起缓冲池；WebSocket 握手恢复瞬间立即重放。
 
-### 4. 60秒停服维护机制 (Graceful Shutdown)
-- **核心实现**：`server/lobby.js` (`startMaintenance()`, `cancelMaintenance()`)
-- **前端 HUD**：`public/js/main.js` (`MaintenanceBanner`)
-- **工作机制**：
-  - 全服推送 `server.maintenance`，前端顶栏浮现战术斑马线 Hazard 条并秒级倒计时。
-  - 拦截所有 `room.create` 与 `match.queue`，返回 `ERR.MAINTENANCE`。
-  - 倒计时归零时优雅关闭房间并落盘；支持 `cancelMaintenance()` 随时取消恢复。
-
-### 5. 战术工业风大厅监控后台 (Tactical Telemetry Dashboard)
-- **访问地址**：
-  - `http://101.37.150.107:3000/dashboard.html`
-  - `http://101.37.150.107/dashboard.html`
-- **特性**：
-  - 零侵入纯只读设计（不修改任何内存状态，不抢占选手席位）。
-  - 完整适配明日方舟/卫戍协议科幻工业美学（黑绿基调、薄荷绿高亮、Bender 等宽数字、六角战术徽标）。
-  - 实时大盘展示在线总数、交战中局数、房间密钥、房主、难度胶囊、4 席位计量槽及当前状态。
-  - 解锁了移动端和桌面端的全屏滑动限制，内嵌 `max-height: 620px` 独立吸顶滚动容器。
+### 4. 60秒停服维护与前端熔断 (`server/lobby.js` & `public/js/main.js`)
+- **维护倒计时触发**：`lobby.startMaintenance(60, "维护原因")`。
+- **前端反应**：顶栏出现醒目的 Hazard 战术斑马线倒计时 HUD，伴随倒计时扣减与 Toast 弹窗提醒。
+- **熔断保障**：建房 `room.create` 和匹配 `match.queue` 在服务端直接返回 `ERR.MAINTENANCE`，杜绝维护前夕开新局。
+- **可逆性**：可通过 `lobby.cancelMaintenance()` 随时取消并向全服广播恢复通知。
 
 ---
 
-## 四、踩坑记录与关键避坑防线
+## 四、历史踩坑血泪史与避坑红线 (Crucial Lessons)
 
-### 1. 前后端原型方法与 JSON 纯对象的割裂（重要事故预防）
-- **现象**：进入房间时前端抛出 `SYSTEM FAULT: room.freeSeat is not a function`。
-- **根因**：服务端的 `Room` 是带有原型方法的 Class 实例；而前端 Store 中的 `room` 仅为服务端下发的纯 JSON 数据字典。
-- **规范**：**前端绝对禁止调用 `room` 上的任何方法**，所有席位计算必须使用前端解构派生属性（如 `facts.emptySeats > 0`、`facts.isHost`）。
+接手者请将以下 4 条铭记于心，每一条都是实战中踩坑排查得出的硬性约束：
 
-### 2. 席位上限常数核准
-- **参战选手上限**：`MAX_SEATS = 4`（P1 ~ P4）。
-- **观战席位上限**：`MAX_SPECTATORS = 2`。
-- **单房最大连接量**：4 选手 + 2 观战 = 6 人。严禁在代码中随意硬编码为 10 人。
+### 🚨 避坑红线 1：前端代码绝不可直接调用后端 Class 实例的原型方法
+- **故障复盘**：曾出现玩家进入多人房间后屏幕弹出 `SYSTEM FAULT: room.freeSeat is not a function` 崩溃。
+- **根因**：后端 Node.js 中的 `Room` 对象拥有原型方法 `room.freeSeat()`；但前端 Store 中存储的 `room` 仅为服务端下发的纯 JSON 数据，不存在原型链！
+- **防御规范**：前端任何状态判断，**必须且只能使用从纯数据派生出的 `facts` 属性**（如 `facts.emptySeats > 0`、`facts.isHost`、`facts.canStart`）。
 
-### 3. 磁盘占用暴增排查 (Android 编译中间件)
-- **现象**：复制目录后磁盘瞬间飙升至 83% (剩余仅 6.4GB)。
-- **根因**：根目录下包含了 Android 本地 Gradle 构建产物 `android/app/build`（单体 4.5GB+）以及历史 APK、Windows zip 压缩包。
-- **规范**：
-  - 服务端部署只需 `server/`、`public/`、`shared/`、`package.json`、`node_modules/`。
-  - 打包新包时必须添加过滤参数：
-    ```bash
-    tar --exclude='android/app/build' --exclude='*.apk' --exclude='*.zip' -czf patch.tar.gz ...
-    ```
+### 🚨 避坑红线 2：打包发布严禁携带 Android 本地编译垃圾进服务器
+- **故障复盘**：服务器磁盘空间曾突增 16GB，占用率飙到 83%（剩余仅 6.4GB）。
+- **根因**：把 Android 本地 Gradle 构建产物 `android/app/build`（4.5GB+ 中间件）和旧 APK、ZIP 安装包（1.5GB）一并打入补丁包推上了云端。
+- **防御规范**：服务端运行只需要 `server/`、`public/`、`shared/`、`package.json`、`node_modules/`。打包时必须使用 `git archive` 或在 `tar` 命令中显式过滤 `android/`、`*.zip`、`*.apk`！
 
----
+### 🚨 避坑红线 3：严禁直接在高峰期对当前 3000 端口执行 `pm2 restart`
+- **故障复盘**：生产 3000 端口活跃连接常年 100~170+，任何粗暴的重启都会瞬间切断所有正在打 Boss 的对局，导致玩家全军覆没。
+- **防御规范**：必须走 `/opt/hot-swap.sh` 蓝绿通道更新，或者提前 60 秒下发 `startMaintenance(60)` 通知玩家收尾。
 
-## 五、日常运维与无感热升级 SOP
-
-后续进行新功能发布或 Bug 修复时，**严禁直接在服务器上运行 `pm2 restart stronghold`**。请严格遵循以下 SOP：
-
-### 步骤 1：本地打包
-在 `E:\Workbox\sp-matchmaking` 目录下执行：
-```powershell
-git archive --format=tar.gz -o update-patch.tar.gz HEAD
-```
-
-### 步骤 2：上传补丁
-```powershell
-scp -o BatchMode=yes update-patch.tar.gz root@101.37.150.107:/opt/update-patch.tar.gz
-```
-
-### 步骤 3：服务器执行零中断热切
-```powershell
-ssh root@101.37.150.107 "/opt/hot-swap.sh /opt/update-patch.tar.gz"
-```
-**脚本执行内部逻辑**：
-1. 自动检测当前在线区（如当前为 3001 Blue，则目标更新区自动锁定为 3002 Green）。
-2. 将补丁解压覆盖到目标空闲区。
-3. 启动/重启空闲区实例，并连续发起 10 轮内部 HTTP 健康检查。
-4. **自测 100% 通过后**，毫秒级重载 Nginx 反代配置 (`nginx -s reload`)。
-5. 新进大厅与刷新页面的玩家全部切至新区；老区允许存活对局打完（Drain）。
-
-### 步骤 4：验证监控
-打开浏览器访问 `http://101.37.150.107:3000/dashboard.html`，确认大盘数据实时跳动正常。
+### 🚨 避坑红线 4：监控后台 (dashboard.html) 必须解除游戏全局 overflow 锁
+- **故障复盘**：做好的监控看板在手机和电脑上完全无法上下滑动。
+- **根因**：页面引用了游戏的 `theme.css`，其中针对游戏主视口设置了 `body { height: 100%; overflow: hidden; }`。
+- **防御规范**：监控后台等管理类页面，必须使用 `!important` 强制覆写 `html, body { height: auto !important; overflow-y: auto !important; -webkit-overflow-scrolling: touch; }`。
 
 ---
 
-## 六、后续规划与遗留待办 (TODO)
+## 五、标准运维操作 SOP (Standard Operating Procedures)
 
-1. **主端口 3000 的 Nginx 接管**：
-   - 目前 Nginx 网关监听在 80 端口，3000 端口仍由老进程占用。
-   - 待挑选玩家极少的低谷期（如凌晨 4 点），将 3000 端口交由 Nginx 统一监听反代，实现对外端口完全固定且全面蓝绿热切。
-2. **大厅平滑引导迁移广播**：
-   - 在热切执行时，进一步完善服务端下发 `server.migrate` 事件，让大厅闲置界面的玩家连线自动静默断开重连至新节点，无需手动刷新网页。
-3. **桌面端打包同步**：
-   - 将当前最新动态监测与网络韧性代码同步编译为 Windows-x64 与 Android 独立客户端包。
+### SOP-01: 日常新功能与热补丁发布流程
+
+1. **本地测试验证**：
+   在 `E:\Workbox\sp-matchmaking` 确认单元测试全绿：
+   ```powershell
+   node --test test/matchmaking.test.js ; node --test test/net-resilience.test.js
+   ```
+2. **生成纯净代码归档 (排除了所有大文件)**：
+   ```powershell
+   git archive --format=tar.gz -o update-patch.tar.gz HEAD
+   ```
+3. **推送到生产服务器**：
+   ```powershell
+   scp -o BatchMode=yes update-patch.tar.gz root@101.37.150.107:/opt/update-patch.tar.gz
+   ```
+4. **触发全自动蓝绿热切**：
+   ```powershell
+   ssh root@101.37.150.107 "/opt/hot-swap.sh /opt/update-patch.tar.gz"
+   ```
+5. **打开监控台验收**：
+   访问 `http://101.37.150.107:3000/dashboard.html`，确认大盘数字正常、活跃房间列表持续更新。
+
+---
+
+### SOP-02: 紧急停机维护与倒计时广播流程
+
+若遇到必须全服停机的严重底层重构或数据库变更：
+1. **连接服务器启动 60 秒倒计时**：
+   ```powershell
+   ssh root@101.37.150.107 "node -e \"
+     import('/opt/stronghold/server/index.js').catch(() => {});
+     // 或者通过 pm2 发送维护信号
+   \""
+   ```
+   *(或者直接在运行服务器的终端输入 `m 60`)*。
+2. **观察客户端反应**：前端顶栏自动弹出 60 秒倒计时，阻断新开房间，玩家打完当前回合。
+3. **倒计时归零后处理**：优雅退出并保存，维护完毕后重启 PM2。
+
+---
+
+### SOP-03: 灾难恢复与秒级回滚流程
+
+若新版本切过去后发现重大未知逻辑 Bug：
+1. **方法 A（Nginx 秒切回滚，推荐）**：
+   直接将 upstream 目标改回上一版端口并 reload：
+   ```bash
+   sed -i "s/3002/3001/g" /etc/nginx/sites-available/default
+   nginx -t && systemctl reload nginx
+   ```
+   *(耗时 < 1 秒，直接切回老版本)*
+2. **方法 B（冷备还原）**：
+   ```bash
+   cp -r /opt/stronghold-backup/* /opt/stronghold/
+   pm2 restart stronghold
+   ```
+
+---
+
+## 六、长期演进路线与待办清单 (Roadmap & Backlog)
+
+1. **主端口 3000 前置化彻底完成**：
+   - 当前 Nginx 监听在 80 端口，3000 端口由主服直接监听。
+   - 目标：挑选凌晨 4 点低谷期，将 3000 端口移交 Nginx 监听，后端完全解耦为 `3001` 与 `3002`，使对外端口完全固定。
+2. **空闲大厅玩家静默引流迁移 (`server.migrate`)**：
+   - 在执行热切时，老服务向大厅未开局的闲散玩家下发 `server.migrate`，客户端 JS 侦听后静默断开并在 0.5s 内重连到新服，无需玩家 F5 刷新网页。
+3. **客户端安装包同步构建**：
+   - 定期将 `feature/matchmaking-system` 合并，重新打出包含网络优化与动态监测的 Windows x64 与 Android APK 离线包。
+
+---
+
+> **结语**：  
+> 战场瞬息万变，生产环境如履薄冰。请务必牢记：**先在备用区探针，再向生产线切流**。祝维护顺利！
