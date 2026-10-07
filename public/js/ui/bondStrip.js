@@ -25,6 +25,7 @@ import { sortBonds, bondMembers, nextThreshold, bondTier, harmonyMembers, HARMON
 import { formatBondEffect } from './richText.js';
 import { bondIconUrl } from './assetUrls.js';
 import { data } from '../data.js';
+import { useState } from '../../vendor/hooks.module.js';
 
 const cx = (...p) => p.flat().filter(Boolean).join(' ');
 
@@ -40,6 +41,37 @@ function OwnerTag({ owner }) {
  *   owner?: string|null }} props — owner: the watched teammate's name (null = your own bonds)
  */
 export function BondStrip({ bonds, layersDisabled = false, onOpen, openId = null, max = 14, owner = null }) {
+  let collapsed = false;
+  let setCollapsed = null;
+  try {
+    [collapsed, setCollapsed] = useState(() => {
+      try {
+        return localStorage.getItem('sp_bonds_collapsed') === '1';
+      } catch {
+        return false;
+      }
+    });
+  } catch {
+    try {
+      collapsed = typeof localStorage !== 'undefined' && localStorage.getItem('sp_bonds_collapsed') === '1';
+    } catch {
+      collapsed = false;
+    }
+  }
+
+  const toggleCollapsed = (e) => {
+    e?.stopPropagation?.();
+    if (setCollapsed) {
+      setCollapsed((c) => {
+        const next = !c;
+        try {
+          localStorage.setItem('sp_bonds_collapsed', next ? '1' : '0');
+        } catch {}
+        return next;
+      });
+    }
+  };
+
   const sorted = sortBonds(bonds, (id) => data.lookup('bonds', id));
   if (!sorted.length) {
     return html`<div class=${cx('bstrip', 'bstrip--empty', owner && 'is-other')} data-owner=${owner || null}>
@@ -76,7 +108,20 @@ export function BondStrip({ bonds, layersDisabled = false, onOpen, openId = null
     })}
     ${sorted.length > shown.length ? html`<span class="bstrip__more num">+${sorted.length - shown.length}</span>` : null}
   </div>`;
-  return layersDisabled ? html`<${Tooltip} text="层数叠加已禁用" placement="bottom">${strip}<//>` : strip;
+  const wrappedStrip = layersDisabled ? html`<${Tooltip} text="层数叠加已禁用" placement="bottom">${strip}<//>` : strip;
+  return html`<div class=${cx('bstrip-container', collapsed && 'is-collapsed')}>
+    <div class="bstrip-tray">
+      ${wrappedStrip}
+    </div>
+    <button type="button" class="bstrip__fold-handle" onClick=${toggleCollapsed}
+      aria-label=${collapsed ? '展开盟约' : '收起盟约'} title=${collapsed ? '展开盟约' : '收起盟约'}>
+      <span class="bstrip__fold-icon">
+        <svg viewBox="0 0 16 16">
+          <path d="M8 3.5l-4.5 4.5 1 1L8 5.5l3.5 3.5 1-1L8 3.5zm0 4.5l-4.5 4.5 1 1L8 10l3.5 3.5 1-1L8 8z" />
+        </svg>
+      </span>
+    </button>
+  </div>`;
 }
 
 /**
