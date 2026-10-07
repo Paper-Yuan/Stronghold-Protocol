@@ -965,3 +965,87 @@
   --bk-c: var(--red-premium);
 }
 .crash__box h2 { font-size: .3rem; }
+
+/* ---- maintenance countdown banner (停服维护60s预警) ----------------------------- */
+.maint-banner {
+  --bk-c: var(--red-premium);
+  --bk-l: .22rem;
+  position: fixed;
+  top: .14rem;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: calc(var(--z-modal) + 10);
+  width: min(8.8rem, 94vw);
+  background: linear-gradient(180deg, rgba(38, 14, 12, .96), rgba(24, 8, 7, .98));
+  border: 1px solid rgba(255, 60, 40, .6);
+  box-shadow: 0 .15rem .6rem rgba(0, 0, 0, .85), 0 0 .35rem rgba(255, 60, 40, .25);
+  animation: maint-in var(--t-slow) var(--ease-out);
+}
+@keyframes maint-in {
+  from { opacity: 0; transform: translate(-50%, -.2rem); }
+}
+.maint-banner__stripe {
+  height: .05rem;
+  background: repeating-linear-gradient(-45deg, #ff4d3b 0 8px, transparent 8px 16px);
+  opacity: .9;
+}
+.maint-banner__content {
+  display: flex;
+  align-items: center;
+  gap: .18rem;
+  padding: .12rem .24rem;
+}
+.maint-banner__hazard {
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  width: .42rem;
+  height: .42rem;
+  background: rgba(255, 60, 40, .18);
+  border: 1px solid rgba(255, 60, 40, .5);
+  color: #ff5240;
+}
+.maint-banner__hazard .icon {
+  width: .26rem;
+  height: .26rem;
+}
+.maint-banner__text {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: .02rem;
+  min-width: 0;
+}
+.maint-banner__title {
+  font-size: .2rem;
+  font-weight: 900;
+  letter-spacing: .08em;
+  color: #ff5240;
+}
+.maint-banner__desc {
+  font-size: .14rem;
+  color: var(--text-md);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.maint-banner__timer {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: .01rem;
+}
+.maint-banner__time {
+  font-size: .34rem;
+  font-weight: 900;
+  color: #ff4d3b;
+  text-shadow: 0 0 .12rem rgba(255, 60, 40, .5);
+  line-height: 1;
+}
+.maint-banner__unit {
+  font-size: .11rem;
+  color: var(--text-dim);
+  letter-spacing: .15em;
+}
+

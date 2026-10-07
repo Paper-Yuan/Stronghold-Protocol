@@ -820,6 +820,39 @@ async function main() {
     for (const u of lanUrls(srv.port)) console.log(`  LAN:     ${u}`);
   }
   console.log('  Internet: cloudflared tunnel --url ' + `http://localhost:${srv.port}` + '\n');
+  console.log('  [提示] 输入 "m 60" 即可向全服广播 60 秒维护倒计时；按 Ctrl+C 亦会自动触发。\n');
+
+  // Interactive maintenance commands in terminal
+  if (process.stdin.isTTY) {
+    process.stdin.setEncoding('utf8');
+    process.stdin.on('data', (chunk) => {
+      const line = String(chunk).trim();
+      if (!line) return;
+      const parts = line.split(/\s+/);
+      const cmd = parts[0];
+      const arg1 = parts[1];
+      const rest = parts.slice(2).join(' ');
+      if (cmd === 'm' || cmd === 'maintain') {
+        if (arg1 === 'cancel') {
+          const ok = srv.lobby.cancelMaintenance();
+          console.log(ok ? '  [运维] 已取消停服维护通知' : '  [运维] 当前未处于维护状态');
+        } else if (arg1 === 'now') {
+          console.log('  [运维] 立即停机退出');
+          stop('MAINTENANCE_NOW');
+        } else {
+          const sec = Number(arg1) > 0 ? Number(arg1) : 60;
+          const reason = rest || '系统例行维护';
+          console.log(`  [运维] 已向全服广播维护通知：${sec} 秒后停机 (${reason})`);
+          srv.lobby.startMaintenance(sec, reason, () => stop('MAINTENANCE_DEADLINE'));
+        }
+      } else if (cmd === 'help') {
+        console.log('  运维指令:');
+        console.log('    m 60 [原因]   - 广播 60 秒停服维护倒计时');
+        console.log('    m cancel      - 取消维护倒计时');
+        console.log('    m now         - 立即停机退出');
+      }
+    });
+  }
 
   let stopping = false;
   const stop = (signal) => {
@@ -829,7 +862,18 @@ async function main() {
     setTimeout(() => process.exit(0), 5000).unref();
     srv.close().then(() => process.exit(0), () => process.exit(1));
   };
-  process.on('SIGINT', () => stop('SIGINT'));
+
+  process.on('SIGINT', () => {
+    if (stopping) { stop('SIGINT'); return; }
+    if (srv.lobby.maintenance) {
+      console.log('\n[SIGINT] 再次按下 Ctrl+C，立即强制退出！');
+      stop('SIGINT');
+      return;
+    }
+    console.log('\n[SIGINT] ⚠ 收到退出信号，已向全服广播 60 秒停服维护倒计时！');
+    console.log('         如需立即强制退出，请再次按下 Ctrl+C。');
+    srv.lobby.startMaintenance(60, '服务器即将关闭维护', () => stop('MAINTENANCE'));
+  });
   process.on('SIGTERM', () => stop('SIGTERM'));
 }
 

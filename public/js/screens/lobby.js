@@ -10,7 +10,7 @@
 // plays 战场#01, 险境 draws one of 8, 绝境 / 终极 one of 7 (m01 excluded).
 
 import { useEffect, useRef, useState } from '../../vendor/hooks.module.js';
-import { DIFFICULTIES, DIFFICULTY_NAMES, DIFFICULTY_COLORS, ROOM_CODE_LEN, MAX_SEATS, MAX_SPECTATORS, modeIdFor, ERR } from '../../../shared/constants.js';
+import { DIFFICULTIES, DIFFICULTY_NAMES, DIFFICULTY_COLORS, ROOM_CODE_LEN, MAX_SEATS, MAX_SPECTATORS, modeIdFor, ERR, ERR_TEXT } from '../../../shared/constants.js';
 import { html, Button, Icon, MicroLabel, Panel, TextField, PingPill, AvatarFrame, Tooltip, Spinner, DifficultyIcon, doctorNo } from '../ui/components.js';
 import { toast, toastError } from '../ui/toasts.js';
 import { GuideButton } from '../ui/guide.js';
@@ -365,6 +365,7 @@ export function LobbyScreen() {
   const me = useStore((s) => s.me, shallowEqual);
   const conn = useStore((s) => s.connection, shallowEqual);
   const mm = useStore((s) => s.matchmaking, shallowEqual);
+  const maint = useStore((s) => s.maintenance, shallowEqual);
   useData('config');
   const [roomMode, setRoomMode] = useState(() => (loadPref('lobby.mode', 'coop') === 'solo' ? 'solo' : 'coop'));
   const [difficulty, setDifficulty] = useState(() => {
@@ -559,14 +560,14 @@ export function LobbyScreen() {
                 </div>
                 <${Button} variant="danger" size="md" loading=${busy === 'cancel'} onClick=${cancelMatch}>取消匹配<//>
               </div>`
-            : html`<${Tooltip} block=${true} text=${online ? null : '正在连接服务器…'}>
-                <${Button} variant="primary" size="xl" block=${true} class="btn-create-alliance" iconRight="chevrons" loading=${busy === 'create'} disabled=${!online} onClick=${create}>
-                  创建同盟 >>
+            : html`<${Tooltip} block=${true} text=${!online ? '正在连接服务器…' : maint?.active ? '服务器即将维护，暂停开启新的模拟' : null}>
+                <${Button} variant="primary" size="xl" block=${true} class="btn-create-alliance" iconRight="chevrons" loading=${busy === 'create'} disabled=${!online || maint?.active} onClick=${create}>
+                  ${maint?.active ? '维护中 · 暂停开局' : '创建同盟 >>'}
                 <//>
               <//>`}
           <div class="create-box__hint">
             ${online
-              ? html`<span>${isSearching ? '超时将自动由 AI 队友补齐出发' : '创建后可邀请好友或添加 AI 队友'}</span>`
+              ? html`<span>${maint?.active ? '服务器即将停机维护，暂时停止开启新的同盟' : isSearching ? '超时将自动由 AI 队友补齐出发' : '创建后可邀请好友或添加 AI 队友'}</span>`
               : html`<${Spinner} size="sm" label="CONNECTING" />`}
           </div>
         </div>

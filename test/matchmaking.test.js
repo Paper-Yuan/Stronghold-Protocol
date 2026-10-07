@@ -217,3 +217,47 @@ test('matchmaking: room.list returns statistics and public alliance rooms', () =
   lobby.shutdown();
 });
 
+test('maintenance: startMaintenance broadcasts countdown and blocks operations', () => {
+  const registry = new SessionRegistry();
+  const lobby = new Lobby({ registry });
+  const s1 = createMockSession('p1', 'Doctor_1');
+  const s2 = createMockSession('p2', 'Doctor_2');
+  registry.byPlayerId.set('p1', s1);
+  registry.byPlayerId.set('p2', s2);
+
+  // start maintenance
+  lobby.startMaintenance(60, '例行更新维护');
+  assert.ok(lobby.maintenance);
+  assert.equal(lobby.maintenance.active, true);
+  assert.equal(lobby.maintenance.seconds, 60);
+
+  // s1 should receive broadcast
+  const maintMsg = s1.sent.find((m) => m.t === 'server.maintenance');
+  assert.ok(maintMsg);
+  assert.equal(maintMsg.active, true);
+  assert.equal(maintMsg.seconds, 60);
+
+  // room.create should be rejected with ERR.MAINTENANCE
+  const createRes = lobby.onMessage(s1, { t: 'room.create', mode: 'coop', difficulty: 'NORMAL' });
+  assert.equal(createRes.error, 'MAINTENANCE');
+
+  // match.queue should be rejected with ERR.MAINTENANCE
+  const queueRes = lobby.onMessage(s2, { t: 'match.queue', mode: 'solo', difficulty: 'FUNNY' });
+  assert.equal(queueRes.error, 'MAINTENANCE');
+
+  // cancel maintenance
+  const cancelled = lobby.cancelMaintenance();
+  assert.equal(cancelled, true);
+  assert.equal(lobby.maintenance, null);
+
+  const cancelMsg = s1.sent.filter((m) => m.t === 'server.maintenance').pop();
+  assert.ok(cancelMsg);
+  assert.equal(cancelMsg.active, false);
+
+  // now room.create should succeed
+  const createOk = lobby.onMessage(s1, { t: 'room.create', mode: 'coop', difficulty: 'NORMAL' });
+  assert.equal(createOk.ok, true);
+
+  lobby.shutdown();
+});
+

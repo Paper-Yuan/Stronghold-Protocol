@@ -141,6 +141,7 @@ export const ERR = Object.freeze({
   TEMP_NOT_EMPTY: 'TEMP_NOT_EMPTY',
   ELIMINATED: 'ELIMINATED',
   SPECTATOR: 'SPECTATOR',         // a spectator seat only watches (MAX_SPECTATORS)
+  MAINTENANCE: 'MAINTENANCE',     // server maintenance in progress / shutting down
   INTERNAL: 'INTERNAL',
 });
 
@@ -150,7 +151,7 @@ export const ERR_TEXT = {
   WRONG_PHASE: '当前阶段无法进行该操作', NO_FUNDS: '资金不足', HAND_FULL: '整备区已满', BOARD_FULL: '已达到部署上限',
   BAD_TILE: '无法部署在该位置', BAD_TARGET: '无效的目标', SOLD_OUT: '已售出', MAX_LEVEL: '调度中心已达最高等级',
   NOT_YOUR_TURN: '尚未轮到你', ALREADY: '已完成该操作', TEMP_NOT_EMPTY: '临时整备区不为空', ELIMINATED: '你已被淘汰',
-  SPECTATOR: '观战中无法进行该操作', INTERNAL: '服务器内部错误',
+  SPECTATOR: '观战中无法进行该操作', MAINTENANCE: '服务器即将维护，暂时关闭入口', INTERNAL: '服务器内部错误',
 };
 
 // ---- Emotes (交流, research 09 §4) -----------------------------------------------------------------------------

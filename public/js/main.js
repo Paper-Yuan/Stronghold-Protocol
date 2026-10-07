@@ -27,8 +27,8 @@
 // Polyfills first (older Safari / Firefox ESR): every module evaluated after this one sees them.
 import './ui/compat.js';
 import { render } from '../vendor/preact.module.js';
-import { useErrorBoundary } from '../vendor/hooks.module.js';
-import { html, UiHosts, Button, MicroLabel, closeAllDialogs } from './ui/components.js';
+import { useErrorBoundary, useEffect, useState } from '../vendor/hooks.module.js';
+import { html, UiHosts, Button, Icon, MicroLabel, closeAllDialogs } from './ui/components.js';
 import { ConnectionBanner } from './ui/connBanner.js';
 import { ToastHost, toast, toastError, describeError } from './ui/toasts.js';
 import { net, identity, NetError } from './net.js';
@@ -227,6 +227,18 @@ function wireNet() {
     store.patch('matchmaking', { status: 'found', roomCode: msg.roomCode });
     toast(`已匹配到同盟小队（${msg.roomCode}）！`, 'success', { ttl: 3000 });
   });
+  net.on('server.maintenance', (msg) => {
+    const active = !!msg.active;
+    store.patch('maintenance', {
+      active,
+      deadline: msg.deadline || 0,
+      seconds: msg.seconds || 0,
+      reason: msg.reason || '',
+    });
+    if (active) {
+      toast(`⚠ 服务器将于 ${msg.seconds || 60} 秒后停服维护（${msg.reason || '例行维护'}）`, 'warn', { ttl: 9000 });
+    }
+  });
   net.on('m.public', (msg) => { matchAt = Date.now(); store.patch('match', { public: payload(msg) }); maybeFinishRestore(); });
   net.on('m.private', (msg) => { matchAt = Date.now(); store.patch('match', { private: payload(msg) }); });
   net.on('m.field', (msg) => store.patch('match', { field: payload(msg) }));
@@ -283,12 +295,50 @@ function ScreenCrashed({ error, reset }) {
   </div>`;
 }
 
+function MaintenanceBanner() {
+  const maint = useStore((s) => s.maintenance);
+  const [timeLeft, setTimeLeft] = useState(0);
+
+  useEffect(() => {
+    if (!maint?.active || !maint.deadline) return undefined;
+    const calc = () => Math.max(0, Math.ceil((maint.deadline - Date.now()) / 1000));
+    setTimeLeft(calc());
+    const t = setInterval(() => {
+      const left = calc();
+      setTimeLeft(left);
+      if (left <= 0) clearInterval(t);
+    }, 500);
+    return () => clearInterval(t);
+  }, [maint?.active, maint?.deadline]);
+
+  if (!maint?.active) return null;
+
+  const mm = String(Math.floor(timeLeft / 60)).padStart(2, '0');
+  const ss = String(timeLeft % 60).padStart(2, '0');
+
+  return html`<aside class="maint-banner brackets" role="alert">
+    <div class="maint-banner__stripe" aria-hidden="true"></div>
+    <div class="maint-banner__content">
+      <div class="maint-banner__hazard"><${Icon} name="warn" /></div>
+      <div class="maint-banner__text">
+        <span class="maint-banner__title">停服维护倒计时</span>
+        <span class="maint-banner__desc">${maint.reason || '服务器即将进行停机维护，请尽快完成当前模拟并保存进度'}</span>
+      </div>
+      <div class="maint-banner__timer">
+        <span class="maint-banner__time num">${mm}:${ss}</span>
+        <span class="maint-banner__unit">REMAINING</span>
+      </div>
+    </div>
+  </aside>`;
+}
+
 function App() {
   const route = useStore(selectRoute);
   const [error, resetError] = useErrorBoundary((err) => console.error('[ui] screen crashed', err));
   const Screen = SCREENS[route] || LobbyScreen;
   return html`<div class="app-root">
     <div class="app-bg" aria-hidden="true"></div>
+    <${MaintenanceBanner} />
     ${error ? html`<${ScreenCrashed} error=${error} reset=${resetError} />` : html`<${Screen} key=${route} />`}
     <${ConnectionBanner} />
     <${ToastHost} />

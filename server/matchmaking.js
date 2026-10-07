@@ -164,6 +164,23 @@ export class Matchmaker {
   }
 
   /**
+   * 清空所有排队队列（用于停机维护等场景）
+   * @param {string} [reason]
+   */
+  clearQueue(reason = 'maintenance') {
+    for (const entry of this.queue.values()) {
+      if (entry.session && entry.session.connected) {
+        sendSession(entry.session, { t: 'match.status', status: 'idle', reason });
+      }
+    }
+    this.queue.clear();
+    for (const code of [...this.roomQueue.keys()]) {
+      const room = this.lobby.getRoom(code);
+      this.cancelRoomQueue(room);
+    }
+  }
+
+  /**
    * 发送当前排队状态给指定玩家
    */
   sendStatus(entry, matchedCount = 1) {

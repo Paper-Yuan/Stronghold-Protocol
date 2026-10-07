@@ -234,6 +234,10 @@ export class Lobby {
     this.limitLog = { at: -Infinity, suppressed: 0 };
     /** @type {Matchmaker} 自动撮合引擎 */
     this.matchmaker = new Matchmaker(this, options.matchmaker || {});
+    /** @type {{ active: boolean, deadline: number, seconds: number, reason: string } | null} 停服维护状态 */
+    this.maintenance = null;
+    /** @type {NodeJS.Timeout | null} 维护定时器 */
+    this.maintenanceTimer = null;
   }
 
   /** @param {string} code @returns {Room | null} */
@@ -263,6 +267,15 @@ export class Lobby {
    * @param {{ resumed: boolean, repeat: boolean }} info
    */
   onHello(session, { resumed, repeat }) {
+    if (this.maintenance && session.ws) {
+      sendSession(session, {
+        t: 'server.maintenance',
+        active: true,
+        deadline: this.maintenance.deadline,
+        seconds: Math.max(0, Math.ceil((this.maintenance.deadline - this.now()) / 1000)),
+        reason: this.maintenance.reason,
+      });
+    }
     if (!resumed && !repeat) return;
     const room = this.roomOf(session);
     if (!room) {
@@ -299,6 +312,11 @@ export class Lobby {
    * @returns {{ ok: true } | { error: string, detail?: string }}
    */
   onMessage(session, msg) {
+    if (this.maintenance) {
+      if (msg.t === 'room.create' || msg.t === 'room.start' || msg.t === 'match.queue') {
+        return fail(ERR.MAINTENANCE, '服务器即将维护，暂时关闭入口');
+      }
+    }
     switch (msg.t) {
       case 'room.create': { this.matchmaker.removePlayer(session.playerId); return this.create(session, msg); }
       case 'room.join': { this.matchmaker.removePlayer(session.playerId); return this.join(session, msg); }
@@ -355,12 +373,81 @@ export class Lobby {
    * @param {string} [reason]
    */
   shutdown(reason = 'shutdown') {
+    if (this.maintenanceTimer) {
+      clearTimeout(this.maintenanceTimer);
+      this.maintenanceTimer = null;
+    }
     this.matchmaker.stop();
     for (const room of [...this.rooms.values()]) this.disposeRoom(room, reason);
     for (const t of this.graceTimers.values()) clearTimeout(t);
     this.graceTimers.clear();
     for (const t of this.resyncTimers.values()) clearTimeout(t);
     this.resyncTimers.clear();
+  }
+
+  /**
+   * Broadcast a frame to all live connections in the server (lobby, rooms, spectators).
+   * @param {object} msg
+   */
+  broadcastAll(msg) {
+    const data = encode(msg);
+    if (data == null) return;
+    if (!this.registry || !this.registry.byPlayerId) return;
+    for (const s of this.registry.byPlayerId.values()) {
+      if (s.connected && s.ws) {
+        try { sendRaw(s.ws, data); } catch { /* ignore */ }
+      }
+    }
+  }
+
+  /**
+   * Start a countdown to graceful maintenance shutdown.
+   * Notifies all clients, locks matchmaking/room creation, and triggers shutdown at deadline.
+   * @param {number} [seconds] countdown in seconds (default: 60)
+   * @param {string} [reason] announcement reason
+   * @param {(() => void) | null} [onComplete] called after shutdown
+   * @returns {{ active: boolean, deadline: number, seconds: number, reason: string }}
+   */
+  startMaintenance(seconds = 60, reason = '系统例行维护', onComplete = null) {
+    if (this.maintenanceTimer) clearTimeout(this.maintenanceTimer);
+    const deadline = this.now() + Math.max(1, seconds) * 1000;
+    this.maintenance = { active: true, deadline, seconds, reason };
+    if (this.matchmaker) this.matchmaker.clearQueue('maintenance');
+    this.broadcastAll({
+      t: 'server.maintenance',
+      active: true,
+      deadline,
+      seconds,
+      reason,
+    });
+    this.log.info(`[lobby] maintenance scheduled in ${seconds}s: ${reason}`);
+    this.maintenanceTimer = setTimeout(() => {
+      this.maintenanceTimer = null;
+      this.log.info('[lobby] maintenance deadline reached, shutting down');
+      this.shutdown('maintenance');
+      if (typeof onComplete === 'function') onComplete();
+    }, Math.max(1, seconds) * 1000);
+    this.maintenanceTimer.unref?.();
+    return this.maintenance;
+  }
+
+  /**
+   * Cancel an active maintenance countdown.
+   * @returns {boolean}
+   */
+  cancelMaintenance() {
+    if (!this.maintenance) return false;
+    if (this.maintenanceTimer) {
+      clearTimeout(this.maintenanceTimer);
+      this.maintenanceTimer = null;
+    }
+    this.maintenance = null;
+    this.broadcastAll({
+      t: 'server.maintenance',
+      active: false,
+    });
+    this.log.info('[lobby] maintenance cancelled');
+    return true;
   }
 
   // ---------------------------------------------------------------------------------------------------
