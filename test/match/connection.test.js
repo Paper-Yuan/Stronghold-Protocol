@@ -300,7 +300,8 @@ test('m.public follows player-state changes (shop level, board count, bonds) wit
   const ps = h.ps('p_0');
   ps.funds = 50;
   m.handle('p_0', { t: 'g.levelUp' });
-  h.sched.advance(150);
+  // PREP uses the relaxed 200 ms idle throttle (DELAYS.PUBLIC_THROTTLE_IDLE, 2+2G 优化 §2.1.2-3)
+  h.sched.advance(250);
   assert.equal(h.lastBc('m.public').players[0].shopLevel, 2);
   m.dispose();
 });

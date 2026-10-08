@@ -435,7 +435,7 @@ describe('net.js', () => {
     assert.ok(ws().last('ping'), 'latency probe before hello');
     net.setName('  凯尔希  ');
     const hello = ws().last('hello');
-    assert.deepEqual({ ...hello, rid: 0 }, { t: 'hello', rid: 0, name: '凯尔希', version: PROTOCOL_VERSION, token: 'tok-1' });
+    assert.deepEqual({ ...hello, rid: 0 }, { t: 'hello', rid: 0, name: '凯尔希', version: PROTOCOL_VERSION, token: 'tok-1', client: { platform: 'web', bundle: 'stream' } });
     assert.equal(net.status, 'handshaking');
     ws().recv({ t: 'welcome', rid: hello.rid, playerId: 'p_1', token: 't', name: '凯尔希', serverNow: Date.now() });
     assert.equal(net.status, 'online');
@@ -620,6 +620,24 @@ describe('net.js', () => {
     assert.equal(errs.length, 1);
     assert.match(errs[0].message, /版本/);
     await assert.rejects(p, (e) => e.code === 'OFFLINE');
+  });
+
+  test('hello error BUSY (admission breaker) → drops socket, retries via backoff', async () => {
+    const { net, ws, sockets, timers } = await makeNet();
+    const errs = [];
+    net.on('helloError', (e) => errs.push(e));
+    net.setName('A');
+    ws().open();
+    ws().recv({ t: 'error', rid: ws().last('hello').rid, code: 'BUSY',
+      msg: '服务器当前对局已满载，正在保护对局稳定，请稍后进入' });
+    assert.equal(errs.length, 1);
+    assert.equal(errs[0].code, 'BUSY');
+    // the old socket is torn down (its onclose handlers are unbound)
+    assert.equal(sockets[0].readyState, 3);
+    assert.equal(net.status, 'reconnecting');
+    // the retry opens a fresh socket after the backoff delay
+    timers.advance(60000);
+    assert.equal(sockets.length, 2);
   });
 
   test('pushes are emitted by type and "*"; unsolicited errors as unhandledError; junk ignored', async () => {

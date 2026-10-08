@@ -157,3 +157,48 @@ test('net resilience: TCP keepalive and nodelay are applied in handleConnection'
   assert.deepEqual(noDelayCalls, [true]);
   network.close();
 });
+
+// Admission circuit breaker (docs/OPTIMIZATION_AND_PR_PLAN.md §2.1.2): when the loadGuard is red, brand-new hello
+// sessions are refused with ERR.BUSY; a hello carrying a known token (a reconnect) always passes.
+test('net resilience: loadGuard red refuses new sessions, reconnect tokens always pass', () => {
+  const registry = new SessionRegistry();
+  const guard = {
+    blocked: true,
+    summary: () => ({ status: 'red', onlineCount: 200, score: 200, cpuPercent: 90, lagMs: 130 }),
+  };
+  const network = new Network({ registry, handler: { onMessage() {} }, loadGuard: guard });
+  const mkWs = () => ({ readyState: 1, _socket: { setKeepAlive() {}, setNoDelay() {} }, on() {}, close() {}, terminate() {}, sent: [], send(d) { this.sent.push(String(d)); } });
+
+  // 1. brand-new session: refused with BUSY, no session minted
+  const ws1 = mkWs();
+  network.handleConnection(ws1, { socket: { remoteAddress: '127.0.0.1' }, headers: {} });
+  network.onFrame(network.conns.get(ws1), JSON.stringify({ t: 'hello', name: '新玩家', rid: 1 }), false);
+  const reply1 = JSON.parse(ws1.sent.at(-1));
+  assert.equal(reply1.t, 'error');
+  assert.equal(reply1.code, 'BUSY');
+  assert.match(reply1.detail, /200 在线/);
+  assert.equal(registry.size, 0, 'no session was minted');
+
+  // 2. seed an existing session, then reconnect with its token: passes even while red
+  guard.blocked = false;
+  const ws2 = mkWs();
+  network.handleConnection(ws2, { socket: { remoteAddress: '127.0.0.1' }, headers: {} });
+  network.onFrame(network.conns.get(ws2), JSON.stringify({ t: 'hello', name: '老玩家', rid: 2 }), false);
+  const welcome = JSON.parse(ws2.sent.at(-1));
+  assert.equal(welcome.t, 'welcome');
+  assert.ok(welcome.token);
+  assert.equal(registry.size, 1);
+  // disconnect it (the session survives for the reconnect window)
+  network.onClose(network.conns.get(ws2));
+
+  guard.blocked = true;
+  const ws3 = mkWs();
+  network.handleConnection(ws3, { socket: { remoteAddress: '127.0.0.1' }, headers: {} });
+  network.onFrame(network.conns.get(ws3), JSON.stringify({ t: 'hello', name: '老玩家', token: welcome.token, rid: 3 }), false);
+  const resumed = JSON.parse(ws3.sent.at(-1));
+  assert.equal(resumed.t, 'welcome');
+  assert.equal(resumed.resumed, true, 'token reconnect passes the red gate');
+  assert.equal(registry.size, 1, 'no extra session');
+
+  network.close();
+});
