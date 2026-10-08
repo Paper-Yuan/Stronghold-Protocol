@@ -199,7 +199,7 @@ export function FacingWheel({ view, row, col, grid, name = '', onPreview, onComm
   // the committed g.move / g.art use the BOARD direction (render/prepfield.js maps it back for display).
   const mirror = viewMirrored(view) || !!(g && g.mirror);
   const bdir = boardDir(dir, mirror);
-  live.current = { g, half, dead, dir, bdir, mirror, onCommit, onCancel, onPreview, hadDir: live.current?.hadDir || false };
+  live.current = { g, half, dead, dir, bdir, mirror, onCommit, onCancel, onPreview };
 
   // preview: model / wedge direction and the rotated range under the units
   const tiles = useRangeHighlight(view, grid, row, col, bdir);
@@ -242,33 +242,24 @@ export function FacingWheel({ view, row, col, grid, name = '', onPreview, onComm
     e.preventDefault();
     if (!inside(e.clientX, e.clientY)) { onCancel(); return; }
     try { e.currentTarget.setPointerCapture(e.pointerId); } catch { /* ignore */ }
-    setDrag({ id: e.pointerId, t0: Date.now(), x0: e.clientX, y0: e.clientY });
-    live.current.hadDir = false;
-    const d = choose(e.clientX, e.clientY);
-    if (d) live.current.hadDir = true;
+    setDrag({ id: e.pointerId });
+    choose(e.clientX, e.clientY);
   };
   const onMove = (e) => {
     if (!drag || e.pointerId !== drag.id) return;
-    const d = choose(e.clientX, e.clientY);
-    if (d) live.current.hadDir = true;
+    choose(e.clientX, e.clientY);
   };
   const onUp = (e) => {
     if (!drag || e.pointerId !== drag.id) return;
-    const sDrag = drag;
     setDrag(null);
     const d = choose(e.clientX, e.clientY);
     if (d) {
       try { audio.sfx('click'); } catch { /* ignore */ }
       onCommit(boardDir(d, live.current.mirror));
     } else {
-      const dt = Date.now() - (sDrag.t0 || 0);
-      const dist = Math.hypot(e.clientX - (sDrag.x0 || 0), e.clientY - (sDrag.y0 || 0));
-      if (!live.current.hadDir && dt < 450 && dist < live.current.dead * 1.5) {
-        try { audio.sfx('click'); } catch { /* ignore */ }
-        onCommit(boardDir('RIGHT', live.current.mirror));
-      } else {
-        onCancel();
-      }
+      // 二段式（plan §2.3.5）：松手在死区里只是"还没选"，罗盘继续等待专属的滑动/点选——
+      // 落子那一下的余动不再被当成朝向（旧版这里快提交默认 RIGHT，触屏误触率高）
+      try { audio.sfx('back', { volume: 0.3 }); } catch { /* ignore */ }
     }
   };
   const onPointerCancel = () => { setDrag(null); setDir(null); };
@@ -308,7 +299,7 @@ export function FacingWheel({ view, row, col, grid, name = '', onPreview, onComm
         <${LocalSprite} name="cancel_icon" class="fwheel__x" fallback=${html`<span class="fwheel__x fwheel__x--txt">✕</span>`} />
         <span>点击取消</span>
       </button>
-      ${outside ? html`<span class="fwheel__tip" role="status">拖回中心区域取消</span>` : null}
+      ${outside ? html`<span class="fwheel__tip" role="status">松手确认${DIR_LABEL[dir] ? ` ${DIR_LABEL[dir]}` : ''} · 拖回中心不提交</span>` : null}
       <span class="fwheel__sr" aria-live="polite">${dir ? `朝向：${DIR_LABEL[dir]}` : ''}</span>
     </div>` : null}
   </div>`;

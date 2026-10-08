@@ -7,7 +7,7 @@ import { DEFAULT_HOTKEYS, sanitizeHotkeys } from './shortcuts.js';
 // ---- settings ------------------------------------------------------------------------------------------------------
 
 /** keys: the in-match shortcuts' key map (ui/gameLogic/shortcuts.js; settings → 快捷键). */
-export const DEFAULT_SETTINGS = Object.freeze({ bgm: 0.6, sfx: 0.8, voice: 0.8, voiceLang: 'jp', muted: false, damageNumbers: true, quality: 'high', board: 'auto', keys: DEFAULT_HOTKEYS });
+export const DEFAULT_SETTINGS = Object.freeze({ bgm: 0.6, sfx: 0.8, voice: 0.8, voiceLang: 'jp', muted: false, damageNumbers: true, quality: 'high', highRefresh: true, board: 'auto', keys: DEFAULT_HOTKEYS });
 const QUALITIES = ['high', 'medium', 'low'];
 const BOARDS = ['auto', '3d', '2d'];
 
@@ -29,6 +29,7 @@ export function sanitizeSettings(raw) {
     muted: typeof r.muted === 'boolean' ? r.muted : DEFAULT_SETTINGS.muted,
     damageNumbers: typeof r.damageNumbers === 'boolean' ? r.damageNumbers : DEFAULT_SETTINGS.damageNumbers,
     quality: QUALITIES.includes(r.quality) ? r.quality : DEFAULT_SETTINGS.quality,
+    highRefresh: typeof r.highRefresh === 'boolean' ? r.highRefresh : DEFAULT_SETTINGS.highRefresh,
     board: BOARDS.includes(r.board) ? r.board : DEFAULT_SETTINGS.board,
     keys: sanitizeHotkeys(r.keys),
   };

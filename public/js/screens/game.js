@@ -844,7 +844,8 @@ function MatchScreen() {
       holdPiece(view, piece.uid, { row: t.row, col: t.col });
       setSel(null);
       setFacing({ uid: piece.uid, piece, row: t.row, col: t.col, grid: previewGrid(lookups, piece), name: rec?.name || '' });
-      audio.sfx('pick', { volume: 0.5 });
+      // 二段式第一段到此为止（plan §2.3.5）：落子即锚定，落子音效先响，朝向留待罗盘上的明确动作
+      audio.sfx(piece.kind === 'item' ? 'artPlace' : 'drop', { volume: 0.5 });
     };
     const offs = [
       view.on('pieceDragStart', (e) => {

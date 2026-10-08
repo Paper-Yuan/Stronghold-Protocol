@@ -391,11 +391,12 @@ function makeData(src) {
 
 const isMobile = typeof navigator !== 'undefined' && (/Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) || (navigator.maxTouchPoints > 1 && !globalThis.matchMedia?.('(pointer: fine)').matches));
 
-// Mobile devices have constrained VRAM and thermal envelopes; capping mobile DPR to 2.0 (board to 1.5)
-// prevents GPU OOM and render process crashes while preserving sharp display on 1080p/1440p phones.
-const QUALITY_RES = isMobile ? { high: 2, medium: 1.5, low: 1 } : { high: 3, medium: 1.5, low: 1 };
+// Mobile devices have constrained VRAM and thermal envelopes; capping mobile DPR to 3.0 (board to 2.0) keeps modern
+// OLED phones (~3x physical DPR) sharp at high quality while medium/low stay conservative for thermals and VRAM.
+// 单机与连服共用这一条管线：画质档位是唯一的降采样依据（plan §2.3.4，手机单机不再被无差别压到 1.5）。
+const QUALITY_RES = isMobile ? { high: 3, medium: 1.5, low: 1 } : { high: 3, medium: 1.5, low: 1 };
 /** Pixel-ratio cap of the 3D board canvas per quality (its fill cost is the PBR board, not the sprites). */
-const BOARD_RES = isMobile ? { high: 1.5, medium: 1.25, low: 1 } : { high: 3, medium: 1.25, low: 1 };
+const BOARD_RES = isMobile ? { high: 2, medium: 1.25, low: 1 } : { high: 3, medium: 1.25, low: 1 };
 
 /**
  * Before a renderer is destroyed: free its GL copies of every texture / buffer / geometry / framebuffer it
@@ -578,7 +579,8 @@ export async function createFieldView(host, options = {}) {
     if (mode === 'battle') return 60;
     const idleSec = (performance.now() - lastTouchTime) / 1000;
     if (idleSec > 8 && !dragState) return 60;
-    return 0;
+    // 高刷开着的休整/备战期跑满屏幕也不封顶会白白烤 GPU（手机 144Hz 满帧），120 已远超人眼感知的丝滑
+    return 120;
   };
   const updateFpsLimit = () => {
     if (app?.ticker) {
