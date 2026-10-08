@@ -98,7 +98,7 @@ export default {
           // boss field nor a boss field's hand / 临时整备区 rows. Community report of 2026-10-06 (item 27) 「乌尔比安使用3技能会在
           // 联防阶段跳到红门后」: on the one-helper 联防 map (escaped_single, enemies from the middle gate at col 10) an anchor that
           // met no enemy flew on to the right half, where no enemy ever walks, and he moved there for the whole skill
-          const ok = ([r, c]) => (r !== unit.tileR || c !== unit.tileC) && battle.grid.inRect(r, c) && battle.onOwnBoard(unit.player, r, c) && battle.grid.canStand(r, c) && !battle.grid.isObstacle(r, c) && !battle.isReservedTile(r, c);
+          const ok = ([r, c]) => (r !== unit.tileR || c !== unit.tileC) && battle.grid.inRect(r, c) && (typeof battle.onOwnBoard === 'function' ? battle.onOwnBoard(unit, r, c) : true) && battle.grid.canStand(r, c) && !battle.grid.isObstacle(r, c) && !battle.isReservedTile(r, c);
           const dest = [[sr, sc], frontOf(unit.tileR, unit.tileC, unit.dir, stop + 1)].find(ok);
           if (dest == null) return;
           const home = [unit.tileR, unit.tileC];

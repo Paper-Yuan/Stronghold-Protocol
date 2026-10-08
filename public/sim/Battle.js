@@ -2113,6 +2113,21 @@ export class Battle {
   }
 
   /**
+   * Check if a tile (r, c) is on the ally's / player's own deployable board half.
+   * On normal maps, any inRect tile is valid. On unite maps (split at col 10),
+   * units originating from the left half stay on the left (col <= 10), and right stay on the right.
+   */
+  onOwnBoard(playerOrUnit, r, c) {
+    if (!Number.isInteger(r) || !Number.isInteger(c) || !this.grid.inRect(r, c)) return false;
+    if (this.kind === 'unite') {
+      const origC = Number.isInteger(playerOrUnit?.homeC) ? playerOrUnit.homeC : (playerOrUnit?.tileC ?? 0);
+      if (origC <= 10 && c > 10) return false;
+      if (origC > 10 && c <= 10) return false;
+    }
+    return true;
+  }
+
+  /**
    * The knocked-out operator (isDown) lying on (r, c), other than `except`, or null. Official (PRTS 卫戍协议/帮助 §作战阶段
    * 单位部署): "干员退场后…原地留下一个“倒地干员”…满足再部署条件时，移除场上的该倒地干员并自动部署至该位置" and "倒地干员所在
    * 地块视为可部署，但所有我方单位在此处的部署行为将被阻止" — its tile (`body`, _layBody) takes no other ally: `_deploy`

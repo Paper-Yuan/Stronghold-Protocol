@@ -300,3 +300,29 @@ test('Battle.moveRedeploy: refused like relocate (nothing changes); 气流 follo
   assert.ok(u.findBuff('terrain:airflow') && u.s.atk > 1000, 'the new tile\'s airflow starts');
   clean(h);
 });
+
+test('乌尔比安 S3: in unite map, anchor respects onOwnBoard and never throws', REAL, () => {
+  const h = makeBattle({
+    kind: 'unite',
+    defs: { enemies: { e_dummy: dummy } },
+    units: [{ chessId: ULP, row: 10, col: 8, dir: 'RIGHT' }],
+    enemies: [{ key: 'e_dummy', pos: [10, 12] }],
+    hooks: ['deploy', 'skillEnd'],
+    autoFinish: false,
+    timeLimit: 30,
+  });
+  const b = h.b, u = h.unit(ULP);
+  h.step();
+  h.run(3);
+  assert.equal(typeof b.onOwnBoard, 'function');
+  assert.equal(b.onOwnBoard(u, 10, 9), true);
+  assert.equal(b.onOwnBoard(u, 10, 10), true);
+  assert.equal(b.onOwnBoard(u, 10, 11), false, 'cannot cross unite mid line into teammate half');
+  
+  u.skill.gainSp(1000);
+  assert.ok(h.runUntil(() => u.skill.active, 2));
+  // Ulpianos cast S3 without error and stayed on left half (<= 10)
+  assert.ok(u.tileC <= 10, 'stayed on own half');
+  assert.equal(b.errors.length, 0, 'no errors logged');
+  clean(h);
+});
