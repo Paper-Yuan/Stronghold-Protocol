@@ -507,14 +507,17 @@ export class Network {
    *   log?: { info: Function, warn: Function, error: Function, debug?: Function },
    *   now?: () => number,
    *   options?: Partial<typeof NET_DEFAULTS>,
+   *   loadGuard?: { blocked: boolean, summary(): object } | null,
    * }} opts
    */
-  constructor({ registry, handler, log = noopLog, now = Date.now, options = {} }) {
+  constructor({ registry, handler, log = noopLog, now = Date.now, options = {}, loadGuard = null }) {
     this.registry = registry;
     this.handler = handler;
     this.log = log;
     this.now = now;
     this.opts = { ...NET_DEFAULTS, ...options };
+    /** admission circuit breaker (server/loadGuard.js): when red, brand-new hello sessions are refused */
+    this.loadGuard = loadGuard;
     /** @type {Map<import('ws').WebSocket, Connection>} */
     this.conns = new Map();
     /** @type {Map<string, number>} open sockets per client network key */
@@ -612,6 +615,14 @@ export class Network {
       return;
     }
     if (msg.t === 'hello') { this.onHelloMsg(conn, msg, now); return; }
+    if (msg.t === 'client.bundle') {
+      if (conn.session && msg.bundle && typeof msg.bundle === 'string') {
+        if (!conn.session.client) conn.session.client = { platform: 'web', bundle: 'stream' };
+        conn.session.client.bundle = msg.bundle.slice(0, 32);
+      }
+      if (validRid(rid)) this.reply(conn, { t: 'ok', rid });
+      return;
+    }
     if (!conn.session) { this.reply(conn, errorMsg(ERR.BAD_MSG, rid, 'hello required')); return; }
     if (HEAVY_TYPES.has(msg.t) && !conn.heavy.take(now)) { this.reply(conn, errorMsg(ERR.RATE, rid, `${msg.t} too often`)); return; }
 
@@ -648,7 +659,17 @@ export class Network {
     let resumed = false;
     const repeat = !!session;
     if (!session) {
-      session = msg.token ? this.registry.byToken(msg.token) : null;
+      // Admission circuit breaker (loadGuard red): brand-new sessions are refused with a friendly queue message,
+      // while a hello carrying a known token (a reconnect — possibly mid-match) always passes. Nobody already
+      // in a room or a match is ever refused by this gate.
+      const known = msg.token ? this.registry.byToken(msg.token) : null;
+      if (this.loadGuard?.blocked && !known) {
+        const s = this.loadGuard.summary();
+        this.log.warn?.(`[net] admission refused (loadGuard red): online ${s.onlineCount}, ELS ${s.score}`);
+        this.reply(conn, errorMsg(ERR.BUSY, rid, `服务器当前对局已满载（${s.onlineCount} 在线），正在保护对局稳定，请稍后进入`));
+        return;
+      }
+      session = known;
       if (session) {
         resumed = true;
         if (session.ws && session.ws !== conn.ws) this.detachReplaced(session.ws);

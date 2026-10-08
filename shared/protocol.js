@@ -313,6 +313,8 @@ export const C2S = {
   'room.diy': { picks: isDiyPicks },
   // 干员皮肤 (docs/SKINS.md): public, accepted in any room phase
   'room.skins': { skins: isSkinSelection },
+  // 客户端预载包形态上报 (0.2.1-fusion)
+  'client.bundle': { bundle: (v) => isStr(v, 32) },
   // 房间与局内文字聊天
   'room.chat': { text: (v) => typeof v === 'string' && v.trim().length > 0 && v.length <= 120 },
   // spectator seats (remake feature, community report #26; MAX_SPECTATORS): take one of a co-op room's spectator seats —

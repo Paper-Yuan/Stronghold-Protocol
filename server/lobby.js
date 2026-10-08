@@ -82,6 +82,7 @@ import { randomBytes, randomInt } from 'node:crypto';
 import { ERR, MAX_SEATS, MAX_SPECTATORS, ROOM_CODE_LEN, modeIdFor } from '../shared/constants.js';
 import { checkLoadout, checkNotOwned, checkDiyPicks } from '../shared/protocol.js';
 import { getCpuUsagePercent } from './admin.js';
+import { LoadGuard } from './loadGuard.js';
 import { encode, isDroppable, isErrCode, sendRaw, sendSession } from './net.js';
 import { getData as defaultGetData, lookup } from './data.js';
 import { Match as DefaultMatch } from './match/Match.js';
@@ -255,6 +256,8 @@ export class Lobby {
     this.maintenanceTimer = null;
     /** @type {NodeJS.Timeout | null} 大厅动态广播节流定时器 */
     this._statsDebounceTimer = null;
+    /** 动态准入熔断与负载采样（docs/OPTIMIZATION_AND_PR_PLAN.md §2.1.2）：welcome/lobby.stats 携带其摘要 */
+    this.loadGuard = options.loadGuard || new LoadGuard({ registry, log, options: options.loadGuardOptions });
     /** 定期大厅全量数据心跳 (4秒，仅非单测环境启用) */
     if (process.env.NODE_ENV !== 'test') {
       this._statsPeriodicTimer = setInterval(() => this.broadcastLobbyStats(), 4000);
@@ -581,6 +584,8 @@ export class Lobby {
       roomsCount: this.rooms.size,
       matchesCount,
       rooms: list,
+      // loadGuard 摘要（docs/OPTIMIZATION_AND_PR_PLAN.md §2.1.2）：已在线玩家也能感知服务器负载变化
+      serverLoad: this.loadGuard.summary(),
     };
   }
 
@@ -899,29 +904,32 @@ export class Lobby {
   /** Extra fields of every `welcome` (net.js): load metrics & operator loadouts */
   welcomeInfo() {
     let androidFull = 0;
-    let webPreloaded = 0;
+    let webFull = 0;
+    let webCore = 0;
     let webStream = 0;
     if (this.registry?.byPlayerId) {
       for (const s of this.registry.byPlayerId.values()) {
         if (!s.connected) continue;
-        if (s.client?.bundle === 'full') androidFull++;
-        else if (s.client?.bundle === 'preloaded') webPreloaded++;
+        const b = s.client?.bundle;
+        if (b === 'full' || b === 'android_full') androidFull++;
+        else if (b === 'web_full') webFull++;
+        else if (b === 'web_core' || b === 'core' || b === 'preloaded') webCore++;
         else webStream++;
       }
     }
-    const onlineCount = androidFull + webPreloaded + webStream;
+    const onlineCount = androidFull + webFull + webCore + webStream;
     // Equivalent Load Score (ELS) out of 150 capacity benchmark:
-    // Full/Preloaded: 1.0 pt, Un-preloaded Web stream: 8.0 pts
-    const loadScore = Math.round((androidFull * 1.0 + webPreloaded * 1.0 + webStream * 8.0) * 10) / 10;
+    // Full (Android/Web): 1.0 pt, Web Core preloaded: 1.5 pts, Un-preloaded Web stream: 8.0 pts
+    const loadScore = Math.round((androidFull * 1.0 + webFull * 1.0 + webCore * 1.5 + webStream * 8.0) * 10) / 10;
     const cpu = getCpuUsagePercent();
     const freeMemMb = Math.round(os.freemem() / 1024 / 1024);
 
     let status = 'normal';
     let message = '';
-    if (loadScore >= 135 || cpu >= 85 || freeMemMb < 250) {
+    if (loadScore >= 200 || cpu >= 95 || freeMemMb < 150) {
       status = 'critical';
       message = '当前服务器处于高载荷运行状态（算力/网络接近上限）。新加入玩家或未预载玩家可能会遇到明显卡顿或掉线，建议前往备用服游玩或稍后再试。';
-    } else if (loadScore >= 100 || cpu >= 75 || freeMemMb < 400) {
+    } else if (loadScore >= 160 || cpu >= 88 || freeMemMb < 250) {
       status = 'warning';
       message = '当前服务器处于高峰拥挤状态。建议网页端玩家在主页右下角「⚡资源预载」完成缓存后再进入游戏，以获得顺畅体验。';
     }
@@ -934,8 +942,13 @@ export class Lobby {
         maxScore: 150,
         onlineCount,
         cpuPercent: cpu,
-        freeMemMb,
-        clients: { androidFull, webPreloaded, webStream },
+        clients: {
+          androidFull,
+          webFull,
+          webCore,
+          webStream,
+          webPreloaded: webFull + webCore,
+        },
         message,
       },
     };
@@ -1142,9 +1155,13 @@ export class Lobby {
     }
     // a spectator only watches (header): nothing else of it ever reaches the match
     if (msg.t !== 'g.watch' && room.spectatorOf(session.playerId)) return fail(ERR.SPECTATOR);
+    // 指令快速通道（2+2G 优化 §2.1.2-3）：轻量 g.* 指令先出结果、net.js 回包 ok 后再 flush——玩家的操作确认
+    // 不再排在同 tick 的 m.public JSON 序列化之后。g.watch / b.* 的回复本身就是大状态重发，保持原路径。
+    // （测试替身 match 可能没有 flush —— 那种走原来的同步路径。）
+    const fastPath = msg.t.startsWith('g.') && msg.t !== 'g.watch' && typeof room.match.flush === 'function';
     let res;
     try {
-      res = room.match.handle(session.playerId, msg);
+      res = room.match.handle(session.playerId, msg, fastPath ? { deferFlush: true } : undefined);
     } catch (e) {
       this.log.error(`[lobby] ${room.code} match.handle(${msg.t}) threw`, e);
       return fail(ERR.INTERNAL);
@@ -1157,6 +1174,16 @@ export class Lobby {
     }
     if (res && typeof res === 'object' && res.error) {
       return fail(isErrCode(res.error) ? res.error : ERR.INTERNAL, typeof res.detail === 'string' ? res.detail : undefined);
+    }
+    if (fastPath && room.match && !room.match.disposed) {
+      // ok goes out first (the caller replies synchronously on return); the flush follows in the next macrotask
+      // before any timer/presentation delay can run — same tick from the client's perspective.
+      setImmediate(() => {
+        try {
+          if (!room.match || room.match.disposed) return;
+          room.match.flush();
+        } catch (e) { this.log.error(`[lobby] ${room.code} deferred flush failed`, e); }
+      });
     }
     return OK;
   }

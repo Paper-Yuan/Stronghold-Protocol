@@ -108,13 +108,16 @@ export class AdminService {
     const activeMatches = rooms.filter((r) => !!r.match).length;
 
     let androidFull = 0;
-    let webPreloaded = 0;
+    let webFull = 0;
+    let webCore = 0;
     let webStream = 0;
     if (this.registry?.byPlayerId) {
       for (const s of this.registry.byPlayerId.values()) {
         if (!s.connected) continue;
-        if (s.client?.bundle === 'full') androidFull++;
-        else if (s.client?.bundle === 'preloaded') webPreloaded++;
+        const b = s.client?.bundle;
+        if (b === 'full' || b === 'android_full') androidFull++;
+        else if (b === 'web_full') webFull++;
+        else if (b === 'web_core' || b === 'core' || b === 'preloaded') webCore++;
         else webStream++;
       }
     }
@@ -143,7 +146,14 @@ export class AdminService {
         sessions: this.registry.size,
         roomsCount: rooms.length,
         matchesCount: activeMatches,
-        clients: { androidFull, webPreloaded, webStream },
+        clients: {
+          androidFull,
+          webFull,
+          webCore,
+          webStream,
+          // backwards compatibility:
+          webPreloaded: webFull + webCore,
+        },
       },
     };
   }

@@ -209,7 +209,19 @@ export const DELAYS = Object.freeze({
   BOT_ACTION: 900,
   BOT_STAGGER: 350,
   PUBLIC_THROTTLE: 100,
+  // 2+2G 服务器优化（docs/OPTIMIZATION_AND_PR_PLAN.md §2.1.2-3）：非战斗阶段把 m.public 节流从 10Hz 放宽到
+  // 5Hz，砍掉一半的 publicView 序列化与广播开销；战斗表现帧保持 100ms 不变（单位移动平滑度不受影响）。
+  PUBLIC_THROTTLE_IDLE: 200,
 });
+
+/**
+ * Phase-aware m.public throttle: COMBAT (and the boss m.public cadence, which has its own 1 s limiter)
+ * keeps the 100 ms presentation frame; every other phase — the untimed PREP/休整 where most edits happen —
+ * uses the relaxed 200 ms idle throttle.
+ */
+function publicThrottleMs(phase) {
+  return phase === 'COMBAT' ? DELAYS.PUBLIC_THROTTLE : DELAYS.PUBLIC_THROTTLE_IDLE;
+}
 
 /**
  * Seconds of one turn of the co-op strategy draft (user playtest #4 item 4: the old 12 s per turn — research 06 §724,
@@ -410,9 +422,12 @@ export class Match {
   /**
    * @param {string} playerId
    * @param {{ t: string }} msg validated intent
+   * @param {{ deferFlush?: boolean }} [opts] deferFlush: skip the trailing flush() — the caller (lobby.routeGame
+   *        via net.js) answers the player first and flushes right after, so the `ok` frame is never queued behind
+   *        this tick's publicView JSON.stringify (2+2G 优化 §2.1.2-3 指令快速通道).
    * @returns {{ ok: true } | { error: string, detail?: string }}
    */
-  handle(playerId, msg) {
+  handle(playerId, msg, opts = {}) {
     const ps = this.players.get(playerId) || this.spectators.get(playerId);
     if (!ps || ps.isBot || ps.left) return fail(ERR.NOT_IN_ROOM);
     // a spectator seat only watches (the platform routes nothing else of it)
@@ -430,7 +445,12 @@ export class Match {
       this.reportError(`handle ${msg.t}`, e);
       res = fail(ERR.INTERNAL);
     }
-    try { this.flush(); } catch (e) { this.reportError('flush', e); }
+    if (opts.deferFlush) {
+      // The dirty flags (this._privDirty / this._pubDirty) stay set; the caller MUST call flush() on this tick.
+      this._flushDeferred = true;
+    } else {
+      try { this.flush(); } catch (e) { this.reportError('flush', e); }
+    }
     if (res && typeof res === 'object' && res.error) return res;
     return OK;
   }
@@ -822,10 +842,11 @@ export class Match {
   }
 
   _maybeSendPublic(force) {
+    const throttle = publicThrottleMs(this.phase);
     const now = this.sched.now();
-    if (!force && now - this._lastPubAt < DELAYS.PUBLIC_THROTTLE) {
+    if (!force && now - this._lastPubAt < throttle) {
       if (!this._pubTimer) {
-        const wait = Math.max(1, DELAYS.PUBLIC_THROTTLE - (now - this._lastPubAt));
+        const wait = Math.max(1, throttle - (now - this._lastPubAt));
         this._pubTimer = this.sched.setTimeout(() => {
           this._pubTimer = null;
           if (this.disposed) return;
