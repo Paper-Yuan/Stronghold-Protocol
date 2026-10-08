@@ -43,6 +43,11 @@ vibe_images/
 *.apk
 *.aab
 *.zip
+*.tar.gz
+debug_web/
+debug_*.png
+test_edge.png
+.edge_profile/
 android/app/build/
 android/.gradle/
 android/local.properties

@@ -1,0 +1,146 @@
+================================================================================
+  明日方舟「卫戍协议：盟约」私有化服务端部署与运维手册 (v0.2.1-fusion)
+================================================================================
+
+本服务端基于 Node.js 22 全量复刻，内置完整干员DIY编队、271款全量皮肤、Spine骨骼、
+双语语音、局内AI托管与战力模拟、网页端资源预载中心、动态算力负载调控及管理后台。
+
+--------------------------------------------------------------------------------
+一、环境与系统要求（环境不内置，需本机自行安装）
+--------------------------------------------------------------------------------
+1. 操作系统：
+   - Linux 发行版（推荐）：Ubuntu 20.04/22.04/24.04 LTS、Debian 11/12、CentOS 8+ / Rocky Linux
+   - Windows 系统：Windows 10 / 11 / Windows Server 2019/2022
+   - macOS：macOS 12+ (Intel / Apple Silicon)
+
+2. 运行环境：
+   - Node.js: >= 22.0.0 (必须，推荐安装 Node.js 22 LTS)
+   - npm: >= 10.0.0
+   - PM2: 全局安装用于生产守护 (npm install -g pm2)
+   - Nginx: 推荐用于 Linux 生产反向代理与 WebSocket 穿透
+
+3. 硬件配置建议：
+   - 1核 1G: 适合局域网/个人 1-10 人联机
+   - 2核 2G~4G: 适合云服务器公网开服，支持 50~150 人并发游玩
+
+--------------------------------------------------------------------------------
+二、Linux 云服务器 / 物理机快速部署指南
+--------------------------------------------------------------------------------
+1. 安装 Node.js 22 LTS 与 PM2 (以 Ubuntu/Debian 为例):
+   sudo apt update && sudo apt install -y curl tar gzip nginx
+   curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
+   sudo apt install -y nodejs
+   sudo npm install -g pm2
+
+2. 解压部署包:
+   sudo mkdir -p /opt/stronghold
+   tar -xzf stronghold-v0.2.1-fusion-server-release.tar.gz -C /opt/stronghold
+   cd /opt/stronghold
+
+3. 安装生产依赖:
+   npm install --omit=dev
+
+4. 编码与多语言支持设置:
+   export LANG=C.UTF-8
+   export LC_ALL=C.UTF-8
+
+5. 校验/拉取全量素材（若需要更新官方镜像素材）:
+   npm run assets
+
+6. 生产启动 (PM2 守护模式):
+   # 请将 ADMIN_SECRET 替换为您自定义的后台管理口令
+   PORT=3000 ADMIN_SECRET="your_custom_admin_token" pm2 start server/index.js --name stronghold
+   pm2 save
+   pm2 startup
+
+--------------------------------------------------------------------------------
+三、Windows 个人电脑 / 局域网开服指南
+--------------------------------------------------------------------------------
+1. 访问 Node.js 官方网站 (https://nodejs.org/) 下载安装 Node.js 22 LTS (Windows Installer)。
+2. 解压发布包至任意英文目录（如 D:\Stronghold-Server）。
+3. 打开 PowerShell，依次执行以下命令：
+   cd D:\Stronghold-Server
+   
+   # 避免 Windows 终端中文乱码
+   chcp 65001
+   
+   # 安装生产依赖
+   npm install --omit=dev
+   
+   # 启动服务器 (指定端口与管理密码)
+   $env:PORT="3000"
+   $env:ADMIN_SECRET="your_custom_admin_token"
+   node server/index.js
+
+4. 访问测试：
+   - 本机浏览器访问：http://localhost:3000
+   - 局域网好友访问：http://<你的本机内网IP>:3000
+
+--------------------------------------------------------------------------------
+四、Nginx 反向代理配置模板 (含 WebSocket 穿透)
+--------------------------------------------------------------------------------
+在 Linux 下配置 /etc/nginx/sites-available/default：
+
+server {
+    listen 80;
+    server_name your-domain.com; # 替换为您的域名或公网IP
+
+    client_max_body_size 50M;
+    gzip on;
+    gzip_types text/plain text/css application/json application/javascript;
+
+    location / {
+        proxy_pass http://127.0.0.1:3000;
+        proxy_http_version 1.1;
+
+        # WebSocket 关键转发
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+
+        # 真实 IP 透传
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+
+        proxy_read_timeout 300s;
+        proxy_send_timeout 300s;
+    }
+}
+
+配置完成后重载：
+sudo nginx -t && sudo systemctl reload nginx
+
+--------------------------------------------------------------------------------
+五、后台管理控制台 (Admin Dashboard)
+--------------------------------------------------------------------------------
+1. 访问地址：http://<服务器IP或域名>/admin
+2. 登录密码：启动时设置的 ADMIN_SECRET（默认：stronghold-admin-2026）
+3. 核心功能：
+   - 客户端类型实时监测：精准区分 📱 手机端全量包 / ⚡ 网页端已预载 / 🌐 网页端流式。
+   - AI 角色识别：对局中的电脑人显示 🤖 徽章，并标明角色名。
+   - 算力负载点数监控：基于 ELS 模型实时展示服务器等效点数（满载 150 分基准）。
+   - 平滑排空与维护模式：一键开启 Drain 排空，通知在线玩家维护倒计时。
+
+--------------------------------------------------------------------------------
+六、零停机蓝绿热切换升级 (hot-swap.sh)
+--------------------------------------------------------------------------------
+本工程随附自动化热切脚本 hot-swap.sh，支持生产环境下 0 秒停机热更新：
+1. 蓝绿双节点机制：
+   - 节点 A: /opt/stronghold-blue (端口 3001)
+   - 节点 B: /opt/stronghold-green (端口 3002)
+2. 一键热切命令：
+   chmod +x hot-swap.sh
+   ./hot-swap.sh /path/to/stronghold-v0.2.1-fusion-server-release.tar.gz
+3. 脚本执行逻辑：
+   - 自动检测并部署到闲置节点
+   - 启动新实例并通过 /healthz 健康探针验证
+   - 毫秒级重载 Nginx 切换 upstream 路由
+   - 向旧实例下发平滑排空指令，并在宽限期后自动删除旧压缩包与临时缓存，释放内存。
+
+--------------------------------------------------------------------------------
+七、健康检查与探针自检
+--------------------------------------------------------------------------------
+curl -s http://127.0.0.1:3000/healthz
+返回 {"ok":true,"version":1,"app":"0.2.1-fusion",...} 即代表运行正常。
+================================================================================

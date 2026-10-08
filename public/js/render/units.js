@@ -974,12 +974,14 @@ export class UnitView {
     // the diamond is only needed while no model shows (a cross-fade keeps whatever diamond was already up)
     if (!spineShown) this._ensurePicture();
     if (!spineShown || this.swapT < 1) {
+      this.fallback.visible = true;
       const size = s * UNIT.diamond * (this.isBoss ? 1.5 : 1);
       const bob = this.alive ? Math.sin(t * 2.4 + this.bob) * s * 0.03 : 0;
       this.fallback.scale.set(size / 160);
       this.fallback.position.set(0, -s * 0.08 + bob);
       this.fallback.tint = this.down ? DOWN_LOOK.tint : this.flash > 0 ? mixTint(0xffffff, 0xff8a80, this.flash) : (this.flags & UF.FROZEN ? 0x9fd4ff : 0xffffff);
       if (!this.alive) this.fallback.alpha = Math.max(0, this.fallback.alpha);
+      else if (!spineShown) this.fallback.alpha = 1;
     }
     this.flash = Math.max(0, this.flash - dt * 6);
 
