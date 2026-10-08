@@ -26,9 +26,12 @@ def main():
     print("1. 同步 public/assets 到便携包目录...")
     sync_dir(os.path.join(root, "public", "assets"), os.path.join(app_dir, "public", "assets"))
     
-    print("2. 同步 data/assets.json 与前端脚本...")
-    shutil.copy2(os.path.join(root, "data", "assets.json"), os.path.join(app_dir, "data", "assets.json"))
-    shutil.copy2(os.path.join(root, "public", "js", "render", "units.js"), os.path.join(app_dir, "public", "js", "render", "units.js"))
+    print("2. 同步 data/assets.json、public/js、shared 与 server 脚本...")
+    if os.path.exists(os.path.join(root, "data", "assets.json")):
+        shutil.copy2(os.path.join(root, "data", "assets.json"), os.path.join(app_dir, "data", "assets.json"))
+    sync_dir(os.path.join(root, "public", "js"), os.path.join(app_dir, "public", "js"))
+    sync_dir(os.path.join(root, "shared"), os.path.join(app_dir, "shared"))
+    sync_dir(os.path.join(root, "server"), os.path.join(app_dir, "server"))
     
     # 验证关键文件
     test_skel = os.path.join(app_dir, "public", "assets", "spine", "op", "char_003_kalts", "front", "char_003_kalts.skel")

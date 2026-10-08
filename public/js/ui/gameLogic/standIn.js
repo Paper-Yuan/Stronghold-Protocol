@@ -16,6 +16,7 @@
 import { standInRecord } from '../../../../shared/standIn.js';
 import { resolveLoadout } from '../../../../shared/protocol.js';
 import { chessLoadout } from './loadout.js';
+import { ownDiyRecord } from './diy.js';
 import { isObj } from './shared.js';
 import { t } from '../../../../shared/i18n.js';
 
@@ -121,6 +122,10 @@ export function standInLoadout(rec, getChess, backups) {
  */
 export function deployedRecord(chess, priv, getChess, backups) {
   if (!isObj(chess)) return chess;
+  if (chess.isDiy) {
+    const diy = ownDiyRecord(chess, priv, { rawChess: getChess, chess: getChess, backups });
+    if (diy) return diy;
+  }
   if (fieldsStandIn(priv, chess)) {
     const si = standInOf(chess, backups);
     if (si) return standInLoadout(si, getChess, backups)?.record || si;
@@ -135,6 +140,10 @@ export function deployedRecord(chess, priv, getChess, backups) {
 export function deployedModuleId(chess, priv, getChess, backups) {
   if (!isObj(chess)) return null;
   try {
+    if (chess.isDiy) {
+      const diy = ownDiyRecord(chess, priv, { rawChess: getChess, chess: getChess, backups });
+      if (diy) return diy.module?.id || diy.module?.uniEquipId || null;
+    }
     if (fieldsStandIn(priv, chess)) {
       const si = standInOf(chess, backups);
       if (si) return resolveLoadout(null, si, standInGetter(getChess, backups))?.moduleId ?? null;

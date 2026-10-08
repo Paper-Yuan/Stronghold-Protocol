@@ -98,7 +98,7 @@ import {
   terrainInfo,
   countdownState, shopBlockReason, stageOverrides, effectiveStage, watchTarget, dropFailureReason,
   previewEnemyKey, prepCamera, prepCameraFor, foldCamera, deployFieldOf, fieldTile, panelSide, panelSlots, bondPopupPlace, chessLoadout, unitLoadout,
-  mergeTarget, modeOffBonds, readyFundsPrompt, ownerBandId,
+  mergeTarget, modeOffBonds, readyFundsPrompt, ownerBandId, diyGetter,
 } from '../ui/gameLogic.js';
 import { toast } from '../ui/toasts.js';
 import { BriefingScreen } from './briefing.js';
@@ -276,10 +276,11 @@ function MatchScreen() {
   // the field the own pieces are deployed on: the own board, or the player's half of the boss field in a boss round's
   // prep (user playtest #5 item 7: legality and the legal-tile highlights read THOSE tiles, like the server)
   const deployField = deployFieldOf(pub, myId);
+  const placeChess = useMemo(() => diyGetter(gd.chess, priv, { rawChess: gd.chess, chess: gd.chess, backups: gd.backups }), [gd.chess, priv, gd.backups]);
   const placeCtx = useMemo(() => placementContext({
     priv, stage: gd.stage(pub?.stageId), editable, field: deployField,
-    getChess: gd.chess, getToken: gd.token, getItem: gd.item, getEffect: gd.effect,
-  }), [priv, pub?.stageId, editable, gd.ready, deployField]);
+    getChess: placeChess, getToken: gd.token, getItem: gd.item, getEffect: gd.effect, backups: gd.backups,
+  }), [priv, pub?.stageId, editable, gd.ready, gd.backups, deployField, placeChess]);
   live.current = { pub, priv, field, editable, placeCtx, watching, watchWho, home, myId, detail, drawer, bondOpen, emoteOpen, settingsOpen, exitOpen, drag, facing, sel, selBusy, pen, collapsedNow: collapsed, localDone: false, canPause: false, paused };
 
   // ---- camera: every request goes through setCam, which remembers it for the pen's way back -----------------------
@@ -453,7 +454,7 @@ function MatchScreen() {
       hudRef.current = snapHud(earlySnap, myId);
       setHud(hudRef.current);
     }
-  }, [view, showPrep, priv, editable, field, combat, mode, watchingOther, watching, holdSeq]);
+  }, [view, showPrep, priv, editable, field, combat, mode, watchingOther, watching, holdSeq, gd.ready]);
 
   // battle frames straight from the socket (server-run combat, 20 Hz) or from the local simulation (client-side combat,
   // battle/runner.js, every animation frame) — never through the store. Frames go to the view as received: the game

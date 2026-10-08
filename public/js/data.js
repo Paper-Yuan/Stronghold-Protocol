@@ -37,6 +37,7 @@ export const DATA_FILES = Object.freeze({
   // Optional art extracted from a local game client (DESIGN §13): { groups: { '<subdir>': { name: { path, w, h } } } }.
   // The emotes and the 玩法说明 pages are in data/assets.json too (downloaded from the mirror): artUrls().
   local: 'local-assets.json',
+  backups: 'backups.json',
 });
 
 const ID_KEYS = ['id', 'chessId', 'bondId', 'itemId', 'bandId', 'enemyKey', 'enemyId', 'stageId', 'bossId', 'tokenId', 'choiceId', 'key'];

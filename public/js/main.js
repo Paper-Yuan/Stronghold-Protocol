@@ -507,6 +507,8 @@ async function boot() {
   data.loadAll('config').catch(() => {});
   // Optional local-client art manifest (emotes, tutorial pages, official UI sprites; DESIGN §13).
   data.load('local').catch(() => {});
+  // 0.2.0 backups (stand-ins, DIY operators, tokens)
+  data.load('backups').catch(() => {});
 
   const connectWhenReady = identityReady.then(() => {
     if (entered) net.setName(savedName);

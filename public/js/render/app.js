@@ -304,6 +304,12 @@ export function renderInfo(u) {
     // unit (resolveDetail `unitItems` → the read-only 装备 section and the 变形同构体 pairing chips); the owner's own
     // unit takes its items from the piece instead, so only other players' boards ever read this field
     items: Array.isArray(u.items) ? u.items.filter((x) => typeof x === 'string') : undefined,
+    // 0.2.0 补位: the replaced operator's charId of a chess fighting as its stand-in (UnitInfo.standInFor)
+    standInFor: typeof u.standInFor === 'string' && u.standInFor ? u.standInFor : undefined,
+    // 0.2.0 自选编队: the pick of a DIY slot's unit (UnitInfo.diy { charId, skillIndex, uniEquipId })
+    diy: u.diy && typeof u.diy === 'object' && typeof u.diy.charId === 'string'
+      ? { charId: u.diy.charId, skillIndex: Number.isInteger(u.diy.skillIndex) ? u.diy.skillIndex : null, uniEquipId: typeof u.diy.uniEquipId === 'string' ? u.diy.uniEquipId : null }
+      : undefined,
   };
 }
 
@@ -374,7 +380,7 @@ function makeData(src) {
     enemy: (id) => look('enemies', id), stage: (id) => look('stages', id), bond: (id) => look('bonds', id),
     diy: (id, pick) => {
       const c = look('chess', id);
-      return c && pick ? diyRecordFor(c, pick, { chess: getFile('chess'), backups: getFile('backups') }) : null;
+      return c && pick ? diyRecordFor(c, pick, { rawChess: (k) => look('chess', k), chess: getFile('chess') || ((k) => look('chess', k)), backups: getFile('backups') }) : null;
     },
     standIn: (id) => {
       const c = look('chess', id);

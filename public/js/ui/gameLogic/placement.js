@@ -7,6 +7,7 @@ import { pieceDir, rangeTiles } from '../facing.js';
 import { isObj, tileKey } from './shared.js';
 import { boardTileOf, fieldTile } from './camera.js';
 import { deployedRecord, fieldsStandIn, standInOf } from './standIn.js';
+import { ownDiyRecord } from './diy.js';
 import { t } from '../../../../shared/i18n.js';
 
 
@@ -223,8 +224,9 @@ export function piecePosition(ctx, piece) {
   if (!isObj(piece)) return null;
   if (piece.kind === 'chess') {
     const chess = ctx.getChess(piece.id);
-    // 0.2.0 补位: a chess the player fields as its stand-in is placed by the stand-in's position (server placeClass)
-    const rec = (fieldsStandIn(ctx.priv, chess) && standInOf(chess, ctx.backups)) || chess;
+    // 0.2.0 自选编队 & 补位: a DIY or stand-in piece is placed by its operator's position
+    const diy = ownDiyRecord(chess, ctx.priv, { rawChess: ctx.getChess, chess: ctx.getChess, backups: ctx.backups });
+    const rec = diy || ((fieldsStandIn(ctx.priv, chess) && standInOf(chess, ctx.backups)) || chess);
     if (meleeOnHighGround(rec)) return 'ALL';
     return rec?.position === 'MELEE' ? 'MELEE' : 'RANGED';
   }
