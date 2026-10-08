@@ -11,7 +11,7 @@ const PRELOAD_STORAGE_KEY = 'sp_preloaded_profiles';
  * @param {any} assets
  * @param {any} skinsData
  */
-function extractUrls(assets, skinsData) {
+function extractUrls(assets, skinsData, currentDiyPicks = null) {
   const coreSet = new Set();
   const fullSet = new Set();
 
@@ -70,7 +70,85 @@ function extractUrls(assets, skinsData) {
     }
   }
 
-  // 4. Audio & SFX
+  // 4. Skills (524 款全量干员技能图标，包含全部自选 6★ 干员 S1~S3 专属技能)
+  if (assets.skills && typeof assets.skills === 'object') {
+    for (const u of Object.values(assets.skills)) {
+      if (typeof u === 'string') {
+        coreSet.add(u);
+        fullSet.add(u);
+      }
+    }
+  }
+
+  // 5. Tokens (召唤物，如 Mon3tr、流形、无人机、咪波等)
+  if (assets.tokens && typeof assets.tokens === 'object') {
+    for (const t of Object.values(assets.tokens)) {
+      if (t.avatar) { coreSet.add(t.avatar); fullSet.add(t.avatar); }
+      if (t.spine) {
+        if (t.spine.skel) fullSet.add(t.spine.skel);
+        if (t.spine.atlas) fullSet.add(t.spine.atlas);
+        if (Array.isArray(t.spine.textures)) t.spine.textures.forEach((u) => fullSet.add(u));
+      }
+    }
+  }
+
+  // 6. Items (模组/装备), Bonds (盟约), Bands (战术策略), Professions (职业分支图标)
+  for (const group of ['items', 'bonds', 'bands']) {
+    if (assets[group] && typeof assets[group] === 'object') {
+      for (const u of Object.values(assets[group])) {
+        if (typeof u === 'string') {
+          coreSet.add(u);
+          fullSet.add(u);
+        }
+      }
+    }
+  }
+  if (assets.prof && typeof assets.prof === 'object') {
+    for (const sub of Object.values(assets.prof)) {
+      if (sub && typeof sub === 'object') {
+        for (const u of Object.values(sub)) {
+          if (typeof u === 'string') {
+            coreSet.add(u);
+            fullSet.add(u);
+          }
+        }
+      }
+    }
+  }
+
+  // 7. 当前自选编队特惠优先预载 (玩家已选 4 名自选干员的 Spine/立绘即使在基础包也完全纳入)
+  if (currentDiyPicks && typeof currentDiyPicks === 'object') {
+    for (const pick of Object.values(currentDiyPicks)) {
+      const charId = typeof pick === 'string' ? pick : pick?.charId;
+      const c = charId && assets.chars ? assets.chars[charId] : null;
+      if (c) {
+        if (c.portrait) coreSet.add(c.portrait);
+        if (c.portraitE2) coreSet.add(c.portraitE2);
+        if (c.spine) {
+          for (const part of ['front', 'back']) {
+            const sp = c.spine[part];
+            if (sp) {
+              if (sp.skel) coreSet.add(sp.skel);
+              if (sp.atlas) coreSet.add(sp.atlas);
+              if (Array.isArray(sp.textures)) sp.textures.forEach((t) => coreSet.add(t));
+            }
+          }
+        }
+        if (c.skins && typeof c.skins === 'object') {
+          for (const sk of Object.values(c.skins)) {
+            if (sk.spine?.front) {
+              const sp = sk.spine.front;
+              if (sp.skel) coreSet.add(sp.skel);
+              if (sp.atlas) coreSet.add(sp.atlas);
+              if (Array.isArray(sp.textures)) sp.textures.forEach((t) => coreSet.add(t));
+            }
+          }
+        }
+      }
+    }
+  }
+
+  // 8. Audio & SFX
   if (assets.audio && typeof assets.audio === 'object') {
     if (assets.audio.bgm) {
       for (const [k, u] of Object.entries(assets.audio.bgm)) {
@@ -169,7 +247,16 @@ class PreloadEngine {
       const safeAssets = Array.isArray(assets) ? assets[0] : assets;
       const safeSkins = Array.isArray(skins) ? skins[0] : skins;
 
-      const urls = extractUrls(safeAssets, safeSkins)[profile] || [];
+      let currentDiy = null;
+      try {
+        const rawDiy = localStorage.getItem('sp.pref.diy');
+        if (rawDiy) {
+          const parsed = JSON.parse(rawDiy);
+          currentDiy = parsed?.picks || parsed;
+        }
+      } catch {}
+
+      const urls = extractUrls(safeAssets, safeSkins, currentDiy)[profile] || [];
       if (urls.length === 0) {
         this.status = 'error';
         this.lastError = '未能解析到资源清单，请检查网络连接';
@@ -383,7 +470,7 @@ export function PreloadModal({ open, onClose }) {
               <span class="preload-card__size">~35 MB (推荐)</span>
             </div>
             <div class="preload-card__detail">
-              包含：全部界面 UI、干员基础/精二头像、全量 271 款时装皮肤缩略图、表情包、大厅背景音乐与常用音效。
+              包含：全部界面 UI、干员基础/精二头像、524款全干员技能图标（含自选干员专属技能）、召唤物、时装缩略图、当前自选编队干员Spine与音效。
             </div>
             ${p.cachedProfiles.core ? html`<div class="preload-card__badge is-ready">✓ 已缓存</div>` : null}
           </div>
@@ -398,7 +485,7 @@ export function PreloadModal({ open, onClose }) {
               <span class="preload-card__size">~280 MB (全量)</span>
             </div>
             <div class="preload-card__detail">
-              包含：在核心包基础上，追加全部干员与敌方战斗 Spine 骨骼模型、高精度立绘、全阶段战斗 BGM 与干员语音。
+              包含：在核心包基础上，追加全部干员（含71名6★自选干员池）与敌方战斗 Spine 骨骼模型、高精度立绘、全阶段战斗 BGM 与干员语音。
             </div>
             ${p.cachedProfiles.full ? html`<div class="preload-card__badge is-ready">✓ 已缓存</div>` : null}
           </div>
