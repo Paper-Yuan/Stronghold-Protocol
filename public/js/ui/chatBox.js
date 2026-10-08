@@ -3,6 +3,7 @@ import { html } from './components.js';
 import { useState, useEffect, useRef } from '../../vendor/hooks.module.js';
 import { net } from '../net.js';
 import { useStore, store, pushChatMessage } from '../store.js';
+import { toast } from './toasts.js';
 
 export function ChatBox({ active: controlledActive, onToggle, showTrigger = controlledActive === undefined }) {
   const messages = useStore((s) => s.chatMessages) || [];
@@ -59,15 +60,22 @@ export function ChatBox({ active: controlledActive, onToggle, showTrigger = cont
     try {
       await net.request('room.chat', { text });
     } catch (err) {
-      console.warn('[chat] send failed, using local push fallback', err);
-      pushChatMessage({
-        playerId: store.get().session?.playerId || 'me',
-        name: store.get().session?.name || '博士',
-        seat: 0,
-        isSpectator: false,
-        text,
-        at: Date.now(),
-      });
+      console.warn('[chat] send failed', err);
+      if (err?.code === 'RATE' || err?.error === 'RATE') {
+        toast('发言过于频繁，请稍候', 'warn');
+      } else if (!net.connected || !store.get().session?.entered) {
+        // 离线/单机调试模式回退
+        pushChatMessage({
+          playerId: store.get().session?.playerId || 'me',
+          name: store.get().session?.name || '博士',
+          seat: 0,
+          isSpectator: false,
+          text,
+          at: Date.now(),
+        });
+      } else {
+        toast(err?.msg || '发送失败，请重试', 'warn');
+      }
     }
   };
 
