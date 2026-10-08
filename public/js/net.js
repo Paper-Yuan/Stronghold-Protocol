@@ -374,19 +374,22 @@ export class Net {
     if (!this.name) return;
     const rid = this._nextRid();
     const isAndroid = typeof globalThis.AndroidNative?.isNativeApp === 'function' ? globalThis.AndroidNative.isNativeApp() : false;
-    let preloaded = false;
-    if (!isAndroid) {
+    let bundleTier = 'stream';
+    if (isAndroid) {
+      bundleTier = 'android_full';
+    } else {
       try {
         const saved = localStorage.getItem('sp_preloaded_profiles');
         if (saved) {
           const p = JSON.parse(saved);
-          if (p.core || p.full) preloaded = true;
+          if (p.full) bundleTier = 'web_full';
+          else if (p.core) bundleTier = 'web_core';
         }
       } catch {}
     }
     const client = {
       platform: isAndroid ? 'android' : 'web',
-      bundle: isAndroid ? 'full' : (preloaded ? 'preloaded' : 'stream'),
+      bundle: bundleTier,
     };
     const msg = { t: 'hello', rid, name: this.name, version: PROTOCOL_VERSION, client };
     let token = null;
@@ -432,6 +435,14 @@ export class Net {
     // Queued requests can't be sent without a session.
     this._failPending('OFFLINE', true);
     this._emit('helloError', this.lastError);
+    // BUSY = the admission circuit breaker (server/loadGuard.js): the server is protecting in-progress matches.
+    // Drop the socket and retry through the normal exponential backoff instead of hammering hello on it.
+    if (msg.code === 'BUSY') {
+      const ws = this.ws;
+      this._teardownSocket();
+      try { ws?.close(1000, 'busy'); } catch { /* ignore */ }
+      this._scheduleReconnect();
+    }
   }
 
   // ---- requests --------------------------------------------------------------------------------
@@ -496,6 +507,11 @@ export class Net {
     if (bad) { console.warn(`[net] refusing invalid ${t}: ${bad}`); return false; }
     if (this.status !== 'online') return false;
     return this._sendRaw(msg);
+  }
+
+  sendClientBundle(bundle) {
+    if (!bundle || typeof bundle !== 'string') return;
+    this.send('client.bundle', { bundle });
   }
 
   _sendRaw(obj) {

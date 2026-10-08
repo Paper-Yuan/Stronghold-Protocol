@@ -170,7 +170,11 @@ function renderOverview(data) {
   const clients = data.network?.clients || {};
   const statClientsEl = $('#stat-clients');
   if (statClientsEl) {
-    statClientsEl.textContent = `📱 全量: ${clients.androidFull || 0} | ⚡ 预载: ${clients.webPreloaded || 0} | 🌐 流式: ${clients.webStream || 0}`;
+    const androidF = clients.androidFull || 0;
+    const webF = clients.webFull || 0;
+    const webC = clients.webCore || clients.webPreloaded || 0;
+    const webS = clients.webStream || 0;
+    statClientsEl.innerHTML = `📱 手机全量: <b>${androidF}</b> | 🌟 全预载: <b>${webF}</b> | ⚡ 基础预载: <b>${webC}</b> | 🌐 流式: <b>${webS}</b>`;
   }
 
   $('#stat-rooms').textContent = data.network?.roomsCount ?? 0;
@@ -209,13 +213,15 @@ function renderRooms(rooms = []) {
       const seatItems = (r.seats || [])
         .map((s) => {
           if (s.isBot) return `<span class="adm-player-tag is-bot">🤖 ${s.name || 'AI'}</span>`;
-          const isFull = s.client?.bundle === 'full';
-          const isPreload = s.client?.bundle === 'preloaded';
-          const badge = isFull
-            ? '<span class="adm-client-badge is-android" title="手机端全量包">📱 全量</span>'
-            : isPreload
-            ? '<span class="adm-client-badge is-preloaded" title="网页端已预载">⚡ 预载</span>'
-            : '<span class="adm-client-badge is-stream" title="网页端在线流式">🌐 流式</span>';
+          const bundle = s.client?.bundle;
+          let badge = '<span class="adm-client-badge is-stream" title="网页端在线流式">🌐 流式</span>';
+          if (bundle === 'full' || bundle === 'android_full') {
+            badge = '<span class="adm-client-badge is-android" title="手机端全量包">📱 全量</span>';
+          } else if (bundle === 'web_full') {
+            badge = '<span class="adm-client-badge is-web-full" title="网页端全量预载 (~280MB)">🌟 全预载</span>';
+          } else if (bundle === 'web_core' || bundle === 'core' || bundle === 'preloaded') {
+            badge = '<span class="adm-client-badge is-preloaded" title="网页端基础包预载 (~35MB)">⚡ 基础预载</span>';
+          }
           return `<span class="adm-player-tag">${s.name || '博士'} ${badge}</span>`;
         })
         .join(' ');

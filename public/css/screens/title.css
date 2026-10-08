@@ -458,3 +458,146 @@
   font-size: .13rem;
   border-radius: 2px;
 }
+
+/* Preload Auto Notice (Non-blocking Floating Banner/Card) */
+.preload-auto-notice {
+  position: absolute;
+  right: .32rem;
+  bottom: .76rem;
+  width: min(3.8rem, 88vw);
+  background: rgba(14, 18, 16, 0.94);
+  border: 1px solid rgba(23, 249, 183, 0.35);
+  box-shadow: 0 .16rem .4rem rgba(0, 0, 0, 0.65), 0 0 .24rem rgba(23, 249, 183, 0.12);
+  border-radius: 3px;
+  overflow: hidden;
+  z-index: 60;
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+  animation: notice-slide-up 400ms var(--ease-out);
+  pointer-events: auto;
+}
+
+@keyframes notice-slide-up {
+  from { opacity: 0; transform: translateY(18px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.preload-auto-notice__glow {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, var(--mint-500), transparent 70%);
+}
+
+.preload-auto-notice__body {
+  display: flex;
+  flex-direction: column;
+  gap: .08rem;
+  padding: .12rem .16rem .14rem;
+}
+
+.preload-auto-notice__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.preload-auto-notice__badge {
+  font-size: max(.12rem, 11px);
+  font-family: var(--font-mono);
+  color: var(--mint-400);
+  background: rgba(23, 249, 183, 0.12);
+  padding: .02rem .06rem;
+  border-radius: 2px;
+  letter-spacing: 0.04em;
+  font-weight: 600;
+}
+
+.preload-auto-notice__close {
+  background: transparent;
+  border: none;
+  color: var(--text-dim);
+  font-size: .14rem;
+  cursor: pointer;
+  padding: .02rem .06rem;
+  border-radius: 2px;
+  transition: all .15s ease;
+  line-height: 1;
+}
+
+.preload-auto-notice__close:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.preload-auto-notice__content {
+  font-size: .13rem;
+  line-height: 1.45;
+  color: #d1dcda;
+}
+
+.preload-auto-notice__bar {
+  width: 100%;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 2px;
+  overflow: hidden;
+  margin-top: .02rem;
+}
+
+.preload-auto-notice__bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--mint-600), var(--mint-400));
+  transition: width 200ms ease;
+}
+
+.preload-auto-notice__actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: .08rem;
+  margin-top: .04rem;
+}
+
+.preload-auto-notice__btn {
+  font-size: max(.12rem, 11px);
+  padding: .04rem .1rem;
+  border-radius: 2px;
+  cursor: pointer;
+  transition: all .18s ease;
+  font-family: inherit;
+}
+
+.preload-auto-notice__btn--primary {
+  background: var(--mint-500);
+  border: 1px solid var(--mint-400);
+  color: #04120e;
+  font-weight: 600;
+}
+
+.preload-auto-notice__btn--primary:hover {
+  background: #2affc6;
+  box-shadow: 0 0 .12rem rgba(23, 249, 183, 0.4);
+}
+
+.preload-auto-notice__btn--ghost {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: var(--text-lo);
+}
+
+.preload-auto-notice__btn--ghost:hover {
+  border-color: rgba(255, 255, 255, 0.35);
+  color: #fff;
+}
+
+
+/* 大厅屏右下角预载胶囊（lobby-preload-pill）：与标题屏 PreloadPill 同款 */
+.lobby-preload-pill {
+  position: fixed;
+  right: calc(.2rem + var(--sa-r, 0px));
+  bottom: calc(.2rem + var(--sa-b, 0px));
+  z-index: 60;
+}

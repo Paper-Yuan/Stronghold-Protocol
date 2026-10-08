@@ -8,7 +8,7 @@
 // entry/loading illustration names) it is layered under the CSS art; otherwise the screen is
 // pure CSS/SVG (radar, ridgelines, glow), so it never issues a request that can 404.
 
-import { useMemo, useState } from '../../vendor/hooks.module.js';
+import { useMemo, useState, useEffect } from '../../vendor/hooks.module.js';
 import { NAME_MAX_LEN, APP_VERSION } from '../../../shared/constants.js';
 import { html, Button, Icon, MicroLabel, TextField, PingPill } from '../ui/components.js';
 import { GuideButton } from '../ui/guide.js';
@@ -19,7 +19,7 @@ import { data, useData } from '../data.js';
 import { FullscreenButton, detectFeatures } from '../ui/device.js';
 import { GIcon } from '../ui/gameComponents.js';
 import { SettingsModal } from '../ui/settings.js';
-import { PreloadPill, PreloadModal } from '../ui/preloadModal.js';
+import { PreloadPill, PreloadModal, PreloadAutoNotice, checkAutoPreload } from '../ui/preloadModal.js';
 
 // Same character classes as server/net.js sanitizeName (control, zero-width, bidi, BOM), so a name
 // the client accepts is never rejected by the server's hello validation.
@@ -213,6 +213,12 @@ export function TitleScreen() {
 
   // touch screens: no autofocus (it would pop the on-screen keyboard over a landscape phone's whole view)
   const touchUi = useMemo(() => detectFeatures().coarse, []);
+
+  // Trigger background auto preload check
+  useEffect(() => {
+    checkAutoPreload();
+  }, []);
+
   return html`<div class="screen title-screen">
     <div class=${`title-bg${bgLoaded ? ' has-art' : ''}${ridgesLoaded ? ' has-ridges' : ''}`} aria-hidden="true">
       ${backdrop ? html`<img class="title-bg__art" src=${backdrop} alt="" draggable=${false}
@@ -270,6 +276,7 @@ export function TitleScreen() {
       </div>
     </main>
 
+    <${PreloadAutoNotice} onOpenManage=${() => setPreloadOpen(true)} />
     <${SettingsModal} open=${settingsOpen} onClose=${() => setSettingsOpen(false)} />
     <${PreloadModal} open=${preloadOpen} onClose=${() => setPreloadOpen(false)} />
 

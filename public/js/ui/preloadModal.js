@@ -2,16 +2,19 @@
 import { useState, useEffect, useRef } from '../../vendor/hooks.module.js';
 import { html, Modal, Button, Icon, MicroLabel, ProgressBar } from './components.js';
 import { data, loadData } from '../data.js';
+import { net } from '../net.js';
+import { store } from '../store.js';
 
 const CACHE_NAME = 'stronghold-assets-v0.2.1';
 const PRELOAD_STORAGE_KEY = 'sp_preloaded_profiles';
 
 /**
  * Extract URLs for Core and Full profiles from assets data.
+ * Exported for the bundle-size audit script (tools/preload-sizes.mjs) and tests.
  * @param {any} assets
  * @param {any} skinsData
  */
-function extractUrls(assets, skinsData, currentDiyPicks = null) {
+export function extractUrls(assets, skinsData, currentDiyPicks = null) {
   const coreSet = new Set();
   const fullSet = new Set();
 
@@ -232,8 +235,11 @@ class PreloadEngine {
     for (const fn of this.listeners) fn(this);
   }
 
-  async start(profile = 'core') {
+  async start(profile = 'core', opts = {}) {
     if (this.status === 'downloading') return;
+    const isBg = !!opts.background;
+    /** 后台模式下的两阶段流水线衔接（checkAutoPreload）：core 完成后自动链式启动 full。 */
+    this.autoChain = !!opts.autoChain;
     this.profile = profile;
     this.status = 'scanning';
     this.isPaused = false;
@@ -278,14 +284,29 @@ class PreloadEngine {
         }
       }
 
-      // Parallel download worker pool (concurrency: 6)
-      const CONCURRENCY = 6;
+      // Parallel download worker pool. Background mode adapts to the match: COMBAT 阶段降为 1 个并发，不与
+      // WebSocket 的战斗快照/指令流量抢带宽（OPTIMIZATION_AND_PR_PLAN §2.2.2-1）；其余阶段 3~4 个。
+      const BASE_CONCURRENCY = isBg ? 4 : 6;
       let activeIndex = 0;
       let lastSpeedMeasure = Date.now();
       let bytesSinceMeasure = 0;
 
-      const worker = async () => {
+      const bgConcurrency = () => {
+        if (!isBg) return 6;
+        try {
+          const phase = store?.get?.().match?.public?.phase;
+          if (phase === 'COMBAT') return 1;
+        } catch {}
+        return 4;
+      };
+
+      const worker = async (workerId) => {
         while (activeIndex < urls.length && !this.isPaused) {
+          // 战斗期自适应降并发：超出当前限额的 worker 在此让出，每 500ms 复查（平滑升降，不打断在途文件）
+          if (isBg && workerId >= bgConcurrency()) {
+            await new Promise((r) => setTimeout(r, 500));
+            continue;
+          }
           const index = activeIndex++;
           const url = urls[index];
           this.currentFile = url.split('/').pop() || url;
@@ -338,7 +359,7 @@ class PreloadEngine {
         }
       };
 
-      const workers = Array.from({ length: Math.min(CONCURRENCY, urls.length) }, () => worker());
+      const workers = Array.from({ length: Math.min(BASE_CONCURRENCY, urls.length) }, (_, i) => worker(i));
       await Promise.all(workers);
 
       if (this.isPaused) {
@@ -348,7 +369,16 @@ class PreloadEngine {
         this.status = 'completed';
         this.speedBps = 0;
         this._saveProfileDone(profile);
+        try {
+          const bundleVal = profile === 'full' ? 'web_full' : 'web_core';
+          net.sendClientBundle(bundleVal);
+        } catch {}
         this.notify();
+        // 两阶段流水线：core 完成 → 自动无缝衔接 full（均为后台静默模式，全程无需点击）
+        if (this.autoChain && profile === 'core' && !this.cachedProfiles.full) {
+          console.log('[preload] Core done — chaining into the full bundle automatically');
+          this.start('full', { background: true, autoChain: false });
+        }
       }
     } catch (err) {
       this.status = 'error';
@@ -467,7 +497,7 @@ export function PreloadModal({ open, onClose }) {
           <div class="preload-card__body">
             <div class="preload-card__head">
               <span class="preload-card__title">⚡ 基础核心包</span>
-              <span class="preload-card__size">~35 MB (推荐)</span>
+              <span class="preload-card__size">~93 MB · 2050 文件</span>
             </div>
             <div class="preload-card__detail">
               包含：全部界面 UI、干员基础/精二头像、524款全干员技能图标（含自选干员专属技能）、召唤物、时装缩略图、当前自选编队干员Spine与音效。
@@ -482,7 +512,7 @@ export function PreloadModal({ open, onClose }) {
           <div class="preload-card__body">
             <div class="preload-card__head">
               <span class="preload-card__title">🌟 完整离线包</span>
-              <span class="preload-card__size">~280 MB (全量)</span>
+              <span class="preload-card__size">~430 MB · 4250 文件</span>
             </div>
             <div class="preload-card__detail">
               包含：在核心包基础上，追加全部干员（含71名6★自选干员池）与敌方战斗 Spine 骨骼模型、高精度立绘、全阶段战斗 BGM 与干员语音。
@@ -516,3 +546,112 @@ export function PreloadModal({ open, onClose }) {
     </div>
   <//>`;
 }
+
+const AUTO_NOTICE_DISMISSED_KEY = 'sp_preload_notice_dismissed';
+
+/**
+ * Check and start auto preloading for web players in the background (OPTIMIZATION_AND_PR_PLAN §2.2).
+ * 两阶段流水线：进入网页端后自动启动 core（后台静默）→ core 完成后自动衔接 full（同样后台静默），
+ * 全程无感、无需点击；战斗阶段引擎自动降并发（见 start() 的 bgConcurrency）。
+ */
+let autoPreloadTriggered = false;
+export function checkAutoPreload() {
+  if (autoPreloadTriggered) return;
+  autoPreloadTriggered = true;
+
+  const isAndroid = typeof globalThis.AndroidNative?.isNativeApp === 'function'
+    ? globalThis.AndroidNative.isNativeApp()
+    : false;
+  if (isAndroid) return;
+
+  // full 已缓存：直接就绪（hello 时会自动上报 web_full，无需再动）
+  if (preloadEngine.cachedProfiles.full) return;
+
+  // core 已缓存但 full 未缓存：继续补全 full
+  if (preloadEngine.cachedProfiles.core) {
+    setTimeout(() => {
+      if (preloadEngine.status === 'idle') {
+        console.log('[preload] Core already cached — auto preloading the full bundle...');
+        preloadEngine.start('full', { background: true, autoChain: false });
+      }
+    }, 1200);
+    return;
+  }
+
+  // 全新玩家：延时 1.2s 后启动 core → full 两阶段流水线
+  setTimeout(() => {
+    if (preloadEngine.status === 'idle') {
+      console.log('[preload] Starting automatic background preload (core → full pipeline)...');
+      preloadEngine.start('core', { background: true, autoChain: true });
+    }
+  }, 1200);
+}
+
+/**
+ * Non-blocking interactive notification banner on title screen.
+ */
+export function PreloadAutoNotice({ onOpenManage }) {
+  const p = usePreloadState();
+  const [dismissed, setDismissed] = useState(() => {
+    try {
+      return localStorage.getItem(AUTO_NOTICE_DISMISSED_KEY) === '1';
+    } catch {
+      return false;
+    }
+  });
+
+  const isAndroid = typeof globalThis.AndroidNative?.isNativeApp === 'function'
+    ? globalThis.AndroidNative.isNativeApp()
+    : false;
+
+  // Don't show on Android (which has full local assets) or if already dismissed or if full is cached
+  if (isAndroid || dismissed || p.cachedProfiles.full) {
+    return null;
+  }
+
+  const handleDismiss = () => {
+    setDismissed(true);
+    try {
+      localStorage.setItem(AUTO_NOTICE_DISMISSED_KEY, '1');
+    } catch {}
+  };
+
+  const pct = p.totalCount > 0 ? Math.round((p.doneCount / p.totalCount) * 100) : 0;
+  const isDownloading = p.status === 'downloading';
+  const isCompleted = p.status === 'completed' || p.cachedProfiles.core;
+
+  return html`<div class="preload-auto-notice" role="status" aria-live="polite">
+    <div class="preload-auto-notice__glow"></div>
+    <div class="preload-auto-notice__body">
+      <div class="preload-auto-notice__head">
+        <span class="preload-auto-notice__badge">
+          ${isCompleted ? '✓ 基础包就绪' : isDownloading ? '⚡ 自动预载中' : '💡 离线加速建议'}
+        </span>
+        <button type="button" class="preload-auto-notice__close" onClick=${handleDismiss} title="关闭提示">✕</button>
+      </div>
+      <div class="preload-auto-notice__content">
+        ${isCompleted
+          ? '基础素材（UI/技能/召唤物/自选干员）已就绪！全量包正在后台继续静默补全。'
+          : isDownloading
+          ? html`<div>正在后台静默下载资源包（不影响当前游玩）<b class="num ml-1">${pct}%</b></div>`
+          : '已自动为您启动后台资源预载（核心包 → 全量包），对局零卡顿。您可直接开始游戏！'}
+      </div>
+      ${isDownloading ? html`
+        <div class="preload-auto-notice__bar">
+          <div class="preload-auto-notice__bar-fill" style=${`width: ${pct}%`}></div>
+        </div>
+      ` : null}
+      <div class="preload-auto-notice__actions">
+        <button type="button" class="preload-auto-notice__btn preload-auto-notice__btn--primary"
+          onClick=${onOpenManage}>
+          全量预载 / 管理
+        </button>
+        <button type="button" class="preload-auto-notice__btn preload-auto-notice__btn--ghost"
+          onClick=${handleDismiss}>
+          知道了
+        </button>
+      </div>
+    </div>
+  </div>`;
+}
+

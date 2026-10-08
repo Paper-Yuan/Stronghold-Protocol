@@ -12,6 +12,7 @@
 import { useEffect, useRef, useState } from '../../vendor/hooks.module.js';
 import { DIFFICULTIES, DIFFICULTY_NAMES, DIFFICULTY_COLORS, ROOM_CODE_LEN, MAX_SEATS, MAX_SPECTATORS, modeIdFor, ERR, ERR_TEXT } from '../../../shared/constants.js';
 import { html, Button, Icon, MicroLabel, Panel, TextField, PingPill, AvatarFrame, Tooltip, Spinner, DifficultyIcon, doctorNo } from '../ui/components.js';
+import { PreloadPill, PreloadModal } from '../ui/preloadModal.js';
 import { toast, toastError } from '../ui/toasts.js';
 import { GuideButton } from '../ui/guide.js';
 import { LoadoutButton } from './loadout.js';
@@ -385,6 +386,9 @@ export function LobbyScreen() {
   const [busy, setBusy] = useState(null);
   const [recent] = useState(recentRooms);
   const [modalOpen, setModalOpen] = useState(() => new URLSearchParams(location.search).has('modal'));
+  // 网页端资源预载指示条（右下角胶囊 + 管理弹窗；安卓原生壳内置全量包不显示）
+  const [preloadOpen, setPreloadOpen] = useState(false);
+  const isNativeApp = typeof globalThis.AndroidNative?.isNativeApp === 'function' && globalThis.AndroidNative.isNativeApp();
   const lobbyStats = useStore((s) => s.lobbyStats, shallowEqual);
   const [onlineCount, setOnlineCount] = useState(() => lobbyStats?.online ?? 1);
   // The Android shell can ask the local network who hosts a key, so a guest never types an address: the code is enough.
@@ -489,6 +493,7 @@ export function LobbyScreen() {
   };
 
   return html`<div class="screen lobby-screen">
+    ${!isNativeApp && html`<div class="lobby-preload-pill"><${PreloadPill} onClick=${() => setPreloadOpen(true)} /><${PreloadModal} open=${preloadOpen} onClose=${() => setPreloadOpen(false)} /></div>`}
     <header class="topbar">
       <div class="topbar__left">
         <${Button} variant="ghost" size="sm" icon="chevronLeft" onClick=${backToTitle} title="返回标题">返回<//>
