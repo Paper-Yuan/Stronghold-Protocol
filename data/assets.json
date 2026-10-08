@@ -93960,1424 +93960,1424 @@
         }
       },
       "char_003_kalts": {
-        "start": "/assets/audio/voice/cn/char_003_kalts/cn_019.mp3",
-        "faceEnemy": "/assets/audio/voice/cn/char_003_kalts/cn_020.mp3",
+        "start": "/assets/audio/voice/jp/char_003_kalts/cn_019.mp3",
+        "faceEnemy": "/assets/audio/voice/jp/char_003_kalts/cn_020.mp3",
         "select": [
-          "/assets/audio/voice/cn/char_003_kalts/cn_021.mp3",
-          "/assets/audio/voice/cn/char_003_kalts/cn_022.mp3"
+          "/assets/audio/voice/jp/char_003_kalts/cn_021.mp3",
+          "/assets/audio/voice/jp/char_003_kalts/cn_022.mp3"
         ],
         "place": [
-          "/assets/audio/voice/cn/char_003_kalts/cn_023.mp3",
-          "/assets/audio/voice/cn/char_003_kalts/cn_024.mp3"
+          "/assets/audio/voice/jp/char_003_kalts/cn_023.mp3",
+          "/assets/audio/voice/jp/char_003_kalts/cn_024.mp3"
         ],
-        "skill1": "/assets/audio/voice/cn/char_003_kalts/cn_025.mp3",
-        "skill2": "/assets/audio/voice/cn/char_003_kalts/cn_026.mp3",
-        "skill3": "/assets/audio/voice/cn/char_003_kalts/cn_027.mp3",
-        "skill4": "/assets/audio/voice/cn/char_003_kalts/cn_028.mp3",
-        "resultFour": "/assets/audio/voice/cn/char_003_kalts/cn_029.mp3",
-        "resultThree": "/assets/audio/voice/cn/char_003_kalts/cn_030.mp3",
-        "resultTwo": "/assets/audio/voice/cn/char_003_kalts/cn_031.mp3",
-        "resultLose": "/assets/audio/voice/cn/char_003_kalts/cn_032.mp3"
+        "skill1": "/assets/audio/voice/jp/char_003_kalts/cn_025.mp3",
+        "skill2": "/assets/audio/voice/jp/char_003_kalts/cn_026.mp3",
+        "skill3": "/assets/audio/voice/jp/char_003_kalts/cn_027.mp3",
+        "skill4": "/assets/audio/voice/jp/char_003_kalts/cn_028.mp3",
+        "resultFour": "/assets/audio/voice/jp/char_003_kalts/cn_029.mp3",
+        "resultThree": "/assets/audio/voice/jp/char_003_kalts/cn_030.mp3",
+        "resultTwo": "/assets/audio/voice/jp/char_003_kalts/cn_031.mp3",
+        "resultLose": "/assets/audio/voice/jp/char_003_kalts/cn_032.mp3"
       },
       "char_010_chen": {
-        "start": "/assets/audio/voice/cn/char_010_chen/cn_019.mp3",
-        "faceEnemy": "/assets/audio/voice/cn/char_010_chen/cn_020.mp3",
+        "start": "/assets/audio/voice/jp/char_010_chen/cn_019.mp3",
+        "faceEnemy": "/assets/audio/voice/jp/char_010_chen/cn_020.mp3",
         "select": [
-          "/assets/audio/voice/cn/char_010_chen/cn_021.mp3",
-          "/assets/audio/voice/cn/char_010_chen/cn_022.mp3"
+          "/assets/audio/voice/jp/char_010_chen/cn_021.mp3",
+          "/assets/audio/voice/jp/char_010_chen/cn_022.mp3"
         ],
         "place": [
-          "/assets/audio/voice/cn/char_010_chen/cn_023.mp3",
-          "/assets/audio/voice/cn/char_010_chen/cn_024.mp3"
+          "/assets/audio/voice/jp/char_010_chen/cn_023.mp3",
+          "/assets/audio/voice/jp/char_010_chen/cn_024.mp3"
         ],
-        "skill1": "/assets/audio/voice/cn/char_010_chen/cn_025.mp3",
-        "skill2": "/assets/audio/voice/cn/char_010_chen/cn_026.mp3",
-        "skill3": "/assets/audio/voice/cn/char_010_chen/cn_027.mp3",
-        "skill4": "/assets/audio/voice/cn/char_010_chen/cn_028.mp3",
-        "resultFour": "/assets/audio/voice/cn/char_010_chen/cn_029.mp3",
-        "resultThree": "/assets/audio/voice/cn/char_010_chen/cn_030.mp3",
-        "resultTwo": "/assets/audio/voice/cn/char_010_chen/cn_031.mp3",
-        "resultLose": "/assets/audio/voice/cn/char_010_chen/cn_032.mp3"
+        "skill1": "/assets/audio/voice/jp/char_010_chen/cn_025.mp3",
+        "skill2": "/assets/audio/voice/jp/char_010_chen/cn_026.mp3",
+        "skill3": "/assets/audio/voice/jp/char_010_chen/cn_027.mp3",
+        "skill4": "/assets/audio/voice/jp/char_010_chen/cn_028.mp3",
+        "resultFour": "/assets/audio/voice/jp/char_010_chen/cn_029.mp3",
+        "resultThree": "/assets/audio/voice/jp/char_010_chen/cn_030.mp3",
+        "resultTwo": "/assets/audio/voice/jp/char_010_chen/cn_031.mp3",
+        "resultLose": "/assets/audio/voice/jp/char_010_chen/cn_032.mp3"
       },
       "char_017_huang": {
-        "start": "/assets/audio/voice/cn/char_017_huang/cn_019.mp3",
-        "faceEnemy": "/assets/audio/voice/cn/char_017_huang/cn_020.mp3",
+        "start": "/assets/audio/voice/jp/char_017_huang/cn_019.mp3",
+        "faceEnemy": "/assets/audio/voice/jp/char_017_huang/cn_020.mp3",
         "select": [
-          "/assets/audio/voice/cn/char_017_huang/cn_021.mp3",
-          "/assets/audio/voice/cn/char_017_huang/cn_022.mp3"
+          "/assets/audio/voice/jp/char_017_huang/cn_021.mp3",
+          "/assets/audio/voice/jp/char_017_huang/cn_022.mp3"
         ],
         "place": [
-          "/assets/audio/voice/cn/char_017_huang/cn_023.mp3",
-          "/assets/audio/voice/cn/char_017_huang/cn_024.mp3"
+          "/assets/audio/voice/jp/char_017_huang/cn_023.mp3",
+          "/assets/audio/voice/jp/char_017_huang/cn_024.mp3"
         ],
-        "skill1": "/assets/audio/voice/cn/char_017_huang/cn_025.mp3",
-        "skill2": "/assets/audio/voice/cn/char_017_huang/cn_026.mp3",
-        "skill3": "/assets/audio/voice/cn/char_017_huang/cn_027.mp3",
-        "skill4": "/assets/audio/voice/cn/char_017_huang/cn_028.mp3",
-        "resultFour": "/assets/audio/voice/cn/char_017_huang/cn_029.mp3",
-        "resultThree": "/assets/audio/voice/cn/char_017_huang/cn_030.mp3",
-        "resultTwo": "/assets/audio/voice/cn/char_017_huang/cn_031.mp3",
-        "resultLose": "/assets/audio/voice/cn/char_017_huang/cn_032.mp3"
+        "skill1": "/assets/audio/voice/jp/char_017_huang/cn_025.mp3",
+        "skill2": "/assets/audio/voice/jp/char_017_huang/cn_026.mp3",
+        "skill3": "/assets/audio/voice/jp/char_017_huang/cn_027.mp3",
+        "skill4": "/assets/audio/voice/jp/char_017_huang/cn_028.mp3",
+        "resultFour": "/assets/audio/voice/jp/char_017_huang/cn_029.mp3",
+        "resultThree": "/assets/audio/voice/jp/char_017_huang/cn_030.mp3",
+        "resultTwo": "/assets/audio/voice/jp/char_017_huang/cn_031.mp3",
+        "resultLose": "/assets/audio/voice/jp/char_017_huang/cn_032.mp3"
       },
       "char_112_siege": {
-        "start": "/assets/audio/voice/cn/char_112_siege/cn_019.mp3",
-        "faceEnemy": "/assets/audio/voice/cn/char_112_siege/cn_020.mp3",
+        "start": "/assets/audio/voice/jp/char_112_siege/cn_019.mp3",
+        "faceEnemy": "/assets/audio/voice/jp/char_112_siege/cn_020.mp3",
         "select": [
-          "/assets/audio/voice/cn/char_112_siege/cn_021.mp3",
-          "/assets/audio/voice/cn/char_112_siege/cn_022.mp3"
+          "/assets/audio/voice/jp/char_112_siege/cn_021.mp3",
+          "/assets/audio/voice/jp/char_112_siege/cn_022.mp3"
         ],
         "place": [
-          "/assets/audio/voice/cn/char_112_siege/cn_023.mp3",
-          "/assets/audio/voice/cn/char_112_siege/cn_024.mp3"
+          "/assets/audio/voice/jp/char_112_siege/cn_023.mp3",
+          "/assets/audio/voice/jp/char_112_siege/cn_024.mp3"
         ],
-        "skill1": "/assets/audio/voice/cn/char_112_siege/cn_025.mp3",
-        "skill2": "/assets/audio/voice/cn/char_112_siege/cn_026.mp3",
-        "skill3": "/assets/audio/voice/cn/char_112_siege/cn_027.mp3",
-        "skill4": "/assets/audio/voice/cn/char_112_siege/cn_028.mp3",
-        "resultFour": "/assets/audio/voice/cn/char_112_siege/cn_029.mp3",
-        "resultThree": "/assets/audio/voice/cn/char_112_siege/cn_030.mp3",
-        "resultTwo": "/assets/audio/voice/cn/char_112_siege/cn_031.mp3",
-        "resultLose": "/assets/audio/voice/cn/char_112_siege/cn_032.mp3"
+        "skill1": "/assets/audio/voice/jp/char_112_siege/cn_025.mp3",
+        "skill2": "/assets/audio/voice/jp/char_112_siege/cn_026.mp3",
+        "skill3": "/assets/audio/voice/jp/char_112_siege/cn_027.mp3",
+        "skill4": "/assets/audio/voice/jp/char_112_siege/cn_028.mp3",
+        "resultFour": "/assets/audio/voice/jp/char_112_siege/cn_029.mp3",
+        "resultThree": "/assets/audio/voice/jp/char_112_siege/cn_030.mp3",
+        "resultTwo": "/assets/audio/voice/jp/char_112_siege/cn_031.mp3",
+        "resultLose": "/assets/audio/voice/jp/char_112_siege/cn_032.mp3"
       },
       "char_113_cqbw": {
-        "start": "/assets/audio/voice/cn/char_113_cqbw/cn_019.mp3",
-        "faceEnemy": "/assets/audio/voice/cn/char_113_cqbw/cn_020.mp3",
+        "start": "/assets/audio/voice/jp/char_113_cqbw/cn_019.mp3",
+        "faceEnemy": "/assets/audio/voice/jp/char_113_cqbw/cn_020.mp3",
         "select": [
-          "/assets/audio/voice/cn/char_113_cqbw/cn_021.mp3",
-          "/assets/audio/voice/cn/char_113_cqbw/cn_022.mp3"
+          "/assets/audio/voice/jp/char_113_cqbw/cn_021.mp3",
+          "/assets/audio/voice/jp/char_113_cqbw/cn_022.mp3"
         ],
         "place": [
-          "/assets/audio/voice/cn/char_113_cqbw/cn_023.mp3",
-          "/assets/audio/voice/cn/char_113_cqbw/cn_024.mp3"
+          "/assets/audio/voice/jp/char_113_cqbw/cn_023.mp3",
+          "/assets/audio/voice/jp/char_113_cqbw/cn_024.mp3"
         ],
-        "skill1": "/assets/audio/voice/cn/char_113_cqbw/cn_025.mp3",
-        "skill2": "/assets/audio/voice/cn/char_113_cqbw/cn_026.mp3",
-        "skill3": "/assets/audio/voice/cn/char_113_cqbw/cn_027.mp3",
-        "skill4": "/assets/audio/voice/cn/char_113_cqbw/cn_028.mp3",
-        "resultFour": "/assets/audio/voice/cn/char_113_cqbw/cn_029.mp3",
-        "resultThree": "/assets/audio/voice/cn/char_113_cqbw/cn_030.mp3",
-        "resultTwo": "/assets/audio/voice/cn/char_113_cqbw/cn_031.mp3",
-        "resultLose": "/assets/audio/voice/cn/char_113_cqbw/cn_032.mp3"
+        "skill1": "/assets/audio/voice/jp/char_113_cqbw/cn_025.mp3",
+        "skill2": "/assets/audio/voice/jp/char_113_cqbw/cn_026.mp3",
+        "skill3": "/assets/audio/voice/jp/char_113_cqbw/cn_027.mp3",
+        "skill4": "/assets/audio/voice/jp/char_113_cqbw/cn_028.mp3",
+        "resultFour": "/assets/audio/voice/jp/char_113_cqbw/cn_029.mp3",
+        "resultThree": "/assets/audio/voice/jp/char_113_cqbw/cn_030.mp3",
+        "resultTwo": "/assets/audio/voice/jp/char_113_cqbw/cn_031.mp3",
+        "resultLose": "/assets/audio/voice/jp/char_113_cqbw/cn_032.mp3"
       },
       "char_134_ifrit": {
-        "start": "/assets/audio/voice/cn/char_134_ifrit/cn_019.mp3",
-        "faceEnemy": "/assets/audio/voice/cn/char_134_ifrit/cn_020.mp3",
+        "start": "/assets/audio/voice/jp/char_134_ifrit/cn_019.mp3",
+        "faceEnemy": "/assets/audio/voice/jp/char_134_ifrit/cn_020.mp3",
         "select": [
-          "/assets/audio/voice/cn/char_134_ifrit/cn_021.mp3",
-          "/assets/audio/voice/cn/char_134_ifrit/cn_022.mp3"
+          "/assets/audio/voice/jp/char_134_ifrit/cn_021.mp3",
+          "/assets/audio/voice/jp/char_134_ifrit/cn_022.mp3"
         ],
         "place": [
-          "/assets/audio/voice/cn/char_134_ifrit/cn_023.mp3",
-          "/assets/audio/voice/cn/char_134_ifrit/cn_024.mp3"
+          "/assets/audio/voice/jp/char_134_ifrit/cn_023.mp3",
+          "/assets/audio/voice/jp/char_134_ifrit/cn_024.mp3"
         ],
-        "skill1": "/assets/audio/voice/cn/char_134_ifrit/cn_025.mp3",
-        "skill2": "/assets/audio/voice/cn/char_134_ifrit/cn_026.mp3",
-        "skill3": "/assets/audio/voice/cn/char_134_ifrit/cn_027.mp3",
-        "skill4": "/assets/audio/voice/cn/char_134_ifrit/cn_028.mp3",
-        "resultFour": "/assets/audio/voice/cn/char_134_ifrit/cn_029.mp3",
-        "resultThree": "/assets/audio/voice/cn/char_134_ifrit/cn_030.mp3",
-        "resultTwo": "/assets/audio/voice/cn/char_134_ifrit/cn_031.mp3",
-        "resultLose": "/assets/audio/voice/cn/char_134_ifrit/cn_032.mp3"
+        "skill1": "/assets/audio/voice/jp/char_134_ifrit/cn_025.mp3",
+        "skill2": "/assets/audio/voice/jp/char_134_ifrit/cn_026.mp3",
+        "skill3": "/assets/audio/voice/jp/char_134_ifrit/cn_027.mp3",
+        "skill4": "/assets/audio/voice/jp/char_134_ifrit/cn_028.mp3",
+        "resultFour": "/assets/audio/voice/jp/char_134_ifrit/cn_029.mp3",
+        "resultThree": "/assets/audio/voice/jp/char_134_ifrit/cn_030.mp3",
+        "resultTwo": "/assets/audio/voice/jp/char_134_ifrit/cn_031.mp3",
+        "resultLose": "/assets/audio/voice/jp/char_134_ifrit/cn_032.mp3"
       },
       "char_147_shining": {
-        "start": "/assets/audio/voice/cn/char_147_shining/cn_019.mp3",
-        "faceEnemy": "/assets/audio/voice/cn/char_147_shining/cn_020.mp3",
+        "start": "/assets/audio/voice/jp/char_147_shining/cn_019.mp3",
+        "faceEnemy": "/assets/audio/voice/jp/char_147_shining/cn_020.mp3",
         "select": [
-          "/assets/audio/voice/cn/char_147_shining/cn_021.mp3",
-          "/assets/audio/voice/cn/char_147_shining/cn_022.mp3"
+          "/assets/audio/voice/jp/char_147_shining/cn_021.mp3",
+          "/assets/audio/voice/jp/char_147_shining/cn_022.mp3"
         ],
         "place": [
-          "/assets/audio/voice/cn/char_147_shining/cn_023.mp3",
-          "/assets/audio/voice/cn/char_147_shining/cn_024.mp3"
+          "/assets/audio/voice/jp/char_147_shining/cn_023.mp3",
+          "/assets/audio/voice/jp/char_147_shining/cn_024.mp3"
         ],
-        "skill1": "/assets/audio/voice/cn/char_147_shining/cn_025.mp3",
-        "skill2": "/assets/audio/voice/cn/char_147_shining/cn_026.mp3",
-        "skill3": "/assets/audio/voice/cn/char_147_shining/cn_027.mp3",
-        "skill4": "/assets/audio/voice/cn/char_147_shining/cn_028.mp3",
-        "resultFour": "/assets/audio/voice/cn/char_147_shining/cn_029.mp3",
-        "resultThree": "/assets/audio/voice/cn/char_147_shining/cn_030.mp3",
-        "resultTwo": "/assets/audio/voice/cn/char_147_shining/cn_031.mp3",
-        "resultLose": "/assets/audio/voice/cn/char_147_shining/cn_032.mp3"
+        "skill1": "/assets/audio/voice/jp/char_147_shining/cn_025.mp3",
+        "skill2": "/assets/audio/voice/jp/char_147_shining/cn_026.mp3",
+        "skill3": "/assets/audio/voice/jp/char_147_shining/cn_027.mp3",
+        "skill4": "/assets/audio/voice/jp/char_147_shining/cn_028.mp3",
+        "resultFour": "/assets/audio/voice/jp/char_147_shining/cn_029.mp3",
+        "resultThree": "/assets/audio/voice/jp/char_147_shining/cn_030.mp3",
+        "resultTwo": "/assets/audio/voice/jp/char_147_shining/cn_031.mp3",
+        "resultLose": "/assets/audio/voice/jp/char_147_shining/cn_032.mp3"
       },
       "char_179_cgbird": {
-        "start": "/assets/audio/voice/cn/char_179_cgbird/cn_019.mp3",
-        "faceEnemy": "/assets/audio/voice/cn/char_179_cgbird/cn_020.mp3",
+        "start": "/assets/audio/voice/jp/char_179_cgbird/cn_019.mp3",
+        "faceEnemy": "/assets/audio/voice/jp/char_179_cgbird/cn_020.mp3",
         "select": [
-          "/assets/audio/voice/cn/char_179_cgbird/cn_021.mp3",
-          "/assets/audio/voice/cn/char_179_cgbird/cn_022.mp3"
+          "/assets/audio/voice/jp/char_179_cgbird/cn_021.mp3",
+          "/assets/audio/voice/jp/char_179_cgbird/cn_022.mp3"
         ],
         "place": [
-          "/assets/audio/voice/cn/char_179_cgbird/cn_023.mp3",
-          "/assets/audio/voice/cn/char_179_cgbird/cn_024.mp3"
+          "/assets/audio/voice/jp/char_179_cgbird/cn_023.mp3",
+          "/assets/audio/voice/jp/char_179_cgbird/cn_024.mp3"
         ],
-        "skill1": "/assets/audio/voice/cn/char_179_cgbird/cn_025.mp3",
-        "skill2": "/assets/audio/voice/cn/char_179_cgbird/cn_026.mp3",
-        "skill3": "/assets/audio/voice/cn/char_179_cgbird/cn_027.mp3",
-        "skill4": "/assets/audio/voice/cn/char_179_cgbird/cn_028.mp3",
-        "resultFour": "/assets/audio/voice/cn/char_179_cgbird/cn_029.mp3",
-        "resultThree": "/assets/audio/voice/cn/char_179_cgbird/cn_030.mp3",
-        "resultTwo": "/assets/audio/voice/cn/char_179_cgbird/cn_031.mp3",
-        "resultLose": "/assets/audio/voice/cn/char_179_cgbird/cn_032.mp3"
+        "skill1": "/assets/audio/voice/jp/char_179_cgbird/cn_025.mp3",
+        "skill2": "/assets/audio/voice/jp/char_179_cgbird/cn_026.mp3",
+        "skill3": "/assets/audio/voice/jp/char_179_cgbird/cn_027.mp3",
+        "skill4": "/assets/audio/voice/jp/char_179_cgbird/cn_028.mp3",
+        "resultFour": "/assets/audio/voice/jp/char_179_cgbird/cn_029.mp3",
+        "resultThree": "/assets/audio/voice/jp/char_179_cgbird/cn_030.mp3",
+        "resultTwo": "/assets/audio/voice/jp/char_179_cgbird/cn_031.mp3",
+        "resultLose": "/assets/audio/voice/jp/char_179_cgbird/cn_032.mp3"
       },
       "char_180_amgoat": {
-        "start": "/assets/audio/voice/cn/char_180_amgoat/cn_019.mp3",
-        "faceEnemy": "/assets/audio/voice/cn/char_180_amgoat/cn_020.mp3",
+        "start": "/assets/audio/voice/jp/char_180_amgoat/cn_019.mp3",
+        "faceEnemy": "/assets/audio/voice/jp/char_180_amgoat/cn_020.mp3",
         "select": [
-          "/assets/audio/voice/cn/char_180_amgoat/cn_021.mp3",
-          "/assets/audio/voice/cn/char_180_amgoat/cn_022.mp3"
+          "/assets/audio/voice/jp/char_180_amgoat/cn_021.mp3",
+          "/assets/audio/voice/jp/char_180_amgoat/cn_022.mp3"
         ],
         "place": [
-          "/assets/audio/voice/cn/char_180_amgoat/cn_023.mp3",
-          "/assets/audio/voice/cn/char_180_amgoat/cn_024.mp3"
+          "/assets/audio/voice/jp/char_180_amgoat/cn_023.mp3",
+          "/assets/audio/voice/jp/char_180_amgoat/cn_024.mp3"
         ],
-        "skill1": "/assets/audio/voice/cn/char_180_amgoat/cn_025.mp3",
-        "skill2": "/assets/audio/voice/cn/char_180_amgoat/cn_026.mp3",
-        "skill3": "/assets/audio/voice/cn/char_180_amgoat/cn_027.mp3",
-        "skill4": "/assets/audio/voice/cn/char_180_amgoat/cn_028.mp3",
-        "resultFour": "/assets/audio/voice/cn/char_180_amgoat/cn_029.mp3",
-        "resultThree": "/assets/audio/voice/cn/char_180_amgoat/cn_030.mp3",
-        "resultTwo": "/assets/audio/voice/cn/char_180_amgoat/cn_031.mp3",
-        "resultLose": "/assets/audio/voice/cn/char_180_amgoat/cn_032.mp3"
+        "skill1": "/assets/audio/voice/jp/char_180_amgoat/cn_025.mp3",
+        "skill2": "/assets/audio/voice/jp/char_180_amgoat/cn_026.mp3",
+        "skill3": "/assets/audio/voice/jp/char_180_amgoat/cn_027.mp3",
+        "skill4": "/assets/audio/voice/jp/char_180_amgoat/cn_028.mp3",
+        "resultFour": "/assets/audio/voice/jp/char_180_amgoat/cn_029.mp3",
+        "resultThree": "/assets/audio/voice/jp/char_180_amgoat/cn_030.mp3",
+        "resultTwo": "/assets/audio/voice/jp/char_180_amgoat/cn_031.mp3",
+        "resultLose": "/assets/audio/voice/jp/char_180_amgoat/cn_032.mp3"
       },
       "char_188_helage": {
-        "start": "/assets/audio/voice/cn/char_188_helage/cn_019.mp3",
-        "faceEnemy": "/assets/audio/voice/cn/char_188_helage/cn_020.mp3",
+        "start": "/assets/audio/voice/jp/char_188_helage/cn_019.mp3",
+        "faceEnemy": "/assets/audio/voice/jp/char_188_helage/cn_020.mp3",
         "select": [
-          "/assets/audio/voice/cn/char_188_helage/cn_021.mp3",
-          "/assets/audio/voice/cn/char_188_helage/cn_022.mp3"
+          "/assets/audio/voice/jp/char_188_helage/cn_021.mp3",
+          "/assets/audio/voice/jp/char_188_helage/cn_022.mp3"
         ],
         "place": [
-          "/assets/audio/voice/cn/char_188_helage/cn_023.mp3",
-          "/assets/audio/voice/cn/char_188_helage/cn_024.mp3"
+          "/assets/audio/voice/jp/char_188_helage/cn_023.mp3",
+          "/assets/audio/voice/jp/char_188_helage/cn_024.mp3"
         ],
-        "skill1": "/assets/audio/voice/cn/char_188_helage/cn_025.mp3",
-        "skill2": "/assets/audio/voice/cn/char_188_helage/cn_026.mp3",
-        "skill3": "/assets/audio/voice/cn/char_188_helage/cn_027.mp3",
-        "skill4": "/assets/audio/voice/cn/char_188_helage/cn_028.mp3",
-        "resultFour": "/assets/audio/voice/cn/char_188_helage/cn_029.mp3",
-        "resultThree": "/assets/audio/voice/cn/char_188_helage/cn_030.mp3",
-        "resultTwo": "/assets/audio/voice/cn/char_188_helage/cn_031.mp3",
-        "resultLose": "/assets/audio/voice/cn/char_188_helage/cn_032.mp3"
+        "skill1": "/assets/audio/voice/jp/char_188_helage/cn_025.mp3",
+        "skill2": "/assets/audio/voice/jp/char_188_helage/cn_026.mp3",
+        "skill3": "/assets/audio/voice/jp/char_188_helage/cn_027.mp3",
+        "skill4": "/assets/audio/voice/jp/char_188_helage/cn_028.mp3",
+        "resultFour": "/assets/audio/voice/jp/char_188_helage/cn_029.mp3",
+        "resultThree": "/assets/audio/voice/jp/char_188_helage/cn_030.mp3",
+        "resultTwo": "/assets/audio/voice/jp/char_188_helage/cn_031.mp3",
+        "resultLose": "/assets/audio/voice/jp/char_188_helage/cn_032.mp3"
       },
       "char_197_poca": {
-        "start": "/assets/audio/voice/cn/char_197_poca/cn_019.mp3",
-        "faceEnemy": "/assets/audio/voice/cn/char_197_poca/cn_020.mp3",
+        "start": "/assets/audio/voice/jp/char_197_poca/cn_019.mp3",
+        "faceEnemy": "/assets/audio/voice/jp/char_197_poca/cn_020.mp3",
         "select": [
-          "/assets/audio/voice/cn/char_197_poca/cn_021.mp3",
-          "/assets/audio/voice/cn/char_197_poca/cn_022.mp3"
+          "/assets/audio/voice/jp/char_197_poca/cn_021.mp3",
+          "/assets/audio/voice/jp/char_197_poca/cn_022.mp3"
         ],
         "place": [
-          "/assets/audio/voice/cn/char_197_poca/cn_023.mp3",
-          "/assets/audio/voice/cn/char_197_poca/cn_024.mp3"
+          "/assets/audio/voice/jp/char_197_poca/cn_023.mp3",
+          "/assets/audio/voice/jp/char_197_poca/cn_024.mp3"
         ],
-        "skill1": "/assets/audio/voice/cn/char_197_poca/cn_025.mp3",
-        "skill2": "/assets/audio/voice/cn/char_197_poca/cn_026.mp3",
-        "skill3": "/assets/audio/voice/cn/char_197_poca/cn_027.mp3",
-        "skill4": "/assets/audio/voice/cn/char_197_poca/cn_028.mp3",
-        "resultFour": "/assets/audio/voice/cn/char_197_poca/cn_029.mp3",
-        "resultThree": "/assets/audio/voice/cn/char_197_poca/cn_030.mp3",
-        "resultTwo": "/assets/audio/voice/cn/char_197_poca/cn_031.mp3",
-        "resultLose": "/assets/audio/voice/cn/char_197_poca/cn_032.mp3"
+        "skill1": "/assets/audio/voice/jp/char_197_poca/cn_025.mp3",
+        "skill2": "/assets/audio/voice/jp/char_197_poca/cn_026.mp3",
+        "skill3": "/assets/audio/voice/jp/char_197_poca/cn_027.mp3",
+        "skill4": "/assets/audio/voice/jp/char_197_poca/cn_028.mp3",
+        "resultFour": "/assets/audio/voice/jp/char_197_poca/cn_029.mp3",
+        "resultThree": "/assets/audio/voice/jp/char_197_poca/cn_030.mp3",
+        "resultTwo": "/assets/audio/voice/jp/char_197_poca/cn_031.mp3",
+        "resultLose": "/assets/audio/voice/jp/char_197_poca/cn_032.mp3"
       },
       "char_225_haak": {
-        "start": "/assets/audio/voice/cn/char_225_haak/cn_019.mp3",
-        "faceEnemy": "/assets/audio/voice/cn/char_225_haak/cn_020.mp3",
+        "start": "/assets/audio/voice/jp/char_225_haak/cn_019.mp3",
+        "faceEnemy": "/assets/audio/voice/jp/char_225_haak/cn_020.mp3",
         "select": [
-          "/assets/audio/voice/cn/char_225_haak/cn_021.mp3",
-          "/assets/audio/voice/cn/char_225_haak/cn_022.mp3"
+          "/assets/audio/voice/jp/char_225_haak/cn_021.mp3",
+          "/assets/audio/voice/jp/char_225_haak/cn_022.mp3"
         ],
         "place": [
-          "/assets/audio/voice/cn/char_225_haak/cn_023.mp3",
-          "/assets/audio/voice/cn/char_225_haak/cn_024.mp3"
+          "/assets/audio/voice/jp/char_225_haak/cn_023.mp3",
+          "/assets/audio/voice/jp/char_225_haak/cn_024.mp3"
         ],
-        "skill1": "/assets/audio/voice/cn/char_225_haak/cn_025.mp3",
-        "skill2": "/assets/audio/voice/cn/char_225_haak/cn_026.mp3",
-        "skill3": "/assets/audio/voice/cn/char_225_haak/cn_027.mp3",
-        "skill4": "/assets/audio/voice/cn/char_225_haak/cn_028.mp3",
-        "resultFour": "/assets/audio/voice/cn/char_225_haak/cn_029.mp3",
-        "resultThree": "/assets/audio/voice/cn/char_225_haak/cn_030.mp3",
-        "resultTwo": "/assets/audio/voice/cn/char_225_haak/cn_031.mp3",
-        "resultLose": "/assets/audio/voice/cn/char_225_haak/cn_032.mp3"
+        "skill1": "/assets/audio/voice/jp/char_225_haak/cn_025.mp3",
+        "skill2": "/assets/audio/voice/jp/char_225_haak/cn_026.mp3",
+        "skill3": "/assets/audio/voice/jp/char_225_haak/cn_027.mp3",
+        "skill4": "/assets/audio/voice/jp/char_225_haak/cn_028.mp3",
+        "resultFour": "/assets/audio/voice/jp/char_225_haak/cn_029.mp3",
+        "resultThree": "/assets/audio/voice/jp/char_225_haak/cn_030.mp3",
+        "resultTwo": "/assets/audio/voice/jp/char_225_haak/cn_031.mp3",
+        "resultLose": "/assets/audio/voice/jp/char_225_haak/cn_032.mp3"
       },
       "char_248_mgllan": {
-        "start": "/assets/audio/voice/cn/char_248_mgllan/cn_019.mp3",
-        "faceEnemy": "/assets/audio/voice/cn/char_248_mgllan/cn_020.mp3",
+        "start": "/assets/audio/voice/jp/char_248_mgllan/cn_019.mp3",
+        "faceEnemy": "/assets/audio/voice/jp/char_248_mgllan/cn_020.mp3",
         "select": [
-          "/assets/audio/voice/cn/char_248_mgllan/cn_021.mp3",
-          "/assets/audio/voice/cn/char_248_mgllan/cn_022.mp3"
+          "/assets/audio/voice/jp/char_248_mgllan/cn_021.mp3",
+          "/assets/audio/voice/jp/char_248_mgllan/cn_022.mp3"
         ],
         "place": [
-          "/assets/audio/voice/cn/char_248_mgllan/cn_023.mp3",
-          "/assets/audio/voice/cn/char_248_mgllan/cn_024.mp3"
+          "/assets/audio/voice/jp/char_248_mgllan/cn_023.mp3",
+          "/assets/audio/voice/jp/char_248_mgllan/cn_024.mp3"
         ],
-        "skill1": "/assets/audio/voice/cn/char_248_mgllan/cn_025.mp3",
-        "skill2": "/assets/audio/voice/cn/char_248_mgllan/cn_026.mp3",
-        "skill3": "/assets/audio/voice/cn/char_248_mgllan/cn_027.mp3",
-        "skill4": "/assets/audio/voice/cn/char_248_mgllan/cn_028.mp3",
-        "resultFour": "/assets/audio/voice/cn/char_248_mgllan/cn_029.mp3",
-        "resultThree": "/assets/audio/voice/cn/char_248_mgllan/cn_030.mp3",
-        "resultTwo": "/assets/audio/voice/cn/char_248_mgllan/cn_031.mp3",
-        "resultLose": "/assets/audio/voice/cn/char_248_mgllan/cn_032.mp3"
+        "skill1": "/assets/audio/voice/jp/char_248_mgllan/cn_025.mp3",
+        "skill2": "/assets/audio/voice/jp/char_248_mgllan/cn_026.mp3",
+        "skill3": "/assets/audio/voice/jp/char_248_mgllan/cn_027.mp3",
+        "skill4": "/assets/audio/voice/jp/char_248_mgllan/cn_028.mp3",
+        "resultFour": "/assets/audio/voice/jp/char_248_mgllan/cn_029.mp3",
+        "resultThree": "/assets/audio/voice/jp/char_248_mgllan/cn_030.mp3",
+        "resultTwo": "/assets/audio/voice/jp/char_248_mgllan/cn_031.mp3",
+        "resultLose": "/assets/audio/voice/jp/char_248_mgllan/cn_032.mp3"
       },
       "char_250_phatom": {
-        "start": "/assets/audio/voice/cn/char_250_phatom/cn_019.mp3",
-        "faceEnemy": "/assets/audio/voice/cn/char_250_phatom/cn_020.mp3",
+        "start": "/assets/audio/voice/jp/char_250_phatom/cn_019.mp3",
+        "faceEnemy": "/assets/audio/voice/jp/char_250_phatom/cn_020.mp3",
         "select": [
-          "/assets/audio/voice/cn/char_250_phatom/cn_021.mp3",
-          "/assets/audio/voice/cn/char_250_phatom/cn_022.mp3"
+          "/assets/audio/voice/jp/char_250_phatom/cn_021.mp3",
+          "/assets/audio/voice/jp/char_250_phatom/cn_022.mp3"
         ],
         "place": [
-          "/assets/audio/voice/cn/char_250_phatom/cn_023.mp3",
-          "/assets/audio/voice/cn/char_250_phatom/cn_024.mp3"
+          "/assets/audio/voice/jp/char_250_phatom/cn_023.mp3",
+          "/assets/audio/voice/jp/char_250_phatom/cn_024.mp3"
         ],
-        "skill1": "/assets/audio/voice/cn/char_250_phatom/cn_025.mp3",
-        "skill2": "/assets/audio/voice/cn/char_250_phatom/cn_026.mp3",
-        "skill3": "/assets/audio/voice/cn/char_250_phatom/cn_027.mp3",
-        "skill4": "/assets/audio/voice/cn/char_250_phatom/cn_028.mp3",
-        "resultFour": "/assets/audio/voice/cn/char_250_phatom/cn_029.mp3",
-        "resultThree": "/assets/audio/voice/cn/char_250_phatom/cn_030.mp3",
-        "resultTwo": "/assets/audio/voice/cn/char_250_phatom/cn_031.mp3",
-        "resultLose": "/assets/audio/voice/cn/char_250_phatom/cn_032.mp3"
+        "skill1": "/assets/audio/voice/jp/char_250_phatom/cn_025.mp3",
+        "skill2": "/assets/audio/voice/jp/char_250_phatom/cn_026.mp3",
+        "skill3": "/assets/audio/voice/jp/char_250_phatom/cn_027.mp3",
+        "skill4": "/assets/audio/voice/jp/char_250_phatom/cn_028.mp3",
+        "resultFour": "/assets/audio/voice/jp/char_250_phatom/cn_029.mp3",
+        "resultThree": "/assets/audio/voice/jp/char_250_phatom/cn_030.mp3",
+        "resultTwo": "/assets/audio/voice/jp/char_250_phatom/cn_031.mp3",
+        "resultLose": "/assets/audio/voice/jp/char_250_phatom/cn_032.mp3"
       },
       "char_293_thorns": {
-        "start": "/assets/audio/voice/cn/char_293_thorns/cn_019.mp3",
-        "faceEnemy": "/assets/audio/voice/cn/char_293_thorns/cn_020.mp3",
+        "start": "/assets/audio/voice/jp/char_293_thorns/cn_019.mp3",
+        "faceEnemy": "/assets/audio/voice/jp/char_293_thorns/cn_020.mp3",
         "select": [
-          "/assets/audio/voice/cn/char_293_thorns/cn_021.mp3",
-          "/assets/audio/voice/cn/char_293_thorns/cn_022.mp3"
+          "/assets/audio/voice/jp/char_293_thorns/cn_021.mp3",
+          "/assets/audio/voice/jp/char_293_thorns/cn_022.mp3"
         ],
         "place": [
-          "/assets/audio/voice/cn/char_293_thorns/cn_023.mp3",
-          "/assets/audio/voice/cn/char_293_thorns/cn_024.mp3"
+          "/assets/audio/voice/jp/char_293_thorns/cn_023.mp3",
+          "/assets/audio/voice/jp/char_293_thorns/cn_024.mp3"
         ],
-        "skill1": "/assets/audio/voice/cn/char_293_thorns/cn_025.mp3",
-        "skill2": "/assets/audio/voice/cn/char_293_thorns/cn_026.mp3",
-        "skill3": "/assets/audio/voice/cn/char_293_thorns/cn_027.mp3",
-        "skill4": "/assets/audio/voice/cn/char_293_thorns/cn_028.mp3",
-        "resultFour": "/assets/audio/voice/cn/char_293_thorns/cn_029.mp3",
-        "resultThree": "/assets/audio/voice/cn/char_293_thorns/cn_030.mp3",
-        "resultTwo": "/assets/audio/voice/cn/char_293_thorns/cn_031.mp3",
-        "resultLose": "/assets/audio/voice/cn/char_293_thorns/cn_032.mp3"
+        "skill1": "/assets/audio/voice/jp/char_293_thorns/cn_025.mp3",
+        "skill2": "/assets/audio/voice/jp/char_293_thorns/cn_026.mp3",
+        "skill3": "/assets/audio/voice/jp/char_293_thorns/cn_027.mp3",
+        "skill4": "/assets/audio/voice/jp/char_293_thorns/cn_028.mp3",
+        "resultFour": "/assets/audio/voice/jp/char_293_thorns/cn_029.mp3",
+        "resultThree": "/assets/audio/voice/jp/char_293_thorns/cn_030.mp3",
+        "resultTwo": "/assets/audio/voice/jp/char_293_thorns/cn_031.mp3",
+        "resultLose": "/assets/audio/voice/jp/char_293_thorns/cn_032.mp3"
       },
       "char_300_phenxi": {
-        "start": "/assets/audio/voice/cn/char_300_phenxi/cn_019.mp3",
-        "faceEnemy": "/assets/audio/voice/cn/char_300_phenxi/cn_020.mp3",
+        "start": "/assets/audio/voice/jp/char_300_phenxi/cn_019.mp3",
+        "faceEnemy": "/assets/audio/voice/jp/char_300_phenxi/cn_020.mp3",
         "select": [
-          "/assets/audio/voice/cn/char_300_phenxi/cn_021.mp3",
-          "/assets/audio/voice/cn/char_300_phenxi/cn_022.mp3"
+          "/assets/audio/voice/jp/char_300_phenxi/cn_021.mp3",
+          "/assets/audio/voice/jp/char_300_phenxi/cn_022.mp3"
         ],
         "place": [
-          "/assets/audio/voice/cn/char_300_phenxi/cn_023.mp3",
-          "/assets/audio/voice/cn/char_300_phenxi/cn_024.mp3"
+          "/assets/audio/voice/jp/char_300_phenxi/cn_023.mp3",
+          "/assets/audio/voice/jp/char_300_phenxi/cn_024.mp3"
         ],
-        "skill1": "/assets/audio/voice/cn/char_300_phenxi/cn_025.mp3",
-        "skill2": "/assets/audio/voice/cn/char_300_phenxi/cn_026.mp3",
-        "skill3": "/assets/audio/voice/cn/char_300_phenxi/cn_027.mp3",
-        "skill4": "/assets/audio/voice/cn/char_300_phenxi/cn_028.mp3",
-        "resultFour": "/assets/audio/voice/cn/char_300_phenxi/cn_029.mp3",
-        "resultThree": "/assets/audio/voice/cn/char_300_phenxi/cn_030.mp3",
-        "resultTwo": "/assets/audio/voice/cn/char_300_phenxi/cn_031.mp3",
-        "resultLose": "/assets/audio/voice/cn/char_300_phenxi/cn_032.mp3"
+        "skill1": "/assets/audio/voice/jp/char_300_phenxi/cn_025.mp3",
+        "skill2": "/assets/audio/voice/jp/char_300_phenxi/cn_026.mp3",
+        "skill3": "/assets/audio/voice/jp/char_300_phenxi/cn_027.mp3",
+        "skill4": "/assets/audio/voice/jp/char_300_phenxi/cn_028.mp3",
+        "resultFour": "/assets/audio/voice/jp/char_300_phenxi/cn_029.mp3",
+        "resultThree": "/assets/audio/voice/jp/char_300_phenxi/cn_030.mp3",
+        "resultTwo": "/assets/audio/voice/jp/char_300_phenxi/cn_031.mp3",
+        "resultLose": "/assets/audio/voice/jp/char_300_phenxi/cn_032.mp3"
       },
       "char_322_lmlee": {
-        "start": "/assets/audio/voice/cn/char_322_lmlee/cn_019.mp3",
-        "faceEnemy": "/assets/audio/voice/cn/char_322_lmlee/cn_020.mp3",
+        "start": "/assets/audio/voice/jp/char_322_lmlee/cn_019.mp3",
+        "faceEnemy": "/assets/audio/voice/jp/char_322_lmlee/cn_020.mp3",
         "select": [
-          "/assets/audio/voice/cn/char_322_lmlee/cn_021.mp3",
-          "/assets/audio/voice/cn/char_322_lmlee/cn_022.mp3"
+          "/assets/audio/voice/jp/char_322_lmlee/cn_021.mp3",
+          "/assets/audio/voice/jp/char_322_lmlee/cn_022.mp3"
         ],
         "place": [
-          "/assets/audio/voice/cn/char_322_lmlee/cn_023.mp3",
-          "/assets/audio/voice/cn/char_322_lmlee/cn_024.mp3"
+          "/assets/audio/voice/jp/char_322_lmlee/cn_023.mp3",
+          "/assets/audio/voice/jp/char_322_lmlee/cn_024.mp3"
         ],
-        "skill1": "/assets/audio/voice/cn/char_322_lmlee/cn_025.mp3",
-        "skill2": "/assets/audio/voice/cn/char_322_lmlee/cn_026.mp3",
-        "skill3": "/assets/audio/voice/cn/char_322_lmlee/cn_027.mp3",
-        "skill4": "/assets/audio/voice/cn/char_322_lmlee/cn_028.mp3",
-        "resultFour": "/assets/audio/voice/cn/char_322_lmlee/cn_029.mp3",
-        "resultThree": "/assets/audio/voice/cn/char_322_lmlee/cn_030.mp3",
-        "resultTwo": "/assets/audio/voice/cn/char_322_lmlee/cn_031.mp3",
-        "resultLose": "/assets/audio/voice/cn/char_322_lmlee/cn_032.mp3"
+        "skill1": "/assets/audio/voice/jp/char_322_lmlee/cn_025.mp3",
+        "skill2": "/assets/audio/voice/jp/char_322_lmlee/cn_026.mp3",
+        "skill3": "/assets/audio/voice/jp/char_322_lmlee/cn_027.mp3",
+        "skill4": "/assets/audio/voice/jp/char_322_lmlee/cn_028.mp3",
+        "resultFour": "/assets/audio/voice/jp/char_322_lmlee/cn_029.mp3",
+        "resultThree": "/assets/audio/voice/jp/char_322_lmlee/cn_030.mp3",
+        "resultTwo": "/assets/audio/voice/jp/char_322_lmlee/cn_031.mp3",
+        "resultLose": "/assets/audio/voice/jp/char_322_lmlee/cn_032.mp3"
       },
       "char_340_shwaz": {
-        "start": "/assets/audio/voice/cn/char_340_shwaz/cn_019.mp3",
-        "faceEnemy": "/assets/audio/voice/cn/char_340_shwaz/cn_020.mp3",
+        "start": "/assets/audio/voice/jp/char_340_shwaz/cn_019.mp3",
+        "faceEnemy": "/assets/audio/voice/jp/char_340_shwaz/cn_020.mp3",
         "select": [
-          "/assets/audio/voice/cn/char_340_shwaz/cn_021.mp3",
-          "/assets/audio/voice/cn/char_340_shwaz/cn_022.mp3"
+          "/assets/audio/voice/jp/char_340_shwaz/cn_021.mp3",
+          "/assets/audio/voice/jp/char_340_shwaz/cn_022.mp3"
         ],
         "place": [
-          "/assets/audio/voice/cn/char_340_shwaz/cn_023.mp3",
-          "/assets/audio/voice/cn/char_340_shwaz/cn_024.mp3"
+          "/assets/audio/voice/jp/char_340_shwaz/cn_023.mp3",
+          "/assets/audio/voice/jp/char_340_shwaz/cn_024.mp3"
         ],
-        "skill1": "/assets/audio/voice/cn/char_340_shwaz/cn_025.mp3",
-        "skill2": "/assets/audio/voice/cn/char_340_shwaz/cn_026.mp3",
-        "skill3": "/assets/audio/voice/cn/char_340_shwaz/cn_027.mp3",
-        "skill4": "/assets/audio/voice/cn/char_340_shwaz/cn_028.mp3",
-        "resultFour": "/assets/audio/voice/cn/char_340_shwaz/cn_029.mp3",
-        "resultThree": "/assets/audio/voice/cn/char_340_shwaz/cn_030.mp3",
-        "resultTwo": "/assets/audio/voice/cn/char_340_shwaz/cn_031.mp3",
-        "resultLose": "/assets/audio/voice/cn/char_340_shwaz/cn_032.mp3"
+        "skill1": "/assets/audio/voice/jp/char_340_shwaz/cn_025.mp3",
+        "skill2": "/assets/audio/voice/jp/char_340_shwaz/cn_026.mp3",
+        "skill3": "/assets/audio/voice/jp/char_340_shwaz/cn_027.mp3",
+        "skill4": "/assets/audio/voice/jp/char_340_shwaz/cn_028.mp3",
+        "resultFour": "/assets/audio/voice/jp/char_340_shwaz/cn_029.mp3",
+        "resultThree": "/assets/audio/voice/jp/char_340_shwaz/cn_030.mp3",
+        "resultTwo": "/assets/audio/voice/jp/char_340_shwaz/cn_031.mp3",
+        "resultLose": "/assets/audio/voice/jp/char_340_shwaz/cn_032.mp3"
       },
       "char_362_saga": {
-        "start": "/assets/audio/voice/cn/char_362_saga/cn_019.mp3",
-        "faceEnemy": "/assets/audio/voice/cn/char_362_saga/cn_020.mp3",
+        "start": "/assets/audio/voice/jp/char_362_saga/cn_019.mp3",
+        "faceEnemy": "/assets/audio/voice/jp/char_362_saga/cn_020.mp3",
         "select": [
-          "/assets/audio/voice/cn/char_362_saga/cn_021.mp3",
-          "/assets/audio/voice/cn/char_362_saga/cn_022.mp3"
+          "/assets/audio/voice/jp/char_362_saga/cn_021.mp3",
+          "/assets/audio/voice/jp/char_362_saga/cn_022.mp3"
         ],
         "place": [
-          "/assets/audio/voice/cn/char_362_saga/cn_023.mp3",
-          "/assets/audio/voice/cn/char_362_saga/cn_024.mp3"
+          "/assets/audio/voice/jp/char_362_saga/cn_023.mp3",
+          "/assets/audio/voice/jp/char_362_saga/cn_024.mp3"
         ],
-        "skill1": "/assets/audio/voice/cn/char_362_saga/cn_025.mp3",
-        "skill2": "/assets/audio/voice/cn/char_362_saga/cn_026.mp3",
-        "skill3": "/assets/audio/voice/cn/char_362_saga/cn_027.mp3",
-        "skill4": "/assets/audio/voice/cn/char_362_saga/cn_028.mp3",
-        "resultFour": "/assets/audio/voice/cn/char_362_saga/cn_029.mp3",
-        "resultThree": "/assets/audio/voice/cn/char_362_saga/cn_030.mp3",
-        "resultTwo": "/assets/audio/voice/cn/char_362_saga/cn_031.mp3",
-        "resultLose": "/assets/audio/voice/cn/char_362_saga/cn_032.mp3"
+        "skill1": "/assets/audio/voice/jp/char_362_saga/cn_025.mp3",
+        "skill2": "/assets/audio/voice/jp/char_362_saga/cn_026.mp3",
+        "skill3": "/assets/audio/voice/jp/char_362_saga/cn_027.mp3",
+        "skill4": "/assets/audio/voice/jp/char_362_saga/cn_028.mp3",
+        "resultFour": "/assets/audio/voice/jp/char_362_saga/cn_029.mp3",
+        "resultThree": "/assets/audio/voice/jp/char_362_saga/cn_030.mp3",
+        "resultTwo": "/assets/audio/voice/jp/char_362_saga/cn_031.mp3",
+        "resultLose": "/assets/audio/voice/jp/char_362_saga/cn_032.mp3"
       },
       "char_377_gdglow": {
-        "start": "/assets/audio/voice/cn/char_377_gdglow/cn_019.mp3",
-        "faceEnemy": "/assets/audio/voice/cn/char_377_gdglow/cn_020.mp3",
+        "start": "/assets/audio/voice/jp/char_377_gdglow/cn_019.mp3",
+        "faceEnemy": "/assets/audio/voice/jp/char_377_gdglow/cn_020.mp3",
         "select": [
-          "/assets/audio/voice/cn/char_377_gdglow/cn_021.mp3",
-          "/assets/audio/voice/cn/char_377_gdglow/cn_022.mp3"
+          "/assets/audio/voice/jp/char_377_gdglow/cn_021.mp3",
+          "/assets/audio/voice/jp/char_377_gdglow/cn_022.mp3"
         ],
         "place": [
-          "/assets/audio/voice/cn/char_377_gdglow/cn_023.mp3",
-          "/assets/audio/voice/cn/char_377_gdglow/cn_024.mp3"
+          "/assets/audio/voice/jp/char_377_gdglow/cn_023.mp3",
+          "/assets/audio/voice/jp/char_377_gdglow/cn_024.mp3"
         ],
-        "skill1": "/assets/audio/voice/cn/char_377_gdglow/cn_025.mp3",
-        "skill2": "/assets/audio/voice/cn/char_377_gdglow/cn_026.mp3",
-        "skill3": "/assets/audio/voice/cn/char_377_gdglow/cn_027.mp3",
-        "skill4": "/assets/audio/voice/cn/char_377_gdglow/cn_028.mp3",
-        "resultFour": "/assets/audio/voice/cn/char_377_gdglow/cn_029.mp3",
-        "resultThree": "/assets/audio/voice/cn/char_377_gdglow/cn_030.mp3",
-        "resultTwo": "/assets/audio/voice/cn/char_377_gdglow/cn_031.mp3",
-        "resultLose": "/assets/audio/voice/cn/char_377_gdglow/cn_032.mp3"
+        "skill1": "/assets/audio/voice/jp/char_377_gdglow/cn_025.mp3",
+        "skill2": "/assets/audio/voice/jp/char_377_gdglow/cn_026.mp3",
+        "skill3": "/assets/audio/voice/jp/char_377_gdglow/cn_027.mp3",
+        "skill4": "/assets/audio/voice/jp/char_377_gdglow/cn_028.mp3",
+        "resultFour": "/assets/audio/voice/jp/char_377_gdglow/cn_029.mp3",
+        "resultThree": "/assets/audio/voice/jp/char_377_gdglow/cn_030.mp3",
+        "resultTwo": "/assets/audio/voice/jp/char_377_gdglow/cn_031.mp3",
+        "resultLose": "/assets/audio/voice/jp/char_377_gdglow/cn_032.mp3"
       },
       "char_400_weedy": {
-        "start": "/assets/audio/voice/cn/char_400_weedy/cn_019.mp3",
-        "faceEnemy": "/assets/audio/voice/cn/char_400_weedy/cn_020.mp3",
+        "start": "/assets/audio/voice/jp/char_400_weedy/cn_019.mp3",
+        "faceEnemy": "/assets/audio/voice/jp/char_400_weedy/cn_020.mp3",
         "select": [
-          "/assets/audio/voice/cn/char_400_weedy/cn_021.mp3",
-          "/assets/audio/voice/cn/char_400_weedy/cn_022.mp3"
+          "/assets/audio/voice/jp/char_400_weedy/cn_021.mp3",
+          "/assets/audio/voice/jp/char_400_weedy/cn_022.mp3"
         ],
         "place": [
-          "/assets/audio/voice/cn/char_400_weedy/cn_023.mp3",
-          "/assets/audio/voice/cn/char_400_weedy/cn_024.mp3"
+          "/assets/audio/voice/jp/char_400_weedy/cn_023.mp3",
+          "/assets/audio/voice/jp/char_400_weedy/cn_024.mp3"
         ],
-        "skill1": "/assets/audio/voice/cn/char_400_weedy/cn_025.mp3",
-        "skill2": "/assets/audio/voice/cn/char_400_weedy/cn_026.mp3",
-        "skill3": "/assets/audio/voice/cn/char_400_weedy/cn_027.mp3",
-        "skill4": "/assets/audio/voice/cn/char_400_weedy/cn_028.mp3",
-        "resultFour": "/assets/audio/voice/cn/char_400_weedy/cn_029.mp3",
-        "resultThree": "/assets/audio/voice/cn/char_400_weedy/cn_030.mp3",
-        "resultTwo": "/assets/audio/voice/cn/char_400_weedy/cn_031.mp3",
-        "resultLose": "/assets/audio/voice/cn/char_400_weedy/cn_032.mp3"
+        "skill1": "/assets/audio/voice/jp/char_400_weedy/cn_025.mp3",
+        "skill2": "/assets/audio/voice/jp/char_400_weedy/cn_026.mp3",
+        "skill3": "/assets/audio/voice/jp/char_400_weedy/cn_027.mp3",
+        "skill4": "/assets/audio/voice/jp/char_400_weedy/cn_028.mp3",
+        "resultFour": "/assets/audio/voice/jp/char_400_weedy/cn_029.mp3",
+        "resultThree": "/assets/audio/voice/jp/char_400_weedy/cn_030.mp3",
+        "resultTwo": "/assets/audio/voice/jp/char_400_weedy/cn_031.mp3",
+        "resultLose": "/assets/audio/voice/jp/char_400_weedy/cn_032.mp3"
       },
       "char_416_zumama": {
-        "start": "/assets/audio/voice/cn/char_416_zumama/cn_019.mp3",
-        "faceEnemy": "/assets/audio/voice/cn/char_416_zumama/cn_020.mp3",
+        "start": "/assets/audio/voice/jp/char_416_zumama/cn_019.mp3",
+        "faceEnemy": "/assets/audio/voice/jp/char_416_zumama/cn_020.mp3",
         "select": [
-          "/assets/audio/voice/cn/char_416_zumama/cn_021.mp3",
-          "/assets/audio/voice/cn/char_416_zumama/cn_022.mp3"
+          "/assets/audio/voice/jp/char_416_zumama/cn_021.mp3",
+          "/assets/audio/voice/jp/char_416_zumama/cn_022.mp3"
         ],
         "place": [
-          "/assets/audio/voice/cn/char_416_zumama/cn_023.mp3",
-          "/assets/audio/voice/cn/char_416_zumama/cn_024.mp3"
+          "/assets/audio/voice/jp/char_416_zumama/cn_023.mp3",
+          "/assets/audio/voice/jp/char_416_zumama/cn_024.mp3"
         ],
-        "skill1": "/assets/audio/voice/cn/char_416_zumama/cn_025.mp3",
-        "skill2": "/assets/audio/voice/cn/char_416_zumama/cn_026.mp3",
-        "skill3": "/assets/audio/voice/cn/char_416_zumama/cn_027.mp3",
-        "skill4": "/assets/audio/voice/cn/char_416_zumama/cn_028.mp3",
-        "resultFour": "/assets/audio/voice/cn/char_416_zumama/cn_029.mp3",
-        "resultThree": "/assets/audio/voice/cn/char_416_zumama/cn_030.mp3",
-        "resultTwo": "/assets/audio/voice/cn/char_416_zumama/cn_031.mp3",
-        "resultLose": "/assets/audio/voice/cn/char_416_zumama/cn_032.mp3"
+        "skill1": "/assets/audio/voice/jp/char_416_zumama/cn_025.mp3",
+        "skill2": "/assets/audio/voice/jp/char_416_zumama/cn_026.mp3",
+        "skill3": "/assets/audio/voice/jp/char_416_zumama/cn_027.mp3",
+        "skill4": "/assets/audio/voice/jp/char_416_zumama/cn_028.mp3",
+        "resultFour": "/assets/audio/voice/jp/char_416_zumama/cn_029.mp3",
+        "resultThree": "/assets/audio/voice/jp/char_416_zumama/cn_030.mp3",
+        "resultTwo": "/assets/audio/voice/jp/char_416_zumama/cn_031.mp3",
+        "resultLose": "/assets/audio/voice/jp/char_416_zumama/cn_032.mp3"
       },
       "char_450_necras": {
-        "start": "/assets/audio/voice/cn/char_450_necras/cn_019.mp3",
-        "faceEnemy": "/assets/audio/voice/cn/char_450_necras/cn_020.mp3",
+        "start": "/assets/audio/voice/jp/char_450_necras/cn_019.mp3",
+        "faceEnemy": "/assets/audio/voice/jp/char_450_necras/cn_020.mp3",
         "select": [
-          "/assets/audio/voice/cn/char_450_necras/cn_021.mp3",
-          "/assets/audio/voice/cn/char_450_necras/cn_022.mp3"
+          "/assets/audio/voice/jp/char_450_necras/cn_021.mp3",
+          "/assets/audio/voice/jp/char_450_necras/cn_022.mp3"
         ],
         "place": [
-          "/assets/audio/voice/cn/char_450_necras/cn_023.mp3",
-          "/assets/audio/voice/cn/char_450_necras/cn_024.mp3"
+          "/assets/audio/voice/jp/char_450_necras/cn_023.mp3",
+          "/assets/audio/voice/jp/char_450_necras/cn_024.mp3"
         ],
-        "skill1": "/assets/audio/voice/cn/char_450_necras/cn_025.mp3",
-        "skill2": "/assets/audio/voice/cn/char_450_necras/cn_026.mp3",
-        "skill3": "/assets/audio/voice/cn/char_450_necras/cn_027.mp3",
-        "skill4": "/assets/audio/voice/cn/char_450_necras/cn_028.mp3",
-        "resultFour": "/assets/audio/voice/cn/char_450_necras/cn_029.mp3",
-        "resultThree": "/assets/audio/voice/cn/char_450_necras/cn_030.mp3",
-        "resultTwo": "/assets/audio/voice/cn/char_450_necras/cn_031.mp3",
-        "resultLose": "/assets/audio/voice/cn/char_450_necras/cn_032.mp3"
+        "skill1": "/assets/audio/voice/jp/char_450_necras/cn_025.mp3",
+        "skill2": "/assets/audio/voice/jp/char_450_necras/cn_026.mp3",
+        "skill3": "/assets/audio/voice/jp/char_450_necras/cn_027.mp3",
+        "skill4": "/assets/audio/voice/jp/char_450_necras/cn_028.mp3",
+        "resultFour": "/assets/audio/voice/jp/char_450_necras/cn_029.mp3",
+        "resultThree": "/assets/audio/voice/jp/char_450_necras/cn_030.mp3",
+        "resultTwo": "/assets/audio/voice/jp/char_450_necras/cn_031.mp3",
+        "resultLose": "/assets/audio/voice/jp/char_450_necras/cn_032.mp3"
       },
       "char_479_sleach": {
-        "start": "/assets/audio/voice/cn/char_479_sleach/cn_019.mp3",
-        "faceEnemy": "/assets/audio/voice/cn/char_479_sleach/cn_020.mp3",
+        "start": "/assets/audio/voice/jp/char_479_sleach/cn_019.mp3",
+        "faceEnemy": "/assets/audio/voice/jp/char_479_sleach/cn_020.mp3",
         "select": [
-          "/assets/audio/voice/cn/char_479_sleach/cn_021.mp3",
-          "/assets/audio/voice/cn/char_479_sleach/cn_022.mp3"
+          "/assets/audio/voice/jp/char_479_sleach/cn_021.mp3",
+          "/assets/audio/voice/jp/char_479_sleach/cn_022.mp3"
         ],
         "place": [
-          "/assets/audio/voice/cn/char_479_sleach/cn_023.mp3",
-          "/assets/audio/voice/cn/char_479_sleach/cn_024.mp3"
+          "/assets/audio/voice/jp/char_479_sleach/cn_023.mp3",
+          "/assets/audio/voice/jp/char_479_sleach/cn_024.mp3"
         ],
-        "skill1": "/assets/audio/voice/cn/char_479_sleach/cn_025.mp3",
-        "skill2": "/assets/audio/voice/cn/char_479_sleach/cn_026.mp3",
-        "skill3": "/assets/audio/voice/cn/char_479_sleach/cn_027.mp3",
-        "skill4": "/assets/audio/voice/cn/char_479_sleach/cn_028.mp3",
-        "resultFour": "/assets/audio/voice/cn/char_479_sleach/cn_029.mp3",
-        "resultThree": "/assets/audio/voice/cn/char_479_sleach/cn_030.mp3",
-        "resultTwo": "/assets/audio/voice/cn/char_479_sleach/cn_031.mp3",
-        "resultLose": "/assets/audio/voice/cn/char_479_sleach/cn_032.mp3"
+        "skill1": "/assets/audio/voice/jp/char_479_sleach/cn_025.mp3",
+        "skill2": "/assets/audio/voice/jp/char_479_sleach/cn_026.mp3",
+        "skill3": "/assets/audio/voice/jp/char_479_sleach/cn_027.mp3",
+        "skill4": "/assets/audio/voice/jp/char_479_sleach/cn_028.mp3",
+        "resultFour": "/assets/audio/voice/jp/char_479_sleach/cn_029.mp3",
+        "resultThree": "/assets/audio/voice/jp/char_479_sleach/cn_030.mp3",
+        "resultTwo": "/assets/audio/voice/jp/char_479_sleach/cn_031.mp3",
+        "resultLose": "/assets/audio/voice/jp/char_479_sleach/cn_032.mp3"
       },
       "char_485_pallas": {
-        "start": "/assets/audio/voice/cn/char_485_pallas/cn_019.mp3",
-        "faceEnemy": "/assets/audio/voice/cn/char_485_pallas/cn_020.mp3",
+        "start": "/assets/audio/voice/jp/char_485_pallas/cn_019.mp3",
+        "faceEnemy": "/assets/audio/voice/jp/char_485_pallas/cn_020.mp3",
         "select": [
-          "/assets/audio/voice/cn/char_485_pallas/cn_021.mp3",
-          "/assets/audio/voice/cn/char_485_pallas/cn_022.mp3"
+          "/assets/audio/voice/jp/char_485_pallas/cn_021.mp3",
+          "/assets/audio/voice/jp/char_485_pallas/cn_022.mp3"
         ],
         "place": [
-          "/assets/audio/voice/cn/char_485_pallas/cn_023.mp3",
-          "/assets/audio/voice/cn/char_485_pallas/cn_024.mp3"
+          "/assets/audio/voice/jp/char_485_pallas/cn_023.mp3",
+          "/assets/audio/voice/jp/char_485_pallas/cn_024.mp3"
         ],
-        "skill1": "/assets/audio/voice/cn/char_485_pallas/cn_025.mp3",
-        "skill2": "/assets/audio/voice/cn/char_485_pallas/cn_026.mp3",
-        "skill3": "/assets/audio/voice/cn/char_485_pallas/cn_027.mp3",
-        "skill4": "/assets/audio/voice/cn/char_485_pallas/cn_028.mp3",
-        "resultFour": "/assets/audio/voice/cn/char_485_pallas/cn_029.mp3",
-        "resultThree": "/assets/audio/voice/cn/char_485_pallas/cn_030.mp3",
-        "resultTwo": "/assets/audio/voice/cn/char_485_pallas/cn_031.mp3",
-        "resultLose": "/assets/audio/voice/cn/char_485_pallas/cn_032.mp3"
+        "skill1": "/assets/audio/voice/jp/char_485_pallas/cn_025.mp3",
+        "skill2": "/assets/audio/voice/jp/char_485_pallas/cn_026.mp3",
+        "skill3": "/assets/audio/voice/jp/char_485_pallas/cn_027.mp3",
+        "skill4": "/assets/audio/voice/jp/char_485_pallas/cn_028.mp3",
+        "resultFour": "/assets/audio/voice/jp/char_485_pallas/cn_029.mp3",
+        "resultThree": "/assets/audio/voice/jp/char_485_pallas/cn_030.mp3",
+        "resultTwo": "/assets/audio/voice/jp/char_485_pallas/cn_031.mp3",
+        "resultLose": "/assets/audio/voice/jp/char_485_pallas/cn_032.mp3"
       },
       "char_1013_chen2": {
-        "start": "/assets/audio/voice/cn/char_1013_chen2/cn_019.mp3",
-        "faceEnemy": "/assets/audio/voice/cn/char_1013_chen2/cn_020.mp3",
+        "start": "/assets/audio/voice/jp/char_1013_chen2/cn_019.mp3",
+        "faceEnemy": "/assets/audio/voice/jp/char_1013_chen2/cn_020.mp3",
         "select": [
-          "/assets/audio/voice/cn/char_1013_chen2/cn_021.mp3",
-          "/assets/audio/voice/cn/char_1013_chen2/cn_022.mp3"
+          "/assets/audio/voice/jp/char_1013_chen2/cn_021.mp3",
+          "/assets/audio/voice/jp/char_1013_chen2/cn_022.mp3"
         ],
         "place": [
-          "/assets/audio/voice/cn/char_1013_chen2/cn_023.mp3",
-          "/assets/audio/voice/cn/char_1013_chen2/cn_024.mp3"
+          "/assets/audio/voice/jp/char_1013_chen2/cn_023.mp3",
+          "/assets/audio/voice/jp/char_1013_chen2/cn_024.mp3"
         ],
-        "skill1": "/assets/audio/voice/cn/char_1013_chen2/cn_025.mp3",
-        "skill2": "/assets/audio/voice/cn/char_1013_chen2/cn_026.mp3",
-        "skill3": "/assets/audio/voice/cn/char_1013_chen2/cn_027.mp3",
-        "skill4": "/assets/audio/voice/cn/char_1013_chen2/cn_028.mp3",
-        "resultFour": "/assets/audio/voice/cn/char_1013_chen2/cn_029.mp3",
-        "resultThree": "/assets/audio/voice/cn/char_1013_chen2/cn_030.mp3",
-        "resultTwo": "/assets/audio/voice/cn/char_1013_chen2/cn_031.mp3",
-        "resultLose": "/assets/audio/voice/cn/char_1013_chen2/cn_032.mp3"
+        "skill1": "/assets/audio/voice/jp/char_1013_chen2/cn_025.mp3",
+        "skill2": "/assets/audio/voice/jp/char_1013_chen2/cn_026.mp3",
+        "skill3": "/assets/audio/voice/jp/char_1013_chen2/cn_027.mp3",
+        "skill4": "/assets/audio/voice/jp/char_1013_chen2/cn_028.mp3",
+        "resultFour": "/assets/audio/voice/jp/char_1013_chen2/cn_029.mp3",
+        "resultThree": "/assets/audio/voice/jp/char_1013_chen2/cn_030.mp3",
+        "resultTwo": "/assets/audio/voice/jp/char_1013_chen2/cn_031.mp3",
+        "resultLose": "/assets/audio/voice/jp/char_1013_chen2/cn_032.mp3"
       },
       "char_1015_aglna2": {
-        "start": "/assets/audio/voice/cn/char_1015_aglna2/cn_019.mp3",
-        "faceEnemy": "/assets/audio/voice/cn/char_1015_aglna2/cn_020.mp3",
+        "start": "/assets/audio/voice/jp/char_1015_aglna2/cn_019.mp3",
+        "faceEnemy": "/assets/audio/voice/jp/char_1015_aglna2/cn_020.mp3",
         "select": [
-          "/assets/audio/voice/cn/char_1015_aglna2/cn_021.mp3",
-          "/assets/audio/voice/cn/char_1015_aglna2/cn_022.mp3"
+          "/assets/audio/voice/jp/char_1015_aglna2/cn_021.mp3",
+          "/assets/audio/voice/jp/char_1015_aglna2/cn_022.mp3"
         ],
         "place": [
-          "/assets/audio/voice/cn/char_1015_aglna2/cn_023.mp3",
-          "/assets/audio/voice/cn/char_1015_aglna2/cn_024.mp3"
+          "/assets/audio/voice/jp/char_1015_aglna2/cn_023.mp3",
+          "/assets/audio/voice/jp/char_1015_aglna2/cn_024.mp3"
         ],
-        "skill1": "/assets/audio/voice/cn/char_1015_aglna2/cn_025.mp3",
-        "skill2": "/assets/audio/voice/cn/char_1015_aglna2/cn_026.mp3",
-        "skill3": "/assets/audio/voice/cn/char_1015_aglna2/cn_027.mp3",
-        "skill4": "/assets/audio/voice/cn/char_1015_aglna2/cn_028.mp3",
-        "resultFour": "/assets/audio/voice/cn/char_1015_aglna2/cn_029.mp3",
-        "resultThree": "/assets/audio/voice/cn/char_1015_aglna2/cn_030.mp3",
-        "resultTwo": "/assets/audio/voice/cn/char_1015_aglna2/cn_031.mp3",
-        "resultLose": "/assets/audio/voice/cn/char_1015_aglna2/cn_032.mp3"
+        "skill1": "/assets/audio/voice/jp/char_1015_aglna2/cn_025.mp3",
+        "skill2": "/assets/audio/voice/jp/char_1015_aglna2/cn_026.mp3",
+        "skill3": "/assets/audio/voice/jp/char_1015_aglna2/cn_027.mp3",
+        "skill4": "/assets/audio/voice/jp/char_1015_aglna2/cn_028.mp3",
+        "resultFour": "/assets/audio/voice/jp/char_1015_aglna2/cn_029.mp3",
+        "resultThree": "/assets/audio/voice/jp/char_1015_aglna2/cn_030.mp3",
+        "resultTwo": "/assets/audio/voice/jp/char_1015_aglna2/cn_031.mp3",
+        "resultLose": "/assets/audio/voice/jp/char_1015_aglna2/cn_032.mp3"
       },
       "char_1031_slent2": {
-        "start": "/assets/audio/voice/cn/char_1031_slent2/cn_019.mp3",
-        "faceEnemy": "/assets/audio/voice/cn/char_1031_slent2/cn_020.mp3",
+        "start": "/assets/audio/voice/jp/char_1031_slent2/cn_019.mp3",
+        "faceEnemy": "/assets/audio/voice/jp/char_1031_slent2/cn_020.mp3",
         "select": [
-          "/assets/audio/voice/cn/char_1031_slent2/cn_021.mp3",
-          "/assets/audio/voice/cn/char_1031_slent2/cn_022.mp3"
+          "/assets/audio/voice/jp/char_1031_slent2/cn_021.mp3",
+          "/assets/audio/voice/jp/char_1031_slent2/cn_022.mp3"
         ],
         "place": [
-          "/assets/audio/voice/cn/char_1031_slent2/cn_023.mp3",
-          "/assets/audio/voice/cn/char_1031_slent2/cn_024.mp3"
+          "/assets/audio/voice/jp/char_1031_slent2/cn_023.mp3",
+          "/assets/audio/voice/jp/char_1031_slent2/cn_024.mp3"
         ],
-        "skill1": "/assets/audio/voice/cn/char_1031_slent2/cn_025.mp3",
-        "skill2": "/assets/audio/voice/cn/char_1031_slent2/cn_026.mp3",
-        "skill3": "/assets/audio/voice/cn/char_1031_slent2/cn_027.mp3",
-        "skill4": "/assets/audio/voice/cn/char_1031_slent2/cn_028.mp3",
-        "resultFour": "/assets/audio/voice/cn/char_1031_slent2/cn_029.mp3",
-        "resultThree": "/assets/audio/voice/cn/char_1031_slent2/cn_030.mp3",
-        "resultTwo": "/assets/audio/voice/cn/char_1031_slent2/cn_031.mp3",
-        "resultLose": "/assets/audio/voice/cn/char_1031_slent2/cn_032.mp3"
+        "skill1": "/assets/audio/voice/jp/char_1031_slent2/cn_025.mp3",
+        "skill2": "/assets/audio/voice/jp/char_1031_slent2/cn_026.mp3",
+        "skill3": "/assets/audio/voice/jp/char_1031_slent2/cn_027.mp3",
+        "skill4": "/assets/audio/voice/jp/char_1031_slent2/cn_028.mp3",
+        "resultFour": "/assets/audio/voice/jp/char_1031_slent2/cn_029.mp3",
+        "resultThree": "/assets/audio/voice/jp/char_1031_slent2/cn_030.mp3",
+        "resultTwo": "/assets/audio/voice/jp/char_1031_slent2/cn_031.mp3",
+        "resultLose": "/assets/audio/voice/jp/char_1031_slent2/cn_032.mp3"
       },
       "char_1034_jesca2": {
-        "start": "/assets/audio/voice/cn/char_1034_jesca2/cn_019.mp3",
-        "faceEnemy": "/assets/audio/voice/cn/char_1034_jesca2/cn_020.mp3",
+        "start": "/assets/audio/voice/jp/char_1034_jesca2/cn_019.mp3",
+        "faceEnemy": "/assets/audio/voice/jp/char_1034_jesca2/cn_020.mp3",
         "select": [
-          "/assets/audio/voice/cn/char_1034_jesca2/cn_021.mp3",
-          "/assets/audio/voice/cn/char_1034_jesca2/cn_022.mp3"
+          "/assets/audio/voice/jp/char_1034_jesca2/cn_021.mp3",
+          "/assets/audio/voice/jp/char_1034_jesca2/cn_022.mp3"
         ],
         "place": [
-          "/assets/audio/voice/cn/char_1034_jesca2/cn_023.mp3",
-          "/assets/audio/voice/cn/char_1034_jesca2/cn_024.mp3"
+          "/assets/audio/voice/jp/char_1034_jesca2/cn_023.mp3",
+          "/assets/audio/voice/jp/char_1034_jesca2/cn_024.mp3"
         ],
-        "skill1": "/assets/audio/voice/cn/char_1034_jesca2/cn_025.mp3",
-        "skill2": "/assets/audio/voice/cn/char_1034_jesca2/cn_026.mp3",
-        "skill3": "/assets/audio/voice/cn/char_1034_jesca2/cn_027.mp3",
-        "skill4": "/assets/audio/voice/cn/char_1034_jesca2/cn_028.mp3",
-        "resultFour": "/assets/audio/voice/cn/char_1034_jesca2/cn_029.mp3",
-        "resultThree": "/assets/audio/voice/cn/char_1034_jesca2/cn_030.mp3",
-        "resultTwo": "/assets/audio/voice/cn/char_1034_jesca2/cn_031.mp3",
-        "resultLose": "/assets/audio/voice/cn/char_1034_jesca2/cn_032.mp3"
+        "skill1": "/assets/audio/voice/jp/char_1034_jesca2/cn_025.mp3",
+        "skill2": "/assets/audio/voice/jp/char_1034_jesca2/cn_026.mp3",
+        "skill3": "/assets/audio/voice/jp/char_1034_jesca2/cn_027.mp3",
+        "skill4": "/assets/audio/voice/jp/char_1034_jesca2/cn_028.mp3",
+        "resultFour": "/assets/audio/voice/jp/char_1034_jesca2/cn_029.mp3",
+        "resultThree": "/assets/audio/voice/jp/char_1034_jesca2/cn_030.mp3",
+        "resultTwo": "/assets/audio/voice/jp/char_1034_jesca2/cn_031.mp3",
+        "resultLose": "/assets/audio/voice/jp/char_1034_jesca2/cn_032.mp3"
       },
       "char_1035_wisdel": {
-        "start": "/assets/audio/voice/cn/char_1035_wisdel/cn_019.mp3",
-        "faceEnemy": "/assets/audio/voice/cn/char_1035_wisdel/cn_020.mp3",
+        "start": "/assets/audio/voice/jp/char_1035_wisdel/cn_019.mp3",
+        "faceEnemy": "/assets/audio/voice/jp/char_1035_wisdel/cn_020.mp3",
         "select": [
-          "/assets/audio/voice/cn/char_1035_wisdel/cn_021.mp3",
-          "/assets/audio/voice/cn/char_1035_wisdel/cn_022.mp3"
+          "/assets/audio/voice/jp/char_1035_wisdel/cn_021.mp3",
+          "/assets/audio/voice/jp/char_1035_wisdel/cn_022.mp3"
         ],
         "place": [
-          "/assets/audio/voice/cn/char_1035_wisdel/cn_023.mp3",
-          "/assets/audio/voice/cn/char_1035_wisdel/cn_024.mp3"
+          "/assets/audio/voice/jp/char_1035_wisdel/cn_023.mp3",
+          "/assets/audio/voice/jp/char_1035_wisdel/cn_024.mp3"
         ],
-        "skill1": "/assets/audio/voice/cn/char_1035_wisdel/cn_025.mp3",
-        "skill2": "/assets/audio/voice/cn/char_1035_wisdel/cn_026.mp3",
-        "skill3": "/assets/audio/voice/cn/char_1035_wisdel/cn_027.mp3",
-        "skill4": "/assets/audio/voice/cn/char_1035_wisdel/cn_028.mp3",
-        "resultFour": "/assets/audio/voice/cn/char_1035_wisdel/cn_029.mp3",
-        "resultThree": "/assets/audio/voice/cn/char_1035_wisdel/cn_030.mp3",
-        "resultTwo": "/assets/audio/voice/cn/char_1035_wisdel/cn_031.mp3",
-        "resultLose": "/assets/audio/voice/cn/char_1035_wisdel/cn_032.mp3"
+        "skill1": "/assets/audio/voice/jp/char_1035_wisdel/cn_025.mp3",
+        "skill2": "/assets/audio/voice/jp/char_1035_wisdel/cn_026.mp3",
+        "skill3": "/assets/audio/voice/jp/char_1035_wisdel/cn_027.mp3",
+        "skill4": "/assets/audio/voice/jp/char_1035_wisdel/cn_028.mp3",
+        "resultFour": "/assets/audio/voice/jp/char_1035_wisdel/cn_029.mp3",
+        "resultThree": "/assets/audio/voice/jp/char_1035_wisdel/cn_030.mp3",
+        "resultTwo": "/assets/audio/voice/jp/char_1035_wisdel/cn_031.mp3",
+        "resultLose": "/assets/audio/voice/jp/char_1035_wisdel/cn_032.mp3"
       },
       "char_1042_phatm2": {
-        "start": "/assets/audio/voice/cn/char_1042_phatm2/cn_019.mp3",
-        "faceEnemy": "/assets/audio/voice/cn/char_1042_phatm2/cn_020.mp3",
+        "start": "/assets/audio/voice/jp/char_1042_phatm2/cn_019.mp3",
+        "faceEnemy": "/assets/audio/voice/jp/char_1042_phatm2/cn_020.mp3",
         "select": [
-          "/assets/audio/voice/cn/char_1042_phatm2/cn_021.mp3",
-          "/assets/audio/voice/cn/char_1042_phatm2/cn_022.mp3"
+          "/assets/audio/voice/jp/char_1042_phatm2/cn_021.mp3",
+          "/assets/audio/voice/jp/char_1042_phatm2/cn_022.mp3"
         ],
         "place": [
-          "/assets/audio/voice/cn/char_1042_phatm2/cn_023.mp3",
-          "/assets/audio/voice/cn/char_1042_phatm2/cn_024.mp3"
+          "/assets/audio/voice/jp/char_1042_phatm2/cn_023.mp3",
+          "/assets/audio/voice/jp/char_1042_phatm2/cn_024.mp3"
         ],
-        "skill1": "/assets/audio/voice/cn/char_1042_phatm2/cn_025.mp3",
-        "skill2": "/assets/audio/voice/cn/char_1042_phatm2/cn_026.mp3",
-        "skill3": "/assets/audio/voice/cn/char_1042_phatm2/cn_027.mp3",
-        "skill4": "/assets/audio/voice/cn/char_1042_phatm2/cn_028.mp3",
-        "resultFour": "/assets/audio/voice/cn/char_1042_phatm2/cn_029.mp3",
-        "resultThree": "/assets/audio/voice/cn/char_1042_phatm2/cn_030.mp3",
-        "resultTwo": "/assets/audio/voice/cn/char_1042_phatm2/cn_031.mp3",
-        "resultLose": "/assets/audio/voice/cn/char_1042_phatm2/cn_032.mp3"
+        "skill1": "/assets/audio/voice/jp/char_1042_phatm2/cn_025.mp3",
+        "skill2": "/assets/audio/voice/jp/char_1042_phatm2/cn_026.mp3",
+        "skill3": "/assets/audio/voice/jp/char_1042_phatm2/cn_027.mp3",
+        "skill4": "/assets/audio/voice/jp/char_1042_phatm2/cn_028.mp3",
+        "resultFour": "/assets/audio/voice/jp/char_1042_phatm2/cn_029.mp3",
+        "resultThree": "/assets/audio/voice/jp/char_1042_phatm2/cn_030.mp3",
+        "resultTwo": "/assets/audio/voice/jp/char_1042_phatm2/cn_031.mp3",
+        "resultLose": "/assets/audio/voice/jp/char_1042_phatm2/cn_032.mp3"
       },
       "char_1043_leizi2": {
-        "start": "/assets/audio/voice/cn/char_1043_leizi2/cn_019.mp3",
-        "faceEnemy": "/assets/audio/voice/cn/char_1043_leizi2/cn_020.mp3",
+        "start": "/assets/audio/voice/jp/char_1043_leizi2/cn_019.mp3",
+        "faceEnemy": "/assets/audio/voice/jp/char_1043_leizi2/cn_020.mp3",
         "select": [
-          "/assets/audio/voice/cn/char_1043_leizi2/cn_021.mp3",
-          "/assets/audio/voice/cn/char_1043_leizi2/cn_022.mp3"
+          "/assets/audio/voice/jp/char_1043_leizi2/cn_021.mp3",
+          "/assets/audio/voice/jp/char_1043_leizi2/cn_022.mp3"
         ],
         "place": [
-          "/assets/audio/voice/cn/char_1043_leizi2/cn_023.mp3",
-          "/assets/audio/voice/cn/char_1043_leizi2/cn_024.mp3"
+          "/assets/audio/voice/jp/char_1043_leizi2/cn_023.mp3",
+          "/assets/audio/voice/jp/char_1043_leizi2/cn_024.mp3"
         ],
-        "skill1": "/assets/audio/voice/cn/char_1043_leizi2/cn_025.mp3",
-        "skill2": "/assets/audio/voice/cn/char_1043_leizi2/cn_026.mp3",
-        "skill3": "/assets/audio/voice/cn/char_1043_leizi2/cn_027.mp3",
-        "skill4": "/assets/audio/voice/cn/char_1043_leizi2/cn_028.mp3",
-        "resultFour": "/assets/audio/voice/cn/char_1043_leizi2/cn_029.mp3",
-        "resultThree": "/assets/audio/voice/cn/char_1043_leizi2/cn_030.mp3",
-        "resultTwo": "/assets/audio/voice/cn/char_1043_leizi2/cn_031.mp3",
-        "resultLose": "/assets/audio/voice/cn/char_1043_leizi2/cn_032.mp3"
+        "skill1": "/assets/audio/voice/jp/char_1043_leizi2/cn_025.mp3",
+        "skill2": "/assets/audio/voice/jp/char_1043_leizi2/cn_026.mp3",
+        "skill3": "/assets/audio/voice/jp/char_1043_leizi2/cn_027.mp3",
+        "skill4": "/assets/audio/voice/jp/char_1043_leizi2/cn_028.mp3",
+        "resultFour": "/assets/audio/voice/jp/char_1043_leizi2/cn_029.mp3",
+        "resultThree": "/assets/audio/voice/jp/char_1043_leizi2/cn_030.mp3",
+        "resultTwo": "/assets/audio/voice/jp/char_1043_leizi2/cn_031.mp3",
+        "resultLose": "/assets/audio/voice/jp/char_1043_leizi2/cn_032.mp3"
       },
       "char_1044_hsgma2": {
-        "start": "/assets/audio/voice/cn/char_1044_hsgma2/cn_019.mp3",
-        "faceEnemy": "/assets/audio/voice/cn/char_1044_hsgma2/cn_020.mp3",
+        "start": "/assets/audio/voice/jp/char_1044_hsgma2/cn_019.mp3",
+        "faceEnemy": "/assets/audio/voice/jp/char_1044_hsgma2/cn_020.mp3",
         "select": [
-          "/assets/audio/voice/cn/char_1044_hsgma2/cn_021.mp3",
-          "/assets/audio/voice/cn/char_1044_hsgma2/cn_022.mp3"
+          "/assets/audio/voice/jp/char_1044_hsgma2/cn_021.mp3",
+          "/assets/audio/voice/jp/char_1044_hsgma2/cn_022.mp3"
         ],
         "place": [
-          "/assets/audio/voice/cn/char_1044_hsgma2/cn_023.mp3",
-          "/assets/audio/voice/cn/char_1044_hsgma2/cn_024.mp3"
+          "/assets/audio/voice/jp/char_1044_hsgma2/cn_023.mp3",
+          "/assets/audio/voice/jp/char_1044_hsgma2/cn_024.mp3"
         ],
-        "skill1": "/assets/audio/voice/cn/char_1044_hsgma2/cn_025.mp3",
-        "skill2": "/assets/audio/voice/cn/char_1044_hsgma2/cn_026.mp3",
-        "skill3": "/assets/audio/voice/cn/char_1044_hsgma2/cn_027.mp3",
-        "skill4": "/assets/audio/voice/cn/char_1044_hsgma2/cn_028.mp3",
-        "resultFour": "/assets/audio/voice/cn/char_1044_hsgma2/cn_029.mp3",
-        "resultThree": "/assets/audio/voice/cn/char_1044_hsgma2/cn_030.mp3",
-        "resultTwo": "/assets/audio/voice/cn/char_1044_hsgma2/cn_031.mp3",
-        "resultLose": "/assets/audio/voice/cn/char_1044_hsgma2/cn_032.mp3"
+        "skill1": "/assets/audio/voice/jp/char_1044_hsgma2/cn_025.mp3",
+        "skill2": "/assets/audio/voice/jp/char_1044_hsgma2/cn_026.mp3",
+        "skill3": "/assets/audio/voice/jp/char_1044_hsgma2/cn_027.mp3",
+        "skill4": "/assets/audio/voice/jp/char_1044_hsgma2/cn_028.mp3",
+        "resultFour": "/assets/audio/voice/jp/char_1044_hsgma2/cn_029.mp3",
+        "resultThree": "/assets/audio/voice/jp/char_1044_hsgma2/cn_030.mp3",
+        "resultTwo": "/assets/audio/voice/jp/char_1044_hsgma2/cn_031.mp3",
+        "resultLose": "/assets/audio/voice/jp/char_1044_hsgma2/cn_032.mp3"
       },
       "char_1050_chen3": {
-        "start": "/assets/audio/voice/cn/char_1050_chen3/cn_019.mp3",
-        "faceEnemy": "/assets/audio/voice/cn/char_1050_chen3/cn_020.mp3",
+        "start": "/assets/audio/voice/jp/char_1050_chen3/cn_019.mp3",
+        "faceEnemy": "/assets/audio/voice/jp/char_1050_chen3/cn_020.mp3",
         "select": [
-          "/assets/audio/voice/cn/char_1050_chen3/cn_021.mp3",
-          "/assets/audio/voice/cn/char_1050_chen3/cn_022.mp3"
+          "/assets/audio/voice/jp/char_1050_chen3/cn_021.mp3",
+          "/assets/audio/voice/jp/char_1050_chen3/cn_022.mp3"
         ],
         "place": [
-          "/assets/audio/voice/cn/char_1050_chen3/cn_023.mp3",
-          "/assets/audio/voice/cn/char_1050_chen3/cn_024.mp3"
+          "/assets/audio/voice/jp/char_1050_chen3/cn_023.mp3",
+          "/assets/audio/voice/jp/char_1050_chen3/cn_024.mp3"
         ],
-        "skill1": "/assets/audio/voice/cn/char_1050_chen3/cn_025.mp3",
-        "skill2": "/assets/audio/voice/cn/char_1050_chen3/cn_026.mp3",
-        "skill3": "/assets/audio/voice/cn/char_1050_chen3/cn_027.mp3",
-        "skill4": "/assets/audio/voice/cn/char_1050_chen3/cn_028.mp3",
-        "resultFour": "/assets/audio/voice/cn/char_1050_chen3/cn_029.mp3",
-        "resultThree": "/assets/audio/voice/cn/char_1050_chen3/cn_030.mp3",
-        "resultTwo": "/assets/audio/voice/cn/char_1050_chen3/cn_031.mp3",
-        "resultLose": "/assets/audio/voice/cn/char_1050_chen3/cn_032.mp3"
+        "skill1": "/assets/audio/voice/jp/char_1050_chen3/cn_025.mp3",
+        "skill2": "/assets/audio/voice/jp/char_1050_chen3/cn_026.mp3",
+        "skill3": "/assets/audio/voice/jp/char_1050_chen3/cn_027.mp3",
+        "skill4": "/assets/audio/voice/jp/char_1050_chen3/cn_028.mp3",
+        "resultFour": "/assets/audio/voice/jp/char_1050_chen3/cn_029.mp3",
+        "resultThree": "/assets/audio/voice/jp/char_1050_chen3/cn_030.mp3",
+        "resultTwo": "/assets/audio/voice/jp/char_1050_chen3/cn_031.mp3",
+        "resultLose": "/assets/audio/voice/jp/char_1050_chen3/cn_032.mp3"
       },
       "char_1051_headb2": {
-        "start": "/assets/audio/voice/cn/char_1051_headb2/cn_019.mp3",
-        "faceEnemy": "/assets/audio/voice/cn/char_1051_headb2/cn_020.mp3",
+        "start": "/assets/audio/voice/jp/char_1051_headb2/cn_019.mp3",
+        "faceEnemy": "/assets/audio/voice/jp/char_1051_headb2/cn_020.mp3",
         "select": [
-          "/assets/audio/voice/cn/char_1051_headb2/cn_021.mp3",
-          "/assets/audio/voice/cn/char_1051_headb2/cn_022.mp3"
+          "/assets/audio/voice/jp/char_1051_headb2/cn_021.mp3",
+          "/assets/audio/voice/jp/char_1051_headb2/cn_022.mp3"
         ],
         "place": [
-          "/assets/audio/voice/cn/char_1051_headb2/cn_023.mp3",
-          "/assets/audio/voice/cn/char_1051_headb2/cn_024.mp3"
+          "/assets/audio/voice/jp/char_1051_headb2/cn_023.mp3",
+          "/assets/audio/voice/jp/char_1051_headb2/cn_024.mp3"
         ],
-        "skill1": "/assets/audio/voice/cn/char_1051_headb2/cn_025.mp3",
-        "skill2": "/assets/audio/voice/cn/char_1051_headb2/cn_026.mp3",
-        "skill3": "/assets/audio/voice/cn/char_1051_headb2/cn_027.mp3",
-        "skill4": "/assets/audio/voice/cn/char_1051_headb2/cn_028.mp3",
-        "resultFour": "/assets/audio/voice/cn/char_1051_headb2/cn_029.mp3",
-        "resultThree": "/assets/audio/voice/cn/char_1051_headb2/cn_030.mp3",
-        "resultTwo": "/assets/audio/voice/cn/char_1051_headb2/cn_031.mp3",
-        "resultLose": "/assets/audio/voice/cn/char_1051_headb2/cn_032.mp3"
+        "skill1": "/assets/audio/voice/jp/char_1051_headb2/cn_025.mp3",
+        "skill2": "/assets/audio/voice/jp/char_1051_headb2/cn_026.mp3",
+        "skill3": "/assets/audio/voice/jp/char_1051_headb2/cn_027.mp3",
+        "skill4": "/assets/audio/voice/jp/char_1051_headb2/cn_028.mp3",
+        "resultFour": "/assets/audio/voice/jp/char_1051_headb2/cn_029.mp3",
+        "resultThree": "/assets/audio/voice/jp/char_1051_headb2/cn_030.mp3",
+        "resultTwo": "/assets/audio/voice/jp/char_1051_headb2/cn_031.mp3",
+        "resultLose": "/assets/audio/voice/jp/char_1051_headb2/cn_032.mp3"
       },
       "char_1052_kalts2": {
-        "start": "/assets/audio/voice/cn/char_1052_kalts2/cn_019.mp3",
-        "faceEnemy": "/assets/audio/voice/cn/char_1052_kalts2/cn_020.mp3",
+        "start": "/assets/audio/voice/jp/char_1052_kalts2/cn_019.mp3",
+        "faceEnemy": "/assets/audio/voice/jp/char_1052_kalts2/cn_020.mp3",
         "select": [
-          "/assets/audio/voice/cn/char_1052_kalts2/cn_021.mp3",
-          "/assets/audio/voice/cn/char_1052_kalts2/cn_022.mp3"
+          "/assets/audio/voice/jp/char_1052_kalts2/cn_021.mp3",
+          "/assets/audio/voice/jp/char_1052_kalts2/cn_022.mp3"
         ],
         "place": [
-          "/assets/audio/voice/cn/char_1052_kalts2/cn_023.mp3",
-          "/assets/audio/voice/cn/char_1052_kalts2/cn_024.mp3"
+          "/assets/audio/voice/jp/char_1052_kalts2/cn_023.mp3",
+          "/assets/audio/voice/jp/char_1052_kalts2/cn_024.mp3"
         ],
-        "skill1": "/assets/audio/voice/cn/char_1052_kalts2/cn_025.mp3",
-        "skill2": "/assets/audio/voice/cn/char_1052_kalts2/cn_026.mp3",
-        "skill3": "/assets/audio/voice/cn/char_1052_kalts2/cn_027.mp3",
-        "skill4": "/assets/audio/voice/cn/char_1052_kalts2/cn_028.mp3",
-        "resultFour": "/assets/audio/voice/cn/char_1052_kalts2/cn_029.mp3",
-        "resultThree": "/assets/audio/voice/cn/char_1052_kalts2/cn_030.mp3",
-        "resultTwo": "/assets/audio/voice/cn/char_1052_kalts2/cn_031.mp3",
-        "resultLose": "/assets/audio/voice/cn/char_1052_kalts2/cn_032.mp3"
+        "skill1": "/assets/audio/voice/jp/char_1052_kalts2/cn_025.mp3",
+        "skill2": "/assets/audio/voice/jp/char_1052_kalts2/cn_026.mp3",
+        "skill3": "/assets/audio/voice/jp/char_1052_kalts2/cn_027.mp3",
+        "skill4": "/assets/audio/voice/jp/char_1052_kalts2/cn_028.mp3",
+        "resultFour": "/assets/audio/voice/jp/char_1052_kalts2/cn_029.mp3",
+        "resultThree": "/assets/audio/voice/jp/char_1052_kalts2/cn_030.mp3",
+        "resultTwo": "/assets/audio/voice/jp/char_1052_kalts2/cn_031.mp3",
+        "resultLose": "/assets/audio/voice/jp/char_1052_kalts2/cn_032.mp3"
       },
       "char_1502_crosly": {
-        "start": "/assets/audio/voice/cn/char_1502_crosly/cn_019.mp3",
-        "faceEnemy": "/assets/audio/voice/cn/char_1502_crosly/cn_020.mp3",
+        "start": "/assets/audio/voice/jp/char_1502_crosly/cn_019.mp3",
+        "faceEnemy": "/assets/audio/voice/jp/char_1502_crosly/cn_020.mp3",
         "select": [
-          "/assets/audio/voice/cn/char_1502_crosly/cn_021.mp3",
-          "/assets/audio/voice/cn/char_1502_crosly/cn_022.mp3"
+          "/assets/audio/voice/jp/char_1502_crosly/cn_021.mp3",
+          "/assets/audio/voice/jp/char_1502_crosly/cn_022.mp3"
         ],
         "place": [
-          "/assets/audio/voice/cn/char_1502_crosly/cn_023.mp3",
-          "/assets/audio/voice/cn/char_1502_crosly/cn_024.mp3"
+          "/assets/audio/voice/jp/char_1502_crosly/cn_023.mp3",
+          "/assets/audio/voice/jp/char_1502_crosly/cn_024.mp3"
         ],
-        "skill1": "/assets/audio/voice/cn/char_1502_crosly/cn_025.mp3",
-        "skill2": "/assets/audio/voice/cn/char_1502_crosly/cn_026.mp3",
-        "skill3": "/assets/audio/voice/cn/char_1502_crosly/cn_027.mp3",
-        "skill4": "/assets/audio/voice/cn/char_1502_crosly/cn_028.mp3",
-        "resultFour": "/assets/audio/voice/cn/char_1502_crosly/cn_029.mp3",
-        "resultThree": "/assets/audio/voice/cn/char_1502_crosly/cn_030.mp3",
-        "resultTwo": "/assets/audio/voice/cn/char_1502_crosly/cn_031.mp3",
-        "resultLose": "/assets/audio/voice/cn/char_1502_crosly/cn_032.mp3"
+        "skill1": "/assets/audio/voice/jp/char_1502_crosly/cn_025.mp3",
+        "skill2": "/assets/audio/voice/jp/char_1502_crosly/cn_026.mp3",
+        "skill3": "/assets/audio/voice/jp/char_1502_crosly/cn_027.mp3",
+        "skill4": "/assets/audio/voice/jp/char_1502_crosly/cn_028.mp3",
+        "resultFour": "/assets/audio/voice/jp/char_1502_crosly/cn_029.mp3",
+        "resultThree": "/assets/audio/voice/jp/char_1502_crosly/cn_030.mp3",
+        "resultTwo": "/assets/audio/voice/jp/char_1502_crosly/cn_031.mp3",
+        "resultLose": "/assets/audio/voice/jp/char_1502_crosly/cn_032.mp3"
       },
       "char_2012_typhon": {
-        "start": "/assets/audio/voice/cn/char_2012_typhon/cn_019.mp3",
-        "faceEnemy": "/assets/audio/voice/cn/char_2012_typhon/cn_020.mp3",
+        "start": "/assets/audio/voice/jp/char_2012_typhon/cn_019.mp3",
+        "faceEnemy": "/assets/audio/voice/jp/char_2012_typhon/cn_020.mp3",
         "select": [
-          "/assets/audio/voice/cn/char_2012_typhon/cn_021.mp3",
-          "/assets/audio/voice/cn/char_2012_typhon/cn_022.mp3"
+          "/assets/audio/voice/jp/char_2012_typhon/cn_021.mp3",
+          "/assets/audio/voice/jp/char_2012_typhon/cn_022.mp3"
         ],
         "place": [
-          "/assets/audio/voice/cn/char_2012_typhon/cn_023.mp3",
-          "/assets/audio/voice/cn/char_2012_typhon/cn_024.mp3"
+          "/assets/audio/voice/jp/char_2012_typhon/cn_023.mp3",
+          "/assets/audio/voice/jp/char_2012_typhon/cn_024.mp3"
         ],
-        "skill1": "/assets/audio/voice/cn/char_2012_typhon/cn_025.mp3",
-        "skill2": "/assets/audio/voice/cn/char_2012_typhon/cn_026.mp3",
-        "skill3": "/assets/audio/voice/cn/char_2012_typhon/cn_027.mp3",
-        "skill4": "/assets/audio/voice/cn/char_2012_typhon/cn_028.mp3",
-        "resultFour": "/assets/audio/voice/cn/char_2012_typhon/cn_029.mp3",
-        "resultThree": "/assets/audio/voice/cn/char_2012_typhon/cn_030.mp3",
-        "resultTwo": "/assets/audio/voice/cn/char_2012_typhon/cn_031.mp3",
-        "resultLose": "/assets/audio/voice/cn/char_2012_typhon/cn_032.mp3"
+        "skill1": "/assets/audio/voice/jp/char_2012_typhon/cn_025.mp3",
+        "skill2": "/assets/audio/voice/jp/char_2012_typhon/cn_026.mp3",
+        "skill3": "/assets/audio/voice/jp/char_2012_typhon/cn_027.mp3",
+        "skill4": "/assets/audio/voice/jp/char_2012_typhon/cn_028.mp3",
+        "resultFour": "/assets/audio/voice/jp/char_2012_typhon/cn_029.mp3",
+        "resultThree": "/assets/audio/voice/jp/char_2012_typhon/cn_030.mp3",
+        "resultTwo": "/assets/audio/voice/jp/char_2012_typhon/cn_031.mp3",
+        "resultLose": "/assets/audio/voice/jp/char_2012_typhon/cn_032.mp3"
       },
       "char_2013_cerber": {
-        "start": "/assets/audio/voice/cn/char_2013_cerber/cn_019.mp3",
-        "faceEnemy": "/assets/audio/voice/cn/char_2013_cerber/cn_020.mp3",
+        "start": "/assets/audio/voice/jp/char_2013_cerber/cn_019.mp3",
+        "faceEnemy": "/assets/audio/voice/jp/char_2013_cerber/cn_020.mp3",
         "select": [
-          "/assets/audio/voice/cn/char_2013_cerber/cn_021.mp3",
-          "/assets/audio/voice/cn/char_2013_cerber/cn_022.mp3"
+          "/assets/audio/voice/jp/char_2013_cerber/cn_021.mp3",
+          "/assets/audio/voice/jp/char_2013_cerber/cn_022.mp3"
         ],
         "place": [
-          "/assets/audio/voice/cn/char_2013_cerber/cn_023.mp3",
-          "/assets/audio/voice/cn/char_2013_cerber/cn_024.mp3"
+          "/assets/audio/voice/jp/char_2013_cerber/cn_023.mp3",
+          "/assets/audio/voice/jp/char_2013_cerber/cn_024.mp3"
         ],
-        "skill1": "/assets/audio/voice/cn/char_2013_cerber/cn_025.mp3",
-        "skill2": "/assets/audio/voice/cn/char_2013_cerber/cn_026.mp3",
-        "skill3": "/assets/audio/voice/cn/char_2013_cerber/cn_027.mp3",
-        "skill4": "/assets/audio/voice/cn/char_2013_cerber/cn_028.mp3",
-        "resultFour": "/assets/audio/voice/cn/char_2013_cerber/cn_029.mp3",
-        "resultThree": "/assets/audio/voice/cn/char_2013_cerber/cn_030.mp3",
-        "resultTwo": "/assets/audio/voice/cn/char_2013_cerber/cn_031.mp3",
-        "resultLose": "/assets/audio/voice/cn/char_2013_cerber/cn_032.mp3"
+        "skill1": "/assets/audio/voice/jp/char_2013_cerber/cn_025.mp3",
+        "skill2": "/assets/audio/voice/jp/char_2013_cerber/cn_026.mp3",
+        "skill3": "/assets/audio/voice/jp/char_2013_cerber/cn_027.mp3",
+        "skill4": "/assets/audio/voice/jp/char_2013_cerber/cn_028.mp3",
+        "resultFour": "/assets/audio/voice/jp/char_2013_cerber/cn_029.mp3",
+        "resultThree": "/assets/audio/voice/jp/char_2013_cerber/cn_030.mp3",
+        "resultTwo": "/assets/audio/voice/jp/char_2013_cerber/cn_031.mp3",
+        "resultLose": "/assets/audio/voice/jp/char_2013_cerber/cn_032.mp3"
       },
       "char_2014_nian": {
-        "start": "/assets/audio/voice/cn/char_2014_nian/cn_019.mp3",
-        "faceEnemy": "/assets/audio/voice/cn/char_2014_nian/cn_020.mp3",
+        "start": "/assets/audio/voice/jp/char_2014_nian/cn_019.mp3",
+        "faceEnemy": "/assets/audio/voice/jp/char_2014_nian/cn_020.mp3",
         "select": [
-          "/assets/audio/voice/cn/char_2014_nian/cn_021.mp3",
-          "/assets/audio/voice/cn/char_2014_nian/cn_022.mp3"
+          "/assets/audio/voice/jp/char_2014_nian/cn_021.mp3",
+          "/assets/audio/voice/jp/char_2014_nian/cn_022.mp3"
         ],
         "place": [
-          "/assets/audio/voice/cn/char_2014_nian/cn_023.mp3",
-          "/assets/audio/voice/cn/char_2014_nian/cn_024.mp3"
+          "/assets/audio/voice/jp/char_2014_nian/cn_023.mp3",
+          "/assets/audio/voice/jp/char_2014_nian/cn_024.mp3"
         ],
-        "skill1": "/assets/audio/voice/cn/char_2014_nian/cn_025.mp3",
-        "skill2": "/assets/audio/voice/cn/char_2014_nian/cn_026.mp3",
-        "skill3": "/assets/audio/voice/cn/char_2014_nian/cn_027.mp3",
-        "skill4": "/assets/audio/voice/cn/char_2014_nian/cn_028.mp3",
-        "resultFour": "/assets/audio/voice/cn/char_2014_nian/cn_029.mp3",
-        "resultThree": "/assets/audio/voice/cn/char_2014_nian/cn_030.mp3",
-        "resultTwo": "/assets/audio/voice/cn/char_2014_nian/cn_031.mp3",
-        "resultLose": "/assets/audio/voice/cn/char_2014_nian/cn_032.mp3"
+        "skill1": "/assets/audio/voice/jp/char_2014_nian/cn_025.mp3",
+        "skill2": "/assets/audio/voice/jp/char_2014_nian/cn_026.mp3",
+        "skill3": "/assets/audio/voice/jp/char_2014_nian/cn_027.mp3",
+        "skill4": "/assets/audio/voice/jp/char_2014_nian/cn_028.mp3",
+        "resultFour": "/assets/audio/voice/jp/char_2014_nian/cn_029.mp3",
+        "resultThree": "/assets/audio/voice/jp/char_2014_nian/cn_030.mp3",
+        "resultTwo": "/assets/audio/voice/jp/char_2014_nian/cn_031.mp3",
+        "resultLose": "/assets/audio/voice/jp/char_2014_nian/cn_032.mp3"
       },
       "char_2023_ling": {
-        "start": "/assets/audio/voice/cn/char_2023_ling/cn_019.mp3",
-        "faceEnemy": "/assets/audio/voice/cn/char_2023_ling/cn_020.mp3",
+        "start": "/assets/audio/voice/jp/char_2023_ling/cn_019.mp3",
+        "faceEnemy": "/assets/audio/voice/jp/char_2023_ling/cn_020.mp3",
         "select": [
-          "/assets/audio/voice/cn/char_2023_ling/cn_021.mp3",
-          "/assets/audio/voice/cn/char_2023_ling/cn_022.mp3"
+          "/assets/audio/voice/jp/char_2023_ling/cn_021.mp3",
+          "/assets/audio/voice/jp/char_2023_ling/cn_022.mp3"
         ],
         "place": [
-          "/assets/audio/voice/cn/char_2023_ling/cn_023.mp3",
-          "/assets/audio/voice/cn/char_2023_ling/cn_024.mp3"
+          "/assets/audio/voice/jp/char_2023_ling/cn_023.mp3",
+          "/assets/audio/voice/jp/char_2023_ling/cn_024.mp3"
         ],
-        "skill1": "/assets/audio/voice/cn/char_2023_ling/cn_025.mp3",
-        "skill2": "/assets/audio/voice/cn/char_2023_ling/cn_026.mp3",
-        "skill3": "/assets/audio/voice/cn/char_2023_ling/cn_027.mp3",
-        "skill4": "/assets/audio/voice/cn/char_2023_ling/cn_028.mp3",
-        "resultFour": "/assets/audio/voice/cn/char_2023_ling/cn_029.mp3",
-        "resultThree": "/assets/audio/voice/cn/char_2023_ling/cn_030.mp3",
-        "resultTwo": "/assets/audio/voice/cn/char_2023_ling/cn_031.mp3",
-        "resultLose": "/assets/audio/voice/cn/char_2023_ling/cn_032.mp3"
+        "skill1": "/assets/audio/voice/jp/char_2023_ling/cn_025.mp3",
+        "skill2": "/assets/audio/voice/jp/char_2023_ling/cn_026.mp3",
+        "skill3": "/assets/audio/voice/jp/char_2023_ling/cn_027.mp3",
+        "skill4": "/assets/audio/voice/jp/char_2023_ling/cn_028.mp3",
+        "resultFour": "/assets/audio/voice/jp/char_2023_ling/cn_029.mp3",
+        "resultThree": "/assets/audio/voice/jp/char_2023_ling/cn_030.mp3",
+        "resultTwo": "/assets/audio/voice/jp/char_2023_ling/cn_031.mp3",
+        "resultLose": "/assets/audio/voice/jp/char_2023_ling/cn_032.mp3"
       },
       "char_2024_chyue": {
-        "start": "/assets/audio/voice/cn/char_2024_chyue/cn_019.mp3",
-        "faceEnemy": "/assets/audio/voice/cn/char_2024_chyue/cn_020.mp3",
+        "start": "/assets/audio/voice/jp/char_2024_chyue/cn_019.mp3",
+        "faceEnemy": "/assets/audio/voice/jp/char_2024_chyue/cn_020.mp3",
         "select": [
-          "/assets/audio/voice/cn/char_2024_chyue/cn_021.mp3",
-          "/assets/audio/voice/cn/char_2024_chyue/cn_022.mp3"
+          "/assets/audio/voice/jp/char_2024_chyue/cn_021.mp3",
+          "/assets/audio/voice/jp/char_2024_chyue/cn_022.mp3"
         ],
         "place": [
-          "/assets/audio/voice/cn/char_2024_chyue/cn_023.mp3",
-          "/assets/audio/voice/cn/char_2024_chyue/cn_024.mp3"
+          "/assets/audio/voice/jp/char_2024_chyue/cn_023.mp3",
+          "/assets/audio/voice/jp/char_2024_chyue/cn_024.mp3"
         ],
-        "skill1": "/assets/audio/voice/cn/char_2024_chyue/cn_025.mp3",
-        "skill2": "/assets/audio/voice/cn/char_2024_chyue/cn_026.mp3",
-        "skill3": "/assets/audio/voice/cn/char_2024_chyue/cn_027.mp3",
-        "skill4": "/assets/audio/voice/cn/char_2024_chyue/cn_028.mp3",
-        "resultFour": "/assets/audio/voice/cn/char_2024_chyue/cn_029.mp3",
-        "resultThree": "/assets/audio/voice/cn/char_2024_chyue/cn_030.mp3",
-        "resultTwo": "/assets/audio/voice/cn/char_2024_chyue/cn_031.mp3",
-        "resultLose": "/assets/audio/voice/cn/char_2024_chyue/cn_032.mp3"
+        "skill1": "/assets/audio/voice/jp/char_2024_chyue/cn_025.mp3",
+        "skill2": "/assets/audio/voice/jp/char_2024_chyue/cn_026.mp3",
+        "skill3": "/assets/audio/voice/jp/char_2024_chyue/cn_027.mp3",
+        "skill4": "/assets/audio/voice/jp/char_2024_chyue/cn_028.mp3",
+        "resultFour": "/assets/audio/voice/jp/char_2024_chyue/cn_029.mp3",
+        "resultThree": "/assets/audio/voice/jp/char_2024_chyue/cn_030.mp3",
+        "resultTwo": "/assets/audio/voice/jp/char_2024_chyue/cn_031.mp3",
+        "resultLose": "/assets/audio/voice/jp/char_2024_chyue/cn_032.mp3"
       },
       "char_2025_shu": {
-        "start": "/assets/audio/voice/cn/char_2025_shu/cn_019.mp3",
-        "faceEnemy": "/assets/audio/voice/cn/char_2025_shu/cn_020.mp3",
+        "start": "/assets/audio/voice/jp/char_2025_shu/cn_019.mp3",
+        "faceEnemy": "/assets/audio/voice/jp/char_2025_shu/cn_020.mp3",
         "select": [
-          "/assets/audio/voice/cn/char_2025_shu/cn_021.mp3",
-          "/assets/audio/voice/cn/char_2025_shu/cn_022.mp3"
+          "/assets/audio/voice/jp/char_2025_shu/cn_021.mp3",
+          "/assets/audio/voice/jp/char_2025_shu/cn_022.mp3"
         ],
         "place": [
-          "/assets/audio/voice/cn/char_2025_shu/cn_023.mp3",
-          "/assets/audio/voice/cn/char_2025_shu/cn_024.mp3"
+          "/assets/audio/voice/jp/char_2025_shu/cn_023.mp3",
+          "/assets/audio/voice/jp/char_2025_shu/cn_024.mp3"
         ],
-        "skill1": "/assets/audio/voice/cn/char_2025_shu/cn_025.mp3",
-        "skill2": "/assets/audio/voice/cn/char_2025_shu/cn_026.mp3",
-        "skill3": "/assets/audio/voice/cn/char_2025_shu/cn_027.mp3",
-        "skill4": "/assets/audio/voice/cn/char_2025_shu/cn_028.mp3",
-        "resultFour": "/assets/audio/voice/cn/char_2025_shu/cn_029.mp3",
-        "resultThree": "/assets/audio/voice/cn/char_2025_shu/cn_030.mp3",
-        "resultTwo": "/assets/audio/voice/cn/char_2025_shu/cn_031.mp3",
-        "resultLose": "/assets/audio/voice/cn/char_2025_shu/cn_032.mp3"
+        "skill1": "/assets/audio/voice/jp/char_2025_shu/cn_025.mp3",
+        "skill2": "/assets/audio/voice/jp/char_2025_shu/cn_026.mp3",
+        "skill3": "/assets/audio/voice/jp/char_2025_shu/cn_027.mp3",
+        "skill4": "/assets/audio/voice/jp/char_2025_shu/cn_028.mp3",
+        "resultFour": "/assets/audio/voice/jp/char_2025_shu/cn_029.mp3",
+        "resultThree": "/assets/audio/voice/jp/char_2025_shu/cn_030.mp3",
+        "resultTwo": "/assets/audio/voice/jp/char_2025_shu/cn_031.mp3",
+        "resultLose": "/assets/audio/voice/jp/char_2025_shu/cn_032.mp3"
       },
       "char_2027_wang": {
-        "start": "/assets/audio/voice/cn/char_2027_wang/cn_019.mp3",
-        "faceEnemy": "/assets/audio/voice/cn/char_2027_wang/cn_020.mp3",
+        "start": "/assets/audio/voice/jp/char_2027_wang/cn_019.mp3",
+        "faceEnemy": "/assets/audio/voice/jp/char_2027_wang/cn_020.mp3",
         "select": [
-          "/assets/audio/voice/cn/char_2027_wang/cn_021.mp3",
-          "/assets/audio/voice/cn/char_2027_wang/cn_022.mp3"
+          "/assets/audio/voice/jp/char_2027_wang/cn_021.mp3",
+          "/assets/audio/voice/jp/char_2027_wang/cn_022.mp3"
         ],
         "place": [
-          "/assets/audio/voice/cn/char_2027_wang/cn_023.mp3",
-          "/assets/audio/voice/cn/char_2027_wang/cn_024.mp3"
+          "/assets/audio/voice/jp/char_2027_wang/cn_023.mp3",
+          "/assets/audio/voice/jp/char_2027_wang/cn_024.mp3"
         ],
-        "skill1": "/assets/audio/voice/cn/char_2027_wang/cn_025.mp3",
-        "skill2": "/assets/audio/voice/cn/char_2027_wang/cn_026.mp3",
-        "skill3": "/assets/audio/voice/cn/char_2027_wang/cn_027.mp3",
-        "skill4": "/assets/audio/voice/cn/char_2027_wang/cn_028.mp3",
-        "resultFour": "/assets/audio/voice/cn/char_2027_wang/cn_029.mp3",
-        "resultThree": "/assets/audio/voice/cn/char_2027_wang/cn_030.mp3",
-        "resultTwo": "/assets/audio/voice/cn/char_2027_wang/cn_031.mp3",
-        "resultLose": "/assets/audio/voice/cn/char_2027_wang/cn_032.mp3"
+        "skill1": "/assets/audio/voice/jp/char_2027_wang/cn_025.mp3",
+        "skill2": "/assets/audio/voice/jp/char_2027_wang/cn_026.mp3",
+        "skill3": "/assets/audio/voice/jp/char_2027_wang/cn_027.mp3",
+        "skill4": "/assets/audio/voice/jp/char_2027_wang/cn_028.mp3",
+        "resultFour": "/assets/audio/voice/jp/char_2027_wang/cn_029.mp3",
+        "resultThree": "/assets/audio/voice/jp/char_2027_wang/cn_030.mp3",
+        "resultTwo": "/assets/audio/voice/jp/char_2027_wang/cn_031.mp3",
+        "resultLose": "/assets/audio/voice/jp/char_2027_wang/cn_032.mp3"
       },
       "char_4009_irene": {
-        "start": "/assets/audio/voice/cn/char_4009_irene/cn_019.mp3",
-        "faceEnemy": "/assets/audio/voice/cn/char_4009_irene/cn_020.mp3",
+        "start": "/assets/audio/voice/jp/char_4009_irene/cn_019.mp3",
+        "faceEnemy": "/assets/audio/voice/jp/char_4009_irene/cn_020.mp3",
         "select": [
-          "/assets/audio/voice/cn/char_4009_irene/cn_021.mp3",
-          "/assets/audio/voice/cn/char_4009_irene/cn_022.mp3"
+          "/assets/audio/voice/jp/char_4009_irene/cn_021.mp3",
+          "/assets/audio/voice/jp/char_4009_irene/cn_022.mp3"
         ],
         "place": [
-          "/assets/audio/voice/cn/char_4009_irene/cn_023.mp3",
-          "/assets/audio/voice/cn/char_4009_irene/cn_024.mp3"
+          "/assets/audio/voice/jp/char_4009_irene/cn_023.mp3",
+          "/assets/audio/voice/jp/char_4009_irene/cn_024.mp3"
         ],
-        "skill1": "/assets/audio/voice/cn/char_4009_irene/cn_025.mp3",
-        "skill2": "/assets/audio/voice/cn/char_4009_irene/cn_026.mp3",
-        "skill3": "/assets/audio/voice/cn/char_4009_irene/cn_027.mp3",
-        "skill4": "/assets/audio/voice/cn/char_4009_irene/cn_028.mp3",
-        "resultFour": "/assets/audio/voice/cn/char_4009_irene/cn_029.mp3",
-        "resultThree": "/assets/audio/voice/cn/char_4009_irene/cn_030.mp3",
-        "resultTwo": "/assets/audio/voice/cn/char_4009_irene/cn_031.mp3",
-        "resultLose": "/assets/audio/voice/cn/char_4009_irene/cn_032.mp3"
+        "skill1": "/assets/audio/voice/jp/char_4009_irene/cn_025.mp3",
+        "skill2": "/assets/audio/voice/jp/char_4009_irene/cn_026.mp3",
+        "skill3": "/assets/audio/voice/jp/char_4009_irene/cn_027.mp3",
+        "skill4": "/assets/audio/voice/jp/char_4009_irene/cn_028.mp3",
+        "resultFour": "/assets/audio/voice/jp/char_4009_irene/cn_029.mp3",
+        "resultThree": "/assets/audio/voice/jp/char_4009_irene/cn_030.mp3",
+        "resultTwo": "/assets/audio/voice/jp/char_4009_irene/cn_031.mp3",
+        "resultLose": "/assets/audio/voice/jp/char_4009_irene/cn_032.mp3"
       },
       "char_4011_lessng": {
-        "start": "/assets/audio/voice/cn/char_4011_lessng/cn_019.mp3",
-        "faceEnemy": "/assets/audio/voice/cn/char_4011_lessng/cn_020.mp3",
+        "start": "/assets/audio/voice/jp/char_4011_lessng/cn_019.mp3",
+        "faceEnemy": "/assets/audio/voice/jp/char_4011_lessng/cn_020.mp3",
         "select": [
-          "/assets/audio/voice/cn/char_4011_lessng/cn_021.mp3",
-          "/assets/audio/voice/cn/char_4011_lessng/cn_022.mp3"
+          "/assets/audio/voice/jp/char_4011_lessng/cn_021.mp3",
+          "/assets/audio/voice/jp/char_4011_lessng/cn_022.mp3"
         ],
         "place": [
-          "/assets/audio/voice/cn/char_4011_lessng/cn_023.mp3",
-          "/assets/audio/voice/cn/char_4011_lessng/cn_024.mp3"
+          "/assets/audio/voice/jp/char_4011_lessng/cn_023.mp3",
+          "/assets/audio/voice/jp/char_4011_lessng/cn_024.mp3"
         ],
-        "skill1": "/assets/audio/voice/cn/char_4011_lessng/cn_025.mp3",
-        "skill2": "/assets/audio/voice/cn/char_4011_lessng/cn_026.mp3",
-        "skill3": "/assets/audio/voice/cn/char_4011_lessng/cn_027.mp3",
-        "skill4": "/assets/audio/voice/cn/char_4011_lessng/cn_028.mp3",
-        "resultFour": "/assets/audio/voice/cn/char_4011_lessng/cn_029.mp3",
-        "resultThree": "/assets/audio/voice/cn/char_4011_lessng/cn_030.mp3",
-        "resultTwo": "/assets/audio/voice/cn/char_4011_lessng/cn_031.mp3",
-        "resultLose": "/assets/audio/voice/cn/char_4011_lessng/cn_032.mp3"
+        "skill1": "/assets/audio/voice/jp/char_4011_lessng/cn_025.mp3",
+        "skill2": "/assets/audio/voice/jp/char_4011_lessng/cn_026.mp3",
+        "skill3": "/assets/audio/voice/jp/char_4011_lessng/cn_027.mp3",
+        "skill4": "/assets/audio/voice/jp/char_4011_lessng/cn_028.mp3",
+        "resultFour": "/assets/audio/voice/jp/char_4011_lessng/cn_029.mp3",
+        "resultThree": "/assets/audio/voice/jp/char_4011_lessng/cn_030.mp3",
+        "resultTwo": "/assets/audio/voice/jp/char_4011_lessng/cn_031.mp3",
+        "resultLose": "/assets/audio/voice/jp/char_4011_lessng/cn_032.mp3"
       },
       "char_4027_heyak": {
-        "start": "/assets/audio/voice/cn/char_4027_heyak/cn_019.mp3",
-        "faceEnemy": "/assets/audio/voice/cn/char_4027_heyak/cn_020.mp3",
+        "start": "/assets/audio/voice/jp/char_4027_heyak/cn_019.mp3",
+        "faceEnemy": "/assets/audio/voice/jp/char_4027_heyak/cn_020.mp3",
         "select": [
-          "/assets/audio/voice/cn/char_4027_heyak/cn_021.mp3",
-          "/assets/audio/voice/cn/char_4027_heyak/cn_022.mp3"
+          "/assets/audio/voice/jp/char_4027_heyak/cn_021.mp3",
+          "/assets/audio/voice/jp/char_4027_heyak/cn_022.mp3"
         ],
         "place": [
-          "/assets/audio/voice/cn/char_4027_heyak/cn_023.mp3",
-          "/assets/audio/voice/cn/char_4027_heyak/cn_024.mp3"
+          "/assets/audio/voice/jp/char_4027_heyak/cn_023.mp3",
+          "/assets/audio/voice/jp/char_4027_heyak/cn_024.mp3"
         ],
-        "skill1": "/assets/audio/voice/cn/char_4027_heyak/cn_025.mp3",
-        "skill2": "/assets/audio/voice/cn/char_4027_heyak/cn_026.mp3",
-        "skill3": "/assets/audio/voice/cn/char_4027_heyak/cn_027.mp3",
-        "skill4": "/assets/audio/voice/cn/char_4027_heyak/cn_028.mp3",
-        "resultFour": "/assets/audio/voice/cn/char_4027_heyak/cn_029.mp3",
-        "resultThree": "/assets/audio/voice/cn/char_4027_heyak/cn_030.mp3",
-        "resultTwo": "/assets/audio/voice/cn/char_4027_heyak/cn_031.mp3",
-        "resultLose": "/assets/audio/voice/cn/char_4027_heyak/cn_032.mp3"
+        "skill1": "/assets/audio/voice/jp/char_4027_heyak/cn_025.mp3",
+        "skill2": "/assets/audio/voice/jp/char_4027_heyak/cn_026.mp3",
+        "skill3": "/assets/audio/voice/jp/char_4027_heyak/cn_027.mp3",
+        "skill4": "/assets/audio/voice/jp/char_4027_heyak/cn_028.mp3",
+        "resultFour": "/assets/audio/voice/jp/char_4027_heyak/cn_029.mp3",
+        "resultThree": "/assets/audio/voice/jp/char_4027_heyak/cn_030.mp3",
+        "resultTwo": "/assets/audio/voice/jp/char_4027_heyak/cn_031.mp3",
+        "resultLose": "/assets/audio/voice/jp/char_4027_heyak/cn_032.mp3"
       },
       "char_4037_demetr": {
-        "start": "/assets/audio/voice/cn/char_4037_demetr/cn_019.mp3",
-        "faceEnemy": "/assets/audio/voice/cn/char_4037_demetr/cn_020.mp3",
+        "start": "/assets/audio/voice/jp/char_4037_demetr/cn_019.mp3",
+        "faceEnemy": "/assets/audio/voice/jp/char_4037_demetr/cn_020.mp3",
         "select": [
-          "/assets/audio/voice/cn/char_4037_demetr/cn_021.mp3",
-          "/assets/audio/voice/cn/char_4037_demetr/cn_022.mp3"
+          "/assets/audio/voice/jp/char_4037_demetr/cn_021.mp3",
+          "/assets/audio/voice/jp/char_4037_demetr/cn_022.mp3"
         ],
         "place": [
-          "/assets/audio/voice/cn/char_4037_demetr/cn_023.mp3",
-          "/assets/audio/voice/cn/char_4037_demetr/cn_024.mp3"
+          "/assets/audio/voice/jp/char_4037_demetr/cn_023.mp3",
+          "/assets/audio/voice/jp/char_4037_demetr/cn_024.mp3"
         ],
-        "skill1": "/assets/audio/voice/cn/char_4037_demetr/cn_025.mp3",
-        "skill2": "/assets/audio/voice/cn/char_4037_demetr/cn_026.mp3",
-        "skill3": "/assets/audio/voice/cn/char_4037_demetr/cn_027.mp3",
-        "skill4": "/assets/audio/voice/cn/char_4037_demetr/cn_028.mp3",
-        "resultFour": "/assets/audio/voice/cn/char_4037_demetr/cn_029.mp3",
-        "resultThree": "/assets/audio/voice/cn/char_4037_demetr/cn_030.mp3",
-        "resultTwo": "/assets/audio/voice/cn/char_4037_demetr/cn_031.mp3",
-        "resultLose": "/assets/audio/voice/cn/char_4037_demetr/cn_032.mp3"
+        "skill1": "/assets/audio/voice/jp/char_4037_demetr/cn_025.mp3",
+        "skill2": "/assets/audio/voice/jp/char_4037_demetr/cn_026.mp3",
+        "skill3": "/assets/audio/voice/jp/char_4037_demetr/cn_027.mp3",
+        "skill4": "/assets/audio/voice/jp/char_4037_demetr/cn_028.mp3",
+        "resultFour": "/assets/audio/voice/jp/char_4037_demetr/cn_029.mp3",
+        "resultThree": "/assets/audio/voice/jp/char_4037_demetr/cn_030.mp3",
+        "resultTwo": "/assets/audio/voice/jp/char_4037_demetr/cn_031.mp3",
+        "resultLose": "/assets/audio/voice/jp/char_4037_demetr/cn_032.mp3"
       },
       "char_4046_ebnhlz": {
-        "start": "/assets/audio/voice/cn/char_4046_ebnhlz/cn_019.mp3",
-        "faceEnemy": "/assets/audio/voice/cn/char_4046_ebnhlz/cn_020.mp3",
+        "start": "/assets/audio/voice/jp/char_4046_ebnhlz/cn_019.mp3",
+        "faceEnemy": "/assets/audio/voice/jp/char_4046_ebnhlz/cn_020.mp3",
         "select": [
-          "/assets/audio/voice/cn/char_4046_ebnhlz/cn_021.mp3",
-          "/assets/audio/voice/cn/char_4046_ebnhlz/cn_022.mp3"
+          "/assets/audio/voice/jp/char_4046_ebnhlz/cn_021.mp3",
+          "/assets/audio/voice/jp/char_4046_ebnhlz/cn_022.mp3"
         ],
         "place": [
-          "/assets/audio/voice/cn/char_4046_ebnhlz/cn_023.mp3",
-          "/assets/audio/voice/cn/char_4046_ebnhlz/cn_024.mp3"
+          "/assets/audio/voice/jp/char_4046_ebnhlz/cn_023.mp3",
+          "/assets/audio/voice/jp/char_4046_ebnhlz/cn_024.mp3"
         ],
-        "skill1": "/assets/audio/voice/cn/char_4046_ebnhlz/cn_025.mp3",
-        "skill2": "/assets/audio/voice/cn/char_4046_ebnhlz/cn_026.mp3",
-        "skill3": "/assets/audio/voice/cn/char_4046_ebnhlz/cn_027.mp3",
-        "skill4": "/assets/audio/voice/cn/char_4046_ebnhlz/cn_028.mp3",
-        "resultFour": "/assets/audio/voice/cn/char_4046_ebnhlz/cn_029.mp3",
-        "resultThree": "/assets/audio/voice/cn/char_4046_ebnhlz/cn_030.mp3",
-        "resultTwo": "/assets/audio/voice/cn/char_4046_ebnhlz/cn_031.mp3",
-        "resultLose": "/assets/audio/voice/cn/char_4046_ebnhlz/cn_032.mp3"
+        "skill1": "/assets/audio/voice/jp/char_4046_ebnhlz/cn_025.mp3",
+        "skill2": "/assets/audio/voice/jp/char_4046_ebnhlz/cn_026.mp3",
+        "skill3": "/assets/audio/voice/jp/char_4046_ebnhlz/cn_027.mp3",
+        "skill4": "/assets/audio/voice/jp/char_4046_ebnhlz/cn_028.mp3",
+        "resultFour": "/assets/audio/voice/jp/char_4046_ebnhlz/cn_029.mp3",
+        "resultThree": "/assets/audio/voice/jp/char_4046_ebnhlz/cn_030.mp3",
+        "resultTwo": "/assets/audio/voice/jp/char_4046_ebnhlz/cn_031.mp3",
+        "resultLose": "/assets/audio/voice/jp/char_4046_ebnhlz/cn_032.mp3"
       },
       "char_4048_doroth": {
-        "start": "/assets/audio/voice/cn/char_4048_doroth/cn_019.mp3",
-        "faceEnemy": "/assets/audio/voice/cn/char_4048_doroth/cn_020.mp3",
+        "start": "/assets/audio/voice/jp/char_4048_doroth/cn_019.mp3",
+        "faceEnemy": "/assets/audio/voice/jp/char_4048_doroth/cn_020.mp3",
         "select": [
-          "/assets/audio/voice/cn/char_4048_doroth/cn_021.mp3",
-          "/assets/audio/voice/cn/char_4048_doroth/cn_022.mp3"
+          "/assets/audio/voice/jp/char_4048_doroth/cn_021.mp3",
+          "/assets/audio/voice/jp/char_4048_doroth/cn_022.mp3"
         ],
         "place": [
-          "/assets/audio/voice/cn/char_4048_doroth/cn_023.mp3",
-          "/assets/audio/voice/cn/char_4048_doroth/cn_024.mp3"
+          "/assets/audio/voice/jp/char_4048_doroth/cn_023.mp3",
+          "/assets/audio/voice/jp/char_4048_doroth/cn_024.mp3"
         ],
-        "skill1": "/assets/audio/voice/cn/char_4048_doroth/cn_025.mp3",
-        "skill2": "/assets/audio/voice/cn/char_4048_doroth/cn_026.mp3",
-        "skill3": "/assets/audio/voice/cn/char_4048_doroth/cn_027.mp3",
-        "skill4": "/assets/audio/voice/cn/char_4048_doroth/cn_028.mp3",
-        "resultFour": "/assets/audio/voice/cn/char_4048_doroth/cn_029.mp3",
-        "resultThree": "/assets/audio/voice/cn/char_4048_doroth/cn_030.mp3",
-        "resultTwo": "/assets/audio/voice/cn/char_4048_doroth/cn_031.mp3",
-        "resultLose": "/assets/audio/voice/cn/char_4048_doroth/cn_032.mp3"
+        "skill1": "/assets/audio/voice/jp/char_4048_doroth/cn_025.mp3",
+        "skill2": "/assets/audio/voice/jp/char_4048_doroth/cn_026.mp3",
+        "skill3": "/assets/audio/voice/jp/char_4048_doroth/cn_027.mp3",
+        "skill4": "/assets/audio/voice/jp/char_4048_doroth/cn_028.mp3",
+        "resultFour": "/assets/audio/voice/jp/char_4048_doroth/cn_029.mp3",
+        "resultThree": "/assets/audio/voice/jp/char_4048_doroth/cn_030.mp3",
+        "resultTwo": "/assets/audio/voice/jp/char_4048_doroth/cn_031.mp3",
+        "resultLose": "/assets/audio/voice/jp/char_4048_doroth/cn_032.mp3"
       },
       "char_4055_bgsnow": {
-        "start": "/assets/audio/voice/cn/char_4055_bgsnow/cn_019.mp3",
-        "faceEnemy": "/assets/audio/voice/cn/char_4055_bgsnow/cn_020.mp3",
+        "start": "/assets/audio/voice/jp/char_4055_bgsnow/cn_019.mp3",
+        "faceEnemy": "/assets/audio/voice/jp/char_4055_bgsnow/cn_020.mp3",
         "select": [
-          "/assets/audio/voice/cn/char_4055_bgsnow/cn_021.mp3",
-          "/assets/audio/voice/cn/char_4055_bgsnow/cn_022.mp3"
+          "/assets/audio/voice/jp/char_4055_bgsnow/cn_021.mp3",
+          "/assets/audio/voice/jp/char_4055_bgsnow/cn_022.mp3"
         ],
         "place": [
-          "/assets/audio/voice/cn/char_4055_bgsnow/cn_023.mp3",
-          "/assets/audio/voice/cn/char_4055_bgsnow/cn_024.mp3"
+          "/assets/audio/voice/jp/char_4055_bgsnow/cn_023.mp3",
+          "/assets/audio/voice/jp/char_4055_bgsnow/cn_024.mp3"
         ],
-        "skill1": "/assets/audio/voice/cn/char_4055_bgsnow/cn_025.mp3",
-        "skill2": "/assets/audio/voice/cn/char_4055_bgsnow/cn_026.mp3",
-        "skill3": "/assets/audio/voice/cn/char_4055_bgsnow/cn_027.mp3",
-        "skill4": "/assets/audio/voice/cn/char_4055_bgsnow/cn_028.mp3",
-        "resultFour": "/assets/audio/voice/cn/char_4055_bgsnow/cn_029.mp3",
-        "resultThree": "/assets/audio/voice/cn/char_4055_bgsnow/cn_030.mp3",
-        "resultTwo": "/assets/audio/voice/cn/char_4055_bgsnow/cn_031.mp3",
-        "resultLose": "/assets/audio/voice/cn/char_4055_bgsnow/cn_032.mp3"
+        "skill1": "/assets/audio/voice/jp/char_4055_bgsnow/cn_025.mp3",
+        "skill2": "/assets/audio/voice/jp/char_4055_bgsnow/cn_026.mp3",
+        "skill3": "/assets/audio/voice/jp/char_4055_bgsnow/cn_027.mp3",
+        "skill4": "/assets/audio/voice/jp/char_4055_bgsnow/cn_028.mp3",
+        "resultFour": "/assets/audio/voice/jp/char_4055_bgsnow/cn_029.mp3",
+        "resultThree": "/assets/audio/voice/jp/char_4055_bgsnow/cn_030.mp3",
+        "resultTwo": "/assets/audio/voice/jp/char_4055_bgsnow/cn_031.mp3",
+        "resultLose": "/assets/audio/voice/jp/char_4055_bgsnow/cn_032.mp3"
       },
       "char_4065_judge": {
-        "start": "/assets/audio/voice/cn/char_4065_judge/cn_019.mp3",
-        "faceEnemy": "/assets/audio/voice/cn/char_4065_judge/cn_020.mp3",
+        "start": "/assets/audio/voice/jp/char_4065_judge/cn_019.mp3",
+        "faceEnemy": "/assets/audio/voice/jp/char_4065_judge/cn_020.mp3",
         "select": [
-          "/assets/audio/voice/cn/char_4065_judge/cn_021.mp3",
-          "/assets/audio/voice/cn/char_4065_judge/cn_022.mp3"
+          "/assets/audio/voice/jp/char_4065_judge/cn_021.mp3",
+          "/assets/audio/voice/jp/char_4065_judge/cn_022.mp3"
         ],
         "place": [
-          "/assets/audio/voice/cn/char_4065_judge/cn_023.mp3",
-          "/assets/audio/voice/cn/char_4065_judge/cn_024.mp3"
+          "/assets/audio/voice/jp/char_4065_judge/cn_023.mp3",
+          "/assets/audio/voice/jp/char_4065_judge/cn_024.mp3"
         ],
-        "skill1": "/assets/audio/voice/cn/char_4065_judge/cn_025.mp3",
-        "skill2": "/assets/audio/voice/cn/char_4065_judge/cn_026.mp3",
-        "skill3": "/assets/audio/voice/cn/char_4065_judge/cn_027.mp3",
-        "skill4": "/assets/audio/voice/cn/char_4065_judge/cn_028.mp3",
-        "resultFour": "/assets/audio/voice/cn/char_4065_judge/cn_029.mp3",
-        "resultThree": "/assets/audio/voice/cn/char_4065_judge/cn_030.mp3",
-        "resultTwo": "/assets/audio/voice/cn/char_4065_judge/cn_031.mp3",
-        "resultLose": "/assets/audio/voice/cn/char_4065_judge/cn_032.mp3"
+        "skill1": "/assets/audio/voice/jp/char_4065_judge/cn_025.mp3",
+        "skill2": "/assets/audio/voice/jp/char_4065_judge/cn_026.mp3",
+        "skill3": "/assets/audio/voice/jp/char_4065_judge/cn_027.mp3",
+        "skill4": "/assets/audio/voice/jp/char_4065_judge/cn_028.mp3",
+        "resultFour": "/assets/audio/voice/jp/char_4065_judge/cn_029.mp3",
+        "resultThree": "/assets/audio/voice/jp/char_4065_judge/cn_030.mp3",
+        "resultTwo": "/assets/audio/voice/jp/char_4065_judge/cn_031.mp3",
+        "resultLose": "/assets/audio/voice/jp/char_4065_judge/cn_032.mp3"
       },
       "char_4072_ironmn": {
-        "start": "/assets/audio/voice/cn/char_4072_ironmn/cn_019.mp3",
-        "faceEnemy": "/assets/audio/voice/cn/char_4072_ironmn/cn_020.mp3",
+        "start": "/assets/audio/voice/jp/char_4072_ironmn/cn_019.mp3",
+        "faceEnemy": "/assets/audio/voice/jp/char_4072_ironmn/cn_020.mp3",
         "select": [
-          "/assets/audio/voice/cn/char_4072_ironmn/cn_021.mp3",
-          "/assets/audio/voice/cn/char_4072_ironmn/cn_022.mp3"
+          "/assets/audio/voice/jp/char_4072_ironmn/cn_021.mp3",
+          "/assets/audio/voice/jp/char_4072_ironmn/cn_022.mp3"
         ],
         "place": [
-          "/assets/audio/voice/cn/char_4072_ironmn/cn_023.mp3",
-          "/assets/audio/voice/cn/char_4072_ironmn/cn_024.mp3"
+          "/assets/audio/voice/jp/char_4072_ironmn/cn_023.mp3",
+          "/assets/audio/voice/jp/char_4072_ironmn/cn_024.mp3"
         ],
-        "skill1": "/assets/audio/voice/cn/char_4072_ironmn/cn_025.mp3",
-        "skill2": "/assets/audio/voice/cn/char_4072_ironmn/cn_026.mp3",
-        "skill3": "/assets/audio/voice/cn/char_4072_ironmn/cn_027.mp3",
-        "skill4": "/assets/audio/voice/cn/char_4072_ironmn/cn_028.mp3",
-        "resultFour": "/assets/audio/voice/cn/char_4072_ironmn/cn_029.mp3",
-        "resultThree": "/assets/audio/voice/cn/char_4072_ironmn/cn_030.mp3",
-        "resultTwo": "/assets/audio/voice/cn/char_4072_ironmn/cn_031.mp3",
-        "resultLose": "/assets/audio/voice/cn/char_4072_ironmn/cn_032.mp3"
+        "skill1": "/assets/audio/voice/jp/char_4072_ironmn/cn_025.mp3",
+        "skill2": "/assets/audio/voice/jp/char_4072_ironmn/cn_026.mp3",
+        "skill3": "/assets/audio/voice/jp/char_4072_ironmn/cn_027.mp3",
+        "skill4": "/assets/audio/voice/jp/char_4072_ironmn/cn_028.mp3",
+        "resultFour": "/assets/audio/voice/jp/char_4072_ironmn/cn_029.mp3",
+        "resultThree": "/assets/audio/voice/jp/char_4072_ironmn/cn_030.mp3",
+        "resultTwo": "/assets/audio/voice/jp/char_4072_ironmn/cn_031.mp3",
+        "resultLose": "/assets/audio/voice/jp/char_4072_ironmn/cn_032.mp3"
       },
       "char_4080_lin": {
-        "start": "/assets/audio/voice/cn/char_4080_lin/cn_019.mp3",
-        "faceEnemy": "/assets/audio/voice/cn/char_4080_lin/cn_020.mp3",
+        "start": "/assets/audio/voice/jp/char_4080_lin/cn_019.mp3",
+        "faceEnemy": "/assets/audio/voice/jp/char_4080_lin/cn_020.mp3",
         "select": [
-          "/assets/audio/voice/cn/char_4080_lin/cn_021.mp3",
-          "/assets/audio/voice/cn/char_4080_lin/cn_022.mp3"
+          "/assets/audio/voice/jp/char_4080_lin/cn_021.mp3",
+          "/assets/audio/voice/jp/char_4080_lin/cn_022.mp3"
         ],
         "place": [
-          "/assets/audio/voice/cn/char_4080_lin/cn_023.mp3",
-          "/assets/audio/voice/cn/char_4080_lin/cn_024.mp3"
+          "/assets/audio/voice/jp/char_4080_lin/cn_023.mp3",
+          "/assets/audio/voice/jp/char_4080_lin/cn_024.mp3"
         ],
-        "skill1": "/assets/audio/voice/cn/char_4080_lin/cn_025.mp3",
-        "skill2": "/assets/audio/voice/cn/char_4080_lin/cn_026.mp3",
-        "skill3": "/assets/audio/voice/cn/char_4080_lin/cn_027.mp3",
-        "skill4": "/assets/audio/voice/cn/char_4080_lin/cn_028.mp3",
-        "resultFour": "/assets/audio/voice/cn/char_4080_lin/cn_029.mp3",
-        "resultThree": "/assets/audio/voice/cn/char_4080_lin/cn_030.mp3",
-        "resultTwo": "/assets/audio/voice/cn/char_4080_lin/cn_031.mp3",
-        "resultLose": "/assets/audio/voice/cn/char_4080_lin/cn_032.mp3"
+        "skill1": "/assets/audio/voice/jp/char_4080_lin/cn_025.mp3",
+        "skill2": "/assets/audio/voice/jp/char_4080_lin/cn_026.mp3",
+        "skill3": "/assets/audio/voice/jp/char_4080_lin/cn_027.mp3",
+        "skill4": "/assets/audio/voice/jp/char_4080_lin/cn_028.mp3",
+        "resultFour": "/assets/audio/voice/jp/char_4080_lin/cn_029.mp3",
+        "resultThree": "/assets/audio/voice/jp/char_4080_lin/cn_030.mp3",
+        "resultTwo": "/assets/audio/voice/jp/char_4080_lin/cn_031.mp3",
+        "resultLose": "/assets/audio/voice/jp/char_4080_lin/cn_032.mp3"
       },
       "char_4088_hodrer": {
-        "start": "/assets/audio/voice/cn/char_4088_hodrer/cn_019.mp3",
-        "faceEnemy": "/assets/audio/voice/cn/char_4088_hodrer/cn_020.mp3",
+        "start": "/assets/audio/voice/jp/char_4088_hodrer/cn_019.mp3",
+        "faceEnemy": "/assets/audio/voice/jp/char_4088_hodrer/cn_020.mp3",
         "select": [
-          "/assets/audio/voice/cn/char_4088_hodrer/cn_021.mp3",
-          "/assets/audio/voice/cn/char_4088_hodrer/cn_022.mp3"
+          "/assets/audio/voice/jp/char_4088_hodrer/cn_021.mp3",
+          "/assets/audio/voice/jp/char_4088_hodrer/cn_022.mp3"
         ],
         "place": [
-          "/assets/audio/voice/cn/char_4088_hodrer/cn_023.mp3",
-          "/assets/audio/voice/cn/char_4088_hodrer/cn_024.mp3"
+          "/assets/audio/voice/jp/char_4088_hodrer/cn_023.mp3",
+          "/assets/audio/voice/jp/char_4088_hodrer/cn_024.mp3"
         ],
-        "skill1": "/assets/audio/voice/cn/char_4088_hodrer/cn_025.mp3",
-        "skill2": "/assets/audio/voice/cn/char_4088_hodrer/cn_026.mp3",
-        "skill3": "/assets/audio/voice/cn/char_4088_hodrer/cn_027.mp3",
-        "skill4": "/assets/audio/voice/cn/char_4088_hodrer/cn_028.mp3",
-        "resultFour": "/assets/audio/voice/cn/char_4088_hodrer/cn_029.mp3",
-        "resultThree": "/assets/audio/voice/cn/char_4088_hodrer/cn_030.mp3",
-        "resultTwo": "/assets/audio/voice/cn/char_4088_hodrer/cn_031.mp3",
-        "resultLose": "/assets/audio/voice/cn/char_4088_hodrer/cn_032.mp3"
+        "skill1": "/assets/audio/voice/jp/char_4088_hodrer/cn_025.mp3",
+        "skill2": "/assets/audio/voice/jp/char_4088_hodrer/cn_026.mp3",
+        "skill3": "/assets/audio/voice/jp/char_4088_hodrer/cn_027.mp3",
+        "skill4": "/assets/audio/voice/jp/char_4088_hodrer/cn_028.mp3",
+        "resultFour": "/assets/audio/voice/jp/char_4088_hodrer/cn_029.mp3",
+        "resultThree": "/assets/audio/voice/jp/char_4088_hodrer/cn_030.mp3",
+        "resultTwo": "/assets/audio/voice/jp/char_4088_hodrer/cn_031.mp3",
+        "resultLose": "/assets/audio/voice/jp/char_4088_hodrer/cn_032.mp3"
       },
       "char_4098_vvana": {
-        "start": "/assets/audio/voice/cn/char_4098_vvana/cn_019.mp3",
-        "faceEnemy": "/assets/audio/voice/cn/char_4098_vvana/cn_020.mp3",
+        "start": "/assets/audio/voice/jp/char_4098_vvana/cn_019.mp3",
+        "faceEnemy": "/assets/audio/voice/jp/char_4098_vvana/cn_020.mp3",
         "select": [
-          "/assets/audio/voice/cn/char_4098_vvana/cn_021.mp3",
-          "/assets/audio/voice/cn/char_4098_vvana/cn_022.mp3"
+          "/assets/audio/voice/jp/char_4098_vvana/cn_021.mp3",
+          "/assets/audio/voice/jp/char_4098_vvana/cn_022.mp3"
         ],
         "place": [
-          "/assets/audio/voice/cn/char_4098_vvana/cn_023.mp3",
-          "/assets/audio/voice/cn/char_4098_vvana/cn_024.mp3"
+          "/assets/audio/voice/jp/char_4098_vvana/cn_023.mp3",
+          "/assets/audio/voice/jp/char_4098_vvana/cn_024.mp3"
         ],
-        "skill1": "/assets/audio/voice/cn/char_4098_vvana/cn_025.mp3",
-        "skill2": "/assets/audio/voice/cn/char_4098_vvana/cn_026.mp3",
-        "skill3": "/assets/audio/voice/cn/char_4098_vvana/cn_027.mp3",
-        "skill4": "/assets/audio/voice/cn/char_4098_vvana/cn_028.mp3",
-        "resultFour": "/assets/audio/voice/cn/char_4098_vvana/cn_029.mp3",
-        "resultThree": "/assets/audio/voice/cn/char_4098_vvana/cn_030.mp3",
-        "resultTwo": "/assets/audio/voice/cn/char_4098_vvana/cn_031.mp3",
-        "resultLose": "/assets/audio/voice/cn/char_4098_vvana/cn_032.mp3"
+        "skill1": "/assets/audio/voice/jp/char_4098_vvana/cn_025.mp3",
+        "skill2": "/assets/audio/voice/jp/char_4098_vvana/cn_026.mp3",
+        "skill3": "/assets/audio/voice/jp/char_4098_vvana/cn_027.mp3",
+        "skill4": "/assets/audio/voice/jp/char_4098_vvana/cn_028.mp3",
+        "resultFour": "/assets/audio/voice/jp/char_4098_vvana/cn_029.mp3",
+        "resultThree": "/assets/audio/voice/jp/char_4098_vvana/cn_030.mp3",
+        "resultTwo": "/assets/audio/voice/jp/char_4098_vvana/cn_031.mp3",
+        "resultLose": "/assets/audio/voice/jp/char_4098_vvana/cn_032.mp3"
       },
       "char_4117_ray": {
-        "start": "/assets/audio/voice/cn/char_4117_ray/cn_019.mp3",
-        "faceEnemy": "/assets/audio/voice/cn/char_4117_ray/cn_020.mp3",
+        "start": "/assets/audio/voice/jp/char_4117_ray/cn_019.mp3",
+        "faceEnemy": "/assets/audio/voice/jp/char_4117_ray/cn_020.mp3",
         "select": [
-          "/assets/audio/voice/cn/char_4117_ray/cn_021.mp3",
-          "/assets/audio/voice/cn/char_4117_ray/cn_022.mp3"
+          "/assets/audio/voice/jp/char_4117_ray/cn_021.mp3",
+          "/assets/audio/voice/jp/char_4117_ray/cn_022.mp3"
         ],
         "place": [
-          "/assets/audio/voice/cn/char_4117_ray/cn_023.mp3",
-          "/assets/audio/voice/cn/char_4117_ray/cn_024.mp3"
+          "/assets/audio/voice/jp/char_4117_ray/cn_023.mp3",
+          "/assets/audio/voice/jp/char_4117_ray/cn_024.mp3"
         ],
-        "skill1": "/assets/audio/voice/cn/char_4117_ray/cn_025.mp3",
-        "skill2": "/assets/audio/voice/cn/char_4117_ray/cn_026.mp3",
-        "skill3": "/assets/audio/voice/cn/char_4117_ray/cn_027.mp3",
-        "skill4": "/assets/audio/voice/cn/char_4117_ray/cn_028.mp3",
-        "resultFour": "/assets/audio/voice/cn/char_4117_ray/cn_029.mp3",
-        "resultThree": "/assets/audio/voice/cn/char_4117_ray/cn_030.mp3",
-        "resultTwo": "/assets/audio/voice/cn/char_4117_ray/cn_031.mp3",
-        "resultLose": "/assets/audio/voice/cn/char_4117_ray/cn_032.mp3"
+        "skill1": "/assets/audio/voice/jp/char_4117_ray/cn_025.mp3",
+        "skill2": "/assets/audio/voice/jp/char_4117_ray/cn_026.mp3",
+        "skill3": "/assets/audio/voice/jp/char_4117_ray/cn_027.mp3",
+        "skill4": "/assets/audio/voice/jp/char_4117_ray/cn_028.mp3",
+        "resultFour": "/assets/audio/voice/jp/char_4117_ray/cn_029.mp3",
+        "resultThree": "/assets/audio/voice/jp/char_4117_ray/cn_030.mp3",
+        "resultTwo": "/assets/audio/voice/jp/char_4117_ray/cn_031.mp3",
+        "resultLose": "/assets/audio/voice/jp/char_4117_ray/cn_032.mp3"
       },
       "char_4121_zuole": {
-        "start": "/assets/audio/voice/cn/char_4121_zuole/cn_019.mp3",
-        "faceEnemy": "/assets/audio/voice/cn/char_4121_zuole/cn_020.mp3",
+        "start": "/assets/audio/voice/jp/char_4121_zuole/cn_019.mp3",
+        "faceEnemy": "/assets/audio/voice/jp/char_4121_zuole/cn_020.mp3",
         "select": [
-          "/assets/audio/voice/cn/char_4121_zuole/cn_021.mp3",
-          "/assets/audio/voice/cn/char_4121_zuole/cn_022.mp3"
+          "/assets/audio/voice/jp/char_4121_zuole/cn_021.mp3",
+          "/assets/audio/voice/jp/char_4121_zuole/cn_022.mp3"
         ],
         "place": [
-          "/assets/audio/voice/cn/char_4121_zuole/cn_023.mp3",
-          "/assets/audio/voice/cn/char_4121_zuole/cn_024.mp3"
+          "/assets/audio/voice/jp/char_4121_zuole/cn_023.mp3",
+          "/assets/audio/voice/jp/char_4121_zuole/cn_024.mp3"
         ],
-        "skill1": "/assets/audio/voice/cn/char_4121_zuole/cn_025.mp3",
-        "skill2": "/assets/audio/voice/cn/char_4121_zuole/cn_026.mp3",
-        "skill3": "/assets/audio/voice/cn/char_4121_zuole/cn_027.mp3",
-        "skill4": "/assets/audio/voice/cn/char_4121_zuole/cn_028.mp3",
-        "resultFour": "/assets/audio/voice/cn/char_4121_zuole/cn_029.mp3",
-        "resultThree": "/assets/audio/voice/cn/char_4121_zuole/cn_030.mp3",
-        "resultTwo": "/assets/audio/voice/cn/char_4121_zuole/cn_031.mp3",
-        "resultLose": "/assets/audio/voice/cn/char_4121_zuole/cn_032.mp3"
+        "skill1": "/assets/audio/voice/jp/char_4121_zuole/cn_025.mp3",
+        "skill2": "/assets/audio/voice/jp/char_4121_zuole/cn_026.mp3",
+        "skill3": "/assets/audio/voice/jp/char_4121_zuole/cn_027.mp3",
+        "skill4": "/assets/audio/voice/jp/char_4121_zuole/cn_028.mp3",
+        "resultFour": "/assets/audio/voice/jp/char_4121_zuole/cn_029.mp3",
+        "resultThree": "/assets/audio/voice/jp/char_4121_zuole/cn_030.mp3",
+        "resultTwo": "/assets/audio/voice/jp/char_4121_zuole/cn_031.mp3",
+        "resultLose": "/assets/audio/voice/jp/char_4121_zuole/cn_032.mp3"
       },
       "char_4132_ascln": {
-        "start": "/assets/audio/voice/cn/char_4132_ascln/cn_019.mp3",
-        "faceEnemy": "/assets/audio/voice/cn/char_4132_ascln/cn_020.mp3",
+        "start": "/assets/audio/voice/jp/char_4132_ascln/cn_019.mp3",
+        "faceEnemy": "/assets/audio/voice/jp/char_4132_ascln/cn_020.mp3",
         "select": [
-          "/assets/audio/voice/cn/char_4132_ascln/cn_021.mp3",
-          "/assets/audio/voice/cn/char_4132_ascln/cn_022.mp3"
+          "/assets/audio/voice/jp/char_4132_ascln/cn_021.mp3",
+          "/assets/audio/voice/jp/char_4132_ascln/cn_022.mp3"
         ],
         "place": [
-          "/assets/audio/voice/cn/char_4132_ascln/cn_023.mp3",
-          "/assets/audio/voice/cn/char_4132_ascln/cn_024.mp3"
+          "/assets/audio/voice/jp/char_4132_ascln/cn_023.mp3",
+          "/assets/audio/voice/jp/char_4132_ascln/cn_024.mp3"
         ],
-        "skill1": "/assets/audio/voice/cn/char_4132_ascln/cn_025.mp3",
-        "skill2": "/assets/audio/voice/cn/char_4132_ascln/cn_026.mp3",
-        "skill3": "/assets/audio/voice/cn/char_4132_ascln/cn_027.mp3",
-        "skill4": "/assets/audio/voice/cn/char_4132_ascln/cn_028.mp3",
-        "resultFour": "/assets/audio/voice/cn/char_4132_ascln/cn_029.mp3",
-        "resultThree": "/assets/audio/voice/cn/char_4132_ascln/cn_030.mp3",
-        "resultTwo": "/assets/audio/voice/cn/char_4132_ascln/cn_031.mp3",
-        "resultLose": "/assets/audio/voice/cn/char_4132_ascln/cn_032.mp3"
+        "skill1": "/assets/audio/voice/jp/char_4132_ascln/cn_025.mp3",
+        "skill2": "/assets/audio/voice/jp/char_4132_ascln/cn_026.mp3",
+        "skill3": "/assets/audio/voice/jp/char_4132_ascln/cn_027.mp3",
+        "skill4": "/assets/audio/voice/jp/char_4132_ascln/cn_028.mp3",
+        "resultFour": "/assets/audio/voice/jp/char_4132_ascln/cn_029.mp3",
+        "resultThree": "/assets/audio/voice/jp/char_4132_ascln/cn_030.mp3",
+        "resultTwo": "/assets/audio/voice/jp/char_4132_ascln/cn_031.mp3",
+        "resultLose": "/assets/audio/voice/jp/char_4132_ascln/cn_032.mp3"
       },
       "char_4133_logos": {
-        "start": "/assets/audio/voice/cn/char_4133_logos/cn_019.mp3",
-        "faceEnemy": "/assets/audio/voice/cn/char_4133_logos/cn_020.mp3",
+        "start": "/assets/audio/voice/jp/char_4133_logos/cn_019.mp3",
+        "faceEnemy": "/assets/audio/voice/jp/char_4133_logos/cn_020.mp3",
         "select": [
-          "/assets/audio/voice/cn/char_4133_logos/cn_021.mp3",
-          "/assets/audio/voice/cn/char_4133_logos/cn_022.mp3"
+          "/assets/audio/voice/jp/char_4133_logos/cn_021.mp3",
+          "/assets/audio/voice/jp/char_4133_logos/cn_022.mp3"
         ],
         "place": [
-          "/assets/audio/voice/cn/char_4133_logos/cn_023.mp3",
-          "/assets/audio/voice/cn/char_4133_logos/cn_024.mp3"
+          "/assets/audio/voice/jp/char_4133_logos/cn_023.mp3",
+          "/assets/audio/voice/jp/char_4133_logos/cn_024.mp3"
         ],
-        "skill1": "/assets/audio/voice/cn/char_4133_logos/cn_025.mp3",
-        "skill2": "/assets/audio/voice/cn/char_4133_logos/cn_026.mp3",
-        "skill3": "/assets/audio/voice/cn/char_4133_logos/cn_027.mp3",
-        "skill4": "/assets/audio/voice/cn/char_4133_logos/cn_028.mp3",
-        "resultFour": "/assets/audio/voice/cn/char_4133_logos/cn_029.mp3",
-        "resultThree": "/assets/audio/voice/cn/char_4133_logos/cn_030.mp3",
-        "resultTwo": "/assets/audio/voice/cn/char_4133_logos/cn_031.mp3",
-        "resultLose": "/assets/audio/voice/cn/char_4133_logos/cn_032.mp3"
+        "skill1": "/assets/audio/voice/jp/char_4133_logos/cn_025.mp3",
+        "skill2": "/assets/audio/voice/jp/char_4133_logos/cn_026.mp3",
+        "skill3": "/assets/audio/voice/jp/char_4133_logos/cn_027.mp3",
+        "skill4": "/assets/audio/voice/jp/char_4133_logos/cn_028.mp3",
+        "resultFour": "/assets/audio/voice/jp/char_4133_logos/cn_029.mp3",
+        "resultThree": "/assets/audio/voice/jp/char_4133_logos/cn_030.mp3",
+        "resultTwo": "/assets/audio/voice/jp/char_4133_logos/cn_031.mp3",
+        "resultLose": "/assets/audio/voice/jp/char_4133_logos/cn_032.mp3"
       },
       "char_4138_narant": {
-        "start": "/assets/audio/voice/cn/char_4138_narant/cn_019.mp3",
-        "faceEnemy": "/assets/audio/voice/cn/char_4138_narant/cn_020.mp3",
+        "start": "/assets/audio/voice/jp/char_4138_narant/cn_019.mp3",
+        "faceEnemy": "/assets/audio/voice/jp/char_4138_narant/cn_020.mp3",
         "select": [
-          "/assets/audio/voice/cn/char_4138_narant/cn_021.mp3",
-          "/assets/audio/voice/cn/char_4138_narant/cn_022.mp3"
+          "/assets/audio/voice/jp/char_4138_narant/cn_021.mp3",
+          "/assets/audio/voice/jp/char_4138_narant/cn_022.mp3"
         ],
         "place": [
-          "/assets/audio/voice/cn/char_4138_narant/cn_023.mp3",
-          "/assets/audio/voice/cn/char_4138_narant/cn_024.mp3"
+          "/assets/audio/voice/jp/char_4138_narant/cn_023.mp3",
+          "/assets/audio/voice/jp/char_4138_narant/cn_024.mp3"
         ],
-        "skill1": "/assets/audio/voice/cn/char_4138_narant/cn_025.mp3",
-        "skill2": "/assets/audio/voice/cn/char_4138_narant/cn_026.mp3",
-        "skill3": "/assets/audio/voice/cn/char_4138_narant/cn_027.mp3",
-        "skill4": "/assets/audio/voice/cn/char_4138_narant/cn_028.mp3",
-        "resultFour": "/assets/audio/voice/cn/char_4138_narant/cn_029.mp3",
-        "resultThree": "/assets/audio/voice/cn/char_4138_narant/cn_030.mp3",
-        "resultTwo": "/assets/audio/voice/cn/char_4138_narant/cn_031.mp3",
-        "resultLose": "/assets/audio/voice/cn/char_4138_narant/cn_032.mp3"
+        "skill1": "/assets/audio/voice/jp/char_4138_narant/cn_025.mp3",
+        "skill2": "/assets/audio/voice/jp/char_4138_narant/cn_026.mp3",
+        "skill3": "/assets/audio/voice/jp/char_4138_narant/cn_027.mp3",
+        "skill4": "/assets/audio/voice/jp/char_4138_narant/cn_028.mp3",
+        "resultFour": "/assets/audio/voice/jp/char_4138_narant/cn_029.mp3",
+        "resultThree": "/assets/audio/voice/jp/char_4138_narant/cn_030.mp3",
+        "resultTwo": "/assets/audio/voice/jp/char_4138_narant/cn_031.mp3",
+        "resultLose": "/assets/audio/voice/jp/char_4138_narant/cn_032.mp3"
       },
       "char_4179_monstr": {
-        "start": "/assets/audio/voice/cn/char_4179_monstr/cn_019.mp3",
-        "faceEnemy": "/assets/audio/voice/cn/char_4179_monstr/cn_020.mp3",
+        "start": "/assets/audio/voice/jp/char_4179_monstr/cn_019.mp3",
+        "faceEnemy": "/assets/audio/voice/jp/char_4179_monstr/cn_020.mp3",
         "select": [
-          "/assets/audio/voice/cn/char_4179_monstr/cn_021.mp3",
-          "/assets/audio/voice/cn/char_4179_monstr/cn_022.mp3"
+          "/assets/audio/voice/jp/char_4179_monstr/cn_021.mp3",
+          "/assets/audio/voice/jp/char_4179_monstr/cn_022.mp3"
         ],
         "place": [
-          "/assets/audio/voice/cn/char_4179_monstr/cn_023.mp3",
-          "/assets/audio/voice/cn/char_4179_monstr/cn_024.mp3"
+          "/assets/audio/voice/jp/char_4179_monstr/cn_023.mp3",
+          "/assets/audio/voice/jp/char_4179_monstr/cn_024.mp3"
         ],
-        "skill1": "/assets/audio/voice/cn/char_4179_monstr/cn_025.mp3",
-        "skill2": "/assets/audio/voice/cn/char_4179_monstr/cn_026.mp3",
-        "skill3": "/assets/audio/voice/cn/char_4179_monstr/cn_027.mp3",
-        "skill4": "/assets/audio/voice/cn/char_4179_monstr/cn_028.mp3",
-        "resultFour": "/assets/audio/voice/cn/char_4179_monstr/cn_029.mp3",
-        "resultThree": "/assets/audio/voice/cn/char_4179_monstr/cn_030.mp3",
-        "resultTwo": "/assets/audio/voice/cn/char_4179_monstr/cn_031.mp3",
-        "resultLose": "/assets/audio/voice/cn/char_4179_monstr/cn_032.mp3"
+        "skill1": "/assets/audio/voice/jp/char_4179_monstr/cn_025.mp3",
+        "skill2": "/assets/audio/voice/jp/char_4179_monstr/cn_026.mp3",
+        "skill3": "/assets/audio/voice/jp/char_4179_monstr/cn_027.mp3",
+        "skill4": "/assets/audio/voice/jp/char_4179_monstr/cn_028.mp3",
+        "resultFour": "/assets/audio/voice/jp/char_4179_monstr/cn_029.mp3",
+        "resultThree": "/assets/audio/voice/jp/char_4179_monstr/cn_030.mp3",
+        "resultTwo": "/assets/audio/voice/jp/char_4179_monstr/cn_031.mp3",
+        "resultLose": "/assets/audio/voice/jp/char_4179_monstr/cn_032.mp3"
       },
       "char_4195_radian": {
-        "start": "/assets/audio/voice/cn/char_4195_radian/cn_019.mp3",
-        "faceEnemy": "/assets/audio/voice/cn/char_4195_radian/cn_020.mp3",
+        "start": "/assets/audio/voice/jp/char_4195_radian/cn_019.mp3",
+        "faceEnemy": "/assets/audio/voice/jp/char_4195_radian/cn_020.mp3",
         "select": [
-          "/assets/audio/voice/cn/char_4195_radian/cn_021.mp3",
-          "/assets/audio/voice/cn/char_4195_radian/cn_022.mp3"
+          "/assets/audio/voice/jp/char_4195_radian/cn_021.mp3",
+          "/assets/audio/voice/jp/char_4195_radian/cn_022.mp3"
         ],
         "place": [
-          "/assets/audio/voice/cn/char_4195_radian/cn_023.mp3",
-          "/assets/audio/voice/cn/char_4195_radian/cn_024.mp3"
+          "/assets/audio/voice/jp/char_4195_radian/cn_023.mp3",
+          "/assets/audio/voice/jp/char_4195_radian/cn_024.mp3"
         ],
-        "skill1": "/assets/audio/voice/cn/char_4195_radian/cn_025.mp3",
-        "skill2": "/assets/audio/voice/cn/char_4195_radian/cn_026.mp3",
-        "skill3": "/assets/audio/voice/cn/char_4195_radian/cn_027.mp3",
-        "skill4": "/assets/audio/voice/cn/char_4195_radian/cn_028.mp3",
-        "resultFour": "/assets/audio/voice/cn/char_4195_radian/cn_029.mp3",
-        "resultThree": "/assets/audio/voice/cn/char_4195_radian/cn_030.mp3",
-        "resultTwo": "/assets/audio/voice/cn/char_4195_radian/cn_031.mp3",
-        "resultLose": "/assets/audio/voice/cn/char_4195_radian/cn_032.mp3"
+        "skill1": "/assets/audio/voice/jp/char_4195_radian/cn_025.mp3",
+        "skill2": "/assets/audio/voice/jp/char_4195_radian/cn_026.mp3",
+        "skill3": "/assets/audio/voice/jp/char_4195_radian/cn_027.mp3",
+        "skill4": "/assets/audio/voice/jp/char_4195_radian/cn_028.mp3",
+        "resultFour": "/assets/audio/voice/jp/char_4195_radian/cn_029.mp3",
+        "resultThree": "/assets/audio/voice/jp/char_4195_radian/cn_030.mp3",
+        "resultTwo": "/assets/audio/voice/jp/char_4195_radian/cn_031.mp3",
+        "resultLose": "/assets/audio/voice/jp/char_4195_radian/cn_032.mp3"
       },
       "char_4202_haruka": {
-        "start": "/assets/audio/voice/cn/char_4202_haruka/cn_019.mp3",
-        "faceEnemy": "/assets/audio/voice/cn/char_4202_haruka/cn_020.mp3",
+        "start": "/assets/audio/voice/jp/char_4202_haruka/cn_019.mp3",
+        "faceEnemy": "/assets/audio/voice/jp/char_4202_haruka/cn_020.mp3",
         "select": [
-          "/assets/audio/voice/cn/char_4202_haruka/cn_021.mp3",
-          "/assets/audio/voice/cn/char_4202_haruka/cn_022.mp3"
+          "/assets/audio/voice/jp/char_4202_haruka/cn_021.mp3",
+          "/assets/audio/voice/jp/char_4202_haruka/cn_022.mp3"
         ],
         "place": [
-          "/assets/audio/voice/cn/char_4202_haruka/cn_023.mp3",
-          "/assets/audio/voice/cn/char_4202_haruka/cn_024.mp3"
+          "/assets/audio/voice/jp/char_4202_haruka/cn_023.mp3",
+          "/assets/audio/voice/jp/char_4202_haruka/cn_024.mp3"
         ],
-        "skill1": "/assets/audio/voice/cn/char_4202_haruka/cn_025.mp3",
-        "skill2": "/assets/audio/voice/cn/char_4202_haruka/cn_026.mp3",
-        "skill3": "/assets/audio/voice/cn/char_4202_haruka/cn_027.mp3",
-        "skill4": "/assets/audio/voice/cn/char_4202_haruka/cn_028.mp3",
-        "resultFour": "/assets/audio/voice/cn/char_4202_haruka/cn_029.mp3",
-        "resultThree": "/assets/audio/voice/cn/char_4202_haruka/cn_030.mp3",
-        "resultTwo": "/assets/audio/voice/cn/char_4202_haruka/cn_031.mp3",
-        "resultLose": "/assets/audio/voice/cn/char_4202_haruka/cn_032.mp3"
+        "skill1": "/assets/audio/voice/jp/char_4202_haruka/cn_025.mp3",
+        "skill2": "/assets/audio/voice/jp/char_4202_haruka/cn_026.mp3",
+        "skill3": "/assets/audio/voice/jp/char_4202_haruka/cn_027.mp3",
+        "skill4": "/assets/audio/voice/jp/char_4202_haruka/cn_028.mp3",
+        "resultFour": "/assets/audio/voice/jp/char_4202_haruka/cn_029.mp3",
+        "resultThree": "/assets/audio/voice/jp/char_4202_haruka/cn_030.mp3",
+        "resultTwo": "/assets/audio/voice/jp/char_4202_haruka/cn_031.mp3",
+        "resultLose": "/assets/audio/voice/jp/char_4202_haruka/cn_032.mp3"
       },
       "char_4204_mantra": {
-        "start": "/assets/audio/voice/cn/char_4204_mantra/cn_019.mp3",
-        "faceEnemy": "/assets/audio/voice/cn/char_4204_mantra/cn_020.mp3",
+        "start": "/assets/audio/voice/jp/char_4204_mantra/cn_019.mp3",
+        "faceEnemy": "/assets/audio/voice/jp/char_4204_mantra/cn_020.mp3",
         "select": [
-          "/assets/audio/voice/cn/char_4204_mantra/cn_021.mp3",
-          "/assets/audio/voice/cn/char_4204_mantra/cn_022.mp3"
+          "/assets/audio/voice/jp/char_4204_mantra/cn_021.mp3",
+          "/assets/audio/voice/jp/char_4204_mantra/cn_022.mp3"
         ],
         "place": [
-          "/assets/audio/voice/cn/char_4204_mantra/cn_023.mp3",
-          "/assets/audio/voice/cn/char_4204_mantra/cn_024.mp3"
+          "/assets/audio/voice/jp/char_4204_mantra/cn_023.mp3",
+          "/assets/audio/voice/jp/char_4204_mantra/cn_024.mp3"
         ],
-        "skill1": "/assets/audio/voice/cn/char_4204_mantra/cn_025.mp3",
-        "skill2": "/assets/audio/voice/cn/char_4204_mantra/cn_026.mp3",
-        "skill3": "/assets/audio/voice/cn/char_4204_mantra/cn_027.mp3",
-        "skill4": "/assets/audio/voice/cn/char_4204_mantra/cn_028.mp3",
-        "resultFour": "/assets/audio/voice/cn/char_4204_mantra/cn_029.mp3",
-        "resultThree": "/assets/audio/voice/cn/char_4204_mantra/cn_030.mp3",
-        "resultTwo": "/assets/audio/voice/cn/char_4204_mantra/cn_031.mp3",
-        "resultLose": "/assets/audio/voice/cn/char_4204_mantra/cn_032.mp3"
+        "skill1": "/assets/audio/voice/jp/char_4204_mantra/cn_025.mp3",
+        "skill2": "/assets/audio/voice/jp/char_4204_mantra/cn_026.mp3",
+        "skill3": "/assets/audio/voice/jp/char_4204_mantra/cn_027.mp3",
+        "skill4": "/assets/audio/voice/jp/char_4204_mantra/cn_028.mp3",
+        "resultFour": "/assets/audio/voice/jp/char_4204_mantra/cn_029.mp3",
+        "resultThree": "/assets/audio/voice/jp/char_4204_mantra/cn_030.mp3",
+        "resultTwo": "/assets/audio/voice/jp/char_4204_mantra/cn_031.mp3",
+        "resultLose": "/assets/audio/voice/jp/char_4204_mantra/cn_032.mp3"
       },
       "char_4212_nasti": {
-        "start": "/assets/audio/voice/cn/char_4212_nasti/cn_019.mp3",
-        "faceEnemy": "/assets/audio/voice/cn/char_4212_nasti/cn_020.mp3",
+        "start": "/assets/audio/voice/jp/char_4212_nasti/cn_019.mp3",
+        "faceEnemy": "/assets/audio/voice/jp/char_4212_nasti/cn_020.mp3",
         "select": [
-          "/assets/audio/voice/cn/char_4212_nasti/cn_021.mp3",
-          "/assets/audio/voice/cn/char_4212_nasti/cn_022.mp3"
+          "/assets/audio/voice/jp/char_4212_nasti/cn_021.mp3",
+          "/assets/audio/voice/jp/char_4212_nasti/cn_022.mp3"
         ],
         "place": [
-          "/assets/audio/voice/cn/char_4212_nasti/cn_023.mp3",
-          "/assets/audio/voice/cn/char_4212_nasti/cn_024.mp3"
+          "/assets/audio/voice/jp/char_4212_nasti/cn_023.mp3",
+          "/assets/audio/voice/jp/char_4212_nasti/cn_024.mp3"
         ],
-        "skill1": "/assets/audio/voice/cn/char_4212_nasti/cn_025.mp3",
-        "skill2": "/assets/audio/voice/cn/char_4212_nasti/cn_026.mp3",
-        "skill3": "/assets/audio/voice/cn/char_4212_nasti/cn_027.mp3",
-        "skill4": "/assets/audio/voice/cn/char_4212_nasti/cn_028.mp3",
-        "resultFour": "/assets/audio/voice/cn/char_4212_nasti/cn_029.mp3",
-        "resultThree": "/assets/audio/voice/cn/char_4212_nasti/cn_030.mp3",
-        "resultTwo": "/assets/audio/voice/cn/char_4212_nasti/cn_031.mp3",
-        "resultLose": "/assets/audio/voice/cn/char_4212_nasti/cn_032.mp3"
+        "skill1": "/assets/audio/voice/jp/char_4212_nasti/cn_025.mp3",
+        "skill2": "/assets/audio/voice/jp/char_4212_nasti/cn_026.mp3",
+        "skill3": "/assets/audio/voice/jp/char_4212_nasti/cn_027.mp3",
+        "skill4": "/assets/audio/voice/jp/char_4212_nasti/cn_028.mp3",
+        "resultFour": "/assets/audio/voice/jp/char_4212_nasti/cn_029.mp3",
+        "resultThree": "/assets/audio/voice/jp/char_4212_nasti/cn_030.mp3",
+        "resultTwo": "/assets/audio/voice/jp/char_4212_nasti/cn_031.mp3",
+        "resultLose": "/assets/audio/voice/jp/char_4212_nasti/cn_032.mp3"
       },
       "char_4226_veen": {
-        "start": "/assets/audio/voice/cn/char_4226_veen/cn_019.mp3",
-        "faceEnemy": "/assets/audio/voice/cn/char_4226_veen/cn_020.mp3",
+        "start": "/assets/audio/voice/jp/char_4226_veen/cn_019.mp3",
+        "faceEnemy": "/assets/audio/voice/jp/char_4226_veen/cn_020.mp3",
         "select": [
-          "/assets/audio/voice/cn/char_4226_veen/cn_021.mp3",
-          "/assets/audio/voice/cn/char_4226_veen/cn_022.mp3"
+          "/assets/audio/voice/jp/char_4226_veen/cn_021.mp3",
+          "/assets/audio/voice/jp/char_4226_veen/cn_022.mp3"
         ],
         "place": [
-          "/assets/audio/voice/cn/char_4226_veen/cn_023.mp3",
-          "/assets/audio/voice/cn/char_4226_veen/cn_024.mp3"
+          "/assets/audio/voice/jp/char_4226_veen/cn_023.mp3",
+          "/assets/audio/voice/jp/char_4226_veen/cn_024.mp3"
         ],
-        "skill1": "/assets/audio/voice/cn/char_4226_veen/cn_025.mp3",
-        "skill2": "/assets/audio/voice/cn/char_4226_veen/cn_026.mp3",
-        "skill3": "/assets/audio/voice/cn/char_4226_veen/cn_027.mp3",
-        "skill4": "/assets/audio/voice/cn/char_4226_veen/cn_028.mp3",
-        "resultFour": "/assets/audio/voice/cn/char_4226_veen/cn_029.mp3",
-        "resultThree": "/assets/audio/voice/cn/char_4226_veen/cn_030.mp3",
-        "resultTwo": "/assets/audio/voice/cn/char_4226_veen/cn_031.mp3",
-        "resultLose": "/assets/audio/voice/cn/char_4226_veen/cn_032.mp3"
+        "skill1": "/assets/audio/voice/jp/char_4226_veen/cn_025.mp3",
+        "skill2": "/assets/audio/voice/jp/char_4226_veen/cn_026.mp3",
+        "skill3": "/assets/audio/voice/jp/char_4226_veen/cn_027.mp3",
+        "skill4": "/assets/audio/voice/jp/char_4226_veen/cn_028.mp3",
+        "resultFour": "/assets/audio/voice/jp/char_4226_veen/cn_029.mp3",
+        "resultThree": "/assets/audio/voice/jp/char_4226_veen/cn_030.mp3",
+        "resultTwo": "/assets/audio/voice/jp/char_4226_veen/cn_031.mp3",
+        "resultLose": "/assets/audio/voice/jp/char_4226_veen/cn_032.mp3"
       },
       "char_4228_closur": {
-        "start": "/assets/audio/voice/cn/char_4228_closur/cn_019.mp3",
-        "faceEnemy": "/assets/audio/voice/cn/char_4228_closur/cn_020.mp3",
+        "start": "/assets/audio/voice/jp/char_4228_closur/cn_019.mp3",
+        "faceEnemy": "/assets/audio/voice/jp/char_4228_closur/cn_020.mp3",
         "select": [
-          "/assets/audio/voice/cn/char_4228_closur/cn_021.mp3",
-          "/assets/audio/voice/cn/char_4228_closur/cn_022.mp3"
+          "/assets/audio/voice/jp/char_4228_closur/cn_021.mp3",
+          "/assets/audio/voice/jp/char_4228_closur/cn_022.mp3"
         ],
         "place": [
-          "/assets/audio/voice/cn/char_4228_closur/cn_023.mp3",
-          "/assets/audio/voice/cn/char_4228_closur/cn_024.mp3"
+          "/assets/audio/voice/jp/char_4228_closur/cn_023.mp3",
+          "/assets/audio/voice/jp/char_4228_closur/cn_024.mp3"
         ],
-        "skill1": "/assets/audio/voice/cn/char_4228_closur/cn_025.mp3",
-        "skill2": "/assets/audio/voice/cn/char_4228_closur/cn_026.mp3",
-        "skill3": "/assets/audio/voice/cn/char_4228_closur/cn_027.mp3",
-        "skill4": "/assets/audio/voice/cn/char_4228_closur/cn_028.mp3",
-        "resultFour": "/assets/audio/voice/cn/char_4228_closur/cn_029.mp3",
-        "resultThree": "/assets/audio/voice/cn/char_4228_closur/cn_030.mp3",
-        "resultTwo": "/assets/audio/voice/cn/char_4228_closur/cn_031.mp3",
-        "resultLose": "/assets/audio/voice/cn/char_4228_closur/cn_032.mp3"
+        "skill1": "/assets/audio/voice/jp/char_4228_closur/cn_025.mp3",
+        "skill2": "/assets/audio/voice/jp/char_4228_closur/cn_026.mp3",
+        "skill3": "/assets/audio/voice/jp/char_4228_closur/cn_027.mp3",
+        "skill4": "/assets/audio/voice/jp/char_4228_closur/cn_028.mp3",
+        "resultFour": "/assets/audio/voice/jp/char_4228_closur/cn_029.mp3",
+        "resultThree": "/assets/audio/voice/jp/char_4228_closur/cn_030.mp3",
+        "resultTwo": "/assets/audio/voice/jp/char_4228_closur/cn_031.mp3",
+        "resultLose": "/assets/audio/voice/jp/char_4228_closur/cn_032.mp3"
       },
       "char_4229_aphris": {
-        "start": "/assets/audio/voice/cn/char_4229_aphris/cn_019.mp3",
-        "faceEnemy": "/assets/audio/voice/cn/char_4229_aphris/cn_020.mp3",
+        "start": "/assets/audio/voice/jp/char_4229_aphris/cn_019.mp3",
+        "faceEnemy": "/assets/audio/voice/jp/char_4229_aphris/cn_020.mp3",
         "select": [
-          "/assets/audio/voice/cn/char_4229_aphris/cn_021.mp3",
-          "/assets/audio/voice/cn/char_4229_aphris/cn_022.mp3"
+          "/assets/audio/voice/jp/char_4229_aphris/cn_021.mp3",
+          "/assets/audio/voice/jp/char_4229_aphris/cn_022.mp3"
         ],
         "place": [
-          "/assets/audio/voice/cn/char_4229_aphris/cn_023.mp3",
-          "/assets/audio/voice/cn/char_4229_aphris/cn_024.mp3"
+          "/assets/audio/voice/jp/char_4229_aphris/cn_023.mp3",
+          "/assets/audio/voice/jp/char_4229_aphris/cn_024.mp3"
         ],
-        "skill1": "/assets/audio/voice/cn/char_4229_aphris/cn_025.mp3",
-        "skill2": "/assets/audio/voice/cn/char_4229_aphris/cn_026.mp3",
-        "skill3": "/assets/audio/voice/cn/char_4229_aphris/cn_027.mp3",
-        "skill4": "/assets/audio/voice/cn/char_4229_aphris/cn_028.mp3",
-        "resultFour": "/assets/audio/voice/cn/char_4229_aphris/cn_029.mp3",
-        "resultThree": "/assets/audio/voice/cn/char_4229_aphris/cn_030.mp3",
-        "resultTwo": "/assets/audio/voice/cn/char_4229_aphris/cn_031.mp3",
-        "resultLose": "/assets/audio/voice/cn/char_4229_aphris/cn_032.mp3"
+        "skill1": "/assets/audio/voice/jp/char_4229_aphris/cn_025.mp3",
+        "skill2": "/assets/audio/voice/jp/char_4229_aphris/cn_026.mp3",
+        "skill3": "/assets/audio/voice/jp/char_4229_aphris/cn_027.mp3",
+        "skill4": "/assets/audio/voice/jp/char_4229_aphris/cn_028.mp3",
+        "resultFour": "/assets/audio/voice/jp/char_4229_aphris/cn_029.mp3",
+        "resultThree": "/assets/audio/voice/jp/char_4229_aphris/cn_030.mp3",
+        "resultTwo": "/assets/audio/voice/jp/char_4229_aphris/cn_031.mp3",
+        "resultLose": "/assets/audio/voice/jp/char_4229_aphris/cn_032.mp3"
       },
       "char_4230_mcnist": {
-        "start": "/assets/audio/voice/cn/char_4230_mcnist/cn_019.mp3",
-        "faceEnemy": "/assets/audio/voice/cn/char_4230_mcnist/cn_020.mp3",
+        "start": "/assets/audio/voice/jp/char_4230_mcnist/cn_019.mp3",
+        "faceEnemy": "/assets/audio/voice/jp/char_4230_mcnist/cn_020.mp3",
         "select": [
-          "/assets/audio/voice/cn/char_4230_mcnist/cn_021.mp3",
-          "/assets/audio/voice/cn/char_4230_mcnist/cn_022.mp3"
+          "/assets/audio/voice/jp/char_4230_mcnist/cn_021.mp3",
+          "/assets/audio/voice/jp/char_4230_mcnist/cn_022.mp3"
         ],
         "place": [
-          "/assets/audio/voice/cn/char_4230_mcnist/cn_023.mp3",
-          "/assets/audio/voice/cn/char_4230_mcnist/cn_024.mp3"
+          "/assets/audio/voice/jp/char_4230_mcnist/cn_023.mp3",
+          "/assets/audio/voice/jp/char_4230_mcnist/cn_024.mp3"
         ],
-        "skill1": "/assets/audio/voice/cn/char_4230_mcnist/cn_025.mp3",
-        "skill2": "/assets/audio/voice/cn/char_4230_mcnist/cn_026.mp3",
-        "skill3": "/assets/audio/voice/cn/char_4230_mcnist/cn_027.mp3",
-        "skill4": "/assets/audio/voice/cn/char_4230_mcnist/cn_028.mp3",
-        "resultFour": "/assets/audio/voice/cn/char_4230_mcnist/cn_029.mp3",
-        "resultThree": "/assets/audio/voice/cn/char_4230_mcnist/cn_030.mp3",
-        "resultTwo": "/assets/audio/voice/cn/char_4230_mcnist/cn_031.mp3",
-        "resultLose": "/assets/audio/voice/cn/char_4230_mcnist/cn_032.mp3"
+        "skill1": "/assets/audio/voice/jp/char_4230_mcnist/cn_025.mp3",
+        "skill2": "/assets/audio/voice/jp/char_4230_mcnist/cn_026.mp3",
+        "skill3": "/assets/audio/voice/jp/char_4230_mcnist/cn_027.mp3",
+        "skill4": "/assets/audio/voice/jp/char_4230_mcnist/cn_028.mp3",
+        "resultFour": "/assets/audio/voice/jp/char_4230_mcnist/cn_029.mp3",
+        "resultThree": "/assets/audio/voice/jp/char_4230_mcnist/cn_030.mp3",
+        "resultTwo": "/assets/audio/voice/jp/char_4230_mcnist/cn_031.mp3",
+        "resultLose": "/assets/audio/voice/jp/char_4230_mcnist/cn_032.mp3"
       },
       "char_4235_thumpy": {
-        "start": "/assets/audio/voice/cn/char_4235_thumpy/cn_019.mp3",
-        "faceEnemy": "/assets/audio/voice/cn/char_4235_thumpy/cn_020.mp3",
+        "start": "/assets/audio/voice/jp/char_4235_thumpy/cn_019.mp3",
+        "faceEnemy": "/assets/audio/voice/jp/char_4235_thumpy/cn_020.mp3",
         "select": [
-          "/assets/audio/voice/cn/char_4235_thumpy/cn_021.mp3",
-          "/assets/audio/voice/cn/char_4235_thumpy/cn_022.mp3"
+          "/assets/audio/voice/jp/char_4235_thumpy/cn_021.mp3",
+          "/assets/audio/voice/jp/char_4235_thumpy/cn_022.mp3"
         ],
         "place": [
-          "/assets/audio/voice/cn/char_4235_thumpy/cn_023.mp3",
-          "/assets/audio/voice/cn/char_4235_thumpy/cn_024.mp3"
+          "/assets/audio/voice/jp/char_4235_thumpy/cn_023.mp3",
+          "/assets/audio/voice/jp/char_4235_thumpy/cn_024.mp3"
         ],
-        "skill1": "/assets/audio/voice/cn/char_4235_thumpy/cn_025.mp3",
-        "skill2": "/assets/audio/voice/cn/char_4235_thumpy/cn_026.mp3",
-        "skill3": "/assets/audio/voice/cn/char_4235_thumpy/cn_027.mp3",
-        "skill4": "/assets/audio/voice/cn/char_4235_thumpy/cn_028.mp3",
-        "resultFour": "/assets/audio/voice/cn/char_4235_thumpy/cn_029.mp3",
-        "resultThree": "/assets/audio/voice/cn/char_4235_thumpy/cn_030.mp3",
-        "resultTwo": "/assets/audio/voice/cn/char_4235_thumpy/cn_031.mp3",
-        "resultLose": "/assets/audio/voice/cn/char_4235_thumpy/cn_032.mp3"
+        "skill1": "/assets/audio/voice/jp/char_4235_thumpy/cn_025.mp3",
+        "skill2": "/assets/audio/voice/jp/char_4235_thumpy/cn_026.mp3",
+        "skill3": "/assets/audio/voice/jp/char_4235_thumpy/cn_027.mp3",
+        "skill4": "/assets/audio/voice/jp/char_4235_thumpy/cn_028.mp3",
+        "resultFour": "/assets/audio/voice/jp/char_4235_thumpy/cn_029.mp3",
+        "resultThree": "/assets/audio/voice/jp/char_4235_thumpy/cn_030.mp3",
+        "resultTwo": "/assets/audio/voice/jp/char_4235_thumpy/cn_031.mp3",
+        "resultLose": "/assets/audio/voice/jp/char_4235_thumpy/cn_032.mp3"
       },
       "cn/char_003_kalts/cn_019.mp3": "/assets/audio/voice/cn/char_003_kalts/cn_019.mp3",
       "cn/char_003_kalts/cn_020.mp3": "/assets/audio/voice/cn/char_003_kalts/cn_020.mp3",
