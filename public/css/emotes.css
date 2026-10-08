@@ -154,12 +154,15 @@
   color: var(--mint-400) !important;
 }
 
+/* 文本气泡（team__bubble 锚定在头像右侧）：自适应宽度、正常行高、完整换行——
+   「单行过窄 / 换行缝隙过大」修复（OPTIMIZATION_AND_PR_PLAN §2.3.1）：
+   min-width 保底不挤成竖条，max-width 4.5rem 内自然换行，line-height 1.35 行距紧凑。 */
 .ebubble--text {
   min-width: max(1.1rem, 70px) !important;
-  max-width: max(3.5rem, 240px) !important;
+  max-width: max(4.5rem, 300px) !important;
   width: auto !important;
   height: auto !important;
-  padding: .06rem .12rem !important;
+  padding: .06rem .14rem !important;
   background: rgba(14, 20, 24, .94) !important;
   border: 1px solid var(--mint-600) !important;
   border-radius: .04rem !important;
@@ -170,13 +173,18 @@
   z-index: 10 !important;
   color: #fff !important;
   font-size: max(.15rem, 12px) !important;
-  line-height: 1.3 !important;
-  word-break: break-all !important;
+  line-height: 1.35 !important;
+  word-break: break-word !important;
+  overflow-wrap: anywhere !important;
   white-space: pre-wrap !important;
 }
 .ebubble--text::after {
   content: ''; position: absolute; left: -.08rem; top: calc(50% - .06rem); width: .08rem; height: .12rem;
   background: var(--mint-600); clip-path: polygon(100% 0, 0 50%, 100% 100%);
+}
+/* 手机横屏：气泡最宽 70vw，不再撑出屏幕 */
+@media (max-width: 900px), (pointer: coarse) {
+  .ebubble--text { max-width: min(70vw, max(4rem, 260px)) !important; font-size: max(.14rem, 12px) !important; }
 }
 
 @keyframes emo-panel-in { from { opacity: 0; transform: translateY(.06rem) scale(.96); } }

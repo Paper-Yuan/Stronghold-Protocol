@@ -401,7 +401,7 @@
 .team__row.is-self .pavatar { box-shadow: 0 0 0 2px var(--mint-500), 0 0 .18rem rgba(23, 249, 183, .35); }
 .team__row.is-watched .pavatar { box-shadow: 0 0 0 2px var(--amber), 0 0 .18rem rgba(246, 163, 41, .45); }
 .team__row.is-dead .team__name { color: var(--text-dim); text-decoration: line-through; }
-.team__bubble { position: absolute; left: calc(100% + .06rem); top: 50%; transform: translateY(-50%); width: max-content; max-width: 3.2rem; }
+.team__bubble { position: absolute; left: calc(100% + .06rem); top: 50%; transform: translateY(-50%); width: max-content; max-width: 4.6rem; }
 /* 前往查看 / 返回战场 (research 09 §3.1: tapping a teammate's avatar expands a mint button under it) */
 .team__row.is-open .pavatar { box-shadow: 0 0 0 2px var(--mint-400), 0 0 .2rem rgba(23, 249, 183, .45); }
 .team__row.is-open .team__info { background: linear-gradient(90deg, rgba(13, 44, 36, .92), rgba(8, 11, 10, 0)); }
@@ -511,21 +511,9 @@
 .ewheel__panel.is-text .ewheel__item { padding: .12rem .04rem; font-size: .15rem; color: var(--text-md); }
 @keyframes pop-in { from { opacity: 0; transform: translateY(.08rem) scale(.97); } }
 
-/* speech bubble next to a team row: official emote art (+ phrase), or the phrase alone */
-.ebubble {
-  display: flex; align-items: center; gap: .06rem; padding: .05rem .14rem .05rem .2rem; white-space: nowrap;
-  background: rgba(22, 28, 26, .96); color: var(--text-hi); font-size: .15rem; font-weight: 700;
-  border: 1px solid rgba(78, 216, 175, .45);
-  clip-path: polygon(.1rem 0, 100% 0, 100% 100%, .1rem 100%, .1rem 62%, 0 50%, .1rem 38%);
-  animation: bubble-in 150ms var(--ease-out), bubble-out 300ms var(--ease-in-out) 2.7s forwards;
-  filter: drop-shadow(0 .04rem .1rem rgba(0, 0, 0, .55));
-  z-index: 2;
-}
-.ebubble--art { padding: .02rem .14rem .02rem .16rem; }
-.ebubble .eart { width: .62rem; height: .62rem; object-fit: contain; }
-.ebubble__txt { color: var(--mint-400); }
-.ebubble--text { background: rgba(236, 244, 241, .96); border: 0; }
-.ebubble--text .ebubble__txt { color: #0b1310; }
+/* speech bubble next to a team row: the visual lives in css/emotes.css (.ebubble / .ebubble--text, loaded after
+   this sheet and fully overriding this block). Only the placement anchor (.team__bubble above) is defined here.
+   bubble-in/bubble-out keyframes kept for the emote-art bubble fallback path. */
 @keyframes bubble-in { from { opacity: 0; transform: translateY(-50%) scale(.6); } }
 @keyframes bubble-out { to { opacity: 0; } }
 
@@ -757,7 +745,7 @@
   position: absolute;
   left: .24rem;
   bottom: calc(.24rem + max(.56rem, 34px) + .12rem);
-  width: 3.6rem;
+  width: 4.8rem;
   pointer-events: none;
   z-index: 105;
   display: flex;
@@ -767,25 +755,33 @@
 
 .chat-log {
   max-height: 1.8rem;
-  overflow-y: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
   display: flex;
   flex-direction: column;
   gap: 0.04rem;
   font-size: 0.13rem;
   text-shadow: 0 1px 2px #000;
   transition: opacity 0.25s ease-out;
-  padding-right: 0.04rem;
+  padding-right: 0.06rem;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(23, 249, 183, .35) transparent;
 }
 
+.chat-log::-webkit-scrollbar { width: 4px; }
+.chat-log::-webkit-scrollbar-track { background: transparent; }
+.chat-log::-webkit-scrollbar-thumb { background: rgba(23, 249, 183, .35); border-radius: 2px; }
+.chat-log::-webkit-scrollbar-thumb:hover { background: rgba(23, 249, 183, .55); }
+
 .chat-panel:not(.is-active) .chat-log {
-  opacity: 0.45;
+  opacity: 0.55;
+  pointer-events: auto;
 }
 
 .chat-panel.is-active .chat-log,
 .chat-panel:hover .chat-log {
   opacity: 1;
   pointer-events: auto;
-  overflow-y: auto;
 }
 
 .chat-item {
@@ -830,6 +826,7 @@
   border: none;
   color: #fff;
   font-size: 0.14rem;
+  min-height: 0.24rem;
   outline: none;
   font-family: inherit;
 }
@@ -870,12 +867,12 @@
   border-color: var(--mint, #17f9b7);
 }
 
-/* 移动端视口适配 */
+/* 移动端视口适配（横屏为主）：宽度 min(56vw, 4rem)，键盘弹出时 chatBox.js 经 visualViewport 上移 */
 @media (max-width: 767px), (max-height: 460px) {
   .chat-panel {
-    left: .24rem;
-    bottom: calc(.24rem + max(.56rem, 34px) + .08rem);
-    width: 2.8rem;
+    left: calc(.24rem + var(--sa-l, 0px));
+    bottom: calc(.24rem + max(.56rem, 34px) + .08rem + var(--sa-b, 0px));
+    width: min(56vw, 4rem);
   }
   .chat-log {
     max-height: 1.2rem;
@@ -883,6 +880,10 @@
   }
   .chat-input {
     font-size: 0.12rem;
+    min-height: .22rem;
   }
 }
+/* 键盘弹出（chatBox.js 设置 --kb-inset）：整个面板抬到键盘上方 */
+.chat-panel { transition: bottom .18s ease-out; }
+.chat-panel.is-kb { bottom: calc(var(--kb-inset, 0px) + .12rem) !important; }
 

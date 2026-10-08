@@ -2,7 +2,7 @@
 import { html } from './components.js';
 import { useState, useEffect, useRef } from '../../vendor/hooks.module.js';
 import { net } from '../net.js';
-import { useStore, store, pushChatMessage } from '../store.js';
+import { useStore, store, pushChatMessage, clearChatMessages } from '../store.js';
 import { toast } from './toasts.js';
 
 export function ChatBox({ active: controlledActive, onToggle, showTrigger = controlledActive === undefined }) {
@@ -47,6 +47,33 @@ export function ChatBox({ active: controlledActive, onToggle, showTrigger = cont
     window.addEventListener('keydown', handleKey);
     return () => window.removeEventListener('keydown', handleKey);
   }, [active, setActive]);
+
+  // Mobile keyboard: track visualViewport so the panel rides above the keyboard
+  // (game.css .chat-panel.is-kb consumes --kb-inset). Coarse pointer only —
+  // desktop browsers also resize visualViewport on zoom, which would jiggle the panel.
+  useEffect(() => {
+    const vv = window.visualViewport;
+    if (!vv || !window.matchMedia('(pointer: coarse)').matches) return;
+    const panelEl = () => logRef.current?.closest('.chat-panel');
+    const onVv = () => {
+      const inset = Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
+      const el = panelEl();
+      if (!el) return;
+      if (inset > 60) {
+        el.style.setProperty('--kb-inset', `${Math.round(inset)}px`);
+        el.classList.add('is-kb');
+      } else {
+        el.classList.remove('is-kb');
+      }
+    };
+    vv.addEventListener('resize', onVv);
+    vv.addEventListener('scroll', onVv);
+    return () => {
+      vv.removeEventListener('resize', onVv);
+      vv.removeEventListener('scroll', onVv);
+      panelEl()?.classList.remove('is-kb');
+    };
+  }, []);
 
   const send = async (e) => {
     e?.preventDefault?.();

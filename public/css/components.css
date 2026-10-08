@@ -1049,3 +1049,52 @@
   letter-spacing: .15em;
 }
 
+
+/* ---- server load badge (右上角服务器负载微型胶囊, OPTIMIZATION_AND_PR_PLAN §2.1.2-4) --------------- */
+.srvload {
+  position: fixed;
+  top: calc(.16rem + var(--sa-t, 0px));
+  right: calc(.2rem + var(--sa-r, 0px));
+  z-index: 130;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: .06rem;
+  pointer-events: none;
+}
+.srvload__pill {
+  pointer-events: auto;
+  display: flex;
+  align-items: center;
+  gap: .08rem;
+  padding: .05rem .14rem .05rem .1rem;
+  font-size: .13rem;
+  font-weight: 700;
+  letter-spacing: .04em;
+  color: var(--text-hi);
+  background: rgba(16, 22, 20, .92);
+  border: 1px solid rgba(78, 216, 175, .35);
+  cursor: pointer;
+  transition: border-color .2s ease-out, background .2s ease-out;
+}
+.srvload__pill:hover { background: rgba(20, 30, 26, .96); }
+.srvload--warn .srvload__icon, .srvload__pill.srvload--warn { border-color: rgba(255, 176, 32, .55); }
+.srvload__pill.srvload--warn .srvload__icon { color: var(--amber); }
+.srvload__pill.srvload--crit { border-color: rgba(255, 82, 64, .65); }
+.srvload__pill.srvload--crit .srvload__icon { color: #ff5240; }
+.srvload__icon { font-size: .14rem; line-height: 1; }
+.srvload__num { font-size: .12rem; color: var(--text-md); }
+.srvload__detail {
+  pointer-events: auto;
+  max-width: 3.6rem;
+  padding: .1rem .14rem;
+  font-size: .12rem;
+  line-height: 1.5;
+  color: var(--text-md);
+  background: rgba(12, 16, 14, .96);
+  border: 1px solid rgba(78, 216, 175, .3);
+  animation: srvload-in 160ms ease-out;
+}
+.srvload__detail b { color: var(--text-hi); }
+.srvload__msg { margin-top: .06rem; color: var(--text-lo); }
+@keyframes srvload-in { from { opacity: 0; transform: translateY(-.06rem); } }

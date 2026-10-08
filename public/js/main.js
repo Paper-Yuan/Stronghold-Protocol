@@ -28,11 +28,12 @@
 import './ui/compat.js';
 import { render } from '../vendor/preact.module.js';
 import { useErrorBoundary, useEffect, useState } from '../vendor/hooks.module.js';
-import { html, UiHosts, Button, Icon, MicroLabel, closeAllDialogs, confirmDialog, alertDialog } from './ui/components.js';
+import { html, UiHosts, Button, Icon, MicroLabel, closeAllDialogs } from './ui/components.js';
+import { ServerLoadBadge } from './ui/serverLoadBadge.js';
 import { ConnectionBanner } from './ui/connBanner.js';
 import { ToastHost, toast, toastError, describeError } from './ui/toasts.js';
 import { net, identity, NetError } from './net.js';
-import { store, useStore, emptyMatch, selectRoute, sessionResetNotice, isSpectating, pushChatMessage } from './store.js';
+import { store, useStore, emptyMatch, selectRoute, sessionResetNotice, isSpectating, pushChatMessage, clearChatMessages } from './store.js';
 import { data } from './data.js';
 import { GAME_FILES } from './ui/gameComponents.js';
 import { TitleScreen, sanitizeName } from './screens/title.js';
@@ -130,7 +131,8 @@ function backToLobby() {
   clearTimeout(restoreTimer);
   const s = store.get();
   if (s.room || s.match.public) closeAllDialogs();
-  store.set({ room: null, match: emptyMatch(), ticker: [], emotes: [], chatMessages: [] });
+  store.set({ room: null, match: emptyMatch(), ticker: [], emotes: [] });
+  clearChatMessages();
   store.patch('ui', { restoring: false });
 }
 
@@ -170,36 +172,18 @@ function onWelcome(msg) {
 }
 
 let hasShownLoadNotice = false;
-async function checkServerLoadNotice(load) {
-  if (hasShownLoadNotice || !load || load.status === 'normal') return;
-  hasShownLoadNotice = true;
-
+/**
+ * 服务器负载提示（docs/OPTIMIZATION_AND_PR_PLAN.md §2.1.2-4）：welcome / lobby.stats 携带 serverLoad。
+ * critical/warning 都不再阻塞弹窗——详情常驻右上角微型胶囊（ServerLoadBadge），这里只在状态首次
+ * 变化时补一条 toast，让玩家不必主动点开也能感知。
+ */
+function checkServerLoadNotice(load) {
+  if (!load || load.status === 'normal') return;
   if (load.status === 'critical') {
-    const isPreloaded = (() => {
-      try {
-        const saved = localStorage.getItem('sp_preloaded_profiles');
-        return !!(saved && (JSON.parse(saved).core || JSON.parse(saved).full));
-      } catch { return false; }
-    })();
-
-    const advice = isPreloaded
-      ? '检测到您已预载核心资源。当前服务器算力负荷极高（CPU ' + (load.cpuPercent || 0) + '%），对局中可能有轻微同步延迟。'
-      : '检测到您尚未预载资源！在当前服务器高负荷下直接进入游玩极易发生静态素材拉取超时或断线。建议立即前往主页右下角「⚡资源预载」或前往备用服务器。';
-
-    await alertDialog({
-      title: '⚠ 服务器高载荷预警',
-      text: html`<div>
-        <p style="margin: 0 0 .12rem 0; line-height: 1.5;">${load.message || '当前服务器在线人数较多，负载已逼近承载上限。'}</p>
-        <p style="margin: 0 0 .1rem 0; color: var(--amber); font-size: .13rem;">${advice}</p>
-        <div style="font-size: .12rem; color: var(--text-lo); background: rgba(0,0,0,0.25); padding: .08rem; border-radius: 4px;">
-          当前在线: <b>${load.onlineCount}</b> 人 · 算力折算点数: <b>${load.score} / ${load.maxScore || 150}</b> · CPU: <b>${load.cpuPercent}%</b>
-        </div>
-      </div>`,
-      okText: '我知道了，继续游玩',
-      tone: 'warn',
-    });
-  } else if (load.status === 'warning') {
-    toast(`⚠️ 服务器较拥挤（在线 ${load.onlineCount} 人），建议未预载玩家先进行资源预载`, 'warn', { ttl: 8000 });
+    toast(`⛔ 服务器高载荷运行中（在线 ${load.onlineCount ?? '—'} 人），正在保护对局稳定`, 'warn', { ttl: 8000 });
+  } else if (load.status === 'warning' && !hasShownLoadNotice) {
+    hasShownLoadNotice = true;
+    toast(`⚠️ 服务器较拥挤（在线 ${load.onlineCount ?? '—'} 人），建议未预载玩家先进行资源预载`, 'warn', { ttl: 8000 });
   }
 }
 
@@ -212,6 +196,7 @@ function onRoomState(msg) {
     // We are no longer seated (kicked / left elsewhere) — neither in a player seat nor a spectator seat.
     if (store.get().room) toast('你已不在该同盟中', 'warn');
     store.set({ room: null, match: emptyMatch() });
+    clearChatMessages();
     return;
   }
   const prevRoom = store.get().room;
@@ -298,6 +283,11 @@ function wireNet() {
         rooms: Array.isArray(msg.rooms) ? msg.rooms : [],
       },
     });
+    // loadGuard 摘要（4s 周期）：已在线玩家也能感知负载变化（ServerLoadBadge + 首变 toast）
+    if (msg.serverLoad && typeof msg.serverLoad === 'object') {
+      store.set({ serverLoad: msg.serverLoad });
+      checkServerLoadNotice(msg.serverLoad);
+    }
   });
   net.on('m.public', (msg) => { matchAt = Date.now(); store.patch('match', { public: payload(msg) }); maybeFinishRestore(); });
   net.on('m.private', (msg) => { matchAt = Date.now(); store.patch('match', { private: payload(msg) }); });
@@ -400,6 +390,7 @@ function App() {
     <div class="app-bg" aria-hidden="true"></div>
     <${MaintenanceBanner} />
     ${error ? html`<${ScreenCrashed} error=${error} reset=${resetError} />` : html`<${Screen} key=${route} />`}
+    <${ServerLoadBadge} />
     <${ConnectionBanner} />
     <${ToastHost} />
     <${UiHosts} />

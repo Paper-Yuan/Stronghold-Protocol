@@ -228,3 +228,14 @@
 .shopbar.has-armed .scard:not(.is-armed):not(.scard--sold) { filter: brightness(.72); }
 .lvcard.is-armed { background: linear-gradient(180deg, #ffd65a, #e0a800); color: #1d1400; box-shadow: 0 0 0 2px #fff4c2, 0 0 .3rem rgba(255, 198, 0, .5); animation: pulse-gold 1.1s var(--ease-in-out) infinite; }
 .lvcard.is-armed .lvcard__label { letter-spacing: .12em; padding-left: .12em; }
+
+/* ---- mobile landscape shop cards (plan §2.3.3: 手机端过窄) -------------------------------------------------- */
+/* On phones the root 1rem is clamped at 40px (theme.css), so .scard's fixed 1.56rem ≈ 62px reads cramped next to its
+   .19rem name text. Cards flex with the viewport between floors, keep the PC proportion on wide screens, and the
+   class row yields its line when the card gets narrow so the name keeps its size. */
+@media (max-width: 767px), (max-height: 460px) and (pointer: coarse), (max-height: 460px) and (any-pointer: coarse) {
+  .scard { width: clamp(1.4rem, 13vw, 1.75rem); }
+  .scard__name { white-space: normal; overflow-wrap: anywhere; }
+  .scard__class { flex-wrap: wrap; }
+  .scard--item .scard__itemart { width: .9rem; height: .9rem; }
+}

@@ -99,6 +99,11 @@ export function pushChatMessage(msg) {
   store.set({ chatMessages: [...cur.slice(-39), msg] });
 }
 
+/** Clear the chat buffer — called on leaving a room so the next match starts clean. */
+export function clearChatMessages() {
+  store.set({ chatMessages: [] });
+}
+
 /**
  * Which screen the router shows for a given app state:
  * not entered → title; m.public.phase ≠ LOBBY or room.inMatch → game; in a room → room; else lobby.
