@@ -10,7 +10,9 @@
 //   缩短) uses the official grid (skill rangeId, or the base grid grown by ability_range_forward_extend) while it runs —
 //   with every module of the loadout: a module's 攻击距离 widens it too, except where the skill's range ignores 攻击距离
 //   (信仰搅拌机 S3 with SPT-Y, PRTS 备注 "此技能的攻击范围不受'攻击距离'属性影响") — and the DEFAULT trigger still reads the
-//   initial range (PRTS 卫戍协议/帮助 "技能就绪，且即将进行普通攻击"). A skill grid that only selects targets (荒芜拉普兰德
+//   initial range (PRTS 卫戍协议/帮助 "技能就绪，且即将进行普通攻击"), except where the owner's rule of 2026-10-05 makes it
+//   ACTIVE_RANGE (a running range that strictly contains the own one; not 烛煌's 4-11 vs 3-1 —
+//   test/sim/feedback5-active-range.test.js). A skill grid that only selects targets (荒芜拉普兰德
 //   S1: no rangeId, no 攻击范围 text) leaves the card on the unit's own range.
 
 import { test } from 'node:test';
@@ -48,7 +50,7 @@ test('data: 烛煌 S3 众恶的焚场 is the default skill (index 2), skill rang
     assert.equal(c.skill.index, 2);
     assert.equal(c.rangeId, '3-1');
     assert.equal(c.skill.rangeId, '4-11');
-    assert.equal(c.skill.trigger.rule, 'DEFAULT', 'an attack-range change keeps the basic strategy (§20.2)');
+    assert.equal(c.skill.trigger.rule, 'DEFAULT', 'an attack-range change keeps the basic strategy (§20.2); 4-11 does not contain 3-1, so no ACTIVE_RANGE');
   }
   assert.equal(C[BLAZE].skill.bb['attack@trigger_time'], 18);
   assert.equal(C.chess_char_5_03_b.skill.bb['attack@trigger_time'], 21);

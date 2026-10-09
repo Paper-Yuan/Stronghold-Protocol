@@ -14,6 +14,10 @@
 //   too), checked every tick, no attack needed. Kit option `trigger.allies` (+ `hpAtMost`, default 1): a healable,
 //   injured ally of the grid whose HP ratio is at most that instead (an AUTO heal skill's own rule — 古米 S1 waits in
 //   its heal mode until it has healed);
+//   ACTIVE_RANGE — the owner's rule (2026-10-05, a deliberate deviation): a MANUAL skill on the basic strategy whose attack
+//   range while it runs strictly contains the unit's own range checks the DEFAULT condition on that larger range
+//   (trigger grid = the running range, grown by the unit's permanent rangeExtend unless the skill ignores 攻击距离), every
+//   tick, no attack needed — an enemy the unit can target there (or one it blocks), a heal skill an injured ally;
 //   TAKE_DAMAGE (ready + just took a hit: 重装 "不受技能范围影响，受到伤害时释放技能"), SP_FULL/ALWAYS (as soon as ready),
 //   CUSTOM_RANGE (enemy inside the custom trigger grid), SEARCH (an enemy inside the INITIAL range, checked every tick
 //   without waiting for an attack: "不受基础策略影响，在初始攻击范围内存在敌人时释放技能" — not any enemy on the field,
@@ -44,7 +48,7 @@
 import { absoluteRangeKeys, canTargetEnemy } from './targeting.js';
 import { AUTO_OP_COOLDOWN, COLS, ROWS } from './constants.js';
 
-const TICK_RULES = new Set(['SP_FULL', 'SEARCH', 'CUSTOM_RANGE', 'SKILL_RANGE', 'GDGLOW_SKILL_2']);
+const TICK_RULES = new Set(['SP_FULL', 'SEARCH', 'CUSTOM_RANGE', 'SKILL_RANGE', 'ACTIVE_RANGE', 'GDGLOW_SKILL_2']);
 /** True when a SkillSpec `targeting` changes the unit's range while the skill runs (Battle._refreshRange). */
 const changesRange = (tg) => !!(tg && (tg.rangeGrid || tg.rangeExtend || tg.noRangeExtend));
 /** Enemies that satisfy a content trigger range (any targetable enemy, flyers included). */
@@ -113,6 +117,19 @@ export class SkillRuntime {
     this._trigSet = null;
     this.triggerRanges = [];      // content trigger ranges (addTriggerRange)
     this.noSkill = !spec;         // unit without any skill spec
+  }
+
+  /**
+   * Change the trigger rule and grid mid-battle — a kit whose skill's running range changes with its own use (薇薇安娜 S3:
+   * "首次技能结束后，本技能的技能范围永久扩大至3-2" — ACTIVE_RANGE on 3-2 from then, DEFAULT again at her next deployment).
+   * `grid`: a facing-RIGHT [dRow, dCol] grid (ACTIVE_RANGE / SKILL_RANGE / CUSTOM_RANGE), or null. (0.2.0 WE2, additive.)
+   * @param {string} rule @param {number[][]|null} [grid]
+   */
+  setTrigger(rule, grid = null) {
+    this.rule = String(rule ?? 'DEFAULT').toUpperCase();
+    this.triggerGrid = Array.isArray(grid) && grid.length ? grid : null;
+    this._trigKeys = null;
+    this._trigSet = null;
   }
 
   /**
@@ -346,15 +363,21 @@ export class SkillRuntime {
   /** Public form of the operation cooldown, for kits with their own automatic cast of a MANUAL skill. */
   get opCooling() { return this._opCooling(); }
 
-  /** Absolute tile keys of the trigger grid at the unit's current tile and direction (cached, with their Set). */
+  /**
+   * Absolute tile keys of the trigger grid at the unit's current tile and direction (cached, with their Set). ACTIVE_RANGE
+   * grows it by the unit's permanent rangeExtend (the range the skill would run with — Battle._refreshRange) unless the
+   * skill's range ignores 攻击距离 (targeting.noRangeExtend).
+   */
   _triggerKeys() {
     const u = this.unit;
     const tile = u.tileR * COLS + u.tileC;
-    if (!this._trigKeys || this._trigTile !== tile || this._trigDir !== u.dir) {
-      this._trigKeys = absoluteRangeKeys(this.triggerGrid, u.tileR, u.tileC, u.dir, 0);
+    const ext = this.rule === 'ACTIVE_RANGE' && !this.spec.targeting?.noRangeExtend ? (u.s.baseRangeExtend || 0) : 0;
+    if (!this._trigKeys || this._trigTile !== tile || this._trigDir !== u.dir || this._trigExt !== ext) {
+      this._trigKeys = absoluteRangeKeys(this.triggerGrid, u.tileR, u.tileC, u.dir, ext);
       this._trigSet = new Set(this._trigKeys);
       this._trigTile = tile;
       this._trigDir = u.dir;
+      this._trigExt = ext;
     }
     return this._trigKeys;
   }
@@ -385,6 +408,7 @@ export class SkillRuntime {
       if (!this.triggerGrid) return this._defaultCondition();
       return b.anyEnemyInKeys(this._triggerKeys());
     }
+    if (this.rule === 'ACTIVE_RANGE') return this._defaultCondition(this.triggerGrid ? this._triggerKeys() : null);
     // GDGLOW_SKILL_2 "全场存在可选目标时释放技能": a targetable enemy anywhere (heal skill: an ally that needs healing)
     if (this.rule === 'GDGLOW_SKILL_2') {
       if (this.healSkill) return b.injuredAlliesInKeys(ALL_TILES, u, !!u.profile?.heal?.elementHealRatio).length > 0;
@@ -396,12 +420,13 @@ export class SkillRuntime {
   /**
    * DEFAULT rule condition: an enemy (or injured ally for heal skills) inside the initial range (baseRangeKeys: own
    * grid + permanent rangeExtend), or an enemy inside a content trigger range (addTriggerRange; not for heal skills).
+   * `range` (ACTIVE_RANGE): those absolute tile keys instead of the initial range.
    */
-  _defaultCondition() {
+  _defaultCondition(range = null) {
     const b = this.battle;
     const u = this.unit;
     if (b.rangeChanged(u)) b._refreshRange(u);
-    const keys = u.baseRangeKeys || u.rangeKeys;
+    const keys = range || u.baseRangeKeys || u.rangeKeys;
     if (keys) {
       if (this.healSkill) return b.injuredAlliesInKeys(keys, u).length > 0;
       if (b.enemiesInKeys(keys, u, u.profile).length > 0) return true;

@@ -1354,7 +1354,8 @@ export class Battle {
    * handlers may cancel it or change `duration` / `value`. Official rules (buffs.js STATUS): 抵抗 (the `resist` status)
    * shortens the RESIST_STATUSES by its value (default half; applied after `beforeStatus`; `resistApplied` skips that
    * pass — the cold-on-cold 冻结 below already used post-抵抗 lengths). A second 寒冷 while 寒冷 remains applies 冻结 for
-   * max(remaining, this cold after 抵抗) (PRTS 术语释义 寒冷 「持续时间取双方之中最高」). 浮空 lasts half as long on units heavier
+   * max(remaining, this cold after 抵抗) (PRTS 术语释义 寒冷 「持续时间取双方之中最高」); on an enemy (友方寒冷) the pair turns into
+   * that 冻结 and no 寒冷 is left (「两两一对产生友方冻结」). 浮空 lasts half as long on units heavier
    * than LEVITATE_HALF_WEIGHT (current massLevel); 冻结's RES cut hits enemies only; 麻痹 adds stacks; "同名效果取最高"
    * statuses (`valued`) keep the strongest value — a weaker application only extends past the stronger one's end (it
    * then resumes); other statuses refresh to the longer duration. 诱导 (`attract`) walks the enemy to `point`
@@ -1409,11 +1410,22 @@ export class Battle {
       const prev = target.findBuff('cold');
       const spans = [prev.timeLeft, duration].filter((t) => t === Infinity || (Number.isFinite(t) && t > 0));
       const freezeFor = spans.length ? Math.max(...spans) : COLD_FREEZE_DURATION;
-      this.applyStatus(target, 'freeze', {
+      const froze = this.applyStatus(target, 'freeze', {
         duration: freezeFor, source: opts.source, force: opts.force,
         ...(spans.length ? { resistApplied: true } : {}),
       });
       if (!target.alive) return false;
+      // 友方寒冷 — every cold on an enemy: the operators', summons', items', the 谢拉格 wind's — "始终需要两两一对产生友方冻结"
+      // (PRTS 术语释义 寒冷; 异常效果 COLD "在特定条件下转变为冻结"): the pair BECOMES the 冻结, so neither cold is left and a
+      // later single cold on the frozen enemy is a 寒冷 that needs its own partner. Until 0.2.0 the older cold stayed on,
+      // extended to the freeze's length, so any cold before it ran out froze again: the 谢拉格 wind alone (every 25 s,
+      // 20 + 0.1 × layers s of cold) froze an enemy for the rest of the battle from 51 layers on — wherever it stood —
+      // and never below (community reports of 2026-10-06 「谢拉格盟约冰冻时间没有随层数正确成长」, 「…被在无法被任何干员攻击
+      // 到的地方永控」). A 敌方 cold (on an operator) keeps the old rule: PRTS 「…施加的敌方寒冷会变为敌方冻结」 names no pairing.
+      if (froze && target.side === 'enemy') {
+        this.removeBuff(target, 'cold');
+        return true;
+      }
     }
     const source = opts.source ?? null;
     let entered = true;

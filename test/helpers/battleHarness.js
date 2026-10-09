@@ -11,8 +11,12 @@
 //   stage         explicit stage object (overrides stageId)
 //   kind          'normal' | 'unite' | 'boss' | 'hidden' (default 'normal')
 //   seed          uint32 (default 1)
-//   units         [{ chessId, row, col, items?, uid?, carryState?, abs? } | { kind:'token', tokenId, row, col }]
-//                 board coordinates (rows 9–12, cols 2–10) for player 'p1'
+//   units         [{ chessId, row, col, items?, uid?, carryState?, abs? } | { kind:'token', tokenId, row, col }
+//                 | { diy: { slot, charId, skillIndex?, uniEquipId? }, elite?, row, col }]
+//                 board coordinates (rows 9–12, cols 2–10) for player 'p1'. A `diy` entry fields a 自选 piece (the
+//                 production path simdata getChess(slotId, { diy }), shared/diy.js): `slot` = a DIY slot's base id
+//                 (`chess_char_5_diy1_a`) or its tier (5 / 6), `elite` = its `_b` form (E2 Lv60); the operator's kit is
+//                 KITS[charId]
 //   players       full PlayerBattleInput[] (overrides `units`)
 //   enemies       [{ key, time=0, route=0 | RouteSpec, pos?, count?, interval?, mods?, tag?, bounty?, sourcePlayerId? }]
 //   waveTemplate  wave id (data/waves.json) or template object → routes + spawns + timeLimit
@@ -146,6 +150,20 @@ function buildData(defs) {
   return new DataSource({ chess: defs.chess ?? {}, enemies: defs.enemies ?? {}, tokens: defs.tokens ?? {}, stages: defs.stages ?? {}, waves: defs.waves ?? {} }, getDefaultSource());
 }
 
+/**
+ * A harness `units[]` entry with `diy` → its PlayerBattleInput fields: `chessId` = the slot's normal or elite id, `diy` =
+ * the pick ({ charId, skillIndex, uniEquipId } as given). Other entries unchanged.
+ */
+function diyEntry(u, data = getDefaultSource()) {
+  if (!u || !u.diy || typeof u.diy !== 'object') return u;
+  const slots = data.rawBackups?.()?.diy?.slots ?? {};
+  const { slot, ...pick } = u.diy;
+  const base = typeof slot === 'number' ? Object.keys(slots).find((id) => slots[id].tier === slot) : slot;
+  if (!base || !slots[base]) throw new Error(`diy: unknown slot ${slot}`);
+  const { elite, ...rest } = u;
+  return { ...rest, chessId: elite ? slots[base].goldenId : base, diy: pick };
+}
+
 /** Create a battle + harness. See header for options. */
 export function makeBattle(opts = {}) {
   const kind = opts.kind ?? 'normal';
@@ -181,7 +199,7 @@ export function makeBattle(opts = {}) {
   if (extraRoutes.length) routes = routes.concat(extraRoutes);
   const players = opts.players ?? [{
     playerId: 'p1', seat: 0, side: 'L', colOffset: 0,
-    units: (opts.units ?? []).map((u, i) => ({ uid: u.uid ?? i + 1, kind: u.kind ?? 'chess', ...u })),
+    units: (opts.units ?? []).map((u, i) => ({ uid: u.uid ?? i + 1, kind: u.kind ?? 'chess', ...diyEntry(u) })),
     bonds: opts.bonds ?? {}, bandId: opts.bandId ?? null, playerEffects: opts.playerEffects ?? [],
   }];
   const hookNames = opts.hooks ?? ALL_HOOKS;

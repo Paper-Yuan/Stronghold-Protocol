@@ -7,6 +7,9 @@
 // One more since 2026-10-04 (the owner's decision after GitHub issue #32 item 1, DESIGN §22.10): 余 S2 厚礼上宾 casts with an
 // enemy on its own 技能范围 x-1 — SKILL_RANGE, customRangeGrid its range (his attack range is his own tile, so the basic
 // strategy could not see an enemy he can pull); `rawRule` keeps TAKE_DAMAGE.
+// And since 0.2.0 (the owner's decision of 2026-10-05): 深巡 S2's running range 3-2 strictly contains her 2-2, so the
+// owner's ACTIVE_RANGE rule applies on top of her DEFAULT deviation — she casts with an enemy in the 3-2 (rule
+// ACTIVE_RANGE, customRangeGrid the 3-2, rawRule still TAKE_DAMAGE; test/sim/feedback5-active-range.test.js).
 //
 // The battle check is real: the chess records of data/chess.json with their kits, the stage 战场#01(下半)
 // (act2autochess_m01), a real enemy (萨卡兹枯朽前锋, melee, 0.8 tiles/s) walking the lane from the gate (9,10) to the
@@ -32,6 +35,8 @@ const DEVIATED = [
   ['chess_char_2_18_a', 'skcom_atk_up[3]'],  // 灰毫 S1 攻击力强化·γ型
   ['chess_char_2_18_a', 'skchr_ashlok_2'],   // 灰毫 S2 专注轰击
 ];
+/** The deviated skill whose running range strictly contains the own one: ACTIVE_RANGE on top (0.2.0). */
+const ACTIVE = new Set(['skchr_udflow_2']);
 /** 余 S2 厚礼上宾: SKILL_RANGE on its own x-1 (DESIGN §22.10). */
 const SKILL_RANGE_DEVIATED = [['chess_char_6_03_a', 'skchr_yu_2']];
 const both = (normalId) => [normalId, CHESS[normalId].goldenId];
@@ -70,16 +75,17 @@ function firstCast(chessId, skillId, { spawnAt = 0, seconds = 40 } = {}) {
   return out;
 }
 
-test('data: the six deviated 重装 skills are DEFAULT and 余 S2 is SKILL_RANGE on its x-1, on the normal and the elite record, rawRule the official TAKE_DAMAGE', () => {
+test('data: the six deviated 重装 skills are DEFAULT (深巡 S2: ACTIVE_RANGE on its 3-2) and 余 S2 is SKILL_RANGE on its x-1, on the normal and the elite record, rawRule the official TAKE_DAMAGE', () => {
   let n = 0;
   for (const [normalId, skillId] of DEVIATED) {
     for (const id of both(normalId)) {
       const s = CHESS[id].skills.find((x) => x.skillId === skillId);
       assert.ok(s, `${id} ${skillId}`);
       assert.equal(CHESS[id].profession, 'TANK');
-      assert.deepEqual(s.trigger, { rule: 'DEFAULT', rawRule: 'TAKE_DAMAGE', customRangeGrid: null }, `${id} ${skillId}`);
+      const want = ACTIVE.has(skillId) ? { rule: 'ACTIVE_RANGE', rawRule: 'TAKE_DAMAGE', customRangeGrid: s.rangeGrid } : { rule: 'DEFAULT', rawRule: 'TAKE_DAMAGE', customRangeGrid: null };
+      assert.deepEqual(s.trigger, want, `${id} ${skillId}`);
       // the sim's loadout def carries the data rule
-      assert.equal(ds.getChess(id, { skillIndex: s.index }).skill.trigger.rule, 'DEFAULT', `${id} ${skillId} loadout def`);
+      assert.equal(ds.getChess(id, { skillIndex: s.index }).skill.trigger.rule, want.rule, `${id} ${skillId} loadout def`);
       n++;
     }
   }
@@ -110,7 +116,7 @@ test('data: the six deviated 重装 skills are DEFAULT and 余 S2 is SKILL_RANGE
   for (const c of others) assert.deepEqual(c.skills.find((s) => s.skillId === 'skcom_atk_up[3]').trigger, { rule: 'DEFAULT', rawRule: 'DEFAULT', customRangeGrid: null }, c.chessId);
 });
 
-test('PR #12\'s kit lines agree with the data: 深巡 / 雷蛇 S2 specs say DEFAULT, the other deviated skills read the data', async () => {
+test('PR #12\'s kit line agrees with the data: 雷蛇 S2\'s spec says DEFAULT, the other deviated skills (深巡 S2 since 0.2.0) read the data', async () => {
   const { KITS } = await import('../../server/sim/content/index.js');
   for (const [normalId, skillId] of [...DEVIATED, ...SKILL_RANGE_DEVIATED]) {
     for (const id of both(normalId)) {
@@ -121,21 +127,24 @@ test('PR #12\'s kit lines agree with the data: 深巡 / 雷蛇 S2 specs say DEFA
       const spec = s.isDefault ? kit?.skill : kit?.skills?.[skillId];
       const specRule = typeof spec?.trigger === 'string' ? spec.trigger : spec?.trigger?.rule;
       assert.ok(specRule == null || specRule === s.trigger.rule, `${id} ${skillId}: kit ${specRule} vs data ${s.trigger.rule}`);
-      if (skillId === 'skchr_udflow_2' || skillId === 'skchr_liskam_2') assert.equal(specRule, 'DEFAULT', `${id} ${skillId}: PR #12's trigger line`);
+      if (skillId === 'skchr_liskam_2') assert.equal(specRule, 'DEFAULT', `${id} ${skillId}: PR #12's trigger line`);
+      if (skillId === 'skchr_udflow_2') assert.equal(specRule, undefined, `${id} ${skillId}: reads the data's ACTIVE_RANGE (PR #12's line would keep the 2-2)`);
     }
   }
 });
 
-test('real battle: each deviated skill casts with an enemy in range before anything hits the operator (normal + elite)', () => {
+test('real battle: each deviated skill casts with an enemy in range before anything hits the operator (normal + elite; 深巡 S2 in its 3-2)', () => {
   for (const [normalId, skillId] of DEVIATED) {
     for (const id of both(normalId)) {
       const r = firstCast(id, skillId, { spawnAt: 3 });
       const where = `${id} ${skillId}: ${JSON.stringify(r)}`;
-      assert.equal(r.rule, 'DEFAULT', where);
+      const rule = ACTIVE.has(skillId) ? 'ACTIVE_RANGE' : 'DEFAULT';
+      assert.equal(r.rule, rule, where);
       assert.ok(r.cast != null, `never cast — ${where}`);
       assert.ok(r.cast >= 3, `no cast before an enemy is on the field — ${where}`);
-      assert.equal(r.reason, 'DEFAULT', where);
-      assert.ok(r.enemyInRange, `an enemy on its initial range at the cast — ${where}`);
+      assert.equal(r.reason, rule, where);
+      if (ACTIVE.has(skillId)) assert.ok(r.enemyInSkillRange && !r.enemyInRange, `an enemy on the 3-2, not yet on the 2-2, at the cast — ${where}`);
+      else assert.ok(r.enemyInRange, `an enemy on its initial range at the cast — ${where}`);
       assert.ok(r.hurt == null || r.hurt > r.cast, `cast before the first hit — ${where}`);
     }
   }
