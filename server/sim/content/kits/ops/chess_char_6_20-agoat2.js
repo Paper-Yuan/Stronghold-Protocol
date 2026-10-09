@@ -45,7 +45,7 @@ function agoat2(bb, chess, def) {
           if (a.hp < a.s.maxHp) battle.heal(unit, a, unit.s.atk, { skillHeal: true });
         }
         const S = bstate(battle);
-        S.agoatVeils ??= [];
+        S.agoatVeils = S.agoatVeils ?? [];
         S.agoatVeils.push({ keys: new Set(unit.rangeKeys || []), pool: unit.s.atk * bv(bb, 'atk_scale', 5), until: battle.time + num(bb.duration, 12), src: unit });
         battle.fx('shield', { x: unit.x, y: unit.y, id: unit.id, duration: num(bb.duration, 12) });
         if (!S.agoatVeilHook) {

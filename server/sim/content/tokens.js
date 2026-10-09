@@ -975,7 +975,7 @@ function manifold(bb, raw, def) {
         u.mem.stolenDef = (u.mem.stolenDef ?? 0) + gd;
         b.addBuff(u, { key: 'mlyss:steal', refresh: 'replace', mods: { atkFlat: u.mem.stolenAtk, defFlat: u.mem.stolenDef } });
         // the robbed enemy keeps exactly what was taken from it (a capped last steal takes less than steal_atk)
-        const robbed = (target.mem.mlyssRobbed ??= { atk: 0, def: 0 });
+        const robbed = (target.mem.mlyssRobbed = target.mem.mlyssRobbed ?? { atk: 0, def: 0 });
         robbed.atk += ga; robbed.def += gd;
         b.addBuff(target, { key: 'mlyss:stolen', refresh: 'replace', mods: { atkFlat: -robbed.atk, defFlat: -robbed.def }, source: u });
       },

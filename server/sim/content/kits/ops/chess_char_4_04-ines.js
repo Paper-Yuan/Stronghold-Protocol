@@ -84,7 +84,7 @@ export default withDefaults({
           const key = `ines:aspd:${unit.id}`;
           const cur = target.findBuff(key);
           battle.addBuff(target, { key, mods: { aspd: (cur?.mods?.aspd ?? 0) - s }, source: unit });
-          if (!(unit.mem.inesAspdVictims ||= []).includes(target.id)) unit.mem.inesAspdVictims.push(target.id);
+          if (!(unit.mem.inesAspdVictims = unit.mem.inesAspdVictims || []).includes(target.id)) unit.mem.inesAspdVictims.push(target.id);
           battle.addBuff(unit, { key: 'ines:aspdGain', mods: { aspd: unit.mem.inesAspd } });
         },
         onEnd({ battle, unit }) { clearAspd(battle, unit); },

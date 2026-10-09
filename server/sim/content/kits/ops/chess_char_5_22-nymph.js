@@ -94,7 +94,7 @@ export default {
             c.dmg.type = 'elemental';
             c.dmg.element = 'apoptosis';
             c.dmg.canDodge = false;
-            (c.dmg.tags ||= []).push('nymphBreak');
+            (c.dmg.tags = c.dmg.tags || []).push('nymphBreak');
           }, { owner: unit, priority: -10 });
         }
       },

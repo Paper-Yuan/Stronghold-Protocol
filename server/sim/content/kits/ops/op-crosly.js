@@ -195,7 +195,7 @@ export default {
             const e = c.source, d = c.dmg;
             if (c.target !== unit || !e || e.side !== 'enemy' || c.type === 'element' || !d) return;
             if (d.tags && (d.tags.includes('dot') || d.tags.includes('periodic') || d.tags.includes('hpLoss'))) return;
-            (unit.mem.croslyHurtBy ??= new WeakSet()).add(e);
+            (unit.mem.croslyHurtBy = unit.mem.croslyHurtBy ?? new WeakSet()).add(e);
           }, { owner: unit });
           const fresh = (e) => !(unit.mem.croslyHurtBy && unit.mem.croslyHurtBy.has(e));
           if (ds !== 1) {

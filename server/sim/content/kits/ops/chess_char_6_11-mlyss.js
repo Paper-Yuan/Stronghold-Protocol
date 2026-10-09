@@ -190,7 +190,7 @@ function mlyss(bb, chess, def) {
       { install(battle, unit) { // 净水即生命: 流形 copy / respawn / melee steal / ranged split
         unit.mem.mlyssPending = [];
         const S = bstate(battle);
-        S.robbed ??= new WeakMap(); // enemy → { atk, def } stolen by any 流形
+        S.robbed = S.robbed ?? new WeakMap(); // enemy → { atk, def } stolen by any 流形
         const mine = (t) => isTok(t, tokId, unit);
         // her 流形 on the field (split clones aside: deployLimit 1 counts the 流形 itself)
         const standing = () => battle.allyUnits.some((t) => mine(t) && live(t) && !t.mem.mlyssClone);
@@ -301,7 +301,7 @@ function mlyss(bb, chess, def) {
       } },
       { install(battle, unit) { // 开源节流: 莱茵生命 ops of the owner cost less DP to redeploy
         const S = bstate(battle);
-        S.rhine ??= new Set();
+        S.rhine = S.rhine ?? new Set();
         if (S.rhine.has(unit.ownerId)) return;
         S.rhine.add(unit.ownerId);
         const cut = num(t1.cost), first = num(t1.runtime_cost);

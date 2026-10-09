@@ -143,7 +143,7 @@ function fireVolley(battle, t, owner) {
   const s2 = skillOn(owner, S2);
   const life = s2 ? num(t.def.skill?.bb?.['attack@projectile_life_time'], BULLET_LIFE) : BULLET_LIFE;
   const [fr, fc] = dirVec(t.dir);
-  const list = (t.mem.radianBullets ??= []);
+  const list = (t.mem.radianBullets = t.mem.radianBullets ?? []);
   for (const [dx, dy] of s2 ? BULLET_OFFSETS : [[0, 0]]) {
     list.push({ x: t.x + dx, y: t.y + dy, vx: fc * BULLET_SPEED, vy: fr * BULLET_SPEED, life, atk: t.s.atk });
   }

@@ -53,6 +53,7 @@
     "ws": "^8.22.0"
   },
   "devDependencies": {
+    "acorn": "^8.19.0",
     "puppeteer-core": "^25.12.0"
   }
 }

@@ -277,7 +277,7 @@ function whitw2(bb, chess, def) {
       } },
       { install(battle, unit) { // 叙拉古的荣幸: one team effect per player, the strongest copy's numbers
         const S = bstate(battle);
-        S.siracusa ??= new Map();
+        S.siracusa = S.siracusa ?? new Map();
         const cur = S.siracusa.get(unit.ownerId);
         const sp = num(t1.sp), as = num(t1.attack_speed);
         if (cur) { cur.sp = Math.max(cur.sp, sp); cur.as = Math.max(cur.as, as); return; }

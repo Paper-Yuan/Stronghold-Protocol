@@ -246,7 +246,7 @@ export default {
             // every enemy the shot hits is pushed once the hit is resolved (a push of the main target inside the hit would
             // move the splash centre: ai.js resolveHit centres it on the target after the main hit's callbacks)
             onEachHit({ unit, target }) {
-              if (target && target.side === 'enemy') (unit.mem.weedyWet ??= []).push(target);
+              if (target && target.side === 'enemy') (unit.mem.weedyWet = unit.mem.weedyWet ?? []).push(target);
             },
             onHit({ battle, unit }) {
               const list = unit.mem.weedyWet ?? [];

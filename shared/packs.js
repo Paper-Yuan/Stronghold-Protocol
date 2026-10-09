@@ -183,12 +183,12 @@ export function normalizeManifest(raw, ctx) {
       // anything but true reads as false: say so when another value was meant
       const mt = m.machineTranslated;
       if (mt !== undefined && typeof mt !== 'boolean') warnings.push(`"machineTranslated": ${String(JSON.stringify(mt)).slice(0, 40)} is not true or false (read as false)`);
-      out.name ||= languageName(code);
-      out.englishName ||= languageName(code, 'en');
+      out.name = out.name || languageName(code);
+      out.englishName = out.englishName || languageName(code, 'en');
     }
   }
-  out.name ||= id;
-  out.englishName ||= out.name;
+  out.name = out.name || id;
+  out.englishName = out.englishName || out.name;
   if (ctx.folder && kind && kind.files) {
     const given = isObj(m.files) ? m.files : {};
     for (const [role, spec] of Object.entries(kind.files)) {

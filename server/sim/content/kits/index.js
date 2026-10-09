@@ -159,34 +159,12 @@ export const OPERATOR_KIT_FILES = Object.freeze([
 export const GENERIC_KIT_CHARS = Object.freeze(['char_600_cpione', 'char_601_cguard', 'char_602_cdfend', 'char_603_csnipe',
   'char_604_ccast', 'char_605_cmedic', 'char_606_csuppo', 'char_607_cspec']);
 
-async function loadKitFile(file) {
-  try {
-    return await import(`./ops/${file}`);
-  } catch (e) {
-    console.error(`[content] failed to load kits/ops/${file}: ${e && e.stack ? e.stack.split('\n').slice(0, 3).join(' | ') : e}`);
-    return {};
-  }
-}
+// The registry is a build-time static import (tools/build-kits-registry.mjs → registry.js): the former top-level
+// `await Promise.all(dynamic import)` required Chrome 89+, and Android WebViews of older builds black-screened on it
+// (test/es2020-syntax.test.js gate). Same key order, same per-file default-export handling — zero runtime cost.
+import { TIER_KITS, STANDIN_KITS, OPERATOR_KITS, KITS } from './registry.js';
 
-const MODULES = await Promise.all(KIT_FILES.map((group) => Promise.all(group.map(loadKitFile))));
-const STANDIN_MODULES = await Promise.all(STANDIN_KIT_FILES.map(loadKitFile));
-const OPERATOR_MODULES = await Promise.all(OPERATOR_KIT_FILES.map(loadKitFile));
-const registryOf = (m) => (m && m.default && typeof m.default === 'object' ? m.default : {});
-
-/** The registry of each tier group (index 0 = tier 1): baseChessId → kit builder, in KIT_FILES order. */
-export const TIER_KITS = Object.freeze(MODULES.map((group) => Object.assign({}, ...group.map(registryOf))));
-
-/** The 补位 stand-in kits: stand-in charId → kit builder, in STANDIN_KIT_FILES order. */
-export const STANDIN_KITS = Object.freeze(Object.assign({}, ...STANDIN_MODULES.map(registryOf)));
-
-/** The 自选 operator kits: owned-6★ charId → kit builder, in OPERATOR_KIT_FILES order. */
-export const OPERATOR_KITS = Object.freeze(Object.assign({}, ...OPERATOR_MODULES.map(registryOf)));
-
-/**
- * The merged kit registry: baseChessId → (bb, chess, def) => Kit, tier 1 … tier 6, then the stand-ins' charIds, then
- * the 自选 operators' charIds.
- */
-export const KITS = Object.freeze(Object.assign({}, ...TIER_KITS, STANDIN_KITS, OPERATOR_KITS));
+export { TIER_KITS, STANDIN_KITS, OPERATOR_KITS, KITS };
 
 /**
  * Every character a 自选 pick may field with a faithful kit: the 预备干员 (GENERIC_KIT_CHARS), the stand-ins with a kit
