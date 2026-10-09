@@ -269,50 +269,53 @@ export class Matchmaker {
     }
 
     // 4. 散人撮合分桶: key = `${mode}:${difficulty}`
-    if (this.queue.size === 0) return;
+    // (a solo / full-room dispatch above may have emptied the roomQueue too — the tail check below still stops the timer)
+    if (this.queue.size > 0) {
+      const buckets = new Map();
+      for (const [pid, entry] of this.queue.entries()) {
+        const key = `${entry.mode}:${entry.difficulty}`;
+        if (!buckets.has(key)) buckets.set(key, []);
+        buckets.get(key).push(entry);
+      }
 
-    const buckets = new Map();
-    for (const [pid, entry] of this.queue.entries()) {
-      const key = `${entry.mode}:${entry.difficulty}`;
-      if (!buckets.has(key)) buckets.set(key, []);
-      buckets.get(key).push(entry);
-    }
-
-    for (const [key, entries] of buckets.entries()) {
-      // 4.1 独立模拟 (solo): 1 人直接发车
-      if (key.startsWith('solo:')) {
-        for (const soloEntry of entries) {
-          this.queue.delete(soloEntry.session.playerId);
-          this.formRoom([soloEntry], soloEntry.mode, soloEntry.difficulty, false);
+      for (const [key, entries] of buckets.entries()) {
+        // 4.1 独立模拟 (solo): 1 人直接发车
+        if (key.startsWith('solo:')) {
+          for (const soloEntry of entries) {
+            this.queue.delete(soloEntry.session.playerId);
+            this.formRoom([soloEntry], soloEntry.mode, soloEntry.difficulty, false);
+          }
+          continue;
         }
-        continue;
-      }
 
-      // 4.2 满员发车 (4 人)
-      while (entries.length >= this.opts.targetPlayers) {
-        const matched = entries.splice(0, this.opts.targetPlayers);
-        for (const m of matched) this.queue.delete(m.session.playerId);
-        this.formRoom(matched, matched[0].mode, matched[0].difficulty, false);
-      }
+        // 4.2 满员发车 (4 人)
+        while (entries.length >= this.opts.targetPlayers) {
+          const matched = entries.splice(0, this.opts.targetPlayers);
+          for (const m of matched) this.queue.delete(m.session.playerId);
+          this.formRoom(matched, matched[0].mode, matched[0].difficulty, false);
+        }
 
-      if (entries.length === 0) continue;
+        if (entries.length === 0) continue;
 
-      // 4.3 散人超时补 AI 发车
-      const oldest = entries.reduce((prev, curr) => (curr.joinedAt < prev.joinedAt ? curr : prev), entries[0]);
-      const waitTime = now - oldest.joinedAt;
+        // 4.3 散人超时补 AI 发车
+        const oldest = entries.reduce((prev, curr) => (curr.joinedAt < prev.joinedAt ? curr : prev), entries[0]);
+        const waitTime = now - oldest.joinedAt;
 
-      if (waitTime >= this.opts.timeoutMs && entries.some(e => e.fillBots)) {
-        const matched = entries.splice(0, this.opts.targetPlayers);
-        for (const m of matched) this.queue.delete(m.session.playerId);
-        this.formRoom(matched, matched[0].mode, matched[0].difficulty, true);
-        continue;
-      }
-
-      // 4.4 广播散人排队进度
-      for (const entry of entries) {
-        this.sendStatus(entry, entries.length);
+        if (waitTime >= this.opts.timeoutMs && entries.some(e => e.fillBots)) {
+          const matched = entries.splice(0, this.opts.targetPlayers);
+          for (const m of matched) this.queue.delete(m.session.playerId);
+          this.formRoom(matched, matched[0].mode, matched[0].difficulty, true);
+          continue;
+        }
+        // 4.4 广播散人排队进度
+        for (const entry of entries) {
+          this.sendStatus(entry, entries.length);
+        }
       }
     }
+
+    // both queues drained: nothing left to match — the 1 s interval only re-arms on the next enqueue
+    if (this.queue.size === 0 && this.roomQueue.size === 0) this.stop();
   }
 
   /**

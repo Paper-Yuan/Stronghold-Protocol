@@ -516,6 +516,8 @@ export class Lobby {
     session.roomCode = code;
     session.notice = null;
     session.pendingResult = null;
+    // in a room now: drop the lobby-stats hint (the broadcast loop also skips room members)
+    session.wantsLobbyStats = false;
     this.log.info(`[lobby] ${code} created (${mode}/${difficulty}) by ${session.name}`);
     this.broadcastState(room);
     this.broadcastLobbyStats();
@@ -539,6 +541,8 @@ export class Lobby {
     session.roomCode = room.code;
     session.notice = null;
     session.pendingResult = null;
+    // in a room now: drop the lobby-stats hint (see create)
+    session.wantsLobbyStats = false;
     if (!room.hostId) room.hostId = session.playerId;
     this.broadcastState(room);
     this.broadcastLobbyStats();
@@ -574,7 +578,7 @@ export class Lobby {
         name: host?.name || `同盟 #${r.code}`,
         difficulty: r.difficulty,
         humans,
-        maxSeats: 10,
+        maxSeats: MAX_SEATS,
         inMatch: !!r.match,
       });
     }
@@ -600,7 +604,10 @@ export class Lobby {
       const payload = encode(stats);
       if (!this.registry?.byPlayerId || !payload) return;
       for (const session of this.registry.byPlayerId.values()) {
-        if (session.connected && session.ws && session.wantsLobbyStats) {
+        // room membership is the authority, not the flag alone: a host can enqueue from inside a
+        // room, and a late room.list poll can re-set the flag after create/join — both must still
+        // stay off the lobby list, so skip anyone currently in a room (roomOf clears stale codes).
+        if (session.connected && session.ws && session.wantsLobbyStats && !this.roomOf(session)) {
           sendRaw(session.ws, payload);
         }
       }
@@ -656,6 +663,8 @@ export class Lobby {
     session.roomCode = room.code;
     session.notice = null;
     session.pendingResult = null;
+    // spectating now: drop the lobby-stats hint (see create)
+    session.wantsLobbyStats = false;
     this.broadcastState(room);
     if (room.match) this.callMatch(room, 'addSpectator', session.playerId);
     return OK;

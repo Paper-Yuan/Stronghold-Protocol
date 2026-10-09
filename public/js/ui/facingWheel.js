@@ -150,15 +150,21 @@ export function useTileScreen(view, row, col) {
     let alive = true;
     // no tile (nothing selected): nothing to follow
     if (!view || !Number.isInteger(row) || !Number.isInteger(col)) { last.current = ''; setG(null); return undefined; }
+    // ~30 Hz is plenty for a follower of the camera's glide (CAMERA_MS); a per-rAF getBoundingClientRect +
+    // re-projection on a high-refresh display costs real main-thread time during the placement drag
+    const WHEEL_FOLLOW_MS = 1000 / 30;
     const tick = () => {
-      if (!alive) return;
       const t = tileScreen(view, row, col);
       const key = t ? `${t.x.toFixed(1)},${t.y.toFixed(1)},${t.s.toFixed(2)}` : '';
       if (key !== last.current) { last.current = key; setG(t); }
-      raf = requestAnimationFrame(tick);
     };
-    tick();
-    return () => { alive = false; cancelAnimationFrame(raf); };
+    const loop = () => {
+      if (!alive) return;
+      tick();
+      raf = setTimeout(loop, WHEEL_FOLLOW_MS);
+    };
+    loop();
+    return () => { alive = false; clearTimeout(raf); };
   }, [view, row, col]);
   return g;
 }
@@ -380,10 +386,13 @@ function Stripes({ tiles, view, row, col }) {
           return el;
         }));
       }
-      raf = requestAnimationFrame(tick);
     };
-    tick();
-    return () => { cancelAnimationFrame(raf); svg.remove(); };
+    // ~30 Hz re-projection (see useTileScreen): full rAF here re-projected every polygon on each frame of a
+    // high-refresh display while the wheel was open
+    const STRIPE_FOLLOW_MS = 1000 / 30;
+    const loop = () => { tick(); raf = setTimeout(loop, STRIPE_FOLLOW_MS); };
+    loop();
+    return () => { clearTimeout(raf); svg.remove(); };
   }, [key, view, !!mount]);
   // overlay (2D board / fallback): never over the piece's own tile, so the unit being placed stays visible
   const over = mount ? [] : tiles.filter(([r, c]) => r !== row || c !== col);
@@ -396,10 +405,12 @@ function Stripes({ tiles, view, row, col }) {
       const t = tileScreen(view, over[0][0], over[0][1]);
       const k = t ? `${t.x.toFixed(1)},${t.y.toFixed(1)}` : '';
       if (k !== last) { last = k; setN((n) => n + 1); }
-      raf = requestAnimationFrame(tick);
     };
-    raf = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(raf);
+    // ~30 Hz (see useTileScreen)
+    const STRIPE_FOLLOW_MS = 1000 / 30;
+    const loop = () => { tick(); raf = setTimeout(loop, STRIPE_FOLLOW_MS); };
+    loop();
+    return () => clearTimeout(raf);
   }, [overKey, view]);
   if (!over.length) return null;
   const polys = stripePolys(view, over);
