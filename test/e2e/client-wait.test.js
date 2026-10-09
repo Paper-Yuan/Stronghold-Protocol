@@ -28,7 +28,9 @@ function fakePage(trueAfter) {
 }
 
 test('a wait longer than one slice keeps polling the same predicate until it holds', async () => {
-  const page = fakePage(95);
+  // 200 ms against 30 ms slices: comfortably more than the 4 slices asserted below, so ordinary timer jitter cannot
+  // shave the count (95 ms against 30 ms sat on the knife edge and resolved in 3 on a slow timer)
+  const page = fakePage(200);
   const fn = () => true;
   const got = await waitForFunctionLong(page, fn, { timeout: 1000, polling: 200, slice: 30 }, 'a', 2);
   assert.deepEqual(got, { handle: 'ok', args: ['a', 2] });
