@@ -82,7 +82,7 @@ import { randomBytes, randomInt } from 'node:crypto';
 import { ERR, MAX_SEATS, MAX_SPECTATORS, ROOM_CODE_LEN, modeIdFor } from '../shared/constants.js';
 import { checkLoadout, checkNotOwned, checkDiyPicks } from '../shared/protocol.js';
 import { getCpuUsagePercent } from './admin.js';
-import { LoadGuard } from './loadGuard.js';
+import { LoadGuard, isTestEnv } from './loadGuard.js';
 import { encode, isDroppable, isErrCode, sendRaw, sendSession } from './net.js';
 import { getData as defaultGetData, lookup } from './data.js';
 import { Match as DefaultMatch } from './match/Match.js';
@@ -259,7 +259,7 @@ export class Lobby {
     /** 动态准入熔断与负载采样（docs/OPTIMIZATION_AND_PR_PLAN.md §2.1.2）：welcome/lobby.stats 携带其摘要 */
     this.loadGuard = options.loadGuard || new LoadGuard({ registry, log, options: options.loadGuardOptions });
     /** 定期大厅全量数据心跳 (4秒，仅非单测环境启用) */
-    if (process.env.NODE_ENV !== 'test') {
+    if (!isTestEnv()) {
       this._statsPeriodicTimer = setInterval(() => this.broadcastLobbyStats(), 4000);
       this._statsPeriodicTimer?.unref?.();
     }

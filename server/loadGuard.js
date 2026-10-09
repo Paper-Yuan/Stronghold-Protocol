@@ -20,6 +20,13 @@ import os from 'node:os';
 import { monitorEventLoopDelay } from 'node:perf_hooks';
 import { getCpuUsagePercent } from './admin.js';
 
+/**
+ * Whether this process runs under a test runner. `node --test` sets NODE_TEST_CONTEXT (and never NODE_ENV), so both
+ * are checked: the sampling timer stays off in tests, where the whole suite's event-loop lag would otherwise trip the
+ * breaker red and refuse the test clients' hello (flaky lobby-integration).
+ */
+export const isTestEnv = () => process.env.NODE_ENV === 'test' || !!process.env.NODE_TEST_CONTEXT;
+
 /** Tunables (override via the LoadGuard constructor options). */
 export const LOAD_GUARD_DEFAULTS = Object.freeze({
   intervalMs: 2000,   // sampling cadence; 0 = manual sampling only (tests)
@@ -71,7 +78,7 @@ export class LoadGuard {
     this._monitor.enable();
     /** true once at least one sample() ran — a fresh guard has no CPU/lag window yet, so it stays green */
     this._sampled = false;
-    if (this.opts.intervalMs > 0 && process.env.NODE_ENV !== 'test') {
+    if (this.opts.intervalMs > 0 && !isTestEnv()) {
       this._timer = setInterval(() => this.sample(), this.opts.intervalMs);
       this._timer.unref?.();
     }

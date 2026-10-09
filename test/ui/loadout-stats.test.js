@@ -196,9 +196,9 @@ test('特性 and 天赋 follow the chosen module: 隐现\'s trait upgrade is MAR
   const rows = (id, level, entries) => kitRows(section(id, level, entries));
   const { golden } = slot(INSIDE);
   const traitOf = (rs) => rs.find((r) => r.k === '特性');
-  // default module: the module's upgraded trait text; 不装备: the plain class trait
-  assert.equal(traitOf(rows(INSIDE, 'elite', {})).text, golden.trait.moduleDescRaw);
-  assert.match(traitOf(rows(INSIDE, 'elite', {})).text, /110%/);
+  // default module: the class trait, then the module's added line (item 16.2 of 2026-10-06); 不装备: the plain class trait
+  assert.equal(traitOf(rows(INSIDE, 'elite', {})).text, `${golden.trait.descRaw}\n${golden.trait.moduleDescRaw}`);
+  assert.match(traitOf(rows(INSIDE, 'elite', {})).text, /^优先攻击空中单位\n[^\n]*110%/);
   assert.equal(traitOf(rows(INSIDE, 'elite', { [INSIDE]: { module: 'none' } })).text, golden.traitBase.descRaw);
   assert.equal(traitOf(rows(INSIDE, 'normal', {})).text, slot(INSIDE).base.trait.descRaw, '普通: its own trait');
   // 天赋: named and not hidden, the record's list

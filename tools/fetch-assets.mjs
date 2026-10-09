@@ -177,7 +177,7 @@ function countStats(m, bytes, files) {
     skills: Object.keys(m.skills || {}).length,
     ui: Object.keys(m.ui || {}).length,
     sfxUnits: Object.keys(m.audio?.sfx?.units || {}).length,
-    voiceChars: Object.keys(m.audio?.voice || {}).length,
+    voiceChars: Object.keys(m.audio?.voice || {}).filter((id) => /^char_/.test(id)).length,
   };
 }
 
