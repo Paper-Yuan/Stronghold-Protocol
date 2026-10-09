@@ -4,6 +4,9 @@
 // `attackAnim`, tools/build-data.mjs from the asset manifest; server/sim/ai.js attackStand). It used to stop only
 // ATTACK_PAUSE (0.35 s) after each strike while the client played the attack clip over the whole walk. An enemy with no
 // clip known keeps the old 0.35 s (test/sim/combat.test.js); a 「不停止移动」 attacker never stops; a stun cuts the stand.
+// Since 0.2.0 (GitHub #187 / #170) every attack has its wind-up — the strike comes at the clip's damage frame after the
+// swing starts, also the first one of an enemy whose cooldown ran out before it had a target (it used to strike at once)
+// — and a stun before the frame cuts the swing (test/sim/feedback5-enemy-swing.test.js).
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -101,9 +104,10 @@ test('a 「不停止移动」 attacker (attackMoves) keeps walking through its a
   };
   const moving = run(true), standing = run(false);
   assert.ok(moving.atks.length >= 3 && standing.atks.length >= 3);
-  for (const t of moving.atks.slice(1, 3)) assert.ok(walked(moving.log, t - 0.5, t + 1) > 0.6, `walks through the attack at ${t.toFixed(2)}`);
-  // (the first attack lands as the target comes into range, its cooldown long over: no wind-up to stand through)
-  for (const t of standing.atks.slice(1, 3)) assert.equal(walked(standing.log, t - 0.5 + 2 * TICK, t + 1 - TICK), 0, 'the same enemy without it stands');
+  for (const t of moving.atks.slice(0, 3)) assert.ok(walked(moving.log, t - 0.5, t + 1) > 0.6, `walks through the attack at ${t.toFixed(2)}`);
+  // (since 0.2.0 the first attack too: its cooldown long over as the target comes into range, it swings from the start —
+  // the whole 0.5 s wind-up stood before the strike)
+  for (const t of standing.atks.slice(0, 3)) assert.equal(walked(standing.log, t - 0.5 + 2 * TICK, t + 1 - TICK), 0, 'the same enemy without it stands');
 });
 
 test('no attack clip known: ATTACK_PAUSE after the strike and no wind-up stand; a stun cuts a stand short', () => {
@@ -116,8 +120,13 @@ test('no attack clip known: ATTACK_PAUSE after the strike and no wind-up stand; 
   });
   h.step();
   const e = h.enemy('enemy_slow');
-  assert.ok(e.lastAttackAt >= 0, 'attacked at once');
-  assert.ok(Math.abs(e.atkStandUntil - (h.b.time - TICK + 2.5)) < 1e-6, 'stands the 2.5 s after the strike');
+  // (0.2.0: a target in range at once, its cooldown over — it swings at once and strikes at the 0.5 s damage frame; it
+  // used to strike in the first tick)
+  assert.equal(e.lastAttackAt, -Infinity, 'swinging, not struck yet');
+  h.runUntil(() => e.lastAttackAt >= 0, 2);
+  assert.ok(Math.abs(e.lastAttackAt - (TICK + 0.5)) < TICK + 1e-6, `struck at the damage frame (${e.lastAttackAt.toFixed(3)})`);
+  h.step();
+  assert.ok(Math.abs(e.atkStandUntil - (e.lastAttackAt + 2.5)) < 1e-6, 'stands the 2.5 s after the strike');
   h.run(0.5);
   const x0 = e.x;
   h.b.applyStatus(e, 'stun', { duration: 0.5 });
@@ -156,8 +165,9 @@ test('a ranged enemy with a target in range on a WAIT checkpoint leaves when the
   assert.equal(free.attacks, 0);
   assert.ok(sniper.attacks >= 2 && quick.attacks >= 5);
   assert.ok(Math.abs(sniper.waited - free.waited) < 1e-9 && Math.abs(quick.waited - free.waited) < 1e-9, `the wait ends at ${free.waited.toFixed(2)} s for all three`);
-  // it walks on once the attack clip running at the end of the wait is over (the attack at 2.7 s: until 3.2 s)
-  assert.ok(sniper.moved > free.moved && sniper.moved <= 3.2 + 2 * TICK, `leaves at ${sniper.moved?.toFixed(2)} s (no target: ${free.moved.toFixed(2)} s)`);
+  // it walks on once the attack clip running at the end of the wait is over (since 0.2.0 the first strike at its 0.5 s
+  // damage frame, the next one 2.7 s later at 3.2 s: its clip until 3.7 s; it used to strike at once — until 3.2 s)
+  assert.ok(sniper.moved > free.moved && sniper.moved <= 3.7 + 2 * TICK, `leaves at ${sniper.moved?.toFixed(2)} s (no target: ${free.moved.toFixed(2)} s)`);
   assert.equal(quick.moved, null, 'an enemy attacking quicker than its clip stands while the target stays in range');
 });
 

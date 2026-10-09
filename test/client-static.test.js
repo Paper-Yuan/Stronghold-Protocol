@@ -506,11 +506,13 @@ describe('net.js', () => {
     await p;
   });
 
-  test('drop → pending rejects, reconnect with backoff, hello again', async () => {
+  test('drop → in-flight request preserved (resilience), reconnect with backoff, hello again', async () => {
     const { net, ws, sockets, timers } = await onlineNet();
     const p = net.request('room.leave', {});
     ws().drop();
-    await assert.rejects(p, (e) => e.code === 'DISCONNECTED');
+    // a recoverable drop keeps the in-flight request queued rather than rejecting it (test/net-resilience.test.js):
+    // it is re-sent once the reconnect gets its welcome, so the request settles on that answer, not on the drop
+    assert.equal(net.pendingCount, 1, 'in-flight request preserved across the drop');
     assert.equal(net.status, 'reconnecting');
     assert.equal(net.attempt, 1);
     assert.equal(sockets.length, 1);
@@ -527,6 +529,10 @@ describe('net.js', () => {
     ws().recv({ t: 'welcome', rid: ws().last('hello').rid, playerId: 'p_1', token: 't', name: '凯尔希', serverNow: 1 });
     assert.equal(net.attempt, 0);
     assert.equal(net.status, 'online');
+    const flushed = ws().last('room.leave');
+    assert.ok(flushed, 'the in-flight request is re-sent after the reconnect');
+    ws().recv({ t: 'ok', rid: flushed.rid });
+    await p;
   });
 
   test('pong gives latency and clock offset', async () => {

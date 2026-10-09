@@ -209,36 +209,41 @@ test('F5 "若干员被击倒的位置为其他干员或召唤物的初始位置�
 // expired or been killed — and the removed summon was not counted, so the clause never applied: a 突袭 member that
 // landed on the free tile of 浊心斯卡蒂's 海嗣 and fell there lay on it and kept the 海嗣 (远古血亲: it comes back on its
 // tile) off the field. Every board piece's 初始位置 counts now, on the field or not.
+// Since 0.2.0 the 海嗣 is a countdown summon — 无敌 + 禁疗 (PRTS 海嗣 备注 「持有禁疗、无敌」; DESIGN §25.16): it only expires,
+// no damage kills it. The killed case takes 缪尔赛思's 流形, a board summon that is attacked and killed and also comes back
+// on its tile (「其被击败后会在25秒后自动刷新」).
 test('F5 rule 3: a body on the home of a summon that has expired or been killed goes back to its own; the summon comes back', () => {
-  for (const how of ['expired', 'killed']) {
+  const CASES = {
+    expired: { owner: 'chess_char_6_04_a', tokenId: 'token_10017_skadi2_dedant', name: '海嗣' },
+    killed: { owner: 'chess_char_6_11_a', tokenId: 'token_10030_mlyss_wtrman', name: '流形' },
+  };
+  for (const [how, { owner, tokenId, name }] of Object.entries(CASES)) {
     const h = makeBattle({
       stageId: 'flat', autoFinish: false, timeLimit: 400, bonds: RAID,
       units: [
-        { chessId: 'chess_char_6_04_a', row: 10, col: 3, uid: 1 },
-        { kind: 'token', tokenId: 'token_10017_skadi2_dedant', row: 10, col: 5, uid: 2, ownerUid: 1 },
+        { chessId: owner, row: 10, col: 3, uid: 1 },
+        { kind: 'token', tokenId, row: 10, col: 5, uid: 2, ownerUid: 1 },
         { chessId: 'chess_char_1_18_a', row: 12, col: 3, uid: 3 },
       ],
     });
     h.step();
     const b = h.b;
-    const sea = b.allyUnits.find((u) => u.kind === 'token' && u.uid === 2);
+    const sum = b.allyUnits.find((u) => u.kind === 'token' && u.uid === 2);
     const yan = h.unit(3);
-    assert.ok(sea.alive && sea.tileR === 10 && sea.tileC === 5, 'the 海嗣 on its placed tile');
-    if (how === 'killed') kill(b, sea);
-    else h.runUntil(() => !sea.alive, 120);
-    assert.ok(!sea.alive && sea.removed, `${how}: the 海嗣 is gone`);
+    assert.ok(sum.alive && sum.tileR === 10 && sum.tileC === 5, `the ${name} on its placed tile`);
+    if (how === 'killed') kill(b, sum);
+    else h.runUntil(() => !sum.alive, 120);
+    assert.ok(!sum.alive && sum.removed, `${how}: the ${name} is gone`);
     assert.equal(b.isReservedTile(10, 5), false, 'its home is free for an automatic placement');
     b.retreat(yan, { reason: 'raid' });                 // the 突袭 landing (raidRedeploy: retreat + redeploy on a free tile)
-    assert.ok(b.redeploy(yan, { free: true, tile: [10, 5], keepSp: true }), `${how}: 宴 lands on the 海嗣's home`);
+    assert.ok(b.redeploy(yan, { free: true, tile: [10, 5], keepSp: true }), `${how}: 宴 lands on the ${name}'s home`);
     kill(b, yan);
-    assert.deepEqual(b.restTile(yan), [12, 3], `${how}: 宴 lies on her own home, not on the 海嗣's`);
+    assert.deepEqual(b.restTile(yan), [12, 3], `${how}: 宴 lies on her own home, not on the ${name}'s`);
     assert.deepEqual(bodyOf(b, yan), [12, 3], 'the client draws her there');
-    assert.equal(b.isReservedTile(10, 5), false, 'the 海嗣\'s home stays free');
-    if (how === 'expired') {
-      const back = () => b.allyUnits.find((u) => u.kind === 'token' && u.alive && u.defId === sea.defId) ?? null;
-      assert.ok(h.runUntil(() => back() != null, 60), 'the 海嗣 comes back (while 宴 still waits to redeploy)');
-      assert.deepEqual(tileOf(back()), [10, 5], 'on its own tile');
-    }
+    assert.equal(b.isReservedTile(10, 5), false, `the ${name}'s home stays free`);
+    const back = () => b.allyUnits.find((u) => u.kind === 'token' && u.alive && u.defId === tokenId) ?? null;
+    assert.ok(h.runUntil(() => back() != null, 60), `${how}: the ${name} comes back`);
+    assert.deepEqual(tileOf(back()), [10, 5], 'on its own tile');
     checkInvariants(b);
   }
 });

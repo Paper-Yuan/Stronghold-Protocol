@@ -1274,6 +1274,7 @@ test(`${nm('enemy_10027_vtsk')}: entrance barrage (${skb('enemy_10027_vtsk', 'Ap
   assert.ok(barrage.every((c) => c.target === h.unit('t_wall')), 'the highest-HP unit');
   approx(barrage[0].amount, e.s.atk);
   h.runUntil(() => e.stats.attacks >= 1, 10);
+  h.run(1);   // (its shot lands: since 0.2.0 the first strike comes at the clip's damage frame, after the barrage window)
   const d = h.hooksOf('damaged').find((c) => c.source === e && c.dmg.isAttack);
   approx(d.amount, e.s.atk * tb('enemy_10027_vtsk', 'range.attack@atk_scale_range'));
   h.run(skb('enemy_10027_vtsk', 'MultiCombat').initCooldown + 6);
@@ -2397,7 +2398,8 @@ test('“斩胄之剑” / “破胄之锤” 初始模式 attack: every ally in
     const h = bossArena({ units: [{ chessId: 't_wall', row: 10, col: 9 }, { chessId: 't_wall2', row: 10, col: 7 }] });
     h.step();
     put(h, key, [3, 8], { tag: 'part' });
-    h.run(1);
+    // (the first attack: its 0.8 / 0.867 s wind-up, then the shots — since 0.2.0 an attack strikes at its damage frame)
+    h.runUntil(() => h.unit('t_wall').stats.taken > 0 && h.unit('t_wall2').stats.taken > 0, 3);
     approx(h.unit('t_wall').stats.taken, E[key].stats.atk * scale, 1e-6, key);
     approx(h.unit('t_wall2').stats.taken, E[key].stats.atk * scale, 1e-6, key);
   }

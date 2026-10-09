@@ -1,9 +1,11 @@
-// Tier-5 operator kits (server/sim/content/kits/tier5.js): every chess runs a real battle through the harness and its
+// Tier-5 operator kits (server/sim/content/kits/ops/chess_char_5_*.js): every chess runs a real battle through the harness and its
 // signature effect is asserted with numbers taken from its own blackboards (normal Lv4 / elite Lv7).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { makeBattle, enemyRec, chessRec, checkInvariants } from '../helpers/battleHarness.js';
-import KITS from '../../server/sim/content/kits/tier5.js';
+import { TIER_KITS } from '../../server/sim/content/kits/index.js';
+
+const KITS = TIER_KITS[4];
 
 const approx = (a, b, eps = 1e-6, msg = '') => assert.ok(Math.abs(a - b) <= eps * Math.max(1, Math.abs(b)), `${msg} ${a} ≉ ${b}`);
 const dummy = (key = 'enemy_dummy', o = {}) => enemyRec({ key, hp: 1e7, speed: 0, ...o });
@@ -457,7 +459,7 @@ test('号角 S3: cast with an enemy in range (DEFAULT, DESIGN §21.29); ATK +25 
 });
 
 // ------------------------------------------------------------------------------------------------------------------
-test('魔王 S3: inspire +65 % of her max HP to others in range, HP equalised every 2 s; T1 orbiting motes ×1.5 aura heal; T2 −10 % from Sarkaz', () => {
+test('魔王 S3: inspire +65 % of her max HP to others in range, HP equalised every 2 s; T1 orbiting motes ×1.5 trait (生命回复速度); T2 −10 % from Sarkaz', () => {
   const sark = dummy('enemy_sark');
   sark.tags = ['sarkaz'];
   const h = makeBattle({
@@ -469,17 +471,22 @@ test('魔王 S3: inspire +65 % of her max HP to others in range, HP equalised ev
   const a = h.unit('t_a'), b = h.unit('t_b'), c = h.unit('t_c');
   const bb = bbOf(u), t0 = tal(u, 0), t1 = tal(u, 1);
   const aura = () => u.s.atk * u.def.traitBb['attack@atk_to_hp_recovery_ratio'];
+  // the trait: 生命回复速度 on the allies in range (an hpRegen buff — PRTS 分支特性信息 吟游者; professions.js bardRegen)
+  const trait = (x) => x.findBuff(`trait:bard:${u.id}`)?.mods.hpRegen ?? 0;
   h.step();
   a.hp = 2000; b.hp = 8000; c.hp = 2000;
   h.run(1.05);
   // the 3 motes orbit at range_radius 1.15 (dynamic_spd 30°/s, 120° apart): none sits on the left neighbour at t = 1 s
   assert.ok(!a.hasBuff('cetsyr:mote'), 'motes orbit: not on the left neighbour yet');
-  approx(a.hp - 2000, aura(), 1e-6, 'plain aura before the mote arrives');
-  approx(b.hp - 8000, aura(), 1e-6, 'plain aura (2 tiles away)');
+  approx(trait(a), aura(), 1e-6, 'plain trait before the mote arrives');
+  approx(trait(b), aura(), 1e-6, 'plain trait (2 tiles away)');
+  assert.ok(a.hp > 2000 && b.hp > 8000, 'regenerating');
   assert.ok(h.runUntil(() => a.hasBuff('cetsyr:mote'), 2), 'an orbiting mote reaches the adjacent operator');
+  h.run(0.3);
+  approx(trait(a), aura() * t0['attack@trait_mul'], 1e-6, 'mote ×1.5');
   const hpA = a.hp;
   h.run(1);
-  approx(a.hp - hpA, aura() * t0['attack@trait_mul'], 1e-6, 'mote ×1.5');
+  assert.ok(Math.abs(a.hp - hpA - aura() * t0['attack@trait_mul']) <= 1.5, `mote ×1.5: +${a.hp - hpA} in 1 s`);
   assert.ok(h.runUntil(() => c.hasBuff('cetsyr:mote'), 12), 'a diagonal neighbour (1.41 tiles) is on the orbit too');
   h.run(8);
   assert.ok(!fxOf(h, 'mote').some((e) => e[4].id === b.id), 'two tiles away: off the orbit');
@@ -502,7 +509,7 @@ test('魔王 S3: inspire +65 % of her max HP to others in range, HP equalised ev
 });
 
 // ------------------------------------------------------------------------------------------------------------------
-test('铃兰 T2 画地为牢 fragile 20 % on sluggish enemies (×1.4 in S3); S3 no attack, range-wide sluggish, heals; T1 Supporter SP aura', () => {
+test('铃兰 T2 画地为牢 fragile 20 % on sluggish enemies (×1.4 in S3); S3 no attack, range-wide sluggish, 生命回复速度 (none in the first second); T1 Supporter SP aura', () => {
   const h = makeBattle({
     defs: { enemies: { enemy_dummy: dummy() }, chess: { t_sup: chessRec({ id: 't_sup', profession: 'SUPPORT', stats: { atk: 0 } }), t_hurt: ally('t_hurt') } },
     units: [{ chessId: 'chess_char_5_10_a', row: 10, col: 4 }, { chessId: 't_sup', row: 12, col: 3 }, { chessId: 't_hurt', row: 11, col: 5 }],
@@ -521,12 +528,21 @@ test('铃兰 T2 画地为牢 fragile 20 % on sluggish enemies (×1.4 in S3); S3 
   hurt.hp = 5000;
   u.skill.gainSp(1000);
   assert.ok(h.runUntil(() => u.skill.active, 5));
-  const lastAtk = u.lastAttackAt;
-  h.run(2.1);
+  const lastAtk = u.lastAttackAt, cast = h.b.time;
+  // PRTS 技能3 备注: an hpRegen buff (no heal), 0 in the first second, its amount refreshed every second
+  const fox = () => hurt.findBuff(`lisa:fox:${u.id}`);
+  h.run(0.9);
+  assert.equal(fox(), null, 'nothing in the first second');
+  assert.equal(hurt.hp, 5000);
+  h.run(1.2);
   assert.equal(u.lastAttackAt, lastAtk, 'no attacks during S3');
   assert.ok(e.s.flags && e.findBuff('sluggish'), 'enemies in range are sluggish');
   approx(e.s.dmgTakenMul, 1 + (t1.damage_scale - 1) * bb.scale_delta_to_one, 1e-9, 'T2 ×1.4');
-  approx(hurt.hp - 5000, 2 * u.s.atk * bb['attack@atk_to_hp_recovery_ratio'], 1e-6, 'heals 9 % ATK/s');
+  const v = u.s.atk * bb['attack@atk_to_hp_recovery_ratio'];
+  approx(fox().mods.hpRegen, v, 1e-9, '生命回复速度 +9 % ATK');
+  assert.ok(Math.abs(hurt.hp - 5000 - v * (h.b.time - cast - 1)) <= 2, `regenerated ${hurt.hp - 5000} from the first second on`);
+  assert.ok(h.runUntil(() => !u.skill.active, 40));
+  assert.equal(fox(), null, 'gone with the skill');
   clean(h);
 });
 
@@ -695,7 +711,7 @@ test('凛御银灰 S2 auto-cast: SKILL_RANGE — an enemy inside the skill range
 });
 
 // ------------------------------------------------------------------------------------------------------------------
-test('引星棘刺 S2: alchemy unit (+3 s with an op in range) — 120 % ATK arts/s, healing ×0.5 on ground enemies, heals allies; T1 ATK +10 %; T2 ASPD ±10 on long roads', () => {
+test('引星棘刺 S2: alchemy unit (+3 s with an op in range) — 120 % ATK arts/s, healing ×0.5 on ground enemies, allies recover (生命回复速度); T1 ATK +10 %; T2 ASPD ±10 on long roads', () => {
   const h = makeBattle({
     defs: { enemies: { enemy_dummy: dummy() }, chess: { t_near: ally('t_near') } },
     units: [{ chessId: 'chess_char_5_15_a', row: 10, col: 3 }, { chessId: 't_near', row: 11, col: 5 }],
@@ -718,7 +734,7 @@ test('引星棘刺 S2: alchemy unit (+3 s with an op in range) — 120 % ATK art
   const ticks = tagged(h, 'alchemy', e);
   assert.ok(ticks.length >= 1);
   approx(ticks[0].amount, u.s.atk * bb.atk_scale, 1e-6);
-  assert.ok(near.hp > 5000, 'allies inside heal');
+  assert.ok(near.hp > 5000, 'allies inside recover');
   h.run(bb.projectile_delay_time + t0.projectile_extend);
   assert.equal(u.mem.zones.length, 0, 'expired');
   clean(h);
@@ -801,10 +817,13 @@ test('百炼嘉维尔 S2: drags unblocked enemies in front of her; T1 ATK/DEF +1
   u.hp = u.s.maxHp * 0.3;
   approx(h.b.heal(null, u, 100), 100 * t1.heal_scale_2);
   for (const e of h.b.enemies) h.b.dealDamage(null, e, { amount: 1e9, type: 'true' });
+  h.run(0.3); // 战地巨斧 refreshes every 0.2 s: back to no extra blocked enemy before the cast
   const near = h.spawn('enemy_dummy', { pos: [9, 5] });
   const far = h.spawn('enemy_dummy', { pos: [9, 6] });
   u.skill.gainSp(1000);
+  // S2's 2-5 strictly contains her 1-1: ACTIVE_RANGE (the owner's rule, 2026-10-05) casts it at once, no attack needed
   assert.ok(h.runUntil(() => u.skill.active, 3));
+  assert.equal(h.hooksOf('skillStart').find((c) => c.unit === u)?.reason, 'ACTIVE_RANGE');
   approx(u.s.atk, u.base.atk * (1 + t0.atk + bb.atk));
   h.b.dealDamage(null, near, { amount: 1e9, type: 'true' });
   h.run(1.5);
@@ -998,7 +1017,7 @@ test('录武官 S2: ATK +45 %; healed allies heal 80 HP per hit taken for 10 s; 
 });
 
 // ------------------------------------------------------------------------------------------------------------------
-// regressions of the 2026-09-28 fidelity review (PRTS 备注 of the base operators; see the tier5.js header)
+// regressions of the 2026-09-28 fidelity review (PRTS 备注 of the base operators; see the kits/shared/tier5.js header)
 
 test('圣约送葬人 T1 受选之人: the extra attack consumes no ammo and never reaches ammoUsed listeners', () => {
   const log = [];

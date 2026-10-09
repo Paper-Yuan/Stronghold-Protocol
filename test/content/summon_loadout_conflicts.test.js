@@ -86,9 +86,13 @@ test('赫默: the medical drone lives its owner\'s withdraw duration (module var
     const start = ops.map((u) => summons(h, u, DRONE)[0]);
     assert.ok(start.every((d) => d && d.alive), 'both start deploys');
     assertLifetimes(h, start, lo.map(life));
-    h.run(6);                                         // past the token's redeploy time
-    assert.ok(ops.every((u) => u.skill.activations === 0), 'no cast yet');
-    const drones = castAndCollect(h, ops, DRONE);
+    // S2 casts by itself the tick its SP is full (22 s), injured ally or not — client skill skchr_silent_2: no `_trigger`,
+    // `_allowNoTarget` 1 (community report of 2026-10-06, DESIGN §25.16; until then it waited for an injured ally and this
+    // test cast it by hand): past the token's redeploy time, so each drone comes back with its owner's cast
+    assert.ok(ops.every((u) => u.skill.activations === 0), 'no cast before the SP is full');
+    assert.ok(h.runUntil(() => ops.every((u) => u.skill.activations === 1), 10), 'both cast at full SP');
+    const drones = ops.map((u) => summons(h, u, DRONE)[0]);
+    assert.ok(drones.every((d) => d.alive), 'both drones back on the field');
     assertLifetimes(h, drones, lo.map(life));
     done(h);
   }
@@ -125,8 +129,10 @@ test('琳琅诗怀雅: a 香槟炸弹 arms after its owner\'s module variant of 
       chessId: SWIRE, lo, tokens, row: 9, col: 5, enemies: { enemy_d: dummy('enemy_d') },
       spawns: [{ key: 'enemy_d', pos: [9, 5] }, { key: 'enemy_d', pos: [9, 13] }],
     });
-    for (const u of ops) { u.mem.coins = 5; u.player.dp = 99; }
-    // the moment a bomb stands, an enemy steps on it (the bomb is < 1 tick old)
+    // each threw its deployment coin's bomb in duel's first step (S2 needs no enemy); no other coin before the 3 s payment,
+    // so every trap hit below is that bomb's
+    for (const u of ops) { u.mem.coins = 0; u.player.dp = 99; }
+    // the moment a bomb stands, an enemy steps on it (the bomb is a tick old)
     const bombs = [null, null];
     for (let i = 0; i < 30 * 10 && bombs.some((x) => !x); i++) {
       h.step();
@@ -181,7 +187,7 @@ test('凯瑟琳: device shield cap and deploy limit follow the owner\'s module v
   });
   const cap = (lo) => want(tokens, CATSLD, CATHY, lo).talents[0].bb.max_shield_ratio;
   const limit = (lo) => (lo === NONE ? 1 : base.rawToken(CATSLD).variants[CATHY].stats.deployLimit);
-  assert.deepEqual([cap(DEF), cap(NONE), limit(DEF)], [0.2, 0.5, 2]);
+  assert.deepEqual([cap(DEF), cap(NONE), limit(DEF)], [0.22, 0.5, 2]);   // 0.22: the device talent at 凯瑟琳's full potential
   for (const lo of ORDERS(DEF, NONE)) {
     // two placed devices each (hand pieces, user playtest #6), facing her and one more operator: the default limit (2)
     // keeps both, the patched one (1) withdraws the first deployed

@@ -3,7 +3,7 @@
 // and Skill_2_Idle; the actor queued the loop after the begin clip, so it jumped with nobody to hit (the sim made no
 // attack). Now a skill with an idle clip of its own (anims skill.idle ≠ skill.loop) stands in that idle between attacks,
 // plays the loop only on attacks, and goes back to the idle after a spell of attacks (its End clip only when the skill
-// ends). Skills whose loop IS their idle (蕾缪安 S3) and skills without an idle (宴) are unchanged. Real manifest entries,
+// ends). Skills whose loop IS their idle (蕾缪安 S3) and skills without an idle (宴 S1) are unchanged. Real manifest entries,
 // headless fake PIXI (test/render/fakepixi.js).
 
 import { test, before, after } from 'node:test';
@@ -76,11 +76,16 @@ test('the other skills with an own idle clip follow the same rule (史尔特尔 
   assert.equal(n.current, 'Skill_3_Idle');
 });
 
-test('unchanged: a loop that is the skill idle (蕾缪安 S3) and a skill without an idle clip (宴: its loop stays the stance)', () => {
+test('unchanged: a loop that is the skill idle (蕾缪安 S3) and a skill without an idle clip (宴 S1: its loop stays the stance)', () => {
   const l = actor('char_4193_lemuen', 2);
   l.setSkill(true);
   assert.deepEqual(l.log, [['set', 'Skill_3_Begin', false], ['queue', 'Skill_3_Idle', true]]);
-  const u = actor('char_337_utage', 1);
+  // 宴's S1 分神 (index 0: Skill_Start / Loop / End, no idle — her sit-down rest); her S2 plays no skill clip since
+  // 0.2.0 (tools/assets/spine.mjs PREFAB_SPINE_ROLES, DESIGN §25.22.9)
+  const u2 = actor('char_337_utage', 1);
+  u2.setSkill(true);
+  assert.deepEqual(u2.log.filter((x) => /^Skill/.test(x[1])), [], '宴 S2: no skill clip');
+  const u = actor('char_337_utage', 0);
   assert.equal(u.roles.skill.idle, null);
   u.setSkill(true);
   assert.deepEqual(u.log, [['set', 'Skill_Start', false], ['queue', 'Skill_Loop', true]], 'begin → loop, as before');
