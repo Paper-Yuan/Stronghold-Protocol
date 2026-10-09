@@ -455,8 +455,11 @@ export async function createFieldView(host, options = {}) {
   try { if (document.fonts?.load) await withTimeout(Promise.all([document.fonts.load('700 40px Bender'), document.fonts.load('700 40px Oxanium')]), 1500); } catch { /* ignore */ }
 
   const size = () => ({ width: Math.max(1, host.clientWidth || 1), height: Math.max(1, host.clientHeight || 1) });
-  const dpr = () => Math.min(globalThis.devicePixelRatio || 1, QUALITY_RES[settings.quality] || 2);
-  const boardDpr = () => Math.min(globalThis.devicePixelRatio || 1, BOARD_RES[settings.quality] || 2);
+  // 热降档系数（plan §2.3.4 安全网）：renderMs 持续超预算 → dprScale 0.75 / 0.5 逐级甩像素；冷静后回升。
+  // 只作用于渲染分辨率，不动用户的画质档位——recoverable，和 loadLevel 的 impostor 自适应同一思路。
+  let dprScale = 1;
+  const dpr = () => Math.min(globalThis.devicePixelRatio || 1, QUALITY_RES[settings.quality] || 2) * dprScale;
+  const boardDpr = () => Math.min(globalThis.devicePixelRatio || 1, BOARD_RES[settings.quality] || 2) * dprScale;
   const s0 = size();
   let app;
   try {
@@ -1848,6 +1851,27 @@ export async function createFieldView(host, options = {}) {
   // Adaptive load level 0–3: a device that cannot hold the frame rate with the current work switches crowds to
   // impostors earlier and animates small / far units at a lower rate (units.js); it steps back after a calm spell.
   let loadLevel = 0, slowFor = 0, fastFor = 0;
+  // 热降档：renderMs（GPU 渲染 EMA，探针每帧更新）持续吃掉帧预算的 70%+ 就降一档分辨率
+  // （dprScale 1 → .75 → .5，resize 重栅格化），持续清凉 12s 才回升一档——降档要果断、回升要迟疑，
+  // 否则会在临界负载下来回抖（和 loadLevel 的 6*loadLevel 迟滞同理）。60fps 锁定时预算 16.7ms，
+  // 120fps 备战期预算 8.3ms——只看比例，两种帧率下都成立。
+  let renderHotFor = 0, renderCoolFor = 0;
+  function adaptDprScale(dtRaw) {
+    if (!(dtRaw > 0) || globalThis.document?.hidden) return;
+    const budget = 1000 / Math.max(30, app.ticker.maxFPS || 60);
+    const busy = views.size + penViews.size > 4;
+    if (renderMs > budget * 0.7 && busy) { renderHotFor += dtRaw; renderCoolFor = 0; }
+    else if (renderMs < budget * 0.5) { renderCoolFor += dtRaw; renderHotFor = 0; }
+    if (renderHotFor > 2.5 && dprScale > 0.5) {
+      dprScale = dprScale === 1 ? 0.75 : 0.5;
+      renderHotFor = 0; renderCoolFor = 0;
+      resize();
+    } else if (renderCoolFor > 12 && dprScale < 1) {
+      dprScale = dprScale === 0.5 ? 0.75 : 1;
+      renderCoolFor = 0; renderHotFor = 0;
+      resize();
+    }
+  }
   function adaptLoad(dtRaw) {
     if (!(dtRaw > 0) || dtRaw > 0.25 || globalThis.document?.hidden) return;
     const busy = views.size + penViews.size > 8;
@@ -1896,6 +1920,7 @@ export async function createFieldView(host, options = {}) {
     if (dtRaw < 0.25) frameMs = frameMs * 0.9 + dtRaw * 1000 * 0.1;
     fps = 1000 / Math.max(1, frameMs);
     adaptLoad(dtRaw);
+    adaptDprScale(dtRaw);
     vp.width = Math.max(1, host.clientWidth || 1); vp.height = Math.max(1, host.clientHeight || 1);
     clock += dt;
     if ((globalThis.devicePixelRatio || 1) !== lastDpr) { lastDpr = globalThis.devicePixelRatio || 1; resize(); }
@@ -2108,6 +2133,11 @@ export async function createFieldView(host, options = {}) {
       if (destroyed) return false;
       thermalThrottled = !!on;
       updateFpsLimit();
+      // 外部散热信号（原生壳的温感回调）不只是锁帧：直接压到半分辨率并冻结自适应回升，
+      // 解除后从 dprScale 1 重新爬坡（adaptDprScale 的冷却节奏）。
+      dprScale = on ? 0.5 : 1;
+      renderHotFor = 0; renderCoolFor = 0;
+      resize();
       return true;
     },
     resize,
@@ -2156,6 +2186,7 @@ export async function createFieldView(host, options = {}) {
     stats() {
       return {
         fps: Math.round(fps * 10) / 10, frameMs: Math.round(frameMs * 100) / 100, cpuMs: Math.round(cpuMs * 100) / 100, renderMs: Math.round(renderMs * 100) / 100, mode, units: views.size, impostor: impInterval, impostorAtlas: { ...impostors.stats }, boardArt: !!tiles.atlas.art,
+        dprScale, resolution: app.renderer.resolution, thermal: thermalThrottled,
         board3d: board3d ? { on: true, ...board3d.stats(), losses: recover.count } : { on: false, error: board3dError, recovering: !!recover.timer, losses: recover.count },
         pen: penViews.size, prepField: prepXf.kind === 'bossPrep' ? prepXf.side : null, lod: loadLevel, culled: culledCount,
         ...fx.counts, spine: assets.spine?.stats ? assets.spine.stats() : null, renderT: interp.renderT, rate: interp.rate,
