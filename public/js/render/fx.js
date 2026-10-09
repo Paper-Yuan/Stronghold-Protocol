@@ -245,6 +245,20 @@ export const FX_KINDS = Object.freeze({
   // bonds / garrisons (support/index.js fxOn)
   bondMilestone: { a: 'buff', c: 0xffc600 }, bondProc: { a: 'buff', c: 0x4ed8af }, bondShare: { a: 'wave', c: 0x4ed8af },
   garrison: { a: 'buff', c: 0x4ed8af }, layer: { a: 'buff', c: 0xffe066 }, sp: { a: 'sp', c: 0x6fd3ff },
+  // operator kits (content/kits/ops) whose kinds had no visual yet — the name says the operator and skill
+  mark: { a: 'mark', c: 0xfff2d0 },                                        // op-lmlee S2 纸鸢: the paper mark (and its taunt)
+  bulletClear: { a: 'counter', c: 0xdfe8ff },                              // op-logos 语汇演化: the enemy bullets it wipes
+  logosLexicon: { a: 'element', c: 0xd0a0ff },                             // op-logos talent: the arts hit of 语汇演化
+  logosExecute: { a: 'strike', c: 0xd0a0ff },                              // op-logos S1 殁亡: the execution of a low-HP enemy
+  mantraArc: { a: 'bolt', c: 0xa8b6ff },                                   // op-mantra S3 倒果为因: the neural arc onto a holder
+  mantraGrant: { a: 'buff', c: 0xa8b6ff },                                 // op-mantra S3: 麻痹 granted to the foes in range
+  mantraGate: { a: 'zone', c: 0xa8b6ff, dur: 3 },                          // op-mantra S3: the gate tile the 麻痹 waits on
+  bounce: { a: 'bolt', c: 0xfff2d0 },                                      // op-narant S3: each hop of the bouncing shot
+  harpoon: { a: 'strike', c: 0xc8b890 },                                   // op-poca S3: a harpoon onto a bound enemy
+  dying: { a: 'vanish', c: 0xc0c0c0 },                                     // op-saga S2: the enemy 死亡宣告 has taken
+  arrowRain: { a: 'volley', c: 0xfff2d0, r: 1.5 },                         // op-typhon S3 箭雨: the volley over the marked area
+  veenBounce: { a: 'bolt', c: 0xffd45a },                                  // op-veen S3: each hop of the arts bounce
+  veenVolley: { a: 'volley', c: 0xffd45a },                                // op-veen S3: the opening volley
 });
 
 /** Keyword guesses for kinds added later (checked in order), before the generic sparkle. */
