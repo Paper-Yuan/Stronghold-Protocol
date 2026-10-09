@@ -2,9 +2,12 @@
 //
 // Handlers validate → mutate → recompute bonds → mark the private view dirty. They never throw on bad input; they
 // return `{ ok: true }` or `{ error: ERR.*, detail? }`. Rules (research 00-INDEX §3–§4, 01 A1, 04 §2):
-//   * Hand (整备区) 10 slots filled right→left, temp (临时整备区) 5 slots. A full hand refuses buys / withdrawals,
-//     except a purchase that completes a merge and a withdrawal whose own summon stack frees a slot. Passive gains (merge
-//     results, grants, returned equipment) overflow into temp; temp blocks Ready ("直到溢出情况排除才可开始进行作战").
+//   * Hand (整备区) 10 slots filled right→left, temp (临时整备区) 5 slots. A full hand refuses buys and reward picks —
+//     also one that would complete a merge at once (PRTS 卫戍协议/帮助 §手牌区 "例如招募/购入等通常情况下会增加手牌的操作";
+//     GitHub #82) — and withdrawals, except one whose own summon stack frees a slot. Passive gains (merge results,
+//     grants, returned equipment) overflow into temp, and a free hand slot pulls them back in at once, right→left
+//     (_fillHandFromTemp at every recompute: "常规手牌区出现空位时自动移入"); temp blocks Ready ("直到溢出情况排除才可开始
+//     进行作战").
 //     A temp piece is resolved (chess sold back to the pool, items destroyed, summon stacks removed — they come back at
 //     the next round start, grantTokensFor) at the deadline of the
 //     first prep in which the player could act on it (tempDue): a piece that overflowed during a prep before Ready
@@ -418,6 +421,31 @@ export class PlayerState {
     const j = freeSlot(this.temp);
     if (j >= 0) { this._putTemp(j, piece); return 'temp'; }
     return null;
+  }
+
+  /**
+   * PRTS 卫戍协议/帮助 §手牌区 "溢出单位会自动进入临时手牌区，常规手牌区出现空位时自动移入" (GitHub #82; until 0.1.3 the
+   * player had to drag them back): every free regular hand slot takes a temp piece at once. Order [ASSUMED] (PRTS names
+   * none): the temp row empties in the order it fills — right→left, the way stow fills it (freeSlot), so the piece that
+   * overflowed first moves first — and each piece takes the hand's next free slot right→left ("被发送至手牌区的物资优先
+   * 从右到左填充空位"). recompute() runs it, so it follows every change that frees a slot: a sale, a deployment from the
+   * hand, a merge that consumed hand copies, an item equipped / destroyed / used from the hand, a summon stack removed
+   * with its owner, an effect's destroyPiece… A piece that leaves temp is no longer due (tempDue). Returns the number
+   * moved.
+   * @returns {number}
+   */
+  _fillHandFromTemp() {
+    let moved = 0;
+    for (let j = this.temp.length - 1; j >= 0; j--) {
+      const p = this.temp[j];
+      if (!p) continue;
+      const i = freeSlot(this.hand);
+      if (i < 0) break;
+      this._detach({ piece: p, area: 'temp', idx: j });
+      this.hand[i] = p;
+      moved++;
+    }
+    return moved;
   }
 
   /**
@@ -957,13 +985,13 @@ export class PlayerState {
       const need = rec.isGolden ? this.gd.goldenCopies : 1;
       const pool = this.poolOf(base);
       if (pool.has(base) && pool.left(base) < need) return fail(ERR.SOLD_OUT);
-      if (handFull && !this.completesChessMerge(slot.id)) return fail(ERR.HAND_FULL);
+      if (handFull) return fail(ERR.HAND_FULL);
       this.spend(price);
       slot.sold = true;
       piece = this.acquireChess(slot.id, { source: 'buy' });
     } else {
       if (!this.gd.item(slot.id)) return fail(ERR.BAD_TARGET);
-      if (handFull && !this.completesItemMerge(slot.id)) return fail(ERR.HAND_FULL);
+      if (handFull) return fail(ERR.HAND_FULL);
       this.spend(price);
       slot.sold = true;
       piece = this.acquireItem(slot.id, { source: 'buy' });
@@ -1455,14 +1483,14 @@ export class PlayerState {
     const handFull = freeSlot(this.hand) < 0;
     if (slot.kind === 'item') {
       if (!this.gd.item(slot.id)) return fail(ERR.BAD_TARGET);
-      if (handFull && !this.completesItemMerge(slot.id)) return fail(ERR.HAND_FULL);
+      if (handFull) return fail(ERR.HAND_FULL);
     } else {
       const rec = this.gd.chess(slot.id);
       if (!rec) return fail(ERR.BAD_TARGET);
       const base = this.gd.baseIdOf(slot.id);
       const need = rec.isGolden ? this.gd.goldenCopies : 1;
       if (this.m.pool.has(base) && this.m.pool.left(base) < need) return fail(ERR.SOLD_OUT);
-      if (handFull && !this.completesChessMerge(slot.id)) return fail(ERR.HAND_FULL);
+      if (handFull) return fail(ERR.HAND_FULL);
     }
     const price = Number.isFinite(slot.price) && slot.price > 0 ? Math.trunc(slot.price) : 0;
     if (price > this.funds) return fail(ERR.NO_FUNDS);
@@ -1580,6 +1608,8 @@ export class PlayerState {
     this.deployMap(); // a change of the deploy field (a boss round's prep) marks the legality stale
     if (this._legalityStale) this._evictIllegal();
     this._liftOutOfRange();
+    // a free regular hand slot pulls a temp piece in (PRTS 卫戍协议/帮助 §手牌区 "常规手牌区出现空位时自动移入")
+    this._fillHandFromTemp();
     this.bonds = computeBonds(this.gd, this);
     this.dirty();
   }

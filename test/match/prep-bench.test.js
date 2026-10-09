@@ -7,7 +7,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { GEO, PHASE } from '../../shared/constants.js';
-import { makeMatch, give, giveItem, legalTileFor, chessOfTier } from './harness.js';
+import { DATA, makeMatch, give, giveItem, legalTileFor, chessOfTier } from './harness.js';
 
 const MELEE = (c) => c.position === 'MELEE' && c.profession === 'TANK';
 
@@ -98,7 +98,12 @@ test("PR #129 review: moving a hand piece to another slot is a scout change (x f
   b.recompute();
   const id = chessOfTier(1, MELEE).find((x) => m.pool.has(x));
   const a = give(m, b, id, 'hand', 0);
+  // a full hand (distinct plain equipment: nothing merges), so the temp piece stays in temp — a free hand slot would pull
+  // it in (PRTS 卫戍协议/帮助 §手牌区 "常规手牌区出现空位时自动移入")
+  const plain = Object.values(DATA.items).filter((i) => i.itemType === 'EQUIP' && !i.isGolden && i.kind === 'passive').map((i) => i.itemId ?? i.id);
+  for (let i = 1; i < b.hand.length; i++) b.hand[i] = b.newPiece('item', plain[i]);
   const c = give(m, b, id, 'temp', 0); // 临时整备区: PRTS 帮助把它算进手牌区,一起侦察
+  assert.ok(b.temp.includes(c));
   assert.deepEqual(m.handle('p_0', { t: 'g.watch', fieldId: 'n:p_1' }), { ok: true });
 
   const first = h.lastTo('p_0', 'm.field');

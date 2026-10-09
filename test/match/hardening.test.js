@@ -85,7 +85,10 @@ test('merge with a full hand and a full temp: the elite takes its deployed copy\
   for (let i = 0; i < 5; i++) give(m, ps, fillers[10 + i], 'temp', i);
   ps.shop.slots[0] = { kind: 'chess', id, basePrice: m.gd.chessPrice(id), frozen: false, sold: false };
   checkInvariants(m);
-  assert.deepEqual(m.handle('p_0', { t: 'g.buy', slot: 0 }), { ok: true }, 'a purchase that completes a merge is allowed with a full hand');
+  // a full hand refuses the purchase, also one that would complete the merge (PRTS 卫戍协议/帮助 §手牌区, GitHub #82);
+  // a gain (an effect's grant) still completes it
+  assert.deepEqual(m.handle('p_0', { t: 'g.buy', slot: 0 }), { error: 'HAND_FULL' }, 'a full hand refuses the merge-completing purchase');
+  assert.ok(ps.acquireChess(id, { source: 'grant' }), 'the gained copy completes the merge');
   const elite = [...ps.board.values()].find((p) => p.id === m.gd.goldenIdOf(id));
   assert.ok(elite, 'the elite stands on a consumed copy\'s tile');
   assert.equal(ps.find(elite.uid).key, `${t1[0]},${t1[1]}`, 'the copy that deploys first (legalTileFor walks the top row left to right: on one row, the deploy order)');
@@ -260,7 +263,7 @@ test('garrisonHooks widens a garrison to extra hooks ("<进入休整期时><休�
   m.dispose();
 });
 
-test('ctx.offerItems queues an item offer; g.reward takes the item (full hand refused unless it merges)', () => {
+test('ctx.offerItems queues an item offer; g.reward takes the item (a full hand refuses it, also when it would merge)', () => {
   const reg = builtins();
   const { m, ps } = prepSolo({ seed: 913, registry: reg });
   const ctx = makeCtx(m, ps, { kind: 'band', key: 'band:test' }, 'onLevelUp');
@@ -269,8 +272,10 @@ test('ctx.offerItems queues an item offer; g.reward takes the item (full hand re
   const view = ps.privateView().shop.rewardOffer;
   assert.deepEqual(view.slots.map((s) => [s.kind, s.id, s.price]), [['item', 'chess_item_1_01_e_a', 0], ['item', 'chess_item_2_03_e_a', 0]]);
   const fillers = chessOfTier(1).filter((c) => m.pool.has(c));
-  for (let i = 0; i < 10; i++) give(m, ps, fillers[i], 'hand', i);
-  assert.equal(m.handle('p_0', { t: 'g.reward', idx: 0 }).error, 'HAND_FULL');
+  for (let i = 0; i < 9; i++) give(m, ps, fillers[i], 'hand', i);
+  giveItem(m, ps, 'chess_item_1_01_e_a', 'hand', 9);
+  assert.equal(ps.completesItemMerge('chess_item_1_01_e_a'), true);
+  assert.equal(m.handle('p_0', { t: 'g.reward', idx: 0 }).error, 'HAND_FULL', 'refused although it would merge (PRTS 卫戍协议/帮助 §手牌区)');
   ps.hand[0] && ps.returnCopies(ps.hand[0]);
   ps.hand[0] = null;
   ps.recompute();

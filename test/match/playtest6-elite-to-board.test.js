@@ -199,7 +199,8 @@ test('equipment with the hand and temp full: the elite keeps up to its 2 equip s
   const warn = m.log.warn;
   m.log.warn = (s) => { warns.push(String(s)); };
   stock(m, ps, id);
-  assert.deepEqual(m.handle('p_0', { t: 'g.buy', slot: 0 }), { ok: true }, 'a merge-completing buy needs no hand slot');
+  assert.equal(m.handle('p_0', { t: 'g.buy', slot: 0 }).error, 'HAND_FULL', 'a full hand refuses the purchase, also a merge-completing one (GitHub #82)');
+  assert.ok(ps.acquireChess(id, { source: 'grant' }), 'a gained copy completes the merge');
   m.log.warn = warn;
   const elite = ps.board.get(want);
   assert.ok(elite && m.gd.isGolden(elite.id), 'the elite took the first deployed copy\'s tile');

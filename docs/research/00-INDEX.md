@@ -73,7 +73,7 @@ Boss rounds: the battle continues past the timer. Merged team LP drains **1/s af
 
 The visible chess per tier are 16/17/19/22/19/19. The item slot uses the same tier shares, then picks uniformly within the tier [ASSUMED].
 
-**Merge:** 3 copies of the same chess (board or hand) merge into 1 elite (`_b`), sent to the **hand** — or, when a consumed copy was deployed, to **that copy's board position** (PRTS 卫戍协议/帮助 "若消耗已部署至作战区的干员，则发送至作战区对应位置"; 01 A1 row 7). 风丸 needs 2. Elites never merge. The equipment of the merged copies returns to the hand. Reward: the shop temporarily shows 3 operators of tier min(shopLv+1, 6) at price **0**; take 1; no refresh or freeze; gone at round end. A purchase that completes a merge is allowed with a full hand. [VERIFIED]
+**Merge:** 3 copies of the same chess (board or hand) merge into 1 elite (`_b`), sent to the **hand** — or, when a consumed copy was deployed, to **that copy's board position** (PRTS 卫戍协议/帮助 "若消耗已部署至作战区的干员，则发送至作战区对应位置"; 01 A1 row 7). 风丸 needs 2. Elites never merge. The equipment of the merged copies returns to the hand. Reward: the shop temporarily shows 3 operators of tier min(shopLv+1, 6) at price **0**; take 1; no refresh or freeze; gone at round end. A full regular hand refuses every purchase, also one that would complete a merge (PRTS 卫戍协议/帮助 §手牌区 "例如招募/购入等通常情况下会增加手牌的操作"; corrected in 0.2.0, GitHub #82 — this line used to allow it). [VERIFIED]
 
 ## 4. Board, hand, combat
 

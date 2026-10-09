@@ -1435,6 +1435,11 @@ function* buyLoopSteps(m, ps, { fillOnly = false, maxRefreshes = 0 } = {}) {
     // shed is pre-emptive (one slot is still free), so with only fresh singles it waits for the next prep.
     const used = ps.hand.filter(Boolean).length;
     if (used >= gd.benchSize - 1) sellWeakestHand(m, ps, { keepFresh: true });
+    // a full hand refuses every purchase, the third copy of a held pair too (PlayerState.buy, PRTS 卫戍协议/帮助 §手牌区):
+    // an affordable one sheds the weakest hand single first (like the shed above, never one of this prep)
+    if (freeSlot(ps.hand) < 0 && ps.shop.slots.some((s) => s && !s.sold && s.kind === 'chess' && ps.priceOf(s) <= ps.funds && ps.completesChessMerge(s.id))) {
+      sellWeakestHand(m, ps, { handOnly: true, keepFresh: true });
+    }
     let best = -1;
     let bestS = 0;
     let bestMerges = false;
@@ -1446,7 +1451,7 @@ function* buyLoopSteps(m, ps, { fillOnly = false, maxRefreshes = 0 } = {}) {
       let sc;
       if (s.kind === 'chess') {
         const merges = ps.completesChessMerge(s.id);
-        if ((freeSlot(ps.hand) < 0 || mergesOnly) && !merges) return;
+        if (freeSlot(ps.hand) < 0 || (mergesOnly && !merges)) return;
         const base = gd.baseIdOf(s.id);
         if (boardFull && !merges && ps.funds - price < reserve) return; // banked (坎诺特)
         sc = buyScore(m, ps, s.id, ctx) - price;
@@ -1469,7 +1474,7 @@ function* buyLoopSteps(m, ps, { fillOnly = false, maxRefreshes = 0 } = {}) {
       } else {
         if (fillOnly) return;
         if (!canUseItem(m, ps, { id: s.id })) return;
-        if (freeSlot(ps.hand) < 0 && !ps.completesItemMerge(s.id)) return;
+        if (freeSlot(ps.hand) < 0) return;
         if (ps.funds - price < reserve && !ps.completesItemMerge(s.id)) return;
         const carriers = [...ps.board.values()].filter((p) => p.kind === 'chess' && (p.items || []).length < gd.equipPerChess).length;
         if (!carriers) return;
@@ -1808,34 +1813,40 @@ function equipItems(m, ps) {
 /**
  * Free a hand slot for an item worth keeping (突变细胞): sell the weakest single hand chess, else (on a bot's own seat
  * only — a human's items under AI 托管 are never destroyed to make room, like freeHandSlot) destroy the cheapest other
- * hand item, else sell the weakest hand chess even of a pair. false: the hand stays full (summon cards only).
+ * hand item, else sell the weakest hand chess even of a pair. `piece` (in temp): done once the freed slot pulled it in
+ * (PlayerState._fillHandFromTemp — resolveTemp asks for the rightmost temp piece, the next one a slot pulls in). false:
+ * the hand stays full (summon cards only).
  */
-function makeHandRoom(m, ps) {
-  if (freeSlot(ps.hand) >= 0) return true;
-  if (sellWeakestHand(m, ps, { handOnly: true }) && freeSlot(ps.hand) >= 0) return true;
+function makeHandRoom(m, ps, piece = null) {
+  const room = () => freeSlot(ps.hand) >= 0 || (piece != null && !ps.temp.includes(piece));
+  if (room()) return true;
+  if (sellWeakestHand(m, ps, { handOnly: true }) && room()) return true;
   const gd = m.gd;
   const junk = ps.isBot && !ps.autoplay ? ps.hand.filter((p) => p && p.kind === 'item' && !isMutationCell(gd, p.id))
     .sort((a, b) => ((gd.item(a.id) || {}).price || 0) - ((gd.item(b.id) || {}).price || 0) || a.uid - b.uid)[0] : null;
-  if (junk && tryDo(() => ps.destroy(junk.uid)) && freeSlot(ps.hand) >= 0) return true;
-  return sellWeakestHand(m, ps, { handOnly: true, keepPairs: false }) && freeSlot(ps.hand) >= 0;
+  if (junk && tryDo(() => ps.destroy(junk.uid)) && room()) return true;
+  return sellWeakestHand(m, ps, { handOnly: true, keepPairs: false }) && room();
 }
 
+/**
+ * Empty the temp row before Ready. A freed hand slot pulls the temp pieces in by itself, rightmost first
+ * (PlayerState._fillHandFromTemp), so the pieces are decided right → left: the one at hand is always the next a freed
+ * slot takes. A chess: the weakest bench single is sold to make room (it may be the temp chess itself), else the temp
+ * chess is sold; an item: see below, else destroyed.
+ */
 function resolveTemp(m, ps) {
-  for (let i = 0; i < ps.temp.length; i++) {
+  for (let i = ps.temp.length - 1; i >= 0; i--) {
     const p = ps.temp[i];
     if (!p) continue;
-    const idx = freeSlot(ps.hand);
+    const idx = freeSlot(ps.hand); // (a recompute pulls it in; a state set up without one)
     if (idx >= 0 && tryDo(() => ps.move(p.uid, { area: 'hand', idx }))) continue;
     if (p.kind === 'chess') {
       if (!sellWeakestHand(m, ps)) tryDo(() => ps.sell(p.uid));
-      else {
-        const j = freeSlot(ps.hand);
-        if (j >= 0) tryDo(() => ps.move(p.uid, { area: 'hand', idx: j }));
-      }
     } else if (p.kind === 'item') {
       // 突变细胞 comes back after every transformation (昆图斯's strategy item), and a human's item under AI 托管 is theirs:
       // make room in the hand (sell a bench operator) rather than lose it — only a hand of nothing but items still drops it
-      if ((isMutationCell(m.gd, p.id) || ps.autoplay) && makeHandRoom(m, ps)) {
+      if ((isMutationCell(m.gd, p.id) || ps.autoplay) && makeHandRoom(m, ps, p)) {
+        if (!ps.temp.includes(p)) continue;
         const j = freeSlot(ps.hand);
         if (j >= 0 && tryDo(() => ps.move(p.uid, { area: 'hand', idx: j }))) continue;
       }

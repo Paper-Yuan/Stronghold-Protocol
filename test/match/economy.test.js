@@ -5,6 +5,14 @@ import { ERR, PHASE } from '../../shared/constants.js';
 import { GameData } from '../../server/match/gamedata.js';
 import { DATA, makeMatch, give, giveItem, checkInvariants, chessOfTier } from './harness.js';
 
+/** Fill every free hand slot with distinct plain equipment (nothing merges), so a piece put into temp stays there. */
+function fillHand(ps) {
+  const plain = Object.values(DATA.items).filter((i) => i.itemType === 'EQUIP' && !i.isGolden && i.kind === 'passive').map((i) => i.itemId ?? i.id);
+  let k = 0;
+  for (let i = 0; i < ps.hand.length; i++) if (ps.hand[i] == null) ps.hand[i] = ps.newPiece('item', plain[k++]);
+  ps.recompute();
+}
+
 test('income = min(3 + r, 12) in every mode; funds are lost at prep end (band_cannot keeps them)', () => {
   for (const modeId of ['mode_single_funny', 'mode_multi_normal', 'mode_multi_abyss']) {
     const gd = new GameData(DATA, modeId);
@@ -190,16 +198,21 @@ test('selling: +1 (normal and elite, board or hand), items return to the hand, i
   m.dispose();
 });
 
-test('ready gating: temp must be empty; unready allowed until everyone is ready; actions locked while ready', () => {
+test('ready gating: temp must be empty (a freed hand slot pulls the temp piece in); unready allowed until everyone is ready; actions locked while ready', () => {
   const h = makeMatch({ mode: 'coop', humans: 2, seed: 10 }).start();
   h.toPrep(1);
   const m = h.m;
   const a = h.ps('p_0');
+  fillHand(a);
   const t = give(m, a, chessOfTier(1).find((x) => m.pool.has(x)), 'temp');
+  assert.ok(a.temp.includes(t), 'a full hand: it waits in temp');
   assert.equal(a.privateView().canReady, false);
   assert.deepEqual(m.handle('p_0', { t: 'g.ready', ready: true }), { error: ERR.TEMP_NOT_EMPTY });
-  const free = a.hand.findIndex((x) => x == null);
-  assert.deepEqual(m.handle('p_0', { t: 'g.move', uid: t.uid, to: { area: 'hand', idx: free } }), { ok: true });
+  // destroying a hand item frees its slot: the temp piece moves in by itself (PRTS 卫戍协议/帮助 §手牌区, GitHub #82)
+  const freed = a.hand[3];
+  assert.deepEqual(m.handle('p_0', { t: 'g.destroy', uid: freed.uid }), { ok: true });
+  assert.equal(a.hand[3], t);
+  assert.ok(a.tempEmpty);
   assert.equal(a.privateView().canReady, true);
   assert.deepEqual(m.handle('p_0', { t: 'g.ready', ready: true }), { ok: true });
   assert.deepEqual(m.handle('p_0', { t: 'g.refresh' }), { error: ERR.WRONG_PHASE, detail: 'ready' });
@@ -222,7 +235,9 @@ test('prep deadline (co-op): unready players are auto-readied and their temp is 
   const a = h.ps('p_0');
   const id = chessOfTier(1).find((x) => m.pool.has(x));
   const left = m.pool.left(id);
+  fillHand(a);
   give(m, a, id, 'temp');
+  assert.ok(!a.tempEmpty, 'a full hand: it waits in temp');
   assert.ok(m.deadline > h.sched.now(), 'co-op prep is timed');
   assert.equal(Math.round((m.deadline - h.sched.now()) / 1000), m.gd.prepTime(1));
   h.sched.advance(m.deadline - h.sched.now() + 1);
