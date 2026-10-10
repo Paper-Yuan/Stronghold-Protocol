@@ -20,7 +20,7 @@ test('admin dashboard: authorization, metrics, rooms and ops', async () => {
     });
     assert.equal(auth.status, 200);
     const overview = await auth.json();
-    assert.equal(overview.version.app, '0.2.2-fusion');
+    assert.equal(overview.version.app, '0.2.3-fusion');
     assert.ok(typeof overview.system.processRssMb === 'number');
     assert.equal(overview.isDraining, false);
 

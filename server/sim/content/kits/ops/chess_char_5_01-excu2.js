@@ -41,7 +41,7 @@ export default {
           onStart({ unit }) {
             unit.mem.verdict = new Set();
             // 特性的回复生命效果提高至2倍 (the reaper profile reads profile.selfHeal on every attack)
-            if (unit.profile) { unit.mem.verdictHeal0 ??= num(unit.profile.selfHeal, 50); unit.profile.selfHeal = unit.mem.verdictHeal0 * num(bb.trait_ratio, 1); }
+            if (unit.profile) { if (unit.mem.verdictHeal0 == null) unit.mem.verdictHeal0 = num(unit.profile.selfHeal, 50); unit.profile.selfHeal = unit.mem.verdictHeal0 * num(bb.trait_ratio, 1); } // ES2020 rewrite of upstream `??=`
           },
           onEnd({ battle, unit }) {
             const hit = unit.mem.verdict;
