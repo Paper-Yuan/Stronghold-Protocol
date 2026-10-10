@@ -73,6 +73,37 @@ test('public/data/ 是 data/ 的客户端镜像（tools/sync-static-web.mjs 整�
   }
 });
 
+test('public/shared/ 与 public/sim/ 同样是镜像（sync-static-web.mjs 的第 1 / 3 步）', () => {
+  if (process.env.DATA_DIR) return;
+  const list = (dir, pred = () => true) => {
+    const out = [];
+    const walk = (d, rel) => {
+      for (const e of readdirSync(d, { withFileTypes: true })) {
+        const r = rel ? `${rel}/${e.name}` : e.name;
+        if (e.isDirectory()) walk(join(d, e.name), r);
+        else if (pred(e.name)) out.push(r);
+      }
+    };
+    walk(dir, '');
+    return out.sort();
+  };
+  // 1) shared/ → public/shared/：整目录逐字节
+  const shared = list(join(ROOT, 'shared'));
+  assert.deepEqual(list(join(ROOT, 'public', 'shared')), shared, 'public/shared/ 的文件清单');
+  for (const f of shared) {
+    assert.ok(readFileSync(join(ROOT, 'shared', f)).equals(readFileSync(join(ROOT, 'public', 'shared', f))),
+      `public/shared/${f} 与 shared/${f} 不一致 —— 跑 node tools/sync-static-web.mjs`);
+  }
+  // 2) server/sim/ → public/sim/：只复制 .js，nodeData.js 不复制，simdata.js 会被工具打掉 Node-only 的 IS_NODE 块
+  const sim = list(join(ROOT, 'server', 'sim'), (n) => n.endsWith('.js') && n.toLowerCase() !== 'nodedata.js');
+  assert.deepEqual(list(join(ROOT, 'public', 'sim'), (n) => n.endsWith('.js')), sim, 'public/sim/ 的文件清单（nodeData.js 不该出现）');
+  for (const f of sim) {
+    if (f === 'simdata.js') continue; // 工具按设计改写这一份
+    assert.ok(readFileSync(join(ROOT, 'server', 'sim', f)).equals(readFileSync(join(ROOT, 'public', 'sim', f))),
+      `public/sim/${f} 与 server/sim/${f} 不一致 —— 跑 node tools/sync-static-web.mjs`);
+  }
+});
+
 test('numbers: every stats/bb/enemyScale object holds only finite numbers (no null/NaN leaks)', () => {
   const bad = [];
   const walk = (x, path) => {
