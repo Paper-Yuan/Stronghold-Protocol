@@ -293,7 +293,7 @@ export const ERR_TEXT = {
 // the match decides. `DEBUG_OPS` is the closed set of intents `g.debug` accepts; `DEBUG_VALUE_MAX` bounds the
 // free-form `value` field, and `DEBUG_DEFAULTS` are the amounts used when `value` is absent or non-positive.
 export const DEBUG_OPS = Object.freeze(['funds', 'setFunds', 'lp', 'maxLevel', 'kill', 'skip']);
-export const DEBUG_VALUE_MAX = 100_000_000;
+export const DEBUG_VALUE_MAX = 100000000;
 export const DEBUG_DEFAULTS = Object.freeze({ funds: 1000, lp: 100 });
 // 作用范围超出请求者本人的调试操作：`kill` / `skip` 推进的是**全局限定回合阶段机**（备战结束、所有战场收尾、
 // Boss 血池清零），`lp` 在最终攻势 / 隐秘核心阶段改的是**队伍合并生命池**。这些操作只要局内还有第二个真人就会
