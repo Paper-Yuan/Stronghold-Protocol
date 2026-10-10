@@ -1,0 +1,23 @@
+# Wrangler / Cloudflare Pages deployment configuration
+# B2 skeleton — values marked <TBD> follow CF_GATE0_FACTS.md's outstanding Cloudflare-console items.
+
+name = "<TBD-pages-project-name>"
+pages_build_output_dir = "public"
+
+# Mod pack objects live in a dedicated R2 bucket, separate from any art/assets bucket.
+# [[r2_buckets]]
+# binding = "SP_MODS"
+# bucket_name = "sp-mods"
+# preview_bucket_name = "sp-mods-preview"
+
+# Serving contract (implemented by functions/mods/[[path]].js, B2):
+#   /mods/index.json            → R2, no-cache
+#   /mods/<id>/<sha256>.zip     → R2, public, max-age=2592000, immutable
+#   fallback to origin server   → fail-closed 404 (origin never holds mod bytes)
+
+# Outstanding (see docs/CF_GATE0_FACTS.md): R2 account status, bucket provisioning,
+# zone relationship between game.jyuanblog.cc.cd and this Pages project, and the
+# credential form (API Token vs Wrangler OAuth). Fill those in, then uncomment the
+# r2_buckets block above and verify with:
+#   wrangler pages deploy public
+#   curl -I https://<pages-domain>/mods/index.json
