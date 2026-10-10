@@ -56,3 +56,27 @@ export function parseModCatalog(raw) {
 export function packById(catalog, id) {
   return catalog?.packs?.find((p) => p.id === id) ?? null;
 }
+
+/**
+ * Freshness check: a local copy is fresh iff its sha256 equals the catalog entry's.
+ * The ONLY freshness source — ?v= query strings and URLs play no part (§0.3).
+ */
+export function hasFreshPack(entry, localSha256) {
+  return typeof localSha256 === 'string' && localSha256.toLowerCase() === entry.sha256;
+}
+
+/** The content-addressed R2 key / URL for a pack's zip. */
+export function modZipUrl(packId, sha256) {
+  return `/mods/${packId}/${sha256}.zip`;
+}
+export const modZipKey = modZipUrl;
+
+/** True for exactly `/mods/<id>/<64-hex>.zip` — any `?v=` or other query fails the check. */
+export function isModZipUrl(url) {
+  return typeof url === 'string' && /^\/mods\/[A-Za-z0-9][A-Za-z0-9._-]{0,63}\/[0-9a-f]{64}\.zip$/.test(url);
+}
+
+/** The catalog index URL, versioned by its own sha256 (the only ?v= that exists anywhere). */
+export function catalogVersionUrl(base, sha256) {
+  return `${base}?v=${sha256.slice(0, 12)}`;
+}

@@ -58,7 +58,15 @@ export const PACK_TYPES = Object.freeze({
     files: Object.freeze({ ui: Object.freeze({ required: true, ext: ['.json'] }), data: Object.freeze({ ext: ['.json'] }) }),
   }),
   assets: Object.freeze({ status: 'planned', summary: 'art, audio and font replacements, client side' }),
-  data: Object.freeze({ status: 'planned', summary: 'data patches the server applies at start' }),
+  data: Object.freeze({
+    status: 'supported', live: false, summary: 'content data merged per room as an overlay (CF_MOD_TRI_PLAN.md §0.3: additive by default, explicit overrides only)',
+    files: Object.freeze({
+      records: Object.freeze({ ext: ['.json'] }), chess: Object.freeze({ ext: ['.json'] }),
+      tokens: Object.freeze({ ext: ['.json'] }), variants: Object.freeze({ ext: ['.json'] }),
+      bands: Object.freeze({ ext: ['.json'] }), items: Object.freeze({ ext: ['.json'] }),
+      skins: Object.freeze({ ext: ['.json'] }), art: Object.freeze({ ext: ['.json'] }),
+    }),
+  }),
 });
 
 const isObj = (v) => !!v && typeof v === 'object' && !Array.isArray(v);
@@ -134,9 +142,11 @@ export function appVersionMatches(range, version = APP_VERSION) {
 
 /**
  * @typedef {{ id: string, type: string, name: string, englishName: string, version: string, app: string,
- *   compatible: boolean, authors: string[], credits: string, license: string, files: Record<string, string>,
+ *   compatible: boolean, authors: string[], credits: string, license: string, files: Record<string, string[]>,
  *   lang?: string, base?: string|null, fallback?: string[], complete?: boolean, machineTranslated?: boolean,
  *   numberUnits?: string[]|null }} PackManifest
+ *   files: role → array of pack-relative paths (a manifest may write one string per role;
+ *   normalizeManifest always returns an array, even for a single path)
  */
 
 /**
@@ -194,9 +204,16 @@ export function normalizeManifest(raw, ctx) {
     for (const [role, spec] of Object.entries(kind.files)) {
       const rel = given[role];
       if (rel === undefined || rel === null || rel === '') { if (spec.required) problems.push(`no "files.${role}"`); continue; }
-      if (!isPackPath(rel)) problems.push(`"files.${role}": "${rel}" is not a path inside the pack folder`);
-      else if (!spec.ext.includes(extOf(rel))) problems.push(`"files.${role}" must be a ${spec.ext.join(' / ')} file`);
-      else out.files[role] = rel;
+      // A role may name one path or several (a data pack can carry many kit/data files per role);
+      // normalize always yields an array.
+      const rels = Array.isArray(rel) ? rel : [rel];
+      const good = [];
+      for (const r of rels) {
+        if (!isPackPath(r)) problems.push(`"files.${role}": "${r}" is not a path inside the pack folder`);
+        else if (!spec.ext.includes(extOf(r))) problems.push(`"files.${role}" must be a ${spec.ext.join(' / ')} file`);
+        else good.push(r);
+      }
+      if (good.length) out.files[role] = good;
     }
     for (const role of Object.keys(given)) if (!kind.files[role]) warnings.push(`"files.${role}" is not a role of a ${type} pack (ignored)`);
   }
@@ -244,11 +261,11 @@ export function buildPackIndex(entries, { app = APP_VERSION } = {}) {
 }
 
 /** A URL a client may fetch from an index: a path on this server ('/…', never '//host' or a scheme). */
-const isLocalUrl = (u) => typeof u === 'string' && /^\/(?!\/)[^\s\\]*$/.test(u) && u.length <= 300;
+export const isLocalUrl = (u) => typeof u === 'string' && /^\/(?!\/)[^\s\\]*$/.test(u) && u.length <= 300;
 
 /**
  * Read a received index (the client): the entries of supported types whose fields check out; anything else is dropped.
- * Optionally only one type.
+ * Optionally only one type. files values may be a URL or an array of URLs; read out always as an array.
  * @param {unknown} json
  * @param {string} [type]
  * @returns {Record<string, any>[]}
@@ -259,8 +276,12 @@ export function readPackIndex(json, type) {
   for (const e of list) {
     if (!isObj(e) || !isPackId(e.id) || PACK_TYPES[e.type]?.status !== 'supported' || (type && e.type !== type)) continue;
     const files = {};
-    for (const [role, url] of Object.entries(isObj(e.files) ? e.files : {})) if (isLocalUrl(url)) files[role] = url;
-    if (e.type === 'lang' && (!isLangCode(e.lang) || e.lang === SOURCE_LANG || !files.ui)) continue;
+    for (const [role, url] of Object.entries(isObj(e.files) ? e.files : {})) {
+      const urls = Array.isArray(url) ? url : [url];
+      const good = urls.filter(isLocalUrl);
+      if (good.length) files[role] = good;
+    }
+    if (e.type === 'lang' && (!isLangCode(e.lang) || e.lang === SOURCE_LANG || !files.ui?.length)) continue;
     out.push({ ...e, files });
   }
   return out;
@@ -268,11 +289,14 @@ export function readPackIndex(json, type) {
 
 /**
  * The language a client registers for a language entry of the index (shared/i18n.js registerLangs).
+ * files values are arrays after readPackIndex's normalization; a language's UI/data file is its first entry.
  * @param {Record<string, any>} e a 'lang' entry of readPackIndex
  * @returns {import('./i18nPacks.js').LangMeta}
  */
 export function langMetaOf(e) {
   const f = langFields(e.lang, e);
+  const uiFiles = Array.isArray(e.files?.ui) ? e.files.ui : e.files?.ui ? [e.files.ui] : [];
+  const dataFiles = Array.isArray(e.files?.data) ? e.files.data : e.files?.data ? [e.files.data] : [];
   return {
     ...f,
     code: e.lang,
@@ -283,9 +307,9 @@ export function langMetaOf(e) {
     app: str(e.app, 60),
     compatible: e.compatible !== false,
     strings: Number.isFinite(e.strings) ? e.strings : undefined,
-    data: !!e.files?.data,
-    ui: e.files?.ui,
-    dataUrl: e.files?.data,
+    data: dataFiles.length > 0,
+    ui: uiFiles[0],
+    dataUrl: dataFiles[0],
     packId: e.id,
   };
 }

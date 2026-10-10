@@ -1,7 +1,7 @@
 // test/modCatalog.test.js — D1-1 acceptance: parse positive/negative, freshness-by-sha256-only.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { parseModCatalog, packById, MOD_CATALOG_URL } from '../shared/modCatalog.js';
+import { parseModCatalog, packById, MOD_CATALOG_URL, hasFreshPack, modZipUrl, modZipKey, isModZipUrl, catalogVersionUrl } from '../shared/modCatalog.js';
 
 const GOOD_SHA = 'a'.repeat(64);
 const GOOD_SHA_B = 'b'.repeat(64);
@@ -80,4 +80,29 @@ test('packById 命中与未命中；缺省字段补默认（name→id, version�
 
 test('MOD_CATALOG_URL 端点冻结为 /mods/index.json（§0.3）', () => {
   assert.equal(MOD_CATALOG_URL, '/mods/index.json');
+});
+
+test('hasFreshPack 只按 sha256 判鲜：相同为鲜、不同为陈、空值为陈', () => {
+  const e = { id: 'fanpack', sha256: 'a'.repeat(64) };
+  assert.equal(hasFreshPack(e, 'a'.repeat(64)), true);
+  assert.equal(hasFreshPack(e, 'b'.repeat(64)), false);
+  assert.equal(hasFreshPack(e, ''), false);
+  assert.equal(hasFreshPack(e, undefined), false);
+  // url plays no part in freshness
+  assert.equal(hasFreshPack(e, 'A'.repeat(64)), true, 'case-insensitive compare');
+});
+
+test('modZipUrl/isModZipUrl 契约：内容寻址 key 恰好一种形状，任何 ?v= 过不去', () => {
+  const sha = 'a'.repeat(64);
+  assert.equal(modZipUrl('fanpack', sha), '/mods/fanpack/' + sha + '.zip');
+  assert.equal(modZipKey('fanpack', sha), modZipUrl('fanpack', sha));
+  assert.equal(isModZipUrl(modZipUrl('fanpack', sha)), true);
+  assert.equal(isModZipUrl('/mods/fanpack/' + sha + '.zip?v=abc'), false, '?v= kills it');
+  assert.equal(isModZipUrl('/mods/fanpack/' + sha + '.zip?x=1'), false);
+  assert.equal(isModZipUrl('/mods/fanpack/x.zip'), false, 'non-sha256 filename rejected');
+  assert.equal(isModZipUrl('https://cdn.example.com' + modZipUrl('fanpack', sha)), false, 'absolute URL rejected');
+});
+
+test('catalogVersionUrl：索引自身的 ?v= 是目录 sha 前 12，与条目判鲜无关', () => {
+  assert.equal(catalogVersionUrl('/mods/index.json', 'a'.repeat(64)), '/mods/index.json?v=aaaaaaaaaaaa');
 });
