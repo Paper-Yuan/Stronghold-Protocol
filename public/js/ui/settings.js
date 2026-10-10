@@ -5,7 +5,7 @@
 import { useState } from '../../vendor/hooks.module.js';
 import { html, Modal, Button, Icon, MicroLabel } from './components.js';
 import { createStore, useStore, loadPref, savePref } from '../store.js';
-import { sanitizeSettings, hotkeyLabel, VOICE_LANGS, VOICE_LANG_NAMES } from './gameLogic.js';
+import { sanitizeSettings, hotkeyLabel, DEFAULT_SETTINGS, VOICE_LANGS, VOICE_LANG_NAMES } from './gameLogic.js';
 import { audio } from '../audio.js';
 import { openGuide } from './guide.js';
 import { detectFeatures } from './device.js';
@@ -65,8 +65,9 @@ function Toggle({ label, micro, value, onChange }) {
 }
 
 const QUALITY = [['high', '高'], ['medium', '中'], ['low', '低']];
-// 全局语音语言（VOICE_LANGS 是唯一词汇表，voicePrefs.js）；默认日语 —— 每干员可在干员调配里单独覆盖。
-const VOICE_LANG = VOICE_LANGS.map((id) => [id, id === 'jp' ? '日语 (默认)' : VOICE_LANG_NAMES[id]]);
+// 全局语音语言（VOICE_LANGS 是唯一词汇表，voicePrefs.js）；默认日语排在最前 —— 每干员可在干员调配里单独覆盖。
+const VOICE_LANG = [DEFAULT_SETTINGS.voiceLang, ...VOICE_LANGS.filter((id) => id !== DEFAULT_SETTINGS.voiceLang)]
+  .map((id) => [id, id === DEFAULT_SETTINGS.voiceLang ? '日语 (默认)' : VOICE_LANG_NAMES[id]]);
 const BOARDS = [['auto', '自动'], ['3d', '3D 全景'], ['2d', '2D 俯视']];
 
 /**

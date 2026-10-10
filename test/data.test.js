@@ -11,7 +11,7 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync, existsSync, statSync, mkdtempSync, rmSync } from 'node:fs';
+import { readFileSync, existsSync, statSync, mkdtempSync, rmSync, readdirSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { tmpdir } from 'node:os';
 import { spawnSync } from 'node:child_process';
@@ -58,6 +58,19 @@ test('all data files load and are non-empty; total size < 6 MB', () => {
     assert.ok(Object.keys(D[f]).length > 0, `${f} is empty`);
   }
   assert.ok(total < 6 * 1024 * 1024, `total ${total} bytes`);
+});
+
+test('public/data/ 是 data/ 的客户端镜像（tools/sync-static-web.mjs 整目录复制 data/ → public/data/）', () => {
+  // 客户端只读 public/data/（public/js/data.js 的 fetch 路径），所以两侧必须逐字节一致 ——
+  // 改数据只改一侧会让客户端拿到旧值，而现有测试都只读 data/，察觉不到。
+  if (process.env.DATA_DIR) return; // an alternative build output (`--out`) has no mirror
+  const canonical = readdirSync(DATA).filter((f) => f.endsWith('.json')).sort();
+  const mirrored = readdirSync(join(ROOT, 'public', 'data')).filter((f) => f.endsWith('.json')).sort();
+  assert.deepEqual(mirrored, canonical, '两边的 json 清单必须一致');
+  for (const f of canonical) {
+    assert.ok(readFileSync(join(DATA, f)).equals(readFileSync(join(ROOT, 'public', 'data', f))),
+      `public/data/${f} 与 data/${f} 不一致 —— 跑 node tools/sync-static-web.mjs`);
+  }
 });
 
 test('numbers: every stats/bb/enemyScale object holds only finite numbers (no null/NaN leaks)', () => {

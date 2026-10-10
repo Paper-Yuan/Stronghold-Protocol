@@ -150,9 +150,19 @@ const voiceSheet = () => `
     </div>
   </div>`;
 
+/** TierChip 的真实产物（components.js:195）：官方八角精灵图，取不到时退回罗马数字。 */
+const ROMAN = ['', 'I', 'II', 'III', 'IV', 'V', 'VI'];
+const tierChip = (tier, size = 'md', cls = '') => {
+  const src = assetUrl(ASSETS.ui?.[`shopCard/img_chess_level_${tier}`]);
+  return src
+    ? `<span class="tier tier--${tier} tier--${size} tier--img ${cls}" aria-label="${tier}阶"><img src="${src}" alt=""></span>`
+    : `<span class="tier tier--${tier} tier--${size} ${cls}" aria-label="${tier}阶">${ROMAN[tier] || tier}</span>`;
+};
+
 const rosterCard = (c) => `
   <button type="button" class="lo-card lo-card--t${c.tier}">
     <span class="lo-card__art">${(() => { const u = assetUrl(ASSETS.chars?.[c.charId]?.avatar); return u ? `<img src="${u}" alt="">` : ''; })()}</span>
+    ${tierChip(c.tier, 'sm', 'lo-card__tier')}
     <span class="lo-card__name">${esc(c.name)}</span>
   </button>`;
 
@@ -161,11 +171,11 @@ const detailPanel = (phone) => `
     <div class="lo-dhead">
       <div class="lo-dhead__art lo-dhead__art--t${SEL.tier}">${portrait ? `<img src="${portrait}" alt="">` : ''}</div>
       <div class="lo-dhead__info">
-        <div class="lo-dhead__chips"><span class="lo-chip lo-chip--tier">${SEL.tier}★</span>
+        <div class="lo-dhead__chips">${tierChip(SEL.tier, 'md')}
           <span class="lo-badge lo-badge--changed">已调整</span></div>
         <h2 class="lo-dhead__name">${esc(SEL.name)}</h2>
         <span class="lo-dhead__en">${esc(SEL.appellation || '')}</span>
-        <span class="lo-dhead__class">${esc(SEL.profession || '')}</span>
+        <span class="lo-dhead__class">${esc(SEL.profession || '')}${SEL.subProfessionName ? `<i class="lo-sep"></i>${esc(SEL.subProfessionName)}` : ''}</span>
         <span class="lo-dhead__bonds">${BOND_LIST.map((b) => `<span class="lo-bond">${(() => { const u = bondIcon(b.bondId); return u ? `<img class="lo-bond__icon" src="${u}" alt="">` : '<i class="lo-bond__dot"></i>'; })()}${esc(b.name)}</span>`).join('')}</span>
       </div>
       <button type="button" class="btn btn--ghost btn--sm lo-dhead__reset">恢复默认</button>
