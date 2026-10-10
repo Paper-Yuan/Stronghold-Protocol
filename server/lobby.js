@@ -80,6 +80,7 @@
 import os from 'node:os';
 import { randomBytes, randomInt } from 'node:crypto';
 import { ERR, MAX_SEATS, MAX_SPECTATORS, ROOM_CODE_LEN, modeIdFor } from '../shared/constants.js';
+import { LOCAL_FEATURES } from '../shared/capabilities.js';
 import { checkLoadout, checkNotOwned, checkDiyPicks } from '../shared/protocol.js';
 import { getCpuUsagePercent } from './admin.js';
 import { LoadGuard, isTestEnv } from './loadGuard.js';
@@ -361,7 +362,11 @@ export class Lobby {
       case 'room.chat': return this.chat(session, msg);
       case 'room.spectate': { this.matchmaker.removePlayer(session.playerId); return this.spectate(session, msg); }
       case 'room.removeSpectator': return this.removeSpectator(session, msg);
-      case 'match.queue': session.wantsLobbyStats = true; return this.matchmaker.enqueue(session, msg);
+      case 'match.queue': {
+        if (!LOCAL_FEATURES.multiplayer) return fail(ERR.BAD_MSG, 'this build has no matchmaking');
+        session.wantsLobbyStats = true;
+        return this.matchmaker.enqueue(session, msg);
+      }
       case 'match.cancel': return this.matchmaker.dequeue(session);
       case 'room.list': session.wantsLobbyStats = true; return this.listRooms(session, msg);
       default:
@@ -495,6 +500,11 @@ export class Lobby {
 
   create(session, { mode, difficulty, private: isPrivate }) {
     if (this.isDraining) return fail(ERR.MAINTENANCE, '服务正在热重载更新中，暂停创建新房间，请稍候连接新节点');
+    // 单人变体（capabilities.multiplayer = false，docs/ANDROID.md §9）：这个构建只承载单机房，
+    // 其余房间在服务端就不存在——客户端入口只是第一道门，这里是不信任客户端的那道。
+    if (!LOCAL_FEATURES.multiplayer && mode !== 'solo') {
+      return fail(ERR.BAD_MSG, 'this build hosts single-player rooms only');
+    }
     const cur = this.roomOf(session);
     if (cur && cur.match) return fail(ERR.ROOM_STARTED, 'leave your running match first');
     if (this.rooms.size >= this.opts.maxRooms) return fail(ERR.INTERNAL, 'too many rooms');
@@ -739,6 +749,10 @@ export class Lobby {
     if (!room) return fail(ERR.NOT_IN_ROOM);
     if (room.hostId !== session.playerId) return fail(ERR.NOT_HOST);
     if (room.match) return fail(ERR.ROOM_STARTED);
+    // 单人变体：房间只在各单机难度之间切换（与 create 同一门禁）。
+    if (!LOCAL_FEATURES.multiplayer && room.mode !== 'solo') {
+      return fail(ERR.BAD_MSG, 'this build hosts single-player rooms only');
+    }
     this.dropReplay(room, session.playerId);
     if (room.difficulty !== difficulty) {
       room.difficulty = difficulty;

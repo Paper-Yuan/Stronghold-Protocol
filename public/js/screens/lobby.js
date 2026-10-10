@@ -382,7 +382,9 @@ export function LobbyScreen() {
   const mm = useStore((s) => s.matchmaking, shallowEqual);
   const maint = useStore((s) => s.maintenance, shallowEqual);
   useData('config');
-  const [roomMode, setRoomMode] = useState(() => (loadPref('lobby.mode', 'coop') === 'solo' ? 'solo' : 'coop'));
+  // 无 multiplayer 能力位的轻量变体：大厅只承载单机（合作/匹配/密钥区不渲染，模式锁 solo）。
+  const multiplayer = LOCAL_FEATURES.multiplayer;
+  const [roomMode, setRoomMode] = useState(() => (!multiplayer || loadPref('lobby.mode', 'coop') === 'solo' ? 'solo' : 'coop'));
   const [difficulty, setDifficulty] = useState(() => {
     const d = loadPref('lobby.difficulty', 'FUNNY');
     return DIFFICULTIES.includes(d) ? d : 'FUNNY';
@@ -512,7 +514,7 @@ export function LobbyScreen() {
         <${Button} variant="secondary" size="sm" icon="chart" class="stats-entry" onClick=${openStats} title="统计数据">统计<//>
         <${EquipButton} from="lobby" size="sm" class="lobby-equip" />
         <${AllianceCodexButton} from="lobby" size="sm" class="lobby-alliance" />
-        <${Button} variant="secondary" size="sm" class="lobby-mod" onClick=${() => setModOpen(true)} title="模组管理">MOD<//>
+        ${LOCAL_FEATURES.mods ? html`<${Button} variant="secondary" size="sm" class="lobby-mod" onClick=${() => setModOpen(true)} title="模组管理">MOD<//>` : null}
         <${GuideButton} class="lobby-guide" variant="secondary" />
         <${LoadoutButton} from="lobby" size="sm" class="lobby-loadout" />
         <div class="me-chip">
@@ -527,7 +529,7 @@ export function LobbyScreen() {
 
     <div class="lobby-body screen__scroll">
       <section class="lobby-left">
-        <div class="section-label"><span class="section-label__idx num">01</span>模拟方式<${MicroLabel}>MODE<//></div>
+        ${multiplayer ? html`<div class="section-label"><span class="section-label__idx num">01</span>模拟方式<${MicroLabel}>MODE<//></div>
         <div class="mode-cards">
           ${MODE_CARDS.map((c) => html`<${ModeCard} key=${c.id} card=${c} selected=${roomMode === c.id} onSelect=${pickMode} />`)}
         </div>
@@ -570,24 +572,24 @@ export function LobbyScreen() {
                 onClick=${() => setCode(c)}>${c}</button>`)}`
               : html`<span class="t-dim">向同伴索取 ${ROOM_CODE_LEN} 位同盟密钥，或直接打开邀请链接</span>`}
           </div>
-        <//>
+        <//>` : null}
         <${TipsPanel} />
       </section>
 
       <section class="lobby-right">
-        <div class="section-label"><span class="section-label__idx num">04</span>模拟难度<${MicroLabel}>DIFFICULTY<//></div>
+        <div class="section-label"><span class="section-label__idx num">${multiplayer ? '04' : '01'}</span>模拟难度<${MicroLabel}>DIFFICULTY<//></div>
         <div class="diff-list">
           ${PICK_DIFFICULTIES.map((d) => html`<${DifficultyCard} key=${d} roomMode=${roomMode} difficulty=${d} selected=${difficulty === d} onSelect=${pickDifficulty} />`)}
         </div>
         <div class="create-box">
-          <div class="lobby-priv-row" style="display: flex; gap: .06rem; margin-bottom: .08rem;">
+          ${multiplayer ? html`<div class="lobby-priv-row" style="display: flex; gap: .06rem; margin-bottom: .08rem;">
             <button type="button" class=${`btn btn--sm ${!isPrivate ? 'btn--primary' : 'btn--ghost'}`}
               style="flex: 1; padding: 0 .08rem; height: max(.32rem, 26px); font-size: max(.13rem, 11px);"
               onClick=${() => { setIsPrivate(false); savePref('lobby.private', false); }}>公开同盟</button>
             <button type="button" class=${`btn btn--sm ${isPrivate ? 'btn--primary' : 'btn--ghost'}`}
               style="flex: 1; padding: 0 .08rem; height: max(.32rem, 26px); font-size: max(.13rem, 11px);"
               onClick=${() => { setIsPrivate(true); savePref('lobby.private', true); }}>🔒 私密同盟</button>
-          </div>
+          </div>` : null}
           ${isSearching
             ? html`<div class="matchmaking-hud brackets">
                 <div class="matchmaking-hud__info">
@@ -599,19 +601,19 @@ export function LobbyScreen() {
               </div>`
             : html`<${Tooltip} block=${true} text=${!online ? '正在连接服务器…' : maint?.active ? '服务器即将维护，暂停开启新的模拟' : null}>
                 <${Button} variant="primary" size="xl" block=${true} class="btn-create-alliance" iconRight="chevrons" loading=${busy === 'create'} disabled=${!online || maint?.active} onClick=${create}>
-                  ${maint?.active ? '维护中 · 暂停开局' : '创建同盟 >>'}
+                  ${maint?.active ? '维护中 · 暂停开局' : multiplayer ? '创建同盟 >>' : '创建单机模拟 >>'}
                 <//>
               <//>`}
           <div class="create-box__hint">
             ${online
-              ? html`<span>${maint?.active ? '服务器即将停机维护，暂时停止开启新的同盟' : isSearching ? '超时将自动由 AI 队友补齐出发' : '创建后可邀请好友或添加 AI 队友'}</span>`
+              ? html`<span>${maint?.active ? '服务器即将停机维护，暂时停止开启新的同盟' : isSearching ? '超时将自动由 AI 队友补齐出发' : multiplayer ? '创建后可邀请好友或添加 AI 队友' : '创建后可调整难度，随时出发'}</span>`
               : html`<${Spinner} size="sm" label="CONNECTING" />`}
           </div>
         </div>
       </section>
     </div>
 
-    <${MatchmakingModal} open=${modalOpen} onClose=${() => setModalOpen(false)} onJoin=${join} onSpectate=${spectate} />
+    ${multiplayer ? html`<${MatchmakingModal} open=${modalOpen} onClose=${() => setModalOpen(false)} onJoin=${join} onSpectate=${spectate} />` : null}
     <${ModUploadModal} open=${modOpen} onClose=${() => setModOpen(false)} />
   </div>`;
 }

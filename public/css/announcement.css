@@ -1,0 +1,17 @@
+/* ==========================================================================================
+   announcement.css — 滚动公告（ui/announcement.js）。
+   ========================================================================================== */
+
+.announcement-bar {
+  display: flex;
+  align-items: center;
+  gap: .08rem;
+  padding: .06rem .14rem;
+  background: rgba(245, 158, 11, 0.15);
+  border-bottom: 1px solid rgba(245, 158, 11, 0.35);
+  font-size: .13rem;
+  color: var(--amber-300, #f6c445);
+}
+.announcement-bar__icon { display: flex; align-items: center; }
+.announcement-bar__text { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.announcement-bar__count { font-size: .11rem; opacity: .7; }

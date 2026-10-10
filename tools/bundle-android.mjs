@@ -8,7 +8,7 @@ import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
 import { verifyVoicesManifest } from './sync-voices-manifest.mjs';
-import { zipDir, zipEntryNames } from '../scripts/pack/_lib.mjs';
+import { zipDir, zipEntryNames, rewriteCapabilities } from '../scripts/pack/_lib.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const ANDROID_ASSETS_DIR = path.join(ROOT, 'android', 'app', 'src', 'main', 'assets');
@@ -62,6 +62,61 @@ copyRecursive(path.join(ROOT, 'shared'), path.join(STAGING_DIR, 'shared'));
 copyRecursive(path.join(ROOT, 'data'), path.join(STAGING_DIR, 'data'));
 copyRecursive(path.join(ROOT, 'public'), path.join(STAGING_DIR, 'public'));
 copyRecursive(path.join(ROOT, 'package.json'), path.join(STAGING_DIR, 'package.json'));
+
+// --capabilities <file>: variant build (无限/, docs/ANDROID.md §9). After staging, rewrite both
+// capabilities.js copies from the JSON payload (the established rewriteCapabilities patcher), so
+// the variant's feature set becomes a physical property of the shipped bytes — the repo source
+// files are never touched.
+const capFlagIdx = process.argv.indexOf('--capabilities');
+if (capFlagIdx >= 0) {
+  const capFile = process.argv[capFlagIdx + 1];
+  if (!capFile || !fs.existsSync(capFile)) {
+    console.error(`✘ [bundle-android] --capabilities 需要一个存在的 JSON 文件，得到: ${capFile || '(缺失)'}`);
+    process.exit(1);
+  }
+  let payload;
+  try { payload = JSON.parse(fs.readFileSync(capFile, 'utf8')); } catch (err) {
+    console.error(`✘ [bundle-android] capabilities JSON 解析失败: ${err.message}`);
+    process.exit(1);
+  }
+  const KNOWN = ['endless', 'mods', 'multiplayer'];
+  const unknown = Object.keys(payload).filter((k) => !KNOWN.includes(k));
+  const badValues = KNOWN.filter((k) => k in payload && typeof payload[k] !== 'boolean');
+  if (unknown.length || badValues.length) {
+    console.error(`✘ [bundle-android] capabilities 载荷非法: 未知键 [${unknown.join(', ')}]，非布尔值 [${badValues.join(', ')}]`);
+    process.exit(1);
+  }
+  // 全量键一起传：改写结果只由变体定义决定，不随源文件当前值的漂移而漂移。
+  // 内核已不再声明的能力位（如 endless 被整体移除）自动跳过并提示——变体定义允许与内核短暂错位。
+  const values = { endless: true, mods: true, multiplayer: true, ...payload };
+  for (const rel of ['shared/capabilities.js', 'public/shared/capabilities.js']) {
+    const dest = path.join(STAGING_DIR, ...rel.split('/'));
+    const src = fs.readFileSync(dest, 'utf8');
+    const present = KNOWN.filter((k) => new RegExp(`^\\s*${k}:\\s*(?:true|false),`, 'm').test(src));
+    const ignored = Object.keys(payload).filter((k) => !present.includes(k));
+    if (ignored.length) {
+      console.warn(`[bundle-android] ⚠ 变体定义里的能力位在 capabilities.js 中不存在，已忽略: ${ignored.join(', ')}`);
+    }
+    if (!present.length) {
+      console.error(`✘ [bundle-android] capabilities 改写失败（源文件里没有任何能力位行，形态变化？）: ${rel}`);
+      process.exit(1);
+    }
+    const rewritten = rewriteCapabilities(src, values);
+    if (!rewritten) {
+      console.error(`✘ [bundle-android] capabilities 改写失败（键缺失或源文件形态变化）: ${rel}`);
+      process.exit(1);
+    }
+    fs.writeFileSync(dest, rewritten, 'utf8');
+    // fail-closed 自检：改写后的文件必须逐键命中期望值，否则这个变体包就是静默错包。
+    for (const k of present) {
+      if (!new RegExp(`^\\s*${k}: ${values[k]},`, 'm').test(rewritten)) {
+        console.error(`✘ [bundle-android] 变体自检失败: ${rel} 的 ${k} 不是 ${values[k]}`);
+        process.exit(1);
+      }
+    }
+  }
+  console.log(`[bundle-android] 变体能力位已写入暂存副本并自检通过: ${JSON.stringify(payload)}`);
+}
 
 // P0-2: Bundle root licenses and notices for in-app distribution
 console.log('[bundle-android] Bundling distribution licenses and third-party notices...');

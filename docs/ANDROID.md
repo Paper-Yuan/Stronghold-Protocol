@@ -146,3 +146,19 @@ Android 壳内嵌的原生动态链接库清单由 [`android/NATIVE_DEPS.json`](
 - **兼容模式也可以由页面触发**：`AndroidNative.enableCompatMode()`（看门狗对话框与游戏内设置行都能走这条），避免用户只能等 12 秒。
 - **回报给开发者**：诊断面板（`showLogsAndDiagnosticsDialog`）里已能看到 `server.log` 尾部；`clientState` 同时写进 logcat 的 `MainActivity` tag（部分厂商会屏蔽应用日志，此时以对话框上的内容为准）。
 
+---
+
+## 9. 无限变体：纯单机安卓端（无限/）
+
+「无限」是主仓库上的**打包变体**，不是分叉：共享内核（`server/` `shared/` `data/` `public/`）与主包逐字节一致，全部差异只有两份 `capabilities.js` 在打包暂存期被改写为 `{ mods: false, multiplayer: false }`（仓库源文件永不改动）。变体的定义、三道门与诚实边界见 [`无限/README.md`](../无限/README.md)。
+
+> 范围说明：变体定位为**纯单机**（四档难度皆可，服务端拒绝一切多人房间）。无尽模式的引擎与数据仍在内核，但其客户端入口（标题按钮 / 大厅卡片 / 房内切换 / 排行榜）已从主线整体移除，变体目前没有无尽专属入口；要不要恢复为「无尽专属端」见 无限/README.md 的后续工作第 1 条。
+
+- **构建**：`node 无限/build.mjs`（debug）/ `--release`（签名沿用 §4 的流程）/ `--bundle-only`（只出资源包）。产物收进 `无限/dist/`（git 忽略）+ `SHA256.txt`。
+- **打包机制**：`tools/bundle-android.mjs --capabilities 无限/capabilities.json` 在暂存目录里用既有的 `rewriteCapabilities` 改写两份 `capabilities.js`，按目标文件实际声明的能力位逐键自检（fail-closed，改写失败即熔断；内核已移除的键自动跳过并提示）。Gradle 属性 `-PappIdSuffix=.endless -PversionNameSuffix=-endless`（`scripts/build-android.mjs` 透传，`android/app/build.gradle` 读取）让变体 APK 与主包**同机共存**：变体 debug 包 id 为 `com.paper.stronghold.endless.debug`，对外版本为 `0.2.3-fusion-endless`。主包的 `versionName` 字面量被 `test/version.test.js` 钉住，不加后缀，所以后缀走 AGP 的 `versionNameSuffix`。
+- **变体的行为差异**（全部由 capabilities 驱动，主线 `multiplayer: true` 时零变化）：
+  - 大厅（`public/js/screens/lobby.js`）：合作/匹配/密钥/模组区不渲染，模式锁 solo，只保留单机难度选择与创建。
+  - 服务端（`server/lobby.js`）：拒绝一切非 solo 的 `room.create` / `room.setDifficulty`，`match.queue` 整体拒绝（`ERR.BAD_MSG`）——不信任客户端。
+- **已知边界**（如实说明）：mod/多人代码仍在包里（入口不存在 + 服务端拒绝，非物理剥离）；内嵌服务器仍监听 `0.0.0.0:3000`（同网设备可只读观战；要彻底单机需壳层绑 `127.0.0.1`）；**进行中的局不落盘**，进程被杀即丢。
+- **后续工作**（按优先级）：① 断点续玩——持久化 `{seed, 难度, 版本, 每回合意图}`，恢复时用 `server/match/scheduler.js` 的 VirtualScheduler 快进重放（工具链现成：`tools/matchrun.mjs`）；② 切后台即暂停、限时做成可选挑战；③ 本地成绩（服务器端无尽排行榜已随无尽入口移除，单机成绩改 localStorage）；④ 壳层收口绑定 `127.0.0.1`。
+

@@ -11,6 +11,9 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const ANDROID_DIR = path.join(ROOT, 'android');
 const IS_WIN = process.platform === 'win32';
 const RELEASE = process.argv.includes('--release');
+// Gradle 属性透传（-P…）：无限变体（无限/build.mjs）用它传 appIdSuffix / versionNameSuffix，
+// 让变体 APK 与主包同机共存。主包构建不传任何属性，行为不变。
+const GRADLE_PROPS = process.argv.filter((a) => a.startsWith('-P'));
 
 /** Read `key=value` pairs from android/local.properties (git-ignored; holds sdk.dir and signing creds). */
 function readLocalProps() {
@@ -155,7 +158,8 @@ for (const f of [gradleSignedApk, unsignedApk, debugApk]) {
   if (fs.existsSync(f)) fs.rmSync(f, { force: true });
 }
 const gradlewCmd = IS_WIN ? path.join(ANDROID_DIR, 'gradlew.bat') : path.join(ANDROID_DIR, 'gradlew');
-const gradleArgs = [RELEASE ? 'assembleRelease' : 'assembleDebug'];
+const gradleArgs = [...GRADLE_PROPS, RELEASE ? 'assembleRelease' : 'assembleDebug'];
+if (GRADLE_PROPS.length) console.log(`  透传 Gradle 属性: ${GRADLE_PROPS.join(' ')}`);
 
 // If gradlew doesn't exist, check dists
 let finalCmd = gradlewCmd;

@@ -18,6 +18,15 @@ android {
         minSdk 24
         targetSdk 34
         versionCode 23
+        // 无限变体（无限/build.mjs 传 -PappIdSuffix=.endless -PversionNameSuffix=-endless）：
+        // applicationId 后缀让变体与主包同机共存（debug 再叠加 buildType 的 ".debug"），
+        // versionNameSuffix 只改变体对外显示的版本（主包 versionName 字面量被 test/version.test.js 钉住，不动）。
+        if (project.hasProperty('appIdSuffix')) {
+            applicationIdSuffix project.property('appIdSuffix').toString()
+        }
+        if (project.hasProperty('versionNameSuffix')) {
+            versionNameSuffix project.property('versionNameSuffix').toString()
+        }
         versionName "0.2.3-fusion"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"

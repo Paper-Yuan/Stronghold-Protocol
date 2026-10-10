@@ -227,6 +227,7 @@ export function TitleScreen() {
     enterSession(finalName);
   };
 
+  const mods = LOCAL_FEATURES.mods;
   const online = conn.status === 'online' || conn.status === 'connected';
   const dotClass = online ? 'is-on' : conn.status === 'reconnecting' || conn.status === 'connecting' || conn.status === 'handshaking' ? 'is-warn' : 'is-bad';
 
@@ -267,7 +268,7 @@ export function TitleScreen() {
       <${MicroLabel} tone="hi">TARGET POINT<//><br /><${MicroLabel}>STRONGHOLD PROTOCOL<//>
       <div class="title-corner__tools">
         <${Button} variant="secondary" size="sm" icon="chart" class="title-quick-btn title-stats" onClick=${openStats} title="统计数据">统计<//>
-        <${Button} variant="secondary" size="sm" class="title-quick-btn title-mod" onClick=${() => setModOpen(true)} title="模组管理与导入">MOD<//>
+        ${mods ? html`<${Button} variant="secondary" size="sm" class="title-quick-btn title-mod" onClick=${() => setModOpen(true)} title="模组管理与导入">MOD<//>` : null}
       </div>
     </div>
 
@@ -291,7 +292,7 @@ export function TitleScreen() {
         <${Button} variant="primary" size="xl" block=${true} iconRight="chevrons" disabled=${!valid} onClick=${start}>开始<//>
         <div class="title-ops">
           <${Button} variant="secondary" size="md" icon="chart" class="title-op-btn" onClick=${openStats}>统计数据<//>
-          <${Button} variant="secondary" size="md" icon="folder" class="title-op-btn" onClick=${() => setModOpen(true)}>MOD 管理<//>
+          ${mods ? html`<${Button} variant="secondary" size="md" icon="folder" class="title-op-btn" onClick=${() => setModOpen(true)}>MOD 管理<//>` : null}
         </div>
         <div class="title-conn">
           <span class=${`status-dot ${dotClass}`}></span>
