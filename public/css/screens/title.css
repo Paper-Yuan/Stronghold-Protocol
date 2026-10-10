@@ -243,7 +243,32 @@
   height: 2px;
   background: linear-gradient(90deg, var(--mint-500), transparent 60%);
 }
+.title-corner__tools {
+  margin-top: .08rem;
+  display: flex;
+  gap: .08rem;
+  justify-content: flex-end;
+}
+.title-quick-btn {
+  min-height: max(.36rem, 30px);
+  padding: 0 .14rem;
+  font-size: max(.14rem, 11px);
+}
 .title-login .btn--xl { letter-spacing: .6em; padding-left: calc(.48rem + .3em); }
+.title-ops {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: .1rem;
+  margin-top: -.02rem;
+}
+.title-op-btn {
+  height: max(.48rem, 34px);
+  font-size: max(.15rem, 12px);
+  justify-content: center;
+}
+.title-op-endless {
+  display: none;
+}
 .title-invite {
   display: flex;
   align-items: center;

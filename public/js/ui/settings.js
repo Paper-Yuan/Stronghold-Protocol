@@ -164,3 +164,14 @@ export function SettingsModal({ open, onClose }) {
     </div>
   <//>`;
 }
+
+export const settingsUiStore = createStore({ open: false });
+export const openSettings = () => settingsUiStore.set({ open: true });
+export const closeSettings = () => settingsUiStore.set({ open: false });
+
+/** 全局设置宿主：由 main.js 挂载在 .app-root，彻底杜绝 transform 引起的遮罩错位与事件穿透 */
+export function SettingsHost() {
+  const open = useStore((s) => s.open, Object.is, settingsUiStore);
+  return html`<${SettingsModal} open=${open} onClose=${closeSettings} />`;
+}
+

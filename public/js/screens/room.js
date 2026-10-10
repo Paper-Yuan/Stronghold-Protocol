@@ -19,6 +19,10 @@ import { toast, toastError } from '../ui/toasts.js';
 import { copyText } from '../ui/clipboard.js';
 import { GuideButton } from '../ui/guide.js';
 import { LoadoutButton } from './loadout.js';
+import { EquipButton } from './equipment.js';
+import { AllianceCodexButton } from './alliances.js';
+import { openStats } from './stats.js';
+import { LeaderboardButton } from '../ui/leaderboard.js';
 import { ChatBox } from '../ui/chatBox.js';
 import { net } from '../net.js';
 import { store, useStore, shallowEqual, emptyMatch, isSpectating } from '../store.js';
@@ -154,14 +158,18 @@ function SpectatorBar({ facts, myId, busy, onRemove, onSit }) {
   </section>`;
 }
 
-function InviteBox({ code, name, difficulty }) {
+function InviteBox({ code, name, difficulty, isPrivate }) {
   const copy = async (what) => {
     const ok = await copyText(what === 'code' ? code : `${inviteLink(code)} ${name}邀请你加入卫戍协议：盟约【${DIFFICULTY_NAMES[difficulty]}】`);
     if (ok) toast(what === 'code' ? `已复制同盟密钥 ${code}` : '已复制邀请链接', 'success');
     else toast('复制失败，请手动复制', 'warn');
   };
   return html`<div class="invite brackets">
-    <div class="invite__label"><${Icon} name="key" /><span>同盟密钥</span><${MicroLabel}>ALLIANCE KEY<//></div>
+    <div class="invite__label">
+      <${Icon} name="key" /><span>同盟密钥</span>
+      ${isPrivate ? html`<span class="private-tag" style="margin-left: 6px; padding: 1px 5px; background: rgba(246,163,41,.15); border: 1px solid var(--amber); color: var(--amber); font-size: max(.12rem, 10px); font-weight: 700; border-radius: 2px;">🔒 私密</span>` : null}
+      <${MicroLabel}>ALLIANCE KEY<//>
+    </div>
     <div class="invite__code num selectable" aria-label=${`同盟密钥 ${code}`}>${[...String(code)].map((ch, i) => html`<span key=${i}>${ch}</span>`)}</div>
     <div class="invite__btns">
       <${Button} size="sm" icon="copy" onClick=${() => copy('code')}>复制密钥<//>
@@ -194,12 +202,12 @@ function DifficultyPicker({ room, isHost, busy, onPick }) {
         title=${endless ? `以${DIFFICULTY_NAMES[d]}为底的无尽模式` : DIFFICULTY_NAMES[d]}>
       <${DifficultyIcon} difficulty=${d} />${DIFFICULTY_NAMES[d].replace('模拟', '')}
     </button>`)}
-    <button type="button" role="radio" aria-checked=${endless ? 'true' : 'false'}
-        class=${`dpick__opt dpick__opt--endless${endless ? ' is-active' : ''}`} style=${`--d-color:${DIFFICULTY_COLORS.ENDLESS}`}
-        disabled=${!!busy} onClick=${toggleEndless}
-        title="无尽模式：回合数没有上限，每 14 回合迎战一次敌方领袖。点亮后上面四档即为它的基础难度；再点一次关闭">
+    ${endless ? html`<button type="button" role="radio" aria-checked="true"
+        class="dpick__opt dpick__opt--endless is-active" style=${`--d-color:${DIFFICULTY_COLORS.ENDLESS}`}
+        disabled=${true}
+        title="无尽模式：回合数没有上限，每 14 回合迎战一次敌方领袖">
       <${DifficultyIcon} difficulty="ENDLESS" />无尽
-    </button>
+    </button>` : null}
   </div>`;
 }
 
@@ -300,7 +308,12 @@ export function RoomScreen() {
         <h1 class="topbar__title">${coop ? '同盟模拟' : '独立模拟'}<span class="topbar__sep"></span><${DifficultyTag} difficulty=${room.difficulty} size="lg" /></h1>
       </div>
       <div class="topbar__right">
-        ${coop ? html`<${InviteBox} code=${room.code} name=${me.name} difficulty=${room.difficulty} />` : html`<div class="solo-note"><${MicroLabel}>SINGLE OPERATOR<//><span>仅限 1 名博士</span></div>`}
+        ${coop
+          ? html`<${InviteBox} code=${room.code} name=${me.name} difficulty=${room.difficulty} isPrivate=${!!room.private} />`
+          : html`<div class="solo-top-right" style="display: flex; align-items: center; gap: .1rem;">
+              ${info.endless ? html`<${LeaderboardButton} variant="secondary" size="sm" class="room-endless-board" label="无尽排行榜" icon="crown" />` : null}
+              <div class="solo-note"><${MicroLabel}>SINGLE OPERATOR<//><span>仅限 1 名博士</span></div>
+            </div>`}
       </div>
     </header>
 
@@ -313,11 +326,14 @@ export function RoomScreen() {
         <p>${info.desc}</p>
         <ul>
           ${info.effects.map((e) => html`<li key=${e}>${e}</li>`)}
-          <li>${info.endless
-            ? html`回合数没有上限，坚持越久越好`
-            : html`共 <b class="num">${info.rounds}</b> 回合${info.hidden ? '，满足条件时进入隐秘核心' : ''}`}</li>
+          ${info.endless
+            ? null
+            : html`<li>共 <b class="num">${info.rounds}</b> 回合${info.hidden ? '，满足条件时进入隐秘核心' : ''}</li>`}
           <li>独立模拟中休整期与机变阶段不限时</li>
         </ul>
+        ${info.endless ? html`<div class="solo-brief__board" style="margin-top: .08rem;">
+          <${LeaderboardButton} block=${true} variant="secondary" size="md" label="查看无尽排行榜" icon="crown" />
+        </div>` : null}
       </aside>`}
     </main>
     <${SpectatorBar} facts=${facts} myId=${me.playerId} busy=${busy} onRemove=${removeSpectator} onSit=${sit} />
@@ -338,6 +354,9 @@ export function RoomScreen() {
         <div class="room-bar__status">${statusLine}</div>
       </div>
       <div class="room-bar__right">
+        <${Button} variant="secondary" size="lg" icon="chart" class="stats-entry" onClick=${openStats} title="统计数据">统计<//>
+        <${EquipButton} from="room" size="lg" class="room-equip" />
+        <${AllianceCodexButton} from="room" size="lg" class="room-alliance" />
         <${LoadoutButton} from="room" size="lg" class="room-loadout" />
         ${facts.isHost
           ? room.matching
@@ -348,7 +367,7 @@ export function RoomScreen() {
                 <${Button} variant="danger" size="lg" icon="close" loading=${busy === 'cancel-match'} onClick=${cancelMatch}>取消匹配<//>
               </div>`
             : html`<div class="room-host-actions" style="display: flex; align-items: center; gap: 8px;">
-                ${coop && facts.emptySeats > 0
+                ${coop && !room.private && facts.emptySeats > 0
                   ? html`<${Button} variant="secondary" size="lg" icon="search" loading=${busy === 'match'} disabled=${!online} onClick=${queueMatch}>匹配队友<//>`
                   : null}
                 <${Tooltip} text=${facts.canStart ? null : '仍有博士未准备就绪'}>

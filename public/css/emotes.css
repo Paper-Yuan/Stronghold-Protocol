@@ -178,6 +178,9 @@
   overflow-wrap: anywhere !important;
   white-space: pre-wrap !important;
 }
+.ebubble--text::before {
+  content: none !important;
+}
 .ebubble--text::after {
   content: ''; position: absolute; left: -.08rem; top: calc(50% - .06rem); width: .08rem; height: .12rem;
   background: var(--mint-600); clip-path: polygon(100% 0, 0 50%, 100% 100%);

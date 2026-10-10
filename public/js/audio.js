@@ -464,6 +464,7 @@ export class AudioManager {
     this.voiceGain = null;
     this.volumes = { bgm: 0.6, sfx: 0.8, voice: 0.8, muted: false };
     this.voiceLang = 'jp';
+    this.modVoicePacks = new Map(); // packId -> voiceTree
     this._duckTimer = null;
     this.buffers = new Map(); // url → Promise<AudioBuffer|null> (insertion order = LRU)
     this.bufBytes = new Map(); // url → decoded PCM bytes (the byte budget of the LRU, see _buffer)
@@ -616,8 +617,23 @@ export class AudioManager {
 
   setVoiceLang(lang) {
     if (lang === 'jp' || lang === 'cn') {
+      const changed = this.voiceLang !== lang;
       this.voiceLang = lang;
+      if (changed && this.voiceNode) {
+        this._stopVoice(); // 热切换时立即淡出当前语音，下个触发即刻使用新语言
+      }
     }
+  }
+
+  /** Register voice lines tree for a Mod pack ({ jp: {}, cn: {} }). */
+  registerModVoice(packId, voiceTree) {
+    if (!packId || !voiceTree) return;
+    this.modVoicePacks.set(packId, voiceTree);
+  }
+
+  /** Unregister voice lines tree for a Mod pack. */
+  unregisterModVoice(packId) {
+    this.modVoicePacks.delete(packId);
   }
 
   /**
@@ -899,11 +915,19 @@ export class AudioManager {
       const curLang = this.voiceLang || 'jp';
       const altLang = curLang === 'jp' ? 'cn' : 'jp';
       let line = null;
-      if (vRoot?.[curLang]?.[realCharId]?.[slot]) line = vRoot[curLang][realCharId][slot];
-      else if (vRoot?.[altLang]?.[realCharId]?.[slot]) line = vRoot[altLang][realCharId][slot];
-      else if (vRoot?.[realCharId]?.[slot]) line = vRoot[realCharId][slot];
-      else if (vRoot?.[realCharId]) line = vRoot[realCharId];
-      else if (m?.chars?.[realCharId]?.voice) line = m.chars[realCharId].voice;
+      // 优先从活跃 Mod 包查找对应语音（支持中日双语热切换与优雅回退）
+      for (const pack of this.modVoicePacks.values()) {
+        if (pack?.[curLang]?.[realCharId]?.[slot]) { line = pack[curLang][realCharId][slot]; break; }
+        if (pack?.[altLang]?.[realCharId]?.[slot]) { line = pack[altLang][realCharId][slot]; break; }
+        if (pack?.[realCharId]?.[slot]) { line = pack[realCharId][slot]; break; }
+      }
+      if (!line) {
+        if (vRoot?.[curLang]?.[realCharId]?.[slot]) line = vRoot[curLang][realCharId][slot];
+        else if (vRoot?.[altLang]?.[realCharId]?.[slot]) line = vRoot[altLang][realCharId][slot];
+        else if (vRoot?.[realCharId]?.[slot]) line = vRoot[realCharId][slot];
+        else if (vRoot?.[realCharId]) line = vRoot[realCharId];
+        else if (m?.chars?.[realCharId]?.voice) line = m.chars[realCharId].voice;
+      }
       const url = Array.isArray(line) ? line[Math.floor(Math.random() * line.length)] : line;
       if (typeof url !== 'string' || !url) return false;
       const now = typeof performance !== 'undefined' ? performance.now() : Date.now();
@@ -1115,7 +1139,17 @@ export function installAudio(deps) {
   try {
     manifestGetter = typeof deps?.getManifest === 'function' ? deps.getManifest : manifestGetter;
     audio.install();
-    if (deps?.settings) audio.setVolumes(deps.settings);
+    if (deps?.settings) {
+      audio.setVolumes(deps.settings);
+      if (deps.settings.voiceLang) audio.setVoiceLang(deps.settings.voiceLang);
+    }
+    if (typeof deps?.onSettings === 'function') {
+      deps.onSettings((st) => {
+        if (!st) return;
+        audio.setVolumes(st);
+        if (st.voiceLang) audio.setVoiceLang(st.voiceLang);
+      });
+    }
     if (typeof deps?.subscribe === 'function' && typeof deps?.getState === 'function') {
       const sync = (s) => {
         try {

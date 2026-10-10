@@ -113,7 +113,7 @@ import { SnapshotBuffer, frameTime } from './interp.js';
 import { TileField } from './tiles.js';
 import { UnitView, ItemView, DeviceView, FORMS } from './units.js';
 import { FxSystem, ensureDamageFonts } from './fx.js';
-import { createDragController, pieceTile } from './drag.js';
+import { createDragController, pieceTile, dragStandTile } from './drag.js';
 import { backdropTextures, shadowTexture, refreshTierChips, silhouetteTexture } from './textures.js';
 import { TILE_H, TIER_COLORS, COLORS } from './style.js';
 import { createAssets, assets as defaultAssets } from '../assets.js';
@@ -1361,22 +1361,31 @@ export async function createFieldView(host, options = {}) {
   function moveDragVisual(p) {
     if (!dragState) return;
     const v = dragState.view;
-    // held under the pointer: a unit with its drawn (lifted) feet DRAG_HOLD_TILES of its own px per tile below it (the
-    // scale at the pointer's ground, refined once at the feet), an item plate centred on it; the drop target
-    // (p.target, highlighted below) is the tile under the pointer
     const item = v instanceof ItemView;
-    const g = cam.unproject(p.x, p.y, 0);
-    const hold = item ? 0 : DRAG_HOLD_TILES;
-    const s0 = g ? cam.scaleAt(g.x, g.y, 0) : cam.scale;
-    const t = pickTile(cam, p.x, p.y + hold * s0, heightAt, tiles.levels);
-    const z = t ? heightAt(t.row, t.col) : 0;
-    const up = item ? z : z + (v.lift || 0) + (v.hover || 0);
-    let w = cam.unproject(p.x, p.y + hold * s0, up);
-    if (w && hold) w = cam.unproject(p.x, p.y + hold * cam.scaleAt(w.x, w.y, up), up) || w;
-    if (w) {
-      v.x = Math.max(-1, Math.min(21, w.x));
-      v.y = Math.max(-1, Math.min(19, w.y));
-      v.z = z;
+    // a unit over a legal drop target — the tile under the pointer, on the board or the bench (render/drag.js
+    // dragStandTile) — stands on it, lifted, as in the official deploy drag (the owner's recording of 2026-10-09): the
+    // world point the drop tween goes to (boardWorld, the prep field transform applied), set at once, no tween
+    const stand = item ? null : dragStandTile(p);
+    if (stand) {
+      const w = boardWorld(stand.row, stand.col, stand.bench);
+      v.x = w.x; v.y = w.y; v.z = w.z;
+    } else {
+      // otherwise held under the pointer (the player still sees what they carry): a unit with its drawn (lifted) feet
+      // DRAG_HOLD_TILES of its own px per tile below it (the scale at the pointer's ground, refined once at the feet), an
+      // item plate centred on it
+      const g = cam.unproject(p.x, p.y, 0);
+      const hold = item ? 0 : DRAG_HOLD_TILES;
+      const s0 = g ? cam.scaleAt(g.x, g.y, 0) : cam.scale;
+      const t = pickTile(cam, p.x, p.y + hold * s0, heightAt, tiles.levels);
+      const z = t ? heightAt(t.row, t.col) : 0;
+      const up = item ? z : z + (v.lift || 0) + (v.hover || 0);
+      let w = cam.unproject(p.x, p.y + hold * s0, up);
+      if (w && hold) w = cam.unproject(p.x, p.y + hold * cam.scaleAt(w.x, w.y, up), up) || w;
+      if (w) {
+        v.x = Math.max(-1, Math.min(21, w.x));
+        v.y = Math.max(-1, Math.min(19, w.y));
+        v.z = z;
+      }
     }
     if (p.target && p.target.area !== 'temp') {
       const r = p.target.area === 'board' ? p.target.row : GEO.HAND_ROW;

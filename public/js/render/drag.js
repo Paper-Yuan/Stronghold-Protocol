@@ -80,6 +80,21 @@ export function resolveDrop(p) {
   return { kind: 'drop', target: slot };
 }
 
+/**
+ * The tile a dragged UNIT is drawn standing on, from a `pieceDragMove` payload: the drop target under the pointer while
+ * it is legal — a board tile, or a bench slot (row HAND_ROW) — as `{ row, col, bench }` in board space; null otherwise
+ * (no target, an illegal tile, a temp slot, the pointer over DOM UI such as the shop bar): the unit is then held under
+ * the pointer. As in the official deploy drag (the owner's recording of 2026-10-09) the model stands on the tile the
+ * finger is on, and moving within that tile leaves it where it is. app.js never snaps an item plate.
+ */
+export function dragStandTile(move, geo = GEO) {
+  const t = move && move.legal === true ? move.target : null;
+  if (!t) return null;
+  if (t.area === 'board' && Number.isInteger(t.row) && Number.isInteger(t.col)) return { row: t.row, col: t.col, bench: false };
+  if (t.area === 'hand' && Number.isInteger(t.idx)) return { row: geo.HAND_ROW, col: t.idx, bench: true };
+  return null;
+}
+
 /** Legality via the UI callback (board → (piece,row,col); hand → (piece, HAND_ROW, idx)). Throwing ⇒ illegal. */
 export function isLegal(canPlace, piece, slot) {
   if (!slot || slot.area === 'temp' || slot.area === 'outside') return false;

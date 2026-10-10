@@ -9,18 +9,21 @@
 // pure CSS/SVG (radar, ridgelines, glow), so it never issues a request that can 404.
 
 import { useMemo, useState, useEffect } from '../../vendor/hooks.module.js';
-import { NAME_MAX_LEN, APP_VERSION } from '../../../shared/constants.js';
-import { html, Button, Icon, MicroLabel, TextField, PingPill } from '../ui/components.js';
+import { NAME_MAX_LEN, APP_VERSION, ENDLESS_DEFAULT_BASE, endlessDifficultyFor } from '../../../shared/constants.js';
+import { html, Button, Icon, MicroLabel, TextField, PingPill, DifficultyIcon } from '../ui/components.js';
 import { GuideButton } from '../ui/guide.js';
 import { toast } from '../ui/toasts.js';
 import { net, identity } from '../net.js';
 import { store, useStore, shallowEqual } from '../store.js';
 import { data, useData } from '../data.js';
-import { FullscreenButton, detectFeatures } from '../ui/device.js';
 import { GIcon } from '../ui/gameComponents.js';
 import { SettingsModal } from '../ui/settings.js';
 import { PreloadPill, PreloadModal, PreloadAutoNotice, checkAutoPreload } from '../ui/preloadModal.js';
-import { LeaderboardButton } from '../ui/leaderboard.js';
+import { FullscreenButton, detectFeatures } from '../ui/device.js';
+import { openStats } from './stats.js';
+import { openEquipCodex } from './equipment.js';
+import { openAllianceCodex } from './alliances.js';
+import { ModUploadModal } from '../ui/modUploadModal.js';
 
 // Same character classes as server/net.js sanitizeName (control, zero-width, bidi, BOM), so a name
 // the client accepts is never rejected by the server's hello validation.
@@ -73,10 +76,18 @@ export const isValidName = (raw) => sanitizeName(raw).length > 0;
 export function enterSession(rawName) {
   const name = sanitizeName(rawName);
   if (!name) return false;
-  identity.saveName(name);
-  identity.setEntered(true);
+  try {
+    identity.saveName(name);
+    identity.setEntered(true);
+  } catch (err) {
+    console.warn('[title] save identity failed', err);
+  }
   store.set((s) => ({ me: { ...s.me, name }, session: { ...s.session, entered: true } }));
-  net.setName(name);
+  try {
+    net.setName(name);
+  } catch (err) {
+    console.warn('[title] net.setName failed', err);
+  }
   return true;
 }
 
@@ -203,10 +214,38 @@ export function TitleScreen() {
   // CSS ridgelines only when there is no ridge art (avoids a swap flash when the art arrives).
   const cssRidges = assetsSettled && (!ridges || ridgesFailed);
 
-  const valid = isValidName(name);
+  const effectiveName = name.trim() || store.get().me.name || identity.loadName() || 'Doctor #9009';
+  const valid = isValidName(effectiveName);
   const start = () => {
-    if (!valid) { toast('请输入博士代号', 'warn'); return; }
-    enterSession(name);
+    const finalName = name.trim() || effectiveName;
+    if (!isValidName(finalName)) {
+      toast('请输入博士代号', 'warn');
+      return;
+    }
+    console.log('[title] Entering session with name:', finalName);
+    enterSession(finalName);
+  };
+
+  const [endlessBusy, setEndlessBusy] = useState(false);
+  const startEndless = async () => {
+    const finalName = name.trim() || effectiveName;
+    if (!isValidName(finalName)) {
+      toast('请输入博士代号', 'warn');
+      return;
+    }
+    if (!online) {
+      toast('尚未连接到服务器，请稍候', 'warn');
+      return;
+    }
+    setEndlessBusy(true);
+    enterSession(finalName);
+    try {
+      await net.request('room.create', { mode: 'solo', difficulty: endlessDifficultyFor(ENDLESS_DEFAULT_BASE) });
+    } catch (err) {
+      toast(err?.message || '进入无尽模式失败', 'error');
+    } finally {
+      setEndlessBusy(false);
+    }
   };
 
   const online = conn.status === 'online' || conn.status === 'connected';
@@ -219,6 +258,8 @@ export function TitleScreen() {
   useEffect(() => {
     checkAutoPreload();
   }, []);
+
+  const [modOpen, setModOpen] = useState(false);
 
   return html`<div class="screen title-screen">
     <div class=${`title-bg${bgLoaded ? ' has-art' : ''}${ridgesLoaded ? ' has-ridges' : ''}`} aria-hidden="true">
@@ -245,6 +286,10 @@ export function TitleScreen() {
     </div>
     <div class="title-corner title-corner--tr">
       <${MicroLabel} tone="hi">TARGET POINT<//><br /><${MicroLabel}>STRONGHOLD PROTOCOL<//>
+      <div class="title-corner__tools">
+        <${Button} variant="secondary" size="sm" icon="chart" class="title-quick-btn title-stats" onClick=${openStats} title="统计数据">统计<//>
+        <${Button} variant="secondary" size="sm" class="title-quick-btn title-mod" onClick=${() => setModOpen(true)} title="模组管理与导入">MOD<//>
+      </div>
     </div>
 
     <main class="title-main">
@@ -265,11 +310,17 @@ export function TitleScreen() {
           placeholder="输入你的代号（最多 ${NAME_MAX_LEN} 字）" autoFocus=${!touchUi}
           onInput=${setName} onEnter=${start} />
         <${Button} variant="primary" size="xl" block=${true} iconRight="chevrons" disabled=${!valid} onClick=${start}>开始<//>
+        <div class="title-ops">
+          <${Button} variant="secondary" size="md" class="title-op-btn title-op-endless" loading=${endlessBusy} onClick=${startEndless} title="单人无尽模式">
+            <${DifficultyIcon} difficulty="ENDLESS" class="title-op-icon" />无尽模式
+          <//>
+          <${Button} variant="secondary" size="md" icon="chart" class="title-op-btn" onClick=${openStats}>统计数据<//>
+          <${Button} variant="secondary" size="md" icon="folder" class="title-op-btn" onClick=${() => setModOpen(true)}>MOD 管理<//>
+        </div>
         <div class="title-conn">
           <span class=${`status-dot ${dotClass}`}></span>
           <span>${STATUS_TEXT[conn.status] || conn.status}</span>
           ${conn.status === 'online' ? html`<${PingPill} ms=${conn.ping} />` : null}
-          <${LeaderboardButton} class="title-leaderboard" variant="secondary" size="sm" />
           <${GuideButton} class="title-guide" />
           <button type="button" class="title-settings fsbtn tapx" aria-label="设置" title="设置"
             onClick=${() => setSettingsOpen(true)}><${GIcon} name="gear" /></button>
@@ -281,6 +332,7 @@ export function TitleScreen() {
     <${PreloadAutoNotice} onOpenManage=${() => setPreloadOpen(true)} />
     <${SettingsModal} open=${settingsOpen} onClose=${() => setSettingsOpen(false)} />
     <${PreloadModal} open=${preloadOpen} onClose=${() => setPreloadOpen(false)} />
+    <${ModUploadModal} open=${modOpen} onClose=${() => setModOpen(false)} />
 
     <footer class="title-foot">
       <div class="title-foot__col">

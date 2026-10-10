@@ -41,11 +41,15 @@ import { LobbyScreen, rememberRoom, parseRoomParam } from './screens/lobby.js';
 import { RoomScreen } from './screens/room.js';
 import { GameScreen } from './screens/game.js';
 import { installAudio, audio } from './audio.js';
-import { settingsStore, updateSettings } from './ui/settings.js';
+import { settingsStore, updateSettings, SettingsHost } from './ui/settings.js';
 import { GuideHost } from './ui/guide.js';
 import { LeaderboardHost } from './ui/leaderboard.js';
 import { installDeviceSupport } from './ui/device.js';
 import { LoadoutHost } from './screens/loadout.js';
+import { EquipHost } from './screens/equipment.js';
+import { AllianceCodexHost } from './screens/alliances.js';
+import { StatsHost } from './screens/stats.js';
+import { installStatsRecorder } from './ui/stats.js';
 import { installLoadoutSync, installOwnershipSync, installDiySync } from './ui/loadoutSync.js';
 import { installSkinsSync } from './ui/skins.js';
 import { startBuildGuard } from './ui/buildGuard.js';
@@ -293,7 +297,11 @@ function wireNet() {
   net.on('m.public', (msg) => { matchAt = Date.now(); store.patch('match', { public: payload(msg) }); maybeFinishRestore(); });
   net.on('m.private', (msg) => { matchAt = Date.now(); store.patch('match', { private: payload(msg) }); });
   net.on('m.field', (msg) => store.patch('match', { field: payload(msg) }));
-  net.on('m.result', (msg) => store.patch('match', { result: payload(msg) }));
+  net.on('m.result', (msg) => {
+    const res = payload(msg);
+    store.patch('match', { result: res });
+    recordResult(res, { myId: store.get().me.playerId, roomMode: store.get().room?.mode ?? null, now: Date.now() });
+  });
   net.on('m.toast', (msg) => {
     const kind = ['info', 'success', 'warn', 'error'].includes(msg.kind) ? msg.kind : 'info';
     toast(msg.text, kind);
@@ -395,9 +403,13 @@ function App() {
     <${ConnectionBanner} />
     <${ToastHost} />
     <${UiHosts} />
+    <${SettingsHost} />
     <${GuideHost} />
     <${LeaderboardHost} />
     <${LoadoutHost} />
+    <${EquipHost} />
+    <${AllianceCodexHost} />
+    <${StatsHost} />
   </div>`;
 }
 
@@ -487,6 +499,7 @@ async function boot() {
   }));
 
   wireNet();
+  installStatsRecorder(store);
   installLoadoutSync({ net });
   installOwnershipSync({ net });
   installDiySync({ net });

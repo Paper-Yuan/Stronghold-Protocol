@@ -15,6 +15,10 @@ import { html, Button, Icon, MicroLabel, Panel, TextField, PingPill, AvatarFrame
 import { toast, toastError } from '../ui/toasts.js';
 import { GuideButton } from '../ui/guide.js';
 import { LoadoutButton } from './loadout.js';
+import { EquipButton } from './equipment.js';
+import { AllianceCodexButton } from './alliances.js';
+import { openStats } from './stats.js';
+import { ModUploadModal } from '../ui/modUploadModal.js';
 import { LeaderboardButton } from '../ui/leaderboard.js';
 import { AnnouncementBar } from '../ui/announcement.js';
 import { net, identity } from '../net.js';
@@ -413,6 +417,8 @@ export function LobbyScreen() {
   const [busy, setBusy] = useState(null);
   const [recent] = useState(recentRooms);
   const [modalOpen, setModalOpen] = useState(() => new URLSearchParams(location.search).has('modal'));
+  const [modOpen, setModOpen] = useState(false);
+  const [isPrivate, setIsPrivate] = useState(() => Boolean(loadPref('lobby.private', false)));
   const lobbyStats = useStore((s) => s.lobbyStats, shallowEqual);
   const [onlineCount, setOnlineCount] = useState(() => lobbyStats?.online ?? 1);
   // The Android shell can ask the local network who hosts a key, so a guest never types an address: the code is enough.
@@ -475,7 +481,7 @@ export function LobbyScreen() {
       if (alive.current) setBusy(null);
     }
   };
-  const create = () => run('create', () => net.request('room.create', { mode: roomMode, difficulty }));
+  const create = () => run('create', () => net.request('room.create', { mode: roomMode, difficulty, private: isPrivate }));
   const queueMatch = () => run('queue', () => net.request('match.queue', { mode: roomMode, difficulty, fillBots: true }));
   const cancelMatch = () => run('cancel', () => net.request('match.cancel'));
   const join = (c = code) => {
@@ -529,6 +535,10 @@ export function LobbyScreen() {
       </div>
       <div class="topbar__right">
         <${OnlinePill} count=${onlineCount} />
+        <${Button} variant="secondary" size="sm" icon="chart" class="stats-entry" onClick=${openStats} title="统计数据">统计<//>
+        <${EquipButton} from="lobby" size="sm" class="lobby-equip" />
+        <${AllianceCodexButton} from="lobby" size="sm" class="lobby-alliance" />
+        <${Button} variant="secondary" size="sm" class="lobby-mod" onClick=${() => setModOpen(true)} title="模组管理">MOD<//>
         <${GuideButton} class="lobby-guide" variant="secondary" />
         <${LoadoutButton} from="lobby" size="sm" class="lobby-loadout" />
         <${LeaderboardButton} class="lobby-leaderboard" variant="secondary" size="sm" />
@@ -596,7 +606,7 @@ export function LobbyScreen() {
         <div class="diff-list">
           ${PICK_DIFFICULTIES.map((d) => html`<${DifficultyCard} key=${d} roomMode=${roomMode} difficulty=${d} selected=${difficulty === d} onSelect=${pickDifficulty} />`)}
         </div>
-        <div class="section-label"><span class="section-label__idx num">05</span>无尽模式<${MicroLabel}>ENDLESS<//></div>
+        <div class="section-label lobby-endless-label"><span class="section-label__idx num">05</span>无尽模式<${MicroLabel}>ENDLESS<//></div>
         <div class="diff-list diff-list--endless">
           <${EndlessCard} roomMode=${roomMode} selected=${isEndlessDifficulty(difficulty)} onSelect=${pickDifficulty} />
         </div>
@@ -604,6 +614,14 @@ export function LobbyScreen() {
           <${LeaderboardButton} block=${true} variant="secondary" size="md" label="无尽排行榜" icon="crown" />
         </div>
         <div class="create-box">
+          <div class="lobby-priv-row" style="display: flex; gap: .06rem; margin-bottom: .08rem;">
+            <button type="button" class=${`btn btn--sm ${!isPrivate ? 'btn--primary' : 'btn--ghost'}`}
+              style="flex: 1; padding: 0 .08rem; height: max(.32rem, 26px); font-size: max(.13rem, 11px);"
+              onClick=${() => { setIsPrivate(false); savePref('lobby.private', false); }}>公开同盟</button>
+            <button type="button" class=${`btn btn--sm ${isPrivate ? 'btn--primary' : 'btn--ghost'}`}
+              style="flex: 1; padding: 0 .08rem; height: max(.32rem, 26px); font-size: max(.13rem, 11px);"
+              onClick=${() => { setIsPrivate(true); savePref('lobby.private', true); }}>🔒 私密同盟</button>
+          </div>
           ${isSearching
             ? html`<div class="matchmaking-hud brackets">
                 <div class="matchmaking-hud__info">
@@ -628,5 +646,6 @@ export function LobbyScreen() {
     </div>
 
     <${MatchmakingModal} open=${modalOpen} onClose=${() => setModalOpen(false)} onJoin=${join} onSpectate=${spectate} />
+    <${ModUploadModal} open=${modOpen} onClose=${() => setModOpen(false)} />
   </div>`;
 }
