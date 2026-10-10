@@ -262,7 +262,7 @@ test('sync: welcome sends the sanitised loadout; edits are debounced; identical 
   const s = installLoadoutSync({ net, timers: T, target, getChessReady: async () => CHESS, lookupChess: get });
   net.emit('welcome', {});
   await T.advance(100);
-  assert.deepEqual(net.sent, [{ t: 'room.loadout', entries: { [INSIDE]: { skill: 0 } } }], 'stale entry dropped');
+  assert.deepEqual(net.sent, [{ t: 'room.loadout', entries: { [INSIDE]: { skill: 0 } }, ops: {} }], 'stale entry dropped');
   assert.equal(target.get().sync, 'synced');
   target.set({ entries: { [INSIDE]: { skill: 0 }, [SWIRE]: { module: SWIRE_ALT } } });
   target.set({ entries: { [INSIDE]: { skill: 0 }, [SWIRE]: { module: MODULE_NONE } } });
@@ -480,7 +480,7 @@ test('sync: an empty loadout is sent without loading chess.json (no 1.6 MB downl
   const s = installLoadoutSync({ net, timers: T, target, getChessReady: async () => { loads++; return CHESS; }, lookupChess: get, notify: () => {} });
   net.emit('welcome', {});
   await T.advance(100);
-  assert.deepEqual(net.sent, [{ t: 'room.loadout', entries: {} }]);
+  assert.deepEqual(net.sent, [{ t: 'room.loadout', entries: {}, ops: {} }]);
   assert.equal(loads, 0);
   await net.reply();
   target.set({ entries: { [INSIDE]: { skill: 0 } } });

@@ -13,7 +13,7 @@ import {
 
 const RAW = withoutTuning(DATA);
 
-test('no custom balance: legacy tuning multipliers are ignored; enemy scale = the PRTS table; leader pool = bloodPoint', () => {
+test('no custom balance: legacy tuning multipliers are ignored; enemy scale = the PRTS table; leader pool = bloodPoint × alive players', () => {
   const tuning = {
     modes: {
       '*': { enemyHpMul: 0.5, enemyAtkMul: 0.9 },
@@ -28,20 +28,18 @@ test('no custom balance: legacy tuning multipliers are ignored; enemy scale = th
     assert.deepEqual(hard.enemyScale(r), { hpMul: e.hp, atkMul: e.atk, speedMul: e.speed }, `R${r}: the config (PRTS) table`);
   }
   assert.equal(hard.bossHpMul('boss_1'), 1);
-  // co-op: one pool = bloodPoint[difficulty] × the players alive when the fight starts; solo: ×1 — the owner's decision
-  // of 2026-10-06 adopting PR #209 (DESIGN §20.10 / §25.13.4, gamedata.js bossPoolShareOf)
+  // co-op: one pool = bloodPoint[difficulty] × the players alive at the fight's start; solo × 1 (DESIGN §25.13.4, the
+  // owner's decision of 2026-10-06 adopting PR #209 — it replaces the fixed pool of DESIGN §20.10)
   for (const [modeId, key] of [['mode_multi_funny', 'FUNNY'], ['mode_multi_normal', 'NORMAL'], ['mode_multi_hard', 'HARD'], ['mode_multi_abyss', 'ABYSS']]) {
     const gd = new GameData(RAW, modeId);
     for (const b of ['boss_1', 'boss_5', 'boss_8']) {
-      const base = DATA.bosses[b].bloodPoint[key];
-      assert.equal(gd.bossPoolHp(b), base * 4, `${modeId} ${b} (no count ⇒ a full team)`);
-      assert.equal(gd.bossPoolHp(b, 4), base * 4, `${modeId} ${b} four alive`);
-      assert.equal(gd.bossPoolHp(b, 2), base * 2, `${modeId} ${b} two alive`);
+      assert.equal(gd.bossPoolHp(b), DATA.bosses[b].bloodPoint[key] * 4, `${modeId} ${b}: no count, a full team`);
+      assert.equal(gd.bossPoolHp(b, 4), DATA.bosses[b].bloodPoint[key] * 4, `${modeId} ${b} four alive`);
+      assert.equal(gd.bossPoolHp(b, 2), DATA.bosses[b].bloodPoint[key] * 2, `${modeId} ${b} two alive: twice the data value`);
     }
   }
   assert.equal(DATA.config.bossHpScale.perPlayer, true);
-  assert.equal(DATA.config.bossHpScale.aliveScaling, false, 'the fixed pool\'s optional × alive / 4 stays off');
-  assert.equal(DATA.config.bossHpScale.aliveAssumed, true);
+  assert.equal(DATA.config.bossHpScale.aliveScaling, false, 'the fixed pool\'s optional scaling stays off');
   const solo = new GameData(RAW, 'mode_single_hard');
   assert.equal(solo.bossPoolHp('boss_2'), DATA.bosses.boss_2.bloodPoint.HARD);
   assert.equal(DATA.config.bossHpScale.solo, 1);

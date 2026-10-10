@@ -7,8 +7,8 @@
 // matches (stage, factions, bans, boss and lineups all vary with the seed), simulates the real wave of that round with
 // the real Battle and FULL content (kits, talents, bonds incl. layers, IN_BATTLE garrisons, items, bands, tokens) and
 // reports the leak distribution and clear time. Boss rounds (R14 / solo 标准 R9) and the Hidden Core (R15) run the
-// real Final Assault fields (pairs, `_s` template for a lone player, shared boss HP pool = bloodPoint (co-op; × alive / 4
-// only with config bossHpScale.aliveScaling; solo ×0.25 [ASSUMED]) — GameData.bossPoolHp —, team LP, overtime drain) and report the pool damage by 150 s, the kill time and the team LP spent.
+// real Final Assault fields (pairs, `_s` template for a lone player, shared boss HP pool = bloodPoint × the players alive
+// at the fight's start (solo × 1; DESIGN §25.13.4) — GameData.bossPoolHp —, team LP, overtime drain) and report the pool damage by 150 s, the kill time and the team LP spent.
 //
 // The competent board of round r (curves below, profile-scaled): shop level, deployed units, elites (精锐), equipment,
 // 2–3 active bonds built around a core bond (3 members early, 6 from R11 when the pool allows it) and the layers those
@@ -378,7 +378,7 @@ export function runBoss({ data, mode, difficulty, round, seed, profile = 1, boss
     }
   }
   const alive = m.alivePlayers();
-  // the official pool (co-op = bloodPoint, × alive / 4 only with aliveScaling, DESIGN §20.10; solo ×0.25) — the match's own rule
+  // the match's own pool rule (bloodPoint × the players alive, solo × 1 — DESIGN §25.13.4)
   const pool = new SharedBossPool(bossPoolHp(gd, id, alive.length));
   let teamLp = alive.reduce((s, p) => s + p.lp, 0);
   const teamLp0 = teamLp;
@@ -397,7 +397,7 @@ export function runBoss({ data, mode, difficulty, round, seed, profile = 1, boss
     const b = m.newBattle({
       seed: deriveSeed(m.seed, `${fieldId}:${round}`), kind: hidden ? 'hidden' : 'boss', modeId: m.modeId, round, stageId: m.stageId,
       rect: { ...GEO.BOSS_RECT }, timeLimit: Infinity, players: inputs, spawns: m._sanitizeSpawns(spawns), routes: wave.routes,
-      sharedBoss: pool, flags: { layerGainsEnabled: false, ...gd.dp }, fieldId, enemyOverrides: wave.overrides, waveId: wave.templateId, bossId: id,
+      sharedBoss: pool, flags: { layerGainsEnabled: false, ...gd.dp, enemyScale: gd.enemyScale(round) }, fieldId, enemyOverrides: wave.overrides, waveId: wave.templateId, bossId: id,
     });
     b.on('enemyLeak', (ctx) => {
       const e = ctx && ctx.enemy;

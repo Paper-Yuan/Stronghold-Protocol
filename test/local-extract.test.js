@@ -1,7 +1,9 @@
 // tools/local-extract/extract.py (DESIGN §13 / §15): the job table, the manifest merge of --only, and the helpers that
 // summarise Materials (map/<theme>/materials.json) and GameObjects (mesh/<bundle>/prefab.json) for the official 3D
-// board, and enemy_scales.py's table of the official enemy model sizes (build-data MODEL_SCALES). The Python helpers
-// run without UnityPy (duck-typed fakes); the real-output checks skip when nothing was extracted on this machine.
+// board, the token Spine models (TOKEN_SPINES: the Front renderer of each battle token prefab, the merged pages), and
+// enemy_scales.py's table of the official enemy model sizes (build-data MODEL_SCALES). The Python helpers run without
+// UnityPy (duck-typed fakes; merge_alpha needs Pillow); the real-output checks skip when nothing was extracted on this
+// machine. The token models' manifest side: test/local-token-models.test.js.
 
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
@@ -37,6 +39,100 @@ describe('extract.py helpers (no UnityPy needed)', { skip: !PY && 'no python3' }
     ]);
     for (const j of mesh) assert.deepEqual(j.kinds, ['GameObject', 'Material', 'Mesh', 'Texture2D']);
     assert.equal(new Set(jobs.map((j) => j.sub)).size, jobs.length, 'one output dir per job');
+  });
+
+  test('job table: the token Spine models (TOKEN_SPINES) come from the battle token packs into spine/token/<id>; no plain job writes under spine/', () => {
+    const r = spawnSync(PY, [path.join(TOOL, 'extract.py'), '--print-jobs'], { encoding: 'utf8', env: ENV });
+    assert.equal(r.status, 0, r.stderr);
+    const { jobs, tokenSpines, enemySpines } = JSON.parse(r.stdout);
+    assert.equal(tokenSpines.bundles, 'pkgrps/btl_pfb_tokens_*.ab');
+    assert.equal(tokenSpines.sub, 'spine/token');
+    assert.equal(enemySpines.sub, 'spine/enemy');
+    // every listed id is a token of the game data without a web model (data/assets.json tokens[id].spine), sorted, unique
+    const ids = tokenSpines.ids;
+    assert.equal(ids.length, 39);
+    assert.deepEqual([...ids].sort(), ids);
+    assert.equal(new Set(ids).size, ids.length);
+    const tokens = JSON.parse(readFileSync(path.join(ROOT, 'data/tokens.json'), 'utf8'));
+    const backups = JSON.parse(readFileSync(path.join(ROOT, 'data/backups.json'), 'utf8'));
+    const web = JSON.parse(readFileSync(path.join(ROOT, 'data/assets.json'), 'utf8')).tokens;
+    for (const id of ids) {
+      assert.ok(tokens[id] || backups.tokens[id], `${id}: a token of the game data`);
+      assert.equal(web[id]?.spine, undefined, `${id}: no web model`);
+    }
+    // the 自选 summons whose prefab draws nothing (an EmptyAnimator: displayType HIDDEN / an effect) are left out
+    for (const id of ['token_10039_ulpia_block', 'token_10055_phatm2_mndclv', 'token_10058_sbell2_icetgt', 'token_10065_demetr_dmtpos',
+      'token_10071_aglna2_agairp']) assert.ok(!ids.includes(id), id);
+    assert.ok(!jobs.some((j) => j.sub.startsWith('spine/')), 'the old skinpack job of 乌尔比安\'s block extracted nothing (its skin prefab holds no art)');
+  });
+
+  test('token helpers: prefab container ids, --only selection of model ids, the Front renderer, atlas page names', () => {
+    const out = py(`
+W = {'token_10009_weedy_cannon', 'token_10002_kalts_mon3tr'}
+ids = ['token_a', 'token_b']
+nodes = [('Back', True, {'m_PathID': 2}), ('Front', True, {'m_PathID': 1}), ('Down', True, {'m_PathID': 3})]
+print(json.dumps({
+  'ids': [e.token_prefab_id(c, W) for c in ['dyn/battle/prefabs/[uc]tokens/token_10009_weedy_cannon.prefab',
+    'battle/prefabs/tokens/token_10002_kalts_mon3tr.prefab',
+    'dyn/battle/prefabs/skins/character/token_10002_kalts_mon3tr/token_10002_kalts_mon3tr_boc#6.prefab',
+    'dyn/battle/prefabs/[uc]tokens/token_10000_silent_healrb.prefab', None]],
+  'only': [e.spine_ids(o, 'spine/token', ids) for o in ([], ['spine'], ['spine/token'], ['spine/token/token_b'], ['spine/enemy'], ['map'])],
+  'pick': [e.pick_spine_node(nodes)[0], e.pick_spine_node([('Spine', True, {}), ('X', True, {})])[0],
+           e.pick_spine_node([('Front', False, {}), ('Other', True, {})])[0], e.pick_spine_node([('A', False, {})])[0], e.pick_spine_node([])],
+  'pages': e.atlas_pages('\\ntoken_x.png\\nsize: 64,64\\nformat: RGBA8888\\nC_Body\\n  rotate: false\\n  xy: 2, 2\\n\\ntoken_x2.png\\nsize: 32,32\\nC_Leg\\n  xy: 0, 0\\n'),
+}))`);
+    assert.deepEqual(out.ids, ['token_10009_weedy_cannon', 'token_10002_kalts_mon3tr', null, null, null]);
+    assert.deepEqual(out.only, [['token_a', 'token_b'], ['token_a', 'token_b'], ['token_a', 'token_b'], ['token_b'], [], []]);
+    assert.deepEqual(out.pick, ['Front', 'Spine', 'Other', 'A', null]);
+    assert.deepEqual(out.pages, ['token_x.png', 'token_x2.png']);
+  });
+
+  test('prefab_spine_nodes: the SkeletonAnimation renderers of a prefab tree, depth first, inactive branches marked', () => {
+    // a directional token prefab: Graphic / DefaultSkin / FaceSwitcher / {Front, Back} (each with its own skeleton), an
+    // inactive Spare renderer, a component in another bundle (m_FileID ≠ 0) and a MonoBehaviour without a type tree
+    const out = py(`
+class O:
+    def __init__(self, kind, tree=None, err=False): self.type, self._t, self._e = NS(name=kind), tree, err
+    def read_typetree(self):
+        if self._e: raise ValueError('no type tree')
+        return self._t
+objs = {}
+def go(pid, name, kids=(), sda=None, active=1):
+    tr = 100 + pid
+    comps = [{'component': {'m_FileID': 0, 'm_PathID': tr}}]
+    objs[tr] = O('Transform', {'m_Children': [{'m_FileID': 0, 'm_PathID': 100 + k} for k in kids], 'm_GameObject': {'m_FileID': 0, 'm_PathID': pid}})
+    if sda is not None:
+        objs[200 + pid] = O('MonoBehaviour', {'skeletonDataAsset': {'m_FileID': 0, 'm_PathID': sda}})
+        comps.append({'component': {'m_FileID': 0, 'm_PathID': 200 + pid}})
+    objs[pid] = O('GameObject', {'m_Name': name, 'm_IsActive': active, 'm_Component': comps})
+go(1, 'token_x', kids=(2, 7))
+go(2, 'Graphic', kids=(3,))
+go(3, 'FaceSwitcher', kids=(4, 5, 6))
+go(4, 'Front', sda=41)
+go(5, 'Back', sda=51)
+go(6, 'Spare', sda=61, active=0)
+go(7, 'Modes')
+objs[107]._t['m_Children'] = []
+objs[1]._t['m_Component'] += [{'component': {'m_FileID': 3, 'm_PathID': 999}}, {'component': {'m_FileID': 0, 'm_PathID': 300}}]
+objs[300] = O('MonoBehaviour', err=True)
+nodes = e.prefab_spine_nodes(objs[1].read_typetree(), objs)
+print(json.dumps({'nodes': [[n, a, r['m_PathID']] for n, a, r in nodes], 'pick': e.pick_spine_node(nodes)[2]['m_PathID']}))`);
+    assert.deepEqual(out.nodes, [['Front', true, 41], ['Back', true, 51], ['Spare', false, 61]]);
+    assert.equal(out.pick, 41, 'the Front skeleton (the fetched tokens use Front / Spine too)');
+  });
+
+  test('merge_alpha: the [alpha] texture as A, else the page\'s own alpha; RGB clamped to A (premultiplied input), multiplied for straight input', { skip: spawnSync(PY, ['-c', 'import PIL']).status !== 0 && 'no Pillow' }, () => {
+    const out = py(`
+from PIL import Image
+rgb = Image.new('RGB', (2, 1)); rgb.putdata([(200, 100, 50), (90, 90, 90)])
+alpha = Image.new('RGB', (2, 1)); alpha.putdata([(128, 128, 128), (255, 255, 255)])
+rgba = Image.new('RGBA', (2, 1)); rgba.putdata([(60, 200, 10, 100), (0, 0, 0, 0)])
+print(json.dumps({'split': list(e.merge_alpha(rgb, alpha).getdata()), 'own': list(e.merge_alpha(rgba, None).getdata()),
+  'opaque': list(e.merge_alpha(rgb, None).getdata()), 'straight': list(e.merge_alpha(rgba, None, True).getdata())}))`);
+    assert.deepEqual(out.split, [[128, 100, 50, 128], [90, 90, 90, 255]], 'A from the [alpha] texture, RGB ≤ A');
+    assert.deepEqual(out.own, [[60, 100, 10, 100], [0, 0, 0, 0]], 'an RGBA page keeps its alpha (the newer tokens: _UseAlphaTex 0)');
+    assert.deepEqual(out.opaque, [[200, 100, 50, 255], [90, 90, 90, 255]], 'no alpha anywhere: opaque');
+    assert.deepEqual(out.straight, [[23, 78, 3, 100], [0, 0, 0, 0]], '_StraightAlphaInput 1: RGB × A / 255 (Pillow truncates)');
   });
 
   test('material_info: textures by name with tiling, floats, colours, sorted keywords; unresolvable refs → null', () => {

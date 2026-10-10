@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>0.2.3 合并收口 · 三方比较</title>
+<style>
+  :root{
+    --bg:#0b0f0e; --panel:#131a18; --line:#243230; --txt:#e6ecea; --dim:#8fa3a0;
+    --up:#8b7cf6; --ours:#4a9eff; --fus:#17f9b7; --red:#e05a5a;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  body{width:1780px; background:var(--bg); color:var(--txt);
+       font-family:"Microsoft YaHei","PingFang SC","Noto Sans CJK SC",system-ui,sans-serif; padding:34px 40px;}
+  h1{font-size:30px; letter-spacing:.5px;}
+  h1 small{display:block; font-size:14.5px; color:var(--dim); font-weight:400; margin-top:8px;}
+  .meta{margin-top:12px; font-size:13.5px; color:var(--dim);}
+  .meta code{font-family:Consolas,monospace; font-size:12.5px; background:#0a1513; border:1px solid #1e2c2a; border-radius:4px; padding:1px 5px; color:#9fe8cf;}
+  table{width:100%; border-collapse:collapse; margin-top:20px; font-size:13px;}
+  th,td{border:1px solid var(--line); padding:9px 11px; vertical-align:top; text-align:left;}
+  thead th{background:#0f1715; font-size:13.5px; position:sticky; top:0;}
+  th.up{color:var(--up);} th.ours{color:var(--ours);} th.fus{color:var(--fus);}
+  td.item{width:150px; font-weight:700; color:#f2f6f5;}
+  td.up{color:#cdc6f8; background:rgba(139,124,246,.05);}
+  td.ours{color:#c6dcff; background:rgba(74,158,255,.05);}
+  td.fus{color:#c9f5e6; background:rgba(23,249,183,.06);}
+  .v{display:inline-block; font-size:11.5px; font-weight:700; padding:2px 7px; border-radius:999px; margin-right:6px; color:#0b0f0e;}
+  .v.keep{background:var(--ours);} .v.take{background:var(--up);} .v.drop{background:#e8a33d; color:#1a1206;} .v.ban{background:var(--red);}
+  tr.grp td{background:#0d1412; color:var(--dim); font-weight:700; font-size:12.5px; letter-spacing:.5px;}
+  code{font-family:Consolas,monospace; font-size:12px; background:#0a1513; border:1px solid #1e2c2a; border-radius:4px; padding:1px 4px; color:#9fe8cf;}
+  .legend{margin-top:16px; display:flex; gap:18px; flex-wrap:wrap; font-size:13px; color:var(--dim);}
+  .legend b{color:var(--txt);}
+  .foot{margin-top:14px; font-size:12.5px; color:var(--dim);}
+</style>
+</head>
+<body>
+  <h1>0.2.3 合并收口 · 三方比较（上游 / 我们 / 融合裁决）
+    <small>原则：UI 与双端特异性适配一律保我们（上游界面件不整份搬入）· 引擎规则与纯函数取上游 · 上游子系统与本地的平行演化做排除 · PR #149 永久排除</small>
+  </h1>
+  <div class="meta">分支 <code>merge/v0.2.3</code>（worktree <code>E:/Workbox/sp-upgrade-merge</code>）· 收口 5 个 commit：<code>e530fcb5</code> <code>146add5f</code> <code>f934b1cb</code> <code>45ed8f79</code> · 数据来源：全仓 import 扫描 + 冲突分类脚本 + client-static / test/ui 实跑</div>
+
+  <table>
+    <thead>
+      <tr><th>调整项</th><th class="up">上游 v0.2.3 的做法</th><th class="ours">我们（fusion 线）的做法</th><th class="fus">融合裁决</th></tr>
+    </thead>
+    <tbody>
+      <tr class="grp"><td colspan="4">A · 保我们 —— UI 与双端特异性适配（用户红线）</td></tr>
+      <tr>
+        <td class="item">新界面组件 ×7</td>
+        <td class="up"><code>ModuleInfo</code> <code>LoadoutGarrisons</code> <code>LineupThumb</code> <code>applyTextSize</code> <code>resultBonds</code> <code>missingGameData</code> <code>importRefusal</code>（单一布局）</td>
+        <td class="ours">无此组件；界面统一走 <code>components.js</code> + <code>device.js</code> 特性类 + CSS 三层制（结构 / <code>.desktop.css</code> / <code>.mobile.css</code>）</td>
+        <td class="fus"><span class="v keep">保我们</span>不搬入组件，删依赖它们的上游测试（<code>feedback5-module-trait</code> / <code>text-scale</code> / <code>feedback5-result-bonds</code>）。要用就按双端适配重写</td>
+      </tr>
+      <tr>
+        <td class="item">皮肤选择链</td>
+        <td class="up">改了 <code>loadout.js</code> / <code>loadout.css</code> / <code>loadoutModel.js</code> / <code>loadoutSync.js</code> / <code>diy.js</code></td>
+        <td class="ours">皮肤节（<code>.lo-skin*</code>/<code>.lo-dtab*</code>）+ skins 状态 + 同步 + <code>assets.js</code> 的皮肤分支（上游 <code>assets.js</code> 里 <code>opts.skin</code> 零命中）</td>
+        <td class="fus"><span class="v keep">保我们</span>冲突处全部取我们；<code>assets.js</code> 只并入上游 28 行 token/SFX 改进，皮肤分支完好。手机端选皮肤不受影响</td>
+      </tr>
+      <tr>
+        <td class="item">手机端适配</td>
+        <td class="up">无此概念（单套布局）</td>
+        <td class="ours"><code>mobile.css</code>(389 行) / <code>devices.css</code> / 44px 命中区 / 底部弹出 / 安全区 inset / <code>sp-coarse</code>·<code>sp-hover</code></td>
+        <td class="fus"><span class="v keep">保我们</span>禁止 UA/宽度判定；上游组件若搬入会绕过适配层</td>
+      </tr>
+
+      <tr class="grp"><td colspan="4">B · 排除 —— 上游子系统与本地的平行演化 / 我们不采用的重构</td></tr>
+      <tr>
+        <td class="item">i18n 子系统</td>
+        <td class="up"><code>ui/lang.js</code> + <code>public/i18n/{en,ja,ko,zh-TW}.json</code>（完整多语言运行时 + 语言包切换 UI）</td>
+        <td class="ours"><b>缺整个子系统</b>（无 <code>public/i18n</code>、无 <code>lang.js</code>）；只有 msgid 直通的 <code>shared/i18n.js</code></td>
+        <td class="fus"><span class="v drop">排除</span>删 <code>lang.js</code>+<code>public/i18n/**</code> 与其测试（语言包切换类整批红）；日后要同轨需单开一轮</td>
+      </tr>
+      <tr>
+        <td class="item">每干员语音</td>
+        <td class="up"><code>VOICE_LANGS</code>（<code>gameLogic/settings.js</code>）+ <code>voicePrefs.js</code> + <code>operatorVoice.js</code> UI，默认中文</td>
+        <td class="ours"><code>VOICE_LANG</code> / <code>voiceLang</code>（默认日语）+ 双语语音层 + 逐干员设置</td>
+        <td class="fus"><span class="v keep">保我们</span><b>同名异构</b>：不拼接，保留我们的数据层与 UI（上游 <code>VOICE_LANGS</code> 的转发已从 <code>ui/gameLogic.js</code> 移除）</td>
+      </tr>
+      <tr>
+        <td class="item">培养屏</td>
+        <td class="up"><code>screens/cultivation.js</code>（独立培养界面，依赖 <code>loadoutModel.opsOf</code>）</td>
+        <td class="ours">潜能/练度做在干员调配里（<code>shared/potential.js</code>、<code>gameLogic/loadout.js</code>）</td>
+        <td class="fus"><span class="v drop">排除</span>删该屏；<code>opsOf</code> 作为纯函数补入 <code>loadoutModel</code>（我们自己也用得到）</td>
+      </tr>
+      <tr>
+        <td class="item">渲染层</td>
+        <td class="up">拆成模块：<code>render/app/**</code>(6) + <code>render/fx/**</code>(15)</td>
+        <td class="ours">单文件：<code>render/app.js</code>(119KB) + <code>render/fx.js</code>(120KB)</td>
+        <td class="fus"><span class="v keep">保我们</span>删上游 21 个模块（它们只被彼此引用；我们的渲染改动都在单文件里）</td>
+      </tr>
+      <tr>
+        <td class="item">服务端目录</td>
+        <td class="up">重构出 <code>server/http/**</code>（9 文件：routes/static/files/config/…）</td>
+        <td class="ours">953 行单体 <code>server/index.js</code>（我们的融合改动都在里面）</td>
+        <td class="fus"><span class="v drop">排除</span>删 <code>server/http/**</code>；它 import 的 <code>createPackRegistry</code> 是上游语言包注册表，与我们的 <code>server/packs.js</code>（mod 管理器）<b>同名不同物</b></td>
+      </tr>
+
+      <tr class="grp"><td colspan="4">C · 取上游 —— 引擎规则修正与纯函数补齐（加法）</td></tr>
+      <tr>
+        <td class="item">crowdAspd 归属</td>
+        <td class="up">从 <code>kits/shared/tier5.js</code> <b>删除</b>该函数，改为引擎级规则 <code>traitMods.js</code>（「攻击范围内≥N 敌时攻速+」），注释写明「同一改动里删除，避免重复计数」</td>
+        <td class="ours">kit <code>chess_char_5_01-excu2.js</code> 仍从 <code>tier5.js</code> 导入 <code>crowdAspd</code> ⇒ <b>一条 import 链挂掉 27 个测试</b></td>
+        <td class="fus"><span class="v take">取上游</span>kit 取上游版（不再导入 <code>crowdAspd</code>）+ 保留我们的 <code>traitMods.js</code>；引擎级规则更对</td>
+      </tr>
+      <tr>
+        <td class="item">缺失导出 ×10</td>
+        <td class="up">定义：<code>DEV_BUILD</code>、<code>checkLoadoutOps</code>、<code>bossPoolShareOf</code>、<code>sanitizeOps</code>、<code>parseStoredOps</code>、<code>champagneHold</code>、<code>CHAMPAGNE_TRIGGER</code>、<code>quickSkillTags</code>、<code>opsOf</code>、<code>voiceLine</code>、<code>TEXT_SIZES</code></td>
+        <td class="ours">缺（被上游 auto-merge 的代码 import）⇒ 全仓 133 处「导入名不存在」</td>
+        <td class="fus"><span class="v take">取上游</span>逐个补入（纯函数/常量，加法不改行为）；<code>shared/protocol.js</code> 的 <code>cultivationCharIds</code> 同法</td>
+      </tr>
+      <tr>
+        <td class="item">tier 助手搬迁</td>
+        <td class="up">删 <code>kits/tier{1,4,5,6}.js</code>，内容搬进 <code>kits/shared/tierN.js</code></td>
+        <td class="ours">这四个文件我们改过（本地 tier 扩展）</td>
+        <td class="fus"><span class="v take">取上游</span>接受删除；我们的版本归档 <code>docs/upstream-merge/our-deleted-by-upstream/</code> 备查</td>
+      </tr>
+      <tr>
+        <td class="item">陈旧上游快照 ×112</td>
+        <td class="up">前进后的版本</td>
+        <td class="ours">从上游历史复制的旧快照（HEAD 内容能在 v0.2.3 历史里找到 ⇒ 非本地改动）</td>
+        <td class="fus"><span class="v take">取上游</span>判据 = <code>HEAD 的 blob 是否存在于上游历史</code>；112 个全部取上游</td>
+      </tr>
+
+      <tr class="grp"><td colspan="4">D · 永久排除 —— 你的合并规则（.agents/rules/upstream-sync.md）</td></tr>
+      <tr>
+        <td class="item">PR #149 盟约收起</td>
+        <td class="up">含该特性：<code>.bonds-toggle</code> / <code>.gm__bond-list</code> / <code>bondsCollapsed</code> / <code>bond-collapse.e2e.test.js</code></td>
+        <td class="ours">原生 <code>&lt;BondStrip/&gt;</code>，无收起按钮</td>
+        <td class="fus"><span class="v ban">排除</span>测试保持删除，全仓零黑名单特征（理由：844×390 下棋盘顶边触控位移 ≈55px，点第 12 行误触发盟约浮层）</td>
+      </tr>
+
+      <tr class="grp"><td colspan="4">E · 待办（尚未裁决/尚未做）</td></tr>
+      <tr>
+        <td class="item">行为断言 28 红</td>
+        <td class="up">上游断言它自己的行为</td>
+        <td class="ours">部分断言我们的行为</td>
+        <td class="fus"><span class="v drop">逐个定性</span>涉及上游 UI 行为的 → 保我们、改/删上游测试；涉及引擎规则的 → 逐条比对</td>
+      </tr>
+      <tr>
+        <td class="item">golden 基准</td>
+        <td class="up">上游自己的摘要</td>
+        <td class="ours">我们引擎变化前的摘要</td>
+        <td class="fus"><span class="v drop">待重生成</span>合并收口完成后统一重录（计划 2f），不手工合并</td>
+      </tr>
+      <tr>
+        <td class="item">D2 逐房 overlay</td>
+        <td class="up">无（上游无 mod 内容层）</td>
+        <td class="ours">缺失：<code>shared/contentSnapshot.js</code> / <code>server/mod/overlay.js</code> / <code>roomData.js</code> / <code>injectRoomData.js</code></td>
+        <td class="fus"><span class="v drop">合并后做</span>这是 mod 真正「加载并正常显示」的一步（5–6 天，动的全是热文件）</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="legend">
+    <span><span class="v keep">保我们</span><b>我们的实现/适配优先</b></span>
+    <span><span class="v take">取上游</span><b>引擎规则与纯函数，加法式并入</b></span>
+    <span><span class="v drop">排除/待办</span><b>上游子系统或不采用的重构</b></span>
+    <span><span class="v ban">永久排除</span><b>你的黑名单</b></span>
+  </div>
+  <div class="foot">收口效果：<code>test/client-static.test.js</code> 384 测试/10 红 → <b>329 全绿</b>；<code>test/ui/*</code> 162 测试/81 红 → <b>631 测试 / 595 通过 / 28 红</b>；mod 链回归（client-static+packs+modverify+publish）<b>352 全绿</b>。不部署、不 push 远端。</div>
+</body>
+</html>

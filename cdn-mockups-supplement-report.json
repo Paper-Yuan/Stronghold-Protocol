@@ -1,0 +1,375 @@
+{
+  "staged": 46,
+  "skipped": 0,
+  "failed": 0,
+  "list": [
+    {
+      "key": "packs/fanpack-mod/manifest.json",
+      "status": "staged",
+      "id": "6d59bbee719d83680dc7c3a3",
+      "sha256": "19e95c160dfb1a31bbe67e05071fefd47100408e49c079a609d7304a1d5c839a",
+      "size": 15953,
+      "url": "https://weishucdn.jiangjiangze.icu/packs/fanpack-mod/manifest.json"
+    },
+    {
+      "key": "assets/docs/mockups/dual-platform-adaptation.png",
+      "status": "staged",
+      "id": "aa2d6a93eb389132765c5ba6",
+      "sha256": "cb8c69ecfb49007b7c84e2e9ee73d12ef1b7af6ce079487bfd4e59f99887032a",
+      "size": 394950,
+      "url": "https://weishucdn.jiangjiangze.icu/assets/docs/mockups/dual-platform-adaptation.png"
+    },
+    {
+      "key": "assets/docs/mockups/endless-1-home-solo.png",
+      "status": "staged",
+      "id": "4d1bb7d467f53d9d178a8501",
+      "sha256": "88f1dc475364faabb6a7313e702239d9d1047ba03b3e617dc8094391a73c3c0b",
+      "size": 1772498,
+      "url": "https://weishucdn.jiangjiangze.icu/assets/docs/mockups/endless-1-home-solo.png"
+    },
+    {
+      "key": "assets/docs/mockups/endless-2-home-phone.png",
+      "status": "staged",
+      "id": "9ea7aafccdbbfa99aeb5f25a",
+      "sha256": "04eb09e460e9aaba5256f51d49ac47b7e52f38c02ab53578451f2d5683eb0b0a",
+      "size": 1163107,
+      "url": "https://weishucdn.jiangjiangze.icu/assets/docs/mockups/endless-2-home-phone.png"
+    },
+    {
+      "key": "assets/docs/mockups/endless-3-ingame-ui.png",
+      "status": "staged",
+      "id": "82503588537f16b7437a8cb6",
+      "sha256": "9f58167af35a6823d6e81c27e9950768b67596cfff02bca6f9778363c81b21dd",
+      "size": 425206,
+      "url": "https://weishucdn.jiangjiangze.icu/assets/docs/mockups/endless-3-ingame-ui.png"
+    },
+    {
+      "key": "assets/docs/mockups/endless-4-dual-vs-server.png",
+      "status": "staged",
+      "id": "3ae0468d1a0189c03d1a010a",
+      "sha256": "df02b19c6d9d95d7995b3cb589c3846efa3d95dff53dcf51d0e8a74118b7c389",
+      "size": 87454,
+      "url": "https://weishucdn.jiangjiangze.icu/assets/docs/mockups/endless-4-dual-vs-server.png"
+    },
+    {
+      "key": "assets/docs/mockups/endless-overview.png",
+      "status": "staged",
+      "id": "aee2a629e325104a08e4cbd2",
+      "sha256": "763a347af7f8f5f28b346fa8668919a13f559300918e37a99b31694ceeb32d93",
+      "size": 2617200,
+      "url": "https://weishucdn.jiangjiangze.icu/assets/docs/mockups/endless-overview.png"
+    },
+    {
+      "key": "assets/docs/mockups/fusion-1-loadout.png",
+      "status": "staged",
+      "id": "32c1f26a9382291d1c3722b4",
+      "sha256": "c5737622c197de78599a0d34425c6c0b02414991579b4cf1d5cff0b28940d5a7",
+      "size": 765053,
+      "url": "https://weishucdn.jiangjiangze.icu/assets/docs/mockups/fusion-1-loadout.png"
+    },
+    {
+      "key": "assets/docs/mockups/fusion-2-skin-dual.png",
+      "status": "staged",
+      "id": "b0ba584d23d1c8df0ee745a3",
+      "sha256": "566401fd86f0c186122dac5f4f4907afa29384f2d3a2f1eef69f26ee0b386b7c",
+      "size": 476019,
+      "url": "https://weishucdn.jiangjiangze.icu/assets/docs/mockups/fusion-2-skin-dual.png"
+    },
+    {
+      "key": "assets/docs/mockups/fusion-3-devices.png",
+      "status": "staged",
+      "id": "5f3f99b71e1c111bf9a5249a",
+      "sha256": "c4fac1e24a9741a2a434be09217a5050c6ea3366f96b411c2f16ed8bbc803e42",
+      "size": 660458,
+      "url": "https://weishucdn.jiangjiangze.icu/assets/docs/mockups/fusion-3-devices.png"
+    },
+    {
+      "key": "assets/docs/mockups/fusion-4-matrix.png",
+      "status": "staged",
+      "id": "8cf27a260a5bca6463e7abfd",
+      "sha256": "f698482338c4db01d22119f0264b188daf84e8f2864af4cdba53a6e0d4628bdc",
+      "size": 272944,
+      "url": "https://weishucdn.jiangjiangze.icu/assets/docs/mockups/fusion-4-matrix.png"
+    },
+    {
+      "key": "assets/docs/mockups/fusion-dual-platform.png",
+      "status": "staged",
+      "id": "4d5a220dc91820066340ee51",
+      "sha256": "aba1ad229e25f5567a87bc42a7834132885d404d00552820f784d291c6f416c1",
+      "size": 1979614,
+      "url": "https://weishucdn.jiangjiangze.icu/assets/docs/mockups/fusion-dual-platform.png"
+    },
+    {
+      "key": "assets/docs/mockups/merged-ui-reference.png",
+      "status": "staged",
+      "id": "783ce9be76bac83f8816ebd5",
+      "sha256": "5414a96a049ff12377bf785a10cf775beca5f8d7d0b70d19bed836139dcaefe1",
+      "size": 510130,
+      "url": "https://weishucdn.jiangjiangze.icu/assets/docs/mockups/merged-ui-reference.png"
+    },
+    {
+      "key": "assets/docs/mockups/mock-1-lobby-private-room.png",
+      "status": "staged",
+      "id": "79728a47e5eb1d9f58a1904d",
+      "sha256": "62a38c13a5a3a0977922f87548fa33e382950575fbfa2861c3b0de4c7bc303ee",
+      "size": 2274734,
+      "url": "https://weishucdn.jiangjiangze.icu/assets/docs/mockups/mock-1-lobby-private-room.png"
+    },
+    {
+      "key": "assets/docs/mockups/mock-2-lobby-private-room-phone.png",
+      "status": "staged",
+      "id": "bc08249d3d1634b39dea40cb",
+      "sha256": "598d249fd91e40d5ef413194f6c22d0bfd57bd96b79432095ec71c2dbcf39ba7",
+      "size": 455378,
+      "url": "https://weishucdn.jiangjiangze.icu/assets/docs/mockups/mock-2-lobby-private-room-phone.png"
+    },
+    {
+      "key": "assets/docs/mockups/mock-3-matchmaking-modal.png",
+      "status": "staged",
+      "id": "57738c4a265e2d2fb850baad",
+      "sha256": "678db6c7e38b1dde729e24f346e34b3bd7a752f593dab0346b9ca404f2d7ea76",
+      "size": 337859,
+      "url": "https://weishucdn.jiangjiangze.icu/assets/docs/mockups/mock-3-matchmaking-modal.png"
+    },
+    {
+      "key": "assets/docs/mockups/mock-4-admin-private-rooms.png",
+      "status": "staged",
+      "id": "578b2c383910345cbbc78c55",
+      "sha256": "af602febf72fc1ea3368cfa914d6a91ba292792f03f3f027716a97d58a5276db",
+      "size": 192903,
+      "url": "https://weishucdn.jiangjiangze.icu/assets/docs/mockups/mock-4-admin-private-rooms.png"
+    },
+    {
+      "key": "assets/docs/mockups/mod-1-lobby-packs.png",
+      "status": "staged",
+      "id": "f5b5284c35ed68070bbe3c3b",
+      "sha256": "6f1a01efb24839eb0ed1ed940e39518ab2b435ef04e0cb49cb6d3ecbae7cefd6",
+      "size": 2243832,
+      "url": "https://weishucdn.jiangjiangze.icu/assets/docs/mockups/mod-1-lobby-packs.png"
+    },
+    {
+      "key": "assets/docs/mockups/mod-2-lobby-packs-phone.png",
+      "status": "staged",
+      "id": "2a1f447c1eaf835ad6a96a31",
+      "sha256": "1aea4157f367ffb95a729f7ed7aed8aa9d3387ebd01ecf63bd4e3f77e3fc17e8",
+      "size": 450934,
+      "url": "https://weishucdn.jiangjiangze.icu/assets/docs/mockups/mod-2-lobby-packs-phone.png"
+    },
+    {
+      "key": "assets/docs/mockups/mod-3-room-badge.png",
+      "status": "staged",
+      "id": "760c7dc09e1a1e952e98dd80",
+      "sha256": "f7b82c30621d210f5b6bff3ac7fa744906b401c1d02056c057b7bc3c295be0ca",
+      "size": 360388,
+      "url": "https://weishucdn.jiangjiangze.icu/assets/docs/mockups/mod-3-room-badge.png"
+    },
+    {
+      "key": "assets/docs/mockups/mod-4-admin-pool.png",
+      "status": "staged",
+      "id": "3c467cf0263d84b709c7571c",
+      "sha256": "ba33de22202577458c0105e108360e1c6765f271b6247ce8a13897b1e47692c0",
+      "size": 238200,
+      "url": "https://weishucdn.jiangjiangze.icu/assets/docs/mockups/mod-4-admin-pool.png"
+    },
+    {
+      "key": "assets/docs/mockups/mod-5-settings-packs.png",
+      "status": "staged",
+      "id": "cedac338acf1fb46ccad9078",
+      "sha256": "fecf5369979c0cc3c33e93c0565c2099a316f9f30ec9baeeb9aa9e4d73cfeff6",
+      "size": 234007,
+      "url": "https://weishucdn.jiangjiangze.icu/assets/docs/mockups/mod-5-settings-packs.png"
+    },
+    {
+      "key": "assets/docs/mockups/mod-6-room-packs.png",
+      "status": "staged",
+      "id": "c555de4782eba64b8762eb5f",
+      "sha256": "31c4ad48150257c4f1e3b61b05c8b02d69b8ad8cc63b406b6cdaa74a372d15b3",
+      "size": 2357102,
+      "url": "https://weishucdn.jiangjiangze.icu/assets/docs/mockups/mod-6-room-packs.png"
+    },
+    {
+      "key": "assets/docs/mockups/mod-7-lobby-packs-open.png",
+      "status": "staged",
+      "id": "2700a5bc67a21c03095ed6b9",
+      "sha256": "75308fc35ea1740a245300aab86f7243a5ddfb3766caa2e8c2873db7cceeccc1",
+      "size": 2165439,
+      "url": "https://weishucdn.jiangjiangze.icu/assets/docs/mockups/mod-7-lobby-packs-open.png"
+    },
+    {
+      "key": "assets/docs/mockups/mod-8-lobby-packs-phone-open.png",
+      "status": "staged",
+      "id": "21fe1a8345c718a29c0d808d",
+      "sha256": "4f172afce58fb3bc589e8c4aa996d36e450d559e3be0ff94ffb24ae3a71bc540",
+      "size": 437337,
+      "url": "https://weishucdn.jiangjiangze.icu/assets/docs/mockups/mod-8-lobby-packs-phone-open.png"
+    },
+    {
+      "key": "assets/docs/mockups/mod-overview.png",
+      "status": "staged",
+      "id": "4d0d88a5dd30eacaefa673de",
+      "sha256": "879c9aba49001468244a9d5a8c28ad014e61687fe10f7a3b9c4277e707e3ce2c",
+      "size": 2590214,
+      "url": "https://weishucdn.jiangjiangze.icu/assets/docs/mockups/mod-overview.png"
+    },
+    {
+      "key": "assets/docs/mockups/mod-ui-alliances-phone.png",
+      "status": "staged",
+      "id": "f547ecc0842ff7c551ed3d50",
+      "sha256": "161f1396de8fff9856376e3a823c42796d078eddeffba97f8197957437fd8f6f",
+      "size": 200598,
+      "url": "https://weishucdn.jiangjiangze.icu/assets/docs/mockups/mod-ui-alliances-phone.png"
+    },
+    {
+      "key": "assets/docs/mockups/mod-ui-alliances-web.png",
+      "status": "staged",
+      "id": "9ac9abc4c4fdc337dae28eb1",
+      "sha256": "4f3d917f0dd14c854bc36fccebb7d5214f0b2d902238206e9d969141138f7105",
+      "size": 941693,
+      "url": "https://weishucdn.jiangjiangze.icu/assets/docs/mockups/mod-ui-alliances-web.png"
+    },
+    {
+      "key": "assets/docs/mockups/mod-ui-equipment-phone.png",
+      "status": "staged",
+      "id": "192e8934e464bf439103ef29",
+      "sha256": "22fa60b2d7040f8eaec06a374c7d1926328b1386c63a12731c14e072a78da9c7",
+      "size": 269243,
+      "url": "https://weishucdn.jiangjiangze.icu/assets/docs/mockups/mod-ui-equipment-phone.png"
+    },
+    {
+      "key": "assets/docs/mockups/mod-ui-equipment-web.png",
+      "status": "staged",
+      "id": "893bb211634ce8ab492e694f",
+      "sha256": "fd8dae750975c775a92debdba2aa196e953bdaf7a3b3dcfd65793c7b9285c081",
+      "size": 1021281,
+      "url": "https://weishucdn.jiangjiangze.icu/assets/docs/mockups/mod-ui-equipment-web.png"
+    },
+    {
+      "key": "assets/docs/mockups/mod-ui-overview.png",
+      "status": "staged",
+      "id": "ade736b6e520a1b6c9e967db",
+      "sha256": "82d0ecd79a5f9b2e47cc91bf4daeb28b38db237287c776e6c67e303b496491ba",
+      "size": 2952976,
+      "url": "https://weishucdn.jiangjiangze.icu/assets/docs/mockups/mod-ui-overview.png"
+    },
+    {
+      "key": "assets/docs/mockups/title-settings-size.png",
+      "status": "staged",
+      "id": "ef4e09d9f08ae55b199c73ac",
+      "sha256": "0536c6a01ec604345eff714b4e53e6d86191a8d2356c3ee81037051a058dad07",
+      "size": 77128,
+      "url": "https://weishucdn.jiangjiangze.icu/assets/docs/mockups/title-settings-size.png"
+    },
+    {
+      "key": "assets/docs/mockups/voice-switch-dual.png",
+      "status": "staged",
+      "id": "9b915620d04f0c0aee2af8d1",
+      "sha256": "db571664e6d9e016996ff1df62c41b768f13e123143d13376f99de3c80121947",
+      "size": 190183,
+      "url": "https://weishucdn.jiangjiangze.icu/assets/docs/mockups/voice-switch-dual.png"
+    },
+    {
+      "key": "assets/docs/mockups/voice-switch-phone.png",
+      "status": "staged",
+      "id": "6306dc6f896f22e5ed0d182c",
+      "sha256": "6c11ef8cba847f5081adb5550fd9f0537a499a04154f54b70aae137900dc4899",
+      "size": 35417,
+      "url": "https://weishucdn.jiangjiangze.icu/assets/docs/mockups/voice-switch-phone.png"
+    },
+    {
+      "key": "assets/docs/mockups/voice-switch-web.png",
+      "status": "staged",
+      "id": "a8e9a2b1f16e904cf13ef76e",
+      "sha256": "487b07d935caec6e909fbd525d1d96bb2b2b9d3f95e79f0b76a706aa3f582043",
+      "size": 253312,
+      "url": "https://weishucdn.jiangjiangze.icu/assets/docs/mockups/voice-switch-web.png"
+    },
+    {
+      "key": "assets/docs/mockups/zoom-phone-bottomleft.png",
+      "status": "staged",
+      "id": "70d6b46fc0ae1a9f105ed50f",
+      "sha256": "c60de1a70ee8b9e30f8437ad58570793d3666f8cd0449bba2ad47a0f8cffc543",
+      "size": 67078,
+      "url": "https://weishucdn.jiangjiangze.icu/assets/docs/mockups/zoom-phone-bottomleft.png"
+    },
+    {
+      "key": "assets/docs/mockups/zoom-phone-detail.png",
+      "status": "staged",
+      "id": "838034a3570a6c3a78c7303e",
+      "sha256": "beaa2131dd8d4cb3d547dc7e56ac701b3eec96254902a8cea0323dbedd505288",
+      "size": 50754,
+      "url": "https://weishucdn.jiangjiangze.icu/assets/docs/mockups/zoom-phone-detail.png"
+    },
+    {
+      "key": "assets/docs/mockups/zoom-phone-members.png",
+      "status": "staged",
+      "id": "e8ce914ae4a56cd1a19bb627",
+      "sha256": "51b482a2a8e6975bd34d8afd6d0e08c5f8f7c081e9e2c1d32f9c3df8845fc635",
+      "size": 39698,
+      "url": "https://weishucdn.jiangjiangze.icu/assets/docs/mockups/zoom-phone-members.png"
+    },
+    {
+      "key": "assets/docs/mockups/zoom-web-members.png",
+      "status": "staged",
+      "id": "b91ecf3fe3a0199a4c8431f2",
+      "sha256": "e2185c1e96d3e4553ec0159fa69d9aa6c9f8a96dff0a4aa3ee3404f609f5b100",
+      "size": 16590,
+      "url": "https://weishucdn.jiangjiangze.icu/assets/docs/mockups/zoom-web-members.png"
+    },
+    {
+      "key": "assets/docs/mockups/zoom-web-right.png",
+      "status": "staged",
+      "id": "686f646ec910ce77cadff6c0",
+      "sha256": "3fed9ddfa63269698fa0deeb84e76e7a4d3e9fa2ffb641d2e631170d519b456f",
+      "size": 229844,
+      "url": "https://weishucdn.jiangjiangze.icu/assets/docs/mockups/zoom-web-right.png"
+    },
+    {
+      "key": "assets/docs/img/band-draft.jpg",
+      "status": "staged",
+      "id": "2059ae3085a45e7f5348ad92",
+      "sha256": "510db3a907be0becce58dff7565d915658842c61ace0f10b8e8a7dc7ca05350f",
+      "size": 243022,
+      "url": "https://weishucdn.jiangjiangze.icu/assets/docs/img/band-draft.jpg"
+    },
+    {
+      "key": "assets/docs/img/combat.jpg",
+      "status": "staged",
+      "id": "bef07465ebff0a032a10528e",
+      "sha256": "133d52b458429088d36f4401ae7dd1f2b3d5b571d9fd493964dd91cceb0f31b1",
+      "size": 279821,
+      "url": "https://weishucdn.jiangjiangze.icu/assets/docs/img/combat.jpg"
+    },
+    {
+      "key": "assets/docs/img/facing-wheel.jpg",
+      "status": "staged",
+      "id": "c10420bd28bb100de8a3ed45",
+      "sha256": "61e8bc13241364abfcd0554560871a548fc4fb4d1b9f55c16c82e32f775c0fed",
+      "size": 256209,
+      "url": "https://weishucdn.jiangjiangze.icu/assets/docs/img/facing-wheel.jpg"
+    },
+    {
+      "key": "assets/docs/img/final-assault.jpg",
+      "status": "staged",
+      "id": "f50ca7ca9952c03ba20032db",
+      "sha256": "efe7143920f861a74461ae22c53df1db3b1661dab93eb9561f62dd498d3f75dd",
+      "size": 151171,
+      "url": "https://weishucdn.jiangjiangze.icu/assets/docs/img/final-assault.jpg"
+    },
+    {
+      "key": "assets/docs/img/prep.jpg",
+      "status": "staged",
+      "id": "58ec0be0f4315d26494197db",
+      "sha256": "506ce35aed3e092915890ec47f9ab2fefb8ede6e4814642664dbc833e745c1f2",
+      "size": 286906,
+      "url": "https://weishucdn.jiangjiangze.icu/assets/docs/img/prep.jpg"
+    },
+    {
+      "key": "assets/docs/img/room.jpg",
+      "status": "staged",
+      "id": "593668fd7e5c3c1308610ccf",
+      "sha256": "a9778569e0290655128f6d881a62f6ccc27b5f721936fc1969e3255f48724305",
+      "size": 213155,
+      "url": "https://weishucdn.jiangjiangze.icu/assets/docs/img/room.jpg"
+    }
+  ]
+}

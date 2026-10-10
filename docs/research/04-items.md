@@ -11,7 +11,7 @@ Tags: **[DATA]** = read directly from game data, **[WEB]** = community/official 
 - Shop (调度中心) has **1 item slot at every shop level** in all real modes (`shopLevelDataDict[*][L].itemCount = 1`; training mode 0 until L5). Season 1 only had items from shop level 5. [DATA]
 - **Max 2 equipment per operator**; equipped items are locked; a 3rd equip = replace (the replaced item is destroyed). Items return to hand when the operator is promoted (3->elite) or sold. [WEB: PRTS 卫戍协议/帮助, arknights.wiki.gg, in-game tip]
 - **2 identical normal items auto-merge into 1 golden** (`upgradeNum=2`). `upgradeNum=100` = never merges (寻呼模块, 信标, 拟态物质, 突变细胞, 人事部文档, 变形同构体; talent note "本装备不会合并为进阶品质"). [DATA]
-- Many items are **consumed on equip** ("装备时销毁"): economy/recruit effects. They need an operator target but never take a slot. [DATA]
+- Many items are **consumed on equip** ("装备时销毁"): economy/recruit effects. They need an operator target but never take a slot. [DATA] On a full carrier they still replace first: the equipped item the player picks is destroyed, then the item resolves, leaving a free slot (PRTS 帮助 "达到上限强行佩戴会改为替换装备" names no exception; GitHub #263, 0.2.1).
 - `trapDuration`: -1 on all normal EQUIP (permanent), 0 on golden & MAGIC (unused by us). `canGiveBond=true` only on 变形同构体; `giveBondId` is set on 18 items (14 bonds) and is the lookup table used by 变形同构体. `givePowerId` always null. [DATA]
 - **MAGIC (法术)**: 画卷, 教鞭, “神秘顾客”; all `hideInShop=true`; only granted by strategies (bands). Drag onto a map tile during prep; instant. Limit: max **2** current-round Arts on the map; all Arts removed at round end. [DATA + WEB wiki.gg]
 
@@ -26,7 +26,7 @@ Tags: **[DATA]** = read directly from game data, **[WEB]** = community/official 
 | Merge | 2 x same normal (`_a`, upgradeNum 2) -> 1 golden (`_b`), automatic, immediate | [DATA]+[WEB] tip "两件同名装备可以合成一件更强力的装备" |
 | Merge counts equipped copies? | Yes: copies in hand and on operators both count; resulting golden goes to hand (slot freed) | [ASSUMED] (consistent with "道具晋级" being a removal condition) |
 | Non-mergeable | upgradeNum 100 items (list above); golden entries have upgradeNum 0 | [DATA] |
-| Consume-on-equip | Effects tagged `kind=consume_on_equip` resolve once on drop, item destroyed, no slot used | [DATA] |
+| Consume-on-equip | Effects tagged `kind=consume_on_equip` resolve once on drop, item destroyed, no slot used; on a full carrier the replace above comes first (a free slot is left) | [DATA]; [WEB] PRTS 帮助, GitHub #263 |
 | Hand capacity | Items share the 10 regular hand slots with operators (+5 temporary) | [DATA] constData.maxDeckChessCnt=10; [WEB] PRTS 帮助 |
 | Shop item slot | 1 slot per refresh at all shop levels (L1-L6) | [DATA] shopLevelDataDict.itemCount |
 | Shop item pool | Non-hidden normal EQUIP with tier <= shop level (mirrors operator rule "调度中心等级≥干员所在等阶") | [ASSUMED] |
@@ -215,7 +215,7 @@ Param names below are the keys of `items[].normal.params` / `items[].golden.para
   params: `hp_ratio=0.7/0.4`; buff keys: `env_gbuff_new_with_verify`
 - **护盾无人机** (`chess_item_4_11_e_a`, TIV, 2) - Each heal the carrier performs: prob chance to give the healed target 1 shield layer (max max_stack_cnt layers; 1 layer blocks one instance of damage).  
   params: `prob=0.1/0.15, max_stack_cnt=1.0`; buff keys: `env_gbuff_new_with_verify`
-- **M3茧甲** (`chess_item_4_12_e_a`, TIV, 3) - When the carrier is defeated during the battle phase: revive immediately in place at full HP [ASSUMED full HP] up to max_respawn_cnt times per battle.  
+- **M3茧甲** (`chess_item_4_12_e_a`, TIV, 3) - When the carrier is defeated during the battle phase: revive immediately at full HP up to max_respawn_cnt times per battle — PRTS 备注 "“复活”的实现方式为：受益者因移动之外的原因退场时下次部署的再部署时间和费用归零": since 0.2.0 the knock-out stands and the carrier redeploys at once, free, where it lies (its 被击倒时 and 部署时 effects run; in place before).  
   params: `max_respawn_cnt=1.0/2.0`; buff keys: `env_gbuff_new_with_verify`
 
 ### SP - 技力 SP gain
@@ -244,7 +244,7 @@ Param names below are the keys of `items[].normal.params` / `items[].golden.para
   params: `refresh_cnt=3.0, choice_cnt=1.0`; buff keys: `use_equip_reward_special_goods_char_chess`
 - **信标** (`chess_item_5_04_e_a`, TV, 3) - On equip: destroy BOTH the item and the target operator; special refresh of refresh_cnt(2) operators of the SAME tier as the target, take choice_cnt(1) free. Multiplayer: at next prep phase send 1 copy of the original operator to the teammate who has the most operators of that operator's bond(s) (tie -> random). Cannot target DIY(自编) operators. Never merges.  
   params: `refresh_cnt=2.0, choice_cnt=1.0`; buff keys: `use_equip_recruit_new_char_and_give_char_to_player_most_bond`
-- **拟态物质** (`chess_item_5_05_e_a`, TV, 4) - On equip: destroy item; if player owns >= 2 NORMAL copies of the target operator (field+hand), give 1 more normal copy (usually triggers 3->elite merge); else give 1 random normal operator sharing a bond with the target. Never merges.  
+- **拟态物质** (`chess_item_5_05_e_a`, TV, 4) - On equip: destroy item; if player owns >= 2 NORMAL copies of the target operator (field+hand), give 1 more normal copy (usually triggers 3->elite merge); else give 1 random normal operator sharing a bond with the target. Never merges. With >= 2 owned and no copy left in the pool (an elite holds 3 of a tier-6's 5) the remake gives nothing: the else is only for < 2 owned (GitHub #207, 0.2.0).  
   params: `-`; buff keys: `use_equip_reward_char_chess`
 - **博士投影** (`chess_item_5_06_e_a`, TV, 5) - Normal: equip onto any normal operator (occupies a slot until next round start), at the start of the next round destroy item and promote the operator to elite(精锐/golden). Golden: on equip, destroy item and promote immediately. On promotion, equipped items return to hand.  
   params: `-`; buff keys: `equip_round_start_upgrade_char`
@@ -352,7 +352,7 @@ Combo check: `equip_chess_id` in blackboard is the partner's id WITHOUT the `_a/
 
 - Buff keys: 画卷 `trap_copy_front_char{}`; 教鞭 `trap_create_self_choice{choice_event=hunter_band_1}`; 神秘顾客 additionally `trap_disney_special{count=1}`.
 - `hunter_band_1` (choiceType PERSONAL_CHOOSE, "悬赏决策") pool is server-side. [ASSUMED] offer 3 random `enemyeffect_b_*` bounties (e.g. 碎骨·悬赏 +1, 萨卡兹百夫长·悬赏 +2, 泥岩·悬赏 +4, 锏·悬赏 +5, “复仇者”·悬赏 +6 funds; buff `add_enemy_kill_gain_coin{count,enemy_id,coin,round=1}`): adds 1 enemy to your next battle, killer gets `coin` funds.
-- 画卷 copy: duplicates the operator (same chess id incl. elite `_b`) AND clones its equipped items into the copy [DATA desc "包括精锐状态和装备"]; copy goes to hand [ASSUMED]; if hand full -> temporary hand.
+- 画卷 copy: duplicates the operator (same chess id incl. elite `_b`) AND its equipped items [DATA desc "包括精锐状态和装备"]; the copied items arrive unequipped (PRTS 画卷 备注 "使用后销毁，获得的装备为未装备状态"), gained like any item — the hand, overflow temp (destroyed with the usual toast when both are full); copy goes to hand [ASSUMED]; if hand full -> temporary hand.
 
 ## 8. Item sources other than the shop [DATA]
 
@@ -411,7 +411,7 @@ Pools referenced but NOT defined in client data (server-side) - proposed content
 - `pool_equip_vict` (维多利亚 bond, every 25 layers): {灼燃, 坚固, 加速, 战栗}维式重锤, uniform.
 - `pool_equip_pepe` (佩佩): 盟约之币 45%, 萨尔贡浓茶 45%, 黄沙罗盘 10% (golden 佩佩: 40/40/20).
 - `pool_equip_rockr` (洛洛 "定制品"): {有限加速器, 激光发射器, 护盾无人机, 双模机械臂, 蜂鸣器} uniform.
-- `pool_equip_kathe` (band_cathy 定向投放, on each shop upgrade 3 choose 1) and `pool_equip_narant` (band_narant, every even round 2 choose 1): tier <= new shop level normal EQUIP.
+- `pool_equip_kathe` (band_cathy 定向投放, on each shop upgrade 3 choose 1): every shop-eligible normal EQUIP, whatever the shop level (0.2.0: players' first-hand report 「原版凯瑟琳1升2都能有6本装备」; tier <= new shop level until then), uniform [ASSUMED]. `pool_equip_narant` (band_narant, every even round 2 choose 1): tier <= shop level normal EQUIP [ASSUMED].
 - garrison_45 / 134 / 135 exist but are not referenced by any operator in `charChessDataDict` (unused this season).
 
 ## 9. Status / damage terms used by items

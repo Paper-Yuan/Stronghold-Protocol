@@ -1,15 +1,17 @@
 // Observing rules and labels of client-side combat (research 09 §3.1 / §6.3, DESIGN §14 "Spectating") — pure helpers
-// for the game screen, the team panel and the combat HUD (mirror of server/match/Match.js _watchClient):
+// for the game screen, the team panel and the combat HUD (mirror of server/match/match/watch.js _watchClient):
 //   * prep (休整期): tap a teammate → 前往查看 → their board (read-only);
 //   * own normal battle running: no observing ("当前无法查看");
 //   * own battle over: "⌛ 作战结束，等待队友完成作战" + the teammates' progress; tap a teammate → 前往查看 → a local
 //     replica of their battle; 返回战场 goes back;
 //   * 联防 / 最终攻势: the ‹ › pill switches the camera LEFT half / 全景 / RIGHT half of the own field; the other pair's
 //     boss field is never shown to a fighting player;
-//   * eliminated: anything.
+//   * eliminated: anything — each phase reset starts on the player it follows (the server's prep scout / b.start,
+//     followedScout).
 
 import { PHASE } from '../../../shared/constants.js';
 import { data } from '../data.js';
+import { t } from '../../../shared/i18n.js';
 
 const isObj = (v) => !!v && typeof v === 'object';
 const COMBAT = new Set([PHASE.COMBAT, PHASE.UNITE, PHASE.FINAL_ASSAULT, PHASE.HIDDEN_CORE]);
@@ -27,7 +29,7 @@ export function fieldOf(pub, playerId) {
 
 /** Display name of a player id ('队友' when unknown). */
 export function nameOf(pub, playerId) {
-  return players(pub).find((p) => p.playerId === playerId)?.name || '队友';
+  return players(pub).find((p) => p.playerId === playerId)?.name || t('队友');
 }
 
 /**
@@ -39,20 +41,20 @@ export function nameOf(pub, playerId) {
  *   (its result is on the way to the server)
  */
 export function observeTarget(p, pub, myId, { observing = false, ownDone = false } = {}) {
-  if (!isObj(p)) return { reason: '无效的目标' };
+  if (!isObj(p)) return { reason: t('无效的目标') };
   if (p.playerId === myId) return observing ? { back: true } : { reason: null };
-  if (p.alive === false || p.status === 'left') return { reason: '该队友已被淘汰，无法查看' };
+  if (p.alive === false || p.status === 'left') return { reason: t('该队友已被淘汰，无法查看') };
   const phase = pub?.phase;
   const me = players(pub).find((x) => x.playerId === myId) || null;
   const meAlive = me ? me.alive !== false : true;
   if (!COMBAT.has(phase)) return { fieldId: `n:${p.playerId}` };
   const target = fieldOf(pub, p.playerId);
-  if (!target) return { reason: '该队友当前没有战场' };
+  if (!target) return { reason: t('该队友当前没有战场') };
   const own = fieldOf(pub, myId);
   if (!meAlive || !own) return { fieldId: target.fieldId };
-  if (own.fieldId === target.fieldId) return { reason: '队友与你在同一战场，使用 ‹ › 切换视角' };
-  if (target.kind === 'boss' || target.kind === 'hidden') return { reason: '无法查看另一组队友的战场' };
-  if (own.kind === 'normal' && own.live !== false && !ownDone) return { reason: '作战中无法查看队友，作战结束后可前往查看' };
+  if (own.fieldId === target.fieldId) return { reason: t('队友与你在同一战场，使用 ‹ › 切换视角') };
+  if (target.kind === 'boss' || target.kind === 'hidden') return { reason: t('无法查看另一组队友的战场') };
+  if (own.kind === 'normal' && own.live !== false && !ownDone) return { reason: t('作战中无法查看队友，作战结束后可前往查看') };
   return { fieldId: target.fieldId };
 }
 
@@ -81,7 +83,24 @@ export function resumedWatch(b, { pub = null, myId = '', alive = true, watching 
   return { seen: b.battleId, fieldId: b.fieldId };
 }
 
-/** Teammates' progress for the waiting pill: [{ playerId, name, killed, total, done, isBot }]. */
+/**
+ * The prep board the server pushed to a viewer that follows a player (an eliminated player or a spectator seat:
+ * Match._followScout — the player it last watched, else the first player still in; community report of 2026-10-06,
+ * item 56, the idea of PR #189), to adopt as the watched board like a 前往查看 tap: `field` is such a scout (m.field
+ * `prep`, an `n:<pid>` id other than the own) and the screen watches nothing (`watching` null — a 返回战场 this phase is
+ * not overridden: the caller adopts a board once per phase). Null for a living player: its phase resets keep its own
+ * board.
+ * @param {{ field?: any, watching?: string|null, alive?: boolean, spectator?: boolean, myId?: string }} o
+ * @returns {string|null} the fieldId to watch
+ */
+export function followedScout({ field = null, watching = null, alive = true, spectator = false, myId = '' } = {}) {
+  if (watching || (alive && !spectator) || !isObj(field) || !field.prep) return null;
+  const fid = field.fieldId;
+  if (typeof fid !== 'string' || !fid.startsWith('n:') || fid === `n:${myId}`) return null;
+  return fid;
+}
+
+/** Teammates' progress for the waiting pill: [{ playerId, name, killed, resolved, total, done, isBot }]. */
 export function teammateProgress(pub, myId) {
   const out = [];
   for (const f of fields(pub)) {
@@ -91,8 +110,10 @@ export function teammateProgress(pub, myId) {
     const p = players(pub).find((x) => x.playerId === pid);
     const pr = isObj(f.progress) ? f.progress : null;
     out.push({
-      playerId: pid, name: p?.name || '队友', isBot: !!p?.isBot,
-      killed: Number.isFinite(pr?.killed) ? pr.killed : null, total: Number.isFinite(pr?.total) ? pr.total : null,
+      playerId: pid, name: p?.name || t('队友'), isBot: !!p?.isBot,
+      killed: Number.isFinite(pr?.killed) ? pr.killed : null,
+      resolved: Number.isFinite(pr?.resolved) ? pr.resolved : (Number.isFinite(pr?.killed) ? pr.killed : null),
+      total: Number.isFinite(pr?.total) ? pr.total : null,
       done: f.live === false || !!pr?.done,
     });
   }
@@ -114,13 +135,13 @@ export function cameraLayers(field, pub, myId) {
   if (!isObj(field) || (field.kind !== 'unite' && field.kind !== 'boss' && field.kind !== 'hidden')) return [];
   const sides = sidesOf(field);
   const at = (side) => Object.keys(sides).find((pid) => sides[pid] === side) || null;
-  const label = (pid) => (!pid ? '无人在家' : pid === myId ? '你自己' : nameOf(pub, pid));
+  const label = (pid) => (!pid ? t('无人在家') : pid === myId ? t('你自己') : nameOf(pub, pid));
   const left = at('L');
   const right = at('R');
   if ((field.kind === 'boss' || field.kind === 'hidden') && (!left || !right)) return [];
   return [
     { key: 'L', label: label(left), self: left === myId, watch: !!left && left !== myId },
-    { key: 'ALL', label: '全景', self: false, watch: false },
+    { key: 'ALL', label: t('全景'), self: false, watch: false },
     { key: 'R', label: label(right), self: right === myId, watch: !!right && right !== myId },
   ];
 }

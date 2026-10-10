@@ -1,0 +1,447 @@
+{
+  "timestamp": "2026-10-10T12:24:52.772Z",
+  "totalDiscovered": 76,
+  "rejected": [
+    {
+      "fullPath": "packs\\fanpack\\README.md",
+      "key": "packs/fanpack/README.md",
+      "ext": "md",
+      "name": "README.md",
+      "size": 3874,
+      "source": "fanpack-data",
+      "what": "同人内容包 (fanpack) 官方数据底表与召唤物配置"
+    },
+    {
+      "fullPath": "fanpack-mod\\README.md",
+      "key": "mods/fanpack/README.md",
+      "ext": "md",
+      "name": "README.md",
+      "size": 6710,
+      "source": "fanpack-mod",
+      "what": "MOD 分发清单 (fanpack-mod manifest)"
+    },
+    {
+      "fullPath": "docs\\mockups\\.zoom-check.mjs",
+      "key": "docs/mockups/.zoom-check.mjs",
+      "ext": "mjs",
+      "name": ".zoom-check.mjs",
+      "size": 1894,
+      "source": "docs-mockups",
+      "what": "双端适配与MOD系统设计UI高保真预览图"
+    },
+    {
+      "fullPath": "docs\\mockups\\endless-leaderboard.css",
+      "key": "docs/mockups/endless-leaderboard.css",
+      "ext": "css",
+      "name": "endless-leaderboard.css",
+      "size": 5441,
+      "source": "docs-mockups",
+      "what": "双端适配与MOD系统设计UI高保真预览图"
+    },
+    {
+      "fullPath": "docs\\mockups\\png-gate.cjs",
+      "key": "docs/mockups/png-gate.cjs",
+      "ext": "cjs",
+      "name": "png-gate.cjs",
+      "size": 1619,
+      "source": "docs-mockups",
+      "what": "双端适配与MOD系统设计UI高保真预览图"
+    },
+    {
+      "fullPath": "docs\\mockups\\README.md",
+      "key": "docs/mockups/README.md",
+      "ext": "md",
+      "name": "README.md",
+      "size": 10996,
+      "source": "docs-mockups",
+      "what": "双端适配与MOD系统设计UI高保真预览图"
+    },
+    {
+      "fullPath": "docs\\mockups\\render-dual-platform.mjs",
+      "key": "docs/mockups/render-dual-platform.mjs",
+      "ext": "mjs",
+      "name": "render-dual-platform.mjs",
+      "size": 27226,
+      "source": "docs-mockups",
+      "what": "双端适配与MOD系统设计UI高保真预览图"
+    },
+    {
+      "fullPath": "docs\\mockups\\render-endless-external.mjs",
+      "key": "docs/mockups/render-endless-external.mjs",
+      "ext": "mjs",
+      "name": "render-endless-external.mjs",
+      "size": 30747,
+      "source": "docs-mockups",
+      "what": "双端适配与MOD系统设计UI高保真预览图"
+    },
+    {
+      "fullPath": "docs\\mockups\\render-fusion-dual-platform.mjs",
+      "key": "docs/mockups/render-fusion-dual-platform.mjs",
+      "ext": "mjs",
+      "name": "render-fusion-dual-platform.mjs",
+      "size": 63269,
+      "source": "docs-mockups",
+      "what": "双端适配与MOD系统设计UI高保真预览图"
+    },
+    {
+      "fullPath": "docs\\mockups\\render-merged-ui.mjs",
+      "key": "docs/mockups/render-merged-ui.mjs",
+      "ext": "mjs",
+      "name": "render-merged-ui.mjs",
+      "size": 47934,
+      "source": "docs-mockups",
+      "what": "双端适配与MOD系统设计UI高保真预览图"
+    },
+    {
+      "fullPath": "docs\\mockups\\render-mockups.mjs",
+      "key": "docs/mockups/render-mockups.mjs",
+      "ext": "mjs",
+      "name": "render-mockups.mjs",
+      "size": 13928,
+      "source": "docs-mockups",
+      "what": "双端适配与MOD系统设计UI高保真预览图"
+    },
+    {
+      "fullPath": "docs\\mockups\\render-mod-alliances-ui.mjs",
+      "key": "docs/mockups/render-mod-alliances-ui.mjs",
+      "ext": "mjs",
+      "name": "render-mod-alliances-ui.mjs",
+      "size": 72963,
+      "source": "docs-mockups",
+      "what": "双端适配与MOD系统设计UI高保真预览图"
+    },
+    {
+      "fullPath": "docs\\mockups\\render-mod-content-overview.mjs",
+      "key": "docs/mockups/render-mod-content-overview.mjs",
+      "ext": "mjs",
+      "name": "render-mod-content-overview.mjs",
+      "size": 29811,
+      "source": "docs-mockups",
+      "what": "双端适配与MOD系统设计UI高保真预览图"
+    },
+    {
+      "fullPath": "docs\\mockups\\render-mod-equipment-ui.mjs",
+      "key": "docs/mockups/render-mod-equipment-ui.mjs",
+      "ext": "mjs",
+      "name": "render-mod-equipment-ui.mjs",
+      "size": 42500,
+      "source": "docs-mockups",
+      "what": "双端适配与MOD系统设计UI高保真预览图"
+    },
+    {
+      "fullPath": "docs\\mockups\\render-mod-loader.mjs",
+      "key": "docs/mockups/render-mod-loader.mjs",
+      "ext": "mjs",
+      "name": "render-mod-loader.mjs",
+      "size": 29170,
+      "source": "docs-mockups",
+      "what": "双端适配与MOD系统设计UI高保真预览图"
+    },
+    {
+      "fullPath": "docs\\mockups\\render-mod-overview.mjs",
+      "key": "docs/mockups/render-mod-overview.mjs",
+      "ext": "mjs",
+      "name": "render-mod-overview.mjs",
+      "size": 18840,
+      "source": "docs-mockups",
+      "what": "双端适配与MOD系统设计UI高保真预览图"
+    },
+    {
+      "fullPath": "docs\\mockups\\render-title-settings-fix.mjs",
+      "key": "docs/mockups/render-title-settings-fix.mjs",
+      "ext": "mjs",
+      "name": "render-title-settings-fix.mjs",
+      "size": 8433,
+      "source": "docs-mockups",
+      "what": "双端适配与MOD系统设计UI高保真预览图"
+    },
+    {
+      "fullPath": "docs\\mockups\\render-voice-switch.mjs",
+      "key": "docs/mockups/render-voice-switch.mjs",
+      "ext": "mjs",
+      "name": "render-voice-switch.mjs",
+      "size": 19824,
+      "source": "docs-mockups",
+      "what": "双端适配与MOD系统设计UI高保真预览图"
+    }
+  ],
+  "report": {
+    "uploaded": [
+      {
+        "key": "assets/pack/bond_kazdelShip.png",
+        "sha256": "c802e8b3a6f092ac88eded8431a2d8f3ded660984bb4c8cf3cde64521a42cf34",
+        "size": 79754,
+        "id": "bb90006f189cb81d8778f0f1",
+        "url": "https://weishucdn.jiangjiangze.icu/assets/pack/bond_kazdelShip.png"
+      },
+      {
+        "key": "assets/pack/bond_rhodesShip.png",
+        "sha256": "fe2fb20a355bd719a6fadca62d1bd1964a2cf74d6382bedd0052185df6695c21",
+        "size": 10950,
+        "id": "4117817d51ef43c4aa9c5d37",
+        "url": "https://weishucdn.jiangjiangze.icu/assets/pack/bond_rhodesShip.png"
+      },
+      {
+        "key": "assets/pack/index.json",
+        "sha256": "ae47af7780935e25b56a300981ee27a054b283ed78e6dd18ecf13a5b7b9d5a08",
+        "size": 531,
+        "id": "224fc8de06856e67dd8ac879",
+        "url": "https://weishucdn.jiangjiangze.icu/assets/pack/index.json"
+      },
+      {
+        "key": "assets/pack/trap_c_01.png",
+        "sha256": "59d1701d08f4f0dd76743f705d51018deb547d13ebca2b10b0d0c4fc986ba4e8",
+        "size": 648968,
+        "id": "ccd45364ffbf42d490f0d505",
+        "url": "https://weishucdn.jiangjiangze.icu/assets/pack/trap_c_01.png"
+      },
+      {
+        "key": "assets/pack/trap_c_02.png",
+        "sha256": "0dc8b54539fb6bad513acaa644e05a2ea8fb830cdf9e8ae5275eedc52c01dd69",
+        "size": 600539,
+        "id": "588e2c512982689d3d37aac7",
+        "url": "https://weishucdn.jiangjiangze.icu/assets/pack/trap_c_02.png"
+      },
+      {
+        "key": "assets/pack/trap_c_03.png",
+        "sha256": "63598410807d4052fe63cf99eb2293ea0599ecc1d9907d5e5b35e6ef00c9ddc3",
+        "size": 765928,
+        "id": "6f718bc683c2f5df46f1569a",
+        "url": "https://weishucdn.jiangjiangze.icu/assets/pack/trap_c_03.png"
+      },
+      {
+        "key": "assets/pack/trap_c_04.png",
+        "sha256": "6480f754eec1a6f9e5ff9f42054121ad86d623303e6a43ab81003634886b6f61",
+        "size": 923963,
+        "id": "4cac333acd94bddf23429b21",
+        "url": "https://weishucdn.jiangjiangze.icu/assets/pack/trap_c_04.png"
+      },
+      {
+        "key": "packs/fanpack/chess.json",
+        "sha256": "9ba7f1f623fb6e8f6f89ab31d5fe5340bba7c3797870343dacbba928a9867dbd",
+        "size": 288355,
+        "id": "a24dd49a9069d3e605d4921c",
+        "url": "https://weishucdn.jiangjiangze.icu/packs/fanpack/chess.json"
+      },
+      {
+        "key": "packs/fanpack/pack.json",
+        "sha256": "d6a367ccc978df0b47f55d964bcc4b60bc797bd236d652691b99523914c7ed66",
+        "size": 893,
+        "id": "ee2e7c8d2d8d43c4e09257b5",
+        "url": "https://weishucdn.jiangjiangze.icu/packs/fanpack/pack.json"
+      },
+      {
+        "key": "packs/fanpack/records.json",
+        "sha256": "449cfb5aa99434f984eec6d03125aa12a645f8afed90b76ff56790536461a71f",
+        "size": 107389,
+        "id": "208b8e559ba87ba80a566f00",
+        "url": "https://weishucdn.jiangjiangze.icu/packs/fanpack/records.json"
+      },
+      {
+        "key": "packs/fanpack/tokens.json",
+        "sha256": "695d72e526ecde7a9c944b19573a6d9f69103684acdbf354193de3ecb8d5883a",
+        "size": 29492,
+        "id": "37197f4b1bf20d8f0b752f88",
+        "url": "https://weishucdn.jiangjiangze.icu/packs/fanpack/tokens.json"
+      },
+      {
+        "key": "packs/fanpack/variants.json",
+        "sha256": "d8e195b0824634e747895fd5ab9152f23977dcc36c3d95c9af1b190a915d68e9",
+        "size": 121097,
+        "id": "3e4800ece888e6b1867e14ab",
+        "url": "https://weishucdn.jiangjiangze.icu/packs/fanpack/variants.json"
+      }
+    ],
+    "skipped": [],
+    "failed": [
+      {
+        "key": "mods/fanpack/manifest.json",
+        "error": "CDN 上传被拒 mods/fanpack/manifest.json: key 必须在 assets/ / fonts/ / packs/ 之下（契约与其它产品线不走后台）"
+      },
+      {
+        "key": "docs/mockups/dual-platform-adaptation.png",
+        "error": "CDN 上传被拒 docs/mockups/dual-platform-adaptation.png: key 必须在 assets/ / fonts/ / packs/ 之下（契约与其它产品线不走后台）"
+      },
+      {
+        "key": "docs/mockups/endless-1-home-solo.png",
+        "error": "CDN 上传被拒 docs/mockups/endless-1-home-solo.png: key 必须在 assets/ / fonts/ / packs/ 之下（契约与其它产品线不走后台）"
+      },
+      {
+        "key": "docs/mockups/endless-2-home-phone.png",
+        "error": "CDN 上传被拒 docs/mockups/endless-2-home-phone.png: key 必须在 assets/ / fonts/ / packs/ 之下（契约与其它产品线不走后台）"
+      },
+      {
+        "key": "docs/mockups/endless-3-ingame-ui.png",
+        "error": "CDN 上传被拒 docs/mockups/endless-3-ingame-ui.png: key 必须在 assets/ / fonts/ / packs/ 之下（契约与其它产品线不走后台）"
+      },
+      {
+        "key": "docs/mockups/endless-4-dual-vs-server.png",
+        "error": "CDN 上传被拒 docs/mockups/endless-4-dual-vs-server.png: key 必须在 assets/ / fonts/ / packs/ 之下（契约与其它产品线不走后台）"
+      },
+      {
+        "key": "docs/mockups/endless-overview.png",
+        "error": "CDN 上传被拒 docs/mockups/endless-overview.png: key 必须在 assets/ / fonts/ / packs/ 之下（契约与其它产品线不走后台）"
+      },
+      {
+        "key": "docs/mockups/fusion-1-loadout.png",
+        "error": "CDN 上传被拒 docs/mockups/fusion-1-loadout.png: key 必须在 assets/ / fonts/ / packs/ 之下（契约与其它产品线不走后台）"
+      },
+      {
+        "key": "docs/mockups/fusion-2-skin-dual.png",
+        "error": "CDN 上传被拒 docs/mockups/fusion-2-skin-dual.png: key 必须在 assets/ / fonts/ / packs/ 之下（契约与其它产品线不走后台）"
+      },
+      {
+        "key": "docs/mockups/fusion-3-devices.png",
+        "error": "CDN 上传被拒 docs/mockups/fusion-3-devices.png: key 必须在 assets/ / fonts/ / packs/ 之下（契约与其它产品线不走后台）"
+      },
+      {
+        "key": "docs/mockups/fusion-4-matrix.png",
+        "error": "CDN 上传被拒 docs/mockups/fusion-4-matrix.png: key 必须在 assets/ / fonts/ / packs/ 之下（契约与其它产品线不走后台）"
+      },
+      {
+        "key": "docs/mockups/fusion-dual-platform.png",
+        "error": "CDN 上传被拒 docs/mockups/fusion-dual-platform.png: key 必须在 assets/ / fonts/ / packs/ 之下（契约与其它产品线不走后台）"
+      },
+      {
+        "key": "docs/mockups/merged-ui-reference.png",
+        "error": "CDN 上传被拒 docs/mockups/merged-ui-reference.png: key 必须在 assets/ / fonts/ / packs/ 之下（契约与其它产品线不走后台）"
+      },
+      {
+        "key": "docs/mockups/mock-1-lobby-private-room.png",
+        "error": "CDN 上传被拒 docs/mockups/mock-1-lobby-private-room.png: key 必须在 assets/ / fonts/ / packs/ 之下（契约与其它产品线不走后台）"
+      },
+      {
+        "key": "docs/mockups/mock-2-lobby-private-room-phone.png",
+        "error": "CDN 上传被拒 docs/mockups/mock-2-lobby-private-room-phone.png: key 必须在 assets/ / fonts/ / packs/ 之下（契约与其它产品线不走后台）"
+      },
+      {
+        "key": "docs/mockups/mock-3-matchmaking-modal.png",
+        "error": "CDN 上传被拒 docs/mockups/mock-3-matchmaking-modal.png: key 必须在 assets/ / fonts/ / packs/ 之下（契约与其它产品线不走后台）"
+      },
+      {
+        "key": "docs/mockups/mock-4-admin-private-rooms.png",
+        "error": "CDN 上传被拒 docs/mockups/mock-4-admin-private-rooms.png: key 必须在 assets/ / fonts/ / packs/ 之下（契约与其它产品线不走后台）"
+      },
+      {
+        "key": "docs/mockups/mod-1-lobby-packs.png",
+        "error": "CDN 上传被拒 docs/mockups/mod-1-lobby-packs.png: key 必须在 assets/ / fonts/ / packs/ 之下（契约与其它产品线不走后台）"
+      },
+      {
+        "key": "docs/mockups/mod-2-lobby-packs-phone.png",
+        "error": "CDN 上传被拒 docs/mockups/mod-2-lobby-packs-phone.png: key 必须在 assets/ / fonts/ / packs/ 之下（契约与其它产品线不走后台）"
+      },
+      {
+        "key": "docs/mockups/mod-3-room-badge.png",
+        "error": "CDN 上传被拒 docs/mockups/mod-3-room-badge.png: key 必须在 assets/ / fonts/ / packs/ 之下（契约与其它产品线不走后台）"
+      },
+      {
+        "key": "docs/mockups/mod-4-admin-pool.png",
+        "error": "CDN 上传被拒 docs/mockups/mod-4-admin-pool.png: key 必须在 assets/ / fonts/ / packs/ 之下（契约与其它产品线不走后台）"
+      },
+      {
+        "key": "docs/mockups/mod-5-settings-packs.png",
+        "error": "CDN 上传被拒 docs/mockups/mod-5-settings-packs.png: key 必须在 assets/ / fonts/ / packs/ 之下（契约与其它产品线不走后台）"
+      },
+      {
+        "key": "docs/mockups/mod-6-room-packs.png",
+        "error": "CDN 上传被拒 docs/mockups/mod-6-room-packs.png: key 必须在 assets/ / fonts/ / packs/ 之下（契约与其它产品线不走后台）"
+      },
+      {
+        "key": "docs/mockups/mod-7-lobby-packs-open.png",
+        "error": "CDN 上传被拒 docs/mockups/mod-7-lobby-packs-open.png: key 必须在 assets/ / fonts/ / packs/ 之下（契约与其它产品线不走后台）"
+      },
+      {
+        "key": "docs/mockups/mod-8-lobby-packs-phone-open.png",
+        "error": "CDN 上传被拒 docs/mockups/mod-8-lobby-packs-phone-open.png: key 必须在 assets/ / fonts/ / packs/ 之下（契约与其它产品线不走后台）"
+      },
+      {
+        "key": "docs/mockups/mod-overview.png",
+        "error": "CDN 上传被拒 docs/mockups/mod-overview.png: key 必须在 assets/ / fonts/ / packs/ 之下（契约与其它产品线不走后台）"
+      },
+      {
+        "key": "docs/mockups/mod-ui-alliances-phone.png",
+        "error": "CDN 上传被拒 docs/mockups/mod-ui-alliances-phone.png: key 必须在 assets/ / fonts/ / packs/ 之下（契约与其它产品线不走后台）"
+      },
+      {
+        "key": "docs/mockups/mod-ui-alliances-web.png",
+        "error": "CDN 上传被拒 docs/mockups/mod-ui-alliances-web.png: key 必须在 assets/ / fonts/ / packs/ 之下（契约与其它产品线不走后台）"
+      },
+      {
+        "key": "docs/mockups/mod-ui-equipment-phone.png",
+        "error": "CDN 上传被拒 docs/mockups/mod-ui-equipment-phone.png: key 必须在 assets/ / fonts/ / packs/ 之下（契约与其它产品线不走后台）"
+      },
+      {
+        "key": "docs/mockups/mod-ui-equipment-web.png",
+        "error": "CDN 上传被拒 docs/mockups/mod-ui-equipment-web.png: key 必须在 assets/ / fonts/ / packs/ 之下（契约与其它产品线不走后台）"
+      },
+      {
+        "key": "docs/mockups/mod-ui-overview.png",
+        "error": "CDN 上传被拒 docs/mockups/mod-ui-overview.png: key 必须在 assets/ / fonts/ / packs/ 之下（契约与其它产品线不走后台）"
+      },
+      {
+        "key": "docs/mockups/title-settings-size.png",
+        "error": "CDN 上传被拒 docs/mockups/title-settings-size.png: key 必须在 assets/ / fonts/ / packs/ 之下（契约与其它产品线不走后台）"
+      },
+      {
+        "key": "docs/mockups/voice-switch-dual.png",
+        "error": "CDN 上传被拒 docs/mockups/voice-switch-dual.png: key 必须在 assets/ / fonts/ / packs/ 之下（契约与其它产品线不走后台）"
+      },
+      {
+        "key": "docs/mockups/voice-switch-phone.png",
+        "error": "CDN 上传被拒 docs/mockups/voice-switch-phone.png: key 必须在 assets/ / fonts/ / packs/ 之下（契约与其它产品线不走后台）"
+      },
+      {
+        "key": "docs/mockups/voice-switch-web.png",
+        "error": "CDN 上传被拒 docs/mockups/voice-switch-web.png: key 必须在 assets/ / fonts/ / packs/ 之下（契约与其它产品线不走后台）"
+      },
+      {
+        "key": "docs/mockups/zoom-phone-bottomleft.png",
+        "error": "CDN 上传被拒 docs/mockups/zoom-phone-bottomleft.png: key 必须在 assets/ / fonts/ / packs/ 之下（契约与其它产品线不走后台）"
+      },
+      {
+        "key": "docs/mockups/zoom-phone-detail.png",
+        "error": "CDN 上传被拒 docs/mockups/zoom-phone-detail.png: key 必须在 assets/ / fonts/ / packs/ 之下（契约与其它产品线不走后台）"
+      },
+      {
+        "key": "docs/mockups/zoom-phone-members.png",
+        "error": "CDN 上传被拒 docs/mockups/zoom-phone-members.png: key 必须在 assets/ / fonts/ / packs/ 之下（契约与其它产品线不走后台）"
+      },
+      {
+        "key": "docs/mockups/zoom-web-members.png",
+        "error": "CDN 上传被拒 docs/mockups/zoom-web-members.png: key 必须在 assets/ / fonts/ / packs/ 之下（契约与其它产品线不走后台）"
+      },
+      {
+        "key": "docs/mockups/zoom-web-right.png",
+        "error": "CDN 上传被拒 docs/mockups/zoom-web-right.png: key 必须在 assets/ / fonts/ / packs/ 之下（契约与其它产品线不走后台）"
+      },
+      {
+        "key": "docs/img/band-draft.jpg",
+        "error": "CDN 上传被拒 docs/img/band-draft.jpg: key 必须在 assets/ / fonts/ / packs/ 之下（契约与其它产品线不走后台）"
+      },
+      {
+        "key": "docs/img/combat.jpg",
+        "error": "CDN 上传被拒 docs/img/combat.jpg: key 必须在 assets/ / fonts/ / packs/ 之下（契约与其它产品线不走后台）"
+      },
+      {
+        "key": "docs/img/facing-wheel.jpg",
+        "error": "CDN 上传被拒 docs/img/facing-wheel.jpg: key 必须在 assets/ / fonts/ / packs/ 之下（契约与其它产品线不走后台）"
+      },
+      {
+        "key": "docs/img/final-assault.jpg",
+        "error": "CDN 上传被拒 docs/img/final-assault.jpg: key 必须在 assets/ / fonts/ / packs/ 之下（契约与其它产品线不走后台）"
+      },
+      {
+        "key": "docs/img/prep.jpg",
+        "error": "CDN 上传被拒 docs/img/prep.jpg: key 必须在 assets/ / fonts/ / packs/ 之下（契约与其它产品线不走后台）"
+      },
+      {
+        "key": "docs/img/room.jpg",
+        "error": "CDN 上传被拒 docs/img/room.jpg: key 必须在 assets/ / fonts/ / packs/ 之下（契约与其它产品线不走后台）"
+      }
+    ]
+  },
+  "finalStatus": {
+    "stagingCount": 6,
+    "pending": 4
+  }
+}

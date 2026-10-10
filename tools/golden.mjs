@@ -8,7 +8,7 @@
 // Usage:
 //   node tools/golden.mjs                 compare the corpus with test/golden/*.json (exit 1 on a difference)
 //   node tools/golden.mjs --update        recompute and rewrite test/golden/*.json   (npm run golden:update)
-//   options: --family roster,bonds,fields,matches   --fast (the test's default subset)   --only <id,id>
+//   options: --family roster,bonds,fields,matches,standins   --fast (the test's default subset)   --only <id,id>
 //            --jobs N (worker threads, default: up to 4)   --list   --coverage (skills cast, stages, enemies…)
 //            --twice  determinism: compute twice in this process (the second pass in reverse order) and compare
 //
@@ -22,13 +22,26 @@
 //            turn; bonds from the board (bondsMeta.computeBonds) with 0–120 layers
 //   bonds    46 battles: every bond at its activation threshold (1 layer) and at its top tier (999 layers), 8 operators
 //   fields   22 battles: every Final Assault / Hidden Core leader on its pair and its solo template (a shared boss pool,
-//            ended at 200 game s) and 联防 fields (1 and 2 helpers, carried HP / SP, a knocked-out operator, two
-//            leakers' enemies with a summoned-only kind and a bounty)
-//   matches  16 bot-only matches (solo 标准 / 险境 / 绝境 / 终极 ×2 seeds, co-op 2 / 3 / 4, one server-run combat match,
-//            two with LP and layers raised at the first prep so they reach the Hidden Core) run to the end in virtual
-//            time with the match's default bot rehearsal
+//            ended at 200 game s) and 联防 fields (1 and 2 helpers on a battle stage, both halves, carried HP / SP, a
+//            knocked-out operator, two leakers' enemies with a summoned-only kind and a bounty)
+//   matches  18 matches run to the end in virtual time with the match's default bot rehearsal: 16 bot-only (solo 标准 /
+//            险境 / 绝境 / 终极 ×2 seeds, co-op 2 / 3 / 4, one server-run combat match, two with LP and layers raised at the
+//            first prep so they reach the Hidden Core), one co-op match whose human seat (AI 托管, offline: its
+//            battles run on the server) does not own a few NORMAL chess — they fight as their 补位 stand-ins (0.2.0) — and
+//            one whose human seat slots 自选 picks (推进之王 and prototypes; its 调度中心 at level 5 from the first prep):
+//            its shop sells them and its AI fields them (0.2.0 自选编队, the digest's `diy`)
+//   standins 10 battles: every NORMAL chess record (normal + elite, 110) fielded as its 补位 stand-in (PlayerBattleInput
+//            standIn: true — DATA.md §18: the stand-in's body, its backup skill / module, its kit by charId; all 17
+//            stand-ins and every skill a chess names for them), 12 per battle by strength band, laid out by the stand-in's
+//            position on a real stage, against the round's real wave three times over, an item each, bonds from the board
+//   diy      自选 pieces (PlayerBattleInput `diy`, shared/diy.js): every owned 6★ with an operator kit (kits/index.js
+//            OPERATOR_KITS) in each form of tiers 5 and 6 — normal, elite with no module and with each module — under
+//            each of its skills, then every prototype pick with a kit at its locked selection, both forms of each tier;
+//            12 pieces per battle on a real stage against the round's real wave three times over (diyScenarios)
 // Battles run through the production BattleSpec path (server/sim/spec.js buildBattleSpec → createBattleFromSpec, the
-// path browsers and the server's headless fields use) with every option explicit; matches construct Match directly
+// path browsers and the server's headless fields use) with every option explicit — every operator the player owns at
+// the default player's settings, 潜能 6 and 练度 精英2 Lv.60 (PlayerBattleInput `potential` / `cultivate`, as
+// PlayerState.battleInput states them, 0.2.2; a stand-in and a prototype 自选 pick neither); matches construct Match directly
 // with a VirtualScheduler (as tools/botbench.mjs) — test-harness defaults never move a digest.
 //
 // Digest (battle): end time, ticks, reason, kills / total / leaks, per player (kills, leaks, coins, damage, boss
@@ -56,17 +69,23 @@ import { DataSource } from '../server/sim/simdata.js';
 import { buildBattleSpec, createBattleFromSpec } from '../server/sim/spec.js';
 import { createRng, deriveSeed } from '../server/sim/rng.js';
 import { GameData } from '../server/match/gamedata.js';
-import { setupMatchWaves, buildNormalWave, buildBossWave, buildUniteWave, isFlyKey, routeByMotion } from '../server/match/waves.js';
+import { setupMatchWaves, buildNormalWave, buildBossWave, buildUniteWave, isFlyKey, routeByMotion, roundMods } from '../server/match/waves.js';
 import { buildDeployMap, positionClass, canPlace, ownerRangeKeys, tileKey } from '../server/match/board.js';
 import { computeBonds, bondSnapshot } from '../server/match/bondsMeta.js';
 import { Match } from '../server/match/Match.js';
 import { VirtualScheduler } from '../server/match/scheduler.js';
 import { resolveRecordLoadout, loadoutRecord, attackRangeGrid } from '../shared/loadoutRecord.js';
+import { diyRecordOf, DIY_TIERS } from '../shared/diy.js';
+import { unitForm } from '../shared/standIn.js';
+import { POTENTIAL_DEFAULT, CULTIVATE_DEFAULT } from '../shared/potential.js';
+import { OPERATOR_KITS, KITTED_CHARS } from '../server/sim/content/kits/index.js';
 import { GEO } from '../shared/constants.js';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
+/** The default player's 潜能 / 练度 of every owned operator (shared/potential.js; the owner's decision of 2026-10-08). */
+const DEFAULT_CULTIVATION = Object.freeze({ potential: POTENTIAL_DEFAULT, cultivate: CULTIVATE_DEFAULT });
 export const GOLDEN_DIR = join(ROOT, 'test', 'golden');
-export const FAMILY_NAMES = Object.freeze(['roster', 'bonds', 'fields', 'matches']);
+export const FAMILY_NAMES = Object.freeze(['roster', 'bonds', 'fields', 'matches', 'standins', 'diy']);
 
 const QUIET = Object.freeze({ warn() {}, error() {}, info() {}, log() {}, debug() {} });
 const data = getData({ log: QUIET });
@@ -230,7 +249,8 @@ const ENEMY_COLS = Object.freeze(['spawned', 'killed', 'leaked', 'dmg', 'taken']
 
 const CHESS = Object.values(data.chess).sort((a, b) => byId(a.chessId, b.chessId));
 const VISIBLE = CHESS.filter((c) => c.visible);
-const STAGES = Object.keys(data.stages).sort(byId);
+// the battle stages (data/stages.json also keeps the escaped levels' two maps, kind 'unite', which no field uses)
+const STAGES = Object.keys(data.stages).filter((id) => data.stages[id].kind !== 'unite').sort(byId);
 const BANDS = Object.keys(data.bands).sort(byId);
 const EQUIPS = Object.values(data.items).filter((i) => i.itemType === 'EQUIP').map((i) => i.id).sort(byId);
 const BOSSES = Object.keys(data.bosses).sort((a, b) => Number(a.replace(/\D/g, '')) - Number(b.replace(/\D/g, '')));
@@ -320,11 +340,13 @@ function layout(gd, stageId, wanted, { field = 'normal', colOffset = 0, max = 12
     const rank = (r, c) => { const d = dist(r, c); return d === 0 ? 1.5 : d; }; // beside a path first, then on it
     return out.sort((a, b) => rank(a[0], a[1]) - rank(b[0], b[1]));
   };
-  const isMelee = (w) => positionClass(data.chess[w.chessId]) === 'melee';
-  const order = wanted.slice().sort((a, b) => (isMelee(b) - isMelee(a)) || (isMelee(a) ? (data.chess[b.chessId].stats.blockCnt || 0) - (data.chess[a.chessId].stats.blockCnt || 0) : 0));
+  // a 补位 unit (`standIn`) is laid out by its stand-in's body (position, block count); every other by its chess record
+  const recOf = (w) => (w.standIn ? gd.standIn(w.chessId) || data.chess[w.chessId] : data.chess[w.chessId]);
+  const isMelee = (w) => positionClass(recOf(w)) === 'melee';
+  const order = wanted.slice().sort((a, b) => (isMelee(b) - isMelee(a)) || (isMelee(a) ? (recOf(b).stats.blockCnt || 0) - (recOf(a).stats.blockCnt || 0) : 0));
   let uid = uid0;
   for (const w of order) {
-    const rec = data.chess[w.chessId];
+    const rec = recOf(w);
     const free = units.length < max ? tiles(positionClass(rec)) : [];
     if (!free.length) { rest.push(w); continue; }
     const [r, c] = free[0];
@@ -333,12 +355,15 @@ function layout(gd, stageId, wanted, { field = 'normal', colOffset = 0, max = 12
     const u = { uid: uid++, kind: 'chess', chessId: w.chessId, row: r, col: c, dir, items: w.items ?? [] };
     if (w.skillIndex != null) u.skillIndex = w.skillIndex;
     if (w.moduleId != null) u.moduleId = w.moduleId;
+    if (w.standIn) u.standIn = true;
+    else Object.assign(u, DEFAULT_CULTIVATION); // an owned operator: the default player's 潜能 / 练度 (0.2.2)
     if (w.carryState) u.carryState = w.carryState;
     units.push(u);
   }
-  // placeable summons of the placed operators
+  // placeable summons of the placed operators (a stand-in makes none: none of the 17 has one)
   const tokens = [];
   for (const u of units) {
+    if (u.standIn) continue;
     for (const { tokenId, count } of gd.placeableTokens(u.chessId, { skillIndex: u.skillIndex ?? null })) {
       const trec = data.tokens[tokenId];
       let allowed = null;
@@ -386,7 +411,7 @@ function extraSpawns(gd, routes, keys, round, pid, t0 = 8, step = 5) {
     const fly = isFlyKey(gd, key);
     let routeIndex = routeByMotion(routes, fly);
     if (!(routeIndex >= 0)) routeIndex = 0;
-    const s = { time: t0 + i * step, enemyKey: key, routeIndex, count: 1, interval: 0, mods: { hpMul: scale.hpMul, atkMul: scale.atkMul, speedMul: scale.speedMul, slot: fly ? 'NF' : 'N' }, ownerPlayerId: pid };
+    const s = { time: t0 + i * step, enemyKey: key, routeIndex, count: 1, interval: 0, mods: { ...roundMods(scale), slot: fly ? 'NF' : 'N' }, ownerPlayerId: pid };
     if (i % 2 === 0) { s.tag = 'bounty'; s.bounty = { coins: 2, ownerPlayerId: pid }; s.mods.bountyCoins = 2; }
     return s;
   });
@@ -574,7 +599,7 @@ export function fieldScenarios() {
       scenarios.push({
         id: `${hidden ? 'hidden' : 'boss'}-${bossId}-${solo ? 'solo' : 'pair'}`, family: 'fields', kind: hidden ? 'hidden' : 'boss', modeId, round, stageId, seed,
         rect: { ...GEO.BOSS_RECT }, timeLimit: Infinity, routes: wave.routes, waveId: wave.templateId, enemyOverrides: wave.overrides,
-        flags: { layerGainsEnabled: false, ...gd.dp }, bossId, boss: { poolHp: pool, poolMax: pool }, fieldId: 'b1', cap: 200,
+        flags: { layerGainsEnabled: false, ...gd.dp, enemyScale: gd.enemyScale(round) }, bossId, boss: { poolHp: pool, poolMax: pool }, fieldId: 'b1', cap: 200,
         players, spawns: wave.spawns.map((s) => ({ ...s })),
         about: `${data.bosses[bossId].name} ${solo ? 'solo' : 'pair'} pool ${pool}: ${players.map((p) => placeName(p.units).join(' ')).join(' | ')}`,
       });
@@ -586,6 +611,7 @@ export function fieldScenarios() {
     const modeId = helpers === 1 ? 'mode_multi_normal' : 'mode_multi_hard';
     const gd = gdFor(modeId);
     const round = helpers === 1 ? 7 : 11;
+    // the 联防 battle runs on the round's stage, the helpers' boards on its two halves (0.2.0's escaped-level map withdrawn)
     const stageId = STAGES[(i * 5) % STAGES.length];
     const seed = deriveSeed(20261005, `unite:${helpers}`);
     const src = normalWave(gd, round, seed);
@@ -621,6 +647,60 @@ export function fieldScenarios() {
 }
 
 // ---------------------------------------------------------------------------------------------------------------
+// family: standins (0.2.0 补位)
+
+/** The NORMAL chess records (normal + elite) that have a stand-in (shared/standIn.js: PRESET / 自选 have none). */
+const STANDIN_CHESS = CHESS.filter((c) => c.chessType === 'NORMAL' && !c.isDiy && c.backup && c.backup.charId && c.backup.charId !== c.charId);
+
+export function standInScenarios() {
+  // normal records first, then the elites; within them by strength band (tier + elite) and id; a battle takes up to 12
+  // with distinct chess ids and bands within one of the first waiting record's
+  const queue = STANDIN_CHESS.map((rec) => ({ chessId: rec.chessId, standIn: true, elite: rec.isGolden ? 1 : 0, band: rec.tier + (rec.isGolden ? 1 : 0) }));
+  queue.sort((a, b) => a.elite - b.elite || a.band - b.band || byId(a.chessId, b.chessId));
+  // every battle also gets 8 ground enemy kinds as extra spawns: a 飞行 round wave would leave the melee stand-ins
+  // nobody to block, and their skills (cast with an enemy in range) uncast
+  const ground = cursor(EXTRA_ENEMIES.filter((k) => !data.enemies[k].tokenOnly && !isFlyKey(gdFor('mode_multi_normal'), k)));
+  const items = cursor(EQUIPS);
+  const bands = cursor(BANDS.slice().reverse());
+  const scenarios = [];
+  let n = 0;
+  while (queue.length) {
+    const i = n++;
+    const stageId = STAGES[(i * 3 + 1) % STAGES.length];
+    const modeId = ROSTER_MODES[(i + 2) % ROSTER_MODES.length];
+    const gd = gdFor(modeId);
+    const first = queue[0];
+    const picked = [];
+    for (const w of queue) {
+      if (picked.length >= 12) break;
+      if (picked.some((x) => x.chessId === w.chessId) || Math.abs(w.band - first.band) > 1 || w.elite !== first.elite) continue;
+      picked.push(w);
+    }
+    const chunk = picked.map((w) => ({ ...w, items: [items.next()] }));
+    const { units } = layout(gd, stageId, chunk, { max: 12 });
+    if (!units.length) throw new Error(`standins: nothing fits on ${stageId}`);
+    const placed = new Set(units.map((u) => u.chessId));
+    for (let q = queue.length - 1; q >= 0; q--) if (picked.includes(queue[q]) && placed.has(queue[q].chessId)) queue.splice(q, 1);
+    if (!placed.size) throw new Error('standins: no progress');
+    const band = Math.max(...picked.filter((w) => placed.has(w.chessId)).map((w) => w.band));
+    const round = BAND_ROUND[band];
+    const seed = deriveSeed(20261005, `standins:${i}`);
+    const wave = normalWave(gd, round, seed);
+    const pid = 'p1';
+    scenarios.push({
+      id: `standin-${String(i + 1).padStart(2, '0')}`, family: 'standins', kind: 'normal', modeId, round, stageId, seed, pass: first.elite,
+      rect: { ...GEO.NORMAL_RECT }, timeLimit: wave.timeLimit, routes: wave.routes, waveId: wave.templateId, enemyOverrides: wave.overrides,
+      flags: { layerGainsEnabled: true, ...gd.dp },
+      players: [playerInput(pid, 0, units, { bonds: bondsOf(gd, units, LAYER_STEPS[i % LAYER_STEPS.length]), bandId: bands.next() })],
+      spawns: [0, 1, 2].flatMap((k) => wave.spawns.map((sp) => ({ ...sp, time: sp.time + k * Math.round(wave.timeLimit / 4), ownerPlayerId: pid })))
+        .concat(extraSpawns(gd, wave.routes, Array.from({ length: 8 }, () => ground.next()), round, pid, 6, 6)),
+      about: `${first.elite ? 'elite' : 'normal'} band ${band} as stand-ins: ${units.map((u) => `${u.chessId}→${gd.standIn(u.chessId)?.charId ?? '?'}`).join(' ')}`,
+    });
+  }
+  return scenarios;
+}
+
+// ---------------------------------------------------------------------------------------------------------------
 // family: matches
 
 export function matchScenarios() {
@@ -636,8 +716,41 @@ export function matchScenarios() {
   // match reaches the Final Assault and — Σ activated layers over the threshold — the Hidden Core
   out.push({ id: 'solo-HARD-9-boosted', mode: 'solo', difficulty: 'HARD', bots: 1, seed: 9, boost: { lp: 400, layers: 300 } });
   out.push({ id: 'coop2-ABYSS-10-boosted', mode: 'coop', difficulty: 'ABYSS', bots: 2, seed: 10, boost: { lp: 400, layers: 300 } });
-  return out.map((m) => ({ ...m, family: 'matches', kind: 'match', about: `${m.mode} ${m.difficulty}, ${m.bots} bot seat(s), seed ${m.seed}${m.clientCombat === false ? ', server-run combat' : ''}${m.boost ? `, LP ${m.boost.lp} and ${m.boost.layers} layers per bond from the first prep` : ''}` }));
+  // 0.2.0 补位: a human seat (AI 托管, offline: its battles run on the server) that does not own a few NORMAL chess
+  out.push({ id: 'coop2-NORMAL-14-standins', mode: 'coop', difficulty: 'NORMAL', bots: 1, seed: 14, human: { notOwned: MATCH_NOT_OWNED } });
+  // 0.2.0 自选编队: a human seat (AI 托管, offline) that slots 推进之王 and prototypes into the four DIY slots
+  // (its 调度中心 starts at level 5, like the boosted runs' raised LP: the 自选 pieces are sold from level 5 / 6, which the
+  // AI otherwise reaches only with a full board, where a single new operator rarely improves its lineup)
+  out.push({ id: `coop2-NORMAL-${MATCH_DIY_SEED}-diy`, mode: 'coop', difficulty: 'NORMAL', bots: 1, seed: MATCH_DIY_SEED, human: { diy: MATCH_DIY, shopLevel: 5 } });
+  const humanAbout = (h) => (h.notOwned ? ` + 1 human seat (AI 托管) without ${h.notOwned.length} operators (补位 stand-ins)`
+    : ` + 1 human seat (AI 托管) with ${Object.keys(h.diy || {}).length} 自选 picks${h.shopLevel ? ` and its 调度中心 at level ${h.shopLevel} from the first prep` : ''}`);
+  return out.map((m) => ({ ...m, family: 'matches', kind: 'match', about: `${m.mode} ${m.difficulty}, ${m.bots} bot seat(s)${m.human ? humanAbout(m.human) : ''}, seed ${m.seed}${m.clientCombat === false ? ', server-run combat' : ''}${m.boost ? `, LP ${m.boost.lp} and ${m.boost.layers} layers per bond from the first prep` : ''}` }));
 }
+
+/**
+ * The 自选 match's human seat (0.2.0 自选编队, shared/diy.js): 推进之王 (an owned 6★ with its operator kit; S3 and SOL-X) in a
+ * tier-5 slot, Sharp (a prototype: its locked S3 + SOL-X) in the other tier-5 slot and a tier-6 one, 领主·Sharp in the last
+ * — its shop sells them from 调度中心 level 5 / 6 and its AI fields them (the digest's `diy` lists the shop draws and the
+ * fielded pieces per round).
+ */
+const MATCH_DIY = Object.freeze({
+  chess_char_5_diy1_a: { charId: 'char_112_siege', skillIndex: 2, uniEquipId: 'uniequip_002_siege' },
+  chess_char_5_diy2_a: { charId: 'char_609_acguad' },
+  chess_char_6_diy1_a: { charId: 'char_609_acguad' },
+  chess_char_6_diy2_a: { charId: 'char_617_sharp2' },
+});
+const MATCH_DIY_SEED = 70;
+
+/**
+ * The NORMAL chess the 补位 match's human seat does not own: operators its AI fields with seed 14 (the digest's `standIns`
+ * lists them per round; test/golden-standins.test.js wants at least 3 different ones). 缄默德克萨斯 and 铃兰 joined in 0.2.0
+ * when the 调度中心 upgrade's new card (DESIGN §25.19) changed the seat's shop: 忍冬 → Sharp from round 4, 缄默德克萨斯 →
+ * Misery from round 7, 铃兰 → 预备干员-辅助 from round 9, 安洁莉娜 → Raidian in round 12.
+ */
+const MATCH_NOT_OWNED = Object.freeze([
+  'chess_char_3_12_a', 'chess_char_3_18_a', 'chess_char_4_16_a', 'chess_char_5_10_a', 'chess_char_5_20_a', 'chess_char_6_05_a', 'chess_char_6_06_a',
+  'chess_char_6_17_a', 'chess_char_6_19_a',
+]);
 
 const pieceStr = (p, r, c) => `${p.id.replace(/^chess_char_/, '')}@${r},${c}${p.dir && p.dir !== 'RIGHT' ? p.dir[0] : ''}${p.items && p.items.length ? `[${p.items.map((i) => i.id.replace(/^chess_item_/, '')).join('+')}]` : ''}`;
 function boardStr(ps) {
@@ -651,7 +764,16 @@ const MATCH_ROW_COLS = Object.freeze(['alive', 'lp', 'prepFunds', 'funds', 'pend
 export function runMatch(cfg) {
   const sched = new VirtualScheduler();
   const seats = [];
-  for (let i = 0; i < cfg.bots; i++) seats.push({ seat: i, playerId: `ai_${i}`, name: `AI-${i + 1}`, isBot: true, connected: true });
+  // a human seat (cfg.human): offline (its battles run on the server) and on AI 托管 from the start; its not-owned chess
+  // fight as their 补位 stand-ins, its 自选 picks join its shop
+  if (cfg.human) {
+    seats.push({
+      seat: 0, playerId: 'h_0', name: 'H-1', isBot: false, connected: false,
+      ...(cfg.human.notOwned ? { notOwned: [...cfg.human.notOwned] } : null),
+      ...(cfg.human.diy ? { diy: JSON.parse(JSON.stringify(cfg.human.diy)) } : null),
+    });
+  }
+  for (let i = 0; i < cfg.bots; i++) seats.push({ seat: seats.length, playerId: `ai_${i}`, name: `AI-${i + 1}`, isBot: true, connected: true });
   let summary = null;
   const logged = [];
   const log = { info() {}, debug() {}, warn() {}, error: (...a) => logged.push(a.map(String).join(' ').slice(0, 120)) };
@@ -660,11 +782,28 @@ export function runMatch(cfg) {
     send: () => true, broadcast: () => {}, onEnd: (s) => { summary = s; },
     clientCombat: cfg.clientCombat !== false, verify: 'off',
   });
+  if (cfg.human) m.players.get('h_0').autoplay = true;
   const rounds = [];
+  // 补位: per round at SETTLE, the human's board pieces that fought as stand-ins (chess id → stand-in charId)
+  const standIns = [];
+  // 自选编队: per round, the human's shop draws of its 自选 pieces and, at SETTLE, its board pieces that fought as their
+  // operators (slot id → charId) — an instance wrapper that only observes (as server/match/audit.js does)
+  const diyRounds = [];
+  const diyRolls = new Map();
+  if (cfg.human?.diy) {
+    const h = m.players.get('h_0');
+    const roll = h._rollChessSlot.bind(h);
+    h._rollChessSlot = () => {
+      const slot = roll();
+      if (slot && h.diyPickOf(slot.id)) diyRolls.set(m.round, [...(diyRolls.get(m.round) || []), slot.id.replace(/^chess_char_/, '')]);
+      return slot;
+    };
+  }
   let last = '';
   m.start();
   const setup = { stageId: m.stageId, bossId: m.bossId, hiddenBossId: m.hiddenBossId, factions: [...(m.factions || [])] };
   let boosted = !cfg.boost;
+  let levelled = !cfg.human?.shopLevel;
   const prepFunds = {};
   sched.runUntil(() => {
     const key = `${m.phase}:${m.round}`;
@@ -677,6 +816,14 @@ export function runMatch(cfg) {
           for (const id of m.gd.bondIds) ps.layers[id] = cfg.boost.layers;
           ps.recompute();
         }
+      }
+      // the human's 调度中心 raised at the first prep (its shop rerolled there; the next level's price follows)
+      if (!levelled && m.phase === 'PREP') {
+        levelled = true;
+        const h = m.players.get('h_0');
+        h.shop.level = cfg.human.shopLevel;
+        h.shop.upgradePrice = m.gd.upgradeBase(h.shop.level) ?? 0;
+        h.rollShop({ keepFrozen: false });
       }
       // funds when the prep opens (income in, nothing bought yet: the bots play their prep in later callbacks)
       if (m.phase === 'PREP') for (const ps of m.order) prepFunds[ps.playerId] = ps.funds;
@@ -691,6 +838,16 @@ export function runMatch(cfg) {
           ];
         }
         rounds.push(row);
+        if (cfg.human?.notOwned) {
+          const h = m.players.get('h_0');
+          const fielded = [...h.board.values()].filter((p) => p.kind === 'chess' && h.fieldsStandIn(p.id)).map((p) => `${p.id.replace(/^chess_char_/, '')}→${m.gd.standIn(p.id)?.charId}`).sort(byId);
+          standIns.push([m.round, fielded.join(' ')]);
+        }
+        if (cfg.human?.diy) {
+          const h = m.players.get('h_0');
+          const fielded = [...h.board.values()].filter((p) => p.kind === 'chess' && h.diyPickOf(p.id)).map((p) => `${p.id.replace(/^chess_char_/, '')}→${h.diyPickOf(p.id).charId}`).sort(byId);
+          diyRounds.push([m.round, (diyRolls.get(m.round) || []).sort(byId).join(' '), fielded.join(' ')]);
+        }
       }
     }
     return summary != null;
@@ -721,29 +878,162 @@ export function runMatch(cfg) {
     rounds,
     players,
   };
+  if (cfg.human?.notOwned) digest.standIns = { notOwned: [...m.players.get('h_0').standIns], rounds: standIns };
+  if (cfg.human?.diy) {
+    const h = m.players.get('h_0');
+    // [round, this round's shop draws of its 自选 pieces (slot ids), the 自选 pieces fielded at SETTLE (slot → operator)];
+    // the stock left at the end
+    digest.diy = { picks: JSON.parse(JSON.stringify(h.diy)), banned: [...h.diyBanned], rounds: diyRounds, stock: h.diyStock.snapshot() };
+  }
   m.dispose();
   return digest;
 }
 
 // ---------------------------------------------------------------------------------------------------------------
+// family: diy (自选 pieces: a DIY slot fielded with its `diy` pick — simdata getDiy, shared/diy.js)
+
+const DIY_SLOTS = data.backups?.diy?.slots ?? {};
+/** The slot record of a tier's first slot, normal or elite (the forms every slot of the tier shares). */
+const diySlotRec = (tier, elite) => {
+  const base = Object.keys(DIY_SLOTS).find((id) => DIY_SLOTS[id].tier === tier);
+  return base ? data.chess[elite ? DIY_SLOTS[base].goldenId : base] : null;
+};
+
+/**
+ * The 自选 configurations of the corpus, in a fixed order: every owned 6★ with an operator kit (OPERATOR_KITS, file
+ * order) in each form of both tiers — normal (no module: none is active), elite with no module and with each module of
+ * the form — under each skill; then every prototype pick with a kit (KITTED_CHARS: its stand-in kit, a 预备干员's generic
+ * kit) at its locked selection, normal and elite, per tier. `{ tier, elite, pick, group }`.
+ */
+function diyConfigs() {
+  const diy = data.backups?.diy;
+  if (!diy) return [];
+  const out = [];
+  for (const charId of Object.keys(OPERATOR_KITS)) {
+    if (!diy.ownedPool.includes(charId)) continue;
+    for (const tier of DIY_TIERS) {
+      for (const elite of [false, true]) {
+        const form = unitForm(data.backups, charId, diySlotRec(tier, elite)?.status);
+        if (!form) continue;
+        for (const uniEquipId of elite ? [null, ...(form.modules ?? []).map((m) => m.uniEquipId)] : [null]) {
+          for (const s of form.skills) out.push({ tier, elite, pick: { charId, skillIndex: s.index, uniEquipId }, group: 'operator' });
+        }
+      }
+    }
+  }
+  for (const tier of DIY_TIERS) {
+    for (const charId of diy.prototypes?.[tier] ?? []) {
+      if (!KITTED_CHARS.includes(charId)) continue;
+      for (const elite of [false, true]) out.push({ tier, elite, pick: { charId }, group: 'prototype' });
+    }
+  }
+  return out;
+}
+
+/**
+ * Lay 自选 pieces on a player's board like `layout` (melee — most blockers first — on the deployable tiles the enemy
+ * ground paths cross most, ranged ones beside the paths, every 7th one facing UP / LEFT / DOWN), their class read from
+ * the composed record (`w.rec`, shared/diy.js diyRecordOf). No summons are placed (the 自选 hand pieces come with the
+ * per-player shop).
+ */
+function diyLayout(stageId, wanted) {
+  const map = buildDeployMap(data.stages[stageId], { field: 'normal' });
+  const traffic = pathTraffic(stageId, 'normal', 0);
+  const pathList = [...traffic.keys()].map((k) => k.split(',').map(Number));
+  const dist = (r, c) => (pathList.length ? Math.min(...pathList.map(([pr, pc]) => Math.max(Math.abs(pr - r), Math.abs(pc - c)))) : 9);
+  const used = new Set();
+  const tiles = (cls) => {
+    const out = [];
+    for (let r = 12; r >= 9; r--) for (let c = 2; c <= 10; c++) if (!used.has(tileKey(r, c)) && canPlace(map, cls, r, c)) out.push([r, c]);
+    if (cls === 'melee') return out.sort((a, b) => (traffic.get(tileKey(b[0], b[1])) || 0) - (traffic.get(tileKey(a[0], a[1])) || 0));
+    const rank = (r, c) => { const d = dist(r, c); return d === 0 ? 1.5 : d; };
+    return out.sort((a, b) => rank(a[0], a[1]) - rank(b[0], b[1]));
+  };
+  const cls = (w) => positionClass(w.rec);
+  const order = wanted.slice().sort((a, b) => ((cls(b) === 'melee') - (cls(a) === 'melee')) || (cls(a) === 'melee' ? (b.rec.stats.blockCnt || 0) - (a.rec.stats.blockCnt || 0) : 0));
+  const units = [];
+  let uid = 1;
+  for (const w of order) {
+    const free = tiles(cls(w));
+    if (!free.length) continue;
+    const [r, c] = free[0];
+    used.add(tileKey(r, c));
+    const dir = units.length % 7 === 6 ? ['UP', 'LEFT', 'DOWN'][Math.floor(units.length / 7) % 3] : 'RIGHT';
+    // an owned pick at the default player's 潜能 / 练度 (0.2.2); a prototype has neither
+    units.push({ uid: uid++, kind: 'chess', chessId: w.chessId, diy: { ...w.diy }, row: r, col: c, dir, items: [], ...(w.rec.diyProto ? null : DEFAULT_CULTIVATION) });
+  }
+  return units;
+}
+
+/**
+ * The diy family: the configurations (diyConfigs) 12 per battle, each on the next of its tier's two slots (the elite
+ * twin for an elite form); a real stage and mode in turn, the round of the strongest piece (BAND_ROUND), the round's
+ * real wave three times over, no bonds / items / band (the 自选 bonds come with the per-player roster). `pass` 0 = the
+ * first battle of each group (operator kits, prototypes): the fast subset.
+ */
+export function diyScenarios() {
+  const configs = diyConfigs();
+  const scenarios = [];
+  const firstOf = new Set();
+  for (let i = 0, n = 0; i < configs.length; i += 12, n++) {
+    const chunk = configs.slice(i, i + 12);
+    const stageId = STAGES[n % STAGES.length];
+    const modeId = ROSTER_MODES[n % ROSTER_MODES.length];
+    const gd = gdFor(modeId);
+    const turn = {};
+    const wanted = chunk.map((c) => {
+      const ids = Object.keys(DIY_SLOTS).filter((id) => DIY_SLOTS[id].tier === c.tier);
+      turn[c.tier] = (turn[c.tier] ?? -1) + 1;
+      const base = ids[turn[c.tier] % ids.length];
+      const chessId = c.elite ? DIY_SLOTS[base].goldenId : base;
+      const rec = diyRecordOf(data.chess[chessId], c.pick, data);
+      if (!rec) throw new Error(`diy: ${c.pick.charId} is no legal pick of ${chessId}`);
+      return { chessId, diy: c.pick, rec, band: c.tier + (c.elite ? 1 : 0) };
+    });
+    const units = diyLayout(stageId, wanted);
+    if (units.length !== wanted.length) throw new Error(`diy: ${wanted.length - units.length} pieces do not fit on ${stageId}`);
+    const round = BAND_ROUND[Math.max(...wanted.map((w) => w.band))];
+    const seed = deriveSeed(20261005, `diy:${n}`);
+    const wave = normalWave(gd, round, seed);
+    const pid = 'p1';
+    const groups = [...new Set(chunk.map((c) => c.group))];
+    const pass = groups.some((g) => !firstOf.has(g)) ? 0 : 1;
+    for (const g of groups) firstOf.add(g);
+    scenarios.push({
+      id: `diy-${String(n + 1).padStart(3, '0')}`, family: 'diy', kind: 'normal', modeId, round, stageId, seed, pass,
+      rect: { ...GEO.NORMAL_RECT }, timeLimit: wave.timeLimit, routes: wave.routes, waveId: wave.templateId, enemyOverrides: wave.overrides,
+      flags: { layerGainsEnabled: true, ...gd.dp },
+      players: [playerInput(pid, 0, units)],
+      spawns: [0, 1, 2].flatMap((k) => wave.spawns.map((s) => ({ ...s, time: s.time + k * Math.round(wave.timeLimit / 4), ownerPlayerId: pid }))),
+      about: `${units.map((u) => `${u.chessId.replace(/^chess_char_/, '')}=${u.diy.charId.replace(/^char_\d+_/, '')}${u.diy.skillIndex != null ? `/S${u.diy.skillIndex + 1}` : ''}${u.diy.uniEquipId ? `/${u.diy.uniEquipId.replace(/^uniequip_/, '')}` : ''}`).join(' ')}`,
+    });
+  }
+  return scenarios;
+}
+
+// ---------------------------------------------------------------------------------------------------------------
 // families, fast subset, comparison
 
-const GENERATORS = { roster: rosterScenarios, bonds: bondScenarios, fields: fieldScenarios, matches: matchScenarios };
+const GENERATORS = { roster: rosterScenarios, bonds: bondScenarios, fields: fieldScenarios, matches: matchScenarios, standins: standInScenarios, diy: diyScenarios };
 const ABOUT = {
   roster: 'every visible chess record × every selectable skill / module, every stage, every non-leader enemy kind, items, bands, 机变 cards, map cards, placeable summons',
   bonds: 'every bond at its activation threshold (layers 1) and at its top tier (layers 999)',
   fields: 'Final Assault / Hidden Core leaders (pair + solo templates, shared pool, 200 s cap) and 联防 fields (1 / 2 helpers)',
-  matches: 'bot-only matches run to the end in virtual time (solo ×4 difficulties ×2 seeds, co-op 2/3/4, one server-run, two boosted to the Hidden Core)',
+  matches: 'matches run to the end in virtual time: bot-only (solo ×4 difficulties ×2 seeds, co-op 2/3/4, one server-run, two boosted to the Hidden Core) and one co-op match whose human seat fields 补位 stand-ins',
+  standins: 'every NORMAL chess record (normal + elite) fielded as its 补位 stand-in (all 17 stand-ins and the skills the chess name for them), 12 per battle on real stages and waves',
+  diy: '自选 pieces: every kitted owned 6★ × form (tiers 5 / 6, normal / elite × module) × skill, every kitted prototype at its locked selection',
 };
 /**
  * The default test subset (GOLDEN_FULL=1 runs everything): the pass-0 roster battles (every chess record with its
  * default loadout, every stage, every non-leader enemy kind), every bond at its top tier, both 联防 fields, four leader
- * fields (one of them a Hidden Core) and five matches (solo 标准 / 绝境, co-op 2 / 4, the boosted Hidden Core run).
+ * fields (one of them a Hidden Core), six matches (solo 标准 / 绝境, co-op 2 / 4, the boosted Hidden Core run, the 补位
+ * match) and the normal-record stand-in battles.
  */
-const FAST_MATCHES = new Set(['solo-FUNNY-1', 'solo-HARD-1', 'coop2-NORMAL-3', 'coop4-ABYSS-7', 'solo-HARD-9-boosted']);
+const FAST_MATCHES = new Set(['solo-FUNNY-1', 'solo-HARD-1', 'coop2-NORMAL-3', 'coop4-ABYSS-7', 'solo-HARD-9-boosted', 'coop2-NORMAL-14-standins', `coop2-NORMAL-${MATCH_DIY_SEED}-diy`]);
 const FAST_FIELDS = new Set(['boss-boss_1-pair', 'boss-boss_4-solo', 'boss-boss_7-pair', 'hidden-boss_9-pair', 'unite-1', 'unite-2']);
 export function isFast(sc) {
   if (sc.family === 'matches') return FAST_MATCHES.has(sc.id);
+  if (sc.family === 'standins') return sc.pass === 0; // the normal records (the elites with GOLDEN_FULL)
   if (sc.family === 'fields') return FAST_FIELDS.has(sc.id);
   if (sc.family === 'bonds') return sc.id.endsWith('-high');
   return sc.pass === 0;
@@ -844,7 +1134,7 @@ export function compareFamily(stored, computed) {
 }
 
 export function formatDiffs(family, list, { maxScenarios = 12, maxDiffs = 8 } = {}) {
-  const fmt = (v) => { const s = typeof v === 'string' ? v : JSON.stringify(v); return s.length > 160 ? `${s.slice(0, 157)}…` : s; };
+  const fmt = (v) => { const s = typeof v === 'string' ? v : (JSON.stringify(v) ?? String(v)); return s.length > 160 ? `${s.slice(0, 157)}…` : s; };
   const lines = [`golden ${family}: ${list.length} scenario(s) differ`];
   for (const { scenario, diffs } of list.slice(0, maxScenarios)) {
     lines.push(`  ${scenario}:`);

@@ -1,5 +1,10 @@
 # 更新记录
 
+## 0.2.3-fusion — 2026-10-10
+
+- 融合上游 0.2.3（tag v0.2.3 / 1db8e510）：每干员语音偏好（voicePrefs/operatorVoice）、对局恢复（resumeMatch）、房主重刷（setupReroll）、bot 表情（botEmotes）、文字大小四档、PWA 安装（pwa.js/manifest/icons）、克莱门莎 op-clemnt。
+- 上游 0.2.2 主体规则并入（战斗整帧对齐等）；本批以「以我为主」策略落地：112 个陈旧上游快照取上游，109 个双方都改过的文件取我们侧并把上游版本归档到 docs/upstream-merge/v0.2.3-conflicted/ 供逐 hunk 复核。
+- 遵守 .agents/rules/upstream-sync.md：PR #149（盟约收起/展开）永久排除，test/ui/bond-collapse.e2e.test.js 保持删除。
 ## 0.2.2-fusion — 2026-10-09
 
 - 融合上游 0.2.2 核心机制：战斗 1s=30 帧整帧对齐 (PR #402)、拖拽吸附 (PR #403)、空发 Toast 提示 (Issue #401)。

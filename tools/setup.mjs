@@ -8,7 +8,7 @@
 //   2. Dependencies: `npm ci` (falls back to `npm install`) when node_modules is missing or incomplete.
 //   3. Client libraries in public/vendor (tools/vendor.mjs) when any is missing.
 //   4. Game data (data/*.json, committed) present and parseable.
-//   5. Art/audio (tools/fetch-assets.mjs, ~270 MB into public/assets, resumable, mirror fallback) when public/assets
+//   5. Art/audio (tools/fetch-assets.mjs, ~550 MB into public/assets, resumable, mirror fallback) when public/assets
 //      is missing or data/assets.json lists files that are not on disk. A failure is a warning: the game still runs
 //      with fallback visuals and the next run resumes.
 //   6. Optional: official board/UI art from a locally installed Arknights client (Windows native install, CrossOver
@@ -48,7 +48,7 @@ const NODE_URL = 'https://nodejs.org/zh-cn/download';
 
 /** Data files the server expects (server/data.js DATA_FILES) + the emote catalogue used by the client. */
 export const DATA_FILES = ['config', 'chess', 'bonds', 'garrisons', 'items', 'bands', 'effects', 'choices',
-  'enemies', 'factions', 'waves', 'stages', 'bosses', 'tokens', 'assets', 'emotes'];
+  'enemies', 'factions', 'waves', 'stages', 'bosses', 'tokens', 'assets', 'backups', 'emotes'];
 /** Runtime packages that must be installed (package.json dependencies). */
 export const RUNTIME_PACKAGES = ['ws', 'pixi.js', 'pixi-spine', 'preact', 'htm'];
 /** Vendor files the client cannot run without (tools/vendor.mjs; three.js is optional there). */
@@ -76,6 +76,9 @@ export const nodeMajor = () => Number(process.versions.node.split('.')[0]);
 const exists = (p) => { try { fs.accessSync(p); return true; } catch { return false; } };
 const readJson = (p) => { try { return JSON.parse(fs.readFileSync(p, 'utf8')); } catch { return null; } };
 const mb = (n) => `${(n / 1048576).toFixed(0)} MB`;
+/** The art download when data/assets.json gives no size (missing, unreadable or without stats.bytes): the 0.2.2
+ * manifest's stats.bytes, 548 MB (both voice dubs; 463 MB before the JP one), as README and docs/DEPLOY.md quote it. */
+const ART_DOWNLOAD_FALLBACK = '550 MB';
 /** Terminal display width (CJK / full-width characters take two columns). */
 export const displayWidth = (s) => [...String(s)].reduce((n, ch) => n + (ch.codePointAt(0) >= 0x2e80 ? 2 : 1), 0);
 export const padDisplay = (s, w) => s + ' '.repeat(Math.max(0, w - displayWidth(s)));
@@ -198,20 +201,32 @@ export function checkAssets() {
  * the 玩法说明 pages are not in the list: step 5 downloads them from the public mirror with the other assets (GitHub
  * issue #42). Shown by setup and doctor.
  */
-export const LOCAL_ART_FALLBACK = '3D 棋盘改用 2D，部分官方界面图标和灼热/炽焰源石虫模型用替代样式';
+export const LOCAL_ART_FALLBACK = '3D 棋盘改用 2D，部分官方界面图标、灼热/炽焰源石虫模型和多数自选召唤物模型用替代样式';
 /** Where a machine without the client gets the local art (docs/DEPLOY.md §6「本地客户端素材」); shown by doctor (setup's row,
  * printed on every start by scripts/launch.mjs, only points to that section). */
-export const LOCAL_ART_COPY_HINT = '没有客户端的服务器可以从同一版本的整合包复制 public/assets/local 和 data/local-assets.json';
+export const LOCAL_ART_COPY_HINT = '没有客户端的服务器可以从同一版本的整合包（完整包）复制 public/assets/local 和 data/local-assets.json';
 
 /**
  * Local-client art (optional): manifest entry count, whether the 3D board atlas is on disk and whether the extraction
- * has the enemy models only the client has (`spine/enemy/*` groups, extract.py ENEMY_SPINES — added after 0.1.0).
+ * has the enemy and token models only the client has (`spine/enemy/*` groups, extract.py ENEMY_SPINES — added after
+ * 0.1.0; `spine/token/*` groups, TOKEN_SPINES — added in 0.2.0).
  */
 export function checkLocal() {
   const m = readJson(LOCAL_MANIFEST);
   const count = m && m.groups ? Object.values(m.groups).reduce((n, g) => n + Object.keys(g || {}).length, 0) : 0;
-  const enemySpines = !!(m && m.groups && Object.keys(m.groups).some((g) => g.startsWith('spine/enemy/')));
-  return { manifest: !!m, count, board3d: exists(LOCAL_BOARD_ATLAS), tiles: exists(LOCAL_BOARD_TILES), enemySpines, dirPresent: exists(path.join(ROOT, 'public', 'assets', 'local')) };
+  const has = (prefix) => !!(m && m.groups && Object.keys(m.groups).some((g) => g.startsWith(prefix)));
+  return {
+    manifest: !!m, count, board3d: exists(LOCAL_BOARD_ATLAS), tiles: exists(LOCAL_BOARD_TILES), enemySpines: has('spine/enemy/'),
+    tokenSpines: has('spine/token/'), dirPresent: exists(path.join(ROOT, 'public', 'assets', 'local')),
+  };
+}
+
+/** What an extraction made by an older extract.py lacks (setup's 本地客户端美术 row; re-extract with --local). */
+export function localGaps(local) {
+  const gaps = [];
+  if (local && !local.enemySpines) gaps.push('灼热/炽焰源石虫模型');
+  if (local && !local.tokenSpines) gaps.push('自选召唤物模型');
+  return gaps.length ? `，缺少新版的${gaps.join('和')}` : '';
 }
 
 /**
@@ -417,7 +432,7 @@ async function main() {
   let assets = checkAssets();
   if (!opts.assets) add(assets.ok ? 'ok' : 'skip', '美术/音频 public/assets', assets.ok ? `${assets.total} 个文件` : '已跳过（--no-assets）');
   else if (!assets.ok && deps.ok && !opts.check) {
-    const what = !assets.present ? `首次下载约 ${assets.bytes ? mb(assets.bytes) : '270 MB'}，可随时中断，重新运行会续传`
+    const what = !assets.present ? `首次下载约 ${assets.bytes ? mb(assets.bytes) : ART_DOWNLOAD_FALLBACK}，可随时中断，重新运行会续传`
       : `补全缺失的 ${assets.missing} 个文件`;
     log(`\n${c.cyan('▶')} 下载美术与音频素材（${what}）…`);
     const r = run(process.execPath, [path.join(ROOT, 'tools', 'fetch-assets.mjs'), `--asset-source=${opts.source}`]);
@@ -445,7 +460,7 @@ async function main() {
       add(already ? 'ok' : 'warn', '本地客户端美术（可选）', `${client.kind} 客户端缺少卫戍协议资源（请在游戏内下载全部资源）：${client.path}`);
     } else if (already && opts.local !== 'force') {
       if (local.board3d && !local.tiles && !opts.check) cropBoardTiles(log);
-      add('ok', '本地客户端美术（可选）', `已提取 ${local.count} 项${local.board3d ? '，3D 棋盘可用' : ''}${local.enemySpines ? '' : '，缺少新版的灼热/炽焰源石虫模型'}（重新提取：--local）`);
+      add('ok', '本地客户端美术（可选）', `已提取 ${local.count} 项${local.board3d ? '，3D 棋盘可用' : ''}${localGaps(local)}（重新提取：--local）`);
     } else if (opts.check) {
       add('skip', '本地客户端美术（可选）', `检测到 ${client.kind} 客户端，可运行 node tools/setup.mjs --local 提取`);
     } else {

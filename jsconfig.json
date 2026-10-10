@@ -1,0 +1,30 @@
+{
+  // First typecheck slice (npm run typecheck). strict stays off until a folder is clean.
+  // tsc does not load this file unless invoked with -p jsconfig.json.
+  // Widen one path at a time: see types/README.md.
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "checkJs": true,
+    "allowJs": true,
+    "noEmit": true,
+    "strict": false,
+    "skipLibCheck": true,
+    "types": [],
+    "lib": ["ES2022"],
+    "maxNodeModuleJsDepth": 0
+  },
+  "include": [
+    "shared/**/*.js",
+    "server/sim/rng.js",
+    "server/sim/detmath.js",
+    "server/sim/dir.js",
+    "server/sim/constants.js",
+    "types/**/*.js"
+  ],
+  "exclude": [
+    "shared/protocol.js",
+    "shared/bandBonds.js"
+  ]
+}

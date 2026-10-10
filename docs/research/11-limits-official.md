@@ -220,7 +220,7 @@ line is lost rather than clamped.
 - `shared/constants.js`: `BOND_LAYER_CAP = 999` and `BOSS_HIT_LIMIT = 300000` (0 / Infinity = off), plus
   `layerGainRoom(before, n)` = min(n, cap − before), never negative.
 - Layers: every writer clamps with it — `PlayerState.addLayers` (every prep-side gain: 特质, items, bands, 机变 cards,
-  bonds), the settle of the in-battle gains (`Match.js`), `Battle.addLayers` (the live in-battle copy, after the
+  bonds), the settle of the in-battle gains (`Match.settle`, `server/match/match/settle.js`), `Battle.addLayers` (the live in-battle copy, after the
   `layerGain` hook, as the client's `AddBondCount`); a gain at the cap adds 0 (no onLayers, no 'layer' event, no hook),
   so the per-N milestones (远见, 奇迹, 维多利亚 …) stop with the count; the client-result check (`fields.js`) bounds a
   reported gain by the room left from the bond's starting layers; `invariants.js` flags a bond above the cap. The dev

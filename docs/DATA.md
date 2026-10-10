@@ -1,15 +1,18 @@
 # DATA.md — generated game data (`data/*.json`)
 
-All files in `data/` except `data/assets.json` are produced by **`node tools/build-data.mjs`** (task F1) from the
+All files in `data/` except `data/assets.json` and `data/i18n/` are produced by **`node tools/build-data.mjs`** (task F1) from the
 official zh_CN client data ([Kengxxiao/ArknightsGameData](https://github.com/Kengxxiao/ArknightsGameData)) joined
 with `docs/research/*.json`. Do not edit them by hand — change the build script and rebuild.
+`data/i18n/en.json` (the official English texts of these files by record id and field) is written by
+`node tools/build-i18n.mjs` — rerun it after a build that changes a text (docs/I18N.md §2; `test/i18n-data.test.js`
+fails while it is stale).
 `data/assets.json` is written by `tools/fetch-assets.mjs`, which keeps the current file rather than drop entries whose
 downloads failed on this machine unless `--allow-shrink` (or `--prune`) is passed (docs/ASSETS.md, DESIGN §21.25).
 
 ```
 node tools/build-data.mjs              # build (downloads missing official files into .cache/gamedata/)
 node tools/build-data.mjs --offline    # never download; fail if a cached file is missing
-node tools/build-data.mjs --refresh    # re-download every official file
+node tools/build-data.mjs --refresh    # re-download every official file; fail if any download fails
 node tools/build-data.mjs --no-research --out /tmp/x   # research-free build (fallback defaults), other dir
 node tools/build-data.mjs --cache <dir> --report <file> # other cache dir / report file (tests, CI)
 node tools/build-data.mjs --force      # write data/ even when integrity checks fail (debugging only)
@@ -20,12 +23,15 @@ Unknown options or a missing option value are errors (exit code 2); `--refresh` 
 - **Cache.** Official files live under `.cache/gamedata/<repo path>` (`excel/activity_table.json`,
   `levels/enemydata/enemy_database.json`, `levels/activities/act1autochess/level_*.json`, …) and are fetched from
   `https://raw.githubusercontent.com/Kengxxiao/ArknightsGameData/master/zh_CN/gamedata/<path>` when missing.
-  Downloads are validated (must parse as JSON) and written atomically.
-- **Report.** Every run writes `.cache/build-data-report.json` (counts, byte sizes, warnings (each once), errors, `written`).
+  Downloads are validated (must parse as JSON) and written atomically. With `--refresh`, a download that still fails
+  after four attempts aborts the build (exit code 1), even if an older cached file exists. Generated files and the
+  previous report remain untouched, including with `--force`; successfully downloaded cache entries are not rolled
+  back. Retry `--refresh` to complete the refresh; cached files are not verified to share an upstream revision.
+- **Report.** A run that reaches integrity validation writes `.cache/build-data-report.json` (counts, byte sizes, warnings (each once), errors, `written`).
   Integrity errors (see §17) make the exit code 1 **and leave the previous output untouched** (unless `--force`);
   warnings never do. Each output file is written atomically (temp file + rename).
 - **Determinism.** Same inputs ⇒ byte-identical outputs (stable key order, no timestamps, no randomness).
-- **Size.** ≈3.5 MB total (limit 6 MB; `chess.json` ≈1.65 MB with the loadout choices), compact JSON (no indentation).
+- **Size.** ≈3.7 MB total (limit 6 MB; `chess.json` ≈1.69 MB with the loadout choices, `backups.json` ≈0.17 MB), compact JSON (no indentation).
 - **Derived paths.** `stages.json groundPaths*` come from the sim's own `server/sim/grid.js` pathing: a change there
   needs a rebuild (the offline-rebuild test catches a stale `data/`).
 
@@ -67,8 +73,8 @@ Top level: `{ season, seasonName, modes, economy, lpCapPerRound, bossOvertimeAft
 | `rounds[r]` | see below | per-round schedule |
 | `spRounds` | `[3,9,11]` | rounds whose prep opens with a 机变 draft |
 | `combatTimeLimit[r]` | `{"1":45,…,"14":null}` | = `rounds[r].combatTimeLimit`: **real** seconds of the forced-2× battle (DESIGN §4) |
-| `enemyScale[r]` | `{"atk":1.1,"hp":1.2,"speed":1,"kAtk":1,"kHp":1}` | non-boss enemy multipliers (research 01 A3): `atk = atkBase·1.1^kAtk`, `hp = hpBase·1.2^kHp·extra`, `speed` 1.15 on ABYSS from R3. Apply to level-0 stats after special-enemy replacement, also to bounty/special enemies. **Leader HP pools excluded.** |
-| `bossHpScale` | `{"bloodPointKey":"bloodPointAbyss","unaffectedByEnemyScale":true}` | the mode's own form of the global rule — the mode entry only picks the `bloodPoint` column (`bloodPointKey`); the share numbers (`perPlayer`, `coop`, `solo`, `aliveFull`, `aliveScaling`) live in the global entry, field by field the mode's value wins. `GameData.bossPoolHp(bossId, aliveCount)` / `bossPoolShare` implement it (DESIGN §20.10) |
+| `enemyScale[r]` | `{"atk":1.1,"hp":1.2,"speed":1,"kAtk":1,"kHp":1}` | non-boss enemy multipliers (research 01 A3): `atk = atkBase·1.1^kAtk`, `hp = hpBase·1.2^kHp·extra`, `speed` 1.15 on ABYSS from R3; `supplyHp` (only when ≠ 1, co-op 终极 R5–R15) = the share of `hp` from 补给线 / 补给线II (1.2^(kHp − kAtk) · extra), which the 14 器物 hit-count keys do not take (their `enemy_exclude`). Apply to level-0 stats after special-enemy replacement, also to bounty/special enemies and to the leaders' mid-fight summons. **Leader HP pools excluded.** |
+| `bossHpScale` | `{"bloodPointKey":"bloodPointAbyss","unaffectedByEnemyScale":true}` | which `bloodPoint` column the mode reads; the pool rule's keys live in the global `bossHpScale` below — one set here would override it for this mode (`gamedata.js bossPoolShareOf`) |
 | `upgradePrices` | `[5,8,11,12,13]` | base price L1→2 … L5→6 (−1 per round start, floor 0, reset after upgrade) |
 | `maxShopLevel` | `6` | |
 | `shopSlots[level]` | `{"1":{"chess":3,"item":1},…}` | operator + item slots per shop level |
@@ -146,6 +152,7 @@ Top level: `{ season, seasonName, modes, economy, lpCapPerRound, bossOvertimeAft
 | `identifier`, `shopSortId` | `133`, `1` | official ordering |
 | `isHidden`, `isDiy`, `visible` | | `visible = !isHidden && !isDiy` (only visible chess enter the shop pool) |
 | `chessType` | `"PRESET"` | `PRESET` / `NORMAL` / `DIY` |
+| `backup` | `{"charId":"char_611_acnipe","tmplId":null,"skillIndex":2,"uniEquipId":"uniequip_002_acnipe","potRank":0}` (`chess_char_5_22_a/_b`, 妮芙) | the shop row's official stand-in fields, verbatim (`backupCharId`, `backupTmplId`, `backupCharSkillIndex`, `backupCharUniEquipId`, `backupCharPotRank`), the same on both forms: PRESET (特许) = itself, NORMAL = the 补位 stand-in fielded when the player marked the operator as not owned (干员持有, §18), DIY = none (`charId` null) |
 | `charId` | `"char_498_inside"` | operator (null for DIY) |
 | `name`, `appellation` | `"隐现"`, `"Insider"` | |
 | `rarity` | `5` | stars 1–6 |
@@ -157,7 +164,7 @@ Top level: `{ season, seasonName, modes, economy, lpCapPerRound, bossOvertimeAft
 | `price`, `sellPrice` | `2`, `1` | |
 | `upgradeNum`, `upgradeChessId` | `3`, `"chess_char_1_01_b"` | copies needed to merge (风丸 2; golden 0) |
 | `status` | `{"phase":2,"level":50,"skillLevel":7,"equipLevel":1}` | training status used for all numbers |
-| `stats` | `{"maxHp":1421,"atk":508,"def":167,"res":0,"cost":15,"blockCnt":1,"bat":1,"aspd":100,"respawnTime":80,"spRecovery":1,"hpRecoveryPerSec":0,"moveSpeed":1,"tauntLevel":0,"massLevel":0,"deployLimit":1,"deckStack":0}` | keyframes linearly interpolated at `status`, hp/atk/def/cost/block/respawn rounded; **golden includes the module attribute bonus**. `aspd` 100 = base (module attack_speed added). Talent stat boosts are NOT folded in. |
+| `stats` | `{"maxHp":1421,"atk":531,"def":167,"res":0,"cost":12,"blockCnt":1,"bat":1,"aspd":100,"respawnTime":70,"spRecovery":1,"hpRecoveryPerSec":0,"moveSpeed":1,"tauntLevel":0,"massLevel":0,"deployLimit":1,"deckStack":0}` | keyframes linearly interpolated at `status` **plus every potential attribute modifier** (full potential, 潜能 6 — the default; character_table `potentialRanks` 1–5 — 「攻击力+N」, 「部署费用-1」, 「再部署时间-N秒」, 生命 / 防御 / 法抗 / 攻速 — added to the raw values: the official records carry no potential, a tournament video shows 刺玫 at ATK 435 / cost 15 = her E1 Lv55 413 / 17 + 攻击力+22 and two 部署费用-1; a lower potential — the player's 干员调配 setting since 0.2.2 — reads `potDown`, §2.3), hp/atk/def/cost/block/respawn rounded; **golden includes the module attribute bonus**. `aspd` 100 = base (module attack_speed added). Talent stat boosts are NOT folded in. |
 | `immunities` | `{"stun":false,"silence":false,"sleep":false,"frozen":false,"levitate":false}` | |
 | `rangeId`, `rangeGrid` | `"3-3"`, `[[1,0],[1,1],…]` | attack range at `status` |
 | `dmgType` | `"phys"` | `phys` / `arts` / `heal` (derived, see §2.1) |
@@ -165,15 +172,16 @@ Top level: `{ season, seasonName, modes, economy, lpCapPerRound, bossOvertimeAft
 | `projectile` | `"arrow"` | `arrow` (phys ranged) / `bolt` (arts ranged) / `orb` (heal) / `none` |
 | `canHitFly` | `true` | |
 | `targetPriority` | `"fly"` | from trait text: `fly` (优先攻击空中单位), `lowestDef` (防御力最低), else `null` |
-| `trait` | `{"desc":"优先攻击空中单位","descRaw":"…","bb":{"atk_scale":1.1},"bbStr":{},"rangeGrid":null,"moduleDesc":"攻击空中单位时攻击力提升至110%","moduleDescRaw":"…"}` | profession trait (+ golden module trait upgrade merged into `bb`; `rangeGrid` = trait-effect area, e.g. 散射手 front row — **not** the attack range) |
+| `trait` | `{"desc":"优先攻击空中单位","descRaw":"…","bb":{"atk_scale":1.1},"bbStr":{},"rangeGrid":null,"moduleDesc":"攻击空中单位时攻击力提升至110%","moduleDescRaw":"…"}` | profession trait (+ golden module trait upgrade merged into `bb`; `rangeGrid` = trait-effect area, e.g. 散射手 front row — **not** the attack range). `desc` = the class trait, or the module's rewrite of it (official `overrideDescripton`); `moduleDesc` = the module's added line (official `additionalDescription`, PRTS 「特性追加」), which the client shows after `desc`, never alone (0.2.0, community report item 16.2). A module part that only adds a display line (official target `DISPLAY`, no rewrite) fills that line with its blackboard and leaves `desc` at the class trait's numbers — 圣约送葬人 REA-Y: `desc` heals 50, `moduleDesc` 攻击速度+12 (0.2.2, GitHub #400); `bb` still merges every part (what the kits read) |
 | `skill` | see below | default skill at `status.skillLevel` (normal 4, golden 7) |
 | `skills[]` | `[{…skill record…, "index":0, "isDefault":false}, {…, "index":1, "isDefault":true}]` | **loadout choices** (DESIGN §16): every skill unlocked at `status` (E1 ⇒ S1–S2, E2 ⇒ S1–S3; the default is always listed), same shape as `skill` + `isDefault`, at the chess skill level, `trigger` resolved **for that skill index** (§2.2). The `isDefault` entry equals `skill` |
 | `modules[]`, `statsBase`, `traitBase`, `talentsBase` | see §2.2 | golden chess with `equipLevel > 0` only: selectable modules + the no-module base they apply to |
-| `talents[]` | `{"index":0,"name":"火力支援","desc":"…","descRaw":"…","bb":{"self_ammo":3,"duration":20,"ally_ammo":1},"bbStr":{},"rangeGrid":null,"tokenKey":null,"hidden":false,"fromModule":false}` | best unlocked candidate at `status` (potential 0); golden: module talent upgrades applied (`fromModule`); module data-only talents have `name:null, hidden:true`. A module upgrade of an existing talent **merges** blackboards (module keys win, base keys it does not restate are kept — e.g. 宴 keeps `min_attack_speed`; 仇白's upgrade adds `atk_scale_t` next to the old `atk_scale`: prefer the key the text uses). Module parts flagged `isToken` are **not** applied to the operator; they upgrade its summons (tokens.json variants). `containerTokenKey`: the official talent token id when it is a container missing from character_table (凛御银灰), `tokenKey` then holds the default skill's token |
+| `talents[]` | `{"index":0,"name":"火力支援","desc":"…","descRaw":"…","bb":{"self_ammo":3,"duration":20,"ally_ammo":1},"bbStr":{},"rangeGrid":null,"tokenKey":null,"hidden":false,"fromModule":false}` | best unlocked candidate at `status` at full potential (candidates up to `requiredPotentialRank` 5: the 「天赋效果增强」 steps; module talent candidates the same — an entry a lower potential changes chains its lower candidates, `potMin` / `potBelow`, §2.3); golden: module talent upgrades applied (`fromModule`); module data-only talents have `name:null, hidden:true`. A module upgrade of an existing talent **merges** blackboards (module keys win, base keys it does not restate are kept — e.g. 宴 keeps `min_attack_speed`; 仇白's upgrade adds `atk_scale_t` next to the old `atk_scale`: prefer the key the text uses). Module parts flagged `isToken` are **not** applied to the operator; they upgrade its summons (tokens.json variants). `containerTokenKey`: the official talent token id when it is a container missing from character_table (凛御银灰), `tokenKey` then holds the default skill's token |
 | `tokens[]` | `["token_10028_vigil_wolf"]` | summons (→ `tokens.json`): displayTokenDict + default-skill `overrideTokenKey` + talent `tokenKey`; `tokens.json → variants[chessId].sources` tells which (a `display`-only token is not produced by this chess's default skill or talents) |
 | `module` | `{"id":"uniequip_002_inside","name":"“最初的惊喜”","type":"MAR-X","level":1,"active":true}` | active only on golden chess |
 | `assets` | `{"avatar":"char_498_inside_2","portrait":"char_498_inside_2","spine":"char_498_inside","skillIcon":"skchr_inside_2","subProfIcon":"sub_fastshot_icon"}` | asset **ids** (URLs in `data/assets.json`); golden uses the E2 art when it exists |
 | `diyRequirement` | `"TIER_6"` | DIY only |
+| `potDown` | `{"0":{"stats.cost":17},"1":{"stats.respawnTime":70},"2":{"stats.atk":413},"4":{"stats.cost":16}}` (`chess_char_1_06_a`, 刺玫) | what a lower potential changes (§2.3; absent when nothing does: the DIY slots, 盟约·辅助干员) |
 
 `skill`:
 
@@ -189,10 +197,10 @@ Top level: `{ season, seasonName, modes, economy, lpCapPerRound, bossOvertimeAft
 | `bb`, `bbStr` | `{"atk":1,"base_attack_time":-0.3,"attack@trigger_time":14}` | kit input (DESIGN §5.6) |
 | `rangeId`, `rangeGrid` | `null` | skill range override |
 | `prefabId`, `overrideTokenKey` | | |
-| `trigger` | `{"rule":"DEFAULT","rawRule":"DEFAULT","customRangeGrid":null}` | auto-cast rule (the official 技能策略, PRTS 卫戍协议/帮助 §作战阶段 技能操作; §2.2). `rule` ∈ `DEFAULT` (basic strategy), `SKILL_RANGE` (a MANUAL skill with a 技能范围 of its own: `customRangeGrid` = its `rangeGrid`, `rawRule` `DEFAULT` — no official row), `TAKE_DAMAGE` (every MANUAL 重装 skill but seven: 深巡 / 雷蛇 S2, 号角 S2 / S3 and 灰毫 S1 / S2 are `DEFAULT` with `rawRule` `TAKE_DAMAGE` — a deliberate deviation, `tools/build-data.mjs TRIGGER_DEVIATIONS`, DESIGN §21.29 — and 余 S2 is `SKILL_RANGE` with `rawRule` `TAKE_DAMAGE` and `customRangeGrid` its x-1, DESIGN §22.10), `SP_FULL` (official `ALWAYS`: 执旗手 / 战术家 / 吟游者 MANUAL skills), `CUSTOM_RANGE` (official `CUSTOM_RANGE_SEARCH_ENEMY`, uses `customRangeGrid`), `SEARCH` (解放者 / 阵法术师 MANUAL skills, 安洁莉娜 S2/S3), `MLYSS_WTRMAN` (缪尔赛思), `GDGLOW_SKILL_2` (荒芜拉普兰德, 纯烬艾雅法拉 S3: "全场存在可选目标时释放技能"). |
+| `trigger` | `{"rule":"DEFAULT","rawRule":"DEFAULT","customRangeGrid":null}` | auto-cast rule (the official 技能策略, PRTS 卫戍协议/帮助 §作战阶段 技能操作; §2.2). `rule` ∈ `DEFAULT` (basic strategy), `SKILL_RANGE` (a MANUAL skill with a 技能范围 of its own: `customRangeGrid` = its `rangeGrid`, `rawRule` `DEFAULT` — no official row), `ACTIVE_RANGE` (the owner's deliberate deviation of 2026-10-05: a MANUAL skill on the basic strategy — 深巡 S2's deviation included — or on the `SEARCH` row whose attack range while it runs strictly contains the operator's own range: `customRangeGrid` = that running range, `rawRule` the official row, `DEFAULT` / `SEARCH` / 深巡's `TAKE_DAMAGE`), `TAKE_DAMAGE` (every MANUAL 重装 skill but seven: 深巡 / 雷蛇 S2, 号角 S2 / S3 and 灰毫 S1 / S2 are `DEFAULT` with `rawRule` `TAKE_DAMAGE` — a deliberate deviation, `tools/build-data.mjs TRIGGER_DEVIATIONS`, DESIGN §21.29; 深巡 S2 then `ACTIVE_RANGE` on its 3-2 — and 余 S2 is `SKILL_RANGE` with `rawRule` `TAKE_DAMAGE` and `customRangeGrid` its x-1, DESIGN §22.10), `SP_FULL` (official `ALWAYS`: 执旗手 / 战术家 / 吟游者 MANUAL skills), `CUSTOM_RANGE` (official `CUSTOM_RANGE_SEARCH_ENEMY`, uses `customRangeGrid`), `SEARCH` (解放者 / 阵法术师 MANUAL skills, 安洁莉娜 S2/S3 — but those whose running range is larger, `ACTIVE_RANGE`: 薄绿 S1, 蜜蜡 S1, 卡涅利安 S3, 玛恩纳 S2, 安洁莉娜 S3), `MLYSS_WTRMAN` (缪尔赛思), `GDGLOW_SKILL_2` (荒芜拉普兰德, 纯烬艾雅法拉 S3: "全场存在可选目标时释放技能"). `allies: true` (only then present): an ally row the engine plays as one of its rules on an injured, healable ally of `customRangeGrid` — 黍 S3 (data/backups.json): official `TRY_SEARCH_ALLY_SKILL` ("技能范围内存在可治疗的我方单位时释放技能") → `SKILL_RANGE` on its x-2 (`tools/build-data.mjs TRIGGER_ALLY_RULES`). |
 
 ### 2.1 Combat classification heuristic (`dmgType` / `attackKind` / `projectile` / `canHitFly`)
-- `dmgType`: MEDIC (except `incantationmedic`) and `bard` → `heal`; trait text containing 法术伤害 or profession CASTER → `arts`; else `phys`.
+- `dmgType`: MEDIC (except `incantationmedic`) and `bard` → `heal`; trait text containing 法术伤害 or profession CASTER → `arts` — but a trait whose 法术伤害 comes only with a running skill ("技能开启时普通攻击会造成法术伤害": 驭法铁卫, 斩业星熊) keeps the normal attack's `phys` (display / the bot; the kit switches to arts while a skill runs; 0.2.0); else `phys`.
 - `attackKind`: `bard`, `phalanx`, `librator` → `none` (no normal attack); heal → `heal`; position RANGED or melee sub-professions with a ranged normal attack (`lord`, `fortress`, `shotprotector`, `agent`, `hookmaster`) → `ranged`; else `melee`.
 - `canHitFly`: ranged attackers unless the trait says 地面敌人 (投掷手) or the sub-profession is `fortress` (要塞: 灰毫, 号角 — DESIGN §22.13); `skywalker` (蒂比) true.
 - These are defaults for the generic engine; kits may override.
@@ -211,7 +219,13 @@ everything needed to resolve a unit for `(chessId, skillIndex, moduleId)` (`simd
   skills: an AUTO skill keeps its own rule (DEFAULT; kits add a base-game rule where needed, e.g. 古米 S1). Then a
   MANUAL operator skill whose `rangeId` is a 技能范围 — its description is not an attack-range change ("攻击范围扩大 /
   改变 / 缩小 / 缩短", "攻击距离+N / 加长 / 缩短") — is `SKILL_RANGE` with `customRangeGrid` = its `rangeGrid`; summons keep
-  DEFAULT. `customRangeGrid` of `CUSTOM_RANGE` from `skillRangeDict[skillId]`. (Research 03 Addendum C1 read the rows'
+  DEFAULT. `customRangeGrid` of `CUSTOM_RANGE` from `skillRangeDict[skillId]`. Last, the owner's rule of 2026-10-05 (a
+  deliberate deviation): a MANUAL operator skill on DEFAULT (no row, or a DEFAULT entry of `TRIGGER_DEVIATIONS` /
+  `STANDIN_TRIGGER_DEVIATIONS` — 深巡 S2) or on the `SEARCH` row (the owner's decision of 2026-10-05 too) whose attack
+  range while it runs — its `rangeId` grid when the text is an attack-range change, else the operator's range grown by
+  `ability_range_forward_extend`; never "被动效果：攻击范围扩大" (引星棘刺 S3) — strictly contains the record's own
+  `rangeGrid` is `ACTIVE_RANGE` with `customRangeGrid` = that running range (`activeAttackGrid`, `ACTIVE_RANGE_OVER`;
+  stand-in forms alike). (Research 03 Addendum C1 read the rows'
   `skillIndex 0` as "skill 1 only" after BWIKI's transcription; superseded by user playtest #6.)
 - `modules[]` (golden, `equipLevel > 0`): every **ADVANCED** `uniequip` of the character (the INITIAL `uniequip_001_*`
   is "no module" = choice `'none'`), in official order, at the chess `equipLevel` (1, T6: 3):
@@ -221,8 +235,8 @@ everything needed to resolve a unit for `(chessId, skillIndex, moduleId)` (`simd
 | `uniEquipId`, `name`, `typeName`, `typeIcon`, `icon` | `"uniequip_003_mlyss"`, `"落叶四季"`, `"TAC-Y"`, `"tac-y"`, `"uniequip_003_mlyss"` | |
 | `isDefault`, `level` | `false`, `3` | default = `defaultUniEquipId` (= `module.id`) |
 | `attr` | `{"maxHp":170,"atk":28,"def":28}` | flat stat additions (stat field names): `stats = statsBase[f] + attr[f]` (float-noise cleaned) |
-| `traitOverride` | `{"desc":"…提升至165%","descRaw":…,"bb":{"atk_scale":1.65},"bbStr":{},"rangeGrid":null,"moduleDesc"?:…}` \| `null` | the full trait with this module; `null` ⇒ `traitBase` |
-| `talentChanges[]` | `{"talentIndex":1,"name":"开源节流","desc":…,"descRaw":…,"bb":{"cost":-2,"runtime_cost":-1},"bbStr":{},"rangeGrid":null,"tokenKey":null,"hidden":false}` | talent additions/overrides (`talentIndex` −1 = new hidden data-only talent); applied to `talentsBase` with the build's merge rule (`simdata composeTalents`: override of an existing index merges blackboards, module keys win) |
+| `traitOverride` | `{"desc":"…提升至165%","descRaw":…,"bb":{"atk_scale":1.65},"bbStr":{},"rangeGrid":null,"moduleDesc"?:…}` \| `null` | the full trait with this module (`desc`, then the added line `moduleDesc` when present — see `trait` above); `null` ⇒ `traitBase` |
+| `talentChanges[]` | `{"talentIndex":1,"name":"开源节流","desc":…,"descRaw":…,"bb":{"cost":-2,"runtime_cost":-2},"bbStr":{},"rangeGrid":null,"tokenKey":null,"hidden":false}` | talent additions/overrides (`talentIndex` −1 = new hidden data-only talent); applied to `talentsBase` with the build's merge rule (`simdata composeTalents`: override of an existing index merges blackboards, module keys win) |
 
 - `statsBase` / `traitBase` / `talentsBase` — the golden record **without** any module (`stats` / `trait` / `talents`
   keep the default module, unchanged). `test/data.test.js` proves that composing the default module onto the base
@@ -232,6 +246,30 @@ everything needed to resolve a unit for `(chessId, skillIndex, moduleId)` (`simd
   variants[owner].byModule` (§14). Module choices never change the combat classification (`dmgType`…; the build warns
   if one ever would).
 
+### 2.3 Potential below full potential: `potDown` and chained talents (0.2.2)
+
+Potential (潜能 1–6) is the player's per-operator setting (干员调配, the owner's decision of 2026-10-08 — default 潜能 6;
+official: 调度手册 「卫戍协议中干员潜能由自身已持有干员潜能决定」). Every record is built at **full potential** and carries
+what each lower one changes; `shared/potential.js atPotential(rec, potential)` composes the record at a potential
+(data rank r = potential − 1, character_table's `potentialRanks[r]` being the step from rank r to r + 1). The same
+annotation is on chess records, `backups.json` unit forms (§18) and token variants (`tokens.json` and `backups.json`
+`tokens` variants, §14 — the owner's potential; a token record's top-level defaults stay full):
+
+- `potDown`: `{ "<rank>": { "<dotted.path>": value } }` — for each rank 0–4, the exact value at that rank of every leaf
+  that differs from the rank above (`stats.*` / `statsBase.*` of a record, `stats.*` of a form; a variant's
+  `stats.deployLimit`, `stats.deckStack`, `count`, `bySkill.<i>.count`, `byModule.<id>.stats.*`). Applied from rank 4
+  down to the wanted rank, each value overwriting, so every leaf ends at its value for that rank.
+- a talent entry (`talents`, `talentsBase`, `modules[].talentChanges`; a variant's `talents` and `byModule[*].talents`)
+  that a lower rank changes: `potMin` = the lowest rank it holds for, `potBelow` = the fields the entry below it
+  changes (`desc`, `descRaw`, `bb` …), itself chained the same way — the candidates by `requiredPotentialRank`
+  (刺玫's 土壤基肥改良 `potMin` 4: 11% → 8%; Mon3tr's 不毁重构 below its owner's rank 4: 3 s / 1200).
+
+`tools/build-data.mjs` runs the chess / backups / tokens builders at every rank (`ctx.potRank`) and annotates the
+full-rank build from the others; the build fails unless `atRank` rebuilds every rank exactly, and the unit-form parity
+(§18) holds at every rank. Nothing else depends on potential (no skill, trait or list length). The data translations
+(`data/i18n/*.json`) translate the chained texts too. 练度 (the 自持有 bonus) is no record field: it is the
+`char_attribute_mul` of the effects.json CHAR_MAP records `aceffect_char_1…4` (§7), applied to the unit.
+
 ---
 
 ## 3. `bonds.json` — `{ [bondId]: Bond }` (23 bonds, 8 core)
@@ -239,7 +277,7 @@ everything needed to resolve a unit for `(chessId, skillIndex, moduleId)` (`simd
 | Field | Example (`deputShip`) | Meaning |
 |---|---|---|
 | `bondId`, `name`, `identifier` | `"deputShip"`, `"助力"`, `14` | |
-| `isCore`, `bondType`, `bondOrder`, `powerIdList` | `false`, `"REGULAR"`, `2`, `[]` | core = `isPower` (SEASON); `powerIdList` = nation/group ids for DIY bond derivation |
+| `isCore`, `bondType`, `bondOrder`, `powerIdList` | `false`, `"REGULAR"`, `2`, `[]` | core = `isPower` (SEASON); `powerIdList` = nation/group/team ids for DIY bond derivation (`backups.json diy.operators[*].bonds`, §18) |
 | `iconId` | `"icon_deputShip"` | |
 | `activeCount` | `2` | official activation count |
 | `thresholds` | `[2,3]` | ascending member counts that raise the tier (tier = number of thresholds reached). yan `[3,6,9]`, egir `[3,5]`, sunt `[2,5]`, solo `[1]` |
@@ -307,7 +345,7 @@ everything needed to resolve a unit for `(chessId, skillIndex, moduleId)` (`simd
 
 ## 7. `effects.json` — `{ [effectId]: Effect }` (361: every effect of the season)
 
-Types: `BAND_INITIAL` 41, `BOND` 23, `EQUIP` 115, `ENEMY_GAIN` 129 (悬赏), `BUFF_GAIN` 43 (战术决策), `ENEMY` 6 (`aceffect_enemy_*` global modifiers), `CHAR_MAP` 4.
+Types: `BAND_INITIAL` 41, `BOND` 23, `EQUIP` 115, `ENEMY_GAIN` 129 (悬赏), `BUFF_GAIN` 43 (战术决策), `ENEMY` 6 (`aceffect_enemy_*` global modifiers), `CHAR_MAP` 4 (角色练度映射 — the 自持有 练度 tiers `aceffect_char_1…4`, 未精英化 / 精英阶段1 / 精英阶段2 / 精英阶段2-60级, in `autoChessData.cultivateEffectList` order: their `char_attribute_mul` buff — `atk` / `def` / `max_hp` 1, 1.05, 1.1 — is the unit's 练度 multiplier, `shared/potential.js cultivateMul`, 0.2.2).
 
 | Field | Example | Meaning |
 |---|---|---|
@@ -358,7 +396,9 @@ blackboards (transitively). Level = `randomEnemyAttributeDict[key].level` (0 for
 | `hitArea` | `{"w":4.95,"h":2.95,"dx":0,"dy":1}` (`enemy_9013_acstmk`) | **huge units only** (巨型单位, 7 keys: 假想敌：胄 ×2, 假想敌：管 ×2 — the 隐秘核心 one `dx` 1 —, 盐风主教昆图斯, 阿利斯泰尔，帝国余晖, “萨米的意志”): the hit rectangle, `w` tiles along the columns × `h` along the rows, centred on the unit's position moved `dx` columns right / `dy` rows up (sim/body.js; user playtest #5). Not in the game tables (the collider lives in the prefab): `tools/build-data.mjs HIT_AREAS` by `prefabKey`, from PRTS "巨型单位：受击判定区域为长4.95、宽2.95的长方形，向上偏移1.0" and PRTS盟约记录 (the season's 阿利斯泰尔 / “萨米的意志” versions); absent = a point. All 7 are also 自缚 + 无法被阻挡 (PRTS 天赋 — not a data field either: content/bosses.js `SELF_BOUND`) |
 | `staticBody` | `true` (`enemy_1005_yokai` 妖怪) | **静态刚体 only** (28 keys: every air unit of the mode except “炎佑” — 妖怪 ×3, 御4, 暴鸰, 法术大师 ×2, 寒霜, 帝国炮火先兆者 ×2, 枯朽之种, 枯朽萃聚使徒, 护障 ×2, 远眺, 愧悔魂灵圣杯, 假想敌：黑云, “斩胄之剑”, “破胄之锤”, 刺胄之弹, 未装配刀片, 防护背心, 冲击式施术单元, 节日气球, “萨科塔之翼 / 之眼 / 昂首” — plus the ground boss 盐风主教昆图斯): pushes and pulls never move it, the skills still hit it (sim `Battle._displaceable`; player report after 0.1.0). PRTS 特殊机制 静态刚体: "该单位的Unity刚体的刚体类型为部分静态（Kinematic）或静态（Static）…无法产生任何速度或移动…※是否为静态刚体与单位的行动方式无关". Not in the game tables (the rigidbody lives in the prefab): `tools/build-data.mjs STATIC_BODIES` by key, from the 天赋 "{{特殊机制|静态刚体}}" of each enemy's PRTS page (every enemy of the file, read 2026-10-03); absent = a dynamic body |
 | `modelScale` | `0.5926` (`enemy_1005_yokai_3` 威龙) | official drawn size of the enemy's Spine model relative to the standard (user playtest #6): the battle prefab's transform scale down to its Spine renderer (Graphic × FaceSwitcher × Spine; SkeletonDataAsset.scale is 0.01 for every enemy skeleton) ÷ 0.27, the standard of 1454 of the client's 2147 enemy prefabs (2080 have exactly one Spine renderer) and of the operators' battle skins. The renderer multiplies `UNIT.modelScale` by it (render/units.js `enemyModelScale`). 125 keys (122 prefabs) carry one, from 0.5926 (威龙 0.16; 妖怪 0.7407, 寒霜 0.6667) to 2.2222 (青铜镜 / 青瓷茶器 0.6); absent = 1. Not in the game tables: `tools/build-data.mjs MODEL_SCALES` by `prefabKey`, read from the local client by `tools/local-extract/enemy_scales.py` |
-| `attackAnim` | `{"clip":"Attack","dur":1,"hit":0.533}` (`enemy_1019_jshoot` 隐形弩手) | the enemy's attack clip — the one the client plays for its attacks (data/assets.json `anims.attack.loop` of its model, not an Idle stand-in) —, its length (s) and first strike frame (`hits`, the OnAttack event; absent when the clip has none). An unblocked ranged enemy stands for this clip at each attack (sim/ai.js `attackStand`, GitHub #58). 213 keys; absent = no attack clip known (御4, 寒霜, the 岁 relics …: the sim keeps `ATTACK_PAUSE`). Not in the game tables: `tools/build-data.mjs enemyAttackAnim` reads the committed asset manifest (tools/fetch-assets.mjs, from the Spine skeletons) |
+| `modelScaleY` | `1.263` (`enemy_1112_emppnt` 帝国炮火先兆者) | **vertically stretched models only** (2 keys, the 先兆者 pair): the official prefab's `Graphic` scale sy ÷ sx — 1.263 because the pair's scale is (0.19, 0.24, 0.24), i.e. the game draws them 26 % taller than `modelScale` (which only carries the horizontal product) implies. The renderer multiplies the skeleton's **Y** scale (and the bar height) by it (render/units.js `enemyModelScaleY`). Not in the game tables: `tools/build-data.mjs MODEL_STRETCH_Y`, read from the local client by `tools/local-extract/enemy_model_offsets.py` (a sweep of all 242 readable enemy prefabs found no other non-uniform one), docs/research/12 §3.1 (PR #211 by @xcdoge; the owner's decision of 2026-10-06) |
+| `mirrorX` | `true` (`enemy_1196_msfyin` 木制瑞印) | **mirrored models only** (1 key): the official prefab's `Graphic` X scale is negative (−0.4), so the game draws the authored model flipped; the size pipeline takes `abs(sx)`, and the renderer flips this model on top of the usual direction flip (render/units.js `mirrorX`). Same extraction as `modelScaleY` (`tools/build-data.mjs MIRRORED_PREFABS`) |
+| `attackAnim` | `{"clip":"Attack","dur":1,"hit":0.533}` (`enemy_1019_jshoot` 隐形弩手) | the enemy's attack clip — the one the client plays for its attacks (data/assets.json `anims.attack.loop` of its model, not an Idle stand-in) —, its length (s) and first strike frame (`hits`, the OnAttack event; absent when the clip has none). An unblocked ranged enemy stands for this clip at each attack (sim/ai.js `attackStand`, GitHub #58) — any enemy for the rest of it after a strike once its block ends meanwhile (0.2.0) —, and every enemy attack strikes at `hit` after its swing starts — a stun before it cuts the swing (sim/ai.js `attackWindup`, 0.2.0). 213 keys; absent = no attack clip known (御4, 寒霜, the 岁 relics …: the sim keeps `ATTACK_PAUSE`). Not in the game tables: `tools/build-data.mjs enemyAttackAnim` reads the committed asset manifest (tools/fetch-assets.mjs, from the Spine skeletons) |
 | `attackMoves` | `true` | **「不停止移动」 attackers only**: the handbook ability text says it attacks on the move (“十字路口”量产型's 四向攻击) — it never stops to attack (sim/ai.js `attackStand`). No enemy of the mode has it (build-data `attacksOnTheMove`) |
 
 ## 10. `factions.json` — special enemies (特训敌人)
@@ -406,12 +446,22 @@ hidden core `h08_0X`; 联防 `act1autochess_escaped_single|multi`; training `tr0
 Timing: templates have one wave with one fragment, so `time = wave.preDelay + fragment.preDelay + action.preDelay`
 exactly (the builder warns if a multi-fragment template ever appears).
 
-## 12. `stages.json` — `{ [stageId]: Stage }` (11 terrains, 8 active)
+## 12. `stages.json` — `{ [stageId]: Stage }` (11 terrains, 8 active, + the 2 escaped levels' maps)
+
+The 11 battle stages of `stageDatasDict` — every field of a match is fought on its stage: the own boards, the boss fields
+and the 联防 field (both halves, `GEO.UNITE_RECT`; the owner's decision of 2026-10-07) — then the maps of the two escaped
+levels: act2autochess constData `escapedBattleTemplateMapSinglePlayer` / `MultiPlayer` name the level of the 联防 wave
+(`level_act1autochess_escaped_single` / `_multi`, the wave templates of the same id in `waves.json`). Their map is the
+placeholder grid every wave template level carries, tile for tile (the round templates `01…07` and `h01…h08`, the
+training `trXX` too): two road halves (cols 3–9 and 11–17, rows 9–12) joined at col 10, the objective at (9,2), no devices or
+special terrain. 0.2.0 fought the 联防 battle on it (GitHub #41); no field uses these two records since 0.2.1 — they stay
+as official level data, and sim tests use them as a plain two-halves road.
 
 | Field | Example | Meaning |
 |---|---|---|
-| `id`, `name` | `"act2autochess_m01"`, `"战场#05(下半) 源石流发生装置"` | player-facing name from research 05 (the official tables carry none; falls back to id). The build drops bracketed segments containing Latin letters (research notes such as `战场#01 (upper half #01)` → `战场#01`), logs a warning, and fails validation if Latin text remains |
-| `weight`, `active`, `modes` | `50`, `true`, `["mode_single_normal",…]` | match-start pick weight (act1 m05–m07 weight 0) |
+| `id`, `name` | `"act2autochess_m01"`, `"战场#05(下半) 源石流发生装置"` | player-facing name from research 05 (the official tables carry none; falls back to id). The build drops bracketed segments containing Latin letters (research notes such as `战场#01 (upper half #01)` → `战场#01`), logs a warning, and fails validation if Latin text remains. The escaped levels' maps: `联防阵地（1名玩家）` / `联防阵地（2名玩家）`, the remake's own label [ASSUMED] (no table or PRTS page names them; no screen shows it) |
+| `weight`, `active`, `modes` | `50`, `true`, `["mode_single_normal",…]` | match-start pick weight (act1 m05–m07 weight 0); the escaped levels' maps: `0`, `false`, `[]` (never a match stage) |
+| `kind`, `helpers` | `"unite"`, `1` | only on the escaped levels' two maps: the helper count of their wave template (= `config.unite.templates`; the build fails when they disagree); no field is fought on them |
 | `size` | `[19,21]` | |
 | `rows[]` | `rows[9] = "##Errr#rrrSrrr#rrrS##"` | 19 strings, **index = row (0 = bottom)**, one glyph per col |
 | `tiles[glyph]` | `{"tileKey":"tile_road","height":"LOW","buildable":"ALL","passable":"ALL","groundPassable":true,"flyPassable":true,"special":null,"bb":{}}` | actual tile properties of each glyph used. `buildable` is the **effective** deploy type: the level's buildableType, except a tile whose mechanism refuses deployment — 深水区 `tile_deepsea` (PRTS 深水区 地形信息 "部署类型 全部位 … 地形机制 拒绝部署（待补充）"; player report #3 after 0.1.0) — which is `NONE` and keeps the level's value in `buildableType` (`server/sim/grid.js DEPLOY_REFUSED_TILES`, shared with the builder) |
@@ -420,7 +470,7 @@ exactly (the builder warns if a multi-fragment template ever appears).
 | `special` | `{"mire":{"intervalSec":1,"aspdPerStack":-0.05,"moveMulPerStack":-0.05,"maxStacks":10,"heavyWeight":3,…}}`, `{"infection":{"bb":{"damage":70,"atk":0.2,"attack_speed":20,"duration":300}}}`, `{"deepsea":{"skillId":"sktok_tidectrl_3","bb":{…}}}`, `{"smog":{"rule":"operatorsNotTargetableByEnemyRanged"}}`, `{"blower":{…}}` | special-terrain parameters |
 | `runes[]`, `globalBuffs[]` | `{"key":"map_tile_blackb_assign","bb":{…},"bbStr":{…}}` | level runes (act2 m03 reed rune has no reed tiles — leftover) |
 | `deployTiles` | `{"normal":{"melee":[[9,3],…],"rangedOnly":[[10,4],…],"changedByDevices":[…]},"bossLeft":{…},"bossRight":{…}}` | deployable tiles at match start: `melee` = LOW (effective) buildable ALL/MELEE (ranged may use them too) — and a 深水区 under an active 特制水上平台 (`waterPlatform`, "在水上建立可以部署任意单位的平台"; act1 m05 only — the prep's deploy map only: the sim does not model the canoes, so its Grid keeps those tiles NONE, automatic placements avoid them and the path tie-break counts them as non-blockable [ASSUMED, weight 0 this season]) —, `rangedOnly` = high ground / active platforms; tiles under active crates/mounds and the 深水区 excluded. `bossLeft` / `bossRight` (field coordinates, boss rows 1–5) are what a player may deploy on in a boss round's prep: board (r, c) = boss (r − 7, c) / the right half mirrored (r − 7, 20 − c) (server/match/board.js `field`, user playtest #5 item 7) |
-| `groundPaths` / `groundPathsWithDevices` | `{"12,10->9,2":[[12,10],[12,9],…,[12,3],[11,3],[10,3],[9,3],[9,2]]}` | the ground route of the sim's own `server/sim/grid.js` flow field (research 08 §3.4: 4-direction SPFA from the goal, crates cost 1000, Bresenham line-of-sight smoothing — official route lengths — kept unless the remake's (0.1.0's) road-over-floor preference route crosses strictly fewer non-blockable floor / gate / 深水区 tiles — the fewest among equal-length chains, smoothing that never cuts across floor its grid route does not walk; a corner touch does not count as a crossing — e.g. 战场#01's lower gate takes the col-8 road, not the col-9 floor lane, while 战场#04's keeps the official diagonal from row 9 into row 10; DESIGN §14 corrections, test/sim/pathing-official.test.js) as the tiles an enemy crosses, over the whole map, without / with the match-start devices (crates cost 1000, platforms / mounds blocking [ASSUMED]); the battle re-reads its flow fields live |
+| `groundPaths` / `groundPathsWithDevices` | `{"12,10->9,2":[[12,10],[12,9],…,[12,3],[11,3],[10,3],[9,3],[9,2]]}` | the ground route of the sim's own `server/sim/grid.js` flow field (research 08 §3.4: 4-direction SPFA from the goal, crates cost 1000, Bresenham line-of-sight smoothing — official route lengths — kept unless the remake's (0.1.0's) road-over-floor preference route crosses strictly fewer non-blockable floor / gate / 深水区 tiles and no more 深水区 (GitHub #375) — the fewest among equal-length chains, smoothing that never cuts across floor its grid route does not walk; a corner touch does not count as a crossing — e.g. 战场#01's lower gate takes the col-8 road, not the col-9 floor lane, while 战场#04's keeps the official diagonal from row 9 into row 10; DESIGN §14 corrections, test/sim/pathing-official.test.js) as the tiles an enemy crosses, over the whole map, without / with the match-start devices (crates cost 1000, platforms / mounds blocking [ASSUMED]); the battle re-reads its flow fields live |
 | `options`, `config` | `{"characterLimit":8,"moveMultiplier":0.5}`, `{…configBlackBoard strings…}` | |
 
 Glyph legend (`rows`):
@@ -463,15 +513,16 @@ Glyph legend (`rows`):
 | Field | Example (`token_10028_vigil_wolf`) | Meaning |
 |---|---|---|
 | `tokenId`, `kind`, `name`, `appellation`, `desc`, `descRaw` | …, `"summon"`, `"狼群"` | |
-| `profession`, `subProfessionId`, `position` | `"TOKEN"`, `"notchar1"`, `"MELEE"` | |
-| `displayType`, `placeable` | `"DEFAULT"`, `true` | `shopStateTokenDict` DEFAULT / HIDDEN (battle-only) / `null` (not listed). `placeable` (a prep hand piece) = a manually deployable summon (PRTS 卫戍协议/帮助 "可手动部署的附属召唤物…加入手牌区"; user playtest #6): not HIDDEN and made by an owner's talent or skill — 医疗探机 (赫默 S2), 诅咒娃娃 (巫恋 S2), 海嗣, 狼群, 流形 and 爬行号·防护单元 (凯瑟琳's talent device — the only pool summon missing from `shopStateTokenDict`, read as shown: placed by hand in the base game, by the friend's report, and confirmed by the user after playtest #6, DESIGN §20); 投递坐标 (HIDDEN) is not. In battle a skill's summon deploys once at the battle start, then on its tile each time the skill gives one (SIM.md, token pieces) |
-| `ownerRange` | `true` | the token text reads "只能部署在召唤者攻击范围内" (`desc`; the tacticians' 援军 — 狼群, 流形; PRTS 狼群 特性): its hand piece may only stand on a tile of its owner's attack range (server/match/board.js `ownerRangeKeys`, `PlayerState._legal`, the client's `gameLogic.summonRange`; player report #9 after 0.1.0). `false` for every other token |
+| `profession`, `subProfessionId`, `position` | `"TOKEN"`, `"notchar1"`, `"MELEE"` | `position` = the token row's, except where PRTS records the client's row as wrong (`tools/build-data.mjs TOKEN_POSITION_CORRECTIONS`): 望's 棋子 `ALL` (PRTS 棋子 部署位置 "全部位", 备注 "游戏内召唤物信息与实际不符（显示为仅部署在近战位）") — the prep's placement class (board.js `positionClass`) |
+| `displayType`, `placeable` | `"DEFAULT"`, `true` | `shopStateTokenDict` DEFAULT / HIDDEN (battle-only) / `null` (not listed). `placeable` (a prep hand piece) = a manually deployable summon (PRTS 卫戍协议/帮助 "可手动部署的附属召唤物…加入手牌区"; user playtest #6): not HIDDEN and made by an owner's talent or skill — 医疗探机 (赫默 S2), 诅咒娃娃 (巫恋 S2), 海嗣, 狼群, 流形 and 爬行号·防护单元 (凯瑟琳's talent device — the only pool summon missing from `shopStateTokenDict`, read as shown: placed by hand in the base game, by the friend's report, and confirmed by the user after playtest #6, DESIGN §20); 投递坐标 (HIDDEN) is not; nor is a summon no owner shows (its `display` source, the owner's displayTokenDict — a skill's own object: every such summon is HIDDEN but 予愿安洁莉娜 S3's “一会儿见！”, which the shop state does not list; PRTS 予愿安洁莉娜 S3 备注, 0.2.0). In battle a skill's summon deploys once at the battle start, then on its tile each time the skill gives one (SIM.md, token pieces) |
+| `ownerRange` | `true` | the token text reads "只能部署在召唤者攻击范围内" (`desc`; the tacticians' 援军 — 狼群, 流形; PRTS 狼群 特性) — or, data/backups.json, an owner's talent naming the token reads "可以在攻击范围内(的地面)部署 / 使用…" (Mon3tr's 重构体; 莱伊's 沙地兽 says both): its hand piece may only stand on a tile of its owner's attack range (server/match/board.js `ownerRangeKeys`, `PlayerState._legal`, the client's `gameLogic.summonRange`; player report #9 after 0.1.0). `false` for every other token |
+| `ownerRangeOutside`, `rangedTilesOnly` | `true` (present only then) | data/backups.json: the token text reads "部署在…攻击范围外" / "仅可以部署在…远程位" — 凯尔希·思衡托's 战术锚点 "仅可以部署在凯尔希·思衡托攻击范围外的远程位" (PRTS 战术锚点 特性): its hand piece may only stand outside its owner's attack range (`PlayerState.summonExcluded`, the client's `gameLogic.summonExcluded`) and on a ranged (高台) tile (board.js placement class `high`; the mode's "所有行动内远程干员可部署在近战位" is an operators' rule [ASSUMED]) (0.2.0) |
 | `owners[]` | `["chess_char_3_19_a","chess_char_3_19_b"]` | |
 | `stats`, `rangeGrid`, `dmgType`, `attackKind`, `projectile`, `canHitFly` | first owner's values | defaults |
 | `skill` | `{"skillId":"sktok_vigil_wolf_3","bb":{…}}` | default token skill (same slot as the owner's skill) |
-| `deployLimit`, `count` | `1`, `1` | `count` = copies sent to the hand / spawned (talent/skill `cnt`); `null` ⇒ use `deployLimit` |
+| `deployLimit`, `count` | `1`, `1` | `deployLimit` = the first owner's `stats.deployLimit`. `count` = copies sent to the hand / spawned (talent/skill `cnt`); `null` ⇒ use `deployLimit` |
 | `abnormal[]` | `["healFree"]` | abnormal effects the summon holds from the start, no official table carries them — `tools/build-data.mjs TOKEN_ABNORMAL` from the PRTS summon pages (user playtest #6 item 18): `healFree` = 禁疗 (“小自在”, “耀阳”, 斯卡蒂的海嗣, 沙之碑, 流形, 狼群, 迷迭香的战术装备, 黄金盟誓, 保护目标（冻结状态）), `isolated` = 孤立 "无法被同阵营选中" (“炎佑”, 从不混淆的方向); `[]` otherwise. The sim sets `noHeal` / `isolated` (docs/SIM.md §3) |
-| `variants[ownerChessId]` | `{"phase":2,"level":1,"stats":{…},"immunities":{…},"rangeGrid":…,"trait":{…},"dmgType":…,"skill":{full skill record},"talents":[…],"count":1,"sources":["talent","display"]}` | stats at the owner's phase/level (clamped to the token's max level) + golden module `tokenAttributeBlackboard`; the owner's module parts flagged `isToken` upgrade the variant's `trait` (+`moduleDesc`) and `talents` (伺夜's wolves, 缪尔赛思's 流形 `scale` 1, 浊心斯卡蒂's 海嗣 30 s, “耀阳” `atk_scale` 1.15). `sources` ⊆ `talent`/`skill`/`display`: how the owner produces it (`display` only = listed on the character but unused by its default skill/talents, e.g. 迷迭香 S2, 凛御银灰 eagle1/3). `count` = copies from a talent `cnt` or the default skill's `cnt` when that skill overrides this token; `null` ⇒ use `deployLimit` |
+| `variants[ownerChessId]` | `{"phase":2,"level":1,"stats":{…},"immunities":{…},"rangeGrid":…,"trait":{…},"dmgType":…,"skill":{full skill record},"talents":[…],"count":1,"sources":["talent","display"]}` | stats at the owner's phase/level (clamped to the token's max level) — **none of the owner's potential attribute modifiers** (a token has no potential ranks) — + golden module `tokenAttributeBlackboard` + the token's own talent additions to `deployLimit` / `deckStack` (blackboard `max_deploy_count` / `max_deck_stack_cnt` — the hidden "TOKEN数" talent of 麦哲伦's / 令's summons and 白铁's devices, 夜莺's 幻影; a module token part of the same talent replaces it: `tools/build-data.mjs tokenTalentDeckBonus`, 0.2.0 — no tokens.json summon has one; PRTS 幻影 备注 "最大可部署数量为3", the owners' "最多同时部署3个"); its `talents` / `trait` candidates are picked at the **owner's potential** (full; their `requiredPotentialRank` mirrors the owner's 「天赋效果增强」 — 夕's “小自在” 18 层, 凯尔希's Mon3tr, 望's 棋子 +1 持有 / 部署 — and the variant chains the lower ones, §2.3: `atPotential(variant, ownerPotential)`); the owner's module parts flagged `isToken` upgrade the variant's `trait` (+`moduleDesc`) and `talents` (伺夜's wolves, 缪尔赛思's 流形 `scale` 1, 浊心斯卡蒂's 海嗣 30 s, “耀阳” `atk_scale` 1.15). `sources` ⊆ `talent`/`skill`/`display`: how the owner produces it (`display` only = listed on the character but unused by its default skill/talents, e.g. 迷迭香 S2, 凛御银灰 eagle1/3). `count` = copies from a talent `cnt` or the default skill's `cnt` when that skill overrides this token; `null` ⇒ use `deployLimit` |
 | `variants[o].bySkill[i]` | `{"skill":{…},"count":1,"sources":["talent","display"]}` | owner loadout with the non-default skill index `i` (one entry per other selectable owner skill): the token skill of that slot (伺夜's wolves, 缪尔赛思's 流形, 凛御银灰's eagles…), the count and how the chess then produces it (`sources` may be `[]`: 风丸 S1 makes no 纸偶; 赫默 / 巫恋 S1 only `display` ⇒ no hand piece). The sim resolves them for an owner loadout: `simdata getToken(id, ownerChessId, loadout)` → `def.sources` / `def.count` |
 | `variants[o].byModule[m]` | `{"stats":{…},"immunities":{…},"trait":{…},"talents":[…]}` | golden owner with another module `m` or `'none'`: the token as that module makes it (module `tokenAttributeBlackboard`, `isToken` trait/talent parts) |
 | `assets` | `{"avatar":"token_10028_vigil_wolf","spine":"token_10028_vigil_wolf"}` | |
@@ -487,7 +538,10 @@ Glyph legend (`rows`):
    `…_eagle1/3` stay listed (`sources:["display"]`, belong to S1/S3). With another skill selected (DESIGN §16) the
    talent follows that skill's eagle (`simdata loadoutRecord`; `variants[o].bySkill[i].sources`).
 2. **DIY chess** (`chess_char_5_diy1/2`, `chess_char_6_diy1/2`, `_a` and `_b` = 8 records): no `charId`, no stats/skill; `visible:false`,
-   name placeholder `甄选干员`. Out of scope for v1.
+   name placeholder `甄选干员`, not in the shop. Their picks and bond rule are in `backups.json diy` (§18); a slot fights
+   only as a 自选 piece — a PlayerBattleInput entry with its `diy` pick (docs/SIM.md §12; shared/diy.js) — and a slot
+   without a legal pick fields nothing. Played since 0.2.0: the player fills the slots on the 自选编队 tab (`room.diy`)
+   and its own shop sells them (server/match/player/diy.js; §18).
 3. **Module-less chess**: 蒂比 (`chess_char_2_13`) and 凛御银灰 (`chess_char_5_14`) have no module; their golden
    record has `module:{id:null,active:false}` and no module stat bonus.
 4. **Hidden chess (17)** are kept with `visible:false`; several operators exist in two tiers with one hidden
@@ -495,9 +549,12 @@ Glyph legend (`rows`):
 5. **Every non-DIY chess (258 records: 129 normal + 129 golden) has a resolvable default skill, stats and range** — no
    skill anomalies.
 6. **Skill triggers** (§2.2): the class rows cover every MANUAL skill of the class (all 重装 MANUAL skills are
-   `TAKE_DAMAGE` but the six of the deliberate deviation, DESIGN §21.29, which are `DEFAULT` with `rawRule` `TAKE_DAMAGE`, and 余 S2, `SKILL_RANGE` on its x-1 (DESIGN §22.10); 薄绿 / 卡涅利安 / 蜜蜡 / 玛恩纳 S2 `SEARCH`; 伺夜 / 魔王 / 浊心斯卡蒂 S3 `SP_FULL`) and no AUTO skill (古米 /
+   `TAKE_DAMAGE` but the six of the deliberate deviation, DESIGN §21.29, which are `DEFAULT` with `rawRule` `TAKE_DAMAGE` (深巡 S2 then `ACTIVE_RANGE`), and 余 S2, `SKILL_RANGE` on its x-1 (DESIGN §22.10); 薄绿 / 卡涅利安 / 蜜蜡 S2 and 玛恩纳 S1 `SEARCH`; 伺夜 / 魔王 / 浊心斯卡蒂 S3 `SP_FULL`) and no AUTO skill (古米 /
    雷蛇 / 瑕光 / 塞雷娅 / 号角 / 信仰搅拌机 S1, 伺夜 S1/S2, 魔王 S1); 13 MANUAL skills (26 normal + elite records) with
-   their own 技能范围 are `SKILL_RANGE` (德克萨斯 S2, 凛御银灰 S2, 锏 S2/S3, 异客 S3, 忍冬 S2, 焰尾 S2 …); 余 S2 joins them by the §22.10 deviation, 14 skills / 28 records in the data.
+   their own 技能范围 are `SKILL_RANGE` (德克萨斯 S2, 凛御银灰 S2, 锏 S2/S3, 异客 S3, 忍冬 S2, 焰尾 S2 …); 余 S2 joins them by the §22.10 deviation, 14 skills / 28 records in the data; 39 MANUAL skills (78 records) whose
+   running attack range strictly contains the operator's own are `ACTIVE_RANGE` (the owner's rule of 2026-10-05; 莫斯提马 S3,
+   银灰 S3, 史尔特尔 S2 / S3 …; from the `SEARCH` row 薄绿 S1, 蜜蜡 S1, 卡涅利安 S3, 玛恩纳 S2, 安洁莉娜 S3, and 深巡 S2 over
+   its deviation), plus 预备干员 Touch S2 / S3 and Raidian S3 in `backups.json`.
 7. **Trait candidate `rangeId`** (送葬人, 松果 1-3; 风丸, 归溟幽灵鲨 x-4) is the trait-effect area, exposed as
    `trait.rangeGrid`, not the attack range.
 8. **Passive skills** use numeric `spType 8` in skill_table → normalized to `ON_DEPLOY`.
@@ -514,11 +571,12 @@ Glyph legend (`rows`):
 15. 炎佑 name in the enemy DB is `"炎佑"` with literal ASCII quotes.
 16. Research-only fields (null without `docs/research`): stage `name`, item `category/kind/family/implFormula/
     requiresBondId/rangeGrid/flavor`, bond `spec`, E2 art availability (falls back to "char has an E2 phase").
-17. [ASSUMED] content (flagged in data): 机变 family schedule and server pools, title criteria, income cap 12,
-    per-turn band-draft timer 30 s (`timers.bandTurn`, the step's only countdown — user playtest #4), the shop-only item
-    list (`SHOP_EXCLUDED_ITEMS`, from play), the alive / 4 proportion of the optional co-op alive scaling
-    (`bossHpScale.aliveAssumed`; `aliveScaling` off, only read when `perPlayer: false`). The special-enemy
-    generator, the co-op leader pool (`bloodPoint × the players alive`, one pool for every field) and the 联防 timing are official.
+17. [ASSUMED] content (flagged in data): 机变 family schedule and server pools, title criteria, income cap 12, per-turn
+    band-draft timer 30 s (`timers.bandTurn`, the step's only countdown — user playtest #4), the shop-only item list
+    (`SHOP_EXCLUDED_ITEMS`, from play), the alive / 4 proportion of the fixed pool's optional alive scaling
+    (`bossHpScale.aliveAssumed`; `aliveScaling` off). The special-enemy generator, the leader table (`bloodPoint`, one
+    pool for every field) and the 联防 timing are official; the pool's × players alive is the owner's decision of
+    2026-10-06 (PR #209: players' observation, no official text).
 18. **Module parts flagged `isToken`** (伺夜, 浊心斯卡蒂, 缪尔赛思, 耀骑士临光 golden) upgrade the summon only; they are
     applied to `tokens.json` variants, never to the operator's talents/trait.
 19. **Undefined enemy-database fields** (`m_defined:false`): a zero `m_value` means "never set" and falls back to the
@@ -542,12 +600,18 @@ Glyph legend (`rows`):
 
 ## 16. Counts (current build)
 
-`chess 266 (112 visible; 283 selectable skills over the visible chess, 184 module choices over 129 goldens)`, `bonds 23`, `garrisons 249 (43 effect keys)`, `items 115`, `bands 40`, `effects 361`,
+`chess 266 (112 visible; 283 selectable skills over the visible chess, 185 module choices over 129 goldens; 74 PRESET / 55 NORMAL / 4 DIY base chess)`, `bonds 23`, `garrisons 249 (43 effect keys)`, `items 115`, `bands 40`, `effects 361`,
 `enemies 249`, `factions 67 entries`, `waves 38`, `stages 11 (8 active)`, `bosses 10`, `tokens 22`, `choice events 109`,
-`bounty cards 129`, `tactic cards 43`.
+`bounty cards 129`, `tactic cards 43`, `backups: 89 units (17 stand-ins, 72 owned-6★ picks; 259 forms), 38 自选 summons, 4 DIY slots, 15 / 9 prototype picks (tier 5 / 6), 72 owned-6★ picks (7 collab operators excluded)`, potential (§2.3): `256 chess records, 219 forms / variants with potDown; 442 + 401 + 19 chained talent entries (chess, backups, tokens)`.
 
 ## 17. Integrity guarantees (checked by the builder and `test/data.test.js`)
 
+Every PRESET chess is its own backup and the stand-in builder gives it back field for field (§18); every NORMAL chess
+(both forms) composes into its stand-in with an unlocked backup skill and, on the elite form, its module at that level;
+every DIY prototype pick has a form for both slot statuses and its locked skill / module there; every owned pick has
+both slot forms with its three skills, every module of the character at the elite's stage and a `tokens` variant per
+summon; derived DIY bonds exist; no 自选 summon id is a tokens.json record (`test/backups.test.js` also re-derives the
+backup fields, the stand-in numbers, the owned pool and the faction ids from the raw tables).
 Chess bonds/garrisons/tokens/base/golden ids resolve; talent tokens are in `chess.tokens`; every non-DIY chess has
 `skills[]` with exactly one default equal to `skill` (and every skill token listed in `chess.tokens`); golden module
 choices are consistent (one default iff `module.active`, base fields present; composing the default reproduces the
@@ -566,3 +630,109 @@ generator and preview zones on the raw level files for every mode × round × te
 included) × allowed entry, and `test/sim/pathing-crosscheck.test.js` re-implements the client SPFA + smoothing over the
 whole map for every walkable tile of the normal / 联防 / boss fields of the 8 stages (extended by the road-over-floor
 preference; against the pure official algorithm: identical route lengths, never more non-blockable tiles crossed).
+
+## 18. `backups.json` — 补位 stand-ins and 自选 (DIY) data — `{ units, tokens, diy }`
+
+The data of two official features: **补位** — a NORMAL chess whose operator the player does not own is fielded as its
+official stand-in (原型干员); played since 0.2.0: the player marks operators as not owned on the 干员持有 tab
+(`room.ownership { notOwned }`, DESIGN §25.3, docs/PLAYING.md §3), the match fields those chess with
+`standIn: true` — and **自选编队** — two tier-5 and two tier-6 DIY slots, each filled with a 6★ the player owns or a
+prototype. Built by `tools/build-data.mjs buildBackups`; `shared/standIn.js` composes it into chess-shaped records,
+`shared/diy.js` adds the 自选 rules on top. The sim fields both (docs/SIM.md §12). Played since 0.2.0: the player fills
+the four slots on the 自选编队 tab (`room.diy { picks }`, docs/PLAYING.md §3; shared/protocol.js checkDiyPicks keeps the
+legal picks), the match takes the picks the seat had at its start (`PlayerState.diy`), and each slotted piece is sold in
+that player's shop only — its own stock (the tier's pool copies, 8 / 5 [ASSUMED]), from the 调度中心 level `shopLevel`,
+none when every bond of it is banned this match — and is the operator for every rule of that player (its data view:
+server/match/player/diy.js, docs/META.md §3). The rules in the data (activity_table act2autochess `charShopChessDatas`; PRTS 卫戍协议, 卫戍协议：盟约
+下半/PRTS盟约记录):
+
+- PRESET (74, 特许干员) always fields the real operator (`backup.charId` = itself); NORMAL (55) names one of 17 stand-ins —
+  the 4★ 预备干员 `char_600–607`, the 6★ `char_608–615` and 领主·Sharp `char_617` (the "其它分支"); DIY (4) has none.
+- A stand-in keeps the chess's bonds, 特质, tier, price, merge and status (the elite form uses the same backup at the
+  elite row) and fights as `backup.charId` at that status with skill `backup.skillIndex` (fixed by the chess: the same
+  character takes S2 on one chess and S3 on another), module `backup.uniEquipId` (null at tiers 3–4 and for every 4★, so
+  even their elite form has none) and the row's potential (`potRank` 0 on all 55) — moot: the 17 原型干员 have no
+  potential ranks, and a stand-in takes neither the player's potential nor the 自持有 练度 (0.2.2).
+
+`units[charId]` — first the 17 stand-ins, then the 72 owned-6★ 自选 picks (`diy.ownedPool`); no unit for a PRESET or DIY
+chess:
+
+| Field | Example (`char_611_acnipe`) | Meaning |
+|---|---|---|
+| `charId`, `name`, `appellation`, `rarity`, `profession`, `subProfessionId`, `subProfessionName`, `position`, `nationId`, `isNotObtainable` | `"char_611_acnipe"`, `"Stormeye"`, `"Stormeye"`, `6`, `"SNIPER"`, `"fastshot"`, `"速射手"`, `"RANGED"`, `null`, `true` | as on a chess record (`isNotObtainable` false for the owned picks) |
+| `assets` | `{"avatar":"char_611_acnipe","avatarGolden":"char_611_acnipe","portrait":"char_611_acnipe_1","portraitGolden":"char_611_acnipe_1","spine":"char_611_acnipe","subProfIcon":"sub_fastshot_icon"}` | art ids (URLs in `data/assets.json`, which carries all 89 — the owned picks since 0.2.0, ASSETS.md); the elite form takes the E2 art when it exists — of the stand-ins only 领主·Sharp has it, every owned pick does |
+| `moduleNames` | `{"uniequip_001_acnipe":{"name":"Stormeye证章","typeName":"ORIGINAL"},"uniequip_002_acnipe":{"name":"Stormeye证章","typeName":"MAR-X"}}` | every module of the character (a composed record names its module on the normal form too) |
+| `standsIn[]` | `["chess_char_3_21_a","chess_char_4_02_a","chess_char_5_18_a","chess_char_5_22_a","chess_char_6_01_a","chess_char_6_05_a"]` | the NORMAL base chess it replaces (`[]` for an owned pick) |
+| `forms[statusKey]` | keys `"2/1/4/0"`, `"2/60/7/1"`, `"2/60/7/3"` | the character at every status it fights at — of the chess it stands in for and of the DIY slots it may fill (`statusKey(status)` = `phase/level/skillLevel/equipLevel`): 3 forms per 6★ (an owned pick: exactly the three DIY slot statuses — E2 Lv1 skill rank 4 without a module, E2 Lv60 rank 7 with every module at stage 1 and at stage 3), 2 per 4★ |
+
+A **form** holds the operator fields of a chess record with **nothing selected**: `status`; `stats`, `trait`, `talents`
+**without** a module, at full potential as on a chess (`potDown` / chained talents for the lower ones, §2.3); `immunities`, `rangeId`, `rangeGrid`, `dmgType`, `attackKind`, `projectile`, `canHitFly`,
+`targetPriority`; `skills[]` — every skill unlocked at the status, at its skill level, `trigger` resolved per skill, no
+`isDefault`; `displayTokens` / `tokens` (summons — none of the 17 stand-ins has one; 27 of the owned picks do, their
+records in `tokens` below); at `equipLevel > 0` `modules[]` (§2.2 shape without `isDefault`). `buildUnitForm` uses buildChess's helpers and rules, and the build fails when `buildUnitForm` +
+`composeUnitRecord` do not give back every PRESET chess field for field (each is its own backup), so a later change to
+buildChess that the stand-ins would miss stops the build. The chess trigger deviations (§2.2, DESIGN §21.29) name chess
+and never apply to a form; the 重装 stand-ins have their own, by charId (`tools/build-data.mjs STANDIN_TRIGGER_DEVIATIONS`,
+the owner's decision of 2026-10-05 in the approved 补位 plan): every skill of 预备干员-重装 and Mechanist is `DEFAULT` —
+cast with an enemy in range — with `rawRule` the official `TAKE_DAMAGE`, on every form.
+
+**Composition** (`shared/standIn.js`, pure ESM for the server, the sim and the client): `standInRecord(chess, backups)` is
+the NORMAL chess as its stand-in — `IDENTITY_FIELDS` (ids, tier, `isHidden` / `visible`, `chessType`, `backup`, `bonds`,
+`garrisonIds`, prices, merge, `status`) from the chess, every other field from the unit's form at the chess's status
+with `backup.skillIndex` / `backup.uniEquipId` as the defaults, plus `standInFor` (the replaced charId: the official 补位
+mark on the avatar). The result is shaped exactly like a chess record (`skill` = the `isDefault` entry of `skills[]`;
+elite `statsBase` / `traitBase` / `talentsBase` / `modules[]`), so `normalizeChess`, `resolveLoadout` (no loadout ⇒ the
+backup selection) and `loadoutRecord` read it unchanged; null for a PRESET or DIY chess. `isDroppableChess(chess)` says
+which chess a player may mark as not owned (the 55 NORMAL base chess; `shared/protocol.js checkNotOwned` keeps those of a
+`room.ownership` list). **In the match** (`server/match/player/basics.js`: `PlayerState.standIns`, `fieldsStandIn`,
+`fieldRecord` = `gd.standIn(id)`) the player's piece keeps the chess's identity for every meta rule (price, bonds,
+特质, merges, pools) and is deployed as the stand-in (placement class, summon / bot ranges; no summons — none of the 17
+has one); what shows the piece shows the stand-in (the prep scouting art of board and bench pieces, the m.result
+lineup's `standInFor`, the elite and gift tickers' names — the owner's recall of the official mode, 2026-10-06). **In battle** a PlayerBattleInput entry with `standIn: true` (PlayerState.battleInput:
+the player's own field, 联防 and the boss fields alike) is fielded as `getChess(chessId, { standIn: true })` (docs/SIM.md
+§12: this record, normalised), and its kit is found by its `charId` (`server/sim/content/index.js kitOf`;
+kits/README.md "Stand-in kits") — never by the chess id it keeps, which names the replaced operator's kit. The client
+composes the same record (`public/js/ui/gameLogic/standIn.js standInOf`, the renderer's `data.standIn`) to show the
+stand-in on the shop / reward cards, the own pieces' models (hand, 临时整备区, board), the detail card, bond popups and the
+result lineup, with a small 「替补」 mark.
+A 自选 piece is composed by `shared/diy.js`:
+`checkDiyPick(slotId, pick, data)` checks one pick `{ charId, skillIndex?, uniEquipId? }` against a slot (a pick of the
+slot's tier; a prototype takes its `diy.locked` selection, another skill is refused; an owned pick names one of its three
+skills and optionally a module of its elite form at the slot's stage), `diySlot(id, data)` names a slot's tier, elite
+twin and `shopLevel`, `diyRecord(slotId, pick, { elite, data })` /
+`diyRecordOf(slot, pick, data)` give the record — the slot's identity (tier, price, merge, status; no 特质), the pick's
+derived bonds, the operator's form at the slot's status with that skill and module (active on the elite only), plus
+`diyFor` = the slot's base id —, `diyPool(tier, { data, kitted })` the legal picks of a tier (prototypes, then the owned
+pool; with `kitted`, only operators with a kit: server/sim/content/kits/index.js `KITTED_CHARS`) and
+`validateDiyPicks(picks, { data, kitted })` a roster (a prototype may fill a tier-5 and a tier-6 slot, an owned operator
+one slot, the picks of a tier differ, no module of another game mode — `isDiyModule` / `DIY_EXCLUDED_MODULE_TYPE`: the
+集成战略 modules ISW-A (凯尔希, 傀影, 菲亚梅塔, 提丰, 艾丽妮, 霍尔海雅) and SO-A / SO-B (电弧, 机械师 — "在【岁的界园志异】中",
+"在【沉沦者的黑流树海】中") and the 生息演算 module RA-A (森蚺) are never a player's choice [ASSUMED], the owner's decision of
+2026-10-05 for ISW-A and the same reason for SO / RA, while the record and the sim still compose them for the kits' tests). **In battle** a PlayerBattleInput entry of a DIY slot carries `diy` (the pick) and
+is fielded as `getChess(slotId, { diy })` (docs/SIM.md §12); its kit is `KITS[charId]` (kits/README.md "How to add an
+operator (自选)").
+
+`diy`:
+
+| Field | Example | Meaning |
+|---|---|---|
+| `slots[slotId]` | `{"tier":5,"goldenId":"chess_char_5_diy1_b","shopLevel":5,"requirement":"TIER_6"}` | the four DIY chess `chess_char_5_diy1/2_a`, `chess_char_6_diy1/2_a` (chess.json: price 4, sell 1, `diyRequirement`, empty `bonds` / `garrisonIds`); `shopLevel` = the 调度中心 level whose `shopLevelDisplayDataDict.charChessDiySlotIdList` lists the slot |
+| `prototypes[tier]` | `{"5":[…15],"6":[…9]}` | the legal prototype picks: the nine 6★ at both tiers, at tier 5 also the six 4★ that are not 先锋 / 特种 ("第5阶可额外从6名四星原型干员（先锋、特种职业除外）中选取"; `DIY_EXTRA_PROTOTYPES`). A prototype may fill a tier-5 and a tier-6 slot ("原型干员可于5、6阶之间重复选取") |
+| `locked[tier][charId]` | `{"skillIndex":2,"uniEquipId":"uniequip_002_acguad","from":["chess_char_5_06_a","chess_char_5_13_a"]}` | the skill and module a prototype carries in a slot of that tier — "技能携带规则与系统补位时一致" (PRTS 卫戍协议), read as [ASSUMED] (the owner's decision of 2026-10-05) the selection of its 补位 rows at that tier (`from`): the eight 6★ elites S3 with their own module, 领主·Sharp S1, the reserves S3 without a module; 预备干员-医疗 has no tier-5 row: S3 by analogy (`from` `[]`, `DIY_PROTOTYPE_FALLBACK_SKILL`) |
+| `ownedPool[]` | 72 charIds | the owned 6★ a player may slot: obtainable, rarity = the requirement, and no chess names it — hidden chess included ("不可甄选加入已在名单中的固定干员"); each at most once per roster ("玩家已拥有干员不可重复选取"). Not the collab operators (`excluded`) |
+| `excluded[]` | `["char_456_ash","char_1029_yato2","char_1048_orchd2","char_4123_ela","char_4141_marcil","char_4182_oblvns","char_4217_makoto"]` | the 7 obtainable 6★ outside the pool that come from a 联动寻访 — a collab team in `mainPower` / `subPower` (`DIY_EXCLUDED_TEAMS`: rainbow, action4, mujica, sees, laios — 灰烬, 麒麟R夜刀, 艾拉, 玛露西尔, 丰川祥子, 结城理) or a collab series in `displayNumber` (`DIY_EXCLUDED_NUMBER_PREFIXES` MH / RS / AM / PS / DD — also 焰狐龙梓兰 MH05, whose team reserve6 names no collab): left out of the data and the pool by the owner's decision of 2026-10-05 (copyright); the excel does not exclude them |
+| `operators[charId]` | `{"name":"煌","rarity":6,"profession":"WARRIOR","subProfessionId":"centurion","obtainable":true,"powers":["rhodes","elite","yan","victoria"],"bonds":["yanShip","victoriaShip"]}` | every pick (owned pool + prototypes): `powers` = the `nationId` / `groupId` / `teamId` of `mainPower` and of every `subPower` (隐藏势力); `bonds` = the core bonds whose `powerIdList` meets them — one or several — else `economy.fallbackBondId` 协防干员 ("甄选加入的干员会根据其实际阵营所属分配核心盟约，若没有可匹配的则改为分配协防干员盟约"); every prototype gets `["emptyShip"]` |
+
+`tokens[tokenId]` — the summons of the owned picks (38 tokens of 27 operators): a tokens.json record (§14: name, text,
+`placeable`, `ownerRange`, `abnormal`, `assets`) whose `variants` are keyed by the owner FORM `<charId>@<statusKey>`
+(`owners` = those keys; shared/diy.js `diyTokenOwner`) instead of a chess id — a DIY piece is a slot, and two players may
+fill one slot with different operators. A variant is the token at the owner's status for its first skill and no module,
+`bySkill[i]` the token skill / count / sources under each other skill, `byModule[id]` each module's token attributes,
+trait and talents (`tools/build-data.mjs buildDiyTokens`); simdata `getToken` merges them with the pick as the owner's
+loadout. No id is also a tokens.json record.
+
+Not in this data: a player's ownership roster and 自选 picks (browser settings sent with `room.ownership` / `room.diy`),
+the DIY stock (per player in the match, `PlayerState.diyStock`: `config.economy.poolCopies` of the slot's tier — no excel
+field), 助战 borrows (`borrowCount` 20), and a player's potential / 练度 per operator (the 干员调配 settings sent with
+`room.loadout`; the forms are built at full potential and carry the lower ranks, §2.3; 练度 = effects.json
+`aceffect_char_1…4`).

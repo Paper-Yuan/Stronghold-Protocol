@@ -2,12 +2,14 @@
 // scripts/launch.mjs — cross-platform "prepare + start + open the browser", used by scripts/start-windows.bat,
 // scripts/start-windows.ps1 and scripts/start.sh (docs/DEPLOY.md).
 //
-//   node scripts/launch.mjs [--port 3000] [--host 0.0.0.0] [--no-open] [--no-setup] [setup options…]
+//   node scripts/launch.mjs [--port 3000] [--host ::] [--no-open] [--no-setup] [setup options…]
 //
 //   1. If our server already answers on the port, just open the browser (double-clicking twice is harmless).
-//   2. node tools/setup.mjs --quiet (dependencies, vendor libs, art download / resume, optional local extraction);
+//   2. An update package extracted over the folder (UPDATE.json) is finished (server/update.js; the server does it too,
+//      for the routes that skip this script); one that does not fit this install stops here with the message.
+//   3. node tools/setup.mjs --quiet (dependencies, vendor libs, art download / resume, optional local extraction);
 //      setup options such as --no-assets, --no-local, --local, --game <dir>, -y are passed through.
-//   3. node server/index.js (PORT / HOST from the options or the environment; SP_COMBAT / SP_VERIFY / TRUST_PROXY /
+//   4. node server/index.js (PORT / HOST from the options or the environment; SP_COMBAT / SP_VERIFY / TRUST_PROXY /
 //      DEBUG are inherited), then — once /healthz answers — prints the addresses to share and opens
 //      http://localhost:<port> (not with --no-open, SP_NO_BROWSER=1, or on a Linux box without a display).
 // Ctrl+C stops the server (it gets the signal from the terminal itself); the exit code is the server's.
@@ -28,10 +30,11 @@ if (Number(process.versions.node.split('.')[0]) < 22) {
 }
 
 const { c, mark } = await import('../tools/setup.mjs');
-const { probePort, classifyAddresses, KIND_LABEL } = await import('../tools/doctor.mjs');
+const { probePort, classifyAddresses, hostUrl, KIND_LABEL } = await import('../tools/doctor.mjs');
+const { applyPendingUpdate, UPDATE_FILE } = await import('../server/update.js');
 
 function parseArgs(argv) {
-  const o = { port: Number(process.env.PORT) || 3000, host: process.env.HOST || '0.0.0.0', open: !/^(1|true|yes)$/i.test(process.env.SP_NO_BROWSER || ''), setup: true, setupArgs: [], help: false };
+  const o = { port: Number(process.env.PORT) || 3000, host: process.env.HOST || '::', open: !/^(1|true|yes)$/i.test(process.env.SP_NO_BROWSER || ''), setup: true, setupArgs: [], help: false };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     const [k, v] = a.split('=');
@@ -58,9 +61,9 @@ function printShare(port) {
   console.log(`${mark.ok} ${c.bold('服务器已启动')}   本机打开：${c.cyan(`http://localhost:${port}`)}`);
   if (addrs.length) {
     console.log('  发给朋友（需要能访问这台电脑的网络）：');
-    for (const a of addrs.slice(0, 4)) console.log(`    ${c.cyan(`http://${a.address}:${port}`)}  ${c.dim(KIND_LABEL[a.kind])}`);
+    for (const a of addrs.slice(0, 4)) console.log(`    ${c.cyan(hostUrl(a.address, port))}  ${c.dim(KIND_LABEL[a.kind])}`);
   } else {
-    console.log(c.warn('  没有检测到局域网地址：朋友暂时无法连接（检查网线/Wi-Fi）。'));
+    console.log(c.warn('  没有检测到可以分享的地址：朋友暂时无法连接（检查网线/Wi-Fi）。'));
   }
   console.log(c.dim('  建房后把 4 位「同盟密钥」或「复制链接」（…/?room=密钥）发给朋友。'));
   console.log(c.dim('  朋友打不开？运行 node tools/doctor.mjs 检查防火墙。按 Ctrl+C 停止服务器。'));
@@ -81,7 +84,7 @@ async function main() {
   const o = parseArgs(process.argv.slice(2));
   if (o.help) {
     const src = fs.readFileSync(fileURLToPath(import.meta.url), 'utf8').split('\n');
-    console.log(src.slice(1, 13).map((l) => l.replace(/^\/\/ ?/, '')).join('\n'));
+    console.log(src.slice(1, 15).map((l) => l.replace(/^\/\/ ?/, '')).join('\n'));
     return 0;
   }
   const localUrl = `http://localhost:${o.port}`;
@@ -89,6 +92,9 @@ async function main() {
   const before = await probePort(o.port, o.host);
   if (before.state === 'ours') {
     console.log(`${mark.ok} 服务器已经在运行（端口 ${o.port}），直接打开浏览器。`);
+    if (fs.existsSync(path.join(ROOT, UPDATE_FILE))) {
+      console.log(c.warn(`  解压过的更新包还没有应用：正在运行的仍是旧版本。先停止它（关掉它的窗口；开机自启用 install-service-windows.ps1 -Restart），再重新启动即可。`));
+    }
     printShare(o.port);
     if (o.open) openBrowser(localUrl);
     return 0;
@@ -98,6 +104,9 @@ async function main() {
     console.error(`  换一个端口：${IS_WIN ? 'scripts\\start-windows.bat --port 3001' : 'scripts/start.sh --port 3001'}`);
     return 1;
   }
+
+  // before setup: setup and the server then see the new version's files (its message explains a refusal)
+  if (applyPendingUpdate(ROOT).state === 'failed') return 1;
 
   if (o.setup) {
     const r = spawnSync(process.execPath, [path.join(ROOT, 'tools', 'setup.mjs'), '--quiet', ...o.setupArgs], { cwd: ROOT, stdio: 'inherit' });

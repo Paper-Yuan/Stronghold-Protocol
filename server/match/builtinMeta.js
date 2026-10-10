@@ -12,7 +12,8 @@
 //   use_equip_gain_coin_when_next_round_start {count}     见钱眼开玩偶           +count funds next round
 //   equip_destory_deployment_cnt_change {count}           人事部文档             deploy cap = count
 //   use_equip_upgrade_char / equip_round_start_upgrade_char 博士投影             promote (golden: now, normal: next round)
-//   use_equip_reward_char_chess                           拟态物质               3rd copy or a same-bond chess
+//   use_equip_reward_char_chess                           拟态物质               3rd copy (none when the pool is
+//                                                                                out), or with < 2 a same-bond chess
 //   use_equip_reward_special_goods_char_chess {refresh_cnt} 寻呼模块             offer N same-bond chess (≤ shop level)
 //   use_equip_recruit_new_char_and_give_char_to_player_most_bond {refresh_cnt} 信标 destroy target, offer N same-tier
 //                                                                                chess, gift the original (an elite stays
@@ -24,8 +25,7 @@
 //                                                                                operator gained into the hand
 //   trap_copy_front_char                                  画卷 (Art)            copy the chess on the tile / in front
 //   trap_create_self_choice {choice_event}                教鞭 / 神秘顾客 (Art)  add a random bounty to your next battle
-// [ASSUMED simplification, documented in docs/META.md: 教鞭/神秘顾客 pick the bounty for the player instead of opening
-//  a personal choice overlay.]
+// This builtin picks a random bounty by default; content/items/meta.js overrides Pointing Stick with a private choice.
 
 import { getData } from '../data.js';
 import { itemKey } from './gamedata.js';
@@ -101,7 +101,7 @@ const ITEM_HANDLERS = {
       const n = int(paramsOf(ctx, ev.item).count, 1);
       const rec = ctx.gd.item(ev.item.id);
       ctx.addEffect({
-        id: `doll:${ev.item.uid}`, key: 'effect:builtin_round_coin', name: rec ? rec.name : '精打细算玩偶', desc: rec ? rec.desc : '',
+        id: `doll:${ev.item.uid}`, key: 'effect:builtin_round_coin', name: rec ? rec.name : '精打细算玩偶', desc: rec ? rec.desc : '', // i18n-ignore: the item's data name
         iconKind: 'item', iconId: rec ? rec.iconId || rec.id : ev.item.id, battle: false, params: { count: n },
       });
     },
@@ -142,6 +142,10 @@ const ITEM_HANDLERS = {
       ctx.promote(holder.uid);
     },
   },
+  // 拟态物质 「若已拥有至少2名该初始干员，则再获得1名该初始干员；否则随机获得1名同盟约初始干员」: the 否则 is the owned < 2
+  // case only. With 2 copies owned and none left in the pool (an elite holds 3 of a Ⅵ阶's 5) the grant fails and the
+  // item gives nothing (research 06 §7: some effects fail at the copy cap) — it never falls back to a same-bond operator
+  // (GitHub #207).
   use_equip_reward_char_chess: {
     onEquip(ctx, ev) {
       const base = ctx.gd.baseIdOf(ev.target.id);
@@ -188,8 +192,10 @@ const ITEM_HANDLERS = {
         if (id) ids.push(id);
       }
       if (ids.length) ctx.offerChess(ids, { source: 'item', tier });
-      // co-op: next prep, send the original chess to the teammate with the most members of its bonds
-      const to = mostBondMate(ctx, bonds);
+      // co-op: next prep, send the original chess to the teammate with the most members of its bonds — except a 自选
+      // piece (0.2.0): its DIY slot is bound to this player's roster (no teammate's shop or slot can hold that operator),
+      // so nothing is sent [ASSUMED: the official text names no 自选 case]
+      const to = ctx.chessRecord(original)?.diyFor ? null : mostBondMate(ctx, bonds);
       if (to) ctx.addEffect({ id: `gift:${ev.item.uid}`, key: 'effect:builtin_gift', hidden: true, battle: false, params: { toPlayerId: to.playerId, chessId: original, bonds } });
     },
   },
@@ -276,7 +282,7 @@ const EFFECT_HANDLERS = {
       if (!to) { ctx.removeEffect(ref.id); return; }
       if (!to.grantChess(p.chessId)) return;
       ctx.removeEffect(ref.id);
-      to.giftTicker(ctx.name, p.chessId);
+      to.giftTicker(ctx.name, p.chessId, ctx.playerId);
     },
   },
   // 整备: the next purchased item becomes advanced (golden)

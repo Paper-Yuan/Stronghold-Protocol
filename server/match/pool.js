@@ -12,7 +12,9 @@
 //
 // Rolls: each chess slot draws ONE copy uniformly from all remaining copies of eligible chess with tier ≤ shop level
 // ("copy-weighted"; duplicates within a roll allowed). The item slot picks a tier with the same tier shares, then a
-// uniform shop-eligible item of that tier (falling back to lower tiers).
+// uniform shop-eligible item of that tier (falling back to lower tiers). A roll may add entries outside the pool
+// (`extra`, after its own): one player's 自选 stock (0.2.0, player/diy.js diyRollEntries) — weighted by its copies like
+// any chess, drawn by that player's shop only.
 
 /**
  * Per-match disabled bond set D and banned chess (research 01 A2): D = uniform sample of `core` core bonds and `addon`
@@ -112,7 +114,8 @@ export class SharedPool {
   /**
    * Copy-weighted roll: one copy uniformly among remaining copies of eligible chess. Returns a base id or null.
    * @param {Function} rng
-   * @param {{ maxTier?: number, tier?: number|null, filter?: (id: string, e: object) => boolean }} [opts]
+   * @param {{ maxTier?: number, tier?: number|null, filter?: (id: string, e: object) => boolean,
+   *   extra?: Iterable<[string, { left: number, tier: number }]>|null }} [opts]
    */
   roll(rng, opts = {}) {
     const el = this._eligible(opts);

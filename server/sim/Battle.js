@@ -152,6 +152,8 @@ export class Battle {
     this.killed = 0;
     this.total = 0;
     this.leakedCount = 0;
+    this.killedInTotal = 0;
+    this.leakedInTotal = 0;
     this.errors = [];
     this.errorCount = 0;
     this._errKeys = new Set();
@@ -174,6 +176,10 @@ export class Battle {
     this._safe(() => installContent(this, { mode: this.contentMode, extra: opts.extraContent }), 'installContent');
     for (const u of this.allyUnits) if (!u.kit) this._setupUnit(u);
     if (typeof opts.setup === 'function') this._safe(() => opts.setup(this), 'opts.setup');
+  }
+
+  get resolved() {
+    return Math.min(this.total, this.killedInTotal + this.leakedInTotal);
   }
 
   // =============================================================================================================
@@ -205,7 +211,7 @@ export class Battle {
     };
     this.players.push(ps);
     this._perPlayer[ps.playerId] = {
-      killed: 0, total: 0, leaked: [], perfect: true, layerGains: {}, coins: 0,
+      killed: 0, total: 0, leaked: [], perfect: true, killedInTotal: 0, leakedInTotal: 0, resolved: 0, layerGains: {}, coins: 0,
       damageDealt: 0, bossDamage: 0, healingDone: 0, deaths: 0, unitsEnd: [], unitStats: [],
     };
     const late = [];
@@ -273,6 +279,7 @@ export class Battle {
     const lo = { skillIndex: inp.skillIndex ?? null, moduleId: inp.moduleId ?? null };
     if (inp.standIn === true) lo.standIn = true;
     if (inp.diy && typeof inp.diy === 'object') lo.diy = inp.diy;
+    if (inp.potential != null) lo.potential = inp.potential;
     const def = this.data.getChess(inp.chessId, lo);
     if (!def) { this.log(`unknown chess ${inp.chessId}`); return null; }
     const u = this._makeAlly(ps, def, 'op', r, c, { uid: inp.uid, dir, skin: inp.skin });
@@ -551,6 +558,7 @@ export class Battle {
     for (const ps of this.players) {
       const pp = this._perPlayer[ps.playerId];
       pp.perfect = !pp.leaked.some((l) => l.counted !== false);
+      pp.resolved = Math.min(pp.total, pp.killedInTotal + pp.leakedInTotal);
       // the operators and the board's summon pieces (a board uid): 联防 carries an operator's HP ratio and SP, a summon's
       // SP only (match/unite.js). `sp` is the official 技力 — stored charges included (PRTS 技能 "可充能X次…当前技力上限等于该
       // 技能技力需求的X倍"); a running skill spent its SP at activation, so it reports what was left (0 for one charge).
@@ -733,7 +741,8 @@ export class Battle {
         ownerPlayerId: s.ownerPlayerId ?? null, pos: s.pos ?? null, seq: ++this._spawnSeq, countInTotal: s.countInTotal,
       };
       p.counted = p.countInTotal ?? (!(def && def.notCountInTotal) && p.tag !== 'boss' && p.tag !== 'part');
-      if (precount && p.counted) {
+      p.inTotal = !!p.counted;
+      if (precount && p.inTotal) {
         this.total++;
         const owner = p.ownerPlayerId ?? this._ownerForTile(p.pos ?? this._routeFor(p.routeIndex, p.route)?.start);
         const pp = this._pp(owner);
@@ -843,7 +852,8 @@ export class Battle {
       if (end) e.route.legs.push({ t: 'move', r: end[0], c: end[1], final: true });
     }
     e.counted = opts.countInTotal ?? (!def.notCountInTotal && e.tag !== 'boss' && e.tag !== 'part');
-    if (e.counted && !opts._precounted) {
+    e.inTotal = (opts.inTotal === true || opts._precounted) ? !!e.counted : false;
+    if (e.inTotal && !opts._precounted) {
       this.total++;
       const pp = this._pp(e.ownerId);
       if (pp) pp.total++;
@@ -888,6 +898,7 @@ export class Battle {
     u.removed = false;
     u.hidden = false;
     u.body = null;
+    u.downAtHome = false;
     u.x = C0; u.y = R0; u.tileR = R0; u.tileC = C0;
     u.blocking = [];
     u.deploySeq = ++this._deploySeq;
@@ -991,6 +1002,11 @@ export class Battle {
           this.killed++;
           const pp = this._pp(unit.ownerId);
           if (pp) pp.killed++;
+        }
+        if (unit.inTotal) {
+          this.killedInTotal++;
+          const pp = this._pp(unit.ownerId);
+          if (pp) pp.killedInTotal++;
         }
         if (killer) killer.stats.kills++;
         if (unit.bounty && unit.bounty.coins > 0) {
@@ -1107,6 +1123,10 @@ export class Battle {
       if (e.counted || e.isBoss) pp.perfect = false;
     }
     if (e.counted) this.leakedCount++;
+    if (e.inTotal) {
+      this.leakedInTotal++;
+      if (pp) pp.leakedInTotal++;
+    }
   }
 
   // =============================================================================================================
@@ -2131,10 +2151,19 @@ export class Battle {
    */
   onOwnBoard(playerOrUnit, r, c) {
     if (!Number.isInteger(r) || !Number.isInteger(c) || !this.grid.inRect(r, c)) return false;
-    if (this.kind === 'unite') {
-      const origC = Number.isInteger(playerOrUnit?.homeC) ? playerOrUnit.homeC : (playerOrUnit?.tileC ?? 0);
-      if (origC <= 10 && c > 10) return false;
-      if (origC > 10 && c <= 10) return false;
+    const ps = playerOrUnit && playerOrUnit.units ? playerOrUnit : playerOrUnit?.player ?? null;
+    if (ps) {
+      let keys = ps._boardKeys;
+      if (!keys) {
+        keys = ps._boardKeys = new Set();
+        for (let br = 9; br <= 12; br++) {
+          for (let bc = 2; bc <= 10; bc++) {
+            const [fr, fc] = this.mapTile(ps, br, bc);
+            keys.add(fr * COLS + fc);
+          }
+        }
+      }
+      return keys.has(r * COLS + c);
     }
     return true;
   }
@@ -2177,7 +2206,7 @@ export class Battle {
     const r = u.tileR, c = u.tileC, hr = u.homeR, hc = u.homeC;
     u.body = [r, c];
     if (r === hr && c === hc) return;
-    if (!this.allyUnits.some((a) => a !== u && a.uid != null && (a.kind === 'op' || a.kind === 'token') && a.homeR === r && a.homeC === c)) return;
+    if (!u.downAtHome && !this.allyUnits.some((a) => a !== u && a.uid != null && (a.kind === 'op' || a.kind === 'token') && a.homeR === r && a.homeC === c)) return;
     if (!this.grid.inRect(hr, hc) || this.isReservedTile(hr, hc)) return;
     u.body = [hr, hc];
   }

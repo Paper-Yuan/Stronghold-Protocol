@@ -17,9 +17,7 @@ import { tmpdir } from 'node:os';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { isEndlessDifficulty, ENDLESS_DIFFICULTIES, ENDLESS_BOSS_EVERY, ENDLESS_BOSS_STEP, ENDLESS_BOSS_CYCLE_SCALE } from '../shared/constants.js';
-// This fork bakes full potential into the generated data: no talent entry carries a potential chain
-// (potMin / potBelow), so stripping one is the identity here.
-const stripPotential = (list) => list;
+import { stripPotential } from '../shared/potential.js';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 // DATA_DIR lets the suite validate an alternative build output (e.g. `--out /tmp/x`).

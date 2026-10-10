@@ -12,14 +12,16 @@ import { net } from '../net.js';
 import { store, useStore, shallowEqual, emptyMatch, createStore, isSpectating } from '../store.js';
 import { GIcon } from './gameComponents.js';
 import { GuideButton } from './guide.js';
+import { recordQuit } from './stats.js';
+import { t, tParts, N_ } from '../../../shared/i18n.js';
 
 /**
  * Exit dialog lines. 放弃模拟 (g.leave → room.leave) ends the run on the server as 'abandoned' and returns to the
  * lobby straight away — no settlement screen follows, so the solo text must not promise one.
  */
 export const EXIT_TEXT = Object.freeze({
-  soloRest: '独立模拟的休整期没有时间限制，你可以随时继续。',
-  soloQuit: '放弃模拟将立即结束本局并返回大厅，本局进度不会保留，也不会进行结算。',
+  soloRest: N_('独立模拟的休整期没有时间限制，你可以随时继续。'),
+  soloQuit: N_('放弃模拟将立即结束本局并返回大厅，本局进度不会保留，也不会进行结算。'),
 });
 
 /** Local "暂离 / AI 托管" flag (the server keeps no per-client autoplay view). */
@@ -36,18 +38,27 @@ export const awayEnds = (s, prev) => (!!prev?.match?.public && !s?.match?.public
 store.subscribe((s, prev) => { if (awayStore.get().away && awayEnds(s, prev)) awayStore.set({ away: false }); });
 
 /**
- * Leave the match for good (g.leave → room.leave), then drop local room/match state.
+ * Leave the match for good (g.leave → room.leave), then drop local room/match state. The server sends a leaver no
+ * settlement, so the page records the match itself before it is cleared (本机统计, ui/stats.js recordQuit: a 中途退出
+ * entry of the history; it counts only when a round had been cleared) — once the leave went through.
  * @returns {Promise<void>}
  */
 export async function quitMatch() {
+  const before = store.get();
+  let left = false;
   try {
     try { await net.request('g.leave', {}); } catch (err) {
       if (err?.code !== 'NOT_IN_ROOM' && err?.code !== 'WRONG_PHASE' && err?.code !== 'OFFLINE') throw err;
     }
     try { await net.request('room.leave', {}); } catch (err) { if (err?.code !== 'NOT_IN_ROOM' && err?.code !== 'OFFLINE') throw err; }
+    left = true;
   } catch (err) {
     toastError(err);
   } finally {
+    // (a settlement that arrived while the leave was in flight is the match's record already)
+    if (left && !store.get().match.result) {
+      try { recordQuit(before); } catch (err) { console.warn('[stats] quit record failed', err); }
+    }
     store.set({ room: null, match: emptyMatch() });
   }
 }
@@ -67,10 +78,10 @@ export function ExitModal({ open, onClose, solo, onAway }) {
     onClose();
   };
   if (spectator) {
-    return html`<${Modal} open=${open} onClose=${onClose} tone="red" title="离开观战" micro="LEAVE SPECTATING" width="6.8rem"
-      actions=${html`<${Button} variant="secondary" onClick=${onClose}>取消<//>
-        <${Button} variant="danger" icon="exit" loading=${busy === 'quit'} onClick=${quit}>离开观战<//>`}>
-      <div class="exitm"><p>离开观战席并返回大厅，本局模拟不受影响；观战席空着时可以凭同盟密钥再次观战。</p></div>
+    return html`<${Modal} open=${open} onClose=${onClose} tone="red" title=${t('离开观战')} micro="LEAVE SPECTATING" width="6.8rem"
+      actions=${html`<${Button} variant="secondary" onClick=${onClose}>${t('取消')}<//>
+        <${Button} variant="danger" icon="exit" loading=${busy === 'quit'} onClick=${quit}>${t('离开观战')}<//>`}>
+      <div class="exitm"><p>${t('离开观战席并返回大厅，本局模拟不受影响；观战席空着时可以凭同盟密钥再次观战。')}</p></div>
     <//>`;
   }
   const away = async () => {
@@ -80,16 +91,16 @@ export function ExitModal({ open, onClose, solo, onAway }) {
     onClose();
     if (ok) { awayStore.set({ away: true }); onAway?.(); }
   };
-  return html`<${Modal} open=${open} onClose=${onClose} tone="red" title="离开模拟" micro="LEAVE SIMULATION" width="6.8rem"
+  return html`<${Modal} open=${open} onClose=${onClose} tone="red" title=${t('离开模拟')} micro="LEAVE SIMULATION" width="6.8rem"
     actions=${html`
-      <${Button} variant="secondary" onClick=${onClose}>取消<//>
-      ${!solo ? html`<${Button} variant="ice" icon="robot" loading=${busy === 'away'} onClick=${away}>暂离（AI 托管）<//>` : null}
-      <${Button} variant="danger" icon="exit" loading=${busy === 'quit'} onClick=${quit}>放弃模拟<//>`}>
+      <${Button} variant="secondary" onClick=${onClose}>${t('取消')}<//>
+      ${!solo ? html`<${Button} variant="ice" icon="robot" loading=${busy === 'away'} onClick=${away}>${t('暂离（AI 托管）')}<//>` : null}
+      <${Button} variant="danger" icon="exit" loading=${busy === 'quit'} onClick=${quit}>${t('放弃模拟')}<//>`}>
     <div class="exitm">
       ${solo
-        ? html`<p>${EXIT_TEXT.soloRest}</p><p class="t-lo">${EXIT_TEXT.soloQuit}</p>`
-        : html`<p><b class="t-ice">暂离</b>：由 AI 托管你的席位（自动部署、准备与选择），随时可以返回。</p>
-               <p><b class="t-red">放弃模拟</b>：离开后无法返回本局，你的干员将回到共享卡池。</p>`}
+        ? html`<p>${t(EXIT_TEXT.soloRest)}</p><p class="t-lo">${t(EXIT_TEXT.soloQuit)}</p>`
+        : html`<p>${tParts('{away}：由 AI 托管你的席位（自动部署、准备与选择），随时可以返回。', { away: html`<b class="t-ice">${t('暂离')}</b>` })}</p>
+               <p>${tParts('{quit}：离开后无法返回本局，你的干员将回到共享卡池。', { quit: html`<b class="t-red">${t('放弃模拟')}</b>` })}</p>`}
     </div>
   <//>`;
 }
@@ -97,13 +108,13 @@ export function ExitModal({ open, onClose, solo, onAway }) {
 /** Full-screen "AI 托管中" overlay with 返回模拟. */
 export function AwayOverlay({ onBack = () => {} }) {
   const [busy, setBusy] = useState(false);
-  return html`<div class="awayov" role="dialog" aria-label="AI 托管中">
+  return html`<div class="awayov" role="dialog" aria-label=${t('AI 托管中')}>
     <div class="awayov__box brackets">
       <${GIcon} name="robot" class="awayov__icon" />
-      <${MicroLabel} tone="mint">AUTOPILOT // AI 托管</${MicroLabel}>
-      <h2>AI 托管中</h2>
-      <p class="t-lo">AI 正在代为操作你的席位</p>
-      <${Button} variant="primary" size="lg" icon="play" loading=${busy} onClick=${async () => { setBusy(true); const ok = await actions.autoplay(false); setBusy(false); if (ok) { awayStore.set({ away: false }); onBack(); } }}>返回模拟<//>
+      <${MicroLabel} tone="mint">${t('AUTOPILOT // AI 托管')}</${MicroLabel}>
+      <h2>${t('AI 托管中')}</h2>
+      <p class="t-lo">${t('AI 正在代为操作你的席位')}</p>
+      <${Button} variant="primary" size="lg" icon="play" loading=${busy} onClick=${async () => { setBusy(true); const ok = await actions.autoplay(false); setBusy(false); if (ok) { awayStore.set({ away: false }); onBack(); } }}>${t('返回模拟')}<//>
     </div>
   </div>`;
 }
@@ -116,7 +127,7 @@ export function StepHeader({ step, of, title, micro, pub, total, onExit }) {
   const conn = useStore((s) => s.connection, shallowEqual);
   return html`<header class="stephead">
     <div class="stephead__left">
-      <${Button} variant="danger" size="lg" square=${true} icon="exit" onClick=${onExit} aria-label="离开" title="离开" />
+      <${Button} variant="danger" size="lg" square=${true} icon="exit" onClick=${onExit} aria-label=${t('离开')} title=${t('离开')} />
       <div class="stephead__meta">
         <${PingPill} ms=${conn.ping} online=${conn.status === 'online'} />
         ${pub?.difficulty ? html`<${DifficultyTag} difficulty=${pub.difficulty} />` : null}

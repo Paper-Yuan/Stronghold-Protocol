@@ -2,7 +2,8 @@
 // g.move / g.equip, the round loop's SETTLE):
 //   #1 拉普兰德 garrison_123 "<刷新时>若为本回合首次主动刷新，使已激活的【叙拉古】层数+4(+8)，此干员在整备区时也有效": the
 //      players' official behaviour — "获得该干员后该回合的首次刷新" also stacks. The refresh count is the 拉普兰德's own
-//      (each copy counts the manual refreshes it witnessed this round), not the player's.
+//      (each copy counts the manual refreshes it witnessed this round), not the player's; an elite merged this round is a
+//      new 拉普兰德 and starts at 0 (GitHub #169, the owner's decision of 2026-10-06).
 //   #4 昆图斯 突变细胞 "战斗结束后，装备者替换为高一阶的随机干员": the cell is not consumed — the original operator is
 //      destroyed (PRTS 备注 "生效时，原干员销毁，获得一名高一阶的随机初始干员（最高六阶）") and its equipment, the cell
 //      included, returns to the hand, to be equipped again ("之后就是一直打针，扎到核心卡…就换人扎"); then the new operator
@@ -94,7 +95,7 @@ test('#1 players\' scenario: 普罗旺斯 + 德克萨斯 deployed, refresh, buy 
   m.dispose();
 });
 
-test('#1 each copy counts its own refreshes: a bench copy (整备区时也有效) bought later fires on its own first refresh; an elite keeps "already fired"', () => {
+test('#1 each copy counts its own refreshes: a bench copy (整备区时也有效) bought later fires on its own first refresh; an elite merged this round is a new 拉普兰德 (GitHub #169)', () => {
   const s = setup();
   const { m, ps } = s;
   s.activate();
@@ -107,18 +108,20 @@ test('#1 each copy counts its own refreshes: a bench copy (整备区时也有效
   assert.equal(s.L(), 8, 'copy B: its first refresh (A already fired this round)');
   s.refresh();
   assert.equal(s.L(), 8, 'nothing more this round');
-  // the third copy completes the elite: A and B already fired this round, so the elite does not fire again this round
-  // [ASSUMED: conservative — the elite keeps the highest refresh count of its copies]
+  // the third copy completes the elite: a new 拉普兰德 (the owner's decision of 2026-10-06; until 0.2.0 it kept its
+  // copies' count and did not fire again this round) — its own first refresh of the round adds +8
   const elite = s.buy(LAP);
   assert.equal(elite.id, LAP_B, 'merged into the elite');
   assert.ok(!ps.find(a.uid) && !ps.find(b.uid), 'copies consumed');
   s.refresh();
-  assert.equal(s.L(), 8, 'the elite made this round from copies that already fired: no second trigger');
+  assert.equal(s.L(), 8 + 8, 'the elite made this round from copies that already fired: its own first refresh +8');
+  s.refresh();
+  assert.equal(s.L(), 16, 'once');
   s.h.toPrep(2);
   ps.funds = 50;
   s.activate();
   s.refresh();
-  assert.equal(s.L(), 8 + 8, 'R2: the elite fires +8 on the round\'s first refresh');
+  assert.equal(s.L(), 16 + 8, 'R2: the elite fires +8 on the round\'s first refresh');
   checkInvariants(m);
   m.dispose();
 });
@@ -146,6 +149,28 @@ test('#1 an elite merged from copies that had not fired yet this round fires on 
   m.dispose();
 });
 
+test('#1 two white copies refreshed this round, merge, refresh → +8: the newly merged elite is a new 拉普兰德 (GitHub #169; the owner\'s decision of 2026-10-06)', () => {
+  const s = setup();
+  const { m, ps } = s;
+  s.activate();
+  const a = give(m, ps, LAP, 'hand');
+  const b = give(m, ps, LAP, 'hand');
+  s.refresh();
+  assert.equal(s.L(), 8, 'both white copies fire on the refresh they witness: 4 + 4');
+  s.refresh();
+  assert.equal(s.L(), 8, 'each only once');
+  const elite = s.buy(LAP);
+  assert.equal(elite.id, LAP_B, 'the third copy merges');
+  assert.ok(!ps.find(a.uid) && !ps.find(b.uid), 'copies consumed');
+  assert.equal(ps.pieceRoundCount(ps.find(elite.uid).piece, `${KEY}:refreshes`), 0, 'the elite carries no refresh count');
+  s.refresh();
+  assert.equal(s.L(), 16, 'its first manual refresh this round adds +8');
+  s.refresh();
+  assert.equal(s.L(), 16, 'nothing more this round');
+  checkInvariants(m);
+  m.dispose();
+});
+
 test('#1 only manual refreshes count: a re-triggered "刷新时" trait (ctx.triggerGarrisons) neither fires nor uses up her first refresh', () => {
   const s = setup();
   const { m, ps } = s;
@@ -158,6 +183,41 @@ test('#1 only manual refreshes count: a re-triggered "刷新时" trait (ctx.trig
   checkInvariants(m);
   m.dispose();
 });
+
+// PR #196 (the part 0.2.0 lacks): 贾维 【团伙行动】 grants a 叙拉古 operator on every 6th manual refresh from that refresh's
+// own dispatch (band step, before the garrisons). The 拉普兰德 it grants — or the elite its copy completes — is gained
+// after the refresh happened: her "本回合首次主动刷新" is the next manual one. The dispatcher walks the board and hand as
+// they stood when the refresh happened (EffectDispatcher.dispatch onRefresh snapshot); it walked them live, so she fired
+// (and spent her first refresh) in the refresh that granted her. Round counters are not copied on a merge (§25.13.3).
+for (const variant of ['a new copy', 'a copy that completes the elite']) {
+  test(`#1 贾维 refresh gift (${variant}, PR #196): the 拉普兰德 waits for the next manual refresh`, () => {
+    const s = setup();
+    const { m, ps } = s;
+    ps.bandId = 'band_chiave';
+    ps.shop.level = 2;
+    // 贾维's draw (ctx.rollChess on the meta RNG) gives 拉普兰德; the shop rolls stay as they are
+    const roll = m.pool.roll.bind(m.pool);
+    m.pool.roll = (rng, opts = {}) => (rng === m.rngMeta && typeof opts.filter === 'function' && opts.filter(LAP) ? LAP : roll(rng, opts));
+    s.activate();
+    const elite = variant !== 'a new copy';
+    if (elite) { give(m, ps, LAP, 'hand'); give(m, ps, LAP, 'hand'); }
+    for (let i = 0; i < 5; i++) s.refresh();
+    const before = s.L();
+    assert.equal(before, elite ? 8 : 0, 'the copies already owned fire on the round\'s first refresh');
+    assert.ok(!ps.allChess().some((p) => p.id === LAP_B) && ps.allChess().filter((p) => p.id === LAP).length === (elite ? 2 : 0));
+    s.refresh(); // the 6th: 贾维's gift
+    const lap = ps.allChess().find((p) => p.id === (elite ? LAP_B : LAP));
+    assert.ok(lap, elite ? 'the gift completed the elite' : 'the gift is owned');
+    assert.equal(s.L(), before, 'not in the refresh that granted her');
+    s.refresh();
+    assert.equal(s.L(), before + (elite ? 8 : 4), 'her first manual refresh is the next one');
+    s.refresh();
+    assert.equal(s.L(), before + (elite ? 8 : 4), 'once a round');
+    assert.equal(m.dispatcher.errors, 0);
+    checkInvariants(m);
+    m.dispose();
+  });
+}
 
 // ---------------------------------------------------------------------------------------------------------------------
 // #4 突变细胞

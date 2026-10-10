@@ -23,12 +23,15 @@
 // use 10 … −60) never wastes a charge: 坚固维式重锤's lock (异常效果 不死, once per deployment — deploymentOf) at
 // PRIO_REVIVE −100 and its running windows, held by one battle-level hook, at PRIO_UNDYING_HELD −99 — before a 傀儡师's
 // switch to its 替身 (professions.js, −100: PRTS 分支特性信息 傀儡师 "受到足以致命的伤害且未持有不死的情况下"), while the
-// lock itself still comes after that switch (as in 0.1.1); then the M3茧甲 revive at PRIO_RESPAWN −101 — PRTS
-// 卫戍协议：盟约 下半/PRTS盟约记录 备注 "“复活”的实现方式为：受益者因移动之外的原因退场时下次部署的再部署时间和费用归零": a
-// revive acts on a knock-out, which a 不死 prevents, so the lock always comes first whatever the equip order (player
-// report F1 after 0.1.0: with the 茧甲 equipped first the revive ran first and the first lethal hit showed no lock);
-// 埃芒加德's band revive follows (bands/battle.js PRIO_BAND_REVIVE −110). Both revives stand in place for that redeploy,
-// so each opens a new deployment for the lock (revivedInPlace).
+// lock itself still comes after that switch (as in 0.1.1). The 复活 — M3茧甲 here, 埃芒加德's band (bands/battle.js) —
+// act on the knock-out itself: PRTS 卫戍协议：盟约 下半/PRTS盟约记录 备注 "“复活”的实现方式为：受益者因移动之外的原因退场时下
+// 次部署的再部署时间和费用归零" — the unit IS knocked out (its `death` hooks, every 被击倒时 effect, run) and its next
+// deployment, at once, free, where it lies, is a deployment like any other (部署时 effects, SP reset, a new lock): a
+// `death` hook at PRIO_RESPAWN 13, then 埃芒加德 12 (PRIO_BAND_REVIVE), ahead of 阿戈尔 5's first-knock-out revive (11)
+// and 不屈 (10) — reviveNow. A 不死 prevents the knock-out, so the lock always comes first whatever the equip order (player
+// report F1 after 0.1.0: with the 茧甲 equipped first the revive ran first and the first lethal hit showed no lock). Until
+// 0.2.0 both revived in place (`fatal` savers at −101 / −110): no 被击倒时 / 部署时 effect fired (community report
+// 「像砾和瑕光这种死亡和部署的叠层效果，如果有艾芒加德的3次复活似乎是无法触发」).
 // 骑士戒律's free in-skill undying runs early (20). Flat damage reduction 'hit' −10 (after the other damage modifiers).
 // Proc damage dealt by items carries the tag 'item' and never re-triggers item procs.
 //
@@ -44,6 +47,7 @@ import {
   alliesAround, passiveBuff, fxOn, battleStore, contentInfo, itemsOf, directMods,
 } from '../support/index.js';
 import { mitigate, hasHp, periodicDamage, isHpLoss } from '../../damage.js';
+import { hypot } from '../../detmath.js';
 
 // =====================================================================================================================
 // data helpers
@@ -69,8 +73,11 @@ const ENEMY_RECORD = /^enemy_/;
 export const PRIO_REVIVE = -100;
 /** A running 坚固 window (不死 held): before a 傀儡师's switch to its 替身 at −100 — see header. */
 export const PRIO_UNDYING_HELD = PRIO_REVIVE + 1;
-/** The items' 复活 (M3茧甲): acts on a knock-out, so after every 不死 (PRIO_REVIVE) — see header. */
-export const PRIO_RESPAWN = PRIO_REVIVE - 1;
+/**
+ * 'death' priority of the items' 复活 (M3茧甲): it acts on the knock-out, so after every `fatal` saver (不死 included) —
+ * before 埃芒加德 (12), 阿戈尔 5's revive (11) and 不屈 (10). See header and reviveNow.
+ */
+export const PRIO_RESPAWN = 13;
 const PRIO_FREE_UNDYING = 20;
 
 /** Stat keys of a stat buff → mods (直接乘算, see header). */
@@ -238,25 +245,44 @@ function hammerState(battle, rt, u) {
 // 娜仁图亚's 60 s lend) follows the same rule as an owner.
 
 /**
- * The deployment `u` is in: every deploy bumps `deploySeq` (the redeploy after a knock-out, a 突袭 retreat + redeploy
- * [ASSUMED a deployment], 阿戈尔's 立刻复活), and an in-place 复活 (M3茧甲, 埃芒加德: revivedInPlace) opens a new one too
- * [ASSUMED] — PRTS (M3茧甲 / 埃芒加德 / 阿戈尔 备注) "“复活”的实现方式为：受益者因移动之外的原因退场时下次部署的再部署时间和
- * 费用归零": officially a revive is a 0-time / 0-cost redeploy; the remake keeps the unit standing instead.
- * Also read by 阿戈尔's devour (bonds/core.js): a unit whose deployment changed during the pass was knocked out.
+ * The deployment `u` is in: every deploy bumps `deploySeq` — the redeploy after a knock-out, a 突袭 retreat + redeploy
+ * [ASSUMED a deployment], 阿戈尔's 立刻复活 and every 复活 (M3茧甲, 埃芒加德: reviveNow — PRTS "“复活”的实现方式为：受益者因移动
+ * 之外的原因退场时下次部署的再部署时间和费用归零", a 0-time / 0-cost redeploy; in place until 0.2.0, when an extra counter
+ * opened the new deployment). Also read by 阿戈尔's devour (bonds/core.js): a unit whose deployment changed during the
+ * pass was knocked out.
  */
-export function deploymentOf(u) { return `${u.deploySeq}:${u.mem.revives | 0}`; }
+export function deploymentOf(u) { return `${u.deploySeq}`; }
 
-/** An in-place 复活 (M3茧甲, 埃芒加德) happened: a new deployment for the once-per-deployment lock (deploymentOf). */
-export function revivedInPlace(u) { if (u && u.mem) u.mem.revives = (u.mem.revives | 0) + 1; }
+/**
+ * A 复活 answering a knock-out — call from a `death` hook (M3茧甲 PRIO_RESPAWN, 埃芒加德 PRIO_BAND_REVIVE). PRTS 备注
+ * "“复活”的实现方式为：受益者因移动之外的原因退场时下次部署的再部署时间和费用归零": the operator was knocked out (this death;
+ * its 被击倒时 effects run) and redeploys at once, free, where it lies (Battle.redeploy: full HP, SP reset, `deploy` —
+ * its 部署时 effects run). True when it stands again; the ctx then carries `revivedBy`, so 阿戈尔 5 does not count the
+ * knock-out as the member's first (the owner's decision of 2026-10-05: an operator's own revive uses no slot; 埃芒加德
+ * [ASSUMED] alike, DESIGN §24.3). A redeploy that cannot happen (its tile taken) spends nothing [ASSUMED].
+ * @param {object} battle @param {{ unit: object, reason: string, revivedBy?: string }} c the `death` ctx @param {string} by
+ */
+export function reviveNow(battle, c, by) {
+  const u = c && c.unit;
+  if (!u || c.reason !== 'killed' || c.revivedBy || !isOp(u) || u.alive || u.removed) return false;
+  if (!battle.redeploy(u, { free: true })) return false;
+  c.revivedBy = by;
+  return true;
+}
 
 /**
  * Does `u` hold 坚固维式重锤's 不死 right now — a window started in this deployment that has not run out? The window lives
  * on the unit (`mem.undyingUntil`, `mem.undyingAt`) and a battle-level hook holds it (hammerAcquire), so it outlives the
  * grant that started it — a lend running out mid-window leaves the 不死 for its 8 s [ASSUMED: the 异常效果 outlasts its
- * source] — and ends with the deployment. 信仰搅拌机 S2 steps aside while it holds (kits/tier4.js).
+ * source] — and ends with the deployment. 信仰搅拌机 S2 steps aside while it holds (kits/ops/chess_char_4_01-rmixer.js).
+ * A content 不死 window counts too: a buff with the flag `undying` (淬羽赫默 S3 无畏者协议, kits/ops/op-slent2.js — its own
+ * battle-level hook holds it), so the savers that do not spend themselves while a 不死 holds ("_dontConsumeWhenUndeadable":
+ * 左乐, 莱恩哈特, 信仰搅拌机) step aside for it as well.
  */
 export function holdsUndying(battle, u) {
-  return !!u && u.mem.undyingAt != null && battle.time < u.mem.undyingUntil && u.mem.undyingAt === deploymentOf(u);
+  if (!u) return false;
+  if (u.mem.undyingAt != null && battle.time < u.mem.undyingUntil && u.mem.undyingAt === deploymentOf(u)) return true;
+  return !!(u.s && u.s.flags.undying);
 }
 /** Effective multiplier of a hammer type on `u` and its params (null when the type does not apply). */
 function hammerMul(battle, rt, u, hs, type) {
@@ -440,7 +466,7 @@ const BY_ITEM = {
     const r = num(p.radius, 3), sc = num(p.damage_scale, 1);
     S.on('hit', (c) => {
       if (c.source !== u || !c.target || c.target.side !== 'enemy' || c.dmg.type === 'element') return;
-      if (Math.hypot(c.target.x - u.x, c.target.y - u.y) >= r - 1e-6) c.dmg.mul *= sc;
+      if (hypot(c.target.x - u.x, c.target.y - u.y) >= r - 1e-6) c.dmg.mul *= sc;
     });
   },
   // 炎国短刀: each skill activation +atk (≤ atk_buff_cnt stacks) — one 直接乘算 bonus of atk × stacks
@@ -597,21 +623,18 @@ const BY_ITEM = {
       if (addShieldLayer(battle, c.target, SHIELD_KEY, cap)) fxOn(battle, 'shield', c.target, 'item:chess_item_4_11_e', rec.id);
     });
   },
-  // M3茧甲: knocked down in battle ⇒ revive at full HP (max_respawn_cnt per battle), in place — PRTS's form (退场, then a
-  // 0-time / 0-cost redeploy) is not modelled, but it counts as a new deployment for 坚固维式重锤's lock (revivedInPlace)
+  // M3茧甲: knocked down in battle ⇒ 立刻复活 (max_respawn_cnt per battle) — PRTS's form: the knock-out stands (its
+  // 被击倒时 effects run) and the carrier redeploys at once, free, where it lies (reviveNow; in place until 0.2.0)
   chess_item_4_12_e(battle, u, rec, S) {
     const p = bp(rec, 'act1autochess_equip_acarm068_global_buff');
     const max = p ? Math.floor(num(p.max_respawn_cnt, 1)) : 0;
     if (!(max > 0)) return;
     let used = 0;
-    S.on('fatal', (c) => {
-      if (c.unit !== u || c.prevented || used >= max) return;
+    S.on('death', (c) => {
+      if (c.unit !== u || used >= max || !reviveNow(battle, c, 'item')) return;
       used++;
-      c.prevented = true;
-      u.hp = u.s.maxHp;
-      revivedInPlace(u);
       fxOn(battle, 'revive', u, 'item:chess_item_4_12_e', rec.id, { left: max - used });
-    }, PRIO_RESPAWN); // after the hammer's 不死 lock, whatever the equip order (header)
+    }, PRIO_RESPAWN); // a knock-out: after every 不死 (the hammer's lock), whatever the equip order (header)
   },
   // 催泪瓦斯: on attack prob ⇒ 1 麻痹 stack
   chess_item_5_01_e(battle, u, rec, S) {
@@ -712,7 +735,7 @@ const BY_ITEM = {
       }
     });
   },
-  // 黄沙罗盘: 初始技力 +init_sp each deploy; (萨尔贡) first skill end +sp; + 萨尔贡浓茶: each cast all 萨尔贡 +addition_sp
+  // 黄沙罗盘 (PRTS: all its SP ignores 阻回): 初始技力 +init_sp each deploy; (萨尔贡) first skill end +sp; + 萨尔贡浓茶: each cast all 萨尔贡 +addition_sp
   chess_item_6_07_e(battle, u, rec, S) {
     const p = bp(rec, 'act1autochess_equip_acarm103_global_buff');
     if (!p) return;
@@ -726,19 +749,20 @@ const BY_ITEM = {
     S.on('skillEnd', (c) => {
       if (c.unit !== u || firstDone || c.reason === 'death' || !memberOf(battle, u, 'sargonShip')) return;
       firstDone = true;
-      if (u.skill && u.alive) u.skill.gainSp(num(p.sp), 'item');
+      if (u.skill && u.alive) u.skill.gainSp(num(p.sp), 'item', false, { ignoreLock: true });
     });
     S.on('skillStart', (c) => {
       if (c.unit !== u || !partner || !memberOf(battle, u, 'sargonShip') || !carries(battle, u, partner)) return;
       const n = num(p.addition_sp);
       if (!(n > 0)) return;
       for (const a of battle.allyUnits) {
-        if (a.kind === 'op' && a.ownerId === u.ownerId && onField(a) && a.skill && memberOf(battle, a, 'sargonShip')) a.skill.gainSp(n, 'item');
+        if (a.kind === 'op' && a.ownerId === u.ownerId && onField(a) && a.skill && memberOf(battle, a, 'sargonShip')) a.skill.gainSp(n, 'item', false, { ignoreLock: true });
       }
     });
   },
   // 骑士戒律 (卡西米尔): skill start ⇒ 20 s aura: enemies in range ASPD ×attack_speed, move ×move_speed;
   //   + 卡西米尔竞技旗: during the (timed) skill ATK +atk, lethal damage does not retreat it — it retreats when the skill ends
+  //   ("受到致命伤害时不撤退，技能结束后退场": a knock-out put off, so a `dying` retreat — Touch's 超脱 counts it [ASSUMED])
   chess_item_6_10_e(battle, u, rec, S) {
     const p = bp(rec, 'act2autochess_equip_acarm119_global_buff');
     const a = bp(rec, 'act2autochess_equip_acarm119_ability');
@@ -763,7 +787,7 @@ const BY_ITEM = {
       battle.removeBuff(u, comboKey);
       if (doomed && c.reason !== 'death') {
         doomed = false;
-        battle.after(0, () => { if (u.alive) battle.retreat(u, { reason: 'retreat' }); });
+        battle.after(0, () => { if (u.alive) battle.retreat(u, { reason: 'retreat', dying: true }); });
       }
     });
     S.on('fatal', (c) => {

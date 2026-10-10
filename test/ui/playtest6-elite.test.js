@@ -120,7 +120,7 @@ describe('shop bar: the merge tag and the armed card', () => {
     assert.equal(mergeHint(board, golden(A)), null, 'an elite card never merges');
     // the first tap: ShopBar tapCard → onDetail(id, 'chess', mergeHint) → game.js setDetail({ …, hint }) → resolveDetail
     assert.match(read('public/js/ui/shopBar.js'), /setArmed\(key\); onDetail\(slot\.id, detailKind, detailKind === 'chess' \? mergeHint\(priv, slot\.id\) : null\)/);
-    assert.match(read('public/js/screens/game.js'), /onDetail=\$\{\(id, kind, hint\) => setDetail\(\{ kind: kind === 'item' \? 'item' : 'chess', id, hint: hint \|\| null \}\)\}/);
+    assert.match(read('public/js/screens/game.js'), /onDetail=\$\{\(id, kind, hint\) => setDetail\(\{ kind: kind === 'item' \? 'item' : 'chess', id, hint: hint \|\| null(?:, tap: \+\+cardTap\.current)? \}\)\}/);
     const r = resolveDetail({ kind: 'chess', id: A, hint: mergeHint(board, A) }, new Map());
     assert.equal(r.hint, '精锐干员将出现在作战区原位置');
     const blocks = ChessDetail({ chess: r.chess, piece: null, editable: false, bonds: [], loadout: null, hint: r.hint });
@@ -171,6 +171,6 @@ describe('shop bar: the merge tag and the armed card', () => {
     assert.match(src, /onArm=\$\{setArmedCard\}/, 'ShopBar reports the armed card');
     assert.match(src, /mergeTarget\(priv, armedCard\.id, gd\.chess\)/, 'the target comes from gameLogic.mergeTarget');
     assert.match(src, /view\.highlightTiles\(mergeAt \? \[\[mergeAt\.row, mergeAt\.col\]\] : \[\], MERGE_HL\)/, 'its own highlight group (cleared with [])');
-    assert.match(src, /const MERGE_HL = Object\.freeze\(\{ group: 'mergeTile'/);
+    assert.match(read('public/js/screens/game/marks.js'), /const MERGE_HL = Object\.freeze\(\{ group: 'mergeTile'/);
   });
 });

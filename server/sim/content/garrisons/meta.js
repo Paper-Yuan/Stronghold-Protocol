@@ -13,7 +13,7 @@
 // Decisions (documented, see research 02 §4 / 03 §5.5):
 //   * "同一行有3名干员" / "同一行每有1名干员" count the trait's owner (board chess of that row, self included).
 //   * POSITION "使自身及身后/身前一格干员的已激活盟约分别各层数+N": per target operator (a shared bond gets +N twice).
-//   * 瑰盐 "优先…更靠上的和更靠右的": highest row first (DESIGN §3.1: row 0 is the bottom), then highest column.
+//   * 瑰盐 "优先…更靠上的和更靠右的": highest row first (DESIGN §3: row 0 is the bottom), then highest column.
 //   * 购买价格为N (SERVER_CHESS_PRICE): bb.price is a discount off the tier price — 至简 (Ⅲ, 3) has 2 → 1, 红豆 (Ⅰ, 2)
 //     has 1 → 1, exactly the N both official texts give (user playtest #5: 至简 costs 1). The dispatcher runs it before
 //     every other onPrice modifier, so 远见's discount (to 0 at 150 layers since 0.1.3) and strategy caps act on the
@@ -22,8 +22,9 @@
 //     of any tier (the text gives no tier cap); a bond without an available chess falls through to the next tied one.
 //   * [ASSUMED] 松果: the "免费特殊招募" is a free pick-one offer of `rewardOffer.count` (3) chess of the pool's tier.
 //   * 拉普兰德 SERVER_GAIN_BOND_LAYER_BY_REFRESH_CNT "若为本回合首次主动刷新": per copy — the first manual refresh this
-//     operator witnesses in the round (players' report after 0.1.0); [ASSUMED] an elite merged this round keeps its
-//     copies' count, and a copy bought after selling one this round is a new copy (fires on its own first refresh).
+//     operator witnesses in the round (players' report after 0.1.0); an elite merged this round is a new 拉普兰德 and
+//     fires +8 on its own first one (GitHub #169, the owner's decision of 2026-10-06); [ASSUMED] a copy bought after
+//     selling one this round is a new copy (fires on its own first refresh).
 //     "本回合每刷新过1次" (SERVER_ADD_REFRESH_CNT_MULTIPLIER_BOND_LAYER, 阿罗玛 / 安洁莉娜 / 售出时)
 //     fires on another event and reads the player's refreshes of the round (roundStats), like 本回合每获得过 / 每花费.
 
@@ -198,11 +199,14 @@ H.SERVER_ADD_REFRESH_CNT_MULTIPLIER_BOND_LAYER = {
 // refreshes this copy witnessed this round (board or hand), so a 拉普兰德 bought after the round's first refresh still
 // fires on the next one (players' report after 0.1.0: "获得该干员后该回合的首次刷新" also stacks — the official behaviour;
 // read as each trait instance counting its own SERVER_REFRESH_SHOP triggers against bb.refresh_cnt). A re-triggered trait
-// (ev.trigger) is no manual refresh: it neither fires nor counts. A new copy (bought, granted) starts at 0. [ASSUMED]:
-// the copies of an elite merged this round pass on their highest count (PlayerState.pieceRoundCount — no second trigger
-// that round, conservative); a copy bought after selling one this round is a new copy — "获得该干员后" — and fires on its
-// own first refresh (the server cannot tell it from any other copy; each such +4 costs her price + a refresh − the
-// 1-fund refund, and needs her in the shop again).
+// (ev.trigger) is no manual refresh: it neither fires nor counts. A new copy (bought, granted) starts at 0, and so does
+// an elite merged this round: a new 拉普兰德, its own first manual refresh this round adds +8 even when its copies
+// already fired (GitHub #169; the owner's decision of 2026-10-06 — PlayerState._mergeChess carries no counter over).
+// A copy gained by a refresh's own effects (贾维's gift on every 6th refresh, or the elite that gift completes) did not
+// witness that refresh: the dispatcher runs the chess that stood there when it happened (effectsMeta.js onRefresh), so
+// her first is the next manual refresh (PR #196). [ASSUMED]: a copy bought after selling one this round is a new copy — "获得该干员后" — and fires on its own first
+// refresh (the server cannot tell it from any other copy; each such +4 costs her price + a refresh − the 1-fund refund,
+// and needs her in the shop again).
 const REFRESH_CNT_KEY = 'garrison:SERVER_GAIN_BOND_LAYER_BY_REFRESH_CNT:refreshes'; // per-piece counter (module-prefixed)
 H.SERVER_GAIN_BOND_LAYER_BY_REFRESH_CNT = {
   onRefresh(ctx, ev) {
@@ -364,7 +368,7 @@ export function triggerGainEffects(ctx, piece) {
 
 // 铃兰 60_a: "<进入休整期时>触发身前一格的其他干员的“获得时”类效果" (scope front)
 // 瑰盐 82: "<售出时>触发场上一名拥有“休整期结束时”的干员的特质（优先触发部署位置更靠上的和更靠右的）" (scope farright).
-// DESIGN §3.1: row 0 is the bottom, so "更靠上" = the highest row; then the highest column ("更靠右").
+// DESIGN §3: row 0 is the bottom, so "更靠上" = the highest row; then the highest column ("更靠右").
 H.SERVER_TRIGGER_ANOTHER = {
   run(ctx) {
     const { bbStr } = ctx.source;

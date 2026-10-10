@@ -14,6 +14,7 @@
 
 import { GEO } from '../../../shared/constants.js';
 import { attackRangeGrid } from '../../../shared/loadoutRecord.js';
+import { N_ } from '../../../shared/i18n.js';
 
 export const DIRS = Object.freeze(['UP', 'RIGHT', 'DOWN', 'LEFT']);
 export const DEFAULT_DIR = 'RIGHT';
@@ -29,7 +30,7 @@ export const DIR_VEC = Object.freeze({
 });
 
 /** Chinese label (for aria / tooltips). */
-export const DIR_LABEL = Object.freeze({ UP: '上', RIGHT: '右', DOWN: '下', LEFT: '左' });
+export const DIR_LABEL = Object.freeze({ UP: N_('上'), RIGHT: N_('右'), DOWN: N_('下'), LEFT: N_('左') });
 
 /** Normalise any direction spelling ('up', 'Right', 1/−1 facing) to UP|RIGHT|DOWN|LEFT; unknown → `fallback`. */
 export function normDir(d, fallback = DEFAULT_DIR) {

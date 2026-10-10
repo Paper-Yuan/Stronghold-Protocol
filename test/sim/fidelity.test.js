@@ -222,7 +222,7 @@ test('generic text rules: 泡泡 stops attacking; 小满 sleeps ≤3 enemies onc
 });
 
 test('generic element: 塑心 charges add 85 % ATK of 凋亡 (apoptosis) damage to the gauge', () => {
-  // the generic kit's numbers (tier6.js has a hand-written 塑心 kit whose talent amplifies apoptosis in range)
+  // the generic kit's numbers (kits/ops/chess_char_6_09-cello.js is a hand-written 塑心 kit whose talent amplifies apoptosis in range)
   const h = makeBattle({ defs: { enemies: { enemy_dummy: dummy() } }, units: [{ chessId: 'chess_char_6_09_a', row: 10, col: 4 }], enemies: [{ key: 'enemy_dummy', pos: [10, 6] }], timeLimit: 60, content: 'generic' });
   const u = h.unit('chess_char_6_09_a');
   assert.ok(h.runUntil(() => u.skill.activations >= 1 && h.enemy('enemy_dummy').elem.apoptosis > 0, 40));
@@ -298,7 +298,12 @@ test('real data: R5 template on act1 m04 (crates) with a real lineup runs to the
   assert.ok(h.b.allyUnits.some((u) => u.kind === 'device'), 'm04 crates present');
   const r = h.result();
   const p = r.perPlayer.p1;
-  assert.equal(p.killed + p.leaked.filter((l) => l.counted).length, p.total, 'every counted enemy is killed or leaked');
+  // the capsule identity (PR #157): this round's own scheduled enemies are all 已解决 — knocked down or leaked. It
+  // replaces `killed + counted leaks = total`, which mixed the counted reading (runtime splits / summons included) with
+  // the scheduled denominator: `killed` may now exceed `total`, so only `≥` holds for it, while the capsule pair is exact
+  assert.ok(p.killed + p.leaked.filter((l) => l.counted).length >= p.total, 'every counted enemy is killed or leaked');
+  assert.equal(p.killedInTotal + p.leakedInTotal, p.total, 'the capsule is full: killedInTotal + leakedInTotal = total');
+  assert.equal(p.resolved, p.total);
 });
 
 test('generic kit never throws and yields finite numbers for every real chess (normal & elite)', () => {

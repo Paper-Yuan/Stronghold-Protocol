@@ -78,9 +78,11 @@
   --lv-6: #5d341e;
 
   /* type */
-  --font-cjk: 'Noto Sans SC', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Source Han Sans SC', 'Noto Sans CJK SC', sans-serif;
-  --font-num: 'Bender', 'Rajdhani', 'Oxanium', 'Noto Sans SC', 'PingFang SC', 'Microsoft YaHei', sans-serif;
-  --font-display: 'Novecento', 'Novecento Wide', 'Oxanium', 'Rajdhani', 'Noto Sans SC', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  /* the Han / Hangul faces follow <html lang> (ui/lang.js htmlLang; the :lang() rules below): Simplified Chinese by default */
+  --cjk-faces: 'Noto Sans SC', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Source Han Sans SC', 'Noto Sans CJK SC';
+  --font-cjk: var(--cjk-faces), sans-serif;
+  --font-num: 'Bender', 'Rajdhani', 'Oxanium', var(--cjk-faces), sans-serif;
+  --font-display: 'Novecento', 'Novecento Wide', 'Oxanium', 'Rajdhani', var(--cjk-faces), sans-serif;
   --font-mono: 'Bender', 'Oxanium', ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
 
   /* motion */
@@ -105,6 +107,12 @@
   --bk-w: 2px;
 }
 
+/* Language packs (docs/I18N.md): the same characters take their own glyph forms per language — Japanese kanji,
+   Traditional Chinese, a Korean face for Hangul (each stack falls back to the Simplified Chinese faces). */
+:root:lang(ja) { --cjk-faces: 'Noto Sans JP', 'Hiragino Sans', 'Hiragino Kaku Gothic ProN', 'Yu Gothic UI', 'Yu Gothic', 'Meiryo', 'Noto Sans CJK JP', 'Noto Sans SC', 'Microsoft YaHei'; }
+:root:lang(ko) { --cjk-faces: 'Noto Sans KR', 'Apple SD Gothic Neo', 'Malgun Gothic', 'Noto Sans CJK KR', 'Noto Sans SC', 'Microsoft YaHei'; }
+:root:lang(zh-TW) { --cjk-faces: 'Noto Sans TC', 'PingFang TC', 'Microsoft JhengHei', 'Noto Sans CJK TC', 'Noto Sans SC', 'Microsoft YaHei'; }
+
 /* ---- root scale ----------------------------------------------------------------------------- */
 html {
   font-size: clamp(24px, min(calc(100vw / 19.2), calc(100vh / 10.8)), 240px);
@@ -117,6 +125,22 @@ html {
   background: var(--bg-0);
 }
 
+/* ---- text root: 设置 →「文字大小」 ---------------------------------------------------------------
+   1rem above is the LAYOUT root, and five modules convert it to pixels with getComputedStyle:
+   ui/fieldHost.js hudPadding / hudBands (the prep camera's HUD clearance), ui/gameLogic/panel.js
+   panelSlots (which side the detail card docks), ui/underframe.js (the tile labels' pixel budget) and
+   ui/fallbackField.js (the DOM board) — raising it would move the board, not just the text.
+   --t is the TEXT root: it appears only in font-size declarations, so a player can enlarge the
+   interface text without touching any layout. The field itself is sized from host.clientWidth /
+   clientHeight (render/app.js), which no font-size can reach.
+   小 = 1rem reproduces the design's own sizes exactly, on every device. The other steps keep the
+   desktop gentle and lift the phone: 1rem there is clamped at 40 px by the rule above, which is what
+   made the .18rem body text 7.2 CSS px. */
+:root { --t: 1rem; }
+:root[data-text="md"] { --t: max(1rem, 64px); }
+:root[data-text="lg"] { --t: max(calc(1rem * 1.15), 76px); }
+:root[data-text="xl"] { --t: max(calc(1rem * 1.3), 88px); }
+
 *, *::before, *::after { box-sizing: border-box; }
 
 body {
@@ -126,7 +150,7 @@ body {
   background: var(--bg-0);
   color: var(--text-hi);
   font-family: var(--font-cjk);
-  font-size: .18rem;
+  font-size: calc(.18 * var(--t));
   line-height: 1.5;
   font-weight: 400;
   -webkit-font-smoothing: antialiased;
@@ -162,7 +186,7 @@ h1, h2, h3, h4, p { margin: 0; }
 .display { font-family: var(--font-display); text-transform: uppercase; letter-spacing: .12em; }
 .micro {
   font-family: var(--font-display);
-  font-size: .11rem;
+  font-size: calc(.11 * var(--t));
   line-height: 1.2;
   letter-spacing: .18em;
   text-transform: uppercase;

@@ -1,7 +1,7 @@
 // User playtest #6 items 1 and 2 (from a friend): 凯瑟琳's device and 赫默's drone could not be placed by hand. The
 // prep side is test/match/playtest6_summons.test.js; this file is the battle side of the placed pieces
-// (server/sim/content/tokens.js dockSkillSummons / releaseSkillSummon, Battle.start `deferDeploy`, kits tier2 / tier3 /
-// tier4, the 爬行号·防护单元 token kit):
+// (server/sim/content/tokens.js dockSkillSummons / releaseSkillSummon, Battle.start `deferDeploy`, the summoner
+// kits in kits/ops/, the 爬行号·防护单元 token kit):
 //   * PRTS 卫戍协议/帮助 §作战阶段: the board summons deploy after the operators; "若战场区初始部署有召唤物，若召唤物在
 //     战斗期间退场，将在满足条件后立即原地再部署1个" — a placed piece marks the tile its summon deploys on;
 //   * a skill's summon (赫默 医疗探机, 巫恋 诅咒娃娃: "获得一个…") deploys once on its tile at the battle start, for free

@@ -1,0 +1,508 @@
+{
+  "mod": "fanpack",
+  "name": "同人内容包",
+  "version": "1.0.0",
+  "app": "0.2.1",
+  "pack": "fanpack",
+  "upstream": "v0.2.1",
+  "generator": "tools/mod-bundle.mjs",
+  "builtAt": "2026-10-08T17:54:32.980Z",
+  "files": [
+    {
+      "path": "shared/packs.js",
+      "kind": "overlay",
+      "sha256": "dd802d005621431c35452faf3e886572c10cba0be5d2496687112d68f74ee973",
+      "size": 17393,
+      "original": {
+        "sha256": "958374b9512f2178f2a4e2834bcf6e73bee3638b4e0e6eb747d8543d9f00e37f",
+        "size": 16561
+      }
+    },
+    {
+      "path": "shared/customContent.js",
+      "kind": "new",
+      "sha256": "85b190a4e15e3e943c75358f8e90b585f2be1a8204a7a5ce6d93e0ee7a7206ff",
+      "size": 8105
+    },
+    {
+      "path": "server/packs.js",
+      "kind": "overlay",
+      "sha256": "0570c4ea75611d69d126af5123bb5c6ace719b54bba852a25b174fc16a426f74",
+      "size": 13573,
+      "original": {
+        "sha256": "c2c64d4c8ff5ff2d379d88e0140e3fec19b2adda9f038457eb43f285d6f15c74",
+        "size": 12325
+      }
+    },
+    {
+      "path": "server/data.js",
+      "kind": "overlay",
+      "sha256": "50bc806b6b8a1ef4678301ebaf128f92a16c4da9ba53ad787393fc9fd900ac00",
+      "size": 12681,
+      "original": {
+        "sha256": "61f37e5c49de8f76dabd10ffe9b53858db56d39a9f0a691b2e81766e2501b57e",
+        "size": 7705
+      }
+    },
+    {
+      "path": "server/http/static.js",
+      "kind": "overlay",
+      "sha256": "8a8d7a7001e031661fad8ff8a3b56406f0cb677d932467607d01aa695c1ba1f3",
+      "size": 12336,
+      "original": {
+        "sha256": "f5e0b5e740e40980d6cec5a56c8236348c8bc2431063e475d997bedce5f12379",
+        "size": 10327
+      }
+    },
+    {
+      "path": "server/http/files.js",
+      "kind": "overlay",
+      "sha256": "16397bcb9c5cdf4f96e7aa8962ab7622f305ff609f7f95eb80d529b3cd774646",
+      "size": 10859,
+      "original": {
+        "sha256": "bd5dd9f6edb9e54659af8b52ca46ba969b1402011ae25f09feab0b22535d94b0",
+        "size": 10013
+      }
+    },
+    {
+      "path": "server/sim/content/index.js",
+      "kind": "overlay",
+      "sha256": "99119093364d160332a72d9b975aae21ac329e0f520e2fe678caa798bebc299d",
+      "size": 16300,
+      "original": {
+        "sha256": "91ae24d8a34918976497230b8038b6b413eba6b44f405652a3e0f0588d4f48a3",
+        "size": 15139
+      }
+    },
+    {
+      "path": "server/sim/content/bonds.js",
+      "kind": "overlay",
+      "sha256": "fbaf15cc2f3c6a7ff8e392d219a981e4c5d29007ae445e26090a1f59c1599066",
+      "size": 2081,
+      "original": {
+        "sha256": "efb8599a69feee06d2efa4ffeaf30783e3a650ed474359b4d37f42122acd8f89",
+        "size": 2015
+      }
+    },
+    {
+      "path": "server/sim/content/garrisons.js",
+      "kind": "overlay",
+      "sha256": "62c95d4e27f5523c645178748e9901dd976348859e153692a8af23e2f636bead",
+      "size": 921,
+      "original": {
+        "sha256": "39d01a4cfc45d96d40adffc923a4048558ae1be9cf851265c31a64bf4e96dd06",
+        "size": 551
+      }
+    },
+    {
+      "path": "server/sim/content/support/index.js",
+      "kind": "overlay",
+      "sha256": "81676218833d4f90b43c9b6f40ae6d048c5c47e8eb3018add1c77599fc9e4ed6",
+      "size": 18883,
+      "original": {
+        "sha256": "73a1d842cc5f65a8fb36ea372077e24d7d893f597eb2cd87bca2357697dfd5cf",
+        "size": 18630
+      }
+    },
+    {
+      "path": "server/sim/content/support/meta.js",
+      "kind": "overlay",
+      "sha256": "e883ab2c06d778a179c513b05bd1320fdf1611cdcb740bbde973b8e6ecf76b9b",
+      "size": 4259,
+      "original": {
+        "sha256": "49441030e60d30c88686b13b4fd1f074c4246630d1fc3376f273e9f3cf5003c0",
+        "size": 4139
+      }
+    },
+    {
+      "path": "server/sim/content/bonds/custom.js",
+      "kind": "new",
+      "sha256": "348e7e0109f56349e2a4d94de65eaf5cdc01608c8b468f8099b26b05364436bc",
+      "size": 17123
+    },
+    {
+      "path": "server/sim/content/garrisons/custom.js",
+      "kind": "new",
+      "sha256": "3f988cd611eac473eba49ee2186938c3d66c04da82c910599968fa0d326d5ba5",
+      "size": 16246
+    },
+    {
+      "path": "server/sim/content/kits/custom.js",
+      "kind": "new",
+      "sha256": "1fdbc92895a4a01633dcd013f704a477270c13d145291b6f6c8c71208a1496be",
+      "size": 73195
+    },
+    {
+      "path": "server/sim/content/tokens.js",
+      "kind": "overlay",
+      "sha256": "29e14121bd3738f378b1710e27324f11bd41f1669bcbabd3b7ed51825dab3621",
+      "size": 106678,
+      "original": {
+        "sha256": "414db8c4487690f5898e5b7581f94dde2c8c3ed50998f85696de71143798b1d4",
+        "size": 104195
+      }
+    },
+    {
+      "path": "server/sim/ai.js",
+      "kind": "overlay",
+      "sha256": "e63baf7b335a4ec1e0a9c75a0931406c437775c924484c5ef9ecce4a20fbd1d3",
+      "size": 51644,
+      "original": {
+        "sha256": "34686a35fe91c9bfcf09b564d10376a7df845124edf2d0f55f2792bcf62ccd2e",
+        "size": 51127
+      }
+    },
+    {
+      "path": "server/sim/buffs.js",
+      "kind": "overlay",
+      "sha256": "85b792ea5a487f069f09b057bb3f7e5bb9b6c5e4fdea95a74f5f23ab179c83df",
+      "size": 14618,
+      "original": {
+        "sha256": "b977fa70fc6a3ec4f9a687ed4f4dcdd80f94330c0a37cfcd7fd95e25b4feed79",
+        "size": 14377
+      }
+    },
+    {
+      "path": "server/sim/damage.js",
+      "kind": "overlay",
+      "sha256": "9fbb219a9d0d7630effe73f37aeb884518f14aa7c59d308240cf636539b83886",
+      "size": 35880,
+      "original": {
+        "sha256": "8244806a2b5f46ed63c2546caa40630a0343090cc6d21b45e0f2e4eeb72fcadd",
+        "size": 35552
+      }
+    },
+    {
+      "path": "server/match/pool.js",
+      "kind": "overlay",
+      "sha256": "22bf8930326a40b28b0f9a9948f9249098e827d6aed0625e3913b4182491de7c",
+      "size": 8565,
+      "original": {
+        "sha256": "27bd30c3a2ccedc6192ea0170df38cbbecb42de4a381f8b1ce8a964a8a5ffeb8",
+        "size": 7304
+      }
+    },
+    {
+      "path": "server/match/bondsMeta.js",
+      "kind": "overlay",
+      "sha256": "c6b5b3a43889f0e1a522d3e8e917efa3245cd89fc2cf14d5a43e543cb65503a2",
+      "size": 14125,
+      "original": {
+        "sha256": "6623e5af77e5f9eb3ad06ebfab1c326cd82241c6efe609f5f62bbdddfe5c0334",
+        "size": 12551
+      }
+    },
+    {
+      "path": "server/match/gamedata.js",
+      "kind": "overlay",
+      "sha256": "51d94aa9059fb35cd4551ce74424c6cc285a4b4d6d14bd1e67c33a61bd09993d",
+      "size": 29727,
+      "original": {
+        "sha256": "baa9ea9352cdea8d2ec9f1460ae3c81171f31e81306e9cef265f3e33d4b5d665",
+        "size": 29160
+      }
+    },
+    {
+      "path": "server/match/player/economy.js",
+      "kind": "overlay",
+      "sha256": "d68efa478a92cdcd479998d7be4bb1ea3363b4ff5a65e2b78ea59e1c0110285f",
+      "size": 11086,
+      "original": {
+        "sha256": "4af14dbf2cf258e61f8d7443931ed940e9c81e3b15132b02dad5bef340aecfc0",
+        "size": 10810
+      }
+    },
+    {
+      "path": "public/js/ui/gameLogic/bonds.js",
+      "kind": "overlay",
+      "sha256": "55e04a627e3e4ca10369375680d76efc7bea718eecdd251f1d3ebefe7dfa17ae",
+      "size": 20621,
+      "original": {
+        "sha256": "6198c085433a967553592fb2887cb05ffde0a0a06c04468e27169a1f6a7280bc",
+        "size": 20268
+      }
+    },
+    {
+      "path": "public/js/ui/assetUrls.js",
+      "kind": "overlay",
+      "sha256": "7b22d67f4581766a1d6560b73a3ce7a29c8d7e02daab1d27e060d933a0244b1c",
+      "size": 8484,
+      "original": {
+        "sha256": "2d80fc4ffaf993154cea3032e7615f634c16fc98864b3488d8c44ee17b372fe2",
+        "size": 8059
+      }
+    },
+    {
+      "path": "public/js/screens/briefing.js",
+      "kind": "overlay",
+      "sha256": "a1c73dcba90f707aa07bfa446690bd7399f563cf59e93b98bfd88042492d0576",
+      "size": 6641,
+      "original": {
+        "sha256": "158aa4591058aa3ca9dc4a80c0f85198cd42b6aa18b624650efa8b18a8672031",
+        "size": 6388
+      }
+    },
+    {
+      "path": "public/js/screens/room.js",
+      "kind": "overlay",
+      "sha256": "27185eac872677f0aac5ccbc2e2ec18f41aa71cbfb12f5a3829870daa4a3b311",
+      "size": 19443,
+      "original": {
+        "sha256": "25ff0ea11ca3cf5e99014718ee94dedeacae929b691e362eb81229c962cb4706",
+        "size": 19196
+      }
+    },
+    {
+      "path": "public/index.html",
+      "kind": "overlay",
+      "sha256": "d5f84fd4e43fb095de1236f6443d5b42bb81e2129c0afe1868067fc6ed8053db",
+      "size": 6426,
+      "original": {
+        "sha256": "ff77ef3ebd9b90058cf3e397ef1528af50effc1f1cb11c8ee923da44df714ddc",
+        "size": 6304
+      }
+    },
+    {
+      "path": "public/css/screens/equipment.css",
+      "kind": "new",
+      "sha256": "c4063b91aabf001b6354b1f30dcdff79e6b85c192dd821a28808a9dfd98286e4",
+      "size": 4968
+    },
+    {
+      "path": "public/css/screens/alliances.css",
+      "kind": "new",
+      "sha256": "3a3e9c93b3fbef8765a1acbf2e5bb59000e5118dd1cce214228f1a0c067b708e",
+      "size": 7783
+    },
+    {
+      "path": "data/chess.json",
+      "kind": "overlay",
+      "sha256": "39d287d466d7b79b1955b386e324f46755961cb9e6510522c7be8469f77c6678",
+      "size": 1712670,
+      "original": {
+        "sha256": "34338e7cd766981ce43d3e4049d9a60b3d2aea017e00f5cfea8682bcfe54461b",
+        "size": 1712670
+      }
+    },
+    {
+      "path": "data/items.json",
+      "kind": "overlay",
+      "sha256": "59ef4876cf83256791972e92cbc7852d5cfaf0058a0ebfadf4a76b03530305e0",
+      "size": 173821,
+      "original": {
+        "sha256": "6122a3cd75531f551a03082f000426a2d6b8028788fbd1abbaea5286592fbba4",
+        "size": 170806
+      }
+    },
+    {
+      "path": "server/index.js",
+      "kind": "overlay",
+      "sha256": "b8d3176534d350489568ddee34a43e5933af1717f91fedf147df15c33b5a5e89",
+      "size": 12153,
+      "original": {
+        "sha256": "b4d44ac161db9cbf58fb67ee54a7c9bcaf7db244496be63bbe94c5d196acead6",
+        "size": 6932
+      }
+    },
+    {
+      "path": "server/sim/units.js",
+      "kind": "overlay",
+      "sha256": "0d7c521fcec2baab985834ec1a601d55f6aaa50ca4c2d5e9c10d09a79b5f709a",
+      "size": 13302,
+      "original": {
+        "sha256": "b2f88bdfa7994b32d990e071d277298b525cc9dffdf9e2322de3fda040e8543d",
+        "size": 13131
+      }
+    },
+    {
+      "path": "public/js/main.js",
+      "kind": "overlay",
+      "sha256": "96952f6d99a4c31101b0c41c9f781f4ffeec76834073ab1944a184f31cfbfd8b",
+      "size": 19192,
+      "original": {
+        "sha256": "29f9f299a6b162b104c5222bcf4f43e631a79e03b59c8ec2ce6d42b216874a5f",
+        "size": 19030
+      }
+    },
+    {
+      "path": "public/js/screens/lobby.js",
+      "kind": "overlay",
+      "sha256": "cc583b656d6e3b28de2584c5d745f52516e39ec1ae93a5a0add9987e607eba86",
+      "size": 20652,
+      "original": {
+        "sha256": "b1b8d52900bc5d5d6931c75160ab1055e23a37dd1ddebc1077b5e8785d4a28e4",
+        "size": 20401
+      }
+    },
+    {
+      "path": "public/js/screens/loadout.js",
+      "kind": "overlay",
+      "sha256": "834f02a16251c9bdde467afc9f8b92b3c2f659ce294f34714478613fa006410c",
+      "size": 55611,
+      "original": {
+        "sha256": "a1d7f90f59e86bc739bbc1b78ad5d5c6c1feaf4477a61809acb2b190c76b5fb7",
+        "size": 54638
+      }
+    },
+    {
+      "path": "public/js/screens/equipment.js",
+      "kind": "new",
+      "sha256": "51faea67a57244ff278b0a0061eb89ec0a7a09f01a8e08445ff37ce6e7e9a7d9",
+      "size": 17862
+    },
+    {
+      "path": "public/js/screens/alliances.js",
+      "kind": "new",
+      "sha256": "9715dc384407209ba07d6b044b498538d5f66bfab1b18a8f7a47ced893d6e620",
+      "size": 30587
+    },
+    {
+      "path": "public/js/ui/detailPanel.js",
+      "kind": "overlay",
+      "sha256": "4b5a995608a94e19b11e8848ba4637701f313d8dacbf441fa793f88043efdfb9",
+      "size": 62941,
+      "original": {
+        "sha256": "5885e01a840a6acd6144ca883c2072211a48e2ab043a1c96affa2acf8bc57535",
+        "size": 62204
+      }
+    },
+    {
+      "path": "public/css/screens/loadout.css",
+      "kind": "overlay",
+      "sha256": "8b269fe418ee185eabca07e264e2f25cde65f17e1fffa77ddcb26ed0f3d05e09",
+      "size": 47802,
+      "original": {
+        "sha256": "2219990c895dace1c9333d73e2cb51560acc8de47b2fd3fd02179820a6c9535c",
+        "size": 47442
+      }
+    },
+    {
+      "path": "packs/fanpack/README.md",
+      "kind": "new",
+      "sha256": "2b866a06438c198a2b9b201196b8146ea696e8fc26408ced199682c8e398d068",
+      "size": 3874
+    },
+    {
+      "path": "packs/fanpack/art/bond_kazdelShip.png",
+      "kind": "new",
+      "sha256": "c802e8b3a6f092ac88eded8431a2d8f3ded660984bb4c8cf3cde64521a42cf34",
+      "size": 79754
+    },
+    {
+      "path": "packs/fanpack/art/bond_rhodesShip.png",
+      "kind": "new",
+      "sha256": "fe2fb20a355bd719a6fadca62d1bd1964a2cf74d6382bedd0052185df6695c21",
+      "size": 10950
+    },
+    {
+      "path": "packs/fanpack/art/index.json",
+      "kind": "new",
+      "sha256": "ae47af7780935e25b56a300981ee27a054b283ed78e6dd18ecf13a5b7b9d5a08",
+      "size": 531
+    },
+    {
+      "path": "packs/fanpack/art/trap_c_01.png",
+      "kind": "new",
+      "sha256": "59d1701d08f4f0dd76743f705d51018deb547d13ebca2b10b0d0c4fc986ba4e8",
+      "size": 648968
+    },
+    {
+      "path": "packs/fanpack/art/trap_c_02.png",
+      "kind": "new",
+      "sha256": "0dc8b54539fb6bad513acaa644e05a2ea8fb830cdf9e8ae5275eedc52c01dd69",
+      "size": 600539
+    },
+    {
+      "path": "packs/fanpack/art/trap_c_03.png",
+      "kind": "new",
+      "sha256": "63598410807d4052fe63cf99eb2293ea0599ecc1d9907d5e5b35e6ef00c9ddc3",
+      "size": 765928
+    },
+    {
+      "path": "packs/fanpack/art/trap_c_04.png",
+      "kind": "new",
+      "sha256": "6480f754eec1a6f9e5ff9f42054121ad86d623303e6a43ab81003634886b6f61",
+      "size": 923963
+    },
+    {
+      "path": "packs/fanpack/chess.json",
+      "kind": "new",
+      "sha256": "9ba7f1f623fb6e8f6f89ab31d5fe5340bba7c3797870343dacbba928a9867dbd",
+      "size": 288355
+    },
+    {
+      "path": "packs/fanpack/pack.json",
+      "kind": "new",
+      "sha256": "d6a367ccc978df0b47f55d964bcc4b60bc797bd236d652691b99523914c7ed66",
+      "size": 893
+    },
+    {
+      "path": "packs/fanpack/records.json",
+      "kind": "new",
+      "sha256": "449cfb5aa99434f984eec6d03125aa12a645f8afed90b76ff56790536461a71f",
+      "size": 107389
+    },
+    {
+      "path": "packs/fanpack/tokens.json",
+      "kind": "new",
+      "sha256": "695d72e526ecde7a9c944b19573a6d9f69103684acdbf354193de3ecb8d5883a",
+      "size": 29492
+    },
+    {
+      "path": "packs/fanpack/variants.json",
+      "kind": "new",
+      "sha256": "d8e195b0824634e747895fd5ab9152f23977dcc36c3d95c9af1b190a915d68e9",
+      "size": 121097
+    },
+    {
+      "path": "public/i18n/en.json",
+      "kind": "overlay",
+      "sha256": "9265626d4c11c3c593df3b3c3ace787a41d194be89a9d9e6ab4e74e37c4c5b8c",
+      "size": 75021,
+      "original": {
+        "sha256": "61c036e1077c0f0b0e2cba424692ec9f94dc3e4ccf34162f23d1be99d1dced43",
+        "size": 71103
+      }
+    },
+    {
+      "path": "public/i18n/ja.json",
+      "kind": "overlay",
+      "sha256": "eb96a26fa6faef49adde20017a23f2c449fbe01cf12e3a38db6033694fa25b84",
+      "size": 81214,
+      "original": {
+        "sha256": "0140e91cd0d170935e487ccabebf2b215f2b4bd168751d4f13fb47008c8bf47a",
+        "size": 81189
+      }
+    },
+    {
+      "path": "public/i18n/ko.json",
+      "kind": "overlay",
+      "sha256": "01c245b8ee55e22b96cd1f6fd14b0f9362fc171fe294d0b1ff77f775bce67b22",
+      "size": 78542,
+      "original": {
+        "sha256": "91e14fae8341594ec96aceb10175f4722ee86ac946cc3277d48f4fb039ee417a",
+        "size": 78517
+      }
+    },
+    {
+      "path": "public/i18n/zh-TW.json",
+      "kind": "overlay",
+      "sha256": "9990289d849cf865446f0427d3ebfd69814915a92827b7f446ba9886f10ea224",
+      "size": 67749,
+      "original": {
+        "sha256": "636ce180ab1d622f6030f8af80e87c711b7fda46f0e6657cadcb9d268ebf0f5b",
+        "size": 67727
+      }
+    },
+    {
+      "path": "data/assets.json",
+      "kind": "overlay",
+      "sha256": "c50ecc037ba83d9bf449de185ed2ee7e34e8e5dd9ac27e574da939bccf30ca3c",
+      "size": 1126169,
+      "original": {
+        "sha256": "52551174da55b55f6e4c9d43d1bb8fd9165dd889c16ae4b78faa8a3644cf3008",
+        "size": 1114330
+      }
+    }
+  ]
+}

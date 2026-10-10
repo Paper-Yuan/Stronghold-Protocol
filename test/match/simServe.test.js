@@ -12,7 +12,7 @@ after(async () => { if (srv) await srv.close(); });
 test('/sim/ serves the simulation modules read-only; nothing else of server/ is reachable', async () => {
   srv = await startServer({ port: 0, host: '127.0.0.1', quiet: true });
   const get = (p, headers = {}) => fetch(srv.url + p, { redirect: 'manual', headers });
-  for (const p of ['/sim/spec.js', '/sim/Battle.js', '/sim/simdata.js', '/sim/constants.js', '/sim/content/index.js', '/sim/content/kits/tier1.js', '/sim/content/support/index.js']) {
+  for (const p of ['/sim/spec.js', '/sim/Battle.js', '/sim/simdata.js', '/sim/constants.js', '/sim/content/index.js', '/sim/content/kits/index.js', '/sim/content/support/index.js']) {
     const r = await get(p);
     assert.equal(r.status, 200, p);
     assert.match(r.headers.get('content-type'), /^text\/javascript/, p);

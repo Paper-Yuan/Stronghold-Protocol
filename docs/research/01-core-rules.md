@@ -173,6 +173,8 @@ Boss HP scaling:
 - The boss HP is one shared pool for the whole team.
 - It shrinks when teammates are eliminated or leave [COMM: "联机队友变少，最后boss血条也会变少"].
 - Proposal: `hp = bloodPoint × alivePlayers / 4` [ASSUMED]. Solo uses `bloodPoint × 0.25` [ASSUMED].
+- [2026-10-06: the owner adopted PR #209 instead — `hp = bloodPoint × the players alive when the fight starts`, solo
+  `bloodPoint` (bloodPoint is one player's share; players' observation, no official text); DESIGN §25.13.4.]
 
 ---
 
@@ -930,6 +932,6 @@ Machine-readable copy: `01-core-data.json → _criticAddendum.enemyStatMultiplie
   - [ASSUMED] 道具补给 tier windows: R3 I–IV, R6 II–V, R9 III–VI, R11 IV–VI. Solo draws 3 cards from the same pools.
 
 ### A5. Other resolved items
-- The **华法琳** granted-trait cap should be **12 / 24 per battle**. The official 3/27 notice changed it and PRTS lists 7/14 → 12/24. The client data still shows 7/14, even though the other 3/27 changes (奇迹 18 %, 远见 80/150, 商业包装方案 8/7) are already in it. See 02.
+- The **华法琳** granted-trait cap is the data's **7 / 14 per battle**. The official 3/27 notice adjusted it and PRTS lists 初始12/精锐24 降低至 初始7/精锐14 — the numbers the client data carries with the other 3/27 changes (奇迹 18 %, 远见 80/150, 商业包装方案 8/7). Corrected 2026-10-06 (GitHub #175): this line first read the PRTS note backwards as 7/14 → 12/24. See 02 Addendum 1.
 - ~~The skill auto-cast rows with `skillIndex` 0 mean skill 1 only (BWIKI "重装职业干员 技能1，受到伤害后自动释放").~~ Superseded by user playtest #6 (DESIGN §20): the class rows apply to **every MANUAL skill** of the class and never to an AUTO skill (PRTS 卫戍协议/帮助 names whole classes; the 阵法术师 row must cover 薄绿's default S2, a phalanx that never attacks with its skill off); a MANUAL skill with its own 技能范围 (not an attack-range change) uses SKILL_RANGE; automatic operations have a 3 s cooldown. See 03 C1.
 - Asset URLs: 40 random URLs from `07-assets.json` were re-checked on 2026-09-27; 40/40 returned `200`.

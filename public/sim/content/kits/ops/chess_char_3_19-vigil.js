@@ -43,6 +43,7 @@ export default {
       skill: null,
       trait: { hitsFn: (b, w) => Math.max(1, w.mem.wolves || 1) },
       install(battle, w) {
+        w.mem.wolfCapacity = maxWolves; // (b.snap `wolves`, snapshot.js wolfView: the pips under the HP bar)
         const tal = w.def.talents || [];
         const wb = tal[0]?.bb ?? {};
         const per = num(wb.block_cnt, num(wb['vigil_wolf_t_1_enhance[trigger].block_cnt'], 1));
@@ -300,7 +301,7 @@ export default {
         { install(battle, unit) {
           battle.on('hit', (ctx) => {
             const w = wolfOf(unit);
-            // "伺夜和狼群对其的攻击无视其175防御力": their attacks only (not item procs or other non-attack damage)
+            // "伺夜和狼群对其的攻击无视其175防御力" (200 at full potential): their attacks only (not item procs or other non-attack damage)
             if (!w || pen <= 0 || !ctx.dmg.isAttack || (ctx.source !== unit && ctx.source !== w) || ctx.target.blockedBy !== w) return;
             ctx.dmg.defIgnoreFlat += pen;
           }, { owner: unit });

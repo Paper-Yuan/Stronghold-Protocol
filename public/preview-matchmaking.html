@@ -1,0 +1,481 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>卫戍协议：盟约 · 匹配系统实际界面修改预览</title>
+  <link rel="stylesheet" href="./fonts/fonts.css" />
+  <link rel="stylesheet" href="./css/theme.css" />
+  <link rel="stylesheet" href="./css/components.css" />
+  <link rel="stylesheet" href="./css/screens/lobby.css" />
+  <style>
+    /* ==========================================================================
+       匹配系统定制样式 — 明日方舟战术工业调和版
+       ========================================================================== */
+    *, *::before, *::after {
+      animation-duration: 0.001ms !important;
+      animation-delay: 0s !important;
+      transition-duration: 0.001ms !important;
+    }
+
+    .match-action-cluster {
+      display: flex;
+      flex-direction: column;
+      gap: 0.12rem;
+      width: 100%;
+    }
+
+    /* 主按键：方舟规范主战术指令 (快速匹配) */
+    .btn--quick-match {
+      position: relative;
+      height: 0.84rem;
+      padding: 0 0.36rem;
+      border: 1px solid #6fe8c4;
+      background-color: var(--mint-500);
+      background-image:
+        repeating-linear-gradient(-55deg, rgba(0, 0, 0, .18) 0 3px, transparent 3px 8px),
+        linear-gradient(180deg, rgba(255, 255, 255, .2), rgba(255, 255, 255, 0) 50%);
+      background-size: 0.5rem 100%, 100% 100%;
+      background-position: right center, 0 0;
+      background-repeat: no-repeat;
+      color: var(--text-on-mint);
+      box-shadow: 0 0.08rem 0.24rem rgba(0, 0, 0, 0.45), 0 0 0.16rem rgba(23, 249, 183, 0.2);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      transition: all var(--t-fast) var(--ease-out);
+    }
+    .btn--quick-match:hover {
+      background-color: var(--mint-400);
+      border-color: #9dffe2;
+      box-shadow: 0 0.08rem 0.28rem rgba(0, 0, 0, 0.5), 0 0 0.28rem rgba(23, 249, 183, 0.4);
+    }
+    .btn--quick-match .btn__content {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 0.04rem;
+      text-align: left;
+    }
+    .btn--quick-match .btn__title {
+      font-size: 0.27rem;
+      font-weight: 900;
+      letter-spacing: 0.16em;
+      line-height: 1.1;
+      color: #04120d;
+    }
+    .btn--quick-match .btn__sub {
+      font-family: var(--font-display);
+      font-size: 0.11rem;
+      letter-spacing: 0.22em;
+      opacity: 0.82;
+      font-weight: 700;
+      color: #061c14;
+    }
+
+    /* 次按键：自建私人同盟 (战术次级栏) */
+    .btn--custom-room {
+      height: 0.48rem;
+      background: rgba(22, 28, 25, 0.85);
+      border: 1px solid var(--line-2);
+      color: var(--text-md);
+      font-size: 0.15rem;
+      letter-spacing: 0.08em;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 0.24rem;
+      transition: all var(--t-fast) var(--ease-out);
+    }
+    .btn--custom-room:hover {
+      background: rgba(32, 40, 36, 0.95);
+      border-color: var(--mint-700);
+      color: var(--text-hi);
+    }
+    .btn--custom-room .custom-room__sub {
+      font-family: var(--font-display);
+      font-size: 0.11rem;
+      letter-spacing: 0.15em;
+      color: var(--text-dim);
+    }
+
+    /* 03 面板内部战术分段标签 (Segmented Tab) */
+    .join-tabs {
+      display: flex;
+      align-items: center;
+      gap: 0.08rem;
+      border-bottom: 1px solid var(--line-2);
+      padding: 0 0.16rem;
+      background: rgba(12, 16, 14, 0.7);
+    }
+    .join-tab {
+      position: relative;
+      padding: 0.1rem 0.16rem;
+      font-size: 0.14rem;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      color: var(--text-lo);
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.06rem;
+      transition: all var(--t-fast) var(--ease-out);
+    }
+    .join-tab:hover {
+      color: var(--text-hi);
+    }
+    .join-tab.is-active {
+      color: var(--amber);
+    }
+    .join-tab.is-active::after {
+      content: '';
+      position: absolute;
+      left: 0.08rem;
+      right: 0.08rem;
+      bottom: -1px;
+      height: 2px;
+      background: var(--amber);
+      box-shadow: 0 0 0.08rem var(--amber);
+    }
+    .join-tab__badge {
+      font-family: var(--font-num);
+      font-size: 0.11rem;
+      padding: 0.01rem 0.05rem;
+      background: rgba(246, 163, 41, 0.2);
+      border: 1px solid rgba(246, 163, 41, 0.4);
+      color: var(--amber);
+      font-weight: 700;
+    }
+
+    /* 公开集结同盟列表 (Tab 视图：舒展、留白充足、不挤) */
+    .tab-view-signals {
+      display: flex;
+      flex-direction: column;
+      gap: 0.1rem;
+      padding: 0.14rem 0.2rem;
+    }
+    .open-alliances__list {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 0.14rem;
+    }
+    .alliance-chip {
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.1rem 0.16rem;
+      background: linear-gradient(90deg, rgba(26, 33, 29, 0.95), rgba(18, 22, 20, 0.95));
+      border: 1px solid var(--line-2);
+      cursor: pointer;
+      transition: all var(--t-fast) var(--ease-out);
+      text-align: left;
+    }
+    .alliance-chip:hover {
+      border-color: var(--amber);
+      background: linear-gradient(90deg, rgba(38, 48, 42, 0.98), rgba(24, 30, 27, 0.98));
+      box-shadow: 0 0 0.14rem rgba(246, 163, 41, 0.25);
+    }
+    .alliance-chip__left {
+      display: flex;
+      flex-direction: column;
+      gap: 0.03rem;
+    }
+    .alliance-chip__code {
+      font-family: var(--font-num);
+      font-size: 0.2rem;
+      font-weight: 700;
+      letter-spacing: 0.15em;
+      color: var(--text-hi);
+    }
+    .alliance-chip__meta {
+      font-size: 0.12rem;
+      color: var(--text-lo);
+      display: flex;
+      align-items: center;
+      gap: 0.06rem;
+    }
+    .alliance-chip__diff {
+      padding: 0.01rem 0.05rem;
+      font-size: 0.10rem;
+      font-weight: 700;
+      border: 1px solid currentColor;
+      line-height: 1;
+    }
+    .alliance-chip__right {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 0.04rem;
+    }
+    .alliance-chip__seats {
+      font-family: var(--font-num);
+      font-size: 0.17rem;
+      font-weight: 700;
+      color: var(--amber);
+    }
+    .alliance-chip__action {
+      font-size: 0.11rem;
+      letter-spacing: 0.1em;
+      color: var(--mint-400);
+      font-weight: 700;
+    }
+    .alliance-chip:hover .alliance-chip__action {
+      color: var(--gold);
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body class="theme-dark">
+  <div id="app">
+    <div class="screen lobby-screen">
+      <!-- 顶栏 -->
+      <header class="topbar">
+        <div class="topbar__left">
+          <button class="btn btn--ghost btn--sm" title="返回标题">
+            <svg class="icon" viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/></svg>
+            <span class="btn__label">返回</span>
+          </button>
+          <div class="ping-pill is-online">
+            <span class="ping-pill__dot"></span>
+            <span class="ping-pill__num">24</span><span class="ping-pill__unit">ms</span>
+          </div>
+        </div>
+        <div class="topbar__center">
+          <span class="micro micro--mint">SIMULATION PROTOCOL SELECT</span>
+          <h1 class="topbar__title">选择模拟协议</h1>
+        </div>
+        <div class="topbar__right">
+          <button class="btn btn--secondary btn--sm">
+            <span class="btn__label">新手指南</span>
+          </button>
+          <button class="btn btn--secondary btn--sm">
+            <span class="btn__label">干员调配</span>
+          </button>
+          <div class="me-chip">
+            <div class="avatar-frame avatar-frame--sm avatar-frame--self">
+              <span class="avatar-frame__label">博</span>
+            </div>
+            <div class="me-chip__text">
+              <span class="me-chip__name">博士</span>
+              <span class="micro">DOCTOR #001</span>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <!-- 主体 -->
+      <div class="lobby-body screen__scroll">
+        <!-- 左栏 -->
+        <section class="lobby-left">
+          <div class="section-label">
+            <span class="section-label__idx num">01</span>模拟方式<span class="micro">MODE</span>
+          </div>
+          <div class="mode-cards">
+            <!-- 独立模拟 -->
+            <button type="button" class="mode-card brackets">
+              <span class="mode-card__bg"></span>
+              <span class="mode-card__icon">
+                <svg class="icon" viewBox="0 0 24 24" width="24" height="24"><path fill="currentColor" d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+              </span>
+              <span class="mode-card__text">
+                <span class="micro">SOLO SIMULATION</span>
+                <span class="mode-card__name">独立模拟</span>
+                <span class="mode-card__desc">独自调配资金与干员，以自己的节奏完成整场模拟。</span>
+                <span class="mode-card__points">
+                  <span>1 名博士</span>
+                  <span>休整期与机变阶段不限时</span>
+                </span>
+              </span>
+            </button>
+            <!-- 同盟模拟 (选中) -->
+            <button type="button" class="mode-card brackets is-selected">
+              <span class="mode-card__bg"></span>
+              <span class="mode-card__icon">
+                <svg class="icon" viewBox="0 0 24 24" width="24" height="24"><path fill="currentColor" d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>
+              </span>
+              <span class="mode-card__text">
+                <span class="micro micro--mint">ALLIANCE SIMULATION</span>
+                <span class="mode-card__name">同盟模拟</span>
+                <span class="mode-card__desc">与至多 3 名博士组成同盟，共享干员池，联防协作抵御敌潮。</span>
+                <span class="mode-card__points">
+                  <span>1–4 名博士 · 可由 AI 队友补位</span>
+                  <span>联防阶段 · 最终攻势合并生命值</span>
+                </span>
+              </span>
+              <span class="mode-card__check">✔ 已选定</span>
+            </button>
+          </div>
+
+          <div class="section-label">
+            <span class="section-label__idx num">03</span>加入同盟<span class="micro">JOIN ALLIANCE PROTOCOL</span>
+          </div>
+          <div class="panel join-panel panel--amber">
+            <!-- 战术分段标签 (Segmented Tabs) -->
+            <div class="join-tabs">
+              <button type="button" class="join-tab is-active">
+                <span class="open-alliances__dot"></span>公开集结频段
+                <span class="join-tab__badge">2</span>
+              </button>
+              <button type="button" class="join-tab">
+                密钥定向接入
+              </button>
+              <span class="micro" style="margin-left:auto; color:var(--text-dim);">BROADCAST CHANNELS</span>
+            </div>
+
+            <!-- Tab 1 内容：公开同盟频道 (空间舒展、不与输码框纵向堆叠) -->
+            <div class="tab-view-signals">
+              <div class="open-alliances__list">
+                <button type="button" class="alliance-chip" title="点击接入该同盟频段">
+                  <div class="alliance-chip__left">
+                    <span class="alliance-chip__code">KKTH</span>
+                    <div class="alliance-chip__meta">
+                      <span class="alliance-chip__diff" style="color:#ff9800;">绝境</span>
+                      <span>凯尔希 · 等待出击</span>
+                    </div>
+                  </div>
+                  <div class="alliance-chip__right">
+                    <span class="alliance-chip__seats">3/4</span>
+                    <span class="alliance-chip__action">接驳 &gt;</span>
+                  </div>
+                </button>
+                <button type="button" class="alliance-chip" title="点击接入该同盟频段">
+                  <div class="alliance-chip__left">
+                    <span class="alliance-chip__code">SWWG</span>
+                    <div class="alliance-chip__meta">
+                      <span class="alliance-chip__diff" style="color:#58b6ec;">险境</span>
+                      <span>阿米娅 · 等待出击</span>
+                    </div>
+                  </div>
+                  <div class="alliance-chip__right">
+                    <span class="alliance-chip__seats">2/4</span>
+                    <span class="alliance-chip__action">接驳 &gt;</span>
+                  </div>
+                </button>
+              </div>
+
+              <!-- 底部轻量辅助行：历史记录与引导 -->
+              <div class="join-foot" style="margin-top:0.04rem; min-height:auto;">
+                <span class="t-lo">历史直达信道</span>
+                <button type="button" class="code-chip num">KKTH</button>
+                <button type="button" class="code-chip num">PVHM</button>
+                <span class="t-dim" style="margin-left:auto; font-size:0.12rem;">切换「密钥定向接入」可输入专属同盟密匙</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- 作战提示 -->
+          <div class="tips brackets" style="margin-top:0.16rem;">
+            <div class="tips__head">
+              <span class="micro">TACTICAL TIPS</span>
+              <span style="font-weight:700; margin-left:0.08rem;">作战提示</span>
+            </div>
+            <p class="tips__text">联合模拟在选择策略时可以进行一次跳过；只有达成完美作战的队友可以进行联防。</p>
+          </div>
+        </section>
+
+        <!-- 右栏 -->
+        <section class="lobby-right">
+          <div class="section-label">
+            <span class="section-label__idx num">02</span>模拟难度<span class="micro">DIFFICULTY</span>
+          </div>
+          <div class="diff-list">
+            <!-- 标准 -->
+            <button type="button" class="diff-card" style="--d-color: #4ed8af;">
+              <span class="diff-card__bar"></span>
+              <span class="diff-card__head">
+                <span class="diff-card__name">标准</span>
+                <span class="diff-card__code num">AC-1</span>
+                <span class="diff-card__meta"><span class="num">14</span> 回合</span>
+              </span>
+              <span class="diff-card__desc">敌方攻击强度较低的模拟训练。</span>
+              <span class="diff-card__effects">
+                <span>作战环境较为温和</span>
+                <span>常规奖励</span>
+              </span>
+            </button>
+
+            <!-- 险境 (选中) -->
+            <button type="button" class="diff-card is-selected" style="--d-color: #58b6ec;">
+              <span class="diff-card__bar"></span>
+              <span class="diff-card__head">
+                <span class="diff-card__name">险境</span>
+                <span class="diff-card__code num">AC-2</span>
+                <span class="diff-card__meta"><span class="num">14</span> 回合<span class="diff-card__hidden">+ 隐秘核心</span></span>
+              </span>
+              <span class="diff-card__desc">敌方攻击强度较高的模拟训练。</span>
+              <span class="diff-card__effects">
+                <span>可使用盟约数增加</span>
+                <span>大幅增加奖励</span>
+              </span>
+              <span class="diff-card__check">✔ 已选定</span>
+            </button>
+
+            <!-- 绝境 -->
+            <button type="button" class="diff-card" style="--d-color: #ff9800;">
+              <span class="diff-card__bar"></span>
+              <span class="diff-card__head">
+                <span class="diff-card__name">绝境</span>
+                <span class="diff-card__code num">AC-3</span>
+                <span class="diff-card__meta"><span class="num">14</span> 回合<span class="diff-card__hidden">+ 隐秘核心</span></span>
+              </span>
+              <span class="diff-card__desc">敌方攻击强度极高的模拟训练。</span>
+              <span class="diff-card__effects">
+                <span>作战环境困难</span>
+                <span>出现更加危险的敌人</span>
+              </span>
+            </button>
+
+            <!-- 终极 -->
+            <button type="button" class="diff-card" style="--d-color: #f44336;">
+              <span class="diff-card__bar"></span>
+              <span class="diff-card__head">
+                <span class="diff-card__name">终极</span>
+                <span class="diff-card__code num">AC-4</span>
+                <span class="diff-card__meta"><span class="num">14</span> 回合<span class="diff-card__hidden">+ 隐秘核心</span></span>
+              </span>
+              <span class="diff-card__desc">敌方攻击强度到达极限的模拟训练。</span>
+              <span class="diff-card__effects">
+                <span>作战环境无比困难</span>
+                <span>出现极度危险的敌人</span>
+              </span>
+            </button>
+          </div>
+
+          <!-- 右下角核心行动集群 (战术双规操作) -->
+          <div class="create-box" style="margin-top:0.24rem;">
+            <div class="match-action-cluster">
+              <!-- 主行动：快速匹配同盟 (方舟纯正薄荷绿大键，斑马暗纹 + 折线箭头) -->
+              <button type="button" class="btn btn--primary btn--xl btn--block btn--quick-match">
+                <div class="btn__content">
+                  <span class="btn__title">快速匹配同盟</span>
+                  <span class="btn__sub">AUTOMATIC ALLIANCE MATCHING</span>
+                </div>
+                <span class="chevrons is-animated">
+                  <svg viewBox="0 0 10 16" style="--i:0"><path d="M2 1l6 7-6 7" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="square"/></svg>
+                  <svg viewBox="0 0 10 16" style="--i:1"><path d="M2 1l6 7-6 7" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="square"/></svg>
+                  <svg viewBox="0 0 10 16" style="--i:2"><path d="M2 1l6 7-6 7" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="square"/></svg>
+                </span>
+              </button>
+
+              <!-- 次行动：自建私人同盟 (方舟次级战术功能条) -->
+              <button type="button" class="btn btn--secondary btn--custom-room">
+                <span style="display:inline-flex; align-items:center; gap:0.08rem;">
+                  <svg class="icon" viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/></svg>
+                  <span>自建私人同盟 (仅限密钥邀请)</span>
+                </span>
+                <span class="custom-room__sub">CREATE PRIVATE ROOM &gt;</span>
+              </button>
+            </div>
+            <div class="create-box__hint">
+              <span>系统将优先调度当前在线博士 · 15 秒未满席由 AI 护卫协同出击</span>
+            </div>
+          </div>
+        </section>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

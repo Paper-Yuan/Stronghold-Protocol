@@ -1768,3 +1768,14 @@ export function install(battle) {
 }
 
 export function registerMeta(registry) {} // no prep-side effects: token pieces are handled by the match
+
+// champagneHold / CHAMPAGNE_TRIGGER: taken from upstream v0.2.3 during the narrow merge —
+// the 0.2.3 kit chess_char_3_04-swire2.js imports them from this module.
+export function champagneHold(battle, bomb) {
+  battle.addBuff(bomb, { key: 'token:champagneHold', flags: { noHeal: true, healFree: true }, persist: true, allowDead: true });
+  battle.on('hit', (ctx) => { if (ctx.target === bomb) ctx.dmg.cancel = true; }, { owner: bomb, priority: 1000 });
+  battle.on('elementHit', (ctx) => { if (ctx.target === bomb) ctx.dmg.cancel = true; }, { owner: bomb, priority: 1000 });
+  battle.on('damaged', (ctx) => { if (ctx.target === bomb && bomb.alive) bomb.hp = bomb.s.maxHp; }, { owner: bomb, priority: 1000 });
+}
+
+export const CHAMPAGNE_TRIGGER = Object.freeze({ canHitFly: false, groundOnly: true });

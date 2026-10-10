@@ -2719,7 +2719,7 @@
     "tiers": [
      {
       "need": "3 distinct",
-      "effect": "阿戈尔 members maxHP x(1 + 0.35 + 0.01*L)."
+      "effect": "阿戈尔 members maxHP x(1 + 0.35 + 0.01*L) (直接乘算), on the members from their deployment, so before the battle-start devour."
      },
      {
       "need": "3 distinct (battle start)",
@@ -2727,14 +2727,14 @@
      },
      {
       "need": "5 distinct",
-      "effect": "The first 3 阿戈尔 members to be knocked out, in knock-out order (the battle-start devour's food included; a member never knocked out takes none), each revive immediately on that first knock-out; a member takes at most one, and a save by its own kit / item / band revive is no knock-out (max_free_respawn_cnt 3; the owner's decision of 2026-10-05)."
+      "effect": "3 revives (max_free_respawn_cnt), one per member at most, on its first knock-out; a member never knocked out takes none, and a save by its own kit / item / band revive is no knock-out (the owner's decision of 2026-10-05). The members the battle-start devour knocks out are revived once every devour pass is over, by board position on the player's own board from the bottom-left (columns from the left, bottom first inside a column; a community report relayed on 2026-10-07), while slots last; a later knock-out takes a slot left at once, in time order."
      }
     ],
     "algorithm": [
      "Order: 阿戈尔 members sorted leftmost first, then topmost (\"更靠左和靠上\").",
      "Each 阿戈尔 in order marks the unit on the tile directly in front of it (its facing direction) and also the front-tile unit of every 阿戈尔 it has marked (chain). It never marks itself, a unit it already marked, or a unit that marked it.",
      "The marker immediately gains the base ATK of every unit it marked (a 最终加算: added after its ATK percentages, PRTS \"基础攻击力（最终加算）\") and their block counts.",
-     "After all marks are placed, each mark makes its target suffer one 5000-point physical 流失 (HP loss, source = the target itself; if it dies, the kill is credited to the marker), resolved in marking order. A target that dies cancels its remaining pending marks; a marker knocked out earlier in the pass still resolves its own marks (only the target's state cancels a mark).",
+     "After all marks are placed, each mark makes its target suffer one 5000-point physical 流失 (HP loss less the target's DEF, no shields, dodge or damage multipliers; source = the target itself; if it dies, the kill is credited to the marker), resolved in marking order — a member in a chain takes one from every 阿戈尔 behind it. A target that dies cancels its remaining pending marks; a marker knocked out earlier in the pass still resolves its own marks (only the target's state cancels a mark).",
      "Each devoured unit adds layers to 阿戈尔 equal to its tier (1-6), once per unit per battle.",
      "(5-member tier) Revive is implemented as: when the unit leaves the field for any reason other than being moved, its next deployment has 0 redeploy time and 0 cost (PRTS). Devour layers: each devoured unit adds its tier once per battle (refreshes next round)."
     ],
@@ -2747,7 +2747,7 @@
     "layerGain": "Devour (tier per devoured unit, every battle); 幽灵鲨 被击倒 +3; 归溟幽灵鲨 被击倒/替身切换 +5 阿戈尔 +5 不屈; 斯卡蒂 each 2 kills +1 阿戈尔/坚守/突袭; 海霓 first kill (enemy or ally) +3 阿戈尔/奥术; 机变 \"斯卡蒂的盟誓\" +8. Strategy 克莱门莎: an 阿戈尔 knocked out adds layers = its tier.",
     "howToPlay": "Put cheap/high-tier fodder in front of 阿戈尔 carries: they steal base ATK and block, gain layers, and (5) revive. Tier-6 fodder gives +6 layers per battle.",
     "assumed": [
-     "5000 physical 流失 ignores DEF and shields",
+     "the 5-tier revive scan of the battle-start devour's knock-outs, 「左下到右上」: columns from the left, bottom first inside a column (the other reading: rows from the bottom, left first inside a row)",
      "marked allied units are operators of any player (devour hits allies): on a shared field a teammate's operator in front, standing or entering 联防 knocked out, is devoured too and the chain continues through a teammate's 阿戈尔 (the owner's decision of 2026-10-05: PRTS has no own-side limit)"
     ]
    },
@@ -7601,7 +7601,7 @@
      "p": "min(1, 0.18 + 0.003*L)",
      "goldPayouts": "20 * floor(L/100)"
     },
-    "layerGain": "维娜·维多利亚 +2 per distinct-tier 奇迹; 录武官 获得时 +3; 伺夜 kills +1; 引星棘刺 +4 self & front; 华法琳 (奇迹 member) gives the operator in front \"开技能时 +1 own active bonds\" (data: <=7/battle, elite +2 <=14; PRTS 3/27 patch note says cap raised to 12/24).",
+    "layerGain": "维娜·维多利亚 +2 per distinct-tier 奇迹; 录武官 获得时 +3; 伺夜 kills +1; 引星棘刺 +4 self & front; 华法琳 (奇迹 member) gives the operator in front \"开技能时 +1 own active bonds\" (data: <=7/battle, elite +2 <=14 — the 3/27 update lowered it from 12/24, PRTS 下半 3月27日更新#2; Addendum 1).",
     "notes": [
      "blackboard probk = 0.3: meaning unknown (not in any description) [UNKNOWN]."
     ]

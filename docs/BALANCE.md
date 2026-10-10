@@ -14,8 +14,10 @@ kinds / counts and routes must follow the official game; research 08 §6–§7, 
   count distribution (同盟 险境 R3 ≤ 10 enemies, R13 ≈ 37 — the old generator averaged 28 / 81);
 * stats = the PRTS per-round `enemyScale` table only (`data/config.json`, 终极 ×1.15 speed from R3);
 * leader pool = `bloodPoint[difficulty]` × the players alive when the fight starts — one pool for every boss field; solo
-  × 1 (the owner's decision of 2026-10-06, adopting PR #209: it replaces the fixed pool of DESIGN §20.10 — config
-  `bossHpScale.perPlayer: false`, `solo: 0.25` restores the old co-op × 1 / solo × 0.25 [ASSUMED]; DESIGN §25.13.4);
+  × 1 (the owner's decision of 2026-10-06, adopting PR #209: it replaces the fixed pool of DESIGN §20.10, co-op
+  bloodPoint whatever the count and solo × 0.25 [ASSUMED] — config `bossHpScale.perPlayer: false`, `solo: 0.25` restores
+  it; DESIGN §25.13.4). The bots' solo matches got 4× the leader HP: in the golden corpus 4 of the 6 solo matches that
+  reached and won the Final Assault now lose it (team LP 0 with 93k–176k of the pool left);
 * leader parts and drones (DESIGN §20.10): a 剑 / 锤 / 碎铳之簧 passes every damage it takes to its leader 1:1 (PRTS "等量的
   无来源生命流失"; until 2026-10-01 half, and a 剑 / 锤 only while grounded — the dive hits [ASSUMED], the handbook says
   "被击落时"); a 胄 drone that dies (whoever kills it, DESIGN §20.13) costs 2 % of the leader's shown max HP = the pool (unchanged from v2.5; which "最大生命值" the
@@ -68,7 +70,7 @@ and runs the real
 `Battle` with full content (kits, talents, bonds with layers, IN_BATTLE 特质, equipment, bands, summons). Co-op rounds
 field **4 boards** against the same wave and then run **联防** exactly like the match (`unite.js`: ≤ 2 perfect helpers,
 only the survivors cost their source LP). Boss rounds build the Final Assault fields exactly like `Match.startFinalAssault`
-(pairs / `_s` for a lone player, shared pool `GameData.bossPoolHp` = `bloodPoint` (solo ×0.25), merged team LP of 15 per player, leaks' `lpr`,
+(pairs / `_s` for a lone player, shared pool `GameData.bossPoolHp` = `bloodPoint` × the players alive (solo × 1, §25.13.4), merged team LP of 15 per player, leaks' `lpr`,
 −1 LP/s after 150 s) and record the pool damage by 150 s, the kill time and the win rate.
 
 Metrics: **capped leaks** = min(leaks, 10) per board and round (what that board alone would lose; the targets below
@@ -120,13 +122,14 @@ the preview being read by a human in 90 s, and losing LP early (fewer rounds to 
 | Faction mixing | was: every round a ground entry + a FLY entry | **official: one entry per round from a 15-slot type schedule** |
 | `MOVE_SCALE` 0.5 | every level's `moveMultiplier` 0.5 (05 §2.2) | kept |
 | **Combat time limit unit** | `maxPlayTime` read as game seconds [ASSUMED] | **wrong — real seconds; fixed** (§2.1) |
-| Boss pool | bloodPoint DATA = the current game data (activity_table act2autochess bossInfoDict; the local cache equals upstream ArknightsGameData master, checked 2026-10-01). PRTS 盟约记录's leader table is the older 11月18日 revision: it matches 常规 and most of 险境, but differs for 铳 险境 (450 000 vs 400 000) and 胄 / 铳 / 萨米 绝境 (1 600 000 / 870 000 / 1 800 000 vs 1 800 000 / 800 000 / 2 000 000), and has no 终极 column or 卢西恩 row; one pool for every field ("所有人将一起对敌方领袖造成伤害"); "敌方领袖的总生命值不变" = the mirrored copies of a pair field share it (notice 5114) | **co-op = bloodPoint × the players alive when the fight starts** (bots and AI 托管 count, eliminated and departed seats do not; at most 4), **solo = × 1** — the owner's decision of 2026-10-06 adopting PR #209; config `bossHpScale.perPlayer: false` restores the fixed pool of 0.1.x (co-op × 1 whatever the count, solo × 0.25 [ASSUMED]; `aliveScaling: true` adds the × alive / 4 proportion of 巴哈姆特 12294) |
+| Boss pool | bloodPoint DATA = the current game data (activity_table act2autochess bossInfoDict; the local cache equals upstream ArknightsGameData master, checked 2026-10-01). PRTS 盟约记录's leader table is the older 11月18日 revision: it matches 常规 and most of 险境, but differs for 铳 险境 (450 000 vs 400 000) and 胄 / 铳 / 萨米 绝境 (1 600 000 / 870 000 / 1 800 000 vs 1 800 000 / 800 000 / 2 000 000), and has no 终极 column or 卢西恩 row; one pool for every field ("所有人将一起对敌方领袖造成伤害"); "敌方领袖的总生命值不变" = the mirrored copies of a pair field share it (notice 5114) | **co-op = bloodPoint whatever the alive count**; × alive / 4 is a config switch (`aliveScaling`, off: 巴哈姆特 12294 "聯機隊友…變少，最後boss血條也會變少" is one community note without a proportion, awaiting the user's recall); solo ×0.25 kept [ASSUMED]; the solo 标准 ×0.6 removed |
 | Leader parts / 胄 drones / same-named debuffs / 坚守 thorns | PRTS 碎铳之簧, “斩胄之剑”, “破胄之锤” "受到伤害时令…受到等量的无来源生命流失"; PRTS 假想敌：胄 "该妖怪死亡时令假想敌：胄受到最大生命值2%的真实伤害" (which max HP: [ASSUMED]); PRTS 作战机制 同名buff默认只表现出一个, 巴哈姆特 12316 "共享型buff會跟對面搶"; 坚守 "伤害来源受到(850+10×L)点法术伤害" | **parts 1:1 (was ½, 剑/锤 only grounded); drone 2 % of the pool (unchanged; the unit-HP reading was tried and reverted); 奥术 / 灵知 坚冰 / 莱恩哈特 & 缄默德克萨斯 RES cut: one instance per target (was one per player / copy); thorns credited to the member (was to nobody)** — 2026-10-01, DESIGN §20.10 |
 | Bonus stacking | was: each bond / strategy / item / 机变 / 特质 "+X%" its own ×(1 + x) (research 02 §2.1) | **official 直接乘算: summed with each other and with skill "+X%"** (PRTS 盟约记录 "…属性加成均为直接乘算", 游戏数据基础 D_t = Σtᵢ); 2026-10-01, DESIGN §20.10 |
 | Solo bounties ×0.7 | 上半 11/18 note = the global solo base | **removed** (already in enemyScale) |
 | Bounty spawn timing | was: the bounty units appended after the host action's own units | **official: inserted among them at floor((i+1)·len/(n+1)), then the list spread over the window** (client `_InsertSpActionToNormal` + `_CalculateActionPredelay`, decoded; `waves.js withBounties`) |
 | 联防 spawn timing | was: owner k at +min(0.5·k, 5) s, each owner's units over the whole window [ASSUMED] | **official (decoded `_CalculateActionPredelayConsiderUid`): owner k at +0.5·k s, unit step min(max(W/M, 0.05·W), 5 s), M = largest owner group** — a lone leaker's units now come 5 s apart instead of up to 40 s |
 | Leader / leader-part multipliers | was: leaders and their parts never scaled | **official: the round multipliers are the ENEMY effects 攻坚装备 / II / III / 补给线 / 急行军 (`enemy_attribute_mul`; `enemy_exclude` = 炎佑 — plus the TIMES tokens for 补给线 — never a leader) ⇒ parts take HP/ATK/speed, the leader ATK/speed; only the leader's HP (the server pool) is exempt** ("领袖单位于服务器的生命值加成不受上述加成影响"). Co-op 终极 R14: leader ATK ×2.14; solo 标准: ×0.7 |
+| 频次 器物 and leader summons (0.2.1, PR #272 by @CXUtk) | was: a 器物's hit count was the data's whatever the difficulty (the spawn's HP multiplier was overwritten); a leader's mid-fight summons (死亡集群's 妖怪, 刺胄之弹, 余音, 不祥幻影) took no round effect | **official data: 攻坚装备 / II / III leave out only 炎佑, 补给线 / 补给线II also the 14 器物 keys** (activity_table aceffect_enemy_2 / 2_2 `enemy_exclude`) ⇒ a 器物 needs data × hp / supplyHp hits (config `supplyHp`: co-op 终极 R5–R15, the HP-only 1.2 steps and the 1.08), rounded [ASSUMED]; the summons take the round's HP (a hit count too) / ATK / speed through the boss field's `flags.enemyScale`, 死亡集群's `summon.hp_ratio` on top. Solo 标准 青铜镜 30 → 23 hits, co-op 终极 R14 30 → 129; 炎佑 is an ally here, never scaled. The 逐火 / 再生 husk counts (talent `Revive[Trigger].prop_max_hp`) stay as they were [open] |
 | Ground routes | was: 8-dir A*, m02 crates active | **official 4-dir SPFA + smoothing, crates cost 1000, m02 without crates** (research 08 §3) |
 | Income / upgrade curve | R1–R3 VERIFIED, +1/round cap 12 ASSUMED | kept (the model's level curve follows it) |
 | Operator stats per tier | chess status T1 E1 L55 … T6 E2 L1, elites E2 + skill 7 (03) — DATA | faithful: power comes from layers, elites and skills, which is why the model carries them |
@@ -199,8 +202,8 @@ earlier commit (a current run differs for every leader) and were not refreshed h
 
 Reading: the early game is easy everywhere (official R1–R3 bring 3–10 enemies); leaks concentrate on the second-half
 specials (深池逐火 TIMES embers, stealth 隐形弩手组长 / 重弩突袭者, 疯狂的逐腐兽, 掠海漂移体) and 终极 R6–R11, where co-op
-boards still leak 3–6 and 联防 halves the LP cost. Solo leaders (bloodPoint × 0.25 [ASSUMED]) are the hard part of the
-solo modes; the solo pool factor is the one open number here (research 08 §8 #2).
+boards still leak 3–6 and 联防 halves the LP cost. Solo leaders (bloodPoint × 0.25 [ASSUMED] when these tables were
+measured; × 1 since the owner's decision of 2026-10-06, §25.13.4) are the hard part of the solo modes.
 
 Reproduce: `node tools/balance.mjs --mode all --difficulty ALL --tuning off [--bots 5] [--json]`.
 
@@ -390,12 +393,13 @@ heuristics CPU 36 / 88 → 35 / 86 ms and 16 / 40 → 16 / 40 ms.
 
 * Bounties with battles left (multi-round cards — "之后的每场作战" — last two battles since playtest #6, META §1.2)
   also spawn in the Final Assault / Hidden Core, on the owner's half (route to its goal), are shown in the boss-round
-  preview, and the boss battle uses up one of their battles (kill coins → pending funds for the Hidden Core prep).
+  preview, and the boss battle uses up one of their battles (kill coins, and a perfect-payout 战术特训 card's coins when the player's own field is perfect and the team wins → pending funds for the Hidden Core prep).
 * A 驰援 card is never offered when its bond has no chess left in the match's pool (every member banned).
 * docs/META.md §2.6 example guards `ctx.source.kind === 'choice'` (its EffectRef reuses the handler's key).
 * 坚若磐石 = least LP lost (`titles.comment_3 { stat: 'lpLost', rule: 'min' }` in tuning.json; results.js supports
   `rule: 'min'` among the players still alive).
-* 教鞭 / “神秘顾客” stay a random bounty, documented in docs/META.md §2.5.
+* 教鞭 offers a personal choice of three 战术特训 cards (a bot picks by the bounty scorer, the prep's deadline at random);
+  “神秘顾客” stays a random bounty — docs/META.md §2.5.
 
 ---
 
@@ -422,6 +426,8 @@ on a leader is cancelled (`MAX_BATTLE_DAMAGE`: 0 damage, nothing to the pool —
   `--profile` above ≈ 4.9 would have pushed the 170-layer R15 core curve, +20 % jitter, past 999) and
   `matchrun.mjs --layers N` adds at most the room left under 999, so `--check` stays clean on a boosted run.
 - **Pool size and the line**: a drone that dies (whoever kills it, DESIGN §20.13) costs 假想敌：胄 0.02 × the pool
-  max (【死亡集群】, boss_1 / boss_8; `bosses.js DRONE_LINK_BASE 'pool'`). Today that is at most 144000 (boss_8 ABYSS 7.2M) and lands; a pool above 14999950 would make every
-  drone kill a cancelled hit. Re-check this whenever the pool size changes (research 11 §6).
+  max (【死亡集群】, boss_1 / boss_8; `bosses.js DRONE_LINK_BASE 'pool'`). With the pool per player alive (§25.13.4) the
+  hidden 胄 终极 pool is 21.6M / 28.8M at 3 / 4 players, so a drone is 432000 / 576000 — above the line; the link is a
+  share, no hit, and passes it (`Battle.loseHp noHitLimit` [ASSUMED]: research 11 §2.1 checks every damage modifier, but
+  which max HP the official link reads is not documented). Re-check this whenever the pool size changes (research 11 §6).
 

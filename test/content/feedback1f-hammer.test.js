@@ -156,7 +156,8 @@ test('F1 坚固维式重锤 in front of an 阿戈尔: the battle-start devour sp
 });
 
 test('F1 坚固维式重锤 + M3茧甲: the lock comes before the revive whatever the equip order (PRTS: a revive acts on 退场)', () => {
-  assert.ok(PRIO_RESPAWN < PRIO_REVIVE && PRIO_RESPAWN > PRIO_BAND_REVIVE, 'revive items: after every 不死, before 埃芒加德');
+  // revive items: a `death` hook (after every 不死 — a fatal saver), before 埃芒加德's
+  assert.ok(Number.isFinite(PRIO_REVIVE) && PRIO_RESPAWN > PRIO_BAND_REVIVE, 'revive items before 埃芒加德');
   for (const items of [[M3, HAMMER], [HAMMER, M3]]) {
     const c = carrier(items);
     const log = fxLog(c.h, c.u);

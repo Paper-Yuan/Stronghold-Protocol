@@ -24,6 +24,7 @@
 // (server/sim/content/kits/index.js KITTED_CHARS), passed in as `kitted`.
 
 import { composeUnitRecord, unitForm, statusKey } from './standIn.js';
+import { atPotential } from './potential.js';
 
 /** The tiers that have 自选 slots. */
 export const DIY_TIERS = Object.freeze([5, 6]);
@@ -201,32 +202,35 @@ export function checkDiyPick(slotId, pick, data) {
  * @param {DiyData} data
  * @returns {object|null}
  */
-export function diyRecordOf(slot, pick, data) {
+export function diyRecordOf(slot, pick, data, { potential = null } = {}) {
   if (!isObj(slot) || !slot.isDiy || typeof slot.chessId !== 'string') return null;
   const c = checkDiyPick(slot.chessId, pick, data);
   if (!('ok' in c)) return null;
   const { charId, skillIndex, uniEquipId } = c.pick;
   const backups = backupsOf(data);
   const unit = backups?.units?.[charId] ?? null;
-  const rec = composeUnitRecord(slot, unit, unitForm(backups, charId, slot.status),
+  const proto = isPrototypePick(data, slot.tier, charId);
+  const form = unitForm(backups, charId, slot.status);
+  const rec = composeUnitRecord(slot, unit, proto ? form : atPotential(form, potential),
     { skillIndex, moduleId: uniEquipId, bonds: diyOf(data)?.operators?.[charId]?.bonds ?? null });
   if (!rec || !rec.skill) return null;
   rec.diyFor = slot.baseId ?? slot.chessId;
+  if (proto) rec.diyProto = true;
   return rec;
 }
 
 /**
  * The record of a 自选 slot filled with `pick` (diyRecordOf): `elite` = the slot's `_b` form (E2 Lv60, module stage 1 at
- * tier 5 / 3 at tier 6), else the normal form (E2 Lv1, no module).
+ * tier 5 / 3 at tier 6), else the normal form (E2 Lv1, no module); `potential` as diyRecordOf.
  * @param {string} slotId the slot's base id (an elite id is accepted and taken as the elite)
  * @param {DiyPick} pick
- * @param {{ elite?: boolean, data: DiyData }} opts
+ * @param {{ elite?: boolean, data: DiyData, potential?: number|null }} opts
  * @returns {object|null}
  */
-export function diyRecord(slotId, pick, { elite = false, data } = { data: null }) {
+export function diyRecord(slotId, pick, { elite = false, data, potential = null } = { data: null }) {
   const slot = diySlot(slotId, data);
   if (!slot) return null;
-  return diyRecordOf(elite || slot.elite ? slot.golden : slot.normal, pick, data);
+  return diyRecordOf(elite || slot.elite ? slot.golden : slot.normal, pick, data, { potential });
 }
 
 /**

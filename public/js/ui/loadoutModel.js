@@ -10,6 +10,7 @@
 // (shared/protocol.js loadoutOptions / checkLoadout), so a sanitised loadout is always accepted.
 
 import { loadoutOptions, checkLoadout, resolveLoadout, MODULE_NONE, LOADOUT_LIMITS, isSkinId, SKIN_LIMITS } from '../../../shared/protocol.js';
+import { isPotential, isCultivate, POTENTIAL_DEFAULT, CULTIVATE_DEFAULT } from '../../../shared/potential.js';
 
 export { MODULE_NONE };
 
@@ -422,4 +423,63 @@ export function skillTags(rec) {
     charges: Number(rec.maxChargeTime) > 1 ? Number(rec.maxChargeTime) : null,
     passive,
   };
+}
+
+// sanitizeOps: taken from v0.2.3:public/js/ui/loadoutModel.js during the v0.2.3 narrow merge (upstream code imports it).
+export function sanitizeOps(ops, isOperator) {
+  const out = {};
+  for (const [id, e] of Object.entries(ops || {})) {
+    if (Object.keys(out).length >= LOADOUT_LIMITS.ops) break;
+    const one = {};
+    if (isPotential(e?.potential)) one.potential = e.potential;
+    if (isCultivate(e?.cultivate)) one.cultivate = e.cultivate;
+    if (!Object.keys(one).length) continue;
+    const res = checkLoadoutOps({ [id]: one }, isOperator);
+    if (res.ok && res.ops[id]) {
+      const x = {};
+      if (res.ops[id].potential !== POTENTIAL_DEFAULT) x.potential = res.ops[id].potential;
+      if (res.ops[id].cultivate !== CULTIVATE_DEFAULT) x.cultivate = res.ops[id].cultivate;
+      out[id] = x;
+    }
+  }
+  return out;
+}
+
+// parseStoredOps: taken from upstream v0.2.3 during the narrow merge — loadoutSync.js imports it
+// (the 潜能 / 练度 stored alongside a loadout). The helpers come from our shared/potential.js.
+export function parseStoredOps(raw) {
+  const src = isObj(raw) && isObj(raw.ops) ? raw.ops : null;
+  const out = {};
+  if (!src) return out;
+  for (const [id, e] of Object.entries(src)) {
+    if (Object.keys(out).length >= LOADOUT_LIMITS.ops) break;
+    if (UNSAFE_IDS.has(id) || !/^[A-Za-z0-9_\-.:]{1,64}$/.test(id) || !isObj(e)) continue;
+    const x = {};
+    if (isPotential(e.potential) && e.potential !== POTENTIAL_DEFAULT) x.potential = e.potential;
+    if (isCultivate(e.cultivate) && e.cultivate !== CULTIVATE_DEFAULT) x.cultivate = e.cultivate;
+    if (Object.keys(x).length) out[id] = x;
+  }
+  return out;
+}
+
+// quickSkillTags: taken from v0.2.3:public/js/ui/loadoutModel.js during the v0.2.3 narrow merge.
+export function quickSkillTags(rec) {
+  const tags = skillTags(rec);
+  if (!rec) return { ...tags, recovery: '—', duration: '—' };
+  // ON_DEPLOY covers constant passives too. A finite duration distinguishes the deploy-and-expire skills;
+  // some older records carry it only in the blackboard. Never infer it from a localized description.
+  const seconds = Number(rec.duration) > 0 ? Number(rec.duration) : tags.passive ? Number(rec.bb?.duration) : 0;
+  const deployment = tags.passive && seconds > 0;
+  const recovery = deployment ? '—' : tags.passive ? t('被动') : tags.spKind === 'atk' ? t('攻回') : tags.spKind === 'def' ? t('受回') : t('自回');
+  const duration = rec.durationType === 'AMMO' ? t('弹药') : seconds > 0 ? `${seconds}s`
+    : tags.passive ? t('常驻') : Number(rec.duration) < 0 ? '∞' : t('瞬发');
+  return { ...tags, sp: deployment ? t('部署触发') : tags.sp, recovery, duration };
+}
+
+// opsOf: taken from v0.2.3:public/js/ui/loadoutModel.js during the v0.2.3 narrow merge.
+export function opsOf(ops, charId) {
+  const e = charId && isObj(ops) && Object.hasOwn(ops, charId) && isObj(ops[charId]) ? ops[charId] : null;
+  const potential = e && isPotential(e.potential) ? e.potential : POTENTIAL_DEFAULT;
+  const cultivate = e && isCultivate(e.cultivate) ? e.cultivate : CULTIVATE_DEFAULT;
+  return { potential, cultivate, changed: potential !== POTENTIAL_DEFAULT || cultivate !== CULTIVATE_DEFAULT };
 }
