@@ -180,7 +180,7 @@ function fireBomb(battle, unit, b3) {
     radius: num(b3['attack@extrabomb.projectile_range'], BOMB_BLAST_FALLBACK),
     stun: num(b3['attack@extrabomb.stun'], 5),
   };
-  (unit.mem.jescaShells ??= []).push(bomb);
+  (unit.mem.jescaShells = unit.mem.jescaShells ?? []).push(bomb);
   unit.atkCd = unit.s.interval;   // the shell is her attack: the timer restarts [ASSUMED]
   battle.fx('bombardShell', { x: bomb.tx, y: bomb.ty, id: unit.id, r: bomb.radius, t: Math.hypot(bomb.tx - bomb.x, bomb.ty - bomb.y) / BOMB_SPEED });
 }

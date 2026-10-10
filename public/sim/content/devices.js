@@ -33,7 +33,7 @@
 // keeps those tiles NONE (grid.js DEPLOY_REFUSED_TILES), so automatic placements never use them [ASSUMED].
 
 import { COLS, ROWS } from '../constants.js';
-import { performAttack } from '../ai.js';
+import { performAttack, attackCountdown } from '../ai.js';
 import { sortEnemyTargets } from '../targeting.js';
 import { DIR_VEC, normDir, oppositeDir } from '../dir.js';
 
@@ -239,7 +239,7 @@ const TURRET_PROFILE = Object.freeze({ attack: 'ranged', dmgType: 'arts', projec
 function tickTurret(battle, u, dt) {
   const T = u.mem.turret;
   if (!u.alive || !T) return;
-  T.cd -= dt;
+  T.cd = attackCountdown(T.cd, dt);   // (the engine's attack countdown: a whole number of ticks takes exactly that many)
   if (T.cd > 0 || u.s.flags.stun) return;
   const L = u.ownerId != null ? topLayers(battle, u.ownerId) : 0;
   const bonus = Math.min(L * T.aspdPer, T.aspdMax);

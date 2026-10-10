@@ -223,7 +223,7 @@ export default {
               CURRENT_DIRS.forEach(([dr, dc], i) => {
                 const spawn = () => {
                   if (!up(unit) || unit.deploySeq !== seq) return;
-                  (unit.mem.leiziCurrents ??= []).push({ x, y, dr, dc, life: CURRENT_LIFE, seq, hitAt: new Map() });
+                  (unit.mem.leiziCurrents = unit.mem.leiziCurrents ?? []).push({ x, y, dr, dc, life: CURRENT_LIFE, seq, hitAt: new Map() });
                 };
                 if (i === 0) spawn();
                 else battle.after(CURRENT_GAP * i, spawn, { owner: unit });

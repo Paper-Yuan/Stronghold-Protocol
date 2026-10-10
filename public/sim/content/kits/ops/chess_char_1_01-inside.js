@@ -41,7 +41,7 @@ export default {
               && (a.def.bonds || []).includes('lateranoShip') && a.skill && a.skill.kind === 'ammo');
             const pick = battle.rng.pick(pool);
             if (!pick) return;
-            (pick.mem.insiderAmmo ??= new Map()).set(unit.id, { src: unit, seq, n: allyAmmo });
+            (pick.mem.insiderAmmo = pick.mem.insiderAmmo ?? new Map()).set(unit.id, { src: unit, seq, n: allyAmmo });
             battle.fx('buff', { x: pick.x, y: pick.y, id: pick.id, kind: 'ammo' });
           }, { owner: unit });
         }, { owner: unit });

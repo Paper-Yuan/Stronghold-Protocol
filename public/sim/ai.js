@@ -73,8 +73,19 @@ export function effectiveProfile(u) {
 // ---------------------------------------------------------------------------------------------------------------
 // ally attack loop
 
+/**
+ * One tick off an attack cooldown. What is left within 1e-9 of 0 is 0 (the engine's timer tolerance, as skills.js
+ * `timeLeft`, buff intervals and `every()`): 1 s counted down in thirty steps of 1/30 leaves 2.1e-16 in floating point,
+ * which held every attack whose interval is a whole number of ticks — 1 s, 3 s, 4 s … — one tick longer (PR #402; PRTS
+ * 作战机制 帧对齐: 1 s is 30 frames). A non-integer count still ends on the tick that crosses 0 (docs/SIM.md §2).
+ */
+export function attackCountdown(cd, dt) {
+  const left = cd - dt;
+  return left > 1e-9 ? left : 0;
+}
+
 export function updateAlly(b, u, dt) {
-  if (u.atkCd > 0 && u.canAct) u.atkCd = Math.max(0, u.atkCd - dt);
+  if (u.atkCd > 0 && u.canAct) u.atkCd = attackCountdown(u.atkCd, dt);
   if (u.blocking.length) enforceBlockCapacity(b, u);
   if (!u.canAct || !u.profile) return;
   // a rangeExtend change (buff added / expired) rebuilds the range — also for units that never attack (auras)
@@ -535,7 +546,7 @@ export function updateEnemy(b, e, dt) {
   // hidden (teleporting) enemies only advance wait legs
   const stunned = e.s.flags.stun;
   const prevCd = e.atkCd;
-  if (e.atkCd > 0 && !stunned && !e.hidden) e.atkCd = Math.max(0, e.atkCd - dt);
+  if (e.atkCd > 0 && !stunned && !e.hidden) e.atkCd = attackCountdown(e.atkCd, dt);
   // a stun / freeze / sleep / 浮空 — or leaving the field — takes the enemy out of its attack: a swing short of its damage
   // frame does not land, and the attack starts again from its wind-up afterwards (enemyAttack)
   if (e.swing && (stunned || e.hidden)) e.swing = false;

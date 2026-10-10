@@ -11,14 +11,17 @@ const ABYSSAL = new Set(['char_143_ghost', 'char_263_skadi', 'char_474_glady', '
 const isAbyssal = (u) => u?.def?.raw?.groupId === 'abyssal' || ABYSSAL.has(u?.def?.charId ?? u?.def?.raw?.charId);
 
 export default withDefaults({
-  // ===== 歌蕾蒂娅 (hookmaster) S3 缺水的碎漩狂舞 — bind a far target, tornado: slow, 85 % arts pulses + pull, final pull
+  // ===== 歌蕾蒂娅 (hookmaster) S3 缺水的碎漩狂舞 — bind a far target, tornado (r 1.5): slow, 85 % arts pulses + pull,
+  //       final pull (the 捕网, r 1)
   //       S1 缺水的大洋裂断 (charges: next attack pulls the target to her front, 150 %/180 %); S2 缺水的掌握怒海 (BAT +0.5 s,
   //       wider range, ≤ 2 targets — blocked first — at 135 %/150 % and pulled to her front); module HOK-Y (淡金坠饰):
   //       a pull towards herself of an enemy farther than 2.5 tiles is one force level stronger
   chess_char_4_12_a: (bb, chess, def) => {
     const t0 = tbb(def, 0), t1 = tbb(def, 1), mb = moduleBb(def);
     const tb = def.traitBb || {};
-    const R = 1.5; // [ASSUMED] tornado radius (no blackboard key)
+    // S3 radii (no blackboard key) — PRTS 备注: 「龙卷风半径1.5」 (slow, pulses) and 「技能结束时的拖拽为捕网，捕网半径为1，无伤害」
+    // (the skill-end pull; until 0.2.2 it reused the tornado's 1.5 — GitHub #324, PR #329)
+    const R = 1.5, NET_R = 1;
     const force = num(bb.force, num(bb['attack@force'], 0));
     const iv = Math.max(0.1, num(bb.interval, 1.5));
     const g = grid(def.skill?.rangeGrid);
@@ -75,7 +78,7 @@ export default withDefaults({
           const T = unit.mem.tornado;
           unit.mem.tornado = null;
           if (!T || reason === 'death' || !unit.alive) return;
-          for (const e of battle.foesInRadius(T.x, T.y, R)) pullSelf(battle, unit, e, force);
+          for (const e of battle.foesInRadius(T.x, T.y, NET_R)) pullSelf(battle, unit, e, force);   // the 捕网
           battle.fx('pull', { x: T.x, y: T.y, id: unit.id });
         },
       },

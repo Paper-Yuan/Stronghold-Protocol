@@ -292,9 +292,11 @@ export class SkillRuntime {
     }
     if (cost <= 0) return 0; // free skills never recharge (see reset)
     this.sp += amt;
-    while (this.sp >= cost && this.charges < this.maxCharges) {
+    // within 1e-9 of the cost is the cost (the timer tolerance of `timeLeft` below; PR #402): 300 time gains of 1/30 SP
+    // add up to 9.999999999999975 in floating point, which held a 10-SP charge one tick
+    while (this.sp > cost - 1e-9 && this.charges < this.maxCharges) {
       this.charges++;
-      if (this.charges < this.maxCharges) this.sp -= cost;
+      if (this.charges < this.maxCharges) this.sp = Math.max(0, this.sp - cost);
       else this.sp = cost;
     }
     if (this.charges >= this.maxCharges) this.sp = cost;
@@ -306,9 +308,9 @@ export class SkillRuntime {
     if (this.noSkill || this.kind === 'passive') return;
     const cost = this.spCost;
     if (cost <= 0) { if (this.sp > 0) { this.sp = 0; this.charges = this.maxCharges; } return; } // became free
-    while (this.sp >= cost && this.charges < this.maxCharges) {
+    while (this.sp > cost - 1e-9 && this.charges < this.maxCharges) {   // (the 1e-9 of gainSp)
       this.charges++;
-      this.sp = this.charges < this.maxCharges ? this.sp - cost : cost;
+      this.sp = this.charges < this.maxCharges ? Math.max(0, this.sp - cost) : cost;
     }
     if (this.sp > cost) this.sp = cost;
   }

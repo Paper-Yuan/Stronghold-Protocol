@@ -43,7 +43,7 @@ export default {
             onHit({ battle, unit, x, y }) {
               if (!unit.mem.hornFlare) return;
               unit.mem.hornFlare = false;
-              (unit.mem.flares ??= []).push({ x, y, until: battle.time + num(bb.projectile_delay_time, 6) });
+              (unit.mem.flares = unit.mem.flares ?? []).push({ x, y, until: battle.time + num(bb.projectile_delay_time, 6) });
               battle.fx('zone', { x, y, id: unit.id, r: num(bb.projectile_range, 1.7), duration: num(bb.projectile_delay_time, 6) });
             },
           },

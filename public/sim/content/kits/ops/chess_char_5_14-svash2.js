@@ -44,7 +44,7 @@ export default {
     };
     const cutCost = (a, v) => {
       if (!a || !(v > 0)) return;
-      a.mem.svashCostBase ??= a.base.cost;
+      a.mem.svashCostBase = a.mem.svashCostBase ?? a.base.cost;
       a.base.cost = Math.max(0, a.base.cost - v);
     };
     const slash = (battle, caster, atk) => {

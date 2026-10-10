@@ -95,7 +95,7 @@ export default {
             const t = battle.alliesInGrid(unit).filter((a) => a.hp > 0).sort((a, b) => a.hpRatio - b.hpRatio || b.blocking.length - a.blocking.length || dist(a, unit) - dist(b, unit) || a.id - b.id)[0];
             if (!t) return;
             const z = { type: 'guard', r: t.tileR, c: t.tileC, x: t.x, y: t.y, t: 0, acc: 0, dur: num(bb.projectile_delay_time, 6) + extend(battle, unit) };
-            (unit.mem.zones ??= []).push(z);
+            (unit.mem.zones = unit.mem.zones ?? []).push(z);
             battle.fx('zone', { x: z.x, y: z.y, id: unit.id, r: RING1, duration: z.dur });
           },
         }),
@@ -107,7 +107,7 @@ export default {
               .slice(0, Math.max(1, num(bb.max_target_token, 3)));
             const dur = num(bb.projectile_delay_time, 19) + extend(battle, unit);
             for (const a of ops) {
-              (unit.mem.zones ??= []).push({ type: 'sea', anchor: a, x: a.x, y: a.y, t: 0, acc: Math.max(0.1, num(bb.interval, 1)) - AURA_IV, dur });
+              (unit.mem.zones = unit.mem.zones ?? []).push({ type: 'sea', anchor: a, x: a.x, y: a.y, t: 0, acc: Math.max(0.1, num(bb.interval, 1)) - AURA_IV, dur });
               battle.fx('zone', { x: a.x, y: a.y, id: unit.id, r: RING1, duration: dur });
             }
           },
@@ -139,7 +139,7 @@ export default {
           // place instead of stacking a new layer each second (render/fx/zones.js; community report of 2026-10-06)
           const key = `thorn2:${unit.id}:${unit.mem.zoneSeq = (unit.mem.zoneSeq ?? 0) + 1}`;
           const z = { x: t.x, y: t.y, vx: (dx / len) * speed, vy: (dy / len) * speed, t: 0, acc: 0, dur: baseDur + extra, key };
-          (unit.mem.zones ??= []).push(z);
+          (unit.mem.zones = unit.mem.zones ?? []).push(z);
           battle.fx('zone', { x: z.x, y: z.y, id: unit.id, r: r0, duration: z.dur, key });
         },
       },

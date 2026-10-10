@@ -82,10 +82,10 @@ export default {
         battle.on('hit', (ctx) => {
           const t = ctx.target, d = ctx.dmg;
           if (ctx.source !== unit || !t || t.side !== 'enemy' || !d.isAttack || d.isSplash || !s3On(unit)) return;
-          const seen = unit.mem.acnipeSeen ??= new WeakMap();
+          const seen = unit.mem.acnipeSeen = unit.mem.acnipeSeen ?? new WeakMap();
           if (d.attackId && seen.get(t) === d.attackId) return;
           seen.set(t, d.attackId);
-          if (t.hpRatio >= ratio - 1e-9) (unit.mem.acnipeExtra ??= new Set()).add(t);
+          if (t.hpRatio >= ratio - 1e-9) (unit.mem.acnipeExtra = unit.mem.acnipeExtra ?? new Set()).add(t);
         }, { owner: unit });
       },
     };

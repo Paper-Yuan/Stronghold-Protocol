@@ -39,7 +39,7 @@ export default withDefaults({
     const S1 = isSel(def, 'skchr_cetsyr_1'), S2 = isSel(def, 'skchr_cetsyr_2'), S3 = isSel(def, 'skchr_cetsyr_3');
     const baseCnt = Math.max(0, Math.floor(num(t0.cnt, 3)));
     const MOTE_GAP = 0.5; // [ASSUMED] minimal time between two motes hitting the same enemy (s)
-    const setTrait = (unit, v) => { unit.mem.bardBase ??= unit.profile.auraRatio; unit.profile.auraRatio = num(v, unit.mem.bardBase); };
+    const setTrait = (unit, v) => { unit.mem.bardBase = unit.mem.bardBase ?? unit.profile.auraRatio; unit.profile.auraRatio = num(v, unit.mem.bardBase); };
     const resetTrait = (unit) => { if (unit.mem.bardBase != null) unit.profile.auraRatio = unit.mem.bardBase; };
     return {
       skills: alt(def, {

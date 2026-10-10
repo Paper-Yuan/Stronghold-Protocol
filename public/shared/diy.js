@@ -67,7 +67,9 @@ function backupsOf(data) {
 }
 /** The data/chess.json record `id` of `data`, or null. @param {DiyData|null|undefined} data @param {string} id */
 function chessOf(data, id) {
-  const r = typeof data?.rawChess === 'function' ? data.rawChess(id) : data?.chess?.[id];
+  const r = typeof data?.rawChess === 'function'
+    ? data.rawChess(id)
+    : (typeof data?.chess === 'function' ? data.chess(id) : data?.chess?.[id]);
   return isObj(r) ? r : null;
 }
 /** The `diy` part of data/backups.json, or null. @param {DiyData|null|undefined} data */

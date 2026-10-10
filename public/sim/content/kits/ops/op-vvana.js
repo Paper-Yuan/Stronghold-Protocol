@@ -107,7 +107,7 @@ function steal(battle, unit, e, n, cap) {
   if (!per) losses.set(e, (per = new Map()));
   per.set(unit.id, Math.min(cap, (per.get(unit.id) ?? 0) + n));
   applyLoss(battle, e, per);
-  (unit.mem.vvanaVictims ??= new Set()).add(e);
+  (unit.mem.vvanaVictims = unit.mem.vvanaVictims ?? new Set()).add(e);
   unit.mem.vvanaLoot = Math.min(cap, (unit.mem.vvanaLoot ?? 0) + n);
   battle.addBuff(unit, { key: LOOT_KEY, mods: { aspd: unit.mem.vvanaLoot }, tags: ['skill'] });
 }
