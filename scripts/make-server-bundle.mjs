@@ -17,6 +17,7 @@ import path from 'node:path';
 import os from 'node:os';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import { copyDir, zipDir } from './pack/_lib.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const IS_WIN = process.platform === 'win32';
@@ -77,36 +78,8 @@ const EXCLUDE_PREFIXES = [
   '.github/',
   '.devcontainer/',
   'scripts/build-android',
-  'scripts/make-windows-bundle',
-  'scripts/build-windows-zip'
+  'scripts/make-windows-bundle'
 ];
-
-async function copyDir(src, dst) {
-  let files = 0;
-  let bytes = 0;
-  const walk = async (d, out) => {
-    await fsp.mkdir(out, { recursive: true });
-    const entries = await fsp.readdir(d, { withFileTypes: true });
-    for (const e of entries) {
-      if (e.name.startsWith('.')) continue;
-      const from = path.join(d, e.name);
-      const to = path.join(out, e.name);
-      if (e.isSymbolicLink()) continue;
-      if (e.isDirectory()) {
-        await walk(from, to);
-        continue;
-      }
-      if (!e.isFile()) continue;
-      await fsp.copyFile(from, to);
-      files++;
-      try {
-        bytes += (await fsp.stat(to)).size;
-      } catch {}
-    }
-  };
-  await walk(src, dst);
-  return { files, bytes };
-}
 
 async function installProductionDeps(outDir) {
   const stage = path.join(outDir, `.tmp-deps-${Date.now()}`);
@@ -115,12 +88,22 @@ async function installProductionDeps(outDir) {
   for (const f of ['package.json', 'package-lock.json']) {
     await fsp.copyFile(path.join(ROOT, f), path.join(stage, f));
   }
+  const dummyNpmrc = path.join(stage, '.npmrc');
+  await fsp.writeFile(dummyNpmrc, 'allow-scripts=\nignore-scripts=true\n');
   console.log('  · 正在提取纯净生产依赖 (npm ci --omit=dev)...');
-  const args = ['ci', '--omit=dev', '--ignore-scripts', '--no-audit', '--no-fund'];
+  const args = ['ci', '--omit=dev', '--ignore-scripts', '--no-audit', '--no-fund', `--userconfig=${dummyNpmrc}`];
   const r = IS_WIN
     ? spawnSync('cmd.exe', ['/d', '/s', '/c', 'npm', ...args], { cwd: stage, stdio: 'inherit' })
     : spawnSync('npm', args, { cwd: stage, stdio: 'inherit' });
-  if (r.error || r.status !== 0) throw new Error('安装生产依赖失败');
+  if (r.error || r.status !== 0) {
+    if (fs.existsSync(path.join(ROOT, 'node_modules'))) {
+      console.log('  ! npm ci 遇到环境限制，正在从本地仓库同步已就绪的生产依赖…');
+      await copyDir(path.join(ROOT, 'node_modules'), path.join(outDir, 'node_modules'));
+      await fsp.rm(stage, { recursive: true, force: true });
+      return;
+    }
+    throw new Error('安装生产依赖失败');
+  }
   
   const targetModules = path.join(outDir, 'node_modules');
   await fsp.rm(targetModules, { recursive: true, force: true });
@@ -645,6 +628,7 @@ async function main() {
     const dst = path.join(o.out, d);
     if (fs.existsSync(src)) {
       const res = await copyDir(src, dst);
+      if (res.files === 0) throw new Error(`${d} 里一个文件都没复制到 —— 素材是不是还没准备好？`);
       console.log(`    - ${d}: ${res.files} 个文件 (${(res.bytes / (1024 * 1024)).toFixed(1)} MB)`);
     }
   }
@@ -655,6 +639,9 @@ async function main() {
     const dst = path.join(o.out, 'data', 'local-assets.json');
     await fsp.copyFile(localAssetManifest, dst);
     console.log('    - data/local-assets.json: 已收录官方 3D 贴图清单');
+  } else if (fs.existsSync(path.join(ROOT, 'public', 'assets', 'local'))) {
+    console.log('    ! 有 public/assets/local 但没有 data/local-assets.json：贴图进了包也用不上，'
+      + '先跑 node tools/setup.mjs --local 生成清单');
   }
 
   // 4. 复制生产 node_modules
@@ -681,17 +668,9 @@ async function main() {
   if (o.zip) {
     const zipPath = `${o.out}.zip`;
     console.log(`\n  · 正在压缩为服务器 ZIP 部署包: ${zipPath}...`);
-    const zipScript = path.join(ROOT, 'scripts', 'build-windows-zip.py');
-    const r = spawnSync('python', [zipScript, o.out, zipPath], { stdio: 'inherit' });
-    if (r.error || r.status !== 0) {
-      console.warn('  [警告] python build-windows-zip.py 压缩失败，尝试使用系统 tar...');
-      spawnSync('tar', ['-acf', zipPath, '-C', path.dirname(o.out), path.basename(o.out)], { stdio: 'inherit' });
-    }
-    if (fs.existsSync(zipPath)) {
-      const stat = fs.statSync(zipPath);
-      console.log(`✔ ZIP 部署包创建成功: ${(stat.size / (1024 * 1024)).toFixed(1)} MB`);
-      console.log(`  完整路径: ${zipPath}`);
-    }
+    const { files, bytes, zipBytes } = zipDir(o.out, zipPath);
+    console.log(`✔ ZIP 部署包创建成功: ${files} 个文件，原始 ${(bytes / (1024 * 1024)).toFixed(1)} MB → 压缩后 ${(zipBytes / (1024 * 1024)).toFixed(1)} MB`);
+    console.log(`  完整路径: ${zipPath}`);
   }
 }
 

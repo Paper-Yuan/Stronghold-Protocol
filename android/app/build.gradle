@@ -3,13 +3,10 @@ plugins {
     id 'org.jetbrains.kotlin.android'
 }
 
-def localProperties = new Properties()
-def localPropertiesFile = rootProject.file('local.properties')
-if (localPropertiesFile.exists()) {
-    localPropertiesFile.withReader('UTF-8') { reader ->
-        localProperties.load(reader)
-    }
-}
+// 这里**故意没有 signingConfig**：release 签名统一由 scripts/build-android.mjs 在 Gradle 之后用
+// build-tools 的 zipalign + apksigner 完成（v1 + v2 + v3 三种方案全开）。交给 Gradle 签的话 AGP 会
+// 按 minSdk 自己决定方案（minSdk 24 时它不签 v1），产出的包在个别老设备上装不上。密钥库路径与口令
+// 仍从 android/local.properties 读，只是改由 build-android.mjs 读，不经过 Gradle。
 
 android {
     namespace 'com.paper.stronghold'
@@ -29,28 +26,11 @@ android {
         }
     }
 
-    signingConfigs {
-        release {
-            def storeFilePath = System.getenv("SP_STORE_FILE") ?: localProperties.getProperty("SP_STORE_FILE")
-            def storePasswordVal = System.getenv("SP_STORE_PASSWORD") ?: localProperties.getProperty("SP_STORE_PASSWORD")
-            def keyAliasVal = System.getenv("SP_KEY_ALIAS") ?: localProperties.getProperty("SP_KEY_ALIAS")
-            def keyPasswordVal = System.getenv("SP_KEY_PASSWORD") ?: localProperties.getProperty("SP_KEY_PASSWORD")
-            if (storeFilePath) {
-                storeFile file(storeFilePath)
-                storePassword storePasswordVal
-                keyAlias keyAliasVal
-                keyPassword keyPasswordVal
-                v1SigningEnabled true
-                v2SigningEnabled true
-            }
-        }
-    }
-
     buildTypes {
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
-            signingConfig signingConfigs.release
+            // 不设 signingConfig：AGP 产出 app-release-unsigned.apk，签名见本文件顶部注释。
         }
         debug {
             applicationIdSuffix ".debug"

@@ -190,9 +190,10 @@ if (gitStatusBefore !== null) {
   console.log('✔ [P0-1 门禁通过] 打包过程未污染或修改任何 Git 工作树文件。');
 }
 
-// 3. Release signing (post-build): zipalign then APK Signature Scheme v2/v3 via build-tools apksigner.
-//    Done outside Gradle so that android/app/build.gradle needs no signingConfig, and so the keystore
-//    password never appears in a command line (it is passed through the environment only).
+// 3. Release signing (post-build): zipalign then APK Signature Scheme v1+v2+v3 via build-tools apksigner.
+//    必须在 Gradle 之外签：AGP 只按 minSdk 自己决定方案（minSdk 24 时完全不签 v1），而 v1 是少数老设备
+//    唯一认的签名。android/app/build.gradle 因此**不设 signingConfig**，Gradle 只产出未签名的
+//    app-release-unsigned.apk。密钥库口令只经环境变量传递，不出现在命令行里。
 let finalApk = RELEASE ? path.join(outDir, 'Stronghold-Protocol-release.apk') : debugApk;
 if (RELEASE) {
   console.log('\n[3/3] 正在对齐并签名 release APK...');
@@ -231,10 +232,7 @@ if (RELEASE) {
   const signed = path.join(outDir, 'Stronghold-Protocol-release.apk');
   for (const f of [aligned, signed]) if (fs.existsSync(f)) fs.rmSync(f, { force: true });
 
-  if (fs.existsSync(gradleSignedApk)) {
-    console.log('  ✔ Gradle 已自动完成签名 (signingConfigs.release)，正在转存并执行最终校验...');
-    fs.copyFileSync(gradleSignedApk, signed);
-  } else if (fs.existsSync(unsignedApk)) {
+  if (fs.existsSync(unsignedApk)) {
     // -p: page-align uncompressed .so (required for targetSdk >= 23); 4 = alignment in bytes
     const alignRes = spawnSync(zipalign, ['-f', '-p', '4', unsignedApk, aligned], { stdio: 'inherit', shell: false });
     if (alignRes.status !== 0) {
@@ -250,8 +248,12 @@ if (RELEASE) {
       '--ks-key-alias', creds.alias,
       '--ks-pass', 'env:SP_STORE_PASSWORD',
       '--key-pass', 'env:SP_KEY_PASSWORD',
+      // 三种方案显式全开：v1 给老设备，v2 给 Android 7+，v3 支持密钥轮换。
+      '--v1-signing-enabled', 'true',
       '--v2-signing-enabled', 'true',
       '--v3-signing-enabled', 'true',
+      // 不要 v4：它只服务 adb 增量安装，还会在产物目录旁边留下一个 .idsig 文件。
+      '--v4-signing-enabled', 'false',
       '--out', signed,
       aligned,
     ], { stdio: 'inherit', shell: signShell, env: signEnv });
@@ -259,20 +261,38 @@ if (RELEASE) {
       console.error('✘ apksigner 签名失败。');
       process.exit(1);
     }
+  } else if (fs.existsSync(gradleSignedApk)) {
+    console.error('✘ Gradle 自己把包签了（android/app/build.gradle 里又被加回了 signingConfig）。');
+    console.error('  本脚本要求签名统一由 apksigner 做，且 v1/v2/v3 三种方案全开 —— AGP 按 minSdk 自行决定方案，');
+    console.error('  minSdk 24 时它不签 v1，个别老设备会装不上。请去掉 signingConfig 后重试。');
+    process.exit(1);
   } else {
-    console.error('✘ 未找到构建产物 APK (既无 app-release.apk 也无 app-release-unsigned.apk)。');
+    console.error('✘ 未找到构建产物 APK (既无 app-release-unsigned.apk 也无 app-release.apk)。');
     process.exit(1);
   }
 
-  const verifyRes = spawnSync(signer.cmd, [...signer.prefix, 'verify', '--print-certs', signed], { encoding: 'utf8', shell: signShell });
+  // --min-sdk-version 21 是必须的：apksigner 在 minSdk >= 24 时**跳过 v1 校验**并把 v1 报成 false
+  // （签名文件其实在，只是它认为 v2/v3 已足够）。我们要求三种方案齐全，就得让它按"老设备也要能装"来验。
+  const verifyRes = spawnSync(signer.cmd, [...signer.prefix, 'verify', '--verbose', '--min-sdk-version', '21', '--print-certs', signed], { encoding: 'utf8', shell: signShell });
   if (verifyRes.status !== 0) {
     console.error('✘ [签名门禁失败] 产出的 APK 未通过 apksigner verify：');
     console.error(verifyRes.stdout || '');
     console.error(verifyRes.stderr || '');
     process.exit(1);
   }
-  const dn = (verifyRes.stdout || '').split(/\r?\n/).find((l) => /certificate DN/.test(l)) || '';
-  console.log('✔ [签名门禁通过] release APK 已通过 apksigner verify。');
+  const verifyOut = verifyRes.stdout || '';
+  const schemeOn = (name) => {
+    const m = verifyOut.match(new RegExp(`Verified using ${name} scheme[^:]*:\\s*(true|false)`));
+    return m ? m[1] === 'true' : false;
+  };
+  const schemes = { v1: schemeOn('v1'), v2: schemeOn('v2'), v3: schemeOn('v3') };
+  if (!schemes.v1 || !schemes.v2 || !schemes.v3) {
+    console.error(`✘ [签名门禁失败] 需要 v1+v2+v3 三种签名方案全部生效，实际: ${JSON.stringify(schemes)}`);
+    console.error(verifyOut);
+    process.exit(1);
+  }
+  const dn = verifyOut.split(/\r?\n/).find((l) => /certificate DN/.test(l)) || '';
+  console.log(`✔ [签名门禁通过] release APK 已通过 apksigner verify，v1+v2+v3 三种方案全部生效。`);
   if (dn) console.log(`  ${dn.trim()}`);
   fs.rmSync(aligned, { force: true });
   finalApk = signed;

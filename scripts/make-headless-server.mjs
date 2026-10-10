@@ -4,7 +4,7 @@
 //   node scripts/make-headless-server.mjs [--out <dir>] [--zip] [--no-deps]
 //
 // 产物特性（针对电脑端与手机端全量包用户开服设计）：
-//   1. 剥离 600MB+ 素材：完全不含 public/assets/ 二进制图包与音频，包体从 460MB 极限瘦身至约 8MB！
+//   1. 剥离素材：完全不含 public/assets/ 二进制图包与音频（包体主要是便携 Node 与生产依赖）。
 //   2. 极低云端开销：云服务器只需 1核1G 内存与 1Mbps 宽带，即可承载数十人联机房间。
 //   3. 客户端完美契约：电脑端（Windows 解压包）与手机端（APK）在本地读取完整素材，仅通过 WebSocket 交换对局信令。
 
@@ -14,11 +14,13 @@ import path from 'node:path';
 import os from 'node:os';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import { copyDir, zipDir } from './pack/_lib.mjs';
+import { APP_VERSION } from '../shared/constants.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const IS_WIN = process.platform === 'win32';
 const DESKTOP = path.join(os.homedir(), 'Desktop');
-const BUNDLE_NAME = 'Stronghold-Protocol-v0.1.6.1-Server-Headless';
+const BUNDLE_NAME = `Stronghold-Protocol-${APP_VERSION}-Server-Headless`;
 const DEFAULT_OUT = path.join(DESKTOP, BUNDLE_NAME);
 
 function parseArgs(argv) {
@@ -74,50 +76,33 @@ const EXCLUDE_PREFIXES = [
   '.devcontainer/',
   'scripts/build-android',
   'scripts/make-windows-bundle',
-  'scripts/build-windows-zip',
   'scripts/make-server-bundle'
 ];
 
-async function copyDir(src, dst) {
-  let files = 0;
-  let bytes = 0;
-  const walk = async (d, out) => {
-    await fsp.mkdir(out, { recursive: true });
-    const entries = await fsp.readdir(d, { withFileTypes: true });
-    for (const e of entries) {
-      if (e.name.startsWith('.')) continue;
-      const from = path.join(d, e.name);
-      const to = path.join(out, e.name);
-      if (e.isSymbolicLink()) continue;
-      if (e.isDirectory()) {
-        await walk(from, to);
-        continue;
-      }
-      if (!e.isFile()) continue;
-      await fsp.copyFile(from, to);
-      files++;
-      try {
-        bytes += (await fsp.stat(to)).size;
-      } catch {}
-    }
-  };
-  await walk(src, dst);
-  return { files, bytes };
-}
-
 async function installProductionDeps(outDir) {
-  const stage = path.join(os.tmpdir(), `sp-headless-deps-${Date.now()}`);
+  // 暂存目录必须和 outDir 同卷：Windows 上跨盘 rename 会抛 EXDEV（系统临时目录常在 C:，输出目录常在别的盘）。
+  const stage = path.join(outDir, `.tmp-deps-${Date.now()}`);
   await fsp.rm(stage, { recursive: true, force: true });
   await fsp.mkdir(stage, { recursive: true });
   for (const f of ['package.json', 'package-lock.json']) {
     await fsp.copyFile(path.join(ROOT, f), path.join(stage, f));
   }
+  const dummyNpmrc = path.join(stage, '.npmrc');
+  await fsp.writeFile(dummyNpmrc, 'allow-scripts=\nignore-scripts=true\n');
   console.log('  · 正在提取纯净生产依赖 (npm ci --omit=dev)...');
-  const args = ['ci', '--omit=dev', '--ignore-scripts', '--no-audit', '--no-fund'];
+  const args = ['ci', '--omit=dev', '--ignore-scripts', '--no-audit', '--no-fund', `--userconfig=${dummyNpmrc}`];
   const r = IS_WIN
     ? spawnSync('cmd.exe', ['/d', '/s', '/c', 'npm', ...args], { cwd: stage, stdio: 'inherit' })
     : spawnSync('npm', args, { cwd: stage, stdio: 'inherit' });
-  if (r.error || r.status !== 0) throw new Error('安装生产依赖失败');
+  if (r.error || r.status !== 0) {
+    if (fs.existsSync(path.join(ROOT, 'node_modules'))) {
+      console.log('  ! npm ci 遇到环境限制，正在从本地仓库同步已就绪的生产依赖…');
+      await copyDir(path.join(ROOT, 'node_modules'), path.join(outDir, 'node_modules'));
+      await fsp.rm(stage, { recursive: true, force: true });
+      return;
+    }
+    throw new Error('安装生产依赖失败');
+  }
   
   const targetModules = path.join(outDir, 'node_modules');
   await fsp.rm(targetModules, { recursive: true, force: true });
@@ -424,7 +409,7 @@ WantedBy=multi-user.target
 function generateReadme(outDir) {
   const content = `# 明日方舟「卫戍协议：盟约」纯逻辑轻量服务器部署说明
 
-本包为 **v0.1.6.1** 剥离素材后的**超轻量纯逻辑服务器包（体积约 8MB）**。
+本包为 **v${APP_VERSION}** 剥离素材后的**纯逻辑服务器包（不含 public/assets 图包与音频）**。
 
 ## 适用场景
 - **客户端设备**：玩家使用 **Windows 电脑端完整解压包** 或 **Android 手机端全量 APK**。
@@ -541,6 +526,7 @@ async function main() {
     const dst = path.join(o.out, d);
     if (fs.existsSync(src)) {
       const res = await copyDir(src, dst);
+      if (res.files === 0) throw new Error(`${d} 里一个文件都没复制到 —— 素材是不是还没准备好？`);
       console.log(`    - ${d}: ${res.files} 个文件 (${(res.bytes / (1024 * 1024)).toFixed(1)} MB)`);
     }
   }
@@ -577,17 +563,9 @@ async function main() {
   if (o.zip) {
     const zipPath = `${o.out}.zip`;
     console.log(`\n  · 正在压缩为轻量 ZIP 部署包: ${zipPath}...`);
-    const zipScript = path.join(ROOT, 'scripts', 'build-windows-zip.py');
-    const r = spawnSync('python', [zipScript, o.out, zipPath], { stdio: 'inherit' });
-    if (r.error || r.status !== 0) {
-      console.warn('  [警告] python build-windows-zip.py 压缩失败，尝试使用系统 tar...');
-      spawnSync('tar', ['-acf', zipPath, '-C', path.dirname(o.out), path.basename(o.out)], { stdio: 'inherit' });
-    }
-    if (fs.existsSync(zipPath)) {
-      const stat = fs.statSync(zipPath);
-      console.log(`✔ 纯逻辑 ZIP 部署包创建成功: ${(stat.size / (1024 * 1024)).toFixed(1)} MB`);
-      console.log(`  完整路径: ${zipPath}`);
-    }
+    const { files, bytes, zipBytes } = zipDir(o.out, zipPath);
+    console.log(`✔ 纯逻辑 ZIP 部署包创建成功: ${files} 个文件，原始 ${(bytes / (1024 * 1024)).toFixed(1)} MB → 压缩后 ${(zipBytes / (1024 * 1024)).toFixed(1)} MB`);
+    console.log(`  完整路径: ${zipPath}`);
   }
 }
 

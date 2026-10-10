@@ -1,6 +1,6 @@
 {
   "name": "stronghold-protocol-alliance",
-  "version": "0.2.1-fusion",
+  "version": "0.2.2-fusion",
   "private": true,
   "description": "明日方舟「卫戍协议：盟约」非官方同人联机网页复刻（1–4 人合作，Node.js 服务器 + 浏览器客户端）",
   "license": "GPL-3.0-or-later",
@@ -39,7 +39,11 @@
     "build:android": "node scripts/build-android.mjs",
     "voices": "node tools/fetch-bilingual-voices.mjs",
     "sync": "node scripts/auto-sync.mjs",
-    "pack:release": "node scripts/pack-release.mjs"
+    "pack": "node scripts/pack/index.mjs all",
+    "pack:server": "node scripts/pack/index.mjs server",
+    "pack:desktop": "node scripts/pack/index.mjs desktop",
+    "pack:mobile": "node scripts/pack/index.mjs mobile",
+    "test:adb": "powershell -ExecutionPolicy Bypass -File scripts/adb-test.ps1"
   },
   "engines": {
     "node": ">=22"

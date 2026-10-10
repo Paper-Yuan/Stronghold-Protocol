@@ -8,6 +8,7 @@ import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
 import { verifyVoicesManifest } from './sync-voices-manifest.mjs';
+import { zipDir, zipEntryNames } from '../scripts/pack/_lib.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const ANDROID_ASSETS_DIR = path.join(ROOT, 'android', 'app', 'src', 'main', 'assets');
@@ -99,62 +100,34 @@ for (const mod of prodModules) {
   }
 }
 
-// 3. Compress into app_bundle.zip using python zipfile
+// 3. Compress into app_bundle.zip（纯 Node 写入器，见 scripts/pack/_lib.mjs —— 不再依赖 python）
 fs.mkdirSync(ANDROID_ASSETS_DIR, { recursive: true });
 console.log(`[bundle-android] Creating zip archive at ${ZIP_TARGET}...`);
 
-const pyScript = `
-import zipfile, os, sys
-
-staging = sys.argv[1]
-target = sys.argv[2]
-
-with zipfile.ZipFile(target, 'w', zipfile.ZIP_DEFLATED) as z:
-    for root, dirs, files in os.walk(staging):
-        for file in files:
-            full_path = os.path.join(root, file)
-            rel_path = os.path.relpath(full_path, staging)
-            z.write(full_path, rel_path)
-print(f"Compressed {target} successfully.")
-`;
-
-const zipRes = spawnSync('python', ['-c', pyScript, STAGING_DIR, ZIP_TARGET], { stdio: 'inherit' });
-if (zipRes.status !== 0) {
-  console.error('[bundle-android] Failed to compress staging directory');
-  process.exit(1);
-}
+// rootName: null —— 解压到 filesDir/bundle 后 public/、server/、data/ 要直接躺在根下，不能多一层目录。
+const zipInfo = zipDir(STAGING_DIR, ZIP_TARGET, { rootName: null });
+console.log(`[bundle-android] Compressed ${zipInfo.files} files: ${(zipInfo.bytes / 1048576).toFixed(1)} MB -> ${(zipInfo.zipBytes / 1048576).toFixed(1)} MB`);
 
 // P0-2 Gate: Verify license files exist inside the generated zip archive
 console.log('[bundle-android] Verifying license files gate inside app_bundle.zip...');
-const verifyPyScript = `
-import zipfile, sys
-
-target = sys.argv[1]
-required_licenses = [
-    'licenses/THIRD-PARTY-NOTICES.txt',
-    'licenses/LICENSE.txt',
-    'node_modules/ws/LICENSE',
-    'node_modules/preact/LICENSE',
-    'node_modules/htm/LICENSE',
-    'node_modules/pixi.js/LICENSE',
-    'node_modules/pixi-spine/SPINE-LICENSE',
-    'node_modules/three/LICENSE',
-]
-
-with zipfile.ZipFile(target, 'r') as z:
-    names = set(z.namelist())
-    missing = [f for f in required_licenses if f not in names and f.replace('/', '\\\\') not in names]
-    if missing:
-        print(f"ERROR: Missing license files in bundle: {missing}", file=sys.stderr)
-        sys.exit(1)
-    print(f"All {len(required_licenses)} required license notices verified in app_bundle.zip.")
-`;
-
-const verifyRes = spawnSync('python', ['-c', verifyPyScript, ZIP_TARGET], { stdio: 'inherit' });
-if (verifyRes.status !== 0) {
-  console.error('✘ [bundle-android] 许可证打包门禁校验失败！');
+const REQUIRED_LICENSES = [
+  'licenses/THIRD-PARTY-NOTICES.txt',
+  'licenses/LICENSE.txt',
+  'node_modules/ws/LICENSE',
+  'node_modules/preact/LICENSE',
+  'node_modules/htm/LICENSE',
+  'node_modules/pixi.js/LICENSE',
+  'node_modules/pixi-spine/SPINE-LICENSE',
+  'node_modules/three/LICENSE',
+];
+// 条目名统一成 `/` 分隔再比对（zipDir 写的就是 `/`，这里只是防御手工放进来的包）。
+const bundleNames = new Set(zipEntryNames(ZIP_TARGET).map((n) => n.replace(/\\/g, '/')));
+const missingLicenses = REQUIRED_LICENSES.filter((f) => !bundleNames.has(f));
+if (missingLicenses.length) {
+  console.error(`✘ [bundle-android] 许可证打包门禁校验失败！缺少: ${missingLicenses.join(', ')}`);
   process.exit(1);
 }
+console.log(`[bundle-android] All ${REQUIRED_LICENSES.length} required license notices verified in app_bundle.zip.`);
 
 // Clean up staging
 fs.rmSync(STAGING_DIR, { recursive: true, force: true });

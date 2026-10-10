@@ -12,7 +12,7 @@ pinned: false
 
 《明日方舟》季节性自走棋塔防玩法「卫戍协议：盟约」的**非官方同人复刻**：浏览器即开即玩，单人或 1–4 人联机合作。
 
-![version](https://img.shields.io/badge/version-0.2.1-fusion-2ea44f)
+![version](https://img.shields.io/badge/version-0.2.2-fusion-2ea44f)
 ![license](https://img.shields.io/badge/code%20license-GPL--3.0--or--later-blue)
 ![node](https://img.shields.io/badge/node-22%20%7C%2024-339933)
 
@@ -223,6 +223,19 @@ GOLDEN_FULL=1 node --test test/golden.test.js           # 黄金结果：固定�
 - 只重构、不改玩法的提交不能改变 `test/golden/*.json`；有意改变玩法时运行 `npm run golden:update`，检查差异后随改动一起提交（见 [test/golden/README.md](test/golden/README.md)）。
 - GitHub Actions（[.github/workflows/ci.yml](.github/workflows/ci.yml)）在 Ubuntu 与 Windows、Node 22 / 24 上运行 `npm ci`、`node --test` 和服务器冒烟测试。
 
+### 发布打包（三端）
+
+三条发布管线共用一个入口和一个纯 Node 的 ZIP 写入器（`scripts/pack/`，不依赖 Python 或系统 `zip`），产物统一落在 `dist/`（已进 `.gitignore`）：
+
+```bash
+npm run pack:server     # 服务器部署包 dist/server/（加 --headless 出剥离素材的纯逻辑服）
+npm run pack:desktop    # Windows 便携包 dist/desktop/（含便携 Node，解压双击即玩）
+npm run pack:mobile     # 安卓 APK dist/mobile/（需 Android SDK + JDK，--release 需 android/local.properties 里的签名配置）
+npm run pack            # 依次打上面三端
+```
+
+参数原样透传给对应管线，例如 `node scripts/pack/index.mjs server --headless --tar`、`node scripts/pack/index.mjs desktop --no-node`。三条管线都会跟随目录型 junction 取素材（工作树里的 `public/assets/*` 常常是指向素材仓库的链接），打包结束后自检 ZIP 里非 ASCII 条目是否带 UTF-8 标记 —— 中文文件名在资源管理器里才不乱码。
+
 ## 项目结构
 
 | 路径 | 内容 |
@@ -232,7 +245,7 @@ GOLDEN_FULL=1 node --test test/golden.test.js           # 黄金结果：固定�
 | `public/` | 浏览器客户端（原生 ES 模块，PixiJS + pixi-spine、three.js 3D 棋盘、Preact + htm UI） |
 | `data/` | 由官方数据表生成的游戏数据与素材清单 `assets.json` |
 | `tools/` | `setup.mjs` / `doctor.mjs`、素材下载 `fetch-assets.mjs`、数据构建、本地提取 `local-extract/` |
-| `scripts/` | 启动脚本（Windows / macOS / Linux）、Windows 开机自启 |
+| `scripts/` | 启动脚本（Windows / macOS / Linux）、Windows 开机自启；`scripts/pack/` 是三端发布打包入口（server / desktop / mobile） |
 | `docs/` | 文档与调研 |
 | `test/` | `node:test` 测试 |
 

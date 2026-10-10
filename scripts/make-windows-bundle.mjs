@@ -11,7 +11,7 @@
 //   README-开箱即用.md       给玩家看的说明（含非官方 / 严禁盈利 / 素材版权声明）
 //   LICENSE / NOTICE.md / THIRD-PARTY-NOTICES.md
 //
-// 目标机器什么都不用装：解压 → 双击 启动游戏.bat。素材约 330 MB 是硬成本，包因此较大。
+// 目标机器什么都不用装：解压 → 双击 启动游戏.bat。素材约 800 MB 是硬成本，包因此较大。
 //
 // 三条硬规则（都是踩过的坑）：
 //   1. app\ 的文件清单来自 `git ls-files`，不是手写的跳过表 —— `.env` / `.venv` / `.claude` /
@@ -29,6 +29,7 @@ import crypto from 'node:crypto';
 import os from 'node:os';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import { copyDir } from './pack/_lib.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const IS_WIN = process.platform === 'win32';
@@ -206,38 +207,12 @@ export async function copyFiles(relPaths, dst, root = ROOT) {
 }
 
 /**
- * 整目录复制（素材 / 依赖），跳过符号链接与点开头的条目。
+ * 整目录复制（素材 / 依赖）：实现见 scripts/pack/_lib.mjs，三端发布管线共用一份。
  *
  * 点开头的条目一律不要：`public/assets` 里可能躺着打包机器自己的 `.DS_Store`，它既不属于项目也不该发出去。
+ * 目录型链接（含 NTFS junction）会跟随，指向文件的链接仍跳过。
  */
-export async function copyDir(src, dst) {
-  let files = 0; let bytes = 0;
-  const walk = async (d, out) => {
-    await fsp.mkdir(out, { recursive: true });
-    const entries = await fsp.readdir(d, { withFileTypes: true });
-    for (const e of entries) {
-      if (e.name.startsWith('.')) continue;
-      const from = path.join(d, e.name);
-      const to = path.join(out, e.name);
-      if (e.isSymbolicLink()) continue;
-      if (e.isDirectory()) {
-        // eslint-disable-next-line no-await-in-loop
-        await walk(from, to);
-        continue;
-      }
-      if (!e.isFile()) continue;
-      // eslint-disable-next-line no-await-in-loop
-      await fsp.copyFile(from, to);
-      files++;
-      try {
-        // eslint-disable-next-line no-await-in-loop
-        bytes += (await fsp.stat(to)).size;
-      } catch { /* ignore */ }
-    }
-  };
-  await walk(src, dst);
-  return { files, bytes };
-}
+export { copyDir };
 
 async function dirSize(dir) {
   let bytes = 0; let files = 0;
@@ -269,17 +244,27 @@ async function installProductionDeps(appDir) {
     if (!fs.existsSync(src)) throw new Error(`缺少 ${f}：无法安装生产依赖`);
     await fsp.copyFile(src, path.join(stage, f));
   }
+  const dummyNpmrc = path.join(stage, '.npmrc');
+  await fsp.writeFile(dummyNpmrc, 'allow-scripts=\nignore-scripts=true\n');
   console.log('  · 安装生产依赖 npm ci --omit=dev（稍等）…');
   // --ignore-scripts：本仓库的 postinstall 是 `node tools/vendor.mjs`（把 npm 里的前端库拷进
   // public/vendor）。这个暂存目录里只有一份 package.json，脚本根本不存在，npm ci 会在 postinstall
   // 阶段 MODULE_NOT_FOUND；而 public/vendor 本来就是整目录进包（见 ASSET_DIRS），不需要再跑一次。
   // 依赖里也没有需要编译的原生模块（htm / pixi / preact / three / ws 都是纯 JS）。
-  const args = ['ci', '--omit=dev', '--ignore-scripts', '--no-audit', '--no-fund'];
+  const args = ['ci', '--omit=dev', '--ignore-scripts', '--no-audit', '--no-fund', `--userconfig=${dummyNpmrc}`];
   // Windows 上 npm 是 npm.cmd（批处理），不能直接 spawn；显式走 cmd.exe，避免 shell:true 的参数转义告警。
   const r = IS_WIN
     ? spawnSync('cmd.exe', ['/d', '/s', '/c', 'npm', ...args], { cwd: stage, stdio: 'inherit' })
     : spawnSync('npm', args, { cwd: stage, stdio: 'inherit' });
-  if (r.error || r.status !== 0) throw new Error('npm ci --omit=dev 失败（便携包需要生产依赖，请先联网）');
+  if (r.error || r.status !== 0) {
+    if (fs.existsSync(path.join(ROOT, 'node_modules'))) {
+      console.log('  ! npm ci 遇到环境限制，正在从本地仓库同步已就绪的生产依赖…');
+      await copyDir(path.join(ROOT, 'node_modules'), path.join(appDir, 'node_modules'));
+      await fsp.rm(stage, { recursive: true, force: true });
+      return;
+    }
+    throw new Error('npm ci --omit=dev 失败（便携包需要生产依赖，请先联网）');
+  }
   await fsp.rm(path.join(appDir, 'node_modules'), { recursive: true, force: true });
   await fsp.rename(path.join(stage, 'node_modules'), path.join(appDir, 'node_modules'));
   await fsp.rm(stage, { recursive: true, force: true });
@@ -516,6 +501,7 @@ async function main() {
   for (const d of ASSET_DIRS) {
     // eslint-disable-next-line no-await-in-loop
     const s = await copyDir(path.join(ROOT, d), path.join(appDir, d));
+    if (s.files === 0) throw new Error(`${d} 里一个文件都没复制到 —— 素材是不是还没准备好？`);
     assetFiles += s.files; assetBytes += s.bytes;
   }
   console.log(`    完成：${assetFiles} 个文件 / ${MB(assetBytes)}`);

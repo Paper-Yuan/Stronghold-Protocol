@@ -43,6 +43,34 @@ const args = [engine, '--out', outDir, '--no-zip'];
 if (!o.deps) args.push('--no-deps');
 run(process.execPath, args);
 
+// 服务器包定位为纯联机服：彻底剔除无尽模式与排行榜（仅双端提供）
+const srvIndex = path.join(outDir, 'server', 'index.js');
+if (fs.existsSync(srvIndex)) {
+  let content = fs.readFileSync(srvIndex, 'utf8');
+  // 移除 /api/endless/leaderboard 路由
+  content = content.replace(/if\s*\(parts\.rawPath\s*===\s*'\/api\/endless\/leaderboard'\)[\s\S]*?return;\s*\}/g, '/* endless leaderboard endpoint disabled in server */');
+  fs.writeFileSync(srvIndex, content, 'utf8');
+}
+// 移除 data/endless-records.json 如果存在
+const srvRec = path.join(outDir, 'data', 'endless-records.json');
+if (fs.existsSync(srvRec)) {
+  fs.rmSync(srvRec, { force: true });
+}
+// 确保前端静态中不挂载 LeaderboardButton
+const srvLobby = path.join(outDir, 'public', 'js', 'screens', 'lobby.js');
+if (fs.existsSync(srvLobby)) {
+  let lobbyContent = fs.readFileSync(srvLobby, 'utf8');
+  lobbyContent = lobbyContent.replace(/<\$\{LeaderboardButton\}[^>]*\/>/g, '');
+  lobbyContent = lobbyContent.replace(/<\$\{EndlessCard\}[^>]*\/>/g, '');
+  fs.writeFileSync(srvLobby, lobbyContent, 'utf8');
+}
+const srvTitle = path.join(outDir, 'public', 'js', 'screens', 'title.js');
+if (fs.existsSync(srvTitle)) {
+  let titleContent = fs.readFileSync(srvTitle, 'utf8');
+  titleContent = titleContent.replace(/<\$\{LeaderboardButton\}[^>]*\/>/g, '');
+  fs.writeFileSync(srvTitle, titleContent, 'utf8');
+}
+
 // 引擎自己也有一份 zip 逻辑（两个构建脚本都能单独用），这里统一由本管线压缩 + 自检，保证三端形状一致。
 let zipPath = null;
 if (o.zip) {

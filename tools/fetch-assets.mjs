@@ -133,16 +133,25 @@ async function writeJsonAtomic(path, value, indent) {
   await rename(path + '.tmp', path);
 }
 
-/** All files under a directory, as forward-slash paths relative to it. */
-async function listFiles(dir, base = dir, out = []) {
+/**
+ * All files under a directory, as forward-slash paths relative to it.
+ *
+ * 目录型链接（含 NTFS junction）**不跟随**：本仓库工作树里的 `public/assets/*` 常是指向共享素材库的
+ * junction，跟进去会让 `--prune` 有机会删掉别的仓库共用的文件。跳过的条目记在 `linked` 里交给调用方
+ * 报出来 —— 否则孤儿统计会静默漏掉整片子树，看上去像是"磁盘上没有多余文件"。
+ *
+ * @returns {Promise<{ files: string[], linked: string[] }>}
+ */
+async function listFiles(dir, base = dir, acc = { files: [], linked: [] }) {
   let entries = [];
-  try { entries = await readdir(dir, { withFileTypes: true }); } catch { return out; }
+  try { entries = await readdir(dir, { withFileTypes: true }); } catch { return acc; }
   for (const e of entries) {
     const p = join(dir, e.name);
-    if (e.isDirectory()) await listFiles(p, base, out);
-    else if (e.isFile()) out.push(relative(base, p).split(sep).join('/'));
+    if (e.isSymbolicLink()) { acc.linked.push(relative(base, p).split(sep).join('/')); continue; }
+    if (e.isDirectory()) await listFiles(p, base, acc);
+    else if (e.isFile()) acc.files.push(relative(base, p).split(sep).join('/'));
   }
-  return out;
+  return acc;
 }
 
 /** Remove fields that only make sense next to a resolved spine. */
@@ -319,8 +328,13 @@ async function main() {
 
   // Orphans: files on disk that the manifest does not reference (e.g. after a mapping change). public/assets/local/**
   // belongs to tools/local-extract (data/local-assets.json) and is never an orphan: --prune used to delete all of it.
-  const orphans = (await listFiles(ASSETS)).filter((r) => !resolved.files.has(r) && !r.startsWith('local/'));
+  const scan = await listFiles(ASSETS);
+  const orphans = scan.files.filter((r) => !resolved.files.has(r) && !r.startsWith('local/'));
   if (opts.prune) for (const r of orphans) { try { await unlink(join(ASSETS, r)); } catch { /* ignore */ } }
+  if (scan.linked.length) {
+    log(`[orphans] 跳过 ${scan.linked.length} 个链接目录（不纳入孤儿检测，--prune 也不会动它们）: `
+      + `${scan.linked.slice(0, 4).join(', ')}${scan.linked.length > 4 ? ' …' : ''}`);
+  }
 
   const charIds = Object.keys(assets07.operators || {});
   const required = requiredMisses(manifest, charIds);
@@ -336,6 +350,7 @@ async function main() {
     fontErrors,
     orphans: opts.prune ? [] : orphans,
     pruned: opts.prune ? orphans : [],
+    skippedLinks: scan.linked, // 链接目录（junction），未纳入孤儿检测
     manifestWritten: guard.write,
     droppedEntries: guard.dropped, // entries of the previous data/assets.json the rebuilt one lacks
     notes: plan.notes,

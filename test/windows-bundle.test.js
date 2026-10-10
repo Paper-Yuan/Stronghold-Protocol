@@ -199,6 +199,37 @@ describe('make-windows-bundle.mjs: 素材整树复制', () => {
     }
   });
 
+  test('copyDir 跟随目录型链接：junction / 目录符号链接指向的素材要整棵进包', async () => {
+    const { copyDir } = await mod('scripts/make-windows-bundle.mjs');
+    const base = await fsp.mkdtemp(path.join(os.tmpdir(), 'sp-copydir-junction-'));
+    try {
+      const src = path.join(base, 'src');
+      const store = path.join(base, 'store');   // 模拟仓库外的素材目录（本机是 E:\Workbox\系统\public\assets）
+      const dst = path.join(base, 'dst');
+      await fsp.mkdir(store, { recursive: true });
+      await fsp.mkdir(path.join(store, 'spine'), { recursive: true });
+      await fsp.writeFile(path.join(store, 'art.png'), 'art');
+      await fsp.writeFile(path.join(store, 'spine', 'a.atlas'), 'atlas');
+      await fsp.mkdir(src, { recursive: true });
+      await fsp.writeFile(path.join(src, 'code.js'), 'code');
+
+      // Windows 用 junction（不需要管理员权限），其它平台用目录符号链接；建不出来就跳过这条。
+      let linked = false;
+      try {
+        await fsp.symlink(store, path.join(src, 'assets'), process.platform === 'win32' ? 'junction' : 'dir');
+        linked = true;
+      } catch { /* 没权限就算了 */ }
+      if (!linked) return;
+
+      const r = await copyDir(src, dst);
+      assert.equal(r.files, 3, 'code.js + 链接目录里的 art.png / spine/a.atlas');
+      assert.equal(await fsp.readFile(path.join(dst, 'assets', 'art.png'), 'utf8'), 'art');
+      assert.equal(await fsp.readFile(path.join(dst, 'assets', 'spine', 'a.atlas'), 'utf8'), 'atlas');
+    } finally {
+      await fsp.rm(base, { recursive: true, force: true });
+    }
+  });
+
   test('copyFiles 跳过不存在的文件，其余照常复制', async () => {
     const { copyFiles } = await mod('scripts/make-windows-bundle.mjs');
     const base = await fsp.mkdtemp(path.join(os.tmpdir(), 'sp-copyfiles-'));

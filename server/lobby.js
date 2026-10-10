@@ -183,6 +183,7 @@ export class Room {
     /** @type {string | null} per-network limit key of whoever started the running match */
     this.matchKey = null;
     this.createdAt = now;
+    this.private = false;
     this.disposed = false;
   }
 
@@ -210,6 +211,7 @@ export class Room {
       mode: this.mode,
       difficulty: this.difficulty,
       inMatch: !!this.match,
+      private: !!this.private,
       matching: this.matching || null,
       seats: this.seats.map((s) => (s
         ? { seat: s.seat, playerId: s.playerId, name: s.name, isBot: s.isBot, ready: s.ready, connected: s.connected && !s.left }
@@ -491,7 +493,7 @@ export class Lobby {
   // room.* handlers
   // ---------------------------------------------------------------------------------------------------
 
-  create(session, { mode, difficulty }) {
+  create(session, { mode, difficulty, private: isPrivate }) {
     if (this.isDraining) return fail(ERR.MAINTENANCE, '服务正在热重载更新中，暂停创建新房间，请稍候连接新节点');
     const cur = this.roomOf(session);
     if (cur && cur.match) return fail(ERR.ROOM_STARTED, 'leave your running match first');
@@ -509,6 +511,7 @@ export class Lobby {
     if (!code) return fail(ERR.INTERNAL, 'no room code available');
     if (cur) this.removeMember(cur, session.playerId);
     const room = new Room(code, mode, difficulty, this.now());
+    room.private = Boolean(isPrivate);
     room.ownerKey = key;
     room.seats[0] = this.humanSeat(0, session);
     room.hostId = session.playerId;
@@ -570,7 +573,7 @@ export class Lobby {
     const list = [];
     for (const r of this.rooms.values()) {
       if (r.match) matchesCount++;
-      if (r.mode !== 'coop') continue;
+      if (r.mode !== 'coop' || r.private) continue;
       const host = r.hostId ? r.seatOf(r.hostId) : null;
       const humans = r.activeHumans().length;
       list.push({

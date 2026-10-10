@@ -47,6 +47,7 @@ import { MEDIA_PREFIX, AUDIO_EXTS } from '../shared/media.js';
 import { AdminService, recordAdminLog } from './admin.js';
 import { endlessLeaderboardAll } from './records.js';
 import { debugConfigFrom } from './debug.js';
+import { GlobalModManager } from './packs.js';
 
 function readJsonBody(req, limit = 64 * 1024) {
   return new Promise((resolve, reject) => {
@@ -817,6 +818,15 @@ export async function startServer(opts = {}) {
         build: buildTag(),
         sockets: network.connectionCount, sessions: registry.size, ...lobby.stats(),
       });
+      return;
+    }
+    if (parts.rawPath === '/api/packs' && (req.method === 'GET' || req.method === 'HEAD')) {
+      try {
+        const status = await GlobalModManager.probeStatus();
+        sendJson(req, res, 200, status);
+      } catch (err) {
+        sendJson(req, res, 500, { ok: false, error: err.message });
+      }
       return;
     }
     // LAN room probe, so a guest can join with only the 4-letter key: the phone sweeps its own /24 and asks each
