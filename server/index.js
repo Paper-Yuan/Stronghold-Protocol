@@ -46,6 +46,8 @@ import { PROTOCOL_VERSION, APP_VERSION } from '../shared/constants.js';
 import { MEDIA_PREFIX, AUDIO_EXTS } from '../shared/media.js';
 import { AdminService, recordAdminLog } from './admin.js';
 import { ModUploadManager } from './admin/modUploads.js';
+import { readCatalog } from './mod/catalogStore.js';
+import { modCacheRoot } from './mod/packCache.js';
 import { endlessLeaderboardAll } from './records.js';
 import { debugConfigFrom } from './debug.js';
 import { GlobalModManager } from './packs.js';
@@ -748,6 +750,8 @@ export async function startServer(opts = {}) {
   });
   // startServer's log is a leveled object; ModUploadManager wants a plain function.
   const modUploads = new ModUploadManager({ stagingDir: opts.modStagingDir, log: (msg) => log.info(msg) });
+  // Mod runtime cache (sections/kits/catalog.json). Tests pass their own dir to stay isolated.
+  const modCache = opts.modCacheDir || modCacheRoot();
 
   const server = http.createServer((req, res) => {
     res.setHeader('X-Content-Type-Options', 'nosniff');
@@ -850,6 +854,18 @@ export async function startServer(opts = {}) {
       try {
         const status = await GlobalModManager.probeStatus();
         sendJson(req, res, 200, status);
+      } catch (err) {
+        sendJson(req, res, 500, { ok: false, error: err.message });
+      }
+      return;
+    }
+    // The mod catalog the clients sync at boot (CF_MOD_TRI_PLAN.md §0.3: the game server
+    // aggregates it; entries point at the third-party CDN's content-addressed zip URLs).
+    // sendJson already stamps Cache-Control: no-store — right for an index rewritten on publish.
+    if (parts.rawPath === '/mods/index.json' && (req.method === 'GET' || req.method === 'HEAD')) {
+      try {
+        const catalog = await readCatalog(modCache);
+        sendJson(req, res, 200, { version: catalog.version, packs: catalog.packs });
       } catch (err) {
         sendJson(req, res, 500, { ok: false, error: err.message });
       }

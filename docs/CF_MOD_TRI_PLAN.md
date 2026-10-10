@@ -36,14 +36,18 @@
 
 | 项 | 冻结值 | 依据 |
 |---|---|---|
-| mod catalog 端点 | **`/mods/index.json`** | `/packs/index.json` 是语言包索引契约（`shared/packs.js:29` 头注释）；CF Function 只兜 `/mods/**` 到 R2，`/packs/**` 维持语言包语义 |
-| catalog 唯一文件 | **`shared/modCatalog.js`** | 废止 `shared/modIndex.js` 与 D1 旧稿 `shared/modCatalog.js` 双文件方案；与 D1 共用，谁先落地谁建，另一个 import |
-| catalog 条目形状 | `{id,name,version,minApp,sha256,bytes,url,features[]}` | `minApp` 必填；`sha256` 64 位 hex；`bytes` 正整数；`url` 内容寻址 |
+| **分发承载（2026-10-10 用户拍板修正，取代原 CF R2 方案）** | **第三方静态托管池**：管理端 `https://downcdn.jiangjiangze.icu`（`x-admin-key`），公共端 `https://weishucdn.jiangjiangze.icu`（全域 CORS + `max-age=31536000, immutable`）；自动 sha256 查重秒传、只增不删、**拒收 `.js`**（仅静态扩展名 + `zip`）。仓库内工具 `tools/cdn-upload.mjs`；契约见 `docs/STATIC_CDN_ANALYSIS_AND_TOOL_SPEC.md`。**服务器不负责发静态素材** | 用户 2026-10-10 拍板；原 `wrangler.toml` + `functions/mods/[[path]].js` + R2 桶方案作废（`wrangler.toml` 仅留档） |
+| **catalog 端点（用户拍板）** | **`/mods/index.json` 由游戏服务器聚合下发**（读本地 catalog 存储；条目 `url` 指向第三方 CDN 的 `packs/<id>/<sha256>.zip`） | 用户拍板「游戏服务器 /mods/index.json 聚合」 |
+| **发布流程（用户拍板：验证后拆分）** | 管理员上传整包 zip（C1）→ 五道验证（C2）→ **服务器拆分**：`art/**` 素材上传第三方 CDN（查重后仅传缺失件）、数据 JSON 与 kit JS 留在瘦身 zip 内 → 瘦身 zip 上传 CDN `packs/<id>/<sha256>.zip` → 写 catalog（C3） | 用户拍板「后台上传 zip，服务器侧检测正常后进行拆分」 |
+| **mod 素材 URL 形态** | 数据 JSON 内对素材的引用改写为 CDN 绝对 URL（`https://weishucdn.jiangjiangze.icu/packs/<id>/assets/<rel>`） | 拆分后素材不再随包，引用必须绝对化 |
+| mod catalog 端点（原冻结，见上修正） | ~~`/mods/index.json`~~ 保留路径，承载改为服务器聚合 | 同上 |
+| catalog 唯一文件 | **`shared/modCatalog.js`** | 与 D1 共用，谁先落地谁建，另一个 import |
+| catalog 条目形状 | `{id,name,version,minApp,sha256,bytes,url,features[]}`；**`sha256`/`bytes` 指瘦身 zip**（拆分后重新计算） | `minApp` 必填；`sha256` 64 位 hex；`bytes` 正整数；`url` 内容寻址 |
 | zip URL 版本化 | **zip 对象内容寻址（key 含 sha256）天生不可变，URL 不带 `?v=`**；`?v=<sha256前12>` 只用于 `/mods/index.json` 本身（索引会被原地重写） | `hasFreshPack` 只按 sha256 判鲜，不解析 `?v=` |
-| zip R2 key / URL | `mods/<id>/<sha256>.zip` / `/mods/<id>/<sha256>.zip`；`isModZipUrl` 正则拒绝任何带 `?` 的 zip URL | 从代码层面杜绝「zip 加 `?v=`」回流 |
+| 瘦身 zip 的 CDN key / URL | `packs/<id>/<sha256>.zip`（第三方 CDN 的 `packs/` 前缀即「第三方 MOD 发布的标准分发 zip」） | 对齐 CDN 目录规范；D1 的 `modZipUrl` 需扩为可接受绝对 CDN URL |
 | 上传 body 契约 | **裸 body 直收**：`fetch(url,{method:'POST',body:file})`（File 即 BodyInit），`Content-Type: application/zip`，**不用 FormData/不用 multipart** | 仓库零 multipart 设施（grep `formidable|busboy|multer` 零命中）；E1 的 FormData 形状作废 |
 | staging 落点 | **`server/.mod-staging/`**（服务器私有运行时目录，与 data/ 零交集） | `data/mod-staging/` 方案作废（与 `data/endless-records.json`「运行时产物不入 data/」先例矛盾）；`.gitignore` 加一行 |
-| 服务器缓存落点 | **`server/.mod-cache/`**：整包 zip + 解出的 sections 目录树 | 服务器反复开局需要，解包一次落盘 |
+| 服务器缓存落点 | **`server/.mod-cache/`**：整包 zip + 解出的 sections 目录树 + catalog.json | 服务器反复开局需要，解包一次落盘 |
 | 浏览器缓存形态 | IndexedDB 只存**整包 zip Blob + meta**（STORE_BLOBS/STORE_META）；**sections 不落盘**，消费时由 `unpackModZip` 内存解出 | 避免双写不一致；localStorage 轻量索引改 `{packId: sha256}` |
 | 合并器接口 | `server/mod/overlay.js` 导出签名冻结：`mergeOverlay(baseData, packSections[], opts?) → { data, snapshotHash }`（data 已 deepFreeze） | C2 gate4 经 `--merger=<path>` 注入消费（默认 `shared/customContent.js`，D2 落地后切默认值）；gate4 内部禁止硬 import 合并器 |
 | 语义 | 只加法 + 显式 overrides；fail-closed（冲突即拒绝，不降级） | `mergeCustomContent`（`shared/customContent.js:42-57` 浅合并）只当参考实现与 C2 默认合并器，不进生产路径 |
