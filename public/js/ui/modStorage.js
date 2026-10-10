@@ -1,15 +1,16 @@
 // public/js/ui/modStorage.js — Client-Side Unified Mod Storage Engine.
-// Adheres strictly to docs/MOD_STORAGE_SPEC.md: IndexedDB persistence for offline/sandbox mods.
+// v2 (CF_MOD_TRI_PLAN.md §2-D1-2): IndexedDB stores ONLY whole zip Blobs + meta.
+// Sections are unpacked in memory on demand (unpackModZip), never persisted.
+// Freshness is judged solely by the per-pack sha256 from the mod catalog.
 
 const DB_NAME = 'sp_mod_storage';
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 const STORE_META = 'meta';
-const STORE_FILES = 'files';
+const STORE_BLOBS = 'blobs';
 
 class ModStorageService {
   constructor() {
     this.dbPromise = null;
-    this.blobUrlCache = new Map(); // key -> objectUrl
   }
 
   async getDB() {
@@ -18,13 +19,22 @@ class ModStorageService {
       const req = indexedDB.open(DB_NAME, DB_VERSION);
       req.onupgradeneeded = (e) => {
         const db = e.target.result;
+        const tx = e.target.transaction;
         if (!db.objectStoreNames.contains(STORE_META)) {
-          db.createObjectStore(STORE_META, { keyPath: 'id' });
+          db.createObjectStore(STORE_META);
         }
-        if (!db.objectStoreNames.contains(STORE_FILES)) {
-          // Compound key: [packId, path]
-          const store = db.createObjectStore(STORE_FILES, { keyPath: ['packId', 'path'] });
-          store.createIndex('by_pack', 'packId', { unique: false });
+        // v1 stored per-file contents in a 'files' store (indexed by [packId, path]).
+        // v2 stores whole zips in 'blobs' (indexed by packId) and unpacks in memory.
+        if (!db.objectStoreNames.contains(STORE_BLOBS)) {
+          db.createObjectStore(STORE_BLOBS);
+        }
+        if (db.objectStoreNames.contains('files')) {
+          try { db.deleteObjectStore('files'); } catch {}
+        }
+        if (tx && db.objectStoreNames.contains(STORE_META)) {
+          // v1 meta records were per-file/one-file-at-a-time entries; v2 keys meta by packId.
+          // Clear stale v1 metadata wholesale — it is regenerated on first sync.
+          try { tx.objectStore(STORE_META).clear(); } catch {}
         }
       };
       req.onsuccess = () => resolve(req.result);
@@ -36,174 +46,101 @@ class ModStorageService {
     return this.dbPromise;
   }
 
-  /**
-   * Save a fully parsed mod pack into IndexedDB.
-   * @param {Object} meta Mod metadata (id, name, version, features, etc.)
-   * @param {Map<string, Uint8Array|string|Object>} files Map of relativePath -> content
-   */
-  async saveMod(meta, files = new Map()) {
+  /** Store one whole-pack zip blob under its id. */
+  async putBlob(packId, blob) {
     const db = await this.getDB();
     return new Promise((resolve, reject) => {
-      const tx = db.transaction([STORE_META, STORE_FILES], 'readwrite');
-      const metaStore = tx.objectStore(STORE_META);
-      const filesStore = tx.objectStore(STORE_FILES);
-
-      const recordMeta = {
-        ...meta,
-        installTime: Date.now(),
-        enabled: meta.enabled !== false
-      };
-      metaStore.put(recordMeta);
-
-      for (const [path, content] of files.entries()) {
-        filesStore.put({
-          packId: meta.id,
-          path,
-          content
-        });
-      }
-
-      tx.oncomplete = () => {
-        this._updateLocalActiveIndex(meta.id, recordMeta.enabled);
-        resolve(recordMeta);
-      };
+      const tx = db.transaction([STORE_BLOBS], 'readwrite');
+      tx.objectStore(STORE_BLOBS).put(blob, packId);
+      tx.oncomplete = () => resolve(true);
       tx.onerror = () => reject(tx.error);
     });
   }
 
-  /**
-   * List all locally installed mods.
-   * @returns {Promise<Array<Object>>}
-   */
-  async listMods() {
-    try {
-      const db = await this.getDB();
-      return new Promise((resolve, reject) => {
-        const tx = db.transaction(STORE_META, 'readonly');
-        const req = tx.objectStore(STORE_META).getAll();
-        req.onsuccess = () => resolve(req.result || []);
-        req.onerror = () => reject(req.error);
-      });
-    } catch {
-      return [];
-    }
-  }
-
-  /**
-   * Toggle mod enabled state.
-   */
-  async toggleMod(packId, enabled) {
+  /** Retrieve the stored blob for a pack, or null. */
+  async getBlob(packId) {
     const db = await this.getDB();
     return new Promise((resolve, reject) => {
-      const tx = db.transaction(STORE_META, 'readwrite');
-      const store = tx.objectStore(STORE_META);
-      const getReq = store.get(packId);
-      getReq.onsuccess = () => {
-        const data = getReq.result;
-        if (!data) return reject(new Error('Mod not found: ' + packId));
-        data.enabled = !!enabled;
-        store.put(data);
-      };
-      tx.oncomplete = () => {
-        this._updateLocalActiveIndex(packId, enabled);
-        resolve(true);
-      };
+      const tx = db.transaction([STORE_BLOBS], 'readonly');
+      const req = tx.objectStore(STORE_BLOBS).get(packId);
+      req.onsuccess = () => resolve(req.result ?? null);
+      req.onerror = () => reject(req.error);
+    });
+  }
+
+  /** Record meta {id, name, version, minApp, sha256, bytes, features, fetchedAt}. */
+  async putMeta(meta) {
+    const db = await this.getDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction([STORE_META], 'readwrite');
+      tx.objectStore(STORE_META).put(meta, meta.id);
+      tx.oncomplete = () => resolve(true);
       tx.onerror = () => reject(tx.error);
     });
   }
 
-  /**
-   * Remove a mod and all its files completely.
-   */
-  async removeMod(packId) {
+  /** All stored meta records. */
+  async listMeta() {
     const db = await this.getDB();
     return new Promise((resolve, reject) => {
-      const tx = db.transaction([STORE_META, STORE_FILES], 'readwrite');
+      const tx = db.transaction([STORE_META], 'readonly');
+      const req = tx.objectStore(STORE_META).getAll();
+      req.onsuccess = () => resolve(req.result || []);
+      req.onerror = () => reject(req.error);
+    });
+  }
+
+  /** Drop one pack's blob + meta. */
+  async removePack(packId) {
+    const db = await this.getDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction([STORE_BLOBS, STORE_META], 'readwrite');
+      tx.objectStore(STORE_BLOBS).delete(packId);
       tx.objectStore(STORE_META).delete(packId);
-
-      const filesStore = tx.objectStore(STORE_FILES);
-      const index = filesStore.index('by_pack');
-      const req = index.openKeyCursor(IDBKeyRange.only(packId));
-      req.onsuccess = (e) => {
-        const cursor = e.target.result;
-        if (cursor) {
-          filesStore.delete(cursor.primaryKey);
-          cursor.continue();
-        }
-      };
-
-      tx.oncomplete = () => {
-        this._updateLocalActiveIndex(packId, false, true);
-        resolve(true);
-      };
+      tx.oncomplete = () => resolve(true);
       tx.onerror = () => reject(tx.error);
     });
   }
 
   /**
-   * Fetch active overlays (JSON data) for offline / sandbox merge.
-   * @returns {Promise<Record<string, any>>} section -> merged json
+   * Ensure the pack's blob matches the catalog sha256. Downloads only when
+   * stale or missing. Returns the blob. Never persists a failed download:
+   * a failed re-download leaves the previous version in place (downgrade red line).
    */
-  async getActiveOverlays() {
-    const mods = await this.listMods();
-    const activeMods = mods.filter(m => m.enabled);
-    if (!activeMods.length) return {};
-
-    const db = await this.getDB();
-    const overlays = {};
-
-    for (const mod of activeMods) {
-      const files = await this._getPackJsonFiles(db, mod.id);
-      for (const [section, content] of Object.entries(files)) {
-        if (!overlays[section]) overlays[section] = content;
-        else {
-          // Shallow overlay merge
-          if (Array.isArray(overlays[section]) && Array.isArray(content)) {
-            overlays[section] = [...overlays[section], ...content];
-          } else if (typeof overlays[section] === 'object' && typeof content === 'object') {
-            overlays[section] = { ...overlays[section], ...content };
-          }
-        }
-      }
+  async ensurePackBlob(entry, fetchImpl = fetch) {
+    const existingMeta = (await this.listMeta()).find(m => m.id === entry.id);
+    if (existingMeta && existingMeta.sha256 === entry.sha256) {
+      const blob = await this.getBlob(entry.id);
+      if (blob) return blob;
     }
-    return overlays;
-  }
-
-  async _getPackJsonFiles(db, packId) {
-    return new Promise((resolve) => {
-      const tx = db.transaction(STORE_FILES, 'readonly');
-      const index = tx.objectStore(STORE_FILES).index('by_pack');
-      const req = index.openCursor(IDBKeyRange.only(packId));
-      const res = {};
-      req.onsuccess = (e) => {
-        const cursor = e.target.result;
-        if (cursor) {
-          const { path, content } = cursor.value;
-          if (path.endsWith('.json')) {
-            const section = path.replace(/^.*[\\/]/, '').replace('.json', '');
-            try {
-              res[section] = typeof content === 'string' ? JSON.parse(content) : content;
-            } catch {}
-          }
-          cursor.continue();
-        } else {
-          resolve(res);
-        }
-      };
-      req.onerror = () => resolve({});
+    const resp = await fetchImpl(entry.url);
+    if (!resp.ok) throw new Error(`下载 mod 包失败 ${entry.id}: HTTP ${resp.status}`);
+    const blob = await resp.blob();
+    const actual = await this.sha256(blob);
+    if (actual !== entry.sha256) {
+      throw new Error(`mod 包 ${entry.id} 校验失败: sha256 ${actual} != ${entry.sha256}`);
+    }
+    await this.putBlob(entry.id, blob);
+    await this.putMeta({
+      id: entry.id,
+      name: entry.name,
+      version: entry.version,
+      minApp: entry.minApp,
+      sha256: entry.sha256,
+      bytes: entry.bytes,
+      features: entry.features,
+      fetchedAt: Date.now(),
     });
+    return blob;
   }
 
-  _updateLocalActiveIndex(packId, enabled, isDelete = false) {
-    try {
-      const raw = localStorage.getItem('sp.active_packs') || '[]';
-      let list = JSON.parse(raw);
-      list = list.filter(id => id !== packId);
-      if (enabled && !isDelete) {
-        list.push(packId);
-      }
-      localStorage.setItem('sp.active_packs', JSON.stringify(list));
-    } catch {}
+  /** Compute the hex SHA-256 of a blob. */
+  async sha256(blob) {
+    const buf = await blob.arrayBuffer();
+    const digest = await crypto.subtle.digest('SHA-256', buf);
+    return [...new Uint8Array(digest)]
+      .map(b => b.toString(16).padStart(2, '0'))
+      .join('');
   }
 }
 

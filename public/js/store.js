@@ -87,7 +87,9 @@ export const initialState = Object.freeze({
   lobbyStats: { online: 1, roomsCount: 0, matchesCount: 0, rooms: [] },
   serverLoad: null,
   chatMessages: [],
-  ui: { pendingJoin: null, restoring: false, buildStale: false },
+  // Mod catalog synced from /mods/index.json at boot (CF_MOD_TRI_PLAN.md §2-D1-3).
+  modCatalog: { version: null, packs: [], fetchedAt: 0 },
+  ui: { pendingJoin: null, restoring: false, buildStale: false, modSync: { phase: 'idle', done: 0, total: 0, error: null } },
 });
 
 /** The app-wide store singleton. */

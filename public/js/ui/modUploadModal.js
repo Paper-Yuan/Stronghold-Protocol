@@ -31,8 +31,8 @@ export function ModUploadModal({ open, onClose, onImported }) {
 
   // Fetch server status and local IndexedDB mods on mount
   useEffect(() => {
-    // 1. First load from IndexedDB
-    modStorage.listMods().then((localMods) => {
+    // 1. First load from IndexedDB (v2: meta records; display-only until the pack has a blob)
+    modStorage.listMeta().then((localMods) => {
       if (localMods && localMods.length > 0) {
         setMods((prev) => {
           const map = new Map(prev.map(m => [m.id, m]));
@@ -109,8 +109,16 @@ export function ModUploadModal({ open, onClose, onImported }) {
         importedAt: Date.now(),
       };
 
-      // Persist metadata to IndexedDB
-      await modStorage.saveMod({ ...newMod, enabled: true }).catch(() => {});
+      // Persist metadata to IndexedDB (v2: meta only; the zip itself is catalog-driven)
+      await modStorage.putMeta({
+        id: newMod.id,
+        name: newMod.name,
+        version: newMod.version,
+        sha256: '', // local imports carry no catalog sha; D1 treats them as always-stale display entries
+        bytes: newMod.totalBytes || 0,
+        features: newMod.features || [],
+        fetchedAt: Date.now(),
+      }).catch(() => {});
 
       setMods((prev) => {
         const next = [newMod, ...prev.filter((m) => m.id !== newMod.id)];
@@ -134,21 +142,14 @@ export function ModUploadModal({ open, onClose, onImported }) {
 
   const toggleModActive = (id) => {
     setMods((prev) => {
-      const next = prev.map((m) => {
-        if (m.id === id) {
-          const nextActive = !m.active;
-          modStorage.toggleMod(id, nextActive).catch(() => {});
-          return { ...m, active: nextActive };
-        }
-        return m;
-      });
+      const next = prev.map((m) => (m.id === id ? { ...m, active: !m.active } : m));
       saveStoredMods(next);
       return next;
     });
   };
 
   const removeMod = (id) => {
-    modStorage.removeMod(id).catch(() => {});
+    modStorage.removePack(id).catch(() => {});
     setMods((prev) => {
       const next = prev.filter((m) => m.id !== id);
       saveStoredMods(next);

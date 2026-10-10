@@ -52,6 +52,7 @@ import { StatsHost } from './screens/stats.js';
 import { installStatsRecorder } from './ui/stats.js';
 import { installLoadoutSync, installOwnershipSync, installDiySync } from './ui/loadoutSync.js';
 import { installSkinsSync } from './ui/skins.js';
+import { syncModCatalog } from './net/modSync.js';
 import { startBuildGuard } from './ui/buildGuard.js';
 
 const RESTORE_GRACE_MS = 1500;
@@ -515,6 +516,10 @@ async function boot() {
   data.load('local').catch(() => {});
   // 0.2.0 backups (stand-ins, DIY operators, tokens)
   data.load('backups').catch(() => {});
+  // Mod catalog sync (CF_MOD_TRI_PLAN.md §2-D1): silent, non-blocking — pulls the tiny
+  // /mods/index.json catalog only; pack zip bytes stay on demand. Failure degrades to
+  // the previous catalog mirror (or none) and never blocks first paint.
+  syncModCatalog({ store }).catch((err) => console.warn('[mod] catalog sync failed, using cache:', err?.message || err));
 
   const connectWhenReady = identityReady.then(() => {
     if (entered) net.setName(savedName);
