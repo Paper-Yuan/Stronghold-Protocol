@@ -213,7 +213,7 @@ test('S1 暗夜回声 (AUTO, 3 attack SP): every 4th attack hits twice for 105 %
   }
 });
 
-test('S2 群体性谵妄 (AUTO, at full SP, endless): cast after 33 / 30 s with no enemy; ASPD +20 / +25; T1\'s splash radius 1.5; it never ends', () => {
+test('S2 群体性谵妄 (AUTO, at full SP, infinite): cast after 33 / 30 s with no enemy; ASPD +20 / +25; T1\'s splash radius 1.5; it never ends', () => {
   for (const [tier, elite] of [[5, false], [6, true]]) {
     const sk = skillOf(tier, elite, S2);
     assert.deepEqual([sk.spCost, sk.initSp, sk.bb.attack_speed, sk.bb['talent@range_radius']], [elite ? 30 : 33, 0, elite ? 25 : 20, 1.5]);
@@ -228,7 +228,7 @@ test('S2 群体性谵妄 (AUTO, at full SP, endless): cast after 33 / 30 s with 
     assert.ok(h.runUntil(() => elemOf(h, u, n0).some((c) => c.target === at14), 3), 'the 1.5 splash');
     void main;
     h.run(200);
-    assert.ok(u.skill.active, 'endless');
+    assert.ok(u.skill.active, 'infinite');
     done(h);
   }
 });

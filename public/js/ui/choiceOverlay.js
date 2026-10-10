@@ -166,7 +166,7 @@ export function ChoiceView({ pub, sp, myId, solo, busyIdx = null, total = null, 
   const turnName = players.get(sp.turnPid)?.name || '队友';
   const special = /_s$/.test(String(sp.family || ''));
   const order = solo ? [] : sp.order;
-  // 以服务端的 sp.untimed 为准（无尽模式单人也有时限：Match.soloUntimed），不再看 solo
+  // 以服务端的 sp.untimed 为准（Match.soloUntimed：单人也可能有时限），不再看 solo
   const timed = !sp.untimed;
   const armedCardRec = armed != null ? sp.cards.find((c) => c && c.idx === armed) : null;
   const armedName = armedCardRec ? resolveSpCard(armedCardRec, sp.family).name : null;

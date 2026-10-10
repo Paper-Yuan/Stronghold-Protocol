@@ -263,7 +263,7 @@ test('a skill onEnd that redeploys its unit during death is refused (no ghost un
 // ---------------------------------------------------------------------------------------------------------------
 // garbage numbers reaching the engine
 
-test('DP flags and time limits: undefined/NaN/0 never poison DP or make a normal round endless', () => {
+test('DP flags and time limits: undefined/NaN/0 never poison DP or leave a normal round without a limit', () => {
   const h = makeBattle({ content: 'none', flags: { dpInit: undefined, dpPerSec: NaN, dpMax: 'x' }, timeLimit: 0 });
   h.step(30);
   const pl = h.b.getPlayer('p1');

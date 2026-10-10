@@ -23,13 +23,13 @@
 .stephead__left { display: flex; align-items: center; gap: .16rem; }
 .stephead__meta { display: flex; flex-direction: column; gap: .06rem; align-items: flex-start; }
 .stephead__center { display: flex; flex-direction: column; align-items: center; gap: .04rem; }
-.stephead__title { display: flex; align-items: baseline; gap: .02rem; font-size: .34rem; font-weight: 900; letter-spacing: .12em; }
-.stephead__title b { font-size: .56rem; line-height: 1; color: var(--mint-400); text-shadow: 0 0 .2rem rgba(23, 249, 183, .4); }
-.stephead__of { font-size: .26rem; color: var(--text-dim); margin-right: .18rem; }
+.stephead__title { display: flex; align-items: baseline; gap: .02rem; font-size: calc(.34 * var(--t)); font-weight: 900; letter-spacing: .12em; }
+.stephead__title b { font-size: calc(.56 * var(--t)); line-height: 1; color: var(--mint-400); text-shadow: 0 0 .2rem rgba(23, 249, 183, .4); }
+.stephead__of { font-size: calc(.26 * var(--t)); color: var(--text-dim); margin-right: .18rem; }
 .stephead__right { justify-self: end; display: flex; align-items: center; gap: .24rem; }
 .stephead__right .countdown { --cd-h: .64rem; }
 
-.brief-h { display: flex; align-items: baseline; gap: .12rem; font-size: .21rem; font-weight: 700; letter-spacing: .1em; margin-bottom: .12rem; }
+.brief-h { display: flex; align-items: baseline; gap: .12rem; font-size: calc(.21 * var(--t)); font-weight: 700; letter-spacing: .1em; margin-bottom: .12rem; }
 .brief-h::before { content: ''; width: .06rem; height: .2rem; background: var(--mint-500); align-self: center; }
 
 /* ---- briefing layout ---- */
@@ -37,6 +37,7 @@
 /* Both columns scroll independently: the left one holds the leader's abilities, and a long description used to push
    战场 / 特训敌人 out of the clipped bottom of the row (min-height: 0 alone only shrinks the box). */
 .brief__left { display: flex; flex-direction: column; gap: .2rem; min-height: 0; overflow: auto; padding-right: .06rem; overscroll-behavior: contain; }
+.brief__left > * { flex-shrink: 0; }
 .brief__right { display: flex; flex-direction: column; gap: .2rem; min-height: 0; overflow: auto; padding-right: .06rem; }
 
 .brief-boss {
@@ -56,9 +57,9 @@
   background: repeating-linear-gradient(0deg, rgba(0, 0, 0, .22) 0 2px, transparent 2px 4px), radial-gradient(circle, transparent 45%, rgba(40, 8, 2, .75) 100%); }
 .brief-boss__q { font-size: 1rem; font-weight: 900; color: rgba(255, 110, 40, .6); }
 .brief-boss__text { display: flex; flex-direction: column; gap: .08rem; padding-top: .2rem; min-width: 0; }
-.brief-boss__name { font-size: .34rem; font-weight: 900; letter-spacing: .04em; line-height: 1.25; }
-.brief-boss__when { font-size: .15rem; color: var(--orange-hi); }
-.brief-boss__abil { margin: .04rem 0 0; padding-left: .18rem; display: flex; flex-direction: column; gap: .04rem; font-size: .14rem; line-height: 1.6; color: var(--text-md); }
+.brief-boss__name { font-size: calc(.34 * var(--t)); font-weight: 900; letter-spacing: .04em; line-height: 1.25; }
+.brief-boss__when { font-size: calc(.15 * var(--t)); color: var(--orange-hi); }
+.brief-boss__abil { margin: .04rem 0 0; padding-left: .18rem; display: flex; flex-direction: column; gap: .04rem; font-size: calc(.14 * var(--t)); line-height: 1.6; color: var(--text-md); }
 
 .brief-stage { display: flex; align-items: center; justify-content: space-between; gap: .1rem .18rem; padding: .12rem .18rem; background: rgba(12, 15, 14, .8); border: 1px solid var(--line); flex-wrap: wrap; }
 .brief-stage__k { display: flex; align-items: baseline; gap: .12rem; min-width: 0; }
@@ -71,8 +72,8 @@
 .brief-faction__icon { width: .72rem; height: .72rem; flex: none; display: grid; place-items: center; background: radial-gradient(circle, rgba(246, 163, 41, .16), transparent 70%); }
 .brief-faction__icon img { width: 100%; height: 100%; object-fit: contain; }
 .brief-faction__text { display: flex; flex-direction: column; gap: .03rem; }
-.brief-faction__text b { font-size: .2rem; color: var(--amber); }
-.brief-faction__text span { font-size: .15rem; color: var(--text-lo); }
+.brief-faction__text b { font-size: calc(.2 * var(--t)); color: var(--amber); }
+.brief-faction__text span { font-size: calc(.15 * var(--t)); color: var(--text-lo); }
 
 .brief-bonds { padding: .16rem .2rem .2rem; background: rgba(12, 15, 14, .8); border: 1px solid var(--line); }
 .brief-bonds__row { display: flex; flex-wrap: wrap; gap: max(.16rem, 5px) max(.1rem, 6px); }
@@ -80,9 +81,9 @@
    and the marks stop being distinguishable — they read as "the wrong emblem". The floors below keep the disc, its icon
    and the name legible on a phone's ~33 px rem. As in the in-game strip, the cell is sized by its label so a 4-glyph
    name never spills onto its neighbour. */
-.brief-bond { --brief-disc: max(.66rem, 30px); position: relative; min-width: max(1rem, 40px); display: flex; justify-content: center; }
-.brief-bond .bond { --disc: var(--brief-disc); }
-.brief-bond .bond__name { font-size: max(.16rem, 11px); }
+.brief-bond { --brief-disc: max(.66rem, 30px); position: relative; min-width: max(1rem, 40px); width: max-content; max-width: 100%; display: flex; justify-content: center; }
+.brief-bond .bond { --disc: var(--brief-disc); max-width: 100%; }
+.brief-bond .bond__name { font-size: max(.16rem, 11px); max-width: 100%; white-space: normal; overflow-wrap: anywhere; text-align: center; }
 /* The banned-operator count sits on its disc's top-right corner. The disc is centred in the cell, so the corner is
    half a disc right of the centre — anchoring by the cell's right edge would drift once a long name widens the cell.
    Anything more negative than -.12rem lifts the badge out of the row and onto the 核心盟约 / CORE BONDS heading above
@@ -91,23 +92,46 @@
 .brief-bond__ban { position: absolute; top: max(-.12rem, -5px); right: calc(50% - var(--brief-disc) / 2 - 2px); z-index: 1; display: inline-flex; align-items: center; justify-content: center; gap: .01rem; font-size: max(.12rem, 10px); min-width: max(.24rem, 18px); font-weight: 700; padding: 0 max(.03rem, 2px); background: var(--red); color: #fff; line-height: 1.3; box-shadow: 0 0 0 1px #000; }
 .brief-bond__ban .icon { width: max(.10rem, 8px); height: max(.10rem, 8px); flex: none; }
 .brief-bond.is-partial .bond__core { box-shadow: 0 0 0 2px rgba(255, 84, 84, .5); }
-.brief-legend { display: flex; align-items: center; gap: .08rem; flex-wrap: wrap; font-size: .14rem; color: var(--text-dim); margin-top: -.06rem; }
+.brief-legend { display: flex; align-items: center; gap: .08rem; flex-wrap: wrap; font-size: calc(.14 * var(--t)); color: var(--text-dim); margin-top: -.06rem; }
 .brief-legend__off { width: .16rem; height: .16rem; border-radius: 50%; background: #3a403d; border: 2px solid #555; }
 .brief-legend__ban { display: inline-grid; place-items: center; width: .2rem; height: .18rem; background: var(--red); color: #fff; }
 .brief-legend__ban .icon { width: .12rem; height: .12rem; }
 
 .brief-banned { padding: .16rem .2rem .2rem; background: rgba(12, 15, 14, .8); border: 1px solid var(--line); }
-.brief-banned__n { margin-left: auto; font-size: .22rem; color: var(--red-premium); }
+.brief-banned__n { margin-left: auto; font-size: calc(.22 * var(--t)); color: var(--red-premium); }
 .brief-banned__grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(.6rem, 1fr)); gap: .08rem; }
 .brief-banned__grid .uthumb { --ut: .6rem; }
+/* 0.2.0: the player's own 自选 pieces out of the shop this match (ui/matchInfo.js DiyBannedLine; m.private.diyBanned) */
+.brief-banned__diy { margin: .1rem 0 0; font-size: calc(.14 * var(--t)); line-height: 1.5; color: var(--text-dim, #b8c2bf); }
+.diybanned__tag { display: inline-block; margin-right: .06rem; padding: .01rem .06rem; font-size: calc(.12 * var(--t)); font-weight: 700;
+  letter-spacing: .08em; background: var(--mint-500); color: var(--text-on-mint); vertical-align: .01rem; }
 
 .brief__foot { position: relative; z-index: 2; flex: none; display: flex; align-items: center; justify-content: flex-end; gap: .4rem; padding: .18rem .5rem .3rem; }
 .brief-ready { display: flex; align-items: center; gap: .16rem; }
-.brief-ready__txt { font-size: .2rem; color: var(--text-lo); }
-.brief-ready__txt b { font-size: .4rem; color: var(--mint-400); margin: 0 .02rem; }
-.brief-ready__txt span { font-size: .24rem; color: var(--text-dim); }
+.brief-ready__txt { font-size: calc(.2 * var(--t)); color: var(--text-lo); }
+.brief-ready__txt b { font-size: calc(.4 * var(--t)); color: var(--mint-400); margin: 0 .02rem; }
+.brief-ready__txt span { font-size: calc(.24 * var(--t)); color: var(--text-dim); }
 .brief-ready__pips { display: flex; gap: .06rem; }
 .brief-ready__pips i { width: .3rem; height: .3rem; display: grid; place-items: center; color: var(--text-dim); }
 .brief-ready__pips i .icon { width: 100%; height: 100%; }
 .brief-ready__pips i.on { color: var(--mint-400); filter: drop-shadow(0 0 .06rem rgba(23, 249, 183, .6)); }
 .brief-ready__pips i.me { border-bottom: 2px solid var(--mint-700); }
+
+/* Full setup reroll: consent stays visible alongside the information being confirmed. */
+.brief-reroll {
+  position: relative; z-index: 2; flex: none;
+  display: flex; align-items: center; justify-content: space-between; gap: .2rem;
+  margin: .1rem .5rem 0; padding: .14rem .2rem;
+  background: rgba(12, 15, 14, .9); border: 1px solid var(--mint-700);
+}
+.brief-reroll__text { display: flex; flex-direction: column; gap: .05rem; min-width: 0; font-size: calc(.16 * var(--t)); }
+.brief-reroll__text strong { font-size: calc(.2 * var(--t)); color: var(--mint-400); }
+.brief-reroll__text > span { color: var(--text-lo); }
+.brief-reroll__players { display: flex; flex-wrap: wrap; gap: .08rem .2rem; color: var(--text-dim); }
+.brief-reroll__players .is-agreed { color: var(--mint-400); }
+.brief-reroll__actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: .1rem; flex-shrink: 0; }
+@media (max-width: 900px) {
+  .brief-reroll { margin-inline: .3rem; gap: .1rem; padding: .1rem .14rem; }
+  .brief-reroll__actions { flex-shrink: 1; }
+  .brief-reroll__actions .btn { min-height: .44rem; padding-inline: .12rem; }
+}

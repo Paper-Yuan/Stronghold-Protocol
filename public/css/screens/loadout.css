@@ -32,8 +32,11 @@
 .lo > :where(:not(.lo__bg)) { position: relative; }
 
 /* ---- top bar ---------------------------------------------------------------------------------------------------- */
+/* The tabs stay centred while both sides fit in equal halves beside them; a wider side keeps its own width and shifts
+   the tabs instead (0.2.0: three tabs and the co-op countdown ran the right column into the tabs on phones and in
+   English), and only when nothing else is left does the tab strip scroll (.lo-tabs). */
 .lo-top {
-  flex: none; display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; gap: .2rem;
+  flex: none; display: grid; grid-template-columns: minmax(max-content, 1fr) minmax(0, auto) minmax(max-content, 1fr); align-items: center; gap: .2rem;
   height: max(1rem, 48px); padding: 0 .36rem;
   background: linear-gradient(180deg, rgba(8, 10, 9, .95), rgba(10, 13, 12, .6));
   border-bottom: 1px solid var(--line);
@@ -43,7 +46,7 @@
   background: linear-gradient(90deg, var(--mint-700), transparent 26%, transparent 74%, var(--mint-700));
 }
 .lo-top__left { justify-self: start; display: flex; align-items: center; gap: .14rem; }
-.lo-top__center { display: flex; flex-direction: column; align-items: center; gap: .02rem; }
+.lo-top__center { display: flex; flex-direction: column; align-items: center; gap: .02rem; min-width: 0; }
 .lo-top__title { display: flex; align-items: center; gap: .12rem; margin: 0; font-size: max(.32rem, 16px); font-weight: 900; letter-spacing: .14em; line-height: 1.15; }
 .lo-top__icon { width: max(.3rem, 16px); height: max(.3rem, 16px); object-fit: contain; color: var(--mint-500); }
 .lo-top__right { justify-self: end; display: flex; align-items: center; gap: .16rem; min-width: 0; }
@@ -51,7 +54,8 @@
 .lo-count b { color: var(--mint-400); font-size: max(.22rem, 13px); margin: 0 .02rem 0 .06rem; }
 /* co-op briefing: time left before the match locks the loadout (the overlay covers the briefing's own countdown) */
 .lo-deadline { --cd-h: max(.44rem, 20px); flex: none; }
-.lo-deadline .countdown__label { font-size: max(.11rem, 8px); }
+/* its caption breaks at its spaces (Loadout / Deadline) rather than widening the column; 调配截止 stays one line */
+.lo-deadline .countdown__label { font-size: max(.11rem, 8px); width: min-content; word-break: keep-all; text-align: right; }
 .lo-sync { font-size: max(.14rem, 10px); padding: .03rem .1rem; border: 1px solid var(--line-2); color: var(--text-lo); white-space: nowrap; letter-spacing: .04em; }
 .lo-sync.is-ok { color: var(--mint-400); border-color: var(--mint-800); }
 .lo-sync.is-busy { color: var(--text-md); }
@@ -184,9 +188,13 @@
 .lo-sicon--xs { width: max(.2rem, 13px); height: max(.2rem, 13px); border: 0; background: transparent; }
 .lo-sicon--xs .lo-sicon__glyph { display: none; }
 .lo-sicon--md { width: max(.72rem, 38px); height: max(.72rem, 38px); }
+.lo-sicon--q { width: 86%; height: 86%; }
 .lo-sicon__glyph { font-family: var(--font-num); font-size: max(.2rem, 12px); font-weight: 700; color: var(--text-lo); letter-spacing: .04em; }
 .lo-sicon.is-on { border-color: #1ea0ff; }
-.lo-sicon__outline { position: absolute; top: -.05rem; left: -.05rem; right: -.05rem; bottom: -.05rem; inset: -.05rem; width: calc(100% + .1rem) !important; height: calc(100% + .1rem) !important; object-fit: fill; pointer-events: none; }
+/* the selected skill's frame (a 30 × 30 sprite, a 3 px ring to its edges) drawn .05rem outside the icon on every side, square:
+   theme.css `img { max-width: 100% }` clamped its width to the icon's while its height grew by .1rem, and `.lo-sicon img`
+   (more specific) made it `cover` — a tall, left-shifted frame with clipped side lines (GitHub #398, PR #399) */
+.lo-sicon .lo-sicon__outline { position: absolute; top: -.05rem; left: -.05rem; right: -.05rem; bottom: -.05rem; inset: -.05rem; width: calc(100% + .1rem) !important; height: calc(100% + .1rem) !important; max-width: none; object-fit: fill; pointer-events: none; }
 .lo-sicon__ring { position: absolute; top: -.05rem; left: -.05rem; right: -.05rem; bottom: -.05rem; inset: -.05rem; border: 2px solid #1ea0ff; pointer-events: none; }
 
 .lo-mglyph { position: relative; flex: none; display: inline-grid; place-items: center; width: max(.56rem, 30px); height: max(.56rem, 30px);
@@ -194,6 +202,7 @@
 .lo-mglyph img { width: 78%; height: 78%; object-fit: contain; }
 .lo-mglyph__t { font-family: var(--font-num); font-size: max(.26rem, 15px); font-weight: 700; color: var(--gold-2); line-height: 1; }
 .lo-mglyph--none { background: #121615; border-style: dashed; }
+.lo-mglyph--q { width: 86%; height: 86%; }
 .lo-mglyph__slash { position: absolute; top: 22%; left: 22%; right: 22%; bottom: 22%; inset: 22%; border-radius: 50%; border: 2px solid var(--text-dim); }
 .lo-mglyph__slash::after { content: ''; position: absolute; left: 50%; top: -10%; bottom: -10%; width: 2px; background: var(--text-dim); transform: translateX(-50%) rotate(45deg); }
 
@@ -366,9 +375,15 @@
 .sp-loadout-open .app-root > .screen { visibility: hidden; }
 
 /* ---- narrow / short viewports ------------------------------------------------------------------------------------------- */
+/* tighter tabs below 1200 px: the co-op briefing's countdown, chips and buttons beside three English tabs */
+@media (max-width: 1200px) {
+  .lo-tab { padding: .02rem .08rem; letter-spacing: .04em; }
+}
 @media (max-width: 1100px) {
   .lo-body { grid-template-columns: minmax(0, 1fr) minmax(0, 6.4rem); gap: .16rem; padding: .12rem .2rem .16rem; }
   .lo-chip__lbl { display: none; }
+  /* the co-op briefing's countdown takes the place of the 已调整 / 同步 chips */
+  .lo-deadline ~ .lo-sync, .lo-deadline ~ .lo-count { display: none; }
 }
 /* phones (the root scale is clamped at 40 px: less than ~14 rem of width): the detail slides over the roster */
 @media (max-width: 760px) {
@@ -525,7 +540,7 @@
 }
 
 /* ---- tabs: 干员调配 / 干员持有 / 自选编队 ------------------------------------------------------------- */
-.lo-tabs { display: flex; align-items: stretch; gap: .04rem; }
+.lo-tabs { display: flex; align-items: stretch; gap: .04rem; max-width: 100%; overflow-x: auto; scrollbar-width: none; }
 .lo-tab {
   display: inline-flex; align-items: center; gap: .08rem; padding: .02rem .16rem; font: inherit; font-size: max(.24rem, 13px); font-weight: 900;
   letter-spacing: .12em; line-height: 1.2; color: var(--text-lo); background: transparent; border: 0; border-bottom: 2px solid transparent; cursor: pointer;
@@ -573,6 +588,10 @@
 .own-card.is-off .own-card__state { color: var(--ice); }
 .own-card.is-off .own-switch { background: var(--bg-4); }
 .own-card.is-off .own-switch > i { right: auto; left: 2px; background: var(--ice); }
+@media (max-width: 760px) {
+  .own { padding: .1rem .16rem .16rem; }
+  .own__lead { display: none; }
+}
 
 /* ---- 自选编队 (screens/diy.js): four DIY slots by tier, the slot picker (operator list + skill / module) --------------- */
 .diy { position: relative; flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; gap: .12rem; padding: .16rem .3rem .2rem; }
@@ -589,10 +608,12 @@
 .diy-slot.is-empty { display: flex; padding: 0; }
 .diy-slot__fill {
   flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: .06rem;
-  padding: .2rem .12rem; min-height: max(1.4rem, 90px); font: inherit; color: var(--text-lo); cursor: pointer;
+  padding: .2rem .12rem; min-height: max(1.4rem, 90px); font: inherit; color: var(--text-lo); cursor: pointer; touch-action: manipulation;
   background: transparent; border: 1px dashed var(--line-3);
 }
 .diy-slot__fill:hover { color: var(--text-hi); border-color: var(--mint-500); background: rgba(52, 211, 153, .04); }
+.diy-slot__fill b { font-size: max(.16rem, 11px); }
+.diy-slot__fill small { font-size: max(.12rem, 9px); }
 .diy-slot__plus { display: grid; place-items: center; width: max(.4rem, 26px); height: max(.4rem, 26px); border: 1px solid var(--line-3); border-radius: 50%; }
 .diy-slot__plus .icon { width: 60%; height: 60%; }
 .diy-slot__art { display: grid; place-items: center; width: max(.9rem, 56px); height: max(1.3rem, 84px); overflow: hidden; background: #0a0d0c; border: 1px solid var(--line-2); }
@@ -664,6 +685,13 @@
 .diy-choice__head { display: flex; align-items: center; gap: .05rem; flex-wrap: wrap; font-size: max(.14rem, 10px); }
 .diy-choice__desc { font-size: max(.12rem, 9px); line-height: 1.45; color: var(--text-md); }
 .diy-pick__foot { flex: none; display: flex; justify-content: flex-end; gap: .08rem; }
+@media (max-width: 760px) {
+  .diy { padding: .1rem .16rem .16rem; }
+  .diy-pick { padding: .08rem .12rem .1rem; }
+  .diy-pick__main { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) minmax(0, 1.1fr); }
+  .diy-slot { grid-template-columns: auto minmax(0, 1fr); }
+  .diy-slot__acts { grid-column: 1 / -1; flex-direction: row; justify-content: flex-end; }
+}
 
 /* ---- 自选专属皮肤选择网格 (嵌入 DiyPicker) ------------------------------------------------------------- */
 .diy-skin-grid {

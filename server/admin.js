@@ -2,7 +2,6 @@
 import os from 'node:os';
 import crypto from 'node:crypto';
 import { PROTOCOL_VERSION, APP_VERSION } from '../shared/constants.js';
-import { endlessLeaderboard } from './records.js';
 
 // Circular log buffer for live console streaming
 const MAX_LOG_ENTRIES = 300;
@@ -205,15 +204,6 @@ export class AdminService {
         createdAt: r.createdAt || null,
       };
     });
-  }
-
-  /**
-   * 无尽模式最高回合榜单（server/records.js，降序）。
-   * @param {number} [limit]
-   */
-  getEndless(limit = 50) {
-    const rows = endlessLeaderboard(limit);
-    return { ok: true, count: rows.length, leaderboard: rows };
   }
 
   /**

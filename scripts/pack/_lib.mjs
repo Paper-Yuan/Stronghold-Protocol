@@ -50,10 +50,10 @@ export function assertExists(paths) {
 
 /**
  * 把 shared/capabilities.js 的源码改写成指定能力位（构建期，只改暂存副本）。
- * 服务器包用它把 endless 置 false：浏览器页面因此连入口都不渲染，而不是渲染了再隐藏
- * （GLOBAL_VOICE_TRI_UI_ENDLESS_PLAN.md D6）。返回 null 表示源里没有该开关，调用方应告警。
+ * 安卓变体构建（tools/bundle-android.mjs --capabilities）用它把变体的能力集写进暂存副本，成为产物字节
+ * 的物理属性。源里没有的键自动跳过；一个键都没命中时返回 null，调用方应告警。
  * @param {string} src
- * @param {{ endless?: boolean, mods?: boolean }} caps
+ * @param {{ mods?: boolean, multiplayer?: boolean }} caps
  * @returns {string|null}
  */
 export function rewriteCapabilities(src, caps) {

@@ -51,7 +51,6 @@ import { modCacheRoot } from './mod/packCache.js';
 import { verifyPack } from './modverify/run.js';
 import { publishPack } from './mod/publish.js';
 import { createCdnClient } from './mod/cdnClient.js';
-import { endlessLeaderboardAll } from './records.js';
 import { debugConfigFrom } from './debug.js';
 import { GlobalModManager } from './packs.js';
 
@@ -797,11 +796,6 @@ export async function startServer(opts = {}) {
         sendJson(req, res, 200, admin.getLogs(since));
         return;
       }
-      if (parts.rawPath === '/api/admin/endless' && (req.method === 'GET' || req.method === 'HEAD')) {
-        const limit = Number(new URLSearchParams(parts.query).get('limit')) || 50;
-        sendJson(req, res, 200, admin.getEndless(limit));
-        return;
-      }
       if (parts.rawPath === '/api/admin/broadcast' && req.method === 'POST') {
         try {
           const body = await readJsonBody(req);
@@ -942,29 +936,6 @@ export async function startServer(opts = {}) {
     }
     if (parts.rawPath === '/api/announcements') {
       sendJson(req, res, 200, { ok: true, announcements });
-      return;
-    }
-    if (parts.rawPath === '/api/endless/leaderboard') {
-      const q = new URLSearchParams(parts.query);
-      const limitParam = q.get('limit');
-      const limitRaw = limitParam == null || limitParam === '' ? NaN : Number(limitParam);
-      const limit = Number.isFinite(limitRaw) ? Math.min(200, Math.max(1, Math.floor(limitRaw))) : 30;
-      const all = endlessLeaderboardAll();
-      const pub = (r) => ({
-        name: String(r.name || ''),
-        rounds: Math.max(0, Math.floor(Number(r.rounds) || 0)),
-        runs: Math.max(0, Math.floor(Number(r.runs) || 0)),
-        solo: !!r.solo,
-        at: Number.isFinite(r.at) ? r.at : null,
-      });
-      const rows = all.slice(0, limit).map(pub);
-      const wantName = String(q.get('name') || '').trim().slice(0, 64);
-      let me = null;
-      if (wantName) {
-        const idx = all.findIndex((r) => r && String(r.name) === wantName);
-        if (idx >= 0) me = { ...pub(all[idx]), rank: idx + 1 };
-      }
-      sendJson(req, res, 200, { ok: true, total: all.length, count: rows.length, leaderboard: rows, me });
       return;
     }
     await serveStatic(req, res, parts.rawPath, parts.query);

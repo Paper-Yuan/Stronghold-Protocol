@@ -37,7 +37,7 @@
   gap: .06rem !important;
 }
 
-/* 登录框适当放宽，并排容纳「无尽模式」「统计数据」「MOD 管理」三枚按键 */
+/* 登录框适当放宽，并排容纳「统计数据」「MOD 管理」两枚按键 */
 .sp-coarse .title-login {
   width: min(5.6rem, 94vw);
   padding: .2rem .24rem .18rem;
@@ -46,7 +46,7 @@
 
 .sp-coarse .title-ops {
   display: grid !important;
-  grid-template-columns: 1fr 1fr 1fr !important;
+  grid-template-columns: 1fr 1fr !important;
   gap: .08rem !important;
   margin-top: -.02rem;
 }
@@ -63,11 +63,6 @@
 .sp-coarse .title-op-btn .dicon {
   width: .15rem !important;
   height: .15rem !important;
-}
-
-/* 仅在手机端显示主页无尽模式启动入口 */
-.sp-coarse .title-op-endless {
-  display: inline-flex !important;
 }
 
 /* 标题屏层级与设置按钮触控优化：保证永远在 footer 之上，触控判定热区 44x44px */
@@ -138,14 +133,6 @@
   flex: 0 0 auto !important;
 }
 
-/* 手机端大厅隐藏无尽模式专区与无尽排行榜（已全部挪至无尽模式专用独立界面） */
-.sp-coarse .lobby-endless-label,
-.sp-coarse .diff-list--endless,
-.sp-coarse .endless-board,
-.sp-coarse .lobby-screen .lobby-leaderboard {
-  display: none !important;
-}
-
 /* 手机端大厅顶栏隐藏冗余按键（MOD已在标题屏，玩法说明收纳） */
 .sp-coarse .lobby-screen .lobby-mod,
 .sp-coarse .lobby-screen .lobby-guide {
@@ -184,14 +171,7 @@
   padding: 0 max(.18rem, var(--sa-l, 0px)) 0 max(.18rem, var(--sa-r, 0px)) !important;
 }
 
-/* 无尽模式顶栏排行榜按钮微调 */
-.sp-coarse .room-screen .room-endless-board {
-  height: max(.36rem, 30px) !important;
-  padding: 0 .10rem !important;
-  font-size: max(.135rem, 11px) !important;
-}
-
-/* 单人/无尽简报面板：解决文本溢出，并提供平滑纵向滚动保底 */
+/* 单人简报面板：解决文本溢出，并提供平滑纵向滚动保底 */
 .sp-coarse .solo-brief {
   padding: .16rem .20rem !important;
   gap: .06rem !important;
@@ -211,10 +191,6 @@
   gap: .04rem !important;
   font-size: .13rem !important;
   line-height: 1.3 !important;
-}
-
-.sp-coarse .solo-brief__board {
-  margin-top: .06rem !important;
 }
 
 /* 底部操作栏布局 */

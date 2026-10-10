@@ -210,7 +210,7 @@ export function BandDraftScreen() {
   useEffect(() => { setInfoOpen(false); }, [turnKey]);
 
   // one countdown (user playtest #4 item 4): the current turn's — m.public.deadline, the same clock as the picker's row.
-  // 以服务端的 untimed / deadline 为准，不再用 solo 判定：无尽模式即使是单人也有时限（Match.soloUntimed）。
+  // 以服务端的 untimed / deadline 为准，不再用 solo 判定（Match.soloUntimed：单人也可能有时限）。
   const clock = draftClock(pub);
   // the highlighted band is what a turn that runs out takes (Match.timeoutBand): report every change before my pick
   const timed = !!pub?.draft && !pub.draft.untimed;

@@ -153,7 +153,6 @@ import {
 import { buildBattleSpec, createBattleFromSpec, resultDigest, compactResult as compactForVerify, battleProgress, uniteLeft } from '../sim/spec.js';
 import { CreditPool } from './finalAssault.js';
 import { buildResult } from './results.js';
-import { recordEndlessResult } from '../records.js';
 import { botPrepBeginSteps, botPrepEndSteps, botPickBand, botPickCard } from './bot.js';
 import { checkDebugAuth } from '../debug.js';
 
@@ -690,12 +689,8 @@ export class Match {
    * presentation steps (BATTLE_CHECK, ROUND_START, SETTLE) run silently (no countdown). The same holds for any match
    * with a single human (loneHuman: a 同盟 room started alone or with AI teammates only — user playtest #4 item 3):
    * the timers only ever made humans wait on each other; AI seats act at once.
-   *
-   * 无尽模式例外（服务器主人要求）：无尽没有官方数据背书，且成绩就是「坚持的回合数」—— 必须按合作盟约计时，
-   * 否则单机 / 单人无尽可以无限泡在休整期里刷回合（gd.isEndless ⇒ 每个非战斗阶段都照常发 deadline；
-   * 单机条目的 prepTime 由 tools/endlessMode.mjs 从同底难度的联机回合表补齐）。
    */
-  get soloUntimed() { return (this.isSolo || this.loneHuman) && !this.gd.isEndless; }
+  get soloUntimed() { return this.isSolo || this.loneHuman; }
 
   nextUid() { return ++this.uidSeq; }
 
@@ -900,9 +895,6 @@ export class Match {
       hiddenBossId: this.hiddenBossId,
       bossRound: this.gd.bossRound,
       hiddenRound: this.gd.hiddenRound,
-      // 无尽模式：回合无限（lastRound = 0），第 14 回合第一次 Boss，其后每 bossStep(7) 回合一次
-      endless: this.gd.isEndless,
-      bossStep: this.gd.isEndless ? this.gd.endlessBossStep : null,
       spRound: this.gd.isSpRound(this.round),
       // DESIGN §14: 'client' = battles are simulated by the browsers (b.start specs), 'server' = legacy streaming
       combatMode: this.clientCombat ? 'client' : 'server',
@@ -1679,24 +1671,12 @@ export class Match {
   }
 
   /**
-   * 无尽模式：某个 Boss 回合该打哪个 Boss。R14（第一次）固定用开局抽中的 `bossId`；其后每次 Boss
-   * **独立按权重重新轮抽**（D10 的 `bossWeights`，允许与上一次相同）——用 `(seed, 该次 Boss 的回合)`
-   * 派生 RNG，所以同一局同一回合对所有客户端一致、可复现。非 Boss 回合返回「最近一次 Boss 回合」的
-   * Boss（供 UI / BGM 显示，避免回合间来回跳）。非无尽模式恒为开局抽中的那一个。
+   * The leader of the boss round: the one drawn at match start (`bossId`). Every boss field of the
+   * match (Final Assault / Hidden Core) uses its own pre-drawn leader.
    * @param {number} r 回合
    */
-  bossIdAtRound(r) {
-    if (!this.gd.isEndless) return this.bossId;
-    const first = this.gd.endlessBossFirst;
-    const n = Number(r);
-    if (!Number.isInteger(n) || n < first) return this.bossId;
-    const step = this.gd.endlessBossStep;
-    const idx = Math.floor((n - first) / step) + 1;     // 截至 r 已发生的 Boss 次数（≥1）
-    if (idx <= 1) return this.bossId;                   // R14：开局抽中的那个
-    const bw = this.gd.bossWeights(false);
-    if (!bw.length) return this.bossId;
-    const drawRound = first + (idx - 1) * step;         // 该次 Boss 的回合 → 抽样键
-    return weightedPick(createRng(deriveSeed(this.seed, `boss:${drawRound}`)), bw);
+  bossIdAtRound(r) { // eslint-disable-line no-unused-vars
+    return this.bossId;
   }
 
   /** The boss round's fields (seat pairs of the alive players) and their templates, generated for the prep preview. */
@@ -3154,8 +3134,7 @@ export class Match {
     // the pool's own per-player tally, one pool per boss round. stats.bossDamage (the result's 领袖伤害) adds up both
     // rounds, so it would credit the Final Assault's damage to the hidden leader ("隐藏boss还没打就出了50%播报").
     const hitSteps = new Map();
-    // 无尽模式：Boss 血池随周期成长（第 n 次 Boss 战 = 基础 × bossCycleScale^(n-1)）；其它模式倍率恒为 1。
-    const poolHp = Math.max(1, Math.round(bossPoolHp(this.gd, bossId, alive.length) * this.gd.endlessBossPoolScale(this.round)));
+    const poolHp = Math.max(1, Math.round(bossPoolHp(this.gd, bossId, alive.length)));
     const pool = new SharedBossPool(poolHp, {
       onHit: (pid, dmg) => {
         const ps = this.players.get(pid);
@@ -3363,20 +3342,6 @@ export class Match {
     this.overtimeAt = 0;
     this.markPublic();
     this.runner = null;
-    if (!hidden && this.gd.isEndless) {
-      // 无尽模式的 Boss 只结束当前周期：血池清零就继续下一回合，队伍目标生命值耗尽才结束整局。
-      this.later(this.scaled(DELAYS.SETTLE), () => {
-        if (!victory) { this.finish({ victory: false, reason: 'defeat' }); return; }
-        this.bossPool = null;
-        this.teamLp = null;
-        this.overtimeAt = 0;
-        this.overtimeApplied = 0;
-        this._finalEnding = null;
-        this.tickerText(`第 ${this.round} 回合的敌方领袖已被击破`, FLOW_TICKER_PRIORITY);
-        this.startRound(this.round + 1);
-      });
-      return;
-    }
     if (!hidden) {
       const eligible = victory && !!this.hiddenBossId && hiddenEligible(this.gd, { layerSum: this.hiddenLayerSum, teamLp: this.teamLp });
       this.later(this.scaled(DELAYS.SETTLE), () => {
@@ -3410,14 +3375,9 @@ export class Match {
     this.deadline = 0;
     for (const f of this.fields) f.live = false;
     this.outcome = { victory: !!victory, hiddenReached: this.hiddenReached, hiddenCleared: !!hiddenCleared, reason };
-    // 无尽模式：把本局存活回合写入最高回合记录，并把「历史最高 / 是否刷新纪录」带进结算页。
-    let extras = {};
-    if (this.gd.isEndless) {
-      try { extras = recordEndlessResult(this); } catch (e) { this.reportError('endless record', e); }
-    }
     let result;
     try {
-      result = buildResult(this, this.outcome, extras);
+      result = buildResult(this, this.outcome);
     } catch (e) {
       this.reportError('buildResult', e);
       result = { t: 'm.result', victory: !!victory, roundsPassed: 0, reason, modeId: this.modeId, difficulty: this.difficulty, players: [] };

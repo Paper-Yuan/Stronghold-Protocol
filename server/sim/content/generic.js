@@ -2,7 +2,7 @@
 //
 // Used for every chess without a hand-authored kit (and for tokens with skills), so every unit fights sensibly.
 // Kind: PASSIVE (or a free skill without duration/ammo) ⇒ passive · durationType AMMO ⇒ ammo · duration > 0 ⇒
-//   duration · duration < 0 ⇒ ammo when an ammo key exists, toggle only for an explicitly endless skill
+//   duration · duration < 0 ⇒ ammo when an ammo key exists, toggle only for an explicitly infinite-duration skill
 //   ("持续时间无限", 史尔特尔) — the official data also uses −1 for instant/charge skills ("立即…", "下一次攻击…",
 //   "可充能N次": 夕, 塑心, 妮芙, 莱恩哈特, 流星 …) · otherwise instant (charges when maxCharges > 1).
 // Blackboard keys → SkillSpec (stat keys prefer the plain key, attack/targeting keys prefer the `attack@` key —
@@ -72,7 +72,7 @@ function attackGetter(bb) {
   };
 }
 
-const ENDLESS = /持续时间无限|无限持续/;
+const INFINITE_DURATION = /持续时间无限|无限持续/;
 const STOP_ATTACK = /(^|[，；。,;])停止(主动)?攻击(敌人)?([，；。,;]|$)/;
 const ELEMENTS = [[/凋亡损伤/, 'apoptosis'], [/灼燃损伤/, 'burn'], [/神经损伤/, 'neural']];
 const STATUS_KEYS = [['stun', 'stun'], ['cold', 'cold'], ['sleep', 'sleep'], ['fear', 'fear'], ['sluggish', 'sluggish'], ['root', 'bind'], ['unmovable', 'bind']];
@@ -89,7 +89,7 @@ export function genericKind(sk, bb = {}) {
   if (sk.duration > 0) return 'duration';
   if (sk.duration < 0) {
     if (g('trigger_time') !== undefined || g('ammo') !== undefined) return 'ammo';
-    if (ENDLESS.test(String(sk.description || ''))) return 'toggle';
+    if (INFINITE_DURATION.test(String(sk.description || ''))) return 'toggle';
   }
   return sk.maxCharges > 1 ? 'charges' : 'instant';
 }

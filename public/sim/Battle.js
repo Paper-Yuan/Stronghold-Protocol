@@ -101,7 +101,7 @@ export class Battle {
     }
     this.grid = new Grid(this.stage, this.rect);
     const bossLike = this.kind === 'boss' || this.kind === 'hidden';
-    // A bad limit (0, negative, NaN — e.g. a missing config row) must not turn a normal round into an endless one:
+    // A bad limit (0, negative, NaN — e.g. a missing config row) must not turn a normal round into a limitless one:
     // non-boss kinds fall back to 60 s; only boss/hidden (or an explicit Infinity) run without a limit.
     const tl = Number(opts.timeLimit);
     this.timeLimit = opts.timeLimit == null || !(tl > 0) ? (bossLike ? Infinity : 60) : tl;

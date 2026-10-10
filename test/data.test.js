@@ -16,7 +16,6 @@ import { join, dirname } from 'node:path';
 import { tmpdir } from 'node:os';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { isEndlessDifficulty, ENDLESS_DIFFICULTIES, ENDLESS_BOSS_EVERY, ENDLESS_BOSS_STEP, ENDLESS_BOSS_CYCLE_SCALE } from '../shared/constants.js';
 import { stripPotential } from '../shared/potential.js';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -62,8 +61,11 @@ test('public/data/ 是 data/ 的客户端镜像（tools/sync-static-web.mjs 整�
   // 客户端只读 public/data/（public/js/data.js 的 fetch 路径），所以两侧必须逐字节一致 ——
   // 改数据只改一侧会让客户端拿到旧值，而现有测试都只读 data/，察觉不到。
   if (process.env.DATA_DIR) return; // an alternative build output (`--out`) has no mirror
-  const canonical = readdirSync(DATA).filter((f) => f.endsWith('.json')).sort();
-  const mirrored = readdirSync(join(ROOT, 'public', 'data')).filter((f) => f.endsWith('.json')).sort();
+  // local-assets.json 是本地客户端提取的工件（tools/local-extract，git-ignore），没有本地客户端的 checkout 上
+  // 只有 public/ 侧那份被跟踪的镜像 —— 和 sim 镜像的 simdata.js 一样是已知的单向例外。
+  const EXCEPTIONS = new Set(['local-assets.json']);
+  const canonical = readdirSync(DATA).filter((f) => f.endsWith('.json') && !EXCEPTIONS.has(f)).sort();
+  const mirrored = readdirSync(join(ROOT, 'public', 'data')).filter((f) => f.endsWith('.json') && !EXCEPTIONS.has(f)).sort();
   assert.deepEqual(mirrored, canonical, '两边的 json 清单必须一致');
   for (const f of canonical) {
     assert.ok(readFileSync(join(DATA, f)).equals(readFileSync(join(ROOT, 'public', 'data', f))),
@@ -289,31 +291,17 @@ test('config: modes, rounds and templates', () => {
       assert.ok(tpls.length > 0, `${m.modeId} r${r}: template`);
       for (const t of tpls) assert.ok(waves[t], `${m.modeId} r${r}: ${t}`);
       if (!rd.isBoss) assert.ok(isFiniteNum(rd.combatTimeLimit), `${m.modeId} r${r}: combatTimeLimit`);
-      // 无尽模式是唯一的例外：它没有官方数据背书、成绩就是「坚持的回合数」，所以故意按合作盟约计时
-      // （server/match/Match.js `soloUntimed` 对 isEndless 返回 false），单机条目的 prepTime 由
-      // tools/endlessMode.mjs 从同底难度的联机回合表补齐。
-      if (m.type === 'SINGLE' && isEndlessDifficulty(m.difficulty)) assert.ok(isFiniteNum(rd.prepTime), `${m.modeId} r${r}: endless prep is timed`);
-      else if (m.type === 'SINGLE') assert.equal(rd.prepTime, null, `${m.modeId}: solo prep untimed`);
+      if (m.type === 'SINGLE') assert.equal(rd.prepTime, null, `${m.modeId}: solo prep untimed`);
       if (m.type === 'MULTI') assert.ok(isFiniteNum(rd.prepTime), `${m.modeId} r${r}: prepTime`);
-      // 无尽模式的回合数没有上限，`enemyScale` 只带底难度那张官方表；超出表的回合由
-      // server/match/gamedata.js endlessEnemyScale 在运行期按官方公式外推（无 es 行只允许出现在无尽模式）。
+      // 每个回合都带官方 enemyScale 表行（es）：运行期 gamedata.enemyScale 只读表，不做外推。
       const es = m.enemyScale[r];
-      if (es) assert.ok(isFiniteNum(es.atk) && isFiniteNum(es.hp) && isFiniteNum(es.speed), `${m.modeId} r${r}: enemyScale`);
-      else assert.ok(isEndlessDifficulty(m.difficulty), `${m.modeId} r${r}: enemyScale`);
+      assert.ok(es && isFiniteNum(es.atk) && isFiniteNum(es.hp) && isFiniteNum(es.speed), `${m.modeId} r${r}: enemyScale`);
     }
     for (const b of [...m.activeBondIds, ...m.inactiveBondIds]) assert.ok(bonds[b], `${m.modeId}: bond ${b}`);
     for (const s of m.stages) assert.ok(stages[s]?.active, `${m.modeId}: stage ${s}`);
     if (m.inScope) {
       assert.equal(m.upgradePrices.length, 5);
       assert.ok(m.stages.length > 0);
-    }
-    if (isEndlessDifficulty(m.difficulty)) {
-      assert.equal(m.lastRound, 0, `${m.modeId}: endless has no last round`);
-      assert.equal(m.hiddenRound, null, `${m.modeId}: endless has no hidden round`);
-      assert.equal(m.bossRound, ENDLESS_BOSS_EVERY, `${m.modeId}: first boss`);
-      assert.equal(m.bossStep, ENDLESS_BOSS_STEP, `${m.modeId}: boss every`);
-      assert.equal(m.bossCycleScale, ENDLESS_BOSS_CYCLE_SCALE, `${m.modeId}: boss cycle scale`);
-      assert.ok(ENDLESS_DIFFICULTIES.includes(m.difficulty), `${m.modeId}: endless difficulty`);
     }
   }
   const M = config.modes;

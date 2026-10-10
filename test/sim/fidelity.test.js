@@ -131,7 +131,7 @@ test('stage devices: active platforms (act1 m03) block ground paths and elevate 
 // ---------------------------------------------------------------------------------------------------------------
 // generic kit on real chess (skill metadata/blackboards from data/chess.json)
 
-test('generic kind: duration −1 is instant/charges unless the skill is explicitly endless', () => {
+test('generic kind: duration −1 is instant/charges unless the skill is explicitly infinite-duration', () => {
   assert.equal(specOf('chess_char_6_09_a').kind, 'charges', '塑心 可充能2次');
   assert.equal(specOf('chess_char_5_22_a').kind, 'instant', '妮芙');
   assert.equal(specOf('chess_char_5_12_a').kind, 'charges', '夕 下一次攻击');
@@ -314,7 +314,7 @@ test('generic kit never throws and yields finite numbers for every real chess (n
     const s = kit.skill;
     for (const [k, v] of Object.entries(s.mods || {})) assert.ok(Number.isFinite(v), `${id} ${k}`);
     if (s.attack?.atkScale !== undefined) assert.ok(s.attack.atkScale > 0 && s.attack.atkScale < 10, `${id} atkScale ${s.attack.atkScale}`);
-    if (s.kind === 'toggle') assert.ok(/无限/.test(d.skill.description), `${id} toggle only when endless`);
+    if (s.kind === 'toggle') assert.ok(/无限/.test(d.skill.description), `${id} toggle only when the skill is infinite-duration`);
   }
 });
 
