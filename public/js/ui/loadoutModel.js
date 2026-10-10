@@ -10,6 +10,7 @@
 // (shared/protocol.js loadoutOptions / checkLoadout), so a sanitised loadout is always accepted.
 
 import { loadoutOptions, checkLoadout, resolveLoadout, MODULE_NONE, LOADOUT_LIMITS, isSkinId, SKIN_LIMITS } from '../../../shared/protocol.js';
+import { isPotential, isCultivate, POTENTIAL_DEFAULT, CULTIVATE_DEFAULT } from '../../../shared/potential.js';
 
 export { MODULE_NONE };
 
@@ -422,4 +423,41 @@ export function skillTags(rec) {
     charges: Number(rec.maxChargeTime) > 1 ? Number(rec.maxChargeTime) : null,
     passive,
   };
+}
+
+// sanitizeOps: taken from v0.2.3:public/js/ui/loadoutModel.js during the v0.2.3 narrow merge (upstream code imports it).
+export function sanitizeOps(ops, isOperator) {
+  const out = {};
+  for (const [id, e] of Object.entries(ops || {})) {
+    if (Object.keys(out).length >= LOADOUT_LIMITS.ops) break;
+    const one = {};
+    if (isPotential(e?.potential)) one.potential = e.potential;
+    if (isCultivate(e?.cultivate)) one.cultivate = e.cultivate;
+    if (!Object.keys(one).length) continue;
+    const res = checkLoadoutOps({ [id]: one }, isOperator);
+    if (res.ok && res.ops[id]) {
+      const x = {};
+      if (res.ops[id].potential !== POTENTIAL_DEFAULT) x.potential = res.ops[id].potential;
+      if (res.ops[id].cultivate !== CULTIVATE_DEFAULT) x.cultivate = res.ops[id].cultivate;
+      out[id] = x;
+    }
+  }
+  return out;
+}
+
+// parseStoredOps: taken from upstream v0.2.3 during the narrow merge — loadoutSync.js imports it
+// (the 潜能 / 练度 stored alongside a loadout). The helpers come from our shared/potential.js.
+export function parseStoredOps(raw) {
+  const src = isObj(raw) && isObj(raw.ops) ? raw.ops : null;
+  const out = {};
+  if (!src) return out;
+  for (const [id, e] of Object.entries(src)) {
+    if (Object.keys(out).length >= LOADOUT_LIMITS.ops) break;
+    if (UNSAFE_IDS.has(id) || !/^[A-Za-z0-9_\-.:]{1,64}$/.test(id) || !isObj(e)) continue;
+    const x = {};
+    if (isPotential(e.potential) && e.potential !== POTENTIAL_DEFAULT) x.potential = e.potential;
+    if (isCultivate(e.cultivate) && e.cultivate !== CULTIVATE_DEFAULT) x.cultivate = e.cultivate;
+    if (Object.keys(x).length) out[id] = x;
+  }
+  return out;
 }
