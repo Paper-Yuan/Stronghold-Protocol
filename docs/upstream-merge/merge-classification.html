@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>上游 v0.2.3 可合并内容分类图</title>
+<style>
+  :root{
+    --bg:#0b0f0e; --panel:#131a18; --line:#243230; --txt:#e6ecea; --dim:#8fa3a0;
+    --a:#2ea44f; --b:#4a9eff; --c:#e8a33d; --d:#e05a5a; --mint:#17f9b7;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  body{width:1600px; background:var(--bg); color:var(--txt);
+       font-family:"Microsoft YaHei","PingFang SC","Noto Sans CJK SC",system-ui,sans-serif; padding:38px 44px;}
+  h1{font-size:31px; letter-spacing:.5px;}
+  h1 small{display:block; font-size:15px; color:var(--dim); font-weight:400; margin-top:8px; letter-spacing:0;}
+  .sub{margin-top:14px; font-size:14px; color:var(--dim);}
+  .sub b{color:var(--mint); font-weight:600;}
+  .grid{display:grid; grid-template-columns:repeat(4,1fr); gap:16px; margin-top:26px;}
+  .card{background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:18px 18px 16px; position:relative; overflow:hidden;}
+  .card::before{content:""; position:absolute; inset:0 auto 0 0; width:5px; background:var(--acc);}
+  .card.a{--acc:var(--a);} .card.b{--acc:var(--b);} .card.c{--acc:var(--c);} .card.d{--acc:var(--d);}
+  .tag{display:inline-block; font-size:12px; font-weight:700; letter-spacing:1px; padding:3px 9px; border-radius:999px;
+       color:#0b0f0e; background:var(--acc);}
+  .card h2{font-size:18px; margin:12px 0 4px;}
+  .card .n{font-size:13px; color:var(--acc); font-weight:700; margin-bottom:12px;}
+  ul{list-style:none; font-size:13.5px; line-height:1.75;}
+  li{padding-left:15px; position:relative; color:#cfd8d5;}
+  li::before{content:"▪"; position:absolute; left:0; color:var(--acc);}
+  li.dim{color:var(--dim);}
+  code{font-family:Consolas,monospace; font-size:12.5px; background:#0a1513; border:1px solid #1e2c2a;
+       border-radius:4px; padding:1px 5px; color:#9fe8cf;}
+  .verdict{margin-top:16px; padding:12px 14px; border-radius:8px; font-size:13.5px;
+           background:rgba(23,249,183,.07); border:1px solid rgba(23,249,183,.3); color:#c9f5e6;}
+  .verdict b{color:var(--mint);}
+  h3{margin-top:26px; font-size:18px;}
+  table{width:100%; border-collapse:collapse; margin-top:12px; font-size:13.5px;}
+  th,td{border:1px solid var(--line); padding:8px 10px; text-align:left;}
+  th{background:#0f1715; color:var(--dim); font-weight:600;}
+  td.ok{color:var(--a); font-weight:600;}
+  td.warn{color:var(--c); font-weight:600;}
+  .foot{margin-top:20px; font-size:12.5px; color:var(--dim);}
+</style>
+</head>
+<body>
+  <h1>上游 v0.2.3 可合并内容分类图
+    <small>策略：以我为主（UI 保持我们侧，尤其手机端选皮肤链路）· 遵守 .agents/rules/upstream-sync.md（PR #149 永久排除）· 不部署不 push</small>
+  </h1>
+  <div class="sub">上游自分叉点 <code>9f93096e</code> 起共改 <b>1059</b> 个文件；合并到 <code>merge/v0.2.3</code> 后：自动并入 <b>906</b> · 冲突 <b>221</b>（陈旧快照 112 取上游 / 双方都改 109 取我们）· 排除 1（黑名单）</div>
+
+  <div class="grid">
+    <div class="card a">
+      <span class="tag">A · 可直接用</span>
+      <h2>自动并入即安全</h2>
+      <div class="n">上游改动与我们不重叠 → 已进树</div>
+      <ul>
+        <li>引擎与规则：<code>server/sim/**</code>、<code>server/match/**</code>（上游修的同源 bug）</li>
+        <li>测试 <code>test/**</code>、工具 <code>tools/**</code>、文档 <code>docs/**</code></li>
+        <li>内容数据：<code>data/*.json</code> 多数段</li>
+        <li>独立新功能：<code>pwa.js</code>+manifest+icons（安装到桌面）、<code>resumeMatch.js</code>（对局恢复）、<code>setupReroll.js</code>（房主重刷）、<code>botEmotes.js</code>、<code>setupVote.js</code>、<code>diag.js</code></li>
+        <li class="dim">文字大小四档、安装图标、#421 素材完整性</li>
+      </ul>
+    </div>
+
+    <div class="card b">
+      <span class="tag">B · 保我们</span>
+      <h2>UI 与融合特性（冲突已取我们侧）</h2>
+      <div class="n">55 个 public/ 冲突文件 + 54 个非 public</div>
+      <ul>
+        <li><b>皮肤选择链</b>：<code>screens/loadout.js</code>、<code>loadout.css</code>、<code>ui/loadoutModel.js</code>、<code>ui/loadoutSync.js</code>、<code>screens/diy.js</code></li>
+        <li><code>ui/assets.js</code> 的皮肤分支（上游本身无皮肤逻辑，已保留我们的）</li>
+        <li>本地融合层：自选干员 / 满潜 / 双语语音 / 整备区规则 / 无尽入口 / mod 管理 / 统计页 / 撮合</li>
+        <li class="dim">手机端适配（<code>mobile.css</code>、<code>devices.css</code>）</li>
+      </ul>
+    </div>
+
+    <div class="card c">
+      <span class="tag">C · 需整合或排除</span>
+      <h2>上游新子系统（悬空依赖来源）</h2>
+      <div class="n">静态 import 图 10 处红 · UI 测试 162/81 红</div>
+      <ul>
+        <li><b>i18n</b>：<code>ui/lang.js</code> + <code>public/i18n/{en,ja,ko,zh-TW}.json</code>（我们缺整个 i18n 子系统）</li>
+        <li><b>每干员语音</b>：<code>voicePrefs.js</code>、<code>operatorVoice.js</code>、<code>VOICE_LANGS</code>（与我们的 <code>VOICE_LANG</code> 同名异构）</li>
+        <li><code>screens/cultivation.js</code>（要 <code>loadoutModel</code> 的 <code>opsOf</code>）</li>
+        <li><b>渲染层双套</b>：上游拆出 <code>render/fx/**</code>(15) 与 <code>render/app/**</code>(6)，我们的单文件版仍在 → 二选一</li>
+      </ul>
+    </div>
+
+    <div class="card d">
+      <span class="tag">D · 永久排除</span>
+      <h2>黑名单（你的规则）</h2>
+      <div class="n">.agents/rules/upstream-sync.md</div>
+      <ul>
+        <li>PR #149「盟约收起/展开」</li>
+        <li>特征：<code>.bonds-toggle</code>、<code>.gm__bond-list</code>、<code>bondsCollapsed</code></li>
+        <li>测试 <code>test/ui/bond-collapse.e2e.test.js</code> 保持删除</li>
+        <li>理由：844×390 下棋盘顶边触控位移 ≈55px，点第 12 行干员误触发盟约浮层</li>
+        <li class="dim">已核实：本次合并未引入任何黑名单特征</li>
+      </ul>
+    </div>
+  </div>
+
+  <h3>你最关心的「选皮肤」链路逐文件核对（合并后实测）</h3>
+  <table>
+    <thead><tr><th>文件</th><th>上游改过?</th><th>合并处置</th><th>皮肤能力</th></tr></thead>
+    <tbody>
+      <tr><td><code>public/js/screens/loadout.js</code></td><td>是</td><td>冲突 → 取我们</td><td class="ok">✔ 皮肤节完整（.lo-skin* / .lo-dtab*）</td></tr>
+      <tr><td><code>public/css/screens/loadout.css</code></td><td>是</td><td>冲突 → 取我们</td><td class="ok">✔ 皮肤选择段样式在</td></tr>
+      <tr><td><code>public/js/ui/loadoutModel.js</code></td><td>是</td><td>冲突 → 取我们</td><td class="ok">✔ skins 状态/导入导出在</td></tr>
+      <tr><td><code>public/js/ui/loadoutSync.js</code></td><td>是</td><td>冲突 → 取我们</td><td class="ok">✔ 皮肤同步在</td></tr>
+      <tr><td><code>public/js/screens/diy.js</code></td><td>是</td><td>冲突 → 取我们</td><td class="ok">✔ 自选/皮肤入口在</td></tr>
+      <tr><td><code>public/js/assets.js</code></td><td>是</td><td>自动并入（28 行）</td><td class="ok">✔ 皮肤分支保留（73-75 / 164-166 / 220-221），仅并入上游 token·SFX 改进</td></tr>
+      <tr><td><code>public/js/ui/skins.js</code> · <code>ui/assetUrls.js</code></td><td>否</td><td>未动</td><td class="ok">✔ 原样</td></tr>
+      <tr><td><code>data/skins.json</code> · <code>public/data/skins.json</code></td><td>否</td><td>未动</td><td class="ok">✔ 273 套（含本次补录的酒神/真言）</td></tr>
+    </tbody>
+  </table>
+  <div class="verdict"><b>结论：</b>皮肤选择链路在合并树里完好——上游根本没有皮肤逻辑（<code>assets.js</code> 里 <code>opts.skin</code> 零命中），冲突处我们保住了自己那份。<b>真正需要你拍板的是 C 类</b>：上游的 i18n 与每干员语音要不要接（它们与我们的 <code>VOICE_LANG</code> 同名异构），以及渲染层两套实现保留哪一套。</div>
+
+  <div class="foot">生成于 merge/v0.2.3（worktree E:/Workbox/sp-upgrade-merge）· 合并提交 7b02d1d2 · 数据来源：git merge-tree / 冲突分类脚本 / client-static 与 test/ui 实跑</div>
+</body>
+</html>
