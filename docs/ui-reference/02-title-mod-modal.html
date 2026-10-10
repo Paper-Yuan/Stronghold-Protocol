@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="sp-hover sp-fs">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>UI 参考 · 主页 Mod 设置框 (Content Pack Settings) - Stronghold Protocol</title>
+  <link rel="stylesheet" href="../../public/css/theme.css">
+  <link rel="stylesheet" href="../../public/css/components.css">
+  <link rel="stylesheet" href="../../public/css/screens/title.css">
+  <style>
+    html {
+      font-size: clamp(24px, min(100vw / 19.2, 100vh / 10.8), 240px);
+      background: #090c0b;
+      color: var(--text-hi, #f2f2f2);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+      margin: 0; padding: 0; height: 100%; overflow: hidden;
+    }
+    body {
+      margin: 0; padding: 0; width: 100vw; height: 100vh;
+      display: flex; align-items: center; justify-content: center;
+      position: relative; overflow: hidden; background: #070908;
+    }
+
+    /* 遮罩层与背景模糊 */
+    .modal-backdrop {
+      position: absolute; inset: 0;
+      background: rgba(8, 10, 9, 0.78);
+      backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+      z-index: 10;
+    }
+
+    /* 模态框主体 */
+    .mod-dialog {
+      position: relative; z-index: 20;
+      width: 9.6rem; max-width: 95vw;
+      background: linear-gradient(180deg, rgba(24, 30, 27, 0.98), rgba(14, 18, 16, 0.99));
+      border: 1px solid var(--line-2, #3e4b45);
+      box-shadow: 0 16px 48px rgba(0, 0, 0, 0.75), 0 0 24px rgba(78, 216, 175, 0.12);
+      display: flex; flex-direction: column; overflow: hidden;
+      animation: dialog-in 200ms cubic-bezier(0.16, 1, 0.3, 1) backwards;
+    }
+    @keyframes dialog-in {
+      from { opacity: 0; transform: scale(0.96) translateY(12px); }
+    }
+
+    /* 对角切角与边框装饰 */
+    .mod-dialog::before {
+      content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+      background: linear-gradient(90deg, var(--mint-400, #59f4ca), var(--mint-600, #35d8b4) 40%, transparent);
+    }
+
+    /* 模态头部 */
+    .dialog-header {
+      padding: 0.24rem 0.36rem 0.18rem;
+      border-bottom: 1px solid var(--line, #2f3a35);
+      display: flex; align-items: flex-start; justify-content: space-between;
+    }
+    .dialog-title-block { display: flex; flex-direction: column; gap: 0.04rem; }
+    .dialog-sub {
+      font-size: 0.11rem; font-weight: 700; letter-spacing: 0.24em; color: var(--mint-400, #59f4ca);
+      text-transform: uppercase;
+    }
+    .dialog-title {
+      font-size: 0.28rem; font-weight: 900; letter-spacing: 0.06em; margin: 0; color: #fff;
+      display: flex; align-items: center; gap: 0.12rem;
+    }
+    .dialog-close {
+      width: 0.36rem; height: 0.36rem; border: 1px solid var(--line-2, #3e4b45);
+      background: rgba(255, 255, 255, 0.03); color: var(--text-lo, #8a948f);
+      display: grid; place-items: center; cursor: pointer; text-decoration: none;
+      font-size: 0.2rem; line-height: 1; transition: all 150ms ease;
+    }
+    .dialog-close:hover {
+      border-color: var(--mint-500, #4ed8af); color: #fff; background: rgba(78, 216, 175, 0.1);
+    }
+
+    /* 提示横幅 */
+    .policy-banner {
+      margin: 0.18rem 0.36rem 0; padding: 0.14rem 0.2rem;
+      background: rgba(18, 28, 24, 0.7); border-left: 3px solid var(--mint-500, #4ed8af);
+      font-size: 0.13rem; line-height: 1.5; color: var(--text-md, #c3cbc7);
+    }
+    .policy-banner b { color: var(--mint-400, #59f4ca); }
+
+    /* 模态框主体内容 */
+    .dialog-body {
+      padding: 0.24rem 0.36rem; display: flex; flex-direction: column; gap: 0.18rem;
+      max-height: 5.6rem; overflow-y: auto;
+    }
+
+    /* 模组包卡片 */
+    .pack-card {
+      background: rgba(18, 22, 20, 0.85); border: 1px solid var(--line, #2f3a35);
+      padding: 0.24rem; display: flex; flex-direction: column; gap: 0.16rem;
+      transition: border-color 200ms ease;
+    }
+    .pack-card.is-active {
+      border-color: var(--mint-600, #35d8b4);
+      background: linear-gradient(180deg, rgba(20, 32, 27, 0.9), rgba(14, 20, 18, 0.95));
+      box-shadow: 0 0 16px rgba(78, 216, 175, 0.08);
+    }
+    .pack-header {
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .pack-info-left { display: flex; align-items: center; gap: 0.16rem; }
+    .pack-avatar {
+      width: 0.54rem; height: 0.54rem; border-radius: 4px;
+      background: #141c18; border: 1px solid var(--line-3, #58675f);
+      display: grid; place-items: center; font-size: 0.24rem; font-weight: 900;
+      color: var(--mint-400, #59f4ca);
+    }
+    .pack-names { display: flex; flex-direction: column; gap: 0.03rem; }
+    .pack-title { font-size: 0.2rem; font-weight: 800; color: #fff; }
+    .pack-meta {
+      font-size: 0.12rem; color: var(--text-lo, #8a948f); display: flex; gap: 0.12rem;
+    }
+    .pack-badge {
+      font-size: 0.1rem; padding: 0.02rem 0.06rem; border-radius: 2px;
+      background: rgba(78, 216, 175, 0.12); color: var(--mint-400, #59f4ca); border: 1px solid var(--mint-800, #145443);
+    }
+    .pack-badge.inactive {
+      background: rgba(138, 148, 143, 0.1); color: var(--text-lo, #8a948f); border-color: var(--line, #2f3a35);
+    }
+
+    /* 开关控件 (Switch) */
+    .switch-wrap { display: flex; align-items: center; gap: 0.12rem; }
+    .switch-label { font-size: 0.13rem; font-weight: 700; color: var(--text-md, #c3cbc7); }
+    .toggle-switch {
+      width: 0.64rem; height: 0.32rem; background: #222a26;
+      border: 1px solid var(--line-3, #58675f); border-radius: 0.16rem;
+      position: relative; cursor: pointer; transition: all 200ms ease;
+    }
+    .toggle-switch::after {
+      content: ''; position: absolute; left: 0.04rem; top: 0.04rem;
+      width: 0.22rem; height: 0.22rem; border-radius: 50%;
+      background: var(--text-lo, #8a948f); transition: all 200ms cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .toggle-switch.checked {
+      background: var(--mint-800, #145443); border-color: var(--mint-500, #4ed8af);
+    }
+    .toggle-switch.checked::after {
+      left: 0.36rem; background: var(--mint-400, #59f4ca);
+      box-shadow: 0 0 8px var(--mint-glow, #17f9b7);
+    }
+
+    /* 包内明细面板 */
+    .pack-details-grid {
+      display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.1rem;
+      background: rgba(10, 13, 12, 0.6); padding: 0.12rem; border: 1px solid rgba(47, 58, 53, 0.5);
+    }
+    .detail-item { display: flex; flex-direction: column; gap: 0.03rem; }
+    .detail-item__label { font-size: 0.11rem; color: var(--text-lo, #8a948f); }
+    .detail-item__val { font-size: 0.14rem; font-weight: 700; color: var(--text-hi, #fff); }
+
+    .pack-desc {
+      font-size: 0.13rem; color: var(--text-md, #c3cbc7); line-height: 1.55;
+    }
+
+    /* 底部操作条 */
+    .dialog-footer {
+      padding: 0.18rem 0.36rem; background: rgba(12, 15, 14, 0.95);
+      border-top: 1px solid var(--line, #2f3a35);
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .btn-group { display: flex; gap: 0.12rem; }
+    .btn {
+      padding: 0.1rem 0.22rem; font-size: 0.14rem; font-weight: 700; letter-spacing: 0.04em;
+      border: 1px solid var(--line-2, #3e4b45); background: #1a201d; color: var(--text-hi, #fff);
+      cursor: pointer; transition: all 160ms ease; text-decoration: none;
+    }
+    .btn:hover { border-color: var(--mint-500, #4ed8af); background: #232c28; }
+    .btn.is-primary {
+      background: var(--mint-700, #2a9e7f); border-color: var(--mint-500, #4ed8af);
+      color: #06110d;
+    }
+    .btn.is-primary:hover { background: var(--mint-500, #4ed8af); }
+  </style>
+</head>
+<body>
+  <div class="modal-backdrop"></div>
+
+  <div class="mod-dialog">
+    <!-- 头部 -->
+    <div class="dialog-header">
+      <div class="dialog-title-block">
+        <span class="dialog-sub">Content Pack Management</span>
+        <h2 class="dialog-title">
+          扩展模组设置
+          <span style="font-size: 0.14rem; color: var(--text-lo, #8a948f); font-weight: 400;">(单机与房主配置)</span>
+        </h2>
+      </div>
+      <a href="01-title.html" class="dialog-close" title="关闭">&times;</a>
+    </div>
+
+    <!-- 规范声明横幅 -->
+    <div class="policy-banner">
+      <b>[架构规范]</b> 官方核心数据保持 100% 零污染。所有扩展包预装在 <code>packs/</code> 独立目录中，<b>默认休眠不启动</b>。开启后由服务端在内存层通过独立 Overlay 动态并入，关停即可随时秒切回纯净官方环境。
+    </div>
+
+    <!-- 模组列表 -->
+    <div class="dialog-body">
+      <!-- 罗德岛/卡兹戴尔 Fanpack -->
+      <div class="pack-card" id="fanpack-card">
+        <div class="pack-header">
+          <div class="pack-info-left">
+            <div class="pack-avatar">K/R</div>
+            <div class="pack-names">
+              <div class="pack-title">罗德岛与卡兹戴尔扩展包 (fanpack)</div>
+              <div class="pack-meta">
+                <span>版本: <b>v1.0.0</b></span>
+                <span>作者: <b>Community Mod Team</b></span>
+                <span class="pack-badge" id="pack-badge">预装 · 未激活</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="switch-wrap">
+            <span class="switch-label" id="switch-text">当前状态: 禁用 (OFF)</span>
+            <div class="toggle-switch" id="mod-toggle" onclick="toggleMod()"></div>
+          </div>
+        </div>
+
+        <div class="pack-desc">
+          本扩展包提供罗德岛（rhodesShip）与卡兹戴尔（kazdelShip）两大全新核心盟约、12 位实装干员及召唤物、5 件专属装备及 8 项专属干员特质。启用后，所有数据将自适应融入装备图鉴、盟约策略库与对局战斗模拟器。
+        </div>
+
+        <!-- 详细数据指标 -->
+        <div class="pack-details-grid">
+          <div class="detail-item">
+            <span class="detail-item__label">新增核心盟约</span>
+            <span class="detail-item__val" style="color: var(--mint-400, #59f4ca);">2 条 (卡兹戴尔 / 罗德岛)</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-item__label">专属定制装备</span>
+            <span class="detail-item__val">5 件 (10 条普通/精锐记录)</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-item__label">自制棋子 & 召唤物</span>
+            <span class="detail-item__val">12 位干员 + Mon3tr 重构体</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-item__label">专属战斗特质</span>
+            <span class="detail-item__val">8 项 (custom_*)</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 底部操作 -->
+    <div class="dialog-footer">
+      <div style="font-size: 0.12rem; color: var(--text-lo, #8a948f);">
+        存储目录: <code>packs/fanpack/</code> (本地已完整预装，未修改 official data)
+      </div>
+      <div class="btn-group">
+        <button class="btn" onclick="resetOfficial()">恢复纯净官方</button>
+        <a href="01-title.html" class="btn is-primary">保存配置并返回</a>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let isEnabled = false;
+
+    function toggleMod() {
+      isEnabled = !isEnabled;
+      const toggle = document.getElementById('mod-toggle');
+      const card = document.getElementById('fanpack-card');
+      const badge = document.getElementById('pack-badge');
+      const text = document.getElementById('switch-text');
+
+      if (isEnabled) {
+        toggle.classList.add('checked');
+        card.classList.add('is-active');
+        badge.textContent = '已激活 (Overlay 挂载)';
+        badge.classList.remove('inactive');
+        text.textContent = '当前状态: 启用 (ON)';
+        text.style.color = 'var(--mint-400, #59f4ca)';
+      } else {
+        toggle.classList.remove('checked');
+        card.classList.remove('is-active');
+        badge.textContent = '预装 · 未激活';
+        badge.classList.add('inactive');
+        text.textContent = '当前状态: 禁用 (OFF)';
+        text.style.color = 'var(--text-md, #c3cbc7)';
+      }
+    }
+
+    function resetOfficial() {
+      if (isEnabled) toggleMod();
+      alert('已重置为纯净官方环境 (0 激活模组)。');
+    }
+  </script>
+</body>
+</html>

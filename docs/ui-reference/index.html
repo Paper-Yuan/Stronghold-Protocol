@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Stronghold Protocol · 实际样式 UI 参考交互总览台</title>
+  <style>
+    :root {
+      --bg-0: #0a0d0c;
+      --bg-1: #121715;
+      --bg-2: #1a221e;
+      --line: #2b3631;
+      --mint: #4ed8af;
+      --gold: #ffc600;
+      --amber: #f6a329;
+      --text: #f0f4f2;
+      --text-muted: #8b9690;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg-0);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Microsoft YaHei", sans-serif;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    header {
+      background: var(--bg-1);
+      border-bottom: 1px solid var(--line);
+      height: 56px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 20px;
+      flex: none;
+      z-index: 100;
+    }
+    .brand-group { display: flex; align-items: center; gap: 12px; }
+    .brand-title { font-size: 16px; font-weight: 900; letter-spacing: 0.08em; color: #fff; }
+    .brand-badge {
+      font-size: 11px; padding: 2px 8px; border-radius: 2px;
+      background: rgba(78, 216, 175, 0.15); border: 1px solid var(--mint); color: var(--mint); font-weight: 700;
+    }
+
+    .view-controls { display: flex; align-items: center; gap: 8px; }
+    .ctrl-btn {
+      background: var(--bg-2); border: 1px solid var(--line); color: var(--text-muted);
+      padding: 5px 12px; font-size: 12px; font-weight: 700; border-radius: 3px; cursor: pointer;
+      display: flex; align-items: center; gap: 6px; transition: all 150ms ease;
+    }
+    .ctrl-btn:hover, .ctrl-btn.active {
+      color: #fff; border-color: var(--mint); background: rgba(78, 216, 175, 0.1);
+    }
+    .open-standalone-btn {
+      color: var(--mint); text-decoration: none; border-color: rgba(78, 216, 175, 0.4);
+    }
+
+    .tab-bar {
+      background: #0f1412; border-bottom: 1px solid var(--line);
+      display: flex; overflow-x: auto; padding: 0 16px; flex: none; gap: 4px;
+    }
+    .tab-item {
+      padding: 10px 16px; font-size: 13px; font-weight: 700; color: var(--text-muted);
+      cursor: pointer; border-bottom: 2px solid transparent;
+      display: flex; align-items: center; gap: 6px; white-space: nowrap; transition: all 150ms ease;
+    }
+    .tab-item:hover { color: #fff; background: rgba(255, 255, 255, 0.03); }
+    .tab-item.active {
+      color: var(--mint); border-bottom-color: var(--mint); background: rgba(78, 216, 175, 0.06);
+    }
+    .tab-num { font-family: monospace; font-size: 11px; opacity: 0.6; }
+
+    .viewport-stage {
+      flex: 1; background: #060807; display: flex; align-items: center; justify-content: center;
+      overflow: auto; padding: 16px; position: relative;
+    }
+    .preview-frame-container {
+      width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;
+      transition: all 240ms cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .preview-frame-container.mode-desktop {
+      width: 100%; height: 100%; max-width: 1920px; max-height: 1080px;
+      box-shadow: 0 0 40px rgba(0, 0, 0, 0.9), 0 0 20px rgba(78, 216, 175, 0.1);
+      border: 1px solid var(--line);
+    }
+    .preview-frame-container.mode-phone {
+      width: 844px; height: 390px; max-width: 90vw; max-height: 90vh;
+      border: 8px solid #222b27; border-radius: 20px;
+      box-shadow: 0 0 40px rgba(0, 0, 0, 0.9), 0 0 16px rgba(78, 216, 175, 0.2);
+    }
+    iframe { width: 100%; height: 100%; border: none; background: #090c0b; display: block; }
+
+    .doc-strip {
+      height: 38px; background: var(--bg-1); border-top: 1px solid var(--line);
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 20px; font-size: 12px; color: var(--text-muted); flex: none;
+    }
+    .doc-strip b { color: var(--mint); }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="brand-group">
+      <span class="brand-title">STRONGHOLD PROTOCOL</span>
+      <span class="brand-badge">UI 交互式参考总览台</span>
+      <span style="font-size: 12px; color: var(--text-muted);">基于官方实际样式与 Mod 提案制作</span>
+    </div>
+
+    <div class="view-controls">
+      <button class="ctrl-btn active" id="btn-desktop" onclick="setMode('desktop')">
+        🖥️ 桌面端 (1920×1080)
+      </button>
+      <button class="ctrl-btn" id="btn-phone" onclick="setMode('phone')">
+        📱 移动端 (844×390 横屏)
+      </button>
+      <a href="01-title.html" target="_blank" class="ctrl-btn open-standalone-btn" id="open-standalone">
+        ↗ 独立窗口全屏打开
+      </a>
+    </div>
+  </header>
+
+  <!-- 9 大界面切换 Tab -->
+  <nav class="tab-bar">
+    <div class="tab-item active" onclick="switchScreen('01-title.html', this, '主页 (Title Screen) · 战术雷达、联机/无尽单人双入口、系统状态')">
+      <span class="tab-num">01</span> 主页
+    </div>
+    <div class="tab-item" onclick="switchScreen('02-title-mod-modal.html', this, '主页 Mod 设置框 · 预装独立包管理、默认休眠与 Overlay 启用开关')">
+      <span class="tab-num">02</span> 主页 Mod 设置框
+    </div>
+    <div class="tab-item" onclick="switchScreen('03-lobby.html', this, '大厅 · 模式选择、房间列表、新图鉴专属入口按钮')">
+      <span class="tab-num">03</span> 大厅
+    </div>
+    <div class="tab-item" onclick="switchScreen('04-loadout.html', this, '干员调配 · 顶层3大Tab(调配/名录/自选4槽)+右侧4子Tab(技能/模组/数值/换装皮肤)')">
+      <span class="tab-num">04</span> 干员调配/自选/皮肤
+    </div>
+    <div class="tab-item" onclick="switchScreen('05-alliances.html', this, '盟约显示 · 默认纯官方23盟约，开启Mod后罗德岛/卡兹戴尔动态注入')">
+      <span class="tab-num">05</span> 盟约显示
+    </div>
+    <div class="tab-item" onclick="switchScreen('06-equipment.html', this, '装备显示 · 默认纯官方115装备，开启Mod后提卡兹之根等动态注入+仅归类标签')">
+      <span class="tab-num">06</span> 装备显示
+    </div>
+    <div class="tab-item" onclick="switchScreen('07-room.html', this, '房间 · 4人私密席位、房主选包控制、邀请码与准备开始')">
+      <span class="tab-num">07</span> 房间
+    </div>
+    <div class="tab-item" onclick="switchScreen('09-endless-solo.html', this, '无尽模式独立单人 UI · 4档难度、本地单机模拟器、排行榜、突破15轮限制')">
+      <span class="tab-num">08</span> 无尽单人独立 UI
+    </div>
+    <div class="tab-item" onclick="switchScreen('08-admin.html', this, '后台管理 · 系统指标 KPI、运行中对局监控、Overlay 热插拔与实时审计流')">
+      <span class="tab-num">09</span> 后台管理
+    </div>
+  </nav>
+
+  <main class="viewport-stage">
+    <div class="preview-frame-container mode-desktop" id="frame-box">
+      <iframe src="01-title.html" id="preview-iframe"></iframe>
+    </div>
+  </main>
+
+  <footer class="doc-strip">
+    <div id="screen-info">
+      当前视图: <b>主页 (Title Screen)</b> · 战术雷达、联机/无尽单人双入口、系统状态
+    </div>
+    <div>
+      设计契约: 默认 100% 官方纯净 · 独立 Overlay 动态并入 · 对局能打 · 皮肤/DIY/无尽全链路贯通
+    </div>
+  </footer>
+
+  <script>
+    let currentUrl = '01-title.html';
+
+    function switchScreen(url, tabElem, desc) {
+      currentUrl = url;
+      document.getElementById('preview-iframe').src = url;
+      document.getElementById('open-standalone').href = url;
+      document.getElementById('screen-info').innerHTML = `当前视图: <b>${desc}</b>`;
+
+      document.querySelectorAll('.tab-item').forEach(t => t.classList.remove('active'));
+      tabElem.classList.add('active');
+    }
+
+    function setMode(mode) {
+      const box = document.getElementById('frame-box');
+      const btnD = document.getElementById('btn-desktop');
+      const btnP = document.getElementById('btn-phone');
+
+      if (mode === 'desktop') {
+        box.className = 'preview-frame-container mode-desktop';
+        btnD.classList.add('active');
+        btnP.classList.remove('active');
+      } else {
+        box.className = 'preview-frame-container mode-phone';
+        btnP.classList.add('active');
+        btnD.classList.remove('active');
+      }
+    }
+  </script>
+</body>
+</html>

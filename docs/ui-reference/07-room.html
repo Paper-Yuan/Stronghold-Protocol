@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="sp-hover sp-fs">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>UI 参考 · 房间 (Private Room with Mod) - Stronghold Protocol</title>
+  <link rel="stylesheet" href="../../public/css/theme.css">
+  <link rel="stylesheet" href="../../public/css/components.css">
+  <link rel="stylesheet" href="../../public/css/screens/room.css">
+  <style>
+    html {
+      font-size: clamp(24px, min(100vw / 19.2, 100vh / 10.8), 240px);
+      background: var(--bg-0, #0c0f0e);
+      color: var(--text-hi, #f2f2f2);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+      margin: 0; padding: 0; height: 100%; overflow: hidden;
+    }
+    body {
+      margin: 0; padding: 0; width: 100vw; height: 100vh;
+      display: flex; flex-direction: column; position: relative; overflow: hidden;
+      background: #090c0b;
+    }
+
+    .room-header {
+      height: 0.82rem; padding: 0 0.4rem; flex: none;
+      display: flex; align-items: center; justify-content: space-between;
+      background: linear-gradient(180deg, rgba(16, 20, 18, 0.98), rgba(10, 13, 12, 0.85));
+      border-bottom: 1px solid var(--line, #2f3a35); z-index: 20;
+    }
+    .back-btn {
+      padding: 0.06rem 0.16rem; font-size: 0.13rem; font-weight: 700;
+      border: 1px solid var(--line-2, #3e4b45); background: rgba(255, 255, 255, 0.03);
+      color: var(--text-md, #c3cbc7); cursor: pointer; text-decoration: none;
+    }
+    .back-btn:hover { border-color: var(--mint-500, #4ed8af); color: #fff; }
+
+    .invite-box {
+      display: flex; align-items: center; gap: 0.14rem;
+      background: rgba(0, 0, 0, 0.4); border: 1px solid var(--line-2, #3e4b45);
+      padding: 0.08rem 0.18rem;
+    }
+    .invite-code-digits {
+      font-family: monospace; font-size: 0.24rem; font-weight: 900;
+      letter-spacing: 0.15em; color: var(--mint-400, #59f4ca);
+      text-shadow: 0 0 10px rgba(78, 216, 175, 0.4);
+    }
+    .copy-btn {
+      padding: 0.04rem 0.1rem; font-size: 0.11rem; font-weight: 700;
+      background: rgba(78, 216, 175, 0.15); border: 1px solid var(--mint-600, #35d8b4);
+      color: var(--mint-400, #59f4ca); cursor: pointer;
+    }
+
+    /* 房主 Mod 状态提示条 (默认隐藏！房主开启后才显示) */
+    .room-mod-banner {
+      margin: 0.18rem 0.4rem 0; padding: 0.14rem 0.24rem;
+      background: linear-gradient(90deg, rgba(246, 163, 41, 0.12), rgba(18, 24, 21, 0.8));
+      border: 1px solid rgba(246, 163, 41, 0.4); border-left: 4px solid var(--amber, #f6a329);
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .mod-banner-left { display: flex; align-items: center; gap: 0.14rem; }
+    .mod-banner-badge {
+      padding: 0.03rem 0.08rem; font-size: 0.11rem; font-weight: 800;
+      background: var(--amber, #f6a329); color: #06110d; border-radius: 2px;
+    }
+    .mod-banner-text { font-size: 0.13rem; color: var(--text-hi, #fff); }
+    .mod-banner-sub { font-size: 0.11rem; color: var(--text-lo, #8a948f); }
+
+    /* 席位区 Grid */
+    .seats-container {
+      flex: 1; display: grid; grid-template-columns: repeat(4, 3.4rem);
+      justify-content: center; align-content: center; gap: 0.24rem; padding: 0.2rem 0.4rem;
+    }
+    .seat-card {
+      background: linear-gradient(180deg, #161e1a, #0e1311);
+      border: 1px solid var(--line, #2f3a35); height: 4.8rem;
+      display: flex; flex-direction: column; align-items: center; justify-content: space-between;
+      padding: 0.24rem 0.2rem; position: relative; transition: all 180ms ease;
+    }
+    .seat-card.is-ready {
+      border-color: var(--mint-600, #35d8b4);
+      box-shadow: 0 0 16px rgba(78, 216, 175, 0.1);
+    }
+    .seat-card.is-host::before {
+      content: 'HOST · 房主'; position: absolute; top: 0.1rem; left: 0.1rem;
+      font-size: 0.09rem; font-weight: 800; padding: 0.02rem 0.06rem;
+      background: var(--gold, #ffc600); color: #06110d; border-radius: 2px;
+    }
+    .seat-card.is-empty {
+      border-style: dashed; border-color: var(--line-2, #3e4b45);
+      background: rgba(14, 18, 16, 0.4); justify-content: center; gap: 0.14rem;
+    }
+
+    .seat-avatar {
+      width: 1.1rem; height: 1.1rem; border-radius: 50%; background: #1c2621;
+      border: 2px solid var(--line-3, #58675f); display: grid; place-items: center;
+      font-size: 0.36rem; font-weight: 900; color: #fff; margin-top: 0.2rem;
+    }
+    .seat-name { font-size: 0.18rem; font-weight: 800; color: #fff; text-align: center; }
+    .seat-status-pill {
+      padding: 0.06rem 0.16rem; font-size: 0.13rem; font-weight: 800;
+      border-radius: 2px; text-transform: uppercase; letter-spacing: 0.08em;
+    }
+    .status-ready {
+      background: var(--mint-800, #145443); border: 1px solid var(--mint-500, #4ed8af);
+      color: var(--mint-400, #59f4ca);
+    }
+    .status-wait {
+      background: rgba(255, 255, 255, 0.05); border: 1px solid var(--line-2, #3e4b45);
+      color: var(--text-lo, #8a948f);
+    }
+
+    .room-bottom-bar {
+      height: 0.88rem; padding: 0 0.4rem; background: rgba(14, 18, 16, 0.98);
+      border-top: 1px solid var(--line, #2f3a35); display: flex; align-items: center; justify-content: space-between;
+      z-index: 20;
+    }
+    .quick-links { display: flex; gap: 0.12rem; }
+    .quick-link-btn {
+      padding: 0.1rem 0.2rem; font-size: 0.13rem; font-weight: 700;
+      background: #18201c; border: 1px solid var(--line-2, #3e4b45); color: var(--text-hi, #fff);
+      text-decoration: none; display: flex; align-items: center; gap: 0.06rem;
+    }
+    .quick-link-btn:hover { border-color: var(--mint-500, #4ed8af); }
+
+    .start-battle-btn {
+      padding: 0.16rem 0.48rem; font-size: 0.2rem; font-weight: 900; letter-spacing: 0.12em;
+      background: var(--mint-500, #4ed8af); border: none; color: #06110d;
+      cursor: pointer; transition: all 160ms ease;
+      box-shadow: 0 0 20px rgba(78, 216, 175, 0.3);
+    }
+    .start-battle-btn:hover {
+      background: var(--mint-400, #59f4ca); transform: scale(1.02);
+      box-shadow: 0 0 28px rgba(78, 216, 175, 0.5);
+    }
+  </style>
+</head>
+<body>
+  <header class="room-header">
+    <div style="display: flex; align-items: center; gap: 0.24rem;">
+      <a href="03-lobby.html" class="back-btn">← 退出房间</a>
+      <div>
+        <div style="font-size: 0.2rem; font-weight: 900; color: #fff;">
+          私密对局室 · #8842
+        </div>
+        <div style="font-size: 0.12rem; color: var(--text-lo, #8a948f);" id="room-mode-desc">
+          同盟协同模式 (4人) · 纯官方 23 盟约基线
+        </div>
+      </div>
+    </div>
+
+    <!-- 房主 Mod 开关控制 (模拟默认纯官方与启用 Mod 对比) -->
+    <div style="display: flex; align-items: center; gap: 0.14rem;">
+      <label style="font-size: 0.12rem; color: var(--text-md, #c3cbc7); cursor: pointer; display: flex; align-items: center; gap: 0.06rem;">
+        <input type="checkbox" id="host-mod-toggle" onchange="toggleHostMod(this.checked)">
+        <span>房主特权: 为本房间启用 Mod (fanpack)</span>
+      </label>
+
+      <div class="invite-box">
+        <span style="font-size: 0.12rem; color: var(--text-lo, #8a948f);">邀请码:</span>
+        <span class="invite-code-digits">SP-8842</span>
+        <button class="copy-btn" onclick="alert('已复制邀请码！')">复制</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- 房主 Mod 状态提示条 (默认隐藏！房主启用后才显示) -->
+  <div class="room-mod-banner" id="room-mod-banner" style="display: none;">
+    <div class="mod-banner-left">
+      <span class="mod-banner-badge">已启用 MOD</span>
+      <div>
+        <div class="mod-banner-text">
+          本房间已由房主加载 <b>罗德岛与卡兹戴尔扩展包 (fanpack v1.0)</b>
+        </div>
+        <div class="mod-banner-sub">
+          对局数据下发已动态挂载 Overlay：卡兹戴尔/罗德岛核心盟约、专属装备及包内干员已入池。
+        </div>
+      </div>
+    </div>
+
+    <a href="02-title-mod-modal.html" class="back-btn" style="border-color: var(--amber, #f6a329); color: var(--amber, #f6a329);">
+      调整 Mod 设置 (房主)
+    </a>
+  </div>
+
+  <!-- 4人席位区 -->
+  <main class="seats-container">
+    <div class="seat-card is-host is-ready">
+      <div class="seat-avatar" style="border-color: var(--mint-500, #4ed8af);">DR</div>
+      <div>
+        <div class="seat-name">Doctor</div>
+        <div style="font-size: 0.11rem; color: var(--text-lo, #8a948f); text-align: center;">延迟 16ms</div>
+      </div>
+      <div class="seat-status-pill status-ready">READY · 就绪</div>
+    </div>
+
+    <div class="seat-card is-ready">
+      <div class="seat-avatar">阿</div>
+      <div>
+        <div class="seat-name">Amiya</div>
+        <div style="font-size: 0.11rem; color: var(--text-lo, #8a948f); text-align: center;">延迟 22ms</div>
+      </div>
+      <div class="seat-status-pill status-ready">READY · 就绪</div>
+    </div>
+
+    <div class="seat-card">
+      <div class="seat-avatar">银</div>
+      <div>
+        <div class="seat-name">SilverAsh</div>
+        <div style="font-size: 0.11rem; color: var(--text-lo, #8a948f); text-align: center;">延迟 28ms</div>
+      </div>
+      <div class="seat-status-pill status-wait">调配中...</div>
+    </div>
+
+    <div class="seat-card is-empty">
+      <div style="font-size: 0.16rem; font-weight: 800; color: var(--text-lo, #8a948f);">[空席位 4]</div>
+      <button class="back-btn" onclick="alert('已添加 AI 托管机器人占位')">+ 添加 AI 托管</button>
+    </div>
+  </main>
+
+  <footer class="room-bottom-bar">
+    <div class="quick-links">
+      <a href="06-equipment.html" class="quick-link-btn">
+        <span>📖 查看本局装备图鉴</span>
+      </a>
+      <a href="05-alliances.html" class="quick-link-btn">
+        <span>🛡️ 查看本局盟约策略</span>
+      </a>
+      <a href="04-loadout.html" class="quick-link-btn">
+        <span>⚙️ 战前干员调配</span>
+      </a>
+    </div>
+
+    <button class="start-battle-btn" onclick="alert('全员就绪，开始连接对局服务器并下发数据契约...')">
+      开始作战 · START
+    </button>
+  </footer>
+
+  <script>
+    // 默认关闭 Mod！房主勾选后才显示横幅
+    function toggleHostMod(enabled) {
+      const banner = document.getElementById('room-mod-banner');
+      const desc = document.getElementById('room-mode-desc');
+      if (enabled) {
+        banner.style.display = 'flex';
+        desc.textContent = '同盟协同模式 (4人) · 已挂载 fanpack 扩展 (25盟约/自适应棋子池)';
+      } else {
+        banner.style.display = 'none';
+        desc.textContent = '同盟协同模式 (4人) · 纯官方 23 盟约基线';
+      }
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,391 @@
+/* ==========================================================================================
+   mobile.css — 手机移动端独立界面适配与优化规范（不影响桌面端/Web端）。
+   所有的规则均以 .sp-coarse（触控/移动设备标志类）为前缀，保证 PC 端 100% 保持原生布局。
+   ========================================================================================== */
+
+/* ---- 0. 基础环境与全屏黑边根治 ---- */
+/* 消除 WebView safe-area inset 导致的左侧黑边，由端侧边距滑块与布局自管 */
+.sp-coarse {
+  --sa-l: 0px !important;
+}
+
+/* 彻底清除聊天气泡左侧小黑方块伪元素（保证纯净文本气泡） */
+.sp-coarse .ebubble--text::before,
+.ebubble--text::before {
+  content: none !important;
+  display: none !important;
+}
+
+/* ---- 1. 全局状态组件与右上角负载提示 ---- */
+/* 手机端彻底屏蔽右上角服务器拥挤/高载微型胶囊弹窗，避免遮挡标题与操作 */
+.sp-coarse .srvload {
+  display: none !important;
+}
+
+/* ---- 2. 标题屏（TitleScreen）---- */
+/* 隐藏右上角与登录框重复的「统计」和「MOD」按键 */
+.sp-coarse .title-corner--tr .title-corner__tools {
+  display: none !important;
+}
+
+/* 预载资源胶囊移动到版本号正上方（纵向排列，居右对齐） */
+.sp-coarse .title-foot__right {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: flex-end !important;
+  justify-content: flex-end !important;
+  gap: .06rem !important;
+}
+
+/* 登录框适当放宽，并排容纳「无尽模式」「统计数据」「MOD 管理」三枚按键 */
+.sp-coarse .title-login {
+  width: min(5.6rem, 94vw);
+  padding: .2rem .24rem .18rem;
+  gap: .14rem;
+}
+
+.sp-coarse .title-ops {
+  display: grid !important;
+  grid-template-columns: 1fr 1fr 1fr !important;
+  gap: .08rem !important;
+  margin-top: -.02rem;
+}
+
+.sp-coarse .title-op-btn {
+  height: max(.44rem, 36px) !important;
+  padding: 0 .04rem !important;
+  font-size: max(.13rem, 11px) !important;
+  letter-spacing: 0 !important;
+  gap: .04rem !important;
+}
+
+.sp-coarse .title-op-btn .btn__icon,
+.sp-coarse .title-op-btn .dicon {
+  width: .15rem !important;
+  height: .15rem !important;
+}
+
+/* 仅在手机端显示主页无尽模式启动入口 */
+.sp-coarse .title-op-endless {
+  display: inline-flex !important;
+}
+
+/* 标题屏层级与设置按钮触控优化：保证永远在 footer 之上，触控判定热区 44x44px */
+.sp-coarse .title-main {
+  position: relative !important;
+  z-index: 5 !important;
+}
+
+.sp-coarse .title-conn {
+  position: relative !important;
+  z-index: 6 !important;
+}
+
+.sp-coarse .title-settings {
+  width: max(.36rem, 36px) !important;
+  height: max(.36rem, 36px) !important;
+  min-width: 36px !important;
+  min-height: 36px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  touch-action: manipulation !important;
+  cursor: pointer !important;
+  pointer-events: auto !important;
+  position: relative !important;
+  z-index: 10 !important;
+  padding: 0 !important;
+  border-radius: 4px !important;
+}
+
+.sp-coarse .title-settings .icon,
+.sp-coarse .title-settings svg {
+  width: 18px !important;
+  height: 18px !important;
+  pointer-events: none !important;
+}
+
+/* ---- 3. 大厅屏（LobbyScreen）优化 ---- */
+/* 避免右上角按键堆叠过多遮挡中央「选择模拟协议」标题，采用与房间屏一致的核心4键收纳风格 */
+.sp-coarse .lobby-screen .topbar {
+  grid-template-columns: auto minmax(0, 1fr) auto !important;
+  padding: 0 max(.18rem, var(--sa-l, 0px)) 0 max(.18rem, var(--sa-r, 0px)) !important;
+  height: 1rem !important;
+}
+
+.sp-coarse .lobby-screen .topbar__center {
+  z-index: 1;
+  padding: 0 .1rem;
+}
+
+.sp-coarse .lobby-screen .topbar__title {
+  font-size: .24rem !important;
+  letter-spacing: .06em !important;
+}
+
+/* 右上角功能按键间隔稍加大，疏密有致不拥挤 */
+.sp-coarse .lobby-screen .topbar__right {
+  gap: .10rem !important;
+  flex: 0 0 auto !important;
+}
+
+/* 手机端大厅隐藏无尽模式专区与无尽排行榜（已全部挪至无尽模式专用独立界面） */
+.sp-coarse .lobby-endless-label,
+.sp-coarse .diff-list--endless,
+.sp-coarse .endless-board,
+.sp-coarse .lobby-screen .lobby-leaderboard {
+  display: none !important;
+}
+
+/* 手机端大厅顶栏隐藏冗余按键（MOD已在标题屏，玩法说明收纳） */
+.sp-coarse .lobby-screen .lobby-mod,
+.sp-coarse .lobby-screen .lobby-guide {
+  display: none !important;
+}
+
+/* 名牌精简：手机端隐藏长文本，只保留头像徽章 */
+.sp-coarse .lobby-screen .me-chip {
+  padding: .04rem !important;
+  background: transparent !important;
+  border-color: transparent !important;
+}
+
+.sp-coarse .lobby-screen .me-chip__text {
+  display: none !important;
+}
+
+/* 顶栏保留4枚核心功能按键（统计、查看装备、盟约与策略、干员调配），尺寸适中利于触控 */
+.sp-coarse .lobby-screen .topbar__right .btn {
+  height: max(.36rem, 30px) !important;
+  min-width: auto !important;
+  padding: 0 .10rem !important;
+  font-size: max(.135rem, 11px) !important;
+  gap: .05rem !important;
+  letter-spacing: 0 !important;
+}
+
+.sp-coarse .lobby-screen .topbar__right .btn .btn__icon {
+  width: .14rem !important;
+  height: .14rem !important;
+}
+
+/* ---- 4. 房间屏（RoomScreen）优化 ---- */
+.sp-coarse .room-screen .topbar {
+  height: 1.1rem !important;
+  padding: 0 max(.18rem, var(--sa-l, 0px)) 0 max(.18rem, var(--sa-r, 0px)) !important;
+}
+
+/* 无尽模式顶栏排行榜按钮微调 */
+.sp-coarse .room-screen .room-endless-board {
+  height: max(.36rem, 30px) !important;
+  padding: 0 .10rem !important;
+  font-size: max(.135rem, 11px) !important;
+}
+
+/* 单人/无尽简报面板：解决文本溢出，并提供平滑纵向滚动保底 */
+.sp-coarse .solo-brief {
+  padding: .16rem .20rem !important;
+  gap: .06rem !important;
+  overflow-y: auto !important;
+}
+
+.sp-coarse .solo-brief h2 {
+  font-size: .26rem !important;
+}
+
+.sp-coarse .solo-brief p {
+  font-size: .135rem !important;
+  line-height: 1.3 !important;
+}
+
+.sp-coarse .solo-brief ul {
+  gap: .04rem !important;
+  font-size: .13rem !important;
+  line-height: 1.3 !important;
+}
+
+.sp-coarse .solo-brief__board {
+  margin-top: .06rem !important;
+}
+
+/* 底部操作栏布局 */
+.sp-coarse .room-bar {
+  height: auto !important;
+  min-height: 1rem !important;
+  padding: .08rem max(.16rem, var(--sa-l, 0px)) calc(.08rem + var(--sa-b, 0px)) max(.16rem, var(--sa-r, 0px)) !important;
+  display: flex !important;
+  justify-content: space-between !important;
+  align-items: center !important;
+  gap: .08rem !important;
+  flex-wrap: nowrap !important;
+}
+
+.sp-coarse .room-bar::before {
+  left: .16rem !important;
+  right: .16rem !important;
+}
+
+/* 隐藏左侧过长的说明文本标签，留出横向空间给难度胶囊 */
+.sp-coarse .room-bar__label {
+  display: none !important;
+}
+
+.sp-coarse .room-bar__left {
+  flex: 0 1 auto !important;
+  min-width: 0 !important;
+  gap: .06rem !important;
+}
+
+.sp-coarse .dpick {
+  border-radius: 2px !important;
+}
+
+/* 难度胶囊稍微放大，更易点击 */
+.sp-coarse .dpick__opt {
+  height: max(.42rem, 36px) !important;
+  padding: 0 .10rem !important;
+  font-size: max(.14rem, 12px) !important;
+  gap: .04rem !important;
+  letter-spacing: 0 !important;
+}
+
+.sp-coarse .dpick__opt .icon {
+  width: .15rem !important;
+  height: .15rem !important;
+}
+
+/* 中间就绪状态与提示文字：消除截断，完整显示协议状态 */
+.sp-coarse .room-bar__center {
+  flex: 0 1 auto !important;
+  min-width: 0 !important;
+  gap: .04rem !important;
+}
+
+.sp-coarse .room-bar__status {
+  font-size: max(.135rem, 11px) !important;
+  white-space: nowrap !important;
+  overflow: visible !important;
+  text-overflow: clip !important;
+  max-width: none !important;
+  letter-spacing: 0.02em !important;
+}
+
+/* 右侧核心按钮区（统计、装备、盟约、调配、开始模拟）稍调大一点点，防重叠且触控舒适 */
+.sp-coarse .room-bar__right {
+  flex: 0 0 auto !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: .06rem !important;
+}
+
+.sp-coarse .room-bar__right .btn--lg {
+  height: max(.42rem, 36px) !important;
+  min-width: auto !important;
+  padding: 0 .11rem !important;
+  font-size: max(.14rem, 12px) !important;
+  gap: .04rem !important;
+}
+
+.sp-coarse .room-bar__right .btn--lg .btn__icon {
+  width: .15rem !important;
+  height: .15rem !important;
+}
+
+.sp-coarse .room-bar__right .btn--xl {
+  height: max(.46rem, 40px) !important;
+  min-width: auto !important;
+  padding: 0 .20rem !important;
+  font-size: max(.17rem, 14px) !important;
+  letter-spacing: .06em !important;
+  gap: .06rem !important;
+}
+
+.sp-coarse .room-bar__right .btn--xl .btn__icon {
+  width: .16rem !important;
+  height: .16rem !important;
+}
+
+.sp-coarse .room-host-actions {
+  display: flex !important;
+  align-items: center !important;
+  gap: .06rem !important;
+}
+
+/* 超窄横屏（≤ 760px）保护：隐藏无关键状态文字，保证按键绝不挤压 */
+@media (max-width: 760px) {
+  .sp-coarse .room-bar__center {
+    display: none !important;
+  }
+}
+
+/* ---- 5. 干员调配/持有/自选顶栏防重叠适配 ---- */
+.sp-coarse .lo-top {
+  display: flex !important;
+  justify-content: space-between !important;
+  align-items: center !important;
+  gap: .06rem !important;
+  padding: 0 max(.14rem, var(--sa-l, 0px)) 0 max(.14rem, var(--sa-r, 0px)) !important;
+}
+
+.sp-coarse .lo-top__left {
+  flex: 0 0 auto !important;
+}
+
+.sp-coarse .lo-top__center {
+  flex: 0 1 auto !important;
+  min-width: 0 !important;
+}
+
+.sp-coarse .lo-tabs {
+  gap: .02rem !important;
+}
+
+.sp-coarse .lo-tab {
+  padding: .02rem .06rem !important;
+  font-size: max(.17rem, 11px) !important;
+  letter-spacing: .02em !important;
+  gap: .04rem !important;
+}
+
+.sp-coarse .lo-tab .lo-top__icon {
+  width: max(.18rem, 12px) !important;
+  height: max(.18rem, 12px) !important;
+}
+
+.sp-coarse .lo-top__right {
+  flex: 0 0 auto !important;
+  gap: .05rem !important;
+}
+
+/* 手机端隐藏已同步文本胶囊，避免与中栏自选编队标签发生物理空间挤压重叠 */
+.sp-coarse .lo-sync {
+  display: none !important;
+}
+
+.sp-coarse .lo-count {
+  font-size: max(.12rem, 10px) !important;
+}
+
+.sp-coarse .lo .lo-top__right .btn {
+  height: max(.32rem, 26px) !important;
+  padding: 0 .08rem !important;
+  font-size: max(.12rem, 10px) !important;
+  gap: .03rem !important;
+}
+
+/* 本机服务设置 4 宫格 */
+.set-engine-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: .06rem;
+}
+.set-engine-grid button {
+  padding: .06rem .08rem;
+  font-size: max(.12rem, 11px);
+  background: rgba(255, 255, 255, .06);
+  border: 1px solid var(--line-2);
+  color: var(--text-hi);
+  border-radius: 2px;
+  cursor: pointer;
+}
+

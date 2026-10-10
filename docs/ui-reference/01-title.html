@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="sp-hover sp-fs">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>UI 参考 · 主页 (Title Screen) - Stronghold Protocol</title>
+  <link rel="stylesheet" href="../../public/css/theme.css">
+  <link rel="stylesheet" href="../../public/css/components.css">
+  <link rel="stylesheet" href="../../public/css/screens/title.css">
+  <style>
+    html {
+      font-size: clamp(24px, min(100vw / 19.2, 100vh / 10.8), 240px);
+      background: var(--bg-0, #0c0f0e);
+      color: var(--text-hi, #f2f2f2);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+      margin: 0; padding: 0; height: 100%; overflow: hidden;
+    }
+    body {
+      margin: 0; padding: 0; width: 100vw; height: 100vh;
+      display: flex; flex-direction: column; position: relative; overflow: hidden;
+      background: #090c0b;
+    }
+
+    .sp-topbar {
+      position: absolute; top: 0; left: 0; right: 0; height: 0.64rem;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 0.4rem; z-index: 20;
+      background: linear-gradient(180deg, rgba(12, 15, 14, 0.95), transparent);
+      border-bottom: 1px solid rgba(78, 216, 175, 0.15);
+    }
+    .sp-topbar__left, .sp-topbar__right { display: flex; align-items: center; gap: 0.24rem; }
+    .sp-brand {
+      display: flex; align-items: center; gap: 0.12rem;
+      font-size: 0.18rem; font-weight: 800; letter-spacing: 0.1em; color: var(--text-hi, #fff);
+    }
+    .sp-brand-badge {
+      font-size: 0.11rem; font-weight: 700; padding: 0.02rem 0.06rem;
+      background: rgba(78, 216, 175, 0.15); border: 1px solid var(--mint-600, #35d8b4);
+      color: var(--mint-400, #59f4ca); border-radius: 2px;
+    }
+    .sp-tag {
+      font-size: 0.12rem; color: var(--text-lo, #8a948f); display: flex; align-items: center; gap: 0.06rem;
+    }
+    .sp-dot-live {
+      width: 0.07rem; height: 0.07rem; border-radius: 50%;
+      background: var(--mint-400, #59f4ca); box-shadow: 0 0 6px var(--mint-glow, #17f9b7);
+    }
+
+    /* 主模式二段切换（联机模式 vs 无尽单人） */
+    .mode-switch-seg {
+      display: flex; background: rgba(18, 24, 21, 0.85); border: 1px solid var(--line-2, #3e4b45);
+      border-radius: 3px; padding: 0.03rem; gap: 0.04rem;
+    }
+    .mode-switch-btn {
+      padding: 0.05rem 0.14rem; font-size: 0.12rem; font-weight: 800; border: none;
+      background: transparent; color: var(--text-lo, #8a948f); cursor: pointer; border-radius: 2px;
+      transition: all 150ms ease;
+    }
+    .mode-switch-btn.active {
+      background: var(--mint-700, #2a9e7f); color: #06110d; font-weight: 900;
+      box-shadow: 0 0 8px rgba(78, 216, 175, 0.3);
+    }
+    .mode-switch-btn.endless.active {
+      background: var(--gold, #ffc600); color: #06110d;
+      box-shadow: 0 0 8px rgba(255, 198, 0, 0.4);
+    }
+
+    /* 主页中央大标题 */
+    .title-viewport {
+      flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
+      position: relative; z-index: 10;
+    }
+    .hero-container {
+      display: flex; flex-direction: column; align-items: center; text-align: center;
+      margin-bottom: 0.44rem;
+    }
+    .hero-sub {
+      font-size: 0.15rem; letter-spacing: 0.38em; color: var(--mint-400, #59f4ca);
+      text-transform: uppercase; margin-bottom: 0.06rem; opacity: 0.9;
+    }
+    .hero-title {
+      font-size: 0.72rem; font-weight: 900; letter-spacing: 0.08em;
+      color: var(--text-hi, #fff); line-height: 1; margin: 0;
+      text-shadow: 0 0 0.3rem rgba(78, 216, 175, 0.35);
+      position: relative;
+    }
+    .hero-desc {
+      font-size: 0.17rem; letter-spacing: 0.12em; color: var(--text-md, #c3cbc7);
+      margin-top: 0.12rem;
+    }
+
+    /* 战术菜单大网格 */
+    .menu-portal {
+      display: grid; grid-template-columns: repeat(3, 2.3rem); gap: 0.16rem;
+      max-width: 7.6rem; width: 100%;
+    }
+    .portal-btn {
+      position: relative; height: 0.86rem;
+      background: linear-gradient(180deg, rgba(28, 35, 32, 0.92), rgba(16, 20, 18, 0.96));
+      border: 1px solid var(--line, #2f3a35);
+      display: flex; flex-direction: column; justify-content: center; align-items: flex-start;
+      padding: 0 0.22rem; cursor: pointer; text-decoration: none; color: inherit;
+      transition: all 180ms cubic-bezier(0.16, 1, 0.3, 1);
+      overflow: hidden;
+    }
+    .portal-btn::before {
+      content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px;
+      background: var(--line-3, #58675f); transition: background 180ms ease;
+    }
+    .portal-btn:hover {
+      border-color: var(--mint-500, #4ed8af);
+      transform: translateY(-2px);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4), 0 0 12px rgba(78, 216, 175, 0.2);
+    }
+    .portal-btn:hover::before {
+      background: var(--mint-400, #59f4ca);
+      box-shadow: 0 0 8px var(--mint-glow, #17f9b7);
+    }
+    .portal-btn.is-primary {
+      background: linear-gradient(180deg, rgba(23, 64, 52, 0.92), rgba(12, 28, 23, 0.96));
+      border-color: var(--mint-600, #35d8b4);
+    }
+    .portal-btn.is-primary::before { background: var(--mint-400, #59f4ca); }
+
+    /* 无尽模式专属卡片 (金色高亮) */
+    .portal-btn.is-endless {
+      background: linear-gradient(180deg, rgba(48, 38, 16, 0.92), rgba(20, 16, 8, 0.96));
+      border-color: rgba(255, 198, 0, 0.4);
+    }
+    .portal-btn.is-endless::before { background: var(--gold, #ffc600); }
+    .portal-btn.is-endless:hover {
+      border-color: var(--gold, #ffc600);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4), 0 0 16px rgba(255, 198, 0, 0.25);
+    }
+
+    .portal-btn__name {
+      font-size: 0.19rem; font-weight: 900; letter-spacing: 0.05em; color: var(--text-hi, #fff);
+      display: flex; align-items: center; justify-content: space-between; width: 100%;
+    }
+    .portal-btn__en {
+      font-size: 0.11rem; font-weight: 700; letter-spacing: 0.14em; color: var(--mint-500, #4ed8af);
+      text-transform: uppercase; margin-top: 0.04rem;
+    }
+    .portal-badge {
+      font-size: 0.1rem; padding: 0.01rem 0.05rem;
+      background: rgba(255, 198, 0, 0.2); border: 1px solid var(--gold, #ffc600);
+      color: var(--gold, #ffc600); border-radius: 2px;
+    }
+
+    /* 底部状态 */
+    .sp-footer {
+      position: absolute; bottom: 0; left: 0; right: 0; height: 0.44rem;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 0.4rem; z-index: 20;
+      background: rgba(10, 13, 12, 0.88); border-top: 1px solid rgba(47, 58, 53, 0.7);
+      font-size: 0.12rem; color: var(--text-lo, #8a948f);
+    }
+    .sp-footer a { color: var(--mint-500, #4ed8af); text-decoration: none; }
+    .sp-footer a:hover { text-decoration: underline; }
+
+    /* 背景与雷达 */
+    .grid-bg {
+      position: absolute; inset: 0; pointer-events: none;
+      background:
+        linear-gradient(rgba(78, 216, 175, 0.035) 1px, transparent 1px) 0 0 / 0.4rem 0.4rem,
+        linear-gradient(90deg, rgba(78, 216, 175, 0.035) 1px, transparent 1px) 0 0 / 0.4rem 0.4rem,
+        radial-gradient(ellipse at 50% 50%, rgba(20, 60, 48, 0.25) 0%, rgba(9, 12, 11, 0.95) 75%);
+    }
+    .radar-circle {
+      position: absolute; width: 6.4rem; height: 6.4rem; border-radius: 50%;
+      border: 1px dashed rgba(78, 216, 175, 0.15);
+      top: 50%; left: 50%; transform: translate(-50%, -50%);
+      pointer-events: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="grid-bg"></div>
+  <div class="radar-circle"></div>
+
+  <!-- 顶部状态栏 -->
+  <header class="sp-topbar">
+    <div class="sp-topbar__left">
+      <div class="sp-brand">
+        STRONGHOLD PROTOCOL
+        <span class="sp-brand-badge">v0.2.1-fusion</span>
+      </div>
+
+      <!-- 主模式二段切换 -->
+      <div class="mode-switch-seg">
+        <button class="mode-switch-btn active" onclick="setPlayMode('online', this)">联机协同模式</button>
+        <button class="mode-switch-btn endless" onclick="setPlayMode('endless', this)">无尽试炼 (独立单人)</button>
+      </div>
+    </div>
+
+    <div class="sp-topbar__right">
+      <div class="sp-tag">
+        <span class="sp-dot-live"></span>
+        服务端就绪 · 延迟 16ms
+      </div>
+      <div class="sp-tag">
+        Mod 状态: <b style="color: var(--mint-400, #59f4ca);">纯净官方 (默认 0 激活)</b>
+      </div>
+      <div class="sp-tag">快捷键: <kbd>ESC</kbd> 菜单 / <kbd>F11</kbd> 全屏</div>
+    </div>
+  </header>
+
+  <!-- 主屏内容 -->
+  <main class="title-viewport">
+    <div class="hero-container">
+      <div class="hero-sub" id="mode-subtitle">Tactical Co-op & Multiplayer Arena</div>
+      <h1 class="hero-title">卫戍协议</h1>
+      <div class="hero-desc" id="mode-desc">战术策略与干员协同自走棋系统 · 融合版本</div>
+    </div>
+
+    <!-- 核心功能传送门 -->
+    <nav class="menu-portal" id="menu-portal">
+      <!-- 联机大厅入口 -->
+      <a href="03-lobby.html" class="portal-btn is-primary">
+        <span class="portal-btn__name">进入联机大厅 <span>→</span></span>
+        <span class="portal-btn__en">Multiplayer Lobby</span>
+      </a>
+
+      <!-- 无尽模式独立单人入口（新增核心） -->
+      <a href="09-endless-solo.html" class="portal-btn is-endless">
+        <span class="portal-btn__name">
+          无尽试炼 · 单人
+          <span class="portal-badge">SOLO</span>
+        </span>
+        <span class="portal-btn__en" style="color: var(--gold, #ffc600);">Endless Challenge</span>
+      </a>
+
+      <!-- 干员调配（含换装、名录、自选卡组） -->
+      <a href="04-loadout.html" class="portal-btn">
+        <span class="portal-btn__name">干员调配与自选</span>
+        <span class="portal-btn__en">Loadout / DIY / Skins</span>
+      </a>
+
+      <!-- 装备总览 -->
+      <a href="06-equipment.html" class="portal-btn">
+        <span class="portal-btn__name">装备总览</span>
+        <span class="portal-btn__en">Equipment Codex</span>
+      </a>
+
+      <!-- 盟约与策略总览 -->
+      <a href="05-alliances.html" class="portal-btn">
+        <span class="portal-btn__name">盟约与策略</span>
+        <span class="portal-btn__en">Alliances & Bands</span>
+      </a>
+
+      <!-- 扩展模组设置 -->
+      <a href="02-title-mod-modal.html" class="portal-btn" style="border-color: rgba(246, 163, 41, 0.4);">
+        <span class="portal-btn__name">
+          扩展模组设置
+          <span class="portal-badge" style="background: rgba(246,163,41,0.2); color: var(--amber, #f6a329); border-color: var(--amber, #f6a329);">OFF</span>
+        </span>
+        <span class="portal-btn__en" style="color: var(--amber, #f6a329);">Content Packs</span>
+      </a>
+    </nav>
+  </main>
+
+  <!-- 底部说明与链接 -->
+  <footer class="sp-footer">
+    <div>
+      分支: <code>feature/v0.2.1-fusion-master</code> | HEAD <code>975585e1</code>
+    </div>
+    <div>
+      <a href="08-admin.html">管理监控后台 (Admin)</a> ·
+      <a href="index.html">返回 UI 交互总览工作台</a>
+    </div>
+  </footer>
+
+  <script>
+    function setPlayMode(mode, btn) {
+      document.querySelectorAll('.mode-switch-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+
+      const sub = document.getElementById('mode-subtitle');
+      const desc = document.getElementById('mode-desc');
+      if (mode === 'endless') {
+        sub.textContent = 'Standalone Solo Simulation Mode';
+        desc.textContent = '无尽试炼 · 本地单人独立演习引擎（零服务端依赖）';
+      } else {
+        sub.textContent = 'Tactical Co-op & Multiplayer Arena';
+        desc.textContent = '战术策略与干员协同自走棋系统 · 融合版本';
+      }
+    }
+  </script>
+</body>
+</html>

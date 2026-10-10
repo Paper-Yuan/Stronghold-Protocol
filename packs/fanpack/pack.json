@@ -1,0 +1,17 @@
+{
+  "_doc": "This checkout's own fan content pack (docs/CUSTOM.md): 卡兹戴尔 / 罗德岛 盟约与其装备、特质、棋子、召唤物，以及它们的口径修正与美术。records / chess / tokens / variants 由 server/data.js 在载入时合并进官方数据（data/*.json 一个字都不改），art 由 tools/fetch-assets.mjs 复制到 public/assets/pack/。别手改 chess.json / tokens.json / variants.json —— 用 node tools/build-custom.mjs 重新生成。",
+  "id": "fanpack",
+  "type": "data",
+  "name": "同人内容包",
+  "englishName": "Fan content pack",
+  "version": "1.0.0",
+  "app": ">=0.2.0",
+  "credits": "非商业同人作品；《明日方舟》及其素材版权归鹰角网络所有。",
+  "files": {
+    "records": "records.json",
+    "chess": "chess.json",
+    "tokens": "tokens.json",
+    "variants": "variants.json",
+    "art": "art/index.json"
+  }
+}

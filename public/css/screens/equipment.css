@@ -1,0 +1,65 @@
+/* ==========================================================================================
+   screens/equipment.css — 装备总览 (Equipment codex, js/screens/equipment.js): a read-only overlay that reuses the
+   干员调配 skeleton (.lo / .lo-top / .lo-note / .lo-body / .lo-grid / .lo-card / .lo-chip) so the two screens look and
+   behave alike; this file adds only the codex's own pieces — the tier sections of the grid, the bond tag of a card and
+   the 普通 / 精锐 effect blocks of the detail column.
+   Sizes are design px ÷ 100 (theme.css root scale); text that must stay readable on phones uses max(.xxrem, N px).
+   ========================================================================================== */
+
+/* the overlay covers the screen behind it (the same rule .sp-loadout-open uses) */
+.sp-equip-open .app-root > .screen { visibility: hidden; }
+
+/* ---- tier sections inside the card grid ------------------------------------------------- */
+.eq-tier { grid-column: 1 / -1; display: flex; align-items: center; gap: .12rem; margin: .08rem 0 .01rem; }
+.eq-tier__k { display: inline-flex; align-items: baseline; gap: .04rem; font-size: max(.17rem, 11px); font-weight: 900; letter-spacing: .14em; color: var(--text-md); }
+.eq-tier__n { font-size: max(.13rem, 9px); color: var(--text-dim); }
+.eq-tier::after { content: ''; flex: 1; height: 1px; background: linear-gradient(90deg, var(--line-2), transparent); }
+
+/* ---- card meta ------------------------------------------------------------------------- */
+.eq-card { text-align: left; }
+.eq-card__meta { font-size: max(.12rem, 9px); }
+.eq-bond { display: inline-flex; align-items: center; gap: .04rem; min-width: 0; overflow: hidden; color: var(--mint-400); white-space: nowrap; text-overflow: ellipsis; }
+.eq-bond.is-none { color: var(--text-dim); }
+.eq-bond__icon { flex: none; width: max(.18rem, 10px); height: max(.18rem, 10px); object-fit: contain; }
+.eq-bond--lg { gap: .07rem; padding: .04rem .12rem; font-size: max(.18rem, 12px); font-weight: 700; border: 1px solid var(--mint-800); background: rgba(78, 216, 175, .07); }
+.eq-bond--lg .eq-bond__icon { width: max(.28rem, 15px); height: max(.28rem, 15px); }
+
+/* ---- detail column --------------------------------------------------------------------- */
+.eq-detail { flex: 1 1 auto; min-height: 0; overflow: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain;
+  display: flex; flex-direction: column; gap: .14rem; padding: .02rem .08rem .2rem .02rem; scrollbar-width: thin; }
+.eq-detail__head { display: flex; gap: .18rem; align-items: flex-start; }
+.eq-detail__art { flex: none; width: max(1.16rem, 66px); height: max(1.16rem, 66px); overflow: hidden; border: 1px solid var(--line-2); background: #1b201e; }
+.eq-detail__art img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.eq-detail__id { min-width: 0; display: flex; flex-direction: column; gap: .07rem; }
+.eq-detail__name { margin: 0; font-size: max(.3rem, 17px); font-weight: 900; letter-spacing: .06em; }
+.eq-detail__tags { display: flex; flex-wrap: wrap; align-items: center; gap: .1rem; }
+.eq-tierchip { height: max(.32rem, 20px); }
+.eq-meta { display: inline-flex; align-items: center; gap: .04rem; font-size: max(.15rem, 10px); color: var(--text-lo); }
+.eq-meta b { color: var(--text-md); }
+.eq-meta .icon { width: max(.16rem, 11px); height: max(.16rem, 11px); }
+.eq-meta.is-warn { color: var(--amber); }
+.eq-detail__bond { display: flex; align-items: center; gap: .12rem; }
+.eq-detail__k { font-size: max(.14rem, 10px); letter-spacing: .1em; color: var(--text-dim); }
+
+/* ---- 普通 / 精锐 effect blocks (a pair, so both are readable at once) ------------------- */
+.eq-eff {
+  display: flex; flex-direction: column; gap: .06rem; padding: .1rem .14rem .12rem;
+  border: 1px solid var(--line-2); border-left: 3px solid var(--mint-500);
+  background: linear-gradient(180deg, rgba(78, 216, 175, .06), rgba(0, 0, 0, .22));
+}
+.eq-eff.is-elite { border-left-color: var(--gold); background: linear-gradient(180deg, rgba(246, 163, 41, .07), rgba(0, 0, 0, .22)); }
+.eq-eff.is-none { opacity: .72; }
+.eq-eff__head { display: flex; align-items: baseline; gap: .1rem; }
+.eq-eff__k { font-size: max(.16rem, 11px); font-weight: 900; letter-spacing: .2em; color: var(--mint-400); }
+.eq-eff.is-elite .eq-eff__k { color: var(--gold-2); }
+.eq-eff__micro { font-size: max(.11rem, 8px); letter-spacing: .14em; color: var(--text-dim); }
+.eq-eff__text { margin: 0; font-size: max(.16rem, 11px); line-height: 1.55; color: var(--text-md); }
+
+/* ---- phones: a narrower detail head ---------------------------------------------------- */
+@media (max-width: 760px) {
+  .eq-detail__head { gap: .12rem; }
+  .eq-detail__art { width: max(.9rem, 54px); height: max(.9rem, 54px); }
+  .eq-tier { margin-top: .04rem; }
+}
+
+@media (prefers-reduced-motion: reduce) { .eq-eff { transition: none; } }

@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="sp-hover sp-fs">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>UI 参考 · 后台管理系统 (Admin Dashboard) - Stronghold Protocol</title>
+  <link rel="stylesheet" href="../../public/css/theme.css">
+  <link rel="stylesheet" href="../../public/css/components.css">
+  <link rel="stylesheet" href="../../public/admin/admin.css">
+  <style>
+    html {
+      font-size: clamp(20px, min(100vw / 19.2, 100vh / 10.8), 200px);
+      background: #080a09;
+      color: var(--text-hi, #f2f2f2);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+      margin: 0; padding: 0; height: 100%; overflow: hidden;
+    }
+    body {
+      margin: 0; padding: 0; width: 100vw; height: 100vh;
+      display: flex; flex-direction: column; position: relative; overflow: hidden;
+      background: #080a09;
+    }
+
+    /* 顶部控制栏 */
+    .admin-topbar {
+      height: 0.64rem; padding: 0 0.36rem; flex: none;
+      display: flex; align-items: center; justify-content: space-between;
+      background: #0e1210; border-bottom: 1px solid var(--line, #2f3a35); z-index: 20;
+    }
+    .admin-title {
+      font-size: 0.18rem; font-weight: 900; letter-spacing: 0.08em; color: #fff;
+      display: flex; align-items: center; gap: 0.12rem;
+    }
+    .admin-badge {
+      font-size: 0.1rem; padding: 0.02rem 0.06rem; background: var(--mint-800, #145443);
+      color: var(--mint-400, #59f4ca); border: 1px solid var(--mint-500, #4ed8af); border-radius: 2px;
+    }
+
+    /* 主布局 */
+    .admin-body {
+      flex: 1; min-height: 0; display: grid; grid-template-columns: 2.4rem 1fr;
+    }
+
+    /* 侧边导航栏 */
+    .admin-sidebar {
+      background: #0b0f0d; border-right: 1px solid var(--line, #2f3a35);
+      padding: 0.2rem 0; display: flex; flex-direction: column; gap: 0.04rem;
+    }
+    .nav-item {
+      padding: 0.12rem 0.24rem; font-size: 0.13rem; font-weight: 700;
+      color: var(--text-lo, #8a948f); cursor: pointer; display: flex; align-items: center; gap: 0.1rem;
+      border-left: 3px solid transparent; text-decoration: none;
+    }
+    .nav-item:hover, .nav-item.active {
+      color: #fff; background: rgba(78, 216, 175, 0.06); border-left-color: var(--mint-500, #4ed8af);
+    }
+
+    /* 主工作台容器 */
+    .admin-content {
+      overflow-y: auto; padding: 0.28rem 0.36rem; display: flex; flex-direction: column; gap: 0.28rem;
+    }
+
+    /* KPI 卡片组 */
+    .kpi-grid {
+      display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.16rem;
+    }
+    .kpi-card {
+      background: #111613; border: 1px solid var(--line, #2f3a35);
+      padding: 0.18rem 0.22rem; display: flex; flex-direction: column; gap: 0.06rem;
+    }
+    .kpi-label { font-size: 0.11rem; color: var(--text-lo, #8a948f); text-transform: uppercase; font-weight: 700; }
+    .kpi-value { font-size: 0.28rem; font-weight: 900; color: #fff; }
+    .kpi-hint { font-size: 0.11rem; color: var(--mint-400, #59f4ca); }
+
+    /* 表格面板 */
+    .panel-box {
+      background: #101512; border: 1px solid var(--line, #2f3a35);
+      padding: 0.2rem; display: flex; flex-direction: column; gap: 0.14rem;
+    }
+    .panel-header {
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .panel-title { font-size: 0.16rem; font-weight: 800; color: #fff; }
+
+    /* 数据表格 */
+    .admin-table {
+      width: 100%; border-collapse: collapse; font-size: 0.12rem; text-align: left;
+    }
+    .admin-table th {
+      padding: 0.1rem 0.12rem; background: #161d19; color: var(--text-lo, #8a948f);
+      border-bottom: 1px solid var(--line, #2f3a35); font-weight: 700;
+    }
+    .admin-table td {
+      padding: 0.12rem; border-bottom: 1px solid rgba(47, 58, 53, 0.4); color: var(--text-hi, #fff);
+    }
+    .admin-table tr:hover td { background: rgba(78, 216, 175, 0.03); }
+
+    .tag-green {
+      padding: 0.02rem 0.06rem; background: rgba(78, 216, 175, 0.15);
+      border: 1px solid var(--mint-600, #35d8b4); color: var(--mint-400, #59f4ca); border-radius: 2px;
+    }
+    .tag-amber {
+      padding: 0.02rem 0.06rem; background: rgba(246, 163, 41, 0.15);
+      border: 1px solid var(--amber, #f6a329); color: var(--amber, #f6a329); border-radius: 2px;
+    }
+
+    /* 终端日志流 */
+    .terminal-box {
+      background: #070908; border: 1px solid var(--line, #2f3a35);
+      padding: 0.16rem; font-family: monospace; font-size: 0.11rem; color: #a4b2ab;
+      line-height: 1.6; height: 1.8rem; overflow-y: auto;
+    }
+  </style>
+</head>
+<body>
+  <!-- 顶部状态栏 -->
+  <header class="admin-topbar">
+    <div class="admin-title">
+      <span>STRONGHOLD PROTOCOL</span>
+      <span class="admin-badge">ADMIN CONSOLE · 运维控制台</span>
+    </div>
+    <div style="font-size: 0.12rem; color: var(--text-lo, #8a948f); display: flex; gap: 0.2rem;">
+      <span>运行时间: <b>14h 28m</b></span>
+      <span>当前单体服务: <b>PID 18420</b></span>
+      <a href="01-title.html" style="color: var(--mint-500, #4ed8af); text-decoration: none;">← 返回前台主页</a>
+    </div>
+  </header>
+
+  <div class="admin-body">
+    <!-- 侧边导航栏 -->
+    <aside class="admin-sidebar">
+      <a href="#" class="nav-item active">📊 概览仪表盘</a>
+      <a href="#" class="nav-item">🎮 活跃对局与房间</a>
+      <a href="#" class="nav-item">📦 Mod 预装与 Overlay 状态</a>
+      <a href="#" class="nav-item">📈 内存与 WebSocket 负载</a>
+      <a href="#" class="nav-item">📜 审计与权威模拟日志</a>
+    </aside>
+
+    <!-- 工作台主体 -->
+    <main class="admin-content">
+      <!-- KPI 卡片 -->
+      <div class="kpi-grid">
+        <div class="kpi-card">
+          <span class="kpi-label">活跃对局房间</span>
+          <span class="kpi-value">8 <span style="font-size: 0.14rem; font-weight: normal; color: var(--text-lo, #8a948f);">场</span></span>
+          <span class="kpi-hint">3 场启用 Mod / 5 场纯官方</span>
+        </div>
+
+        <div class="kpi-card">
+          <span class="kpi-label">在线客户端</span>
+          <span class="kpi-value">34 <span style="font-size: 0.14rem; font-weight: normal; color: var(--text-lo, #8a948f);">人</span></span>
+          <span class="kpi-hint">Web 28 · Android 6</span>
+        </div>
+
+        <div class="kpi-card">
+          <span class="kpi-label">Overlay 内存占用</span>
+          <span class="kpi-value">2.4 <span style="font-size: 0.14rem; font-weight: normal; color: var(--text-lo, #8a948f);">MB</span></span>
+          <span class="kpi-hint">内存纯动态合并 · 磁盘 0 写入</span>
+        </div>
+
+        <div class="kpi-card">
+          <span class="kpi-label">Mod 引擎状态</span>
+          <span class="kpi-value" style="color: var(--mint-400, #59f4ca);">RUNNING</span>
+          <span class="kpi-hint">预装 1 个 · 激活 1 个</span>
+        </div>
+      </div>
+
+      <!-- 面板：活跃房间监控 -->
+      <div class="panel-box">
+        <div class="panel-header">
+          <span class="panel-title">当前运行对局列表 (Active Matches)</span>
+          <span style="font-size: 0.12rem; color: var(--text-lo, #8a948f);">自动轮询中 (每 5 秒刷新)</span>
+        </div>
+
+        <table class="admin-table">
+          <thead>
+            <tr>
+              <th>房间编号</th>
+              <th>作战模式</th>
+              <th>房主</th>
+              <th>席位</th>
+              <th>回合 (Round)</th>
+              <th>Mod 挂载状态</th>
+              <th>操作</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><b>#8842</b> (私密)</td>
+              <td>同盟协同作战 (4人)</td>
+              <td>Doctor</td>
+              <td>3 / 4 席</td>
+              <td>PREP 阶段</td>
+              <td><span class="tag-amber">fanpack v1.0 (2盟约/5装/12棋)</span></td>
+              <td><button class="back-btn" style="padding: 0.02rem 0.08rem; font-size: 0.11rem;">监控日志</button></td>
+            </tr>
+            <tr>
+              <td><b>#1003</b> (公开)</td>
+              <td>常规排位对局</td>
+              <td>Ch'en</td>
+              <td>4 / 4 席</td>
+              <td>ROUND 8 战斗中</td>
+              <td><span class="tag-green">纯净官方 (23盟约)</span></td>
+              <td><button class="back-btn" style="padding: 0.02rem 0.08rem; font-size: 0.11rem;">监控日志</button></td>
+            </tr>
+            <tr>
+              <td><b>#1005</b> (公开)</td>
+              <td>单机演习测试</td>
+              <td>Amiya</td>
+              <td>1 / 1 席</td>
+              <td>ROUND 3 战斗中</td>
+              <td><span class="tag-green">纯净官方</span></td>
+              <td><button class="back-btn" style="padding: 0.02rem 0.08rem; font-size: 0.11rem;">监控日志</button></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- 面板：内容包与 Overlay 控制台 -->
+      <div class="panel-box">
+        <div class="panel-header">
+          <span class="panel-title">内容包与独立 Overlay 中间件控制 (Content Packs & Middleware)</span>
+          <div style="display: flex; gap: 0.1rem;">
+            <button class="back-btn" style="padding: 0.04rem 0.12rem; font-size: 0.12rem;" onclick="alert('已重新扫描 packs/ 目录，发现 1 个预装包')">重新扫描 packs/</button>
+            <button class="back-btn" style="padding: 0.04rem 0.12rem; font-size: 0.12rem; border-color: var(--amber, #f6a329); color: var(--amber, #f6a329);" onclick="alert('已清空 Overlay，全局恢复纯官方数据！')">一键卸载 Overlay</button>
+          </div>
+        </div>
+
+        <div style="font-size: 0.12rem; color: var(--text-md, #c3cbc7); line-height: 1.6;">
+          • <b>预装位置</b>: <code>packs/fanpack/</code> (包含 records.json, chess.json, tokens.json, variants.json, art/)<br>
+          • <b>动态路由覆盖</b>: <code>/data/bonds.json</code> (25 条)、<code>/data/items.json</code> (120 件)、<code>/data/assets.json</code> (附带 <code>?v=size-mtime</code> 防缓存戳)<br>
+          • <b>权威模拟器挂载</b>: <code>server/sim/content/bonds/custom.js</code> (kazdelShip, rhodesShip) & <code>kits/custom.js</code> (12 干员战斗实现) 均已就绪。
+        </div>
+      </div>
+
+      <!-- 实时日志流终端 -->
+      <div class="panel-box">
+        <span class="panel-title">实时服务端日志 (Live Audit Log Stream)</span>
+        <div class="terminal-box">
+          [2026-10-09 21:50:01] [server] Listening on 0.0.0.0:3000 (build 975585e1)<br>
+          [2026-10-09 21:50:01] [packs] Discovered pre-installed pack: fanpack (v1.0.0, data pack, disabled by default)<br>
+          [2026-10-09 21:50:14] [http] GET /data/bonds.json -> served official baseline (23 bonds, etag "3a8f...")<br>
+          [2026-10-09 21:51:22] [match] Room #8842 created by host 'Doctor' with enabled pack: ['fanpack']<br>
+          [2026-10-09 21:51:22] [overlay] Custom overlay calculated for Room #8842: merged 2 bonds, 5 items, 12 operators.<br>
+          [2026-10-09 21:51:23] [sim] Safe dynamic load: bonds/custom.js loaded successfully (kazdelShip, rhodesShip installed).<br>
+          [2026-10-09 21:51:23] [sim] Safe dynamic load: kits/custom.js loaded (12 kits registered).<br>
+          [2026-10-09 21:52:05] [ws] Player 'Kal'tsit' joined room #8842, client synced with overlay hash 0x7e29a...
+        </div>
+      </div>
+    </main>
+  </div>
+</body>
+</html>

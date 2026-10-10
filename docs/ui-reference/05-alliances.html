@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="sp-hover sp-fs">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>UI 参考 · 盟约与策略总览 (Alliance Codex) - Stronghold Protocol</title>
+  <link rel="stylesheet" href="../../public/css/theme.css">
+  <link rel="stylesheet" href="../../public/css/components.css">
+  <link rel="stylesheet" href="../../public/css/screens/loadout.css">
+  <style>
+    html {
+      font-size: clamp(24px, min(100vw / 19.2, 100vh / 10.8), 240px);
+      background: var(--bg-0, #0c0f0e);
+      color: var(--text-hi, #f2f2f2);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+      margin: 0; padding: 0; height: 100%; overflow: hidden;
+    }
+    body {
+      margin: 0; padding: 0; width: 100vw; height: 100vh;
+      display: flex; flex-direction: column; position: relative; overflow: hidden;
+    }
+
+    .al-topbar {
+      height: 0.68rem; padding: 0 0.36rem; flex: none;
+      display: flex; align-items: center; justify-content: space-between;
+      background: linear-gradient(180deg, rgba(16, 20, 18, 0.98), rgba(10, 13, 12, 0.85));
+      border-bottom: 1px solid var(--line, #2f3a35); z-index: 20;
+    }
+    .back-btn {
+      padding: 0.06rem 0.16rem; font-size: 0.13rem; font-weight: 700;
+      border: 1px solid var(--line-2, #3e4b45); background: rgba(255, 255, 255, 0.03);
+      color: var(--text-md, #c3cbc7); cursor: pointer; text-decoration: none;
+    }
+    .back-btn:hover { border-color: var(--mint-500, #4ed8af); color: #fff; }
+
+    .al-nav-tabs { display: flex; gap: 0.08rem; }
+    .al-tab-btn {
+      padding: 0.08rem 0.22rem; font-size: 0.14rem; font-weight: 800;
+      border: 1px solid var(--line, #2f3a35); background: #141a17; color: var(--text-lo, #8a948f);
+      cursor: pointer; transition: all 120ms ease;
+    }
+    .al-tab-btn.active {
+      border-color: var(--mint-500, #4ed8af); color: #fff; background: rgba(78, 216, 175, 0.12);
+    }
+
+    /* 盟约双栏 */
+    .al-main {
+      flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) 5.6rem;
+      position: relative; z-index: 10;
+    }
+
+    .al-grid-pane {
+      display: flex; flex-direction: column; border-right: 1px solid var(--line, #2f3a35);
+      background: rgba(12, 15, 14, 0.6); min-width: 0;
+    }
+    .al-filter-bar {
+      padding: 0.14rem 0.36rem; display: flex; align-items: center; justify-content: space-between;
+      border-bottom: 1px solid var(--line, #2f3a35); background: rgba(16, 20, 18, 0.85);
+    }
+    .filter-chips { display: flex; gap: 0.06rem; }
+    .filter-chip {
+      padding: 0.04rem 0.12rem; font-size: 0.12rem; font-weight: 700;
+      border: 1px solid var(--line, #2f3a35); background: #141a17; color: var(--text-lo, #8a948f);
+      cursor: pointer;
+    }
+    .filter-chip.active {
+      border-color: var(--mint-600, #35d8b4); color: var(--mint-400, #59f4ca); background: rgba(78, 216, 175, 0.1);
+    }
+
+    .al-scroll-area {
+      flex: 1; overflow-y: auto; padding: 0.2rem 0.36rem; display: flex; flex-direction: column; gap: 0.24rem;
+    }
+    .group-header {
+      font-size: 0.15rem; font-weight: 900; letter-spacing: 0.08em; color: var(--text-md, #c3cbc7);
+      display: flex; align-items: center; gap: 0.1rem;
+    }
+    .group-header::before {
+      content: ''; width: 3px; height: 0.14rem; background: var(--mint-500, #4ed8af);
+    }
+
+    .bond-card-grid {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(2.1rem, 1fr));
+      gap: 0.12rem;
+    }
+    .bond-card {
+      background: linear-gradient(180deg, #18201c, #101513);
+      border: 1px solid var(--line, #2f3a35); padding: 0.14rem;
+      display: flex; align-items: center; gap: 0.12rem; cursor: pointer;
+      position: relative; transition: all 150ms ease;
+    }
+    .bond-card:hover { border-color: var(--line-3, #58675f); transform: translateY(-2px); }
+    .bond-card.selected {
+      border-color: var(--mint-500, #4ed8af);
+      background: linear-gradient(180deg, #1f2c25, #121815);
+      box-shadow: 0 0 16px rgba(78, 216, 175, 0.2);
+    }
+    .bond-icon-box {
+      width: 0.44rem; height: 0.44rem; border-radius: 4px; background: #121815;
+      border: 1px solid var(--line-2, #3e4b45); display: grid; place-items: center;
+      font-size: 0.18rem; font-weight: 900; color: var(--mint-400, #59f4ca); flex: none;
+    }
+    .bond-card-titles { display: flex; flex-direction: column; gap: 0.02rem; }
+    .bond-card-name { font-size: 0.16rem; font-weight: 800; color: #fff; }
+    .bond-card-id { font-size: 0.1rem; color: var(--text-lo, #8a948f); font-family: monospace; }
+    .pack-pill {
+      position: absolute; top: 0.06rem; right: 0.06rem;
+      font-size: 0.09rem; font-weight: 800; padding: 0.01rem 0.04rem;
+      background: var(--amber, #f6a329); color: #06110d; border-radius: 2px;
+    }
+
+    /* 右栏详情 */
+    .al-detail-pane {
+      background: rgba(14, 18, 16, 0.96); padding: 0.28rem 0.36rem;
+      display: flex; flex-direction: column; gap: 0.22rem; overflow-y: auto;
+    }
+    .al-detail-hero { display: flex; align-items: center; gap: 0.18rem; }
+    .hero-bond-icon {
+      width: 0.8rem; height: 0.8rem; border-radius: 4px; background: #1a241f;
+      border: 2px solid var(--mint-500, #4ed8af); display: grid; place-items: center;
+      font-size: 0.32rem; font-weight: 900; color: #fff;
+    }
+    .hero-bond-title { font-size: 0.24rem; font-weight: 900; color: #fff; }
+    .core-chip {
+      font-size: 0.11rem; font-weight: 800; padding: 0.02rem 0.08rem; border-radius: 2px;
+      background: var(--mint-800, #145443); border: 1px solid var(--mint-500, #4ed8af);
+      color: var(--mint-400, #59f4ca);
+    }
+
+    /* 层数效果列表 */
+    .layer-list { display: flex; flex-direction: column; gap: 0.08rem; }
+    .layer-row {
+      padding: 0.12rem 0.14rem; background: #161e1a; border: 1px solid var(--line, #2f3a35);
+      display: flex; flex-direction: column; gap: 0.04rem;
+    }
+    .layer-count-chip { font-size: 0.12rem; font-weight: 800; color: var(--mint-400, #59f4ca); }
+    .layer-effect-desc { font-size: 0.12rem; color: var(--text-hi, #fff); line-height: 1.5; }
+
+    /* 成员 */
+    .member-tags { display: flex; flex-wrap: wrap; gap: 0.06rem; }
+    .op-tag {
+      padding: 0.04rem 0.08rem; background: #1c2621; border: 1px solid var(--line-2, #3e4b45);
+      font-size: 0.11rem; color: var(--text-hi, #fff); display: flex; align-items: center; gap: 0.04rem;
+    }
+    .op-tag.is-pack {
+      border-color: var(--amber, #f6a329); color: var(--amber, #f6a329); background: rgba(246, 163, 41, 0.1);
+    }
+  </style>
+</head>
+<body>
+  <header class="al-topbar">
+    <div style="display: flex; align-items: center; gap: 0.2rem;">
+      <a href="03-lobby.html" class="back-btn">← 返回大厅</a>
+      <h2 style="font-size: 0.2rem; font-weight: 900; margin: 0; color: #fff; letter-spacing: 0.08em;">
+        盟约与策略总览 · ALLIANCE & STRATEGY CODEX
+      </h2>
+    </div>
+
+    <!-- Mod 模拟注入开关（验证默认状态与开启后状态对比） -->
+    <div style="display: flex; align-items: center; gap: 0.14rem;">
+      <label style="font-size: 0.12rem; color: var(--text-md, #c3cbc7); cursor: pointer; display: flex; align-items: center; gap: 0.06rem;">
+        <input type="checkbox" id="mod-toggle" onchange="toggleModBonds(this.checked)">
+        <span>模拟注入 Mod 扩展包 (fanpack)</span>
+      </label>
+      <span style="font-size: 0.11rem; color: var(--text-lo, #8a948f); border-left: 1px solid var(--line-2, #3e4b45); padding-left: 0.1rem;" id="bond-status-text">
+        默认纯官方: <b>23 条盟约 (8核心 + 15附加) · 0 Mod</b>
+      </span>
+    </div>
+  </header>
+
+  <main class="al-main">
+    <section class="al-grid-pane">
+      <div class="al-filter-bar">
+        <div class="filter-chips">
+          <div class="filter-chip active" id="chip-all">全部盟约 (23)</div>
+          <div class="filter-chip" id="chip-core">核心盟约 (8)</div>
+          <div class="filter-chip" id="chip-addon">附加盟约 (15)</div>
+        </div>
+        <div class="al-nav-tabs">
+          <button class="al-tab-btn active">【盟约 BONDS】</button>
+          <button class="al-tab-btn" onclick="alert('局内策略 (Bands) 面板：支持官方 40 策略与 Mod 扩展段')">【策略 BANDS】</button>
+        </div>
+      </div>
+
+      <div class="al-scroll-area">
+        <!-- 核心盟约组 -->
+        <div>
+          <div class="group-header" id="core-group-header">核心盟约 · CORE ALLIANCES (官方 8 条)</div>
+          <div class="bond-card-grid" style="margin-top: 0.12rem;">
+            <!-- 包内核心盟约容器 (默认空！只有开启Mod才注入) -->
+            <div id="pack-bonds-container" style="display: contents;"></div>
+
+            <!-- 官方核心 1：谢拉格 -->
+            <div class="bond-card selected" onclick="selectBond('谢拉格', 'kjerag', '喀兰圣山', '攻击附带寒冷/冻结；6人时冻结目标受到极高暴击伤害', ['银灰', '初雪', '崖心', '讯使'], false)">
+              <div class="bond-icon-box">谢</div>
+              <div class="bond-card-titles">
+                <span class="bond-card-name">谢拉格</span>
+                <span class="bond-card-id">kjerag</span>
+              </div>
+            </div>
+
+            <!-- 官方核心 2：维多利亚 -->
+            <div class="bond-card" onclick="selectBond('维多利亚', 'victoria', '帝国军团', '阵地协同防御，提升生命与护甲，提供坚守掩护', ['风笛', '芦苇', '琴柳', '号角'], false)">
+              <div class="bond-icon-box">维</div>
+              <div class="bond-card-titles">
+                <span class="bond-card-name">维多利亚</span>
+                <span class="bond-card-id">victoria</span>
+              </div>
+            </div>
+
+            <!-- 官方核心 3：卡西米尔 -->
+            <div class="bond-card" onclick="selectBond('卡西米尔', 'kazimierz', '大骑士领', '攻击附带真实伤害，部署时获得高额暴击加成', ['玛恩纳', '临光', '瑕光', '焰尾'], false)">
+              <div class="bond-icon-box">卡</div>
+              <div class="bond-card-titles">
+                <span class="bond-card-name">卡西米尔</span>
+                <span class="bond-card-id">kazimierz</span>
+              </div>
+            </div>
+
+            <!-- 官方核心 4：炎 -->
+            <div class="bond-card" onclick="selectBond('炎', 'yan', '岁相与司岁台', '阴阳两极法术共鸣，击败目标回复技力', ['令', '黍', '重岳', '夕'], false)">
+              <div class="bond-icon-box">炎</div>
+              <div class="bond-card-titles">
+                <span class="bond-card-name">炎</span>
+                <span class="bond-card-id">yan</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 附加盟约组 -->
+        <div>
+          <div class="group-header">附加盟约 · ADD-ON ALLIANCES (官方 15 条)</div>
+          <div class="bond-card-grid" style="margin-top: 0.12rem;">
+            <div class="bond-card" onclick="selectBond('精准', 'addon_sniper', '远程压制', '攻击距离提升，距离越远暴击伤害越高', ['提丰', '能天使', '黑'], false)">
+              <div class="bond-icon-box">准</div>
+              <div class="bond-card-titles">
+                <span class="bond-card-name">精准</span>
+                <span class="bond-card-id">addon_sniper</span>
+              </div>
+            </div>
+
+            <div class="bond-card" onclick="selectBond('协防干员', 'addon_support', '战术链接', '协同出战时相互分摊伤害并提供持续治疗', ['塞雷娅', '铃兰', '白面鸮'], false)">
+              <div class="bond-icon-box">协</div>
+              <div class="bond-card-titles">
+                <span class="bond-card-name">协防干员</span>
+                <span class="bond-card-id">addon_support</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 右栏：详情 -->
+    <aside class="al-detail-pane">
+      <div class="al-detail-hero">
+        <div class="hero-bond-icon" id="detail-icon">谢</div>
+        <div>
+          <div class="hero-bond-title" id="detail-name">谢拉格</div>
+          <div style="display: flex; gap: 0.08rem; margin-top: 0.04rem;">
+            <span class="core-chip" id="detail-kind">核心盟约</span>
+            <span class="core-chip" style="background: rgba(255,255,255,0.06); border-color: var(--line-2, #3e4b45); color: #fff;">战斗生效</span>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <div style="font-size: 0.13rem; font-weight: 800; color: var(--mint-400, #59f4ca); margin-bottom: 0.08rem;">
+          层数效果阶梯 (Layers Progression)
+        </div>
+        <div class="layer-list" id="detail-layers">
+          <div class="layer-row">
+            <span class="layer-count-chip">[2] 圣山微雪</span>
+            <div class="layer-effect-desc">全体成员攻击有 25% 概率对目标施加【寒冷】。</div>
+          </div>
+          <div class="layer-row">
+            <span class="layer-count-chip">[4] 严冬降临</span>
+            <div class="layer-effect-desc">对处于【冻结】状态的敌人造成的物理与法术伤害提升 50%。</div>
+          </div>
+          <div class="layer-row">
+            <span class="layer-count-chip">[6] 极境暴雪</span>
+            <div class="layer-effect-desc">战斗开场立即对全体敌方单位施加 4 秒【冻结】，且冻结期间护甲清零。</div>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <div style="font-size: 0.13rem; font-weight: 800; color: var(--text-md, #c3cbc7); margin-bottom: 0.08rem;">
+          归属干员名单 (Members Roster)
+        </div>
+        <div class="member-tags" id="detail-members">
+          <span class="op-tag">银灰</span>
+          <span class="op-tag">初雪</span>
+          <span class="op-tag">崖心</span>
+          <span class="op-tag">讯使</span>
+        </div>
+      </div>
+    </aside>
+  </main>
+
+  <script>
+    // 默认关闭 Mod 包！只有手动打开时，卡兹戴尔和罗德岛才动态出现
+    function toggleModBonds(enabled) {
+      const container = document.getElementById('pack-bonds-container');
+      const stat = document.getElementById('bond-status-text');
+      const chipAll = document.getElementById('chip-all');
+      const chipCore = document.getElementById('chip-core');
+      const coreHeader = document.getElementById('core-group-header');
+
+      if (enabled) {
+        container.innerHTML = `
+          <div class="bond-card" onclick="selectBond('罗德岛', 'rhodesShip', '罗德岛舰船', '全体成员攻击生命大幅加成；6人时生命回复、元素损伤恢复且免疫禁疗', ['阿米娅', '凯尔希 [包]', '煌 [包]', '闪灵 [包]'], true)">
+            <span class="pack-pill">包</span>
+            <div class="bond-icon-box" style="border-color: var(--mint-500, #4ed8af); color: var(--mint-400, #59f4ca);">罗</div>
+            <div class="bond-card-titles">
+              <span class="bond-card-name">罗德岛</span>
+              <span class="bond-card-id">rhodesShip</span>
+            </div>
+          </div>
+          <div class="bond-card" onclick="selectBond('卡兹戴尔', 'kazdelShip', '卡兹戴尔王庭', '对眩晕/束缚/停顿敌人高额增伤；6人时全体普攻附加真实伤害与断角掉落', ['维什戴尔 [包]', '逻各斯 [包]', '阿斯卡纶 [包]', '赫德雷 [包]'], true)">
+            <span class="pack-pill">包</span>
+            <div class="bond-icon-box" style="border-color: var(--amber, #f6a329); color: var(--amber, #f6a329);">卡</div>
+            <div class="bond-card-titles">
+              <span class="bond-card-name">卡兹戴尔</span>
+              <span class="bond-card-id">kazdelShip</span>
+            </div>
+          </div>
+        `;
+        stat.innerHTML = `已挂载 Mod: <b style="color: var(--amber, #f6a329);">25 条盟约 (10核心+15附加) · fanpack 激活</b>`;
+        chipAll.textContent = '全部盟约 (25)';
+        chipCore.textContent = '核心盟约 (10)';
+        coreHeader.textContent = '核心盟约 · CORE ALLIANCES (官方 8 + 包内 2)';
+      } else {
+        container.innerHTML = '';
+        stat.innerHTML = `默认纯官方: <b>23 条盟约 (8核心 + 15附加) · 0 Mod</b>`;
+        chipAll.textContent = '全部盟约 (23)';
+        chipCore.textContent = '核心盟约 (8)';
+        coreHeader.textContent = '核心盟约 · CORE ALLIANCES (官方 8 条)';
+      }
+    }
+
+    function selectBond(name, id, sub, desc, members, isPack) {
+      document.getElementById('detail-name').textContent = name;
+      document.getElementById('detail-icon').textContent = name[0];
+
+      const memBox = document.getElementById('detail-members');
+      memBox.innerHTML = members.map(m => `<span class="op-tag ${m.includes('[包]') ? 'is-pack' : ''}">${m}</span>`).join('');
+
+      document.querySelectorAll('.bond-card').forEach(c => c.classList.remove('selected'));
+      event.currentTarget.classList.add('selected');
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,672 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="sp-hover sp-fs">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>UI 参考 · 干员调配、名录与自选 (Loadout, Ownership & DIY) - Stronghold Protocol</title>
+  <link rel="stylesheet" href="../../public/css/theme.css">
+  <link rel="stylesheet" href="../../public/css/components.css">
+  <link rel="stylesheet" href="../../public/css/screens/loadout.css">
+  <style>
+    html {
+      font-size: clamp(24px, min(100vw / 19.2, 100vh / 10.8), 240px);
+      background: var(--bg-0, #0c0f0e);
+      color: var(--text-hi, #f2f2f2);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+      margin: 0; padding: 0; height: 100%; overflow: hidden;
+    }
+    body {
+      margin: 0; padding: 0; width: 100vw; height: 100vh;
+      display: flex; flex-direction: column; position: relative; overflow: hidden;
+      background: #090c0b;
+    }
+
+    /* 顶栏与核心 3 大主选项卡 (.lo-tabs) */
+    .lo-top-header {
+      height: 0.68rem; padding: 0 0.36rem; flex: none;
+      display: flex; align-items: center; justify-content: space-between;
+      background: linear-gradient(180deg, rgba(16, 20, 18, 0.98), rgba(10, 13, 12, 0.85));
+      border-bottom: 1px solid var(--line, #2f3a35); z-index: 20;
+    }
+    .back-btn {
+      padding: 0.06rem 0.16rem; font-size: 0.13rem; font-weight: 700;
+      border: 1px solid var(--line-2, #3e4b45); background: rgba(255, 255, 255, 0.03);
+      color: var(--text-md, #c3cbc7); cursor: pointer; text-decoration: none;
+    }
+    .back-btn:hover { border-color: var(--mint-500, #4ed8af); color: #fff; }
+
+    .main-lo-tabs { display: flex; gap: 0.06rem; }
+    .main-lo-tab {
+      padding: 0.08rem 0.22rem; font-size: 0.14rem; font-weight: 800;
+      border: 1px solid var(--line, #2f3a35); background: #131916; color: var(--text-lo, #8a948f);
+      cursor: pointer; transition: all 120ms ease; display: flex; align-items: center; gap: 0.06rem;
+    }
+    .main-lo-tab:hover { color: #fff; border-color: var(--line-3, #58675f); }
+    .main-lo-tab.active {
+      border-color: var(--mint-500, #4ed8af); color: #fff; background: rgba(78, 216, 175, 0.12);
+    }
+    .tab-badge-num {
+      font-size: 0.1rem; padding: 0.01rem 0.05rem; border-radius: 2px;
+      background: var(--mint-800, #145443); color: var(--mint-400, #59f4ca); font-weight: 700;
+    }
+
+    /* 视图容器 */
+    .view-container { flex: 1; min-height: 0; position: relative; }
+
+    /* =========================================================================
+       视图 1：干员调配 (Loadout)
+       ========================================================================= */
+    .view-loadout {
+      width: 100%; height: 100%; display: grid; grid-template-columns: minmax(0, 1fr) 5.6rem;
+    }
+    .roster-pane {
+      display: flex; flex-direction: column; border-right: 1px solid var(--line, #2f3a35);
+      background: rgba(12, 15, 14, 0.6); min-width: 0;
+    }
+    .roster-filter-bar {
+      padding: 0.14rem 0.36rem; display: flex; align-items: center; justify-content: space-between;
+      border-bottom: 1px solid var(--line, #2f3a35); background: rgba(16, 20, 18, 0.85);
+    }
+    .filter-chips { display: flex; gap: 0.06rem; }
+    .filter-chip {
+      padding: 0.04rem 0.1rem; font-size: 0.12rem; font-weight: 700;
+      border: 1px solid var(--line, #2f3a35); background: #141a17; color: var(--text-lo, #8a948f);
+      cursor: pointer;
+    }
+    .filter-chip.active {
+      border-color: var(--mint-600, #35d8b4); color: var(--mint-400, #59f4ca); background: rgba(78, 216, 175, 0.1);
+    }
+
+    .op-grid {
+      flex: 1; overflow-y: auto; padding: 0.2rem 0.36rem;
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(1.3rem, 1fr));
+      gap: 0.12rem; align-content: start;
+    }
+    .op-card {
+      background: linear-gradient(180deg, #18201c, #101513);
+      border: 1px solid var(--line, #2f3a35); padding: 0.1rem;
+      display: flex; flex-direction: column; align-items: center; gap: 0.06rem;
+      cursor: pointer; position: relative; transition: all 150ms ease;
+    }
+    .op-card:hover { border-color: var(--line-3, #58675f); transform: translateY(-2px); }
+    .op-card.selected {
+      border-color: var(--mint-500, #4ed8af);
+      background: linear-gradient(180deg, #1e2a24, #121815);
+      box-shadow: 0 0 14px rgba(78, 216, 175, 0.2);
+    }
+    .op-avatar {
+      width: 0.84rem; height: 0.84rem; border-radius: 2px; background: #232d28;
+      display: grid; place-items: center; font-size: 0.26rem; font-weight: 900; color: #fff;
+      border: 1px solid var(--line-2, #3e4b45);
+    }
+    .op-name { font-size: 0.13rem; font-weight: 800; color: #fff; text-align: center; }
+    .op-bonds { display: flex; gap: 0.04rem; }
+    .op-bond-tag {
+      font-size: 0.09rem; padding: 0.01rem 0.04rem; border-radius: 2px;
+      background: rgba(78, 216, 175, 0.1); color: var(--mint-400, #59f4ca); border: 1px solid rgba(78, 216, 175, 0.3);
+    }
+    .pack-flag {
+      position: absolute; top: 0.06rem; right: 0.06rem;
+      font-size: 0.09rem; font-weight: 800; padding: 0.01rem 0.04rem;
+      background: var(--amber, #f6a329); color: #06110d; border-radius: 2px;
+    }
+
+    /* 右侧：4 大子选项卡 (技能 / 模组 / 数值 / 皮肤) */
+    .detail-pane {
+      background: rgba(14, 18, 16, 0.96); padding: 0.24rem 0.32rem;
+      display: flex; flex-direction: column; gap: 0.2rem; overflow-y: auto;
+    }
+    .detail-hero { display: flex; align-items: center; gap: 0.18rem; }
+    .hero-big-avatar {
+      width: 0.94rem; height: 0.94rem; border-radius: 4px; background: #1c2621;
+      border: 2px solid var(--mint-500, #4ed8af); display: grid; place-items: center;
+      font-size: 0.34rem; font-weight: 900; color: #fff;
+    }
+    .hero-name { font-size: 0.24rem; font-weight: 900; color: #fff; }
+
+    /* 4 个子选项卡 (.lo-dtabs) */
+    .lo-dtabs {
+      display: flex; background: #121815; border: 1px solid var(--line, #2f3a35);
+      border-radius: 2px; padding: 0.02rem; gap: 0.02rem;
+    }
+    .lo-dtab {
+      flex: 1; padding: 0.06rem; font-size: 0.12rem; font-weight: 800; border: none;
+      background: transparent; color: var(--text-lo, #8a948f); cursor: pointer; text-align: center;
+    }
+    .lo-dtab.active {
+      background: rgba(78, 216, 175, 0.15); color: var(--mint-400, #59f4ca); border-radius: 2px;
+    }
+
+    /* 皮肤选择器卡片组 (SkinSection) */
+    .skin-cards-grid {
+      display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.12rem;
+    }
+    .skin-card {
+      background: #18221d; border: 1px solid var(--line, #2f3a35);
+      padding: 0.12rem; display: flex; flex-direction: column; gap: 0.06rem; cursor: pointer;
+      position: relative; transition: all 140ms ease;
+    }
+    .skin-card:hover { border-color: var(--line-3, #58675f); }
+    .skin-card.selected {
+      border-color: var(--mint-500, #4ed8af); background: rgba(78, 216, 175, 0.08);
+    }
+    .skin-thumb {
+      width: 100%; height: 1.1rem; background: #222d27; border-radius: 2px;
+      display: grid; place-items: center; font-size: 0.13rem; color: var(--text-lo, #8a948f);
+    }
+    .skin-name { font-size: 0.13rem; font-weight: 800; color: #fff; }
+    .skin-brand { font-size: 0.1rem; color: var(--mint-400, #59f4ca); }
+    .skin-equipped-badge {
+      position: absolute; top: 0.06rem; right: 0.06rem;
+      font-size: 0.09rem; font-weight: 800; padding: 0.02rem 0.05rem;
+      background: var(--mint-700, #2a9e7f); color: #06110d; border-radius: 2px;
+    }
+
+    /* 技能槽 */
+    .skill-slots { display: flex; flex-direction: column; gap: 0.08rem; }
+    .skill-slot {
+      padding: 0.1rem 0.14rem; background: #18201c; border: 1px solid var(--line, #2f3a35);
+      cursor: pointer; display: flex; align-items: center; justify-content: space-between;
+    }
+    .skill-slot.active {
+      border-color: var(--mint-500, #4ed8af); background: rgba(78, 216, 175, 0.08);
+    }
+
+    /* =========================================================================
+       视图 2：自选卡组 (DIY Panel - 4 槽位)
+       ========================================================================= */
+    .view-diy {
+      width: 100%; height: 100%; display: flex; flex-direction: column;
+      padding: 0.28rem 0.36rem; overflow-y: auto; box-sizing: border-box;
+      gap: 0.24rem;
+    }
+    .diy-banner {
+      background: rgba(18, 26, 22, 0.8); border: 1px solid var(--line, #2f3a35);
+      border-left: 4px solid var(--mint-500, #4ed8af); padding: 0.16rem 0.22rem;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .diy-slots-grid {
+      display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.18rem;
+    }
+    .diy-slot-card {
+      background: linear-gradient(180deg, #17201c, #0e1411);
+      border: 1px solid var(--line, #2f3a35); height: 4.8rem;
+      display: flex; flex-direction: column; justify-content: space-between; padding: 0.2rem;
+      position: relative; transition: all 160ms ease;
+    }
+    .diy-slot-card.is-filled {
+      border-color: var(--line-3, #58675f);
+    }
+    .diy-slot-card.is-conflict {
+      border-color: var(--red, #e73118);
+      background: linear-gradient(180deg, rgba(48, 16, 16, 0.9), rgba(18, 8, 8, 0.95));
+    }
+    .slot-tier-tag {
+      font-size: 0.11rem; font-weight: 800; padding: 0.02rem 0.06rem; border-radius: 2px;
+      display: inline-block; width: fit-content;
+    }
+    .tier-5 { background: rgba(192, 120, 240, 0.2); color: #c078f0; border: 1px solid #c078f0; }
+    .tier-6 { background: rgba(255, 198, 0, 0.2); color: var(--gold, #ffc600); border: 1px solid var(--gold, #ffc600); }
+
+    /* =========================================================================
+       视图 3：干员名录 (Ownership Panel - 53 正常棋子)
+       ========================================================================= */
+    .view-ownership {
+      width: 100%; height: 100%; display: flex; flex-direction: column;
+      padding: 0.24rem 0.36rem; overflow-y: auto; box-sizing: border-box; gap: 0.18rem;
+    }
+    .own-cards-grid {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(2.8rem, 1fr)); gap: 0.12rem;
+    }
+    .own-card-item {
+      background: #151d19; border: 1px solid var(--line, #2f3a35); padding: 0.12rem 0.16rem;
+      display: flex; align-items: center; justify-content: space-between; cursor: pointer;
+    }
+    .own-card-item.is-unowned {
+      border-color: rgba(246, 163, 41, 0.4); background: rgba(246, 163, 41, 0.05);
+    }
+    .own-tag { font-size: 0.1rem; font-weight: 800; padding: 0.02rem 0.05rem; border-radius: 2px; }
+  </style>
+</head>
+<body>
+  <!-- 顶栏：3 大主选项卡切换 -->
+  <header class="lo-top-header">
+    <div style="display: flex; align-items: center; gap: 0.24rem;">
+      <a href="03-lobby.html" class="back-btn">← 返回大厅</a>
+
+      <div class="main-lo-tabs">
+        <button class="main-lo-tab active" id="tab-btn-loadout" onclick="switchMainTab('loadout')">
+          <span>干员调配</span>
+          <span class="tab-badge-num">112</span>
+        </button>
+        <button class="main-lo-tab" id="tab-btn-ownership" onclick="switchMainTab('ownership')">
+          <span>干员名录 (持有/补位)</span>
+          <span class="tab-badge-num">53</span>
+        </button>
+        <button class="main-lo-tab" id="tab-btn-diy" onclick="switchMainTab('diy')">
+          <span>自选卡组 (DIY)</span>
+          <span class="tab-badge-num" style="background: var(--gold, #ffc600); color: #06110d;">4/4 槽位</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Mod 测试模拟注入开关 -->
+    <div style="display: flex; align-items: center; gap: 0.14rem;">
+      <label style="font-size: 0.12rem; color: var(--text-md, #c3cbc7); cursor: pointer; display: flex; align-items: center; gap: 0.06rem;">
+        <input type="checkbox" id="mod-load-switch" onchange="toggleModRoster(this.checked)">
+        <span>模拟启用 Mod (fanpack)</span>
+      </label>
+      <span style="font-size: 0.11rem; color: var(--text-lo, #8a948f); border-left: 1px solid var(--line-2, #3e4b45); padding-left: 0.1rem;" id="roster-stat-text">
+        默认纯官方: <b>266 棋子 · 0 Mod</b>
+      </span>
+    </div>
+  </header>
+
+  <div class="view-container">
+    <!-- =====================================================================
+         视图 1：干员调配 (Loadout)
+         ===================================================================== -->
+    <div class="view-loadout" id="view-loadout">
+      <!-- 左栏：干员网格 -->
+      <section class="roster-pane">
+        <div class="roster-filter-bar">
+          <div class="filter-chips">
+            <div class="filter-chip active">全部职业</div>
+            <div class="filter-chip">近卫</div>
+            <div class="filter-chip">狙击</div>
+            <div class="filter-chip">医疗</div>
+            <div class="filter-chip">术师</div>
+            <div class="filter-chip">先锋</div>
+          </div>
+          <div class="filter-chips">
+            <div class="filter-chip active">全部品阶</div>
+            <div class="filter-chip">VI 阶 (6★)</div>
+            <div class="filter-chip">V 阶 (5★)</div>
+          </div>
+        </div>
+
+        <div class="op-grid" id="op-cards-grid">
+          <!-- 银灰 (官方) -->
+          <div class="op-card selected" onclick="selectOp('银灰', 'SilverAsh', '谢拉格 / 近卫', 'S3 · 真银斩', '防御力下降70%，攻击力+200%，大范围多目标物理斩击', false)">
+            <div class="op-avatar">银</div>
+            <div class="op-name">银灰</div>
+            <div class="op-bonds">
+              <span class="op-bond-tag">谢拉格</span>
+              <span class="op-bond-tag">独行</span>
+            </div>
+          </div>
+
+          <!-- 玛恩纳 (官方) -->
+          <div class="op-card" onclick="selectOp('玛恩纳', 'Młynar', '卡西米尔 / 近卫', 'S3 · 未完的断章', '攻击范围扩大，造成高额真实伤害与反伤', false)">
+            <div class="op-avatar">玛</div>
+            <div class="op-name">玛恩纳</div>
+            <div class="op-bonds">
+              <span class="op-bond-tag">卡西米尔</span>
+              <span class="op-bond-tag">投资人</span>
+            </div>
+          </div>
+
+          <!-- 提丰 (官方) -->
+          <div class="op-card" onclick="selectOp('提丰', 'Typhon', '萨米 / 狙击', 'S2 · 冰原的哨卡', '攻击力提升，优先锁定高生命值重型目标', false)">
+            <div class="op-avatar">提</div>
+            <div class="op-name">提丰</div>
+            <div class="op-bonds">
+              <span class="op-bond-tag">精准</span>
+              <span class="op-bond-tag">远见</span>
+            </div>
+          </div>
+
+          <!-- 塞雷娅 (官方) -->
+          <div class="op-card" onclick="selectOp('塞雷娅', 'Saria', '莱茵生命 / 重装', 'S3 · 钙质化', '附近敌人减速并大幅增加受到的法术伤害', false)">
+            <div class="op-avatar">塞</div>
+            <div class="op-name">塞雷娅</div>
+            <div class="op-bonds">
+              <span class="op-bond-tag">坚守</span>
+              <span class="op-bond-tag">助力</span>
+            </div>
+          </div>
+
+          <!-- 艾雅法拉 (官方) -->
+          <div class="op-card" onclick="selectOp('艾雅法拉', 'Eyjafjalla', '卡普里尼 / 术师', 'S3 · 火山', '超大范围极速群体高爆发法术爆发', false)">
+            <div class="op-avatar">羊</div>
+            <div class="op-name">艾雅法拉</div>
+            <div class="op-bonds">
+              <span class="op-bond-tag">奥术</span>
+              <span class="op-bond-tag">奇迹</span>
+            </div>
+          </div>
+
+          <!-- 动态包内干员容器 (默认空，勾选Mod后动态出现) -->
+          <div id="pack-ops-container" style="display: contents;"></div>
+        </div>
+      </section>
+
+      <!-- 右栏：4 个子选项卡 (技能 / 模组 / 数值 / 皮肤) -->
+      <aside class="detail-pane">
+        <div class="detail-hero">
+          <div class="hero-big-avatar" id="hero-avatar">银</div>
+          <div>
+            <div class="hero-name" id="hero-name">银灰</div>
+            <div style="color: var(--gold, #ffc600); font-size: 0.13rem;">★★★★★★</div>
+            <div style="font-size: 0.12rem; color: var(--text-lo, #8a948f);" id="hero-sub">谢拉格 / 近卫干员</div>
+          </div>
+        </div>
+
+        <!-- 4 个子选项卡 -->
+        <div class="lo-dtabs">
+          <button class="lo-dtab active" id="dtab-skill" onclick="switchDetailTab('skill')">技能 · SKILL</button>
+          <button class="lo-dtab" id="dtab-mod" onclick="switchDetailTab('mod')">模组 · MODULE</button>
+          <button class="lo-dtab" id="dtab-stats" onclick="switchDetailTab('stats')">数值 · STATS</button>
+          <button class="lo-dtab" id="dtab-skin" onclick="switchDetailTab('skin')">换装 · SKIN</button>
+        </div>
+
+        <!-- 子面板 1：技能 -->
+        <div id="subpanel-skill" class="skill-slots">
+          <div class="skill-slot">
+            <div>
+              <div style="font-size: 0.13rem; font-weight: 800; color: #fff;">S1 · 强力击·γ型</div>
+              <div style="font-size: 0.11rem; color: var(--text-lo, #8a948f);">下次普攻攻击力提升至 290%</div>
+            </div>
+            <span style="font-size: 0.11rem; color: var(--text-lo, #8a948f);">技力: 3</span>
+          </div>
+
+          <div class="skill-slot">
+            <div>
+              <div style="font-size: 0.13rem; font-weight: 800; color: #fff;">S2 · 雪境生存法则</div>
+              <div style="font-size: 0.11rem; color: var(--text-lo, #8a948f);">切换形态，防御力提升并持续回复生命</div>
+            </div>
+            <span style="font-size: 0.11rem; color: var(--text-lo, #8a948f);">切换型</span>
+          </div>
+
+          <div class="skill-slot active">
+            <div>
+              <div style="font-size: 0.13rem; font-weight: 800; color: #fff;" id="skill-s3-title">S3 · 真银斩</div>
+              <div style="font-size: 0.11rem; color: var(--text-lo, #8a948f);" id="skill-s3-desc">防御力下降70%，攻击力+200%，同时攻击多名敌人</div>
+            </div>
+            <span style="font-size: 0.11rem; color: var(--mint-400, #59f4ca);">当前装配</span>
+          </div>
+        </div>
+
+        <!-- 子面板 2：模组 -->
+        <div id="subpanel-mod" style="display: none; flex-direction: column; gap: 0.1rem;">
+          <div class="skill-slot active">
+            <div>
+              <div style="font-size: 0.13rem; font-weight: 800; color: #fff;">模组 X · 喀兰长锋</div>
+              <div style="font-size: 0.11rem; color: var(--text-lo, #8a948f);">攻击力 +55，防御力 +30；特性追加无视目标 100 点护甲</div>
+            </div>
+            <span style="font-size: 0.11rem; color: var(--mint-400, #59f4ca);">已装配</span>
+          </div>
+          <div class="skill-slot">
+            <div>
+              <div style="font-size: 0.13rem; font-weight: 800; color: #fff;">模组 Y · 鹰之眼界</div>
+              <div style="font-size: 0.11rem; color: var(--text-lo, #8a948f);">反隐范围扩大至全场，天赋再部署时间缩短</div>
+            </div>
+            <span style="font-size: 0.11rem; color: var(--text-lo, #8a948f);">备选</span>
+          </div>
+        </div>
+
+        <!-- 子面板 3：数值 -->
+        <div id="subpanel-stats" style="display: none; flex-direction: column; gap: 0.12rem;">
+          <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.08rem; background: #121815; padding: 0.12rem; border: 1px solid var(--line, #2f3a35);">
+            <div><span style="font-size: 0.11rem; color: var(--text-lo, #8a948f);">攻击力</span><br><b style="font-size: 0.16rem; color: #fff;">765</b></div>
+            <div><span style="font-size: 0.11rem; color: var(--text-lo, #8a948f);">最大生命</span><br><b style="font-size: 0.16rem; color: #fff;">2560</b></div>
+            <div><span style="font-size: 0.11rem; color: var(--text-lo, #8a948f);">防御力</span><br><b style="font-size: 0.16rem; color: #fff;">412</b></div>
+          </div>
+          <div style="font-size: 0.12rem; color: var(--text-md, #c3cbc7); line-height: 1.5;">
+            <b>特性:</b> 可以进行远程攻击，但此时攻击力降低至 80%。<br>
+            <b>天赋【领袖】:</b> 全体在场干员再部署时间 -10%，攻击力 +10%。
+          </div>
+        </div>
+
+        <!-- 子面板 4：换装 / 皮肤 (★ 用户重点需求) -->
+        <div id="subpanel-skin" style="display: none; flex-direction: column; gap: 0.12rem;">
+          <div style="font-size: 0.12rem; color: var(--text-md, #c3cbc7);">
+            当前干员可用时装库 (已内置 174 套全量时装，对局与调配即时同步)：
+          </div>
+
+          <div class="skin-cards-grid">
+            <!-- 默认立绘 -->
+            <div class="skin-card selected" onclick="selectSkin(this, '默认晋升造型')">
+              <span class="skin-equipped-badge">已穿戴</span>
+              <div class="skin-thumb">默认立绘 (E2)</div>
+              <div class="skin-name">默认晋升造形</div>
+              <div class="skin-brand">Rhodes Island · 初始</div>
+            </div>
+
+            <!-- 皮肤 1 -->
+            <div class="skin-card" onclick="selectSkin(this, '约克郡寒风')">
+              <div class="skin-thumb" style="border: 1px solid var(--mint-700, #2a9e7f);">CORAL COAST</div>
+              <div class="skin-name">约克郡寒风</div>
+              <div class="skin-brand">Coral Coast 系列专属</div>
+            </div>
+
+            <!-- 皮肤 2 -->
+            <div class="skin-card" onclick="selectSkin(this, '探寻者')">
+              <div class="skin-thumb" style="border: 1px solid var(--gold, #ffc600);">EPOQUE</div>
+              <div class="skin-name">探寻者</div>
+              <div class="skin-brand">时代系列 / 典藏活动</div>
+            </div>
+          </div>
+        </div>
+      </aside>
+    </div>
+
+    <!-- =====================================================================
+         视图 2：自选卡组 (DIY - 4 槽位) (★ 用户重点需求)
+         ===================================================================== -->
+    <div class="view-diy" id="view-diy" style="display: none;">
+      <div class="diy-banner">
+        <div>
+          <span style="font-size: 0.16rem; font-weight: 900; color: #fff;">自选编队规则 (0.2.0 DIY System)</span>
+          <p style="font-size: 0.12rem; color: var(--text-lo, #8a948f); margin-top: 0.04rem;">
+            共 4 个槽位（5阶 ×2, 6阶 ×2）。填入的干员将在达到调度中心等级 5/6 时仅在自己的商店中刷出。
+          </p>
+        </div>
+        <div style="font-size: 0.12rem; color: var(--amber, #f6a329); text-align: right;">
+          <b>[安全契约 · stripPackOperators]</b><br>
+          若开启 Mod，被包转为正规棋子的干员会自动从自选备选库剔除，并在此提示标红。
+        </div>
+      </div>
+
+      <!-- 4 槽位展示 -->
+      <div class="diy-slots-grid">
+        <!-- 槽位 1：5阶自选 -->
+        <div class="diy-slot-card is-filled">
+          <div>
+            <span class="slot-tier-tag tier-5">5阶 自选槽位 1</span>
+            <div style="font-size: 0.11rem; color: var(--text-lo, #8a948f); margin-top: 0.04rem;">调度中心 Lv.5 出售</div>
+          </div>
+
+          <div style="display: flex; flex-direction: column; align-items: center; gap: 0.08rem;">
+            <div class="op-avatar" style="width: 1.1rem; height: 1.1rem; font-size: 0.36rem; border-color: #c078f0;">德</div>
+            <div style="font-size: 0.18rem; font-weight: 900; color: #fff;">德克萨斯</div>
+            <span style="font-size: 0.11rem; color: #c078f0;">[已持有 · S2 剑雨]</span>
+          </div>
+
+          <button class="back-btn" style="text-align: center;" onclick="alert('更换 5 阶自选干员')">更换自选</button>
+        </div>
+
+        <!-- 槽位 2：5阶自选 -->
+        <div class="diy-slot-card is-filled">
+          <div>
+            <span class="slot-tier-tag tier-5">5阶 自选槽位 2</span>
+            <div style="font-size: 0.11rem; color: var(--text-lo, #8a948f); margin-top: 0.04rem;">调度中心 Lv.5 出售</div>
+          </div>
+
+          <div style="display: flex; flex-direction: column; align-items: center; gap: 0.08rem;">
+            <div class="op-avatar" style="width: 1.1rem; height: 1.1rem; font-size: 0.36rem; border-color: #c078f0;">拉</div>
+            <div style="font-size: 0.18rem; font-weight: 900; color: #fff;">拉普兰德</div>
+            <span style="font-size: 0.11rem; color: #c078f0;">[已持有 · S2 狼魂]</span>
+          </div>
+
+          <button class="back-btn" style="text-align: center;" onclick="alert('更换 5 阶自选干员')">更换自选</button>
+        </div>
+
+        <!-- 槽位 3：6阶自选 (官方正常干员) -->
+        <div class="diy-slot-card is-filled">
+          <div>
+            <span class="slot-tier-tag tier-6">6阶 自选槽位 1</span>
+            <div style="font-size: 0.11rem; color: var(--text-lo, #8a948f); margin-top: 0.04rem;">调度中心 Lv.6 出售</div>
+          </div>
+
+          <div style="display: flex; flex-direction: column; align-items: center; gap: 0.08rem;">
+            <div class="op-avatar" style="width: 1.1rem; height: 1.1rem; font-size: 0.36rem; border-color: var(--gold, #ffc600);">锏</div>
+            <div style="font-size: 0.18rem; font-weight: 900; color: #fff;">锏 (Degenbrecher)</div>
+            <span style="font-size: 0.11rem; color: var(--gold, #ffc600);">[原型干员 · S3 无瑕斩击]</span>
+          </div>
+
+          <button class="back-btn" style="text-align: center;" onclick="alert('更换 6 阶自选干员')">更换自选</button>
+        </div>
+
+        <!-- 槽位 4：6阶自选 (模拟与 Mod 冲突与剔除效果) -->
+        <div class="diy-slot-card is-filled" id="diy-slot-4">
+          <div>
+            <span class="slot-tier-tag tier-6">6阶 自选槽位 2</span>
+            <div style="font-size: 0.11rem; color: var(--text-lo, #8a948f); margin-top: 0.04rem;">调度中心 Lv.6 出售</div>
+          </div>
+
+          <div style="display: flex; flex-direction: column; align-items: center; gap: 0.08rem;">
+            <div class="op-avatar" style="width: 1.1rem; height: 1.1rem; font-size: 0.36rem; border-color: var(--gold, #ffc600);" id="diy-slot-4-avatar">史</div>
+            <div style="font-size: 0.18rem; font-weight: 900; color: #fff;" id="diy-slot-4-name">史尔特尔</div>
+            <span style="font-size: 0.11rem; color: var(--gold, #ffc600);" id="diy-slot-4-tag">[已持有 · S3 黄昏]</span>
+          </div>
+
+          <button class="back-btn" style="text-align: center;" onclick="alert('更换 6 阶自选干员')">更换自选</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- =====================================================================
+         视图 3：干员名录 (Ownership / 补位) (★ 用户重点需求)
+         ===================================================================== -->
+    <div class="view-ownership" id="view-ownership" style="display: none;">
+      <div style="display: flex; justify-content: space-between; align-items: center;">
+        <div>
+          <span style="font-size: 0.16rem; font-weight: 900; color: #fff;">干员名录与替补设定 (Ownership & Stand-in)</span>
+          <div style="font-size: 0.12rem; color: var(--text-lo, #8a948f); margin-top: 0.02rem;">
+            点击干员卡片可快速切换【持有】与【未持有】。未持有时，对局将由官方替补干员出战，数值与盟约不受影响。
+          </div>
+        </div>
+        <button class="back-btn" onclick="alert('已将所有干员重置为全量持有状态')">全部设为持有</button>
+      </div>
+
+      <div class="own-cards-grid">
+        <div class="own-card-item" onclick="toggleOwnership(this, '银灰', '芳汀')">
+          <div>
+            <b style="color: #fff; font-size: 0.14rem;">银灰</b>
+            <div style="font-size: 0.11rem; color: var(--text-lo, #8a948f);">近卫 · 领头羊</div>
+          </div>
+          <span class="own-tag" style="background: var(--mint-800, #145443); color: var(--mint-400, #59f4ca);">持有</span>
+        </div>
+
+        <div class="own-card-item is-unowned" onclick="toggleOwnership(this, '风笛', '红豆')">
+          <div>
+            <b style="color: #fff; font-size: 0.14rem;">风笛 → [替补: 红豆]</b>
+            <div style="font-size: 0.11rem; color: var(--amber, #f6a329);">未持有 · 由红豆上场</div>
+          </div>
+          <span class="own-tag" style="background: rgba(246, 163, 41, 0.2); color: var(--amber, #f6a329);">未持有</span>
+        </div>
+
+        <div class="own-card-item" onclick="toggleOwnership(this, '玛恩纳', '月见夜')">
+          <div>
+            <b style="color: #fff; font-size: 0.14rem;">玛恩纳</b>
+            <div style="font-size: 0.11rem; color: var(--text-lo, #8a948f);">近卫 · 卡西米尔</div>
+          </div>
+          <span class="own-tag" style="background: var(--mint-800, #145443); color: var(--mint-400, #59f4ca);">持有</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // 顶层选项卡切换 (干员调配 / 名录 / 自选)
+    function switchMainTab(tab) {
+      document.getElementById('view-loadout').style.display = tab === 'loadout' ? 'grid' : 'none';
+      document.getElementById('view-ownership').style.display = tab === 'ownership' ? 'flex' : 'none';
+      document.getElementById('view-diy').style.display = tab === 'diy' ? 'flex' : 'none';
+
+      document.querySelectorAll('.main-lo-tab').forEach(b => b.classList.remove('active'));
+      document.getElementById(`tab-btn-${tab}`).classList.add('active');
+    }
+
+    // 右侧子选项卡切换 (技能 / 模组 / 数值 / 换装皮肤)
+    function switchDetailTab(sub) {
+      document.getElementById('subpanel-skill').style.display = sub === 'skill' ? 'flex' : 'none';
+      document.getElementById('subpanel-mod').style.display = sub === 'mod' ? 'flex' : 'none';
+      document.getElementById('subpanel-stats').style.display = sub === 'stats' ? 'flex' : 'none';
+      document.getElementById('subpanel-skin').style.display = sub === 'skin' ? 'flex' : 'none';
+
+      document.querySelectorAll('.lo-dtab').forEach(b => b.classList.remove('active'));
+      document.getElementById(`dtab-${sub}`).classList.add('active');
+    }
+
+    function selectSkin(card, name) {
+      document.querySelectorAll('.skin-card').forEach(c => {
+        c.classList.remove('selected');
+        const badge = c.querySelector('.skin-equipped-badge');
+        if (badge) badge.remove();
+      });
+      card.classList.add('selected');
+      const b = document.createElement('span');
+      b.className = 'skin-equipped-badge';
+      b.textContent = '已穿戴';
+      card.appendChild(b);
+    }
+
+    function toggleOwnership(card, op, sub) {
+      if (card.classList.contains('is-unowned')) {
+        card.classList.remove('is-unowned');
+        card.innerHTML = `<div><b style="color: #fff; font-size: 0.14rem;">${op}</b><div style="font-size: 0.11rem; color: var(--text-lo, #8a948f);">正常出战</div></div><span class="own-tag" style="background: var(--mint-800, #145443); color: var(--mint-400, #59f4ca);">持有</span>`;
+      } else {
+        card.classList.add('is-unowned');
+        card.innerHTML = `<div><b style="color: #fff; font-size: 0.14rem;">${op} → [替补: ${sub}]</b><div style="font-size: 0.11rem; color: var(--amber, #f6a329);">未持有 · 由${sub}上场</div></div><span class="own-tag" style="background: rgba(246, 163, 41, 0.2); color: var(--amber, #f6a329);">未持有</span>`;
+      }
+    }
+
+    // 模拟开启/关闭 Mod：默认不显示包内干员，勾选后才动态注入！
+    function toggleModRoster(enabled) {
+      const c = document.getElementById('pack-ops-container');
+      const stat = document.getElementById('roster-stat-text');
+      const diy4 = document.getElementById('diy-slot-4');
+
+      if (enabled) {
+        c.innerHTML = `
+          <div class="op-card" onclick="selectOp('凯尔希', 'Kal\'tsit', '罗德岛 / 医疗', 'S3 · 指令:熔毁', '召唤 Mon3tr 协同作战，造成高额真实伤害', true)">
+            <span class="pack-flag">包</span>
+            <div class="op-avatar">凯</div>
+            <div class="op-name">凯尔希</div>
+            <div class="op-bonds"><span class="op-bond-tag">罗德岛</span><span class="op-bond-tag">协防</span></div>
+          </div>
+          <div class="op-card" onclick="selectOp('维什戴尔', 'Wis\'adel', '卡兹戴尔 / 狙击', 'S3 · 爆裂黎明', '攻击溅射半径 2.5，对空攻击并施加眩晕', true)">
+            <span class="pack-flag">包</span>
+            <div class="op-avatar">维</div>
+            <div class="op-name">维什戴尔</div>
+            <div class="op-bonds"><span class="op-bond-tag">卡兹戴尔</span><span class="op-bond-tag">突袭</span></div>
+          </div>
+        `;
+        stat.innerHTML = `已挂载 Mod: <b style="color: var(--amber, #f6a329);">266 + 12 (fanpack 动态并入)</b>`;
+
+        // 演示 stripPackOperators 效果：若自选填了维什戴尔或凯尔希，标红剔除提示
+        diy4.classList.add('is-conflict');
+        document.getElementById('diy-slot-4-tag').innerHTML = `<span style="color: var(--red-premium, #ff5454);">[包冲突已剔除: 改为正规棋子]</span>`;
+      } else {
+        c.innerHTML = '';
+        stat.innerHTML = `默认纯官方: <b>266 棋子 · 0 Mod</b>`;
+        diy4.classList.remove('is-conflict');
+        document.getElementById('diy-slot-4-tag').textContent = `[已持有 · S3 黄昏]`;
+      }
+    }
+
+    function selectOp(name, en, sub, s3, s3Desc, isPack) {
+      document.getElementById('hero-name').textContent = name;
+      document.getElementById('hero-avatar').textContent = name[0];
+      document.getElementById('hero-sub').textContent = sub;
+      document.getElementById('skill-s3-title').textContent = s3;
+      document.getElementById('skill-s3-desc').textContent = s3Desc;
+
+      document.querySelectorAll('.op-card').forEach(c => c.classList.remove('selected'));
+      event.currentTarget.classList.add('selected');
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,91 @@
+/* ==========================================================================================
+   screens/alliances.css — 盟约与策略总览 (js/screens/alliances.js): a read-only overlay that reuses the 装备总览 /
+   干员调配 skeleton (.lo / .lo-top / .lo-note / .lo-body / .lo-grid / .lo-card / .lo-chip / .eq-*), so the three
+   screens look and behave alike; this file adds only its own pieces — the 盟约 / 策略 tabs, the group headers of the
+   grid, the 层数 rows of a bond's effect, the member list and the 相关装备 chips.
+   Sizes are design px ÷ 100 (theme.css root scale); text that must stay readable on phones uses max(.xxrem, N px).
+   ========================================================================================== */
+
+/* the overlay covers the screen behind it (the same rule .sp-loadout-open / .sp-equip-open use) */
+.sp-alliance-open .app-root > .screen { visibility: hidden; }
+
+/* ---- tabs (盟约 / 策略) ------------------------------------------------------------------ */
+.al-tabs { width: 100%; gap: .06rem; }
+.al-tab { display: inline-flex; align-items: center; gap: .06rem; height: max(.42rem, 26px); padding: 0 .18rem; font-weight: 700; letter-spacing: .04em; }
+.al-tab .icon { width: max(.2rem, 12px); height: max(.2rem, 12px); }
+.al-tab .num { font-family: var(--font-num); font-size: max(.13rem, 9px); opacity: .8; }
+
+/* ---- group headers inside the card grid ------------------------------------------------- */
+.al-group { grid-column: 1 / -1; display: flex; align-items: center; gap: .12rem; margin: .08rem 0 .01rem; }
+.al-group__k { font-size: max(.17rem, 11px); font-weight: 900; letter-spacing: .14em; color: var(--text-md); }
+.al-group__n { font-size: max(.13rem, 9px); color: var(--text-dim); }
+.al-group::after { content: ''; flex: 1; height: 1px; background: linear-gradient(90deg, var(--line-2), transparent); }
+
+/* ---- cards ------------------------------------------------------------------------------ */
+/* the strategy portraits need room: a wider min column than the shared .lo-grid default (64px), so the 180×180
+   bust reads at ~1.6× the size it had (the official 策略 draft uses 1.36rem per card, draft.css) */
+.al-grid--bands { grid-template-columns: repeat(auto-fill, minmax(max(1.8rem, 112px), 1fr)); }
+.al-card { text-align: left; --tc: var(--line-3); }
+.al-card--core { --tc: var(--mint-400); }
+.al-card--bond .lo-card__art img { object-fit: contain; padding: 16%; background: radial-gradient(circle at 50% 45%, rgba(78, 216, 175, .1), transparent 70%); }
+.al-card--band .lo-card__art { display: block; background: #111513; }
+/* the official strategy art is a 180×180 bust (all 40 are) — fill the card frame instead of the .6rem default
+   BandIcon size, so the 大头照 reads at full size and nothing is cut */
+.al-card--band .lo-card__art .bandicon { --bi: 100%; width: 100%; height: 100%; display: block; }
+.al-card--band .lo-card__art .bandicon img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.al-card__meta { font-size: max(.12rem, 9px); }
+.al-card__th { font-family: var(--font-num); letter-spacing: .04em; color: var(--text-lo); }
+.al-card__eff { min-width: 0; overflow: hidden; color: var(--text-lo); white-space: nowrap; text-overflow: ellipsis; }
+.al-card__hp { display: inline-flex; align-items: center; gap: .03rem; font-family: var(--font-num); color: var(--gold-2); }
+.al-kind { padding: 0 .07rem; font-size: max(.11rem, 8px); letter-spacing: .1em; border: 1px solid var(--line-3); color: var(--text-lo); }
+.al-kind.is-core { border-color: var(--mint-600); color: var(--mint-400); background: rgba(78, 216, 175, .08); }
+
+/* ---- detail column ---------------------------------------------------------------------- */
+/* NB: padding on the disc must be *fixed*, never a percentage — a % resolves against the *detail column*
+   (≈350px), which blows the content box up and squeezes the icon to 0×0 (the grey square bug, 2026-10-06). */
+.al-detail__disc { display: grid; place-items: center; background: #1b201e; }
+.al-detail__disc img { object-fit: contain; padding: max(.12rem, 7px); }
+.al-detail__disc.is-core { border-color: var(--mint-600); box-shadow: inset 0 0 0 1px rgba(78, 216, 175, .25); }
+/* the strategy art is a 180×180 bust: `BandIcon size="xl"` is 2.2rem (132 px), and the `.eq-detail__art` frame
+   clips it to 66 px ⇒ only a corner of the face survived. Fill the frame instead — a square source + cover means
+   the whole bust, as large as the frame allows. */
+.al-detail__disc--band .bandicon { --bi: 100%; width: 100%; height: 100%; display: block; }
+.al-detail__disc--band .bandicon img { width: 100%; height: 100%; object-fit: cover; padding: 0; border-radius: 0; }
+.al-detail__hp { margin-left: auto; }
+
+/* 层数行：官方八角图标（TierChip）+ 需要的人数 */
+.al-layerrow { display: grid; grid-template-columns: max(1.1rem, 64px) 1fr; gap: .1rem; align-items: start; padding: .05rem 0; border-top: 1px dashed var(--line-1); }
+.al-layerrow:first-of-type { border-top: 0; }
+.al-layerrow.is-base { opacity: .92; }
+.al-layer { display: inline-flex; flex-direction: column; align-items: center; justify-content: center; gap: .02rem; padding: .03rem .06rem; border: 1px solid var(--line-3); background: rgba(0, 0, 0, .3); }
+.al-layer__icon { width: max(.34rem, 20px); height: max(.34rem, 20px); }
+.al-layer__k { font-family: var(--font-num); font-size: max(.15rem, 10px); font-weight: 900; letter-spacing: .06em; color: var(--mint-400); }
+.al-layer__n { font-size: max(.11rem, 8px); color: var(--text-dim); }
+.al-layer--0 .al-layer__k { color: var(--text-lo); font-weight: 700; }
+
+/* 相关装备 / 相关盟约 chips */
+.al-items { display: flex; flex-wrap: wrap; gap: .08rem; }
+.al-item { display: inline-flex; align-items: center; gap: .06rem; padding: .05rem .1rem .05rem .05rem; border: 1px solid var(--line-2); background: rgba(0, 0, 0, .3); color: inherit; cursor: pointer; }
+.al-item:hover { border-color: var(--mint-500); }
+.al-item__icon { width: max(.3rem, 18px); height: max(.3rem, 18px); object-fit: contain; }
+.al-item__name { font-size: max(.15rem, 10px); color: var(--text-md); }
+.al-bondchip { display: inline-flex; align-items: center; gap: .06rem; padding: .04rem .1rem; font-size: max(.15rem, 10px); color: var(--text-lo); border: 1px solid var(--line-2); }
+.al-bondchip.is-core { color: var(--mint-400); border-color: var(--mint-800); background: rgba(78, 216, 175, .07); }
+.al-bondchip__icon { width: max(.2rem, 12px); height: max(.2rem, 12px); object-fit: contain; }
+
+/* 成员 list: a compact grid of thumb + name + tier */
+.al-members { display: grid; grid-template-columns: repeat(auto-fill, minmax(max(1.7rem, 104px), 1fr)); gap: .06rem; }
+.al-member { display: flex; align-items: center; gap: .06rem; padding: .03rem .05rem; border: 1px solid transparent; background: rgba(0, 0, 0, .22); }
+.al-member:hover { border-color: var(--line-2); }
+.al-member__name { flex: 1; min-width: 0; overflow: hidden; font-size: max(.15rem, 10px); color: var(--text-md); white-space: nowrap; text-overflow: ellipsis; }
+/* the row carries the standalone 阶级 chip, so the thumb's own mini badge would double it */
+.al-member .uthumb__tier { display: none; }
+.al-member .tier { width: max(.28rem, 17px); height: max(.28rem, 17px); }
+
+/* ---- phones ----------------------------------------------------------------------------- */
+@media (max-width: 760px) {
+  .al-layerrow { grid-template-columns: max(.92rem, 54px) 1fr; }
+  .al-members { grid-template-columns: repeat(auto-fill, minmax(max(1.5rem, 92px), 1fr)); }
+}
+
+@media (prefers-reduced-motion: reduce) { .al-item, .al-member { transition: none; } }

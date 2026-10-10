@@ -1,0 +1,9 @@
+{
+  "_doc": "The pack's own art: asset key → file inside this pack folder. tools/fetch-assets.mjs copies each one to public/assets/pack/<key>.png, records.json `assets` maps those keys to the served URLs, and server/index.js overlays them onto data/assets.json while the pack is loaded.",
+  "bond_kazdelShip": "art/bond_kazdelShip.png",
+  "bond_rhodesShip": "art/bond_rhodesShip.png",
+  "trap_c_01": "art/trap_c_01.png",
+  "trap_c_02": "art/trap_c_02.png",
+  "trap_c_03": "art/trap_c_03.png",
+  "trap_c_04": "art/trap_c_04.png"
+}

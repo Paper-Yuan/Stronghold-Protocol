@@ -40,6 +40,7 @@ desktop.ini
 vibe_images/
 
 # --- Build artifacts ----------------------------------------------------------------
+dist/
 *.apk
 *.aab
 *.zip
@@ -48,9 +49,24 @@ debug_web/
 debug_*.png
 test_edge.png
 .edge_profile/
+.edge_data/
+android/build/
 android/app/build/
 android/.gradle/
 android/local.properties
 android/app/src/main/assets/app_bundle.zip
 android/app/src/main/assets/bundle.sha256
+
+# --- mod pipeline runtime dirs (CF_MOD_TRI_PLAN.md §0.3 冻结落点) --------------------------------
+# 上传验证 staging 与服务器整包缓存：运行时产物，绝不入库
+server/.mod-staging/
+server/.mod-cache/
+
+# --- scratch & session debris (验收截图/临时脚本/管道残留) --------------------------------------
+screen*.png
+screen_*.png
+scratch_*.js
+nul
+cloudflared-*.deb
+test_ports.py
 

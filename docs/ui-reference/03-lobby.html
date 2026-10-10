@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="sp-hover sp-fs">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>UI 参考 · 大厅 (Lobby) - Stronghold Protocol</title>
+  <link rel="stylesheet" href="../../public/css/theme.css">
+  <link rel="stylesheet" href="../../public/css/components.css">
+  <link rel="stylesheet" href="../../public/css/screens/lobby.css">
+  <style>
+    html {
+      font-size: clamp(24px, min(100vw / 19.2, 100vh / 10.8), 240px);
+      background: var(--bg-0, #0c0f0e);
+      color: var(--text-hi, #f2f2f2);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+      margin: 0; padding: 0; height: 100%; overflow: hidden;
+    }
+    body {
+      margin: 0; padding: 0; width: 100vw; height: 100vh;
+      display: flex; flex-direction: column; position: relative; overflow: hidden;
+      background: #090c0b;
+    }
+
+    /* 顶部导航与玩家卡片 */
+    .topbar {
+      height: 0.68rem; padding: 0 0.4rem;
+      display: flex; align-items: center; justify-content: space-between;
+      background: linear-gradient(180deg, rgba(16, 20, 18, 0.95), rgba(12, 15, 14, 0.7));
+      border-bottom: 1px solid var(--line, #2f3a35); z-index: 10;
+    }
+    .topbar-left { display: flex; align-items: center; gap: 0.24rem; }
+    .back-btn {
+      padding: 0.06rem 0.16rem; font-size: 0.13rem; font-weight: 700;
+      border: 1px solid var(--line-2, #3e4b45); background: rgba(255, 255, 255, 0.03);
+      color: var(--text-md, #c3cbc7); cursor: pointer; text-decoration: none;
+      display: flex; align-items: center; gap: 0.06rem;
+    }
+    .back-btn:hover { border-color: var(--mint-500, #4ed8af); color: #fff; }
+
+    .player-card { display: flex; align-items: center; gap: 0.14rem; }
+    .player-avatar {
+      width: 0.44rem; height: 0.44rem; border-radius: 50%;
+      background: #141c18; border: 2px solid var(--mint-600, #35d8b4);
+      display: grid; place-items: center; font-size: 0.18rem; font-weight: 900; color: #fff;
+    }
+    .player-meta { display: flex; flex-direction: column; gap: 0.02rem; }
+    .player-name { font-size: 0.16rem; font-weight: 800; color: #fff; }
+    .player-level { font-size: 0.11rem; color: var(--mint-400, #59f4ca); }
+
+    /* 大厅主区域两栏 */
+    .lobby-content {
+      flex: 1; display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
+      gap: 0.4rem; padding: 0.3rem 0.4rem; overflow-y: auto; max-width: 18.4rem; margin: 0 auto; width: 100%;
+      box-sizing: border-box;
+    }
+
+    /* 左栏：模式选择与快速入口 */
+    .left-section { display: flex; flex-direction: column; gap: 0.24rem; }
+    .section-title {
+      font-size: 0.18rem; font-weight: 900; letter-spacing: 0.08em; color: #fff;
+      display: flex; align-items: center; gap: 0.1rem;
+    }
+    .section-title::before {
+      content: ''; width: 4px; height: 0.18rem; background: var(--mint-500, #4ed8af);
+    }
+
+    /* 模式卡片 */
+    .mode-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.16rem; }
+    .mode-box {
+      background: linear-gradient(180deg, rgba(24, 30, 27, 0.9), rgba(13, 16, 15, 0.94));
+      border: 1px solid var(--line, #2f3a35); padding: 0.24rem; cursor: pointer;
+      display: flex; flex-direction: column; gap: 0.1rem; transition: all 180ms ease;
+    }
+    .mode-box:hover, .mode-box.selected {
+      border-color: var(--mint-500, #4ed8af);
+      box-shadow: 0 0 16px rgba(78, 216, 175, 0.12); transform: translateY(-2px);
+    }
+    .mode-box__tag {
+      font-size: 0.11rem; font-weight: 700; color: var(--mint-400, #59f4ca); text-transform: uppercase;
+    }
+    .mode-box__title { font-size: 0.22rem; font-weight: 900; color: #fff; margin: 0; }
+    .mode-box__desc { font-size: 0.12rem; color: var(--text-lo, #8a948f); line-height: 1.5; }
+
+    /* 图鉴与配置专属传送栏 */
+    .codex-shortcuts {
+      background: rgba(18, 24, 21, 0.7); border: 1px solid var(--line, #2f3a35);
+      padding: 0.18rem 0.24rem; display: flex; align-items: center; justify-content: space-between;
+    }
+    .codex-btn-group { display: flex; gap: 0.12rem; }
+    .nav-btn {
+      padding: 0.1rem 0.2rem; font-size: 0.14rem; font-weight: 800;
+      border: 1px solid var(--line-2, #3e4b45); background: #161c19;
+      color: var(--text-hi, #fff); text-decoration: none; display: flex; align-items: center; gap: 0.08rem;
+      transition: all 150ms ease;
+    }
+    .nav-btn:hover {
+      border-color: var(--mint-500, #4ed8af); background: #202a24;
+      box-shadow: 0 0 10px rgba(78, 216, 175, 0.2);
+    }
+    .nav-btn .badge-pill {
+      font-size: 0.1rem; padding: 0.01rem 0.05rem; background: var(--mint-700, #2a9e7f);
+      color: #06110d; border-radius: 2px;
+    }
+
+    /* 右栏：房间列表与私密入口 */
+    .right-section { display: flex; flex-direction: column; gap: 0.18rem; }
+    .room-action-bar { display: flex; gap: 0.12rem; }
+    .create-room-btn {
+      flex: 1; padding: 0.12rem; font-size: 0.15rem; font-weight: 800;
+      background: var(--mint-700, #2a9e7f); border: 1px solid var(--mint-500, #4ed8af);
+      color: #06110d; cursor: pointer; text-decoration: none; text-align: center;
+      transition: all 160ms ease;
+    }
+    .create-room-btn:hover { background: var(--mint-500, #4ed8af); }
+
+    .room-list-box {
+      background: rgba(16, 20, 18, 0.8); border: 1px solid var(--line, #2f3a35);
+      padding: 0.16rem; display: flex; flex-direction: column; gap: 0.12rem;
+      min-height: 4.8rem;
+    }
+    .room-card {
+      background: #141a17; border: 1px solid var(--line, #2f3a35);
+      padding: 0.16rem 0.2rem; display: flex; align-items: center; justify-content: space-between;
+      transition: all 150ms ease;
+    }
+    .room-card:hover { border-color: var(--line-3, #58675f); background: #1a221e; }
+    .room-info { display: flex; flex-direction: column; gap: 0.04rem; }
+    .room-name {
+      font-size: 0.16rem; font-weight: 800; color: #fff; display: flex; align-items: center; gap: 0.08rem;
+    }
+    .mod-tag {
+      font-size: 0.1rem; font-weight: 700; padding: 0.02rem 0.06rem;
+      background: rgba(246, 163, 41, 0.2); border: 1px solid var(--amber, #f6a329);
+      color: var(--amber, #f6a329); border-radius: 2px;
+    }
+    .room-meta { font-size: 0.12rem; color: var(--text-lo, #8a948f); display: flex; gap: 0.16rem; }
+    .join-btn {
+      padding: 0.06rem 0.16rem; font-size: 0.13rem; font-weight: 700;
+      border: 1px solid var(--mint-600, #35d8b4); background: rgba(78, 216, 175, 0.12);
+      color: var(--mint-400, #59f4ca); text-decoration: none;
+    }
+    .join-btn:hover { background: var(--mint-500, #4ed8af); color: #06110d; }
+  </style>
+</head>
+<body>
+  <!-- 顶部状态栏 -->
+  <header class="topbar">
+    <div class="topbar-left">
+      <a href="01-title.html" class="back-btn">← 返回主页</a>
+      <div class="player-card">
+        <div class="player-avatar">DR</div>
+        <div class="player-meta">
+          <span class="player-name">Doctor · 罗德岛指挥官</span>
+          <span class="player-level">Lv.85 · 信赖 100% · 在线</span>
+        </div>
+      </div>
+    </div>
+    <div style="font-size: 0.12rem; color: var(--text-lo, #8a948f); display: flex; gap: 0.2rem;">
+      <span>数据节点: <b>华东集群-01</b></span>
+      <span>服务器负载: <b style="color: var(--mint-400, #59f4ca);">正常 (18ms)</b></span>
+    </div>
+  </header>
+
+  <!-- 大厅主体 -->
+  <main class="lobby-content">
+    <!-- 左栏：模式选择与新图鉴快捷入口 -->
+    <section class="left-section">
+      <div class="section-title">作战模式选择</div>
+      <div class="mode-grid">
+        <div class="mode-box selected">
+          <span class="mode-box__tag">Standard Co-op</span>
+          <h3 class="mode-box__title">同盟协同作战 (4人)</h3>
+          <p class="mode-box__desc">经典四人组队对局，共享生命池与战术支援，可按房间启用自制扩展内容包。</p>
+        </div>
+
+        <div class="mode-box">
+          <span class="mode-box__tag">Solo Simulation</span>
+          <h3 class="mode-box__title">独立单机演习</h3>
+          <p class="mode-box__desc">无需联网配对，快速进入本地权威模拟器验证干员配置、盟约叠层与伤害表现。</p>
+        </div>
+      </div>
+
+      <!-- 本期重点：挂载在各大界面的图鉴入口条 -->
+      <div class="section-title">核心数据库与调配通道</div>
+      <div class="codex-shortcuts">
+        <div style="display: flex; flex-direction: column; gap: 0.04rem;">
+          <span style="font-size: 0.15rem; font-weight: 800; color: #fff;">自适应图鉴与编队总览</span>
+          <span style="font-size: 0.11rem; color: var(--text-lo, #8a948f);">数据驱动更新 · 装包后自动增量呈现</span>
+        </div>
+
+        <div class="codex-btn-group">
+          <!-- 装备图鉴入口 -->
+          <a href="06-equipment.html" class="nav-btn">
+            <span>装备总览</span>
+            <span class="badge-pill">Codex</span>
+          </a>
+
+          <!-- 盟约策略总览入口 -->
+          <a href="05-alliances.html" class="nav-btn">
+            <span>盟约与策略</span>
+            <span class="badge-pill">Bonds</span>
+          </a>
+
+          <!-- 干员调配入口 -->
+          <a href="04-loadout.html" class="nav-btn" style="border-color: var(--line-3, #58675f);">
+            <span>干员调配</span>
+          </a>
+        </div>
+      </div>
+    </section>
+
+    <!-- 右栏：对局房间与创建通道 -->
+    <section class="right-section">
+      <div class="section-title">对局房间列表</div>
+      <div class="room-action-bar">
+        <a href="07-room.html" class="create-room-btn">创建私密对局 (房主可选Mod)</a>
+        <button class="nav-btn" style="flex: 1; justify-content: center;" onclick="alert('请输入6位房间邀请码')">输入邀请码加入</button>
+      </div>
+
+      <div class="room-list-box">
+        <!-- 房间 1：带 Mod 房间 -->
+        <div class="room-card">
+          <div class="room-info">
+            <div class="room-name">
+              <span>#8842 · 罗德岛战术演习</span>
+              <span class="mod-tag">[Mod: fanpack]</span>
+            </div>
+            <div class="room-meta">
+              <span>房主: <b>Kal'tsit</b></span>
+              <span>人数: <b>2 / 4 席</b></span>
+              <span>私密房间</span>
+            </div>
+          </div>
+          <a href="07-room.html" class="join-btn">加入席位</a>
+        </div>
+
+        <!-- 房间 2：纯净官方房间 -->
+        <div class="room-card">
+          <div class="room-info">
+            <div class="room-name">
+              <span>#1003 · 协同作战常规匹配</span>
+            </div>
+            <div class="room-meta">
+              <span>房主: <b>Ch'en</b></span>
+              <span>人数: <b>3 / 4 席</b></span>
+              <span>纯净官方 23 盟约</span>
+            </div>
+          </div>
+          <a href="07-room.html" class="join-btn">加入席位</a>
+        </div>
+      </div>
+    </section>
+  </main>
+</body>
+</html>
