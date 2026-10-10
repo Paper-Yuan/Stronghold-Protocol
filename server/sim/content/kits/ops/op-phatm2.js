@@ -4,7 +4,7 @@
 // rules: ../README.md ("How to add an operator (自选)").
 //
 // Forms (data/backups.json units.char_1042_phatm2): normal = E2 Lv1, skills at rank 4, no module; elite = E2 Lv60, rank 7, the
-// picked module at stage 1 (tier 5) or 3 (tier 6) — the owner's decision of 2026-10-05. Potential 0 [ASSUMED: no account].
+// picked module at stage 1 (tier 5) or 3 (tier 6) — the owner's decision of 2026-10-05. Full potential (the owner's decision of 2026-10-07).
 // Sources: character_table / skill_table / battle_equip_table / token_table / range_table (zh_CN, as built into backups.json),
 // PRTS 酒神 (形为心役 备注 "溅射半径1.3（中点判定）；先造成神经损伤与溅射，随后造成伤害"; 堕梦 备注 "于敌人成功普通攻击前之前触发
 // （意味着触发的元素爆发可打断当次普攻，且不会触发成功攻击前的效果）"; 群体性谵妄 备注 on 本能的召唤; 空剧场 备注 "技能开始时，
@@ -20,16 +20,16 @@
 //   her. RIT-X “酒神之心” (trait bb ep_damage_scale) "对精英和领袖敌人造成的元素损伤提升18%": every element fill she deals
 //   (her summon's too: "来源均为酒神自身") on an ELITE / BOSS / leader enemy ×1.18 — an `elementHit` multiplier (the kits'
 //   convention: 塑心 强弱法).
-// - T1 形为心役 "攻击附带相当于攻击力30%的神经损伤，并对目标周围其他敌人造成一次相当于攻击力20%的神经损伤": every damage
+// - T1 形为心役 "攻击附带相当于攻击力30%的神经损伤，并对目标周围其他敌人造成一次相当于攻击力20%的神经损伤" (full potential: 33 % / 23 %): every damage
 //   instance of her normal attacks first gives its target attack@ep_damage_ratio × ATK 神经损伤 and every other selectable
 //   enemy within range_radius (1.3, 中点判定; S2 talent@range_radius 1.5) of it ep_damage_ratio × ATK — before the damage (a
 //   late `hit` handler, after any cancel; a hit dodged afterwards still carried it [ASSUMED], as 塑心 S2). S1's two hits
 //   each carry it [ASSUMED: per damage instance].
-// - T2 堕梦 "在场时，全场处于神经损伤爆发期间的敌人攻击速度-12；攻击范围内的敌人普通攻击时受到70点神经损伤": while she is on
+// - T2 堕梦 "在场时，全场处于神经损伤爆发期间的敌人攻击速度-12；攻击范围内的敌人普通攻击时受到70点神经损伤" (full potential: −16): while she is on
 //   the field every enemy in a 神经损伤 burst (its 爆发冷却, `neuralBurst`) has ASPD −|attack_speed| (one "同名" effect,
 //   the strongest — priorityBBKeys); an enemy of her attack range starting a normal attack first takes `value` 神经损伤 —
 //   the engine's `enemyAttackStart` hook, before 麻痹 is checked, so a burst it causes interrupts that very attack. RIT-X
-//   stage 2+: −20 / 90 (the talent change).
+//   stage 2+: −24 / 90 (the talent change).
 // - S1 暗夜回声 (AUTO, attack SP 3, data DEFAULT — a "next attack"): that attack picks an enemy not in a burst first
 //   (`notBurst`) and hits twice for atk_scale × ATK arts (times), then 束缚 (`bind`) for `unmove` s; while that root holds
 //   (its final duration after 抵抗) the target takes 神经损伤 ×ep_damage_scale from anyone (phatm2_s_1[unmove]
@@ -68,6 +68,7 @@ import { absoluteRangeKeys } from '../../../targeting.js';
 import { bodyInKeys } from '../../../body.js';
 import { hasHp, burstLocked } from '../../../damage.js';
 import { MIN_DAMAGE_RATIO } from '../../../constants.js';
+import { hypot } from '../../../detmath.js';
 
 const S1 = 'skchr_phatm2_1';
 const S2 = 'skchr_phatm2_2';
@@ -134,7 +135,7 @@ function callKit(t, owner, b2) {
         const keys = keysAt(grid, tok);
         const cands = battle.enemiesInKeys([...keys], tok, ANY).filter((e) => !lured.includes(e) && !e.s.flags.attract
           && (e.motion === 'FLY' || !!battle.grid.waypoints(Math.round(e.y), Math.round(e.x), tok.tileR, tok.tileC)));
-        cands.sort((a, b) => (isElite(b) - isElite(a)) || (Math.hypot(a.x - tok.x, a.y - tok.y) - Math.hypot(b.x - tok.x, b.y - tok.y)) || a.spawnSeq - b.spawnSeq);
+        cands.sort((a, b) => (isElite(b) - isElite(a)) || (hypot(a.x - tok.x, a.y - tok.y) - hypot(b.x - tok.x, b.y - tok.y)) || a.spawnSeq - b.spawnSeq);
         for (const e of cands) {
           if (lured.length >= cap) break;
           if (battle.applyStatus(e, 'attract', { duration: Math.max(0.05, endAt - battle.time), source: tok, point: [tok.tileR, tok.tileC] })) {
@@ -146,7 +147,7 @@ function callKit(t, owner, b2) {
       // the first lured enemy within `arrive` of it: it leaves
       battle.on('tick', () => {
         if (!up(tok)) return;
-        if (lured.some((e) => e.alive && mine(e) && Math.hypot(e.x - tok.x, e.y - tok.y) <= arrive + 1e-9)) battle.retreat(tok, { reason: 'expired', permanent: true });
+        if (lured.some((e) => e.alive && mine(e) && hypot(e.x - tok.x, e.y - tok.y) <= arrive + 1e-9)) battle.retreat(tok, { reason: 'expired', permanent: true });
       }, { owner: tok });
       // leaving (any reason): 停顿 + the damage over time on every selectable enemy of its x-1; the 诱导 ends
       battle.on('death', (c) => {

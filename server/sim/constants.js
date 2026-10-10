@@ -38,7 +38,7 @@ export const BLOCK_RADIUS_SQ = Object.freeze({ ground: 0.49999037, fly: 0.799951
 /**
  * An enemy's 隐匿 after a block ends (s): PRTS 作战机制 §隐匿 "对于绝大部分可隐匿的敌人而言，在被我方单位阻挡后会解除隐匿，不被
  * 阻挡的3秒后重新进入隐匿" / §隐匿与Buff的关系 "阻挡状态解除后3s开关重新被开启而恢复隐匿". An enemy page's "（解除阻挡N秒后
- * 恢复）" overrides it per 隐匿 source (buff `data.stealthRestore`: content/enemies.js). Battle._stealthSwitch; our
+ * 恢复）" overrides it per 隐匿 source (buff `data.stealthRestore`: content/enemies/helpers.js STEALTH_RESTORE_BY_KEY). Battle._stealthSwitch; our
  * operators' 隐匿 / 迷彩 are never lifted by blocking ("我方干员并不会因为阻挡而解除隐匿").
  */
 export const STEALTH_RESTORE = 3;
@@ -48,7 +48,7 @@ export const PROJECTILE_SPEED = 12;
  * Projectile speeds per visual kind (tiles/s). `none`/`beam` are instant. `boomerang` (回环射手 跃跃) is the OUTBOUND
  * flight to the target — PRTS 跃跃 特性 note "投射物飞行速度15，返回时飞行速度3.75"; the way back is
  * BOOMERANG_RETURN_SPEED (ai.js throwBoomerang). `droneBomb` = 暴鸰's bomb (the official projectile_bombd `_speed` 5;
- * content/enemies.js kitBombd).
+ * content/enemies/fly.js kitBombd).
  */
 export const PROJECTILE_SPEEDS = Object.freeze({ arrow: 14, bolt: 11, bomb: 8, lob: 8, orb: 10, drone: 16, enemy: 10, boomerang: 15, droneBomb: 5 });
 /** 回环射手: speed (tiles/s) of a boomerang flying back from its hit point to its thrower (PRTS "返回时飞行速度3.75"). */
@@ -128,6 +128,22 @@ export const PULL_CRAWL = 0.03;
 export const PULL_ORIGIN = 0.5;
 export const PULL_STOP_RADIUS = 0.6708;
 export const PUSH_DIRECTIONAL_MIN_DIST = 0.25;
+/**
+ * 失衡 (UNBALANCE) — the state machine a force > 0 puts an enemy in (PRTS 失衡位移机制 「当一名敌方单位受到一个任意来源的力，
+ * 并且受力大小 > 0 时，该敌方单位将进入失衡（UNBALANCE）状态机」; 异常效果图鉴/失衡免疫 「失衡期间无法自主移动、发动攻击、使用技能」 —
+ * not an abnormal status: 异常效果 「失衡…不属于异常效果，它是一种状态机」, so it is no stun). Its length in game seconds:
+ * PUSH_UNBALANCE = a push by 受力等级 — PRTS 游戏数据基础 推力-位移近似对应表 「位移时间」 (whole frames at 30 fps: 6, 12, 24,
+ * 27, 32, 35; the 0.1 s floor is inside them); PULL_UNBALANCE / PULL_UNBALANCE_WEAK = a pull's force window — 推与拉 §拉力
+ * 「作用时间默认为 1 s；若本次受力等级 < −1，作用时间改为 0.5 s」, the state lasting to its end after the 急停 too (「目标将仍保持
+ * 失衡状态至拉力作用时间结束为止」); UNBALANCE_MIN = the 失衡硬直 floor (「立刻拥有 0.1 s 的“失衡硬直”。此期间无法解除失衡状态机
+ * ——哪怕已经没有被移动或者受力」) — what a 静态刚体 hit by a push gets (特殊机制 静态刚体 「失衡状态拥有 0.1 秒保底持续时间」; a pulled
+ * one stays for the pull's window, its force lasting that long).
+ * PR #392 by @xcdoge brought the state; its 0.6387·√tiles was derived from the page's μ = 0.5 单位假设, not printed.
+ */
+export const PUSH_UNBALANCE = Object.freeze({ '-2': 0.2, '-1': 0.4, 0: 0.8, 1: 0.9, 2: 32 / 30, 3: 35 / 30 });
+export const PULL_UNBALANCE = 1;
+export const PULL_UNBALANCE_WEAK = 0.5;
+export const UNBALANCE_MIN = 0.1;
 
 /**
  * Fallback freeze when a second 寒冷 lands and neither the remaining cold nor the incoming one has a duration

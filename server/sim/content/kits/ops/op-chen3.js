@@ -3,7 +3,7 @@
 // Kit contract and the 自选 rules: ../README.md ("How to add an operator (自选)").
 //
 // Forms (data/backups.json units.char_1050_chen3, the DIY slot statuses): normal = E2 Lv1, skills at rank 4, no module;
-// elite = E2 Lv60, rank 7, AFT-X at stage 1 (tier 5) or 3 (tier 6). Potential 0 [ASSUMED: no account].
+// elite = E2 Lv60, rank 7, AFT-X at stage 1 (tier 5) or 3 (tier 6). Full potential (the owner's decision of 2026-10-07).
 // Sources: character_table / skill_table / battle_equip_table (zh_CN, as built into backups.json); the client's battle
 // logic — buff_template_data (chen3_t2 / [timer] / [evade], chen3_s1[derived_silence], chen3_s2[dead_listener] /
 // [record_position] / [try_resapwn] / [respawn_buff], chen3_s3[ensure_dmg] / [finish_projectile]), her charpack (talent 1
@@ -15,8 +15,8 @@
 // 移动时可继承闪避效果"; S2 / S3 备注), Terra wiki Ch'en the Dawnstreak (the wave's enemy hitbox 1.3).
 // - Trait (术战者) "攻击造成法术伤害": the artsfghter profile (melee arts, ground only), range 1-1, blocks 1. Module AFT-X
 //   “记忆残页” adds "未阻挡敌人时攻击速度+8" (trait attack_speed): ASPD + while she blocks nobody.
-// - T1 形意洞照 "攻击力+13%，攻击速度+13，造成的物理和法术伤害变为弱点伤害" (PRTS 修正): a permanent ATK / ASPD buff, and
-//   every physical or arts damage instance she deals becomes 弱点伤害 (ba.weaknessatk "根据目标防御力和法术抗性变更伤害类
+// - T1 形意洞照 "攻击力+13%，攻击速度+13，造成的物理和法术伤害变为弱点伤害" (PRTS 修正; full potential: +16% / +16): a permanent ATK /
+//   ASPD buff, and every physical or arts damage instance she deals becomes 弱点伤害 (ba.weaknessatk "根据目标防御力和法术抗性变更伤害类
 //   型"): the type the target resists less (items/battle.js weaknessRetype, as 双模机械臂 / 陈's band 以己之长).
 // - T2 寒暑觉知 "未受到伤害时，每N秒随机治疗自身一定（攻击力的X%~Y%）生命值，并闪避下次物理与法术攻击": a counter +1 every
 //   second (chen3_t2[timer]: triggerInterval 1, the first a second in), back to 0 with every damage instance she takes
@@ -26,7 +26,7 @@
 //   or arts damage instance that can be dodged (Evade PHYSICAL_AND_MAGICAL), then is spent. Its priority is −1000 (PRTS;
 //   onEventPriority LOW_PRIORITY): her other dodges (S2's) are rolled first, and the held dodge is kept when one of them
 //   wins. S2's 【移动】 keeps it (PRTS "二技能移动时可继承闪避效果") — and the counter, as the engine's 【移动】 keeps the rest
-//   (DESIGN §22.3). AFT-X stage 2+: the module talent's numbers (stage 3: 6 s, 50 %–200 %).
+//   (DESIGN §22.3). AFT-X stage 2+: the module talent's numbers (stage 3 at full potential: 6 s, 55 %–205 %).
 // - S1 赤霄·奔夜 (MANUAL, data DEFAULT): ATK +atk for `duration` s, every attack hits twice (二连击) and 特殊能力失效 — 沉默 —
 //   its target until the skill ends (chen3_s1[derived_silence]: derived from the skill's holder buff, independentCharacter
 //   Source): the status for the skill's time left; an early end (she leaves) lifts the ones she set.
@@ -46,7 +46,10 @@
 //   field, the stage tiles beyond it are another player's half] —, an 侵入点 or a 保护目标 it turns 90° clockwise (four
 //   turns at most per tick; boxed in on every side it waits) and forgets whom it hit; each enemy it can select within 1.3
 //   (air too) is hit once per straight run for the larger of hp_ratio × its current HP (the unit's own HP, PRTS) and
-//   projectile_min_atk_scale × her ATK at the hit, arts (RES applies — PRTS "非伤害保底或无视法术抗性"; 普通伤害). Her
+//   projectile_min_atk_scale × her ATK at the hit, arts (RES applies — PRTS "非伤害保底或无视法术抗性"; 普通伤害).
+//   The wave is a kit-managed probe, not a snapshot projectile, so it is shown with `fx('chen3Wave')` events every
+//   WAVE_FX_EVERY s (its position, the previous point and its direction — render/fx 'qi': a procedural blade trail with
+//   a crescent head, not the official particle prefab); before that the 龙剑气 had no visual at all (PR #382). Her
 //   begin clips (S1 0.2 s, S3 0.433 s) are not modelled [ASSUMED: the engine starts skills at once].
 
 import { num, talentBb, traitBb, skillRec, statBuff, toggleBuff, up } from '../shared/tier1.js';
@@ -69,6 +72,14 @@ const RETARGET_RADIUS = 1.7;
 const WAVE_SPEED = 1.5;
 const WAVE_PROBE = 0.25;
 const WAVE_HIT_RADIUS = 1.3;
+/**
+ * How often the wave's position is sent to the client as an `fx` (`chen3Wave`, carrying the previous point and its
+ * direction). The wave is a kit-managed probe (it turns corners and lives as long as the skill), so it is not in the
+ * snapshot's projectile list: without these events the client has nothing to draw and the 龙剑气 is invisible (the cast
+ * emitted one `dash` puff and each hit a `slash` spark). The rate is the renderer's: each event draws a short blade
+ * trail whose life outlasts the gap, so the events join into one continuous wave.
+ */
+const WAVE_FX_EVERY = 0.12;
 /** S1's early end: a silence of hers that ends within this of the skill's planned end ended with it. */
 const SILENCE_SLACK = 0.1;
 const AIR = Object.freeze({ canHitFly: true });
@@ -215,7 +226,8 @@ export default {
           attack: { atkScale: num(b3['attack@atk_scale'], 1), hits: 3 },   // `_additionalTimes` 2
           onStart({ battle, unit, skill }) {
             const [dr, dc] = unit.fwd;
-            unit.mem.chen3Wave = { x: unit.x, y: unit.y, dr, dc, hit: new Set(), act: skill.activations, seq: unit.deploySeq };
+            unit.mem.chen3Wave = { x: unit.x, y: unit.y, dr, dc, hit: new Set(), act: skill.activations, seq: unit.deploySeq,
+              fx: 0, fxX: unit.x, fxY: unit.y };
             battle.fx('dash', { x: unit.x, y: unit.y, id: unit.id, skill: 'chen3:wave' });
           },
           onEnd({ unit }) { unit.mem.chen3Wave = null; },
@@ -274,6 +286,12 @@ export default {
         }, { owner: unit });
         // S3: the sword wave
         if (unit.skill?.id !== S3) return;
+        // PRTS: the sword wave hits air, although her S3 normal attacks remain ground-only. Include those selectable
+        // targets in the existing ACTIVE_RANGE automation. [ASSUMED] Use its expanded attack grid (plus permanent
+        // range extension), not the wave's entire eventual route; operation cooldown / control checks stay shared.
+        unit.skill.addTriggerRange(() => [{
+          keys: absoluteRangeKeys(grid3, unit.tileR, unit.tileC, unit.dir, unit.s.baseRangeExtend || 0), profile: AIR,
+        }]);
         const ratio = num(b3.hp_ratio), minScale = num(b3.projectile_min_atk_scale);
         battle.on('tick', ({ dt }) => {
           const w = unit.mem.chen3Wave;
@@ -285,8 +303,17 @@ export default {
             w.dr = 0 - w.dc;    // (`0 - x`: never a negative zero)
             w.dc = dr;
             w.hit.clear();
+            w.fxX = w.x; w.fxY = w.y;   // the drawn trail starts again at the corner (no streak across the turn)
           }
           if (!waveBlocked(battle, w)) { w.x += w.dc * WAVE_SPEED * dt; w.y += w.dr * WAVE_SPEED * dt; }
+          // the 龙剑气 itself: tell the client where it is now (and where it came from) so it can be drawn — while it
+          // runs, while it is boxed in waiting, and after a turn (the direction comes along for the renderer)
+          w.fx += dt;
+          if (w.fx >= WAVE_FX_EVERY) {
+            w.fx = 0;
+            battle.fx('chen3Wave', { x: w.x, y: w.y, fromX: w.fxX, fromY: w.fxY, dr: w.dr, dc: w.dc, id: unit.id, skill: 'chen3:wave' });
+            w.fxX = w.x; w.fxY = w.y;
+          }
           for (const e of battle.foesInRadius(w.x, w.y, WAVE_HIT_RADIUS)) {
             if (w.hit.has(e) || !canTargetEnemy(unit, e, AIR)) continue;
             w.hit.add(e);

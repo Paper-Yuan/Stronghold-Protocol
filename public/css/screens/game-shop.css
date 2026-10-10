@@ -130,6 +130,13 @@
 .scard__class { display: flex; align-items: center; gap: .05rem; font-size: .13rem; color: var(--text-lo); }
 .scard__prof { width: .18rem; height: .18rem; object-fit: contain; opacity: .85; }
 .scard__mergetag { position: absolute; z-index: 3; right: 0; top: .38rem; font-size: .12rem; font-weight: 700; padding: .01rem .06rem; background: var(--gold); color: #1d1400; letter-spacing: .08em; }
+/* 0.2.0 补位: a chess the player does not own shows its stand-in (ui/shopBar.js ChessCard) — a small 「替补」 mark */
+.scard__standin { position: absolute; z-index: 3; left: 0; top: .38rem; max-width: calc(100% - .1rem); font-size: max(.11rem, 8px); font-weight: 700; line-height: 1.4;
+  padding: 0 .05rem; background: var(--ice); color: var(--ice-900); letter-spacing: .08em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  opacity: .9; box-shadow: 0 1px 3px rgba(0, 0, 0, .6); }
+/* 0.2.0 自选编队: a DIY slot the player filled — the card is its operator, only in this player's shop (ui/shopBar.js) */
+.scard__diy { position: absolute; z-index: 3; left: 0; top: .38rem; font-size: .12rem; font-weight: 700; padding: .01rem .06rem;
+  background: var(--mint-500); color: var(--text-on-mint); letter-spacing: .08em; white-space: nowrap; box-shadow: 0 1px 3px rgba(0, 0, 0, .6); }
 .scard:not(.is-disabled):not(.scard--sold):hover { transform: translateY(-.08rem); border-color: var(--mint-400); box-shadow: 0 0 0 1px var(--mint-400), 0 .1rem .24rem rgba(23, 249, 183, .22); }
 .scard:not(.is-disabled):not(.scard--sold):active { transform: translateY(-.04rem); }
 .scard.is-disabled { cursor: not-allowed; }
@@ -149,6 +156,9 @@
 .scard__idesc { font-size: .12rem; line-height: 1.45; color: var(--text-lo); display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
 .scard--sold { background: repeating-linear-gradient(135deg, rgba(255, 255, 255, .02) 0 .08rem, transparent .08rem .16rem), rgba(8, 11, 10, .75); border: 1px dashed var(--line-2); justify-content: center; align-items: center; }
 .scard__soldtxt { display: flex; flex-direction: column; align-items: center; gap: .02rem; font-size: .16rem; color: var(--text-dim); }
+/* a slot the 调度中心's upgrade opened and nothing filled yet (ui/shopBar.js EmptyCard, also .scard--sold): the bare frame — no hatching,
+   no SOLD OUT text */
+.scard--sold.scard--empty { background: rgba(8, 11, 10, .4); border-color: var(--line); }
 
 /* ---- funds card ---- */
 .funds { width: 1.18rem; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: .08rem; padding: .06rem; border-left: 1px solid var(--line); }

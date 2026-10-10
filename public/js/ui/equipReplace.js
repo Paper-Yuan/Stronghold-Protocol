@@ -7,8 +7,9 @@
 // _arrow_head, _avatart_bg / _frame, _round, _close, _comfirm_icon, _replace_icon), CSS look-alikes without them
 // (css/screens/game-panels.css .eqr).
 //
-//   replaceRequest(ctx, intent, getChess, getItem) → { targetUid, targetId, targetName, item: {uid,id,name}, options }
-//                                                 | null  (pure; the data the dialog shows — null = no dialog)
+//   replaceRequest(ctx, intent, getChess, getItem) → { targetUid, targetId, targetName, targetRec, item: {uid,id,name},
+//                                                 options } | null  (pure; the data the dialog shows — null = no dialog;
+//                                                 `getChess` = what the own pieces show: a 补位 piece's stand-in record)
 //   replaceIntent(intent, replaceUid)            → { t: 'g.equip', fields: { itemUid, targetUid, replaceUid } }
 //   <EquipReplaceDialog request onConfirm(replaceUid) onCancel />
 
@@ -16,6 +17,7 @@ import { useEffect, useState } from '../../vendor/hooks.module.js';
 import { html, Modal, Button, TierChip, MicroLabel } from './components.js';
 import { UnitThumb, RichText, GIcon } from './gameComponents.js';
 import { localAsset } from '../data.js';
+import { t, tParts } from '../../../shared/i18n.js';
 
 const cx = (...p) => p.flat().filter(Boolean).join(' ');
 const isObj = (v) => !!v && typeof v === 'object';
@@ -35,12 +37,15 @@ export function replaceRequest(ctx, intent, getChess = () => null, getItem = () 
   const equipped = (Array.isArray(target.items) ? target.items : []).filter((it) => isObj(it) && Number.isInteger(it.uid));
   if (equipped.length < 2) return null;
   const rec = (id) => getItem(id) || null;
+  const shown = getChess(target.id) || null;
   return {
     targetUid: target.uid,
     targetId: target.id,
-    targetName: getChess(target.id)?.name || '该干员',
+    targetName: shown?.name || t('该干员'),
+    // the record the avatar draws (a 补位 stand-in's or a 自选 operator's composed record; the data's for any other chess)
+    targetRec: shown && (shown.standInFor || shown.diyFor) ? shown : null,
     golden: !!target.golden,
-    item: { uid: item.uid, id: item.id, name: rec(item.id)?.name || '装备' },
+    item: { uid: item.uid, id: item.id, name: rec(item.id)?.name || t('装备') },
     options: equipped.map((it) => ({ uid: it.uid, id: it.id, name: rec(it.id)?.name || it.id })),
   };
 }
@@ -72,7 +77,7 @@ function ItemCard({ id, item, rec, selected = false, option = false, onPick }) {
     </span>
     <span class="eqr__meta">
       <span class="eqr__chips">${tier ? html`<${TierChip} tier=${tier} golden=${!!rec?.isGolden} size="sm" />` : null}
-        ${rec?.isGolden ? html`<span class="eqr__elite">进阶</span>` : null}</span>
+        ${rec?.isGolden ? html`<span class="eqr__elite">${t('进阶')}</span>` : null}</span>
       <b class="eqr__name">${rec?.name || item?.name || id}</b>
     </span>
     <${RichText} as="p" class="eqr__desc" text=${rec?.descRaw || rec?.desc || ''} />`;
@@ -81,7 +86,7 @@ function ItemCard({ id, item, rec, selected = false, option = false, onPick }) {
       class=${cx('eqr__card', 'eqr__opt', selected && 'is-sel')} onClick=${() => onPick(item.uid)}>
     ${body}
     <span class="eqr__flag" aria-hidden=${selected ? 'false' : 'true'}>
-      <${GIcon} name="trash" class="eqr__flag-icon" /><span>将被销毁</span>
+      <${GIcon} name="trash" class="eqr__flag-icon" /><span>${t('将被销毁')}</span>
     </span>
   </button>`;
 }
@@ -106,30 +111,31 @@ export function EquipReplaceDialog({ request, getItem = () => null, busy = false
   ].join('');
   const confirmIcon = localAsset('ui/battle', 'equip_replace_comfirm_icon');
   const swapIcon = localAsset('ui/battle', 'equip_replace_replace_icon');
-  return html`<div class="eqr-host" style=${style} onKeyDown=${(e) => { if (e.key === 'Enter' && chosen && !busy) { e.preventDefault(); onConfirm(chosen.uid); } }}>
-    <${Modal} open=${true} tone="red" class="eqr" width="min(7.6rem, 96vw)" micro="EQUIPMENT · REPLACE" title="替换装备" onClose=${onCancel}
+  // A focused button owns Enter through its native click, including Cancel and the item options.
+  return html`<div class="eqr-host" style=${style} onKeyDown=${(e) => { if (e.key === 'Enter' && e.target?.tagName !== 'BUTTON' && chosen && !busy) { e.preventDefault(); onConfirm(chosen.uid); } }}>
+    <${Modal} open=${true} tone="red" class="eqr" width="min(7.6rem, 96vw)" micro="EQUIPMENT · REPLACE" title=${t('替换装备')} onClose=${onCancel}
       actions=${html`
-        <${Button} variant="secondary" icon="close" class="eqr__cancel" onClick=${onCancel}>取消<//>
+        <${Button} variant="secondary" icon="close" class="eqr__cancel" onClick=${onCancel}>${t('取消')}<//>
         <${Button} variant="danger" class="eqr__ok" disabled=${!chosen} loading=${busy} data-autofocus onClick=${() => chosen && onConfirm(chosen.uid)}>
-          ${confirmIcon ? html`<img class="eqr__ok-icon" src=${confirmIcon} alt="" draggable=${false} />` : null}确认替换<//>`}>
-      <p class="eqr__lead">「<b>${request.targetName}</b>」的装备栏已满（2/2）。选择一件装备进行替换，<b class="t-red">被替换的装备将被销毁</b>。</p>
+          ${confirmIcon ? html`<img class="eqr__ok-icon" src=${confirmIcon} alt="" draggable=${false} />` : null}${t('确认替换')}<//>`}>
+      <p class="eqr__lead">${tParts('「{name}」的装备栏已满（2/2）。选择一件装备进行替换，{warn}。', { name: html`<b>${request.targetName}</b>`, warn: html`<b class="t-red">${t('被替换的装备将被销毁')}</b>` })}</p>
       <div class="eqr__top">
         <div class="eqr__op" title=${request.targetName}>
-          <span class="eqr__ava"><${UnitThumb} kind="chess" id=${request.targetId} golden=${request.golden} size="md" /></span>
+          <span class="eqr__ava"><${UnitThumb} kind="chess" id=${request.targetId} golden=${request.golden} size="md" rec=${request.targetRec || null} /></span>
           <span class="eqr__opname">${request.targetName}</span>
         </div>
         <span class="eqr__swap" aria-hidden="true">${swapIcon ? html`<img src=${swapIcon} alt="" draggable=${false} />` : html`<${GIcon} name="refresh" />`}</span>
         <div class="eqr__incoming">
-          <${MicroLabel} tone="mint">新装备</${MicroLabel}>
+          <${MicroLabel} tone="mint">${t('新装备')}</${MicroLabel}>
           <${ItemCard} id=${request.item.id} item=${request.item} rec=${getItem(request.item.id)} />
         </div>
       </div>
       <div class="eqr__arrow" aria-hidden="true"><i class="eqr__aline"></i><i class="eqr__ahead eqr__ahead--l"></i><i class="eqr__ahead eqr__ahead--r"></i></div>
-      <div class="eqr__opts" role="radiogroup" aria-label="选择被替换的装备">
+      <div class="eqr__opts" role="radiogroup" aria-label=${t('选择被替换的装备')}>
         ${request.options.map((o) => html`<${ItemCard} key=${o.uid} id=${o.id} item=${o} rec=${getItem(o.id)} option=${true}
           selected=${o.uid === sel} onPick=${(uid) => setSel((s) => (s === uid ? null : uid))} />`)}
       </div>
-      <p class="eqr__hint">${chosen ? html`将销毁「<b>${chosen.name}</b>」并配发「<b>${request.item.name}</b>」` : '点击选择要替换的装备'}</p>
+      <p class="eqr__hint">${chosen ? html`${tParts('将销毁「{old}」并配发「{item}」', { old: html`<b>${chosen.name}</b>`, item: html`<b>${request.item.name}</b>` })}` : t('点击选择要替换的装备')}</p>
     <//>
   </div>`;
 }

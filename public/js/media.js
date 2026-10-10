@@ -9,7 +9,7 @@
 //
 //     /assets/audio/bgm/act1.mp3   →   /media/bgm/act1
 //
-// `server/index.js` resolves /media/… back to the real file under public/assets/audio and still answers with
+// `server/http/media.js` resolves /media/… back to the real file under public/assets/audio and still answers with
 // `Content-Type: audio/mpeg` + range support; Web Audio sniffs the container, so the URL is all the same to it.
 // A host that does not implement /media/ keeps working: `audio.js` falls back to the original URL whenever the
 // /media/ response is unusable (a 404, or a 200 that is not audio at all — some static hosts answer a missing

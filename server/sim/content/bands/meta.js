@@ -12,12 +12,14 @@
 //   give_coin_in_round {round,coin}                    老鲤     income of round `round` = coin (R1/R2 0, R3 15)
 //   prep_start_gain_chess_from_pool_in_round {round}   老鲤     round start of `round`: 1 chess of pool
 //   band_coin_cost_gain_random_char_by_shop_level      绮良     every coin_cnt funds spent → count random chess ≤ shop level
-//   up_shop_next_refresh_must_present_bond_char        佩佩     level-up to a level of lvlist → +1 free refresh (price 0) that prefers <bond>
+//   up_shop_next_refresh_must_present_bond_char        佩佩     level-up to a level of lvlist → the next manual refresh (its usual
+//                                                               price) prefers <bond>
 //   gain_bond_char_per_round {round,preround,bond}     哈洛德   rounds round, round+preround, …: a <bond> chess (≤ shop level, else any tier)
 //   first_buy_in_round_char_price_change {price,bond}  休露丝   first <bond> chess of the round costs `price` (bought in the
 //                                                               shop: onBuy — a free pick / grant never uses it up)
 //   band_cost_coin_reach_cnt_gain_chess_from_pool      潘格尼尼 once coin_cnt funds spent in total: 1 chess of pool (elite 拉特兰 ≥ T4)
 //   round_start_bond_check_gain_layer                  余       round start of `round`: exactly factioncount active bonds → +count1, else each active +count2
+//                                                               — never to a bond without layers (noStack; the owner's decision of 2026-10-08)
 //   up_shop_add_special_goods {count,choice,pool}      凯瑟琳   every level-up: pick 1 of `count` items of pool (free)
 //   coin_carry_over {capital,interest,max}             坎诺特   leftover ≥ capital at round start → +min(max, ⌊left/capital⌋×interest) income
 //   round_start_all_player_change_enemy_2              鸭爵     global: every alive player's battle from `round` (own + teammates;
@@ -184,12 +186,15 @@ K.band_coin_cost_gain_random_char_by_shop_level = (ps) => ({
   },
 });
 
+// 佩佩 博学多通 "升级调度中心至2、4和6级后，获得1次特殊刷新：此次刷新出现的干员优先为<萨尔贡>干员": the special refresh is the
+// player's next manual refresh, paid as usual — the text gives no 免费 (德克萨斯's trait says 「获得1次免费刷新」 for a free
+// one), and the community report of 2026-10-06 「佩佩策略的特殊刷新也是要花钱的，不是免费」. Until 0.2.0 a free refresh came
+// with it (blackboard `price` 0 read as its price) [ASSUMED: `cnt` / `price` 0 change nothing].
 K.up_shop_next_refresh_must_present_bond_char = (ps) => ({
   onLevelUp(ctx, ev) {
     const p = ps[0];
     if (!list(p.lvlist).map(Number).includes(ev.level)) return;
     ctx.incCounter('band:pepe:special', 1);
-    if (int(p.price, 0) === 0) ctx.grantFreeRefresh(1);
   },
   onRefresh(ctx) {
     if (ctx.counter('band:pepe:special') <= 0) return;
@@ -240,15 +245,22 @@ K.band_cost_coin_reach_cnt_gain_chess_from_pool = (ps) => ({
   },
 });
 
+/**
+ * 余 【文火慢炖】 「第8回合开始时，若仅激活了1个盟约，使其增加36层；否则使所有已激活盟约增加12层」. The owner's decision of 2026-10-08
+ * overrides PRTS here (下半/PRTS盟约记录: layers of a bond that shows none 「仍然对其生效」): a bond without layers — bonds.json
+ * `noStack`: 绝技, 独行, 调和, 协防干员 — gets none. The count stays the sentence's (every active bond), so one active bond
+ * that is such a bond means nothing is added, and with two active bonds a layered one still gets count2. Only this
+ * strategy: 协防's 「使所有已激活的盟约层数」 (bonds/addon/meta.js) and 华法琳's 【重点监护】 keep adding to every bond they name.
+ */
 K.round_start_bond_check_gain_layer = (ps) => ({
   onRoundStart(ctx) {
     const p = ps[0];
     if (ctx.round !== int(p.round, -1)) return;
     const active = Object.entries(ctx.bonds()).filter(([, b]) => b && b.active).map(([id]) => id);
-    if (active.length === int(p.factioncount, 1)) {
-      for (const b of active) ctx.addLayers(b, int(p.count1, 0), { requireActive: true, reason: 'band' });
-    } else {
-      for (const b of active) ctx.addLayers(b, int(p.count2, 0), { requireActive: true, reason: 'band' });
+    const n = active.length === int(p.factioncount, 1) ? int(p.count1, 0) : int(p.count2, 0);
+    for (const b of active) {
+      if (ctx.gd.bond(b)?.noStack) continue;
+      ctx.addLayers(b, n, { requireActive: true, reason: 'band' });
     }
   },
 });
@@ -369,7 +381,9 @@ K.preparation_start_add_special_goods_every_n_round = (ps) => ({
 // share taken over that half [ASSUMED: "你和队友遭遇的敌人" — the enemies heading for the player's own protection point;
 // each official client simulates its own battle, docs/research/08 appendix A]. The originals never exist, so none of
 // their death / kill / leak effects happen. Reaching the protection point costs 1 LP ("但进入保护目标点将减少1点目标生命值":
-// the enemies' data lpr, tools/build-data.mjs).
+// the enemies' data lpr, tools/build-data.mjs). The swaps carry the spawn tag 'duck': their 隐匿 (流泪小子) comes back no
+// sooner than 1 s after a block ends, not the official 0 s (content/enemies/helpers.js DUCK_STEALTH_RESTORE — the owner's
+// decision of 2026-10-07, a deliberate deviation).
 
 export const DUCK_BAND = 'band_ducklord';
 /** "击倒这些敌人者获得1资金奖励" (the blackboard's `count` is 1 too). */

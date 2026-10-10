@@ -14,7 +14,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { makeBattle, enemyRec, chessRec, checkInvariants } from '../helpers/battleHarness.js';
 import { getDefaultSource } from '../../server/sim/simdata.js';
-import { PITHST_ELEMENTS } from '../../server/sim/content/kits/tier6.js';
+import { PITHST_ELEMENTS } from '../../server/sim/content/kits/ops/chess_char_1_15-pithst.js';
 import { spawnYanyou } from '../../server/sim/content/tokens.js';
 import { COLS } from '../../server/sim/constants.js';
 

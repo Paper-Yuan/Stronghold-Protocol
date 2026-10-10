@@ -22,7 +22,7 @@ import { makeBattle, chessRec, enemyRec, checkInvariants } from '../helpers/batt
 import { getDefaultSource, hasGeneratedData } from '../../server/sim/simdata.js';
 import { effectiveProfile } from '../../server/sim/ai.js';
 import { PUSH_TILES, PUSH_TILES_EFFECT, PULL_STOP_RADIUS, ASPD_MIN, COLS } from '../../server/sim/constants.js';
-import { alliesInGridOf } from '../../server/sim/content/kits/tier1.js';
+import { alliesInGridOf } from '../../server/sim/content/kits/shared/tier1.js';
 import { Unit } from '../../server/sim/units.js';
 import { spawnYanyou, TOKEN_IDS } from '../../server/sim/content/tokens.js';
 

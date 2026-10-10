@@ -146,6 +146,44 @@ describe('1. equip-replace dialog', () => {
     assert.equal(itemDestroyable(ctxOf(after), a.uid), false);
     h.invariants();
   });
+
+  test('real match engine: 博士投影 and 盟约之币 on a full operator — the dialog asks and the picked item is the one destroyed (GitHub #263)', () => {
+    const h = makeMatch({ mode: 'solo', difficulty: 'FUNNY', humans: 1, seed: 5 });
+    h.start();
+    h.toPrep(1);
+    const m = h.m;
+    const ps = h.ps('p_0');
+    const chessId = Object.values(DATA.chess).find((c) => c.visible && !c.isGolden && c.tier === 1).chessId;
+    const at = legalTileFor(m, ps, chessId);
+    const unit = give(m, ps, chessId, 'board', at);
+    const tile = { area: 'board', row: at[0], col: at[1] };
+    const [a, b, c] = [giveItem(m, ps, A), giveItem(m, ps, B), giveItem(m, ps, C)];
+    for (const it of [a, b]) assert.equal(m.handle('p_0', { t: 'g.equip', itemUid: it.uid, targetUid: unit.uid }).error, undefined);
+    /** Drop `it` on the operator, pick `pick` in the dialog and send the intent; the operator's items after. */
+    const dropAndPick = (it, pick) => {
+      h.flushAll();
+      const cx = ctxOf(h.lastTo('p_0', 'm.private'));
+      const intent = dropIntent(cx, it.uid, tile);
+      assert.equal(intent.confirmReplace, true, `${it.id}: the client asks`);
+      const r = replaceIntent(intent, pick.uid);
+      assert.equal(m.handle('p_0', { t: r.t, ...r.fields }).error, undefined);
+      h.flushAll();
+      return h.lastTo('p_0', 'm.private').board.find((p) => p.uid === unit.uid).items.map((x) => x.uid);
+    };
+    // 博士投影 (normal) takes the slot of the NEWER item the player picked — it used to push the oldest out unasked
+    const holo = giveItem(m, ps, 'chess_item_5_06_e_a');
+    assert.deepEqual(dropAndPick(holo, b), [a.uid, holo.uid], 'b destroyed, a kept, 博士投影 equipped');
+    // 盟约之币 on [a, 博士投影]: the pick (a) is destroyed, the coin pays — 博士投影 and a free slot are left
+    const coin = giveItem(m, ps, 'chess_item_1_03_e_a');
+    const funds = ps.funds;
+    assert.deepEqual(dropAndPick(coin, a), [holo.uid]);
+    assert.equal(ps.funds, funds + 1);
+    // the free slot takes the next item without a dialog
+    h.flushAll();
+    assert.equal(dropIntent(ctxOf(h.lastTo('p_0', 'm.private')), c.uid, tile).confirmReplace, false);
+    for (const gone of [a, b, coin]) assert.equal(ps.find(gone.uid), null);
+    h.invariants();
+  });
 });
 
 describe('2. boss-round countdown and the overtime (DOT) warning', () => {

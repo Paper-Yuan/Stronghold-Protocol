@@ -463,7 +463,7 @@ function fxScene(view, stageId) {
   };
   // `pt` kinds name the shooter in `id` and happen at an enemy's spot; a 'flame' happens at its target
   const posFor = (k, ex) => unitAt(FX_KINDS[k].pt ? [21, 23, 20][i % 3] : FX_KINDS[k].a === 'flame' ? ex.target : ex.id);
-  // 蕾缪安 S3 as the sim plays it (sim/content/kits/tier6.js): a lock every 0.5 s, then after the skill one shell every
+  // 蕾缪安 S3 as the sim plays it (sim/content/kits/ops/chess_char_6_01-lemuen.js): a lock every 0.5 s, then after the skill one shell every
   // 0.3 s on the locks in order, each landing 0.3 s later with its bombard — queued [game time, event]
   const queue = [];
   const lemuenS3 = () => {

@@ -76,7 +76,8 @@ describe('#6 the server names its offers (m.private shop.rewardOffer source / la
     for (const s of offer.slots) {
       assert.equal(s.kind, 'item');
       assert.equal(s.price, 0);
-      assert.ok(DATA.items[s.id] && DATA.items[s.id].itemType === 'EQUIP' && DATA.items[s.id].tier <= ps.shop.level, s.id);
+      // any tier since 0.2.0 (community report of 2026-10-06: 「原版凯瑟琳1升2都能有6本装备」), shop items only
+      assert.ok(DATA.items[s.id] && DATA.items[s.id].itemType === 'EQUIP' && !DATA.items[s.id].shopExcluded, s.id);
     }
     const want = offer.slots[1].id;
     const funds = ps.funds;

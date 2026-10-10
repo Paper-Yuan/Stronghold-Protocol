@@ -21,24 +21,43 @@ const LEMUEN_SHELL_FLIGHT = 0.3;
 function ensureWanted(battle) {
   const S = bstate(battle);
   if (S.wanted) return S.wanted;
-  const W = S.wanted = { lemuens: new Set(), time: new WeakMap() };
+  const W = S.wanted = { lemuens: new Set(), sources: new Map(), refreshRanges: new Set() };
   const activeLem = () => [...W.lemuens].filter(live);
-  battle.every(0.25, () => {
-    const lems = activeLem();
-    if (!lems.length) return;
-    const need = Math.min(...lems.map((u) => u.mem.wantedInterval));
-    const lat = battle.allyUnits.filter((a) => live(a) && a.kind === 'op' && hasBond(a, 'lateranoShip'));
+  const reconcile = () => {
     for (const e of battle.enemies) {
-      if (!e.alive || e.hidden || !isElite(e) || e.findBuff('lemuen:wanted')) continue;
-      // "停留超过8秒": a continuous stay — leaving every 拉特兰 range restarts the count
-      if (!lat.some((a) => a.rangeKeySet && bodyInKeys(e, a.rangeKeySet))) { W.time.delete(e); continue; }
-      const t = (W.time.get(e) ?? 0) + 0.25;
-      W.time.set(e, t);
-      if (t >= need - 1e-9) {
+      const marked = [...W.sources.values()].some((s) => s.marks.has(e));
+      if (marked && e.alive && !e.findBuff('lemuen:wanted')) {
         battle.addBuff(e, { key: 'lemuen:wanted', visible: true });
         battle.fx('wanted', { x: e.x, y: e.y, id: e.id });
+      } else if (!marked && e.findBuff('lemuen:wanted')) battle.removeBuff(e, 'lemuen:wanted');
+    }
+    for (const refresh of W.refreshRanges) refresh();
+  };
+  // PRTS: the source leaving clears its timers and marks; another on-field Lemuen keeps her own progress.
+  battle.on('death', ({ unit }) => {
+    if (!W.lemuens.has(unit)) return;
+    W.sources.delete(unit);
+    reconcile();
+  });
+  battle.every(0.25, () => {
+    const lems = activeLem();
+    for (const u of W.sources.keys()) if (!lems.includes(u)) W.sources.delete(u);
+    const lat = battle.allyUnits.filter((a) => live(a) && a.kind === 'op' && hasBond(a, 'lateranoShip'));
+    for (const u of lems) {
+      let state = W.sources.get(u);
+      if (!state) W.sources.set(u, state = { time: new WeakMap(), marks: new Set() });
+      for (const e of state.marks) if (!e.alive) state.marks.delete(e);
+      for (const e of battle.enemies) {
+        if (!e.alive || state.marks.has(e) || !isElite(e)) continue;
+        // PRTS: starting the timer needs selectability; once attached, only its continuous stay is tested.
+        if (e.hidden || !lat.some((a) => a.rangeKeySet && bodyInKeys(e, a.rangeKeySet))) { state.time.delete(e); continue; }
+        if (!state.time.has(e) && !canTargetEnemy(u, e, ANY)) continue;
+        const t = (state.time.get(e) ?? 0) + 0.25;
+        state.time.set(e, t);
+        if (t >= u.mem.wantedInterval - 1e-9) state.marks.add(e);
       }
     }
+    reconcile();
   });
   battle.on('hit', (ctx) => {
     const s = ctx.source, t = ctx.target;
@@ -58,7 +77,11 @@ function lemuen(bb, chess, def) {
   const d2 = num(bb['attack@dist_2'], num(bb['attack@projectile_range'], 1.5));
   const s1 = num(bb['attack@proj_atk_scale_1'], 1), s2 = num(bb['attack@proj_atk_scale_2'], 1);
   const pickLock = (battle, unit, locks) => {
-    const cands = battle.enemiesInKeys(unit.rangeKeys, unit, unit.profile);
+    let cands = battle.enemiesInKeys(unit.rangeKeys, unit, unit.profile);
+    // 白铁's 铁钳号·原型机 (a registered ally target, an enemy-camp summon) is locked like an enemy when no enemy is in her
+    // range — the owner's rule of 2026-10-08 (it draws aggro like an enemy): her bullets are spent on it, the shells' hits
+    // are cancelled by it [ASSUMED: after every enemy, its 嘲讽等级 −2]
+    if (!cands.length) cands = battle.allyTargetsInKeys(unit.rangeKeys, unit);
     if (!cands.length) return null;
     sortEnemyTargets(battle, unit, cands, 'lowDef');
     const cnt = (e) => locks.reduce((n, L) => n + (L.e === e ? 1 : 0), 0);
@@ -84,6 +107,10 @@ function lemuen(bb, chess, def) {
       if (e.s.flags.untargetable) continue;
       const d = bodyDist(e, x, y);
       battle.dealDamage(unit, e, { amount: atk * (d <= d1 + 1e-9 ? s1 : s2), type: 'phys', isSkill: true, isSplash: true, tags: ['skill', 'bombard'] });
+    }
+    // (the 铁钳号 too, like an enemy — its kit cancels the hit)
+    for (const a of battle.allyTargetsInRadius(x, y, d2, unit)) {
+      battle.dealDamage(unit, a, { amount: atk * s2, type: 'phys', isSkill: true, isSplash: true, tags: ['skill', 'bombard'] });
     }
   };
   const bombard = (battle, unit, locks) => {
@@ -164,6 +191,7 @@ function lemuen(bb, chess, def) {
       kind: 'ammo',
       ammo: Math.max(1, Math.floor(num(bb['attack@trigger_time'], 5))),
       attack: { noAttack: true },
+      allyTargets: true,   // its locks take 白铁's 铁钳号 too (pickLock) — skills.js allyTargetsOk
       onStart({ unit }) { unit.mem.lemLocks = []; unit.mem.lemAcc = aim; },
       onTick({ battle, unit, skill, dt }) {
         const m = unit.mem;
@@ -196,17 +224,26 @@ function lemuen(bb, chess, def) {
       { install(battle, unit) { // 跨境追缉许可
         unit.mem.wantedInterval = num(t0.interval, 8);
         unit.mem.wantedScale = num(t0.damage_scale, 1);
-        ensureWanted(battle).lemuens.add(unit);
-        let sig = null;
-        battle.on('tick', () => { // wanted targets' tiles join her range (engine extra range keys, kept across rebuilds)
-          if (!live(unit)) return;
+        const wanted = ensureWanted(battle);
+        wanted.lemuens.add(unit);
+        const wantedKeys = () => {
           const keys = [];
           for (const e of battle.enemies) if (e.alive && !e.hidden && e.findBuff('lemuen:wanted')) keys.push(...bodyKeys(e));
+          return keys;
+        };
+        // #428: extra attack range also opens her skill under the existing content-trigger contract.
+        unit.skill?.addTriggerRange(() => [{ keys: wantedKeys(), profile: unit.profile }], { attackOnly: true });
+        let sig = null;
+        const refresh = () => { // update immediately when the last source leaves, before another attack can run
+          const keys = live(unit) ? wantedKeys() : [];
           const s = keys.join(',');
           if (s === sig) return;
           sig = s;
           battle.setExtraRange(unit, keys);
-        }, { owner: unit });
+        };
+        wanted.refreshRanges.add(refresh);
+        battle.on('tick', refresh, { owner: unit });
+        battle.on('deploy', ({ unit: u }) => { if (u === unit) { sig = null; refresh(); } }, { owner: unit });
       } },
       { install(battle, unit) { // 逃犯引渡手续
         const iv = num(t1.interval, 20), atk = num(t1.atk), add = Math.floor(num(t1.add_count)), exAdd = Math.floor(num(t1.ex_add_count));

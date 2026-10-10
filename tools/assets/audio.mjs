@@ -141,6 +141,74 @@ function firstMatching(banks, event, abilities, ok = () => true) {
 const SKILL_MODE_FILE = /_(d|h|s)\d*\.mp3$/i;
 /** A bank of an operator's normal attack: none of its files belongs to a skill mode. */
 export const normalModeBank = (paths) => Array.isArray(paths) && paths.length > 0 && !paths.some((p) => SKILL_MODE_FILE.test(p));
+/**
+ * The skill mode of a sound file: 'd' / 'h' / 's' for 技能1 / 2 / 3, null for a normal-mode (`_n`) file. The mode letter
+ * is the official naming of a skill's own sounds — it holds for the whole chain of a skill (原声: `p_skill_lzxqlkl_s`
+ * 技能3发动, `p_atk_lzxqlkl_s` 技能3的攻击, `p_imp_…_s` 技能3命中): 司霆惊蛰's three skills have the activation sounds
+ * `_d` / `_h` / `_s` and the matching attack banks `p_atk_lzxqlkl_d1` / `_h` / `_s`, and every operator whose activation
+ * sounds name a mode agrees with its slot (§ pickModeAttacks).
+ */
+export function skillModeLetter(path) {
+  const m = SKILL_MODE_FILE.exec(typeof path === 'string' ? path : '');
+  return m ? m[1].toLowerCase() : null;
+}
+
+/** [ASSUMED] Slot fallback for operators without a named activation sound; DESIGN §28.17. */
+export const SLOT_MODE_LETTER = Object.freeze({ 0: 'd', 1: 'h', 2: 's' });
+
+/**
+ * The per-skill-mode bank of one unit, by mode letter: `{ d?: string[], h?: string[], s?: string[] }`.
+ *
+ * Why a second table: `pickUnitSfx` builds the operator's NORMAL attack / impact, and for that it refuses every
+ * skill-mode file (`_d` / `_h` / `_s`) — 银灰's S3 swing is not his normal attack. An operator whose library is all
+ * skill modes has therefore no normal bank at all: 司霆惊蛰's attack banks are `ON_ABILITY_ON…attack.1.2.1`
+ * (`p_atk_lzxqlkl_d1`, 技能1), `…attack.4` (`_h2` / `_h`, 技能2) and `…attack.7` (`_s`, 技能3) — she never has a plain
+ * bank, because (解放者) she only attacks while a skill runs. The official client plays that mode's own files during the
+ * skill, so the manifest needs them per skill index (plan.mjs writes `sfx.units[id].attacks` / `hits` = the mode's
+ * attack / impact sound, public/js/audio.js plays them while that skill is active).
+ *
+ * `events` picks which banks count: the attack is cast / held (`ON_ABILITY_START` preferred over `ON_ABILITY_ON`, the
+ * order pickUnitSfx prefers), the impact is the hit (`ON_ABILITY_HIT`). Among equals the plain ability wins over a
+ * numbered variant, then the numeric order. 赤刃明霄陈 S3 (the official banks, `attack.3`):
+ * `ON_ABILITY_START` → `p_atk_hljdswd_s` (the swing: different from her normal `p_atk_hljdswd_n`),
+ * `ON_ABILITY_HIT` → `p_imp_hljdswd_s` (the slash's impact: different from `p_imp_hljdswd_n`).
+ * @param {Map<string,string[]>|undefined} banks unit bank table (from indexAudio().unitBanks)
+ * @param {string[]} events official event prefixes to read
+ * @returns {{ d?: string[], h?: string[], s?: string[] }}
+ */
+export function pickModeBanks(banks, events) {
+  const cands = new Map(); // letter → [{ rank, rest, paths }]
+  if (!banks || !banks.size) return {};
+  for (const [name, paths] of banks) {
+    const ev = events.find((e) => name.startsWith(e + '.'));
+    if (!ev || !Array.isArray(paths) || !paths.length) continue;
+    const ability = name.slice(ev.length + 1).split('.')[0];
+    if (!/attack|combat/i.test(ability)) continue;
+    const letter = skillModeLetter(paths[0]);
+    if (!letter || paths.some((p) => skillModeLetter(p) !== letter)) continue;
+    const rest = name.slice(ev.length + 1 + ability.length);
+    const numbered = rest ? 1 : 0;                    // 'attack.1.2.1' / 'attack.4' vs the plain 'attack'
+    const rank = `${events.indexOf(ev)}${numbered}`;
+    if (!cands.has(letter)) cands.set(letter, []);
+    cands.get(letter).push({ rank, rest, paths });
+  }
+  const out = {};
+  for (const [letter, list] of cands) {
+    list.sort((a, b) => (a.rank !== b.rank ? (a.rank < b.rank ? -1 : 1) : abilityOrder(a.rest, b.rest)));
+    out[letter] = list[0].paths;
+  }
+  return out;
+}
+
+/** The per-skill-mode ATTACK bank of one unit (the swing / cast while that skill runs) — see pickModeBanks. */
+export const pickModeAttacks = (banks) => pickModeBanks(banks, ['ON_ABILITY_START', 'ON_ABILITY_ON']);
+
+/**
+ * The per-skill-mode IMPACT bank of one unit (the hit sound while that skill runs): 赤刃明霄陈's S3 slashes hit with
+ * `p_imp_hljdswd_s`, not her normal `p_imp_hljdswd_n`. A mode without an `ON_ABILITY_HIT` bank keeps the unit's normal
+ * impact (司霆惊蛰's S3 has none: only its 技能2 swings `_h` and impacts `_h`).
+ */
+export const pickModeHits = (banks) => pickModeBanks(banks, ['ON_ABILITY_HIT']);
 
 /**
  * Pick role → candidate sound paths for one unit.
@@ -167,6 +235,21 @@ export function pickUnitSfx(banks, opts = {}) {
   };
   const exact = (event) => ['attack', 'combat'].map((ab) => banks.get(`${event}.${ab}`)).find((p) => p?.length && ok(p)) ?? null;
   const own = (p) => (p?.length && ok(p) ? p : null);
+  // operators whose default mode is the unsuffixed ability (a plain attack / combat bank of any event): every numbered
+  // variant (attack.1, attack.2 …) is then a skill mode's ability, whatever its file name — 银灰's attack.2 swing
+  // p_atk_silver_n is his S3 mode's (charpack modes Default / S2 / S3), his normal attack is the Default mode's Combat (impact
+  // ON_ABILITY_HIT.combat p_imp_spear_n, no swing bank): community report of 2026-10-06 (item 54) 「银灰的普通攻击的音效错误
+  // 的使用了3技能期间的攻击音效」. Only the plain banks then, or the operator's own projectile banks; newer operators number
+  // their default mode too (attack.0 …) and keep the rule below
+  if (opts.operator && ['ON_ABILITY_START', 'ON_ABILITY_ON', 'ON_ABILITY_HIT'].some((e) => exact(e))) {
+    const swing = exact('ON_ABILITY_START') ?? exact('ON_ABILITY_ON') ?? own(proj.born);
+    const impact = exact('ON_ABILITY_HIT') ?? own(proj.hit);
+    if (swing) out.attack = swing;
+    if (impact) out.hit = impact;
+    if (banks.get('ON_UNIT_DEAD')?.length) out.die = banks.get('ON_UNIT_DEAD');
+    if (banks.get('ON_UNIT_BORN')?.length) out.born = banks.get('ON_UNIT_BORN');
+    return out;
+  }
   // operators: the plain ability of either event before any numbered variant
   const plain = opts.operator ? exact('ON_ABILITY_START') ?? exact('ON_ABILITY_ON') : null;
   const attack = plain
@@ -304,10 +387,10 @@ export const VOICE_SLOTS = Object.freeze({
 });
 
 /**
- * The slots a running battle can actually request — the only ones `public/js/audio.js` ever asks for (the 休整期 is
- * silent, so nothing else is played): 行动出发 start, 首次接敌 faceEnemy, 作战中1-4 skillN, 部署 place (the deploy
- * events) and 选中干员 select (the detail panel, behind its combat flag), plus the settlement lines
- * resultFour / resultThree / resultTwo / resultLose (public/js/screens/game.js onResult).
+ * The slots the client can actually request — the only ones `public/js/audio.js` ever asks for: 行动出发 start, 首次接敌
+ * faceEnemy, 作战中1-4 skillN, 部署 place (a running battle's deploy events), the settlement lines resultFour /
+ * resultThree / resultTwo / resultLose (public/js/screens/game.js onResult) and 选中干员 select (the detail panel opening
+ * on an operator the player tapped, in every phase since 0.2.2).
  * `buildPlan` plans these by default; `--voice-all` widens it to every slot of VOICE_SLOTS.
  */
 export const VOICE_BATTLE_SLOTS = Object.freeze(['start', 'faceEnemy', 'select', 'place',
@@ -318,7 +401,7 @@ export const VOICE_BATTLE_SLOTS = Object.freeze(['start', 'faceEnemy', 'select',
  * 任命队长 squadFirst). `test/docs-consistency.test.js` proves the client never asks for one, so planning them only
  * makes every `npm run assets` download 360 files (19.3 MB, CN dub) that no player will ever hear — they are left out
  * unless `--voice-all` is passed. 部署 `place` and 选中干员 `select` deliberately stay in: the official client groups
- * them with the prep lines, but a battle does play them (the deploy events; the detail panel behind its combat flag).
+ * them with the prep lines, but the client does play them (the deploy events; a tap on an operator).
  */
 export const VOICE_PREP_SLOTS = Object.freeze(['gacha', 'squad', 'squadFirst']);
 

@@ -1,5 +1,6 @@
-// test/full-potential.test.js — every operator fights at FULL potential (潜能 6), the owner's decision of 2026-10-07
-// (GitHub #252, PR #255; tools/build-data.mjs OPERATOR_POTENTIAL, docs/DATA.md §2): every chess (normal and elite), 自选
+// test/full-potential.test.js — the data records are built at FULL potential (潜能 6: the default — the owner's decisions of
+// 2026-10-07, GitHub #252 / PR #255, and 2026-10-08: a lower potential is the player's 干员调配 setting, test/potential.test.js;
+// tools/build-data.mjs FULL_RANK, docs/DATA.md §2 / §2.3): every chess (normal and elite), 自选
 // pick and 补位 stand-in adds its character_table `potentialRanks` attribute steps and takes its talent / module-talent
 // candidates up to `requiredPotentialRank` 5; a summon picks its talent candidates at its owner's potential but takes
 // none of the owner's attribute steps. The evidence: a tournament video shows 刺玫 (chess_char_1_06_a) at ATK 435 and
@@ -92,7 +93,7 @@ test('every chess, 自选 form and stand-in form: the raw keyframes plus every p
   for (const [charId, u] of Object.entries(backups.units)) {
     for (const f of Object.values(u.forms)) { check(`${charId}@${f.status.phase}/${f.status.level}`, charId, f.status, f.stats); forms++; }
   }
-  assert.equal(forms, 256);
+  assert.equal(forms, 259);
   // the 原型干员 stand-ins have no potential ranks: their numbers are the plain keyframes
   for (const id of ['char_600_cpione', 'char_602_cdfend', 'char_608_acpion', 'char_617_sharp2']) assert.equal((CT[id].potentialRanks || []).length, 0, id);
 });

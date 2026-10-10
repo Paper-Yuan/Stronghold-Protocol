@@ -12,7 +12,7 @@ import { COLS } from '../../server/sim/constants.js';
 import { makeBattle, chessRec, enemyRec, checkInvariants } from '../helpers/battleHarness.js';
 import { findSummonTile } from '../../server/sim/content/tokens.js';
 import { frontTile, sideTiles, alliesAround, N4 } from '../../server/sim/content/support/index.js';
-import { freeTileAround } from '../../server/sim/content/kits/tier1.js';
+import { freeTileAround } from '../../server/sim/content/kits/shared/tier1.js';
 import { DIRS as PROTOCOL_DIRS } from '../../shared/protocol.js';
 
 const K = (r, c) => r * COLS + c;

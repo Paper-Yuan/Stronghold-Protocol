@@ -250,13 +250,13 @@ test('the 普通 / 精锐 toggle: 精锐 is the shown variant, the tabs say so, 
 test('place in the detail: after the skills, before the modules; the first .lo-seg stays the skill level toggle (e2e selector)', () => {
   const src = read('public/js/screens/loadout.js');
   const detail = src.slice(src.indexOf('function Detail('), src.indexOf('// ---- filters'));
-  const toggle = detail.indexOf('aria-label="技能等级"');
-  const skills = detail.indexOf('aria-label="选择技能"');
+  const toggle = detail.indexOf("aria-label=${t('技能等级')}");
+  const skills = detail.indexOf("aria-label=${t('选择技能')}");
   const stats = detail.indexOf('<${LoadoutStats} base=${chess}');
   const mods = detail.indexOf('<section class="lo-sec lo-sec--mod">');
   assert.ok(toggle > 0 && skills > toggle && stats > skills && mods > stats, 'skills (and their level toggle) → 局内数值 → modules');
   // one record resolution, shared with the card: chessLoadout, the card's block, trait and talent helpers — no stat arithmetic of its own
-  assert.match(src, /import \{ chessStatsBlock, traitText, chessTalents \} from '\.\.\/ui\/detailPanel\.js';/);
+  assert.match(src, /import \{ chessStatsBlock, traitText, chessTalents, GarrisonBlock \} from '\.\.\/ui\/detailPanel\.js';/);
   assert.match(src, /import \{ chessLoadout \} from '\.\.\/ui\/gameLogic\.js';/);
   const fn = src.slice(src.indexOf('export function statsPreview'), src.indexOf('export function LoadoutStats'));
   assert.ok(!/composeStats|attr\b|maxHp|statsBase/.test(fn), 'no stat arithmetic in the screen');
@@ -292,8 +292,8 @@ test('特性 follows the chosen module also when the skill or the module differs
   const chess = JSON.parse(fs.readFileSync(new URL('../../data/chess.json', import.meta.url), 'utf8'));
   const get = (id) => chess[id];
   const shown = (id, lo) => traitText(get(id), true, chessLoadout(get(id), lo, get));
-  // 隐现 (MAR-X): its other skill keeps the module's line, not the class trait 优先攻击空中单位
-  assert.match(shown('chess_char_1_01_b', { chess_char_1_01_a: { skill: 0, module: null } }), /攻击空中单位时攻击力提升至/);
+  // 隐现 (MAR-X): its other skill keeps the module's line after the class trait 优先攻击空中单位 (item 16.2)
+  assert.match(shown('chess_char_1_01_b', { chess_char_1_01_a: { skill: 0, module: null } }), /^优先攻击空中单位\n攻击空中单位时攻击力提升至/);
   // 信仰搅拌机: SPT-Y shows its own line; 不装备 shows the class trait
   assert.match(shown('chess_char_4_01_b', { chess_char_4_01_a: { skill: get('chess_char_4_01_b').skill.index, module: 'uniequip_003_rmixer' } }), /攻击距离\+1/);
   assert.match(shown('chess_char_4_01_b', { chess_char_4_01_a: { skill: get('chess_char_4_01_b').skill.index, module: 'none' } }), /能够阻挡三个敌人/);

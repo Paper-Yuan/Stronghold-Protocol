@@ -35,7 +35,8 @@
 //   await assets.local();                           // optional local-client art manifest (data/local-assets.json,
 //   assets.localUrl('map/autochess', 'TX_autochessi_D')   DESIGN §13) → URL or null (never required)
 //   assets.spineEntry('enemy_1305_mhslim')          // its official model from the local client once local() listed
-//                                                   // it (manifest spineLocal), else the web model; `.fallback`
+//                                                   // it (manifest spineLocal; enemies and tokens), else the web
+//                                                   // model; `.fallback`
 //
 // Every URL helper is also exported as a pure function taking the manifest first (`avatarUrl(manifest, …)`),
 // so it can be unit tested without a browser. Helpers never throw on unknown ids — they return null and the
@@ -147,9 +148,10 @@ export function subProfIconUrl(m, sub) {
  * Spine manifest entry for a unit asset id (operator charId, token id, enemy id). `opts.back` asks for the Back
  * model (operators only; falls back to Front). Enemy aliases are resolved transparently. Returns the Spine
  * object of docs/ASSETS.md or null.
- * `opts.local` (the data/local-assets.json manifest): an enemy whose official model only the local client has
- * (`spineLocal`, e.g. 灼热源石虫 — user feedback after 0.1.0, D3) gets that model when the manifest lists every one of
- * its files; the returned entry's `fallback` is the web model (aliased), for a load failure (DESIGN §13: local art is
+ * `opts.local` (the data/local-assets.json manifest): an enemy or token whose official model only the local client has
+ * (`spineLocal`, e.g. 灼热源石虫 — user feedback after 0.1.0, D3 — and most 自选 summons) gets that model when the
+ * manifest lists every one of its files; the returned entry's `fallback` is the web model (an enemy's alias; a token's
+ * web model, mostly none — its view then keeps the avatar diamond), for a load failure (DESIGN §13: local art is
  * optional, everything works without it).
  */
 export function spineEntry(m, id, opts) {
@@ -169,7 +171,10 @@ export function spineEntry(m, id, opts) {
     return fallbackSp;
   }
   const tk = get(get(m, 'tokens'), s);
-  if (tk) return validSpine(tk.spine) ? tk.spine : null;
+  if (tk) {
+    const web = validSpine(tk.spine) ? tk.spine : null;
+    return (opts && opts.local && localSpineEntry(tk.spineLocal, opts.local, web)) || web;
+  }
   const en = get(get(m, 'enemies'), s);
   if (en) {
     let web = null;
@@ -240,13 +245,22 @@ export function bgmEntry(m, kind) {
 /** SFX URL: group 'ui' | 'battle', key e.g. 'buy'. */
 export const sfxUrl = (m, group, key) => str(get(get(get(get(m, 'audio'), 'sfx'), str(group) || ''), str(key) || ''));
 
-/** Per-unit SFX: kind 'attack' | 'hit' | 'skill' | 'die' | 'born'; `skillIndex` picks `skills[i]` when present. */
+/**
+ * Per-unit SFX: kind 'attack' | 'hit' | 'skill' | 'die' | 'born'; `skillIndex` picks `skills[i]` and — for an attack or
+ * an impact — `attacks[i]` / `hits[i]` (the running skill's own files, tools/assets/audio.mjs pickModeAttacks /
+ * pickModeHits) when the manifest has them.
+ */
 export function unitSfxUrl(m, id, kind, skillIndex) {
   const u = get(get(get(get(m, 'audio'), 'sfx'), 'units'), str(id) || '') || get(get(get(get(m, 'audio'), 'sfx'), 'units'), baseCharId(id) || '');
   if (!isObj(u)) return null;
   if (kind === 'skill' && Number.isInteger(skillIndex) && isObj(u.skills)) {
     const s = str(u.skills[skillIndex]);
     if (s) return s;
+  }
+  const per = kind === 'attack' ? u.attacks : kind === 'hit' ? u.hits : null;
+  if (Number.isInteger(skillIndex) && isObj(per)) {
+    const a = str(per[skillIndex]);
+    if (a) return a;
   }
   return str(u[kind]);
 }

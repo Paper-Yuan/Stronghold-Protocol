@@ -1,0 +1,1953 @@
+{
+  "about": "Spine metadata of the token (summon) models only the local client has (tools/local-extract/extract.py TOKEN_SPINES); data/assets.json tokens[id].spineLocal. Written by node tools/fetch-assets.mjs --local-spines (docs/ASSETS.md \"Token models from the local client\").",
+  "models": {
+    "token_10002_kalts_mon3tr": {
+      "skel": "token_10002_kalts_mon3tr.skel",
+      "atlas": "token_10002_kalts_mon3tr.atlas",
+      "textures": [
+        "token_10002_kalts_mon3tr.png"
+      ],
+      "pma": true,
+      "anims": {
+        "idle": "Idle",
+        "deploy": "Start",
+        "attack": {
+          "begin": null,
+          "loop": "Attack",
+          "end": null
+        },
+        "attackDown": null,
+        "skill": {
+          "begin": null,
+          "loop": "Skill",
+          "end": null,
+          "index": 0,
+          "idle": null
+        },
+        "die": "Die",
+        "move": null,
+        "stun": null
+      },
+      "animations": {
+        "Attack": 0.933,
+        "Default": 0,
+        "Die": 1,
+        "Idle": 1.333,
+        "Skill": 1,
+        "Skill_2": 1.267,
+        "Start": 1.667
+      },
+      "events": [
+        "OnAttack",
+        "OnStart"
+      ],
+      "hits": {
+        "Attack": [
+          0.233
+        ],
+        "Skill": [
+          0.367
+        ],
+        "Skill_2": [
+          0.667
+        ]
+      },
+      "bounds": {
+        "x": -518.63,
+        "y": 13.1,
+        "width": 744.033,
+        "height": 561.75
+      }
+    },
+    "token_10003_cgbird_bird": {
+      "skel": "token_10003_cgbird_bird.skel",
+      "atlas": "token_10003_cgbird_bird.atlas",
+      "textures": [
+        "token_10003_cgbird_bird.png"
+      ],
+      "pma": true,
+      "anims": {
+        "idle": "Idle",
+        "deploy": "Start",
+        "attack": {
+          "begin": null,
+          "loop": "Idle",
+          "end": null,
+          "via": "idle"
+        },
+        "attackDown": null,
+        "skill": {
+          "begin": null,
+          "loop": "Idle",
+          "end": null,
+          "via": "attack",
+          "index": 0,
+          "idle": null
+        },
+        "die": null,
+        "move": null,
+        "stun": null
+      },
+      "animations": {
+        "Default": 0,
+        "Idle": 0,
+        "Start": 1.333
+      },
+      "events": [],
+      "hits": {},
+      "bounds": {
+        "x": -234.162,
+        "y": -25.869,
+        "width": 383.475,
+        "height": 357
+      }
+    },
+    "token_10005_mgllan_drone1": {
+      "skel": "token_10005_mgllan_drone1.skel",
+      "atlas": "token_10005_mgllan_drone1.atlas",
+      "textures": [
+        "token_10005_mgllan_drone1.png"
+      ],
+      "pma": true,
+      "anims": {
+        "idle": "Idle",
+        "deploy": "Start",
+        "attack": {
+          "begin": null,
+          "loop": "Idle",
+          "end": null,
+          "via": "idle"
+        },
+        "attackDown": null,
+        "skill": {
+          "begin": null,
+          "loop": "Idle",
+          "end": null,
+          "via": "attack",
+          "index": 0,
+          "idle": null
+        },
+        "die": "Die",
+        "move": null,
+        "stun": null
+      },
+      "animations": {
+        "Default": 0,
+        "Die": 0.5,
+        "Idle": 1,
+        "Start": 0.5
+      },
+      "events": [
+        "OnAttack",
+        "OnStart"
+      ],
+      "hits": {},
+      "bounds": {
+        "x": -104.293,
+        "y": 224.984,
+        "width": 202.5,
+        "height": 226.25
+      }
+    },
+    "token_10005_mgllan_drone2": {
+      "skel": "token_10005_mgllan_drone2.skel",
+      "atlas": "token_10005_mgllan_drone2.atlas",
+      "textures": [
+        "token_10005_mgllan_drone2.png"
+      ],
+      "pma": true,
+      "anims": {
+        "idle": "Idle",
+        "deploy": "Start",
+        "attack": {
+          "begin": null,
+          "loop": "Attack",
+          "end": null
+        },
+        "attackDown": null,
+        "skill": {
+          "begin": null,
+          "loop": "Attack",
+          "end": null,
+          "via": "attack",
+          "index": 0,
+          "idle": null
+        },
+        "die": "Die",
+        "move": null,
+        "stun": null
+      },
+      "animations": {
+        "Attack": 1,
+        "Default": 0,
+        "Die": 0.5,
+        "Idle": 1,
+        "Start": 0.5
+      },
+      "events": [
+        "OnAttack",
+        "OnStart"
+      ],
+      "hits": {
+        "Attack": [
+          0.233
+        ]
+      },
+      "bounds": {
+        "x": -81.215,
+        "y": 219.873,
+        "width": 162,
+        "height": 178.816
+      }
+    },
+    "token_10005_mgllan_drone3": {
+      "skel": "token_10005_mgllan_drone3.skel",
+      "atlas": "token_10005_mgllan_drone3.atlas",
+      "textures": [
+        "token_10005_mgllan_drone3.png"
+      ],
+      "pma": true,
+      "anims": {
+        "idle": "Idle",
+        "deploy": "Start",
+        "attack": {
+          "begin": null,
+          "loop": "Attack",
+          "end": null
+        },
+        "attackDown": null,
+        "skill": {
+          "begin": null,
+          "loop": "Attack",
+          "end": null,
+          "via": "attack",
+          "index": 0,
+          "idle": null
+        },
+        "die": "Die",
+        "move": null,
+        "stun": null
+      },
+      "animations": {
+        "Attack": 1,
+        "Default": 0,
+        "Die": 0.5,
+        "Idle": 1,
+        "Start": 0.5
+      },
+      "events": [
+        "OnAttack",
+        "OnStart"
+      ],
+      "hits": {
+        "Attack": [
+          0.7
+        ]
+      },
+      "bounds": {
+        "x": -82.282,
+        "y": 221.906,
+        "width": 162,
+        "height": 182.115
+      }
+    },
+    "token_10007_phatom_twin": {
+      "skel": "token_10007_phatom_twin.skel",
+      "atlas": "token_10007_phatom_twin.atlas",
+      "textures": [
+        "token_10007_phatom_twin.png"
+      ],
+      "pma": true,
+      "anims": {
+        "idle": "Idle",
+        "deploy": "Start",
+        "attack": {
+          "begin": null,
+          "loop": "Attack",
+          "end": null
+        },
+        "attackDown": null,
+        "skill": {
+          "begin": null,
+          "loop": "Skill",
+          "end": null,
+          "index": 0,
+          "idle": null
+        },
+        "die": "Die",
+        "move": null,
+        "stun": null
+      },
+      "animations": {
+        "Attack": 0.867,
+        "Attack_2": 0.9,
+        "Default": 0,
+        "Die": 1,
+        "Idle": 3,
+        "Skill": 1,
+        "Start": 1
+      },
+      "events": [
+        "OnAttack",
+        "OnStart"
+      ],
+      "hits": {
+        "Attack": [
+          0.267
+        ],
+        "Attack_2": [
+          0.4
+        ],
+        "Skill": [
+          0.433
+        ]
+      },
+      "bounds": null
+    },
+    "token_10008_cqbw_box": {
+      "skel": "token_10008_cqbw_box.skel",
+      "atlas": "token_10008_cqbw_box.atlas",
+      "textures": [
+        "token_10008_cqbw_box.png"
+      ],
+      "pma": true,
+      "anims": {
+        "idle": "Idle",
+        "deploy": "Start",
+        "attack": {
+          "begin": null,
+          "loop": "Attack",
+          "end": null
+        },
+        "attackDown": null,
+        "skill": {
+          "begin": null,
+          "loop": "Attack",
+          "end": null,
+          "via": "attack",
+          "index": 0,
+          "idle": null
+        },
+        "die": "Die",
+        "move": null,
+        "stun": null
+      },
+      "animations": {
+        "Attack": 1.5,
+        "Default": 0,
+        "Die": 0.167,
+        "Idle": 0,
+        "Start": 0.5
+      },
+      "events": [
+        "OnAttack",
+        "OnStart"
+      ],
+      "hits": {
+        "Attack": [
+          1.5
+        ]
+      },
+      "bounds": {
+        "x": -44.388,
+        "y": -3.048,
+        "width": 88.2,
+        "height": 92.4
+      }
+    },
+    "token_10009_weedy_cannon": {
+      "skel": "token_10009_weedy_cannon.skel",
+      "atlas": "token_10009_weedy_cannon.atlas",
+      "textures": [
+        "token_10009_weedy_cannon.png"
+      ],
+      "pma": true,
+      "anims": {
+        "idle": "Idle",
+        "deploy": "Start",
+        "attack": {
+          "begin": "Attack_Begin",
+          "loop": "Attack_Loop",
+          "end": "Attack_End"
+        },
+        "attackDown": {
+          "begin": "Attack_Down_Begin",
+          "loop": "Attack_Down_Loop",
+          "end": "Attack_Down_End"
+        },
+        "skill": {
+          "begin": null,
+          "loop": "Skill",
+          "end": null,
+          "index": 0,
+          "idle": null
+        },
+        "die": null,
+        "move": null,
+        "stun": null
+      },
+      "animations": {
+        "Attack_Begin": 0.167,
+        "Attack_Down_Begin": 0.167,
+        "Attack_Down_End": 0.167,
+        "Attack_Down_Loop": 3.967,
+        "Attack_End": 0.167,
+        "Attack_Loop": 3.967,
+        "Default": 0,
+        "Idle": 5.4,
+        "Skill": 0.867,
+        "Skill_Down": 0.867,
+        "Start": 1
+      },
+      "events": [
+        "OnAttack",
+        "OnStart"
+      ],
+      "hits": {
+        "Attack_Down_Loop": [
+          0.033
+        ],
+        "Attack_Loop": [
+          0.033
+        ],
+        "Skill": [
+          0.333
+        ],
+        "Skill_Down": [
+          0.333
+        ],
+        "Start": [
+          0.133
+        ]
+      },
+      "bounds": {
+        "x": -171.668,
+        "y": -2.412,
+        "width": 330.705,
+        "height": 229.504
+      }
+    },
+    "token_10020_ling_soul1": {
+      "skel": "token_10020_ling_soul1.skel",
+      "atlas": "token_10020_ling_soul1.atlas",
+      "textures": [
+        "token_10020_ling_soul1.png"
+      ],
+      "pma": true,
+      "anims": {
+        "idle": "Idle",
+        "deploy": "Start",
+        "attack": {
+          "begin": null,
+          "loop": "Attack",
+          "end": null
+        },
+        "attackDown": null,
+        "skill": {
+          "begin": null,
+          "loop": "Attack",
+          "end": null,
+          "via": "attack",
+          "index": 0,
+          "idle": null
+        },
+        "die": "Die",
+        "move": null,
+        "stun": {
+          "begin": null,
+          "loop": "Stun",
+          "end": null
+        }
+      },
+      "animations": {
+        "Attack": 1,
+        "Default": 0,
+        "Die": 1,
+        "Idle": 1.333,
+        "Start": 1,
+        "Stun": 1
+      },
+      "events": [
+        "OnAttack",
+        "OnStart"
+      ],
+      "hits": {
+        "Attack": [
+          0.367
+        ]
+      },
+      "bounds": {
+        "x": 527.795,
+        "y": -3.156,
+        "width": 342.015,
+        "height": 328.516
+      }
+    },
+    "token_10020_ling_soul2": {
+      "skel": "token_10020_ling_soul2.skel",
+      "atlas": "token_10020_ling_soul2.atlas",
+      "textures": [
+        "token_10020_ling_soul2.png"
+      ],
+      "pma": true,
+      "anims": {
+        "idle": "Idle",
+        "deploy": "Start",
+        "attack": {
+          "begin": null,
+          "loop": "Attack",
+          "end": null
+        },
+        "attackDown": null,
+        "skill": {
+          "begin": null,
+          "loop": "Skill",
+          "end": null,
+          "index": 0,
+          "idle": null
+        },
+        "die": "Die",
+        "move": null,
+        "stun": {
+          "begin": null,
+          "loop": "Stun",
+          "end": null
+        }
+      },
+      "animations": {
+        "Attack": 1,
+        "Default": 0,
+        "Die": 1,
+        "Idle": 1.333,
+        "Skill": 1.167,
+        "Start": 1,
+        "Stun": 1
+      },
+      "events": [
+        "OnAttack",
+        "OnStart"
+      ],
+      "hits": {
+        "Attack": [
+          0.367
+        ],
+        "Skill": [
+          0.5
+        ]
+      },
+      "bounds": {
+        "x": 527.795,
+        "y": -3.156,
+        "width": 342.015,
+        "height": 328.516
+      }
+    },
+    "token_10020_ling_soul3": {
+      "skel": "token_10020_ling_soul3.skel",
+      "atlas": "token_10020_ling_soul3.atlas",
+      "textures": [
+        "token_10020_ling_soul3.png"
+      ],
+      "pma": true,
+      "anims": {
+        "idle": "Idle",
+        "deploy": "Start",
+        "attack": {
+          "begin": null,
+          "loop": "Attack",
+          "end": null
+        },
+        "attackDown": null,
+        "skill": {
+          "begin": null,
+          "loop": "Attack",
+          "end": null,
+          "via": "attack",
+          "index": 0,
+          "idle": null
+        },
+        "die": "Die",
+        "move": null,
+        "stun": {
+          "begin": null,
+          "loop": "Stun",
+          "end": null
+        }
+      },
+      "animations": {
+        "Attack": 1,
+        "Attack_02": 1.667,
+        "Default": 0,
+        "Die": 1,
+        "Die_02": 1,
+        "Die_Skill": 0.333,
+        "Idle": 1.333,
+        "Idle_02": 2,
+        "Start": 1,
+        "Start_02": 0.667,
+        "Stun": 1,
+        "Stun_02": 1
+      },
+      "events": [
+        "OnAttack",
+        "OnStart"
+      ],
+      "hits": {
+        "Attack": [
+          0.367
+        ],
+        "Attack_02": [
+          0.5
+        ]
+      },
+      "bounds": {
+        "x": -1165.665,
+        "y": -4.122,
+        "width": 2035.691,
+        "height": 537.811
+      }
+    },
+    "token_10024_ebnhlz_rcube": {
+      "skel": "token_10024_ebnhlz_rcube.skel",
+      "atlas": "token_10024_ebnhlz_rcube.atlas",
+      "textures": [
+        "token_10024_ebnhlz_rcube.png"
+      ],
+      "pma": true,
+      "anims": {
+        "idle": "Idle",
+        "deploy": "Start",
+        "attack": {
+          "begin": null,
+          "loop": "Attack",
+          "end": null
+        },
+        "attackDown": null,
+        "skill": {
+          "begin": null,
+          "loop": "Attack",
+          "end": null,
+          "via": "attack",
+          "index": 0,
+          "idle": null
+        },
+        "die": "Die",
+        "move": null,
+        "stun": null
+      },
+      "animations": {
+        "Attack": 0.933,
+        "Default": 0,
+        "Die": 0.167,
+        "Idle": 1,
+        "Start": 1
+      },
+      "events": [
+        "OnAttack",
+        "OnStart"
+      ],
+      "hits": {
+        "Attack": [
+          0.433
+        ]
+      },
+      "bounds": {
+        "x": -114.083,
+        "y": -0.231,
+        "width": 400.735,
+        "height": 385.999
+      }
+    },
+    "token_10025_doroth_recttp": {
+      "skel": "token_10025_doroth_recttp.skel",
+      "atlas": "token_10025_doroth_recttp.atlas",
+      "textures": [
+        "token_10025_doroth_recttp.png"
+      ],
+      "pma": true,
+      "anims": {
+        "idle": "Idle",
+        "deploy": "Start",
+        "attack": {
+          "begin": null,
+          "loop": "Attack",
+          "end": null
+        },
+        "attackDown": null,
+        "skill": {
+          "begin": null,
+          "loop": "Attack",
+          "end": null,
+          "via": "attack",
+          "index": 0,
+          "idle": null
+        },
+        "die": "Die",
+        "move": null,
+        "stun": null
+      },
+      "animations": {
+        "Attack": 0.333,
+        "Default": 0,
+        "Die": 0.833,
+        "Idle": 1.667,
+        "Start": 0.433
+      },
+      "events": [
+        "OnAttack"
+      ],
+      "hits": {
+        "Attack": [
+          0.267,
+          0.333
+        ]
+      },
+      "bounds": {
+        "x": -97.195,
+        "y": -9.425,
+        "width": 186.806,
+        "height": 147.302
+      }
+    },
+    "token_10026_bgsnow_subbow": {
+      "skel": "token_10026_bgsnow_subbow.skel",
+      "atlas": "token_10026_bgsnow_subbow.atlas",
+      "textures": [
+        "token_10026_bgsnow_subbow.png"
+      ],
+      "pma": true,
+      "anims": {
+        "idle": "Idle",
+        "deploy": "Start",
+        "attack": {
+          "begin": null,
+          "loop": "Attack",
+          "end": null
+        },
+        "attackDown": {
+          "begin": null,
+          "loop": "Attack_Down",
+          "end": null
+        },
+        "skill": {
+          "begin": null,
+          "loop": "Attack",
+          "end": null,
+          "via": "attack",
+          "index": 0,
+          "idle": null
+        },
+        "die": null,
+        "move": null,
+        "stun": null
+      },
+      "animations": {
+        "Attack": 1.6,
+        "Attack_Down": 1.6,
+        "Default": 0,
+        "Default_Down": 0,
+        "Idle": 0.333,
+        "Idle_Down": 0.333,
+        "Start": 0.667,
+        "Start_Down": 0.667
+      },
+      "events": [
+        "OnAttack",
+        "OnStart"
+      ],
+      "hits": {
+        "Attack": [
+          0.067
+        ],
+        "Attack_Down": [
+          0.067
+        ]
+      },
+      "bounds": {
+        "x": -155.441,
+        "y": -133.505,
+        "width": 362.987,
+        "height": 319
+      }
+    },
+    "token_10027_ironmn_pile1": {
+      "skel": "token_10027_ironmn_pile1.skel",
+      "atlas": "token_10027_ironmn_pile1.atlas",
+      "textures": [
+        "token_10027_ironmn_pile1.png"
+      ],
+      "pma": true,
+      "anims": {
+        "idle": "Idle",
+        "deploy": "Start",
+        "attack": {
+          "begin": null,
+          "loop": "Idle",
+          "end": null,
+          "via": "idle"
+        },
+        "attackDown": null,
+        "skill": {
+          "begin": null,
+          "loop": "Idle",
+          "end": null,
+          "via": "attack",
+          "index": 0,
+          "idle": null
+        },
+        "die": "End",
+        "move": null,
+        "stun": null
+      },
+      "animations": {
+        "Default": 0,
+        "End": 1,
+        "Idle": 2.8,
+        "Start": 1
+      },
+      "events": [
+        "OnStart"
+      ],
+      "hits": {},
+      "bounds": {
+        "x": -125.131,
+        "y": -1.127,
+        "width": 215.5,
+        "height": 287
+      }
+    },
+    "token_10027_ironmn_pile2": {
+      "skel": "token_10027_ironmn_pile2.skel",
+      "atlas": "token_10027_ironmn_pile2.atlas",
+      "textures": [
+        "token_10027_ironmn_pile2.png"
+      ],
+      "pma": true,
+      "anims": {
+        "idle": "Idle",
+        "deploy": "Start",
+        "attack": {
+          "begin": null,
+          "loop": "Idle",
+          "end": null,
+          "via": "idle"
+        },
+        "attackDown": null,
+        "skill": {
+          "begin": null,
+          "loop": "Idle",
+          "end": null,
+          "via": "attack",
+          "index": 0,
+          "idle": null
+        },
+        "die": "End",
+        "move": null,
+        "stun": null
+      },
+      "animations": {
+        "Default": 0,
+        "End": 1,
+        "Idle": 2.8,
+        "Start": 1
+      },
+      "events": [
+        "OnStart"
+      ],
+      "hits": {},
+      "bounds": {
+        "x": -125.131,
+        "y": -1.127,
+        "width": 215.5,
+        "height": 287
+      }
+    },
+    "token_10027_ironmn_pile3": {
+      "skel": "token_10027_ironmn_pile3.skel",
+      "atlas": "token_10027_ironmn_pile3.atlas",
+      "textures": [
+        "token_10027_ironmn_pile3.png"
+      ],
+      "pma": true,
+      "anims": {
+        "idle": "Idle",
+        "deploy": "Start",
+        "attack": {
+          "begin": null,
+          "loop": "Attack",
+          "end": null
+        },
+        "attackDown": null,
+        "skill": {
+          "begin": null,
+          "loop": "Attack",
+          "end": null,
+          "via": "attack",
+          "index": 0,
+          "idle": null
+        },
+        "die": "Die",
+        "move": null,
+        "stun": null
+      },
+      "animations": {
+        "Attack": 0.333,
+        "Default": 0,
+        "Die": 1,
+        "Idle": 1,
+        "Start": 1
+      },
+      "events": [
+        "OnAttack",
+        "OnStart"
+      ],
+      "hits": {
+        "Attack": [
+          0.067
+        ]
+      },
+      "bounds": {
+        "x": -144.444,
+        "y": -6.815,
+        "width": 307.5,
+        "height": 358.952
+      }
+    },
+    "token_10029_slent2_protrb": {
+      "skel": "token_10029_slent2_protrb.skel",
+      "atlas": "token_10029_slent2_protrb.atlas",
+      "textures": [
+        "token_10029_slent2_protrb.png"
+      ],
+      "pma": true,
+      "anims": {
+        "idle": "Idle",
+        "deploy": "Start",
+        "attack": {
+          "begin": null,
+          "loop": "Idle",
+          "end": null,
+          "via": "idle"
+        },
+        "attackDown": null,
+        "skill": {
+          "begin": null,
+          "loop": "Idle",
+          "end": null,
+          "via": "attack",
+          "index": 0,
+          "idle": null
+        },
+        "die": "Die",
+        "move": null,
+        "stun": null
+      },
+      "animations": {
+        "Default": 0,
+        "Die": 1,
+        "Idle": 1.2,
+        "Start": 1
+      },
+      "events": [
+        "Start"
+      ],
+      "hits": {},
+      "bounds": {
+        "x": -54.473,
+        "y": 32.801,
+        "width": 102,
+        "height": 241
+      }
+    },
+    "token_10032_jesca2_jckshd": {
+      "skel": "token_10032_jesca2_jckshd.skel",
+      "atlas": "token_10032_jesca2_jckshd.atlas",
+      "textures": [
+        "token_10032_jesca2_jckshd.png"
+      ],
+      "pma": true,
+      "anims": {
+        "idle": "Idle",
+        "deploy": "Start",
+        "attack": {
+          "begin": null,
+          "loop": "Idle",
+          "end": null,
+          "via": "idle"
+        },
+        "attackDown": null,
+        "skill": {
+          "begin": null,
+          "loop": "Idle",
+          "end": null,
+          "via": "attack",
+          "index": 0,
+          "idle": null
+        },
+        "die": "Die",
+        "move": null,
+        "stun": null
+      },
+      "animations": {
+        "Default": 0,
+        "Die": 1,
+        "Idle": 1,
+        "Start": 1
+      },
+      "events": [],
+      "hits": {},
+      "bounds": {
+        "x": -95.509,
+        "y": -1.252,
+        "width": 372.723,
+        "height": 308.75
+      }
+    },
+    "token_10034_ray_sndbst": {
+      "skel": "token_10034_ray_sndbst.skel",
+      "atlas": "token_10034_ray_sndbst.atlas",
+      "textures": [
+        "token_10034_ray_sndbst.png"
+      ],
+      "pma": true,
+      "anims": {
+        "idle": "Idle",
+        "deploy": "Start",
+        "attack": {
+          "begin": null,
+          "loop": "Idle",
+          "end": null,
+          "via": "idle"
+        },
+        "attackDown": null,
+        "skill": {
+          "begin": null,
+          "loop": "Idle",
+          "end": null,
+          "via": "attack",
+          "index": 0,
+          "idle": null
+        },
+        "die": null,
+        "move": null,
+        "stun": null
+      },
+      "animations": {
+        "Default": 0,
+        "Idle": 1,
+        "Start": 1
+      },
+      "events": [
+        "OnStart"
+      ],
+      "hits": {},
+      "bounds": null
+    },
+    "token_10035_wisdel_wward": {
+      "skel": "token_10035_wisdel_wward.skel",
+      "atlas": "token_10035_wisdel_wward.atlas",
+      "textures": [
+        "token_10035_wisdel_wward.png"
+      ],
+      "pma": true,
+      "anims": {
+        "idle": "Idle",
+        "deploy": "Start",
+        "attack": {
+          "begin": null,
+          "loop": "Attack",
+          "end": null
+        },
+        "attackDown": null,
+        "skill": {
+          "begin": null,
+          "loop": "Attack",
+          "end": null,
+          "via": "attack",
+          "index": 0,
+          "idle": null
+        },
+        "die": "Die",
+        "move": null,
+        "stun": null
+      },
+      "animations": {
+        "Attack": 2.033,
+        "Die": 1,
+        "Idle": 2,
+        "Start": 1
+      },
+      "events": [
+        "OnAttack",
+        "OnStart"
+      ],
+      "hits": {
+        "Attack": [
+          0.033
+        ]
+      },
+      "bounds": null
+    },
+    "token_10041_cathy_catsld": {
+      "skel": "token_10041_cathy_catsld.skel",
+      "atlas": "token_10041_cathy_catsld.atlas",
+      "textures": [
+        "token_10041_cathy_catsld.png"
+      ],
+      "pma": true,
+      "anims": {
+        "idle": "Idle",
+        "deploy": "Start",
+        "attack": {
+          "begin": null,
+          "loop": "Idle",
+          "end": null,
+          "via": "idle"
+        },
+        "attackDown": null,
+        "skill": {
+          "begin": null,
+          "loop": "Idle",
+          "end": null,
+          "via": "attack",
+          "index": 0,
+          "idle": null
+        },
+        "die": "Die",
+        "move": null,
+        "stun": null
+      },
+      "animations": {
+        "Default": 0,
+        "Die": 0.567,
+        "Idle": 0.7,
+        "Start": 0.667
+      },
+      "events": [
+        "OnStart"
+      ],
+      "hits": {},
+      "bounds": {
+        "x": 160.056,
+        "y": -1.331,
+        "width": 201.714,
+        "height": 335.376
+      }
+    },
+    "token_10043_necras_skeltn": {
+      "skel": "token_10043_necras_skeltn.skel",
+      "atlas": "token_10043_necras_skeltn.atlas",
+      "textures": [
+        "token_10043_necras_skeltn.png"
+      ],
+      "pma": true,
+      "anims": {
+        "idle": "Idle",
+        "deploy": "Start",
+        "attack": {
+          "begin": null,
+          "loop": "Attack",
+          "end": null
+        },
+        "attackDown": null,
+        "skill": {
+          "begin": "Skill_Begin",
+          "loop": "Skill_Loop",
+          "end": "Skill_End",
+          "index": 0,
+          "idle": null
+        },
+        "die": "Die",
+        "move": null,
+        "stun": {
+          "begin": null,
+          "loop": "Stun",
+          "end": null
+        }
+      },
+      "animations": {
+        "Attack": 2,
+        "Attack_2": 2,
+        "Default": 0,
+        "Die": 1,
+        "Die_2": 0.333,
+        "Idle": 2,
+        "Idle_2": 2,
+        "Skill_Begin": 0.567,
+        "Skill_Down_Begin": 0.567,
+        "Skill_Down_End": 0.333,
+        "Skill_Down_Loop": 0.8,
+        "Skill_End": 0.333,
+        "Skill_Loop": 0.8,
+        "Start": 1,
+        "Start_2": 1,
+        "Stun": 1,
+        "Stun_2": 1
+      },
+      "events": [
+        "OnAttack",
+        "OnStart"
+      ],
+      "hits": {
+        "Attack": [
+          0.567
+        ],
+        "Attack_2": [
+          0.5
+        ],
+        "Skill_Down_Loop": [
+          0.067
+        ],
+        "Skill_Loop": [
+          0.067
+        ]
+      },
+      "bounds": {
+        "x": -265.35,
+        "y": -0.431,
+        "width": 720.496,
+        "height": 446.585
+      }
+    },
+    "token_10050_monstr_prosts": {
+      "skel": "token_10050_monstr_prosts.skel",
+      "atlas": "token_10050_monstr_prosts.atlas",
+      "textures": [
+        "token_10050_monstr_prosts.png"
+      ],
+      "pma": true,
+      "anims": {
+        "idle": "Idle",
+        "deploy": "Start",
+        "attack": {
+          "begin": null,
+          "loop": "Attack",
+          "end": null
+        },
+        "attackDown": null,
+        "skill": {
+          "begin": null,
+          "loop": "Attack",
+          "end": null,
+          "via": "attack",
+          "index": 0,
+          "idle": null
+        },
+        "die": "Die",
+        "move": null,
+        "stun": null
+      },
+      "animations": {
+        "Attack": 1.333,
+        "Default": 0,
+        "Die": 1,
+        "Idle": 2,
+        "Skill_3": 0,
+        "Skill_3_Begin": 0.667,
+        "Start": 1
+      },
+      "events": [
+        "OnAttack",
+        "OnStart"
+      ],
+      "hits": {
+        "Attack": [
+          0.033
+        ]
+      },
+      "bounds": null
+    },
+    "token_10051_radian_tower1": {
+      "skel": "token_10051_radian_tower1.skel",
+      "atlas": "token_10051_radian_tower1.atlas",
+      "textures": [
+        "token_10051_radian_tower1.png"
+      ],
+      "pma": true,
+      "anims": {
+        "idle": "C_Skill1_Idle",
+        "deploy": "C_Skill1_Start",
+        "attack": {
+          "begin": null,
+          "loop": "C_Skill1_Attack",
+          "end": null
+        },
+        "attackDown": null,
+        "skill": {
+          "begin": null,
+          "loop": "C_Skill1_Attack",
+          "end": null,
+          "via": "attack",
+          "index": 0,
+          "idle": null
+        },
+        "die": "C_Skill1_Die",
+        "move": null,
+        "stun": null
+      },
+      "animations": {
+        "C_Default": 0,
+        "C_Skill1_Attack": 1.2,
+        "C_Skill1_Die": 1,
+        "C_Skill1_Idle": 4,
+        "C_Skill1_Start": 1
+      },
+      "events": [
+        "OnAttack",
+        "OnStart"
+      ],
+      "hits": {
+        "C_Skill1_Attack": [
+          0.267
+        ]
+      },
+      "bounds": null
+    },
+    "token_10052_radian_tower2": {
+      "skel": "token_10052_radian_tower2.skel",
+      "atlas": "token_10052_radian_tower2.atlas",
+      "textures": [
+        "token_10052_radian_tower2.png"
+      ],
+      "pma": true,
+      "anims": {
+        "idle": "Idle",
+        "deploy": "Start",
+        "attack": {
+          "begin": null,
+          "loop": "Idle",
+          "end": null,
+          "via": "idle"
+        },
+        "attackDown": null,
+        "skill": {
+          "begin": null,
+          "loop": "Skill_Idle",
+          "end": null,
+          "index": 0,
+          "idle": "Skill_Idle"
+        },
+        "die": "Die",
+        "move": null,
+        "stun": null
+      },
+      "animations": {
+        "Default": 0,
+        "Die": 1,
+        "Idle": 4.2,
+        "Skill_Idle": 3,
+        "Start": 1
+      },
+      "events": [
+        "OnAttack",
+        "OnStart"
+      ],
+      "hits": {
+        "Idle": [
+          0.5
+        ],
+        "Skill_Idle": [
+          0.367
+        ]
+      },
+      "bounds": {
+        "x": -157.661,
+        "y": -493.753,
+        "width": 599.948,
+        "height": 130.995
+      }
+    },
+    "token_10053_radian_tower3": {
+      "skel": "token_10053_radian_tower3.skel",
+      "atlas": "token_10053_radian_tower3.atlas",
+      "textures": [
+        "token_10053_radian_tower3.png"
+      ],
+      "pma": true,
+      "anims": {
+        "idle": "Idle",
+        "deploy": "Start",
+        "attack": {
+          "begin": null,
+          "loop": "Attack",
+          "end": null
+        },
+        "attackDown": null,
+        "skill": {
+          "begin": "Skill_Begin",
+          "loop": "Skill_Loop",
+          "end": "Skill_End",
+          "index": 0,
+          "idle": "Skill_Idle"
+        },
+        "die": "Die",
+        "move": null,
+        "stun": null
+      },
+      "animations": {
+        "Attack": 2,
+        "Default": 0,
+        "Die": 1,
+        "Idle": 1.333,
+        "Skill_Begin": 0.333,
+        "Skill_End": 0.333,
+        "Skill_Idle": 0.667,
+        "Skill_Loop": 2,
+        "Start": 1
+      },
+      "events": [
+        "OnAttack",
+        "OnStart"
+      ],
+      "hits": {
+        "Attack": [
+          0.267
+        ],
+        "Skill_Loop": [
+          0.233
+        ]
+      },
+      "bounds": {
+        "x": -684.731,
+        "y": -862.267,
+        "width": 391.513,
+        "height": 680.516
+      }
+    },
+    "token_10054_phatm2_encdool": {
+      "skel": "token_10054_phatm2_encdool.skel",
+      "atlas": "token_10054_phatm2_encdool.atlas",
+      "textures": [
+        "token_10054_phatm2_encdool.png"
+      ],
+      "pma": true,
+      "anims": {
+        "idle": "Loop",
+        "deploy": "Start",
+        "attack": {
+          "begin": null,
+          "loop": "Loop",
+          "end": null,
+          "via": "idle"
+        },
+        "attackDown": null,
+        "skill": {
+          "begin": null,
+          "loop": "Loop",
+          "end": null,
+          "via": "attack",
+          "index": 0,
+          "idle": null
+        },
+        "die": "End",
+        "move": null,
+        "stun": null
+      },
+      "animations": {
+        "Default": 0,
+        "End": 1.5,
+        "Loop": 5,
+        "Start": 1
+      },
+      "events": [
+        "On_Attack",
+        "On_Start"
+      ],
+      "hits": {},
+      "bounds": null
+    },
+    "token_10057_svash2_eagle1": {
+      "skel": "token_10057_svash2_eagle.skel",
+      "atlas": "token_10057_svash2_eagle.atlas",
+      "textures": [
+        "token_10057_svash2_eagle.png"
+      ],
+      "pma": true,
+      "anims": {
+        "idle": "Default",
+        "deploy": "Default",
+        "attack": {
+          "begin": null,
+          "loop": "Default",
+          "end": null,
+          "via": "idle"
+        },
+        "attackDown": null,
+        "skill": {
+          "begin": null,
+          "loop": "Default",
+          "end": null,
+          "via": "attack",
+          "index": 0,
+          "idle": null
+        },
+        "die": null,
+        "move": null,
+        "stun": null
+      },
+      "animations": {
+        "Default": 0
+      },
+      "events": [],
+      "hits": {},
+      "bounds": {
+        "x": -75,
+        "y": -0.51,
+        "width": 150,
+        "height": 174
+      }
+    },
+    "token_10057_svash2_eagle2": {
+      "skel": "token_10057_svash2_eagle.skel",
+      "atlas": "token_10057_svash2_eagle.atlas",
+      "textures": [
+        "token_10057_svash2_eagle.png"
+      ],
+      "pma": true,
+      "anims": {
+        "idle": "Default",
+        "deploy": "Default",
+        "attack": {
+          "begin": null,
+          "loop": "Default",
+          "end": null,
+          "via": "idle"
+        },
+        "attackDown": null,
+        "skill": {
+          "begin": null,
+          "loop": "Default",
+          "end": null,
+          "via": "attack",
+          "index": 0,
+          "idle": null
+        },
+        "die": null,
+        "move": null,
+        "stun": null
+      },
+      "animations": {
+        "Default": 0
+      },
+      "events": [],
+      "hits": {},
+      "bounds": {
+        "x": -75,
+        "y": -0.51,
+        "width": 150,
+        "height": 174
+      }
+    },
+    "token_10057_svash2_eagle3": {
+      "skel": "token_10057_svash2_eagle.skel",
+      "atlas": "token_10057_svash2_eagle.atlas",
+      "textures": [
+        "token_10057_svash2_eagle.png"
+      ],
+      "pma": true,
+      "anims": {
+        "idle": "Default",
+        "deploy": "Default",
+        "attack": {
+          "begin": null,
+          "loop": "Default",
+          "end": null,
+          "via": "idle"
+        },
+        "attackDown": null,
+        "skill": {
+          "begin": null,
+          "loop": "Default",
+          "end": null,
+          "via": "attack",
+          "index": 0,
+          "idle": null
+        },
+        "die": null,
+        "move": null,
+        "stun": null
+      },
+      "animations": {
+        "Default": 0
+      },
+      "events": [],
+      "hits": {},
+      "bounds": {
+        "x": -75,
+        "y": -0.51,
+        "width": 150,
+        "height": 174
+      }
+    },
+    "token_10059_nasti_nstdef": {
+      "skel": "token_10059_nasti_nstdef.skel",
+      "atlas": "token_10059_nasti_nstdef.atlas",
+      "textures": [
+        "token_10059_nasti_nstdef.png"
+      ],
+      "pma": true,
+      "anims": {
+        "idle": "Idle",
+        "deploy": "Start",
+        "attack": {
+          "begin": null,
+          "loop": "Skill_Loop",
+          "end": null,
+          "via": "skill"
+        },
+        "attackDown": null,
+        "skill": {
+          "begin": "Skill_Begin",
+          "loop": "Skill_Loop",
+          "end": "Skill_End",
+          "index": 0,
+          "idle": null
+        },
+        "die": "Die",
+        "move": null,
+        "stun": null
+      },
+      "animations": {
+        "Default": 0,
+        "Die": 1,
+        "Idle": 1.333,
+        "Skill_Begin": 0.667,
+        "Skill_End": 0.333,
+        "Skill_Loop": 1.333,
+        "Start": 1
+      },
+      "events": [
+        "OnAttack",
+        "OnStart"
+      ],
+      "hits": {},
+      "bounds": null
+    },
+    "token_10060_nasti_nstchr": {
+      "skel": "token_10060_nasti_nstchr.skel",
+      "atlas": "token_10060_nasti_nstchr.atlas",
+      "textures": [
+        "token_10060_nasti_nstchr.png"
+      ],
+      "pma": true,
+      "anims": {
+        "idle": "Idle_1",
+        "deploy": "Start",
+        "attack": {
+          "begin": null,
+          "loop": "Skill_Loop",
+          "end": null,
+          "via": "skill"
+        },
+        "attackDown": null,
+        "skill": {
+          "begin": "Skill_Begin",
+          "loop": "Skill_Loop",
+          "end": "Skill_End",
+          "index": 0,
+          "idle": null
+        },
+        "die": "Die",
+        "move": null,
+        "stun": null
+      },
+      "animations": {
+        "Default": 0,
+        "Die": 1,
+        "Idle_1": 1.333,
+        "Idle_2": 1.333,
+        "Skill_Begin": 0.467,
+        "Skill_Down_Begin": 0.467,
+        "Skill_Down_End": 0.167,
+        "Skill_Down_Loop": 0.333,
+        "Skill_End": 0.167,
+        "Skill_Loop": 0.333,
+        "Skill_Up_Begin": 0.467,
+        "Skill_Up_End": 0.167,
+        "Skill_Up_Loop": 0.333,
+        "Start": 1
+      },
+      "events": [
+        "OnAttack",
+        "OnStart"
+      ],
+      "hits": {},
+      "bounds": null
+    },
+    "token_10061_nasti_nstbld": {
+      "skel": "token_10061_nasti_nstbld.skel",
+      "atlas": "token_10061_nasti_nstbld.atlas",
+      "textures": [
+        "token_10061_nasti_nstbld.png"
+      ],
+      "pma": true,
+      "anims": {
+        "idle": "Idle_1",
+        "deploy": "Start",
+        "attack": {
+          "begin": null,
+          "loop": "Idle_1",
+          "end": null,
+          "via": "idle"
+        },
+        "attackDown": null,
+        "skill": {
+          "begin": null,
+          "loop": "Skill",
+          "end": null,
+          "index": 0,
+          "idle": null
+        },
+        "die": "Die",
+        "move": null,
+        "stun": null
+      },
+      "animations": {
+        "Default": 0,
+        "Die": 1,
+        "Idle_1": 2,
+        "Idle_2": 3.333,
+        "Idle_3": 1.333,
+        "Idle_4": 0,
+        "Skill": 1.433,
+        "Start": 1
+      },
+      "events": [
+        "OnAttack",
+        "OnStart"
+      ],
+      "hits": {},
+      "bounds": null
+    },
+    "token_10064_wang_stone1": {
+      "skel": "token_10064_wang_stone1.skel",
+      "atlas": "token_10064_wang_stone1.atlas",
+      "textures": [
+        "token_10064_wang_stone1.png"
+      ],
+      "pma": true,
+      "anims": {
+        "idle": "Idle",
+        "deploy": "Start",
+        "attack": {
+          "begin": null,
+          "loop": "Attack",
+          "end": null
+        },
+        "attackDown": null,
+        "skill": {
+          "begin": null,
+          "loop": "Attack",
+          "end": null,
+          "via": "attack",
+          "index": 0,
+          "idle": null
+        },
+        "die": null,
+        "move": null,
+        "stun": null
+      },
+      "animations": {
+        "Attack": 0.333,
+        "Default": 0,
+        "Idle": 1.667,
+        "Start": 0.333
+      },
+      "events": [
+        "OnAttack",
+        "OnStart"
+      ],
+      "hits": {
+        "Attack": [
+          0.167
+        ]
+      },
+      "bounds": null
+    },
+    "token_10066_closur_ourbase": {
+      "skel": "token_10066_closur_ourbase.skel",
+      "atlas": "token_10066_closur_ourbase.atlas",
+      "textures": [
+        "token_10066_closur_ourbase.png"
+      ],
+      "pma": true,
+      "anims": {
+        "idle": "Idle",
+        "deploy": "Start",
+        "attack": {
+          "begin": null,
+          "loop": "Idle",
+          "end": null,
+          "via": "idle"
+        },
+        "attackDown": null,
+        "skill": {
+          "begin": null,
+          "loop": "Idle",
+          "end": null,
+          "via": "attack",
+          "index": 0,
+          "idle": null
+        },
+        "die": "Die",
+        "move": null,
+        "stun": null
+      },
+      "animations": {
+        "Default": 0,
+        "Die": 1,
+        "Idle": 1.333,
+        "Start": 1
+      },
+      "events": [
+        "OnStart"
+      ],
+      "hits": {},
+      "bounds": null
+    },
+    "token_10068_kalts2_mtship": {
+      "skel": "token_10068_kalts2_mtship.skel",
+      "atlas": "token_10068_kalts2_mtship.atlas",
+      "textures": [
+        "token_10068_kalts2_mtship.png"
+      ],
+      "pma": true,
+      "anims": {
+        "idle": "Default",
+        "deploy": "Default",
+        "attack": {
+          "begin": null,
+          "loop": "Default",
+          "end": null,
+          "via": "idle"
+        },
+        "attackDown": null,
+        "skill": {
+          "begin": null,
+          "loop": "Default",
+          "end": null,
+          "via": "attack",
+          "index": 0,
+          "idle": null
+        },
+        "die": null,
+        "move": null,
+        "stun": null
+      },
+      "animations": {
+        "Default": 0,
+        "Die": 1,
+        "Idle": 1,
+        "Start": 1
+      },
+      "events": [
+        "OnStart"
+      ],
+      "hits": {},
+      "bounds": {
+        "x": -218.217,
+        "y": -160.033,
+        "width": 398,
+        "height": 410
+      }
+    },
+    "token_10069_mcnist_mcgraf": {
+      "skel": "token_10069_mcnist_mcgraf.skel",
+      "atlas": "token_10069_mcnist_mcgraf.atlas",
+      "textures": [
+        "token_10069_mcnist_mcgraf.png"
+      ],
+      "pma": true,
+      "anims": {
+        "idle": "Idle",
+        "deploy": "Start",
+        "attack": {
+          "begin": null,
+          "loop": "Attack",
+          "end": null
+        },
+        "attackDown": null,
+        "skill": {
+          "begin": "Skill_Begin",
+          "loop": "Skill_Loop",
+          "end": "Skill_End",
+          "index": 0,
+          "idle": null
+        },
+        "die": "Die",
+        "move": null,
+        "stun": null
+      },
+      "animations": {
+        "Attack": 1.5,
+        "Default": 0,
+        "Die": 1,
+        "Idle": 1.333,
+        "Skill_Begin": 0.267,
+        "Skill_End": 1.233,
+        "Skill_Loop": 0,
+        "Start": 1
+      },
+      "events": [
+        "OnAttack",
+        "OnStart"
+      ],
+      "hits": {
+        "Attack": [
+          0.667
+        ],
+        "Skill_End": [
+          0.4
+        ]
+      },
+      "bounds": {
+        "x": -124.804,
+        "y": -2.196,
+        "width": 250.009,
+        "height": 390.019
+      }
+    },
+    "token_10070_aphris_pc": {
+      "skel": "token_10070_aphris_pc.skel",
+      "atlas": "token_10070_aphris_pc.atlas",
+      "textures": [
+        "token_10070_aphris_pc.png"
+      ],
+      "pma": true,
+      "anims": {
+        "idle": "Idle",
+        "deploy": "Start",
+        "attack": {
+          "begin": null,
+          "loop": "Idle",
+          "end": null,
+          "via": "idle"
+        },
+        "attackDown": null,
+        "skill": {
+          "begin": null,
+          "loop": "Idle",
+          "end": null,
+          "via": "attack",
+          "index": 0,
+          "idle": null
+        },
+        "die": "Die",
+        "move": null,
+        "stun": null
+      },
+      "animations": {
+        "Default": 0,
+        "Die": 1,
+        "Idle": 3,
+        "Start": 1
+      },
+      "events": [
+        "OnAttack",
+        "OnStart"
+      ],
+      "hits": {},
+      "bounds": null
+    }
+  }
+}

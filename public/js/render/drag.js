@@ -11,8 +11,10 @@
 // direction wheel to re-orient it in place (research 09 §1.2 — "drag the unit onto its own tile and swipe").
 // Everything is judged at the pointer (user playtest #4 item 1: the ground is drawn as tiles): a press / hover is on the
 // piece standing on the tile under it (`hitPiece`, render/pick.js), and while dragging the target, `tileHover` and the
-// legality are that tile — an item dropped on a unit's tile goes to that unit; app.js holds the dragged ghost under
-// the pointer. A release over DOM UI covering the canvas (the shop bar) is 'outside' (mouse and touch alike).
+// legality are that tile — an item dropped on a unit's tile goes to that unit. app.js draws a dragged unit standing on
+// that tile while it is a legal target (`dragStandTile`, the official deploy drag) and held under the pointer
+// otherwise; an item plate stays on the pointer. A release over DOM UI covering the canvas (the shop bar) is 'outside'
+// (mouse and touch alike).
 //
 // Events emitted through `emit(name, payload)`:
 //   pieceHover     { uid, piece, clientX, clientY } | { uid: null }            (mouse/pen hover changes)

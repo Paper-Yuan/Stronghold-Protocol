@@ -352,8 +352,9 @@ reported the 战场#01 lower-gate enemies walking up the col-9 floor lane, where
 `server/sim/grid.js` keeps every official route LENGTH and the official route itself unless the 2026-09-29
 road-over-floor preference route (equal-length ties to the chain with the fewest non-blockable floor / gate tiles,
 smoothing that never cuts across floor its grid route does not walk, the corner tiles of a diagonal step included)
-crosses strictly fewer non-blockable tiles; in that comparison a segment that only touches a floor tile's corner does
-not cross it. Used alone (0.1.0) the preference also bent official diagonals into L shapes — the D5 report after
+crosses strictly fewer non-blockable tiles and no more 深水区 (GitHub #375, 0.2.2: the 深水区 is non-blockable too, and
+on 战场#08(下半) the patrolling leaders had waded through two water tiles to dodge one floor tile); in that comparison a
+segment that only touches a floor tile's corner does not cross it. Used alone (0.1.0) the preference also bent official diagonals into L shapes — the D5 report after
 0.1.0: on 战场#04 the lower-gate enemies walked (9,10) → (9,8) → (10,8) instead of the official diagonal (9,10) →
 (10,7), which only brushes the corner of the floor (10,9). Lanes that still differ from the table above (21 of the 154
 stage × gate × field routes, test/sim/pathing-official.test.js):
@@ -551,10 +552,10 @@ Everything in `docs/BALANCE.md` §4 (the tuned tables) and the `tools/balance.mj
 2. **Stat scaling and balance.**
    - Delete every `enemyHpMul`, `enemyAtkMul` and `bossHpMul` in `data/tuning.json`. Keep the `titles` block.
    - Remove the `soloMul` in `bountySpawns`.
-   - `config.bossHpScale`: co-op pool = `bloodPoint[difficulty]` with no alive-player factor; solo stays a flagged config value. (2026-10-01: × alive / 4 available behind `aliveScaling`, off, see §6 #7.)
+   - `config.bossHpScale`: co-op pool = `bloodPoint[difficulty]` with no alive-player factor; solo stays a flagged config value. (2026-10-01: × alive / 4 available behind `aliveScaling`, off, see §6 #7.) (2026-10-06: replaced by the owner's decision adopting PR #209 — `bloodPoint` × the players alive at the fight's start, solo × 1; `perPlayer: false` restores the fixed pool; DESIGN §25.13.4.)
    - Keep `enemyScale` (PRTS table) and the 终极 speed ×1.15 from R3.
    - Re-run `tools/balance.mjs --tuning off` only to report, not to tune.
-3. **Pathing** (`server/sim/grid.js`, `server/sim/ai.js`, `server/sim/Battle.js`):
+3. **Pathing** (`server/sim/grid.js`, `server/sim/ai.js`, `server/sim/Battle.js` — since 0.2.0 `server/sim/battle/spawns.js` / `tiles.js`):
    - Add `Grid.flowField(dest)` as in §3.4, cached per `(dest, version)`.
    - `planLeg` for WALK: follow the smoothed parents from the enemy's tile to the leg target and re-plan on version change. That is the same trigger as today.
    - Crates: `setObstacle` marks a cost-1000 obstacle-like tile, not an impassable one. The existing "blocked enemy attacks the crate" logic stays.
@@ -581,7 +582,7 @@ Everything in `docs/BALANCE.md` §4 (the tuned tables) and the `tools/balance.mj
 | # | Question | Default |
 |---|---|---|
 | 1 | Do 射击台 (act1 m03 (10,3)/(10,4)) and 土石结构 block ground movement? | Block [ASSUMED] |
-| 2 | Leader HP pool in solo, and in co-op with fewer than 4 alive players | co-op `bloodPoint` (× alive / 4 behind `aliveScaling`, off — ask the user, 2026-10-01); solo config value (flagged) |
+| 2 | Leader HP pool in solo, and in co-op with fewer than 4 alive players | co-op `bloodPoint` (× alive / 4 behind `aliveScaling`, off — ask the user, 2026-10-01); solo config value (flagged). Answered 2026-10-06 (the owner, PR #209): `bloodPoint` × the players alive at the fight's start, solo × 1 (DESIGN §25.13.4) |
 | 3 | Unit of `maxPlayTime` | Real seconds (×2 game) [ASSUMED] |
 | 4 | Exact 联防 predelay formula (`_CalculateActionPredelayConsiderUid`) | 0.5 s per owner [ASSUMED] |
 | 5 | DEF reduction in the 70 % / 80 % bases | HP/ATK only (下半 text) |
