@@ -48,6 +48,9 @@ import { AdminService, recordAdminLog } from './admin.js';
 import { ModUploadManager } from './admin/modUploads.js';
 import { readCatalog } from './mod/catalogStore.js';
 import { modCacheRoot } from './mod/packCache.js';
+import { verifyPack } from './modverify/run.js';
+import { publishPack } from './mod/publish.js';
+import { createCdnClient } from './mod/cdnClient.js';
 import { endlessLeaderboardAll } from './records.js';
 import { debugConfigFrom } from './debug.js';
 import { GlobalModManager } from './packs.js';
@@ -69,6 +72,9 @@ function readJsonBody(req, limit = 64 * 1024) {
 
 /** Repository root. */
 export const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+
+/** Wall clock the admin verify endpoint gives the forked verifier before it is killed (C2). */
+const MOD_VERIFY_TIMEOUT_MS = Number(process.env.MOD_VERIFY_TIMEOUT_MS) > 0 ? Number(process.env.MOD_VERIFY_TIMEOUT_MS) : 180000;
 
 /** Inbound WebSocket frame limit (DESIGN §8). */
 export const WS_MAX_PAYLOAD = 64 * 1024;
@@ -752,6 +758,8 @@ export async function startServer(opts = {}) {
   const modUploads = new ModUploadManager({ stagingDir: opts.modStagingDir, log: (msg) => log.info(msg) });
   // Mod runtime cache (sections/kits/catalog.json). Tests pass their own dir to stay isolated.
   const modCache = opts.modCacheDir || modCacheRoot();
+  // The CDN client used by the publish step; tests inject a fake.
+  const modCdn = opts.cdnClient || createCdnClient({});
 
   const server = http.createServer((req, res) => {
     res.setHeader('X-Content-Type-Options', 'nosniff');
@@ -830,6 +838,53 @@ export async function startServer(opts = {}) {
         const receipt = await modUploads.get(uploadId);
         if (!receipt) { sendJson(req, res, 404, { ok: false, error: 'Not found' }); return; }
         sendJson(req, res, 200, { ok: true, receipt });
+        return;
+      }
+      // The current published catalog (what clients sync at boot).
+      if (parts.rawPath === '/api/admin/mods/catalog' && (req.method === 'GET' || req.method === 'HEAD')) {
+        const catalog = await readCatalog(modCache);
+        sendJson(req, res, 200, { ok: true, catalog });
+        return;
+      }
+      // Run the five-gate verification for one staged upload (C2). Forked subprocess: a
+      // crash or timeout inside the verifier cannot take this server down.
+      if (parts.rawPath.startsWith('/api/admin/mods/') && parts.rawPath.endsWith('/verify') && req.method === 'POST') {
+        const uploadId = parts.rawPath.slice('/api/admin/mods/'.length, -'/verify'.length);
+        const receipt = await modUploads.get(uploadId);
+        if (!receipt) { sendJson(req, res, 404, { ok: false, error: 'Not found' }); return; }
+        try {
+          const { code, report } = await verifyPack(path.join(modUploads.stagingDir, uploadId), {
+            timeoutMs: MOD_VERIFY_TIMEOUT_MS,
+            log: (m) => log.info(m),
+          });
+          sendJson(req, res, 200, { ok: true, exitCode: code, report });
+        } catch (err) {
+          sendJson(req, res, 500, { ok: false, error: err?.message || '验证器执行失败' });
+        }
+        return;
+      }
+      // Publish a VERIFIED upload (C3): split art → CDN, slim zip → CDN, catalog entry.
+      // Body: { allowPending?: boolean } — an admin clearing skip-only verifications (C4 policy).
+      if (parts.rawPath.startsWith('/api/admin/mods/') && parts.rawPath.endsWith('/publish') && req.method === 'POST') {
+        const uploadId = parts.rawPath.slice('/api/admin/mods/'.length, -'/publish'.length);
+        const receipt = await modUploads.get(uploadId);
+        if (!receipt) { sendJson(req, res, 404, { ok: false, error: 'Not found' }); return; }
+        let allowPending = false;
+        try {
+          const body = await readJsonBody(req, 4096);
+          allowPending = body?.allowPending === true;
+        } catch { /* empty body is fine */ }
+        try {
+          const { catalogEntry, report } = await publishPack(path.join(modUploads.stagingDir, uploadId), {
+            cdn: modCdn, cacheRoot: modCache, allowPending, log: (m) => log.info(m),
+          });
+          sendJson(req, res, 200, { ok: true, catalogEntry, report });
+        } catch (err) {
+          // A refused publish (missing/failed/pending verification) is a 409: the request was
+          // well-formed, the pack just is not publishable yet.
+          const status = /验证|verify-report/.test(String(err?.message)) ? 409 : 500;
+          sendJson(req, res, status, { ok: false, error: err?.message || '发布失败' });
+        }
         return;
       }
       sendJson(req, res, 404, { ok: false, error: 'Not found' });
@@ -983,7 +1038,7 @@ export async function startServer(opts = {}) {
     return closing;
   }
 
-  return { port: actualPort, host, url, server, wss, lobby, network, registry, admin, modUploads, close };
+  return { port: actualPort, host, url, server, wss, lobby, network, registry, admin, modUploads, modCache, close };
 }
 
 // ---------------------------------------------------------------------------------------------------

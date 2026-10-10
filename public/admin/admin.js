@@ -133,6 +133,7 @@ function initDashboard() {
   if (!pollTimer) {
     pollTimer = setInterval(fetchAllData, 2000);
   }
+  wireModPipeline();
 }
 
 async function fetchAllData() {
@@ -150,6 +151,143 @@ async function fetchAllData() {
   } catch (err) {
     console.warn('[admin] poll error', err);
   }
+  // MOD pipeline polls separately: it is heavier (staging scan + catalog read) and the
+  // section is optional, so a failure there must not break the rest of the dashboard.
+  try {
+    await refreshModPipeline();
+  } catch (err) {
+    console.warn('[admin] mod pipeline poll error', err);
+  }
+}
+
+// ---- MOD pipeline (upload → verify → publish) --------------------------------------
+
+let modBusy = false;
+
+function modStatus(msg, isError = false) {
+  const el = $('#mod-status');
+  if (!el) return;
+  el.textContent = msg || '';
+  el.style.color = isError ? 'var(--red-premium, #eb4b4b)' : '';
+}
+
+async function refreshModPipeline() {
+  if (!$('#mod-staged-body')) return;
+  const [staged, catalog] = await Promise.all([
+    apiGet('/api/admin/mods/staged'),
+    apiGet('/api/admin/mods/catalog'),
+  ]);
+  renderModStaged(staged.staged || []);
+  renderModCatalog(catalog.catalog?.packs || []);
+}
+
+function fmtBytes(n) {
+  if (!Number.isFinite(n)) return '—';
+  if (n < 1024) return `${n} B`;
+  if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
+  return `${(n / 1024 / 1024).toFixed(1)} MB`;
+}
+
+function renderModStaged(rows) {
+  const tbody = $('#mod-staged-body');
+  if (!tbody) return;
+  if (!rows.length) {
+    tbody.innerHTML = '<tr><td colspan="5" class="adm-td-empty">暂无已上传的 mod 包</td></tr>';
+    return;
+  }
+  tbody.innerHTML = rows.map((r) => {
+    const id = r.uploadId;
+    const published = r.status === 'published';
+    const actions = published
+      ? '<span class="adm-card__sub">已发布</span>'
+      : `<button class="adm-pill" data-mod-verify="${id}">验证</button> ` +
+        `<button class="adm-pill" data-mod-publish="${id}" title="验证只有 skip 项时需显式放行">发布</button>`;
+    return `<tr>
+      <td class="adm-td-mono">${id}</td>
+      <td class="adm-td-mono">${String(r.sha256 || '').slice(0, 12)}</td>
+      <td>${fmtBytes(r.bytes)}</td>
+      <td>${r.status || 'staged'}</td>
+      <td>${actions}</td>
+    </tr>`;
+  }).join('');
+}
+
+function renderModCatalog(packs) {
+  const tbody = $('#mod-catalog-body');
+  if (!tbody) return;
+  if (!packs.length) {
+    tbody.innerHTML = '<tr><td colspan="5" class="adm-td-empty">catalog 为空（尚无已发布的 mod）</td></tr>';
+    return;
+  }
+  tbody.innerHTML = packs.map((p) => `<tr>
+    <td class="adm-td-mono">${p.id}</td>
+    <td>${p.name || ''}</td>
+    <td>${p.version || ''}</td>
+    <td class="adm-td-mono">${String(p.sha256 || '').slice(0, 12)}</td>
+    <td>${fmtBytes(p.bytes)}</td>
+  </tr>`).join('');
+}
+
+async function uploadModZip(file) {
+  modStatus(`上传中：${file.name}（${fmtBytes(file.size)}）…`);
+  const res = await fetch('/api/admin/mods/upload', {
+    method: 'POST',
+    headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/zip' },
+    body: file, // raw body — the zip IS the request body (no FormData; §0.3 contract)
+  });
+  if (res.status === 401) { showLogin(true); throw new Error('Unauthorized'); }
+  const doc = await res.json().catch(() => null);
+  if (!res.ok || !doc?.ok) throw new Error(doc?.error || `HTTP ${res.status}`);
+  modStatus(`已上传 ${doc.uploadId}（sha256 ${String(doc.sha256).slice(0, 12)}）。接下来点「验证」。`);
+  return doc;
+}
+
+async function runModAction(uploadId, action, extra = {}) {
+  modStatus(`${action === 'verify' ? '验证' : '发布'}中：${uploadId}（五道验证可能要一两分钟）…`);
+  const doc = await apiPost(`/api/admin/mods/${uploadId}/${action}`, extra);
+  if (!doc?.ok) throw new Error(doc?.error || '操作失败');
+  if (action === 'verify') {
+    const gates = (doc.report?.gates || []).map((g) => `g${g.gate}:${g.status}`).join(' ');
+    modStatus(`验证完成 overall=${doc.report?.overall}（${gates}）`);
+  } else {
+    modStatus(`已发布 ${doc.catalogEntry?.id}@${doc.catalogEntry?.version} → ${doc.catalogEntry?.url}`);
+  }
+  return doc;
+}
+
+function wireModPipeline() {
+  const fileInput = $('#mod-file');
+  if (!fileInput) return;
+  $('#btn-mod-upload').addEventListener('click', () => fileInput.click());
+  $('#btn-mod-refresh').addEventListener('click', () => refreshModPipeline().catch((e) => modStatus(e.message, true)));
+  fileInput.addEventListener('change', async () => {
+    const file = fileInput.files?.[0];
+    if (!file || modBusy) return;
+    modBusy = true;
+    try {
+      await uploadModZip(file);
+      await refreshModPipeline();
+    } catch (err) {
+      modStatus(err.message, true);
+    } finally {
+      modBusy = false;
+      fileInput.value = '';
+    }
+  });
+  $('#mod-staged-body').addEventListener('click', async (e) => {
+    const btn = e.target.closest('button[data-mod-verify], button[data-mod-publish]');
+    if (!btn || modBusy) return;
+    modBusy = true;
+    try {
+      if (btn.dataset.modVerify) await runModAction(btn.dataset.modVerify, 'verify');
+      else await runModAction(btn.dataset.modPublish, 'publish', { allowPending: true });
+      await refreshModPipeline();
+    } catch (err) {
+      modStatus(err.message, true);
+    } finally {
+      modBusy = false;
+    }
+  });
 }
 
 function renderOverview(data) {

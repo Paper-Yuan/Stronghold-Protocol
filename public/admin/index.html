@@ -112,6 +112,37 @@
       </div>
     </section>
 
+    <!-- MOD pipeline: upload → verify → publish -->
+    <section class="adm-section">
+      <div class="adm-section__head">
+        <h2>MOD 流水线 (Mod Pipeline)</h2>
+        <div class="adm-log-filters">
+          <input type="file" id="mod-file" accept=".zip" style="display:none" />
+          <button class="adm-pill is-active" id="btn-mod-upload">上传 zip</button>
+          <button class="adm-pill" id="btn-mod-refresh">刷新</button>
+        </div>
+      </div>
+      <p class="adm-card__sub" style="margin:0 0 8px">
+        上传整包 zip → 五道验证（zip+schema / ES2020 / 确定性 / 合并 / 渲染冒烟）→ 发布
+        （素材上传 CDN、数据与 kit 留在瘦身 zip、写 catalog）。发布前必须先通过验证；
+        只有 skip 项（如未设 CHROME_PATH）时需显式「放行发布」。
+      </p>
+      <div id="mod-status" class="adm-card__sub"></div>
+      <table class="adm-table">
+        <thead>
+          <tr><th>上传 ID</th><th>sha256</th><th>大小</th><th>状态</th><th>操作</th></tr>
+        </thead>
+        <tbody id="mod-staged-body"></tbody>
+      </table>
+      <div class="adm-section__head" style="margin-top:12px"><h2>已发布 catalog</h2></div>
+      <table class="adm-table">
+        <thead>
+          <tr><th>包 ID</th><th>名称</th><th>版本</th><th>sha256</th><th>大小</th></tr>
+        </thead>
+        <tbody id="mod-catalog-body"></tbody>
+      </table>
+    </section>
+
     <!-- Real-time Log Stream -->
     <section class="adm-section">
       <div class="adm-section__head">
