@@ -20,6 +20,7 @@ import { AllianceCodexButton } from './alliances.js';
 import { openStats } from './stats.js';
 import { ModUploadModal } from '../ui/modUploadModal.js';
 import { LeaderboardButton } from '../ui/leaderboard.js';
+import { LOCAL_FEATURES } from '../../../shared/capabilities.js';
 import { AnnouncementBar } from '../ui/announcement.js';
 import { net, identity } from '../net.js';
 import { store, useStore, shallowEqual, loadPref, savePref } from '../store.js';
@@ -541,7 +542,7 @@ export function LobbyScreen() {
         <${Button} variant="secondary" size="sm" class="lobby-mod" onClick=${() => setModOpen(true)} title="模组管理">MOD<//>
         <${GuideButton} class="lobby-guide" variant="secondary" />
         <${LoadoutButton} from="lobby" size="sm" class="lobby-loadout" />
-        <${LeaderboardButton} class="lobby-leaderboard" variant="secondary" size="sm" />
+        ${LOCAL_FEATURES.endless ? html`<${LeaderboardButton} class="lobby-leaderboard" variant="secondary" size="sm" />` : null}
         <div class="me-chip">
           <${AvatarFrame} size="sm" name=${me.name} seat=${0} self=${true} />
           <div class="me-chip__text">
@@ -606,13 +607,13 @@ export function LobbyScreen() {
         <div class="diff-list">
           ${PICK_DIFFICULTIES.map((d) => html`<${DifficultyCard} key=${d} roomMode=${roomMode} difficulty=${d} selected=${difficulty === d} onSelect=${pickDifficulty} />`)}
         </div>
-        <div class="section-label lobby-endless-label"><span class="section-label__idx num">05</span>无尽模式<${MicroLabel}>ENDLESS<//></div>
+        ${LOCAL_FEATURES.endless ? html`<div class="section-label lobby-endless-label"><span class="section-label__idx num">05</span>无尽模式<${MicroLabel}>ENDLESS<//></div>
         <div class="diff-list diff-list--endless">
           <${EndlessCard} roomMode=${roomMode} selected=${isEndlessDifficulty(difficulty)} onSelect=${pickDifficulty} />
         </div>
         <div class="endless-board">
           <${LeaderboardButton} block=${true} variant="secondary" size="md" label="无尽排行榜" icon="crown" />
-        </div>
+        </div>` : null}
         <div class="create-box">
           <div class="lobby-priv-row" style="display: flex; gap: .06rem; margin-bottom: .08rem;">
             <button type="button" class=${`btn btn--sm ${!isPrivate ? 'btn--primary' : 'btn--ghost'}`}

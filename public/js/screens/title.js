@@ -10,6 +10,7 @@
 
 import { useMemo, useState, useEffect } from '../../vendor/hooks.module.js';
 import { NAME_MAX_LEN, APP_VERSION, ENDLESS_DEFAULT_BASE, endlessDifficultyFor } from '../../../shared/constants.js';
+import { LOCAL_FEATURES } from '../../../shared/capabilities.js';
 import { html, Button, Icon, MicroLabel, TextField, PingPill, DifficultyIcon } from '../ui/components.js';
 import { GuideButton } from '../ui/guide.js';
 import { toast } from '../ui/toasts.js';
@@ -311,9 +312,9 @@ export function TitleScreen() {
           onInput=${setName} onEnter=${start} />
         <${Button} variant="primary" size="xl" block=${true} iconRight="chevrons" disabled=${!valid} onClick=${start}>开始<//>
         <div class="title-ops">
-          <${Button} variant="secondary" size="md" class="title-op-btn title-op-endless" loading=${endlessBusy} onClick=${startEndless} title="单人无尽模式">
+          ${LOCAL_FEATURES.endless ? html`<${Button} variant="secondary" size="md" class="title-op-btn title-op-endless" loading=${endlessBusy} onClick=${startEndless} title="单人无尽模式">
             <${DifficultyIcon} difficulty="ENDLESS" class="title-op-icon" />无尽模式
-          <//>
+          <//>` : null}
           <${Button} variant="secondary" size="md" icon="chart" class="title-op-btn" onClick=${openStats}>统计数据<//>
           <${Button} variant="secondary" size="md" icon="folder" class="title-op-btn" onClick=${() => setModOpen(true)}>MOD 管理<//>
         </div>

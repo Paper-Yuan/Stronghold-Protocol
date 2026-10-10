@@ -14,7 +14,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { APP_VERSION } from '../../shared/constants.js';
-import { ROOT, DIST, run, banner, human, dirSize, rmrf, assertExists, zipDir, verifyZipUtf8 } from './_lib.mjs';
+import { ROOT, DIST, run, banner, human, dirSize, rmrf, assertExists, zipDir, verifyZipUtf8, rewriteCapabilities } from './_lib.mjs';
 
 const o = { headless: false, deps: true, zip: true, tar: false, out: null };
 for (let i = 2; i < process.argv.length; i++) {
@@ -43,11 +43,27 @@ const args = [engine, '--out', outDir, '--no-zip'];
 if (!o.deps) args.push('--no-deps');
 run(process.execPath, args);
 
-// 服务器包定位为纯联机服：彻底剔除无尽模式与排行榜（仅双端提供）
+// 服务器包定位为纯联机服：无尽模式与排行榜只由双端提供。
+// D6 定稿：入口的剔除发生在**构建期能力位改写**，不是产物正则抠标签——正则跨行匹配产物代码，
+// 上游一改模板结构就静默失效。这里把暂存副本里的 public/shared/capabilities.js 改写成
+// { endless: false }，浏览器页面因此**连入口都不渲染**（不是渲染了再隐藏），无尽素材也就不再
+// 从服务器下发。客户端侧的入口守卫见 public/js/screens/{title,lobby}.js 的 LOCAL_FEATURES.endless。
+const capsPath = path.join(outDir, 'public', 'shared', 'capabilities.js');
+if (fs.existsSync(capsPath)) {
+  const rewritten = rewriteCapabilities(fs.readFileSync(capsPath, 'utf8'), { endless: false });
+  if (rewritten === null) {
+    console.warn('  ! capabilities.js 未找到 "endless: true"，服务器包的无尽入口开关可能未生效');
+  } else {
+    fs.writeFileSync(capsPath, rewritten, 'utf8');
+    console.log('  ✔ 服务器包能力位改写：LOCAL_FEATURES.endless = false（浏览器页面不渲染无尽入口）');
+  }
+} else {
+  console.warn('  ! 服务器包缺少 public/shared/capabilities.js：无尽入口开关未生效');
+}
+// 服务器侧仍要摘掉无尽在线化端点与记录文件（这部分属服务器代码层，归无尽出服阶段；能力位管不到）
 const srvIndex = path.join(outDir, 'server', 'index.js');
 if (fs.existsSync(srvIndex)) {
   let content = fs.readFileSync(srvIndex, 'utf8');
-  // 移除 /api/endless/leaderboard 路由
   content = content.replace(/if\s*\(parts\.rawPath\s*===\s*'\/api\/endless\/leaderboard'\)[\s\S]*?return;\s*\}/g, '/* endless leaderboard endpoint disabled in server */');
   fs.writeFileSync(srvIndex, content, 'utf8');
 }
@@ -56,20 +72,9 @@ const srvRec = path.join(outDir, 'data', 'endless-records.json');
 if (fs.existsSync(srvRec)) {
   fs.rmSync(srvRec, { force: true });
 }
-// 确保前端静态中不挂载 LeaderboardButton
-const srvLobby = path.join(outDir, 'public', 'js', 'screens', 'lobby.js');
-if (fs.existsSync(srvLobby)) {
-  let lobbyContent = fs.readFileSync(srvLobby, 'utf8');
-  lobbyContent = lobbyContent.replace(/<\$\{LeaderboardButton\}[^>]*\/>/g, '');
-  lobbyContent = lobbyContent.replace(/<\$\{EndlessCard\}[^>]*\/>/g, '');
-  fs.writeFileSync(srvLobby, lobbyContent, 'utf8');
-}
-const srvTitle = path.join(outDir, 'public', 'js', 'screens', 'title.js');
-if (fs.existsSync(srvTitle)) {
-  let titleContent = fs.readFileSync(srvTitle, 'utf8');
-  titleContent = titleContent.replace(/<\$\{LeaderboardButton\}[^>]*\/>/g, '');
-  fs.writeFileSync(srvTitle, titleContent, 'utf8');
-}
+// 前端入口不再做产物正则抠标签（上面 capabilities.js 的构建期改写已让入口不渲染）。
+// 打包器纪律：只改写暂存副本、不改仓库源文件；只做「按能力位改写」，不做跨行正则。
+
 
 // 引擎自己也有一份 zip 逻辑（两个构建脚本都能单独用），这里统一由本管线压缩 + 自检，保证三端形状一致。
 let zipPath = null;

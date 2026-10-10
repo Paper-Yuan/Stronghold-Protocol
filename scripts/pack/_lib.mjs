@@ -48,6 +48,29 @@ export function assertExists(paths) {
   if (missing.length) throw new Error(`缺少前置产物/文件:\n  ${missing.join('\n  ')}`);
 }
 
+/**
+ * 把 shared/capabilities.js 的源码改写成指定能力位（构建期，只改暂存副本）。
+ * 服务器包用它把 endless 置 false：浏览器页面因此连入口都不渲染，而不是渲染了再隐藏
+ * （GLOBAL_VOICE_TRI_UI_ENDLESS_PLAN.md D6）。返回 null 表示源里没有该开关，调用方应告警。
+ * @param {string} src
+ * @param {{ endless?: boolean, mods?: boolean }} caps
+ * @returns {string|null}
+ */
+export function rewriteCapabilities(src, caps) {
+  let out = src;
+  let touched = false;
+  for (const [key, value] of Object.entries(caps)) {
+    if (value === undefined) continue;
+    // Line-anchored: only the object literal's own line (indent + key), never a comment or
+    // a JSDoc example that happens to mention the flag.
+    const re = new RegExp(`^(\\s*${key}:\\s*)(?:true|false)`, 'gm');
+    if (!re.test(out)) continue;
+    out = out.replace(re, `$1${value}`);
+    touched = true;
+  }
+  return touched ? out : null;
+}
+
 /** 递归统计目录的文件数与字节数。 */
 export function dirSize(dir) {
   let files = 0;
