@@ -35,6 +35,22 @@
 node docs/mockups/render-fusion-dual-platform.mjs      # 需要 Chrome（Windows 自动探测，或设 CHROME_PATH）
 ```
 
+## 每干员语音切换（干员调配 → 语音子页）
+
+| 文件 | 生成脚本 | 说明 |
+|---|---|---|
+| `voice-switch-web.png` | `render-voice-switch.mjs` | 桌面 1920×1080（`sp-hover sp-fs`）：语音子页的原生 `<select>`（跟随全局（日本語）/ 中文 / 日本語） |
+| `voice-switch-phone.png` | 同上 | 安卓横屏 740×390（`sp-touch sp-coarse sp-no-hover`，手机布局）：整行按钮 → **底部弹出**大按钮列表，每行 ≥44px |
+| `voice-switch-dual.png` | 同上 | **总览**：两张并排 + 四条说明（判定与命中区 / 语言与回退 / 数据模型 / 落地位置） |
+
+这个界面**已经实现**（`public/js/ui/voicePicker.js` + `public/js/voicePrefs.js` + `loadout.css` 的 `.lo-voice*`/`.lo-sheet*`），
+所以是**实景重建**而不是提案：样式表、类名、字体全部取自本分支源码，版面逐类照抄 `VoiceView` 的产物。
+跑一次产出三张图，并在渲染时自检（手机端每行命中高度 ≥ `--tap-min` 44px、桌面端是原生 select）。
+
+```bash
+node docs/mockups/render-voice-switch.mjs      # 需要 Chrome（Windows 自动探测，或设 CHROME_PATH）
+```
+
 ## 内置内容包 + 房主选择（mod 加载器的界面）
 
 | 文件 | 生成脚本 | 说明 |
