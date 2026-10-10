@@ -38,11 +38,21 @@ export function normalizeResult(res, pub) {
       stats: isObj(p.stats) ? p.stats : {},
       trophies: Number.isFinite(p.trophies) ? p.trophies : 0,
       reward: Number.isFinite(p.reward) ? p.reward : 0,
+      // 无尽模式：该玩家与全队的历史最高回合（server/records.js 回传）
+      bestRounds: Number.isFinite(p.bestRounds) ? p.bestRounds : null,
+      bestImprovement: !!p.bestImprovement,
       left: !!p.left,
     };
   }).sort((a, b) => a.seat - b.seat);
   return {
     victory: !!r.victory,
+    // 无尽模式：没有胜负，只有「存活回合」（m.result.endless）
+    endless: !!r.endless,
+    // 无尽模式：本局难度是否计入排行榜（只有「无尽·终极」上榜，server/records.js 的 RANK_DIFFICULTY）。
+    // 旧 payload 没有该字段时退回按难度名判断，避免老客户端/老服务端混跑时误报「不计入」。
+    ranked: r.endless ? (typeof r.ranked === 'boolean' ? r.ranked : String(r.difficulty || pub?.difficulty || '') === 'ENDLESS_ABYSS') : false,
+    bestRounds: players.reduce((n, p) => Math.max(n, Number(p.bestRounds) || 0), 0),
+    bestImproved: players.some((p) => p.bestImprovement),
     roundsPassed: Number.isFinite(r.roundsPassed) ? r.roundsPassed : Math.max(0, ...players.map((p) => p.roundsPassed), 0),
     lastRound: Number.isFinite(r.lastRound) ? r.lastRound : (Number.isFinite(pub?.lastRound) ? pub.lastRound : 14),
     hiddenCleared: !!r.hiddenCleared,

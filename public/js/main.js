@@ -43,6 +43,7 @@ import { GameScreen } from './screens/game.js';
 import { installAudio, audio } from './audio.js';
 import { settingsStore, updateSettings } from './ui/settings.js';
 import { GuideHost } from './ui/guide.js';
+import { LeaderboardHost } from './ui/leaderboard.js';
 import { installDeviceSupport } from './ui/device.js';
 import { LoadoutHost } from './screens/loadout.js';
 import { installLoadoutSync, installOwnershipSync, installDiySync } from './ui/loadoutSync.js';
@@ -395,6 +396,7 @@ function App() {
     <${ToastHost} />
     <${UiHosts} />
     <${GuideHost} />
+    <${LeaderboardHost} />
     <${LoadoutHost} />
   </div>`;
 }
@@ -491,7 +493,7 @@ async function boot() {
   installSkinsSync({ net });
   net.attachBrowserHooks();
   // Audio: unlock on first gesture, BGM follows the route / match phase (js/audio.js).
-  installAudio({ getManifest: () => data.get('assets'), subscribe: store.subscribe, getState: store.get, selectRoute, settings: settingsStore.get() });
+  installAudio({ getManifest: () => data.get('assets'), subscribe: store.subscribe, getState: store.get, selectRoute, settings: settingsStore.get(), onSettings: settingsStore.subscribe });
   data.load('assets').catch(() => {});
   data.load('skins').catch(() => {});
   // Warm the data cache in the background (missing files are tolerated).

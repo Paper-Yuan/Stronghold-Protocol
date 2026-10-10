@@ -9,8 +9,8 @@
     "stemRule": "skinId.replace(/@/g,'_').replace(/#/g,'_') === stem  (fexli directory and model file stem)",
     "avatarRule": "avatar/{avatarId}.png from yuanyan3060 (180×180, ~25 KB), with '#' percent-encoded as %23. Deliberately NOT the full skin art skin/{portraitId}b.png: that is ~2.5 MB each, 435 MB for the set.",
     "counts": {
-      "operators": 115,
-      "skins": 174
+      "operators": 174,
+      "skins": 273
     }
   },
   "skins": {
@@ -7318,6 +7318,80 @@
         "group": "小马宝莉",
         "avatar": {
           "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/avatar/char_4138_narant_littlePony%231.png"
+        }
+      }
+    ],
+    "char_1042_phatm2": [
+      {
+        "skinId": "char_1042_phatm2@sightseer#4",
+        "stem": "char_1042_phatm2_sightseer_4",
+        "name": "真我自扼",
+        "group": "错位巡礼/IV",
+        "avatar": {
+          "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/avatar/char_1042_phatm2_sightseer%234.png"
+        },
+        "battleSpine": {
+          "front": {
+            "skel": {
+              "url": "https://raw.githubusercontent.com/fexli/ArknightsResource/main/spine/char_1042_phatm2/char_1042_phatm2_sightseer_4/Front/char_1042_phatm2_sightseer_4.skel"
+            },
+            "atlas": {
+              "url": "https://raw.githubusercontent.com/fexli/ArknightsResource/main/spine/char_1042_phatm2/char_1042_phatm2_sightseer_4/Front/char_1042_phatm2_sightseer_4.atlas"
+            },
+            "png": {
+              "url": "https://raw.githubusercontent.com/fexli/ArknightsResource/main/spine/char_1042_phatm2/char_1042_phatm2_sightseer_4/Front/char_1042_phatm2_sightseer_4.png"
+            },
+            "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_1042_phatm2/char_1042_phatm2_sightseer_4/Front/char_1042_phatm2_sightseer_4.skel"
+          },
+          "back": {
+            "skel": {
+              "url": "https://raw.githubusercontent.com/fexli/ArknightsResource/main/spine/char_1042_phatm2/char_1042_phatm2_sightseer_4/Back/char_1042_phatm2_sightseer_4.skel"
+            },
+            "atlas": {
+              "url": "https://raw.githubusercontent.com/fexli/ArknightsResource/main/spine/char_1042_phatm2/char_1042_phatm2_sightseer_4/Back/char_1042_phatm2_sightseer_4.atlas"
+            },
+            "png": {
+              "url": "https://raw.githubusercontent.com/fexli/ArknightsResource/main/spine/char_1042_phatm2/char_1042_phatm2_sightseer_4/Back/char_1042_phatm2_sightseer_4.png"
+            },
+            "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_1042_phatm2/char_1042_phatm2_sightseer_4/Back/char_1042_phatm2_sightseer_4.skel"
+          }
+        }
+      }
+    ],
+    "char_4204_mantra": [
+      {
+        "skinId": "char_4204_mantra@sightseer#4",
+        "stem": "char_4204_mantra_sightseer_4",
+        "name": "万籁俱寂",
+        "group": "错位巡礼/IV",
+        "avatar": {
+          "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/avatar/char_4204_mantra_sightseer%234.png"
+        },
+        "battleSpine": {
+          "front": {
+            "skel": {
+              "url": "https://raw.githubusercontent.com/fexli/ArknightsResource/main/spine/char_4204_mantra/char_4204_mantra_sightseer_4/Front/char_4204_mantra_sightseer_4.skel"
+            },
+            "atlas": {
+              "url": "https://raw.githubusercontent.com/fexli/ArknightsResource/main/spine/char_4204_mantra/char_4204_mantra_sightseer_4/Front/char_4204_mantra_sightseer_4.atlas"
+            },
+            "png": {
+              "url": "https://raw.githubusercontent.com/fexli/ArknightsResource/main/spine/char_4204_mantra/char_4204_mantra_sightseer_4/Front/char_4204_mantra_sightseer_4.png"
+            },
+            "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_4204_mantra/char_4204_mantra_sightseer_4/Front/char_4204_mantra_sightseer_4.skel"
+          },
+          "back": {
+            "skel": {
+              "url": "https://raw.githubusercontent.com/fexli/ArknightsResource/main/spine/char_4204_mantra/char_4204_mantra_sightseer_4/Back/char_4204_mantra_sightseer_4.skel"
+            },
+            "atlas": {
+              "url": "https://raw.githubusercontent.com/fexli/ArknightsResource/main/spine/char_4204_mantra/char_4204_mantra_sightseer_4/Back/char_4204_mantra_sightseer_4.atlas"
+            },
+            "png": {
+              "url": "https://raw.githubusercontent.com/fexli/ArknightsResource/main/spine/char_4204_mantra/char_4204_mantra_sightseer_4/Back/char_4204_mantra_sightseer_4.png"
+            },
+            "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_4204_mantra/char_4204_mantra_sightseer_4/Back/char_4204_mantra_sightseer_4.skel"
+          }
         }
       }
     ]

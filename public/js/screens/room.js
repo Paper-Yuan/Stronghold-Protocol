@@ -11,7 +11,7 @@
 // button for 观战中 and offers 入座 (room.join of the room) while a player seat is free.
 
 import { useEffect, useRef, useState } from '../../vendor/hooks.module.js';
-import { DIFFICULTIES, DIFFICULTY_NAMES, DIFFICULTY_COLORS, MAX_SEATS, MAX_SPECTATORS } from '../../../shared/constants.js';
+import { PICK_DIFFICULTIES, DIFFICULTY_NAMES, DIFFICULTY_COLORS, MAX_SEATS, MAX_SPECTATORS, isEndlessDifficulty, endlessBaseOf, endlessDifficultyFor } from '../../../shared/constants.js';
 import {
   html, Button, Icon, MicroLabel, PingPill, AvatarFrame, DifficultyTag, DifficultyIcon, Tooltip, confirmDialog, doctorNo,
 } from '../ui/components.js';
@@ -170,6 +170,11 @@ function InviteBox({ code, name, difficulty }) {
   </div>`;
 }
 
+/**
+ * Host's difficulty picker: the four base chips (标准/险境/绝境/终极) and, next to them, the 无尽模式 toggle.
+ * Turning the toggle on makes the same four chips pick the *base* of the endless run (无尽·标准 … 无尽·终极) —
+ * one button selects among the four endless difficulties (server: room.setDifficulty, modeIdFor).
+ */
 function DifficultyPicker({ room, isHost, busy, onPick }) {
   if (!isHost) {
     return html`<div class="dpick dpick--ro">
@@ -177,12 +182,24 @@ function DifficultyPicker({ room, isHost, busy, onPick }) {
       <span class="t-dim">由创建者选择</span>
     </div>`;
   }
-  return html`<div class="dpick" role="radiogroup" aria-label="模拟难度">
-    ${DIFFICULTIES.map((d) => html`<button key=${d} type="button" role="radio" aria-checked=${room.difficulty === d ? 'true' : 'false'}
-        class=${`dpick__opt${room.difficulty === d ? ' is-active' : ''}`} style=${`--d-color:${DIFFICULTY_COLORS[d]}`}
-        disabled=${!!busy} onClick=${() => room.difficulty !== d && onPick(d)}>
+  const endless = isEndlessDifficulty(room.difficulty);
+  const base = endlessBaseOf(room.difficulty) || room.difficulty;
+  const pick = (next) => { if (!busy && next !== room.difficulty) onPick(next); };
+  const pickBase = (d) => pick(endless ? endlessDifficultyFor(d) : d);
+  const toggleEndless = () => pick(endless ? base : endlessDifficultyFor(base));
+  return html`<div class="dpick" role="radiogroup" aria-label=${endless ? '无尽模式基础难度' : '模拟难度'}>
+    ${PICK_DIFFICULTIES.map((d) => html`<button key=${d} type="button" role="radio" aria-checked=${base === d ? 'true' : 'false'}
+        class=${`dpick__opt${base === d ? ' is-active' : ''}`} style=${`--d-color:${DIFFICULTY_COLORS[d]}`}
+        disabled=${!!busy} onClick=${() => pickBase(d)}
+        title=${endless ? `以${DIFFICULTY_NAMES[d]}为底的无尽模式` : DIFFICULTY_NAMES[d]}>
       <${DifficultyIcon} difficulty=${d} />${DIFFICULTY_NAMES[d].replace('模拟', '')}
     </button>`)}
+    <button type="button" role="radio" aria-checked=${endless ? 'true' : 'false'}
+        class=${`dpick__opt dpick__opt--endless${endless ? ' is-active' : ''}`} style=${`--d-color:${DIFFICULTY_COLORS.ENDLESS}`}
+        disabled=${!!busy} onClick=${toggleEndless}
+        title="无尽模式：回合数没有上限，每 14 回合迎战一次敌方领袖。点亮后上面四档即为它的基础难度；再点一次关闭">
+      <${DifficultyIcon} difficulty="ENDLESS" />无尽
+    </button>
   </div>`;
 }
 
@@ -296,7 +313,9 @@ export function RoomScreen() {
         <p>${info.desc}</p>
         <ul>
           ${info.effects.map((e) => html`<li key=${e}>${e}</li>`)}
-          <li>共 <b class="num">${info.rounds}</b> 回合${info.hidden ? '，满足条件时进入隐秘核心' : ''}</li>
+          <li>${info.endless
+            ? html`回合数没有上限，坚持越久越好`
+            : html`共 <b class="num">${info.rounds}</b> 回合${info.hidden ? '，满足条件时进入隐秘核心' : ''}`}</li>
           <li>独立模拟中休整期与机变阶段不限时</li>
         </ul>
       </aside>`}
@@ -305,7 +324,7 @@ export function RoomScreen() {
 
     <footer class="room-bar">
       <div class="room-bar__left">
-        <span class="room-bar__label">模拟难度<${MicroLabel}>DIFFICULTY<//></span>
+        <span class="room-bar__label">${info.endless ? '无尽模式' : '模拟难度'}<${MicroLabel}>${info.endless ? 'ENDLESS · BASE' : 'DIFFICULTY'}<//></span>
         <${DifficultyPicker} room=${room} isHost=${facts.isHost} busy=${busy} onPick=${setDifficulty} />
       </div>
       <div class="room-bar__center">

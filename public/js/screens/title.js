@@ -20,6 +20,7 @@ import { FullscreenButton, detectFeatures } from '../ui/device.js';
 import { GIcon } from '../ui/gameComponents.js';
 import { SettingsModal } from '../ui/settings.js';
 import { PreloadPill, PreloadModal, PreloadAutoNotice, checkAutoPreload } from '../ui/preloadModal.js';
+import { LeaderboardButton } from '../ui/leaderboard.js';
 
 // Same character classes as server/net.js sanitizeName (control, zero-width, bidi, BOM), so a name
 // the client accepts is never rejected by the server's hello validation.
@@ -268,6 +269,7 @@ export function TitleScreen() {
           <span class=${`status-dot ${dotClass}`}></span>
           <span>${STATUS_TEXT[conn.status] || conn.status}</span>
           ${conn.status === 'online' ? html`<${PingPill} ms=${conn.ping} />` : null}
+          <${LeaderboardButton} class="title-leaderboard" variant="secondary" size="sm" />
           <${GuideButton} class="title-guide" />
           <button type="button" class="title-settings fsbtn tapx" aria-label="设置" title="设置"
             onClick=${() => setSettingsOpen(true)}><${GIcon} name="gear" /></button>

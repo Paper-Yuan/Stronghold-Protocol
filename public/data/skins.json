@@ -1,8 +1,8 @@
 {
  "version": 1,
  "counts": {
-  "chars": 172,
-  "skins": 271
+  "chars": 174,
+  "skins": 273
  },
  "chars": {
   "char_498_inside": [
@@ -1702,6 +1702,20 @@
     "id": "char_4138_narant@littlePony#1",
     "name": "率直诚实之人",
     "group": "小马宝莉"
+   }
+  ],
+  "char_1042_phatm2": [
+   {
+    "id": "char_1042_phatm2@sightseer#4",
+    "name": "真我自扼",
+    "group": "错位巡礼/IV"
+   }
+  ],
+  "char_4204_mantra": [
+   {
+    "id": "char_4204_mantra@sightseer#4",
+    "name": "万籁俱寂",
+    "group": "错位巡礼/IV"
    }
   ]
  }

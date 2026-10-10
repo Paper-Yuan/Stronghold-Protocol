@@ -1,0 +1,177 @@
+/* 无尽模式排行榜（js/ui/leaderboard.js）—— 弹窗内的表格。复用 components.css 的 .modal 外壳。 */
+
+.lb { display: flex; flex-direction: column; gap: .14rem; }
+
+.lb__intro {
+  margin: 0;
+  font-size: .15rem;
+  line-height: 1.6;
+  color: var(--text-lo);
+}
+
+/* ---- 顶部：总数 + 刷新 ---- */
+.lb__bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .12rem;
+}
+.lb__total { font-size: .15rem; color: var(--text-lo); }
+.lb__total .num { color: var(--mint-400); font-weight: 700; }
+.lb__only { font-style: normal; margin-left: .1rem; color: var(--text-dim); }
+
+/* ---- 我的排名 ---- */
+.lb-me {
+  display: flex;
+  align-items: center;
+  gap: .16rem;
+  padding: .12rem .18rem;
+  background: linear-gradient(90deg, var(--mint-a20), transparent 70%);
+  border: 1px solid var(--mint-a35);
+  border-radius: 6px;
+}
+.lb-me__rank { display: flex; flex-direction: column; gap: .02rem; }
+.lb-me__rank .num { font-size: .26rem; font-weight: 700; color: var(--gold); line-height: 1; }
+.lb-me__name { flex: 1; min-width: 0; font-size: .18rem; color: var(--text-hi); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lb-me__rounds { font-size: .24rem; font-weight: 700; color: var(--mint-400); }
+.lb-me__rounds i { font-size: .13rem; font-style: normal; font-weight: 400; color: var(--text-lo); margin-left: .04rem; }
+
+/* ---- 空态 / 错误 / 加载 ---- */
+.lb__state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: .1rem;
+  padding: .5rem .2rem;
+  color: var(--text-lo);
+  text-align: center;
+}
+.lb__state .icon, .lb__state svg { width: .42rem; height: .42rem; color: var(--text-dim); }
+.lb__state p { margin: 0; font-size: .16rem; line-height: 1.6; max-width: 4.6rem; }
+.lb__state--err { color: var(--red-premium); }
+.lb__state--err svg { color: var(--red-premium); }
+
+/* ---- 表格 ---- */
+.lb__table { display: flex; flex-direction: column; gap: .04rem; }
+
+.lb-row {
+  display: grid;
+  grid-template-columns: .54rem minmax(0, 1fr) .95rem .62rem .52rem .82rem;
+  align-items: center;
+  gap: .08rem;
+  padding: .09rem .12rem;
+  border-radius: 4px;
+  font-size: .16rem;
+  background: rgba(255, 255, 255, .02);
+  border-left: 2px solid transparent;
+}
+.lb-row--head {
+  background: transparent;
+  border-left-color: transparent;
+  padding-bottom: .04rem;
+  font-size: .12rem;
+  letter-spacing: .08em;
+  color: var(--text-dim);
+  text-transform: uppercase;
+}
+.lb-row--head .lb-row__rounds,
+.lb-row--head .lb-row__runs { font-size: .12rem; color: var(--text-dim); font-weight: 400; }
+
+.lb__list { display: flex; flex-direction: column; gap: .04rem; max-height: min(4.6rem, 42vh); overflow-y: auto; overflow-x: hidden; }
+
+.lb-row--gold { background: linear-gradient(90deg, var(--gold-a20), transparent 65%); border-left-color: var(--gold); }
+.lb-row--silver { background: linear-gradient(90deg, rgba(200, 214, 224, .16), transparent 65%); border-left-color: #c8d6e0; }
+.lb-row--bronze { background: linear-gradient(90deg, rgba(205, 127, 50, .18), transparent 65%); border-left-color: #cd7f32; }
+.lb-row.is-self { box-shadow: inset 0 0 0 1px var(--mint-a35); }
+
+.lb-row__rank {
+  display: flex;
+  align-items: center;
+  gap: .04rem;
+  font-size: .18rem;
+  font-weight: 700;
+  color: var(--text-lo);
+}
+.lb-row--gold .lb-row__rank { color: var(--gold); }
+.lb-row--silver .lb-row__rank { color: #d8e2ea; }
+.lb-row--bronze .lb-row__rank { color: #e0a468; }
+.lb-row__crown { width: .18rem; height: .18rem; }
+
+.lb-row__name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-hi);
+}
+.lb-row__you {
+  margin-left: .06rem;
+  padding: 0 .05rem;
+  font-size: .11rem;
+  border-radius: 3px;
+  color: var(--text-on-mint);
+  background: var(--mint-500);
+  vertical-align: middle;
+}
+
+.lb-row__rounds { font-size: .2rem; font-weight: 700; color: var(--mint-400); }
+.lb-row__rounds i, .lb-row__runs i {
+  margin-left: .03rem;
+  font-size: .11rem;
+  font-style: normal;
+  font-weight: 400;
+  color: var(--text-dim);
+}
+.lb-row__runs { font-size: .16rem; color: var(--text-md); }
+.lb-row__flags { display: flex; gap: .04rem; }
+.lb-row__date { font-size: .13rem; color: var(--text-dim); text-align: right; }
+
+.lb-tag {
+  padding: 0 .06rem;
+  font-size: .11rem;
+  line-height: 1.5;
+  border-radius: 3px;
+  color: var(--ice);
+  background: var(--ice-a20);
+}
+
+/* 竖屏 / 窄屏：收窄列，藏掉次要信息 */
+@media (max-width: 900px) {
+  .lb-row { grid-template-columns: .46rem minmax(0, 1fr) .8rem .52rem .72rem; }
+  .lb-row__flags { display: none; }
+  .lb-row--head .lb-row__flags { display: none; }
+}
+
+/* ---- 各入口的落位 ---- */
+
+/* 大厅：无尽模式卡片下方的榜单入口 */
+.endless-board { margin-top: .12rem; }
+
+/* 结算页（无尽）：与「返回」并排，避免两个 xl 按钮加起来超宽 */
+.result__foot { gap: .16rem; }
+.result__foot .btn--secondary { min-width: 2.6rem; }
+
+/* 移动端与触控设备：滚动优化与触控反馈 */
+@media (pointer: coarse), (max-width: 768px) {
+  .lb { max-height: min(76vh, 480px); overflow-y: auto; -webkit-overflow-scrolling: touch; }
+  .lb-row { min-height: .44rem; }
+  .lb-me { padding: .1rem .14rem; }
+}
+
+/* ---- 滚动公告 ---- */
+.announcement-bar {
+  display: flex;
+  align-items: center;
+  gap: .08rem;
+  padding: .06rem .14rem;
+  background: rgba(245, 158, 11, 0.15);
+  border-bottom: 1px solid rgba(245, 158, 11, 0.35);
+  font-size: .13rem;
+  color: var(--amber-300, #f6c445);
+}
+.announcement-bar__icon { display: flex; align-items: center; }
+.announcement-bar__text { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.announcement-bar__count { font-size: .11rem; opacity: .7; }
+
+
+

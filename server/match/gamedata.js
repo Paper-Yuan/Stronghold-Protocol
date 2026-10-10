@@ -13,6 +13,10 @@
 
 import { getConfig, getMode } from '../data.js';
 import { isShopItem } from '../sim/simdata.js';
+import {
+  bondLayerCapOf, endlessBaseOf, ENDLESS_BOSS_CYCLE_SCALE, ENDLESS_BOSS_EVERY, ENDLESS_BOSS_STEP, ENDLESS_ENEMY_CYCLE_BOOST,
+  ENDLESS_SP_EVERY, isEndlessDifficulty, isEndlessModeId,
+} from '../../shared/constants.js';
 
 const own = (map, id) => (map && typeof map === 'object' && typeof id === 'string' && Object.hasOwn(map, id) && map[id] && typeof map[id] === 'object' ? map[id] : null);
 const numOr = (v, d) => (typeof v === 'number' && Number.isFinite(v) ? v : d);
@@ -143,6 +147,28 @@ export class GameData {
     const n = Number(aliveCount);
     const alive = scaling && Number.isFinite(n) && n >= 1 ? Math.min(full, Math.floor(n)) : full;
     return pick('coop', 1) * (alive / full);
+  }
+
+  /**
+   * bosses.json `bloodPoint` 取哪一档作为血池基准。无尽模式的难度名 ENDLESS 不在 bloodPoint 的键里，
+   * 所以模式条目带了 `bloodPointDifficulty`（默认 NORMAL）指明基准档；其它模式就是自身难度。
+   */
+  get bossBloodPointDifficulty() {
+    return typeof this.mode.bloodPointDifficulty === 'string' && this.mode.bloodPointDifficulty
+      ? this.mode.bloodPointDifficulty
+      : this.difficulty;
+  }
+
+  /**
+   * 无尽模式：Boss 血池随 Boss 周期成长的倍率（第 n 次 Boss 战 = 基础 × bossCycleScale^(n-1)）。
+   * Boss 序号按 endlessBossIndex（第 14 回合第 1 次，其后每 7 回合一次）。非无尽模式恒为 1（原有血池数值完全不变）。
+   */
+  endlessBossPoolScale(round) {
+    if (!this.isEndless) return 1;
+    const idx = this.endlessBossIndex(round);
+    if (idx < 1) return 1;
+    const k = numOr(this.mode.bossCycleScale, ENDLESS_BOSS_CYCLE_SCALE);
+    return Math.pow(k > 1 ? k : ENDLESS_BOSS_CYCLE_SCALE, idx - 1);
   }
 
   /** config.titles with the tuning overrides (stat / rule per title id) merged in. */
@@ -276,20 +302,101 @@ export class GameData {
 
   get isSolo() { return this.mode.type === 'SINGLE' || /^mode_single_/.test(this.modeId || ''); }
   get difficulty() { return this.mode.difficulty || (this.modeId ? String(this.modeId).split('_').pop().toUpperCase() : 'NORMAL'); }
+
+  /**
+   * 无尽模式 (ENDLESS)：回合无限、波次循环、强度外推、周期性 Boss。运行时规则见 shared/constants.js 的 ENDLESS 段，
+   * 数据条目由 tools/endlessMode.mjs 生成。非无尽模式一律走原有逻辑（本类中所有 isEndless 分支都不影响它们）。
+   */
+  get isEndless() { return isEndlessDifficulty(this.mode.difficulty) || isEndlessModeId(this.modeId); }
+  /** 无尽模式**第一次** Boss 的回合（前 14 回合保持官方节奏）。 */
+  get endlessBossFirst() { return posIntOr(this.mode.bossFirst, ENDLESS_BOSS_EVERY); }
+  /** 无尽模式：第一次 Boss 之后，Boss 与「+1/3 强化」的周期（回合数，默认 7）。 */
+  get endlessBossStep() { return posIntOr(this.mode.bossStep, ENDLESS_BOSS_STEP); }
+  /** 兼容别名：第一次之后的周期。 */
+  get endlessBossEvery() { return this.endlessBossStep; }
+  /**
+   * 无尽模式：截至回合 r **已经发生**的 Boss 次数（第 14 回合第 1 次，其后每 7 回合一次；未到第一次为 0）。
+   * Boss 血池成长与「每次 Boss 后 +1/3」阶梯都按它取档。注意它**不等于** isBossRound：
+   * R14–R20 都返回 1（第一次 Boss 已发生），但只有 R14 本身是 Boss 回合。
+   */
+  endlessBossIndex(r) {
+    const n = Number(r);
+    if (!Number.isInteger(n)) return 0;
+    const first = this.endlessBossFirst;
+    if (n < first) return 0;
+    return Math.floor((n - first) / this.endlessBossStep) + 1;
+  }
+
   get lastRound() {
+    if (this.isEndless) return 0; // 0 = 无限回合（哨兵值；客户端据此显示 ∞）
     if (Number.isInteger(this.mode.lastRound) && this.mode.lastRound > 0) return this.mode.lastRound;
     return this.modeId === 'mode_single_funny' ? 9 : 14;
   }
-  get bossRound() { return Number.isInteger(this.mode.bossRound) && this.mode.bossRound > 0 ? this.mode.bossRound : this.lastRound; }
-  get hiddenRound() { return Number.isInteger(this.mode.hiddenRound) && this.mode.hiddenRound > 0 ? this.mode.hiddenRound : null; }
+  get bossRound() {
+    if (this.isEndless) return this.endlessBossFirst; // 第一次 Boss 的回合（其后每 endlessBossStep 回合一次）
+    return Number.isInteger(this.mode.bossRound) && this.mode.bossRound > 0 ? this.mode.bossRound : this.lastRound;
+  }
+  get hiddenRound() {
+    if (this.isEndless) return null; // 无尽模式没有隐秘核心
+    return Number.isInteger(this.mode.hiddenRound) && this.mode.hiddenRound > 0 ? this.mode.hiddenRound : null;
+  }
   get maxShopLevel() { return posIntOr(this.mode.maxShopLevel, DEFAULTS.maxShopLevel); }
+
+  /**
+   * 回合 r 是否为 Boss 回合：无尽模式第 14 回合起每 7 回合一次（14、21、28…）；其它模式 = bossRound / hiddenRound。
+   */
+  isBossRound(r) {
+    const n = Number(r);
+    if (!Number.isInteger(n) || n < 1) return false;
+    if (this.isEndless) {
+      if (n < this.endlessBossFirst) return false;
+      return (n - this.endlessBossFirst) % this.endlessBossStep === 0;
+    }
+    return n === this.bossRound || n === this.hiddenRound;
+  }
+
+  /**
+   * 无尽模式把回合 r 映射到官方回合表的键：
+   *   · 前 `endlessBossFirst`(14) 回合直接用表里的同一回合（表必须撑满这 14 回合）；
+   *   · 之后每个 `endlessBossStep`(7) 回合的周期复用表的最后 7 个回合 —— R8–R13 的终局段高阶波次 + R14 的 Boss 配置，
+   *     于是第 14、21、28… 回合都取到 Boss 配置。非无尽模式不使用本函数。
+   */
+  endlessWaveKey(r) {
+    const first = this.endlessBossFirst;
+    const n = Number(r);
+    if (!Number.isInteger(n) || n < 1) return 1;
+    if (n <= first) return n;
+    const step = this.endlessBossStep;
+    const pos = ((n - first - 1) % step) + 1;   // 1..step
+    if (pos === step) return first;             // Boss 回合 → 表的 Boss 键
+    return first - (step - 1) + (pos - 1);      // 普通回合 → 表尾的 (step-1) 个高阶回合
+  }
 
   roundCfg(r) {
     const rounds = this.mode.rounds;
-    return rounds && typeof rounds === 'object' && rounds[String(r)] && typeof rounds[String(r)] === 'object' ? rounds[String(r)] : null;
+    if (!rounds || typeof rounds !== 'object') return null;
+    let key = String(r);
+    // 无尽模式：超出配置的回合按上面的规则循环复用（第 14、21、28… 回合都取到 Boss 配置）。
+    if (!rounds[key] && this.isEndless) {
+      const n = Number(r);
+      if (Number.isInteger(n) && n > 0) key = String(this.endlessWaveKey(n));
+    }
+    const rc = rounds[key];
+    return rc && typeof rc === 'object' ? rc : null;
   }
 
-  spRounds() { return Array.isArray(this.mode.spRounds) ? this.mode.spRounds.filter((n) => Number.isInteger(n)) : []; }
+  spRounds() {
+    if (this.isEndless) return []; // 无尽模式的机变回合由 isSpRound 周期计算
+    return Array.isArray(this.mode.spRounds) ? this.mode.spRounds.filter((n) => Number.isInteger(n)) : [];
+  }
+
+  /** 回合 r 是否为机变阶段：无尽模式每 ENDLESS_SP_EVERY 回合一次（Boss 回合除外）。 */
+  isSpRound(r) {
+    const n = Number(r);
+    if (!Number.isInteger(n) || n < 1) return false;
+    if (this.isEndless) return !this.isBossRound(n) && n % ENDLESS_SP_EVERY === 0;
+    return this.spRounds().includes(n);
+  }
 
   upgradePrices() {
     const arr = Array.isArray(this.mode.upgradePrices) ? this.mode.upgradePrices : DEFAULTS.upgradePrices;
@@ -368,9 +475,67 @@ export class GameData {
     };
   }
 
-  /** Enemy multipliers of round r = the official table (baseEnemyScale; no custom multiplier). */
+  /**
+   * Enemy multipliers of round r. The official table for r ≤ its last round; beyond it a normal mode has no numbers
+   * (returns 1×), while 无尽模式 keeps growing with the official formula below.
+   * 无尽模式在此之上再叠加「每 14 关 +1/3 基础属性」的阶梯（endlessCycleBoost）。
+   */
   enemyScale(r) {
-    return this.baseEnemyScale(r);
+    const base = this.baseEnemyScale(r);
+    if (!this.isEndless) return base;
+    const sc = (this.mode.enemyScale && this.mode.enemyScale[String(r)]) ? base : this.endlessEnemyScale(r);
+    return this.endlessCycleBoost(sc, r);
+  }
+
+  /**
+   * 无尽模式：**第一次 Boss 之后**每经过 `endlessBossStep`(7) 关，怪物「血量 / 攻击」再加强
+   * 「基础难度属性的 1/3」—— 第 1–20 关 ×1、第 21–27 关 ×4/3、第 28–34 关 ×5/3 ……
+   * 与官方公式外推**叠加**（先算外推再乘本阶梯）。移动速度不变（官方第 15 关后已封顶 1.15）。
+   * 非无尽模式恒为原值。
+   * @param {{hpMul:number, atkMul:number, speedMul:number}} sc
+   * @param {number} r 回合
+   */
+  endlessCycleBoost(sc, r) {
+    const steps = Math.max(0, this.endlessBossIndex(r) - 1);
+    if (!steps) return sc;
+    const m = 1 + steps * this.endlessEnemyCycleBoost;
+    return { hpMul: sc.hpMul * m, atkMul: sc.atkMul * m, speedMul: sc.speedMul };
+  }
+
+  /** 每 7 关怪物血量/攻击的加强比例（mode.enemyCycleBoost 可覆盖，默认 1/3）。 */
+  get endlessEnemyCycleBoost() {
+    const v = numOr(this.mode.enemyCycleBoost, ENDLESS_ENEMY_CYCLE_BOOST);
+    return v >= 0 ? v : ENDLESS_ENEMY_CYCLE_BOOST;
+  }
+
+  /**
+   * 无尽模式：超出官方 enemyScale 表之后的强度外推。沿用官方生成公式
+   * `atk = atkBase · 1.1^kAtk`、`hp = hpBase · 1.2^kHp`，其中 kAtk / kHp 按官方表尾部的斜率继续线性增长
+   * （表里 mode_*_normal 的 kAtk 从 R1 的 0 增到 R14 的 7，即每回合 ≈0.538）。速度不加成。
+   */
+  endlessEnemyScale(r) {
+    const table = this.mode.enemyScale && typeof this.mode.enemyScale === 'object' ? this.mode.enemyScale : null;
+    if (!table) return { hpMul: 1, atkMul: 1, speedMul: 1 };
+    const keys = Object.keys(table).map(Number).filter((n) => Number.isInteger(n) && n > 0).sort((a, b) => a - b);
+    if (!keys.length) return { hpMul: 1, atkMul: 1, speedMul: 1 };
+    const first = keys[0];
+    const last = keys[keys.length - 1];
+    const e0 = table[String(first)] || {};
+    const e1 = table[String(last)] || e0;
+    const span = Math.max(1, last - first);
+    const dKAtk = (numOr(e1.kAtk, 0) - numOr(e0.kAtk, 0)) / span;
+    const dKHp = (numOr(e1.kHp, 0) - numOr(e0.kHp, 0)) / span;
+    const over = Math.max(0, Number(r) - last);
+    const kAtk = numOr(e1.kAtk, 0) + over * dKAtk;
+    const kHp = numOr(e1.kHp, 0) + over * dKHp;
+    // atk(first) = atkBase · 1.1^kAtk(first) ⇒ atkBase = atk(first) / 1.1^kAtk(first)（hp 同理）
+    const atkBase = numOr(e0.atk, 1) / Math.pow(1.1, numOr(e0.kAtk, 0));
+    const hpBase = numOr(e0.hp, 1) / Math.pow(1.2, numOr(e0.kHp, 0));
+    return {
+      hpMul: Math.max(0.01, hpBase * Math.pow(1.2, kHp)),
+      atkMul: Math.max(0, atkBase * Math.pow(1.1, kAtk)),
+      speedMul: 1,
+    };
   }
 
   timer(key) {
@@ -405,6 +570,14 @@ export class GameData {
     const d = this.config.dp && typeof this.config.dp === 'object' ? this.config.dp : {};
     return { dpInit: numOr(d.init, 10), dpPerSec: numOr(d.perSec, 1), dpMax: numOr(d.max, 99) };
   }
+  /** 本局盟约层数上限：无尽 9999，其余 999（shared/constants.js bondLayerCapOf；唯一按模式分流的入口）。 */
+  get bondLayerCap() {
+    return bondLayerCapOf(this.isEndless);
+  }
+  /** 传给 Battle 的 flags：DP 三件套 + 本局盟约层数上限（客户端由 spec.flags 拿到同一个值）。 */
+  get simFlags() {
+    return { ...this.dp, bondLayerCap: this.bondLayerCap };
+  }
   get unite() {
     const u = this.config.unite && typeof this.config.unite === 'object' ? this.config.unite : {};
     return {
@@ -421,9 +594,15 @@ export class GameData {
       difficulties: Array.isArray(h.difficulties) ? h.difficulties : DEFAULTS.hiddenCore.difficulties,
     };
   }
+  /**
+   * 本局的盟约禁用数（config.bans，键 = 难度名）。无尽模式的难度名是 `ENDLESS_<底难度>`，不在表里：
+   * 回退到它底难度那一档（无尽·终极 → ABYSS 的 3/4，无尽·标准 → FUNNY 的 0/1），使四档无尽像四档常规一样有区别。
+   * 常规难度不受影响（endlessBaseOf 返回 null，就是自身）。
+   */
   bans(difficulty) {
-    const b = this.config.bans && this.config.bans[difficulty];
-    const d = DEFAULTS.bans[difficulty] || { core: 0, addon: 0 };
+    const base = endlessBaseOf(difficulty);
+    const b = (this.config.bans && (this.config.bans[difficulty] || (base && this.config.bans[base]))) || null;
+    const d = DEFAULTS.bans[difficulty] || (base && DEFAULTS.bans[base]) || { core: 0, addon: 0 };
     if (!b || typeof b !== 'object') return { ...d };
     return { core: Number.isInteger(b.core) && b.core >= 0 ? b.core : d.core, addon: Number.isInteger(b.addon) && b.addon >= 0 ? b.addon : d.addon };
   }

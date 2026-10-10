@@ -130,7 +130,7 @@
 //     human is left at all the match ends ('abandoned'); when nobody alive is left it ends as 'eliminated'.
 
 import { C2S, unitStatsEntry } from '../../shared/protocol.js';
-import { PHASE, ERR, EMOTES, EMOTE_COOLDOWN_MS, GEO, modeIdFor, layerGainRoom } from '../../shared/constants.js';
+import { PHASE, ERR, EMOTES, EMOTE_COOLDOWN_MS, GEO, modeIdFor, layerGainRoom, DEBUG_OPS, DEBUG_DEFAULTS, DEBUG_VALUE_MAX, DEBUG_GLOBAL_OPS } from '../../shared/constants.js';
 import { Battle } from '../sim/Battle.js';
 import { DataSource } from '../sim/simdata.js';
 import { createRng, deriveSeed } from '../sim/rng.js';
@@ -153,7 +153,9 @@ import {
 import { buildBattleSpec, createBattleFromSpec, resultDigest, compactResult as compactForVerify, battleProgress, uniteLeft } from '../sim/spec.js';
 import { CreditPool } from './finalAssault.js';
 import { buildResult } from './results.js';
+import { recordEndlessResult } from '../records.js';
 import { botPrepBeginSteps, botPrepEndSteps, botPickBand, botPickCard } from './bot.js';
+import { checkDebugAuth } from '../debug.js';
 
 const BOT_REHEARSAL_DEFAULT = 3;
 /** Wall-clock ms of bot layout rehearsal per scheduler callback (real time; virtual time runs it in one go). */
@@ -209,19 +211,7 @@ export const DELAYS = Object.freeze({
   BOT_ACTION: 900,
   BOT_STAGGER: 350,
   PUBLIC_THROTTLE: 100,
-  // 2+2G 服务器优化（docs/OPTIMIZATION_AND_PR_PLAN.md §2.1.2-3）：非战斗阶段把 m.public 节流从 10Hz 放宽到
-  // 5Hz，砍掉一半的 publicView 序列化与广播开销；战斗表现帧保持 100ms 不变（单位移动平滑度不受影响）。
-  PUBLIC_THROTTLE_IDLE: 200,
 });
-
-/**
- * Phase-aware m.public throttle: COMBAT (and the boss m.public cadence, which has its own 1 s limiter)
- * keeps the 100 ms presentation frame; every other phase — the untimed PREP/休整 where most edits happen —
- * uses the relaxed 200 ms idle throttle.
- */
-function publicThrottleMs(phase) {
-  return phase === 'COMBAT' ? DELAYS.PUBLIC_THROTTLE : DELAYS.PUBLIC_THROTTLE_IDLE;
-}
 
 /**
  * Seconds of one turn of the co-op strategy draft (user playtest #4 item 4: the old 12 s per turn — research 06 §724,
@@ -422,12 +412,9 @@ export class Match {
   /**
    * @param {string} playerId
    * @param {{ t: string }} msg validated intent
-   * @param {{ deferFlush?: boolean }} [opts] deferFlush: skip the trailing flush() — the caller (lobby.routeGame
-   *        via net.js) answers the player first and flushes right after, so the `ok` frame is never queued behind
-   *        this tick's publicView JSON.stringify (2+2G 优化 §2.1.2-3 指令快速通道).
    * @returns {{ ok: true } | { error: string, detail?: string }}
    */
-  handle(playerId, msg, opts = {}) {
+  handle(playerId, msg) {
     const ps = this.players.get(playerId) || this.spectators.get(playerId);
     if (!ps || ps.isBot || ps.left) return fail(ERR.NOT_IN_ROOM);
     // a spectator seat only watches (the platform routes nothing else of it)
@@ -445,12 +432,7 @@ export class Match {
       this.reportError(`handle ${msg.t}`, e);
       res = fail(ERR.INTERNAL);
     }
-    if (opts.deferFlush) {
-      // The dirty flags (this._privDirty / this._pubDirty) stay set; the caller MUST call flush() on this tick.
-      this._flushDeferred = true;
-    } else {
-      try { this.flush(); } catch (e) { this.reportError('flush', e); }
-    }
+    try { this.flush(); } catch (e) { this.reportError('flush', e); }
     if (res && typeof res === 'object' && res.error) return res;
     return OK;
   }
@@ -708,8 +690,12 @@ export class Match {
    * presentation steps (BATTLE_CHECK, ROUND_START, SETTLE) run silently (no countdown). The same holds for any match
    * with a single human (loneHuman: a 同盟 room started alone or with AI teammates only — user playtest #4 item 3):
    * the timers only ever made humans wait on each other; AI seats act at once.
+   *
+   * 无尽模式例外（服务器主人要求）：无尽没有官方数据背书，且成绩就是「坚持的回合数」—— 必须按合作盟约计时，
+   * 否则单机 / 单人无尽可以无限泡在休整期里刷回合（gd.isEndless ⇒ 每个非战斗阶段都照常发 deadline；
+   * 单机条目的 prepTime 由 tools/endlessMode.mjs 从同底难度的联机回合表补齐）。
    */
-  get soloUntimed() { return this.isSolo || this.loneHuman; }
+  get soloUntimed() { return (this.isSolo || this.loneHuman) && !this.gd.isEndless; }
 
   nextUid() { return ++this.uidSeq; }
 
@@ -842,11 +828,10 @@ export class Match {
   }
 
   _maybeSendPublic(force) {
-    const throttle = publicThrottleMs(this.phase);
     const now = this.sched.now();
-    if (!force && now - this._lastPubAt < throttle) {
+    if (!force && now - this._lastPubAt < DELAYS.PUBLIC_THROTTLE) {
       if (!this._pubTimer) {
-        const wait = Math.max(1, throttle - (now - this._lastPubAt));
+        const wait = Math.max(1, DELAYS.PUBLIC_THROTTLE - (now - this._lastPubAt));
         this._pubTimer = this.sched.setTimeout(() => {
           this._pubTimer = null;
           if (this.disposed) return;
@@ -911,11 +896,14 @@ export class Match {
       disabledBonds: [...new Set([...this.disabledBonds, ...this.staticInactiveBonds])].sort(),
       drawnDisabledBonds: this.disabledBonds.slice(),
       bannedChess: this.bannedChess.slice(),
-      bossId: this.bossId,
+      bossId: this.bossIdAtRound(this.round),
       hiddenBossId: this.hiddenBossId,
       bossRound: this.gd.bossRound,
       hiddenRound: this.gd.hiddenRound,
-      spRound: this.gd.spRounds().includes(this.round),
+      // 无尽模式：回合无限（lastRound = 0），第 14 回合第一次 Boss，其后每 bossStep(7) 回合一次
+      endless: this.gd.isEndless,
+      bossStep: this.gd.isEndless ? this.gd.endlessBossStep : null,
+      spRound: this.gd.isSpRound(this.round),
       // DESIGN §14: 'client' = battles are simulated by the browsers (b.start specs), 'server' = legacy streaming
       combatMode: this.clientCombat ? 'client' : 'server',
       // solo pause (g.pause, DESIGN §14): the battle, its field clock and every deadline are frozen while true
@@ -1149,9 +1137,124 @@ export class Match {
       // the stats the board's units start their next battle with (the detail card in prep, user playtest #4 item 7)
       case 'g.unitStats': return this.unitStats(ps, msg.seq ?? null);
       case 'g.leave': this.onLeave(ps.playerId); return OK;
+      // 服务器主人专用调试（server/debug.js）：口令 + 昵称白名单校验通过才执行
+      case 'g.debug': return this.debugOp(ps, msg);
       case 'b.progress': return this._onProgress(ps, msg);
       case 'b.result': return this._onResult(ps, msg);
       default: return fail(ERR.BAD_MSG);
+    }
+  }
+
+  // ===================================================================================================
+  // 调试模式 (服务器主人专用, server/debug.js)
+
+  /**
+   * `g.debug` — 服务端权威的作弊开关：口令 + 昵称白名单（若配置）全部通过才生效，每一次调用都写进日志。
+   * 未配置 DEBUG_SECRET 时整体关闭，直接常量时间拒绝。客户端只是请求方，无法自行改状态。
+   * 多人局保护（用户要求：调试不得波及同局的其他玩家）：`kill` / `skip` 推进的是全局共享的回合阶段机，
+   * `lp` 在 Boss / 终局阶段改的是队伍合并生命池 —— 一旦局内还有第二个真人，这些操作一律拒绝。
+   */
+  debugOp(ps, msg) {
+    if (!DEBUG_OPS.includes(msg.op)) return fail(ERR.BAD_MSG, 'unknown debug op');
+    const auth = checkDebugAuth(this.opts.debug, { secret: msg.secret, name: ps.name });
+    if (!auth.ok) {
+      this.log.warn(`[debug] 拒绝(${auth.reason}) op=${msg.op} by ${ps.name} #${ps.playerId} room=${this.roomCode}`);
+      return fail(ERR.DEBUG);
+    }
+    const op = msg.op;
+    const humans = this.humans().length;
+    if (humans > 1 && this._debugIsGlobal(op)) {
+      this.log.warn(`[debug] 拒绝(multiplayer) op=${op} by ${ps.name} #${ps.playerId} humans=${humans} room=${this.roomCode}`);
+      return fail(ERR.DEBUG, 'multiplayer');
+    }
+    const value = Number.isInteger(msg.value) ? Math.max(-DEBUG_VALUE_MAX, Math.min(DEBUG_VALUE_MAX, msg.value)) : null;
+    try {
+      this._applyDebug(ps, op, value);
+    } catch (e) {
+      this.reportError(`debug ${op}`, e);
+      return fail(ERR.INTERNAL, 'debug failed');
+    }
+    this.log.info(`[debug] ${op}${value == null ? '' : ' ' + value} by ${ps.name} #${ps.playerId} round=${this.round} room=${this.roomCode}`);
+    this.markPublic();
+    return OK;
+  }
+
+  /**
+   * 该调试操作的作用范围是否超出请求者本人（会改全局回合阶段机 / 队伍合并生命池）。
+   * `lp` 只在生命已被合并成队伍池时才算全局（最终攻势 / 隐秘核心）；其余阶段它只加在自己身上。
+   * @param {string} op @returns {boolean}
+   */
+  _debugIsGlobal(op) {
+    return DEBUG_GLOBAL_OPS.includes(op) || (op === 'lp' && this.teamLp != null);
+  }
+
+  /** 应用一条已鉴权通过的调试指令。 */
+  _applyDebug(ps, op, value) {
+    switch (op) {
+      case 'funds':
+        ps.addFunds(value != null && value > 0 ? value : DEBUG_DEFAULTS.funds, { reason: 'debug' });
+        return;
+      case 'setFunds':
+        ps.funds = Math.max(0, value != null ? value : 0);
+        ps.dirty();
+        return;
+      case 'lp':
+        this._debugAddLp(ps, value != null && value > 0 ? value : DEBUG_DEFAULTS.lp);
+        return;
+      case 'maxLevel': {
+        const max = this.gd.maxShopLevel;
+        if (ps.shop.level < max) {
+          ps.shop.level = max;
+          ps.shop.upgradePrice = this.gd.upgradeBase(max) ?? 0;
+          ps.rollShop({ keepFrozen: true });
+          ps.dirty();
+        }
+        return;
+      }
+      case 'kill': return this._debugClearRound(false);
+      case 'skip': return this._debugClearRound(true);
+      default: return;
+    }
+  }
+
+  /** +生命：Boss / 终局阶段加在合并的 teamLp 上（再按比例回写），平时加在该玩家自己身上。 */
+  _debugAddLp(ps, n) {
+    if (this.teamLp != null) {
+      this.teamLp = Math.max(0, this.teamLp + n);
+      this._syncTeamLp();
+    } else if (ps.alive) {
+      ps.lp = Math.max(0, ps.lp + n);
+      ps.dirty();
+    }
+  }
+
+  /**
+   * 秒杀 / 跳过本回合：把当前回合直接判成"完美通过"，让既有流程自然推进（不手工改回合号）。
+   * - 战斗 / 联防：每个存活战场补一个零泄漏结果并收尾（_fieldDone → _finishCombat / _finishUniteClient）。
+   * - 最终攻势 / 隐秘核心：清空 Boss 血池 → _checkFinalEnd 判胜。
+   * - 备战阶段（仅 `skip`）：先把所有人置为就绪并结束备战，再清掉随之而来的战斗。
+   * 回合开始 / 机变或服务端战斗（SP_COMBAT=server）等无法安全跳过的情形不做任何事。
+   */
+  _debugClearRound(fromAnyPhase) {
+    if (fromAnyPhase && this.phase === PHASE.PREP) {
+      for (const p of this.alivePlayers()) {
+        try { p.resolveTemp(); } catch { /* ignore */ }
+        p.ready = true;
+        p.dirty();
+      }
+      this.endPrep();
+    }
+    if (this.phase === PHASE.COMBAT || this.phase === PHASE.UNITE) {
+      for (const f of this.fields) {
+        if (!f || !f.cc || f.done) continue;
+        if (!f.result) f.result = syntheticResult(f.players, { bossBy: f.bossBy });
+        this._fieldDone(f);
+      }
+      return;
+    }
+    if (this.phase === PHASE.FINAL_ASSAULT || this.phase === PHASE.HIDDEN_CORE) {
+      if (this.bossPool) this.bossPool.hp = 0;
+      this._checkFinalEnd();
     }
   }
 
@@ -1233,11 +1336,11 @@ export class Match {
     const units = [];
     // the flags of the battle it previews: a normal round gains IN_BATTLE layers from its start (a <战斗开始时> layer gain
     // raises bond stats at t = 0 there too); the Final Assault / Hidden Core fight without (previewed as a normal field)
-    const bossRound = this.round === this.gd.bossRound || this.round === this.gd.hiddenRound;
+    const bossRound = this.gd.isBossRound(this.round) || this.round === this.gd.hiddenRound;
     const b = this.newBattle({
       seed: deriveSeed(this.seed, `preview:${this.round}:${ps.seat}`), kind: 'normal', modeId: this.modeId, round: this.round,
       stageId: this.stageId, rect: { ...GEO.NORMAL_RECT }, timeLimit: 60, players, spawns: [], routes: this.wave ? this.wave.routes : [],
-      sharedBoss: null, flags: { layerGainsEnabled: !bossRound, ...this.gd.dp }, fieldId: `n:${ps.playerId}`, recordEvents: false,
+      sharedBoss: null, flags: { layerGainsEnabled: !bossRound, ...this.gd.simFlags }, fieldId: `n:${ps.playerId}`, recordEvents: false,
     });
     try {
       if (typeof b.start === 'function') b.start();
@@ -1557,7 +1660,7 @@ export class Match {
     // round start: its recompute() checks the board on the field the player deploys on this round (deployFieldOf reads
     // the boss pairing), so R14 → R15 never re-checks a boss-field board against the normal field (user playtest #5
     // item 7). rngWaves is used only here, so the order leaves every random stream unchanged.
-    const isBoss = r === this.gd.bossRound || r === this.gd.hiddenRound;
+    const isBoss = this.gd.isBossRound(r);
     if (isBoss) {
       this._planBossWaves();
     } else {
@@ -1575,10 +1678,31 @@ export class Match {
     this.markPublic();
   }
 
+  /**
+   * 无尽模式：某个 Boss 回合该打哪个 Boss。R14（第一次）固定用开局抽中的 `bossId`；其后每次 Boss
+   * **独立按权重重新轮抽**（D10 的 `bossWeights`，允许与上一次相同）——用 `(seed, 该次 Boss 的回合)`
+   * 派生 RNG，所以同一局同一回合对所有客户端一致、可复现。非 Boss 回合返回「最近一次 Boss 回合」的
+   * Boss（供 UI / BGM 显示，避免回合间来回跳）。非无尽模式恒为开局抽中的那一个。
+   * @param {number} r 回合
+   */
+  bossIdAtRound(r) {
+    if (!this.gd.isEndless) return this.bossId;
+    const first = this.gd.endlessBossFirst;
+    const n = Number(r);
+    if (!Number.isInteger(n) || n < first) return this.bossId;
+    const step = this.gd.endlessBossStep;
+    const idx = Math.floor((n - first) / step) + 1;     // 截至 r 已发生的 Boss 次数（≥1）
+    if (idx <= 1) return this.bossId;                   // R14：开局抽中的那个
+    const bw = this.gd.bossWeights(false);
+    if (!bw.length) return this.bossId;
+    const drawRound = first + (idx - 1) * step;         // 该次 Boss 的回合 → 抽样键
+    return weightedPick(createRng(deriveSeed(this.seed, `boss:${drawRound}`)), bw);
+  }
+
   /** The boss round's fields (seat pairs of the alive players) and their templates, generated for the prep preview. */
   _planBossWaves() {
     const r = this.round;
-    const bossId = r === this.gd.hiddenRound && r !== this.gd.bossRound ? this.hiddenBossId : this.bossId;
+    const bossId = r === this.gd.hiddenRound && r !== this.gd.bossRound ? this.hiddenBossId : this.bossIdAtRound(r);
     this.bossWaves = pairPlayers(this.alivePlayers()).map((g) => ({
       players: g.map((p) => p.playerId),
       wave: buildBossWave(this.gd, this.rngWaves, this.factions, r, { bossId, solo: this.isSolo || g.length === 1 }),
@@ -1586,7 +1710,7 @@ export class Match {
   }
 
   afterRoundStart() {
-    if (this.gd.spRounds().includes(this.round)) this.enterSpDraft();
+    if (this.gd.isSpRound(this.round)) this.enterSpDraft();
     else this.enterPrep();
   }
 
@@ -1897,11 +2021,11 @@ export class Match {
     for (const ps of alive) this.dispatch(ps, 'onPrepEnd', { round: this.round });
     for (const ps of alive) ps.endPrep();
     const r = this.round;
-    if (r === this.gd.bossRound) {
+    if (r === this.gd.hiddenRound) {
+      this.startFinalAssault(true);
+    } else if (this.gd.isBossRound(r)) {
       this.hiddenLayerSum = alive.reduce((s, p) => s + p.activatedLayers(), 0);
       this.startFinalAssault(false);
-    } else if (r === this.gd.hiddenRound) {
-      this.startFinalAssault(true);
     } else {
       this.startCombat();
     }
@@ -1960,7 +2084,7 @@ export class Match {
       spawns: this._sanitizeSpawns(Array.isArray(ev.spawns) ? ev.spawns : spawns, ps.playerId),
       routes: wave.routes,
       sharedBoss: null,
-      flags: { layerGainsEnabled: true, ...this.gd.dp },
+      flags: { layerGainsEnabled: true, ...this.gd.simFlags },
       fieldId: `n:${ps.playerId}`,
       enemyOverrides: wave.overrides,
       waveId: wave.templateId,
@@ -2088,7 +2212,7 @@ export class Match {
       spawns: this._sanitizeSpawns(wave.spawns),
       routes: wave.routes,
       sharedBoss: null,
-      flags: { layerGainsEnabled: false, ...this.gd.dp },
+      flags: { layerGainsEnabled: false, ...this.gd.simFlags },
       fieldId: 'u',
       // leaked enemies re-enter with the stats they had: the round template's stat overrides apply again
       enemyOverrides: this.wave && this.wave.overrides ? this.wave.overrides : {},
@@ -2956,12 +3080,13 @@ export class Match {
       if (coins > 0) { ps.pendingFunds += coins; ps.stats.fundsGained += coins; }
       for (const b of ps.bounties) b.roundsLeft--;
       ps.bounties = ps.bounties.filter((b) => b.roundsLeft > 0);
-      // IN_BATTLE layer gains (normal battles only), at most the room left under BOND_LAYER_CAP (999, as the battle's
-      // live copy: Battle.addLayers); a bond at the cap gains nothing and dispatches nothing
+      // IN_BATTLE layer gains (normal battles only), at most the room left under this mode's bond layer cap (999, or
+      // 9999 in 无尽模式 — the same value the battle's live copy used: Battle.addLayers via spec.flags.bondLayerCap);
+      // a bond at the cap gains nothing and dispatches nothing
       for (const [bondId, n] of Object.entries(r.layerGains || {})) {
         if (!this.gd.bond(bondId) || !(n > 0)) continue;
         const before = ps.layers[bondId] || 0;
-        const add = layerGainRoom(before, Math.floor(n));
+        const add = layerGainRoom(before, Math.floor(n), this.gd.bondLayerCap);
         if (!(add > 0)) continue;
         ps.layers[bondId] = before + add;
         this.dispatch(ps, 'onLayers', { bondId, from: before, to: ps.layers[bondId], reason: 'battle' });
@@ -3024,12 +3149,14 @@ export class Match {
       this.teamLp = alive.reduce((s, p) => s + Math.max(0, p.lp), 0);
       for (const ps of alive) ps.lpAtFinal = Math.max(0, ps.lp);
     }
-    const bossId = hidden ? this.hiddenBossId : this.bossId;
+    const bossId = hidden ? this.hiddenBossId : this.bossIdAtRound(this.round);
     // BOSS_HIT tickers ("对敌方领袖造成的伤害超过20% / 50% / 80%"): the player's damage to THIS leader over its pool —
     // the pool's own per-player tally, one pool per boss round. stats.bossDamage (the result's 领袖伤害) adds up both
     // rounds, so it would credit the Final Assault's damage to the hidden leader ("隐藏boss还没打就出了50%播报").
     const hitSteps = new Map();
-    const pool = new SharedBossPool(bossPoolHp(this.gd, bossId, alive.length), {
+    // 无尽模式：Boss 血池随周期成长（第 n 次 Boss 战 = 基础 × bossCycleScale^(n-1)）；其它模式倍率恒为 1。
+    const poolHp = Math.max(1, Math.round(bossPoolHp(this.gd, bossId, alive.length) * this.gd.endlessBossPoolScale(this.round)));
+    const pool = new SharedBossPool(poolHp, {
       onHit: (pid, dmg) => {
         const ps = this.players.get(pid);
         if (!ps) return;
@@ -3078,7 +3205,7 @@ export class Match {
         spawns: this._sanitizeSpawns(spawns),
         routes: wave.routes,
         sharedBoss: this.bossPool,
-        flags: { layerGainsEnabled: false, ...this.gd.dp },
+        flags: { layerGainsEnabled: false, ...this.gd.simFlags },
         fieldId,
         enemyOverrides: wave.overrides,
         waveId: wave.templateId,
@@ -3236,6 +3363,20 @@ export class Match {
     this.overtimeAt = 0;
     this.markPublic();
     this.runner = null;
+    if (!hidden && this.gd.isEndless) {
+      // 无尽模式的 Boss 只结束当前周期：血池清零就继续下一回合，队伍目标生命值耗尽才结束整局。
+      this.later(this.scaled(DELAYS.SETTLE), () => {
+        if (!victory) { this.finish({ victory: false, reason: 'defeat' }); return; }
+        this.bossPool = null;
+        this.teamLp = null;
+        this.overtimeAt = 0;
+        this.overtimeApplied = 0;
+        this._finalEnding = null;
+        this.tickerText(`第 ${this.round} 回合的敌方领袖已被击破`, FLOW_TICKER_PRIORITY);
+        this.startRound(this.round + 1);
+      });
+      return;
+    }
     if (!hidden) {
       const eligible = victory && !!this.hiddenBossId && hiddenEligible(this.gd, { layerSum: this.hiddenLayerSum, teamLp: this.teamLp });
       this.later(this.scaled(DELAYS.SETTLE), () => {
@@ -3269,9 +3410,14 @@ export class Match {
     this.deadline = 0;
     for (const f of this.fields) f.live = false;
     this.outcome = { victory: !!victory, hiddenReached: this.hiddenReached, hiddenCleared: !!hiddenCleared, reason };
+    // 无尽模式：把本局存活回合写入最高回合记录，并把「历史最高 / 是否刷新纪录」带进结算页。
+    let extras = {};
+    if (this.gd.isEndless) {
+      try { extras = recordEndlessResult(this); } catch (e) { this.reportError('endless record', e); }
+    }
     let result;
     try {
-      result = buildResult(this, this.outcome);
+      result = buildResult(this, this.outcome, extras);
     } catch (e) {
       this.reportError('buildResult', e);
       result = { t: 'm.result', victory: !!victory, roundsPassed: 0, reason, modeId: this.modeId, difficulty: this.difficulty, players: [] };

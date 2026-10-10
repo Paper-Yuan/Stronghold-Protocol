@@ -166,7 +166,8 @@ export function ChoiceView({ pub, sp, myId, solo, busyIdx = null, total = null, 
   const turnName = players.get(sp.turnPid)?.name || '队友';
   const special = /_s$/.test(String(sp.family || ''));
   const order = solo ? [] : sp.order;
-  const timed = !solo && !sp.untimed;
+  // 以服务端的 sp.untimed 为准（无尽模式单人也有时限：Match.soloUntimed），不再看 solo
+  const timed = !sp.untimed;
   const armedCardRec = armed != null ? sp.cards.find((c) => c && c.idx === armed) : null;
   const armedName = armedCardRec ? resolveSpCard(armedCardRec, sp.family).name : null;
   // a press anywhere but a card or the confirm button drops the selection

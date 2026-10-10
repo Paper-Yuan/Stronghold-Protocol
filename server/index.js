@@ -45,6 +45,8 @@ import { getData, loadData } from './data.js';
 import { PROTOCOL_VERSION, APP_VERSION } from '../shared/constants.js';
 import { MEDIA_PREFIX, AUDIO_EXTS } from '../shared/media.js';
 import { AdminService, recordAdminLog } from './admin.js';
+import { endlessLeaderboardAll } from './records.js';
+import { debugConfigFrom } from './debug.js';
 
 function readJsonBody(req, limit = 64 * 1024) {
   return new Promise((resolve, reject) => {
@@ -638,6 +640,35 @@ export function parseTrustProxy(v) {
   return 'auto';
 }
 
+/**
+ * 解析滚动公告配置（服务器主人通过控制台「配置」页下发，launcher 注入 `ANNOUNCEMENTS` 环境变量）。
+ * 接受两种格式：
+ *   - JSON 数组：`["第一条", "第二条"]`（控制台保存的就是这个）
+ *   - 换行分隔的纯文本：每行一条
+ * 返回去重、去空、限长的字符串数组；无有效内容时返回 `[]`（客户端据此隐藏公告条）。
+ */
+export function parseAnnouncements(raw) {
+  const s = String(raw ?? '').trim();
+  if (!s) return [];
+  let list = null;
+  if (s.startsWith('[')) {
+    try {
+      const j = JSON.parse(s);
+      if (Array.isArray(j)) list = j.map((x) => String(x ?? ''));
+    } catch { list = null; }
+  }
+  if (list == null) list = s.split(/\r?\n/);
+  const out = [];
+  for (const item of list) {
+    const t = String(item).trim();
+    if (!t) continue;
+    if (out.includes(t)) continue;
+    out.push(t.slice(0, 200));
+    if (out.length >= 50) break;
+  }
+  return out;
+}
+
 function makeLogger(quiet) {
   if (quiet) return noopLog;
   return {
@@ -684,6 +715,10 @@ export async function startServer(opts = {}) {
   for (const k of ['lobbyGraceMs', 'maxRooms', 'maxRoomsPerAddr', 'maxMatchesPerAddr', 'resyncMinGapMs', 'soloReconnectWindowMs']) {
     if (opts[k] != null) lobbyOptions[k] = opts[k];
   }
+  const announcements = parseAnnouncements(process.env.ANNOUNCEMENTS ?? opts.announcements);
+  if (announcements.length) log.info(`[announce] 已加载 ${announcements.length} 条滚动公告`);
+
+  lobbyOptions.debug = debugConfigFrom(process.env, opts.debug || {});
   const origInfo = log.info;
   const origWarn = log.warn;
   const origError = log.error;
@@ -692,6 +727,11 @@ export async function startServer(opts = {}) {
   log.error = (...args) => { recordAdminLog('error', args.map(String).join(' ')); return origError?.apply(log, args); };
 
   const lobby = new Lobby({ registry, log, MatchClass: opts.MatchClass, getData: () => data, seedFn: opts.seedFn, options: lobbyOptions });
+  if (lobbyOptions.debug && lobbyOptions.debug.secret) {
+    log.info(`[debug] 调试模式已启用（${lobbyOptions.debug.names.length ? `昵称白名单: ${lobbyOptions.debug.names.join(', ')}` : '未设置昵称白名单 → 仅校验口令'}）`);
+  } else {
+    log.info('[debug] 调试模式未启用（未配置 DEBUG_SECRET / ADMIN_SECRET）');
+  }
   const network = new Network({ registry, handler: lobby, log, options: netOptions, loadGuard: lobby.loadGuard });
   const serveStatic = createStaticHandler({ publicDir, dataDir, sharedDir, log });
   const startedAt = Date.now();
@@ -741,6 +781,11 @@ export async function startServer(opts = {}) {
         sendJson(req, res, 200, admin.getLogs(since));
         return;
       }
+      if (parts.rawPath === '/api/admin/endless' && (req.method === 'GET' || req.method === 'HEAD')) {
+        const limit = Number(new URLSearchParams(parts.query).get('limit')) || 50;
+        sendJson(req, res, 200, admin.getEndless(limit));
+        return;
+      }
       if (parts.rawPath === '/api/admin/broadcast' && req.method === 'POST') {
         try {
           const body = await readJsonBody(req);
@@ -786,6 +831,33 @@ export async function startServer(opts = {}) {
         ok: true, code: room.code, mode: room.mode, difficulty: room.difficulty,
         seats: room.seats.length, humans: room.seats.filter((s) => s && !s.isBot).length, inMatch: !!room.match,
       });
+      return;
+    }
+    if (parts.rawPath === '/api/announcements') {
+      sendJson(req, res, 200, { ok: true, announcements });
+      return;
+    }
+    if (parts.rawPath === '/api/endless/leaderboard') {
+      const q = new URLSearchParams(parts.query);
+      const limitParam = q.get('limit');
+      const limitRaw = limitParam == null || limitParam === '' ? NaN : Number(limitParam);
+      const limit = Number.isFinite(limitRaw) ? Math.min(200, Math.max(1, Math.floor(limitRaw))) : 30;
+      const all = endlessLeaderboardAll();
+      const pub = (r) => ({
+        name: String(r.name || ''),
+        rounds: Math.max(0, Math.floor(Number(r.rounds) || 0)),
+        runs: Math.max(0, Math.floor(Number(r.runs) || 0)),
+        solo: !!r.solo,
+        at: Number.isFinite(r.at) ? r.at : null,
+      });
+      const rows = all.slice(0, limit).map(pub);
+      const wantName = String(q.get('name') || '').trim().slice(0, 64);
+      let me = null;
+      if (wantName) {
+        const idx = all.findIndex((r) => r && String(r.name) === wantName);
+        if (idx >= 0) me = { ...pub(all[idx]), rank: idx + 1 };
+      }
+      sendJson(req, res, 200, { ok: true, total: all.length, count: rows.length, leaderboard: rows, me });
       return;
     }
     await serveStatic(req, res, parts.rawPath, parts.query);

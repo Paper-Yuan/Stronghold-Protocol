@@ -2,6 +2,7 @@
 import os from 'node:os';
 import crypto from 'node:crypto';
 import { PROTOCOL_VERSION, APP_VERSION } from '../shared/constants.js';
+import { endlessLeaderboard } from './records.js';
 
 // Circular log buffer for live console streaming
 const MAX_LOG_ENTRIES = 300;
@@ -108,16 +109,13 @@ export class AdminService {
     const activeMatches = rooms.filter((r) => !!r.match).length;
 
     let androidFull = 0;
-    let webFull = 0;
-    let webCore = 0;
+    let webPreloaded = 0;
     let webStream = 0;
     if (this.registry?.byPlayerId) {
       for (const s of this.registry.byPlayerId.values()) {
         if (!s.connected) continue;
-        const b = s.client?.bundle;
-        if (b === 'full' || b === 'android_full') androidFull++;
-        else if (b === 'web_full') webFull++;
-        else if (b === 'web_core' || b === 'core' || b === 'preloaded') webCore++;
+        if (s.client?.bundle === 'full') androidFull++;
+        else if (s.client?.bundle === 'preloaded') webPreloaded++;
         else webStream++;
       }
     }
@@ -132,6 +130,8 @@ export class AdminService {
       uptime: Math.round((Date.now() - this.startedAt) / 1000),
       isDraining: this.isDraining,
       drainElapsedSec: this.drainStartedAt ? Math.round((Date.now() - this.drainStartedAt) / 1000) : 0,
+      // 排空是否已完成（房间已全部解散）——运维脚本据此判断旧节点能否下线
+      drainComplete: this.isDraining && rooms.length === 0,
       system: {
         cpuPercent: getCpuUsagePercent(),
         loadAvg: os.loadavg().map((v) => Math.round(v * 100) / 100),
@@ -146,14 +146,7 @@ export class AdminService {
         sessions: this.registry.size,
         roomsCount: rooms.length,
         matchesCount: activeMatches,
-        clients: {
-          androidFull,
-          webFull,
-          webCore,
-          webStream,
-          // backwards compatibility:
-          webPreloaded: webFull + webCore,
-        },
+        clients: { androidFull, webPreloaded, webStream },
       },
     };
   }
@@ -215,6 +208,15 @@ export class AdminService {
   }
 
   /**
+   * 无尽模式最高回合榜单（server/records.js，降序）。
+   * @param {number} [limit]
+   */
+  getEndless(limit = 50) {
+    const rows = endlessLeaderboard(limit);
+    return { ok: true, count: rows.length, leaderboard: rows };
+  }
+
+  /**
    * Recent system log ring.
    */
   getLogs(since = 0) {
@@ -252,15 +254,18 @@ export class AdminService {
 
   /**
    * Enter graceful draining mode (prepare for hot reload).
+   * 禁止新建房间 / 快速匹配，并让存量房间在本局结束后自动解散（热切时旧节点可干净下线）。
    */
   startDrain() {
     if (this.isDraining) return true;
     this.isDraining = true;
     this.drainStartedAt = Date.now();
+    let info = null;
     if (this.lobby) {
-      this.lobby.isDraining = true;
+      if (typeof this.lobby.beginDrain === 'function') info = this.lobby.beginDrain();
+      else this.lobby.isDraining = true;
     }
-    recordAdminLog('warn', '[Admin] 启动热重载平滑排空模式 (Graceful Drain)：新房间将拒绝创建，等待存量对局结束');
+    recordAdminLog('warn', `[Admin] 启动热重载平滑排空模式 (Graceful Drain)：禁止新房间/快速匹配，存量房间打完本局后自动解散（当前 ${info?.rooms ?? '-'} 个房间）`);
     return true;
   }
 }

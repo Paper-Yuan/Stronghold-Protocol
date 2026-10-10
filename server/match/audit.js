@@ -312,7 +312,7 @@ export function attachAudit(m, { invariants = true, limit = 200 } = {}) {
     check('round start phase', () => {
       if (m.phase !== PHASE.ROUND_START) return;
       expectDeadline(2, 'ROUND_START', { silentSolo: true });
-      const isBoss = rr === gd.bossRound || rr === gd.hiddenRound;
+      const isBoss = gd.isBossRound(rr);
       if (isBoss ? !m.bossWaves : !m.wave) fail('round without its wave');
     });
     return res;
@@ -446,7 +446,8 @@ export function attachAudit(m, { invariants = true, limit = 200 } = {}) {
       m.fields.forEach((f, i) => { if (f.fieldId !== `b${i + 1}`) fail(`boss field id ${f.fieldId}`); });
       if (!hidden && m.teamLp !== lpSum) fail(`team LP ${m.teamLp} != Σ alive LP ${lpSum}`);
       if (hidden && m.teamLp !== teamLp0) fail(`hidden core changed team LP ${teamLp0} → ${m.teamLp}`);
-      const want = bossPoolHp(gd, hidden ? m.hiddenBossId : m.bossId, alive.length);
+      // 无尽模式：Boss 血池随周期成长（Match.startFinalAssault 乘 endlessBossPoolScale）
+      const want = Math.max(1, Math.round(bossPoolHp(gd, hidden ? m.hiddenBossId : m.bossId, alive.length) * gd.endlessBossPoolScale(m.round)));
       if (!m.bossPool || m.bossPool.maxHp !== want) fail(`boss pool ${m.bossPool && m.bossPool.maxHp} != ${want}`);
       if (hidden && !hiddenEligible(gd, { layerSum: m.hiddenLayerSum, teamLp: m.teamLp })) fail('hidden core entered while not eligible');
       if (hidden && gd.difficulty === 'FUNNY') fail('hidden core on FUNNY');
@@ -465,7 +466,9 @@ export function attachAudit(m, { invariants = true, limit = 200 } = {}) {
         const t = p.title && cfg.find((x) => x.id === p.title.id);
         if (t && t.onlyOnWin && !r.victory) fail(`${p.playerId}: win-only title ${t.id} on a defeat`);
         const ps = m.players.get(p.playerId);
-        const want = !ps.alive && ps.eliminatedRound != null ? Math.max(0, ps.eliminatedRound - 1) : r.victory ? gd.bossRound + (r.hiddenCleared ? 1 : 0) : Math.max(0, Math.min(m.round, gd.bossRound) - 1);
+        const want = gd.isEndless
+          ? (ps.eliminatedRound != null ? Math.max(0, ps.eliminatedRound - 1) : Math.max(0, m.round - 1))
+          : !ps.alive && ps.eliminatedRound != null ? Math.max(0, ps.eliminatedRound - 1) : r.victory ? gd.bossRound + (r.hiddenCleared ? 1 : 0) : Math.max(0, Math.min(m.round, gd.bossRound) - 1);
         if (p.roundsPassed !== want) fail(`${p.playerId}: roundsPassed ${p.roundsPassed}, expected ${want}`);
       }
       if (r.hiddenReached && !m.hiddenReached) fail('hiddenReached mismatch');

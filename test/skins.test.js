@@ -13,10 +13,10 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const skinsData = JSON.parse(readFileSync(join(ROOT, 'data/skins.json'), 'utf8'));
 const assetsData = JSON.parse(readFileSync(join(ROOT, 'data/assets.json'), 'utf8'));
 
-test('全量 271 套皮肤内置元数据覆盖与映射正确', () => {
+test('全量 273 套皮肤内置元数据覆盖与映射正确', () => {
   const chars = skinsData.chars || {};
   const charKeys = Object.keys(chars);
-  assert.equal(charKeys.length, 172, '拥有皮肤的干员数为 172 名');
+  assert.equal(charKeys.length, 174, '拥有皮肤的干员数为 174 名（指南原文 173 系笔误：172 基线 + 酒神/真言 2 名）');
 
   let totalSkins = 0;
   for (const [charId, list] of Object.entries(chars)) {
@@ -27,7 +27,7 @@ test('全量 271 套皮肤内置元数据覆盖与映射正确', () => {
       assert.ok(typeof s.name === 'string' && s.name.length > 0, `皮肤 ${s.id} 具有名称`);
     }
   }
-  assert.equal(totalSkins, 271, '总皮肤数应精准为 271 款');
+  assert.equal(totalSkins, 273, '总皮肤数应精准为 273 款');
 
   // 验证普查出的 6 名无皮肤干员
   const noSkinChars = [

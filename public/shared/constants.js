@@ -3,7 +3,7 @@
 export const PROTOCOL_VERSION = 1;
 /** Release version shown to players (title screen, server banner, /healthz). Kept equal to package.json "version"
  * (test/version.test.js); PROTOCOL_VERSION above is the separate wire-format number. */
-export const APP_VERSION = '0.2.1-fusion';
+export const APP_VERSION = '0.2.2-fusion';
 
 export const MAX_SEATS = 4;
 /**
@@ -16,13 +16,110 @@ export const MAX_SPECTATORS = 2;
 export const ROOM_CODE_LEN = 4;
 export const NAME_MAX_LEN = 12;
 
-export const DIFFICULTIES = ['FUNNY', 'NORMAL', 'HARD', 'ABYSS'];
-export const DIFFICULTY_NAMES = { FUNNY: '标准模拟', NORMAL: '险境模拟', HARD: '绝境模拟', ABYSS: '终极模拟' };
-export const DIFFICULTY_COLORS = { FUNNY: '#f6a329', NORMAL: '#e85a1a', HARD: '#e73118', ABYSS: '#ff0024' };
+/** The four base difficulties, hardest last — the chips of every difficulty picker (大厅 §04 / 房间底栏). */
+export const PICK_DIFFICULTIES = ['FUNNY', 'NORMAL', 'HARD', 'ABYSS'];
+/** The base a bare `ENDLESS` room difficulty stands for (the 无尽模式 lobby card's default). */
+export const ENDLESS_DEFAULT_BASE = 'ABYSS';
+/**
+ * 无尽模式的四个难度 = 四档底难度 × 无尽，写成 `ENDLESS_<BASE>`（见 tools/endlessMode.mjs）。四档之间像常规难度
+ * 一样有区别：enemyScale 敌方强度表、inactiveEnemyKeys 禁用敌人、stages 战场池、bans 盟约禁用数，全取自对应底难度。
+ */
+export const ENDLESS_DIFFICULTIES = PICK_DIFFICULTIES.map((b) => `ENDLESS_${b}`);
+/**
+ * Every difficulty a room may hold. `ENDLESS` is the legacy alias of `ENDLESS_ABYSS`（一个不带底的旧无尽 id）：两者
+ * 由 modeIdFor 解析到同一个模式条目，只有大厅卡片的偏好值仍用不带底的那个。
+ */
+export const DIFFICULTIES = [...PICK_DIFFICULTIES, 'ENDLESS', ...ENDLESS_DIFFICULTIES];
+export const DIFFICULTY_NAMES = {
+  FUNNY: '标准模拟', NORMAL: '险境模拟', HARD: '绝境模拟', ABYSS: '终极模拟', ENDLESS: '无尽模式',
+  ENDLESS_FUNNY: '无尽·标准', ENDLESS_NORMAL: '无尽·险境', ENDLESS_HARD: '无尽·绝境', ENDLESS_ABYSS: '无尽·终极',
+};
+export const DIFFICULTY_COLORS = {
+  FUNNY: '#f6a329', NORMAL: '#e85a1a', HARD: '#e73118', ABYSS: '#ff0024', ENDLESS: '#7c5cff',
+  ENDLESS_FUNNY: '#7c5cff', ENDLESS_NORMAL: '#7c5cff', ENDLESS_HARD: '#7c5cff', ENDLESS_ABYSS: '#7c5cff',
+};
 
-// modeId in data/config.json = `mode_${type}_${difficulty.toLowerCase()}` with type single|multi
-export const modeIdFor = (roomMode, difficulty) =>
-  `mode_${roomMode === 'solo' ? 'single' : 'multi'}_${difficulty.toLowerCase()}`;
+/**
+ * 无尽模式的「底难度」of a difficulty id: `ENDLESS_<BASE>` → BASE，旧的无底 `ENDLESS` → ENDLESS_DEFAULT_BASE，
+ * 其它一律 null。服务端（gamedata / bans）与客户端（房间选择器 / 大厅卡片）读无尽难度的唯一入口。
+ * @param {string} difficulty
+ * @returns {string|null}
+ */
+export function endlessBaseOf(difficulty) {
+  if (typeof difficulty !== 'string') return null;
+  if (difficulty === ENDLESS_DIFFICULTY) return ENDLESS_DEFAULT_BASE;
+  if (!difficulty.startsWith('ENDLESS_')) return null;
+  const base = difficulty.slice('ENDLESS_'.length);
+  return PICK_DIFFICULTIES.includes(base) ? base : null;
+}
+/** 某档底难度对应的无尽难度 id（未知底难度时退回默认挡）。 */
+export const endlessDifficultyFor = (base) => `ENDLESS_${PICK_DIFFICULTIES.includes(base) ? base : ENDLESS_DEFAULT_BASE}`;
+/** 该难度是否属于无尽模式（四个 `ENDLESS_*` 与旧的无底 `ENDLESS`）。 */
+export const isEndlessDifficulty = (difficulty) => endlessBaseOf(difficulty) != null;
+
+// modeId in data/config.json = `mode_${type}_${difficulty.toLowerCase()}` with type single|multi;
+// 一个无尽难度指向它底难度的那份无尽条目（`mode_multi_endless_hard` …），由 tools/endlessMode.mjs 生成。
+export const modeIdFor = (roomMode, difficulty) => {
+  const t = roomMode === 'solo' ? 'single' : 'multi';
+  const base = endlessBaseOf(difficulty);
+  return base ? `mode_${t}_endless_${base.toLowerCase()}` : `mode_${t}_${String(difficulty).toLowerCase()}`;
+};
+
+// ---------------------------------------------------------------------------------------------------
+// 无尽模式 (Endless) — a non-official remake mode. Its rules live in the server match engine and are
+// keyed off these constants; its mode entries (`mode_single_endless_<base>` / `mode_multi_endless_<base>`,
+// one per base difficulty) are built by tools/build-data.mjs (see tools/endlessMode.mjs).
+//   * 无限回合：没有自然终局，直到全队目标生命值耗尽。
+//   * 波次循环：回合 r 的模板按 period 循环复用。
+//   * 数值外推：超过官方 enemyScale 表后，沿用官方公式 atk = atkBase·1.1^kAtk、hp = hpBase·1.2^kHp 继续增长。
+//   * 周期性 Boss：第 14 回合第一次「最终攻势」式共享血池 Boss 战，其后每 7 回合一次（21、28、35…），打完继续，不结束。
+//   * 四个难度：底难度（标准/险境/绝境/终极）各自派生一份条目，敌方强度表、禁用敌人、战场池、盟约禁用数都随之变化。
+// ---------------------------------------------------------------------------------------------------
+export const ENDLESS_DIFFICULTY = 'ENDLESS';
+/** 无尽模式**第一次** Boss 战的回合（前 14 回合保持官方节奏）。 */
+export const ENDLESS_BOSS_EVERY = 14;
+/** 无尽模式：第一次 Boss 之后，Boss 与「+1/3 强化」的周期（回合数）—— 即第 14、21、28、35… 回合。 */
+export const ENDLESS_BOSS_STEP = 7;
+/** 无尽模式每多少回合进入一次机变阶段（sp）。 */
+export const ENDLESS_SP_EVERY = 3;
+/** Boss 血池每经过一个 Boss 周期的成长倍率（第 n 次 Boss 战 = 基础 × scale^(n-1)）。 */
+export const ENDLESS_BOSS_CYCLE_SCALE = 1.75;
+/**
+ * 无尽模式：第一次 Boss 之后，每经过 `ENDLESS_BOSS_STEP`(7) 关，怪物「血量 / 攻击」再加强
+ * 「基础难度属性的 1/3」——叠加在官方公式外推之上（第 21–27 关 ×4/3、第 28–34 关 ×5/3 …）。
+ * 移动速度不加成（官方第 15 关后已把速度封顶在 1.15）。可在模式条目里用 `enemyCycleBoost` 覆盖。
+ */
+export const ENDLESS_ENEMY_CYCLE_BOOST = 1 / 3;
+
+/** 某个模式 id 是否属于无尽模式（`mode_multi_endless_abyss` / 旧的 `mode_multi_endless`）。 */
+export const isEndlessModeId = (id) => typeof id === 'string' && /_endless(_|$)/.test(id);
+
+/**
+ * 回合 r 是否为 Boss 回合，依据 m.public 视图（服务端 gamedata.isBossRound 的客户端镜像）。
+ * 无尽模式：第 `bossRound`(14) 回合是第一次 Boss，其后每 `bossStep`(7) 回合一次（14、21、28…）。
+ * 其它模式看 bossRound / hiddenRound。
+ * @param {{ endless?: boolean, bossRound?: number|null, bossStep?: number|null, hiddenRound?: number|null }} pub
+ * @param {number} r
+ */
+export const isBossRoundOf = (pub, r) => {
+  const n = Number(r);
+  if (!Number.isInteger(n) || n < 1) return false;
+  if (!pub || typeof pub !== 'object') return false;
+  if (pub.endless) {
+    const first = Number.isInteger(pub.bossRound) && pub.bossRound > 0 ? pub.bossRound : ENDLESS_BOSS_EVERY;
+    const step = Number.isInteger(pub.bossStep) && pub.bossStep > 0 ? pub.bossStep : ENDLESS_BOSS_STEP;
+    return n >= first && (n - first) % step === 0;
+  }
+  return n === pub.bossRound || n === pub.hiddenRound;
+};
+
+/** 无尽模式每多少回合一次机变阶段（客户端镜像）。 */
+export const isSpRoundOf = (pub, r) => {
+  const n = Number(r);
+  if (!Number.isInteger(n) || n < 1) return false;
+  if (pub && pub.endless) return !isBossRoundOf(pub, n) && n % ENDLESS_SP_EVERY === 0;
+  return false;
+};
 
 export const PHASE = Object.freeze({
   LOBBY: 'LOBBY',
@@ -89,15 +186,49 @@ export const SKILL_SUMMON_START_DEPLOY = true;
 export const BOND_LAYER_CAP = 999;
 
 /**
- * The layers a gain of `n` actually adds to a bond holding `before` under BOND_LAYER_CAP: min(n, cap − before), never
- * negative (a count already at or over the cap gains 0 and is never lowered); 0 for a non-positive / non-finite `n`
- * except +Infinity (= "the room left").
+ * 无尽模式 (ENDLESS) 的盟约层数上限（社区改造，非官方）：官方 999 在一局没有终点的模拟里会把所有盟约钉死，
+ * 无尽模式放开到 9999，让长期作战的层数仍能增长。由 gamedata.bondLayerCap 按模式选用（其余模式仍是
+ * BOND_LAYER_CAP），保证本字段只影响无尽模式。live 上限的客户端副本 (public/sim/spec.js) 已把上报的 layerGains
+ * 截到 1e4，9999 落在其内。
+ *
+ * 只放开「层数」本身，不放开发奖：按层数结算的里程碑（每 N 层…）一律以 milestoneLayers() 为准，钉在官方 999
+ * 层——无尽模式 9999 层拿到的是和「常规模式 999 层」完全相同的奖（否则 维多利亚「每 25 层 1 件装备」在 9999
+ * 层会发到 399 件，远超官方内容所面向的层数）。
  */
-export function layerGainRoom(before, n) {
+export const ENDLESS_BOND_LAYER_CAP = 9999;
+
+/** 某一局该用的盟约层数上限：无尽模式 9999，其余 999（唯一按模式分流层数上限的入口）。 */
+export function bondLayerCapOf(endless) {
+  return endless ? ENDLESS_BOND_LAYER_CAP : BOND_LAYER_CAP;
+}
+
+/**
+ * 按层数结算的「里程碑发奖」（每 N 层…）所用的层数基准 —— 钉在官方 BOND_LAYER_CAP (999)。
+ *
+ * 里程碑内容（docs/research/11-limits-official.md §1）是面向 ≤ 999 层写死的：维多利亚「每 25 层 → 1 件装备」、
+ * 远见「每 10 层 → 2 资金」、奇迹「每 100 层 → 20 资金」。无尽模式把层数上限放到 ENDLESS_BOND_LAYER_CAP (9999)
+ * 之后，如果发奖跟着层数一起放大，一局就能刷出几百件装备 / 几万资金，既不是官方原意，也会让「手牌/临时区」被
+ * 塞爆。所以发奖的 due 一律以本函数为准：`min(层数, 999)`，即「层数涨到 9999，但发奖最多按 999 层算」。
+ *
+ * 只用于发奖计数（payHammers / settleCoins 的 due），不改层数本身——层数仍写到本局上限
+ * （layerGainRoom + gd.bondLayerCap），其它读层数的战斗效果（谢拉格冷风时长、奇迹刷新概率、投资人 ×3 门槛）
+ * 不受影响。常规模式层数本就 ≤ 999，此函数是恒等映射（旧行为完全不变）。
+ */
+export function milestoneLayers(layers) {
+  const L = Number.isFinite(layers) && layers > 0 ? layers : 0;
+  return BOND_LAYER_CAP > 0 ? Math.min(L, BOND_LAYER_CAP) : L;
+}
+
+/**
+ * The layers a gain of `n` actually adds to a bond holding `before` under a cap: min(n, cap − before), never negative
+ * (a count already at or over the cap gains 0 and is never lowered); 0 for a non-positive / non-finite `n` except
+ * +Infinity (= "the room left"). `cap` defaults to BOND_LAYER_CAP (999); endless callers pass gd.bondLayerCap (9999).
+ */
+export function layerGainRoom(before, n, cap = BOND_LAYER_CAP) {
   if (!(n > 0)) return 0;
-  const cap = BOND_LAYER_CAP > 0 ? BOND_LAYER_CAP : Infinity;
+  const c = cap > 0 ? cap : Infinity; // 0 / Infinity / NaN = no cap (matches the old BOND_LAYER_CAP > 0 test)
   const b = Number.isFinite(before) && before > 0 ? before : 0;
-  return Math.max(0, Math.min(n, cap - b));
+  return Math.max(0, Math.min(n, c - b));
 }
 
 /**
@@ -142,7 +273,8 @@ export const ERR = Object.freeze({
   ELIMINATED: 'ELIMINATED',
   SPECTATOR: 'SPECTATOR',         // a spectator seat only watches (MAX_SPECTATORS)
   MAINTENANCE: 'MAINTENANCE',     // server maintenance in progress / shutting down
-  BUSY: 'BUSY',                   // admission circuit breaker: the server is at capacity (loadGuard red), try again later
+  DEBUG: 'DEBUG',                 // a debug/cheat intent was refused (wrong secret, name not whitelisted, or disabled)
+  BUSY: 'BUSY',
   INTERNAL: 'INTERNAL',
 });
 
@@ -153,7 +285,24 @@ export const ERR_TEXT = {
   BAD_TILE: '无法部署在该位置', BAD_TARGET: '无效的目标', SOLD_OUT: '已售出', MAX_LEVEL: '调度中心已达最高等级',
   NOT_YOUR_TURN: '尚未轮到你', ALREADY: '已完成该操作', TEMP_NOT_EMPTY: '临时整备区不为空', ELIMINATED: '你已被淘汰',
   SPECTATOR: '观战中无法进行该操作', MAINTENANCE: '服务器即将维护，暂时关闭入口', BUSY: '服务器当前对局已满载，正在保护对局稳定，请稍后进入', INTERNAL: '服务器内部错误',
+  DEBUG: '调试指令被拒绝（口令错误、昵称不在白名单，或多人局中限制了全局操作）',
 };
+
+// ---- Debug / cheat gate (服务器主人专用调试模式) ----------------------------------------------------------------
+// Server-authoritative and OFF unless the owner configures DEBUG_SECRET (server/debug.js): the client only asks,
+// the match decides. `DEBUG_OPS` is the closed set of intents `g.debug` accepts; `DEBUG_VALUE_MAX` bounds the
+// free-form `value` field, and `DEBUG_DEFAULTS` are the amounts used when `value` is absent or non-positive.
+export const DEBUG_OPS = Object.freeze(['funds', 'setFunds', 'lp', 'maxLevel', 'kill', 'skip']);
+export const DEBUG_VALUE_MAX = 100_000_000;
+export const DEBUG_DEFAULTS = Object.freeze({ funds: 1000, lp: 100 });
+// 作用范围超出请求者本人的调试操作：`kill` / `skip` 推进的是**全局限定回合阶段机**（备战结束、所有战场收尾、
+// Boss 血池清零），`lp` 在最终攻势 / 隐秘核心阶段改的是**队伍合并生命池**。这些操作只要局内还有第二个真人就会
+// 波及他人 —— Match.debugOp 因此在多人局里一律拒绝（单人局 / 只有自己一个真人时照常可用）。
+export const DEBUG_GLOBAL_OPS = Object.freeze(['kill', 'skip']);
+/** Human labels for the debug panel (client + logs). */
+export const DEBUG_OP_NAMES = Object.freeze({
+  funds: '增加资金', setFunds: '设定资金', lp: '增加生命', maxLevel: '商店满级', kill: '秒杀本回合', skip: '跳过本回合',
+});
 
 // ---- Emotes (交流, research 09 §4) -----------------------------------------------------------------------------
 // The 36 official in-match emotes: display_meta_table emoticonData, scene AUTOCHESS_BATTLE, 6 themes × 6, one wheel

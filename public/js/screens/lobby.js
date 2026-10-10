@@ -10,12 +10,13 @@
 // plays 战场#01, 险境 draws one of 8, 绝境 / 终极 one of 7 (m01 excluded).
 
 import { useEffect, useRef, useState } from '../../vendor/hooks.module.js';
-import { DIFFICULTIES, DIFFICULTY_NAMES, DIFFICULTY_COLORS, ROOM_CODE_LEN, MAX_SEATS, MAX_SPECTATORS, modeIdFor, ERR, ERR_TEXT } from '../../../shared/constants.js';
+import { DIFFICULTIES, PICK_DIFFICULTIES, DIFFICULTY_NAMES, DIFFICULTY_COLORS, ENDLESS_DEFAULT_BASE, ROOM_CODE_LEN, MAX_SEATS, MAX_SPECTATORS, modeIdFor, isEndlessDifficulty, endlessDifficultyFor, ERR, ERR_TEXT } from '../../../shared/constants.js';
 import { html, Button, Icon, MicroLabel, Panel, TextField, PingPill, AvatarFrame, Tooltip, Spinner, DifficultyIcon, doctorNo } from '../ui/components.js';
-import { PreloadPill, PreloadModal } from '../ui/preloadModal.js';
 import { toast, toastError } from '../ui/toasts.js';
 import { GuideButton } from '../ui/guide.js';
 import { LoadoutButton } from './loadout.js';
+import { LeaderboardButton } from '../ui/leaderboard.js';
+import { AnnouncementBar } from '../ui/announcement.js';
 import { net, identity } from '../net.js';
 import { store, useStore, shallowEqual, loadPref, savePref } from '../store.js';
 import { getConfig, getMode, getStage, useData } from '../data.js';
@@ -91,13 +92,16 @@ export function difficultyInfo(roomMode, difficulty) {
   const effects = Array.isArray(m?.effectDescList)
     ? m.effectDescList.map((e) => String(e).replace(/^[·•\s]+/, '')).filter(Boolean)
     : fallback.effects;
-  const rounds = Number.isFinite(m?.lastRound) ? m.lastRound : roomMode === 'solo' && difficulty === 'FUNNY' ? 9 : 14;
+  // 无尽模式：回合无限（0 = ∞），难度取自 mode_*_endless_<底难度>
+  const endless = isEndlessDifficulty(difficulty) || isEndlessDifficulty(m?.difficulty);
+  const rounds = endless ? 0 : Number.isFinite(m?.lastRound) ? m.lastRound : roomMode === 'solo' && difficulty === 'FUNNY' ? 9 : 14;
   return {
     code: typeof m?.code === 'string' ? m.code : fallback.code,
     desc: typeof m?.desc === 'string' ? m.desc : fallback.desc,
     effects,
     rounds,
-    hidden: difficulty !== 'FUNNY',
+    endless,
+    hidden: !endless && difficulty !== 'FUNNY',
     stageNote: stageNote(Array.isArray(m?.stages) && m.stages.length ? m.stages : STAGE_POOL[difficulty]),
   };
 }
@@ -219,8 +223,31 @@ function DifficultyCard({ roomMode, difficulty, selected, onSelect }) {
       <span class="diff-card__name">${DIFFICULTY_NAMES[difficulty]}</span>
       <span class="diff-card__code num">${info.code}</span>
       <span class="diff-card__meta">
-        <span class="num">${info.rounds}</span> 回合${info.hidden ? html`<span class="diff-card__hidden">+ 隐秘核心</span>` : null}
+        <span class="num">${info.endless ? '∞' : info.rounds}</span> 回合${info.hidden ? html`<span class="diff-card__hidden">+ 隐秘核心</span>` : null}
       </span>
+    </span>
+    <span class="diff-card__desc">${info.desc}</span>
+    <span class="diff-card__effects">${info.effects.map((e) => html`<span key=${e}>${e}</span>`)}${info.stageNote ? html`<span key="stage" class="diff-card__stage"><${Icon} name="rook" />${info.stageNote}</span>` : null}</span>
+    <span class="diff-card__check" aria-hidden="true"><${Icon} name="check" /><span>已选定</span></span>
+  </button>`;
+}
+
+/**
+ * 无尽模式入口：独立于四档难度的单独卡片（回合无限，每 14 回合一次最终攻势式 Boss 战）。
+ * 卡片固定创建默认底难度（终极模拟）的无尽房间——底难度在房间内用「无尽」按钮切换（room.js DifficultyPicker）。
+ */
+const ENDLESS_LOBBY_DIFFICULTY = endlessDifficultyFor(ENDLESS_DEFAULT_BASE);
+
+function EndlessCard({ roomMode, selected, onSelect }) {
+  const info = difficultyInfo(roomMode, ENDLESS_LOBBY_DIFFICULTY);
+  return html`<button type="button" class=${`diff-card diff-card--endless${selected ? ' is-selected' : ''}`}
+      style=${`--d-color:${DIFFICULTY_COLORS.ENDLESS}`} onClick=${() => onSelect(ENDLESS_LOBBY_DIFFICULTY)} aria-pressed=${selected ? 'true' : 'false'}>
+    <span class="diff-card__bar" aria-hidden="true"></span>
+    <span class="diff-card__head">
+      <${DifficultyIcon} difficulty="ENDLESS" class="diff-card__glyph" />
+      <span class="diff-card__name">${DIFFICULTY_NAMES.ENDLESS}</span>
+      <span class="diff-card__code num">${info.code}</span>
+      <span class="diff-card__meta"><span class="num">∞</span> 回合</span>
     </span>
     <span class="diff-card__desc">${info.desc}</span>
     <span class="diff-card__effects">${info.effects.map((e) => html`<span key=${e}>${e}</span>`)}${info.stageNote ? html`<span key="stage" class="diff-card__stage"><${Icon} name="rook" />${info.stageNote}</span>` : null}</span>
@@ -386,9 +413,6 @@ export function LobbyScreen() {
   const [busy, setBusy] = useState(null);
   const [recent] = useState(recentRooms);
   const [modalOpen, setModalOpen] = useState(() => new URLSearchParams(location.search).has('modal'));
-  // 网页端资源预载指示条（右下角胶囊 + 管理弹窗；安卓原生壳内置全量包不显示）
-  const [preloadOpen, setPreloadOpen] = useState(false);
-  const isNativeApp = typeof globalThis.AndroidNative?.isNativeApp === 'function' && globalThis.AndroidNative.isNativeApp();
   const lobbyStats = useStore((s) => s.lobbyStats, shallowEqual);
   const [onlineCount, setOnlineCount] = useState(() => lobbyStats?.online ?? 1);
   // The Android shell can ask the local network who hosts a key, so a guest never types an address: the code is enough.
@@ -493,7 +517,7 @@ export function LobbyScreen() {
   };
 
   return html`<div class="screen lobby-screen">
-    ${!isNativeApp && html`<div class="lobby-preload-pill"><${PreloadPill} onClick=${() => setPreloadOpen(true)} /><${PreloadModal} open=${preloadOpen} onClose=${() => setPreloadOpen(false)} /></div>`}
+    <${AnnouncementBar} class="lobby-announce" />
     <header class="topbar">
       <div class="topbar__left">
         <${Button} variant="ghost" size="sm" icon="chevronLeft" onClick=${backToTitle} title="返回标题">返回<//>
@@ -507,6 +531,7 @@ export function LobbyScreen() {
         <${OnlinePill} count=${onlineCount} />
         <${GuideButton} class="lobby-guide" variant="secondary" />
         <${LoadoutButton} from="lobby" size="sm" class="lobby-loadout" />
+        <${LeaderboardButton} class="lobby-leaderboard" variant="secondary" size="sm" />
         <div class="me-chip">
           <${AvatarFrame} size="sm" name=${me.name} seat=${0} self=${true} />
           <div class="me-chip__text">
@@ -567,9 +592,16 @@ export function LobbyScreen() {
       </section>
 
       <section class="lobby-right">
-        <div class="section-label"><span class="section-label__idx num">02</span>模拟难度<${MicroLabel}>DIFFICULTY<//></div>
+        <div class="section-label"><span class="section-label__idx num">04</span>模拟难度<${MicroLabel}>DIFFICULTY<//></div>
         <div class="diff-list">
-          ${DIFFICULTIES.map((d) => html`<${DifficultyCard} key=${d} roomMode=${roomMode} difficulty=${d} selected=${difficulty === d} onSelect=${pickDifficulty} />`)}
+          ${PICK_DIFFICULTIES.map((d) => html`<${DifficultyCard} key=${d} roomMode=${roomMode} difficulty=${d} selected=${difficulty === d} onSelect=${pickDifficulty} />`)}
+        </div>
+        <div class="section-label"><span class="section-label__idx num">05</span>无尽模式<${MicroLabel}>ENDLESS<//></div>
+        <div class="diff-list diff-list--endless">
+          <${EndlessCard} roomMode=${roomMode} selected=${isEndlessDifficulty(difficulty)} onSelect=${pickDifficulty} />
+        </div>
+        <div class="endless-board">
+          <${LeaderboardButton} block=${true} variant="secondary" size="md" label="无尽排行榜" icon="crown" />
         </div>
         <div class="create-box">
           ${isSearching
