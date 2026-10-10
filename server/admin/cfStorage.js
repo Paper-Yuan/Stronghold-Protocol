@@ -21,7 +21,9 @@ export class CloudflareModStorage {
 
   /**
    * Dispatches a mod pack archive to the CF storage endpoint.
-   * In local/staging mode, stages it in the packs/ directory and generates manifest.
+   * Local stage lands in server/.mod-staging/cf-pending/<packId>/ (CF_MOD_TRI_PLAN.md
+   * §2-C1-4); the CF key shape mods/<packId>/<sha256>.zip follows the §0.3 catalog
+   * contract — B1's catalog entries are the source of truth for the final shape.
    * @param {string} packId
    * @param {Buffer} fileBuffer
    */
@@ -29,7 +31,7 @@ export class CloudflareModStorage {
     if (!packId || !fileBuffer) throw new Error('Invalid packId or buffer');
 
     const hash = this.hashBundle(fileBuffer);
-    const targetDir = path.join(process.cwd(), 'packs', packId);
+    const targetDir = path.join(process.cwd(), 'server', '.mod-staging', 'cf-pending', packId);
     await fs.mkdir(targetDir, { recursive: true });
 
     // Write hash manifest
@@ -37,7 +39,7 @@ export class CloudflareModStorage {
       packId,
       sha256: hash,
       uploadedAt: new Date().toISOString(),
-      cfRemotePath: `packs/${packId}/`
+      cfRemotePath: `mods/${packId}/${hash}.zip`
     };
 
     await fs.writeFile(path.join(targetDir, 'manifest.sha256'), JSON.stringify(manifest, null, 2), 'utf8');
@@ -46,7 +48,7 @@ export class CloudflareModStorage {
       success: true,
       packId,
       hash,
-      cfUrl: `${this.endpoint}/packs/${packId}/`
+      cfUrl: `${this.endpoint}/mods/${packId}/${hash}.zip`
     };
   }
 }

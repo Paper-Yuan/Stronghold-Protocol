@@ -45,6 +45,7 @@ import { getData, loadData } from './data.js';
 import { PROTOCOL_VERSION, APP_VERSION } from '../shared/constants.js';
 import { MEDIA_PREFIX, AUDIO_EXTS } from '../shared/media.js';
 import { AdminService, recordAdminLog } from './admin.js';
+import { ModUploadManager } from './admin/modUploads.js';
 import { endlessLeaderboardAll } from './records.js';
 import { debugConfigFrom } from './debug.js';
 import { GlobalModManager } from './packs.js';
@@ -745,6 +746,8 @@ export async function startServer(opts = {}) {
     buildTag: () => buildTag(),
     secret: opts.adminSecret || process.env.ADMIN_SECRET,
   });
+  // startServer's log is a leveled object; ModUploadManager wants a plain function.
+  const modUploads = new ModUploadManager({ stagingDir: opts.modStagingDir, log: (msg) => log.info(msg) });
 
   const server = http.createServer((req, res) => {
     res.setHeader('X-Content-Type-Options', 'nosniff');
@@ -800,6 +803,29 @@ export async function startServer(opts = {}) {
       if (parts.rawPath === '/api/admin/drain' && req.method === 'POST') {
         admin.startDrain();
         sendJson(req, res, 200, { ok: true, draining: true });
+        return;
+      }
+      // Mod zip upload — raw body (NOT readJsonBody: that one is JSON-only with a
+      // 64KB cap). The zip file IS the request body (§0.3: no multipart anywhere).
+      if (parts.rawPath === '/api/admin/mods/upload' && req.method === 'POST') {
+        try {
+          const receipt = await modUploads.receive(req);
+          sendJson(req, res, 200, { ok: true, ...receipt });
+        } catch (err) {
+          const status = err && typeof err.status === 'number' ? err.status : 500;
+          sendJson(req, res, status, { ok: false, error: err?.error || err?.message || '上传失败' });
+        }
+        return;
+      }
+      if (parts.rawPath === '/api/admin/mods/staged' && (req.method === 'GET' || req.method === 'HEAD')) {
+        sendJson(req, res, 200, { ok: true, staged: await modUploads.list() });
+        return;
+      }
+      if (parts.rawPath.startsWith('/api/admin/mods/') && parts.rawPath.endsWith('/status') && (req.method === 'GET' || req.method === 'HEAD')) {
+        const uploadId = parts.rawPath.slice('/api/admin/mods/'.length, -'/status'.length);
+        const receipt = await modUploads.get(uploadId);
+        if (!receipt) { sendJson(req, res, 404, { ok: false, error: 'Not found' }); return; }
+        sendJson(req, res, 200, { ok: true, receipt });
         return;
       }
       sendJson(req, res, 404, { ok: false, error: 'Not found' });
@@ -941,7 +967,7 @@ export async function startServer(opts = {}) {
     return closing;
   }
 
-  return { port: actualPort, host, url, server, wss, lobby, network, registry, admin, close };
+  return { port: actualPort, host, url, server, wss, lobby, network, registry, admin, modUploads, close };
 }
 
 // ---------------------------------------------------------------------------------------------------
