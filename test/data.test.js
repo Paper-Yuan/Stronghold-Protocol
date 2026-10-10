@@ -16,6 +16,7 @@ import { join, dirname } from 'node:path';
 import { tmpdir } from 'node:os';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import { isEndlessDifficulty, ENDLESS_DIFFICULTIES, ENDLESS_BOSS_EVERY, ENDLESS_BOSS_STEP, ENDLESS_BOSS_CYCLE_SCALE } from '../shared/constants.js';
 // This fork bakes full potential into the generated data: no talent entry carries a potential chain
 // (potMin / potBelow), so stripping one is the identity here.
 const stripPotential = (list) => list;
@@ -246,16 +247,31 @@ test('config: modes, rounds and templates', () => {
       assert.ok(tpls.length > 0, `${m.modeId} r${r}: template`);
       for (const t of tpls) assert.ok(waves[t], `${m.modeId} r${r}: ${t}`);
       if (!rd.isBoss) assert.ok(isFiniteNum(rd.combatTimeLimit), `${m.modeId} r${r}: combatTimeLimit`);
-      if (m.type === 'SINGLE') assert.equal(rd.prepTime, null, `${m.modeId}: solo prep untimed`);
+      // 无尽模式是唯一的例外：它没有官方数据背书、成绩就是「坚持的回合数」，所以故意按合作盟约计时
+      // （server/match/Match.js `soloUntimed` 对 isEndless 返回 false），单机条目的 prepTime 由
+      // tools/endlessMode.mjs 从同底难度的联机回合表补齐。
+      if (m.type === 'SINGLE' && isEndlessDifficulty(m.difficulty)) assert.ok(isFiniteNum(rd.prepTime), `${m.modeId} r${r}: endless prep is timed`);
+      else if (m.type === 'SINGLE') assert.equal(rd.prepTime, null, `${m.modeId}: solo prep untimed`);
       if (m.type === 'MULTI') assert.ok(isFiniteNum(rd.prepTime), `${m.modeId} r${r}: prepTime`);
+      // 无尽模式的回合数没有上限，`enemyScale` 只带底难度那张官方表；超出表的回合由
+      // server/match/gamedata.js endlessEnemyScale 在运行期按官方公式外推（无 es 行只允许出现在无尽模式）。
       const es = m.enemyScale[r];
-      assert.ok(es && isFiniteNum(es.atk) && isFiniteNum(es.hp) && isFiniteNum(es.speed), `${m.modeId} r${r}: enemyScale`);
+      if (es) assert.ok(isFiniteNum(es.atk) && isFiniteNum(es.hp) && isFiniteNum(es.speed), `${m.modeId} r${r}: enemyScale`);
+      else assert.ok(isEndlessDifficulty(m.difficulty), `${m.modeId} r${r}: enemyScale`);
     }
     for (const b of [...m.activeBondIds, ...m.inactiveBondIds]) assert.ok(bonds[b], `${m.modeId}: bond ${b}`);
     for (const s of m.stages) assert.ok(stages[s]?.active, `${m.modeId}: stage ${s}`);
     if (m.inScope) {
       assert.equal(m.upgradePrices.length, 5);
       assert.ok(m.stages.length > 0);
+    }
+    if (isEndlessDifficulty(m.difficulty)) {
+      assert.equal(m.lastRound, 0, `${m.modeId}: endless has no last round`);
+      assert.equal(m.hiddenRound, null, `${m.modeId}: endless has no hidden round`);
+      assert.equal(m.bossRound, ENDLESS_BOSS_EVERY, `${m.modeId}: first boss`);
+      assert.equal(m.bossStep, ENDLESS_BOSS_STEP, `${m.modeId}: boss every`);
+      assert.equal(m.bossCycleScale, ENDLESS_BOSS_CYCLE_SCALE, `${m.modeId}: boss cycle scale`);
+      assert.ok(ENDLESS_DIFFICULTIES.includes(m.difficulty), `${m.modeId}: endless difficulty`);
     }
   }
   const M = config.modes;
