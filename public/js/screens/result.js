@@ -18,7 +18,6 @@ import { normalizeResult, fmtNum } from '../ui/gameLogic.js';
 import { enemyIconUrl, titleIconUrl, uiUrl } from '../ui/assetUrls.js';
 import { store, useStore, emptyMatch } from '../store.js';
 import { audio } from '../audio.js';
-import { LeaderboardButton } from '../ui/leaderboard.js';
 
 const cx = (...p) => p.flat().filter(Boolean).join(' ');
 
@@ -107,15 +106,13 @@ export function ResultView({ res, pub = null, myId = null, backLabel, onBack, qu
       <section class="result__hero">
         <div class="result__logo"><${Sprite} k="entry/season_logo_settle" class="result__logoimg" fallback=${html`<${MicroLabel} tone="mint">STRONGHOLD PROTOCOL</${MicroLabel}>`} /></div>
         ${r.difficulty ? html`<${DifficultyTag} difficulty=${r.difficulty} size="lg" />` : null}
-        <h1 class="result__headline">${r.endless ? '模拟结束' : r.victory ? '模拟完成' : '模拟失败'}</h1>
-        <p class="result__sub">${r.endless ? '无尽模式 · 防线最终被突破' : r.victory ? '成功卫戍 · 敌方领袖已被击败' : '防线已被突破'}</p>
+        <h1 class="result__headline">${r.victory ? '模拟完成' : '模拟失败'}</h1>
+        <p class="result__sub">${r.victory ? '成功卫戍 · 敌方领袖已被击败' : '防线已被突破'}</p>
         <div class="result__rounds">
-          <span class="result__rlabel">${r.endless ? '存活回合' : '通过回合'}</span>
+          <span class="result__rlabel">通过回合</span>
           <b class="result__rnum num">${r.roundsPassed}</b>
-          ${!r.endless && r.roundsPassed <= r.lastRound ? html`<span class="result__rof num">/${r.lastRound}</span>` : null}
+          ${r.roundsPassed <= r.lastRound ? html`<span class="result__rof num">/${r.lastRound}</span>` : null}
         </div>
-        ${r.endless && r.bestRounds > 0 ? html`<p class="result__time t-lo">历史最高 <b class="num">${r.bestRounds}</b> 回合${r.bestImproved ? html`<span class="result__newrec">· 新纪录</span>` : null}</p>` : null}
-        ${r.endless && !r.ranked ? html`<p class="result__time t-lo">本难度不计入排行榜 —— 仅「无尽 · 终极」上榜</p>` : null}
         <div class="result__medals">
           ${boss ? html`<div class=${cx('medal', r.victory && 'is-done')} title=${boss.name}>
             <${Img} src=${enemyIconUrl(gd.m, boss.enemyKey)} /><span class="medal__check">${r.victory ? html`<${Icon} name="check" />` : html`<${Icon} name="close" />`}</span>
@@ -126,7 +123,6 @@ export function ResultView({ res, pub = null, myId = null, backLabel, onBack, qu
         </div>
         ${mins ? html`<p class="result__time t-lo">本局耗时 <b class="num">${mins}</b> 分钟</p>` : null}
         <footer class="result__foot">
-          ${r.endless ? html`<${LeaderboardButton} variant="secondary" size="lg" label="查看排行榜" icon="crown" />` : null}
           <${Button} variant="primary" size="xl" icon="chevronLeft" onClick=${onBack}>${backLabel}<//>
         </footer>
       </section>

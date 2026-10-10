@@ -174,13 +174,13 @@ export default {
           kind: 'duration', attack: healAttack(healTargets + Math.max(0, Math.floor(num(b2['attack@max_target_heal_add'])))), allyTargets: false,
           onStart({ battle, unit }) {
             unit.mem.harukaS2Uses = (unit.mem.harukaS2Uses ?? 0) + 1;
-            unit.mem.harukaS2Endless = unit.mem.harukaS2Uses >= 2;
-            const atk = unit.mem.harukaS2Endless ? num(b2.atk) : num(b2['haruka_s_2[first].atk']);
+            unit.mem.harukaS2Infinite = unit.mem.harukaS2Uses >= 2;
+            const atk = unit.mem.harukaS2Infinite ? num(b2.atk) : num(b2['haruka_s_2[first].atk']);
             if (atk) battle.addBuff(unit, { key: 'haruka:s2:atk', mods: { atkPct: atk }, tags: ['skill'] });
           },
           // 持续时间无限 (2nd use on): the bar stays full and the skill never ends
-          onTick({ unit, skill }) { if (unit.mem.harukaS2Endless) skill.timeLeft = Math.max(skill.timeLeft, s2?.duration ?? skill.duration); },
-          onEnd({ battle, unit }) { battle.removeBuff(unit, 'haruka:s2:atk'); unit.mem.harukaS2Endless = false; },
+          onTick({ unit, skill }) { if (unit.mem.harukaS2Infinite) skill.timeLeft = Math.max(skill.timeLeft, s2?.duration ?? skill.duration); },
+          onEnd({ battle, unit }) { battle.removeBuff(unit, 'haruka:s2:atk'); unit.mem.harukaS2Infinite = false; },
         },
         [S3]: {
           kind: 'duration',
@@ -210,7 +210,7 @@ export default {
             b.data = { ...b.data, boom: true };
             battle.after(breakDelay, () => { if (a.alive && a.findBuff(BUBBLE) === b) burst(battle, unit, a, b); }, { owner: a });
           }, { owner: unit });
-          battle.on('deploy', (c) => { if (c.unit === unit) { unit.mem.harukaS2Uses = 0; unit.mem.harukaS2Endless = false; } }, { owner: unit });
+          battle.on('deploy', (c) => { if (c.unit === unit) { unit.mem.harukaS2Uses = 0; unit.mem.harukaS2Infinite = false; } }, { owner: unit });
         } },
         { install(battle, unit) { // 幽隙栖萤: each heal of hers while S2 runs ⇒ arts damage around the healed unit
           if (unit.skill?.id !== S2) return;

@@ -9,9 +9,9 @@
 // pure CSS/SVG (radar, ridgelines, glow), so it never issues a request that can 404.
 
 import { useMemo, useState, useEffect } from '../../vendor/hooks.module.js';
-import { NAME_MAX_LEN, APP_VERSION, ENDLESS_DEFAULT_BASE, endlessDifficultyFor } from '../../../shared/constants.js';
+import { NAME_MAX_LEN, APP_VERSION } from '../../../shared/constants.js';
 import { LOCAL_FEATURES } from '../../../shared/capabilities.js';
-import { html, Button, Icon, MicroLabel, TextField, PingPill, DifficultyIcon } from '../ui/components.js';
+import { html, Button, Icon, MicroLabel, TextField, PingPill } from '../ui/components.js';
 import { GuideButton } from '../ui/guide.js';
 import { toast } from '../ui/toasts.js';
 import { net, identity } from '../net.js';
@@ -227,28 +227,6 @@ export function TitleScreen() {
     enterSession(finalName);
   };
 
-  const [endlessBusy, setEndlessBusy] = useState(false);
-  const startEndless = async () => {
-    const finalName = name.trim() || effectiveName;
-    if (!isValidName(finalName)) {
-      toast('请输入博士代号', 'warn');
-      return;
-    }
-    if (!online) {
-      toast('尚未连接到服务器，请稍候', 'warn');
-      return;
-    }
-    setEndlessBusy(true);
-    enterSession(finalName);
-    try {
-      await net.request('room.create', { mode: 'solo', difficulty: endlessDifficultyFor(ENDLESS_DEFAULT_BASE) });
-    } catch (err) {
-      toast(err?.message || '进入无尽模式失败', 'error');
-    } finally {
-      setEndlessBusy(false);
-    }
-  };
-
   const online = conn.status === 'online' || conn.status === 'connected';
   const dotClass = online ? 'is-on' : conn.status === 'reconnecting' || conn.status === 'connecting' || conn.status === 'handshaking' ? 'is-warn' : 'is-bad';
 
@@ -312,9 +290,6 @@ export function TitleScreen() {
           onInput=${setName} onEnter=${start} />
         <${Button} variant="primary" size="xl" block=${true} iconRight="chevrons" disabled=${!valid} onClick=${start}>开始<//>
         <div class="title-ops">
-          ${LOCAL_FEATURES.endless ? html`<${Button} variant="secondary" size="md" class="title-op-btn title-op-endless" loading=${endlessBusy} onClick=${startEndless} title="单人无尽模式">
-            <${DifficultyIcon} difficulty="ENDLESS" class="title-op-icon" />无尽模式
-          <//>` : null}
           <${Button} variant="secondary" size="md" icon="chart" class="title-op-btn" onClick=${openStats}>统计数据<//>
           <${Button} variant="secondary" size="md" icon="folder" class="title-op-btn" onClick=${() => setModOpen(true)}>MOD 管理<//>
         </div>

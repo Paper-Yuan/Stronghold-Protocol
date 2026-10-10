@@ -82,6 +82,7 @@ import { computeBonds, bondList, bondSnapshot, activatedLayers, bondsWithGains, 
 import { itemKey } from './gamedata.js';
 import { bountyText } from './choices.js';
 import { PlayerDiy, DiyStock } from './player/diy.js';
+import { PlayerBasics } from './player/basics.js';
 
 const HAND_SIZE = GEO.HAND_SIZE;
 const TEMP_SIZE = GEO.TEMP_SIZE;
@@ -93,7 +94,7 @@ const fail = (error, detail) => (detail ? { error, detail } : { error });
 export class PlayerState {
   /**
    * @param {import('./Match.js').Match} m owning match
-   * @param {{ seat: number, playerId: string, name: string, isBot: boolean, connected: boolean }} seat
+   * @param {{ seat: number, playerId: string, name: string, isBot: boolean, connected: boolean, loadout?: any, notOwned?: any, diy?: any }} seat
    */
   constructor(m, seat) {
     this.m = m;
@@ -116,6 +117,14 @@ export class PlayerState {
     /** operator loadout (DESIGN §16): frozen { [baseChessId]: { skill, module } }, {} = every chess on its defaults */
     this.loadout = Object.freeze({});
     if (!this.isBot && seat.loadout) this.setLoadout(seat.loadout);
+    /**
+     * 补位 (0.2.0): the base chess ids this player fields as their stand-ins — the seat's not-owned list when the match
+     * started, re-checked against this match's data; frozen, sorted; [] = every operator owned (bots always)
+     */
+    this.standIns = Object.freeze([]);
+    /** @type {Set<string>} lookup set of `standIns` */
+    this._standInSet = new Set();
+    if (!this.isBot && seat.notOwned) this.setNotOwned(seat.notOwned);
     /** 干员皮肤 (docs/SKINS.md): frozen { [chessId]: skinId }, {} = every chess on its default model. */
     this.skins = Object.freeze({});
     if (!this.isBot && seat.skins) this.setSkins(seat.skins);
@@ -1761,6 +1770,9 @@ export class PlayerState {
       nextEnemies: this.m.nextEnemiesFor(this),
       // DESIGN §16: the effective operator loadout ({ [baseChessId]: { skill, module } }; chess not listed use defaults)
       loadout: this.loadout,
+      // 0.2.0 补位: the base chess ids this player fields as their stand-ins in this match (the not-owned list the seat
+      // had at the match start; [] = every operator owned) — the client shows these as their stand-ins
+      standIns: this.standIns,
       // 0.2.0 自选编队: the slotted picks and banned slots
       diy: this.diy,
       diyBanned: this.diyBanned,
@@ -1777,6 +1789,15 @@ for (const key of Object.getOwnPropertyNames(PlayerDiy.prototype)) {
   if (key === 'constructor') continue;
   if (!Object.prototype.hasOwnProperty.call(PlayerState.prototype, key)) {
     PlayerState.prototype[key] = PlayerDiy.prototype[key];
+  }
+}
+
+// Install the PlayerBasics methods the class itself does not define (the 0.2.0 补位 stand-ins — setNotOwned,
+// fieldsStandIn, fieldRecord — and 0.2.2's cultivationFor): a name the class already defines keeps its own.
+for (const key of Object.getOwnPropertyNames(PlayerBasics.prototype)) {
+  if (key === 'constructor') continue;
+  if (!Object.prototype.hasOwnProperty.call(PlayerState.prototype, key)) {
+    PlayerState.prototype[key] = PlayerBasics.prototype[key];
   }
 }
 

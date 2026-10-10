@@ -14,7 +14,6 @@
 
 import { bondList } from './bondsMeta.js';
 import { boardOrder } from './board.js';
-import { RANK_DIFFICULTY } from '../records.js';
 
 const STAT_OF = {
   bossDamage: (ps) => ps.stats.bossDamage,
@@ -87,25 +86,15 @@ function rewardFor(gd, roundsPassed) {
 /**
  * @param {import('./Match.js').Match} m
  * @param {{ victory: boolean, hiddenReached: boolean, hiddenCleared: boolean, reason: string }} outcome
- * @param {{ endlessBest?: Map<string, number>, endlessBestNew?: Set<string> }} [extras] 无尽模式的最高回合记录
- *   （server/records.js）：玩家 → 历史最高回合，以及本局是否刷新纪录。
  */
-export function buildResult(m, outcome, extras = {}) {
+export function buildResult(m, outcome) {
   const gd = m.gd;
   const { victory, hiddenReached, hiddenCleared } = outcome;
-  const endless = !!gd.isEndless;
-  const best = extras.endlessBest instanceof Map ? extras.endlessBest : new Map();
-  const bestNew = extras.endlessBestNew instanceof Set ? extras.endlessBestNew : new Set();
   const players = [...m.players.values()].sort((a, b) => a.seat - b.seat);
   const titles = assignTitles(gd, players, victory);
-  // 无尽模式没有终局：成绩 = 存活过的回合数（第 m.round 回合倒下 ⇒ 通过 m.round − 1 回合）。
-  const teamRounds = endless
-    ? Math.max(0, m.round - 1)
-    : victory ? gd.bossRound + (hiddenCleared ? 1 : 0) : Math.max(0, Math.min(m.round, gd.bossRound) - 1);
+  const teamRounds = victory ? gd.bossRound + (hiddenCleared ? 1 : 0) : Math.max(0, Math.min(m.round, gd.bossRound) - 1);
   const rows = players.map((ps) => {
-    const roundsPassed = endless
-      ? (ps.eliminatedRound != null ? Math.max(0, ps.eliminatedRound - 1) : teamRounds)
-      : (!ps.alive && ps.eliminatedRound != null ? Math.max(0, ps.eliminatedRound - 1) : teamRounds);
+    const roundsPassed = !ps.alive && ps.eliminatedRound != null ? Math.max(0, ps.eliminatedRound - 1) : teamRounds;
     const lineup = boardOrder(ps.board).filter((x) => x.piece.kind === 'chess').map(({ r, c, piece }) => {
       const e = { id: piece.id, golden: gd.isGolden(piece.id), tier: gd.tierOf(piece.id), row: r, col: c, items: (piece.items || []).map((i) => i.id) };
       // 0.2.0 自选编队: a DIY slot's pick — the result screen names and draws the operator (shared/diy.js diyRecord)
@@ -136,20 +125,14 @@ export function buildResult(m, outcome, extras = {}) {
         perfectRounds: ps.stats.perfectRounds,
       },
       title: titles.get(ps.playerId) ?? null,
-      // 无尽模式不产出常规奖杯 / 奖励：它只看「最高回合」（server/records.js）。
-      trophies: endless ? 0 : trophiesFor(gd, roundsPassed, cleared && hiddenCleared),
-      reward: endless ? 0 : rewardFor(gd, roundsPassed),
-      ...(endless ? { bestRounds: best.has(ps.playerId) ? best.get(ps.playerId) : null, bestImprovement: bestNew.has(ps.playerId) } : {}),
+      trophies: trophiesFor(gd, roundsPassed, cleared && hiddenCleared),
+      reward: rewardFor(gd, roundsPassed),
     };
   });
   return {
     t: 'm.result',
     victory,
     roundsPassed: teamRounds,
-    // 无尽模式：本轮存活回合数 + 模式标记（客户端据此切换结算页文案）。
-    // ranked：本局难度是否计入排行榜（只有「无尽·终极」上榜，见 server/records.js）——
-    // 非终极局没有最高回合记录可显示，结算页据此提示「本难度不计入排行榜」。
-    ...(endless ? { endless: true, roundsSurvived: teamRounds, ranked: String(m.difficulty || '') === RANK_DIFFICULTY } : {}),
     hiddenReached,
     hiddenCleared,
     reason: outcome.reason,

@@ -223,7 +223,7 @@ test('S1 夜啼彩羽 (DEFAULT): ASPD +30 / +45 for 19 / 20 s, heals; a bubble b
   }
 });
 
-test('S2 幽隙栖萤: every heal of hers meanwhile deals heal × 140 % / 200 % arts damage to the 2 / 3 nearest enemies within 1.7 of the healed unit (air units too); rank 7: one more heal target and one more bubble; the first use lasts 22 / 23 s with no ATK bonus, the next ones ATK +20 % / +25 % and endless; the count restarts with a deployment', () => {
+test('S2 幽隙栖萤: every heal of hers meanwhile deals heal × 140 % / 200 % arts damage to the 2 / 3 nearest enemies within 1.7 of the healed unit (air units too); rank 7: one more heal target and one more bubble; the first use lasts 22 / 23 s with no ATK bonus, the next ones ATK +20 % / +25 % and infinite; the count restarts with a deployment', () => {
   for (const [tier, elite] of [[5, false], [6, true]]) {
     const sk = skillOf(tier, elite, S2);
     assert.deepEqual([sk.duration, sk.bb.atk_scale_extra, sk.bb.max_target_extra, sk.bb['attack@max_target_heal_add'], sk.bb.max_target_shield_add, sk.bb.atk, sk.bb.ability_range_radius],
@@ -257,12 +257,12 @@ test('S2 幽隙栖萤: every heal of hers meanwhile deals heal × 140 % / 200 % 
     assert.ok(bubbled(h).length >= (elite ? 2 : 1), 'bubbles per attack');
     h.runUntil(() => !u.skill.active, 30);
     approx(h.hooksOf('skillEnd').filter((c) => c.unit === u).at(-1).t - h.hooksOf('skillStart').filter((c) => c.unit === u).at(-1).t, sk.duration, 'first use: its duration', 0.05);
-    // second use: ATK bonus, endless
+    // second use: ATK bonus, infinite
     u.skill.gainSp(999);
     assert.ok(h.runUntil(() => u.skill.active, 4));
     approx(u.s.atk, u.base.atk * (1 + sk.bb.atk), 'second use: ATK');
     h.run(sk.duration * 3);
-    assert.ok(u.skill.active, 'endless');
+    assert.ok(u.skill.active, 'infinite');
     // a new deployment: the first use again
     h.b.retreat(u);
     h.b.redeploy(u);

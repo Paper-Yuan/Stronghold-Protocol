@@ -43,13 +43,12 @@ import { GameScreen } from './screens/game.js';
 import { installAudio, audio } from './audio.js';
 import { settingsStore, updateSettings, SettingsHost } from './ui/settings.js';
 import { GuideHost } from './ui/guide.js';
-import { LeaderboardHost } from './ui/leaderboard.js';
 import { installDeviceSupport } from './ui/device.js';
 import { LoadoutHost } from './screens/loadout.js';
 import { EquipHost } from './screens/equipment.js';
 import { AllianceCodexHost } from './screens/alliances.js';
 import { StatsHost } from './screens/stats.js';
-import { installStatsRecorder } from './ui/stats.js';
+import { installStatsRecorder, recordResult } from './ui/stats.js';
 import { installLoadoutSync, installOwnershipSync, installDiySync } from './ui/loadoutSync.js';
 import { installSkinsSync } from './ui/skins.js';
 import { syncModCatalog } from './net/modSync.js';
@@ -406,7 +405,6 @@ function App() {
     <${UiHosts} />
     <${SettingsHost} />
     <${GuideHost} />
-    <${LeaderboardHost} />
     <${LoadoutHost} />
     <${EquipHost} />
     <${AllianceCodexHost} />

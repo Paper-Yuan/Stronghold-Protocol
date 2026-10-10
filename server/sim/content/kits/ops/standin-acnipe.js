@@ -16,7 +16,7 @@
 // - S1 破空: ATK +atk, ASPD +attack_speed, 无视 def_penetrate_fixed DEF (defIgnoreFlat) for its 20 s.
 // - S2 心手合一 (自动触发, 持续时间无限): ATK +atk and attack@max_target targets until she is knocked out (a toggle). Trigger:
 //   the data's DEFAULT — an AUTO attack buff waits for her next attack like 能天使 S3 / 乌尔比安 S2 (W5C's AUTO audit:
-//   "attack modes / attack buffs" keep waiting); being endless it changes nothing but the moment of the cast.
+//   "attack modes / attack buffs" keep waiting); being infinite it changes nothing but the moment of the cast.
 // - S3 旋臂: attack@max_target targets, attack@times hits each (二连击), 风坠 at talent@prob; and "攻击目标生命值高于90%时额外
 //   造成1次伤害": the S3 attack carries acnipe_s_3[extra] (`_onlyFeedActiveBuffToFirstOne`: the first hit of the double hit
 //   only) — FilterByTargetHpRatio GE attack@hp_ratio, then AdvancedApplyDamage PHYSICAL attack@atk_scale_extra × ATK with

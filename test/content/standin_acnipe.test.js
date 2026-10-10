@@ -69,7 +69,7 @@ test('Stormeye on every chess it replaces: the stand-in body, its kit (never gen
   }
 });
 
-test('Stormeye triggers: the data rules — S1 / S3 MANUAL DEFAULT (no range change), S2 AUTO DEFAULT (an attack buff waits for her next attack, endless)', () => {
+test('Stormeye triggers: the data rules — S1 / S3 MANUAL DEFAULT (no range change), S2 AUTO DEFAULT (an attack buff waits for her next attack, infinite)', () => {
   for (const id of ['chess_char_3_21_a', 'chess_char_3_21_b']) {
     for (const [i, sid] of [[0, S1], [1, S2], [2, S3]]) {
       const h = arena(id, { standIn: { skillIndex: i }, sp: null });
@@ -101,7 +101,7 @@ test('S1 破空: ATK +15 %, ASPD +30 / +50, 100 DEF ignored on her hits, for 20 
   }
 });
 
-test('S2 心手合一 (自动触发): no enemy, no cast; with one it casts at her attack — ATK +5 %, one extra target per attack, endless and no SP meanwhile; a knock-out ends it', () => {
+test('S2 心手合一 (自动触发): no enemy, no cast; with one it casts at her attack — ATK +5 %, one extra target per attack, infinite and no SP meanwhile; a knock-out ends it', () => {
   for (const id of ['chess_char_4_02_a', 'chess_char_4_02_b']) {
     const sk = skillOf(id, S2);
     const h = arena(id, { timeLimit: 400, enemies: [{ key: 'd', pos: [10, 6], time: 5 }, { key: 'd', pos: [9, 6], time: 5 }] });

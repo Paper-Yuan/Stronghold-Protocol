@@ -11,7 +11,7 @@
 // button for 观战中 and offers 入座 (room.join of the room) while a player seat is free.
 
 import { useEffect, useRef, useState } from '../../vendor/hooks.module.js';
-import { PICK_DIFFICULTIES, DIFFICULTY_NAMES, DIFFICULTY_COLORS, MAX_SEATS, MAX_SPECTATORS, isEndlessDifficulty, endlessBaseOf, endlessDifficultyFor } from '../../../shared/constants.js';
+import { PICK_DIFFICULTIES, DIFFICULTY_NAMES, DIFFICULTY_COLORS, MAX_SEATS, MAX_SPECTATORS } from '../../../shared/constants.js';
 import {
   html, Button, Icon, MicroLabel, PingPill, AvatarFrame, DifficultyTag, DifficultyIcon, Tooltip, confirmDialog, doctorNo,
 } from '../ui/components.js';
@@ -22,7 +22,6 @@ import { LoadoutButton } from './loadout.js';
 import { EquipButton } from './equipment.js';
 import { AllianceCodexButton } from './alliances.js';
 import { openStats } from './stats.js';
-import { LeaderboardButton } from '../ui/leaderboard.js';
 import { ChatBox } from '../ui/chatBox.js';
 import { net } from '../net.js';
 import { store, useStore, shallowEqual, emptyMatch, isSpectating } from '../store.js';
@@ -179,9 +178,7 @@ function InviteBox({ code, name, difficulty, isPrivate }) {
 }
 
 /**
- * Host's difficulty picker: the four base chips (标准/险境/绝境/终极) and, next to them, the 无尽模式 toggle.
- * Turning the toggle on makes the same four chips pick the *base* of the endless run (无尽·标准 … 无尽·终极) —
- * one button selects among the four endless difficulties (server: room.setDifficulty, modeIdFor).
+ * Host's difficulty picker: the four base chips (标准/险境/绝境/终极).
  */
 function DifficultyPicker({ room, isHost, busy, onPick }) {
   if (!isHost) {
@@ -190,24 +187,14 @@ function DifficultyPicker({ room, isHost, busy, onPick }) {
       <span class="t-dim">由创建者选择</span>
     </div>`;
   }
-  const endless = isEndlessDifficulty(room.difficulty);
-  const base = endlessBaseOf(room.difficulty) || room.difficulty;
   const pick = (next) => { if (!busy && next !== room.difficulty) onPick(next); };
-  const pickBase = (d) => pick(endless ? endlessDifficultyFor(d) : d);
-  const toggleEndless = () => pick(endless ? base : endlessDifficultyFor(base));
-  return html`<div class="dpick" role="radiogroup" aria-label=${endless ? '无尽模式基础难度' : '模拟难度'}>
-    ${PICK_DIFFICULTIES.map((d) => html`<button key=${d} type="button" role="radio" aria-checked=${base === d ? 'true' : 'false'}
-        class=${`dpick__opt${base === d ? ' is-active' : ''}`} style=${`--d-color:${DIFFICULTY_COLORS[d]}`}
-        disabled=${!!busy} onClick=${() => pickBase(d)}
-        title=${endless ? `以${DIFFICULTY_NAMES[d]}为底的无尽模式` : DIFFICULTY_NAMES[d]}>
+  return html`<div class="dpick" role="radiogroup" aria-label="模拟难度">
+    ${PICK_DIFFICULTIES.map((d) => html`<button key=${d} type="button" role="radio" aria-checked=${room.difficulty === d ? 'true' : 'false'}
+        class=${`dpick__opt${room.difficulty === d ? ' is-active' : ''}`} style=${`--d-color:${DIFFICULTY_COLORS[d]}`}
+        disabled=${!!busy} onClick=${() => pick(d)}
+        title=${DIFFICULTY_NAMES[d]}>
       <${DifficultyIcon} difficulty=${d} />${DIFFICULTY_NAMES[d].replace('模拟', '')}
     </button>`)}
-    ${endless ? html`<button type="button" role="radio" aria-checked="true"
-        class="dpick__opt dpick__opt--endless is-active" style=${`--d-color:${DIFFICULTY_COLORS.ENDLESS}`}
-        disabled=${true}
-        title="无尽模式：回合数没有上限，每 14 回合迎战一次敌方领袖">
-      <${DifficultyIcon} difficulty="ENDLESS" />无尽
-    </button>` : null}
   </div>`;
 }
 
@@ -311,7 +298,6 @@ export function RoomScreen() {
         ${coop
           ? html`<${InviteBox} code=${room.code} name=${me.name} difficulty=${room.difficulty} isPrivate=${!!room.private} />`
           : html`<div class="solo-top-right" style="display: flex; align-items: center; gap: .1rem;">
-              ${info.endless ? html`<${LeaderboardButton} variant="secondary" size="sm" class="room-endless-board" label="无尽排行榜" icon="crown" />` : null}
               <div class="solo-note"><${MicroLabel}>SINGLE OPERATOR<//><span>仅限 1 名博士</span></div>
             </div>`}
       </div>
@@ -326,21 +312,16 @@ export function RoomScreen() {
         <p>${info.desc}</p>
         <ul>
           ${info.effects.map((e) => html`<li key=${e}>${e}</li>`)}
-          ${info.endless
-            ? null
-            : html`<li>共 <b class="num">${info.rounds}</b> 回合${info.hidden ? '，满足条件时进入隐秘核心' : ''}</li>`}
+          <li>共 <b class="num">${info.rounds}</b> 回合${info.hidden ? '，满足条件时进入隐秘核心' : ''}</li>
           <li>独立模拟中休整期与机变阶段不限时</li>
         </ul>
-        ${info.endless ? html`<div class="solo-brief__board" style="margin-top: .08rem;">
-          <${LeaderboardButton} block=${true} variant="secondary" size="md" label="查看无尽排行榜" icon="crown" />
-        </div>` : null}
       </aside>`}
     </main>
     <${SpectatorBar} facts=${facts} myId=${me.playerId} busy=${busy} onRemove=${removeSpectator} onSit=${sit} />
 
     <footer class="room-bar">
       <div class="room-bar__left">
-        <span class="room-bar__label">${info.endless ? '无尽模式' : '模拟难度'}<${MicroLabel}>${info.endless ? 'ENDLESS · BASE' : 'DIFFICULTY'}<//></span>
+        <span class="room-bar__label">模拟难度<${MicroLabel}>DIFFICULTY<//></span>
         <${DifficultyPicker} room=${room} isHost=${facts.isHost} busy=${busy} onPick=${setDifficulty} />
       </div>
       <div class="room-bar__center">
