@@ -461,3 +461,25 @@ export function parseStoredOps(raw) {
   }
   return out;
 }
+
+// quickSkillTags: taken from v0.2.3:public/js/ui/loadoutModel.js during the v0.2.3 narrow merge.
+export function quickSkillTags(rec) {
+  const tags = skillTags(rec);
+  if (!rec) return { ...tags, recovery: '—', duration: '—' };
+  // ON_DEPLOY covers constant passives too. A finite duration distinguishes the deploy-and-expire skills;
+  // some older records carry it only in the blackboard. Never infer it from a localized description.
+  const seconds = Number(rec.duration) > 0 ? Number(rec.duration) : tags.passive ? Number(rec.bb?.duration) : 0;
+  const deployment = tags.passive && seconds > 0;
+  const recovery = deployment ? '—' : tags.passive ? t('被动') : tags.spKind === 'atk' ? t('攻回') : tags.spKind === 'def' ? t('受回') : t('自回');
+  const duration = rec.durationType === 'AMMO' ? t('弹药') : seconds > 0 ? `${seconds}s`
+    : tags.passive ? t('常驻') : Number(rec.duration) < 0 ? '∞' : t('瞬发');
+  return { ...tags, sp: deployment ? t('部署触发') : tags.sp, recovery, duration };
+}
+
+// opsOf: taken from v0.2.3:public/js/ui/loadoutModel.js during the v0.2.3 narrow merge.
+export function opsOf(ops, charId) {
+  const e = charId && isObj(ops) && Object.hasOwn(ops, charId) && isObj(ops[charId]) ? ops[charId] : null;
+  const potential = e && isPotential(e.potential) ? e.potential : POTENTIAL_DEFAULT;
+  const cultivate = e && isCultivate(e.cultivate) ? e.cultivate : CULTIVATE_DEFAULT;
+  return { potential, cultivate, changed: potential !== POTENTIAL_DEFAULT || cultivate !== CULTIVATE_DEFAULT };
+}

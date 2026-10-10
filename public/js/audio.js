@@ -1169,3 +1169,17 @@ export function installAudio(deps) {
   } catch (err) { console.warn('[audio] install failed', err); }
   return () => {};
 }
+
+// voiceLine: taken from v0.2.3:public/js/audio.js during the v0.2.3 narrow merge.
+export function voiceLine(audio, charId, slot, lang = 'cn', random = Math.random) {
+  const lines = (line) => (Array.isArray(line) ? line : [line]).filter((u) => typeof u === 'string' && u);
+  const draw = (list) => (list.length ? list[Math.min(list.length - 1, Math.floor(random() * list.length))] : null);
+  const cn = lines(audio?.voice?.[charId]?.[slot]);
+  const jp = lang === 'jp' ? draw(lines(audio?.voiceJp?.[charId]?.[slot])) : null;
+  if (jp) {
+    const file = (u) => u.slice(u.lastIndexOf('/') + 1);
+    return { url: jp, fallback: cn.find((u) => file(u) === file(jp)) ?? draw(cn) };
+  }
+  const url = draw(cn);
+  return url ? { url, fallback: null } : null;
+}

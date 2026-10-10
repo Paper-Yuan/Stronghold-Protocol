@@ -2,7 +2,7 @@
 // Conventions of the tier-5 kits: ../shared/tier5.js; kit contract and rules: ../README.md.
 
 import {
-  num, on, talent, batPct, mods, inFaction, isOp, selectedId, lazySkills, skillRange, crowdAspd,
+  num, on, talent, batPct, mods, inFaction, isOp, selectedId, lazySkills, skillRange,
 } from '../shared/tier5.js';
 
 const isLaterano = (u) => inFaction(u, 'lateranoShip', ['laterano']);
@@ -41,7 +41,7 @@ export default {
           onStart({ unit }) {
             unit.mem.verdict = new Set();
             // 特性的回复生命效果提高至2倍 (the reaper profile reads profile.selfHeal on every attack)
-            if (unit.profile) { unit.mem.verdictHeal0 = unit.mem.verdictHeal0 ?? num(unit.profile.selfHeal, 50); unit.profile.selfHeal = unit.mem.verdictHeal0 * num(bb.trait_ratio, 1); }
+            if (unit.profile) { unit.mem.verdictHeal0 ??= num(unit.profile.selfHeal, 50); unit.profile.selfHeal = unit.mem.verdictHeal0 * num(bb.trait_ratio, 1); }
           },
           onEnd({ battle, unit }) {
             const hit = unit.mem.verdict;
@@ -100,7 +100,9 @@ export default {
         } },
       ],
       install(battle, unit) {
-        crowdAspd(battle, unit, 'excu2:module', num(tm.attack_speed), num(tm['trigger_cnt[equip]']));
+        // REA-Y "攻击范围内存在2名及以上敌人时攻击速度+12": the ENGINE owns this trait line now
+        // (server/sim/content/traitMods.js, applied from battle/players.js _setupUnit for every operator) — a second
+        // implementation here would count the same 12 points twice.
         if (sid === 'skchr_excu2_3') { // S3: +attack@atk ATK per bullet spent
           battle.on('ammoUsed', (c) => {
             if (c.unit !== unit || !unit.skill?.active) return;

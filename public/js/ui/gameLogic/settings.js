@@ -7,6 +7,9 @@ import { DEFAULT_HOTKEYS, sanitizeHotkeys } from './shortcuts.js';
 // ---- settings ------------------------------------------------------------------------------------------------------
 
 /** keys: the in-match shortcuts' key map (ui/gameLogic/shortcuts.js; settings → 快捷键). */
+// TEXT_SIZES: the four text sizes (upstream 0.2.3 #435); css/theme.css --t, applied by ui/settings.js applyTextSize.
+export const TEXT_SIZES = Object.freeze(['sm', 'md', 'lg', 'xl']);
+
 export const DEFAULT_SETTINGS = Object.freeze({ bgm: 0.6, sfx: 0.8, voice: 0.8, voiceLang: 'jp', muted: false, damageNumbers: true, quality: 'high', highRefresh: true, board: 'auto', keys: DEFAULT_HOTKEYS });
 const QUALITIES = ['high', 'medium', 'low'];
 const BOARDS = ['auto', '3d', '2d'];
