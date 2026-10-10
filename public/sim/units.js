@@ -1,7 +1,7 @@
 // server/sim/units.js — Unit model (operators, tokens, enemies, devices) and stat aggregation (DESIGN §5.2).
 //
 // Aggregation (recomputed lazily whenever buffs change — `unit.markDirty()`):
-//   ATK/DEF/maxHp = (base + Σflat) × (1 + Σpct) × Πmul
+//   ATK/DEF/maxHp = (base + Σflat) × (1 + Σpct) × Πmul        (Πmul includes the unit's 练度 `cultMul`, 0.2.2)
 //   res           = clamp((base + Σflat) × Πmul, 0, 100)
 //   aspd          = clamp(base + Σaspd, 20, 600)          (base is 100 for almost everyone; floor 20 = PRTS 数值范围)
 //   interval      = bat × (1 + ΣbatPct) × 100 / aspd      (ΣbatPct floored at −0.9)
@@ -16,6 +16,8 @@ import { DIR_VEC, normDir } from './dir.js';
 
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
 const EMPTY = Object.freeze({});
+/** No 练度 multiplier (a unit without one: enemies, summons, stand-ins, a raw spec unit). */
+const NO_MUL = Object.freeze({ atk: 1, def: 1, hp: 1 });
 /** Aggregates can overflow (huge stacked *Mul mods → Infinity) — fall back to `d` so no stat is ever non-finite. */
 const fin = (v, d) => (Number.isFinite(v) ? v : d);
 
@@ -82,15 +84,32 @@ export class Unit {
     this.burstPending = null;   // { [element]: true } while that element's burst resolves (damage.js burstLocked)
     this.tags = new Set(init.tags || []);
     this.mem = {};              // free scratch space for content (per unit)
+    // a countdown summon's life on the field ({ from, until } battle times; content/tokens.js startCountdown, cleared by
+    // every deployment): its bar shows the time left (snapshot.js unitTuple), its HP never moves (无敌 + 禁疗)
+    this.countdown = null;
+    // a unit with a negative-HP pool (斩业星熊's 我执, kits/ops/op-hsgma2.js) sets this to a function returning the share of the
+    // pool's cap it holds (0–1): b.snap's `neg` list (snapshot.js negView) draws it as the red bar; display only
+    this.negFill = null;
+    // knocked out, the unit lies — and redeploys — on its home tile instead of where it fell (Battle._layBody) while content
+    // holds this: 乌尔比安 moved by his S3 (the owner's decision of 2026-10-07, a deviation from PRTS's "where it fell");
+    // every deployment clears it (battle/deploy.js _deploy)
+    this.downAtHome = false;
     this.trait = {};            // profession runtime state
     this.stats = { dmg: 0, kills: 0, heal: 0, taken: 0, attacks: 0 };
     this.hidden = false;        // enemies inside a DISAPPEAR segment
     this.moving = false;        // enemies: walked this tick (drawn on the move clip; ai.js updateEnemy)
-    this.form = null;           // the model's current form (content/enemies.js setForm, a 傀儡师's 替身 'doll' → snapshot.js unitInfo)
+    this.form = null;           // the model's current form (content/enemies/helpers.js setForm, a 傀儡师's 替身 'doll' → snapshot.js unitInfo)
     this.anim = 0;
     this.persist = { redeployMul: 1, freeRedeploys: 0 };
     this.isBoss = false;
+    // the HUD capsule's own flag (battle/spawns.js: set on the enemies the field itself scheduled, DESIGN §14); declared
+    // here so every unit keeps the same object shape (the hot loops' property reads)
+    this.inTotal = false;
     this.bossPool = null;
+    // 练度 (自持有, 0.2.2; battle/players.js): the owned operator's tier (0–3, effects.json aceffect_char_1…4) and its
+    // char_attribute_mul — ATK / DEF / max HP, a multiplier of its own (never summed with the 直接乘算 percentages)
+    this.cultivate = null;
+    this.cultMul = null;
   }
 
   markDirty() { this._dirty = true; }
@@ -117,12 +136,13 @@ export class Unit {
     const a = (k) => add[k] ?? 0;
     const m = (k) => mul[k] ?? 1;
     const b = this.base;
+    const cm = this.cultMul || NO_MUL;
     const bHp = fin(b.maxHp, 1) > 0 ? fin(b.maxHp, 1) : 1;
-    const maxHp = Math.max(1, fin((bHp + a('hpFlat')) * Math.max(0, 1 + a('hpPct')) * m('hpMul'), bHp));
+    const maxHp = Math.max(1, fin((bHp + a('hpFlat')) * Math.max(0, 1 + a('hpPct')) * m('hpMul') * cm.hp, bHp));
     // PRTS 游戏数据基础 属性基本公式 A_f = F_t[(A + D_p)(1 + D_t) + F_p]: `atkFinal` is the 最终加算 (FINAL_ADDITION) —
     // added after the percentages, inside the Πmul (阿戈尔's devoured base ATK, DESIGN §24.7)
-    const atk = Math.max(0, fin(((b.atk + a('atkFlat')) * Math.max(0, 1 + a('atkPct')) + a('atkFinal')) * m('atkMul'), fin(b.atk, 0)));
-    const def = Math.max(0, fin((b.def + a('defFlat')) * Math.max(0, 1 + a('defPct')) * m('defMul'), fin(b.def, 0)));
+    const atk = Math.max(0, fin(((b.atk + a('atkFlat')) * Math.max(0, 1 + a('atkPct')) + a('atkFinal')) * m('atkMul') * cm.atk, fin(b.atk, 0)));
+    const def = Math.max(0, fin((b.def + a('defFlat')) * Math.max(0, 1 + a('defPct')) * m('defMul') * cm.def, fin(b.def, 0)));
     const res = clamp(fin((b.res + a('resFlat')) * m('resMul'), fin(b.res, 0)), 0, 100);
     const aspd = clamp(fin(b.aspd + a('aspd'), 100), ASPD_MIN, ASPD_MAX);
     const bBat = fin(b.bat, 1) > 0 ? fin(b.bat, 1) : 1;
@@ -133,6 +153,8 @@ export class Unit {
       blockCnt: Math.max(0, fin(Math.round(b.blockCnt + a('blockCnt')), 0)),
       moveSpeed: Math.max(0, fin((b.moveSpeed + a('moveFlat')) * m('moveMul'), fin(b.moveSpeed, 0))),
       rangeExtend: Math.max(0, Math.round(a('rangeExtend'))),
+      // 阻挡半径倍率 − 1 (PRTS 数值范围 BLOCK_RADIUS_SCALE "影响阻挡模式为飞行阻挡的单位的阻挡半径"): Battle._checkBlock
+      blockRadiusScale: Math.max(0, fin(a('blockRadiusScale'), 0)),
       baseRangeExtend: Math.max(0, fin(Math.round(permRangeExtend), 0)),   // permanent part (initial range)
       massLevel: Math.max(0, fin(fin(b.massLevel, 0) + a('massFlat'), 0)),
       maxTargets: a('maxTargets'),
@@ -182,13 +204,18 @@ export class Unit {
   /**
    * Air unit (空中单位) for every targeting / ground-only rule: FLY movers, and enemies that hover (近地悬浮, buff flag
    * `float` — PRTS 术语释义 ba.float "算作空中单位"; they keep walking the ground path) or are levitated (浮空, gamedata_const
-   * ba.levitate "变为空中单位"). Movement and pathing read `motion`, never this.
+   * ba.levitate "变为空中单位"). A 缚地 enemy (status `groundbind`, ba.groundbind "目标变为地面单位") is a ground unit
+   * meanwhile — unless a 浮空 lifts it again (浮空 lands on a 缚地 flyer: Battle.applyStatus). Movement and pathing read
+   * `motion`, never this.
    */
   get isFlying() {
-    if (this.motion === 'FLY') return true;
-    if (this.side !== 'enemy') return false;
-    const f = this.s.flags;
-    return !!(f.float || f.levitate);
+    if (this.side === 'enemy') {
+      const f = this.s.flags;
+      if (f.levitate) return true;
+      if (f.groundbind) return false;
+      return this.motion === 'FLY' || !!f.float;
+    }
+    return this.motion === 'FLY';
   }
 
   get hpRatio() { const mh = this.s.maxHp; return mh > 0 ? this.hp / mh : 0; }

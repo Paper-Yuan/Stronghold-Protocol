@@ -428,3 +428,17 @@ export function fxForm(ev) {
   if (!x || typeof x !== 'object' || x.id == null || !Object.hasOwn(x, 'form')) return undefined;
   return typeof x.form === 'string' ? x.form : null;
 }
+
+
+/**
+ * The char ids a 潜能 / 练度 may name: the roster (data/chess.json) plus the 自选 owned pool
+ * (data/backups.json diy.ownedPool). Taken from upstream 0.2.3 for loadoutSync.
+ */
+export function cultivationCharIds(chess, backups = null) {
+  const out = new Set();
+  for (const c of Object.values(chess && typeof chess === 'object' ? chess : {})) {
+    if (c && !c.isGolden && !c.isDiy && c.visible !== false && !c.isHidden && (!c.baseId || c.baseId === c.chessId) && isId(c.charId)) out.add(c.charId);
+  }
+  for (const id of Array.isArray(backups?.diy?.ownedPool) ? backups.diy.ownedPool : []) if (isId(id)) out.add(id);
+  return out;
+}

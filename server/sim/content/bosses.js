@@ -780,7 +780,10 @@ export function echoHit(b, echo) {
   // [ASSUMED] Resolve recursively earned pulses FIFO after the current pulse. A counter can remove dozens of
   // hit-count HP here; synchronous damaged → counter → pulse nesting used to trip the engine's 32-hook guard.
   // Keep the pulse earned by the lethal hit, too. No timer, extra RNG or skipped damage (DESIGN §28.24).
-  (ab.pulses ||= []).push(echo.s.atk);
+  // ES2020 rewrite of upstream's `(ab.pulses ||= []).push(...)` — logical assignment is ES2021 and the
+  // old Android WebView target rejects it (test/es2020-syntax.test.js).
+  if (!ab.pulses) ab.pulses = [];
+  ab.pulses.push(echo.s.atk);
   if (ab.pulsing) return;
   ab.pulsing = true;
   try {

@@ -4,7 +4,7 @@
 // (token_10069_mcnist_mcgraf). Kit contract and the 自选 rules: ../README.md ("How to add an operator (自选)").
 //
 // Forms (data/backups.json units.char_4230_mcnist): normal = E2 Lv1, skills at rank 4, no module; elite = E2 Lv60, rank 7,
-// the module at stage 1 (tier 5) or 3 (tier 6) — the owner's decision of 2026-10-05. Potential 0 [ASSUMED: no account].
+// the module at stage 1 (tier 5) or 3 (tier 6) — the owner's decision of 2026-10-05. Full potential (the owner's decision of 2026-10-07).
 // Sources: character_table / skill_table / battle_equip_table / token_table (zh_CN, as built into backups.json); PRTS 机械师
 // (生命方程 备注: the 【超额防护】 of her own 屏障 — "当此屏障吸收部分伤害…后，若此时“持有的所有同来源的屏障”的屏障值总和等于0
 // 时，将本次伤害直接视为抵挡"; S1 备注 "弹道溅射半径1.1（碰撞判定），可对空"; S2 备注 "屏障“被摧毁时...”的效果，其溅射半径1.5（中点
@@ -58,6 +58,8 @@
 import { num, skillRec, batMod, up } from '../shared/tier1.js';
 import { COLS } from '../../../constants.js';
 import { dirVec } from '../../../dir.js';
+import { hypot } from '../../../detmath.js';
+import { atPotential } from '../../../../../shared/potential.js';
 
 const S1 = 'skchr_mcnist_1';
 const S2 = 'skchr_mcnist_2';
@@ -197,7 +199,7 @@ function grafKit(owner, { life, t2, b2, b3, aura }) {
 function chargeGraf(battle, mcn, t, b3) {
   if (!up(t)) return;
   const { stop, land } = chargeEnd(battle, t);
-  const dist = Math.hypot(stop[0] - t.tileR, stop[1] - t.tileC);
+  const dist = hypot(stop[0] - t.tileR, stop[1] - t.tileC);
   t.mem.charging = true;
   battle.fx('charge', { x: t.x, y: t.y, id: t.id, tx: stop[1], ty: stop[0] });
   battle.retreat(t, { reason: 'expired', permanent: true });
@@ -268,6 +270,8 @@ export default {
         [S3]: {
           kind: 'duration',
           mods: { atkPct: num(b3.atk), batPct: batMod(b3.base_attack_time, chess) },
+          // [ASSUMED] the cross lands on an enemy target only: 白铁's 铁钳号 alone does not open it (skills.js allyTargetsOk)
+          allyTargets: false,
           // the attack is the cross: no damage on the target itself (its 0.8 s later landing does it)
           attack: { dmgType: 'arts', hitsFn: () => 0 },
           onAttack({ battle, unit, targets }) {
@@ -283,7 +287,7 @@ export default {
       },
       talents: [
         { install(battle, unit) { // 结构性原理: her pieces run the token's kit (set up before the battle starts)
-          const raw = battle.data.rawToken?.(MCGRAF)?.variants?.[unit.def?.tokenOwner] ?? null;
+          const raw = atPotential(battle.data.rawToken?.(MCGRAF)?.variants?.[unit.def?.tokenOwner] ?? null, unit.def?.loadout?.potential);
           for (const t of battle.allyUnits) {
             if (!isGrafOf(t, unit) || t.alive || t.deployed) continue;
             // its life: the base variant's (the SO-A stage-3 skill@duration −1 is 集成战略-only)
