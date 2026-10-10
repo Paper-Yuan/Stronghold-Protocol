@@ -73,3 +73,16 @@ test('GPL-3.0-or-later: LICENSE, package metadata and notices', () => {
   assert.match(aklz4, /SPDX-License-Identifier: BSD-3-Clause/);
   assert.match(aklz4, /Copyright \(c\) 2022, Harry Huang/);
 });
+
+test('the Android package carries the same version (android/app/build.gradle)', () => {
+  // 这个数字是手工按版本递增的（0.1.6-pre-skin → 15、0.2.1-fusion → 21），不是从 APP_VERSION 推出来的，
+  // 所以每次升版本都得手动改 —— 0.2.2-fusion 那次就漏了，打出来的 APK 一直对外报 0.2.1-fusion。
+  // 这里钉住它，别再漏。
+  const gradle = read('android/app/build.gradle');
+  const name = gradle.match(/^\s*versionName\s+"([^"]+)"/m);
+  const code = gradle.match(/^\s*versionCode\s+(\d+)/m);
+  assert.ok(name, 'android/app/build.gradle 里有 versionName');
+  assert.ok(code, 'android/app/build.gradle 里有 versionCode');
+  assert.equal(name[1], APP_VERSION, 'APK 对外报的版本必须等于 APP_VERSION');
+  assert.ok(Number(code[1]) > 0, 'versionCode 是正整数，且每次发布必须递增');
+});

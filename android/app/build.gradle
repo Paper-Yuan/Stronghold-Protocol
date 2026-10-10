@@ -17,8 +17,8 @@ android {
         applicationId "com.paper.stronghold"
         minSdk 24
         targetSdk 34
-        versionCode 21
-        versionName "0.2.1-fusion"
+        versionCode 22
+        versionName "0.2.2-fusion"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         ndk {
