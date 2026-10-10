@@ -11,6 +11,7 @@ import android.content.pm.ActivityInfo
 import android.media.AudioAttributes
 import android.media.AudioFocusRequest
 import android.media.AudioManager
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.os.Handler
@@ -49,7 +50,15 @@ class MainActivity : AppCompatActivity() {
         private const val KEY_EDGE_PADDING = "edge_padding_px"   // 0-200 px inset from each side (notch/punch-hole)
         private const val DEFAULT_LOCAL_URL = "http://127.0.0.1:3000"
         private const val DEFAULT_LAN_URL = "http://192.168.10.25:3000"
+        private const val REQ_FILE_CHOOSER = 1001   // onShowFileChooser → 系统文件选择器
     }
+
+    /**
+     * The pending `<input type="file">` callback (mod 上传要选一个 .zip)。
+     * 安卓 WebView 只有在宿主实现 `WebChromeClient.onShowFileChooser` 时才会打开系统选择器 ——
+     * 不实现的话，页面里点 `<label for="mod-file-input">` 什么都不发生（上传入口「调度不出来」）。
+     */
+    private var filePathCallback: ValueCallback<Array<Uri>>? = null
 
     private lateinit var webView: WebView
     private lateinit var layoutLoading: LinearLayout
@@ -340,6 +349,38 @@ class MainActivity : AppCompatActivity() {
                     )
                 }
                 return true
+            }
+
+            /**
+             * 页面里的 `<input type="file">`（MOD 管理 → 选择本地模组包 .zip）必须由宿主打开系统选择器，
+             * 否则点上去毫无反应。回调要恰好交付一次：取消/异常时也要 `onReceiveValue(null)`，不然
+             * 同一个 input 之后再也触发不了。
+             */
+            override fun onShowFileChooser(
+                view: WebView?,
+                callback: ValueCallback<Array<Uri>>?,
+                params: FileChooserParams?
+            ): Boolean {
+                filePathCallback?.onReceiveValue(null)   // 上一次没交付的（页面被重载等）先作废
+                filePathCallback = callback
+                val intent = try {
+                    params?.createIntent()
+                } catch (e: Exception) {
+                    Log.w(TAG, "createIntent for file chooser failed: ${e.message}")
+                    null
+                } ?: Intent(Intent.ACTION_GET_CONTENT).apply {
+                    addCategory(Intent.CATEGORY_OPENABLE)
+                    type = "*/*"
+                }
+                return try {
+                    startActivityForResult(Intent.createChooser(intent, "选择文件"), REQ_FILE_CHOOSER)
+                    true
+                } catch (e: Exception) {
+                    Log.w(TAG, "no activity for file chooser: ${e.message}")
+                    filePathCallback = null
+                    callback?.onReceiveValue(null)
+                    false
+                }
             }
         }
 
@@ -1148,6 +1189,22 @@ class MainActivity : AppCompatActivity() {
         }
 
         dialog.show()
+    }
+
+    /** 系统文件选择器回来了：把结果（或 null = 取消）交给 `onShowFileChooser` 留下的回调。 */
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        if (requestCode == REQ_FILE_CHOOSER) {
+            val cb = filePathCallback ?: return
+            filePathCallback = null
+            val result = if (resultCode == RESULT_OK && data != null) {
+                WebChromeClient.FileChooserParams.parseResult(resultCode, data)
+            } else {
+                null
+            }
+            cb.onReceiveValue(result)
+            return
+        }
+        super.onActivityResult(requestCode, resultCode, data)
     }
 
     override fun onResume() {
