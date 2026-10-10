@@ -310,6 +310,43 @@ describe('operator battle voice', () => {
     }
   });
 
+  test('voice: 每干员语音覆盖 (voicePrefs.js) —— 选中的语言优先，该语言没有台词时回退到另一种', async () => {
+    const fw = fakeWindow();
+    const origFetch = globalThis.fetch;
+    globalThis.fetch = async () => ({ ok: true, arrayBuffer: async () => new ArrayBuffer(8) });
+    const tick = () => new Promise((r) => setTimeout(r, 10));
+    try {
+      const A = 'char_102_texas', B = 'char_263_skadi'; // real-shaped ids (voicePrefs.js checks the charId shape)
+      const vm = { audio: { sfx: { ui: {}, battle: {}, units: {} }, voice: {
+        jp: { [A]: { start: '/v/jp_a.mp3' }, [B]: { start: '/v/jp_b.mp3' } },
+        cn: { [A]: { start: '/v/cn_a.mp3' } }, // B carries no 中文 line
+      } } };
+      const a = new AudioManager({ win: fw.win, getManifest: () => vm });
+      a.voiceGate = new VoiceGate({ gapMs: 0 });
+      a.install();
+      fw.fire('pointerdown');
+      await tick();
+      assert.equal(a.voice(A, 'start', { unitKey: 1 }), true, '全局日语（本分支默认）');
+      await tick();
+      assert.equal(a.voiceNode?.url, '/v/jp_a.mp3');
+      a._stopVoice(); a.voiceGate.reset();
+      a.setVoiceLang('jp', { [A]: 'cn' }); // 该干员单独用中文
+      assert.equal(a.voice(A, 'start', { unitKey: 1 }), true);
+      await tick();
+      assert.equal(a.voiceNode?.url, '/v/cn_a.mp3', 'the per-operator override wins over the global');
+      a._stopVoice(); a.voiceGate.reset();
+      a.setVoiceLang('jp', { [B]: 'cn' }); // 覆盖为中文，但这个干员没有中文台词
+      assert.equal(a.voice(B, 'start', { unitKey: 1 }), true);
+      await tick();
+      assert.equal(a.voiceNode?.url, '/v/jp_b.mp3', 'missing in the chosen language ⇒ the other language');
+      a._stopVoice(); a.voiceGate.reset();
+      a.setVoiceLang('jp', { [A]: 'kr' }); // 白名单外的语言在入口就被清洗掉
+      assert.deepEqual(a.voiceOverrides, {}, 'sanitizeVoiceOverrides drops a language outside VOICE_LANGS');
+    } finally {
+      globalThis.fetch = origFetch;
+    }
+  });
+
   test('voice: a stale callback never frees the channel the newest line holds (review on #73)', async () => {
     const fw = fakeWindow();
     const origFetch = globalThis.fetch;

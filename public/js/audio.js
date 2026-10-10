@@ -48,6 +48,7 @@
 
 import { PHASE } from '../../shared/constants.js';
 import { mediaUrl } from './media.js';
+import { sanitizeVoiceOverrides, voiceLangFor } from './voicePrefs.js';
 
 const isMobile = typeof navigator !== 'undefined' && (/Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) || (navigator.maxTouchPoints > 1 && !globalThis.matchMedia?.('(pointer: fine)').matches));
 
@@ -464,6 +465,7 @@ export class AudioManager {
     this.voiceGain = null;
     this.volumes = { bgm: 0.6, sfx: 0.8, voice: 0.8, muted: false };
     this.voiceLang = 'jp';
+    this.voiceOverrides = {}; // charId → 'jp'|'cn' (voicePrefs.js; absent ⇒ follow voiceLang)
     this.modVoicePacks = new Map(); // packId -> voiceTree
     this._duckTimer = null;
     this.buffers = new Map(); // url → Promise<AudioBuffer|null> (insertion order = LRU)
@@ -612,16 +614,22 @@ export class AudioManager {
     if (typeof v?.voiceLang === 'string' && (v.voiceLang === 'jp' || v.voiceLang === 'cn')) {
       this.voiceLang = v.voiceLang;
     }
+    if (v && 'voiceOverrides' in v) this.voiceOverrides = sanitizeVoiceOverrides(v.voiceOverrides);
     this._applyVolumes();
   }
 
-  setVoiceLang(lang) {
-    if (lang === 'jp' || lang === 'cn') {
-      const changed = this.voiceLang !== lang;
-      this.voiceLang = lang;
-      if (changed && this.voiceNode) {
-        this._stopVoice(); // 热切换时立即淡出当前语音，下个触发即刻使用新语言
-      }
+  /**
+   * Set the global dub language and (optionally) the per-operator overrides (voicePrefs.js).
+   * @param {'jp'|'cn'} lang
+   * @param {Record<string, 'jp'|'cn'>} [overrides] defaults to the current map
+   */
+  setVoiceLang(lang, overrides = this.voiceOverrides) {
+    const ov = sanitizeVoiceOverrides(overrides);
+    const changed = this.voiceLang !== lang || JSON.stringify(this.voiceOverrides) !== JSON.stringify(ov);
+    if (lang === 'jp' || lang === 'cn') this.voiceLang = lang;
+    this.voiceOverrides = ov;
+    if (changed && this.voiceNode) {
+      this._stopVoice(); // 热切换时立即淡出当前语音，下个触发即刻使用新语言
     }
   }
 
@@ -912,7 +920,9 @@ export class AudioManager {
       if (this.voiceNode && this.voiceNode.charId === realCharId) return false;
       const m = this.getManifest();
       const vRoot = m?.audio?.voice;
-      const curLang = this.voiceLang || 'jp';
+      // 该干员自己的语言：settings.voiceOverrides 的覆盖优先，否则跟随全局（voicePrefs.js voiceLangFor）。
+      // 选中的语言缺失时回退到另一种语言，再退到不分语言的旧扁平结构（chars[].voice）。
+      const curLang = voiceLangFor(realCharId, this.voiceLang, this.voiceOverrides);
       const altLang = curLang === 'jp' ? 'cn' : 'jp';
       let line = null;
       // 优先从活跃 Mod 包查找对应语音（支持中日双语热切换与优雅回退）
@@ -1141,13 +1151,13 @@ export function installAudio(deps) {
     audio.install();
     if (deps?.settings) {
       audio.setVolumes(deps.settings);
-      if (deps.settings.voiceLang) audio.setVoiceLang(deps.settings.voiceLang);
+      if (deps.settings.voiceLang) audio.setVoiceLang(deps.settings.voiceLang, deps.settings.voiceOverrides);
     }
     if (typeof deps?.onSettings === 'function') {
       deps.onSettings((st) => {
         if (!st) return;
         audio.setVolumes(st);
-        if (st.voiceLang) audio.setVoiceLang(st.voiceLang);
+        if (st.voiceLang) audio.setVoiceLang(st.voiceLang, st.voiceOverrides);
       });
     }
     if (typeof deps?.subscribe === 'function' && typeof deps?.getState === 'function') {

@@ -851,8 +851,11 @@ test('the deliberate trigger deviation (DESIGN §21.29): six 重装 skills DEFAU
 test('干员战斗语音 (DESIGN §21.30): the manifest data, the official priorities, and the 休整期 stays silent', async () => {
   const { VOICE_PRIORITY, VOICE_COOLDOWN_MS, resultVoiceSlot } = await import('../public/js/audio.js');
   const manifest = JSON.parse(readFileSync(join(ROOT, 'data/assets.json'), 'utf8'));
+  // 本分支的 manifest 把两种配音**按语言嵌套**（`audio.voice.{cn,jp}`，计划里还要加 en/kr；audio.js voice() 就按这个
+  // 结构查），上游是扁平 `voice`（中文）+ `voiceJp`——那是两语言专用形状，我们不采用。
   const voice = manifest.audio?.voice ?? {};
-  const charIds = Object.keys(voice);
+  assert.deepEqual(Object.keys(voice).sort(), ['cn', 'jp'], 'the two dubs, nested by language');
+  const charIds = Object.keys(voice.jp);
   assert.ok(charIds.length >= 100, `${charIds.length} operators carry official battle voice`);
   assert.equal(manifest.stats.voiceChars, charIds.length, 'stats.voiceChars counts them');
   // one operator carries every slot a battle can play — and none of the prep-only ones (plan.mjs VOICE_BATTLE_SLOTS):
@@ -860,20 +863,25 @@ test('干员战斗语音 (DESIGN §21.30): the manifest data, the official prior
   // download 360 files (19.3 MB, one per operator and slot) nobody hears. `--voice-all` brings the complete set back.
   const slots = ['start', 'faceEnemy', 'select', 'place', 'skill1', 'skill2', 'skill3', 'skill4', 'resultFour', 'resultThree', 'resultTwo', 'resultLose'];
   const prepOnly = ['gacha', 'squad', 'squadFirst'];
-  const lines = [];
-  const walk = (x) => {
-    if (typeof x === 'string') lines.push(x);
-    else if (Array.isArray(x)) x.forEach(walk);
-    else if (x && typeof x === 'object') Object.values(x).forEach(walk);
+  const jpLines = [];
+  const cnLines = [];
+  const walk = (x, into) => {
+    if (typeof x === 'string') into.push(x);
+    else if (Array.isArray(x)) x.forEach((y) => walk(y, into));
+    else if (x && typeof x === 'object') Object.values(x).forEach((y) => walk(y, into));
   };
   for (const id of charIds) {
-    for (const s of slots) assert.ok(voice[id][s], `${id}.${s}`);
-    for (const s of prepOnly) assert.equal(voice[id][s], undefined, `${id}.${s} is not planned by default`);
-    walk(voice[id]);
+    for (const s of slots) assert.ok(voice.jp[id][s], `jp ${id}.${s}`);
+    for (const s of prepOnly) assert.equal(voice.jp[id][s], undefined, `jp ${id}.${s} is not planned by default`);
+    walk(voice.jp[id], jpLines);
+    assert.ok(voice.cn?.[id], `cn ${id}: the fallback of a missing 日语 line`);
+    walk(voice.cn[id], cnLines);
   }
   // a battle slot usually carries several lines (选中干员 / 部署 have two), so the battle set alone stays well above 10 each
-  assert.ok(lines.length >= charIds.length * 10, `${lines.length} voice lines for ${charIds.length} operators`);
-  for (const u of lines) assert.match(u, /^\/assets\/audio\/voice\/cn\/char_[^/]+\/cn_\d+\.mp3$/);
+  assert.ok(jpLines.length >= charIds.length * 10, `${jpLines.length} 日语 voice lines for ${charIds.length} operators`);
+  assert.ok(cnLines.length >= charIds.length * 10, `${cnLines.length} 中文 voice lines for ${charIds.length} operators`);
+  for (const u of jpLines) assert.match(u, /^\/assets\/audio\/voice\/jp\/char_[^/]+\/cn_\d+\.mp3$/);
+  for (const u of cnLines) assert.match(u, /^\/assets\/audio\/voice\/cn\/char_[^/]+\/cn_\d+\.mp3$/);
   // the official scheduling numbers (audio_data.json battleVoice.voiceTypeOptions)
   assert.equal(VOICE_PRIORITY.start, 100);
   assert.equal(VOICE_PRIORITY.faceEnemy, 90);

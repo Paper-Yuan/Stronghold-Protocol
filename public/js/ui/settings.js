@@ -5,7 +5,7 @@
 import { useState } from '../../vendor/hooks.module.js';
 import { html, Modal, Button, Icon, MicroLabel } from './components.js';
 import { createStore, useStore, loadPref, savePref } from '../store.js';
-import { sanitizeSettings, hotkeyLabel } from './gameLogic.js';
+import { sanitizeSettings, hotkeyLabel, VOICE_LANGS, VOICE_LANG_NAMES } from './gameLogic.js';
 import { audio } from '../audio.js';
 import { openGuide } from './guide.js';
 import { detectFeatures } from './device.js';
@@ -21,8 +21,10 @@ export const settingsStore = createStore(initialPref);
 settingsStore.subscribe((s) => {
   savePref('settings', sanitizeSettings(s));
   audio.setVolumes(s);
+  audio.setVoiceLang?.(s.voiceLang, s.voiceOverrides); // 全局语言 + 每干员覆盖（voicePrefs.js）
 });
 audio.setVolumes(settingsStore.get());
+audio.setVoiceLang?.(initialPref.voiceLang, initialPref.voiceOverrides);
 
 /**
  * The key assigned to an in-match action (ui/gameLogic/shortcuts.js; default if not set).
@@ -63,7 +65,8 @@ function Toggle({ label, micro, value, onChange }) {
 }
 
 const QUALITY = [['high', '高'], ['medium', '中'], ['low', '低']];
-const VOICE_LANG = [['jp', '日语 (默认)'], ['cn', '中文']];
+// 全局语音语言（VOICE_LANGS 是唯一词汇表，voicePrefs.js）；默认日语 —— 每干员可在干员调配里单独覆盖。
+const VOICE_LANG = VOICE_LANGS.map((id) => [id, id === 'jp' ? '日语 (默认)' : VOICE_LANG_NAMES[id]]);
 const BOARDS = [['auto', '自动'], ['3d', '3D 全景'], ['2d', '2D 俯视']];
 
 /**
@@ -117,7 +120,7 @@ export function SettingsModal({ open, onClose }) {
           ${VOICE_LANG.map(([id, label]) => {
             const on = (s.voiceLang || 'jp') === id;
             return html`<button key=${id} type="button" role="radio" aria-checked=${on ? 'true' : 'false'}
-              class=${on ? 'is-on' : ''} onClick=${() => { updateSettings({ voiceLang: id }); audio.setVoiceLang?.(id); audio.sfx?.('click'); }}>${label}</button>`;
+              class=${on ? 'is-on' : ''} onClick=${() => { updateSettings({ voiceLang: id }); audio.setVoiceLang?.(id, s.voiceOverrides); audio.sfx?.('click'); }}>${label}</button>`;
           })}
         </div>
       </div>

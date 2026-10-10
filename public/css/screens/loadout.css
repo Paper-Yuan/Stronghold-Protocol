@@ -748,4 +748,56 @@
   .diy-slot__acts { grid-column: 1 / -1; flex-direction: row; justify-content: flex-end; }
 }
 
+/* ---- 语音 (详情面板的语音子页): ui/voicePicker.js + public/js/voicePrefs.js ----
+   桌面：一行 —— 标签 + 原生 select（沿用 .lo-select）。
+   手机（sp-coarse）：整行按钮 → 底部弹出的大按钮列表，每行 ≥ --tap-min(44px) 命中区。
+   判定只用特性类，不用 UA / 宽度（docs/HANDOFF_MERGE_V023_2026-10-10.md 的硬规则）。 */
+.lo-sec--voice .lo-sec__icon { align-self: center; color: var(--mint-500); }
+.lo-voice {
+  display: flex; align-items: center; flex-wrap: wrap; gap: .08rem .14rem;
+  padding: .1rem .12rem; border: 1px solid var(--line); background: rgba(0, 0, 0, .28);
+}
+.lo-voice__label { font-size: max(.15rem, 11px); color: var(--text-dim); letter-spacing: .06em; }
+.lo-voice__select { margin-left: auto; }
+.lo-voice__select select { min-width: 2.6rem; }
+.lo-voice__note { flex: 1 1 100%; font-size: max(.12rem, 9px); color: var(--text-dim); }
+.lo-voice__pick {
+  display: flex; align-items: center; gap: .1rem; width: 100%; min-height: var(--tap-min, 44px);
+  padding: .06rem max(.16rem, 8px); border: 1px solid var(--line); background: rgba(0, 0, 0, .4);
+  color: var(--text-hi); font: inherit; text-align: left; cursor: pointer;
+}
+.lo-voice__pick:active { background: rgba(78, 216, 175, .12); }
+.lo-voice__val { display: flex; flex: 1 1 auto; flex-direction: column; gap: .02rem; min-width: 0; }
+.lo-voice__val b { font-size: max(.18rem, 12px); font-weight: 800; }
+.lo-voice__eff { font-size: max(.13rem, 10px); color: var(--text-dim); }
+
+/* 底部弹出（本屏第一个；voicePicker 的音色选择器）。fixed 以免被 .lo-detail 的 overflow 裁掉；
+   z-index 70：高于干员调配浮层（55），低于模态框（80）。 */
+.lo-sheet { position: fixed; inset: 0; z-index: 70; display: flex; align-items: flex-end; justify-content: center; }
+.lo-sheet__backdrop { position: absolute; inset: 0; background: rgba(0, 0, 0, .55); }
+.lo-sheet__panel {
+  position: relative; display: flex; flex-direction: column; width: 100%; max-height: 70vh;
+  padding: .12rem .14rem calc(.14rem + var(--sa-b, 0px)); border-top: 1px solid var(--mint-700);
+  background: linear-gradient(180deg, rgba(24, 30, 28, .99), rgba(10, 13, 12, .99));
+  box-shadow: 0 -.16rem .4rem rgba(0, 0, 0, .5); animation: lo-sheet-up 180ms var(--ease-out) backwards;
+}
+@keyframes lo-sheet-up { from { transform: translateY(14%); opacity: .55; } to { transform: none; opacity: 1; } }
+.lo-sheet__head { display: flex; align-items: center; gap: .1rem; padding-bottom: .06rem; }
+.lo-sheet__head b { font-size: max(.2rem, 13px); font-weight: 900; letter-spacing: .08em; }
+.lo-sheet__close {
+  display: inline-flex; align-items: center; justify-content: center; width: var(--tap-min, 44px); height: var(--tap-min, 44px);
+  margin-left: auto; border: 0; background: transparent; color: var(--text-dim); cursor: pointer;
+}
+.lo-sheet__list { display: flex; flex-direction: column; gap: .06rem; overflow-y: auto; }
+.lo-sheet__opt {
+  display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 0 .1rem;
+  width: 100%; min-height: var(--tap-min, 44px); padding: .06rem max(.16rem, 8px); border: 1px solid var(--line);
+  background: rgba(0, 0, 0, .35); color: var(--text-hi); font: inherit; text-align: left; cursor: pointer;
+}
+.lo-sheet__opt.is-on { border-color: var(--mint-700); background: rgba(78, 216, 175, .12); }
+.lo-sheet__opt-name { font-size: max(.19rem, 13px); font-weight: 800; }
+.lo-sheet__opt-sub { grid-column: 1; font-size: max(.13rem, 10px); color: var(--text-dim); }
+.lo-sheet__opt-mark { grid-row: 1 / span 2; grid-column: 2; color: var(--mint-500); }
+@media (prefers-reduced-motion: reduce) { .lo-sheet__panel { animation: none; } }
+
 
