@@ -17,25 +17,31 @@ test('pairing by seat: (1,2), (3,4); an odd player alone', () => {
   assert.deepEqual(pairPlayers([p(3), p(1), p(0), p(2)]).map((g) => g.map((x) => x.seat)), [[0, 1], [2, 3]]);
 });
 
-test('boss pool = bloodPoint[difficulty] in co-op whatever the alive count (× alive / 4 only with aliveScaling; solo × 0.25) × tuning; shared and never negative', () => {
-  // research numbers (data/tuning.json left out); DESIGN §20.10: notice 5114's "敌方领袖的总生命值不变" is about the
-  // mirrored copies, the one note on player count (巴哈姆特 12294 "聯機隊友(撤退/死掉)變少，最後boss血條也會變少") has no
-  // proportion — config bossHpScale.aliveScaling (off) would apply × alive / 4
+test('boss pool = bloodPoint[difficulty] × the players alive (co-op), × 1 solo; the fixed pool of 0.1.x restores perPlayer false; shared and never negative', () => {
+  // the owner's decision of 2026-10-06 adopts PR #209 (DESIGN §20.10 / §25.13.4): bloodPoint is one player's share, so
+  // the one pool = bloodPoint × the players alive when the fight starts (at most aliveFull); notice 5114's
+  // "敌方领袖的总生命值不变" is about the mirrored copies, not the player count. config bossHpScale.perPlayer false
+  // restores the fixed pool of 0.1.x 「保持固定血量」 (× alive / aliveFull only with aliveScaling).
   const { tuning, ...RAW } = DATA; // eslint-disable-line no-unused-vars
+  const HARD = 1800000; // boss_1's bloodPoint.HARD
   const gd = new GameData(RAW, 'mode_multi_hard');
-  for (const n of [4, 3, 2, 1, undefined, 9]) assert.equal(bossPoolHp(gd, 'boss_1', n), 1800000, `${n} alive`);
+  for (const [n, want] of [[4, HARD * 4], [3, HARD * 3], [2, HARD * 2], [1, HARD], [undefined, HARD * 4], [9, HARD * 4]]) {
+    assert.equal(bossPoolHp(gd, 'boss_1', n), want, `${n} alive`);
+  }
   assert.equal(gd.bossPoolHp('boss_1', 2), bossPoolHp(gd, 'boss_1', 2), 'GameData agrees');
-  // the flip: config bossHpScale.aliveScaling true scales the pool by alive / 4
-  const scaled = new GameData({ ...RAW, config: { ...RAW.config, bossHpScale: { ...RAW.config.bossHpScale, aliveScaling: true },
-    modes: { ...RAW.config.modes, mode_multi_hard: { ...RAW.config.modes.mode_multi_hard, bossHpScale: { ...RAW.config.modes.mode_multi_hard.bossHpScale, aliveScaling: true } } } } }, 'mode_multi_hard');
-  assert.equal(bossPoolHp(scaled, 'boss_1', 4), 1800000);
-  assert.equal(bossPoolHp(scaled, 'boss_1', 3), 1350000);
-  assert.equal(bossPoolHp(scaled, 'boss_1', 2), 900000);
-  assert.equal(bossPoolHp(scaled, 'boss_1', 1), 450000);
-  assert.equal(bossPoolHp(scaled, 'boss_1'), 1800000, 'no count given: a full team');
-  assert.equal(bossPoolHp(scaled, 'boss_1', 9), 1800000, 'never above the data value');
-  assert.equal(bossPoolHp(new GameData(RAW, 'mode_single_abyss'), 'boss_5', 1), 750000);
-  assert.equal(bossPoolHp(new GameData(RAW, 'mode_single_funny'), 'boss_2', 1), 56250);
+  // the flip: perPlayer false (+ aliveScaling) is the fixed pool of 0.1.x — × alive / aliveFull, never above the data value
+  const fixed = (aliveScaling) => new GameData({ ...RAW, config: { ...RAW.config, bossHpScale: { ...RAW.config.bossHpScale, perPlayer: false, aliveScaling },
+    modes: { ...RAW.config.modes, mode_multi_hard: { ...RAW.config.modes.mode_multi_hard, bossHpScale: { ...RAW.config.modes.mode_multi_hard.bossHpScale, perPlayer: false, aliveScaling } } } } }, 'mode_multi_hard');
+  const scaled = fixed(true);
+  assert.equal(bossPoolHp(scaled, 'boss_1', 4), HARD);
+  assert.equal(bossPoolHp(scaled, 'boss_1', 3), Math.round(HARD * 3 / 4));
+  assert.equal(bossPoolHp(scaled, 'boss_1', 2), Math.round(HARD * 2 / 4));
+  assert.equal(bossPoolHp(scaled, 'boss_1', 1), Math.round(HARD / 4));
+  assert.equal(bossPoolHp(scaled, 'boss_1'), HARD, 'no count given: a full team');
+  assert.equal(bossPoolHp(scaled, 'boss_1', 9), HARD, 'never above the data value');
+  assert.equal(bossPoolHp(fixed(false), 'boss_1', 2), HARD, 'aliveScaling off: the pool never moves with the count');
+  assert.equal(bossPoolHp(new GameData(RAW, 'mode_single_abyss'), 'boss_5', 1), 3000000, 'solo: × 1');
+  assert.equal(bossPoolHp(new GameData(RAW, 'mode_single_funny'), 'boss_2', 1), 225000, 'solo: × 1');
   // the balance layer multiplies the pool (docs/BALANCE.md)
   for (const modeId of ['mode_single_funny', 'mode_multi_hard']) {
     const tuned = new GameData(DATA, modeId);

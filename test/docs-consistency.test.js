@@ -567,12 +567,13 @@ test('playtest6b follow-up (DESIGN §20.10–§20.13): leader HP, 直接乘算, 
   assert.match(BALANCE, /superseded by that binary evidence/);
   assert.match(R11, /MAX_BATTLE_DAMAGE = 300000/);
   assert.match(R02, /MAX_GARRISON_STACK = 999/);
-  // §20.9: elite settled, 999 / 限伤 official with their flips, the fixed leader pool settled (aliveScaling off in the data)
+  // §20.9: elite settled, 999 / 限伤 official with their flips, the leader pool settled on perPlayer (PR #209)
   assert.match(s209, /\| A merge's elite \(§20\.11\) \| takes the consumed deployed copy's tile/);
   assert.match(s209, /`shared\/constants\.js BOND_LAYER_CAP = 0`/);
   assert.match(s209, /`shared\/constants\.js BOSS_HIT_LIMIT = 0`/);
-  assert.match(s209, /Settled by the user \("保持固定血量"\)[^\n]*aliveScaling` is \*\*false\*\*/);
-  assert.equal(DATA.config.bossHpScale.aliveScaling, false, 'the user chose the fixed leader pool');
+  assert.match(s209, /Settled by the user \(2026-10-06, adopting PR #209[^\n]*`config bossHpScale\.perPlayer` is \*\*true\*\*/);
+  assert.equal(DATA.config.bossHpScale.perPlayer, true, 'the owner adopted the per-player pool (2026-10-06)');
+  assert.equal(DATA.config.bossHpScale.aliveScaling, false, 'the fixed pool\'s optional × alive / 4 stays off');
   assert.equal(SIM_CONST.DIRECT_BONUS_STACKING, 'add');
   assert.match(s209, /DIRECT_BONUS_STACKING = 'multiply'/);
   // the normative lines

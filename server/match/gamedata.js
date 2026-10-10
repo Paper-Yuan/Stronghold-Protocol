@@ -61,6 +61,32 @@ export const COMBAT_TIME_SCALE = 2;
 /** Strip the _a/_b suffix of an item id (the registry key of an item family). */
 export const itemKey = (id) => (typeof id === 'string' ? id.replace(/_[ab]$/, '') : '');
 
+/**
+ * The leader pool's share of bloodPoint (DESIGN §20.10, §25.13.4): `perPlayer` true (the owner's decision of 2026-10-06,
+ * adopting PR #209) — co-op = coop × the players alive when the fight starts (at most aliveFull), solo = solo (1);
+ * `perPlayer` false restores the fixed pool of 0.1.x 「保持固定血量」 — co-op = coop whatever the count (× alive / aliveFull
+ * with aliveScaling), solo = solo (0.25). The mode entry's bossHpScale wins over the global one, field by field.
+ * A pure function so a caller without a GameData (finalAssault.js bossPoolHp, the tests' plain objects) reads the same
+ * config; GameData.bossPoolShare delegates to it.
+ * @param {any} modeScale mode.bossHpScale
+ * @param {any} cfgScale config.bossHpScale
+ * @param {boolean} isSolo
+ * @param {number} [aliveCount] alive players at the Final Assault / Hidden Core start (co-op); omitted ⇒ a full team
+ * @returns {number}
+ */
+export function bossPoolShareOf(modeScale, cfgScale, isSolo, aliveCount) {
+  const ms = modeScale && typeof modeScale === 'object' ? modeScale : {};
+  const cs = cfgScale && typeof cfgScale === 'object' ? cfgScale : {};
+  const pick = (k, d) => (Number.isFinite(ms[k]) && ms[k] > 0 ? ms[k] : Number.isFinite(cs[k]) && cs[k] > 0 ? cs[k] : d);
+  const flag = (k, d) => (typeof ms[k] === 'boolean' ? ms[k] : typeof cs[k] === 'boolean' ? cs[k] : d);
+  if (isSolo) return pick('solo', 1);
+  const full = Math.max(1, Math.floor(pick('aliveFull', 4)));
+  const n = Number(aliveCount);
+  const alive = Number.isFinite(n) && n >= 1 ? Math.min(full, Math.floor(n)) : full;
+  if (flag('perPlayer', true)) return pick('coop', 1) * alive;
+  return pick('coop', 1) * (flag('aliveScaling', false) ? alive / full : 1);
+}
+
 export class GameData {
   /**
    * @param {Readonly<Record<string, any>>} data server/data.js getData() (may be partial)
@@ -133,20 +159,12 @@ export class GameData {
   }
 
   /**
-   * Multiplier of bloodPoint for the leader pool (see bossPoolHp): solo = bossHpScale.solo (0.25); co-op = coop (1) ×
-   * min(alive, aliveFull) / aliveFull when bossHpScale.aliveScaling (mode entry first, then the global one).
+   * Multiplier of bloodPoint for the leader pool (see bossPoolHp): bossPoolShareOf over this mode's bossHpScale and the
+   * global one (perPlayer: co-op = coop × the players alive, solo = solo 1; the fixed pool of 0.1.x: coop × 1, solo 0.25).
    * @param {number} [aliveCount]
    */
   bossPoolShare(aliveCount) {
-    const ms = this.mode.bossHpScale && typeof this.mode.bossHpScale === 'object' ? this.mode.bossHpScale : {};
-    const cs = this.config.bossHpScale && typeof this.config.bossHpScale === 'object' ? this.config.bossHpScale : {};
-    const pick = (k, d) => (Number.isFinite(ms[k]) && ms[k] > 0 ? ms[k] : Number.isFinite(cs[k]) && cs[k] > 0 ? cs[k] : d);
-    if (this.isSolo) return pick('solo', 0.25);
-    const scaling = typeof ms.aliveScaling === 'boolean' ? ms.aliveScaling : cs.aliveScaling === true;
-    const full = Math.max(1, Math.floor(pick('aliveFull', 4)));
-    const n = Number(aliveCount);
-    const alive = scaling && Number.isFinite(n) && n >= 1 ? Math.min(full, Math.floor(n)) : full;
-    return pick('coop', 1) * (alive / full);
+    return bossPoolShareOf(this.mode.bossHpScale, this.config.bossHpScale, !!this.isSolo, aliveCount);
   }
 
   /**
