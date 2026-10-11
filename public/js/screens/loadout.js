@@ -30,6 +30,7 @@ import {
 import { loadoutStore, openLoadout, closeLoadout, setEntries, applyLoadoutEntries } from '../ui/loadoutSync.js';
 import { skinsStore, setSkins } from '../ui/skins.js';
 import { SkinSection } from '../ui/skinPicker.js';
+import { VoiceSection } from '../ui/voicePicker.js';
 import { copyText } from '../ui/clipboard.js';
 import { toast } from '../ui/toasts.js';
 
@@ -314,6 +315,9 @@ function Detail({ m, chess, golden, entries, onChange, onReset, locked }) {
       <button type="button" role="tab" aria-selected=${activeTab === 'skin'} class=${cx('lo-dtab', activeTab === 'skin' && 'is-on')} onClick=${() => setTab('skin')}>
         换装 <span class="lo-dtab__en num">SKIN</span>
       </button>
+      <button type="button" role="tab" aria-selected=${activeTab === 'voice'} class=${cx('lo-dtab', activeTab === 'voice' && 'is-on')} onClick=${() => setTab('voice')}>
+        语音 <span class="lo-dtab__en num">VOICE</span>
+      </button>
     </div>
     <div class="lo-detail__body" ref=${bodyRef}>
       ${activeTab === 'skill' ? html`
@@ -359,6 +363,7 @@ function Detail({ m, chess, golden, entries, onChange, onReset, locked }) {
       ` : null}
 
       ${activeTab === 'skin' ? html`<${SkinSection} chess=${chess} />` : null}
+      ${activeTab === 'voice' ? html`<${VoiceSection} chess=${chess} />` : null}
 
       ${locked ? html`<p class="lo-locknote"><${Icon} name="info" />本局的调配已锁定，修改将在下一局生效</p>` : null}
     </div>

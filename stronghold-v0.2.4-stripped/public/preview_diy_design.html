@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>自选编队与干员调配 UI 设计原型预览</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/screens/loadout.css">
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background: #060807;
+      color: #e5e7eb;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Microsoft YaHei", sans-serif;
+      overflow-x: hidden;
+    }
+    .preview-banner {
+      background: rgba(16, 185, 129, 0.15);
+      border-bottom: 1px solid rgba(16, 185, 129, 0.4);
+      padding: 10px 20px;
+      font-size: 13px;
+      color: #6ee7b7;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .preview-banner b { color: #fff; font-size: 14px; }
+    
+    /* 顶部 Tabs 样式精细化 */
+    .lo-tabs {
+      display: flex;
+      align-items: center;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 4px;
+      padding: 2px;
+      gap: 2px;
+    }
+    .lo-tab {
+      padding: 4px 14px;
+      font-size: 13px;
+      font-weight: 500;
+      color: #9ca3af;
+      background: transparent;
+      border: none;
+      border-radius: 3px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.15s ease;
+    }
+    .lo-tab:hover {
+      color: #fff;
+      background: rgba(255, 255, 255, 0.04);
+    }
+    .lo-tab.is-on {
+      color: #064e3b;
+      background: #34d399;
+      font-weight: 700;
+    }
+    .lo-tab__n {
+      font-size: 11px;
+      padding: 1px 5px;
+      background: rgba(0, 0, 0, 0.25);
+      border-radius: 10px;
+      color: currentColor;
+    }
+
+    /* 皮肤选择网格嵌入 DiyPicker */
+    .diy-skin-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+      gap: 8px;
+      margin-top: 6px;
+    }
+    .diy-skin-card {
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      background: rgba(255, 255, 255, 0.02);
+      border-radius: 4px;
+      padding: 6px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .diy-skin-card:hover {
+      border-color: rgba(52, 211, 153, 0.5);
+      background: rgba(52, 211, 153, 0.04);
+    }
+    .diy-skin-card.is-on {
+      border-color: #34d399;
+      background: rgba(52, 211, 153, 0.12);
+      box-shadow: 0 0 10px rgba(52, 211, 153, 0.2);
+    }
+    .diy-skin-card__img {
+      width: 40px;
+      height: 40px;
+      border-radius: 3px;
+      background: #111827;
+      object-fit: cover;
+      flex-shrink: 0;
+    }
+    .diy-skin-card__info {
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .diy-skin-card__name {
+      font-size: 12px;
+      font-weight: 600;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      color: #fff;
+    }
+    .diy-skin-card__tag {
+      font-size: 10px;
+      color: #9ca3af;
+      letter-spacing: 0.5px;
+    }
+    .diy-skin-card.is-on .diy-skin-card__tag {
+      color: #34d399;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+  <div class="preview-banner">
+    <div>
+      <b>【高保真交互设计原型】0.2.1 自选编队 & 干员持有 & 全皮肤融入</b>
+      <span style="margin-left: 15px; opacity: 0.8;">保留上方 Tabs 设计 + 自选干员角色选择专属皮肤面板</span>
+    </div>
+    <div style="font-size: 12px; opacity: 0.7;">点击上方 Tab 可切换预览不同视图</div>
+  </div>
+
+  <div class="lo" style="position: relative; height: calc(100vh - 42px); display: flex; flex-direction: column;">
+    <!-- 顶部 Header（保留上方三大 Tabs 设计） -->
+    <header class="lo-top">
+      <div class="lo-top__left">
+        <button type="button" class="btn btn--ghost btn--md lo-back">返回</button>
+      </div>
+
+      <div class="lo-top__center" style="display: flex; flex-direction: column; align-items: center; gap: 4px;">
+        <span class="micro-label" style="color: #34d399; font-size: 10px; letter-spacing: 1px;">SQUAD MANAGEMENT</span>
+        <div class="lo-tabs" role="tablist">
+          <button type="button" class="lo-tab" onclick="switchTab('loadout')" id="tab-btn-loadout">
+            干员调配
+          </button>
+          <button type="button" class="lo-tab" onclick="switchTab('ownership')" id="tab-btn-ownership">
+            干员持有 <span class="lo-tab__n">2</span>
+          </button>
+          <button type="button" class="lo-tab is-on" onclick="switchTab('diy')" id="tab-btn-diy">
+            自选编队 <span class="lo-tab__n">3/4</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="lo-top__right" id="header-right-tools">
+        <span class="lo-count">已选 <b class="num" style="color: #34d399;">3</b><span class="num t-dim">/4</span></span>
+        <button type="button" class="btn btn--ghost btn--sm">导入</button>
+        <button type="button" class="btn btn--secondary btn--sm">全部清空</button>
+      </div>
+    </header>
+
+    <!-- 视图 1：自选编队主视图 (当前激活) -->
+    <div id="view-diy" style="flex: 1; display: flex; flex-direction: column; position: relative;">
+      <p class="lo-note" style="margin: 6px 20px; color: #9ca3af; font-size: 12px;">
+        5阶与6阶各有两个自选名额：选择持有的 6★ 干员或原型干员。自选干员只出现在你自己的商店里，调度中心达到该阶等级后才会刷新。
+      </p>
+
+      <div style="flex: 1; padding: 10px 24px; display: flex; flex-direction: column; gap: 16px;">
+        <!-- 5阶 自选 -->
+        <div>
+          <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+            <span class="tier-chip" style="background: #f59e0b; color: #000; font-size: 11px; padding: 1px 6px; border-radius: 3px; font-weight: bold;">5阶</span>
+            <b style="font-size: 14px;">V 阶自选名额</b>
+            <span style="font-size: 12px; color: #6b7280;">(调度中心等级 5 起可刷新 · 共 2 席)</span>
+          </div>
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 12px;">
+            <!-- 槽位 1：已选择推进之王 (带皮肤) -->
+            <div style="border: 1px solid rgba(52, 211, 153, 0.4); background: rgba(13, 17, 16, 0.8); border-radius: 6px; padding: 12px; display: flex; gap: 12px; align-items: center;">
+              <div style="width: 64px; height: 64px; border-radius: 4px; background: #1e293b; overflow: hidden; position: relative;">
+                <img src="/assets/img/logo.png" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.src='https://placehold.co/64x64/1e293b/34d399?text=Siege'">
+                <span style="position: absolute; bottom: 0; left: 0; right: 0; background: rgba(0,0,0,0.7); font-size: 9px; text-align: center; color: #34d399;">致辞皮</span>
+              </div>
+              <div style="flex: 1; min-width: 0;">
+                <div style="display: flex; align-items: center; gap: 6px;">
+                  <b style="font-size: 15px; color: #fff;">推进之王</b>
+                  <span style="font-size: 10px; background: #34d399; color: #064e3b; padding: 1px 4px; border-radius: 2px; font-weight: bold;">已持有</span>
+                  <span style="font-size: 11px; color: #9ca3af;">先锋 · 冲锋手</span>
+                </div>
+                <div style="font-size: 12px; color: #d1d5db; margin-top: 4px;">
+                  技能：<b style="color: #6ee7b7;">S3 碎金一击</b> · 模组：<b style="color: #93c5fd;">CHG-X</b>
+                </div>
+                <div style="font-size: 11px; color: #34d399; margin-top: 2px;">
+                  装配时装：<b>【时代】致辞</b>
+                </div>
+              </div>
+              <div>
+                <button type="button" class="btn btn--ghost btn--sm" onclick="openPickerModal()">更改</button>
+              </div>
+            </div>
+
+            <!-- 槽位 2：未配置 (空卡槽) -->
+            <div style="border: 1px dashed rgba(255, 255, 255, 0.2); border-radius: 6px; padding: 12px; display: flex; flex-direction: column; justify-content: center; align-items: center; cursor: pointer; min-height: 80px;" onclick="openPickerModal()">
+              <span style="font-size: 24px; color: #9ca3af; line-height: 1;">+</span>
+              <b style="font-size: 13px; color: #d1d5db; margin-top: 4px;">点击挑选 5阶 自选干员</b>
+              <span style="font-size: 11px; color: #6b7280;">支持 6★ 原型与已持有 6★</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 6阶 自选 -->
+        <div>
+          <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+            <span class="tier-chip" style="background: #ef4444; color: #fff; font-size: 11px; padding: 1px 6px; border-radius: 3px; font-weight: bold;">6阶</span>
+            <b style="font-size: 14px;">VI 阶自选名额</b>
+            <span style="font-size: 12px; color: #6b7280;">(调度中心等级 6 起可刷新 · 共 2 席)</span>
+          </div>
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 12px;">
+            <!-- 槽位 3：鸿雪 -->
+            <div style="border: 1px solid rgba(52, 211, 153, 0.4); background: rgba(13, 17, 16, 0.8); border-radius: 6px; padding: 12px; display: flex; gap: 12px; align-items: center;">
+              <div style="width: 64px; height: 64px; border-radius: 4px; background: #1e293b; overflow: hidden; position: relative;">
+                <img src="/assets/img/logo.png" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.src='https://placehold.co/64x64/1e293b/ef4444?text=Snow'">
+                <span style="position: absolute; bottom: 0; left: 0; right: 0; background: rgba(0,0,0,0.7); font-size: 9px; text-align: center; color: #34d399;">泳装皮</span>
+              </div>
+              <div style="flex: 1; min-width: 0;">
+                <div style="display: flex; align-items: center; gap: 6px;">
+                  <b style="font-size: 15px; color: #fff;">鸿雪</b>
+                  <span style="font-size: 10px; background: #34d399; color: #064e3b; padding: 1px 4px; border-radius: 2px; font-weight: bold;">已持有</span>
+                  <span style="font-size: 11px; color: #9ca3af;">狙击 · 精准射手</span>
+                </div>
+                <div style="font-size: 12px; color: #d1d5db; margin-top: 4px;">
+                  技能：<b style="color: #6ee7b7;">S3 抑扬格</b> · 模组：<b style="color: #93c5fd;">POS-X</b>
+                </div>
+                <div style="font-size: 11px; color: #34d399; margin-top: 2px;">
+                  装配时装：<b>【珊瑚海岸】缤纷夏日</b>
+                </div>
+              </div>
+              <div>
+                <button type="button" class="btn btn--ghost btn--sm" onclick="openPickerModal()">更改</button>
+              </div>
+            </div>
+
+            <!-- 槽位 4：Sharp -->
+            <div style="border: 1px solid rgba(52, 211, 153, 0.4); background: rgba(13, 17, 16, 0.8); border-radius: 6px; padding: 12px; display: flex; gap: 12px; align-items: center;">
+              <div style="width: 64px; height: 64px; border-radius: 4px; background: #1e293b; overflow: hidden;">
+                <img src="/assets/img/logo.png" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.src='https://placehold.co/64x64/1e293b/38bdf8?text=Sharp'">
+              </div>
+              <div style="flex: 1; min-width: 0;">
+                <div style="display: flex; align-items: center; gap: 6px;">
+                  <b style="font-size: 15px; color: #fff;">Sharp</b>
+                  <span style="font-size: 10px; background: #38bdf8; color: #082f49; padding: 1px 4px; border-radius: 2px; font-weight: bold;">原型干员</span>
+                  <span style="font-size: 11px; color: #9ca3af;">近卫 · 强攻手</span>
+                </div>
+                <div style="font-size: 12px; color: #d1d5db; margin-top: 4px;">
+                  技能：<b style="color: #6ee7b7;">S3 破甲猛击</b> (原型锁定)
+                </div>
+                <div style="font-size: 11px; color: #9ca3af; margin-top: 2px;">
+                  时装：默认战术装束
+                </div>
+              </div>
+              <div>
+                <button type="button" class="btn btn--ghost btn--sm" onclick="openPickerModal()">更改</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 自选角色选择抽屉 (全功能：选干员 + 选技能 + 选模组 + 选皮肤) -->
+      <div id="picker-modal" style="position: absolute; inset: 0; background: rgba(13, 17, 16, 0.98); z-index: 20; display: flex; flex-direction: column;">
+        <header style="padding: 12px 20px; border-bottom: 1px solid rgba(255,255,255,0.1); display: flex; justify-content: space-between; align-items: center;">
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <span class="tier-chip" style="background: #f59e0b; color: #000; font-size: 11px; padding: 1px 6px; border-radius: 3px; font-weight: bold;">5阶</span>
+            <b style="font-size: 15px;">挑选自选干员与战备配置</b>
+            <span style="font-size: 12px; color: #9ca3af;">(可自定义技能、模组及全套皮肤时装)</span>
+          </div>
+          <button type="button" class="btn btn--ghost btn--sm" onclick="closePickerModal()">✕ 关闭</button>
+        </header>
+
+        <div style="flex: 1; display: grid; grid-template-columns: 280px 1fr; min-height: 0;">
+          <!-- 左侧：干员选择列表 -->
+          <div style="border-right: 1px solid rgba(255,255,255,0.1); display: flex; flex-direction: column;">
+            <div style="padding: 10px; border-bottom: 1px solid rgba(255,255,255,0.06);">
+              <input type="search" placeholder="搜索干员 / 职业 / 阵营..." style="width: 100%; box-sizing: border-box; padding: 6px 10px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.15); border-radius: 4px; color: #fff; font-size: 12px;">
+            </div>
+            <div style="flex: 1; overflow-y: auto; padding: 8px; display: flex; flex-direction: column; gap: 6px;">
+              <div style="padding: 8px; background: rgba(52,211,153,0.15); border: 1px solid #34d399; border-radius: 4px; display: flex; align-items: center; gap: 10px; cursor: pointer;">
+                <img src="https://placehold.co/40x40/1e293b/34d399?text=Siege" style="width: 40px; height: 40px; border-radius: 3px;">
+                <div>
+                  <div style="display: flex; align-items: center; gap: 6px;">
+                    <b style="color: #fff; font-size: 13px;">推进之王</b>
+                    <span style="font-size: 9px; background: #34d399; color: #064e3b; padding: 0 4px; border-radius: 2px;">已持有</span>
+                  </div>
+                  <span style="font-size: 11px; color: #9ca3af;">先锋 · 维多利亚</span>
+                </div>
+              </div>
+
+              <div style="padding: 8px; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.08); border-radius: 4px; display: flex; align-items: center; gap: 10px; cursor: pointer;">
+                <img src="https://placehold.co/40x40/1e293b/f59e0b?text=Kalts" style="width: 40px; height: 40px; border-radius: 3px;">
+                <div>
+                  <div style="display: flex; align-items: center; gap: 6px;">
+                    <b style="color: #fff; font-size: 13px;">凯尔希</b>
+                    <span style="font-size: 9px; background: #34d399; color: #064e3b; padding: 0 4px; border-radius: 2px;">已持有</span>
+                  </div>
+                  <span style="font-size: 11px; color: #9ca3af;">医疗 · 罗德岛</span>
+                </div>
+              </div>
+
+              <div style="padding: 8px; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.08); border-radius: 4px; display: flex; align-items: center; gap: 10px; cursor: pointer;">
+                <img src="https://placehold.co/40x40/1e293b/38bdf8?text=Sharp" style="width: 40px; height: 40px; border-radius: 3px;">
+                <div>
+                  <div style="display: flex; align-items: center; gap: 6px;">
+                    <b style="color: #fff; font-size: 13px;">Sharp</b>
+                    <span style="font-size: 9px; background: #38bdf8; color: #082f49; padding: 0 4px; border-radius: 2px;">原型</span>
+                  </div>
+                  <span style="font-size: 11px; color: #9ca3af;">近卫 · 协防</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 右侧：选定干员的技能、模组、皮肤三联配置区 -->
+          <div style="overflow-y: auto; padding: 16px 24px; display: flex; flex-direction: column; gap: 16px;">
+            <!-- 干员信息摘要 -->
+            <div style="display: flex; align-items: center; gap: 12px; padding-bottom: 12px; border-bottom: 1px solid rgba(255,255,255,0.08);">
+              <img src="https://placehold.co/56x56/1e293b/34d399?text=Siege" style="width: 56px; height: 56px; border-radius: 4px; border: 1px solid #34d399;">
+              <div>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <span style="font-size: 18px; font-weight: bold; color: #fff;">推进之王</span>
+                  <span style="font-size: 11px; background: #34d399; color: #064e3b; padding: 1px 6px; border-radius: 3px; font-weight: bold;">已持有 6★</span>
+                </div>
+                <div style="font-size: 12px; color: #9ca3af; margin-top: 2px;">
+                  先锋 · 冲锋手 · 阵营羁绊：<span style="color: #6ee7b7;">维多利亚同盟</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- 配置区 1：技能选择 -->
+            <div>
+              <div style="font-size: 13px; font-weight: bold; color: #34d399; margin-bottom: 6px; display: flex; align-items: center; gap: 6px;">
+                <span>1. 初始技能选择</span>
+                <span style="font-size: 11px; color: #9ca3af; font-weight: normal;">(出战时携带)</span>
+              </div>
+              <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;">
+                <div style="border: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.02); padding: 8px; border-radius: 4px; cursor: pointer;">
+                  <b style="font-size: 12px; color: #fff;">S1 冲锋号令·γ型</b>
+                  <p style="font-size: 11px; color: #9ca3af; margin: 4px 0 0;">立即获得12点部署费用</p>
+                </div>
+                <div style="border: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.02); padding: 8px; border-radius: 4px; cursor: pointer;">
+                  <b style="font-size: 12px; color: #fff;">S2 跃空锤</b>
+                  <p style="font-size: 11px; color: #9ca3af; margin: 4px 0 0;">范围群伤并获得3点部署费用</p>
+                </div>
+                <div style="border: 1px solid #34d399; background: rgba(52,211,153,0.12); padding: 8px; border-radius: 4px; cursor: pointer;">
+                  <b style="font-size: 12px; color: #6ee7b7;">S3 碎金一击 (已选)</b>
+                  <p style="font-size: 11px; color: #9ca3af; margin: 4px 0 0;">大幅提升攻击力并造成眩晕</p>
+                </div>
+              </div>
+            </div>
+
+            <!-- 配置区 2：模组选择 -->
+            <div>
+              <div style="font-size: 13px; font-weight: bold; color: #34d399; margin-bottom: 6px; display: flex; align-items: center; gap: 6px;">
+                <span>2. 专属模组选择</span>
+                <span style="font-size: 11px; color: #9ca3af; font-weight: normal;">(精锐化金卡时生效)</span>
+              </div>
+              <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px;">
+                <div style="border: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.02); padding: 8px; border-radius: 4px; cursor: pointer;">
+                  <b style="font-size: 12px; color: #fff;">不装备模组</b>
+                  <p style="font-size: 11px; color: #9ca3af; margin: 4px 0 0;">保留基础特性与属性</p>
+                </div>
+                <div style="border: 1px solid #34d399; background: rgba(52,211,153,0.12); padding: 8px; border-radius: 4px; cursor: pointer;">
+                  <b style="font-size: 12px; color: #6ee7b7;">CHG-X 维多利亚皇家徽章 (已选)</b>
+                  <p style="font-size: 11px; color: #9ca3af; margin: 4px 0 0;">击败敌人额外获得费用并强化攻击力</p>
+                </div>
+              </div>
+            </div>
+
+            <!-- 配置区 3：专属皮肤时装选择 (本次专项增设) -->
+            <div>
+              <div style="font-size: 13px; font-weight: bold; color: #34d399; margin-bottom: 6px; display: flex; align-items: center; justify-content: space-between;">
+                <div style="display: flex; align-items: center; gap: 6px;">
+                  <span>3. 干员时装 / 皮肤选择</span>
+                  <span style="font-size: 11px; color: #9ca3af; font-weight: normal;">(内置全量皮肤无缝支持局内与战后结算)</span>
+                </div>
+                <span style="font-size: 11px; color: #6ee7b7;">3 款时装可用</span>
+              </div>
+              <div class="diy-skin-grid">
+                <!-- 皮肤 1：默认 -->
+                <div class="diy-skin-card" onclick="selectSkin(this)">
+                  <img src="https://placehold.co/40x40/1e293b/9ca3af?text=Def" class="diy-skin-card__img">
+                  <div class="diy-skin-card__info">
+                    <span class="diy-skin-card__name">默认装束</span>
+                    <span class="diy-skin-card__tag">DEFAULT</span>
+                  </div>
+                </div>
+
+                <!-- 皮肤 2：致辞 (已选) -->
+                <div class="diy-skin-card is-on" onclick="selectSkin(this)">
+                  <img src="https://placehold.co/40x40/1e293b/34d399?text=Skin1" class="diy-skin-card__img">
+                  <div class="diy-skin-card__info">
+                    <span class="diy-skin-card__name">致辞</span>
+                    <span class="diy-skin-card__tag">EPOQUE / 时代</span>
+                  </div>
+                </div>
+
+                <!-- 皮肤 3：音律联觉 -->
+                <div class="diy-skin-card" onclick="selectSkin(this)">
+                  <img src="https://placehold.co/40x40/1e293b/38bdf8?text=Skin2" class="diy-skin-card__img">
+                  <div class="diy-skin-card__info">
+                    <span class="diy-skin-card__name">识之真意</span>
+                    <span class="diy-skin-card__tag">AMBASSADOR</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 底部确认栏 -->
+            <div style="margin-top: 10px; display: flex; justify-content: flex-end; gap: 10px; border-top: 1px solid rgba(255,255,255,0.08); padding-top: 12px;">
+              <button type="button" class="btn btn--ghost btn--md" onclick="closePickerModal()">取消</button>
+              <button type="button" class="btn btn--primary btn--md" onclick="closePickerModal()">✔ 保存该槽位干员配置</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function switchTab(tab) {
+      document.querySelectorAll('.lo-tab').forEach(b => b.classList.remove('is-on'));
+      document.getElementById('tab-btn-' + tab).classList.add('is-on');
+      if (tab === 'loadout') {
+        alert('切换至【干员调配】：100% 展示您原版的 112 名干员技能模组与数值列表面板。');
+      } else if (tab === 'ownership') {
+        alert('切换至【干员持有】：展示 53 名干员的持有/替补状态开关面板。');
+      }
+    }
+    function openPickerModal() {
+      document.getElementById('picker-modal').style.display = 'flex';
+    }
+    function closePickerModal() {
+      document.getElementById('picker-modal').style.display = 'none';
+    }
+    function selectSkin(el) {
+      document.querySelectorAll('.diy-skin-card').forEach(c => c.classList.remove('is-on'));
+      el.classList.add('is-on');
+    }
+  </script>
+</body>
+</html>

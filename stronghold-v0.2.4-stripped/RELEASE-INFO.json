@@ -1,0 +1,16 @@
+{
+  "format": 1,
+  "status": "local-stripped-verified",
+  "node": "local-debug",
+  "version": "0.2.4",
+  "upstreamCommit": "bc50cac01ff447eff3ab6c35f69d934bbc23b48f",
+  "customMode": "none",
+  "browserBuild": "fp100-upstream024-20261011",
+  "resourceVersion": "f3216bd82a48",
+  "resourceCount": 13889,
+  "productionActivated": false,
+  "localMerged": true,
+  "firepowerStripped": true,
+  "completedDate": "2026-10-11",
+  "prepSkinsFix": true
+}

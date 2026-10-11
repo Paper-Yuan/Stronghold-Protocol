@@ -1,0 +1,194 @@
+[
+ {
+  "name": "normal-m01",
+  "title": "常规作战 · 源石流发生装置 · R5",
+  "kind": "normal",
+  "stageId": "act2autochess_m01",
+  "duration": 55,
+  "frames": 550,
+  "maxUnits": 29,
+  "file": "normal-m01.json",
+  "bytes": 419568,
+  "result": {
+   "reason": "timeout",
+   "killed": 13,
+   "total": 32
+  }
+ },
+ {
+  "name": "normal-m02",
+  "title": "常规作战 · 沼泽控制 · R8",
+  "kind": "normal",
+  "stageId": "act2autochess_m02",
+  "duration": 85,
+  "frames": 850,
+  "maxUnits": 27,
+  "file": "normal-m02.json",
+  "bytes": 628577,
+  "result": {
+   "reason": "timeout",
+   "killed": 15,
+   "total": 35
+  }
+ },
+ {
+  "name": "normal-m03",
+  "title": "常规作战 · 排气格栅 · R11",
+  "kind": "normal",
+  "stageId": "act2autochess_m03",
+  "duration": 90,
+  "frames": 900,
+  "maxUnits": 38,
+  "file": "normal-m03.json",
+  "bytes": 831200,
+  "result": {
+   "reason": "timeout",
+   "killed": 13,
+   "total": 46
+  }
+ },
+ {
+  "name": "normal-m04",
+  "title": "常规作战 · 涨潮控制 · R6",
+  "kind": "normal",
+  "stageId": "act2autochess_m04",
+  "duration": 70,
+  "frames": 700,
+  "maxUnits": 36,
+  "file": "normal-m04.json",
+  "bytes": 623925,
+  "result": {
+   "reason": "timeout",
+   "killed": 22,
+   "total": 39
+  }
+ },
+ {
+  "name": "late-m03-r12",
+  "title": "常规作战 · 排气格栅 · R12（官方波次）",
+  "kind": "normal",
+  "stageId": "act2autochess_m03",
+  "duration": 84.23,
+  "frames": 843,
+  "maxUnits": 31,
+  "file": "late-m03-r12.json",
+  "bytes": 641750,
+  "result": {
+   "reason": "cleared",
+   "killed": 11,
+   "total": 57
+  }
+ },
+ {
+  "name": "late-m01-r13",
+  "title": "常规作战 · 源石流发生装置 · R13（官方波次）",
+  "kind": "normal",
+  "stageId": "act2autochess_m01",
+  "duration": 110,
+  "frames": 1100,
+  "maxUnits": 32,
+  "file": "late-m01-r13.json",
+  "bytes": 878821,
+  "result": {
+   "reason": "timeout",
+   "killed": 6,
+   "total": 55
+  }
+ },
+ {
+  "name": "unite-m01",
+  "title": "联防 · 源石流发生装置 · R9",
+  "kind": "unite",
+  "stageId": "act2autochess_m01",
+  "duration": 60,
+  "frames": 600,
+  "maxUnits": 37,
+  "file": "unite-m01.json",
+  "bytes": 635055,
+  "result": {
+   "reason": "timeout",
+   "killed": 18,
+   "total": 40
+  }
+ },
+ {
+  "name": "boss-m02",
+  "title": "最终攻势 · 卢西恩，“猩红血钻” · R14",
+  "kind": "boss",
+  "stageId": "act2autochess_m02",
+  "duration": 75,
+  "frames": 750,
+  "maxUnits": 25,
+  "file": "boss-m02.json",
+  "bytes": 699249,
+  "result": {
+   "reason": "forced",
+   "killed": 13,
+   "total": 18
+  }
+ },
+ {
+  "name": "normal-a1m01",
+  "title": "常规作战 · 战场#01 · R4",
+  "kind": "normal",
+  "stageId": "act1autochess_m01",
+  "duration": 55,
+  "frames": 550,
+  "maxUnits": 20,
+  "file": "normal-a1m01.json",
+  "bytes": 326193,
+  "result": {
+   "reason": "timeout",
+   "killed": 11,
+   "total": 19
+  }
+ },
+ {
+  "name": "normal-a1m02",
+  "title": "常规作战 · 战场#02 · R7",
+  "kind": "normal",
+  "stageId": "act1autochess_m02",
+  "duration": 85,
+  "frames": 850,
+  "maxUnits": 28,
+  "file": "normal-a1m02.json",
+  "bytes": 617662,
+  "result": {
+   "reason": "timeout",
+   "killed": 26,
+   "total": 43
+  }
+ },
+ {
+  "name": "normal-a1m03",
+  "title": "常规作战 · 战场#03 · R10",
+  "kind": "normal",
+  "stageId": "act1autochess_m03",
+  "duration": 90,
+  "frames": 900,
+  "maxUnits": 33,
+  "file": "normal-a1m03.json",
+  "bytes": 713331,
+  "result": {
+   "reason": "timeout",
+   "killed": 20,
+   "total": 41
+  }
+ },
+ {
+  "name": "normal-a1m04",
+  "title": "常规作战 · 战场#04 活性源石 · R6",
+  "kind": "normal",
+  "stageId": "act1autochess_m04",
+  "duration": 70,
+  "frames": 700,
+  "maxUnits": 35,
+  "file": "normal-a1m04.json",
+  "bytes": 593839,
+  "result": {
+   "reason": "timeout",
+   "killed": 17,
+   "total": 39
+  }
+ }
+]

@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex,nofollow"><title>玩家管理 · 卫戍协议</title>
+  <link rel="stylesheet" href="/admin/admin.css"><script src="/admin/admin.js" type="module"></script>
+</head>
+<body>
+  <section id="login-screen" class="login-screen">
+    <div class="login-card">
+      <div class="brand-mark" aria-hidden="true">SP</div><p class="eyebrow">STRONGHOLD · SERVER CONTROL</p>
+      <h1>玩家管理</h1><p class="muted">登录后查看实时对局与玩家，管理连接和服务器公告。</p>
+      <form id="login-form">
+        <label>管理账号<input name="username" autocomplete="username" required maxlength="32" value="admin"></label>
+        <label>管理密码<input name="password" type="password" autocomplete="current-password" required maxlength="128"></label>
+        <p id="login-error" class="form-error" role="alert"></p><button class="primary" type="submit">登录控制台 <span aria-hidden="true">↗</span></button>
+      </form>
+      <a class="back-link" href="/">返回游戏 ↗</a>
+    </div>
+  </section>
+
+  <div id="console" class="console" hidden>
+    <aside class="sidebar">
+      <a class="brand" href="/admin/"><span class="brand-mark small">SP</span><span>卫戍协议<small>PLAYER CONTROL</small></span></a>
+      <p class="nav-label">服务器管理</p>
+      <nav aria-label="管理功能">
+        <button class="nav-item active" data-tab="players"><span>◉</span>玩家与对局</button>
+        <button class="nav-item" data-tab="bans"><span>⊘</span>封禁管理 <span id="ban-count" class="nav-count">0</span></button>
+        <button class="nav-item" data-tab="announcements"><span>◇</span>服务器公告</button>
+        <button class="nav-item" data-tab="audit"><span>≡</span>操作记录</button>
+      </nav>
+      <div class="sidebar-foot"><span class="live-dot"></span> 广州 · 游戏服务器<small>每 5 秒更新，页面隐藏时暂停</small><a href="/" target="_blank" rel="noopener">打开游戏 ↗</a></div>
+    </aside>
+    <main>
+      <header class="page-header"><div><p class="eyebrow">SERVER OPERATIONS</p><h1 id="page-title">玩家与对局</h1><p class="muted">查看当前参与情况，按玩家处理异常会话。</p></div>
+        <div class="header-actions"><span id="admin-name" class="admin-name"></span><button id="password-button" class="subtle">修改密码</button><button id="logout-button" class="subtle">退出</button></div>
+      </header>
+      <div id="notice" class="notice" role="status" hidden></div>
+      <section class="stats-grid" aria-label="服务器概况">
+        <article class="stat"><span>真人在线</span><strong id="stat-online">--</strong><small>同一浏览器的多个窗口算一人</small></article>
+        <article class="stat"><span>正在对局</span><strong id="stat-playing">--</strong><small>真人席位，不含 AI 与观战者</small></article>
+        <article class="stat"><span>等待匹配</span><strong id="stat-queue">--</strong><small id="stat-matches">-- 场对局进行中</small></article>
+        <article class="stat"><span>离线留席</span><strong id="stat-offline">--</strong><small>仍在房间或对局中的断线玩家</small></article>
+      </section>
+
+      <section class="tab-panel" id="tab-players">
+        <div class="panel-heading"><div><h2>玩家列表 <span id="player-count" class="muted"></span></h2><p id="last-update" class="muted">等待服务器数据…</p></div><button id="refresh-button" class="secondary">↻ 刷新</button></div>
+        <div class="toolbar"><label class="search"><span aria-hidden="true">⌕</span><input id="search" type="search" placeholder="搜索昵称、玩家 ID、房间或 IP" aria-label="搜索玩家" maxlength="80"></label><select id="scope" aria-label="筛选玩家"><option value="playing">正在对局</option><option value="all">所有玩家</option><option value="online">连接中的玩家</option><option value="disconnected">离线留席</option><option value="matching">等待匹配</option></select></div>
+        <div class="table-wrap"><table><thead><tr><th>玩家</th><th>状态</th><th>房间 / 对局</th><th>模拟进度</th><th>连接地址</th><th class="action-cell">管理操作</th></tr></thead><tbody id="players-body"></tbody></table></div>
+        <div class="table-footer"><p>踢出将结束玩家当前参与；其他玩家继续原有对局。</p><div><button id="previous-page" class="subtle">上一页</button><span id="page-range" class="muted"></span><button id="next-page" class="subtle">下一页</button></div></div>
+      </section>
+
+      <section class="tab-panel" id="tab-bans" hidden>
+        <div class="panel-heading"><div><h2>封禁管理</h2><p class="muted">定时封禁到期后自动失效，可手动提前解除。</p></div></div>
+        <div class="table-wrap"><table><thead><tr><th>玩家</th><th>原因 / 范围</th><th>封禁时间</th><th>到期时间</th><th>操作</th></tr></thead><tbody id="bans-body"></tbody></table></div>
+        <p class="panel-note">默认封禁同一浏览器与会话。游戏没有实名账号：清除浏览器数据或换设备可能绕过客户端封禁；附加 IP 封禁会影响同一出口下的其他玩家。</p>
+      </section>
+
+      <section class="tab-panel" id="tab-announcements" hidden>
+        <div class="announcement-layout"><form id="announcement-form" class="form-panel">
+          <p class="eyebrow">BROADCAST</p><h2>发布服务器公告</h2><p class="muted">公告会出现在所有连接玩家的游戏页面，包含正在进行的对局。</p>
+          <label>公告正文<textarea name="text" rows="5" maxlength="500" placeholder="例如：服务器将在今晚 23:00 维护，请提前结束对局。" required></textarea></label>
+          <div class="form-row"><label>等级<select name="level"><option value="info">普通通知</option><option value="warning" selected>提醒</option><option value="urgent">紧急</option></select></label><label>显示时长<select name="durationSeconds"><option value="300">5 分钟</option><option value="900" selected>15 分钟</option><option value="3600">1 小时</option><option value="86400">24 小时</option></select></label></div>
+          <p class="panel-note">同时存在多条公告时按等级优先、同等级按发布时间先后展示。</p><button class="primary" type="submit">发布公告 ↗</button>
+        </form><div class="announcement-list"><h2>当前与排期</h2><div id="announcements-list"></div></div></div>
+      </section>
+
+      <section class="tab-panel" id="tab-audit" hidden><div class="panel-heading"><div><h2>操作记录</h2><p class="muted">显示最近 50 条，服务器保留最近 1000 条管理记录。</p></div></div><div class="table-wrap"><table><thead><tr><th>时间</th><th>操作</th><th>对象</th><th>记录</th><th>管理员</th></tr></thead><tbody id="audit-body"></tbody></table></div></section>
+    </main>
+  </div>
+
+  <dialog id="action-dialog"><form id="action-form">
+    <p class="eyebrow">PLAYER MANAGEMENT</p><h2 id="action-title"></h2><p id="action-description" class="muted"></p>
+    <label id="reason-label">操作原因<input name="reason" maxlength="200" placeholder="填写便于后续查看的原因"></label>
+    <div id="ban-options" hidden><label>封禁时长<select name="durationSeconds"><option value="3600">1 小时</option><option value="86400" selected>24 小时</option><option value="604800">7 天</option><option value="0">永久，直到手动解除</option></select></label><label class="checkbox-label"><input name="includeIp" type="checkbox">同时封禁该公网 IP</label><p class="panel-note">同一网络可能有多名玩家，此选项会同时影响他们。</p></div>
+    <p class="form-error" role="alert"></p><div class="dialog-actions"><button class="secondary" type="button" data-close="action-dialog">取消</button><button id="action-submit" class="danger" type="submit">确认</button></div>
+  </form></dialog>
+  <dialog id="password-dialog"><form id="password-form"><p class="eyebrow">ACCOUNT SECURITY</p><h2>修改管理密码</h2><label>当前密码<input name="currentPassword" type="password" autocomplete="current-password" required maxlength="128"></label><label>新密码<input name="newPassword" type="password" autocomplete="new-password" required minlength="12" maxlength="128"></label><label>再次输入新密码<input name="confirmPassword" type="password" autocomplete="new-password" required minlength="12" maxlength="128"></label><p class="muted">修改后所有管理会话退出，需要使用新密码登录。</p><p class="form-error" role="alert"></p><div class="dialog-actions"><button class="secondary" type="button" data-close="password-dialog">取消</button><button class="primary" type="submit">修改并退出</button></div></form></dialog>
+</body></html>

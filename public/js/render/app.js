@@ -126,7 +126,7 @@ import { layoutPen, penSignature } from './pen.js';
 import { IDENTITY, bossPrepField, tilesToDisp, leaderStand } from './prepfield.js';
 import { pickOnTile, pickBattle, hitRectAt, hitTiles } from './pick.js';
 import { promotionsOf } from './promote.js';
-import { skinFor } from '../ui/skins.js';
+import { skinFor, skinsStore } from '../ui/skins.js';
 
 const VENDOR = { pixi: '/vendor/pixi.min.js', spine: '/vendor/pixi-spine.js' };
 const PIECE_DIRS = new Set(['UP', 'RIGHT', 'DOWN', 'LEFT']);
@@ -938,10 +938,11 @@ export async function createFieldView(host, options = {}) {
     }
     const rec = data.chess(piece.id);
     const baseId = rec?.baseId || piece.id;
+    const charId = rec?.charId;
     return {
       kind: 'op', side: 'ally', defId: piece.id,
       spine: rec?.assets?.spine || rec?.charId || null, avatar: rec?.assets?.avatar || rec?.charId || null,
-      skin: piece.skin ?? skinFor(baseId) ?? skinFor(piece.id) ?? null,
+      skin: piece.skin ?? skinFor(baseId) ?? (charId ? skinFor(charId) : null) ?? skinFor(piece.id) ?? null,
       tier: rec?.tier || piece.tier || 1, golden: !!(piece.golden || rec?.isGolden), dir,
     };
   }
@@ -1952,6 +1953,10 @@ export async function createFieldView(host, options = {}) {
     leader?.view.retryAssets?.();
   }
   const offAssets = typeof assets.onChange === 'function' ? assets.onChange(onAssets) : null;
+  const offSkins = typeof skinsStore?.subscribe === 'function' ? skinsStore.subscribe(() => {
+    if (destroyed) return;
+    if (mode === 'prep' && lastPrep) setPrep(lastPrep.ps, lastPrep.o);
+  }) : null;
   const onVisible = () => {
     if (destroyed || globalThis.document?.visibilityState !== 'visible') return;
     if (assets.loaded === false && typeof assets.ready === 'function') assets.ready();
@@ -2088,6 +2093,7 @@ export async function createFieldView(host, options = {}) {
       destroyed = true;
       try { ro?.disconnect(); } catch { /* ignore */ }
       try { offAssets?.(); } catch { /* ignore */ }
+      try { offSkins?.(); } catch { /* ignore */ }
       globalThis.document?.removeEventListener?.('visibilitychange', onVisible);
       canvas.removeEventListener('pointerdown', onPointerDown);
       canvas.removeEventListener('pointermove', onPointerMove);

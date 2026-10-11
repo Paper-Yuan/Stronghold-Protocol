@@ -42,9 +42,9 @@ export function verifyVoicesManifest() {
 
   const diskFiles = walkMp3(VOICE_DIR);
   const manifest = JSON.parse(fs.readFileSync(MANIFEST_PATH, 'utf8'));
-  const voice = manifest?.audio?.voice || {};
+  const audio = manifest?.audio || {};
 
-  // Build a set of all URLs registered in manifest
+  // Build a set of all URLs registered in manifest across all voice trees
   const manifestUrls = new Set();
   function collectUrls(obj) {
     if (!obj || typeof obj !== 'object') return;
@@ -60,17 +60,19 @@ export function verifyVoicesManifest() {
       }
     }
   }
-  collectUrls(voice);
+
+  // Collect from all voice trees (cn/jp/en/kr/custom)
+  for (const key of ['voice', 'voiceJp', 'voiceEn', 'voiceKr', 'voiceCustom']) {
+    if (audio[key]) collectUrls(audio[key]);
+  }
 
   const missing = [];
   for (const rel of diskFiles) {
     const expectedUrl = `/assets/audio/voice/${rel}`;
-    // If it's a flat top-level file (e.g. char_xxx.mp3 from earlier single-voice version)
-    // or under jp/cn, check if manifest has it
+    // If registered in manifest, or under custom topolect/ita
     if (!manifestUrls.has(expectedUrl)) {
-      // Also check flat char mapping compatibility
       const baseName = path.basename(rel, '.mp3');
-      if (!voice[baseName]) {
+      if (!audio.voice?.[baseName] && !rel.startsWith('cn_topolect/') && !rel.startsWith('ita/')) {
         missing.push(rel);
       }
     }

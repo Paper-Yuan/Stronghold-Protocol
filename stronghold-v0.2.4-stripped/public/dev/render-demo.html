@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="color-scheme" content="dark" />
+  <title>Render demo · 卫戍协议：盟约</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' fill='%230c0f0e'/%3E%3Cpath fill='%234ed8af' d='M5 3h3v2h2V3h4v2h2V3h3v5l-2 2v7l2 2v2H5v-2l2-2v-7L5 8z'/%3E%3C/svg%3E" />
+  <link rel="stylesheet" href="/fonts/fonts.css" />
+  <link rel="stylesheet" href="/css/theme.css" />
+  <script type="importmap">
+    { "imports": { "preact": "/vendor/preact.module.js", "preact/hooks": "/vendor/hooks.module.js", "htm": "/vendor/htm.module.js" } }
+  </script>
+  <!-- PixiJS 7 + pixi-spine as classic scripts (global PIXI / PIXI.spine), like the game page -->
+  <script src="/vendor/pixi.min.js"></script>
+  <script src="/vendor/pixi-spine.js"></script>
+  <style>
+    html, body { margin: 0; height: 100%; background: #0a0e0d; overflow: hidden; }
+    #field { position: fixed; inset: 0; }
+    .rd-panel {
+      position: fixed; right: 12px; bottom: 12px; z-index: 5; display: flex; flex-direction: column; gap: 8px;
+      padding: 10px 12px; min-width: 320px; background: rgba(12, 16, 15, .86); border: 1px solid #2f3a35;
+      color: #c3cbc7; font: 13px/1.35 "Noto Sans SC", system-ui, sans-serif; backdrop-filter: blur(6px);
+    }
+    .rd-panel.is-hidden { display: none; }
+    .rd-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .rd-panel select, .rd-panel button {
+      background: #1e2421; color: #f2f2f2; border: 1px solid #3e4b45; padding: 4px 8px; font: inherit; cursor: pointer;
+    }
+    .rd-panel button.is-on { border-color: #4ed8af; color: #4ed8af; }
+    .rd-panel input[type=range] { flex: 1; accent-color: #4ed8af; }
+    .rd-title { font-weight: 700; color: #f2f2f2; }
+    .rd-micro { font: 11px/1 Bender, Oxanium, monospace; letter-spacing: .08em; color: #4ed8af; text-transform: uppercase; }
+    .rd-stats { font: 12px/1.4 Bender, Oxanium, ui-monospace, monospace; color: #8a948f; white-space: pre; }
+    .rd-log { position: fixed; left: 12px; bottom: 12px; z-index: 5; max-width: 42vw; font: 12px/1.4 ui-monospace, monospace; color: #8a948f; pointer-events: none; white-space: pre-wrap; }
+  </style>
+</head>
+<body>
+  <div id="field"></div>
+  <div class="rd-panel" id="panel">
+    <div class="rd-row"><span class="rd-micro">RENDER DEMO</span><span class="rd-title" id="title">—</span></div>
+    <div class="rd-row">
+      <select id="scene" aria-label="scene"></select>
+      <select id="stage" aria-label="stage"></select>
+      <button id="play" type="button">❚❚</button>
+      <select id="speed" aria-label="speed">
+        <option value="0.25">0.25×</option><option value="0.5">0.5×</option><option value="1" selected>1×</option><option value="2">2×</option><option value="4">4×</option>
+      </select>
+      <button id="editable" type="button" class="is-on">编辑</button>
+    </div>
+    <div class="rd-row">
+      <span class="rd-micro">BOARD</span>
+      <button id="board3d" type="button" class="is-on" title="official 3D board (three.js) / 2D atlas board">3D</button>
+      <select id="cam" aria-label="camera">
+        <option value="">scene camera</option>
+        <option value="prep">prep · shop</option><option value="prep-noshop">prep · shop collapsed</option>
+        <option value="normal">battle</option><option value="unite">联防 全景</option><option value="boss">最终攻势 全景</option>
+        <option value="boss-L">最终攻势 左</option><option value="boss-R">最终攻势 右</option><option value="pen">enemy pen</option>
+        <option value="fa-L">最终攻势 整备 左</option><option value="fa-R">最终攻势 整备 右</option>
+      </select>
+    </div>
+    <div class="rd-row"><input id="scrub" type="range" min="0" max="1000" value="0" aria-label="scrub" /><span id="time" class="rd-stats">0.0 s</span></div>
+    <div class="rd-stats" id="stats"></div>
+  </div>
+  <div class="rd-log" id="log"></div>
+  <script type="module" src="/dev/render-demo.js"></script>
+</body>
+</html>

@@ -1,0 +1,108 @@
+/* ==========================================================================================
+   guide.css — 玩法说明 viewer (js/ui/guide.js): the 19 official tutorial pages at 16:9, chapter tabs,
+   ‹ › edge buttons, page dots. Sits above modals (it can be opened from the settings dialog).
+   ========================================================================================== */
+
+.guide {
+  position: fixed; inset: 0; z-index: calc(var(--z-modal) + 4);
+  display: grid; place-items: center;
+  background: radial-gradient(ellipse at 50% 40%, rgba(8, 14, 12, .82), rgba(2, 4, 3, .94));
+  -webkit-backdrop-filter: blur(3px); backdrop-filter: blur(3px);
+  animation: guide-fade 180ms var(--ease-out);
+}
+@keyframes guide-fade { from { opacity: 0; } }
+
+.guide__box {
+  --bk-c: var(--mint-500);
+  position: relative; display: flex; flex-direction: column; gap: .12rem;
+  padding: .16rem .22rem .16rem;
+  background: linear-gradient(180deg, rgba(22, 28, 26, .98), rgba(10, 13, 12, .98));
+  border: 1px solid var(--line-2);
+  box-shadow: 0 .2rem .6rem rgba(0, 0, 0, .7), 0 0 0 1px rgba(78, 216, 175, .06) inset;
+  outline: none;
+  animation: guide-pop 220ms var(--ease-out);
+}
+@keyframes guide-pop { from { opacity: 0; transform: translateY(.12rem) scale(.985); } }
+
+/* header: title | chapter tabs | close */
+.guide__head { display: flex; align-items: center; gap: .3rem; min-height: .62rem; }
+.guide__titles { display: flex; flex-direction: column; gap: .02rem; min-width: 2.4rem; }
+.guide__title { margin: 0; font-size: calc(.3 * var(--t)); font-weight: 900; letter-spacing: .12em; color: var(--text-hi); line-height: 1.1; }
+.guide__chapters { display: flex; gap: .06rem; margin: 0 auto; }
+.guide__chapter {
+  position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: .01rem;
+  min-width: 1.5rem; height: .56rem; padding: 0 .22rem;
+  background: rgba(255, 255, 255, .03); border: 1px solid var(--line); color: var(--text-lo);
+  clip-path: polygon(.12rem 0, 100% 0, calc(100% - .12rem) 100%, 0 100%);
+  transition: color var(--t-fast), background var(--t-fast), border-color var(--t-fast);
+}
+.guide__chapter:hover { color: var(--text-hi); background: rgba(78, 216, 175, .06); }
+.guide__chapter.is-on { color: var(--text-on-mint); background: var(--mint-500); border-color: var(--mint-500); }
+.guide__chname { font-size: calc(.19 * var(--t)); font-weight: 700; letter-spacing: .1em; }
+.guide__chmicro { font-family: var(--font-display); font-size: calc(.1 * var(--t)); letter-spacing: .24em; opacity: .75; }
+.guide__close {
+  width: .56rem; height: .56rem; display: grid; place-items: center; flex: none;
+  background: rgba(0, 0, 0, .35); border: 1px solid var(--line-2); color: var(--text-md);
+  transition: color var(--t-fast), border-color var(--t-fast), background var(--t-fast);
+}
+.guide__close .icon { width: .3rem; height: .3rem; }
+.guide__close:hover { color: var(--text-hi); border-color: var(--red-premium); background: var(--red-a20); }
+
+/* page stage (16:9) with edge buttons */
+.guide__stage { position: relative; }
+.guide__page {
+  position: relative; overflow: hidden;
+  width: min(calc(96vw - .5rem), calc((100vh - 2.3rem) * 16 / 9));
+  aspect-ratio: 16 / 9;
+  background: #050807 repeating-linear-gradient(135deg, rgba(78, 216, 175, .04) 0 .02rem, transparent .02rem .14rem);
+  border: 1px solid var(--line);
+}
+/* the pages are stored squashed to 1024²: stretch back to 16:9 */
+.guide__page img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: fill; user-select: none; opacity: 0; transition: opacity 160ms ease; }
+.guide__page.is-loaded img { opacity: 1; }
+.guide__loading { position: absolute; inset: 0; display: grid; place-items: center; }
+.guide__nav {
+  position: absolute; top: 0; bottom: 0; z-index: 2; width: 1rem; display: grid; place-items: center;
+  color: rgba(242, 242, 242, .7); background: transparent; border: 0;
+  transition: color var(--t-fast), background var(--t-fast);
+}
+.guide__nav .icon { width: .52rem; height: .52rem; filter: drop-shadow(0 0 .06rem rgba(0, 0, 0, .9)); }
+.guide__prev { left: 0; background: linear-gradient(90deg, rgba(0, 0, 0, .38), transparent); }
+.guide__next { right: 0; background: linear-gradient(270deg, rgba(0, 0, 0, .38), transparent); }
+.guide__nav:hover { color: var(--mint-400); }
+.guide__prev:hover { background: linear-gradient(90deg, rgba(0, 0, 0, .6), transparent); }
+.guide__next:hover { background: linear-gradient(270deg, rgba(0, 0, 0, .6), transparent); }
+
+/* footer: chapter + title | dots | count */
+.guide__foot { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: .3rem; min-height: .44rem; }
+.guide__label { display: flex; align-items: center; gap: .14rem; min-width: 0; }
+.guide__chtag {
+  flex: none; padding: .02rem .12rem; font-size: calc(.14 * var(--t)); font-weight: 700; letter-spacing: .1em;
+  color: var(--mint-400); border: 1px solid var(--mint-800); background: var(--mint-a10);
+}
+.guide__ptitle { font-size: calc(.22 * var(--t)); font-weight: 700; letter-spacing: .06em; color: var(--text-hi); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.guide__dots { display: flex; align-items: center; gap: .05rem; }
+.guide__dot {
+  width: .2rem; height: .08rem; padding: 0; border: 0; background: var(--line-2);
+  transition: background var(--t-fast), width var(--t-fast);
+}
+.guide__dot.is-first { margin-left: .14rem; }
+.guide__dot:hover { background: var(--line-3); }
+.guide__dot.is-on { width: .42rem; background: var(--mint-500); box-shadow: 0 0 .08rem rgba(23, 249, 183, .5); }
+.guide__count { justify-self: end; font-size: calc(.24 * var(--t)); color: var(--text-md); letter-spacing: .06em; }
+
+/* text fallback: the official tips when no tutorial page can be shown (none listed, or none of a page's copies loads) */
+.guide__stage--text { width: min(92vw, 10rem); max-height: calc(100vh - 2rem); overflow: auto; padding: .1rem .06rem; }
+.guide__tips ol { margin: .14rem 0 0; padding-left: .34rem; display: flex; flex-direction: column; gap: .08rem; }
+.guide__tips li { font-size: calc(.18 * var(--t)); line-height: 1.6; color: var(--text-md); }
+.guide__tips li::marker { color: var(--mint-500); font-family: var(--font-num); }
+
+/* standard trigger */
+.guide-btn .btn__icon { color: var(--mint-500); }
+
+@media (max-height: 560px) {
+  .guide__box { padding: .08rem .12rem; gap: .06rem; }
+  .guide__head { min-height: .5rem; }
+  .guide__titles { display: none; }
+  .guide__page { width: min(calc(96vw - .3rem), calc((100vh - 1.5rem) * 16 / 9)); }
+}

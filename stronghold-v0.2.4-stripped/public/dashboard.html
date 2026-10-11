@@ -1,0 +1,737 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>卫戍协议：盟约 · 战术中继与大厅全局监控</title>
+  <link rel="stylesheet" href="/fonts/fonts.css" />
+  <link rel="stylesheet" href="/css/theme.css" />
+  <link rel="stylesheet" href="/css/components.css" />
+  <style>
+    /* 明确允许全局纵向自然平滑滚动，覆盖主工程 theme.css 中的 body { overflow: hidden; height: 100% } */
+    html, body {
+      height: auto !important;
+      min-height: 100vh !important;
+      overflow-x: hidden !important;
+      overflow-y: auto !important;
+      -webkit-overflow-scrolling: touch !important;
+      touch-action: pan-y !important;
+    }
+    body {
+      background-color: var(--bg-0);
+      background-image:
+        radial-gradient(circle at 50% 0%, rgba(78, 216, 175, 0.05), transparent 60%),
+        repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.012) 0 1px, transparent 1px 40px),
+        repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.012) 0 1px, transparent 1px 40px);
+      color: var(--text-hi);
+      font-family: var(--font-cjk);
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    /* 顶栏 Header 模块 */
+    .topbar {
+      height: 72px;
+      background: linear-gradient(180deg, rgba(20, 24, 22, 0.95), rgba(12, 15, 14, 0.95));
+      border-bottom: 1px solid var(--line);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 32px;
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      backdrop-filter: blur(12px);
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+    .brand-logo-hex {
+      width: 38px;
+      height: 38px;
+      background: var(--mint-500);
+      clip-path: polygon(25% 0, 75% 0, 100% 50%, 75% 100%, 25% 100%, 0 50%);
+      display: grid;
+      place-items: center;
+      box-shadow: 0 0 16px rgba(78, 216, 175, 0.4);
+    }
+    .brand-logo-inner {
+      width: 32px;
+      height: 32px;
+      background: var(--bg-0);
+      clip-path: polygon(25% 0, 75% 0, 100% 50%, 75% 100%, 25% 100%, 0 50%);
+      display: grid;
+      place-items: center;
+      font-family: var(--font-num);
+      font-weight: 900;
+      color: var(--mint-400);
+      font-size: 14px;
+      letter-spacing: 1px;
+    }
+    .brand-titles {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .brand-title {
+      font-size: 17px;
+      font-weight: 900;
+      letter-spacing: 0.1em;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .brand-sub {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      letter-spacing: 0.18em;
+      color: var(--mint-500);
+      text-transform: uppercase;
+    }
+
+    .topbar-right {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+    }
+    .live-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 4px 12px;
+      background: rgba(14, 28, 24, 0.85);
+      border: 1px solid rgba(78, 216, 175, 0.35);
+      border-radius: 2px;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      letter-spacing: 0.12em;
+      color: var(--mint-400);
+    }
+    .live-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--mint-400);
+      box-shadow: 0 0 10px var(--mint-glow);
+      animation: live-blink 1.8s infinite;
+    }
+    @keyframes live-blink {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.3; transform: scale(0.8); }
+    }
+
+    /* 容器主视图 */
+    .viewport {
+      max-width: 1440px;
+      width: 100%;
+      margin: 0 auto;
+      padding: 32px 32px 48px;
+      display: flex;
+      flex-direction: column;
+      gap: 28px;
+    }
+
+    /* 指标矩阵 Cards */
+    .metric-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 18px;
+    }
+    @media (max-width: 1024px) {
+      .metric-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+    @media (max-width: 600px) {
+      .metric-grid { grid-template-columns: 1fr; }
+    }
+
+    .m-card {
+      background: linear-gradient(180deg, rgba(28, 34, 31, 0.88), rgba(16, 20, 18, 0.95));
+      border: 1px solid var(--line);
+      padding: 20px 22px;
+      position: relative;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      min-height: 110px;
+    }
+    /* 战术折角与边缘标线 */
+    .m-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0;
+      width: 4px; height: 100%;
+      background: var(--line-2);
+      transition: background 0.2s;
+    }
+    .m-card.mint::before { background: var(--mint-500); box-shadow: 0 0 12px var(--mint-a35); }
+    .m-card.amber::before { background: var(--amber); box-shadow: 0 0 12px var(--amber-a20); }
+    .m-card.ice::before { background: var(--ice); box-shadow: 0 0 12px var(--ice-a20); }
+    .m-card.gold::before { background: var(--gold); box-shadow: 0 0 12px var(--gold-a20); }
+
+    .m-card__stripes {
+      position: absolute;
+      right: 0; top: 0; bottom: 0;
+      width: 70px;
+      background: repeating-linear-gradient(-45deg, rgba(255, 255, 255, 0.02) 0 4px, transparent 4px 10px);
+      pointer-events: none;
+    }
+    .m-card-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+    }
+    .m-card-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--text-md);
+      letter-spacing: 0.04em;
+    }
+    .m-card-en {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      letter-spacing: 0.14em;
+      color: var(--text-dim);
+    }
+    .m-card-value {
+      font-family: var(--font-num);
+      font-size: 42px;
+      font-weight: 900;
+      line-height: 1;
+      margin-top: 14px;
+      color: #fff;
+      font-variant-numeric: tabular-nums;
+    }
+    .m-card.mint .m-card-value { color: var(--mint-400); text-shadow: 0 0 20px rgba(78, 216, 175, 0.25); }
+    .m-card.amber .m-card-value { color: var(--amber); }
+    .m-card.ice .m-card-value { color: var(--ice); }
+    .m-card.gold .m-card-value { color: var(--gold); }
+
+    /* 双栏主力布局 */
+    .layout-split {
+      display: grid;
+      grid-template-columns: 2.2fr 1fr;
+      gap: 22px;
+    }
+    @media (max-width: 1100px) {
+      .layout-split { grid-template-columns: 1fr; }
+    }
+
+    /* 战术面板框架 */
+    .tactical-panel {
+      background: linear-gradient(180deg, rgba(22, 27, 24, 0.92), rgba(14, 18, 16, 0.96));
+      border: 1px solid var(--line);
+      position: relative;
+      padding: 24px;
+    }
+    /* 四角括号标记 */
+    .tactical-panel::after {
+      content: '';
+      position: absolute;
+      inset: -1px;
+      pointer-events: none;
+      background:
+        linear-gradient(var(--mint-500), var(--mint-500)) top left / 12px 2px no-repeat,
+        linear-gradient(var(--mint-500), var(--mint-500)) top left / 2px 12px no-repeat,
+        linear-gradient(var(--mint-500), var(--mint-500)) bottom right / 12px 2px no-repeat,
+        linear-gradient(var(--mint-500), var(--mint-500)) bottom right / 2px 12px no-repeat;
+    }
+
+    .panel-headline {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      padding-bottom: 14px;
+      margin-bottom: 18px;
+      border-bottom: 1px solid var(--line);
+    }
+    .panel-headline-left {
+      display: flex;
+      align-items: baseline;
+      gap: 12px;
+    }
+    .headline-cn {
+      font-size: 16px;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      color: #fff;
+    }
+    .headline-en {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      letter-spacing: 0.16em;
+      color: var(--mint-700);
+      text-transform: uppercase;
+    }
+
+    /* 房间表格滚动容器 (支持自适应与触摸上下平滑滑动) */
+    .tactical-table-scroll {
+      max-height: 620px;
+      overflow-y: auto;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      touch-action: pan-y;
+      padding-right: 4px;
+    }
+    .tactical-table-scroll::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    .tactical-table-scroll::-webkit-scrollbar-track {
+      background: rgba(0, 0, 0, 0.25);
+      border-radius: 2px;
+    }
+    .tactical-table-scroll::-webkit-scrollbar-thumb {
+      background: var(--line-2);
+      border-radius: 2px;
+      border: 1px solid rgba(78, 216, 175, 0.15);
+    }
+    .tactical-table-scroll::-webkit-scrollbar-thumb:hover {
+      background: var(--mint-700);
+      box-shadow: 0 0 6px var(--mint-a35);
+    }
+
+    /* 战术表格 */
+    .tactical-table {
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 0 6px;
+      font-size: 13px;
+    }
+    .tactical-table thead {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      background: rgba(18, 22, 20, 0.98);
+      backdrop-filter: blur(8px);
+    }
+    .tactical-table th {
+      text-align: left;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      letter-spacing: 0.1em;
+      color: var(--text-dim);
+      padding: 10px 14px 10px;
+      font-weight: 600;
+      border-bottom: 1px solid var(--line);
+    }
+    .tactical-table tr.row-item {
+      background: rgba(255, 255, 255, 0.02);
+      transition: background 0.15s, border-color 0.15s;
+    }
+    .tactical-table tr.row-item:hover {
+      background: rgba(78, 216, 175, 0.05);
+    }
+    .tactical-table td {
+      padding: 12px 14px;
+      border-top: 1px solid rgba(255, 255, 255, 0.03);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+      vertical-align: middle;
+    }
+    .tactical-table td:first-child {
+      border-left: 2px solid transparent;
+      padding-left: 14px;
+    }
+    .tactical-table tr.row-item.is-combat td:first-child {
+      border-left-color: var(--mint-500);
+    }
+    .tactical-table tr.row-item.is-lobby td:first-child {
+      border-left-color: var(--amber);
+    }
+
+    .key-badge {
+      font-family: var(--font-mono);
+      font-size: 15px;
+      font-weight: 800;
+      letter-spacing: 0.12em;
+      color: var(--mint-400);
+      background: rgba(78, 216, 175, 0.1);
+      border: 1px solid rgba(78, 216, 175, 0.25);
+      padding: 3px 8px;
+      border-radius: 2px;
+      display: inline-block;
+    }
+    .doctor-name {
+      font-weight: 700;
+      color: var(--text-hi);
+      letter-spacing: 0.02em;
+    }
+
+    /* 难度色块 */
+    .diff-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      font-weight: 700;
+      padding: 2px 7px;
+      border-radius: 2px;
+    }
+    .diff-ABYSS { color: #ff334b; background: rgba(255, 0, 36, 0.12); border: 1px solid rgba(255, 0, 36, 0.35); }
+    .diff-HARD { color: #ff7a33; background: rgba(231, 49, 24, 0.12); border: 1px solid rgba(231, 49, 24, 0.35); }
+    .diff-NORMAL { color: #f6a329; background: rgba(246, 163, 41, 0.12); border: 1px solid rgba(246, 163, 41, 0.35); }
+    .diff-FUNNY { color: #4ed8af; background: rgba(78, 216, 175, 0.12); border: 1px solid rgba(78, 216, 175, 0.35); }
+
+    /* 席位槽位指示器 */
+    .seats-meter {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .seat-box {
+      width: 14px;
+      height: 10px;
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 1px;
+    }
+    .seat-box.filled {
+      background: var(--mint-500);
+      border-color: var(--mint-400);
+      box-shadow: 0 0 6px var(--mint-a35);
+    }
+
+    /* 状态指示徽章 */
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 3px 9px;
+      border-radius: 2px;
+      letter-spacing: 0.04em;
+    }
+    .status-pill.combat {
+      background: rgba(78, 216, 175, 0.15);
+      border: 1px solid var(--mint-600);
+      color: var(--mint-400);
+    }
+    .status-pill.recruit {
+      background: rgba(246, 163, 41, 0.15);
+      border: 1px solid var(--amber);
+      color: var(--amber);
+    }
+
+    /* 架构状态边栏 */
+    .node-stack {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+    .node-item {
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid var(--line);
+      padding: 16px;
+      position: relative;
+    }
+    .node-item.is-active {
+      border-color: var(--line-2);
+      background: linear-gradient(90deg, rgba(78, 216, 175, 0.06), transparent 70%);
+    }
+    .node-item::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; bottom: 0; width: 3px;
+      background: var(--line-2);
+    }
+    .node-item.active-blue::before { background: var(--mint-500); box-shadow: 0 0 8px var(--mint-glow); }
+    .node-item.active-green::before { background: var(--amber); }
+    .node-item.active-gw::before { background: var(--ice); }
+
+    .node-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+    .node-name {
+      font-size: 13px;
+      font-weight: 800;
+      color: #fff;
+    }
+    .node-tag {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      letter-spacing: 0.1em;
+      padding: 1px 6px;
+      border-radius: 2px;
+    }
+    .node-tag.live { background: var(--mint-900); color: var(--mint-400); border: 1px solid var(--mint-700); }
+    .node-tag.standby { background: rgba(246, 163, 41, 0.15); color: var(--amber); border: 1px solid var(--amber); }
+    .node-tag.proxy { background: var(--ice-900); color: var(--ice); border: 1px solid rgba(159, 212, 255, 0.4); }
+
+    .node-detail {
+      font-size: 12px;
+      color: var(--text-lo);
+      line-height: 1.5;
+    }
+
+    /* 底栏 */
+    .foot {
+      text-align: center;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      letter-spacing: 0.16em;
+      color: var(--text-dim);
+      padding: 24px;
+      border-top: 1px solid var(--line);
+      margin-top: auto;
+    }
+  </style>
+</head>
+<body>
+
+  <header class="topbar">
+    <div class="brand">
+      <div class="brand-logo-hex">
+        <div class="brand-logo-inner">SP</div>
+      </div>
+      <div class="brand-titles">
+        <div class="brand-title">
+          卫戍协议：盟约 · 战术中继监控台
+        </div>
+        <div class="brand-sub">STRONGHOLD PROTOCOL // TACTICAL RELAY & TELEMETRY HUB</div>
+      </div>
+    </div>
+    <div class="topbar-right">
+      <div class="live-chip">
+        <span class="live-dot"></span>
+        <span id="conn-state">WEBSOCKET ONLINE</span>
+      </div>
+      <div style="font-family: var(--font-mono); font-size: 12px; color: var(--text-lo); letter-spacing: 0.08em;">
+        HEARTBEAT: <span id="heartbeat-clock" style="color: #fff; font-weight: 700;">--:--:--</span>
+      </div>
+    </div>
+  </header>
+
+  <main class="viewport">
+    <!-- 顶栏 4 联战术卡片 -->
+    <section class="metric-grid">
+      <div class="m-card mint">
+        <div class="m-card__stripes"></div>
+        <div class="m-card-head">
+          <span class="m-card-title">在线博士总数</span>
+          <span class="m-card-en">TOTAL DOCTORS</span>
+        </div>
+        <div class="m-card-value" id="val-online">--</div>
+      </div>
+
+      <div class="m-card amber">
+        <div class="m-card__stripes"></div>
+        <div class="m-card-head">
+          <span class="m-card-title">前线交战对局</span>
+          <span class="m-card-en">ACTIVE BATTLES</span>
+        </div>
+        <div class="m-card-value" id="val-matches">--</div>
+      </div>
+
+      <div class="m-card ice">
+        <div class="m-card__stripes"></div>
+        <div class="m-card-head">
+          <span class="m-card-title">同盟房间总数</span>
+          <span class="m-card-en">ALLIANCE ROOMS</span>
+        </div>
+        <div class="m-card-value" id="val-rooms">--</div>
+      </div>
+
+      <div class="m-card gold">
+        <div class="m-card__stripes"></div>
+        <div class="m-card-head">
+          <span class="m-card-title">当前承载端口</span>
+          <span class="m-card-en">ACTIVE PORT</span>
+        </div>
+        <div class="m-card-value" style="font-size: 28px; line-height: 42px;">:3000 (BLUE)</div>
+      </div>
+    </section>
+
+    <!-- 主展示区 -->
+    <section class="layout-split">
+      <!-- 房间列表 -->
+      <div class="tactical-panel">
+        <div class="panel-headline">
+          <div class="panel-headline-left">
+            <span class="headline-cn">活动同盟作战序列</span>
+            <span class="headline-en">TACTICAL SQUADS // REAL-TIME DEPLOYMENT</span>
+          </div>
+          <div style="font-family: var(--font-mono); font-size: 11px; color: var(--text-dim);">
+            SYNC S2C: <span id="room-count-tag" style="color: var(--mint-400); font-weight: 700;">0</span> UNITS
+          </div>
+        </div>
+
+        <div class="tactical-table-scroll">
+          <table class="tactical-table">
+            <thead>
+              <tr>
+                <th style="width: 120px;">KEY 密钥</th>
+                <th>HOST 房主代号</th>
+                <th style="width: 120px;">DIFF 难度</th>
+                <th style="width: 130px;">SEATS 席位</th>
+                <th style="width: 120px;">STATUS 状态</th>
+              </tr>
+            </thead>
+            <tbody id="rooms-list">
+              <tr>
+                <td colspan="5" style="text-align: center; color: var(--text-dim); padding: 48px;">
+                  正在通过战术中继线缆接入 WebSocket 通道...
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- 右侧架构拓扑 -->
+      <div class="tactical-panel">
+        <div class="panel-headline">
+          <div class="panel-headline-left">
+            <span class="headline-cn">集群拓扑与分流状态</span>
+            <span class="headline-en">CLUSTER MIGRATION TOPOLOGY</span>
+          </div>
+        </div>
+
+        <div class="node-stack">
+          <div class="node-item is-active active-blue">
+            <div class="node-head">
+              <span class="node-name">生产主服 (Blue) · 端口 3000</span>
+              <span class="node-tag live">ACTIVE</span>
+            </div>
+            <div class="node-detail">
+              当前对外主服务，承载全服玩家战斗。运行稳定，未发生闪断。
+            </div>
+          </div>
+
+          <div class="node-item active-green">
+            <div class="node-head">
+              <span class="node-name">热备新节点 (Green) · 端口 3002</span>
+              <span class="node-tag standby">READY</span>
+            </div>
+            <div class="node-detail">
+              蓝绿双实例备用区，已部署动态大厅广播与网络韧性增强。
+            </div>
+          </div>
+
+          <div class="node-item active-gw">
+            <div class="node-head">
+              <span class="node-name">Nginx 反代前置 · 端口 80</span>
+              <span class="node-tag proxy">PROXY</span>
+            </div>
+            <div class="node-detail">
+              零中断切换网关，支持全自动毫秒热切，长连接超时设为 3600s。
+            </div>
+          </div>
+
+          <div style="border-top: 1px solid var(--line); padding-top: 12px; margin-top: 8px;">
+            <div style="font-family: var(--font-mono); font-size: 11px; color: var(--text-dim); line-height: 1.6;">
+              <div>• 零侵入读取模式：对战局内存零读写</div>
+              <div>• 事件广播驱动：服务端 250ms 防抖主动同步</div>
+              <div>• 应急热切指令：/opt/hot-swap.sh</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="foot">
+    STRONGHOLD PROTOCOL: ALLIANCE // TACTICAL TELEMETRY SUB-SYSTEM // AUTHORIZED RESEARCH WORKSPACE
+  </footer>
+
+  <script>
+    const elOnline = document.getElementById('val-online');
+    const elMatches = document.getElementById('val-matches');
+    const elRooms = document.getElementById('val-rooms');
+    const elList = document.getElementById('rooms-list');
+    const elCountTag = document.getElementById('room-count-tag');
+    const elClock = document.getElementById('heartbeat-clock');
+    const elState = document.getElementById('conn-state');
+
+    function connect() {
+      const loc = window.location;
+      const wsUrl = `${loc.protocol === 'https:' ? 'wss' : 'ws'}://${loc.host}/ws`;
+      const ws = new WebSocket(wsUrl);
+
+      ws.onopen = () => {
+        elState.innerText = 'WEBSOCKET ONLINE';
+        elState.style.color = 'var(--mint-400)';
+        // 监控端只读探针
+        ws.send(JSON.stringify({ t: 'hello', name: '战术监控台' }));
+      };
+
+      ws.onmessage = (e) => {
+        try {
+          const msg = JSON.parse(e.data);
+          if (msg.t === 'lobby.stats') {
+            updateDashboard(msg);
+          }
+        } catch (err) {}
+      };
+
+      ws.onclose = () => {
+        elState.innerText = 'DISCONNECTED (RETRYING)';
+        elState.style.color = 'var(--amber)';
+        setTimeout(connect, 2000);
+      };
+
+      ws.onerror = () => ws.close();
+    }
+
+    function updateDashboard(data) {
+      elOnline.innerText = data.online ?? 1;
+      elMatches.innerText = data.matchesCount ?? 0;
+      elRooms.innerText = data.roomsCount ?? 0;
+      elClock.innerText = new Date().toLocaleTimeString();
+
+      const rooms = data.rooms || [];
+      elCountTag.innerText = rooms.length;
+
+      if (!rooms.length) {
+        elList.innerHTML = '<tr><td colspan="5" style="text-align: center; color: var(--text-dim); padding: 40px;">暂无公开作战房间</td></tr>';
+        return;
+      }
+
+      elList.innerHTML = rooms.map(r => {
+        const inMatch = !!r.inMatch;
+        const total = r.maxSeats || 4;
+        const humans = r.humans || 1;
+
+        // 席位计量条
+        let meters = '';
+        for (let i = 0; i < total; i++) {
+          meters += `<span class="seat-box ${i < humans ? 'filled' : ''}"></span>`;
+        }
+
+        return `
+          <tr class="row-item ${inMatch ? 'is-combat' : 'is-lobby'}">
+            <td><span class="key-badge">${r.code}</span></td>
+            <td><span class="doctor-name">${escape(r.name || '博士')}</span></td>
+            <td><span class="diff-badge diff-${r.difficulty || 'NORMAL'}">${r.difficulty || 'NORMAL'}</span></td>
+            <td>
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <div class="seats-meter">${meters}</div>
+                <span style="font-family: var(--font-mono); font-size: 11px; color: var(--text-md);">${humans}/${total}</span>
+              </div>
+            </td>
+            <td>
+              <span class="status-pill ${inMatch ? 'combat' : 'recruit'}">
+                ${inMatch ? '● 交战中' : '○ 招募中'}
+              </span>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function escape(s) {
+      return String(s).replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' })[c]);
+    }
+
+    connect();
+  </script>
+</body>
+</html>

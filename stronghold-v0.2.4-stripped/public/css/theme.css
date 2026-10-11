@@ -1,0 +1,393 @@
+/* ==========================================================================================
+   theme.css — design tokens, fonts, root scale, base reset, shared backdrops & utilities.
+   Look: research 06 §12 (near-black green-grey, mint accents, gold prices, bracket frames).
+
+   Root scale: 1rem = 100 design px at 1920×1080 and scales with min(vw/1920, vh/1080), so the
+   whole UI is authored in design pixels ÷ 100 (e.g. 24px → .24rem). The root never drops below
+   40px, which keeps it clear of CJK browsers' minimum-font-size clamping. 1px hairlines stay px.
+   ========================================================================================== */
+
+:root {
+  color-scheme: dark;
+
+  /* surfaces */
+  --bg-0: #0c0f0e;
+  --bg-1: #141816;
+  --bg-2: #1e2421;
+  --bg-3: #252c29;
+  --bg-4: #2d3632;
+  --bg-glass: rgba(16, 20, 18, .82);
+  --line: #2f3a35;
+  --line-2: #3e4b45;
+  --line-3: #58675f;
+
+  /* accents (official hex values where research marks [DATA]) */
+  --mint-500: #4ed8af;
+  --mint-400: #59f4ca;
+  --mint-600: #35d8b4;
+  --mint-glow: #17f9b7;
+  --mint-700: #2a9e7f;
+  --mint-800: #145443;
+  --mint-900: #0d2c24;
+  --mint-a10: rgba(78, 216, 175, .10);
+  --mint-a20: rgba(78, 216, 175, .20);
+  --mint-a35: rgba(78, 216, 175, .35);
+  --gold: #ffc600;
+  --gold-2: #f2bd3e;
+  --gold-a20: rgba(255, 198, 0, .2);
+  --amber: #f6a329;
+  --amber-a20: rgba(246, 163, 41, .2);
+  --orange: #e85a1a;
+  --orange-hi: #ff7a33;
+  --orange-a20: rgba(232, 90, 26, .22);
+  --red: #e73118;
+  --red-abyss: #ff0024;
+  --red-premium: #ff5454;
+  --red-a20: rgba(231, 49, 24, .22);
+  --ice: #9fd4ff;
+  --ice-a20: rgba(159, 212, 255, .2);
+  --ice-900: #14283a;
+
+  /* text */
+  --text-hi: #f2f2f2;
+  --text-md: #c3cbc7;
+  --text-lo: #8a948f;
+  --text-dim: #5d6863;
+  --text-on-mint: #06110d;
+
+  /* difficulty (shared/constants.js DIFFICULTY_COLORS) */
+  --diff-funny: #f6a329;
+  --diff-normal: #e85a1a;
+  --diff-hard: #e73118;
+  --diff-abyss: #ff0024;
+
+  /* chess tier accents (I–VI), sampled from the official tier chips (img_chess_level_1..6) */
+  --tier-1: #a8a8a8;
+  --tier-2: #f2f2f2;
+  --tier-3: #34e6b2;
+  --tier-4: #34b8d8;
+  --tier-5: #f8bf00;
+  --tier-6: #f88000;
+
+  /* shop level tag colours (shopLevelDisplayDataDict) */
+  --lv-1: #434343;
+  --lv-2: #626654;
+  --lv-3: #445760;
+  --lv-4: #615b74;
+  --lv-5: #6c5e41;
+  --lv-6: #5d341e;
+
+  /* type */
+  /* the Han / Hangul faces follow <html lang> (ui/lang.js htmlLang; the :lang() rules below): Simplified Chinese by default */
+  --cjk-faces: 'Noto Sans SC', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Source Han Sans SC', 'Noto Sans CJK SC';
+  --font-cjk: var(--cjk-faces), sans-serif;
+  --font-num: 'Bender', 'Rajdhani', 'Oxanium', var(--cjk-faces), sans-serif;
+  --font-display: 'Novecento', 'Novecento Wide', 'Oxanium', 'Rajdhani', var(--cjk-faces), sans-serif;
+  --font-mono: 'Bender', 'Oxanium', ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
+
+  /* motion */
+  --ease-out: cubic-bezier(.2, .8, .2, 1);
+  --ease-in-out: cubic-bezier(.6, 0, .3, 1);
+  --t-fast: 150ms;
+  --t-med: 200ms;
+  --t-slow: 250ms;
+
+  /* layers */
+  --z-screen: 1;
+  --z-banner: 40;
+  --z-conn: 60;
+  --z-modal: 80;
+  --z-toast: 90;
+  --z-tooltip: 95;
+  --z-rotate: 100;
+
+  /* bracket corners (see .brackets) */
+  --bk-c: var(--mint-500);
+  --bk-l: .14rem;
+  --bk-w: 2px;
+}
+
+/* Language packs (docs/I18N.md): the same characters take their own glyph forms per language — Japanese kanji,
+   Traditional Chinese, a Korean face for Hangul (each stack falls back to the Simplified Chinese faces). */
+:root:lang(ja) { --cjk-faces: 'Noto Sans JP', 'Hiragino Sans', 'Hiragino Kaku Gothic ProN', 'Yu Gothic UI', 'Yu Gothic', 'Meiryo', 'Noto Sans CJK JP', 'Noto Sans SC', 'Microsoft YaHei'; }
+:root:lang(ko) { --cjk-faces: 'Noto Sans KR', 'Apple SD Gothic Neo', 'Malgun Gothic', 'Noto Sans CJK KR', 'Noto Sans SC', 'Microsoft YaHei'; }
+:root:lang(zh-TW) { --cjk-faces: 'Noto Sans TC', 'PingFang TC', 'Microsoft JhengHei', 'Noto Sans CJK TC', 'Noto Sans SC', 'Microsoft YaHei'; }
+
+/* ---- root scale ----------------------------------------------------------------------------- */
+html {
+  font-size: clamp(40px, min(calc(100vw / 19.2), calc(100vh / 10.8)), 240px);
+  /* mobile browsers: 100vh is the height with the toolbars hidden — the small viewport (svh; Safari 15.4+, Chrome 108+,
+     Firefox 101+) is what is really visible while they show; older browsers keep the line above */
+  font-size: clamp(40px, min(calc(100vw / 19.2), calc(100svh / 10.8)), 240px);
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  height: 100%;
+  background: var(--bg-0);
+}
+
+/* ---- text root: 设置 →「文字大小」 ---------------------------------------------------------------
+   1rem above is the LAYOUT root, and five modules convert it to pixels with getComputedStyle:
+   ui/fieldHost.js hudPadding / hudBands (the prep camera's HUD clearance), ui/gameLogic/panel.js
+   panelSlots (which side the detail card docks), ui/underframe.js (the tile labels' pixel budget) and
+   ui/fallbackField.js (the DOM board) — raising it would move the board, not just the text.
+   --t is the TEXT root: it appears only in font-size declarations, so a player can enlarge the
+   interface text without touching any layout. The field itself is sized from host.clientWidth /
+   clientHeight (render/app.js), which no font-size can reach.
+   小 = 1rem reproduces the design's own sizes exactly, on every device. The other steps keep the
+   desktop gentle and lift the phone: 1rem there is clamped at 40 px by the rule above, which is what
+   made the .18rem body text 7.2 CSS px. */
+:root { --t: 1rem; }
+:root[data-text="md"] { --t: max(1rem, 64px); }
+:root[data-text="lg"] { --t: max(calc(1rem * 1.15), 76px); }
+:root[data-text="xl"] { --t: max(calc(1rem * 1.3), 88px); }
+
+*, *::before, *::after { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  background: var(--bg-0);
+  color: var(--text-hi);
+  font-family: var(--font-cjk);
+  font-size: calc(.18 * var(--t));
+  line-height: 1.5;
+  font-weight: 400;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+input, textarea, [contenteditable], .selectable { -webkit-user-select: text; user-select: text; }
+button, input, select, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; }
+img { max-width: 100%; }
+h1, h2, h3, h4, p { margin: 0; }
+:focus { outline: none; }
+:focus-visible { outline: 2px solid var(--mint-400); outline-offset: 2px; }
+
+::selection { background: var(--mint-500); color: var(--text-on-mint); }
+
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--line-2); }
+::-webkit-scrollbar-thumb:hover { background: var(--mint-700); }
+
+.sr-only {
+  position: absolute !important; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+}
+
+/* ---- typography helpers ---------------------------------------------------------------------- */
+.num { font-family: var(--font-num); font-variant-numeric: tabular-nums; letter-spacing: .02em; }
+.display { font-family: var(--font-display); text-transform: uppercase; letter-spacing: .12em; }
+.micro {
+  font-family: var(--font-display);
+  font-size: calc(.11 * var(--t));
+  line-height: 1.2;
+  letter-spacing: .18em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  white-space: nowrap;
+}
+.micro--mint { color: var(--mint-700); }
+.micro--gold { color: #9c7c16; }
+.micro--hi { color: var(--text-lo); }
+.t-mint { color: var(--mint-500); }
+.t-gold { color: var(--gold); }
+.t-amber { color: var(--amber); }
+.t-orange { color: var(--orange-hi); }
+.t-red { color: var(--red-premium); }
+.t-ice { color: var(--ice); }
+.t-lo { color: var(--text-lo); }
+.t-dim { color: var(--text-dim); }
+
+/* ---- bracket corners: 4 L-shaped corners drawn with gradients on ::after ---------------------- */
+.brackets { position: relative; }
+.brackets::after {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  pointer-events: none;
+  background:
+    linear-gradient(var(--bk-c), var(--bk-c)) top left / var(--bk-l) var(--bk-w) no-repeat,
+    linear-gradient(var(--bk-c), var(--bk-c)) top left / var(--bk-w) var(--bk-l) no-repeat,
+    linear-gradient(var(--bk-c), var(--bk-c)) top right / var(--bk-l) var(--bk-w) no-repeat,
+    linear-gradient(var(--bk-c), var(--bk-c)) top right / var(--bk-w) var(--bk-l) no-repeat,
+    linear-gradient(var(--bk-c), var(--bk-c)) bottom left / var(--bk-l) var(--bk-w) no-repeat,
+    linear-gradient(var(--bk-c), var(--bk-c)) bottom left / var(--bk-w) var(--bk-l) no-repeat,
+    linear-gradient(var(--bk-c), var(--bk-c)) bottom right / var(--bk-l) var(--bk-w) no-repeat,
+    linear-gradient(var(--bk-c), var(--bk-c)) bottom right / var(--bk-w) var(--bk-l) no-repeat;
+  transition: opacity var(--t-med) var(--ease-out);
+}
+
+/* ---- texture overlays -------------------------------------------------------------------------- */
+.fx-scan { position: relative; }
+.fx-scan::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(0deg, rgba(255, 255, 255, .028) 0 1px, transparent 1px 3px);
+  mix-blend-mode: screen;
+  z-index: 0;
+}
+
+.fx-noise {
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 .8  0 0 0 0 .9  0 0 0 0 .85  0 0 0 .55 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)' opacity='.5'/></svg>");
+}
+
+/* ---- global app backdrop (behind every screen) ------------------------------------------------- */
+.app-root {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.app-bg {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(120% 80% at 50% 110%, rgba(23, 249, 183, .10), transparent 55%),
+    radial-gradient(80% 60% at 50% 40%, rgba(40, 60, 52, .35), transparent 70%),
+    linear-gradient(180deg, #0b0e0d 0%, #0e1311 55%, #0a0d0c 100%);
+}
+.app-bg::before {
+  /* faint survey grid */
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(rgba(78, 216, 175, .045) 1px, transparent 1px) 0 0 / .8rem .8rem,
+    linear-gradient(90deg, rgba(78, 216, 175, .045) 1px, transparent 1px) 0 0 / .8rem .8rem;
+  -webkit-mask-image: radial-gradient(90% 80% at 50% 50%, #000 30%, transparent 85%);
+  mask-image: radial-gradient(90% 80% at 50% 50%, #000 30%, transparent 85%);
+}
+.app-bg::after {
+  /* grain + scanlines + vignette */
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    repeating-linear-gradient(0deg, rgba(255, 255, 255, .02) 0 1px, transparent 1px 3px),
+    radial-gradient(130% 100% at 50% 50%, transparent 55%, rgba(0, 0, 0, .65) 100%),
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='220' height='220'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 .75  0 0 0 0 .85  0 0 0 0 .8  0 0 0 .6 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)' opacity='.35'/></svg>");
+  opacity: .9;
+}
+
+/* ---- screens ------------------------------------------------------------------------------------ */
+.screen {
+  position: absolute;
+  inset: 0;
+  z-index: var(--z-screen);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: screen-in var(--t-slow) var(--ease-out) backwards;
+}
+/* Opacity only: a transform here would become the containing block of fixed overlays. */
+@keyframes screen-in { from { opacity: 0; } }
+
+.screen__scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+}
+
+/* crosshair "+" marks used as decoration */
+.cross {
+  position: absolute;
+  width: .22rem;
+  height: .22rem;
+  pointer-events: none;
+  background:
+    linear-gradient(var(--mint-700), var(--mint-700)) center / 100% 1px no-repeat,
+    linear-gradient(var(--mint-700), var(--mint-700)) center / 1px 100% no-repeat;
+  opacity: .7;
+}
+
+/* ---- boot splash (index.html, removed by main.js) ------------------------------------------- */
+.boot {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: var(--bg-0);
+  z-index: 200;
+  transition: opacity 250ms ease;
+}
+.boot.is-done { opacity: 0; pointer-events: none; }
+.boot__inner { display: grid; justify-items: center; gap: .18rem; }
+.boot__hex {
+  width: .64rem;
+  height: .64rem;
+  border: 2px solid var(--mint-500);
+  clip-path: polygon(25% 3%, 75% 3%, 100% 50%, 75% 97%, 25% 97%, 0 50%);
+  animation: boot-spin 1.4s linear infinite;
+  background: linear-gradient(135deg, transparent 45%, rgba(78, 216, 175, .35) 50%, transparent 55%);
+}
+.boot__text { font-family: var(--font-display); font-size: .13rem; letter-spacing: .4em; color: var(--mint-700); }
+.boot__err { max-width: 6rem; text-align: center; color: var(--text-lo); font-size: .16rem; }
+@keyframes boot-spin { to { transform: rotate(360deg); } }
+
+/* ---- rotate-device hint (portrait phones/tablets) ------------------------------------------- */
+.rotate-hint {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-rotate);
+  display: none;
+  place-items: center;
+  align-content: center;
+  gap: 18px;
+  padding: 24px;
+  text-align: center;
+  background: var(--bg-0);
+  color: var(--text-md);
+  font-size: 16px;
+}
+.rotate-hint__phone {
+  width: 54px;
+  height: 90px;
+  border: 3px solid var(--mint-500);
+  border-radius: 9px;
+  position: relative;
+  animation: rotate-phone 2.4s var(--ease-in-out) infinite;
+  box-shadow: 0 0 24px rgba(23, 249, 183, .25);
+}
+.rotate-hint__phone::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: 6px;
+  width: 14px;
+  height: 3px;
+  margin-left: -7px;
+  background: var(--mint-500);
+  border-radius: 2px;
+}
+.rotate-hint__title { font-size: 20px; font-weight: 700; color: var(--text-hi); }
+.rotate-hint__micro { font-family: var(--font-display); font-size: 11px; letter-spacing: .3em; color: var(--mint-700); }
+@keyframes rotate-phone {
+  0%, 20% { transform: rotate(0deg); }
+  50%, 75% { transform: rotate(-90deg); }
+  100% { transform: rotate(0deg); }
+}
+/* only on a device that can be turned (js/ui/device.js sp-rotatable: a touch screen whose screen is not landscape) —
+   a narrow desktop window or a split-view iPad keeps the game */
+@media (orientation: portrait) and (max-width: 1024px) {
+  .sp-rotatable .rotate-hint { display: grid; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 1ms !important;
+  }
+}

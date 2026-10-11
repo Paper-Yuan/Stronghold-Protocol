@@ -1,0 +1,3 @@
+UnityPy>=1.25
+lz4>=4
+Pillow>=10

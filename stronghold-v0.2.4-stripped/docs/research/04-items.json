@@ -1,0 +1,7166 @@
+{
+ "meta": {
+  "season": "act2autochess 卫戍协议：盟约 (下半 data, zh_CN Kengxxiao/ArknightsGameData)",
+  "counts": {
+   "shopEntries": 59,
+   "chessEntries": 115,
+   "equipDistinct": 56,
+   "magic": 3
+  },
+  "notes": "normal chess id *_a, golden *_b; params = flattened blackboard (duplicate keys suffixed _1). Descriptions stripped of rich-text; effectDescRaw keeps tags."
+ },
+ "rules": {
+  "itemTypes": {
+   "EQUIP": "装备: attached to an operator (max 2). 56 distinct items x (normal _a + golden _b) = 112 chess entries.",
+   "MAGIC": "法术 (Arts): dragged onto a map tile, not equipped. 3 entries (chess_item_6_0x_m), all hideInShop=true, no golden version, obtained only from strategies (bands)."
+  },
+  "maxEquipPerOperator": {
+   "value": 2,
+   "source": "PRTS 卫戍协议/帮助 \"每名干员最多可佩戴2件装备\"; arknights.wiki.gg; 变形同构体 text \"由另一件携带装备而定\""
+  },
+  "equipTargets": "Operators on the battlefield OR in hand/整备区 (下半 update ak.hypergryph.com/news/5114: \"装备可直接配置在处于整备区的干员身上\").",
+  "lockAndRemoval": "Once equipped an item is locked; it only leaves the operator when (a) the operator is promoted to elite (3->1 merge), (b) the item itself merges into golden, (c) the operator is sold -> items return to hand (overflow -> 临时手牌区). Source: PRTS/bwiki summary \"除干员晋级、道具晋级、干员出售外无法取下\"; in-game tip \"干员晋级后已配发装备会回收至整备区，需要重新配置\".",
+  "replacement": "Equipping a 3rd item onto an operator with 2 items starts a replacement: player picks one equipped item, which is DESTROYED; cancelable. Source: PRTS 帮助 \"达到上限强行佩戴会改为替换装备\", wiki.gg \"the replaced one will be destroyed\".",
+  "merge": {
+   "rule": "2 copies of the same NORMAL item (upgradeNum=2) automatically merge into 1 golden (进阶) copy (_b). upgradeNum=100 => never merges (talent note \"本装备不会合并为进阶品质\"). Golden items have upgradeNum=0.",
+   "countsEquipped": "[ASSUMED] copies in hand AND copies equipped on operators both count; the merged golden item goes to hand (the operator slot is freed), consistent with \"道具晋级\" being a removal condition.",
+   "nonMergeable": [
+    "寻呼模块",
+    "信标",
+    "拟态物质",
+    "突变细胞",
+    "人事部文档",
+    "变形同构体"
+   ]
+  },
+  "consumeOnEquip": "Items whose effect says \"装备时销毁\" are consumed instantly when dropped on an operator, never occupy a slot, and still need a valid operator target (their effect reads the target: bonds/tier/name).",
+  "shop": {
+   "itemSlotsPerShopLevel": "itemCount = 1 at every shop level (1-6) in all real modes (single/multi funny/normal/hard/abyss); training mode: 0 until level 5. (act1 season: items only from shop level 5.)",
+   "eligiblePool": "[ASSUMED] non-hidden normal (_a) EQUIP items with tier <= current shop level, mirroring the operator rule \"仅当调度中心等级≥干员所在等阶时才可能出现\". Pool size by tier: I:5 II:7 III:12 IV:12 V:9 VI:11.",
+   "tierWeights": "[ASSUMED] reuse the operator tier-odds table for the current shop level, then uniform among items of that tier (no per-item copy limit).",
+   "price": "purchasePrice of the _a entry (1-5). Golden entries all have purchasePrice=5 but never appear in the normal shop [ASSUMED]; a golden can be bought only via 整备 buff (allybuff_select_5: next bought item becomes golden).",
+   "refreshFreeze": "[ASSUMED] item slot is refreshed (1 fund) and frozen together with operator slots."
+  },
+  "hand": "Items occupy hand (手牌区) slots like operators: 10 regular (constData.maxDeckChessCnt=10) + 5 temporary (cleared when next phase starts). Source: PRTS 卫戍协议/帮助.",
+  "sell": "[ASSUMED] An UNEQUIPPED item in hand can be sold for 1 fund (normal or golden). Official sources only confirm operators sell for 1 fund; if you prefer strictness, disallow item selling.",
+  "stacking": "[ASSUMED] Effects from two different items on one operator stack: ATK%/DEF%/HP% additive with other % buffs (final = base*(1+sum%)+flat), ASPD flat additive, damage multipliers (damage_scale) multiplicative, identical status procs roll independently. Same item (normal+golden of the same name) can coexist on one operator and both apply.",
+  "magicArts": {
+   "usage": "Drag onto a map tile during 休整期(prep); resolves immediately (all 3 current Arts are instant). trapDuration=0.",
+   "limit": "wiki.gg (season 1): \"For Arts that affect the current round, up to two Arts may be placed at a time, and all Arts on the map are destroyed when the round ends.\" -> implement MAX_ACTIVE_ARTS_PER_ROUND = 2.",
+   "range": "画卷 uses range 1-1 = [(0,0),(0,1)] (placed tile + the tile in front); others 0-1 (single tile)."
+  },
+  "freeSupply": {
+   "equip_free_* (道具补给, choiceType EQUIP_FREE)": "Special-phase (机变阶段) choice: pick equipment for free. Community (Bahamut snA=12294): happens after rounds 2/8 (标准), 2/5/8 (险境), 2/8/10 (绝境+), alternating with bounties/tactics. [ASSUMED] offer 3 random eligible items (tier <= shop level + 1, capped at 6), pick 1.",
+   "artifact_paid_* (机密商店)": "Same choiceType EQUIP_FREE with desc \"无需消耗资金，获得装备补给\". [ASSUMED] offer 3 items of tier >= 4, pick 1.",
+   "allybuff_select_1 列装": "Tactical decision: you (and teammates) get 2 random tier-I equipment (pool_equip_shop_1).",
+   "allybuff_select_5 整备": "Your next purchased item becomes golden."
+  },
+  "bondInteraction": "Victoria bond counts equipped items (per equip ATK bonus, golden counts more) and every 25 layers grants a random special hammer (pool_equip_vict = {灼燃,坚固,加速,战栗}维式重锤 [ASSUMED]). band_narant (娜仁图亚) lets Sargon skills share the carrier's items of tier <= V to the 8 surrounding allies for 60 s."
+ },
+ "categories": {
+  "STAT": "属性型 Flat stat modifiers (always on while equipped)",
+  "ON_HIT": "战斗触发 On-attack / on-skill / time-window combat effects",
+  "SURVIVAL": "生存 Survival (taunt, shields, undying, revive, DR, CC-immunity)",
+  "SP": "技力 SP gain",
+  "ECONOMY": "经济 Consumed on equip, gives funds",
+  "RECRUIT": "调度 Roster manipulation (get / transform / promote operators, deploy cap)",
+  "BOND": "盟约层数 Bond-layer consumables",
+  "BOND_GRANT": "盟约赋予 Grants an extra bond",
+  "SET": "套装 Two-piece set (天马)",
+  "BOND_SIGNATURE": "VI阶盟约专属 Bond-gated signature items (bonus if carrier has bond X, extra bonus if paired with bond's base item)",
+  "MAGIC": "法术 Arts: placed on a map tile, not equipped"
+ },
+ "shopLevels": {
+  "mode_training_1": {
+   "1": {
+    "charChessCount": 3,
+    "itemCount": 0,
+    "upgradePrice": 4
+   },
+   "2": {
+    "charChessCount": 3,
+    "itemCount": 0,
+    "upgradePrice": 4
+   },
+   "3": {
+    "charChessCount": 3,
+    "itemCount": 0,
+    "upgradePrice": 6
+   },
+   "4": {
+    "charChessCount": 3,
+    "itemCount": 0,
+    "upgradePrice": 9
+   },
+   "5": {
+    "charChessCount": 3,
+    "itemCount": 1,
+    "upgradePrice": 12
+   },
+   "6": {
+    "charChessCount": 3,
+    "itemCount": 1,
+    "upgradePrice": 99
+   }
+  },
+  "mode_single_funny": {
+   "1": {
+    "charChessCount": 3,
+    "itemCount": 1,
+    "upgradePrice": 1
+   },
+   "2": {
+    "charChessCount": 4,
+    "itemCount": 1,
+    "upgradePrice": 1
+   },
+   "3": {
+    "charChessCount": 4,
+    "itemCount": 1,
+    "upgradePrice": 5
+   },
+   "4": {
+    "charChessCount": 4,
+    "itemCount": 1,
+    "upgradePrice": 8
+   },
+   "5": {
+    "charChessCount": 4,
+    "itemCount": 1,
+    "upgradePrice": 10
+   },
+   "6": {
+    "charChessCount": 5,
+    "itemCount": 1,
+    "upgradePrice": 11
+   }
+  },
+  "mode_single_normal": {
+   "1": {
+    "charChessCount": 3,
+    "itemCount": 1,
+    "upgradePrice": 5
+   },
+   "2": {
+    "charChessCount": 4,
+    "itemCount": 1,
+    "upgradePrice": 8
+   },
+   "3": {
+    "charChessCount": 4,
+    "itemCount": 1,
+    "upgradePrice": 11
+   },
+   "4": {
+    "charChessCount": 5,
+    "itemCount": 1,
+    "upgradePrice": 12
+   },
+   "5": {
+    "charChessCount": 5,
+    "itemCount": 1,
+    "upgradePrice": 13
+   },
+   "6": {
+    "charChessCount": 5,
+    "itemCount": 1,
+    "upgradePrice": 99
+   }
+  },
+  "mode_single_hard": {
+   "1": {
+    "charChessCount": 3,
+    "itemCount": 1,
+    "upgradePrice": 5
+   },
+   "2": {
+    "charChessCount": 4,
+    "itemCount": 1,
+    "upgradePrice": 8
+   },
+   "3": {
+    "charChessCount": 4,
+    "itemCount": 1,
+    "upgradePrice": 11
+   },
+   "4": {
+    "charChessCount": 5,
+    "itemCount": 1,
+    "upgradePrice": 12
+   },
+   "5": {
+    "charChessCount": 5,
+    "itemCount": 1,
+    "upgradePrice": 13
+   },
+   "6": {
+    "charChessCount": 5,
+    "itemCount": 1,
+    "upgradePrice": 99
+   }
+  },
+  "mode_single_abyss": {
+   "1": {
+    "charChessCount": 3,
+    "itemCount": 1,
+    "upgradePrice": 5
+   },
+   "2": {
+    "charChessCount": 4,
+    "itemCount": 1,
+    "upgradePrice": 8
+   },
+   "3": {
+    "charChessCount": 4,
+    "itemCount": 1,
+    "upgradePrice": 11
+   },
+   "4": {
+    "charChessCount": 5,
+    "itemCount": 1,
+    "upgradePrice": 12
+   },
+   "5": {
+    "charChessCount": 5,
+    "itemCount": 1,
+    "upgradePrice": 13
+   },
+   "6": {
+    "charChessCount": 5,
+    "itemCount": 1,
+    "upgradePrice": 99
+   }
+  },
+  "mode_multi_funny": {
+   "1": {
+    "charChessCount": 3,
+    "itemCount": 1,
+    "upgradePrice": 5
+   },
+   "2": {
+    "charChessCount": 4,
+    "itemCount": 1,
+    "upgradePrice": 8
+   },
+   "3": {
+    "charChessCount": 4,
+    "itemCount": 1,
+    "upgradePrice": 10
+   },
+   "4": {
+    "charChessCount": 4,
+    "itemCount": 1,
+    "upgradePrice": 11
+   },
+   "5": {
+    "charChessCount": 4,
+    "itemCount": 1,
+    "upgradePrice": 11
+   },
+   "6": {
+    "charChessCount": 5,
+    "itemCount": 1,
+    "upgradePrice": 99
+   }
+  },
+  "mode_multi_normal": {
+   "1": {
+    "charChessCount": 3,
+    "itemCount": 1,
+    "upgradePrice": 5
+   },
+   "2": {
+    "charChessCount": 4,
+    "itemCount": 1,
+    "upgradePrice": 8
+   },
+   "3": {
+    "charChessCount": 4,
+    "itemCount": 1,
+    "upgradePrice": 11
+   },
+   "4": {
+    "charChessCount": 5,
+    "itemCount": 1,
+    "upgradePrice": 12
+   },
+   "5": {
+    "charChessCount": 5,
+    "itemCount": 1,
+    "upgradePrice": 13
+   },
+   "6": {
+    "charChessCount": 5,
+    "itemCount": 1,
+    "upgradePrice": 99
+   }
+  },
+  "mode_multi_hard": {
+   "1": {
+    "charChessCount": 3,
+    "itemCount": 1,
+    "upgradePrice": 5
+   },
+   "2": {
+    "charChessCount": 4,
+    "itemCount": 1,
+    "upgradePrice": 8
+   },
+   "3": {
+    "charChessCount": 4,
+    "itemCount": 1,
+    "upgradePrice": 11
+   },
+   "4": {
+    "charChessCount": 5,
+    "itemCount": 1,
+    "upgradePrice": 12
+   },
+   "5": {
+    "charChessCount": 5,
+    "itemCount": 1,
+    "upgradePrice": 13
+   },
+   "6": {
+    "charChessCount": 5,
+    "itemCount": 1,
+    "upgradePrice": 99
+   }
+  },
+  "mode_multi_abyss": {
+   "1": {
+    "charChessCount": 3,
+    "itemCount": 1,
+    "upgradePrice": 5
+   },
+   "2": {
+    "charChessCount": 4,
+    "itemCount": 1,
+    "upgradePrice": 8
+   },
+   "3": {
+    "charChessCount": 4,
+    "itemCount": 1,
+    "upgradePrice": 11
+   },
+   "4": {
+    "charChessCount": 5,
+    "itemCount": 1,
+    "upgradePrice": 12
+   },
+   "5": {
+    "charChessCount": 5,
+    "itemCount": 1,
+    "upgradePrice": 13
+   },
+   "6": {
+    "charChessCount": 5,
+    "itemCount": 1,
+    "upgradePrice": 99
+   }
+  }
+ },
+ "bondGrantTable_for_变形同构体": {
+  "victoriaShip": {
+   "bondName": "维多利亚",
+   "items": [
+    "维式重锤(chess_item_1_01_e)",
+    "战栗维式重锤(chess_item_2_03_e)",
+    "坚固维式重锤(chess_item_3_09_e)",
+    "加速维式重锤(chess_item_3_10_e)",
+    "灼燃维式重锤(chess_item_4_09_e)"
+   ]
+  },
+  "steadShip": {
+   "bondName": "坚守",
+   "items": [
+    "坚守盾牌(chess_item_1_02_e)"
+   ]
+  },
+  "indomShip": {
+   "bondName": "不屈",
+   "items": [
+    "不屈弹射器(chess_item_2_01_e)"
+   ]
+  },
+  "sargonShip": {
+   "bondName": "萨尔贡",
+   "items": [
+    "萨尔贡浓茶(chess_item_2_04_e)"
+   ]
+  },
+  "siracusaShip": {
+   "bondName": "叙拉古",
+   "items": [
+    "叙拉古正装(chess_item_3_01_e)"
+   ]
+  },
+  "preciShip": {
+   "bondName": "精准",
+   "items": [
+    "精准狙击镜(chess_item_3_02_e)"
+   ]
+  },
+  "yanShip": {
+   "bondName": "炎",
+   "items": [
+    "炎国短刀(chess_item_3_04_e)"
+   ]
+  },
+  "swiftShip": {
+   "bondName": "迅捷",
+   "items": [
+    "迅捷作战粮(chess_item_3_05_e)"
+   ]
+  },
+  "egirShip": {
+   "bondName": "阿戈尔",
+   "items": [
+    "阿戈尔重刃(chess_item_3_07_e)"
+   ]
+  },
+  "arcaneShip": {
+   "bondName": "奥术",
+   "items": [
+    "奥术法阵(chess_item_3_08_e)"
+   ]
+  },
+  "raidShip": {
+   "bondName": "突袭",
+   "items": [
+    "突袭手雷(chess_item_3_11_e)"
+   ]
+  },
+  "kazimierzShip": {
+   "bondName": "卡西米尔",
+   "items": [
+    "卡西米尔竞技旗(chess_item_4_07_e)"
+   ]
+  },
+  "lateranoShip": {
+   "bondName": "拉特兰",
+   "items": [
+    "拉特兰桥夹(chess_item_4_08_e)"
+   ]
+  },
+  "kjeragShip": {
+   "bondName": "谢拉格",
+   "items": [
+    "谢拉格不融冰(chess_item_5_02_e)"
+   ]
+  }
+ },
+ "statusDefinitions": {
+  "晕眩 Stun": "cannot move, block, attack or use skills",
+  "寒冷 Cold": "ASPD -30; if Cold is applied again while Cold -> Frozen",
+  "冻结 Frozen": "cannot move, attack or use skills; (AK standard) RES -15 while frozen",
+  "战栗 Tremble": "while blocked, cannot perform normal attacks (implemented as disarm-when-blocked)",
+  "麻痹 Paralysis": "each layer cancels one enemy normal attack; max 3 layers",
+  "失去特殊能力 Silence(enemy)": "enemy loses its special abilities/talents for the duration",
+  "隐匿 Camouflage": "not targeted by enemy attacks unless blocking",
+  "护盾 Shield layer": "each layer absorbs one instance of damage completely",
+  "灼燃损伤 Burn (elemental)": "accumulates on target; (AK standard) at 1000 burst for 7000 arts damage and RES -20 for 10 s; simplify if needed",
+  "弱点伤害 Weakness damage": "deals physical or arts, whichever the target resists less",
+  "伤害减免 Flat DR": "each hit reduced by a fixed value",
+  "嘲讽 tauntLevel": "higher tauntLevel is targeted first by enemies"
+ },
+ "itemSources": [
+  {
+   "sourceType": "BAND_INITIAL",
+   "effectId": "aceffect_band_23",
+   "effectName": "猎头顾问",
+   "desc": "【猎头顾问】每次主动刷新均变为特殊刷新：必定刷新2名同名干员，并冻结其中一名；第10回合获得1个<寻呼模块>\n<寻呼模块>：装备时销毁，立即在调度中心中刷新三名与该干员盟约相同的干员，免费获得其中一名!（不超过当前调度中心等级）",
+   "buffKey": "preparation_start_gain_chess_from_round",
+   "blackboard": {
+    "round": 10.0,
+    "count": 1.0,
+    "type": "equip",
+    "chess": "chess_item_4_01_e_a"
+   },
+   "bandIds": [
+    "band_orchid"
+   ]
+  },
+  {
+   "sourceType": "BAND_INITIAL",
+   "effectId": "aceffect_band_25",
+   "effectName": "加练！",
+   "desc": "【加练！】每2个回合获得1个特殊法术<教鞭>\n<教鞭>：使用后为下场战斗添加额外敌人，若自身战斗完美作战可获得资金",
+   "buffKey": "preparation_start_gain_chess_every_n_round",
+   "blackboard": {
+    "round": 2.0,
+    "count": 1.0,
+    "type": "trap",
+    "chess": "chess_item_6_03_m"
+   },
+   "bandIds": [
+    "band_doberm"
+   ]
+  },
+  {
+   "sourceType": "BAND_INITIAL",
+   "effectId": "aceffect_band_26",
+   "effectName": "定向投放",
+   "desc": "【定向投放】每次升级调度中心时，在调度中心刷新随机3件装备，可以选择并获得其中1件",
+   "buffKey": "up_shop_add_special_goods",
+   "blackboard": {
+    "count": 3.0,
+    "choice": 1.0,
+    "pool": "pool_equip_kathe"
+   },
+   "bandIds": [
+    "band_cathy"
+   ]
+  },
+  {
+   "sourceType": "BAND_INITIAL",
+   "effectId": "aceffect_band_27",
+   "effectName": "商业包装",
+   "desc": "【商业包装】初始获得1个<商业包装方案>\n<商业包装方案>：每出售8名任意干员后，获得1名装备者的同盟约普通干员",
+   "buffKey": "preparation_start_gain_chess_from_round",
+   "blackboard": {
+    "round": 1.0,
+    "count": 1.0,
+    "type": "equip",
+    "chess": "chess_item_5_07_e_a"
+   },
+   "bandIds": [
+    "band_malkie"
+   ]
+  },
+  {
+   "sourceType": "BAND_INITIAL",
+   "effectId": "aceffect_band_40",
+   "effectName": "变形同构",
+   "desc": "【变形同构】每5回合获得1件特殊装备<变形同构体>\n<变形同构体>：与特定装备一同装备时装备者将视为特定盟约成员",
+   "buffKey": "preparation_start_gain_chess_from_round",
+   "blackboard": {
+    "round": 5.0,
+    "count": 1.0,
+    "type": "equip",
+    "chess": "chess_item_6_09_e_a"
+   },
+   "bandIds": [
+    "band_damaztic"
+   ]
+  },
+  {
+   "sourceType": "BAND_INITIAL",
+   "effectId": "aceffect_band_40",
+   "effectName": "变形同构",
+   "desc": "【变形同构】每5回合获得1件特殊装备<变形同构体>\n<变形同构体>：与特定装备一同装备时装备者将视为特定盟约成员",
+   "buffKey": "preparation_start_gain_chess_from_round",
+   "blackboard": {
+    "round": 10.0,
+    "count": 1.0,
+    "type": "equip",
+    "chess": "chess_item_6_09_e_a"
+   },
+   "bandIds": [
+    "band_damaztic"
+   ]
+  },
+  {
+   "sourceType": "BAND_INITIAL",
+   "effectId": "aceffect_band_40",
+   "effectName": "变形同构",
+   "desc": "【变形同构】每5回合获得1件特殊装备<变形同构体>\n<变形同构体>：与特定装备一同装备时装备者将视为特定盟约成员",
+   "buffKey": "preparation_start_gain_chess_from_round",
+   "blackboard": {
+    "round": 15.0,
+    "count": 1.0,
+    "type": "equip",
+    "chess": "chess_item_6_09_e_a"
+   },
+   "bandIds": [
+    "band_damaztic"
+   ]
+  },
+  {
+   "sourceType": "BAND_INITIAL",
+   "effectId": "aceffect_band_41",
+   "effectName": "不稳定要素",
+   "desc": "【不稳定要素】第3回合获得1件特殊装备<突变细胞>\n<突变细胞>：战斗结束后使装备者变为高一阶的随机干员（最高6阶）",
+   "buffKey": "preparation_start_gain_chess_from_round",
+   "blackboard": {
+    "round": 3.0,
+    "count": 1.0,
+    "type": "equip",
+    "chess": "chess_item_5_08_e_a"
+   },
+   "bandIds": [
+    "band_quintus"
+   ]
+  },
+  {
+   "sourceType": "BAND_INITIAL",
+   "effectId": "aceffect_band_45",
+   "effectName": "墨色真颜",
+   "desc": "【墨色真颜】若你的场上存在同名干员，这些干员攻击力+30%\n【幻画为真】第1回合获得1个特殊法术<画卷>\n<画卷>：使用后可以复制该法术范围内的1名干员（包括精锐状态和携带的装备）",
+   "buffKey": "preparation_start_gain_chess_from_round",
+   "blackboard": {
+    "round": 1.0,
+    "count": 1.0,
+    "type": "trap",
+    "chess": "chess_item_6_02_m"
+   },
+   "bandIds": [
+    "band_dusk"
+   ]
+  },
+  {
+   "sourceType": "BAND_INITIAL",
+   "effectId": "aceffect_band_47",
+   "effectName": "私募基金",
+   "desc": "【私募基金】在第1、4、7、10回合进入休整期时获得1个<骑士储蓄罐>\n<骑士储蓄罐>：装备时随机获得1~6资金并销毁",
+   "buffKey": "preparation_start_gain_chess_from_round",
+   "blackboard": {
+    "round": 1.0,
+    "count": 1.0,
+    "type": "equip",
+    "chess": "chess_item_3_12_e_a"
+   },
+   "bandIds": [
+    "band_justin"
+   ]
+  },
+  {
+   "sourceType": "BAND_INITIAL",
+   "effectId": "aceffect_band_47",
+   "effectName": "私募基金",
+   "desc": "【私募基金】在第1、4、7、10回合进入休整期时获得1个<骑士储蓄罐>\n<骑士储蓄罐>：装备时随机获得1~6资金并销毁",
+   "buffKey": "preparation_start_gain_chess_from_round",
+   "blackboard": {
+    "round": 4.0,
+    "count": 1.0,
+    "type": "equip",
+    "chess": "chess_item_3_12_e_a"
+   },
+   "bandIds": [
+    "band_justin"
+   ]
+  },
+  {
+   "sourceType": "BAND_INITIAL",
+   "effectId": "aceffect_band_47",
+   "effectName": "私募基金",
+   "desc": "【私募基金】在第1、4、7、10回合进入休整期时获得1个<骑士储蓄罐>\n<骑士储蓄罐>：装备时随机获得1~6资金并销毁",
+   "buffKey": "preparation_start_gain_chess_from_round",
+   "blackboard": {
+    "round": 7.0,
+    "count": 1.0,
+    "type": "equip",
+    "chess": "chess_item_3_12_e_a"
+   },
+   "bandIds": [
+    "band_justin"
+   ]
+  },
+  {
+   "sourceType": "BAND_INITIAL",
+   "effectId": "aceffect_band_47",
+   "effectName": "私募基金",
+   "desc": "【私募基金】在第1、4、7、10回合进入休整期时获得1个<骑士储蓄罐>\n<骑士储蓄罐>：装备时随机获得1~6资金并销毁",
+   "buffKey": "preparation_start_gain_chess_from_round",
+   "blackboard": {
+    "round": 10.0,
+    "count": 1.0,
+    "type": "equip",
+    "chess": "chess_item_3_12_e_a"
+   },
+   "bandIds": [
+    "band_justin"
+   ]
+  },
+  {
+   "sourceType": "BAND_INITIAL",
+   "effectId": "aceffect_band_54",
+   "effectName": "集结指示",
+   "desc": "【集结指示】在第4、7、10、13回合进入休整期时获得1个<寻呼模块>\n<寻呼模块>：装备时销毁，立即在调度中心中刷新三名与该干员盟约相同的干员，免费获得其中一名!（不超过当前调度中心等级）",
+   "buffKey": "preparation_start_gain_chess_from_round",
+   "blackboard": {
+    "round": 4.0,
+    "count": 1.0,
+    "type": "equip",
+    "chess": "chess_item_4_01_e_a"
+   },
+   "bandIds": [
+    "band_jesica"
+   ]
+  },
+  {
+   "sourceType": "BAND_INITIAL",
+   "effectId": "aceffect_band_54",
+   "effectName": "集结指示",
+   "desc": "【集结指示】在第4、7、10、13回合进入休整期时获得1个<寻呼模块>\n<寻呼模块>：装备时销毁，立即在调度中心中刷新三名与该干员盟约相同的干员，免费获得其中一名!（不超过当前调度中心等级）",
+   "buffKey": "preparation_start_gain_chess_from_round",
+   "blackboard": {
+    "round": 7.0,
+    "count": 1.0,
+    "type": "equip",
+    "chess": "chess_item_4_01_e_a"
+   },
+   "bandIds": [
+    "band_jesica"
+   ]
+  },
+  {
+   "sourceType": "BAND_INITIAL",
+   "effectId": "aceffect_band_54",
+   "effectName": "集结指示",
+   "desc": "【集结指示】在第4、7、10、13回合进入休整期时获得1个<寻呼模块>\n<寻呼模块>：装备时销毁，立即在调度中心中刷新三名与该干员盟约相同的干员，免费获得其中一名!（不超过当前调度中心等级）",
+   "buffKey": "preparation_start_gain_chess_from_round",
+   "blackboard": {
+    "round": 10.0,
+    "count": 1.0,
+    "type": "equip",
+    "chess": "chess_item_4_01_e_a"
+   },
+   "bandIds": [
+    "band_jesica"
+   ]
+  },
+  {
+   "sourceType": "BAND_INITIAL",
+   "effectId": "aceffect_band_54",
+   "effectName": "集结指示",
+   "desc": "【集结指示】在第4、7、10、13回合进入休整期时获得1个<寻呼模块>\n<寻呼模块>：装备时销毁，立即在调度中心中刷新三名与该干员盟约相同的干员，免费获得其中一名!（不超过当前调度中心等级）",
+   "buffKey": "preparation_start_gain_chess_from_round",
+   "blackboard": {
+    "round": 13.0,
+    "count": 1.0,
+    "type": "equip",
+    "chess": "chess_item_4_01_e_a"
+   },
+   "bandIds": [
+    "band_jesica"
+   ]
+  },
+  {
+   "sourceType": "BAND_INITIAL",
+   "effectId": "aceffect_band_55",
+   "effectName": "至纯凝结",
+   "desc": "【至纯凝结】在第1回合开始时获得一个进阶<博士投影>\n进阶<博士投影>：任意干员可装备，立即使该干员晋升为精锐干员",
+   "buffKey": "preparation_start_gain_chess_from_round",
+   "blackboard": {
+    "round": 1.0,
+    "count": 1.0,
+    "type": "equip",
+    "chess": "chess_item_5_06_e_b"
+   },
+   "bandIds": [
+    "band_mlyss"
+   ]
+  },
+  {
+   "sourceType": "BAND_INITIAL",
+   "effectId": "aceffect_band_57",
+   "effectName": "协力共进",
+   "desc": "【协力共进】第8、10、12、14回合时，获得1个<信标>\n<信标>：装备后销毁携带干员，并在调度中心刷新两名同等阶干员免费获取其中一名；原干员在下回合传递给对应盟约人数最多的队友",
+   "buffKey": "preparation_start_gain_chess_from_round",
+   "blackboard": {
+    "round": 8.0,
+    "count": 1.0,
+    "type": "equip",
+    "chess": "chess_item_5_04_e_a"
+   },
+   "bandIds": [
+    "band_fang"
+   ]
+  },
+  {
+   "sourceType": "BAND_INITIAL",
+   "effectId": "aceffect_band_57",
+   "effectName": "协力共进",
+   "desc": "【协力共进】第8、10、12、14回合时，获得1个<信标>\n<信标>：装备后销毁携带干员，并在调度中心刷新两名同等阶干员免费获取其中一名；原干员在下回合传递给对应盟约人数最多的队友",
+   "buffKey": "preparation_start_gain_chess_from_round",
+   "blackboard": {
+    "round": 10.0,
+    "count": 1.0,
+    "type": "equip",
+    "chess": "chess_item_5_04_e_a"
+   },
+   "bandIds": [
+    "band_fang"
+   ]
+  },
+  {
+   "sourceType": "BAND_INITIAL",
+   "effectId": "aceffect_band_57",
+   "effectName": "协力共进",
+   "desc": "【协力共进】第8、10、12、14回合时，获得1个<信标>\n<信标>：装备后销毁携带干员，并在调度中心刷新两名同等阶干员免费获取其中一名；原干员在下回合传递给对应盟约人数最多的队友",
+   "buffKey": "preparation_start_gain_chess_from_round",
+   "blackboard": {
+    "round": 12.0,
+    "count": 1.0,
+    "type": "equip",
+    "chess": "chess_item_5_04_e_a"
+   },
+   "bandIds": [
+    "band_fang"
+   ]
+  },
+  {
+   "sourceType": "BAND_INITIAL",
+   "effectId": "aceffect_band_57",
+   "effectName": "协力共进",
+   "desc": "【协力共进】第8、10、12、14回合时，获得1个<信标>\n<信标>：装备后销毁携带干员，并在调度中心刷新两名同等阶干员免费获取其中一名；原干员在下回合传递给对应盟约人数最多的队友",
+   "buffKey": "preparation_start_gain_chess_from_round",
+   "blackboard": {
+    "round": 14.0,
+    "count": 1.0,
+    "type": "equip",
+    "chess": "chess_item_5_04_e_a"
+   },
+   "bandIds": [
+    "band_fang"
+   ]
+  },
+  {
+   "sourceType": "BAND_INITIAL",
+   "effectId": "aceffect_band_60",
+   "effectName": "见者有份",
+   "desc": "【见者有份】偶数回合进入休整期时，调度中心特殊刷新两件装备，免费获取其中一件；萨尔贡盟约<在场6名不同【萨尔贡】干员>效果替换为【萨尔贡】干员技能开启后，周围八格干员同时享受该干员携带的不高于V阶的装备效果，持续60秒\n在<萨尔贡>部分干员缺席时体验可能不完整",
+   "buffKey": "preparation_start_add_special_goods_every_n_round",
+   "blackboard": {
+    "round": 2.0,
+    "count": 1.0,
+    "type": "equip",
+    "pool": "pool_equip_narant",
+    "refresh_cnt": 2.0,
+    "choice_cnt": 1.0
+   },
+   "bandIds": [
+    "band_narant"
+   ]
+  },
+  {
+   "sourceType": "BOND",
+   "effectId": "bondeffect_victoria",
+   "effectName": "维多利亚",
+   "desc": "携带装备的【维多利亚】干员伤害提升至{0:0%}（受层数影响）\n<每叠加25层>获得一件带有随机特殊效果的维式重锤\n<在场6名不同【维多利亚】干员>【维多利亚】干员每携带1件装备攻击力+50%，携带进阶装备改为+80%",
+   "buffKey": "bond_layer_added_reward_equip",
+   "blackboard": {
+    "layer": 25.0,
+    "count": 1.0,
+    "pool": "pool_equip_vict"
+   },
+   "bandIds": []
+  },
+  {
+   "sourceType": "BUFF_GAIN",
+   "effectId": "allybuff_select_1",
+   "effectName": "列装",
+   "desc": "你获得2件随机1阶装备，若存在其他队友则他们也获得",
+   "buffKey": "global_special_choice_gain_equip",
+   "blackboard": {
+    "count": 2.0,
+    "pool": "pool_equip_shop_1"
+   },
+   "bandIds": []
+  },
+  {
+   "sourceType": "GARRISON",
+   "effectId": "garrison_45_a",
+   "desc": "<进入休整期时>获得1件随机装备",
+   "buffKey": null,
+   "blackboard": {
+    "pool": "pool_equip_normal",
+    "count": 1.0,
+    "conditionkey": "character_target_inboard"
+   },
+   "operators": []
+  },
+  {
+   "sourceType": "GARRISON",
+   "effectId": "garrison_49_a",
+   "desc": "<获得时>获得1件“迅捷作战粮”",
+   "buffKey": null,
+   "blackboard": {
+    "chess": "chess_item_3_05_e_a",
+    "count": 1.0
+   },
+   "operators": [
+    "卡涅利安(char_426_billro)",
+    "蜜蜡(char_344_beewax)"
+   ]
+  },
+  {
+   "sourceType": "GARRISON",
+   "effectId": "garrison_76_a",
+   "desc": "<获得时>获得1个“变形同构体”",
+   "buffKey": null,
+   "blackboard": {
+    "chess": "chess_item_6_09_e_a",
+    "count": 1.0
+   },
+   "operators": [
+    "缪尔赛思(char_249_mlyss)"
+   ]
+  },
+  {
+   "sourceType": "GARRISON",
+   "effectId": "garrison_91_a",
+   "desc": "<获得时>随机制造1件洛洛的定制品",
+   "buffKey": null,
+   "blackboard": {
+    "pool": "pool_equip_rockr",
+    "count": 1.0
+   },
+   "operators": [
+    "洛洛(char_4040_rockr)"
+   ]
+  },
+  {
+   "sourceType": "GARRISON",
+   "effectId": "garrison_92_a",
+   "desc": "<获得时>获得1件“谢拉格不融冰”",
+   "buffKey": null,
+   "blackboard": {
+    "chess": "chess_item_5_02_e_a",
+    "count": 1.0
+   },
+   "operators": [
+    "耶拉(char_4013_kjera)"
+   ]
+  },
+  {
+   "sourceType": "GARRISON",
+   "effectId": "garrison_94_a",
+   "desc": "<进入休整期时>获得1件“盟约之币”或“萨尔贡浓茶”，有小概率发现“黄沙罗盘”",
+   "buffKey": null,
+   "blackboard": {
+    "pool": "pool_equip_pepe",
+    "count": 1.0,
+    "conditionkey": "character_target_inboard"
+   },
+   "operators": [
+    "佩佩(char_4058_pepe)"
+   ]
+  },
+  {
+   "sourceType": "GARRISON",
+   "effectId": "garrison_127_a",
+   "desc": "<进入休整期时>若当前为奇数回合，获得1件随机装备",
+   "buffKey": null,
+   "blackboard": {
+    "pool": "pool_equip_normal",
+    "round_list": "1,3,5,7,9,11,13,15",
+    "count": 1.0,
+    "conditionkey": "character_target_inboard"
+   },
+   "operators": [
+    "凯瑟琳(char_4162_cathy)"
+   ]
+  },
+  {
+   "sourceType": "GARRISON",
+   "effectId": "garrison_133_a",
+   "desc": "<获得时>获得1个“盟约之币”",
+   "buffKey": null,
+   "blackboard": {
+    "chess": "chess_item_1_03_e_a",
+    "count": 1.0
+   },
+   "operators": [
+    "诗怀雅(char_308_swire)"
+   ]
+  },
+  {
+   "sourceType": "GARRISON",
+   "effectId": "garrison_134_a",
+   "desc": "本干员三合一为精锐状态时获得1件高阶装备：“骑士戒律”",
+   "buffKey": null,
+   "blackboard": {},
+   "operators": []
+  },
+  {
+   "sourceType": "GARRISON",
+   "effectId": "garrison_135_a",
+   "desc": "<获得时>获得1件“卡西米尔竞技旗”",
+   "buffKey": null,
+   "blackboard": {
+    "chess": "chess_item_4_07_e_a",
+    "count": 1.0
+   },
+   "operators": []
+  },
+  {
+   "sourceType": "GARRISON",
+   "effectId": "garrison_45_b",
+   "desc": "<进入休整期时>获得2件随机装备",
+   "buffKey": null,
+   "blackboard": {
+    "pool": "pool_equip_normal",
+    "count": 2.0,
+    "conditionkey": "character_target_inboard"
+   },
+   "operators": []
+  },
+  {
+   "sourceType": "GARRISON",
+   "effectId": "garrison_49_b",
+   "desc": "<获得时>获得2件“迅捷作战粮”",
+   "buffKey": null,
+   "blackboard": {
+    "chess": "chess_item_3_05_e_a",
+    "count": 2.0
+   },
+   "operators": [
+    "卡涅利安(char_426_billro)",
+    "蜜蜡(char_344_beewax)"
+   ]
+  },
+  {
+   "sourceType": "GARRISON",
+   "effectId": "garrison_76_b",
+   "desc": "<获得时>获得2个“变形同构体”",
+   "buffKey": null,
+   "blackboard": {
+    "chess": "chess_item_6_09_e_a",
+    "count": 2.0
+   },
+   "operators": [
+    "缪尔赛思(char_249_mlyss)"
+   ]
+  },
+  {
+   "sourceType": "GARRISON",
+   "effectId": "garrison_91_b",
+   "desc": "<获得时>随机制造2件洛洛的定制品",
+   "buffKey": null,
+   "blackboard": {
+    "pool": "pool_equip_rockr",
+    "count": 2.0
+   },
+   "operators": [
+    "洛洛(char_4040_rockr)"
+   ]
+  },
+  {
+   "sourceType": "GARRISON",
+   "effectId": "garrison_92_b",
+   "desc": "<获得时>获得2件“谢拉格不融冰”",
+   "buffKey": null,
+   "blackboard": {
+    "chess": "chess_item_5_02_e_a",
+    "count": 2.0
+   },
+   "operators": [
+    "耶拉(char_4013_kjera)"
+   ]
+  },
+  {
+   "sourceType": "GARRISON",
+   "effectId": "garrison_94_b",
+   "desc": "<进入休整期时>获得2件“盟约之币”或“萨尔贡浓茶”，有概率发现“黄沙罗盘”",
+   "buffKey": null,
+   "blackboard": {
+    "pool": "pool_equip_pepe",
+    "count": 2.0,
+    "conditionkey": "character_target_inboard"
+   },
+   "operators": [
+    "佩佩(char_4058_pepe)"
+   ]
+  },
+  {
+   "sourceType": "GARRISON",
+   "effectId": "garrison_127_b",
+   "desc": "<进入休整期时>若当前为奇数回合，获得2件随机装备",
+   "buffKey": null,
+   "blackboard": {
+    "pool": "pool_equip_normal",
+    "round_list": "1,3,5,7,9,11,13,15",
+    "count": 2.0,
+    "conditionkey": "character_target_inboard"
+   },
+   "operators": [
+    "凯瑟琳(char_4162_cathy)"
+   ]
+  },
+  {
+   "sourceType": "GARRISON",
+   "effectId": "garrison_133_b",
+   "desc": "<获得时>获得2个“盟约之币”",
+   "buffKey": null,
+   "blackboard": {
+    "chess": "chess_item_1_03_e_a",
+    "count": 2.0
+   },
+   "operators": [
+    "诗怀雅(char_308_swire)"
+   ]
+  },
+  {
+   "sourceType": "GARRISON",
+   "effectId": "garrison_134_b",
+   "desc": "<获得时>获得1件【骑士戒律】",
+   "buffKey": null,
+   "blackboard": {
+    "chess": "chess_item_6_10_e_a",
+    "count": 1.0
+   },
+   "operators": []
+  },
+  {
+   "sourceType": "GARRISON",
+   "effectId": "garrison_135_b",
+   "desc": "<获得时>获得2件【卡西米尔竞技旗】",
+   "buffKey": null,
+   "blackboard": {
+    "chess": "chess_item_4_07_e_a",
+    "count": 2.0
+   },
+   "operators": []
+  }
+ ],
+ "choiceEvents": [
+  {
+   "choiceEventId": "equip_free_1_tr",
+   "choiceType": "EQUIP_FREE",
+   "effectType": "EQUIP",
+   "name": "道具补给",
+   "desc": "无需消耗资金，获得装备补给。",
+   "typeTxtColor": "#35d8b4"
+  },
+  {
+   "choiceEventId": "equip_free_1",
+   "choiceType": "EQUIP_FREE",
+   "effectType": "EQUIP",
+   "name": "道具补给",
+   "desc": "无需消耗资金，获得装备补给。",
+   "typeTxtColor": "#35d8b4"
+  },
+  {
+   "choiceEventId": "equip_free_2",
+   "choiceType": "EQUIP_FREE",
+   "effectType": "EQUIP",
+   "name": "道具补给",
+   "desc": "无需消耗资金，获得装备补给。",
+   "typeTxtColor": "#35d8b4"
+  },
+  {
+   "choiceEventId": "equip_free_3",
+   "choiceType": "EQUIP_FREE",
+   "effectType": "EQUIP",
+   "name": "道具补给",
+   "desc": "无需消耗资金，获得装备补给。",
+   "typeTxtColor": "#35d8b4"
+  },
+  {
+   "choiceEventId": "artifact_paid_1",
+   "choiceType": "EQUIP_FREE",
+   "effectType": "EQUIP",
+   "name": "机密商店",
+   "desc": "无需消耗资金，获得装备补给。",
+   "typeTxtColor": "#35d8b4"
+  },
+  {
+   "choiceEventId": "equip_free_4",
+   "choiceType": "EQUIP_FREE",
+   "effectType": "EQUIP",
+   "name": "道具补给",
+   "desc": "无需消耗资金，获得装备补给。",
+   "typeTxtColor": "#35d8b4"
+  },
+  {
+   "choiceEventId": "artifact_paid_2",
+   "choiceType": "EQUIP_FREE",
+   "effectType": "EQUIP",
+   "name": "机密商店",
+   "desc": "无需消耗资金，获得装备补给。",
+   "typeTxtColor": "#35d8b4"
+  },
+  {
+   "choiceEventId": "artifact_paid_3",
+   "choiceType": "EQUIP_FREE",
+   "effectType": "EQUIP",
+   "name": "机密商店",
+   "desc": "无需消耗资金，获得装备补给。",
+   "typeTxtColor": "#35d8b4"
+  },
+  {
+   "choiceEventId": "artifact_paid_4",
+   "choiceType": "EQUIP_FREE",
+   "effectType": "EQUIP",
+   "name": "机密商店",
+   "desc": "无需消耗资金，获得装备补给。",
+   "typeTxtColor": "#35d8b4"
+  },
+  {
+   "choiceEventId": "artifact_paid_5",
+   "choiceType": "EQUIP_FREE",
+   "effectType": "EQUIP",
+   "name": "机密商店",
+   "desc": "无需消耗资金，获得装备补给。",
+   "typeTxtColor": "#35d8b4"
+  },
+  {
+   "choiceEventId": "hunter_band_1",
+   "choiceType": "PERSONAL_CHOOSE",
+   "effectType": "ENEMY_GAIN",
+   "name": "悬赏决策",
+   "desc": "选定悬赏目标，获取额外奖励。",
+   "typeTxtColor": "#35d8b4"
+  },
+  {
+   "choiceEventId": "equip_free_2_s",
+   "choiceType": "EQUIP_FREE",
+   "effectType": "EQUIP",
+   "name": "道具补给",
+   "desc": "无需消耗资金，获得装备补给。",
+   "typeTxtColor": "#f2bd3e"
+  },
+  {
+   "choiceEventId": "equip_free_3_s",
+   "choiceType": "EQUIP_FREE",
+   "effectType": "EQUIP",
+   "name": "道具补给",
+   "desc": "无需消耗资金，获得装备补给。",
+   "typeTxtColor": "#f2bd3e"
+  },
+  {
+   "choiceEventId": "artifact_paid_1_s",
+   "choiceType": "EQUIP_FREE",
+   "effectType": "EQUIP",
+   "name": "机密商店",
+   "desc": "无需消耗资金，获得装备补给。",
+   "typeTxtColor": "#f2bd3e"
+  },
+  {
+   "choiceEventId": "equip_free_4_s",
+   "choiceType": "EQUIP_FREE",
+   "effectType": "EQUIP",
+   "name": "道具补给",
+   "desc": "无需消耗资金，获得装备补给。",
+   "typeTxtColor": "#f2bd3e"
+  },
+  {
+   "choiceEventId": "artifact_paid_2_s",
+   "choiceType": "EQUIP_FREE",
+   "effectType": "EQUIP",
+   "name": "机密商店",
+   "desc": "无需消耗资金，获得装备补给。",
+   "typeTxtColor": "#f2bd3e"
+  },
+  {
+   "choiceEventId": "artifact_paid_3_s",
+   "choiceType": "EQUIP_FREE",
+   "effectType": "EQUIP",
+   "name": "机密商店",
+   "desc": "无需消耗资金，获得装备补给。",
+   "typeTxtColor": "#f2bd3e"
+  },
+  {
+   "choiceEventId": "artifact_paid_4_s",
+   "choiceType": "EQUIP_FREE",
+   "effectType": "EQUIP",
+   "name": "机密商店",
+   "desc": "无需消耗资金，获得装备补给。",
+   "typeTxtColor": "#f2bd3e"
+  },
+  {
+   "choiceEventId": "artifact_paid_5_s",
+   "choiceType": "EQUIP_FREE",
+   "effectType": "EQUIP",
+   "name": "机密商店",
+   "desc": "无需消耗资金，获得装备补给。",
+   "typeTxtColor": "#f2bd3e"
+  }
+ ],
+ "items": [
+  {
+   "id": "chess_item_1_01_e_a",
+   "goldenId": "chess_item_1_01_e_b",
+   "trapId": "trap_1041_acarm041",
+   "name": "维式重锤",
+   "nameEn": "Victorian Hammer",
+   "itemType": "EQUIP",
+   "tier": 1,
+   "shopLevelSortId": 1,
+   "hideInShop": false,
+   "price": 1,
+   "goldenPrice": 5,
+   "upgradeNum": 2,
+   "mergeable": true,
+   "trapDuration": -1,
+   "giveBondId": "victoriaShip",
+   "giveBondName": "维多利亚",
+   "canGiveBond": false,
+   "category": "STAT",
+   "kind": "passive",
+   "requiresBond": null,
+   "requiresBondName": null,
+   "family": null,
+   "rangeId": "0-1",
+   "rangeGrids": [
+    {
+     "row": 0,
+     "col": 0
+    }
+   ],
+   "flavor": "一柄曾在维多利亚的工厂内铸造和平的重锤。\n“用同样的铁与火，去终结那场战争。”",
+   "talentNotes": [],
+   "implFormula": "ATK% += atk (additive with other ATK% buffs)",
+   "normal": {
+    "chessId": "chess_item_1_01_e_a",
+    "isGolden": false,
+    "purchasePrice": 1,
+    "upgradeChessId": "chess_item_1_01_e_b",
+    "upgradeNum": 2,
+    "trapDuration": -1,
+    "skillId": "sktok_acarm041_1",
+    "effectId": "eff_acarm041",
+    "effectName": "维式重锤",
+    "effectDesc": "攻击力+15%",
+    "effectDescRaw": "攻击力<@ba.vup>+15%</>",
+    "skillDesc": "攻击力+15%",
+    "buffs": [
+     {
+      "key": "env_gbuff_new_with_verify",
+      "countType": "NONE",
+      "blackboard": {
+       "key": "attr_common_global_buff",
+       "atk": 0.15
+      }
+     }
+    ],
+    "params": {
+     "atk": 0.15
+    }
+   },
+   "golden": {
+    "chessId": "chess_item_1_01_e_b",
+    "isGolden": true,
+    "purchasePrice": 5,
+    "upgradeChessId": null,
+    "upgradeNum": 0,
+    "trapDuration": 0,
+    "skillId": "sktok_acarm041_2",
+    "effectId": "eff_acgarm041",
+    "effectName": "维式重锤",
+    "effectDesc": "攻击力+25%",
+    "effectDescRaw": "攻击力<@ba.vup>+25%</>",
+    "skillDesc": "攻击力+25%",
+    "buffs": [
+     {
+      "key": "env_gbuff_new_with_verify",
+      "countType": "NONE",
+      "blackboard": {
+       "key": "attr_common_global_buff",
+       "atk": 0.25
+      }
+     }
+    ],
+    "params": {
+     "atk": 0.25
+    }
+   },
+   "inAct1": true,
+   "act1TierPrice": [
+    1,
+    1
+   ]
+  },
+  {
+   "id": "chess_item_1_02_e_a",
+   "goldenId": "chess_item_1_02_e_b",
+   "trapId": "trap_1047_acarm047",
+   "name": "坚守盾牌",
+   "nameEn": "Durable Shield",
+   "itemType": "EQUIP",
+   "tier": 1,
+   "shopLevelSortId": 2,
+   "hideInShop": false,
+   "price": 1,
+   "goldenPrice": 5,
+   "upgradeNum": 2,
+   "mergeable": true,
+   "trapDuration": -1,
+   "giveBondId": "steadShip",
+   "giveBondName": "坚守",
+   "canGiveBond": false,
+   "category": "STAT",
+   "kind": "passive",
+   "requiresBond": null,
+   "requiresBondName": null,
+   "family": null,
+   "rangeId": "0-1",
+   "rangeGrids": [
+    {
+     "row": 0,
+     "col": 0
+    }
+   ],
+   "flavor": "一面属于坚守之人的盾牌。\n“推击、拨挡、压制，主动防御的基础在于对盾的运用。”",
+   "talentNotes": [],
+   "implFormula": "DEF% += def",
+   "normal": {
+    "chessId": "chess_item_1_02_e_a",
+    "isGolden": false,
+    "purchasePrice": 1,
+    "upgradeChessId": "chess_item_1_02_e_b",
+    "upgradeNum": 2,
+    "trapDuration": -1,
+    "skillId": "sktok_acarm047_1",
+    "effectId": "eff_acarm047",
+    "effectName": "坚守盾牌",
+    "effectDesc": "防御力+20%",
+    "effectDescRaw": "防御力<@ba.vup>+20%</>",
+    "skillDesc": "防御力+20%",
+    "buffs": [
+     {
+      "key": "env_gbuff_new_with_verify",
+      "countType": "NONE",
+      "blackboard": {
+       "key": "attr_common_global_buff",
+       "def": 0.2
+      }
+     }
+    ],
+    "params": {
+     "def": 0.2
+    }
+   },
+   "golden": {
+    "chessId": "chess_item_1_02_e_b",
+    "isGolden": true,
+    "purchasePrice": 5,
+    "upgradeChessId": null,
+    "upgradeNum": 0,
+    "trapDuration": 0,
+    "skillId": "sktok_acarm047_2",
+    "effectId": "eff_acgarm047",
+    "effectName": "坚守盾牌",
+    "effectDesc": "防御力+35%",
+    "effectDescRaw": "防御力<@ba.vup>+35%</>",
+    "skillDesc": "防御力+35%",
+    "buffs": [
+     {
+      "key": "env_gbuff_new_with_verify",
+      "countType": "NONE",
+      "blackboard": {
+       "key": "attr_common_global_buff",
+       "def": 0.35
+      }
+     }
+    ],
+    "params": {
+     "def": 0.35
+    }
+   },
+   "inAct1": true,
+   "act1TierPrice": [
+    1,
+    1
+   ]
+  },
+  {
+   "id": "chess_item_1_03_e_a",
+   "goldenId": "chess_item_1_03_e_b",
+   "trapId": "trap_1066_acarm066",
+   "name": "盟约之币",
+   "nameEn": "Alliance Coin",
+   "itemType": "EQUIP",
+   "tier": 1,
+   "shopLevelSortId": 3,
+   "hideInShop": false,
+   "price": 1,
+   "goldenPrice": 5,
+   "upgradeNum": 2,
+   "mergeable": true,
+   "trapDuration": -1,
+   "giveBondId": null,
+   "giveBondName": null,
+   "canGiveBond": false,
+   "category": "ECONOMY",
+   "kind": "consume_on_equip",
+   "requiresBond": null,
+   "requiresBondName": null,
+   "family": null,
+   "rangeId": "0-1",
+   "rangeGrids": [
+    {
+     "row": 0,
+     "col": 0
+    }
+   ],
+   "flavor": "“推动协议模拟进程的基础。”",
+   "talentNotes": [],
+   "implFormula": "On equip: destroy item, player.funds += randInt(min,max) (normal 1, golden 2). Does not use an equip slot.",
+   "normal": {
+    "chessId": "chess_item_1_03_e_a",
+    "isGolden": false,
+    "purchasePrice": 1,
+    "upgradeChessId": "chess_item_1_03_e_b",
+    "upgradeNum": 2,
+    "trapDuration": -1,
+    "skillId": "sktok_acarm066_1",
+    "effectId": "eff_acarm066",
+    "effectName": "盟约之币",
+    "effectDesc": "装备时销毁，并获得1资金",
+    "effectDescRaw": "装备时销毁，并获得<@ba.vup>1</>资金",
+    "skillDesc": "装备时销毁，并获得1资金",
+    "buffs": [
+     {
+      "key": "equip_destory_gain_random_coin",
+      "countType": "NONE",
+      "blackboard": {
+       "min": 1.0,
+       "max": 1.0
+      }
+     }
+    ],
+    "params": {
+     "min": 1.0,
+     "max": 1.0
+    }
+   },
+   "golden": {
+    "chessId": "chess_item_1_03_e_b",
+    "isGolden": true,
+    "purchasePrice": 5,
+    "upgradeChessId": null,
+    "upgradeNum": 0,
+    "trapDuration": 0,
+    "skillId": "sktok_acarm066_2",
+    "effectId": "eff_acgarm066",
+    "effectName": "盟约之币",
+    "effectDesc": "装备时销毁，并获得2资金",
+    "effectDescRaw": "装备时销毁，并获得<@ba.vup>2</>资金",
+    "skillDesc": "装备时销毁，并获得2资金",
+    "buffs": [
+     {
+      "key": "equip_destory_gain_random_coin",
+      "countType": "NONE",
+      "blackboard": {
+       "min": 2.0,
+       "max": 2.0
+      }
+     }
+    ],
+    "params": {
+     "min": 2.0,
+     "max": 2.0
+    }
+   },
+   "inAct1": true,
+   "act1TierPrice": [
+    4,
+    3
+   ]
+  },
+  {
+   "id": "chess_item_1_04_e_a",
+   "goldenId": "chess_item_1_04_e_b",
+   "trapId": "trap_1124_acarm124",
+   "name": "随身身份牌",
+   "nameEn": "Portable ID Tag",
+   "itemType": "EQUIP",
+   "tier": 1,
+   "shopLevelSortId": 4,
+   "hideInShop": false,
+   "price": 1,
+   "goldenPrice": 5,
+   "upgradeNum": 2,
+   "mergeable": true,
+   "trapDuration": -1,
+   "giveBondId": null,
+   "giveBondName": null,
+   "canGiveBond": false,
+   "category": "BOND",
+   "kind": "consume_on_equip",
+   "requiresBond": null,
+   "requiresBondName": null,
+   "family": null,
+   "rangeId": "0-1",
+   "rangeGrids": [
+    {
+     "row": 0,
+     "col": 0
+    }
+   ],
+   "flavor": "一个可以证明身份的便捷小装置。 “欢迎进入模拟战场。”",
+   "talentNotes": [],
+   "implFormula": "On equip: destroy item; for EACH bond of the target operator: bondLayer[bond] += layer (works even if that bond is not activated).",
+   "normal": {
+    "chessId": "chess_item_1_04_e_a",
+    "isGolden": false,
+    "purchasePrice": 1,
+    "upgradeChessId": "chess_item_1_04_e_b",
+    "upgradeNum": 2,
+    "trapDuration": -1,
+    "skillId": "sktok_acarm124_1",
+    "effectId": "eff_acarm124",
+    "effectName": "随身身份牌",
+    "effectDesc": "装备时销毁，并使携带者所属盟约层数+3（无需激活盟约）",
+    "effectDescRaw": "装备时销毁，并使携带者所属盟约层数<@ba.vup>+3</>（无需激活盟约）",
+    "skillDesc": "装备时销毁，并使携带者所属盟约层数+3（无需激活盟约）",
+    "buffs": [
+     {
+      "key": "use_equip_reward_char_chess_bond_layer",
+      "countType": "NONE",
+      "blackboard": {
+       "layer": 3.0
+      }
+     }
+    ],
+    "params": {
+     "layer": 3.0
+    }
+   },
+   "golden": {
+    "chessId": "chess_item_1_04_e_b",
+    "isGolden": true,
+    "purchasePrice": 5,
+    "upgradeChessId": null,
+    "upgradeNum": 0,
+    "trapDuration": 0,
+    "skillId": "sktok_acarm124_2",
+    "effectId": "eff_acgarm124",
+    "effectName": "随身身份牌",
+    "effectDesc": "装备时销毁，并使携带者所属盟约层数+6（无需激活盟约）",
+    "effectDescRaw": "装备时销毁，并使携带者所属盟约层数<@ba.vup>+6</>（无需激活盟约）",
+    "skillDesc": "装备时销毁，并使携带者所属盟约层数+6（无需激活盟约）",
+    "buffs": [
+     {
+      "key": "use_equip_reward_char_chess_bond_layer",
+      "countType": "NONE",
+      "blackboard": {
+       "layer": 6.0
+      }
+     }
+    ],
+    "params": {
+     "layer": 6.0
+    }
+   },
+   "inAct1": false
+  },
+  {
+   "id": "chess_item_1_05_e_a",
+   "goldenId": "chess_item_1_05_e_b",
+   "trapId": "trap_1125_acarm125",
+   "name": "源石溶剂",
+   "nameEn": "Originium Solvent",
+   "itemType": "EQUIP",
+   "tier": 1,
+   "shopLevelSortId": 5,
+   "hideInShop": false,
+   "price": 1,
+   "goldenPrice": 5,
+   "upgradeNum": 2,
+   "mergeable": true,
+   "trapDuration": -1,
+   "giveBondId": null,
+   "giveBondName": null,
+   "canGiveBond": false,
+   "category": "STAT",
+   "kind": "passive",
+   "requiresBond": null,
+   "requiresBondName": null,
+   "family": null,
+   "rangeId": "0-1",
+   "rangeGrids": [
+    {
+     "row": 0,
+     "col": 0
+    }
+   ],
+   "flavor": "“经典的工业材料军事化应用案例。”",
+   "talentNotes": [],
+   "implFormula": "ATK% += atk; in battle the carrier takes `damage` true damage per second — 无来源 持续 damage, not a 流失 (PRTS 盟约记录 修正 \"并非流失\", 备注 \"造成无来源真实持续环境伤害\"): shields and damage-taken modifiers apply, it counts as 受到伤害 (受击回复 SP, the 重装 skill trigger, 信仰搅拌机 S3 counters); can kill the carrier. Every 敌人类我方单位 of the field (炎佑, a partner's too) takes the same tick while a carrier is on the field — once per second however many carriers (PRTS 备注 \"全场范围内的所有敌人类我方单位也会获得此装备的…效果\").",
+   "normal": {
+    "chessId": "chess_item_1_05_e_a",
+    "isGolden": false,
+    "purchasePrice": 1,
+    "upgradeChessId": "chess_item_1_05_e_b",
+    "upgradeNum": 2,
+    "trapDuration": -1,
+    "skillId": "sktok_acarm125_1",
+    "effectId": "eff_acarm125",
+    "effectName": "源石溶剂",
+    "effectDesc": "携带者每秒流失60点生命值，攻击力+40%",
+    "effectDescRaw": "携带者每秒流失<@ba.vdown>60</>点生命值，攻击力<@ba.vup>+40%</>",
+    "skillDesc": "携带者每秒流失60点生命值，攻击力+40%",
+    "buffs": [
+     {
+      "key": "env_gbuff_new_with_verify",
+      "countType": "NONE",
+      "blackboard": {
+       "key": "attr_common_global_buff",
+       "atk": 0.4
+      }
+     },
+     {
+      "key": "env_gbuff_new_with_verify",
+      "countType": "NONE",
+      "blackboard": {
+       "key": "periodic_damage",
+       "damage": 60.0
+      }
+     }
+    ],
+    "params": {
+     "atk": 0.4,
+     "damage": 60.0
+    }
+   },
+   "golden": {
+    "chessId": "chess_item_1_05_e_b",
+    "isGolden": true,
+    "purchasePrice": 5,
+    "upgradeChessId": null,
+    "upgradeNum": 0,
+    "trapDuration": 0,
+    "skillId": "sktok_acarm125_2",
+    "effectId": "eff_acgarm125",
+    "effectName": "源石溶剂",
+    "effectDesc": "携带者每秒流失60点生命值，攻击力+60%",
+    "effectDescRaw": "携带者每秒流失<@ba.vdown>60</>点生命值，攻击力<@ba.vup>+60%</>",
+    "skillDesc": "携带者每秒流失60点生命值，攻击力+60%",
+    "buffs": [
+     {
+      "key": "env_gbuff_new_with_verify",
+      "countType": "NONE",
+      "blackboard": {
+       "key": "attr_common_global_buff",
+       "atk": 0.6
+      }
+     },
+     {
+      "key": "env_gbuff_new_with_verify",
+      "countType": "NONE",
+      "blackboard": {
+       "key": "periodic_damage",
+       "damage": 60.0
+      }
+     }
+    ],
+    "params": {
+     "atk": 0.6,
+     "damage": 60.0
+    }
+   },
+   "inAct1": false
+  },
+  {
+   "id": "chess_item_2_01_e_a",
+   "goldenId": "chess_item_2_01_e_b",
+   "trapId": "trap_1056_acarm056",
+   "name": "不屈弹射器",
+   "nameEn": "Tough Launcher",
+   "itemType": "EQUIP",
+   "tier": 2,
+   "shopLevelSortId": 1,
+   "hideInShop": false,
+   "price": 1,
+   "goldenPrice": 5,
+   "upgradeNum": 2,
+   "mergeable": true,
+   "trapDuration": -1,
+   "giveBondId": "indomShip",
+   "giveBondName": "不屈",
+   "canGiveBond": false,
+   "category": "STAT",
+   "kind": "passive",
+   "requiresBond": null,
+   "requiresBondName": null,
+   "family": null,
+   "rangeId": "0-1",
+   "rangeGrids": [
+    {
+     "row": 0,
+     "col": 0
+    }
+   ],
+   "flavor": "一台属于不屈之人的弹射器。\n“它能让你在各个平台间快速移动，前提是你学会使用它，而不是摔个佩洛啃泥。”",
+   "talentNotes": [],
+   "implFormula": "respawnTime *= (1 + respawn_time) (i.e. -30%/-50%); maxHP% += max_hp (-30%).",
+   "normal": {
+    "chessId": "chess_item_2_01_e_a",
+    "isGolden": false,
+    "purchasePrice": 1,
+    "upgradeChessId": "chess_item_2_01_e_b",
+    "upgradeNum": 2,
+    "trapDuration": -1,
+    "skillId": "sktok_acarm056_1",
+    "effectId": "eff_acarm056",
+    "effectName": "不屈弹射器",
+    "effectDesc": "再部署时间-30%，生命值-30%",
+    "effectDescRaw": "再部署时间<@ba.vup>-30%</>，生命值<@ba.vdown>-30%</>",
+    "skillDesc": "再部署时间-30%，生命值-30%",
+    "buffs": [
+     {
+      "key": "env_gbuff_new_with_verify",
+      "countType": "NONE",
+      "blackboard": {
+       "key": "act1autochess_equip_acarm056_global_buff",
+       "respawn_time": -0.3,
+       "max_hp": -0.3
+      }
+     }
+    ],
+    "params": {
+     "respawn_time": -0.3,
+     "max_hp": -0.3
+    }
+   },
+   "golden": {
+    "chessId": "chess_item_2_01_e_b",
+    "isGolden": true,
+    "purchasePrice": 5,
+    "upgradeChessId": null,
+    "upgradeNum": 0,
+    "trapDuration": 0,
+    "skillId": "sktok_acarm056_2",
+    "effectId": "eff_acgarm056",
+    "effectName": "不屈弹射器",
+    "effectDesc": "再部署时间-50%，生命值-30%",
+    "effectDescRaw": "再部署时间<@ba.vup>-50%</>，生命值<@ba.vdown>-30%</>",
+    "skillDesc": "再部署时间-50%，生命值-30%",
+    "buffs": [
+     {
+      "key": "env_gbuff_new_with_verify",
+      "countType": "NONE",
+      "blackboard": {
+       "key": "act1autochess_equip_acarm056_global_buff",
+       "respawn_time": -0.5,
+       "max_hp": -0.3
+      }
+     }
+    ],
+    "params": {
+     "respawn_time": -0.5,
+     "max_hp": -0.3
+    }
+   },
+   "inAct1": true,
+   "act1TierPrice": [
+    1,
+    1
+   ]
+  },
+  {
+   "id": "chess_item_2_02_e_a",
+   "goldenId": "chess_item_2_02_e_b",
+   "trapId": "trap_1115_acarm115",
+   "name": "紧急调度券",
+   "nameEn": "Emergency Dispatch Voucher",
+   "itemType": "EQUIP",
+   "tier": 2,
+   "shopLevelSortId": 2,
+   "hideInShop": false,
+   "price": 2,
+   "goldenPrice": 5,
+   "upgradeNum": 2,
+   "mergeable": true,
+   "trapDuration": -1,
+   "giveBondId": null,
+   "giveBondName": null,
+   "canGiveBond": false,
+   "category": "RECRUIT",
+   "kind": "consume_on_equip",
+   "requiresBond": null,
+   "requiresBondName": null,
+   "family": null,
+   "rangeId": "0-1",
+   "rangeGrids": [
+    {
+     "row": 0,
+     "col": 0
+    }
+   ],
+   "flavor": "“有时候成功是需要那么一点点运气……”",
+   "talentNotes": [],
+   "implFormula": "On equip: destroy item; pick `count` random operator(s) currently displayed in the player's shop (调度中心) slots, move them to hand for free; those shop slots become empty.",
+   "normal": {
+    "chessId": "chess_item_2_02_e_a",
+    "isGolden": false,
+    "purchasePrice": 2,
+    "upgradeChessId": "chess_item_2_02_e_b",
+    "upgradeNum": 2,
+    "trapDuration": -1,
+    "skillId": "sktok_acarm115_1",
+    "effectId": "eff_acarm115",
+    "effectName": "紧急调度券",
+    "effectDesc": "装备时销毁，随机获取当前调度中心内的1名干员 （调度中心中对应干员消失）",
+    "effectDescRaw": "装备时销毁，随机获取当前调度中心内的<@ba.vup>1</>名干员 （调度中心中对应干员消失）",
+    "skillDesc": "装备时销毁，随机获取当前调度中心内的1名干员 （调度中心中对应干员消失）",
+    "buffs": [
+     {
+      "key": "use_equip_reward_random_char_chess_in_shop",
+      "countType": "NONE",
+      "blackboard": {
+       "count": 1.0
+      }
+     }
+    ],
+    "params": {
+     "count": 1.0
+    }
+   },
+   "golden": {
+    "chessId": "chess_item_2_02_e_b",
+    "isGolden": true,
+    "purchasePrice": 5,
+    "upgradeChessId": null,
+    "upgradeNum": 0,
+    "trapDuration": 0,
+    "skillId": "sktok_acarm115_2",
+    "effectId": "eff_acgarm115",
+    "effectName": "紧急调度券",
+    "effectDesc": "装备时销毁，随机获取当前调度中心内的2名干员 （调度中心中对应干员消失）",
+    "effectDescRaw": "装备时销毁，随机获取当前调度中心内的<@ba.vup>2</>名干员 （调度中心中对应干员消失）",
+    "skillDesc": "装备时销毁，随机获取当前调度中心内的2名干员 （调度中心中对应干员消失）",
+    "buffs": [
+     {
+      "key": "use_equip_reward_random_char_chess_in_shop",
+      "countType": "NONE",
+      "blackboard": {
+       "count": 2.0
+      }
+     }
+    ],
+    "params": {
+     "count": 2.0
+    }
+   },
+   "inAct1": false
+  },
+  {
+   "id": "chess_item_2_03_e_a",
+   "goldenId": "chess_item_2_03_e_b",
+   "trapId": "trap_1045_acarm045",
+   "name": "战栗维式重锤",
+   "nameEn": "Frightening Victorian Hammer",
+   "itemType": "EQUIP",
+   "tier": 2,
+   "shopLevelSortId": 3,
+   "hideInShop": false,
+   "price": 2,
+   "goldenPrice": 5,
+   "upgradeNum": 2,
+   "mergeable": true,
+   "trapDuration": -1,
+   "giveBondId": "victoriaShip",
+   "giveBondName": "维多利亚",
+   "canGiveBond": false,
+   "category": "ON_HIT",
+   "kind": "passive",
+   "requiresBond": null,
+   "requiresBondName": null,
+   "family": "hammer",
+   "rangeId": "0-1",
+   "rangeGrids": [
+    {
+     "row": 0,
+     "col": 0
+    }
+   ],
+   "flavor": "一柄曾在维多利亚的工厂内铸造和平的重锤，如今它的威名更盛。\n“用同样的铁与火，去终结那场战争。”",
+   "talentNotes": [],
+   "implFormula": "ATK% += atk. If carrier is a MELEE(ground) operator: on each attack, prob chance to apply 战栗(Tremble: target cannot normal-attack while blocked) for disarmed_duration s. Special effect doubled (prob x2 [ASSUMED]) when carrier also has 蒸汽之心 and is Victoria.",
+   "normal": {
+    "chessId": "chess_item_2_03_e_a",
+    "isGolden": false,
+    "purchasePrice": 2,
+    "upgradeChessId": "chess_item_2_03_e_b",
+    "upgradeNum": 2,
+    "trapDuration": -1,
+    "skillId": "sktok_acarm045_1",
+    "effectId": "eff_acarm045",
+    "effectName": "战栗维式重锤",
+    "effectDesc": "攻击力+20%；若携带者是地面干员则攻击时有10%概率使目标战栗2秒",
+    "effectDescRaw": "攻击力<@ba.vup>+20%</>；若携带者是地面干员则攻击时有10%概率使目标<$ba.tremble>战栗</>2秒",
+    "skillDesc": "攻击力+20%；若携带者是地面干员则攻击时有10%概率使目标战栗2秒",
+    "buffs": [
+     {
+      "key": "env_gbuff_new_with_verify",
+      "countType": "NONE",
+      "blackboard": {
+       "key": "attr_common_global_buff",
+       "atk": 0.2
+      }
+     },
+     {
+      "key": "env_gbuff_new_with_verify",
+      "countType": "NONE",
+      "blackboard": {
+       "key": "act1autochess_equip_acarm045_global_buff",
+       "prob": 0.1,
+       "disarmed_duration": 2.0,
+       "big_hammer": "chess_item_6_05_e"
+      }
+     }
+    ],
+    "params": {
+     "atk": 0.2,
+     "prob": 0.1,
+     "disarmed_duration": 2.0,
+     "big_hammer": "chess_item_6_05_e"
+    }
+   },
+   "golden": {
+    "chessId": "chess_item_2_03_e_b",
+    "isGolden": true,
+    "purchasePrice": 5,
+    "upgradeChessId": null,
+    "upgradeNum": 0,
+    "trapDuration": 0,
+    "skillId": "sktok_acarm045_2",
+    "effectId": "eff_acgarm045",
+    "effectName": "战栗维式重锤",
+    "effectDesc": "攻击力+35%；若携带者是地面干员则攻击时有10%概率使目标战栗2秒",
+    "effectDescRaw": "攻击力<@ba.vup>+35%</>；若携带者是地面干员则攻击时有10%概率使目标<$ba.tremble>战栗</>2秒",
+    "skillDesc": "攻击力+35%；若携带者是地面干员则攻击时有10%概率使目标战栗2秒",
+    "buffs": [
+     {
+      "key": "env_gbuff_new_with_verify",
+      "countType": "NONE",
+      "blackboard": {
+       "key": "attr_common_global_buff",
+       "atk": 0.35
+      }
+     },
+     {
+      "key": "env_gbuff_new_with_verify",
+      "countType": "NONE",
+      "blackboard": {
+       "key": "act1autochess_equip_acarm045_global_buff",
+       "prob": 0.1,
+       "disarmed_duration": 2.0,
+       "big_hammer": "chess_item_6_05_e"
+      }
+     }
+    ],
+    "params": {
+     "atk": 0.35,
+     "prob": 0.1,
+     "disarmed_duration": 2.0,
+     "big_hammer": "chess_item_6_05_e"
+    }
+   },
+   "inAct1": true,
+   "act1TierPrice": [
+    2,
+    2
+   ]
+  },
+  {
+   "id": "chess_item_2_04_e_a",
+   "goldenId": "chess_item_2_04_e_b",
+   "trapId": "trap_1050_acarm050",
+   "name": "萨尔贡浓茶",
+   "nameEn": "Sargonian Teaspresso",
+   "itemType": "EQUIP",
+   "tier": 2,
+   "shopLevelSortId": 4,
+   "hideInShop": false,
+   "price": 2,
+   "goldenPrice": 5,
+   "upgradeNum": 2,
+   "mergeable": true,
+   "trapDuration": -1,
+   "giveBondId": "sargonShip",
+   "giveBondName": "萨尔贡",
+   "canGiveBond": false,
+   "category": "STAT",
+   "kind": "passive",
+   "requiresBond": null,
+   "requiresBondName": null,
+   "family": null,
+   "rangeId": "0-1",
+   "rangeGrids": [
+    {
+     "row": 0,
+     "col": 0
+    }
+   ],
+   "flavor": "一种曾在萨尔贡的荒漠中救人性命的浓茶。\n“别畏惧苦涩，它能让你保持清醒，清醒地活下去。”",
+   "talentNotes": [],
+   "implFormula": "spRecoveryPerSec += sp_recovery_per_sec (flat, on top of base 1 SP/s for auto-recovery skills).",
+   "normal": {
+    "chessId": "chess_item_2_04_e_a",
+    "isGolden": false,
+    "purchasePrice": 2,
+    "upgradeChessId": "chess_item_2_04_e_b",
+    "upgradeNum": 2,
+    "trapDuration": -1,
+    "skillId": "sktok_acarm050_1",
+    "effectId": "eff_acarm050",
+    "effectName": "萨尔贡浓茶",
+    "effectDesc": "技力自然回复速度+0.15/秒",
+    "effectDescRaw": "技力自然回复速度<@ba.vup>+0.15</>/秒",
+    "skillDesc": "技力自然回复速度+0.15/秒",
+    "buffs": [
+     {
+      "key": "env_gbuff_new_with_verify",
+      "countType": "NONE",
+      "blackboard": {
+       "key": "act1autochess_equip_acarm050_global_buff",
+       "sp_recovery_per_sec": 0.15
+      }
+     }
+    ],
+    "params": {
+     "sp_recovery_per_sec": 0.15
+    }
+   },
+   "golden": {
+    "chessId": "chess_item_2_04_e_b",
+    "isGolden": true,
+    "purchasePrice": 5,
+    "upgradeChessId": null,
+    "upgradeNum": 0,
+    "trapDuration": 0,
+    "skillId": "sktok_acarm050_2",
+    "effectId": "eff_acgarm050",
+    "effectName": "萨尔贡浓茶",
+    "effectDesc": "技力自然回复速度+0.25/秒",
+    "effectDescRaw": "技力自然回复速度<@ba.vup>+0.25</>/秒",
+    "skillDesc": "技力自然回复速度+0.25/秒",
+    "buffs": [
+     {
+      "key": "env_gbuff_new_with_verify",
+      "countType": "NONE",
+      "blackboard": {
+       "key": "act1autochess_equip_acarm050_global_buff",
+       "sp_recovery_per_sec": 0.25
+      }
+     }
+    ],
+    "params": {
+     "sp_recovery_per_sec": 0.25
+    }
+   },
+   "inAct1": true,
+   "act1TierPrice": [
+    3,
+    2
+   ]
+  },
+  {
+   "id": "chess_item_2_05_e_a",
+   "goldenId": "chess_item_2_05_e_b",
+   "trapId": "trap_1113_acarm113",
+   "name": "精打细算玩偶",
+   "nameEn": "Thrifty Doll",
+   "itemType": "EQUIP",
+   "tier": 2,
+   "shopLevelSortId": 5,
+   "hideInShop": false,
+   "price": 3,
+   "goldenPrice": 5,
+   "upgradeNum": 2,
+   "mergeable": true,
+   "trapDuration": -1,
+   "giveBondId": null,
+   "giveBondName": null,
+   "canGiveBond": false,
+   "category": "ECONOMY",
+   "kind": "consume_on_equip",
+   "requiresBond": null,
+   "requiresBondName": null,
+   "family": null,
+   "rangeId": "0-1",
+   "rangeGrids": [
+    {
+     "row": 0,
+     "col": 0
+    }
+   ],
+   "flavor": "“她总是想为你多省一点。”",
+   "talentNotes": [],
+   "implFormula": "On equip: destroy item; register a permanent player effect: at the start of every subsequent round player.funds += count (stackable).",
+   "normal": {
+    "chessId": "chess_item_2_05_e_a",
+    "isGolden": false,
+    "purchasePrice": 3,
+    "upgradeChessId": "chess_item_2_05_e_b",
+    "upgradeNum": 2,
+    "trapDuration": -1,
+    "skillId": "sktok_acarm113_1",
+    "effectId": "eff_acarm113",
+    "effectName": "精打细算玩偶",
+    "effectDesc": "装备时销毁，之后每回合开始时额外获得1资金",
+    "effectDescRaw": "装备时销毁，之后每回合开始时额外获得<@ba.vup>1</>资金",
+    "skillDesc": "装备时销毁，之后每回合开始时额外获得1资金",
+    "buffs": [
+     {
+      "key": "gain_coin_when_round_start",
+      "countType": "NONE",
+      "blackboard": {
+       "count": 1.0
+      }
+     }
+    ],
+    "params": {
+     "count": 1.0
+    }
+   },
+   "golden": {
+    "chessId": "chess_item_2_05_e_b",
+    "isGolden": true,
+    "purchasePrice": 5,
+    "upgradeChessId": null,
+    "upgradeNum": 0,
+    "trapDuration": 0,
+    "skillId": "sktok_acarm113_2",
+    "effectId": "eff_acgarm113",
+    "effectName": "精打细算玩偶",
+    "effectDesc": "装备时销毁，之后每回合开始时额外获得2资金",
+    "effectDescRaw": "装备时销毁，之后每回合开始时额外获得<@ba.vup>2</>资金",
+    "skillDesc": "装备时销毁，之后每回合开始时额外获得2资金",
+    "buffs": [
+     {
+      "key": "gain_coin_when_round_start",
+      "countType": "NONE",
+      "blackboard": {
+       "count": 2.0
+      }
+     }
+    ],
+    "params": {
+     "count": 2.0
+    }
+   },
+   "inAct1": false
+  },
+  {
+   "id": "chess_item_2_06_e_a",
+   "goldenId": "chess_item_2_06_e_b",
+   "trapId": "trap_1114_acarm114",
+   "name": "简易通讯机",
+   "nameEn": "Simple Communicator",
+   "itemType": "EQUIP",
+   "tier": 2,
+   "shopLevelSortId": 6,
+   "hideInShop": false,
+   "price": 2,
+   "goldenPrice": 5,
+   "upgradeNum": 2,
+   "mergeable": true,
+   "trapDuration": -1,
+   "giveBondId": null,
+   "giveBondName": null,
+   "canGiveBond": false,
+   "category": "RECRUIT",
+   "kind": "consume_on_equip",
+   "requiresBond": null,
+   "requiresBondName": null,
+   "family": null,
+   "rangeId": "0-1",
+   "rangeGrids": [
+    {
+     "row": 0,
+     "col": 0
+    }
+   ],
+   "flavor": "“我已到达接头地点。”",
+   "talentNotes": [],
+   "implFormula": "On equip: destroy item; give player `count` random NORMAL-quality operator(s) that share at least one bond with the target operator (tier <= current shop level [ASSUMED]).",
+   "normal": {
+    "chessId": "chess_item_2_06_e_a",
+    "isGolden": false,
+    "purchasePrice": 2,
+    "upgradeChessId": "chess_item_2_06_e_b",
+    "upgradeNum": 2,
+    "trapDuration": -1,
+    "skillId": "sktok_acarm114_1",
+    "effectId": "eff_acarm114",
+    "effectName": "简易通讯机",
+    "effectDesc": "装备时销毁，随机获得1名与该干员有相同盟约的干员",
+    "effectDescRaw": "装备时销毁，随机获得<@ba.vup>1</>名与该干员有相同盟约的干员",
+    "skillDesc": "装备时销毁，随机获得1名与该干员有相同盟约的干员",
+    "buffs": [
+     {
+      "key": "use_equip_reward_char_chess_with_same_bond",
+      "countType": "NONE",
+      "blackboard": {
+       "count": 1.0
+      }
+     }
+    ],
+    "params": {
+     "count": 1.0
+    }
+   },
+   "golden": {
+    "chessId": "chess_item_2_06_e_b",
+    "isGolden": true,
+    "purchasePrice": 5,
+    "upgradeChessId": null,
+    "upgradeNum": 0,
+    "trapDuration": 0,
+    "skillId": "sktok_acarm114_2",
+    "effectId": "eff_acgarm114",
+    "effectName": "简易通讯机",
+    "effectDesc": "装备时销毁，随机获得2名与该干员有相同盟约的干员",
+    "effectDescRaw": "装备时销毁，随机获得<@ba.vup>2</>名与该干员有相同盟约的干员",
+    "skillDesc": "装备时销毁，随机获得2名与该干员有相同盟约的干员",
+    "buffs": [
+     {
+      "key": "use_equip_reward_char_chess_with_same_bond",
+      "countType": "NONE",
+      "blackboard": {
+       "count": 2.0
+      }
+     }
+    ],
+    "params": {
+     "count": 2.0
+    }
+   },
+   "inAct1": false
+  },
+  {
+   "id": "chess_item_2_07_e_a",
+   "goldenId": "chess_item_2_07_e_b",
+   "trapId": "trap_1116_acarm116",
+   "name": "见钱眼开玩偶",
+   "nameEn": "Money-Eyed Doll",
+   "itemType": "EQUIP",
+   "tier": 2,
+   "shopLevelSortId": 7,
+   "hideInShop": false,
+   "price": 1,
+   "goldenPrice": 5,
+   "upgradeNum": 2,
+   "mergeable": true,
+   "trapDuration": -1,
+   "giveBondId": null,
+   "giveBondName": null,
+   "canGiveBond": false,
+   "category": "ECONOMY",
+   "kind": "consume_on_equip",
+   "requiresBond": null,
+   "requiresBondName": null,
+   "family": null,
+   "rangeId": "0-1",
+   "rangeGrids": [
+    {
+     "row": 0,
+     "col": 0
+    }
+   ],
+   "flavor": "“看到你的钱包，她总是很开心。”",
+   "talentNotes": [],
+   "implFormula": "On equip: destroy item; at the start of NEXT round only: player.funds += count.",
+   "normal": {
+    "chessId": "chess_item_2_07_e_a",
+    "isGolden": false,
+    "purchasePrice": 1,
+    "upgradeChessId": "chess_item_2_07_e_b",
+    "upgradeNum": 2,
+    "trapDuration": -1,
+    "skillId": "sktok_acarm116_1",
+    "effectId": "eff_acarm116",
+    "effectName": "见钱眼开玩偶",
+    "effectDesc": "装备时销毁，下回合额外获得2资金",
+    "effectDescRaw": "装备时销毁，下回合额外获得<@ba.vup>2</>资金",
+    "skillDesc": "装备时销毁，下回合额外获得2资金",
+    "buffs": [
+     {
+      "key": "use_equip_gain_coin_when_next_round_start",
+      "countType": "NONE",
+      "blackboard": {
+       "count": 2.0
+      }
+     }
+    ],
+    "params": {
+     "count": 2.0
+    }
+   },
+   "golden": {
+    "chessId": "chess_item_2_07_e_b",
+    "isGolden": true,
+    "purchasePrice": 5,
+    "upgradeChessId": null,
+    "upgradeNum": 0,
+    "trapDuration": 0,
+    "skillId": "sktok_acarm116_2",
+    "effectId": "eff_acgarm116",
+    "effectName": "见钱眼开玩偶",
+    "effectDesc": "装备时销毁，下回合额外获得4资金",
+    "effectDescRaw": "装备时销毁，下回合额外获得<@ba.vup>4</>资金",
+    "skillDesc": "装备时销毁，下回合额外获得4资金",
+    "buffs": [
+     {
+      "key": "use_equip_gain_coin_when_next_round_start",
+      "countType": "NONE",
+      "blackboard": {
+       "count": 4.0
+      }
+     }
+    ],
+    "params": {
+     "count": 4.0
+    }
+   },
+   "inAct1": false
+  },
+  {
+   "id": "chess_item_3_01_e_a",
+   "goldenId": "chess_item_3_01_e_b",
+   "trapId": "trap_1121_acarm121",
+   "name": "叙拉古正装",
+   "nameEn": "Siracusan Formalwear",
+   "itemType": "EQUIP",
+   "tier": 3,
+   "shopLevelSortId": 1,
+   "hideInShop": false,
+   "price": 2,
+   "goldenPrice": 5,
+   "upgradeNum": 2,
+   "mergeable": true,
+   "trapDuration": -1,
+   "giveBondId": "siracusaShip",
+   "giveBondName": "叙拉古",
+   "canGiveBond": false,
+   "category": "STAT",
+   "kind": "passive",
+   "requiresBond": null,
+   "requiresBondName": null,
+   "family": null,
+   "rangeId": "0-1",
+   "rangeGrids": [
+    {
+     "row": 0,
+     "col": 0
+    }
+   ],
+   "flavor": "一套彰显家族成员身份的正式着装。 “在这里，服装有言语不能说明的意义。”",
+   "talentNotes": [],
+   "implFormula": "Carrier ASPD += attack_speed. Allies deployed on the 2 tiles left/right of the carrier (perpendicular to its facing direction) get ASPD += attack_speed_1 while the carrier is on the field.",
+   "normal": {
+    "chessId": "chess_item_3_01_e_a",
+    "isGolden": false,
+    "purchasePrice": 2,
+    "upgradeChessId": "chess_item_3_01_e_b",
+    "upgradeNum": 2,
+    "trapDuration": -1,
+    "skillId": "sktok_acarm121_1",
+    "effectId": "eff_acarm121",
+    "effectName": "叙拉古正装",
+    "effectDesc": "攻击速度+15，携带者部署方向左右两侧的我方干员攻击速度+10",
+    "effectDescRaw": "攻击速度<@ba.vup>+15</>，携带者部署方向左右两侧的我方干员攻击速度<@ba.vup>+10</>",
+    "skillDesc": "攻击速度+15，携带者部署方向左右两侧的我方干员攻击速度+10",
+    "buffs": [
+     {
+      "key": "env_gbuff_new_with_verify",
+      "countType": "NONE",
+      "blackboard": {
+       "key": "attr_common_global_buff",
+       "attack_speed": 15.0
+      }
+     },
+     {
+      "key": "char_dynamic_ability_new",
+      "countType": "NONE",
+      "blackboard": {
+       "at_root": 1.0,
+       "key": "act2autochess_equip_acarm121_ability",
+       "attack_speed": 10.0
+      }
+     }
+    ],
+    "params": {
+     "attack_speed": 15.0,
+     "at_root": 1.0,
+     "attack_speed_1": 10.0
+    }
+   },
+   "golden": {
+    "chessId": "chess_item_3_01_e_b",
+    "isGolden": true,
+    "purchasePrice": 5,
+    "upgradeChessId": null,
+    "upgradeNum": 0,
+    "trapDuration": 0,
+    "skillId": "sktok_acarm121_2",
+    "effectId": "eff_acgarm121",
+    "effectName": "叙拉古正装",
+    "effectDesc": "攻击速度+25，携带者部署方向左右两侧的我方干员攻击速度+15",
+    "effectDescRaw": "攻击速度<@ba.vup>+25</>，携带者部署方向左右两侧的我方干员攻击速度<@ba.vup>+15</>",
+    "skillDesc": "攻击速度+25，携带者部署方向左右两侧的我方干员攻击速度+15",
+    "buffs": [
+     {
+      "key": "env_gbuff_new_with_verify",
+      "countType": "NONE",
+      "blackboard": {
+       "key": "attr_common_global_buff",
+       "attack_speed": 25.0
+      }
+     },
+     {
+      "key": "char_dynamic_ability_new",
+      "countType": "NONE",
+      "blackboard": {
+       "at_root": 1.0,
+       "key": "act2autochess_equip_acarm121_ability",
+       "attack_speed": 15.0
+      }
+     }
+    ],
+    "params": {
+     "attack_speed": 25.0,
+     "at_root": 1.0,
+     "attack_speed_1": 15.0
+    }
+   },
+   "inAct1": false
+  },
+  {
+   "id": "chess_item_3_02_e_a",
+   "goldenId": "chess_item_3_02_e_b",
+   "trapId": "trap_1063_acarm063",
+   "name": "精准狙击镜",
+   "nameEn": "Precision Scope",
+   "itemType": "EQUIP",
+   "tier": 3,
+   "shopLevelSortId": 2,
+   "hideInShop": false,
+   "price": 2,
+   "goldenPrice": 5,
+   "upgradeNum": 2,
+   "mergeable": true,
+   "trapDuration": -1,
+   "giveBondId": "preciShip",
+   "giveBondName": "精准",
+   "canGiveBond": false,
+   "category": "ON_HIT",
+   "kind": "passive",
+   "requiresBond": null,
+   "requiresBondName": null,
+   "family": null,
+   "rangeId": "0-1",
+   "rangeGrids": [
+    {
+     "row": 0,
+     "col": 0
+    }
+   ],
+   "flavor": "一个属于精准之人的狙击镜。\n“定住身形，盯紧目标，钉死敌人。”",
+   "talentNotes": [],
+   "implFormula": "If distance(carrier tile, target) >= radius (3 tiles, Chebyshev/Euclid on tile grid [ASSUMED Euclidean]), outgoing damage *= damage_scale.",
+   "normal": {
+    "chessId": "chess_item_3_02_e_a",
+    "isGolden": false,
+    "purchasePrice": 2,
+    "upgradeChessId": "chess_item_3_02_e_b",
+    "upgradeNum": 2,
+    "trapDuration": -1,
+    "skillId": "sktok_acarm063_1",
+    "effectId": "eff_acarm063",
+    "effectName": "精准狙击镜",
+    "effectDesc": "攻击距离自身3格及以上的目标时，伤害提高30%",
+    "effectDescRaw": "攻击距离自身3格及以上的目标时，伤害提高<@ba.vup>30%</>",
+    "skillDesc": "攻击距离自身3格及以上的目标时，伤害提高30%",
+    "buffs": [
+     {
+      "key": "env_gbuff_new_with_verify",
+      "countType": "NONE",
+      "blackboard": {
+       "key": "act1autochess_equip_acarm063_global_buff",
+       "radius": 3.0,
+       "damage_scale": 1.3
+      }
+     }
+    ],
+    "params": {
+     "radius": 3.0,
+     "damage_scale": 1.3
+    }
+   },
+   "golden": {
+    "chessId": "chess_item_3_02_e_b",
+    "isGolden": true,
+    "purchasePrice": 5,
+    "upgradeChessId": null,
+    "upgradeNum": 0,
+    "trapDuration": 0,
+    "skillId": "sktok_acarm063_2",
+    "effectId": "eff_acgarm063",
+    "effectName": "精准狙击镜",
+    "effectDesc": "攻击距离自身3格及以上的目标时，伤害提高50%",
+    "effectDescRaw": "攻击距离自身3格及以上的目标时，伤害提高<@ba.vup>50%</>",
+    "skillDesc": "攻击距离自身3格及以上的目标时，伤害提高50%",
+    "buffs": [
+     {
+      "key": "env_gbuff_new_with_verify",
+      "countType": "NONE",
+      "blackboard": {
+       "key": "act1autochess_equip_acarm063_global_buff",
+       "radius": 3.0,
+       "damage_scale": 1.5
+      }
+     }
+    ],
+    "params": {
+     "radius": 3.0,
+     "damage_scale": 1.5
+    }
+   },
+   "inAct1": true,
+   "act1TierPrice": [
+    3,
+    2
+   ]
+  },
+  {
+   "id": "chess_item_3_03_e_a",
+   "goldenId": "chess_item_3_03_e_b",
+   "trapId": "trap_1053_acarm053",
+   "name": "激光发射器",
+   "nameEn": "Laser Sighter",
+   "itemType": "EQUIP",
+   "tier": 3,
+   "shopLevelSortId": 3,
+   "hideInShop": false,
+   "price": 2,
+   "goldenPrice": 5,
+   "upgradeNum": 2,
+   "mergeable": true,
+   "trapDuration": -1,
+   "giveBondId": null,
+   "giveBondName": null,
+   "canGiveBond": false,
+   "category": "STAT",
+   "kind": "passive",
+   "requiresBond": null,
+   "requiresBondName": null,
+   "family": null,
+   "rangeId": "0-1",
+   "rangeGrids": [
+    {
+     "row": 0,
+     "col": 0
+    }
+   ],
+   "flavor": "“除了有定位与穿透效用，也可作为诱饵使用。”",
+   "talentNotes": [],
+   "implFormula": "Carrier's attacks ignore magic_resist_penetrate (percent) of target RES: effRES = RES * (1 - p).",
+   "normal": {
+    "chessId": "chess_item_3_03_e_a",
+    "isGolden": false,
+    "purchasePrice": 2,
+    "upgradeChessId": "chess_item_3_03_e_b",
+    "upgradeNum": 2,
+    "trapDuration": -1,
+    "skillId": "sktok_acarm053_1",
+    "effectId": "eff_acarm053",
+    "effectName": "激光发射器",
+    "effectDesc": "攻击无视目标25%法术抗性",
+    "effectDescRaw": "攻击无视目标<@ba.vup>25%</>法术抗性",
+    "skillDesc": "攻击无视目标25%法术抗性",
+    "buffs": [
+     {
+      "key": "env_gbuff_new_with_verify",
+      "countType": "NONE",
+      "blackboard": {
+       "key": "magic_penetrate_global_buff",
+       "magic_resist_penetrate": 0.25
+      }
+     }
+    ],
+    "params": {
+     "magic_resist_penetrate": 0.25
+    }
+   },
+   "golden": {
+    "chessId": "chess_item_3_03_e_b",
+    "isGolden": true,
+    "purchasePrice": 5,
+    "upgradeChessId": null,
+    "upgradeNum": 0,
+    "trapDuration": 0,
+    "skillId": "sktok_acarm053_2",
+    "effectId": "eff_acgarm053",
+    "effectName": "激光发射器",
+    "effectDesc": "攻击无视目标45%法术抗性",
+    "effectDescRaw": "攻击无视目标<@ba.vup>45%</>法术抗性",
+    "skillDesc": "攻击无视目标45%法术抗性",
+    "buffs": [
+     {
+      "key": "env_gbuff_new_with_verify",
+      "countType": "NONE",
+      "blackboard": {
+       "key": "magic_penetrate_global_buff",
+       "magic_resist_penetrate": 0.45
+      }
+     }
+    ],
+    "params": {
+     "magic_resist_penetrate": 0.45
+    }
+   },
+   "inAct1": true,
+   "act1TierPrice": [
+    2,
+    2
+   ]
+  },
+  {
+   "id": "chess_item_3_04_e_a",
+   "goldenId": "chess_item_3_04_e_b",
+   "trapId": "trap_1040_acarm040",
+   "name": "炎国短刀",
+   "nameEn": "Yanese Dagger",
+   "itemType": "EQUIP",
+   "tier": 3,
+   "shopLevelSortId": 4,
+   "hideInShop": false,
+   "price": 2,
+   "goldenPrice": 5,
+   "upgradeNum": 2,
+   "mergeable": true,
+   "trapDuration": -1,
+   "giveBondId": "yanShip",
+   "giveBondName": "炎",
+   "canGiveBond": false,
+   "category": "ON_HIT",
+   "kind": "passive_counter",
+   "requiresBond": null,
+   "requiresBondName": null,
+   "family": null,
+   "rangeId": "0-1",
+   "rangeGrids": [
+    {
+     "row": 0,
+     "col": 0
+    }
+   ],
+   "flavor": "一把曾在炎国的江湖上铲除不义的短刀。\n“拔刀之前，先想清楚是否值得。拔出刀后，就不可再犹豫。”",
+   "talentNotes": [],
+   "implFormula": "Each time the carrier activates a skill: stacks = min(stacks+1, atk_buff_cnt); ATK% += atk * stacks. Stacks reset each battle.",
+   "normal": {
+    "chessId": "chess_item_3_04_e_a",
+    "isGolden": false,
+    "purchasePrice": 2,
+    "upgradeChessId": "chess_item_3_04_e_b",
+    "upgradeNum": 2,
+    "trapDuration": -1,
+    "skillId": "sktok_acarm040_1",
+    "effectId": "eff_acarm040",
+    "effectName": "炎国短刀",
+    "effectDesc": "每开启一次技能，获得5%的攻击力加成（最多叠加10次）",
+    "effectDescRaw": "每开启一次技能，获得<@ba.vup>5%</>的攻击力加成（最多叠加10次）",
+    "skillDesc": "每开启一次技能，获得5%的攻击力加成（最多叠加10次）",
+    "buffs": [
+     {
+      "key": "env_gbuff_new_with_verify",
+      "countType": "COUNTING",
+      "blackboard": {
+       "key": "act1vautochess_equip_acarm024_global_buff",
+       "prob": 1.0,
+       "atk": 0.05,
+       "atk_buff_cnt": 10.0
+      }
+     }
+    ],
+    "params": {
+     "prob": 1.0,
+     "atk": 0.05,
+     "atk_buff_cnt": 10.0
+    }
+   },
+   "golden": {
+    "chessId": "chess_item_3_04_e_b",
+    "isGolden": true,
+    "purchasePrice": 5,
+    "upgradeChessId": null,
+    "upgradeNum": 0,
+    "trapDuration": 0,
+    "skillId": "sktok_acarm040_2",
+    "effectId": "eff_acgarm040",
+    "effectName": "炎国短刀",
+    "effectDesc": "每开启一次技能，获得8%的攻击力加成（最多叠加10次）",
+    "effectDescRaw": "每开启一次技能，获得<@ba.vup>8%</>的攻击力加成（最多叠加10次）",
+    "skillDesc": "每开启一次技能，获得8%的攻击力加成（最多叠加10次）",
+    "buffs": [
+     {
+      "key": "env_gbuff_new_with_verify",
+      "countType": "COUNTING",
+      "blackboard": {
+       "key": "act1vautochess_equip_acarm024_global_buff",
+       "prob": 1.0,
+       "atk": 0.08,
+       "atk_buff_cnt": 10.0
+      }
+     }
+    ],
+    "params": {
+     "prob": 1.0,
+     "atk": 0.08,
+     "atk_buff_cnt": 10.0
+    }
+   },
+   "inAct1": true,
+   "act1TierPrice": [
+    2,
+    1
+   ]
+  },
+  {
+   "id": "chess_item_3_05_e_a",
+   "goldenId": "chess_item_3_05_e_b",
+   "trapId": "trap_1051_acarm051",
+   "name": "迅捷作战粮",
+   "nameEn": "Quick Combat Rations",
+   "itemType": "EQUIP",
+   "tier": 3,
+   "shopLevelSortId": 5,
+   "hideInShop": false,
+   "price": 2,
+   "goldenPrice": 5,
+   "upgradeNum": 2,
+   "mergeable": true,
+   "trapDuration": -1,
+   "giveBondId": "swiftShip",
+   "giveBondName": "迅捷",
+   "canGiveBond": false,
+   "category": "SP",
+   "kind": "passive",
+   "requiresBond": null,
+   "requiresBondName": null,
+   "family": null,
+   "rangeId": "0-1",
+   "rangeGrids": [
+    {
+     "row": 0,
+     "col": 0
+    }
+   ],
+   "flavor": "一份属于迅捷之人的作战粮。\n“它的作用是提供能量，不是满足口腹之欲。”",
+   "talentNotes": [],
+   "implFormula": "On deploy: SP += sp_each_person * (1 + N), N = number of OTHER deployed operators sharing at least one bond with the carrier [ASSUMED interpretation].",
+   "normal": {
+    "chessId": "chess_item_3_05_e_a",
+    "isGolden": false,
+    "purchasePrice": 2,
+    "upgradeChessId": "chess_item_3_05_e_b",
+    "upgradeNum": 2,
+    "trapDuration": -1,
+    "skillId": "sktok_acarm051_1",
+    "effectId": "eff_acarm051",
+    "effectName": "迅捷作战粮",
+    "effectDesc": "部署时，获得3点技力；每有一个同盟约的其他干员，额外获得3点技力",
+    "effectDescRaw": "部署时，获得<@ba.vup>3</>点技力；每有一个同盟约的其他干员，额外获得<@ba.vup>3</>点技力",
+    "skillDesc": "部署时，获得3点技力；每有一个同盟约的其他干员，额外获得3点技力",
+    "buffs": [
+     {
+      "key": "env_gbuff_new_with_verify",
+      "countType": "NONE",
+      "blackboard": {
+       "key": "act1autochess_equip_acarm051_global_buff",
+       "sp_each_person": 3.0
+      }
+     }
+    ],
+    "params": {
+     "sp_each_person": 3.0
+    }
+   },
+   "golden": {
+    "chessId": "chess_item_3_05_e_b",
+    "isGolden": true,
+    "purchasePrice": 5,
+    "upgradeChessId": null,
+    "upgradeNum": 0,
+    "trapDuration": 0,
+    "skillId": "sktok_acarm051_2",
+    "effectId": "eff_acgarm051",
+    "effectName": "迅捷作战粮",
+    "effectDesc": "部署时，获得6点技力；每有一个同盟约的其他干员，额外获得6点技力",
+    "effectDescRaw": "部署时，获得<@ba.vup>6</>点技力；每有一个同盟约的其他干员，额外获得<@ba.vup>6</>点技力",
+    "skillDesc": "部署时，获得6点技力；每有一个同盟约的其他干员，额外获得6点技力",
+    "buffs": [
+     {
+      "key": "env_gbuff_new_with_verify",
+      "countType": "NONE",
+      "blackboard": {
+       "key": "act1autochess_equip_acarm051_global_buff",
+       "sp_each_person": 6.0
+      }
+     }
+    ],
+    "params": {
+     "sp_each_person": 6.0
+    }
+   },
+   "inAct1": true,
+   "act1TierPrice": [
+    2,
+    2
+   ]
+  },
+  {
+   "id": "chess_item_3_06_e_a",
+   "goldenId": "chess_item_3_06_e_b",
+   "trapId": "trap_1049_acarm049",
+   "name": "歌利亚头盔",
+   "nameEn": "Goliath Helmet",
+   "itemType": "EQUIP",
+   "tier": 3,
+   "shopLevelSortId": 6,
+   "hideInShop": false,
+   "price": 2,
+   "goldenPrice": 5,
+   "upgradeNum": 2,
+   "mergeable": true,
+   "trapDuration": -1,
+   "giveBondId": null,
+   "giveBondName": null,
+   "canGiveBond": false,
+   "category": "STAT",
+   "kind": "passive",
+   "requiresBond": null,
+   "requiresBondName": null,
+   "family": null,
+   "rangeId": "0-1",
+   "rangeGrids": [
+    {
+     "row": 0,
+     "col": 0
+    }
+   ],
+   "flavor": "“锅炉工先生经常看着这个头盔发呆，他在想什么呢？”",
+   "talentNotes": [],
+   "implFormula": "maxHP% += init_max_hp; additionally, if at deploy time the tile directly in front of the carrier (facing direction) has no allied operator, maxHP% += ex_max_hp.",
+   "normal": {
+    "chessId": "chess_item_3_06_e_a",
+    "isGolden": false,
+    "purchasePrice": 2,
+    "upgradeChessId": "chess_item_3_06_e_b",
+    "upgradeNum": 2,
+    "trapDuration": -1,
+    "skillId": "sktok_acarm049_1",
+    "effectId": "eff_acarm049",
+    "effectName": "歌利亚头盔",
+    "effectDesc": "生命值+25%；部署时若身前一格没有其他干员，生命值额外+15%",
+    "effectDescRaw": "生命值<@ba.vup>+25%</>；部署时若身前一格没有其他干员，生命值额外<@ba.vup>+15%</>",
+    "skillDesc": "生命值+25%；部署时若身前一格没有其他干员，生命值额外+15%",
+    "buffs": [
+     {
+      "key": "env_gbuff_new_with_verify",
+      "countType": "NONE",
+      "blackboard": {
+       "key": "act1autochess_equip_acarm049_global_buff",
+       "init_max_hp": 0.25,
+       "ex_max_hp": 0.15
+      }
+     }
+    ],
+    "params": {
+     "init_max_hp": 0.25,
+     "ex_max_hp": 0.15
+    }
+   },
+   "golden": {
+    "chessId": "chess_item_3_06_e_b",
+    "isGolden": true,
+    "purchasePrice": 5,
+    "upgradeChessId": null,
+    "upgradeNum": 0,
+    "trapDuration": 0,
+    "skillId": "sktok_acarm049_2",
+    "effectId": "eff_acgarm049",
+    "effectName": "歌利亚头盔",
+    "effectDesc": "生命值+45%；部署时若身前一格没有其他干员，生命值额外+25%",
+    "effectDescRaw": "生命值<@ba.vup>+45%</>；部署时若身前一格没有其他干员，生命值额外<@ba.vup>+25%</>",
+    "skillDesc": "生命值+45%；部署时若身前一格没有其他干员，生命值额外+25%",
+    "buffs": [
+     {
+      "key": "env_gbuff_new_with_verify",
+      "countType": "NONE",
+      "blackboard": {
+       "key": "act1autochess_equip_acarm049_global_buff",
+       "init_max_hp": 0.45,
+       "ex_max_hp": 0.25
+      }
+     }
+    ],
+    "params": {
+     "init_max_hp": 0.45,
+     "ex_max_hp": 0.25
+    }
+   },
+   "inAct1": true,
+   "act1TierPrice": [
+    2,
+    2
+   ]
+  },
+  {
+   "id": "chess_item_3_07_e_a",
+   "goldenId": "chess_item_3_07_e_b",
+   "trapId": "trap_1046_acarm046",
+   "name": "阿戈尔重刃",
+   "nameEn": "Aegirian Blade",
+   "itemType": "EQUIP",
+   "tier": 3,
+   "shopLevelSortId": 7,
+   "hideInShop": false,
+   "price": 2,
+   "goldenPrice": 5,
+   "upgradeNum": 2,
+   "mergeable": true,
+   "trapDuration": -1,
+   "giveBondId": "egirShip",
+   "giveBondName": "阿戈尔",
+   "canGiveBond": false,
+   "category": "STAT",
+   "kind": "passive",
+   "requiresBond": null,
+   "requiresBondName": null,
+   "family": null,
+   "rangeId": "0-1",
+   "rangeGrids": [
+    {
+     "row": 0,
+     "col": 0
+    }
+   ],
+   "flavor": "一把曾在阿戈尔的漩涡里击碎浪涛的重刃。\n“直面那些你必将战胜的目标，证明你比它们更强大。”",
+   "talentNotes": [],
+   "implFormula": "ATK% += atk; ASPD += attack_speed (-10).",
+   "normal": {
+    "chessId": "chess_item_3_07_e_a",
+    "isGolden": false,
+    "purchasePrice": 2,
+    "upgradeChessId": "chess_item_3_07_e_b",
+    "upgradeNum": 2,
+    "trapDuration": -1,
+    "skillId": "sktok_acarm046_1",
+    "effectId": "eff_acarm046",
+    "effectName": "阿戈尔重刃",
+    "effectDesc": "攻击力+40%，攻击速度-10",
+    "effectDescRaw": "攻击力<@ba.vup>+40%</>，攻击速度<@ba.vdown>-10</>",
+    "skillDesc": "攻击力+40%，攻击速度-10",
+    "buffs": [
+     {
+      "key": "env_gbuff_new_with_verify",
+      "countType": "NONE",
+      "blackboard": {
+       "key": "attr_common_global_buff",
+       "atk": 0.4,
+       "attack_speed": -10.0
+      }
+     }
+    ],
+    "params": {
+     "atk": 0.4,
+     "attack_speed": -10.0
+    }
+   },
+   "golden": {
+    "chessId": "chess_item_3_07_e_b",
+    "isGolden": true,
+    "purchasePrice": 5,
+    "upgradeChessId": null,
+    "upgradeNum": 0,
+    "trapDuration": 0,
+    "skillId": "sktok_acarm046_2",
+    "effectId": "eff_acgarm046",
+    "effectName": "阿戈尔重刃",
+    "effectDesc": "攻击力+60%，攻击速度-10",
+    "effectDescRaw": "攻击力<@ba.vup>+60%</>，攻击速度<@ba.vdown>-10</>",
+    "skillDesc": "攻击力+60%，攻击速度-10",
+    "buffs": [
+     {
+      "key": "env_gbuff_new_with_verify",
+      "countType": "NONE",
+      "blackboard": {
+       "key": "attr_common_global_buff",
+       "atk": 0.6,
+       "attack_speed": -10.0
+      }
+     }
+    ],
+    "params": {
+     "atk": 0.6,
+     "attack_speed": -10.0
+    }
+   },
+   "inAct1": true,
+   "act1TierPrice": [
+    1,
+    1
+   ]
+  },
+  {
+   "id": "chess_item_3_08_e_a",
+   "goldenId": "chess_item_3_08_e_b",
+   "trapId": "trap_1048_acarm048",
+   "name": "奥术法阵",
+   "nameEn": "Pocket Arts Circle",
+   "itemType": "EQUIP",
+   "tier": 3,
+   "shopLevelSortId": 8,
+   "hideInShop": false,
+   "price": 1,
+   "goldenPrice": 5,
+   "upgradeNum": 2,
+   "mergeable": true,
+   "trapDuration": -1,
+   "giveBondId": "arcaneShip",
+   "giveBondName": "奥术",
+   "canGiveBond": false,
+   "category": "STAT",
+   "kind": "passive",
+   "requiresBond": null,
+   "requiresBondName": null,
+   "family": null,
+   "rangeId": "0-1",
+   "rangeGrids": [
+    {
+     "row": 0,
+     "col": 0
+    }
+   ],
+   "flavor": "“赶紧把术师们派到战场上去！”",
+   "talentNotes": [],
+   "implFormula": "RES += magic_resistance (flat); each attack applies 失去特殊能力 (silence: enemy loses its special abilities/talents) to target for `silence` s.",
+   "normal": {
+    "chessId": "chess_item_3_08_e_a",
+    "isGolden": false,
+    "purchasePrice": 1,
+    "upgradeChessId": "chess_item_3_08_e_b",
+    "upgradeNum": 2,
+    "trapDuration": -1,
+    "skillId": "sktok_acarm048_1",
+    "effectId": "eff_acarm048",
+    "effectName": "奥术法阵",
+    "effectDesc": "法术抗性+20，攻击使目标失去特殊能力5秒",
+    "effectDescRaw": "法术抗性<@ba.vup>+20</>，攻击使目标失去特殊能力<@ba.vup>5</>秒",
+    "skillDesc": "法术抗性+20，攻击使目标失去特殊能力5秒",
+    "buffs": [
+     {
+      "key": "env_gbuff_new_with_verify",
+      "countType": "NONE",
+      "blackboard": {
+       "key": "attr_common_global_buff",
+       "magic_resistance": 20.0
+      }
+     },
+     {
+      "key": "env_gbuff_new_with_verify",
+      "countType": "NONE",
+      "blackboard": {
+       "key": "silence_attachment",
+       "silence": 5.0
+      }
+     }
+    ],
+    "params": {
+     "magic_resistance": 20.0,
+     "silence": 5.0
+    }
+   },
+   "golden": {
+    "chessId": "chess_item_3_08_e_b",
+    "isGolden": true,
+    "purchasePrice": 5,
+    "upgradeChessId": null,
+    "upgradeNum": 0,
+    "trapDuration": 0,
+    "skillId": "sktok_acarm048_2",
+    "effectId": "eff_acgarm048",
+    "effectName": "奥术法阵",
+    "effectDesc": "法术抗性+30，攻击使目标失去特殊能力5秒",
+    "effectDescRaw": "法术抗性<@ba.vup>+30</>，攻击使目标失去特殊能力<@ba.vup>5</>秒",
+    "skillDesc": "法术抗性+30，攻击使目标失去特殊能力5秒",
+    "buffs": [
+     {
+      "key": "env_gbuff_new_with_verify",
+      "countType": "NONE",
+      "blackboard": {
+       "key": "attr_common_global_buff",
+       "magic_resistance": 30.0
+      }
+     },
+     {
+      "key": "env_gbuff_new_with_verify",
+      "countType": "NONE",
+      "blackboard": {
+       "key": "silence_attachment",
+       "silence": 5.0
+      }
+     }
+    ],
+    "params": {
+     "magic_resistance": 30.0,
+     "silence": 5.0
+    }
+   },
+   "inAct1": true,
+   "act1TierPrice": [
+    1,
+    2
+   ]
+  },
+  {
+   "id": "chess_item_3_09_e_a",
+   "goldenId": "chess_item_3_09_e_b",
+   "trapId": "trap_1043_acarm043",
+   "name": "坚固维式重锤",
+   "nameEn": "Durable Victorian Hammer",
+   "itemType": "EQUIP",
+   "tier": 3,
+   "shopLevelSortId": 9,
+   "hideInShop": false,
+   "price": 2,
+   "goldenPrice": 5,
+   "upgradeNum": 2,
+   "mergeable": true,
+   "trapDuration": -1,
+   "giveBondId": "victoriaShip",
+   "giveBondName": "维多利亚",
+   "canGiveBond": false,
+   "category": "SURVIVAL",
+   "kind": "passive",
+   "requiresBond": null,
+   "requiresBondName": null,
+   "family": "hammer",
+   "rangeId": "0-1",
+   "rangeGrids": [
+    {
+     "row": 0,
+     "col": 0
+    }
+   ],
+   "flavor": "一柄曾在维多利亚的工厂内铸造和平的重锤，如今它的质地更硬。\n“用同样的铁与火，去终结那场战争。”",
+   "talentNotes": [],
+   "implFormula": "ATK% += atk. First time per battle carrier would take lethal damage: HP cannot drop below 1 for undeadable_duration s.",
+   "normal": {
+    "chessId": "chess_item_3_09_e_a",
+    "isGolden": false,
+    "purchasePrice": 2,
+    "upgradeChessId": "chess_item_3_09_e_b",
+    "upgradeNum": 2,
+    "trapDuration": -1,
+    "skillId": "sktok_acarm043_1",
+    "effectId": "eff_acarm043",
+    "effectName": "坚固维式重锤",
+    "effectDesc": "攻击力+25%；首次受到致命伤害时生命值不低于1，持续8秒",
+    "effectDescRaw": "攻击力<@ba.vup>+25%</>；首次受到致命伤害时生命值不低于<@ba.vup>1</>，持续8秒",
+    "skillDesc": "攻击力+25%；首次受到致命伤害时生命值不低于1，持续8秒",
+    "buffs": [
+     {
+      "key": "env_gbuff_new_with_verify",
+      "countType": "NONE",
+      "blackboard": {
+       "key": "attr_common_global_buff",
+       "atk": 0.25
+      }
+     },
+     {
+      "key": "env_gbuff_new_with_verify",
+      "countType": "NONE",
+      "blackboard": {
+       "key": "act1autochess_equip_acarm043_global_buff",
+       "undeadable_duration": 8.0,
+       "big_hammer": "chess_item_6_05_e"
+      }
+     }
+    ],
+    "params": {
+     "atk": 0.25,
+     "undeadable_duration": 8.0,
+     "big_hammer": "chess_item_6_05_e"
+    }
+   },
+   "golden": {
+    "chessId": "chess_item_3_09_e_b",
+    "isGolden": true,
+    "purchasePrice": 5,
+    "upgradeChessId": null,
+    "upgradeNum": 0,
+    "trapDuration": 0,
+    "skillId": "sktok_acarm043_2",
+    "effectId": "eff_acgarm043",
+    "effectName": "坚固维式重锤",
+    "effectDesc": "攻击力+45%；首次受到致命伤害时生命值不低于1，持续8秒",
+    "effectDescRaw": "攻击力<@ba.vup>+45%</>；首次受到致命伤害时生命值不低于<@ba.vup>1</>，持续8秒",
+    "skillDesc": "攻击力+45%；首次受到致命伤害时生命值不低于1，持续8秒",
+    "buffs": [
+     {
+      "key": "env_gbuff_new_with_verify",
+      "countType": "NONE",
+      "blackboard": {
+       "key": "attr_common_global_buff",
+       "atk": 0.45
+      }
+     },
+     {
+      "key": "env_gbuff_new_with_verify",
+      "countType": "NONE",
+      "blackboard": {
+       "key": "act1autochess_equip_acarm043_global_buff",
+       "undeadable_duration": 8.0,
+       "big_hammer": "chess_item_6_05_e"
+      }
+     }
+    ],
+    "params": {
+     "atk": 0.45,
+     "undeadable_duration": 8.0,
+     "big_hammer": "chess_item_6_05_e"
+    }
+   },
+   "inAct1": true,
+   "act1TierPrice": [
+    2,
+    2
+   ]
+  },
+  {
+   "id": "chess_item_3_10_e_a",
+   "goldenId": "chess_item_3_10_e_b",
+   "trapId": "trap_1044_acarm044",
+   "name": "加速维式重锤",
+   "nameEn": "Speedy Victorian Hammer",
+   "itemType": "EQUIP",
+   "tier": 3,
+   "shopLevelSortId": 10,
+   "hideInShop": false,
+   "price": 2,
+   "goldenPrice": 5,
+   "upgradeNum": 2,
+   "mergeable": true,
+   "trapDuration": -1,
+   "giveBondId": "victoriaShip",
+   "giveBondName": "维多利亚",
+   "canGiveBond": false,
+   "category": "STAT",
+   "kind": "passive",
+   "requiresBond": null,
+   "requiresBondName": null,
+   "family": "hammer",
+   "rangeId": "0-1",
+   "rangeGrids": [
+    {
+     "row": 0,
+     "col": 0
+    }
+   ],
+   "flavor": "一柄曾在维多利亚的工厂内铸造和平的重锤，如今它的势头更猛。\n“用同样的铁与火，去终结那场战争。”",
+   "talentNotes": [],
+   "implFormula": "ATK% += atk; ASPD += attack_speed (the hammer 'special effect' = the ASPD part).",
+   "normal": {
+    "chessId": "chess_item_3_10_e_a",
+    "isGolden": false,
+    "purchasePrice": 2,
+    "upgradeChessId": "chess_item_3_10_e_b",
+    "upgradeNum": 2,
+    "trapDuration": -1,
+    "skillId": "sktok_acarm044_1",
+    "effectId": "eff_acarm044",
+    "effectName": "加速维式重锤",
+    "effectDesc": "攻击力+25%；攻击速度+30",
+    "effectDescRaw": "攻击力<@ba.vup>+25%</>；攻击速度<@ba.vup>+30</>",
+    "skillDesc": "攻击力+25%；攻击速度+30",
+    "buffs": [
+     {
+      "key": "env_gbuff_new_with_verify",
+      "countType": "NONE",
+      "blackboard": {
+       "key": "attr_common_global_buff",
+       "atk": 0.25
+      }
+     },
+     {
+      "key": "env_gbuff_new_with_verify",
+      "countType": "NONE",
+      "blackboard": {
+       "key": "act1autochess_equip_acarm044_global_buff",
+       "attack_speed": 30.0,
+       "big_hammer": "chess_item_6_05_e"
+      }
+     }
+    ],
+    "params": {
+     "atk": 0.25,
+     "attack_speed": 30.0,
+     "big_hammer": "chess_item_6_05_e"
+    }
+   },
+   "golden": {
+    "chessId": "chess_item_3_10_e_b",
+    "isGolden": true,
+    "purchasePrice": 5,
+    "upgradeChessId": null,
+    "upgradeNum": 0,
+    "trapDuration": 0,
+    "skillId": "sktok_acarm044_2",
+    "effectId": "eff_acgarm044",
+    "effectName": "加速维式重锤",
+    "effectDesc": "攻击力+45%；攻击速度+30",
+    "effectDescRaw": "攻击力<@ba.vup>+45%</>；攻击速度<@ba.vup>+30</>",
+    "skillDesc": "攻击力+45%；攻击速度+30",
+    "buffs": [
+     {
+      "key": "env_gbuff_new_with_verify",
+      "countType": "NONE",
+      "blackboard": {
+       "key": "attr_common_global_buff",
+       "atk": 0.45
+      }
+     },
+     {
+      "key": "env_gbuff_new_with_verify",
+      "countType": "NONE",
+      "blackboard": {
+       "key": "act1autochess_equip_acarm044_global_buff",
+       "attack_speed": 30.0,
+       "big_hammer": "chess_item_6_05_e"
+      }
+     }
+    ],
+    "params": {
+     "atk": 0.45,
+     "attack_speed": 30.0,
+     "big_hammer": "chess_item_6_05_e"
+    }
+   },
+   "inAct1": true,
+   "act1TierPrice": [
+    2,
+    2
+   ]
+  },
+  {
+   "id": "chess_item_3_11_e_a",
+   "goldenId": "chess_item_3_11_e_b",
+   "trapId": "trap_1064_acarm064",
+   "name": "突袭手雷",
+   "nameEn": "Raid Grenade",
+   "itemType": "EQUIP",
+   "tier": 3,
+   "shopLevelSortId": 11,
+   "hideInShop": false,
+   "price": 1,
+   "goldenPrice": 5,
+   "upgradeNum": 2,
+   "mergeable": true,
+   "trapDuration": -1,
+   "giveBondId": "raidShip",
+   "giveBondName": "突袭",
+   "canGiveBond": false,
+   "category": "ON_HIT",
+   "kind": "passive",
+   "requiresBond": null,
+   "requiresBondName": null,
+   "family": null,
+   "rangeId": "0-1",
+   "rangeGrids": [
+    {
+     "row": 0,
+     "col": 0
+    }
+   ],
+   "flavor": "一枚属于突袭之人的手雷。\n“就是现在！！！”",
+   "talentNotes": [],
+   "implFormula": "For `duration` s after EACH deploy, every attack stuns the target for `stun` s.",
+   "normal": {
+    "chessId": "chess_item_3_11_e_a",
+    "isGolden": false,
+    "purchasePrice": 1,
+    "upgradeChessId": "chess_item_3_11_e_b",
+    "upgradeNum": 2,
+    "trapDuration": -1,
+    "skillId": "sktok_acarm064_1",
+    "effectId": "eff_acarm064",
+    "effectName": "突袭手雷",
+    "effectDesc": "每次部署后的10秒内，攻击时使目标晕眩2秒",
+    "effectDescRaw": "每次部署后的10秒内，攻击时使目标<$ba.stun>晕眩</>2秒",
+    "skillDesc": "每次部署后的10秒内，攻击时使目标晕眩2秒",
+    "buffs": [
+     {
+      "key": "env_gbuff_new_with_verify",
+      "countType": "NONE",
+      "blackboard": {
+       "key": "act1autochess_equip_acarm064_global_buff",
+       "stun": 2.0,
+       "duration": 10.0
+      }
+     }
+    ],
+    "params": {
+     "stun": 2.0,
+     "duration": 10.0
+    }
+   },
+   "golden": {
+    "chessId": "chess_item_3_11_e_b",
+    "isGolden": true,
+    "purchasePrice": 5,
+    "upgradeChessId": null,
+    "upgradeNum": 0,
+    "trapDuration": 0,
+    "skillId": "sktok_acarm064_2",
+    "effectId": "eff_acgarm064",
+    "effectName": "突袭手雷",
+    "effectDesc": "每次部署后的15秒内，攻击时使目标晕眩2秒",
+    "effectDescRaw": "每次部署后的15秒内，攻击时使目标<$ba.stun>晕眩</>2秒",
+    "skillDesc": "每次部署后的15秒内，攻击时使目标晕眩2秒",
+    "buffs": [
+     {
+      "key": "env_gbuff_new_with_verify",
+      "countType": "NONE",
+      "blackboard": {
+       "key": "act1autochess_equip_acarm064_global_buff",
+       "stun": 2.0,
+       "duration": 15.0
+      }
+     }
+    ],
+    "params": {
+     "stun": 2.0,
+     "duration": 15.0
+    }
+   },
+   "inAct1": true,
+   "act1TierPrice": [
+    3,
+    1
+   ]
+  },
+  {
+   "id": "chess_item_3_12_e_a",
+   "goldenId": "chess_item_3_12_e_b",
+   "trapId": "trap_1123_acarm123",
+   "name": "骑士储蓄罐",
+   "nameEn": "Knight Piggy Bank",
+   "itemType": "EQUIP",
+   "tier": 3,
+   "shopLevelSortId": 12,
+   "hideInShop": false,
+   "price": 3,
+   "goldenPrice": 5,
+   "upgradeNum": 2,
+   "mergeable": true,
+   "trapDuration": -1,
+   "giveBondId": null,
+   "giveBondName": null,
+   "canGiveBond": false,
+   "category": "ECONOMY",
+   "kind": "consume_on_equip",
+   "requiresBond": null,
+   "requiresBondName": null,
+   "family": null,
+   "rangeId": "0-1",
+   "rangeGrids": [
+    {
+     "row": 0,
+     "col": 0
+    }
+   ],
+   "flavor": "一款卡西米尔各大周边商城在售的储蓄罐。 “将你积攒起的幸运传递给喜爱的选手吧。”",
+   "talentNotes": [],
+   "implFormula": "On equip: destroy item, player.funds += randInt(min,max) inclusive (normal 1-6, golden 2-12).",
+   "normal": {
+    "chessId": "chess_item_3_12_e_a",
+    "isGolden": false,
+    "purchasePrice": 3,
+    "upgradeChessId": "chess_item_3_12_e_b",
+    "upgradeNum": 2,
+    "trapDuration": -1,
+    "skillId": "sktok_acarm123_1",
+    "effectId": "eff_acarm123",
+    "effectName": "骑士储蓄罐",
+    "effectDesc": "装备时销毁，并随机获得1~6资金",
+    "effectDescRaw": "装备时销毁，并随机获得<@ba.vup>1~6</>资金",
+    "skillDesc": "装备时销毁，并随机获得1~6资金",
+    "buffs": [
+     {
+      "key": "equip_destory_gain_random_coin",
+      "countType": "NONE",
+      "blackboard": {
+       "min": 1.0,
+       "max": 6.0
+      }
+     }
+    ],
+    "params": {
+     "min": 1.0,
+     "max": 6.0
+    }
+   },
+   "golden": {
+    "chessId": "chess_item_3_12_e_b",
+    "isGolden": true,
+    "purchasePrice": 5,
+    "upgradeChessId": null,
+    "upgradeNum": 0,
+    "trapDuration": 0,
+    "skillId": "sktok_acarm123_2",
+    "effectId": "eff_acgarm123",
+    "effectName": "骑士储蓄罐",
+    "effectDesc": "装备时销毁，并随机获得2~12资金",
+    "effectDescRaw": "装备时销毁，并随机获得<@ba.vup>2~12</>资金",
+    "skillDesc": "装备时销毁，并随机获得2~12资金",
+    "buffs": [
+     {
+      "key": "equip_destory_gain_random_coin",
+      "countType": "NONE",
+      "blackboard": {
+       "min": 2.0,
+       "max": 12.0
+      }
+     }
+    ],
+    "params": {
+     "min": 2.0,
+     "max": 12.0
+    }
+   },
+   "inAct1": false
+  },
+  {
+   "id": "chess_item_4_01_e_a",
+   "goldenId": "chess_item_4_01_e_b",
+   "trapId": "trap_1075_acarm075",
+   "name": "寻呼模块",
+   "nameEn": "Dispatch Module",
+   "itemType": "EQUIP",
+   "tier": 4,
+   "shopLevelSortId": 1,
+   "hideInShop": false,
+   "price": 4,
+   "goldenPrice": 5,
+   "upgradeNum": 100,
+   "mergeable": false,
+   "trapDuration": -1,
+   "giveBondId": null,
+   "giveBondName": null,
+   "canGiveBond": false,
+   "category": "RECRUIT",
+   "kind": "consume_on_equip",
+   "requiresBond": null,
+   "requiresBondName": null,
+   "family": null,
+   "rangeId": "0-1",
+   "rangeGrids": [
+    {
+     "row": 0,
+     "col": 0
+    }
+   ],
+   "flavor": "“呼叫调度中心，呼叫调度中心，我们已准备好接收指令。”",
+   "talentNotes": [
+    "本装备不会合并为进阶品质"
+   ],
+   "implFormula": "On equip: destroy item; open a special shop refresh with refresh_cnt(3) operators sharing a bond with the target (tier <= current shop level); player takes choice_cnt(1) of them for free. Never merges (upgradeNum=100).",
+   "normal": {
+    "chessId": "chess_item_4_01_e_a",
+    "isGolden": false,
+    "purchasePrice": 4,
+    "upgradeChessId": "chess_item_4_01_e_b",
+    "upgradeNum": 100,
+    "trapDuration": -1,
+    "skillId": "sktok_acarm075_1",
+    "effectId": "eff_acarm075",
+    "effectName": "寻呼模块",
+    "effectDesc": "装备时销毁，立即特殊刷新一次调度中心，出现三名与该干员有相同盟约的干员，免费获取其中一名！（不高于当前调度中心等级）",
+    "effectDescRaw": "装备时销毁，立即特殊刷新一次调度中心，出现三名与该干员有相同盟约的干员，免费获取其中一名！（不高于当前调度中心等级）",
+    "skillDesc": "装备时销毁，立即特殊刷新一次调度中心，出现三名与该干员有相同盟约的干员，免费获取其中一名！（不高于当前调度中心等级）",
+    "buffs": [
+     {
+      "key": "use_equip_reward_special_goods_char_chess",
+      "countType": "NONE",
+      "blackboard": {
+       "refresh_cnt": 3.0,
+       "choice_cnt": 1.0
+      }
+     }
+    ],
+    "params": {
+     "refresh_cnt": 3.0,
+     "choice_cnt": 1.0
+    }
+   },
+   "golden": {
+    "chessId": "chess_item_4_01_e_b",
+    "isGolden": true,
+    "purchasePrice": 5,
+    "upgradeChessId": null,
+    "upgradeNum": 0,
+    "trapDuration": 0,
+    "skillId": "sktok_acarm075_2",
+    "effectId": "eff_acgarm075",
+    "effectName": "寻呼模块",
+    "effectDesc": "装备时销毁，立即特殊刷新一次调度中心，出现三名与该干员有相同盟约的干员，免费获取其中一名！（不高于当前调度中心等级）",
+    "effectDescRaw": "装备时销毁，立即特殊刷新一次调度中心，出现三名与该干员有相同盟约的干员，免费获取其中一名！（不高于当前调度中心等级）",
+    "skillDesc": "装备时销毁，立即特殊刷新一次调度中心，出现三名与该干员有相同盟约的干员，免费获取其中一名！（不高于当前调度中心等级）",
+    "buffs": [
+     {
+      "key": "use_equip_reward_special_goods_char_chess",
+      "countType": "NONE",
+      "blackboard": {
+       "refresh_cnt": 3.0,
+       "choice_cnt": 1.0
+      }
+     }
+    ],
+    "params": {
+     "refresh_cnt": 3.0,
+     "choice_cnt": 1.0
+    }
+   },
+   "inAct1": true,
+   "act1TierPrice": [
+    5,
+    4
+   ]
+  },
+  {
+   "id": "chess_item_4_02_e_a",
+   "goldenId": "chess_item_4_02_e_b",
+   "trapId": "trap_1054_acarm054",
+   "name": "蜂鸣器",
+   "nameEn": "Buzzer",
+   "itemType": "EQUIP",
+   "tier": 4,
+   "shopLevelSortId": 2,
+   "hideInShop": false,
+   "price": 1,
+   "goldenPrice": 5,
+   "upgradeNum": 2,
+   "mergeable": true,
+   "trapDuration": -1,
+   "giveBondId": null,
+   "giveBondName": null,
+   "canGiveBond": false,
+   "category": "SURVIVAL",
+   "kind": "passive",
+   "requiresBond": null,
+   "requiresBondName": null,
+   "family": null,
+   "rangeId": "0-1",
+   "rangeGrids": [
+    {
+     "row": 0,
+     "col": 0
+    }
+   ],
+   "flavor": "“你们去救伤员，我来对付这些混蛋！”",
+   "talentNotes": [],
+   "implFormula": "tauntLevel = 1 (enemies prefer this unit as target); maxHP% += max_hp.",
+   "normal": {
+    "chessId": "chess_item_4_02_e_a",
+    "isGolden": false,
+    "purchasePrice": 1,
+    "upgradeChessId": "chess_item_4_02_e_b",
+    "upgradeNum": 2,
+    "trapDuration": -1,
+    "skillId": "sktok_acarm054_1",
+    "effectId": "eff_acarm054",
+    "effectName": "蜂鸣器",
+    "effectDesc": "更容易受到攻击，生命值+40%",
+    "effectDescRaw": "更容易受到攻击，生命值<@ba.vup>+40%</>",
+    "skillDesc": "更容易受到攻击，生命值+40%",
+    "buffs": [
+     {
+      "key": "env_gbuff_new_with_verify",
+      "countType": "NONE",
+      "blackboard": {
+       "key": "act1autochess_equip_acarm054_global_buff",
+       "taunt_level": 1.0
+      }
+     },
+     {
+      "key": "env_gbuff_new_with_verify",
+      "countType": "NONE",
+      "blackboard": {
+       "key": "attr_common_global_buff",
+       "max_hp": 0.4
+      }
+     }
+    ],
+    "params": {
+     "taunt_level": 1.0,
+     "max_hp": 0.4
+    }
+   },
+   "golden": {
+    "chessId": "chess_item_4_02_e_b",
+    "isGolden": true,
+    "purchasePrice": 5,
+    "upgradeChessId": null,
+    "upgradeNum": 0,
+    "trapDuration": 0,
+    "skillId": "sktok_acarm054_2",
+    "effectId": "eff_acgarm054",
+    "effectName": "蜂鸣器",
+    "effectDesc": "更容易受到攻击，生命值+60%",
+    "effectDescRaw": "更容易受到攻击，生命值<@ba.vup>+60%</>",
+    "skillDesc": "更容易受到攻击，生命值+60%",
+    "buffs": [
+     {
+      "key": "env_gbuff_new_with_verify",
+      "countType": "NONE",
+      "blackboard": {
+       "key": "act1autochess_equip_acarm054_global_buff",
+       "taunt_level": 1.0
+      }
+     },
+     {
+      "key": "env_gbuff_new_with_verify",
+      "countType": "NONE",
+      "blackboard": {
+       "key": "attr_common_global_buff",
+       "max_hp": 0.6
+      }
+     }
+    ],
+    "params": {
+     "taunt_level": 1.0,
+     "max_hp": 0.6
+    }
+   },
+   "inAct1": true,
+   "act1TierPrice": [
+    2,
+    1
+   ]
+  },
+  {
+   "id": "chess_item_4_03_e_a",
+   "goldenId": "chess_item_4_03_e_b",
+   "trapId": "trap_1052_acarm052",
+   "name": "有限加速器",
+   "nameEn": "Miniature Accelerator",
+   "itemType": "EQUIP",
+   "tier": 4,
+   "shopLevelSortId": 3,
+   "hideInShop": false,
+   "price": 2,
+   "goldenPrice": 5,
+   "upgradeNum": 2,
+   "mergeable": true,
+   "trapDuration": -1,
+   "giveBondId": null,
+   "giveBondName": null,
+   "canGiveBond": false,
+   "category": "ON_HIT",
+   "kind": "passive_counter",
+   "requiresBond": null,
+   "requiresBondName": null,
+   "family": null,
+   "rangeId": "0-1",
+   "rangeGrids": [
+    {
+     "row": 0,
+     "col": 0
+    }
+   ],
+   "flavor": "“通过触摸有限的极致，我们得以观察无限的边缘。”",
+   "talentNotes": [],
+   "implFormula": "After each attack or heal: stacks = min(stacks+1, max_buff_cnt); ASPD += attack_speed * stacks. Resets each battle.",
+   "normal": {
+    "chessId": "chess_item_4_03_e_a",
+    "isGolden": false,
+    "purchasePrice": 2,
+    "upgradeChessId": "chess_item_4_03_e_b",
+    "upgradeNum": 2,
+    "trapDuration": -1,
+    "skillId": "sktok_acarm052_1",
+    "effectId": "eff_acarm052",
+    "effectName": "有限加速器",
+    "effectDesc": "每次攻击或治疗后，本场战斗中攻击速度+1，最高60层",
+    "effectDescRaw": "每次攻击或治疗后，本场战斗中攻击速度<@ba.vup>+1</>，最高60层",
+    "skillDesc": "每次攻击或治疗后，本场战斗中攻击速度+1，最高60层",
+    "buffs": [
+     {
+      "key": "env_gbuff_new_with_verify",
+      "countType": "COUNTING",
+      "blackboard": {
+       "key": "act1vautochess_equip_acarm037_global_buff",
+       "attack_speed": 1.0,
+       "max_buff_cnt": 60.0,
+       "atk": 0.0
+      }
+     }
+    ],
+    "params": {
+     "attack_speed": 1.0,
+     "max_buff_cnt": 60.0,
+     "atk": 0.0
+    }
+   },
+   "golden": {
+    "chessId": "chess_item_4_03_e_b",
+    "isGolden": true,
+    "purchasePrice": 5,
+    "upgradeChessId": null,
+    "upgradeNum": 0,
+    "trapDuration": 0,
+    "skillId": "sktok_acarm052_2",
+    "effectId": "eff_acgarm052",
+    "effectName": "有限加速器",
+    "effectDesc": "每次攻击或治疗后，本场战斗中攻击速度+2，最高60层",
+    "effectDescRaw": "每次攻击或治疗后，本场战斗中攻击速度<@ba.vup>+2</>，最高60层",
+    "skillDesc": "每次攻击或治疗后，本场战斗中攻击速度+2，最高60层",
+    "buffs": [
+     {
+      "key": "env_gbuff_new_with_verify",
+      "countType": "COUNTING",
+      "blackboard": {
+       "key": "act1vautochess_equip_acarm037_global_buff",
+       "attack_speed": 2.0,
+       "max_buff_cnt": 60.0,
+       "atk": 0.0
+      }
+     }
+    ],
+    "params": {
+     "attack_speed": 2.0,
+     "max_buff_cnt": 60.0,
+     "atk": 0.0
+    }
+   },
+   "inAct1": true,
+   "act1TierPrice": [
+    2,
+    2
+   ]
+  },
+  {
+   "id": "chess_item_4_04_e_a",
+   "goldenId": "chess_item_4_04_e_b",
+   "trapId": "trap_1055_acarm055",
+   "name": "伪装服",
+   "nameEn": "Disguise Outfit",
+   "itemType": "EQUIP",
+   "tier": 4,
+   "shopLevelSortId": 4,
+   "hideInShop": false,
+   "price": 1,
+   "goldenPrice": 5,
+   "upgradeNum": 2,
+   "mergeable": true,
+   "trapDuration": -1,
+   "giveBondId": null,
+   "giveBondName": null,
+   "canGiveBond": false,
+   "category": "SURVIVAL",
+   "kind": "passive",
+   "requiresBond": null,
+   "requiresBondName": null,
+   "family": null,
+   "rangeId": "0-1",
+   "rangeGrids": [
+    {
+     "row": 0,
+     "col": 0
+    }
+   ],
+   "flavor": "“我会让你们记住这份教训，我将让你们永远对暗处怀有恐惧。”",
+   "talentNotes": [],
+   "implFormula": "First time the carrier takes damage in a battle: gain 隐匿(Camouflage: not targeted by ranged enemies unless blocking) for `duration` s.",
+   "normal": {
+    "chessId": "chess_item_4_04_e_a",
+    "isGolden": false,
+    "purchasePrice": 1,
+    "upgradeChessId": "chess_item_4_04_e_b",
+    "upgradeNum": 2,
+    "trapDuration": -1,
+    "skillId": "sktok_acarm055_1",
+    "effectId": "eff_acarm055",
+    "effectName": "伪装服",
+    "effectDesc": "首次受到伤害后获得隐匿，持续15秒",
+    "effectDescRaw": "首次受到伤害后获得<$ba.invisible>隐匿</>，持续15秒",
+    "skillDesc": "首次受到伤害后获得隐匿，持续15秒",
+    "buffs": [
+     {
+      "key": "env_gbuff_new_with_verify",
+      "countType": "NONE",
+      "blackboard": {
+       "key": "act2autochess_equip_acarm055_global_buff",
+       "duration": 15.0
+      }
+     }
+    ],
+    "params": {
+     "duration": 15.0
+    }
+   },
+   "golden": {
+    "chessId": "chess_item_4_04_e_b",
+    "isGolden": true,
+    "purchasePrice": 5,
+    "upgradeChessId": null,
+    "upgradeNum": 0,
+    "trapDuration": 0,
+    "skillId": "sktok_acarm055_2",
+    "effectId": "eff_acgarm055",
+    "effectName": "伪装服",
+    "effectDesc": "首次受到伤害后获得隐匿，持续25秒",
+    "effectDescRaw": "首次受到伤害后获得<$ba.invisible>隐匿</>，持续25秒",
+    "skillDesc": "首次受到伤害后获得隐匿，持续25秒",
+    "buffs": [
+     {
+      "key": "env_gbuff_new_with_verify",
+      "countType": "NONE",
+      "blackboard": {
+       "key": "act2autochess_equip_acarm055_global_buff",
+       "duration": 25.0
+      }
+     }
+    ],
+    "params": {
+     "duration": 25.0
+    }
+   },
+   "inAct1": true,
+   "act1TierPrice": [
+    3,
+    1
+   ]
+  },
+  {
+   "id": "chess_item_4_05_e_a",
+   "goldenId": "chess_item_4_05_e_b",
+   "trapId": "trap_1060_acarm060",
+   "name": "防暴盾",
+   "nameEn": "Riot Shield",
+   "itemType": "EQUIP",
+   "tier": 4,
+   "shopLevelSortId": 5,
+   "hideInShop": false,
+   "price": 2,
+   "goldenPrice": 5,
+   "upgradeNum": 2,
+   "mergeable": true,
+   "trapDuration": -1,
+   "giveBondId": null,
+   "giveBondName": null,
+   "canGiveBond": false,
+   "category": "SURVIVAL",
+   "kind": "passive",
+   "requiresBond": null,
+   "requiresBondName": null,
+   "family": null,
+   "rangeId": "0-1",
+   "rangeGrids": [
+    {
+     "row": 0,
+     "col": 0
+    }
+   ],
+   "flavor": "“我会保护好我的队友，我会保护好我自己。”",
+   "talentNotes": [],
+   "implFormula": "While the carrier is blocking >=1 enemy: damage taken from sources NOT blocked by the carrier *= damage_scale.",
+   "normal": {
+    "chessId": "chess_item_4_05_e_a",
+    "isGolden": false,
+    "purchasePrice": 2,
+    "upgradeChessId": "chess_item_4_05_e_b",
+    "upgradeNum": 2,
+    "trapDuration": -1,
+    "skillId": "sktok_acarm060_1",
+    "effectId": "eff_acarm060",
+    "effectName": "防暴盾",
+    "effectDesc": "阻挡敌人时，受到来自非自身阻挡单位的伤害降低40%",
+    "effectDescRaw": "阻挡敌人时，受到来自非自身阻挡单位的伤害降低<@ba.vup>40%</>",
+    "skillDesc": "阻挡敌人时，受到来自非自身阻挡单位的伤害降低40%",
+    "buffs": [
+     {
+      "key": "env_gbuff_new_with_verify",
+      "countType": "NONE",
+      "blackboard": {
+       "key": "act1autochess_equip_acarm060_global_buff",
+       "damage_scale": 0.6
+      }
+     }
+    ],
+    "params": {
+     "damage_scale": 0.6
+    }
+   },
+   "golden": {
+    "chessId": "chess_item_4_05_e_b",
+    "isGolden": true,
+    "purchasePrice": 5,
+    "upgradeChessId": null,
+    "upgradeNum": 0,
+    "trapDuration": 0,
+    "skillId": "sktok_acarm060_2",
+    "effectId": "eff_acgarm060",
+    "effectName": "防暴盾",
+    "effectDesc": "阻挡敌人时，受到来自非自身阻挡单位的伤害降低70%",
+    "effectDescRaw": "阻挡敌人时，受到来自非自身阻挡单位的伤害降低<@ba.vup>70%</>",
+    "skillDesc": "阻挡敌人时，受到来自非自身阻挡单位的伤害降低70%",
+    "buffs": [
+     {
+      "key": "env_gbuff_new_with_verify",
+      "countType": "NONE",
+      "blackboard": {
+       "key": "act1autochess_equip_acarm060_global_buff",
+       "damage_scale": 0.3
+      }
+     }
+    ],
+    "params": {
+     "damage_scale": 0.3
+    }
+   },
+   "inAct1": true,
+   "act1TierPrice": [
+    3,
+    2
+   ]
+  },
+  {
+   "id": "chess_item_4_06_e_a",
+   "goldenId": "chess_item_4_06_e_b",
+   "trapId": "trap_1065_acarm065",
+   "name": "休眠子裔",
+   "nameEn": "Dormant Heir",
+   "itemType": "EQUIP",
+   "tier": 4,
+   "shopLevelSortId": 6,
+   "hideInShop": false,
+   "price": 2,
+   "goldenPrice": 5,
+   "upgradeNum": 2,
+   "mergeable": true,
+   "trapDuration": -1,
+   "giveBondId": null,
+   "giveBondName": null,
+   "canGiveBond": false,
+   "category": "SURVIVAL",
+   "kind": "passive",
+   "requiresBond": null,
+   "requiresBondName": null,
+   "family": null,
+   "rangeId": "0-1",
+   "rangeGrids": [
+    {
+     "row": 0,
+     "col": 0
+    }
+   ],
+   "flavor": "“别把袋子戳破了，你不会想和这些小家伙亲密接触的。”",
+   "talentNotes": [],
+   "implFormula": "For each target hit by an attack: heal self hp_ratio * maxHP.",
+   "normal": {
+    "chessId": "chess_item_4_06_e_a",
+    "isGolden": false,
+    "purchasePrice": 2,
+    "upgradeChessId": "chess_item_4_06_e_b",
+    "upgradeNum": 2,
+    "trapDuration": -1,
+    "skillId": "sktok_acarm065_1",
+    "effectId": "eff_acarm065",
+    "effectName": "休眠子裔",
+    "effectDesc": "每攻击1个目标，回复自身2%最大生命值",
+    "effectDescRaw": "每攻击1个目标，回复自身<@ba.vup>2%</>最大生命值",
+    "skillDesc": "每攻击1个目标，回复自身2%最大生命值",
+    "buffs": [
+     {
+      "key": "env_gbuff_new_with_verify",
+      "countType": "NONE",
+      "blackboard": {
+       "key": "act1vautochess_equip_acarm025_global_buff",
+       "hp_ratio": 0.02
+      }
+     }
+    ],
+    "params": {
+     "hp_ratio": 0.02
+    }
+   },
+   "golden": {
+    "chessId": "chess_item_4_06_e_b",
+    "isGolden": true,
+    "purchasePrice": 5,
+    "upgradeChessId": null,
+    "upgradeNum": 0,
+    "trapDuration": 0,
+    "skillId": "sktok_acarm065_2",
+    "effectId": "eff_acgarm065",
+    "effectName": "休眠子裔",
+    "effectDesc": "每攻击1个目标，回复自身4%最大生命值",
+    "effectDescRaw": "每攻击1个目标，回复自身<@ba.vup>4%</>最大生命值",
+    "skillDesc": "每攻击1个目标，回复自身4%最大生命值",
+    "buffs": [
+     {
+      "key": "env_gbuff_new_with_verify",
+      "countType": "NONE",
+      "blackboard": {
+       "key": "act1vautochess_equip_acarm025_global_buff",
+       "hp_ratio": 0.04
+      }
+     }
+    ],
+    "params": {
+     "hp_ratio": 0.04
+    }
+   },
+   "inAct1": true,
+   "act1TierPrice": [
+    4,
+    1
+   ]
+  },
+  {
+   "id": "chess_item_4_07_e_a",
+   "goldenId": "chess_item_4_07_e_b",
+   "trapId": "trap_1119_acarm119",
+   "name": "卡西米尔竞技旗",
+   "nameEn": "Kazimierz Tournament Banner",
+   "itemType": "EQUIP",
+   "tier": 4,
+   "shopLevelSortId": 7,
+   "hideInShop": false,
+   "price": 2,
+   "goldenPrice": 5,
+   "upgradeNum": 2,
+   "mergeable": true,
+   "trapDuration": -1,
+   "giveBondId": "kazimierzShip",
+   "giveBondName": "卡西米尔",
+   "canGiveBond": false,
+   "category": "ON_HIT",
+   "kind": "passive",
+   "requiresBond": null,
+   "requiresBondName": null,
+   "family": null,
+   "rangeId": "0-1",
+   "rangeGrids": [
+    {
+     "row": 0,
+     "col": 0
+    }
+   ],
+   "flavor": "一面代表卡西米尔骑士竞技的旗帜。 “看见它仿佛就能听到山呼海啸般的助威声。”",
+   "talentNotes": [],
+   "implFormula": "After each deploy: outgoing damage *= damage_scale for `interval` (15) s; afterwards every ex_interval (0.5) s the multiplier changes by damage_scale_minus until it reaches 1.0.",
+   "normal": {
+    "chessId": "chess_item_4_07_e_a",
+    "isGolden": false,
+    "purchasePrice": 2,
+    "upgradeChessId": "chess_item_4_07_e_b",
+    "upgradeNum": 2,
+    "trapDuration": -1,
+    "skillId": "sktok_acarm119_1",
+    "effectId": "eff_acarm119",
+    "effectName": "卡西米尔竞技旗",
+    "effectDesc": "部署后15秒内造成的伤害提升至135%，随后逐渐衰减",
+    "effectDescRaw": "部署后<@ba.vup>15</>秒内造成的伤害提升至<@ba.vup>135%</>，随后逐渐衰减",
+    "skillDesc": "部署后15秒内造成的伤害提升至135%，随后逐渐衰减",
+    "buffs": [
+     {
+      "key": "env_gbuff_new_with_verify",
+      "countType": "NONE",
+      "blackboard": {
+       "key": "act2autochess_equip_acarm120_global_buff",
+       "damage_scale": 1.35,
+       "interval": 15.0,
+       "ex_interval": 0.5,
+       "damage_scale_minus": -0.04
+      }
+     }
+    ],
+    "params": {
+     "damage_scale": 1.35,
+     "interval": 15.0,
+     "ex_interval": 0.5,
+     "damage_scale_minus": -0.04
+    }
+   },
+   "golden": {
+    "chessId": "chess_item_4_07_e_b",
+    "isGolden": true,
+    "purchasePrice": 5,
+    "upgradeChessId": null,
+    "upgradeNum": 0,
+    "trapDuration": 0,
+    "skillId": "sktok_acarm119_2",
+    "effectId": "eff_acgarm119",
+    "effectName": "卡西米尔竞技旗",
+    "effectDesc": "部署后15秒内造成的伤害提升至160%，随后逐渐衰减",
+    "effectDescRaw": "部署后<@ba.vup>15</>秒内造成的伤害提升至<@ba.vup>160%</>，随后逐渐衰减",
+    "skillDesc": "部署后15秒内造成的伤害提升至160%，随后逐渐衰减",
+    "buffs": [
+     {
+      "key": "env_gbuff_new_with_verify",
+      "countType": "NONE",
+      "blackboard": {
+       "key": "act2autochess_equip_acarm120_global_buff",
+       "damage_scale": 1.6,
+       "interval": 15.0,
+       "ex_interval": 0.5,
+       "damage_scale_minus": -0.07
+      }
+     }
+    ],
+    "params": {
+     "damage_scale": 1.6,
+     "interval": 15.0,
+     "ex_interval": 0.5,
+     "damage_scale_minus": -0.07
+    }
+   },
+   "inAct1": false
+  },
+  {
+   "id": "chess_item_4_08_e_a",
+   "goldenId": "chess_item_4_08_e_b",
+   "trapId": "trap_1057_acarm057",
+   "name": "拉特兰桥夹",
+   "nameEn": "Lateran Clip",
+   "itemType": "EQUIP",
+   "tier": 4,
+   "shopLevelSortId": 8,
+   "hideInShop": false,
+   "price": 1,
+   "goldenPrice": 5,
+   "upgradeNum": 2,
+   "mergeable": true,
+   "trapDuration": -1,
+   "giveBondId": "lateranoShip",
+   "giveBondName": "拉特兰",
+   "canGiveBond": false,
+   "category": "ON_HIT",
+   "kind": "passive",
+   "requiresBond": null,
+   "requiresBondName": null,
+   "family": null,
+   "rangeId": "0-1",
+   "rangeGrids": [
+    {
+     "row": 0,
+     "col": 0
+    }
+   ],
+   "flavor": "一个曾在拉特兰的夜空里引发大爆炸的桥夹。\n“开火，别停下！克里夫，我们三个一定能闯出比这更辉煌的事业！”",
+   "talentNotes": [],
+   "implFormula": "Ammo-type skills: when ammo remaining becomes 1, prob chance to restore ceil(ammo_percent * maxAmmo) [ASSUMED rounding] bullets; max max_trigger_cnt triggers per deploy.",
+   "normal": {
+    "chessId": "chess_item_4_08_e_a",
+    "isGolden": false,
+    "purchasePrice": 1,
+    "upgradeChessId": "chess_item_4_08_e_b",
+    "upgradeNum": 2,
+    "trapDuration": -1,
+    "skillId": "sktok_acarm057_1",
+    "effectId": "eff_acarm057",
+    "effectName": "拉特兰桥夹",
+    "effectDesc": "子弹类技能剩余一发子弹时有50%概率恢复40%的子弹（每次部署最多触发3次）",
+    "effectDescRaw": "子弹类技能剩余一发子弹时有50%概率恢复40%的子弹（每次部署最多触发3次）",
+    "skillDesc": "子弹类技能剩余一发子弹时有50%概率恢复40%的子弹（每次部署最多触发3次）",
+    "buffs": [
+     {
+      "key": "env_gbuff_new_with_verify",
+      "countType": "NONE",
+      "blackboard": {
+       "key": "act1autochess_equip_acarm057_global_buff",
+       "prob": 0.5,
+       "ammo_percent": 0.4,
+       "max_trigger_cnt": 3.0
+      }
+     }
+    ],
+    "params": {
+     "prob": 0.5,
+     "ammo_percent": 0.4,
+     "max_trigger_cnt": 3.0
+    }
+   },
+   "golden": {
+    "chessId": "chess_item_4_08_e_b",
+    "isGolden": true,
+    "purchasePrice": 5,
+    "upgradeChessId": null,
+    "upgradeNum": 0,
+    "trapDuration": 0,
+    "skillId": "sktok_acarm057_2",
+    "effectId": "eff_acgarm057",
+    "effectName": "拉特兰桥夹",
+    "effectDesc": "子弹类技能剩余一发子弹时有60%概率恢复60%的子弹（每次部署最多触发3次）",
+    "effectDescRaw": "子弹类技能剩余一发子弹时有60%概率恢复60%的子弹（每次部署最多触发3次）",
+    "skillDesc": "子弹类技能剩余一发子弹时有60%概率恢复60%的子弹（每次部署最多触发3次）",
+    "buffs": [
+     {
+      "key": "env_gbuff_new_with_verify",
+      "countType": "NONE",
+      "blackboard": {
+       "key": "act1autochess_equip_acarm057_global_buff",
+       "prob": 0.6,
+       "ammo_percent": 0.6,
+       "max_trigger_cnt": 3.0
+      }
+     }
+    ],
+    "params": {
+     "prob": 0.6,
+     "ammo_percent": 0.6,
+     "max_trigger_cnt": 3.0
+    }
+   },
+   "inAct1": true,
+   "act1TierPrice": [
+    3,
+    2
+   ]
+  },
+  {
+   "id": "chess_item_4_09_e_a",
+   "goldenId": "chess_item_4_09_e_b",
+   "trapId": "trap_1042_acarm042",
+   "name": "灼燃维式重锤",
+   "nameEn": "Burning Victorian Hammer",
+   "itemType": "EQUIP",
+   "tier": 4,
+   "shopLevelSortId": 9,
+   "hideInShop": false,
+   "price": 2,
+   "goldenPrice": 5,
+   "upgradeNum": 2,
+   "mergeable": true,
+   "trapDuration": -1,
+   "giveBondId": "victoriaShip",
+   "giveBondName": "维多利亚",
+   "canGiveBond": false,
+   "category": "ON_HIT",
+   "kind": "passive",
+   "requiresBond": null,
+   "requiresBondName": null,
+   "family": "hammer",
+   "rangeId": "0-1",
+   "rangeGrids": [
+    {
+     "row": 0,
+     "col": 0
+    }
+   ],
+   "flavor": "一柄曾在维多利亚的工厂内铸造和平的重锤，如今它的火焰更旺。\n“用同样的铁与火，去终结那场战争。”",
+   "talentNotes": [],
+   "implFormula": "ATK% += atk. When dealing ARTS damage: also inflict 灼燃损伤(Burn elemental damage) = damage_scale * that damage.",
+   "normal": {
+    "chessId": "chess_item_4_09_e_a",
+    "isGolden": false,
+    "purchasePrice": 2,
+    "upgradeChessId": "chess_item_4_09_e_b",
+    "upgradeNum": 2,
+    "trapDuration": -1,
+    "skillId": "sktok_acarm042_1",
+    "effectId": "eff_acarm042",
+    "effectName": "灼燃维式重锤",
+    "effectDesc": "攻击力+30%；造成法术伤害附带相当于10%伤害的灼燃损伤",
+    "effectDescRaw": "攻击力<@ba.vup>+30%</>；造成法术伤害附带相当于<@ba.vup>10%</>伤害的<$ba.dt.burning2>灼燃损伤</>",
+    "skillDesc": "攻击力+30%；造成法术伤害附带相当于10%伤害的灼燃损伤",
+    "buffs": [
+     {
+      "key": "env_gbuff_new_with_verify",
+      "countType": "NONE",
+      "blackboard": {
+       "key": "attr_common_global_buff",
+       "atk": 0.3
+      }
+     },
+     {
+      "key": "env_gbuff_new_with_verify",
+      "countType": "NONE",
+      "blackboard": {
+       "key": "act1autochess_equip_acarm042_global_buff",
+       "damage_scale": 0.1,
+       "big_hammer": "chess_item_6_05_e"
+      }
+     }
+    ],
+    "params": {
+     "atk": 0.3,
+     "damage_scale": 0.1,
+     "big_hammer": "chess_item_6_05_e"
+    }
+   },
+   "golden": {
+    "chessId": "chess_item_4_09_e_b",
+    "isGolden": true,
+    "purchasePrice": 5,
+    "upgradeChessId": null,
+    "upgradeNum": 0,
+    "trapDuration": 0,
+    "skillId": "sktok_acarm042_2",
+    "effectId": "eff_acgarm042",
+    "effectName": "灼燃维式重锤",
+    "effectDesc": "攻击力+50%；造成法术伤害附带相当于10%伤害的灼燃损伤",
+    "effectDescRaw": "攻击力<@ba.vup>+50%</>；造成法术伤害附带相当于<@ba.vup>10%</>伤害的<$ba.dt.burning2>灼燃损伤</>",
+    "skillDesc": "攻击力+50%；造成法术伤害附带相当于10%伤害的灼燃损伤",
+    "buffs": [
+     {
+      "key": "env_gbuff_new_with_verify",
+      "countType": "NONE",
+      "blackboard": {
+       "key": "attr_common_global_buff",
+       "atk": 0.5
+      }
+     },
+     {
+      "key": "env_gbuff_new_with_verify",
+      "countType": "NONE",
+      "blackboard": {
+       "key": "act1autochess_equip_acarm042_global_buff",
+       "damage_scale": 0.1,
+       "big_hammer": "chess_item_6_05_e"
+      }
+     }
+    ],
+    "params": {
+     "atk": 0.5,
+     "damage_scale": 0.1,
+     "big_hammer": "chess_item_6_05_e"
+    }
+   },
+   "inAct1": true,
+   "act1TierPrice": [
+    2,
+    2
+   ]
+  },
+  {
+   "id": "chess_item_4_10_e_a",
+   "goldenId": "chess_item_4_10_e_b",
+   "trapId": "trap_1059_acarm059",
+   "name": "浓缩嗅盐",
+   "nameEn": "Concentrated Smelling Salts",
+   "itemType": "EQUIP",
+   "tier": 4,
+   "shopLevelSortId": 10,
+   "hideInShop": false,
+   "price": 2,
+   "goldenPrice": 5,
+   "upgradeNum": 2,
+   "mergeable": true,
+   "trapDuration": -1,
+   "giveBondId": null,
+   "giveBondName": null,
+   "canGiveBond": false,
+   "category": "SURVIVAL",
+   "kind": "passive",
+   "requiresBond": null,
+   "requiresBondName": null,
+   "family": null,
+   "rangeId": "0-1",
+   "rangeGrids": [
+    {
+     "row": 0,
+     "col": 0
+    }
+   ],
+   "flavor": "“增强了烈性的配方，能让你保持清醒，前提是你能忍受那种奇特的味道。”",
+   "talentNotes": [],
+   "implFormula": "While HP/maxHP > hp_ratio: immune to stun, freeze, sleep, and other CC 'special states' [ASSUMED list: stun/freeze/sleep/levitate/palsy].",
+   "normal": {
+    "chessId": "chess_item_4_10_e_a",
+    "isGolden": false,
+    "purchasePrice": 2,
+    "upgradeChessId": "chess_item_4_10_e_b",
+    "upgradeNum": 2,
+    "trapDuration": -1,
+    "skillId": "sktok_acarm059_1",
+    "effectId": "eff_acarm059",
+    "effectName": "浓缩嗅盐",
+    "effectDesc": "生命值大于70%时，免疫晕眩、冻结等特殊状态",
+    "effectDescRaw": "生命值大于70%时，免疫<$ba.stun>晕眩</>、<$ba.frozen>冻结</>等特殊状态",
+    "skillDesc": "生命值大于70%时，免疫晕眩、冻结等特殊状态",
+    "buffs": [
+     {
+      "key": "env_gbuff_new_with_verify",
+      "countType": "NONE",
+      "blackboard": {
+       "key": "act1autochess_equip_acarm059_global_buff",
+       "hp_ratio": 0.7
+      }
+     }
+    ],
+    "params": {
+     "hp_ratio": 0.7
+    }
+   },
+   "golden": {
+    "chessId": "chess_item_4_10_e_b",
+    "isGolden": true,
+    "purchasePrice": 5,
+    "upgradeChessId": null,
+    "upgradeNum": 0,
+    "trapDuration": 0,
+    "skillId": "sktok_acarm059_2",
+    "effectId": "eff_acgarm059",
+    "effectName": "浓缩嗅盐",
+    "effectDesc": "生命值大于40%时，免疫晕眩、冻结等特殊状态",
+    "effectDescRaw": "生命值大于40%时，免疫<$ba.stun>晕眩</>、<$ba.frozen>冻结</>等特殊状态",
+    "skillDesc": "生命值大于40%时，免疫晕眩、冻结等特殊状态",
+    "buffs": [
+     {
+      "key": "env_gbuff_new_with_verify",
+      "countType": "NONE",
+      "blackboard": {
+       "key": "act1autochess_equip_acarm059_global_buff",
+       "hp_ratio": 0.4
+      }
+     }
+    ],
+    "params": {
+     "hp_ratio": 0.4
+    }
+   },
+   "inAct1": true,
+   "act1TierPrice": [
+    4,
+    2
+   ]
+  },
+  {
+   "id": "chess_item_4_11_e_a",
+   "goldenId": "chess_item_4_11_e_b",
+   "trapId": "trap_1061_acarm061",
+   "name": "护盾无人机",
+   "nameEn": "Protection Drone",
+   "itemType": "EQUIP",
+   "tier": 4,
+   "shopLevelSortId": 11,
+   "hideInShop": false,
+   "price": 2,
+   "goldenPrice": 5,
+   "upgradeNum": 2,
+   "mergeable": true,
+   "trapDuration": -1,
+   "giveBondId": null,
+   "giveBondName": null,
+   "canGiveBond": false,
+   "category": "SURVIVAL",
+   "kind": "passive",
+   "requiresBond": null,
+   "requiresBondName": null,
+   "family": null,
+   "rangeId": "0-1",
+   "rangeGrids": [
+    {
+     "row": 0,
+     "col": 0
+    }
+   ],
+   "flavor": "“你可以用它来挡住一些攻击，它并不介意。”",
+   "talentNotes": [],
+   "implFormula": "Each heal the carrier performs: prob chance to give the healed target 1 shield layer (max max_stack_cnt layers; 1 layer blocks one instance of damage).",
+   "normal": {
+    "chessId": "chess_item_4_11_e_a",
+    "isGolden": false,
+    "purchasePrice": 2,
+    "upgradeChessId": "chess_item_4_11_e_b",
+    "upgradeNum": 2,
+    "trapDuration": -1,
+    "skillId": "sktok_acarm061_1",
+    "effectId": "eff_acarm061",
+    "effectName": "护盾无人机",
+    "effectDesc": "治疗时有10%概率使目标获得1层护盾（最多1层）",
+    "effectDescRaw": "治疗时有10%概率使目标获得1层<$ba.shield>护盾</>（最多1层）",
+    "skillDesc": "治疗时有10%概率使目标获得1层护盾（最多1层）",
+    "buffs": [
+     {
+      "key": "env_gbuff_new_with_verify",
+      "countType": "NONE",
+      "blackboard": {
+       "key": "act1autochess_equip_acarm061_global_buff",
+       "prob": 0.1,
+       "max_stack_cnt": 1.0
+      }
+     }
+    ],
+    "params": {
+     "prob": 0.1,
+     "max_stack_cnt": 1.0
+    }
+   },
+   "golden": {
+    "chessId": "chess_item_4_11_e_b",
+    "isGolden": true,
+    "purchasePrice": 5,
+    "upgradeChessId": null,
+    "upgradeNum": 0,
+    "trapDuration": 0,
+    "skillId": "sktok_acarm061_2",
+    "effectId": "eff_acgarm061",
+    "effectName": "护盾无人机",
+    "effectDesc": "治疗时有15%概率使目标获得1层护盾（最多1层）",
+    "effectDescRaw": "治疗时有15%概率使目标获得1层<$ba.shield>护盾</>（最多1层）",
+    "skillDesc": "治疗时有15%概率使目标获得1层护盾（最多1层）",
+    "buffs": [
+     {
+      "key": "env_gbuff_new_with_verify",
+      "countType": "NONE",
+      "blackboard": {
+       "key": "act1autochess_equip_acarm061_global_buff",
+       "prob": 0.15,
+       "max_stack_cnt": 1.0
+      }
+     }
+    ],
+    "params": {
+     "prob": 0.15,
+     "max_stack_cnt": 1.0
+    }
+   },
+   "inAct1": true,
+   "act1TierPrice": [
+    4,
+    3
+   ]
+  },
+  {
+   "id": "chess_item_4_12_e_a",
+   "goldenId": "chess_item_4_12_e_b",
+   "trapId": "trap_1068_acarm068",
+   "name": "M3茧甲",
+   "nameEn": "M3 Cocoon Shell",
+   "itemType": "EQUIP",
+   "tier": 4,
+   "shopLevelSortId": 12,
+   "hideInShop": false,
+   "price": 3,
+   "goldenPrice": 5,
+   "upgradeNum": 2,
+   "mergeable": true,
+   "trapDuration": -1,
+   "giveBondId": null,
+   "giveBondName": null,
+   "canGiveBond": false,
+   "category": "SURVIVAL",
+   "kind": "passive",
+   "requiresBond": null,
+   "requiresBondName": null,
+   "family": null,
+   "rangeId": "0-1",
+   "rangeGrids": [
+    {
+     "row": 0,
+     "col": 0
+    }
+   ],
+   "flavor": "“她听懂了你说的那句谢谢，她很高兴能救下你。”",
+   "talentNotes": [],
+   "implFormula": "When the carrier is defeated during the battle phase: revive immediately in place at full HP [ASSUMED full HP] up to max_respawn_cnt times per battle.",
+   "normal": {
+    "chessId": "chess_item_4_12_e_a",
+    "isGolden": false,
+    "purchasePrice": 3,
+    "upgradeChessId": "chess_item_4_12_e_b",
+    "upgradeNum": 2,
+    "trapDuration": -1,
+    "skillId": "sktok_acarm068_1",
+    "effectId": "eff_acarm068",
+    "effectName": "M3茧甲",
+    "effectDesc": "战斗阶段被击倒时立刻复活（一场战斗仅1次）",
+    "effectDescRaw": "战斗阶段被击倒时立刻复活（一场战斗仅<@ba.vup>1</>次）",
+    "skillDesc": "战斗阶段被击倒时立刻复活（一场战斗仅1次）",
+    "buffs": [
+     {
+      "key": "env_gbuff_new_with_verify",
+      "countType": "NONE",
+      "blackboard": {
+       "key": "act1autochess_equip_acarm068_global_buff",
+       "max_respawn_cnt": 1.0
+      }
+     }
+    ],
+    "params": {
+     "max_respawn_cnt": 1.0
+    }
+   },
+   "golden": {
+    "chessId": "chess_item_4_12_e_b",
+    "isGolden": true,
+    "purchasePrice": 5,
+    "upgradeChessId": null,
+    "upgradeNum": 0,
+    "trapDuration": 0,
+    "skillId": "sktok_acarm068_2",
+    "effectId": "eff_acgarm068",
+    "effectName": "M3茧甲",
+    "effectDesc": "战斗阶段被击倒时立刻复活（一场战斗仅2次）",
+    "effectDescRaw": "战斗阶段被击倒时立刻复活（一场战斗仅<@ba.vup>2</>次）",
+    "skillDesc": "战斗阶段被击倒时立刻复活（一场战斗仅2次）",
+    "buffs": [
+     {
+      "key": "env_gbuff_new_with_verify",
+      "countType": "NONE",
+      "blackboard": {
+       "key": "act1autochess_equip_acarm068_global_buff",
+       "max_respawn_cnt": 2.0
+      }
+     }
+    ],
+    "params": {
+     "max_respawn_cnt": 2.0
+    }
+   },
+   "inAct1": true,
+   "act1TierPrice": [
+    4,
+    3
+   ]
+  },
+  {
+   "id": "chess_item_5_01_e_a",
+   "goldenId": "chess_item_5_01_e_b",
+   "trapId": "trap_1058_acarm058",
+   "name": "催泪瓦斯",
+   "nameEn": "Teargas Can",
+   "itemType": "EQUIP",
+   "tier": 5,
+   "shopLevelSortId": 1,
+   "hideInShop": false,
+   "price": 2,
+   "goldenPrice": 5,
+   "upgradeNum": 2,
+   "mergeable": true,
+   "trapDuration": -1,
+   "giveBondId": null,
+   "giveBondName": null,
+   "canGiveBond": false,
+   "category": "ON_HIT",
+   "kind": "passive",
+   "requiresBond": null,
+   "requiresBondName": null,
+   "family": null,
+   "rangeId": "0-1",
+   "rangeGrids": [
+    {
+     "row": 0,
+     "col": 0
+    }
+   ],
+   "flavor": "“它能让目标痛到打滚，使用前一定要确认好风向。”",
+   "talentNotes": [],
+   "implFormula": "On attack: prob chance to add 1 layer of 麻痹(Paralysis: each layer interrupts one enemy normal attack, max 3 layers).",
+   "normal": {
+    "chessId": "chess_item_5_01_e_a",
+    "isGolden": false,
+    "purchasePrice": 2,
+    "upgradeChessId": "chess_item_5_01_e_b",
+    "upgradeNum": 2,
+    "trapDuration": -1,
+    "skillId": "sktok_acarm058_1",
+    "effectId": "eff_acarm058",
+    "effectName": "催泪瓦斯",
+    "effectDesc": "攻击时有3%概率使目标获得一层麻痹",
+    "effectDescRaw": "攻击时有3%概率使目标获得一层<$ba.palsy>麻痹</>",
+    "skillDesc": "攻击时有3%概率使目标获得一层麻痹",
+    "buffs": [
+     {
+      "key": "env_gbuff_new_with_verify",
+      "countType": "NONE",
+      "blackboard": {
+       "key": "act1autochess_equip_acarm058_global_buff",
+       "prob": 0.03
+      }
+     }
+    ],
+    "params": {
+     "prob": 0.03
+    }
+   },
+   "golden": {
+    "chessId": "chess_item_5_01_e_b",
+    "isGolden": true,
+    "purchasePrice": 5,
+    "upgradeChessId": null,
+    "upgradeNum": 0,
+    "trapDuration": 0,
+    "skillId": "sktok_acarm058_2",
+    "effectId": "eff_acgarm058",
+    "effectName": "催泪瓦斯",
+    "effectDesc": "攻击时有5%概率使目标获得一层麻痹",
+    "effectDescRaw": "攻击时有5%概率使目标获得一层<$ba.palsy>麻痹</>",
+    "skillDesc": "攻击时有5%概率使目标获得一层麻痹",
+    "buffs": [
+     {
+      "key": "env_gbuff_new_with_verify",
+      "countType": "NONE",
+      "blackboard": {
+       "key": "act1autochess_equip_acarm058_global_buff",
+       "prob": 0.05
+      }
+     }
+    ],
+    "params": {
+     "prob": 0.05
+    }
+   },
+   "inAct1": true,
+   "act1TierPrice": [
+    4,
+    2
+   ]
+  },
+  {
+   "id": "chess_item_5_02_e_a",
+   "goldenId": "chess_item_5_02_e_b",
+   "trapId": "trap_1062_acarm062",
+   "name": "谢拉格不融冰",
+   "nameEn": "Kjeragi Nevermeltice",
+   "itemType": "EQUIP",
+   "tier": 5,
+   "shopLevelSortId": 2,
+   "hideInShop": false,
+   "price": 2,
+   "goldenPrice": 5,
+   "upgradeNum": 2,
+   "mergeable": true,
+   "trapDuration": -1,
+   "giveBondId": "kjeragShip",
+   "giveBondName": "谢拉格",
+   "canGiveBond": false,
+   "category": "ON_HIT",
+   "kind": "passive",
+   "requiresBond": null,
+   "requiresBondName": null,
+   "family": null,
+   "rangeId": "0-1",
+   "rangeGrids": [
+    {
+     "row": 0,
+     "col": 0
+    }
+   ],
+   "flavor": "\"一块曾在谢拉格的山峰上见证日月升落的不融冰。\n“让自己冷静下来，如同冰川，不可被撼动，却能摧毁一切。”\"",
+   "talentNotes": [],
+   "implFormula": "On attack: prob chance to apply 寒冷(Cold: ASPD -30; cold again while cold -> Frozen) for `cold` s.",
+   "normal": {
+    "chessId": "chess_item_5_02_e_a",
+    "isGolden": false,
+    "purchasePrice": 2,
+    "upgradeChessId": "chess_item_5_02_e_b",
+    "upgradeNum": 2,
+    "trapDuration": -1,
+    "skillId": "sktok_acarm062_1",
+    "effectId": "eff_acarm062",
+    "effectName": "谢拉格不融冰",
+    "effectDesc": "攻击时有12%概率对目标施加1.5秒的寒冷",
+    "effectDescRaw": "攻击时有12%概率对目标施加1.5秒的<$ba.cold>寒冷</>",
+    "skillDesc": "攻击时有12%概率对目标施加1.5秒的寒冷",
+    "buffs": [
+     {
+      "key": "env_gbuff_new_with_verify",
+      "countType": "NONE",
+      "blackboard": {
+       "key": "act1vautochess_equip_acarm003_global_buff",
+       "prob": 0.12,
+       "cold": 1.5
+      }
+     }
+    ],
+    "params": {
+     "prob": 0.12,
+     "cold": 1.5
+    }
+   },
+   "golden": {
+    "chessId": "chess_item_5_02_e_b",
+    "isGolden": true,
+    "purchasePrice": 5,
+    "upgradeChessId": null,
+    "upgradeNum": 0,
+    "trapDuration": 0,
+    "skillId": "sktok_acarm062_2",
+    "effectId": "eff_acgarm062",
+    "effectName": "谢拉格不融冰",
+    "effectDesc": "攻击时有20%概率对目标施加1.5秒的寒冷",
+    "effectDescRaw": "攻击时有20%概率对目标施加1.5秒的<$ba.cold>寒冷</>",
+    "skillDesc": "攻击时有20%概率对目标施加1.5秒的寒冷",
+    "buffs": [
+     {
+      "key": "env_gbuff_new_with_verify",
+      "countType": "NONE",
+      "blackboard": {
+       "key": "act1vautochess_equip_acarm003_global_buff",
+       "prob": 0.2,
+       "cold": 1.5
+      }
+     }
+    ],
+    "params": {
+     "prob": 0.2,
+     "cold": 1.5
+    }
+   },
+   "inAct1": true,
+   "act1TierPrice": [
+    4,
+    2
+   ]
+  },
+  {
+   "id": "chess_item_5_03_e_a",
+   "goldenId": "chess_item_5_03_e_b",
+   "trapId": "trap_1067_acarm067",
+   "name": "双模机械臂",
+   "nameEn": "Bimodule Robotic Arm",
+   "itemType": "EQUIP",
+   "tier": 5,
+   "shopLevelSortId": 3,
+   "hideInShop": false,
+   "price": 3,
+   "goldenPrice": 5,
+   "upgradeNum": 2,
+   "mergeable": true,
+   "trapDuration": -1,
+   "giveBondId": null,
+   "giveBondName": null,
+   "canGiveBond": false,
+   "category": "ON_HIT",
+   "kind": "passive",
+   "requiresBond": null,
+   "requiresBondName": null,
+   "family": null,
+   "rangeId": "0-1",
+   "rangeGrids": [
+    {
+     "row": 0,
+     "col": 0
+    }
+   ],
+   "flavor": "“是的，这台设备能帮上你不小的忙，但要获得胜利，还是得靠你自己。”",
+   "talentNotes": [],
+   "implFormula": "ATK% += atk; carrier's physical and arts damage becomes 弱点伤害(weakness damage): each hit is dealt as whichever of physical/arts yields MORE damage against that target's DEF/RES.",
+   "normal": {
+    "chessId": "chess_item_5_03_e_a",
+    "isGolden": false,
+    "purchasePrice": 3,
+    "upgradeChessId": "chess_item_5_03_e_b",
+    "upgradeNum": 2,
+    "trapDuration": -1,
+    "skillId": "sktok_acarm067_1",
+    "effectId": "eff_acarm067",
+    "effectName": "双模机械臂",
+    "effectDesc": "攻击力+30%，自身造成物理和法术伤害时，伤害类型转化为弱点伤害",
+    "effectDescRaw": "攻击力<@ba.vup>+30%</>，自身造成物理和法术伤害时，伤害类型转化为<$ba.weaknessatk>弱点伤害</>",
+    "skillDesc": "攻击力+30%，自身造成物理和法术伤害时，伤害类型转化为弱点伤害",
+    "buffs": [
+     {
+      "key": "env_gbuff_new_with_verify",
+      "countType": "NONE",
+      "blackboard": {
+       "key": "act1autochess_equip_acarm067_global_buff"
+      }
+     },
+     {
+      "key": "env_gbuff_new_with_verify",
+      "countType": "NONE",
+      "blackboard": {
+       "key": "attr_common_global_buff",
+       "atk": 0.3
+      }
+     }
+    ],
+    "params": {
+     "atk": 0.3
+    }
+   },
+   "golden": {
+    "chessId": "chess_item_5_03_e_b",
+    "isGolden": true,
+    "purchasePrice": 5,
+    "upgradeChessId": null,
+    "upgradeNum": 0,
+    "trapDuration": 0,
+    "skillId": "sktok_acarm067_2",
+    "effectId": "eff_acgarm067",
+    "effectName": "双模机械臂",
+    "effectDesc": "攻击力+50%，自身造成物理和法术伤害时，伤害类型转化为弱点伤害",
+    "effectDescRaw": "攻击力<@ba.vup>+50%</>，自身造成物理和法术伤害时，伤害类型转化为<$ba.weaknessatk>弱点伤害</>",
+    "skillDesc": "攻击力+50%，自身造成物理和法术伤害时，伤害类型转化为弱点伤害",
+    "buffs": [
+     {
+      "key": "env_gbuff_new_with_verify",
+      "countType": "NONE",
+      "blackboard": {
+       "key": "act1autochess_equip_acarm067_global_buff"
+      }
+     },
+     {
+      "key": "env_gbuff_new_with_verify",
+      "countType": "NONE",
+      "blackboard": {
+       "key": "attr_common_global_buff",
+       "atk": 0.5
+      }
+     }
+    ],
+    "params": {
+     "atk": 0.5
+    }
+   },
+   "inAct1": true,
+   "act1TierPrice": [
+    4,
+    4
+   ]
+  },
+  {
+   "id": "chess_item_5_04_e_a",
+   "goldenId": "chess_item_5_04_e_b",
+   "trapId": "trap_1109_acarm109",
+   "name": "信标",
+   "nameEn": "Transmitter (Beacon)",
+   "itemType": "EQUIP",
+   "tier": 5,
+   "shopLevelSortId": 4,
+   "hideInShop": false,
+   "price": 3,
+   "goldenPrice": 5,
+   "upgradeNum": 100,
+   "mergeable": false,
+   "trapDuration": -1,
+   "giveBondId": null,
+   "giveBondName": null,
+   "canGiveBond": false,
+   "category": "RECRUIT",
+   "kind": "consume_on_equip",
+   "requiresBond": null,
+   "requiresBondName": null,
+   "family": null,
+   "rangeId": "0-1",
+   "rangeGrids": [
+    {
+     "row": 0,
+     "col": 0
+    }
+   ],
+   "flavor": null,
+   "talentNotes": [],
+   "implFormula": "On equip: destroy BOTH the item and the target operator; special refresh of refresh_cnt(2) operators of the SAME tier as the target, take choice_cnt(1) free. Multiplayer: at next prep phase send 1 copy of the original operator to the teammate who has the most operators of that operator's bond(s) (tie -> random). Cannot target DIY(自编) operators. Never merges.",
+   "normal": {
+    "chessId": "chess_item_5_04_e_a",
+    "isGolden": false,
+    "purchasePrice": 3,
+    "upgradeChessId": "chess_item_5_04_e_b",
+    "upgradeNum": 100,
+    "trapDuration": -1,
+    "skillId": "sktok_acarm109_1",
+    "effectId": "eff_acarm109",
+    "effectName": "信标",
+    "effectDesc": "装备时，目标干员和本装备销毁并进行一次特殊刷新，出现两名与携带者同等阶的干员，免费获取其中一名\n若在同盟模拟中且存在其他队友，下个休整期向相应盟约人数最多的队友发送1个原干员\n相应盟约人数相同则随机发送\n无法装备给自编干员",
+    "effectDescRaw": "装备时，目标干员和本装备销毁并进行一次特殊刷新，出现两名与携带者同等阶的干员，免费获取其中一名\\n<@ba.rem>若在同盟模拟中且存在其他队友，下个休整期向相应盟约人数最多的队友发送1个原干员</>\\n<@ba.acrem>相应盟约人数相同则随机发送</>\\n<@ba.acrem>无法装备给自编干员</>",
+    "skillDesc": "装备时，目标干员和本装备销毁并进行一次特殊刷新，出现两名与携带者同等阶的干员，免费获取其中一名\n若在同盟模拟中且存在其他队友，下个休整期向相应盟约人数最多的队友发送1个原干员\n相应盟约人数相同则随机发送\n无法装备给自编干员",
+    "buffs": [
+     {
+      "key": "use_equip_recruit_new_char_and_give_char_to_player_most_bond",
+      "countType": "NONE",
+      "blackboard": {
+       "refresh_cnt": 2.0,
+       "choice_cnt": 1.0
+      }
+     }
+    ],
+    "params": {
+     "refresh_cnt": 2.0,
+     "choice_cnt": 1.0
+    }
+   },
+   "golden": {
+    "chessId": "chess_item_5_04_e_b",
+    "isGolden": true,
+    "purchasePrice": 5,
+    "upgradeChessId": null,
+    "upgradeNum": 0,
+    "trapDuration": 0,
+    "skillId": "sktok_acarm109_2",
+    "effectId": "eff_acgarm109",
+    "effectName": "信标",
+    "effectDesc": "装备时，目标干员和本装备销毁并进行一次特殊刷新，出现两名与携带者同等阶的干员，免费获取其中一名\n若在同盟模拟中且存在其他队友，下个休整期向相应盟约人数最多的队友发送1个原干员\n相应盟约人数相同则随机发送\n无法装备给自编干员",
+    "effectDescRaw": "装备时，目标干员和本装备销毁并进行一次特殊刷新，出现两名与携带者同等阶的干员，免费获取其中一名\\n<@ba.rem>若在同盟模拟中且存在其他队友，下个休整期向相应盟约人数最多的队友发送1个原干员</>\\n<@ba.acrem>相应盟约人数相同则随机发送</>\\n<@ba.acrem>无法装备给自编干员</>",
+    "skillDesc": "装备时，目标干员和本装备销毁并进行一次特殊刷新，出现两名与携带者同等阶的干员，免费获取其中一名\n若在同盟模拟中且存在其他队友，下个休整期向相应盟约人数最多的队友发送1个原干员\n相应盟约人数相同则随机发送\n无法装备给自编干员",
+    "buffs": [
+     {
+      "key": "use_equip_recruit_new_char_and_give_char_to_player_most_bond",
+      "countType": "NONE",
+      "blackboard": {
+       "refresh_cnt": 2.0,
+       "choice_cnt": 1.0
+      }
+     }
+    ],
+    "params": {
+     "refresh_cnt": 2.0,
+     "choice_cnt": 1.0
+    }
+   },
+   "inAct1": true,
+   "act1TierPrice": [
+    5,
+    1
+   ]
+  },
+  {
+   "id": "chess_item_5_05_e_a",
+   "goldenId": "chess_item_5_05_e_b",
+   "trapId": "trap_1069_acarm069",
+   "name": "拟态物质",
+   "nameEn": "Mimic Matter",
+   "itemType": "EQUIP",
+   "tier": 5,
+   "shopLevelSortId": 5,
+   "hideInShop": false,
+   "price": 4,
+   "goldenPrice": 5,
+   "upgradeNum": 100,
+   "mergeable": false,
+   "trapDuration": -1,
+   "giveBondId": null,
+   "giveBondName": null,
+   "canGiveBond": false,
+   "category": "RECRUIT",
+   "kind": "consume_on_equip",
+   "requiresBond": null,
+   "requiresBondName": null,
+   "family": null,
+   "rangeId": "0-1",
+   "rangeGrids": [
+    {
+     "row": 0,
+     "col": 0
+    }
+   ],
+   "flavor": "“这是一份礼物，你可以让它变成任何你想要的样子。”",
+   "talentNotes": [
+    "本装备不会合并为进阶品质"
+   ],
+   "implFormula": "On equip: destroy item; if player owns >= 2 NORMAL copies of the target operator (field+hand), give 1 more normal copy (usually triggers 3->elite merge); else give 1 random normal operator sharing a bond with the target. Never merges.",
+   "normal": {
+    "chessId": "chess_item_5_05_e_a",
+    "isGolden": false,
+    "purchasePrice": 4,
+    "upgradeChessId": "chess_item_5_05_e_b",
+    "upgradeNum": 100,
+    "trapDuration": -1,
+    "skillId": "sktok_acarm069_1",
+    "effectId": "eff_acarm069",
+    "effectName": "拟态物质",
+    "effectDesc": "装备时销毁，若已拥有至少2名该初始干员，则再获得1名该初始干员；否则随机获得1名同盟约初始干员",
+    "effectDescRaw": "装备时销毁，若已拥有至少2名该初始干员，则再获得1名该初始干员；否则随机获得1名同盟约初始干员",
+    "skillDesc": "装备时销毁，若已拥有至少2名该初始干员，则再获得1名该初始干员；否则随机获得1名同盟约初始干员",
+    "buffs": [
+     {
+      "key": "use_equip_reward_char_chess",
+      "countType": "NONE",
+      "blackboard": {}
+     }
+    ],
+    "params": {}
+   },
+   "golden": {
+    "chessId": "chess_item_5_05_e_b",
+    "isGolden": true,
+    "purchasePrice": 5,
+    "upgradeChessId": null,
+    "upgradeNum": 0,
+    "trapDuration": 0,
+    "skillId": "sktok_acarm069_2",
+    "effectId": "eff_acgarm069",
+    "effectName": "拟态物质",
+    "effectDesc": "装备时销毁，若已拥有至少2名该初始干员，则再获得1名该初始干员；否则随机获得1名同盟约初始干员",
+    "effectDescRaw": "装备时销毁，若已拥有至少2名该初始干员，则再获得1名该初始干员；否则随机获得1名同盟约初始干员",
+    "skillDesc": "装备时销毁，若已拥有至少2名该初始干员，则再获得1名该初始干员；否则随机获得1名同盟约初始干员",
+    "buffs": [
+     {
+      "key": "use_equip_reward_char_chess",
+      "countType": "NONE",
+      "blackboard": {}
+     }
+    ],
+    "params": {}
+   },
+   "inAct1": true,
+   "act1TierPrice": [
+    5,
+    4
+   ]
+  },
+  {
+   "id": "chess_item_5_06_e_a",
+   "goldenId": "chess_item_5_06_e_b",
+   "trapId": "trap_1071_acarm071",
+   "name": "博士投影",
+   "nameEn": "Doctor Hologram",
+   "itemType": "EQUIP",
+   "tier": 5,
+   "shopLevelSortId": 6,
+   "hideInShop": false,
+   "price": 5,
+   "goldenPrice": 5,
+   "upgradeNum": 2,
+   "mergeable": true,
+   "trapDuration": -1,
+   "giveBondId": null,
+   "giveBondName": null,
+   "canGiveBond": false,
+   "category": "RECRUIT",
+   "kind": "consume_on_equip_or_delayed",
+   "requiresBond": null,
+   "requiresBondName": null,
+   "family": null,
+   "rangeId": "0-1",
+   "rangeGrids": [
+    {
+     "row": 0,
+     "col": 0
+    }
+   ],
+   "flavor": "“仔细听，博士正在布置任务。”",
+   "talentNotes": [],
+   "implFormula": "Normal: equip onto any normal operator (occupies a slot until next round start), at the start of the next round destroy item and promote the operator to elite(精锐/golden). Golden: on equip, destroy item and promote immediately. On promotion, equipped items return to hand.",
+   "normal": {
+    "chessId": "chess_item_5_06_e_a",
+    "isGolden": false,
+    "purchasePrice": 5,
+    "upgradeChessId": "chess_item_5_06_e_b",
+    "upgradeNum": 2,
+    "trapDuration": -1,
+    "skillId": "sktok_acarm071_1",
+    "effectId": "eff_acarm071",
+    "effectName": "博士投影",
+    "effectDesc": "任意干员可装备，下个回合开始时销毁，并使该干员晋升为精锐干员",
+    "effectDescRaw": "任意干员可装备，下个回合开始时销毁，并使该干员晋升为精锐干员",
+    "skillDesc": "任意干员可装备，下个回合开始时销毁，并使该干员晋升为精锐干员",
+    "buffs": [
+     {
+      "key": "equip_round_start_upgrade_char",
+      "countType": "NONE",
+      "blackboard": {}
+     }
+    ],
+    "params": {}
+   },
+   "golden": {
+    "chessId": "chess_item_5_06_e_b",
+    "isGolden": true,
+    "purchasePrice": 5,
+    "upgradeChessId": null,
+    "upgradeNum": 0,
+    "trapDuration": 0,
+    "skillId": "sktok_acarm071_2",
+    "effectId": "eff_acgarm071",
+    "effectName": "博士投影",
+    "effectDesc": "任意干员可装备，立即使该干员晋升为精锐干员",
+    "effectDescRaw": "任意干员可装备，立即使该干员晋升为精锐干员",
+    "skillDesc": "任意干员可装备，立即使该干员晋升为精锐干员",
+    "buffs": [
+     {
+      "key": "use_equip_upgrade_char",
+      "countType": "NONE",
+      "blackboard": {}
+     }
+    ],
+    "params": {}
+   },
+   "inAct1": true,
+   "act1TierPrice": [
+    5,
+    5
+   ]
+  },
+  {
+   "id": "chess_item_5_07_e_a",
+   "goldenId": "chess_item_5_07_e_b",
+   "trapId": "trap_1074_acarm074",
+   "name": "商业包装方案",
+   "nameEn": "Commercial Packaging Plan",
+   "itemType": "EQUIP",
+   "tier": 5,
+   "shopLevelSortId": 7,
+   "hideInShop": false,
+   "price": 3,
+   "goldenPrice": 5,
+   "upgradeNum": 2,
+   "mergeable": true,
+   "trapDuration": -1,
+   "giveBondId": null,
+   "giveBondName": null,
+   "canGiveBond": false,
+   "category": "RECRUIT",
+   "kind": "passive_player",
+   "requiresBond": null,
+   "requiresBondName": null,
+   "family": null,
+   "rangeId": "0-1",
+   "rangeGrids": [
+    {
+     "row": 0,
+     "col": 0
+    }
+   ],
+   "flavor": "“端起酒杯，注意微笑的弧度，我保证你会火得一塌糊涂！不，现在还不够打动人，再去换一套衣服看看。”",
+   "talentNotes": [],
+   "implFormula": "Stays equipped. Counter of operators SOLD by the player (any): every `count` sales, give 1 random NORMAL operator sharing a bond with the carrier, tier <= current shop level.",
+   "normal": {
+    "chessId": "chess_item_5_07_e_a",
+    "isGolden": false,
+    "purchasePrice": 3,
+    "upgradeChessId": "chess_item_5_07_e_b",
+    "upgradeNum": 2,
+    "trapDuration": -1,
+    "skillId": "sktok_acarm074_1",
+    "effectId": "eff_acarm074",
+    "effectName": "商业包装方案",
+    "effectDesc": "每出售8名干员，额外获得一个与此装备携带者的同盟约初始干员（不高于当前调度中心等级）",
+    "effectDescRaw": "每出售8名干员，额外获得一个与此装备携带者的同盟约初始干员（不高于当前调度中心等级）",
+    "skillDesc": "每出售8名干员，额外获得一个与此装备携带者的同盟约初始干员（不高于当前调度中心等级）",
+    "buffs": [
+     {
+      "key": "sell_char_count_gain_equip_owner_bond",
+      "countType": "NONE",
+      "blackboard": {
+       "count": 8.0
+      }
+     }
+    ],
+    "params": {
+     "count": 8.0
+    }
+   },
+   "golden": {
+    "chessId": "chess_item_5_07_e_b",
+    "isGolden": true,
+    "purchasePrice": 5,
+    "upgradeChessId": null,
+    "upgradeNum": 0,
+    "trapDuration": 0,
+    "skillId": "sktok_acarm074_2",
+    "effectId": "eff_acgarm074",
+    "effectName": "商业包装方案",
+    "effectDesc": "每出售7名干员，额外获得一个与此装备携带者的同盟约初始干员（不高于当前调度中心等级）",
+    "effectDescRaw": "每出售7名干员，额外获得一个与此装备携带者的同盟约初始干员（不高于当前调度中心等级）",
+    "skillDesc": "每出售7名干员，额外获得一个与此装备携带者的同盟约初始干员（不高于当前调度中心等级）",
+    "buffs": [
+     {
+      "key": "sell_char_count_gain_equip_owner_bond",
+      "countType": "NONE",
+      "blackboard": {
+       "count": 7.0
+      }
+     }
+    ],
+    "params": {
+     "count": 7.0
+    }
+   },
+   "inAct1": true,
+   "act1TierPrice": [
+    6,
+    3
+   ]
+  },
+  {
+   "id": "chess_item_5_08_e_a",
+   "goldenId": "chess_item_5_08_e_b",
+   "trapId": "trap_1072_acarm072",
+   "name": "突变细胞",
+   "nameEn": "Mutated Cells",
+   "itemType": "EQUIP",
+   "tier": 5,
+   "shopLevelSortId": 8,
+   "hideInShop": false,
+   "price": 2,
+   "goldenPrice": 5,
+   "upgradeNum": 100,
+   "mergeable": false,
+   "trapDuration": -1,
+   "giveBondId": null,
+   "giveBondName": null,
+   "canGiveBond": false,
+   "category": "RECRUIT",
+   "kind": "post_battle_transform",
+   "requiresBond": null,
+   "requiresBondName": null,
+   "family": null,
+   "rangeId": "0-1",
+   "rangeGrids": [
+    {
+     "row": 0,
+     "col": 0
+    }
+   ],
+   "flavor": "“代价……”",
+   "talentNotes": [
+    "本装备不会合并为进阶品质"
+   ],
+   "implFormula": "After the battle ends: the carrier is destroyed wherever it stands (a board tile is freed); its equipment, the cell included, returns to the hand first (the cell is not consumed); then a random NORMAL operator one tier higher (max tier 6; an elite carrier too) is gained like any gained operator, into the 整备区 (overflow temp), never onto the carrier's tile. Never merges. [Corrected after 0.1.0 — the first reading was 'item consumed [ASSUMED]': PRTS 下半 记录 备注 '生效时，原干员销毁，获得一名高一阶的随机初始干员（最高六阶）'; official footage bilibili BV1vzyVBuEN9 / BV1Qkw1zMEoR (the tile empty, the operator on the bench; PR #2); see the 04-items.md addenda.]",
+   "normal": {
+    "chessId": "chess_item_5_08_e_a",
+    "isGolden": false,
+    "purchasePrice": 2,
+    "upgradeChessId": "chess_item_5_08_e_b",
+    "upgradeNum": 100,
+    "trapDuration": -1,
+    "skillId": "sktok_acarm072_1",
+    "effectId": "eff_acarm072",
+    "effectName": "突变细胞",
+    "effectDesc": "战斗结束后，装备者替换为高一阶的随机干员",
+    "effectDescRaw": "战斗结束后，装备者替换为高一阶的随机干员",
+    "skillDesc": "战斗结束后，装备者替换为高一阶的随机干员",
+    "buffs": [
+     {
+      "key": "char_chess_transformation_equip",
+      "countType": "NONE",
+      "blackboard": {}
+     }
+    ],
+    "params": {}
+   },
+   "golden": {
+    "chessId": "chess_item_5_08_e_b",
+    "isGolden": true,
+    "purchasePrice": 5,
+    "upgradeChessId": null,
+    "upgradeNum": 0,
+    "trapDuration": 0,
+    "skillId": "sktok_acarm072_2",
+    "effectId": "eff_acgarm072",
+    "effectName": "突变细胞",
+    "effectDesc": "战斗结束后，装备者替换为高一阶的随机干员",
+    "effectDescRaw": "战斗结束后，装备者替换为高一阶的随机干员",
+    "skillDesc": "战斗结束后，装备者替换为高一阶的随机干员",
+    "buffs": [
+     {
+      "key": "char_chess_transformation_equip",
+      "countType": "NONE",
+      "blackboard": {}
+     }
+    ],
+    "params": {}
+   },
+   "inAct1": true,
+   "act1TierPrice": [
+    6,
+    2
+   ]
+  },
+  {
+   "id": "chess_item_5_09_e_a",
+   "goldenId": "chess_item_5_09_e_b",
+   "trapId": "trap_1118_acarm118",
+   "name": "天马之盔",
+   "nameEn": "Pegasus Helm",
+   "itemType": "EQUIP",
+   "tier": 5,
+   "shopLevelSortId": 9,
+   "hideInShop": false,
+   "price": 3,
+   "goldenPrice": 5,
+   "upgradeNum": 2,
+   "mergeable": true,
+   "trapDuration": -1,
+   "giveBondId": null,
+   "giveBondName": null,
+   "canGiveBond": false,
+   "category": "SET",
+   "kind": "passive",
+   "requiresBond": null,
+   "requiresBondName": null,
+   "family": null,
+   "rangeId": "0-1",
+   "rangeGrids": [
+    {
+     "row": 0,
+     "col": 0
+    }
+   ],
+   "flavor": "“见证过无数勇士与英豪的诞生。”",
+   "talentNotes": [],
+   "implFormula": "maxHP% += max_hp. If carrier also holds 天马之枪 (either quality): regen hp_recovery_per_sec_by_max_hp_ratio * maxHP per second.",
+   "normal": {
+    "chessId": "chess_item_5_09_e_a",
+    "isGolden": false,
+    "purchasePrice": 3,
+    "upgradeChessId": "chess_item_5_09_e_b",
+    "upgradeNum": 2,
+    "trapDuration": -1,
+    "skillId": "sktok_acarm118_1",
+    "effectId": "eff_acarm118",
+    "effectName": "天马之盔",
+    "effectDesc": "生命值+50%，若与“天马之枪”一起装备，每秒回复8%最大生命值。",
+    "effectDescRaw": "生命值<@ba.vup>+50%</>，若与“天马之枪”一起装备，每秒回复<@ba.vup>8%</>最大生命值。",
+    "skillDesc": "生命值+50%，若与“天马之枪”一起装备，每秒回复8%最大生命值。",
+    "buffs": [
+     {
+      "key": "env_gbuff_new_with_verify",
+      "countType": "NONE",
+      "blackboard": {
+       "key": "attr_common_global_buff",
+       "max_hp": 0.5
+      }
+     },
+     {
+      "key": "env_gbuff_new_with_verify",
+      "countType": "NONE",
+      "blackboard": {
+       "key": "act2autochess_equip_acarm118_global_buff",
+       "hp_recovery_per_sec_by_max_hp_ratio": 0.08,
+       "equip_chess_id": "chess_item_6_01_e"
+      }
+     }
+    ],
+    "params": {
+     "max_hp": 0.5,
+     "hp_recovery_per_sec_by_max_hp_ratio": 0.08,
+     "equip_chess_id": "chess_item_6_01_e"
+    }
+   },
+   "golden": {
+    "chessId": "chess_item_5_09_e_b",
+    "isGolden": true,
+    "purchasePrice": 5,
+    "upgradeChessId": null,
+    "upgradeNum": 0,
+    "trapDuration": 0,
+    "skillId": "sktok_acarm118_2",
+    "effectId": "eff_acgarm118",
+    "effectName": "天马之盔",
+    "effectDesc": "生命值+75%，若与“天马之枪”一起装备，每秒回复8%最大生命值。",
+    "effectDescRaw": "生命值<@ba.vup>+75%</>，若与“天马之枪”一起装备，每秒回复<@ba.vup>8%</>最大生命值。",
+    "skillDesc": "生命值+75%，若与“天马之枪”一起装备，每秒回复8%最大生命值。",
+    "buffs": [
+     {
+      "key": "env_gbuff_new_with_verify",
+      "countType": "NONE",
+      "blackboard": {
+       "key": "attr_common_global_buff",
+       "max_hp": 0.75
+      }
+     },
+     {
+      "key": "env_gbuff_new_with_verify",
+      "countType": "NONE",
+      "blackboard": {
+       "key": "act2autochess_equip_acarm118_global_buff",
+       "hp_recovery_per_sec_by_max_hp_ratio": 0.08,
+       "equip_chess_id": "chess_item_6_01_e"
+      }
+     }
+    ],
+    "params": {
+     "max_hp": 0.75,
+     "hp_recovery_per_sec_by_max_hp_ratio": 0.08,
+     "equip_chess_id": "chess_item_6_01_e"
+    }
+   },
+   "inAct1": false
+  },
+  {
+   "id": "chess_item_6_01_e_a",
+   "goldenId": "chess_item_6_01_e_b",
+   "trapId": "trap_1117_acarm117",
+   "name": "天马之枪",
+   "nameEn": "Pegasus Lance",
+   "itemType": "EQUIP",
+   "tier": 6,
+   "shopLevelSortId": 1,
+   "hideInShop": false,
+   "price": 3,
+   "goldenPrice": 5,
+   "upgradeNum": 2,
+   "mergeable": true,
+   "trapDuration": -1,
+   "giveBondId": null,
+   "giveBondName": null,
+   "canGiveBond": false,
+   "category": "SET",
+   "kind": "passive",
+   "requiresBond": null,
+   "requiresBondName": null,
+   "family": null,
+   "rangeId": "0-1",
+   "rangeGrids": [
+    {
+     "row": 0,
+     "col": 0
+    }
+   ],
+   "flavor": "“造就了无数血肉与精神的溃散。”",
+   "talentNotes": [],
+   "implFormula": "ATK% += atk. If carrier also holds 天马之盔: every damage instance additionally deals atk_scale * ATK as TRUE damage [ASSUMED: % of ATK, per blackboard key atk_scale; description says 30% true damage].",
+   "normal": {
+    "chessId": "chess_item_6_01_e_a",
+    "isGolden": false,
+    "purchasePrice": 3,
+    "upgradeChessId": "chess_item_6_01_e_b",
+    "upgradeNum": 2,
+    "trapDuration": -1,
+    "skillId": "sktok_acarm117_1",
+    "effectId": "eff_acarm117",
+    "effectName": "天马之枪",
+    "effectDesc": "攻击力+40%，若与“天马之盔”一起装备，造成伤害时额外造成30%的真实伤害",
+    "effectDescRaw": "攻击力<@ba.vup>+40%</>，若与“天马之盔”一起装备，造成伤害时额外造成<@ba.vup>30%</>的真实伤害",
+    "skillDesc": "攻击力+40%，若与“天马之盔”一起装备，造成伤害时额外造成30%的真实伤害",
+    "buffs": [
+     {
+      "key": "env_gbuff_new_with_verify",
+      "countType": "NONE",
+      "blackboard": {
+       "key": "attr_common_global_buff",
+       "atk": 0.4
+      }
+     },
+     {
+      "key": "env_gbuff_new_with_verify",
+      "countType": "NONE",
+      "blackboard": {
+       "key": "act2autochess_equip_acarm117_global_buff",
+       "equip_chess_id": "chess_item_5_09_e",
+       "atk_scale": 0.3
+      }
+     }
+    ],
+    "params": {
+     "atk": 0.4,
+     "equip_chess_id": "chess_item_5_09_e",
+     "atk_scale": 0.3
+    }
+   },
+   "golden": {
+    "chessId": "chess_item_6_01_e_b",
+    "isGolden": true,
+    "purchasePrice": 5,
+    "upgradeChessId": null,
+    "upgradeNum": 0,
+    "trapDuration": 0,
+    "skillId": "sktok_acarm117_2",
+    "effectId": "eff_acgarm117",
+    "effectName": "天马之枪",
+    "effectDesc": "攻击力+60%，若与“天马之盔”一起装备，造成伤害时额外造成30%的真实伤害",
+    "effectDescRaw": "攻击力<@ba.vup>+60%</>，若与“天马之盔”一起装备，造成伤害时额外造成<@ba.vup>30%</>的真实伤害",
+    "skillDesc": "攻击力+60%，若与“天马之盔”一起装备，造成伤害时额外造成30%的真实伤害",
+    "buffs": [
+     {
+      "key": "env_gbuff_new_with_verify",
+      "countType": "NONE",
+      "blackboard": {
+       "key": "attr_common_global_buff",
+       "atk": 0.6
+      }
+     },
+     {
+      "key": "env_gbuff_new_with_verify",
+      "countType": "NONE",
+      "blackboard": {
+       "key": "act2autochess_equip_acarm117_global_buff",
+       "equip_chess_id": "chess_item_5_09_e",
+       "atk_scale": 0.3
+      }
+     }
+    ],
+    "params": {
+     "atk": 0.6,
+     "equip_chess_id": "chess_item_5_09_e",
+     "atk_scale": 0.3
+    }
+   },
+   "inAct1": false
+  },
+  {
+   "id": "chess_item_6_02_e_a",
+   "goldenId": "chess_item_6_02_e_b",
+   "trapId": "trap_1076_acarm076",
+   "name": "铳骑之威",
+   "nameEn": "Gun-Knight's Might",
+   "itemType": "EQUIP",
+   "tier": 6,
+   "shopLevelSortId": 2,
+   "hideInShop": false,
+   "price": 4,
+   "goldenPrice": 5,
+   "upgradeNum": 2,
+   "mergeable": true,
+   "trapDuration": -1,
+   "giveBondId": null,
+   "giveBondName": null,
+   "canGiveBond": false,
+   "category": "BOND_SIGNATURE",
+   "kind": "passive",
+   "requiresBond": "lateranoShip",
+   "requiresBondName": "拉特兰",
+   "family": null,
+   "rangeId": "0-1",
+   "rangeGrids": [
+    {
+     "row": 0,
+     "col": 0
+    }
+   ],
+   "flavor": "“拉特兰人从不曾怀疑过铳骑的威严。”",
+   "talentNotes": [],
+   "implFormula": "ATK% += atk. If carrier has bond Laterano: on each attack, prob chance to fire an extra bullet at 1 enemy in range dealing atk_scale_1 * ATK physical damage; if carrier also holds 拉特兰桥夹 -> atk_scale_2 * ATK.",
+   "normal": {
+    "chessId": "chess_item_6_02_e_a",
+    "isGolden": false,
+    "purchasePrice": 4,
+    "upgradeChessId": "chess_item_6_02_e_b",
+    "upgradeNum": 2,
+    "trapDuration": -1,
+    "skillId": "sktok_acarm076_1",
+    "effectId": "eff_acarm076",
+    "effectName": "铳骑之威",
+    "effectDesc": "攻击力+40%；若携带者为【拉特兰】盟约干员，该干员每次攻击时，有35%概率额外对攻击范围内一名敌人发射子弹造成150%攻击力的物理伤害\n若该【拉特兰】盟约干员同时装备“拉特兰桥夹”，子弹伤害改为300%攻击力",
+    "effectDescRaw": "攻击力<@ba.vup>+40%</>；若携带者为【拉特兰】盟约干员，该干员每次攻击时，有35%概率额外对攻击范围内一名敌人发射子弹造成<@ba.vup>150%</>攻击力的物理伤害\\n<@ba.acrem>若该【拉特兰】盟约干员同时装备“拉特兰桥夹”，子弹伤害改为<@ba.vup>300%</>攻击力</>",
+    "skillDesc": "攻击力+40%；若携带者为【拉特兰】盟约干员，该干员每次攻击时，有35%概率额外对攻击范围内一名敌人发射子弹造成150%攻击力的物理伤害\n若该【拉特兰】盟约干员同时装备“拉特兰桥夹”，子弹伤害改为300%攻击力",
+    "buffs": [
+     {
+      "key": "env_gbuff_new_with_verify",
+      "countType": "NONE",
+      "blackboard": {
+       "key": "act1autochess_equip_acarm076_global_buff",
+       "equip_chess_id": "chess_item_4_08_e",
+       "prob": 0.35,
+       "atk_scale_1": 1.5,
+       "atk_scale_2": 3.0
+      }
+     },
+     {
+      "key": "env_gbuff_new_with_verify",
+      "countType": "NONE",
+      "blackboard": {
+       "key": "attr_common_global_buff",
+       "atk": 0.4
+      }
+     }
+    ],
+    "params": {
+     "equip_chess_id": "chess_item_4_08_e",
+     "prob": 0.35,
+     "atk_scale_1": 1.5,
+     "atk_scale_2": 3.0,
+     "atk": 0.4
+    }
+   },
+   "golden": {
+    "chessId": "chess_item_6_02_e_b",
+    "isGolden": true,
+    "purchasePrice": 5,
+    "upgradeChessId": null,
+    "upgradeNum": 0,
+    "trapDuration": 0,
+    "skillId": "sktok_acarm076_2",
+    "effectId": "eff_acgarm076",
+    "effectName": "铳骑之威",
+    "effectDesc": "攻击力+60%；若携带者为【拉特兰】盟约干员，该干员每次攻击时，有35%概率额外对攻击范围内一名敌人发射子弹造成150%攻击力的物理伤害\n若该【拉特兰】盟约干员同时装备“拉特兰桥夹”，子弹伤害改为300%攻击力",
+    "effectDescRaw": "攻击力<@ba.vup>+60%</>；若携带者为【拉特兰】盟约干员，该干员每次攻击时，有35%概率额外对攻击范围内一名敌人发射子弹造成<@ba.vup>150%</>攻击力的物理伤害\\n<@ba.acrem>若该【拉特兰】盟约干员同时装备“拉特兰桥夹”，子弹伤害改为<@ba.vup>300%</>攻击力</>",
+    "skillDesc": "攻击力+60%；若携带者为【拉特兰】盟约干员，该干员每次攻击时，有35%概率额外对攻击范围内一名敌人发射子弹造成150%攻击力的物理伤害\n若该【拉特兰】盟约干员同时装备“拉特兰桥夹”，子弹伤害改为300%攻击力",
+    "buffs": [
+     {
+      "key": "env_gbuff_new_with_verify",
+      "countType": "NONE",
+      "blackboard": {
+       "key": "act1autochess_equip_acarm076_global_buff",
+       "equip_chess_id": "chess_item_4_08_e",
+       "prob": 0.35,
+       "atk_scale_1": 1.5,
+       "atk_scale_2": 3.0
+      }
+     },
+     {
+      "key": "env_gbuff_new_with_verify",
+      "countType": "NONE",
+      "blackboard": {
+       "key": "attr_common_global_buff",
+       "atk": 0.6
+      }
+     }
+    ],
+    "params": {
+     "equip_chess_id": "chess_item_4_08_e",
+     "prob": 0.35,
+     "atk_scale_1": 1.5,
+     "atk_scale_2": 3.0,
+     "atk": 0.6
+    }
+   },
+   "inAct1": true,
+   "act1TierPrice": [
+    6,
+    4
+   ]
+  },
+  {
+   "id": "chess_item_6_03_e_a",
+   "goldenId": "chess_item_6_03_e_b",
+   "trapId": "trap_1077_acarm077",
+   "name": "天师古鼎",
+   "nameEn": "Tianshi's Cauldron",
+   "itemType": "EQUIP",
+   "tier": 6,
+   "shopLevelSortId": 3,
+   "hideInShop": false,
+   "price": 4,
+   "goldenPrice": 5,
+   "upgradeNum": 2,
+   "mergeable": true,
+   "trapDuration": -1,
+   "giveBondId": null,
+   "giveBondName": null,
+   "canGiveBond": false,
+   "category": "BOND_SIGNATURE",
+   "kind": "passive",
+   "requiresBond": "yanShip",
+   "requiresBondName": "炎",
+   "family": null,
+   "rangeId": "0-1",
+   "rangeGrids": [
+    {
+     "row": 0,
+     "col": 0
+    }
+   ],
+   "flavor": "“炎国人相信那些关于天师的上古传说绝非完全出自虚构。”",
+   "talentNotes": [],
+   "implFormula": "maxHP% += max_hp. If carrier has bond Yan: at battle start ASPD += attack_speed * min(k, max_cnt), k = operators the player acquired during THIS round's prep. If also holding 炎国短刀: each time the player acquires an operator, funds += count (max `max` times per round).",
+   "normal": {
+    "chessId": "chess_item_6_03_e_a",
+    "isGolden": false,
+    "purchasePrice": 4,
+    "upgradeChessId": "chess_item_6_03_e_b",
+    "upgradeNum": 2,
+    "trapDuration": -1,
+    "skillId": "sktok_acarm077_1",
+    "effectId": "eff_acarm077",
+    "effectName": "天师古鼎",
+    "effectDesc": "生命值+45%；若携带者为【炎】盟约干员，本回合每获得过1名干员战斗开始后攻击速度+25（最多3层）\n若该【炎】盟约干员同时装备“炎国短刀”，每次获得干员时获得2资金（每回合最多3次）",
+    "effectDescRaw": "生命值<@ba.vup>+45%</>；若携带者为【炎】盟约干员，本回合每获得过1名干员战斗开始后攻击速度<@ba.vup>+25</>（最多3层）\\n<@ba.acrem>若该【炎】盟约干员同时装备“炎国短刀”，每次获得干员时获得<@ba.vup>2</>资金（每回合最多3次）</>",
+    "skillDesc": "生命值+45%；若携带者为【炎】盟约干员，本回合每获得过1名干员战斗开始后攻击速度+25（最多3层）\n若该【炎】盟约干员同时装备“炎国短刀”，每次获得干员时获得2资金（每回合最多3次）",
+    "buffs": [
+     {
+      "key": "env_gbuff_new_with_verify",
+      "countType": "NONE",
+      "blackboard": {
+       "key": "act1autochess_equip_acarm077_global_buff",
+       "equip_chess_id": "chess_item_3_04_e",
+       "attack_speed": 25.0,
+       "max_cnt": 3.0
+      }
+     },
+     {
+      "key": "env_gbuff_new_with_verify",
+      "countType": "NONE",
+      "blackboard": {
+       "key": "attr_common_global_buff",
+       "max_hp": 0.45
+      }
+     },
+     {
+      "key": "equip_with_another_gain_coin_when_gain_char",
+      "countType": "NONE",
+      "blackboard": {
+       "other_equip": "chess_item_3_04_e_a,chess_item_3_04_e_b",
+       "count": 2.0,
+       "max": 3.0,
+       "bond": "yanShip"
+      }
+     }
+    ],
+    "params": {
+     "equip_chess_id": "chess_item_3_04_e",
+     "attack_speed": 25.0,
+     "max_cnt": 3.0,
+     "max_hp": 0.45,
+     "other_equip": "chess_item_3_04_e_a,chess_item_3_04_e_b",
+     "count": 2.0,
+     "max": 3.0,
+     "bond": "yanShip"
+    }
+   },
+   "golden": {
+    "chessId": "chess_item_6_03_e_b",
+    "isGolden": true,
+    "purchasePrice": 5,
+    "upgradeChessId": null,
+    "upgradeNum": 0,
+    "trapDuration": 0,
+    "skillId": "sktok_acarm077_2",
+    "effectId": "eff_acgarm077",
+    "effectName": "天师古鼎",
+    "effectDesc": "生命值+70%；若携带者为【炎】盟约干员，本回合每获得过1名干员战斗开始后攻击速度+25（最多3层）\n若该【炎】盟约干员同时装备“炎国短刀”，每次获得干员时获得2资金（每回合最多3次）",
+    "effectDescRaw": "生命值<@ba.vup>+70%</>；若携带者为【炎】盟约干员，本回合每获得过1名干员战斗开始后攻击速度<@ba.vup>+25</>（最多3层）\\n<@ba.acrem>若该【炎】盟约干员同时装备“炎国短刀”，每次获得干员时获得<@ba.vup>2</>资金（每回合最多3次）</>",
+    "skillDesc": "生命值+70%；若携带者为【炎】盟约干员，本回合每获得过1名干员战斗开始后攻击速度+25（最多3层）\n若该【炎】盟约干员同时装备“炎国短刀”，每次获得干员时获得2资金（每回合最多3次）",
+    "buffs": [
+     {
+      "key": "env_gbuff_new_with_verify",
+      "countType": "NONE",
+      "blackboard": {
+       "key": "act1autochess_equip_acarm077_global_buff",
+       "equip_chess_id": "chess_item_3_04_e",
+       "attack_speed": 25.0,
+       "max_cnt": 3.0
+      }
+     },
+     {
+      "key": "env_gbuff_new_with_verify",
+      "countType": "NONE",
+      "blackboard": {
+       "key": "attr_common_global_buff",
+       "max_hp": 0.7
+      }
+     },
+     {
+      "key": "equip_with_another_gain_coin_when_gain_char",
+      "countType": "NONE",
+      "blackboard": {
+       "other_equip": "chess_item_3_04_e_a,chess_item_3_04_e_b",
+       "count": 2.0,
+       "max": 3.0,
+       "bond": "yanShip"
+      }
+     }
+    ],
+    "params": {
+     "equip_chess_id": "chess_item_3_04_e",
+     "attack_speed": 25.0,
+     "max_cnt": 3.0,
+     "max_hp": 0.7,
+     "other_equip": "chess_item_3_04_e_a,chess_item_3_04_e_b",
+     "count": 2.0,
+     "max": 3.0,
+     "bond": "yanShip"
+    }
+   },
+   "inAct1": true,
+   "act1TierPrice": [
+    6,
+    4
+   ]
+  },
+  {
+   "id": "chess_item_6_04_e_a",
+   "goldenId": "chess_item_6_04_e_b",
+   "trapId": "trap_1078_acarm078",
+   "name": "海沟实验体",
+   "nameEn": "Trench Test Subject",
+   "itemType": "EQUIP",
+   "tier": 6,
+   "shopLevelSortId": 4,
+   "hideInShop": false,
+   "price": 4,
+   "goldenPrice": 5,
+   "upgradeNum": 2,
+   "mergeable": true,
+   "trapDuration": -1,
+   "giveBondId": null,
+   "giveBondName": null,
+   "canGiveBond": false,
+   "category": "BOND_SIGNATURE",
+   "kind": "passive",
+   "requiresBond": "egirShip",
+   "requiresBondName": "阿戈尔",
+   "family": null,
+   "rangeId": "0-1",
+   "rangeGrids": [
+    {
+     "row": 0,
+     "col": 0
+    }
+   ],
+   "flavor": "“属于阿戈尔人的秘密被埋葬在最深的海沟中，但它从未真正死去。”",
+   "talentNotes": [],
+   "implFormula": "Flat damage reduction: each incoming hit reduced by `value` (180/300, min 0 [ASSUMED]). If carrier has bond Aegir: when taking damage, deal atk_scale * ATK arts damage to the source (internal CD lock_duration 0.5 s); if also holding 阿戈尔重刃, one additional hit of atk_scale * ATK arts (same CD).",
+   "normal": {
+    "chessId": "chess_item_6_04_e_a",
+    "isGolden": false,
+    "purchasePrice": 4,
+    "upgradeChessId": "chess_item_6_04_e_b",
+    "upgradeNum": 2,
+    "trapDuration": -1,
+    "skillId": "sktok_acarm078_1",
+    "effectId": "eff_acarm078",
+    "effectName": "海沟实验体",
+    "effectDesc": "获得180点伤害减免；若携带者为【阿戈尔】盟约干员，自身受到伤害时对伤害来源造成自身攻击力50%的法术伤害（每0.5秒最多触发一次）\n若该【阿戈尔】盟约干员同时装备“阿戈尔重刃”，则自身受到伤害时额外造成一次50%攻击力的法术伤害（每0.5秒最多触发一次）",
+    "effectDescRaw": "获得<@ba.vup>180</>点<$ba.dmgresistance>伤害减免</>；若携带者为【阿戈尔】盟约干员，自身受到伤害时对伤害来源造成自身攻击力<@ba.vup>50%</>的法术伤害（每0.5秒最多触发一次）\\n<@ba.acrem>若该【阿戈尔】盟约干员同时装备“阿戈尔重刃”，则自身受到伤害时额外造成一次<@ba.vup>50%</>攻击力的法术伤害（每0.5秒最多触发一次）</>",
+    "skillDesc": "获得180点伤害减免；若携带者为【阿戈尔】盟约干员，自身受到伤害时对伤害来源造成自身攻击力50%的法术伤害（每0.5秒最多触发一次）\n若该【阿戈尔】盟约干员同时装备“阿戈尔重刃”，则自身受到伤害时额外造成一次50%攻击力的法术伤害（每0.5秒最多触发一次）",
+    "buffs": [
+     {
+      "key": "env_gbuff_new_with_verify",
+      "countType": "NONE",
+      "blackboard": {
+       "key": "act2autochess_equip_acarm078_global_buff",
+       "equip_chess_id": "chess_item_3_07_e",
+       "lock_duration": 0.5,
+       "atk_scale": 0.5
+      }
+     },
+     {
+      "key": "env_gbuff_new_with_verify",
+      "countType": "NONE",
+      "blackboard": {
+       "key": "halfidle_block_fixed_damage",
+       "value": 180.0
+      }
+     }
+    ],
+    "params": {
+     "equip_chess_id": "chess_item_3_07_e",
+     "lock_duration": 0.5,
+     "atk_scale": 0.5,
+     "value": 180.0
+    }
+   },
+   "golden": {
+    "chessId": "chess_item_6_04_e_b",
+    "isGolden": true,
+    "purchasePrice": 5,
+    "upgradeChessId": null,
+    "upgradeNum": 0,
+    "trapDuration": 0,
+    "skillId": "sktok_acarm078_2",
+    "effectId": "eff_acgarm078",
+    "effectName": "海沟实验体",
+    "effectDesc": "获得300点伤害减免；若携带者为【阿戈尔】盟约干员，自身受到伤害时对伤害来源造成自身攻击力50%的法术伤害（每0.5秒最多触发一次）\n若该【阿戈尔】盟约干员同时装备“阿戈尔重刃”，则自身受到伤害时额外造成一次50%的攻击力的法术伤害（每0.5秒最多触发一次）",
+    "effectDescRaw": "获得<@ba.vup>300</>点<$ba.dmgresistance>伤害减免</>；若携带者为【阿戈尔】盟约干员，自身受到伤害时对伤害来源造成自身攻击力<@ba.vup>50%</>的法术伤害（每0.5秒最多触发一次）\\n<@ba.acrem>若该【阿戈尔】盟约干员同时装备“阿戈尔重刃”，则自身受到伤害时额外造成一次<@ba.vup>50%</>的攻击力的法术伤害（每0.5秒最多触发一次）</>",
+    "skillDesc": "获得300点伤害减免；若携带者为【阿戈尔】盟约干员，自身受到伤害时对伤害来源造成自身攻击力50%的法术伤害（每0.5秒最多触发一次）\n若该【阿戈尔】盟约干员同时装备“阿戈尔重刃”，则自身受到伤害时额外造成一次50%的攻击力的法术伤害（每0.5秒最多触发一次）",
+    "buffs": [
+     {
+      "key": "env_gbuff_new_with_verify",
+      "countType": "NONE",
+      "blackboard": {
+       "key": "act2autochess_equip_acarm078_global_buff",
+       "equip_chess_id": "chess_item_3_07_e",
+       "lock_duration": 0.5,
+       "atk_scale": 0.5
+      }
+     },
+     {
+      "key": "env_gbuff_new_with_verify",
+      "countType": "NONE",
+      "blackboard": {
+       "key": "halfidle_block_fixed_damage",
+       "value": 300.0
+      }
+     }
+    ],
+    "params": {
+     "equip_chess_id": "chess_item_3_07_e",
+     "lock_duration": 0.5,
+     "atk_scale": 0.5,
+     "value": 300.0
+    }
+   },
+   "inAct1": true,
+   "act1TierPrice": [
+    6,
+    4
+   ]
+  },
+  {
+   "id": "chess_item_6_05_e_a",
+   "goldenId": "chess_item_6_05_e_b",
+   "trapId": "trap_1079_acarm079",
+   "name": "蒸汽之心",
+   "nameEn": "Steam Heart",
+   "itemType": "EQUIP",
+   "tier": 6,
+   "shopLevelSortId": 5,
+   "hideInShop": false,
+   "price": 4,
+   "goldenPrice": 5,
+   "upgradeNum": 2,
+   "mergeable": true,
+   "trapDuration": -1,
+   "giveBondId": null,
+   "giveBondName": null,
+   "canGiveBond": false,
+   "category": "BOND_SIGNATURE",
+   "kind": "passive",
+   "requiresBond": "victoriaShip",
+   "requiresBondName": "维多利亚",
+   "family": null,
+   "rangeId": "0-1",
+   "rangeGrids": [
+    {
+     "row": 0,
+     "col": 0
+    }
+   ],
+   "flavor": "“维多利亚人用数个时代证明了蒸汽与齿轮中蕴藏着真理。”",
+   "talentNotes": [],
+   "implFormula": "ASPD += attack_speed_1 (35/55). If carrier has bond Victoria: gains the special effects of every hammer (灼燃/坚固/加速/战栗) currently equipped by ANY of the player's on-field operators (burn 10% of arts dmg, undying 8 s, ASPD +30, 10% tremble 2 s). If it also holds a hammer-series item, that hammer's special effect is doubled (burn 20%, undying 16 s, ASPD +60, tremble prob 20% [ASSUMED doubling targets]).",
+   "normal": {
+    "chessId": "chess_item_6_05_e_a",
+    "isGolden": false,
+    "purchasePrice": 4,
+    "upgradeChessId": "chess_item_6_05_e_b",
+    "upgradeNum": 2,
+    "trapDuration": -1,
+    "skillId": "sktok_acarm079_1",
+    "effectId": "eff_acarm079",
+    "effectName": "蒸汽之心",
+    "effectDesc": "攻击速度+35；若携带者为【维多利亚】盟约干员，该干员获得当前场上所有维式重锤特殊效果\n若该【维多利亚】盟约干员同时装备“维式重锤”系列装备，该“维式重锤”装备特殊效果获得强化（效果变为2倍）",
+    "effectDescRaw": "攻击速度<@ba.vup>+35</>；若携带者为【维多利亚】盟约干员，该干员获得当前场上所有维式重锤特殊效果\\n<@ba.acrem>若该【维多利亚】盟约干员同时装备“维式重锤”系列装备，该“维式重锤”装备特殊效果获得强化（效果变为2倍）</>",
+    "skillDesc": "攻击速度+35；若携带者为【维多利亚】盟约干员，该干员获得当前场上所有维式重锤特殊效果\n若该【维多利亚】盟约干员同时装备“维式重锤”系列装备，该“维式重锤”装备特殊效果获得强化（效果变为2倍）",
+    "buffs": [
+     {
+      "key": "env_gbuff_new_with_verify",
+      "countType": "NONE",
+      "blackboard": {
+       "key": "act1autochess_equip_acarm079_global_buff",
+       "hammer_1": "chess_item_4_09_e",
+       "hammer_2": "chess_item_3_09_e",
+       "hammer_3": "chess_item_3_10_e",
+       "hammer_4": "chess_item_2_03_e",
+       "damage_scale": 0.1,
+       "undeadable_duration": 8.0,
+       "attack_speed": 30.0,
+       "prob": 0.1,
+       "disarmed_duration": 2.0,
+       "big_hammer": "none"
+      }
+     },
+     {
+      "key": "env_gbuff_new_with_verify",
+      "countType": "NONE",
+      "blackboard": {
+       "key": "attr_common_global_buff",
+       "attack_speed": 35.0
+      }
+     }
+    ],
+    "params": {
+     "hammer_1": "chess_item_4_09_e",
+     "hammer_2": "chess_item_3_09_e",
+     "hammer_3": "chess_item_3_10_e",
+     "hammer_4": "chess_item_2_03_e",
+     "damage_scale": 0.1,
+     "undeadable_duration": 8.0,
+     "attack_speed": 30.0,
+     "prob": 0.1,
+     "disarmed_duration": 2.0,
+     "big_hammer": "none",
+     "attack_speed_1": 35.0
+    }
+   },
+   "golden": {
+    "chessId": "chess_item_6_05_e_b",
+    "isGolden": true,
+    "purchasePrice": 5,
+    "upgradeChessId": null,
+    "upgradeNum": 0,
+    "trapDuration": 0,
+    "skillId": "sktok_acarm079_2",
+    "effectId": "eff_acgarm079",
+    "effectName": "蒸汽之心",
+    "effectDesc": "攻击速度+55；若携带者为【维多利亚】盟约干员，该干员获得当前场上所有维式重锤特殊效果\n若该【维多利亚】盟约干员同时装备“维式重锤”系列装备，该“维式重锤”装备特殊效果获得强化（效果变为2倍）",
+    "effectDescRaw": "攻击速度<@ba.vup>+55</>；若携带者为【维多利亚】盟约干员，该干员获得当前场上所有维式重锤特殊效果\\n<@ba.acrem>若该【维多利亚】盟约干员同时装备“维式重锤”系列装备，该“维式重锤”装备特殊效果获得强化（效果变为2倍）</>",
+    "skillDesc": "攻击速度+55；若携带者为【维多利亚】盟约干员，该干员获得当前场上所有维式重锤特殊效果\n若该【维多利亚】盟约干员同时装备“维式重锤”系列装备，该“维式重锤”装备特殊效果获得强化（效果变为2倍）",
+    "buffs": [
+     {
+      "key": "env_gbuff_new_with_verify",
+      "countType": "NONE",
+      "blackboard": {
+       "key": "act1autochess_equip_acarm079_global_buff",
+       "hammer_1": "chess_item_4_09_e",
+       "hammer_2": "chess_item_3_09_e",
+       "hammer_3": "chess_item_3_10_e",
+       "hammer_4": "chess_item_2_03_e",
+       "damage_scale": 0.1,
+       "undeadable_duration": 8.0,
+       "attack_speed": 30.0,
+       "prob": 0.1,
+       "disarmed_duration": 2.0,
+       "big_hammer": "none"
+      }
+     },
+     {
+      "key": "env_gbuff_new_with_verify",
+      "countType": "NONE",
+      "blackboard": {
+       "key": "attr_common_global_buff",
+       "attack_speed": 55.0
+      }
+     }
+    ],
+    "params": {
+     "hammer_1": "chess_item_4_09_e",
+     "hammer_2": "chess_item_3_09_e",
+     "hammer_3": "chess_item_3_10_e",
+     "hammer_4": "chess_item_2_03_e",
+     "damage_scale": 0.1,
+     "undeadable_duration": 8.0,
+     "attack_speed": 30.0,
+     "prob": 0.1,
+     "disarmed_duration": 2.0,
+     "big_hammer": "none",
+     "attack_speed_1": 55.0
+    }
+   },
+   "inAct1": true,
+   "act1TierPrice": [
+    6,
+    4
+   ]
+  },
+  {
+   "id": "chess_item_6_06_e_a",
+   "goldenId": "chess_item_6_06_e_b",
+   "trapId": "trap_1102_acarm102",
+   "name": "耶拉冈德之泪",
+   "nameEn": "Kjeragandr's Tears",
+   "itemType": "EQUIP",
+   "tier": 6,
+   "shopLevelSortId": 6,
+   "hideInShop": false,
+   "price": 4,
+   "goldenPrice": 5,
+   "upgradeNum": 2,
+   "mergeable": true,
+   "trapDuration": -1,
+   "giveBondId": null,
+   "giveBondName": null,
+   "canGiveBond": false,
+   "category": "BOND_SIGNATURE",
+   "kind": "passive",
+   "requiresBond": "kjeragShip",
+   "requiresBondName": "谢拉格",
+   "family": null,
+   "rangeId": "0-1",
+   "rangeGrids": [
+    {
+     "row": 0,
+     "col": 0
+    }
+   ],
+   "flavor": "“谢拉格人相信冰川最深处的宝石是耶拉冈德的眼泪。”",
+   "talentNotes": [],
+   "implFormula": "RES += magic_resistance. If carrier has bond Kjerag: every `interval` (1 s) each Cold or Frozen enemy inside the carrier's attack range takes atk_scale * ATK arts damage; atk_scale_ex (100%) if carrier also holds 谢拉格不融冰.",
+   "normal": {
+    "chessId": "chess_item_6_06_e_a",
+    "isGolden": false,
+    "purchasePrice": 4,
+    "upgradeChessId": "chess_item_6_06_e_b",
+    "upgradeNum": 2,
+    "trapDuration": -1,
+    "skillId": "sktok_acarm102_1",
+    "effectId": "eff_acarm102",
+    "effectName": "耶拉冈德之泪",
+    "effectDesc": "法术抗性+30；若携带者为【谢拉格】盟约干员，该干员攻击范围内被寒冷或冻结的敌人每秒受到一次自身攻击力30%的法术伤害\n若该【谢拉格】盟约干员同时装备“谢拉格不融冰”，则使自身攻击范围内寒冷或冻结的敌人每秒受到的法术伤害提升至100%攻击力",
+    "effectDescRaw": "法术抗性<@ba.vup>+30</>；若携带者为【谢拉格】盟约干员，该干员攻击范围内被<$ba.cold>寒冷</>或<$ba.frozen>冻结</>的敌人每秒受到一次自身攻击力<@ba.vup>30%</>的法术伤害\\n<@ba.acrem>若该【谢拉格】盟约干员同时装备“谢拉格不融冰”，则使自身攻击范围内<$ba.cold>寒冷</>或<$ba.frozen>冻结</>的敌人每秒受到的法术伤害提升至<@ba.vup>100%</>攻击力</>",
+    "skillDesc": "法术抗性+30；若携带者为【谢拉格】盟约干员，该干员攻击范围内被寒冷或冻结的敌人每秒受到一次自身攻击力30%的法术伤害\n若该【谢拉格】盟约干员同时装备“谢拉格不融冰”，则使自身攻击范围内寒冷或冻结的敌人每秒受到的法术伤害提升至100%攻击力",
+    "buffs": [
+     {
+      "key": "char_dynamic_ability_new",
+      "countType": "NONE",
+      "blackboard": {
+       "key": "act2autochess_equip_acarm102_ability",
+       "atk_scale": 0.3,
+       "interval": 1.0,
+       "atk_scale_ex": 1.0,
+       "equip_chess_id": "chess_item_5_02_e"
+      }
+     },
+     {
+      "key": "env_gbuff_new_with_verify",
+      "countType": "NONE",
+      "blackboard": {
+       "key": "attr_common_global_buff",
+       "magic_resistance": 30.0
+      }
+     }
+    ],
+    "params": {
+     "atk_scale": 0.3,
+     "interval": 1.0,
+     "atk_scale_ex": 1.0,
+     "equip_chess_id": "chess_item_5_02_e",
+     "magic_resistance": 30.0
+    }
+   },
+   "golden": {
+    "chessId": "chess_item_6_06_e_b",
+    "isGolden": true,
+    "purchasePrice": 5,
+    "upgradeChessId": null,
+    "upgradeNum": 0,
+    "trapDuration": 0,
+    "skillId": "sktok_acarm102_2",
+    "effectId": "eff_acgarm102",
+    "effectName": "耶拉冈德之泪",
+    "effectDesc": "法术抗性+50；若携带者为【谢拉格】盟约干员，该干员攻击范围内被寒冷或冻结的敌人每秒受到一次自身攻击力30%的法术伤害\n若该【谢拉格】盟约干员同时装备“谢拉格不融冰”，则使自身攻击范围内寒冷或冻结的敌人每秒受到的法术伤害提升至100%攻击力",
+    "effectDescRaw": "法术抗性<@ba.vup>+50</>；若携带者为【谢拉格】盟约干员，该干员攻击范围内被<$ba.cold>寒冷</>或<$ba.frozen>冻结</>的敌人每秒受到一次自身攻击力<@ba.vup>30%</>的法术伤害\\n<@ba.acrem>若该【谢拉格】盟约干员同时装备“谢拉格不融冰”，则使自身攻击范围内<$ba.cold>寒冷</>或<$ba.frozen>冻结</>的敌人每秒受到的法术伤害提升至<@ba.vup>100%</>攻击力</>",
+    "skillDesc": "法术抗性+50；若携带者为【谢拉格】盟约干员，该干员攻击范围内被寒冷或冻结的敌人每秒受到一次自身攻击力30%的法术伤害\n若该【谢拉格】盟约干员同时装备“谢拉格不融冰”，则使自身攻击范围内寒冷或冻结的敌人每秒受到的法术伤害提升至100%攻击力",
+    "buffs": [
+     {
+      "key": "char_dynamic_ability_new",
+      "countType": "NONE",
+      "blackboard": {
+       "key": "act2autochess_equip_acarm102_ability",
+       "atk_scale": 0.3,
+       "interval": 1.0,
+       "atk_scale_ex": 1.0,
+       "equip_chess_id": "chess_item_5_02_e"
+      }
+     },
+     {
+      "key": "env_gbuff_new_with_verify",
+      "countType": "NONE",
+      "blackboard": {
+       "key": "attr_common_global_buff",
+       "magic_resistance": 50.0
+      }
+     }
+    ],
+    "params": {
+     "atk_scale": 0.3,
+     "interval": 1.0,
+     "atk_scale_ex": 1.0,
+     "equip_chess_id": "chess_item_5_02_e",
+     "magic_resistance": 50.0
+    }
+   },
+   "inAct1": true,
+   "act1TierPrice": [
+    6,
+    4
+   ]
+  },
+  {
+   "id": "chess_item_6_07_e_a",
+   "goldenId": "chess_item_6_07_e_b",
+   "trapId": "trap_1103_acarm103",
+   "name": "黄沙罗盘",
+   "nameEn": "Desert Compass",
+   "itemType": "EQUIP",
+   "tier": 6,
+   "shopLevelSortId": 7,
+   "hideInShop": false,
+   "price": 4,
+   "goldenPrice": 5,
+   "upgradeNum": 2,
+   "mergeable": true,
+   "trapDuration": -1,
+   "giveBondId": null,
+   "giveBondName": null,
+   "canGiveBond": false,
+   "category": "BOND_SIGNATURE",
+   "kind": "passive",
+   "requiresBond": "sargonShip",
+   "requiresBondName": "萨尔贡",
+   "family": null,
+   "rangeId": "0-1",
+   "rangeGrids": [
+    {
+     "row": 0,
+     "col": 0
+    }
+   ],
+   "flavor": "“传说萨尔贡人将会在黄沙尽头找到时间回流的刻印。”",
+   "talentNotes": [],
+   "implFormula": "Initial SP += init_sp (30/50). If carrier has bond Sargon: when its FIRST skill ends, SP += sp (30). If also holding 萨尔贡浓茶: each time the carrier activates a skill, all Sargon operators on field gain addition_sp (3) SP.",
+   "normal": {
+    "chessId": "chess_item_6_07_e_a",
+    "isGolden": false,
+    "purchasePrice": 4,
+    "upgradeChessId": "chess_item_6_07_e_b",
+    "upgradeNum": 2,
+    "trapDuration": -1,
+    "skillId": "sktok_acarm103_1",
+    "effectId": "eff_acarm103",
+    "effectName": "黄沙罗盘",
+    "effectDesc": "初始技力+30；若携带者为【萨尔贡】盟约干员，该干员首次技能结束时立刻回复30点技力\n若该【萨尔贡】盟约干员同时装备“萨尔贡浓茶”，每次开启技能时为全部【萨尔贡】干员回复3点技力",
+    "effectDescRaw": "初始技力<@ba.vup>+30</>；若携带者为【萨尔贡】盟约干员，该干员首次技能结束时立刻回复<@ba.vup>30</>点技力\\n<@ba.acrem>若该【萨尔贡】盟约干员同时装备“萨尔贡浓茶”，每次开启技能时为全部【萨尔贡】干员回复<@ba.vup>3</>点技力</>",
+    "skillDesc": "初始技力+30；若携带者为【萨尔贡】盟约干员，该干员首次技能结束时立刻回复30点技力\n若该【萨尔贡】盟约干员同时装备“萨尔贡浓茶”，每次开启技能时为全部【萨尔贡】干员回复3点技力",
+    "buffs": [
+     {
+      "key": "env_gbuff_new_with_verify",
+      "countType": "NONE",
+      "blackboard": {
+       "key": "act1autochess_equip_acarm103_global_buff",
+       "equip_chess_id": "chess_item_2_04_e",
+       "sp": 30.0,
+       "addition_sp": 3.0,
+       "init_sp": 30.0
+      }
+     }
+    ],
+    "params": {
+     "equip_chess_id": "chess_item_2_04_e",
+     "sp": 30.0,
+     "addition_sp": 3.0,
+     "init_sp": 30.0
+    }
+   },
+   "golden": {
+    "chessId": "chess_item_6_07_e_b",
+    "isGolden": true,
+    "purchasePrice": 5,
+    "upgradeChessId": null,
+    "upgradeNum": 0,
+    "trapDuration": 0,
+    "skillId": "sktok_acarm103_2",
+    "effectId": "eff_acgarm103",
+    "effectName": "黄沙罗盘",
+    "effectDesc": "初始技力+50；若携带者为【萨尔贡】盟约干员，该干员首次技能结束时立刻回复30点技力\n若该【萨尔贡】盟约干员同时装备“萨尔贡浓茶”，每次开启技能时为全部【萨尔贡】干员回复3点技力",
+    "effectDescRaw": "初始技力<@ba.vup>+50</>；若携带者为【萨尔贡】盟约干员，该干员首次技能结束时立刻回复<@ba.vup>30</>点技力\\n<@ba.acrem>若该【萨尔贡】盟约干员同时装备“萨尔贡浓茶”，每次开启技能时为全部【萨尔贡】干员回复<@ba.vup>3</>点技力</>",
+    "skillDesc": "初始技力+50；若携带者为【萨尔贡】盟约干员，该干员首次技能结束时立刻回复30点技力\n若该【萨尔贡】盟约干员同时装备“萨尔贡浓茶”，每次开启技能时为全部【萨尔贡】干员回复3点技力",
+    "buffs": [
+     {
+      "key": "env_gbuff_new_with_verify",
+      "countType": "NONE",
+      "blackboard": {
+       "key": "act1autochess_equip_acarm103_global_buff",
+       "equip_chess_id": "chess_item_2_04_e",
+       "sp": 30.0,
+       "addition_sp": 3.0,
+       "init_sp": 50.0
+      }
+     }
+    ],
+    "params": {
+     "equip_chess_id": "chess_item_2_04_e",
+     "sp": 30.0,
+     "addition_sp": 3.0,
+     "init_sp": 50.0
+    }
+   },
+   "inAct1": true,
+   "act1TierPrice": [
+    6,
+    4
+   ]
+  },
+  {
+   "id": "chess_item_6_08_e_a",
+   "goldenId": "chess_item_6_08_e_b",
+   "trapId": "trap_1070_acarm070",
+   "name": "人事部文档",
+   "nameEn": "HR File",
+   "itemType": "EQUIP",
+   "tier": 6,
+   "shopLevelSortId": 8,
+   "hideInShop": false,
+   "price": 4,
+   "goldenPrice": 5,
+   "upgradeNum": 100,
+   "mergeable": false,
+   "trapDuration": -1,
+   "giveBondId": null,
+   "giveBondName": null,
+   "canGiveBond": false,
+   "category": "RECRUIT",
+   "kind": "consume_on_equip",
+   "requiresBond": null,
+   "requiresBondName": null,
+   "family": null,
+   "rangeId": "0-1",
+   "rangeGrids": [
+    {
+     "row": 0,
+     "col": 0
+    }
+   ],
+   "flavor": "“新来的这家伙肯定能帮上忙，不是吗？”",
+   "talentNotes": [
+    "本装备不会合并为进阶品质"
+   ],
+   "implFormula": "On equip: destroy item; player's max deployable operator count becomes `count` (9) (base maxBattleChessCnt = 8). Never merges; a second copy has no further effect [ASSUMED].",
+   "normal": {
+    "chessId": "chess_item_6_08_e_a",
+    "isGolden": false,
+    "purchasePrice": 4,
+    "upgradeChessId": "chess_item_6_08_e_b",
+    "upgradeNum": 100,
+    "trapDuration": -1,
+    "skillId": "sktok_acarm070_1",
+    "effectId": "eff_acarm070",
+    "effectName": "人事部文档",
+    "effectDesc": "装备时销毁，最大可部署人数变为9",
+    "effectDescRaw": "装备时销毁，最大可部署人数变为9",
+    "skillDesc": "装备时销毁，最大可部署人数变为9",
+    "buffs": [
+     {
+      "key": "equip_destory_deployment_cnt_change",
+      "countType": "NONE",
+      "blackboard": {
+       "count": 9.0
+      }
+     }
+    ],
+    "params": {
+     "count": 9.0
+    }
+   },
+   "golden": {
+    "chessId": "chess_item_6_08_e_b",
+    "isGolden": true,
+    "purchasePrice": 5,
+    "upgradeChessId": null,
+    "upgradeNum": 0,
+    "trapDuration": 0,
+    "skillId": "sktok_acarm070_2",
+    "effectId": "eff_acgarm070",
+    "effectName": "人事部文档",
+    "effectDesc": "装备时销毁，最大可部署人数变为9",
+    "effectDescRaw": "装备时销毁，最大可部署人数变为9",
+    "skillDesc": "装备时销毁，最大可部署人数变为9",
+    "buffs": [
+     {
+      "key": "equip_destory_deployment_cnt_change",
+      "countType": "NONE",
+      "blackboard": {
+       "count": 9.0
+      }
+     }
+    ],
+    "params": {
+     "count": 9.0
+    }
+   },
+   "inAct1": true,
+   "act1TierPrice": [
+    6,
+    5
+   ]
+  },
+  {
+   "id": "chess_item_6_09_e_a",
+   "goldenId": "chess_item_6_09_e_b",
+   "trapId": "trap_1073_acarm073",
+   "name": "变形同构体",
+   "nameEn": "Damazti Isomorph",
+   "itemType": "EQUIP",
+   "tier": 6,
+   "shopLevelSortId": 9,
+   "hideInShop": false,
+   "price": 3,
+   "goldenPrice": 5,
+   "upgradeNum": 100,
+   "mergeable": false,
+   "trapDuration": -1,
+   "giveBondId": null,
+   "giveBondName": null,
+   "canGiveBond": true,
+   "category": "BOND_GRANT",
+   "kind": "passive",
+   "requiresBond": null,
+   "requiresBondName": null,
+   "family": null,
+   "rangeId": "0-1",
+   "rangeGrids": [
+    {
+     "row": 0,
+     "col": 0
+    }
+   ],
+   "flavor": "“变形者集群，我们早已见识到了你都能做到些什么……”",
+   "talentNotes": [
+    "“炎国短刀”→【炎】盟约\n“维式重锤”系列装备→【维多利亚】盟约\n“阿戈尔重刃”→【阿戈尔】盟约\n“坚守盾牌”→【坚守】盟约\n“萨尔贡浓茶”→【萨尔贡】盟约\n“不屈弹射器”→【不屈】盟约\n“拉特兰桥夹”→【拉特兰】盟约\n“谢拉格不融冰”→【谢拉格】盟约\n“精准狙击镜”→【精准】盟约\n“突袭手雷”→【突袭】盟约\n“迅捷作战粮”→【迅捷】盟约\n“卡西米尔竞技旗”→【卡西米尔】盟约\n“叙拉古正装”→【叙拉古】盟约\n“奥术法阵”→【奥术】盟约\n本装备不会合并为进阶品质"
+   ],
+   "implFormula": "Carrier additionally counts as a member of bond B where B = giveBondId of the OTHER item equipped on the same operator (see bondGrantTable). No effect if the other item has giveBondId=null. Never merges.",
+   "normal": {
+    "chessId": "chess_item_6_09_e_a",
+    "isGolden": false,
+    "purchasePrice": 3,
+    "upgradeChessId": "chess_item_6_09_e_b",
+    "upgradeNum": 100,
+    "trapDuration": -1,
+    "skillId": "sktok_acarm073_1",
+    "effectId": "eff_acarm073",
+    "effectName": "变形同构体",
+    "effectDesc": "携带者获得额外盟约（由另一件携带装备而定）\n具体对应关系可在模拟中查看本装备天赋栏",
+    "effectDescRaw": "携带者获得额外盟约（由另一件携带装备而定）\\n<@ba.acrem>具体对应关系可在模拟中查看本装备天赋栏</>",
+    "skillDesc": "携带者获得额外盟约（由另一件携带装备而定）\n具体对应关系可在模拟中查看本装备天赋栏",
+    "buffs": [],
+    "params": {}
+   },
+   "golden": {
+    "chessId": "chess_item_6_09_e_b",
+    "isGolden": true,
+    "purchasePrice": 5,
+    "upgradeChessId": null,
+    "upgradeNum": 0,
+    "trapDuration": 0,
+    "skillId": "sktok_acarm073_2",
+    "effectId": "eff_acgarm073",
+    "effectName": "变形同构体",
+    "effectDesc": "携带者获得额外盟约（由另一件携带装备而定）\n具体对应关系可在模拟中查看本装备天赋栏",
+    "effectDescRaw": "携带者获得额外盟约（由另一件携带装备而定）\\n<@ba.acrem>具体对应关系可在模拟中查看本装备天赋栏</>",
+    "skillDesc": "携带者获得额外盟约（由另一件携带装备而定）\n具体对应关系可在模拟中查看本装备天赋栏",
+    "buffs": [],
+    "params": {}
+   },
+   "inAct1": true,
+   "act1TierPrice": [
+    6,
+    4
+   ]
+  },
+  {
+   "id": "chess_item_6_10_e_a",
+   "goldenId": "chess_item_6_10_e_b",
+   "trapId": "trap_1120_acarm120",
+   "name": "骑士戒律",
+   "nameEn": "Knightly Code",
+   "itemType": "EQUIP",
+   "tier": 6,
+   "shopLevelSortId": 10,
+   "hideInShop": false,
+   "price": 4,
+   "goldenPrice": 5,
+   "upgradeNum": 2,
+   "mergeable": true,
+   "trapDuration": -1,
+   "giveBondId": null,
+   "giveBondName": null,
+   "canGiveBond": false,
+   "category": "BOND_SIGNATURE",
+   "kind": "passive",
+   "requiresBond": "kazimierzShip",
+   "requiresBondName": "卡西米尔",
+   "family": null,
+   "rangeId": "0-1",
+   "rangeGrids": [
+    {
+     "row": 0,
+     "col": 0
+    }
+   ],
+   "flavor": "一份为卡西米尔的骑士定下的戒律。 “诚实、坚定、勇敢、不屈。”",
+   "talentNotes": [],
+   "implFormula": "respawnTime *= (1 + respawn_time) (-40%/-60%). If carrier has bond Kazimierz: for `duration` (20) s after activating a skill, enemies inside its attack range get ASPD x attack_speed(0.65) and move speed x move_speed(0.65) (i.e. -35%). If also holding 卡西米尔竞技旗: during skill duration ATK% += atk (+100%), and lethal damage does not retreat it; it retreats when the skill ends.",
+   "normal": {
+    "chessId": "chess_item_6_10_e_a",
+    "isGolden": false,
+    "purchasePrice": 4,
+    "upgradeChessId": "chess_item_6_10_e_b",
+    "upgradeNum": 2,
+    "trapDuration": -1,
+    "skillId": "sktok_acarm120_1",
+    "effectId": "eff_acarm120",
+    "effectName": "骑士戒律",
+    "effectDesc": "再部署时间-40%；若携带者为【卡西米尔】盟约干员，开启技能后20s内，使攻击范围内敌人攻击速度-35%，移动速度-35%\n若该【卡西米尔】盟约干员同时装备“卡西米尔竞技旗”，该卡西米尔干员技能持续期间，攻击力+100%，且受到致命伤害时不撤退，技能结束后退场",
+    "effectDescRaw": "再部署时间<@ba.vup>-40%</>；若携带者为【卡西米尔】盟约干员，开启技能后20s内，使攻击范围内敌人攻击速度<@ba.vup>-35%</>，移动速度<@ba.vup>-35%</>\\n<@ba.acrem>若该【卡西米尔】盟约干员同时装备“卡西米尔竞技旗”，该卡西米尔干员技能持续期间，攻击力<@ba.vup>+100%</>，且受到致命伤害时不撤退，技能结束后退场</>",
+    "skillDesc": "再部署时间-40%；若携带者为【卡西米尔】盟约干员，开启技能后20s内，使攻击范围内敌人攻击速度-35%，移动速度-35%\n若该【卡西米尔】盟约干员同时装备“卡西米尔竞技旗”，该卡西米尔干员技能持续期间，攻击力+100%，且受到致命伤害时不撤退，技能结束后退场",
+    "buffs": [
+     {
+      "key": "env_gbuff_new_with_verify",
+      "countType": "NONE",
+      "blackboard": {
+       "key": "act1autochess_equip_acarm056_global_buff",
+       "respawn_time": -0.4,
+       "max_hp": 0.0
+      }
+     },
+     {
+      "key": "env_gbuff_new_with_verify",
+      "countType": "NONE",
+      "blackboard": {
+       "key": "act2autochess_equip_acarm119_global_buff",
+       "duration": 20.0,
+       "equip_chess_id": "chess_item_4_07_e",
+       "atk": 1.0
+      }
+     },
+     {
+      "key": "char_dynamic_ability_new",
+      "countType": "NONE",
+      "blackboard": {
+       "key": "act2autochess_equip_acarm119_ability",
+       "move_speed": 0.65,
+       "attack_speed": 0.65
+      }
+     }
+    ],
+    "params": {
+     "respawn_time": -0.4,
+     "max_hp": 0.0,
+     "duration": 20.0,
+     "equip_chess_id": "chess_item_4_07_e",
+     "atk": 1.0,
+     "move_speed": 0.65,
+     "attack_speed": 0.65
+    }
+   },
+   "golden": {
+    "chessId": "chess_item_6_10_e_b",
+    "isGolden": true,
+    "purchasePrice": 5,
+    "upgradeChessId": null,
+    "upgradeNum": 0,
+    "trapDuration": 0,
+    "skillId": "sktok_acarm120_2",
+    "effectId": "eff_acgarm120",
+    "effectName": "骑士戒律",
+    "effectDesc": "再部署时间-60%；若携带者为【卡西米尔】盟约干员，开启技能后20s内，使攻击范围内敌人攻击速度-35%，移动速度-35%\n若该【卡西米尔】盟约干员同时装备“卡西米尔竞技旗”，该卡西米尔干员技能持续期间，攻击力+100%，且受到致命伤害时不撤退，技能结束后退场",
+    "effectDescRaw": "再部署时间<@ba.vup>-60%</>；若携带者为【卡西米尔】盟约干员，开启技能后20s内，使攻击范围内敌人攻击速度<@ba.vup>-35%</>，移动速度<@ba.vup>-35%</>\\n<@ba.acrem>若该【卡西米尔】盟约干员同时装备“卡西米尔竞技旗”，该卡西米尔干员技能持续期间，攻击力<@ba.vup>+100%</>，且受到致命伤害时不撤退，技能结束后退场</>",
+    "skillDesc": "再部署时间-60%；若携带者为【卡西米尔】盟约干员，开启技能后20s内，使攻击范围内敌人攻击速度-35%，移动速度-35%\n若该【卡西米尔】盟约干员同时装备“卡西米尔竞技旗”，该卡西米尔干员技能持续期间，攻击力+100%，且受到致命伤害时不撤退，技能结束后退场",
+    "buffs": [
+     {
+      "key": "env_gbuff_new_with_verify",
+      "countType": "NONE",
+      "blackboard": {
+       "key": "act1autochess_equip_acarm056_global_buff",
+       "respawn_time": -0.6,
+       "max_hp": 0.0
+      }
+     },
+     {
+      "key": "env_gbuff_new_with_verify",
+      "countType": "NONE",
+      "blackboard": {
+       "key": "act2autochess_equip_acarm119_global_buff",
+       "duration": 20.0,
+       "equip_chess_id": "chess_item_4_07_e",
+       "atk": 1.0
+      }
+     },
+     {
+      "key": "char_dynamic_ability_new",
+      "countType": "NONE",
+      "blackboard": {
+       "key": "act2autochess_equip_acarm119_ability",
+       "move_speed": 0.65,
+       "attack_speed": 0.65
+      }
+     }
+    ],
+    "params": {
+     "respawn_time": -0.6,
+     "max_hp": 0.0,
+     "duration": 20.0,
+     "equip_chess_id": "chess_item_4_07_e",
+     "atk": 1.0,
+     "move_speed": 0.65,
+     "attack_speed": 0.65
+    }
+   },
+   "inAct1": false
+  },
+  {
+   "id": "chess_item_6_11_e_a",
+   "goldenId": "chess_item_6_11_e_b",
+   "trapId": "trap_1122_acarm122",
+   "name": "家族徽章",
+   "nameEn": "Family Crest",
+   "itemType": "EQUIP",
+   "tier": 6,
+   "shopLevelSortId": 11,
+   "hideInShop": false,
+   "price": 4,
+   "goldenPrice": 5,
+   "upgradeNum": 2,
+   "mergeable": true,
+   "trapDuration": -1,
+   "giveBondId": null,
+   "giveBondName": null,
+   "canGiveBond": false,
+   "category": "BOND_SIGNATURE",
+   "kind": "passive",
+   "requiresBond": "siracusaShip",
+   "requiresBondName": "叙拉古",
+   "family": null,
+   "rangeId": "0-1",
+   "rangeGrids": [
+    {
+     "row": 0,
+     "col": 0
+    }
+   ],
+   "flavor": "一枚能让人成为“家族成员”的叙拉古徽章。 “学会陪伴你的家人，真正的，家人。”",
+   "talentNotes": [],
+   "implFormula": "spRecoveryPerSec += sp_recovery_per_sec (0.2/0.35). If carrier has bond Siracusa: while Camouflaged, ATK% += atk_per_sec per second (2%/s) up to max_atk (+100%, i.e. 200% ATK); the bonus lasts until the first damage dealt after camouflage ends, or until the carrier leaves the field. If also holding 叙拉古正装: that first hit after losing camouflage additionally deals atk_scale (800%) * ATK true damage.",
+   "normal": {
+    "chessId": "chess_item_6_11_e_a",
+    "isGolden": false,
+    "purchasePrice": 4,
+    "upgradeChessId": "chess_item_6_11_e_b",
+    "upgradeNum": 2,
+    "trapDuration": -1,
+    "skillId": "sktok_acarm122_1",
+    "effectId": "eff_acarm122",
+    "effectName": "家族徽章",
+    "effectDesc": "技力自然回复速度+0.2/秒；若携带者为【叙拉古】盟约干员，该干员处于隐匿状态时，攻击力逐渐提升至200%，持续至隐匿结束后首次造成伤害或干员离场\n若该【叙拉古】盟约干员同时装备“叙拉古正装”，该叙拉古干员失去隐匿后首次造成伤害时额外造成800%攻击力的真实伤害",
+    "effectDescRaw": "技力自然回复速度<@ba.vup>+0.2</>/秒；若携带者为【叙拉古】盟约干员，该干员处于隐匿状态时，攻击力逐渐提升至<@ba.vup>200%</>，持续至隐匿结束后首次造成伤害或干员离场\\n<@ba.acrem>若该【叙拉古】盟约干员同时装备“叙拉古正装”，该叙拉古干员失去隐匿后首次造成伤害时额外造成<@ba.vup>800%</>攻击力的真实伤害</>",
+    "skillDesc": "技力自然回复速度+0.2/秒；若携带者为【叙拉古】盟约干员，该干员处于隐匿状态时，攻击力逐渐提升至200%，持续至隐匿结束后首次造成伤害或干员离场\n若该【叙拉古】盟约干员同时装备“叙拉古正装”，该叙拉古干员失去隐匿后首次造成伤害时额外造成800%攻击力的真实伤害",
+    "buffs": [
+     {
+      "key": "env_gbuff_new_with_verify",
+      "countType": "NONE",
+      "blackboard": {
+       "key": "act1autochess_equip_acarm050_global_buff",
+       "sp_recovery_per_sec": 0.2
+      }
+     },
+     {
+      "key": "env_gbuff_new_with_verify",
+      "countType": "NONE",
+      "blackboard": {
+       "key": "act2autochess_equip_acarm122_global_buff",
+       "equip_chess_id": "chess_item_3_01_e",
+       "atk_per_sec": 0.02,
+       "max_atk": 1.0,
+       "atk_scale": 8.0
+      }
+     }
+    ],
+    "params": {
+     "sp_recovery_per_sec": 0.2,
+     "equip_chess_id": "chess_item_3_01_e",
+     "atk_per_sec": 0.02,
+     "max_atk": 1.0,
+     "atk_scale": 8.0
+    }
+   },
+   "golden": {
+    "chessId": "chess_item_6_11_e_b",
+    "isGolden": true,
+    "purchasePrice": 5,
+    "upgradeChessId": null,
+    "upgradeNum": 0,
+    "trapDuration": 0,
+    "skillId": "sktok_acarm122_2",
+    "effectId": "eff_acgarm122",
+    "effectName": "家族徽章",
+    "effectDesc": "技力自然回复速度+0.35/秒；若携带者为【叙拉古】盟约干员，该干员处于隐匿状态时，攻击力逐渐提升至200%，持续至隐匿结束后首次造成伤害或干员离场\n若该【叙拉古】盟约干员同时装备“叙拉古正装”，该叙拉古干员失去隐匿后首次造成伤害时额外造成800%攻击力的真实伤害",
+    "effectDescRaw": "技力自然回复速度<@ba.vup>+0.35</>/秒；若携带者为【叙拉古】盟约干员，该干员处于隐匿状态时，攻击力逐渐提升至<@ba.vup>200%</>，持续至隐匿结束后首次造成伤害或干员离场\\n<@ba.acrem>若该【叙拉古】盟约干员同时装备“叙拉古正装”，该叙拉古干员失去隐匿后首次造成伤害时额外造成<@ba.vup>800%</>攻击力的真实伤害</>",
+    "skillDesc": "技力自然回复速度+0.35/秒；若携带者为【叙拉古】盟约干员，该干员处于隐匿状态时，攻击力逐渐提升至200%，持续至隐匿结束后首次造成伤害或干员离场\n若该【叙拉古】盟约干员同时装备“叙拉古正装”，该叙拉古干员失去隐匿后首次造成伤害时额外造成800%攻击力的真实伤害",
+    "buffs": [
+     {
+      "key": "env_gbuff_new_with_verify",
+      "countType": "NONE",
+      "blackboard": {
+       "key": "act1autochess_equip_acarm050_global_buff",
+       "sp_recovery_per_sec": 0.35
+      }
+     },
+     {
+      "key": "env_gbuff_new_with_verify",
+      "countType": "NONE",
+      "blackboard": {
+       "key": "act2autochess_equip_acarm122_global_buff",
+       "equip_chess_id": "chess_item_3_01_e",
+       "atk_per_sec": 0.02,
+       "max_atk": 1.0,
+       "atk_scale": 8.0
+      }
+     }
+    ],
+    "params": {
+     "sp_recovery_per_sec": 0.35,
+     "equip_chess_id": "chess_item_3_01_e",
+     "atk_per_sec": 0.02,
+     "max_atk": 1.0,
+     "atk_scale": 8.0
+    }
+   },
+   "inAct1": false
+  },
+  {
+   "id": "chess_item_6_01_m",
+   "goldenId": null,
+   "trapId": "trap_1108_acdisney",
+   "name": "“神秘顾客”",
+   "nameEn": "\"Mystery Customer\"",
+   "itemType": "MAGIC",
+   "tier": 6,
+   "shopLevelSortId": 1,
+   "hideInShop": true,
+   "price": 2,
+   "goldenPrice": null,
+   "upgradeNum": 0,
+   "mergeable": false,
+   "trapDuration": 0,
+   "giveBondId": null,
+   "giveBondName": null,
+   "canGiveBond": false,
+   "category": "MAGIC",
+   "kind": "art_instant",
+   "requiresBond": null,
+   "requiresBondName": null,
+   "family": null,
+   "rangeId": "0-1",
+   "rangeGrids": [
+    {
+     "row": 0,
+     "col": 0
+    }
+   ],
+   "flavor": null,
+   "talentNotes": [],
+   "implFormula": "Drag onto the field: choose a special bounty (hunter_band_1). When actively destroyed: +1 fund and the item passes to the next player. UNUSED in act2 (no band/garrison grants it) - implement last or skip.",
+   "normal": {
+    "chessId": "chess_item_6_01_m",
+    "isGolden": false,
+    "purchasePrice": 2,
+    "upgradeChessId": null,
+    "upgradeNum": 0,
+    "trapDuration": 0,
+    "skillId": "sktok_acdisney_1",
+    "effectId": "eff_acdisney",
+    "effectName": "“神秘顾客”",
+    "effectDesc": "拖拽至场上使用后，选择一项特殊悬赏任务进行挑战；主动销毁时获得1份资金，并将“神秘顾客”传递给下一名玩家",
+    "effectDescRaw": "拖拽至场上使用后，选择一项特殊悬赏任务进行挑战；主动销毁时获得1份资金，并将“神秘顾客”传递给下一名玩家",
+    "skillDesc": "拖拽至场上使用后，选择一项特殊悬赏任务进行挑战；主动销毁时获得1份资金，并将“神秘顾客”传递给下一名玩家",
+    "buffs": [
+     {
+      "key": "trap_create_self_choice",
+      "countType": "NONE",
+      "blackboard": {
+       "choice_event": "hunter_band_1"
+      }
+     },
+     {
+      "key": "trap_disney_special",
+      "countType": "NONE",
+      "blackboard": {
+       "count": 1.0
+      }
+     }
+    ],
+    "params": {
+     "choice_event": "hunter_band_1",
+     "count": 1.0
+    }
+   },
+   "golden": null,
+   "inAct1": true,
+   "act1TierPrice": [
+    6,
+    2
+   ]
+  },
+  {
+   "id": "chess_item_6_02_m",
+   "goldenId": null,
+   "trapId": "trap_1110_accopy",
+   "name": "画卷",
+   "nameEn": "Dusk's Scroll",
+   "itemType": "MAGIC",
+   "tier": 6,
+   "shopLevelSortId": 2,
+   "hideInShop": true,
+   "price": 2,
+   "goldenPrice": null,
+   "upgradeNum": 0,
+   "mergeable": false,
+   "trapDuration": 0,
+   "giveBondId": null,
+   "giveBondName": null,
+   "canGiveBond": false,
+   "category": "MAGIC",
+   "kind": "art_instant",
+   "requiresBond": null,
+   "requiresBondName": null,
+   "family": null,
+   "rangeId": "1-1",
+   "rangeGrids": [
+    {
+     "row": 0,
+     "col": 0
+    },
+    {
+     "row": 0,
+     "col": 1
+    }
+   ],
+   "flavor": null,
+   "talentNotes": [],
+   "implFormula": "Drag onto a map tile during prep. Range 1-1 = the tile itself + the tile in front (facing). Gives the player a copy of 1 operator inside that range, INCLUDING elite status and equipped items (copies go to hand). Consumed.",
+   "normal": {
+    "chessId": "chess_item_6_02_m",
+    "isGolden": false,
+    "purchasePrice": 2,
+    "upgradeChessId": null,
+    "upgradeNum": 0,
+    "trapDuration": 0,
+    "skillId": "sktok_accopy_1",
+    "effectId": "eff_accopy",
+    "effectName": "画卷",
+    "effectDesc": "拖拽至场上使用后，获得范围内的干员（包括精锐状态和装备！）",
+    "effectDescRaw": "拖拽至场上使用后，获得范围内的干员（包括精锐状态和装备！）",
+    "skillDesc": "拖拽至场上使用后，获得范围内的干员（包括精锐状态和装备！）",
+    "buffs": [
+     {
+      "key": "trap_copy_front_char",
+      "countType": "NONE",
+      "blackboard": {}
+     }
+    ],
+    "params": {}
+   },
+   "golden": null,
+   "inAct1": true,
+   "act1TierPrice": [
+    6,
+    2
+   ]
+  },
+  {
+   "id": "chess_item_6_03_m",
+   "goldenId": null,
+   "trapId": "trap_1111_acchal",
+   "name": "教鞭",
+   "nameEn": "Pointing Stick",
+   "itemType": "MAGIC",
+   "tier": 6,
+   "shopLevelSortId": 3,
+   "hideInShop": true,
+   "price": 2,
+   "goldenPrice": null,
+   "upgradeNum": 0,
+   "mergeable": false,
+   "trapDuration": 0,
+   "giveBondId": null,
+   "giveBondName": null,
+   "canGiveBond": false,
+   "category": "MAGIC",
+   "kind": "art_instant",
+   "requiresBond": null,
+   "requiresBondName": null,
+   "family": null,
+   "rangeId": "0-1",
+   "rangeGrids": [
+    {
+     "row": 0,
+     "col": 0
+    }
+   ],
+   "flavor": null,
+   "talentNotes": [],
+   "implFormula": "Drag onto the field during prep: opens a personal bounty choice (choice event hunter_band_1). The chosen bounty adds extra enemies to your next battle; killing them / perfect defence grants funds (see ENEMY_GAIN '...悬赏' effects). Consumed.",
+   "normal": {
+    "chessId": "chess_item_6_03_m",
+    "isGolden": false,
+    "purchasePrice": 2,
+    "upgradeChessId": null,
+    "upgradeNum": 0,
+    "trapDuration": 0,
+    "skillId": "sktok_acchal_1",
+    "effectId": "eff_acchal",
+    "effectName": "教鞭",
+    "effectDesc": "拖拽至场上使用后，选择一项悬赏任务进行挑战",
+    "effectDescRaw": "拖拽至场上使用后，选择一项悬赏任务进行挑战",
+    "skillDesc": "拖拽至场上使用后，选择一项悬赏任务进行挑战",
+    "buffs": [
+     {
+      "key": "trap_create_self_choice",
+      "countType": "NONE",
+      "blackboard": {
+       "choice_event": "hunter_band_1"
+      }
+     }
+    ],
+    "params": {
+     "choice_event": "hunter_band_1"
+    }
+   },
+   "golden": null,
+   "inAct1": true,
+   "act1TierPrice": [
+    6,
+    2
+   ]
+  }
+ ]
+}

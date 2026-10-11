@@ -1,0 +1,150 @@
+/* Emotes (交流) — public/js/ui/emotes.js. Research 09 §4: picture-only bubbles, a 3×2 pager per theme, 1 s cooldown.
+   Sizes follow the official sprites at 1 px = .01rem (1920-wide reference): emoji_btn 151×55, emoji_bkg 313×231,
+   emoji_cell_bkg 85×85, emoji_bubble_bkg 108×97. With the local ui/battle extraction the official sprites are used
+   (inline --ewheel-* / --ebubble-bg); without it CSS draws look-alikes. Loaded after the screen sheets, so these rules
+   also override the v1 emote rules that may still sit in screens/game.css. */
+
+/* ---- picture / fallback glyph ------------------------------------------------------------------------------- */
+.eart { display: block; width: 100%; height: 100%; object-fit: contain; pointer-events: none; user-select: none; -webkit-user-drag: none; }
+.eart--glyph {
+  display: grid; place-items: center; border-radius: 22%;
+  background: radial-gradient(circle at 50% 42%, rgba(78, 216, 175, .10), rgba(78, 216, 175, 0) 70%);
+  color: rgba(195, 203, 199, .55);
+}
+.eart--glyph .icon { width: 58%; height: 58%; }
+.eart--pending { visibility: hidden; }
+
+/* ---- 交流 button -------------------------------------------------------------------------------------------- */
+.ewheel { position: relative; }
+.ewheel__btn {
+  position: relative; display: flex; align-items: center; justify-content: flex-start; gap: .08rem;
+  height: .56rem; min-width: 1.51rem; padding: 0 .2rem 0 .14rem;
+  background: rgba(8, 11, 10, .85); border: 1px solid var(--line-2); border-radius: .04rem;
+  color: var(--text-md); font-size: .18rem; font-weight: 700; letter-spacing: .1em; line-height: 1;
+  transition: color var(--t-fast), border-color var(--t-fast), filter var(--t-fast), opacity var(--t-fast);
+}
+.ewheel__btn .icon { width: .3rem; height: .3rem; color: var(--mint-500); }
+.ewheel__btn:hover:not(:disabled), .ewheel__btn.is-on { color: var(--mint-400); border-color: var(--mint-700); }
+.ewheel__btn:disabled { opacity: .5; cursor: not-allowed; }
+/* emoji_btn 151×55: plate x 3–147, y 0–45 (a shadow below); the robot face + '<' chevron span x 22–79. The label gets
+   its own box right of the chevron (x ≥ 57 %), so a font clamped up by a browser minimum font size (CJK Chrome: 12 px)
+   or a small root can never run into the icon; the button never shrinks below 72 px (96 px on touch screens). */
+.ewheel__btn.has-sprite {
+  --ewb-w: max(1.51rem, 72px);
+  width: var(--ewb-w); height: calc(var(--ewb-w) * 55 / 151); min-width: 0; padding: 0; display: block;
+  background: var(--ewheel-btn) left bottom / 100% 100% no-repeat; border: 0; border-radius: 0; color: #f2f2f2;
+}
+.ewheel__btn.has-sprite .ewheel__label {
+  position: absolute; left: 57%; right: 3%; top: 0; height: 82%;
+  display: flex; align-items: center; justify-content: center; overflow: hidden;
+  font-size: calc(var(--ewb-w) * 18 / 151); letter-spacing: .06em; line-height: 1;
+}
+.ewheel__btn.has-sprite:hover:not(:disabled), .ewheel__btn.has-sprite.is-on { color: #fff; filter: brightness(1.18); border: 0; }
+.ewheel__btn.has-sprite:disabled { opacity: 1; color: rgba(242, 242, 242, .45); }
+.ewheel__btn.is-cooling { cursor: default; }
+.ewheel__label { white-space: nowrap; }
+
+/* ---- panel: one page per theme ----------------------------------------------------------------------------- */
+/* emoji_bkg is 313×231 with a soft shadow margin; its opaque plate spans x 15–297, y 13–212. The cells, the pager
+   and the CSS fallback plate all use that geometry. */
+.ewheel__panel {
+  position: absolute; left: -.15rem; bottom: calc(100% + .02rem); z-index: 5;
+  width: 3.13rem; height: 2.31rem; padding: 0; box-sizing: border-box;
+  background: none; border: 0; border-radius: 0; box-shadow: none;
+  transform-origin: .45rem 100%;
+  animation: emo-panel-in 160ms var(--ease-out);
+  touch-action: pan-y; user-select: none; -webkit-user-select: none;
+}
+.ewheel__panel::before { /* CSS look-alike of the emoji_bkg plate */
+  content: ''; position: absolute; left: .15rem; top: .13rem; width: 2.82rem; height: 1.99rem; border-radius: .06rem;
+  background: rgba(19, 19, 19, .92); box-shadow: 0 .04rem .16rem rgba(0, 0, 0, .5), inset 0 0 0 1px rgba(255, 255, 255, .07);
+}
+.ewheel__panel.has-sprite { background: var(--ewheel-bg) center / 100% 100% no-repeat; }
+.ewheel__panel.has-sprite::before { content: none; }
+.ewheel__viewport { position: absolute; left: .205rem; top: .19rem; width: 2.71rem; height: 1.78rem; overflow: hidden; touch-action: pan-y; cursor: grab; }
+.ewheel__viewport:active { cursor: grabbing; }
+.ewheel__page {
+  display: grid; grid-template-columns: repeat(3, .85rem); grid-auto-rows: .85rem; gap: .08rem;
+  justify-content: space-between; align-content: start; height: 100%;
+  animation: emo-page-in 180ms var(--ease-out);
+  will-change: transform;
+}
+.ewheel__page.is-from-right { animation-name: emo-page-from-right; }
+.ewheel__page.is-from-left { animation-name: emo-page-from-left; }
+.ewheel__page.is-dragging { animation: none; transition: none; opacity: .92; }
+
+.ewheel__item {
+  position: relative; display: grid; place-items: center; width: .85rem; height: .85rem; padding: .07rem; margin: 0; box-sizing: border-box;
+  background: rgba(255, 255, 255, .16); border: 0; border-radius: .08rem; color: inherit; font-size: 0; flex-direction: initial; gap: 0;
+  transition: background-color var(--t-fast), filter var(--t-fast), transform 90ms var(--ease-out);
+}
+.ewheel__panel.has-cell .ewheel__item { background: var(--ewheel-cell) center / 100% 100% no-repeat; border-radius: 0; }
+.ewheel__item:hover:not(:disabled) { background-color: rgba(255, 255, 255, .26); filter: brightness(1.12); transform: none; border-color: transparent; }
+/* the official cell is a rounded plate with transparent corners: brighten it, never fill its square box */
+.ewheel__panel.has-cell .ewheel__item:hover:not(:disabled) { background-color: transparent; filter: brightness(1.35); }
+.ewheel__item:active:not(:disabled) { transform: scale(.9); }
+.ewheel__item:focus-visible { outline: 2px solid var(--mint-500); outline-offset: 1px; }
+.ewheel__item:disabled { opacity: .45; cursor: default; }
+
+/* pager: ‹ dots › in the strip under the cells */
+.ewheel__dots { position: absolute; left: .15rem; width: 2.82rem; top: 1.99rem; height: .12rem; display: flex; align-items: center; justify-content: center; gap: .1rem; }
+.ewheel__dot {
+  position: relative; width: .11rem; height: .12rem; padding: 0; border: 0; border-radius: .015rem; background: rgba(255, 255, 255, .28);
+  transition: background-color var(--t-fast), transform var(--t-fast);
+}
+.ewheel__dot:hover { background: rgba(255, 255, 255, .55); }
+.ewheel__dot.is-on { background: #fff; transform: scale(1.12); }
+.ewheel__dot::before { content: ''; position: absolute; inset: -.05rem -.05rem; } /* bigger hit area */
+.ewheel__nav {
+  position: absolute; top: 1.94rem; width: .26rem; height: .22rem; display: grid; place-items: center; padding: 0; z-index: 1;
+  background: none; border: 0; color: rgba(255, 255, 255, .6); transition: color var(--t-fast), opacity var(--t-fast);
+}
+.ewheel__nav .icon { width: .18rem; height: .18rem; }
+.ewheel__nav.is-prev { left: .7rem; }
+.ewheel__nav.is-next { right: .7rem; }
+.ewheel__nav:hover:not(:disabled) { color: #fff; }
+.ewheel__nav:disabled { opacity: .18; cursor: default; }
+
+/* ---- bubble beside the sender's avatar (picture only) ------------------------------------------------------ */
+/* emoji_bubble_bkg is 108×97: plate x 22–97, y 8–85, tail tip at x 9, y ≈ 46 (pointing left, toward the avatar). */
+.ebubble {
+  --ebubble-ttl: 3000ms;
+  --ebubble-age: 0ms; /* set inline for a bubble mounted after its emote arrived: resume the timeline, never restart it */
+  position: relative; display: block; box-sizing: border-box; width: 1.08rem; height: .97rem; max-width: none; padding: 0;
+  background: none; border: 0; clip-path: none; color: inherit; font-size: 0; white-space: normal; filter: none;
+  transform-origin: .09rem 47%;
+  animation: emo-bubble-pop 240ms var(--ease-out) calc(0ms - var(--ebubble-age)) both,
+    emo-bubble-out 300ms var(--ease-in-out) calc(var(--ebubble-ttl) - 300ms - var(--ebubble-age)) forwards;
+  pointer-events: none; z-index: 3;
+}
+/* CSS look-alike of emoji_bubble_bkg: dark rounded square + tail */
+.ebubble::before {
+  content: ''; position: absolute; left: .22rem; top: .08rem; width: .76rem; height: .78rem; border-radius: .08rem;
+  background: rgba(24, 24, 24, .86); box-shadow: 0 .02rem .08rem rgba(0, 0, 0, .45);
+}
+.ebubble::after {
+  content: ''; position: absolute; left: .09rem; top: calc(47% - .08rem); width: .14rem; height: .16rem;
+  background: rgba(24, 24, 24, .86); clip-path: polygon(100% 0, 0 50%, 100% 100%);
+}
+.ebubble.has-sprite { background: var(--ebubble-bg) center / 100% 100% no-repeat; }
+.ebubble.has-sprite::before, .ebubble.has-sprite::after { content: none; }
+/* in the team panel the bubble is anchored beside the row (placement: screens/game.css .team__bubble) */
+.ebubble.team__bubble { position: absolute; }
+.ebubble__icon { position: absolute; left: .26rem; top: .12rem; width: .68rem; height: .70rem; display: grid; place-items: center; }
+.ebubble .eart { width: 100%; height: 100%; }
+
+@keyframes emo-panel-in { from { opacity: 0; transform: translateY(.06rem) scale(.96); } }
+@keyframes emo-page-in { from { opacity: 0; } }
+@keyframes emo-page-from-right { from { opacity: .2; transform: translateX(45%); } }
+@keyframes emo-page-from-left { from { opacity: .2; transform: translateX(-45%); } }
+@keyframes emo-bubble-pop { 0% { opacity: 0; scale: .35; } 60% { opacity: 1; scale: 1.1; } 100% { opacity: 1; scale: 1; } }
+@keyframes emo-bubble-out { to { opacity: 0; scale: .92; } }
+
+@media (pointer: coarse) {
+  .ewheel__btn.has-sprite { --ewb-w: max(1.51rem, 96px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ewheel__panel, .ewheel__page, .ewheel__page.is-from-right, .ewheel__page.is-from-left { animation: none; }
+  .ebubble { animation: emo-bubble-out 1ms linear calc(var(--ebubble-ttl) - 1ms - var(--ebubble-age)) forwards; }
+}

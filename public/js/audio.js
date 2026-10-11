@@ -48,6 +48,7 @@
 
 import { PHASE } from '../../shared/constants.js';
 import { mediaUrl } from './media.js';
+import { sanitizeVoiceOverrides, voiceLangFor } from './voicePrefs.js';
 
 const isMobile = typeof navigator !== 'undefined' && (/Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) || (navigator.maxTouchPoints > 1 && !globalThis.matchMedia?.('(pointer: fine)').matches));
 
@@ -464,6 +465,8 @@ export class AudioManager {
     this.voiceGain = null;
     this.volumes = { bgm: 0.6, sfx: 0.8, voice: 0.8, muted: false };
     this.voiceLang = 'jp';
+    this.voiceOverrides = {}; // charId → 'jp'|'cn' (voicePrefs.js; absent ⇒ follow voiceLang)
+    this.modVoicePacks = new Map(); // packId -> voiceTree
     this._duckTimer = null;
     this.buffers = new Map(); // url → Promise<AudioBuffer|null> (insertion order = LRU)
     this.bufBytes = new Map(); // url → decoded PCM bytes (the byte budget of the LRU, see _buffer)
@@ -611,13 +614,34 @@ export class AudioManager {
     if (typeof v?.voiceLang === 'string' && (v.voiceLang === 'jp' || v.voiceLang === 'cn')) {
       this.voiceLang = v.voiceLang;
     }
+    if (v && 'voiceOverrides' in v) this.voiceOverrides = sanitizeVoiceOverrides(v.voiceOverrides);
     this._applyVolumes();
   }
 
-  setVoiceLang(lang) {
-    if (lang === 'jp' || lang === 'cn') {
-      this.voiceLang = lang;
+  /**
+   * Set the global dub language and (optionally) the per-operator overrides (voicePrefs.js).
+   * @param {'jp'|'cn'} lang
+   * @param {Record<string, 'jp'|'cn'>} [overrides] defaults to the current map
+   */
+  setVoiceLang(lang, overrides = this.voiceOverrides) {
+    const ov = sanitizeVoiceOverrides(overrides);
+    const changed = this.voiceLang !== lang || JSON.stringify(this.voiceOverrides) !== JSON.stringify(ov);
+    if (lang === 'jp' || lang === 'cn') this.voiceLang = lang;
+    this.voiceOverrides = ov;
+    if (changed && this.voiceNode) {
+      this._stopVoice(); // 热切换时立即淡出当前语音，下个触发即刻使用新语言
     }
+  }
+
+  /** Register voice lines tree for a Mod pack ({ jp: {}, cn: {} }). */
+  registerModVoice(packId, voiceTree) {
+    if (!packId || !voiceTree) return;
+    this.modVoicePacks.set(packId, voiceTree);
+  }
+
+  /** Unregister voice lines tree for a Mod pack. */
+  unregisterModVoice(packId) {
+    this.modVoicePacks.delete(packId);
   }
 
   /**
@@ -895,15 +919,31 @@ export class AudioManager {
       if (!realCharId) return false;
       if (this.voiceNode && this.voiceNode.charId === realCharId) return false;
       const m = this.getManifest();
-      const vRoot = m?.audio?.voice;
-      const curLang = this.voiceLang || 'jp';
-      const altLang = curLang === 'jp' ? 'cn' : 'jp';
+      // 语音树按上游清单的命名约定：audio.voice(中文) / voiceJp / voiceEn / voiceKr；特色语音挂在 audio.voiceCustom[charId][kind]。
+      const audio = m?.audio || null;
+      const TREES = { cn: 'voice', jp: 'voiceJp', en: 'voiceEn', kr: 'voiceKr' };
+      const customTrees = audio?.voiceCustom?.[realCharId] || null;
+      const treeOf = (key) => (customTrees && customTrees[key]) || (TREES[key] ? audio?.[TREES[key]] : null);
+      // 该干员自己的语言：settings.voiceOverrides 的覆盖优先（语言或它自己的特色语音），否则跟随全局（voicePrefs.js voiceLangFor）。
+      const curLang = voiceLangFor(realCharId, this.voiceLang, this.voiceOverrides);
+      // 回退顺序：选中项 → 默认日语 → 中文 → 其余语言 → 不分语言的旧扁平结构（chars[].voice）。
+      const chain = [curLang, ...(curLang === 'jp' ? [] : ['jp']), ...(curLang === 'cn' ? [] : ['cn']), 'en', 'kr'];
+      const altLang = chain[1];
       let line = null;
-      if (vRoot?.[curLang]?.[realCharId]?.[slot]) line = vRoot[curLang][realCharId][slot];
-      else if (vRoot?.[altLang]?.[realCharId]?.[slot]) line = vRoot[altLang][realCharId][slot];
-      else if (vRoot?.[realCharId]?.[slot]) line = vRoot[realCharId][slot];
-      else if (vRoot?.[realCharId]) line = vRoot[realCharId];
-      else if (m?.chars?.[realCharId]?.voice) line = m.chars[realCharId].voice;
+      // 优先从活跃 Mod 包查找对应语音（支持中日双语热切换与优雅回退）
+      for (const pack of this.modVoicePacks.values()) {
+        if (pack?.[curLang]?.[realCharId]?.[slot]) { line = pack[curLang][realCharId][slot]; break; }
+        if (pack?.[altLang]?.[realCharId]?.[slot]) { line = pack[altLang][realCharId][slot]; break; }
+        if (pack?.[realCharId]?.[slot]) { line = pack[realCharId][slot]; break; }
+      }
+      if (!line) {
+        for (const key of chain) { const t = treeOf(key); const hit = t?.[realCharId]?.[slot]; if (hit) { line = hit; break; } }
+        if (!line) {
+          const flat = treeOf(curLang);
+          if (flat?.[realCharId]) line = flat[realCharId];
+          else if (m?.chars?.[realCharId]?.voice) line = m.chars[realCharId].voice;
+        }
+      }
       const url = Array.isArray(line) ? line[Math.floor(Math.random() * line.length)] : line;
       if (typeof url !== 'string' || !url) return false;
       const now = typeof performance !== 'undefined' ? performance.now() : Date.now();
@@ -1115,7 +1155,17 @@ export function installAudio(deps) {
   try {
     manifestGetter = typeof deps?.getManifest === 'function' ? deps.getManifest : manifestGetter;
     audio.install();
-    if (deps?.settings) audio.setVolumes(deps.settings);
+    if (deps?.settings) {
+      audio.setVolumes(deps.settings);
+      if (deps.settings.voiceLang) audio.setVoiceLang(deps.settings.voiceLang, deps.settings.voiceOverrides);
+    }
+    if (typeof deps?.onSettings === 'function') {
+      deps.onSettings((st) => {
+        if (!st) return;
+        audio.setVolumes(st);
+        if (st.voiceLang) audio.setVoiceLang(st.voiceLang, st.voiceOverrides);
+      });
+    }
     if (typeof deps?.subscribe === 'function' && typeof deps?.getState === 'function') {
       const sync = (s) => {
         try {
@@ -1134,4 +1184,18 @@ export function installAudio(deps) {
     }
   } catch (err) { console.warn('[audio] install failed', err); }
   return () => {};
+}
+
+// voiceLine: taken from v0.2.3:public/js/audio.js during the v0.2.3 narrow merge.
+export function voiceLine(audio, charId, slot, lang = 'cn', random = Math.random) {
+  const lines = (line) => (Array.isArray(line) ? line : [line]).filter((u) => typeof u === 'string' && u);
+  const draw = (list) => (list.length ? list[Math.min(list.length - 1, Math.floor(random() * list.length))] : null);
+  const cn = lines(audio?.voice?.[charId]?.[slot]);
+  const jp = lang === 'jp' ? draw(lines(audio?.voiceJp?.[charId]?.[slot])) : null;
+  if (jp) {
+    const file = (u) => u.slice(u.lastIndexOf('/') + 1);
+    return { url: jp, fallback: cn.find((u) => file(u) === file(jp)) ?? draw(cn) };
+  }
+  const url = draw(cn);
+  return url ? { url, fallback: null } : null;
 }

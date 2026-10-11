@@ -1,0 +1,28 @@
+.spvoice{color:#34d399;font:12px/1.5 system-ui,sans-serif;position:fixed;inset:0;z-index:162;pointer-events:none}
+.spvoice[hidden],.spvoice [hidden]{display:none!important}
+.spvoice__fab,.spvoice__panel{position:fixed;pointer-events:auto;box-sizing:border-box}
+.spvoice__fab{width:44px;height:44px;border:1px solid #34d399;border-radius:50%;background:#18181b;color:#34d399;display:grid;place-items:center;padding:0;touch-action:none!important;user-select:none!important;-webkit-user-select:none!important;-webkit-touch-callout:none;cursor:grab}
+.spvoice__fab:active{cursor:grabbing}
+.spvoice__fab--on{box-shadow:0 0 12px #34d39966;background:#12392b}
+.spvoice__panel{background:#18181bf5;border:1px solid #27272a;border-radius:8px;padding:10px;overflow:auto;box-shadow:0 8px 30px #0008}
+.spvoice button{font:inherit}
+.spvoice__header{display:flex;align-items:center;justify-content:space-between;gap:6px;margin-bottom:8px}
+.spvoice__fold{background:#27272a;color:#ddd;border:0;border-radius:4px;width:28px;height:28px}
+.spvoice__hint{color:#a1a1aa;min-height:20px;margin-bottom:6px;overflow-wrap:anywhere}
+.spvoice__user{display:flex;align-items:center;gap:6px;color:#ddd;margin:6px 0;overflow-wrap:anywhere}
+.spvoice__user svg{width:16px;height:16px;flex:none;color:#34d399}
+.spvoice__action,.spvoice__leave{display:block;width:100%;padding:8px;border:1px solid #34d399;background:#12392b;color:#34d399;border-radius:4px;margin-top:6px;touch-action:manipulation}
+.spvoice__leave{border-color:#3f3f46;background:#27272a;color:#ccc}
+.spvoice button:disabled{opacity:.45}
+.spvoice button:focus-visible{outline:2px solid #a7f3d0;outline-offset:2px}
+.spchat .spchat__toggle{color:#34d399;display:grid;place-items:center;padding:0}
+.spchat .spchat__toggle svg{pointer-events:none}
+.spchat__badge{position:absolute;top:-5px;right:-5px;background:#34d399;color:#08110d;font:600 10px/14px system-ui;border-radius:8px;min-width:14px;padding:0 2px}
+.spchat__badge[hidden]{display:none!important}
+
+/* Visible circles follow the game's HUD scale; the invisible touch target remains 44px. */
+@media (orientation: landscape) and (max-height: 600px) and (any-pointer: coarse) {
+  .spvoice__fab, .spchat .spchat__toggle { width: max(.56rem, 24px) !important; height: max(.56rem, 24px) !important; }
+  .spvoice__fab svg, .spchat .spchat__toggle svg { width: max(.28rem, 14px) !important; height: max(.28rem, 14px) !important; }
+  .spvoice__fab::before, .spchat .spchat__toggle::before { content: ''; position: absolute; width: 44px; height: 44px; left: 50%; top: 50%; transform: translate(-50%, -50%); }
+}

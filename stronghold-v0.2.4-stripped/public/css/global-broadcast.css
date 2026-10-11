@@ -1,0 +1,86 @@
+/* 全服广播：独立于游戏 rem 缩放。 */
+.site-notice {
+  --notice-color: #34d399;
+  position: fixed;
+  top: calc(env(safe-area-inset-top, 0px) + 8px);
+  left: 50%;
+  right: auto;
+  transform: translateX(-50%);
+  width: calc(100% - 24px - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px));
+  max-width: 1040px;
+  box-sizing: border-box;
+  z-index: 100001;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 8px 4px 12px;
+  border: 1px solid #34d399;
+  border-left: 3px solid #34d399;
+  border-radius: 3px;
+  background: #050606;
+  color: #f4fff9;
+  pointer-events: none;
+  box-shadow: 0 4px 20px #0009;
+  font-size: clamp(13px, 1.2vw, 17px);
+  line-height: 1.5;
+}
+.site-notice__label {
+  color: #34d399;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+  flex: none;
+}
+.site-notice__viewport {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+}
+.site-notice__text {
+  display: block;
+  width: max-content;
+  white-space: nowrap;
+  font-weight: 600;
+  animation: sp-global-broadcast var(--notice-duration, 12s) linear infinite;
+}
+.site-notice__close {
+  width: 32px;
+  height: 32px;
+  min-width: 32px;
+  flex: none;
+  padding: 0;
+  pointer-events: auto;
+  color: #34d399;
+}
+.site-notice__close .icon {
+  width: 16px;
+  height: 16px;
+}
+@keyframes sp-global-broadcast {
+  0%, 15% {
+    transform: translateX(0);
+  }
+  85%, 100% {
+    transform: translateX(min(0px, calc(var(--notice-from, 0px) + var(--notice-to, 0px))));
+  }
+}
+@media (max-width: 767px) {
+  .site-notice {
+    gap: 7px;
+    padding-left: 8px;
+    font-size: 13px;
+  }
+  .site-notice__label {
+    font-size: 11px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .site-notice__text {
+    animation: none;
+    transform: none;
+  }
+  .site-notice__viewport {
+    overflow-x: auto;
+    pointer-events: auto;
+  }
+}

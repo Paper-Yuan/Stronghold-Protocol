@@ -1,0 +1,94 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: test (${{ matrix.os }}, node ${{ matrix.node }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        # 22 and 24 = the maintained LTS lines (24 is what `winget install OpenJS.NodeJS.LTS` installs today)
+        node: [22, 24]
+    env:
+      # Browser/E2E suites gate themselves on these (and on a local Chrome + downloaded game assets, which CI never
+      # has): keep them off explicitly. Suites that need .cache/gamedata, public/assets or data/local-assets.json skip.
+      SP_E2E: '0'
+      SP_REAL_E2E: '0'
+      RENDER_E2E: '0'
+      NO_COLOR: '1'
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+
+      - name: Install (npm ci → postinstall copies public/vendor)
+        run: npm ci --no-audit --no-fund
+
+      - name: Setup check (no downloads)
+        run: node tools/setup.mjs --check --no-local
+
+      - name: Unit & integration tests
+        run: node --test
+
+      - name: Server smoke test (boot, /healthz, index.html, doctor)
+        shell: bash
+        run: |
+          node server/index.js > server.log 2>&1 &
+          pid=$!
+          ok=
+          for i in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:3000/healthz; then ok=1; break; fi
+            sleep 1
+          done
+          echo
+          [ -n "$ok" ] || { cat server.log; exit 1; }
+          # Save the page first: piping curl into `grep -q` let grep exit on the first match, curl then failed with a
+          # write error (23) and pipefail turned that into a flaky red step.
+          curl -fsS -o index.out http://127.0.0.1:3000/
+          grep -qi '<html' index.out
+          curl -fsS -o /dev/null http://127.0.0.1:3000/vendor/pixi.min.js
+          node tools/doctor.mjs || true
+          kill $pid || true
+
+  # Separate from the test matrix so lint / types / import boundaries run once, not four times.
+  # Lint warnings do not fail the job (npm run lint does not pass --max-warnings=0).
+  tooling:
+    name: tooling (lint, imports, typecheck)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install (npm ci → postinstall copies public/vendor)
+        run: npm ci --no-audit --no-fund
+
+      - name: Lint (warnings allowed)
+        run: npm run lint
+
+      - name: Import boundaries
+        run: npm run check:imports
+
+      - name: Typecheck
+        run: npm run typecheck

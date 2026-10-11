@@ -1,0 +1,70 @@
+.spchat[hidden], .spchat [hidden] { display: none !important; }
+.spchat { font: 12px/1.35 system-ui,sans-serif; color: #e4e4e7; }
+.spchat__panel {
+  position: fixed; z-index: 160; display: flex; flex-direction: column;
+  width: 230px; height: 220px; box-sizing: border-box;
+  background: #18181b; border: 1px solid #27272a; border-radius: 9px;
+  box-shadow: 0 8px 28px #0008; overflow: hidden; pointer-events: auto;
+}
+.spchat__header {
+  display: flex; align-items: center; justify-content: space-between;
+  flex: 0 0 30px; padding: 0 9px; color: #34d399;
+  cursor: grab; touch-action: none;
+}
+.spchat button {
+  font: inherit; border: 1px solid #27272a; border-radius: 5px;
+  background: #27272a; color: #e4e4e7; cursor: pointer; touch-action: manipulation;
+}
+.spchat button:disabled { opacity: .45; }
+.spchat__fold { width: 24px; height: 24px; padding: 0; }
+.spchat__log {
+  flex: 1 1 auto; min-height: 0; overflow: auto; padding: 6px 8px;
+  overscroll-behavior: contain; touch-action: pan-y;
+}
+.spchat__row {
+  display: flex; flex-direction: column; align-items: flex-start; margin-bottom: 7px;
+}
+.spchat__row--mine { align-items: flex-end; }
+.spchat__name { font-size: 10px; color: #a1a1aa; margin-bottom: 2px; overflow-wrap: anywhere; }
+.spchat__bubble {
+  max-width: 94%; padding: 5px 7px; border-radius: 7px; background: #27272a;
+  white-space: pre-wrap; overflow-wrap: anywhere; box-sizing: border-box;
+}
+.spchat__row--mine .spchat__bubble {
+  background: #065f46; color: #ecfdf5; border: 1px solid #34d39966;
+}
+.spchat__hint { padding: 0 8px 3px; font-size: 10px; color: #a1a1aa; }
+.spchat__form {
+  display: flex; gap: 4px; padding: 5px; border-top: 1px solid #27272a; flex-shrink: 0;
+}
+.spchat__input {
+  min-width: 0; flex: 1; height: 28px; box-sizing: border-box; padding: 3px 6px;
+  background: #09090b; color: #fafafa; border: 1px solid #3f3f46; border-radius: 5px;
+  font: 12px system-ui,sans-serif; outline-color: #34d399;
+  -webkit-user-select: text !important; user-select: text !important;
+  touch-action: manipulation !important; pointer-events: auto !important;
+}
+.spchat__send { padding: 0 6px; }
+.spchat__toggle {
+  position: fixed; z-index: 161; width: 36px; height: 36px; padding: 0;
+  background: #18181b !important; border-color: #34d399 !important;
+  border-radius: 50% !important; box-shadow: 0 4px 16px #0008;
+}
+@media (pointer: coarse) { .spchat__input { font-size: 16px; } }
+
+/* SPCHAT_DRAGGABLE_TOGGLE_V1 */
+.spchat .spchat__toggle {
+  touch-action: none !important;
+  user-select: none !important;
+  -webkit-user-select: none !important;
+  -webkit-touch-callout: none;
+  cursor: grab;
+}
+.spchat .spchat__toggle:active { cursor: grabbing; }
+
+/* Visible circles follow the game's HUD scale; the invisible touch target remains 44px. */
+@media (orientation: landscape) and (max-height: 600px) and (any-pointer: coarse) {
+  .spvoice__fab, .spchat .spchat__toggle { width: max(.56rem, 24px) !important; height: max(.56rem, 24px) !important; }
+  .spvoice__fab svg, .spchat .spchat__toggle svg { width: max(.28rem, 14px) !important; height: max(.28rem, 14px) !important; }
+  .spvoice__fab::before, .spchat .spchat__toggle::before { content: ''; position: absolute; width: 44px; height: 44px; left: 50%; top: 50%; transform: translate(-50%, -50%); }
+}
