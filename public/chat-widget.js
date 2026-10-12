@@ -1,3 +1,2 @@
-import { mountRoomChat } from './js/ui/roomChat.js';
-const dispose = mountRoomChat();
-window.addEventListener('pagehide', dispose, { once: true });
+// chat-widget.js — Discontinued: replaced by built-in in-game chat and danmaku.
+export {};

@@ -1000,6 +1000,27 @@
   white-space: nowrap;
 }
 .chat-send-btn:hover { background: #fff; }
+.chat-danmaku-btn {
+  background: rgba(255, 255, 255, .08);
+  color: var(--text-lo);
+  border: 1px solid rgba(255, 255, 255, .2);
+  border-radius: 2px;
+  font-size: max(.12rem, 11px);
+  padding: .04rem .08rem;
+  cursor: pointer;
+  white-space: nowrap;
+  user-select: none;
+  transition: all var(--t-fast, .15s);
+}
+.chat-danmaku-btn:hover {
+  background: rgba(255, 255, 255, .16);
+  color: #fff;
+}
+.chat-danmaku-btn.is-on {
+  background: rgba(23, 249, 183, .16);
+  color: var(--mint-400);
+  border-color: var(--mint-500);
+}
 .chat-trigger-btn {
   pointer-events: auto;
   width: max(.42rem, 30px);
@@ -1023,4 +1044,5 @@
   .chat-log { max-height: 1.8rem; font-size: .13rem; }
   .chat-input { font-size: max(.13rem, 12px); }
   .chat-send-btn { font-size: max(.12rem, 11px); padding: .03rem .10rem; }
+  .chat-danmaku-btn { font-size: max(.11rem, 10px); padding: .03rem .06rem; }
 }

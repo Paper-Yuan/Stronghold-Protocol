@@ -17,6 +17,7 @@ import { html } from './components.js';
 import { useState, useEffect, useRef } from '../../vendor/hooks.module.js';
 import { net } from '../net.js';
 import { store, useStore, pushChatMessage } from '../store.js';
+import { getRoomDanmaku } from './roomDanmaku.js';
 import { toast } from './toasts.js';
 import { t } from '../../../shared/i18n.js';
 
@@ -32,6 +33,7 @@ export function ChatBox({ active: controlledActive, onToggle, showTrigger = cont
   const active = controlledActive !== undefined ? controlledActive : internalActive;
   const setActive = onToggle || setInternalActive;
   const [draft, setDraft] = useState('');
+  const [danmakuOn, setDanmakuOn] = useState(() => getRoomDanmaku().enabled);
   const inputRef = useRef(null);
   const logRef = useRef(null);
 
@@ -58,22 +60,45 @@ export function ChatBox({ active: controlledActive, onToggle, showTrigger = cont
     return () => window.removeEventListener('keydown', onKey);
   }, [active, setActive]);
 
+  const toggleDanmaku = (e) => {
+    e?.preventDefault?.();
+    e?.stopPropagation?.();
+    const next = getRoomDanmaku().toggle();
+    setDanmakuOn(next);
+  };
+
   const send = async (e) => {
     e?.preventDefault?.();
     const text = draft.trim();
     setDraft('');
     setActive(false);
     if (!text) return;
+    const room = store.get().room;
+    const code = room?.code || '';
+    const me = store.get().me;
+    const localMsg = {
+      playerId: me?.playerId || 'me',
+      name: me?.name || t('博士'),
+      seat: 0,
+      isSpectator: false,
+      text,
+      at: Date.now(),
+    };
+
     try {
-      const room = store.get().room;
-      const code = room?.code || '';
+      if (net.status !== 'online' || !room) {
+        // offline / single-player dev page: echo locally and show danmaku
+        pushChatMessage(localMsg);
+        getRoomDanmaku().show(localMsg, true);
+        return;
+      }
       await net.request('room.chat', { text, code });
     } catch (err) {
       console.warn('[chat] send failed', err);
       if (err?.code === 'RATE') { toast(t('发言过于频繁，请稍候'), 'warn'); return; }
-      if (net.status !== 'online') {
-        // offline / a single-player dev page: echo it locally so the log still shows something
-        pushChatMessage({ playerId: store.get().me?.playerId || 'me', name: store.get().me?.name || '', seat: 0, isSpectator: false, text, at: Date.now() });
+      if (net.status !== 'online' || !store.get().room) {
+        pushChatMessage(localMsg);
+        getRoomDanmaku().show(localMsg, true);
         return;
       }
       toast(err?.message ? t(err.message) : t('发送失败，请重试'), 'warn');
@@ -108,6 +133,16 @@ export function ChatBox({ active: controlledActive, onToggle, showTrigger = cont
             onKeyDown=${(e) => e.stopPropagation()}
             onBlur=${() => { setTimeout(() => { if (!draft) setActive(false); }, 180); }}
           />
+          <button
+            type="button"
+            class=${`chat-danmaku-btn ${danmakuOn ? 'is-on' : ''}`}
+            onMouseDown=${(e) => e.preventDefault()}
+            onTouchStart=${(e) => e.preventDefault()}
+            onClick=${toggleDanmaku}
+            title=${danmakuOn ? t('弹幕已开启 (点击关闭)') : t('弹幕已关闭 (点击开启)')}
+          >
+            ${danmakuOn ? t('弹幕开') : t('弹幕关')}
+          </button>
           <button type="submit" class="chat-send-btn">${t('发送')}</button>
         </form>
       ` : (showTrigger ? html`

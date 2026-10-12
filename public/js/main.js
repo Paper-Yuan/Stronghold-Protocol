@@ -58,6 +58,7 @@ import { StatsHost } from './screens/stats.js';
 import { recordResult, installStatsRecorder } from './ui/stats.js';
 import { installLoadoutSync, installOwnershipSync, installDiySync } from './ui/loadoutSync.js';
 import { startBuildGuard } from './ui/buildGuard.js';
+import { getRoomDanmaku } from './ui/roomDanmaku.js';
 import { installEntryPreload } from './resources/entry.js';
 import { preloadEngine } from './resources/preload.js';
 import { initLang, useLang, tickerText } from './ui/lang.js';
@@ -242,7 +243,12 @@ function wireNet() {
   net.on('replaced', () => toast(t('该身份已在其他页面登录，本页已断开'), 'warn', { ttl: 6000 }));
   net.on('unhandledError', (err) => toastError(err));
   net.on('room.state', onRoomState);
-  net.on('room.chat', (msg) => pushChatMessage(msg));
+  net.on('room.chat', (msg) => {
+    pushChatMessage(msg);
+    const myId = store.get().me?.playerId;
+    const isMine = Boolean(msg?.playerId && myId && msg.playerId === myId);
+    getRoomDanmaku().show(msg, isMine);
+  });
   net.on('room.chat.history', (msg) => {
     if (Array.isArray(msg?.messages)) {
       for (const m of msg.messages) pushChatMessage(m);
