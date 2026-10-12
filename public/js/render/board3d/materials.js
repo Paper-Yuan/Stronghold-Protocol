@@ -351,7 +351,7 @@ export function smogMaterial(THREE, tex, focus) {
  * texel of 1.0 stands for when scene.json has no lightRange; [ASSUMED] `ambient` — the light of a mesh without a
  * lightmap page; `direct` / `indirect` — gains of the two terms (1 = the scene's own values).
  */
-export const SCENE_LIGHT = Object.freeze({ range: 8.0, ambient: 0.2, direct: 0.8, indirect: 0.4 });
+export const SCENE_LIGHT = Object.freeze({ range: 8.0, ambient: 0.35, direct: 1.1, indirect: 0.8 });
 
 const colorOf = (info, key, fallback = [1, 1, 1, 1]) => {
   const c = info && info.colors && Array.isArray(info.colors[key]) ? info.colors[key] : fallback;
@@ -416,14 +416,17 @@ export function sceneMaterial(THREE, o, focus) {
       '    a *= texture2D(uMap, vUv);',
       '  #endif',
       '  if (a.a < uCutoff) discard;',
-      '  vec3 light = vec3(uAmbient); float shade = 1.0;',
+      '  vec3 light = vec3(max(uAmbient, 0.35)); float shade = 1.0;',
       '  #ifdef SCENE_LM',
       '    vec4 lm = texture2D(uLm, vLm);',
-      '    light += pow(lm.rgb, vec3(2.2)) * uLmScale; shade = mix(1.0, lm.a, uShadow);',
+      '    light += pow(lm.rgb, vec3(2.0)) * uLmScale; shade = mix(1.0, lm.a, uShadow);',
       '  #endif',
       '  vec3 n = normalize(gl_FrontFacing ? vN : -vN);',
       '  light += uLightColor * max(dot(n, uLightDir), 0.0) * shade;',
-      '  gl_FragColor = vec4(a.rgb * light * focusMask(vWorld.xy), a.a);',
+      '  vec3 litColor = a.rgb * light;',
+      '  // Gamma / curve lift to match natural Arknights battlefield brightness',
+      '  litColor = pow(litColor, vec3(0.92));',
+      '  gl_FragColor = vec4(litColor * focusMask(vWorld.xy), a.a);',
       '  #include <colorspace_fragment>',
       '}',
     ].join('\n'),

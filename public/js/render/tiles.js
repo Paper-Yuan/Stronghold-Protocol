@@ -535,8 +535,8 @@ export class TileField {
   }
 
   _drawHighlights() {
-    this.hlGfx.clear();
-    for (const s of this.rowSurfaces.values()) if (s._hl) s._hl.clear();
+    this.hlGfx?.clear?.();
+    for (const s of this.rowSurfaces.values()) if (s && s._hl) s._hl?.clear?.();
     const cam = this.cam;
     if (!cam || !this.highlights.size) return;
     const p = this._p;
