@@ -1,4 +1,4 @@
-// server/sim/nodeData.js — the Node-only default data loader of the simulation (DESIGN §14).
+// server/sim/nodedata.js — the Node-only default data loader of the simulation (DESIGN §14).
 //
 // server/sim/** is shared with browsers (served read-only at /sim/), so every Node API lives here. simdata.js imports
 // this module dynamically — and only under Node — to build its default DataSource:

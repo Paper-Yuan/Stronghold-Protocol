@@ -6,10 +6,11 @@
 import { net } from '../net.js';
 import { toastError } from './toasts.js';
 import { audio } from '../audio.js';
+import { createWatchQueue } from './watchRequests.js';
 
 const SUCCESS_SFX = {
   'g.buy': 'buy', 'g.sell': 'sell', 'g.refresh': 'refresh', 'g.freeze': 'freeze', 'g.levelUp': 'levelup',
-  'g.move': 'drop', 'g.equip': 'equip', 'g.art': 'artPlace', 'g.reward': 'pick', 'g.choice': 'pick',
+  'g.move': 'drop', 'g.equip': 'equip', 'g.art': 'artPlace', 'g.reward': 'pick', 'g.choice': 'pick', 'g.pickAny': 'pick',
   'g.band': 'confirm', 'g.bandSkip': 'back', 'g.infoReady': 'ready', 'g.emote': 'emote', 'g.destroy': 'back',
 };
 
@@ -47,8 +48,12 @@ export async function act(t, fields = {}, opts = {}) {
   }
 }
 
+const watchQueue = createWatchQueue(fieldId => act('g.watch', { fieldId }, { sfx: 'tab' }));
 export const actions = {
-  infoReady: () => act('g.infoReady'),
+  infoReady: (setupRevision = 0) => act('g.infoReady', { setupRevision }),
+  rerollSetup: (setupRevision) => act('room.rerollSetup', { setupRevision }, { sfx: 'confirm' }),
+  rerollVote: (voteId, agree) => act('g.rerollVote', { voteId, agree }, { sfx: agree ? 'confirm' : 'back' }),
+  cancelReroll: (voteId) => act('room.cancelReroll', { voteId }, { sfx: 'back' }),
   band: (bandId) => act('g.band', { bandId }),
   bandSkip: () => act('g.bandSkip'),
   buy: (slot) => act('g.buy', { slot }),
@@ -63,12 +68,18 @@ export const actions = {
   equip: (itemUid, targetUid, replaceUid) => act('g.equip', Number.isInteger(replaceUid) ? { itemUid, targetUid, replaceUid } : { itemUid, targetUid }),
   art: (itemUid, row, col, dir) => act('g.art', dir ? { itemUid, row, col, dir } : { itemUid, row, col }),
   destroy: (uid) => act('g.destroy', { uid }),
+  reroll: () => act('g.reroll', {}),
   reward: (idx) => act('g.reward', { idx }),
-  choice: (idx) => act('g.choice', { idx }),
+  choice: (idx, choiceId) => act('g.choice', choiceId === undefined ? { idx } : { idx, choiceId }),
+  pickAny: (chessId) => act('g.pickAny', { chessId }),
   ready: (ready) => act('g.ready', { ready }, { sfx: ready ? 'ready' : 'back' }),
   emote: (id) => act('g.emote', { id }, { quiet: true }),
-  watch: (fieldId) => act('g.watch', { fieldId }, { sfx: 'tab' }),
+  watch: (fieldId, playerId = null) => playerId ? act('g.watch', { fieldId, playerId }, { sfx: 'tab' }) : watchQueue.request(fieldId),
+  cancelWatch: () => watchQueue.cancel(),
   autoplay: (on) => act('g.autoplay', { on }),
   // solo battles only (ui/matchStatus.js pauseAvailable): m.public.paused follows
   pause: (on) => act('g.pause', { on: !!on }, { sfx: on ? 'click' : 'confirm' }),
+  // room-level intent (NOT g.*): the host frees a spectator seat while the match runs — the server takes room.removeSpectator at
+  // any time (server/lobby.js removeSpectator), the game screen had no entry for it (ui/hud.js SpectatorPill; GitHub #120)
+  removeSpectator: (playerId) => act('room.removeSpectator', { playerId }, { sfx: 'back' }),
 };

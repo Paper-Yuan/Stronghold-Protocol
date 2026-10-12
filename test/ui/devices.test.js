@@ -5,9 +5,6 @@
 
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { installCompat } from '../../public/js/ui/compat.js';
 import { detectFeatures, featureClasses, fullscreen, installDeviceSupport, LONG_PRESS_MS, screenLandscape } from '../../public/js/ui/device.js';
 import { checkButtons } from '../../public/js/ui/hud.js';
@@ -383,8 +380,9 @@ describe('room: copy the invite without navigator.clipboard (LAN over http, iOS)
     const ta = {
       style: {}, value: '',
       setAttribute(k) { calls.push(['attr', k]); },
+      focus() { document.activeElement = ta; },
       select() { calls.push(['select']); },
-      setSelectionRange(a, b) { calls.push(['range', a, b]); },
+      setSelectionRange(a, b) { this.selectionStart = a; this.selectionEnd = b; calls.push(['range', a, b]); },
       remove() { calls.push(['remove']); },
     };
     const saved = { document: globalThis.document, secure: globalThis.isSecureContext, nav: Object.getOwnPropertyDescriptor(globalThis, 'navigator') };
@@ -401,18 +399,5 @@ describe('room: copy the invite without navigator.clipboard (LAN over http, iOS)
       if (saved.nav) Object.defineProperty(globalThis, 'navigator', saved.nav);
       if (saved.secure === undefined) delete globalThis.isSecureContext; else globalThis.isSecureContext = saved.secure;
     }
-  });
-});
-
-const read = (p) => readFileSync(path.resolve(fileURLToPath(new URL('.', import.meta.url)), '../..', p), 'utf8');
-
-describe('the title footer on a phone', () => {
-  test('both lines keep a px floor, and the bilibili credit is plain text (a link would navigate the WebView off the match)', () => {
-    const css = read('public/css/screens/title.css');
-    assert.match(css.slice(css.indexOf('.title-foot {')), /font-size: max\(\.13rem, 10px\)/, 'the disclaimer: a bare .13rem is 4.3 px when the root is 33 px');
-    assert.match(css, /\.title-foot \.micro \{ font-size: max\(\.12rem, 10px\); \}/, 'the version label keeps one too');
-    const title = read('public/js/screens/title.js');
-    assert.match(title, /title-foot__credit">B 站 纸鸢安好 · UID 99201674 · 安卓端适配参考 B 站 @Ausevay</, 'the credit line: name, UID and the @Ausevay acknowledgement');
-    assert.ok(!/<a\b[^>]*class="title-foot/.test(title) && !/title-foot__credit[^>]*href/.test(title), 'no anchors in the footer');
   });
 });

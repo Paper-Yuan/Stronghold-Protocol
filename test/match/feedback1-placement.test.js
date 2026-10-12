@@ -25,6 +25,7 @@ import { DATA, makeMatch, give, giveItem, checkInvariants, chessOfTier } from '.
 import { botPrep, planLayout, fieldModel } from '../../server/match/bot.js';
 import { placementContext, canPlace as clientCanPlace, boardTargets, deployMap as clientDeployMap } from '../../public/js/ui/gameLogic.js';
 import { makeBattle } from '../helpers/battleHarness.js';
+import { renderMessage } from '../../shared/i18n.js';
 
 const STAGE = 'act2autochess_m04';
 const WATER = ['10,6', '11,6', '12,6'];
@@ -189,10 +190,12 @@ test('#9 hand and temp full: a re-orientation that would push 狼群 out is refu
   assert.equal(stackOf(ps, WOLF), null, 'its only copy is placed: no stack left to return onto');
   const toasts = [];
   const toast = m.toast.bind(m);
-  m.toast = (p, kind, text) => { toasts.push(text); return toast(p, kind, text); };
-  const golden = Object.keys(DATA.items).find((id) => DATA.items[id].isGolden && DATA.items[id].itemType === 'EQUIP');
-  while (ps.hand.includes(null)) giveItem(m, ps, golden);
-  while (ps.temp.includes(null)) giveItem(m, ps, golden, 'temp');
+  m.toast = (p, kind, text) => { toasts.push(renderMessage(text)); return toast(p, kind, text); }; // string or msg()
+  // One distinct golden per empty slot: goldens do not merge, and each base stays within its shared cap.
+  const fillers = Object.values(DATA.items).filter((r) => r.isGolden && r.itemType === 'EQUIP' && (m.gd.itemPoolCopies(r.id) ?? 0) >= 2).map((r) => r.id);
+  let n = 0;
+  while (ps.hand.includes(null)) giveItem(m, ps, fillers[n++]);
+  while (ps.temp.includes(null)) giveItem(m, ps, fillers[n++], 'temp');
   // facing LEFT would leave (11,5) outside her range and the wolf has nowhere to go: refused, nothing changes
   assert.equal(move(m, vigil.uid, board(10, 4), 'LEFT').error, ERR.HAND_FULL);
   assert.equal(ps.board.get('10,4').dir, 'RIGHT');

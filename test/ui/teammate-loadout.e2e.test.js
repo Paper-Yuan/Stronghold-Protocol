@@ -58,9 +58,14 @@ describe('DESIGN §16 — a teammate\'s unit shows its owner\'s loadout (real se
       await guest.click('.lo-search input');
       await guest.page.keyboard.type('野鬃');
       await guest.page.waitForFunction(() => document.querySelectorAll('.lo-card').length === 1, { timeout: 5000 });
-      await guest.click('.lo-card');
-      await guest.click('.lo-detail .lo-skill[data-skill="0"]');
-      await guest.click('.lo-detail .lo-mod[data-module="none"]');
+      await guest.click('.lo-card__pick');
+      // the row's quick choices (0.2.2: the roster is one list, a row per operator with its skills and the elite's
+      // modules; the detail's own module cards sit below the fold) — the row and the detail agree on S1 + 不装备
+      await guest.click('.lo-card .lo-q--skill[data-skill="0"]');
+      await guest.click('.lo-card .lo-q--mod[data-module="none"]');
+      await guest.page.waitForFunction(() => document.querySelector('.lo-card .lo-q--skill[data-skill="0"]')?.getAttribute('aria-pressed') === 'true'
+        && document.querySelector('.lo-card .lo-q--mod[data-module="none"]')?.getAttribute('aria-pressed') === 'true'
+        && document.querySelector('.lo-detail .lo-skill.is-on[data-skill="0"]') && document.querySelector('.lo-detail .lo-mod.is-on[data-module="none"]'), { timeout: 3000 });
       await guest.page.waitForFunction(() => /已同步/.test(document.querySelector('.lo-sync')?.textContent || ''), { timeout: 8000 });
       await guest.page.keyboard.press('Escape');
       await guest.page.waitForFunction(() => !document.querySelector('.lo'), { timeout: 3000 });
@@ -83,7 +88,7 @@ describe('DESIGN §16 — a teammate\'s unit shows its owner\'s loadout (real se
       assert.deepEqual(await loOf(host), {}, 'the host fights with the defaults');
       for (const c of [host, guest]) await c.click('.brief__foot .btn--primary', '准备就绪');
       // the draft first (a client still in the briefing would count as done without picking: its turn then runs out —
-      // Match.BAND_TURN_SECONDS, 30 s each since user playtest #4 item 4)
+      // Match.BAND_TURN_SECONDS, 50 s each since the 2026-10-10 official-play report)
       for (const c of [host, guest]) await c.waitFor((s) => s.phase !== 'INFO_CHECK', 'band draft', 40000);
       const picked = new Set();
       const t0 = Date.now();

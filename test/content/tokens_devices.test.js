@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import { makeBattle, chessRec, enemyRec, checkInvariants } from '../helpers/battleHarness.js';
 import { hasGeneratedData, getDefaultSource } from '../../server/sim/simdata.js';
 import { genericKit } from '../../server/sim/content/generic.js';
-import { spawnYanyou, spawnMapChar, TOKEN_IDS, wolfShadows, tileFree, findSummonTile, summonToken } from '../../server/sim/content/tokens.js';
+import { spawnYanyou, spawnMapChar, TOKEN_IDS, wolfShadows, wolfShadowInterval, wolfTacticalPoint, tileFree, findSummonTile, summonToken } from '../../server/sim/content/tokens.js';
 import { startColdWind, kjeragColdWind, activateTurrets, terrainAt, deviceOverridesOf } from '../../server/sim/content/devices.js';
 import { HUSK_REBIRTH } from '../../server/sim/content/enemies.js';
 
@@ -118,7 +118,7 @@ test('“小自在”: arts melee blocker, 25 s lifetime, kills emit summonKill 
   checkInvariants(h.b);
 });
 
-test('斯卡蒂的海嗣: heals allies in its range; during the owner skill: true dmg/s + 鼓舞; expires, then redeploys after respawnTime', REAL, () => {
+test('斯卡蒂的海嗣: its owner\'s trait (生命回复速度) on the allies in its range; during the owner skill: true dmg/s + 鼓舞; expires, then redeploys after respawnTime', REAL, () => {
   const bb = tokDef(TOKEN_IDS.seaborn, 'chess_char_6_04_a').skill.bb;
   const ratio = tokDef(TOKEN_IDS.seaborn, 'chess_char_6_04_a').traitBb['attack@atk_to_hp_recovery_ratio'];
   // heal mode (owner skill idle)
@@ -130,8 +130,13 @@ test('斯卡蒂的海嗣: heals allies in its range; during the owner skill: tru
     g.hp = 1000;
     const sea = spawnOn(h, sk, TOKEN_IDS.seaborn, 10, 7);
     assert.equal(sea.s.flags.untargetable, true);
-    h.run(3.05);
-    approx(g.hp - 1000, 3 * sk.s.atk * ratio, 1e-6, 'heal 3 pulses');
+    h.run(1.05);
+    // an hpRegen buff keyed by the owner (one trait effect per ally — professions.js bardRegen), refreshed every second
+    const v = sk.s.atk * ratio;
+    approx(g.findBuff(`trait:bard:${sk.id}`)?.mods.hpRegen ?? 0, v, 1e-6, 'the owner\'s trait');
+    const hp0 = g.hp, t1 = h.b.time;
+    h.run(2);
+    assert.ok(Math.abs(g.hp - hp0 - v * (h.b.time - t1)) <= 1.5, `regenerated ${g.hp - hp0}`);
     const life = tokDef(TOKEN_IDS.seaborn, 'chess_char_6_04_a').talents[0].bb.duration;
     h.runUntil(() => !sea.alive, life + 2);
     approx(sea.deathAt - sea.deployedAt, life, 0.01, 'lifetime');
@@ -202,10 +207,11 @@ test('纸偶: appear burst = its ATK × damage_scale arts on the 8 surrounding t
   checkInvariants(h.b);
 });
 
-test('狼群: board piece becomes 伺夜\'s 援军; 2→3 狼影 (block & hits), fatal sheds a shadow, DEF ignore vs blocked, respawn', REAL, () => {
+test('狼群: board piece becomes 伺夜\'s 援军; 2→3 狼影 (block & hits), fatal sheds a shadow, DEF ignore vs blocked, 战术点形态 after the last one', REAL, () => {
   let wolfHits = 0;
   const h = makeBattle({
-    defs: { enemies: { enemy_walker: walker({ def: 200, atk: 0 }) } },
+    // DEF 250: above the pack's 200 DEF ignore (its talent at 伺夜's full potential), so a bite shows the partial ignore
+    defs: { enemies: { enemy_walker: walker({ def: 250, atk: 0 }) } },
     kits: { chess_char_3_19_a: genericNoSkill },
     // the wolf is listed before its owner (higher row): it must still be linked to 伺夜 (owner-level variant)
     units: [{ kind: 'token', tokenId: TOKEN_IDS.wolfPack, row: 9, col: 6, uid: 1, ownerUid: 2 }, { chessId: 'chess_char_3_19_b', row: 10, col: 4, uid: 2 }],
@@ -223,11 +229,12 @@ test('狼群: board piece becomes 伺夜\'s 援军; 2→3 狼影 (block & hits),
   assert.equal(wolf.s.blockCnt, 2);
   const e = h.enemy('enemy_walker');
   assert.ok(h.runUntil(() => e.blockedBy === wolf && wolfHits >= 2, 30), 'blocks and bites');
-  // DEF ignore: every bite does ATK − (200 − 175)
+  // DEF ignore: every bite does ATK − (250 − 200)
+  assert.equal(tokDef(TOKEN_IDS.wolfPack, 'chess_char_3_19_b').talents[1].bb.def_penetrate_fixed, 200, 'the pack ignores 200 DEF (175 + the potential step)');
   let dealt = null;
   h.b.on('damaged', (c) => { if (c.source === wolf && c.type === 'phys') dealt = c.amount; });
   h.runUntil(() => dealt != null, 5);
-  approx(dealt, wolf.s.atk - (200 - 175), 1e-9, 'def pen');
+  approx(dealt, wolf.s.atk - (250 - 200), 1e-9, 'def pen');
   h.runUntil(() => wolfShadows(wolf) === 3, 30);
   assert.equal(wolf.s.blockCnt, 3);
   assert.equal(wolf.profile.hitsFn(h.b, wolf), 3);
@@ -238,11 +245,19 @@ test('狼群: board piece becomes 伺夜\'s 援军; 2→3 狼影 (block & hits),
   assert.equal(wolf.hp, wolf.s.maxHp);
   h.b.dealDamage(null, wolf, { amount: 1e6, type: 'true' });
   h.b.dealDamage(null, wolf, { amount: 1e6, type: 'true' });
+  // the last shadow falls: 战术点形态 (PRTS 狼群 备注) — off the field, kept, 0 狼影, for the 狼影 interval (data), then
+  // back on its tile with one 狼影 (no longer a full pack after the token's redeploy time)
   assert.equal(wolf.alive, false, 'last shadow falls');
-  const died = h.b.time;
-  assert.ok(h.runUntil(() => wolf.alive, 20), 'respawns');
-  approx(h.b.time - died, wolf.base.respawnTime, 0.3);
-  assert.equal(wolfShadows(wolf), 2, 'fresh pack');
+  assert.ok(wolfTacticalPoint(wolf), '战术点形态');
+  assert.equal(wolf.removed, false);
+  assert.equal(wolfShadows(wolf), 0);
+  const died = h.b.time, iv = wolfShadowInterval(wolf.def);
+  assert.equal(iv, tokDef(TOKEN_IDS.wolfPack, 'chess_char_3_19_b').talents[0].bb.interval, 'the talent interval');
+  assert.ok(h.runUntil(() => wolf.alive, iv + 1), 'back');
+  approx(h.b.time - died, iv, 0.004);
+  assert.deepEqual([wolf.tileR, wolf.tileC], [9, 6], 'on its tile');
+  assert.equal(wolfShadows(wolf), 1, 'one 狼影');
+  assert.equal(wolf.s.blockCnt, 1);
   checkInvariants(h.b);
 });
 
@@ -255,14 +270,14 @@ test('hand-authored summoner kits: the board 狼群 deploys before 伺夜 (one p
   assert.equal(packs.length, 1, 'a single pack');
   assert.equal(packs[0].uid, 2, 'the player\'s piece');
   assert.equal(vigil.trait.reinforcement, packs[0]);
-  // a summoner with a hand kit (no skill here): the seaborn does not run its own heal pulses
+  // a summoner with a hand kit (no skill here): the seaborn does not run its own trait pulses
   const h2 = makeBattle({ defs: { chess: { test_guard: guard() } }, kits: { chess_char_6_04_a: bare }, units: [{ chessId: 'chess_char_6_04_a', row: 12, col: 3 }, { chessId: 'test_guard', row: 10, col: 8 }], autoFinish: false, timeLimit: 30 });
   h2.step();
   const g = h2.unit('test_guard');
   g.hp = 1000;
   const sea = spawnOn(h2, h2.unit('chess_char_6_04_a'), TOKEN_IDS.seaborn, 10, 7);
   h2.run(3);
-  assert.equal(g.hp, 1000, 'managed: no token-side heal');
+  assert.equal(g.hp, 1000, 'managed: no token-side trait');
   assert.equal(sea.mem.expiresAt, undefined, 'managed: lifetime left to the owner kit');
   checkInvariants(h.b);
 });
@@ -487,7 +502,7 @@ test('炎佑: spawnYanyou — flying ally, bond stats, 3 targets with burn + ele
   checkInvariants(h.b);
 });
 
-test('band map characters: spawnMapChar puts 预备干员-医疗 at its stage slot; Touch 恳切福音 heals ×heal_scale on ≤50 % HP allies', REAL, () => {
+test('band map characters: spawnMapChar puts 预备干员-医疗 at its stage slot; Touch 恳切福音 heals ×heal_scale on allies below 50 % HP', REAL, () => {
   const g = guard({ stats: { maxHp: 10000 } });
   const h = makeBattle({ stageId: 'act2autochess_m01', defs: { chess: { test_guard: g } }, units: [{ chessId: 'test_guard', row: 10, col: 3 }], autoFinish: false, timeLimit: 60,
     setup: (b) => b.on('heal', (c) => { if (c.source?.defId === TOKEN_IDS.touch) (b.mem ??= []).push({ amount: c.amount, ratio: c.target.hpRatio, active: c.source.skill.active }); }, { priority: -500 }) });
@@ -507,7 +522,7 @@ test('band map characters: spawnMapChar puts 预备干员-医疗 at its stage sl
   gu.hp = 3000;
   h.run(4);
   const bb = touch.skill.bb;
-  const low = h.b.mem.find((x) => x.active && x.ratio <= bb.hp_ratio);
+  const low = h.b.mem.find((x) => x.active && x.ratio < bb.hp_ratio);
   assert.ok(low, 'healed a low ally');
   approx(low.amount, touch.s.atk * bb.heal_scale, 1e-6, 'boosted heal');
   checkInvariants(h.b);
@@ -914,7 +929,7 @@ test('every token variant: a spawn with that owner takes the owner-level stats (
   assert.ok(n >= 38, `variants checked: ${n}`);
 });
 
-test('elite numbers: 沙之碑 230 %/1.5 s, 香槟炸弹 170 %, 纸偶 its ATK × 2.7, “耀阳” 100 % + ×1.15 vs blocked, 医疗探机 ATK 114', REAL, () => {
+test('elite numbers: 沙之碑 230 %/1.5 s, 香槟炸弹 170 %, 纸偶 its ATK × 2.75 (full potential), “耀阳” 100 % + ×1.15 vs blocked, 医疗探机 ATK 114', REAL, () => {
   const burstOf = (ownerId, tokenId, r, c, ePos) => {
     const base = ownerId.replace(/_[ab]$/, '_a');
     const h = makeBattle({ defs: { enemies: { enemy_dummy: dummy() } }, kits: { [base]: genericNoSkill }, units: [{ chessId: ownerId, row: 12, col: 2 }], enemies: [{ key: 'enemy_dummy', pos: ePos }], autoFinish: false, timeLimit: 10 });
@@ -938,7 +953,7 @@ test('elite numbers: 沙之碑 230 %/1.5 s, 香槟炸弹 170 %, 纸偶 its ATK �
   {
     const { t, e } = burstOf('chess_char_2_11_b', TOKEN_IDS.paperDoll, 10, 6, [11, 7]);
     assert.equal(t.base.atk, 728);
-    approx(1e7 - e.hp, 728 * 2.7, 1e-9, '纸偶 elite');
+    approx(1e7 - e.hp, 728 * 2.75, 1e-9, '纸偶 elite (2.7 + the potential step of 风丸)');
   }
   {
     const { o, e } = burstOf('chess_char_6_17_b', TOKEN_IDS.radiantSword, 10, 6, [10, 7]);
@@ -1082,7 +1097,7 @@ test('预备干员-医疗: stat talent 攻击提升 (+4 % ATK) on top of the dat
   approx(med.s.atk, tokDef(TOKEN_IDS.reserveMedic).stats.atk * (1.04 + 0.5), 1e-9, '治疗强化·β型 +50 %');
 });
 
-test('Touch talents: 攫升 +3 SP to the healed unit, 超脱 +5 SP when an operator in range is knocked out; extra heal = 30 % of the main heal', REAL, () => {
+test('Touch talents: 攫升 +3 SP to the healed unit, 超脱 +5 SP when an operator in range is knocked out; extra heal = 30 % of the main heal\'s base, ×heal_scale on its own low recipient', REAL, () => {
   const g = chessRec({ id: 'test_sp', stats: { maxHp: 10000, atk: 0, spRecovery: 0 }, skill: { spCost: 100, initSp: 0 } });
   const h = makeBattle({ stageId: 'act2autochess_m01', defs: { chess: { test_sp: g } }, units: [{ chessId: 'test_sp', row: 10, col: 3, uid: 1 }, { chessId: 'test_sp', row: 11, col: 3, uid: 2 }], autoFinish: false, timeLimit: 60,
     setup: (b) => b.on('heal', (c) => { if (c.source?.defId === TOKEN_IDS.touch) (b.mem ??= []).push({ t: c.target.id, amount: c.amount, ratio: c.target.hpRatio }); }, { priority: -500 }) });
@@ -1097,14 +1112,39 @@ test('Touch talents: 攫升 +3 SP to the healed unit, 超脱 +5 SP when an opera
   h.b.dealDamage(null, b2, { amount: 1e6, type: 'true' });
   assert.equal(b2.alive, false);
   approx(touch.skill.sp - sp0, 5, 0.1, '超脱');
-  // skill: main heal (×1.5 at ≤ 50 %) + extra 30 % of it, not boosted again
+  // skill: main heal (×1.5 below 50 %) + an extra heal of 30 % of its base (ATK) on the lowest-ratio unit of the target and
+  // its neighbours — the target again, still below half after the main heal: ×1.5 on its own (PRTS 技能3 备注)
   h.b.mem = [];
   touch.skill.activate('test', { free: true });
-  a.hp = 4000;
+  a.hp = 2000;
   assert.ok(h.runUntil(() => h.b.mem.length >= 2, 5));
   const [main, extra] = h.b.mem;
+  assert.deepEqual([main.t, extra.t], [a.id, a.id]);
   approx(main.amount, touch.s.atk * 1.5, 1e-6, 'main heal boosted');
-  approx(extra.amount, main.amount * 0.3, 1e-6, 'extra = 30 % of the main heal');
+  assert.ok(extra.ratio < 0.5);
+  approx(extra.amount, touch.s.atk * 0.3 * 1.5, 1e-6, 'extra = 30 % of the base, boosted on its low recipient');
+  checkInvariants(h.b);
+});
+
+test('GitHub #260: the 外勤医疗 Touch casts 恳切福音 on an injured ally only inside the skill\'s 5-2 (ACTIVE_RANGE, as the 补位 Touch); a full-HP or unhealable one does not', REAL, () => {
+  // Touch stands on (10,2) facing right: her 3-3 reaches column 5, the skill's 5-2 column 7
+  const h = makeBattle({ stageId: 'act2autochess_m01', defs: { chess: { test_guard: guard({ stats: { maxHp: 10000, atk: 0 } }) } },
+    units: [{ chessId: 'test_guard', row: 10, col: 7 }], autoFinish: false, timeLimit: 60 });
+  h.step();
+  const touch = spawnMapChar(h.b, 'p1', TOKEN_IDS.touch);
+  assert.deepEqual([touch.tileR, touch.tileC], [10, 2]);
+  assert.equal(touch.skill.rule, 'ACTIVE_RANGE');
+  const ally = h.unit('test_guard');
+  touch.skill.gainSp(1000);
+  h.run(3);
+  assert.equal(touch.skill.activations, 0, 'every ally at full HP: no cast');
+  ally.hp = 4000;
+  const buff = h.b.addBuff(ally, { key: 'test:noHeal', flags: { noHeal: true } });
+  h.run(2);
+  assert.equal(touch.skill.activations, 0, 'an ally no heal can pick: no cast');
+  h.b.removeBuff(ally, buff);
+  assert.ok(h.runUntil(() => touch.skill.activations === 1, 2), 'the injured ally five tiles ahead (outside her 3-3) casts the skill');
+  assert.ok(h.runUntil(() => ally.hp > 4000, 5), 'and she heals it from the larger range');
   checkInvariants(h.b);
 });
 
@@ -1190,7 +1230,7 @@ test('tactical point: without a board piece the 援军 (狼群) stands on an ene
   checkInvariants(h.b);
 });
 
-test('狼群 (generic 伺夜): 伺夜\'s own attacks on pack-blocked enemies ignore 175 DEF and get the S3 bonus; the pack leaves with 伺夜', REAL, () => {
+test('狼群 (generic 伺夜): 伺夜\'s own attacks on pack-blocked enemies ignore 200 DEF (full potential) and get the S3 bonus; the pack leaves with 伺夜', REAL, () => {
   const kit = () => ({ generic: true, talents: [], skill: { kind: 'duration', duration: 60, trigger: 'SP_FULL', spCost: 1, initSp: 1 } });
   const own = [], bonus = [];
   // RES 100: the 弱点伤害 garrison keeps the attacks physical (arts would do 5 %)
@@ -1206,8 +1246,8 @@ test('狼群 (generic 伺夜): 伺夜\'s own attacks on pack-blocked enemies ign
   assert.ok(h.runUntil(() => own.some((x) => x.blocked) && bonus.some((x) => x.src === 'chess_char_3_19_a'), 30), 'owner hits a pack-blocked enemy');
   const hit = own.find((x) => x.blocked);
   assert.equal(hit.type, 'phys');
-  // tactician trait ×1.5 vs enemies its 援军 blocks; DEF 300 − 175
-  approx(hit.amount, vigil.s.atk * 1.5 - (300 - 175), 1e-6, 'DEF ignore on 伺夜\'s attack');
+  // tactician trait ×1.5 vs enemies its 援军 blocks; DEF 300 − 200
+  approx(hit.amount, vigil.s.atk * 1.5 - (300 - 200), 1e-6, 'DEF ignore on 伺夜\'s attack');
   approx(bonus.find((x) => x.src === 'chess_char_3_19_a').amount, vigil.s.atk * 0.2 * 0.05, 1e-6, 'S3 bonus: 20 % ATK arts vs RES 100 (5 % floor)');
   assert.ok(bonus.some((x) => x.src === TOKEN_IDS.wolfPack), 'the pack\'s bites carry the bonus too');
   // the 援军 leaves with its tactician (no respawn afterwards)

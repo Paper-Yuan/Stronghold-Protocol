@@ -5,13 +5,12 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { makeBattle, chessRec, enemyRec, checkInvariants } from '../helpers/battleHarness.js';
 import { getData } from '../../server/data.js';
-import { GRANTED_CAP_OVERRIDE } from '../../server/sim/content/garrisons/battle.js';
 
 const D = getData({ log: { warn() {}, error() {}, info() {} } });
 const GR = (gid) => D.garrisons[gid];
 const ids = (s) => String(s ?? '').split(',').map((x) => x.trim()).filter(Boolean);
 const num = (v, d = 0) => (Number.isFinite(+v) && v !== '' && v != null ? +v : d);
-const capOf = (gid) => GRANTED_CAP_OVERRIDE[gid] ?? (num(GR(gid).bb.max_add_count_per_battle) > 0 ? num(GR(gid).bb.max_add_count_per_battle) : Infinity);
+const capOf = (gid) => (num(GR(gid).bb.max_add_count_per_battle) > 0 ? num(GR(gid).bb.max_add_count_per_battle) : Infinity);
 
 /** IN_BATTLE garrison ids carried by visible chess, and the ids those grant. */
 const VISIBLE_IDS = new Set();
@@ -358,8 +357,10 @@ test('缇缇 125 + S2 封护 (GitHub #162): every 0.25 s sleep pulse of the ward
 // ---------------------------------------------------------------------------------------------------------------------
 // ADD_BOND grants
 
-test('ADD_BOND 华法琳 72: the front operator gets garrison_95 (own active bonds +1 / +2), cap overridden to 12 / 24', () => {
-  for (const [gid, per, cap] of [['garrison_72_a', 1, 12], ['garrison_72_b', 2, 24]]) {
+// PRTS 卫戍协议：盟约 下半, 3月27日更新#2: 「[Ⅳ阶]华法琳：赋予的特质的叠层上限从 初始12/精锐24 降低至 初始7/精锐14」 — the
+// data's 7 / 14 (GitHub #175; from PR #192 by @kukiC)
+test('ADD_BOND 华法琳 72: the front operator gets garrison_95 (own active bonds +1 / +2), capped at the data\'s 7 / 14 (GitHub #175)', () => {
+  for (const [gid, per, cap] of [['garrison_72_a', 1, 7], ['garrison_72_b', 2, 14]]) {
     const give = GR(gid).bbStr.give_garrison_id;
     const h = battle({
       units: [{ id: 'warfarin', g: [gid], row: 10, col: 4 }, { id: 'front', row: 10, col: 5, bonds: ['yanShip', 'kjeragShip', 'egirShip'] }, { id: 'side', row: 11, col: 4, bonds: ['yanShip'] }],
@@ -369,8 +370,13 @@ test('ADD_BOND 华法琳 72: the front operator gets garrison_95 (own active bon
     assert.equal(num(GR(give).bb.bond_add_count), per);
     skill(h, f);
     assert.deepEqual(gains(h), { yanShip: per, kjeragShip: per });
+    assert.equal(num(GR(give).bb.max_add_count_per_battle), cap, `${give}: the data cap`);
+    for (let i = 1; i < 7; i++) skill(h, f);
+    assert.deepEqual(gains(h), { yanShip: cap, kjeragShip: cap }, `${gid}: the seventh activation reaches the cap`);
+    skill(h, f);
+    assert.deepEqual(gains(h), { yanShip: cap, kjeragShip: cap }, `${gid}: the eighth adds no layers`);
     for (let i = 0; i < 30; i++) skill(h, f);
-    assert.deepEqual(gains(h), { yanShip: cap, kjeragShip: cap }, `${gid}: 12/24 override, not the data's 7/14`);
+    assert.deepEqual(gains(h), { yanShip: cap, kjeragShip: cap }, `${gid}: later activations stay capped`);
     skill(h, h.unit('warfarin'));
     skill(h, h.unit('side'));
     assert.equal(gains(h).yanShip, cap, '华法琳 herself / other operators do not carry the trait');
@@ -456,6 +462,33 @@ test('ADD_BOND 耀骑士临光 145 / 160 (real chess): self + front get 144 (red
     assert.ok(!f.findBuff(`gar:garrison_144_${sfx}`).mods.aspd, 'ASPD comes from 159 only (no double count)');
     checkInvariants(h.b);
     for (const g of D.chess[id].garrisonIds) cover(g);
+  }
+});
+
+test('respawnTimeByBond 144 has no 5% floor (#370): redeployMul is max(0, 1 + respawn_time * steps)', () => {
+  for (const [gid, rt] of [['garrison_144_a', -0.015], ['garrison_144_b', -0.03]]) {
+    assert.equal(GR(gid).bb.respawn_time, rt);
+    assert.deepEqual(Object.keys(GR(gid).bb).sort(), ['divide_num', 'respawn_time']);
+    // 96 / 192 layers: the old 0.05 floor bound the elite / the normal form (raw 0.04); 300: below zero
+    for (const layers of [9, 96, 192, 300]) {
+      const k = Math.floor(layers / 3);
+      const want = Math.max(0, 1 + rt * k);
+      const h = battle({
+        units: [{ id: 'op', g: [gid], row: 10, col: 4, o: { stats: { respawnTime: 100 } } }],
+        bonds: { kazimierzShip: B(layers) },
+      });
+      const u = h.unit('op');
+      approx(u.findBuff(`gar:${gid}`).mods.redeployMul, want, `${gid} @ ${layers}`);
+      h.b.dealDamage(null, u, { amount: 1e9, type: 'true' });
+      assert.equal(u.alive, false);
+      approx(u.respawnAt - u.deathAt, 100 * want, `${gid} timer @ ${layers}`);
+      if (want === 0) {
+        h.step(2);
+        assert.ok(u.alive && u.deployed, `${gid} @ ${layers}: a 0 s timer brings it straight back`);
+        assert.equal(h.b.errorCount, 0);
+      }
+    }
+    cover(gid);
   }
 });
 

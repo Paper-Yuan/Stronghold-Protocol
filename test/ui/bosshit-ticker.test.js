@@ -1,5 +1,5 @@
 // Player report after 0.1.0, client part: "隐藏boss还没打就出了造成50%伤害播报". Besides the server's share (fixed in
-// server/match/Match.js, test/match/bosshit-ticker.test.js) the ticker strip plays its queue in order, TICKER_MS (5.2 s)
+// server/match/match/bossRounds.js, test/match/bosshit-ticker.test.js) the ticker strip plays its queue in order, TICKER_MS (5.2 s)
 // per line and up to QUEUE_MAX (4) lines behind: in a headless-Chrome run the Final Assault's "超过20%" / "超过80%"
 // lines played 2–8 s into the Hidden Core with its leader at 96 % / 53 %. A leader-damage line (BOSS_HIT) now plays
 // only during the round it came in, and a player's newer BOSS_HIT line of the round supersedes their older one, queued

@@ -240,13 +240,22 @@ export function bgmEntry(m, kind) {
 /** SFX URL: group 'ui' | 'battle', key e.g. 'buy'. */
 export const sfxUrl = (m, group, key) => str(get(get(get(get(m, 'audio'), 'sfx'), str(group) || ''), str(key) || ''));
 
-/** Per-unit SFX: kind 'attack' | 'hit' | 'skill' | 'die' | 'born'; `skillIndex` picks `skills[i]` when present. */
+/**
+ * Per-unit SFX: kind 'attack' | 'hit' | 'skill' | 'die' | 'born'; `skillIndex` picks `skills[i]` and — for an attack or
+ * an impact — `attacks[i]` / `hits[i]` (the running skill's own files, tools/assets/audio.mjs pickModeAttacks /
+ * pickModeHits) when the manifest has them.
+ */
 export function unitSfxUrl(m, id, kind, skillIndex) {
   const u = get(get(get(get(m, 'audio'), 'sfx'), 'units'), str(id) || '') || get(get(get(get(m, 'audio'), 'sfx'), 'units'), baseCharId(id) || '');
   if (!isObj(u)) return null;
   if (kind === 'skill' && Number.isInteger(skillIndex) && isObj(u.skills)) {
     const s = str(u.skills[skillIndex]);
     if (s) return s;
+  }
+  const per = kind === 'attack' ? u.attacks : kind === 'hit' ? u.hits : null;
+  if (Number.isInteger(skillIndex) && isObj(per)) {
+    const a = str(per[skillIndex]);
+    if (a) return a;
   }
   return str(u[kind]);
 }
@@ -847,10 +856,11 @@ export function createAssets(options) {
   });
 
   /** Image element (cached; failures resolve to null). */
-  function image(u) {
+  function image(u, { retry = false } = {}) {
     const s = str(u);
     if (!s) return Promise.resolve(null);
     let e = images.get(s);
+    if (retry && e?.done && !e.value) { images.delete(s); e = null; }
     if (!e) {
       e = { value: null, done: false, promise: null };
       e.promise = Promise.resolve().then(() => loadImage(s)).then(

@@ -44,6 +44,20 @@ test('golden files list exactly the corpus scenarios (regenerate with npm run go
   }
 });
 
+// a stored digest that records engine errors means the corpus was regenerated over a crash (0.2.0: a merge dropped an
+// import a kit's tick handler used, and `npm run golden:update` stored 9288 swallowed errors as "the expected result")
+test('no stored scenario records engine errors (errors.count is 0 everywhere)', () => {
+  for (const f of FAMILY_NAMES) {
+    for (const [id, dg] of Object.entries(storedDigests(loadGolden(f)))) {
+      if (!dg || typeof dg !== 'object' || !dg.errors) continue;
+      // battles: { count, kinds }; matches: { engine, logged, sim, dispatcher }
+      const e = dg.errors;
+      const n = typeof e.count === 'number' ? e.count : Object.values(e).reduce((a, v) => a + (typeof v === 'number' ? v : 0), 0);
+      assert.equal(n, 0, `${f} ${id}: ${n} engine error(s) ${JSON.stringify(e)} — fix the crash, then regenerate`);
+    }
+  }
+});
+
 for (const f of FAMILY_NAMES) {
   test(`golden ${f}: ${FULL ? 'every scenario' : 'the fast subset (GOLDEN_FULL=1 for all)'} reproduces its stored digest`, () => {
     const computed = digests[f];

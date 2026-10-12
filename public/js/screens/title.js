@@ -1,4 +1,6 @@
-// Title screen: season-style backdrop, big title 卫戍协议：盟约, remembered nickname, 开始.
+// Title screen: season-style backdrop, big title 卫戍协议：盟约, remembered nickname, 开始, the language menu
+// (中文 | English | every pack in public/i18n/, ui/lang.js; a title in an alphabetic script — English — is the big one and
+// the small wordmark above it hides).
 //
 // Pressing 开始 validates the nickname (1..NAME_MAX_LEN chars, no control characters), stores it,
 // marks this tab as "entered" (so reloads skip the title) and hands the name to net.js, which
@@ -8,17 +10,25 @@
 // entry/loading illustration names) it is layered under the CSS art; otherwise the screen is
 // pure CSS/SVG (radar, ridgelines, glow), so it never issues a request that can 404.
 
-import { useMemo, useState } from '../../vendor/hooks.module.js';
-import { NAME_MAX_LEN, APP_VERSION } from '../../../shared/constants.js';
+import { ResumeMatchButton } from '../ui/resumeMatch.js';
+import { useEffect, useMemo, useState } from '../../vendor/hooks.module.js';
+import { NAME_MAX_LEN, APP_VERSION, DEV_BUILD } from '../../../shared/constants.js';
 import { html, Button, Icon, MicroLabel, TextField, PingPill } from '../ui/components.js';
 import { GuideButton } from '../ui/guide.js';
+import { openStats } from './stats.js';
 import { toast } from '../ui/toasts.js';
 import { net, identity } from '../net.js';
 import { store, useStore, shallowEqual } from '../store.js';
 import { data, useData } from '../data.js';
-import { FullscreenButton, detectFeatures } from '../ui/device.js';
+import { FullscreenButton, PwaInstallButton, detectFeatures } from '../ui/device.js';
+import { LangToggle, useLang } from '../ui/lang.js';
+import { t, N_ } from '../../../shared/i18n.js';
+import { scriptOf } from '../../../shared/i18nPacks.js';
 import { GIcon } from '../ui/gameComponents.js';
 import { SettingsModal } from '../ui/settings.js';
+import { PreloadPill, PreloadModal, usePreloadState } from '../ui/preloadModal.js';
+import { ServerPicker, currentGameNode } from '../ui/serverPicker.js';
+import { GAME_NODES, serverEntryUrl } from '../../../shared/serverSelection.js';
 
 // Same character classes as server/net.js sanitizeName (control, zero-width, bidi, BOM), so a name
 // the client accepts is never rejected by the server's hello validation.
@@ -71,6 +81,8 @@ export const isValidName = (raw) => sanitizeName(raw).length > 0;
 export function enterSession(rawName) {
   const name = sanitizeName(rawName);
   if (!name) return false;
+  const session = store.get().session;
+  if (session.preloadRequired && !session.preloadReady) return false;
   identity.saveName(name);
   identity.setEntered(true);
   store.set((s) => ({ me: { ...s.me, name }, session: { ...s.session, entered: true } }));
@@ -176,20 +188,42 @@ function Ridges() {
 }
 
 const STATUS_TEXT = {
-  idle: '准备连接', connecting: '正在连接服务器', connected: '已连接服务器', handshaking: '正在验证身份',
-  online: '已连接服务器', reconnecting: '连接中断，正在重连', closed: '连接已关闭',
+  idle: N_('准备连接'), connecting: N_('正在连接服务器'), connected: N_('已连接服务器'), handshaking: N_('正在验证身份'),
+  online: N_('已连接服务器'), reconnecting: N_('连接中断，正在重连'), closed: N_('连接已关闭'),
 };
 
 /** Title screen component. */
 export function TitleScreen() {
   const conn = useStore((s) => s.connection, shallowEqual);
   const pendingJoin = useStore((s) => s.ui.pendingJoin);
+  const preloadRequired = useStore(s => !!s.session.preloadRequired);
+  const preloadReady = useStore(s => !!s.session.preloadReady);
+  useLang(); // re-render on a language switch
   const [name, setName] = useState(() => store.get().me.name || identity.loadName() || '');
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [preloadOpen, setPreloadOpen] = useState(false);
+  const resourceState = usePreloadState();
+  useEffect(() => {
+    if (preloadRequired && !preloadReady &&
+        (['missing', 'error'].includes(resourceState.status) || resourceState.lastError)) setPreloadOpen(true);
+  }, [preloadRequired, preloadReady, resourceState.status, resourceState.lastError]);
+  const [selectedNode, setSelectedNode] = useState(currentGameNode);
+  // A server switch transfers only a nickname in a fragment, never reconnect tokens or room keys.
+  const [switchName] = useState(() => {
+    const p = new URLSearchParams(location.hash.slice(1));
+    const value = sanitizeName(p.get('sp-enter') || '');
+    if (p.has('sp-enter')) { p.delete('sp-enter'); history.replaceState(null, '', location.pathname + location.search + (p.size ? '#' + p : '')); }
+    return value;
+  });
+  useEffect(() => {
+    if (switchName && !pendingJoin && (!preloadRequired || preloadReady)) enterSession(switchName);
+  }, [switchName, pendingJoin, preloadRequired, preloadReady]);
   const assetsSettled = useData('assets');
   const assets = data.get('assets');
-  const backdrop = findUiAsset(assets, BACKDROP_KEYS);
-  const ridges = findUiAsset(assets, RIDGE_KEYS);
+  const backdropBase = findUiAsset(assets, BACKDROP_KEYS);
+  const backdrop = backdropBase && preloadReady ? backdropBase + (backdropBase.includes('?') ? '&' : '?') + 'resources=f3216bd82a48' : backdropBase;
+  const ridgesBase = findUiAsset(assets, RIDGE_KEYS);
+  const ridges = ridgesBase && preloadReady ? ridgesBase + (ridgesBase.includes('?') ? '&' : '?') + 'resources=f3216bd82a48' : ridgesBase;
   // Track load/fail per URL (not as booleans reset in effects: an image can load before an effect runs).
   const [bgLoadedUrl, setBgLoadedUrl] = useState(null);
   const [ridgesLoadedUrl, setRidgesLoadedUrl] = useState(null);
@@ -211,6 +245,9 @@ export function TitleScreen() {
 
   // touch screens: no autofocus (it would pop the on-screen keyboard over a landscape phone's whole view)
   const touchUi = useMemo(() => detectFeatures().coarse, []);
+  // a title in an alphabetic script (English, French …) is the big one in the display face and the wordmark above it
+  // hides; a CJK / kana / Hangul title keeps the Chinese layout (shared/i18nPacks.js scriptOf — a pack needs no flag)
+  const alphabetic = scriptOf(t('卫戍协议')) === 'alphabetic';
   return html`<div class="screen title-screen">
     <div class=${`title-bg${bgLoaded ? ' has-art' : ''}${ridgesLoaded ? ' has-ridges' : ''}`} aria-hidden="true">
       ${backdrop ? html`<img class="title-bg__art" src=${backdrop} alt="" draggable=${false}
@@ -235,33 +272,41 @@ export function TitleScreen() {
       <div><${MicroLabel} tone="mint">RHODES ISLAND // SIMULATION SERVICE<//><br /><${MicroLabel}>TACTICAL CO-OP NODE · 02<//></div>
     </div>
     <div class="title-corner title-corner--tr">
-      <${MicroLabel} tone="hi">TARGET POINT<//><br /><${MicroLabel}>STRONGHOLD PROTOCOL<//>
+      <div>
+        <div class="title-corner__tools">
+          <${Button} variant="ghost" size="sm" icon="chart" class="title-stats" onClick=${openStats} title=${t('统计数据')}>${t('统计')}<//>
+          <${LangToggle} class="title-lang" />
+        </div>
+        <${MicroLabel} tone="hi">TARGET POINT<//><br /><${MicroLabel}>STRONGHOLD PROTOCOL<//>
+      </div>
     </div>
 
     <main class="title-main">
       <${Emblem} />
-      <div class="title-en">
+      ${alphabetic ? null : html`<div class="title-en">
         <span class="title-en__a">STRONGHOLD PROTOCOL</span>
         <span class="title-en__b">ALLIANCE</span>
-      </div>
-      <h1 class="title-cn">卫戍协议<span class="title-cn__colon">：</span><em>盟约</em></h1>
-      <p class="title-tag">调配资金与干员，与同伴协同布防，抵御多波次进攻，直至击败敌方领袖。</p>
+      </div>`}
+      <h1 class=${`title-cn${alphabetic ? ' title-cn--latin' : ''}`}>${t('卫戍协议')}<span class="title-cn__colon">${alphabetic ? ': ' : '：'}</span><em>${t('盟约')}</em></h1>
+      <p class="title-tag">${t('调配资金与干员，与同伴协同布防，抵御多波次进攻，直至击败敌方领袖。')}</p>
 
       <div class="title-login">
+        <${ServerPicker} selected=${selectedNode} onSelect=${setSelectedNode} locked=${!!pendingJoin} />
         ${pendingJoin ? html`<div class="title-invite">
           <${Icon} name="key" />
-          <span>收到同盟邀请</span><b class="num">${pendingJoin}</b><span class="t-lo">· 输入代号后将自动加入</span>
+          <span>${t('收到同盟邀请')}</span><b class="num">${pendingJoin}</b><span class="t-lo">${t('· 输入代号后将自动加入')}</span>
         </div>` : null}
-        <${TextField} label="博士代号" micro="CALLSIGN" size="lg" icon="user" value=${name} maxLength=${NAME_MAX_LEN}
-          placeholder="输入你的代号（最多 ${NAME_MAX_LEN} 字）" autoFocus=${!touchUi}
+        <${TextField} label=${t('博士代号')} micro="CALLSIGN" size="lg" icon="user" value=${name} maxLength=${NAME_MAX_LEN}
+          placeholder=${t('输入你的代号（最多 {NAME_MAX_LEN} 字）', { NAME_MAX_LEN })} autoFocus=${!touchUi}
           onInput=${setName} onEnter=${start} />
-        <${Button} variant="primary" size="xl" block=${true} iconRight="chevrons" disabled=${!valid} onClick=${start}>开始<//>
+        <${Button} variant="primary" size="xl" block=${true} iconRight="chevrons" disabled=${!valid} onClick=${start}>
+          ${t('开始')}<//>
         <div class="title-conn">
           <span class=${`status-dot ${dotClass}`}></span>
-          <span>${STATUS_TEXT[conn.status] || conn.status}</span>
+          <span>${STATUS_TEXT[conn.status] ? t(STATUS_TEXT[conn.status]) : conn.status}</span>
           ${conn.status === 'online' ? html`<${PingPill} ms=${conn.ping} />` : null}
-          <${GuideButton} class="title-guide" />
-          <button type="button" class="title-settings fsbtn tapx" aria-label="设置" title="设置"
+          <${GuideButton} class="title-guide" label=${t('玩法说明')} />
+          <button type="button" class="title-settings fsbtn tapx" aria-label=${t('设置')} title=${t('设置')}
             onClick=${() => setSettingsOpen(true)}><${GIcon} name="gear" /></button>
           <${FullscreenButton} class="title-fs" />
         </div>
@@ -269,13 +314,17 @@ export function TitleScreen() {
     </main>
 
     <${SettingsModal} open=${settingsOpen} onClose=${() => setSettingsOpen(false)} />
+    <${PreloadModal} open=${preloadOpen} required=${preloadRequired} onClose=${() => setPreloadOpen(false)}
+      onContinue=${() => { setPreloadOpen(false); if (valid) start(); }} />
 
     <footer class="title-foot">
+      <${ResumeMatchButton} />
       <div class="title-foot__col">
-        <span>非官方同人复刻 · 游戏素材版权归 上海鹰角网络 / Yostar 所有</span>
+        <span>${t('非官方同人复刻 · 游戏素材版权归 上海鹰角网络 / Yostar 所有')}</span>
         <span class="title-foot__credit">B 站 纸鸢安好 · UID 99201674 · 安卓端适配参考 B 站 @Ausevay</span>
       </div>
       <${MicroLabel}>v${APP_VERSION} · WEB SIMULATION<//>
+      ${DEV_BUILD ? html`<span class="title-dev" role="note">${t('开发版 · 不稳定，请勿用于公开服务器')}</span>` : null}
     </footer>
   </div>`;
 }

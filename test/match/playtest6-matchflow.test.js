@@ -1,5 +1,6 @@
 // User playtest #6, match flow (workstream WC): #4 悬赏决策 bounty enemies keep coming back, #19 the merge reward offers
-// the same operator twice, #7 the 联防 leak counter (server side; the HUD helpers are in test/ui/playtest6-unite.test.js).
+// the same operator twice, #7 the 联防 leak counter (server side; the HUD helpers are in test/ui/playtest6-unite.test.js);
+// GitHub #235, the 联防 outcome in the SETTLE view (the result box's words: test/ui/gameLogic.test.js).
 // Real match paths (the match harness in virtual time), real data.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -429,7 +430,13 @@ test('#7 a leaked enemy that splits (磨砻: DeadSpawn ×2) raises the counter �
     seen.push(p.uniteLeft);
     h.sched.advance(500);
   }
-  assert.ok(b.total > SENT, `the 磨砻 split (${SENT} → ${b.total} on the field)`);
+  // the split children are runtime spawns: they enter neither part of the HUD capsule (PR #157: the denominator counts
+  // only what the 联防 scheduled — `b.total` — and the numerator only that set's own knock-outs / leaks), while the
+  // 联防 live counter (m.public uniteLeft) still bills them to the leaker
+  const kids = b.units.filter((u) => u.side === 'enemy' && !u.inTotal).length;
+  assert.ok(kids > 0, `the 磨砻 split into ${kids} runtime children`);
+  assert.equal(b.total, SENT, `the children stay out of the capsule's denominator (total = the ${SENT} the 联防 scheduled)`);
+  assert.equal(b.resolved, Math.min(SENT, b.killedInTotal + b.leakedInTotal), 'the capsule numerator counts only the 联防\'s own enemies');
   const rises = seen.filter((v, i) => i > 0 && v > seen[i - 1]).length;
   assert.ok(rises > 0, `the counter rose after a split: ${seen.filter((v, i) => i === 0 || v !== seen[i - 1]).join(' → ')}`);
   assert.ok(Math.max(...seen) > SENT, 'above the number sent in (the old clamp hid it)');
@@ -438,4 +445,64 @@ test('#7 a leaked enemy that splits (磨砻: DeadSpawn ×2) raises the counter �
   toSettled(h);
   assert.equal(lp - leaker.lp, Math.min(10, last), `settled LP loss = min(10, ${last} left)`);
   h.m.dispose();
+});
+
+// =====================================================================================================================
+// GitHub #235 (PR #112 by @Convey123): the official result box at settlement. The 联防's outcome rides the SETTLE
+// m.public as data (`uniteResult`), each player's own LP charge in `losses` — the number the client's 「生命值减少 −N」
+// shows (ui/gameLogic/phases.js uniteResultBox) — and that box is the only announcement: no 联防 result ticker line.
+
+test('#235 联防 outcome: the SETTLE view carries every player\'s own charge (= the LP settled), no result line is broadcast, and the next phase drops it', () => {
+  const run = (survivors) => {
+    const h = makeMatch({ mode: 'coop', difficulty: 'NORMAL', humans: 3, seed: 6060, fake: true, clientCombat: true, instant: false,
+      script: (b) => (b.kind === 'normal'
+        ? (b.players[0] === 'p_0' ? { duration: 2, leaks: { p_0: 3 } } : { duration: 3 })
+        : { duration: 5, survivors }) }).start();
+    const m = h.m;
+    h.autoHumans();
+    const before = h.bc.length;
+    let lpBefore = null;
+    h.run(() => {
+      if (m.phase === PHASE.UNITE && !lpBefore) lpBefore = Object.fromEntries([...m.players.values()].map((ps) => [ps.playerId, ps.lp]));
+      return m.phase === PHASE.SETTLE || h.ended != null;
+    }, { maxSteps: 5e6 });
+    const tickers = h.bc.slice(before).filter((x) => x.t === 'm.ticker').map((x) => x.text);
+    const view = m.publicView();
+    assert.equal(view.phase, PHASE.SETTLE);
+    assert.ok(lpBefore, 'a 联防 ran this round');
+    const through = Object.values(survivors).reduce((a, b) => a + b, 0);
+    const losses = { p_0: Math.min(m.gd.lpCapPerRound, through) };
+    for (const id of view.uniteResult.helpers) losses[id] = 0;
+    assert.deepEqual(view.uniteResult, { through, helpers: view.uniteResult.helpers, leakers: ['p_0'], losses }, 'the 联防 outcome rides the SETTLE view');
+    assert.ok(view.uniteResult.helpers.length > 0 && !view.uniteResult.helpers.includes('p_0'), 'the helpers are the perfect players');
+    // the box's number is the LP settlement really charged — never the leaker's own battle leaks (3)
+    for (const ps of m.players.values()) assert.equal(lpBefore[ps.playerId] - ps.lp, view.uniteResult.losses[ps.playerId], `${ps.playerId}: losses = the LP settled`);
+    checkInvariants(m);
+    // the next phase carries no stale outcome
+    h.run(() => m.phase !== PHASE.SETTLE || h.ended != null, { maxSteps: 5e6 });
+    assert.equal(m.publicView().uniteResult, undefined, `no uniteResult in ${m.phase}`);
+    m.dispose();
+    return tickers;
+  };
+  const cleared = run({});
+  // the 联防's opening line is still broadcast (the official 「联防阶段」 banner while it runs) …
+  assert.ok(cleared.some((t) => t.startsWith('联防阶段')), `expected the 联防阶段 line, got ${JSON.stringify(cleared)}`);
+  // … but the outcome is box-only: no 「联防成功」 / 「联防结束」 line beside it
+  assert.ok(!cleared.some((t) => /^联防(成功|结束|失败)/.test(t)), `no result line may be broadcast, got ${JSON.stringify(cleared)}`);
+  const through = run({ p_0: 2 });
+  assert.ok(!through.some((t) => /^联防(成功|结束|失败)/.test(t)), `no result line may be broadcast, got ${JSON.stringify(through)}`);
+  // more survivors than the per-round cap: the charge (and the box) stops at the cap
+  run({ p_0: 14 });
+});
+
+test('#235 no 联防 this round: the SETTLE view carries no uniteResult (the client then shows the round\'s own battle result)', () => {
+  const h = makeMatch({ mode: 'coop', difficulty: 'NORMAL', humans: 2, seed: 6061, fake: true, clientCombat: true, instant: false,
+    script: () => ({ duration: 3 }) }).start();
+  const m = h.m;
+  h.autoHumans();
+  h.run(() => m.phase === PHASE.SETTLE || h.ended != null, { maxSteps: 5e6 });
+  assert.equal(m.phase, PHASE.SETTLE);
+  assert.equal(m.publicView().uniteResult, undefined);
+  checkInvariants(m);
+  m.dispose();
 });

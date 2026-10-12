@@ -29,6 +29,8 @@
 //
 // The handler object (implemented by server/lobby.js) receives:
 //   onHello(session, { resumed, repeat })  after `welcome` was sent
+//   welcomeInfo() → object (optional)      extra fields of every `welcome` (never one of its own keys): the lobby's
+//                                          `diyKitted` (0.2.0 自选编队 — which operators a DIY slot may field)
 //   onMessage(session, msg) → { ok: true } | { error: ERR code, detail?: string } | undefined
 //   routeGame(session, msg) → same (optional): client-side combat reports `b.progress` / `b.result` (DESIGN §14) go
 //                                          straight to the running match through it; without it they reach onMessage
@@ -38,7 +40,7 @@
 import { randomBytes } from 'node:crypto';
 import { isIP } from 'node:net';
 import { C2S, validateC2S } from '../shared/protocol.js';
-import { ERR, ERR_TEXT, NAME_MAX_LEN, PROTOCOL_VERSION } from '../shared/constants.js';
+import { DIFFICULTIES, ERR, ERR_TEXT, NAME_MAX_LEN, PROTOCOL_VERSION } from '../shared/constants.js';
 
 /** Tunables (all overridable through the Network / SessionRegistry constructors). */
 export const NET_DEFAULTS = Object.freeze({
@@ -60,15 +62,18 @@ export const NET_DEFAULTS = Object.freeze({
 
 /**
  * Intents that also draw from the per-connection heavy bucket: g.watch (its reply is a large state resend, m.field),
- * room.loadout (a ≤ 160-entry map validated against the game data; the client debounces its edits) and room.spectate
+ * room.loadout (a ≤ 160-entry map and ≤ 256 operator settings validated against the game data; the client debounces its
+ * edits), room.ownership
+ * (a ≤ 160-id list, the same way), room.diy (≤ 8 自选 picks checked against the data, the same way) and room.spectate
  * (taking a spectator seat in a running match resends its state like a watcher's g.watch — server/lobby.js spectate).
  */
-export const HEAVY_TYPES = new Set(['g.watch', 'room.loadout', 'room.spectate']);
+export const HEAVY_TYPES = new Set(['g.watch', 'room.loadout', 'room.ownership', 'room.diy', 'room.spectate']);
 
 /** Close codes (see header). */
 export const CLOSE = Object.freeze({ REPLACED: 4001, HELLO_TIMEOUT: 4002, POLICY: 1008, SHUTDOWN: 1001 });
 
 const WS_OPEN = 1;
+export const PRESENCE_INTERVAL_MS = 2000;
 const MAX_RID = 2 ** 31;
 const noopLog = { info() {}, warn() {}, error() {}, debug() {} };
 
@@ -92,6 +97,8 @@ export class Session {
     this.ws = null;
     /** @type {boolean} */
     this.connected = false;
+    /** @type {number | null} local first-welcome stamp of the attached client (optional, not authentication) */
+    this.claimAt = null;
     /** @type {number} ms epoch of the last inbound frame / pong */
     this.lastSeen = now;
     /** @type {number | null} ms epoch when the socket was lost (null while connected) */
@@ -106,6 +113,12 @@ export class Session {
     this.resyncAt = -Infinity;
     /** @type {Record<string, { skill: number, module: string|null }> | null} checked operator loadout (lobby-owned, DESIGN §16) */
     this.loadout = null;
+    /** @type {Readonly<Record<string, { potential: number, cultivate: number }>> | null} checked per-operator 潜能 / 练度 (lobby-owned, 0.2.2; room.loadout `ops`) */
+    this.ops = null;
+    /** @type {readonly string[] | null} checked not-owned chess ids (干员持有, lobby-owned, 0.2.0 补位) */
+    this.notOwned = null;
+    /** @type {Readonly<Record<string, { charId: string, skillIndex: number, uniEquipId: string|null }>> | null} checked 自选 picks (lobby-owned, 0.2.0 自选编队) */
+    this.diy = null;
     /** @type {string} client address of the latest connection (logging) */
     this.addr = '?';
     /** @type {string | null} per-network limit key of the latest connection (null = not limited), see clientAddress */
@@ -497,7 +510,7 @@ export class Network {
   /**
    * @param {{
    *   registry: SessionRegistry,
-   *   handler: { onHello?: Function, onMessage: Function, onDisconnect?: Function, onExpire?: Function },
+   *   handler: { onHello?: Function, onMessage: Function, onDisconnect?: Function, onExpire?: Function, welcomeInfo?: Function },
    *   log?: { info: Function, warn: Function, error: Function, debug?: Function },
    *   now?: () => number,
    *   options?: Partial<typeof NET_DEFAULTS>,
@@ -514,6 +527,8 @@ export class Network {
     /** @type {Map<string, number>} open sockets per client network key */
     this.connsPerKey = new Map();
     this.closed = false;
+    this.presenceTimer = setInterval(() => this.broadcastPresence(), PRESENCE_INTERVAL_MS);
+    this.presenceTimer.unref?.();
     this.heartbeatTimer = setInterval(() => this.heartbeat(), this.opts.heartbeatMs);
     this.heartbeatTimer.unref?.();
     const sweepMs = Math.max(20, Math.min(15_000, Math.floor(this.opts.reconnectWindowMs / 4)));
@@ -521,11 +536,60 @@ export class Network {
     this.sweepTimer.unref?.();
   }
 
+  get onlineCount() {
+    const people = new Set();
+    for (const conn of this.conns.values()) {
+      if (conn.closing || conn.ws.readyState !== WS_OPEN) continue;
+      const session = conn.session;
+      if (!session?.connected || session.ws !== conn.ws) continue;
+      people.add(conn.browserId ? `browser:${conn.browserId}` : `session:${session.playerId}`);
+    }
+    return people.size;
+  }
+
+  get matchmakingCounts() {
+    const byDifficulty = Object.fromEntries(DIFFICULTIES.map(d => [d, 0]));
+    const counted = new Set();
+    const add = (id, difficulty) => {
+      if (counted.has(id) || !DIFFICULTIES.includes(difficulty)) return;
+      const session = this.registry.byId(id);
+      const conn = session?.connected && this.conns.get(session.ws);
+      if (!conn || conn.closing || conn.ws.readyState !== WS_OPEN || conn.session !== session) return;
+      counted.add(id); byDifficulty[difficulty]++;
+    };
+    for (const entry of this.handler.matchmaker?.queue.values() || []) {
+      if (entry.mode === 'coop') add(entry.session.playerId, entry.difficulty);
+    }
+    for (const { room } of this.handler.matchmaker?.roomQueue.values() || []) {
+      if (!room || room.disposed || room.match || room.mode !== 'coop') continue;
+      for (const seat of room.seats) if (seat && !seat.isBot && !seat.left) add(seat.playerId, room.difficulty);
+    }
+    return { total: counted.size, byDifficulty };
+  }
+
+  broadcastPresence() {
+    if (this.closed) return;
+    const online = this.onlineCount;
+    const data = encode({ t: 'presence', online, matchmaking: this.matchmakingCounts, serverNow: this.now() });
+    if (data == null) return;
+    for (const conn of this.conns.values()) {
+      if (conn.closing) continue;
+      sendRaw(conn.ws, data);
+    }
+  }
+
+  broadcast(msg) {
+    if (this.closed) return;
+    const data = encode(msg);
+    if (data == null) return;
+    for (const conn of this.conns.values()) if (!conn.closing) sendRaw(conn.ws, data);
+  }
+
   /** Number of open sockets. */
   get connectionCount() { return this.conns.size; }
 
   /**
-   * Upgrade-time admission check (server/index.js): null to accept, otherwise the reason to refuse.
+   * Upgrade-time admission check (server/http/websocket.js): null to accept, otherwise the reason to refuse.
    * @param {import('node:http').IncomingMessage} req
    * @returns {null | 'shutdown' | 'full' | 'per-address'}
    */
@@ -624,6 +688,11 @@ export class Network {
   /** @param {Connection} conn @param {any} msg @param {number} now */
   onHelloMsg(conn, msg, now) {
     const rid = msg.rid;
+    if (this.moderation?.blocked(conn, msg)) {
+      this.reply(conn, errorMsg(ERR.BAD_MSG, rid, '此客户端已被管理员封禁'));
+      conn.close(4003, 'admin:banned');
+      return;
+    }
     if (msg.version != null && msg.version !== PROTOCOL_VERSION) {
       this.reply(conn, errorMsg(ERR.BAD_MSG, rid, `version mismatch: server ${PROTOCOL_VERSION}`));
       return;
@@ -637,6 +706,11 @@ export class Network {
     if (!session) {
       session = msg.token ? this.registry.byToken(msg.token) : null;
       if (session) {
+        if (session.connected && session.ws && session.ws !== conn.ws
+          && (msg.noReplace || (Number.isFinite(msg.claimAt) && session.claimAt != null && msg.claimAt > session.claimAt))) {
+          this.reply(conn, errorMsg(ERR.SESSION_IN_USE, rid));
+          return;
+        }
         resumed = true;
         if (session.ws && session.ws !== conn.ws) this.detachReplaced(session.ws);
       } else {
@@ -646,14 +720,27 @@ export class Network {
       conn.session = session;
       session.ws = conn.ws;
       session.connected = true;
+      session.claimAt = Number.isFinite(msg.claimAt) ? msg.claimAt : null;
       session.disconnectedAt = null;
     }
     session.name = name;
     session.lastSeen = now;
     session.addr = conn.ip;
     session.limitKey = conn.key;
+    if (msg.browserId != null) conn.browserId = msg.browserId;
+    this.moderation?.remember(session, conn);
+    if (msg.client && typeof msg.client === 'object') {
+      session.client = {
+        platform: String(msg.client.platform || 'web'),
+        bundle: String(msg.client.bundle || 'stream'),
+      };
+    } else if (!session.client) {
+      session.client = { platform: 'web', bundle: 'stream' };
+    }
 
-    const welcome = { t: 'welcome', playerId: session.playerId, token: session.token, name: session.name, serverNow: now, version: PROTOCOL_VERSION, resumed };
+    let extra = null;
+    try { extra = this.handler.welcomeInfo?.() ?? null; } catch (e) { this.log.error('[net] welcomeInfo crashed', e); }
+    const welcome = { ...(extra && typeof extra === 'object' ? extra : null), t: 'welcome', playerId: session.playerId, token: session.token, name: session.name, serverNow: now, version: PROTOCOL_VERSION, resumed, online: this.onlineCount, matchmaking: this.matchmakingCounts };
     if (validRid(rid)) welcome.rid = rid;
     this.reply(conn, welcome);
     try {
@@ -733,6 +820,7 @@ export class Network {
     this.closed = true;
     clearInterval(this.heartbeatTimer);
     clearInterval(this.sweepTimer);
+    clearInterval(this.presenceTimer);
     for (const conn of this.conns.values()) {
       conn.close(code, reason);
       const t = setTimeout(() => { try { conn.ws.terminate(); } catch { /* ignore */ } }, 1000);

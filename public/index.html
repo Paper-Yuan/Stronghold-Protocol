@@ -15,7 +15,12 @@
   <meta name="apple-mobile-web-app-title" content="卫戍协议" />
   <meta name="description" content="卫戍协议：盟约 · 网页联机复刻（非官方同人作品）" />
   <title>卫戍协议：盟约 · STRONGHOLD PROTOCOL</title>
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' fill='%230c0f0e'/%3E%3Cpath fill='%234ed8af' d='M5 3h3v2h2V3h4v2h2V3h3v5l-2 2v7l2 2v2H5v-2l2-2v-7L5 8z'/%3E%3C/svg%3E" />
+  <link rel="manifest" href="/manifest.json" />
+  <link rel="icon" href="/icons/favicon.ico" sizes="16x16 32x32 48x48" />
+  <link rel="icon" href="/icons/favicon-16.png" type="image/png" sizes="16x16" />
+  <link rel="icon" href="/icons/favicon-32.png" type="image/png" sizes="32x32" />
+  <link rel="icon" href="/icons/app.svg" type="image/svg+xml" sizes="any" />
+  <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" sizes="180x180" />
 
   <!-- Web fonts: never render-blocking (LAN/offline play must still start); system fallbacks in theme.css. -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -38,8 +43,12 @@
   <link rel="stylesheet" href="/css/screens/result.css" />
   <link rel="stylesheet" href="/css/screens/guide.css" />
   <link rel="stylesheet" href="/css/screens/loadout.css" />
+  <link rel="stylesheet" href="/css/screens/stats.css" />
   <link rel="stylesheet" href="/css/emotes.css" />
   <link rel="stylesheet" href="/css/devices.css" />
+  <link rel="stylesheet" href="/css/fullscreen-prompt.css" />
+  <link rel="stylesheet" href="/css/room-chat.css" />
+  <link rel="stylesheet" href="/css/room-voice.css" />
 
   <script type="importmap">
     { "imports": { "preact": "/vendor/preact.module.js", "preact/hooks": "/vendor/hooks.module.js", "htm": "/vendor/htm.module.js" } }
@@ -54,6 +63,7 @@
        at low priority so entering the match doesn't wait on ~800 KB of script. -->
   <link rel="prefetch" href="/vendor/pixi.min.js" as="script" />
   <link rel="prefetch" href="/vendor/pixi-spine.js" as="script" />
+<link rel="stylesheet" href="/css/global-broadcast.css">
 </head>
 <body>
   <div id="app"></div>
@@ -96,6 +106,9 @@
     });
   </script>
   <script type="module" src="/js/main.js" onerror="window.__spBootFail && window.__spBootFail('load')"></script>
+  <script type="module" src="/fullscreen-guide.js"></script>
+  <script type="module" src="/chat-widget.js"></script>
+  <script type="module" src="/voice-widget.js"></script>
   <script nomodule>window.__spBootFail && window.__spBootFail('old');</script>
   <script>
     // If modules never boot (very old browser / blocked script), explain instead of spinning forever.

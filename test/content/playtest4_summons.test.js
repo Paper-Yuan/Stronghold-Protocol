@@ -1,4 +1,4 @@
-// Content tests for user playtest #4 items 11 and 12 (server/sim/content/tokens.js, kits/tier2.js):
+// Content tests for user playtest #4 items 11 and 12 (server/sim/content/tokens.js, kits/ops/…2_02-silent.js):
 //   #11 赫默's 医疗无人机 comes with her S2 — since user playtest #6 it is a hand piece the player places, it deploys
 //       once on that tile at the battle start (PRTS 卫戍协议/帮助 §作战阶段; settled by the user after playtest #6 —
 //       shared/constants.js SKILL_SUMMON_START_DEPLOY) and re-appears there each time S2 fires

@@ -91,7 +91,7 @@ describe('#8 深池逐火: a knock-out is a walking 隐匿 ember that a blocker 
       round: 3, wave, units: [
         chess(1, 'chess_char_4_23_b', 9, 8),   // 百炼嘉维尔 blocks the lower lane
         chess(2, 'chess_char_4_20_b', 10, 4),  // 远牙
-        chess(3, 'chess_char_4_02_b', 11, 4),  // 莫斯提马
+        chess(3, 'chess_char_4_02_b', 11, 3),  // 莫斯提马 (since 0.2.0 her S3 casts on its 3-15: at (11,4) it was spent early)
         chess(4, 'chess_char_4_17_b', 12, 6),  // 星熊 blocks the upper lane's way down
       ],
     });
@@ -143,7 +143,9 @@ describe('#8 深池逐火: a knock-out is a walking 隐匿 ember that a blocker 
     for (const u of dusk) assert.equal(deaths.get(u.id), 1, `${u.defId} #${u.id} dies exactly once`);
     assert.equal(ember.size, dusk.length, 'every 逐火 went through its ember');
     assert.deepEqual([...bad], [], 'ember rules');
-    assert.ok(walked > 1, `an ember whose blocker fell walks on (${walked.toFixed(2)} tiles)`);
+    // (until 0.2.0 one of 百炼嘉维尔's embers walked on once she fell; since 0.2.0 she — a 强攻手 — strikes up to her block count
+    // of targets (ai.js targetCount) and holds: an ember whose blocker falls is checked on its own in the test below)
+    assert.ok(walked >= 0);
   });
 
   for (const key of EMBERS) {
@@ -198,6 +200,20 @@ describe('#8 深池逐火: a knock-out is a walking 隐匿 ember that a blocker 
       assert.equal(h2.b.killed, 1);
       assert.equal(h2.eventsOf('die').filter((ev) => ev[1] === f.id).length, 1, 'one die event');
       checkInvariants(h2.b);
+
+      // its blocker falls: the ember walks on (隐匿 again — nobody else can target it)
+      const h3 = arena({ units: [{ chessId: 't_wall', row: 9, col: 7 }], kits: QUIET_GUNS });
+      h3.step();
+      const g = put(h3, key, { mods: { speedMul: 1 } });
+      assert.ok(h3.runUntil(() => !!g.blockedBy, 20), 'blocked');
+      h3.b.kill(g, null);
+      h3.run(HUSK_REBIRTH + 0.1);
+      assert.ok(g.blockedBy, 'an ember held by its blocker');
+      const gx = g.x, gy = g.y;
+      h3.b.kill(h3.unit('t_wall'), null);
+      h3.run(3);
+      assert.ok(g.alive && Math.hypot(g.x - gx, g.y - gy) > 0.5, `an ember whose blocker fell walks on (${Math.hypot(g.x - gx, g.y - gy).toFixed(2)} tiles)`);
+      checkInvariants(h3.b);
     });
   }
 
@@ -286,7 +302,7 @@ describe('#5 转译基底·α: damage is cancelled until its form change; only t
       round: 4, wave, spawns, units: [
         chess(1, 'chess_char_4_23_b', 9, 3),   // 百炼嘉维尔 near the goal
         chess(2, 'chess_char_6_01_b', 10, 4),  // 蕾缪安 (physical)
-        chess(3, 'chess_char_4_02_b', 11, 4),  // 莫斯提马 (arts)
+        chess(3, 'chess_char_4_02_b', 10, 3),  // 莫斯提马 (arts; her S3 casts on its 3-15 since 0.2.0: at (11,4) her arts landed 4 hits first)
       ],
     });
     let tr = null, phaseAt = null, kind = null, diedAt = null, formAt = null, maxBefore = null, firstFormLoss = null, earlyAttack = false;

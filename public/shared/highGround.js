@@ -10,7 +10,7 @@
 // §战斗部署), and is not read. The battle keeps position MELEE: on a 高台 the unit attacks and blocks nothing.
 
 /** The trait line that lets a MELEE chess stand on a ranged (高台) tile. */
-export const PLACE_ON_RANGED = '可以放置于远程位';
+export const PLACE_ON_RANGED = '可以放置于远程位'; // i18n-ignore: matched against the data's trait text
 
 /**
  * The record's trait text without a module ('' when it has none).

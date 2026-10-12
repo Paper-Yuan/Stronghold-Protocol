@@ -8,8 +8,14 @@
 // (ModuleRecord: uniEquipId, name, typeName, attr, traitOverride, talentChanges, isDefault) — while the data lacks
 // them only the default skill / module is offered. The option rules are shared with the server
 // (shared/protocol.js loadoutOptions / checkLoadout), so a sanitised loadout is always accepted.
+// 潜能 / 练度 (0.2.2, the owner's decision of 2026-10-08): `ops` = `{ [charId]: { potential?: 1–6, cultivate?: 0–3 } }` —
+// per operator, so the normal, elite and 自选 forms share them; only values that differ from the defaults (潜能 6,
+// 精英2 Lv.60) are kept; stored beside the entries (`sp.pref.loadout` = { v: 1, entries, ops }; an older stored loadout
+// has none = the defaults) and sent with `room.loadout { entries, ops }` (shared/protocol.js checkLoadoutOps).
 
-import { loadoutOptions, checkLoadout, resolveLoadout, MODULE_NONE, LOADOUT_LIMITS, isSkinId, SKIN_LIMITS } from '../../../shared/protocol.js';
+import { loadoutOptions, checkLoadout, checkLoadoutOps, resolveLoadout, MODULE_NONE, LOADOUT_LIMITS, isSkinId, SKIN_LIMITS } from '../../../shared/protocol.js';
+import { isPotential, isCultivate, POTENTIAL_DEFAULT, CULTIVATE_DEFAULT } from '../../../shared/potential.js';
+import { t, N_ } from '../../../shared/i18n.js';
 
 export { MODULE_NONE };
 
@@ -55,8 +61,95 @@ export function parseStored(raw) {
   return out;
 }
 
-/** Serialised form for localStorage. */
-export const toStored = (entries) => ({ v: LOADOUT_VERSION, entries: entries || {} });
+/**
+ * Parse the stored per-operator 潜能 / 练度 (0.2.2; any junk → {}): structurally valid entries only, defaults dropped.
+ * An older stored loadout (no `ops`) gives {} — every operator at the defaults.
+ * @param {any} raw `{ v, entries, ops }`
+ * @returns {Record<string, { potential?: number, cultivate?: number }>}
+ */
+export function parseStoredOps(raw) {
+  const src = isObj(raw) && isObj(raw.ops) ? raw.ops : null;
+  const out = {};
+  if (!src) return out;
+  for (const [id, e] of Object.entries(src)) {
+    if (Object.keys(out).length >= LOADOUT_LIMITS.ops) break;
+    if (UNSAFE_IDS.has(id) || !/^[A-Za-z0-9_\-.:]{1,64}$/.test(id) || !isObj(e)) continue;
+    const x = {};
+    if (isPotential(e.potential) && e.potential !== POTENTIAL_DEFAULT) x.potential = e.potential;
+    if (isCultivate(e.cultivate) && e.cultivate !== CULTIVATE_DEFAULT) x.cultivate = e.cultivate;
+    if (Object.keys(x).length) out[id] = x;
+  }
+  return out;
+}
+
+/** Serialised form for localStorage (`ops`: the per-operator 潜能 / 练度, 0.2.2). */
+export const toStored = (entries, ops = {}) => ({ v: LOADOUT_VERSION, entries: entries || {}, ops: ops || {} });
+
+// ---- 潜能 / 练度 (0.2.2) ------------------------------------------------------------------------------------------------
+
+/**
+ * The effective 潜能 / 练度 of operator `charId` under the stored settings (the defaults for a missing entry or field).
+ * @param {Record<string, any>|null|undefined} ops @param {string|null|undefined} charId
+ * @returns {{ potential: number, cultivate: number, changed: boolean }}
+ */
+export function opsOf(ops, charId) {
+  const e = charId && isObj(ops) && Object.hasOwn(ops, charId) && isObj(ops[charId]) ? ops[charId] : null;
+  const potential = e && isPotential(e.potential) ? e.potential : POTENTIAL_DEFAULT;
+  const cultivate = e && isCultivate(e.cultivate) ? e.cultivate : CULTIVATE_DEFAULT;
+  return { potential, cultivate, changed: potential !== POTENTIAL_DEFAULT || cultivate !== CULTIVATE_DEFAULT };
+}
+
+/**
+ * Set (part of) one operator's 潜能 / 练度; an entry equal to the defaults is removed. Returns a new map.
+ * @param {Record<string, any>} ops @param {string} charId @param {{ potential?: number, cultivate?: number }} patch
+ */
+export function setOps(ops, charId, patch) {
+  if (typeof charId !== 'string' || !charId) return ops;
+  const cur = opsOf(ops, charId);
+  const potential = patch && isPotential(patch.potential) ? patch.potential : cur.potential;
+  const cultivate = patch && isCultivate(patch.cultivate) ? patch.cultivate : cur.cultivate;
+  const out = { ...(ops || {}) };
+  delete out[charId];
+  const e = {};
+  if (potential !== POTENTIAL_DEFAULT) e.potential = potential;
+  if (cultivate !== CULTIVATE_DEFAULT) e.cultivate = cultivate;
+  if (Object.keys(e).length) out[charId] = e;
+  return out;
+}
+
+/** Remove one operator's 潜能 / 练度 (恢复默认). */
+export function resetOps(ops, charId) {
+  if (!ops || !Object.hasOwn(ops, charId)) return ops;
+  const out = { ...ops };
+  delete out[charId];
+  return out;
+}
+
+/**
+ * The settings to send (`room.loadout.ops`): every stored entry the server would keep for the loaded data (an operator
+ * of the 干员调配 roster or the 自选 owned pool, `isOperator` — shared/protocol.js cultivationCharIds), the rest dropped one
+ * by one; defaults dropped.
+ * @param {Record<string, any>} ops @param {(charId: string) => boolean} isOperator
+ * @returns {Record<string, { potential?: number, cultivate?: number }>}
+ */
+export function sanitizeOps(ops, isOperator) {
+  const out = {};
+  for (const [id, e] of Object.entries(ops || {})) {
+    if (Object.keys(out).length >= LOADOUT_LIMITS.ops) break;
+    const one = {};
+    if (isPotential(e?.potential)) one.potential = e.potential;
+    if (isCultivate(e?.cultivate)) one.cultivate = e.cultivate;
+    if (!Object.keys(one).length) continue;
+    const res = checkLoadoutOps({ [id]: one }, isOperator);
+    if (res.ok && res.ops[id]) {
+      const x = {};
+      if (res.ops[id].potential !== POTENTIAL_DEFAULT) x.potential = res.ops[id].potential;
+      if (res.ops[id].cultivate !== CULTIVATE_DEFAULT) x.cultivate = res.ops[id].cultivate;
+      out[id] = x;
+    }
+  }
+  return out;
+}
 
 // ---- export / import ----------------------------------------------------------------------------------------------
 
@@ -103,23 +196,29 @@ export function mergeSkins(currentSkins, importedSkins) {
 /**
  * Portable payload of a loadout, as downloaded / copied by 导出.
  * @param {Record<string, any>} entries `room.loadout.entries`
- * @param {{ now?: number, skins?: Record<string, string>|null }} [o]
+ * @param {{ now?: number, ops?: Record<string, any>, skins?: Record<string, any>, diy?: Record<string, any> }} [o]
  */
-export function exportPayload(entries, { now = Date.now(), skins = null } = {}) {
+export function exportPayload(entries, { now = Date.now(), ops = {}, skins = null, diy = null } = {}) {
   const clean = {};
   for (const [id, e] of Object.entries(entries || {})) if (isObj(e)) clean[id] = { ...e };
+  const cleanOps = {};
+  for (const [id, e] of Object.entries(ops || {})) if (isObj(e)) cleanOps[id] = { ...e };
   const out = {
     kind: LOADOUT_EXPORT_KIND,
     v: LOADOUT_VERSION,
     exportedAt: new Date(Number.isFinite(now) ? now : Date.now()).toISOString(),
     count: Object.keys(clean).length,
     entries: clean,
+    ops: cleanOps,
   };
   if (skins && isObj(skins)) {
     const cleanSkins = sanitizeSkins(skins);
     if (Object.keys(cleanSkins).length > 0) {
       out.skins = cleanSkins;
     }
+  }
+  if (diy && isObj(diy) && Object.keys(diy).length > 0) {
+    out.diy = { ...diy };
   }
   return out;
 }
@@ -134,8 +233,10 @@ export function serializeExport(entries, opts) {
  * `{ [chessId]: { skill, module } }` map all work, as does the serialised text of any of them. Parsing is STRUCTURAL
  * only — the caller still runs `sanitizeEntries` against the loaded data, because a preset from another season may name
  * chess / skills / modules this build does not have. `__proto__` / `constructor` keys are skipped (see parseStored).
+ * A payload with `ops` (0.2.2) brings the per-operator 潜能 / 练度 too (`ops` in the result — absent when the payload has
+ * none: an older export leaves the current settings alone); a payload of settings only imports.
  * @param {any} input payload object or serialised text
- * @returns {{ ok: true, entries: Record<string, any>, skins?: Record<string, string>|null } | { ok: false, error: string }}
+ * @returns {{ ok: true, entries: Record<string, any>, ops?: Record<string, any>, skins?: Record<string, any>, diy?: Record<string, any> } | { ok: false, error: string }}
  */
 export function parseImport(input) {
   let raw = input;
@@ -150,13 +251,19 @@ export function parseImport(input) {
   // a newer envelope may reshuffle fields — refuse instead of silently reading it as something else
   if (v != null && v > LOADOUT_VERSION) return { ok: false, error: `这份调配来自更新的版本（v${v}），请先更新游戏` };
   const kind = typeof raw.kind === 'string' ? raw.kind : null;
-  if (kind && kind !== LOADOUT_EXPORT_KIND) return { ok: false, error: '这不是干员调配的数据' };
+  if (kind && kind !== LOADOUT_EXPORT_KIND && kind !== 'stronghold.diy') return { ok: false, error: '这不是干员调配的数据' };
   const entries = parseStored(raw);
+  const ops = isObj(raw.ops) ? parseStoredOps(raw) : null;
   const skins = isObj(raw.skins) ? sanitizeSkins(raw.skins) : null;
-  if (!Object.keys(entries).length && (!skins || !Object.keys(skins).length)) {
+  const diy = isObj(raw.diy) ? raw.diy : (kind === 'stronghold.diy' && isObj(raw.picks) ? raw.picks : null);
+  if (!Object.keys(entries).length && (!skins || !Object.keys(skins).length) && !(ops && Object.keys(ops).length) && !(diy && Object.keys(diy).length)) {
     return { ok: false, error: '里面没有有效的调配或皮肤条目' };
   }
-  return { ok: true, entries, skins };
+  const result = { ok: true, entries };
+  if (ops) result.ops = ops;
+  if (skins) result.skins = skins;
+  if (diy) result.diy = diy;
+  return result;
 }
 
 // ---- options & choices ---------------------------------------------------------------------------------------------
@@ -321,8 +428,9 @@ export function rosterOf(list) {
  * @param {Record<string, any>} entries stored loadout (for changedOnly)
  * @param {(id: string) => any} getChess
  * @param {(id: string) => any} [getBond] bond lookup (the search also matches bond names)
+ * @param {Record<string, any>|null} [ops] the per-operator 潜能 / 练度 (changedOnly counts them too)
  */
-export function filterRoster(roster, f = {}, entries = {}, getChess = () => null, getBond = () => null) {
+export function filterRoster(roster, f = {}, entries = {}, getChess = () => null, getBond = () => null, ops = null) {
   const q = String(f.query || '').trim().toLowerCase();
   return roster.filter((c) => {
     if (f.tier && c.tier !== f.tier) return false;
@@ -330,7 +438,7 @@ export function filterRoster(roster, f = {}, entries = {}, getChess = () => null
     if (f.bond && !(Array.isArray(c.bonds) && c.bonds.includes(f.bond))) return false;
     if (f.changedOnly) {
       const golden = c.goldenId ? getChess(c.goldenId) : null;
-      if (!effectiveChoice(entries, c, golden).changed) return false;
+      if (!effectiveChoice(entries, c, golden).changed && !opsOf(ops, c.charId).changed) return false;
     }
     if (q) {
       const hay = [c.name, c.appellation, c.subProfessionName, PROF_NAME[c.profession], ...(c.bonds || []).map((b) => getBond(b)?.name)]
@@ -342,12 +450,14 @@ export function filterRoster(roster, f = {}, entries = {}, getChess = () => null
 }
 
 /** Number of chess whose choice differs from the defaults (only loadout slots of the loaded data count: an entry of a
- *  retired / hidden chess is never sent nor applied). */
-export function changedCount(entries, getChess) {
+ *  retired / hidden chess is never sent nor applied) — with `ops` (0.2.2), also those whose operator's 潜能 / 练度 differ. */
+export function changedCount(entries, getChess, ops = null, roster = null) {
+  const ids = new Set(Object.keys(entries || {}));
+  if (ops && Object.keys(ops).length && Array.isArray(roster)) for (const c of roster) if (opsOf(ops, c.charId).changed) ids.add(c.chessId);
   let n = 0;
-  for (const id of Object.keys(entries || {})) {
+  for (const id of ids) {
     const { base, golden } = recordsOf(id, getChess);
-    if (isLoadoutSlot(base) && base.chessId === id && effectiveChoice(entries, base, golden).changed) n++;
+    if (isLoadoutSlot(base) && base.chessId === id && (effectiveChoice(entries, base, golden).changed || opsOf(ops, base.charId).changed)) n++;
   }
   return n;
 }
@@ -363,6 +473,26 @@ export function moduleBadge(rec, id = null) {
   const t = String(rec.typeName || rec.type || '');
   const m = t.match(/-([^-\s]+)$/);
   return m ? m[1] : t.slice(-1) || '?';
+}
+
+/**
+ * The two lines of a trait record (data `trait` / `traitBase`, ModuleRecord `traitOverride`, DATA.md §2): `base` = the
+ * 特性 the unit fights with — the class trait, or the module's own wording where the module rewrites it (official
+ * `overrideDescripton`) — and `added` = the module's extra line (official `additionalDescription`), or null.
+ * @param {any} trait
+ * @returns {{ base: string, added: string|null }}
+ */
+export function traitLines(trait) {
+  if (!isObj(trait)) return { base: '', added: null };
+  const base = String(trait.descRaw || trait.desc || '');
+  const added = trait.moduleDescRaw || trait.moduleDesc || null;
+  return { base, added: added ? String(added) : null };
+}
+
+/** The whole 特性 text of a trait record: its base line, then the module's extra line (`\n` between; RichText breaks it). */
+export function fullTraitText(trait) {
+  const { base, added } = traitLines(trait);
+  return base && added ? `${base}\n${added}` : base || added || '';
 }
 
 /**
@@ -402,4 +532,18 @@ export function skillTags(rec) {
     charges: Number(rec.maxChargeTime) > 1 ? Number(rec.maxChargeTime) : null,
     passive,
   };
+}
+
+/** Compact skill preview; SP and duration come from the selected form's generated record. */
+export function quickSkillTags(rec) {
+  const tags = skillTags(rec);
+  if (!rec) return { ...tags, recovery: '—', duration: '—' };
+  // ON_DEPLOY covers constant passives too. A finite duration distinguishes the deploy-and-expire skills;
+  // some older records carry it only in the blackboard. Never infer it from a localized description.
+  const seconds = Number(rec.duration) > 0 ? Number(rec.duration) : tags.passive ? Number(rec.bb?.duration) : 0;
+  const deployment = tags.passive && seconds > 0;
+  const recovery = deployment ? '—' : tags.passive ? t('被动') : tags.spKind === 'atk' ? t('攻回') : tags.spKind === 'def' ? t('受回') : t('自回');
+  const duration = rec.durationType === 'AMMO' ? t('弹药') : seconds > 0 ? `${seconds}s`
+    : tags.passive ? t('常驻') : Number(rec.duration) < 0 ? '∞' : t('瞬发');
+  return { ...tags, sp: deployment ? t('部署触发') : tags.sp, recovery, duration };
 }

@@ -23,7 +23,7 @@ const manifest = {
     'ui/battle': { img_chess_level_3: { path: '/assets/local/ui/battle/img_chess_level_3.png', w: 45, h: 45 } },
   },
 };
-// what server/index.js serves when data/local-assets.json is absent
+// what the server (server/http/static.js) serves when data/local-assets.json is absent
 const EMPTY_LOCAL = { version: 1, source: 'none', count: 0, groups: {} };
 
 let mode = 'ok';         // data/local-assets.json: 'ok' (the manifest above) | 'empty' (the server's stand-in) | 'missing' (404)

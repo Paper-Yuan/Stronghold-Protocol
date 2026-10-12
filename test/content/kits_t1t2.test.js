@@ -1,4 +1,4 @@
-// Content tests for the tier 1 / tier 2 operator kits (server/sim/content/kits/tier1.js, tier2.js).
+// Content tests for the tier 1 / tier 2 operator kits (server/sim/content/kits/ops/chess_char_1_*.js, chess_char_2_*.js).
 // Every chess (normal + elite where the elite adds something) runs a real battle through the harness and the test
 // asserts its signature effect with numbers taken from the chess blackboards (data/chess.json).
 import { test } from 'node:test';
@@ -132,12 +132,12 @@ test('1_04 深巡: fin darts pierce attack@max_target enemies on the line + 1 s 
   });
   const u = h.unit(id);
   h.step();
-  // 技能策略 (issue #4; the deliberate deviation of DESIGN §21.29): an enemy inside her initial 2-2 range is enough — the
-  // basic strategy casts it, no hit required
-  assert.equal(u.skill.rule, 'DEFAULT', '行动能力剥夺 is an offensive ranged skill, not a 重装 TAKE_DAMAGE one');
+  // 技能策略 (issue #4; the deliberate deviation of DESIGN §21.29, and since 0.2.0 the owner's ACTIVE_RANGE on top): an
+  // enemy inside the 3-2 she attacks with is enough — no hit required
+  assert.equal(u.skill.rule, 'ACTIVE_RANGE', '行动能力剥夺 is an offensive ranged skill, not a 重装 TAKE_DAMAGE one');
   h.run(3.5);
   assert.ok(u.skill.active);
-  assert.equal(h.hooksOf('skillStart').find((c) => c.unit === u).reason, 'DEFAULT', 'cast by the basic strategy');
+  assert.equal(h.hooksOf('skillStart').find((c) => c.unit === u).reason, 'ACTIVE_RANGE', 'cast on its running range');
   approx(u.s.atk, u.base.atk * (1 + bb.atk));
   const firstAtk = h.hooksOf('attack').find((c) => c.attacker === u && c.isSkill);
   assert.equal(firstAtk.targets.length, bb['attack@max_target'], 'hits every enemy of the line');
@@ -150,16 +150,20 @@ test('1_04 深巡: fin darts pierce attack@max_target enemies on the line + 1 s 
   done(h);
 });
 
-test('1_04 深巡 / 1_20 雷蛇 S2 技能策略: both 哨戒铁卫 S2s cast with an enemy in range, no hit needed (issue #4)', () => {
+test('1_04 深巡 / 1_20 雷蛇 S2 技能策略: both 哨戒铁卫 S2s cast with an enemy in range, no hit needed (issue #4); 深巡 on her 3-2', () => {
   // both S2s are offensive (深巡: range up + ATK/ASPD + piercing darts; 雷蛇: ATK +125 % + arts on 3 + stun); the official
   // 下半 重装 row (TAKE_DAMAGE for every MANUAL 重装 skill) made both wait for a hit, and the owner's deliberate deviation
-  // from it (DESIGN §21.29, after community feedback) gives them the basic strategy — the data and the kit say DEFAULT.
+  // from it (DESIGN §21.29, after community feedback) gives them the basic strategy — 雷蛇's data and kit say DEFAULT;
+  // 深巡's 3-2 strictly contains her 2-2, so since 0.2.0 the owner's ACTIVE_RANGE rule casts it on the 3-2 (2026-10-05).
   for (const id of ['chess_char_1_04_a', 'chess_char_1_04_b', 'chess_char_1_20_a', 'chess_char_1_20_b']) {
-    const h = run({ units: [{ chessId: id, row: 9, col: 4, carryState: READY }], enemies: [{ key: 'e', pos: [9, 6] }] });
+    const udflow = id.startsWith('chess_char_1_04');
+    // (9,7) = [0,3]: on 深巡's 3-2, not on her 2-2
+    const h = run({ units: [{ chessId: id, row: 9, col: 4, carryState: READY }], enemies: [{ key: 'e', pos: [9, udflow ? 7 : 6] }] });
     const u = h.unit(id);
-    assert.equal(u.skill.rule, 'DEFAULT', `${id}: an offensive skill, not the 重装 TAKE_DAMAGE row`);
+    const rule = udflow ? 'ACTIVE_RANGE' : 'DEFAULT';
+    assert.equal(u.skill.rule, rule, `${id}: an offensive skill, not the 重装 TAKE_DAMAGE row`);
     assert.ok(h.runUntil(() => u.skill.activations >= 1, 5), `${id}: casts while an enemy is in range and untouched`);
-    assert.equal(h.hooksOf('skillStart').find((c) => c.unit === u).reason, 'DEFAULT', `${id}: cast by the basic strategy`);
+    assert.equal(h.hooksOf('skillStart').find((c) => c.unit === u).reason, rule, `${id}: cast by ${rule}`);
     done(h);
   }
 });
@@ -215,7 +219,9 @@ test('1_06 刺玫: 荆藤庇荫 taunts the highest-HP ally in range and counters
   const counters = dealt(h, u, tagged('counter'));
   assert.ok(counters.length >= 2);
   for (const c of counters) approx(c.amount, u.s.atk * bb.atk_scale, 'counter = 20 % ATK arts');
-  assert.ok(heals(h, u).every((c) => c.target === yak), 'trait heal only on the protected ally during the skill');
+  // the counters' trait heal goes to the protected ally; her attacks heal the most injured ally in range — the protected
+  // one here, the only ally hit (test/content/feedback5-vendla-heal.test.js: herself when she is the most injured)
+  assert.ok(heals(h, u).every((c) => c.target === yak), 'trait heals on the protected ally (counters; the most injured)');
   // talent: the highest max-HP ally in range receives more healing
   yak.hp = yak.s.maxHp * 0.3;
   approx(h.b.heal(null, yak, 100), 100 * t.heal_scale, 'heal ×1.08');
@@ -492,7 +498,7 @@ test('1_15 盟约·辅助干员 (hidden): 迭代元素 18 % ATK 神经 + 灼燃 
 });
 
 for (const [idA, idB] of [['chess_char_1_16_a', 'chess_char_1_16_b'], ['chess_char_2_19_a', 'chess_char_2_19_b']]) {
-  test(`${idA.slice(11, 15)} 锡人: “大拉里” zone — ground enemies take atk_scale × ATK arts/s, allies heal; elite 凋敝魂灵 + module SP`, () => {
+  test(`${idA.slice(11, 15)} 锡人: “大拉里” zone — ground enemies take atk_scale × ATK arts/s, allies inside get 生命回复速度 (PRTS 备注: no heal); elite 凋敝魂灵 + module SP`, () => {
     const bb = bbOf(idA);
     const flyer = dummy('e_fly', { motion: 'FLY' });
     const h = run({
@@ -509,10 +515,25 @@ for (const [idA, idB] of [['chess_char_1_16_a', 'chess_char_1_16_b'], ['chess_ch
     assert.equal(z.length, bb.projectile_delay_time);
     for (const c of z) approx(c.amount, u.s.atk * bb.atk_scale);
     assert.equal(dealt(h, u, (c) => c.target === f && (c.dmg.tags || []).includes('zone')).length, 0, 'air units unaffected');
-    const zh = heals(h, u, (c) => c.target === yak);
-    assert.equal(zh.length, bb.projectile_delay_time);
-    for (const c of zh) approx(c.amount, u.s.atk * bb.hp_recovery_per_sec_ratio);
+    assert.equal(heals(h, u, (c) => c.target === yak).length, 0, 'no heal of hers: an hpRegen buff (PRTS 备注 「增加目标的“生命回复速度”属性」)');
     done(h);
+    // the ally inside: 生命回复速度 + her ATK at the cast × hp_recovery_per_sec_ratio for the unit's life, then gone
+    const h3 = run({
+      defs: { enemies: { e: dummy('e') } },
+      units: [{ chessId: idA, row: 10, col: 4, carryState: READY }, { chessId: 'chess_char_1_02_a', row: 10, col: 6 }],
+      enemies: [{ key: 'e', pos: [10, 5] }],
+    });
+    const u3 = h3.unit(idA), yak3 = h3.unit('chess_char_1_02_a');
+    const zone = () => yak3.buffs.find((b) => String(b.key).startsWith('tinman:zone:'));
+    assert.ok(h3.runUntil(() => !!zone(), 2), 'the unit is down');
+    const v = u3.s.atk * bb.hp_recovery_per_sec_ratio;
+    approx(zone().mods.hpRegen, v, 'ATK × ratio');
+    yak3.hp = yak3.s.maxHp * 0.3;
+    const hp0 = yak3.hp, t1 = h3.b.time;
+    h3.run(5);
+    assert.ok(Math.abs(yak3.hp - hp0 - v * (h3.b.time - t1)) <= 1.5, `regenerated ${yak3.hp - hp0} ≈ ${v * 5}`);
+    assert.ok(h3.runUntil(() => !zone(), bb.projectile_delay_time + 1), 'gone with the unit');
+    done(h3);
 
     const bbB = bbOf(idB), w = tal(idB, 1)['skill@damage_scale'], mb = hid(idB);
     const h2 = run({ defs: { enemies: { e: dummy('e') } }, units: [{ chessId: idB, row: 10, col: 4 }], enemies: [{ key: 'e', pos: [10, 5] }] });
@@ -588,7 +609,8 @@ test('1_19 野鬃: 夹枪冲锋 wider range, ATK +atk, pushes targets away; elit
   approx(u.s.atk, u.base.atk * (1 + bb.atk));
   const e = h.enemies()[0];
   assert.ok(e.x >= 6.5, `pushed to x=${e.x}`);
-  assert.ok(h.eventsOf('fx').some((f) => f[1] === 'displace'));
+  assert.ok(h.eventsOf('fx').some((f) => f[1] === 'displace' && f[4]?.keepFacing === true),
+    'Wild Mane S2 inherits the common push facing rule');
   done(h);
 
   const idb = 'chess_char_1_19_b', t = tal(idb);
@@ -1027,7 +1049,7 @@ test('2_13 蒂比: an incoming attack triggers 紧急赶场通知 and is dodged;
   done(h2);
 });
 
-test('2_14 调香师: 精调 ATK +atk / ASPD −50; 熏衣草 heals every ally atk_to_hp_recovery_ratio × ATK per s; elite heals 4', () => {
+test('2_14 调香师: 精调 ATK +atk / ASPD −50; 熏衣草 every ally 生命回复速度 +atk_to_hp_recovery_ratio × ATK (PRTS 备注: no heal); elite heals 4', () => {
   const id = 'chess_char_2_14_a', bb = bbOf(id), t = tal(id);
   const h = run({ units: [{ chessId: id, row: 10, col: 4, carryState: READY }, { chessId: 'chess_char_1_02_a', row: 9, col: 9 }, { chessId: 'chess_char_1_10_a', row: 10, col: 5 }] });
   const u = h.unit(id), far = h.unit('chess_char_1_02_a'), near = h.unit('chess_char_1_10_a');
@@ -1038,9 +1060,12 @@ test('2_14 调香师: 精调 ATK +atk / ASPD −50; 熏衣草 heals every ally a
   assert.ok(u.skill.active);
   approx(u.s.atk, u.base.atk * (1 + bb.atk));
   approx(u.s.aspd, u.base.aspd + bb.attack_speed);
-  const aura = heals(h, u, (c) => c.target === far);
-  assert.equal(aura.length, 3, 'one pulse per second, out of range too');
-  for (const c of aura) approx(c.amount, u.s.atk * t.atk_to_hp_recovery_ratio);
+  const v = u.s.atk * t.atk_to_hp_recovery_ratio;
+  for (const x of [far, near, u]) approx(x.s.hpRegen - x.base.hpRecoveryPerSec, v, `${x.defId}: 生命回复速度 +ATK × ratio (out of range too)`);
+  assert.equal(heals(h, u, (c) => c.target === far).length, 0, 'no heal of hers');
+  const hp0 = far.hp, t1 = h.b.time;
+  h.run(2);
+  assert.ok(Math.abs(far.hp - hp0 - far.s.hpRegen * (h.b.time - t1)) <= 1.5, `regenerated ${far.hp - hp0}`);
   done(h);
   const idb = 'chess_char_2_14_b';
   const ids = ['chess_char_1_02_a', 'chess_char_1_10_a', 'chess_char_1_12_a', 'chess_char_2_07_a', 'chess_char_1_18_a'];

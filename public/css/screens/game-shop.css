@@ -16,18 +16,21 @@
    on bench slots 5–9. */
 .gm__hud > .shopbar { pointer-events: none; }
 .shopbar__row, .shopbar__tools > button { pointer-events: auto; }
-.shopbar__tools { display: grid; grid-template-columns: auto auto; justify-content: end; align-items: center; gap: .06rem .12rem; }
+.shopbar__tools {
+  display: grid; grid-template-columns: auto auto; justify-content: end; align-items: center;
+  gap: .08rem .14rem; margin-bottom: .08rem;
+}
 .shopbar__remain {
   grid-column: 1 / -1; justify-self: end; pointer-events: none;
-  font-size: .16rem; color: var(--text-md); padding: .04rem .14rem; background: rgba(8, 11, 10, .78);
-  border-left: 3px solid var(--mint-500);
+  font-size: .17rem; color: var(--text-md); padding: .04rem .14rem; background: rgba(8, 11, 10, .85);
+  border-left: 3px solid var(--mint-500); border-radius: 0 2px 2px 0;
 }
-.shopbar__remain b { color: var(--mint-400); font-size: .2rem; margin-left: .04rem; }
+.shopbar__remain b { color: var(--mint-400); font-size: .22rem; margin-left: .05rem; }
 .toolbtn {
   --tb: var(--ice);
-  display: flex; align-items: center; gap: .08rem; height: .48rem; padding: 0 .14rem 0 .08rem;
-  background: rgba(8, 11, 10, .9); border: 2px solid var(--tb); color: var(--tb); font-size: .19rem; font-weight: 700; letter-spacing: .1em;
-  box-shadow: 0 .04rem .14rem rgba(0, 0, 0, .45);
+  display: flex; align-items: center; gap: .08rem; height: .52rem; padding: 0 .16rem 0 .1rem;
+  background: rgba(8, 11, 10, .92); border: 2px solid var(--tb); color: var(--tb); font-size: .21rem; font-weight: 700; letter-spacing: .1em;
+  box-shadow: 0 .04rem .14rem rgba(0, 0, 0, .5);
   transition: background var(--t-fast), box-shadow var(--t-fast), transform var(--t-fast);
 }
 .toolbtn:hover:not(:disabled) { background: rgba(8, 11, 10, .9); background: color-mix(in srgb, var(--tb) 16%, rgba(8, 11, 10, .9)); box-shadow: 0 0 .18rem transparent; box-shadow: 0 0 .18rem color-mix(in srgb, var(--tb) 40%, transparent); }
@@ -94,7 +97,7 @@
 }
 .scard--t1 { --tc: var(--tier-1); } .scard--t2 { --tc: var(--tier-2); } .scard--t3 { --tc: var(--tier-3); }
 .scard--t4 { --tc: var(--tier-4); } .scard--t5 { --tc: var(--tier-5); } .scard--t6 { --tc: var(--tier-6); }
-.scard__bg { position: absolute; top: 0; left: 0; right: 0; bottom: 0; width: 100%; height: 100%; inset: 0;
+.scard__bg { position: absolute; inset: 0;
   background: linear-gradient(180deg, #1c2320, #0f1311); /* fallback: no color-mix() (Safari < 16.2) */
   background:
   radial-gradient(120% 70% at 80% 30%, color-mix(in srgb, var(--tc) 28%, transparent), transparent 70%),
@@ -103,7 +106,7 @@
 .scard__water .bglyph { width: 100%; height: 100%; }
 .scard__art { position: absolute; right: -.14rem; top: 0; height: 100%; width: auto; max-width: none; object-fit: cover; pointer-events: none;
   -webkit-mask-image: linear-gradient(180deg, #000 55%, transparent 88%); mask-image: linear-gradient(180deg, #000 55%, transparent 88%); }
-.scard__top { position: absolute; left: .06rem; right: .06rem; top: .06rem; display: flex; align-items: flex-start; justify-content: space-between; z-index: 2; min-height: max(.32rem, 16px); }
+.scard__top { position: absolute; left: .06rem; right: .06rem; top: .06rem; display: flex; align-items: flex-start; justify-content: space-between; z-index: 2; }
 .scard__price { position: absolute; left: 50%; top: 0; transform: translateX(-50%); filter: drop-shadow(0 1px 3px #000); }
 .scard__free { position: absolute; left: 50%; top: .02rem; transform: translateX(-50%); font-family: var(--font-num); font-weight: 700; font-size: .16rem; letter-spacing: .1em; color: var(--text-on-mint); background: var(--mint-400); padding: 0 .1rem; clip-path: polygon(.08rem 0, calc(100% - .08rem) 0, 100% 50%, calc(100% - .08rem) 100%, .08rem 100%, 0 50%); }
 .scard__pips { display: flex; gap: .03rem; padding: .03rem .04rem; background: rgba(0, 0, 0, .6); }
@@ -130,18 +133,37 @@
 .scard__class { display: flex; align-items: center; gap: .05rem; font-size: .13rem; color: var(--text-lo); }
 .scard__prof { width: .18rem; height: .18rem; object-fit: contain; opacity: .85; }
 .scard__mergetag { position: absolute; z-index: 3; right: 0; top: .38rem; font-size: .12rem; font-weight: 700; padding: .01rem .06rem; background: var(--gold); color: #1d1400; letter-spacing: .08em; }
+/* 0.2.0 补位: a chess the player does not own shows its stand-in (ui/shopBar.js ChessCard) — a small 「替补」 mark */
+.scard__standin { position: absolute; z-index: 3; left: 0; top: .38rem; max-width: calc(100% - .1rem); font-size: max(.11rem, 8px); font-weight: 700; line-height: 1.4;
+  padding: 0 .05rem; background: var(--ice); color: var(--ice-900); letter-spacing: .08em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  opacity: .9; box-shadow: 0 1px 3px rgba(0, 0, 0, .6); }
+/* 0.2.0 自选编队: a DIY slot the player filled — the card is its operator, only in this player's shop (ui/shopBar.js) */
+.scard__diy { position: absolute; z-index: 3; left: 0; top: .38rem; font-size: .12rem; font-weight: 700; padding: .01rem .06rem;
+  background: var(--mint-500); color: var(--text-on-mint); letter-spacing: .08em; white-space: nowrap; box-shadow: 0 1px 3px rgba(0, 0, 0, .6); }
 .scard:not(.is-disabled):not(.scard--sold):hover { transform: translateY(-.08rem); border-color: var(--mint-400); box-shadow: 0 0 0 1px var(--mint-400), 0 .1rem .24rem rgba(23, 249, 183, .22); }
 .scard:not(.is-disabled):not(.scard--sold):active { transform: translateY(-.04rem); }
 .scard.is-disabled { cursor: not-allowed; }
 .shopbar.is-locked .scard:not(.scard--sold) { cursor: help; } /* not editable: a tap opens the detail */
 .scard.is-disabled .scard__art, .scard.is-disabled .scard__itemart { filter: grayscale(.7) brightness(.6); }
 .scard.is-merge { border-color: var(--gold); box-shadow: 0 0 0 1px rgba(255, 198, 0, .6), 0 0 .2rem rgba(255, 198, 0, .3); }
-.scard.is-frozen::after { content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0; width: 100%; height: 100%; inset: 0; z-index: 2; pointer-events: none;
+.scard.is-frozen::after { content: ''; position: absolute; inset: 0; z-index: 2; pointer-events: none;
   background: linear-gradient(180deg, rgba(159, 212, 255, .28), rgba(159, 212, 255, .12) 50%, rgba(159, 212, 255, .34));
   box-shadow: inset 0 0 0 2px rgba(159, 212, 255, .8), inset 0 0 .3rem rgba(159, 212, 255, .5); }
 .scard__ice { position: absolute; left: 50%; bottom: .06rem; transform: translateX(-50%); z-index: 4; width: .3rem; height: .3rem; display: grid; place-items: center; background: #0c1a26; border: 1px solid var(--ice); color: var(--ice); }
 .scard__ice .icon { width: .2rem; height: .2rem; }
 .scard--item { --tc: var(--gold-2); }
+/* 随机模式 盲盒卡: dark teal card, a "?" tier chip and the box glyph; no portrait to hide (the server sends no id) */
+.scard--mystery { --tc: #4fd6c2; }
+.scard--mystery .scard__bg { background:
+  radial-gradient(120% 70% at 80% 30%, color-mix(in srgb, #4fd6c2 20%, transparent), transparent 70%),
+  linear-gradient(180deg, #101d1b, #0a1110); }
+.scard__tierq { width: .32rem; height: .32rem; display: grid; place-items: center; background: rgba(0, 0, 0, .6); border: 1px solid var(--line-3); color: #4fd6c2; }
+.scard__tierq .icon { width: .2rem; height: .2rem; }
+.scard__mystery { position: absolute; left: 50%; top: .34rem; transform: translateX(-50%); width: 1rem; height: 1rem; display: grid; place-items: center;
+  background: radial-gradient(circle, rgba(79, 214, 194, .18), transparent 70%); }
+.scard__mystery .icon { width: .66rem; height: .66rem; color: #4fd6c2; filter: drop-shadow(0 .04rem .1rem rgba(0, 0, 0, .8)); animation: rm-box-float 2.6s ease-in-out infinite; }
+@keyframes rm-box-float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-.06rem); } }
+.scard__mdesc { font-size: .12rem; line-height: 1.45; color: var(--text-lo); }
 .scard__itemart { position: absolute; left: 50%; top: .38rem; transform: translateX(-50%); width: 1rem; height: 1rem; display: grid; place-items: center;
   background: radial-gradient(circle, rgba(255, 198, 0, .16), transparent 70%); }
 .scard__itemart img { width: 100%; height: 100%; object-fit: contain; filter: drop-shadow(0 .04rem .08rem #000); }
@@ -149,6 +171,9 @@
 .scard__idesc { font-size: .12rem; line-height: 1.45; color: var(--text-lo); display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
 .scard--sold { background: repeating-linear-gradient(135deg, rgba(255, 255, 255, .02) 0 .08rem, transparent .08rem .16rem), rgba(8, 11, 10, .75); border: 1px dashed var(--line-2); justify-content: center; align-items: center; }
 .scard__soldtxt { display: flex; flex-direction: column; align-items: center; gap: .02rem; font-size: .16rem; color: var(--text-dim); }
+/* a slot the 调度中心's upgrade opened and nothing filled yet (ui/shopBar.js EmptyCard, also .scard--sold): the bare frame — no hatching,
+   no SOLD OUT text */
+.scard--sold.scard--empty { background: rgba(8, 11, 10, .4); border-color: var(--line); }
 
 /* ---- funds card ---- */
 .funds { width: 1.18rem; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: .08rem; padding: .06rem; border-left: 1px solid var(--line); }
@@ -157,7 +182,7 @@
   background: linear-gradient(180deg, #2b2410, #16120a); color: var(--gold);
   clip-path: polygon(25% 0, 75% 0, 100% 50%, 75% 100%, 25% 100%, 0 50%);
 }
-.funds__hex::before { content: ''; position: absolute; top: 2px; left: 2px; right: 2px; bottom: 2px; inset: 2px; clip-path: inherit; border: 0; background: transparent; box-shadow: inset 0 0 0 2px var(--gold); }
+.funds__hex::before { content: ''; position: absolute; inset: 2px; clip-path: inherit; border: 0; background: transparent; box-shadow: inset 0 0 0 2px var(--gold); }
 .funds__coin { width: .34rem; height: .34rem; fill: var(--gold); filter: drop-shadow(0 0 .06rem rgba(255, 198, 0, .6)); }
 .funds__num { font-size: .36rem; line-height: 1; font-weight: 700; color: #fff; }
 .funds__label { font-size: .14rem; color: var(--text-lo); letter-spacing: .1em; }
@@ -177,20 +202,20 @@
 /* (no drag-to-sell zone: selling is the underframe's 出售 +N button — research 09 §5) */
 
 /* ---- merge reward (inline: replaces the operator cards) ---- */
-.shopbar__reward { display: flex; gap: .08rem; padding: 0 .08rem 0 0; position: relative; min-width: 0; flex: none; animation: pop-in var(--t-slow) var(--ease-out); }
-.shopbar__reward::before { content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0; width: 100%; height: 100%; inset: 0; border: 1px solid rgba(255, 198, 0, .55);
+.shopbar__reward { display: flex; gap: .08rem; padding: 0 .08rem 0 0; position: relative; animation: pop-in var(--t-slow) var(--ease-out); }
+.shopbar__reward::before { content: ''; position: absolute; inset: -.06rem -.04rem; border: 1px solid rgba(255, 198, 0, .55);
   box-shadow: 0 0 .24rem rgba(255, 198, 0, .18), inset 0 0 .3rem rgba(255, 198, 0, .08); pointer-events: none; }
 .rwtag {
-  width: auto; min-width: max(.92rem, 34px); flex: none; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: .06rem; padding: .08rem max(.04rem, 4px);
+  width: .92rem; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: .06rem; padding: .08rem .04rem;
   background: linear-gradient(180deg, rgba(255, 198, 0, .22), rgba(255, 198, 0, .06)); color: var(--gold); text-align: center;
 }
 .rwtag__icon { width: .34rem; height: .34rem; filter: drop-shadow(0 0 .08rem rgba(255, 198, 0, .6)); }
-.rwtag__title { writing-mode: vertical-rl; font-size: max(.22rem, 9px); font-weight: 900; letter-spacing: .2em; line-height: 1; padding: 0 max(.04rem, 4px); }
-.rwtag__micro { font-family: var(--font-display); font-size: max(.09rem, 8px); letter-spacing: .14em; opacity: .75; }
-.rwtag__sub { font-size: max(.12rem, 9px); color: var(--text-md); line-height: 1.3; white-space: nowrap; }
-.rwtag__more { color: var(--gold); font-size: max(.12rem, 9px); }
-.rwtag__later { display: flex; align-items: center; gap: .02rem; margin-top: .04rem; padding: .02rem .08rem; font-size: max(.13rem, 9px); color: var(--text-lo);
-  background: rgba(0, 0, 0, .35); border: 1px solid var(--line-2); white-space: nowrap; }
+.rwtag__title { writing-mode: vertical-rl; font-size: .22rem; font-weight: 900; letter-spacing: .2em; line-height: 1; }
+.rwtag__micro { font-family: var(--font-display); font-size: .09rem; letter-spacing: .14em; opacity: .75; }
+.rwtag__sub { font-size: .12rem; color: var(--text-md); line-height: 1.3; }
+.rwtag__more { color: var(--gold); }
+.rwtag__later { display: flex; align-items: center; gap: .02rem; margin-top: .04rem; padding: .02rem .08rem; font-size: .13rem; color: var(--text-lo);
+  background: rgba(0, 0, 0, .35); border: 1px solid var(--line-2); }
 .rwtag__later .icon { width: .12rem; height: .12rem; }
 .rwtag__later:hover { color: var(--text-hi); border-color: var(--line-3); }
 .shopbar__rwcards { display: flex; gap: .08rem; }
@@ -228,3 +253,13 @@
 .shopbar.has-armed .scard:not(.is-armed):not(.scard--sold) { filter: brightness(.72); }
 .lvcard.is-armed { background: linear-gradient(180deg, #ffd65a, #e0a800); color: #1d1400; box-shadow: 0 0 0 2px #fff4c2, 0 0 .3rem rgba(255, 198, 0, .5); animation: pulse-gold 1.1s var(--ease-in-out) infinite; }
 .lvcard.is-armed .lvcard__label { letter-spacing: .12em; padding-left: .12em; }
+
+/* 随机模式 盲盒重掷按钮（免费重掷，智能保底刷新） */
+.rwtag__reroll { display: flex; align-items: center; gap: .03rem; margin-top: .04rem; padding: .02rem .1rem; font-size: max(.13rem, 9px);
+  font-weight: 700; color: var(--gold); background: rgba(255, 198, 0, .1); border: 1px solid rgba(255, 198, 0, .55); white-space: nowrap;
+  box-shadow: 0 0 .06rem rgba(255, 198, 0, .35); animation: rwtag-reroll-pulse 1.4s ease-in-out infinite; }
+.rwtag__reroll .icon { width: .12rem; height: .12rem; }
+.rwtag__reroll .rwtag__rerolln { margin-left: .02rem; padding: 0 .04rem; border-radius: 3px; background: var(--gold); color: #1a1404; font-size: .1rem; }
+.rwtag__reroll:hover { color: #1a1404; background: var(--gold); }
+.rwtag__reroll:disabled { opacity: .5; animation: none; }
+@keyframes rwtag-reroll-pulse { 0%, 100% { box-shadow: 0 0 .06rem rgba(255, 198, 0, .35); } 50% { box-shadow: 0 0 .14rem rgba(255, 198, 0, .8); } }

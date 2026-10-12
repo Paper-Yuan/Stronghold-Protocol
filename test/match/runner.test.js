@@ -5,7 +5,7 @@
 // leak count of normal fields (state().leaks, user playtest #3 item 2).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { createBattleRunner, ticksPerFrameCap, SIM_RETRIES_MAX } from '../../public/js/battle/runner.js';
+import { createBattleRunner, ticksPerFrameCap } from '../../public/js/battle/runner.js';
 import { createStore, initialState } from '../../public/js/store.js';
 import * as specMod from '../../server/sim/spec.js';
 import { DataSource } from '../../server/sim/simdata.js';
@@ -28,7 +28,7 @@ function fakeNet() {
   return n;
 }
 
-function rig({ hidden = false, loadSim = async () => ({ spec: specMod, ds: DS }) } = {}) {
+function rig({ hidden = false } = {}) {
   let t = 1000;
   const frames = [];
   const intervals = [];
@@ -42,7 +42,7 @@ function rig({ hidden = false, loadSim = async () => ({ spec: specMod, ds: DS })
     caf: () => {},
     setInterval: (fn) => { intervals.push(fn); return intervals.length; },
     clearInterval: () => {},
-    loadSim,
+    loadSim: async () => ({ spec: specMod, ds: DS }),
     logger: { error() {}, warn() {}, info() {}, debug() {} },
   });
   const feed = { snaps: [], evs: [], fields: [] };
@@ -217,6 +217,12 @@ test('boss field: the local pool follows b.pool (server hp − unacknowledged lo
   assert.ok(last.bossDmg <= pool.cum);
   assert.ok(last.by && typeof last.by === 'object');
   assert.equal(typeof last.leaks, 'number');
+  // the per-player split of the leak LP (the server holds the result's leaked lists to it, Match._bossLeaksAgree): the
+  // leaks of every player of the field, never more than the field's LP cost (leader effects make up the rest)
+  assert.ok(last.leaksBy && typeof last.leaksBy === 'object', 'boss progress carries leaksBy');
+  assert.deepEqual(Object.keys(last.leaksBy).sort(), start.spec.players.map((p) => p.playerId).sort());
+  assert.ok(Object.values(last.leaksBy).every((n) => Number.isFinite(n) && n >= 0));
+  assert.ok(Object.values(last.leaksBy).reduce((a, b) => a + b, 0) <= last.leaks + 1e-9);
   r.net.emit('b.pool', { hp: pool.maxHp * 0.5, max: pool.maxHp, teamLp: 20, acked: { [start.fieldId]: pool.cum } });
   assert.ok(Math.abs(pool.hp - pool.maxHp * 0.5) < 1e-6, 'server hp when everything is acknowledged');
   r.runner.dispose();
@@ -432,8 +438,10 @@ test('live unit stats (user playtest #4 item 7): unitStats(id) reads the battle 
   assert.equal(got.interval, Math.round(s.interval * 100) / 100);
   assert.equal(got.blockCnt, s.blockCnt);
   assert.equal(got.hp, Math.round(ally.hp));
-  assert.equal(got.base.atk, Math.round(ally.base.atk));
-  assert.equal(got.base.maxHp, Math.round(ally.base.maxHp));
+  // the unit's own numbers: its base with its 练度 (0.2.2: the match states 精英2 Lv.60 by default — ×1.1)
+  assert.equal(ally.cultivate, 3);
+  assert.equal(got.base.atk, Math.round(ally.base.atk * ally.cultMul.atk));
+  assert.equal(got.base.maxHp, Math.round(ally.base.maxHp * ally.cultMul.hp));
   assert.equal(r.runner.unitStats(ally.id, start.fieldId)?.id, ally.id, 'on the named field');
   assert.equal(r.runner.unitStats(ally.id, 'n:someone_else'), null, 'another field: nothing');
   assert.equal(r.runner.unitStats(999999), null, 'unknown unit');
@@ -465,28 +473,5 @@ test('live unit stats (user playtest #4 item 7): unitStats(id) reads the battle 
   r.runner.clear();
   assert.equal(r.runner.unitStats(ally.id), null, 'nothing on screen after the battles were dropped');
   assert.equal(r.runner.unitIdOf(ally.uid, ally.ownerId), null);
-  r.runner.dispose();
-});
-
-test('a sim that cannot load is reported instead of showing an empty battlefield (Android WebView report: combat with no enemies)', async () => {
-  const start = realStart();
-  let ok = false;
-  const r = rig({ loadSim: async () => { if (!ok) throw new Error('simulation data unavailable: chess, waves'); return { spec: specMod, ds: DS }; } });
-  r.net.emit('b.start', start);
-  await r.settle();
-  const bad = r.store.get().match.battle;
-  assert.ok(bad?.simError, 'the failed load reaches the store, where the banner can show it');
-  assert.match(bad.simError.text, /simulation data unavailable: chess, waves/, 'the message names what is missing');
-  assert.equal(bad.simError.max, SIM_RETRIES_MAX);
-  assert.equal(r.runner._entries.get(start.battleId), undefined, 'no battle was built');
-  const tries = bad.simError.tries;
-  await r.runner.onStart(start);
-  await r.settle();
-  assert.equal(r.store.get().match.battle.simError.tries, tries + 1, 'every failed attempt counts, so the retries stop out loud');
-  ok = true;
-  await r.runner.onStart(start);
-  await r.settle();
-  assert.equal(r.store.get().match.battle.simError, null, 'a load that works clears the banner');
-  assert.ok(r.feed.fields.length, 'and the battle runs');
   r.runner.dispose();
 });

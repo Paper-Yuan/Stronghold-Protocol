@@ -88,7 +88,7 @@ test('unchanged: a Begin clip still runs into its queued next clip, a skill with
   const n = actor('char_1014_nearl2', 2);   // 耀骑士临光 S3: no Begin, own Idle — plays that idle at once
   n.setSkill(true);
   assert.deepEqual(n.log, [['set', 'Skill_3_Idle', true]]);
-  const u = actor('char_337_utage', 1);     // 宴: Begin → loop, unchanged
+  const u = actor('char_337_utage', 0);     // 宴 S1 分神: Begin → loop, unchanged (her S2 has no skill clip, DESIGN §25.22.9)
   u.setSkill(true);
   assert.deepEqual(u.log, [['set', 'Skill_Start', false], ['queue', 'Skill_Loop', true]]);
 });

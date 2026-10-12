@@ -1,12 +1,17 @@
 // server/match/invariants.js — engine invariants (DESIGN §11) as a non-throwing check. Used by the test harness
+// (i18n-ignore-file: developer reports in English with the game's terms, never shown to players — docs/I18N.md)
 // (test/match/harness.js checkInvariants asserts the list is empty) and by tools/matchrun.mjs --check sweeps.
 //
 // collectViolations(m) → string[] (empty when every invariant holds):
-//   pool     0 ≤ left ≤ cap and left + Σ copies held by pieces == cap per base chess; non-pool chess hold 0 copies
+//   pool     raw balance ≤ cap and raw balance + Σ copies held by pieces == cap (public availability is clamped at zero) per base chess; non-pool chess hold 0 copies;
+//            every capped shop item is held by at most its cap (normal occupies 1, upgraded 2; effect-only items have no cap)
+//            a player's 自选 stock (0.2.0, player/diy.js) the same against its own pieces of each slotted slot — a DIY
+//            piece is always a slotted slot of its owner's, and a DIY shop / reward card one of its stocked slots
 //   economy  funds / pendingFunds non-negative integers, LP finite, shop level in range, prices ≥ 0
-//   pieces   unique uids; hand 10 / temp 5 slots; chess carry ≤ equipPerChess known items; a normal piece holds ≤ 1
-//            copy, an elite ≤ goldenCopies; merges are immediate (never `mergeCount` normal copies of one chess, never
-//            two copies of a mergeable normal item); every token's owner chess is deployed
+//   pieces   unique uids; hand 10 / temp 5 slots; temp holds pieces only while the hand is full (a free hand slot pulls
+//            a temp piece in, PlayerState._fillHandFromTemp); chess carry ≤ equipPerChess known items; a normal piece
+//            holds ≤ 1 copy, an elite ≤ goldenCopies; merges are immediate (never `mergeCount` normal copies of one
+//            chess, never two copies of a mergeable normal item); every token's owner chess is deployed
 //   board    tiles inside the own region and legal for the piece (a range-bound summon inside its owner's attack
 //            range); no items on the board; chess count ≤ deploy cap
 //            (where a merge's elite goes — a consumed deployed copy's tile, else the hand — needs the state before the
@@ -14,6 +19,8 @@
 //   bonds    ps.bonds equals a fresh computeBonds() (every mutation recomputed them); every bond's layers 0 … BOND_LAYER_CAP
 //   shop     slot count follows the rolled layout; ids known; banned chess never offered by the shop / rewards
 //   elim.    an eliminated player owns nothing (board, hand, temp, shop, offers, bounties, funds)
+//   choice   a player's open 教鞭 choice (`personalChoice`) is one of an alive, not-Ready player in the PREP of its own round,
+//            with one to three different cards
 //   match    phase known; teamLp / boss pool within range; combat fields match the alive players
 
 import { PHASE, BOND_LAYER_CAP } from '../../shared/constants.js';
@@ -46,12 +53,17 @@ export function collectViolations(m, { limit = 25 } = {}) {
 
   for (const ps of m.players.values()) {
     const id = ps.playerId;
+    // the player's view of the data (its slotted 自选 slots are its operators) and the copies its 自选 pieces hold
+    const pgd = ps.gd || gd;
+    const diyHeld = new Map();
     if (!Number.isInteger(ps.funds) || ps.funds < 0) fail(`${id}: funds ${ps.funds}`);
     if (!Number.isInteger(ps.pendingFunds) || ps.pendingFunds < 0) fail(`${id}: pendingFunds ${ps.pendingFunds}`);
     if (!Number.isFinite(ps.lp)) fail(`${id}: lp ${ps.lp}`);
     if (ps.alive && m.phase !== PHASE.SETTLE && ps.lp <= 0 && m.teamLp == null && m.round > 0 && ps.bandId) fail(`${id}: alive with lp ${ps.lp}`);
     if (ps.hand.length !== gd.benchSize) fail(`${id}: hand has ${ps.hand.length} slots`);
     if (ps.temp.length !== gd.tempSize) fail(`${id}: temp has ${ps.temp.length} slots`);
+    // 临时整备区 = overflow only (PRTS 卫戍协议/帮助 §手牌区 "常规手牌区出现空位时自动移入", GitHub #82)
+    if (ps.temp.some(Boolean) && ps.hand.some((x) => x == null)) fail(`${id}: a temp piece waits while a hand slot is free`);
     if (!(ps.shop.level >= 1 && ps.shop.level <= gd.maxShopLevel)) fail(`${id}: shop level ${ps.shop.level}`);
     if (!(ps.shop.upgradePrice >= 0)) fail(`${id}: upgradePrice ${ps.shop.upgradePrice}`);
     if (!Number.isInteger(ps.shop.freeRefreshes) || ps.shop.freeRefreshes < 0) fail(`${id}: freeRefreshes ${ps.shop.freeRefreshes}`);
@@ -66,6 +78,12 @@ export function collectViolations(m, { limit = 25 } = {}) {
       if (ps.shop.slots.length || ps.offers.length || ps.bounties.length) fail(`${id}: eliminated but keeps shop/offers/bounties`);
       if (ps.funds || ps.pendingFunds) fail(`${id}: eliminated with funds ${ps.funds}+${ps.pendingFunds}`);
     }
+    // 教鞭's personal choice (Match.offerBountyChoice): resolved before the prep ends — by its owner, the deadline or the bot
+    const pc = ps.personalChoice;
+    if (pc) {
+      if (!ps.alive || ps.ready || m.phase !== PHASE.PREP || pc.round !== m.round) fail(`${id}: a personal choice outside its own prep (${m.phase} R${m.round}, offered in R${pc.round})`);
+      if (!Array.isArray(pc.cards) || !pc.cards.length || pc.cards.length > 3 || new Set(pc.cards.map((c) => c && c.effectId)).size !== pc.cards.length) fail(`${id}: personal choice of ${pc.cards && pc.cards.length} cards`);
+    }
 
     // pieces
     const all = [...ps.board.values(), ...ps.hand.filter(Boolean), ...ps.temp.filter(Boolean)];
@@ -78,8 +96,9 @@ export function collectViolations(m, { limit = 25 } = {}) {
     for (const p of all) {
       note(ps, p);
       if (p.kind === 'chess') {
-        const rec = gd.chess(p.id);
+        const rec = pgd.chess(p.id);
         if (!rec) { fail(`${id}: unknown chess ${p.id}`); continue; }
+        if (rec.isDiy && !rec.diyFor) fail(`${id}: owns ${p.id}, a 自选 slot it has not filled`);
         if (!Array.isArray(p.items) || p.items.length > gd.equipPerChess) fail(`${id}: ${p.id} carries ${p.items && p.items.length} items`);
         for (const it of p.items || []) {
           note(ps, it);
@@ -90,12 +109,13 @@ export function collectViolations(m, { limit = 25 } = {}) {
         const maxCopies = rec.isGolden ? gd.goldenCopies : 1;
         if (!Number.isInteger(p.poolCopies) || p.poolCopies < 0 || p.poolCopies > maxCopies) fail(`${id}: ${p.id} holds ${p.poolCopies} copies`);
         const base = gd.baseIdOf(p.id);
-        held.set(base, (held.get(base) || 0) + (p.poolCopies || 0));
+        const tally = rec.isDiy ? diyHeld : held;
+        tally.set(base, (tally.get(base) || 0) + (p.poolCopies || 0));
       } else if (p.kind === 'item') {
         if (!gd.item(p.id)) fail(`${id}: unknown item ${p.id}`);
         countItem(p);
       } else if (p.kind === 'token') {
-        if (!gd.token(p.id)) fail(`${id}: unknown token ${p.id}`);
+        if (!pgd.token(p.id)) fail(`${id}: unknown token ${p.id}`);
         if (!(p.count >= 1)) fail(`${id}: token stack count ${p.count}`);
         // summons exist only while their owner is deployed (withdrawing / selling / merging it removes them)
         if (!boardChessUids.has(p.ownerUid)) fail(`${id}: token ${p.uid} without a deployed owner (${p.ownerUid})`);
@@ -112,18 +132,21 @@ export function collectViolations(m, { limit = 25 } = {}) {
       const [r, c] = parseKey(k);
       if (!(r >= FIELD.r0 && r <= FIELD.r1 && c >= FIELD.c0 && c <= FIELD.c1)) fail(`${id}: piece outside the board at ${k}`);
       if (p.kind === 'item') { fail(`${id}: item ${p.id} stands on the board`); continue; }
-      const rec = p.kind === 'token' ? gd.token(p.id) : gd.chess(p.id);
+      const rec = p.kind === 'token' ? pgd.token(p.id) : pgd.chess(p.id);
       const cls = p.kind === 'chess' ? placeClass(ps, rec) : positionClass(rec);
       if (rec && !canPlace(dmap, cls, r, c)) fail(`${id}: ${p.id} on an illegal tile ${k}`);
       // a "只能部署在召唤者攻击范围内" summon inside its owner's attack range (PlayerState.summonRange: a pure read)
       const range = p.kind === 'token' && typeof ps.summonRange === 'function' ? ps.summonRange(p) : null;
       if (range && !range.has(k)) fail(`${id}: ${p.id} on ${k}, outside its owner's attack range`);
+      // an outside-bound summon (战术锚点, PlayerState.summonExcluded) outside it
+      const out = p.kind === 'token' && typeof ps.summonExcluded === 'function' ? ps.summonExcluded(p) : null;
+      if (out && out.has(k)) fail(`${id}: ${p.id} on ${k}, inside its owner's attack range`);
       if (p.kind === 'chess') deployed++;
     }
     if (deployed > ps.deployCap) fail(`${id}: ${deployed} chess deployed > cap ${ps.deployCap}`);
     // merges are immediate
     const copies = new Map();
-    for (const p of all) if (p.kind === 'chess' && gd.chess(p.id) && !gd.isGolden(p.id)) { const b = gd.baseIdOf(p.id); copies.set(b, (copies.get(b) || 0) + 1); }
+    for (const p of all) if (p.kind === 'chess' && pgd.chess(p.id) && !gd.isGolden(p.id)) { const b = gd.baseIdOf(p.id); copies.set(b, (copies.get(b) || 0) + 1); }
     for (const [b, n] of copies) {
       const need = gd.mergeCount(b);
       if (need > 1 && gd.goldenIdOf(b) && n >= need) fail(`${id}: owns ${n} normal copies of ${b} (merges at ${need})`);
@@ -137,7 +160,7 @@ export function collectViolations(m, { limit = 25 } = {}) {
     }
     // bonds are up to date
     try {
-      const fresh = computeBonds(gd, ps);
+      const fresh = computeBonds(pgd, ps);
       if (JSON.stringify(fresh) !== JSON.stringify(ps.bonds)) fail(`${id}: stale bonds (missing recompute)`);
     } catch (e) {
       fail(`${id}: computeBonds threw ${e && e.message}`);
@@ -151,24 +174,44 @@ export function collectViolations(m, { limit = 25 } = {}) {
         if (s.kind === 'chess' ? !gd.chess(s.id) : !gd.item(s.id)) fail(`${id}: shop slot ${i} unknown ${s.kind} ${s.id}`);
         if (!Number.isInteger(s.basePrice) || s.basePrice < 0) fail(`${id}: shop slot ${i} basePrice ${s.basePrice}`);
         if (s.kind === 'chess' && banned.has(gd.baseIdOf(s.id))) fail(`${id}: banned chess ${s.id} in the shop`);
+        if (s.kind === 'chess' && gd.chess(s.id)?.isDiy && !(ps.diyStock && ps.diyStock.has(gd.baseIdOf(s.id)))) fail(`${id}: 自选 slot ${s.id} in the shop without its stock`);
       });
       for (const o of ps.offers) {
         for (const s of o.slots || []) {
           if (s.kind === 'item' ? !gd.item(s.id) : !gd.chess(s.id)) fail(`${id}: bad reward slot ${s.kind} ${s.id}`);
           if (s.kind !== 'item' && banned.has(gd.baseIdOf(s.id)) && o.source === 'merge') fail(`${id}: banned chess ${s.id} offered as a merge reward`);
+          if (s.kind !== 'item' && gd.chess(s.id)?.isDiy && !(ps.diyStock && ps.diyStock.has(gd.baseIdOf(s.id)))) fail(`${id}: 自选 slot ${s.id} offered without its stock`);
         }
         if (!o.slots || !o.slots.length || o.slots.length > 6) fail(`${id}: reward offer with ${o.slots && o.slots.length} slots`);
       }
     }
+    // 自选 stock accounting (player/diy.js): left + held == cap per slotted slot; a slot without stock holds nothing
+    for (const [base, e] of ps.diyStock ? ps.diyStock.entries : []) {
+      if (!(Number.isInteger(e.left) && e.left <= e.cap)) fail(`${id}: 自选 stock ${base}: balance ${e.left} cap ${e.cap}`);
+      const h = diyHeld.get(base) || 0;
+      if (e.left + h !== e.cap) fail(`${id}: 自选 stock ${base}: left ${e.left} + held ${h} != cap ${e.cap}`);
+    }
+    for (const [base, n] of diyHeld) if (!(ps.diyStock && ps.diyStock.has(base)) && n !== 0) fail(`${id}: 自选 slot ${base} without stock holds ${n} copies`);
   }
 
   // shared pool accounting
   for (const [base, e] of m.pool.entries) {
-    if (!(e.left >= 0 && e.left <= e.cap)) fail(`pool ${base}: left ${e.left} cap ${e.cap}`);
+    if (!(Number.isInteger(e.left) && e.left <= e.cap)) fail(`pool ${base}: balance ${e.left} cap ${e.cap}`);
     const h = held.get(base) || 0;
     if (e.left + h !== e.cap) fail(`pool ${base}: left ${e.left} + held ${h} != cap ${e.cap}`);
   }
   for (const [base, n] of held) if (!m.pool.has(base) && n !== 0) fail(`non-pool chess ${base} holds ${n} copies`);
+
+  // Shared shop equipment. The chess pool above may go negative (Mimic). Item stock may not: held ≤ cap.
+  if (m.itemPool && gd.raw.items) {
+    for (const [id, rec] of Object.entries(gd.raw.items)) {
+      if (!rec || rec.isGolden) continue;
+      const cap = m.itemPool.cap(id);
+      if (!Number.isInteger(cap)) continue;
+      const h = m.itemPool.held(id);
+      if (h > cap) fail(`item ${id}: held ${h} > cap ${cap}`);
+    }
+  }
 
   // combat fields
   if (m.phase === PHASE.COMBAT) {

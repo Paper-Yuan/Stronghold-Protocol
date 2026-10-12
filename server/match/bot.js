@@ -37,7 +37,8 @@
 //      tiles, where it blocks — except one whose trait reads 「可以放置于远程位」 (歌蕾蒂娅, 崖心, 见行者, any module:
 //      placeClass 'all', shared/highGround.js), which takes a 高台 whose range covers the enemy road, else the ground
 //      (owner 2026-10-04 for the 高台 preference, 2026-10-05 for who may use one). It stays a blocker in the lineup
-//      (basePositionClass). Each unit's range grid — the one it is
+//      (basePositionClass). A blocker whose range grid is its own tile only (range 0-1: 角峰, 古米, 泡泡, 折桠, 菲莱, 蛇屠箱,
+//      塞雷娅, 余) is planned on a free tile of the enemy road first: off it nothing is blocked or hit. Each unit's range grid — the one it is
 //      deployed with, rangeRec (loadoutRecord attackRangeGrid) — is rotated per direction (DESIGN §3; RIGHT is tried first
 //      and kept on ties, so symmetric ranges and melee units whose front adds nothing stay facing the gates), so
 //      ranged units turn toward the enemy path tiles they cover best and blockers toward the road; on 气流 tiles
@@ -119,6 +120,12 @@ const MAX_REFRESHES = 16;
 const BENCH_BUDGET = 6;
 /** Shop level the bot aims for at the start of round r (index = round). */
 const LEVEL_TARGET = [1, 1, 1, 2, 2, 3, 3, 4, 4, 4, 5, 5, 6, 6, 6, 6];
+/**
+ * AI 托管 of a human with 自选 picks (0.2.0; bots field none): the buy score of one of the player's own slotted pieces —
+ * the operator the player chose to field (follow-up #13: under AI 托管 they were rarely bought) — and the 调度中心 is
+ * levelled one round earlier for the step that opens a slotted tier (levelUp).
+ */
+export const DIY_PIECE_BONUS = 12;
 const TIER_POWER = [0, 10, 12.5, 15, 18, 21.5, 25];
 /** Prep-side 特质 that keep adding bond layers every round / every refresh (a player's main layer engine). */
 const RECURRING_TRAIT_EVENTS = new Set(['SERVER_PREP_START', 'SERVER_PREP_FIN', 'SERVER_REFRESH_SHOP']);
@@ -135,7 +142,7 @@ const DEFAULT_MELEE_RANGE = [[0, 0], [0, 1]];
  * without inactive bonds keep exactly the earlier picks.
  */
 export function botPickBand(m, ps) {
-  const gd = m.gd;
+  const gd = ps?.gd || m.gd;
   const ids = gd.bandIds();
   if (!ids.length) return gd.defaultBandId;
   const lateFunds = (id) => /暂存/.test(String(gd.band(id)?.desc || ''));
@@ -187,7 +194,7 @@ export function botPickCard(m, ps, cards, available) {
  * first blocker's hold on the ground. 0.5 without data.
  */
 export function bountyKillChance(m, ps, card) {
-  const gd = m.gd;
+  const gd = ps?.gd || m.gd;
   const e = card && gd.enemy(card.enemyKey);
   if (!e || !e.stats) return 0.5;
   const model = fieldModel(m, ps);
@@ -276,7 +283,8 @@ function tacticScore(m, ps, card) {
 // ---------------------------------------------------------------------------------------------------
 // evaluation helpers
 
-const chessRec = (m, id) => m.gd.chess(id);
+// a player's record of a chess id (its data view: a human's slotted 自选 slots are its operators, 0.2.0 player/diy.js)
+const chessRec = (m, id, ps = null) => (ps?.gd || m.gd).chess(id);
 const isHealer = (c) => !!c && (c.dmgType === 'heal' || c.attackKind === 'heal');
 // the record's own position: a 钩索师 / 推击手 is a MELEE blocker like any other (a 高台 does not block)
 const isBlocker = (c) => !!c && basePositionClass(c) === 'melee' && (c.stats?.blockCnt ?? 1) > 0 && c.attackKind !== 'none';
@@ -293,7 +301,7 @@ function ownedBonds(m, ps, exclude = null) {
     const base = m.gd.baseIdOf(p.id);
     if (seen.has(base)) continue;
     seen.add(base);
-    const c = chessRec(m, p.id);
+    const c = chessRec(m, p.id, ps);
     for (const b of (c && c.bonds) || []) counts.set(b, (counts.get(b) || 0) + 1);
   }
   return { counts, bases: seen };
@@ -395,7 +403,7 @@ function keeperBases(m, ps, plan) {
   const out = new Set();
   for (const p of ps.board.values()) if (p.kind === 'chess') out.add(m.gd.baseIdOf(p.id));
   for (const p of ps.allChess()) {
-    const c = chessRec(m, p.id);
+    const c = chessRec(m, p.id, ps);
     if (!c) continue;
     const bonds = c.bonds || [];
     if ((plan.focus && bonds.includes(plan.focus)) || (plan.second && bonds.includes(plan.second)) || c.tier >= ps.shop.level - 1) out.add(m.gd.baseIdOf(p.id));
@@ -407,7 +415,7 @@ function keeperBases(m, ps, plan) {
 function roles(m, ps) {
   const r = { blockers: 0, antiAir: 0, healers: 0, total: 0 };
   for (const p of ps.allChess()) {
-    const c = chessRec(m, p.id);
+    const c = chessRec(m, p.id, ps);
     if (!c) continue;
     r.total++;
     if (isBlocker(c)) r.blockers++;
@@ -475,7 +483,7 @@ function traitsOf(m, c) {
 
 /** Stand-alone value of an owned piece (no bond context): power, items, role fit, layer engines. */
 function unitBase(m, piece, ctx) {
-  const c = chessRec(m, piece.id);
+  const c = chessRec(m, piece.id, ctx.ps);
   if (!c) return 0;
   let v = power(c) + (piece.items ? piece.items.length * 5 : 0);
   if (m.round <= 11) v += traitsOf(m, c).recurring * 4;
@@ -487,7 +495,7 @@ function unitBase(m, piece, ctx) {
 
 /** Value of an owned piece for bench / sell decisions (its bonds counted against the other owned chess). */
 function pieceValue(m, ps, piece, ctx) {
-  const c = chessRec(m, piece.id);
+  const c = chessRec(m, piece.id, ps);
   if (!c) return 0;
   return unitBase(m, piece, ctx) + bondValue(m, c, ownedBonds(m, ps, piece.uid), ctx.focus, ctx.second) * 0.8;
 }
@@ -497,7 +505,7 @@ function pieceValue(m, ps, piece, ctx) {
  * members still count for BOARD_AND_DECK bonds) + composition (blockers, anti-air when the wave flies, ≤ 2 healers).
  */
 function lineupScore(m, ps, set, ctx) {
-  const gd = m.gd;
+  const gd = ps?.gd || m.gd;
   const board = new Map();
   set.forEach((p, i) => board.set(`x${i}`, p));
   const inSet = new Set(set.map((p) => p.uid));
@@ -520,7 +528,7 @@ function lineupScore(m, ps, set, ctx) {
   let blockers = 0;
   let air = 0;
   let healers = 0;
-  for (const p of set) { const c = chessRec(m, p.id); if (isBlocker(c)) blockers++; if (hitsFly(c)) air++; if (isHealer(c)) healers++; }
+  for (const p of set) { const c = chessRec(m, p.id, ps); if (isBlocker(c)) blockers++; if (hitsFly(c)) air++; if (isHealer(c)) healers++; }
   v -= Math.max(0, Math.min(2, ctx.roles.blockers) - blockers) * 15;
   if (ctx.fly > 0 && ctx.roles.antiAir > 0 && air === 0) v -= 12;
   v -= Math.max(0, healers - 2) * 10;
@@ -562,10 +570,15 @@ function chooseLineup(m, ps, ctx) {
   return { set, bench, score };
 }
 
+/** buyScore with a fresh context (tests). */
+export function buyScoreOf(m, ps, id) {
+  return buyScore(m, ps, id, context(m, ps));
+}
+
 /** Shop / reward score of acquiring one copy of chess `id` (0 = not worth it). */
 function buyScore(m, ps, id, ctx) {
-  const gd = m.gd;
-  const c = chessRec(m, id);
+  const gd = ps?.gd || m.gd;
+  const c = chessRec(m, id, ps);
   if (!c) return 0;
   let s = power(c) * 0.6;
   const tr = traitsOf(m, c);
@@ -588,6 +601,13 @@ function buyScore(m, ps, id, ctx) {
   if (isHealer(c)) s += ctx.roles.healers === 0 && m.round >= 3 ? 6 : ctx.roles.healers >= 2 ? -14 : -3;
   if (c.attackKind === 'none' && !isHealer(c)) s -= 4;
   if (ctx.model && !isHealer(c)) s += ARMOR_WEIGHT * 0.6 * (armorFit(ctx.model, c) - 0.6);
+  // the player's own 自选 piece (a slotted slot: its composed record carries diyFor) — AI 托管 of a human with picks
+  if (c.diyFor) s += DIY_PIECE_BONUS;
+  // [ASSUMED] A soft 18-point cooperation weight (PR #407), not an official rule or a reserved card.
+  // Leave high-tier shared chess to living teammates whose opening strategy needs its faction.
+  // Humans and bots count equally; a single soft penalty still allows valuable own merges.
+  if (c.tier >= 5 && !c.isGolden && !c.diyFor && m.pool.has(base) && m.alivePlayers().some((mate) =>
+    mate !== ps && gd.bandBondIds(mate.bandId).some((b) => !gd.modeInactiveBonds.has(b) && c.bonds.includes(b)))) s -= 18;
   return s;
 }
 
@@ -641,7 +661,7 @@ export function fieldModel(m, ps = null) {
   const wave = m.wave || (boss && boss.wave);
   const cacheKey = `${m.round}|${m.stageId}|${wave ? wave.templateId : 'boss'}|${boss ? boss.side : ''}`;
   if (m._botPath && m._botPath.key === cacheKey) return m._botPath;
-  const gd = m.gd;
+  const gd = ps?.gd || m.gd;
   const st = m.stage;
   const gpaths = (st && (st.groundPathsWithDevices || st.groundPaths)) || {};
   const routesOut = [];
@@ -820,7 +840,9 @@ export function rangeRec(ps, rec) {
   if (cache.has(key)) return cache.get(key);
   let out = rec;
   try {
-    const g = attackRangeGrid(loadoutRecord(rec, resolveRecordLoadout(rec, lo)));
+    // 0.2.0 补位: a human's not-owned chess (AI 托管) is deployed as its stand-in — that body's range
+    const body = typeof ps.fieldRecord === 'function' ? ps.fieldRecord(rec) || rec : rec;
+    const g = attackRangeGrid(loadoutRecord(body, resolveRecordLoadout(body, lo)));
     if (Array.isArray(g) && g.length && JSON.stringify(g) !== JSON.stringify(rec.rangeGrid)) out = Object.freeze({ ...rec, rangeGrid: g });
   } catch { out = rec; }
   cache.set(key, out);
@@ -835,7 +857,8 @@ export function rangeRec(ps, rec) {
 export function effDps(model, rec) {
   if (!rec) return 0;
   if (!model || !Array.isArray(model.armor) || !model.armor.length) return dpsOf(rec);
-  const id = rec.chessId || rec.tokenId || rec.id || rec.name;
+  // (a 自选 record — one DIY slot id, each player's own operator — is cached per operator and skill)
+  const id = rec.diyFor ? `${rec.chessId}@${rec.charId}#${rec.skill?.index ?? ''}` : rec.chessId || rec.tokenId || rec.id || rec.name;
   const cache = model.dps instanceof Map ? model.dps : null;
   if (cache && cache.has(id)) return cache.get(id);
   let v = 0;
@@ -938,7 +961,8 @@ export function planLayout(m, ps, pieces, params = LAYOUT_PARAMS, opts = {}) {
 export function* planLayoutSteps(m, ps, pieces, params = LAYOUT_PARAMS, { occupied = new Set(), recOf = null } = {}) {
   const model = fieldModel(m, ps);
   const map = ps.deployMap();
-  const rec = recOf || ((p) => (p.kind === 'token' ? m.gd.token(p.id) : rangeRec(ps, m.gd.chess(p.id))));
+  const pgd = ps.gd || m.gd;
+  const rec = recOf || ((p) => (p.kind === 'token' ? pgd.token(p.id) : rangeRec(ps, pgd.chess(p.id))));
   const layout = new Layout(model, params);
   const rank = (p) => { const r = rec(p); return isBlocker(r) ? 0 : isHealer(r) ? 2 : 1; };
   const order = pieces.slice().sort((a, b) => rank(a) - rank(b) || dpsOf(rec(b)) - dpsOf(rec(a)) || a.uid - b.uid);
@@ -951,16 +975,24 @@ export function* planLayoutSteps(m, ps, pieces, params = LAYOUT_PARAMS, { occupi
     let bestV = -Infinity;
     // a "只能部署在召唤者攻击范围内" summon (伺夜's 狼群, 缪尔赛思's 流形): only the tiles of its owner's range
     const within = p.kind === 'token' && typeof ps.summonRange === 'function' ? ps.summonRange(p) : null;
+    // and an outside-bound one (凯尔希·思衡托's 战术锚点): never a tile of its owner's range
+    const without = p.kind === 'token' && typeof ps.summonExcluded === 'function' ? ps.summonExcluded(p) : null;
     // ground tiles for a MELEE blocker. placeClass 'all' on a MELEE record is a chess whose trait reads 「可以放置于远程位」
     // (歌蕾蒂娅, 崖心, 见行者, any module): it may stand on a 高台, and when one of those tiles covers the enemy road it is
     // planned there even with the ground free (owner 2026-10-04: the bot uses the 高台; 2026-10-05: every such chess).
-    const cls = p.kind === 'token' ? basePositionClass(r0) : placeClass(ps, m.gd.chess(p.id) || r0);
+    const cls = p.kind === 'token' ? positionClass(r0) : placeClass(ps, pgd.chess(p.id) || r0);
     const preferHigh = cls === 'all' && basePositionClass(r0) === 'melee';
     let bestHigh = null;
     let bestHighV = -Infinity;
+    // a blocker whose range is its own tile only (range 0-1: 角峰, 古米, 泡泡, 折桠, 菲莱, 蛇屠箱, 塞雷娅, 余) neither blocks nor
+    // hits anything off the enemy road — the official range "0-1" (excel range_table) is the one grid (0,0) — so a free road tile
+    // comes first (the kill estimate saturates in a full layout and then cannot tell the tiles apart)
+    const preferRoad = isBlocker(r0) && r0.rangeGrid?.length === 1 && r0.rangeGrid[0].every((v) => v === 0);
+    let bestRoad = null;
+    let bestRoadV = -Infinity;
     for (const [r, c] of legalTiles(map, cls)) {
       const k = tileKey(r, c);
-      if (taken.has(k) || (within && !within.has(k))) continue;
+      if (taken.has(k) || (within && !within.has(k)) || (without && without.has(k))) continue;
       const noise = m.rngBots() * 1e-6;
       const seen = new Set();
       for (const dir of PLAN_DIRS) {
@@ -973,13 +1005,15 @@ export function* planLayoutSteps(m, ps, pieces, params = LAYOUT_PARAMS, { occupi
         const v = layout.value() + noise;
         layout.units.pop();
         if (v > bestV) { bestV = v; best = [k, r, c, dir]; }
+        // (the best road tile by the same value)
+        if (preferRoad && model.ground.has(k) && v > bestRoadV) { bestRoadV = v; bestRoad = [k, r, c, dir]; }
         if (preferHigh && map.get(k) === 'ranged' && [...u.cover].some((ck) => model.ground.has(ck)) && v > bestHighV) {
           bestHighV = v;
           bestHigh = [k, r, c, dir];
         }
       }
     }
-    const pick = bestHigh || best;
+    const pick = bestHigh || bestRoad || best;
     if (!pick) continue;
     taken.add(pick[0]);
     layout.units.push(unitOf(r0, pick[0], pick[1], pick[2], pick[3], model));
@@ -1162,7 +1196,7 @@ function context(m, ps) {
   const copies = copyCounts(m, ps);
   let pairs = 0;
   for (const [b, k] of copies) if (k + 1 >= mergeNeed(m, b)) pairs++;
-  return { owned, focus: plan.focus, second: plan.second, keep: keeperBases(m, ps, plan), copies, pairs, roles: roles(m, ps), fly: model.flyTotal, model };
+  return { ps, owned, focus: plan.focus, second: plan.second, keep: keeperBases(m, ps, plan), copies, pairs, roles: roles(m, ps), fly: model.flyTotal, model };
 }
 
 /** Normal copies owned per base (board, hand, temp). */
@@ -1255,7 +1289,7 @@ function sellJunk(m, ps) {
   const keep = [];
   const junk = [];
   for (const p of bench) {
-    const c = chessRec(m, p.id);
+    const c = chessRec(m, p.id, ps);
     if (!c) continue;
     const base = m.gd.baseIdOf(p.id);
     const copies = c.isGolden ? 0 : ctx.copies.get(base) || 0;
@@ -1272,7 +1306,7 @@ function sellJunk(m, ps) {
 
 /** Take the queued pick-one offers (merge rewards, special refreshes — free; they expire at prep end). */
 function takeOffers(m, ps) {
-  const gd = m.gd;
+  const gd = ps?.gd || m.gd;
   for (let guard = 0; guard < 4 && ps.offers.length; guard++) {
     const offer = ps.offers[0];
     const ctx = context(m, ps);
@@ -1309,6 +1343,7 @@ export function botPrepBegin(m, ps) {
  */
 export function* botPrepBeginSteps(m, ps) {
   if (!ps.alive || ps.ready) return null;
+  m.autoPickPersonalChoice(ps, 'bot');
   // 1. reward offers (free)
   takeOffers(m, ps);
   yield;
@@ -1346,6 +1381,7 @@ export function* botPrepEndSteps(m, ps, job = null) {
   if (freeSlot(ps.hand) < 0) freeHandSlot(m, ps);
   // what the next prep's bench shed may judge by value: what is owned now (later gains wait for a placement step)
   rememberOwned(ps);
+  m.autoPickPersonalChoice(ps, 'bot');
   tryDo(() => ps.setReady(true));
 }
 
@@ -1378,8 +1414,17 @@ function maybeFreeze(m, ps) {
   if (ps.shop.slots.some((s) => s && !s.sold && s.kind === 'chess' && ps.priceOf(s) > ps.funds && ps.completesChessMerge(s.id))) tryDo(() => ps.freeze());
 }
 
-function levelUp(m, ps, { spare = false } = {}) {
-  const gd = m.gd;
+/** Whether level `lv` of the 调度中心 opens one of the player's slotted 自选 pieces with copies left (player/diy.js). */
+export function diyOpensAt(ps, lv) {
+  const st = ps.diyStock;
+  if (!st || !st.entries || !st.entries.size) return false;
+  for (const e of st.entries.values()) if (e.shopLevel === lv && e.left > 0) return true;
+  return false;
+}
+
+/** The 调度中心 level-ups of a bot's prep (exported for tests). */
+export function levelUp(m, ps, { spare = false } = {}) {
+  const gd = ps?.gd || m.gd;
   for (let guard = 0; guard < 6; guard++) {
     if (ps.shop.level >= gd.maxShopLevel) return;
     const price = Math.max(0, ps.shop.upgradePrice);
@@ -1391,6 +1436,8 @@ function levelUp(m, ps, { spare = false } = {}) {
     const boardReady = ps.allChess().length >= (r <= 4 ? ps.deployCap : Math.min(ps.deployCap, 6));
     let want = price === 0;
     if (!want && ps.shop.level < target && (boardReady || r >= 6)) want = true;
+    // a human's 自选 slots of the next level (AI 托管): that step one round earlier (DIY_PIECE_BONUS)
+    if (!want && boardReady && ps.shop.level < nextTarget && diyOpensAt(ps, ps.shop.level + 1)) want = true;
     if (!want && ps.shop.level < nextTarget && price <= 2 && boardReady) want = true;
     if (!want && spare && ps.funds >= price + 1 + fundsReserve(m, ps) && ps.shop.level < nextTarget + 1 && boardReady) want = true;
     if (!want && ps.funds >= price + 14) want = true;
@@ -1414,7 +1461,7 @@ function fundsReserve(m, ps) {
 
 /** Buying / rerolling toward the lineup; a step generator (yields after each purchase or reroll). */
 function* buyLoopSteps(m, ps, { fillOnly = false, maxRefreshes = 0 } = {}) {
-  const gd = m.gd;
+  const gd = ps?.gd || m.gd;
   let refreshes = 0;
   const minPrice = 2;
   const reserve = fundsReserve(m, ps);
@@ -1435,6 +1482,11 @@ function* buyLoopSteps(m, ps, { fillOnly = false, maxRefreshes = 0 } = {}) {
     // shed is pre-emptive (one slot is still free), so with only fresh singles it waits for the next prep.
     const used = ps.hand.filter(Boolean).length;
     if (used >= gd.benchSize - 1) sellWeakestHand(m, ps, { keepFresh: true });
+    // a full hand refuses every purchase, the third copy of a held pair too (PlayerState.buy, PRTS 卫戍协议/帮助 §手牌区):
+    // an affordable one sheds the weakest hand single first (like the shed above, never one of this prep)
+    if (freeSlot(ps.hand) < 0 && ps.shop.slots.some((s) => s && !s.sold && s.kind === 'chess' && ps.priceOf(s) <= ps.funds && ps.completesChessMerge(s.id))) {
+      sellWeakestHand(m, ps, { handOnly: true, keepFresh: true });
+    }
     let best = -1;
     let bestS = 0;
     let bestMerges = false;
@@ -1446,7 +1498,7 @@ function* buyLoopSteps(m, ps, { fillOnly = false, maxRefreshes = 0 } = {}) {
       let sc;
       if (s.kind === 'chess') {
         const merges = ps.completesChessMerge(s.id);
-        if ((freeSlot(ps.hand) < 0 || mergesOnly) && !merges) return;
+        if (freeSlot(ps.hand) < 0 || (mergesOnly && !merges)) return;
         const base = gd.baseIdOf(s.id);
         if (boardFull && !merges && ps.funds - price < reserve) return; // banked (坎诺特)
         sc = buyScore(m, ps, s.id, ctx) - price;
@@ -1460,7 +1512,7 @@ function* buyLoopSteps(m, ps, { fillOnly = false, maxRefreshes = 0 } = {}) {
             const gain = lineupGain(m, ps, s.id, ctx, cur);
             if (gain <= 2) return;
             sc += Math.min(15, gain * 0.5);
-          } else if (gd.isGolden(s.id) || (!ctx.keep.has(base) && !(ctx.pairs < MAX_PAIRS && (chessRec(m, s.id)?.tier ?? 6) <= 3 && countFree(ps.hand) >= 3))) {
+          } else if (gd.isGolden(s.id) || (!ctx.keep.has(base) && !(ctx.pairs < MAX_PAIRS && (chessRec(m, s.id, ps)?.tier ?? 6) <= 3 && countFree(ps.hand) >= 3))) {
             // a second copy of a non-keeper with no bench room for another pair is clutter, sold later at a loss
             return;
           }
@@ -1469,7 +1521,7 @@ function* buyLoopSteps(m, ps, { fillOnly = false, maxRefreshes = 0 } = {}) {
       } else {
         if (fillOnly) return;
         if (!canUseItem(m, ps, { id: s.id })) return;
-        if (freeSlot(ps.hand) < 0 && !ps.completesItemMerge(s.id)) return;
+        if (freeSlot(ps.hand) < 0) return;
         if (ps.funds - price < reserve && !ps.completesItemMerge(s.id)) return;
         const carriers = [...ps.board.values()].filter((p) => p.kind === 'chess' && (p.items || []).length < gd.equipPerChess).length;
         if (!carriers) return;
@@ -1603,7 +1655,7 @@ const SUPPORT_SPOTS = Object.freeze([[0, -1, 'RIGHT'], [1, 0, 'DOWN'], [-1, 0, '
  * first — they take the hits —, then DPS), pointing at it; null when none is free.
  */
 function supportSpot(m, ps, p) {
-  const rec = m.gd.token(p.id);
+  const rec = (ps.gd || m.gd).token(p.id);
   if (!rec) return null;
   const map = ps.deployMap();
   const pos = positionClass(rec);
@@ -1614,7 +1666,7 @@ function supportSpot(m, ps, p) {
     const [dr, dc] = rotateOffset(0, 1, pieceDir(q));
     faced.add(tileKey(r + dr, c + dc));
   }
-  const ops = [...ps.board.entries()].filter(([k, q]) => q.kind === 'chess' && !faced.has(k)).map(([k, q]) => [k, m.gd.chess(q.id)]).filter(([, c]) => c)
+  const ops = [...ps.board.entries()].filter(([k, q]) => q.kind === 'chess' && !faced.has(k)).map(([k, q]) => [k, (ps.gd || m.gd).chess(q.id)]).filter(([, c]) => c)
     .sort((a, b) => Number(isBlocker(b[1])) - Number(isBlocker(a[1])) || dpsOf(b[1]) - dpsOf(a[1]) || (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0));
   for (const [k] of ops) {
     const [r, c] = parseKey(k);
@@ -1672,7 +1724,7 @@ const isMutationCell = (gd, itemId) => itemEffect(gd.item(itemId)) === 'char_che
  * progress would be lost), nobody already carrying a cell. null: the cell waits in the hand.
  */
 export function cellTarget(m, ps, ctx = context(m, ps)) {
-  const gd = m.gd;
+  const gd = ps?.gd || m.gd;
   let best = null;
   let bestV = Infinity;
   for (const p of ps.allChess()) {
@@ -1694,16 +1746,18 @@ function lastPerfect(m, ps) {
  * The carrier of an item (null = keep it), by what the item does (itemEffect):
  *   信标 (destroys its carrier for a pick of two chess of the same tier): the highest-tier bench single, else the
  *     weakest normal deployed operator;
- *   拟态物质 (a third copy of a pair, else a member of a bond): a pair (highest tier), else a focus member;
+ *   拟态物质 (a third copy of a pair, else a member of a bond): a pair (highest tier), else a focus member — never one
+ *     of 2 copies whose pool is out (the item gives nothing then);
  *   博士投影 (promotes to elite; the normal one at the next round start, the golden one at once): the strongest normal
  *     deployed operator;
  *   突变细胞 (the carrier becomes a random tier + 1 operator after the battle): cellTarget;
  *   随身身份牌 / 简易通讯机 / 寻呼模块 (act on the carrier's bonds): the operator whose bonds matter most (focus first);
- *   funds, 紧急调度券, 人事部文档 …: anyone; a bond signature item (requiresBondId): a member of that bond;
+ *   funds, 紧急调度券, 人事部文档 …: anyone, one with a free slot first (on a full carrier the item replaces one of its
+ *     items, GitHub #263); a bond signature item (requiresBondId): a member of that bond;
  *   other equipment: the strongest deployed damage dealers with a free slot (SURVIVAL items blockers first).
  */
 export function itemTarget(m, ps, item, ctx = context(m, ps)) {
-  const gd = m.gd;
+  const gd = ps?.gd || m.gd;
   const rec = gd.item(item.id);
   if (!rec) return null;
   const key = itemEffect(rec);
@@ -1713,20 +1767,23 @@ export function itemTarget(m, ps, item, ctx = context(m, ps)) {
   const owned = ps.allChess();
   const normal = (p) => !gd.isGolden(p.id);
   const byVal = (list, dir = -1) => list.slice().sort((a, b) => dir * (val(a) - val(b)) || a.uid - b.uid);
-  const rel = (p) => { let r = 0; for (const b of chessRec(m, p.id)?.bonds || []) r += b === ctx.focus ? 3 : b === ctx.second ? 2 : ps.bonds[b] && ps.bonds[b].active ? 1 : 0; return r; };
+  const rel = (p) => { let r = 0; for (const b of chessRec(m, p.id, ps)?.bonds || []) r += b === ctx.focus ? 3 : b === ctx.second ? 2 : ps.bonds[b] && ps.bonds[b].active ? 1 : 0; return r; };
   switch (key) {
     case 'use_equip_recruit_new_char_and_give_char_to_player_most_bond': {
       // a bench single of the highest tier (a pick of two of its tier), else the weakest deployed normal operator
       const counts = copyCounts(m, ps);
       const bench = owned.filter((p) => normal(p) && ps.find(p.uid)?.area !== 'board' && (counts.get(gd.baseIdOf(p.id)) || 0) < 2)
-        .sort((a, b) => (chessRec(m, b.id)?.tier || 0) - (chessRec(m, a.id)?.tier || 0) || val(a) - val(b) || a.uid - b.uid);
+        .sort((a, b) => (chessRec(m, b.id, ps)?.tier || 0) - (chessRec(m, a.id, ps)?.tier || 0) || val(a) - val(b) || a.uid - b.uid);
       return bench[0] || byVal(deployed.filter(normal), 1)[0] || null;
     }
     case 'use_equip_reward_char_chess': {
+      // with 2 copies owned and none left in the pool the item gives nothing (GitHub #207): such a pair is no carrier
       const counts = copyCounts(m, ps);
-      const pair = owned.filter((p) => normal(p) && (counts.get(gd.baseIdOf(p.id)) || 0) + 1 >= mergeNeed(m, gd.baseIdOf(p.id)))
-        .sort((a, b) => (chessRec(m, b.id)?.tier || 0) - (chessRec(m, a.id)?.tier || 0) || a.uid - b.uid);
-      return pair[0] || owned.slice().sort((a, b) => rel(b) - rel(a) || val(b) - val(a) || a.uid - b.uid)[0] || null;
+      const live = (base) => { const pool = typeof ps.poolOf === 'function' ? ps.poolOf(base) : m.pool; return pool.left(base) > 0 || !pool.has(base); };
+      const dead = (p) => (counts.get(gd.baseIdOf(p.id)) || 0) >= 2 && !live(gd.baseIdOf(p.id));
+      const pair = owned.filter((p) => normal(p) && !dead(p) && (counts.get(gd.baseIdOf(p.id)) || 0) + 1 >= mergeNeed(m, gd.baseIdOf(p.id)))
+        .sort((a, b) => (chessRec(m, b.id, ps)?.tier || 0) - (chessRec(m, a.id, ps)?.tier || 0) || a.uid - b.uid);
+      return pair[0] || owned.filter((p) => !dead(p)).sort((a, b) => rel(b) - rel(a) || val(b) - val(a) || a.uid - b.uid)[0] || null;
     }
     // 博士投影: the normal one promotes at the next round start, the golden one (缪尔赛思's R1 item, item merges) at once;
     // both refuse an elite (builtinMeta: BAD_TARGET 'already elite')
@@ -1744,15 +1801,17 @@ export function itemTarget(m, ps, item, ctx = context(m, ps)) {
   }
   const consume = typeof rec.kind === 'string' && rec.kind.startsWith('consume_on_equip');
   const list = byVal(deployed);
-  if (consume) return list[0] || owned[0] || null;
   const free = (p) => (p.items || []).length < gd.equipPerChess;
+  // a consumable on a full carrier destroys one of its items (the replace rule, GitHub #263): a carrier with a free slot
+  // first — the effect is the same on anyone
+  if (consume) return list.find(free) || owned.find(free) || list[0] || owned[0] || null;
   if (rec.requiresBondId) {
-    const member = list.find((p) => free(p) && (chessRec(m, p.id)?.bonds || []).includes(rec.requiresBondId));
+    const member = list.find((p) => free(p) && (chessRec(m, p.id, ps)?.bonds || []).includes(rec.requiresBondId));
     if (member) return member;
   }
   // damage dealers carry equipment first (healers / non-attackers last); survival items on blockers first
-  const dealer = (p) => { const c = chessRec(m, p.id); return c && !isHealer(c) && c.attackKind !== 'none'; };
-  const blocker = (p) => isBlocker(chessRec(m, p.id));
+  const dealer = (p) => { const c = chessRec(m, p.id, ps); return c && !isHealer(c) && c.attackKind !== 'none'; };
+  const blocker = (p) => isBlocker(chessRec(m, p.id, ps));
   const order = rec.category === 'SURVIVAL'
     ? [...list.filter(blocker), ...list.filter((p) => !blocker(p) && dealer(p)), ...list.filter((p) => !blocker(p) && !dealer(p))]
     : [...list.filter(dealer), ...list.filter((p) => !dealer(p))];
@@ -1764,8 +1823,8 @@ const isBountyArt = (gd, itemId) => { const rec = gd.item(itemId); return !!rec 
 
 /**
  * Use an Art: 画卷 copies the operator on its tile (its range is the tile + the one in front) — the most valuable
- * deployed operator, with a free hand slot for the copy; 教鞭 / “神秘顾客” add a bounty to the next battle (one the engine
- * draws, not chosen) — only after a perfect battle with LP to spare, else the Art stays in the hand for a later round
+ * deployed operator, with a free hand slot for the copy; 教鞭 offers a scored personal bounty choice, “神秘顾客” adds a
+ * random bounty — only after a perfect battle with LP to spare, else the Art stays in the hand for a later round
  * (destroying 教鞭 gives nothing; a full hand at the prep end: freeHandSlot).
  */
 function useArt(m, ps, item, ctx) {
@@ -1782,7 +1841,10 @@ function useArt(m, ps, item, ctx) {
   if (keys.includes('trap_create_self_choice')) {
     if (!lastPerfect(m, ps) || ps.lp < 10) return; // kept
     const [key] = [...ps.board.keys()];
-    if (key) { const [r, c] = parseKey(key); tryDo(() => ps.useArt(item.uid, r, c)); }
+    if (key) {
+      const [r, c] = parseKey(key);
+      if (tryDo(() => ps.useArt(item.uid, r, c))) m.autoPickPersonalChoice(ps, 'bot');
+    }
     return;
   }
   const [key] = [...ps.board.keys()];
@@ -1790,7 +1852,7 @@ function useArt(m, ps, item, ctx) {
 }
 
 function equipItems(m, ps) {
-  const gd = m.gd;
+  const gd = ps?.gd || m.gd;
   const tried = new Set();
   for (let guard = 0; guard < 12; guard++) {
     const item = [...ps.hand, ...ps.temp].find((p) => p && p.kind === 'item' && canUseItem(m, ps, p) && !tried.has(p.uid));
@@ -1808,34 +1870,40 @@ function equipItems(m, ps) {
 /**
  * Free a hand slot for an item worth keeping (突变细胞): sell the weakest single hand chess, else (on a bot's own seat
  * only — a human's items under AI 托管 are never destroyed to make room, like freeHandSlot) destroy the cheapest other
- * hand item, else sell the weakest hand chess even of a pair. false: the hand stays full (summon cards only).
+ * hand item, else sell the weakest hand chess even of a pair. `piece` (in temp): done once the freed slot pulled it in
+ * (PlayerState._fillHandFromTemp — resolveTemp asks for the rightmost temp piece, the next one a slot pulls in). false:
+ * the hand stays full (summon cards only).
  */
-function makeHandRoom(m, ps) {
-  if (freeSlot(ps.hand) >= 0) return true;
-  if (sellWeakestHand(m, ps, { handOnly: true }) && freeSlot(ps.hand) >= 0) return true;
-  const gd = m.gd;
+function makeHandRoom(m, ps, piece = null) {
+  const room = () => freeSlot(ps.hand) >= 0 || (piece != null && !ps.temp.includes(piece));
+  if (room()) return true;
+  if (sellWeakestHand(m, ps, { handOnly: true }) && room()) return true;
+  const gd = ps?.gd || m.gd;
   const junk = ps.isBot && !ps.autoplay ? ps.hand.filter((p) => p && p.kind === 'item' && !isMutationCell(gd, p.id))
     .sort((a, b) => ((gd.item(a.id) || {}).price || 0) - ((gd.item(b.id) || {}).price || 0) || a.uid - b.uid)[0] : null;
-  if (junk && tryDo(() => ps.destroy(junk.uid)) && freeSlot(ps.hand) >= 0) return true;
-  return sellWeakestHand(m, ps, { handOnly: true, keepPairs: false }) && freeSlot(ps.hand) >= 0;
+  if (junk && tryDo(() => ps.destroy(junk.uid)) && room()) return true;
+  return sellWeakestHand(m, ps, { handOnly: true, keepPairs: false }) && room();
 }
 
+/**
+ * Empty the temp row before Ready. A freed hand slot pulls the temp pieces in by itself, rightmost first
+ * (PlayerState._fillHandFromTemp), so the pieces are decided right → left: the one at hand is always the next a freed
+ * slot takes. A chess: the weakest bench single is sold to make room (it may be the temp chess itself), else the temp
+ * chess is sold; an item: see below, else destroyed.
+ */
 function resolveTemp(m, ps) {
-  for (let i = 0; i < ps.temp.length; i++) {
+  for (let i = ps.temp.length - 1; i >= 0; i--) {
     const p = ps.temp[i];
     if (!p) continue;
-    const idx = freeSlot(ps.hand);
+    const idx = freeSlot(ps.hand); // (a recompute pulls it in; a state set up without one)
     if (idx >= 0 && tryDo(() => ps.move(p.uid, { area: 'hand', idx }))) continue;
     if (p.kind === 'chess') {
       if (!sellWeakestHand(m, ps)) tryDo(() => ps.sell(p.uid));
-      else {
-        const j = freeSlot(ps.hand);
-        if (j >= 0) tryDo(() => ps.move(p.uid, { area: 'hand', idx: j }));
-      }
     } else if (p.kind === 'item') {
       // 突变细胞 comes back after every transformation (昆图斯's strategy item), and a human's item under AI 托管 is theirs:
       // make room in the hand (sell a bench operator) rather than lose it — only a hand of nothing but items still drops it
-      if ((isMutationCell(m.gd, p.id) || ps.autoplay) && makeHandRoom(m, ps)) {
+      if ((isMutationCell(m.gd, p.id) || ps.autoplay) && makeHandRoom(m, ps, p)) {
+        if (!ps.temp.includes(p)) continue;
         const j = freeSlot(ps.hand);
         if (j >= 0 && tryDo(() => ps.move(p.uid, { area: 'hand', idx: j }))) continue;
       }

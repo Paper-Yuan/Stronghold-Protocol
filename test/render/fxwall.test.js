@@ -1,5 +1,5 @@
 // test/render/fxwall.test.js — 余 S3 fire wall visual (render/fx.js): the sim's `firewall` fx carries `axis` ('col' for
-// a RIGHT / LEFT facing, 'row' for UP / DOWN — sim/content/kits/tier6.js); the renderer lights that straight line of
+// a RIGHT / LEFT facing, 'row' for UP / DOWN — sim/content/kits/ops/chess_char_6_03-yu.js); the renderer lights that straight line of
 // tiles through his tile, clipped to the battle rect (it used to be a round zone whatever the facing).
 
 import { test } from 'node:test';

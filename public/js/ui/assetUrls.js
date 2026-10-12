@@ -19,12 +19,17 @@ export function uiUrl(m, key) {
 export function chessAvatarUrl(m, chess) {
   const chars = obj(obj(m)?.chars);
   const id = str(chess?.assets?.avatar) || str(chess?.charId);
-  if (!chars || !id) return null;
-  if (id.endsWith('_2') && !chars[id]) {
-    const base = chars[id.slice(0, -2)];
-    return str(base?.avatarE2) || str(base?.avatar);
+  if (!id) return null;
+  if (chars) {
+    if (id.endsWith('_2') && !chars[id]) {
+      const base = chars[id.slice(0, -2)];
+      const res = str(base?.avatarE2) || str(base?.avatar);
+      if (res) return res;
+    }
+    const hit = str(chars[id]?.avatar) || (chess?.charId ? str(chars[chess.charId]?.avatar) : null);
+    if (hit) return hit;
   }
-  return str(chars[id]?.avatar) || (chess?.charId ? str(chars[chess.charId]?.avatar) : null);
+  return `/assets/char/avatar/${id}.png`;
 }
 
 /**
@@ -35,20 +40,24 @@ export function chessAvatarUrl(m, chess) {
 export function chessPortraitUrl(m, chess) {
   const chars = obj(obj(m)?.chars);
   const id = str(chess?.assets?.portrait);
-  if (!chars) return null;
-  if (id) {
-    if (id.endsWith('_2')) {
-      const base = chars[id.slice(0, -2)];
-      if (base) return str(base.portraitE2) || str(base.portrait);
+  if (chars) {
+    if (id) {
+      if (id.endsWith('_2')) {
+        const base = chars[id.slice(0, -2)];
+        if (base) return str(base.portraitE2) || str(base.portrait);
+      }
+      if (id.endsWith('_1')) {
+        const base = chars[id.slice(0, -2)];
+        if (base) return str(base.portrait);
+      }
     }
-    if (id.endsWith('_1')) {
-      const base = chars[id.slice(0, -2)];
-      if (base) return str(base.portrait);
+    const byChar = chess?.charId ? chars[chess.charId] : null;
+    if (byChar) {
+      return (chess?.isGolden ? str(byChar.portraitE2) : null) || str(byChar.portrait);
     }
   }
-  const byChar = chess?.charId ? chars[chess.charId] : null;
-  if (!byChar) return null;
-  return (chess?.isGolden ? str(byChar.portraitE2) : null) || str(byChar.portrait);
+  const fallbackId = id || (chess?.charId ? `${chess.charId}_1` : null);
+  return fallbackId ? `/assets/char/portrait/${fallbackId}.png` : null;
 }
 
 /** Skill icon of a chess record (manifest `skills[iconId]`, else the empty skill sprite). */

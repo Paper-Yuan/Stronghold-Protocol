@@ -27,11 +27,13 @@
 // 「可以放置于远程位」 — the 钩索师 / 推击手 branch trait: 歌蕾蒂娅, 崖心, 见行者, normal and elite, any module or none
 // (shared/highGround.js ⇒ any deployable tile; the owner's decision of 2026-10-05, following PRTS). The loadout does
 // not change the class.
-// Tokens follow their own `position` (ALL ⇒ any deployable tile, MELEE ⇒ melee tiles, RANGED ⇒ any deployable).
+// Tokens follow their own `position` (ALL ⇒ any deployable tile, MELEE ⇒ melee tiles, RANGED ⇒ any deployable), except
+// a token marked `rangedTilesOnly` ("仅可以部署在…远程位": 凯尔希·思衡托's 战术锚点) — class 'high', the ranged tiles only.
 // A token whose text reads "只能部署在召唤者攻击范围内" (tokens.json `ownerRange`: the tacticians' 援军 — 伺夜's 狼群,
-// 缪尔赛思's 流形; PRTS 狼群 特性) also needs a tile of its owner's attack range: `ownerRangeKeys` = the owner's range
-// grid (loadout-resolved, shared/loadoutRecord.js attackRangeGrid) rotated by its facing around its board tile
-// (PlayerState._legal; player report #9 after 0.1.0).
+// 缪尔赛思's 流形; PRTS 狼群 特性; Mon3tr's 重构体 by her talent) also needs a tile of its owner's attack range:
+// `ownerRangeKeys` = the owner's range grid (loadout-resolved, shared/loadoutRecord.js attackRangeGrid) rotated by its
+// facing around its board tile (PlayerState._legal; player report #9 after 0.1.0); one marked `ownerRangeOutside`
+// ("…攻击范围外": the 战术锚点) a tile outside that range.
 // Facing: board pieces carry `dir` ∈ UP|RIGHT|DOWN|LEFT (server/sim/dir.js); `pieceDir` reads it (absent ⇒ RIGHT),
 // `parseDir` validates an intent's optional direction.
 
@@ -135,24 +137,36 @@ export function buildDeployMap(stage, { deviceOverrides = {}, tileOverrides = {}
 }
 
 /**
- * Placement class of a chess / token record: 'melee' | 'ranged' | 'all'. A MELEE chess whose trait reads
+ * Placement class of a chess / token record: 'melee' | 'ranged' | 'all' | 'high'. A MELEE chess whose trait reads
  * 「可以放置于远程位」 (shared/highGround.js: 歌蕾蒂娅, 崖心, 见行者, normal and elite) is widened to 'all': it may also
- * stand on the ranged (高台) tiles. Every other MELEE record stays 'melee'. `chess.json` has no `placement` field.
+ * stand on the ranged (高台) tiles. Every other MELEE record stays 'melee'. A token marked `rangedTilesOnly` (tokens
+ * "仅可以部署在…远程位": 战术锚点) is 'high': the ranged tiles only. `chess.json` has no `placement` field.
  * @param {object|null} rec
  */
 export function positionClass(rec) {
+  if (rec && rec.rangedTilesOnly === true) return 'high';
   return meleeOnHighGround(rec) ? 'all' : basePositionClass(rec);
 }
 
 /**
  * Placement class of a record on a player's board — the server's single entry point for pieces (g.move, swaps, merges,
  * the audit, the invariants, the bot). Since the owner's decision of 2026-10-05 the player's loadout no longer changes
- * it (any module, or none), so this is `positionClass(rec)`.
- * @param {object|null} _ps the player (unused)
+ * it (any module, or none). A chess the player fields as its stand-in (0.2.0 补位, `ps.fieldRecord`) is placed by the
+ * stand-in's position — the body that is deployed (圣约送葬人's 预备干员-先锋 stands on the ground, 塞雷娅's Touch
+ * anywhere) [ASSUMED: the official deploy check reads the fielded character]; tokens and records without a chess id
+ * are their own body.
+ * @param {{ fieldRecord?: (rec: object) => object }|null} ps
  * @param {object|null} rec
  */
-export function placeClass(_ps, rec) {
-  return positionClass(rec);
+export function placeClass(ps, rec) {
+  if (!rec || !rec.chessId || !ps || typeof ps.fieldRecord !== 'function') return positionClass(rec);
+  let body;
+  try {
+    body = ps.fieldRecord(rec) || rec;
+  } catch {
+    body = rec;
+  }
+  return positionClass(body);
 }
 
 /**
@@ -173,6 +187,7 @@ export function canPlace(map, pos, r, c) {
   const cls = map.get(tileKey(r, c));
   if (!cls) return false;
   if (pos === 'melee') return cls === 'melee';
+  if (pos === 'high') return cls === 'ranged';
   return true; // ranged / all: melee tiles and ranged tiles
 }
 

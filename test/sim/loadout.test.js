@@ -24,7 +24,7 @@ const WTRMAN = 'token_10030_mlyss_wtrman';
 
 test('resolveLoadout: legal choices resolve, anything else falls back to the default', { skip }, () => {
   const n = C[INSIDE];
-  assert.deepEqual(resolveLoadout(n, null), { skillIndex: 1, moduleId: null, skillIsDefault: true, moduleIsDefault: true, isDefault: true });
+  assert.deepEqual(resolveLoadout(n, null), { skillIndex: 1, moduleId: null, potential: 6, skillIsDefault: true, moduleIsDefault: true, potentialIsDefault: true, isDefault: true });
   assert.equal(resolveLoadout(n, { skillIndex: 0 }).skillIndex, 0);
   assert.equal(resolveLoadout(n, { skill: 0 }).skillIndex, 0, 'client shape { skill, module } accepted');
   assert.equal(resolveLoadout(n, { skillIndex: 2 }).skillIndex, 1, 'S3 is not unlocked at E1 → default');
@@ -80,7 +80,7 @@ test('getChess(id, loadout): selected skill (bb, SP, trigger) and module (stats,
   assert.equal(s1.skill.id, 'skchr_inside_1');
   assert.deepEqual(s1.skill.bb, C[INSIDE].skills[0].bb);
   assert.equal(s1.skill.spCost, C[INSIDE].skills[0].spCost);
-  assert.deepEqual(s1.loadout, { skillIndex: 0, moduleId: null, skillIsDefault: false, moduleIsDefault: true, isDefault: false });
+  assert.deepEqual(s1.loadout, { skillIndex: 0, moduleId: null, potential: 6, skillIsDefault: false, moduleIsDefault: true, potentialIsDefault: true, isDefault: false });
   assert.deepEqual(s1.stats, def0.stats, 'a skill choice never changes stats');
   assert.ok(Object.isFrozen(s1) && Object.isFrozen(s1.skill.bb), 'variant defs are frozen like every def');
   assert.equal(C[INSIDE].skill.skillId, 'skchr_inside_2', 'the raw record is never mutated');
@@ -105,7 +105,9 @@ test('getChess(id, loadout): selected skill (bb, SP, trigger) and module (stats,
   assert.equal(m3.raw.module.id, 'uniequip_003_mlyss');
   assert.equal(m3.raw.module.active, true);
   assert.equal(none.raw.module.active, false, 'no module ⇒ moduleOn(chess) false for kits');
-  assert.ok(m3.talents.some((t) => t.bb.runtime_cost === -1 && t.bb.cost === -2), 'module talent change applied');
+  // 开源节流 at full potential (runtime_cost −2; the module restates it) and the module's own data-only talents (sp_other)
+  assert.ok(m3.talents.some((t) => t.bb.runtime_cost === -2 && t.bb.cost === -2), 'module talent change applied');
+  assert.ok(m3.talents.some((t) => t.bb.sp_other === 10) && !none.talents.some((t) => t.bb.sp_other === 10), 'the module-only talent');
   assert.equal(m3.skill.id, dm.skill.id, 'a module choice keeps the skill');
   const both = d.getChess(MLYSS, { skillIndex: 0, moduleId: 'none' });
   assert.equal(both.skill.id, 'skchr_mlyss_1');

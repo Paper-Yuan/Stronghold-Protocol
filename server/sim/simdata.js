@@ -16,6 +16,21 @@
 // match / UI (implemented in shared/loadoutRecord.js, re-exported here): resolveLoadout, loadoutRecord (the resolved
 // chess record), composeStats / composeTalents. (Which choices a player may make is shared/protocol.js
 // loadoutOptions / checkLoadout.)
+// 补位 stand-ins (DATA.md §18): `getChess(id, { standIn: true })` = the def of a NORMAL chess fielded as its official
+// stand-in (shared/standIn.js standInRecord over data/backups.json: the chess's ids, bonds, 特质, tier; the stand-in's
+// body, skill `backup.skillIndex` and module `backup.uniEquipId` — any other skill / module choice is ignored), with
+// `def.standInFor` = the replaced operator's charId and `def.charId` = the stand-in's (content/index.js looks its kit
+// up by that charId). A PRESET / DIY chess, or a source without backups.json, gives the chess's own def instead.
+// 自选 picks (DATA.md §18): `getChess(slotId, { diy: { charId, skillIndex, uniEquipId } })` = the def of a DIY slot (its
+// `_a` / `_b` id) filled with that operator (shared/diy.js diyRecordOf: the slot's tier / price / status, no 特质, the
+// pick's derived bonds, the operator's body, skill and module — a prototype's locked ones), with `def.diyFor` = the
+// slot's base id, `def.charId` = the operator (its kit, content/index.js kitOf), `def.loadout.diy` = the checked pick and
+// `def.tokenOwner` = the key of its summons' variants (data/backups.json `tokens`, read by getToken); null for an illegal
+// pick.
+// Potential (潜能 1–6, 0.2.2 — the player's 干员调配 setting; shared/potential.js): a loadout's `potential` composes the
+// chess / 自选 record at it (`def.loadout.potential`; full potential 6 is the default and the data's own) and the
+// summons' variants at their owner's potential (getToken / getDiyToken: talents, a 自选 summon's deploy limit / count).
+// A 补位 stand-in and a prototype 自选 pick have no potential.
 //
 // This module is pure ESM shared with browsers (served at /sim/): no Node API is imported here. Under Node the default
 // loader (./nodeData.js) is imported dynamically at module evaluation; browsers never load it.
@@ -25,6 +40,9 @@
 //   getSimData()      the injected data (browser) or the generated data (Node), or null.
 
 import { resolveRecordLoadout, composeStats, composeTalents, loadoutRecord } from '../../shared/loadoutRecord.js';
+import { atPotential, isPotential, POTENTIAL_DEFAULT, cultivateMul } from '../../shared/potential.js';
+import { standInRecord } from '../../shared/standIn.js';
+import { diyRecordOf, diyTokenOwner } from '../../shared/diy.js';
 import { normHitArea } from './body.js';
 
 // ---------------------------------------------------------------------------------------------------------------
@@ -123,7 +141,8 @@ export function normalizeSkill(rec) {
     initSp: Math.max(0, num(s.initSp, 0)),
     maxCharges: Math.max(1, num(s.maxChargeTime ?? s.maxCharges ?? s.charges, 1)),
     rangeGrid: toArrayOfPairs(s.rangeGrid),
-    trigger: { rule, grid: trigGrid },
+    // `allies` (data: an ally row, tools/build-data.mjs TRIGGER_ALLY_RULES — 黍 S3) — skills.js `trigger.allies`
+    trigger: typeof trig === 'object' && trig.allies === true ? { rule, grid: trigGrid, allies: true } : { rule, grid: trigGrid },
     kind: s.kind ?? null,
     bb,
     description: s.description ?? s.desc ?? '',
@@ -193,6 +212,10 @@ export function normalizeChess(rec) {
     tokens: rec.tokens ?? [],
     spine: rec.assets?.spine ?? rec.spine ?? rec.charId ?? null,
     avatar: rec.assets?.avatar ?? rec.avatar ?? rec.charId ?? null,
+    // a 补位 stand-in (shared/standIn.js): the replaced operator's charId — `charId` is the stand-in's (absent otherwise)
+    ...(rec.standInFor ? { standInFor: rec.standInFor } : null),
+    // a 自选 piece (shared/diy.js): the slot's base id — `charId` is the operator's (absent otherwise)
+    ...(rec.diyFor ? { diyFor: rec.diyFor } : null),
     raw: rec,
   };
 }
@@ -212,7 +235,7 @@ export { composeStats, composeTalents, loadoutRecord };
 
 /** Cache key suffix of a resolved non-default loadout ('' for the default). */
 export function loadoutKey(lo) {
-  return lo && !lo.isDefault ? `|s${lo.skillIndex}|m${lo.moduleId ?? ''}` : '';
+  return lo && !lo.isDefault ? `|s${lo.skillIndex}|m${lo.moduleId ?? ''}${lo.potentialIsDefault === false ? `|p${lo.potential}` : ''}` : '';
 }
 
 /** Build an immunity Set from an object `{stun:true,…}` or an array `['stun', 'feared']`. */
@@ -376,6 +399,7 @@ export function normalizeRoute(r) {
       const t = String(st.t ?? st.type ?? 'move').toUpperCase();
       cps.push({ type: normCpType(t), pos: pairOf(st.p ?? st.pos) ?? [0, 0], time: num(st.s ?? st.time, 0) });
     }
+    portalAppear(cps);
     return { motion, start, end, checkpoints: cps };
   }
   for (const cp of r.checkpoints ?? r.cp ?? []) {
@@ -388,7 +412,27 @@ export function normalizeRoute(r) {
       cps.push({ type: normCpType(cp.type), pos: pairOf(cp.pos ?? cp.position ?? [cp.row, cp.col]) ?? [0, 0], time: num(cp.time ?? cp.t, 0) });
     }
   }
+  portalAppear(cps);
   return { motion, start, end, checkpoints: cps };
+}
+
+/**
+ * The boss / Hidden Core templates' 传送门 (GitHub #336, PR #337 by @2321Robin): the twin routes spell a crossing as
+ * DISAPPEAR → WAIT → APPEAR[exit], but four official routes leave the APPEAR out and go straight to MOVE-to-the-exit
+ * (act1autochess_h07_02 #4, act1autochess_h08_02 #5 / #9, act2autochess_h07_05 #6; the level files themselves have no
+ * APPEAR_AT_POS there). Taken literally, such a route walks the enemy's whole remaining run hidden (untargetable,
+ * unblockable) and it leaks unseen — the crossing must read "reappear on the far side". Re-insert the exit APPEAR
+ * ahead of that MOVE, at the MOVE's own target, where the twins appear ([5,10]; the leftover MOVE becomes a
+ * zero-length hop, and the hop no longer counts as walking distance for the targeting order). A DISAPPEAR followed by
+ * an APPEAR, or by no MOVE, stays as it is; idempotent.
+ */
+function portalAppear(cps) {
+  for (let i = 0; i < cps.length; i++) {
+    if (cps[i].type !== 'DISAPPEAR') continue;
+    let j = i + 1;
+    while (j < cps.length && cps[j].type === 'WAIT') j++;
+    if (cps[j] && cps[j].type === 'MOVE') cps.splice(j, 0, { type: 'APPEAR', pos: cps[j].pos.slice(), time: 0 });
+  }
 }
 
 function normCpType(t) {
@@ -509,7 +553,8 @@ export function freezeDef(d) {
 }
 
 /**
- * A DataSource resolves ids to normalised defs. `raw` is `{ chess, enemies, tokens, stages, waves }`.
+ * A DataSource resolves ids to normalised defs. `raw` is `{ chess, enemies, tokens, stages, waves, backups? }`
+ * (`backups` = data/backups.json `{ units, diy }`, the 补位 stand-ins: getChess(id, { standIn: true })).
  */
 export class DataSource {
   constructor(raw = {}, fallback = null) {
@@ -519,6 +564,8 @@ export class DataSource {
       tokens: asMap(unwrap(raw.tokens, 'tokens'), 'tokenId') ?? {},
       stages: asMap(unwrap(raw.stages, 'stages'), 'id') ?? {},
       waves: asMap(unwrap(raw.waves, 'waves'), 'id') ?? {},
+      backups: raw.backups && typeof raw.backups === 'object' && raw.backups.units ? raw.backups : null,
+      effects: raw.effects && typeof raw.effects === 'object' ? raw.effects : null,
     };
     this.fallback = fallback;
     this._chess = new Map();
@@ -531,16 +578,43 @@ export class DataSource {
   rawEnemy(key) {
     return this.raw.enemies[key] ?? this.raw.enemies['enemy_' + key] ?? this.raw.enemies[String(key).replace(/^enemy_/, '')] ?? this.fallback?.rawEnemy(key) ?? null;
   }
-  rawToken(id) { return this.raw.tokens[id] ?? this.fallback?.rawToken(id) ?? null; }
+  /** A token record: data/tokens.json, else the 自选 picks' summons (data/backups.json `tokens`). */
+  rawToken(id) { return this.raw.tokens[id] ?? this.fallback?.rawToken(id) ?? this.rawBackups()?.tokens?.[id] ?? null; }
   rawStage(id) { return this.raw.stages[id] ?? this.fallback?.rawStage(id) ?? null; }
   rawWave(id) { return this.raw.waves[id] ?? this.fallback?.rawWave(id) ?? null; }
+  /** data/backups.json (`{ units, diy }`) of this source or its fallback, or null. */
+  rawBackups() { return this.raw.backups ?? (typeof this.fallback?.rawBackups === 'function' ? this.fallback.rawBackups() : null); }
+  /** A data/effects.json record of this source, its fallback, or the default game data (Node / the injected data). */
+  rawEffect(id) {
+    const own = this.raw.effects && Object.prototype.hasOwnProperty.call(this.raw.effects, id) ? this.raw.effects[id] : null;
+    if (own) return own;
+    if (typeof this.fallback?.rawEffect === 'function') return this.fallback.rawEffect(id);
+    const fx = generatedCache && generatedCache.effects;
+    return fx && Object.prototype.hasOwnProperty.call(fx, id) ? fx[id] : null;
+  }
+  /**
+   * The 练度 (自持有) multipliers of tier `cultivate` (0–3): ATK / DEF / max HP from the effects.json CHAR_MAP record's
+   * char_attribute_mul (shared/potential.js cultivateMul), or null.
+   * @param {number} cultivate
+   */
+  cultivateMul(cultivate) { return cultivateMul((id) => this.rawEffect(id), cultivate); }
 
   /**
    * Chess def for the default loadout, or for `loadout` `{ skillIndex, moduleId }` (DESIGN §16; resolved with
    * resolveLoadout — illegal choices fall back to the default). `def.loadout` = the resolved loadout (null for records
    * without skill choices); `def.id` is always the chess id. Defs are cached per (id, resolved loadout).
+   * `loadout.standIn === true`: the 补位 def of the chess (getStandIn) — its skill and module are the chess's backup
+   * selection whatever `skillIndex` / `moduleId` say; a chess without a stand-in (PRESET, DIY, no backups data) gives
+   * its own def for that loadout. `loadout.diy` (`{ charId, skillIndex, uniEquipId }`): the 自选 def of a DIY slot
+   * (getDiy; null when the pick is not legal for that slot). `loadout.potential` (1–6): the record at that potential
+   * (loadoutRecord; not for a stand-in).
    */
   getChess(id, loadout = null) {
+    if (loadout && loadout.diy && typeof loadout.diy === 'object') return this.getDiy(id, loadout.diy, loadout.potential);
+    if (loadout && loadout.standIn === true) {
+      const sd = this.getStandIn(id);
+      if (sd) return sd;
+    }
     if (loadout == null && this._chess.has(id)) return this._chess.get(id);
     const r = this.rawChess(id);
     const lo = r ? resolveLoadout(r, loadout) : null;
@@ -550,6 +624,60 @@ export class DataSource {
     if (r) {
       d = normalizeChess({ chessId: id, ...loadoutRecord(r, lo) });
       d.loadout = lo;
+      freezeDef(d);
+    }
+    this._chess.set(key, d);
+    return d;
+  }
+  /**
+   * The 补位 def of chess `id` (DATA.md §18): shared/standIn.js standInRecord of its record over rawBackups(), normalised
+   * — `def.id` / `baseId` / `golden` / `tier` / `bonds` / `raw.garrisonIds` of the chess, every combat field of the
+   * stand-in at the chess's status, `def.charId` the stand-in's, `def.standInFor` the replaced operator's charId,
+   * `def.loadout` the backup selection (`isDefault`, `standIn: true`). Null for a chess without a stand-in (PRESET,
+   * DIY) or when the data lacks it. Cached per id.
+   */
+  getStandIn(id) {
+    const key = `${id}|standIn`;
+    if (this._chess.has(key)) return this._chess.get(key);
+    const r = this.rawChess(id);
+    const rec = r ? standInRecord(r, this.rawBackups()) : null;
+    let d = null;
+    if (rec) {
+      d = normalizeChess({ ...rec, chessId: id });
+      d.loadout = { ...resolveLoadout(rec, null), standIn: true };
+      freezeDef(d);
+    }
+    this._chess.set(key, d);
+    return d;
+  }
+  /**
+   * The 自选 def of DIY slot `id` (its `_a` or `_b` record) filled with `pick` (DATA.md §18): shared/diy.js diyRecordOf
+   * over this source (chess records, backups.json), normalised — `def.id` / `baseId` / `golden` / `tier` / `bonds` (the
+   * pick's derived ones) of the slot, every combat field of the operator at the slot's status with the pick's skill and
+   * module, `def.charId` the operator's, `def.diyFor` the slot's base id, `def.loadout` = the selection (`isDefault`) with
+   * `diy` = the checked pick, `def.tokenOwner` = its summons' variant key (shared/diy.js diyTokenOwner). Null for an
+   * illegal pick (not a pick of the slot's tier, a prototype off its locked skill, an unknown skill or module — checkDiyPick)
+   * or when the data lacks it. An owned pick is composed at `potential` (1–6, default 6; shared/diy.js diyRecordOf —
+   * `def.loadout.potential`, its summons' variants follow); a prototype has none. Cached per (id, pick, potential).
+   * @param {string} id
+   * @param {{ charId?: string, skillIndex?: number|null, uniEquipId?: string|null }} pick
+   * @param {number|null} [potential]
+   */
+  getDiy(id, pick, potential = null) {
+    const pot = isPotential(potential) ? potential : POTENTIAL_DEFAULT;
+    const key = `${id}|diy|${pick?.charId ?? ''}|${pick?.skillIndex ?? ''}|${pick?.uniEquipId ?? ''}|p${pot}`;
+    if (this._chess.has(key)) return this._chess.get(key);
+    const r = this.rawChess(id);
+    const rec = r && r.isDiy ? diyRecordOf(r, pick, this, { potential: pot }) : null;
+    let d = null;
+    if (rec) {
+      d = normalizeChess({ ...rec, chessId: id });
+      const own = rec.diyProto ? POTENTIAL_DEFAULT : pot;
+      d.loadout = {
+        ...resolveLoadout(rec, null), potential: own, potentialIsDefault: own === POTENTIAL_DEFAULT,
+        diy: { charId: rec.charId, skillIndex: rec.skill.index, uniEquipId: rec.module?.id ?? null },
+      };
+      d.tokenOwner = diyTokenOwner(rec.charId, rec.status);
       freezeDef(d);
     }
     this._chess.set(key, d);
@@ -571,6 +699,7 @@ export class DataSource {
    * than 'display'; PlayerState / the kits' skill summons read them from here).
    */
   getToken(id, ownerChessId = null, ownerLoadout = null) {
+    if (ownerChessId && ownerLoadout && ownerLoadout.diy && typeof ownerLoadout.diy === 'object') return this.getDiyToken(id, ownerChessId, ownerLoadout.diy, ownerLoadout.potential);
     const olo = ownerChessId && ownerLoadout ? resolveLoadout(this.rawChess(ownerChessId), ownerLoadout) : null;
     const ck = id + '|' + (ownerChessId ?? '') + loadoutKey(olo);
     if (this._token.has(ck)) return this._token.get(ck);
@@ -594,9 +723,41 @@ export class DataSource {
     }
     if (r && r.variants && !owner) owner = Object.keys(r.variants)[0] ?? null;
     let variant = r && r.variants && owner ? r.variants[owner] ?? null : null;
+    // the owner's potential (0.2.2): the variant's talents (and counts) at it — before the skill / module parts merge
+    if (variant && olo && olo.potentialIsDefault === false) variant = atPotential(variant, olo.potential);
     if (variant && olo && !olo.isDefault) {
       if (!olo.skillIsDefault && variant.bySkill && variant.bySkill[olo.skillIndex]) variant = { ...variant, ...variant.bySkill[olo.skillIndex] };
       if (!olo.moduleIsDefault && variant.byModule && variant.byModule[olo.moduleId]) variant = { ...variant, ...variant.byModule[olo.moduleId] };
+    }
+    const d = r ? freezeDef(normalizeToken(id, r, owner, variant)) : null;
+    this._token.set(ck, d);
+    return d;
+  }
+  /**
+   * Token def of a summon of a 自选 piece: its record (data/backups.json `tokens`) with the variant of the owner form
+   * (`<charId>@<statusKey of the slot record>`, shared/diy.js diyTokenOwner) and the pick as the owner's loadout —
+   * `bySkill[skillIndex]` (the token skill / count / sources of that skill), `byModule[uniEquipId]` (module token
+   * attributes, trait, talents), as getToken does for a chess owner's loadout. A token without a variant of that form
+   * gets the record's defaults (`sources` null).
+   * @param {string} id token id
+   * @param {string} slotId the owner's DIY slot record id (`_a` / `_b`)
+   * @param {{ charId?: string, skillIndex?: number|null, uniEquipId?: string|null }} pick the owner def's `loadout.diy`
+   * @param {number|null} [potential] the owner's potential (its `loadout.potential`; default 6): the variant at it
+   */
+  getDiyToken(id, slotId, pick, potential = null) {
+    const slot = this.rawChess(slotId);
+    const owner = slot && typeof pick?.charId === 'string' ? diyTokenOwner(pick.charId, slot.status) : null;
+    const pot = isPotential(potential) ? potential : POTENTIAL_DEFAULT;
+    const ck = `${id}|diy|${owner ?? ''}|${pick?.skillIndex ?? ''}|${pick?.uniEquipId ?? ''}|p${pot}`;
+    if (this._token.has(ck)) return this._token.get(ck);
+    const r = this.rawToken(id);
+    let variant = r && r.variants && owner ? r.variants[owner] ?? null : null;
+    if (variant) variant = atPotential(variant, pot);
+    if (variant) {
+      const si = pick.skillIndex;
+      if (Number.isInteger(si) && variant.bySkill && variant.bySkill[si]) variant = { ...variant, ...variant.bySkill[si] };
+      const mid = pick.uniEquipId;
+      if (typeof mid === 'string' && variant.byModule && variant.byModule[mid]) variant = { ...variant, ...variant.byModule[mid] };
     }
     const d = r ? freezeDef(normalizeToken(id, r, owner, variant)) : null;
     this._token.set(ck, d);
@@ -691,7 +852,9 @@ export function toDataSource(data) {
  * lookups (`view.loadoutConflicts` lists them) — callers that pass the unit's own loadout (`getChess(id, { skillIndex,
  * moduleId })`, `getToken(id, owner, ownerDef.loadout)`) are always exact. Returns `ds` itself when no unit carries a
  * loadout, and an existing view unchanged (`isLoadoutView`). Used by spec.js createBattleFromSpec and by
- * content/index.js installContent (every Battle, however constructed).
+ * content/index.js installContent (every Battle, however constructed). An entry with `standIn: true` (补位) maps its
+ * chess id to the stand-in def (`getChess(id, { standIn: true })`) the same way, and one with `diy` (自选: `{ charId,
+ * skillIndex, uniEquipId }`) to its 自选 def (`getChess(id, { diy })`); a `potential` (1–6) rides along (0.2.2).
  * @param {object} ds DataSource
  * @param {object[]} players PlayerBattleInput[] (spec players)
  */
@@ -703,11 +866,18 @@ export function withUnitLoadouts(ds, players) {
   for (const p of Array.isArray(players) ? players : []) {
     for (const u of (p && Array.isArray(p.units) ? p.units : [])) {
       if (!u || u.kind === 'token' || typeof u.chessId !== 'string') continue;
-      if (u.skillIndex != null || u.moduleId != null) any = true;
+      const diy = u.diy && typeof u.diy === 'object' ? u.diy : null;
+      const pot = u.standIn !== true && isPotential(u.potential) ? u.potential : null;
+      if (u.skillIndex != null || u.moduleId != null || u.standIn === true || diy || pot != null) any = true;
       const lo = { skillIndex: u.skillIndex ?? null, moduleId: u.moduleId ?? null };
+      if (u.standIn === true) lo.standIn = true;
+      if (diy) lo.diy = diy;
+      if (pot != null) lo.potential = pot;
       const prev = map.get(u.chessId);
       if (!prev) map.set(u.chessId, lo);
-      else if (prev.skillIndex !== lo.skillIndex || prev.moduleId !== lo.moduleId) conflicts.add(u.chessId);
+      else if (prev.skillIndex !== lo.skillIndex || prev.moduleId !== lo.moduleId || !!prev.standIn !== !!lo.standIn
+        || (prev.potential ?? null) !== (lo.potential ?? null)
+        || JSON.stringify(prev.diy ?? null) !== JSON.stringify(lo.diy ?? null)) conflicts.add(u.chessId);
     }
   }
   if (!any) return ds;

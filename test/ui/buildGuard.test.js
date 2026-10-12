@@ -34,7 +34,7 @@ test('checkBuildOnce: first sighting, unchanged, changed, and unknown when the s
 });
 
 /** A guard driven by hand: run the interval callback on demand. */
-function manual({ inMatch = false } = {}) {
+function manual({ inMatch = false, autoRefresh = true } = {}) {
   const ticks = [];
   const calls = { reload: 0, stale: [] };
   let build = 'aaa';
@@ -47,6 +47,7 @@ function manual({ inMatch = false } = {}) {
     },
     reload: () => { calls.reload++; },
     inMatch: () => busy,
+    autoRefresh,
     setInterval: (fn) => { ticks.push(fn); return ticks.length; },
     clearInterval: () => {},
     onStale: (info) => calls.stale.push(info),
@@ -60,6 +61,20 @@ function manual({ inMatch = false } = {}) {
     tick: async () => { for (const fn of ticks) fn(); await new Promise((r) => setTimeout(r, 0)); },
   };
 }
+
+test('custom deployment: a confirmed update only shows a notice until the player manually refreshes', async () => {
+  const m = manual({ inMatch: true, autoRefresh: false });
+  await m.tick();
+  m.setBuild('bbb');
+  await m.tick(); await m.tick();
+  assert.equal(m.guard.stale(), true);
+  assert.equal(m.calls.stale.length, 1);
+  assert.equal(m.calls.reload, 0);
+  m.setInMatch(false);
+  await m.tick(); await m.tick();
+  assert.equal(m.calls.reload, 0, 'leaving the battle and settlement must not refresh the open page');
+  m.guard.stop();
+});
 
 test('startBuildGuard: records this page\'s build in memory, reloads once on a NEW build (after two agreeing checks)', async () => {
   const m = manual();

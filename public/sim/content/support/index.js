@@ -129,11 +129,17 @@ export function contentInfo(battle, pid) {
   const ci = player(battle, pid)?.input?.contentInfo;
   return ci && typeof ci === 'object' ? ci : {};
 }
-/** Band ids of every alive player of the match (own first); falls back to this battle's players. */
+/** Band ids of every alive player of the match (own first); falls back to this battle's players (随机模式: every
+ *  held band, duplicates kept — a player holding the same band twice lists it twice). */
 export function matchBands(battle, pid) {
   const mb = contentInfo(battle, pid).matchBands;
   if (Array.isArray(mb) && mb.length) return mb;
-  return (battle.players || []).map((p) => p.bandId).filter(Boolean);
+  const out = [];
+  for (const p of battle.players || []) {
+    const ids = Array.isArray(p.bandIds) && p.bandIds.length ? p.bandIds : p.bandId ? [p.bandId] : [];
+    for (const id of ids) out.push(id);
+  }
+  return out.filter(Boolean);
 }
 
 // =====================================================================================================================

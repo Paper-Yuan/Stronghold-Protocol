@@ -23,7 +23,8 @@ import { render } from '../../vendor/preact.module.js';
 import { html, TierChip } from './components.js';
 import { GEO } from '../../../shared/constants.js';
 import { chessAvatarUrl, itemIconUrl, tokenAvatarUrl, enemyIconUrl } from './assetUrls.js';
-import { tileKey, hasFlag, UF, penPlacement, PEN, fieldTile } from './gameLogic.js';
+import { tileKey, hasFlag, UF, penPlacement, PEN, fieldTile, ownStandIn, ownDiyRecord } from './gameLogic.js';
+import { t } from '../../../shared/i18n.js';
 
 const DRAG_PX = 6;
 const DMG_TTL = 900;
@@ -125,12 +126,22 @@ export function createFallbackView(host, opts = {}) {
     const mm = m();
     if (p.kind === 'item') return itemIconUrl(mm, lookup('items', p.id));
     if (p.kind === 'token') return tokenAvatarUrl(mm, p.id);
-    return chessAvatarUrl(mm, lookup('chess', p.id));
+    const chess = lookup('chess', p.id);
+    return chessAvatarUrl(mm, ownSi(chess) || ownDiy(chess) || chess);
+  }
+  /** 0.2.0 补位: the player's own piece of a chess it does not own is its stand-in, bench and board alike (render/app.js pieceInfo) */
+  function ownSi(chess) {
+    return chess ? ownStandIn(chess, st.priv, dataStore?.get?.('backups') ?? null) : null;
+  }
+  /** 0.2.0 自选编队: the player's own piece of a DIY slot it filled is its operator (gameLogic ownDiyRecord) */
+  function ownDiy(chess) {
+    return chess ? ownDiyRecord(chess, st.priv, { chess: dataStore?.get?.('chess') ?? null, backups: dataStore?.get?.('backups') ?? null }) : null;
   }
   function pieceName(p) {
-    if (p.kind === 'item') return lookup('items', p.id)?.name || '道具';
-    if (p.kind === 'token') return lookup('tokens', p.id)?.name || '召唤物';
-    return lookup('chess', p.id)?.name || '干员';
+    if (p.kind === 'item') return lookup('items', p.id)?.name || t('道具');
+    if (p.kind === 'token') return lookup('tokens', p.id)?.name || t('召唤物');
+    const chess = lookup('chess', p.id);
+    return (ownSi(chess) || ownDiy(chess) || chess)?.name || t('干员');
   }
 
   function Piece({ p, x, y, L, area }) {
@@ -293,7 +304,7 @@ export function createFallbackView(host, opts = {}) {
     });
     return html`<div class="ff-board ff-board--pen" style=${`left:${left}px;top:${top}px;width:${bw}px;height:${tile * rows}px;--tile:${tile}px`}>
       ${cells}${figs}
-      ${models.length ? null : html`<p class="ff-pen__empty">暂无敌方情报</p>`}
+      ${models.length ? null : html`<p class="ff-pen__empty">${t('暂无敌方情报')}</p>`}
     </div>`;
   }
 
@@ -321,6 +332,16 @@ export function createFallbackView(host, opts = {}) {
     const now = performance.now();
     if (st.mode === 'prep' && st.priv) {
       const heldPos = (p) => { const t = st.held.get(p.uid); return t ? tilePos(L, t.row, t.col) : null; };
+      for (const u of Array.isArray(st.priv.prepMapChars) ? st.priv.prepMapChars : []) {
+        if (!u || !Number.isInteger(u.x) || !Number.isInteger(u.y) || typeof u.defId !== 'string') continue;
+        const pos = tilePos(L, u.y, u.x);
+        const src = tokenAvatarUrl(m(), u.defId);
+        pieces.push(html`<div key=${`map:${u.uid}`} class="ff-piece ff-piece--token ff-piece--map-char"
+            style=${`transform:translate(${pos.x}px,${pos.y}px);width:${L.tile}px;height:${L.tile}px;pointer-events:none`}
+            title=${u.name || u.defId}>
+          <div class="ff-piece__art">${src ? html`<img src=${src} alt="" draggable=${false} />` : html`<span>${[...(u.name || '?')][0]}</span>`}</div>
+        </div>`);
+      }
       for (const p of Array.isArray(st.priv.board) ? st.priv.board : []) {
         if (!p || !Number.isInteger(p.row)) continue;
         const pos = heldPos(p) || tilePos(L, p.row, p.col);
@@ -362,7 +383,7 @@ export function createFallbackView(host, opts = {}) {
     })() : null;
     if (st.camera === 'pen') { render(html`${penView()}<div class="ff-badge">SIMPLIFIED VIEW</div>`, root); return; }
     render(html`<div class=${cx('ff-board', `ff-board--${st.mode}`, `ff-cam--${st.camera}`)} style=${`left:${L.left}px;top:${L.top}px;width:${L.bw}px;height:${L.bh}px;--tile:${L.tile}px`}>
-      ${st.mode === 'prep' ? html`<div class="ff-hand-label" style=${`top:${(L.rows + 0.18) * L.tile}px`}><span>整备区</span><i></i></div>` : null}
+      ${st.mode === 'prep' ? html`<div class="ff-hand-label" style=${`top:${(L.rows + 0.18) * L.tile}px`}><span>${t('整备区')}</span><i></i></div>` : null}
       ${tiles}${hand}${units}${pieces}${floats}
     </div>${ghost}
     <div class="ff-badge">SIMPLIFIED VIEW</div>`, root);

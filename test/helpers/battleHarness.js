@@ -11,15 +11,26 @@
 //   stage         explicit stage object (overrides stageId)
 //   kind          'normal' | 'unite' | 'boss' | 'hidden' (default 'normal')
 //   seed          uint32 (default 1)
-//   units         [{ chessId, row, col, items?, uid?, carryState?, abs? } | { kind:'token', tokenId, row, col }]
-//                 board coordinates (rows 9–12, cols 2–10) for player 'p1'
+//   units         [{ chessId, row, col, items?, uid?, carryState?, abs?, standIn? } | { kind:'token', tokenId, row, col }]
+//                 board coordinates (rows 9–12, cols 2–10) for player 'p1'. `standIn: true` fields a NORMAL chess as its
+//                 补位 stand-in (data/backups.json through simdata getChess(id, { standIn: true }) — the production
+//                 path: the chess's ids / bonds / 特质 / tier, the stand-in's body, its kit by charId); the `_a` id is the
+//                 normal form, `_b` the elite, skill / module are the chess's backup selection. `standIn: { skillIndex?,
+//                 moduleId? }` fields it with another of the stand-in's skills / modules (a kit test of a skill no chess
+//                 names): the composed record (standInRec) replaces that chess id's record for the whole battle.
+//                 `{ diy: { slot, charId, skillIndex?, uniEquipId? }, elite?, row, col }` fields a 自选 piece — the
+//                 production path (simdata getChess(slotId, { diy }), shared/diy.js): `slot` = a DIY slot's base id
+//                 (`chess_char_5_diy1_a`) or its tier (5 / 6 ⇒ that tier's first slot), `elite` = its `_b` form (E2
+//                 Lv60, module stage 1 at tier 5 / 3 at tier 6); the operator's kit is KITS[charId]; a prototype may
+//                 omit skillIndex / uniEquipId (its locked ones)
 //   players       full PlayerBattleInput[] (overrides `units`)
 //   enemies       [{ key, time=0, route=0 | RouteSpec, pos?, count?, interval?, mods?, tag?, bounty?, sourcePlayerId? }]
 //   waveTemplate  wave id (data/waves.json) or template object → routes + spawns + timeLimit
 //   routes        RouteSpec[] (default: template routes, or flat-stage routes 0..3 = walk low, walk high, fly low, fly high)
 //   timeLimit     seconds (default: template maxPlayTime, else 60; boss/hidden: Infinity)
 //   content       'full' | 'generic' | 'none' (default 'full')
-//   kits          { [baseChessId]: (bb, chess, def) => Kit } injected kits (take precedence over kits/tier*.js)
+//   kits          { [baseChessId | standInCharId]: (bb, chess, def) => Kit } injected kits (take precedence over
+//                 kits/index.js; a stand-in's kit is keyed by its charId only)
 //   extraContent  [{ install(battle) }] extra content modules installed after the domain modules (content tests)
 //   defs          { chess: {id: record}, enemies: {key: record}, tokens: {id: record} } extra/override data records
 //   flags, sharedBoss, modeId, round, setup(battle), recordEvents (default true). The harness sets
@@ -36,6 +47,7 @@
 import { Battle } from '../../server/sim/Battle.js';
 import { DataSource, getDefaultSource, spawnsFromTemplate } from '../../server/sim/simdata.js';
 import { TICK } from '../../server/sim/constants.js';
+import { standInRecord, composeUnitRecord, unitForm } from '../../shared/standIn.js';
 
 export const ALL_HOOKS = Object.freeze([
   'battleStart', 'deploy', 'tick', 'beforeAttack', 'attack', 'hit', 'damaged', 'heal', 'kill', 'death',
@@ -141,15 +153,66 @@ export function enemyRec(o = {}) {
   };
 }
 
+/**
+ * The 补位 record of a NORMAL chess (data/chess.json `_a` normal / `_b` elite) fielded as its stand-in — shared/standIn.js
+ * standInRecord: the chess's backup skill and module — or, with `skillIndex` / `moduleId` (null / 'none' = no module),
+ * another selection of the same stand-in at the chess's status. Throws when the chess has no stand-in (PRESET, DIY) or
+ * the stand-in lacks that skill / module.
+ * @param {string} chessId
+ * @param {{ skillIndex?: number, moduleId?: string|null }} [sel]
+ * @param {object} [data] DataSource (default: the sim's default source)
+ */
+export function standInRec(chessId, sel = {}, data = getDefaultSource()) {
+  const chess = data.rawChess(chessId);
+  const backups = typeof data.rawBackups === 'function' ? data.rawBackups() : null;
+  const b = chess?.backup;
+  if (!b || !backups || chess.chessType !== 'NORMAL') throw new Error(`${chessId}: no 补位 stand-in (PRESET / DIY chess, or no backups.json)`);
+  const custom = sel && (sel.skillIndex != null || sel.moduleId !== undefined);
+  const rec = !custom ? standInRecord(chess, backups) : composeUnitRecord(chess, backups.units?.[b.charId], unitForm(backups, b.charId, chess.status), {
+    skillIndex: sel.skillIndex ?? b.skillIndex,
+    moduleId: sel.moduleId === undefined ? b.uniEquipId ?? null : (sel.moduleId === 'none' ? null : sel.moduleId),
+    standInFor: chess.charId,
+  });
+  if (!rec || !rec.skill) throw new Error(`${chessId}: stand-in ${b.charId} has no skill ${sel?.skillIndex ?? b.skillIndex}`);
+  const mod = sel?.moduleId;
+  if (custom && mod && mod !== 'none' && !rec.module?.active) throw new Error(`${chessId}: stand-in ${b.charId} has no module ${mod} at ${chessId}`);
+  return rec;
+}
+
 function buildData(defs) {
   if (!defs) return getDefaultSource();
   return new DataSource({ chess: defs.chess ?? {}, enemies: defs.enemies ?? {}, tokens: defs.tokens ?? {}, stages: defs.stages ?? {}, waves: defs.waves ?? {} }, getDefaultSource());
 }
 
+/**
+ * A harness `units[]` entry with `diy` → its PlayerBattleInput fields: `chessId` = the slot's normal or elite id, `diy` =
+ * the pick ({ charId, skillIndex, uniEquipId } as given). Other entries unchanged.
+ */
+function diyEntry(u, data = getDefaultSource()) {
+  if (!u || !u.diy || typeof u.diy !== 'object') return u;
+  const slots = data.rawBackups?.()?.diy?.slots ?? {};
+  const { slot, ...pick } = u.diy;
+  const base = typeof slot === 'number' ? Object.keys(slots).find((id) => slots[id].tier === slot) : slot;
+  if (!base || !slots[base]) throw new Error(`diy: unknown slot ${slot}`);
+  const { elite, ...rest } = u;
+  return { ...rest, chessId: elite ? slots[base].goldenId : base, diy: pick };
+}
+
+/** `units[].standIn` objects → the composed records for `defs.chess` (null when there are none). */
+function standInDefs(units) {
+  let out = null;
+  for (const u of units ?? []) {
+    if (!u || !u.standIn || typeof u.standIn !== 'object') continue;
+    (out ??= {})[u.chessId] = standInRec(u.chessId, u.standIn);
+  }
+  return out;
+}
+
 /** Create a battle + harness. See header for options. */
 export function makeBattle(opts = {}) {
   const kind = opts.kind ?? 'normal';
-  const data = opts.data ?? buildData(opts.defs);
+  const custom = opts.data ? null : standInDefs(opts.units);
+  const data = opts.data ?? buildData(custom ? { ...opts.defs, chess: { ...(opts.defs?.chess ?? {}), ...custom } } : opts.defs);
   let stage = opts.stage ?? null;
   if (!stage) stage = !opts.stageId || opts.stageId === 'flat' ? flatStage(opts.flat || {}) : data.getStage(opts.stageId);
   if (!stage) throw new Error(`unknown stage ${opts.stageId}`);
@@ -181,7 +244,7 @@ export function makeBattle(opts = {}) {
   if (extraRoutes.length) routes = routes.concat(extraRoutes);
   const players = opts.players ?? [{
     playerId: 'p1', seat: 0, side: 'L', colOffset: 0,
-    units: (opts.units ?? []).map((u, i) => ({ uid: u.uid ?? i + 1, kind: u.kind ?? 'chess', ...u })),
+    units: (opts.units ?? []).map((u, i) => ({ uid: u.uid ?? i + 1, kind: u.kind ?? 'chess', ...diyEntry(u), ...(u.standIn ? { standIn: true } : null) })),
     bonds: opts.bonds ?? {}, bandId: opts.bandId ?? null, playerEffects: opts.playerEffects ?? [],
   }];
   const hookNames = opts.hooks ?? ALL_HOOKS;
@@ -303,8 +366,15 @@ export function checkInvariants(b) {
   for (const pr of b.projectiles.list) if (![pr.x, pr.y, pr.tx, pr.ty].every(Number.isFinite)) bad(`projectile at ${pr.x},${pr.y} → ${pr.tx},${pr.ty}`);
   if (b._emitDepth) bad(`hook emit depth ${b._emitDepth} between steps`);
   for (const pp of Object.values(b._perPlayer ?? {})) {
-    for (const k of ['killed', 'total', 'coins', 'damageDealt', 'bossDamage', 'healingDone', 'deaths']) if (!Number.isFinite(pp[k])) bad(`result ${k}=${pp[k]}`);
+    for (const k of ['killed', 'total', 'killedInTotal', 'leakedInTotal', 'coins', 'damageDealt', 'bossDamage', 'healingDone', 'deaths']) if (!Number.isFinite(pp[k])) bad(`result ${k}=${pp[k]}`);
+    // The capsule's counters are attributed differently on purpose: a knock-out goes to the enemy's owner (as its `total`
+    // did), while a leak goes to the player whose half the enemy reached (`_recordLeak`) — in a 联防 field an enemy
+    // spawned on one half and leaked on the other bills the leaker, so per player only `killedInTotal ≤ total` holds
+    // (BattleResult's per-player `resolved` clamps the sum to `total`, and the battle-level sum is exact)
+    if (pp.killedInTotal > pp.total) bad(`capsule ${pp.killedInTotal} > ${pp.total}`);
+    if (pp.total < 0 || pp.killedInTotal < 0 || pp.leakedInTotal < 0) bad('negative capsule counter');
   }
+  if (b.killedInTotal + b.leakedInTotal > b.total) bad(`battle capsule ${b.killedInTotal}+${b.leakedInTotal} > ${b.total}`);
   return true;
 }
 

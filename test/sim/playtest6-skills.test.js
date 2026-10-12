@@ -1,7 +1,8 @@
 // test/sim/playtest6-skills.test.js — user playtest #6, workstream WE (skill triggers and buffs), with the real data and kits.
 //   #15 "技能范围比攻击范围大的技能在敌人进入技能范围时不触发": PRTS 卫戍协议/帮助 §作战阶段 技能操作 — "携带拥有技能范围的技能
 //       （非攻击距离增加）的干员：不通过普通攻击/治疗触发技能，仅在技能范围内存在敌人（无视其不可选中）时释放技能" (SKILL_RANGE);
-//       an attack-range change keeps the basic strategy; the class rows (重装 "不受技能范围影响，受到伤害时释放技能" …) cover every
+//       an attack-range change keeps the basic strategy (since 0.2.0 ACTIVE_RANGE when the running range strictly contains
+//       the own one — the owner's rule of 2026-10-05); the class rows (重装 "不受技能范围影响，受到伤害时释放技能" …) cover every
 //       MANUAL skill of the class; "自动操作具有3s冷却"; GDGLOW_SKILL_2 "全场存在可选目标时释放技能".
 //   #16 "古米的治疗队友的技能在身边队友受伤时并没触发，古米接敌之后才触发": 备用军粮 is 自动触发 (no 技能策略); PRTS 备注 "此技能
 //       在存在生命值不满的可治疗角色时可触发；技能触发后古米将切换至治疗模式…直至古米完成一次普通攻击的治疗". Audit: 塞雷娅
@@ -87,20 +88,21 @@ test('#15 audit: every MANUAL chess skill with its own 技能范围 casts with a
   assert.ok(n >= 20, `${n} SKILL_RANGE skills`);
 });
 
-test('#15 an attack-range change ("攻击范围扩大") keeps the basic strategy: 银灰 S3 waits for an enemy in his initial range', () => {
+test('#15 an attack-range change ("攻击范围扩大") is officially the basic strategy; by the owner\'s rule of 2026-10-05 银灰 S3 (3-7 strictly containing his 3-12) casts on an enemy inside the expanded range (ACTIVE_RANGE)', () => {
   const id = 'chess_char_4_22_a';
   const h = run({ defs: { enemies: { enemy_d: dummy('enemy_d') }, chess: noGarrison(id) }, units: [{ chessId: id, row: 10, col: 3 }] });
   const u = h.unit(id);
   assert.equal(u.skill.id, 'skchr_svrash_3');
-  assert.equal(u.skill.rule, 'DEFAULT');
+  assert.equal(u.skill.rule, 'ACTIVE_RANGE');
+  assert.equal(skillOf(id, 'skchr_svrash_3').trigger.rawRule, 'DEFAULT', 'the official strategy: the basic one (PRTS "非攻击距离增加")');
   h.step();
   fill(u);
-  const far = absoluteRangeKeys(u.def.skill.rangeGrid, 10, 3, u.dir, 0).find((k) => !u.rangeKeySet.has(k) && Math.floor(k / COLS) === 10);
-  h.spawn('enemy_d', { pos: [10, far % COLS] });
-  h.run(1);
-  assert.equal(u.skill.activations, 0, 'an enemy only in the expanded range: no cast (PRTS "非攻击距离增加")');
-  h.spawn('enemy_d', { pos: [10, 4] });
-  assert.ok(h.runUntil(() => u.skill.activations === 1, 3), 'an enemy in the initial range: cast before the attack');
+  // a field tile of the expanded range outside his own (his row has none: 3-7 and 3-12 share it)
+  const far = absoluteRangeKeys(u.def.skill.rangeGrid, 10, 3, u.dir, 0).find((k) => !u.rangeKeySet.has(k) && Math.floor(k / COLS) >= 9 && Math.floor(k / COLS) <= 12);
+  assert.ok(far != null);
+  h.spawn('enemy_d', { pos: [Math.floor(far / COLS), far % COLS] });
+  assert.ok(h.runUntil(() => u.skill.activations === 1, 3), 'an enemy only in the expanded range: cast, no attack needed');
+  assert.equal(starts(h, u)[0].reason, 'ACTIVE_RANGE');
   done(h);
 });
 
@@ -245,7 +247,8 @@ test('#16 塞雷娅 S1 急救 (audit): checked at her attack — an ally of her 
   fill(u);
   m.hp = 4000;
   h.run(2);
-  assert.equal(u.skill.activations, 0, 'no enemy, no attack: no cast');
+  assert.equal(u.skill.activations, 1, 'eligible injured ally supplies the heal attack without an enemy (#406)');
+  assert.ok(m.hp > 4000, 'the charged attack actually heals');
   done(h);
   [h, u, m] = setup(true);
   const e = h.enemies()[0];

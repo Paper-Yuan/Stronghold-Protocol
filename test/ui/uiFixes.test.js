@@ -247,16 +247,19 @@ describe('full hand: shop and promotion cards', () => {
   const privFull = { alive: true, ready: false, funds: 20, board: [], temp: new Array(GEO.TEMP_SIZE).fill(null), shop: {},
     hand: fullHand([{ uid: 1, kind: 'chess', id: MELEE, items: [] }, { uid: 2, kind: 'chess', id: MELEE, items: [] }]) };
   const o = { priv: privFull, editable: true, getChess, getItem };
-  test('a card that needs a slot is blocked with 整备区已满; one completing a merge is not', () => {
+  test('every card is blocked with 整备区已满, one completing a merge too (PRTS 卫戍协议/帮助 §手牌区, GitHub #82)', () => {
     assert.equal(handFull(privFull), true);
     assert.equal(shopBlockReason('buy', { ...o, slot: { kind: 'chess', id: other, price: 1 } }), '整备区已满');
     assert.equal(completesMerge(privFull, { kind: 'chess', id: MELEE }, o), true);
-    assert.equal(shopBlockReason('buy', { ...o, slot: { kind: 'chess', id: MELEE, price: 1 } }), null);
+    assert.equal(shopBlockReason('buy', { ...o, slot: { kind: 'chess', id: MELEE, price: 1 } }), '整备区已满', 'the third copy of a held pair');
     assert.equal(shopBlockReason('reward', { ...o, slot: { kind: 'chess', id: other, price: 0 } }), '整备区已满');
-    // the hand is filled with a mergeable equipment: buying another copy merges instead of needing a slot
-    assert.equal(shopBlockReason('buy', { ...o, slot: { kind: 'item', id: 'chess_item_1_01_e_a', price: 1 } }), null);
+    assert.equal(shopBlockReason('reward', { ...o, slot: { kind: 'chess', id: MELEE, price: 0 } }), '整备区已满', 'a merge-completing pick');
+    // the hand is filled with a mergeable equipment: another copy would merge, but the purchase is refused all the same
+    assert.equal(completesMerge(privFull, { kind: 'item', id: 'chess_item_1_01_e_a' }, o), true);
+    assert.equal(shopBlockReason('buy', { ...o, slot: { kind: 'item', id: 'chess_item_1_01_e_a', price: 1 } }), '整备区已满');
     const notFull = { ...privFull, hand: privFull.hand.map((p, i) => (i === 5 ? null : p)) };
     assert.equal(shopBlockReason('buy', { ...o, priv: notFull, slot: { kind: 'chess', id: other, price: 1 } }), null);
+    assert.equal(shopBlockReason('buy', { ...o, priv: notFull, slot: { kind: 'chess', id: MELEE, price: 1 } }), null);
   });
 });
 

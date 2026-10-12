@@ -40,14 +40,16 @@ const laneDirs = (st, r, c) => DIRS.filter((d) => [[0, 1], [0, 2]].some(([dr, dc
 /**
  * One battle: the operator alone on (r, c) facing `dir` against a real round template. Returns its attacks, the ticks a
  * targetable enemy stood on its range tiles, the longest wait for an attack while one did and it could act (seconds
- * beyond its attack interval) and the ticks it blocked anything.
+ * beyond its attack interval — the longer of the interval when the wait began and now: her S2 casts on its 3-2 between
+ * two attacks since 0.2.0, the owner's ACTIVE_RANGE rule, and its ASPD shortens the interval while the cooldown the
+ * last attack set still runs) and the ticks it blocked anything.
  */
 function watch(stageId, chessId, r, c, dir, { template = 'act1autochess_02', seconds = 45 } = {}) {
   const h = makeBattle({ stageId, waveTemplate: template, units: [{ chessId, row: r, col: c, dir }], seed: 5 });
   h.step(1);
   const u = h.unit(chessId);
   assert.ok(u && u.deployed && u.tileR === r && u.tileC === c, `${stageId} (${r},${c}) deployed`);
-  let attacks = 0, inRange = 0, blocked = 0, waitFrom = null, worst = 0;
+  let attacks = 0, inRange = 0, blocked = 0, waitFrom = null, waitIv = 0, worst = 0;
   h.b.on('attack', (ctx) => { if (ctx.attacker === u) { attacks++; waitFrom = null; } });
   for (let i = 0; i < seconds * 30 && !h.b.finished; i++) {
     h.step(1);
@@ -58,8 +60,8 @@ function watch(stageId, chessId, r, c, dir, { template = 'act1autochess_02', sec
     const target = h.b.enemies.some((e) => e.alive && e.deployed && canTargetEnemy(u, e, prof) && bodyInKeys(e, set));
     if (!target) { waitFrom = null; continue; }
     inRange++;
-    if (waitFrom == null) waitFrom = h.b.time;
-    worst = Math.max(worst, h.b.time - waitFrom - u.s.interval);
+    if (waitFrom == null) { waitFrom = h.b.time; waitIv = u.s.interval; }
+    worst = Math.max(worst, h.b.time - waitFrom - Math.max(waitIv, u.s.interval));
   }
   return { attacks, inRange, blocked, worst };
 }

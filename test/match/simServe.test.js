@@ -12,7 +12,7 @@ after(async () => { if (srv) await srv.close(); });
 test('/sim/ serves the simulation modules read-only; nothing else of server/ is reachable', async () => {
   srv = await startServer({ port: 0, host: '127.0.0.1', quiet: true });
   const get = (p, headers = {}) => fetch(srv.url + p, { redirect: 'manual', headers });
-  for (const p of ['/sim/spec.js', '/sim/Battle.js', '/sim/simdata.js', '/sim/constants.js', '/sim/content/index.js', '/sim/content/kits/tier1.js', '/sim/content/support/index.js']) {
+  for (const p of ['/sim/spec.js', '/sim/Battle.js', '/sim/simdata.js', '/sim/constants.js', '/sim/content/index.js', '/sim/content/kits/index.js', '/sim/content/support/index.js']) {
     const r = await get(p);
     assert.equal(r.status, 200, p);
     assert.match(r.headers.get('content-type'), /^text\/javascript/, p);
@@ -24,7 +24,7 @@ test('/sim/ serves the simulation modules read-only; nothing else of server/ is 
   const gz = await get('/sim/Battle.js', { 'accept-encoding': 'gzip' });
   assert.equal(gz.status, 200);
   // the Node-only loader stays private under any spelling (case-insensitive host file systems: macOS, Windows)
-  for (const p of ['/sim/nodeData.js', '/sim/NODEDATA.JS', '/sim/NodeData.js', '/sim/nodedata.js', '/sim/', '/sim', '/sim/content/', '/sim/content', '/sim/../index.js', '/sim/%2e%2e/index.js', '/sim/..%2fdata.js',
+  for (const p of ['/sim/nodedata.js', '/sim/NODEDATA.JS', '/sim/NodeData.js', '/sim/nodedata.js', '/sim/', '/sim', '/sim/content/', '/sim/content', '/sim/../index.js', '/sim/%2e%2e/index.js', '/sim/..%2fdata.js',
     '/server/index.js', '/server/data.js', '/server/match/Match.js', '/sim/.hidden.js', '/sim/constants.json', '/sim/spec.js/']) {
     const r = await get(p);
     assert.ok(r.status === 404 || r.status === 403 || r.status === 400, `${p} → ${r.status}`);

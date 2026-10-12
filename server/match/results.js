@@ -95,11 +95,18 @@ export function buildResult(m, outcome) {
   const teamRounds = victory ? gd.bossRound + (hiddenCleared ? 1 : 0) : Math.max(0, Math.min(m.round, gd.bossRound) - 1);
   const rows = players.map((ps) => {
     const roundsPassed = !ps.alive && ps.eliminatedRound != null ? Math.max(0, ps.eliminatedRound - 1) : teamRounds;
-    const lineup = boardOrder(ps.board).filter((x) => x.piece.kind === 'chess').map(({ r, c, piece }) => ({
-      id: piece.id, golden: gd.isGolden(piece.id), tier: gd.tierOf(piece.id), row: r, col: c, items: (piece.items || []).map((i) => i.id),
-    }));
-    // the team's clear counts for the players still in; an eliminated / departed teammate did not pass the boss round
-    const cleared = victory && ps.alive;
+    const lineup = boardOrder(ps.board).filter((x) => x.piece.kind === 'chess').map(({ r, c, piece }) => {
+      const e = { id: piece.id, golden: gd.isGolden(piece.id), tier: gd.tierOf(piece.id), row: r, col: c, items: (piece.items || []).map((i) => i.id) };
+      // 0.2.0 自选编队: a DIY slot's pick — the result screen names and draws the operator (shared/diy.js diyRecord)
+      const pick = typeof ps.diyPickOf === 'function' ? ps.diyPickOf(piece.id) : null;
+      if (pick) e.diy = { charId: pick.charId, skillIndex: pick.skillIndex, uniEquipId: pick.uniEquipId };
+      const si = typeof ps.fieldsStandIn === 'function' && ps.fieldsStandIn(piece.id) ? gd.standIn(piece.id) : null;
+      if (si && si.standInFor) e.standInFor = si.standInFor;
+      return e;
+    });
+    // the team's clear counts for the players still in; an eliminated / departed teammate did not pass the boss round.
+    // 随机模式 负生: a player whose LP dropped below 0 (rmFailed) 已判负 — still on the seat, but cannot win this match
+    const cleared = victory && ps.alive && !(m.random && ps.rmFailed);
     return {
       playerId: ps.playerId,
       seat: ps.seat,
@@ -112,6 +119,8 @@ export function buildResult(m, outcome) {
       eliminatedRound: ps.eliminatedRound,
       lp: Math.max(0, ps.lp),
       bandId: ps.bandId,
+      // 随机模式: the second pick, when the player holds two (the client shows both bands)
+      ...(m.random && Array.isArray(ps.bandIds) && ps.bandIds.length > 1 ? { bandId2: ps.bandIds[1] } : {}),
       lineup,
       bonds: bondList(gd, ps.bonds).filter((b) => b.active || b.layers > 0),
       stats: {

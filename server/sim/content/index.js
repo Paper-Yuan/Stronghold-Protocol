@@ -1,12 +1,19 @@
 // server/sim/content/index.js — installs all content into a Battle (DESIGN §7).
 //
 // installContent(battle, { mode }) — applies the per-battle loadout data view (simdata withUnitLoadouts; DESIGN §16),
-//   then mode 'full' (default): hand-authored kits (kits/tier1..6) with generic
+//   then mode 'full' (default): hand-authored kits (kits/index.js: one file per kit in kits/ops/) with generic
 //   fallback + every domain module's install(battle); 'generic': generic kits only, no domain modules;
 //   'none': no kits (units never cast skills) and no modules. Every module install runs inside try/catch:
 //   a faulty content module is logged and skipped, never crashing the battle.
 // setupUnitKit(battle, unit, mode) — resolves a unit's Kit: kits[baseChessId]?.(bb, chess, def) ?? generic.
 //   Battle opts.kits ({ [baseChessId]: kitFn }) take precedence (tests / sandboxes).
+//   补位 stand-ins (isStandInDef: the def of simdata getStandIn — the chess's ids, another character's body): the kit is
+//   kits[def.charId] (the stand-in's own, kits/ops/standin-<codename>.js), never the chess id's — that is the replaced
+//   operator's kit; without one, the generic kit plus the talents it can apply exactly (generic.js genericTalents).
+//   A stand-in has no default skill: its kit authors every skill it supports in `skills` (selectSkillSpec).
+//   自选 pieces (isDiyDef: the def of simdata getDiy — a DIY slot's ids, the picked operator's body) take their kit the
+//   same way: kits[def.charId] (an owned 6★'s kits/ops/op-<codename>.js, a prototype's standin-<codename>.js), else the
+//   generic kit plus genericTalents; no default skill either (the pick chooses any of the three).
 //   Operator loadouts (DESIGN §16): the def is resolved for the unit's selected skill / module (simdata getChess), so
 //   the kit receives `chess.skill` = the SELECTED skill record and `bb` = its blackboard (talents / trait / module of
 //   the selected module). Kit contract (backward compatible): `{ skill?, skills?: { [skillId]: SkillSpec }, talents,
@@ -19,34 +26,74 @@
 //   are resolved by Battle (getToken(id, owner.defId, owner.def.loadout)), not here.
 // registerAllMeta(registry) — calls each domain module's registerMeta(registry) (prep side, server boot).
 
-import { genericKit } from './generic.js';
+import { genericKit, genericTalents } from './generic.js';
 import { withUnitLoadouts } from '../simdata.js';
+import { isPotential } from '../../../shared/potential.js';
 
-import tier1 from './kits/tier1.js';
-import tier2 from './kits/tier2.js';
-import tier3 from './kits/tier3.js';
-import tier4 from './kits/tier4.js';
-import tier5 from './kits/tier5.js';
-import tier6 from './kits/tier6.js';
-import * as tokens from './tokens.js';
-import * as devices from './devices.js';
-import * as enemies from './enemies.js';
-import * as bosses from './bosses.js';
-import * as bonds from './bonds.js';
-import * as garrisons from './garrisons.js';
-import * as items from './items.js';
-import * as bands from './bands.js';
-import * as choices from './choices.js';
+// Content files are loaded with guarded dynamic imports: a module that fails to load (syntax error, throwing
+// top-level code, missing file) is logged and replaced by an empty module instead of breaking the server.
+async function safeImport(path) {
+  try {
+    return await import(path);
+  } catch (e) {
+    console.error(`[content] failed to load ${path}: ${e && e.stack ? e.stack.split('\n').slice(0, 3).join(' | ') : e}`);
+    return {};
+  }
+}
 
-const TIERS = [tier1, tier2, tier3, tier4, tier5, tier6];
+const KIT_REGISTRY = await safeImport('./kits/index.js');
 const DOMAIN_NAMES = ['tokens', 'devices', 'enemies', 'bosses', 'bonds', 'garrisons', 'items', 'bands', 'choices'];
-const DOMAINS = [tokens, devices, enemies, bosses, bonds, garrisons, items, bands, choices];
+const DOMAINS = await Promise.all(DOMAIN_NAMES.map((n) => safeImport(`./${n}.js`)));
+const tokens = DOMAINS[0];
 
-/** Merged kit registry: baseChessId → (bb, chess, def) => Kit */
-export const KITS = Object.freeze(Object.assign({}, ...TIERS.map((m) => (m && typeof m === 'object' ? (m.default && typeof m.default === 'object' ? m.default : m) : {}))));
+/**
+ * Merged kit registry: baseChessId → (bb, chess, def) => Kit, then the 补位 stand-in kits: stand-in charId → builder
+ * (kits/index.js; each kit file is loaded guarded too)
+ */
+export const KITS = KIT_REGISTRY.KITS ?? Object.freeze({});
 
 /** Domain modules in install order: tokens, devices, enemies, bosses, bonds, garrisons, items, bands, choices. */
 export const MODULES = Object.freeze(DOMAIN_NAMES.map((n, i) => [n, DOMAINS[i]]));
+
+/**
+ * Whether `def` is a 补位 stand-in: a chess fielded with another character's body (simdata getStandIn — `standInFor` =
+ * the replaced operator's charId, `charId` = the stand-in's, which differ).
+ */
+export function isStandInDef(def) {
+  return !!(def && def.standInFor && def.charId && def.charId !== def.standInFor);
+}
+
+/**
+ * Whether `def` is a 自选 piece: a DIY slot fielded with a picked operator's body (simdata getDiy — `diyFor` = the slot's
+ * base id, `charId` = the operator's).
+ */
+export function isDiyDef(def) {
+  return !!(def && def.diyFor && def.charId);
+}
+
+/** A def whose body is another character than its chess id names (补位 stand-in, 自选 piece): its kit is keyed by charId. */
+const isOtherBody = (def) => isStandInDef(def) || isDiyDef(def);
+
+/**
+ * The kit builder of an operator def in `reg` ({ [key]: (bb, chess, def) => Kit }), or undefined. A stand-in's and a
+ * 自选 piece's kit is keyed by its charId (`char_609_acguad`, `char_112_siege`) and by nothing else: the chess id it keeps
+ * names the replaced operator's kit (a DIY slot has none). Any other def: baseId (`…_a`, data/SIM.md), the exact id, or
+ * the suffix-less id of DESIGN §5.6's example.
+ */
+export function kitOf(def, reg) {
+  if (!def || !reg) return undefined;
+  if (isOtherBody(def)) return Object.prototype.hasOwnProperty.call(reg, def.charId) ? reg[def.charId] : undefined;
+  const bare = String(def.baseId ?? def.id ?? '').replace(/_[ab]$/, '');
+  return reg[def.baseId] ?? reg[def.id] ?? reg[bare];
+}
+
+/** The generic kit of an operator def; a stand-in's / 自选 piece's also carries the talents generic.js can apply exactly. */
+function fallbackKit(bb, raw, def) {
+  const k = genericKit(bb, raw, def);
+  if (!isOtherBody(def)) return k;
+  const talents = genericTalents(def);
+  return talents.length ? { ...k, talents: [...(k.talents ?? []), ...talents] } : k;
+}
 
 /** Resolve the Kit of an ally unit. Never throws (falls back to the generic kit). */
 export function setupUnitKit(battle, unit, mode = 'full') {
@@ -65,20 +112,17 @@ export function setupUnitKit(battle, unit, mode = 'full') {
   if (unit.kind !== 'op') return {};
   const injected = battle.opts && battle.opts.kits;
   if (mode === 'full' || injected) {
-    // DESIGN §5.6's example keys kits by the suffix-less id (`chess_char_1_01`), data/SIM.md by baseId (`…_a`): accept both
-    const bare = String(def.baseId ?? def.id ?? '').replace(/_[ab]$/, '');
-    const pick = (reg) => reg?.[def.baseId] ?? reg?.[def.id] ?? reg?.[bare];
-    const f = pick(injected) ?? (mode === 'full' ? pick(KITS) : undefined);
+    const f = kitOf(def, injected) ?? (mode === 'full' ? kitOf(def, KITS) : undefined);
     if (typeof f === 'function') {
       try {
         const k = f(bb, raw, def);
         if (k) return selectSkillSpec(k, bb, raw, def);
       } catch (e) {
-        battle._handlerError(`kit:${def.baseId}`, unit, e);
+        battle._handlerError(`kit:${isOtherBody(def) ? def.charId : def.baseId}`, unit, e);
       }
     }
   }
-  return genericKit(bb, raw, def);
+  return fallbackKit(bb, raw, def);
 }
 
 /** A unit's own PlayerBattleInput entry (operators: kind ≠ 'token'; tokens: kind 'token'), or null. */
@@ -92,13 +136,20 @@ function inputEntry(unit) {
 /**
  * The loadout `{ skillIndex, moduleId }` a unit's PlayerBattleInput entry gives; an entry without loadout fields means
  * the DEFAULT loadout (`{}`), never "whatever the data view maps this chess id to" (another player's choice in a
- * multi-player field). Null when the unit has no input entry.
+ * multi-player field). `standIn: true` rides along (补位: the stand-in def whatever the skill / module fields say), as
+ * do `diy` (自选: the pick of a DIY slot's piece) and `potential` (0.2.2: 1–6, never a stand-in's). Null when the unit
+ * has no input entry.
  */
 function inputLoadout(unit) {
   const x = inputEntry(unit);
   if (!x) return null;
-  if (x.skillIndex == null && x.moduleId == null) return {};
-  return { skillIndex: x.skillIndex ?? null, moduleId: x.moduleId ?? null };
+  const extra = {
+    ...(x.standIn === true ? { standIn: true } : null),
+    ...(x.diy && typeof x.diy === 'object' ? { diy: x.diy } : null),
+    ...(x.standIn !== true && isPotential(x.potential) ? { potential: x.potential } : null),
+  };
+  if (x.skillIndex == null && x.moduleId == null) return extra;
+  return { skillIndex: x.skillIndex ?? null, moduleId: x.moduleId ?? null, ...extra };
 }
 
 /** Put a def on a not-yet-deployed ally (the fields Battle._makeAlly takes from the def). */
@@ -147,13 +198,17 @@ export function syncUnitLoadout(battle, unit) {
 /** Id of the selected skill of an operator def (null without a skill). */
 const selectedSkillId = (def) => def?.skill?.id ?? def?.raw?.skill?.skillId ?? null;
 
-/** True when the def's selected skill is the chess's default skill (no loadout info ⇒ default). */
-const skillIsDefault = (def) => !def?.loadout || def.loadout.skillIsDefault !== false;
+/**
+ * True when the def's selected skill is the chess's default skill (no loadout info ⇒ default). Never for a stand-in:
+ * the skill it fields is the one its chess names (S2 on one chess, S3 on another), so its kit authors each in `skills`;
+ * nor for a 自选 piece (the pick chooses any of its skills).
+ */
+const skillIsDefault = (def) => !isOtherBody(def) && (!def?.loadout || def.loadout.skillIsDefault !== false);
 
 /**
- * The kit with the skill spec of the SELECTED skill (see header): `kit.skills[id]` → `kit.skill` (default skill only)
- * → the generic spec. Returns the kit itself when nothing changes; `kit.skillSource` tells which one was used
- * ('skills' | 'kit' | 'generic').
+ * The kit with the skill spec of the SELECTED skill (see header): `kit.skills[id]` → `kit.skill` (default skill only;
+ * never for a stand-in) → the generic spec. Returns the kit itself when nothing changes; `kit.skillSource` tells which
+ * one was used ('skills' | 'kit' | 'generic').
  * @param {object} kit hand-authored kit
  */
 export function selectSkillSpec(kit, bb, raw, def) {
@@ -176,8 +231,7 @@ export function selectSkillSpec(kit, bb, raw, def) {
  * @returns {'skills'|'kit'|'generic'|'none'} where the spec comes from ('none' = no kit function at all)
  */
 export function skillSpecSource(def, kits = KITS) {
-  const bare = String(def?.baseId ?? def?.id ?? '').replace(/_[ab]$/, '');
-  const f = kits?.[def?.baseId] ?? kits?.[def?.id] ?? kits?.[bare];
+  const f = kitOf(def, kits);
   if (typeof f !== 'function') return 'none';
   let k = null;
   try { k = f(def.skill?.bb ?? {}, def.raw ?? def, def); } catch { return 'generic'; }

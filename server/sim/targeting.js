@@ -74,7 +74,11 @@ export function enemyStealthed(e) {
   return false;
 }
 
-/** Can `attacker` (ally) target enemy `e` at all (ignoring range)? */
+/**
+ * Can `attacker` (ally) target enemy `e` at all (ignoring range)? A profile's own exclusion `skipEnemy(e)` (a kit trait:
+ * 嵯峨 劝善 "嵯峨不攻击重伤单位") keeps such an enemy out of the unit's normal targets, the enemies it blocks
+ * (blockedTargets) and the target condition of its skill triggers (they pass `unit.profile`).
+ */
 export function canTargetEnemy(attacker, e, profile) {
   if (!e.alive || e.hidden || !e.deployed) return false;
   const f = e.s.flags;
@@ -82,6 +86,7 @@ export function canTargetEnemy(attacker, e, profile) {
   if (f.stealth && enemyStealthed(e)) return false;
   if (e.isFlying && !(profile && profile.canHitFly)) return false;
   if (profile && profile.groundOnly && e.isFlying) return false;
+  if (profile && typeof profile.skipEnemy === 'function' && profile.skipEnemy(e)) return false;
   return true;
 }
 
@@ -94,20 +99,22 @@ export function canTargetEnemy(attacker, e, profile) {
  * PRTS 异常效果 gives both anomalies the note "与'阻挡时解除'没有直接关系" — for this target selection (an attack, a skill
  * pick, a cast condition, a normal attack on every ally in range: PRTS 选择器 "所有触发选择器通常不无视迷彩"); an area
  * effect selects with areaSelectable / auraSelectable, which do not check 迷彩. An airborne ally (起飞, flag `liftoff`) is
- * never a target of a ground enemy (evadesGround).
+ * never a target of a ground enemy (evadesGround). An enemy whose 索敌不受阻挡影响 (profile `blockFree`: 自制投石机, PRTS 天赋)
+ * has no blocker exception: a 隐匿 / 迷彩 ally that blocks it is no target either — so, blocked by an operator on the
+ * 排气格栅 with nobody else in range, it does not attack (the official game, community report of 2026-10-06, item 24).
  */
 export function canTargetAlly(e, a, ranged) {
   if (!a.alive || !a.deployed || a.hidden || a.kind === 'device') return false;
   const f = a.s.flags;
   if (f.untargetable || f.sleep) return false;
-  if (ranged && (f.stealth || f.camou) && e.blockedBy !== a) return false;
+  if (ranged && (f.stealth || f.camou) && (e.blockedBy !== a || (e.profile && e.profile.blockFree))) return false;
   if (f.liftoff && evadesGround(e, a)) return false;
   return true;
 }
 
 /**
  * May an AREA effect of enemy-side `src` select ally `a` — a splash, a blast, an area skill or status, a pulse, a zone it
- * leaves, a chain / bounce jump, a 周围四格 addition (content/enemies.js areaAllies / areaAlliesInTiles / fieldAllies)?
+ * leaves, a chain / bounce jump, a 周围四格 addition (content/enemies/helpers.js areaAllies / areaAlliesInTiles / fieldAllies)?
  * PRTS 作战机制 §AOE伤害判定 "AOE的判定是对攻击范围内的每个可以被选中的敌人进行判定"; §隐匿 "隐匿效果使得获得该效果的单位无法被
  * 任何敌方的能力索敌选中"; PRTS 异常效果 §无法选择: with 隐匿, 不可选中, 无敌, 塔不可选中 or 对地规避 "常见的、来自不同阵营的
  * “选择”行为将无视这些单位进行（如同范围内不存在这个单位）", and the abilities PRTS marks "无视可选性" are those that skip
@@ -133,9 +140,9 @@ export function areaSelectable(src, a) {
 
 /**
  * May a BUFF AURA of enemy-side `src` (a 光环 refreshed on whoever stands in it — 深池伙友卫队's force field, 扎罗's
- * 远古威慑; content/enemies.js auraAllies) take ally `a`? PRTS 作战机制 §隐匿与Buff的关系 "隐匿状态下的单位一般无法被敌方的
+ * 远古威慑; content/enemies/helpers.js auraAllies) take ally `a`? PRTS 作战机制 §隐匿与Buff的关系 "隐匿状态下的单位一般无法被敌方的
  * 索敌机制和Buff选择器选中为目标", "目前明日方舟中使用能选中隐匿状态单位的Buff效果一定是无视隐匿状态起作用的" (its example:
- * 寒霜's 攻速下降 Debuff — content/enemies.js allyAura keeps that one on every ally): no 隐匿 ally, the one blocking `src`
+ * 寒霜's 攻速下降 Debuff — content/enemies/archetypes.js allyAura keeps that one on every ally): no 隐匿 ally, the one blocking `src`
  * included (GitHub #97), no untargetable or sleeping one; 迷彩 does not protect ("所有光环类能力…均不受迷彩制约"). Unlike areaSelectable it does not
  * apply 对地规避: a ground enemy's aura still reaches an airborne 起飞 ally [ASSUMED, DESIGN §21.20 / §21.22].
  */
@@ -176,12 +183,22 @@ const PRIORITY_FNS = {
   lowestHpRatio: (e) => e.hpRatio,
   highestAtk: (e) => -e.s.atk,
   boss: (e) => (e.isBoss ? 0 : 1),
+  // "优先攻击精英或领袖敌人" (薇薇安娜 S3: kits/ops/op-vvana.js): an ELITE / BOSS rank enemy or a leader first
+  elite: (e) => (e.isBoss || e.def?.rank === 'ELITE' || e.def?.rank === 'BOSS' ? 0 : 1),
   notBurst: (e) => (e.s.flags.burstLock ? 1 : 0),
   ground: (e) => (e.isFlying ? 1 : 0),
+  // 攻城手 trait "优先攻击重量最重的敌人" (早露 / 提丰: kits/ops/op-poca.js, op-typhon.js): the highest current 重量等级
+  // (Unit.weight: massLevel with 失重 etc.) first, the usual order after that
+  heaviest: (e) => -e.weight,
 };
 
 /**
- * Sort candidate enemies for an attacker (in place) and return them.
+ * Sort candidate enemies for an attacker (in place) and return them: the enemies it blocks first (the user's rule after
+ * playtest #6, "阻挡了就一定要能打到", for every blocker — DESIGN §20.3), then the special priority, taunt, the remaining
+ * route, the spawn order. One exception, the owner's decision of 2026-10-08 (GitHub #220 by TsangAsuna, #205): the 速射手 air priority
+ * (trait 优先攻击空中单位 — priority 'fly', a skill's too) comes before its own blocked enemy, so a 速狙 on a melee tile
+ * blocking a ground enemy shoots the flyer in its range (PRTS 索敌的概念 「阻挡（近战限定）→特殊优先级→…」); every other
+ * priority keeps the blocked enemy first.
  * @param {object} attacker ally unit
  * @param {object[]} cands enemies
  * @param {string|null} priority profile/skill priority key
@@ -189,6 +206,7 @@ const PRIORITY_FNS = {
 export function sortEnemyTargets(battle, attacker, cands, priority) {
   if (cands.length <= 1) return cands;
   const pf = priority ? (PRIORITY_FNS[priority] || (priority === 'nearest' || priority === 'farthest' ? null : null)) : null;
+  const airFirst = priority === 'fly';
   const ax = attacker.x, ay = attacker.y;
   const keyed = cands.map((e) => ({
     e,
@@ -198,7 +216,7 @@ export function sortEnemyTargets(battle, attacker, cands, priority) {
     d: battle.remainingDistance(e),
     s: e.spawnSeq,
   }));
-  keyed.sort((a, b) => a.b - b.b || a.p - b.p || a.t - b.t || a.d - b.d || a.s - b.s);
+  keyed.sort((a, b) => (airFirst ? a.p - b.p : 0) || a.b - b.b || a.p - b.p || a.t - b.t || a.d - b.d || a.s - b.s);
   for (let i = 0; i < keyed.length; i++) cands[i] = keyed[i].e;
   return cands;
 }
@@ -211,8 +229,9 @@ export function sortEnemyTargets(battle, attacker, cands, priority) {
  */
 export function sortAllyTargets(enemy, cands) {
   if (cands.length <= 1) return cands;
+  const bl = enemy.profile && enemy.profile.blockFree ? null : enemy.blockedBy;   // 索敌不受阻挡影响: no blocker first
   cands.sort((a, b) => {
-    const ba = enemy.blockedBy === a ? 0 : 1, bb = enemy.blockedBy === b ? 0 : 1;
+    const ba = bl === a ? 0 : 1, bb = bl === b ? 0 : 1;
     return ba - bb || aggroCmp(a, b);
   });
   return cands;

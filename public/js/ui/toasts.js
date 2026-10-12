@@ -8,6 +8,8 @@ import { h } from '../../vendor/preact.module.js';
 import { useEffect, useReducer } from '../../vendor/hooks.module.js';
 import htm from '../../vendor/htm.module.js';
 import { ERR_TEXT } from '../../../shared/constants.js';
+import { t } from '../../../shared/i18n.js';
+import { recordError } from '../diag.js';
 
 // no shared static vnodes (see components.js hFresh: htm's static cache would retain unmounted DOM)
 function hFresh(type, props, ...children) {
@@ -87,17 +89,18 @@ export function dismissToast(id) {
 }
 
 /**
- * Text for an error-ish value: NetError / {code,msg} / Error / string.
+ * Text for an error-ish value: NetError / {code,msg} / Error / string — in the current language (the Chinese texts are
+ * msgids: ERR_TEXT, net.js CLIENT_ERR_TEXT, a server `msg`; anything else is shown as it is).
  * @param {any} err
  * @returns {string}
  */
 export function describeError(err) {
-  if (!err) return '发生未知错误';
-  if (typeof err === 'string') return ERR_TEXT[err] || err;
-  if (err.code && ERR_TEXT[err.code]) return ERR_TEXT[err.code];
-  if (typeof err.message === 'string' && err.message) return err.message;
-  if (typeof err.msg === 'string' && err.msg) return err.msg;
-  return '发生未知错误';
+  if (!err) return t('发生未知错误');
+  if (typeof err === 'string') return t(Object.hasOwn(ERR_TEXT, err) ? ERR_TEXT[err] : err);
+  if (err.code && Object.hasOwn(ERR_TEXT, err.code)) return t(ERR_TEXT[err.code]);
+  if (typeof err.message === 'string' && err.message) return t(err.message);
+  if (typeof err.msg === 'string' && err.msg) return t(err.msg);
+  return t('发生未知错误');
 }
 
 /**
@@ -106,6 +109,7 @@ export function describeError(err) {
  * @returns {number}
  */
 export function toastError(err) {
+  recordError('request', err);
   return toast(describeError(err), 'error');
 }
 

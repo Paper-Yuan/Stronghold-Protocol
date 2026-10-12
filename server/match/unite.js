@@ -36,6 +36,9 @@ import { layerGainRoom } from '../../shared/constants.js';
  */
 export function planUnite(m, results) {
   if (m.isSolo) return null;
+  // 随机模式 负生: a failed player (LP < 0 once) 禁止参与后续联防 — neither helper nor leaker (their leaks
+  // re-enter like any leaker's; only the helper seat is barred)
+  const canHelp = (ps) => !(m.random && ps.rmFailed);
   const alive = m.alivePlayers();
   const leakers = [];
   const perfects = [];
@@ -44,7 +47,7 @@ export function planUnite(m, results) {
     if (!r) continue;
     const counted = (r.leaked || []).filter((l) => l && l.counted !== false);
     if (counted.length > 0) leakers.push(ps);
-    else if (r.perfect !== false) perfects.push(ps);
+    else if (r.perfect !== false && canHelp(ps)) perfects.push(ps);
   }
   if (!leakers.length || !perfects.length) return null;
   const helpers = helperOrder(m, perfects, results);

@@ -88,7 +88,18 @@ test('docs and messages say what falls back without the local art and how a serv
   const s6 = deploy.slice(deploy.indexOf('## 6. 本地客户端素材'));
   assert.ok(deploy.includes('## 6. 本地客户端素材') && s6.length > 200, 'DEPLOY §6');
   for (const re of [/同一版本/, /public\/assets\/local\//, /data\/local-assets\.json/, /3D 棋盘/, /源石虫/, /表情/, /玩法说明/]) assert.match(s6, re);
+  // 0.2.0: the summon models of the local client (extract.py TOKEN_SPINES) — named in the fallbacks, DEPLOY §6 and README,
+  // and an extraction made before them is reported by setup as lacking them (re-extract with --local)
+  assert.match(LOCAL_ART_FALLBACK, /召唤物/);
+  assert.match(s6, /召唤物/);
+  assert.match(s6, /--only spine\/token/);
+  const { localGaps } = await import('../tools/setup.mjs');
+  assert.equal(localGaps({ enemySpines: true, tokenSpines: true }), '');
+  assert.equal(localGaps({ enemySpines: true, tokenSpines: false }), '，缺少新版的自选召唤物模型');
+  assert.equal(localGaps({ enemySpines: false, tokenSpines: false }), '，缺少新版的灼热/炽焰源石虫模型和自选召唤物模型');
+  assert.match(read('tools/setup.mjs'), /\$\{localGaps\(local\)\}（重新提取：--local）/);
   const readme = read('README.md');
+  assert.match(readme, /召唤物/);
   assert.match(readme, /表情和「玩法说明」的教程图随上面的素材一起从公开镜像下载/);
   assert.match(readme, /\*\*同一版本\*\*的整合包/);
   assert.ok(!/需本地提取/.test(read('docs/PLAYING.md')), 'PLAYING: the 玩法说明 pages come with the download');

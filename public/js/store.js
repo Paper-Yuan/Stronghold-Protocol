@@ -21,6 +21,7 @@
 
 import { useLayoutEffect, useReducer, useRef } from '../vendor/hooks.module.js';
 import { PHASE } from '../../shared/constants.js';
+import { t } from '../../shared/i18n.js';
 
 /**
  * Create an observable store.
@@ -82,15 +83,39 @@ export const initialState = Object.freeze({
   ticker: [],
   emotes: [],
   clock: { offset: 0, rtt: null, synced: false },
+  matchmaking: { status: 'idle', mode: null, difficulty: null, random: false, elapsed: 0, matched: 0, target: 4 },
+  maintenance: { active: false, deadline: 0, seconds: 0, reason: '' },
+  lobbyStats: { online: 1, roomsCount: 0, matchesCount: 0, rooms: [] },
+  serverLoad: null,
+  presence: { online: null, matchmaking: null, serverNow: null },
+  announcement: null,
+  chatMessages: [],
   ui: { pendingJoin: null, restoring: false, buildStale: false },
 });
+
+export const CHAT_KEEP = 40;
+
+/**
+ * Append one `room.chat` line to the ring buffer (main.js feeds every S2C `room.chat` here).
+ * @param {{ playerId?: string, name?: string, seat?: number, isSpectator?: boolean, text?: string, at?: number }} msg
+ */
+export function pushChatMessage(msg) {
+  if (!msg || typeof msg.text !== 'string') return;
+  const cur = store.get().chatMessages || [];
+  store.set({ chatMessages: [...cur.slice(-(CHAT_KEEP - 1)), msg] });
+}
+
+/** Drop the chat log — a new room's lines must not sit under the old room's (called when the room changes). */
+export function clearChat() {
+  if (store.get().chatMessages?.length) store.set({ chatMessages: [] });
+}
 
 /** The app-wide store singleton. */
 export const store = createStore(initialState);
 
 /**
  * Which screen the router shows for a given app state:
- * not entered → title; m.public.phase ≠ LOBBY or room.inMatch → game; in a room → room; else lobby.
+ * not entered → title; a restored active match → game; unverified preload → title; room → room; else lobby.
  * @param {any} s store state
  * @returns {'title'|'lobby'|'room'|'game'}
  */
@@ -99,6 +124,7 @@ export function selectRoute(s) {
   const phase = s.match?.public?.phase;
   if (phase && phase !== PHASE.LOBBY) return 'game';
   if (s.room?.inMatch) return 'game'; // match starting: m.public is on its way
+  if (s.session.preloadRequired && !s.session.preloadReady) return 'title';
   if (s.room) return 'room';
   return 'lobby';
 }
@@ -125,8 +151,8 @@ export function isSpectating(room, playerId) {
 export function sessionResetNotice(prev, playerId) {
   const prevId = prev?.me?.playerId;
   if (prevId == null || prevId === playerId) return null;
-  if (prev?.match?.public || prev?.room?.inMatch) return '服务器会话已重置，上一局模拟已结束';
-  if (prev?.room) return '服务器会话已重置，已返回大厅';
+  if (prev?.match?.public || prev?.room?.inMatch) return t('服务器会话已重置，上一局模拟已结束');
+  if (prev?.room) return t('服务器会话已重置，已返回大厅');
   return null;
 }
 

@@ -96,7 +96,7 @@ test('splash casters hit enemies around the target; chain casters bounce with fa
   assert.deepEqual(hit.slice().sort((x, y) => y - x), [1000, 850, 723, 614]);
 });
 
-test('ring healers heal three allies; bards heal everyone in range every second', () => {
+test('ring healers heal three allies; bards give everyone in range 生命回复速度 +10 % of their ATK (PRTS 分支特性信息 吟游者)', () => {
   const ally = (id) => chessRec({ id, profession: 'TANK', skill: null, stats: { maxHp: 10000, atk: 0 } });
   const h = makeBattle({
     defs: {
@@ -119,10 +119,12 @@ test('ring healers heal three allies; bards heal everyone in range every second'
     content: 'none',
   });
   h2.step();
+  h2.run(0.3);
+  for (const id of ['a1', 'a2', 't_bard']) approx(h2.unit(id).s.hpRegen, 100); // an hpRegen buff, not a heal
   h2.unit('a1').hp = 1000; h2.unit('a2').hp = 1000;
-  h2.run(3.05);
-  approx(h2.unit('a1').hp, 1000 + 3 * 100);
-  approx(h2.unit('a2').hp, 1000 + 3 * 100);
+  h2.run(3);
+  // the regeneration lands as the HP ticks over (at most 1 HP pending)
+  for (const id of ['a1', 'a2']) assert.ok(Math.abs(h2.unit(id).hp - (1000 + 3 * 100)) <= 1.5, `${id}: ${h2.unit(id).hp}`);
   assert.equal(h2.unit('t_bard').stats.attacks, 0);
 });
 

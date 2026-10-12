@@ -7,7 +7,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { GEO, PHASE } from '../../shared/constants.js';
-import { makeMatch, give, giveItem, legalTileFor, chessOfTier } from './harness.js';
+import { DATA, makeMatch, give, giveItem, legalTileFor, chessOfTier } from './harness.js';
 
 const MELEE = (c) => c.position === 'MELEE' && c.profession === 'TANK';
 
@@ -37,6 +37,7 @@ test('#44 prep scout: held pieces are units on the hand row; deploying moves the
     const u = first.units.find((x) => x.uid === piece.uid);
     assert.ok(u, `${pid}: the held operator is a unit of the scout`);
     assert.deepEqual([u.x, u.y], [0, GEO.HAND_ROW], `${pid}: standing on the first hand slot`);
+    assert.equal(u.area, 'hand', 'tagged with its area: the bond popup counts it as held, not in play (GitHub #385)');
     assert.equal(u.kind, 'op');
     assert.equal(u.items, undefined, 'no items equipped yet');
   }
@@ -48,6 +49,7 @@ test('#44 prep scout: held pieces are units on the hand row; deploying moves the
   const last = h.lastTo('p_0', 'm.field');
   const u = last.units.find((x) => x.uid === piece.uid);
   assert.deepEqual([u.x, u.y], [c, r], 'deployed onto the watched board');
+  assert.equal(u.area, 'board');
   assert.equal(last.units.some((x) => x.uid === piece.uid && x.y === GEO.HAND_ROW), false, 'and gone from the hand row');
   m.dispose();
 });
@@ -74,6 +76,7 @@ test('#44 prep scout: a held item is a kind-item unit on the hand row; equipped 
   assert.ok(iu, 'the held item is a unit of the scout');
   assert.equal(iu.kind, 'item');
   assert.equal(iu.y, GEO.HAND_ROW);
+  assert.equal(iu.area, 'hand');
   // equip the item onto the operator (still in the hand): the operator's unit carries the item id
   assert.deepEqual(m.handle('p_1', { t: 'g.equip', itemUid: item.uid, targetUid: op.uid }), { ok: true });
   const after = h.lastTo('p_0', 'm.field');
@@ -98,13 +101,21 @@ test("PR #129 review: moving a hand piece to another slot is a scout change (x f
   b.recompute();
   const id = chessOfTier(1, MELEE).find((x) => m.pool.has(x));
   const a = give(m, b, id, 'hand', 0);
+  // a full hand (distinct plain equipment: nothing merges), so the temp piece stays in temp — a free hand slot would pull
+  // it in (PRTS 卫戍协议/帮助 §手牌区 "常规手牌区出现空位时自动移入")
+  const plain = Object.values(DATA.items).filter((i) => i.itemType === 'EQUIP' && !i.isGolden && i.kind === 'passive').map((i) => i.itemId ?? i.id);
+  for (let i = 1; i < b.hand.length; i++) b.hand[i] = b.newPiece('item', plain[i]);
   const c = give(m, b, id, 'temp', 0); // 临时整备区: PRTS 帮助把它算进手牌区,一起侦察
+  assert.ok(b.temp.includes(c));
   assert.deepEqual(m.handle('p_0', { t: 'g.watch', fieldId: 'n:p_1' }), { ok: true });
 
   const first = h.lastTo('p_0', 'm.field');
   const tu = first.units.find((x) => x.uid === c.uid);
   assert.deepEqual([tu.x, tu.y], [GEO.TEMP_C0, GEO.TEMP_ROW], 'the temp piece scouts on the temp row (first slot, col 4)');
-  assert.equal(first.units.find((x) => x.uid === a.uid).x, 0);
+  assert.equal(tu.area, 'temp');
+  const hu = first.units.find((x) => x.uid === a.uid);
+  assert.equal(hu.x, 0);
+  assert.equal(hu.area, 'hand');
 
   // a hand piece moved to another slot keeps uid and id — the slot must be in the signature for the push to fire
   assert.deepEqual(m.handle('p_1', { t: 'g.move', uid: a.uid, to: { area: 'hand', idx: 3 } }), { ok: true });

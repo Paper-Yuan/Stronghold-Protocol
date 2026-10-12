@@ -22,11 +22,8 @@
 //   imp.flush()                             // once per frame, after every unit update, before the main render
 //   imp.free(slot) ; imp.destroy()
 
-const isMobile = typeof navigator !== 'undefined' && (/Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) || (navigator.maxTouchPoints > 1 && !globalThis.matchMedia?.('(pointer: fine)').matches));
-
-// On mobile devices, 2048² RenderTextures cost ~80MB+ of VRAM; 1024² provides sharp impostors with 75% less VRAM
-const MAX_PAGES = isMobile ? { main: 2, clip: 1 } : { main: 4, clip: 3 };
-const PAGE_PX = isMobile ? { main: 1024, clip: 512 } : { main: 2048, clip: 1024 };
+const MAX_PAGES = { main: 3, clip: 2 };
+const PAGE_PX = { main: 2048, clip: 1024 };
 const GRID = 16;
 
 export class ImpostorAtlas {
@@ -34,8 +31,7 @@ export class ImpostorAtlas {
   constructor(renderer) {
     this.P = globalThis.PIXI;
     this.R = renderer;
-    // The baked page has to match the canvas resolution, or the sprites stay soft after the canvas is lifted.
-    this.res = Math.max(1, Math.min(3, renderer.resolution || 1));
+    this.res = Math.max(1, Math.min(2, renderer.resolution || 1));
     this.pages = [];
     this.parked = new this.P.Container(); // skeletons of impostor units (never rendered directly)
     this.parked.visible = false;

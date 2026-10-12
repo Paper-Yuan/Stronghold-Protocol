@@ -63,7 +63,7 @@
 
 import { weightedPick } from './waves.js';
 
-export const FAMILY_NAMES = { bounty: '悬赏决策', supply: '道具补给', shop: '机密商店', tactic: '战术决策' };
+export const FAMILY_NAMES = { bounty: '悬赏决策', supply: '道具补给', shop: '机密商店', tactic: '战术决策' }; // i18n-ignore: = choices.json families (the client shows the localized record)
 
 /**
  * Battles a multi-round bounty card lasts (data `rounds` 99, official text "之后 / 后续的<@ba.vdown>每场</>作战":
@@ -82,7 +82,7 @@ export function bountyBattles(c) {
   const r = Number(c && c.rounds);
   return Math.max(1, Math.min(99, Number.isInteger(r) ? r : 1));
 }
-const N_ZH = ['', '一', '两', '三', '四', '五'];
+const N_ZH = ['', '一', '两', '三', '四', '五']; // i18n-ignore: rewrites the official Chinese bounty text
 /**
  * A bounty text as the card lasts: a multi-round card's "之后的 / 后续每场作战" (rich `<@ba.vdown>每场</>` or plain) reads
  * "接下来<@ba.vup>两场作战</>" like the official two-battle cards while MULTI_ROUND_BOUNTY_BATTLES is set; any other
@@ -91,7 +91,7 @@ const N_ZH = ['', '一', '两', '三', '四', '五'];
 export function bountyText(text, c) {
   if (typeof text !== 'string' || !text || !isMultiRoundBounty(c) || !Number.isInteger(MULTI_ROUND_BOUNTY_BATTLES)) return text;
   const n = MULTI_ROUND_BOUNTY_BATTLES;
-  const battles = `${N_ZH[n] || n}场作战`;
+  const battles = `${N_ZH[n] || n}场作战`; // i18n-ignore
   return text
     .replace(/(?:之后的|后续的?)<@ba\.vdown>每场<\/>作战/g, `接下来<@ba.vup>${battles}</>`)
     .replace(/(?:之后的|后续的?)每场作战/g, `接下来${battles}`);
@@ -136,12 +136,13 @@ function itemCard(gd, id) {
  * Build the draft cards for an SP round.
  * @returns {{ family: string, name: string, desc: string, eventId: string|null, cards: object[] } | null}
  */
-export function generateDraft(gd, rng, round, { stageId = null, bondAvailable = null } = {}) {
+export function generateDraft(gd, rng, round, { stageId = null, bondAvailable = null, itemAvailable = null, forceFamily = null } = {}) {
   const sch = scheduleFor(gd, round);
   const fams = Array.isArray(sch.families) && sch.families.length ? sch.families.map((f) => [f.family, f.weight]) : [['supply', 1]];
-  let family = weightedPick(rng, fams) || 'supply';
+  // 随机模式 (无限火力) 悬赏每回合选：forceFamily 强制该类卡片（不再跟其它类别加权竞争）
+  let family = (forceFamily && FAMILY_NAMES[forceFamily] ? forceFamily : null) || weightedPick(rng, fams) || 'supply';
   const n = Number.isInteger(sch.cards) && sch.cards > 0 ? Math.min(sch.cards, 6) : formatCount(gd);
-  const opts = { stageId, bondAvailable, round };
+  const opts = { stageId, bondAvailable, round, itemAvailable };
   let cards = buildCards(gd, rng, family, n, sch, opts);
   if (!cards.length && family !== 'supply') { family = 'supply'; cards = buildCards(gd, rng, family, n, sch, opts); }
   if (!cards.length) return null;
@@ -328,16 +329,17 @@ function bountyDraftCards(gd, rng, n, sch, round) {
  * the nearest lower one, then any) — so one item can fill two slots. Positions shuffled; `n` < the slots (solo) keeps
  * `n` of them. Null without a usable `shopDraft` or at a round its `rounds` (when given) does not list.
  */
-export function shopDraftCards(gd, rng, n, round = null) {
+export function shopDraftCards(gd, rng, n, round = null, itemAvailable = null) {
   const spec = gd.choices.shopDraft;
   const slots = spec && Array.isArray(spec.slots) ? spec.slots.filter((x) => x && typeof x === 'object') : [];
   if (!slots.length) return null;
   if (Array.isArray(spec.rounds) && !spec.rounds.includes(round)) return null;
   const w = spec.itemWeights && typeof spec.itemWeights === 'object' ? spec.itemWeights : {};
   const coin = typeof spec.coin === 'string' && gd.item(spec.coin) ? spec.coin : null;
+  const free = list => itemAvailable ? list.filter(itemAvailable) : list;
   const ofTier = (t) => {
-    for (let k = t; k >= 1; k--) if ((gd.shopItemsByTier[k] || []).length) return gd.shopItemsByTier[k];
-    return eligibleItems(gd, 1, 6);
+    for (let k = t; k >= 1; k--) { const list = free(gd.shopItemsByTier[k] || []); if (list.length) return list; }
+    return free(eligibleItems(gd, 1, 6));
   };
   const out = [];
   for (const slot of slots) {
@@ -382,10 +384,10 @@ export function tacticDraftCards(gd, rng, n, { stageId = null, bondAvailable = n
   return out;
 }
 
-function buildCards(gd, rng, family, n, sch, { stageId = null, bondAvailable = null, round = 1 } = {}) {
+function buildCards(gd, rng, family, n, sch, { stageId = null, bondAvailable = null, round = 1, itemAvailable = null } = {}) {
   if (family === 'bounty') return bountyDraftCards(gd, rng, n, sch, round);
   if (family === 'shop') {
-    const cards = shopDraftCards(gd, rng, n, round);
+    const cards = shopDraftCards(gd, rng, n, round, itemAvailable);
     if (cards) return cards;
   }
   if (family === 'supply' || family === 'shop') {
@@ -393,7 +395,9 @@ function buildCards(gd, rng, family, n, sch, { stageId = null, bondAvailable = n
     let hi = 6;
     if (family === 'supply' && Array.isArray(sch.supplyTiers) && sch.supplyTiers.length === 2) [lo, hi] = sch.supplyTiers;
     let list = eligibleItems(gd, lo, hi);
+    if (itemAvailable) list = list.filter(itemAvailable);
     if (!list.length) list = eligibleItems(gd, 1, 6);
+    if (itemAvailable) list = list.filter(itemAvailable);
     const out = [];
     for (let i = 0; i < n && list.length; i++) out.push(itemCard(gd, list[Math.floor(rng() * list.length)]));
     return out;
@@ -482,9 +486,13 @@ function applyDefault(m, ps, card) {
         handled = true;
         break;
       case 'single_special_choice_gain_bond_chess': {
+        // the player's 自选 stock joins the draw, its bonds read through the player's view (player/diy.js diyStockEntries)
+        const pgd = ps.gd || gd;
+        const hasBond = (cid) => { const c = pgd.chess(cid); return !!(c && Array.isArray(c.bonds) && c.bonds.includes(bs.bond)); };
         for (let i = 0; i < count; i++) {
-          const id = m.pool.roll(m.rngMeta, { maxTier: Math.max(1, ps.shop.level), filter: (cid) => { const c = gd.chess(cid); return !!(c && Array.isArray(c.bonds) && c.bonds.includes(bs.bond)); } })
-            || m.pool.roll(m.rngMeta, { maxTier: 6, filter: (cid) => { const c = gd.chess(cid); return !!(c && Array.isArray(c.bonds) && c.bonds.includes(bs.bond)); } });
+          const extra = typeof ps.diyStockEntries === 'function' ? ps.diyStockEntries() : null;
+          const id = m.pool.roll(m.rngMeta, { maxTier: Math.max(1, ps.shop.level), filter: hasBond, extra })
+            || m.pool.roll(m.rngMeta, { maxTier: 6, filter: hasBond, extra });
           if (id) ps.acquireChess(id, { source: 'choice' });
         }
         handled = true;

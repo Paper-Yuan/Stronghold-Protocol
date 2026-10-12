@@ -1,3 +1,5 @@
+import { installSkinsSync } from './ui/skins.js';
+import { alertDialog } from './ui/components.js';
 // Client entry: boot (fonts, identity, socket), net → store wiring, router, global overlays.
 //
 // Router (derived from the store, no URL routes):
@@ -20,9 +22,14 @@
 // Multi-device support (ui/device.js + css/devices.css): feature classes on <html>, no page zoom, safe areas, rotation
 // re-layout; ui/compat.js polyfills are imported before anything else.
 // 干员调配 (DESIGN §16): an overlay over any route (<LoadoutHost/>, opened from lobby / room / briefing); its loadout is
-// kept in sync with the server by installLoadoutSync (room.loadout after every welcome and edit).
+// kept in sync with the server by installLoadoutSync (room.loadout after every welcome and edit), its 干员持有 tab's
+// not-owned list (0.2.0 补位) by installOwnershipSync (room.ownership, likewise), the 自选编队 picks (0.2.0 DIY) by
+// installDiySync (room.diy, likewise; it also keeps welcome.diyKitted for the picker).
 // Game data: every text of the game is static data (/data/*.json) downloaded once per page; the in-match files are
 // warmed in the background as soon as the player is in a room (warmGameData), before the match needs them.
+// Language (ui/lang.js, docs/I18N.md): chosen before the first render (initLang); App re-renders on a switch (useLang).
+// Server texts are translated on arrival: m.toast / m.ticker frames (msgid + params, or the text as a msgid; a
+// config.broadcasts line from its id + args), error codes (ui/toasts.js describeError) and room.closed reasons.
 
 // Polyfills first (older Safari / Firefox ESR): every module evaluated after this one sees them.
 import './ui/compat.js';
@@ -30,9 +37,12 @@ import { render } from '../vendor/preact.module.js';
 import { useErrorBoundary } from '../vendor/hooks.module.js';
 import { html, UiHosts, Button, MicroLabel, closeAllDialogs } from './ui/components.js';
 import { ConnectionBanner } from './ui/connBanner.js';
+import { normalizeMatchmaking } from './ui/matchmaking.js';
+import { AnnouncementBanner } from './ui/announcement.js';
+import { announcementFromMessage } from '../../shared/announcements.js';
 import { ToastHost, toast, toastError, describeError } from './ui/toasts.js';
 import { net, identity, NetError } from './net.js';
-import { store, useStore, emptyMatch, selectRoute, sessionResetNotice, isSpectating } from './store.js';
+import { store, useStore, emptyMatch, selectRoute, sessionResetNotice, isSpectating, pushChatMessage, clearChat } from './store.js';
 import { data } from './data.js';
 import { GAME_FILES } from './ui/gameComponents.js';
 import { TitleScreen, sanitizeName } from './screens/title.js';
@@ -44,9 +54,15 @@ import { settingsStore, updateSettings } from './ui/settings.js';
 import { GuideHost } from './ui/guide.js';
 import { installDeviceSupport } from './ui/device.js';
 import { LoadoutHost } from './screens/loadout.js';
-import { installLoadoutSync } from './ui/loadoutSync.js';
-import { installSkinsSync } from './ui/skins.js';
+import { StatsHost } from './screens/stats.js';
+import { recordResult, installStatsRecorder } from './ui/stats.js';
+import { installLoadoutSync, installOwnershipSync, installDiySync } from './ui/loadoutSync.js';
 import { startBuildGuard } from './ui/buildGuard.js';
+import { installEntryPreload } from './resources/entry.js';
+import { preloadEngine } from './resources/preload.js';
+import { initLang, useLang, tickerText } from './ui/lang.js';
+import { t, N_, translateWire } from '../../shared/i18n.js';
+import { recordError } from './diag.js';
 
 const RESTORE_GRACE_MS = 1500;
 const JOIN_DELAY_MS = 350;
@@ -91,9 +107,10 @@ function schedulePendingJoin() {
   joinTimer = setTimeout(async () => {
     const s = store.get();
     const code = s.ui.pendingJoin;
-    if (!code || joinInFlight || !s.session.entered || net.status !== 'online') return;
+    if (!code || joinInFlight || !s.session.entered || net.status !== 'online' ||
+      (s.session.preloadRequired && !s.session.preloadReady)) return;
     if (s.room) {
-      if (s.room.code !== code) toast('你已在其他同盟中，请先离开当前同盟', 'warn');
+      if (s.room.code !== code) toast(t('你已在其他同盟中，请先离开当前同盟'), 'warn');
       clearPendingJoin();
       return;
     }
@@ -127,6 +144,7 @@ function maybeFinishRestore() {
  * follow the store themselves).
  */
 function backToLobby() {
+  identity.rememberMatch(null);
   clearTimeout(restoreTimer);
   const s = store.get();
   if (s.room || s.match.public) closeAllDialogs();
@@ -136,10 +154,13 @@ function backToLobby() {
 
 function onWelcome(msg) {
   identity.saveToken(msg.token);
+  identity.rememberMatch(null);
   const prev = store.get();
   const prevId = prev.me.playerId;
   const name = typeof msg.name === 'string' && msg.name ? msg.name : prev.me.name;
+  identity.saveName(name);
   store.set({ me: { playerId: msg.playerId ?? null, name, token: typeof msg.token === 'string' ? msg.token : null } });
+  store.set({ presence: { online: msg.online ?? null, matchmaking: normalizeMatchmaking(msg.matchmaking), serverNow: msg.serverNow } });
   welcomeAt = Date.now();
 
   if (prevId != null && prevId !== msg.playerId) {
@@ -147,7 +168,7 @@ function onWelcome(msg) {
     // expired on it): whatever we showed before is gone — back to the lobby cleanly and say why.
     const notice = sessionResetNotice(prev, msg.playerId);
     backToLobby();
-    if (notice) toast(notice, 'warn', { ttl: 7000 });
+    if (notice) toast(t(notice), 'warn', { ttl: 7000 });
   } else if (prev.room || prev.match.public) {
     // Resumed session: the server re-pushes room/match state; drop whatever it doesn't.
     store.patch('ui', { restoring: true });
@@ -161,6 +182,10 @@ function onWelcome(msg) {
       store.patch('ui', { restoring: false });
     }, RESTORE_GRACE_MS);
   }
+  if (msg.serverLoad && typeof msg.serverLoad === 'object') {
+    store.set({ serverLoad: msg.serverLoad });
+    // Keep load status available without interrupting entry with a popup.
+  }
   schedulePendingJoin();
 }
 
@@ -171,7 +196,7 @@ function onRoomState(msg) {
   const seats = Array.isArray(room.seats) ? room.seats : [];
   if (myId != null && seats.length && !seats.some((s) => s && s.playerId === myId) && !isSpectating(room, myId)) {
     // We are no longer seated (kicked / left elsewhere) — neither in a player seat nor a spectator seat.
-    if (store.get().room) toast('你已不在该同盟中', 'warn');
+    if (store.get().room) toast(t('你已不在该同盟中'), 'warn');
     store.set({ room: null, match: emptyMatch() });
     return;
   }
@@ -179,14 +204,16 @@ function onRoomState(msg) {
   // A (new) match starts: forget the previous match's state so stale results never show.
   if (room.inMatch && !(prevRoom && prevRoom.inMatch && prevRoom.code === room.code)) store.set({ match: emptyMatch() });
   store.set({ room });
+  identity.rememberMatch(room.inMatch && seats.some((seat) => seat?.playerId === myId)
+    ? { name: store.get().me.name, code: room.code || '' } : null);
   if (room.mode === 'coop' && typeof room.code === 'string') rememberRoom(room.code);
   maybeFinishRestore();
 }
 
 const CLOSE_REASON = {
   // 'timeout' = this player was removed after staying disconnected past the lobby grace (server/lobby.js)
-  host_left: '创建者已离开，同盟已解散', timeout: '由于长时间断开连接，你已离开同盟', empty: '同盟已解散',
-  kicked: '你已被移出同盟', ended: '模拟已结束', expired: '同盟已过期', shutdown: '服务器维护中，同盟已关闭',
+  host_left: N_('创建者已离开，同盟已解散'), timeout: N_('由于长时间断开连接，你已离开同盟'), empty: N_('同盟已解散'),
+  kicked: N_('你已被移出同盟'), ended: N_('模拟已结束'), expired: N_('同盟已过期'), shutdown: N_('服务器维护中，同盟已关闭'),
 };
 
 function wireNet() {
@@ -201,31 +228,94 @@ function wireNet() {
   });
   net.on('clock', (c) => store.set({ clock: { offset: c.offset, rtt: c.rtt, synced: c.synced } }));
   net.on('welcome', onWelcome);
-  net.on('helloError', (err) => toastError(err));
-  net.on('replaced', () => toast('该身份已在其他页面登录，本页已断开', 'warn', { ttl: 6000 }));
+  net.on('presence', (msg) => {
+    if (!Number.isSafeInteger(msg.online) || msg.online < 0) return;
+    store.set({ presence: { online: msg.online, matchmaking: normalizeMatchmaking(msg.matchmaking), serverNow: msg.serverNow } });
+    store.patch('lobbyStats', { online: msg.online });
+  });
+  net.on('site.announcement', msg => store.set({ announcement: announcementFromMessage(msg) }));
+  net.on('adminKick', msg => { backToLobby(); toast(msg.banned ? '此客户端已被管理员封禁' : '你已被管理员断开连接', 'warn', { ttl: 8000 }); });
+  net.on('helloError', (err) => {
+    if (err.code === 'SESSION_IN_USE') identity.rejectToken();
+    toastError(err);
+  });
+  net.on('replaced', () => toast(t('该身份已在其他页面登录，本页已断开'), 'warn', { ttl: 6000 }));
   net.on('unhandledError', (err) => toastError(err));
   net.on('room.state', onRoomState);
+  net.on('room.chat', (msg) => pushChatMessage(msg));
+  net.on('room.chat.history', (msg) => {
+    if (Array.isArray(msg?.messages)) {
+      for (const m of msg.messages) pushChatMessage(m);
+    }
+  });
   net.on('room.closed', (msg) => {
     backToLobby();
+    clearChat();
     toast(CLOSE_REASON[msg.reason] || (typeof msg.reason === 'string' && msg.reason.length < 60 ? `同盟已关闭：${msg.reason}` : '同盟已关闭'), 'warn');
+  });
+  net.on('match.status', (msg) => {
+    store.patch('matchmaking', {
+      status: msg.status || 'idle',
+      mode: msg.mode || null,
+      difficulty: msg.difficulty || null,
+      random: msg.random === true,
+      elapsed: typeof msg.elapsed === 'number' ? msg.elapsed : 0,
+      matched: typeof msg.matched === 'number' ? msg.matched : 0,
+      target: typeof msg.target === 'number' ? msg.target : 4,
+    });
+  });
+  net.on('match.found', (msg) => {
+    store.patch('matchmaking', { status: 'found', roomCode: msg.roomCode, random: msg.random === true });
+    toast(`已匹配到${msg.random ? '无限火力 1.0' : '同盟'}小队（${msg.roomCode}）！`, 'success', { ttl: 3000 });
+  });
+  net.on('server.maintenance', (msg) => {
+    const active = !!msg.active;
+    store.patch('maintenance', {
+      active,
+      deadline: msg.deadline || 0,
+      seconds: msg.seconds || 0,
+      reason: msg.reason || '',
+    });
+    if (active) {
+      toast(`⚠ 服务器将于 ${msg.seconds || 60} 秒后停服维护（${msg.reason || '例行维护'}）`, 'warn', { ttl: 9000 });
+    }
+  });
+  net.on('lobby.stats', (msg) => {
+    store.patch('connection', { onlineCount: typeof msg.online === 'number' ? msg.online : 1 });
+    store.set({
+      lobbyStats: {
+        online: typeof msg.online === 'number' ? msg.online : 1,
+        roomsCount: typeof msg.roomsCount === 'number' ? msg.roomsCount : 0,
+        matchesCount: typeof msg.matchesCount === 'number' ? msg.matchesCount : 0,
+        rooms: Array.isArray(msg.rooms) ? msg.rooms : [],
+      },
+    });
   });
   net.on('m.public', (msg) => { matchAt = Date.now(); store.patch('match', { public: payload(msg) }); maybeFinishRestore(); });
   net.on('m.private', (msg) => { matchAt = Date.now(); store.patch('match', { private: payload(msg) }); });
   net.on('m.field', (msg) => store.patch('match', { field: payload(msg) }));
-  net.on('m.result', (msg) => store.patch('match', { result: payload(msg) }));
+  net.on('m.result', (msg) => {
+    const res = payload(msg);
+    store.patch('match', { result: res });
+    // 本机统计 (PR #323): every arrival, including the lobby's result replay after a reconnect / reload —
+    // replays dedupe by content id inside recordResult (spectator seats' copies build no record at all)
+    recordResult(res, { myId: store.get().me.playerId, roomMode: store.get().room?.mode ?? null, now: Date.now() });
+  });
   net.on('m.toast', (msg) => {
     const kind = ['info', 'success', 'warn', 'error'].includes(msg.kind) ? msg.kind : 'info';
-    toast(msg.text, kind);
+    // msgid + params (server ≥ 0.2.0) or the text itself as a msgid, in the current language
+    toast(translateWire(msg), kind);
   });
   net.on('m.ticker', (msg) => {
     if (typeof msg.text !== 'string') return;
+    const text = tickerText(msg);
     // type, player + the round it came in: a BOSS_HIT line is dropped once its boss round is over and superseded by the
     // same player's next one (ui/ticker.js tickerLineLive / tickerSupersedes)
     const type = typeof msg.type === 'string' ? msg.type : null;
     const playerId = typeof msg.playerId === 'string' ? msg.playerId : null;
     // its broadcast priority: the strip plays the highest first (ui/ticker.js enqueueTickerLines)
     const priority = Number.isFinite(msg.priority) ? msg.priority : 0;
-    store.set((s) => ({ ticker: [...s.ticker.slice(-(TICKER_KEEP - 1)), { id: ++seq, text: msg.text, at: Date.now(), type, playerId, round: s.match?.public?.round ?? null, priority }] }));
+    store.set((s) => ({ ticker: [...s.ticker.slice(-(TICKER_KEEP - 1)), { id: ++seq, text, at: Date.now(), type, playerId, round: s.match?.public?.round ?? null, priority }] }));
   });
   net.on('m.emote', (msg) => {
     store.set((s) => ({ emotes: [...s.emotes.slice(-(EMOTE_KEEP - 1)), { seq: ++seq, playerId: msg.playerId, id: msg.id, at: Date.now() }] }));
@@ -233,7 +323,7 @@ function wireNet() {
 
   // Entering (title → lobby) while already online also needs the deep-link join.
   store.subscribe((s, prev) => {
-    if (s.session.entered && !prev.session.entered) schedulePendingJoin();
+    if (s.session.entered && (!prev.session.entered || (s.session.preloadReady && !prev.session.preloadReady))) schedulePendingJoin();
     // in a room (co-op or solo, also a resumed one) a match is near: its data starts downloading
     if (s.room && !prev.room) warmGameData();
   });
@@ -258,25 +348,31 @@ function ScreenCrashed({ error, reset }) {
   return html`<div class="screen crash">
     <div class="crash__box brackets">
       <${MicroLabel} tone="mint">SYSTEM FAULT<//>
-      <h2>界面发生错误</h2>
+      <h2>${t('界面发生错误')}</h2>
       <p class="t-lo">${String(error?.message || error).slice(0, 200)}</p>
-      <${Button} variant="primary" icon="refresh" onClick=${reset}>重新加载界面<//>
+      <${Button} variant="primary" icon="refresh" onClick=${reset}>${t('重新加载界面')}<//>
     </div>
   </div>`;
 }
 
 function App() {
   const route = useStore(selectRoute);
-  const [error, resetError] = useErrorBoundary((err) => console.error('[ui] screen crashed', err));
+  useLang(); // a language switch re-renders the whole tree in place
+  const [error, resetError] = useErrorBoundary((err) => {
+    console.error('[ui] screen crashed', err);
+    if (err && err.stack) console.error('[ui] stack:', err.stack);
+  });
   const Screen = SCREENS[route] || LobbyScreen;
   return html`<div class="app-root">
     <div class="app-bg" aria-hidden="true"></div>
     ${error ? html`<${ScreenCrashed} error=${error} reset=${resetError} />` : html`<${Screen} key=${route} />`}
     <${ConnectionBanner} />
+    <${AnnouncementBanner} />
     <${ToastHost} />
     <${UiHosts} />
     <${GuideHost} />
     <${LoadoutHost} />
+    <${StatsHost} />
   </div>`;
 }
 
@@ -286,8 +382,8 @@ async function waitForFonts(ms) {
   const fonts = document.fonts;
   if (!fonts || typeof fonts.load !== 'function') return;
   const loads = [
-    fonts.load('900 1em "Noto Sans SC"', '卫戍协议盟约'),
-    fonts.load('700 1em "Noto Sans SC"', '开始'),
+    fonts.load('900 1em "Noto Sans SC"', '卫戍协议盟约'), // i18n-ignore (font sample)
+    fonts.load('700 1em "Noto Sans SC"', '开始'), // i18n-ignore (font sample)
     fonts.load('700 1em Bender', '0123456789'),
     fonts.load('700 1em Rajdhani', '0123456789'),
   ].map((p) => p.catch(() => null));
@@ -301,23 +397,18 @@ function installGlobalErrorHandlers() {
     // expected browser behaviour, not app errors: log quietly, never toast.
     if (err && (err.name === 'NotAllowedError' || err.name === 'AbortError')) { console.warn('[app] ignored rejection', err.name); return; }
     console.error('[app] unhandled rejection', err);
+    recordError('rejection', err);
     if (err instanceof NetError) toastError(err);
-    else toast(`发生意外错误：${describeError(err)}`.slice(0, 120), 'error');
+    else toast(t('发生意外错误：{error}', { error: describeError(err) }).slice(0, 120), 'error');
   });
   window.addEventListener('error', (ev) => {
     if (!(ev instanceof ErrorEvent)) return; // resource load errors are not script errors
     console.error('[app] uncaught error', ev.error || ev.message);
-    // An uncaught throw after boot leaves nothing on screen (the toast path only covers rejections), and on a device
-    // whose WebView surface is broken even a toast would be invisible — so the shell has to hear about it.
+    recordError('error', ev.error || ev.message, ev.error ? null : `${ev.filename || '?'}:${ev.lineno || 0}:${ev.colno || 0}`);
     reportClientState({ error: String((ev.error && ev.error.message) || ev.message || 'unknown').slice(0, 200) });
   });
 }
 
-/**
- * One line of "what the page can see about itself", handed to the Android shell (AndroidBridge.reportClientState).
- * A WebView that fails to composite shows a black screen the page cannot annotate — the message would be painted on
- * the same broken surface — so the native side keeps this and complains when it never arrives.
- */
 function reportClientState(extra = {}) {
   const native = globalThis.AndroidNative;
   if (typeof native?.reportClientState !== 'function') return;
@@ -347,6 +438,7 @@ function reportClientState(extra = {}) {
 
 async function boot() {
   installGlobalErrorHandlers();
+  window.addEventListener('sp-federation-error',e=>toast(e.detail,'warn'));
   // touch / hover / fullscreen classes, zoom-gesture blocking, rotation re-layout (ui/device.js, css/devices.css)
   installDeviceSupport();
   // A page restored from the back/forward cache has a dead socket and a stale token choice: start over.
@@ -355,22 +447,37 @@ async function boot() {
   const identityReady = identity.init();
 
   const pendingJoin = parseRoomParam(location.search);
-  const savedName = sanitizeName(identity.loadName());
-  const entered = identity.wasEntered() && !!savedName;
+  const urlParams = new URLSearchParams(location.search);
+  const paramName = urlParams.get('name');
+  const savedName = sanitizeName(paramName || identity.loadName() || (urlParams.has('entered') ? 'Doctor #9009' : ''));
+  const entered = false; // Imported resources and admission are required on every page load.
   store.set((s) => ({
     me: { ...s.me, name: savedName },
     session: { entered },
     ui: { ...s.ui, pendingJoin },
   }));
+  installEntryPreload({ store, engine: preloadEngine });
+  if (savedName && identity.wasEntered()) {
+    const resumeEntry=()=>{
+      if (!store.get().session.preloadReady) return;
+      offResume?.();net.setName(savedName);store.patch('session',{entered:true});
+    };
+    let offResume=store.subscribe(resumeEntry);resumeEntry();
+  }
+
 
   wireNet();
+  installStatsRecorder(store); // follows the match on screen, so a 放弃模拟 can be recorded (ui/stats.js)
   installLoadoutSync({ net });
   installSkinsSync({ net });
+  installOwnershipSync({ net });
+  installDiySync({ net });
   net.attachBrowserHooks();
   // Audio: unlock on first gesture, BGM follows the route / match phase (js/audio.js).
   installAudio({ getManifest: () => data.get('assets'), subscribe: store.subscribe, getState: store.get, selectRoute, settings: settingsStore.get() });
   data.load('assets').catch(() => {});
   data.load('skins').catch(() => {});
+  data.load('backups').catch(() => {});
   // Warm the data cache in the background (missing files are tolerated).
   data.loadAll('config').catch(() => {});
   // Optional local-client art manifest (emotes, tutorial pages, official UI sprites; DESIGN §13).
@@ -380,9 +487,13 @@ async function boot() {
     if (entered) net.setName(savedName);
     else net.connect();
   });
-  await Promise.all([waitForFonts(1200), connectWhenReady]);
+  // the language (and its UI translations) before the first render: no Chinese flash for an English player
+  const langReady = initLang().catch((err) => console.warn('[app] language setup failed', err));
+  await Promise.all([waitForFonts(1200), connectWhenReady, langReady]);
   const root = document.getElementById('app');
   render(html`<${App} />`, root);
+  // Resource routing does not scan caches or start a preload, and never delays entry or a restored match.
+  import('./resources/routing.js').then(m => m.installResourceRouting()).catch(() => {});
 
   const splash = document.getElementById('boot');
   if (splash) {
@@ -395,13 +506,13 @@ async function boot() {
   };
   reportClientState();
   // A page keeps the modules it imported at load time for its whole lifetime, so a deploy cannot reach an open tab
-  // (ui/buildGuard.js): watch `/healthz.build`. Outside a match the page reloads itself; during a match the guard says
-  // so instead (the connection banner offers 刷新页面) and reloads once the match — settlement screen included — is over,
-  // so a running game is never thrown away.
+  // (ui/buildGuard.js): watch `/healthz.build` and offer a manual refresh. Keep every open page running until
+  // the player chooses to refresh, including the lobby and settlement screen.
   try {
     startBuildGuard({
       inMatch: () => selectRoute(store.get()) === 'game',
-      onStale: ({ waiting }) => { if (waiting) store.patch('ui', { buildStale: true }); },
+      autoRefresh: false,
+      onStale: () => store.patch('ui', { buildStale: true }),
     });
   } catch (err) {
     console.warn('[app] build guard failed to start', err);
@@ -411,5 +522,5 @@ async function boot() {
 boot().catch((err) => {
   console.error('[app] boot failed', err);
   const el = document.getElementById('boot-err');
-  if (el) el.textContent = '启动失败，请刷新页面重试';
+  if (el) el.textContent = t('启动失败，请刷新页面重试');
 });

@@ -372,11 +372,12 @@ test('限伤 vs the real leader defences [ASSUMED order]: 阿利斯泰尔\'s 500
   assert.equal(pool10.hp, before10);
 });
 
-test('限伤 vs 【死亡集群】 (real kit): a drone killed by an operator costs the leader 2 % of the pool max — a loss that lands up to a 14999950 pool and is cancelled above it (ceil)', () => {
+test('限伤 vs 【死亡集群】 (real kit): a drone killed by an operator costs the leader 2 % of the pool max — a share, no hit: it lands past the 300000 line too (DESIGN §25.13.4)', () => {
   // boss_1 / boss_8 skill 2: bb hp_ratio 0.02; the leader's max HP is the shared pool's max (Battle syncs it), so the
-  // loss is 0.02 × pool max. Today's largest drone pool is boss_8 ABYSS 7.2M → 144000; a pool above 14999950 (≈ 2.08 ×
-  // that), where ceil(0.02 × max) reaches 300000, would make every drone kill a cancelled hit — kept in view for any
-  // change to the pool size (research 11 §6).
+  // loss is 0.02 × pool max. With the pool per player alive (the owner's decision of 2026-10-06, PR #209) boss_8 ABYSS
+  // reaches 21.6M / 28.8M at 3 / 4 players: 432000 / 576000 per drone, past the line where ceil(0.02 × max) ≥ 300000 —
+  // until 0.2.0 the link was cancelled there like a hit; it is a share of the pool and lands (Battle.loseHp noHitLimit
+  // [ASSUMED], research 11 §6).
   assert.equal(gd.enemy('enemy_9013_acstmk').skills.find((s) => s.prefabKey === '2').bb.hp_ratio, 0.02);
   assert.equal(gd.enemy('enemy_9013_acstmk_2').skills.find((s) => s.prefabKey === '2').bb.hp_ratio, 0.02);
   const withOp = [{ ...PAIR[0], units: [{ uid: 1, chessId: 'chess_char_1_01_a', row: 10, col: 2 }] }, PAIR[1]];
@@ -399,16 +400,16 @@ test('限伤 vs 【死亡集群】 (real kit): a drone killed by an operator cos
     assert.equal(drone.alive, false, 'the drone died');
     return { lost: before - pool.hp, caps, id: L.id };
   };
-  const today = run(7200000);
-  assert.equal(today.lost, 144000, 'boss_8 ABYSS-sized pool: the loss lands');
-  assert.deepEqual(today.caps, []);
+  const solo = run(7200000);
+  assert.equal(solo.lost, 144000, 'boss_8 ABYSS-sized pool (one player): the loss lands');
+  assert.deepEqual(solo.caps, []);
   const under = run(14999950);
   assert.equal(under.lost, 299999, 'just under the line: lands');
   assert.deepEqual(under.caps, []);
-  for (const m of [14999951, 15000000]) {
+  for (const [m, want] of [[14999951, 299999.02], [15000000, 300000], [21600000, 432000], [28800000, 576000]]) {
     const over = run(m);
-    assert.equal(over.lost, 0, `${m}: ceil(0.02 × max) = 300000, one hit at the line: cancelled`);
-    assert.deepEqual(over.caps.map((c) => c[0]), [over.id]);
+    assert.ok(Math.abs(over.lost - want) < 1e-6, `${m}: the share lands past the line (${over.lost})`);
+    assert.deepEqual(over.caps, [], `${m}: no cancelled hit`);
   }
 });
 

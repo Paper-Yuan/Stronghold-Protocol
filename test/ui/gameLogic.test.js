@@ -9,13 +9,15 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
   phaseMode, phaseBanner, isCombatPhase, isBossPhase, countdownState, phaseTotalSeconds, sortBonds, bondTier, nextThreshold,
+  battleOverSfx, ownRoundLoss, uniteResultBox, battleResultBox, roundResultBox, RESULT_BOX_MS,
   bondMembers, memberHeadCount, bannedPerBond, priceTone, mergeProgress, shopBlockReason, deploySets, indexPieces, placementContext, canPlace,
-  boardTargets, dropIntent, normalizeDraft, normalizeSp, groupEnemies, factionTypes, snapHud, bossFrac, attackInterval, fmtNum,
+  boardTargets, dropIntent, normalizeDraft, normalizeSp, normalizePersonalChoice, groupEnemies, factionTypes, snapHud, bossFrac, attackInterval, fmtNum,
   rangeGridBox, shortcutFor, sanitizeSettings, DEFAULT_SETTINGS, normalizeResult, cycleField, fieldLabel, homeFieldId,
   activeBubbles, sortedPlayers, tileKey, prepCapsuleLabel, prepCamera, dropFailureReason, terrainInfo,
 } from '../../public/js/ui/gameLogic.js';
 import { pairPlayers } from '../../server/match/finalAssault.js';
 import { PHASE, GEO } from '../../shared/constants.js';
+import { setLang, setMessages } from '../../shared/i18n.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const load = (f) => JSON.parse(readFileSync(path.join(ROOT, 'data', f), 'utf8'));
@@ -71,6 +73,129 @@ describe('phases', () => {
     assert.match(phaseBanner(PHASE.ROUND_START, { round: 7 }).title, /7/);
     assert.equal(phaseBanner(PHASE.SETTLE, {}), null);
     assert.equal(prepCapsuleLabel(PHASE.PREP), '休息一下');
+  });
+  test('the round-start banner says 资金已到账 to a player still in only — 观战中 to an eliminated player and a spectator seat (GitHub #236)', () => {
+    // round 2 after p_0 ran out of LP: p_1 is still in; the spectator seat s_spec has no row in m.public
+    const pub = { round: 2, phase: PHASE.ROUND_START, players: [
+      { playerId: 'p_0', seat: 0, alive: false }, { playerId: 'p_1', seat: 1, alive: true },
+    ] };
+    const round = (viewer) => phaseBanner(PHASE.ROUND_START, pub, viewer);
+    // a player still in (the server paid the round's income)
+    assert.equal(round({ alive: true, spectator: false }).sub, '资金已到账');
+    assert.equal(round().sub, '资金已到账', 'no viewer given: the copy of a player still in');
+    // an eliminated player (eliminate() zeroed funds and pendingFunds; startRound pays the seats still in only)
+    assert.equal(round({ alive: false, spectator: false }).sub, '观战中');
+    // a spectator seat (no seat, no funds), also when only `spectator` is given
+    assert.equal(round({ alive: false, spectator: true }).sub, '观战中');
+    assert.equal(round({ spectator: true }).sub, '观战中');
+    // the title and the other phases' copy are the same for every viewer
+    for (const v of [{ alive: true }, { alive: false }, { alive: false, spectator: true }]) {
+      assert.equal(round(v).title, '第 2 回合');
+      assert.equal(phaseBanner(PHASE.PREP, pub, v).sub, phaseBanner(PHASE.PREP, pub).sub);
+    }
+    // the match screen hands the banner its viewer (screens/game.js `alive` folds a spectator seat in)
+    const src = readFileSync(path.join(ROOT, 'public/js/screens/game.js'), 'utf8');
+    assert.match(src, /phaseBanner\(phase, pub, \{ alive, spectator \}\)/);
+  });
+  // GitHub #235 (PR #112 by @Convey123): the official round result dialog and its 战斗结束 sound at SETTLE
+  test('战斗结束 sound: the official BATTLEOVER_* variant for the round', () => {
+    // 掉血 → _REDUCE；联防里自己没被扣 → _NOREDUCE；普通回合没扣 → _NORMAL；本回合没打过（不在本回合 / 重连落在结算）→ 不响
+    // `cost` is what screens/game.js roundLossRef keeps — { round, leaks, cap, unite }; it has no `pending` (a field the
+    // object never carried is how the Reduce variant was once dead code, review on PR #112)
+    const cost = (o) => ({ round: 3, leaks: 0, cap: 10, unite: false, ...o });
+    assert.equal(battleOverSfx(cost({ leaks: 3 })), 'battleOverReduce');
+    assert.equal(battleOverSfx(cost({ leaks: 1, unite: true })), 'battleOverReduce');
+    assert.equal(battleOverSfx(cost({ unite: true })), 'battleOverNoReduce');
+    assert.equal(battleOverSfx(cost({})), 'battleOverNormal');
+    // the cap bounds it like settlement's charge (14 leaks with cap 10 is still a loss)
+    assert.equal(battleOverSfx(cost({ leaks: 14, cap: 10 })), 'battleOverReduce');
+    assert.equal(battleOverSfx(cost({ leaks: 14, cap: undefined })), 'battleOverReduce', 'no cap known → the official 10');
+    // a 联防 round: the authority's charge decides, not the own battle's leaks — a leaker whose enemies the helpers
+    // stopped paid 0 and hears NoReduce
+    assert.equal(battleOverSfx(cost({ leaks: 3, unite: true }), 0), 'battleOverNoReduce');
+    assert.equal(battleOverSfx(cost({ leaks: 3, unite: true }), 3), 'battleOverReduce');
+    assert.equal(battleOverSfx(cost({ leaks: 0, unite: true }), 2), 'battleOverReduce');
+    assert.equal(battleOverSfx(cost({ leaks: 2, unite: true }), null), 'battleOverReduce', 'no 联防 figure → the own battle decides');
+    assert.equal(battleOverSfx(cost({ leaks: 2, unite: true }), undefined), 'battleOverReduce');
+    // this round's battle never seen (a spectator seat, an eliminated player, a reconnect landing on SETTLE)
+    assert.equal(battleOverSfx(null), null);
+    assert.equal(battleOverSfx(undefined, 0), null);
+  });
+  test('ownRoundLoss: min(cap, leaks) — what settlement charges outside a 联防', () => {
+    assert.equal(ownRoundLoss({ leaks: 3, cap: 10 }), 3);
+    assert.equal(ownRoundLoss({ leaks: 14, cap: 10 }), 10);
+    assert.equal(ownRoundLoss({ leaks: 14 }), 10);
+    assert.equal(ownRoundLoss({ leaks: 2.9, cap: 10 }), 2);
+    assert.equal(ownRoundLoss({ leaks: 0 }), 0);
+    assert.equal(ownRoundLoss(null), null);
+    assert.equal(ownRoundLoss({ cap: 10 }), null, 'no leaks seen → no figure at all');
+  });
+  test('round result box: the official words — 作战结束 + 全员无伤！ (mint) / 生命值减少 −N (red)', () => {
+    assert.equal(RESULT_BOX_MS, 2800, 'inside SETTLE\'s 3 s (server DELAYS.SETTLE)');
+    assert.deepEqual(roundResultBox(0), { title: '作战结束', micro: 'BATTLE OVER', tone: 'mint', sub: '全员无伤！', duration: RESULT_BOX_MS });
+    assert.deepEqual(roundResultBox(4), { title: '作战结束', micro: 'BATTLE OVER', tone: 'red', sub: '生命值减少 −4', duration: RESULT_BOX_MS });
+    assert.equal(roundResultBox(undefined).sub, '全员无伤！', 'an unknown loss reads as no loss');
+    assert.equal(roundResultBox(-2).sub, '全员无伤！');
+    assert.equal(roundResultBox(2.7).sub, '生命值减少 −2');
+    // through t(): the English pack (public/i18n/en.json — no official EN wording in the data, a plain translation)
+    try {
+      setMessages('en', JSON.parse(readFileSync(path.join(ROOT, 'public/i18n/en.json'), 'utf8')));
+      setLang('en');
+      assert.deepEqual([roundResultBox(0).title, roundResultBox(0).sub, roundResultBox(3).sub], ['Battle over', 'All unharmed!', 'LP reduced by 3']);
+    } finally { setLang('zh'); setMessages('en', {}); }
+  });
+  test('联防 result box: the viewer\'s own charge from the authority, the official words only when true', () => {
+    const res = { through: 3, helpers: ['p_1', 'p_2'], leakers: ['p_0'], losses: { p_0: 3, p_1: 0, p_2: 0 } };
+    // the leaker reads the LP settlement actually charged — word for word an ordinary round's box
+    assert.deepEqual(uniteResultBox(res, 'p_0'), roundResultBox(3));
+    assert.equal(uniteResultBox(res, 'p_0').sub, '生命值减少 −3');
+    // a helper was spared, but the 联防 leaked and a teammate paid: 全员无伤！ would claim that teammate was unharmed, and
+    // the official dialog has no other line (the remake's 「联防失败：还有 N 只突破防线」 was dropped in the owner's review
+    // of PR #112) — the official title alone, orange (player report 2026-10-06 on PR #112)
+    const helper = uniteResultBox(res, 'p_1');
+    assert.equal(helper.title, '作战结束');
+    assert.equal(helper.tone, 'orange');
+    assert.equal(helper.sub, '', 'no 全员无伤！ while a teammate was charged');
+    assert.ok(!/联防成功|联防失败|突破防线/.test(JSON.stringify(helper)), 'no 联防 verdict line');
+    // nothing got through: nobody paid, so 全员无伤！ is true for leaker and helper alike — the only 联防 case that says it
+    const cleared = { through: 0, helpers: ['p_1', 'p_2'], leakers: ['p_0'], losses: { p_0: 0, p_1: 0, p_2: 0 } };
+    assert.deepEqual(uniteResultBox(cleared, 'p_0'), roundResultBox(0));
+    assert.deepEqual(uniteResultBox(cleared, 'p_1'), roundResultBox(0));
+    // two leakers, one spared by the 联防, one charged: only the charged one reads 生命值减少
+    const spared = { through: 3, helpers: ['p_1'], leakers: ['p_0', 'p_2'], losses: { p_0: 0, p_2: 2, p_1: 0 } };
+    assert.equal(uniteResultBox(spared, 'p_0').sub, '', 'spared leaker, but the 联防 leaked: no claim');
+    assert.equal(uniteResultBox(spared, 'p_2').sub, '生命值减少 −2');
+    assert.equal(uniteResultBox(spared, 'p_1').sub, '', 'the helper, whose teammate paid');
+    // not in the round — a spectator seat, a player eliminated before it (settle lists alive players only): no box,
+    // as in a round without 联防 where a viewer without a battle gets none (and no sound) [ASSUMED]
+    assert.equal(uniteResultBox(res, 'nobody'), null);
+    assert.equal(uniteResultBox(cleared, 'nobody'), null);
+    assert.equal(uniteResultBox(res, undefined), null);
+    assert.equal(uniteResultBox(res, null), null);
+    // no 联防 this round: no box from here (the own battle's takes over)
+    assert.equal(uniteResultBox(null, 'p_0'), null);
+    assert.equal(uniteResultBox(undefined, 'p_0'), null);
+    assert.equal(uniteResultBox({}, 'p_0'), null);
+    assert.equal(uniteResultBox({ through: -1 }, 'p_0'), null);
+    // a view without `losses` makes no LP claim — and never falls back to the own battle's leaks, which a 联防 removed
+    const noLosses = uniteResultBox({ through: 3, helpers: ['p_1'], leakers: ['p_0'] }, 'p_0');
+    assert.equal(noLosses.title, '作战结束');
+    assert.equal(noLosses.sub, '', 'no LP known → no LP claim');
+    assert.equal(noLosses.tone, 'orange', 'no LP known → not read as a loss');
+    assert.equal(uniteResultBox({ through: 0, helpers: ['p_1'], leakers: ['p_0'] }, 'p_1').sub, '');
+  });
+  test('作战 result box (no 联防): 全员无伤！ without a leak, min(cap, leaks) otherwise, nothing without a battle', () => {
+    assert.deepEqual(battleResultBox({ leaks: 0, cap: 10 }), roundResultBox(0));
+    const bad = battleResultBox({ leaks: 3, cap: 10 });
+    assert.equal(bad.title, '作战结束');
+    assert.equal(bad.tone, 'red');
+    assert.equal(bad.sub, '生命值减少 −3');
+    // the per-round LP cap (config.lpCapPerRound): the loss shown is min(cap, leaks), never the leaked count
+    assert.equal(battleResultBox({ leaks: 14, cap: 10 }).sub, '生命值减少 −10');
+    assert.equal(battleResultBox({ leaks: 14 }).sub, '生命值减少 −10', 'no cap known → the official 10');
+    assert.equal(battleResultBox({ leaks: 2, cap: 5 }).sub, '生命值减少 −2');
+    assert.equal(battleResultBox(null), null);
+    assert.equal(battleResultBox({}), null, 'no battle seen this round (a spectator, a reconnect) → no box');
   });
 });
 
@@ -317,6 +442,58 @@ describe('placement mirror (canPlace)', () => {
     assert.equal(canPlace(ctx, h0.uid, { area: 'hand', idx: 10 }).ok, false);
     assert.equal(canPlace(ctx, h0.uid, { area: 'hand', idx: -1 }).ok, false);
   });
+  test('summoner withdrawal: a full hand accepts a drop onto its own summon stack', () => {
+    const b = { ...piece('chess_char_2_02_a'), row: 10, col: 4 };
+    const stack = { uid: ++uid, kind: 'token', id: 'token_10000_silent_healrb', ownerUid: b.uid, count: 1 };
+    const ctx = ctxFor(privWith({ board: [b], hand: [...Array.from({ length: 9 }, () => item(EQUIP)), stack] }));
+    const to = { area: 'hand', idx: 9 };
+    assert.deepEqual(canPlace(ctx, b.uid, to), { ok: true, action: 'move' });
+    assert.deepEqual(dropIntent(ctx, b.uid, to), { t: 'g.move', fields: { uid: b.uid, to } });
+    assert.equal(dropFailureReason(ctx, b.uid, to), null);
+  });
+  test('summoner withdrawal: its own stack frees space when dropped onto another item or token', () => {
+    const b = { ...piece('chess_char_2_02_a'), row: 10, col: 4 };
+    const stack = { uid: ++uid, kind: 'token', id: 'token_10000_silent_healrb', ownerUid: b.uid, count: 1 };
+    const other = { ...stack, uid: ++uid, ownerUid: ++uid };
+    const ctx = ctxFor(privWith({ board: [b], hand: [...Array.from({ length: 8 }, () => item(EQUIP)), other, stack] }));
+    for (const idx of [0, 8]) {
+      const to = { area: 'hand', idx };
+      assert.deepEqual(canPlace(ctx, b.uid, to), { ok: true, action: 'move' });
+      assert.deepEqual(dropIntent(ctx, b.uid, to), { t: 'g.move', fields: { uid: b.uid, to } });
+      assert.equal(dropFailureReason(ctx, b.uid, to), null);
+    }
+  });
+  test('summoner withdrawal: a full hand without its own hand stack still refuses the move', () => {
+    const b = { ...piece('chess_char_2_02_a'), row: 10, col: 4 };
+    const stack = { uid: ++uid, kind: 'token', id: 'token_10000_silent_healrb', ownerUid: b.uid, count: 1 };
+    const other = { ...stack, uid: ++uid, ownerUid: ++uid };
+    const hand = Array.from({ length: 10 }, () => item(EQUIP));
+    const cases = [
+      privWith({ board: [b], hand }),
+      privWith({ board: [{ ...b, id: MELEE }], hand }),
+      privWith({ board: [b], hand: [...hand.slice(0, 9), other] }),
+      privWith({ board: [b], hand, temp: [stack] }),
+      privWith({ board: [b, { ...stack, row: 9, col: 3 }], hand }),
+      privWith({ board: [b], hand: [...hand.slice(0, 9), { ...item(EQUIP), ownerUid: b.uid }] }),
+    ];
+    for (const priv of cases) {
+      const ctx = ctxFor(priv);
+      for (const idx of [0, 9]) {
+        const to = { area: 'hand', idx };
+        assert.equal(canPlace(ctx, b.uid, to).code, 'HAND_FULL');
+        assert.equal(dropIntent(ctx, b.uid, to), null);
+        assert.equal(dropFailureReason(ctx, b.uid, to), '整备区已满');
+      }
+    }
+  });
+  test('summoner withdrawal: freed space does not bypass an illegal chess swap', () => {
+    const b = { ...piece('chess_char_2_02_a'), row: 10, col: 4 };
+    const stack = { uid: ++uid, kind: 'token', id: 'token_10000_silent_healrb', ownerUid: b.uid, count: 1 };
+    const ctx = ctxFor(privWith({ board: [b], hand: [piece(MELEE), ...Array.from({ length: 8 }, () => item(EQUIP)), stack] }));
+    const to = { area: 'hand', idx: 0 };
+    assert.equal(canPlace(ctx, b.uid, to).code, 'BAD_TILE');
+    assert.equal(dropIntent(ctx, b.uid, to), null);
+  });
   test('items: equip on chess (board or hand), arts on tiles, not on tokens', () => {
     const b = { ...piece(MELEE), row: 9, col: 3 };
     const hChess = piece(RANGED);
@@ -364,7 +541,8 @@ describe('placement mirror (canPlace)', () => {
     const consumable = Object.values(items).find((x) => x.itemType === 'EQUIP' && String(x.kind).startsWith('consume_on_equip'));
     const cons = item(consumable.id);
     const ctxC = ctxFor(privWith({ board: [b], hand: [{ idx: 3, piece: cons }] }));
-    assert.equal(dropIntent(ctxC, cons.uid, { area: 'board', row: 9, col: 3 }).confirmReplace, false, 'consumed on equip: nothing is replaced');
+    // consumed on equip: a full carrier still replaces first (GitHub #263, test/ui/leftovers.test.js)
+    assert.equal(dropIntent(ctxC, cons.uid, { area: 'board', row: 9, col: 3 }).confirmReplace, true, 'consumed on equip: still replaces on a full carrier');
     const ar = dropIntent(ctx, art.uid, { area: 'board', row: 12, col: 6 });
     assert.deepEqual(ar, { t: 'g.art', fields: { itemUid: art.uid, row: 12, col: 6 } });
     for (const i of [mv, back, eqI, eqH, ar]) assert.equal(validateC2S({ t: i.t, ...i.fields }), null, i.t);
@@ -405,6 +583,32 @@ describe('drafts', () => {
     assert.equal(sp2.turnPid, 'b'); assert.equal(sp2.cards[1].takenBy, 'b'); assert.equal(sp2.pickOf.has('x'), false);
     assert.equal(normalizeSp(null), null);
     assert.equal(normalizeSp({ cards: new Array(9).fill({}) }).cards.length, 6, 'at most 6 cards');
+  });
+  test('personal choice: only the living recipient in the current PREP, independent of the public draft', () => {
+    const pub = { phase: PHASE.PREP, round: 14, sp: { family: 'supply', cards: ['global'] } };
+    const priv = { playerId: 'a', alive: true, canReady: false, temp: [], personalChoice: {
+      id: 'seed.choice.3', round: 14, sourceItemId: 'chess_item_6_03_m',
+      cards: [{ id: 'e1', kind: 'bounty', name: '战术特训', coin: 2 }, { id: 'e2', kind: 'bounty' }],
+    } };
+    const before = JSON.stringify({ pub, priv });
+    const sp = normalizePersonalChoice(pub, priv, 'a');
+    assert.equal(sp.id, priv.personalChoice.id);
+    assert.equal(sp.family, 'bounty');
+    assert.equal(sp.name, '教鞭 · 战术特训');
+    assert.equal(sp.turnPid, 'a');
+    assert.equal(sp.pickOf.size, 0);
+    assert.deepEqual(sp.cards.map((c) => c.idx), [0, 1]);
+    assert.ok(sp.cards.every((c) => c.takenBy === null));
+    assert.equal(JSON.stringify({ pub, priv }), before);
+    assert.equal(shopBlockReason('ready', { priv, editable: true }), '请先完成教鞭选择');
+    assert.equal(shopBlockReason('ready', { priv: { ...priv, temp: [{}] }, editable: true }), '请先完成教鞭选择');
+    assert.match(shopBlockReason('ready', { priv: { ...priv, personalChoice: null }, editable: true }), /临时整备区/);
+    for (const phase of [PHASE.SP_DRAFT, PHASE.COMBAT, PHASE.ROUND_START]) assert.equal(normalizePersonalChoice({ ...pub, phase }, priv, 'a'), null);
+    assert.equal(normalizePersonalChoice(pub, null, 'a'), null, 'spectator has no private state');
+    assert.equal(normalizePersonalChoice(pub, priv, 'b'), null);
+    assert.equal(normalizePersonalChoice(pub, { ...priv, alive: false }, 'a'), null);
+    assert.equal(normalizePersonalChoice({ ...pub, round: 15 }, priv, 'a'), null);
+    assert.equal(normalizePersonalChoice(pub, { ...priv, personalChoice: null }, 'a'), null);
   });
 });
 
@@ -457,7 +661,10 @@ describe('enemies, HUD, stats', () => {
     assert.deepEqual(factionTypes(['FLY', { type: 'TIMES' }, { id: 'SPECIAL' }, 'FLY', 3, null]), ['FLY', 'TIMES', 'SPECIAL']);
   });
   test('snapHud / bossFrac', () => {
-    assert.deepEqual(snapHud({ killed: 3, total: 9, dp: 20 }), { killed: 3, total: 9, dp: 20, boss: null });
+    assert.deepEqual(snapHud({ killed: 3, total: 9, dp: 20 }), { killed: 3, resolved: 3, total: 9, dp: 20, boss: null });
+    // the capsule's numerator: the field's own enemies knocked out or leaked (a runtime split / summon knocked down
+    // counts in `killed` only, so the two may differ — 5/9 down but 3/9 of the round's own list resolved)
+    assert.deepEqual(snapHud({ killed: 5, resolved: 3, total: 9, dp: 20 }), { killed: 5, resolved: 3, total: 9, dp: 20, boss: null });
     assert.deepEqual(snapHud({ boss: { hp: 50, max: 200 } }).boss, { hp: 50, max: 200 });
     assert.equal(snapHud(null), null);
     assert.equal(bossFrac({ hp: 50, max: 200 }), 0.25);
@@ -516,11 +723,16 @@ describe('keyboard & settings', () => {
   test('sanitizeSettings', () => {
     assert.deepEqual(sanitizeSettings(null), { ...DEFAULT_SETTINGS });
     assert.deepEqual(sanitizeSettings({ bgm: 3, sfx: -1, voice: 2, muted: 'yes', damageNumbers: false, quality: 'ultra' }),
-      { bgm: 1, sfx: 0, voice: 1, muted: false, damageNumbers: false, quality: 'high', highRefresh: true, board: 'auto' });
+      { bgm: 1, sfx: 0, voice: 1, voiceLang: 'cn', voiceOverrides: {}, muted: false, damageNumbers: false, quality: 'high', textSize: 'sm', keys: { ...DEFAULT_SETTINGS.keys } },
+      'a saved profile without `keys` (before 0.2.0) gets the default key map (test/ui/feedback5-hotkeys.test.js)');
     assert.equal(sanitizeSettings({ bgm: 0.5 }).voice, DEFAULT_SETTINGS.voice, 'a saved profile without `voice` gets the default');
+    // 语音语言 (0.2.2): 中文 by default — a profile saved before it, or any other value, plays the Chinese dub
+    assert.equal(DEFAULT_SETTINGS.voiceLang, 'cn');
+    assert.equal(sanitizeSettings({ bgm: 0.5 }).voiceLang, 'cn');
+    assert.equal(sanitizeSettings({ voiceLang: 'jp' }).voiceLang, 'jp');
+    for (const bad of ['en', 'kr', 'JP', 'ja', 1, null]) assert.equal(sanitizeSettings({ voiceLang: bad }).voiceLang, 'cn', String(bad));
     assert.equal(sanitizeSettings({ bgm: 0.333 }).bgm, 0.33);
     assert.equal(sanitizeSettings({ quality: 'low' }).quality, 'low');
-    assert.equal(sanitizeSettings({ highRefresh: false }).highRefresh, false);
   });
 });
 

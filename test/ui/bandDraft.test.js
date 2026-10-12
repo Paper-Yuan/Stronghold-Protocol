@@ -1,8 +1,8 @@
 // Strategy draft 队友已选 (research 09 §5 / §7, DESIGN §14 corrections): a strategy a teammate already picked cannot be
-// chosen again — the server refuses it (server/match/Match.js pickBand → BAD_TARGET '队友已选'), bots re-draw, and the
+// chosen again — the server refuses it (server/match/match/phases.js pickBand → BAD_TARGET '队友已选'), bots re-draw, and the
 // UI marks it (screens/bandDraft.js teammateBands). Automatic assignments (a turn that runs out, a departing seat) give
-// the official default 「华法琳」 only while no teammate holds it, else the first free strategy (Match.js defaultBand; the
-// UI names it: bandDraft.js timeoutBand) — a timed-out turn takes the highlighted band first (g.bandFocus, Match.js
+// the official default 「华法琳」 only while no teammate holds it, else the first free strategy (match/phases.js defaultBand; the
+// UI names it: bandDraft.js timeoutBand) — a timed-out turn takes the highlighted band first (g.bandFocus, match/phases.js
 // timeoutBand; user playtest #4 item 4: one countdown, BAND_TURN_SECONDS per turn, no separate step cap).
 
 import { test, describe } from 'node:test';
@@ -164,7 +164,7 @@ describe('server: automatic assignments never duplicate a teammate\'s strategy',
   test('every human idle: the turn timeouts assign distinct strategies (no separate step cap)', () => {
     const h = draftOf({ humans: 4, seed: 9 });
     const m = h.m;
-    h.run(() => m.phase !== PHASE.BAND_DRAFT, { maxTime: 120000 });
+    h.run(() => m.phase !== PHASE.BAND_DRAFT, { maxTime: 4 * TURN_MS + 1 });
     assert.equal(m.phase, PHASE.BATTLE_CHECK);
     const ids = distinct(m);
     assert.ok(ids.includes('band_bldsk'), 'the first idle player still gets the official default');
@@ -194,7 +194,7 @@ describe('server: automatic assignments never duplicate a teammate\'s strategy',
     m.dispose();
     for (const seed of [1, 2, 3, 4]) {
       const h2 = draftOf({ humans: 2, bots: 2, seed });
-      h2.run(() => h2.m.phase !== PHASE.BAND_DRAFT, { maxTime: 120000 });
+      h2.run(() => h2.m.phase !== PHASE.BAND_DRAFT, { maxTime: 4 * TURN_MS + 1 });
       distinct(h2.m);
       h2.m.dispose();
     }

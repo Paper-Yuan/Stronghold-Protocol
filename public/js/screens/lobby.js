@@ -1,7 +1,5 @@
 // Lobby screen: pick 独立模拟 / 同盟模拟 and a difficulty (标准/险境/绝境/终极), create a room,
-// or join one with a 同盟密钥 (recent codes remembered) — as a player (加入同盟) or in one of its MAX_SPECTATORS
-// spectator seats (观战: room.spectate, also while its match runs; community report #26, a remake feature — the
-// official room has none). Shows connection status + ping.
+// or join one with a 同盟密钥 (recent codes remembered). Shows connection status + ping.
 //
 // Difficulty descriptions come from data/config.json `modes[modeId]` when present, else from the
 // official act2autochess `modeDataDict` texts embedded below (desc + effectDescList), so the
@@ -10,7 +8,7 @@
 // plays 战场#01, 险境 draws one of 8, 绝境 / 终极 one of 7 (m01 excluded).
 
 import { useEffect, useRef, useState } from '../../vendor/hooks.module.js';
-import { DIFFICULTIES, DIFFICULTY_NAMES, DIFFICULTY_COLORS, ROOM_CODE_LEN, MAX_SEATS, MAX_SPECTATORS, modeIdFor, ERR } from '../../../shared/constants.js';
+import { DIFFICULTIES, DIFFICULTY_NAMES, DIFFICULTY_COLORS, ROOM_CODE_LEN, MAX_SEATS, modeIdFor } from '../../../shared/constants.js';
 import { html, Button, Icon, MicroLabel, Panel, TextField, PingPill, AvatarFrame, Tooltip, Spinner, DifficultyIcon, doctorNo } from '../ui/components.js';
 import { toast, toastError } from '../ui/toasts.js';
 import { GuideButton } from '../ui/guide.js';
@@ -113,20 +111,6 @@ export function normalizeCode(v) {
   const m = s.match(/[?&]room=([A-Za-z0-9]+)/);
   if (m) s = m[1];
   return s.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, ROOM_CODE_LEN);
-}
-
-/**
- * A handler that Preact binds as `onClick=${fn}` receives the click EVENT as its first argument, and a default
- * parameter only applies to `undefined` — so `fn(c = code)` would normalise the event target into a nonsense code
- * (`String(el)` → `"[object HTMLElement]"` → "OBJE"). Only a string is ever a code; anything else falls back to the
- * input field. Returns null when neither yields a well-formed code.
- * @param {unknown} arg the argument a handler was called with
- * @param {string} field the current input-field value
- * @returns {string|null}
- */
-export function codeArg(arg, field) {
-  const k = normalizeCode(typeof arg === 'string' ? arg : field);
-  return CODE_RE.test(k) ? k : null;
 }
 
 /**
@@ -240,24 +224,6 @@ export function LobbyScreen() {
   const [code, setCode] = useState('');
   const [busy, setBusy] = useState(null);
   const [recent] = useState(recentRooms);
-  // The Android shell can ask the local network who hosts a key, so a guest never types an address: the code is enough.
-  const nativeShell = globalThis.AndroidNative?.isNativeApp?.() ? globalThis.AndroidNative : null;
-  const [lanRoom, setLanRoom] = useState(null);
-  const [lanNote, setLanNote] = useState('');
-  useEffect(() => {
-    if (!nativeShell || roomMode !== 'coop' || !codeOk) { setLanRoom(null); return undefined; }
-    let cancelled = false;
-    setLanRoom(null);
-    setLanNote('正在局域网中查找该房间…');
-    globalThis.__onRoomFound = (list) => {
-      if (cancelled) return;
-      const host = (list || []).find((h) => !h.self);
-      if (host) { setLanRoom(host); setLanNote(`已找到房主 ${host.ip}（${host.humans || 0} 人在房）· 点「加入同盟」进入`); }
-      else setLanNote('局域网里没有这个房间：确认房主已创建同盟模拟房间，且两台设备在同一网络');
-    };
-    nativeShell.findRoom(code);
-    return () => { cancelled = true; delete globalThis.__onRoomFound; };
-  }, [code, roomMode]);
   const alive = useRef(true);
   const inFlight = useRef(false); // synchronous guard against double clicks (state updates are async)
   useEffect(() => () => { alive.current = false; }, []);
@@ -280,37 +246,9 @@ export function LobbyScreen() {
   };
   const create = () => run('create', () => net.request('room.create', { mode: roomMode, difficulty }));
   const join = (c = code) => {
-    // `onClick=${join}` hands the click EVENT as the first argument, and a default parameter only applies to
-    // `undefined` — codeArg keeps an event target out of the key and falls back to the input field
-    const k = codeArg(c, code);
+    const k = normalizeCode(c);
     if (!CODE_RE.test(k)) { toast(`同盟密钥为 ${ROOM_CODE_LEN} 位字母或数字`, 'warn'); return; }
-    // A room found on another phone is a different origin: hand the WebView over to it instead of asking the
-    // server we are on, which by definition does not have that room.
-    if (nativeShell && lanRoom) {
-      nativeShell.connectToHost(lanRoom.ip, k);
-      setLanNote(`正在进入 ${lanRoom.ip} 的房间…`);
-      return;
-    }
     run('join', () => net.request('room.join', { code: k }));
-  };
-  // a spectator seat: no player seat taken, nothing to do but watch (also a match already running)
-  const spectate = (c = code) => {
-    // same guard as join: `onClick=${spectate}` passes the click event, not a code
-    const k = codeArg(c, code);
-    if (!k) { toast(`同盟密钥为 ${ROOM_CODE_LEN} 位字母或数字`, 'warn'); return; }
-    run('spectate', () => net.request('room.spectate', { code: k }).catch((err) => {
-      // Clearer than the bare ERR_TEXT: the usual cause is a code that is not the host's (a remembered one from an
-      // earlier room, or another machine's) — the server can only answer "no such room".
-      if (err?.code === ERR.ROOM_NOT_FOUND) {
-        toast(`没有找到密钥 ${k} 对应的同盟：请和房主核对密钥（同盟结束后密钥即失效）`, 'warn');
-        return;
-      }
-      if (err?.code === ERR.ALREADY) {
-        toast('你已经是该同盟的博士：先离开同盟，才能以观战身份进入', 'warn');
-        return;
-      }
-      throw err;
-    }));
   };
   const backToTitle = () => {
     identity.setEntered(false);
@@ -349,22 +287,14 @@ export function LobbyScreen() {
 
         <div class="section-label"><span class="section-label__idx num">03</span>加入同盟<${MicroLabel}>JOIN WITH ALLIANCE KEY<//></div>
         <${Panel} class="join-panel" tone="amber">
-          ${nativeShell && roomMode === 'coop' && codeOk ? html`<div class="join-foot">
-            <span class=${lanRoom ? 't-lo' : 't-dim'}>${lanNote || '正在局域网中查找该房间…'}</span>
-            <button type="button" class="code-chip" onClick=${() => { setLanRoom(null); setLanNote('正在局域网中查找该房间…'); nativeShell.findRoom(code); }}>重新搜索</button>
-          </div>` : null}
           <div class="join-row">
             <${TextField} size="code" icon="key" value=${code} placeholder="输入同盟密钥 / 粘贴邀请链接"
               transform=${normalizeCode} onInput=${(v) => setCode(normalizeCode(v))} onEnter=${() => join()} />
             <${Button} variant="amber" size="lg" icon="users" loading=${busy === 'join'} disabled=${!codeOk || !online} onClick=${() => join()}>加入同盟<//>
-            <${Tooltip} text=${`以观战者身份进入：不占博士席位，只能观看（每个同盟最多 ${MAX_SPECTATORS} 名，模拟进行中也可进入）`}>
-              <${Button} variant="secondary" size="lg" icon="eye" class="join-spectate" loading=${busy === 'spectate'} disabled=${!codeOk || !online} onClick=${spectate}>观战<//>
-            <//>
           </div>
           <div class="join-foot">
             ${recent.length ? html`<span class="t-lo">最近的同盟</span>
-              ${recent.map((c) => html`<button key=${c} type="button" class="code-chip num" title="填入密钥（不会直接加入）"
-                onClick=${() => setCode(c)}>${c}</button>`)}`
+              ${recent.map((c) => html`<button key=${c} type="button" class="code-chip num" onClick=${() => { setCode(c); join(c); }}>${c}</button>`)}`
               : html`<span class="t-dim">向同伴索取 ${ROOM_CODE_LEN} 位同盟密钥，或直接打开邀请链接</span>`}
           </div>
         <//>

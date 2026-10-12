@@ -1,7 +1,8 @@
 // Spectator seats, the match side (community report #26, owner's decision 2026-10-04 — a remake feature: the official
 // room has no spectator seat). A spectator (opts.spectators / addSpectator, server/lobby.js spectate) is shown fields like
-// an ELIMINATED player in every phase — the first field of each battle (b.start watch), any field on g.watch, the 联防
-// spec, the first boss field, a prep board on g.watch 'n:<pid>' — and the settlement; it never receives an m.private
+// an ELIMINATED player in every phase — the field of the player it follows in each battle (b.start watch: the one it last
+// watched, else the first), any field on g.watch, the 联防 spec, that player's boss field, a prep board on g.watch
+// 'n:<pid>' or of the player it follows — and the settlement; it never receives an m.private
 // (shop, hand, funds …), an m.toast or m.unitStats, is never a field's player or authority, and every intent but g.watch
 // is refused (SPECTATOR). The platform half (seats, cap, host removal, reconnect): test/lobby.test.js; over sockets with
 // the real Match: test/match/lobby-integration.test.js.
@@ -65,8 +66,9 @@ test('a spectator seat watches a whole match (各自行动, 联防, 最终攻势
   }
   const kinds = new Set(starts.map((x) => x.kind));
   for (const k of ['normal', 'unite', 'boss']) assert.ok(kinds.has(k), `a ${k} field was shown (${[...kinds]})`);
-  // what it was shown in 各自行动 is what an eliminated player is shown: the first field of the phase
-  for (const st of starts.filter((x) => x.kind === 'normal')) assert.equal(st.fieldId, 'n:p_0');
+  // what it was shown in 各自行动 is what an eliminated player is shown: the field of the player it follows — p_1, the one
+  // it scouted itself in prep (a manual watch is the preference: item 56 of 2026-10-06); with no pick the first field
+  for (const st of starts.filter((x) => x.kind === 'normal')) assert.equal(st.fieldId, 'n:p_1');
   // the Final Assault's end reaches the boss field it watched, like every human shown that field
   const ends = h.allTo(S, 'b.end');
   assert.ok(ends.some((e) => e.fieldId === starts.filter((x) => x.kind === 'boss').pop().fieldId), 'b.end of the watched boss field');

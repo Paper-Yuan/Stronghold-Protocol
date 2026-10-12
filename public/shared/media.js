@@ -6,14 +6,14 @@
 //
 //     /assets/audio/bgm/act1.mp3   →   /media/bgm/act1
 //
-// — and `server/index.js` resolves it back to the real file under public/assets/audio, still answering with
+// — and `server/http/media.js` resolves it back to the real file under public/assets/audio, still answering with
 // `Content-Type: audio/mpeg`, Range support and the ETag of the file it resolved.
 //
 // Both sides import this module: the browser to decide which URLs to rewrite (`public/js/media.js`), the server to
 // decide which extensions a `/media/…` request may resolve to. A second copy of the list on one side would let them
 // drift apart silently — the client would rewrite to a path the server no longer accepts.
 
-/** Prefix of the extension-less audio route served by `server/index.js`. */
+/** Prefix of the extension-less audio route served by `server/http/media.js`. */
 export const MEDIA_PREFIX = '/media/';
 
 /** Extensions a `/media/…` request may resolve to, in the order the server tries them. */

@@ -7,13 +7,18 @@
 //   act1autochess_band2_buff  阿米娅 众志合一   ≥ value_i active bonds (highest i) ⇒ every operator ATK +atk_i,
 //                                               HP +max_hp_i (直接乘算 — support directMods —, bonds snapshot at combat start)
 //   act1autochess_band28_buff 埃芒加德 命结之秘 the first max_respawn_cnt operator knock-downs of the battle revive at
-//                                               once at full HP (runs after every other death saver, items included;
-//                                               a new deployment for 坚固维式重锤's lock — items revivedInPlace)
+//                                               once — PRTS 备注 "“复活”的实现方式为：受益者因移动之外的原因退场时下次部署
+//                                               的再部署时间和费用归零": the knock-out stands (被击倒时 effects run) and the
+//                                               operator redeploys at once, free, where it lies (部署时 effects run, SP
+//                                               reset): items reviveNow, a `death` hook after M3茧甲's and before 阿戈尔
+//                                               5 / 不屈 (in place until 0.2.0, community report 「…砾和瑕光这种死亡和部
+//                                               署的叠层效果，如果有艾芒加德的3次复活似乎是无法触发」)
 //   act1autochess_band13_buff 克莱门莎 崇高牺牲 a <bond_id> operator knocked down ⇒ +its tier (等阶) <bond_id> layers
 //                                               (bond_add_type by_charlevel; no "已激活" in the text ⇒ requireActive false)
 //   act1autochess_band16_buff 大帝 加急调派     "每次部署后再部署时间减少50%": every deployment of an operator stacks one
-//                                               redeploy ×(1 + respawn_time) for the rest of the battle [ASSUMED cumulative:
-//                                               "每次" — the first redeploy is −50 % under either reading]
+//                                               redeploy ×(1 + respawn_time) for the rest of the battle, with no cap (PRTS
+//                                               卫戍协议：盟约 下半 / PRTS盟约记录 备注 "※该策略效果可无限叠加"; a 20-stack cap
+//                                               until 0.2.2 — GitHub #328, PR #329)
 //   act1autochess_band17_buff 桑葚 药枚实验     at combat start the player's units on the front-most (最右边) column: each
 //                                               attack has `prob` to gain 1 shield layer (max 1)
 //   act1autochess_band18_buff 休谟斯 回收利用   a ground (地面) operator's skill ends ⇒ a random operator on its 4
@@ -37,22 +42,30 @@ import {
   num, buffsOf, bandRecord, isOp, onField, isElite, tierOf, unitBonds, activeBondIds, playerOps, passiveBuff, fxOn,
   matchBands, gainLayers, alliesAround, N4, baseChessId, isGroundOp, directMods,
 } from '../support/index.js';
-import { weaknessRetype, addShieldLayer, PRIO_REVIVE, revivedInPlace } from '../items/battle.js';
+import { weaknessRetype, addShieldLayer, PRIO_RESPAWN, reviveNow } from '../items/battle.js';
 import { spawnMapChar } from '../tokens.js';
 
 export const AMEDIC_BAND = 'band_amedic';
-/** 'fatal' priority of 埃芒加德: after the operators' own items (PRIO_REVIVE / PRIO_RESPAWN) and every talent / skill saver. */
-export const PRIO_BAND_REVIVE = PRIO_REVIVE - 10;
+/**
+ * 'death' priority of 埃芒加德's revive: a knock-out (so after every `fatal` saver — kits', 坚固维式重锤's 不死), after the
+ * operator's own M3茧甲 (PRIO_RESPAWN 13), before 阿戈尔 5's first-knock-out revive (11) and 不屈 (10).
+ */
+export const PRIO_BAND_REVIVE = PRIO_RESPAWN - 1;
 
 const keyOf = (bandId, part = '') => `band:${bandId}${part ? `:${part}` : ''}`;
 const deployedOps = (battle, pid) => playerOps(battle, pid, { fieldOnly: true });
 
+/** Every band id a battle player holds ([primary, secondary]; the duplicate id repeats when held twice). */
+const bandsOf = (ps) => (Array.isArray(ps.bandIds) && ps.bandIds.length ? ps.bandIds : ps.bandId ? [ps.bandId] : []);
+
 // ---------------------------------------------------------------------------------------------------------------
-// band buff behaviours: (battle, ps, params, bandId)
+// band buff behaviours: (battle, ps, params, bandId, dup) — `dup` is 1 for the primary copy of a held band, 2 for the
+// second one (随机模式 double pick); every buff key it builds is suffixed then, so the copy's numbers stack instead of
+// colliding on the same key ("same key keeps the highest" — support passiveBuff / addBuff 'replace').
 
 const BY_KEY = {
   // 阿米娅 众志合一
-  act1autochess_band2_buff(battle, ps, p, bandId) {
+  act1autochess_band2_buff(battle, ps, p, bandId, dup) {
     const n = activeBondIds(battle, ps.playerId).length;
     let atk = 0, hp = 0;
     for (let i = 1; i <= 9 && p[`value_${i}`] != null; i++) {
@@ -60,57 +73,55 @@ const BY_KEY = {
     }
     if (!(atk > 0 || hp > 0)) return;
     const mods = directMods({ atk, hp });
-    for (const u of playerOps(battle, ps.playerId)) passiveBuff(battle, u, keyOf(bandId), mods);
+    for (const u of playerOps(battle, ps.playerId)) passiveBuff(battle, u, keyOf(bandId, dup > 1 ? String(dup) : ''), mods);
   },
 
   // 埃芒加德 命结之秘
-  act1autochess_band28_buff(battle, ps, p, bandId) {
+  act1autochess_band28_buff(battle, ps, p, bandId, dup) {
     const max = Math.floor(num(p.max_respawn_cnt, 3));
     if (!(max > 0)) return;
     let used = 0;
-    battle.on('fatal', (c) => {
+    battle.on('death', (c) => {
       const u = c.unit;
-      if (c.prevented || used >= max || !isOp(u) || u.ownerId !== ps.playerId || !u.alive) return;
+      if (used >= max || !isOp(u) || u.ownerId !== ps.playerId || !reviveNow(battle, c, 'band')) return;
       used++;
-      c.prevented = true;
-      u.hp = u.s.maxHp;
-      revivedInPlace(u); // in place for PRTS's 0-time / 0-cost redeploy: a new deployment for 坚固维式重锤's lock (items)
-      fxOn(battle, 'revive', u, keyOf(bandId), bandId, { left: max - used });
+      fxOn(battle, 'revive', u, keyOf(bandId, dup > 1 ? String(dup) : ''), bandId, { left: max - used });
     }, { priority: PRIO_BAND_REVIVE });
   },
 
-  // 克莱门莎 崇高牺牲
-  act1autochess_band13_buff(battle, ps, p, bandId) {
+  // 克莱门莎 崇高牺牲: PRTS requires the 阿戈尔 bond to be active.
+  act1autochess_band13_buff(battle, ps, p, bandId, dup) {
     const bond = typeof p.bond_id === 'string' && p.bond_id ? p.bond_id : null;
     if (!bond) return;
     const byLevel = p.bond_add_type == null || p.bond_add_type === 'by_charlevel';
+    const key = keyOf(bandId, dup > 1 ? String(dup) : '');
     battle.on('death', (c) => {
       const u = c.unit;
       if (c.reason !== 'killed' || !isOp(u) || u.ownerId !== ps.playerId || !unitBonds(u).includes(bond)) return;
       const n = byLevel ? tierOf(u) : Math.max(1, Math.floor(num(p.value, 1)));
-      if (gainLayers(battle, { playerId: ps.playerId, bonds: bond, n, requireActive: false, source: u, reason: 'band' }) > 0) {
-        fxOn(battle, 'layer', u, keyOf(bandId), bandId, { bond, n });
+      if (gainLayers(battle, { playerId: ps.playerId, bonds: bond, n, requireActive: true, source: u, reason: 'band' }) > 0) {
+        fxOn(battle, 'layer', u, key, bandId, { bond, n });
       }
     });
   },
 
   // 大帝 加急调派
-  act1autochess_band16_buff(battle, ps, p, bandId) {
+  act1autochess_band16_buff(battle, ps, p, bandId, dup) {
     const mul = Math.max(0, 1 + num(p.respawn_time, 0));
     if (mul === 1) return;
-    const key = keyOf(bandId);
+    const key = keyOf(bandId, dup > 1 ? String(dup) : '');
     battle.on('deploy', (c) => {
       const u = c.unit;
       if (!isOp(u) || u.ownerId !== ps.playerId) return;
-      battle.addBuff(u, { key, mods: { redeployMul: mul }, refresh: 'stack', stacks: 1, maxStacks: 20, persist: true, allowDead: true });
+      battle.addBuff(u, { key, mods: { redeployMul: mul }, refresh: 'stack', stacks: 1, maxStacks: Infinity, persist: true, allowDead: true });
     });
   },
 
   // 桑葚 药枚实验
-  act1autochess_band17_buff(battle, ps, p, bandId) {
+  act1autochess_band17_buff(battle, ps, p, bandId, dup) {
     const pr = num(p.prob);
     if (!(pr > 0)) return;
-    const key = keyOf(bandId, 'shield');
+    const key = keyOf(bandId, dup > 1 ? `2:${'shield'}` : 'shield');
     const chosen = new Set();
     battle.on('battleStart', () => {
       const units = battle.allies(ps.playerId);
@@ -125,14 +136,15 @@ const BY_KEY = {
       const u = c.attacker;
       if (!chosen.has(u) || !u.alive) return;
       if (!(pr >= 1 || battle.rng() < pr)) return;
-      if (addShieldLayer(battle, u, key, 1)) fxOn(battle, 'shield', u, keyOf(bandId), bandId);
+      if (addShieldLayer(battle, u, key, 1)) fxOn(battle, 'shield', u, keyOf(bandId, dup > 1 ? String(dup) : ''), bandId);
     });
   },
 
   // 休谟斯 回收利用 ("地面干员技能结束时…": a melee-position operator on any tile — support isGroundOp)
-  act1autochess_band18_buff(battle, ps, p, bandId) {
+  act1autochess_band18_buff(battle, ps, p, bandId, dup) {
     const sp = num(p.sp);
     if (!(sp > 0)) return;
+    const key = keyOf(bandId, dup > 1 ? String(dup) : '');
     battle.on('skillEnd', (c) => {
       const u = c.unit;
       if (!isOp(u) || u.ownerId !== ps.playerId || c.reason === 'death' || !onField(u) || !isGroundOp(u)) return;
@@ -140,16 +152,16 @@ const BY_KEY = {
       const t = cands.length ? battle.rng.pick(cands) : null;
       if (!t) return;
       t.skill.gainSp(sp, 'band');
-      fxOn(battle, 'spGain', t, keyOf(bandId), bandId, { n: sp, from: u.id });
+      fxOn(battle, 'spGain', t, key, bandId, { n: sp, from: u.id });
     });
   },
 
   // 卡莱莎 食腐之蝶
-  act1autochess_band15_buff(battle, ps, p, bandId) {
+  act1autochess_band15_buff(battle, ps, p, bandId, dup) {
     const step = num(p.atk);
     const cap = Math.max(1, Math.floor(num(p.max_stack_cnt, 10)));
     if (!(step > 0)) return;
-    const key = keyOf(bandId);
+    const key = keyOf(bandId, dup > 1 ? String(dup) : '');
     battle.on('death', (c) => {
       const d = c.unit;
       if (c.reason !== 'killed' || !isOp(d) || d.ownerId !== ps.playerId) return;
@@ -172,9 +184,10 @@ const BY_KEY = {
   },
 
   // 夕 墨色真颜
-  act2autochess_band12_buff(battle, ps, p, bandId) {
+  act2autochess_band12_buff(battle, ps, p, bandId, dup) {
     const atk = num(p.atk);
     if (!atk) return;
+    const key = keyOf(bandId, dup > 1 ? String(dup) : '');
     battle.on('battleStart', () => {
       const groups = new Map();
       for (const u of deployedOps(battle, ps.playerId)) {
@@ -184,21 +197,22 @@ const BY_KEY = {
       }
       for (const list of groups.values()) {
         if (list.length < 2) continue;
-        for (const u of list) passiveBuff(battle, u, keyOf(bandId), directMods({ atk }));
+        for (const u of list) passiveBuff(battle, u, key, directMods({ atk }));
       }
     });
   },
 
   // 伊奥莱塔 统御号令
-  act2autochess_band3_buff(battle, ps, p, bandId) {
+  act2autochess_band3_buff(battle, ps, p, bandId, dup) {
     const a = num(p.atk_per_cnt), h = num(p.max_hp_per_cnt);
     if (!(a > 0 || h > 0)) return;
+    const key = keyOf(bandId, dup > 1 ? String(dup) : '');
     battle.on('battleStart', () => {
       const elites = deployedOps(battle, ps.playerId).filter(isElite);
       const n = elites.length;
       if (!n) return;
       const mods = directMods({ atk: a * n, hp: h * n });
-      for (const u of elites) passiveBuff(battle, u, keyOf(bandId), mods);
+      for (const u of elites) passiveBuff(battle, u, key, mods);
     });
   },
 };
@@ -255,12 +269,21 @@ export function hasBattlePart(bandId) {
 
 export function install(battle) {
   for (const ps of battle.players) {
-    const band = ps.bandId ? bandRecord(ps.bandId) : null;
-    if (!band) continue;
-    for (const b of buffsOf(band)) {
-      const f = b.bbKey ? BY_KEY[b.bbKey] : null;
-      if (!f) continue;
-      try { f(battle, ps, b.p, ps.bandId); } catch (e) { battle._handlerError?.(`band:${ps.bandId}`, null, e); }
+    // 随机模式: every held band installs (two picks). A duplicate band installs a second time under suffixed buff keys
+    // (band:<id> → band:<id>:2) so the sim's same-key "highest wins" rule does not swallow the doubled numbers; the
+    // per-band meta counters of the prep side (bands/meta.js) are shared, so a one-shot band holds only once there.
+    const ids = bandsOf(ps);
+    const seen = new Map();
+    for (const bandId of ids) {
+      const band = bandRecord(bandId);
+      if (!band) continue;
+      seen.set(bandId, (seen.get(bandId) || 0) + 1);
+      const dup = seen.get(bandId); // 1 = the primary, 2 = the second copy
+      for (const b of buffsOf(band)) {
+        const f = b.bbKey ? BY_KEY[b.bbKey] : null;
+        if (!f) continue;
+        try { f(battle, ps, b.p, bandId, dup); } catch (e) { battle._handlerError?.(`band:${bandId}`, null, e); }
+      }
     }
   }
   installMapChars(battle);

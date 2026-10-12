@@ -48,7 +48,12 @@ function scenario(chessId, dir, secs) {
         e_fly: enemyRec({ key: 'e_fly', hp: 1e6, speed: 0, motion: 'FLY', def: 50, res: 30 }),
       },
     },
-    setup: (b) => b.on('deploy', ({ unit }) => { if (unit.uid >= 100) unit.hp = unit.s.maxHp * (0.3 + 0.1 * (unit.uid - 100)); }),
+    setup: (b) => {
+      b.on('deploy', ({ unit }) => { if (unit.uid >= 100) unit.hp = unit.s.maxHp * (0.3 + 0.1 * (unit.uid - 100)); });
+      // the open field has no boards: "a tile of the player's own board" (Battle.onOwnBoard — 乌尔比安 S3's landing) is a
+      // board-position rule (DESIGN), not a facing one — every tile counts here, so the anchor's landing turns with him
+      b.onOwnBoard = () => true;
+    },
   });
   h.run(secs);
   checkInvariants(h.b);
@@ -111,18 +116,22 @@ test('战术家 援军 (伺夜): the tactical point is the tile in FRONT along t
 });
 
 test('突袭 (raidShip): the landing tile beside the enemy turns with the member direction (equal candidates)', () => {
-  // a diagonal-only range: two equally near landing tiles cover the enemy — the tie resolves in the member's frame
+  // a diagonal-only range: two equally near landing tiles cover the enemy — the tie resolves in the member's frame. The
+  // enemy stands inside the player's own board (rows 9–12, cols 2–10): a member lands only on a board of its field since
+  // 0.2.0 (Battle.onFieldBoard — on a one-player field its own; DESIGN §25.18, §26.1), so all four diagonal tiles around
+  // (10, 6) are candidates in every direction
+  const ER = 10, EC = 6;
   const rec = chessRec({ id: 'r_diag', bonds: ['raidShip'], profession: 'WARRIOR', skill: null, rangeGrid: [[1, 1], [-1, 1]] });
   const land = (dir) => {
     const h = makeBattle({
       stage: OPEN, rect: RECT, routes: FAR_ROUTE, defs: { chess: { r_diag: rec }, enemies: { e_d: enemyRec({ key: 'e_d', hp: 1e6, speed: 0 }) } },
       bonds: { raidShip: { count: 1, active: true, tier: 1, layers: 0 } },
       units: [{ chessId: 'r_diag', row: 15, col: 3, dir, abs: true }],
-      enemies: [{ key: 'e_d', pos: [R0, C0], route: walkRoute([R0, C0]) }], autoFinish: false, timeLimit: 60,
+      enemies: [{ key: 'e_d', pos: [ER, EC], route: walkRoute([ER, EC]) }], autoFinish: false, timeLimit: 60,
     });
     const u = h.unit('r_diag');
-    assert.ok(h.runUntil(() => u.alive && u.deployed && Math.max(Math.abs(u.tileR - R0), Math.abs(u.tileC - C0)) <= 2, 30), `${dir}: jumped next to the enemy`);
-    return toLocal(u.tileR - R0, u.tileC - C0, dir);
+    assert.ok(h.runUntil(() => u.alive && u.deployed && Math.max(Math.abs(u.tileR - ER), Math.abs(u.tileC - EC)) <= 2, 30), `${dir}: jumped next to the enemy`);
+    return toLocal(u.tileR - ER, u.tileC - EC, dir);
   };
   const right = land('RIGHT');
   assert.deepEqual(right, [-1, -1], 'RIGHT: the lower of the two diagonal tiles behind the enemy (tile-key order, as before)');

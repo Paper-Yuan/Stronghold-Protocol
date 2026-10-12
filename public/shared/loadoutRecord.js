@@ -4,16 +4,20 @@
 // user playtest #2 integration: an elite on 不装备 showed its default module's ATK and trait; attackRangeGrid = the range
 // it is deployed with, also the board overlay and the deploy wheel — extendedGrid is the battle's own 攻击距离 growth,
 // re-exported by server/sim/targeting.js). One implementation, so the card and the battle never disagree. (Which
-// choices a player may make: shared/protocol.js loadoutOptions.)
+// choices a player may make: shared/protocol.js loadoutOptions.) A loadout may carry the operator's potential (潜能 1–6,
+// the player's 干员调配 setting since 0.2.2 — shared/potential.js): the record is composed at it first.
 
 import { GEO } from './constants.js';
+import { atPotential, isPotential, POTENTIAL_DEFAULT } from './potential.js';
 
 /**
- * Resolve a loadout against a chess record.
+ * Resolve a loadout against a chess record. `potential` (潜能 1–6; anything else = 6, full potential — the default)
+ * rides along: loadoutRecord composes the record at it (shared/potential.js atPotential).
  * @param {object|null} rec data/chess.json record
- * @param {{ skillIndex?: number, moduleId?: string, skill?: number, module?: string }|null} [loadout]
- * @returns {{ skillIndex: number|null, moduleId: string|null, skillIsDefault: boolean, moduleIsDefault: boolean,
- *             isDefault: boolean }|null} null without a record; `moduleId` null for chess without module choices
+ * @param {{ skillIndex?: number, moduleId?: string, skill?: number, module?: string, potential?: number }|null} [loadout]
+ * @returns {{ skillIndex: number|null, moduleId: string|null, potential: number, skillIsDefault: boolean,
+ *             moduleIsDefault: boolean, potentialIsDefault: boolean, isDefault: boolean }|null} null without a record;
+ *             `moduleId` null for chess without module choices
  */
 export function resolveRecordLoadout(rec, loadout = null) {
   if (!rec || typeof rec !== 'object') return null;
@@ -26,9 +30,14 @@ export function resolveRecordLoadout(rec, loadout = null) {
   const defMod = mods ? (mods.find((m) => m && m.isDefault)?.uniEquipId ?? 'none') : null;
   const wantMod = lo.moduleId ?? lo.module;
   const moduleId = mods && (wantMod === 'none' || (typeof wantMod === 'string' && mods.some((m) => m && m.uniEquipId === wantMod))) ? wantMod : defMod;
+  const potential = isPotential(lo.potential) ? lo.potential : POTENTIAL_DEFAULT;
   const skillIsDefault = skillIndex === defSkill;
   const moduleIsDefault = moduleId === defMod;
-  return { skillIndex, moduleId, skillIsDefault, moduleIsDefault, isDefault: skillIsDefault && moduleIsDefault };
+  const potentialIsDefault = potential === POTENTIAL_DEFAULT;
+  return {
+    skillIndex, moduleId, potential, skillIsDefault, moduleIsDefault, potentialIsDefault,
+    isDefault: skillIsDefault && moduleIsDefault && potentialIsDefault,
+  };
 }
 
 const clean6 = (v) => (typeof v !== 'number' || !Number.isFinite(v) || Number.isInteger(v) || Math.abs(v) >= 1e6 ? v : Math.round(v * 1e6) / 1e6);
@@ -41,14 +50,22 @@ export function composeStats(statsBase, attr) {
 }
 
 /**
+ * A talent entry without its potential chain (shared/potential.js: `potMin` / `potBelow`).
+ * @param {any} t
+ * @returns {any}
+ */
+const unchained = ({ potMin: _m, potBelow: _b, ...t }) => t;
+
+/**
  * Talents with a module: apply ModuleRecord.talentChanges to the no-module talents — the merge rule of
  * tools/build-data.mjs mergeTalentChanges (override of an existing index: module values win, base keys the module does
- * not restate are kept; otherwise appended; empty placeholders dropped).
+ * not restate are kept; otherwise appended; empty placeholders dropped). The result carries no potential chains: a merged
+ * list is composed at one potential (resolve the inputs first — shared/potential.js atPotential).
  */
 export function composeTalents(base, changes) {
-  const talents = (base || []).map((t) => ({ ...t }));
-  for (const ch of changes || []) {
-    const { talentIndex, ...rest } = ch;
+  const talents = (base || []).map(unchained);
+  for (const ch0 of changes || []) {
+    const { talentIndex, ...rest } = unchained(ch0);
     const rec = { index: talentIndex, ...rest, fromModule: true };
     const at = talentIndex >= 0 ? talents.findIndex((x) => x.index === talentIndex) : -1;
     if (at >= 0) {
@@ -68,16 +85,18 @@ export function composeTalents(base, changes) {
 }
 
 /**
- * The chess record as the selected loadout makes it (a new object; the input is never mutated): `skill` = the selected
- * SkillRecord; golden chess with a non-default module choice: `stats` = statsBase + module attr, `trait` = the module's
- * traitOverride or traitBase, `talents` = talentsBase + talentChanges, `module` = the chosen module (`active:false`,
- * id null for 'none'). A talent that summons through a container token (凛御银灰) follows the selected skill's token.
- * The default loadout returns `rec` itself.
- * @param {object} rec data/chess.json record
- * @param {object} lo resolveRecordLoadout(rec, …)
+ * The chess record as the selected loadout makes it (a new object; the input is never mutated): at a potential below 6
+ * the record at that potential first (stats / statsBase / talents / talentsBase / module talent changes — shared/potential.js
+ * atPotential); `skill` = the selected SkillRecord; golden chess with a non-default module choice: `stats` = statsBase +
+ * module attr, `trait` = the module's traitOverride or traitBase, `talents` = talentsBase + talentChanges, `module` =
+ * the chosen module (`active:false`, id null for 'none'). A talent that summons through a container token (凛御银灰)
+ * follows the selected skill's token. The default loadout returns `rec` itself.
+ * @param {object} rec0 data/chess.json record
+ * @param {object} lo resolveRecordLoadout(rec0, …)
  */
-export function loadoutRecord(rec, lo) {
-  if (!rec || !lo || lo.isDefault) return rec;
+export function loadoutRecord(rec0, lo) {
+  if (!rec0 || !lo || lo.isDefault) return rec0;
+  const rec = lo.potentialIsDefault === false ? atPotential(rec0, lo.potential) : rec0;
   const out = { ...rec };
   if (!lo.moduleIsDefault && Array.isArray(rec.modules)) {
     const m = lo.moduleId === 'none' ? null : rec.modules.find((x) => x.uniEquipId === lo.moduleId) ?? null;
@@ -106,9 +125,9 @@ export function loadoutRecord(rec, lo) {
  * The attack range a (loadout-resolved) chess record fights with from its deployment — the detail card without a live
  * entry, the board's range overlay and the deploy wheel (DESIGN §16), the same tiles the battle unit starts with (prep
  * m.unitStats `range`): the selected skill's grid when it reads "被动效果：攻击范围扩大" (引星棘刺 S3 3-9: her own range
- * while she carries it, tier5 kit); else an elite whose equipped module reads "攻击范围扩大" uses that module's own grid
+ * while she carries it, her kit); else an elite whose equipped module reads "攻击范围扩大" uses that module's own grid
  * — its range-only talent change (talentIndex −1), e.g. SPC-X = the 3×3 caster range + the centre tile [0,3] — as the
- * kits do (tier4 moduleRangeGrid, tier5 moduleRangeUp); anything else its `rangeGrid`. Then grown by the 特性's
+ * kits do (kits/shared/tier4.js moduleRangeGrid, shared/tier5.js moduleRangeUp); anything else its `rangeGrid`. Then grown by the 特性's
  * permanent 攻击距离 (traitRangeExtend: 信仰搅拌机 SPT-Y "攻击距离+1"). A running skill's range is the live entry's.
  * @param {object|null} rec loadoutRecord(…) output (or a data/chess.json record: its default module)
  * @returns {number[][]|null}
@@ -131,7 +150,7 @@ export function attackRangeGrid(rec) {
 
 /**
  * The permanent 攻击距离 (ability_range_forward_extend) a record's 特性 grants — a module's, e.g. 信仰搅拌机 SPT-Y
- * "攻击距离+1" (tier4 rangeUp: a persistent rangeExtend buff, s.baseRangeExtend); 0 for one that works "在集成战略中" only
+ * "攻击距离+1" (its kit's rangeUp: a persistent rangeExtend buff, s.baseRangeExtend); 0 for one that works "在集成战略中" only
  * (空弦 ISW-A). The other 攻击距离 of the mode are skills' (their running range).
  * @param {object|null} rec loadoutRecord(…) output
  */

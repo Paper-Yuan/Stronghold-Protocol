@@ -1,6 +1,7 @@
 // A second 寒冷 used to apply a fixed 3 s 冻结 (COLD_FREEZE_DURATION) whatever the two colds lasted.
-// PRTS 术语释义 寒冷 (id ba.cold): 友方寒冷 pairs into 友方冻结, 「持续时间取双方之中最高」. The cold that remains is
-// already max(remaining, incoming) via addBuff refresh 'extend'; the freeze in the same moment must match it.
+// PRTS 术语释义 寒冷 (id ba.cold): 友方寒冷 pairs into 友方冻结, 「持续时间取双方之中最高」 — max(remaining, incoming). Since
+// 0.2.0 the pair BECOMES the freeze (「两两一对产生友方冻结」, 异常效果 COLD 「转变为冻结」): no cold is left on the enemy
+// (until then the older cold stayed on for as long as the freeze — test/sim/feedback5-kjerag-cold.test.js).
 // 抵抗 shortens the incoming duration before that max. A frozen-immune enemy still gets no freeze.
 // [ASSUMED] the engine's one cold uses that 友方 sentence for an enemy-applied cold too (PRTS states the max on
 // the 友方 line only). gamedata_const ba.cold names the freeze and not its length.
@@ -28,8 +29,8 @@ test('cold 10s then immediately another cold 1s → freeze lasts about 10s, not 
   const e = h.enemy('enemy_dummy');
   h.b.applyStatus(e, 'cold', { duration: 10 });
   h.b.applyStatus(e, 'cold', { duration: 1 });
-  close(e.findBuff('cold').timeLeft, 10, 1e-6, 'the shorter cold does not replace the longer one');
-  close(e.findBuff('freeze').timeLeft, 10, 1e-6, 'freeze');
+  assert.equal(e.findBuff('cold'), null, 'the pair became the freeze: no cold left');
+  close(e.findBuff('freeze').timeLeft, 10, 1e-6, 'freeze: the longer cold, not the shorter one');
   assert.equal(e.s.res, 15, 'frozen: RES −15');
   h.run(3.2);
   assert.ok(e.s.flags.freeze, 'still frozen past the old fixed 3 s');
@@ -44,7 +45,7 @@ test('cold 1s then cold 8s → freeze lasts about 8s, not 3', () => {
   const e = h.enemy('enemy_dummy');
   h.b.applyStatus(e, 'cold', { duration: 1 });
   h.b.applyStatus(e, 'cold', { duration: 8 });
-  close(e.findBuff('cold').timeLeft, 8, 1e-6);
+  assert.equal(e.findBuff('cold'), null);
   close(e.findBuff('freeze').timeLeft, 8, 1e-6);
   h.run(3.2);
   assert.ok(e.s.flags.freeze, 'still frozen past 3 s');
@@ -61,7 +62,7 @@ test('a shorter second cold does not shorten a longer remaining cold\'s freeze',
   const remain = e.findBuff('cold').timeLeft;
   assert.ok(remain > 3.5 && remain < 4.5, `about 4 s left, got ${remain}`);
   h.b.applyStatus(e, 'cold', { duration: 1 });
-  close(e.findBuff('cold').timeLeft, remain, 1e-6, 'cold');
+  assert.equal(e.findBuff('cold'), null, 'both colds became the freeze');
   close(e.findBuff('freeze').timeLeft, remain, 1e-6, 'freeze follows the remaining cold, not 1 s and not 3 s');
   h.run(3.2);
   assert.ok(e.s.flags.freeze, 'a 1 s or 3 s freeze would have ended');
@@ -76,8 +77,8 @@ test('抵抗 still shortens the incoming duration before the max', () => {
   h.b.applyStatus(e, 'cold', { duration: 2 });
   h.b.applyStatus(e, 'resist', { value: 0.5 });
   h.b.applyStatus(e, 'cold', { duration: 10 });
-  // incoming 10 × (1 − 0.5) = 5, remaining 2 → both cold and freeze are 5, not 10 and not 2.5
-  close(e.findBuff('cold').timeLeft, 5, 1e-6, 'cold');
+  // incoming 10 × (1 − 0.5) = 5, remaining 2 → the freeze is 5, not 10 and not 2.5 (and no cold is left)
+  assert.equal(e.findBuff('cold'), null, 'cold');
   close(e.findBuff('freeze').timeLeft, 5, 1e-6, 'freeze');
   const freeze = h.hooksOf('statusApplied').filter((c) => c.target === e && c.status === 'freeze');
   assert.equal(freeze.length, 1);
