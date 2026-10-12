@@ -7,7 +7,7 @@ aklz4.py registers a decoder for it. This script pulls the art the web sources l
   - every Sprite of the three autochess UI bundles (HUD frames, badges, banners, icons)
   - the 6 in-match emoticon themes of 盟约 (activity_table autoChessData.enabledEmoticonThemeIdList; only the
     *_battle sprites, keyed by display_meta_table picId: emoticon/<dir>/<picId>.png, see data/emotes.json)
-  - the autochess guidebook pages, battle projectile sprites and a few token/skin Spine models missing upstream
+  - the autochess guidebook pages and battle projectile sprites
   (the emotes and the guidebook pages are on the public mirror too: tools/fetch-assets.mjs downloads them, and the
   client uses these local copies first — GitHub issue #42)
   - the enemy battle Spine models no community dump carries (ENEMY_SPINES: 灼热源石虫 / 炽焰源石虫), from the enemy art
@@ -15,6 +15,11 @@ aklz4.py registers a decoder for it. This script pulls the art the web sources l
     merged in (premultiplied RGB + A, the Ark-Models format; the atlas gets `size:` / `pma: true` like the fetched
     enemies); the client draws them instead of the web alias once this manifest lists them (data/assets.json
     enemies[id].spineLocal, docs/ASSETS.md "Enemy aliases")
+  - the token (summon) battle Spine models no community dump carries (TOKEN_SPINES: most 自选 summons, 凯瑟琳's
+    爬行号·防护单元, 凛御银灰's 风雪之眼), from the battle token prefabs (pkgrps/btl_pfb_tokens_*.ab: the skeleton
+    the prefab's Front / only Spine renderer draws) → spine/token/<tokenId>/<stem>.skel|.atlas + merged page PNGs, the
+    same format; drawn instead of the avatar diamond once this manifest lists them (data/assets.json
+    tokens[id].spineLocal)
   - for the official 3D board (DESIGN §15): the map theme's Material parameters (map/<theme>/materials.json; shader
     names resolved through the shaders/*.ab bundles), the background / device meshes as Wavefront OBJ
     (mesh/<bundle>/<mesh>.obj; UnityPy's exporter, X mirrored into a right-handed frame) and their GameObject
@@ -23,11 +28,16 @@ aklz4.py registers a decoder for it. This script pulls the art the web sources l
     [opt]end_box / [opt]start_fly meshes, their merged additive textures, materials and prefab), the blower's texture
     (arts/maps/common/res.ab → map/common: TX_wind_device of the s_wind_device mesh) and the shared water / noise
     textures (arts/maps/effect.ab → map/water) used for deep-sea / mire / smog tiles
-  - derived PBR maps for three.js (DERIVED): Unity stores the theme's normal map as two channels (BC5: RG = XY, B = 0)
-    and metallic/gloss with the smoothness in A; the board renderer needs an RGB normal map (Z rebuilt) and a
-    roughness map in G (1 − smoothness; metalness B = 0), written next to the source as <name>_rgb.png / _rough.png
+  - derived PBR maps for three.js (DERIVED): Unity stores the theme's normal map as two channels (BC5: RG = XY, B = 0;
+    DXT5nm in an older bundle: AG = XY, R = 1) and metallic/gloss with the smoothness in A; the board renderer needs
+    an RGB normal map (Z rebuilt) and a roughness map in G (1 − smoothness; metalness B = 0), written next to the
+    source as <name>_rgb.png / _rough.png
   - WebP copies of the board textures every player downloads with the 3D board (WEBP), written next to their PNGs;
     the manifest lists the copy
+  - the official battlefield scenes (scenes.py SCENES: one prebuilt scene per 卫戍协议 battlefield) → scene/<stageId>/
+    scene.json + scene.bin + lightmap pages and scene/tex/ (the materials' albedo textures). The scene bundles ship
+    only while the season runs: they are read from the client when it has them, else from --scenes <dir> (default
+    .cache/official-scenes/*, filled by tools/local-extract/fetch_scenes.py)
 
 Usage:
   python3 -m venv .venv && .venv/bin/pip install -r tools/local-extract/requirements.txt
@@ -35,6 +45,7 @@ Usage:
   python3 tools/local-extract/extract.py --print-jobs     (the job table as JSON; needs no dependencies)
   python3 tools/local-extract/extract.py --webp           (only the WebP copies, from the PNGs already extracted —
                                                           e.g. the local art copied from a release bundle; needs Pillow)
+  .venv/bin/python tools/local-extract/extract.py --only scene [--scenes <dir of in-season bundles>]
 
 Writes <out>/**.png|.webp|.skel|.atlas and data/local-assets.json (manifest of what was extracted). With --only, just
 the jobs whose output subdir starts with one of the prefixes run, and their groups replace those of the existing
@@ -49,6 +60,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+import scenes  # noqa: E402  (the battlefield scene table and exporter; imports UnityPy only when it runs)
 
 ROOT = Path(__file__).resolve().parents[2]
 HOME = Path.home()
@@ -94,7 +106,6 @@ JOBS = [
     ('battle/prefabs/[uc]projectiles.ab', 'projectiles', {'Sprite', 'Texture2D'}),
     # official module (uniequip) type icons, keyed by lower-case type name (e.g. 'mar-x')
     ('spritepack/ui_equip_type_hub_h2_0.ab', 'module', {'Sprite'}),
-    ('skinpack/token_10039_ulpia_block.ab', 'spine/token_10039_ulpia_block', {'TextAsset', 'Texture2D'}),
     *[(rel, f'mesh/{sub}', {'Mesh', 'GameObject', 'Material', 'Texture2D'}) for rel, sub in MESH_BUNDLES],
     ('arts/effects/[pack]map.ab', 'map/fx', {'Mesh', 'GameObject', 'Material', 'Texture2D'}),
     ('arts/maps/common/res.ab', 'map/common', {'Material', 'Texture2D'}, r'^(TX|MT)_wind_device$'),
@@ -114,9 +125,38 @@ ENEMY_SPINES = ['enemy_1305_mhslim', 'enemy_1305_mhslim_2']
 ENEMY_ART = 'refs/arts/enm_art_*.ab'
 ENEMY_SPINE_SUB = 'spine/enemy'
 
+# Token (summon) battle Spine models that no community dump carries: fexli/ArknightsResource has most of the 自选
+# summons (data/backups.json `tokens`) only as skin variants or not at all, so tools/fetch-assets.mjs reports "missing
+# skel" for them and the client drew the avatar diamond. Every token of data/tokens.json and data/backups.json whose
+# battle prefab draws a Spine model and that has no web model (audited 2026-10-06 against both local installs). Read from
+# the battle token packs (dyn/battle/prefabs/[uc]tokens/<id>.prefab): the SkeletonDataAsset of the prefab's Spine
+# renderer — of a directional token (FaceSwitcher with Front / Back / Down renderers, each its own skeleton under the
+# same name) the Front one, the model the fetched tokens use too (plan.mjs: Spine/ or Front/) — with its skeleton,
+# atlas and page textures as in ENEMY_SPINES. The Windows build carries every one (pkgrps/btl_pfb_tokens_0/4/5.ab; the
+# iOS build lacks btl_pfb_tokens_0, and its pages are ASTC rather than BC7). Output: spine/token/<id>/ (manifest group
+# spine/token/<id>); the client draws the model when the group lists every file of data/assets.json
+# tokens[id].spineLocal (metadata in tools/assets/local-token-spines.json, `node tools/fetch-assets.mjs --local-spines`).
+# Not here: the tokens whose prefab draws nothing (an EmptyAnimator in place of the Spine renderer, displayType HIDDEN
+# or an effect only, and no avatar in either install's asset index) — 乌尔比安's 从不混淆的方向, 圣聆初雪's frozen
+# protection point, 酒神's 迷狂牢笼, 贝洛内's 牵绊, 予愿安洁莉娜's “一会儿见！” (token_10039 / 10058 / 10055 / 10065 / 10071).
+TOKEN_SPINES = [
+    'token_10002_kalts_mon3tr', 'token_10003_cgbird_bird', 'token_10005_mgllan_drone1', 'token_10005_mgllan_drone2',
+    'token_10005_mgllan_drone3', 'token_10007_phatom_twin', 'token_10008_cqbw_box', 'token_10009_weedy_cannon',
+    'token_10020_ling_soul1', 'token_10020_ling_soul2', 'token_10020_ling_soul3', 'token_10024_ebnhlz_rcube',
+    'token_10025_doroth_recttp', 'token_10026_bgsnow_subbow', 'token_10027_ironmn_pile1', 'token_10027_ironmn_pile2',
+    'token_10027_ironmn_pile3', 'token_10029_slent2_protrb', 'token_10031_swire2_gdtrap', 'token_10032_jesca2_jckshd', 'token_10034_ray_sndbst',
+    'token_10035_wisdel_wward', 'token_10041_cathy_catsld', 'token_10043_necras_skeltn', 'token_10050_monstr_prosts',
+    'token_10051_radian_tower1', 'token_10052_radian_tower2', 'token_10053_radian_tower3', 'token_10054_phatm2_encdool',
+    'token_10057_svash2_eagle1', 'token_10057_svash2_eagle2', 'token_10057_svash2_eagle3', 'token_10059_nasti_nstdef',
+    'token_10060_nasti_nstchr', 'token_10061_nasti_nstbld', 'token_10064_wang_stone1', 'token_10066_closur_ourbase',
+    'token_10068_kalts2_mtship', 'token_10069_mcnist_mcgraf', 'token_10070_aphris_pc',
+]
+TOKEN_PACKS = 'pkgrps/btl_pfb_tokens_*.ab'
+TOKEN_SPINE_SUB = 'spine/token'
+
 # Derived three.js maps: (output subdir, source texture, kind, output name). 'normal_rg' rebuilds Z of a two-channel
-# (BC5) normal map into an RGB tangent-space map; 'rough_from_gloss' turns Unity's metallic/gloss map (smoothness in
-# A) into a roughness (G) / metalness (B) map. Written after the job that exported the source texture.
+# (BC5 or DXT5nm) normal map into an RGB tangent-space map; 'rough_from_gloss' turns Unity's metallic/gloss map
+# (smoothness in A) into a roughness (G) / metalness (B) map. Written after the job that exported the source texture.
 DERIVED = [
     ('map/autochess', 'TX_autochessi_N', 'normal_rg', 'TX_autochessi_N_rgb'),
     ('map/autochess', 'TX_autochessi_M', 'rough_from_gloss', 'TX_autochessi_M_rough'),
@@ -190,6 +230,73 @@ def enemy_spine_id(container, wanted):
     SkeletonData.asset) when it is one of `wanted`, else None."""
     m = re.search(r'/Enemies/Spines/(?:[^/]+/)+([^/]+)_SkeletonData\.asset$', container or '', re.I)
     return m.group(1) if m and m.group(1) in wanted else None
+
+
+def token_prefab_id(container, wanted):
+    """The token id of a battle token prefab container path (dyn/battle/prefabs/[uc]tokens/<id>.prefab) when it is one
+    of `wanted`, else None (a skin's prefab lives under battle/prefabs/skins/character/…)."""
+    m = re.search(r'(?:^|/)battle/prefabs/(?:\[uc\])?tokens/([^/]+)\.prefab$', container or '', re.I)
+    return m.group(1) if m and m.group(1) in wanted else None
+
+
+def spine_ids(only, sub, ids):
+    """The ids of a Spine model list (ENEMY_SPINES / TOKEN_SPINES, written to `<sub>/<id>`) that run under --only: all of
+    them with no prefix, `sub` or a parent of it; else those whose output dir is a prefix or below one."""
+    if not wants_sub(only, sub):
+        return []
+    if not only or any(sub == p.rstrip('/') or sub.startswith(p.rstrip('/') + '/') for p in only):
+        return list(ids)
+    return [i for i in ids if any(f'{sub}/{i}' == p.rstrip('/') or f'{sub}/{i}'.startswith(p.rstrip('/') + '/')
+                                  for p in only)]
+
+
+def prefab_spine_nodes(root, objects):
+    """The Spine renderers of a prefab, depth first: [(GameObject name, active, skeletonDataAsset PPtr)] for every
+    MonoBehaviour holding a `skeletonDataAsset` (Spine's SkeletonAnimation). `root` is the root GameObject's type tree,
+    `objects` the bundle's {path id: object}; references into other bundles are skipped."""
+    out = []
+
+    def local(pptr):
+        return objects.get(pptr.get('m_PathID')) if pptr and not pptr.get('m_FileID') else None
+
+    def walk(go, active, depth):
+        tr, refs = None, []
+        for c in go.get('m_Component') or []:
+            o = local(c.get('component'))
+            if o is None:
+                continue
+            try:
+                if o.type.name == 'Transform':
+                    tr = o.read_typetree()
+                elif o.type.name == 'MonoBehaviour':
+                    sda = o.read_typetree().get('skeletonDataAsset')
+                    if sda and sda.get('m_PathID'):
+                        refs.append(sda)
+            except Exception:  # a script without a readable type tree is no Spine renderer we could use
+                continue
+        active = active and bool(go.get('m_IsActive', 1))
+        out.extend((go.get('m_Name') or '', active, ref) for ref in refs)
+        if tr is None or depth >= 12:
+            return
+        for ch in tr.get('m_Children') or []:
+            t = local(ch)
+            g = local(t.read_typetree().get('m_GameObject')) if t is not None else None
+            if g is not None:
+                walk(g.read_typetree(), active, depth + 1)
+
+    walk(root, True, 0)
+    return out
+
+
+def pick_spine_node(nodes):
+    """The renderer the remake draws among prefab_spine_nodes: of a directional token (a FaceSwitcher with Front / Back /
+    Down renderers) the Front one, else one named Spine, else the first — active renderers first; None when empty."""
+    live = [n for n in nodes if n[1]] or list(nodes)
+    for want in ('Front', 'Spine'):
+        hit = next((n for n in live if n[0] == want), None)
+        if hit:
+            return hit
+    return live[0] if live else None
 
 
 def _num(v, nd=6):
@@ -300,13 +407,16 @@ def _normal_z_table():
 
 
 def derive_normal_rg(img):
-    """RGB tangent-space normal map from a two-channel (BC5: R = X, G = Y, B unused) one: Z rebuilt per pixel."""
-    from PIL import Image
-    rgb = img.convert('RGB')
-    r, g, _ = rgb.split()
+    """RGB tangent-space normal map from Unity's two-channel one: Z rebuilt per pixel. X and Y are read the way Unity's
+    shaders unpack them (UnityCG.cginc UnpackNormalmapRGorAG: x = R · A, y = G), which covers both layouts a client
+    build holds: BC5 (R = X, G = Y, B unused, no alpha → A = 1) and DXT5nm (R = 1, G = Y, A = X — the map_autochess
+    bundle before the client update of 2026-10)."""
+    from PIL import Image, ImageChops
+    r, g, _, a = img.convert('RGBA').split()
+    x = ImageChops.multiply(r, a)  # exact when either factor is 255
     table = _normal_z_table()
-    z = bytes(table[(x << 8) | y] for x, y in zip(r.tobytes(), g.tobytes()))
-    return Image.merge('RGB', (r, g, Image.frombytes('L', rgb.size, z)))
+    z = bytes(table[(xb << 8) | yb] for xb, yb in zip(x.tobytes(), g.tobytes()))
+    return Image.merge('RGB', (x, g, Image.frombytes('L', img.size, z)))
 
 
 def derive_rough_from_gloss(img):
@@ -494,13 +604,34 @@ def _text_bytes(text_asset):
     return raw.encode('utf-8', 'surrogateescape') if isinstance(raw, str) else bytes(raw)
 
 
-def merge_alpha(rgb, alpha):
-    """RGBA page of a split texture: RGB of the main texture (premultiplied: the client's Spine material has
-    _StraightAlphaInput 0) and A from its [alpha] texture; RGB is clamped to A (block-compression bleed)."""
+def merge_alpha(rgb, alpha, straight=False):
+    """Premultiplied RGBA page of a Spine atlas texture: RGB of the main texture and A from its [alpha] texture (the
+    split pages: _UseAlphaTex 1), else the main texture's own alpha (the newer RGBA pages: _UseAlphaTex 0); RGB is
+    clamped to A (block-compression bleed) — the client's Spine material reads premultiplied input
+    (_StraightAlphaInput 0) — or, for a material with _StraightAlphaInput 1 (`straight`), multiplied by A."""
     from PIL import Image, ImageChops
     r, g, b = rgb.convert('RGB').split()
-    a = alpha.convert('L').resize(rgb.size) if alpha is not None else Image.new('L', rgb.size, 255)
-    return Image.merge('RGBA', tuple(ImageChops.darker(ch, a) for ch in (r, g, b)) + (a,))
+    if alpha is not None:
+        a = alpha.convert('L').resize(rgb.size)
+    elif rgb.mode in ('RGBA', 'LA', 'PA') or 'transparency' in rgb.info:
+        a = rgb.convert('RGBA').getchannel('A')
+    else:
+        a = Image.new('L', rgb.size, 255)
+    op = ImageChops.multiply if straight else ImageChops.darker
+    return Image.merge('RGBA', tuple(op(ch, a) for ch in (r, g, b)) + (a,))
+
+
+def _is_page_line(lines, i):
+    """Whether line i of a Spine atlas starts a page: a page name is an unindented line without ':' that comes first
+    or after a blank line (a region name follows its page's or the previous region's fields)."""
+    line = lines[i]
+    return bool(line.strip()) and ':' not in line and not line[:1].isspace() and (i == 0 or not lines[i - 1].strip())
+
+
+def atlas_pages(text):
+    """The page names (image files) of a Spine atlas text, in order."""
+    lines = text.replace('\r\n', '\n').replace('\r', '\n').lstrip('\ufeff').split('\n')
+    return [lines[i].strip() for i in range(len(lines)) if _is_page_line(lines, i)]
 
 
 def normalize_atlas(text, sizes):
@@ -512,8 +643,7 @@ def normalize_atlas(text, sizes):
     out, i, n = [], 0, len(lines)
     while i < n:
         line = lines[i]
-        starts_page = line.strip() and ':' not in line and not line[:1].isspace() and (i == 0 or not lines[i - 1].strip())
-        if not starts_page:
+        if not _is_page_line(lines, i):
             out.append(line)
             i += 1
             continue
@@ -538,21 +668,21 @@ def normalize_atlas(text, sizes):
     return '\n'.join(out)
 
 
-def write_enemy_spine(objects, sda, eid, out_root, manifest, log):
-    """Write one enemy model (skeleton, atlas, merged pages) of a SkeletonDataAsset typetree; returns the file count."""
+def write_spine(objects, sda, sub, name, out_root, manifest, log):
+    """Write one Spine model of a SkeletonDataAsset type tree — its skeleton TextAsset, its atlas TextAsset(s) (sized,
+    `pma: true`: normalize_atlas) and the page textures of the atlas materials (_MainTex with its _AlphaTex merged in,
+    merge_alpha) — to <out_root>/<sub>/ as <stem>.skel, <stem>.atlas (one stem: pixi-spine finds the atlas by the
+    skeleton's name) and <page>.png, and list them in the manifest group `sub`. Returns the file count; 0 when a part
+    is missing or the textures do not match the atlas pages (nothing is written then). `name` labels the log lines and
+    names a skeleton without a name."""
     get = lambda pptr: objects.get(pptr['m_PathID']) if pptr and not pptr.get('m_FileID') else None  # noqa: E731
-    sub = f'{ENEMY_SPINE_SUB}/{eid}'
-    out_dir = Path(out_root) / sub
-    out_dir.mkdir(parents=True, exist_ok=True)
-    files = {}
     skel = get(sda.get('skeletonJSON'))
     if skel is None:
-        log(f'  warn {eid}: skeleton TextAsset not in this bundle')
+        log(f'  warn {name}: skeleton TextAsset not in this bundle')
         return 0
     ta = skel.read()
-    stem = safe_name(getattr(ta, 'm_Name', '') or eid).removesuffix('.skel')
-    files[f'{stem}.skel'] = _text_bytes(ta)
-    pages = {}
+    stem = safe_name(getattr(ta, 'm_Name', '') or name).removesuffix('.skel')
+    texts, pages = [], {}
     for aref in sda.get('atlasAssets') or []:
         aa = get(aref)
         if aa is None:
@@ -560,22 +690,34 @@ def write_enemy_spine(objects, sda, eid, out_root, manifest, log):
         at = aa.read_typetree()
         af = get(at.get('atlasFile'))
         if af is not None:
-            files[f'{stem}.atlas'] = _text_bytes(af.read())
+            texts.append(_text_bytes(af.read()).decode('utf-8', 'replace'))
         for mref in at.get('materials') or []:
             mo = get(mref)
             if mo is None:
                 continue
-            texs = dict(mo.read_typetree()['m_SavedProperties']['m_TexEnvs'])
+            props = mo.read_typetree()['m_SavedProperties']
+            texs = dict(props['m_TexEnvs'])
+            straight = dict(props.get('m_Floats') or []).get('_StraightAlphaInput') == 1
             main, alpha = get(texs.get('_MainTex', {}).get('m_Texture')), get(texs.get('_AlphaTex', {}).get('m_Texture'))
             if main is None:
                 continue
             mt = main.read()
-            pages[safe_name(mt.m_Name) + '.png'] = merge_alpha(mt.image, alpha.read().image if alpha is not None else None)
-    if f'{stem}.atlas' not in files or not pages:
-        log(f'  warn {eid}: atlas or page textures missing')
+            pages[safe_name(mt.m_Name) + '.png'] = merge_alpha(mt.image, alpha.read().image if alpha is not None else None,
+                                                               straight)
+    if not texts or not pages:
+        log(f'  warn {name}: atlas or page textures missing')
         return 0
-    sizes = {name: img.size for name, img in pages.items()}
-    files[f'{stem}.atlas'] = normalize_atlas(files[f'{stem}.atlas'].decode('utf-8'), sizes).encode('utf-8')
+    atlas = texts[0] if len(texts) == 1 else '\n\n'.join(t.strip('\n') for t in texts) + '\n'
+    names = atlas_pages(atlas)
+    if set(names) != set(pages):
+        if len(names) != 1 or len(pages) != 1:
+            log(f'  warn {name}: atlas pages {names} do not match the textures {sorted(pages)}')
+            return 0
+        pages = {names[0]: next(iter(pages.values()))}  # one page under another name: saved as the atlas names it
+    files = {f'{stem}.skel': _text_bytes(ta),
+             f'{stem}.atlas': normalize_atlas(atlas, {p: img.size for p, img in pages.items()}).encode('utf-8')}
+    out_dir = Path(out_root) / sub
+    out_dir.mkdir(parents=True, exist_ok=True)
     for fname, blob in files.items():
         (out_dir / fname).write_bytes(blob)
         manifest.setdefault(sub, {})[fname] = {'path': f'/assets/local/{sub}/{fname}', 'kind': 'TextAsset'}
@@ -586,11 +728,45 @@ def write_enemy_spine(objects, sda, eid, out_root, manifest, log):
     return len(files) + len(pages)
 
 
+def scene_ids(only):
+    """The stage ids of scenes.SCENES that run under --only (all with no prefix, `scene` or a parent of it)."""
+    return spine_ids(only, scenes.SCENE_SUB, [sid for sid, _deps in scenes.SCENES])
+
+
+def scene_roots(ab_root, extra):
+    """AB roots searched for the scene bundles, in order: the client, --scenes dirs, then every version kept under
+    .cache/official-scenes (newest name first)."""
+    kept = ROOT / '.cache' / 'official-scenes'
+    cached = sorted((p for p in kept.iterdir() if p.is_dir()), reverse=True) if kept.is_dir() else []
+    return [Path(ab_root), *[Path(p) for p in extra], *cached]
+
+
+def export_scenes(ab_root, out_root, manifest, log, ids, roots):
+    """scenes.SCENES (the ids in `ids`) → scene/<stageId>/ (scenes.export_scene); a stage without a scene bundle in
+    any root is skipped."""
+    root = Path(ab_root)
+    shader_deps = dep_bundles(root, {'Material'})
+    n = 0
+    for sid, deps in scenes.SCENES:
+        if sid not in ids:
+            continue
+        src = scenes.find_scene(sid, roots)
+        if src is None:
+            log(f'skip (no scene bundle: off-season client, see --scenes) {scenes.scene_bundle(sid)}')
+            continue
+        try:
+            n += scenes.export_scene(sid, deps, src, root, out_root, manifest, log, material_info, shader_deps)
+        except Exception as e:  # one broken scene must not stop the others
+            log(f'FAIL scene {sid}: {e}')
+    return n
+
+
 def export_enemy_spines(ab_root, out_root, manifest, log, ids=None):
-    """ENEMY_SPINES from the enemy art bundles (each bundle loaded on its own; stops once every model was found)."""
+    """ENEMY_SPINES (or `ids`) from the enemy art bundles (each bundle loaded on its own; stops once every model was
+    found)."""
     import aklz4  # noqa: F401  (registers the LZ4AK decoder)
     import UnityPy
-    wanted, n = set(ids or ENEMY_SPINES), 0
+    wanted, n = set(ENEMY_SPINES if ids is None else ids), 0
     for f in sorted(Path(ab_root).glob(ENEMY_ART)):
         if not wanted:
             break
@@ -605,7 +781,7 @@ def export_enemy_spines(ab_root, out_root, manifest, log, ids=None):
             if not eid:
                 continue
             try:
-                k = write_enemy_spine(objects, ref.read_typetree(), eid, out_root, manifest, log)
+                k = write_spine(objects, ref.read_typetree(), f'{ENEMY_SPINE_SUB}/{eid}', eid, out_root, manifest, log)
             except Exception as e:
                 log(f'  warn {eid}: {e}')
                 continue
@@ -618,6 +794,46 @@ def export_enemy_spines(ab_root, out_root, manifest, log, ids=None):
     return n
 
 
+def export_token_spines(ab_root, out_root, manifest, log, ids=None):
+    """TOKEN_SPINES (or `ids`) from the battle token packs: each token's prefab → the SkeletonDataAsset its Front / only
+    Spine renderer draws (pick_spine_node) → write_spine. Each pack is loaded on its own; stops once every model was
+    found."""
+    import aklz4  # noqa: F401  (registers the LZ4AK decoder)
+    import UnityPy
+    wanted, n = set(TOKEN_SPINES if ids is None else ids), 0
+    for f in sorted(Path(ab_root).glob(TOKEN_PACKS)):
+        if not wanted:
+            break
+        try:
+            env = UnityPy.load(str(f))
+        except Exception as e:  # corrupt or unsupported bundle: report and continue
+            log(f'FAIL load {f.name}: {e}')
+            continue
+        objects = {o.path_id: o for o in env.objects}
+        for name, ref in env.container.items():
+            tid = token_prefab_id(name, wanted)
+            if not tid:
+                continue
+            sub = f'{TOKEN_SPINE_SUB}/{tid}'
+            try:
+                node = pick_spine_node(prefab_spine_nodes(ref.read_typetree(), objects))
+                sda = objects.get(node[2]['m_PathID']) if node and not node[2].get('m_FileID') else None
+                if sda is None:
+                    log(f'  warn {tid}: its prefab has no Spine renderer in this bundle')
+                    continue
+                k = write_spine(objects, sda.read_typetree(), sub, tid, out_root, manifest, log)
+            except Exception as e:
+                log(f'  warn {tid}: {e}')
+                continue
+            if k:
+                wanted.discard(tid)
+                n += k
+                log(f'{f.relative_to(ab_root).as_posix()}: {tid} ({node[0]}) -> {sub} ({k} files)')
+    for tid in sorted(wanted):
+        log(f'skip (not found) token Spine {tid}')
+    return n
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument('--game', help='AssetBundle root (…/StreamingAssets/AB/Windows or …/Documents/Bundles)')
@@ -625,6 +841,9 @@ def main():
     ap.add_argument('--manifest', default=str(ROOT / 'data/local-assets.json'))
     ap.add_argument('--only', action='append', default=[], metavar='SUBDIR',
                     help='only run the jobs whose output subdir starts with this prefix (repeatable), e.g. emoticon')
+    ap.add_argument('--scenes', action='append', default=[], metavar='DIR',
+                    help='an AB root holding the battlefield scene bundles of an in-season version (repeatable; '
+                         'searched after --game and before .cache/official-scenes/*)')
     ap.add_argument('--print-jobs', action='store_true', help='print the job table as JSON and exit')
     ap.add_argument('--webp', action='store_true',
                     help='only write the WebP copies of the board textures from the PNGs already under --out and list '
@@ -637,8 +856,13 @@ def main():
         derived = [{'sub': sub, 'from': src, 'derive': kind, 'name': name} for sub, src, kind, name in DERIVED]
         webp = [{'sub': sub, 'name': name, 'mode': mode} for sub, name, mode in WEBP]
         print(json.dumps({'emoteThemes': [{'themeId': t, 'dir': d} for t, d in EMOTE_THEMES], 'jobs': jobs,
-                          'derived': derived, 'webp': webp, 'enemySpines': {'bundles': ENEMY_ART, 'sub': ENEMY_SPINE_SUB,
-                                                                            'ids': ENEMY_SPINES}}, ensure_ascii=False))
+                          'derived': derived, 'webp': webp,
+                          'enemySpines': {'bundles': ENEMY_ART, 'sub': ENEMY_SPINE_SUB, 'ids': ENEMY_SPINES},
+                          'tokenSpines': {'bundles': TOKEN_PACKS, 'sub': TOKEN_SPINE_SUB, 'ids': TOKEN_SPINES},
+                          'scenes': {'sub': scenes.SCENE_SUB, 'tex': scenes.TEX_SUB,
+                                     'stages': [{'id': sid, 'bundle': scenes.scene_bundle(sid), 'deps': deps}
+                                                for sid, deps in scenes.SCENES]}},
+                         ensure_ascii=False))
         return 0
     if args.webp:
         return webp_only(Path(args.out), Path(args.manifest), print)
@@ -648,8 +872,10 @@ def main():
         print('No Arknights install found. Pass --game <AssetBundle root>.', file=sys.stderr)
         return 2
     jobs = select_jobs(args.only)
-    enemy_spines = wants_sub(args.only, ENEMY_SPINE_SUB)
-    if not jobs and not enemy_spines:
+    enemy_ids = spine_ids(args.only, ENEMY_SPINE_SUB, ENEMY_SPINES)
+    token_ids = spine_ids(args.only, TOKEN_SPINE_SUB, TOKEN_SPINES)
+    stage_ids = scene_ids(args.only)
+    if not jobs and not enemy_ids and not token_ids and not stage_ids:
         print(f'--only {args.only}: no job matches', file=sys.stderr)
         return 2
     out_root = Path(args.out)
@@ -658,8 +884,12 @@ def main():
     print(f'AB root: {ab_root}')
     for job in jobs:
         total += export_bundle(ab_root, job, out_root, manifest, print)
-    if enemy_spines:
-        total += export_enemy_spines(ab_root, out_root, manifest, print)
+    if enemy_ids:
+        total += export_enemy_spines(ab_root, out_root, manifest, print, enemy_ids)
+    if token_ids:
+        total += export_token_spines(ab_root, out_root, manifest, print, token_ids)
+    if stage_ids:
+        total += export_scenes(ab_root, out_root, manifest, print, stage_ids, scene_roots(ab_root, args.scenes))
     old = {}
     if args.only and Path(args.manifest).exists():
         try:

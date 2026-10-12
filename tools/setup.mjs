@@ -8,13 +8,18 @@
 //   2. Dependencies: `npm ci` (falls back to `npm install`) when node_modules is missing or incomplete.
 //   3. Client libraries in public/vendor (tools/vendor.mjs) when any is missing.
 //   4. Game data (data/*.json, committed) present and parseable.
-//   5. Art/audio (tools/fetch-assets.mjs, ~270 MB into public/assets, resumable, mirror fallback) when public/assets
+//   5. Art/audio (tools/fetch-assets.mjs, ~550 MB into public/assets, resumable, mirror fallback) when public/assets
 //      is missing or data/assets.json lists files that are not on disk. A failure is a warning: the game still runs
 //      with fallback visuals and the next run resumes.
 //   6. Optional: official board/UI art from a locally installed Arknights client (Windows native install, CrossOver
 //      bottle or PlayCover on macOS, or --game <dir>) with tools/local-extract/extract.py in a project-local Python
 //      venv (.venv-extract), then the board tile crops (tools/crop-board-atlas.mjs → tiles.json). Asked once on a
 //      terminal (the answer is remembered in .cache/setup-state.json; without a terminal it is skipped); never fatal.
+//   7. Optional: the eleven official battlefield scenes (0.2.5 asset pack). The full release zip already contains
+//      them when the maintainer extracted them. A lite package or a source install may download the in-season bundles
+//      (tools/local-extract/fetch_scenes.py) and extract them (extract.py --only scene). Missing Python or
+//      UnityPy / lz4 / Pillow is a warning: the 3D board keeps the metal tiles. --scenes does it without asking;
+//      --no-scenes skips it. The answer is remembered like step 6.
 //
 // Options:
 //   --check          report only, change nothing (exit 1 when something essential is missing)
@@ -22,8 +27,10 @@
 //   --asset-source=M direct (default) or mirror (opt-in; no public-IP lookup)
 //                    SP_ASSET_SOURCE sets the default; SP_GITHUB_PROXY sets the HTTPS prefix (https://gh-proxy.com/)
 //                    An empty SP_GITHUB_PROXY disables the proxy, including in mirror mode.
-//   --no-local       skip the local-client detection and extraction
+//   --no-local       skip the local-client detection and extraction (the scene step still runs unless --no-scenes)
 //   --local          extract from the local client without asking (re-extracts when already done)
+//   --scenes         download and extract the official battlefield scenes without asking
+//   --no-scenes      do not download or extract battlefield scenes (the metal board stays)
 //   --game <dir>     AssetBundle root of the local client (…/StreamingAssets/AB/Windows or PlayCover …/Documents/Bundles)
 //   -y, --yes        answer "yes" to every question
 //   --quiet          fewer lines (used by scripts/launch.mjs)
@@ -48,7 +55,7 @@ const NODE_URL = 'https://nodejs.org/zh-cn/download';
 
 /** Data files the server expects (server/data.js DATA_FILES) + the emote catalogue used by the client. */
 export const DATA_FILES = ['config', 'chess', 'bonds', 'garrisons', 'items', 'bands', 'effects', 'choices',
-  'enemies', 'factions', 'waves', 'stages', 'bosses', 'tokens', 'assets', 'emotes'];
+  'enemies', 'factions', 'waves', 'stages', 'bosses', 'tokens', 'assets', 'backups', 'emotes'];
 /** Runtime packages that must be installed (package.json dependencies). */
 export const RUNTIME_PACKAGES = ['ws', 'pixi.js', 'pixi-spine', 'preact', 'htm'];
 /** Vendor files the client cannot run without (tools/vendor.mjs; three.js is optional there). */
@@ -58,6 +65,7 @@ export const VENDOR_OPTIONAL = ['three.core.js', 'three.module.js'];
 const STATE_FILE = path.join(ROOT, '.cache', 'setup-state.json');
 export const VENV_DIR = path.join(ROOT, '.venv-extract');
 const EXTRACT_PY = path.join(ROOT, 'tools', 'local-extract', 'extract.py');
+const FETCH_SCENES_PY = path.join(ROOT, 'tools', 'local-extract', 'fetch_scenes.py');
 const EXTRACT_REQ = path.join(ROOT, 'tools', 'local-extract', 'requirements.txt');
 const LOCAL_MANIFEST = path.join(ROOT, 'data', 'local-assets.json');
 const LOCAL_BOARD_ATLAS = path.join(ROOT, 'public', 'assets', 'local', 'map', 'autochess', 'TX_autochessi_D.png');
@@ -76,6 +84,9 @@ export const nodeMajor = () => Number(process.versions.node.split('.')[0]);
 const exists = (p) => { try { fs.accessSync(p); return true; } catch { return false; } };
 const readJson = (p) => { try { return JSON.parse(fs.readFileSync(p, 'utf8')); } catch { return null; } };
 const mb = (n) => `${(n / 1048576).toFixed(0)} MB`;
+/** The art download when data/assets.json gives no size (missing, unreadable or without stats.bytes): the 0.2.2
+ * manifest's stats.bytes, 548 MB (both voice dubs; 463 MB before the JP one), as README and docs/DEPLOY.md quote it. */
+const ART_DOWNLOAD_FALLBACK = '550 MB';
 /** Terminal display width (CJK / full-width characters take two columns). */
 export const displayWidth = (s) => [...String(s)].reduce((n, ch) => n + (ch.codePointAt(0) >= 0x2e80 ? 2 : 1), 0);
 export const padDisplay = (s, w) => s + ' '.repeat(Math.max(0, w - displayWidth(s)));
@@ -198,20 +209,70 @@ export function checkAssets() {
  * the 玩法说明 pages are not in the list: step 5 downloads them from the public mirror with the other assets (GitHub
  * issue #42). Shown by setup and doctor.
  */
-export const LOCAL_ART_FALLBACK = '3D 棋盘改用 2D，部分官方界面图标和灼热/炽焰源石虫模型用替代样式';
+export const LOCAL_ART_FALLBACK = '3D 棋盘改用 2D，部分官方界面图标、灼热/炽焰源石虫模型和多数自选召唤物模型用替代样式';
 /** Where a machine without the client gets the local art (docs/DEPLOY.md §6「本地客户端素材」); shown by doctor (setup's row,
  * printed on every start by scripts/launch.mjs, only points to that section). */
-export const LOCAL_ART_COPY_HINT = '没有客户端的服务器可以从同一版本的整合包复制 public/assets/local 和 data/local-assets.json';
+export const LOCAL_ART_COPY_HINT = '没有客户端的服务器可以从同一版本的整合包（完整包）复制 public/assets/local 和 data/local-assets.json';
 
 /**
  * Local-client art (optional): manifest entry count, whether the 3D board atlas is on disk and whether the extraction
- * has the enemy models only the client has (`spine/enemy/*` groups, extract.py ENEMY_SPINES — added after 0.1.0).
+ * has the enemy and token models only the client has (`spine/enemy/*` groups, extract.py ENEMY_SPINES — added after
+ * 0.1.0; `spine/token/*` groups, TOKEN_SPINES — added in 0.2.0).
  */
 export function checkLocal() {
   const m = readJson(LOCAL_MANIFEST);
   const count = m && m.groups ? Object.values(m.groups).reduce((n, g) => n + Object.keys(g || {}).length, 0) : 0;
-  const enemySpines = !!(m && m.groups && Object.keys(m.groups).some((g) => g.startsWith('spine/enemy/')));
-  return { manifest: !!m, count, board3d: exists(LOCAL_BOARD_ATLAS), tiles: exists(LOCAL_BOARD_TILES), enemySpines, dirPresent: exists(path.join(ROOT, 'public', 'assets', 'local')) };
+  const has = (prefix) => !!(m && m.groups && Object.keys(m.groups).some((g) => g.startsWith(prefix)));
+  return {
+    manifest: !!m, count, board3d: exists(LOCAL_BOARD_ATLAS), tiles: exists(LOCAL_BOARD_TILES), enemySpines: has('spine/enemy/'),
+    tokenSpines: has('spine/token/'), scenes: has('scene/act'), dirPresent: exists(path.join(ROOT, 'public', 'assets', 'local')),
+  };
+}
+
+/** What an extraction made by an older extract.py lacks (setup's 本地客户端美术 row; re-extract with --local). */
+export function localGaps(local) {
+  const gaps = [];
+  if (local && !local.enemySpines) gaps.push('灼热/炽焰源石虫模型');
+  if (local && !local.tokenSpines) gaps.push('自选召唤物模型');
+  if (local && local.scenes === false) gaps.push('各战场官方场景');
+  return gaps.length ? `，缺少新版的${gaps.join('和')}` : '';
+}
+
+/**
+ * Whether setup should download and extract the official battlefield scenes (0.2.5 asset pack).
+ * The full release zip already contains them when the maintainer extracted them before packaging.
+ * A lite package or a source install may fetch the in-season bundles on this machine and extract them.
+ * Missing Python or UnityPy / lz4 / Pillow is not fatal: the 3D board keeps the metal tiles.
+ * `client` is true (autochess bundles present), 'incomplete' (a client dir without them) or false.
+ * @param {{ hasScenes?: boolean, client?: boolean|string, python?: boolean, deps?: boolean, check?: boolean, declined?: boolean, force?: boolean, yes?: boolean }} o
+ * @returns {{ run: boolean, state: 'ok'|'skip'|'warn'|'ask', detail: string }}
+ */
+export function sceneInstallPlan(o = {}) {
+  if (o.hasScenes && !o.force) {
+    return { run: false, state: 'ok', detail: '已提取各战场官方场景（0.2.5 素材；某个战场没有文件时仍用金属地块）' };
+  }
+  if (o.check) {
+    return { run: false, state: 'skip', detail: '未提取各战场官方场景：3D 棋盘用金属地块（node tools/setup.mjs --scenes 可在本机下载并提取）' };
+  }
+  if (o.client === 'incomplete') {
+    return { run: false, state: 'warn', detail: '客户端缺少卫戍协议资源，战场场景未提取。3D 棋盘继续用金属地块' };
+  }
+  if (!o.client) {
+    return { run: false, state: 'skip', detail: '没有本机客户端，不能提取战场场景（贴图仍取自客户端）。3D 棋盘用金属地块；完整包已带场景时可复制 public/assets/local 和 data/local-assets.json' };
+  }
+  if (!o.python) {
+    return { run: false, state: 'warn', detail: '没有 Python 3.8+，战场场景未提取。3D 棋盘继续用金属地块' };
+  }
+  if (o.deps === false) {
+    return { run: false, state: 'warn', detail: '提取依赖（UnityPy / lz4 / Pillow）没装好，战场场景未提取。3D 棋盘继续用金属地块' };
+  }
+  if (o.declined && !o.force && !o.yes) {
+    return { run: false, state: 'skip', detail: '已跳过战场场景（node tools/setup.mjs --scenes）。3D 棋盘用金属地块' };
+  }
+  if (!o.force && !o.yes) {
+    return { run: false, state: 'ask', detail: '可以下载赛季场景包并提取（约 23 MB）。失败或跳过时 3D 棋盘仍用金属地块' };
+  }
+  return { run: true, state: 'ok', detail: '将下载赛季场景包并提取；失败时 3D 棋盘仍用金属地块' };
 }
 
 /**
@@ -332,7 +393,7 @@ function ensureVenv(py, log) {
 // ---------------------------------------------------------------------------------------------------
 
 function parseArgs(argv) {
-  const o = { check: false, assets: true, local: 'ask', game: null, yes: false, quiet: false, help: false, source: process.env.SP_ASSET_SOURCE || 'direct' };
+  const o = { check: false, assets: true, local: 'ask', scenes: 'ask', game: null, yes: false, quiet: false, help: false, source: process.env.SP_ASSET_SOURCE || 'direct' };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === '--check') o.check = true;
@@ -341,6 +402,8 @@ function parseArgs(argv) {
     else if (a.startsWith('--asset-source=')) o.source = a.slice('--asset-source='.length);
     else if (a === '--no-local') o.local = 'no';
     else if (a === '--local') o.local = 'force';
+    else if (a === '--no-scenes') o.scenes = 'no';
+    else if (a === '--scenes') o.scenes = 'force';
     else if (a === '--game') { o.game = argv[++i] || null; if (o.local !== 'no') o.local = 'force'; }
     else if (a.startsWith('--game=')) { o.game = a.slice(7) || null; if (o.local !== 'no') o.local = 'force'; }
     else if (a === '-y' || a === '--yes') o.yes = true;
@@ -417,7 +480,7 @@ async function main() {
   let assets = checkAssets();
   if (!opts.assets) add(assets.ok ? 'ok' : 'skip', '美术/音频 public/assets', assets.ok ? `${assets.total} 个文件` : '已跳过（--no-assets）');
   else if (!assets.ok && deps.ok && !opts.check) {
-    const what = !assets.present ? `首次下载约 ${assets.bytes ? mb(assets.bytes) : '270 MB'}，可随时中断，重新运行会续传`
+    const what = !assets.present ? `首次下载约 ${assets.bytes ? mb(assets.bytes) : ART_DOWNLOAD_FALLBACK}，可随时中断，重新运行会续传`
       : `补全缺失的 ${assets.missing} 个文件`;
     log(`\n${c.cyan('▶')} 下载美术与音频素材（${what}）…`);
     const r = run(process.execPath, [path.join(ROOT, 'tools', 'fetch-assets.mjs'), `--asset-source=${opts.source}`]);
@@ -445,7 +508,7 @@ async function main() {
       add(already ? 'ok' : 'warn', '本地客户端美术（可选）', `${client.kind} 客户端缺少卫戍协议资源（请在游戏内下载全部资源）：${client.path}`);
     } else if (already && opts.local !== 'force') {
       if (local.board3d && !local.tiles && !opts.check) cropBoardTiles(log);
-      add('ok', '本地客户端美术（可选）', `已提取 ${local.count} 项${local.board3d ? '，3D 棋盘可用' : ''}${local.enemySpines ? '' : '，缺少新版的灼热/炽焰源石虫模型'}（重新提取：--local）`);
+      add('ok', '本地客户端美术（可选）', `已提取 ${local.count} 项${local.board3d ? '，3D 棋盘可用' : ''}${localGaps(local)}（重新提取：--local）`);
     } else if (opts.check) {
       add('skip', '本地客户端美术（可选）', `检测到 ${client.kind} 客户端，可运行 node tools/setup.mjs --local 提取`);
     } else {
@@ -477,6 +540,47 @@ async function main() {
             if (r.ok && after.manifest) { add('ok', '本地客户端美术（可选）', `提取 ${after.count} 项${after.board3d ? '，3D 棋盘可用' : ''}`); saveState({ localDeclined: false, localExtractedFrom: client.path }); }
             else add('warn', '本地客户端美术（可选）', `提取未成功（退出码 ${r.code}）：游戏照常运行，${LOCAL_ART_FALLBACK}；可稍后重试 node tools/setup.mjs --local`);
           }
+        }
+      }
+    }
+  }
+
+  // 7. official battlefield scenes (optional; the full zip ships them, a lite / source install may fetch them)
+  if (opts.scenes !== 'no') {
+    const sceneLocal = checkLocal();
+    const sceneClient = findClient(opts.game);
+    const scenePy = findPython();
+    const clientFlag = sceneClient?.autochess ? true : (sceneClient ? 'incomplete' : false);
+    let decision = sceneInstallPlan({
+      hasScenes: sceneLocal.scenes, client: clientFlag, python: !!scenePy, check: opts.check,
+      declined: !!loadState().sceneDeclined, force: opts.scenes === 'force', yes: opts.yes,
+    });
+    if (decision.state === 'ask') {
+      log(`\n${c.cyan('▶')} 各战场的官方场景还没提取（11 个战场；赛季场景包约 23 MB，贴图仍取自本机客户端）。`);
+      log('  下载并提取后，3D 棋盘按战场显示官方场景。没有提取依赖、下载失败或跳过时，仍用现在的金属地块。');
+      const answer = await ask('现在下载并提取吗？', true);
+      if (answer === null) decision = { run: false, state: 'skip', detail: '无终端，未询问、未提取战场场景。3D 棋盘用金属地块（需要时 node tools/setup.mjs --scenes）' };
+      else if (!answer) {
+        saveState({ sceneDeclined: true });
+        decision = { run: false, state: 'skip', detail: '已跳过战场场景（node tools/setup.mjs --scenes）。3D 棋盘用金属地块' };
+      } else decision = { run: true, state: 'ok', detail: decision.detail };
+    }
+    if (!decision.run) add(decision.state === 'ok' ? 'ok' : decision.state, '各战场官方场景（可选）', decision.detail);
+    else {
+      const venv = ensureVenv(scenePy, log);
+      if (!venv.ok) add('warn', '各战场官方场景（可选）', `${venv.why}。3D 棋盘继续用金属地块`);
+      else {
+        log(`  ${c.cyan('▶')} 下载赛季场景包（python tools/local-extract/fetch_scenes.py，约 23 MB）`);
+        const fr = run(venv.python, [FETCH_SCENES_PY], { env: PY_ENV });
+        if (!fr.ok) add('warn', '各战场官方场景（可选）', `场景包下载未完成（退出码 ${fr.code}）。3D 棋盘继续用金属地块；稍后可重试 node tools/setup.mjs --scenes`);
+        else {
+          log(`  ${c.cyan('▶')} 提取战场场景（extract.py --only scene）`);
+          const er = run(venv.python, [EXTRACT_PY, '--game', sceneClient.path, '--only', 'scene'], { env: PY_ENV });
+          const afterScenes = checkLocal();
+          if (er.ok && afterScenes.scenes) {
+            add('ok', '各战场官方场景（可选）', '已提取；进入对局时按战场显示，没有的战场仍用金属地块');
+            saveState({ sceneDeclined: false });
+          } else add('warn', '各战场官方场景（可选）', `提取未成功（退出码 ${er.code}）。3D 棋盘继续用金属地块`);
         }
       }
     }
