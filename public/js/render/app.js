@@ -750,7 +750,7 @@ export async function createFieldView(host, options = {}) {
     const rec = si || dr || chess;
     const baseId = rec?.baseId || chess?.baseId || piece.baseId || null;
     const charId = rec?.charId || chess?.charId || null;
-    const resolvedSkin = piece.skin ?? skinFor(baseId) ?? (charId ? skinFor(charId) : null) ?? skinFor(piece.id) ?? null;
+    const resolvedSkin = piece.skin || skinFor(baseId) || (charId ? skinFor(charId) : null) || skinFor(piece.id) || null;
     return {
       kind: 'op', side: 'ally', defId: piece.id,
       spine: rec?.assets?.spine || rec?.charId || null, avatar: rec?.assets?.avatar || rec?.charId || null,

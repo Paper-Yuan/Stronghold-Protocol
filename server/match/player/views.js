@@ -12,8 +12,11 @@ export class PlayerViews {
   pieceView(p, rc = null) {
     const rec = p.kind === 'item' ? this.gd.item(p.id) : p.kind === 'token' ? this.gd.token(p.id) : this.gd.chess(p.id);
     const baseId = (rec && rec.baseId) || p.id;
+    const charId = rec && rec.charId;
     const diy = p.kind === 'chess' && typeof this.diyPickOf === 'function' ? this.diyPickOf(p.id) : null;
-    const skin = p.kind === 'chess' ? (this.skins[baseId] || this.skins[p.id] || (diy ? (this.skins[diy.charId] || this.skins[baseId]) : null)) : null;
+    const skin = p.kind === 'chess'
+      ? (this.skins[baseId] || this.skins[p.id] || (charId ? this.skins[charId] : null) || (diy ? (this.skins[diy.charId] || this.skins[baseId]) : null))
+      : null;
     const v = {
       uid: p.uid,
       kind: p.kind,

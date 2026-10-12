@@ -762,11 +762,12 @@ describe('websocket lobby', () => {
     const s1 = await host.waitFor('room.state', (s) => s.seats[1]?.isBot);
     assert.equal(s1.seats[1].ready, true);
     assert.equal(s1.seats[1].connected, true);
-    assert.equal(s1.seats[1].name, BOT_NAMES[0]);
+    assert.ok(BOT_NAMES.includes(s1.seats[1].name));
     assert.match(s1.seats[1].playerId, /^ai_[0-9a-f]{8}$/);
     await expectOk(host, { t: 'room.addBot' });
     const s2 = await host.waitFor('room.state', (s) => s.seats[2]?.isBot);
-    assert.equal(s2.seats[2].name, BOT_NAMES[1]);
+    assert.ok(BOT_NAMES.includes(s2.seats[2].name));
+    assert.notEqual(s2.seats[2].name, s1.seats[1].name);
 
     await expectError(host, { t: 'room.removeBot', seat: 0 }, ERR.BAD_TARGET); // human seat
     await expectError(host, { t: 'room.removeBot', seat: 3 }, ERR.BAD_TARGET); // empty seat
@@ -775,7 +776,7 @@ describe('websocket lobby', () => {
     assert.ok(s3);
     await expectOk(host, { t: 'room.addBot' });
     const s4 = await host.waitFor('room.state', (s) => s.seats[1]?.isBot);
-    assert.equal(s4.seats[1].name, BOT_NAMES[0], 'freed bot name is reused');
+    assert.ok(BOT_NAMES.includes(s4.seats[1].name), 'added bot takes a name from BOT_NAMES');
 
     await expectOk(host, { t: 'room.leave' });
     const probe = await pool.player('Probe');

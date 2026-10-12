@@ -681,7 +681,8 @@ export class Lobby {
     const idx = room.freeSeat();
     if (idx < 0) return fail(ERR.ROOM_FULL);
     const used = new Set(room.seats.filter((s) => s && s.isBot).map((s) => s.name));
-    const name = BOT_NAMES.find((n) => !used.has(n)) || `AI·${idx + 1}`;
+    const available = BOT_NAMES.filter((n) => !used.has(n));
+    const name = available.length > 0 ? available[Math.floor(Math.random() * available.length)] : `AI·${idx + 1}`;
     let playerId;
     do playerId = 'ai_' + randomBytes(4).toString('hex'); while (room.seatOf(playerId));
     room.seats[idx] = { seat: idx, playerId, name, isBot: true, ready: true, connected: true, left: false };
@@ -1552,13 +1553,16 @@ broadcastAll(msg) {
 function freezeSkins(skins, getChess) {
   const out = {};
   for (const [id, skinId] of Object.entries(skins || {})) {
+    if (typeof skinId !== 'string' || !skinId) continue;
     if (typeof id === 'string' && (id.startsWith('char_') || (id.startsWith('chess_char_') && id.includes('_diy')))) {
       out[id] = String(skinId);
       continue;
     }
     const rec = getChess(id);
-    if (!rec || rec.isGolden || rec.visible === false || rec.isHidden || (rec.baseId && rec.baseId !== id)) continue;
+    if (!rec) continue;
     out[id] = String(skinId);
+    if (rec.baseId) out[rec.baseId] = String(skinId);
+    if (rec.charId) out[rec.charId] = String(skinId);
   }
   return Object.freeze(out);
 }

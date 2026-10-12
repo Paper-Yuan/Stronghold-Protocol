@@ -1,3 +1,5 @@
+import { skinFor } from '../../ui/skins.js';
+
 // public/js/render/app/info.js — battle-unit info handed to a view, and which deaths draw particles.
 
 /**
@@ -27,7 +29,9 @@ export function renderInfo(u) {
   return {
     id: u.id, uid: u.uid ?? null, kind: u.kind || 'enemy', side: u.side === 'ally' ? 'ally' : 'enemy', ownerId: u.ownerId ?? null,
     defId: u.defId ?? null, name: u.name ?? '', tier: u.tier ?? 1, golden: !!u.golden, spine: u.spine ?? u.defId ?? null,
-    avatar: u.avatar ?? u.defId ?? null, skin: u.skin ?? null, x: Number(u.x) || 0, y: Number(u.y) || 0, facing: u.facing === -1 ? -1 : 1,
+    avatar: u.avatar ?? u.defId ?? null,
+    skin: u.skin || (u.side === 'ally' && u.defId ? skinFor(u.defId) : null) || null,
+    x: Number(u.x) || 0, y: Number(u.y) || 0, facing: u.facing === -1 ? -1 : 1,
     maxHp: Number(u.maxHp) || 1, boss: !!u.boss, motion: u.motion,
     // deploy direction of allies (UnitInfo.dir, DESIGN §3): the model (Back for UP, mirrored for LEFT) and the
     // ground wedge follow it; absent = unknown (legacy frames) → derived from `facing`, no wedge

@@ -104,7 +104,12 @@ export class PlayerRound {
     for (const { r, c, piece } of boardOrder(this.board)) {
       if (piece.kind === 'chess') {
         const u = { uid: piece.uid, kind: 'chess', chessId: piece.id, row: r, col: c, dir: pieceDir(piece), items: (piece.items || []).map((i) => i.id) };
+        const rec = this.gd.chess(piece.id);
+        const baseId = (rec && rec.baseId) || piece.id;
+        const charId = rec && rec.charId;
         const pick = this.diyPickOf(piece.id);
+        const skin = this.skins[baseId] || this.skins[piece.id] || (charId ? this.skins[charId] : null) || (pick ? (this.skins[pick.charId] || this.skins[baseId]) : null) || null;
+        if (skin) u.skin = skin;
         if (pick) {
           // 0.2.0 自选编队: a slotted DIY slot fights as its pick (sim getChess(id, { diy }): the operator's body, the pick's
           // skill and module — no loadout fields, docs/SIM.md §12)

@@ -266,8 +266,10 @@ PlayerState.prototype.setSkins = function(skins) {
         continue;
       }
       const rec = this.gd.chess(id);
-      if (!rec || rec.isGolden || rec.visible === false || rec.isHidden || (rec.baseId && rec.baseId !== id)) continue;
+      if (!rec) continue;
       out[id] = skinId;
+      if (rec.baseId) out[rec.baseId] = skinId;
+      if (rec.charId) out[rec.charId] = skinId;
     }
   }
   this.skins = Object.freeze(out);

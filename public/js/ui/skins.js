@@ -59,7 +59,20 @@ export function clearSkin(chessId) {
 }
 
 /** The skin this browser picked for an operator, or null. */
-export const skinFor = (chessId) => skinsStore.get().entries[chessId] || null;
+export const skinFor = (chessId) => {
+  if (!chessId) return null;
+  const entries = skinsStore.get().entries;
+  if (entries[chessId]) return entries[chessId];
+  const chess = data.get('chess');
+  if (chess && typeof chess === 'object') {
+    const rec = chess[chessId];
+    if (rec) {
+      if (rec.charId && entries[rec.charId]) return entries[rec.charId];
+      if (rec.baseId && entries[rec.baseId]) return entries[rec.baseId];
+    }
+  }
+  return null;
+};
 
 /**
  * Every skin of an operator (built-in full set).
