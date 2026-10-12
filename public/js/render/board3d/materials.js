@@ -391,9 +391,14 @@ export function sceneMaterial(THREE, o, focus) {
     uLightColor: { value: new THREE.Vector3(lin(L.color[0]) * k, lin(L.color[1]) * k, lin(L.color[2]) * k) },
     ...focus,
   };
+  const isSand = !!((info && typeof info.map === 'string' && /sand/i.test(info.map)) || (typeof o.materialName === 'string' && /sand/i.test(o.materialName)));
   const m = new THREE.ShaderMaterial({
     uniforms,
-    defines: { ...(o.map ? { SCENE_MAP: 1 } : {}), ...(o.lightMap ? { SCENE_LM: 1 } : {}) },
+    defines: {
+      ...(o.map ? { SCENE_MAP: 1 } : {}),
+      ...(o.lightMap ? { SCENE_LM: 1 } : {}),
+      ...(isSand ? { SCENE_SAND: 1 } : {}),
+    },
     vertexShader: [
       'attribute vec2 aLm;',
       'varying vec2 vUv; varying vec2 vLm; varying vec3 vN; varying vec3 vWorld;',
@@ -424,6 +429,10 @@ export function sceneMaterial(THREE, o, focus) {
       '  vec3 n = normalize(gl_FrontFacing ? vN : -vN);',
       '  light += uLightColor * max(dot(n, uLightDir), 0.0) * shade;',
       '  vec3 litColor = a.rgb * light;',
+      '  #ifdef SCENE_SAND',
+      '    // Sand stages: brighten by +25% and lift shadow floor for crisp battlefield visibility',
+      '    litColor *= 1.25;',
+      '  #endif',
       '  // Gamma / curve lift to match natural Arknights battlefield brightness',
       '  litColor = pow(litColor, vec3(0.92));',
       '  gl_FragColor = vec4(litColor * focusMask(vWorld.xy), a.a);',

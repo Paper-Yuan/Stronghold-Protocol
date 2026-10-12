@@ -374,6 +374,7 @@ export class BoardScene {
         mat = water
           ? sceneWaterMaterial(T, this.tex, this.focus, info)
           : sceneMaterial(T, {
+            materialName: c.material,
             map: res.tex[info?.map] || null, lightMap: c.lightmap >= 0 ? (res.lm[c.lightmap] || null) : null, info,
             light: pack.doc?.light || null, lightRange: pack.doc?.lightRange,
           }, this.focus);

@@ -394,12 +394,24 @@ export async function createFieldView(host, options = {}) {
   const recover = { THREE: null, pack: null, timer: 0, tries: 0, since: 0, off: false, count: 0 };
   setupCleanup.push(() => { clearTimeout(recover.timer); disable3d(); });
   /** The stage's official scene, once loaded (the procedural board shows meanwhile and when there is none). */
-  function useOfficialScene(st) {
+  function useOfficialScene(st, retryCount = 0) {
     const id = st && typeof st.id === 'string' ? st.id : '';
     if (!id || !board3d) return;
     loadScenePack(assets, id).then((scene) => {
-      if (scene && !destroyed && board3d && stageRec && stageRec.id === id) board3d.setScenePack(id, scene);
-    }).catch(() => {});
+      if (scene && !destroyed && board3d && stageRec && stageRec.id === id) {
+        console.log(`[board3d] applying official scene pack for ${id}`);
+        board3d.setScenePack(id, scene);
+      } else if (!scene && retryCount < 5 && !destroyed && stageRec && stageRec.id === id) {
+        // assets.local() might still be resolving asynchronously
+        setTimeout(() => {
+          if (!destroyed && board3d && stageRec && stageRec.id === id) {
+            useOfficialScene(st, retryCount + 1);
+          }
+        }, 1000);
+      }
+    }).catch((err) => {
+      console.warn(`[board3d] failed to load scene pack for ${id}`, err);
+    });
   }
   function enable3d(THREE, pack) {
     if (destroyed || board3d || !THREE || !pack) return false;
