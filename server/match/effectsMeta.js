@@ -570,6 +570,7 @@ export function makeCtx(m, ps, source, hook, ev = null) {
         source: opts.source || source.key || 'effect',
         toTemp: !!opts.toTemp,
         deferMerge: ps._deferItemMerge > 0,
+        ignoreCap: !!opts.ignoreCap,
       });
       return p ? view(p) : null;
     },

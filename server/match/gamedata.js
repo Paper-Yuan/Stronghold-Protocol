@@ -308,6 +308,8 @@ export class GameData {
   itemPoolCopies(id) {
     const base = this.baseIdOf(id), rec = this.item(base);
     if (!rec || !isShopItem(rec)) return null;
+    // 特性专属产出装备无上限（缪缪变形同构体、耶拉谢拉格不融冰）
+    if (base === 'chess_item_6_09_e_a' || base === 'chess_item_5_02_e_a') return null;
     const count = this.economy.itemPoolCopiesOverrides?.[base] ?? this.economy.itemPoolCopies?.[rec.tier];
     return Number.isInteger(count) && count >= 0 ? count : null;
   }
