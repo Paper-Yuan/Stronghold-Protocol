@@ -48,27 +48,39 @@ export function setSkins(entries) {
 
 /** Choose a skin for one operator. */
 export function setSkin(chessId, skinId) {
-  setSkins({ ...skinsStore.get().entries, [chessId]: skinId });
+  const chess = data.get('chess');
+  const rec = chess?.[chessId] || data.lookup?.('chess', chessId);
+  const charId = rec?.charId;
+  const next = { ...skinsStore.get().entries, [chessId]: skinId };
+  if (charId) next[charId] = skinId;
+  setSkins(next);
 }
 
 /** Drop one operator's choice (it goes back to its default model). */
 export function clearSkin(chessId) {
+  const chess = data.get('chess');
+  const rec = chess?.[chessId] || data.lookup?.('chess', chessId);
+  const charId = rec?.charId;
   const next = { ...skinsStore.get().entries };
   delete next[chessId];
+  if (charId) delete next[charId];
   setSkins(next);
 }
 
 /** The skin this browser picked for an operator, or null. */
-export const skinFor = (chessId) => {
-  if (!chessId) return null;
+export const skinFor = (id) => {
+  if (!id) return null;
   const entries = skinsStore.get().entries;
-  if (entries[chessId]) return entries[chessId];
+  if (entries[id]) return entries[id];
   const chess = data.get('chess');
   if (chess && typeof chess === 'object') {
-    const rec = chess[chessId];
+    const rec = chess[id];
     if (rec) {
       if (rec.charId && entries[rec.charId]) return entries[rec.charId];
       if (rec.baseId && entries[rec.baseId]) return entries[rec.baseId];
+    }
+    for (const [k, sId] of Object.entries(entries)) {
+      if (chess[k]?.charId === id || chess[k]?.baseId === id) return sId;
     }
   }
   return null;

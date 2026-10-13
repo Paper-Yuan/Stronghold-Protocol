@@ -1,4 +1,4 @@
-import { skinsStore, setSkins, setSkin, clearSkin, availableSkins } from '../ui/skins.js';
+import { skinsStore, setSkins, setSkin, clearSkin, availableSkins, skinFor } from '../ui/skins.js';
 import { SkinSection } from '../ui/skinPicker.js';
 // 干员调配 (Operator loadout, DESIGN §16): choose the equipped skill of every chess and the module of its elite before a
 // match (official rule: "开始游戏前无法调整干员的等级，但可调整其所携带的技能和模组"). A full-screen overlay opened
@@ -213,6 +213,7 @@ export function RosterHead() {
  * 「替补」 tag: its stand-in fights with a fixed skill and no 潜能 / 练度, the choices here apply once it is owned again.
  */
 export function RosterRow({ m, chess, golden, entries, ops = {}, selected, onPick, onChange, onOps, level = 'normal', notOwned = false }) {
+  const skins = useStore((s) => s.entries, shallowEqual, skinsStore);
   const choice = effectiveChoice(entries, chess, golden);
   const opt = chessOptions(chess, golden);
   const cv = opsOf(ops, chess.charId);
@@ -221,11 +222,13 @@ export function RosterRow({ m, chess, golden, entries, ops = {}, selected, onPic
   const elite = level === 'elite' && !!golden;
   const slots = [0, 1, 2].map((i) => opt.skillOptions[i] || null);
   const standInNote = notOwned ? t('未持有（干员持有）：由替补干员上场，替补干员没有潜能与练度') : null;
+  const chosenSkin = skins?.[chess.chessId] || skins?.[chess.charId] || skinFor(chess.chessId) || null;
+  const customChess = chosenSkin ? { ...chess, skinId: chosenSkin } : chess;
   return html`<div role="listitem" data-chess=${chess.chessId} data-variant=${elite ? 'elite' : 'normal'}
       class=${cx('lo-card', `lo-card--t${chess.tier}`, selected && 'is-sel', changed && 'is-changed', notOwned && 'is-standin')}>
     <button type="button" class="lo-card__pick" aria-pressed=${selected ? 'true' : 'false'} title=${chess.name} onClick=${() => onPick(chess.chessId)}>
       <span class="lo-card__art">
-        <${Img} src=${chessAvatarUrl(m, chess)} fallback=${html`<span class="lo-card__glyph">${[...(chess.name || '?')][0]}</span>`} />
+        <${Img} src=${chessAvatarUrl(m, customChess)} fallback=${html`<span class="lo-card__glyph">${[...(chess.name || '?')][0]}</span>`} />
         <${TierChip} tier=${chess.tier} size="sm" class="lo-card__tier" />
       </span>
       <span class="lo-card__id">
@@ -456,6 +459,7 @@ function PotPips({ n }) {
  * column of quick choices beside the card — the same handlers as the list's RosterRow.
  */
 export function OpCard({ m, chess, golden, entries, ops = {}, selected = false, quick = null, onPick, onChange, onOps, notOwned = false }) {
+  const skins = useStore((s) => s.entries, shallowEqual, skinsStore);
   const choice = effectiveChoice(entries, chess, golden);
   const opt = chessOptions(chess, golden);
   const cv = opsOf(ops, chess.charId);
@@ -465,6 +469,8 @@ export function OpCard({ m, chess, golden, entries, ops = {}, selected = false, 
   const mod = golden ? opt.moduleOptions.find((x) => x.id === choice.module) || null : null;
   const modules = [...opt.moduleOptions].sort((a, b) => Number(b.id === MODULE_NONE) - Number(a.id === MODULE_NONE));
   const standInNote = notOwned ? t('未持有（干员持有）：由替补干员上场，替补干员没有潜能与练度') : null;
+  const chosenSkin = skins?.[chess.chessId] || skins?.[chess.charId] || skinFor(chess.chessId) || null;
+  const customChess = chosenSkin ? { ...chess, skinId: chosenSkin } : chess;
   return html`<div role="listitem" data-chess=${chess.chessId}
       class=${cx('lo-op', `lo-op--t${chess.tier}`, selected && 'is-sel', changed && 'is-changed', notOwned && 'is-standin', quick && 'is-quick')}>
     <div class="lo-op__card">
@@ -478,7 +484,7 @@ export function OpCard({ m, chess, golden, entries, ops = {}, selected = false, 
       </div>
       <button type="button" class="lo-op__pick" aria-pressed=${selected ? 'true' : 'false'} title=${chess.name} onClick=${() => onPick(chess.chessId)}>
         <span class="lo-op__art">
-          <${Img} src=${chessPortraitUrl(m, chess) || chessAvatarUrl(m, chess)} fallback=${html`<span class="lo-op__glyph">${[...(chess.name || '?')][0]}</span>`} />
+          <${Img} src=${chessPortraitUrl(m, customChess) || chessAvatarUrl(m, customChess)} fallback=${html`<span class="lo-op__glyph">${[...(chess.name || '?')][0]}</span>`} />
         </span>
         <${Img} src=${subProfIconUrl(m, chess)} class="lo-op__sub" />
         ${notOwned ? html`<span class="lo-op__ribbon" title=${t('未持有（干员持有）：由替补干员上场')}>${t('替补')}</span>` : null}
@@ -503,7 +509,7 @@ export function OpCard({ m, chess, golden, entries, ops = {}, selected = false, 
       : quick === 'skin' ? html`<div class="lo-op__quick lo-quick" role="group" aria-label=${t('选择皮肤')}>
         ${(() => {
           const list = availableSkins(chess.charId);
-          const chosen = skinsStore.get().entries[chess.chessId] || null;
+          const chosen = chosenSkin;
           const defaultArt = data.get('assets')?.chars?.[chess.charId]?.avatar || null;
           if (!list || !list.length) return html`<span class="lo-op__none">${t('无时装')}</span>`;
           return html`

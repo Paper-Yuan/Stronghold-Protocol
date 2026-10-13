@@ -19,7 +19,7 @@ export function uiUrl(m, key) {
  * @param {any} chess chess.json record (or { assets: { avatar } })
  */
 export function chessAvatarUrl(m, chess) {
-  const chosenSkin = str(chess?.skinId) || skinFor(chess?.charId || chess?.chessId || chess?.id);
+  const chosenSkin = str(chess?.skinId) || skinFor(chess?.chessId) || skinFor(chess?.charId) || skinFor(chess?.id);
   if (chosenSkin) {
     const skinStem = chosenSkin.replace(/@/g, '_').replace(/#/g, '_');
     return `/assets/char/skin_avatar/${skinStem}.png`;
@@ -45,7 +45,7 @@ export function chessAvatarUrl(m, chess) {
  * @param {any} chess
  */
 export function chessPortraitUrl(m, chess) {
-  const chosenSkin = str(chess?.skinId) || skinFor(chess?.charId || chess?.chessId || chess?.id);
+  const chosenSkin = str(chess?.skinId) || skinFor(chess?.chessId) || skinFor(chess?.charId) || skinFor(chess?.id);
   if (chosenSkin) {
     const skinStem = chosenSkin.replace(/@/g, '_').replace(/#/g, '_');
     return `/assets/char/portrait/${skinStem}.png`;
