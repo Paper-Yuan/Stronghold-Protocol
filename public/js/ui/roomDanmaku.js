@@ -80,6 +80,7 @@ export function createRoomDanmaku() {
         : null;
     const prefix = message.noPrefix ? '' : (seatLabel ? `[${seatLabel}] ` : '');
     const sender = message.name ? String(message.name).slice(0, 24) : '';
+    const el = document.createElement('div');
     el.textContent = sender ? `${prefix}${sender}：${message.text}` : `${prefix}${message.text}`;
 
     const isDark = color === '#111111' || color === '#222222' || color === 'black' || color === '#000000';

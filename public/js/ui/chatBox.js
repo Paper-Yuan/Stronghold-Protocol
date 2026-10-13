@@ -75,8 +75,9 @@ export function ChatBox({ active: controlledActive, onToggle, showTrigger = cont
     setActive(false);
     if (!text) return;
     const room = store.get().room;
-    const pub = store.get().pub;
-    const code = room?.code || '';
+    const pub = store.get().match?.public;
+    const rawCode = room?.code || '';
+    const code = typeof rawCode === 'string' && rawCode.length === 4 ? rawCode : undefined;
     const me = store.get().me;
     let seat = 0;
     if (pub?.players) {
@@ -96,7 +97,11 @@ export function ChatBox({ active: controlledActive, onToggle, showTrigger = cont
     };
 
     // 乐观立即弹出自己发送的弹幕（确保单人/多人/离线立即呈现）
-    getRoomDanmaku().show(localMsg, true);
+    try {
+      getRoomDanmaku().show(localMsg, true);
+    } catch (err) {
+      console.warn('[chat] local danmaku render error', err);
+    }
 
     try {
       if (net.status !== 'online' || !room) {
@@ -104,13 +109,13 @@ export function ChatBox({ active: controlledActive, onToggle, showTrigger = cont
         pushChatMessage(localMsg);
         return;
       }
-      await net.request('room.chat', { text, code });
+      const chatPayload = code ? { text, code } : { text };
+      await net.request('room.chat', chatPayload);
     } catch (err) {
       console.warn('[chat] send failed', err);
       if (err?.code === 'RATE') { toast(t('发言过于频繁，请稍候'), 'warn'); return; }
       if (net.status !== 'online' || !store.get().room) {
         pushChatMessage(localMsg);
-        getRoomDanmaku().show(localMsg, true);
         return;
       }
       toast(err?.message ? t(err.message) : t('发送失败，请重试'), 'warn');

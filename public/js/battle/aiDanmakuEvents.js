@@ -78,15 +78,28 @@ export function emitDanmaku({ text, name, seat, color, gradient, noPrefix = fals
   else run();
 }
 
+export function hasAiTeammates(pub) {
+  if (!pub) return false;
+  // 单人独立模拟下始终支持 AI 互动
+  if (pub.mode === 'solo') return true;
+  // 联机模式下：只有当房间内确实存在 AI bot 队友时才返回 true
+  const players = Array.isArray(pub.players) ? pub.players : [];
+  return players.some((p) => p && p.isBot);
+}
+
 function getAiPlayers(pub) {
   const list = (pub?.players || []).filter((p) => p && p.isBot);
   if (list.length > 0) return list;
-  // 备用 AI 占位，确保即使在单机离线演练等无完整 bot 数据下也能正常发声
-  return [{ playerId: 'ai_fallback', name: 'AI·队友', seat: 1, isBot: true }];
+  // 仅在单人独立模拟 (solo) 模式下才使用兜底 AI，在联机模式下只使用真实加入房间的 bot
+  if (pub?.mode === 'solo') {
+    return [{ playerId: 'ai_fallback', name: 'AI·队友', seat: 1, isBot: true }];
+  }
+  return [];
 }
 
 function getRandomAi(pub) {
   const ais = getAiPlayers(pub);
+  if (!ais.length) return null;
   return ais[Math.floor(Math.random() * ais.length)];
 }
 
@@ -126,26 +139,41 @@ export class AiDanmakuManager {
 
   /**
    * 检查游玩者激活的羁绊、层数及干员配置
-   * 要求：游玩者激活对应羁绊（b.active === true），触发后失活再激活不重复触发
    */
   checkBondAndLayerEvents(pub, priv, myId, liveBondLayers = null) {
-    if (!priv || !pub) return;
+    if (!pub) return;
     const round = pub.round || 1;
-    const bonds = priv.bonds || [];
-    const activeBondsMap = new Map();
-    for (const b of bonds) {
-      if (b && b.active && typeof b.bondId === 'string') {
-        activeBondsMap.set(b.bondId, b);
+
+    // 1. 阵营专属层数名言弹幕（一局一次，全场任意玩家满足层数即触发，不论单人还是联机满人）
+    const layerMap = new Map(); // bondId -> maxLayers
+    // 本地私有 bonds
+    for (const b of (priv?.bonds || [])) {
+      if (b && typeof b.bondId === 'string') {
+        const cur = layerMap.get(b.bondId) || 0;
+        layerMap.set(b.bondId, Math.max(cur, Number(b.layers) || 0));
+      }
+    }
+    // 本地实时战斗战斗内 bondLayers
+    if (liveBondLayers && typeof liveBondLayers === 'object') {
+      for (const [bondId, n] of Object.entries(liveBondLayers)) {
+        if (typeof n === 'number') {
+          const cur = layerMap.get(bondId) || 0;
+          layerMap.set(bondId, Math.max(cur, n));
+        }
+      }
+    }
+    // 所有玩家（联机队友）在 pub.players 中的 bonds
+    for (const p of (pub.players || [])) {
+      for (const b of (p.bonds || [])) {
+        if (b && typeof b.bondId === 'string') {
+          const cur = layerMap.get(b.bondId) || 0;
+          layerMap.set(b.bondId, Math.max(cur, Number(b.layers) || 0));
+        }
       }
     }
 
-    // 1. 阵营专属层数名言弹幕（一局一次）
     for (const item of BOND_QUOTE_THRESHOLDS) {
-      const activeBond = activeBondsMap.get(item.bondId);
-      if (!activeBond) continue;
-      const baseLayers = activeBond.layers ?? 0;
-      const liveLayer = liveBondLayers && typeof liveBondLayers[item.bondId] === 'number' ? liveBondLayers[item.bondId] : 0;
-      const layers = Math.max(baseLayers, liveLayer);
+      const layers = layerMap.get(item.bondId) || 0;
       if (layers >= item.layer) {
         const key = `quote:${item.bondId}:${item.layer}`;
         if (!this.triggeredOnce.has(key)) {
@@ -156,6 +184,20 @@ export class AiDanmakuManager {
             noPrefix: true,
           });
         }
+      }
+    }
+
+    // 若场上不存在 AI bot 队友（全真人联机），坚决不触发 AI 特殊互动弹幕
+    if (!hasAiTeammates(pub)) return;
+    const ais = getAiPlayers(pub);
+    if (!ais.length) return;
+
+    // 提取本地活跃羁绊
+    const bonds = priv?.bonds || [];
+    const activeBondsMap = new Map();
+    for (const b of bonds) {
+      if (b && b.active && typeof b.bondId === 'string') {
+        activeBondsMap.set(b.bondId, b);
       }
     }
 
@@ -171,14 +213,16 @@ export class AiDanmakuManager {
           roundSet.add(key);
           this.triggeredRounds.set(round, roundSet);
           const ai = getRandomAi(pub);
-          const lines = ['？！区区？！', '龙可是...'];
-          const text = lines[Math.floor(Math.random() * lines.length)];
-          emitDanmaku({
-            name: ai.name,
-            seat: ai.seat,
-            text,
-            color: '#ff3b30',
-          });
+          if (ai) {
+            const lines = ['？！区区？！', '龙可是...'];
+            const text = lines[Math.floor(Math.random() * lines.length)];
+            emitDanmaku({
+              name: ai.name,
+              seat: ai.seat,
+              text,
+              color: '#ff3b30',
+            });
+          }
         }
       }
     }
@@ -280,7 +324,7 @@ export class AiDanmakuManager {
    * 检查战斗漏怪态势（进入联防阶段时）
    */
   checkBattleLeaks(pub, myId) {
-    if (!pub || pub.phase !== 'UNITE') return;
+    if (!pub || pub.phase !== 'UNITE' || !hasAiTeammates(pub)) return;
     const round = pub.round || 1;
     if (this.lastCheckedLeakRound === round) return;
     this.lastCheckedLeakRound = round;
@@ -288,6 +332,7 @@ export class AiDanmakuManager {
     const leakers = Array.isArray(pub?.unite?.leakers) ? pub.unite.leakers : [];
     const playerLeaked = leakers.includes(myId);
     const ais = getAiPlayers(pub);
+    if (!ais.length) return;
     const aiLeakers = ais.filter((a) => leakers.includes(a.playerId));
     const aiNonLeakers = ais.filter((a) => !leakers.includes(a.playerId));
 
@@ -321,7 +366,7 @@ export class AiDanmakuManager {
    * 检查联防结算（游玩者没漏怪且联防成功时，漏怪的 AI 依次感谢）
    */
   checkUniteSettlement(pub, myId, uniteResult) {
-    if (!pub) return;
+    if (!pub || !hasAiTeammates(pub)) return;
     const round = pub.round || 1;
     if (this.lastCheckedUniteRound === round) return;
     this.lastCheckedUniteRound = round;
@@ -332,6 +377,7 @@ export class AiDanmakuManager {
     if (playerLeaked) return;
 
     const ais = getAiPlayers(pub);
+    if (!ais.length) return;
     const aiLeakers = ais.filter((a) => leakers.includes(a.playerId));
     if (aiLeakers.length === 0) return;
 
