@@ -34,6 +34,34 @@ test('the per-operator JP/EN/KR/custom preference retains the existing per-slot 
   assert.equal(voiceLine(tree, a, 'skill2', voiceLangFor(a, 'cn', { [a]: 'en' })).url, '/en.mp3');
   assert.equal(voiceLine(tree, a, 'skill3', voiceLangFor(a, 'cn', { [a]: 'kr' })).url, '/kr.mp3');
   assert.equal(voiceLine(tree, a, 'skill4', voiceLangFor(a, 'cn', { [a]: 'custom' })).url, '/custom.mp3');
-  // fallback to cn if slot absent in custom
-  assert.equal(voiceLine(tree, a, 'select', voiceLangFor(a, 'cn', { [a]: 'custom' })).url, '/cn.mp3');
+  // fallback to jp if slot absent in custom (特殊语音没有就用默认日语)
+  const treeWithJpSelect = {
+    voice: { [a]: { select: '/cn.mp3' } },
+    voiceJp: { [a]: { select: '/jp_select.mp3' } },
+    voiceCustom: { [a]: { cn_topolect: { skill4: '/custom.mp3' } } }
+  };
+  assert.equal(voiceLine(treeWithJpSelect, a, 'select', voiceLangFor(a, 'cn', { [a]: 'custom' })).url, '/jp_select.mp3');
+});
+
+test('operator skin voice lookup and multilingual matching', () => {
+  const tree = {
+    voice: { [a]: { select: '/base_cn.mp3' } },
+    voiceJp: { [a]: { select: '/base_jp.mp3' } },
+    skinVoice: { 'char_263_skadi_epoque#1': { select: '/skin_cn.mp3' } },
+    skinVoiceJp: { 'char_263_skadi_epoque#1': { select: '/skin_jp.mp3' } },
+  };
+
+  // Without skin -> base voice
+  assert.equal(voiceLine(tree, a, 'select', 'cn', Math.random, null).url, '/base_cn.mp3');
+  assert.equal(voiceLine(tree, a, 'select', 'jp', Math.random, null).url, '/base_jp.mp3');
+
+  // With skin -> skin voice
+  assert.equal(voiceLine(tree, a, 'select', 'cn', Math.random, 'char_263_skadi@epoque#1').url, '/skin_cn.mp3');
+  assert.equal(voiceLine(tree, a, 'select', 'jp', Math.random, 'char_263_skadi@epoque#1').url, '/skin_jp.mp3');
+
+  // Special language with skin without custom line -> fallback to skin's jp
+  assert.equal(voiceLine(tree, a, 'select', 'custom', Math.random, 'char_263_skadi@epoque#1').url, '/skin_jp.mp3');
+
+  // Unrelated skin -> fallback to base voice
+  assert.equal(voiceLine(tree, a, 'select', 'cn', Math.random, 'char_263_skadi@other#1').url, '/base_cn.mp3');
 });

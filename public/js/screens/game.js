@@ -82,7 +82,9 @@ import { EmoteWheel } from '../ui/emotes.js';
 import { ChatBox } from '../ui/chatBox.js';
 import { EffectsList } from '../ui/effectsList.js';
 import { CombatHud } from '../ui/combatHud.js';
+import { DpsPanel } from '../ui/dpsPanel.js';
 import { SettingsModal, settingsStore } from '../ui/settings.js';
+import { aiDanmakuEvents } from '../battle/aiDanmakuEvents.js';
 import { ExitModal, AwayOverlay, awayStore } from '../ui/matchChrome.js';
 import { openGuide } from '../ui/guide.js';
 import { actions, onRefreshBusy } from '../ui/gameActions.js';
@@ -770,6 +772,27 @@ function MatchScreen() {
     if (activeBonds > prevActive.current && phase === PHASE.PREP && !audio.bondCueRecent('prep')) audio.sfx('bondUp', { volume: 0.7, scope: 'prep' });
     prevActive.current = activeBonds;
   }, [activeBonds]);
+
+  // AI danmaku interactions & bond/layer quote events
+  useEffect(() => {
+    if (pub?.round === 1) aiDanmakuEvents.reset();
+  }, [pub?.round]);
+
+  useEffect(() => {
+    aiDanmakuEvents.checkBondAndLayerEvents(pub, priv, myId, battleState?.bondLayers);
+  }, [priv?.bonds, priv?.pieces, phase, pub?.round, battleState?.bondLayers]);
+
+  useEffect(() => {
+    if (phase === PHASE.UNITE) {
+      aiDanmakuEvents.checkBattleLeaks(pub, myId);
+    }
+  }, [phase, pub?.round, pub?.unite?.leakers]);
+
+  useEffect(() => {
+    if (phase === PHASE.SETTLE) {
+      aiDanmakuEvents.checkUniteSettlement(pub, myId, pub?.uniteResult);
+    }
+  }, [phase, pub?.round, pub?.uniteResult]);
 
   // emote bubbles (and a sound for teammates' emotes)
   const bubbleMs = (gd.config?.timers?.chatBubble ?? 3) * 1000;
@@ -1514,7 +1537,8 @@ function MatchScreen() {
 
       ${combat || mode === 'settle' ? html`<${CombatHud} pub=${pub} myId=${myId} watching=${watchingNow} hud=${hud} myDone=${!!myDone && alive}
         spectating=${!alive} spectator=${spectator} onWatch=${watchField}
-        client=${cc ? { progress, observing: observingName ? { name: observingName } : null, onBack: alive ? backHome : null, layers, layer, onLayer: setLayer } : null} />` : null}
+        client=${cc ? { progress, observing: observingName ? { name: observingName } : null, onBack: alive ? backHome : null, layers, layer, onLayer: setLayer } : null} />
+      <${DpsPanel} myId=${myId} watching=${watchingNow} phase=${phase} />` : null}
 
       ${showDeadPill(alive, phase) ? (spectator
         ? html`<div class="gm__dead gm__dead--spectator" role="status"><${GIcon} name="eye" />${t('观战中 · 点击左侧成员头像切换查看')}</div>`
@@ -1525,8 +1549,8 @@ function MatchScreen() {
       <${ChatBox} active=${chatOpen} onToggle=${setChatOpen} />
 
       <div class="gm__corner">
-        <button type="button" class=${`gm__gear gm__chat ${chatOpen ? 'is-on' : ''}`} aria-label=${t('发言')} title=${t('发言')} onClick=${() => setChatOpen((v) => !v)}><${GIcon} name="chat" /></button>
-        ${spectator ? null : html`<${EmoteWheel} open=${emoteOpen} onToggle=${setEmoteOpen} onSend=${(id) => actions.emote(id)} disabled=${conn.status !== 'online'} />`}
+        <button type="button" class=${`gm__gear gm__chat ${chatOpen ? 'is-on' : ''}`} aria-label=${t('发言')} title=${t('发言')} onClick=${() => { setChatOpen((v) => { const n = !v; if (n) setEmoteOpen(false); return n; }); }}><${GIcon} name="chat" /></button>
+        ${spectator ? null : html`<${EmoteWheel} open=${emoteOpen} onToggle=${(v) => { setEmoteOpen(v); if (v) setChatOpen(false); }} onSend=${(id) => actions.emote(id)} disabled=${conn.status !== 'online'} />`}
         <button type="button" class="gm__gear" aria-label=${t('设置')} title=${t('设置')} onClick=${() => setSettingsOpen(true)}><${GIcon} name="gear" /></button>
         <button type="button" class="gm__gear gm__guide" aria-label=${t('玩法说明')} title=${t('玩法说明')} onClick=${() => openGuide(0)}><${Icon} name="book" /></button>
         <${FullscreenButton} class="gm__gear gm__fs" />

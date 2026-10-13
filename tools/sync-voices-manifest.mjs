@@ -61,8 +61,8 @@ export function verifyVoicesManifest() {
     }
   }
 
-  // Collect from all voice trees (cn/jp/en/kr/custom)
-  for (const key of ['voice', 'voiceJp', 'voiceEn', 'voiceKr', 'voiceCustom']) {
+  // Collect from all voice trees (cn/jp/en/kr/custom/skin)
+  for (const key of ['voice', 'voiceJp', 'voiceEn', 'voiceKr', 'voiceCustom', 'skinVoice', 'skinVoiceJp', 'skinVoiceEn', 'skinVoiceKr']) {
     if (audio[key]) collectUrls(audio[key]);
   }
 

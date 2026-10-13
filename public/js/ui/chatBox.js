@@ -46,11 +46,12 @@ export function ChatBox({ active: controlledActive, onToggle, showTrigger = cont
     if (active) setTimeout(() => inputRef.current?.focus(), 40);
   }, [active]);
 
-  // Desktop: Enter opens the input, Escape closes it. The input itself stops propagation, so the game's hotkeys never
-  // see the keystrokes meant for the text field.
+  // Desktop: Enter opens the input, Escape closes it (局内生效；局外不截获按键).
   useEffect(() => {
     const onKey = (e) => {
       if (e.key === 'Enter') {
+        const inMatch = Boolean(store.get().room?.inMatch);
+        if (!inMatch) return;
         if (!active) { e.preventDefault(); e.stopPropagation(); setActive(true); }
       } else if (e.key === 'Escape') {
         if (active) { setActive(false); inputRef.current?.blur(); }
@@ -74,22 +75,33 @@ export function ChatBox({ active: controlledActive, onToggle, showTrigger = cont
     setActive(false);
     if (!text) return;
     const room = store.get().room;
+    const pub = store.get().pub;
     const code = room?.code || '';
     const me = store.get().me;
+    let seat = 0;
+    if (pub?.players) {
+      const idx = pub.players.findIndex((p) => p.playerId === me?.playerId);
+      if (idx >= 0) seat = pub.players[idx].seat ?? idx;
+    } else if (room?.players) {
+      const idx = room.players.findIndex((p) => p.playerId === me?.playerId);
+      if (idx >= 0) seat = idx;
+    }
     const localMsg = {
       playerId: me?.playerId || 'me',
       name: me?.name || t('博士'),
-      seat: 0,
+      seat,
       isSpectator: false,
       text,
       at: Date.now(),
     };
 
+    // 乐观立即弹出自己发送的弹幕（确保单人/多人/离线立即呈现）
+    getRoomDanmaku().show(localMsg, true);
+
     try {
       if (net.status !== 'online' || !room) {
-        // offline / single-player dev page: echo locally and show danmaku
+        // offline / single-player dev page: echo locally into log
         pushChatMessage(localMsg);
-        getRoomDanmaku().show(localMsg, true);
         return;
       }
       await net.request('room.chat', { text, code });

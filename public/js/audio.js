@@ -317,34 +317,76 @@ export const VOICE_TAP_SLOTS = Object.freeze(['select']);
  * @param {() => number} [random]
  * @returns {{ url: string, fallback: string|null } | null}
  */
-export function voiceLine(audio, charId, slot, lang = 'cn', random = Math.random) {
+export function voiceLine(audio, charId, slot, lang = 'cn', random = Math.random, skinId = null) {
   const lines = (line) => (Array.isArray(line) ? line : [line]).filter((u) => typeof u === 'string' && u);
   const draw = (list) => (list.length ? list[Math.min(list.length - 1, Math.floor(random() * list.length))] : null);
+
+  // 1. 若干员穿戴了具有专属语音的特殊皮肤，优先检查皮肤语音
+  const skinKey = typeof skinId === 'string' ? skinId.replace('@', '_') : null;
+  if (skinKey) {
+    const skinBranch = (l) => {
+      if (l === 'jp') return audio?.skinVoiceJp?.[skinKey];
+      if (l === 'en') return audio?.skinVoiceEn?.[skinKey];
+      if (l === 'kr') return audio?.skinVoiceKr?.[skinKey];
+      if (l === 'cn') return audio?.skinVoice?.[skinKey];
+      return null;
+    };
+
+    let skinTarget = null;
+    if (lang === 'jp') {
+      skinTarget = lines(skinBranch('jp')?.[slot]);
+    } else if (lang === 'en') {
+      skinTarget = lines(skinBranch('en')?.[slot]) || lines(skinBranch('jp')?.[slot]);
+    } else if (lang === 'kr') {
+      skinTarget = lines(skinBranch('kr')?.[slot]) || lines(skinBranch('jp')?.[slot]);
+    } else if (lang === 'custom' || lang === 'ita' || lang === 'cn_topolect') {
+      // “特殊语言没有就用默认日语”
+      skinTarget = lines(skinBranch(lang)?.[slot]);
+      if (!skinTarget.length) skinTarget = lines(skinBranch('jp')?.[slot]);
+      if (!skinTarget.length) skinTarget = lines(skinBranch('cn')?.[slot]);
+    } else {
+      skinTarget = lines(skinBranch('cn')?.[slot]);
+    }
+
+    if (skinTarget.length) {
+      const dub = draw(skinTarget);
+      const skinCn = lines(audio?.skinVoice?.[skinKey]?.[slot]);
+      const file = (u) => u.slice(u.lastIndexOf('/') + 1);
+      return { url: dub, fallback: skinCn.find((u) => file(u) === file(dub)) ?? draw(skinCn) ?? dub };
+    }
+  }
+
+  // 2. 原皮标准语音链路
   const cn = lines(audio?.voice?.[charId]?.[slot]);
+  const jp = lines(audio?.voiceJp?.[charId]?.[slot]);
 
   let targetList = null;
   if (lang === 'jp') {
-    targetList = lines(audio?.voiceJp?.[charId]?.[slot]);
+    targetList = jp;
   } else if (lang === 'en') {
     targetList = lines(audio?.voiceEn?.[charId]?.[slot]);
   } else if (lang === 'kr') {
     targetList = lines(audio?.voiceKr?.[charId]?.[slot]);
-  } else if (lang === 'custom') {
+  } else if (lang === 'custom' || audio?.voiceCustom?.[charId]?.[lang]) {
     const customBranch = audio?.voiceCustom?.[charId];
     if (customBranch && typeof customBranch === 'object') {
-      const subKey = Object.keys(customBranch)[0];
-      if (subKey && customBranch[subKey]) {
-        targetList = lines(customBranch[subKey][slot]);
+      const slotMap = customBranch[lang] || customBranch[Object.keys(customBranch)[0]];
+      if (slotMap) {
+        targetList = lines(slotMap[slot]);
       }
+    }
+    // “特殊语音没有就用默认日语”
+    if (!targetList || !targetList.length) {
+      targetList = jp;
     }
   }
 
-  const dub = targetList ? draw(targetList) : null;
+  const dub = targetList && targetList.length ? draw(targetList) : null;
   if (dub) {
     const file = (u) => u.slice(u.lastIndexOf('/') + 1);
-    return { url: dub, fallback: cn.find((u) => file(u) === file(dub)) ?? draw(cn) };
+    return { url: dub, fallback: cn.find((u) => file(u) === file(dub)) ?? draw(cn) ?? dub };
   }
-  const url = draw(cn);
+  const url = draw(cn) || draw(jp);
   return url ? { url, fallback: null } : null;
 }
 
@@ -696,7 +738,7 @@ export class AudioManager {
    * @param {string} lang
    */
   setVoiceLang(lang, overrides = this.voiceOverrides) {
-    this.voiceLang = (lang === 'jp' || lang === 'custom') ? lang : 'cn';
+    this.voiceLang = ['jp', 'en', 'kr', 'custom'].includes(lang) ? lang : 'cn';
     this.voiceOverrides = sanitizeVoiceOverrides(overrides);
   }
 
@@ -1006,8 +1048,10 @@ export class AudioManager {
     try {
       if (!this.ctx || !this.voiceGain || this.volumes.muted || this.volumes.voice <= 0) return false;
       if (typeof charId !== 'string' || typeof slot !== 'string') return false;
+      // skinId can be passed explicitly in o.skinId, or looked up from unit if available
+      const skinId = o.skinId ?? (o.unitKey != null && this.units.get(o.unitKey)?.skinId) ?? null;
       // the chosen dub's line (settings 语音语言), with the Chinese file of the same name as its fallback (voiceLine)
-      const line = voiceLine(this.getManifest()?.audio, charId, slot, voiceLangFor(charId, this.voiceLang, this.voiceOverrides));
+      const line = voiceLine(this.getManifest()?.audio, charId, slot, voiceLangFor(charId, this.voiceLang, this.voiceOverrides), Math.random, skinId);
       if (!line) return false;
       const now = typeof performance !== 'undefined' ? performance.now() : Date.now();
       const verdict = this.voiceGate.request(slot, o.unitKey ?? null, now);
@@ -1106,9 +1150,9 @@ export class AudioManager {
   _track(u) {
     if (!u || typeof u !== 'object' || u.id == null) return;
     // UnitInfo.spine is the model id (charId / tokenId / enemyId) — the key of sfx.units; kind/defId pick the
-    // official class sounds (operator vs summon vs device). `skillActive` follows the ['skill', id, 1] / 0 events.
     this.units.set(u.id, { def: u.spine || u.defId, defId: u.defId ?? null, kind: u.kind ?? null, side: u.side, boss: !!u.boss,
-      skillIndex: Number.isInteger(u.skillIndex) ? u.skillIndex : null, skillActive: !!u.skillActive });
+      skillIndex: Number.isInteger(u.skillIndex) ? u.skillIndex : null, skillActive: !!u.skillActive,
+      skinId: u.skinId || (typeof u.spine === 'string' && u.spine.includes('@') ? u.spine : null) });
     // a cast that arrived before this unit was known (handleBattleEvents): it sounds now, once
     const held = this.pendingSkill.get(u.id);
     if (held) {

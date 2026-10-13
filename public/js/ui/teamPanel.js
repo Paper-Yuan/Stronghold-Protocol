@@ -198,7 +198,7 @@ export function TeamPanel({ pub, myId, watching, bubbles, chatBubbles = null, on
             onClick=${() => observe.onBack()}><span class="btn__label">${t('返回战场')}</span></button>` : null}
         </div>
         ${bubble ? html`<${EmoteBubble} key=${bubble.seq} id=${bubble.id} class="team__bubble" />` : null}
-        ${chatMsg ? html`<div class="team__chat-bubble" key=${chatMsg.at}><span class="team__chat-text">${chatMsg.text}</span></div>` : null}
+        ${chatMsg ? html`<div class=${cx('team__chat-bubble', p.seat != null ? `seat-${p.seat}` : 'seat-0')} key=${chatMsg.at}><span class="team__chat-text">${chatMsg.text}</span></div>` : null}
       </div>`;
     })}
   </aside>`;

@@ -17,38 +17,31 @@
 /* ---- 交流 button -------------------------------------------------------------------------------------------- */
 .ewheel { position: relative; }
 .ewheel__btn {
-  position: relative; display: flex; align-items: center; justify-content: flex-start; gap: .08rem;
-  height: .56rem; min-width: 1.51rem; padding: 0 .2rem 0 .14rem;
-  background: rgba(8, 11, 10, .85); border: 1px solid var(--line-2); border-radius: .04rem;
-  color: var(--text-md); font-size: .18rem; font-weight: 700; letter-spacing: .1em; line-height: 1;
-  transition: color var(--t-fast), border-color var(--t-fast), filter var(--t-fast), opacity var(--t-fast);
+  position: relative; display: grid; place-items: center;
+  width: .82rem; height: .82rem; min-width: 0; padding: 0; aspect-ratio: 1;
+  background: rgba(8, 11, 10, .88); border: 1px solid var(--line-2); border-radius: 4px;
+  color: var(--text-lo); box-shadow: 0 2px 8px rgba(0, 0, 0, .5);
+  transition: color var(--t-fast), border-color var(--t-fast), transform var(--t-fast);
 }
-.ewheel__btn .icon { width: .3rem; height: .3rem; color: var(--mint-500); }
+.ewheel__btn .icon { width: .44rem; height: .44rem; color: inherit; }
 .ewheel__btn:hover:not(:disabled), .ewheel__btn.is-on { color: var(--mint-400); border-color: var(--mint-700); }
+.ewheel__btn.is-on { background: rgba(23, 249, 183, 0.15); }
 .ewheel__btn:disabled { opacity: .5; cursor: not-allowed; }
-/* emoji_btn 151×55: plate x 3–147, y 0–45 (a shadow below); the robot face + '<' chevron span x 22–79. The label gets
-   its own box right of the chevron (x ≥ 57 %), so a font clamped up by a browser minimum font size (CJK Chrome: 12 px)
-   or a small root can never run into the icon; the button never shrinks below 72 px (96 px on touch screens). */
 .ewheel__btn.has-sprite {
-  --ewb-w: max(1.51rem, 72px);
-  width: var(--ewb-w); height: calc(var(--ewb-w) * 55 / 151); min-width: 0; padding: 0; display: block;
-  background: var(--ewheel-btn) left bottom / 100% 100% no-repeat; border: 0; border-radius: 0; color: #f2f2f2;
+  width: .82rem; height: .82rem; min-width: 0; padding: 0; display: grid; place-items: center; aspect-ratio: 1;
+  background: rgba(8, 11, 10, .88); border: 1px solid var(--line-2); border-radius: 4px; color: var(--text-lo);
 }
-.ewheel__btn.has-sprite .ewheel__label {
-  position: absolute; left: 57%; right: 3%; top: 0; height: 82%;
-  display: flex; align-items: center; justify-content: center; overflow: hidden;
-  font-size: calc(var(--ewb-w) * 18 / 151); letter-spacing: .06em; line-height: 1;
-}
-.ewheel__btn.has-sprite:hover:not(:disabled), .ewheel__btn.has-sprite.is-on { color: #fff; filter: brightness(1.18); border: 0; }
-.ewheel__btn.has-sprite:disabled { opacity: 1; color: rgba(242, 242, 242, .45); }
+.ewheel__btn.has-sprite .ewheel__label { display: none; }
+.ewheel__btn.has-sprite:hover:not(:disabled), .ewheel__btn.has-sprite.is-on { color: var(--mint-400); border-color: var(--mint-700); }
+.ewheel__btn.has-sprite:disabled { opacity: .5; cursor: not-allowed; }
 .ewheel__btn.is-cooling { cursor: default; }
-.ewheel__label { white-space: nowrap; }
+.ewheel__label { display: none; }
 
 /* ---- panel: one page per theme ----------------------------------------------------------------------------- */
 /* emoji_bkg is 313×231 with a soft shadow margin; its opaque plate spans x 15–297, y 13–212. The cells, the pager
    and the CSS fallback plate all use that geometry. */
 .ewheel__panel {
-  position: absolute; left: -.15rem; bottom: calc(100% + .02rem); z-index: 5;
+  position: absolute; left: -.15rem; bottom: calc(100% + .02rem); z-index: 120;
   width: 3.13rem; height: 2.31rem; padding: 0; box-sizing: border-box;
   background: none; border: 0; border-radius: 0; box-shadow: none;
   transform-origin: .45rem 100%;

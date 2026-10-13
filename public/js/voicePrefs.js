@@ -14,12 +14,12 @@ export function sanitizeVoiceOverrides(raw) {
 export function voiceLangFor(charId, globalLang, overrides) {
   const own = Object.hasOwn(overrides || {}, charId) ? overrides[charId] : null;
   const allAllowed = [...VOICE_LANGS, ...DIALECT_LANGS];
-  if (own && allAllowed.includes(own) && own !== 'custom') {
+  if (own && allAllowed.includes(own)) {
     return own;
   }
   if (globalLang === 'custom') {
-    return 'jp'; // custom mode defaults to jp for non-overridden operators
+    return 'custom';
   }
-  return (VOICE_LANGS.includes(globalLang) && globalLang !== 'custom') ? globalLang : 'jp';
+  return VOICE_LANGS.includes(globalLang) ? globalLang : 'jp';
 }
 

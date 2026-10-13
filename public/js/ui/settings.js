@@ -27,6 +27,9 @@ import { LangToggle, machineTranslationNote } from './lang.js';
 import { t, tc, N_ } from '../../../shared/i18n.js';
 import { errorCount, currentBattle, diagnosticsText } from '../diag.js';
 import { copyText } from './clipboard.js';
+import { toast } from './toasts.js';
+import { loadoutStore, setEntries, setOpsMap } from './loadoutSync.js';
+import { skinsStore, setSkins } from './skins.js';
 
 const cx = (...p) => p.flat().filter(Boolean).join(' ');
 
@@ -234,6 +237,98 @@ function DiagSection() {
 }
 
 /**
+ * 配置导出与导入 (设置、干员调配、皮肤、潜能练度一键备份与恢复)
+ */
+function ConfigIoSection() {
+  const [open, setOpen] = useState(false);
+  const [text, setText] = useState('');
+  const [note, setNote] = useState('');
+
+  const handleExport = () => {
+    const payload = {
+      v: 2,
+      kind: 'stronghold.all_config',
+      timestamp: Date.now(),
+      settings: settingsStore.get(),
+      loadout: loadoutStore.get().entries || {},
+      ops: loadoutStore.get().ops || {},
+      skins: skinsStore.get().entries || {},
+    };
+    const str = JSON.stringify(payload, null, 2);
+    setText(str);
+    setOpen(true);
+    setNote(t('已生成完整配置JSON，可点击复制或直接编辑'));
+  };
+
+  const handleCopy = async () => {
+    if (!text) return;
+    const ok = await copyText(text);
+    toast(ok ? t('已复制到剪贴板') : t('复制失败，请手动长按全选复制'), ok ? 'success' : 'warn');
+  };
+
+  const handleImport = () => {
+    if (!text || !text.trim()) {
+      toast(t('请先在文本框中粘贴配置数据'), 'warn');
+      return;
+    }
+    try {
+      const data = JSON.parse(text.trim());
+      if (typeof data !== 'object' || !data) throw new Error('无效的 JSON 格式');
+      let count = 0;
+      if (data.settings && typeof data.settings === 'object') {
+        updateSettings(data.settings);
+        count++;
+      }
+      if (data.loadout && typeof data.loadout === 'object') {
+        setEntries(data.loadout);
+        count++;
+      }
+      if (data.ops && typeof data.ops === 'object') {
+        setOpsMap(data.ops);
+        count++;
+      }
+      if (data.skins && typeof data.skins === 'object') {
+        setSkins(data.skins);
+        count++;
+      }
+      if (count > 0) {
+        toast(t('配置已成功导入并生效！'), 'success');
+        setOpen(false);
+      } else {
+        toast(t('未检测到可用的配置项'), 'warn');
+      }
+    } catch (e) {
+      toast(t('导入失败：JSON 解析错误，请检查内容是否完整'), 'error');
+    }
+  };
+
+  return html`<section class="set-diag" aria-labelledby="set-io-title">
+    <div class="set-keys__head">
+      <span class="set-row__label" id="set-io-title">${t('配置备份与恢复')}<${MicroLabel}>CONFIG BACKUP / RESTORE<//></span>
+      <div style="display:flex;gap:.08rem">
+        <${Button} variant="secondary" size="sm" icon="copy" onClick=${handleExport}>${t('导出配置')}<//>
+        <${Button} variant="ghost" size="sm" icon="edit" onClick=${() => { setText(''); setOpen(true); setNote(t('请粘贴之前导出的配置 JSON 文本后点击「确认导入」')); }}>${t('导入配置')}<//>
+      </div>
+    </div>
+    <p class="set-hint">${t('导出或导入客户端全量偏好：系统设置、干员调配技能与模组、装配皮肤、潜能练度。')}</p>
+    ${open ? html`
+      <div style="display:flex;flex-direction:column;gap:.08rem;margin-top:.04rem">
+        <textarea class="set-diag__text" style="height:2.2rem" spellcheck=${false}
+          placeholder=${t('在此粘贴配置 JSON 数据…')} value=${text} onInput=${(e) => setText(e.currentTarget.value)}></textarea>
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <span style="font-size:calc(.14 * var(--t));color:var(--mint-400)">${note}</span>
+          <div style="display:flex;gap:.08rem">
+            ${text ? html`<${Button} variant="secondary" size="sm" icon="copy" onClick=${handleCopy}>${t('复制')}<//>` : null}
+            <${Button} variant="primary" size="sm" icon="check" onClick=${handleImport}>${t('确认导入')}<//>
+            <${Button} variant="ghost" size="sm" onClick=${() => setOpen(false)}>${t('收起')}<//>
+          </div>
+        </div>
+      </div>
+    ` : null}
+  </section>`;
+}
+
+/**
  * Settings modal.
  * @param {{ open: boolean, onClose: Function }} props
  */
@@ -276,6 +371,20 @@ export function SettingsModal({ open, onClose }) {
             class=${s.quality === id ? 'is-on' : ''} onClick=${() => updateSettings({ quality: id })}>${t(label)}</button>`)}
         </div>
       </div>
+      <label class="set-row">
+        <span class="set-row__label"><${Icon} name="sun" />${t('地图亮度')}<${MicroLabel}>MAP BRIGHTNESS<//></span>
+        <input class="set-range" type="range" min="50" max="200" step="5" value=${Math.round((s.mapBrightness ?? 1.1) * 100)}
+          style=${`--pct:${Math.max(0, Math.min(100, (((s.mapBrightness ?? 1.1) * 100 - 50) / 150) * 100))}%`}
+          onInput=${(e) => updateSettings({ mapBrightness: Number(e.currentTarget.value) / 100 })} />
+        <span class="set-row__val num">${Math.round((s.mapBrightness ?? 1.1) * 100)}%</span>
+      </label>
+      <label class="set-row set-slider">
+        <span class="set-row__label"><${GIcon} name="sparkle" />${t('冷热度调整')}<${MicroLabel}>COLOR TEMPERATURE<//></span>
+        <input class="set-range" type="range" min="60" max="140" step="5" value=${Math.round((s.colorWarmth ?? 1.0) * 100)}
+          style=${`--pct:${Math.max(0, Math.min(100, (((s.colorWarmth ?? 1.0) * 100 - 60) / 80) * 100))}%`}
+          onInput=${(e) => updateSettings({ colorWarmth: Number(e.currentTarget.value) / 100 })} />
+        <span class="set-row__val num">${(s.colorWarmth ?? 1.0) < 0.98 ? t('冷调 {n}%', { n: Math.round((1 - (s.colorWarmth ?? 1.0)) * 250) }) : (s.colorWarmth ?? 1.0) > 1.02 ? t('暖调 +{n}%', { n: Math.round(((s.colorWarmth ?? 1.0) - 1) * 250) }) : t('标准')}</span>
+      </label>
       <div class="set-row">
         <span class="set-row__label">${t('文字大小')}<${MicroLabel}>TEXT SIZE<//></span>
         <div class="set-seg set-textsize" role="radiogroup" aria-label=${t('文字大小')} data-testid="text-size">
@@ -299,6 +408,7 @@ export function SettingsModal({ open, onClose }) {
         }}><${GIcon} name="gear" /><span>${t('切换服务器与联机方式')}</span></button>
       </div>
       <${HotkeySection} keys=${s.keys} touchUi=${touchUi} />
+      <${ConfigIoSection} />
       <${DiagSection} />
       <p class="set-hint">${touchUi ? t('触屏操作：点击单位选中（撤退 / 出售）· 长按单位或卡牌查看详情 · 拖动部署后滑动选择朝向') : t('右键查看详情')}</p>
     </div>

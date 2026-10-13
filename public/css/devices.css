@@ -129,7 +129,7 @@ html:not(.sp-in-match) .toast-host { margin-top: var(--sa-t); }
   .gm__corner .gm__gear, .gm__corner .ewheel__btn { width: .82rem !important; height: .82rem !important; padding: 0 !important; }
   .gm__corner .gm__gear .icon, .gm__corner .ewheel__btn .icon { width: .44rem !important; height: .44rem !important; }
   .dpanel:not(.dpanel--right) { bottom: calc(.44rem + max(.82rem, 44px)); }
-  .team__chat-bubble, .ebubble { font-size: max(.18rem, 15px) !important; padding: .09rem .20rem .09rem .26rem !important; max-width: 4.8rem !important; }
+  .team__chat-bubble, .ebubble { font-size: max(.18rem, 15px) !important; padding: .09rem .24rem .09rem .28rem !important; min-width: 1.8rem !important; max-width: min(8.5rem, 60vw) !important; }
   .team__chat-text, .ebubble__txt { font-size: max(.18rem, 15px) !important; }
 }
 /* Mobile detail panel dimensions & clearance (vivo V2520A: 761x360 dpr 3) */

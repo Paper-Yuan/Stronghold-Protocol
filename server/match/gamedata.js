@@ -333,7 +333,10 @@ export class GameData {
 
   // ---- mode -----------------------------------------------------------------------------------------
 
-  get isSolo() { return this.mode.type === 'SINGLE' || /^mode_single_/.test(this.modeId || ''); }
+  get isSolo() {
+    if (typeof this.isSoloOverride === 'boolean') return this.isSoloOverride;
+    return this.mode.type === 'SINGLE' || /^mode_single_/.test(this.modeId || '');
+  }
   get difficulty() { return this.mode.difficulty || (this.modeId ? String(this.modeId).split('_').pop().toUpperCase() : 'NORMAL'); }
   get lastRound() {
     if (Number.isInteger(this.mode.lastRound) && this.mode.lastRound > 0) return this.mode.lastRound;

@@ -26,6 +26,8 @@ import android.webkit.*
 import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.SwitchCompat
+import android.net.Uri
+import androidx.activity.result.contract.ActivityResultContracts
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import java.io.File
@@ -48,7 +50,7 @@ class MainActivity : AppCompatActivity() {
         private const val KEY_HIGH_REFRESH = "high_refresh"      // true = pin the highest refresh mode (120 Hz+)
         private const val KEY_EDGE_PADDING = "edge_padding_px"   // 0-200 px inset from each side (notch/punch-hole)
         private const val DEFAULT_LOCAL_URL = "http://127.0.0.1:3000"
-        private const val DEFAULT_LAN_URL = "http://192.168.10.25:3000"
+        private const val DEFAULT_LAN_URL = "https://wei.isomer319.xyz/"
     }
 
     private lateinit var webView: WebView
@@ -70,6 +72,16 @@ class MainActivity : AppCompatActivity() {
 
     /** The page's own "this is what I see" report; null means the WebView never said anything at all. */
     @Volatile private var clientState: String? = null
+
+    private var filePathCallback: ValueCallback<Array<Uri>>? = null
+    private val fileChooserLauncher = registerForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
+        if (uri != null) {
+            filePathCallback?.onReceiveValue(arrayOf(uri))
+        } else {
+            filePathCallback?.onReceiveValue(null)
+        }
+        filePathCallback = null
+    }
 
     private val audioFocusChangeListener = AudioManager.OnAudioFocusChangeListener { focusChange ->
         when (focusChange) {
@@ -340,6 +352,23 @@ class MainActivity : AppCompatActivity() {
                     )
                 }
                 return true
+            }
+
+            override fun onShowFileChooser(
+                webView: WebView?,
+                filePathCallback: ValueCallback<Array<Uri>>?,
+                fileChooserParams: FileChooserParams?
+            ): Boolean {
+                this@MainActivity.filePathCallback?.onReceiveValue(null)
+                this@MainActivity.filePathCallback = filePathCallback
+                try {
+                    fileChooserLauncher.launch("image/*")
+                    return true
+                } catch (e: Exception) {
+                    this@MainActivity.filePathCallback?.onReceiveValue(null)
+                    this@MainActivity.filePathCallback = null
+                    return false
+                }
             }
         }
 
@@ -914,7 +943,8 @@ class MainActivity : AppCompatActivity() {
         }
 
         if (currentBoardMode == "2d") rbBoard2D.isChecked = true else rbBoard3D.isChecked = true
-        etAddress.setText(if (!currentRemoteUrl.isNullOrBlank()) currentRemoteUrl else DEFAULT_LAN_URL)
+        val initialRemoteUrl = if (currentRemoteUrl.isNullOrBlank() || currentRemoteUrl == "http://192.168.10.25:3000") DEFAULT_LAN_URL else currentRemoteUrl
+        etAddress.setText(initialRemoteUrl)
 
         fun preview() {
             val url = normalizeServerUrl(etAddress.text.toString())
@@ -925,7 +955,7 @@ class MainActivity : AppCompatActivity() {
         fun paint() {
             for ((key, card) in cards) {
                 val on = key == picked
-                card.setBackgroundColor(if (on) 0xFF16211D.toInt() else 0xFF131817.toInt())
+                card.setBackgroundColor(if (on) 0xFF182822.toInt() else 0xFF111715.toInt())
                 strips[key]?.setBackgroundColor(if (on) 0xFF4ED8AF.toInt() else 0xFF2A3531.toInt())
                 cardTitles[key]?.setTextColor(if (on) 0xFF4ED8AF.toInt() else 0xFFF0F4F2.toInt())
             }
@@ -986,6 +1016,12 @@ class MainActivity : AppCompatActivity() {
 
         paint()
         dialog.show()
+        dialog.window?.let { window ->
+            window.setBackgroundDrawableResource(android.R.color.transparent)
+            val dm = resources.displayMetrics
+            val targetWidth = (dm.widthPixels * 0.88f).toInt().coerceAtMost(2200)
+            window.setLayout(targetWidth, ViewGroup.LayoutParams.WRAP_CONTENT)
+        }
     }
 
     /**

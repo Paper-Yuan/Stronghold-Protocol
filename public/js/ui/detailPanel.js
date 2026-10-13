@@ -47,6 +47,7 @@ import { moduleBadge, fullTraitText } from './loadoutModel.js';
 import { t, tc, N_ } from '../../../shared/i18n.js';
 import { audio } from '../audio.js';
 import { tokenVariantFor } from './gameLogic/loadout.js';
+import { skinFor } from './skins.js';
 
 const cx = (...p) => p.flat().filter(Boolean).join(' ');
 
@@ -855,9 +856,11 @@ export function DetailPanel({ detail, editable, snapHp, onClose, onSell, onDestr
   // 0.2.0 补位: a chess fielded as its stand-in is spoken for by the stand-in (the operator on the field, whose model, name
   // and battle lines the card and audio.js show), never by the operator it replaces; a 自选 record is already the pick's
   const selectChar = voice && detail?.type === 'chess' ? detail.standIn?.charId || detail.chess?.charId || null : null;
+  const chessId = detail?.chess?.chessId || detail?.chess?.id || null;
+  const selectSkin = chessId ? skinFor(chessId) : null;
   useEffect(() => {
-    if (selectKey && selectChar) audio.voice(selectChar, 'select');
-  }, [selectKey, selectChar]);
+    if (selectKey && selectChar) audio.voice(selectChar, 'select', { skinId: selectSkin });
+  }, [selectKey, selectChar, selectSkin]);
   if (!detail) return null;
   let liveNow = null;
   try { liveNow = getter ? getter() : live && typeof live === 'object' ? live : null; } catch { liveNow = null; }

@@ -64,10 +64,17 @@ export class PlayerViews {
 
   privateView() {
     // 随机模式 盲盒: the slot is sanitized — no id, no basePrice (a sold one keeps nothing either: the candidates
-    // live in the reward offer below, and only from the buy on). The mystery flag tells the client to draw its back.
-    const slots = this.shop.slots.map((s) => (s ? (s.mystery
-        ? { kind: s.kind, id: null, mystery: true, faction: s.mysteryFaction || null, price: this.priceOf(s), sold: !!s.sold, frozen: !!s.frozen }
-      : { kind: s.kind, id: s.id, price: this.priceOf(s), basePrice: s.basePrice, sold: !!s.sold, frozen: !!s.frozen }) : null));
+    const slots = this.shop.slots.map((s) => {
+      if (!s) return null;
+      let remaining = null;
+      if (s.kind === 'chess' && s.id) {
+        const pool = typeof this.poolOf === 'function' ? this.poolOf(s.id) : this.m.pool;
+        remaining = pool ? pool.left(s.id) : null;
+      }
+      return s.mystery
+        ? { kind: s.kind, id: null, mystery: true, faction: s.mysteryFaction || null, price: this.priceOf(s), sold: !!s.sold, frozen: !!s.frozen, remaining }
+        : { kind: s.kind, id: s.id, price: this.priceOf(s), basePrice: s.basePrice, sold: !!s.sold, frozen: !!s.frozen, remaining };
+    });
     const offer = this.offers[0] || null;
     const free = this.shop.freeRefreshes > 0;
     const board = [];

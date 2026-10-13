@@ -245,9 +245,17 @@ function wireNet() {
   net.on('room.state', onRoomState);
   net.on('room.chat', (msg) => {
     pushChatMessage(msg);
-    const myId = store.get().me?.playerId;
-    const isMine = Boolean(msg?.playerId && myId && msg.playerId === myId);
-    getRoomDanmaku().show(msg, isMine);
+    // 局内展示弹幕（兼容多人匹配、单人作战或处于 game 界面）
+    const st = store.get();
+    const inMatch = Boolean(st.room?.inMatch || st.screen === 'game' || st.match?.public);
+    if (inMatch) {
+      const myId = st.me?.playerId;
+      const isMine = Boolean(msg?.playerId && myId && msg.playerId === myId);
+      // 如果是自己的消息，chatBox 发送时已乐观弹出过弹幕，避免重复弹出
+      if (!isMine) {
+        getRoomDanmaku().show(msg, false);
+      }
+    }
   });
   net.on('room.chat.history', (msg) => {
     if (Array.isArray(msg?.messages)) {

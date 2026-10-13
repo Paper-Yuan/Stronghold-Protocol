@@ -90,18 +90,21 @@
 .scard-wrap { display: flex; }
 .scard {
   --tc: var(--tier-1);
-  position: relative; width: 1.56rem; height: 2.24rem; padding: 0; overflow: hidden; text-align: left;
+  position: relative; width: 1.72rem; height: 2.24rem; padding: 0; overflow: hidden; text-align: left;
   display: flex; flex-direction: column; justify-content: flex-end;
-  background: #151a18; border: 1px solid rgba(78, 216, 175, .35);
+  background-color: #151a18;
+  background-image: linear-gradient(180deg, #222b27 0%, #151a18 50%, #0e1210 100%);
+  border: 1px solid rgba(78, 216, 175, .35);
   transition: transform var(--t-fast) var(--ease-out), border-color var(--t-fast), box-shadow var(--t-fast);
 }
 .scard--t1 { --tc: var(--tier-1); } .scard--t2 { --tc: var(--tier-2); } .scard--t3 { --tc: var(--tier-3); }
 .scard--t4 { --tc: var(--tier-4); } .scard--t5 { --tc: var(--tier-5); } .scard--t6 { --tc: var(--tier-6); }
-.scard__bg { position: absolute; inset: 0;
-  background: linear-gradient(180deg, #1c2320, #0f1311); /* fallback: no color-mix() (Safari < 16.2) */
+.scard__bg {
+  position: absolute; top: 0; left: 0; right: 0; bottom: 0; width: 100%; height: 100%; inset: 0;
+  background: linear-gradient(180deg, #222b27 0%, #1c2320 50%, #0f1311 100%); /* fallback: no color-mix() */
   background:
-  radial-gradient(120% 70% at 80% 30%, color-mix(in srgb, var(--tc) 28%, transparent), transparent 70%),
-  linear-gradient(180deg, #1c2320, #0f1311); }
+    radial-gradient(120% 70% at 80% 30%, color-mix(in srgb, var(--tc) 28%, transparent), transparent 70%),
+    linear-gradient(180deg, #222b27 0%, #1c2320 50%, #0f1311 100%); }
 .scard__water { position: absolute; left: -.2rem; top: .34rem; width: 1.1rem; height: 1.1rem; opacity: .1; }
 .scard__water .bglyph { width: 100%; height: 100%; }
 .scard__art { position: absolute; right: -.14rem; top: 0; height: 100%; width: auto; max-width: none; object-fit: cover; pointer-events: none;
@@ -130,7 +133,7 @@
 .scard__bond { display: inline-flex; align-items: center; gap: .03rem; font-size: .13rem; color: var(--mint-400); }
 .scard__bond .bglyph { width: .18rem; height: .18rem; }
 .scard__bond.is-off { color: var(--text-dim); text-decoration: line-through; text-decoration-color: rgba(255, 84, 84, .6); } /* the mode never activates it (标准) */
-.scard__class { display: flex; align-items: center; gap: .05rem; font-size: .13rem; color: var(--text-lo); }
+.scard__class { display: flex; align-items: center; gap: .05rem; font-size: .13rem; color: var(--text-lo); font-variant-numeric: tabular-nums; }
 .scard__prof { width: .18rem; height: .18rem; object-fit: contain; opacity: .85; }
 .scard__mergetag { position: absolute; z-index: 3; right: 0; top: .38rem; font-size: .12rem; font-weight: 700; padding: .01rem .06rem; background: var(--gold); color: #1d1400; letter-spacing: .08em; }
 /* 0.2.0 补位: a chess the player does not own shows its stand-in (ui/shopBar.js ChessCard) — a small 「替补」 mark */

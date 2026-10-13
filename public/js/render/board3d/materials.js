@@ -14,6 +14,7 @@
 // geometry when the camera moves.
 
 import { ORIGINIUM } from '../style.js';
+import { settingsStore } from '../../ui/settings.js';
 
 /** Shared focus uniforms (one object for every lit material). */
 export function focusUniforms(THREE) {
@@ -380,6 +381,8 @@ export function sceneMaterial(THREE, o, focus) {
   const k = (Number.isFinite(L.intensity) ? L.intensity : 1) * SCENE_LIGHT.direct;
   const lin = (v) => Math.pow(Math.max(0, v), 2.2);   // the scene's colours are authored in gamma space
   const col = colorOf(info, '_Color');
+  const curBrightness = Number.isFinite(settingsStore?.get()?.mapBrightness) ? settingsStore.get().mapBrightness : 1.1;
+  const curWarmth = Number.isFinite(settingsStore?.get()?.colorWarmth) ? settingsStore.get().colorWarmth : 1.0;
   const uniforms = {
     uMap: { value: o.map || null }, uLm: { value: o.lightMap || null },
     uColor: { value: new THREE.Vector4(lin(col[0]), lin(col[1]), lin(col[2]), col[3]) },
@@ -389,6 +392,8 @@ export function sceneMaterial(THREE, o, focus) {
     uShadow: { value: floatOf(info, '_ShadowStrength', 1) },
     uLightDir: { value: new THREE.Vector3(...L.dir).normalize() },
     uLightColor: { value: new THREE.Vector3(lin(L.color[0]) * k, lin(L.color[1]) * k, lin(L.color[2]) * k) },
+    uBrightness: { value: curBrightness },
+    uWarmth: { value: curWarmth },
     ...focus,
   };
   const isSand = !!((info && typeof info.map === 'string' && /sand/i.test(info.map)) || (typeof o.materialName === 'string' && /sand/i.test(o.materialName)));
@@ -412,7 +417,7 @@ export function sceneMaterial(THREE, o, focus) {
     ].join('\n'),
     fragmentShader: [
       'uniform sampler2D uMap; uniform sampler2D uLm; uniform vec4 uColor; uniform float uCutoff;',
-      'uniform float uLmScale; uniform float uAmbient; uniform float uShadow; uniform vec3 uLightDir; uniform vec3 uLightColor;',
+      'uniform float uLmScale; uniform float uAmbient; uniform float uShadow; uniform vec3 uLightDir; uniform vec3 uLightColor; uniform float uBrightness; uniform float uWarmth;',
       FOCUS_GLSL,
       'varying vec2 vUv; varying vec2 vLm; varying vec3 vN; varying vec3 vWorld;',
       'void main() {',
@@ -434,7 +439,15 @@ export function sceneMaterial(THREE, o, focus) {
       '    litColor *= 1.25;',
       '  #endif',
       '  // Gamma / curve lift to match natural Arknights battlefield brightness',
-      '  litColor = pow(litColor, vec3(0.92));',
+      '  litColor = pow(litColor, vec3(0.92)) * uBrightness;',
+      '  // Color temperature warmth adjustment',
+      '  if (uWarmth > 1.001) {',
+      '    float w = uWarmth - 1.0;',
+      '    litColor.r *= (1.0 + w * 0.45); litColor.g *= (1.0 + w * 0.15); litColor.b *= (1.0 - w * 0.35);',
+      '  } else if (uWarmth < 0.999) {',
+      '    float c = 1.0 - uWarmth;',
+      '    litColor.r *= (1.0 - c * 0.35); litColor.g *= (1.0 + c * 0.08); litColor.b *= (1.0 + c * 0.45);',
+      '  }',
       '  gl_FragColor = vec4(litColor * focusMask(vWorld.xy), a.a);',
       '  #include <colorspace_fragment>',
       '}',
@@ -442,6 +455,16 @@ export function sceneMaterial(THREE, o, focus) {
     transparent: blend === 'blend', depthWrite: blend !== 'blend',
   });
   m.userData.blend = blend;
+  if (settingsStore?.subscribe) {
+    const unsub = settingsStore.subscribe((s) => {
+      if (m && m.uniforms) {
+        if (m.uniforms.uBrightness) m.uniforms.uBrightness.value = Number.isFinite(s?.mapBrightness) ? s.mapBrightness : 1.1;
+        if (m.uniforms.uWarmth) m.uniforms.uWarmth.value = Number.isFinite(s?.colorWarmth) ? s.colorWarmth : 1.0;
+      }
+    });
+    const origDispose = m.dispose.bind(m);
+    m.dispose = () => { unsub(); origDispose(); };
+  }
   return m;
 }
 

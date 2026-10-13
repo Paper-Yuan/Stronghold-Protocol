@@ -124,7 +124,7 @@ export function ChessCard({ slot, idx, priv, frozen = false, reason = null, free
       </span>
       <span class="scard__class">
         <${Img} src=${profIconUrl(m, c?.profession)} class="scard__prof" />
-        <span>${c?.subProfessionName || ''}</span>
+        <span>${slot?.remaining != null ? t('剩余{n}张', { n: slot.remaining }) : t('剩余{n}张', { n: ({ 1: 30, 2: 25, 3: 18, 4: 12, 5: 10, 6: 7 })[tier] ?? 18 })}</span>
       </span>
     </span>
     ${willMerge ? html`<span class="scard__mergetag" title=${hint}>${t('可晋升')}</span>` : null}

@@ -256,7 +256,7 @@
 /* Symmetric insets, so justify-content centres the strip on the screen. The right inset used to be 5.2rem as a
    reserve for .gm__effects — but that column is a .5rem stack inset .3rem, one row lower (top: 2.4rem), so the
    1.56rem inset already clears it and the extra reserve only pushed the whole strip ~1.8rem off-centre. */
-.gm__bonds { position: absolute; left: 1.56rem; top: 1.36rem; right: 1.56rem; pointer-events: none;
+.gm__bonds { position: absolute; left: 2.5rem; top: 1.36rem; right: 2.5rem; pointer-events: none;
   display: flex; flex-direction: column; align-items: center; justify-content: flex-start; }
 /* Only the bond discs (and the +N chip) take the pointer: the strip's box spans the width under the top bar, where the
    top board row's units stand (row 12 at 16:9 / 21:9 / 720p / phones, the boss field's row 5 in a boss prep) — it used
@@ -356,9 +356,24 @@
 .bstrip-container.is-collapsed .bstrip__fold-icon {
   transform: rotate(180deg);
 }
-.bstrip { display: flex; align-items: flex-start; justify-content: center; gap: max(.06rem, 4px) max(.1rem, 6px); flex-wrap: wrap; }
+.bstrip {
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-start;
+  gap: 0 max(.04rem, 4px);
+  flex-wrap: nowrap;
+  max-width: min(11.2rem, 66vw);
+  overflow-x: auto;
+  overflow-y: hidden;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  padding: 0 .12rem 0 .04rem;
+  pointer-events: auto;
+}
+.bstrip::-webkit-scrollbar { display: none; }
 .bstrip.is-frozen .bslot { opacity: .5; filter: saturate(.4); }
-.bstrip--empty { display: inline-flex; align-items: center; gap: .12rem; padding: .08rem .16rem; font-size: .15rem; color: var(--text-dim); background: rgba(8, 11, 10, .6); border: 1px dashed var(--line-2); }
+.bstrip--empty { display: inline-flex; align-items: center; gap: .12rem; padding: .08rem .16rem; font-size: .15rem; color: var(--text-dim); background: rgba(8, 11, 10, .6); border: 1px dashed var(--line-2); -webkit-mask-image: none; mask-image: none; }
 /* a watched teammate's bonds (DESIGN §20.15): an amber "👁 name" pill in front of the discs, amber rings. Horizontal at
    every width with a pixel floor (a vertical .12rem name was ~6-8 px per glyph on desktop / tablet, ~5 px on phones
    where 1rem is clamped at 40 px); centred on the discs, clear of the team panel below */
@@ -374,8 +389,7 @@
   .bstrip__eye { font-size: max(.15rem, 10px); }
 }
 .bstrip.is-other .bond__core { box-shadow: 0 0 0 1px rgba(246, 163, 41, .45); }
-.bstrip__more { align-self: center; font-size: .16rem; color: var(--text-lo); padding: .04rem .08rem; border: 1px solid var(--line-2); background: rgba(8, 11, 10, .7); }
-.bslot { position: relative; display: flex; flex-direction: column; align-items: center; width: .74rem; }
+.bslot { flex: none; position: relative; display: flex; flex-direction: column; align-items: center; width: .62rem; }
 .bslot .bond { --disc: .52rem; }
 .bslot .bond__name { font-size: .14rem; font-weight: 500; text-shadow: 0 1px 3px #000, 0 0 6px #000; }
 .bslot__count {
@@ -481,7 +495,7 @@
 .efftip p { font-size: .15rem; line-height: 1.55; color: var(--text-md); }
 
 /* ---- corner: emote + settings --------------------------------------------------------------------------------- */
-.gm__corner { position: absolute; left: .24rem; bottom: .24rem; display: flex; align-items: flex-end; gap: .14rem; }
+.gm__corner { position: absolute; left: .24rem; bottom: .24rem; display: flex; align-items: flex-end; gap: .14rem; z-index: 110; }
 .gm__gear {
   width: .82rem; height: .82rem; display: grid; place-items: center; background: rgba(8, 11, 10, .88);
   border: 1px solid var(--line-2); color: var(--text-lo); transition: color var(--t-fast), border-color var(--t-fast), transform var(--t-fast);
@@ -491,7 +505,7 @@
 .gm__gear:hover, .gm__gear.is-on { color: var(--mint-400); border-color: var(--mint-700); }
 .gm__gear.is-on { background: rgba(23, 249, 183, 0.15); }
 
-.ewheel { position: relative; }
+.ewheel { position: relative; z-index: 115; }
 .ewheel__btn {
   width: .82rem; height: .82rem; padding: 0; display: grid; place-items: center;
 }
@@ -503,10 +517,11 @@
   background: linear-gradient(180deg, rgba(20, 26, 24, .97), rgba(10, 14, 12, .97)); border: 1px solid var(--line-2);
   box-shadow: 0 .1rem .3rem rgba(0, 0, 0, .6);
   animation: pop-in var(--t-med) var(--ease-out);
+  z-index: 120;
 }
 .ewheel__grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: .08rem; margin-top: .12rem; }
 .ewheel__item {
-  position: relative; display: flex; flex-direction: column; align-items: center; gap: .02rem; padding: .06rem .02rem .05rem;
+  position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: .02rem; padding: .06rem .02rem .05rem; aspect-ratio: 1;
   background: rgba(255, 255, 255, .025); border: 1px solid var(--line); font-size: .12rem; color: var(--text-lo);
   transition: background var(--t-fast), border-color var(--t-fast), transform var(--t-fast), color var(--t-fast);
 }
@@ -523,11 +538,12 @@
 /* speech bubble next to a team row: official emote art (+ phrase), or the phrase alone */
 .ebubble {
   display: flex; align-items: center; gap: .08rem; padding: .08rem .18rem .08rem .26rem; white-space: nowrap;
-  background: rgba(22, 28, 26, .96); color: var(--text-hi); font-size: max(.18rem, 15px); font-weight: 700;
-  border: 1px solid rgba(78, 216, 175, .6);
+  background: rgba(20, 30, 26, .75); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+  color: var(--text-hi); font-size: max(.18rem, 15px); font-weight: 700;
+  border: 1px solid rgba(78, 216, 175, .7);
   clip-path: polygon(.14rem 0, 100% 0, 100% 100%, .14rem 100%, .14rem 65%, 0 50%, .14rem 35%);
   animation: bubble-in 150ms var(--ease-out), bubble-out 300ms var(--ease-in-out) 2.7s forwards;
-  filter: drop-shadow(0 .04rem .12rem rgba(0, 0, 0, .7));
+  filter: drop-shadow(0 .04rem .12rem rgba(0, 0, 0, .45));
   z-index: 2;
 }
 .ebubble--art { padding: .04rem .16rem .04rem .22rem; }
@@ -539,33 +555,63 @@
 /* text chat bubble next to a team row */
 .team__chat-bubble {
   position: absolute;
-  left: calc(100% + .14rem);
+  left: calc(100% + .18rem);
   top: 50%;
   transform: translateY(-50%);
   display: flex;
   align-items: center;
-  max-width: 4.8rem;
-  padding: .09rem .20rem .09rem .26rem;
-  background: rgba(14, 20, 18, .96);
+  min-width: 1.6rem;
+  max-width: min(8.5rem, 60vw);
+  padding: .09rem .22rem .09rem .22rem;
+  background: rgba(18, 28, 25, .72);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   color: var(--text-hi);
   font-size: max(.18rem, 15px);
   line-height: 1.45;
   word-break: break-all;
   border: 1.5px solid var(--mint-400, #22d3ee);
-  border-radius: 0 6px 6px 0;
-  clip-path: polygon(.14rem 0, 100% 0, 100% 100%, .14rem 100%, .14rem 65%, 0 50%, .14rem 35%);
+  border-radius: 6px;
   animation: bubble-in 180ms var(--ease-out), bubble-out 350ms var(--ease-in-out) 3.5s forwards;
-  box-shadow: 0 .04rem .16rem rgba(0, 0, 0, .7);
+  box-shadow: 0 .04rem .16rem rgba(0, 0, 0, .45);
   z-index: 10;
   pointer-events: none;
 }
-.team__chat-text {
-  color: #eef8f5;
-  font-size: max(.18rem, 15px);
-  font-weight: 500;
-  text-shadow: 0 1px 2px #000;
+.team__chat-bubble::before {
+  content: '';
+  position: absolute;
+  right: 100%;
+  top: 50%;
+  transform: translateY(-50%);
+  border: .1rem solid transparent;
+  border-right-color: inherit;
+  width: 0;
+  height: 0;
+  filter: drop-shadow(-1px 0 0 inherit);
 }
-@keyframes bubble-in { from { opacity: 0; transform: translateY(-50%) scale(.6); } }
+.team__chat-bubble::after {
+  content: '';
+  position: absolute;
+  right: 100%;
+  top: 50%;
+  transform: translateY(-50%);
+  border: calc(.1rem - 1.5px) solid transparent;
+  border-right-color: rgba(18, 28, 25, .72);
+  width: 0;
+  height: 0;
+}
+.team__chat-bubble.seat-0 { border-color: #17f9b7; }
+.team__chat-bubble.seat-1 { border-color: #f6a329; }
+.team__chat-bubble.seat-2 { border-color: #45b7ff; }
+.team__chat-bubble.seat-3 { border-color: #be7eff; }
+.team__chat-bubble.seat-spec { border-color: #8fa29a; }
+.team__chat-text {
+  color: #f0fdf9;
+  font-size: max(.18rem, 15px);
+  font-weight: 600;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, .8);
+}
+@keyframes bubble-in { from { opacity: 0; transform: translateY(-50%) scale(.8); } }
 @keyframes bubble-out { to { opacity: 0; } }
 
 /* ---- ticker -------------------------------------------------------------------------------------------- */
@@ -1048,3 +1094,110 @@
   .chat-send-btn { font-size: max(.12rem, 11px); padding: .03rem .10rem; }
   .chat-danmaku-btn { font-size: max(.11rem, 10px); padding: .03rem .06rem; }
 }
+
+/* ---- In-battle DPS meter & total damage ranking ---- */
+.dps-panel {
+  position: absolute;
+  right: .24rem;
+  bottom: .22rem;
+  z-index: 12;
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: .06rem;
+  min-width: 1.55rem;
+  padding: .08rem .1rem;
+  background: rgba(14, 18, 17, .82);
+  border: 1px solid rgba(255, 255, 255, .15);
+  border-radius: 4px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, .55);
+  backdrop-filter: blur(6px);
+  animation: dps-fade 240ms ease-out;
+}
+@keyframes dps-fade { from { opacity: 0; transform: translateY(6px); } }
+.dps-panel__head {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: .01rem;
+  width: 100%;
+  border-bottom: 1px solid rgba(255, 255, 255, .12);
+  padding-bottom: .04rem;
+  margin-bottom: .02rem;
+}
+.dps-panel__tag {
+  font-size: max(.12rem, 9px);
+  font-weight: 700;
+  color: var(--text-lo, #8d9391);
+  letter-spacing: .08em;
+}
+.dps-panel__total {
+  font-size: max(.24rem, 16px);
+  font-weight: 900;
+  color: #ffcf5a;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, .9);
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+.dps-panel__list {
+  display: flex;
+  flex-direction: column;
+  gap: .04rem;
+  width: 100%;
+}
+.dps-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .08rem;
+  height: max(.30rem, 20px);
+  padding: 0 .04rem;
+  overflow: hidden;
+  border-radius: 2px;
+}
+.dps-row__bar {
+  position: absolute;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  background: linear-gradient(270deg, rgba(255, 207, 90, .28), rgba(255, 207, 90, .06));
+  border-right: 2px solid rgba(255, 207, 90, .7);
+  pointer-events: none;
+  transition: width 240ms ease-out;
+}
+.dps-row__avatar {
+  position: relative;
+  z-index: 1;
+  width: max(.24rem, 16px);
+  height: max(.24rem, 16px);
+  flex: none;
+  border-radius: 2px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, .25);
+  background: #1a1e1d;
+  display: grid;
+  place-items: center;
+}
+.dps-row__avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.dps-row__char {
+  font-size: max(.12rem, 9px);
+  font-weight: 700;
+  color: #c9cecc;
+}
+.dps-row__num {
+  position: relative;
+  z-index: 1;
+  font-size: max(.15rem, 11px);
+  font-weight: 700;
+  color: #f2f4f3;
+  text-shadow: 0 1px 2px #000;
+  font-variant-numeric: tabular-nums;
+  margin-left: auto;
+}
+

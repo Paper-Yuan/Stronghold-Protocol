@@ -29,7 +29,7 @@
 // teammate's 自选 pieces on the field are rows too (their picks are not sent), opening THEIR operator's card (the unit's
 // pick goes with onMember: never the empty 甄选干员 slot's card).
 
-import { useState } from '../../vendor/hooks.module.js';
+import { useState, useRef, useEffect } from '../../vendor/hooks.module.js';
 import { html, BondDisc, Icon, MicroLabel, Tooltip } from './components.js';
 import { RichText, UnitThumb, BondGlyph, GIcon } from './gameComponents.js';
 import { sortBonds, bondMembers, nextThreshold, bondTier, harmonyMembers, HARMONY_BOND, memberHeadCount, briefingBondTip, diyGetter, diyRecordFor, memberStandIn, standInForText } from './gameLogic.js';
@@ -90,11 +90,67 @@ export function BondStrip({ bonds, layersDisabled = false, onOpen, openId = null
   }
 
   const m = data.get('assets');
-  const shown = sorted.slice(0, max);
+  const scrollRef = useRef(null);
+
+  const updateMask = () => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const overflow = el.scrollWidth > el.clientWidth + 4;
+    if (!overflow) {
+      el.style.webkitMaskImage = 'none';
+      el.style.maskImage = 'none';
+      return;
+    }
+    const hasLeft = el.scrollLeft > 6;
+    const hasRight = el.scrollWidth - (el.scrollLeft + el.clientWidth) > 6;
+    if (hasLeft && hasRight) {
+      const mask = 'linear-gradient(to right, transparent 0, black 0.5rem, black calc(100% - 0.75rem), transparent 100%)';
+      el.style.webkitMaskImage = mask;
+      el.style.maskImage = mask;
+    } else if (hasRight) {
+      const mask = 'linear-gradient(to right, black calc(100% - 0.75rem), transparent 100%)';
+      el.style.webkitMaskImage = mask;
+      el.style.maskImage = mask;
+    } else if (hasLeft) {
+      const mask = 'linear-gradient(to right, transparent 0, black 0.5rem, black 100%)';
+      el.style.webkitMaskImage = mask;
+      el.style.maskImage = mask;
+    } else {
+      el.style.webkitMaskImage = 'none';
+      el.style.maskImage = 'none';
+    }
+  };
+
+  useEffect(() => {
+    updateMask();
+    const el = scrollRef.current;
+    if (!el) return;
+    const onScroll = () => updateMask();
+    el.addEventListener('scroll', onScroll, { passive: true });
+    let ro = null;
+    if (typeof ResizeObserver !== 'undefined') {
+      ro = new ResizeObserver(() => updateMask());
+      ro.observe(el);
+    }
+    return () => {
+      el.removeEventListener('scroll', onScroll);
+      ro?.disconnect();
+    };
+  }, [sorted.length]);
+
+  const onWheel = (e) => {
+    if (!scrollRef.current) return;
+    if (Math.abs(e.deltaX) < Math.abs(e.deltaY)) {
+      scrollRef.current.scrollLeft += e.deltaY;
+      e.preventDefault();
+    }
+  };
+
   const strip = html`<div class=${cx('bstrip', layersDisabled && 'is-frozen', owner && 'is-other')} role="list"
+      ref=${scrollRef} onWheel=${onWheel} onScroll=${updateMask}
       aria-label=${owner ? t('{owner} 的盟约', { owner }) : t('我的盟约')} data-owner=${owner || null}>
     ${owner ? html`<${OwnerTag} owner=${owner} />` : null}
-    ${shown.map((b) => {
+    ${sorted.map((b) => {
       const rec = data.lookup('bonds', b.bondId);
       const th = Array.isArray(b.thresholds) && b.thresholds.length ? b.thresholds : rec?.thresholds || [];
       if (b.off) {
@@ -118,7 +174,6 @@ export function BondStrip({ bonds, layersDisabled = false, onOpen, openId = null
         <span class=${cx('bslot__count', 'num', next == null && 'is-max')}>${b.count ?? 0}<small>/${next ?? th[th.length - 1] ?? '-'}</small></span>
       </div>`;
     })}
-    ${sorted.length > shown.length ? html`<span class="bstrip__more num">+${sorted.length - shown.length}</span>` : null}
   </div>`;
 
   const wrappedStrip = layersDisabled ? html`<${Tooltip} text=${t('层数叠加已禁用')} placement="bottom">${strip}<//>` : strip;

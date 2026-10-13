@@ -3,6 +3,8 @@
 // (glyph, CSS shape) when null. Only URLs present in the manifest are ever returned, so the client
 // never requests files the asset pipeline did not produce (no 404 noise in the console).
 
+import { skinFor } from './skins.js';
+
 const str = (v) => (typeof v === 'string' && v ? v : null);
 const obj = (v) => (v && typeof v === 'object' ? v : null);
 
@@ -12,11 +14,16 @@ export function uiUrl(m, key) {
 }
 
 /**
- * Operator avatar for a chess record (golden → E2 art when present).
+ * Operator avatar for a chess record (golden → E2 art when present, skin when selected).
  * @param {any} m manifest
  * @param {any} chess chess.json record (or { assets: { avatar } })
  */
 export function chessAvatarUrl(m, chess) {
+  const chosenSkin = str(chess?.skinId) || skinFor(chess?.charId || chess?.chessId || chess?.id);
+  if (chosenSkin) {
+    const skinStem = chosenSkin.replace(/@/g, '_').replace(/#/g, '_');
+    return `/assets/char/skin_avatar/${skinStem}.png`;
+  }
   const chars = obj(obj(m)?.chars);
   const id = str(chess?.assets?.avatar) || str(chess?.charId);
   if (!id) return null;
@@ -33,12 +40,18 @@ export function chessAvatarUrl(m, chess) {
 }
 
 /**
- * Half-body portrait (180×360) for a chess record (golden → E2 portrait when present).
+ * Half-body portrait (180×360) for a chess record (skin → skin portrait, golden → E2 portrait when present).
  * @param {any} m
  * @param {any} chess
  */
 export function chessPortraitUrl(m, chess) {
+  const chosenSkin = str(chess?.skinId) || skinFor(chess?.charId || chess?.chessId || chess?.id);
+  if (chosenSkin) {
+    const skinStem = chosenSkin.replace(/@/g, '_').replace(/#/g, '_');
+    return `/assets/char/portrait/${skinStem}.png`;
+  }
   const chars = obj(obj(m)?.chars);
+
   const id = str(chess?.assets?.portrait);
   if (chars) {
     if (id) {

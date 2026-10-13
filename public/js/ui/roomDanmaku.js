@@ -1,8 +1,23 @@
-// roomDanmaku.js — 局内与房间弹幕单例与渲染图层 (danmaku for chat messages in coop & solo modes).
+const SEAT_COLORS = Object.freeze({
+  0: '#17f9b7',
+  1: '#f6a329',
+  2: '#45b7ff',
+  3: '#be7eff',
+});
 
 let singleton = null;
 
 export function createRoomDanmaku() {
+  if (typeof document === 'undefined') {
+    return {
+      show() {},
+      clear() {},
+      get enabled() { return true; },
+      setEnabled() { return true; },
+      toggle() { return true; },
+      dispose() {},
+    };
+  }
   const layer = document.createElement('div');
   layer.className = 'spchat-danmaku';
   layer.setAttribute('aria-hidden', 'true');
@@ -50,9 +65,28 @@ export function createRoomDanmaku() {
     while (busy.has(lane)) lane++;
     if (lane >= lanes) return;
 
-    const el = document.createElement('span');
-    const sender = String(message.name || '博士').slice(0, 24);
-    el.textContent = `${sender}：${message.text}`;
+    const seat = typeof message.seat === 'number' ? message.seat : null;
+    const isSpec = message.isSpectator || seat === -1;
+    let color = message.color || (isSpec
+      ? '#8fa29a'
+      : (seat != null && SEAT_COLORS[seat])
+        ? SEAT_COLORS[seat]
+        : (mine ? '#65f1ca' : '#ffffff'));
+
+    const seatLabel = isSpec
+      ? '观战'
+      : (seat != null && seat >= 0)
+        ? `P${seat + 1}`
+        : null;
+    const prefix = message.noPrefix ? '' : (seatLabel ? `[${seatLabel}] ` : '');
+    const sender = message.name ? String(message.name).slice(0, 24) : '';
+    el.textContent = sender ? `${prefix}${sender}：${message.text}` : `${prefix}${message.text}`;
+
+    const isDark = color === '#111111' || color === '#222222' || color === 'black' || color === '#000000';
+    const textShadow = isDark
+      ? '0 0 3px #ffffff, 0 0 5px #ffffff, 1px 1px 2px #fff'
+      : '0 1px 3px #000, 1px 0 3px #000, 0 0 4px rgba(0,0,0,0.85)';
+
     Object.assign(el.style, {
       position: 'absolute',
       left: '100%',
@@ -61,14 +95,21 @@ export function createRoomDanmaku() {
       fontSize: innerHeight < 420 ? '14px' : '18px',
       fontWeight: '600',
       lineHeight: '28px',
-      color: mine ? '#65f1ca' : '#ffffff',
-      textShadow: '0 1px 3px #000, 1px 0 3px #000',
+      color,
+      textShadow,
       maxWidth: 'min(680px, 85vw)',
       overflow: 'hidden',
       textOverflow: 'ellipsis',
       pointerEvents: 'none',
       userSelect: 'none',
     });
+
+    if (message.gradient) {
+      el.style.background = message.gradient;
+      el.style.webkitBackgroundClip = 'text';
+      el.style.webkitTextFillColor = 'transparent';
+      el.style.filter = 'drop-shadow(0 1px 2px #000) drop-shadow(1px 0 2px #000)';
+    }
     layer.append(el);
 
     const duration = 8000;

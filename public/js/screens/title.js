@@ -142,7 +142,7 @@ const EMBLEM = [
   'XXXXXXXXXXXXX',
 ];
 
-function Emblem() {
+export function Emblem() {
   const dots = useMemo(() => {
     const out = [];
     EMBLEM.forEach((row, r) => {
@@ -192,6 +192,91 @@ const STATUS_TEXT = {
   online: N_('已连接服务器'), reconnecting: N_('连接中断，正在重连'), closed: N_('连接已关闭'),
 };
 
+const THANKS_FALLBACK = [
+  { name: 'Ausevay', role: '一切的起点' },
+  { name: '纸鸢安好', role: '安卓端适配的神' },
+  { name: '水沫沐沐', role: 'MOD管理器作者' },
+  { name: 'jingjiangze', role: '兼容MOD管理器' },
+  { name: '剑光卤煮-斩尽牛杂', role: '新开一期卫' },
+  { name: '不知名信箱', role: '' },
+  { name: '雨千代Chiyo', role: '' },
+  { name: '伊佐那邪_', role: '多功能优化Mod' },
+  { name: 'Sakanine', role: '' },
+  { name: '万い（千万言语）', role: '百人服家宽暴力开' },
+  { name: '服务器', role: 'Mod 管理器，mod 制作，三端开发' },
+];
+
+function ThanksMarquee() {
+  const [list, setList] = useState(THANKS_FALLBACK);
+
+  useEffect(() => {
+    let dead = false;
+    const fetchThanks = async () => {
+      try {
+        const ctrl = new AbortController();
+        const tid = setTimeout(() => ctrl.abort(), 4000);
+        const res = await fetch(`https://ganxiemingdan.jiangjiangze.icu/api/thanks?_t=${Date.now()}`, {
+          signal: ctrl.signal,
+          cache: 'no-store',
+          headers: { 'Cache-Control': 'no-cache', Pragma: 'no-cache' },
+        });
+        clearTimeout(tid);
+        if (res.ok) {
+          const json = await res.json();
+          if (!dead && Array.isArray(json?.names) && json.names.length) {
+            const combined = [...json.names];
+            if (json.dedication?.name) combined.push(json.dedication);
+            setList(combined);
+            return;
+          }
+        }
+      } catch { /* ignore and try fallback */ }
+
+      try {
+        const resLocal = await fetch(`/data/thanks.json?_t=${Date.now()}`, { cache: 'no-store' });
+        if (resLocal.ok) {
+          const json = await resLocal.json();
+          if (!dead && Array.isArray(json?.names)) {
+            const combined = [...json.names];
+            if (json.dedication?.name) combined.push(json.dedication);
+            setList(combined);
+          }
+        }
+      } catch { /* use default fallback */ }
+    };
+
+    fetchThanks();
+    // 热更新机制：每 25 秒自动重新检查并热更新名单
+    const timer = setInterval(fetchThanks, 25000);
+    return () => { dead = true; clearInterval(timer); };
+  }, []);
+
+  return html`<div class="title-thanks">
+    <a class="title-thanks__tag" href="https://ganxiemingdan.jiangjiangze.icu/" target="_blank" rel="noopener noreferrer" title="查看完整感谢名单">
+      <span class="title-thanks__dot"></span>
+      <span>感谢名单</span>
+    </a>
+    <div class="title-thanks__viewport">
+      <div class="title-thanks__track">
+        <div class="title-thanks__group">
+          ${list.map((item, idx) => html`<span key=${idx} class="title-thanks__item">
+            <b class="title-thanks__name">${item.name}</b>
+            ${item.role ? html`<span class="title-thanks__role">${item.role}</span>` : null}
+            <span class="title-thanks__sep" aria-hidden="true">◆</span>
+          </span>`)}
+        </div>
+        <div class="title-thanks__group" aria-hidden="true">
+          ${list.map((item, idx) => html`<span key=${`dup-${idx}`} class="title-thanks__item">
+            <b class="title-thanks__name">${item.name}</b>
+            ${item.role ? html`<span class="title-thanks__role">${item.role}</span>` : null}
+            <span class="title-thanks__sep" aria-hidden="true">◆</span>
+          </span>`)}
+        </div>
+      </div>
+    </div>
+  </div>`;
+}
+
 /** Title screen component. */
 export function TitleScreen() {
   const conn = useStore((s) => s.connection, shallowEqual);
@@ -200,6 +285,7 @@ export function TitleScreen() {
   const preloadReady = useStore(s => !!s.session.preloadReady);
   useLang(); // re-render on a language switch
   const [name, setName] = useState(() => store.get().me.name || identity.loadName() || '');
+  const [entering, setEntering] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [preloadOpen, setPreloadOpen] = useState(false);
   const resourceState = usePreloadState();
@@ -237,7 +323,11 @@ export function TitleScreen() {
   const valid = isValidName(name);
   const start = () => {
     if (!valid) { toast('请输入博士代号', 'warn'); return; }
-    enterSession(name);
+    if (entering) return;
+    setEntering(true);
+    setTimeout(() => {
+      enterSession(name);
+    }, 240);
   };
 
   const online = conn.status === 'online' || conn.status === 'connected';
@@ -248,7 +338,7 @@ export function TitleScreen() {
   // a title in an alphabetic script (English, French …) is the big one in the display face and the wordmark above it
   // hides; a CJK / kana / Hangul title keeps the Chinese layout (shared/i18nPacks.js scriptOf — a pack needs no flag)
   const alphabetic = scriptOf(t('卫戍协议')) === 'alphabetic';
-  return html`<div class="screen title-screen">
+  return html`<div class=${`screen title-screen${entering ? ' is-entering' : ''}`}>
     <div class=${`title-bg${bgLoaded ? ' has-art' : ''}${ridgesLoaded ? ' has-ridges' : ''}`} aria-hidden="true">
       ${backdrop ? html`<img class="title-bg__art" src=${backdrop} alt="" draggable=${false}
         onLoad=${() => setBgLoadedUrl(backdrop)} />` : null}
@@ -299,7 +389,7 @@ export function TitleScreen() {
         <${TextField} label=${t('博士代号')} micro="CALLSIGN" size="lg" icon="user" value=${name} maxLength=${NAME_MAX_LEN}
           placeholder=${t('输入你的代号（最多 {NAME_MAX_LEN} 字）', { NAME_MAX_LEN })} autoFocus=${!touchUi}
           onInput=${setName} onEnter=${start} />
-        <${Button} variant="primary" size="xl" block=${true} iconRight="chevrons" disabled=${!valid} onClick=${start}>
+        <${Button} variant="primary" size="xl" block=${true} iconRight="chevrons" disabled=${!valid || entering} onClick=${start}>
           ${t('开始')}<//>
         <div class="title-conn">
           <span class=${`status-dot ${dotClass}`}></span>
@@ -321,8 +411,8 @@ export function TitleScreen() {
       <${ResumeMatchButton} />
       <${PwaInstallButton} />
       <div class="title-foot__col">
-        <span>${t('非官方同人复刻 · 游戏素材版权归 上海鹰角网络 / Yostar 所有')}</span>
-        <span class="title-foot__credit">B 站 纸鸢安好 · UID 99201674 · 安卓端适配参考 B 站 @Ausevay</span>
+        <span class="title-foot__copyright">${t('非官方同人复刻 · 游戏素材版权归 上海鹰角网络 / Yostar 所有')}</span>
+        <${ThanksMarquee} />
       </div>
       <span class="title-foot__meta">
         <a class="title-repo" href="https://github.com/sganggs/Stronghold-Protocol" target="_blank" rel="noopener noreferrer">${t('项目仓库')}</a>

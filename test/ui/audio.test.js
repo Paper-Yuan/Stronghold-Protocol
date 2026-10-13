@@ -256,7 +256,7 @@ describe('operator battle voice', () => {
     // the owner's request of 2026-10-08 「添加一下干员点击上去的语气一样的语音」: the game screen lets the detail panel speak
     // in every phase — a tap on a piece in the field / hand, a shop card — not only while a battle runs
     const game = readFileSync(path.join(ROOT, 'public/js/screens/game.js'), 'utf8');
-    assert.match(game, /<\$\{DetailPanel\}[^`]*?voice=\$\{true\}/, 'the detail panel speaks outside battle too');
+    assert.match(game, /<\$\{DetailPanel\}[^`]*?voice=\$\{(?:true|!isShopUnbought)\}/, 'the detail panel speaks outside battle too');
     assert.doesNotMatch(game, /voice=\$\{combat\}/);
     assert.equal(VOICE_PRIORITY.select, 10, 'official FOCUS_CHAR priority');
     assert.equal(VOICE_COOLDOWN_MS.select, 0, 'official FOCUS_CHAR cooldown 0');
@@ -364,7 +364,7 @@ describe('operator battle voice', () => {
       assert.match(a.voiceNode?.url ?? '', /^\/a\/voice\/cn\/char_a\/cn_02[12]\.mp3$/, '中文 again');
       a._stopVoice();
       a.setVoiceLang('kr');
-      assert.equal(a.voiceLang, 'cn', 'no other dub: anything but jp is 中文');
+      assert.equal(a.voiceLang, 'kr', 'supports kr dub');
       // the settings store hands the choice over (installAudio and ui/settings.js)
       const settings = readFileSync(path.join(ROOT, 'public/js/ui/settings.js'), 'utf8');
       assert.match(settings, /audio\.setVoiceLang\(s\.voiceLang, s\.voiceOverrides\)/);

@@ -1,0 +1,20 @@
+{
+  "v": 2,
+  "updated": "2026-10-13",
+  "title": "感谢名单",
+  "micro": "THANKS LIST",
+  "prefix": "bilibili_",
+  "names": [
+    { "name": "Ausevay", "role": "一切的起点" },
+    { "name": "纸鸢安好", "role": "安卓端适配的神" },
+    { "name": "水沫沐沐", "role": "MOD管理器作者" },
+    { "name": "jingjiangze", "role": "兼容MOD管理器" },
+    { "name": "剑光卤煮-斩尽牛杂", "role": "新开一期卫" },
+    { "name": "不知名信箱", "role": "" },
+    { "name": "雨千代Chiyo", "role": "" },
+    { "name": "伊佐那邪_", "role": "多功能优化Mod" },
+    { "name": "Sakanine", "role": "" },
+    { "name": "万い（千万言语）", "role": "百人服家宽暴力开" }
+  ],
+  "dedication": { "name": "服务器", "role": "Mod 管理器，mod 制作，三端开发" }
+}
