@@ -18,6 +18,9 @@
 // builder here returns the fields it was given, byte-identical: no `mods`, no `modIds`, no empty object.
 
 import { mergeBehaviourDecls, behaviourValue } from '../../shared/behaviour.js';
+import { setMorphPairing, setMorphSlotPolicy } from './ui/gameLogic/bonds.js';
+import { setUnequipAllowed } from './ui/gameActions.js';
+import { setPrepLoadout } from './ui/loadoutSync.js';
 
 /** @typedef {{ id: string, hash: string, layer: string, combat: boolean, api?: string }} ModEntry */
 
@@ -51,6 +54,11 @@ export function setWelcomeMods(msg) {
   const same = sameSet(welcomeModSet, next);
   welcomeModSet = next;
   if (!same) selectedModIds = [];
+  const decl = mergeBehaviourDecls(packs).decl;
+  setMorphPairing(behaviourValue(decl, 'morphPairing'));
+  setMorphSlotPolicy(behaviourValue(decl, 'morphPairing'));
+  setUnequipAllowed(behaviourValue(decl, 'unequip') === 'allow');
+  setPrepLoadout(behaviourValue(decl, 'prepLoadout'));
   return same;
 }
 

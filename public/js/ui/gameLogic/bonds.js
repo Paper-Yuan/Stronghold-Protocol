@@ -341,3 +341,11 @@ export function bandOffLine(names) {
   const list = (Array.isArray(names) ? names : []).filter((n) => typeof n === 'string' && n);
   return list.length ? t('本局禁用{names}盟约，此策略效果可能无法发挥', { names: list.map((n) => t('【{name}】', { name: n })).join('') }) : '';
 }
+
+let activeMorphPairing = 'official';
+let activeMorphSlotPolicy = null;
+export function setMorphPairing(v) { activeMorphPairing = v; }
+export function getMorphPairing() { return activeMorphPairing; }
+export function setMorphSlotPolicy(v) { activeMorphSlotPolicy = v; }
+export function getMorphSlotPolicy() { return activeMorphSlotPolicy; }
+

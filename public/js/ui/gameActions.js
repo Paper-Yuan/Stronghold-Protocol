@@ -105,3 +105,8 @@ export const actions = {
   // any time (server/lobby.js removeSpectator), the game screen had no entry for it (ui/hud.js SpectatorPill; GitHub #120)
   removeSpectator: (playerId) => act('room.removeSpectator', { playerId }, { sfx: 'back' }),
 };
+
+let unequipAllowed = false;
+export function setUnequipAllowed(v) { unequipAllowed = !!v; }
+export function isUnequipAllowed() { return unequipAllowed; }
+

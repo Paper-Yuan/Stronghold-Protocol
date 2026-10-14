@@ -323,3 +323,8 @@ export function installDiySync({ net, timers, target = loadoutStore, notify } = 
   });
   return { flush: sync.flush, dispose() { offKit?.(); sync.dispose(); } };
 }
+
+let activePrepLoadout = null;
+export function setPrepLoadout(v) { activePrepLoadout = v; }
+export function getPrepLoadout() { return activePrepLoadout; }
+
