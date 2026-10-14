@@ -920,6 +920,7 @@ export class Lobby {
 
     return {
       diyKitted: KITTED_CHARS,
+      ...(this.workshop?.mods?.length ? { mods: { digest: this.workshop.modSet?.digest || '', packs: this.workshop.mods } } : {}),
       serverLoad: {
         status,
         score: loadScore,

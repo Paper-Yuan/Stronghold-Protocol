@@ -25,6 +25,7 @@
       <p class="nav-label">服务器管理</p>
       <nav aria-label="管理功能">
         <button class="nav-item active" data-tab="players"><span>◉</span>玩家与对局</button>
+        <button class="nav-item" data-tab="mods"><span>⛭</span>模组工坊 <span id="mod-count" class="nav-count">0</span></button>
         <button class="nav-item" data-tab="bans"><span>⊘</span>封禁管理 <span id="ban-count" class="nav-count">0</span></button>
         <button class="nav-item" data-tab="announcements"><span>◇</span>服务器公告</button>
         <button class="nav-item" data-tab="audit"><span>≡</span>操作记录</button>
@@ -48,6 +49,36 @@
         <div class="toolbar"><label class="search"><span aria-hidden="true">⌕</span><input id="search" type="search" placeholder="搜索昵称、玩家 ID、房间或 IP" aria-label="搜索玩家" maxlength="80"></label><select id="scope" aria-label="筛选玩家"><option value="playing">正在对局</option><option value="all">所有玩家</option><option value="online">连接中的玩家</option><option value="disconnected">离线留席</option><option value="matching">等待匹配</option></select></div>
         <div class="table-wrap"><table><thead><tr><th>玩家</th><th>状态</th><th>房间 / 对局</th><th>模拟进度</th><th>连接地址</th><th class="action-cell">管理操作</th></tr></thead><tbody id="players-body"></tbody></table></div>
         <div class="table-footer"><p>踢出将结束玩家当前参与；其他玩家继续原有对局。</p><div><button id="previous-page" class="subtle">上一页</button><span id="page-range" class="muted"></span><button id="next-page" class="subtle">下一页</button></div></div>
+      </section>
+
+      <section class="tab-panel" id="tab-mods" hidden>
+        <div class="panel-heading">
+          <div>
+            <h2>模组工坊管理</h2>
+            <p class="muted">上传 ZIP 模组包自动解压安装；可动态启用/禁用或删除模组。修改后需热切服务生效。</p>
+          </div>
+          <div class="header-actions">
+            <input type="file" id="mod-upload-input" accept=".zip" hidden>
+            <button id="mod-upload-btn" class="primary">↑ 上传模组 (ZIP)</button>
+            <button id="mod-refresh-btn" class="secondary">↻ 刷新</button>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>模组</th>
+                <th>版本</th>
+                <th>作者</th>
+                <th>类型</th>
+                <th>状态</th>
+                <th class="action-cell">管理操作</th>
+              </tr>
+            </thead>
+            <tbody id="mods-body"></tbody>
+          </table>
+        </div>
+        <p class="panel-note">模组安装目录：<code>workshop/&lt;modId&gt;/pack.json</code>。如修改了代码层或对局数值，建议配合热重启命令平滑刷新。</p>
       </section>
 
       <section class="tab-panel" id="tab-bans" hidden>

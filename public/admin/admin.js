@@ -3,7 +3,7 @@ const state = { csrf: null, tab: 'players', offset: 0, snapshot: null, action: n
 const statusNames = { playing: '正在对局', disconnected: '离线留席', matching: '等待匹配', spectating: '观战中', waiting: '房间等待', lobby: '大厅' };
 const difficultyNames = { FUNNY: '标准模拟', NORMAL: '险境模拟', HARD: '绝境模拟', ABYSS: '终极模拟' };
 const phaseNames = { INFO_CHECK: '开局确认', BAND_DRAFT: '策略选择', PREP: '整备', COMBAT: '作战', UNITE: '联防', SETTLE: '结算', CHOICE: '机变', RESULT: '结束', LOBBY: '等待' };
-const actionNames = { kick: '踢出玩家', ban: '封禁玩家', unban: '解除封禁', announcement: '发布公告', stopAnnouncement: '结束公告', passwordChanged: '修改管理密码' };
+const actionNames = { kick: '踢出玩家', ban: '封禁玩家', unban: '解除封禁', announcement: '发布公告', stopAnnouncement: '结束公告', passwordChanged: '修改管理密码', uploadMod: '上传模组', deleteMod: '删除模组', toggleMod: '启停模组' };
 const scopeNames = { session: '会话', browser: '同一浏览器', ip: '公网 IP' };
 const date = value => value ? new Date(value).toLocaleString('zh-CN', { hour12: false }) : '—';
 const elem = (tag, text, className) => { const node = document.createElement(tag); if (text != null) node.textContent = String(text); if (className) node.className = className; return node; };
@@ -96,6 +96,71 @@ async function renderAnnouncements() {
     list.append(card);
   }
 }
+async function renderMods() {
+  const generation = state.generation;
+  const data = await api('mods');
+  if (generation !== state.generation) return;
+  const body = $('#mods-body'); body.replaceChildren();
+  $('#mod-count').textContent = data.packs.length;
+  if (!data.packs.length) {
+    empty(body, 6, '当前服务器未安装任何第三方模组（底座纯净）。点击右上角「上传模组 (ZIP)」可快速添加。');
+    return;
+  }
+  for (const p of data.packs) {
+    const row = elem('tr');
+    const nameWrap = elem('div', null, 'player-name');
+    const avatar = elem('span', p.combat ? '⚔' : '❖', 'avatar');
+    if (p.combat) avatar.style.color = 'var(--amber)';
+    const text = elem('div', null, 'name-text');
+    text.append(elem('strong', p.name || p.id), elem('span', p.id + (p.description ? ` · ${p.description}` : ''), 'subtext'));
+    nameWrap.append(avatar, text);
+
+    const verCell = elem('span', 'v' + p.version, 'mono');
+    const authorCell = elem('span', p.author || '未知作者');
+    const typeCell = elem('span', p.combat ? '包含战斗改动' : '数据/外观', p.combat ? 'pill disconnected' : 'pill');
+    
+    const statusWrap = elem('div');
+    const statusPill = elem('span', p.enabled ? (p.loaded ? '已生效' : '已启用(待重启)') : '已禁用', p.enabled ? 'pill' : 'pill disconnected');
+    statusWrap.append(statusPill);
+
+    const toggleBtn = elem('button', p.enabled ? '禁用' : '启用', 'subtle');
+    toggleBtn.type = 'button';
+    toggleBtn.addEventListener('click', async () => {
+      toggleBtn.disabled = true;
+      try {
+        await api('mods/toggle', { id: p.id, enabled: !p.enabled });
+        notice(`已${!p.enabled ? '启用' : '禁用'}模组 ${p.name}`);
+        await renderMods();
+      } catch (e) {
+        notice(e.message, true);
+      } finally {
+        toggleBtn.disabled = false;
+      }
+    });
+
+    const delBtn = elem('button', '删除', 'danger');
+    delBtn.type = 'button';
+    delBtn.addEventListener('click', async () => {
+      if (!confirm(`确定要彻底删除模组「${p.name || p.id}」？目录将被移除。`)) return;
+      delBtn.disabled = true;
+      try {
+        await api('mods/delete', { id: p.id });
+        notice(`已删除模组 ${p.name || p.id}`);
+        await renderMods();
+      } catch (e) {
+        notice(e.message, true);
+      } finally {
+        delBtn.disabled = false;
+      }
+    });
+
+    const actions = cell(toggleBtn, delBtn);
+    actions.className = 'action-cell';
+
+    row.append(cell(nameWrap), cell(verCell), cell(authorCell), cell(typeCell), cell(statusWrap), actions);
+    body.append(row);
+  }
+}
 async function refresh() {
   if (!state.csrf) return;
   if (state.loading) { state.refreshAgain = true; return; }
@@ -114,6 +179,7 @@ async function refresh() {
     $('#last-update').textContent = `更新于 ${date(data.serverNow)} · 当前连接 ${data.stats.connectedPlayers} 个真人席位`;
     renderPlayers(data); renderBans(data); renderAudit(data);
     if (state.tab === 'announcements') await renderAnnouncements();
+    if (state.tab === 'mods') await renderMods();
     if ($('#notice').classList.contains('error')) notice('');
   } catch (e) { if (e.status === 401) showLogin('管理会话已过期，请重新登录'); else notice('刷新失败，当前显示上次成功获取的数据：' + e.message, true); }
   finally { state.loading = false; $('#refresh-button').disabled = false; if (state.refreshAgain) { state.refreshAgain = false; queueMicrotask(refresh); } }
@@ -179,9 +245,47 @@ for (const button of document.querySelectorAll('[data-tab]')) button.addEventLis
   state.tab = button.dataset.tab;
   for (const b of document.querySelectorAll('[data-tab]')) b.classList.toggle('active', b === button);
   for (const panel of document.querySelectorAll('.tab-panel')) panel.hidden = panel.id !== 'tab-' + state.tab;
-  $('#page-title').textContent = { players: '玩家与对局', bans: '封禁管理', announcements: '服务器公告', audit: '操作记录' }[state.tab];
+  $('#page-title').textContent = { players: '玩家与对局', mods: '模组工坊管理', bans: '封禁管理', announcements: '服务器公告', audit: '操作记录' }[state.tab];
   if (state.tab === 'announcements') renderAnnouncements().catch(e => notice(e.message, true));
+  if (state.tab === 'mods') renderMods().catch(e => notice(e.message, true));
 });
+$('#mod-refresh-btn')?.addEventListener('click', () => renderMods().catch(e => notice(e.message, true)));
+const uploadBtn = $('#mod-upload-btn');
+const uploadInput = $('#mod-upload-input');
+if (uploadBtn && uploadInput) {
+  uploadBtn.addEventListener('click', () => uploadInput.click());
+  uploadInput.addEventListener('change', async () => {
+    const file = uploadInput.files?.[0];
+    if (!file) return;
+    if (!file.name.endsWith('.zip')) {
+      notice('仅支持上传 .zip 格式模组压缩包', true);
+      uploadInput.value = '';
+      return;
+    }
+    uploadBtn.disabled = true;
+    notice(`正在上传并解压模组包 ${file.name}（大小 ${(file.size / 1024 / 1024).toFixed(2)} MB）...`);
+    try {
+      const response = await fetch('/admin/api/mods/upload', {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: {
+          'Content-Type': 'application/zip',
+          ...(state.csrf ? { 'X-CSRF-Token': state.csrf } : {}),
+        },
+        body: file,
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || '上传模组失败');
+      notice(`模组「${data.name || data.id}」上传并解压安装成功！若涉及逻辑改动可热重启服务生效。`);
+      await renderMods();
+    } catch (e) {
+      notice(e.message, true);
+    } finally {
+      uploadBtn.disabled = false;
+      uploadInput.value = '';
+    }
+  });
+}
 $('#refresh-button').addEventListener('click', refresh);
 $('#scope').addEventListener('change', () => { state.offset = 0; state.generation++; refresh(); });
 let searchTimer;

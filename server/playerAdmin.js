@@ -1,8 +1,9 @@
 // Private player management. No session tokens, browser IDs or credential hashes leave this module.
-import { readFile, mkdir, open, rename, unlink } from 'node:fs/promises';
+import { readFile, mkdir, open, rename, unlink, rm } from 'node:fs/promises';
 import path from 'node:path';
 import { randomBytes, createHash, scrypt, timingSafeEqual } from 'node:crypto';
 import { promisify } from 'node:util';
+import { execFile } from 'node:child_process';
 import { setTimeout as wait } from 'node:timers/promises';
 import { fileURLToPath } from 'node:url';
 import { isIP } from 'node:net';
@@ -11,6 +12,8 @@ import { parseAnnouncements, activeAnnouncement } from '../shared/announcements.
 import { ANNOUNCEMENT_MAX_BYTES } from './announcements.js';
 import { loadWorkshop, WORKSHOP_DIR } from './workshop.js';
 import { buildModCatalog } from './modCatalog.js';
+
+const execFileAsync = promisify(execFile);
 
 const derive = promisify(scrypt);
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -324,6 +327,100 @@ export class PlayerAdmin {
     await this.commit(this.state, { action: 'stopAnnouncement', announcementId: noticeId });
     return { ok: true };
   }
+  async deleteMod(body) {
+    const modId = cleanText(body.id, 64, '模组 ID');
+    if (!/^[a-z0-9][a-z0-9._-]{0,63}$/i.test(modId)) throw fail(400, '模组 ID 格式无效');
+    const wsDir = process.env.SP_WORKSHOP || WORKSHOP_DIR;
+    const targetDir = path.join(wsDir, modId);
+    if (!targetDir.startsWith(wsDir + path.sep)) throw fail(400, '路径不合法');
+    await rm(targetDir, { recursive: true, force: true });
+    await this.commit(this.state, { action: 'deleteMod', name: modId, reason: `删除模组 ${modId}` });
+    return { ok: true, id: modId };
+  }
+  async toggleMod(body) {
+    const modId = cleanText(body.id, 64, '模组 ID');
+    const enabled = !!body.enabled;
+    const wsDir = process.env.SP_WORKSHOP || WORKSHOP_DIR;
+    const packJsonPath = path.join(wsDir, modId, 'pack.json');
+    if (!packJsonPath.startsWith(wsDir + path.sep)) throw fail(400, '路径不合法');
+    let manifest;
+    try {
+      manifest = JSON.parse(await readFile(packJsonPath, 'utf8'));
+    } catch {
+      throw fail(404, '模组 pack.json 不存在');
+    }
+    manifest.enabled = enabled;
+    await atomicJson(packJsonPath, manifest);
+    await this.commit(this.state, { action: 'toggleMod', name: modId, reason: `${enabled ? '启用' : '禁用'}模组 ${modId}` });
+    return { ok: true, id: modId, enabled };
+  }
+  async uploadMod(req) {
+    const wsDir = process.env.SP_WORKSHOP || WORKSHOP_DIR;
+    await mkdir(wsDir, { recursive: true });
+    const chunks = [];
+    let size = 0;
+    const MAX_ZIP = 50 * 1024 * 1024; // 50MB
+    for await (const chunk of req) {
+      size += chunk.length;
+      if (size > MAX_ZIP) throw fail(413, '模组压缩包过大（上限 50MB）');
+      chunks.push(chunk);
+    }
+    const buf = Buffer.concat(chunks);
+    if (buf.length < 4 || buf[0] !== 0x50 || buf[1] !== 0x4b) throw fail(400, '不是合法的 ZIP 压缩包');
+    
+    const tmpZip = path.join(wsDir, `.upload_${id()}.zip`);
+    const tmpExtract = path.join(wsDir, `.extract_${id()}`);
+    let handle;
+    try {
+      handle = await open(tmpZip, 'wx', 0o600);
+      await handle.writeFile(buf);
+      await handle.sync();
+      await handle.close(); handle = null;
+      await mkdir(tmpExtract, { recursive: true });
+
+      // Unpack based on platform
+      if (process.platform === 'win32') {
+        const psCmd = `Expand-Archive -LiteralPath '${tmpZip}' -DestinationPath '${tmpExtract}' -Force`;
+        await execFileAsync('powershell', ['-NoProfile', '-NonInteractive', '-Command', psCmd]);
+      } else {
+        await execFileAsync('unzip', ['-q', '-o', tmpZip, '-d', tmpExtract]);
+      }
+
+      // Check extracted content: is pack.json at root, or inside a single subfolder?
+      let modRoot = tmpExtract;
+      let packJsonPath = path.join(modRoot, 'pack.json');
+      let hasPack = false;
+      try { await readFile(packJsonPath); hasPack = true; } catch {}
+
+      if (!hasPack) {
+        // check subdirectories
+        const { readdir } = await import('node:fs/promises');
+        const entries = await readdir(tmpExtract, { withFileTypes: true });
+        const subdirs = entries.filter(e => e.isDirectory() && !e.name.startsWith('.'));
+        for (const sub of subdirs) {
+          const subPack = path.join(tmpExtract, sub.name, 'pack.json');
+          try { await readFile(subPack); modRoot = path.join(tmpExtract, sub.name); packJsonPath = subPack; hasPack = true; break; } catch {}
+        }
+      }
+
+      if (!hasPack) throw fail(400, '压缩包内未找到合法的 pack.json 模组清单');
+
+      const manifest = JSON.parse(await readFile(packJsonPath, 'utf8'));
+      const modId = manifest.id || path.basename(modRoot);
+      if (!/^[a-z0-9][a-z0-9._-]{0,63}$/i.test(modId)) throw fail(400, `模组 ID "${modId}" 格式无效（须为字母数字短横线点）`);
+
+      const destDir = path.join(wsDir, modId);
+      await rm(destDir, { recursive: true, force: true });
+      await rename(modRoot, destDir);
+
+      await this.commit(this.state, { action: 'uploadMod', name: modId, reason: `上传并安装模组 ${manifest.name || modId} (v${manifest.version || '1.0.0'})` });
+      return { ok: true, id: modId, name: manifest.name || modId, version: manifest.version || '1.0.0' };
+    } finally {
+      await handle?.close().catch(() => {});
+      await unlink(tmpZip).catch(() => {});
+      await rm(tmpExtract, { recursive: true, force: true }).catch(() => {});
+    }
+  }
   async password(body, req, res) {
     if (!await this.verifyPassword(body.currentPassword)) throw fail(403, '当前管理密码不正确');
     const secret = await credentials(body.newPassword);
@@ -369,25 +466,53 @@ export class PlayerAdmin {
       } else if (pathname === '/admin/api/mods') {
         const wsDir = process.env.SP_WORKSHOP || WORKSHOP_DIR;
         const loaded = loadWorkshop(wsDir, { log: this.log });
-        const catalog = buildModCatalog(loaded);
-        this.json(req, res, 200, { ok: true, packs: loaded.packs.map(p => ({
-          id: p.id,
-          name: p.manifest?.name || p.id,
-          version: p.manifest?.version || '1.0.0',
-          author: p.manifest?.author || '未知作者',
-          layer: p.layer,
-          combat: !!p.combat,
-          description: p.manifest?.description || '',
-          hash: p.hash,
-        })), errors: loaded.errors, total: loaded.packs.length });
+        const { readdir } = await import('node:fs/promises');
+        let diskDirs = [];
+        try {
+          const entries = await readdir(wsDir, { withFileTypes: true });
+          diskDirs = entries.filter(e => e.isDirectory() && !e.name.startsWith('.')).map(e => e.name);
+        } catch {}
+        const loadedMap = new Map(loaded.packs.map(p => [p.id, p]));
+        const packs = [];
+        for (const dirName of diskDirs) {
+          const p = loadedMap.get(dirName);
+          let manifest = p?.manifest;
+          let enabled = manifest?.enabled !== false;
+          if (!manifest) {
+            try {
+              manifest = JSON.parse(await readFile(path.join(wsDir, dirName, 'pack.json'), 'utf8'));
+              enabled = manifest.enabled !== false;
+            } catch {}
+          }
+          packs.push({
+            id: dirName,
+            name: manifest?.name || dirName,
+            version: manifest?.version || '1.0.0',
+            author: manifest?.author || '未知作者',
+            layer: p?.layer || 'data',
+            combat: !!p?.combat,
+            enabled,
+            description: manifest?.description || '',
+            hash: p?.hash || '',
+            loaded: !!p,
+          });
+        }
+        this.json(req, res, 200, { ok: true, packs, errors: loaded.errors, total: packs.length });
       } else throw fail(404, '管理接口不存在');
       return;
     }
     if (!same(req.headers['x-csrf-token'], session.csrf)) throw fail(403, '操作校验失败，请重新登录');
     if (!session.budget.take(this.now())) throw fail(429, '管理操作过于频繁，请稍后重试');
+    if (pathname === '/admin/api/mods/upload') {
+      const resData = await this.serialize(() => this.uploadMod(req));
+      this.json(req, res, 200, resData);
+      return;
+    }
     const body = await this.body(req);
     const handlers = { '/admin/api/kick': () => this.kick(body), '/admin/api/ban': () => this.ban(body), '/admin/api/unban': () => this.unban(body),
       '/admin/api/announcement': () => this.publish(body), '/admin/api/announcement/stop': () => this.stopNotice(body),
+      '/admin/api/mods/delete': () => this.deleteMod(body),
+      '/admin/api/mods/toggle': () => this.toggleMod(body),
       '/admin/api/password': () => this.password(body, req, res),
       '/admin/api/logout': async () => { this.sessions.delete(hash(this.cookie(req))); this.setCookie(res, '', 0); return { ok: true }; } };
     if (!Object.hasOwn(handlers, pathname)) throw fail(404, '管理接口不存在');

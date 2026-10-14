@@ -54,6 +54,7 @@ import { createRoomAssets } from './roomAssets.js';
 import { buildModCatalog } from './modCatalog.js';
 import { lanUrls, displayHost, isProcessEntry, runMain } from './http/boot.js';
 import { workshopAssetsFor, workshopKitFilesFor, workshopKitDirsFor, workshopResourceFilesFor } from './http/workshop.js';
+import { modSetOf } from '../shared/modIdentity.js';
 
 export { rewriteAssetPaths } from '../shared/cdn.js';
 
@@ -143,9 +144,11 @@ export async function startServer(opts = {}) {
       })
     : null;
 
+  const workshopModSet = workshopMods.length ? modSetOf(workshopMods) : null;
   const workshopState = {
     packs: workshopLoaded.packs,
     mods: workshopMods,
+    modSet: workshopModSet,
     kits: workshopKits.kits,
     tokenKits: workshopKits.tokenKits,
     modules: workshopKits.modules,

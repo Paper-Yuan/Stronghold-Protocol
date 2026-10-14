@@ -496,6 +496,47 @@ export function ProtoCard({ roomMode, difficulty, selected, onSelect, matchmakin
   </button>`;
 }
 
+function ModPickerModal({ open, onClose, selected, onSave }) {
+  if (!open) return null;
+  const mods = roomMods.availableMods();
+  const [picks, setPicks] = useState(selected);
+  const toggle = (id) => {
+    setPicks((prev) => prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id].sort());
+  };
+  return html`<div class="modal mod-modal" role="dialog" aria-label="房间模组选择">
+    <div class="modal__backdrop" onClick=${onClose}></div>
+    <div class="mod-modal-card brackets">
+      <header class="modal__header">
+        <span class="micro">WORKSHOP MODS</span>
+        <h2>选择本房间启用的模组</h2>
+        <p class="muted">根据勾选决定本房间载入的内容；未启用的房间不受任何影响。</p>
+      </header>
+      <div class="mod-modal-list">
+        ${!mods.length ? html`<p class="muted" style="padding: .3rem; text-align: center;">服务器当前未安装模组</p>` : null}
+        ${mods.map((m) => {
+          const checked = picks.includes(m.id);
+          return html`<div key=${m.id} class=${`mod-pick-item${checked ? ' is-selected' : ''}`} onClick=${() => toggle(m.id)}>
+            <input type="checkbox" checked=${checked} onChange=${() => toggle(m.id)} onClick=${(e) => e.stopPropagation()} />
+            <div class="mod-pick-info">
+              <div class="mod-pick-head">
+                <span class="mod-pick-name">${m.id}</span>
+                <span class=${`mod-pick-tag ${m.combat ? 'mod-pick-tag--combat' : 'mod-pick-tag--cosmetic'}`}>
+                  ${m.combat ? '数值/战斗改动' : '外观/数据扩展'}
+                </span>
+              </div>
+              <p class="mod-pick-desc">${m.layer || '模组扩展'}</p>
+            </div>
+          </div>`;
+        })}
+      </div>
+      <footer class="mod-modal-foot">
+        <${Button} variant="secondary" size="md" onClick=${() => { setPicks([]); onSave([]); onClose(); }}>清空选择<//>
+        <${Button} variant="primary" size="md" onClick=${() => { onSave(picks); onClose(); }}>确定 (${picks.length})<//>
+      </footer>
+    </div>
+  </div>`;
+}
+
 /**
  * 选择模拟协议 (2026-10-13, the owner's request: the event's second screen after 独立模拟): full screen, the picture of
  * the selected difficulty at the left (ui/protocolScene.js, original), the difficulties down the right with the
@@ -507,12 +548,15 @@ export function ProtoCard({ roomMode, difficulty, selected, onSelect, matchmakin
 function ProtocolSelect({ card, roomMode, random, variant, difficulty, onDifficulty, onClose, matchmaking, brief, privateRoom, onPrivate,
   online, maint, busy, isSearching, onCreate, onQueue, purpose = 'create', onSearch, onCancel, mm, onBrowse, chained = false }) {
   const [leaving, leave] = useLeave(onClose);
+  const [modModalOpen, setModModalOpen] = useState(false);
+  const [modPicks, setModPicks] = useState(roomMods.getSelectedModIds());
+  const hasAvailableMods = roomMods.hasMods() && roomMods.availableMods().length > 0;
   useEffect(() => {
-    const onKey = (e) => { if (e.key === 'Escape' && !document.querySelector('.modal, .guide')) leave(); };
+    const onKey = (e) => { if (e.key === 'Escape' && !document.querySelector('.modal:not(.mod-modal), .guide')) { if (modModalOpen) setModModalOpen(false); else leave(); } };
     addEventListener('keydown', onKey);
     document.body.classList.add('hub-dialog-open');
     return () => { removeEventListener('keydown', onKey); document.body.classList.remove('hub-dialog-open'); };
-  }, []);
+  }, [modModalOpen]);
   const fx = `${leaving ? ' is-leaving' : ''}${chained ? ' is-chained' : ''}`;
   const search = purpose === 'search';
   const info = difficultyInfo(roomMode, difficulty, { random, variant });
@@ -574,8 +618,15 @@ function ProtocolSelect({ card, roomMode, random, variant, difficulty, onDifficu
           </div>` : roomMode !== 'solo' ? html`<div class="proto-opts">
             ${roomMode !== 'solo' && CAN_PRIVATE ? html`<label class="proto-private" title=${t('不在公开大厅显示，仅通过房间码或邀请加入')}>
               <input type="checkbox" checked=${privateRoom} onChange=${(e) => onPrivate(e.currentTarget.checked)} /><span>${t('私密房间')}</span></label>` : null}
+            ${hasAvailableMods ? html`<button type="button" class=${`proto-mods-btn${modPicks.length ? ' has-selected' : ''}`} onClick=${() => setModModalOpen(true)}>
+              <span>⛭</span><span>${modPicks.length ? `已启用 ${modPicks.length} 个模组` : '配置模组'}</span>
+            </button>` : null}
             ${roomMode === 'coop' && CAN_QUEUE ? html`<${Button} variant="secondary" size="md" icon="refresh" loading=${busy === 'queue'} disabled=${!online || maint?.active || isSearching}
               onClick=${onQueue}>${t('快速匹配')}<//>` : null}
+          </div>` : hasAvailableMods ? html`<div class="proto-opts">
+            <button type="button" class=${`proto-mods-btn${modPicks.length ? ' has-selected' : ''}`} onClick=${() => setModModalOpen(true)}>
+              <span>⛭</span><span>${modPicks.length ? `已启用 ${modPicks.length} 个模组` : '配置模组'}</span>
+            </button>
           </div>` : null}
           <p class="proto-hint">${hint}</p>
           <button type="button" class="proto-start" disabled=${!online || maint?.active || busy === 'create' || busy === 'queue'} onClick=${search ? onSearch : onCreate}>
@@ -587,6 +638,10 @@ function ProtocolSelect({ card, roomMode, random, variant, difficulty, onDifficu
       </section>
     </div>
     ${busy === 'create' ? html`<${JoinLine} text=${roomMode === 'solo' ? t('正在进入模拟') : t('正在建立同盟')} />` : null}
+    <${ModPickerModal} open=${modModalOpen} onClose=${() => setModModalOpen(false)} selected=${modPicks} onSave=${(picks) => {
+      setModPicks(picks);
+      roomMods.setSelectedModIds(picks);
+    }} />
   </div>`;
 }
 
