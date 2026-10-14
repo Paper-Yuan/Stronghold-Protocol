@@ -17,13 +17,7 @@
 // ▸ Absent means absent. On a plain install `welcome` has NO `mods` key, `welcomeModSet` stays null, and every payload
 // builder here returns the fields it was given, byte-identical: no `mods`, no `modIds`, no empty object.
 
-// 行为开关的有效档位（DESIGN §28.43）：客户端不自己实现合并规则，直接调 `shared/behaviour.js` 那**一份**纯函数
-// （与 `shared/variants.js` 的 `mergeVariantDecls` 逐字同一条「包 id 字典序小的赢」）。
 import { mergeBehaviourDecls, behaviourValue } from '../../shared/behaviour.js';
-import { setMorphPairing, setMorphSlotPolicy } from './ui/gameLogic/bonds.js';
-import { setUnequipAllowed } from './ui/gameActions.js';
-// 第二格 `prepLoadout` 的客户端半（DESIGN §28.43.3）：干员调配屏"是否锁定"的那份相位判据住在 loadoutSync。
-import { setPrepLoadout } from './ui/loadoutSync.js';
 
 /** @typedef {{ id: string, hash: string, layer: string, combat: boolean, api?: string }} ModEntry */
 
@@ -57,18 +51,6 @@ export function setWelcomeMods(msg) {
   const same = sameSet(welcomeModSet, next);
   welcomeModSet = next;
   if (!same) selectedModIds = [];
-  // 行为开关的有效档位（DESIGN §28.43）：客户端不自己实现合并规则，直接调 `shared/behaviour.js` 那**一份**纯函数
-  // （与 `shared/variants.js` 的 `mergeVariantDecls` 逐字同一条「包 id 字典序小的赢」）。四处读数都走它：
-  // `morphPairing`（详情卡 / 列表的 变形同构体 读数）、`unequip`（画不画「卸下」按钮）、
-  // `prepLoadout`（干员调配屏画不画「本局已锁定」那句 —— 服务端早已按它收 `PREP`，客户端原来在撒谎）。
-  const decl = mergeBehaviourDecls(packs).decl;
-  setMorphPairing(behaviourValue(decl, 'morphPairing'));
-  // 第 7 段：同一格开关的**装备位语义**（不占格 / 每名干员只一件 / 第三件顶掉真占格那两件）。客户端读它算
-  // `EQUIP n/2`、画「不占装备格」标签、判替换对话框 —— 与 `grantedBonds` 一样，客户端不自己实现一遍判据，
-  // 直接调 `shared/morph.js` 的 `morphSlotPolicy`（没声明这一格 ⇒ 共享的 `OFFICIAL_SLOT_POLICY`，界面逐字不变）。
-  setMorphSlotPolicy(behaviourValue(decl, 'morphPairing'));
-  setUnequipAllowed(behaviourValue(decl, 'unequip') === 'allow');
-  setPrepLoadout(behaviourValue(decl, 'prepLoadout'));
   return same;
 }
 
