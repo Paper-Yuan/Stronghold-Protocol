@@ -570,7 +570,21 @@ export class Network {
   broadcastPresence() {
     if (this.closed) return;
     const online = this.onlineCount;
-    const data = encode({ t: 'presence', online, matchmaking: this.matchmakingCounts, serverNow: this.now() });
+    const activeHumans = typeof this.handler?.countActiveHumans === 'function' ? this.handler.countActiveHumans() : 0;
+    const maxPlayingHumans = this.handler?.opts?.maxPlayingHumans ?? 60;
+    const activeBots = typeof this.handler?.countActiveBots === 'function' ? this.handler.countActiveBots() : 0;
+    const maxBots = this.handler?.opts?.maxBots ?? 10;
+    const data = encode({
+      t: 'presence',
+      online,
+      activeHumans,
+      maxPlayingHumans,
+      humanLimitReached: activeHumans >= maxPlayingHumans,
+      activeBots,
+      maxBots,
+      matchmaking: this.matchmakingCounts,
+      serverNow: this.now(),
+    });
     if (data == null) return;
     for (const conn of this.conns.values()) {
       if (conn.closing) continue;

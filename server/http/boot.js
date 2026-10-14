@@ -56,10 +56,13 @@ export function displayHost(host) {
 /** Is the module whose `import.meta.url` is `metaUrl` the file node was started with? */
 export function isProcessEntry(metaUrl) {
   if (!process.argv[1]) return false;
+  if (process.env.pm_id !== undefined || process.env.PM2_USAGE || process.env.PM2_HOME) return true;
   try {
-    return fs.realpathSync(process.argv[1]) === fs.realpathSync(fileURLToPath(metaUrl));
+    const p1 = fs.realpathSync(process.argv[1]);
+    const target = fs.realpathSync(fileURLToPath(metaUrl));
+    return p1 === target || process.argv.some((a) => typeof a === 'string' && a.includes('server/index.js'));
   } catch {
-    return false;
+    return process.argv.some((a) => typeof a === 'string' && a.includes('server/index.js'));
   }
 }
 

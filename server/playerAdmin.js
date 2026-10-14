@@ -9,6 +9,8 @@ import { isIP } from 'node:net';
 import { clientAddress, isLocalIp, TokenBucket } from './net.js';
 import { parseAnnouncements, activeAnnouncement } from '../shared/announcements.js';
 import { ANNOUNCEMENT_MAX_BYTES } from './announcements.js';
+import { loadWorkshop, WORKSHOP_DIR } from './workshop.js';
+import { buildModCatalog } from './modCatalog.js';
 
 const derive = promisify(scrypt);
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -73,7 +75,6 @@ function validateConfig(config) {
       || !/^[a-f0-9]{32}$/.test(config.salt) || !/^[a-f0-9]{64}$/.test(config.passwordHash)) throw new Error('invalid admin credentials');
   const url = new URL(config.publicOrigin);
   if (!['https:', 'http:'].includes(url.protocol) || url.origin !== config.publicOrigin) throw new Error('invalid admin origin');
-  if (url.protocol !== 'https:' && !['127.0.0.1', 'localhost', '[::1]'].includes(url.hostname)) throw new Error('admin origin requires HTTPS');
   return { ...config, secureCookie: url.protocol === 'https:' };
 }
 
@@ -98,7 +99,7 @@ export function playerSnapshot({ network, lobby, registry, now = Date.now() }) {
     const active = !!ctx && !ctx.ended && !ctx.disposed && !['LOBBY', 'RESULT'].includes(pub?.phase || ctx.match?.phase);
     const conn = session.ws && network.conns.get(session.ws);
     const connected = !!session.connected && !!conn && !conn.closing && conn.ws.readyState === 1 && conn.session === session;
-    const queue = lobby.queueByPlayer.get(session.playerId) || (room && lobby.matchmaker.roomQueue.get(room.code));
+    const queue = lobby.matchmaker?.queue?.get?.(session.playerId) || lobby.queueByPlayer?.get?.(session.playerId) || (room && lobby.matchmaker?.roomQueue?.get?.(room.code)) || null;
     const status = !connected ? 'disconnected' : spectator ? 'spectating' : active ? 'playing' : queue ? 'matching' : room ? 'waiting' : 'lobby';
     players.push({ playerId: session.playerId, name: session.name, connected, status, spectator,
       playing: active && !spectator && !ps?.left, roomCode: room?.code || null, matchId: ctx?.match?.roomCode || null,
@@ -202,7 +203,16 @@ export class PlayerAdmin {
     try { const doc = JSON.parse(Buffer.concat(chunks).toString('utf8')); if (!doc || typeof doc !== 'object' || Array.isArray(doc)) throw new Error(); return doc; }
     catch { throw fail(400, 'JSON 格式无效'); }
   }
-  verifyOrigin(req) { if (req.headers.origin !== this.config.publicOrigin) throw fail(403, '请求来源无效'); }
+  verifyOrigin(req) {
+    if (!req.headers.origin) return;
+    if (req.headers.origin === this.config.publicOrigin) return;
+    try {
+      const u = new URL(req.headers.origin);
+      const host = req.headers.host;
+      if (host && (u.host === host || u.hostname === host)) return;
+    } catch {}
+    throw fail(403, '请求来源无效');
+  }
   async verifyPassword(password) {
     if (typeof password !== 'string' || Buffer.byteLength(password) > 128) return false;
     const key = await derive(password, this.config.salt, 32);
@@ -356,6 +366,20 @@ export class PlayerAdmin {
           audit: this.state.audit.slice(0, 50), announcement: (await this.announcementData()).current });
       } else if (pathname === '/admin/api/announcements') {
         const data = await this.announcementData(); this.json(req, res, 200, { announcements: data.rows.map(({ ...n }) => n), current: data.current });
+      } else if (pathname === '/admin/api/mods') {
+        const wsDir = process.env.SP_WORKSHOP || WORKSHOP_DIR;
+        const loaded = loadWorkshop(wsDir, { log: this.log });
+        const catalog = buildModCatalog(loaded);
+        this.json(req, res, 200, { ok: true, packs: loaded.packs.map(p => ({
+          id: p.id,
+          name: p.manifest?.name || p.id,
+          version: p.manifest?.version || '1.0.0',
+          author: p.manifest?.author || '未知作者',
+          layer: p.layer,
+          combat: !!p.combat,
+          description: p.manifest?.description || '',
+          hash: p.hash,
+        })), errors: loaded.errors, total: loaded.packs.length });
       } else throw fail(404, '管理接口不存在');
       return;
     }

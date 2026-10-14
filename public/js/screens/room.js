@@ -30,7 +30,7 @@ import { DIFFICULTIES, DIFFICULTY_NAMES, DIFFICULTY_COLORS, MAX_SPECTATORS } fro
 import * as SEAT_CONST from '../../../shared/constants.js';
 import { RANDOM_MODE, RANDOM_MODE_NAME } from '../../../shared/randomMode.js';
 import {
-  html, Button, Icon, MicroLabel, AvatarFrame, DifficultyIcon, Tooltip, confirmDialog, doctorNo, Spinner, Modal,
+  html, Button, Icon, MicroLabel, AvatarFrame, DifficultyIcon, Tooltip, confirmDialog, alertDialog, doctorNo, Spinner, Modal,
 } from '../ui/components.js';
 import { toast, toastError } from '../ui/toasts.js';
 import { copyText } from '../ui/clipboard.js';
@@ -464,7 +464,23 @@ export function RoomScreen() {
   // 房主切换无限火力分支（blitz / endurance）——room.setRandom 带 variant
   const setVariant = () => {}; // 剥离无限火力
   const cancelMatch = () => { setSearchWant(false); setLastMatching(0); if (room.matching) run('cancel-match', () => net.request('match.cancel', {})); };
-  const addBot = () => run('add', () => net.request('room.addBot', {}));
+  const addBot = () => run('add', async () => {
+    try {
+      await net.request('room.addBot', {});
+    } catch (err) {
+      if (err?.message?.includes('全服 AI 数量已达上限') || err?.message?.includes('AI') || err?.code === 'ROOM_FULL') {
+        await alertDialog({
+          title: t('AI 调度上限'),
+          micro: 'AI ALLOCATION LIMIT // 算力管控',
+          tone: 'gold',
+          text: t('全服 AI 队友总数已达上限（单服最多支持 10 个 AI）。当前服务器算力资源紧张，请等待其他对局结束，或邀请真人玩家一同作战。'),
+          okText: t('我知道了'),
+        });
+        return;
+      }
+      throw err;
+    }
+  });
   const removeBot = (seat) => run(`rm${seat}`, () => net.request('room.removeBot', { seat }));
   // the host removes a human before the match (community report #17): asked first; the player may join again. The
   // confirmed player's id goes along: if they left and someone else took the seat meanwhile, the server refuses it.
@@ -569,6 +585,13 @@ export function RoomScreen() {
         </ul>
       </aside>`}
     </main>
+    ${room.mods ? html`<div class="room-mods-bar" style="margin: 0 24px 10px; padding: 8px 14px; background: rgba(0,0,0,0.6); border: 1px solid rgba(76,175,80,0.4); border-radius: 4px; display: flex; align-items: center; justify-content: space-between; font-size: 13px;">
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <span style="color: #4caf50; font-weight: bold; display: flex; align-items: center; gap: 4px;"><${Icon} name="box" />本房间已挂载创意工坊模组 (${room.mods.packs?.length || 0} 个):</span>
+        <span style="color: #ccc;">${(room.mods.packs || []).map(p => p.id).join(', ')}</span>
+      </div>
+      ${room.mods.packs?.some(p => p.combat) ? html`<span style="color: #ff9800; font-size: 12px; border: 1px solid #ff9800; padding: 1px 6px; border-radius: 2px;">⚡ 含战斗数值改动</span>` : null}
+    </div>` : null}
     <${SpectatorBar} facts=${facts} myId=${me.playerId} busy=${busy} onRemove=${removeSpectator} onSit=${sit} />
 
     <footer class="rs-foot">

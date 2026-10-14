@@ -55,7 +55,10 @@ export function deepFreeze(root) {
  * @param {{ log?: { warn: Function, error: Function, info?: Function }, expected?: readonly string[] }} [opts]
  * @returns {Readonly<Record<string, any>>}
  */
-export function loadData(dir = DATA_DIR, { log = console, expected = DATA_FILES } = {}) {
+import { loadWorkshop, WORKSHOP_DIR } from './workshop.js';
+import { applyWorkshop, workshopSummary } from '../shared/workshop.js';
+
+export function loadData(dir = DATA_DIR, { log = console, expected = DATA_FILES, workshopDir = WORKSHOP_DIR, excludePacks = null } = {}) {
   /** @type {Record<string, any>} */
   const out = {};
   let names = [];
@@ -77,6 +80,21 @@ export function loadData(dir = DATA_DIR, { log = console, expected = DATA_FILES 
   }
   const missing = expected.filter((k) => !(k in out));
   if (missing.length) log.warn(`[data] missing data files: ${missing.map((k) => k + '.json').join(', ')}`);
+
+  // 创意工坊 overlay: merged in before deepFreeze
+  if (workshopDir) {
+    const loaded = loadWorkshop(workshopDir, { log });
+    const packs = excludePacks && excludePacks.size ? loaded.packs.filter((p) => !excludePacks.has(p.id)) : loaded.packs;
+    if (packs.length) {
+      const { data: merged, report } = applyWorkshop(out, packs);
+      for (const [k, v] of Object.entries(merged)) out[k] = v;
+      log.info?.(`[workshop] applied ${packs.length} pack(s): ${workshopSummary(report)}`);
+      for (const e of report.errors) log.warn?.(`[workshop] ${e.pack}: ${e.reason}`);
+      for (const l of report.looks || []) log.warn?.(`[workshop] ${l.pack}: ${l.reason}`);
+      for (const g of report.traitGrants || []) log.warn?.(`[workshop] ${g.pack}: ${g.code}: ${g.reason}`);
+    }
+  }
+
   return deepFreeze(out);
 }
 
@@ -85,11 +103,11 @@ let singleton = null;
 
 /**
  * Process-wide data singleton; loads on first call (later calls ignore the options).
- * @param {{ dir?: string, log?: object }} [opts]
+ * @param {{ dir?: string, log?: object, workshopDir?: string|null, excludePacks?: Set<string>|null }} [opts]
  * @returns {Readonly<Record<string, any>>}
  */
-export function getData({ dir = DATA_DIR, log = console } = {}) {
-  if (!singleton) singleton = loadData(dir, { log });
+export function getData({ dir = DATA_DIR, log = console, workshopDir = WORKSHOP_DIR, excludePacks = null } = {}) {
+  if (!singleton) singleton = loadData(dir, { log, workshopDir, excludePacks });
   return singleton;
 }
 

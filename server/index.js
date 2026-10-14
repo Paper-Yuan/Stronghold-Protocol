@@ -39,7 +39,8 @@ import { PROTOCOL_VERSION, APP_VERSION } from '../shared/constants.js';
 import { sendJson, sendError, splitUrl, answerClientError } from './http/common.js';
 import { ROOT, listenAddress, bindCandidates, serveDirs, makeLogger, parseTrustProxy, assetIndexOptionsFrom, netOptionsFrom } from './http/config.js';
 import { WS_MAX_PAYLOAD, createSessionStack, attachWebSocket } from './http/websocket.js';
-import { DATA_SHIM_JS, createStaticHandler } from './http/static.js';
+import { DATA_SHIM_JS } from './http/static.js';
+import { createStaticHandler } from './http/customStatic.js';
 import { createPackRegistry } from './packs.js';
 import { MIME, COMPRESSIBLE, acceptsGzip, pickEncoding, parseRange } from './http/files.js';
 import { BUILD_INPUTS, computeBuildTag, buildTag, resetBuildTag } from './http/buildTag.js';
@@ -47,8 +48,12 @@ import { createRequestHandler } from './http/routes.js';
 import { createTrafficCounter } from './http/traffic.js';
 import { createAssetIndex } from './http/assetIndex.js';
 import { createManifestViews } from './http/assetViews.js';
-import { lanUrls, displayHost, isProcessEntry, runMain } from './http/boot.js';
 import { getData, loadData } from './data.js';
+import { loadWorkshop, loadWorkshopKits, loadWorkshopPanels, WORKSHOP_DIR } from './workshop.js';
+import { createRoomAssets } from './roomAssets.js';
+import { buildModCatalog } from './modCatalog.js';
+import { lanUrls, displayHost, isProcessEntry, runMain } from './http/boot.js';
+import { workshopAssetsFor, workshopKitFilesFor, workshopKitDirsFor, workshopResourceFilesFor } from './http/workshop.js';
 
 export { rewriteAssetPaths } from '../shared/cdn.js';
 
@@ -108,7 +113,46 @@ export async function startServer(opts = {}) {
   log.warn = (...args) => { recordAdminLog('warn', args.map(String).join(' ')); return origWarn?.apply(log, args); };
   log.error = (...args) => { recordAdminLog('error', args.map(String).join(' ')); return origError?.apply(log, args); };
 
-  const { registry, lobby, network } = createSessionStack(opts, { data, log });
+  // 创意工坊 Workshop 初始化
+  const workshopDir = opts.workshopDir || process.env.SP_WORKSHOP || WORKSHOP_DIR;
+  const workshopLoaded = loadWorkshop(workshopDir, { log });
+  const workshopKits = await loadWorkshopKits(workshopLoaded, {
+    log,
+    knownIds: new Set([
+      ...Object.keys(data.chess || {}),
+      ...((workshopLoaded.packs || []).flatMap((p) => Object.keys(p.operators || {}))),
+    ]),
+  });
+  const workshopMods = (workshopLoaded.packs || []).map((p) => ({
+    id: p.id,
+    hash: p.hash,
+    layer: p.layer,
+    combat: !!p.combat,
+  }));
+  const roomAssets = (workshopLoaded.packs || []).length
+    ? createRoomAssets({
+        dataDir,
+        official: loadData(dataDir, { log, workshopDir: null }),
+        packs: workshopLoaded.packs,
+        kits: workshopKits.kits,
+        kitOwners: workshopKits.owners,
+        tokenKits: workshopKits.tokenKits,
+        tokenKitOwners: workshopKits.tokenOwners,
+        modules: workshopKits.modules,
+        log,
+      })
+    : null;
+
+  const workshopState = {
+    packs: workshopLoaded.packs,
+    mods: workshopMods,
+    kits: workshopKits.kits,
+    tokenKits: workshopKits.tokenKits,
+    modules: workshopKits.modules,
+    roomAssets,
+  };
+
+  const { registry, lobby, network } = createSessionStack(opts, { data, log, workshop: workshopState });
   lobby.network = network;
 
   // content packs (docs/PACKS.md): scanned now — the start log names them — and again whenever their folders change
@@ -119,7 +163,16 @@ export async function startServer(opts = {}) {
   const indexOptions = assetIndexOptionsFrom(opts, publicDir);
   const assetIndex = indexOptions ? createAssetIndex({ publicDir, log, ...indexOptions }) : null;
   const views = assetIndex ? createManifestViews({ dataDir, index: assetIndex, log }) : null;
-  const serveStatic = createStaticHandler({ publicDir, dataDir, sharedDir, packsDir, packs, log, assetIndex, views });
+  const workshopKitFiles = workshopKitFilesFor(workshopKits.modules, workshopDir);
+  const workshopKitDirs = workshopKitDirsFor(workshopLoaded);
+  const workshopAssets = workshopAssetsFor(workshopLoaded, workshopDir);
+  const workshopResourceFiles = workshopResourceFilesFor(workshopLoaded.packs, workshopDir);
+
+  const cdnBase = process.env.SP_ASSETS_CDN || 'https://weishucdn.jiangjiangze.icu';
+  const serveStatic = createStaticHandler({
+    publicDir, dataDir, sharedDir, packsDir, packs, log, assetIndex, views, cdnBase,
+    workshopKitFiles, workshopKitDirs, workshopAssets, workshopResourceFiles,
+  });
 
   const startedAt = Date.now();
   resetBuildTag();
@@ -158,6 +211,13 @@ export async function startServer(opts = {}) {
     (async () => {
       // 1. 公开 API 挂载
       if (await serveApi(req, res, parts.rawPath)) return;
+
+      // 1.1 创意工坊模组清单 (W-C /api/mods)
+      if (parts.rawPath === '/api/mods') {
+        const catalog = buildModCatalog(workshopLoaded);
+        sendJson(req, res, 200, { ok: true, ...catalog });
+        return;
+      }
 
       // 2. 管理面板
       if (parts.rawPath === '/admin' || parts.rawPath === '/admin/') {

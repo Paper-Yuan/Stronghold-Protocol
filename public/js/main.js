@@ -58,6 +58,7 @@ import { StatsHost } from './screens/stats.js';
 import { recordResult, installStatsRecorder } from './ui/stats.js';
 import { installLoadoutSync, installOwnershipSync, installDiySync } from './ui/loadoutSync.js';
 import { startBuildGuard } from './ui/buildGuard.js';
+import { setWelcomeMods } from './roomMods.js';
 import { getRoomDanmaku } from './ui/roomDanmaku.js';
 import { installEntryPreload } from './resources/entry.js';
 import { preloadEngine } from './resources/preload.js';
@@ -161,8 +162,20 @@ function onWelcome(msg) {
   const name = typeof msg.name === 'string' && msg.name ? msg.name : prev.me.name;
   identity.saveName(name);
   store.set({ me: { playerId: msg.playerId ?? null, name, token: typeof msg.token === 'string' ? msg.token : null } });
-  store.set({ presence: { online: msg.online ?? null, matchmaking: normalizeMatchmaking(msg.matchmaking), serverNow: msg.serverNow } });
+  store.set({
+    presence: {
+      online: msg.online ?? null,
+      activeHumans: msg.activeHumans ?? msg.serverLoad?.activeHumans ?? null,
+      maxPlayingHumans: msg.maxPlayingHumans ?? msg.serverLoad?.maxPlayingHumans ?? 60,
+      humanLimitReached: !!(msg.humanLimitReached ?? msg.serverLoad?.humanLimitReached),
+      activeBots: msg.activeBots ?? msg.serverLoad?.activeBots ?? null,
+      maxBots: msg.maxBots ?? msg.serverLoad?.maxBots ?? 10,
+      matchmaking: normalizeMatchmaking(msg.matchmaking),
+      serverNow: msg.serverNow,
+    },
+  });
   welcomeAt = Date.now();
+  setWelcomeMods(msg);
 
   if (prevId != null && prevId !== msg.playerId) {
     // A brand-new server session (the server restarted — crashed / killed, so no room.closed arrived — or this session
@@ -231,7 +244,18 @@ function wireNet() {
   net.on('welcome', onWelcome);
   net.on('presence', (msg) => {
     if (!Number.isSafeInteger(msg.online) || msg.online < 0) return;
-    store.set({ presence: { online: msg.online, matchmaking: normalizeMatchmaking(msg.matchmaking), serverNow: msg.serverNow } });
+    store.set({
+      presence: {
+        online: msg.online,
+        activeHumans: msg.activeHumans ?? null,
+        maxPlayingHumans: msg.maxPlayingHumans ?? 60,
+        humanLimitReached: !!msg.humanLimitReached,
+        activeBots: msg.activeBots ?? null,
+        maxBots: msg.maxBots ?? 10,
+        matchmaking: normalizeMatchmaking(msg.matchmaking),
+        serverNow: msg.serverNow,
+      },
+    });
     store.patch('lobbyStats', { online: msg.online });
   });
   net.on('site.announcement', msg => store.set({ announcement: announcementFromMessage(msg) }));

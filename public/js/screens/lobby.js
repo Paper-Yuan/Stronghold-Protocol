@@ -32,6 +32,7 @@ import { SettingsButton } from '../ui/settings.js';
 import { PwaInstallButton, fullscreen } from '../ui/device.js';
 import { LoadoutButton } from './loadout.js';
 import { SweepReport } from './sweep.js';
+import { ServerRedirectModal } from '../ui/serverRedirectModal.js';
 import { ProtocolScene } from '../ui/protocolScene.js';
 import { SearchPanel, RadarScene, CreateArt, JoinArt } from '../ui/matchFlow.js';
 import { useLeave } from '../ui/transitions.js';
@@ -40,6 +41,7 @@ import { net, identity } from '../net.js';
 import { store, useStore, shallowEqual, loadPref, savePref } from '../store.js';
 import { getConfig, getMode, getStage, useData } from '../data.js';
 import { t, tc, N_ } from '../../../shared/i18n.js';
+import * as roomMods from '../roomMods.js';
 
 // What the server offers: shared/protocol.js is the server's own message list, so a deployment without 搜寻队友 /
 // 快速匹配 (match.queue), 无限火力 (room.setRandom), 私密房间 (room.setPrivate) or the public room list (room.list)
@@ -737,6 +739,7 @@ function MatchmakingModal({ open, onClose, onJoin, onSpectate }) {
                       <span>${DIFFICULTY_NAMES[r.difficulty] || r.difficulty}</span>
                     </span>
                     ${r.random ? html`<span class="mm-room-rm">无限火力 · 1.1 · ${r.variant === 'endurance' ? '持久鏖战' : r.variant === 'marathon' ? '最长时赛' : '快速突袭'}</span>` : null}
+                    ${r.mods ? html`<span class="mm-room-mod-badge" title="本房间启用了创意工坊模组" style="display:inline-flex;align-items:center;gap:3px;padding:2px 6px;border:1px solid ${r.mods.packs?.some(p => p.combat) ? '#ff9800' : '#4caf50'};color:${r.mods.packs?.some(p => p.combat) ? '#ff9800' : '#4caf50'};font-size:11px;border-radius:2px;margin-left:6px;"><${Icon} name="box" />MOD: ${r.mods.count}${r.mods.packs?.some(p => p.combat) ? ' (改数值)' : ''}</span>` : null}
                     <span class="mm-room-players">
                       <${Icon} name="users" />
                       <span class="num">${r.humans} / ${r.maxSeats || MAX_SEATS}</span>
@@ -787,6 +790,21 @@ export function LobbyScreen() {
   const matchmakingCounts = useStore(s => s.presence?.matchmaking);
   const me = useStore((s) => s.me, shallowEqual);
   const conn = useStore((s) => s.connection, shallowEqual);
+  const presence = useStore((s) => s.presence);
+  const serverLoad = useStore((s) => s.serverLoad);
+  const [redirectModalOpen, setRedirectModalOpen] = useState(false);
+  const hasPromptedOverload = useRef(false);
+
+  const activeHumans = presence?.activeHumans ?? serverLoad?.activeHumans ?? 0;
+  const maxPlayingHumans = presence?.maxPlayingHumans ?? serverLoad?.maxPlayingHumans ?? 60;
+  const isOverload = activeHumans >= maxPlayingHumans || presence?.humanLimitReached || serverLoad?.humanLimitReached;
+
+  useEffect(() => {
+    if (isOverload && !hasPromptedOverload.current) {
+      hasPromptedOverload.current = true;
+      setRedirectModalOpen(true);
+    }
+  }, [isOverload]);
   useData('config');
   const [simulation, setSimulation] = useState(lobbySimulationPreference);
   const [difficulty, setDifficulty] = useState(() => preferredDifficulty(lobbySimulationPreference()));
@@ -879,7 +897,15 @@ export function LobbyScreen() {
     if (!online) { toast(t('尚未连接到服务器，请稍候'), 'warn'); return; }
     inFlight.current = true;
     setBusy(kind);
-    try { await fn(); } catch (err) { toastError(err); } finally {
+    try {
+      await fn();
+    } catch (err) {
+      if (err?.message?.includes('全服同时游玩人数已达上限') || err?.message?.includes('HUMAN_LIMIT_REACHED') || (err?.code === ERR.RATE && String(err?.message || '').includes('上限'))) {
+        setRedirectModalOpen(true);
+        return;
+      }
+      toastError(err);
+    } finally {
       inFlight.current = false;
       if (alive.current) setBusy(null);
     }
@@ -889,7 +915,12 @@ export function LobbyScreen() {
     savePref('lobby.firepowerVariant', v);
   };
 
-  const create = () => run('create', () => net.request('room.create', { mode: roomMode, difficulty, random: randomMode, private: roomMode !== 'solo' && privateRoom, ...(randomMode ? { variant } : {}) }));
+  const create = () => run('create', () => net.request('room.create', {
+    ...roomMods.buildCreatePayload(roomMode, difficulty),
+    random: randomMode,
+    private: roomMode !== 'solo' && privateRoom,
+    ...(randomMode ? { variant } : {}),
+  }));
   const queueMatch = () => run('queue', () => net.request('match.queue', { mode: roomMode, difficulty, random: randomMode, ...(randomMode ? { variant } : {}), fillBots: false }));
   const cancelMatch = () => run('cancel', () => net.request('match.cancel'));
   const join = (c = code, federationNode) => {
@@ -1042,5 +1073,11 @@ export function LobbyScreen() {
 
     <${MatchmakingModal} open=${modalOpen} onClose=${() => setModalOpen(false)} onJoin=${join} onSpectate=${spectate} />
     ${sweepOpen ? html`<${SweepReport} onClose=${() => setSweepOpen(false)} />` : null}
+    <${ServerRedirectModal}
+      open=${redirectModalOpen}
+      onClose=${() => setRedirectModalOpen(false)}
+      activeHumans=${activeHumans}
+      maxPlayingHumans=${maxPlayingHumans}
+    />
   </div>`;
 }
