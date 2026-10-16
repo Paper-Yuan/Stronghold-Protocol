@@ -47,6 +47,8 @@ import { createStaticHandler } from './http/customStatic.js';
 import { createWorkshopServe } from './http/workshopServe.js';
 import { createModApi } from './http/modApi.js';
 import { mountPlayerAdmin } from './playerAdmin.js';
+import { createPublicApi } from './publicApi.js';
+import { Announcements } from './announcements.js';
 import { WORKSHOP_DIR } from './workshop.js';
 import { createPluginRegistry } from './plugins/registry.js';
 import { computeVanillaContent } from './plugins/identity.js';
@@ -64,7 +66,7 @@ import { createRequestHandler } from './http/routes.js';
 import { createTrafficCounter } from './http/traffic.js';
 import { createAssetIndex } from './http/assetIndex.js';
 import { createManifestViews } from './http/assetViews.js';
-import { answerClientError } from './http/common.js';
+import { answerClientError, sendJson, sendError } from './http/common.js';
 import { lanUrls, displayHost, isProcessEntry, runMain } from './http/boot.js';
 
 // The public API of this module (tests and tools import it from here); the code lives in ./http/.
@@ -161,8 +163,18 @@ export async function startServer(opts = {}) {
   resetBuildTag();
   buildTag();
 
+  // 公开只读 API (server/publicApi.js) 与维护公告 (server/announcements.js)：房间目录、建房链接、ping、公告。
+  // 客户端主流程不依赖它们（房间目录页与外部工具在用），但它们是本仓库服务端表面的一部分。
+  const announcementFile = opts.announcementsFile !== undefined ? opts.announcementsFile
+    : (process.env.SP_ANNOUNCEMENTS_FILE || path.join(ROOT, 'config/announcements.json'));
+  const announcements = new Announcements({
+    file: announcementFile ? path.resolve(announcementFile) : null,
+    broadcast: (msg) => network.broadcast(msg), log, pollMs: opts.announcementPollMs,
+  });
+  await announcements.start();
+  const publicApi = createPublicApi({ lobby, announcements, trustProxy: network.opts.trustProxy, sendJson, sendError });
   const traffic = createTrafficCounter();
-  const server = http.createServer(createRequestHandler({ serveStatic, modApi, csp: process.env.SP_CSP === 'off' ? null : siteCsp(publicDir), health: { startedAt, network, registry, lobby, content, traffic, assetIndex, views, trusted:trustedRuntime?.health }, log, trustProxy: network.opts.trustProxy, studio, trustedRuntime }));
+  const server = http.createServer(createRequestHandler({ serveStatic, modApi, publicApi, csp: process.env.SP_CSP === 'off' ? null : siteCsp(publicDir), health: { startedAt, network, registry, lobby, content, traffic, assetIndex, views, trusted:trustedRuntime?.health }, log, trustProxy: network.opts.trustProxy, studio, trustedRuntime }));
   server.on('clientError', answerClientError);
   // 管理端 (server/playerAdmin.js): /admin/ 页面与 /admin/api/*（登录、快照、封禁、公告、模组上传/拉取…）。它读
   // config/player-admin/config.json：没有配置时 /admin* 一律 404，其余请求原样转给已有的监听器。
@@ -227,6 +239,7 @@ export async function startServer(opts = {}) {
     if (closing) return closing;
     closing = (async () => {
       try { await playerAdmin?.unmount(); } catch (e) { log.error('[shutdown] player admin', e); }
+      try { await announcements.stop?.(); } catch (e) { log.error('[shutdown] announcements', e); }
       try { lobby.shutdown('shutdown'); } catch (e) { log.error('[shutdown] lobby', e); }
       try { hosts.close(); } catch (e) { log.error('[shutdown] match hosts', e); }
       network.close();

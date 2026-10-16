@@ -79,7 +79,7 @@ const wantsTraffic = (query) => /(?:^|&)traffic(?:=(?:1|true|yes))?(?:&|$)/i.tes
  *   plugin studio (server/studio/index.js), or none
  * @returns {(req: import('node:http').IncomingMessage, res: import('node:http').ServerResponse) => void}
  */
-export function createRequestHandler({ serveStatic, health, log, trustProxy = 'auto', studio = null, csp = null, trustedRuntime = null, modApi = null }) {
+export function createRequestHandler({ serveStatic, health, log, trustProxy = 'auto', studio = null, csp = null, trustedRuntime = null, modApi = null, publicApi = null }) {
   async function handleRequest(req, res) {
     const url = req.url || '/';
     if (url.length > MAX_URL_LENGTH) { sendError(req, res, 414, '请求地址过长 · URI too long'); return; }
@@ -90,6 +90,9 @@ export function createRequestHandler({ serveStatic, health, log, trustProxy = 'a
     // 模组管理 API (server/http/modApi.js)：POST 的那几条（热重载 / 从远程同步）必须在这里回答 —— 下面那道方法门
     // 只放 GET/HEAD 过，晚一步就是 405。
     if (modApi && modApi.handles(parts.rawPath)) { await modApi.handle(req, res, parts.rawPath, parts.query); return; }
+    // 公开只读 API (server/publicApi.js: /api/rooms · /api/create_room · /api/ping · /api/announcement)：它们自己
+    // 判方法（含 POST/OPTIONS 与 405），所以也要在这一道方法门之前。
+    if (publicApi && await publicApi(req, res, parts.rawPath)) return;
     if (req.method !== 'GET' && req.method !== 'HEAD') {
       res.setHeader('Allow', 'GET, HEAD');
       sendError(req, res, 405, '不支持的请求方法 · Method not allowed');
