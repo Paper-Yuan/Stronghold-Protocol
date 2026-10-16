@@ -137,7 +137,7 @@ export async function startServer(opts = {}) {
   let workshop = null;
   /** （重新）装载工坊并换掉服务表 —— `POST /api/mods/reload` 与 sync-from-remote 都用它，导入模组因此无需重启。 */
   const loadWorkshopTables = async () => {
-    const served = await createWorkshopServe({ data, workshopDir, log });
+    const served = await createWorkshopServe({ data, workshopDir, log, views });
     workshop = served.tables;
     for (const e of served.errors || []) log.warn?.(`[workshop] ${e.pack} ${e.path}: ${e.reason}`);
     return served;

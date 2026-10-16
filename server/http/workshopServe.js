@@ -27,6 +27,7 @@ import {
 import { WORKSHOP_PANEL_PREFIX, WORKSHOP_RESOURCE_PREFIX } from '../../shared/workshop.js';
 import { WORKSHOP_DIR, loadWorkshop, loadWorkshopKits, loadWorkshopPanels } from '../workshop.js';
 import { buildModCatalog } from '../modCatalog.js';
+import { VIEW_MANIFESTS } from './assetViews.js';
 
 /** 包声明的战斗逻辑模块（`pack.json.server.battle`, DESIGN §28.17）的 URL 前缀。 */
 export const WORKSHOP_BATTLE_PREFIX = '/workshop-battle/';
@@ -60,11 +61,36 @@ function resolvePackRelativeKit(decoded, kitDirs) {
 }
 
 /**
+ * 包 touch 过的 /data/<file>.json 的合并体。
+ *
+ * **上游的资源视图优先**：`assetViews.js` 拥有 `assets.json` / `local-assets.json` / `local-fx.json` 这三份清单
+ * （它把每个美术 URL 改写成带内容哈希的 `/assets/~<hash>/` 形式，并给出内容 ETag）。工坊的合并体是**原始
+ * `data/assets`**，若让它先把 `/data/assets.json` 答掉，客户端就会拿到不带哈希的 URL —— 不可变缓存失效，
+ * `test/asset-index.test.js` 直接五连红。所以在有视图时这三份让位给视图。
+ *
+ * 代价：包对那几个清单的**增补**暂不合并（包的素材文件本身仍由 `/workshop-assets/` 提供）。下一步是把增补合并到
+ * 视图文档上（用 `assetViews.js rewriteManifest` 改写过的 doc 当底），而不是拿原始 `data.assets`。
+ * @param {any} data
+ * @param {any} loaded
+ * @param {any} views
+ * @param {any} log
+ * @returns {Map<string, Buffer>}
+ */
+function workshopDataFiles(data, loaded, views, log) {
+  const out = buildWorkshopDataFiles(data, loaded);
+  if (!views) return out;
+  for (const name of VIEW_MANIFESTS) {
+    if (out.delete(name.replace(/\.json$/, ''))) log?.warn?.(`[workshop] /data/${name} 由资源视图提供（哈希 URL），工坊对它的增补暂不合并`);
+  }
+  return out;
+}
+
+/**
  * 装载一次工坊并建好所有服务表（进程级，`server/index.js` 启动时调一次）。
  * @param {{ data?: any, workshopDir?: string, log?: any, mount?: Array<{prefix: string, name?: string, dir?: string}> }} o
  * @returns {Promise<{ tables: object, errors: Array<object> }>}
  */
-export async function createWorkshopServe({ data = null, workshopDir = WORKSHOP_DIR, log = console, mount = [] } = {}) {
+export async function createWorkshopServe({ data = null, workshopDir = WORKSHOP_DIR, log = console, mount = [], views = null } = {}) {
   const loaded = loadWorkshop(workshopDir, { log });
   const knownIds = new Set([
     ...Object.keys((data && data.chess) || {}),
@@ -77,7 +103,7 @@ export async function createWorkshopServe({ data = null, workshopDir = WORKSHOP_
   const tables = {
     modsJson: createModsRoute(loaded, catalog),
     workshopRoutes: routes.routes,
-    workshopJson: buildWorkshopDataFiles(data, loaded),
+    workshopJson: workshopDataFiles(data, loaded, views, log),
     workshopI18n: buildWorkshopI18nFiles(loaded, { log }),
     workshopBattleFiles: workshopBattleFilesFor(kits.modules, workshopDir),
     workshopKitFiles: workshopKitFilesFor(kits.modules, workshopDir),

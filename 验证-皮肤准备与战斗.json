@@ -37,7 +37,7 @@
     "skin": "char_498_inside@kitchen#2",
     "skel": "/assets/spine/op/char_498_inside/char_498_inside_kitchen_2/front/char_498_inside_kitchen_2.skel",
     "ready": true,
-    "scaleY": 0.1717023156489055
+    "scaleY": 1
   },
   "errors": []
 }
