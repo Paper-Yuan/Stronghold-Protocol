@@ -209,7 +209,7 @@ export function difficultyInfo(roomMode, difficulty, { random = false, variant =
   if (isInfiniteMode(roomMode)) {
     return {
       code: 'INFINITE',
-      desc: t('单人无限模式：前 4 回合是普通怪与精英怪混合的高压波次，突破关底后进入无限循环，边打边滚雪球。'),
+      desc: t('单人无限模式：撑过前 4 回合，关底之后就是没有尽头的循环。'),
       effects: [
         t('从第 15 回合起，敌人生命、攻击与速度按回合数指数膨胀'),
         t('突破第 15 回合后解除单局 3 个阵营的限制，在全部怪池里跨阵营抽取混合编组'),

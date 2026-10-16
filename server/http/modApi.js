@@ -79,6 +79,8 @@ export function createModApi({ workshopDir, log = console, reload = null }) {
         enabled: rawMeta?.enabled !== false && p?.manifest?.enabled !== false,
         hash: p?.hash || '',
         operators: chessKeys,
+        // C 层面板（pack.json client.panels）：客户端宿主 public/js/ui/extensions.js 按这张表挂载。
+        client: rawMeta?.client || null,
         downloadUrl: `/api/mods/download?id=${encodeURIComponent(dirName)}`,
       });
     }

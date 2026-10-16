@@ -1,5 +1,6 @@
 // public/js/ui/modManagerModal.js — In-game Mod Management Dialog (Settings Level 2)
 import { useState, useEffect } from '../../vendor/hooks.module.js';
+import { isSoloRoomMode } from '../../shared/infiniteMode.js';
 import { html, Modal, Button, Icon, MicroLabel } from './components.js';
 import { GIcon } from './gameComponents.js';
 import { t } from '../../../shared/i18n.js';
@@ -157,7 +158,7 @@ export function ModManagerModal({ open, onClose }) {
       const st = store.get();
       const room = st.room;
       const myId = st.me?.playerId;
-      if (room && (!room.hostId || room.hostId === myId || room.mode === 'solo')) {
+      if (room && (!room.hostId || room.hostId === myId || isSoloRoomMode(room.mode))) {   // 单人/超限房不声明房间模组，否则服务端回 BAD_TARGET
         net.request('room.setMods', { modIds: enabledIds }).catch((e) => {
           console.warn('[modManager] Failed to sync room.setMods:', e);
         });

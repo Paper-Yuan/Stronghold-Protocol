@@ -43,6 +43,7 @@ import { net, identity, NetError } from './net.js';
 import { store, useStore, emptyMatch, selectRoute, sessionResetNotice, isSpectating, pushChatMessage, clearChat, roomIdentityChanged } from './store.js';
 import { getRoomDanmaku } from './ui/roomDanmaku.js';
 import { setWelcomeMods } from './roomMods.js';
+import { installModExtensions } from './ui/extensions.js';
 import { data } from './data.js';
 import { GAME_FILES } from './ui/gameComponents.js';
 import { TitleScreen, sanitizeName } from './screens/title.js';
@@ -457,6 +458,7 @@ async function boot() {
   // 干员皮肤 (docs/SKINS.md): the local choice, mirrored to the room through room.skins (ui/skins.js)
   installSkinsSync({ net });
   // the room's cosmetic plugins and the player's own over the art manifest (content.js; nothing is fetched without them)
+  installModExtensions(); // 工坊包的客户端面板（client.panels）：挂载 + 组件改写
   installContent({ toast });
   // a room with gameplay plugins: its content set downloaded, checked and shown (content.js — DESIGN §32.6)
   installContentSet({ toast });

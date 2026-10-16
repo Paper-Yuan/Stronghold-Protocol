@@ -6,6 +6,7 @@
 // blocks the strategy draft's 本局信息 dialog shows (screens/bandDraft.js).
 
 import { useState } from '../../vendor/hooks.module.js';
+import { isSoloRoomMode } from '../../../shared/infiniteMode.js';
 import { html, Button, Icon, MicroLabel } from '../ui/components.js';
 import { useGameData, Img, RichText } from '../ui/gameComponents.js';
 import { StepHeader, ExitModal } from '../ui/matchChrome.js';
@@ -27,7 +28,7 @@ export function BriefingScreen() {
   const pub = useStore((s) => s.match.public);
   const priv = useStore((s) => s.match.private);
   const myId = useStore((s) => s.me.playerId);
-  const solo = useStore((s) => s.room?.mode === 'solo') || String(pub?.modeId || '').includes('single');
+  const solo = useStore((s) => isSoloRoomMode(s.room?.mode)) || String(pub?.modeId || '').includes('single');
   // gameplay plugins (DESIGN §32.6): the briefing says the match is unofficial
   const room = useStore((s) => s.room);
   const gd = useGameData();

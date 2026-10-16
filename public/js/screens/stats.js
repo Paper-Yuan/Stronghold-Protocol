@@ -16,6 +16,7 @@
 // downloads them): the statistics tabs read config / bands / bonds / assets only.
 
 import { useEffect, useMemo, useRef, useState } from '../../vendor/hooks.module.js';
+import { isSoloRoomMode } from '../../../shared/infiniteMode.js';
 import { DIFFICULTIES, DIFFICULTY_NAMES, DIFFICULTY_COLORS } from '../../../shared/constants.js';
 import { html, Icon, MicroLabel, Spinner, Button, confirmDialog } from '../ui/components.js';
 import { useGameData, makeLookups, BandIcon, BondGlyph, Img } from '../ui/gameComponents.js';
@@ -165,7 +166,7 @@ function Overview({ agg, gd, nickname, records }) {
           ];
           return html`<tr key=${mode} class="st-modegrid__row">
             <th scope="row" class="st-modegrid__mode">
-              <${Icon} name=${mode === 'solo' ? 'user' : 'users'} />
+              <${Icon} name=${isSoloRoomMode(mode) ? 'user' : 'users'} />
               <span class="st-modegrid__name">${t(label)}</span>
             </th>
             ${metrics.map(({ value, label }) => html`<td key=${label} class="st-modegrid__cell">

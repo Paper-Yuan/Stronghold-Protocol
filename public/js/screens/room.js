@@ -118,7 +118,7 @@ export function roomFacts(room, myId) {
  * @returns {{ on: boolean, editable: boolean } | null}
  */
 export function aiLastOption(room, myId) {
-  if (!room || room.mode === 'solo') return null;
+  if (!room || isSoloRoomMode(room.mode)) return null;   // 超限模拟也不发邀请链接
   return { on: room.aiPicksLast === true, editable: room.hostId != null && room.hostId === myId };
 }
 

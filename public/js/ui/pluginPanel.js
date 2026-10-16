@@ -24,6 +24,7 @@
 // here. Texts go through t() (docs/I18N.md).
 
 import { useEffect, useRef, useState } from '../../vendor/hooks.module.js';
+import { isSoloRoomMode } from '../../shared/infiniteMode.js';
 import { APP_VERSION } from '../../../shared/constants.js';
 import { html, Modal, Button, Icon } from './components.js';
 import { PluginSettings, settingsSelection } from './pluginSettings.js';
@@ -84,7 +85,7 @@ function ContentState({ cs }) {
 function ModePicker({ room, f, busy, onPick }) {
   const modes = f.modes.filter((m) => m.roomMode === room.mode);
   if (!f.modded || !modes.length) return null;
-  const official = `mode_${room.mode === 'solo' ? 'single' : 'multi'}_${String(room.difficulty || 'NORMAL').toLowerCase()}`;
+  const official = `mode_${isSoloRoomMode(room.mode) ? 'single' : 'multi'}_${String(room.difficulty || 'NORMAL').toLowerCase()}`;
   const options = [{ id: official, name: t('原版模式（按难度）') }, ...modes.map((m) => ({ id: m.id, name: typeof m.name === 'string' ? m.name : m.id }))];
   const current = f.modeId || official;
   return html`<div class="plugpanel__modes" role="radiogroup" aria-label=${t('模式')} data-testid="plugin-modes">

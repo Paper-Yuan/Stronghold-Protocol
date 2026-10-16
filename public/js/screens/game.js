@@ -75,6 +75,8 @@
 // phase). Its pill reads 观战中, never "你已被淘汰"; its exit only leaves the seat (ui/matchChrome.js ExitModal).
 
 import { useCallback, useEffect, useMemo, useRef, useState } from '../../vendor/hooks.module.js';
+import { isSoloRoomMode } from '../../../shared/infiniteMode.js';
+import { packWraps } from '../ui/extensions.js';
 import { PHASE, GEO } from '../../../shared/constants.js';
 import { html, Spinner, PhaseBanner, ResultDialog, Icon, Button, confirmDialog, closeAllDialogs, useTicker } from '../ui/components.js';
 import { useGameData, GIcon } from '../ui/gameComponents.js';
@@ -210,7 +212,7 @@ function MatchScreen() {
   const myId = useStore((s) => s.me.playerId);
   const conn = useStore((s) => s.connection, shallowEqual);
   const emotes = useStore((s) => s.emotes);
-  const roomSolo = useStore((s) => s.room?.mode === 'solo');
+  const roomSolo = useStore((s) => isSoloRoomMode(s.room?.mode));
   const spectator = useStore((s) => isSpectating(s.room, s.me.playerId));
   const metricsSetting = useSettings().combatMetrics === true;
   // gameplay plugins (DESIGN §32.6): the HUD corner's MOD mark — re-rendered only when the room's content changes
@@ -1646,6 +1648,7 @@ function MatchScreen() {
 
   return html`<div class=${cx('screen', 'gm', `gm--${mode}`, drag && 'is-dragging', barCollapsed && 'is-collapsed', (sp || hasPersonalChoice) && 'has-sp', pen && 'is-pen', readyWhy && 'has-readywhy')}
       data-camera=${pen ? 'pen' : camKind}>
+    <div class="mod-host" data-ui-slot="screen.game.overlay" aria-hidden="true"></div>
     <div class="gm__field" ref=${hostRef} onContextMenu=${(e) => e.preventDefault()}></div>
     ${viewKind === 'loading' ? html`<div class="gm__loading"><${Spinner} label="LOADING FIELD" /></div>` : null}
     <div class="gm__vignette" aria-hidden="true"></div>
@@ -1654,6 +1657,7 @@ function MatchScreen() {
     ${showPrep && view && viewKind !== 'loading' && priv && !pen ? html`<${StandInTags} view=${view} priv=${priv} getChess=${gd.chess} backups=${gd.backups} diyData=${{ chess: data.get('chess'), backups: data.get('backups') }} />` : null}
 
     <div class="gm__hud" ref=${hudElRef}>
+      ${packWraps('game.hud.topBar', { pub, priv, myId }).map((fn) => fn(null))}
       <${TopBar} pub=${pub} priv=${priv} conn=${conn} hud=${hud} total=${total} drawer=${drawer}
         onExit=${() => setExitOpen(true)} onDrawer=${(t) => setDrawer((d) => (d ? null : t))} onReady=${toggleReady}
         readyBusy=${readyBusy} readyCount=${readyCount} playerCount=${solo ? 1 : aliveCount}
