@@ -1,8 +1,0 @@
-{
-  "version": 1,
-  "username": "tester",
-  "admin": true,
-  "publicOrigin": "http://127.0.0.1:3000",
-  "salt": "884448dc1d741eb816dd287cd3afa4ec",
-  "passwordHash": "05c4915eddac767b11387eb7146960a1c9d76f72aaf97ac13db56c0a3b1d713e"
-}
