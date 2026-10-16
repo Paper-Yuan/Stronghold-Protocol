@@ -56,6 +56,20 @@ import { t, tParts, N_ } from '../../../shared/i18n.js';
 import { copyText } from '../ui/clipboard.js';
 import { toast } from '../ui/toasts.js';
 
+/**
+ * 设置里**启用**的模组 id 集合（`sp.pref.enabledMods`，与 modManagerModal / roomMods 同一个键）。
+ * 花名册与徽标计数据此隐藏没启用的包：loadoutModel 的 `isLoadoutSlot(c, enabledModIds)` 早就支持，
+ * 只是从前没人把集合传进来。**必须放在模块级** —— 花名册、导出、徽标计数三处都会调它。
+ * @returns {Set<string>}
+ */
+function enabledPacks() {
+  try {
+    const raw = localStorage.getItem('sp.pref.enabledMods');
+    const list = raw ? JSON.parse(raw) : null;
+    return new Set(Array.isArray(list) ? list : []);
+  } catch { return new Set(); }
+}
+
 export { openLoadout, closeLoadout };
 
 const cx = (...p) => p.flat().filter(Boolean).join(' ');
@@ -776,15 +790,13 @@ function LoadoutScreen({ st, leaving = false }) {
   const m = data.get('assets');
   const getChess = (id) => data.lookup('chess', id);
   const getBond = (id) => data.lookup('bonds', id);
-  // 花名册按**设置里启用**的模组过滤：没启用的包，它的干员不该出现在这里（loadoutModel 的 isLoadoutSlot 早就支持，
-  // 只是以前没人把集合传进来）。'sp.pref.enabledMods' 与 modManagerModal / roomMods 是同一个键。
-  const enabledPacks = () => {
-    try {
-      const raw = localStorage.getItem('sp.pref.enabledMods');
-      const list = raw ? JSON.parse(raw) : null;
-      return new Set(Array.isArray(list) ? list : []);
-    } catch { return new Set(); }
-  };
+  const [modsRev, setModsRev] = useState(0);
+  useEffect(() => {
+    const onMods = () => setModsRev((v) => v + 1);
+    window.addEventListener('sp:mods-changed', onMods);
+    return () => window.removeEventListener('sp:mods-changed', onMods);
+  }, []);
+  // opened from a member of S.W.E.E.P.报告's 盟约报告 (screens/sweep.js): straight to that operator's detail
   const roster = useMemo(() => rosterOf(data.list('chess'), enabledPacks()), [ready, data.locale(), modsRev]); // (names follow a language switch)
   const bonds = useMemo(() => {
     const used = new Set(roster.flatMap((c) => c.bonds || []));
@@ -808,13 +820,6 @@ function LoadoutScreen({ st, leaving = false }) {
   const [deckTab, setDeckTab] = useState('ops');
   const [quick, setQuick] = useState(null);                // null | 'skill' | 'module' | 'cult' | 'skin'
   // 模组开关一改，花名册要跟着重算（modManagerModal 会派发 sp:mods-changed）。
-  const [modsRev, setModsRev] = useState(0);
-  useEffect(() => {
-    const onMods = () => setModsRev((v) => v + 1);
-    window.addEventListener('sp:mods-changed', onMods);
-    return () => window.removeEventListener('sp:mods-changed', onMods);
-  }, []);
-  // opened from a member of S.W.E.E.P.报告's 盟约报告 (screens/sweep.js): straight to that operator's detail
   const [drawer, setDrawer] = useState(() => st.from === 'sweep' && !!st.sel);
   const [menu, setMenu] = useState(null);                  // null | 'filter' | 'more'
   const [help, setHelp] = useState(false);
