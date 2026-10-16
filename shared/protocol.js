@@ -26,6 +26,11 @@ const isMap = (v, max, key, val) => {
   for (const k of keys) if (!key(k) || !val(v[k])) return false;
   return true;
 };
+
+// 干员皮肤 (docs/SKINS.md): the client's skin selection and its wire limits, shared with the server.
+export const SKIN_LIMITS = Object.freeze({ entries: 160, idLen: 64 });
+export const isSkinId = (v) => typeof v === 'string' && v.length > 0 && v.length <= SKIN_LIMITS.idLen && /^[A-Za-z0-9_@#+.\-]+$/.test(v);
+export const isSkinSelection = (v) => isMap(v, SKIN_LIMITS.entries, isId, isSkinId);
 const isList = (v, max, item) => Array.isArray(v) && v.length <= max && v.every(item);
 const isScalar = (v) => isStr(v, 64) || isNum(v) || isBool(v);
 
