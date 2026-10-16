@@ -37,6 +37,7 @@ import { toast, toastError } from '../ui/toasts.js';
 import { PluginTag, isModdedRoom } from '../ui/pluginTag.js';
 import { hasScriptConsent, rememberScriptConsent } from '../content.js';
 import { mountRoomChat } from '../ui/roomChat.js';
+import { isInfiniteMode } from '../../../shared/infiniteMode.js';
 import { copyText } from '../ui/clipboard.js';
 import { GuideButton } from '../ui/guide.js';
 import { openStats } from './stats.js';
@@ -182,7 +183,7 @@ function SeatCard({ seat, index, room, facts, myId, busy, onKick, onInvite, sear
   const [bad, setBad] = useState(null);
   const flash = useRise(!!seat && (seat.ready || seat.isBot || seat.playerId === room.hostId));
   if (!seat) {
-    const invitable = room.mode !== 'solo' && !facts.spectating;
+    const invitable = room.mode === 'coop' && !facts.spectating;
     return html`<article class=${`rseat rseat--empty${searching ? ' is-searching' : ''}`} style=${`--i:${index}`}>
       <span class="rseat__clip" aria-hidden="true"></span>
       <header class="rseat__strip"><i></i><span class="num">P${index + 1}</span></header>
@@ -294,7 +295,7 @@ function RoomProtocol({ room, variant, onClose, onPick, busy, leaving = false })
 
 /** ⚙ of the bottom pill: 私密房间, 人数上限 (with the 10-seat constants), AI 队友最后选择, 无限火力 branch. */
 function RoomOptions({ room, facts, myId, busy, online, variant, onPrivate, onMaxSeats, onAiLast, onVariant, onClose, leaving = false }) {
-  const coop = room.mode !== 'solo';
+  const coop = room.mode === 'coop';   // solo_infinite（超限模拟）也是单人：渲染成独立模拟页
   const host = facts.isHost;
   useEffect(() => {
     const away = (e) => { if (!e.target.closest?.('.rs-opts, .rs-pill__gear')) onClose(); };
@@ -375,7 +376,7 @@ export function RoomScreen() {
   useEffect(() => { if (!found) return undefined; const id = setTimeout(() => alive.current && setFound(false), 1900); return () => clearTimeout(id); }, [found]);
 
   const online = conn.status === 'online';
-  const coop = room ? room.mode !== 'solo' : false;
+  const coop = room ? room.mode === 'coop' : false;
   const facts = room ? roomFacts(room, me.playerId) : null;
   const searchable = CAN_QUEUE && !!room && coop && facts.isHost && room.private !== true && facts.seats.length <= DEFAULT_SEATS && !room.inMatch;
   const firepower = room?.random === true;
@@ -421,7 +422,7 @@ export function RoomScreen() {
   const myReady = !!facts.mine?.ready;
   const info = difficultyInfo(room.mode, room.difficulty, { random: firepower, variant });
   const variantName = variant === 'endurance' ? '持久鏖战' : variant === 'marathon' ? '最长时赛' : '快速突袭';
-  const modeName = firepower ? `${RANDOM_MODE_NAME} · ${variantName}` : coop ? t('同盟模拟') : t('独立模拟');
+  const modeName = firepower ? `${RANDOM_MODE_NAME} · ${variantName}` : coop ? t('同盟模拟') : isInfiniteMode(room.mode) ? t('超限模拟') : t('独立模拟');
   const searchElapsed = facts.isHost && searchSince ? (Date.now() - searchSince) / 1000
     : room.matching?.startedAt ? (serverNow() - room.matching.startedAt) / 1000 : 0;
 
@@ -559,15 +560,15 @@ export function RoomScreen() {
         <div class="rs-pill">
           <button type="button" class="rs-pill__diff" disabled=${!facts.isHost || !!busy} onClick=${() => setPicker(true)}
             title=${facts.isHost ? t('更改模拟难度') : t('由创建者选择')}><${DifficultyIcon} difficulty=${room.difficulty} />${t(DIFFICULTY_NAMES[room.difficulty])}</button>
+          <button type="button" class=${`rs-pill__gear${opts ? ' is-on' : ''}`} onClick=${() => setOpts((v) => !v)} title=${t('同盟设置')} aria-label=${t('同盟设置')} aria-expanded=${opts ? 'true' : 'false'}>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10.3 2h3.4l.5 2.6 1.9.8 2.2-1.5 2.4 2.4-1.5 2.2.8 1.9 2.6.5v3.4l-2.6.5-.8 1.9 1.5 2.2-2.4 2.4-2.2-1.5-1.9.8-.5 2.6h-3.4l-.5-2.6-1.9-.8-2.2 1.5-2.4-2.4 1.5-2.2-.8-1.9L2 13.7v-3.4l2.6-.5.8-1.9-1.5-2.2 2.4-2.4 2.2 1.5 1.9-.8zM12 8.5a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7z" fill-rule="evenodd" /></svg>
+          </button>
         </div>
       </div>
       <div class="rs-foot__center">
         <p class="rs-hint">${coop ? html`<span class="rs-ready num" title=${t('已就绪')}>${facts.humans.map((s) => html`<${Icon} key=${s.playerId} name="user" class=${facts.isReady(s) ? 'is-on' : ''} />`)}<b>${facts.readyHumans}</b>/${facts.humans.length}</span>` : null}${statusLine}</p>
         <div class="rs-pill">
           ${coop && CAN_QUEUE ? html`<span class="rs-pill__mode" title=${t('精确搜寻：只与选择相同难度的博士组成同盟')}><${Icon} name="search" />${t('精确搜寻')}</span><i class="rs-pill__sep"></i>` : null}
-          <button type="button" class=${`rs-pill__gear${opts ? ' is-on' : ''}`} onClick=${() => setOpts((v) => !v)} title=${t('同盟设置')} aria-label=${t('同盟设置')} aria-expanded=${opts ? 'true' : 'false'}>
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10.3 2h3.4l.5 2.6 1.9.8 2.2-1.5 2.4 2.4-1.5 2.2.8 1.9 2.6.5v3.4l-2.6.5-.8 1.9 1.5 2.2-2.4 2.4-2.2-1.5-1.9.8-.5 2.6h-3.4l-.5-2.6-1.9-.8-2.2 1.5-2.4-2.4 1.5-2.2-.8-1.9L2 13.7v-3.4l2.6-.5.8-1.9-1.5-2.2 2.4-2.4 2.2 1.5 1.9-.8zM12 8.5a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7z" fill-rule="evenodd" /></svg>
-          </button>
           ${optsShown ? html`<${RoomOptions} room=${room} facts=${facts} myId=${me.playerId} busy=${busy} online=${online} variant=${variant}
             onPrivate=${setPrivate} onMaxSeats=${setMaxSeats} onAiLast=${setAiLast} onVariant=${setVariant} onClose=${() => setOpts(false)} leaving=${optsLeaving} />` : null}
         </div>
