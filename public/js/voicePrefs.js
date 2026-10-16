@@ -7,6 +7,9 @@ export const VOICE_LANGS = Object.freeze(['cn', 'jp', 'en', 'kr']);
 export const VOICE_PICKS = Object.freeze([...VOICE_LANGS, 'native']);
 /** Manifest tree of each non-Chinese dub. Chinese is audio.voice. */
 export const VOICE_TREES = Object.freeze({ jp: 'voiceJp', en: 'voiceEn', kr: 'voiceKr', native: 'voiceNative' });
+/** Manifest tree of each dub's **skin-exclusive** lines, keyed by the skin's voice word key (`skinId.replace('@','_')`).
+ * A skin that carries its own dub speaks it for as long as it is worn (audio.js voiceLine → data/skin-voices.json). */
+export const SKIN_TREES = Object.freeze({ cn: 'skinVoice', jp: 'skinVoiceJp', en: 'skinVoiceEn', kr: 'skinVoiceKr' });
 
 const TREE = Object.freeze({ cn: 'voice', ...VOICE_TREES });
 

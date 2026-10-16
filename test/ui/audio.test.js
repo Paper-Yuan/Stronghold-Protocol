@@ -6,7 +6,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { bgmKeyFor, resolveBgm, SfxLimiter, AudioManager, normalAttackSfx, installAudio, audio, combatTrackFor, COMBAT_TRACK_SWITCH_ROUND, VoiceGate, resultSpeaker, resultVoiceSlot, VOICE_PRIORITY, VOICE_COOLDOWN_MS, voiceLine, VOICE_TREES } from '../../public/js/audio.js';
+import { bgmKeyFor, resolveBgm, SfxLimiter, AudioManager, normalAttackSfx, installAudio, audio, combatTrackFor, COMBAT_TRACK_SWITCH_ROUND, VoiceGate, resultSpeaker, resultVoiceSlot, VOICE_PRIORITY, VOICE_COOLDOWN_MS, voiceLine, VOICE_TREES, SKIN_TREES } from '../../public/js/audio.js';
 import { mediaUrl } from '../../public/js/media.js';
 import { PHASE } from '../../shared/constants.js';
 import { makeBattle, chessRec } from '../helpers/battleHarness.js';
@@ -1198,4 +1198,51 @@ describe('漏怪 sound', () => {
       assert.ok(a.limiter.active <= a.limiter.maxVoices);
     } finally { restore(); }
   });
+  test('皮肤专属语音 (docs/SKINS.md): a worn skin speaks its own dub lines and falls back to the operator line', async () => {
+    assert.deepEqual(SKIN_TREES, { cn: 'skinVoice', jp: 'skinVoiceJp', en: 'skinVoiceEn', kr: 'skinVoiceKr' });
+    const id = 'char_472_pasngr';
+    const skin = 'char_472_pasngr@epoque#17';
+    const key = 'char_472_pasngr_epoque#17';
+    const audioM = {
+      voice: { [id]: { select: '/a/voice/cn/char_a/cn_021.mp3', place: '/a/voice/cn/char_a/cn_023.mp3', start: '/a/voice/cn/char_a/cn_019.mp3' } },
+      voiceJp: { [id]: { select: '/a/voice/jp/char_a/cn_021.mp3' } },
+      skinVoice: { [key]: { select: '/a/voice/cn/char_a_epoque#17/cn_021.mp3', start: '/a/voice/cn/char_a_epoque#17/cn_019.mp3' } },
+      skinVoiceJp: { [key]: { select: '/a/voice/jp/char_a_epoque#17/cn_021.mp3' } },
+    };
+    // the skin key is its skinId with '@' rewritten to '_' — the voice word key the files live under
+    assert.deepEqual(voiceLine(audioM, id, 'select', 'cn', () => 0, skin), { url: '/a/voice/cn/char_a_epoque#17/cn_021.mp3', fallback: '/a/voice/cn/char_a_epoque#17/cn_021.mp3' });
+    assert.deepEqual(voiceLine(audioM, id, 'select', 'jp', () => 0, skin), { url: '/a/voice/jp/char_a_epoque#17/cn_021.mp3', fallback: '/a/voice/cn/char_a_epoque#17/cn_021.mp3' }, '日本語: the skin JP line, its 中文 twin as fallback');
+    // a slot the skin lacks falls through to the operator's own line
+    assert.deepEqual(voiceLine(audioM, id, 'place', 'cn', () => 0, skin), { url: '/a/voice/cn/char_a/cn_023.mp3', fallback: null });
+    // a skin whose JP line this host lacks: the skin's Chinese line; with no skin line at all, the operator's
+    assert.deepEqual(voiceLine({ ...audioM, skinVoiceJp: {} }, id, 'select', 'jp', () => 0, skin), { url: '/a/voice/cn/char_a_epoque#17/cn_021.mp3', fallback: '/a/voice/cn/char_a_epoque#17/cn_021.mp3' });
+    assert.deepEqual(voiceLine({ ...audioM, skinVoiceJp: {}, skinVoice: {} }, id, 'select', 'jp', () => 0, skin), { url: '/a/voice/jp/char_a/cn_021.mp3', fallback: '/a/voice/cn/char_a/cn_021.mp3' });
+    // no skin, or a skin this host does not know: the operator line, exactly as before the feature
+    assert.deepEqual(voiceLine(audioM, id, 'select', 'cn', () => 0, null), { url: '/a/voice/cn/char_a/cn_021.mp3', fallback: null });
+    assert.deepEqual(voiceLine(audioM, id, 'select', 'cn', () => 0, 'char_999_x@nope#1'), { url: '/a/voice/cn/char_a/cn_021.mp3', fallback: null });
+
+    // the manager: o.skinId, and the skin the tracked unit carries (snapshot unitInfo `skin`)
+    const fw = fakeWindow();
+    const origFetch = globalThis.fetch;
+    globalThis.fetch = async () => ({ ok: true, arrayBuffer: async () => new ArrayBuffer(8) });
+    const tick = () => new Promise((r) => setTimeout(r, 10));
+    try {
+      const a = new AudioManager({ win: fw.win, getManifest: () => ({ audio: { sfx: { ui: {}, battle: {}, units: {} }, ...audioM } }) });
+      a.voiceGate = new VoiceGate({ gapMs: 0 });
+      a.install();
+      fw.fire('pointerdown');
+      await tick();
+      const played = [];
+      a._playVoice = (url) => played.push(url);
+      assert.equal(a.voice(id, 'select', { skinId: skin }), true);
+      assert.equal(played.at(-1), '/a/voice/cn/char_a_epoque#17/cn_021.mp3', 'o.skinId picks the skin line');
+      a.setFieldUnits([{ id: 1, spine: id, kind: 'operator', side: 0 }]);
+      assert.equal(a.voice(id, 'place', { unitKey: 1 }), true);
+      assert.equal(played.at(-1), '/a/voice/cn/char_a/cn_023.mp3', 'a unit with no skin speaks the operator line');
+      a.setFieldUnits([{ id: 2, spine: id, skin, kind: 'operator', side: 0 }]);
+      assert.equal(a.voice(id, 'start', { unitKey: 2 }), true);
+      assert.equal(played.at(-1), '/a/voice/cn/char_a_epoque#17/cn_019.mp3', 'the tracked skin picks the skin line');
+    } finally { globalThis.fetch = origFetch; }
+  });
+
 });

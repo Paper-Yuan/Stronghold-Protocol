@@ -78,8 +78,8 @@
 // `bgmKeyFor(route, pub)` picks the track for the current screen/phase (main.js calls `audio.install()`,
 // which follows the store).
 
-import { sanitizeVoiceOverrides, voiceLangFor, VOICE_LANGS, VOICE_TREES, VOICE_PICKS } from './voicePrefs.js';
-export { VOICE_TREES } from './voicePrefs.js';
+import { sanitizeVoiceOverrides, voiceLangFor, VOICE_LANGS, VOICE_TREES, VOICE_PICKS, SKIN_TREES } from './voicePrefs.js';
+export { VOICE_TREES, SKIN_TREES } from './voicePrefs.js';
 import { PHASE } from '../../shared/constants.js';
 import { mediaUrl } from './media.js';
 import { unhashedUrl } from '../../shared/assetPaths.js';
@@ -348,9 +348,29 @@ export const VOICE_TAP_SLOTS = Object.freeze(['select']);
  * @param {() => number} [random]
  * @returns {{ url: string, fallback: string|null } | null}
  */
-export function voiceLine(audio, charId, slot, lang = 'cn', random = Math.random) {
+export function voiceLine(audio, charId, slot, lang = 'cn', random = Math.random, skinId = null) {
   const lines = (line) => (Array.isArray(line) ? line : [line]).filter((u) => typeof u === 'string' && u);
   const draw = (list) => (list.length ? list[Math.min(list.length - 1, Math.floor(random() * list.length))] : null);
+
+  // 1) a skin that carries its own dub speaks it while it is worn (docs/SKINS.md): audio.skinVoice{,Jp,En,Kr},
+  //    keyed by the skin's voice word key. The worn dub wins, then 日本語, then 中文; a skin whose line this host
+  //    lacks falls through to the operator's own line below.
+  const skinKey = typeof skinId === 'string' && skinId ? skinId.replace('@', '_') : null;
+  if (skinKey) {
+    const branch = (l) => (SKIN_TREES[l] ? audio?.[SKIN_TREES[l]]?.[skinKey] : null);
+    const want = VOICE_TREES[lang] || lang === 'cn' ? lang : null;
+    let skinTarget = want ? lines(branch(want)?.[slot]) : [];
+    if (!skinTarget.length && want !== 'jp') skinTarget = lines(branch('jp')?.[slot]);
+    if (!skinTarget.length) skinTarget = lines(branch('cn')?.[slot]);
+    if (skinTarget.length) {
+      const dub = draw(skinTarget);
+      const skinCn = lines(branch('cn')?.[slot]);
+      const file = (u) => u.slice(u.lastIndexOf('/') + 1);
+      return { url: dub, fallback: skinCn.find((u) => file(u) === file(dub)) ?? draw(skinCn) ?? dub };
+    }
+  }
+
+  // 2) the operator's own line in the worn dub
   const cn = lines(audio?.voice?.[charId]?.[slot]);
   const tree = VOICE_TREES[lang];
   const dub = tree ? draw(lines(audio?.[tree]?.[charId]?.[slot])) : null;
@@ -1131,8 +1151,10 @@ export class AudioManager {
     try {
       if (!this.ctx || !this.voiceGain || this.volumes.muted || this.volumes.voice <= 0) return false;
       if (typeof charId !== 'string' || typeof slot !== 'string') return false;
-      // the chosen dub's line (settings 语音语言), with the Chinese file of the same name as its fallback (voiceLine)
-      const pick = () => voiceLine(this.getManifest()?.audio, charId, slot, this._voiceLangOf(charId));
+      // the worn skin's own line when it has one (o.skinId, or the unit the caller names), else the chosen dub's —
+      // with the Chinese file of the same name as its fallback (voiceLine)
+      const skinId = o.skinId ?? (o.unitKey != null ? this.units.get(o.unitKey)?.skinId : null) ?? null;
+      const pick = () => voiceLine(this.getManifest()?.audio, charId, slot, this._voiceLangOf(charId), Math.random, skinId);
       const line = pick();
       if (!line) return false;
       const now = typeof performance !== 'undefined' ? performance.now() : Date.now();
@@ -1265,8 +1287,11 @@ export class AudioManager {
     if (!u || typeof u !== 'object' || u.id == null) return;
     // UnitInfo.spine is the model id (charId / tokenId / enemyId) — the key of sfx.units; kind/defId pick the
     // official class sounds (operator vs summon vs device). `skillActive` follows the ['skill', id, 1] / 0 events.
+    // `skinId` is the worn skin (snapshot unitInfo `skin`; the fork's `skinId`, or a `spine` that carries the
+    // '@skin' form) — audio.voice() reads it back so the skin's own dub plays instead of the operator's.
     this.units.set(u.id, { def: u.spine || u.defId, defId: u.defId ?? null, kind: u.kind ?? null, side: u.side, boss: !!u.boss,
-      skillIndex: Number.isInteger(u.skillIndex) ? u.skillIndex : null, skillActive: !!u.skillActive });
+      skillIndex: Number.isInteger(u.skillIndex) ? u.skillIndex : null, skillActive: !!u.skillActive,
+      skinId: u.skinId || u.skin || (typeof u.spine === 'string' && u.spine.includes('@') ? u.spine : null) });
     // a cast that arrived before this unit was known (handleBattleEvents): it sounds now, once
     const held = this.pendingSkill.get(u.id);
     if (held) {
