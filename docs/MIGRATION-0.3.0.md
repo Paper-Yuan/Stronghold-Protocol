@@ -127,3 +127,33 @@
   * 对局侧要把**房间那一份**数据喂给 sim（`/sim/simdata.js` 的 `setSimData`），不只是 UI 的 store；
   * 浏览器的 kit 执行还需要 `@kit/` / `@sim/` 的解析 —— 服务端现在是**改写后**再给浏览器（`rewriteKitImports`），
     而 `shared/kitImports.js` 的 `kitImportMap()` **没有任何消费者**；从缓存里跑包字节这条路要先把这一环定下来。
+
+---
+
+## 剩余测试失败的定性（方法：把同一个套件放到本仓库 `2bed2e7f` 的 worktree 上跑）
+
+全量基线：**7820 用例 / 7733 通过 / 62 失败**（第 5 轮是 65）。逐簇定性结果：
+
+| 套件 | 处数 | 结论 | 依据 |
+|---|---|---|---|
+| `match/community-round30` | 7 | **本仓库既有** | 在本仓库树上同样 6+1 失败 |
+| `ui/playtest5-ui` | 3 | **本仓库既有** | 在本仓库树上同样 3 失败 |
+| `match/plugin-host` | 3 | 负载抖动 | 单独跑 7/7 |
+| `lobby`（GRACE 回放） | 1 | 负载抖动 | 与 `golden` 并发时抖动；HEAD~1 同样 |
+| `data.test` | 2 | **合并造成** | 在本仓库树上 **28 通过 / 0 失败** |
+| 其余 ~46 | — | 既有门与既有差异 | 见下 |
+
+### 更正第 5 轮的判断：本仓库的数据**就是**它自己生成器的产出
+
+在本仓库树上 `test/data.test.js` 全过（含 "offline rebuild reproduces data/ byte-for-byte"）。所以第 5 轮我写的
+「提交的数据是手工整理过的」是**错的** —— 真相是：**本仓库的生成器**（`tools/build-data.mjs`，比上游版短 689 行
+但输出更多字段）产出这份数据；合并时那个文件的 6 处冲突取了上游版，于是「数据对不上生成器」。
+**把本仓库的生成器 hunk 并回来，`data/` 就能重新生成**，那 2 个失败与「不敢重生成」的限制一起消失。
+
+### 本轮的回归与修复（重要教训）
+
+客户端 kit 注入把 `InPageSimHost.start` 改成了 `async`，而 runner / 工人线程 / runner 测试都是**建完立刻同步读**
+`host.battle` → `Cannot read properties of null (reading allyUnits)`，一次全量里多出 **36 处失败**（`runner` 12、
+`runner-pending` 14、`feedback1-runner-forms` 10 …）。修复：`start` 恢复同步，kit 表由**已经是异步的调用方**先 await
+好再传进 `opts`（页面 `runner.js`、工人线程 `simWorkerRuntime.js`；排练 worker 本来就是先解析后建候选）。该 6 个套件
+回到 67/67。
