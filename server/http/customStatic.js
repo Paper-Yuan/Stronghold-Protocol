@@ -8,13 +8,17 @@ import { sendError } from './common.js';
 import { MIME, acceptsGzip, isNotModified } from './files.js';
 import { createResourceIndex, RESOURCE_MANIFEST_FILE } from '../resources.js';
 import { rewriteAssetPaths } from '../../shared/cdn.js';
+import { serveWorkshop } from './workshopServe.js';
 export function createStaticHandler(dirs) {
-  const { publicDir, dataDir, simDir = path.join(ROOT, 'server/sim'), log = noopLog, cdnBase = '' } = dirs;
+  const { publicDir, dataDir, simDir = path.join(ROOT, 'server/sim'), log = noopLog, cdnBase = '', workshop = null } = dirs;
   const serve = upstreamStatic(dirs);
   const resources = createResourceIndex({ dataDir, publicDir, cdnBase, frozenManifest: dirs.resourceManifestPath || process.env.SP_RESOURCE_MANIFEST || path.join(dataDir, 'resource-manifest-frozen.json'), rewrite: v => cdnBase ? rewriteAssetPaths(v, cdnBase) : v, log });
   return async (req, res, rawPath, query) => {
     let decoded;
     try { decoded = decodeURIComponent(rawPath); } catch { return serve(req, res, rawPath, query); }
+    // 创意工坊 / 客户端 mod 缓存 (server/http/workshopServe.js)：命中就回答；未命中落到上游挂载 —— 没有安装任何工坊包
+    // 时那些表全是空的，每个分支都被跳过，行为与上游逐字节一致。
+    if (workshop && serveWorkshop(req, res, decoded, query, workshop, log)) return;
     if (decoded.toLowerCase() === `/data/${RESOURCE_MANIFEST_FILE}`) {
       let idx;
       try {
