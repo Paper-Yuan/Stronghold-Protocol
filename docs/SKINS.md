@@ -98,6 +98,12 @@ node tools/install-skins.mjs remove <skinId…>                # uninstall (file
 npm run assets                                               # rebuilds the manifest from the selection file
 ```
 
+The tools this checkout actually carries are `tools/build-skins.mjs` (`docs/research/08-skins.json` →
+`data/skins.json`), the four fetchers `tools/fetch-skin-{avatars,portraits,spines,voices}.mjs`,
+`tools/inject-skins-assets.mjs` (per-skin `{ name, group, avatar }` and, when the model is on disk, its `spine` block)
+and `tools/inject-skin-voices.mjs` (the `audio.skinVoice*` trees). The `install-skins.mjs` / `server/skinInstall.js`
+pair named elsewhere in this document is not present; regeneration is an offline fetch plus the two injectors.
+
 `tools/fetch-assets.mjs` only builds the skins listed in `data/skins-installed.json`, so a full run never
 re-downloads one that was uninstalled **and** removes it from the manifest — matching what the installer writes.
 
@@ -117,8 +123,12 @@ more than the entire rest of the asset set, for a thumbnail.
 
 - **No skin effects.** The official per-character battle effects are `.ab` particle bundles that the project does
   not extract (`docs/ASSETS.md`); battle FX stay procedural.
-- **No operator voices.** A separate piece of work; the files exist (`ArknightsAssets2`, `voice` branch) but there
-  is no event→line mapping or playback path yet.
+- **Skin-exclusive voices are wired up.** `tools/fetch-skin-voices.mjs` writes `data/skin-voices.json` (per dub,
+  keyed by the skin's voice word key = its `skinId` with `@` → `_`), `tools/inject-skin-voices.mjs` merges that file
+  into the manifest as `audio.skinVoice` / `skinVoiceJp` / `skinVoiceEn` / `skinVoiceKr` (`public/js/voicePrefs.js`
+  `SKIN_TREES`), and `public/js/audio.js` `voiceLine()` plays it for as long as the skin is worn — `voice({ skinId })`,
+  or the skin the tracked unit carries (`server/sim/snapshot.js` `unitInfo` `skin`). A slot the skin has no line for
+  falls through to 日本語 → 中文 → the operator's own line (`test/ui/audio.test.js` 皮肤专属语音).
 - **Bots always wear the default model** (`setSkins` refuses bots, as `setLoadout` does).
 - **Uninstalling leaves the files on disk.** They are shared between skins and a reinstall would only fetch them
   again; `npm run assets --prune` clears the orphans.

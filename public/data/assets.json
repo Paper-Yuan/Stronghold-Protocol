@@ -25,7 +25,8 @@
     "voiceKrChars": 182,
     "voiceNativeChars": 44,
     "skins": 273,
-    "charsWithSkins": 174
+    "charsWithSkins": 174,
+    "skinVoiceUrls": 560
   },
   "chars": {
     "char_003_kalts": {
