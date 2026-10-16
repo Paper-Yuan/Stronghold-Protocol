@@ -184,8 +184,13 @@ export function BandDraftScreen() {
   const solo = roomSolo || String(pub?.modeId || '').includes('single') || room?.mode === 'solo_infinite';
   const offBonds = modeOffBonds(mode); // the bonds this mode never activates (标准: 10 of 23)
   const bands = useMemo(() => {
+    // 单人房（含超限）**从不声明房间模组**（ui/modManagerModal.js:161 同一条规则），所以它那一局的游戏数据里
+    // 根本没有模组策略 —— 客户端若把它们列出来，玩家一点就会被服务端按 gd.bandAllowed 拒成 BAD_TARGET
+    // （2026-10-16 手机实测：solo/HARD 里点了 band_kaituo，服务端回 band band_kaituo not allowed here）。
+    // 之前只排除了 solo_infinite，于是普通单人房会漏列出模组策略（modIds 里残留过就会中招）。
+    const soloRoom = room?.mode === 'solo' || room?.mode === 'solo_infinite';
     const activeModSet = new Set(
-      room?.mode === 'solo_infinite' ? [] : (room?.modIds || pub?.modIds || priv?.modIds || [])
+      soloRoom ? [] : (room?.modIds || pub?.modIds || priv?.modIds || [])
     );
     const rawBands = (gd.list('bands') || []).filter((b) => !b.packId || activeModSet.has(b.packId));
     return allowedBands(rawBands, mode?.type || (solo ? 'SINGLE' : 'MULTI'));
