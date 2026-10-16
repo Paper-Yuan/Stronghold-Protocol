@@ -34,7 +34,34 @@
 // something the loader then refuses (docs/design/mod-layer.md §28.3).
 
 /** The only prefixes a kit may import through. A specifier that starts with neither is refused. */
-export const KIT_IMPORT_PREFIXES = Object.freeze(['@kit/', '@sim/']);
+export const KIT_IMPORT_PREFIXES = Object.freeze(['@kit/', '@sim/', '@ops/']);
+
+/**
+ * `@ops/<name>.js` —— **引擎自带的干员 kit**（`server/sim/content/kits/ops/`，210 个文件）。本仓库自己的包用它复用
+ * 引擎里已经写好的干员实现：`columbia` 的 kit 就是 `import aphris from '@ops/op-aphris.js'`。
+ *
+ * 为什么是一个**家族**而不是白名单里的若干行：ops/ 是引擎自己的目录（内容随版本增删，包作者不该跟着改白名单），
+ * 而这条前缀只能到达那一个目录 —— 与 `@kit/`（SDK 构造器）、`@sim/`（三个纯函数模块）不同，它开的是「引擎的干员库」。
+ * 两端的落点由同一个函数给出：服务端 `server/sim/content/kits/ops/<name>.js`，浏览器 `/sim/content/kits/ops/<name>.js`
+ * （ops 文件内部用相对路径 import 引擎代码，两边都相对**它自己**解析，所以不需要再改写）。
+ *
+ * 形状检查与白名单同一条纪律：`.js` 结尾、没有 `..` 段、没有反斜杠、没有 `%`、没有空段 —— 越界一律拒绝。
+ * @param {unknown} specifier
+ * @returns {string|null} workspace-relative file，或 null
+ */
+export function opsImportFile(specifier) {
+  const s = String(specifier ?? '');
+  if (!s.startsWith(OPS_IMPORT_PREFIX)) return null;
+  const rel = s.slice(OPS_IMPORT_PREFIX.length);
+  if (!rel || !rel.endsWith('.js') || rel.startsWith('/')) return null;
+  if (rel.includes('..') || rel.includes('\\') || rel.includes('%') || rel.includes('?') || rel.includes('#')) return null;
+  if (rel.split('/').some((seg) => seg === '' || seg === '.' || seg === '..')) return null;
+  return OPS_IMPORT_DIR + rel;
+}
+
+/** `@ops/` 前缀与它指向的目录（服务端路径；浏览器由 kitImportMap() 映射到同一个子树）。 */
+export const OPS_IMPORT_PREFIX = '@ops/';
+export const OPS_IMPORT_DIR = 'server/sim/content/kits/ops/';
 
 /**
  * 包**战斗逻辑**模块（`pack.json.server.battle`, DESIGN §28.17）允许的两个前缀：`@battle/`（战斗内容层的辅助函数，
@@ -112,7 +139,7 @@ export const BATTLE_IMPORT_ALLOWED = Object.freeze(BATTLE_IMPORT_FILES.map((e) =
 export const ROOM_IMPORT_ALLOWED = Object.freeze(ROOM_IMPORT_FILES.map((e) => e.specifier));
 
 /** One line naming every allowed specifier — the "here is what you may write instead" half of an error. */
-export const kitImportAllowedText = () => KIT_IMPORT_ALLOWED.join(', ');
+export const kitImportAllowedText = () => [...KIT_IMPORT_ALLOWED, `${OPS_IMPORT_PREFIX}*.js`].join(', ');
 
 /**
  * 包**相对**模块那半句话（§28.18）：每个拒绝理由的末尾都要说一遍，作者才知道除了白名单之外**自己包里**的文件也能
@@ -279,7 +306,7 @@ export function kitImportIssues(src, decls = null, { targets = KIT_IMPORT_TARGET
     });
   }
   for (const d of (decls || kitImportDeclarations(src))) {
-    if (targets.has(d.specifier)) continue;
+    if (targets.has(d.specifier) || opsImportFile(d.specifier)) continue;
     // 包相对：kit 放行（§28.18），战斗逻辑模块拒绝 —— 两份载荷的装载方式不同，理由见 kitImportUnavailableReason。
     if (allowRelative && isPackRelativeSpecifier(d.specifier)) continue;
     out.push({ code: 'KIT_IMPORT', reason: `import "${d.specifier}" 不在白名单里：${kitImportUnavailableReason(d.specifier, { allowedText, allowRelative })}` });
@@ -324,6 +351,9 @@ export function kitImportUnavailableReason(specifier, { allowedText = kitImportA
   }
   if (s.startsWith('.')) return `相对路径无法同时在服务端与浏览器成立（只有 "./…" 这种向下的包相对形式可以，见 §28.18）；${allowedBoth}`;
   if (s.startsWith('/')) return `绝对路径无法同时在服务端与浏览器成立；${allowedBoth}`;
+  if (s.startsWith('@ops/')) {
+    return `引擎的干员 kit 目录里没有 ${JSON.stringify(s.slice('@ops/'.length))}（要 .js 结尾、不带 ".."，且在 server/sim/content/kits/ops/ 下真的存在）；${allowedBoth}`;
+  }
   if (s.startsWith('@kit/') || s.startsWith('@sim/') || s.startsWith('@battle/')) {
     return `模块名 "${s.slice(s.indexOf('/') + 1)}" 未开放（前缀合法，但这个文件不在白名单里）；${allowedBoth}`;
   }
@@ -332,7 +362,7 @@ export function kitImportUnavailableReason(specifier, { allowedText = kitImportA
 }
 
 /** The allowed file for a specifier, or null. */
-export const kitImportTarget = (specifier) => KIT_IMPORT_TARGETS.get(String(specifier)) || null;
+export const kitImportTarget = (specifier) => KIT_IMPORT_TARGETS.get(String(specifier)) || opsImportFile(specifier);
 
 /**
  * The import map a browser needs so the SAME source works there — `{"@kit/": "/sim/content/kits/shared/", "@sim/": "/sim/"}`.
@@ -349,6 +379,8 @@ export function kitImportMap() {
   const map = {};
   const prefixes = [...new Set([...KIT_IMPORT_PREFIXES, ...BATTLE_IMPORT_PREFIXES])];
   for (const prefix of prefixes) {
+    // `@ops/` 没有白名单行（它开的是一个目录），映射直接由那两条常量给出 —— 与家族解析器同源，不会漂。
+    if (prefix === OPS_IMPORT_PREFIX) { map[prefix] = kitImportBrowserUrl(OPS_IMPORT_DIR); continue; }
     const first = KIT_IMPORT_FILES.find((e) => e.specifier.startsWith(prefix));
     if (!first) continue;
     const tail = first.specifier.slice(prefix.length);
@@ -394,7 +426,7 @@ export function rewriteKitImports(src, urlOf, { targets = KIT_IMPORT_TARGETS, re
   let out = '';
   let at = 0;
   for (const d of decls) {
-    const file = targets.get(d.specifier);
+    const file = targets.get(d.specifier) || opsImportFile(d.specifier);
     // 白名单那一半优先：一个 specifier 要么是白名单条目，要么是包相对路径，两种判定互斥（`@` 开头 vs `./` 开头）。
     const url = file
       ? String(urlOf(file))

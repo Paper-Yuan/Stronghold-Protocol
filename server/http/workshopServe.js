@@ -30,6 +30,7 @@ import { buildModCatalog } from '../modCatalog.js';
 import { modSetOf } from '../../shared/modIdentity.js';
 import { createRoomAssets } from '../roomAssets.js';
 import { DATA_FILES } from '../data.js';
+import { rewriteKitImports, kitImportBrowserUrl, KIT_IMPORT_TARGETS, BATTLE_IMPORT_TARGETS } from '../../shared/kitImports.js';
 import { VIEW_MANIFESTS } from './assetViews.js';
 
 /** 按房间的游戏数据 (W-B) 的 URL 前缀与摘要形状（`shared/modIdentity.js` modDigest = sha256 hex）。 */
@@ -218,7 +219,8 @@ export function serveWorkshop(req, res, decoded, query, t, log = console) {
   }
   // 包声明的战斗逻辑模块：只服务装载器**登记过的 URL**（不放宽成「包内子树」——它被当作 data: URL 加载，没有目录）。
   if (t.workshopBattleFiles && t.workshopBattleFiles.size && decoded.startsWith(WORKSHOP_BATTLE_PREFIX)) {
-    return sendFile(req, res, t.workshopBattleFiles.get(decoded) || null, MIME['.js'], 'no-cache', log, '[workshop] battle module');
+    // 战斗逻辑模块那份名单里**没有**包相对形式（服务端把它们当 data: URL 加载，没有目录可退）——所以不改写相对说明符。
+    return sendModule(req, res, t.workshopBattleFiles.get(decoded) || null, { targets: BATTLE_IMPORT_TARGETS, log, what: '[workshop] battle module' });
   }
   // 工坊行为层 (docs/WORKSHOP.md §4, DESIGN §28.18)：把包的 kit 作为 ES 模块发给**浏览器**。两半：登记过的 URL → kit
   // 文件本身；`<包>/<rel>` 且 <包> 是已装载包 → `<packDir>/kits/<rel>`，于是 kit 可以用向下的相对说明符 import 自己的
@@ -227,7 +229,10 @@ export function serveWorkshop(req, res, decoded, query, t, log = console) {
   // 文件缺失都答**同一个** 404。
   if (t.workshopKitFiles && t.workshopKitFiles.size && decoded.startsWith('/workshop-kits/')) {
     const abs = t.workshopKitFiles.get(decoded) ?? resolvePackRelativeKit(decoded, t.workshopKitDirs);
-    return sendFile(req, res, abs, MIME['.js'], 'no-cache', log, '[workshop] kit');
+    // 包相对说明符按**这个 URL 自己的目录**解析：`./lib/util.js` 与 `/workshop-kits/<包>/lib/util.js` 是同一个文件
+    // （`kits/` 那一段不在 URL 里），两端才指向同一个模块。
+    const base = new URL(decoded, 'http://workshop.invalid');
+    return sendModule(req, res, abs, { targets: KIT_IMPORT_TARGETS, resolveRelative: (spec) => new URL(spec, base).pathname, log, what: '[workshop] kit' });
   }
   // 包声明的资源容器与清单 (`pack.json.assets`, DESIGN §28.13)：/workshop-resources/ 下**只有装载器注册过的 URL**
   // 会被回答。容器可达数百 MB，所以**流式**出去（createReadStream + pipeline），绝不整读进内存。
@@ -309,7 +314,22 @@ function sendBuffer(req, res, buf, tagPrefix, type, cache) {
   return true;
 }
 
-/** 200/404 一个文件（kit / panel / battle 三条 ES 模块通道共用；未知包与缺失文件同一个 404）。 */
+/**
+ * 200/404 一个工坊 **ES 模块**：读盘 → 按 DESIGN §28.18 改写成浏览器能直接跑的源码 → 发（ETag 由改写后的字节算出）。
+ *
+ * 为什么在服务端改写、而不是给页面塞一张 import map：改写后**同一份源码**在两端成立（§28.2 的哈希只算作者写的字节），
+ * 客户端缓存把这份字节存下来直接 import 就行；而 import map 只能在模块图开始解析之前插入，时机很苛刻（页面里已经有一张）。
+ * 服务端的装载器自己走 `file:` URL 那一套（server/workshop.js），与这里互不影响。
+ */
+function sendModule(req, res, abs, { targets = null, resolveRelative = null, log = null, what = 'module' } = {}) {
+  if (!abs) { sendError(req, res, 404, '页面不存在 · Not found'); return true; }
+  let raw;
+  try { raw = fs.readFileSync(abs, 'utf8'); } catch (e) { log?.error?.(`${what} read failed`, e); sendError(req, res, 404, '页面不存在 · Not found'); return true; }
+  const src = rewriteKitImports(raw, (file) => kitImportBrowserUrl(file), { ...(targets ? { targets } : {}), resolveRelative });
+  return sendBuffer(req, res, Buffer.from(src, 'utf8'), 'ws-mod', MIME['.js'], 'no-cache');
+}
+
+/** 200/404 一个文件（panel 那条 ES 模块通道共用；未知包与缺失文件同一个 404）。 */
 function sendFile(req, res, abs, type, cache, log, what) {
   if (!abs) { sendError(req, res, 404, '页面不存在 · Not found'); return true; }
   let body;
