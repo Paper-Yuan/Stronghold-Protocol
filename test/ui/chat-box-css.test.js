@@ -33,7 +33,13 @@ describe('the chat panel is styled and placed', () => {
     assert.doesNotMatch(css, /\.chat-panel:not\(\.is-active\) \.chat-log \{ display: none; \}/);
     // 半收起 = 只留一行；局内让开角落按钮那一列
     assert.match(css, /\.chat-panel\.is-collapsed \.chat-log \{ max-height: 34px; \}/);
-    assert.match(css, /\.gm \.chat-panel \{ left: 3\.45rem;/, 'clear of the emote column');
+    assert.match(css, /\.gm \.chat-panel \{ left: \.24rem; bottom: \.9rem;/, 'above the four corner buttons');
+    // 更透明 + 不吃指针（只有控件接收点击，日志区域穿透到棋盘）
+    assert.match(css, /\.chat-panel \{[^}]*background: rgba\(14, 18, 17, \.52\)/);
+    assert.match(css, /\.chat-panel \{[^}]*pointer-events: none/);
+    assert.match(css, /\.chat-panel \.chat-log \{ pointer-events: none; \}/);
+    assert.match(css, /\.chat-panel \.chat-header-bar[\s\S]{0,220}pointer-events: auto/);
+    assert.match(css, /\.chat-panel \.chat-send-btn \{ pointer-events: auto; \}/);
     // 唤出对话按键 = 出输入框（按钮在标题栏里，不再是固定圆点）
     const trig = /\.chat-trigger-btn \{([^}]*)\}/.exec(css)?.[1] || '';
     assert.doesNotMatch(trig, /position:\s*fixed/);
