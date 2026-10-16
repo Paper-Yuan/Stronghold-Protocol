@@ -1043,6 +1043,14 @@ export function LobbyScreen() {
   const [allyOpen, setAllyOpen] = useState(false);            // 选择同盟方式
   const [sheetChained, setSheetChained] = useState(false);    // opened from 选择同盟方式: no darkening of the hub between
   const [joinOpen, setJoinOpen] = useState(false);
+  // 大厅两处「收起」：右栏三块（缺人同盟 / S.W.E.E.P. / 干员调配，不含中央徽标）与下面的模拟方式选择。
+  // 状态存本机（sp.hub.fold），与那个工坊包的做法一致，只是原生做进这里、不用它的 root.overlays 槽位。
+  const [foldRight, setFoldRight] = useState(() => { try { return localStorage.getItem('sp.hub.fold.right') === '1'; } catch { return false; } });
+  const [foldModes, setFoldModes] = useState(() => { try { return localStorage.getItem('sp.hub.fold.modes') === '1'; } catch { return false; } });
+  const toggleFold = (which) => {
+    if (which === 'right') setFoldRight((v) => { try { localStorage.setItem('sp.hub.fold.right', v ? '0' : '1'); } catch {} return !v; });
+    else setFoldModes((v) => { try { localStorage.setItem('sp.hub.fold.modes', v ? '0' : '1'); } catch {} return !v; });
+  };
   const [achOpen, setAchOpen] = useState(false);              // 成就统计 (ui/achievements.js)
   const [veil, setVeil] = useState(true);
   useEffect(() => { const timer = setTimeout(() => setVeil(false), 520); return () => clearTimeout(timer); }, []);
@@ -1106,7 +1114,8 @@ export function LobbyScreen() {
         <${TipsPanel} />
       </aside>
 
-      <aside class="hub-right">
+      <aside class=${`hub-right${foldRight ? ' is-folded' : ''}`}>
+        <button type="button" class="hub-fold hub-fold--right" title=${foldRight ? t('展开右栏') : t('收起右栏')} aria-label=${foldRight ? t('展开右栏') : t('收起右栏')} aria-expanded=${foldRight ? 'false' : 'true'} onClick=${() => toggleFold('right')}><${Icon} name=${foldRight ? 'chevronLeft' : 'chevronRight'} /></button>
         <${RecruitCard} rooms=${rooms} online=${online} onJoin=${join} onAll=${() => setModalOpen(true)} onCreate=${() => openMode('coop')} />
         <div class="hub-right__plates">
           <${SweepPlate} onClick=${() => setSweepOpen(true)} />
@@ -1114,7 +1123,8 @@ export function LobbyScreen() {
         </div>
       </aside>
 
-      <section class="hub-entries" aria-label=${t('模拟方式')}>
+      <section class=${`hub-entries${foldModes ? ' is-folded' : ''}`} aria-label=${t('模拟方式')}>
+        <button type="button" class="hub-fold hub-fold--modes" title=${foldModes ? t('展开模拟方式') : t('收起模拟方式')} aria-label=${foldModes ? t('展开模拟方式') : t('收起模拟方式')} aria-expanded=${foldModes ? 'false' : 'true'} onClick=${() => toggleFold('modes')}><${Icon} name=${foldModes ? 'chevronLeft' : 'chevronRight'} /></button>
         ${isSearching ? html`<div class="matchmaking-hud brackets hub-searching">
             <div class="matchmaking-hud__info">
               <${Spinner} size="sm" />

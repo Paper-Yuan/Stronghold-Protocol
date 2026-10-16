@@ -2513,3 +2513,22 @@ button.ally-card:disabled { filter: grayscale(.7) brightness(.7); cursor: defaul
 .tbadge--inline { width: 1.35em; height: 1.35em; margin-right: .2em; vertical-align: middle; filter: drop-shadow(0 0 2px rgba(0, 0, 0, .6)); }
 .hub-ach__rank > .tbadge { width: .34rem; height: .34rem; }
 .splate__rank > .tbadge { width: .44rem; height: .44rem; }
+
+/* ---- 大厅两处「收起」-------------------------------------------------------------------------------
+   原生实现（不用那个工坊包的 root.overlays 槽位，本仓库没有那个宿主）：
+     * 右栏三块（缺人同盟 / S.W.E.E.P. / 干员调配，**不含中央徽标**）一个开关；
+     * 下面的模拟方式选择整块单独一个开关。
+   按钮做得很小（18-22px 的圆角箭头），折起来只留按钮；状态记在本机 localStorage 的 sp.hub.fold.*。 */
+.hub-fold {
+  width: max(.22rem, 18px); height: max(.22rem, 18px); display: grid; place-items: center; padding: 0;
+  border: 1px solid var(--line-2); border-radius: 50%; background: rgba(8, 11, 10, .72);
+  color: var(--text-lo); cursor: pointer; touch-action: manipulation; transition: color .15s, border-color .15s;
+}
+.hub-fold:hover, .hub-fold:focus-visible { color: var(--mint-400); border-color: var(--mint-500); }
+.hub-fold .icon { width: 58%; height: 58%; }
+.hub-right { position: relative; }
+.hub-fold--right { position: absolute; top: 0; right: 0; z-index: 3; }
+.hub-right.is-folded > :not(.hub-fold) { display: none !important; }
+.hub-entries { position: relative; }
+.hub-fold--modes { position: absolute; top: -.26rem; right: .06rem; z-index: 3; }
+.hub-entries.is-folded .hub-entries__row { display: none; }

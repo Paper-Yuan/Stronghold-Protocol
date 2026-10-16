@@ -155,6 +155,15 @@ export function getPackIdForChess(chessId) {
   return chessToPackMap.get(chessId) || null;
 }
 
+/**
+ * 注销一个包的算子：取消启用后它就不该再出现在干员池/编队里（owner：取消启动后不该显示）。
+ * @param {string} packId
+ */
+export function unregisterPackOperators(packId) {
+  if (!packId) return;
+  for (const [id, p] of [...chessToPackMap]) if (p === packId) chessToPackMap.delete(id);
+}
+
 export function buildCreatePayload(mode, difficulty) {
   /** @type {{ mode: string, difficulty: string, mods?: string, modIds?: string[] }} */
   const fields = { mode, difficulty };

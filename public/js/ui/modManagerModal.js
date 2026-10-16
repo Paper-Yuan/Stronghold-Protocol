@@ -6,7 +6,7 @@ import { t } from '../../../shared/i18n.js';
 import { toast } from './toasts.js';
 // import { VirtualModList } from './VirtualModList.js'; // 临时禁用虚拟滚动
 
-import { setSelectedModIds, registerPackOperators } from '../roomMods.js';
+import { setSelectedModIds, registerPackOperators, unregisterPackOperators } from '../roomMods.js';
 import { net } from '../net.js';
 import { store } from '../store.js';
 
@@ -111,13 +111,17 @@ export function ModManagerModal({ open, onClose }) {
       const saved = getLocalEnabledMods();
       const initMap = {};
       allMods.forEach((m) => {
-        if (Array.isArray(m.operators)) {
-          registerPackOperators(m.id, m.operators);
-        }
         if (saved && Array.isArray(saved)) {
           initMap[m.id] = saved.includes(m.id);
         } else {
           initMap[m.id] = m.enabled !== false;
+        }
+        // 只有**启用**的包才把算子登记进池子：以前这里对列表里每个包都注册，于是禁用的模组也照样出现在
+        // 干员池 / 编队 / 图鉴里（owner：取消启动后不该显示）。
+        if (initMap[m.id]) {
+          if (Array.isArray(m.operators)) registerPackOperators(m.id, m.operators);
+        } else {
+          unregisterPackOperators(m.id);
         }
       });
       setEnabledMap(initMap);
@@ -142,6 +146,10 @@ export function ModManagerModal({ open, onClose }) {
     const enabledIds = Object.keys(newMap).filter((k) => newMap[k]);
     setLocalEnabledMods(enabledIds);
     setSelectedModIds(enabledIds);
+    // 启用/禁用立刻反映到干员池：禁用的包注销掉算子，启用的补登记。
+    const rec = mods.find((m) => m.id === id);
+    if (next) { if (rec && Array.isArray(rec.operators)) registerPackOperators(id, rec.operators); }
+    else unregisterPackOperators(id);
 
     // 即时向当前所在房间同步（房主/单机房主）
     try {

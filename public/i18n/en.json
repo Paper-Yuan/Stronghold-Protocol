@@ -1837,5 +1837,9 @@
   "120 帧": "120 fps",
   "限制渲染帧率以省电降温。120 帧还会让安卓外壳切到高刷模式；发烫或卡顿就降到 60 或 30。": "Caps the render rate to save power and heat. 120 fps also switches the Android shell into its high-refresh mode; drop to 60 or 30 if the phone gets hot or stutters.",
   "感谢名单": "Credits",
-  "查看完整感谢名单": "View the full credits"
+  "查看完整感谢名单": "View the full credits",
+  "展开右栏": "Expand the right column",
+  "收起右栏": "Collapse the right column",
+  "展开模拟方式": "Expand the simulation modes",
+  "收起模拟方式": "Collapse the simulation modes"
 }

@@ -93,7 +93,13 @@ if (fs.existsSync(bundledPkgPath)) {
 
 // Copy only necessary production node_modules
 console.log('[bundle-android] Copying production node_modules (ws, preact, htm, pixi.js, pixi-spine, three)...');
-const prodModules = ['ws', 'preact', 'htm', 'pixi.js', 'pixi-spine', 'three'];
+// server/ 与 shared/ 真正 import 到的运行期依赖（tools/bundle-android.mjs 末尾的裸模块守则会核对这张表）：
+//   ws          所有 WebSocket 通信
+//   adm-zip     /api/mods/sync-from-remote 解压远端模组包（2026-10-16 真机就是缺它，模组同步一直失败）
+//   acorn/ses   match/host/entry.js 与 plugins/* 的脚本沙箱（解析 + SES 锁定）
+//   chokidar    workshop-watcher.js 的工坊目录监听
+// preact/htm/pixi.js/pixi-spine/three 是客户端那几个包，一并带上。
+const prodModules = ['ws', 'preact', 'htm', 'pixi.js', 'pixi-spine', 'three', 'adm-zip', 'acorn', 'ses', 'chokidar'];
 fs.mkdirSync(path.join(STAGING_DIR, 'node_modules'), { recursive: true });
 for (const mod of prodModules) {
   const modPath = path.join(ROOT, 'node_modules', mod);
@@ -156,6 +162,33 @@ for (const rel of needsCopy) {
   if (!fs.existsSync(path.join(STAGING_DIR, rel))) throw new Error(`[bundle-android] 缺少 server/ 静态引用的文件: ${rel}`);
 }
 if (needsCopy.size) console.log(`[bundle-android] Copied ${needsCopy.size} file(s) server/ imports: ${[...needsCopy].join(', ')}`);
+
+// 裸模块守卫：server/、shared/ 里 import 的每个**裸模块名**（'ws'、'adm-zip'……）都必须在生产依赖白名单里。
+// 否则那条路径一跑到就是 ERR_MODULE_NOT_FOUND（2026-10-16 真机：从远端同步模组挂在 adm-zip 上，而它不在名单里）。
+{
+  // 行首锚定，避免把字符串/注释里的 `from '...'` 也当 import（第一版就是这么误报的）。
+  const BARE = /^[ \t]*(?:import|export)\b[^\n]*?\bfrom[ \t]*['"]([^'"]+)['"]|^[ \t]*import[ \t]*['"]([^'"]+)['"]|^[ \t]*(?:const|let|var)?[^\n]*?\bimport\([ \t]*['"]([^'"]+)['"]\)/gm;
+  const NAME_OK = /^(@[a-z0-9][\w.-]*\/)?[a-z0-9][\w.-]*$/i;
+  const NODE_BUILTINS = new Set(['fs', 'path', 'http', 'https', 'url', 'crypto', 'os', 'child_process', 'worker_threads', 'stream', 'util', 'events', 'net', 'tls', 'zlib', 'assert', 'buffer', 'timers', 'querystring', 'process', 'v8', 'vm', 'perf_hooks', 'readline']);
+  const pkgNameOf = (s) => (s.startsWith('@') ? s.split('/').slice(0, 2).join('/') : s.split('/')[0]);
+  const needed = new Set();
+  for (const f of [...walkCode(path.join(ROOT, 'server')), ...walkCode(path.join(ROOT, 'shared'))]) {
+    const src = fs.readFileSync(f, 'utf8');
+    for (const m of src.matchAll(BARE)) {
+      const spec = m[1] || m[2] || m[3];
+      if (!spec || spec.startsWith('.') || spec.startsWith('/') || spec.startsWith('node:')) continue;
+      if (NODE_BUILTINS.has(spec)) continue;
+      const name = pkgNameOf(spec);
+      if (!NAME_OK.test(name)) continue;
+      needed.add(name);
+    }
+  }
+  const missing = [...needed].filter((n) => !prodModules.includes(n));
+  if (missing.length) {
+    throw new Error(`[bundle-android] server/shared 引用了不在生产依赖白名单里的模块: ${missing.join(', ')} —— 加进 prodModules，否则手机上运行到那一步会找不到模块`);
+  }
+  console.log(`[bundle-android] bare-module guard: ${needed.size} bare modules referenced, all in prodModules`);
+}
 
 // 3. Compress into app_bundle.zip using python zipfile
 fs.mkdirSync(ANDROID_ASSETS_DIR, { recursive: true });
