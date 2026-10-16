@@ -46,6 +46,7 @@ import { DATA_SHIM_JS } from './http/static.js';
 import { createStaticHandler } from './http/customStatic.js';
 import { createWorkshopServe } from './http/workshopServe.js';
 import { createModApi } from './http/modApi.js';
+import { mountPlayerAdmin } from './playerAdmin.js';
 import { WORKSHOP_DIR } from './workshop.js';
 import { createPluginRegistry } from './plugins/registry.js';
 import { computeVanillaContent } from './plugins/identity.js';
@@ -163,6 +164,11 @@ export async function startServer(opts = {}) {
   const traffic = createTrafficCounter();
   const server = http.createServer(createRequestHandler({ serveStatic, modApi, csp: process.env.SP_CSP === 'off' ? null : siteCsp(publicDir), health: { startedAt, network, registry, lobby, content, traffic, assetIndex, views, trusted:trustedRuntime?.health }, log, trustProxy: network.opts.trustProxy, studio, trustedRuntime }));
   server.on('clientError', answerClientError);
+  // 管理端 (server/playerAdmin.js): /admin/ 页面与 /admin/api/*（登录、快照、封禁、公告、模组上传/拉取…）。它读
+  // config/player-admin/config.json：没有配置时 /admin* 一律 404，其余请求原样转给已有的监听器。
+  //
+  // 必须挂在 createRequestHandler 之后：它会把 server 上已有的 'request' 监听器**摘下来**、套一层自己的再放回。
+  const playerAdmin = await mountPlayerAdmin({ server, network, lobby, registry, log });
   const wss = attachWebSocket(server, { network, log, traffic });
 
   // The address actually bound. The default may fall back to IPv4; the returned host and url follow that.
@@ -220,6 +226,7 @@ export async function startServer(opts = {}) {
   async function close() {
     if (closing) return closing;
     closing = (async () => {
+      try { await playerAdmin?.unmount(); } catch (e) { log.error('[shutdown] player admin', e); }
       try { lobby.shutdown('shutdown'); } catch (e) { log.error('[shutdown] lobby', e); }
       try { hosts.close(); } catch (e) { log.error('[shutdown] match hosts', e); }
       network.close();
@@ -236,7 +243,7 @@ export async function startServer(opts = {}) {
     return closing;
   }
 
-  return { port: actualPort, host: boundHost, url, server, wss, lobby, network, registry, packs, content, visual, contents, hosts, traffic, assetIndex, views, studio, close };
+  return { port: actualPort, host: boundHost, url, server, wss, lobby, network, registry, packs, content, visual, contents, hosts, traffic, assetIndex, views, studio, playerAdmin, close };
 }
 
 // `node server/index.js` / npm start: listen, print the banner, stop on SIGINT / SIGTERM (http/boot.js).
