@@ -776,7 +776,16 @@ function LoadoutScreen({ st, leaving = false }) {
   const m = data.get('assets');
   const getChess = (id) => data.lookup('chess', id);
   const getBond = (id) => data.lookup('bonds', id);
-  const roster = useMemo(() => rosterOf(data.list('chess')), [ready, data.locale()]); // (names follow a language switch)
+  // 花名册按**设置里启用**的模组过滤：没启用的包，它的干员不该出现在这里（loadoutModel 的 isLoadoutSlot 早就支持，
+  // 只是以前没人把集合传进来）。'sp.pref.enabledMods' 与 modManagerModal / roomMods 是同一个键。
+  const enabledPacks = () => {
+    try {
+      const raw = localStorage.getItem('sp.pref.enabledMods');
+      const list = raw ? JSON.parse(raw) : null;
+      return new Set(Array.isArray(list) ? list : []);
+    } catch { return new Set(); }
+  };
+  const roster = useMemo(() => rosterOf(data.list('chess'), enabledPacks()), [ready, data.locale(), modsRev]); // (names follow a language switch)
   const bonds = useMemo(() => {
     const used = new Set(roster.flatMap((c) => c.bonds || []));
     return (data.list('bonds') || []).filter((b) => b && used.has(b.bondId))
@@ -797,7 +806,14 @@ function LoadoutScreen({ st, leaving = false }) {
   const [view, setViewState] = useState(loadoutViewPref);
   const setView = (v) => { setViewState(v); savePref(VIEW_PREF, v); };
   const [deckTab, setDeckTab] = useState('ops');
-  const [quick, setQuick] = useState(null);                // null | 'skill' | 'module' | 'cult'
+  const [quick, setQuick] = useState(null);                // null | 'skill' | 'module' | 'cult' | 'skin'
+  // 模组开关一改，花名册要跟着重算（modManagerModal 会派发 sp:mods-changed）。
+  const [modsRev, setModsRev] = useState(0);
+  useEffect(() => {
+    const onMods = () => setModsRev((v) => v + 1);
+    window.addEventListener('sp:mods-changed', onMods);
+    return () => window.removeEventListener('sp:mods-changed', onMods);
+  }, []);
   // opened from a member of S.W.E.E.P.报告's 盟约报告 (screens/sweep.js): straight to that operator's detail
   const [drawer, setDrawer] = useState(() => st.from === 'sweep' && !!st.sel);
   const [menu, setMenu] = useState(null);                  // null | 'filter' | 'more'
@@ -952,7 +968,7 @@ function LoadoutScreen({ st, leaving = false }) {
       // (a row's quick choices: ←/→ stay with the focused group, PR #301)
       if (e.target?.closest?.('.lo-quick') && (e.key === 'ArrowRight' || e.key === 'ArrowLeft')) return;
       if ((e.key === 'ArrowRight' || e.key === 'ArrowLeft') && loadoutStore.get().tab !== 'ownership' && loadoutStore.get().tab !== 'diy') {
-        const ids = filterRoster(rosterOf(data.list('chess')), loadoutStore.get().filters, loadoutStore.get().entries, getChess, getBond, loadoutStore.get().ops).map((c) => c.chessId);
+        const ids = filterRoster(rosterOf(data.list('chess'), enabledPacks()), loadoutStore.get().filters, loadoutStore.get().entries, getChess, getBond, loadoutStore.get().ops).map((c) => c.chessId);
         if (!ids.length) return;
         const cur = Math.max(0, ids.indexOf(loadoutStore.get().sel));
         const next = ids[(cur + (e.key === 'ArrowRight' ? 1 : -1) + ids.length) % ids.length];
@@ -1264,7 +1280,7 @@ export function LoadoutButton({ from, size = 'md', variant = 'secondary', class:
   const notOwned = useStore((s) => s.notOwned, Object.is, loadoutStore);
   const diy = useStore((s) => s.diy, Object.is, loadoutStore);
   const chessReady = data.status('chess') === 'ready';
-  const n = badgeCount(entries, chessReady ? (id) => data.lookup('chess', id) : null, ops, chessReady ? rosterOf(data.list('chess')) : null);
+  const n = badgeCount(entries, chessReady ? (id) => data.lookup('chess', id) : null, ops, chessReady ? rosterOf(data.list('chess'), enabledPacks()) : null);
   // 0.2.0 补位: how many operators the player marked as not owned (the 干员持有 tab) — easy to forget between sessions
   const off = Array.isArray(notOwned) ? notOwned.length : 0;
   // 0.2.0 自选编队: how many DIY slots the player filled

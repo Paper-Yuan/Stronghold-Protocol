@@ -51,7 +51,8 @@ import { createPublicApi } from './publicApi.js';
 import { createAppApi } from './http/appApi.js';
 import { APP_VERSION } from '../shared/constants.js';
 import { Announcements } from './announcements.js';
-import { WORKSHOP_DIR } from './workshop.js';
+import { WORKSHOP_DIR, loadWorkshop } from './workshop.js';
+import { applyWorkshop } from '../shared/workshop.js';
 import { createPluginRegistry } from './plugins/registry.js';
 import { computeVanillaContent } from './plugins/identity.js';
 import { createVisualSets } from './plugins/visualSet.js';
@@ -111,6 +112,16 @@ export async function startServer(opts = {}) {
 
   // The process-wide singleton serves the default data dir; a custom dir (tests) gets its own copy.
   const data = opts.dataDir ? loadData(dataDir, { log }) : getData({ dir: dataDir, log });
+  // 创意工坊的数据合并必须在会话栈之前：浏览器读的 /data/* 是「官方 + 包」的合并体（http/workshop.js），
+  // 服务端重算、GameData 与对局都必须建立在同一份数据上（本文件 139 行那段注释的原意）。没有包时就是 data 本身。
+  const workshopDir = opts.workshopDir || process.env.SP_WORKSHOP || WORKSHOP_DIR;
+  const preloadedWorkshop = (() => {
+    try { return loadWorkshop(workshopDir, { log }); }
+    catch (err) { log.warn?.(`[workshop] 预装载失败，服务端按基准数据处理: ${err && err.message ? err.message : err}`); return null; }
+  })();
+  const gameData = preloadedWorkshop && Array.isArray(preloadedWorkshop.packs) && preloadedWorkshop.packs.length
+    ? applyWorkshop(data, preloadedWorkshop.packs).data
+    : data;
   // the vanilla content hash `cs` (DESIGN §32): the bytes of the served sim, shared code and game data, read once now —
   // like the data the matches use and the build tag below
   const content = computeVanillaContent({ simDir, sharedDir, dataDir, shim: DATA_SHIM_JS, log });
@@ -129,16 +140,15 @@ export async function startServer(opts = {}) {
   // the server owner's policy (plugins/config.json), the content sets of the gameplay plugins (served at /cs/<cs16>/…),
   // what a room's plugins make of both, and the match hosts a room with gameplay plugins plays in (DESIGN §32.6)
   const policy = createPluginPolicy({ pluginsDir, log });
-  const contents = createContentSets({ registry: packs, vanillaData: data, log, maxSets: () => policy.get().maxSets });
+  const contents = createContentSets({ registry: packs, vanillaData: gameData, log, maxSets: () => policy.get().maxSets });
   const roomSets = createRoomSets({ registry: packs, visual, contents, policy });
   // a child process per content set; SP_MATCH_HOST=worker asks for a worker thread instead (match/host/index.js header:
   // an out-of-memory abort in a worker thread ends the whole server)
   const transport = String(process.env.SP_MATCH_HOST || '').trim().toLowerCase() === 'worker' ? 'worker' : 'process';
   const hosts = createMatchHosts({ contents, log, options: { transport, maxWorkers: Math.max(1, policy.get().maxSets), ...(opts.matchHost || {}) } });
-  const { registry, lobby, network } = createSessionStack(opts, { data, log, content, plugins: roomSets, hosts });
+  const { registry, lobby, network } = createSessionStack(opts, { data: gameData, log, content, plugins: roomSets, hosts });
   // 创意工坊 (docs/WORKSHOP.md, DESIGN §28): 装载一次、建好服务表。仓库里没有 workshop/ 内容时这些表全空，静态层的每个
   // 分支都被跳过 —— 普通安装的行为与上游逐字节一致。装载失败只记一条错误：一台装不上工坊的服务器仍要能开局。
-  const workshopDir = opts.workshopDir || process.env.SP_WORKSHOP || WORKSHOP_DIR;
   let workshop = null;
   /** （重新）装载工坊并换掉服务表 —— `POST /api/mods/reload` 与 sync-from-remote 都用它，导入模组因此无需重启。 */
   const loadWorkshopTables = async () => {
