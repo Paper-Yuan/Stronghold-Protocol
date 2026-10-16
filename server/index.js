@@ -45,6 +45,8 @@ import { DATA_SHIM_JS } from './http/static.js';
 // 本仓库的静态层：它包住上游的 static.js，并在其之前加一层创意工坊 / mod 缓存路由 (server/http/workshopServe.js)
 import { createStaticHandler } from './http/customStatic.js';
 import { createWorkshopServe } from './http/workshopServe.js';
+import { createModApi } from './http/modApi.js';
+import { WORKSHOP_DIR } from './workshop.js';
 import { createPluginRegistry } from './plugins/registry.js';
 import { computeVanillaContent } from './plugins/identity.js';
 import { createVisualSets } from './plugins/visualSet.js';
@@ -131,15 +133,22 @@ export async function startServer(opts = {}) {
   const { registry, lobby, network } = createSessionStack(opts, { data, log, content, plugins: roomSets, hosts });
   // 创意工坊 (docs/WORKSHOP.md, DESIGN §28): 装载一次、建好服务表。仓库里没有 workshop/ 内容时这些表全空，静态层的每个
   // 分支都被跳过 —— 普通安装的行为与上游逐字节一致。装载失败只记一条错误：一台装不上工坊的服务器仍要能开局。
+  const workshopDir = opts.workshopDir || process.env.SP_WORKSHOP || WORKSHOP_DIR;
   let workshop = null;
-  try {
-    const served = await createWorkshopServe({ data, workshopDir: opts.workshopDir || process.env.SP_WORKSHOP || undefined, log });
+  /** （重新）装载工坊并换掉服务表 —— `POST /api/mods/reload` 与 sync-from-remote 都用它，导入模组因此无需重启。 */
+  const loadWorkshopTables = async () => {
+    const served = await createWorkshopServe({ data, workshopDir, log });
     workshop = served.tables;
     for (const e of served.errors || []) log.warn?.(`[workshop] ${e.pack} ${e.path}: ${e.reason}`);
+    return served;
+  };
+  try {
+    const served = await loadWorkshopTables();
     if ((served.packs || []).length) log.info(`[workshop] ${served.packs.length} 个包已装载 · ${(served.catalog?.packs || []).length} 个进入 mod 目录`);
   } catch (e) {
     log.error('[workshop] 创意工坊装载失败，本次以无工坊模式启动', e);
   }
+  const modApi = createModApi({ workshopDir, log, reload: loadWorkshopTables });
   const serveStatic = createStaticHandler({ publicDir, dataDir, sharedDir, simDir, packsDir, pluginsDir, packs, content, log, assetIndex, views, visual, contents, workshop });
   // the plugin studio (DESIGN §32.9): its page and API for this machine and the local network; it watches plugins/ only
   // once it is used (hot reload), and rooms whose host is the author or alone follow a plugin's changes by themselves
@@ -152,7 +161,7 @@ export async function startServer(opts = {}) {
   buildTag();
 
   const traffic = createTrafficCounter();
-  const server = http.createServer(createRequestHandler({ serveStatic, csp: process.env.SP_CSP === 'off' ? null : siteCsp(publicDir), health: { startedAt, network, registry, lobby, content, traffic, assetIndex, views, trusted:trustedRuntime?.health }, log, trustProxy: network.opts.trustProxy, studio, trustedRuntime }));
+  const server = http.createServer(createRequestHandler({ serveStatic, modApi, csp: process.env.SP_CSP === 'off' ? null : siteCsp(publicDir), health: { startedAt, network, registry, lobby, content, traffic, assetIndex, views, trusted:trustedRuntime?.health }, log, trustProxy: network.opts.trustProxy, studio, trustedRuntime }));
   server.on('clientError', answerClientError);
   const wss = attachWebSocket(server, { network, log, traffic });
 

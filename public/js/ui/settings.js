@@ -40,6 +40,7 @@ import { toast, describeError } from './toasts.js';
 import { pluginMicro } from './pluginTag.js';
 import { fxAvailable } from '../render/vfx/available.js';
 import { resolveOfficialFx } from '../render/vfx/tier.js';
+import { ModManagerModal } from './modManagerModal.js';
 
 const cx = (...p) => p.flat().filter(Boolean).join(' ');
 
@@ -347,6 +348,8 @@ export function SettingsModal({ open, onClose }) {
     fxAvailable(null).then((ok) => { if (live) setFxOk(!!ok); }, () => {});
     return () => { live = false; };
   }, [open]);
+  // 模组仓库 (docs/MOD-CDN-ARCHITECTURE.md, W-C)：列出磁盘上的模组、下载 ZIP、从别的服务器同步 (server/http/modApi.js)
+  const [modModalOpen, setModModalOpen] = useState(false);
   const fxTier = resolveOfficialFx(s.officialFx, true);
   return html`<${Modal} open=${open} onClose=${onClose} title=${t('设置')} micro="SETTINGS" width="7.4rem"
                         actions=${html`<${Button} variant="secondary" icon="book" class="set-guide" onClick=${() => openGuide(0)}>${t('玩法说明')}<//>
@@ -409,8 +412,15 @@ export function SettingsModal({ open, onClose }) {
       <${CosmeticSection} />
       <${UiPluginSection} />
       <${DiagSection} />
+      <div class="set-row" data-testid="mod-management">
+        <span class="set-row__label">${t('模组管理')}<${MicroLabel}>MOD MANAGEMENT<//></span>
+        <button type="button" class="btn btn--secondary btn--sm" onClick=${() => setModModalOpen(true)}>
+          <${GIcon} name="sparkle" /><span>${t('模组仓库')}</span>
+        </button>
+      </div>
       <p class="set-hint">${touchUi ? t('触屏操作：点击单位选中（撤退 / 出售）· 长按单位或卡牌查看详情 · 拖动部署后滑动选择朝向') : t('右键查看详情')}</p>
     </div>
+    <${ModManagerModal} open=${modModalOpen} onClose=${() => setModModalOpen(false)} />
   <//>`;
 }
 
