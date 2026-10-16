@@ -135,6 +135,31 @@ export async function createWorkshopServe({ data = null, workshopDir = WORKSHOP_
     workshopAssets: workshopAssetsFor(loaded, workshopDir),
     resourcePolicy: 'serve',
   };
+  // ── /data/assets.json：资源视图（官方哈希 URL）+ 工坊增量 ──────────────────────────────────────
+  // 视图把官方条目改写成 /assets/~<hash>/（不可变缓存），但索引是**监听后在后台**建的，启动期算不出哈希 ——
+  // 这正是 2026-10-16 直接改写导致官方 URL 全退化的原因。做法改成：等视图就绪后，以**已改写**的 doc 为底
+  // 把工坊增量并上去（包条目本来就是 /workshop-assets/… 的绝对 URL，不需要索引），再塞回 workshopJson 的
+  // `assets` 条目 —— 路由一个字不用改（workshopDataFiles 在有视图时本来就把这个条目删掉了）。
+  if (views && typeof views.get === 'function' && (loaded.packs || []).length) {
+    let tries = 0;
+    const warmMergedAssets = () => {
+      (async () => {
+        const view = await views.get('assets.json');
+        if (!view || !view.body) return null;
+        const base = JSON.parse(view.body.toString('utf8'));
+        const { data: withPacks } = applyWorkshop({ ...data, assets: base }, loaded.packs);
+        return Buffer.from(JSON.stringify(withPacks.assets), 'utf8');
+      })().then((buf) => {
+        if (buf) {
+          tables.workshopJson.set('assets', buf);
+          log?.info?.(`[workshop] /data/assets.json: 官方哈希 URL + 工坊增量（${buf.length} B）`);
+        } else if (++tries < 60) setTimeout(warmMergedAssets, 1000);
+      }).catch((err) => {
+        log?.warn?.(`[workshop] /data/assets.json 合并工坊增量失败，退回视图版本: ${err && err.message ? err.message : err}`);
+      });
+    };
+    warmMergedAssets();
+  }
   // The workshop state the lobby runs on (W-C): the catalogue a room may declare, the set those picks resolve to, the
   // loaded kits/modules and the per-room asset view. server/index.js hands this to the Lobby after boot (the lobby is
   // built before the workshop finishes loading, so it is assigned to `lobby.workshop` rather than constructed with it).
