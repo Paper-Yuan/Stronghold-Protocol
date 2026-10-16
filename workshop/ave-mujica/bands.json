@@ -1,0 +1,38 @@
+{
+ "band_wuyouyoumeng": {
+  "bandId": "band_wuyouyoumeng",
+  "sortId": 42,
+  "name": "丰川祥子",
+  "iconId": "icon_oblivionis",
+  "modeTypeList": [
+   "SINGLE",
+   "MULTI"
+  ],
+  "totalHp": 21,
+  "effectId": "aceffect_band_wuyouyoumeng",
+  "effectName": "无忧梦呓",
+  "desc": "【无忧梦呓】每回合首次获得<颂乐人偶>干员时，获得1位阶级等于调度中心的随机干员",
+  "descRaw": "【无忧梦呓】每回合首次获得<颂乐人偶>干员时，获得1位阶级等于调度中心的随机干员",
+  "buffs": [
+   {
+    "key": "band_wuyouyoumeng_first_gain_bond_gain_random_char",
+    "bb": {
+     "count": 1
+    },
+    "bbStr": {
+     "bond": "aveMujica"
+    }
+   }
+  ],
+  "params": {
+   "count": 1,
+   "bond": "aveMujica"
+  },
+  "victorCount": 3,
+  "rewardModulus": 1,
+  "unlockDesc": null,
+  "bondIds": [
+   "aveMujica"
+  ]
+ }
+}

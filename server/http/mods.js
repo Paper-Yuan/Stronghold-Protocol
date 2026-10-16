@@ -117,9 +117,14 @@ export function serveMods(req, res, decoded, query, routes) {
     ? containerDigestBytes(pack.assetsDigest)
     : null;
   handleFile(req, res, abs, query, virtual).catch((err) => {
-    routes.error = err instanceof Error ? err : new Error(String(err));
-    if (!res.headersSent) sendError(req, res, 404, '页面不存在 · Not found');
-    else res.destroy();
+    // 使用请求级别的错误记录，避免共享状态并发冲突
+    const error = err instanceof Error ? err : new Error(String(err));
+    if (!res.headersSent) {
+      console.error('[mods] File serve error:', { path: abs, error: error.message });
+      sendError(req, res, 404, '页面不存在 · Not found');
+    } else {
+      res.destroy();
+    }
   });
   return true;
 }

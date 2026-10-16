@@ -932,6 +932,6 @@ test('干员战斗语音 (DESIGN §21.30): the manifest data, the official prior
     assert.ok(!/voice\([^)]*'(gacha|squad|squadFirst)'/.test(src), `${name}: no prep slot is played`);
   }
   assert.match(panel, /const selectKey = voice && detail\?\.type === 'chess'/);
-  assert.match(game, /voice=\$\{true\}/);
+  assert.match(game, /voice=\$\{(!isShopUnbought|true)\}/);
   assert.match(game, /audio\.voice\(charId, resultVoiceSlot\(/);
 });

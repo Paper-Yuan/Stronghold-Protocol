@@ -101,4 +101,32 @@ class AndroidBridge(private val activity: MainActivity) {
             activity.setHighRefresh(enabled)
         }
     }
+
+    @JavascriptInterface
+    fun getBoardMode(): String = activity.getBoardMode()
+
+    @JavascriptInterface
+    fun setBoardMode(mode: String) {
+        activity.runOnUiThread {
+            activity.setBoardMode(mode)
+        }
+    }
+
+    @JavascriptInterface
+    fun getBundleVersion(): String {
+        return try {
+            val vFile = java.io.File(AssetManagerHelper.getBundleDir(activity), ".bundle_version")
+            if (vFile.exists()) vFile.readText().trim() else AssetManagerHelper.getExpectedBundleVersion(activity)
+        } catch (_: Exception) {
+            "unknown"
+        }
+    }
+
+    /**
+     * Download and apply lightweight code patch in background, then reload.
+     */
+    @JavascriptInterface
+    fun downloadAndApplyPatch(patchUrl: String, patchVersion: String) {
+        activity.downloadAndApplyPatch(patchUrl, patchVersion)
+    }
 }

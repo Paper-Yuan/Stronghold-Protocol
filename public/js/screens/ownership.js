@@ -16,6 +16,8 @@ import { chessAvatarUrl } from '../ui/assetUrls.js';
 import { data } from '../data.js';
 import { PROF_NAME } from '../ui/loadoutModel.js';
 import { ownershipRoster, rosterByTier, isOwned, standInSummary } from '../ui/ownershipModel.js';
+import { useStore } from '../store.js';
+import { getSelectedModIds } from '../roomMods.js';
 import { t, tParts } from '../../../shared/i18n.js';
 
 const cx = (...p) => p.flat().filter(Boolean).join(' ');
@@ -23,7 +25,13 @@ const ROMAN = ['', 'I', 'II', 'III', 'IV', 'V', 'VI'];
 
 /** The roster of the tab (data.list('chess'), memoised on the data being ready). */
 export function useOwnershipRoster(ready) {
-  return useMemo(() => ownershipRoster(data.list('chess')), [ready, data.locale()]);
+  const room = useStore((s) => s.room);
+  const enabledMods = useMemo(() => {
+    if (room?.mode === 'solo_infinite') return new Set();
+    if (room?.modIds) return new Set(room.modIds);
+    return new Set(getSelectedModIds());
+  }, [room?.mode, room?.modIds]);
+  return useMemo(() => ownershipRoster(data.list('chess'), enabledMods), [ready, data.locale(), enabledMods]);
 }
 
 /** One chess: the operator → its stand-in, and the 持有 switch (the whole card is the switch). */

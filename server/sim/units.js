@@ -11,7 +11,7 @@
 
 import { aggregateMods } from './buffs.js';
 import { flagsOf } from './snapshot.js';
-import { ASPD_MIN, ASPD_MAX, ELEMENT_GAUGE_MAX, ELEMENT_GAUGE_MAX_LEADER } from './constants.js';
+import { ASPD_MIN, ASPD_MAX, ELEMENT_GAUGE_MAX, ELEMENT_GAUGE_MAX_LEADER, MIN_ATTACK_INTERVAL_SEC } from './constants.js';
 import { DIR_VEC, normDir } from './dir.js';
 
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
@@ -147,9 +147,17 @@ export class Unit {
     const aspd = clamp(fin(b.aspd + a('aspd'), 100), ASPD_MIN, ASPD_MAX);
     const bBat = fin(b.bat, 1) > 0 ? fin(b.bat, 1) : 1;
     const bat = fin(bBat * Math.max(0.1, 1 + a('batPct')), bBat);
+    const rawInterval = (bat * 100) / aspd;
+    // 攻速物理频率保护：最小攻击间隔锁定 >= 0.066s (15次/秒)，溢出攻速平滑折算到攻击力，保真 DPS 且防止爆帧
+    let finalAtk = atk;
+    let interval = rawInterval;
+    if (rawInterval > 0 && rawInterval < MIN_ATTACK_INTERVAL_SEC) {
+      interval = MIN_ATTACK_INTERVAL_SEC;
+      finalAtk = atk * (MIN_ATTACK_INTERVAL_SEC / rawInterval);
+    }
     const s = {
-      maxHp, atk, def, res, aspd, bat,
-      interval: (bat * 100) / aspd,
+      maxHp, atk: finalAtk, def, res, aspd, bat,
+      interval,
       blockCnt: Math.max(0, fin(Math.round(b.blockCnt + a('blockCnt')), 0)),
       moveSpeed: Math.max(0, fin((b.moveSpeed + a('moveFlat')) * m('moveMul'), fin(b.moveSpeed, 0))),
       rangeExtend: Math.max(0, Math.round(a('rangeExtend'))),

@@ -208,6 +208,115 @@
 .solo-brief li::before { content: ''; display: inline-block; width: .06rem; height: .06rem; margin: 0 .12rem .02rem 0; background: var(--mint-600); transform: rotate(45deg); vertical-align: middle; }
 .solo-brief b { color: var(--text-hi); }
 
+/* ---- infinite room theme & mod buttons ---- */
+.rs--infinite {
+  background:
+    radial-gradient(ellipse at 50% 20%, rgba(138, 43, 226, .18), transparent 70%),
+    radial-gradient(circle at 80% 90%, rgba(75, 0, 130, .25), transparent 60%),
+    linear-gradient(180deg, #130d1e 0%, #08060d 100%) !important;
+}
+.rs-brief--infinite {
+  border-color: rgba(176, 102, 255, .35) !important;
+  background:
+    repeating-linear-gradient(0deg, rgba(255, 255, 255, .01) 0 1px, transparent 1px 3px),
+    linear-gradient(180deg, rgba(35, 20, 52, .92), rgba(15, 10, 24, .96)) !important;
+  box-shadow: 0 .08rem .3rem rgba(138, 43, 226, .2);
+}
+.rs-brief--infinite li::before {
+  background: #c988ff !important;
+}
+.rs-go--infinite {
+  background: linear-gradient(180deg, #ba75ff, #8a2be2) !important;
+  box-shadow: 0 0 .25rem rgba(186, 117, 255, .45) !important;
+  border-color: #d8aaff !important;
+  color: #fff !important;
+}
+.rs-go--infinite:hover:not(:disabled) {
+  filter: brightness(1.2) drop-shadow(0 0 .15rem rgba(186, 117, 255, .6));
+}
+
+/* Mod config button on room bottom right */
+.rs-mod-cfg-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: .08rem;
+  height: max(.7rem, 40px);
+  padding: 0 .24rem;
+  font: inherit;
+  font-size: max(.2rem, 13px);
+  font-weight: 700;
+  letter-spacing: .06em;
+  color: #b3c5c0;
+  background: linear-gradient(180deg, rgba(28, 35, 33, .9), rgba(16, 20, 19, .95));
+  border: 1px solid rgba(79, 232, 192, .3);
+  box-shadow: 0 .04rem .14rem rgba(0, 0, 0, .4), inset 0 1px 0 rgba(255, 255, 255, .06);
+  cursor: pointer;
+  transition: all var(--t-fast);
+  white-space: nowrap;
+}
+.rs-mod-cfg-btn__icon {
+  font-size: 1.15em;
+  color: var(--mint-400);
+  filter: drop-shadow(0 0 4px rgba(79, 232, 192, .4));
+}
+.rs-mod-cfg-btn:hover:not(:disabled) {
+  color: #fff;
+  border-color: var(--mint-400);
+  background: linear-gradient(180deg, rgba(38, 48, 45, .95), rgba(20, 26, 24, .98));
+  box-shadow: 0 0 .16rem rgba(79, 232, 192, .25);
+}
+.rs-mod-cfg-btn.has-selected {
+  border-color: var(--mint-400);
+  color: var(--mint-400);
+  background: linear-gradient(180deg, rgba(20, 48, 40, .9), rgba(12, 28, 24, .95));
+}
+.rs-mod-cfg-btn:disabled {
+  opacity: .5;
+  cursor: default;
+}
+
+/* AI bot button & empty actions */
+.rseat__empty-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: .14rem;
+  width: 100%;
+  padding: .1rem;
+}
+.rseat__bot-add {
+  display: inline-flex;
+  align-items: center;
+  gap: .08rem;
+  padding: .08rem .16rem;
+  font: inherit;
+  font-size: max(.16rem, 11px);
+  font-weight: 700;
+  letter-spacing: .06em;
+  color: #9fd4ff;
+  background: linear-gradient(180deg, rgba(25, 42, 58, .85), rgba(13, 22, 32, .92));
+  border: 1px solid rgba(159, 212, 255, .35);
+  box-shadow: 0 .04rem .12rem rgba(0, 0, 0, .4);
+  cursor: pointer;
+  border-radius: 2px;
+  transition: all var(--t-fast);
+}
+.rseat__bot-add .icon {
+  width: max(.2rem, 13px);
+  height: max(.2rem, 13px);
+}
+.rseat__bot-add:hover:not(:disabled) {
+  color: #fff;
+  background: linear-gradient(180deg, rgba(35, 62, 88, .95), rgba(18, 32, 48, .98));
+  border-color: #9fd4ff;
+  box-shadow: 0 0 .14rem rgba(159, 212, 255, .3);
+}
+.rseat__bot-add:disabled {
+  opacity: .5;
+  cursor: default;
+}
+
 /* ---- spectator seats (观战席, community report #26) -------------------------------------------------------------- */
 .specbar {
   flex: none;

@@ -1,0 +1,43 @@
+/* 颂乐人偶 Fever 积攒进度图标（`ui/fever.js`）—— 贴着战场上的【颂乐人偶】干员。
+   整层不吃指针（与引擎的 .sitags 同一条），所以不会挡住拖拽 / 点选。
+   坐标来自 view.tileScreen（**视口**坐标），因此这里一律 position: fixed。
+
+   图标是**两张 PNG 叠出来的**（业主给的稿，同一枚实心连音符剪影、像素对齐）：
+     下层 `fever_note_empty.png` = 黑、alpha=72/255 的半透明底；
+     上层 `fever_note_full.png` = 实心 rgb(235,63,116)，只露出底部一条（高度 = Fever 比例）。 */
+
+.amfv-layer {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.amfv {
+  position: fixed;
+  pointer-events: none;
+  /* 阴影：drop-shadow **沿音符剪影**（不是矩形框）投出来 —— 素材是实心剪影、没有描边，
+     让它在亮/暗背景下都读得出来全靠这两层（第一层紧贴当暗边，第二层外扩当投影）。 */
+  filter: drop-shadow(0 0 1.2px rgba(0, 0, 0, .9)) drop-shadow(0 1px 2px rgba(0, 0, 0, .65));
+}
+
+/* 两张素材尺寸相同、都从底部对齐，所以叠在一起像素级重合 */
+.amfv > img,
+.amfv__fillwrap > img {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+/* 满态的裁剪壳：只露出底部「壳高」那一条 —— 高度由 JS 按 Fever 比例设（底部对齐 ⇒ 品红自下而上涨） */
+.amfv__fillwrap {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 0;
+  overflow: hidden;
+}

@@ -13,6 +13,7 @@
 
 import { checkNotOwned, OWNERSHIP_LIMITS } from '../../../shared/protocol.js';
 import { isDroppableChess, standInRecord } from '../../../shared/standIn.js';
+import { getPackIdForChess } from '../roomMods.js';
 import { t } from '../../../shared/i18n.js';
 
 /** localStorage key (store.js loadPref/savePref prefix `sp.pref.`) and format version. */
@@ -86,9 +87,14 @@ export function setOwned(notOwned, chessId, owned = !isOwned(notOwned, chessId))
  * The chess the screen lists: droppable chess in this season's shop (visible), in shop order (tier, shopSortId).
  * @param {any[]} list data.list('chess')
  */
-export function ownershipRoster(list) {
+export function ownershipRoster(list, enabledModIds = null) {
   return (Array.isArray(list) ? list : [])
-    .filter((c) => isDroppableChess(c) && c.visible !== false && !c.isHidden)
+    .filter((c) => {
+      if (!isDroppableChess(c) || c.visible === false || c.isHidden) return false;
+      const pId = c.packId || getPackIdForChess(c.chessId);
+      if (pId && (!enabledModIds || !enabledModIds.has(pId))) return false;
+      return true;
+    })
     .sort((a, b) => (a.tier ?? 0) - (b.tier ?? 0) || (a.shopSortId ?? 0) - (b.shopSortId ?? 0) || String(a.chessId).localeCompare(String(b.chessId)));
 }
 

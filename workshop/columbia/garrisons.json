@@ -1,0 +1,402 @@
+{
+ "garrison_col_aphris_a": {
+  "garrisonId": "garrison_col_aphris_a",
+  "desc": "<战斗中>【哥伦比亚】每叠加10层，自身携带的装备基础数值增加0.1%；攻击速度提升自身携带装备数量×5%",
+  "descRaw": "<战斗中>【哥伦比亚】每叠加10层，自身携带的装备基础数值增加0.1%；攻击速度提升自身携带装备数量×5%",
+  "eventType": "IN_BATTLE",
+  "eventTypeDesc": "作战能力",
+  "eventTypeIcon": "icon_battle",
+  "effectType": "COL_EQUIP_BASE_BY_BOND_LAYER",
+  "effectKey": "COL_EQUIP_BASE_BY_BOND_LAYER",
+  "battleRuneKey": null,
+  "charLevel": 0,
+  "bb": {
+   "divide_num": 10,
+   "add": 0.001,
+   "aspd_per_item": 0.05
+  },
+  "bbStr": {},
+  "owners": [
+   "chess_ws_col_aphris_a"
+  ]
+ },
+ "garrison_col_aphris_b": {
+  "garrisonId": "garrison_col_aphris_b",
+  "desc": "<战斗中>【哥伦比亚】每叠加5层，自身携带的装备基础数值增加0.1%；攻击速度提升自身携带装备数量×10%",
+  "descRaw": "<战斗中>【哥伦比亚】每叠加5层，自身携带的装备基础数值增加0.1%；攻击速度提升自身携带装备数量×10%",
+  "eventType": "IN_BATTLE",
+  "eventTypeDesc": "作战能力",
+  "eventTypeIcon": "icon_battle",
+  "effectType": "COL_EQUIP_BASE_BY_BOND_LAYER",
+  "effectKey": "COL_EQUIP_BASE_BY_BOND_LAYER",
+  "battleRuneKey": null,
+  "charLevel": 0,
+  "bb": {
+   "divide_num": 5,
+   "add": 0.001,
+   "aspd_per_item": 0.1
+  },
+  "bbStr": {},
+  "owners": [
+   "chess_ws_col_aphris_b"
+  ]
+ },
+ "garrison_col_nasti_a": {
+  "garrisonId": "garrison_col_nasti_a",
+  "desc": "<获得时>获得一件阶级等于调度中心的随机装备",
+  "descRaw": "<获得时>获得一件阶级等于调度中心的随机装备",
+  "eventType": "SERVER_GAIN",
+  "eventTypeDesc": "整备能力",
+  "eventTypeIcon": "icon_gold",
+  "effectType": "COL_GAIN_RANDOM_EQUIP",
+  "effectKey": "COL_GAIN_RANDOM_EQUIP",
+  "battleRuneKey": null,
+  "charLevel": 0,
+  "bb": {
+   "count": 1
+  },
+  "bbStr": {
+   "golden": false
+  },
+  "owners": [
+   "chess_ws_col_nasti_a"
+  ]
+ },
+ "garrison_col_nasti_b": {
+  "garrisonId": "garrison_col_nasti_b",
+  "desc": "<获得时>获得一件阶级等于调度中心的随机进阶装备",
+  "descRaw": "<获得时>获得一件阶级等于调度中心的随机进阶装备",
+  "eventType": "SERVER_GAIN",
+  "eventTypeDesc": "整备能力",
+  "eventTypeIcon": "icon_gold",
+  "effectType": "COL_GAIN_RANDOM_EQUIP",
+  "effectKey": "COL_GAIN_RANDOM_EQUIP",
+  "battleRuneKey": null,
+  "charLevel": 0,
+  "bb": {
+   "count": 1
+  },
+  "bbStr": {
+   "golden": true
+  },
+  "owners": [
+   "chess_ws_col_nasti_b"
+  ]
+ },
+ "garrison_col_jesca_a": {
+  "garrisonId": "garrison_col_jesca_a",
+  "desc": "<休整期结束时>自身每携带1件装备，使已激活的【哥伦比亚】层数+3",
+  "descRaw": "<休整期结束时>自身每携带1件装备，使已激活的【哥伦比亚】层数+3",
+  "eventType": "SERVER_PREP_FIN",
+  "eventTypeDesc": "持续叠加",
+  "eventTypeIcon": "icon_bond",
+  "effectType": "COL_ADD_BOND_BY_EQUIP_COUNT",
+  "effectKey": "COL_ADD_BOND_BY_EQUIP_COUNT",
+  "battleRuneKey": null,
+  "charLevel": 0,
+  "bb": {
+   "count": 3
+  },
+  "bbStr": {
+   "bond": "columbiaShip"
+  },
+  "owners": [
+   "chess_ws_col_jesca_a"
+  ]
+ },
+ "garrison_col_jesca_b": {
+  "garrisonId": "garrison_col_jesca_b",
+  "desc": "<休整期结束时>自身每携带1件装备，使已激活的【哥伦比亚】层数+6",
+  "descRaw": "<休整期结束时>自身每携带1件装备，使已激活的【哥伦比亚】层数+6",
+  "eventType": "SERVER_PREP_FIN",
+  "eventTypeDesc": "持续叠加",
+  "eventTypeIcon": "icon_bond",
+  "effectType": "COL_ADD_BOND_BY_EQUIP_COUNT",
+  "effectKey": "COL_ADD_BOND_BY_EQUIP_COUNT",
+  "battleRuneKey": null,
+  "charLevel": 0,
+  "bb": {
+   "count": 6
+  },
+  "bbStr": {
+   "bond": "columbiaShip"
+  },
+  "owners": [
+   "chess_ws_col_jesca_b"
+  ]
+ },
+ "garrison_col_heyak_a": {
+  "garrisonId": "garrison_col_heyak_a",
+  "desc": "获得装备时，额外获得1件阶级不超过该装备的随机装备（每回合1次）",
+  "descRaw": "获得装备时，额外获得1件阶级不超过该装备的随机装备（每回合1次）",
+  "eventType": "SERVER_GAIN_ITEM",
+  "eventTypeDesc": "整备能力",
+  "eventTypeIcon": "icon_gold",
+  "effectType": "COL_GAIN_FRONT_EQUIP",
+  "effectKey": "COL_GAIN_FRONT_EQUIP",
+  "battleRuneKey": null,
+  "charLevel": 0,
+  "bb": {
+   "count": 1
+  },
+  "bbStr": {},
+  "owners": [
+   "chess_ws_col_heyak_a"
+  ]
+ },
+ "garrison_col_heyak_b": {
+  "garrisonId": "garrison_col_heyak_b",
+  "desc": "获得装备时，额外获得1件阶级不超过该装备的随机进阶装备（每回合1次）",
+  "descRaw": "获得装备时，额外获得1件阶级不超过该装备的随机进阶装备（每回合1次）",
+  "eventType": "SERVER_GAIN_ITEM",
+  "eventTypeDesc": "整备能力",
+  "eventTypeIcon": "icon_gold",
+  "effectType": "COL_GAIN_FRONT_EQUIP",
+  "effectKey": "COL_GAIN_FRONT_EQUIP",
+  "battleRuneKey": null,
+  "charLevel": 0,
+  "bb": {
+   "count": 1
+  },
+  "bbStr": {
+   "golden": true
+  },
+  "owners": [
+   "chess_ws_col_heyak_b"
+  ]
+ },
+ "garrison_col_shwaz_a": {
+  "garrisonId": "garrison_col_shwaz_a",
+  "desc": "<获得时>自身所属盟约层数+3（无需激活盟约）",
+  "descRaw": "<获得时>自身所属盟约层数+3（无需激活盟约）",
+  "eventType": "SERVER_GAIN",
+  "eventTypeDesc": "单次叠加",
+  "eventTypeIcon": "icon_bond",
+  "effectType": "SERVER_ADD_BOND_CHESS_ALL",
+  "effectKey": "SERVER_ADD_BOND_CHESS_ALL",
+  "battleRuneKey": null,
+  "charLevel": 0,
+  "bb": {
+   "count": 3
+  },
+  "bbStr": {},
+  "owners": [
+   "chess_char_3_22_a"
+  ]
+ },
+ "garrison_col_shwaz_b": {
+  "garrisonId": "garrison_col_shwaz_b",
+  "desc": "<获得时>自身所属盟约层数+6（无需激活盟约）",
+  "descRaw": "<获得时>自身所属盟约层数+6（无需激活盟约）",
+  "eventType": "SERVER_GAIN",
+  "eventTypeDesc": "单次叠加",
+  "eventTypeIcon": "icon_bond",
+  "effectType": "SERVER_ADD_BOND_CHESS_ALL",
+  "effectKey": "SERVER_ADD_BOND_CHESS_ALL",
+  "battleRuneKey": null,
+  "charLevel": 0,
+  "bb": {
+   "count": 6
+  },
+  "bbStr": {},
+  "owners": [
+   "chess_char_3_22_b"
+  ]
+ },
+ "garrison_col_astesia_a": {
+  "garrisonId": "garrison_col_astesia_a",
+  "desc": "<战斗开始时>自身与周围8格干员获得1层护盾（可叠加，【哥伦比亚】盟约每20层+1）\n<战斗中>开启技能时，使自身周围八格干员已激活的盟约层数+4（最多2次）",
+  "descRaw": "<战斗开始时>自身与周围8格干员获得1层护盾（可叠加，【哥伦比亚】盟约每20层+1）\n<战斗中>开启技能时，使自身周围八格干员已激活的盟约层数+4（最多2次）",
+  "eventType": "IN_BATTLE",
+  "eventTypeDesc": "作战能力",
+  "eventTypeIcon": "icon_battle",
+  "effectType": "COL_SHIELD_AND_SKILL_LAYER",
+  "effectKey": "COL_SHIELD_AND_SKILL_LAYER",
+  "battleRuneKey": null,
+  "charLevel": 0,
+  "bb": {
+   "shield": 1,
+   "shield_div": 20,
+   "layer": 4,
+   "max": 2
+  },
+  "bbStr": {},
+  "owners": [
+   "chess_ws_col_astesia_a"
+  ]
+ },
+ "garrison_col_astesia_b": {
+  "garrisonId": "garrison_col_astesia_b",
+  "desc": "<战斗开始时>自身与周围8格干员获得2层护盾（可叠加，【哥伦比亚】盟约每10层+1）\n<战斗中>开启技能时，使自身周围八格干员已激活的盟约层数+8（最多2次）",
+  "descRaw": "<战斗开始时>自身与周围8格干员获得2层护盾（可叠加，【哥伦比亚】盟约每10层+1）\n<战斗中>开启技能时，使自身周围八格干员已激活的盟约层数+8（最多2次）",
+  "eventType": "IN_BATTLE",
+  "eventTypeDesc": "作战能力",
+  "eventTypeIcon": "icon_battle",
+  "effectType": "COL_SHIELD_AND_SKILL_LAYER",
+  "effectKey": "COL_SHIELD_AND_SKILL_LAYER",
+  "battleRuneKey": null,
+  "charLevel": 0,
+  "bb": {
+   "shield": 2,
+   "shield_div": 10,
+   "layer": 8,
+   "max": 2
+  },
+  "bbStr": {},
+  "owners": [
+   "chess_ws_col_astesia_b"
+  ]
+ },
+ "garrison_col_ceylon_a": {
+  "garrisonId": "garrison_col_ceylon_a",
+  "desc": "<战斗中>开启技能时，使自身与身前一格干员的已激活盟约层数+2（最多4次）",
+  "descRaw": "<战斗中>开启技能时，使自身与身前一格干员的已激活盟约层数+2（最多4次）",
+  "eventType": "IN_BATTLE",
+  "eventTypeDesc": "持续叠加",
+  "eventTypeIcon": "icon_bond",
+  "effectType": "COL_SKILL_SELF_FRONT_LAYER",
+  "effectKey": "COL_SKILL_SELF_FRONT_LAYER",
+  "battleRuneKey": null,
+  "charLevel": 0,
+  "bb": {
+   "count": 2,
+   "max": 4
+  },
+  "bbStr": {},
+  "owners": [
+   "chess_ws_col_ceylon_a"
+  ]
+ },
+ "garrison_col_ceylon_b": {
+  "garrisonId": "garrison_col_ceylon_b",
+  "desc": "<战斗中>开启技能时，使自身与身前一格干员的已激活盟约层数+4（最多4次）",
+  "descRaw": "<战斗中>开启技能时，使自身与身前一格干员的已激活盟约层数+4（最多4次）",
+  "eventType": "IN_BATTLE",
+  "eventTypeDesc": "持续叠加",
+  "eventTypeIcon": "icon_bond",
+  "effectType": "COL_SKILL_SELF_FRONT_LAYER",
+  "effectKey": "COL_SKILL_SELF_FRONT_LAYER",
+  "battleRuneKey": null,
+  "charLevel": 0,
+  "bb": {
+   "count": 4,
+   "max": 4
+  },
+  "bbStr": {},
+  "owners": [
+   "chess_ws_col_ceylon_b"
+  ]
+ },
+ "garrison_col_kafka_a": {
+  "garrisonId": "garrison_col_kafka_a",
+  "desc": "<部署时>使已激活的【哥伦比亚】层数+2",
+  "descRaw": "<部署时>使已激活的【哥伦比亚】层数+2",
+  "eventType": "IN_BATTLE",
+  "eventTypeDesc": "持续叠加",
+  "eventTypeIcon": "icon_bond",
+  "effectType": "COL_DEPLOY_LAYER_NOREDEPLOY_EQUIP",
+  "effectKey": "COL_DEPLOY_LAYER_NOREDEPLOY_EQUIP",
+  "battleRuneKey": null,
+  "charLevel": 0,
+  "bb": {
+   "layer": 2,
+   "item_tier": 1
+  },
+  "bbStr": {},
+  "owners": [
+   "chess_ws_col_kafka_a"
+  ]
+ },
+ "garrison_col_kafka_b": {
+  "garrisonId": "garrison_col_kafka_b",
+  "desc": "<部署时>使已激活的【哥伦比亚】层数+4",
+  "descRaw": "<部署时>使已激活的【哥伦比亚】层数+4",
+  "eventType": "IN_BATTLE",
+  "eventTypeDesc": "持续叠加",
+  "eventTypeIcon": "icon_bond",
+  "effectType": "COL_DEPLOY_LAYER_NOREDEPLOY_EQUIP",
+  "effectKey": "COL_DEPLOY_LAYER_NOREDEPLOY_EQUIP",
+  "battleRuneKey": null,
+  "charLevel": 0,
+  "bb": {
+   "layer": 4,
+   "item_tier": 2
+  },
+  "bbStr": {},
+  "owners": [
+   "chess_ws_col_kafka_b"
+  ]
+ },
+ "garrison_col_kafka_prep_a": {
+  "garrisonId": "garrison_col_kafka_prep_a",
+  "desc": "<战斗中>若没有陷入过再部署状态，使下个休整期获得1件随机1阶装备",
+  "descRaw": "<战斗中>若没有陷入过再部署状态，使下个休整期获得1件随机1阶装备",
+  "eventType": "SERVER_PREP_START",
+  "eventTypeDesc": "整备能力",
+  "eventTypeIcon": "icon_gold",
+  "effectType": "COL_KAFKA_PREP_EQUIP",
+  "effectKey": "COL_KAFKA_PREP_EQUIP",
+  "battleRuneKey": null,
+  "charLevel": 0,
+  "bb": {},
+  "bbStr": {},
+  "owners": [
+   "chess_ws_col_kafka_a"
+  ]
+ },
+ "garrison_col_kafka_prep_b": {
+  "garrisonId": "garrison_col_kafka_prep_b",
+  "desc": "<战斗中>若没有陷入过再部署状态，使下个休整期获得1件随机2阶装备",
+  "descRaw": "<战斗中>若没有陷入过再部署状态，使下个休整期获得1件随机2阶装备",
+  "eventType": "SERVER_PREP_START",
+  "eventTypeDesc": "整备能力",
+  "eventTypeIcon": "icon_gold",
+  "effectType": "COL_KAFKA_PREP_EQUIP",
+  "effectKey": "COL_KAFKA_PREP_EQUIP",
+  "battleRuneKey": null,
+  "charLevel": 0,
+  "bb": {},
+  "bbStr": {},
+  "owners": [
+   "chess_ws_col_kafka_b"
+  ]
+ },
+ "garrison_col_cutter_a": {
+  "garrisonId": "garrison_col_cutter_a",
+  "desc": "<战斗开始时>自身所属盟约层数+1（无需激活盟约）",
+  "descRaw": "<战斗开始时>自身所属盟约层数+1（无需激活盟约）",
+  "eventType": "IN_BATTLE",
+  "eventTypeDesc": "单次叠加",
+  "eventTypeIcon": "icon_bond",
+  "effectType": "COL_START_OWN_BOND_NOACT",
+  "effectKey": "COL_START_OWN_BOND_NOACT",
+  "battleRuneKey": null,
+  "charLevel": 0,
+  "bb": {
+   "count": 1
+  },
+  "bbStr": {},
+  "owners": [
+   "chess_ws_col_cutter_a"
+  ]
+ },
+ "garrison_col_cutter_b": {
+  "garrisonId": "garrison_col_cutter_b",
+  "desc": "<战斗开始时>自身所属盟约层数+2（无需激活盟约）",
+  "descRaw": "<战斗开始时>自身所属盟约层数+2（无需激活盟约）",
+  "eventType": "IN_BATTLE",
+  "eventTypeDesc": "单次叠加",
+  "eventTypeIcon": "icon_bond",
+  "effectType": "COL_START_OWN_BOND_NOACT",
+  "effectKey": "COL_START_OWN_BOND_NOACT",
+  "battleRuneKey": null,
+  "charLevel": 0,
+  "bb": {
+   "count": 2
+  },
+  "bbStr": {},
+  "owners": [
+   "chess_ws_col_cutter_b"
+  ]
+ }
+}

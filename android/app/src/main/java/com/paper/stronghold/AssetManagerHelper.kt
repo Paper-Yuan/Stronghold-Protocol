@@ -76,6 +76,23 @@ object AssetManagerHelper {
         }
     }
 
+    /**
+     * Applies a downloaded zip patch on top of the existing bundle without deleting user data.
+     */
+    fun applyHotUpdatePatch(context: Context, patchInputStream: InputStream, patchVersion: String): Boolean {
+        return try {
+            val targetDir = getBundleDir(context)
+            unzip(patchInputStream, targetDir) {}
+            val versionFile = File(targetDir, VERSION_FILE_NAME)
+            versionFile.writeText(patchVersion)
+            Log.i(TAG, "Applied hot update patch successfully ($patchVersion)")
+            true
+        } catch (e: Throwable) {
+            Log.e(TAG, "Failed to apply hot update patch", e)
+            false
+        }
+    }
+
     private fun unzip(inputStream: InputStream, targetDir: File, onProgress: (String) -> Unit) {
         val buffer = ByteArray(65536)
         var fileCount = 0

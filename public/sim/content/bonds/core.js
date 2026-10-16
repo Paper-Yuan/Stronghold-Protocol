@@ -44,6 +44,7 @@ import { kjeragColdWind } from '../devices.js';
 import * as items from '../items.js';
 import { FORCED_EXIT } from '../../constants.js';
 import { msg } from '../../../../shared/i18n.js';
+import { isInfiniteMode } from '../../../../shared/infiniteMode.js';
 
 const num = S.num;
 
@@ -312,6 +313,7 @@ function installKjerag(battle, pid, bb, members) {
 
 function installLaterano(battle, pid, bb, members) {
   const memberSet = new Set(members);
+  const isInf = isInfiniteMode(battle.opts?.mode) || isInfiniteMode(battle.opts?.roomMode);
   battle.on('skillStart', ({ unit, skill }) => {
     if (!memberSet.has(unit) || !skill || skill.kind !== 'ammo' || !(skill.ammoLeft > 0)) return;
     const mul = 1 + num(bb.base_ammo_percent, 0) + num(bb.ammo_percent_per_stack, 0) * S.bondLayers(battle, pid, 'lateranoShip');
@@ -319,14 +321,34 @@ function installLaterano(battle, pid, bb, members) {
     if (Number.isFinite(n) && n > skill.ammoLeft) skill.ammoLeft = n;
   }, { priority: -10 });
   if (!reached(battle, pid, 'lateranoShip', bb.power_bond_char_cnt)) return;
-  const per = num(bb.atk_per_consume, 0), cap = num(bb.max_atk_for_consume, Infinity);
+  const per = num(bb.atk_per_consume, 0);
+  const cap = isInf ? 7.0 : num(bb.max_atk_for_consume, Infinity); // 超限模式上限调整至 +700% (7.0)
   if (!(per > 0)) return;
-  const st = { used: 0, bonus: 0 };
+  const st = { used: 0, bonus: 0, totalUsed: 0 };
   battle.on('ammoUsed', ({ unit }) => {
-    if (!memberSet.has(unit) || st.bonus >= cap) return;
+    if (!memberSet.has(unit)) return;
     st.used++;
-    st.bonus = Math.min(cap, st.used * per);
-    for (const m of members) S.passiveBuff(battle, m, 'bond:laterano:ammo', S.directMods({ atk: st.bonus }));
+    st.totalUsed++;
+    if (st.bonus < cap) {
+      st.bonus = Math.min(cap, st.used * per);
+      for (const m of members) S.passiveBuff(battle, m, 'bond:laterano:ammo', S.directMods({ atk: st.bonus }));
+    }
+    // 超限模式：每累计消耗 100 发弹药，触发一次全场「圣堂殉爆」（全队拉特兰干员攻击力总和 × 20% 真实伤害）
+    if (isInf && st.totalUsed > 0 && st.totalUsed % 100 === 0) {
+      let sumAtk = 0;
+      for (const m of members) {
+        if (m.alive && S.onField(m)) sumAtk += num(m.s?.atk, 0);
+      }
+      const burstDmg = Math.max(0, sumAtk * 0.20);
+      if (burstDmg > 0) {
+        for (const foe of battle.enemyUnits) {
+          if (foe.alive && S.onField(foe)) {
+            battle.dealDamage(unit, foe, { amount: burstDmg, type: 'true', canDodge: false, tags: ['bond:laterano:burst'] });
+          }
+        }
+        S.fxOn(battle, 'aoe', unit, 'bond:lateranoShip', 'sanctuary_burst', { dmg: burstDmg });
+      }
+    }
   });
 }
 
@@ -457,7 +479,11 @@ function devour(battle, pid, bb, members) {
     // start, resolves nothing (`knocked`: it is off the field)
     if (knocked(t)) continue;
     S.fxOn(battle, 'devour', t, 'bond:egirShip', 'devour', { from: m.id });
-    if (amount > 0) battle.loseHp(t, mitigate(amount, 'phys', t.s), { source: m, tags: ['bond:egir:devour'] });
+    // The maintainer's 2026-10-11 联防 carry decision: reconstruct marks/attributes, but do not apply a second
+    // opening HP loss (or trigger deaths/revives) to an operator restored from the previous field. Battle.start
+    // applies its exact HP ratio and SP after the opening hooks. Fresh units and all other battle kinds still pay.
+    const restored = battle.kind === 'unite' && Number.isFinite(t.carry?.hpPct) && t.carry.hpPct > 0;
+    if (amount > 0 && !restored) battle.loseHp(t, mitigate(amount, 'phys', t.s), { source: m, tags: ['bond:egir:devour'] });
     if (!layered.has(t)) {
       layered.add(t);
       S.gainLayers(battle, { playerId: pid, bonds: 'egirShip', n: S.tierOf(t), source: m, reason: 'bond' });
@@ -504,12 +530,23 @@ function installEgir(battle, pid, bb, members) {
   // knock-out in the fight the slot is always the one used. Until 0.1.3 the slots were fixed at battle start for the
   // first 3 members by position (§23.20); until 0.1.2 the first 3 knocked out took them but a revived member's pending
   // marks could knock it out again (GitHub #33, fixed in devour since).
-  const max = reached(battle, pid, 'egirShip', bb.power_bond_char_cnt) ? Math.max(0, Math.floor(num(bb.max_free_respawn_cnt, 0))) : 0;
+  const isInf = isInfiniteMode(battle.opts?.mode) || isInfiniteMode(battle.opts?.roomMode);
+  const max = reached(battle, pid, 'egirShip', bb.power_bond_char_cnt) ? (isInf ? 99 : Math.max(0, Math.floor(num(bb.max_free_respawn_cnt, 0)))) : 0;
   const start = egirStart(battle);
   start.passes++;
   battle.on('battleStart', () => {
     start.depth++;
     try {
+      if (isInf) {
+        // 超限模式：战斗开始时，所有【阿戈尔】干员获得当前【阿戈尔】层数 50% 的攻击力
+        const L = S.bondLayers(battle, pid, 'egirShip');
+        const atkBonus = L * 0.5;
+        if (atkBonus > 0) {
+          for (const m of members) {
+            S.passiveBuff(battle, m, 'bond:egir:start_atk', S.directMods({ atk: atkBonus }));
+          }
+        }
+      }
       devour(battle, pid, bb, members);
     } finally {
       start.depth--;
@@ -524,6 +561,10 @@ function installEgir(battle, pid, bb, members) {
   const revive = (u) => {
     if (!battle.redeploy(u, { free: true })) return;
     revives++;
+    if (isInf) {
+      // 超限模式：【阿戈尔】干员首次被击倒时立刻复活并获得 50 攻速加成
+      battle.addBuff(u, { key: 'bond:egir:revive_aspd', duration: Infinity, mods: { aspd: 50 }, visible: true });
+    }
     S.fxOn(battle, 'revive', u, 'bond:egirShip', 'respawn', { n: revives });
   };
   start.flush.push(() => {
@@ -584,7 +625,9 @@ function installSiracusa(battle, pid, bb, members) {
     battle.addBuff(unit, { key: 'bond:siracusa:stealth', duration: dur, flags: { stealth: true }, status: 'stealth', onExpire: off, onRemove: off });
   });
   if (!six) return;
-  const c = prdConstant(num(bb.prob, 0));
+  const isInf = isInfiniteMode(battle.opts?.mode) || isInfiniteMode(battle.opts?.roomMode);
+  const prob = isInf ? 0.08 : num(bb.prob, 0); // 超限模式触发概率提升至 8%
+  const c = prdConstant(prob);
   if (!(c > 0)) return;
   const st = { n: 0 };
   const onDmg = (ctx) => {
@@ -595,10 +638,25 @@ function installSiracusa(battle, pid, bb, members) {
     st.n++;
     if (!(battle.rng() < Math.min(1, c * st.n))) return;
     st.n = 0;
-    const amount = num(bb.base_damage, 0) + num(bb.damage_per_stack, 0) * S.bondLayers(battle, pid, 'siracusaShip');
+    let amount = num(bb.base_damage, 0) + num(bb.damage_per_stack, 0) * S.bondLayers(battle, pid, 'siracusaShip');
+    if (isInf) {
+      // 超限模式：基础真伤 + 目标最大生命值 0.5%（非精英/小怪不限，精英/Boss单次上限 250 万）
+      const hpRatioDmg = Math.min(2500000, num(t.s?.maxHp, 0) * 0.005);
+      amount += hpRatioDmg;
+    }
     S.fxOn(battle, 'bondProc', t, 'bond:siracusaShip', 'assassin', { from: u.id, amount });
     if (amount > 0) battle.dealDamage(u, t, { amount, type: 'true', canDodge: false, tags: ['bond:siracusa'] });
-    if (t.alive && num(bb.fear, 0) > 0) battle.applyStatus(t, 'fear', { duration: num(bb.fear, 0), source: u });
+    if (t.alive) {
+      if (num(bb.fear, 0) > 0) {
+        const fearResisted = t.findBuff && (t.findBuff('cc_immune') || t.findBuff('fear_immune'));
+        if (fearResisted || (isInf && battle.infinite?.ccResist > 0)) {
+          // 若目标免疫恐惧或超限抗性抵抗，施加【血迹清算】：受到来自叙拉古干员的下一次攻击必定触发真伤并受脆弱加深
+          battle.addBuff(t, { key: 'bond:siracusa:blood_reckoning', duration: 5, flags: { blood_reckoning: true }, visible: true });
+        } else {
+          battle.applyStatus(t, 'fear', { duration: num(bb.fear, 0), source: u });
+        }
+      }
+    }
   };
   for (const u of members) onUnitDamaged(battle, u, onDmg);
 }

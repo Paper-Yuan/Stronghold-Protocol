@@ -8,6 +8,9 @@ export const TICK = 1 / 30;
 /** Snapshots are produced every N ticks by the match (20 Hz at 2× real time). */
 export const SNAPSHOT_EVERY = 3;
 
+/** 攻速物理频率保护：最小攻击间隔锁定 >= 0.066s (15次/秒)，溢出攻速平滑折算到攻击力，保真 DPS 且防止爆帧 */
+export const MIN_ATTACK_INTERVAL_SEC = 0.066;
+
 export const ROWS = GEO.ROWS;
 export const COLS = GEO.COLS;
 

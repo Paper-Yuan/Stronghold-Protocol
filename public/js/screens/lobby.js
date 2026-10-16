@@ -22,16 +22,18 @@ import { useHubBackdrop, HubBackdrop, HubRadar, BackdropSettings, BackdropGlyph,
 
 import { ResumeMatchButton } from '../ui/resumeMatch.js';
 import { useEffect, useRef, useState } from '../../vendor/hooks.module.js';
-import { DIFFICULTIES, DIFFICULTY_NAMES, DIFFICULTY_COLORS, ROOM_CODE_LEN, MAX_SEATS, MAX_SPECTATORS, modeIdFor, ERR, ERR_TEXT } from '../../../shared/constants.js';
+import { DIFFICULTIES, DIFFICULTY_NAMES, DIFFICULTY_COLORS, ROOM_CODE_LEN, MAX_SEATS, MAX_SPECTATORS, modeIdFor, ERR, ERR_TEXT, SOLO_INFINITE, isInfiniteMode } from '../../../shared/constants.js';
 import { RANDOM_MODE } from '../../../shared/randomMode.js';
-import { html, Button, Icon, MicroLabel, Panel, TextField, PingPill, AvatarFrame, Tooltip, Spinner, DifficultyIcon, doctorNo } from '../ui/components.js';
+import { html, Modal, Button, Icon, MicroLabel, Panel, TextField, PingPill, AvatarFrame, Tooltip, Spinner, DifficultyIcon, doctorNo } from '../ui/components.js';
 import { toast, toastError } from '../ui/toasts.js';
 import { GuideButton, openGuide } from '../ui/guide.js';
 import { openStats } from './stats.js';
 import { SettingsButton } from '../ui/settings.js';
+import { LobbyMusicButton } from '../ui/lobbyMusic.js';
 import { PwaInstallButton, fullscreen } from '../ui/device.js';
 import { LoadoutButton } from './loadout.js';
 import { SweepReport } from './sweep.js';
+import { AchievementEntry, AchievementPanel } from '../ui/achievements.js';
 import { ServerRedirectModal } from '../ui/serverRedirectModal.js';
 import { ProtocolScene } from '../ui/protocolScene.js';
 import { SearchPanel, RadarScene, CreateArt, JoinArt } from '../ui/matchFlow.js';
@@ -106,6 +108,11 @@ const MODE_CARDS = [
     id: 'solo', name: N_('独立模拟'), en: 'SOLO SIMULATION', icon: 'user',
     desc: N_('独自调配资金与干员，以自己的节奏完成整场模拟。'),
     points: [N_('1 名博士'), N_('休整期与机变阶段不限时')],
+  },
+  {
+    id: 'solo_infinite', name: N_('超限模拟'), badge: '∞', en: 'INFINITE SIMULATION', icon: 'cpu',
+    desc: N_('无上限深层波次推演。领袖限伤放宽，波次抗性与霸体保护激活，挑战极限构筑。'),
+    points: [N_('1 名博士 · 独立规则'), N_('突破 15 波次 · 性能抗性自适应')],
   },
   {
     id: 'coop', name: N_('同盟模拟'), en: 'ALLIANCE SIMULATION', icon: 'users',
@@ -197,14 +204,16 @@ function FirepowerBrief({ variant, onVariant }) {
  * @returns {{ code: string, desc: string, effects: string[], rounds: number, hidden: boolean, stageNote: string }}
  */
 export function difficultyInfo(roomMode, difficulty, { random = false, variant = 'blitz' } = {}) {
-  const fallback = MODE_TEXT[roomMode === 'single' || roomMode === 'solo' ? 'single' : 'multi'][difficulty] || { code: '', desc: '', effects: [] };
+  const fallback = MODE_TEXT[roomMode === 'single' || roomMode === 'solo' || roomMode === 'solo_infinite' ? 'single' : 'multi'][difficulty] || { code: '', desc: '', effects: [] };
   // modeIdFor() lower-cases the difficulty: never call it with a value the server did not validate.
   const m = DIFFICULTIES.includes(difficulty) ? getMode(modeIdFor(roomMode, difficulty)) : null;
   const effects = Array.isArray(m?.effectDescList)
     ? m.effectDescList.map((e) => String(e).replace(/^[·•\s]+/, '')).filter(Boolean)
     : fallback.effects;
   // 随机模式: the whole run is the variant's rounds (server GameData.applyRandomRounds; variantRounds)
-  const rounds = random
+  const rounds = roomMode === 'solo_infinite'
+    ? '∞'
+    : random
     ? (variant === 'endurance' ? RANDOM_MODE.endurance.totalRounds : variant === 'marathon' ? RANDOM_MODE.marathon.totalRounds : RANDOM_MODE.totalRounds)
     : Number.isFinite(m?.lastRound) ? m.lastRound : roomMode === 'solo' && difficulty === 'FUNNY' ? 9 : 14;
   return {
@@ -212,7 +221,7 @@ export function difficultyInfo(roomMode, difficulty, { random = false, variant =
     desc: typeof m?.desc === 'string' ? m.desc : t(fallback.desc),
     effects,
     rounds,
-    hidden: !random && difficulty !== 'FUNNY',
+    hidden: roomMode !== 'solo_infinite' && !random && difficulty !== 'FUNNY',
     stageNote: stageNote(Array.isArray(m?.stages) && m.stages.length ? m.stages : STAGE_POOL[difficulty]),
   };
 }
@@ -477,7 +486,13 @@ function JoinLine({ text }) {
 /** One difficulty of 选择模拟协议: name, text, effects; the extras (code, rounds, 隐秘核心, battlefields, queue) below. */
 export function ProtoCard({ roomMode, difficulty, selected, onSelect, matchmaking, random, variant }) {
   const info = difficultyInfo(roomMode, difficulty, { random, variant });
-  return html`<button type="button" class=${`pcard${selected ? ' is-on' : ''}`} style=${`--d-color:${DIFFICULTY_COLORS[difficulty]}`}
+  const cardRef = useRef(null);
+  useEffect(() => {
+    if (selected && cardRef.current) {
+      cardRef.current.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    }
+  }, [selected]);
+  return html`<button ref=${cardRef} type="button" class=${`pcard${selected ? ' is-on' : ''}`} style=${`--d-color:${DIFFICULTY_COLORS[difficulty]}`}
       onClick=${() => onSelect(difficulty)} aria-pressed=${selected ? 'true' : 'false'}>
     <span class="pcard__glow" aria-hidden="true"></span>
     <span class="pcard__head">
@@ -496,23 +511,33 @@ export function ProtoCard({ roomMode, difficulty, selected, onSelect, matchmakin
   </button>`;
 }
 
-function ModPickerModal({ open, onClose, selected, onSave }) {
+export function ModPickerModal({ open, onClose, selected, onSave }) {
   if (!open) return null;
   const mods = roomMods.availableMods();
   const [picks, setPicks] = useState(selected);
   const toggle = (id) => {
     setPicks((prev) => prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id].sort());
   };
-  return html`<div class="modal mod-modal" role="dialog" aria-label="房间模组选择">
-    <div class="modal__backdrop" onClick=${onClose}></div>
-    <div class="mod-modal-card brackets">
-      <header class="modal__header">
-        <span class="micro">WORKSHOP MODS</span>
-        <h2>选择本房间启用的模组</h2>
-        <p class="muted">根据勾选决定本房间载入的内容；未启用的房间不受任何影响。</p>
-      </header>
+  return html`<${Modal}
+    open=${open}
+    onClose=${onClose}
+    title=${t('选择本房间启用的模组')}
+    micro="WORKSHOP MODS"
+    width="min(7.6rem, 92vw)"
+    class="mod-picker-modal"
+    actions=${html`
+      <div style="display:flex; justify-content:center; align-items:center; width:100%; gap:14px;">
+        <${Button} variant="secondary" size="md" onClick=${() => { setPicks([]); onSave([]); onClose(); }}>${t('清空选择')}<//>
+        <${Button} variant="primary" size="md" onClick=${() => { onSave(picks); onClose(); }}>${t('确定 ({n})', { n: picks.length })}<//>
+      </div>
+    `}
+  >
+    <div class="mod-picker-body">
+      <p style="font-size:calc(.13 * var(--t)); color:var(--text-lo); margin-bottom:.12rem; text-align:center;">
+        ${t('根据勾选决定本房间载入的内容；未启用的房间不受任何影响。')}
+      </p>
       <div class="mod-modal-list">
-        ${!mods.length ? html`<p class="muted" style="padding: .3rem; text-align: center;">服务器当前未安装模组</p>` : null}
+        ${!mods.length ? html`<p class="muted" style="padding: .4rem; text-align: center;">${t('服务器当前未安装模组')}</p>` : null}
         ${mods.map((m) => {
           const checked = picks.includes(m.id);
           return html`<div key=${m.id} class=${`mod-pick-item${checked ? ' is-selected' : ''}`} onClick=${() => toggle(m.id)}>
@@ -521,20 +546,16 @@ function ModPickerModal({ open, onClose, selected, onSave }) {
               <div class="mod-pick-head">
                 <span class="mod-pick-name">${m.id}</span>
                 <span class=${`mod-pick-tag ${m.combat ? 'mod-pick-tag--combat' : 'mod-pick-tag--cosmetic'}`}>
-                  ${m.combat ? '数值/战斗改动' : '外观/数据扩展'}
+                  ${m.combat ? t('数值/战斗改动') : t('外观/数据扩展')}
                 </span>
               </div>
-              <p class="mod-pick-desc">${m.layer || '模组扩展'}</p>
+              <p class="mod-pick-desc">${m.layer || t('模组扩展')}</p>
             </div>
           </div>`;
         })}
       </div>
-      <footer class="mod-modal-foot">
-        <${Button} variant="secondary" size="md" onClick=${() => { setPicks([]); onSave([]); onClose(); }}>清空选择<//>
-        <${Button} variant="primary" size="md" onClick=${() => { onSave(picks); onClose(); }}>确定 (${picks.length})<//>
-      </footer>
     </div>
-  </div>`;
+  <//>`;
 }
 
 /**
@@ -864,7 +885,7 @@ export function LobbyScreen() {
   const [simulation, setSimulation] = useState(lobbySimulationPreference);
   const [difficulty, setDifficulty] = useState(() => preferredDifficulty(lobbySimulationPreference()));
   const [fpVariant, setFpVariant] = useState(firepowerVariantPreference);
-  const roomMode = simulation === 'solo' ? 'solo' : 'coop';
+  const roomMode = simulation === 'solo_infinite' ? 'solo_infinite' : simulation === 'solo' ? 'solo' : 'coop';
   const randomMode = simulation === 'firepower';
   const variant = randomMode ? fpVariant : 'blitz';
   const [code, setCode] = useState('');
@@ -889,6 +910,7 @@ export function LobbyScreen() {
   const [sweepOpen, setSweepOpen] = useState(false);
   // The Android shell can ask the local network who hosts a key, so a guest never types an address: the code is enough.
   const nativeShell = globalThis.AndroidNative?.isNativeApp?.() ? globalThis.AndroidNative : null;
+  const isLocalOrNative = Boolean(nativeShell || location.hostname === 'localhost' || location.hostname === '127.0.0.1');
   const [lanRoom, setLanRoom] = useState(null);
   const [lanNote, setLanNote] = useState('');
   useEffect(() => {
@@ -939,7 +961,7 @@ export function LobbyScreen() {
     if ((m === 'firepower') !== randomMode) setDifficulty(preferredDifficulty(m));
     setSimulation(m);
     savePref('lobby.simulation', m);
-    savePref('lobby.mode', m === 'solo' ? 'solo' : 'coop');
+    savePref('lobby.mode', m === 'solo' || m === 'solo_infinite' ? m : 'coop');
     savePref('lobby.random', m === 'firepower');
   };
   const pickDifficulty = (d) => {
@@ -973,7 +995,7 @@ export function LobbyScreen() {
   const create = () => run('create', () => net.request('room.create', {
     ...roomMods.buildCreatePayload(roomMode, difficulty),
     random: randomMode,
-    private: roomMode !== 'solo' && privateRoom,
+    private: roomMode !== 'solo' && roomMode !== 'solo_infinite' && privateRoom,
     ...(randomMode ? { variant } : {}),
   }));
   const queueMatch = () => run('queue', () => net.request('match.queue', { mode: roomMode, difficulty, random: randomMode, ...(randomMode ? { variant } : {}), fillBots: false }));
@@ -1021,10 +1043,28 @@ export function LobbyScreen() {
   const [allyOpen, setAllyOpen] = useState(false);            // 选择同盟方式
   const [sheetChained, setSheetChained] = useState(false);    // opened from 选择同盟方式: no darkening of the hub between
   const [joinOpen, setJoinOpen] = useState(false);
+  const [achOpen, setAchOpen] = useState(false);              // 成就统计 (ui/achievements.js)
   const [veil, setVeil] = useState(true);
   useEffect(() => { const timer = setTimeout(() => setVeil(false), 520); return () => clearTimeout(timer); }, []);
-  // 同盟模拟 → 选择同盟方式; 独立模拟 / 无限火力 → 选择模拟协议
-  const openMode = (m) => { pickMode(m); if (m === 'coop') setAllyOpen(true); else { setSheetPurpose('create'); setSheetChained(false); setSheetOpen(true); } };
+
+
+  const enterInfiniteMode = () => {
+    pickMode('solo_infinite');
+    run('create', () => net.request('room.create', {
+      mode: 'solo_infinite',
+      difficulty: 'HARD',
+      private: true,
+      modIds: [],
+    }));
+  };
+
+  // 同盟模拟 → 选择同盟方式; 独立模拟 / 无限火力 → 选择模拟协议; 超限模拟 → 直接进入终极单人房间
+  const openMode = (m) => {
+    if (m === 'solo_infinite') { enterInfiniteMode(); return; }
+    pickMode(m);
+    if (m === 'coop') setAllyOpen(true);
+    else { setSheetPurpose('create'); setSheetChained(false); setSheetOpen(true); }
+  };
   const openSearch = () => { pickMode('coop'); setSheetChained(allyOpen); setAllyOpen(false); setSheetPurpose('search'); setSheetOpen(true); };
   const modeCard = MODE_CARDS.find((c) => c.id === simulation) || MODE_CARDS[0];
 
@@ -1039,6 +1079,7 @@ export function LobbyScreen() {
         <div class="topbar__tools">
           <${SettingsButton} class="lobby-settings" variant="secondary" square=${true} />
           <${GuideButton} class="lobby-guide" variant="secondary" square=${true} />
+          <${LobbyMusicButton} />
           <${Button} variant="secondary" size="sm" square=${true} class="hub-bg-btn" onClick=${() => setBgOpen(true)}
             title=${t('大厅背景')} aria-label=${t('大厅背景')}><${BackdropGlyph} /><//>
           <${HubFullscreenButton} />
@@ -1060,6 +1101,7 @@ export function LobbyScreen() {
       </div>
 
       <aside class="hub-side">
+        <${AchievementEntry} key=${achOpen ? 'open' : 'shut'} onOpen=${() => setAchOpen(true)} />
         <${HubTile} icon="key" label=${t('密钥加入')} en="JOIN WITH KEY" onClick=${() => setJoinOpen(true)} />
         <${TipsPanel} />
       </aside>
@@ -1083,10 +1125,11 @@ export function LobbyScreen() {
           </div>` : null}
         ${maint?.active ? html`<div class="hub-maint">${t('服务器即将维护，暂停开启新的模拟')}</div>` : null}
         <div class="hub-entries__row">
+          ${isLocalOrNative ? html`<${HubEntry} group=${{ icon: 'cpu', label: t('超限模拟') }} name=${t('超限模拟')} en="INFINITE" icon="cpu" badge="∞" tone="purple" onClick=${() => openMode('solo_infinite')} />` : null}
           <${HubEntry} group=${{ icon: 'user', label: t('独立模拟') }} name=${t('独立模拟')} en="SOLO" icon="user" onClick=${() => openMode('solo')} />
           <${HubEntry} group=${{ icon: 'users', label: t('同盟模拟') }} name=${t('同盟模拟')} en="ALLIANCE" icon="users" count=${matchmakingCounts?.total} onClick=${() => openMode('coop')} />
           ${CAN_FIREPOWER ? html`<${HubEntry} name="无限火力" en="FIREPOWER" icon="dice" badge="1.1" tone="gold" onClick=${() => openMode('firepower')} />` : null}
-          ${CAN_QUEUE ? html`<${HubEntry} name=${t('搜寻队友')} en="FIND ALLIES" icon="search" tone="bright" onClick=${openSearch} />` : null}
+          ${CAN_QUEUE && !isLocalOrNative ? html`<${HubEntry} name=${t('搜寻队友')} en="FIND ALLIES" icon="search" tone="bright" onClick=${openSearch} />` : null}
         </div>
       </section>
     </main>
@@ -1127,6 +1170,7 @@ export function LobbyScreen() {
     <//>
 
     <${MatchmakingModal} open=${modalOpen} onClose=${() => setModalOpen(false)} onJoin=${join} onSpectate=${spectate} />
+    ${achOpen ? html`<${AchievementPanel} me=${me} onClose=${() => setAchOpen(false)} />` : null}
     ${sweepOpen ? html`<${SweepReport} onClose=${() => setSweepOpen(false)} />` : null}
     <${ServerRedirectModal}
       open=${redirectModalOpen}

@@ -169,7 +169,13 @@ export function spineEntry(m, id, opts) {
     return fallbackSp;
   }
   const tk = get(get(m, 'tokens'), s);
-  if (tk) return validSpine(tk.spine) ? tk.spine : null;
+  if (tk) {
+    // A summon whose official model only the local client has (spineLocal, tools/local-token-models.test.js): the
+    // same overlay rule as an enemy below — the local model when data/local-assets.json lists every one of its
+    // files, else the web model (usually none: the client keeps the avatar diamond).
+    const web = validSpine(tk.spine) ? tk.spine : null;
+    return (opts && opts.local && localSpineEntry(tk.spineLocal, opts.local, web)) || web;
+  }
   const en = get(get(m, 'enemies'), s);
   if (en) {
     let web = null;

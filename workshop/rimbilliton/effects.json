@@ -1,0 +1,182 @@
+{
+ "aceffect_band_62": {
+  "effectId": "aceffect_band_62",
+  "effectType": "BAND_INITIAL",
+  "name": "开拓大地",
+  "desc": "【开拓大地】当你首次激活【雷姆必拓】盟约时，立即获得1名阶级等于调度中心的精锐化【雷姆必拓】干员\n在【雷姆必拓】部分干员缺席时体验可能不完整",
+  "descRaw": "【开拓大地】当你首次激活【雷姆必拓】盟约时，立即获得1名阶级等于调度中心的精锐化【雷姆必拓】干员\n<@ba.vdown>在【雷姆必拓】部分干员缺席时体验可能不完整</>",
+  "counterType": "NONE",
+  "continuedRound": -1,
+  "decoIconId": null,
+  "enemyPrice": 0,
+  "buffs": [
+   {
+    "key": "first_activate_bond_gain_golden_bond_char",
+    "countType": "NONE",
+    "bb": {
+     "count": 1
+    },
+    "bbStr": {
+     "bond": "rimBilliton"
+    }
+   }
+  ],
+  "params": {
+   "count": 1,
+   "bond": "rimBilliton"
+  }
+ },
+ "bondeffect_rimbilliton": {
+  "effectId": "bondeffect_rimbilliton",
+  "effectType": "BOND",
+  "name": "雷姆必拓",
+  "desc": "【雷姆必拓】最后上场的1名雷姆必拓干员获得“开拓心”：场上每存在1位不重复的雷姆必拓干员，其受到的伤害降低5%；持有“开拓心”的干员生命值+{0:0%}（受层数影响，每层+0.25%），攻击时额外附带{1:0%}生命上限的真实伤害（受层数影响，每层+0.05%）\n<在场6名不同【雷姆必拓】干员>场上的雷姆必拓干员获得等同于“开拓心”干员{2:0%}生命上限的攻击",
+  "descRaw": "【雷姆必拓】最后上场的<@autochess.dgreen>1</>名雷姆必拓干员获得<@ba.vup>“开拓心”</>：场上每存在1位不重复的雷姆必拓干员，其受到的伤害降低<@ba.vup>5%</>；持有<@ba.vup>“开拓心”</>的干员<@ba.vup>生命值</>+{0:0%}<@autochess.gray>（受层数影响，每层+0.25%）</>，攻击时额外附带{1:0%}<@ba.vup>生命上限</>的<@ba.vup>真实伤害</><@autochess.gray>（受层数影响，每层+0.05%）</>\n<在场<@autochess.dgreen>6</>名不同【雷姆必拓】干员>场上的雷姆必拓干员获得等同于<@ba.vup>“开拓心”</>干员{2:0%}<@ba.vup>生命上限</>的攻击",
+  "counterType": "NONE",
+  "continuedRound": -1,
+  "decoIconId": null,
+  "enemyPrice": 0,
+  "buffs": [
+   {
+    "key": "env_gbuff_new",
+    "bb": {
+     "power_bond_char_cnt": 3,
+     "ex_bond_char_cnt": 6,
+     "hp": 0.2,
+     "hp_per_stack": 0.005,
+     "true_dmg": 0.05,
+     "true_dmg_per_stack": 0.001,
+     "taken_reduce": 0.05,
+     "atk_hp_share": 0.25
+    },
+    "bbStr": {
+     "key": "act2autochess_bond_eff_rimbilliton"
+    },
+    "countType": "NONE"
+   }
+  ],
+  "params": {
+   "power_bond_char_cnt": 3,
+   "ex_bond_char_cnt": 6,
+   "hp": 0.25,
+   "hp_per_stack": 0.0025,
+   "true_dmg": 0.05,
+   "true_dmg_per_stack": 0.0005,
+   "taken_reduce": 0.05,
+   "atk_hp_share": 0.25,
+   "key": "act2autochess_bond_eff_rimbilliton"
+  }
+ },
+ "eff_mod_happy_supply": {
+  "effectId": "eff_mod_happy_supply",
+  "effectType": "EQUIP",
+  "name": "“幸福在途”补给包",
+  "desc": "造成的伤害提升40%；若携带者为【雷姆必拓】盟约干员，造成伤害时，额外造成1次等于“开拓心”干员2.5%生命上限的真实伤害",
+  "descRaw": "造成的伤害<@ba.vup>提升40%</>；若携带者为【<@ba.vup>雷姆必拓</>】盟约干员，造成伤害时，额外造成1次等于<@ba.vup>“开拓心”</>干员<@ba.vup>2.5%生命上限</>的<@ba.vup>真实伤害</>",
+  "counterType": "NONE",
+  "continuedRound": -1,
+  "decoIconId": null,
+  "enemyPrice": 0,
+  "buffs": [
+   {
+    "key": "env_gbuff_new_with_verify",
+    "countType": "NONE",
+    "bb": {
+     "damage_scale": 1.4,
+     "true_damage_hp_scale": 0.025
+    },
+    "bbStr": {
+     "key": "mod_rimbilliton_happy_supply"
+    }
+   }
+  ],
+  "params": {
+   "damage_scale": 1.4,
+   "true_damage_hp_scale": 0.025,
+   "key": "mod_rimbilliton_happy_supply"
+  }
+ },
+ "eff_modg_happy_supply": {
+  "effectId": "eff_modg_happy_supply",
+  "effectType": "EQUIP",
+  "name": "“幸福在途”补给包",
+  "desc": "造成的伤害提升80%；若携带者为【雷姆必拓】盟约干员，造成伤害时，额外造成1次等于“开拓心”干员5%生命上限的真实伤害",
+  "descRaw": "造成的伤害<@ba.vup>提升80%</>；若携带者为【<@ba.vup>雷姆必拓</>】盟约干员，造成伤害时，额外造成1次等于<@ba.vup>“开拓心”</>干员<@ba.vup>5%生命上限</>的<@ba.vup>真实伤害</>",
+  "counterType": "NONE",
+  "continuedRound": -1,
+  "decoIconId": null,
+  "enemyPrice": 0,
+  "buffs": [
+   {
+    "key": "env_gbuff_new_with_verify",
+    "countType": "NONE",
+    "bb": {
+     "damage_scale": 1.8,
+     "true_damage_hp_scale": 0.05
+    },
+    "bbStr": {
+     "key": "mod_rimbilliton_happy_supply"
+    }
+   }
+  ],
+  "params": {
+   "damage_scale": 1.8,
+   "true_damage_hp_scale": 0.05,
+   "key": "mod_rimbilliton_happy_supply"
+  }
+ },
+ "eff_mod_greens_can": {
+  "effectId": "eff_mod_greens_can",
+  "effectType": "EQUIP",
+  "name": "绿叶菜罐头",
+  "desc": "受到的伤害降低5%",
+  "descRaw": "受到的伤害<@ba.vup>降低5%</>",
+  "counterType": "NONE",
+  "continuedRound": -1,
+  "decoIconId": null,
+  "enemyPrice": 0,
+  "buffs": [
+   {
+    "key": "env_gbuff_new_with_verify",
+    "countType": "NONE",
+    "bb": {
+     "dmg_taken_mul": 0.95
+    },
+    "bbStr": {
+     "key": "mod_rimbilliton_greens_can"
+    }
+   }
+  ],
+  "params": {
+   "dmg_taken_mul": 0.95,
+   "key": "mod_rimbilliton_greens_can"
+  }
+ },
+ "eff_modg_greens_can": {
+  "effectId": "eff_modg_greens_can",
+  "effectType": "EQUIP",
+  "name": "绿叶菜罐头",
+  "desc": "受到的伤害降低10%",
+  "descRaw": "受到的伤害<@ba.vup>降低10%</>",
+  "counterType": "NONE",
+  "continuedRound": -1,
+  "decoIconId": null,
+  "enemyPrice": 0,
+  "buffs": [
+   {
+    "key": "env_gbuff_new_with_verify",
+    "countType": "NONE",
+    "bb": {
+     "dmg_taken_mul": 0.9
+    },
+    "bbStr": {
+     "key": "mod_rimbilliton_greens_can"
+    }
+   }
+  ],
+  "params": {
+   "dmg_taken_mul": 0.9,
+   "key": "mod_rimbilliton_greens_can"
+  }
+ }
+}

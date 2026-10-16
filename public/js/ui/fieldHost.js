@@ -89,6 +89,8 @@ export function hudBands(kind, size, opts) {
   const folded = !!opts && opts.shop === false;
   const h = size?.height || 1080;
   let rem = 100;
+  // 异形屏适配 (ui/screenFit.js): the board's host may not start at the viewport's top — the HUD rects are measured from it
+  let oy = 0;
   let safeTop = 0;
   let safeBottom = 0;
   let corner = 0;
@@ -97,6 +99,7 @@ export function hudBands(kind, size, opts) {
   let coarse = false;
   try {
     rem = parseFloat(getComputedStyle(document.documentElement).fontSize) || 100;
+    oy = document.querySelector('.gm__field')?.getBoundingClientRect()?.top || 0;
     // The bond strip's slots and labels carry px floors (css/screens/game.css .bslot), so on a phone it is taller than
     // its rem budget suggests and would cover the field's back row. Measure the strip itself; fall back to the rem
     // constant when it is not on the page (a player with no bonds yet).
@@ -105,15 +108,15 @@ export function hudBands(kind, size, opts) {
     // also change its actual top edge; a fixed rem budget can needlessly shrink the board there.
     if (!folded) {
       const row = document.querySelector('.shopbar__row')?.getBoundingClientRect();
-      if (row && row.height > 0 && row.top > 0 && row.top < h) shopBottom = h - row.top;
+      if (row && row.height > 0 && row.top - oy > 0 && row.top - oy < h) shopBottom = h - (row.top - oy);
     }
     coarse = !!document.documentElement?.classList?.contains('sp-coarse');
     // the HUD layer starts below the top safe-area inset and ends above the bottom one (css/devices.css .gm__hud)
     const hud = document.querySelector('.gm__hud')?.getBoundingClientRect();
-    safeTop = Math.max(0, hud?.top || 0);
+    safeTop = Math.max(0, (hud?.top || 0) - oy);
     if (folded) {
-      if (hud && hud.bottom > 0) safeBottom = Math.max(0, h - hud.bottom);
-      corner = cornerBand(h);
+      if (hud && hud.bottom - oy > 0) safeBottom = Math.max(0, h - (hud.bottom - oy));
+      corner = cornerBand(h, oy);
     }
   } catch { /* ignore */ }
   const bottom = folded
@@ -131,8 +134,9 @@ export function hudBands(kind, size, opts) {
  * of at least --tap-min (44 px) centred on it (css/devices.css touch targets), 5 px above a 34 px phone button — a bench
  * pad edge there is not pressable.
  * @param {number} h
+ * @param {number} [oy]
  */
-function cornerBand(h) {
+function cornerBand(h, oy = 0) {
   const btns = document.querySelectorAll('.gm__corner .gm__gear, .gm__corner .ewheel__btn');
   if (!btns || !btns.length) return 0;
   const root = document.documentElement;
@@ -142,7 +146,7 @@ function cornerBand(h) {
     const r = b.getBoundingClientRect();
     if (r && r.height > 0) top = Math.min(top, r.top + r.height / 2 - Math.max(r.height, tap) / 2);
   }
-  return top < Infinity ? Math.max(0, h - top) : 0;
+  return top < Infinity ? Math.max(0, h - (top - oy)) : 0;
 }
 
 function renderPref() {

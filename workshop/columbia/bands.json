@@ -1,0 +1,42 @@
+{
+ "band_columbia": {
+  "bandId": "band_columbia",
+  "sortId": 43,
+  "name": "谬因",
+  "iconId": "icon_columbia_hundun",
+  "modeTypeList": [
+   "SINGLE",
+   "MULTI"
+  ],
+  "totalHp": 24,
+  "effectId": "aceffect_band_columbia",
+  "effectName": "混沌本质",
+  "desc": "【混沌本质】<哥伦比亚>盟约层每叠加50层时，获得1件<沙盘·α>和<沙盘·β>\n在【哥伦比亚】部分干员缺席时体验可能不完整",
+  "descRaw": "【混沌本质】<哥伦比亚>盟约层每叠加50层时，获得1件<沙盘·α>和<沙盘·β>\n<@ba.vdown>在【哥伦比亚】部分干员缺席时体验可能不完整</>",
+  "buffs": [
+   {
+    "key": "band_columbia_elite_gain_sandbox",
+    "bb": {
+     "count": 1
+    },
+    "bbStr": {
+     "bond": "columbiaShip"
+    }
+   }
+  ],
+  "params": {
+   "count": 1,
+   "bond": "columbiaShip",
+   "items": [
+    "chess_item_3_13_e_a",
+    "chess_item_3_14_e_a"
+   ]
+  },
+  "victorCount": 3,
+  "rewardModulus": 1,
+  "unlockDesc": null,
+  "bondIds": [
+   "columbiaShip"
+  ]
+ }
+}

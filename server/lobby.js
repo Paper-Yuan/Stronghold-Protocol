@@ -3,6 +3,7 @@ import { getCpuUsagePercent } from './admin.js';
 import { Matchmaker } from './matchmaking.js';
 import { RoomVoice } from './roomVoice.js';
 import { getNodeStatus } from './serverStatus.js';
+import { buildTag } from './http/buildTag.js';
 // server/lobby.js — rooms, seats, host, AI seats, ready/start, reconnect, and room → Match wiring
 // (DESIGN §2, §6.1 LOBBY, §8.1). Implements the handler interface consumed by server/net.js.
 //
@@ -112,7 +113,7 @@ import { Match as DefaultMatch } from './match/Match.js';
 import { KITTED_CHARS } from './sim/content/kits/index.js';
 import { isModId, modSetOf } from '../shared/modIdentity.js';
 
-function resolveRoomModSet(requested, catalogue) {
+export function resolveRoomModSet(requested, catalogue) {
   const available = (Array.isArray(catalogue) ? catalogue : []).filter((p) => p && isModId(p.id));
   const known = new Set(available.map((p) => p.id));
   const ids = [];
@@ -125,7 +126,7 @@ function resolveRoomModSet(requested, catalogue) {
   if (unknown.length) {
     return { ok: false, unknown: unknown.sort(), available: [...known].sort() };
   }
-  if (!ids.length) return { ok: true, modIds: [], modSet: null };
+  if (!ids.length) return { ok: true, modIds: [], modSet: { digest: 'vanilla', packs: [] } };
   const picked = ids.map((id) => {
     const p = available.find((e) => e.id === id);
     return p.api == null ? { id: p.id, hash: p.hash, layer: p.layer, combat: p.combat }
@@ -145,8 +146,8 @@ export const LOBBY_DEFAULTS = Object.freeze({
   maxRooms: 1000,
   maxRoomsPerAddr: 16,    // rooms created from one client network that may exist at once (0 = unlimited)
   maxMatchesPerAddr: 8,   // matches started from one client network that may run at once (0 = unlimited)
-  maxBots: 10,            // 全服 AI 队友最大数量限制（确保服务器顺畅运行）
-  maxPlayingHumans: 60,   // 全服同时游玩人类玩家最大数量限制
+  maxBots: 10,            // 全服 AI 队友最大数量限制（依旧保持 10 人）
+  maxPlayingHumans: 70,   // 全服同时游玩人类玩家最大数量限制（由 60 人提高至 70 人；按实际连接玩家真实统计，不按房间数量估算）
   resyncMinGapMs: 1000,   // heavy resyncs (match state / result replay) per session at most this often on repeated hellos
   soloReconnectWindowMs: null, // a dropped solo run stays resumable this long (null = data singleReconnectTime, 24 h)
 });
@@ -205,6 +206,19 @@ function opsCharIds(data) {
   let ids = OPS_IDS.get(data);
   if (!ids) { ids = cultivationCharIds(data.chess, data.backups); OPS_IDS.set(data, ids); }
   return ids;
+}
+
+const charIdSets = new WeakMap();
+function chessCharIds(data) {
+  const chess = data && typeof data.chess === 'object' ? data.chess : null;
+  if (!chess) return new Set();
+  let set = charIdSets.get(chess);
+  if (!set) {
+    set = new Set();
+    for (const c of Object.values(chess)) if (c && typeof c.charId === 'string') set.add(c.charId);
+    charIdSets.set(chess, set);
+  }
+  return set;
 }
 
 /** Deep-frozen copy of checked 自选 picks (shared by the session, the seat and the match's PlayerState). */
@@ -290,10 +304,14 @@ export class Room {
       inMatch: !!this.match,
       matching: this.matching || null,
       seats: this.seats.map((s) => (s
-        ? { seat: s.seat, playerId: s.playerId, name: s.name, isBot: s.isBot, ready: s.ready, connected: s.connected && !s.left }
+        ? {
+            seat: s.seat, playerId: s.playerId, name: s.name, isBot: s.isBot, ready: s.ready, connected: s.connected && !s.left,
+            ...(!s.isBot && s.card ? { card: s.card } : {}),
+          }
         : null)),
       spectators: this.spectators.map((s) => ({ playerId: s.playerId, name: s.name, connected: s.connected })),
       ...(this.modSet ? { mods: this.modSet } : {}),
+      modIds: this.modIds || (this.modSet?.packs?.map((p) => p.id) || []),
     };
   }
 
@@ -433,6 +451,7 @@ export class Lobby {
       case 'room.leave': return this.leave(session);
       case 'room.ready': return this.ready(session, msg);
       case 'room.setDifficulty': return this.setDifficulty(session, msg);
+      case 'room.setMods': return this.setMods(session, msg);
       case 'room.setAiPicksLast': return this.setAiPicksLast(session, msg);
       case 'room.setPrivate': return this.setPrivate(session, msg);
       case 'room.addBot': return this.addBot(session);
@@ -452,7 +471,7 @@ export class Lobby {
       case 'room.ownership': return this.ownership(session, msg);
       case 'room.diy': return this.diy(session, msg);
       case 'room.skins': return this.skins(session, msg);
-      case 'room.chat': return this.chat(session, msg);
+      case 'room.card': return this.card(session, msg);
       case 'room.spectate': { this.matchmaker.removePlayer(session.playerId); return this.spectate(session, msg); }
       case 'room.removeSpectator': return this.removeSpectator(session, msg);
       case 'match.queue': session.wantsLobbyStats = true; return this.matchmaker.enqueue(session, msg);
@@ -473,7 +492,7 @@ export class Lobby {
     this.clearResync(session.playerId); // the next resume resyncs immediately
     const room = this.roomOf(session);
     // a solo run may be resumed within singleReconnectTime (24 h); everything else keeps the registry's window
-    session.resumeWindowMs = room && room.match && room.mode === 'solo' ? this.soloResumeWindowMs() : null;
+    session.resumeWindowMs = room && room.match && (room.mode === 'solo' || room.mode === 'solo_infinite') ? this.soloResumeWindowMs() : null;
     if (!room) return;
     const player = room.seatOf(session.playerId);
     const seat = player || room.spectatorOf(session.playerId);
@@ -531,8 +550,13 @@ export class Lobby {
     if (this.isDraining) return fail(ERR.MAINTENANCE, '服务正在热重载更新中，暂停创建新房间，请稍候连接新节点');
     const cur = this.roomOf(session);
     if (cur && cur.match) return fail(ERR.ROOM_STARTED, 'leave your running match first');
-    if (this.rooms.size >= this.opts.maxRooms) return fail(ERR.INTERNAL, 'too many rooms');
-    const maxPlayingHumans = this.opts.maxPlayingHumans ?? 60;
+    // 如果当前玩家所在房间即将在创建后销毁，不计入当前房间占用
+    const leavingRoom = (cur && cur.activeHumans().length === 1 && !cur.spectatorOf(session.playerId)) ? 1 : 0;
+    const dynamicMaxRooms = this.getDynamicMaxRooms();
+    if (this.rooms.size - leavingRoom >= dynamicMaxRooms) {
+      return fail(ERR.RATE, `房间数量已达上限（除去已满房间外最多额外允许 12 个房间，当前上限 ${dynamicMaxRooms} 个），请加入已有房间`);
+    }
+    const maxPlayingHumans = this.opts.maxPlayingHumans ?? 70;
     if (!cur && this.countActiveHumans() >= maxPlayingHumans) {
       return fail(ERR.RATE, `全服同时游玩人数已达上限（最多 ${maxPlayingHumans} 人），请稍候重试`);
     }
@@ -544,6 +568,9 @@ export class Lobby {
         this.limitWarn(`room limit (${this.opts.maxRoomsPerAddr}) reached for ${session.addr}`);
         return fail(ERR.RATE, 'too many rooms from your network');
       }
+    }
+    if (mode === 'solo_infinite') {
+      modIds = [];
     }
     const resolved = resolveRoomModSet(Array.isArray(modIds) ? modIds : [], this.workshop?.mods);
     if (!resolved.ok) {
@@ -558,7 +585,7 @@ export class Lobby {
     room.private = isPrivate === true;
     if (room.private) room.visibility = 'invite';
     room.ownerKey = key;
-    room.modIds = resolved.modIds.length ? resolved.modIds : null;
+    room.modIds = resolved.modIds;
     room.modSet = resolved.modSet;
     if (room.modSet && this.workshop?.roomAssets) {
       this.workshop.roomAssets.forRoom(room.modSet);
@@ -587,8 +614,8 @@ export class Lobby {
     if (cur === room && !room.spectatorOf(session.playerId)) { this.sendState(room, session); return OK; }
     if (cur && cur.match) return fail(ERR.ROOM_STARTED, 'leave your running match first');
     if (room.match) return fail(ERR.ROOM_STARTED);
-    if (room.mode === 'solo') return fail(ERR.ROOM_FULL, 'solo room');
-    const maxPlayingHumans = this.opts.maxPlayingHumans ?? 60;
+    if (room.mode === 'solo' || room.mode === 'solo_infinite') return fail(ERR.ROOM_FULL, 'solo room');
+    const maxPlayingHumans = this.opts.maxPlayingHumans ?? 70;
     if (!cur && this.countActiveHumans() >= maxPlayingHumans) {
       return fail(ERR.RATE, `全服同时游玩人数已达上限（最多 ${maxPlayingHumans} 人），请稍候重试`);
     }
@@ -705,13 +732,35 @@ export class Lobby {
     return OK;
   }
 
+  setMods(session, { modIds = [] } = {}) {
+    const room = this.roomOf(session);
+    if (!room) return fail(ERR.NOT_IN_ROOM);
+    if (room.hostId !== session.playerId) return fail(ERR.NOT_HOST);
+    if (room.match) return fail(ERR.ROOM_STARTED);
+    const resolved = resolveRoomModSet(Array.isArray(modIds) ? modIds : [], this.workshop?.mods);
+    if (!resolved.ok) {
+      const unknown = resolved.unknown.length ? resolved.unknown.join(', ') : '(none)';
+      const available = resolved.available.length ? resolved.available.join(', ') : '(none)';
+      return fail(ERR.MOD_UNKNOWN || 'MOD_UNKNOWN', `本服务器未加载该模组 (${unknown})；可用模组: ${available}`);
+    }
+    room.modIds = resolved.modIds;
+    room.modSet = resolved.modSet;
+    if (room.modSet && this.workshop?.roomAssets) {
+      this.workshop.roomAssets.forRoom(room.modSet);
+    }
+    for (const s of room.seats) if (s && !s.isBot && s.playerId !== room.hostId) s.ready = false;
+    this.log.info(`[lobby] ${room.code} mods updated (${room.modSet?.packs?.length ? `${room.modSet.packs.length} mods` : 'none (vanilla)'}) by host ${session.name}`);
+    this.broadcastState(room);
+    return OK;
+  }
+
   /** 「AI 队友最后选择」 (GitHub #338): host-only, before the match, co-op rooms only (a solo room has no AI seat). */
   setAiPicksLast(session, { on }) {
     const room = this.roomOf(session);
     if (!room) return fail(ERR.NOT_IN_ROOM);
     if (room.hostId !== session.playerId) return fail(ERR.NOT_HOST);
     if (room.match) return fail(ERR.ROOM_STARTED);
-    if (room.mode === 'solo') return fail(ERR.BAD_TARGET, 'solo rooms have no AI teammates');
+    if (room.mode === 'solo' || room.mode === 'solo_infinite') return fail(ERR.BAD_TARGET, 'solo rooms have no AI teammates');
     this.dropReplay(room, session.playerId);
     if (room.aiPicksLast !== on) {
       room.aiPicksLast = on;
@@ -727,7 +776,7 @@ export class Lobby {
     if (room.hostId !== session.playerId) return fail(ERR.NOT_HOST);
     if (room.match) return fail(ERR.ROOM_STARTED);
     this.dropReplay(room, session.playerId);
-    if (room.mode === 'solo') return fail(ERR.ROOM_FULL, 'solo rooms cannot have AI teammates');
+    if (room.mode === 'solo' || room.mode === 'solo_infinite') return fail(ERR.ROOM_FULL, 'solo rooms cannot have AI teammates');
     const maxBots = this.opts.maxBots ?? 10;
     if (this.countActiveBots() >= maxBots) return fail(ERR.ROOM_FULL, `全服 AI 数量已达上限（最多 ${maxBots} 人）`);
     const idx = room.freeSeat();
@@ -789,7 +838,7 @@ export class Lobby {
       if (s.playerId !== room.hostId && (!s.connected || !s.ready)) return fail(ERR.NOT_READY);
     }
     const bots = room.seats.filter((s) => s && s.isBot);
-    if (humans.length < 1 || (room.mode === 'solo' && (humans.length !== 1 || bots.length > 0))) {
+    if (humans.length < 1 || ((room.mode === 'solo' || room.mode === 'solo_infinite') && (humans.length !== 1 || bots.length > 0))) {
       return fail(ERR.BAD_MSG, 'invalid seat configuration');
     }
     const key = session.limitKey || null;
@@ -912,13 +961,15 @@ export class Lobby {
     }
 
     const activeHumans = this.countActiveHumans();
-    const maxPlayingHumans = this.opts.maxPlayingHumans ?? 60;
+    const maxPlayingHumans = this.opts.maxPlayingHumans ?? 70;
     const activeBots = this.countActiveBots();
     const maxBots = this.opts.maxBots ?? 10;
     const humanLimitReached = activeHumans >= maxPlayingHumans;
     const botLimitReached = activeBots >= maxBots;
 
     return {
+      appVersion: '0.2.6',
+      build: buildTag(),
       diyKitted: KITTED_CHARS,
       ...(this.workshop?.mods?.length ? { mods: { digest: this.workshop.modSet?.digest || '', packs: this.workshop.mods } } : {}),
       serverLoad: {
@@ -964,7 +1015,9 @@ export class Lobby {
     let seed = 0;
     try { seed = this.seedFn() >>> 0; } catch { seed = randomInt(2 ** 32); }
     try {
-      const assets = room.modSet && this.workshop?.roomAssets ? this.workshop.roomAssets.forRoom(room.modSet) : null;
+      const hasMods = Boolean(room.modSet && Array.isArray(room.modSet.packs) && room.modSet.packs.length > 0);
+      const assets = hasMods && this.workshop?.roomAssets ? this.workshop.roomAssets.forRoom(room.modSet) : null;
+      const vanillaAssets = !hasMods && this.workshop?.roomAssets ? this.workshop.roomAssets.forRoom({ digest: 'vanilla', packs: [] }) : null;
       const match = new this.MatchClass({
         roomCode: room.code,
         mode: room.mode,
@@ -979,11 +1032,11 @@ export class Lobby {
         seed,
         // the room's match number: with the seed it keeps battleIds unique across the room's matches (DESIGN §14)
         matchNo: room.matchCount + 1,
-        data: assets ? assets.data : this.safeData(),
-        workshopKits: assets ? assets.kits : (this.workshop?.kits || null),
-        workshopKitModules: assets ? assets.modules : (this.workshop?.modules || []),
-        workshopTokenKits: assets ? assets.tokenKits : (this.workshop?.tokenKits || null),
-        mods: room.modSet || this.workshop?.modSet || null,
+        data: hasMods ? (assets ? assets.data : this.safeData()) : (vanillaAssets?.data || this.safeData()),
+        workshopKits: hasMods ? (assets ? assets.kits : (this.workshop?.kits || null)) : null,
+        workshopKitModules: hasMods ? (assets ? assets.modules : (this.workshop?.modules || [])) : [],
+        workshopTokenKits: hasMods ? (assets ? assets.tokenKits : (this.workshop?.tokenKits || null)) : null,
+        mods: hasMods ? room.modSet : null,
         log: this.log,
         now: this.now,
         send: (playerId, msg) => (ctx.live ? this.matchSend(room, ctx, playerId, msg) : false),
@@ -1153,7 +1206,42 @@ export class Lobby {
     return count;
   }
 
-  /** 全服活跃人类玩家总数 (未离开的非 AI 座位) */
+  /**
+   * 判断房间是否已满员 / 不可再加入：
+   * 1. 正在对局中 (match 不为空)
+   * 2. 单人模式房间 (mode === 'solo' 独占)
+   * 3. 4 个座位全部坐满 (freeSeat() === -1)
+   */
+  isRoomFull(room) {
+    if (!room || room.disposed) return false;
+    if (room.match) return true;
+    if (room.mode === 'solo') return true;
+    return room.freeSeat() < 0;
+  }
+
+  /** 统计当前全服已满房间数 */
+  countFullRooms() {
+    let full = 0;
+    for (const r of this.rooms.values()) {
+      if (this.isRoomFull(r)) full++;
+    }
+    return full;
+  }
+
+  /**
+   * 房间数量动态上限计算：
+   * 规则：除去已满的房间外＋12个（不满16个算16个）
+   * 即：fullRooms + 12；若计算结果不足 16 个则保底算 16 个。
+   */
+  getDynamicMaxRooms() {
+    const fullRooms = this.countFullRooms();
+    return Math.max(16, fullRooms + 12);
+  }
+
+  /**
+   * 全服活跃人类玩家总数 (真实统计各房间未离开的非 AI 座位)
+   * 注意：按实际活跃连接与座位真实统计，绝不通过房间数量估算！
+   */
   countActiveHumans() {
     let count = 0;
     for (const r of this.rooms.values()) {
@@ -1251,6 +1339,7 @@ export class Lobby {
       notOwned: session.notOwned || null,
       diy: session.diy || null,
       skins: session.skins || null,
+      card: session.card || null,
     };
   }
 
@@ -1451,6 +1540,19 @@ skins(session, { skins }) {
     return OK;
   }
 
+  card(session, { charId }) {
+    const id = typeof charId === 'string' ? charId : '';
+    if (id && !chessCharIds(this.safeData()).has(id)) return fail(ERR.BAD_MSG, 'unknown operator');
+    session.card = id || null;
+    const room = this.roomOf(session);
+    const seat = room ? room.seatOf(session.playerId) : null;
+    if (seat && seat.card !== session.card) {
+      seat.card = session.card;
+      this.broadcastState(room);
+    }
+    return OK;
+  }
+
 
 chatHistory(session, msg) {
     const room = this.roomOf(session);
@@ -1576,7 +1678,8 @@ activeMatchOf(session) {
   }
 
 createBotRoom({ difficulty = 'FUNNY', ownerKey = null } = {}) {
-    if (!DIFFICULTIES.includes(difficulty) || this.rooms.size >= this.opts.maxRooms) return null;
+    const dynamicMaxRooms = this.getDynamicMaxRooms();
+    if (!DIFFICULTIES.includes(difficulty) || this.rooms.size >= dynamicMaxRooms) return null;
     if (ownerKey && this.opts.maxRoomsPerAddr > 0 &&
         this.countRooms(room => room.ownerKey === ownerKey) >= this.opts.maxRoomsPerAddr) return null;
     const code = this.genCode();

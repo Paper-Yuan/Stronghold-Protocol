@@ -10,5 +10,7 @@
         <domain includeSubdomains="true">localhost</domain>
         <domain includeSubdomains="true">127.0.0.1</domain>
         <domain includeSubdomains="true">10.0.2.2</domain>
+        <domain includeSubdomains="true">101.37.150.107</domain>
+        <domain includeSubdomains="true">isomer319.xyz</domain>
     </domain-config>
 </network-security-config>

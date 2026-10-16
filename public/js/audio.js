@@ -823,6 +823,25 @@ export class AudioManager {
           try { await res.body?.cancel?.(); } catch { /* the fallback request matters more than draining this one */ }
           res = await fetch(url);
         }
+        if (!res.ok || !isAudioResponse(res)) {
+          // CDN fallback: try downcdn.jiangjiangze.icu, weishucdn, speedcdn for audio
+          const cdnCandidates = [
+            'https://downcdn.jiangjiangze.icu',
+            'https://weishucdn.jiangjiangze.icu',
+            'https://speedcdn.jiangjiangze.icu',
+          ];
+          const cleanPath = url.startsWith('/') ? url : `/${url}`;
+          for (const cdnBase of cdnCandidates) {
+            try {
+              await res.body?.cancel?.();
+              const cdnRes = await fetch(`${cdnBase}${cleanPath}`);
+              if (cdnRes.ok && isAudioResponse(cdnRes)) {
+                res = cdnRes;
+                break;
+              }
+            } catch { /* ignore CDN network errors */ }
+          }
+        }
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const ab = await res.arrayBuffer();
         return await new Promise((resolve) => {
@@ -882,6 +901,7 @@ export class AudioManager {
    */
   playBgm(key) {
     try {
+      if (this.lobbyMusicOverride?.(key)) { this.wantBgm = null; ++this.bgmToken; this._fadeOutBgm(); return; }
       if (!this.ctx) { this.wantBgm = key; return; }
       if (this.bgmSilent) {
         this.wantBgm = key;
@@ -939,6 +959,7 @@ export class AudioManager {
       s.start(loopAt);
       nodes.push({ src: s, gain: g });
       this.bgm = { key, loopUrl: track.loop, nodes, gain };
+      this.lobbyMusicBgmStarted?.(key);
     } catch (err) { this._warn('bgm-start', err); }
   }
 

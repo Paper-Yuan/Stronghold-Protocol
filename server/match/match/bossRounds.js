@@ -544,6 +544,13 @@ export class MatchBoss {
     this.markPublic();
     this.runner = null;
     if (!hidden) {
+      if (this.isInfinite && victory) {
+        this.later(this.scaled(DELAYS.SETTLE), () => {
+          this.bossPool = null;
+          this.startRound(this.round + 1);
+        });
+        return;
+      }
       const eligible = victory && !!this.hiddenBossId && hiddenEligible(this.gd, { layerSum: this.hiddenLayerSum, teamLp: this.teamLp });
       this.later(this.scaled(DELAYS.SETTLE), () => {
         if (eligible) {
@@ -556,6 +563,13 @@ export class MatchBoss {
         }
       });
     } else {
+      if (this.isInfinite && victory) {
+        this.later(this.scaled(DELAYS.SETTLE), () => {
+          this.bossPool = null;
+          this.startRound(this.round + 1);
+        });
+        return;
+      }
       this.later(this.scaled(DELAYS.SETTLE), () => this.finish({ victory: true, hiddenCleared: victory, reason: 'victory' }));
     }
   }

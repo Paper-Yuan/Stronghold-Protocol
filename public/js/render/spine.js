@@ -136,7 +136,7 @@ function slotCentre(slot, att, buf, out) {
 // sampling throws is recorded as not measurable (false): units.js draws it directly while it plays, never as empty.
 export const CLIP_SAMPLE_HZ = 60;
 export const CLIP_SAMPLE_MAX = 48;
-export const CLIP_BOUNDS_BUDGET_MS = 2.5;
+export const CLIP_BOUNDS_BUDGET_MS = 1.0;
 const ATT_REGION = 0, ATT_MESH = 2;      // pixi-spine AttachmentType
 const boundsOf = new WeakMap();          // skeleton data → { data, Skeleton, skel, rects: Map<clip, rect|null|false>, todo, job, users, failed }
 const boundsQueue = [];                  // records with clips still to sample, oldest request first
@@ -561,7 +561,17 @@ export class SpineActor {
     if (!once) this.interval = iv;
     this.mode = 'attack';
     this.attackUntil = this.clock + lead + Math.max(0, loopDur - hit) / plan.ts;
-    this._play(clip.loop, false, { timeScale: plan.tsWind, start: plan.start, mix: 0.06 });
+    const isRapid = !once && !this.clipPerAttack && (iv <= loopDur * 1.1);
+    if (isRapid && this.mode === 'attack' && this.current === clip.loop && this.looping) {
+      this.windTs = plan.ts;
+      this.windUntil = this.clock + lead;
+      this.wound = true;
+      const track = this.spine?.state?.tracks?.[0];
+      if (track) track.timeScale = plan.tsWind;
+      return true;
+    }
+    this._play(clip.loop, isRapid, { timeScale: plan.tsWind, start: plan.start, mix: 0.06 });
+    this.looping = isRapid;
     this.windTs = plan.ts;
     this.windUntil = this.clock + lead;
     this.wound = true;
@@ -588,6 +598,12 @@ export class SpineActor {
     this.attackUntil = this.clock + Math.max(0, loopDur - hit) / ts;
     this.windUntil = null;
     this.wound = false;
+    const isRapid = !once && !per && (this.interval <= loopDur * 1.1);
+    if (isRapid && this.looping && this.current === clip.loop) {
+      const e = this.spine?.state?.tracks?.[0];
+      if (e) e.timeScale = ts;
+      return;
+    }
     if (!wasAttacking) {
       // not wound up (no look-ahead, e.g. a batch that arrived late): the sim already resolved the hit, so show the
       // strike frame now — unless a clip-per-attack actor's rhythm leaves room for the whole clip (interval ≥ clip):
@@ -595,7 +611,8 @@ export class SpineActor {
       // lifts before the slam; #246 by @TsangAsuna, accepted by the owner on 2026-10-07)
       const whole = per && this.interval >= loopDur;
       if (whole) this.attackUntil = this.clock + loopDur / ts;
-      this._play(clip.loop, false, { timeScale: ts, start: whole ? 0 : hit, mix: 0.06 });
+      this._play(clip.loop, isRapid, { timeScale: ts, start: whole ? 0 : hit, mix: 0.06 });
+      this.looping = isRapid;
     } else {
       const e = this.spine.state.tracks[0];
       if (e) {
@@ -609,6 +626,7 @@ export class SpineActor {
           e.trackTime += d * 0.8;
         }
       }
+      this.looping = isRapid;
     }
   }
 

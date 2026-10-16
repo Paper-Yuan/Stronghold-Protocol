@@ -1,0 +1,166 @@
+{
+ "columbiaShip": {
+  "bondId": "columbiaShip",
+  "name": "哥伦比亚",
+  "identifier": 31,
+  "isCore": true,
+  "bondType": "SEASON",
+  "bondOrder": 2,
+  "powerIdList": [
+   "columbia"
+  ],
+  "iconId": "icon_columbiaShip",
+  "activeCount": 3,
+  "thresholds": [
+   3,
+   6
+  ],
+  "maxCount": null,
+  "thresholdTemplate": "count_threshold_upward",
+  "countMode": "BOARD",
+  "countsHand": false,
+  "countsGoldenOnly": false,
+  "activeType": "BATTLE",
+  "isActiveInDeck": false,
+  "noStack": false,
+  "weight": 10,
+  "maxInactiveBondCount": -1,
+  "layerMilestones": [],
+  "desc": "场上的【哥伦比亚】干员视为额外携带了1件装备（受层数影响，每50层+1）\n<首次激活时>获得1件源石辅助仪\n<战斗开始时>【哥伦比亚】干员获得携带装备数量×20%的攻击力（受层数影响，每层+0.1%）\n<在场6名不同【哥伦比亚】干员>时，获得1件源石辅助仪，<进入休整期时>获得1件随机阶级的进阶装备",
+  "descRaw": "场上的【哥伦比亚】干员视为额外携带了<@ba.vup>1</>件装备<@autochess.gray>（受层数影响，每50层+1）</>\n<首次激活时>获得<@ba.vup>1</>件<@ba.vup>源石辅助仪</>\n<战斗开始时>【哥伦比亚】干员获得<@ba.vup>携带装备数量×20%</>的攻击力<@autochess.gray>（受层数影响，每层+0.1%）</>\n<在场<@autochess.dgreen>6</>名不同【哥伦比亚】干员>时，获得<@ba.vup>1</>件<@ba.vup>源石辅助仪</>，<进入休整期时>获得<@ba.vup>1</>件<@ba.vup>随机阶级的进阶装备</>",
+  "effectId": "bondeffect_columbia",
+  "effectName": "哥伦比亚",
+  "effectDesc": "场上的【哥伦比亚】干员视为额外携带了{1}件装备（受层数影响，每{2}层+1）\n<首次激活时>获得1件源石辅助仪\n<战斗开始时>【哥伦比亚】干员获得携带装备数量×{0:0%}的攻击力（受层数影响，每层+0.1%）\n<在场6名不同【哥伦比亚】干员>时，获得1件源石辅助仪，<进入休整期时>获得1件随机阶级的进阶装备",
+  "effectDescRaw": "场上的【哥伦比亚】干员视为额外携带了<@ba.vup>{1}</>件装备<@autochess.gray>（受层数影响，每{2}层+1）</>\n<首次激活时>获得<@ba.vup>1</>件<@ba.vup>源石辅助仪</>\n<战斗开始时>【哥伦比亚】干员获得<@ba.vup>携带装备数量×{0:0%}</>的攻击力<@autochess.gray>（受层数影响，每层+0.1%）</>\n<在场<@autochess.dgreen>6</>名不同【哥伦比亚】干员>时，获得<@ba.vup>1</>件<@ba.vup>源石辅助仪</>，<进入休整期时>获得<@ba.vup>1</>件<@ba.vup>随机阶级的进阶装备</>",
+  "effectDescParams": [
+   {
+    "index": 0,
+    "format": "0%",
+    "base": "atk_per_item",
+    "perStack": "atk_per_item_per"
+   },
+   {
+    "index": 1,
+    "format": "0",
+    "base": "extra_carry",
+    "perStack": null,
+    "perStep": "extra_carry_per_layer"
+   },
+   {
+    "index": 2,
+    "format": "0",
+    "base": "extra_carry_per_layer",
+    "perStack": null
+   }
+  ],
+  "bb": {
+   "power_bond_char_cnt": 3,
+   "ex_bond_char_cnt": 6,
+   "atk_per_item": 0.2,
+   "atk_per_item_per": 0.001,
+   "extra_carry": 1,
+   "extra_carry_per_layer": 50,
+   "item_id": "chess_item_6_13_e_a",
+   "golden_item_max_tier": "shop"
+  },
+  "bbStr": {
+   "key": "act2autochess_bond_eff_columbia"
+  },
+  "buffs": [
+   {
+    "key": "env_gbuff_new",
+    "bb": {
+     "power_bond_char_cnt": 3,
+     "ex_bond_char_cnt": 6,
+     "atk_per_item": 0.2,
+     "atk_per_item_per": 0.001,
+     "extra_carry": 1,
+     "extra_carry_per_layer": 50,
+     "item_id": "chess_item_6_13_e_a",
+     "golden_item_max_tier": "shop"
+    },
+    "bbStr": {
+     "key": "act2autochess_bond_eff_columbia"
+    }
+   }
+  ],
+  "baseParams": [
+   "atk_per_item"
+  ],
+  "perStackParams": [
+   "atk_per_item_per"
+  ],
+  "members": [
+   "chess_char_3_10_a",
+   "chess_char_3_22_a",
+   "chess_char_6_16_a",
+   "chess_ws_col_aphris_a",
+   "chess_ws_col_astesia_a",
+   "chess_ws_col_ceylon_a",
+   "chess_ws_col_cutter_a",
+   "chess_ws_col_heyak_a",
+   "chess_ws_col_jesca_a",
+   "chess_ws_col_kafka_a",
+   "chess_ws_col_nasti_a"
+  ],
+  "visibleMembers": [
+   "chess_char_3_10_a",
+   "chess_char_3_22_a",
+   "chess_char_6_16_a",
+   "chess_ws_col_aphris_a",
+   "chess_ws_col_astesia_a",
+   "chess_ws_col_ceylon_a",
+   "chess_ws_col_cutter_a",
+   "chess_ws_col_heyak_a",
+   "chess_ws_col_jesca_a",
+   "chess_ws_col_kafka_a",
+   "chess_ws_col_nasti_a"
+  ],
+  "spec": {
+   "tiers": [
+    {
+     "need": "3 distinct 【哥伦比亚】 on board",
+     "effect": "Every on-board 【哥伦比亚】 operator counts as carrying one extra piece of equipment (+1 per 50 layers); at battle start each 【哥伦比亚】 operator gains ATK = (equipped items + that extra) × (20% + 0.1%·L). On first activation the player gains 1 源石辅助仪."
+    },
+    {
+     "need": "6 distinct",
+     "effect": "On first activation the player gains 1 more 源石辅助仪; at the start of every prep (进入休整期时) the player gains 1 random golden item of random tier."
+    }
+   ],
+   "formulas": {
+    "atkPerItem": "0.20 + 0.001*L",
+    "extraCarried": "1 + floor(L / 50)"
+   },
+   "caps": "none",
+   "layerGain": "Economy-driven like every other core bond.",
+   "howToPlay": "Field 【哥伦比亚】 operators (红豆 / 锡人 / 雷蛇 / 赫默 / 白面鸮 / 塞雷娅 …) and stack 源石辅助仪 on them: the item eats the other equipment each prep and grows with the bond's layers.",
+   "assumed": [
+    "「视为额外携带了1件装备」 is a virtual +1 to the carried-equipment COUNT used by this bond's ATK term (real per-carrier capacity comes from 源石辅助仪's 装备格+2/+4), not a real third slot",
+    "「3人数 <首次激活时>」 and 「6人数 <首次激活时>」 each grant once per match (two grants in total)",
+    "a full carrier can still take 源石辅助仪 (its own 装备格 bonus raises the cap)"
+   ]
+  }
+ },
+ "swiftShip": {
+  "bondId": "swiftShip",
+  "members": [
+   "chess_ws_col_astesia_a",
+   "chess_ws_col_cutter_a",
+   "chess_ws_dos_takila_a"
+  ],
+  "visibleMembers": [
+   "chess_ws_col_astesia_a",
+   "chess_ws_col_cutter_a",
+   "chess_ws_dos_takila_a"
+  ]
+ },
+ "raidShip": {
+  "bondId": "raidShip",
+  "members": [
+   "chess_ws_col_kafka_a"
+  ],
+  "visibleMembers": [
+   "chess_ws_col_kafka_a"
+  ]
+ }
+}

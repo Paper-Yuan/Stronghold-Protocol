@@ -82,7 +82,7 @@ export function resetData() {}
 const SIM_PRIVATE = new Set(['nodedata.js']); // lower-case (compared case-insensitively)
 /** 按房间的游戏数据 (W-B): the URL prefix and the digest shape (`shared/modIdentity.js` modDigest = sha256 hex). */
 export const ROOM_DATA_PREFIX = '/room-data/';
-const ROOM_DIGEST_RE = /^[0-9a-f]{64}$/;
+const ROOM_DIGEST_RE = /^(?:[0-9a-f]{64}|vanilla)$/;
 /** 包声明的战斗逻辑模块（`server.battle`, DESIGN §28.17）的 URL 前缀 —— 与 `shared/battlePack` 的默认值同一个字符串。 */
 export const WORKSHOP_BATTLE_PREFIX = '/workshop-battle/';
 

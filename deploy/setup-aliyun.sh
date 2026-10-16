@@ -62,8 +62,8 @@ upstream stronghold_backend {
 }
 
 server {
-    listen 80 default_server;
-    listen [::]:80 default_server;
+    listen 3000 default_server;
+    listen [::]:3000 default_server;
     server_name _;
 
     location /assets/ {

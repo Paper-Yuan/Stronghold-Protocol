@@ -33,7 +33,10 @@ export const DIFFICULTY_COLORS = { FUNNY: '#f6a329', NORMAL: '#e85a1a', HARD: '#
 
 // modeId in data/config.json = `mode_${type}_${difficulty.toLowerCase()}` with type single|multi
 export const modeIdFor = (roomMode, difficulty) =>
-  `mode_${roomMode === 'solo' ? 'single' : 'multi'}_${difficulty.toLowerCase()}`;
+  `mode_${(roomMode === 'solo' || roomMode === 'solo_infinite') ? 'single' : 'multi'}_${difficulty.toLowerCase()}`;
+
+export { SOLO_INFINITE, isInfiniteMode, BOSS_HIT_LIMIT_INFINITE, INFINITE_MAX_ROUND, MIN_ATTACK_INTERVAL_SEC } from './infiniteMode.js';
+
 
 export const PHASE = Object.freeze({
   LOBBY: 'LOBBY',

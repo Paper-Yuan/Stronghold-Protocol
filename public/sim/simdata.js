@@ -867,8 +867,16 @@ export function withUnitLoadouts(ds, players) {
       if (diy) lo.diy = diy;
       if (pot != null) lo.potential = pot;
       const prev = map.get(u.chessId);
-      if (!prev) map.set(u.chessId, lo);
-      else if (prev.skillIndex !== lo.skillIndex || prev.moduleId !== lo.moduleId || !!prev.standIn !== !!lo.standIn
+      if (!prev) {
+        map.set(u.chessId, lo);
+        try {
+          const raw = typeof ds.rawChess === 'function' ? ds.rawChess(u.chessId) : null;
+          if (raw) {
+            if (raw.baseId && !map.has(raw.baseId)) map.set(raw.baseId, lo);
+            if (raw.goldenId && !map.has(raw.goldenId)) map.set(raw.goldenId, lo);
+          }
+        } catch (_) {}
+      } else if (prev.skillIndex !== lo.skillIndex || prev.moduleId !== lo.moduleId || !!prev.standIn !== !!lo.standIn
         || (prev.potential ?? null) !== (lo.potential ?? null)
         || JSON.stringify(prev.diy ?? null) !== JSON.stringify(lo.diy ?? null)) conflicts.add(u.chessId);
     }

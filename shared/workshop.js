@@ -160,6 +160,8 @@ export const PACK_FIELDS = Object.freeze([
   // 版本）。这里只管**形状**；**语义在装载期裁决**（`adjudicatePackGraph`：缺失依赖 / 版本不合 / 互斥 / 级联 /
   // 循环，全部具名拒绝）。与 `target` 同一条纪律：**只在写出来时**才进归一化结果 —— 没声明的包哈希逐字节不变。
   'dependencies', 'conflicts',
+  // 自选干员去重行为声明
+  'stripDiyOverlaps',
 ]);
 
 /** `pack.json.target` 的闭枚举：`forge`（缺省）本引擎装载；`stardust` 是给 Stardust 宿主的声明型包（本引擎只认识、不装载）。 */
@@ -401,6 +403,7 @@ export const CLIENT_PANEL_REPEATABLE = Object.freeze(['screen.game.shopCard']);
  */
 export const CLIENT_WRAP_COMPONENTS = Object.freeze([
   'game.bondStrip', 'game.hud.topBar', 'game.shopCard', 'loadout.detail',
+  'briefing.bonds', 'briefing.banned', 'sweep.bonds',
 ]);
 /** 改写方式：`wrap` = 包住引擎的那一份（外层拿到内层的结果当 `orig`）；`replace` = 整段换掉（`orig` 是 `null`）。 */
 export const CLIENT_WRAP_MODES = Object.freeze(['wrap', 'replace']);
@@ -2531,6 +2534,7 @@ export function normalizePackManifest(raw, dirName = '', opts = {}) {
       // 包都加一个 `behaviour: []` 会让**所有已发布包的哈希全部改变**。而它**必须**进哈希：一条开关改的是引擎的
       // 规则，两份只差开关的包共用同一个摘要，房间的摘要闸门就会放行两种不同的行为（DESIGN §28.2）。
       ...(behaviourParsed ? { behaviour: behaviourParsed.decl } : {}),
+      ...(typeof raw.stripDiyOverlaps === 'boolean' ? { stripDiyOverlaps: raw.stripDiyOverlaps } : {}),
       // 四组新声明：**只在声明过时才存在**（见上面 `declared` 的注释）。哈希覆盖它们靠的就是这一条 ——
       // `identifyPack` 哈希的是这份归一化清单的 `canonicalJson`（server/workshop.js）。
       ...Object.fromEntries(declared),
@@ -3277,7 +3281,19 @@ export function applyWorkshop(base, packs) {
         if (file === 'chess') looked.push({ pack: pack.id, id, rec });
         if (file === 'enemies') lookedEnemies.push({ pack: pack.id, id, rec });
         if (exists) push(report.overridden, file, id); else push(report.added, file, id);
-        return { record: exists ? mergeRecord(priorMap[id], rec) : rec, existed: exists };
+        let record = exists ? mergeRecord(priorMap[id], rec) : { ...rec, packId: pack.id };
+        if (exists && file === 'bonds' && priorMap[id]) {
+          // 工坊 Mod 经常只声明自己新增的干员（如 members: [若麦]），而非全量覆盖；
+          // 此时对 members 与 visibleMembers 取并集，保留官方原有名册干员
+          if (Array.isArray(priorMap[id].members) && Array.isArray(rec.members)) {
+            record.members = Array.from(new Set([...priorMap[id].members, ...rec.members]));
+          }
+          if (Array.isArray(priorMap[id].visibleMembers) && Array.isArray(rec.visibleMembers)) {
+            record.visibleMembers = Array.from(new Set([...priorMap[id].visibleMembers, ...rec.visibleMembers]));
+          }
+        }
+        if (!exists && !record.packId) record.packId = pack.id;
+        return { record, existed: exists };
       });
       entry.files[file] = { added, overridden };
     }

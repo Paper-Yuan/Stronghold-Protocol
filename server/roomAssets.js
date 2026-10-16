@@ -47,18 +47,35 @@ export function createRoomAssets({ official, processData, packs, kits, kitOwners
   const byDigest = new Map();
   const sameAsProcess = (ids) => ids.length === allIds.size && ids.every((id) => allIds.has(id));
 
-  /** 一个包集合是不是**正好**就是进程级那一份（空集合与全集都算）。 */
-  function isProcess(ids) { return ids.length === 0 || sameAsProcess(ids); }
+  /** 一个包集合是不是正好就是进程级那一份（全集，或没有安装任何工坊包）。 */
+  function isProcess(ids) { return (allIds.size === 0) || (allIds.size > 0 && sameAsProcess(ids)); }
 
   return {
     /**
-     * 这一局的数据 / kit / 模块清单。没有声明集合（或声明了全部）时返回**进程级那一份本体**。
+     * 这一局的数据 / kit / 模块清单。没有声明集合且全服无包（或声明了全部已装包）时返回进程级那一份本体；声明空集合时物化纯官方无模组数据。
      * @param {{ digest: string, packs: Array<{ id: string }> }|null} modSet `Room.modSet`（W-A）
      */
     forRoom(modSet) {
+      if (!modSet && allIds.size === 0) return processAssets;
       const ids = modSet && Array.isArray(modSet.packs) ? modSet.packs.map((p) => p && p.id).filter(Boolean) : [];
       if (isProcess(ids)) return processAssets;
-      const key = modSet.digest || ids.slice().sort().join(',');
+
+      // 若明确声明空集合（即禁用全部工坊包，纯净官方模式）
+      if (allIds.size > 0 && ids.length === 0) {
+        if (!cache.has('__vanilla__')) {
+          cache.set('__vanilla__', {
+            data: deepFreeze(official),
+            kits: Object.freeze({}),
+            tokenKits: Object.freeze({}),
+            modules: Object.freeze([]),
+          });
+        }
+        const vanilla = cache.get('__vanilla__');
+        if (modSet?.digest) byDigest.set(modSet.digest, vanilla);
+        return vanilla;
+      }
+
+      const key = modSet?.digest || ids.slice().sort().join(',');
       const hit = cache.get(key);
       if (hit) return hit;
       const chosen = list.filter((p) => ids.includes(p.id));
@@ -97,8 +114,13 @@ export function createRoomAssets({ official, processData, packs, kits, kitOwners
      * @returns {{ data: any, kits: any, modules: any } | null}
      */
     byDigest(digest) {
+      if (digest === 'vanilla') {
+        return this.forRoom({ digest: 'vanilla', packs: [] });
+      }
       return typeof digest === 'string' && byDigest.has(digest) ? byDigest.get(digest) : null;
     },
+    /** 官方原生纯净数据（无任何工坊模组叠加） */
+    official,
     /** 已经物化了几套（诊断与测试用）。 */
     size: () => cache.size,
     /** 其中有几个摘要可以按 URL 取（`/room-data/`）。 */

@@ -5,7 +5,7 @@
 // the player state).
 
 import { ERR } from '../../../shared/constants.js';
-import { tileKey, inField, parseDir } from '../board.js';
+import { tileKey, inField, parseDir, freeSlot } from '../board.js';
 import { offsetTile } from '../../sim/dir.js';
 import { itemKey } from '../gamedata.js';
 import { OK, fail } from './common.js';
@@ -143,6 +143,25 @@ export class PlayerItems {
     if (loc.area === 'equipped') return fail(ERR.BAD_TARGET, 'equipped items are locked');
     this._detach(loc);
     this.m.dispatchItem(this, loc.piece, loc.holder || null, 'onDestroy', { item: loc.piece, holder: loc.holder || null, reason: 'player' });
+    this.recompute();
+    return OK;
+  }
+
+  /**
+   * g.unequip {itemUid}: unequip an item currently worn by an operator back into the hand (right->left)
+   * or temporary storage if hand is full. If neither has room, refused atomically with ERR.HAND_FULL.
+   */
+  unequip(itemUid) {
+    const g = this._gate(); if (g) return g;
+    const loc = this.find(itemUid);
+    if (!loc || loc.piece.kind !== 'item' || loc.area !== 'equipped') return fail(ERR.BAD_TARGET, 'item is not equipped');
+    if (freeSlot(this.hand) < 0 && freeSlot(this.temp) < 0) return fail(ERR.HAND_FULL, 'hand and temp are both full');
+    const item = loc.piece;
+    const holder = loc.holder;
+    this._detach(loc);
+    this.stow(item, { allowTemp: true });
+    this.m.dispatchItem(this, item, holder || null, 'onDestroy', { item, holder: holder || null, reason: 'unequip' });
+    this.checkItemMerges();
     this.recompute();
     return OK;
   }

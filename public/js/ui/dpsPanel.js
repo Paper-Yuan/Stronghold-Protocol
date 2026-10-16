@@ -34,8 +34,9 @@ export function DpsPanel({ myId, watching = null, phase = null }) {
         // 以干员 defId / charId 聚合（召唤物可归并至所属干员或单独展示）
         const id = u.defId || u.charId || u.id;
         if (!id) continue;
-        const prev = map.get(id) || { id, name: u.name || id, dmg: 0, charId: u.charId || id };
+        const prev = map.get(id) || { id, name: u.name || id, dmg: 0, charId: u.charId || id, standInFor: u.standInFor || null };
         prev.dmg += dmg;
+        if (u.standInFor) prev.standInFor = u.standInFor;
         map.set(id, prev);
       }
 
@@ -66,8 +67,11 @@ export function DpsPanel({ myId, watching = null, phase = null }) {
     <div class="dps-panel__list">
       ${stats.ops.map((op) => {
         const pct = Math.min(100, Math.round((op.dmg / maxDmg) * 100));
-        const chessRec = data.lookup('chess', op.id);
-        const avatarSrc = chessAvatarUrl(m, chessRec || { charId: op.charId });
+        let chessRec = data.lookup('chess', op.id);
+        if (op.standInFor) {
+          chessRec = { ...(chessRec || {}), charId: op.charId, standInFor: op.standInFor };
+        }
+        const avatarSrc = chessAvatarUrl(m, chessRec || { charId: op.charId, standInFor: op.standInFor });
         return html`<div key=${op.id} class="dps-row">
           <div class="dps-row__bar" style=${`width: ${pct}%`} aria-hidden="true"></div>
           <span class="dps-row__avatar">

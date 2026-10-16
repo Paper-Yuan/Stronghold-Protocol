@@ -29,7 +29,7 @@ function splitEntry(line) {
  * @returns {{ lines: string[], pages: AtlasPage[] }}
  */
 export function parseAtlas(text) {
-  const lines = String(text).replace(/^﻿/, '').replace(/\r\n?/g, '\n').split('\n');
+  const lines = String(text).replace(/^\uFEFF/, '').replace(/\r\n?/g, '\n').split('\n');
   /** @type {AtlasPage[]} */
   const pages = [];
   let page = null;
@@ -108,7 +108,7 @@ export function normalizeAtlas(text, { pageSize, pma = false, renamePage = null 
     }
   }
   const result = out.join('\n');
-  const original = String(text).replace(/^﻿/, '').replace(/\r\n?/g, '\n');
+  const original = String(text).replace(/^\uFEFF/, '').replace(/\r\n?/g, '\n');
   return { text: result, changed: result !== original, pages: pages.map((p) => (replace.get(p.line) ?? p.name)), missingSize, fixedSize };
 }
 

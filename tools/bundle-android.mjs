@@ -41,13 +41,15 @@ if (fs.existsSync(STAGING_DIR)) {
 }
 fs.mkdirSync(STAGING_DIR, { recursive: true });
 
-function copyRecursive(src, dest) {
+function copyRecursive(src, dest, filterFn) {
   if (!fs.existsSync(src)) return;
   const stat = fs.statSync(src);
   if (stat.isDirectory()) {
     fs.mkdirSync(dest, { recursive: true });
     for (const file of fs.readdirSync(src)) {
-      copyRecursive(path.join(src, file), path.join(dest, file));
+      const srcPath = path.join(src, file);
+      if (filterFn && !filterFn(srcPath)) continue;
+      copyRecursive(srcPath, path.join(dest, file), filterFn);
     }
   } else {
     fs.mkdirSync(path.dirname(dest), { recursive: true });
@@ -59,7 +61,8 @@ console.log('[bundle-android] Copying server, shared, data, and public assets...
 copyRecursive(path.join(ROOT, 'server'), path.join(STAGING_DIR, 'server'));
 copyRecursive(path.join(ROOT, 'shared'), path.join(STAGING_DIR, 'shared'));
 copyRecursive(path.join(ROOT, 'data'), path.join(STAGING_DIR, 'data'));
-copyRecursive(path.join(ROOT, 'public'), path.join(STAGING_DIR, 'public'));
+copyRecursive(path.join(ROOT, 'public'), path.join(STAGING_DIR, 'public'), (srcPath) => !srcPath.endsWith('.zip'));
+copyRecursive(path.join(ROOT, 'workshop'), path.join(STAGING_DIR, 'workshop'));
 copyRecursive(path.join(ROOT, 'package.json'), path.join(STAGING_DIR, 'package.json'));
 
 // P0-2: Bundle root licenses and notices for in-app distribution

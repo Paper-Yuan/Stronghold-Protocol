@@ -166,7 +166,7 @@ function onWelcome(msg) {
     presence: {
       online: msg.online ?? null,
       activeHumans: msg.activeHumans ?? msg.serverLoad?.activeHumans ?? null,
-      maxPlayingHumans: msg.maxPlayingHumans ?? msg.serverLoad?.maxPlayingHumans ?? 60,
+      maxPlayingHumans: msg.maxPlayingHumans ?? msg.serverLoad?.maxPlayingHumans ?? 70,
       humanLimitReached: !!(msg.humanLimitReached ?? msg.serverLoad?.humanLimitReached),
       activeBots: msg.activeBots ?? msg.serverLoad?.activeBots ?? null,
       maxBots: msg.maxBots ?? msg.serverLoad?.maxBots ?? 10,
@@ -176,6 +176,14 @@ function onWelcome(msg) {
   });
   welcomeAt = Date.now();
   setWelcomeMods(msg);
+  if (msg.build) {
+    if (globalThis.__SP_BUILD__ && globalThis.__SP_BUILD__ !== msg.build) {
+      store.patch('ui', { buildStale: true });
+    } else {
+      globalThis.__SP_BUILD__ = msg.build;
+    }
+  }
+  if (msg.appVersion) globalThis.__SP_VERSION__ = msg.appVersion;
 
   if (prevId != null && prevId !== msg.playerId) {
     // A brand-new server session (the server restarted — crashed / killed, so no room.closed arrived — or this session
@@ -248,7 +256,7 @@ function wireNet() {
       presence: {
         online: msg.online,
         activeHumans: msg.activeHumans ?? null,
-        maxPlayingHumans: msg.maxPlayingHumans ?? 60,
+        maxPlayingHumans: msg.maxPlayingHumans ?? 70,
         humanLimitReached: !!msg.humanLimitReached,
         activeBots: msg.activeBots ?? null,
         maxBots: msg.maxBots ?? 10,
@@ -388,10 +396,11 @@ function warmGameData() {
 
 function ScreenCrashed({ error, reset }) {
   return html`<div class="screen crash">
-    <div class="crash__box brackets">
+    <div class="crash__box brackets" style="max-width: 90vw; max-height: 80vh; overflow: auto;">
       <${MicroLabel} tone="mint">SYSTEM FAULT<//>
       <h2>${t('界面发生错误')}</h2>
-      <p class="t-lo">${String(error?.message || error).slice(0, 200)}</p>
+      <p class="t-lo" style="font-weight: bold; color: #ff8a7a;">${String(error?.message || error)}</p>
+      <pre style="font-size: 11px; color: #9aa8a3; background: rgba(0,0,0,0.5); padding: 8px; border-radius: 4px; white-space: pre-wrap; word-break: break-all; max-height: 40vh; overflow-y: auto;">${error?.stack || 'no stack'}</pre>
       <${Button} variant="primary" icon="refresh" onClick=${reset}>${t('重新加载界面')}<//>
     </div>
   </div>`;

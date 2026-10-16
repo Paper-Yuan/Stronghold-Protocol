@@ -9,6 +9,7 @@ import { makeBuff, STATUS, RESIST_STATUSES } from '../buffs.js';
 import { palsyBuff } from '../damage.js';
 import { evadesGround } from '../targeting.js';
 import { stampFear } from '../fear.js';
+import { shouldBlockInfiniteCc } from '../infiniteRule.js';
 
 export class BattleStatus {
   addBuff(unit, b) {
@@ -172,6 +173,10 @@ export class BattleStatus {
     if (this.rm && this.rm.enemyClamp && target.side === 'enemy' && !opts.force && CC_STATUSES.has(key)) {
       const cr = Number(this.rm.enemyClamp.ccResist);
       if (Number.isFinite(cr) && cr > 0 && this.rng() < cr) return false;
+    }
+    // 超限模拟 (无限模式)：波次抗性递增与 6s/4s 霸体防木桩保护（性能节流）
+    if (this.infinite && shouldBlockInfiniteCc(this, target, key, opts)) {
+      return false;
     }
     // 浮空 Buff (PRTS 异常效果: "若单位数据上为飞行单位且不持有缚地异常或是持有浮空异常则Buff取消"; 行动方式 "行动类型（数据）为
     // 飞行的单位、以及已持有浮空异常的单位无法被施加浮空Buff"): refused on data flyers (`motion` FLY) that hold no 缚地 and on

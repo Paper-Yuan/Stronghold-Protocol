@@ -36,8 +36,11 @@ export function ConnectionBanner() {
     // for a player who would rather do it now
     return html`<div class="conn-banner" role="alert">
       <${Icon} name="refresh" />
-      <span>${t('服务器已更新，本局结束后刷新')}</span>
-      <${Button} size="sm" variant="secondary" icon="refresh" onClick=${() => location.reload()}>${t('刷新页面')}<//>
+      <span>${t('服务器已发布新版本')}</span>
+      <${Button} size="sm" variant="secondary" icon="refresh" onClick=${() => {
+        if (globalThis.AndroidNative?.reloadClient) globalThis.AndroidNative.reloadClient();
+        else location.reload(true);
+      }}>${t('立即热更')}<//>
     </div>`;
   }
   if (!conn.everOnline && (conn.status === 'connecting' || conn.status === 'handshaking' || conn.status === 'idle')) return null;

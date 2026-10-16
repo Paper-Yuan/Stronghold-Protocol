@@ -16,28 +16,46 @@ export async function onRequest(context) {
 
   const url = new URL(context.request.url);
 
-  // 2. Fallback to Render backend for character art/voices
-  const renderUrl = `https://stronghold-protocol-see7.onrender.com${url.pathname}${url.search}`;
-  try {
-    const renderRes = await fetch(renderUrl, {
-      method: context.request.method,
-      headers: context.request.headers,
-      cf: {
-        cacheEverything: true,
-        cacheTtl: 86400 * 30, // 30 days CDN cache
-      },
-    });
+  // 2. Fallback to CDNs and Primary Production server (101.37.150.107:3000) for full art/voices/portraits/spines
+  const weishuOrigin = 'https://weishucdn.jiangjiangze.icu';
+  const speedOrigin = 'https://speedcdn.jiangjiangze.icu';
+  const primaryOrigin = 'http://101.37.150.107:3000';
+  const renderOrigin = 'https://stronghold-protocol-see7.onrender.com';
+  const originCandidates = [
+    `${weishuOrigin}${url.pathname}${url.search}`,
+    `${speedOrigin}${url.pathname}${url.search}`,
+    `${primaryOrigin}${url.pathname}${url.search}`,
+    `${renderOrigin}${url.pathname}${url.search}`
+  ];
 
-    if (renderRes.status === 200 && !renderRes.headers.get('content-type')?.includes('text/html')) {
-      const headers = new Headers(renderRes.headers);
-      headers.set('Cache-Control', 'public, max-age=2592000, immutable');
-      return new Response(renderRes.body, {
-        status: 200,
-        headers,
+  for (const originUrl of originCandidates) {
+    try {
+      const upstreamRes = await fetch(originUrl, {
+        method: context.request.method,
+        headers: {
+          ...Object.fromEntries(context.request.headers.entries()),
+          'Host': new URL(originUrl).host,
+        },
+        cf: {
+          cacheEverything: true,
+          cacheTtl: 86400 * 30, // 30 days CDN cache
+        },
       });
+
+      if (upstreamRes.status === 200 && !upstreamRes.headers.get('content-type')?.includes('text/html')) {
+        const headers = new Headers(upstreamRes.headers);
+        headers.set('Cache-Control', 'public, max-age=2592000, immutable');
+        headers.set('Access-Control-Allow-Origin', '*');
+        headers.set('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS');
+        headers.set('Access-Control-Expose-Headers', 'Content-Length, Content-Range, ETag, X-SP-Resource, X-SP-Resource-Hash');
+        return new Response(upstreamRes.body, {
+          status: 200,
+          headers,
+        });
+      }
+    } catch (err) {
+      console.warn('[assets-proxy] Upstream fetch failed for', originUrl, err);
     }
-  } catch (err) {
-    console.warn('[assets-proxy] Render fetch failed:', err);
   }
 
   // 3. Fallback to jsdelivr CDN for skin spine models (/assets/spine/op/char_*/stem/front|back/...)

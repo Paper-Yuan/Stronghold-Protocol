@@ -231,10 +231,12 @@ export function bondMembers(bond, priv, banned = [], getChess = () => null, getI
     if (diyOfBond(rec) && rec.diyFor === slotId) diy.set(slotId, { on: false, hand: false, owned: false, rec, pick: null });
   }
   const diyBanned = new Set(Array.isArray(priv?.diyBanned) ? priv.diyBanned : []);
-  const rows = members.map((id) => {
-    const c = getChess(id);
-    return { id, tier: c?.tier ?? 0, name: c?.name ?? id, onBoard: onBoard.has(id), owned: owned.has(id), inHand: inHand.has(id), banned: bannedSet.has(id) };
-  });
+  const rows = members
+    .filter((id) => !!getChess(id))
+    .map((id) => {
+      const c = getChess(id);
+      return { id, tier: c?.tier ?? 0, name: c?.name ?? id, onBoard: onBoard.has(id), owned: owned.has(id), inHand: inHand.has(id), banned: bannedSet.has(id) };
+    });
   for (const [id, g] of granted) {
     const c = getChess(id);
     rows.push({ id, tier: c?.tier ?? 0, name: c?.name ?? id, onBoard: g.on, owned: true, inHand: g.hand, banned: false, granted: true, items: g.items });

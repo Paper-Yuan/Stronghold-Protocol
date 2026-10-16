@@ -143,6 +143,13 @@ export function enforceBlockCapacity(b, u) {
 
 /** Collect targets for an ally with profile `prof`. */
 export function acquireTargets(b, u, prof) {
+  // 超限模拟 (无限模式) 索敌节流保护：怪物数量密集 (>25) 时缓存非阻挡普攻索敌 3 帧
+  if (b.infinite && b.enemies.length > 25 && !u.blocking.length && !prof.isSkill && b.infinite.targetingCache) {
+    const cached = b.infinite.targetingCache.get(u.id);
+    if (cached && cached.length && cached.every((t) => t && t.alive && !t.removed && b.inRange(u, t))) {
+      return cached;
+    }
+  }
   // a heal attack (医师 / 群愈师 / 疗养师 / 链愈师 / 行医, a skill attack turned into a heal) selects injured allies only,
   // never the enemies its unit blocks — a blocking healer keeps healing: PRTS 卫戍协议/帮助 "对于医疗干员（咒愈师分支除外），
   // 攻击目标为需要治疗的单位" (the blocked-first rule below is for attackers of enemies; community feedback after 0.1.0, E2)
@@ -192,7 +199,11 @@ export function acquireTargets(b, u, prof) {
   if (prof.allInRange) return cands;
   const n = targetCount(u, prof);
   sortEnemyTargets(b, u, cands, prof.priority);
-  return n >= cands.length ? cands : cands.slice(0, n);
+  const res = n >= cands.length ? cands : cands.slice(0, n);
+  if (b.infinite && b.enemies.length > 25 && !u.blocking.length && !prof.isSkill && b.infinite.targetingCache && res.length) {
+    b.infinite.targetingCache.set(u.id, res);
+  }
+  return res;
 }
 
 /**

@@ -336,6 +336,14 @@ const rebirth = (begin, hold, end, form2 = Object.freeze({})) => Object.freeze({
   reborn: Object.freeze({ change: begin, end, next: 'form2', roles: Object.freeze({ idle: hold, deploy: hold, move: loop(hold), stun: loop(hold), attack: null, skill: null }) }),
   form2: Object.freeze({ change: null, roles: form2 }),
 });
+/** 孤岛风云 prisoners (community report of 2026-10-06): the collar light's three clip sets, one per mode — the
+ *  prefab's default (confined, the grey / unnumbered set the manifest's roles now name), R (warning, orange) and
+ *  L (liberty, red). The prefab switches the set at once (`change: null`); the sim's phase / liberate fx carry the
+ *  mode (Units.js setForm). 普通/老练囚犯 number theirs 3/2/'' , 强壮囚犯_Id and the 牢房 boxes suffix them. */
+const prisoner = (conf, warn, free) => Object.freeze({
+  warning: Object.freeze({ change: null, roles: clipSet(`Idle${warn}`, `Move${warn}`, `Die${warn}`, `Attack${warn}`) }),
+  liberty: Object.freeze({ change: null, roles: clipSet(`Idle${free}`, `Move${free}`, `Die${free}`, `Attack${free}`) }),
+});
 const STATUE = Object.freeze({
   stone: Object.freeze({ change: null, roles: Object.freeze({ idle: 'Sleep', deploy: 'Sleep', move: loop('Sleep'), stun: loop('Sleep'), attack: null, skill: null }) }),
   fly: Object.freeze({ change: null, roles: clipSet('Idle_2', 'Move_2', 'Die_2', 'Attack_2') }),
@@ -385,6 +393,12 @@ export const FORMS = Object.freeze({
     reborn: Object.freeze({ change: 'C1_Die', roles: JAKILL2 }),
     form2: Object.freeze({ change: null, roles: JAKILL2 }),
   }),
+  enemy_1116_liprr: prisoner('3', '2', ''),
+  enemy_1116_liprr_2: prisoner('3', '2', ''),
+  enemy_1119_vofsd: prisoner('', '2', '3'),
+  enemy_1118_lidbox_2: prisoner('_grey', '_orange', '_red'),
+  enemy_1121_lifbos: prisoner('_grey', '_orange', '_red'),
+  enemy_1121_lifbos_2: prisoner('_grey', '_orange', '_red'),
   enemy_1172_dugago: STATUE,
   enemy_1172_dugago_2: STATUE,
 });
@@ -1281,8 +1295,9 @@ export class UnitView {
     this.placed = true;
     const s = p.s;
     // fades
+    // below 0: still waiting for its arrival (the 联防 beam-in, render/app.js queueBeam) — hidden until then
     if (this.fadeIn < 1) this.fadeIn = Math.min(1, this.fadeIn + dt * 4);
-    let alpha = this.fadeIn;
+    let alpha = Math.max(0, this.fadeIn);
     if (this.down) {
       // knocked down: the Die clip ends and holds its last frame (the actor keeps its clock), no fade
       this.dieT += dt;
@@ -1759,13 +1774,19 @@ export class UnitView {
   // skeleton (spine.js clipBounds) — no pose it plays is cut, and the atlas clips every slot to itself. A clip too large
   // for the box (`over`) is drawn directly while it plays; the slot stays the unit's (_impBypass).
 
-  /** The impostor box ({ x0, y0, w, h, over } in skeleton units), null while the model's clips are still measured. */
+  /** The impostor box ({ x0, y0, w, h, over } in skeleton units), using provisional box during measurement to stay in atlas. */
   _impBox() {
-    if (this._box) return this._box;
+    if (this._box && !this._box.provisional) return this._box;
     const a = this.actor;
     const names = this._clipNames();
     const rects = typeof a.clipBounds === 'function' ? a.clipBounds([...names.keys()]) : false;
-    if (rects === null) return null;
+    if (rects === null) {
+      if (!this._box) {
+        this._box = this._legacyBox();
+        this._box.provisional = true;
+      }
+      return this._box;
+    }
     let box = null;
     const unmeasured = new Set();   // clips whose sampling threw (false): drawn directly while they play
     if (rects) {
@@ -1779,7 +1800,14 @@ export class UnitView {
       box = impostorBox(idle && rect(idle) !== false ? rect(idle) : null, rest);
       if (box && idle && unmeasured.has(idle)) box.over.add(idle);
     }
-    this._box = box || this._legacyBox(unmeasured);
+    const finalBox = box || this._legacyBox(unmeasured);
+    finalBox.provisional = false;
+    if (this._box?.provisional && this.imp) {
+      if (Math.abs(finalBox.w - this._box.w) > 8 || Math.abs(finalBox.h - this._box.h) > 8) {
+        this.imp.dirty = true;
+      }
+    }
+    this._box = finalBox;
     return this._box;
   }
 

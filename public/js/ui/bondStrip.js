@@ -90,7 +90,10 @@ export function BondStrip({ bonds, layersDisabled = false, onOpen, openId = null
   }
 
   const m = data.get('assets');
-  const scrollRef = useRef(null);
+  // The strip is also called as a plain function (the node tests expand its vnode tree), where no preact render is in
+  // flight: like the useState guard above, a failed hook call falls back to a plain ref object.
+  let scrollRef = { current: null };
+  try { scrollRef = useRef(null); } catch { /* outside a render */ }
 
   const updateMask = () => {
     const el = scrollRef.current;
@@ -121,22 +124,24 @@ export function BondStrip({ bonds, layersDisabled = false, onOpen, openId = null
     }
   };
 
-  useEffect(() => {
-    updateMask();
-    const el = scrollRef.current;
-    if (!el) return;
-    const onScroll = () => updateMask();
-    el.addEventListener('scroll', onScroll, { passive: true });
-    let ro = null;
-    if (typeof ResizeObserver !== 'undefined') {
-      ro = new ResizeObserver(() => updateMask());
-      ro.observe(el);
-    }
-    return () => {
-      el.removeEventListener('scroll', onScroll);
-      ro?.disconnect();
-    };
-  }, [sorted.length]);
+  try {
+    useEffect(() => {
+      updateMask();
+      const el = scrollRef.current;
+      if (!el) return;
+      const onScroll = () => updateMask();
+      el.addEventListener('scroll', onScroll, { passive: true });
+      let ro = null;
+      if (typeof ResizeObserver !== 'undefined') {
+        ro = new ResizeObserver(() => updateMask());
+        ro.observe(el);
+      }
+      return () => {
+        el.removeEventListener('scroll', onScroll);
+        ro?.disconnect();
+      };
+    }, [sorted.length]);
+  } catch { /* outside a render */ }
 
   const onWheel = (e) => {
     if (!scrollRef.current) return;

@@ -61,12 +61,14 @@ export const penShown = (vk, prevVk = null) => vk === 'pen' || prevVk === 'pen';
 /** Is the prep's leader on the boss field shown for a view kind (a flight shows it when either end is the boss-field prep)? */
 export const leaderShown = (vk, prevVk = null) => vk === 'bossPrep' || prevVk === 'bossPrep';
 
-/** '2d' | '3d' | 'auto' board preference: `?board=` in the page URL (dev), else the view option. */
+/** '2d' | '3d' | '3d_pro' | '3d_std' | 'auto' board preference: explicit user setting wins, else `?board=` in the page URL (dev), else auto. */
 export function boardPreference(opt) {
+  const v = typeof opt === 'string' ? opt : opt?.board;
+  if (v === '2d' || v === '3d' || v === '3d_pro' || v === '3d_std') return v;
   let q = null;
   try { q = new URLSearchParams(globalThis.location?.search || '').get('board'); } catch { /* no location */ }
-  const v = q || opt;
-  return v === '2d' || v === '3d' ? v : 'auto';
+  if (q === '2d' || q === '3d' || q === '3d_pro' || q === '3d_std') return q;
+  return 'auto';
 }
 
 /**

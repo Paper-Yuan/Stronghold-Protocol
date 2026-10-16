@@ -51,6 +51,16 @@ function toastNothing(ctx, ev, chessName = null) {
 /** random chess sharing at least one bond with `bonds`, tier ≤ maxTier */
 function rollSameBond(ctx, bonds, maxTier, exclude = null) {
   const set = new Set(bonds);
+  const isInf = ctx.m?.isInfinite || ctx.isInfinite;
+  if (isInf) {
+    // 超限模式：简易通讯机优先核心盟约
+    const coreBonds = [...set].filter((b) => ctx.gd.bond(b)?.isCore);
+    if (coreBonds.length > 0) {
+      const coreSet = new Set(coreBonds);
+      const coreId = ctx.rollChess({ maxTier, filter: (id) => { const c = ctx.gd.chess(id); return !!(c && Array.isArray(c.bonds) && c.bonds.some((b) => coreSet.has(b))) && !(exclude && exclude.includes(id)); } });
+      if (coreId) return coreId;
+    }
+  }
   return ctx.rollChess({ maxTier, filter: (id) => { const c = ctx.gd.chess(id); return !!(c && Array.isArray(c.bonds) && c.bonds.some((b) => set.has(b))) && !(exclude && exclude.includes(id)); } });
 }
 

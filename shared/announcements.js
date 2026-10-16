@@ -29,11 +29,16 @@ export function parseAnnouncements(doc) {
     if (typeof text !== 'string' || !text.trim() || [...text].length > ANNOUNCEMENT_MAX_TEXT
         || /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/.test(text)) throw new Error(`${id}: text must contain 1..500 printable characters`);
     if (!validTime(startAt)) throw new Error(`${id}: startAt requires a valid ISO date with an explicit timezone`);
-    if (!Number.isInteger(durationSeconds) || durationSeconds < 1 || durationSeconds > 86400) throw new Error(`${id}: durationSeconds must be 1..86400`);
+    if (!Number.isInteger(durationSeconds) || durationSeconds < 1 || durationSeconds > 2592000) throw new Error(`${id}: durationSeconds must be 1..2592000 (up to 30 days)`);
     if (typeof level !== 'string' || !own(ANNOUNCEMENT_LEVELS, level) || typeof enabled !== 'boolean') throw new Error(`${id}: invalid level or enabled flag`);
     const at = Date.parse(startAt);
+    const platform = ['all', 'android', 'web'].includes(row.platform) ? row.platform : 'all';
+    const scene = ['all', 'lobby', 'match'].includes(row.scene) ? row.scene : 'all';
+    const targetUrl = typeof row.targetUrl === 'string' && row.targetUrl.trim() ? row.targetUrl.trim() : null;
+    const action = typeof row.action === 'string' && row.action.trim() ? row.action.trim() : null;
     return { id, ...(own(row, 'title') ? { title: row.title.trim() } : {}),
-      text: text.trim().replace(/\s+/g, ' '), startAt: at, endAt: at + durationSeconds * 1000, level, enabled };
+      text: text.trim().replace(/\s+/g, ' '), startAt: at, endAt: at + durationSeconds * 1000, level, enabled,
+      platform, scene, targetUrl, action };
   });
 }
 
@@ -55,11 +60,21 @@ export function activeAnnouncement(rows, now) {
   return notice;
 }
 
-/** Incoming public frame: accept only display fields; expiry is checked independently by the UI. */
+/** Incoming public frame: accept display fields & targeting parameters; expiry is checked independently by the UI. */
 export function announcementFromMessage(msg) {
   const n = msg?.announcement;
   if (!n || typeof n.id !== 'string' || typeof n.text !== 'string' || !n.text || [...n.text].length > ANNOUNCEMENT_MAX_TEXT
       || typeof n.level !== 'string' || !own(ANNOUNCEMENT_LEVELS, n.level) || !Number.isFinite(n.startAt) || !Number.isFinite(n.endAt)
       || n.endAt <= n.startAt) return null;
-  return { id: n.id, text: n.text, level: n.level, startAt: n.startAt, endAt: n.endAt };
+  return {
+    id: n.id,
+    text: n.text,
+    level: n.level,
+    startAt: n.startAt,
+    endAt: n.endAt,
+    platform: typeof n.platform === 'string' ? n.platform : 'all',
+    scene: typeof n.scene === 'string' ? n.scene : 'all',
+    targetUrl: typeof n.targetUrl === 'string' ? n.targetUrl : null,
+    action: typeof n.action === 'string' ? n.action : null,
+  };
 }

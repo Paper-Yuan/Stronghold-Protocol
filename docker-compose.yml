@@ -1,0 +1,15 @@
+services:
+  stronghold:
+    build: .
+    image: stronghold-protocol:0.1.6.1
+    container_name: stronghold-server
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - PORT=3000
+      - HOST=0.0.0.0
+      - NODE_ENV=production
+      - SP_VERIFY=off
+      - SP_COMBAT=client
+      - TRUST_PROXY=auto

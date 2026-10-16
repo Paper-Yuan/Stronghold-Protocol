@@ -29,6 +29,8 @@
 // The server only auto-listens when this file is the process entry point.
 
 import http from 'node:http';
+import fs from 'node:fs';
+import fsp from 'node:fs/promises';
 import path from 'node:path';
 import { send } from './net.js';
 import { Announcements } from './announcements.js';
@@ -52,9 +54,11 @@ import { getData, loadData } from './data.js';
 import { loadWorkshop, loadWorkshopKits, loadWorkshopPanels, WORKSHOP_DIR } from './workshop.js';
 import { createRoomAssets } from './roomAssets.js';
 import { buildModCatalog } from './modCatalog.js';
+import { createModsRoute } from './http/mods.js';
 import { lanUrls, displayHost, isProcessEntry, runMain } from './http/boot.js';
-import { workshopAssetsFor, workshopKitFilesFor, workshopKitDirsFor, workshopResourceFilesFor } from './http/workshop.js';
+import { workshopAssetsFor, workshopKitFilesFor, workshopKitDirsFor, workshopResourceFilesFor, buildWorkshopDataFiles, buildWorkshopI18nFiles, workshopBattleFilesFor } from './http/workshop.js';
 import { modSetOf } from '../shared/modIdentity.js';
+import { createZipFromDir } from './simpleZip.js';
 
 export { rewriteAssetPaths } from '../shared/cdn.js';
 
@@ -126,23 +130,24 @@ export async function startServer(opts = {}) {
   });
   const workshopMods = (workshopLoaded.packs || []).map((p) => ({
     id: p.id,
+    name: p.name || p.id,
     hash: p.hash,
     layer: p.layer,
     combat: !!p.combat,
+    operators: Object.keys(p.operators || {}),
   }));
-  const roomAssets = (workshopLoaded.packs || []).length
-    ? createRoomAssets({
-        dataDir,
-        official: loadData(dataDir, { log, workshopDir: null }),
-        packs: workshopLoaded.packs,
-        kits: workshopKits.kits,
-        kitOwners: workshopKits.owners,
-        tokenKits: workshopKits.tokenKits,
-        tokenKitOwners: workshopKits.tokenOwners,
-        modules: workshopKits.modules,
-        log,
-      })
-    : null;
+  const roomAssets = createRoomAssets({
+    dataDir,
+    official: loadData(dataDir, { log, workshopDir: null }),
+    processData: data,
+    packs: workshopLoaded.packs || [],
+    kits: workshopKits.kits,
+    kitOwners: workshopKits.owners,
+    tokenKits: workshopKits.tokenKits,
+    tokenKitOwners: workshopKits.tokenOwners,
+    modules: workshopKits.modules,
+    log,
+  });
 
   const workshopModSet = workshopMods.length ? modSetOf(workshopMods) : null;
   const workshopState = {
@@ -171,10 +176,19 @@ export async function startServer(opts = {}) {
   const workshopAssets = workshopAssetsFor(workshopLoaded, workshopDir);
   const workshopResourceFiles = workshopResourceFilesFor(workshopLoaded.packs, workshopDir);
 
-  const cdnBase = process.env.SP_ASSETS_CDN || 'https://weishucdn.jiangjiangze.icu';
+  const workshopJson = buildWorkshopDataFiles(data, workshopLoaded);
+  const workshopI18n = buildWorkshopI18nFiles(workshopLoaded, { log });
+  const workshopBattleFiles = workshopBattleFilesFor(workshopKits.modules, workshopDir);
+  const roomData = roomAssets ? (digest) => roomAssets.byDigest(digest) : null;
+
+  const cdnBase = process.env.SP_ASSETS_CDN || 'https://downcdn.jiangjiangze.icu';
+  const modCatalog = buildModCatalog(workshopLoaded);
+  const modsJson = createModsRoute(workshopLoaded, modCatalog);
   const serveStatic = createStaticHandler({
     publicDir, dataDir, sharedDir, packsDir, packs, log, assetIndex, views, cdnBase,
+    workshopJson, workshopI18n, workshopBattleFiles, roomData,
     workshopKitFiles, workshopKitDirs, workshopAssets, workshopResourceFiles,
+    modsJson,
   });
 
   const startedAt = Date.now();
@@ -215,10 +229,257 @@ export async function startServer(opts = {}) {
       // 1. 公开 API 挂载
       if (await serveApi(req, res, parts.rawPath)) return;
 
-      // 1.1 创意工坊模组清单 (W-C /api/mods)
-      if (parts.rawPath === '/api/mods') {
-        const catalog = buildModCatalog(workshopLoaded);
-        sendJson(req, res, 200, { ok: true, ...catalog });
+      // 1.0 客户端版本与热更新探测接口 (/api/app/version & /api/version)
+      if (parts.rawPath === '/api/app/version' || parts.rawPath === '/api/version') {
+        const build = buildTag();
+        sendJson(req, res, 200, {
+          ok: true,
+          app: APP_VERSION,
+          build,
+          serverNow: Date.now(),
+          hotUpdate: {
+            supported: true,
+            bundleVersion: build,
+            patchUrl: `/api/app/patch.zip`,
+            changelog: `卫戍协议：盟约 v${APP_VERSION} (Build: ${build}) 运行就绪`,
+          },
+        });
+        return;
+      }
+
+      // 1.0.1 客户端热更新补丁下载接口 (/api/app/patch.zip)
+      if (parts.rawPath === '/api/app/patch.zip') {
+        const patchPath = path.join(ROOT, 'dist', 'patch.zip');
+        const altPatchPath = path.join(ROOT, 'public', 'patch.zip');
+        const fileToServe = fs.existsSync(patchPath) ? patchPath : (fs.existsSync(altPatchPath) ? altPatchPath : null);
+        if (!fileToServe) {
+          sendError(req, res, 404, '补丁文件未就绪 · Patch not found');
+          return;
+        }
+        res.setHeader('Content-Type', 'application/zip');
+        res.setHeader('Access-Control-Allow-Origin', '*');
+        res.setHeader('Cache-Control', 'no-cache');
+        const stat = fs.statSync(fileToServe);
+        res.setHeader('Content-Length', stat.size);
+        const stream = fs.createReadStream(fileToServe);
+        stream.pipe(res);
+        return;
+      }
+
+      // 1.1 创意工坊模组清单 (W-C /api/mods & /mods/catalog.json)
+      if (parts.rawPath === '/api/mods' || parts.rawPath === '/mods/catalog.json') {
+        res.setHeader('Access-Control-Allow-Origin', '*');
+        res.setHeader('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS');
+        res.setHeader('Access-Control-Allow-Headers', '*');
+        if (req.method === 'OPTIONS') {
+          res.writeHead(204);
+          res.end();
+          return;
+        }
+
+        if (parts.rawPath === '/mods/catalog.json') {
+          sendJson(req, res, 200, modCatalog);
+          return;
+        }
+
+        const wsDir = workshopDir;
+        let diskDirs = [];
+        try {
+          const entries = await fs.promises.readdir(wsDir, { withFileTypes: true });
+          diskDirs = entries.filter((e) => e.isDirectory() && !e.name.startsWith('.')).map((e) => e.name);
+        } catch {}
+
+        const loaded = loadWorkshop(wsDir, { log });
+        const loadedMap = new Map((loaded.packs || []).map((p) => [p.id, p]));
+        const packs = [];
+
+        for (const dirName of diskDirs) {
+          const p = loadedMap.get(dirName);
+          let rawMeta = null;
+          try {
+            rawMeta = JSON.parse(await fsp.readFile(path.join(wsDir, dirName, 'pack.json'), 'utf8'));
+          } catch {}
+
+          const enabled = rawMeta?.enabled !== false && p?.manifest?.enabled !== false;
+          const chessKeys = p?.files?.chess ? Object.keys(p.files.chess) : [];
+          packs.push({
+            id: dirName,
+            name: rawMeta?.name || p?.manifest?.name || dirName,
+            version: rawMeta?.version || p?.manifest?.version || '1.0.0',
+            author: rawMeta?.author || p?.manifest?.author || '未知作者',
+            description: rawMeta?.description || rawMeta?.desc || p?.manifest?.description || '暂无描述',
+            layer: p?.layer || 'data',
+            combat: !!p?.combat,
+            enabled,
+            hash: p?.hash || '',
+            operators: chessKeys,
+            downloadUrl: `/api/mods/download?id=${encodeURIComponent(dirName)}`,
+          });
+        }
+        sendJson(req, res, 200, { ok: true, packs, total: packs.length });
+        return;
+      }
+
+      // 1.2 模组 ZIP 打包下载 (/api/mods/download?id=<modId>)
+      if (parts.rawPath === '/api/mods/download') {
+        res.setHeader('Access-Control-Allow-Origin', '*');
+        res.setHeader('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS');
+        res.setHeader('Access-Control-Allow-Headers', '*');
+        if (req.method === 'OPTIONS') {
+          res.writeHead(204);
+          res.end();
+          return;
+        }
+        const modId = new URL(req.url, 'http://127.0.0.1').searchParams.get('id');
+        // 白名单验证：只允许字母、数字、下划线、连字符和点号
+        if (!modId || typeof modId !== 'string' || !/^[a-zA-Z0-9_.-]+$/.test(modId)) {
+          sendError(req, res, 400, '无效的模组标识 · Invalid mod ID');
+          return;
+        }
+        const targetDir = path.join(workshopDir, modId);
+        // 路径规范化后验证仍在 workshop 目录内
+        const normalizedTarget = path.normalize(targetDir);
+        const normalizedWorkshop = path.normalize(workshopDir);
+        if (!normalizedTarget.startsWith(normalizedWorkshop + path.sep) && normalizedTarget !== normalizedWorkshop) {
+          sendError(req, res, 403, '禁止访问 · Forbidden');
+          return;
+        }
+        if (!fs.existsSync(targetDir) || !fs.statSync(targetDir).isDirectory()) {
+          sendError(req, res, 404, '模组不存在 · Mod not found');
+          return;
+        }
+        try {
+          const zipBuf = createZipFromDir(targetDir);
+          res.writeHead(200, {
+            'Content-Type': 'application/zip',
+            'Content-Disposition': `attachment; filename="${encodeURIComponent(modId)}.zip"`,
+            'Content-Length': zipBuf.length,
+            'Cache-Control': 'no-cache',
+            'Access-Control-Allow-Origin': '*',
+          });
+          res.end(zipBuf);
+        } catch (err) {
+          log.error?.('[mods-download] Failed to zip mod', modId, err);
+          sendError(req, res, 500, '打包下载失败 · Pack error');
+        }
+        return;
+      }
+
+      // 1.3 模组热重载端点 (/api/mods/reload) — Android 手机导入模组后无需重启服务
+      if (parts.rawPath === '/api/mods/reload' && req.method === 'POST') {
+        res.setHeader('Access-Control-Allow-Origin', '*');
+        res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+        res.setHeader('Access-Control-Allow-Headers', '*');
+        if (req.method === 'OPTIONS') {
+          res.writeHead(204);
+          res.end();
+          return;
+        }
+        try {
+          log.info?.('[MOD-RELOAD] Re-scanning workshop directory...');
+          
+          // 重新加载 workshop 目录
+          const freshLoaded = loadWorkshop(workshopDir, { log });
+          const freshKits = await loadWorkshopKits(freshLoaded, {
+            log,
+            knownIds: new Set([
+              ...Object.keys(data.chess || {}),
+              ...((freshLoaded.packs || []).flatMap((p) => Object.keys(p.operators || {}))),
+            ]),
+          });
+          
+          // 重建相关数据结构
+          const freshMods = (freshLoaded.packs || []).map((p) => ({
+            id: p.id,
+            name: p.name || p.id,
+            hash: p.hash,
+            layer: p.layer,
+            combat: !!p.combat,
+            operators: Object.keys(p.operators || {}),
+          }));
+          const freshModSet = freshMods.length ? modSetOf(freshMods) : null;
+          const freshCatalog = buildModCatalog(freshLoaded);
+          
+          log.info?.(`[MOD-RELOAD] ✓ Reloaded ${freshLoaded.packs?.length || 0} packs without restart`);
+          
+          sendJson(req, res, 200, { 
+            ok: true, 
+            reloaded: freshLoaded.packs?.length || 0,
+            packs: freshMods,
+            message: '模组已热重载，无需重启服务 · Mods reloaded successfully' 
+          });
+        } catch (err) {
+          log.error?.('[MOD-RELOAD] Failed:', err);
+          sendError(req, res, 500, '模组重载失败 · Reload failed');
+        }
+        return;
+      }
+
+      // 1.4 从远程服务器同步模组到本地 (/api/mods/sync-from-remote)
+      if (parts.rawPath === '/api/mods/sync-from-remote' && req.method === 'POST') {
+        res.setHeader('Access-Control-Allow-Origin', '*');
+        res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+        res.setHeader('Access-Control-Allow-Headers', '*');
+        if (req.method === 'OPTIONS') {
+          res.writeHead(204);
+          res.end();
+          return;
+        }
+        
+        let body = '';
+        req.on('data', chunk => { body += chunk.toString(); });
+        req.on('end', async () => {
+          try {
+            const { modId, remoteServer } = JSON.parse(body);
+            if (!modId || typeof modId !== 'string') {
+              return sendJson(req, res, 400, { ok: false, error: 'Missing modId' });
+            }
+            
+            const remoteUrl = remoteServer || 'http://101.37.150.107:3000';
+            log.info?.(`[MOD-SYNC] Downloading ${modId} from ${remoteUrl}...`);
+            
+            // 从远程服务器下载模组 ZIP
+            const downloadUrl = `${remoteUrl}/api/mods/download?id=${encodeURIComponent(modId)}`;
+            const response = await fetch(downloadUrl, { signal: AbortSignal.timeout(120000) });
+            if (!response.ok) {
+              throw new Error(`Remote server returned ${response.status}`);
+            }
+            
+            const buffer = Buffer.from(await response.arrayBuffer());
+            const targetDir = path.join(workshopDir, modId);
+            
+            // 解压到本地 workshop 目录
+            if (fs.existsSync(targetDir)) {
+              log.warn?.(`[MOD-SYNC] ${modId} already exists, overwriting...`);
+              fs.rmSync(targetDir, { recursive: true, force: true });
+            }
+            
+            // 使用 adm-zip 解压
+            const AdmZip = (await import('adm-zip')).default;
+            const zip = new AdmZip(buffer);
+            zip.extractAllTo(targetDir, true);
+            
+            log.info?.(`[MOD-SYNC] ✓ ${modId} synced successfully`);
+            
+            // 自动触发热重载
+            const freshLoaded = loadWorkshop(workshopDir, { log });
+            const freshMods = (freshLoaded.packs || []).map((p) => ({
+              id: p.id,
+              name: p.name || p.id,
+              version: p.version,
+            }));
+            
+            sendJson(req, res, 200, { 
+              ok: true, 
+              modId,
+              message: `模组 ${modId} 已同步并重载成功`,
+              packs: freshMods
+            });
+          } catch (err) {
+            log.error?.('[MOD-SYNC] Failed:', err);
+            sendJson(req, res, 500, { ok: false, error: err.message });
+          }
+        });
         return;
       }
 

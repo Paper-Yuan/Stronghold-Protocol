@@ -245,6 +245,14 @@ class MainActivity : AppCompatActivity() {
 
     fun isHighRefresh(): Boolean = prefs().getBoolean(KEY_HIGH_REFRESH, true)
 
+    fun getBoardMode(): String = prefs().getString(KEY_BOARD_MODE, "3d") ?: "3d"
+
+    fun setBoardMode(mode: String) {
+        val m = if (mode == "2d") "2d" else "3d"
+        prefs().edit().putString(KEY_BOARD_MODE, m).putBoolean(KEY_COMPAT_MODE, false).apply()
+        FileLogger.i("settings", "board mode set to $m")
+    }
+
     fun setHighRefresh(enabled: Boolean) {
         prefs().edit().putBoolean(KEY_HIGH_REFRESH, enabled).apply()
         DisplayHelper.apply(window, enabled)
@@ -362,7 +370,13 @@ class MainActivity : AppCompatActivity() {
                 this@MainActivity.filePathCallback?.onReceiveValue(null)
                 this@MainActivity.filePathCallback = filePathCallback
                 try {
-                    fileChooserLauncher.launch("image/*")
+                    val accepts = fileChooserParams?.acceptTypes?.filter { !it.isNullOrBlank() }
+                    val mimeType = if (!accepts.isNullOrEmpty()) {
+                        if (accepts.size == 1) accepts[0] else "*/*"
+                    } else {
+                        "*/*"
+                    }
+                    fileChooserLauncher.launch(mimeType)
                     return true
                 } catch (e: Exception) {
                     this@MainActivity.filePathCallback?.onReceiveValue(null)
@@ -797,12 +811,107 @@ class MainActivity : AppCompatActivity() {
 
     fun reloadWebView() {
         runOnUiThread {
+            try {
+                webView.clearCache(true)
+            } catch (_: Exception) {}
             val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
             val mode = prefs.getString(KEY_SERVER_MODE, "local")
             val remoteUrl = prefs.getString(KEY_REMOTE_URL, DEFAULT_LAN_URL)
             val currentUrl = if (mode == "remote" && !remoteUrl.isNullOrBlank()) remoteUrl else (webView.url ?: DEFAULT_LOCAL_URL)
             loadServerUrl(currentUrl)
         }
+    }
+
+    /**
+     * Downloads a lightweight hot update patch (.zip), applies it on top of filesDir/bundle,
+     * and restarts the local Node server & reloads the WebView.
+     */
+    fun downloadAndApplyPatch(patchUrl: String, patchVersion: String) {
+        Thread {
+            try {
+                val fullUrl = if (patchUrl.startsWith("http://") || patchUrl.startsWith("https://")) {
+                    patchUrl
+                } else {
+                    val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+                    val mode = prefs.getString(KEY_SERVER_MODE, "local")
+                    val baseUrl = if (mode == "remote") {
+                        prefs.getString(KEY_REMOTE_URL, DEFAULT_LAN_URL) ?: DEFAULT_LAN_URL
+                    } else {
+                        DEFAULT_LOCAL_URL
+                    }
+                    baseUrl.trimEnd('/') + "/" + patchUrl.trimStart('/')
+                }
+
+                FileLogger.i("update", "Starting hot update download from $fullUrl (target version: $patchVersion)")
+                runOnUiThread {
+                    webView.evaluateJavascript("globalThis.__onHotUpdateProgress?.(10, '正在连接补丁服务器…')", null)
+                }
+
+                val client = OkHttpClient.Builder()
+                    .connectTimeout(15, TimeUnit.SECONDS)
+                    .readTimeout(60, TimeUnit.SECONDS)
+                    .build()
+
+                val request = Request.Builder()
+                    .url(fullUrl)
+                    .header("Cache-Control", "no-cache")
+                    .build()
+
+                val response = client.newCall(request).execute()
+                if (!response.isSuccessful) {
+                    val err = "补丁包下载失败，服务器返回 HTTP ${response.code}"
+                    FileLogger.e("update", err)
+                    runOnUiThread {
+                        webView.evaluateJavascript("globalThis.__onHotUpdateResult?.(false, '$err')", null)
+                    }
+                    return@Thread
+                }
+
+                val body = response.body
+                if (body == null) {
+                    val err = "补丁包响应内容为空"
+                    FileLogger.e("update", err)
+                    runOnUiThread {
+                        webView.evaluateJavascript("globalThis.__onHotUpdateResult?.(false, '$err')", null)
+                    }
+                    return@Thread
+                }
+
+                runOnUiThread {
+                    webView.evaluateJavascript("globalThis.__onHotUpdateProgress?.(50, '正在解压并应用热更补丁…')", null)
+                }
+
+                val inputStream = body.byteStream()
+                val ok = AssetManagerHelper.applyHotUpdatePatch(applicationContext, inputStream, patchVersion)
+
+                if (ok) {
+                    FileLogger.i("update", "Hot update patch applied successfully to version $patchVersion")
+                    runOnUiThread {
+                        webView.evaluateJavascript("globalThis.__onHotUpdateProgress?.(90, '热更完成，正在重新载入…')", null)
+                        webView.evaluateJavascript("globalThis.__onHotUpdateResult?.(true, '热更新成功！')", null)
+                    }
+                    val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+                    if (prefs.getString(KEY_SERVER_MODE, "local") == "local") {
+                        startLocalServer()
+                    }
+                    mainHandler.postDelayed({
+                        reloadWebView()
+                    }, 800)
+                } else {
+                    val err = "补丁包解压安装失败，请检查存储权限或剩余空间"
+                    FileLogger.e("update", err)
+                    runOnUiThread {
+                        webView.evaluateJavascript("globalThis.__onHotUpdateResult?.(false, '$err')", null)
+                    }
+                }
+            } catch (t: Throwable) {
+                FileLogger.e("update", "Hot update exception: ${t.message}", t)
+                val err = "热更新过程发生异常: ${t.message}"
+                runOnUiThread {
+                    webView.evaluateJavascript("globalThis.__onHotUpdateResult?.(false, '$err')", null)
+                }
+            }
+        }.start()
     }
 
     /**

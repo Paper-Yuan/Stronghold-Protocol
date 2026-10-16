@@ -79,10 +79,14 @@ function makeData(src) {
   };
 }
 
-const QUALITY_RES = { high: 3, medium: 2, low: 1 };
+const QUALITY_RES = { extreme: 3.5, high: 3, medium: 2, low: 1 };
 
 /** Pixel-ratio cap of the 3D board canvas per quality (its fill cost is the PBR board, not the sprites). */
-const BOARD_RES = { high: 2.75, medium: 2, low: 1 };
+const BOARD_RES = { extreme: 3.0, high: 2.75, medium: 2, low: 1 };
+
+/** Mobile resolution caps: extreme 2.5, other tiers +0.25 (high: 1.75, medium: 1.5, low: 1.25) */
+const MOBILE_QUALITY_RES = { extreme: 2.5, high: 1.75, medium: 1.5, low: 1.25 };
+const MOBILE_BOARD_RES = { extreme: 2.5, high: 1.75, medium: 1.5, low: 1.25 };
 
 /**
  * Before a renderer is destroyed: free its GL copies of every texture / buffer / geometry / framebuffer it
@@ -112,4 +116,4 @@ export function releaseGl(renderer) {
   }
 }
 
-export { withTimeout, resolveAssets, makeData, QUALITY_RES, BOARD_RES };
+export { withTimeout, resolveAssets, makeData, QUALITY_RES, BOARD_RES, MOBILE_QUALITY_RES, MOBILE_BOARD_RES };

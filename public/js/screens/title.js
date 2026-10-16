@@ -215,10 +215,9 @@ function ThanksMarquee() {
       try {
         const ctrl = new AbortController();
         const tid = setTimeout(() => ctrl.abort(), 4000);
+        // 使用标准简单请求（不带自定义 header），避免跨域预检 preflight 被拦截
         const res = await fetch(`https://ganxiemingdan.jiangjiangze.icu/api/thanks?_t=${Date.now()}`, {
           signal: ctrl.signal,
-          cache: 'no-store',
-          headers: { 'Cache-Control': 'no-cache', Pragma: 'no-cache' },
         });
         clearTimeout(tid);
         if (res.ok) {

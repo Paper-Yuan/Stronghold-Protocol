@@ -36,6 +36,7 @@ import { toast, toastError } from '../ui/toasts.js';
 import { copyText } from '../ui/clipboard.js';
 import { GuideButton } from '../ui/guide.js';
 import { openStats } from './stats.js';
+import { TrophyBadge } from '../ui/trophies.js';
 import { SettingsButton } from '../ui/settings.js';
 import { LoadoutButton } from './loadout.js';
 import { net } from '../net.js';
@@ -43,7 +44,8 @@ import { store, useStore, shallowEqual, emptyMatch, isSpectating, serverNow, loa
 import { data, useData } from '../data.js';
 import { chessPortraitUrl, chessAvatarUrl } from '../ui/assetUrls.js';
 import { C2S } from '../../../shared/protocol.js';
-import { difficultyInfo, ProtoCard } from './lobby.js';
+import { difficultyInfo, ProtoCard, ModPickerModal } from './lobby.js';
+import * as roomMods from '../roomMods.js';
 import { ProtocolScene } from '../ui/protocolScene.js';
 import { SearchPanel, FoundPanel } from '../ui/matchFlow.js';
 import { usePresence, useRise, afterLeave } from '../ui/transitions.js';
@@ -249,7 +251,7 @@ function SeatCard({ seat, index, room, facts, myId, busy, onKick, onInvite, sear
       ${isMe ? html`<span class="rseat__me" title=${t('你')}><${Icon} name="info" /></span>` : null}
       <${AvatarFrame} size="sm" name=${seat.name} src=${seatAccount?.avatar || undefined} seat=${index} bot=${seat.isBot} self=${isMe} />
       <span class="rseat__who">
-        <b class=${`rseat__name${owner ? ' sp-owner-name' : ''}`}>${seat.name || t('博士')}</b><${AccountTag} playerId=${seat.isBot ? null : seat.playerId} />
+        <${TrophyBadge} count=${seatAccount?.trophies} class="tbadge--inline" /><b class=${`rseat__name${owner ? ' sp-owner-name' : ''}`}>${seat.name || t('博士')}</b><${AccountTag} playerId=${seat.isBot ? null : seat.playerId} />
         ${owner ? html`<span class="sp-owner-badge">服主</span>` : null}
       </span>
       <small class="rseat__doc">${seat.isBot ? 'AUTONOMOUS UNIT' : `DOCTOR #${doctorNo(seat.playerId)}`}</small>
@@ -316,9 +318,10 @@ function RoomProtocol({ room, variant, onClose, onPick, busy, leaving = false })
 }
 
 /** ⚙ of the bottom pill: 私密房间, 人数上限 (with the 10-seat constants), AI 队友最后选择, 无限火力 branch. */
-function RoomOptions({ room, facts, myId, busy, online, variant, onPrivate, onMaxSeats, onAiLast, onVariant, onClose, leaving = false }) {
+function RoomOptions({ room, facts, myId, busy, online, variant, onPrivate, onMaxSeats, onAiLast, onVariant, onOpenMods, onClose, leaving = false }) {
   const coop = room.mode !== 'solo';
   const host = facts.isHost;
+  const hasMods = roomMods.hasMods() && roomMods.availableMods().length > 0;
   useEffect(() => {
     const away = (e) => { if (!e.target.closest?.('.rs-opts, .rs-pill__gear')) onClose(); };
     const onKey = (e) => { if (e.key === 'Escape') { e.stopPropagation(); onClose(); } };
@@ -334,11 +337,15 @@ function RoomOptions({ room, facts, myId, busy, online, variant, onPrivate, onMa
         ${Array.from({ length: MAX_SEATS - DEFAULT_SEATS + 1 }, (_, k) => DEFAULT_SEATS + k).map((n) => html`<option key=${n} value=${String(n)} selected=${n === facts.seats.length}>${t('{n} 人', { n })}</option>`)}
       </select></label>` : null}
     <${AiLastToggle} option=${aiLastOption(room, myId)} busy=${busy} onToggle=${onAiLast} />
+    ${hasMods ? html`<div class="rs-opt rs-opt--mods">
+      <span>${t('模组扩展')}<small>${room.mods?.packs?.length ? t('已启用 {n} 个模组', { n: room.mods.packs.length }) : t('未挂载模组')}</small></span>
+      ${host ? html`<${Button} variant="secondary" size="sm" onClick=${() => { onClose(); onOpenMods(); }}>${t('配置模组')}<//>` : null}
+    </div>` : null}
     ${room.random === true ? html`<div class="rs-opt rs-opt--variant"><span>${t('模式分支')}</span>
       <div class="dpick" role="radiogroup" aria-label=${t('模式分支')}>
         ${[['blitz', `快速突袭 ${RANDOM_MODE.totalRounds} 回合`], ['endurance', `持久鏖战 ${RANDOM_MODE.endurance.totalRounds} 回合`], ['marathon', `最长时赛 ${RANDOM_MODE.marathon.totalRounds} 回合`]].map(([v, label]) => html`
           <button key=${v} type="button" role="radio" aria-checked=${variant === v ? 'true' : 'false'} class=${`dpick__opt${variant === v ? ' is-active' : ''}`}
-            disabled=${!!busy || !host} onClick=${() => variant !== v && host && onVariant(v)}>${label}</button>`)}
+          disabled=${!!busy || !host} onClick=${() => variant !== v && host && onVariant(v)}>${label}</button>`)}
       </div></div>` : null}
   </div>`;
 }
@@ -352,6 +359,9 @@ export function RoomScreen() {
   const [busy, setBusy] = useState(null);
   const [picker, setPicker] = useState(false);
   const [opts, setOpts] = useState(false);
+  const [modModalOpen, setModModalOpen] = useState(false);
+  const hasAvailableMods = roomMods.hasMods() && roomMods.availableMods().length > 0;
+  const currentRoomModPicks = room?.mods?.packs ? room.mods.packs.map((p) => p.id) : (room?.modIds || []);
   const [searchWant, setSearchWant] = useState(false); // the host asked to search and has not stopped
   const [searchSince, setSearchSince] = useState(0);
   const [found, setFound] = useState(false);
@@ -396,7 +406,9 @@ export function RoomScreen() {
   const online = conn.status === 'online';
   const coop = room ? room.mode !== 'solo' : false;
   const facts = room ? roomFacts(room, me.playerId) : null;
-  const searchable = CAN_QUEUE && !!room && coop && facts.isHost && room.private !== true && facts.seats.length <= DEFAULT_SEATS && !room.inMatch;
+  const nativeShell = globalThis.AndroidNative?.isNativeApp?.() ? globalThis.AndroidNative : null;
+  const isLocalOrNative = Boolean(nativeShell || location.hostname === 'localhost' || location.hostname === '127.0.0.1');
+  const searchable = CAN_QUEUE && !isLocalOrNative && !!room && coop && facts?.isHost && room.private !== true && (facts?.seats?.length ?? 0) <= DEFAULT_SEATS && !room.inMatch;
   const firepower = false; // 剥离无限火力
   const variant = room?.variant === 'endurance' || room?.variant === 'marathon' ? room.variant : 'blitz';
 
@@ -438,9 +450,10 @@ export function RoomScreen() {
 
   if (!room) return null;
   const myReady = !!facts.mine?.ready;
+  const isInfinite = room.mode === 'solo_infinite';
   const info = difficultyInfo(room.mode, room.difficulty, { random: firepower, variant });
   const variantName = variant === 'endurance' ? '持久鏖战' : variant === 'marathon' ? '最长时赛' : '快速突袭';
-  const modeName = firepower ? `${RANDOM_MODE_NAME} · ${variantName}` : coop ? t('同盟模拟') : t('独立模拟');
+  const modeName = isInfinite ? t('超限模拟') : firepower ? `${RANDOM_MODE_NAME} · ${variantName}` : coop ? t('同盟模拟') : t('独立模拟');
   const searchElapsed = facts.isHost && searchSince ? (Date.now() - searchSince) / 1000
     : room.matching?.startedAt ? (serverNow() - room.matching.startedAt) / 1000 : 0;
 
@@ -493,6 +506,11 @@ export function RoomScreen() {
   const setMaxSeats = (n) => run('cap', () => net.request('room.setMaxSeats', { n })); // 2026-10-12: 4–10 seats
   const setDifficulty = (difficulty) => run('diff', async () => { await net.request('room.setDifficulty', { difficulty }); setPicker(false); });
   const setAiLast = (on) => run('ailast', () => net.request('room.setAiPicksLast', { on }));
+  const saveRoomMods = (picks) => run('mods', async () => {
+    await net.request('room.setMods', { modIds: picks });
+    roomMods.setSelectedModIds(picks);
+    setModModalOpen(false);
+  });
   // spectator seats: the host frees one; a spectator takes a free player seat with room.join of this room
   const removeSpectator = (playerId) => run(`rs${playerId}`, () => net.request('room.removeSpectator', { playerId }));
   const sit = () => run('sit', () => net.request('room.join', { code: room.code }));
@@ -542,7 +560,7 @@ export function RoomScreen() {
         ? html`<span class="t-mint">${t('已就绪 · 等待创建者开始模拟')}</span>`
         : html`<span class="t-lo">${t('准备就绪后，创建者即可开始模拟')}</span>`;
 
-  return html`<div class=${`screen room-screen rs${coop ? '' : ' rs--solo'}${facts.seats.length > DEFAULT_SEATS ? ' rs--big' : ''}${exiting ? ' is-leaving' : ''}`} style=${`--d-color:${DIFFICULTY_COLORS[room.difficulty]}; --n:${facts.seats.length}`}>
+  return html`<div class=${`screen room-screen rs${coop ? '' : ' rs--solo'}${isInfinite ? ' rs--infinite' : ''}${facts.seats.length > DEFAULT_SEATS ? ' rs--big' : ''}${exiting ? ' is-leaving' : ''}`} style=${`--d-color:${isInfinite ? '#b066ff' : DIFFICULTY_COLORS[room.difficulty]}; --n:${facts.seats.length}`}>
     <div class="rs__bg" aria-hidden="true"></div>
     <header class="rs-top">
       <div class="rs-top__left">
@@ -550,7 +568,7 @@ export function RoomScreen() {
           <button type="button" class="rs-exit" disabled=${busy === 'leave'} onClick=${leave} aria-label=${t('离开同盟')}><${Icon} name="exit" /></button>
         <//>
         <div class="rs-clock">
-          <b>${modeName}<span class="rs-clock__sep"></span>${t('同盟已等待')} <span class="num">${clock((Date.now() - since) / 1000)}</span></b>
+          <b>${isInfinite ? html`<span class="rs-clock__inf" style="color:#c988ff">∞ ${t('超限模拟')} · ${t('终极推演')}</span>` : modeName}<span class="rs-clock__sep"></span>${t('同盟已等待')} <span class="num">${clock((Date.now() - since) / 1000)}</span></b>
           <span>${t('当前延迟')}<b class=${`num rs-ping rs-ping--${!online || !Number.isFinite(conn.ping) ? 'off' : conn.ping < 60 ? 'low' : conn.ping < 200 ? 'mid' : 'high'}`}>${online && Number.isFinite(conn.ping) ? Math.round(conn.ping) : '--'}</b>ms</span>
         </div>
         <div class="rs-tools">
@@ -566,7 +584,8 @@ export function RoomScreen() {
           <b class="rs-key__code num selectable" aria-label=${t('同盟密钥 {code}', { code: room.code })}>${room.code}</b>
           <button type="button" class="rs-key__copy" onClick=${() => copy('code')}>${t('复制')}</button>
           <button type="button" class="rs-key__link" onClick=${() => copy('link')} title=${t('复制邀请链接')} aria-label=${t('复制邀请链接')}><${Icon} name="link" /></button>
-        </div>` : html`<div class="rs-key rs-key--solo"><${MicroLabel}>SINGLE OPERATOR<//><span>${t('仅限 1 名博士')}</span></div>`}
+        </div>` : isInfinite ? html`<div class="rs-key rs-key--solo rs-key--infinite"><${MicroLabel} tone="purple">INFINITE EXPERIMENT<//><span>${t('极值推演 · 纯净单机')}</span></div>`
+          : html`<div class="rs-key rs-key--solo"><${MicroLabel}>SINGLE OPERATOR<//><span>${t('仅限 1 名博士')}</span></div>`}
       </div>
     </header>
 
@@ -574,7 +593,17 @@ export function RoomScreen() {
       ${facts.seats.map((s, i) => html`<${SeatCard} key=${s ? `p${s.playerId}` : `e${i}`} seat=${s} index=${i} room=${room} facts=${facts}
         myId=${me.playerId} busy=${busy} onKick=${kick} onInvite=${() => copy('code')} searching=${searching} portraits=${portraits}
         onPickCard=${cardList.length ? () => setPicking(true) : null} onAddBot=${addBot} onRemoveBot=${removeBot} />`)}
-      ${coop ? null : html`<aside class="solo-brief rs-brief brackets">
+      ${coop ? null : isInfinite ? html`<aside class="solo-brief rs-brief rs-brief--infinite brackets">
+        <${MicroLabel} tone="purple">INFINITE SIMULATION // 超限推演<//>
+        <h2 style="color: #c988ff">${t('终极超限模拟')}<span class="num t-dim"> ∞-9999</span></h2>
+        <p>${t('突破常规模拟上限，迎击无尽波次与指数级膨胀敌潮。')}</p>
+        <ul>
+          <li>${t('领袖单发伤害上限提升至 99,999,999')}</li>
+          <li>${t('随波次递增敌人控制抗性，终极免控')}</li>
+          <li>${t('精英/领袖 4s~6s 霸体防木桩与攻速过载截断')}</li>
+          <li>${t('纯净原版环境，禁用一切 Mod 扩展')}</li>
+        </ul>
+      </aside>` : html`<aside class="solo-brief rs-brief brackets">
         <${MicroLabel} tone="mint">BRIEFING<//>
         <h2>${DIFFICULTY_NAMES[room.difficulty] ? t(DIFFICULTY_NAMES[room.difficulty]) : ''}<span class="num t-dim"> ${info.code}</span></h2>
         <p>${info.desc}</p>
@@ -585,40 +614,42 @@ export function RoomScreen() {
         </ul>
       </aside>`}
     </main>
-    ${room.mods ? html`<div class="room-mods-bar" style="margin: 0 24px 10px; padding: 8px 14px; background: rgba(0,0,0,0.6); border: 1px solid rgba(76,175,80,0.4); border-radius: 4px; display: flex; align-items: center; justify-content: space-between; font-size: 13px;">
-      <div style="display: flex; align-items: center; gap: 8px;">
-        <span style="color: #4caf50; font-weight: bold; display: flex; align-items: center; gap: 4px;"><${Icon} name="box" />本房间已挂载创意工坊模组 (${room.mods.packs?.length || 0} 个):</span>
-        <span style="color: #ccc;">${(room.mods.packs || []).map(p => p.id).join(', ')}</span>
-      </div>
-      ${room.mods.packs?.some(p => p.combat) ? html`<span style="color: #ff9800; font-size: 12px; border: 1px solid #ff9800; padding: 1px 6px; border-radius: 2px;">⚡ 含战斗数值改动</span>` : null}
-    </div>` : null}
     <${SpectatorBar} facts=${facts} myId=${me.playerId} busy=${busy} onRemove=${removeSpectator} onSit=${sit} />
 
     <footer class="rs-foot">
       <div class="rs-foot__left">
         <div class="rs-pill">
           ${coop && CAN_QUEUE ? html`<span class="rs-pill__mode" title=${t('精确搜寻：只与选择相同难度的博士组成同盟')}><${Icon} name="search" />${t('精确搜寻')}</span><i class="rs-pill__sep"></i>` : null}
-          <button type="button" class="rs-pill__diff" disabled=${!facts.isHost || !!busy} onClick=${() => setPicker(true)}
-            title=${facts.isHost ? t('更改模拟难度') : t('由创建者选择')}><${DifficultyIcon} difficulty=${room.difficulty} />${t(DIFFICULTY_NAMES[room.difficulty])}</button>
+          ${isInfinite ? html`<span class="rs-pill__diff rs-pill__diff--locked" style="color: #c988ff; border-color: rgba(176, 102, 255, .4); background: rgba(176, 102, 255, .1); cursor: default;" title=${t('超限模拟锁定为终极模式')}>
+            <${DifficultyIcon} difficulty="HARD" />${t('终极模式 (已锁定)')}</span>` : html`
+            <button type="button" class="rs-pill__diff" disabled=${!facts.isHost || !!busy} onClick=${() => setPicker(true)}
+              title=${facts.isHost ? t('更改模拟难度') : t('由创建者选择')}><${DifficultyIcon} difficulty=${room.difficulty} />${t(DIFFICULTY_NAMES[room.difficulty])}</button>
+          `}
           <button type="button" class=${`rs-pill__gear${opts ? ' is-on' : ''}`} onClick=${() => setOpts((v) => !v)} title=${t('同盟设置')} aria-label=${t('同盟设置')} aria-expanded=${opts ? 'true' : 'false'}>
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10.3 2h3.4l.5 2.6 1.9.8 2.2-1.5 2.4 2.4-1.5 2.2.8 1.9 2.6.5v3.4l-2.6.5-.8 1.9 1.5 2.2-2.4 2.4-2.2-1.5-1.9.8-.5 2.6h-3.4l-.5-2.6-1.9-.8-2.2 1.5-2.4-2.4 1.5-2.2-.8-1.9L2 13.7v-3.4l2.6-.5.8-1.9-1.5-2.2 2.4-2.4 2.2 1.5 1.9-.8zM12 8.5a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7z" fill-rule="evenodd" /></svg>
           </button>
           ${optsShown ? html`<${RoomOptions} room=${room} facts=${facts} myId=${me.playerId} busy=${busy} online=${online} variant=${variant}
-            onPrivate=${setPrivate} onMaxSeats=${setMaxSeats} onAiLast=${setAiLast} onVariant=${setVariant} onClose=${() => setOpts(false)} leaving=${optsLeaving} />` : null}
+            onPrivate=${setPrivate} onMaxSeats=${setMaxSeats} onAiLast=${setAiLast} onVariant=${setVariant} onOpenMods=${() => setModModalOpen(true)} onClose=${() => setOpts(false)} leaving=${optsLeaving} />` : null}
         </div>
       </div>
       <div class="rs-foot__center">
         <p class="rs-hint">${coop ? html`<span class="rs-ready num" title=${t('已就绪')}>${facts.humans.map((s) => html`<${Icon} key=${s.playerId} name="user" class=${facts.isReady(s) ? 'is-on' : ''} />`)}<b>${facts.readyHumans}</b>/${facts.humans.length}</span>` : null}${statusLine}</p>
       </div>
       <div class="rs-foot__right">
+        ${!isInfinite && facts.isHost && hasAvailableMods ? html`<button type="button" class=${`rs-mod-cfg-btn${currentRoomModPicks.length ? ' has-selected' : ''}`}
+          disabled=${!online || !!busy} onClick=${() => setModModalOpen(true)}
+          title=${currentRoomModPicks.length ? `已启用 ${currentRoomModPicks.length} 个模组（点击配置）` : t('配置模组')}>
+          <span class="rs-mod-cfg-btn__icon">⚙</span>
+          <span class="rs-mod-cfg-btn__txt">${currentRoomModPicks.length ? `模组 (${currentRoomModPicks.length})` : t('配置模组')}</span>
+        </button>` : null}
         ${facts.isHost && searchable && facts.emptySeats > 0 && !searching
           ? html`<button type="button" class="rs-search" disabled=${!online || busy === 'match'} onClick=${queueMatch}>
               <${Icon} name="search" />${t('开始搜寻')}${busy === 'match' ? html`<${Spinner} size="sm" />` : null}</button>` : null}
         ${facts.isHost
-          ? html`<button type="button" class="proto-start rs-go" disabled=${!facts.canStart || !online || busy === 'start'} onClick=${start}
+          ? html`<button type="button" class=${`proto-start rs-go${isInfinite ? ' rs-go--infinite' : ''}`} disabled=${!facts.canStart || !online || busy === 'start'} onClick=${start}
               title=${facts.canStart ? undefined : t('仍有博士未准备就绪')}>
-              <span class="proto-start__mark" aria-hidden="true"><span class="proto-start__rook"><i>[</i><${Icon} name="rook" /><i>]</i></span><small>STRONGHOLD<br />PROTOCOL</small></span>
-              <span class="proto-start__label">${busy === 'start' ? html`<${Spinner} size="sm" />` : null}${t('开始模拟')}</span>
+              <span class="proto-start__mark" aria-hidden="true"><span class="proto-start__rook"><i>[</i><${Icon} name=${isInfinite ? 'cpu' : 'rook'} /><i>]</i></span><small>${isInfinite ? 'INFINITE' : 'STRONGHOLD'}<br />${isInfinite ? 'SIMULATION' : 'PROTOCOL'}</small></span>
+              <span class="proto-start__label">${busy === 'start' ? html`<${Spinner} size="sm" />` : null}${isInfinite ? t('开启超限模拟') : t('开始模拟')}</span>
               <span class="proto-start__deco" aria-hidden="true"></span></button>`
           : facts.spectating
             ? html`<button type="button" class="proto-start rs-go" disabled=${true}><span class="proto-start__label"><${Icon} name="eye" />${t('观战中')}</span></button>`
@@ -638,5 +669,6 @@ export function RoomScreen() {
     ${foundShown ? html`<${FoundPanel} class=${foundLeaving ? 'is-leaving' : ''} seats=${facts.seats.length} text=${t('同盟集结完毕')} />` : null}
     ${picking ? html`<${CardPicker} current=${myCard} list=${cardList} m=${m} onPick=${pickCard} onClose=${() => setPicking(false)} />` : null}
     ${protoShown ? html`<${RoomProtocol} room=${room} variant=${variant} busy=${busy} onClose=${() => setPicker(false)} onPick=${setDifficulty} leaving=${protoLeaving} />` : null}
+    <${ModPickerModal} open=${modModalOpen} onClose=${() => setModModalOpen(false)} selected=${currentRoomModPicks} onSave=${saveRoomMods} />
   </div>`;
 }

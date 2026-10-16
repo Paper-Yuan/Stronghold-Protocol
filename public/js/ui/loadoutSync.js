@@ -57,6 +57,7 @@ export const loadoutStore = createStore({
   ownSync: 'idle',
   diySync: 'idle',
 });
+if (typeof window !== 'undefined') window.loadoutStore = loadoutStore;
 
 /** Replace the stored entries (persisted at once with the settings; the sync picks the change up). */
 export function setEntries(entries) {

@@ -21,8 +21,8 @@ import { modDigest } from '../../../shared/modIdentity.js';
 export const ROOM_DATA_PREFIX = '/room-data/';
 /** The process data face every install has. */
 export const DATA_PREFIX = '/data/';
-/** A mod digest as `shared/modIdentity.js` builds it: sha256, lowercase hex. */
-const DIGEST_RE = /^[0-9a-f]{64}$/;
+/** A mod digest as `shared/modIdentity.js` builds it: sha256, lowercase hex, or 'vanilla'. */
+const DIGEST_RE = /^(?:[0-9a-f]{64}|vanilla)$/;
 
 /** The browser store, opened once per page (OPFS → IndexedDB → memory; never throws). */
 let store = null;

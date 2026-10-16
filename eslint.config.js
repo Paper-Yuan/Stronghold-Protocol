@@ -57,6 +57,11 @@ export default [
   {
     ignores: [
       'node_modules/**',
+      // Scratch / build trees that live in the working copy but are not this repo's sources:
+      // .sp-upstream-pr is an upstream PR checkout, dist / dist-i18n are built bundles (both in .git/info/exclude).
+      '.sp-upstream-pr/**',
+      'dist/**',
+      'dist-i18n/**',
       'public/vendor/**',
       'public/assets/**',
       'public/fonts/**',

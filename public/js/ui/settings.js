@@ -15,7 +15,7 @@
 // Only font-size declarations read `--t`, so the board, the HUD bands the prep camera keeps clear and the detail
 // card's side do not move — the field is sized from the host element's clientWidth (render/app.js).
 
-import { useLayoutEffect, useRef, useState } from '../../vendor/hooks.module.js';
+import { useEffect, useLayoutEffect, useRef, useState } from '../../vendor/hooks.module.js';
 import { html, Modal, Button, Icon, MicroLabel } from './components.js';
 import { GIcon } from './gameComponents.js';
 import { createStore, useStore, loadPref, savePref, store } from '../store.js';
@@ -28,9 +28,12 @@ import { LangToggle, machineTranslationNote } from './lang.js';
 import { t, tc, N_ } from '../../../shared/i18n.js';
 import { errorCount, currentBattle, diagnosticsText } from '../diag.js';
 import { copyText } from './clipboard.js';
+import { HubSectionsRow } from './hubSections.js';
 import { toast } from './toasts.js';
 import { loadoutStore, setEntries, setOpsMap } from './loadoutSync.js';
 import { skinsStore, setSkins } from './skins.js';
+import { ModManagerModal } from './modManagerModal.js';
+import { ScreenFitSection } from './screenFit.js';
 
 const cx = (...p) => p.flat().filter(Boolean).join(' ');
 
@@ -49,19 +52,32 @@ export function applyTextSize(v) {
   if (el) el.dataset.text = TEXT_SIZES.includes(v) ? v : 'sm';
 }
 
+export function applyPerfLite(v) {
+  const el = globalThis.document?.documentElement;
+  if (el) {
+    if (v) el.setAttribute('data-perf-lite', 'hard');
+    else el.removeAttribute('data-perf-lite');
+  }
+}
+
 settingsStore.subscribe((s) => {
   savePref('settings', sanitizeSettings(s));
   audio.setVolumes(s);
   audio.setVoiceLang(s.voiceLang, s.voiceOverrides);
   applyTextSize(s.textSize);
+  applyPerfLite(s.perfLite);
 });
 audio.setVolumes(settingsStore.get());
 audio.setVoiceLang(settingsStore.get().voiceLang, settingsStore.get().voiceOverrides);
 // before the first render (main.js boot renders after its imports ran): the stored step is on screen without a flash
 applyTextSize(settingsStore.get().textSize);
+applyPerfLite(settingsStore.get().perfLite);
 
 /** @param {Partial<ReturnType<typeof sanitizeSettings>>} patch */
 export function updateSettings(patch) {
+  if (patch?.board && globalThis.AndroidNative?.setBoardMode) {
+    try { globalThis.AndroidNative.setBoardMode(patch.board); } catch {}
+  }
   settingsStore.set(sanitizeSettings({ ...settingsStore.get(), ...patch }));
 }
 
@@ -93,12 +109,15 @@ function Toggle({ label, micro, value, onChange }) {
   </div>`;
 }
 
-const QUALITY = [['high', N_('高')], ['medium', N_('中')], ['low', N_('低')]];
+const QUALITY = [['extreme', N_('极高')], ['high', N_('高')], ['medium', N_('中')], ['low', N_('低')]];
 /**
  * 文字大小: one step of TEXT_SIZES (ui/gameLogic/settings.js) with its label — 小 is the design's own sizes, the others
  * raise the text root `--t` (css/theme.css) and with it every readable font-size; the board and the HUD's boxes stay.
  */
 const TEXT_SCALES = [['sm', N_('小')], ['md', N_('中')], ['lg', N_('大')], ['xl', N_('特大')]];
+const isTouchClient = typeof navigator !== 'undefined' && (/Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) || (navigator.maxTouchPoints > 1 && !globalThis.matchMedia?.('(pointer: fine)').matches));
+const FPS_OPTIONS_DESKTOP = [['30', N_('30帧')], ['60', N_('60帧')], ['120', N_('120帧')], ['screen', N_('跟随屏幕')]];
+const FPS_OPTIONS_MOBILE = [['30', N_('30帧')], ['60', N_('60帧')], ['screen', N_('跟随屏幕')]];
 /**
  * 语音语言: each dub named in its own language, like the interface language switch (ui/lang.js) — the owner's
  * 「中文 / 日本語」 (2026-10-08); VOICE_LANGS order.
@@ -338,6 +357,80 @@ export function SettingsModal({ open, onClose }) {
   const [danmakuOn, setDanmakuOn] = useState(() => getRoomDanmaku().enabled);
   const [tested, setTested] = useState(false);
   const [touchUi] = useState(() => detectFeatures().coarse && !detectFeatures().fine);
+  const [modModalOpen, setModModalOpen] = useState(false);
+  const [checkingUpdate, setCheckingUpdate] = useState(false);
+  const [updateInfo, setUpdateInfo] = useState(null);
+  const [updating, setUpdating] = useState(false);
+  const [updateStatus, setUpdateStatus] = useState('');
+
+  useEffect(() => {
+    globalThis.__onHotUpdateProgress = (pct, msg) => {
+      setUpdateStatus(msg || `${pct}%`);
+    };
+    globalThis.__onHotUpdateResult = (ok, msg) => {
+      setUpdating(false);
+      if (ok) {
+        toast(t('热更新成功，正在重新载入…'), 'info');
+      } else {
+        toast(msg || t('热更新失败'), 'warn');
+      }
+    };
+    return () => {
+      delete globalThis.__onHotUpdateProgress;
+      delete globalThis.__onHotUpdateResult;
+    };
+  }, []);
+
+  const handleCheckUpdate = async () => {
+    setCheckingUpdate(true);
+    try {
+      const isSolo = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+      const apiBase = isSolo ? 'http://101.37.150.107:3000' : '';
+      const res = await fetch(`${apiBase}/api/app/version`, { cache: 'no-cache', signal: AbortSignal.timeout(6000) });
+      if (!res.ok) throw new Error('Network error');
+      const data = await res.json();
+      const currentBuild = globalThis.__SP_BUILD__ || null;
+      const isOutdated = currentBuild && data.build && currentBuild !== data.build;
+      if (isOutdated) {
+        let patchUrl = data.hotUpdate?.patchUrl || '/api/app/patch.zip';
+        if (!patchUrl.startsWith('http://') && !patchUrl.startsWith('https://')) {
+          patchUrl = `${apiBase}${patchUrl}`;
+        }
+        setUpdateInfo({
+          hasUpdate: true,
+          version: data.app || '0.2.6',
+          build: data.build,
+          patchUrl,
+          changelog: data.hotUpdate?.changelog || '检测到新版本补丁',
+        });
+      } else {
+        toast(t('当前游戏已是最新版本 (v{v})', { v: data.app || '0.2.6' }), 'info');
+      }
+    } catch {
+      toast(t('检测更新失败，请检查网络或官方服务器连接'), 'warn');
+    } finally {
+      setCheckingUpdate(false);
+    }
+  };
+
+  const handleApplyUpdate = () => {
+    if (globalThis.AndroidNative?.downloadAndApplyPatch && updateInfo?.patchUrl) {
+      setUpdating(true);
+      setUpdateStatus(t('正在连接补丁服务器…'));
+      const patchUrl = updateInfo.patchUrl;
+      globalThis.AndroidNative.downloadAndApplyPatch(patchUrl, updateInfo.build || 'patch-update');
+      return;
+    }
+    toast(t('正在进行热更新重载…'), 'info');
+    setTimeout(() => {
+      if (globalThis.AndroidNative?.reloadClient) {
+        globalThis.AndroidNative.reloadClient();
+      } else {
+        location.reload(true);
+      }
+    }, 400);
+  };
+
   const mtNote = machineTranslationNote(); // a pack marked as machine translation says so under the switch
   return html`<${Modal} open=${open} onClose=${onClose} title=${t('设置')} micro="SETTINGS" width="7.4rem"
                         actions=${html`<${Button} variant="secondary" icon="book" class="set-guide" onClick=${() => openGuide(0)}>${t('玩法说明')}<//>
@@ -368,12 +461,37 @@ export function SettingsModal({ open, onClose }) {
       <${Toggle} label=${t('弹药数量')} micro="AMMO COUNT" value=${s.ammoCount} onChange=${(v) => updateSettings({ ammoCount: v })} />
       <p class="set-hint">${t('弹药类技能开启时，在弹药条下方显示剩余弹药 / 总弹药数（如 13/14）。官方界面没有这个数字。')}</p>
       <div class="set-row">
+        <span class="set-row__label">${t('画面帧率')}<${MicroLabel}>FRAME RATE<//></span>
+        <div class="set-seg" role="radiogroup">
+          ${(isTouchClient && s.targetFps !== '120' ? FPS_OPTIONS_MOBILE : FPS_OPTIONS_DESKTOP).map(([id, label]) => html`<button key=${id} type="button" role="radio" aria-checked=${(s.targetFps || '60') === id ? 'true' : 'false'}
+            class=${(s.targetFps || '60') === id ? 'is-on' : ''} onClick=${() => updateSettings({ targetFps: id })}>${t(label)}</button>`)}
+        </div>
+      </div>
+      <p class="set-hint">${t('默认推荐 60 帧，与官方一致，兼顾流畅度并大幅减轻手机发热耗电。高刷屏或低配设备可按需调节。')}</p>
+      <div class="set-row">
         <span class="set-row__label">${t('画面质量')}<${MicroLabel}>QUALITY<//></span>
         <div class="set-seg" role="radiogroup">
           ${QUALITY.map(([id, label]) => html`<button key=${id} type="button" role="radio" aria-checked=${s.quality === id ? 'true' : 'false'}
             class=${s.quality === id ? 'is-on' : ''} onClick=${() => updateSettings({ quality: id })}>${t(label)}</button>`)}
         </div>
       </div>
+      <div class="set-row">
+        <span class="set-row__label">${t('战场场景模式')}<${MicroLabel}>BOARD SCENE<//></span>
+        <div class="set-seg" role="radiogroup">
+          ${[['3d_pro', N_('3D 官方高模')], ['3d_std', N_('3D 标准立体')], ['2d', N_('2D 极速平面')]].map(([id, label]) => {
+            const current = (s.board === '3d' || !s.board) ? '3d_pro' : s.board;
+            return html`<button key=${id} type="button" role="radio" aria-checked=${current === id ? 'true' : 'false'}
+              class=${current === id ? 'is-on' : ''} onClick=${() => updateSettings({ board: id })}>${t(label)}</button>`;
+          })}
+        </div>
+      </div>
+      <p class="set-hint">${t('【3D 官方高模】载入官方 1:1 提取的 3D 战场、光照烘焙与建筑模型；【3D 标准立体】使用轻量程序化 3D 棋盘；【2D 极速平面】纯二维渲染，极速省电。')}</p>
+      <${Toggle} label=${t('抗锯齿')} micro="ANTIALIAS" value=${s.antialias ?? true} onChange=${(v) => updateSettings({ antialias: v })} />
+      <p class="set-hint">${t('抗锯齿使画面边缘更平滑。手机端默认关闭以降低发热与功耗，可按需开启。')}</p>
+      <${Toggle} label=${t('低配优化')} micro="PERF LITE" value=${s.perfLite ?? false} onChange=${(v) => updateSettings({ perfLite: v })} />
+      <p class="set-hint">${t('关闭所有冗余动画与平滑过渡，显著提升运行帧率并降低手机端发热功耗。')}</p>
+      <${Toggle} label=${t('装备拆卸')} micro="UNEQUIP" value=${s.unequip ?? false} onChange=${(v) => updateSettings({ unequip: v })} />
+      <p class="set-hint">${t('允许休整期在干员详情面板中随时卸下已配发的装备退回整备区。')}</p>
       <label class="set-row">
         <span class="set-row__label"><${Icon} name="sun" />${t('地图亮度')}<${MicroLabel}>MAP BRIGHTNESS<//></span>
         <input class="set-range" type="range" min="50" max="200" step="5" value=${Math.round((s.mapBrightness ?? 1.1) * 100)}
@@ -396,6 +514,7 @@ export function SettingsModal({ open, onClose }) {
         </div>
       </div>
       <p class="set-hint set-textsize-note">${t('调整界面文字大小，棋盘保持原比例。')}</p>
+      <${ScreenFitSection} />
       <div class="set-row">
         <span class="set-row__label">${t('服务器配置')}<${MicroLabel}>SERVER / NETWORK<//></span>
         <button type="button" class="btn btn--secondary btn--sm" onClick=${() => {
@@ -410,11 +529,41 @@ export function SettingsModal({ open, onClose }) {
           }
         }}><${GIcon} name="gear" /><span>${t('切换服务器与联机方式')}</span></button>
       </div>
+      <div class="set-row">
+        <span class="set-row__label">${t('模组管理')}<${MicroLabel}>MOD MANAGEMENT<//></span>
+        <button type="button" class="btn btn--secondary btn--sm" onClick=${() => setModModalOpen(true)}>
+          <${GIcon} name="sparkle" /><span>${t('模组仓库')}</span>
+        </button>
+      </div>
+      <div class="set-row">
+        <span class="set-row__label">${t('版本与热更新')}<${MicroLabel}>HOT UPDATE<//></span>
+        <button type="button" class="btn btn--secondary btn--sm" onClick=${handleCheckUpdate} disabled=${checkingUpdate}>
+          <${GIcon} name="refresh" /><span>${checkingUpdate ? t('正在检测…') : t('检查游戏更新')}</span>
+        </button>
+      </div>
+      <p class="set-hint">
+        ${t('游戏版本: v{ver}', { ver: globalThis.__SP_VERSION__ || '0.2.6' })}
+        ${globalThis.AndroidNative?.getAppVersion ? ` · ${t('安卓终端: v{v}', { v: globalThis.AndroidNative.getAppVersion() })}` : ''}
+        ${globalThis.__SP_BUILD__ ? ` (Build: ${globalThis.__SP_BUILD__.slice(0, 8)})` : ''}
+      </p>
+      ${updateInfo?.hasUpdate ? html`
+        <div class="card" style="padding:.12rem .16rem;margin-top:.04rem;background:rgba(20,50,40,0.45);border:1px solid var(--mint-400);border-radius:4px">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <div>
+              <div style="font-weight:bold;color:var(--mint-400)">🚀 ${t('发现游戏新版本 (v{v})', { v: updateInfo.version })}</div>
+              <div style="font-size:calc(.13 * var(--t));color:var(--text-lo);margin-top:.04rem">${updating ? (updateStatus || t('正在下载并覆盖补丁…')) : updateInfo.changelog}</div>
+            </div>
+            <${Button} variant="primary" size="sm" icon="check" disabled=${updating} onClick=${handleApplyUpdate}>${updating ? t('更新中…') : t('立即热更')}<//>
+          </div>
+        </div>
+      ` : null}
       <${HotkeySection} keys=${s.keys} touchUi=${touchUi} />
       <${ConfigIoSection} />
       <${DiagSection} />
+      <${HubSectionsRow} />
       <p class="set-hint">${touchUi ? t('触屏操作：点击单位选中（撤退 / 出售）· 长按单位或卡牌查看详情 · 拖动部署后滑动选择朝向') : t('右键查看详情')}</p>
     </div>
+    <${ModManagerModal} open=${modModalOpen} onClose=${() => setModModalOpen(false)} />
   <//>`;
 }
 

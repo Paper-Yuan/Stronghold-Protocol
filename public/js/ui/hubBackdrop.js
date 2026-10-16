@@ -1,3 +1,4 @@
+import { audio } from '../audio.js';
 // Lobby hub backdrop (owner's request, 2026-10-13): original procedural scenes without a sun — 夜巡 (default), 霜原,
 // 烬野, 静默 — or the player's own picture. A picture is downscaled on this device and kept in IndexedDB (never
 // uploaded); the choice and its dim / blur / overlay / motion settings are a localStorage pref. The ridges and the
@@ -31,6 +32,7 @@ export function loadBackdropPref() {
     blur: clamp(num(o.blur, 0), 0, 16),
     overlay: o.overlay !== false,
     motion: o.motion !== false,
+    videoSound: o.videoSound === true,videoPaused: o.videoPaused === true,
   };
 }
 
@@ -88,13 +90,14 @@ async function shrink(file) {
  * `ready` turns true once the stored picture was looked up (a custom backdrop draws nothing but the sky until then).
  */
 export function useHubBackdrop() {
+  const [mediaKind,setMediaKind]=useState('image');const revision=useRef(0);
   const [pref, setPref] = useState(loadBackdropPref);
   const [imageUrl, setImageUrl] = useState(null);
   const [ready, setReady] = useState(false);
   useEffect(() => {
-    let dead = false;
+    let dead = false;const initialRevision=revision.current;
     idbGet().then((blob) => {
-      if (!dead && blob instanceof Blob) setImageUrl(URL.createObjectURL(blob));
+      if (!dead && initialRevision===revision.current && blob instanceof Blob) {setMediaKind(blob.type.startsWith('video/')?'video':'image');setImageUrl(URL.createObjectURL(blob));}
     }).catch(() => {}).finally(() => { if (!dead) setReady(true); });
     return () => { dead = true; };
   }, []);
@@ -106,19 +109,21 @@ export function useHubBackdrop() {
   });
   /** @returns {Promise<boolean>} false when the picture is shown but could not be stored on this device */
   const setImage = async (file) => {
-    const blob = await shrink(file);
+    ++revision.current;const video=file.type.startsWith('video/')||/\.(mp4|webm|m4v)$/i.test(file.name||'');
+    const blob = video?await validateVideo(file):await shrink(file);
     let saved = true;
     try { await idbPut(blob); } catch { saved = false; }
     setImageUrl(URL.createObjectURL(blob));
-    update({ theme: 'custom' });
+    setMediaKind(video?'video':'image');update({ theme: 'custom',videoPaused:false,videoSound:false });
     return saved;
   };
   const clearImage = async () => {
+    ++revision.current;setMediaKind('image');
     try { await idbDel(); } catch { /* nothing stored */ }
     setImageUrl(null);
     update({ theme: 'night', dim: 45, blur: 0 });
   };
-  return { pref, update, imageUrl, ready, setImage, clearImage };
+  return { pref, update, imageUrl, mediaKind, ready, setImage, clearImage };
 }
 
 /** What the backdrop draws: a theme id, 'photo' (custom picture) or 'blank' (custom picture still loading). */
@@ -241,13 +246,54 @@ function Scene({ theme }) {
       style=${`left:${m.x.toFixed(2)}%;top:${m.y.toFixed(2)}%;width:${m.s.toFixed(1)}px;height:${m.s.toFixed(1)}px;--d:${m.d.toFixed(1)}s;--dl:-${m.dl.toFixed(1)}s`}></i>`)}</div>` : null}`;
 }
 
+export const MAX_VIDEO_BYTES = 60 * 1024 * 1024;
+async function validateVideo(file) {
+  if (!file.size || file.size>MAX_VIDEO_BYTES) throw Error('视频大小上限为 60MB');
+  if (!/\.(mp4|webm|m4v)$/i.test(file.name||'')) throw Error('请选择 MP4 或 WebM 视频');
+  const type=file.type||(/\.webm$/i.test(file.name)?'video/webm':'video/mp4');
+  const blob=new Blob([file],{type}),url=URL.createObjectURL(blob),v=document.createElement('video');v.preload='metadata';v.muted=true;
+  try {await new Promise((resolve,reject)=>{const t=setTimeout(()=>reject(Error('视频读取超时，请换一个文件')),12000);
+    v.onloadedmetadata=()=>{clearTimeout(t);if(!Number.isFinite(v.duration)||v.duration<=0||!v.videoWidth||!v.videoHeight)reject(Error('视频文件无效'));
+      else if(v.videoWidth*v.videoHeight>1920*1080||Math.max(v.videoWidth,v.videoHeight)>1920)reject(Error('请使用最高 1080p 的视频'));else resolve();};
+    v.onerror=()=>{clearTimeout(t);reject(Error('浏览器无法播放，请使用 H.264 MP4 或 WebM'));};v.src=url;
+  });return blob;} finally{v.onloadedmetadata=v.onerror=null;v.removeAttribute('src');v.load();URL.revokeObjectURL(url);}
+}
+const videoSoundEvent = active => window.dispatchEvent(new CustomEvent('sp:lobby-video-audio',{detail:{active}}));
+function HubVideo({bg}) {
+  const ref=useRef(null),prefRef=useRef(bg.pref);prefRef.current=bg.pref;
+  useEffect(()=>{
+    const v=ref.current;let node=null,dead=false,claimed=false;
+    const claim=active=>{if(claimed!==active){claimed=active;videoSoundEvent(active);}};
+    const sync=()=>{
+      const pref=prefRef.current;
+      if(dead)return;
+      if(pref.videoPaused||document.hidden){v.pause();claim(false);return;}
+      let sound=pref.videoSound;
+      if(sound&&!node&&audio.ctx){try{node=audio.ctx.createMediaElementSource(v);node.connect(audio.bgmGain);}catch{sound=false;}}
+      if(sound&&!node)sound=false;
+      v.muted=!sound;
+      if(!v.paused){claim(sound);return;}
+      v.play().then(()=>{if(!dead)claim(sound&&!v.muted);},()=>{
+        if(dead)return;claim(false);v.muted=true;v.play().catch(()=>{});
+      });
+    };
+    const gesture=()=>{if(prefRef.current.videoSound)audio._unlock();sync();};
+    const stop=()=>claim(false);
+    v.addEventListener('pause',stop);v.addEventListener('error',stop);
+    window.addEventListener('pointerdown',gesture,{passive:true});window.addEventListener('sp:lobby-video-sync',sync);document.addEventListener('visibilitychange',sync);sync();
+    return()=>{dead=true;v.removeEventListener('pause',stop);v.removeEventListener('error',stop);window.removeEventListener('pointerdown',gesture);window.removeEventListener('sp:lobby-video-sync',sync);document.removeEventListener('visibilitychange',sync);v.pause();claim(false);node?.disconnect();v.removeAttribute('src');v.load();};
+  },[]);
+  useEffect(()=>{window.dispatchEvent(new Event('sp:lobby-video-sync'));},[bg.pref.videoSound,bg.pref.videoPaused]);
+  return html`<video ref=${ref} class="hub-bg__video" src=${bg.imageUrl} loop playsInline preload="metadata" muted style=${`position:absolute;inset:0;width:100%;height:100%;object-fit:cover;filter:${bg.pref.blur?`blur(${bg.pref.blur}px)`:'none'}`} />`;
+}
+
 /** The hub's backdrop layer (behind everything; never takes pointer events). */
 export function HubBackdrop({ bg }) {
   const scene = sceneOf(bg);
   const { pref } = bg;
   return html`<div class="hub-bg" data-scene=${scene} data-motion=${pref.motion ? 'on' : 'off'} aria-hidden="true">
     ${scene === 'photo'
-      ? html`<div class="hub-bg__photo" style=${`background-image:url("${bg.imageUrl}");filter:${pref.blur ? `blur(${pref.blur}px)` : 'none'}`}></div>
+      ? html`${bg.mediaKind==='video'?html`<${HubVideo} key=${bg.imageUrl} bg=${bg} />`:html`<div class="hub-bg__photo" style=${`background-image:url("${bg.imageUrl}");filter:${pref.blur ? `blur(${pref.blur}px)` : 'none'}`}></div>`}
         <div class="hub-bg__shade" style=${`opacity:${pref.dim / 100}`}></div>`
       : scene === 'blank' ? html`<div class="hub-bg__sky"></div>` : html`<${Scene} theme=${scene} />`}
     ${scene !== 'photo' || pref.overlay ? html`<div class="hub-bg__grid"></div><div class="hub-bg__dots"></div>` : null}
@@ -297,13 +343,14 @@ export function BackdropSettings({ bg }) {
     const file = input.files?.[0];
     input.value = '';
     if (!file) return;
-    if (!/^image\//.test(file.type)) { toast('请选择图片文件', 'warn'); return; }
-    if (file.size > MAX_FILE) { toast('图片太大（上限 30MB）', 'warn'); return; }
+    const video=file.type.startsWith('video/')||/\.(mp4|webm|m4v)$/i.test(file.name||'');
+    if(!video&&!/^image\//.test(file.type)){toast('请选择图片、MP4 或 WebM 视频','warn');return;}
+    if(file.size>(video?MAX_VIDEO_BYTES:MAX_FILE)){toast(video?'视频太大（上限 60MB）':'图片太大（上限 30MB）','warn');return;}
     setBusy(true);
     try {
-      if (!(await bg.setImage(file))) toast('这个浏览器无法保存图片：本次可以使用，刷新后会恢复默认背景', 'warn');
-    } catch {
-      toast('这张图片读取失败，换一张试试', 'warn');
+      if (!(await bg.setImage(file))) toast('这个浏览器无法保存背景：本次可以使用，刷新后会恢复默认背景', 'warn');
+    } catch(e) {
+      toast(e.message||'背景读取失败，换一个文件试试', 'warn');
     } finally {
       setBusy(false);
     }
@@ -317,19 +364,20 @@ export function BackdropSettings({ bg }) {
         <span class="bgset__name">${x.name}</span><span class="bgset__en">${x.en}</span>
       </button>`)}
       <button type="button" role="radio" aria-checked=${custom ? 'true' : 'false'} class=${`bgset__theme${custom ? ' is-selected' : ''}`}
-          onClick=${() => browse()}>
-        <span class="bgset__swatch bgset__swatch--custom" style=${imageUrl ? `background-image:url("${imageUrl}")` : ''} aria-hidden="true">
-          ${imageUrl ? null : html`<span class="bgset__plus">+</span>`}
+          onClick=${() => (imageUrl ? update({ theme: 'custom' }) : browse())}>
+        <span class="bgset__swatch bgset__swatch--custom" style=${imageUrl && bg.mediaKind!=='video' ? `background-image:url("${imageUrl}")` : ''} aria-hidden="true">
+          ${bg.mediaKind==='video'&&imageUrl?html`<span class="bgset__plus">▶</span>`:imageUrl ? null : html`<span class="bgset__plus">+</span>`}
         </span>
-        <span class="bgset__name">${imageUrl ? '更换图片' : '自定义图片'}</span><span class="bgset__en">${imageUrl ? 'CHANGE' : 'CUSTOM'}</span>
+        <span class="bgset__name">自定义背景</span><span class="bgset__en">CUSTOM</span>
       </button>
     </div>
-    <input ref=${fileRef} type="file" accept="image/*" hidden onChange=${onFile} />
+    <input ref=${fileRef} type="file" accept="image/*,video/mp4,video/webm,.mp4,.webm,.m4v" hidden onChange=${onFile} />
     ${custom && imageUrl ? html`<div class="bgset__custom">
       <div class="bgset__row">
-        <button type="button" class="btn btn--secondary btn--sm" disabled=${busy} onClick=${browse}><span class="btn__label">${busy ? '处理中…' : '更换图片'}</span></button>
-        <button type="button" class="btn btn--ghost btn--sm" disabled=${busy} onClick=${() => bg.clearImage()}><span class="btn__label">移除图片</span></button>
+        <button type="button" class="btn btn--secondary btn--sm" disabled=${busy} onClick=${browse}><span class="btn__label">${busy ? '处理中…' : '更换背景'}</span></button>
+        <button type="button" class="btn btn--ghost btn--sm" disabled=${busy} onClick=${() => bg.clearImage()}><span class="btn__label">移除背景</span></button>
       </div>
+      ${bg.mediaKind==='video'?html`<label class="bgset__check"><input type="checkbox" checked=${pref.videoSound} onChange=${e=>{audio._unlock();update({videoSound:e.currentTarget.checked});}} /><span>播放视频声音（暂停大厅 BGM）</span></label><button type="button" class="btn btn--secondary btn--sm" onClick=${()=>update({videoPaused:!pref.videoPaused})}>${pref.videoPaused?'播放视频':'暂停视频'}</button>`:null}
       <label class="bgset__slider"><span>暗化</span>
         <input type="range" min="0" max="85" step="1" value=${pref.dim} onInput=${(e) => update({ dim: Number(e.currentTarget.value) })} />
         <b class="num">${pref.dim}%</b></label>
@@ -339,6 +387,6 @@ export function BackdropSettings({ bg }) {
       <label class="bgset__check"><input type="checkbox" checked=${pref.overlay} onChange=${(e) => update({ overlay: e.currentTarget.checked })} /><span>叠加战术网格</span></label>
     </div>` : busy ? html`<p class="bgset__note">图片处理中…</p>` : null}
     <label class="bgset__check"><input type="checkbox" checked=${pref.motion} onChange=${(e) => update({ motion: e.currentTarget.checked })} /><span>动态效果（云层、粒子、雷达扫描）</span></label>
-    <p class="bgset__note">自定义图片只保存在这台设备的浏览器里，不会上传到服务器；建议使用横版图片。</p>
+    <p class="bgset__note">图片上限 30MB；视频上限 60MB、最高 1080p，推荐横版 H.264 MP4 / WebM。仅保存在当前浏览器。视频默认静音，可搭配 ♫ 大厅音乐；切出大厅或隐藏网页会暂停视频。</p>
   </div>`;
 }

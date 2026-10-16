@@ -23,7 +23,17 @@ import { useStore, loadPref, savePref } from '../store.js';
 import { loadoutStore, openLoadout } from '../ui/loadoutSync.js';
 import { openGuide, guidePages, guideStore } from '../ui/guide.js';
 import { useLeave } from '../ui/transitions.js';
+import { getSelectedModIds, getPackIdForChess } from '../roomMods.js';
 import { t, N_ } from '../../../shared/i18n.js';
+
+function useActiveMods() {
+  const room = useStore((s) => s.room);
+  return useMemo(() => {
+    if (room?.mode === 'solo_infinite') return new Set();
+    if (room?.modIds) return new Set(room.modIds);
+    return new Set(getSelectedModIds());
+  }, [room?.mode, room?.modIds]);
+}
 
 const cx = (...p) => p.flat().filter(Boolean).join(' ');
 const TAB_PREF = 'sweep.tab';
@@ -138,22 +148,75 @@ function EnemyThumb({ e, m, on = false, onClick = null, size = 'sm' }) {
 
 // ---- 盟约报告 ----------------------------------------------------------------------------------------------------------
 
-function BondPanel({ bond, m, notOwned }) {
+/**
+ * 盟约报告具体数值解析：
+ * 普通模式和超限模式均呈现大盟约的具体实装数值，不再展示空洞的模糊描述。
+ */
+function resolveBondReportText(bond, isInf = false) {
+  if (!bond) return '';
+  if (isInf) {
+    if (bond.bondId === 'egirShip') {
+      return '【阿戈尔】干员生命值提升<@ba.vup>+(35+1×层数)%</><@ba.acrem>（受层数影响）</>\n战斗开始时，所有【阿戈尔】干员获得当前【阿戈尔】层数<@ba.vup>50%</>的攻击力然后会吞噬身前一格干员对其造成<@ba.vdown>5000</>点物理流失并获得其<@ba.vup>基础攻击力</>和<@ba.vup>阻挡数</>，使【阿戈尔】叠加等于被吞噬者等阶的<@ba.vup>盟约层数</><@ba.acrem>（【阿戈尔】之间优先更靠左和靠上的干员发起吞噬）</>\n<在场<@ba.vup>5</>名不同【阿戈尔】干员>【阿戈尔】干员首次被击倒时<@ba.vup>立刻复活</>并获得<@ba.vup>50</>攻速加成';
+    }
+    if (bond.bondId === 'lateranoShip') {
+      return '【拉特兰】干员开启技能时获得的弹药量<@ba.vup>+(5+1.5×层数)%</><@ba.acrem>（受层数影响）</>\n<在场<@ba.vup>6</>名不同【拉特兰】干员>任意【拉特兰】干员每消耗1发弹药，全体【拉特兰】干员攻击力<@ba.vup>+4%</>，至多<@ba.vup>+700%</>；每累计消耗100发弹药触发<@ba.vup>【圣堂殉爆】</>，对全场敌人造成全队拉特兰攻击力总和<@ba.vup>20%</>的真实伤害';
+    }
+    if (bond.bondId === 'siracusaShip') {
+      return '【叙拉古】干员部署后攻击速度<@ba.vup>+(25+0.8×层数)</>，持续<@ba.vup>(32+0.4×层数)</>秒<@ba.acrem>（受层数影响）</>\n<在场<@ba.vup>6</>名不同【叙拉古】干员>【叙拉古】干员部署后还会进入等时长的隐匿状态，【叙拉古】干员在隐匿状态和脱离隐匿10秒内对敌人攻击时有<@ba.vup>8%</>概率造成<@ba.vup>(5000+50×层数)+0.5%目标最大生命值（精英/首领至多250万）</><@ba.acrem>（受层数影响）</>点真实伤害并<@ba.vup>恐惧</>目标3秒；若目标免疫控制或被超限抗性抵抗，则施加<@ba.vup>【血迹清算】</>造成等额真实伤害';
+    }
+  }
+
+  let text = bond.effectDescRaw || bond.effectDesc || bond.descRaw || bond.desc || '';
+  const params = Array.isArray(bond.effectDescParams) ? bond.effectDescParams : [];
+  const bb = bond.bb || {};
+  for (const p of params) {
+    if (!p || typeof p.index !== 'number') continue;
+    const isPercent = String(p.format).includes('%');
+    const rawBase = Number(bb[p.base]) || 0;
+    const rawPer = Number(bb[p.perStack]) || 0;
+    const baseVal = isPercent ? +(rawBase * 100).toFixed(2) : rawBase;
+    const perVal = isPercent ? +(rawPer * 100).toFixed(2) : rawPer;
+    let formula = '';
+    if (rawPer !== 0) {
+      formula = baseVal !== 0 ? `(${baseVal}+${perVal}×层数)` : `(${perVal}×层数)`;
+    } else {
+      formula = String(baseVal);
+    }
+    if (isPercent) formula += '%';
+    text = text.split(`{${p.index}:${p.format}}`).join(formula);
+  }
+  return text;
+}
+
+function BondPanel({ bond, m, notOwned, simMode = 'normal' }) {
+  const isInf = simMode === 'infinite';
+  const activeMods = useActiveMods();
   const off = new Set(Array.isArray(notOwned) ? notOwned : []);
   const ids = Array.isArray(bond.visibleMembers) && bond.visibleMembers.length ? bond.visibleMembers : (bond.members || []);
   const members = ids.map((id) => data.lookup('chess', id)).filter(Boolean)
+    .filter((c) => {
+      if (isInf) {
+        // 超限模式绝不显示 Mod 干员
+        return !c.packId && !getPackIdForChess(c.chessId);
+      }
+      const pId = c.packId || getPackIdForChess(c.chessId);
+      return !pId || activeMods.has(pId);
+    })
     .sort((a, b) => (b.tier - a.tier) || ((a.shopSortId ?? 0) - (b.shopSortId ?? 0)));
   const anyOff = members.some((c) => off.has(c.chessId));
   const steps = Array.isArray(bond.thresholds) ? bond.thresholds.filter((n) => Number.isFinite(n)) : [];
+
   return html`<div class="sw-detail">
     <${Hero} src=${bondIconUrl(m, bond.bondId)} glyph=${true} name=${bond.name}
       fallback=${html`<span class="sw-hero__txt">${[...(bond.name || '?')][0]}</span>`} />
     <div class="sw-facts">
       <span class="sw-pill">${t('激活所需人数')}<b class="num">${bond.activeCount ?? steps[0] ?? '—'}</b></span>
       ${steps.length > 1 ? html`<span class="sw-pill sw-pill--ghost" title=${t('达到这些人数时效果增强')}>${t('档位')}<b class="num">${steps.join(' / ')}</b></span>` : null}
-      <span class="sw-kind">${bond.isCore ? t('核心盟约') : t('附加盟约')}</span>
+      <span class="sw-kind">${isInf ? html`<span style="color:#c988ff;font-weight:700;">∞ 超限推演</span>` : (bond.isCore ? t('核心盟约') : t('附加盟约'))}</span>
     </div>
-    <div class="sw-text"><${RichText} as="p" text=${bond.descRaw || bond.desc || ''} /></div>
+    <div class="sw-text">
+      <${RichText} as="p" text=${resolveBondReportText(bond, isInf)} />
+    </div>
     ${members.length ? html`<div class="sw-box">
       <div class="sw-box__head">
         <span class="sw-box__k"><${Icon} name="user" />${t('对应干员')}<small class="num">${members.length}</small></span>
@@ -169,8 +232,19 @@ function BondPanel({ bond, m, notOwned }) {
   </div>`;
 }
 
-function BondsTab({ m, sel, onSel }) {
-  const all = (data.list('bonds') || []).filter((b) => b && b.bondId).sort((a, b) => (a.identifier ?? 99) - (b.identifier ?? 99));
+function BondsTab({ m, sel, onSel, simMode = 'normal' }) {
+  const isInf = simMode === 'infinite';
+  const activeMods = useActiveMods();
+  const all = (data.list('bonds') || [])
+    .filter((b) => {
+      if (!b || !b.bondId) return false;
+      if (isInf) {
+        // 超限模式绝不显示 Mod 盟约
+        return !b.packId;
+      }
+      return !b.packId || activeMods.has(b.packId);
+    })
+    .sort((a, b) => (a.identifier ?? 99) - (b.identifier ?? 99));
   const sections = [
     { id: 'core', name: t('核心盟约'), glyph: html`<${GIcon} name="flag" />`, items: all.filter((b) => b.isCore) },
     { id: 'extra', name: t('附加盟约'), glyph: html`<${Icon} name="link" />`, items: all.filter((b) => !b.isCore) },
@@ -205,7 +279,10 @@ function BandPanel({ band, m }) {
 }
 
 function BandsTab({ m, sel, onSel }) {
-  const all = (data.list('bands') || []).filter((b) => b && b.bandId).sort((a, b) => (a.sortId ?? 99) - (b.sortId ?? 99));
+  const activeMods = useActiveMods();
+  const all = (data.list('bands') || [])
+    .filter((b) => b && b.bandId && (!b.packId || activeMods.has(b.packId)))
+    .sort((a, b) => (a.sortId ?? 99) - (b.sortId ?? 99));
   return html`<${Section} name=${t('策略')} glyph=${html`<${Icon} name="rook" />`} count=${all.length}>
     ${all.map((b) => html`<${Tile} key=${b.bandId} kind="band" on=${sel === b.bandId} onClick=${() => onSel(b.bandId)} title=${b.name}>
       <span class="sw-face"><${Img} src=${bandIconUrl(m, b.bandId)} fallback=${html`<span class="sw-face__txt">${[...(b.name || '?')][0]}</span>`} /></span>
@@ -413,9 +490,10 @@ export function SweepReport({ onClose }) {
   const [codex, setCodex] = useState(null);
   const [leaving, leave] = useLeave(onClose);
 
+  const activeMods = useActiveMods();
   // defaults once the data is there: the first tile of each tab
-  const bonds = ready ? (data.list('bonds') || []).filter((b) => b && b.bondId).sort((a, b) => (a.identifier ?? 99) - (b.identifier ?? 99)) : [];
-  const bands = ready ? (data.list('bands') || []).filter((b) => b && b.bandId).sort((a, b) => (a.sortId ?? 99) - (b.sortId ?? 99)) : [];
+  const bonds = ready ? (data.list('bonds') || []).filter((b) => b && b.bondId && (!b.packId || activeMods.has(b.packId))).sort((a, b) => (a.identifier ?? 99) - (b.identifier ?? 99)) : [];
+  const bands = ready ? (data.list('bands') || []).filter((b) => b && b.bandId && (!b.packId || activeMods.has(b.packId))).sort((a, b) => (a.sortId ?? 99) - (b.sortId ?? 99)) : [];
   const bond = data.lookup('bonds', bondSel) || bonds[0] || null;
   const band = data.lookup('bands', bandSel) || bands[0] || null;
   const firstBoss = ready ? bossList()[0] : null;
@@ -440,13 +518,15 @@ export function SweepReport({ onClose }) {
     return () => window.removeEventListener('keydown', onKey);
   }, []);
 
+  const [simMode, setSimMode] = useState('normal'); // 'normal' | 'infinite'
+
   let left = null;
   let right = null;
   if (!ready) {
     right = html`<p class="sw-loading">${t('正在读取报告…')}</p>`;
   } else if (tab === 'bonds') {
-    left = bond ? html`<${BondPanel} key=${bond.bondId} bond=${bond} m=${m} notOwned=${notOwned} />` : null;
-    right = html`<${BondsTab} m=${m} sel=${bond?.bondId} onSel=${setBondSel} />`;
+    left = bond ? html`<${BondPanel} key=${`${bond.bondId}:${simMode}`} bond=${bond} m=${m} notOwned=${notOwned} simMode=${simMode} />` : null;
+    right = html`<${BondsTab} m=${m} sel=${bond?.bondId} onSel=${setBondSel} simMode=${simMode} />`;
   } else if (tab === 'bands') {
     left = band ? html`<${BandPanel} key=${band.bandId} band=${band} m=${m} />` : null;
     right = html`<${BandsTab} m=${m} sel=${band?.bandId} onSel=${setBandSel} />`;
@@ -464,10 +544,24 @@ export function SweepReport({ onClose }) {
         </button>
         <button type="button" class="sw-info" onClick=${() => openGuide(handbookPage())} aria-label=${t('进阶图鉴')} title=${t('进阶图鉴：敌人类型、盟约、策略与轮选')}><${Icon} name="info" /></button>
       </div>
-      <nav class="sw-tabs" role="tablist" aria-label=${t('S.W.E.E.P.报告')}>
-        ${TABS.map((x) => html`<button key=${x.id} type="button" role="tab" aria-selected=${tab === x.id ? 'true' : 'false'} class=${cx('sw-tab', tab === x.id && 'is-on')}
-          onClick=${() => setTab(x.id)}><span class="sw-tab__icon">${x.icon()}</span><span>${t(x.name)}</span></button>`)}
-      </nav>
+      <div style="display:flex;align-items:center;">
+        <div class="sw-mode-slider" role="radiogroup" aria-label="模拟模式观察">
+          <button type="button" role="radio" aria-checked=${simMode === 'normal' ? 'true' : 'false'}
+            class=${cx('sw-mode-slider__btn', simMode === 'normal' && 'is-on')}
+            onClick=${() => setSimMode('normal')}>
+            <${Icon} name="check" /><span>正常模拟</span>
+          </button>
+          <button type="button" role="radio" aria-checked=${simMode === 'infinite' ? 'true' : 'false'}
+            class=${cx('sw-mode-slider__btn sw-mode-slider__btn--inf', simMode === 'infinite' && 'is-on')}
+            onClick=${() => setSimMode('infinite')}>
+            <span style="font-size:1.1em;font-weight:900;">∞</span><span>超限模拟</span>
+          </button>
+        </div>
+        <nav class="sw-tabs" role="tablist" aria-label=${t('S.W.E.E.P.报告')}>
+          ${TABS.map((x) => html`<button key=${x.id} type="button" role="tab" aria-selected=${tab === x.id ? 'true' : 'false'} class=${cx('sw-tab', tab === x.id && 'is-on')}
+            onClick=${() => setTab(x.id)}><span class="sw-tab__icon">${x.icon()}</span><span>${t(x.name)}</span></button>`)}
+        </nav>
+      </div>
     </header>
     <main class="sw-body">
       <aside class="sw-left">${left}</aside>

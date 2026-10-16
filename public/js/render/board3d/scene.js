@@ -197,7 +197,9 @@ export class BoardScene {
     this.scene.add(hemi);
     const key = new T.DirectionalLight(LIGHTING.key.color, LIGHTING.key.intensity);
     key.castShadow = R.shadowMap.enabled;
-    key.shadow.mapSize.set(LIGHTING.shadow.size, LIGHTING.shadow.size);
+    const isMobileHost = typeof navigator !== 'undefined' && (/Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) || navigator.maxTouchPoints > 1);
+    const shadowMapSize = isMobileHost ? 1024 : LIGHTING.shadow.size;
+    key.shadow.mapSize.set(shadowMapSize, shadowMapSize);
     key.shadow.radius = LIGHTING.shadow.radius;
     key.shadow.bias = LIGHTING.shadow.bias;
     key.shadow.normalBias = LIGHTING.shadow.normalBias;

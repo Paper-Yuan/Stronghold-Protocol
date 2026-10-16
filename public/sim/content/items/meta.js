@@ -95,11 +95,21 @@ export function registerMeta(registry) {
       const n = Math.max(1, int(p.refresh_cnt, 3));
       const bonds = new Set(ctx.pieceBonds(ev.target.uid));
       const maxTier = ctx.shopLevel();
+      const isInf = ctx.m?.isInfinite || ctx.isInfinite;
+      const coreBonds = isInf ? [...bonds].filter((b) => ctx.gd.bond(b)?.isCore) : [];
+      const coreSet = new Set(coreBonds);
+      const sharesCore = (id) => { const c = ctx.gd.chess(id); return !!(c && Array.isArray(c.bonds) && c.bonds.some((b) => coreSet.has(b))); };
       const shares = (id) => { const c = ctx.gd.chess(id); return !!(c && Array.isArray(c.bonds) && c.bonds.some((b) => bonds.has(b))); };
       const ids = [];
       for (let k = 0; k < n; k++) {
         // never the same operator twice (user playtest #6 item 19): fewer cards when the pool has no other one
-        const id = ctx.rollChess({ maxTier, filter: (x) => shares(x) && !ids.includes(x) });
+        let id = null;
+        if (isInf && coreBonds.length > 0) {
+          id = ctx.rollChess({ maxTier, filter: (x) => sharesCore(x) && !ids.includes(x) });
+        }
+        if (!id) {
+          id = ctx.rollChess({ maxTier, filter: (x) => shares(x) && !ids.includes(x) });
+        }
         if (id) ids.push(id);
       }
       if (ids.length) ctx.offerChess(ids, { source: 'item' });

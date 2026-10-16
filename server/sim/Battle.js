@@ -66,6 +66,8 @@ import { BattleTiles } from './battle/tiles.js';
 import { BattleDisplacement } from './battle/displacement.js';
 import { BattleEconomy } from './battle/economy.js';
 import { BattleEvents } from './battle/events.js';
+import { installInfiniteRule } from './infiniteRule.js';
+import { isInfiniteMode } from '../../shared/infiniteMode.js';
 
 export { pushTiles } from './battle/displacement.js';
 
@@ -175,6 +177,11 @@ export class Battle {
     this._safe(() => installContent(this, { mode: this.contentMode, extra: opts.extraContent }), 'installContent');
     for (const u of this.allyUnits) if (!u.kit) this._setupUnit(u);
     if (typeof opts.setup === 'function') this._safe(() => opts.setup(this), 'opts.setup');
+
+    // ---- 超限模拟 (无限模式) 性能防护与智能控制状态机节流
+    if (opts.infinite || isInfiniteMode(this.opts?.mode) || isInfiniteMode(this.opts?.roomMode)) {
+      this._safe(() => installInfiniteRule(this, opts), 'installInfiniteRule');
+    }
   }
 
   /**

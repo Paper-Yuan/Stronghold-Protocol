@@ -571,7 +571,7 @@ export class Network {
     if (this.closed) return;
     const online = this.onlineCount;
     const activeHumans = typeof this.handler?.countActiveHumans === 'function' ? this.handler.countActiveHumans() : 0;
-    const maxPlayingHumans = this.handler?.opts?.maxPlayingHumans ?? 60;
+    const maxPlayingHumans = this.handler?.opts?.maxPlayingHumans ?? 70;
     const activeBots = typeof this.handler?.countActiveBots === 'function' ? this.handler.countActiveBots() : 0;
     const maxBots = this.handler?.opts?.maxBots ?? 10;
     const data = encode({
@@ -768,7 +768,14 @@ export class Network {
   detachReplaced(oldWs) {
     const old = this.conns.get(oldWs);
     if (old) {
+      // 原子性地清空会话引用，防止竞态条件下消息发送到错误的客户端
+      const sess = old.session;
       old.session = null;
+      // 双重检查：确保会话的 ws 引用也指向正在被替换的连接
+      if (sess && sess.ws === oldWs) {
+        sess.ws = null;
+        sess.connected = false;
+      }
       old.close(CLOSE.REPLACED, 'session replaced');
     } else {
       try { oldWs.close(CLOSE.REPLACED, 'session replaced'); } catch { /* ignore */ }

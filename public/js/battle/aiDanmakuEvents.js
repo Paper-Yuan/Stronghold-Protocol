@@ -55,7 +55,7 @@ export const BOND_QUOTE_THRESHOLDS = Object.freeze([
   { bondId: 'sargonShip', layer: 350, text: '娜仁图亚：砰——太阳被我吞掉啦！', color: '#dc2626' },
 ]);
 
-export function emitDanmaku({ text, name, seat, color, gradient, noPrefix = false, delayMs = 0 }) {
+export function emitDanmaku({ text, name, seat, color, gradient, noPrefix = false, delayMs = 0, chat = false }) {
   const run = () => {
     const msg = {
       playerId: 'ai',
@@ -69,7 +69,10 @@ export function emitDanmaku({ text, name, seat, color, gradient, noPrefix = fals
     };
     try {
       getRoomDanmaku().show(msg, false);
-      pushChatMessage(msg);
+      // 特殊叠层/AI弹幕只作为纯弹幕飘屏展示，不存储在对话框中
+      if (chat) {
+        pushChatMessage(msg);
+      }
     } catch (err) {
       console.warn('[aiDanmaku] emit failed', err);
     }
@@ -80,8 +83,8 @@ export function emitDanmaku({ text, name, seat, color, gradient, noPrefix = fals
 
 export function hasAiTeammates(pub) {
   if (!pub) return false;
-  // 单人独立模拟下始终支持 AI 互动
-  if (pub.mode === 'solo') return true;
+  // 单人独立模拟与超限模拟下始终支持 AI 互动
+  if (pub.mode === 'solo' || pub.mode === 'solo_infinite') return true;
   // 联机模式下：只有当房间内确实存在 AI bot 队友时才返回 true
   const players = Array.isArray(pub.players) ? pub.players : [];
   return players.some((p) => p && p.isBot);
@@ -90,8 +93,8 @@ export function hasAiTeammates(pub) {
 function getAiPlayers(pub) {
   const list = (pub?.players || []).filter((p) => p && p.isBot);
   if (list.length > 0) return list;
-  // 仅在单人独立模拟 (solo) 模式下才使用兜底 AI，在联机模式下只使用真实加入房间的 bot
-  if (pub?.mode === 'solo') {
+  // 仅在单人独立模拟与超限模拟模式下才使用兜底 AI，在联机模式下只使用真实加入房间的 bot
+  if (pub?.mode === 'solo' || pub?.mode === 'solo_infinite') {
     return [{ playerId: 'ai_fallback', name: 'AI·队友', seat: 1, isBot: true }];
   }
   return [];

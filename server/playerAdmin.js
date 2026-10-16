@@ -12,6 +12,7 @@ import { parseAnnouncements, activeAnnouncement } from '../shared/announcements.
 import { ANNOUNCEMENT_MAX_BYTES } from './announcements.js';
 import { loadWorkshop, WORKSHOP_DIR } from './workshop.js';
 import { buildModCatalog } from './modCatalog.js';
+import { extractZip } from './simpleZip.js';
 
 const execFileAsync = promisify(execFile);
 
@@ -307,16 +308,38 @@ export class PlayerAdmin {
   }
   async publish(body) {
     const old = await this.announcementData();
-    const notice = { id: 'admin_' + id(), text: cleanText(typeof body.text === 'string' ? body.text.replace(/\s+/g, ' ') : body.text, 500, '公告正文'),
-      startAt: new Date(this.now()).toISOString(), durationSeconds: body.durationSeconds, level: body.level || 'warning', enabled: true };
-    try { parseAnnouncements({ announcements: [notice] }); } catch { throw fail(400, '公告等级或时长无效，时长需为 1–86400 秒'); }
+    const platform = ['all', 'android', 'web'].includes(body.platform) ? body.platform : 'all';
+    const scene = ['all', 'lobby', 'match'].includes(body.scene) ? body.scene : 'all';
+    const targetUrl = typeof body.targetUrl === 'string' && body.targetUrl.trim() ? cleanText(body.targetUrl.trim(), 250, '跳转链接') : null;
+    const action = typeof body.action === 'string' && body.action.trim() ? cleanText(body.action.trim(), 50, '联动动作') : null;
+    const notice = {
+      id: 'admin_' + id(),
+      text: cleanText(typeof body.text === 'string' ? body.text.replace(/\s+/g, ' ') : body.text, 500, '公告正文'),
+      startAt: new Date(this.now()).toISOString(),
+      durationSeconds: body.durationSeconds,
+      level: body.level || 'warning',
+      enabled: true,
+      platform,
+      scene,
+      targetUrl,
+      action,
+    };
+    try { parseAnnouncements({ announcements: [notice] }); } catch (e) { throw fail(400, '公告配置无效: ' + e.message); }
     const list = old.doc.announcements.filter(n => !n.id.startsWith('admin_') || Date.parse(n.startAt) + n.durationSeconds * 1000 > this.now());
     const doc = { ...old.doc, announcements: [...list, notice] };
     if (doc.announcements.length > 100) throw fail(409, '有效公告数量已达上限');
     parseAnnouncements(doc);
     if (Buffer.byteLength(JSON.stringify(doc, null, 2) + '\n') > ANNOUNCEMENT_MAX_BYTES) throw fail(409, '公告排期容量已达上限，请先清理旧排期');
     await atomicJson(this.announcementFile, doc, old.raw);
-    await this.commit(this.state, { action: 'announcement', announcementId: notice.id, text: notice.text, durationSeconds: notice.durationSeconds, level: notice.level });
+    await this.commit(this.state, {
+      action: 'announcement',
+      announcementId: notice.id,
+      text: notice.text,
+      durationSeconds: notice.durationSeconds,
+      level: notice.level,
+      platform,
+      scene,
+    });
     return { ok: true, announcementId: notice.id };
   }
   async stopNotice(body) {
@@ -368,23 +391,10 @@ export class PlayerAdmin {
     const buf = Buffer.concat(chunks);
     if (buf.length < 4 || buf[0] !== 0x50 || buf[1] !== 0x4b) throw fail(400, '不是合法的 ZIP 压缩包');
     
-    const tmpZip = path.join(wsDir, `.upload_${id()}.zip`);
     const tmpExtract = path.join(wsDir, `.extract_${id()}`);
-    let handle;
     try {
-      handle = await open(tmpZip, 'wx', 0o600);
-      await handle.writeFile(buf);
-      await handle.sync();
-      await handle.close(); handle = null;
       await mkdir(tmpExtract, { recursive: true });
-
-      // Unpack based on platform
-      if (process.platform === 'win32') {
-        const psCmd = `Expand-Archive -LiteralPath '${tmpZip}' -DestinationPath '${tmpExtract}' -Force`;
-        await execFileAsync('powershell', ['-NoProfile', '-NonInteractive', '-Command', psCmd]);
-      } else {
-        await execFileAsync('unzip', ['-q', '-o', tmpZip, '-d', tmpExtract]);
-      }
+      extractZip(buf, tmpExtract);
 
       // Check extracted content: is pack.json at root, or inside a single subfolder?
       let modRoot = tmpExtract;
@@ -416,8 +426,110 @@ export class PlayerAdmin {
       await this.commit(this.state, { action: 'uploadMod', name: modId, reason: `上传并安装模组 ${manifest.name || modId} (v${manifest.version || '1.0.0'})` });
       return { ok: true, id: modId, name: manifest.name || modId, version: manifest.version || '1.0.0' };
     } finally {
-      await handle?.close().catch(() => {});
-      await unlink(tmpZip).catch(() => {});
+      await rm(tmpExtract, { recursive: true, force: true }).catch(() => {});
+    }
+  }
+  async upstreamMods(customServer) {
+    let customUrl = null;
+    if (customServer && typeof customServer === 'string' && customServer.trim()) {
+      let s = customServer.trim();
+      if (!s.startsWith('http://') && !s.startsWith('https://')) s = 'http://' + s;
+      customUrl = s.replace(/\/+$/, '') + '/api/mods';
+    }
+    const defaultUpstream = customUrl || process.env.SP_UPSTREAM_MODS_URL || 'http://47.103.14.217:25570/api/mods';
+    let data;
+    let usedUrl = defaultUpstream;
+    try {
+      const res = await fetch(defaultUpstream, { signal: AbortSignal.timeout(8000) });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      data = await res.json();
+    } catch (err) {
+      throw fail(502, `无法连接工坊站点 (${defaultUpstream}): ${err.message}`);
+    }
+    const wsDir = process.env.SP_WORKSHOP || WORKSHOP_DIR;
+    const local = loadWorkshop(wsDir);
+    const localPackIds = new Set((local.packs || []).map(p => p.id));
+    let mods = [];
+    if (Array.isArray(data.packs)) {
+      const baseOrigin = new URL(usedUrl).origin;
+      mods = data.packs.map(p => ({
+        id: p.id,
+        packId: p.id,
+        name: p.name || p.id,
+        author: p.author || '未知作者',
+        size: 0,
+        packKind: 'functional',
+        funcKind: p.combat ? 'gameplay' : 'expansion',
+        funcKindTitle: p.combat ? '核心战斗' : '拓展包',
+        note: p.description || '',
+        installed: localPackIds.has(p.id),
+        downloadUrl: p.downloadUrl ? `${baseOrigin}${p.downloadUrl}` : `${baseOrigin}/api/mods/download?id=${encodeURIComponent(p.id)}`,
+      }));
+    } else {
+      const rawList = (data.mods || []).concat(data.flagged || []);
+      mods = rawList.map(m => ({
+        id: m.id,
+        packId: m.packId || m.id,
+        name: m.name,
+        author: m.author,
+        size: m.size,
+        packKind: m.packKind,
+        funcKind: m.funcKind,
+        funcKindTitle: m.funcKindTitle,
+        note: m.note || m.compatNote || '',
+        installed: localPackIds.has(m.packId),
+        downloadUrl: m.download ? `http://47.103.14.217:25570${m.download}` : null,
+      }));
+    }
+    return { ok: true, mods, counts: data.counts || { total: mods.length }, total: mods.length };
+  }
+  async pullUpstreamMod(body) {
+    const targetUrl = cleanText(body.url, 256, '下载地址');
+    if (!targetUrl.startsWith('http://') && !targetUrl.startsWith('https://')) {
+      throw fail(400, '仅允许从有效的 HTTP/HTTPS 工坊站点拉取模组');
+    }
+    let zipBuf;
+    try {
+      const res = await fetch(targetUrl, { signal: AbortSignal.timeout(60000) });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      zipBuf = Buffer.from(await res.arrayBuffer());
+    } catch (err) {
+      throw fail(502, `拉取模组文件失败: ${err.message}`);
+    }
+    const wsDir = process.env.SP_WORKSHOP || WORKSHOP_DIR;
+    await mkdir(wsDir, { recursive: true });
+    const tmpExtract = path.join(wsDir, `.pull_${id()}`);
+    try {
+      await mkdir(tmpExtract, { recursive: true });
+      extractZip(zipBuf, tmpExtract);
+
+      let modRoot = tmpExtract;
+      let packJsonPath = path.join(modRoot, 'pack.json');
+      let hasPack = false;
+      try { await readFile(packJsonPath); hasPack = true; } catch {}
+
+      if (!hasPack) {
+        const { readdir } = await import('node:fs/promises');
+        const entries = await readdir(tmpExtract, { withFileTypes: true });
+        const subdirs = entries.filter(e => e.isDirectory() && !e.name.startsWith('.'));
+        for (const sub of subdirs) {
+          const subPack = path.join(tmpExtract, sub.name, 'pack.json');
+          try { await readFile(subPack); modRoot = path.join(tmpExtract, sub.name); packJsonPath = subPack; hasPack = true; break; } catch {}
+        }
+      }
+
+      if (!hasPack) throw fail(400, '拉取的压缩包内未找到合法的 pack.json 模组清单');
+
+      const manifest = JSON.parse(await readFile(packJsonPath, 'utf8'));
+      const modId = manifest.id || body.packId || path.basename(modRoot);
+      if (!/^[a-z0-9][a-z0-9._-]{0,63}$/i.test(modId)) throw fail(400, `模组 ID "${modId}" 格式无效`);
+
+      const destDir = path.join(wsDir, modId);
+      await rm(destDir, { recursive: true, force: true });
+      await rename(modRoot, destDir);
+      await this.commit(this.state, { action: 'pullMod', name: modId, reason: `从上游工坊拉取并安装模组 ${manifest.name || modId} (v${manifest.version || '1.0.0'})` });
+      return { ok: true, id: modId, name: manifest.name || modId };
+    } finally {
       await rm(tmpExtract, { recursive: true, force: true }).catch(() => {});
     }
   }
@@ -498,6 +610,10 @@ export class PlayerAdmin {
           });
         }
         this.json(req, res, 200, { ok: true, packs, errors: loaded.errors, total: packs.length });
+      } else if (pathname === '/admin/api/mods/upstream') {
+        const serverParam = new URL(req.url, 'http://127.0.0.1').searchParams.get('server');
+        const data = await this.upstreamMods(serverParam);
+        this.json(req, res, 200, data);
       } else throw fail(404, '管理接口不存在');
       return;
     }
@@ -513,6 +629,7 @@ export class PlayerAdmin {
       '/admin/api/announcement': () => this.publish(body), '/admin/api/announcement/stop': () => this.stopNotice(body),
       '/admin/api/mods/delete': () => this.deleteMod(body),
       '/admin/api/mods/toggle': () => this.toggleMod(body),
+      '/admin/api/mods/upstream/pull': () => this.pullUpstreamMod(body),
       '/admin/api/password': () => this.password(body, req, res),
       '/admin/api/logout': async () => { this.sessions.delete(hash(this.cookie(req))); this.setCookie(res, '', 0); return { ok: true }; } };
     if (!Object.hasOwn(handlers, pathname)) throw fail(404, '管理接口不存在');

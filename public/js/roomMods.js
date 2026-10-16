@@ -53,7 +53,28 @@ export function setWelcomeMods(msg) {
   const next = digest ? { digest, packs } : null;
   const same = sameSet(welcomeModSet, next);
   welcomeModSet = next;
-  if (!same) selectedModIds = [];
+  if (!same) {
+    try {
+      const raw = localStorage.getItem('sp.pref.enabledMods');
+      if (raw) {
+        const saved = JSON.parse(raw);
+        if (Array.isArray(saved)) {
+          setSelectedModIds(saved);
+        } else {
+          setSelectedModIds(packs.map((p) => p.id));
+        }
+      } else {
+        setSelectedModIds(packs.map((p) => p.id));
+      }
+    } catch {
+      setSelectedModIds(packs.map((p) => p.id));
+    }
+  }
+  for (const p of packs) {
+    if (p && p.id && Array.isArray(p.operators)) {
+      registerPackOperators(p.id, p.operators);
+    }
+  }
   const decl = mergeBehaviourDecls(packs).decl;
   setMorphPairing(behaviourValue(decl, 'morphPairing'));
   setMorphSlotPolicy(behaviourValue(decl, 'morphPairing'));
@@ -100,6 +121,9 @@ export function setSelectedModIds(ids) {
     if (typeof id === 'string' && known.has(id) && !kept.includes(id)) kept.push(id);
   }
   selectedModIds = kept.sort();
+  try {
+    localStorage.setItem('sp.pref.enabledMods', JSON.stringify(selectedModIds));
+  } catch {}
   return selectedModIds.slice();
 }
 
@@ -118,12 +142,25 @@ export function clearSelection() { selectedModIds = []; }
  * @param {string} mode @param {string} difficulty
  * @returns {{ mode: string, difficulty: string, mods?: string, modIds?: string[] }}
  */
+const chessToPackMap = new Map();
+
+export function registerPackOperators(packId, chessIds) {
+  if (!packId || !Array.isArray(chessIds)) return;
+  for (const id of chessIds) {
+    if (typeof id === 'string') chessToPackMap.set(id, packId);
+  }
+}
+
+export function getPackIdForChess(chessId) {
+  return chessToPackMap.get(chessId) || null;
+}
+
 export function buildCreatePayload(mode, difficulty) {
   /** @type {{ mode: string, difficulty: string, mods?: string, modIds?: string[] }} */
   const fields = { mode, difficulty };
   if (welcomeModSet) {
     fields.mods = welcomeModSet.digest;
-    if (selectedModIds.length) fields.modIds = selectedModIds.slice();
+    fields.modIds = selectedModIds.slice();
   }
   return fields;
 }

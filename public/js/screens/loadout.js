@@ -1,4 +1,4 @@
-import { skinsStore, setSkins, setSkin, clearSkin, availableSkins, skinFor } from '../ui/skins.js';
+import { skinsStore, setSkins } from '../ui/skins.js';
 import { SkinSection } from '../ui/skinPicker.js';
 // 干员调配 (Operator loadout, DESIGN §16): choose the equipped skill of every chess and the module of its elite before a
 // match (official rule: "开始游戏前无法调整干员的等级，但可调整其所携带的技能和模组"). A full-screen overlay opened
@@ -34,7 +34,7 @@ import { Img, RichText, UnitThumb } from '../ui/gameComponents.js';
 import { chessAvatarUrl, chessPortraitUrl, subProfIconUrl, bondIconUrl, moduleTypeIconUrl, itemIconUrl } from '../ui/assetUrls.js';
 import { GarrisonBlock } from '../ui/detailPanel.js';
 import { data, useData, localAsset, DATA_FILES } from '../data.js';
-import { useStore, shallowEqual, loadPref, savePref } from '../store.js';
+import { useStore, loadPref, savePref } from '../store.js';
 import { PHASE } from '../../../shared/constants.js';
 import {
   MODULE_NONE, PROF_ORDER, PROF_NAME, rosterOf, filterRoster, recordsOf, chessOptions, effectiveChoice, setChoice, resetChoice,
@@ -42,6 +42,7 @@ import {
   opsOf, setOps, resetOps, moduleRecord,
 } from '../ui/loadoutModel.js';
 import { loadoutStore, openLoadout, closeLoadout, setEntries, setOpsMap, applyLoadoutEntries, setNotOwned, applyOwnershipImport, setDiyPicks, applyDiyImport } from '../ui/loadoutSync.js';
+import { getSelectedModIds } from '../roomMods.js';
 import { OperatorVoice } from '../ui/operatorVoice.js';
 import { CultivationSelects, CultivationSection } from './cultivation.js';
 import { cultivationCharIds } from '../../../shared/protocol.js';
@@ -184,18 +185,6 @@ function QuickModule({ m, opt, on, onPick }) {
   </button>`;
 }
 
-/** 皮肤快速选择栏中的单款皮肤项 */
-function QuickSkin({ m, chessId, charId, skin, on, defaultArt, onPick }) {
-  const art = (skin ? data.get('assets')?.chars?.[charId]?.skins?.[skin.id]?.avatar : null) || defaultArt;
-  const name = skin ? skin.name : t('默认');
-  return html`<button type="button" class=${cx('lo-q', 'lo-q--skin', on && 'is-on')} aria-pressed=${on ? 'true' : 'false'}
-      aria-label=${name} title=${name} onClick=${() => onPick(skin ? skin.id : null)}>
-    <span class="lo-q__art">
-      ${art ? html`<${Img} src=${art} fallback=${html`<span>${[...name][0]}</span>`} />` : html`<span class="lo-q__none">原</span>`}
-    </span>
-  </button>`;
-}
-
 /** The list's column heads (the rows share its grid). */
 export function RosterHead() {
   return html`<div class="lo-list__head" aria-hidden="true">
@@ -213,7 +202,6 @@ export function RosterHead() {
  * 「替补」 tag: its stand-in fights with a fixed skill and no 潜能 / 练度, the choices here apply once it is owned again.
  */
 export function RosterRow({ m, chess, golden, entries, ops = {}, selected, onPick, onChange, onOps, level = 'normal', notOwned = false }) {
-  const skins = useStore((s) => s.entries, shallowEqual, skinsStore);
   const choice = effectiveChoice(entries, chess, golden);
   const opt = chessOptions(chess, golden);
   const cv = opsOf(ops, chess.charId);
@@ -222,13 +210,11 @@ export function RosterRow({ m, chess, golden, entries, ops = {}, selected, onPic
   const elite = level === 'elite' && !!golden;
   const slots = [0, 1, 2].map((i) => opt.skillOptions[i] || null);
   const standInNote = notOwned ? t('未持有（干员持有）：由替补干员上场，替补干员没有潜能与练度') : null;
-  const chosenSkin = skins?.[chess.chessId] || skins?.[chess.charId] || skinFor(chess.chessId) || null;
-  const customChess = chosenSkin ? { ...chess, skinId: chosenSkin } : chess;
   return html`<div role="listitem" data-chess=${chess.chessId} data-variant=${elite ? 'elite' : 'normal'}
       class=${cx('lo-card', `lo-card--t${chess.tier}`, selected && 'is-sel', changed && 'is-changed', notOwned && 'is-standin')}>
     <button type="button" class="lo-card__pick" aria-pressed=${selected ? 'true' : 'false'} title=${chess.name} onClick=${() => onPick(chess.chessId)}>
       <span class="lo-card__art">
-        <${Img} src=${chessAvatarUrl(m, customChess)} fallback=${html`<span class="lo-card__glyph">${[...(chess.name || '?')][0]}</span>`} />
+        <${Img} src=${chessAvatarUrl(m, chess)} fallback=${html`<span class="lo-card__glyph">${[...(chess.name || '?')][0]}</span>`} />
         <${TierChip} tier=${chess.tier} size="sm" class="lo-card__tier" />
       </span>
       <span class="lo-card__id">
@@ -459,7 +445,6 @@ function PotPips({ n }) {
  * column of quick choices beside the card — the same handlers as the list's RosterRow.
  */
 export function OpCard({ m, chess, golden, entries, ops = {}, selected = false, quick = null, onPick, onChange, onOps, notOwned = false }) {
-  const skins = useStore((s) => s.entries, shallowEqual, skinsStore);
   const choice = effectiveChoice(entries, chess, golden);
   const opt = chessOptions(chess, golden);
   const cv = opsOf(ops, chess.charId);
@@ -469,11 +454,9 @@ export function OpCard({ m, chess, golden, entries, ops = {}, selected = false, 
   const mod = golden ? opt.moduleOptions.find((x) => x.id === choice.module) || null : null;
   const modules = [...opt.moduleOptions].sort((a, b) => Number(b.id === MODULE_NONE) - Number(a.id === MODULE_NONE));
   const standInNote = notOwned ? t('未持有（干员持有）：由替补干员上场，替补干员没有潜能与练度') : null;
-  const chosenSkin = skins?.[chess.chessId] || skins?.[chess.charId] || skinFor(chess.chessId) || null;
-  const customChess = chosenSkin ? { ...chess, skinId: chosenSkin } : chess;
   return html`<div role="listitem" data-chess=${chess.chessId}
       class=${cx('lo-op', `lo-op--t${chess.tier}`, selected && 'is-sel', changed && 'is-changed', notOwned && 'is-standin', quick && 'is-quick')}>
-    <div class="lo-op__card">
+    <div class="lo-op__card" onClick=${(e) => { if (!e.target.closest?.('button, select, input')) onPick(chess.chessId); }}>
       <div class="lo-op__rail">
         <${TierChip} tier=${chess.tier} size="sm" class="lo-op__tier" />
         <span class="lo-op__lv" title=${t('普通 / 精锐等级')}>
@@ -484,7 +467,7 @@ export function OpCard({ m, chess, golden, entries, ops = {}, selected = false, 
       </div>
       <button type="button" class="lo-op__pick" aria-pressed=${selected ? 'true' : 'false'} title=${chess.name} onClick=${() => onPick(chess.chessId)}>
         <span class="lo-op__art">
-          <${Img} src=${chessPortraitUrl(m, customChess) || chessAvatarUrl(m, customChess)} fallback=${html`<span class="lo-op__glyph">${[...(chess.name || '?')][0]}</span>`} />
+          <${Img} src=${chessPortraitUrl(m, chess) || chessAvatarUrl(m, chess)} fallback=${html`<span class="lo-op__glyph">${[...(chess.name || '?')][0]}</span>`} />
         </span>
         <${Img} src=${subProfIconUrl(m, chess)} class="lo-op__sub" />
         ${notOwned ? html`<span class="lo-op__ribbon" title=${t('未持有（干员持有）：由替补干员上场')}>${t('替补')}</span>` : null}
@@ -505,19 +488,7 @@ export function OpCard({ m, chess, golden, entries, ops = {}, selected = false, 
         ${golden ? modules.map((mo) => html`<${QuickModule} key=${mo.id} m=${m} opt=${mo} on=${mo.id === choice.module}
           onPick=${(module) => onChange(chess.chessId, { module })} />`) : html`<span class="lo-op__none">${t('无精锐')}</span>`}
       </div>`
-      : quick === 'cult' ? html`<div class="lo-op__quick lo-op__quick--cult"><${CultivationSelects} charId=${chess.charId} ops=${ops} onSet=${onOps} note=${standInNote} /></div>`
-      : quick === 'skin' ? html`<div class="lo-op__quick lo-quick" role="group" aria-label=${t('选择皮肤')}>
-        ${(() => {
-          const list = availableSkins(chess.charId);
-          const chosen = chosenSkin;
-          const defaultArt = data.get('assets')?.chars?.[chess.charId]?.avatar || null;
-          if (!list || !list.length) return html`<span class="lo-op__none">${t('无时装')}</span>`;
-          return html`
-            <${QuickSkin} m=${m} chessId=${chess.chessId} charId=${chess.charId} skin=${null} on=${!chosen} defaultArt=${defaultArt} onPick=${() => clearSkin(chess.chessId)} />
-            ${list.map((sk) => html`<${QuickSkin} key=${sk.id} m=${m} chessId=${chess.chessId} charId=${chess.charId} skin=${sk} on=${chosen === sk.id} defaultArt=${defaultArt} onPick=${(id) => setSkin(chess.chessId, id)} />`)}
-          `;
-        })()}
-      </div>` : null}
+      : quick === 'cult' ? html`<div class="lo-op__quick lo-op__quick--cult"><${CultivationSelects} charId=${chess.charId} ops=${ops} onSet=${onOps} note=${standInNote} /></div>` : null}
   </div>`;
 }
 
@@ -539,6 +510,43 @@ function DiyDeckCard({ m, tier, slots, picks, onOpen }) {
 }
 
 /**
+ * Mouse drag scrolls a sideways deck (a desktop has no swipe): past a few pixels the press becomes a drag and the click
+ * that ends it is swallowed, so a card is not picked by letting go. Touch and pen keep the browser's own scrolling.
+ */
+function useDragScroll() {
+  const drag = useRef(null), swallow = useRef(false);
+  const end = (e) => {
+    const d = drag.current;
+    drag.current = null;
+    if (!d?.moved) return;
+    e.currentTarget.classList.remove('is-dragging');
+    swallow.current = true;
+    setTimeout(() => { swallow.current = false; }, 0);
+  };
+  return {
+    onPointerDown: (e) => {
+      if (e.pointerType !== 'mouse' || e.button !== 0 || e.target?.closest?.('select, input, textarea, .lo-op__quick--cult')) return;
+      drag.current = { id: e.pointerId, x: e.clientX, left: e.currentTarget.scrollLeft, moved: false };
+    },
+    onPointerMove: (e) => {
+      const d = drag.current;
+      if (!d || d.id !== e.pointerId) return;
+      const dx = e.clientX - d.x;
+      if (!d.moved) {
+        if (Math.abs(dx) < 6) return;
+        d.moved = true;
+        e.currentTarget.setPointerCapture?.(e.pointerId);
+        e.currentTarget.classList.add('is-dragging');
+      }
+      e.currentTarget.scrollLeft = d.left - dx;
+    },
+    onPointerUp: end,
+    onPointerCancel: end,
+    onClickCapture: (e) => { if (swallow.current) { swallow.current = false; e.stopPropagation(); e.preventDefault(); } },
+  };
+}
+
+/**
  * The deck: one group per tier present in `list` (a tall marker, then the cards flowing in two rows), the 甄选 card closing
  * tiers 5 / 6. A vertical wheel scrolls it sideways; `onTier` reports the tier group at the left edge (the bottom bar).
  */
@@ -546,6 +554,7 @@ function DeckView({ m, list, getChess, st, selId, quick, onPick, onChange, onOps
   const groups = TIERS.map((tier) => ({ tier, items: list.filter((c) => c.tier === tier) }))
     .filter((g) => g.items.length || (!filtered && diySlots.some((s) => s.tier === g.tier)));
   const raf = useRef(0);
+  const dragScroll = useDragScroll();
   const onScroll = (e) => {
     const el = e.currentTarget;
     cancelAnimationFrame(raf.current);
@@ -564,7 +573,7 @@ function DeckView({ m, list, getChess, st, selId, quick, onPick, onChange, onOps
     e.preventDefault();
   };
   if (!groups.length) return html`<div class="lo-deck lo-deck--empty" ref=${deckRef}><p class="lo-empty t-dim">${t('没有符合条件的干员')}</p></div>`;
-  return html`<div class=${cx('lo-deck', drawer && 'has-drawer', quick && 'is-quick')} ref=${deckRef} onScroll=${onScroll} onWheel=${onWheel} role="list" aria-label=${t('干员列表')}>
+  return html`<div class=${cx('lo-deck', drawer && 'has-drawer', quick && 'is-quick')} ref=${deckRef} onScroll=${onScroll} onWheel=${onWheel} ...${dragScroll} role="list" aria-label=${t('干员列表')}>
     ${groups.map((g) => html`<section key=${g.tier} class=${cx('lo-tgroup', `lo-tgroup--t${g.tier}`)} data-tier=${g.tier}>
       <div class=${cx('lo-tmark', `tier--${g.tier}`)} aria-hidden="true">
         <span class="lo-tmark__no">NO.</span>
@@ -592,6 +601,7 @@ export function codexItems(items) {
 function ItemCodex({ m, items, deckRef, onOpen, onTier }) {
   const groups = TIERS.map((tier) => ({ tier, items: items.filter((x) => x.tier === tier) })).filter((g) => g.items.length);
   const raf = useRef(0);
+  const dragScroll = useDragScroll();
   const onScroll = (e) => {
     const el = e.currentTarget;
     cancelAnimationFrame(raf.current);
@@ -609,7 +619,7 @@ function ItemCodex({ m, items, deckRef, onOpen, onTier }) {
   };
   if (!items.length) return html`<div class="lo-deck lo-deck--empty" ref=${deckRef}><p class="lo-empty t-dim">${t('装备数据载入中…')}</p></div>`;
   let n = -1;
-  return html`<div class="lo-deck lo-deck--items" ref=${deckRef} onScroll=${onScroll} onWheel=${onWheel} role="list" aria-label=${t('装备一览')}>
+  return html`<div class="lo-deck lo-deck--items" ref=${deckRef} onScroll=${onScroll} onWheel=${onWheel} ...${dragScroll} role="list" aria-label=${t('装备一览')}>
     ${groups.map((g) => html`<section key=${g.tier} class=${cx('lo-tgroup', `lo-tgroup--t${g.tier}`)} data-tier=${g.tier}>
       <div class=${cx('lo-tmark', `tier--${g.tier}`)} aria-hidden="true">
         <span class="lo-tmark__no">NO.</span><b class="lo-tmark__n">${ROMAN[g.tier]}</b><span class="lo-tmark__cnt num">${g.items.length}</span>
@@ -766,7 +776,13 @@ function LoadoutScreen({ st, leaving = false }) {
   const m = data.get('assets');
   const getChess = (id) => data.lookup('chess', id);
   const getBond = (id) => data.lookup('bonds', id);
-  const roster = useMemo(() => rosterOf(data.list('chess')), [ready, data.locale()]); // (names follow a language switch)
+  const room = useStore((s) => s.room);
+  const enabledMods = useMemo(() => {
+    if (room?.mode === 'solo_infinite') return new Set();
+    if (room?.modIds) return new Set(room.modIds);
+    return new Set(getSelectedModIds());
+  }, [room?.mode, room?.modIds]);
+  const roster = useMemo(() => rosterOf(data.list('chess'), enabledMods), [ready, data.locale(), enabledMods]);
   const bonds = useMemo(() => {
     const used = new Set(roster.flatMap((c) => c.bonds || []));
     return (data.list('bonds') || []).filter((b) => b && used.has(b.bondId))
@@ -942,7 +958,7 @@ function LoadoutScreen({ st, leaving = false }) {
       // (a row's quick choices: ←/→ stay with the focused group, PR #301)
       if (e.target?.closest?.('.lo-quick') && (e.key === 'ArrowRight' || e.key === 'ArrowLeft')) return;
       if ((e.key === 'ArrowRight' || e.key === 'ArrowLeft') && loadoutStore.get().tab !== 'ownership' && loadoutStore.get().tab !== 'diy') {
-        const ids = filterRoster(rosterOf(data.list('chess')), loadoutStore.get().filters, loadoutStore.get().entries, getChess, getBond, loadoutStore.get().ops).map((c) => c.chessId);
+        const ids = filterRoster(rosterOf(data.list('chess'), enabledMods), loadoutStore.get().filters, loadoutStore.get().entries, getChess, getBond, loadoutStore.get().ops).map((c) => c.chessId);
         if (!ids.length) return;
         const cur = Math.max(0, ids.indexOf(loadoutStore.get().sel));
         const next = ids[(cur + (e.key === 'ArrowRight' ? 1 : -1) + ids.length) % ids.length];
@@ -1076,7 +1092,7 @@ function LoadoutScreen({ st, leaving = false }) {
         ${inMatch && hasDeadline(infoDeadline) ? html`<${Countdown} deadline=${infoDeadline} size="sm" gauge=${false} label=${t('调配截止')} class="lo-deadline" />` : null}
         ${quick ? html`<span class="lo-qbar__k">${t('快速编辑')}</span>
           <div class="lo-qseg" role="tablist" aria-label=${t('快速编辑')}>
-            ${[['skill', N_('技能')], ['module', N_('模组')], ['cult', N_('潜能·练度')], ['skin', N_('皮肤')]].map(([k, l]) => html`<button key=${k} type="button" role="tab"
+            ${[['skill', N_('技能')], ['module', N_('模组')], ['cult', N_('潜能·练度')]].map(([k, l]) => html`<button key=${k} type="button" role="tab"
               aria-selected=${quick === k ? 'true' : 'false'} class=${cx(quick === k && 'is-on')} onClick=${() => setQuick(k)}>${t(l)}</button>`)}
           </div>`
         : html`${syncText ? html`<span class=${cx('lo-sync', syncCls)} role="status">${t(syncText)}</span>` : null}

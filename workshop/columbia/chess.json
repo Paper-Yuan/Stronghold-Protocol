@@ -1,0 +1,5933 @@
+{
+ "chess_ws_col_aphris_a": {
+  "tier": 6,
+  "isHidden": false,
+  "isDiy": false,
+  "visible": true,
+  "chessType": "NORMAL",
+  "directToHand": false,
+  "name": "谬因",
+  "appellation": "Aphrissa",
+  "charId": "char_4229_aphris",
+  "profession": "CASTER",
+  "subProfessionId": "blastcaster",
+  "subProfessionName": "轰击术师",
+  "position": "RANGED",
+  "nationId": "columbia",
+  "bonds": [
+   "columbiaShip",
+   "arcaneShip"
+  ],
+  "garrisonIds": [
+   "garrison_col_aphris_a"
+  ],
+  "price": 4,
+  "sellPrice": 1,
+  "immunities": {
+   "stun": false,
+   "silence": false,
+   "sleep": false,
+   "frozen": false,
+   "levitate": false
+  },
+  "rangeId": "5-1",
+  "rangeGrid": [
+   [
+    0,
+    0
+   ],
+   [
+    0,
+    1
+   ],
+   [
+    0,
+    2
+   ],
+   [
+    0,
+    3
+   ],
+   [
+    0,
+    4
+   ],
+   [
+    0,
+    5
+   ]
+  ],
+  "dmgType": "arts",
+  "attackKind": "ranged",
+  "projectile": "bolt",
+  "canHitFly": true,
+  "targetPriority": null,
+  "trait": {
+   "desc": "攻击造成超远距离的群体法术伤害",
+   "descRaw": "攻击造成<@ba.kw>超远距离的群体法术伤害</>",
+   "bb": {},
+   "bbStr": {},
+   "rangeGrid": null
+  },
+  "tokens": [
+   "token_10070_aphris_pc"
+  ],
+  "assets": {
+   "avatar": "char_4229_aphris",
+   "portrait": "char_4229_aphris_2",
+   "spine": "char_4229_aphris",
+   "skillIcon": "skchr_aphris_1",
+   "subProfIcon": "sub_blastcaster_icon"
+  },
+  "workshop": {
+   "schema": 1,
+   "id": "col_aphris"
+  },
+  "chessId": "chess_ws_col_aphris_a",
+  "baseId": "chess_ws_col_aphris_a",
+  "goldenId": "chess_ws_col_aphris_b",
+  "isGolden": false,
+  "rarity": 6,
+  "upgradeNum": 3,
+  "upgradeChessId": "chess_ws_col_aphris_b",
+  "status": {
+   "phase": 2,
+   "level": 1,
+   "skillLevel": 4,
+   "equipLevel": 0
+  },
+  "stats": {
+   "maxHp": 1261,
+   "atk": 762,
+   "def": 107,
+   "res": 20,
+   "cost": 32,
+   "blockCnt": 1,
+   "bat": 2.9,
+   "aspd": 100,
+   "respawnTime": 66,
+   "spRecovery": 1,
+   "hpRecoveryPerSec": 0,
+   "moveSpeed": 1,
+   "tauntLevel": 0,
+   "massLevel": 0,
+   "deployLimit": 1,
+   "deckStack": 0
+  },
+  "skill": {
+   "skillId": "skchr_aphris_1",
+   "iconId": "skchr_aphris_1",
+   "name": "连续映射",
+   "level": 4,
+   "desc": "攻击力+90%，“中继器”持续时间变为无限\n持续时间无限",
+   "descRaw": "攻击力<@ba.vup>+90%</>，“中继器”持续时间变为无限\n<@ba.rem>持续时间无限</>",
+   "skillType": "AUTO",
+   "durationType": "NONE",
+   "duration": -1,
+   "spType": "INCREASE_WITH_TIME",
+   "spCost": 45,
+   "initSp": 0,
+   "maxChargeTime": 1,
+   "increment": 1,
+   "bb": {
+    "atk": 0.9
+   },
+   "bbStr": {},
+   "rangeId": null,
+   "rangeGrid": null,
+   "prefabId": "skchr_aphris_1",
+   "trigger": {
+    "rule": "DEFAULT",
+    "rawRule": "DEFAULT",
+    "customRangeGrid": null
+   },
+   "index": 0,
+   "overrideTokenKey": null
+  },
+  "skills": [
+   {
+    "skillId": "skchr_aphris_1",
+    "iconId": "skchr_aphris_1",
+    "name": "连续映射",
+    "level": 4,
+    "desc": "攻击力+90%，“中继器”持续时间变为无限\n持续时间无限",
+    "descRaw": "攻击力<@ba.vup>+90%</>，“中继器”持续时间变为无限\n<@ba.rem>持续时间无限</>",
+    "skillType": "AUTO",
+    "durationType": "NONE",
+    "duration": -1,
+    "spType": "INCREASE_WITH_TIME",
+    "spCost": 45,
+    "initSp": 0,
+    "maxChargeTime": 1,
+    "increment": 1,
+    "bb": {
+     "atk": 0.9
+    },
+    "bbStr": {},
+    "rangeId": null,
+    "rangeGrid": null,
+    "prefabId": "skchr_aphris_1",
+    "trigger": {
+     "rule": "DEFAULT",
+     "rawRule": "DEFAULT",
+     "customRangeGrid": null
+    },
+    "index": 0,
+    "overrideTokenKey": null,
+    "isDefault": true
+   },
+   {
+    "skillId": "skchr_aphris_2",
+    "iconId": "skchr_aphris_2",
+    "name": "临界瞬爆",
+    "level": 4,
+    "desc": "向前发射一道无限长直线的光束，每0.5秒造成攻击力90%的法术伤害，光束可被我方干员改变方向",
+    "descRaw": "向前发射一道无限长直线的光束，每<@ba.vup>0.5</>秒造成攻击力<@ba.vup>90%</>的法术伤害，光束可被我方干员改变方向",
+    "skillType": "MANUAL",
+    "durationType": "NONE",
+    "duration": 8,
+    "spType": "INCREASE_WITH_TIME",
+    "spCost": 22,
+    "initSp": 10,
+    "maxChargeTime": 1,
+    "increment": 1,
+    "bb": {
+     "atk_scale": 0.9,
+     "interval": 0.5
+    },
+    "bbStr": {},
+    "rangeId": null,
+    "rangeGrid": null,
+    "prefabId": "skchr_aphris_2",
+    "trigger": {
+     "rule": "DEFAULT",
+     "rawRule": "DEFAULT",
+     "customRangeGrid": null
+    },
+    "index": 1,
+    "overrideTokenKey": null,
+    "isDefault": false
+   },
+   {
+    "skillId": "skchr_aphris_3",
+    "iconId": "skchr_aphris_3",
+    "name": "混沌的本质",
+    "level": 4,
+    "desc": "技能开启后停止攻击3秒，撤回已部署的“中继器”并重置再部署；攻击间隔较大幅度缩短，攻击力+95%，攻击造成140%的法术伤害，并使目标停顿0.2秒；攻击经过“中继器”后，额外造成一次攻击力25%的法术伤害，且停顿时间延长0.2秒\n技能期间可额外部署2个“中继器”，“中继器”不会撤退，技能结束时自动撤退\n攻击装有20发弹药，打完后结束（可随时停止技能）",
+    "descRaw": "技能开启后停止攻击3秒，撤回已部署的“中继器”并重置再部署；攻击间隔<@ba.vup>较大幅度缩短</>，攻击力<@ba.vup>+95%</>，攻击造成<@ba.vup>140%</>的法术伤害，并使目标<$ba.sluggish>停顿</><@ba.vup>0.2</>秒；攻击经过“中继器”后，额外造成一次攻击力<@ba.vup>25%</>的法术伤害，且<$ba.sluggish>停顿</>时间延长<@ba.vup>0.2</>秒\n<@ba.rem>技能期间可额外部署<@ba.vup>2</>个“中继器”，“中继器”不会撤退，技能结束时自动撤退</>\n<@ba.rem>攻击装有20发弹药，打完后结束（可随时停止技能）</>",
+    "skillType": "MANUAL",
+    "durationType": "AMMO",
+    "duration": -1,
+    "spType": "INCREASE_WITH_TIME",
+    "spCost": 50,
+    "initSp": 25,
+    "maxChargeTime": 1,
+    "increment": 1,
+    "bb": {
+     "charge_time": 3,
+     "atk": 0.95,
+     "attack@max_times": 1,
+     "mode_default": 2,
+     "token_recharge_cnt": 2,
+     "mode_down": 3,
+     "attack@atk_scale": 1.4,
+     "attack@origin_sluggish": 0.2,
+     "attack@extra_atk_scale": 0.25,
+     "attack@extra_sluggish": 0.2,
+     "base_attack_time": -1.1,
+     "attack@trigger_time": 20
+    },
+    "bbStr": {},
+    "rangeId": null,
+    "rangeGrid": null,
+    "prefabId": "skchr_aphris_3",
+    "trigger": {
+     "rule": "DEFAULT",
+     "rawRule": "DEFAULT",
+     "customRangeGrid": null
+    },
+    "index": 2,
+    "overrideTokenKey": null,
+    "isDefault": false
+   }
+  ],
+  "talents": [
+   {
+    "index": 0,
+    "name": "链路协议",
+    "desc": "可以使用一个持续时间25秒的“中继器”，能改变自身的攻击方向，且使该次攻击距离+2；“中继器”在场时，自身攻击力+25%",
+    "descRaw": "可以使用一个持续时间25秒的“中继器”，能改变自身的攻击方向，且使该次攻击距离+2；“中继器”在场时，自身攻击力+25%",
+    "bb": {
+     "cnt": 1,
+     "atk": 0.25
+    },
+    "bbStr": {},
+    "rangeGrid": null,
+    "tokenKey": "token_10070_aphris_pc",
+    "hidden": false,
+    "fromModule": false
+   },
+   {
+    "index": 1,
+    "name": "取样优化",
+    "desc": "攻击范围内的友方干员攻击时无视敌方13（+3）点法术抗性",
+    "descRaw": "攻击范围内的友方干员攻击时无视敌方13<@ba.talpu>（+3）</>点法术抗性",
+    "bb": {
+     "magic_resist_penetrate_fixed": 13
+    },
+    "bbStr": {},
+    "rangeGrid": null,
+    "tokenKey": null,
+    "hidden": false,
+    "fromModule": false
+   }
+  ],
+  "module": {
+   "id": "uniequip_002_aphris",
+   "name": "第三相态",
+   "type": "BLA-Y",
+   "level": 0,
+   "active": false
+  }
+ },
+ "chess_ws_col_aphris_b": {
+  "tier": 6,
+  "isHidden": false,
+  "isDiy": false,
+  "visible": true,
+  "chessType": "NORMAL",
+  "directToHand": false,
+  "name": "谬因",
+  "appellation": "Aphrissa",
+  "charId": "char_4229_aphris",
+  "profession": "CASTER",
+  "subProfessionId": "blastcaster",
+  "subProfessionName": "轰击术师",
+  "position": "RANGED",
+  "nationId": "columbia",
+  "bonds": [
+   "columbiaShip",
+   "arcaneShip"
+  ],
+  "garrisonIds": [
+   "garrison_col_aphris_b"
+  ],
+  "price": 4,
+  "sellPrice": 1,
+  "immunities": {
+   "stun": false,
+   "silence": false,
+   "sleep": false,
+   "frozen": false,
+   "levitate": false
+  },
+  "rangeId": "5-1",
+  "rangeGrid": [
+   [
+    0,
+    0
+   ],
+   [
+    0,
+    1
+   ],
+   [
+    0,
+    2
+   ],
+   [
+    0,
+    3
+   ],
+   [
+    0,
+    4
+   ],
+   [
+    0,
+    5
+   ]
+  ],
+  "dmgType": "arts",
+  "attackKind": "ranged",
+  "projectile": "bolt",
+  "canHitFly": true,
+  "targetPriority": null,
+  "trait": {
+   "desc": "攻击造成超远距离的群体法术伤害",
+   "descRaw": "攻击造成<@ba.kw>超远距离的群体法术伤害</>",
+   "bb": {},
+   "bbStr": {},
+   "rangeGrid": null,
+   "moduleDesc": "部署费用减少",
+   "moduleDescRaw": "部署费用<@ba.kw>减少</>"
+  },
+  "tokens": [
+   "token_10070_aphris_pc"
+  ],
+  "assets": {
+   "avatar": "char_4229_aphris",
+   "portrait": "char_4229_aphris_2",
+   "spine": "char_4229_aphris",
+   "skillIcon": "skchr_aphris_1",
+   "subProfIcon": "sub_blastcaster_icon"
+  },
+  "workshop": {
+   "schema": 1,
+   "id": "col_aphris"
+  },
+  "chessId": "chess_ws_col_aphris_b",
+  "baseId": "chess_ws_col_aphris_a",
+  "goldenId": "chess_ws_col_aphris_b",
+  "isGolden": true,
+  "rarity": 6,
+  "upgradeNum": 0,
+  "upgradeChessId": null,
+  "status": {
+   "phase": 2,
+   "level": 60,
+   "skillLevel": 7,
+   "equipLevel": 3
+  },
+  "statsBase": {
+   "maxHp": 1526,
+   "atk": 861,
+   "def": 121,
+   "res": 20,
+   "cost": 32,
+   "blockCnt": 1,
+   "bat": 2.9,
+   "aspd": 100,
+   "respawnTime": 66,
+   "spRecovery": 1,
+   "hpRecoveryPerSec": 0,
+   "moveSpeed": 1,
+   "tauntLevel": 0,
+   "massLevel": 0,
+   "deployLimit": 1,
+   "deckStack": 0
+  },
+  "traitBase": {
+   "desc": "攻击造成超远距离的群体法术伤害",
+   "descRaw": "攻击造成<@ba.kw>超远距离的群体法术伤害</>",
+   "bb": {},
+   "bbStr": {},
+   "rangeGrid": null
+  },
+  "talentsBase": [
+   {
+    "index": 0,
+    "name": "链路协议",
+    "desc": "可以使用一个持续时间25秒的“中继器”，能改变自身的攻击方向，且使该次攻击距离+2；“中继器”在场时，自身攻击力+25%",
+    "descRaw": "可以使用一个持续时间25秒的“中继器”，能改变自身的攻击方向，且使该次攻击距离+2；“中继器”在场时，自身攻击力+25%",
+    "bb": {
+     "cnt": 1,
+     "atk": 0.25
+    },
+    "bbStr": {},
+    "rangeGrid": null,
+    "tokenKey": "token_10070_aphris_pc",
+    "hidden": false,
+    "fromModule": false
+   },
+   {
+    "index": 1,
+    "name": "取样优化",
+    "desc": "攻击范围内的友方干员攻击时无视敌方13（+3）点法术抗性",
+    "descRaw": "攻击范围内的友方干员攻击时无视敌方13<@ba.talpu>（+3）</>点法术抗性",
+    "bb": {
+     "magic_resist_penetrate_fixed": 13
+    },
+    "bbStr": {},
+    "rangeGrid": null,
+    "tokenKey": null,
+    "hidden": false,
+    "fromModule": false
+   }
+  ],
+  "stats": {
+   "maxHp": 1726,
+   "atk": 931,
+   "def": 121,
+   "res": 20,
+   "cost": 24,
+   "blockCnt": 1,
+   "bat": 2.9,
+   "aspd": 100,
+   "respawnTime": 66,
+   "spRecovery": 1,
+   "hpRecoveryPerSec": 0,
+   "moveSpeed": 1,
+   "tauntLevel": 0,
+   "massLevel": 0,
+   "deployLimit": 1,
+   "deckStack": 0
+  },
+  "talents": [
+   {
+    "index": 0,
+    "name": "链路协议",
+    "desc": "可以使用一个持续时间35秒的“中继器”，“中继器”再部署时间变短，能改变自身的攻击方向，且使该次攻击距离+2；“中继器”在场时，自身攻击力+35%",
+    "descRaw": "可以使用一个持续时间35秒的“中继器”，“中继器”再部署时间变短，能改变自身的攻击方向，且使该次攻击距离+2；“中继器”在场时，自身攻击力+35%",
+    "bb": {
+     "cnt": 1,
+     "atk": 0.35
+    },
+    "bbStr": {},
+    "rangeGrid": null,
+    "tokenKey": "token_10070_aphris_pc",
+    "hidden": false,
+    "fromModule": true
+   },
+   {
+    "index": 1,
+    "name": "取样优化",
+    "desc": "攻击范围内的友方干员攻击时无视敌方13（+3）点法术抗性",
+    "descRaw": "攻击范围内的友方干员攻击时无视敌方13<@ba.talpu>（+3）</>点法术抗性",
+    "bb": {
+     "magic_resist_penetrate_fixed": 13
+    },
+    "bbStr": {},
+    "rangeGrid": null,
+    "tokenKey": null,
+    "hidden": false,
+    "fromModule": false
+   }
+  ],
+  "module": {
+   "id": "uniequip_002_aphris",
+   "name": "第三相态",
+   "type": "BLA-Y",
+   "level": 3,
+   "active": true
+  },
+  "skill": {
+   "skillId": "skchr_aphris_1",
+   "iconId": "skchr_aphris_1",
+   "name": "连续映射",
+   "level": 7,
+   "desc": "攻击力+120%，“中继器”持续时间变为无限\n持续时间无限",
+   "descRaw": "攻击力<@ba.vup>+120%</>，“中继器”持续时间变为无限\n<@ba.rem>持续时间无限</>",
+   "skillType": "AUTO",
+   "durationType": "NONE",
+   "duration": -1,
+   "spType": "INCREASE_WITH_TIME",
+   "spCost": 40,
+   "initSp": 0,
+   "maxChargeTime": 1,
+   "increment": 1,
+   "bb": {
+    "atk": 1.2
+   },
+   "bbStr": {},
+   "rangeId": null,
+   "rangeGrid": null,
+   "prefabId": "skchr_aphris_1",
+   "trigger": {
+    "rule": "DEFAULT",
+    "rawRule": "DEFAULT",
+    "customRangeGrid": null
+   },
+   "index": 0,
+   "overrideTokenKey": null
+  },
+  "skills": [
+   {
+    "skillId": "skchr_aphris_1",
+    "iconId": "skchr_aphris_1",
+    "name": "连续映射",
+    "level": 7,
+    "desc": "攻击力+120%，“中继器”持续时间变为无限\n持续时间无限",
+    "descRaw": "攻击力<@ba.vup>+120%</>，“中继器”持续时间变为无限\n<@ba.rem>持续时间无限</>",
+    "skillType": "AUTO",
+    "durationType": "NONE",
+    "duration": -1,
+    "spType": "INCREASE_WITH_TIME",
+    "spCost": 40,
+    "initSp": 0,
+    "maxChargeTime": 1,
+    "increment": 1,
+    "bb": {
+     "atk": 1.2
+    },
+    "bbStr": {},
+    "rangeId": null,
+    "rangeGrid": null,
+    "prefabId": "skchr_aphris_1",
+    "trigger": {
+     "rule": "DEFAULT",
+     "rawRule": "DEFAULT",
+     "customRangeGrid": null
+    },
+    "index": 0,
+    "overrideTokenKey": null,
+    "isDefault": true
+   },
+   {
+    "skillId": "skchr_aphris_2",
+    "iconId": "skchr_aphris_2",
+    "name": "临界瞬爆",
+    "level": 7,
+    "desc": "向前发射一道无限长直线的光束，每0.5秒造成攻击力120%的法术伤害，光束可被我方干员改变方向",
+    "descRaw": "向前发射一道无限长直线的光束，每<@ba.vup>0.5</>秒造成攻击力<@ba.vup>120%</>的法术伤害，光束可被我方干员改变方向",
+    "skillType": "MANUAL",
+    "durationType": "NONE",
+    "duration": 8,
+    "spType": "INCREASE_WITH_TIME",
+    "spCost": 20,
+    "initSp": 15,
+    "maxChargeTime": 1,
+    "increment": 1,
+    "bb": {
+     "atk_scale": 1.2,
+     "interval": 0.5
+    },
+    "bbStr": {},
+    "rangeId": null,
+    "rangeGrid": null,
+    "prefabId": "skchr_aphris_2",
+    "trigger": {
+     "rule": "DEFAULT",
+     "rawRule": "DEFAULT",
+     "customRangeGrid": null
+    },
+    "index": 1,
+    "overrideTokenKey": null,
+    "isDefault": false
+   },
+   {
+    "skillId": "skchr_aphris_3",
+    "iconId": "skchr_aphris_3",
+    "name": "混沌的本质",
+    "level": 7,
+    "desc": "技能开启后停止攻击3秒，撤回已部署的“中继器”并重置再部署；攻击间隔较大幅度缩短，攻击力+115%，攻击造成155%的法术伤害，并使目标停顿0.4秒；攻击经过“中继器”后，额外造成一次攻击力30%的法术伤害，且停顿时间延长0.4秒\n技能期间可额外部署2个“中继器”，“中继器”不会撤退，技能结束时自动撤退\n攻击装有20发弹药，打完后结束（可随时停止技能）",
+    "descRaw": "技能开启后停止攻击3秒，撤回已部署的“中继器”并重置再部署；攻击间隔<@ba.vup>较大幅度缩短</>，攻击力<@ba.vup>+115%</>，攻击造成<@ba.vup>155%</>的法术伤害，并使目标<$ba.sluggish>停顿</><@ba.vup>0.4</>秒；攻击经过“中继器”后，额外造成一次攻击力<@ba.vup>30%</>的法术伤害，且<$ba.sluggish>停顿</>时间延长<@ba.vup>0.4</>秒\n<@ba.rem>技能期间可额外部署<@ba.vup>2</>个“中继器”，“中继器”不会撤退，技能结束时自动撤退</>\n<@ba.rem>攻击装有20发弹药，打完后结束（可随时停止技能）</>",
+    "skillType": "MANUAL",
+    "durationType": "AMMO",
+    "duration": -1,
+    "spType": "INCREASE_WITH_TIME",
+    "spCost": 45,
+    "initSp": 30,
+    "maxChargeTime": 1,
+    "increment": 1,
+    "bb": {
+     "charge_time": 3,
+     "atk": 1.15,
+     "attack@max_times": 1,
+     "mode_default": 2,
+     "token_recharge_cnt": 2,
+     "mode_down": 3,
+     "attack@atk_scale": 1.55,
+     "attack@origin_sluggish": 0.4,
+     "attack@extra_atk_scale": 0.3,
+     "attack@extra_sluggish": 0.4,
+     "base_attack_time": -1.1,
+     "attack@trigger_time": 20
+    },
+    "bbStr": {},
+    "rangeId": null,
+    "rangeGrid": null,
+    "prefabId": "skchr_aphris_3",
+    "trigger": {
+     "rule": "DEFAULT",
+     "rawRule": "DEFAULT",
+     "customRangeGrid": null
+    },
+    "index": 2,
+    "overrideTokenKey": null,
+    "isDefault": false
+   }
+  ],
+  "modules": [
+   {
+    "uniEquipId": "uniequip_002_aphris",
+    "name": "第三相态",
+    "typeName": "BLA-Y",
+    "typeIcon": "bla-y",
+    "icon": "uniequip_002_aphris",
+    "level": 3,
+    "attr": {
+     "cost": -8,
+     "maxHp": 200,
+     "atk": 70
+    },
+    "traitOverride": {
+     "desc": "攻击造成超远距离的群体法术伤害",
+     "descRaw": "攻击造成<@ba.kw>超远距离的群体法术伤害</>",
+     "bb": {},
+     "bbStr": {},
+     "rangeGrid": null,
+     "moduleDesc": "部署费用减少",
+     "moduleDescRaw": "部署费用<@ba.kw>减少</>"
+    },
+    "talentChanges": [
+     {
+      "talentIndex": 0,
+      "name": "链路协议",
+      "desc": "可以使用一个持续时间35秒的“中继器”，“中继器”再部署时间变短，能改变自身的攻击方向，且使该次攻击距离+2；“中继器”在场时，自身攻击力+35%",
+      "descRaw": "可以使用一个持续时间35秒的“中继器”，“中继器”再部署时间变短，能改变自身的攻击方向，且使该次攻击距离+2；“中继器”在场时，自身攻击力+35%",
+      "bb": {
+       "atk": 0.35,
+       "cnt": 1
+      },
+      "bbStr": {},
+      "rangeGrid": null,
+      "tokenKey": "token_10070_aphris_pc",
+      "hidden": false
+     }
+    ],
+    "isDefault": true
+   }
+  ]
+ },
+ "chess_ws_col_nasti_a": {
+  "tier": 5,
+  "isHidden": false,
+  "isDiy": false,
+  "visible": true,
+  "chessType": "NORMAL",
+  "directToHand": false,
+  "name": "娜斯提",
+  "appellation": "Nasti",
+  "charId": "char_4212_nasti",
+  "profession": "SUPPORT",
+  "subProfessionId": "craftsman",
+  "subProfessionName": "工匠",
+  "position": "MELEE",
+  "nationId": "columbia",
+  "bonds": [
+   "columbiaShip",
+   "deputShip"
+  ],
+  "garrisonIds": [
+   "garrison_col_nasti_a"
+  ],
+  "price": 4,
+  "sellPrice": 1,
+  "immunities": {
+   "stun": false,
+   "silence": false,
+   "sleep": false,
+   "frozen": false,
+   "levitate": false
+  },
+  "rangeId": "1-1",
+  "rangeGrid": [
+   [
+    0,
+    0
+   ],
+   [
+    0,
+    1
+   ]
+  ],
+  "dmgType": "phys",
+  "attackKind": "melee",
+  "projectile": "none",
+  "canHitFly": false,
+  "targetPriority": null,
+  "trait": {
+   "desc": "能够阻挡两个敌人，使用<支援装置>协助作战",
+   "descRaw": "能够阻挡两个敌人，使用<支援装置>协助作战",
+   "bb": {},
+   "bbStr": {},
+   "rangeGrid": null
+  },
+  "tokens": [
+   "token_10059_nasti_nstdef",
+   "token_10060_nasti_nstchr",
+   "token_10061_nasti_nstbld"
+  ],
+  "assets": {
+   "avatar": "char_4212_nasti",
+   "portrait": "char_4212_nasti_2",
+   "spine": "char_4212_nasti",
+   "skillIcon": "skchr_nasti_1",
+   "subProfIcon": "sub_craftsman_icon"
+  },
+  "workshop": {
+   "schema": 1,
+   "id": "col_nasti"
+  },
+  "chessId": "chess_ws_col_nasti_a",
+  "baseId": "chess_ws_col_nasti_a",
+  "goldenId": "chess_ws_col_nasti_b",
+  "isGolden": false,
+  "rarity": 6,
+  "upgradeNum": 3,
+  "upgradeChessId": "chess_ws_col_nasti_b",
+  "status": {
+   "phase": 2,
+   "level": 1,
+   "skillLevel": 4,
+   "equipLevel": 0
+  },
+  "stats": {
+   "maxHp": 1938,
+   "atk": 534,
+   "def": 375,
+   "res": 0,
+   "cost": 17,
+   "blockCnt": 2,
+   "bat": 1.5,
+   "aspd": 100,
+   "respawnTime": 64,
+   "spRecovery": 1,
+   "hpRecoveryPerSec": 0,
+   "moveSpeed": 1,
+   "tauntLevel": 0,
+   "massLevel": 0,
+   "deployLimit": 1,
+   "deckStack": 0
+  },
+  "skill": {
+   "skillId": "skchr_nasti_1",
+   "iconId": "skchr_nasti_1",
+   "name": "“拱卫”",
+   "level": 4,
+   "desc": "携带此技能时：装置使前方干员防御力提升\n攻击力+52%，防御力+52%，同时攻击阻挡的所有敌人；装置效果改为使前方干员阻挡数+1，防御力+40%，装置每秒流失2%最大生命值\n技能开启时获得一个装置",
+   "descRaw": "携带此技能时：装置使前方干员防御力提升\n攻击力<@ba.vup>+52%</>，防御力<@ba.vup>+52%</>，同时攻击阻挡的所有敌人；装置效果改为使前方干员阻挡数<@ba.vup>+1</>，防御力<@ba.vup>+40%</>，装置每秒流失2%最大生命值\n<@ba.rem>技能开启时获得一个装置</>",
+   "skillType": "MANUAL",
+   "durationType": "NONE",
+   "duration": 38,
+   "spType": "INCREASE_WITH_TIME",
+   "spCost": 47,
+   "initSp": 21,
+   "maxChargeTime": 1,
+   "increment": 1,
+   "bb": {
+    "talent@def": 0.4,
+    "atk": 0.52,
+    "def": 0.52
+   },
+   "bbStr": {},
+   "rangeId": null,
+   "rangeGrid": null,
+   "prefabId": "skchr_nasti_1",
+   "trigger": {
+    "rule": "DEFAULT",
+    "rawRule": "DEFAULT",
+    "customRangeGrid": null
+   },
+   "index": 0,
+   "overrideTokenKey": "token_10059_nasti_nstdef"
+  },
+  "skills": [
+   {
+    "skillId": "skchr_nasti_1",
+    "iconId": "skchr_nasti_1",
+    "name": "“拱卫”",
+    "level": 4,
+    "desc": "携带此技能时：装置使前方干员防御力提升\n攻击力+52%，防御力+52%，同时攻击阻挡的所有敌人；装置效果改为使前方干员阻挡数+1，防御力+40%，装置每秒流失2%最大生命值\n技能开启时获得一个装置",
+    "descRaw": "携带此技能时：装置使前方干员防御力提升\n攻击力<@ba.vup>+52%</>，防御力<@ba.vup>+52%</>，同时攻击阻挡的所有敌人；装置效果改为使前方干员阻挡数<@ba.vup>+1</>，防御力<@ba.vup>+40%</>，装置每秒流失2%最大生命值\n<@ba.rem>技能开启时获得一个装置</>",
+    "skillType": "MANUAL",
+    "durationType": "NONE",
+    "duration": 38,
+    "spType": "INCREASE_WITH_TIME",
+    "spCost": 47,
+    "initSp": 21,
+    "maxChargeTime": 1,
+    "increment": 1,
+    "bb": {
+     "talent@def": 0.4,
+     "atk": 0.52,
+     "def": 0.52
+    },
+    "bbStr": {},
+    "rangeId": null,
+    "rangeGrid": null,
+    "prefabId": "skchr_nasti_1",
+    "trigger": {
+     "rule": "DEFAULT",
+     "rawRule": "DEFAULT",
+     "customRangeGrid": null
+    },
+    "index": 0,
+    "overrideTokenKey": "token_10059_nasti_nstdef",
+    "isDefault": true
+   },
+   {
+    "skillId": "skchr_nasti_2",
+    "iconId": "skchr_nasti_2",
+    "name": "“执行”",
+    "level": 4,
+    "desc": "携带此技能时：装置部署后逐渐回复自身生命值，激活后每0.5秒流失1点生命值，使前方干员获得1点技力和相当于娜斯提生命上限3%的屏障\n立即激活场上装置，停止攻击，每0.5秒获得相当于生命上限6%的屏障（最多不超过生命上限48%）\n技能结束时获得一个装置",
+    "descRaw": "携带此技能时：装置部署后逐渐回复自身生命值，激活后每0.5秒流失1点生命值，使前方干员获得<@ba.vup>1</>点技力和相当于娜斯提生命上限<@ba.vup>3%</>的<$ba.barrier>屏障</>\n立即激活场上装置，停止攻击，每0.5秒获得相当于生命上限<@ba.vup>6%</>的<$ba.barrier>屏障</>（最多不超过生命上限48%）\n<@ba.rem>技能结束时获得一个装置</>",
+    "skillType": "MANUAL",
+    "durationType": "NONE",
+    "duration": 4,
+    "spType": "INCREASE_WITH_TIME",
+    "spCost": 35,
+    "initSp": 19,
+    "maxChargeTime": 1,
+    "increment": 1,
+    "bb": {
+     "attack@nasti_s2[update_shield].interval": 0.5,
+     "attack@nasti_s2[update_shield].shield_each_hp_rate": 0.06,
+     "attack@nasti_s2[update_shield].shield_max_hp_rate": 0.48,
+     "talent@shield_max_hp_rate": 0.48,
+     "talent@shield_each_hp_rate": 0.03
+    },
+    "bbStr": {},
+    "rangeId": null,
+    "rangeGrid": null,
+    "prefabId": "skchr_nasti_2",
+    "trigger": {
+     "rule": "DEFAULT",
+     "rawRule": "DEFAULT",
+     "customRangeGrid": null
+    },
+    "index": 1,
+    "overrideTokenKey": "token_10060_nasti_nstchr",
+    "isDefault": false
+   },
+   {
+    "skillId": "skchr_nasti_3",
+    "iconId": "skchr_nasti_3",
+    "name": "栖脚地",
+    "level": 4,
+    "desc": "携带此技能时：装置可建造并升级一个可以放置远程干员并为其提供增益的特殊高台\n攻击力+100%，防御力+100%；小工程师装置为高台装置回复技力和生命的效果翻倍\n技能开启时获得一个装置",
+    "descRaw": "携带此技能时：装置可建造并升级一个可以放置远程干员并为其提供增益的特殊高台\n攻击力<@ba.vup>+100%</>，防御力<@ba.vup>+100%</>；小工程师装置为高台装置回复技力和生命的效果翻倍\n<@ba.rem>技能开启时获得一个装置</>",
+    "skillType": "MANUAL",
+    "durationType": "NONE",
+    "duration": 15,
+    "spType": "INCREASE_WITH_TIME",
+    "spCost": 30,
+    "initSp": 11,
+    "maxChargeTime": 1,
+    "increment": 1,
+    "bb": {
+     "atk": 1,
+     "def": 1
+    },
+    "bbStr": {},
+    "rangeId": null,
+    "rangeGrid": null,
+    "prefabId": "skchr_nasti_3",
+    "trigger": {
+     "rule": "DEFAULT",
+     "rawRule": "DEFAULT",
+     "customRangeGrid": null
+    },
+    "index": 2,
+    "overrideTokenKey": "token_10061_nasti_nstbld",
+    "isDefault": false
+   }
+  ],
+  "talents": [
+   {
+    "index": 0,
+    "name": "前方施工",
+    "desc": "可以携带3个<支援装置>(最多可部署2个)，效果根据技能改变而改变",
+    "descRaw": "可以携带3个<支援装置>(最多可部署2个)，效果根据技能改变而改变",
+    "bb": {
+     "cnt": 3
+    },
+    "bbStr": {},
+    "rangeGrid": null,
+    "tokenKey": null,
+    "hidden": false,
+    "fromModule": false
+   },
+   {
+    "index": 1,
+    "name": "注意安全",
+    "desc": "获得12%（+2%）庇护；远程敌人出现后，改为使自身和场上的高台干员获得18%（+3%）庇护，且每6秒获得1点技力",
+    "descRaw": "获得12%<@ba.talpu>（+2%）</><$ba.protect>庇护</>；远程敌人出现后，改为使自身和场上的高台干员获得18%<@ba.talpu>（+3%）</><$ba.protect>庇护</>，且每6秒获得1点技力",
+    "bb": {
+     "nasti_t2[add_sp].interval": 6,
+     "nasti_t2[res_plus].damage_resistance": 0.18,
+     "nasti_t2[res].damage_resistance": 0.12
+    },
+    "bbStr": {},
+    "rangeGrid": null,
+    "tokenKey": null,
+    "hidden": false,
+    "fromModule": false
+   }
+  ],
+  "module": {
+   "id": "uniequip_002_nasti",
+   "name": "工程师们",
+   "type": "CRA-X",
+   "level": 0,
+   "active": false
+  }
+ },
+ "chess_ws_col_nasti_b": {
+  "tier": 5,
+  "isHidden": false,
+  "isDiy": false,
+  "visible": true,
+  "chessType": "NORMAL",
+  "directToHand": false,
+  "name": "娜斯提",
+  "appellation": "Nasti",
+  "charId": "char_4212_nasti",
+  "profession": "SUPPORT",
+  "subProfessionId": "craftsman",
+  "subProfessionName": "工匠",
+  "position": "MELEE",
+  "nationId": "columbia",
+  "bonds": [
+   "columbiaShip",
+   "deputShip"
+  ],
+  "garrisonIds": [
+   "garrison_col_nasti_b"
+  ],
+  "price": 4,
+  "sellPrice": 1,
+  "immunities": {
+   "stun": false,
+   "silence": false,
+   "sleep": false,
+   "frozen": false,
+   "levitate": false
+  },
+  "rangeId": "1-1",
+  "rangeGrid": [
+   [
+    0,
+    0
+   ],
+   [
+    0,
+    1
+   ]
+  ],
+  "dmgType": "phys",
+  "attackKind": "melee",
+  "projectile": "none",
+  "canHitFly": false,
+  "targetPriority": null,
+  "trait": {
+   "desc": "能够阻挡两个敌人，使用<支援装置>协助作战",
+   "descRaw": "能够阻挡两个敌人，使用<支援装置>协助作战",
+   "bb": {
+    "cnt": 1
+   },
+   "bbStr": {},
+   "rangeGrid": null,
+   "moduleDesc": "<支援装置>的持有上限+1且部署费用减少",
+   "moduleDescRaw": "<支援装置>的持有上限<@ba.kw>+1</>且部署费用<@ba.kw>减少</>"
+  },
+  "tokens": [
+   "token_10059_nasti_nstdef",
+   "token_10060_nasti_nstchr",
+   "token_10061_nasti_nstbld"
+  ],
+  "assets": {
+   "avatar": "char_4212_nasti",
+   "portrait": "char_4212_nasti_2",
+   "spine": "char_4212_nasti",
+   "skillIcon": "skchr_nasti_1",
+   "subProfIcon": "sub_craftsman_icon"
+  },
+  "workshop": {
+   "schema": 1,
+   "id": "col_nasti"
+  },
+  "chessId": "chess_ws_col_nasti_b",
+  "baseId": "chess_ws_col_nasti_a",
+  "goldenId": "chess_ws_col_nasti_b",
+  "isGolden": true,
+  "rarity": 6,
+  "upgradeNum": 0,
+  "upgradeChessId": null,
+  "status": {
+   "phase": 2,
+   "level": 60,
+   "skillLevel": 7,
+   "equipLevel": 1
+  },
+  "statsBase": {
+   "maxHp": 2367,
+   "atk": 604,
+   "def": 422,
+   "res": 0,
+   "cost": 17,
+   "blockCnt": 2,
+   "bat": 1.5,
+   "aspd": 100,
+   "respawnTime": 64,
+   "spRecovery": 1,
+   "hpRecoveryPerSec": 0,
+   "moveSpeed": 1,
+   "tauntLevel": 0,
+   "massLevel": 0,
+   "deployLimit": 1,
+   "deckStack": 0
+  },
+  "traitBase": {
+   "desc": "能够阻挡两个敌人，使用<支援装置>协助作战",
+   "descRaw": "能够阻挡两个敌人，使用<支援装置>协助作战",
+   "bb": {},
+   "bbStr": {},
+   "rangeGrid": null
+  },
+  "talentsBase": [
+   {
+    "index": 0,
+    "name": "前方施工",
+    "desc": "可以携带3个<支援装置>(最多可部署2个)，效果根据技能改变而改变",
+    "descRaw": "可以携带3个<支援装置>(最多可部署2个)，效果根据技能改变而改变",
+    "bb": {
+     "cnt": 3
+    },
+    "bbStr": {},
+    "rangeGrid": null,
+    "tokenKey": null,
+    "hidden": false,
+    "fromModule": false
+   },
+   {
+    "index": 1,
+    "name": "注意安全",
+    "desc": "获得12%（+2%）庇护；远程敌人出现后，改为使自身和场上的高台干员获得18%（+3%）庇护，且每6秒获得1点技力",
+    "descRaw": "获得12%<@ba.talpu>（+2%）</><$ba.protect>庇护</>；远程敌人出现后，改为使自身和场上的高台干员获得18%<@ba.talpu>（+3%）</><$ba.protect>庇护</>，且每6秒获得1点技力",
+    "bb": {
+     "nasti_t2[add_sp].interval": 6,
+     "nasti_t2[res_plus].damage_resistance": 0.18,
+     "nasti_t2[res].damage_resistance": 0.12
+    },
+    "bbStr": {},
+    "rangeGrid": null,
+    "tokenKey": null,
+    "hidden": false,
+    "fromModule": false
+   }
+  ],
+  "stats": {
+   "maxHp": 2445,
+   "atk": 630,
+   "def": 447,
+   "res": 0,
+   "cost": 17,
+   "blockCnt": 2,
+   "bat": 1.5,
+   "aspd": 100,
+   "respawnTime": 64,
+   "spRecovery": 1,
+   "hpRecoveryPerSec": 0,
+   "moveSpeed": 1,
+   "tauntLevel": 0,
+   "massLevel": 0,
+   "deployLimit": 1,
+   "deckStack": 0
+  },
+  "talents": [
+   {
+    "index": 0,
+    "name": "前方施工",
+    "desc": "可以携带3个<支援装置>(最多可部署2个)，效果根据技能改变而改变",
+    "descRaw": "可以携带3个<支援装置>(最多可部署2个)，效果根据技能改变而改变",
+    "bb": {
+     "cnt": 3
+    },
+    "bbStr": {},
+    "rangeGrid": null,
+    "tokenKey": null,
+    "hidden": false,
+    "fromModule": false
+   },
+   {
+    "index": 1,
+    "name": "注意安全",
+    "desc": "获得12%（+2%）庇护；远程敌人出现后，改为使自身和场上的高台干员获得18%（+3%）庇护，且每6秒获得1点技力",
+    "descRaw": "获得12%<@ba.talpu>（+2%）</><$ba.protect>庇护</>；远程敌人出现后，改为使自身和场上的高台干员获得18%<@ba.talpu>（+3%）</><$ba.protect>庇护</>，且每6秒获得1点技力",
+    "bb": {
+     "nasti_t2[add_sp].interval": 6,
+     "nasti_t2[res_plus].damage_resistance": 0.18,
+     "nasti_t2[res].damage_resistance": 0.12
+    },
+    "bbStr": {},
+    "rangeGrid": null,
+    "tokenKey": null,
+    "hidden": false,
+    "fromModule": false
+   }
+  ],
+  "module": {
+   "id": "uniequip_002_nasti",
+   "name": "工程师们",
+   "type": "CRA-X",
+   "level": 1,
+   "active": true
+  },
+  "skill": {
+   "skillId": "skchr_nasti_1",
+   "iconId": "skchr_nasti_1",
+   "name": "“拱卫”",
+   "level": 7,
+   "desc": "携带此技能时：装置使前方干员防御力提升\n攻击力+65%，防御力+65%，同时攻击阻挡的所有敌人；装置效果改为使前方干员阻挡数+1，防御力+46%，装置每秒流失2%最大生命值\n技能开启时获得一个装置",
+   "descRaw": "携带此技能时：装置使前方干员防御力提升\n攻击力<@ba.vup>+65%</>，防御力<@ba.vup>+65%</>，同时攻击阻挡的所有敌人；装置效果改为使前方干员阻挡数<@ba.vup>+1</>，防御力<@ba.vup>+46%</>，装置每秒流失2%最大生命值\n<@ba.rem>技能开启时获得一个装置</>",
+   "skillType": "MANUAL",
+   "durationType": "NONE",
+   "duration": 40,
+   "spType": "INCREASE_WITH_TIME",
+   "spCost": 44,
+   "initSp": 25,
+   "maxChargeTime": 1,
+   "increment": 1,
+   "bb": {
+    "talent@def": 0.46,
+    "atk": 0.65,
+    "def": 0.65
+   },
+   "bbStr": {},
+   "rangeId": null,
+   "rangeGrid": null,
+   "prefabId": "skchr_nasti_1",
+   "trigger": {
+    "rule": "DEFAULT",
+    "rawRule": "DEFAULT",
+    "customRangeGrid": null
+   },
+   "index": 0,
+   "overrideTokenKey": "token_10059_nasti_nstdef"
+  },
+  "skills": [
+   {
+    "skillId": "skchr_nasti_1",
+    "iconId": "skchr_nasti_1",
+    "name": "“拱卫”",
+    "level": 7,
+    "desc": "携带此技能时：装置使前方干员防御力提升\n攻击力+65%，防御力+65%，同时攻击阻挡的所有敌人；装置效果改为使前方干员阻挡数+1，防御力+46%，装置每秒流失2%最大生命值\n技能开启时获得一个装置",
+    "descRaw": "携带此技能时：装置使前方干员防御力提升\n攻击力<@ba.vup>+65%</>，防御力<@ba.vup>+65%</>，同时攻击阻挡的所有敌人；装置效果改为使前方干员阻挡数<@ba.vup>+1</>，防御力<@ba.vup>+46%</>，装置每秒流失2%最大生命值\n<@ba.rem>技能开启时获得一个装置</>",
+    "skillType": "MANUAL",
+    "durationType": "NONE",
+    "duration": 40,
+    "spType": "INCREASE_WITH_TIME",
+    "spCost": 44,
+    "initSp": 25,
+    "maxChargeTime": 1,
+    "increment": 1,
+    "bb": {
+     "talent@def": 0.46,
+     "atk": 0.65,
+     "def": 0.65
+    },
+    "bbStr": {},
+    "rangeId": null,
+    "rangeGrid": null,
+    "prefabId": "skchr_nasti_1",
+    "trigger": {
+     "rule": "DEFAULT",
+     "rawRule": "DEFAULT",
+     "customRangeGrid": null
+    },
+    "index": 0,
+    "overrideTokenKey": "token_10059_nasti_nstdef",
+    "isDefault": true
+   },
+   {
+    "skillId": "skchr_nasti_2",
+    "iconId": "skchr_nasti_2",
+    "name": "“执行”",
+    "level": 7,
+    "desc": "携带此技能时：装置部署后逐渐回复自身生命值，激活后每0.5秒流失1点生命值，使前方干员获得1点技力和相当于娜斯提生命上限4%的屏障\n立即激活场上装置，停止攻击，每0.5秒获得相当于生命上限8%的屏障（最多不超过生命上限64%）\n技能结束时获得一个装置",
+    "descRaw": "携带此技能时：装置部署后逐渐回复自身生命值，激活后每0.5秒流失1点生命值，使前方干员获得<@ba.vup>1</>点技力和相当于娜斯提生命上限<@ba.vup>4%</>的<$ba.barrier>屏障</>\n立即激活场上装置，停止攻击，每0.5秒获得相当于生命上限<@ba.vup>8%</>的<$ba.barrier>屏障</>（最多不超过生命上限64%）\n<@ba.rem>技能结束时获得一个装置</>",
+    "skillType": "MANUAL",
+    "durationType": "NONE",
+    "duration": 4,
+    "spType": "INCREASE_WITH_TIME",
+    "spCost": 32,
+    "initSp": 20,
+    "maxChargeTime": 1,
+    "increment": 1,
+    "bb": {
+     "attack@nasti_s2[update_shield].interval": 0.5,
+     "attack@nasti_s2[update_shield].shield_each_hp_rate": 0.08,
+     "attack@nasti_s2[update_shield].shield_max_hp_rate": 0.64,
+     "talent@shield_max_hp_rate": 0.64,
+     "talent@shield_each_hp_rate": 0.04
+    },
+    "bbStr": {},
+    "rangeId": null,
+    "rangeGrid": null,
+    "prefabId": "skchr_nasti_2",
+    "trigger": {
+     "rule": "DEFAULT",
+     "rawRule": "DEFAULT",
+     "customRangeGrid": null
+    },
+    "index": 1,
+    "overrideTokenKey": "token_10060_nasti_nstchr",
+    "isDefault": false
+   },
+   {
+    "skillId": "skchr_nasti_3",
+    "iconId": "skchr_nasti_3",
+    "name": "栖脚地",
+    "level": 7,
+    "desc": "携带此技能时：装置可建造并升级一个可以放置远程干员并为其提供增益的特殊高台\n攻击力+130%，防御力+130%；小工程师装置为高台装置回复技力和生命的效果翻倍\n技能开启时获得一个装置",
+    "descRaw": "携带此技能时：装置可建造并升级一个可以放置远程干员并为其提供增益的特殊高台\n攻击力<@ba.vup>+130%</>，防御力<@ba.vup>+130%</>；小工程师装置为高台装置回复技力和生命的效果翻倍\n<@ba.rem>技能开启时获得一个装置</>",
+    "skillType": "MANUAL",
+    "durationType": "NONE",
+    "duration": 15,
+    "spType": "INCREASE_WITH_TIME",
+    "spCost": 27,
+    "initSp": 14,
+    "maxChargeTime": 1,
+    "increment": 1,
+    "bb": {
+     "atk": 1.3,
+     "def": 1.3
+    },
+    "bbStr": {},
+    "rangeId": null,
+    "rangeGrid": null,
+    "prefabId": "skchr_nasti_3",
+    "trigger": {
+     "rule": "DEFAULT",
+     "rawRule": "DEFAULT",
+     "customRangeGrid": null
+    },
+    "index": 2,
+    "overrideTokenKey": "token_10061_nasti_nstbld",
+    "isDefault": false
+   }
+  ],
+  "modules": [
+   {
+    "uniEquipId": "uniequip_002_nasti",
+    "name": "工程师们",
+    "typeName": "CRA-X",
+    "typeIcon": "cra-x",
+    "icon": "uniequip_002_nasti",
+    "level": 1,
+    "attr": {
+     "maxHp": 78,
+     "atk": 26,
+     "def": 25
+    },
+    "traitOverride": {
+     "desc": "能够阻挡两个敌人，使用<支援装置>协助作战",
+     "descRaw": "能够阻挡两个敌人，使用<支援装置>协助作战",
+     "bb": {
+      "cnt": 1
+     },
+     "bbStr": {},
+     "rangeGrid": null,
+     "moduleDesc": "<支援装置>的持有上限+1且部署费用减少",
+     "moduleDescRaw": "<支援装置>的持有上限<@ba.kw>+1</>且部署费用<@ba.kw>减少</>"
+    },
+    "talentChanges": [],
+    "isDefault": true
+   }
+  ]
+ },
+ "chess_ws_col_jesca_a": {
+  "tier": 5,
+  "isHidden": false,
+  "isDiy": false,
+  "visible": true,
+  "chessType": "NORMAL",
+  "directToHand": false,
+  "name": "涤火杰西卡",
+  "appellation": "Jessica the Liberated",
+  "charId": "char_1034_jesca2",
+  "profession": "TANK",
+  "subProfessionId": "shotprotector",
+  "subProfessionName": "哨戒铁卫",
+  "position": "MELEE",
+  "nationId": "columbia",
+  "bonds": [
+   "columbiaShip",
+   "steadShip",
+   "preciShip"
+  ],
+  "garrisonIds": [
+   "garrison_col_jesca_a"
+  ],
+  "price": 4,
+  "sellPrice": 1,
+  "immunities": {
+   "stun": false,
+   "silence": false,
+   "sleep": false,
+   "frozen": false,
+   "levitate": false
+  },
+  "rangeId": "2-2",
+  "rangeGrid": [
+   [
+    0,
+    0
+   ],
+   [
+    0,
+    1
+   ],
+   [
+    0,
+    2
+   ]
+  ],
+  "dmgType": "phys",
+  "attackKind": "ranged",
+  "projectile": "arrow",
+  "canHitFly": true,
+  "targetPriority": null,
+  "trait": {
+   "desc": "能够阻挡三个敌人，可以进行远程攻击",
+   "descRaw": "能够阻挡三个敌人，可以进行远程攻击",
+   "bb": {},
+   "bbStr": {},
+   "rangeGrid": null
+  },
+  "tokens": [
+   "token_10032_jesca2_jckshd"
+  ],
+  "assets": {
+   "avatar": "char_1034_jesca2",
+   "portrait": "char_1034_jesca2_2",
+   "spine": "char_1034_jesca2",
+   "skillIcon": "skchr_jesca2_1",
+   "subProfIcon": "sub_shotprotector_icon"
+  },
+  "workshop": {
+   "schema": 1,
+   "id": "col_jesca"
+  },
+  "chessId": "chess_ws_col_jesca_a",
+  "baseId": "chess_ws_col_jesca_a",
+  "goldenId": "chess_ws_col_jesca_b",
+  "isGolden": false,
+  "rarity": 6,
+  "upgradeNum": 3,
+  "upgradeChessId": "chess_ws_col_jesca_b",
+  "status": {
+   "phase": 2,
+   "level": 1,
+   "skillLevel": 4,
+   "equipLevel": 0
+  },
+  "stats": {
+   "maxHp": 2589,
+   "atk": 461,
+   "def": 522,
+   "res": 0,
+   "cost": 21,
+   "blockCnt": 3,
+   "bat": 1.2,
+   "aspd": 100,
+   "respawnTime": 70,
+   "spRecovery": 1,
+   "hpRecoveryPerSec": 0,
+   "moveSpeed": 1,
+   "tauntLevel": 0,
+   "massLevel": 0,
+   "deployLimit": 1,
+   "deckStack": 0
+  },
+  "skill": {
+   "skillId": "skchr_jesca2_1",
+   "iconId": "skchr_jesca2_1",
+   "name": "坚守阵线",
+   "level": 4,
+   "desc": "攻击力+40%，自身与机动盾牌防御力+40%，机动盾牌持续时间+20秒\n持续时间无限",
+   "descRaw": "攻击力<@ba.vup>+40%</>，自身与机动盾牌防御力<@ba.vup>+40%</>，机动盾牌持续时间<@ba.vup>+20</>秒\n<@ba.rem>持续时间无限</>",
+   "skillType": "AUTO",
+   "durationType": "NONE",
+   "duration": -1,
+   "spType": "INCREASE_WITH_TIME",
+   "spCost": 100,
+   "initSp": 0,
+   "maxChargeTime": 1,
+   "increment": 1,
+   "bb": {
+    "def": 0.4,
+    "atk": 0.4,
+    "duration": 20
+   },
+   "bbStr": {},
+   "rangeId": null,
+   "rangeGrid": null,
+   "prefabId": "skchr_jesca2_1",
+   "trigger": {
+    "rule": "DEFAULT",
+    "rawRule": "DEFAULT",
+    "customRangeGrid": null
+   },
+   "index": 0,
+   "overrideTokenKey": null
+  },
+  "skills": [
+   {
+    "skillId": "skchr_jesca2_1",
+    "iconId": "skchr_jesca2_1",
+    "name": "坚守阵线",
+    "level": 4,
+    "desc": "攻击力+40%，自身与机动盾牌防御力+40%，机动盾牌持续时间+20秒\n持续时间无限",
+    "descRaw": "攻击力<@ba.vup>+40%</>，自身与机动盾牌防御力<@ba.vup>+40%</>，机动盾牌持续时间<@ba.vup>+20</>秒\n<@ba.rem>持续时间无限</>",
+    "skillType": "AUTO",
+    "durationType": "NONE",
+    "duration": -1,
+    "spType": "INCREASE_WITH_TIME",
+    "spCost": 100,
+    "initSp": 0,
+    "maxChargeTime": 1,
+    "increment": 1,
+    "bb": {
+     "def": 0.4,
+     "atk": 0.4,
+     "duration": 20
+    },
+    "bbStr": {},
+    "rangeId": null,
+    "rangeGrid": null,
+    "prefabId": "skchr_jesca2_1",
+    "trigger": {
+     "rule": "DEFAULT",
+     "rawRule": "DEFAULT",
+     "customRangeGrid": null
+    },
+    "index": 0,
+    "overrideTokenKey": null,
+    "isDefault": true
+   },
+   {
+    "skillId": "skchr_jesca2_2",
+    "iconId": "skchr_jesca2_2",
+    "name": "掩蔽护卫",
+    "level": 4,
+    "desc": "攻击范围扩大，攻击力+45%，攻击间隔大幅缩小，获得75%的物理和法术闪避",
+    "descRaw": "攻击范围<@ba.vup>扩大</>，攻击力<@ba.vup>+45%</>，攻击间隔<@ba.vup>大幅缩小</>，获得<@ba.vup>75%</>的物理和法术闪避",
+    "skillType": "MANUAL",
+    "durationType": "NONE",
+    "duration": 15,
+    "spType": "INCREASE_WITH_TIME",
+    "spCost": 35,
+    "initSp": 15,
+    "maxChargeTime": 1,
+    "increment": 1,
+    "bb": {
+     "atk": 0.45,
+     "base_attack_time": -0.9,
+     "prob": 0.75
+    },
+    "bbStr": {},
+    "rangeId": "2-5",
+    "rangeGrid": [
+     [
+      1,
+      1
+     ],
+     [
+      1,
+      2
+     ],
+     [
+      0,
+      0
+     ],
+     [
+      0,
+      1
+     ],
+     [
+      0,
+      2
+     ],
+     [
+      -1,
+      1
+     ],
+     [
+      -1,
+      2
+     ]
+    ],
+    "prefabId": "skchr_jesca2_2",
+    "trigger": {
+     "rule": "ACTIVE_RANGE",
+     "rawRule": "TAKE_DAMAGE",
+     "customRangeGrid": [
+      [
+       1,
+       1
+      ],
+      [
+       1,
+       2
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       1
+      ],
+      [
+       0,
+       2
+      ],
+      [
+       -1,
+       1
+      ],
+      [
+       -1,
+       2
+      ]
+     ]
+    },
+    "index": 1,
+    "overrideTokenKey": null,
+    "isDefault": false
+   },
+   {
+    "skillId": "skchr_jesca2_3",
+    "iconId": "skchr_jesca2_3",
+    "name": "饱和迸射",
+    "level": 4,
+    "desc": "攻击距离+1，攻击间隔增大，攻击力+240%，防御力+50%，机动盾牌防御力+100%\n机动盾牌存在时，立刻向前发射一枚炮弹，命中或到达终点时对范围内所有敌人造成相当于攻击力250%的物理伤害，并使其晕眩5秒\n攻击装有20发弹药，打完后结束（可随时停止技能）",
+    "descRaw": "攻击距离<@ba.vup>+1</>，攻击间隔<@ba.vdown>增大</>，攻击力<@ba.vup>+240%</>，防御力<@ba.vup>+50%</>，机动盾牌防御力<@ba.vup>+100%</>\n机动盾牌存在时，立刻向前发射一枚炮弹，命中或到达终点时对范围内所有敌人造成相当于攻击力<@ba.vup>250%</>的物理伤害，并使其<$ba.stun>晕眩</><@ba.vup>5</>秒\n<@ba.rem>攻击装有20发弹药，打完后结束（可随时停止技能）</>",
+    "skillType": "MANUAL",
+    "durationType": "AMMO",
+    "duration": -1,
+    "spType": "INCREASE_WITH_TIME",
+    "spCost": 50,
+    "initSp": 20,
+    "maxChargeTime": 1,
+    "increment": 1,
+    "bb": {
+     "atk": 2.4,
+     "jesca2_s_3_token[def].def": 1,
+     "ability_range_forward_extend": 1,
+     "base_attack_time": 0.6,
+     "attack@extrabomb.stun": 5,
+     "attack@extrabomb.atk_scale": 2.5,
+     "attack@trigger_time": 20,
+     "attack@extrabomb.projectile_range": 1.7,
+     "jesca2_s_3[def].def": 0.5
+    },
+    "bbStr": {},
+    "rangeId": null,
+    "rangeGrid": null,
+    "prefabId": "skchr_jesca2_3",
+    "trigger": {
+     "rule": "ACTIVE_RANGE",
+     "rawRule": "TAKE_DAMAGE",
+     "customRangeGrid": [
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       1
+      ],
+      [
+       0,
+       2
+      ],
+      [
+       0,
+       3
+      ]
+     ]
+    },
+    "index": 2,
+    "overrideTokenKey": null,
+    "isDefault": false
+   }
+  ],
+  "talents": [
+   {
+    "index": 0,
+    "name": "灵活应变",
+    "desc": "可以使用一个持续50秒的机动盾牌，机动盾牌只能放置于涤火杰西卡四周，机动盾牌部署后，涤火杰西卡立刻转向盾牌且自身与身后的单位防御力+18%（+3%）",
+    "descRaw": "可以使用一个持续50秒的机动盾牌，机动盾牌只能放置于涤火杰西卡四周，机动盾牌部署后，涤火杰西卡立刻转向盾牌且自身与身后的单位防御力+18%<@ba.talpu>（+3%）</>",
+    "bb": {
+     "cnt": 1,
+     "def": 0.18
+    },
+    "bbStr": {},
+    "rangeGrid": null,
+    "tokenKey": "token_10032_jesca2_jckshd",
+    "hidden": false,
+    "fromModule": false
+   },
+   {
+    "index": 1,
+    "name": "蓄能释放",
+    "desc": "机动盾牌受到伤害时，有55%（+5%）的概率使涤火杰西卡获得1点技力",
+    "descRaw": "机动盾牌受到伤害时，有55%<@ba.talpu>（+5%）</>的概率使涤火杰西卡获得1点技力",
+    "bb": {
+     "sp": 1,
+     "prob": 0.55
+    },
+    "bbStr": {},
+    "rangeGrid": null,
+    "tokenKey": null,
+    "hidden": false,
+    "fromModule": false
+   }
+  ],
+  "module": {
+   "id": "uniequip_002_jesca2",
+   "name": "“私家英雄”",
+   "type": "SPT-X",
+   "level": 0,
+   "active": false
+  }
+ },
+ "chess_ws_col_jesca_b": {
+  "tier": 5,
+  "isHidden": false,
+  "isDiy": false,
+  "visible": true,
+  "chessType": "NORMAL",
+  "directToHand": false,
+  "name": "涤火杰西卡",
+  "appellation": "Jessica the Liberated",
+  "charId": "char_1034_jesca2",
+  "profession": "TANK",
+  "subProfessionId": "shotprotector",
+  "subProfessionName": "哨戒铁卫",
+  "position": "MELEE",
+  "nationId": "columbia",
+  "bonds": [
+   "columbiaShip",
+   "steadShip",
+   "preciShip"
+  ],
+  "garrisonIds": [
+   "garrison_col_jesca_b"
+  ],
+  "price": 4,
+  "sellPrice": 1,
+  "immunities": {
+   "stun": false,
+   "silence": false,
+   "sleep": false,
+   "frozen": false,
+   "levitate": false
+  },
+  "rangeId": "2-2",
+  "rangeGrid": [
+   [
+    0,
+    0
+   ],
+   [
+    0,
+    1
+   ],
+   [
+    0,
+    2
+   ]
+  ],
+  "dmgType": "phys",
+  "attackKind": "ranged",
+  "projectile": "arrow",
+  "canHitFly": true,
+  "targetPriority": null,
+  "trait": {
+   "desc": "能够阻挡三个敌人，可以进行远程攻击",
+   "descRaw": "能够阻挡三个敌人，可以进行远程攻击",
+   "bb": {},
+   "bbStr": {},
+   "rangeGrid": null,
+   "moduleDesc": "攻击范围内敌人的隐匿效果失效",
+   "moduleDescRaw": "攻击范围内敌人的<$ba.invisible>隐匿</>效果失效"
+  },
+  "tokens": [
+   "token_10032_jesca2_jckshd"
+  ],
+  "assets": {
+   "avatar": "char_1034_jesca2",
+   "portrait": "char_1034_jesca2_2",
+   "spine": "char_1034_jesca2",
+   "skillIcon": "skchr_jesca2_1",
+   "subProfIcon": "sub_shotprotector_icon"
+  },
+  "workshop": {
+   "schema": 1,
+   "id": "col_jesca"
+  },
+  "chessId": "chess_ws_col_jesca_b",
+  "baseId": "chess_ws_col_jesca_a",
+  "goldenId": "chess_ws_col_jesca_b",
+  "isGolden": true,
+  "rarity": 6,
+  "upgradeNum": 0,
+  "upgradeChessId": null,
+  "status": {
+   "phase": 2,
+   "level": 60,
+   "skillLevel": 7,
+   "equipLevel": 1
+  },
+  "statsBase": {
+   "maxHp": 3265,
+   "atk": 520,
+   "def": 651,
+   "res": 0,
+   "cost": 21,
+   "blockCnt": 3,
+   "bat": 1.2,
+   "aspd": 100,
+   "respawnTime": 70,
+   "spRecovery": 1,
+   "hpRecoveryPerSec": 0,
+   "moveSpeed": 1,
+   "tauntLevel": 0,
+   "massLevel": 0,
+   "deployLimit": 1,
+   "deckStack": 0
+  },
+  "traitBase": {
+   "desc": "能够阻挡三个敌人，可以进行远程攻击",
+   "descRaw": "能够阻挡三个敌人，可以进行远程攻击",
+   "bb": {},
+   "bbStr": {},
+   "rangeGrid": null
+  },
+  "talentsBase": [
+   {
+    "index": 0,
+    "name": "灵活应变",
+    "desc": "可以使用一个持续50秒的机动盾牌，机动盾牌只能放置于涤火杰西卡四周，机动盾牌部署后，涤火杰西卡立刻转向盾牌且自身与身后的单位防御力+18%（+3%）",
+    "descRaw": "可以使用一个持续50秒的机动盾牌，机动盾牌只能放置于涤火杰西卡四周，机动盾牌部署后，涤火杰西卡立刻转向盾牌且自身与身后的单位防御力+18%<@ba.talpu>（+3%）</>",
+    "bb": {
+     "cnt": 1,
+     "def": 0.18
+    },
+    "bbStr": {},
+    "rangeGrid": null,
+    "tokenKey": "token_10032_jesca2_jckshd",
+    "hidden": false,
+    "fromModule": false
+   },
+   {
+    "index": 1,
+    "name": "蓄能释放",
+    "desc": "机动盾牌受到伤害时，有55%（+5%）的概率使涤火杰西卡获得1点技力",
+    "descRaw": "机动盾牌受到伤害时，有55%<@ba.talpu>（+5%）</>的概率使涤火杰西卡获得1点技力",
+    "bb": {
+     "sp": 1,
+     "prob": 0.55
+    },
+    "bbStr": {},
+    "rangeGrid": null,
+    "tokenKey": null,
+    "hidden": false,
+    "fromModule": false
+   }
+  ],
+  "stats": {
+   "maxHp": 3445,
+   "atk": 570,
+   "def": 676,
+   "res": 0,
+   "cost": 21,
+   "blockCnt": 3,
+   "bat": 1.2,
+   "aspd": 100,
+   "respawnTime": 70,
+   "spRecovery": 1,
+   "hpRecoveryPerSec": 0,
+   "moveSpeed": 1,
+   "tauntLevel": 0,
+   "massLevel": 0,
+   "deployLimit": 1,
+   "deckStack": 0
+  },
+  "talents": [
+   {
+    "index": 0,
+    "name": "灵活应变",
+    "desc": "可以使用一个持续50秒的机动盾牌，机动盾牌只能放置于涤火杰西卡四周，机动盾牌部署后，涤火杰西卡立刻转向盾牌且自身与身后的单位防御力+18%（+3%）",
+    "descRaw": "可以使用一个持续50秒的机动盾牌，机动盾牌只能放置于涤火杰西卡四周，机动盾牌部署后，涤火杰西卡立刻转向盾牌且自身与身后的单位防御力+18%<@ba.talpu>（+3%）</>",
+    "bb": {
+     "cnt": 1,
+     "def": 0.18
+    },
+    "bbStr": {},
+    "rangeGrid": null,
+    "tokenKey": "token_10032_jesca2_jckshd",
+    "hidden": false,
+    "fromModule": false
+   },
+   {
+    "index": 1,
+    "name": "蓄能释放",
+    "desc": "机动盾牌受到伤害时，有55%（+5%）的概率使涤火杰西卡获得1点技力",
+    "descRaw": "机动盾牌受到伤害时，有55%<@ba.talpu>（+5%）</>的概率使涤火杰西卡获得1点技力",
+    "bb": {
+     "sp": 1,
+     "prob": 0.55
+    },
+    "bbStr": {},
+    "rangeGrid": null,
+    "tokenKey": null,
+    "hidden": false,
+    "fromModule": false
+   }
+  ],
+  "module": {
+   "id": "uniequip_002_jesca2",
+   "name": "“私家英雄”",
+   "type": "SPT-X",
+   "level": 1,
+   "active": true
+  },
+  "skill": {
+   "skillId": "skchr_jesca2_1",
+   "iconId": "skchr_jesca2_1",
+   "name": "坚守阵线",
+   "level": 7,
+   "desc": "攻击力+55%，自身与机动盾牌防御力+55%，机动盾牌持续时间+20秒\n持续时间无限",
+   "descRaw": "攻击力<@ba.vup>+55%</>，自身与机动盾牌防御力<@ba.vup>+55%</>，机动盾牌持续时间<@ba.vup>+20</>秒\n<@ba.rem>持续时间无限</>",
+   "skillType": "AUTO",
+   "durationType": "NONE",
+   "duration": -1,
+   "spType": "INCREASE_WITH_TIME",
+   "spCost": 90,
+   "initSp": 0,
+   "maxChargeTime": 1,
+   "increment": 1,
+   "bb": {
+    "def": 0.55,
+    "atk": 0.55,
+    "duration": 20
+   },
+   "bbStr": {},
+   "rangeId": null,
+   "rangeGrid": null,
+   "prefabId": "skchr_jesca2_1",
+   "trigger": {
+    "rule": "DEFAULT",
+    "rawRule": "DEFAULT",
+    "customRangeGrid": null
+   },
+   "index": 0,
+   "overrideTokenKey": null
+  },
+  "skills": [
+   {
+    "skillId": "skchr_jesca2_1",
+    "iconId": "skchr_jesca2_1",
+    "name": "坚守阵线",
+    "level": 7,
+    "desc": "攻击力+55%，自身与机动盾牌防御力+55%，机动盾牌持续时间+20秒\n持续时间无限",
+    "descRaw": "攻击力<@ba.vup>+55%</>，自身与机动盾牌防御力<@ba.vup>+55%</>，机动盾牌持续时间<@ba.vup>+20</>秒\n<@ba.rem>持续时间无限</>",
+    "skillType": "AUTO",
+    "durationType": "NONE",
+    "duration": -1,
+    "spType": "INCREASE_WITH_TIME",
+    "spCost": 90,
+    "initSp": 0,
+    "maxChargeTime": 1,
+    "increment": 1,
+    "bb": {
+     "def": 0.55,
+     "atk": 0.55,
+     "duration": 20
+    },
+    "bbStr": {},
+    "rangeId": null,
+    "rangeGrid": null,
+    "prefabId": "skchr_jesca2_1",
+    "trigger": {
+     "rule": "DEFAULT",
+     "rawRule": "DEFAULT",
+     "customRangeGrid": null
+    },
+    "index": 0,
+    "overrideTokenKey": null,
+    "isDefault": true
+   },
+   {
+    "skillId": "skchr_jesca2_2",
+    "iconId": "skchr_jesca2_2",
+    "name": "掩蔽护卫",
+    "level": 7,
+    "desc": "攻击范围扩大，攻击力+60%，攻击间隔大幅缩小，获得75%的物理和法术闪避",
+    "descRaw": "攻击范围<@ba.vup>扩大</>，攻击力<@ba.vup>+60%</>，攻击间隔<@ba.vup>大幅缩小</>，获得<@ba.vup>75%</>的物理和法术闪避",
+    "skillType": "MANUAL",
+    "durationType": "NONE",
+    "duration": 15,
+    "spType": "INCREASE_WITH_TIME",
+    "spCost": 35,
+    "initSp": 20,
+    "maxChargeTime": 1,
+    "increment": 1,
+    "bb": {
+     "atk": 0.6,
+     "base_attack_time": -0.9,
+     "prob": 0.75
+    },
+    "bbStr": {},
+    "rangeId": "2-5",
+    "rangeGrid": [
+     [
+      1,
+      1
+     ],
+     [
+      1,
+      2
+     ],
+     [
+      0,
+      0
+     ],
+     [
+      0,
+      1
+     ],
+     [
+      0,
+      2
+     ],
+     [
+      -1,
+      1
+     ],
+     [
+      -1,
+      2
+     ]
+    ],
+    "prefabId": "skchr_jesca2_2",
+    "trigger": {
+     "rule": "ACTIVE_RANGE",
+     "rawRule": "TAKE_DAMAGE",
+     "customRangeGrid": [
+      [
+       1,
+       1
+      ],
+      [
+       1,
+       2
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       1
+      ],
+      [
+       0,
+       2
+      ],
+      [
+       -1,
+       1
+      ],
+      [
+       -1,
+       2
+      ]
+     ]
+    },
+    "index": 1,
+    "overrideTokenKey": null,
+    "isDefault": false
+   },
+   {
+    "skillId": "skchr_jesca2_3",
+    "iconId": "skchr_jesca2_3",
+    "name": "饱和迸射",
+    "level": 7,
+    "desc": "攻击距离+1，攻击间隔增大，攻击力+270%，防御力+65%，机动盾牌防御力+135%\n机动盾牌存在时，立刻向前发射一枚炮弹，命中或到达终点时对范围内所有敌人造成相当于攻击力250%的物理伤害，并使其晕眩5秒\n攻击装有20发弹药，打完后结束（可随时停止技能）",
+    "descRaw": "攻击距离<@ba.vup>+1</>，攻击间隔<@ba.vdown>增大</>，攻击力<@ba.vup>+270%</>，防御力<@ba.vup>+65%</>，机动盾牌防御力<@ba.vup>+135%</>\n机动盾牌存在时，立刻向前发射一枚炮弹，命中或到达终点时对范围内所有敌人造成相当于攻击力<@ba.vup>250%</>的物理伤害，并使其<$ba.stun>晕眩</><@ba.vup>5</>秒\n<@ba.rem>攻击装有20发弹药，打完后结束（可随时停止技能）</>",
+    "skillType": "MANUAL",
+    "durationType": "AMMO",
+    "duration": -1,
+    "spType": "INCREASE_WITH_TIME",
+    "spCost": 45,
+    "initSp": 25,
+    "maxChargeTime": 1,
+    "increment": 1,
+    "bb": {
+     "atk": 2.7,
+     "jesca2_s_3_token[def].def": 1.35,
+     "ability_range_forward_extend": 1,
+     "base_attack_time": 0.6,
+     "attack@extrabomb.stun": 5,
+     "attack@extrabomb.atk_scale": 2.5,
+     "attack@trigger_time": 20,
+     "attack@extrabomb.projectile_range": 1.7,
+     "jesca2_s_3[def].def": 0.65
+    },
+    "bbStr": {},
+    "rangeId": null,
+    "rangeGrid": null,
+    "prefabId": "skchr_jesca2_3",
+    "trigger": {
+     "rule": "ACTIVE_RANGE",
+     "rawRule": "TAKE_DAMAGE",
+     "customRangeGrid": [
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       1
+      ],
+      [
+       0,
+       2
+      ],
+      [
+       0,
+       3
+      ]
+     ]
+    },
+    "index": 2,
+    "overrideTokenKey": null,
+    "isDefault": false
+   }
+  ],
+  "modules": [
+   {
+    "uniEquipId": "uniequip_002_jesca2",
+    "name": "“私家英雄”",
+    "typeName": "SPT-X",
+    "typeIcon": "spt-x",
+    "icon": "uniequip_002_jesca2",
+    "level": 1,
+    "attr": {
+     "maxHp": 180,
+     "atk": 50,
+     "def": 25
+    },
+    "traitOverride": {
+     "desc": "能够阻挡三个敌人，可以进行远程攻击",
+     "descRaw": "能够阻挡三个敌人，可以进行远程攻击",
+     "bb": {},
+     "bbStr": {},
+     "rangeGrid": null,
+     "moduleDesc": "攻击范围内敌人的隐匿效果失效",
+     "moduleDescRaw": "攻击范围内敌人的<$ba.invisible>隐匿</>效果失效"
+    },
+    "talentChanges": [
+     {
+      "talentIndex": -1,
+      "name": null,
+      "desc": null,
+      "descRaw": null,
+      "bb": {},
+      "bbStr": {},
+      "rangeGrid": null,
+      "tokenKey": null,
+      "hidden": true
+     }
+    ],
+    "isDefault": true
+   },
+   {
+    "uniEquipId": "uniequip_003_jesca2",
+    "name": "未曾风化",
+    "typeName": "SPT-Y",
+    "typeIcon": "spt-y",
+    "icon": "uniequip_003_jesca2",
+    "level": 1,
+    "attr": {
+     "maxHp": 180,
+     "atk": 52
+    },
+    "traitOverride": {
+     "desc": "能够阻挡三个敌人，可以进行远程攻击",
+     "descRaw": "能够阻挡三个敌人，可以进行远程攻击",
+     "bb": {
+      "ability_range_forward_extend": 1
+     },
+     "bbStr": {},
+     "rangeGrid": null,
+     "moduleDesc": "攻击距离+1（不受技能攻击范围变化影响）",
+     "moduleDescRaw": "攻击距离+1（不受技能攻击范围变化影响）"
+    },
+    "talentChanges": [],
+    "isDefault": false
+   }
+  ]
+ },
+ "chess_ws_col_heyak_a": {
+  "tier": 4,
+  "isHidden": false,
+  "isDiy": false,
+  "visible": true,
+  "chessType": "NORMAL",
+  "directToHand": false,
+  "name": "霍尔海雅",
+  "appellation": "Ho'olheyak",
+  "charId": "char_4027_heyak",
+  "profession": "CASTER",
+  "subProfessionId": "corecaster",
+  "subProfessionName": "中坚术师",
+  "position": "RANGED",
+  "nationId": "columbia",
+  "bonds": [
+   "columbiaShip",
+   "miraShip"
+  ],
+  "garrisonIds": [
+   "garrison_col_heyak_a"
+  ],
+  "price": 3,
+  "sellPrice": 1,
+  "immunities": {
+   "stun": false,
+   "silence": false,
+   "sleep": false,
+   "frozen": false,
+   "levitate": false
+  },
+  "rangeId": "3-1",
+  "rangeGrid": [
+   [
+    1,
+    0
+   ],
+   [
+    1,
+    1
+   ],
+   [
+    1,
+    2
+   ],
+   [
+    0,
+    0
+   ],
+   [
+    0,
+    1
+   ],
+   [
+    0,
+    2
+   ],
+   [
+    0,
+    3
+   ],
+   [
+    -1,
+    0
+   ],
+   [
+    -1,
+    1
+   ],
+   [
+    -1,
+    2
+   ]
+  ],
+  "dmgType": "arts",
+  "attackKind": "ranged",
+  "projectile": "bolt",
+  "canHitFly": true,
+  "targetPriority": null,
+  "trait": {
+   "desc": "攻击造成法术伤害",
+   "descRaw": "攻击造成<@ba.kw>法术伤害</>",
+   "bb": {},
+   "bbStr": {},
+   "rangeGrid": null
+  },
+  "tokens": [],
+  "assets": {
+   "avatar": "char_4027_heyak",
+   "portrait": "char_4027_heyak_2",
+   "spine": "char_4027_heyak",
+   "skillIcon": "skchr_heyak_1",
+   "subProfIcon": "sub_corecaster_icon"
+  },
+  "workshop": {
+   "schema": 1,
+   "id": "col_heyak"
+  },
+  "chessId": "chess_ws_col_heyak_a",
+  "baseId": "chess_ws_col_heyak_a",
+  "goldenId": "chess_ws_col_heyak_b",
+  "isGolden": false,
+  "rarity": 6,
+  "upgradeNum": 3,
+  "upgradeChessId": "chess_ws_col_heyak_b",
+  "status": {
+   "phase": 2,
+   "level": 1,
+   "skillLevel": 4,
+   "equipLevel": 0
+  },
+  "stats": {
+   "maxHp": 1380,
+   "atk": 552,
+   "def": 116,
+   "res": 20,
+   "cost": 19,
+   "blockCnt": 1,
+   "bat": 1.6,
+   "aspd": 100,
+   "respawnTime": 66,
+   "spRecovery": 1,
+   "hpRecoveryPerSec": 0,
+   "moveSpeed": 1,
+   "tauntLevel": 0,
+   "massLevel": 0,
+   "deployLimit": 1,
+   "deckStack": 0
+  },
+  "skill": {
+   "skillId": "skchr_heyak_1",
+   "iconId": "skchr_heyak_1",
+   "name": "但为求索",
+   "level": 4,
+   "desc": "下次攻击额外攻击一个目标并造成相当于攻击力200%的法术伤害，仅攻击到1名目标时使其浮空2.5秒\n可充能1次",
+   "descRaw": "下次攻击额外攻击一个目标并造成相当于攻击力<@ba.vup>200%</>的法术伤害，仅攻击到<@ba.vup>1</>名目标时使其<$ba.levitate>浮空</><@ba.vup>2.5</>秒\n<@ba.rem>可充能1次</>",
+   "skillType": "AUTO",
+   "durationType": "NONE",
+   "duration": -1,
+   "spType": "INCREASE_WITH_TIME",
+   "spCost": 8,
+   "initSp": 0,
+   "maxChargeTime": 1,
+   "increment": 1,
+   "bb": {
+    "atk_scale": 2,
+    "levitate": 2.5,
+    "cnt": 1
+   },
+   "bbStr": {},
+   "rangeId": null,
+   "rangeGrid": null,
+   "prefabId": "skchr_heyak_1",
+   "trigger": {
+    "rule": "DEFAULT",
+    "rawRule": "DEFAULT",
+    "customRangeGrid": null
+   },
+   "index": 0,
+   "overrideTokenKey": null
+  },
+  "skills": [
+   {
+    "skillId": "skchr_heyak_1",
+    "iconId": "skchr_heyak_1",
+    "name": "但为求索",
+    "level": 4,
+    "desc": "下次攻击额外攻击一个目标并造成相当于攻击力200%的法术伤害，仅攻击到1名目标时使其浮空2.5秒\n可充能1次",
+    "descRaw": "下次攻击额外攻击一个目标并造成相当于攻击力<@ba.vup>200%</>的法术伤害，仅攻击到<@ba.vup>1</>名目标时使其<$ba.levitate>浮空</><@ba.vup>2.5</>秒\n<@ba.rem>可充能1次</>",
+    "skillType": "AUTO",
+    "durationType": "NONE",
+    "duration": -1,
+    "spType": "INCREASE_WITH_TIME",
+    "spCost": 8,
+    "initSp": 0,
+    "maxChargeTime": 1,
+    "increment": 1,
+    "bb": {
+     "atk_scale": 2,
+     "levitate": 2.5,
+     "cnt": 1
+    },
+    "bbStr": {},
+    "rangeId": null,
+    "rangeGrid": null,
+    "prefabId": "skchr_heyak_1",
+    "trigger": {
+     "rule": "DEFAULT",
+     "rawRule": "DEFAULT",
+     "customRangeGrid": null
+    },
+    "index": 0,
+    "overrideTokenKey": null,
+    "isDefault": true
+   },
+   {
+    "skillId": "skchr_heyak_2",
+    "iconId": "skchr_heyak_2",
+    "name": "群星逶迤",
+    "level": 4,
+    "desc": "攻击变为攻击力27%的9连发，随机攻击范围内的目标，每发有10%的概率使目标浮空1秒",
+    "descRaw": "攻击变为攻击力<@ba.vup>27%</>的<@ba.vup>9</>连发，随机攻击范围内的目标，每发有<@ba.vup>10%</>的概率使目标<$ba.levitate>浮空</><@ba.vup>1</>秒",
+    "skillType": "MANUAL",
+    "durationType": "NONE",
+    "duration": 16,
+    "spType": "INCREASE_WITH_TIME",
+    "spCost": 36,
+    "initSp": 21,
+    "maxChargeTime": 1,
+    "increment": 1,
+    "bb": {
+     "attack@atk_scale": 0.27,
+     "attack@prob": 0.1,
+     "attack@levitate": 1
+    },
+    "bbStr": {},
+    "rangeId": null,
+    "rangeGrid": null,
+    "prefabId": "skchr_heyak_2",
+    "trigger": {
+     "rule": "DEFAULT",
+     "rawRule": "DEFAULT",
+     "customRangeGrid": null
+    },
+    "index": 1,
+    "overrideTokenKey": null,
+    "isDefault": false
+   },
+   {
+    "skillId": "skchr_heyak_3",
+    "iconId": "skchr_heyak_3",
+    "name": "博览者的狂语",
+    "level": 4,
+    "desc": "攻击范围扩大，攻击间隔延长，攻击变为向前吹出平行的旋风，旋风伤害随行进距离正比增强并在行进三格后达到最大，使命中的第一个目标浮空1.8秒，并造成最高350%攻击力的法术伤害",
+    "descRaw": "攻击范围<@ba.vup>扩大</>，攻击间隔<@ba.vdown>延长</>，攻击变为向前吹出平行的旋风，旋风伤害随行进距离正比增强并在行进三格后达到最大，使命中的第一个目标<$ba.levitate>浮空</><@ba.vup>1.8</>秒，并造成最高<@ba.vup>350%</>攻击力的法术伤害",
+    "skillType": "MANUAL",
+    "durationType": "NONE",
+    "duration": 45,
+    "spType": "INCREASE_WITH_TIME",
+    "spCost": 67,
+    "initSp": 41,
+    "maxChargeTime": 1,
+    "increment": 1,
+    "bb": {
+     "attack@min_atk_scale": 2.33,
+     "attack@max_atk_scale": 3.5,
+     "attack@levitate": 1.8,
+     "base_attack_time": 1.4
+    },
+    "bbStr": {},
+    "rangeId": "3-10",
+    "rangeGrid": [
+     [
+      1,
+      0
+     ],
+     [
+      1,
+      1
+     ],
+     [
+      1,
+      2
+     ],
+     [
+      1,
+      3
+     ],
+     [
+      1,
+      4
+     ],
+     [
+      0,
+      0
+     ],
+     [
+      0,
+      1
+     ],
+     [
+      0,
+      2
+     ],
+     [
+      0,
+      3
+     ],
+     [
+      0,
+      4
+     ],
+     [
+      -1,
+      0
+     ],
+     [
+      -1,
+      1
+     ],
+     [
+      -1,
+      2
+     ],
+     [
+      -1,
+      3
+     ],
+     [
+      -1,
+      4
+     ]
+    ],
+    "prefabId": "skchr_heyak_3",
+    "trigger": {
+     "rule": "ACTIVE_RANGE",
+     "rawRule": "DEFAULT",
+     "customRangeGrid": [
+      [
+       1,
+       0
+      ],
+      [
+       1,
+       1
+      ],
+      [
+       1,
+       2
+      ],
+      [
+       1,
+       3
+      ],
+      [
+       1,
+       4
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       1
+      ],
+      [
+       0,
+       2
+      ],
+      [
+       0,
+       3
+      ],
+      [
+       0,
+       4
+      ],
+      [
+       -1,
+       0
+      ],
+      [
+       -1,
+       1
+      ],
+      [
+       -1,
+       2
+      ],
+      [
+       -1,
+       3
+      ],
+      [
+       -1,
+       4
+      ]
+     ]
+    },
+    "index": 2,
+    "overrideTokenKey": null,
+    "isDefault": false
+   }
+  ],
+  "talents": [
+   {
+    "index": 0,
+    "name": "传承终焉",
+    "desc": "攻击空中目标时攻击力提升至123%（+3%），并使其特殊能力失效3秒",
+    "descRaw": "攻击空中目标时攻击力提升至123%<@ba.talpu>（+3%）</>，并使其特殊能力失效3秒",
+    "bb": {
+     "atk_scale": 1.23,
+     "silence": 3
+    },
+    "bbStr": {},
+    "rangeGrid": null,
+    "tokenKey": null,
+    "hidden": false,
+    "fromModule": false
+   },
+   {
+    "index": 1,
+    "name": "曾有羽翼",
+    "desc": "攻击范围内所有生命值高于80%的敌人失重",
+    "descRaw": "攻击范围内所有生命值高于80%的敌人<$ba.weightless>失重</>",
+    "bb": {
+     "hp_ratio": 0.8
+    },
+    "bbStr": {},
+    "rangeGrid": null,
+    "tokenKey": null,
+    "hidden": false,
+    "fromModule": false
+   }
+  ],
+  "module": {
+   "id": "uniequip_002_heyak",
+   "name": "“图书馆”",
+   "type": "CCR-X",
+   "level": 0,
+   "active": false
+  }
+ },
+ "chess_ws_col_heyak_b": {
+  "tier": 4,
+  "isHidden": false,
+  "isDiy": false,
+  "visible": true,
+  "chessType": "NORMAL",
+  "directToHand": false,
+  "name": "霍尔海雅",
+  "appellation": "Ho'olheyak",
+  "charId": "char_4027_heyak",
+  "profession": "CASTER",
+  "subProfessionId": "corecaster",
+  "subProfessionName": "中坚术师",
+  "position": "RANGED",
+  "nationId": "columbia",
+  "bonds": [
+   "columbiaShip",
+   "miraShip"
+  ],
+  "garrisonIds": [
+   "garrison_col_heyak_b"
+  ],
+  "price": 3,
+  "sellPrice": 1,
+  "immunities": {
+   "stun": false,
+   "silence": false,
+   "sleep": false,
+   "frozen": false,
+   "levitate": false
+  },
+  "rangeId": "3-1",
+  "rangeGrid": [
+   [
+    1,
+    0
+   ],
+   [
+    1,
+    1
+   ],
+   [
+    1,
+    2
+   ],
+   [
+    0,
+    0
+   ],
+   [
+    0,
+    1
+   ],
+   [
+    0,
+    2
+   ],
+   [
+    0,
+    3
+   ],
+   [
+    -1,
+    0
+   ],
+   [
+    -1,
+    1
+   ],
+   [
+    -1,
+    2
+   ]
+  ],
+  "dmgType": "arts",
+  "attackKind": "ranged",
+  "projectile": "bolt",
+  "canHitFly": true,
+  "targetPriority": null,
+  "trait": {
+   "desc": "攻击造成法术伤害",
+   "descRaw": "攻击造成<@ba.kw>法术伤害</>",
+   "bb": {
+    "magic_resist_penetrate_fixed": 10
+   },
+   "bbStr": {},
+   "rangeGrid": null,
+   "moduleDesc": "无视目标10点法术抗性",
+   "moduleDescRaw": "无视目标<@ba.kw>10</>点法术抗性"
+  },
+  "tokens": [],
+  "assets": {
+   "avatar": "char_4027_heyak",
+   "portrait": "char_4027_heyak_2",
+   "spine": "char_4027_heyak",
+   "skillIcon": "skchr_heyak_1",
+   "subProfIcon": "sub_corecaster_icon"
+  },
+  "workshop": {
+   "schema": 1,
+   "id": "col_heyak"
+  },
+  "chessId": "chess_ws_col_heyak_b",
+  "baseId": "chess_ws_col_heyak_a",
+  "goldenId": "chess_ws_col_heyak_b",
+  "isGolden": true,
+  "rarity": 6,
+  "upgradeNum": 0,
+  "upgradeChessId": null,
+  "status": {
+   "phase": 2,
+   "level": 60,
+   "skillLevel": 7,
+   "equipLevel": 1
+  },
+  "statsBase": {
+   "maxHp": 1639,
+   "atk": 624,
+   "def": 125,
+   "res": 20,
+   "cost": 19,
+   "blockCnt": 1,
+   "bat": 1.6,
+   "aspd": 100,
+   "respawnTime": 66,
+   "spRecovery": 1,
+   "hpRecoveryPerSec": 0,
+   "moveSpeed": 1,
+   "tauntLevel": 0,
+   "massLevel": 0,
+   "deployLimit": 1,
+   "deckStack": 0
+  },
+  "traitBase": {
+   "desc": "攻击造成法术伤害",
+   "descRaw": "攻击造成<@ba.kw>法术伤害</>",
+   "bb": {},
+   "bbStr": {},
+   "rangeGrid": null
+  },
+  "talentsBase": [
+   {
+    "index": 0,
+    "name": "传承终焉",
+    "desc": "攻击空中目标时攻击力提升至123%（+3%），并使其特殊能力失效3秒",
+    "descRaw": "攻击空中目标时攻击力提升至123%<@ba.talpu>（+3%）</>，并使其特殊能力失效3秒",
+    "bb": {
+     "atk_scale": 1.23,
+     "silence": 3
+    },
+    "bbStr": {},
+    "rangeGrid": null,
+    "tokenKey": null,
+    "hidden": false,
+    "fromModule": false
+   },
+   {
+    "index": 1,
+    "name": "曾有羽翼",
+    "desc": "攻击范围内所有生命值高于80%的敌人失重",
+    "descRaw": "攻击范围内所有生命值高于80%的敌人<$ba.weightless>失重</>",
+    "bb": {
+     "hp_ratio": 0.8
+    },
+    "bbStr": {},
+    "rangeGrid": null,
+    "tokenKey": null,
+    "hidden": false,
+    "fromModule": false
+   }
+  ],
+  "stats": {
+   "maxHp": 1759,
+   "atk": 664,
+   "def": 125,
+   "res": 20,
+   "cost": 19,
+   "blockCnt": 1,
+   "bat": 1.6,
+   "aspd": 100,
+   "respawnTime": 66,
+   "spRecovery": 1,
+   "hpRecoveryPerSec": 0,
+   "moveSpeed": 1,
+   "tauntLevel": 0,
+   "massLevel": 0,
+   "deployLimit": 1,
+   "deckStack": 0
+  },
+  "talents": [
+   {
+    "index": 0,
+    "name": "传承终焉",
+    "desc": "攻击空中目标时攻击力提升至123%（+3%），并使其特殊能力失效3秒",
+    "descRaw": "攻击空中目标时攻击力提升至123%<@ba.talpu>（+3%）</>，并使其特殊能力失效3秒",
+    "bb": {
+     "atk_scale": 1.23,
+     "silence": 3
+    },
+    "bbStr": {},
+    "rangeGrid": null,
+    "tokenKey": null,
+    "hidden": false,
+    "fromModule": false
+   },
+   {
+    "index": 1,
+    "name": "曾有羽翼",
+    "desc": "攻击范围内所有生命值高于80%的敌人失重",
+    "descRaw": "攻击范围内所有生命值高于80%的敌人<$ba.weightless>失重</>",
+    "bb": {
+     "hp_ratio": 0.8
+    },
+    "bbStr": {},
+    "rangeGrid": null,
+    "tokenKey": null,
+    "hidden": false,
+    "fromModule": false
+   }
+  ],
+  "module": {
+   "id": "uniequip_002_heyak",
+   "name": "“图书馆”",
+   "type": "CCR-X",
+   "level": 1,
+   "active": true
+  },
+  "skill": {
+   "skillId": "skchr_heyak_1",
+   "iconId": "skchr_heyak_1",
+   "name": "但为求索",
+   "level": 7,
+   "desc": "下次攻击额外攻击一个目标并造成相当于攻击力240%的法术伤害，仅攻击到1名目标时使其浮空3秒\n可充能2次",
+   "descRaw": "下次攻击额外攻击一个目标并造成相当于攻击力<@ba.vup>240%</>的法术伤害，仅攻击到<@ba.vup>1</>名目标时使其<$ba.levitate>浮空</><@ba.vup>3</>秒\n<@ba.rem>可充能2次</>",
+   "skillType": "AUTO",
+   "durationType": "NONE",
+   "duration": -1,
+   "spType": "INCREASE_WITH_TIME",
+   "spCost": 8,
+   "initSp": 0,
+   "maxChargeTime": 2,
+   "increment": 1,
+   "bb": {
+    "atk_scale": 2.4,
+    "levitate": 3,
+    "cnt": 2
+   },
+   "bbStr": {},
+   "rangeId": null,
+   "rangeGrid": null,
+   "prefabId": "skchr_heyak_1",
+   "trigger": {
+    "rule": "DEFAULT",
+    "rawRule": "DEFAULT",
+    "customRangeGrid": null
+   },
+   "index": 0,
+   "overrideTokenKey": null
+  },
+  "skills": [
+   {
+    "skillId": "skchr_heyak_1",
+    "iconId": "skchr_heyak_1",
+    "name": "但为求索",
+    "level": 7,
+    "desc": "下次攻击额外攻击一个目标并造成相当于攻击力240%的法术伤害，仅攻击到1名目标时使其浮空3秒\n可充能2次",
+    "descRaw": "下次攻击额外攻击一个目标并造成相当于攻击力<@ba.vup>240%</>的法术伤害，仅攻击到<@ba.vup>1</>名目标时使其<$ba.levitate>浮空</><@ba.vup>3</>秒\n<@ba.rem>可充能2次</>",
+    "skillType": "AUTO",
+    "durationType": "NONE",
+    "duration": -1,
+    "spType": "INCREASE_WITH_TIME",
+    "spCost": 8,
+    "initSp": 0,
+    "maxChargeTime": 2,
+    "increment": 1,
+    "bb": {
+     "atk_scale": 2.4,
+     "levitate": 3,
+     "cnt": 2
+    },
+    "bbStr": {},
+    "rangeId": null,
+    "rangeGrid": null,
+    "prefabId": "skchr_heyak_1",
+    "trigger": {
+     "rule": "DEFAULT",
+     "rawRule": "DEFAULT",
+     "customRangeGrid": null
+    },
+    "index": 0,
+    "overrideTokenKey": null,
+    "isDefault": true
+   },
+   {
+    "skillId": "skchr_heyak_2",
+    "iconId": "skchr_heyak_2",
+    "name": "群星逶迤",
+    "level": 7,
+    "desc": "攻击变为攻击力35%的9连发，随机攻击范围内的目标，每发有12%的概率使目标浮空1秒",
+    "descRaw": "攻击变为攻击力<@ba.vup>35%</>的<@ba.vup>9</>连发，随机攻击范围内的目标，每发有<@ba.vup>12%</>的概率使目标<$ba.levitate>浮空</><@ba.vup>1</>秒",
+    "skillType": "MANUAL",
+    "durationType": "NONE",
+    "duration": 16,
+    "spType": "INCREASE_WITH_TIME",
+    "spCost": 32,
+    "initSp": 22,
+    "maxChargeTime": 1,
+    "increment": 1,
+    "bb": {
+     "attack@atk_scale": 0.35,
+     "attack@prob": 0.12,
+     "attack@levitate": 1
+    },
+    "bbStr": {},
+    "rangeId": null,
+    "rangeGrid": null,
+    "prefabId": "skchr_heyak_2",
+    "trigger": {
+     "rule": "DEFAULT",
+     "rawRule": "DEFAULT",
+     "customRangeGrid": null
+    },
+    "index": 1,
+    "overrideTokenKey": null,
+    "isDefault": false
+   },
+   {
+    "skillId": "skchr_heyak_3",
+    "iconId": "skchr_heyak_3",
+    "name": "博览者的狂语",
+    "level": 7,
+    "desc": "攻击范围扩大，攻击间隔延长，攻击变为向前吹出平行的旋风，旋风伤害随行进距离正比增强并在行进三格后达到最大，使命中的第一个目标浮空2秒，并造成最高380%攻击力的法术伤害",
+    "descRaw": "攻击范围<@ba.vup>扩大</>，攻击间隔<@ba.vdown>延长</>，攻击变为向前吹出平行的旋风，旋风伤害随行进距离正比增强并在行进三格后达到最大，使命中的第一个目标<$ba.levitate>浮空</><@ba.vup>2</>秒，并造成最高<@ba.vup>380%</>攻击力的法术伤害",
+    "skillType": "MANUAL",
+    "durationType": "NONE",
+    "duration": 45,
+    "spType": "INCREASE_WITH_TIME",
+    "spCost": 64,
+    "initSp": 42,
+    "maxChargeTime": 1,
+    "increment": 1,
+    "bb": {
+     "attack@min_atk_scale": 2.53,
+     "attack@max_atk_scale": 3.8,
+     "attack@levitate": 2,
+     "base_attack_time": 1.4
+    },
+    "bbStr": {},
+    "rangeId": "3-10",
+    "rangeGrid": [
+     [
+      1,
+      0
+     ],
+     [
+      1,
+      1
+     ],
+     [
+      1,
+      2
+     ],
+     [
+      1,
+      3
+     ],
+     [
+      1,
+      4
+     ],
+     [
+      0,
+      0
+     ],
+     [
+      0,
+      1
+     ],
+     [
+      0,
+      2
+     ],
+     [
+      0,
+      3
+     ],
+     [
+      0,
+      4
+     ],
+     [
+      -1,
+      0
+     ],
+     [
+      -1,
+      1
+     ],
+     [
+      -1,
+      2
+     ],
+     [
+      -1,
+      3
+     ],
+     [
+      -1,
+      4
+     ]
+    ],
+    "prefabId": "skchr_heyak_3",
+    "trigger": {
+     "rule": "ACTIVE_RANGE",
+     "rawRule": "DEFAULT",
+     "customRangeGrid": [
+      [
+       1,
+       0
+      ],
+      [
+       1,
+       1
+      ],
+      [
+       1,
+       2
+      ],
+      [
+       1,
+       3
+      ],
+      [
+       1,
+       4
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       1
+      ],
+      [
+       0,
+       2
+      ],
+      [
+       0,
+       3
+      ],
+      [
+       0,
+       4
+      ],
+      [
+       -1,
+       0
+      ],
+      [
+       -1,
+       1
+      ],
+      [
+       -1,
+       2
+      ],
+      [
+       -1,
+       3
+      ],
+      [
+       -1,
+       4
+      ]
+     ]
+    },
+    "index": 2,
+    "overrideTokenKey": null,
+    "isDefault": false
+   }
+  ],
+  "modules": [
+   {
+    "uniEquipId": "uniequip_002_heyak",
+    "name": "“图书馆”",
+    "typeName": "CCR-X",
+    "typeIcon": "ccr-x",
+    "icon": "uniequip_002_heyak",
+    "level": 1,
+    "attr": {
+     "maxHp": 120,
+     "atk": 40
+    },
+    "traitOverride": {
+     "desc": "攻击造成法术伤害",
+     "descRaw": "攻击造成<@ba.kw>法术伤害</>",
+     "bb": {
+      "magic_resist_penetrate_fixed": 10
+     },
+     "bbStr": {},
+     "rangeGrid": null,
+     "moduleDesc": "无视目标10点法术抗性",
+     "moduleDescRaw": "无视目标<@ba.kw>10</>点法术抗性"
+    },
+    "talentChanges": [],
+    "isDefault": true
+   },
+   {
+    "uniEquipId": "uniequip_003_heyak",
+    "name": "羽蛇的时间博物馆",
+    "typeName": "CCR-Y",
+    "typeIcon": "ccr-y",
+    "icon": "uniequip_003_heyak",
+    "level": 1,
+    "attr": {
+     "maxHp": 105,
+     "atk": 32,
+     "def": 15
+    },
+    "traitOverride": {
+     "desc": "攻击造成法术伤害",
+     "descRaw": "攻击造成<@ba.kw>法术伤害</>",
+     "bb": {
+      "sp": 1
+     },
+     "bbStr": {},
+     "rangeGrid": null,
+     "moduleDesc": "普通攻击命中精英或领袖敌人时获得1点技力",
+     "moduleDescRaw": "普通攻击命中精英或领袖敌人时获得<@ba.kw>1</>点技力"
+    },
+    "talentChanges": [],
+    "isDefault": false
+   },
+   {
+    "uniEquipId": "uniequip_004_heyak",
+    "name": "霍尔海雅特限证章",
+    "typeName": "ISW-A",
+    "typeIcon": "isw-a",
+    "icon": "uniequip_004_heyak",
+    "level": 1,
+    "attr": {
+     "maxHp": 100,
+     "atk": 55
+    },
+    "traitOverride": {
+     "desc": "攻击造成法术伤害",
+     "descRaw": "攻击造成<@ba.kw>法术伤害</>",
+     "bb": {
+      "sp": 0.3,
+      "magic_resist_penetrate_fixed": 10
+     },
+     "bbStr": {},
+     "rangeGrid": null,
+     "moduleDesc": "在集成战略中，无视目标10点法术抗性，每个敌人首次进入目标点所在地块时，恢复自身30%的技力",
+     "moduleDescRaw": "在<@ba.kw>集成战略</>中，无视目标<@ba.kw>10</>点法术抗性，每个敌人首次进入目标点所在地块时，恢复自身30%的技力"
+    },
+    "talentChanges": [],
+    "isDefault": false
+   }
+  ]
+ },
+ "chess_char_3_10_a": {
+  "bonds": [
+   "swiftShip",
+   "emptyShip",
+   "columbiaShip"
+  ]
+ },
+ "chess_char_3_10_b": {
+  "bonds": [
+   "swiftShip",
+   "emptyShip",
+   "columbiaShip"
+  ]
+ },
+ "chess_char_6_16_a": {
+  "bonds": [
+   "arcaneShip",
+   "skillfulShip",
+   "columbiaShip"
+  ]
+ },
+ "chess_char_6_16_b": {
+  "bonds": [
+   "arcaneShip",
+   "skillfulShip",
+   "columbiaShip"
+  ]
+ },
+ "chess_ws_col_astesia_a": {
+  "tier": 4,
+  "isHidden": false,
+  "isDiy": false,
+  "visible": true,
+  "chessType": "NORMAL",
+  "directToHand": false,
+  "name": "星极",
+  "appellation": "Astesia",
+  "charId": "char_274_astesi",
+  "profession": "WARRIOR",
+  "subProfessionId": "artsfghter",
+  "subProfessionName": "术战者",
+  "position": "MELEE",
+  "nationId": "columbia",
+  "bonds": [
+   "columbiaShip",
+   "swiftShip"
+  ],
+  "garrisonIds": [
+   "garrison_col_astesia_a"
+  ],
+  "price": 3,
+  "sellPrice": 1,
+  "immunities": {
+   "stun": false,
+   "silence": false,
+   "sleep": false,
+   "frozen": false,
+   "levitate": false
+  },
+  "rangeId": "1-1",
+  "rangeGrid": [
+   [
+    0,
+    0
+   ],
+   [
+    0,
+    1
+   ]
+  ],
+  "dmgType": "arts",
+  "attackKind": "melee",
+  "projectile": "none",
+  "canHitFly": false,
+  "targetPriority": null,
+  "trait": {
+   "desc": "攻击造成法术伤害",
+   "descRaw": "攻击造成<@ba.kw>法术伤害</>",
+   "bb": {},
+   "bbStr": {},
+   "rangeGrid": null
+  },
+  "tokens": [],
+  "assets": {
+   "avatar": "char_274_astesi",
+   "portrait": "char_274_astesi_2",
+   "spine": "char_274_astesi",
+   "skillIcon": "skchr_astesi_1",
+   "subProfIcon": "sub_artsfghter_icon"
+  },
+  "workshop": {
+   "schema": 1,
+   "id": "col_astesia"
+  },
+  "chessId": "chess_ws_col_astesia_a",
+  "baseId": "chess_ws_col_astesia_a",
+  "goldenId": "chess_ws_col_astesia_b",
+  "isGolden": false,
+  "rarity": 5,
+  "upgradeNum": 3,
+  "upgradeChessId": "chess_ws_col_astesia_b",
+  "status": {
+   "phase": 2,
+   "level": 1,
+   "skillLevel": 4,
+   "equipLevel": 0
+  },
+  "stats": {
+   "maxHp": 1917,
+   "atk": 534,
+   "def": 349,
+   "res": 15,
+   "cost": 19,
+   "blockCnt": 1,
+   "bat": 1.25,
+   "aspd": 100,
+   "respawnTime": 60,
+   "spRecovery": 1,
+   "hpRecoveryPerSec": 0,
+   "moveSpeed": 1,
+   "tauntLevel": 0,
+   "massLevel": 0,
+   "deployLimit": 1,
+   "deckStack": 0
+  },
+  "skill": {
+   "skillId": "skchr_astesi_1",
+   "iconId": "skchr_astesi_1",
+   "name": "星座守护",
+   "level": 4,
+   "desc": "攻击力+30%，防御力+45%",
+   "descRaw": "攻击力<@ba.vup>+30%</>，防御力<@ba.vup>+45%</>",
+   "skillType": "MANUAL",
+   "durationType": "NONE",
+   "duration": 30,
+   "spType": "INCREASE_WITH_TIME",
+   "spCost": 37,
+   "initSp": 3,
+   "maxChargeTime": 1,
+   "increment": 1,
+   "bb": {
+    "atk": 0.3,
+    "def": 0.45
+   },
+   "bbStr": {},
+   "rangeId": null,
+   "rangeGrid": null,
+   "prefabId": "skchr_astesi_1",
+   "trigger": {
+    "rule": "DEFAULT",
+    "rawRule": "DEFAULT",
+    "customRangeGrid": null
+   },
+   "index": 0,
+   "overrideTokenKey": null
+  },
+  "skills": [
+   {
+    "skillId": "skchr_astesi_1",
+    "iconId": "skchr_astesi_1",
+    "name": "星座守护",
+    "level": 4,
+    "desc": "攻击力+30%，防御力+45%",
+    "descRaw": "攻击力<@ba.vup>+30%</>，防御力<@ba.vup>+45%</>",
+    "skillType": "MANUAL",
+    "durationType": "NONE",
+    "duration": 30,
+    "spType": "INCREASE_WITH_TIME",
+    "spCost": 37,
+    "initSp": 3,
+    "maxChargeTime": 1,
+    "increment": 1,
+    "bb": {
+     "atk": 0.3,
+     "def": 0.45
+    },
+    "bbStr": {},
+    "rangeId": null,
+    "rangeGrid": null,
+    "prefabId": "skchr_astesi_1",
+    "trigger": {
+     "rule": "DEFAULT",
+     "rawRule": "DEFAULT",
+     "customRangeGrid": null
+    },
+    "index": 0,
+    "overrideTokenKey": null,
+    "isDefault": true
+   },
+   {
+    "skillId": "skchr_astesi_2",
+    "iconId": "skchr_astesi_2",
+    "name": "星辉剑",
+    "level": 4,
+    "desc": "攻击力+45%，防御力+45%，阻挡数+1，同时攻击阻挡的所有敌人",
+    "descRaw": "攻击力<@ba.vup>+45%</>，防御力<@ba.vup>+45%</>，阻挡数<@ba.vup>+1</>，同时攻击阻挡的所有敌人",
+    "skillType": "MANUAL",
+    "durationType": "NONE",
+    "duration": 11,
+    "spType": "INCREASE_WITH_TIME",
+    "spCost": 27,
+    "initSp": 3,
+    "maxChargeTime": 1,
+    "increment": 1,
+    "bb": {
+     "atk": 0.45,
+     "def": 0.45,
+     "block_cnt": 1
+    },
+    "bbStr": {},
+    "rangeId": null,
+    "rangeGrid": null,
+    "prefabId": "skchr_astesi_2",
+    "trigger": {
+     "rule": "DEFAULT",
+     "rawRule": "DEFAULT",
+     "customRangeGrid": null
+    },
+    "index": 1,
+    "overrideTokenKey": null,
+    "isDefault": false
+   }
+  ],
+  "talents": [
+   {
+    "index": 0,
+    "name": "天体仪",
+    "desc": "每在场上停留20秒，攻击速度+5，最多可以叠加5次",
+    "descRaw": "每在场上停留20秒，攻击速度+5，最多可以叠加5次",
+    "bb": {
+     "max_stack_cnt": 5,
+     "interval": 20,
+     "attack_speed": 5
+    },
+    "bbStr": {},
+    "rangeGrid": null,
+    "tokenKey": null,
+    "hidden": false,
+    "fromModule": false
+   }
+  ],
+  "module": {
+   "id": "uniequip_002_astesi",
+   "name": "未卜星图",
+   "type": "AFT-Y",
+   "level": 0,
+   "active": false
+  }
+ },
+ "chess_ws_col_astesia_b": {
+  "tier": 4,
+  "isHidden": false,
+  "isDiy": false,
+  "visible": true,
+  "chessType": "NORMAL",
+  "directToHand": false,
+  "name": "星极",
+  "appellation": "Astesia",
+  "charId": "char_274_astesi",
+  "profession": "WARRIOR",
+  "subProfessionId": "artsfghter",
+  "subProfessionName": "术战者",
+  "position": "MELEE",
+  "nationId": "columbia",
+  "bonds": [
+   "columbiaShip",
+   "swiftShip"
+  ],
+  "garrisonIds": [
+   "garrison_col_astesia_b"
+  ],
+  "price": 3,
+  "sellPrice": 1,
+  "immunities": {
+   "stun": false,
+   "silence": false,
+   "sleep": false,
+   "frozen": false,
+   "levitate": false
+  },
+  "rangeId": "1-1",
+  "rangeGrid": [
+   [
+    0,
+    0
+   ],
+   [
+    0,
+    1
+   ]
+  ],
+  "dmgType": "arts",
+  "attackKind": "melee",
+  "projectile": "none",
+  "canHitFly": false,
+  "targetPriority": null,
+  "trait": {
+   "desc": "攻击造成法术伤害",
+   "descRaw": "攻击造成<@ba.kw>法术伤害</>",
+   "bb": {
+    "damage_scale": 1.1
+   },
+   "bbStr": {},
+   "rangeGrid": null,
+   "moduleDesc": "自身阻挡的敌人受到10%的法术脆弱效果",
+   "moduleDescRaw": "自身阻挡的敌人受到<@ba.kw>10%</>的<$ba.magicfragile>法术脆弱</>效果"
+  },
+  "tokens": [],
+  "assets": {
+   "avatar": "char_274_astesi",
+   "portrait": "char_274_astesi_2",
+   "spine": "char_274_astesi",
+   "skillIcon": "skchr_astesi_1",
+   "subProfIcon": "sub_artsfghter_icon"
+  },
+  "workshop": {
+   "schema": 1,
+   "id": "col_astesia"
+  },
+  "chessId": "chess_ws_col_astesia_b",
+  "baseId": "chess_ws_col_astesia_a",
+  "goldenId": "chess_ws_col_astesia_b",
+  "isGolden": true,
+  "rarity": 5,
+  "upgradeNum": 0,
+  "upgradeChessId": null,
+  "status": {
+   "phase": 2,
+   "level": 60,
+   "skillLevel": 7,
+   "equipLevel": 1
+  },
+  "statsBase": {
+   "maxHp": 2370,
+   "atk": 628,
+   "def": 399,
+   "res": 15,
+   "cost": 19,
+   "blockCnt": 1,
+   "bat": 1.25,
+   "aspd": 100,
+   "respawnTime": 60,
+   "spRecovery": 1,
+   "hpRecoveryPerSec": 0,
+   "moveSpeed": 1,
+   "tauntLevel": 0,
+   "massLevel": 0,
+   "deployLimit": 1,
+   "deckStack": 0
+  },
+  "traitBase": {
+   "desc": "攻击造成法术伤害",
+   "descRaw": "攻击造成<@ba.kw>法术伤害</>",
+   "bb": {},
+   "bbStr": {},
+   "rangeGrid": null
+  },
+  "talentsBase": [
+   {
+    "index": 0,
+    "name": "天体仪",
+    "desc": "每在场上停留20秒，攻击速度+5，最多可以叠加5次",
+    "descRaw": "每在场上停留20秒，攻击速度+5，最多可以叠加5次",
+    "bb": {
+     "max_stack_cnt": 5,
+     "interval": 20,
+     "attack_speed": 5
+    },
+    "bbStr": {},
+    "rangeGrid": null,
+    "tokenKey": null,
+    "hidden": false,
+    "fromModule": false
+   }
+  ],
+  "stats": {
+   "maxHp": 2370,
+   "atk": 653,
+   "def": 424,
+   "res": 15,
+   "cost": 19,
+   "blockCnt": 1,
+   "bat": 1.25,
+   "aspd": 100,
+   "respawnTime": 60,
+   "spRecovery": 1,
+   "hpRecoveryPerSec": 0,
+   "moveSpeed": 1,
+   "tauntLevel": 0,
+   "massLevel": 0,
+   "deployLimit": 1,
+   "deckStack": 0
+  },
+  "talents": [
+   {
+    "index": 0,
+    "name": "天体仪",
+    "desc": "每在场上停留20秒，攻击速度+5，最多可以叠加5次",
+    "descRaw": "每在场上停留20秒，攻击速度+5，最多可以叠加5次",
+    "bb": {
+     "max_stack_cnt": 5,
+     "interval": 20,
+     "attack_speed": 5
+    },
+    "bbStr": {},
+    "rangeGrid": null,
+    "tokenKey": null,
+    "hidden": false,
+    "fromModule": false
+   }
+  ],
+  "module": {
+   "id": "uniequip_002_astesi",
+   "name": "未卜星图",
+   "type": "AFT-Y",
+   "level": 1,
+   "active": true
+  },
+  "skill": {
+   "skillId": "skchr_astesi_1",
+   "iconId": "skchr_astesi_1",
+   "name": "星座守护",
+   "level": 7,
+   "desc": "攻击力+40%，防御力+60%",
+   "descRaw": "攻击力<@ba.vup>+40%</>，防御力<@ba.vup>+60%</>",
+   "skillType": "MANUAL",
+   "durationType": "NONE",
+   "duration": 30,
+   "spType": "INCREASE_WITH_TIME",
+   "spCost": 34,
+   "initSp": 6,
+   "maxChargeTime": 1,
+   "increment": 1,
+   "bb": {
+    "atk": 0.4,
+    "def": 0.6
+   },
+   "bbStr": {},
+   "rangeId": null,
+   "rangeGrid": null,
+   "prefabId": "skchr_astesi_1",
+   "trigger": {
+    "rule": "DEFAULT",
+    "rawRule": "DEFAULT",
+    "customRangeGrid": null
+   },
+   "index": 0,
+   "overrideTokenKey": null
+  },
+  "skills": [
+   {
+    "skillId": "skchr_astesi_1",
+    "iconId": "skchr_astesi_1",
+    "name": "星座守护",
+    "level": 7,
+    "desc": "攻击力+40%，防御力+60%",
+    "descRaw": "攻击力<@ba.vup>+40%</>，防御力<@ba.vup>+60%</>",
+    "skillType": "MANUAL",
+    "durationType": "NONE",
+    "duration": 30,
+    "spType": "INCREASE_WITH_TIME",
+    "spCost": 34,
+    "initSp": 6,
+    "maxChargeTime": 1,
+    "increment": 1,
+    "bb": {
+     "atk": 0.4,
+     "def": 0.6
+    },
+    "bbStr": {},
+    "rangeId": null,
+    "rangeGrid": null,
+    "prefabId": "skchr_astesi_1",
+    "trigger": {
+     "rule": "DEFAULT",
+     "rawRule": "DEFAULT",
+     "customRangeGrid": null
+    },
+    "index": 0,
+    "overrideTokenKey": null,
+    "isDefault": true
+   },
+   {
+    "skillId": "skchr_astesi_2",
+    "iconId": "skchr_astesi_2",
+    "name": "星辉剑",
+    "level": 7,
+    "desc": "攻击力+60%，防御力+60%，阻挡数+1，同时攻击阻挡的所有敌人",
+    "descRaw": "攻击力<@ba.vup>+60%</>，防御力<@ba.vup>+60%</>，阻挡数<@ba.vup>+1</>，同时攻击阻挡的所有敌人",
+    "skillType": "MANUAL",
+    "durationType": "NONE",
+    "duration": 12,
+    "spType": "INCREASE_WITH_TIME",
+    "spCost": 24,
+    "initSp": 6,
+    "maxChargeTime": 1,
+    "increment": 1,
+    "bb": {
+     "atk": 0.6,
+     "def": 0.6,
+     "block_cnt": 1
+    },
+    "bbStr": {},
+    "rangeId": null,
+    "rangeGrid": null,
+    "prefabId": "skchr_astesi_2",
+    "trigger": {
+     "rule": "DEFAULT",
+     "rawRule": "DEFAULT",
+     "customRangeGrid": null
+    },
+    "index": 1,
+    "overrideTokenKey": null,
+    "isDefault": false
+   }
+  ],
+  "modules": [
+   {
+    "uniEquipId": "uniequip_002_astesi",
+    "name": "未卜星图",
+    "typeName": "AFT-Y",
+    "typeIcon": "aft-y",
+    "icon": "uniequip_002_astesi",
+    "level": 1,
+    "attr": {
+     "atk": 25,
+     "def": 25
+    },
+    "traitOverride": {
+     "desc": "攻击造成法术伤害",
+     "descRaw": "攻击造成<@ba.kw>法术伤害</>",
+     "bb": {
+      "damage_scale": 1.1
+     },
+     "bbStr": {},
+     "rangeGrid": null,
+     "moduleDesc": "自身阻挡的敌人受到10%的法术脆弱效果",
+     "moduleDescRaw": "自身阻挡的敌人受到<@ba.kw>10%</>的<$ba.magicfragile>法术脆弱</>效果"
+    },
+    "talentChanges": [],
+    "isDefault": true
+   }
+  ]
+ },
+ "chess_ws_col_ceylon_a": {
+  "tier": 2,
+  "isHidden": false,
+  "isDiy": false,
+  "visible": true,
+  "chessType": "NORMAL",
+  "directToHand": false,
+  "name": "锡兰",
+  "appellation": "Ceylon",
+  "charId": "char_348_ceylon",
+  "profession": "MEDIC",
+  "subProfessionId": "healer",
+  "subProfessionName": "疗养师",
+  "position": "RANGED",
+  "nationId": "columbia",
+  "bonds": [
+   "columbiaShip",
+   "deputShip"
+  ],
+  "garrisonIds": [
+   "garrison_col_ceylon_a"
+  ],
+  "price": 3,
+  "sellPrice": 1,
+  "immunities": {
+   "stun": false,
+   "silence": false,
+   "sleep": false,
+   "frozen": false,
+   "levitate": false
+  },
+  "rangeId": "3-4",
+  "rangeGrid": [
+   [
+    2,
+    0
+   ],
+   [
+    2,
+    1
+   ],
+   [
+    2,
+    2
+   ],
+   [
+    1,
+    0
+   ],
+   [
+    1,
+    1
+   ],
+   [
+    1,
+    2
+   ],
+   [
+    1,
+    3
+   ],
+   [
+    0,
+    0
+   ],
+   [
+    0,
+    1
+   ],
+   [
+    0,
+    2
+   ],
+   [
+    0,
+    3
+   ],
+   [
+    -1,
+    0
+   ],
+   [
+    -1,
+    1
+   ],
+   [
+    -1,
+    2
+   ],
+   [
+    -1,
+    3
+   ],
+   [
+    -2,
+    0
+   ],
+   [
+    -2,
+    1
+   ],
+   [
+    -2,
+    2
+   ]
+  ],
+  "dmgType": "heal",
+  "attackKind": "heal",
+  "projectile": "orb",
+  "canHitFly": false,
+  "targetPriority": null,
+  "trait": {
+   "desc": "拥有较大治疗范围，但在治疗较远目标时治疗量变为80%",
+   "descRaw": "拥有较大治疗范围，但在治疗较远目标时治疗量变为<@ba.kw>80%</>",
+   "bb": {
+    "heal_scale": 0.8
+   },
+   "bbStr": {},
+   "rangeGrid": null
+  },
+  "tokens": [],
+  "assets": {
+   "avatar": "char_348_ceylon",
+   "portrait": "char_348_ceylon_2",
+   "spine": "char_348_ceylon",
+   "skillIcon": "skchr_ceylon_1",
+   "subProfIcon": "sub_healer_icon"
+  },
+  "workshop": {
+   "schema": 1,
+   "id": "col_ceylon"
+  },
+  "chessId": "chess_ws_col_ceylon_a",
+  "baseId": "chess_ws_col_ceylon_a",
+  "goldenId": "chess_ws_col_ceylon_b",
+  "isGolden": false,
+  "rarity": 5,
+  "upgradeNum": 3,
+  "upgradeChessId": "chess_ws_col_ceylon_b",
+  "status": {
+   "phase": 2,
+   "level": 1,
+   "skillLevel": 4,
+   "equipLevel": 0
+  },
+  "stats": {
+   "maxHp": 1251,
+   "atk": 374,
+   "def": 100,
+   "res": 10,
+   "cost": 19,
+   "blockCnt": 1,
+   "bat": 2.85,
+   "aspd": 100,
+   "respawnTime": 70,
+   "spRecovery": 1,
+   "hpRecoveryPerSec": 0,
+   "moveSpeed": 1,
+   "tauntLevel": 0,
+   "massLevel": 0,
+   "deployLimit": 1,
+   "deckStack": 0
+  },
+  "skill": {
+   "skillId": "skchr_ceylon_1",
+   "iconId": "skchr_ceylon_1",
+   "name": "集中式水疗",
+   "level": 4,
+   "desc": "下次治疗时的治疗量提升至攻击力的155%，并且不会因特性效果而降低\n可以充能1次",
+   "descRaw": "下次治疗时的治疗量提升至攻击力的<@ba.vup>155%</>，并且不会因特性效果而降低\n<@ba.rem>可以充能1次</>",
+   "skillType": "AUTO",
+   "durationType": "NONE",
+   "duration": 0,
+   "spType": "INCREASE_WITH_TIME",
+   "spCost": 9,
+   "initSp": 0,
+   "maxChargeTime": 1,
+   "increment": 1,
+   "bb": {
+    "heal_scale": 1.55,
+    "cnt": 1
+   },
+   "bbStr": {},
+   "rangeId": null,
+   "rangeGrid": null,
+   "prefabId": "skchr_ceylon_1",
+   "trigger": {
+    "rule": "DEFAULT",
+    "rawRule": "DEFAULT",
+    "customRangeGrid": null
+   },
+   "index": 0,
+   "overrideTokenKey": null
+  },
+  "skills": [
+   {
+    "skillId": "skchr_ceylon_1",
+    "iconId": "skchr_ceylon_1",
+    "name": "集中式水疗",
+    "level": 4,
+    "desc": "下次治疗时的治疗量提升至攻击力的155%，并且不会因特性效果而降低\n可以充能1次",
+    "descRaw": "下次治疗时的治疗量提升至攻击力的<@ba.vup>155%</>，并且不会因特性效果而降低\n<@ba.rem>可以充能1次</>",
+    "skillType": "AUTO",
+    "durationType": "NONE",
+    "duration": 0,
+    "spType": "INCREASE_WITH_TIME",
+    "spCost": 9,
+    "initSp": 0,
+    "maxChargeTime": 1,
+    "increment": 1,
+    "bb": {
+     "heal_scale": 1.55,
+     "cnt": 1
+    },
+    "bbStr": {},
+    "rangeId": null,
+    "rangeGrid": null,
+    "prefabId": "skchr_ceylon_1",
+    "trigger": {
+     "rule": "DEFAULT",
+     "rawRule": "DEFAULT",
+     "customRangeGrid": null
+    },
+    "index": 0,
+    "overrideTokenKey": null,
+    "isDefault": true
+   },
+   {
+    "skillId": "skchr_ceylon_2",
+    "iconId": "skchr_ceylon_2",
+    "name": "水灵庇护",
+    "level": 4,
+    "desc": "攻击力+40%，治疗目标数+1，持续时间内攻击范围内的友方单位获得抵抗",
+    "descRaw": "攻击力<@ba.vup>+40%</>，治疗目标数+1，持续时间内攻击范围内的友方单位获得<$ba.buffres>抵抗</>",
+    "skillType": "MANUAL",
+    "durationType": "NONE",
+    "duration": 25,
+    "spType": "INCREASE_WITH_TIME",
+    "spCost": 80,
+    "initSp": 26,
+    "maxChargeTime": 1,
+    "increment": 1,
+    "bb": {
+     "attack@max_target": 2,
+     "atk": 0.4,
+     "one_minus_status_resistance": -0.5
+    },
+    "bbStr": {},
+    "rangeId": null,
+    "rangeGrid": null,
+    "prefabId": "skchr_ceylon_2",
+    "trigger": {
+     "rule": "DEFAULT",
+     "rawRule": "DEFAULT",
+     "customRangeGrid": null
+    },
+    "index": 1,
+    "overrideTokenKey": null,
+    "isDefault": false
+   }
+  ],
+  "talents": [
+   {
+    "index": 0,
+    "name": "湖畔漫步者",
+    "desc": "攻击力+6%（+1%），当场地中存在水地形时改为攻击力+24%（+6%）",
+    "descRaw": "攻击力+6%<@ba.talpu>（+1%）</>，当场地中存在水地形时改为攻击力+24%<@ba.talpu>（+6%）</>",
+    "bb": {
+     "ceylon_t_1[common].atk": 0.06,
+     "celyon_t_1[map].atk": 0.18
+    },
+    "bbStr": {},
+    "rangeGrid": null,
+    "tokenKey": null,
+    "hidden": false,
+    "fromModule": false
+   }
+  ],
+  "module": {
+   "id": "uniequip_002_ceylon",
+   "name": "野外考察套装",
+   "type": "WAH-X",
+   "level": 0,
+   "active": false
+  }
+ },
+ "chess_ws_col_ceylon_b": {
+  "tier": 2,
+  "isHidden": false,
+  "isDiy": false,
+  "visible": true,
+  "chessType": "NORMAL",
+  "directToHand": false,
+  "name": "锡兰",
+  "appellation": "Ceylon",
+  "charId": "char_348_ceylon",
+  "profession": "MEDIC",
+  "subProfessionId": "healer",
+  "subProfessionName": "疗养师",
+  "position": "RANGED",
+  "nationId": "columbia",
+  "bonds": [
+   "columbiaShip",
+   "deputShip"
+  ],
+  "garrisonIds": [
+   "garrison_col_ceylon_b"
+  ],
+  "price": 3,
+  "sellPrice": 1,
+  "immunities": {
+   "stun": false,
+   "silence": false,
+   "sleep": false,
+   "frozen": false,
+   "levitate": false
+  },
+  "rangeId": "3-4",
+  "rangeGrid": [
+   [
+    2,
+    0
+   ],
+   [
+    2,
+    1
+   ],
+   [
+    2,
+    2
+   ],
+   [
+    1,
+    0
+   ],
+   [
+    1,
+    1
+   ],
+   [
+    1,
+    2
+   ],
+   [
+    1,
+    3
+   ],
+   [
+    0,
+    0
+   ],
+   [
+    0,
+    1
+   ],
+   [
+    0,
+    2
+   ],
+   [
+    0,
+    3
+   ],
+   [
+    -1,
+    0
+   ],
+   [
+    -1,
+    1
+   ],
+   [
+    -1,
+    2
+   ],
+   [
+    -1,
+    3
+   ],
+   [
+    -2,
+    0
+   ],
+   [
+    -2,
+    1
+   ],
+   [
+    -2,
+    2
+   ]
+  ],
+  "dmgType": "heal",
+  "attackKind": "heal",
+  "projectile": "orb",
+  "canHitFly": false,
+  "targetPriority": null,
+  "trait": {
+   "desc": "拥有较大治疗范围，但在治疗较远目标时治疗量变为80%",
+   "descRaw": "拥有较大治疗范围，但在治疗较远目标时治疗量变为<@ba.kw>80%</>",
+   "bb": {
+    "heal_scale": 0.8,
+    "taunt_level": -1,
+    "one_minus_status_resistance": -0.5
+   },
+   "bbStr": {},
+   "rangeGrid": null,
+   "moduleDesc": "自身获得抵抗且更不容易受到敌人的攻击",
+   "moduleDescRaw": "自身获得<$ba.buffres>抵抗</>且更不容易受到敌人的攻击"
+  },
+  "tokens": [],
+  "assets": {
+   "avatar": "char_348_ceylon",
+   "portrait": "char_348_ceylon_2",
+   "spine": "char_348_ceylon",
+   "skillIcon": "skchr_ceylon_1",
+   "subProfIcon": "sub_healer_icon"
+  },
+  "workshop": {
+   "schema": 1,
+   "id": "col_ceylon"
+  },
+  "chessId": "chess_ws_col_ceylon_b",
+  "baseId": "chess_ws_col_ceylon_a",
+  "goldenId": "chess_ws_col_ceylon_b",
+  "isGolden": true,
+  "rarity": 5,
+  "upgradeNum": 0,
+  "upgradeChessId": null,
+  "status": {
+   "phase": 2,
+   "level": 60,
+   "skillLevel": 7,
+   "equipLevel": 1
+  },
+  "statsBase": {
+   "maxHp": 1403,
+   "atk": 444,
+   "def": 119,
+   "res": 10,
+   "cost": 19,
+   "blockCnt": 1,
+   "bat": 2.85,
+   "aspd": 100,
+   "respawnTime": 70,
+   "spRecovery": 1,
+   "hpRecoveryPerSec": 0,
+   "moveSpeed": 1,
+   "tauntLevel": 0,
+   "massLevel": 0,
+   "deployLimit": 1,
+   "deckStack": 0
+  },
+  "traitBase": {
+   "desc": "拥有较大治疗范围，但在治疗较远目标时治疗量变为80%",
+   "descRaw": "拥有较大治疗范围，但在治疗较远目标时治疗量变为<@ba.kw>80%</>",
+   "bb": {
+    "heal_scale": 0.8
+   },
+   "bbStr": {},
+   "rangeGrid": null
+  },
+  "talentsBase": [
+   {
+    "index": 0,
+    "name": "湖畔漫步者",
+    "desc": "攻击力+6%（+1%），当场地中存在水地形时改为攻击力+24%（+6%）",
+    "descRaw": "攻击力+6%<@ba.talpu>（+1%）</>，当场地中存在水地形时改为攻击力+24%<@ba.talpu>（+6%）</>",
+    "bb": {
+     "ceylon_t_1[common].atk": 0.06,
+     "celyon_t_1[map].atk": 0.18
+    },
+    "bbStr": {},
+    "rangeGrid": null,
+    "tokenKey": null,
+    "hidden": false,
+    "fromModule": false
+   }
+  ],
+  "stats": {
+   "maxHp": 1403,
+   "atk": 469,
+   "def": 119,
+   "res": 15,
+   "cost": 19,
+   "blockCnt": 1,
+   "bat": 2.85,
+   "aspd": 100,
+   "respawnTime": 70,
+   "spRecovery": 1,
+   "hpRecoveryPerSec": 0,
+   "moveSpeed": 1,
+   "tauntLevel": 0,
+   "massLevel": 0,
+   "deployLimit": 1,
+   "deckStack": 0
+  },
+  "talents": [
+   {
+    "index": 0,
+    "name": "湖畔漫步者",
+    "desc": "攻击力+6%（+1%），当场地中存在水地形时改为攻击力+24%（+6%）",
+    "descRaw": "攻击力+6%<@ba.talpu>（+1%）</>，当场地中存在水地形时改为攻击力+24%<@ba.talpu>（+6%）</>",
+    "bb": {
+     "ceylon_t_1[common].atk": 0.06,
+     "celyon_t_1[map].atk": 0.18
+    },
+    "bbStr": {},
+    "rangeGrid": null,
+    "tokenKey": null,
+    "hidden": false,
+    "fromModule": false
+   }
+  ],
+  "module": {
+   "id": "uniequip_002_ceylon",
+   "name": "野外考察套装",
+   "type": "WAH-X",
+   "level": 1,
+   "active": true
+  },
+  "skill": {
+   "skillId": "skchr_ceylon_1",
+   "iconId": "skchr_ceylon_1",
+   "name": "集中式水疗",
+   "level": 7,
+   "desc": "下次治疗时的治疗量提升至攻击力的170%，并且不会因特性效果而降低\n可以充能2次",
+   "descRaw": "下次治疗时的治疗量提升至攻击力的<@ba.vup>170%</>，并且不会因特性效果而降低\n<@ba.rem>可以充能2次</>",
+   "skillType": "AUTO",
+   "durationType": "NONE",
+   "duration": 0,
+   "spType": "INCREASE_WITH_TIME",
+   "spCost": 9,
+   "initSp": 0,
+   "maxChargeTime": 2,
+   "increment": 1,
+   "bb": {
+    "heal_scale": 1.7,
+    "cnt": 2
+   },
+   "bbStr": {},
+   "rangeId": null,
+   "rangeGrid": null,
+   "prefabId": "skchr_ceylon_1",
+   "trigger": {
+    "rule": "DEFAULT",
+    "rawRule": "DEFAULT",
+    "customRangeGrid": null
+   },
+   "index": 0,
+   "overrideTokenKey": null
+  },
+  "skills": [
+   {
+    "skillId": "skchr_ceylon_1",
+    "iconId": "skchr_ceylon_1",
+    "name": "集中式水疗",
+    "level": 7,
+    "desc": "下次治疗时的治疗量提升至攻击力的170%，并且不会因特性效果而降低\n可以充能2次",
+    "descRaw": "下次治疗时的治疗量提升至攻击力的<@ba.vup>170%</>，并且不会因特性效果而降低\n<@ba.rem>可以充能2次</>",
+    "skillType": "AUTO",
+    "durationType": "NONE",
+    "duration": 0,
+    "spType": "INCREASE_WITH_TIME",
+    "spCost": 9,
+    "initSp": 0,
+    "maxChargeTime": 2,
+    "increment": 1,
+    "bb": {
+     "heal_scale": 1.7,
+     "cnt": 2
+    },
+    "bbStr": {},
+    "rangeId": null,
+    "rangeGrid": null,
+    "prefabId": "skchr_ceylon_1",
+    "trigger": {
+     "rule": "DEFAULT",
+     "rawRule": "DEFAULT",
+     "customRangeGrid": null
+    },
+    "index": 0,
+    "overrideTokenKey": null,
+    "isDefault": true
+   },
+   {
+    "skillId": "skchr_ceylon_2",
+    "iconId": "skchr_ceylon_2",
+    "name": "水灵庇护",
+    "level": 7,
+    "desc": "攻击力+50%，治疗目标数+1，持续时间内攻击范围内的友方单位获得抵抗",
+    "descRaw": "攻击力<@ba.vup>+50%</>，治疗目标数+1，持续时间内攻击范围内的友方单位获得<$ba.buffres>抵抗</>",
+    "skillType": "MANUAL",
+    "durationType": "NONE",
+    "duration": 30,
+    "spType": "INCREASE_WITH_TIME",
+    "spCost": 80,
+    "initSp": 32,
+    "maxChargeTime": 1,
+    "increment": 1,
+    "bb": {
+     "attack@max_target": 2,
+     "atk": 0.5,
+     "one_minus_status_resistance": -0.5
+    },
+    "bbStr": {},
+    "rangeId": null,
+    "rangeGrid": null,
+    "prefabId": "skchr_ceylon_2",
+    "trigger": {
+     "rule": "DEFAULT",
+     "rawRule": "DEFAULT",
+     "customRangeGrid": null
+    },
+    "index": 1,
+    "overrideTokenKey": null,
+    "isDefault": false
+   }
+  ],
+  "modules": [
+   {
+    "uniEquipId": "uniequip_002_ceylon",
+    "name": "野外考察套装",
+    "typeName": "WAH-X",
+    "typeIcon": "wah-x",
+    "icon": "uniequip_002_ceylon",
+    "level": 1,
+    "attr": {
+     "atk": 25,
+     "res": 5
+    },
+    "traitOverride": {
+     "desc": "拥有较大治疗范围，但在治疗较远目标时治疗量变为80%",
+     "descRaw": "拥有较大治疗范围，但在治疗较远目标时治疗量变为<@ba.kw>80%</>",
+     "bb": {
+      "heal_scale": 0.8,
+      "taunt_level": -1,
+      "one_minus_status_resistance": -0.5
+     },
+     "bbStr": {},
+     "rangeGrid": null,
+     "moduleDesc": "自身获得抵抗且更不容易受到敌人的攻击",
+     "moduleDescRaw": "自身获得<$ba.buffres>抵抗</>且更不容易受到敌人的攻击"
+    },
+    "talentChanges": [],
+    "isDefault": true
+   }
+  ]
+ },
+ "chess_ws_col_kafka_a": {
+  "tier": 2,
+  "isHidden": false,
+  "isDiy": false,
+  "visible": true,
+  "chessType": "NORMAL",
+  "directToHand": false,
+  "name": "卡夫卡",
+  "appellation": "Kafka",
+  "charId": "char_214_kafka",
+  "profession": "SPECIAL",
+  "subProfessionId": "executor",
+  "subProfessionName": "处决者",
+  "position": "MELEE",
+  "nationId": "columbia",
+  "bonds": [
+   "columbiaShip",
+   "raidShip"
+  ],
+  "garrisonIds": [
+   "garrison_col_kafka_a",
+   "garrison_col_kafka_prep_a"
+  ],
+  "price": 3,
+  "sellPrice": 1,
+  "immunities": {
+   "stun": false,
+   "silence": false,
+   "sleep": false,
+   "frozen": false,
+   "levitate": false
+  },
+  "rangeId": "1-1",
+  "rangeGrid": [
+   [
+    0,
+    0
+   ],
+   [
+    0,
+    1
+   ]
+  ],
+  "dmgType": "phys",
+  "attackKind": "melee",
+  "projectile": "none",
+  "canHitFly": false,
+  "targetPriority": null,
+  "trait": {
+   "desc": "再部署时间大幅度减少",
+   "descRaw": "再部署时间大幅度<@ba.kw>减少</>",
+   "bb": {},
+   "bbStr": {},
+   "rangeGrid": null
+  },
+  "tokens": [],
+  "assets": {
+   "avatar": "char_214_kafka",
+   "portrait": "char_214_kafka_2",
+   "spine": "char_214_kafka",
+   "skillIcon": "skchr_kafka_1",
+   "subProfIcon": "sub_executor_icon"
+  },
+  "workshop": {
+   "schema": 1,
+   "id": "col_kafka"
+  },
+  "chessId": "chess_ws_col_kafka_a",
+  "baseId": "chess_ws_col_kafka_a",
+  "goldenId": "chess_ws_col_kafka_b",
+  "isGolden": false,
+  "rarity": 5,
+  "upgradeNum": 3,
+  "upgradeChessId": "chess_ws_col_kafka_b",
+  "status": {
+   "phase": 2,
+   "level": 1,
+   "skillLevel": 4,
+   "equipLevel": 0
+  },
+  "stats": {
+   "maxHp": 1456,
+   "atk": 409,
+   "def": 261,
+   "res": 0,
+   "cost": 7,
+   "blockCnt": 1,
+   "bat": 0.93,
+   "aspd": 100,
+   "respawnTime": 16,
+   "spRecovery": 1,
+   "hpRecoveryPerSec": 0,
+   "moveSpeed": 1,
+   "tauntLevel": 0,
+   "massLevel": 0,
+   "deployLimit": 1,
+   "deckStack": 0
+  },
+  "skill": {
+   "skillId": "skchr_kafka_1",
+   "iconId": "skchr_kafka_1",
+   "name": "怪异魔方",
+   "level": 4,
+   "desc": "部署后5秒内停止攻击，立即使周围地面敌人全部陷入沉睡，并在技能结束时对周围所有地面敌人造成相当于攻击力300%的法术伤害",
+   "descRaw": "部署后<@ba.vup>5</>秒内停止攻击，立即使周围地面敌人全部陷入<$ba.sleep>沉睡</>，并在技能结束时对周围所有地面敌人造成相当于攻击力<@ba.vup>300%</>的法术伤害",
+   "skillType": "PASSIVE",
+   "durationType": "NONE",
+   "duration": -1,
+   "spType": "ON_DEPLOY",
+   "spCost": 0,
+   "initSp": 0,
+   "maxChargeTime": 0,
+   "increment": 0,
+   "bb": {
+    "atk_scale": 3,
+    "duration": 5
+   },
+   "bbStr": {},
+   "rangeId": "x-5",
+   "rangeGrid": [
+    [
+     1,
+     0
+    ],
+    [
+     0,
+     -1
+    ],
+    [
+     0,
+     0
+    ],
+    [
+     0,
+     1
+    ],
+    [
+     -1,
+     0
+    ]
+   ],
+   "prefabId": "skchr_kafka_1",
+   "trigger": {
+    "rule": "DEFAULT",
+    "rawRule": "DEFAULT",
+    "customRangeGrid": null
+   },
+   "index": 0,
+   "overrideTokenKey": null
+  },
+  "skills": [
+   {
+    "skillId": "skchr_kafka_1",
+    "iconId": "skchr_kafka_1",
+    "name": "怪异魔方",
+    "level": 4,
+    "desc": "部署后5秒内停止攻击，立即使周围地面敌人全部陷入沉睡，并在技能结束时对周围所有地面敌人造成相当于攻击力300%的法术伤害",
+    "descRaw": "部署后<@ba.vup>5</>秒内停止攻击，立即使周围地面敌人全部陷入<$ba.sleep>沉睡</>，并在技能结束时对周围所有地面敌人造成相当于攻击力<@ba.vup>300%</>的法术伤害",
+    "skillType": "PASSIVE",
+    "durationType": "NONE",
+    "duration": -1,
+    "spType": "ON_DEPLOY",
+    "spCost": 0,
+    "initSp": 0,
+    "maxChargeTime": 0,
+    "increment": 0,
+    "bb": {
+     "atk_scale": 3,
+     "duration": 5
+    },
+    "bbStr": {},
+    "rangeId": "x-5",
+    "rangeGrid": [
+     [
+      1,
+      0
+     ],
+     [
+      0,
+      -1
+     ],
+     [
+      0,
+      0
+     ],
+     [
+      0,
+      1
+     ],
+     [
+      -1,
+      0
+     ]
+    ],
+    "prefabId": "skchr_kafka_1",
+    "trigger": {
+     "rule": "DEFAULT",
+     "rawRule": "DEFAULT",
+     "customRangeGrid": null
+    },
+    "index": 0,
+    "overrideTokenKey": null,
+    "isDefault": true
+   },
+   {
+    "skillId": "skchr_kafka_2",
+    "iconId": "skchr_kafka_2",
+    "name": "诡异剪刀",
+    "level": 4,
+    "desc": "部署后立即对前方目标格内所有敌人造成相当于攻击力250%的法术伤害，并在之后11秒内对目标格持续进行地面单体法术攻击",
+    "descRaw": "部署后立即对前方<@ba.rem>目标格</>内所有敌人造成相当于攻击力<@ba.vup>250%</>的法术伤害，并在之后<@ba.vup>11</>秒内对<@ba.rem>目标格</>持续进行地面单体<@ba.vup>法术</>攻击",
+    "skillType": "PASSIVE",
+    "durationType": "NONE",
+    "duration": -1,
+    "spType": "ON_DEPLOY",
+    "spCost": 0,
+    "initSp": 0,
+    "maxChargeTime": 0,
+    "increment": 0,
+    "bb": {
+     "atk_scale": 2.5,
+     "duration": 11
+    },
+    "bbStr": {},
+    "rangeId": "3-16",
+    "rangeGrid": [
+     [
+      0,
+      3
+     ]
+    ],
+    "prefabId": "skchr_kafka_2",
+    "trigger": {
+     "rule": "DEFAULT",
+     "rawRule": "DEFAULT",
+     "customRangeGrid": null
+    },
+    "index": 1,
+    "overrideTokenKey": null,
+    "isDefault": false
+   }
+  ],
+  "talents": [
+   {
+    "index": 0,
+    "name": "注意力误导",
+    "desc": "被动技能触发期间攻击力+18%（+3%），阻挡数降至0且获得迷彩",
+    "descRaw": "被动技能触发期间攻击力+18%<@ba.talpu>（+3%）</>，阻挡数降至0且获得<$ba.camou>迷彩</>",
+    "bb": {
+     "atk": 0.18
+    },
+    "bbStr": {},
+    "rangeGrid": null,
+    "tokenKey": null,
+    "hidden": false,
+    "fromModule": false
+   }
+  ],
+  "module": {
+   "id": "uniequip_002_kafka",
+   "name": "魔方挂坠",
+   "type": "EXE-Y",
+   "level": 0,
+   "active": false
+  }
+ },
+ "chess_ws_col_kafka_b": {
+  "tier": 2,
+  "isHidden": false,
+  "isDiy": false,
+  "visible": true,
+  "chessType": "NORMAL",
+  "directToHand": false,
+  "name": "卡夫卡",
+  "appellation": "Kafka",
+  "charId": "char_214_kafka",
+  "profession": "SPECIAL",
+  "subProfessionId": "executor",
+  "subProfessionName": "处决者",
+  "position": "MELEE",
+  "nationId": "columbia",
+  "bonds": [
+   "columbiaShip",
+   "raidShip"
+  ],
+  "garrisonIds": [
+   "garrison_col_kafka_b",
+   "garrison_col_kafka_prep_b"
+  ],
+  "price": 3,
+  "sellPrice": 1,
+  "immunities": {
+   "stun": false,
+   "silence": false,
+   "sleep": false,
+   "frozen": false,
+   "levitate": false
+  },
+  "rangeId": "1-1",
+  "rangeGrid": [
+   [
+    0,
+    0
+   ],
+   [
+    0,
+    1
+   ]
+  ],
+  "dmgType": "phys",
+  "attackKind": "melee",
+  "projectile": "none",
+  "canHitFly": false,
+  "targetPriority": null,
+  "trait": {
+   "desc": "再部署时间大幅度减少",
+   "descRaw": "再部署时间大幅度<@ba.kw>减少</>",
+   "bb": {
+    "atk": 0.1
+   },
+   "bbStr": {},
+   "rangeGrid": null,
+   "moduleDesc": "周围四格没有友方干员时攻击力+10%",
+   "moduleDescRaw": "周围四格没有友方干员时攻击力<@ba.kw>+10%</>"
+  },
+  "tokens": [],
+  "assets": {
+   "avatar": "char_214_kafka",
+   "portrait": "char_214_kafka_2",
+   "spine": "char_214_kafka",
+   "skillIcon": "skchr_kafka_1",
+   "subProfIcon": "sub_executor_icon"
+  },
+  "workshop": {
+   "schema": 1,
+   "id": "col_kafka"
+  },
+  "chessId": "chess_ws_col_kafka_b",
+  "baseId": "chess_ws_col_kafka_a",
+  "goldenId": "chess_ws_col_kafka_b",
+  "isGolden": true,
+  "rarity": 5,
+  "upgradeNum": 0,
+  "upgradeChessId": null,
+  "status": {
+   "phase": 2,
+   "level": 60,
+   "skillLevel": 7,
+   "equipLevel": 1
+  },
+  "statsBase": {
+   "maxHp": 1732,
+   "atk": 496,
+   "def": 298,
+   "res": 0,
+   "cost": 7,
+   "blockCnt": 1,
+   "bat": 0.93,
+   "aspd": 100,
+   "respawnTime": 16,
+   "spRecovery": 1,
+   "hpRecoveryPerSec": 0,
+   "moveSpeed": 1,
+   "tauntLevel": 0,
+   "massLevel": 0,
+   "deployLimit": 1,
+   "deckStack": 0
+  },
+  "traitBase": {
+   "desc": "再部署时间大幅度减少",
+   "descRaw": "再部署时间大幅度<@ba.kw>减少</>",
+   "bb": {},
+   "bbStr": {},
+   "rangeGrid": null
+  },
+  "talentsBase": [
+   {
+    "index": 0,
+    "name": "注意力误导",
+    "desc": "被动技能触发期间攻击力+18%（+3%），阻挡数降至0且获得迷彩",
+    "descRaw": "被动技能触发期间攻击力+18%<@ba.talpu>（+3%）</>，阻挡数降至0且获得<$ba.camou>迷彩</>",
+    "bb": {
+     "atk": 0.18
+    },
+    "bbStr": {},
+    "rangeGrid": null,
+    "tokenKey": null,
+    "hidden": false,
+    "fromModule": false
+   }
+  ],
+  "stats": {
+   "maxHp": 1812,
+   "atk": 541,
+   "def": 298,
+   "res": 0,
+   "cost": 7,
+   "blockCnt": 1,
+   "bat": 0.93,
+   "aspd": 100,
+   "respawnTime": 16,
+   "spRecovery": 1,
+   "hpRecoveryPerSec": 0,
+   "moveSpeed": 1,
+   "tauntLevel": 0,
+   "massLevel": 0,
+   "deployLimit": 1,
+   "deckStack": 0
+  },
+  "talents": [
+   {
+    "index": 0,
+    "name": "注意力误导",
+    "desc": "被动技能触发期间攻击力+18%（+3%），阻挡数降至0且获得迷彩",
+    "descRaw": "被动技能触发期间攻击力+18%<@ba.talpu>（+3%）</>，阻挡数降至0且获得<$ba.camou>迷彩</>",
+    "bb": {
+     "atk": 0.18
+    },
+    "bbStr": {},
+    "rangeGrid": null,
+    "tokenKey": null,
+    "hidden": false,
+    "fromModule": false
+   }
+  ],
+  "module": {
+   "id": "uniequip_002_kafka",
+   "name": "魔方挂坠",
+   "type": "EXE-Y",
+   "level": 1,
+   "active": true
+  },
+  "skill": {
+   "skillId": "skchr_kafka_1",
+   "iconId": "skchr_kafka_1",
+   "name": "怪异魔方",
+   "level": 7,
+   "desc": "部署后5秒内停止攻击，立即使周围地面敌人全部陷入沉睡，并在技能结束时对周围所有地面敌人造成相当于攻击力350%的法术伤害",
+   "descRaw": "部署后<@ba.vup>5</>秒内停止攻击，立即使周围地面敌人全部陷入<$ba.sleep>沉睡</>，并在技能结束时对周围所有地面敌人造成相当于攻击力<@ba.vup>350%</>的法术伤害",
+   "skillType": "PASSIVE",
+   "durationType": "NONE",
+   "duration": -1,
+   "spType": "ON_DEPLOY",
+   "spCost": 0,
+   "initSp": 0,
+   "maxChargeTime": 0,
+   "increment": 0,
+   "bb": {
+    "atk_scale": 3.5,
+    "duration": 5
+   },
+   "bbStr": {},
+   "rangeId": "x-5",
+   "rangeGrid": [
+    [
+     1,
+     0
+    ],
+    [
+     0,
+     -1
+    ],
+    [
+     0,
+     0
+    ],
+    [
+     0,
+     1
+    ],
+    [
+     -1,
+     0
+    ]
+   ],
+   "prefabId": "skchr_kafka_1",
+   "trigger": {
+    "rule": "DEFAULT",
+    "rawRule": "DEFAULT",
+    "customRangeGrid": null
+   },
+   "index": 0,
+   "overrideTokenKey": null
+  },
+  "skills": [
+   {
+    "skillId": "skchr_kafka_1",
+    "iconId": "skchr_kafka_1",
+    "name": "怪异魔方",
+    "level": 7,
+    "desc": "部署后5秒内停止攻击，立即使周围地面敌人全部陷入沉睡，并在技能结束时对周围所有地面敌人造成相当于攻击力350%的法术伤害",
+    "descRaw": "部署后<@ba.vup>5</>秒内停止攻击，立即使周围地面敌人全部陷入<$ba.sleep>沉睡</>，并在技能结束时对周围所有地面敌人造成相当于攻击力<@ba.vup>350%</>的法术伤害",
+    "skillType": "PASSIVE",
+    "durationType": "NONE",
+    "duration": -1,
+    "spType": "ON_DEPLOY",
+    "spCost": 0,
+    "initSp": 0,
+    "maxChargeTime": 0,
+    "increment": 0,
+    "bb": {
+     "atk_scale": 3.5,
+     "duration": 5
+    },
+    "bbStr": {},
+    "rangeId": "x-5",
+    "rangeGrid": [
+     [
+      1,
+      0
+     ],
+     [
+      0,
+      -1
+     ],
+     [
+      0,
+      0
+     ],
+     [
+      0,
+      1
+     ],
+     [
+      -1,
+      0
+     ]
+    ],
+    "prefabId": "skchr_kafka_1",
+    "trigger": {
+     "rule": "DEFAULT",
+     "rawRule": "DEFAULT",
+     "customRangeGrid": null
+    },
+    "index": 0,
+    "overrideTokenKey": null,
+    "isDefault": true
+   },
+   {
+    "skillId": "skchr_kafka_2",
+    "iconId": "skchr_kafka_2",
+    "name": "诡异剪刀",
+    "level": 7,
+    "desc": "部署后立即对前方目标格内所有敌人造成相当于攻击力300%的法术伤害，并在之后12秒内对目标格持续进行地面单体法术攻击",
+    "descRaw": "部署后立即对前方<@ba.rem>目标格</>内所有敌人造成相当于攻击力<@ba.vup>300%</>的法术伤害，并在之后<@ba.vup>12</>秒内对<@ba.rem>目标格</>持续进行地面单体<@ba.vup>法术</>攻击",
+    "skillType": "PASSIVE",
+    "durationType": "NONE",
+    "duration": -1,
+    "spType": "ON_DEPLOY",
+    "spCost": 0,
+    "initSp": 0,
+    "maxChargeTime": 0,
+    "increment": 0,
+    "bb": {
+     "atk_scale": 3,
+     "duration": 12
+    },
+    "bbStr": {},
+    "rangeId": "3-16",
+    "rangeGrid": [
+     [
+      0,
+      3
+     ]
+    ],
+    "prefabId": "skchr_kafka_2",
+    "trigger": {
+     "rule": "DEFAULT",
+     "rawRule": "DEFAULT",
+     "customRangeGrid": null
+    },
+    "index": 1,
+    "overrideTokenKey": null,
+    "isDefault": false
+   }
+  ],
+  "modules": [
+   {
+    "uniEquipId": "uniequip_002_kafka",
+    "name": "魔方挂坠",
+    "typeName": "EXE-Y",
+    "typeIcon": "exe-y",
+    "icon": "uniequip_002_kafka",
+    "level": 1,
+    "attr": {
+     "maxHp": 80,
+     "atk": 45
+    },
+    "traitOverride": {
+     "desc": "再部署时间大幅度减少",
+     "descRaw": "再部署时间大幅度<@ba.kw>减少</>",
+     "bb": {
+      "atk": 0.1
+     },
+     "bbStr": {},
+     "rangeGrid": null,
+     "moduleDesc": "周围四格没有友方干员时攻击力+10%",
+     "moduleDescRaw": "周围四格没有友方干员时攻击力<@ba.kw>+10%</>"
+    },
+    "talentChanges": [],
+    "isDefault": true
+   }
+  ]
+ },
+ "chess_ws_col_cutter_a": {
+  "tier": 1,
+  "isHidden": false,
+  "isDiy": false,
+  "visible": true,
+  "chessType": "NORMAL",
+  "directToHand": false,
+  "name": "刻刀",
+  "appellation": "Cutter",
+  "charId": "char_301_cutter",
+  "profession": "WARRIOR",
+  "subProfessionId": "sword",
+  "subProfessionName": "剑豪",
+  "position": "MELEE",
+  "nationId": "columbia",
+  "bonds": [
+   "columbiaShip",
+   "swiftShip"
+  ],
+  "garrisonIds": [
+   "garrison_col_cutter_a"
+  ],
+  "price": 2,
+  "sellPrice": 1,
+  "immunities": {
+   "stun": false,
+   "silence": false,
+   "sleep": false,
+   "frozen": false,
+   "levitate": false
+  },
+  "rangeId": "1-1",
+  "rangeGrid": [
+   [
+    0,
+    0
+   ],
+   [
+    0,
+    1
+   ]
+  ],
+  "dmgType": "phys",
+  "attackKind": "melee",
+  "projectile": "none",
+  "canHitFly": false,
+  "targetPriority": null,
+  "trait": {
+   "desc": "普通攻击连续造成两次伤害",
+   "descRaw": "普通攻击连续造成<@ba.kw>两次</>伤害",
+   "bb": {},
+   "bbStr": {},
+   "rangeGrid": null
+  },
+  "tokens": [],
+  "assets": {
+   "avatar": "char_301_cutter",
+   "portrait": "char_301_cutter_2",
+   "spine": "char_301_cutter",
+   "skillIcon": "skchr_cutter_1",
+   "subProfIcon": "sub_sword_icon"
+  },
+  "workshop": {
+   "schema": 1,
+   "id": "col_cutter"
+  },
+  "chessId": "chess_ws_col_cutter_a",
+  "baseId": "chess_ws_col_cutter_a",
+  "goldenId": "chess_ws_col_cutter_b",
+  "isGolden": false,
+  "rarity": 4,
+  "upgradeNum": 3,
+  "upgradeChessId": "chess_ws_col_cutter_b",
+  "status": {
+   "phase": 2,
+   "level": 1,
+   "skillLevel": 4,
+   "equipLevel": 0
+  },
+  "stats": {
+   "maxHp": 1763,
+   "atk": 460,
+   "def": 266,
+   "res": 0,
+   "cost": 19,
+   "blockCnt": 2,
+   "bat": 1.3,
+   "aspd": 100,
+   "respawnTime": 66,
+   "spRecovery": 1,
+   "hpRecoveryPerSec": 0,
+   "moveSpeed": 1,
+   "tauntLevel": 0,
+   "massLevel": 0,
+   "deployLimit": 1,
+   "deckStack": 0
+  },
+  "skill": {
+   "skillId": "skchr_cutter_1",
+   "iconId": "skchr_cutter_1",
+   "name": "红移",
+   "level": 4,
+   "desc": "立即投掷4把飞刀随机攻击前方的敌人，每把造成相当于攻击力240%的物理伤害",
+   "descRaw": "立即投掷<@ba.vup>4</>把飞刀随机攻击前方的敌人，每把造成相当于攻击力<@ba.vup>240%</>的物理伤害",
+   "skillType": "MANUAL",
+   "durationType": "NONE",
+   "duration": 0,
+   "spType": "INCREASE_WHEN_ATTACK",
+   "spCost": 15,
+   "initSp": 5,
+   "maxChargeTime": 1,
+   "increment": 1,
+   "bb": {
+    "atk_scale": 2.4,
+    "times": 4
+   },
+   "bbStr": {},
+   "rangeId": "3-12",
+   "rangeGrid": [
+    [
+     1,
+     0
+    ],
+    [
+     1,
+     1
+    ],
+    [
+     0,
+     0
+    ],
+    [
+     0,
+     1
+    ],
+    [
+     0,
+     2
+    ],
+    [
+     0,
+     3
+    ],
+    [
+     -1,
+     0
+    ],
+    [
+     -1,
+     1
+    ]
+   ],
+   "prefabId": "skchr_cutter_1",
+   "trigger": {
+    "rule": "SKILL_RANGE",
+    "rawRule": "DEFAULT",
+    "customRangeGrid": [
+     [
+      1,
+      0
+     ],
+     [
+      1,
+      1
+     ],
+     [
+      0,
+      0
+     ],
+     [
+      0,
+      1
+     ],
+     [
+      0,
+      2
+     ],
+     [
+      0,
+      3
+     ],
+     [
+      -1,
+      0
+     ],
+     [
+      -1,
+      1
+     ]
+    ]
+   },
+   "index": 0,
+   "overrideTokenKey": null
+  },
+  "skills": [
+   {
+    "skillId": "skchr_cutter_1",
+    "iconId": "skchr_cutter_1",
+    "name": "红移",
+    "level": 4,
+    "desc": "立即投掷4把飞刀随机攻击前方的敌人，每把造成相当于攻击力240%的物理伤害",
+    "descRaw": "立即投掷<@ba.vup>4</>把飞刀随机攻击前方的敌人，每把造成相当于攻击力<@ba.vup>240%</>的物理伤害",
+    "skillType": "MANUAL",
+    "durationType": "NONE",
+    "duration": 0,
+    "spType": "INCREASE_WHEN_ATTACK",
+    "spCost": 15,
+    "initSp": 5,
+    "maxChargeTime": 1,
+    "increment": 1,
+    "bb": {
+     "atk_scale": 2.4,
+     "times": 4
+    },
+    "bbStr": {},
+    "rangeId": "3-12",
+    "rangeGrid": [
+     [
+      1,
+      0
+     ],
+     [
+      1,
+      1
+     ],
+     [
+      0,
+      0
+     ],
+     [
+      0,
+      1
+     ],
+     [
+      0,
+      2
+     ],
+     [
+      0,
+      3
+     ],
+     [
+      -1,
+      0
+     ],
+     [
+      -1,
+      1
+     ]
+    ],
+    "prefabId": "skchr_cutter_1",
+    "trigger": {
+     "rule": "SKILL_RANGE",
+     "rawRule": "DEFAULT",
+     "customRangeGrid": [
+      [
+       1,
+       0
+      ],
+      [
+       1,
+       1
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       1
+      ],
+      [
+       0,
+       2
+      ],
+      [
+       0,
+       3
+      ],
+      [
+       -1,
+       0
+      ],
+      [
+       -1,
+       1
+      ]
+     ]
+    },
+    "index": 0,
+    "overrideTokenKey": null,
+    "isDefault": true
+   },
+   {
+    "skillId": "skchr_cutter_2",
+    "iconId": "skchr_cutter_2",
+    "name": "绯红刺刀",
+    "level": 4,
+    "desc": "对周围最多5个敌人造成相当于攻击力340%的物理伤害\n对飞行单位的攻击力系数加倍",
+    "descRaw": "对周围最多<@ba.vup>5</>个敌人造成相当于攻击力<@ba.vup>340%</>的物理伤害\n<@ba.rem>对飞行单位的攻击力系数加倍</>",
+    "skillType": "MANUAL",
+    "durationType": "NONE",
+    "duration": 0,
+    "spType": "INCREASE_WHEN_ATTACK",
+    "spCost": 16,
+    "initSp": 1,
+    "maxChargeTime": 1,
+    "increment": 1,
+    "bb": {
+     "max_target": 5,
+     "atk_scale": 3.4,
+     "cutter_s_2[drone].atk_scale": 2
+    },
+    "bbStr": {},
+    "rangeId": "x-1",
+    "rangeGrid": [
+     [
+      2,
+      0
+     ],
+     [
+      1,
+      -1
+     ],
+     [
+      1,
+      0
+     ],
+     [
+      1,
+      1
+     ],
+     [
+      0,
+      -2
+     ],
+     [
+      0,
+      -1
+     ],
+     [
+      0,
+      0
+     ],
+     [
+      0,
+      1
+     ],
+     [
+      0,
+      2
+     ],
+     [
+      -1,
+      -1
+     ],
+     [
+      -1,
+      0
+     ],
+     [
+      -1,
+      1
+     ],
+     [
+      -2,
+      0
+     ]
+    ],
+    "prefabId": "skchr_cutter_2",
+    "trigger": {
+     "rule": "SKILL_RANGE",
+     "rawRule": "DEFAULT",
+     "customRangeGrid": [
+      [
+       2,
+       0
+      ],
+      [
+       1,
+       -1
+      ],
+      [
+       1,
+       0
+      ],
+      [
+       1,
+       1
+      ],
+      [
+       0,
+       -2
+      ],
+      [
+       0,
+       -1
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       1
+      ],
+      [
+       0,
+       2
+      ],
+      [
+       -1,
+       -1
+      ],
+      [
+       -1,
+       0
+      ],
+      [
+       -1,
+       1
+      ],
+      [
+       -2,
+       0
+      ]
+     ]
+    },
+    "index": 1,
+    "overrideTokenKey": null,
+    "isDefault": false
+   }
+  ],
+  "talents": [
+   {
+    "index": 0,
+    "name": "光蚀刻痕",
+    "desc": "造成伤害时有23%（+3%）的几率额外回复1点技力",
+    "descRaw": "造成伤害时有23%<@ba.talpu>（+3%）</>的几率额外回复1点技力",
+    "bb": {
+     "sp": 1,
+     "prob": 0.23
+    },
+    "bbStr": {},
+    "rangeGrid": null,
+    "tokenKey": null,
+    "hidden": false,
+    "fromModule": false
+   }
+  ],
+  "module": {
+   "id": "uniequip_002_cutter",
+   "name": "可替换刀具套装",
+   "type": "SWO-Y",
+   "level": 0,
+   "active": false
+  }
+ },
+ "chess_ws_col_cutter_b": {
+  "tier": 1,
+  "isHidden": false,
+  "isDiy": false,
+  "visible": true,
+  "chessType": "NORMAL",
+  "directToHand": false,
+  "name": "刻刀",
+  "appellation": "Cutter",
+  "charId": "char_301_cutter",
+  "profession": "WARRIOR",
+  "subProfessionId": "sword",
+  "subProfessionName": "剑豪",
+  "position": "MELEE",
+  "nationId": "columbia",
+  "bonds": [
+   "columbiaShip",
+   "swiftShip"
+  ],
+  "garrisonIds": [
+   "garrison_col_cutter_b"
+  ],
+  "price": 2,
+  "sellPrice": 1,
+  "immunities": {
+   "stun": false,
+   "silence": false,
+   "sleep": false,
+   "frozen": false,
+   "levitate": false
+  },
+  "rangeId": "1-1",
+  "rangeGrid": [
+   [
+    0,
+    0
+   ],
+   [
+    0,
+    1
+   ]
+  ],
+  "dmgType": "phys",
+  "attackKind": "melee",
+  "projectile": "none",
+  "canHitFly": false,
+  "targetPriority": null,
+  "trait": {
+   "desc": "普通攻击连续造成两次伤害",
+   "descRaw": "普通攻击连续造成<@ba.kw>两次</>伤害",
+   "bb": {
+    "def_penetrate_fixed": 70
+   },
+   "bbStr": {},
+   "rangeGrid": null,
+   "moduleDesc": "攻击时无视敌人70点的防御力",
+   "moduleDescRaw": "攻击时无视敌人<@ba.vup>70</>点的防御力"
+  },
+  "tokens": [],
+  "assets": {
+   "avatar": "char_301_cutter",
+   "portrait": "char_301_cutter_2",
+   "spine": "char_301_cutter",
+   "skillIcon": "skchr_cutter_1",
+   "subProfIcon": "sub_sword_icon"
+  },
+  "workshop": {
+   "schema": 1,
+   "id": "col_cutter"
+  },
+  "chessId": "chess_ws_col_cutter_b",
+  "baseId": "chess_ws_col_cutter_a",
+  "goldenId": "chess_ws_col_cutter_b",
+  "isGolden": true,
+  "rarity": 4,
+  "upgradeNum": 0,
+  "upgradeChessId": null,
+  "status": {
+   "phase": 2,
+   "level": 60,
+   "skillLevel": 7,
+   "equipLevel": 1
+  },
+  "statsBase": {
+   "maxHp": 2239,
+   "atk": 573,
+   "def": 316,
+   "res": 0,
+   "cost": 19,
+   "blockCnt": 2,
+   "bat": 1.3,
+   "aspd": 100,
+   "respawnTime": 66,
+   "spRecovery": 1,
+   "hpRecoveryPerSec": 0,
+   "moveSpeed": 1,
+   "tauntLevel": 0,
+   "massLevel": 0,
+   "deployLimit": 1,
+   "deckStack": 0
+  },
+  "traitBase": {
+   "desc": "普通攻击连续造成两次伤害",
+   "descRaw": "普通攻击连续造成<@ba.kw>两次</>伤害",
+   "bb": {},
+   "bbStr": {},
+   "rangeGrid": null
+  },
+  "talentsBase": [
+   {
+    "index": 0,
+    "name": "光蚀刻痕",
+    "desc": "造成伤害时有23%（+3%）的几率额外回复1点技力",
+    "descRaw": "造成伤害时有23%<@ba.talpu>（+3%）</>的几率额外回复1点技力",
+    "bb": {
+     "sp": 1,
+     "prob": 0.23
+    },
+    "bbStr": {},
+    "rangeGrid": null,
+    "tokenKey": null,
+    "hidden": false,
+    "fromModule": false
+   }
+  ],
+  "stats": {
+   "maxHp": 2339,
+   "atk": 613,
+   "def": 316,
+   "res": 0,
+   "cost": 19,
+   "blockCnt": 2,
+   "bat": 1.3,
+   "aspd": 100,
+   "respawnTime": 66,
+   "spRecovery": 1,
+   "hpRecoveryPerSec": 0,
+   "moveSpeed": 1,
+   "tauntLevel": 0,
+   "massLevel": 0,
+   "deployLimit": 1,
+   "deckStack": 0
+  },
+  "talents": [
+   {
+    "index": 0,
+    "name": "光蚀刻痕",
+    "desc": "造成伤害时有23%（+3%）的几率额外回复1点技力",
+    "descRaw": "造成伤害时有23%<@ba.talpu>（+3%）</>的几率额外回复1点技力",
+    "bb": {
+     "sp": 1,
+     "prob": 0.23
+    },
+    "bbStr": {},
+    "rangeGrid": null,
+    "tokenKey": null,
+    "hidden": false,
+    "fromModule": false
+   }
+  ],
+  "module": {
+   "id": "uniequip_002_cutter",
+   "name": "可替换刀具套装",
+   "type": "SWO-Y",
+   "level": 1,
+   "active": true
+  },
+  "skill": {
+   "skillId": "skchr_cutter_1",
+   "iconId": "skchr_cutter_1",
+   "name": "红移",
+   "level": 7,
+   "desc": "立即投掷4把飞刀随机攻击前方的敌人，每把造成相当于攻击力280%的物理伤害",
+   "descRaw": "立即投掷<@ba.vup>4</>把飞刀随机攻击前方的敌人，每把造成相当于攻击力<@ba.vup>280%</>的物理伤害",
+   "skillType": "MANUAL",
+   "durationType": "NONE",
+   "duration": 0,
+   "spType": "INCREASE_WHEN_ATTACK",
+   "spCost": 14,
+   "initSp": 5,
+   "maxChargeTime": 1,
+   "increment": 1,
+   "bb": {
+    "atk_scale": 2.8,
+    "times": 4
+   },
+   "bbStr": {},
+   "rangeId": "3-12",
+   "rangeGrid": [
+    [
+     1,
+     0
+    ],
+    [
+     1,
+     1
+    ],
+    [
+     0,
+     0
+    ],
+    [
+     0,
+     1
+    ],
+    [
+     0,
+     2
+    ],
+    [
+     0,
+     3
+    ],
+    [
+     -1,
+     0
+    ],
+    [
+     -1,
+     1
+    ]
+   ],
+   "prefabId": "skchr_cutter_1",
+   "trigger": {
+    "rule": "SKILL_RANGE",
+    "rawRule": "DEFAULT",
+    "customRangeGrid": [
+     [
+      1,
+      0
+     ],
+     [
+      1,
+      1
+     ],
+     [
+      0,
+      0
+     ],
+     [
+      0,
+      1
+     ],
+     [
+      0,
+      2
+     ],
+     [
+      0,
+      3
+     ],
+     [
+      -1,
+      0
+     ],
+     [
+      -1,
+      1
+     ]
+    ]
+   },
+   "index": 0,
+   "overrideTokenKey": null
+  },
+  "skills": [
+   {
+    "skillId": "skchr_cutter_1",
+    "iconId": "skchr_cutter_1",
+    "name": "红移",
+    "level": 7,
+    "desc": "立即投掷4把飞刀随机攻击前方的敌人，每把造成相当于攻击力280%的物理伤害",
+    "descRaw": "立即投掷<@ba.vup>4</>把飞刀随机攻击前方的敌人，每把造成相当于攻击力<@ba.vup>280%</>的物理伤害",
+    "skillType": "MANUAL",
+    "durationType": "NONE",
+    "duration": 0,
+    "spType": "INCREASE_WHEN_ATTACK",
+    "spCost": 14,
+    "initSp": 5,
+    "maxChargeTime": 1,
+    "increment": 1,
+    "bb": {
+     "atk_scale": 2.8,
+     "times": 4
+    },
+    "bbStr": {},
+    "rangeId": "3-12",
+    "rangeGrid": [
+     [
+      1,
+      0
+     ],
+     [
+      1,
+      1
+     ],
+     [
+      0,
+      0
+     ],
+     [
+      0,
+      1
+     ],
+     [
+      0,
+      2
+     ],
+     [
+      0,
+      3
+     ],
+     [
+      -1,
+      0
+     ],
+     [
+      -1,
+      1
+     ]
+    ],
+    "prefabId": "skchr_cutter_1",
+    "trigger": {
+     "rule": "SKILL_RANGE",
+     "rawRule": "DEFAULT",
+     "customRangeGrid": [
+      [
+       1,
+       0
+      ],
+      [
+       1,
+       1
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       1
+      ],
+      [
+       0,
+       2
+      ],
+      [
+       0,
+       3
+      ],
+      [
+       -1,
+       0
+      ],
+      [
+       -1,
+       1
+      ]
+     ]
+    },
+    "index": 0,
+    "overrideTokenKey": null,
+    "isDefault": true
+   },
+   {
+    "skillId": "skchr_cutter_2",
+    "iconId": "skchr_cutter_2",
+    "name": "绯红刺刀",
+    "level": 7,
+    "desc": "对周围最多6个敌人造成相当于攻击力380%的物理伤害\n对飞行单位的攻击力系数加倍",
+    "descRaw": "对周围最多<@ba.vup>6</>个敌人造成相当于攻击力<@ba.vup>380%</>的物理伤害\n<@ba.rem>对飞行单位的攻击力系数加倍</>",
+    "skillType": "MANUAL",
+    "durationType": "NONE",
+    "duration": 0,
+    "spType": "INCREASE_WHEN_ATTACK",
+    "spCost": 15,
+    "initSp": 2,
+    "maxChargeTime": 1,
+    "increment": 1,
+    "bb": {
+     "max_target": 6,
+     "atk_scale": 3.8,
+     "cutter_s_2[drone].atk_scale": 2
+    },
+    "bbStr": {},
+    "rangeId": "x-1",
+    "rangeGrid": [
+     [
+      2,
+      0
+     ],
+     [
+      1,
+      -1
+     ],
+     [
+      1,
+      0
+     ],
+     [
+      1,
+      1
+     ],
+     [
+      0,
+      -2
+     ],
+     [
+      0,
+      -1
+     ],
+     [
+      0,
+      0
+     ],
+     [
+      0,
+      1
+     ],
+     [
+      0,
+      2
+     ],
+     [
+      -1,
+      -1
+     ],
+     [
+      -1,
+      0
+     ],
+     [
+      -1,
+      1
+     ],
+     [
+      -2,
+      0
+     ]
+    ],
+    "prefabId": "skchr_cutter_2",
+    "trigger": {
+     "rule": "SKILL_RANGE",
+     "rawRule": "DEFAULT",
+     "customRangeGrid": [
+      [
+       2,
+       0
+      ],
+      [
+       1,
+       -1
+      ],
+      [
+       1,
+       0
+      ],
+      [
+       1,
+       1
+      ],
+      [
+       0,
+       -2
+      ],
+      [
+       0,
+       -1
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       1
+      ],
+      [
+       0,
+       2
+      ],
+      [
+       -1,
+       -1
+      ],
+      [
+       -1,
+       0
+      ],
+      [
+       -1,
+       1
+      ],
+      [
+       -2,
+       0
+      ]
+     ]
+    },
+    "index": 1,
+    "overrideTokenKey": null,
+    "isDefault": false
+   }
+  ],
+  "modules": [
+   {
+    "uniEquipId": "uniequip_002_cutter",
+    "name": "可替换刀具套装",
+    "typeName": "SWO-Y",
+    "typeIcon": "swo-y",
+    "icon": "uniequip_002_cutter",
+    "level": 1,
+    "attr": {
+     "maxHp": 100,
+     "atk": 40
+    },
+    "traitOverride": {
+     "desc": "普通攻击连续造成两次伤害",
+     "descRaw": "普通攻击连续造成<@ba.kw>两次</>伤害",
+     "bb": {
+      "def_penetrate_fixed": 70
+     },
+     "bbStr": {},
+     "rangeGrid": null,
+     "moduleDesc": "攻击时无视敌人70点的防御力",
+     "moduleDescRaw": "攻击时无视敌人<@ba.vup>70</>点的防御力"
+    },
+    "talentChanges": [],
+    "isDefault": true
+   }
+  ]
+ }
+}

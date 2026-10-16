@@ -14,7 +14,7 @@ export function loadCdnConfig() {
     const bytes = await response.arrayBuffer();
     if (await digest(bytes) !== CDN_CONFIG_SHA256) throw new Error('资源 CDN 配置校验失败');
     const config = JSON.parse(new TextDecoder().decode(bytes));
-    if (config.version !== CDN_VERSION || config.base !== 'https://weishucdn.jiangjiangze.icu' || Object.keys(config.files || {}).length !== 13889)
+    if (config.version !== CDN_VERSION || (config.base !== 'https://downcdn.jiangjiangze.icu' && config.base !== 'https://weishucdn.jiangjiangze.icu') || Object.keys(config.files || {}).length !== 13889)
       throw new Error('资源 CDN 版本不匹配');
     return config;
   })().catch(error => { configPromise = null; throw error; });

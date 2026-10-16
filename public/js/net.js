@@ -368,6 +368,8 @@ export class Net {
     this._unansweredSince = null;
     this._clearTimer('_pingTimer', 'clearInterval');
     this._clearTimer('_helloTimer', 'clearTimeout');
+    // 清理时钟同步样本，防止旧网络条件的样本影响新连接
+    this._clearClockSamples();
     this._helloRid = null;
     this._helloSentName = null;
   }
@@ -530,7 +532,12 @@ export class Net {
       if (!entry.sent && !includeQueued) continue;
       this._pending.delete(rid);
       this._clearEntryTimer(entry);
-      try { entry.reject(new NetError(code)); } catch { /* ignore */ }
+      try { 
+        entry.reject(new NetError(code)); 
+      } catch (err) { 
+        // 记录 rejection 回调错误，确保清理逻辑始终执行
+        console.warn('[net] pending request rejection handler threw:', err);
+      }
     }
   }
 
@@ -588,7 +595,13 @@ export class Net {
     if (t === 'welcome') {
       // A local ownership election can revoke a token after its hello went onto the wire.
       // Do not publish or persist that stale welcome, even if the server had already accepted it.
-      if (this._helloToken !== this.getToken()) { this.reconnectNow(); return; }
+      // Lock the token during hello-welcome cycle to prevent TOCTOU (Time-Of-Check-Time-Of-Use) vulnerability
+      const currentToken = this.getToken();
+      if (this._helloToken !== currentToken) { 
+        console.warn('[net] Token changed during hello-welcome cycle:', { expected: this._helloToken, current: currentToken });
+        this.reconnectNow(); 
+        return; 
+      }
       this._onWelcome(msg);
     } else if (t === 'pong') {
       this._onPong(msg);
@@ -663,6 +676,10 @@ export class Net {
     this._emit('status', this.snapshot());
   }
 
+  /**
+   * Add a clock offset sample. Keeps at most 8 samples; older samples are dropped.
+   * Samples should be cleared on reconnect to avoid stale network conditions affecting sync.
+   */
   _addClockSample(offset, rtt) {
     if (!Number.isFinite(offset)) return;
     this._clockSamples.push({ offset, rtt });
@@ -676,6 +693,15 @@ export class Net {
     if (Math.abs(prev - this.clockOffset) >= 1 || wasSynced !== this.clockSynced || this._clockSamples.length === 1) {
       this._emit('clock', { offset: this.clockOffset, rtt: Number.isFinite(best.rtt) ? best.rtt : null, synced: this.clockSynced });
     }
+  }
+
+  /**
+   * Clear clock sync samples - called on disconnect to prevent stale samples
+   * from old network conditions affecting new connections.
+   */
+  _clearClockSamples() {
+    this._clockSamples.length = 0;
+    this.clockSynced = false;
   }
 
   /** Current server time estimate (ms epoch). */

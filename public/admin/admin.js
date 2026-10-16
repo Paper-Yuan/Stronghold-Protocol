@@ -89,9 +89,18 @@ async function renderAnnouncements() {
   const list = $('#announcements-list'); list.replaceChildren();
   const rows = data.announcements.filter(n => n.enabled && n.endAt > Date.now()).sort((a, b) => a.startAt - b.startAt);
   if (!rows.length) list.append(elem('p', '当前没有有效公告。', 'muted'));
+  const platformLabel = { all: '全平台', android: '仅安卓', web: '仅网页' };
+  const sceneLabel = { all: '全场景', lobby: '仅大厅', match: '仅对局' };
   for (const n of rows) {
     const card = elem('article', null, 'announcement-card');
-    card.append(elem('span', data.current?.id === n.id ? '正在展示' : n.startAt > Date.now() ? '等待开始' : '等待更高等级公告结束', 'pill'), elem('p', n.text), elem('small', `${date(n.startAt)} — ${date(n.endAt)} · ${n.level === 'urgent' ? '紧急' : n.level === 'warning' ? '提醒' : '普通'}`));
+    const plat = platformLabel[n.platform] || '全平台';
+    const scn = sceneLabel[n.scene] || '全场景';
+    card.append(
+      elem('span', data.current?.id === n.id ? '正在展示' : n.startAt > Date.now() ? '等待开始' : '等待更高等级公告结束', 'pill'),
+      elem('span', `[${plat} · ${scn}]`, 'pill subtle'),
+      elem('p', n.text),
+      elem('small', `${date(n.startAt)} — ${date(n.endAt)} · ${n.level === 'urgent' ? '紧急' : n.level === 'warning' ? '提醒' : '普通'}${n.targetUrl ? ` · 链接: ${n.targetUrl}` : ''}`)
+    );
     if (n.id.startsWith('admin_')) card.append(actionButton('提前结束', 'stopAnnouncement', n));
     list.append(card);
   }
@@ -274,8 +283,19 @@ if (uploadBtn && uploadInput) {
         },
         body: file,
       });
+      if (!response.ok) {
+        let errMsg = `上传失败 (HTTP ${response.status})`;
+        try {
+          const errData = await response.json();
+          if (errData?.error) errMsg = errData.error;
+        } catch {
+          const text = await response.text();
+          if (text.includes('413 Request Entity Too Large')) errMsg = '压缩包体积超出服务器限制 (413 Payload Too Large)';
+          else if (text) errMsg = text.slice(0, 100);
+        }
+        throw new Error(errMsg);
+      }
       const data = await response.json();
-      if (!response.ok) throw new Error(data.error || '上传模组失败');
       notice(`模组「${data.name || data.id}」上传并解压安装成功！若涉及逻辑改动可热重启服务生效。`);
       await renderMods();
     } catch (e) {
@@ -286,6 +306,103 @@ if (uploadBtn && uploadInput) {
     }
   });
 }
+
+const upstreamBtn = $('#mod-upstream-btn');
+const upstreamDialog = $('#upstream-dialog');
+const upstreamBody = $('#upstream-mods-body');
+
+async function renderUpstreamMods() {
+  if (!upstreamBody) return;
+  upstreamBody.replaceChildren();
+  const loadingRow = elem('tr');
+  const loadingTd = elem('td', '正在连接工坊服务器抓取最新模组清单…');
+  loadingTd.colSpan = 6;
+  loadingTd.style.textAlign = 'center';
+  loadingTd.style.padding = '24px';
+  loadingRow.append(loadingTd);
+  upstreamBody.append(loadingRow);
+
+  try {
+    const serverVal = $('#upstream-server-input')?.value?.trim() || '';
+    const endpoint = serverVal ? `mods/upstream?server=${encodeURIComponent(serverVal)}` : 'mods/upstream';
+    const res = await api(endpoint);
+    upstreamBody.replaceChildren();
+    if (!res.mods || !res.mods.length) {
+      const emptyRow = elem('tr');
+      const emptyTd = elem('td', '上游站点当前无可用模组。');
+      emptyTd.colSpan = 6;
+      emptyTd.style.textAlign = 'center';
+      emptyTd.style.padding = '24px';
+      emptyRow.append(emptyTd);
+      upstreamBody.append(emptyRow);
+      return;
+    }
+    for (const m of res.mods) {
+      const row = elem('tr');
+      const nameWrap = elem('div', null, 'player-name');
+      const avatar = elem('span', m.funcKind === 'gameplay' ? '⚔' : '❖', 'avatar');
+      const text = elem('div', null, 'name-text');
+      text.append(elem('strong', m.name), elem('span', (m.packId || m.id), 'subtext'));
+      nameWrap.append(avatar, text);
+
+      const catPill = elem('span', m.funcKindTitle || m.funcKind || '模组', 'pill');
+      const authorCell = elem('span', m.author || '未知作者');
+      const sizeCell = elem('span', (m.size / 1024 / 1024).toFixed(2) + ' MB', 'mono');
+      const noteCell = elem('span', (m.note || '暂无说明').slice(0, 50) + (m.note && m.note.length > 50 ? '…' : ''), 'muted');
+
+      const pullBtn = elem('button', m.installed ? '重新拉取' : '拉取并安装', m.installed ? 'subtle' : 'primary');
+      pullBtn.type = 'button';
+      if (!m.downloadUrl) pullBtn.disabled = true;
+      pullBtn.addEventListener('click', async () => {
+        pullBtn.disabled = true;
+        pullBtn.textContent = '正在拉取…';
+        notice(`正在从上游抓取模组包 ${m.name} 并解压安装...`);
+        try {
+          const pullRes = await api('mods/upstream/pull', { url: m.downloadUrl, packId: m.packId });
+          notice(`模组「${pullRes.name || pullRes.id}」已成功拉取并解压安装到本地工坊！若修改了代码层建议热重启。`);
+          await renderMods();
+          await renderUpstreamMods();
+        } catch (err) {
+          notice(`拉取失败: ${err.message}`, true);
+          pullBtn.disabled = false;
+          pullBtn.textContent = m.installed ? '重新拉取' : '拉取并安装';
+        }
+      });
+      const actions = cell(pullBtn);
+      actions.className = 'action-cell';
+
+      row.append(cell(nameWrap), cell(catPill), cell(authorCell), cell(sizeCell), cell(noteCell), actions);
+      upstreamBody.append(row);
+    }
+  } catch (err) {
+    upstreamBody.replaceChildren();
+    const errRow = elem('tr');
+    const errTd = elem('td', `抓取上游失败: ${err.message}`);
+    errTd.colSpan = 6;
+    errTd.style.color = 'var(--red)';
+    errTd.style.textAlign = 'center';
+    errTd.style.padding = '24px';
+    errRow.append(errTd);
+    upstreamBody.append(errRow);
+  }
+}
+
+if (upstreamBtn && upstreamDialog) {
+  upstreamBtn.addEventListener('click', () => {
+    upstreamDialog.showModal();
+    renderUpstreamMods();
+  });
+  $('#upstream-fetch-btn')?.addEventListener('click', () => {
+    renderUpstreamMods();
+  });
+  $('#upstream-server-input')?.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      renderUpstreamMods();
+    }
+  });
+}
+
 $('#refresh-button').addEventListener('click', refresh);
 $('#scope').addEventListener('change', () => { state.offset = 0; state.generation++; refresh(); });
 let searchTimer;

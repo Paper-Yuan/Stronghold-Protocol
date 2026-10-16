@@ -1,0 +1,384 @@
+{
+ "garrison_161_a": {
+  "garrisonId": "garrison_161_a",
+  "desc": "<进入休整期时>获得1名\"开拓心\"干员",
+  "descRaw": "<进入休整期时>获得1名\"开拓心\"干员",
+  "eventType": "SERVER_PREP_START",
+  "eventTypeDesc": "整备能力",
+  "eventTypeIcon": "icon_gold",
+  "effectType": "SERVER_GAIN_PIONEER_HOLDER",
+  "effectKey": "SERVER_GAIN_PIONEER_HOLDER",
+  "battleRuneKey": null,
+  "charLevel": 0,
+  "bb": {
+   "count": 1,
+   "check_count": 0
+  },
+  "bbStr": {
+   "conditionkey": "character_target_inboard"
+  },
+  "owners": [
+   "chess_char_6_21_a"
+  ]
+ },
+ "garrison_161_b": {
+  "garrisonId": "garrison_161_b",
+  "desc": "<进入休整期时>获得2名\"开拓心\"干员",
+  "descRaw": "<进入休整期时>获得2名\"开拓心\"干员",
+  "eventType": "SERVER_PREP_START",
+  "eventTypeDesc": "整备能力",
+  "eventTypeIcon": "icon_gold",
+  "effectType": "SERVER_GAIN_PIONEER_HOLDER",
+  "effectKey": "SERVER_GAIN_PIONEER_HOLDER",
+  "battleRuneKey": null,
+  "charLevel": 0,
+  "bb": {
+   "count": 2,
+   "check_count": 0
+  },
+  "bbStr": {
+   "conditionkey": "character_target_inboard"
+  },
+  "owners": [
+   "chess_char_6_21_b"
+  ]
+ },
+ "garrison_162_a": {
+  "garrisonId": "garrison_162_a",
+  "desc": "【雷姆必拓】每叠加1层，本干员受到的伤害降低0.1%",
+  "descRaw": "【雷姆必拓】每叠加1层，本干员受到的伤害降低0.1%",
+  "eventType": "IN_BATTLE",
+  "eventTypeDesc": "作战能力",
+  "eventTypeIcon": "icon_battle",
+  "effectType": "GAIN_BUFF",
+  "effectKey": "act_gar_eff_takenReduceByBond",
+  "battleRuneKey": "env_gbuff_new_with_verify",
+  "charLevel": 0,
+  "bb": {
+   "divide_num": 1,
+   "taken_reduce": 0.001
+  },
+  "bbStr": {
+   "key": "act_gar_eff_takenReduceByBond",
+   "bond_id": "rimBilliton"
+  },
+  "owners": [
+   "chess_char_6_22_a"
+  ]
+ },
+ "garrison_162_b": {
+  "garrisonId": "garrison_162_b",
+  "desc": "【雷姆必拓】每叠加5层，本干员受到的伤害降低0.2%",
+  "descRaw": "【雷姆必拓】每叠加5层，本干员受到的伤害降低0.2%",
+  "eventType": "IN_BATTLE",
+  "eventTypeDesc": "作战能力",
+  "eventTypeIcon": "icon_battle",
+  "effectType": "GAIN_BUFF",
+  "effectKey": "act_gar_eff_takenReduceByBond",
+  "battleRuneKey": "env_gbuff_new_with_verify",
+  "charLevel": 0,
+  "bb": {
+   "divide_num": 5,
+   "taken_reduce": 0.002
+  },
+  "bbStr": {
+   "key": "act_gar_eff_takenReduceByBond",
+   "bond_id": "rimBilliton"
+  },
+  "owners": [
+   "chess_char_6_22_b"
+  ]
+ },
+ "garrison_163_a": {
+  "garrisonId": "garrison_163_a",
+  "desc": "<战斗开始时>复制身前一格的其他干员的\"战斗中\"类效果",
+  "descRaw": "<战斗开始时>复制身前一格的其他干员的\"战斗中\"类效果",
+  "eventType": "IN_BATTLE",
+  "eventTypeDesc": "特异化",
+  "eventTypeIcon": "icon_support",
+  "effectType": "SERVER_COPY_FRONT_EFFECT_BATTLE",
+  "effectKey": "SERVER_COPY_FRONT_EFFECT_BATTLE",
+  "battleRuneKey": null,
+  "charLevel": 0,
+  "bb": {
+   "front_count": 1
+  },
+  "bbStr": {},
+  "owners": [
+   "chess_char_5_24_a"
+  ]
+ },
+ "garrison_163_b": {
+  "garrisonId": "garrison_163_b",
+  "desc": "<战斗开始时>复制身前两格内的其他干员的\"战斗中\"类效果",
+  "descRaw": "<战斗开始时>复制身前两格内的其他干员的\"战斗中\"类效果",
+  "eventType": "IN_BATTLE",
+  "eventTypeDesc": "特异化",
+  "eventTypeIcon": "icon_support",
+  "effectType": "SERVER_COPY_FRONT_EFFECT_BATTLE",
+  "effectKey": "SERVER_COPY_FRONT_EFFECT_BATTLE",
+  "battleRuneKey": null,
+  "charLevel": 0,
+  "bb": {
+   "front_count": 2
+  },
+  "bbStr": {},
+  "owners": [
+   "chess_char_5_24_b"
+  ]
+ },
+ "garrison_165_a": {
+  "garrisonId": "garrison_165_a",
+  "desc": "<战斗中>其他干员触发的\"战斗中\"类效果额外触发1次（每名干员最多1次）",
+  "descRaw": "<战斗中>其他干员触发的\"战斗中\"类效果额外触发1次（每名干员最多1次）",
+  "eventType": "IN_BATTLE",
+  "eventTypeDesc": "持续叠加",
+  "eventTypeIcon": "icon_bond",
+  "effectType": "SERVER_EXTRA_TRIGGER_BATTLE_EFFECT",
+  "effectKey": "SERVER_EXTRA_TRIGGER_BATTLE_EFFECT",
+  "battleRuneKey": null,
+  "charLevel": 0,
+  "bb": {
+   "extra_trigger": 1,
+   "max_count": 1
+  },
+  "bbStr": {},
+  "owners": [
+   "chess_char_4_27_a"
+  ]
+ },
+ "garrison_165_b": {
+  "garrisonId": "garrison_165_b",
+  "desc": "<战斗中>其他干员触发的\"战斗中\"类效果额外触发2次（每名干员最多1次）",
+  "descRaw": "<战斗中>其他干员触发的\"战斗中\"类效果额外触发2次（每名干员最多1次）",
+  "eventType": "IN_BATTLE",
+  "eventTypeDesc": "持续叠加",
+  "eventTypeIcon": "icon_bond",
+  "effectType": "SERVER_EXTRA_TRIGGER_BATTLE_EFFECT",
+  "effectKey": "SERVER_EXTRA_TRIGGER_BATTLE_EFFECT",
+  "battleRuneKey": null,
+  "charLevel": 0,
+  "bb": {
+   "extra_trigger": 2,
+   "max_count": 1
+  },
+  "bbStr": {},
+  "owners": [
+   "chess_char_4_27_b"
+  ]
+ },
+ "garrison_166_a": {
+  "garrisonId": "garrison_166_a",
+  "desc": "<获得时>自身所属盟约层数+3（无需激活盟约）",
+  "descRaw": "<获得时>自身所属盟约层数+3（无需激活盟约）",
+  "eventType": "SERVER_GAIN",
+  "eventTypeDesc": "单次叠加",
+  "eventTypeIcon": "icon_bond",
+  "effectType": "SERVER_ADD_BOND_CHESS_ALL",
+  "effectKey": "SERVER_ADD_BOND_CHESS_ALL",
+  "battleRuneKey": null,
+  "charLevel": 0,
+  "bb": {
+   "count": 3
+  },
+  "bbStr": {},
+  "owners": [
+   "chess_char_3_22_a"
+  ]
+ },
+ "garrison_166_b": {
+  "garrisonId": "garrison_166_b",
+  "desc": "<获得时>自身所属盟约层数+6（无需激活盟约）",
+  "descRaw": "<获得时>自身所属盟约层数+6（无需激活盟约）",
+  "eventType": "SERVER_GAIN",
+  "eventTypeDesc": "单次叠加",
+  "eventTypeIcon": "icon_bond",
+  "effectType": "SERVER_ADD_BOND_CHESS_ALL",
+  "effectKey": "SERVER_ADD_BOND_CHESS_ALL",
+  "battleRuneKey": null,
+  "charLevel": 0,
+  "bb": {
+   "count": 6
+  },
+  "bbStr": {},
+  "owners": [
+   "chess_char_3_22_b"
+  ]
+ },
+ "garrison_167_a": {
+  "garrisonId": "garrison_167_a",
+  "desc": "<战斗中>若没有陷入过再部署状态，使下个休整期额外获得1名阶级不超过调度中心的【雷姆必拓】干员",
+  "descRaw": "<战斗中>若没有陷入过再部署状态，使下个休整期额外获得1名阶级不超过调度中心的【雷姆必拓】干员",
+  "eventType": "IN_BATTLE",
+  "eventTypeDesc": "整备能力",
+  "eventTypeIcon": "icon_gold",
+  "effectType": "SERVER_ADD_CHAR_NO_REDEPLOY",
+  "effectKey": "SERVER_ADD_CHAR_NO_REDEPLOY",
+  "battleRuneKey": null,
+  "charLevel": 0,
+  "bb": {
+   "count": 1,
+   "tier_key": "deployment_center_level"
+  },
+  "bbStr": {},
+  "owners": [
+   "chess_char_2_20_a"
+  ]
+ },
+ "garrison_167_b": {
+  "garrisonId": "garrison_167_b",
+  "desc": "<战斗中>若没有陷入过再部署状态，使下个休整期额外获得2名阶级不超过调度中心的【雷姆必拓】干员",
+  "descRaw": "<战斗中>若没有陷入过再部署状态，使下个休整期额外获得2名阶级不超过调度中心的【雷姆必拓】干员",
+  "eventType": "IN_BATTLE",
+  "eventTypeDesc": "整备能力",
+  "eventTypeIcon": "icon_gold",
+  "effectType": "SERVER_ADD_CHAR_NO_REDEPLOY",
+  "effectKey": "SERVER_ADD_CHAR_NO_REDEPLOY",
+  "battleRuneKey": null,
+  "charLevel": 0,
+  "bb": {
+   "count": 2,
+   "tier_key": "deployment_center_level"
+  },
+  "bbStr": {},
+  "owners": [
+   "chess_char_2_20_b"
+  ]
+ },
+ "garrison_168_a": {
+  "garrisonId": "garrison_168_a",
+  "desc": "<进入休整期时>场上每有1名不同的【雷姆必拓】干员，使所有【雷姆必拓】干员已激活的层数+2（不会重复触发同一盟约，比如两名【雷姆必拓】，那么雷姆必拓只会+2一次，不会+2两次）",
+  "descRaw": "<进入休整期时>场上每有1名不同的【雷姆必拓】干员，使所有【雷姆必拓】干员已激活的层数+2（不会重复触发同一盟约，比如两名【雷姆必拓】，那么雷姆必拓只会+2一次，不会+2两次）",
+  "eventType": "SERVER_PREP_START",
+  "eventTypeDesc": "持续叠加",
+  "eventTypeIcon": "icon_bond",
+  "effectType": "SERVER_ADD_ACT_BOND_LAYER_BY_BOARD_BOND_CHAR",
+  "effectKey": "SERVER_ADD_ACT_BOND_LAYER_BY_BOARD_BOND_CHAR",
+  "battleRuneKey": null,
+  "charLevel": 0,
+  "bb": {
+   "count": 2
+  },
+  "bbStr": {
+   "bond_id": "rimBilliton",
+   "conditionkey": "character_target_inboard"
+  },
+  "owners": [
+   "chess_char_2_21_a"
+  ]
+ },
+ "garrison_168_b": {
+  "garrisonId": "garrison_168_b",
+  "desc": "<进入休整期时>场上每有1名不同的【雷姆必拓】干员，使所有【雷姆必拓】干员已激活的层数+4（不会重复触发同一盟约，比如两名【雷姆必拓】，那么雷姆必拓只会+4一次，不会+4两次）",
+  "descRaw": "<进入休整期时>场上每有1名不同的【雷姆必拓】干员，使所有【雷姆必拓】干员已激活的层数+4（不会重复触发同一盟约，比如两名【雷姆必拓】，那么雷姆必拓只会+4一次，不会+4两次）",
+  "eventType": "SERVER_PREP_START",
+  "eventTypeDesc": "持续叠加",
+  "eventTypeIcon": "icon_bond",
+  "effectType": "SERVER_ADD_ACT_BOND_LAYER_BY_BOARD_BOND_CHAR",
+  "effectKey": "SERVER_ADD_ACT_BOND_LAYER_BY_BOARD_BOND_CHAR",
+  "battleRuneKey": null,
+  "charLevel": 0,
+  "bb": {
+   "count": 4
+  },
+  "bbStr": {
+   "bond_id": "rimBilliton",
+   "conditionkey": "character_target_inboard"
+  },
+  "owners": [
+   "chess_char_2_21_b"
+  ]
+ },
+ "garrison_169_a": {
+  "garrisonId": "garrison_169_a",
+  "desc": "<战斗中>开启技能时使自身所属已激活盟约层数+1（最多2次）",
+  "descRaw": "<战斗中>开启技能时使自身所属已激活盟约层数+1（最多2次）",
+  "eventType": "IN_BATTLE",
+  "eventTypeDesc": "持续叠加",
+  "eventTypeIcon": "icon_bond",
+  "effectType": "ADD_BOND",
+  "effectKey": "act1autochess_gar_event_useskill",
+  "battleRuneKey": "env_gbuff_new_with_verify",
+  "charLevel": 0,
+  "bb": {
+   "bond_add_count": 1,
+   "max_add_count_per_battle": 2
+  },
+  "bbStr": {
+   "key": "act1autochess_gar_event_useskill",
+   "bond_type": "bond_self",
+   "bond_add_type": "by_count",
+   "garrison_key": "garrison_169_a"
+  },
+  "owners": [
+   "chess_char_1_21_a"
+  ]
+ },
+ "garrison_169_b": {
+  "garrisonId": "garrison_169_b",
+  "desc": "<战斗中>开启技能时使自身所属已激活盟约层数+2（最多2次）",
+  "descRaw": "<战斗中>开启技能时使自身所属已激活盟约层数+2（最多2次）",
+  "eventType": "IN_BATTLE",
+  "eventTypeDesc": "持续叠加",
+  "eventTypeIcon": "icon_bond",
+  "effectType": "ADD_BOND",
+  "effectKey": "act1autochess_gar_event_useskill",
+  "battleRuneKey": "env_gbuff_new_with_verify",
+  "charLevel": 0,
+  "bb": {
+   "bond_add_count": 2,
+   "max_add_count_per_battle": 4
+  },
+  "bbStr": {
+   "key": "act1autochess_gar_event_useskill",
+   "bond_type": "bond_self",
+   "bond_add_type": "by_count",
+   "garrison_key": "garrison_169_b"
+  },
+  "owners": [
+   "chess_char_1_21_b"
+  ]
+ },
+ "garrison_167_prep_a": {
+  "garrisonId": "garrison_167_prep_a",
+  "desc": "<进入休整期时>获得1名阶级不超过调度中心的【雷姆必拓】干员",
+  "descRaw": "<进入休整期时>获得1名阶级不超过调度中心的【雷姆必拓】干员",
+  "eventType": "SERVER_PREP_START",
+  "eventTypeDesc": "整备能力",
+  "eventTypeIcon": "icon_gold",
+  "effectType": "SERVER_GRANT_NO_REDEPLOY_CHAR",
+  "effectKey": "SERVER_GRANT_NO_REDEPLOY_CHAR",
+  "battleRuneKey": null,
+  "charLevel": 0,
+  "bb": {
+   "count": 1
+  },
+  "bbStr": {
+   "conditionkey": "character_target_inboard"
+  },
+  "owners": [
+   "chess_char_2_20_a"
+  ]
+ },
+ "garrison_167_prep_b": {
+  "garrisonId": "garrison_167_prep_b",
+  "desc": "<进入休整期时>获得2名阶级不超过调度中心的【雷姆必拓】干员",
+  "descRaw": "<进入休整期时>获得2名阶级不超过调度中心的【雷姆必拓】干员",
+  "eventType": "SERVER_PREP_START",
+  "eventTypeDesc": "整备能力",
+  "eventTypeIcon": "icon_gold",
+  "effectType": "SERVER_GRANT_NO_REDEPLOY_CHAR",
+  "effectKey": "SERVER_GRANT_NO_REDEPLOY_CHAR",
+  "battleRuneKey": null,
+  "charLevel": 0,
+  "bb": {
+   "count": 2
+  },
+  "bbStr": {
+   "conditionkey": "character_target_inboard"
+  },
+  "owners": [
+   "chess_char_2_20_b"
+  ]
+ }
+}

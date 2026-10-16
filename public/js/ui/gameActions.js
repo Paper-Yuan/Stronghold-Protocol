@@ -90,6 +90,7 @@ export const actions = {
   equip: (itemUid, targetUid, replaceUid) => act('g.equip', Number.isInteger(replaceUid) ? { itemUid, targetUid, replaceUid } : { itemUid, targetUid }),
   art: (itemUid, row, col, dir) => act('g.art', dir ? { itemUid, row, col, dir } : { itemUid, row, col }),
   destroy: (uid) => act('g.destroy', { uid }),
+  unequip: (itemUid) => act('g.unequip', { itemUid }),
   reroll: () => act('g.reroll', {}),
   reward: (idx) => act('g.reward', { idx }),
   choice: (idx, choiceId) => act('g.choice', choiceId === undefined ? { idx } : { idx, choiceId }),

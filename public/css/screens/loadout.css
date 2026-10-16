@@ -640,6 +640,16 @@
 .lo-voice > small { flex-basis: 100%; color: var(--text-dim); font-size: calc(.15 * var(--t)); }
 .lo-voice .lo-select { min-width: 1.6rem; max-width: 100%; }
 
+/* The coarse-pointer picker (ui/voicePicker.js): a whole-row button that opens a bottom sheet of --tap-min rows
+   (a native select inside a scrolling panel is unusable on a phone; devices.css guarantees the 44 px target). */
+.lo-voice__pick { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .12rem; width: 100%; min-height: var(--tap-min); padding: .1rem .12rem; border: 1px solid var(--line); border-radius: .1rem; background: none; color: inherit; font: inherit; font-size: calc(.18 * var(--t)); text-align: left; cursor: pointer; }
+.lo-voice__value { color: var(--text-dim); }
+.lo-sheet { position: fixed; left: 0; right: 0; bottom: 0; z-index: 60; display: flex; flex-direction: column; padding: .14rem .14rem calc(.14rem + env(safe-area-inset-bottom, 0px)); background: var(--panel, #171b1a); border-top: 1px solid var(--line); border-radius: .18rem .18rem 0 0; }
+.lo-sheet__list { display: flex; flex-direction: column; max-height: 60vh; overflow-y: auto; }
+.lo-sheet__opt { display: flex; flex-direction: column; justify-content: center; gap: .04rem; min-height: var(--tap-min); padding: .08rem .1rem; border: 0; background: none; color: inherit; font: inherit; font-size: calc(.18 * var(--t)); text-align: left; cursor: pointer; }
+.lo-sheet__opt[aria-selected="true"] { color: var(--mint-700); }
+.lo-sheet__sub { color: var(--text-dim); font-size: calc(.15 * var(--t)); }
+
 /* Server custom skin picker */
 
 
@@ -927,6 +937,8 @@
 .lo-deck { position: relative; flex: 1 1 auto; min-width: 0; display: flex; align-items: stretch; gap: .34rem; padding: .24rem .36rem .2rem;
   overflow-x: auto; overflow-y: hidden; overscroll-behavior-x: contain; -webkit-overflow-scrolling: touch;
   scrollbar-width: thin; scrollbar-color: var(--line-3) transparent; }
+.lo-deck.is-dragging { cursor: grabbing; user-select: none; }
+.lo-deck.is-dragging * { cursor: grabbing !important; }
 .lo-deck--empty { align-items: center; justify-content: center; }
 .lo-deck.has-drawer { padding-left: calc(var(--drawer-w) + .3rem); scroll-padding-left: calc(var(--drawer-w) + .2rem); }
 .lo-tgroup { flex: none; display: flex; align-items: stretch; gap: .18rem; }
@@ -948,7 +960,7 @@
 .lo-op__card { position: relative; width: var(--opw); min-height: 0; display: grid; grid-template-columns: var(--rail) minmax(0, 1fr);
   grid-template-rows: minmax(0, 1fr) auto auto; column-gap: max(.05rem, 3px); padding: max(.06rem, 3px) max(.06rem, 3px) max(.07rem, 4px);
   background: linear-gradient(180deg, rgba(44, 50, 48, .94), rgba(24, 28, 27, .96)); border: 1px solid rgba(255, 255, 255, .08);
-  box-shadow: 0 .05rem .16rem rgba(0, 0, 0, .45); transition: border-color var(--t-fast), box-shadow var(--t-fast); }
+  box-shadow: 0 .05rem .16rem rgba(0, 0, 0, .45); transition: border-color var(--t-fast), box-shadow var(--t-fast); cursor: pointer; }
 .lo-op:hover .lo-op__card { border-color: rgba(255, 255, 255, .22); }
 .lo-op.is-sel .lo-op__card { border-color: var(--mint-400); box-shadow: 0 0 0 1px var(--mint-400), 0 0 .18rem rgba(89, 244, 202, .3); }
 .lo-op__rail { grid-row: 1 / 3; grid-column: 1; display: flex; flex-direction: column; align-items: center; gap: max(.08rem, 4px); padding-top: 2px; }
@@ -992,12 +1004,6 @@
 @keyframes lo-q-in { from { opacity: 0; transform: translateX(-6px); } }
 .lo-op__quick .lo-q:not(.is-on):not(.lo-q--empty) { opacity: .55; }
 .lo-op__quick .lo-q.is-on { opacity: 1; }
-.lo-q--skin { position: relative; width: var(--q); height: var(--q); display: grid; place-items: center; padding: 0; background: #0c100e; border: 1px solid var(--line-2); border-radius: 2px; cursor: pointer; }
-.lo-q--skin:hover { border-color: var(--mint-600); }
-.lo-q--skin.is-on { border-color: var(--mint-400); box-shadow: 0 0 6px rgba(23, 249, 183, .45); }
-.lo-q--skin .lo-q__art { width: 100%; height: 100%; display: grid; place-items: center; overflow: hidden; }
-.lo-q--skin .lo-q__art img { width: 100%; height: 100%; object-fit: cover; object-position: center top; }
-.lo-q--skin .lo-q__none { font-size: max(.14rem, 10px); font-weight: 800; color: var(--text-dim); }
 .lo-op__quick--cult { width: var(--qcw); padding: max(.08rem, 5px); justify-content: center; }
 .lo-op__quick--cult .lo-cult { flex-direction: column; align-items: stretch; width: 100%; }
 .lo-op__quick--cult .lo-select { width: 100%; }

@@ -1,0 +1,29 @@
+{
+ "aceffect_band_wuyouyoumeng": {
+  "effectId": "aceffect_band_wuyouyoumeng",
+  "effectType": "BAND_INITIAL",
+  "name": "无忧梦呓",
+  "desc": "【无忧梦呓】每回合首次获得<颂乐人偶>干员时，获得1位阶级等于调度中心的随机干员",
+  "descRaw": "【无忧梦呓】每回合首次获得<颂乐人偶>干员时，获得1位阶级等于调度中心的随机干员",
+  "counterType": "NONE",
+  "continuedRound": -1,
+  "decoIconId": null,
+  "enemyPrice": 0,
+  "buffs": [
+   {
+    "key": "band_wuyouyoumeng_first_gain_bond_gain_random_char",
+    "countType": "NONE",
+    "bb": {
+     "count": 1
+    },
+    "bbStr": {
+     "bond": "aveMujica"
+    }
+   }
+  ],
+  "params": {
+   "count": 1,
+   "bond": "aveMujica"
+  }
+ }
+}

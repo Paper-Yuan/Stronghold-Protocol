@@ -239,6 +239,8 @@ export function loadOnePack(pack) {
     id: pack.id,
     name: typeof pack.name === 'string' && pack.name ? pack.name : pack.id,
     version: typeof pack.version === 'string' ? pack.version : '',
+    author: typeof pack.author === 'string' ? pack.author : (pack.manifest?.author || ''),
+    description: typeof pack.description === 'string' ? pack.description : (pack.manifest?.description || ''),
     hash: pack.hash,
     layer: pack.layer,
     combat: pack.combat === true,

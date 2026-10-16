@@ -173,6 +173,8 @@
 //                    fail, BOSS_CLOCK_MS)
 
 import { PHASE, modeIdFor } from '../../shared/constants.js';
+import { SOLO_INFINITE, isInfiniteMode } from '../../shared/infiniteMode.js';
+import { buildInfiniteNormalWave, buildInfiniteBossWave, isInfiniteBossRound } from './infiniteWaves.js';
 import { Battle } from '../sim/Battle.js';
 import { DataSource } from '../sim/simdata.js';
 import { createRng, deriveSeed } from '../sim/rng.js';
@@ -233,7 +235,8 @@ export class Match {
     }
     this.opts = opts;
     this.roomCode = opts.roomCode ?? '----';
-    this.mode = opts.mode === 'solo' ? 'solo' : 'coop';
+    this.mode = opts.mode === SOLO_INFINITE ? SOLO_INFINITE : (opts.mode === 'solo' ? 'solo' : 'coop');
+    this.isInfinite = isInfiniteMode(this.mode);
     this.difficulty = opts.difficulty;
     this.modeId = opts.modeId || modeIdFor(this.mode, opts.difficulty);
     this.seed = (Number(opts.seed) >>> 0) || 1;
@@ -244,7 +247,7 @@ export class Match {
     this.data = opts.data && typeof opts.data === 'object' ? opts.data : {};
     this.gd = new GameData(this.data, this.modeId);
     if (!this.difficulty) this.difficulty = this.gd.difficulty;
-    this.isSolo = this.mode === 'solo' || this.gd.isSolo;
+    this.isSolo = this.mode === 'solo' || this.isInfinite || this.gd.isSolo;
     this.gd.isSoloOverride = this.isSolo;
     /** 「AI 队友最后选择」 (opts.aiPicksLast, GitHub #338): humans draft before AI seats (MatchPhases.humansFirst) */
     this.aiPicksLast = !this.isSolo && opts.aiPicksLast === true;

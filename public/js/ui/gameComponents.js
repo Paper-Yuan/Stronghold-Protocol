@@ -9,6 +9,7 @@ import { t as tr } from '../../../shared/i18n.js';
 import {
   uiUrl, chessAvatarUrl, chessPortraitUrl, itemIconUrl, tokenAvatarUrl, enemyIconUrl, bondIconUrl, bandIconUrl,
 } from './assetUrls.js';
+import { standInOf } from './gameLogic.js';
 
 const cx = (...p) => p.flat().filter(Boolean).join(' ');
 
@@ -113,8 +114,25 @@ export function UnitThumb({ kind = 'chess', id, golden, size = 'md', tier, showT
   let t = tier;
   let si = null;
   if (kind === 'chess') {
-    const c = rec || data.lookup('chess', id);
-    si = rec && typeof rec.standInFor === 'string' && rec.standInFor ? rec : null;
+    let c = rec || data.lookup('chess', id);
+    si = (rec && typeof rec.standInFor === 'string' && rec.standInFor) ? rec : null;
+    if (!si && c) {
+      const backups = data.get('backups');
+      const priv = data.get('private');
+      const privStandIns = Array.isArray(priv?.standIns) ? priv.standIns : null;
+      const notOwned = (typeof window !== 'undefined' && window.loadoutStore) ? window.loadoutStore.get()?.notOwned : null;
+      const isStandIn = (privStandIns && (privStandIns.includes(c.baseId || c.chessId))) ||
+                        (notOwned && (notOwned.includes(c.baseId || c.chessId) || notOwned.includes(c.charId)));
+      if (isStandIn && backups) {
+        try {
+          const sRec = standInOf(c, backups);
+          if (sRec) {
+            si = sRec;
+            c = sRec;
+          }
+        } catch (_) {}
+      }
+    }
     src = chessAvatarUrl(m, c);
     name = c?.name || '';
     t = t ?? c?.tier;
@@ -151,6 +169,7 @@ export function UnitThumb({ kind = 'chess', id, golden, size = 'md', tier, showT
 export function PieceThumb({ piece, size = 'md', class: cls, badge }) {
   if (!piece) return null;
   return html`<${UnitThumb} kind=${piece.kind === 'item' ? 'item' : piece.kind === 'token' ? 'token' : 'chess'} id=${piece.id}
+    rec=${piece.rec || (piece.standInFor ? piece : null)}
     golden=${!!piece.golden} tier=${piece.tier} size=${size} class=${cls} badge=${badge} />`;
 }
 

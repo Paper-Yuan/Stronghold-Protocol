@@ -36,8 +36,18 @@ export function createStore(initial) {
   const listeners = new Set();
 
   const notify = (prev) => {
+    const errors = [];
     for (const fn of [...listeners]) {
-      try { fn(state, prev); } catch (err) { console.error('[store] listener failed', err); }
+      try { 
+        fn(state, prev); 
+      } catch (err) { 
+        console.error('[store] listener failed', err);
+        errors.push(err);
+      }
+    }
+    // 如果有监听器错误，可以通过自定义事件通知上层
+    if (errors.length > 0 && typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('store:listener-error', { detail: { errors } }));
     }
   };
 
@@ -87,7 +97,7 @@ export const initialState = Object.freeze({
   maintenance: { active: false, deadline: 0, seconds: 0, reason: '' },
   lobbyStats: { online: 1, roomsCount: 0, matchesCount: 0, rooms: [] },
   serverLoad: null,
-  presence: { online: null, matchmaking: null, serverNow: null },
+  presence: { online: null, activeHumans: null, maxPlayingHumans: 60, humanLimitReached: false, activeBots: null, maxBots: 10, matchmaking: null, serverNow: null },
   announcement: null,
   chatMessages: [],
   ui: { pendingJoin: null, restoring: false, buildStale: false },

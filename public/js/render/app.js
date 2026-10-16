@@ -152,7 +152,7 @@ import { pieceDirOf, pickUnitOf } from './app/pick.js';
 import { CAMERA_MS, BOARD3D_STABLE_MS, BOARD3D_RETRY_MS, PEN_CAMERA_MS, RANGE_GROUPS, LEADER_HIT_STYLE, DRAG_HOLD_TILES, CHAIN_KINDS, DROP_PENDING_MS, DEPLOY_REPLAY_MS } from './app/tune.js';
 import { boardPreference, switchableBox, bandFor, fieldRows, boardArea, viewKind, penShown, leaderShown } from './app/view.js';
 import { renderInfo, FORCED_EXIT, showsDeathFx } from './app/info.js';
-import { resolveAssets, makeData, withTimeout, QUALITY_RES, BOARD_RES, releaseGl } from './app/host.js';
+import { resolveAssets, makeData, withTimeout, QUALITY_RES, BOARD_RES, MOBILE_QUALITY_RES, MOBILE_BOARD_RES, releaseGl } from './app/host.js';
 import { skinsStore, skinFor } from '../ui/skins.js';
 import { t } from '../../../shared/i18n.js';
 
@@ -180,7 +180,7 @@ export async function createFieldView(host, options = {}) {
   const data = makeData(opts.data);
   const settings = { damageNumbers: true, officialDamageNumbers: false, ammoCount: false, quality: 'high', ...(opts.settings || {}) };
   // the 3D board (three.js + the official art) loads in parallel with everything else
-  const boardPref = boardPreference(opts.board);
+  const boardPref = boardPreference(opts.board || settings.board);
   const want3d = boardPref !== '2d' && webgl2Available(boardPref === '3d');
   // three.js (~2 MB) is fetched only when the local-art manifest lists the board atlas (in parallel with the art)
   const artListed = want3d ? boardArtListed(assets).catch(() => false) : Promise.resolve(false);
@@ -196,8 +196,15 @@ export async function createFieldView(host, options = {}) {
   signal?.throwIfAborted();
 
   const size = () => ({ width: Math.max(1, host.clientWidth || 1), height: Math.max(1, host.clientHeight || 1) });
-  const dpr = () => Math.min(globalThis.devicePixelRatio || 1, QUALITY_RES[settings.quality] || 2);
-  const boardDpr = () => Math.min(globalThis.devicePixelRatio || 1, BOARD_RES[settings.quality] || 2);
+  const isMobileClient = typeof navigator !== 'undefined' && (/Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) || (navigator.maxTouchPoints > 1 && !globalThis.matchMedia?.('(pointer: fine)').matches));
+  const dpr = () => {
+    const table = isMobileClient ? MOBILE_QUALITY_RES : QUALITY_RES;
+    return Math.min(globalThis.devicePixelRatio || 1, table[settings.quality] || (isMobileClient ? 1.25 : 2));
+  };
+  const boardDpr = () => {
+    const table = isMobileClient ? MOBILE_BOARD_RES : BOARD_RES;
+    return Math.min(globalThis.devicePixelRatio || 1, table[settings.quality] || (isMobileClient ? 1.25 : 2));
+  };
   const s0 = size();
   // Construction is synchronous until the complete view can own cancellation. If setup throws,
   // dispose only the resources acquired by this attempt, never another view's host contents.
@@ -211,10 +218,12 @@ export async function createFieldView(host, options = {}) {
   // own scissor rect, GitHub #542), and with those flushes the re-uploads stalled Apple GPUs — on an Apple M4 (Chrome,
   // ANGLE Metal) a 120-unit crowd at 1920 × 1080 ran at 42–58 fps instead of 60 (DPR 1 and 2, by the machine's load);
   // a buffer per flush costs ≈ 0.3 ms of render CPU there
-  if (P.BatchRenderer && 'canUploadSameBuffer' in P.BatchRenderer) P.BatchRenderer.canUploadSameBuffer = false;
+  const effectiveAntialias = typeof opts.antialias === 'boolean'
+    ? opts.antialias
+    : (typeof settings.antialias === 'boolean' ? settings.antialias : (!isMobileClient && settings.quality !== 'low'));
   const app = new P.Application({
-    width: s0.width, height: s0.height, antialias: opts.antialias ?? (settings.quality !== 'low'), backgroundColor: 0x0a0e0d, backgroundAlpha: 0,
-    resolution: dpr(), autoDensity: true, powerPreference: 'high-performance',
+    width: s0.width, height: s0.height, antialias: effectiveAntialias, backgroundColor: 0x0a0e0d, backgroundAlpha: 0,
+    resolution: dpr(), autoDensity: true, powerPreference: isMobileClient ? 'default' : 'high-performance',
   });
   const canvas = app.view;
   setupCleanup.push(() => {
@@ -319,6 +328,12 @@ export async function createFieldView(host, options = {}) {
     if (settings.highRefresh === false) return 60;
     if (thermalThrottled) return 60;
     if (mode === 'battle') return 60;
+    if (isMobileClient) {
+      const idleSec = (performance.now() - lastTouchTime) / 1000;
+      // 手机端限制：拖拽/触控动态期间上限 90 帧；闲置 > 2.5 秒稳态锁定 60 帧
+      if (dragState || idleSec < 2.5) return 90;
+      return 60;
+    }
     const idleSec = (performance.now() - lastTouchTime) / 1000;
     if (idleSec > 8 && !dragState) return 60;
     // 0 = unlimited in PixiJS: on a 144/165 Hz display the whole prep render (Spine, tiles, fx) ran at full
@@ -421,8 +436,18 @@ export async function createFieldView(host, options = {}) {
   function useOfficialScene(st, retryCount = 0) {
     const id = st && typeof st.id === 'string' ? st.id : '';
     if (!id || !board3d) return;
+    const pref = boardPreference(settings.board);
+    // 3d_std 明确指定仅使用程序化标准3D棋盘，不应用高模官方场景包
+    if (pref === '3d_std') {
+      board3d.setScenePack(id, null);
+      return;
+    }
     loadScenePack(assets, id).then((scene) => {
       if (scene && !destroyed && board3d && stageRec && stageRec.id === id) {
+        if (boardPreference(settings.board) === '3d_std') {
+          board3d.setScenePack(id, null);
+          return;
+        }
         console.log(`[board3d] applying official scene pack for ${id}`);
         board3d.setScenePack(id, scene);
       } else if (!scene && retryCount < 5 && !destroyed && stageRec && stageRec.id === id) {
@@ -452,7 +477,7 @@ export async function createFieldView(host, options = {}) {
       }
       board3dCanvas = c3;
       const b = new BoardScene(THREE, pack, {
-        canvas: c3, antialias: settings.quality !== 'low', shadows: settings.quality !== 'low',
+        canvas: c3, antialias: effectiveAntialias, shadows: isMobileClient ? (settings.quality === 'extreme' || settings.quality === 'high') : settings.quality !== 'low',
       });
       const sz = size();
       b.resize(sz.width, sz.height, boardDpr());
@@ -795,7 +820,7 @@ export async function createFieldView(host, options = {}) {
     const rec = si || dr || chess;
     const baseId = rec?.baseId || chess?.baseId || piece.baseId || null;
     const charId = rec?.charId || chess?.charId || null;
-    const resolvedSkin = piece.skin || skinFor(baseId) || (charId ? skinFor(charId) : null) || skinFor(piece.id) || null;
+    const resolvedSkin = si ? null : (piece.skin || skinFor(baseId) || (charId ? skinFor(charId) : null) || skinFor(piece.id) || null);
     return {
       kind: 'op', side: 'ally', defId: piece.id,
       spine: rec?.assets?.spine || rec?.charId || null, avatar: rec?.assets?.avatar || rec?.charId || null,
@@ -1423,6 +1448,7 @@ export async function createFieldView(host, options = {}) {
     emitTileClick(ev, e);
   };
   const onPointerDown = (e) => {
+    markTouch();
     if (destroyed || (e.pointerType === 'touch' && pinchActive)) return;
     const ev = evPayload(e);
     if (mode !== 'battle' && drag.pointerDown(ev)) { try { canvas.setPointerCapture(e.pointerId); } catch { /* ignore */ } return; }
@@ -1430,6 +1456,7 @@ export async function createFieldView(host, options = {}) {
     fieldTap(ev, e);
   };
   const onPointerMove = (e) => {
+    if (isMobileClient && (dragState || e.pointerType === 'touch')) markTouch();
     if (destroyed || (e.pointerType === 'touch' && pinchActive)) return;
     const ev = evPayload(e);
     if (touchTap?.pointerId === e.pointerId && Math.hypot(ev.x - touchTap.x, ev.y - touchTap.y) > 10) touchTap = null;
@@ -1587,6 +1614,8 @@ export async function createFieldView(host, options = {}) {
     consumedIds.clear();
     clearHl();
     renderT0Battle = null;
+    beamQ.length = 0;
+    beamSeq = 0;
     mode = 'battle';
     const rect = meta.rect ? normRect(meta.rect) : (meta.kind === 'boss' || meta.kind === 'hidden' ? { ...GEO.BOSS_RECT } : meta.kind === 'unite' ? { ...GEO.UNITE_RECT } : { ...GEO.NORMAL_RECT });
     // prep: true = a read-only scouting board (a teammate's lineup during prep): prep-style pieces, no bars
@@ -1704,7 +1733,7 @@ export async function createFieldView(host, options = {}) {
       case 'deploy': {
         gone.delete(e[1]);
         const v = battleView(e[1]);
-        if (v) { v.onDeploy?.(); if (v.info?.kind !== 'device') fx.deploy(v); }
+        if (v) { v.onDeploy?.(); if (!queueBeam(v, now) && v.info?.kind !== 'device') fx.deploy(v); }
         break;
       }
       case 'atk': {
@@ -1826,6 +1855,33 @@ export async function createFieldView(host, options = {}) {
     });
   }
   let renderT0Battle = null;   // game time of the first rendered battle frame (spawn puffs skip the initial wave)
+  // 联防 (the event's, video 8:42): as the 联防 field opens (its first 2 game s), the operators carried onto it beam in
+  // one after another — each hidden until its beam lands (UnitView fadeIn below 0 counts up to it at the same rate), the
+  // opening's own deploy flash skipped. A field watched later, or a redeploy, keeps the plain deploy flash.
+  const beamQ = [];            // [{ v, id }] waiting for their beam (v._beamLeft: real seconds)
+  let beamSeq = 0;             // beams queued on this field (the stagger)
+  function queueBeam(v, renderT) {
+    if (!v) return false;
+    if (v._beamLeft > 0) { v.fadeIn = -v._beamLeft * 4; return true; } // queued already (a deploy event re-showed it)
+    if (v._beamed || battleMeta?.kind !== 'unite' || battleMeta.prep || !(renderT <= 2)) return false;
+    const info = v.info || null;
+    if (!info || info.side !== 'ally' || info.kind === 'device' || info.kind === 'item') return false;
+    v._beamed = true;
+    v._beamLeft = 0.35 + Math.min(beamSeq++, 10) * 0.16;
+    v.fadeIn = -v._beamLeft * 4;
+    beamQ.push({ v, id: info.id });
+    return true;
+  }
+  function pumpBeams(dt) {
+    for (let i = beamQ.length - 1; i >= 0; i--) {
+      const b = beamQ[i];
+      b.v._beamLeft -= dt;
+      if (b.v._beamLeft > 0) continue;
+      b.v._beamLeft = 0;
+      beamQ.splice(i, 1);
+      if (views.get(b.id) === b.v && b.v.alive !== false) fx.deploy(b.v, { beam: true });
+    }
+  }
   let downSeq = 0;             // syncBattle pass counter: a view still marked down after a pass left the `down` list
   function syncBattle(renderT) {
     if (renderT0Battle == null) renderT0Battle = renderT;
@@ -1844,7 +1900,7 @@ export async function createFieldView(host, options = {}) {
       }
       if (!v) v = battleView(id) || createUnknown(id, s);
       if (!v) continue;
-      if (!v._seen) { v._seen = true; v.fadeIn = 0; }
+      if (!v._seen) { v._seen = true; v.fadeIn = 0; queueBeam(v, renderT); }
       syncView(v, s, renderT);
     }
     // knocked-out operators waiting to redeploy (b.snap `down`, user playtest #4 item 9): their view stays on the
@@ -1902,14 +1958,87 @@ export async function createFieldView(host, options = {}) {
   let impSlot = 0;
   let vp = { width: s0.width, height: s0.height };   // viewport (CSS px) of this frame: unit culling
   let culledCount = 0;
+  class FramePacer {
+    constructor(target = '60') {
+      this.targetFps = String(target || '60');
+      this.intervals = [];
+      this.lastTs = 0;
+      this.lastPicture = 0;
+      this.next = 0;
+    }
+    setTarget(target) {
+      this.targetFps = String(target || '60');
+      this.lastPicture = 0;
+      this.next = 0;
+    }
+    shouldDraw(ts) {
+      if (this.targetFps === 'screen' || this.targetFps === '0') {
+        this.lastPicture = ts;
+        return true;
+      }
+      const targetFpsNum = Number(this.targetFps) || 60;
+      const I = 1000 / targetFpsNum;
+
+      if (this.lastTs > 0) {
+        const dt = ts - this.lastTs;
+        if (dt >= 1 && dt <= 100) {
+          this.intervals.push(dt);
+          if (this.intervals.length > 21) this.intervals.shift();
+        }
+      }
+      this.lastTs = ts;
+
+      if (this.intervals.length < 5) {
+        this.lastPicture = ts;
+        this.next = ts + I;
+        return true;
+      }
+
+      const sorted = [...this.intervals].sort((a, b) => a - b);
+      const P = sorted[Math.floor(sorted.length / 2)];
+      const r = I / P;
+
+      if (!this.lastPicture || (ts - this.lastPicture) > (I * 1.8)) {
+        this.lastPicture = ts;
+        this.next = ts + I;
+        return true;
+      }
+
+      let draw = false;
+      if (r <= 1.06) {
+        draw = true;
+      } else if (Math.abs(r - Math.round(r)) <= 0.06) {
+        if (ts - this.lastPicture >= (Math.round(r) - 0.5) * P) {
+          draw = true;
+        }
+      } else {
+        const tau = Math.min(P, I) / 2;
+        if (ts >= this.next - tau) {
+          draw = true;
+          this.next = Math.max(this.next + I, ts + I - tau);
+        }
+      }
+
+      if (draw) this.lastPicture = ts;
+      return draw;
+    }
+  }
+
+  const pacer = new FramePacer(settings.targetFps || '60');
+
   // Adaptive load level 0–3: a device that cannot hold the frame rate with the current work switches crowds to
   // impostors earlier and animates small / far units at a lower rate (units.js); it steps back after a calm spell.
   let loadLevel = 0, slowFor = 0, fastFor = 0;
   function adaptLoad(dtRaw) {
     if (!(dtRaw > 0) || dtRaw > 0.25 || globalThis.document?.hidden) return;
     const busy = views.size + penViews.size > 8;
-    if (frameMs > 19.5 && busy) { slowFor += dtRaw; fastFor = 0; }
-    else if (frameMs < 17.6) { fastFor += dtRaw; slowFor = 0; }
+    const targetFpsNum = Number(pacer.targetFps) || 60;
+    const I = (pacer.targetFps === 'screen' || pacer.targetFps === '0') ? (1000 / 60) : (1000 / targetFpsNum);
+    const shift = Math.max(0, I - 1000 / 60);
+    const slowAt = 19.5 + shift;
+    const fastAt = 17.6 + shift;
+    if (frameMs > slowAt && busy) { slowFor += dtRaw; fastFor = 0; }
+    else if (frameMs < fastAt) { fastFor += dtRaw; slowFor = 0; }
     if (slowFor > 1 && loadLevel < 3) { loadLevel++; slowFor = 0; fastFor = 0; impInterval = pickImpostorInterval(); }
     else if (loadLevel > 0 && (fastFor > 6 * loadLevel || !busy && fastFor > 2)) { loadLevel--; fastFor = 0; impInterval = pickImpostorInterval(); }
   }
@@ -1934,10 +2063,13 @@ export async function createFieldView(host, options = {}) {
     // a struggling device (load level ≥ 2) may refresh a big crowd more rarely (10 Hz at worst)
     return Math.min(loadLevel >= 2 ? 6 : 4, Math.max(2, Math.ceil(n / (base * 0.75))));
   }
+
+  let currentRafTs = performance.now();
   function frame() {
     if (destroyed) return;
-    const now = performance.now();
-    try { frameBody(now); } finally { cpuMs = cpuMs * 0.9 + (performance.now() - now) * 0.1; }
+    const now = currentRafTs;
+    const t0 = performance.now();
+    try { frameBody(now); } finally { cpuMs = cpuMs * 0.9 + (performance.now() - t0) * 0.1; }
   }
   function frameBody(now) {
     frameNo++;
@@ -1972,6 +2104,7 @@ export async function createFieldView(host, options = {}) {
           syncBattle(renderT);
           windUpAttacks(renderT);
         }
+        if (beamQ.length) pumpBeams(dt);
       } else if (mode === 'prep') {
         for (const [key, pd] of pending) {
           if (now - pd.t > DROP_PENDING_MS) {
@@ -2009,6 +2142,23 @@ export async function createFieldView(host, options = {}) {
   const postRender = () => { if (renderT0) renderMs = renderMs * 0.9 + (performance.now() - renderT0) * 0.1; };
   app.ticker.add(preRender, null, -24);
   app.ticker.add(postRender, null, -26);
+
+  // Stop auto ticker and drive with custom frame pacer loop
+  app.ticker.autoStart = false;
+  app.ticker.stop();
+  let rafId = 0;
+  function onPacerRaf(ts) {
+    if (destroyed) return;
+    rafId = requestAnimationFrame(onPacerRaf);
+    if (pacer.shouldDraw(ts)) {
+      currentRafTs = ts;
+      app.ticker.update(ts);
+    }
+  }
+  rafId = requestAnimationFrame(onPacerRaf);
+  setupCleanup.push(() => {
+    if (rafId) cancelAnimationFrame(rafId);
+  });
 
   // ---- resize ---------------------------------------------------------------------------------------------------
 
@@ -2181,8 +2331,26 @@ export async function createFieldView(host, options = {}) {
       if (typeof s.damageNumbers === 'boolean') settings.damageNumbers = s.damageNumbers;
       if (typeof s.officialDamageNumbers === 'boolean') settings.officialDamageNumbers = s.officialDamageNumbers;
       if (typeof s.ammoCount === 'boolean') settings.ammoCount = s.ammoCount;   // the units read it every frame (ctx.settings)
-      if (s.quality === 'high' || s.quality === 'medium' || s.quality === 'low') settings.quality = s.quality;
+      if (s.quality === 'extreme' || s.quality === 'high' || s.quality === 'medium' || s.quality === 'low') settings.quality = s.quality;
+      if (typeof s.antialias === 'boolean') settings.antialias = s.antialias;
+      if (typeof s.highRefresh === 'boolean') { settings.highRefresh = s.highRefresh; updateFpsLimit(); }
+      if (s.board === '2d' || s.board === '3d' || s.board === '3d_pro' || s.board === '3d_std' || s.board === 'auto') {
+        const prevBoard = settings.board;
+        settings.board = s.board;
+        const want = s.board !== '2d';
+        if (!want && board3d) {
+          disable3d();
+        } else if (want && !board3d) {
+          retryBoard();
+        } else if (want && board3d && prevBoard !== s.board) {
+          if (stageRec) useOfficialScene(stageRec);
+        }
+      }
       if (q !== settings.quality) { board3d?.setQuality?.(settings.quality); resize(); }
+      if (s.targetFps) pacer.setTarget(s.targetFps);
+    },
+    setTargetFps(fps) {
+      pacer.setTarget(fps);
     },
     setThermalThrottle(on) {
       if (destroyed) return false;
@@ -2240,6 +2408,7 @@ export async function createFieldView(host, options = {}) {
       canvas.removeEventListener('pointermove', onPinchMove);
       canvas.removeEventListener('pointerup', onPinchUp);
       canvas.removeEventListener('pointercancel', onPinchUp);
+      if (rafId) { cancelAnimationFrame(rafId); rafId = 0; }
       canvas.removeEventListener('lostpointercapture', onPinchUp);
       globalThis.removeEventListener?.('blur', clearPinch);
       app.ticker.remove(frame);

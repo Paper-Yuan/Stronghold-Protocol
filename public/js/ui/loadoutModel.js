@@ -16,6 +16,7 @@
 import { loadoutOptions, checkLoadout, checkLoadoutOps, resolveLoadout, MODULE_NONE, LOADOUT_LIMITS, isSkinId, SKIN_LIMITS } from '../../../shared/protocol.js';
 import { isPotential, isCultivate, POTENTIAL_DEFAULT, CULTIVATE_DEFAULT } from '../../../shared/potential.js';
 import { t, N_ } from '../../../shared/i18n.js';
+import { getPackIdForChess } from '../roomMods.js';
 
 export { MODULE_NONE };
 
@@ -379,16 +380,15 @@ export function sanitizeEntries(entries, getChess) {
     if (typeof e?.module === 'string') one.module = e.module;
     if (!Object.keys(one).length) continue;
     const res = checkLoadout({ [id]: one }, getChess);
-    if (!res.ok) {
-      // keep the part that is still legal (e.g. the skill when a module disappeared)
-      for (const k of ['skill', 'module']) {
-        if (one[k] === undefined) continue;
-        const r = checkLoadout({ [id]: { [k]: one[k] } }, getChess);
-        if (r.ok && r.loadout[id]) out[id] = { ...(out[id] || {}), [k]: one[k] };
-      }
-      continue;
+    if (res.ok && res.loadout[id]) { out[id] = one; continue; }
+    // checkLoadout skips what it cannot accept instead of refusing the message (a mod pack's chess disappears with
+    // its pack), so an entry missing from the result means one of its parts was illegal — keep the part that still
+    // passes on its own (e.g. the skill when a module disappeared)
+    for (const k of ['skill', 'module']) {
+      if (one[k] === undefined) continue;
+      const r = checkLoadout({ [id]: { [k]: one[k] } }, getChess);
+      if (r.ok && r.loadout[id]) out[id] = { ...(out[id] || {}), [k]: one[k] };
     }
-    if (res.loadout[id]) out[id] = one;
   }
   return out;
 }
@@ -413,11 +413,16 @@ export function selectedModule(loadout, chess, getChess) {
  * @param {any[]} list data.list('chess')
  */
 /** Whether a chess record is a loadout slot (a visible normal chess — what the server's checkLoadout accepts). */
-export const isLoadoutSlot = (c) => !!c && !c.isGolden && c.visible !== false && !c.isHidden && !c.isDiy && (!c.baseId || c.baseId === c.chessId);
+export const isLoadoutSlot = (c, enabledModIds = null) => {
+  if (!c || c.isGolden || c.visible === false || c.isHidden || c.isDiy || (c.baseId && c.baseId !== c.chessId)) return false;
+  const pId = c.packId || getPackIdForChess(c.chessId);
+  if (pId && (!enabledModIds || !enabledModIds.has(pId))) return false;
+  return true;
+};
 
-export function rosterOf(list) {
+export function rosterOf(list, enabledModIds = null) {
   return (Array.isArray(list) ? list : [])
-    .filter(isLoadoutSlot)
+    .filter((c) => isLoadoutSlot(c, enabledModIds))
     .sort((a, b) => (a.tier ?? 0) - (b.tier ?? 0) || (a.shopSortId ?? 0) - (b.shopSortId ?? 0) || String(a.chessId).localeCompare(String(b.chessId)));
 }
 

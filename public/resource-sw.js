@@ -239,8 +239,8 @@ async function handleResourceRequest(request, { caches = globalThis.caches } = {
 
 // Verified, read-only resource mirror for the four-server 02a466 pack.
 const CDN_CONFIG_URL = new URL('./data/cdn-resource-config.json', self.location.href).href;
-const CDN_CONFIG_SHA256 = '37cb3dc82932c43f0857b8b0dbdc40ca906f9176bade9852a4ed1264b299c841';
-const CDN_VERSION = 'f3216bd82a48';
+const CDN_CONFIG_SHA256 = '462dfb0ae60169f43b4c91ae73b1322cc7b028bd1f2538055fa17756dd7bcfca';
+const CDN_VERSION = 'v2-21556-7aaeddce';
 const CDN_CACHE = 'stronghold-resources-v1-all';
 let configPromise;
 async function digest(bytes, algorithm = 'SHA-256') {
@@ -253,7 +253,7 @@ function loadCdnConfig() {
     const bytes = await response.arrayBuffer();
     if (await digest(bytes) !== CDN_CONFIG_SHA256) throw new Error('资源 CDN 配置校验失败');
     const config = JSON.parse(new TextDecoder().decode(bytes));
-    if (config.version !== CDN_VERSION || config.base !== 'https://weishucdn.jiangjiangze.icu' || Object.keys(config.files || {}).length !== 13889)
+    if (config.version !== CDN_VERSION || config.base !== 'https://downcdn.jiangjiangze.icu' || Object.keys(config.files || {}).length !== 21556)
       throw new Error('资源 CDN 版本不匹配');
     return config;
   })().catch(error => { configPromise = null; throw error; });
@@ -285,7 +285,14 @@ async function handleCdnRequest(request) {
     let paths = mediaCandidates(url.pathname);
     if (!paths.length) paths = [url.pathname, decodeURI(url.pathname)];
     const path = paths.find(p => Object.prototype.hasOwnProperty.call(config.files, p));
-    if (!path) return new Response('当前版本不存在此资源', { status: 404 });
+    if (!path) {
+      // 增强机制：不在 CDN 镜像清单里的资源，自动回退向本站服务器请求（如皮肤半身图、小语种语音、皮肤专属语音等）
+      try {
+        const originRes = await fetch(request);
+        if (originRes.ok) return originRes;
+      } catch {}
+      return new Response('当前版本不存在此资源', { status: 404 });
+    }
     // Reuse a verified old pack only when this file still matches the current catalog.
     const local = await handleResourceRequest(request);
     if (local && local.status !== 412 && local.headers.get('X-SP-Resource-Hash') === config.files[path][0]) return local;
@@ -298,6 +305,13 @@ async function handleCdnRequest(request) {
         pending = cdnResource(path).then(async response => {
           try { await cache.put(key, response.clone()); } catch { /* Quota cannot block online play. */ }
           return response;
+        }).catch(async (cdnErr) => {
+          // CDN 请求失败时，透明回退向游戏本站服务器拉取
+          try {
+            const fallbackRes = await fetch(request);
+            if (fallbackRes.ok) return fallbackRes;
+          } catch {}
+          throw cdnErr;
         }).finally(() => cdnInflight.delete(key));
         cdnInflight.set(key, pending);
       }
@@ -306,6 +320,10 @@ async function handleCdnRequest(request) {
     const range = request.headers.get('Range');
     return range ? await rangeResponse(hit, range) : hit;
   } catch {
+    try {
+      const originRes = await fetch(request);
+      if (originRes.ok) return originRes;
+    } catch {}
     return new Response('在线素材暂不可用，请稍后重试或导入 QQ 群资源包', {
       status: 503, headers: { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'no-store' }
     });

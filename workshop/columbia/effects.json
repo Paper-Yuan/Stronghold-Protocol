@@ -1,0 +1,290 @@
+{
+ "bondeffect_columbia": {
+  "effectId": "bondeffect_columbia",
+  "effectType": "BOND",
+  "name": "哥伦比亚",
+  "desc": "【哥伦比亚】场上的【哥伦比亚】干员视为额外携带了1件装备（受层数影响，每50层+1）。\n<首次激活时>获得1件源石辅助仪。\n<战斗开始时>【哥伦比亚】干员获得携带装备数量×{0:0%}的攻击力（受层数影响，每层+0.1%）。\n<在场6名不同【哥伦比亚】干员><首次激活时>获得1件源石辅助仪；<进入休整期时>获得1件随机阶级的进阶装备。",
+  "descRaw": "【哥伦比亚】场上的【哥伦比亚】干员视为额外携带了<@ba.vup>1</>件装备<@autochess.gray>（受层数影响，每50层+1）</>。\n<首次激活时>获得<@ba.vup>1</>件<@ba.vup>源石辅助仪</>。\n<战斗开始时>【哥伦比亚】干员获得<@ba.vup>携带装备数量×{0:0%}</>的攻击力<@autochess.gray>（受层数影响，每层+0.1%）</>。\n<在场<@autochess.dgreen>6</>名不同【哥伦比亚】干员><首次激活时>获得<@ba.vup>1</>件<@ba.vup>源石辅助仪</>；<进入休整期时>获得<@ba.vup>1</>件<@ba.vup>随机阶级的进阶装备</>。",
+  "counterType": "NONE",
+  "continuedRound": -1,
+  "decoIconId": null,
+  "enemyPrice": 0,
+  "buffs": [
+   {
+    "key": "env_gbuff_new",
+    "countType": "NONE",
+    "bb": {
+     "power_bond_char_cnt": 3,
+     "ex_bond_char_cnt": 6,
+     "atk_per_item": 0.2,
+     "atk_per_item_per": 0.001,
+     "extra_carry": 1,
+     "extra_carry_per_layer": 50,
+     "item_id": "chess_item_6_13_e_a"
+    },
+    "bbStr": {
+     "key": "act2autochess_bond_eff_columbia"
+    }
+   }
+  ],
+  "params": {
+   "power_bond_char_cnt": 3,
+   "ex_bond_char_cnt": 6,
+   "atk_per_item": 0.2,
+   "atk_per_item_per": 0.001,
+   "extra_carry": 1,
+   "extra_carry_per_layer": 50,
+   "item_id": "chess_item_6_13_e_a",
+   "key": "act2autochess_bond_eff_columbia"
+  }
+ },
+ "aceffect_band_columbia": {
+  "effectId": "aceffect_band_columbia",
+  "effectType": "BAND_INITIAL",
+  "name": "混沌本质",
+  "desc": "【混沌本质】【哥伦比亚】盟约层每叠加50层时，获得1件<沙盘·α>和<沙盘·β>。",
+  "descRaw": "【混沌本质】【哥伦比亚】盟约层每叠加50层时，获得1件<沙盘·α>和<沙盘·β>。",
+  "counterType": "NONE",
+  "continuedRound": -1,
+  "decoIconId": null,
+  "enemyPrice": 0,
+  "buffs": [
+   {
+    "key": "band_columbia_elite_gain_sandbox",
+    "countType": "NONE",
+    "bb": {
+     "count": 1
+    },
+    "bbStr": {
+     "bond": "columbiaShip"
+    }
+   }
+  ],
+  "params": {
+   "count": 1,
+   "bond": "columbiaShip",
+   "items": [
+    "chess_item_3_13_e_a",
+    "chess_item_3_14_e_a"
+   ]
+  }
+ },
+ "eff_mod_col_pldevice": {
+  "effectId": "eff_mod_col_pldevice",
+  "effectType": "EQUIP",
+  "name": "源石辅助仪",
+  "desc": "干员的装备格+2。\n<进入休整期时>干员其余装备的效果与数值继承到该装备上（可叠加），随后销毁（源石辅助仪同时继承销毁装备在搭配变形同构体时获得的盟约效果）。\n【哥伦比亚】盟约每层使该装备的已继承装备的效果提升2.5%。",
+  "descRaw": "干员的<@ba.vup>装备格+2</>。\n<进入休整期时>干员其余装备的<@ba.vup>效果与数值</>继承到该装备上<@autochess.gray>（可叠加）</>，随后<@ba.vup>销毁</>（源石辅助仪同时继承销毁装备在搭配<@ba.vup>变形同构体</>时获得的盟约效果）。\n【哥伦比亚】盟约每层使该装备的已继承装备的效果提升<@ba.vup>2.5%</>。",
+  "counterType": "NONE",
+  "continuedRound": -1,
+  "decoIconId": null,
+  "enemyPrice": 0,
+  "buffs": [
+   {
+    "key": "env_gbuff_new_with_verify",
+    "countType": "NONE",
+    "bb": {
+     "slot_cap": 2,
+     "inherit_ratio_per_layer": 0.025
+    },
+    "bbStr": {
+     "key": "mod_col_pldevice"
+    }
+   }
+  ],
+  "params": {
+   "slot_cap": 2,
+   "inherit_ratio_per_layer": 0.025,
+   "key": "mod_col_pldevice"
+  }
+ },
+ "eff_modg_col_pldevice": {
+  "effectId": "eff_modg_col_pldevice",
+  "effectType": "EQUIP",
+  "name": "源石辅助仪",
+  "desc": "干员的装备格+4。\n<进入休整期时>干员其余装备的数值与效果继承到该装备上（可叠加），随后销毁（源石辅助仪同时继承销毁装备在搭配变形同构体时获得的盟约效果）。\n【哥伦比亚】盟约每层使该装备的已继承装备的数值提升5%。",
+  "descRaw": "干员的<@ba.vup>装备格+4</>。\n<进入休整期时>干员其余装备的<@ba.vup>数值与效果</>继承到该装备上<@autochess.gray>（可叠加）</>，随后<@ba.vup>销毁</>（源石辅助仪同时继承销毁装备在搭配<@ba.vup>变形同构体</>时获得的盟约效果）。\n【哥伦比亚】盟约每层使该装备的已继承装备的数值提升<@ba.vup>5%</>。",
+  "counterType": "NONE",
+  "continuedRound": -1,
+  "decoIconId": null,
+  "enemyPrice": 0,
+  "buffs": [
+   {
+    "key": "env_gbuff_new_with_verify",
+    "countType": "NONE",
+    "bb": {
+     "slot_cap": 4,
+     "inherit_ratio_per_layer": 0.05
+    },
+    "bbStr": {
+     "key": "mod_col_pldevice"
+    }
+   }
+  ],
+  "params": {
+   "slot_cap": 4,
+   "inherit_ratio_per_layer": 0.05,
+   "key": "mod_col_pldevice"
+  }
+ },
+ "eff_mod_col_sandboxA": {
+  "effectId": "eff_mod_col_sandboxA",
+  "effectType": "EQUIP",
+  "name": "沙盘·α",
+  "desc": "装备时销毁，获得1位阶级等于调度中心的【哥伦比亚】干员。",
+  "descRaw": "装备时<@ba.vup>销毁</>，获得<@ba.vup>1</>位阶级等于调度中心的【哥伦比亚】干员。",
+  "counterType": "NONE",
+  "continuedRound": -1,
+  "decoIconId": null,
+  "enemyPrice": 0,
+  "buffs": [
+   {
+    "key": "mod_col_sandbox_a",
+    "countType": "NONE",
+    "bb": {
+     "count": 1
+    },
+    "bbStr": {
+     "bond": "columbiaShip"
+    }
+   }
+  ],
+  "params": {
+   "count": 1,
+   "bond": "columbiaShip"
+  }
+ },
+ "eff_modg_col_sandboxA": {
+  "effectId": "eff_modg_col_sandboxA",
+  "effectType": "EQUIP",
+  "name": "沙盘·α",
+  "desc": "装备时销毁，获得2位阶级等于调度中心的【哥伦比亚】干员。",
+  "descRaw": "装备时<@ba.vup>销毁</>，获得<@ba.vup>2</>位阶级等于调度中心的【哥伦比亚】干员。",
+  "counterType": "NONE",
+  "continuedRound": -1,
+  "decoIconId": null,
+  "enemyPrice": 0,
+  "buffs": [
+   {
+    "key": "mod_col_sandbox_a",
+    "countType": "NONE",
+    "bb": {
+     "count": 2
+    },
+    "bbStr": {
+     "bond": "columbiaShip"
+    }
+   }
+  ],
+  "params": {
+   "count": 2,
+   "bond": "columbiaShip"
+  }
+ },
+ "eff_mod_col_sandboxB": {
+  "effectId": "eff_mod_col_sandboxB",
+  "effectType": "EQUIP",
+  "name": "沙盘·β",
+  "desc": "装备时销毁，获得2件阶级不超过调度中心的装备。",
+  "descRaw": "装备时<@ba.vup>销毁</>，获得<@ba.vup>2</>件阶级不超过调度中心的装备。",
+  "counterType": "NONE",
+  "continuedRound": -1,
+  "decoIconId": null,
+  "enemyPrice": 0,
+  "buffs": [
+   {
+    "key": "mod_col_sandbox_b",
+    "countType": "NONE",
+    "bb": {
+     "count": 2
+    },
+    "bbStr": {}
+   }
+  ],
+  "params": {
+   "count": 2
+  }
+ },
+ "eff_modg_col_sandboxB": {
+  "effectId": "eff_modg_col_sandboxB",
+  "effectType": "EQUIP",
+  "name": "沙盘·β",
+  "desc": "装备时销毁，获得4件阶级不超过调度中心的装备。",
+  "descRaw": "装备时<@ba.vup>销毁</>，获得<@ba.vup>4</>件阶级不超过调度中心的装备。",
+  "counterType": "NONE",
+  "continuedRound": -1,
+  "decoIconId": null,
+  "enemyPrice": 0,
+  "buffs": [
+   {
+    "key": "mod_col_sandbox_b",
+    "countType": "NONE",
+    "bb": {
+     "count": 4
+    },
+    "bbStr": {}
+   }
+  ],
+  "params": {
+   "count": 4
+  }
+ },
+ "eff_mod_col_fellow": {
+  "effectId": "eff_mod_col_fellow",
+  "effectType": "EQUIP",
+  "name": "同行者",
+  "desc": "造成的伤害无视敌人10%的防御力与10%法术抗性。",
+  "descRaw": "造成的伤害<@ba.vup>无视敌人10%的防御力与10%法术抗性</>。",
+  "counterType": "NONE",
+  "continuedRound": -1,
+  "decoIconId": null,
+  "enemyPrice": 0,
+  "buffs": [
+   {
+    "key": "env_gbuff_new_with_verify",
+    "countType": "NONE",
+    "bb": {
+     "def_penetrate": 0.1,
+     "magic_resist_penetrate": 0.1
+    },
+    "bbStr": {
+     "key": "mod_col_fellow"
+    }
+   }
+  ],
+  "params": {
+   "def_penetrate": 0.1,
+   "magic_resist_penetrate": 0.1,
+   "key": "mod_col_fellow"
+  }
+ },
+ "eff_modg_col_fellow": {
+  "effectId": "eff_modg_col_fellow",
+  "effectType": "EQUIP",
+  "name": "同行者",
+  "desc": "造成的伤害无视敌人20%的防御力与20%法术抗性。",
+  "descRaw": "造成的伤害<@ba.vup>无视敌人20%的防御力与20%法术抗性</>。",
+  "counterType": "NONE",
+  "continuedRound": -1,
+  "decoIconId": null,
+  "enemyPrice": 0,
+  "buffs": [
+   {
+    "key": "env_gbuff_new_with_verify",
+    "countType": "NONE",
+    "bb": {
+     "def_penetrate": 0.2,
+     "magic_resist_penetrate": 0.2
+    },
+    "bbStr": {
+     "key": "mod_col_fellow"
+    }
+   }
+  ],
+  "params": {
+   "def_penetrate": 0.2,
+   "magic_resist_penetrate": 0.2,
+   "key": "mod_col_fellow"
+  }
+ }
+}

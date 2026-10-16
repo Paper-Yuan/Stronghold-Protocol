@@ -1,0 +1,1215 @@
+{
+ "id": "columbia",
+ "name": "哥伦比亚",
+ "version": "1.0.0",
+ "author": "the Columbia mod",
+ "license": "GPL-3.0-or-later",
+ "description": "哥伦比亚 mod：新增核心盟约【哥伦比亚】（源石辅助仪 / 随机进阶装备 / 视为额外携带装备）、策略【混沌本质】（图标干员：谬因）、4 件新装备（源石辅助仪 / 沙盘·α / 沙盘·β / 同行者）与【哥伦比亚】盟约干员。数据与素材走创意工坊叠加层，官方 data/*.json 不被改动。",
+ "gameVersion": "0.2.6",
+ "combat": true,
+ "server": {
+  "battle": {
+   "module": "battle/main.mjs"
+  },
+  "meta": {
+   "module": "meta/main.mjs",
+   "registers": [
+    "band:band_columbia",
+    "bond:columbiaShip",
+    "garrison:COL_ADD_BOND_BY_EQUIP_COUNT",
+    "garrison:COL_GAIN_FRONT_EQUIP",
+    "garrison:COL_GAIN_RANDOM_EQUIP",
+    "garrison:COL_KAFKA_PREP_EQUIP",
+    "item:chess_item_3_13_e",
+    "item:chess_item_3_14_e",
+    "item:chess_item_6_09_e",
+    "item:chess_item_6_13_e"
+   ]
+  }
+ },
+ "content": [
+  "bands",
+  "bonds",
+  "chess",
+  "effects",
+  "garrisons",
+  "items",
+  "tokens"
+ ],
+ "overrides": [
+  "chess:chess_char_3_10_a",
+  "chess:chess_char_3_10_b",
+  "chess:chess_char_6_16_a",
+  "chess:chess_char_6_16_b",
+  "bonds:swiftShip",
+  "bonds:raidShip"
+ ],
+ "art": {
+  "chars": {
+   "char_274_astesi": {
+    "avatar": "art/char_274_astesi/avatar.png",
+    "avatarE2": "art/char_274_astesi/avatar_2.png",
+    "portrait": "art/char_274_astesi/portrait_1.png",
+    "portraitE2": "art/char_274_astesi/portrait_2.png",
+    "spine": {
+     "front": {
+      "skel": "art/char_274_astesi/front/char_274_astesi.skel",
+      "atlas": "art/char_274_astesi/front/char_274_astesi.atlas",
+      "textures": [
+       "art/char_274_astesi/front/char_274_astesi.png"
+      ],
+      "pma": false,
+      "anims": {
+       "idle": "Idle",
+       "deploy": "Start",
+       "attack": {
+        "begin": null,
+        "loop": "Attack",
+        "end": null
+       },
+       "attackDown": null,
+       "skill": {
+        "begin": null,
+        "loop": "Attack",
+        "end": null,
+        "via": "attack",
+        "index": 0,
+        "idle": null
+       },
+       "die": "Die",
+       "move": null,
+       "stun": null,
+       "skills": {
+        "0": {
+         "begin": null,
+         "loop": "Attack",
+         "end": null,
+         "via": "attack",
+         "index": 0,
+         "idle": null
+        },
+        "1": {
+         "begin": null,
+         "loop": "Attack",
+         "end": null,
+         "via": "attack",
+         "index": 1,
+         "idle": null
+        },
+        "2": {
+         "begin": null,
+         "loop": "Attack",
+         "end": null,
+         "via": "attack",
+         "index": 2,
+         "idle": null
+        }
+       }
+      },
+      "animations": {
+       "Attack": 1.2,
+       "Default": 0,
+       "Die": 1,
+       "Idle": 2,
+       "Start": 1
+      },
+      "events": [
+       "OnAttack",
+       "OnStart"
+      ],
+      "hits": {
+       "Attack": [
+        0.533
+       ]
+      },
+      "bounds": {
+       "x": -399.354,
+       "y": -1.649,
+       "width": 749.776,
+       "height": 416.973
+      }
+     },
+     "back": {
+      "skel": "art/char_274_astesi/back/char_274_astesi.skel",
+      "atlas": "art/char_274_astesi/back/char_274_astesi.atlas",
+      "textures": [
+       "art/char_274_astesi/back/char_274_astesi.png"
+      ],
+      "pma": false,
+      "anims": {
+       "idle": "Idle",
+       "deploy": "Start",
+       "attack": {
+        "begin": null,
+        "loop": "Attack",
+        "end": null
+       },
+       "attackDown": null,
+       "skill": {
+        "begin": null,
+        "loop": "Attack",
+        "end": null,
+        "via": "attack",
+        "index": 0,
+        "idle": null
+       },
+       "die": null,
+       "move": null,
+       "stun": null,
+       "skills": {
+        "0": {
+         "begin": null,
+         "loop": "Attack",
+         "end": null,
+         "via": "attack",
+         "index": 0,
+         "idle": null
+        },
+        "1": {
+         "begin": null,
+         "loop": "Attack",
+         "end": null,
+         "via": "attack",
+         "index": 1,
+         "idle": null
+        },
+        "2": {
+         "begin": null,
+         "loop": "Attack",
+         "end": null,
+         "via": "attack",
+         "index": 2,
+         "idle": null
+        }
+       }
+      },
+      "animations": {
+       "Attack": 1.2,
+       "Default": 0,
+       "Idle": 2,
+       "Start": 1
+      },
+      "events": [
+       "OnAttack",
+       "OnStart"
+      ],
+      "hits": {
+       "Attack": [
+        0.533
+       ]
+      },
+      "bounds": {
+       "x": -399.354,
+       "y": -1.649,
+       "width": 749.776,
+       "height": 416.973
+      }
+     }
+    }
+   },
+   "char_348_ceylon": {
+    "avatar": "art/char_348_ceylon/avatar.png",
+    "avatarE2": "art/char_348_ceylon/avatar_2.png",
+    "portrait": "art/char_348_ceylon/portrait_1.png",
+    "portraitE2": "art/char_348_ceylon/portrait_2.png",
+    "spine": {
+     "front": {
+      "skel": "art/char_348_ceylon/front/char_348_ceylon.skel",
+      "atlas": "art/char_348_ceylon/front/char_348_ceylon.atlas",
+      "textures": [
+       "art/char_348_ceylon/front/char_348_ceylon.png"
+      ],
+      "pma": false,
+      "anims": {
+       "idle": "Idle",
+       "deploy": "Start",
+       "attack": {
+        "begin": null,
+        "loop": "Attack",
+        "end": null
+       },
+       "attackDown": null,
+       "skill": {
+        "begin": null,
+        "loop": "Attack",
+        "end": null,
+        "via": "attack",
+        "index": 0,
+        "idle": null
+       },
+       "die": "Die",
+       "move": null,
+       "stun": null,
+       "skills": {
+        "0": {
+         "begin": null,
+         "loop": "Attack",
+         "end": null,
+         "via": "attack",
+         "index": 0,
+         "idle": null
+        },
+        "1": {
+         "begin": null,
+         "loop": "Attack",
+         "end": null,
+         "via": "attack",
+         "index": 1,
+         "idle": null
+        },
+        "2": {
+         "begin": null,
+         "loop": "Attack",
+         "end": null,
+         "via": "attack",
+         "index": 2,
+         "idle": null
+        }
+       }
+      },
+      "animations": {
+       "Attack": 1.433,
+       "Default": 0,
+       "Die": 1,
+       "Idle": 2.667,
+       "Start": 1
+      },
+      "events": [
+       "OnAttack",
+       "OnStart"
+      ],
+      "hits": {
+       "Attack": [
+        0.5
+       ]
+      },
+      "bounds": {
+       "x": -179.635,
+       "y": -74.915,
+       "width": 453.704,
+       "height": 466.85
+      }
+     },
+     "back": {
+      "skel": "art/char_348_ceylon/back/char_348_ceylon.skel",
+      "atlas": "art/char_348_ceylon/back/char_348_ceylon.atlas",
+      "textures": [
+       "art/char_348_ceylon/back/char_348_ceylon.png"
+      ],
+      "pma": false,
+      "anims": {
+       "idle": "Idle",
+       "deploy": "Start",
+       "attack": {
+        "begin": null,
+        "loop": "Attack",
+        "end": null
+       },
+       "attackDown": null,
+       "skill": {
+        "begin": null,
+        "loop": "Attack",
+        "end": null,
+        "via": "attack",
+        "index": 0,
+        "idle": null
+       },
+       "die": null,
+       "move": null,
+       "stun": null,
+       "skills": {
+        "0": {
+         "begin": null,
+         "loop": "Attack",
+         "end": null,
+         "via": "attack",
+         "index": 0,
+         "idle": null
+        },
+        "1": {
+         "begin": null,
+         "loop": "Attack",
+         "end": null,
+         "via": "attack",
+         "index": 1,
+         "idle": null
+        },
+        "2": {
+         "begin": null,
+         "loop": "Attack",
+         "end": null,
+         "via": "attack",
+         "index": 2,
+         "idle": null
+        }
+       }
+      },
+      "animations": {
+       "Attack": 1.433,
+       "Default": 0,
+       "Idle": 1.333,
+       "Start": 1
+      },
+      "events": [
+       "OnAttack",
+       "OnStart"
+      ],
+      "hits": {
+       "Attack": [
+        0.5
+       ]
+      },
+      "bounds": {
+       "x": -195.256,
+       "y": -74.919,
+       "width": 469.326,
+       "height": 471.98
+      }
+     }
+    }
+   },
+   "char_214_kafka": {
+    "avatar": "art/char_214_kafka/avatar.png",
+    "avatarE2": "art/char_214_kafka/avatar_2.png",
+    "portrait": "art/char_214_kafka/portrait_1.png",
+    "portraitE2": "art/char_214_kafka/portrait_2.png",
+    "spine": {
+     "front": {
+      "skel": "art/char_214_kafka/front/char_214_kafka.skel",
+      "atlas": "art/char_214_kafka/front/char_214_kafka.atlas",
+      "textures": [
+       "art/char_214_kafka/front/char_214_kafka.png"
+      ],
+      "pma": false,
+      "anims": {
+       "idle": "Idle",
+       "deploy": "Idle",
+       "attack": {
+        "begin": null,
+        "loop": "Attack",
+        "end": null
+       },
+       "attackDown": null,
+       "skill": {
+        "begin": "Skill_Begin",
+        "loop": "Skill_Loop",
+        "end": "Skill_End",
+        "index": 0,
+        "idle": null
+       },
+       "die": "Die",
+       "move": null,
+       "stun": null,
+       "skills": {
+        "0": {
+         "begin": "Skill_Begin",
+         "loop": "Skill_Loop",
+         "end": "Skill_End",
+         "index": 0,
+         "idle": null
+        },
+        "1": {
+         "begin": "Skill_2_Begin",
+         "loop": "Skill_2_Loop",
+         "end": "Skill_2_End",
+         "index": 1,
+         "idle": "Skill_2_Idle"
+        },
+        "2": {
+         "begin": "Skill_Begin",
+         "loop": "Skill_Loop",
+         "end": "Skill_End",
+         "index": 2,
+         "idle": null
+        }
+       }
+      },
+      "animations": {
+       "Attack": 1.1,
+       "Default": 0,
+       "Die": 1,
+       "Idle": 2.4,
+       "Skill_2_Begin": 0.933,
+       "Skill_2_End": 0.833,
+       "Skill_2_Idle": 1,
+       "Skill_2_Loop": 0.667,
+       "Skill_Begin": 0.933,
+       "Skill_End": 0.867,
+       "Skill_Loop": 2.667
+      },
+      "events": [
+       "OnAttack",
+       "OnPlayAudio",
+       "OnStart"
+      ],
+      "hits": {
+       "Attack": [
+        0.5
+       ],
+       "Skill_2_Loop": [
+        0.233
+       ],
+       "Skill_End": [
+        0.3
+       ]
+      },
+      "bounds": {
+       "x": -244.526,
+       "y": -2.953,
+       "width": 645.969,
+       "height": 464.283
+      }
+     },
+     "back": {
+      "skel": "art/char_214_kafka/back/char_214_kafka.skel",
+      "atlas": "art/char_214_kafka/back/char_214_kafka.atlas",
+      "textures": [
+       "art/char_214_kafka/back/char_214_kafka.png"
+      ],
+      "pma": false,
+      "anims": {
+       "idle": "Idle",
+       "deploy": "Idle",
+       "attack": {
+        "begin": null,
+        "loop": "Attack",
+        "end": null
+       },
+       "attackDown": null,
+       "skill": {
+        "begin": "Skill_Begin",
+        "loop": "Skill_Loop",
+        "end": "Skill_End",
+        "index": 0,
+        "idle": null
+       },
+       "die": null,
+       "move": null,
+       "stun": null,
+       "skills": {
+        "0": {
+         "begin": "Skill_Begin",
+         "loop": "Skill_Loop",
+         "end": "Skill_End",
+         "index": 0,
+         "idle": null
+        },
+        "1": {
+         "begin": "Skill_2_Begin",
+         "loop": "Skill_2_Loop",
+         "end": "Skill_2_End",
+         "index": 1,
+         "idle": "Skill_2_Idle"
+        },
+        "2": {
+         "begin": "Skill_Begin",
+         "loop": "Skill_Loop",
+         "end": "Skill_End",
+         "index": 2,
+         "idle": null
+        }
+       }
+      },
+      "animations": {
+       "Attack": 1.1,
+       "Default": 0,
+       "Idle": 1.2,
+       "Skill_2_Begin": 0.933,
+       "Skill_2_End": 0.833,
+       "Skill_2_Idle": 1,
+       "Skill_2_Loop": 0.667,
+       "Skill_Begin": 0.933,
+       "Skill_End": 0.867,
+       "Skill_Loop": 2.667
+      },
+      "events": [
+       "OnAttack",
+       "OnPlayAudio",
+       "OnStart"
+      ],
+      "hits": {
+       "Attack": [
+        0.5
+       ],
+       "Skill_2_Loop": [
+        0.233
+       ],
+       "Skill_End": [
+        0.3
+       ]
+      },
+      "bounds": {
+       "x": -246.331,
+       "y": -2.792,
+       "width": 647.226,
+       "height": 464.89
+      }
+     }
+    }
+   },
+   "char_301_cutter": {
+    "avatar": "art/char_301_cutter/avatar.png",
+    "avatarE2": "art/char_301_cutter/avatar_2.png",
+    "portrait": "art/char_301_cutter/portrait_1.png",
+    "portraitE2": "art/char_301_cutter/portrait_2.png",
+    "spine": {
+     "front": {
+      "skel": "art/char_301_cutter/front/char_301_cutter.skel",
+      "atlas": "art/char_301_cutter/front/char_301_cutter.atlas",
+      "textures": [
+       "art/char_301_cutter/front/char_301_cutter.png"
+      ],
+      "pma": false,
+      "anims": {
+       "idle": "Idle",
+       "deploy": "Start",
+       "attack": {
+        "begin": null,
+        "loop": "Attack",
+        "end": null
+       },
+       "attackDown": null,
+       "skill": {
+        "begin": null,
+        "loop": "Skill_1",
+        "end": null,
+        "index": 0,
+        "idle": null
+       },
+       "die": "Die",
+       "move": null,
+       "stun": null,
+       "skills": {
+        "0": {
+         "begin": null,
+         "loop": "Skill_1",
+         "end": null,
+         "index": 0,
+         "idle": null
+        },
+        "1": {
+         "begin": null,
+         "loop": "Skill_2",
+         "end": null,
+         "index": 1,
+         "idle": null
+        },
+        "2": {
+         "begin": null,
+         "loop": "Attack",
+         "end": null,
+         "via": "attack",
+         "index": 2,
+         "idle": null
+        }
+       }
+      },
+      "animations": {
+       "Attack": 1.333,
+       "Default": 0,
+       "Die": 1,
+       "Idle": 2,
+       "Skill_1": 1,
+       "Skill_2": 1,
+       "Start": 1
+      },
+      "events": [
+       "OnAttack",
+       "OnStart"
+      ],
+      "hits": {
+       "Attack": [
+        0.6,
+        0.667
+       ],
+       "Skill_1": [
+        0.467
+       ],
+       "Skill_2": [
+        0.5
+       ]
+      },
+      "bounds": {
+       "x": -139.365,
+       "y": -90.758,
+       "width": 462.904,
+       "height": 493.39
+      }
+     },
+     "back": {
+      "skel": "art/char_301_cutter/back/char_301_cutter.skel",
+      "atlas": "art/char_301_cutter/back/char_301_cutter.atlas",
+      "textures": [
+       "art/char_301_cutter/back/char_301_cutter.png"
+      ],
+      "pma": false,
+      "anims": {
+       "idle": "Idle",
+       "deploy": "Start",
+       "attack": {
+        "begin": null,
+        "loop": "Attack",
+        "end": null
+       },
+       "attackDown": null,
+       "skill": {
+        "begin": null,
+        "loop": "Skill_1",
+        "end": null,
+        "index": 0,
+        "idle": null
+       },
+       "die": null,
+       "move": null,
+       "stun": null,
+       "skills": {
+        "0": {
+         "begin": null,
+         "loop": "Skill_1",
+         "end": null,
+         "index": 0,
+         "idle": null
+        },
+        "1": {
+         "begin": null,
+         "loop": "Skill_2",
+         "end": null,
+         "index": 1,
+         "idle": null
+        },
+        "2": {
+         "begin": null,
+         "loop": "Attack",
+         "end": null,
+         "via": "attack",
+         "index": 2,
+         "idle": null
+        }
+       }
+      },
+      "animations": {
+       "Attack": 1.333,
+       "Default": 0,
+       "Idle": 2,
+       "Skill_1": 1,
+       "Skill_2": 1,
+       "Start": 1
+      },
+      "events": [
+       "OnAttack",
+       "OnStart"
+      ],
+      "hits": {
+       "Attack": [
+        0.6,
+        0.667
+       ],
+       "Skill_1": [
+        0.467
+       ],
+       "Skill_2": [
+        0.5
+       ]
+      },
+      "bounds": {
+       "x": -146.397,
+       "y": -94.554,
+       "width": 506.124,
+       "height": 497.326
+      }
+     }
+    }
+   }
+  },
+  "bands": {
+   "band_columbia": "band/band_columbia.png"
+  },
+  "skills": {
+   "skchr_astesi_1": "art/skill/skchr_astesi_1.png",
+   "skchr_astesi_2": "art/skill/skchr_astesi_2.png",
+   "skchr_ceylon_1": "art/skill/skchr_ceylon_1.png",
+   "skchr_ceylon_2": "art/skill/skchr_ceylon_2.png",
+   "skchr_kafka_1": "art/skill/skchr_kafka_1.png",
+   "skchr_kafka_2": "art/skill/skchr_kafka_2.png",
+   "skchr_cutter_1": "art/skill/skchr_cutter_1.png",
+   "skchr_cutter_2": "art/skill/skchr_cutter_2.png"
+  }
+ },
+ "bondIcons": {
+  "columbiaShip": "bond/icon_columbiaShip.png"
+ },
+ "itemIcons": {
+  "trap_2100_mod_col_pldevice": "item/trap_2100_mod_col_pldevice.png",
+  "trap_2101_mod_col_sandboxA": "item/trap_2101_mod_col_sandboxA.png",
+  "trap_2102_mod_col_sandboxB": "item/trap_2102_mod_col_sandboxB.png",
+  "trap_2103_mod_col_fellow": "item/trap_2103_mod_col_fellow.png"
+ },
+ "skins": [
+  {
+   "id": "epoque-astesi",
+   "charId": "char_274_astesi",
+   "name": "奇工妙想",
+   "series": "时代",
+   "art": {
+    "avatar": "skin/op/char_274_astesi/avatar.png",
+    "portrait": "skin/op/char_274_astesi/portrait.png",
+    "spine": {
+     "front": {
+      "skel": "skin/op/char_274_astesi/front/char_274_astesi_epoque_23.skel",
+      "atlas": "skin/op/char_274_astesi/front/char_274_astesi_epoque_23.atlas",
+      "textures": [
+       "skin/op/char_274_astesi/front/char_274_astesi_epoque_23.png"
+      ],
+      "anims": {
+       "idle": "Idle",
+       "deploy": "Start",
+       "attack": {
+        "begin": null,
+        "loop": "Attack",
+        "end": null
+       },
+       "attackDown": null,
+       "skill": {
+        "begin": null,
+        "loop": "Attack",
+        "end": null,
+        "via": "attack",
+        "index": 0,
+        "idle": null
+       },
+       "die": "Die",
+       "move": null,
+       "stun": null,
+       "skills": {
+        "0": {
+         "begin": null,
+         "loop": "Attack",
+         "end": null,
+         "via": "attack",
+         "index": 0,
+         "idle": null
+        },
+        "1": {
+         "begin": null,
+         "loop": "Attack",
+         "end": null,
+         "via": "attack",
+         "index": 1,
+         "idle": null
+        },
+        "2": {
+         "begin": null,
+         "loop": "Attack",
+         "end": null,
+         "via": "attack",
+         "index": 2,
+         "idle": null
+        }
+       }
+      }
+     },
+     "back": {
+      "skel": "skin/op/char_274_astesi/back/char_274_astesi_epoque_23.skel",
+      "atlas": "skin/op/char_274_astesi/back/char_274_astesi_epoque_23.atlas",
+      "textures": [
+       "skin/op/char_274_astesi/back/char_274_astesi_epoque_23.png"
+      ],
+      "anims": {
+       "idle": "Idle",
+       "deploy": "Start",
+       "attack": {
+        "begin": null,
+        "loop": "Attack",
+        "end": null
+       },
+       "attackDown": null,
+       "skill": {
+        "begin": null,
+        "loop": "Attack",
+        "end": null,
+        "via": "attack",
+        "index": 0,
+        "idle": null
+       },
+       "die": null,
+       "move": null,
+       "stun": null,
+       "skills": {
+        "0": {
+         "begin": null,
+         "loop": "Attack",
+         "end": null,
+         "via": "attack",
+         "index": 0,
+         "idle": null
+        },
+        "1": {
+         "begin": null,
+         "loop": "Attack",
+         "end": null,
+         "via": "attack",
+         "index": 1,
+         "idle": null
+        },
+        "2": {
+         "begin": null,
+         "loop": "Attack",
+         "end": null,
+         "via": "attack",
+         "index": 2,
+         "idle": null
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  {
+   "id": "summer-ceylon",
+   "charId": "char_348_ceylon",
+   "name": "悠然假日 HD49",
+   "series": "珊瑚海岸",
+   "art": {
+    "avatar": "skin/op/char_348_ceylon/avatar.png",
+    "portrait": "skin/op/char_348_ceylon/portrait.png",
+    "spine": {
+     "front": {
+      "skel": "skin/op/char_348_ceylon/front/char_348_ceylon_summer_13.skel",
+      "atlas": "skin/op/char_348_ceylon/front/char_348_ceylon_summer_13.atlas",
+      "textures": [
+       "skin/op/char_348_ceylon/front/char_348_ceylon_summer_13.png"
+      ],
+      "anims": {
+       "idle": "Idle",
+       "deploy": "Start",
+       "attack": {
+        "begin": null,
+        "loop": "Attack",
+        "end": null
+       },
+       "attackDown": null,
+       "skill": {
+        "begin": null,
+        "loop": "Attack",
+        "end": null,
+        "via": "attack",
+        "index": 0,
+        "idle": null
+       },
+       "die": "Die",
+       "move": null,
+       "stun": null,
+       "skills": {
+        "0": {
+         "begin": null,
+         "loop": "Attack",
+         "end": null,
+         "via": "attack",
+         "index": 0,
+         "idle": null
+        },
+        "1": {
+         "begin": null,
+         "loop": "Attack",
+         "end": null,
+         "via": "attack",
+         "index": 1,
+         "idle": null
+        },
+        "2": {
+         "begin": null,
+         "loop": "Attack",
+         "end": null,
+         "via": "attack",
+         "index": 2,
+         "idle": null
+        }
+       }
+      }
+     },
+     "back": {
+      "skel": "skin/op/char_348_ceylon/back/char_348_ceylon_summer_13.skel",
+      "atlas": "skin/op/char_348_ceylon/back/char_348_ceylon_summer_13.atlas",
+      "textures": [
+       "skin/op/char_348_ceylon/back/char_348_ceylon_summer_13.png"
+      ],
+      "anims": {
+       "idle": "Idle",
+       "deploy": "Start",
+       "attack": {
+        "begin": null,
+        "loop": "Attack",
+        "end": null
+       },
+       "attackDown": null,
+       "skill": {
+        "begin": null,
+        "loop": "Attack",
+        "end": null,
+        "via": "attack",
+        "index": 0,
+        "idle": null
+       },
+       "die": null,
+       "move": null,
+       "stun": null,
+       "skills": {
+        "0": {
+         "begin": null,
+         "loop": "Attack",
+         "end": null,
+         "via": "attack",
+         "index": 0,
+         "idle": null
+        },
+        "1": {
+         "begin": null,
+         "loop": "Attack",
+         "end": null,
+         "via": "attack",
+         "index": 1,
+         "idle": null
+        },
+        "2": {
+         "begin": null,
+         "loop": "Attack",
+         "end": null,
+         "via": "attack",
+         "index": 2,
+         "idle": null
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  {
+   "id": "snow-kafka",
+   "charId": "char_214_kafka",
+   "name": "纸板仙子",
+   "series": "冰原信使",
+   "art": {
+    "avatar": "skin/op/char_214_kafka/avatar.png",
+    "portrait": "skin/op/char_214_kafka/portrait.png",
+    "spine": {
+     "front": {
+      "skel": "skin/op/char_214_kafka/front/char_214_kafka_snow_3.skel",
+      "atlas": "skin/op/char_214_kafka/front/char_214_kafka_snow_3.atlas",
+      "textures": [
+       "skin/op/char_214_kafka/front/char_214_kafka_snow_3.png"
+      ],
+      "anims": {
+       "idle": "Idle",
+       "deploy": "Idle",
+       "attack": {
+        "begin": null,
+        "loop": "Attack",
+        "end": null
+       },
+       "attackDown": null,
+       "skill": {
+        "begin": "Skill_Begin",
+        "loop": "Skill_Loop",
+        "end": "Skill_End",
+        "index": 0,
+        "idle": null
+       },
+       "die": "Die",
+       "move": null,
+       "stun": null,
+       "skills": {
+        "0": {
+         "begin": "Skill_Begin",
+         "loop": "Skill_Loop",
+         "end": "Skill_End",
+         "index": 0,
+         "idle": null
+        },
+        "1": {
+         "begin": "Skill_2_Begin",
+         "loop": "Skill_2_Loop",
+         "end": "Skill_2_End",
+         "index": 1,
+         "idle": "Skill_2_Idle"
+        },
+        "2": {
+         "begin": "Skill_Begin",
+         "loop": "Skill_Loop",
+         "end": "Skill_End",
+         "index": 2,
+         "idle": null
+        }
+       }
+      }
+     },
+     "back": {
+      "skel": "skin/op/char_214_kafka/back/char_214_kafka_snow_3.skel",
+      "atlas": "skin/op/char_214_kafka/back/char_214_kafka_snow_3.atlas",
+      "textures": [
+       "skin/op/char_214_kafka/back/char_214_kafka_snow_3.png"
+      ],
+      "anims": {
+       "idle": "Idle",
+       "deploy": "Idle",
+       "attack": {
+        "begin": null,
+        "loop": "Attack",
+        "end": null
+       },
+       "attackDown": null,
+       "skill": {
+        "begin": "Skill_Begin",
+        "loop": "Skill_Loop",
+        "end": "Skill_End",
+        "index": 0,
+        "idle": null
+       },
+       "die": null,
+       "move": null,
+       "stun": null,
+       "skills": {
+        "0": {
+         "begin": "Skill_Begin",
+         "loop": "Skill_Loop",
+         "end": "Skill_End",
+         "index": 0,
+         "idle": null
+        },
+        "1": {
+         "begin": "Skill_2_Begin",
+         "loop": "Skill_2_Loop",
+         "end": "Skill_2_End",
+         "index": 1,
+         "idle": "Skill_2_Idle"
+        },
+        "2": {
+         "begin": "Skill_Begin",
+         "loop": "Skill_Loop",
+         "end": "Skill_End",
+         "index": 2,
+         "idle": null
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  {
+   "id": "marthe-cutter",
+   "charId": "char_301_cutter",
+   "name": "拭刀",
+   "series": "玛尔特",
+   "art": {
+    "avatar": "skin/op/char_301_cutter/avatar.png",
+    "portrait": "skin/op/char_301_cutter/portrait.png",
+    "spine": {
+     "front": {
+      "skel": "skin/op/char_301_cutter/front/char_301_cutter_marthe_8.skel",
+      "atlas": "skin/op/char_301_cutter/front/char_301_cutter_marthe_8.atlas",
+      "textures": [
+       "skin/op/char_301_cutter/front/char_301_cutter_marthe_8.png"
+      ],
+      "anims": {
+       "idle": "Idle",
+       "deploy": "Start",
+       "attack": {
+        "begin": null,
+        "loop": "Attack",
+        "end": null
+       },
+       "attackDown": null,
+       "skill": {
+        "begin": null,
+        "loop": "Skill_1",
+        "end": null,
+        "index": 0,
+        "idle": null
+       },
+       "die": "Die",
+       "move": null,
+       "stun": null,
+       "skills": {
+        "0": {
+         "begin": null,
+         "loop": "Skill_1",
+         "end": null,
+         "index": 0,
+         "idle": null
+        },
+        "1": {
+         "begin": null,
+         "loop": "Skill_2",
+         "end": null,
+         "index": 1,
+         "idle": null
+        },
+        "2": {
+         "begin": null,
+         "loop": "Attack",
+         "end": null,
+         "via": "attack",
+         "index": 2,
+         "idle": null
+        }
+       }
+      }
+     },
+     "back": {
+      "skel": "skin/op/char_301_cutter/back/char_301_cutter_marthe_8.skel",
+      "atlas": "skin/op/char_301_cutter/back/char_301_cutter_marthe_8.atlas",
+      "textures": [
+       "skin/op/char_301_cutter/back/char_301_cutter_marthe_8.png"
+      ],
+      "anims": {
+       "idle": "Idle",
+       "deploy": "Start",
+       "attack": {
+        "begin": null,
+        "loop": "Attack",
+        "end": null
+       },
+       "attackDown": null,
+       "skill": {
+        "begin": null,
+        "loop": "Skill_1",
+        "end": null,
+        "index": 0,
+        "idle": null
+       },
+       "die": null,
+       "move": null,
+       "stun": null,
+       "skills": {
+        "0": {
+         "begin": null,
+         "loop": "Skill_1",
+         "end": null,
+         "index": 0,
+         "idle": null
+        },
+        "1": {
+         "begin": null,
+         "loop": "Skill_2",
+         "end": null,
+         "index": 1,
+         "idle": null
+        },
+        "2": {
+         "begin": null,
+         "loop": "Attack",
+         "end": null,
+         "via": "attack",
+         "index": 2,
+         "idle": null
+        }
+       }
+      }
+     }
+    }
+   }
+  }
+ ]
+}

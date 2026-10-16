@@ -51,7 +51,7 @@
 // has `hitSleep` or the damage carries `ignoreSleep`.
 
 import { MIN_DAMAGE_RATIO, ELEMENT, ELEMENT_ORDER, PALSY_MAX } from './constants.js';
-import { BOSS_HIT_LIMIT } from '../../shared/constants.js';
+import { BOSS_HIT_LIMIT, BOSS_HIT_LIMIT_INFINITE } from '../../shared/constants.js';
 import { evadesGround } from './targeting.js';
 
 const clamp01 = (v) => (v < 0 ? 0 : v > 1 ? 1 : v);
@@ -222,6 +222,14 @@ export function leaderHitCancelled(battle, target, amount) {
   // 随机模式 (无限火力)：彻底移除领袖限伤——模组 ×5 + 盟约无上限叠层的单刀伤害远超限值，原限伤把大额伤害
   // 整笔取消（不是封顶），阿利斯泰尔等终局 boss 打不动、血条不动。普通模式保留原版 30 万。
   if (battle.rm) return false;
+  // 超限模拟 (无限模式)：限伤上限放宽到 99,999,999，匹配巨幅伤害成长且避免 32 位溢出
+  if (battle.infinite) {
+    if (Math.ceil(amount) >= BOSS_HIT_LIMIT_INFINITE) {
+      battle.fx('hitCap', { x: target.x, y: target.y, id: target.id, n: Math.ceil(amount) });
+      return true;
+    }
+    return false;
+  }
   if (!(Math.ceil(amount) >= BOSS_HIT_LIMIT)) return false;
   battle.fx('hitCap', { x: target.x, y: target.y, id: target.id, n: Math.ceil(amount) });
   return true;

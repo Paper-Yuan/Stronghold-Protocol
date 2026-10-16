@@ -150,15 +150,15 @@ export function checkLoadout(entries, getChess) {
     const e = entries[id];
     const base = typeof getChess === 'function' ? getChess(id) : null;
     if (!base || base.isGolden || base.visible === false || base.isHidden || base.isDiy || (base.baseId && base.baseId !== id)) {
-      return { error: 'BAD_TARGET', detail: `unknown chess ${id}` };
+      continue;
     }
     const golden = base.goldenId ? getChess(base.goldenId) || null : null;
     const opt = loadoutOptions(base, golden);
     const skill = e.skill ?? opt.defaultSkill;
-    if (!opt.skills.includes(skill)) return { error: 'BAD_TARGET', detail: `skill ${e.skill} not available for ${id}` };
-    if (e.module !== undefined && !golden) return { error: 'BAD_TARGET', detail: `${id} has no elite module` };
+    if (!opt.skills.includes(skill)) continue;
+    if (e.module !== undefined && !golden) continue;
     const module = golden ? (e.module ?? opt.defaultModule) : null;
-    if (golden && !opt.modules.includes(module)) return { error: 'BAD_TARGET', detail: `module ${e.module} not available for ${id}` };
+    if (golden && !opt.modules.includes(module)) continue;
     if (skill === opt.defaultSkill && module === opt.defaultModule) continue;
     out[id] = { skill, module };
   }
@@ -386,14 +386,15 @@ export const C2S = {
   hello: { name: (v) => isStr(v, NAME_MAX_LEN) && v.trim().length > 0, token: (v) => v == null || isStr(v, 64), version: (v) => v == null || isInt(v, 0, 1e6),
     browserId: (v) => v == null || (typeof v === 'string' && /^[a-f0-9]{32}$/.test(v)), noReplace: isBool, claimAt: (v) => isNum(v, 0, Number.MAX_SAFE_INTEGER), $optional: ['token', 'version', 'noReplace', 'claimAt', 'browserId'] },
   ping: { c: (v) => typeof v === 'number' && Number.isFinite(v) },
-  'room.create': { mode: (v) => v === 'solo' || v === 'coop', difficulty: (v) => DIFFICULTIES.includes(v), random: (v) => v == null || isBool(v), variant: (v) => v == null || v === 'blitz' || v === 'endurance' || v === 'marathon', private: (v) => v == null || isBool(v), $optional: ['random', 'variant', 'private'] },
+  'room.create': { mode: (v) => v === 'solo' || v === 'coop' || v === 'solo_infinite', difficulty: (v) => DIFFICULTIES.includes(v), random: (v) => v == null || isBool(v), variant: (v) => v == null || v === 'blitz' || v === 'endurance' || v === 'marathon', private: (v) => v == null || isBool(v), mods: (v) => v == null || typeof v === 'string', modIds: (v) => v == null || (Array.isArray(v) && v.every(id => typeof id === 'string')), $optional: ['random', 'variant', 'private', 'mods', 'modIds'] },
   // 随机模式 (娱乐模式): host toggles it in the room lobby; the room keeps it until the next match starts
   'room.setPrivate': { private: isBool },
   'room.setRandom': { random: isBool, variant: (v) => v == null || v === 'blitz' || v === 'endurance' || v === 'marathon', $optional: ['variant'] },
-  'room.join': { code: (v) => isStr(v, ROOM_CODE_LEN + 2) && /^[A-Za-z0-9]+$/.test(v) },
+  'room.join': { code: (v) => isStr(v, ROOM_CODE_LEN + 2) && /^[A-Za-z0-9]+$/.test(v), mods: (v) => v == null || typeof v === 'string', $optional: ['mods'] },
   'room.leave': {},
   'room.ready': { ready: isBool },
   'room.setDifficulty': { difficulty: (v) => DIFFICULTIES.includes(v) },
+  'room.setMods': { modIds: (v) => v == null || (Array.isArray(v) && v.every(id => typeof id === 'string')), $optional: ['modIds'] },
   // the co-op room option 「AI 队友最后选择」 (GitHub #338; host, before the match): the strategy and 机变 drafts order every
   // human seat before every AI seat (server/match/match/phases.js humansFirst); room.state.aiPicksLast
   'room.setAiPicksLast': { on: isBool },
@@ -421,6 +422,7 @@ export const C2S = {
   'room.diy': { picks: isDiyPicks },
   // 干员皮肤 (docs/SKINS.md): public, accepted in any room phase
   'room.skins': { skins: isSkinSelection },
+  'room.card': { charId: (v) => isStr(v, 48) && (v === '' || /^char_[0-9a-z_]+$/.test(v)) },
   // spectator seats (remake feature, community report #26; MAX_SPECTATORS): take one of a co-op room's spectator seats —
   // in its lobby or while its match runs — never a player seat; the host frees one by playerId (the spectator gets
   // room.closed { reason: 'kicked' }). room.leave / g.leave leave a spectator seat like a player seat.

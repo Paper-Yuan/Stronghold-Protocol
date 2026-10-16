@@ -30,6 +30,16 @@ const SEAT_CLASS = Object.freeze(['seat-0', 'seat-1', 'seat-2', 'seat-3']);
 export function ChatBox({ active: controlledActive, onToggle, showTrigger = controlledActive === undefined }) {
   const messages = useStore((s) => s.chatMessages) || [];
   const [internalActive, setInternalActive] = useState(false);
+  const [halfCollapsed, setHalfCollapsed] = useState(() => {
+    try { return localStorage.getItem('sp.chat.collapsed') === 'true'; } catch { return false; }
+  });
+  const toggleCollapse = () => {
+    setHalfCollapsed((v) => {
+      const next = !v;
+      try { localStorage.setItem('sp.chat.collapsed', String(next)); } catch {}
+      return next;
+    });
+  };
   const active = controlledActive !== undefined ? controlledActive : internalActive;
   const setActive = onToggle || setInternalActive;
   const [draft, setDraft] = useState('');
@@ -123,7 +133,18 @@ export function ChatBox({ active: controlledActive, onToggle, showTrigger = cont
   };
 
   return html`
-    <div class=${`chat-panel ${active ? 'is-active' : ''}`}>
+    <div class=${`chat-panel ${active ? 'is-active' : ''} ${halfCollapsed ? 'is-collapsed' : ''}`}>
+      <div class="chat-header-bar">
+        <button
+          type="button"
+          class="chat-collapse-btn"
+          onClick=${toggleCollapse}
+          title=${halfCollapsed ? t('展开对话框') : t('收起一半对话框')}
+          aria-label=${halfCollapsed ? t('展开') : t('收起')}
+        >
+          <span class="chat-collapse-icon">${halfCollapsed ? '▲ 展开' : '▼ 收起'}</span>
+        </button>
+      </div>
       <div class="chat-log" ref=${logRef}>
         ${messages.map((m, i) => {
           const seatLabel = m.isSpectator ? t('观战') : `P${(m.seat ?? 0) + 1}`;

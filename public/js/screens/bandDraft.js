@@ -23,6 +23,8 @@ import { html, Button, Icon, MicroLabel, useTicker, secondsLeft } from '../ui/co
 import { useGameData, BandIcon, RichText, PlayerAvatar, LpTower, Sprite } from '../ui/gameComponents.js';
 import { StepHeader, ExitModal } from '../ui/matchChrome.js';
 import { MatchInfoDialog, matchInfoModel } from '../ui/matchInfo.js';
+// package (对局动画): the 「请选择策略」 band each time a pick becomes the player's (ui/matchIntro.js TurnBanner)
+import { TurnBanner } from '../ui/matchIntro.js';
 import { actions, act } from '../ui/gameActions.js';
 import { normalizeDraft, sortedPlayers } from '../ui/gameLogic.js';
 import { useStore } from '../store.js';
@@ -168,18 +170,26 @@ export function BandDraftScreen() {
   const pub = useStore((s) => s.match.public);
   const priv = useStore((s) => s.match.private);
   const myId = useStore((s) => s.me.playerId);
-  const roomSolo = useStore((s) => s.room?.mode === 'solo');
+  const room = useStore((s) => s.room);
+  const roomSolo = room?.mode === 'solo' || room?.mode === 'solo_infinite';
   const gd = useGameData();
   const [sel, setSel] = useState(null);
   const [busy, setBusy] = useState(null);
   const [exit, setExit] = useState(false);
   const [skipped, setSkipped] = useState(false);
   const [infoOpen, setInfoOpen] = useState(false);
+  const [banner, setBanner] = useState(null);
 
   const mode = gd.config?.modes?.[pub?.modeId];
+  const solo = roomSolo || String(pub?.modeId || '').includes('single') || room?.mode === 'solo_infinite';
   const offBonds = modeOffBonds(mode); // the bonds this mode never activates (标准: 10 of 23)
-  const solo = roomSolo || mode?.type === 'SINGLE' || String(pub?.modeId || '').includes('single');
-  const bands = useMemo(() => allowedBands(gd.list('bands'), mode?.type || (solo ? 'SINGLE' : 'MULTI')), [gd.ready, mode?.type, solo, data.locale()]);
+  const bands = useMemo(() => {
+    const activeModSet = new Set(
+      room?.mode === 'solo_infinite' ? [] : (room?.modIds || pub?.modIds || priv?.modIds || [])
+    );
+    const rawBands = (gd.list('bands') || []).filter((b) => !b.packId || activeModSet.has(b.packId));
+    return allowedBands(rawBands, mode?.type || (solo ? 'SINGLE' : 'MULTI'));
+  }, [gd.ready, mode?.type, solo, data.locale(), room?.mode, room?.modIds, pub?.modIds]);
   const players = sortedPlayers(pub);
   const draft = normalizeDraft(pub?.draft, players);
   const myPick = draft.picks.get(myId) || priv?.bandId || null;
@@ -204,6 +214,7 @@ export function BandDraftScreen() {
   }, [bands.length, myPick, myTurn, takenKey]);
   // "your turn" cue
   useEffect(() => { if (myTurn && !solo) audio.sfx('yourTurn'); }, [myTurn]);
+  useEffect(() => { if (myTurn) setBanner(`${draft.turnPid || 'self'}|${Date.now()}`); }, [myTurn]);
   // the 本局信息 dialog never outlives the turn it was opened in: a turn change (a pick, a skip, a turn that ran out, an
   // AI pick) or my pick closes it, so whoever's turn begins sees the draft
   const turnKey = `${draft.turnPid || ''}|${myPick || ''}`;
@@ -324,6 +335,7 @@ export function BandDraftScreen() {
         </div>
       </aside>
     </main>
+    ${banner ? html`<${TurnBanner} key=${banner} text=${t('请选择策略')} onDone=${() => setBanner(null)} />` : null}
     <${ExitModal} open=${exit} onClose=${() => setExit(false)} solo=${solo} />
     <${MatchInfoDialog} open=${infoOpen} onClose=${() => setInfoOpen(false)} model=${info}
       status=${infoStatus ? html`<span class=${cx('minfo-dlg__turn', `is-${infoStatus.tone}`)}>

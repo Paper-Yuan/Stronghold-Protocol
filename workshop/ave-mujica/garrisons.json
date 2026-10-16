@@ -1,0 +1,218 @@
+{
+ "garrison_180_a": {
+  "garrisonId": "garrison_180_a",
+  "desc": "<战斗开始时>获得等与【颂乐人偶】盟约层数一半的Fever；<战斗中>击倒敌人时使所有【颂乐人偶】干员已激活盟约层数+1（最多12次）",
+  "descRaw": "<战斗开始时>获得等与【颂乐人偶】盟约层数一半的Fever；<战斗中>击倒敌人时使所有【颂乐人偶】干员已激活盟约层数+1（最多12次）",
+  "eventType": "IN_BATTLE",
+  "eventTypeDesc": "持续叠加",
+  "eventTypeIcon": "icon_bond",
+  "effectType": "AVEMUJICA_FEVER_KILL",
+  "effectKey": "AVEMUJICA_FEVER_KILL",
+  "battleRuneKey": null,
+  "charLevel": 0,
+  "bb": {
+   "fever_ratio": 0.5,
+   "kill_layers": 1,
+   "max_count": 12
+  },
+  "bbStr": {},
+  "owners": [
+   "chess_char_6_30_a"
+  ]
+ },
+ "garrison_180_b": {
+  "garrisonId": "garrison_180_b",
+  "desc": "<战斗开始时>获得等与【颂乐人偶】盟约层数全部的Fever；【战斗中】击倒敌人时使所有【颂乐人偶】干员已激活盟约层数+2（最多12次）",
+  "descRaw": "<战斗开始时>获得等与【颂乐人偶】盟约层数全部的Fever；【战斗中】击倒敌人时使所有【颂乐人偶】干员已激活盟约层数+2（最多12次）",
+  "eventType": "IN_BATTLE",
+  "eventTypeDesc": "持续叠加",
+  "eventTypeIcon": "icon_bond",
+  "effectType": "AVEMUJICA_FEVER_KILL",
+  "effectKey": "AVEMUJICA_FEVER_KILL",
+  "battleRuneKey": null,
+  "charLevel": 0,
+  "bb": {
+   "fever_ratio": 1,
+   "kill_layers": 2,
+   "max_count": 12
+  },
+  "bbStr": {},
+  "owners": [
+   "chess_char_6_30_b"
+  ]
+ },
+ "garrison_181_a": {
+  "garrisonId": "garrison_181_a",
+  "desc": "【颂乐人偶】干员触发特质时额外触发1次；触发干员为丰川祥子时，使所有【颂乐人偶】干员已激活盟约层数+1（每回合1次）",
+  "descRaw": "【颂乐人偶】干员触发特质时额外触发1次；触发干员为丰川祥子时，使所有【颂乐人偶】干员已激活盟约层数+1（每回合1次）",
+  "eventType": "IN_BATTLE",
+  "eventTypeDesc": "持续叠加",
+  "eventTypeIcon": "icon_bond",
+  "effectType": "AVEMUJICA_EXTRA_TRIGGER",
+  "effectKey": "AVEMUJICA_EXTRA_TRIGGER",
+  "battleRuneKey": null,
+  "charLevel": 0,
+  "bb": {
+   "extra_trigger": 1,
+   "partner_layers": 1
+  },
+  "bbStr": {
+   "partner": "oblivionis"
+  },
+  "owners": [
+   "chess_char_5_30_a"
+  ]
+ },
+ "garrison_181_b": {
+  "garrisonId": "garrison_181_b",
+  "desc": "【颂乐人偶】干员触发特质时额外触发2次；触发干员为丰川祥子时，使所有【颂乐人偶】干员已激活盟约层数+2（每回合1次）",
+  "descRaw": "【颂乐人偶】干员触发特质时额外触发2次；触发干员为丰川祥子时，使所有【颂乐人偶】干员已激活盟约层数+2（每回合1次）",
+  "eventType": "IN_BATTLE",
+  "eventTypeDesc": "持续叠加",
+  "eventTypeIcon": "icon_bond",
+  "effectType": "AVEMUJICA_EXTRA_TRIGGER",
+  "effectKey": "AVEMUJICA_EXTRA_TRIGGER",
+  "battleRuneKey": null,
+  "charLevel": 0,
+  "bb": {
+   "extra_trigger": 2,
+   "partner_layers": 2
+  },
+  "bbStr": {
+   "partner": "oblivionis"
+  },
+  "owners": [
+   "chess_char_5_30_b"
+  ]
+ },
+ "garrison_182_a": {
+  "garrisonId": "garrison_182_a",
+  "desc": "<刷新时>使自身所属已激活盟约层数+1（最多6次）",
+  "descRaw": "<刷新时>使自身所属已激活盟约层数+1（最多6次）",
+  "eventType": "SERVER_REFRESH_SHOP",
+  "eventTypeDesc": "整备能力",
+  "eventTypeIcon": "icon_gold",
+  "effectType": "AVEMUJICA_REFRESH_LAYERS",
+  "effectKey": "AVEMUJICA_REFRESH_LAYERS",
+  "battleRuneKey": null,
+  "charLevel": 0,
+  "bb": {
+   "layers": 1,
+   "max_count": 6
+  },
+  "bbStr": {},
+  "owners": [
+   "chess_char_5_32_a"
+  ]
+ },
+ "garrison_182_b": {
+  "garrisonId": "garrison_182_b",
+  "desc": "<刷新时>使自身所属已激活盟约层数+2（最多6次）",
+  "descRaw": "<刷新时>使自身所属已激活盟约层数+2（最多6次）",
+  "eventType": "SERVER_REFRESH_SHOP",
+  "eventTypeDesc": "整备能力",
+  "eventTypeIcon": "icon_gold",
+  "effectType": "AVEMUJICA_REFRESH_LAYERS",
+  "effectKey": "AVEMUJICA_REFRESH_LAYERS",
+  "battleRuneKey": null,
+  "charLevel": 0,
+  "bb": {
+   "layers": 2,
+   "max_count": 6
+  },
+  "bbStr": {},
+  "owners": [
+   "chess_char_5_32_b"
+  ]
+ },
+ "garrison_183_a": {
+  "garrisonId": "garrison_183_a",
+  "desc": "<进入休整期时>【颂乐人偶】干员数量＜3时，获得1资金；【颂乐人偶】干员数量≥3时，获得1次免费刷新",
+  "descRaw": "<进入休整期时>【颂乐人偶】干员数量＜3时，获得1资金；【颂乐人偶】干员数量≥3时，获得1次免费刷新",
+  "eventType": "SERVER_PREP_START",
+  "eventTypeDesc": "整备能力",
+  "eventTypeIcon": "icon_gold",
+  "effectType": "AVEMUJICA_PREP_REWARD",
+  "effectKey": "AVEMUJICA_PREP_REWARD",
+  "battleRuneKey": null,
+  "charLevel": 0,
+  "bb": {
+   "refresh": 1,
+   "fund": 1,
+   "check_count": 3
+  },
+  "bbStr": {},
+  "owners": [
+   "chess_char_5_31_a"
+  ]
+ },
+ "garrison_183_b": {
+  "garrisonId": "garrison_183_b",
+  "desc": "<进入休整期时>【颂乐人偶】干员数量＜3时，获得2资金；【颂乐人偶】干员数量≥3时，获得2次免费刷新",
+  "descRaw": "<进入休整期时>【颂乐人偶】干员数量＜3时，获得2资金；【颂乐人偶】干员数量≥3时，获得2次免费刷新",
+  "eventType": "SERVER_PREP_START",
+  "eventTypeDesc": "整备能力",
+  "eventTypeIcon": "icon_gold",
+  "effectType": "AVEMUJICA_PREP_REWARD",
+  "effectKey": "AVEMUJICA_PREP_REWARD",
+  "battleRuneKey": null,
+  "charLevel": 0,
+  "bb": {
+   "refresh": 2,
+   "fund": 2,
+   "check_count": 3
+  },
+  "bbStr": {},
+  "owners": [
+   "chess_char_5_31_b"
+  ]
+ },
+ "garrison_164_a": {
+  "garrisonId": "garrison_164_a",
+  "desc": "<战斗中>受到伤害时使自身已激活的层数+5（最多2次）",
+  "descRaw": "<战斗中>受到伤害时使自身已激活的层数+5（最多2次）",
+  "eventType": "IN_BATTLE",
+  "eventTypeDesc": "持续叠加",
+  "eventTypeIcon": "icon_bond",
+  "effectType": "ADD_BOND",
+  "effectKey": "act_gar_event_onhurt_add_bond_layer",
+  "battleRuneKey": "env_gbuff_new_with_verify",
+  "charLevel": 0,
+  "bb": {
+   "bond_add_count": 5,
+   "max_count": 2
+  },
+  "bbStr": {
+   "key": "act_gar_event_onhurt_add_bond_layer",
+   "bond_type": "bond_self",
+   "bond_add_type": "by_count"
+  },
+  "owners": [
+   "chess_char_5_25_a"
+  ]
+ },
+ "garrison_164_b": {
+  "garrisonId": "garrison_164_b",
+  "desc": "<战斗中>受到伤害时使自身已激活的层数+10（最多4次）",
+  "descRaw": "<战斗中>受到伤害时使自身已激活的层数+10（最多4次）",
+  "eventType": "IN_BATTLE",
+  "eventTypeDesc": "持续叠加",
+  "eventTypeIcon": "icon_bond",
+  "effectType": "ADD_BOND",
+  "effectKey": "act_gar_event_onhurt_add_bond_layer",
+  "battleRuneKey": "env_gbuff_new_with_verify",
+  "charLevel": 0,
+  "bb": {
+   "bond_add_count": 10,
+   "max_count": 4
+  },
+  "bbStr": {
+   "key": "act_gar_event_onhurt_add_bond_layer",
+   "bond_type": "bond_self",
+   "bond_add_type": "by_count"
+  },
+  "owners": [
+   "chess_char_5_25_b"
+  ]
+ }
+}

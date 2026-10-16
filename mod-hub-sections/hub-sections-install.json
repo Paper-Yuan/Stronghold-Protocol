@@ -1,0 +1,12 @@
+{
+ "installedAt": "2026-10-14T09:21:19.299Z",
+ "updatedAt": "2026-10-14T09:21:19.300Z",
+ "target": "e:\\Workbox\\系统",
+ "backedUp": [
+  "public/js/ui/settings.js"
+ ],
+ "created": [
+  "public/js/ui/hubSections.js",
+  "public/js/ui/settingsPolish.js"
+ ]
+}

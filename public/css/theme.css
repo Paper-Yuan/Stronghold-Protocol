@@ -395,3 +395,15 @@ h1, h2, h3, h4, p { margin: 0; }
     transition-duration: 1ms !important;
   }
 }
+
+/* 低配优化：关动画与过渡（一律归零，提升流畅度并降低发热功耗） */
+:root[data-perf-lite="hard"],
+:root[data-perf-lite="hard"] *,
+:root[data-perf-lite="hard"] *::before,
+:root[data-perf-lite="hard"] *::after {
+  animation-duration: 0s !important;
+  animation-delay: 0s !important;
+  transition-duration: 0s !important;
+  transition-delay: 0s !important;
+}
+

@@ -60,6 +60,7 @@
           <div class="header-actions">
             <input type="file" id="mod-upload-input" accept=".zip" hidden>
             <button id="mod-upload-btn" class="primary">↑ 上传模组 (ZIP)</button>
+            <button id="mod-upstream-btn" class="secondary" style="border-color: #23e2b2; color: #23e2b2;">☁ 上游工坊抓取 (47.103.14.217)</button>
             <button id="mod-refresh-btn" class="secondary">↻ 刷新</button>
           </div>
         </div>
@@ -91,8 +92,10 @@
         <div class="announcement-layout"><form id="announcement-form" class="form-panel">
           <p class="eyebrow">BROADCAST</p><h2>发布服务器公告</h2><p class="muted">公告会出现在所有连接玩家的游戏页面，包含正在进行的对局。</p>
           <label>公告正文<textarea name="text" rows="5" maxlength="500" placeholder="例如：服务器将在今晚 23:00 维护，请提前结束对局。" required></textarea></label>
-          <div class="form-row"><label>等级<select name="level"><option value="info">普通通知</option><option value="warning" selected>提醒</option><option value="urgent">紧急</option></select></label><label>显示时长<select name="durationSeconds"><option value="300">5 分钟</option><option value="900" selected>15 分钟</option><option value="3600">1 小时</option><option value="86400">24 小时</option></select></label></div>
-          <p class="panel-note">同时存在多条公告时按等级优先、同等级按发布时间先后展示。</p><button class="primary" type="submit">发布公告 ↗</button>
+          <div class="form-row"><label>等级<select name="level"><option value="info">普通通知</option><option value="warning" selected>提醒</option><option value="urgent">紧急</option></select></label><label>显示时长<select name="durationSeconds"><option value="900">15 分钟</option><option value="3600">1 小时</option><option value="86400">24 小时</option><option value="259200">3 天</option><option value="604800" selected>7 天</option><option value="2592000">30 天</option></select></label></div>
+          <div class="form-row"><label>定向平台<select name="platform"><option value="all" selected>全平台客户端 (Web & Android)</option><option value="android">仅安卓客户端 (APK 原生端)</option><option value="web">仅网页端 (PC 浏览器)</option></select></label><label>场景定向<select name="scene"><option value="all" selected>全场景 (大厅与战斗中)</option><option value="lobby">仅大厅与主界面 (不打扰对局)</option><option value="match">仅正在对局中的玩家</option></select></label></div>
+          <label>跳转/下载链接 (选填)<input name="targetUrl" type="url" placeholder="例如：https://.../download/app.apk 或更新说明地址"></label>
+          <p class="panel-note">定向设置生效后，不符合条件的客户端将自动忽略该条公告或按需静默展示。</p><button class="primary" type="submit">发布公告 ↗</button>
         </form><div class="announcement-list"><h2>当前与排期</h2><div id="announcements-list"></div></div></div>
       </section>
 
@@ -107,4 +110,38 @@
     <p class="form-error" role="alert"></p><div class="dialog-actions"><button class="secondary" type="button" data-close="action-dialog">取消</button><button id="action-submit" class="danger" type="submit">确认</button></div>
   </form></dialog>
   <dialog id="password-dialog"><form id="password-form"><p class="eyebrow">ACCOUNT SECURITY</p><h2>修改管理密码</h2><label>当前密码<input name="currentPassword" type="password" autocomplete="current-password" required maxlength="128"></label><label>新密码<input name="newPassword" type="password" autocomplete="new-password" required minlength="12" maxlength="128"></label><label>再次输入新密码<input name="confirmPassword" type="password" autocomplete="new-password" required minlength="12" maxlength="128"></label><p class="muted">修改后所有管理会话退出，需要使用新密码登录。</p><p class="form-error" role="alert"></p><div class="dialog-actions"><button class="secondary" type="button" data-close="password-dialog">取消</button><button class="primary" type="submit">修改并退出</button></div></form></dialog>
+
+  <dialog id="upstream-dialog" style="max-width: 960px; width: 95vw;">
+    <div class="form-panel">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 12px;">
+        <div>
+          <p class="eyebrow">UPSTREAM WORKSHOP</p>
+          <h2 style="margin:0;">工坊模组中心</h2>
+          <p class="muted" style="margin:4px 0 0;">可连接任意兼容工坊服务器拉取模组清单并一键解压安装到本地。</p>
+        </div>
+        <button class="secondary" type="button" data-close="upstream-dialog">关闭 ✕</button>
+      </div>
+      <div style="display:flex; gap: 8px; margin-bottom: 12px; align-items: center;">
+        <input id="upstream-server-input" type="text" placeholder="工坊服务器地址（默认官方站，可填自定义服务器如 101.37.150.107:3000）" style="flex:1; padding: 7px 12px; border-radius: 4px; border: 1px solid #334; background: #161e1b; color: #fff;">
+        <button id="upstream-fetch-btn" class="primary" type="button" style="padding: 7px 16px; white-space: nowrap;">抓取模组清单</button>
+      </div>
+      <div class="table-wrap" style="max-height: 60vh; overflow-y: auto;">
+        <table>
+          <thead>
+            <tr>
+              <th>模组名称</th>
+              <th>分类</th>
+              <th>作者</th>
+              <th>大小</th>
+              <th>说明</th>
+              <th class="action-cell">操作</th>
+            </tr>
+          </thead>
+          <tbody id="upstream-mods-body">
+            <tr><td colspan="6" style="text-align:center; padding: 24px;">正在连接上游站点抓取模组列表…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </dialog>
 </body></html>

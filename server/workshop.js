@@ -82,16 +82,23 @@ export function readUiLangFile(lang) {
 
 /**
  * Load every pack under `dir`.
+ * 
+ * ⚠️ PERFORMANCE NOTE: This function uses synchronous file I/O (fs.readFileSync) which blocks the event loop.
+ * Each pack adds ~10-50ms of blocking time during server startup. This is acceptable for startup but should
+ * not be called in hot paths. For hot reload scenarios, consider batching or deferring to avoid blocking
+ * active requests. Future optimization: convert to async with Promise.all for parallel loading.
+ * 
  * @param {string} [dir] pack root (default WORKSHOP_DIR)
- * @param {{ log?: { warn?: Function, info?: Function } | null, c2s?: Record<string, any> }} [opts]
+ * @param {{ log?: { warn?: Function, info?: Function } | null, c2s?: Record<string, any>, overlimit?: boolean }} [opts]
  *   `c2s` defaults to the loaded protocol and only decides whether a declared `server.preDispatch.intercepts`
  *   entry exists (tests inject a narrower catalogue to prove the load-time judgement is against the protocol
  *   actually installed, not against a copied list — the same injection `loadWorkshopHooks` takes).
+ *   `overlimit` when true: only load manifests (pack.json), skip all content files for faster startup.
  * @returns {{ dir: string, present: boolean, packs: Array<{ id: string, name: string, version: string, dir: string,
  *   overrides: string[], files: Record<string, Record<string, object>> }>, errors: Array<{ pack: string, reason: string }>,
  *   foreign: Array<{ pack: string, reason: string }> }}
  */
-export function loadWorkshop(dir = WORKSHOP_DIR, { log = null, c2s = C2S } = {}) {
+export function loadWorkshop(dir = WORKSHOP_DIR, { log = null, c2s = C2S, overlimit = false } = {}) {
   /** @type {any[]} */
   const packs = [];
   /** @type {Array<{ pack: string, reason: string }>} */
@@ -149,6 +156,19 @@ export function loadWorkshop(dir = WORKSHOP_DIR, { log = null, c2s = C2S } = {})
     }
     /** @type {Record<string, Record<string, object>>} */
     const files = {};
+    
+    // 🚀 OVERLIMIT MODE: Skip content loading, only register manifest metadata
+    if (overlimit) {
+      log?.info?.(`[OVERLIMIT] ${name}: manifest-only mode, skipping content files`);
+      // Still need to register the pack structure, but with empty content
+      packs.push({
+        ...manifest.pack,
+        dir: packDir,
+        files,
+      });
+      continue;
+    }
+    
     for (const file of manifest.pack.content) {
       let json;
       try {

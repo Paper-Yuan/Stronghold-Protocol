@@ -6,6 +6,7 @@
 
 import { PHASE, ERR } from '../../../shared/constants.js';
 import { buildNormalWave, buildBossWave } from '../waves.js';
+import { isInfiniteBossRound, buildInfiniteNormalWave, buildInfiniteBossWave } from '../infiniteWaves.js';
 import { pairPlayers } from '../finalAssault.js';
 import { createRng, deriveSeed } from '../../sim/rng.js';
 import { botPickBand } from '../bot.js';
@@ -268,9 +269,11 @@ export class MatchPhases {
     // round start: its recompute() checks the board on the field the player deploys on this round (deployFieldOf reads
     // the boss pairing), so R14 → R15 never re-checks a boss-field board against the normal field (user playtest #5
     // item 7). rngWaves is used only here, so the order leaves every random stream unchanged.
-    const isBoss = r === this.gd.bossRound || r === this.gd.hiddenRound;
+    const isBoss = (this.isInfinite && isInfiniteBossRound(r)) || r === this.gd.bossRound || r === this.gd.hiddenRound;
     if (isBoss) {
       this._planBossWaves();
+    } else if (this.isInfinite && r >= 16) {
+      this.wave = buildInfiniteNormalWave(this.gd, this.rngWaves, r);
     } else {
       this.wave = buildNormalWave(this.gd, this.rngWaves, this.factions, r);
     }
@@ -298,7 +301,9 @@ export class MatchPhases {
     this.bossPairs = groups.map(g => g.map(p => p.playerId));
     this.bossWaves = groups.map((g) => ({
       players: g.map((p) => p.playerId),
-      wave: buildBossWave(this.gd, this.rngWaves, this.factions, r, { bossId, solo: this.isSolo || g.length === 1 }),
+      wave: (this.isInfinite && r >= 16)
+        ? buildInfiniteBossWave(this.gd, this.rngWaves, r)
+        : buildBossWave(this.gd, this.rngWaves, this.factions, r, { bossId, solo: this.isSolo || g.length === 1 }),
     }));
   }
 

@@ -363,16 +363,17 @@ describe('UnitView impostor mode (render/units.js)', () => {
     return { v, step, log };
   }
 
-  test('while the model\'s clips are still measured the unit is drawn directly; then an impostor sized from them', async () => {
+  test('while the model\'s clips are still measured the unit stays in the atlas with provisional box; then sized from measured', async () => {
     let ready = null;
     const { v, step, log } = await operator(() => ready);
     step(4);
-    assert.ok(!v.imp, 'no impostor without a box');
-    assert.equal(log.draw, 0);
-    assert.equal(v.actor.spine.parent, v.body, 'drawn directly');
+    assert.ok(v.imp, 'stays in impostor atlas with provisional box');
+    assert.equal(v._box?.provisional, true, 'uses provisional box');
+    assert.ok(log.draw >= 1, 'draws through impostor atlas');
     ready = MEASURED;
     step(2);
     assert.ok(v.imp && log.draw >= 1, 'an impostor once measured');
+    assert.equal(v._box?.provisional, false, 'final box replaces provisional');
     const b = v._box, r = [b.x0, b.y0, b.x0 + b.w, b.y0 + b.h];
     for (const n of ['Idle', 'Attack', 'Die']) {
       const c = MEASURED.get(n);
