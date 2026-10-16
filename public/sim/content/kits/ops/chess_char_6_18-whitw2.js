@@ -5,6 +5,8 @@ import { sortEnemyTargets, canTargetEnemy } from '../../../targeting.js';
 import { rotateOffset } from '../../../dir.js';
 import { bodyDist } from '../../../body.js';
 import { num, tbb, hasBond, ANY, selectedSkill, skillGridOf, WHOLE_FIELD, bstate, aura } from '../shared/tier6.js';
+import { boundedCount } from '../../../../../shared/plugins/limits.js';
+import { bbCap } from '../../../../../shared/plugins/officialBounds.js';
 import { hypot, sin, cos, atan2 } from '../../../detmath.js';
 
 // ------------------------------------------------------------------------------------------------------------------
@@ -124,8 +126,10 @@ function whitw2(bb, chess, def) {
 
   const skills = {
     // S1 慵怠者悲鸣: passive 浮游单元+1 (trait: one more hit per attack); toggled on: ATK +atk and the drones lock a random
-    // non-moving enemy anywhere on the field (re-locking when it moves or falls; install), else her range. The whole-field
-    // grid only selects those targets — no rangeId, no 攻击范围 in the text — so the card keeps her 3-1 (showOwnRange)
+    // non-moving enemy anywhere on the field (re-locking when it moves or falls; install), else her range. The toggle
+    // retargets her attack; the text does not say she stops attacking, so the body and both unreleased additions stay.
+    // The whole-field grid only selects those targets — no rangeId, no 攻击范围 in the text — so the card keeps her 3-1
+    // (showOwnRange)
     skchr_whitw2_1: {
       kind: 'toggle',
       // [ASSUMED] her drones lock enemies only (install): 白铁's 铁钳号 alone does not open S1 / S2 (skills.js allyTargetsOk)
@@ -143,7 +147,9 @@ function whitw2(bb, chess, def) {
       ...(skillGridW ? { targeting: { rangeGrid: skillGridW } } : {}),
       attack: {
         hits: 1,
-        dmgMul(battle, unit, target) {
+        // The skill names the released drones, not a second hit from her. 0 keeps the ramp inside these hits.
+        funnelBodyHits: 0,
+        funnelMul(battle, unit, target) {
           const f = unit.profile?.funnel || { init: 0.2, delta: 0.15, max: 1.1 };
           const m = unit.mem.hunt;
           if (!m) return f.init;
@@ -189,9 +195,9 @@ function whitw2(bb, chess, def) {
           const c = battle.enemiesInKeys(unit.rangeKeys, unit, ctx.profile);
           for (const e of battle.blockedTargets(unit, ctx.profile)) if (!c.includes(e)) c.push(e);
           if (!c.length) { ctx.targets = []; return; }
-          const n = 1 + Math.floor(num(bb['attack@cnt'])) + ((unit.mem.wolfStage || 0) >= 3 ? 1 : 0);
+          const n = 1 + Math.floor(boundedCount(num(bb['attack@cnt']), bbCap('attack@cnt'), 0)) + ((unit.mem.wolfStage || 0) >= 3 ? 1 : 0);
           m.locks = m.locks.filter((e) => e.alive && c.includes(e)).slice(0, n);
-          while (m.locks.length < n) {
+          while (m.locks.length < n) { // loop-cap: bbCap attack@cnt; picks only from enemies already in range
             const free = c.filter((e) => !m.locks.includes(e));
             m.locks.push(battle.rng.pick(free.length ? free : c));
           }

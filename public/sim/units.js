@@ -5,13 +5,13 @@
 //   res           = clamp((base + Σflat) × Πmul, 0, 100)
 //   aspd          = clamp(base + Σaspd, 20, 600)          (base is 100 for almost everyone; floor 20 = PRTS 数值范围)
 //   interval      = bat × (1 + ΣbatPct) × 100 / aspd      (ΣbatPct floored at −0.9)
-//   moveSpeed     = (base + ΣmoveFlat) × ΠmoveMul          (tiles/s = moveSpeed × MOVE_SCALE)
+//   moveSpeed     = max(mem.moveSpeedFloor ?? 0, (base + ΣmoveFlat) × ΠmoveMul)   (tiles/s = moveSpeed × MOVE_SCALE)
 //   massLevel     = max(0, base + ΣmassFlat)                (重量: displacement, 浮空 halving; 失重 = massFlat −1)
 // Changing maxHp keeps the HP ratio. The sim keeps floats; rounding happens only in snapshots.
 
 import { aggregateMods } from './buffs.js';
 import { flagsOf } from './snapshot.js';
-import { ASPD_MIN, ASPD_MAX, ELEMENT_GAUGE_MAX, ELEMENT_GAUGE_MAX_LEADER } from './constants.js';
+import { ASPD_MIN, ASPD_MAX, ELEMENT_GAUGE_MAX, ELEMENT_GAUGE_MAX_LEADER, MIN_ATTACK_INTERVAL_SEC } from './constants.js';
 import { DIR_VEC, normDir } from './dir.js';
 
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
@@ -67,6 +67,9 @@ export class Unit {
     this.removed = false;       // permanently gone (enemies, tokens, retreated-for-good)
     this.blocking = [];         // ops: enemies currently blocked
     this.blockedBy = null;      // enemies: blocker unit
+    // enemies: listed on more than one tile of the per-tick range index (their 0.1 collider straddles an edge —
+    // battle/queries.js _buildEnemyIndex); declared here so the index writing it never changes a unit's shape
+    this._ebMulti = false;
     this.motion = init.motion ?? 'GROUND'; // enemies: 'WALK' | 'FLY'
     this.profile = null;        // resolved profession/attack profile
     this.skill = null;          // SkillRuntime
@@ -78,7 +81,7 @@ export class Unit {
     this.deathAt = -Infinity;
     this.respawnAt = Infinity;
     this.deploySeq = 0;         // deployment counter; also the identity of one deployment (content: `seq === u.deploySeq`)
-    this.aggroSeq = 0;          // 仇恨 order (the later the more attacked): = deploySeq, except summons of the initial deployment
+    this.aggroSeq = 0;          // 仇恨 order: usually deploySeq; initial summons and prepared map characters are exceptions
     this.spawnSeq = 0;
     this.elem = { burn: 0, neural: 0, necrosis: 0, apoptosis: 0, erosion: 0 };
     this.burstPending = null;   // { [element]: true } while that element's burst resolves (damage.js burstLocked)
@@ -147,11 +150,19 @@ export class Unit {
     const aspd = clamp(fin(b.aspd + a('aspd'), 100), ASPD_MIN, ASPD_MAX);
     const bBat = fin(b.bat, 1) > 0 ? fin(b.bat, 1) : 1;
     const bat = fin(bBat * Math.max(0.1, 1 + a('batPct')), bBat);
+    const rawInterval = (bat * 100) / aspd;
+    // 攻速物理频率保护：最小攻击间隔锁定 >= 0.066s (15次/秒)，溢出攻速平滑折算到攻击力，保真 DPS 且防止爆帧
+    let finalAtk = atk;
+    let interval = rawInterval;
+    if (rawInterval > 0 && rawInterval < MIN_ATTACK_INTERVAL_SEC) {
+      interval = MIN_ATTACK_INTERVAL_SEC;
+      finalAtk = atk * (MIN_ATTACK_INTERVAL_SEC / rawInterval);
+    }
     const s = {
-      maxHp, atk, def, res, aspd, bat,
-      interval: (bat * 100) / aspd,
+      maxHp, atk: finalAtk, def, res, aspd, bat,
+      interval,
       blockCnt: Math.max(0, fin(Math.round(b.blockCnt + a('blockCnt')), 0)),
-      moveSpeed: Math.max(0, fin((b.moveSpeed + a('moveFlat')) * m('moveMul'), fin(b.moveSpeed, 0))),
+      moveSpeed: Math.max(this.mem.moveSpeedFloor ?? 0, fin((b.moveSpeed + a('moveFlat')) * m('moveMul'), fin(b.moveSpeed, 0))),
       rangeExtend: Math.max(0, Math.round(a('rangeExtend'))),
       // 阻挡半径倍率 − 1 (PRTS 数值范围 BLOCK_RADIUS_SCALE "影响阻挡模式为飞行阻挡的单位的阻挡半径"): Battle._checkBlock
       blockRadiusScale: Math.max(0, fin(a('blockRadiusScale'), 0)),

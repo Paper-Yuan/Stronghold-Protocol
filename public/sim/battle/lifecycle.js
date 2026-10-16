@@ -4,7 +4,7 @@
 // Installed on Battle.prototype by server/sim/Battle.js (a method container: never instantiated; `this` is the battle).
 
 import { FORCED_EXIT, MAX_BATTLE_TIME } from '../constants.js';
-import { updateAlly, updateEnemy } from '../ai.js';
+import { noteAttackCommit, updateAlly, updateEnemy } from '../ai.js';
 
 export class BattleLifecycle {
   start() {
@@ -50,6 +50,15 @@ export class BattleLifecycle {
       }
     }
     this.emit('battleStart', {});
+    // 联防 restores the previous phase's state after all opening effects have established the new stats. In
+    // particular, Egir rebuilds devour attributes without charging carried targets for its opening damage again.
+    // Keep fractional HP: a legal survivor below 1% (or below 1 HP after max-HP changes) must not be healed by carry.
+    if (this.kind === 'unite') for (const u of this.allyUnits) {
+      const cs = u.carry;
+      if (!cs || cs.down || !u.alive || !u.deployed || u.deploySeq <= seq0) continue;
+      if (u.kind === 'op' && Number.isFinite(cs.hpPct) && cs.hpPct > 0) u.hp = u.s.maxHp * Math.min(1, cs.hpPct);
+      if (Number.isFinite(cs.sp) && u.skill) u.skill.setSpTotal(cs.sp);
+    }
     // redeploy-time effects that start with the battle (机变 征召 "所有干员的再部署时间-50%", added by a battleStart
     // handler) cover the operators forced out above too: their timer is re-read with them, as a later knock-out's is
     for (const u of this.allyUnits) {
@@ -72,6 +81,8 @@ export class BattleLifecycle {
         for (const ps of this.players) ps.dp = Math.min(this.flags.dpMax, ps.dp + this.flags.dpPerSec * dt);
       });
       this._phase('buffs', () => this._tickBuffs(dt));
+      // Allies whose attack comes off cooldown this tick keep the target they have now, before enemies move.
+      this._phase('attackCommit', () => noteAttackCommit(this, dt));
       this._phase('enemies', () => {
         // enemies spawned by hooks during this loop start moving next tick (a leak hook that spawns an enemy which
         // leaks at once would otherwise loop forever inside a single tick)
@@ -128,7 +139,7 @@ export class BattleLifecycle {
   /** Run until finished or `maxSeconds` of game time elapsed. Returns the result when finished. */
   runToEnd(maxSeconds = MAX_BATTLE_TIME) {
     const limit = this.time + maxSeconds;
-    while (!this.finished && this.time < limit) this.step();
+    while (!this.finished && this.time < limit) this.step(); // loop-cap: battle time limit
     return this.finished ? this.result() : null;
   }
 
@@ -212,6 +223,9 @@ export class BattleLifecycle {
       // the HUD capsule's numerator of this field (DESIGN §14): this player's own scheduled enemies resolved — knocked
       // down or leaked (`counted` keeps the LP / 完美作战 reading, runtime splits and summons included)
       pp.resolved = Math.min(pp.total, pp.killedInTotal + pp.leakedInTotal);
+      // Actual enemy deaths credited to this player's operators / summons, independent of the enemy's wave owner.
+      // Sum the full unit list before compactBattleResult caps unitStats (long fights may spawn many summons).
+      pp.creditedKills = ps.units.reduce((n, u) => n + u.stats.kills, 0);
       // the operators and the board's summon pieces (a board uid): 联防 carries an operator's HP ratio and SP, a summon's
       // SP only (match/unite.js). `sp` is the official 技力 — stored charges included (PRTS 技能 "可充能X次…当前技力上限等于该
       // 技能技力需求的X倍"); a running skill spent its SP at activation, so it reports what was left (0 for one charge).

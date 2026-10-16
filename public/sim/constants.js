@@ -8,6 +8,9 @@ export const TICK = 1 / 30;
 /** Snapshots are produced every N ticks by the match (20 Hz at 2× real time). */
 export const SNAPSHOT_EVERY = 3;
 
+/** 攻速物理频率保护：最小攻击间隔锁定 >= 0.066s (15次/秒)，溢出攻速平滑折算到攻击力，保真 DPS 且防止爆帧 */
+export const MIN_ATTACK_INTERVAL_SEC = 0.066;
+
 export const ROWS = GEO.ROWS;
 export const COLS = GEO.COLS;
 
@@ -27,6 +30,16 @@ export const ATTACK_PAUSE = 0.35;
  * included; enemy skills / zones of content keep their own (point) radius.
  */
 export const ALLY_COLLIDER_RADIUS = 0.25;
+/**
+ * Collider radius of an enemy (a regular one: a huge enemy's hit rectangle is its collider, body.js). The official
+ * client gives every enemy prefab of this mode a CircleCollider2D of radius 0.1 (237 prefabs, local CN client read
+ * 2026-10-14), and target search tests colliders (PRTS 作战机制, above): an operator-side range — an attack range, a
+ * skill's or trait's range grid, the skill-range trigger — takes an enemy whose circle overlaps one of its tiles
+ * (body.js colliderKeys / bodyInRange; the owner's decision of 2026-10-14). Tile rules keep the tile of the position
+ * (格子判定: terrain, traps, fields and marks laid on tiles, "所在格" effects — Battle.enemiesOnTiles, body.js bodyInKeys),
+ * blocking and splash keep the position (中点判定); a radius PRTS marks 碰撞判定 takes the collider (Battle.foesInColliderRadius).
+ */
+export const ENEMY_COLLIDER_RADIUS = 0.1;
 /**
  * Block contact (PRTS 游戏数据基础 §阻挡半径; 作战机制 §碰撞体积与位置识别 "中点判定 … 案例: 阻挡"): an unblocked enemy whose
  * position lies within the blocker's radius of the blocker's centre touches it — compared on squared distances, as the
@@ -219,6 +232,15 @@ export const MAX_ALIVE_ENEMIES = 600;
 
 /** Heal-over-time / regen events are aggregated and only emitted when they reach this amount. */
 export const REGEN_EVENT_MIN = 1;
+
+/**
+ * How far inside the field rectangle an enemy is held (tiles; Battle._clampPos). [ASSUMED] The rectangle's edge lies
+ * exactly halfway between two tiles, where the tile of a position — rounded half to even (body.js; PRTS 作战机制
+ * 四舍六入五成双) — would depend on whether the row or column number is even. Held this little inside, an enemy at the
+ * edge stays on the edge tile. 2^-20 is exact in binary and too small to move a slide of 0.1-tile steps; a 1/1024 inset
+ * did move those steps.
+ */
+export const FIELD_EDGE_INSET = 1 / 1048576;
 
 /** Row offset mapping board rows (9..12) onto boss-field rows (2..5). */
 export const BOSS_ROW_OFFSET = -7;
