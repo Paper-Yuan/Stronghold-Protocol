@@ -340,6 +340,10 @@ export function errorMsg(code, rid, detail) {
   const m = { t: 'error', code: known ? code : ERR.INTERNAL, msg: known ? ERR_TEXT[code] || ERR_TEXT.INTERNAL : ERR_TEXT.INTERNAL };
   if (validRid(rid)) m.rid = rid;
   if (detail) m.detail = String(detail).slice(0, 120);
+  // 每一条错误应答都在这里成形，所以这一行就是「客户端为什么收到 error」的唯一观测点。
+  // 客户端的 NetError 是 reject 出来的，调用方若不 catch 就只剩 code（诊断页看不到 detail），
+  // 2026-10-16 手机诊断里 43 次 BAD_TARGET 就是这么丢掉了原因。日志进 PM2 / 手机的 debug.log。
+  console.warn(`[net] error reply ${m.code}${m.detail ? ': ' + m.detail : ''}`);
   return m;
 }
 
