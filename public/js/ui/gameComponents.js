@@ -118,11 +118,11 @@ export function UnitThumb({ kind = 'chess', id, golden, size = 'md', tier, showT
     si = (rec && typeof rec.standInFor === 'string' && rec.standInFor) ? rec : null;
     if (!si && c) {
       const backups = data.get('backups');
-      const priv = data.get('private');
-      const privStandIns = Array.isArray(priv?.standIns) ? priv.standIns : null;
+      // A match's stand-ins (m.private.standIns) are a message, not a data file: a generic thumbnail reads the
+      // client-side 「未持有」 list instead (the same information the player sets; screens/loadout.js reads it too).
+      // test/ui/playtest3.test.js requires every `data.get` of the in-match UI to be a GAME_FILE.
       const notOwned = (typeof window !== 'undefined' && window.loadoutStore) ? window.loadoutStore.get()?.notOwned : null;
-      const isStandIn = (privStandIns && (privStandIns.includes(c.baseId || c.chessId))) ||
-                        (notOwned && (notOwned.includes(c.baseId || c.chessId) || notOwned.includes(c.charId)));
+      const isStandIn = !!(notOwned && (notOwned.includes(c.baseId || c.chessId) || notOwned.includes(c.charId)));
       if (isStandIn && backups) {
         try {
           const sRec = standInOf(c, backups);

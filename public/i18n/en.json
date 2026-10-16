@@ -1010,6 +1010,8 @@
   "已导入：全部持有": "Imported: all owned",
   "已导入 {applied} 名干员（另有 {dropped} 项未导入）": "Imported {applied} {applied|Operator|Operators} ({dropped} {dropped|entry|entries} not imported)",
   "已导入 {applied} 名干员的调配": "Imported the loadout of {applied} {applied|Operator|Operators}",
+  "已导入 {n} 款皮肤": "Imported {n} skins",
+  "（含 {n} 套皮肤）": " (including {n} skins)",
   "干员持有是局外设置：本局按开局时的设置进行，修改将在下一局生效": "The Operator Roster is set outside matches: this match keeps the roster it started with; changes apply from the next match",
   "局外设置，下一局生效 · 联机时只影响你自己的棋子 · 默认全部持有": "Set outside matches, applies from the next match · in co-op it only affects your own chess · everything is owned by default",
   "标记未持有的干员：由官方指定的替补干员上场": "Mark the Operators you do not own: their official stand-ins take the field",

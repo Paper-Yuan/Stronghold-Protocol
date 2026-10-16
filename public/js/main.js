@@ -57,6 +57,7 @@ import { StatsHost } from './screens/stats.js';
 import { installRehearsal } from './battle/rehearsal.js';
 import { recordResult, installStatsRecorder } from './ui/stats.js';
 import { installLoadoutSync, installOwnershipSync, installDiySync } from './ui/loadoutSync.js';
+import { installSkinsSync } from './ui/skins.js';
 import { startBuildGuard } from './ui/buildGuard.js';
 import { initLang, useLang, tickerText } from './ui/lang.js';
 import { t, N_, translateWire } from '../../shared/i18n.js';
@@ -396,6 +397,8 @@ async function boot() {
   installLoadoutSync({ net });
   installOwnershipSync({ net });
   installDiySync({ net });
+  // 干员皮肤 (docs/SKINS.md): the local choice, mirrored to the room through room.skins (ui/skins.js)
+  installSkinsSync({ net });
   // the room's cosmetic plugins and the player's own over the art manifest (content.js; nothing is fetched without them)
   installContent({ toast });
   // a room with gameplay plugins: its content set downloaded, checked and shown (content.js — DESIGN §32.6)
@@ -417,6 +420,8 @@ async function boot() {
   data.loadAll('config').catch(() => {});
   // Optional local-client art manifest (emotes, tutorial pages, official UI sprites; DESIGN §13).
   data.load('local').catch(() => {});
+  // 干员皮肤: the client's catalogue (data/skins.json) — 干员调配's 皮肤 section reads it, and it is a GAME_FILE
+  data.load('skins').catch(() => {});
 
   const connectWhenReady = identityReady.then(() => {
     if (entered) net.setName(savedName);

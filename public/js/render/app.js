@@ -157,6 +157,7 @@ import { BoardScene } from './board3d/scene.js';
 import { layoutPen, penSignature } from './pen.js';
 import { IDENTITY, bossPrepField, tilesToDisp, leaderStand } from './prepfield.js';
 import { pickOnTile, pickBattle, hitTiles } from './pick.js';
+import { skinsStore, skinFor } from '../ui/skins.js';
 import { promotionsOf } from './promote.js';
 import { ensurePixi } from './app/pixi.js';
 import { pieceDirOf, pickUnitOf } from './app/pick.js';
@@ -554,6 +555,19 @@ export async function createFieldView(host, options = {}) {
     } catch { /* optional */ }
   }
   loadShadow();
+  // 干员皮肤 (docs/SKINS.md): a skin picked while the prep board is up is a new body for that piece — setPrep rebuilds
+  // the views whose signature changed (pieceInfo's `sig` carries the skin). Outside prep nothing is rebuilt: a battle's
+  // units carry their own (render/app/info.js reads the snapshot's `skin`).
+  let offSkins = null;
+  if (typeof skinsStore?.subscribe === 'function') {
+    offSkins = skinsStore.subscribe(() => {
+      if (destroyed || mode !== 'prep' || !lastPrep) return;
+      try {
+        setPrep(lastPrep.ps, lastPrep.o);
+      } catch { /* ignore */ }
+    });
+    setupCleanup.push(() => { try { offSkins?.(); } catch {} });
+  }
   ensureDamageFonts();
   // web fonts may land after the first chips / redeploy-ring labels were drawn
   if (document.fonts?.ready) document.fonts.ready.then(() => { if (!destroyed) { refreshTierChips(); refreshDownLabels(); } }).catch(() => {});
@@ -768,9 +782,15 @@ export async function createFieldView(host, options = {}) {
     const pick = chess && chess.isDiy ? diyPicks[chess.baseId || chess.chessId] : null;
     const dr = pick ? data.diy(piece.id, pick) : null;
     const rec = si || dr || chess;
+    // 干员皮肤 (docs/SKINS.md): the piece's own choice, else the operator's — the chess record keys it by chess id, the
+    // catalogue by operator id, so both are asked (a golden / promoted piece reads its base's)
+    const baseId = rec?.baseId || chess?.baseId || piece.baseId || null;
+    const charId = rec?.charId || chess?.charId || null;
+    const resolvedSkin = si ? null : (piece.skin || skinFor(baseId) || (charId ? skinFor(charId) : null) || skinFor(piece.id) || null);
     return {
       kind: 'op', side: 'ally', defId: piece.id,
       spine: rec?.assets?.spine || rec?.charId || null, avatar: rec?.assets?.avatar || rec?.charId || null,
+      skin: resolvedSkin,
       tier: chess?.tier || piece.tier || 1, golden: !!(piece.golden || chess?.isGolden), dir,
       ...(si ? { standInFor: si.standInFor } : null),
       ...(dr ? { diy: { charId: pick.charId, skillIndex: pick.skillIndex ?? null, uniEquipId: pick.uniEquipId ?? null } } : null),
@@ -855,7 +875,7 @@ export async function createFieldView(host, options = {}) {
       e.key = key;
       const info = pieceInfo(e.piece, e.area);
       // (the model is part of it: a piece whose body changes — a merge, an own 补位 / 自选 setting arriving — is rebuilt)
-      const sig = `${info.kind}|${info.defId}|${info.golden ? 1 : 0}|${info.spine || ''}`;
+      const sig = `${info.kind}|${info.defId}|${info.golden ? 1 : 0}|${info.spine || ''}|${info.skin || ''}`;
       let v = views.get(key);
       if (v && v._sig !== sig) { dropView(key); v = null; }
       const w = slotWorld(e);
@@ -982,7 +1002,7 @@ export async function createFieldView(host, options = {}) {
       const info = u && Number.isInteger(u.uid) ? renderInfo({ ...u, id: `m:${u.uid}` }) : null;
       if (!info) continue;
       keep.add(info.id);
-      const sig = `${info.defId}|${info.golden ? 1 : 0}|${info.spine || ''}|${info.x},${info.y}|${info.dir || ''}|${(info.items || []).join(',')}`;
+      const sig = `${info.defId}|${info.golden ? 1 : 0}|${info.spine || ''}|${info.skin || ''}|${info.x},${info.y}|${info.dir || ''}|${(info.items || []).join(',')}`;
       let v = views.get(info.id);
       if (v && v._sig !== sig) { dropView(info.id); v = null; }
       if (v) continue;

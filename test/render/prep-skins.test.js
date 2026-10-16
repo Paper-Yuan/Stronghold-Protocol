@@ -3,6 +3,8 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { parse } from 'espree';
 import { renderInfo } from '../../public/js/render/app/info.js';
+import { GEO } from '../../shared/constants.js';
+import { skinFor } from '../../public/js/ui/skins.js';
 
 // Run the actual preparation functions with lightweight view objects, without allocating a GPU.
 const source=fs.readFileSync(process.env.PREP_RENDER_SOURCE || new URL('../../public/js/render/app.js',import.meta.url),'utf8');
@@ -28,7 +30,7 @@ class View {
  setItems(){}
  destroy(){this.destroyed=true;}
 }
-const make=new Function('UnitView','ItemView','renderInfo',`
+const make=new Function('UnitView','ItemView','renderInfo','GEO','skinFor',`
  const views=new Map(),ctx={},assets={},TIER_COLORS={},data={chess:id=>({chessId:id,baseId:id,charId:'char_test',assets:{spine:'char_test',avatar:'char_test'},tier:1})};
  let destroyed=false,mode='prep',lastPrep,editable,canPlaceFn,standInList=[],diyPicks={},ownPen,prepPieces=[],promoBase=[],dragState=null,hoverUnit=null;
  const drag={setCanPlace(){},setEditable(){}},held=new Map(),pending=new Map(),promotions=[],fx={deploy(){},promote(){}},prepXf={kind:'normal',toDisp:(row,col)=>({row,col}),dirToDisp:d=>d};
@@ -39,7 +41,7 @@ const make=new Function('UnitView','ItemView','renderInfo',`
 `);
 
 test('preparation keeps selected skins in hand, temp, board and read-only ally views',()=>{
- const r=make(View,View,renderInfo),piece=(uid,skin)=>({uid,kind:'chess',id:'chess_test',skin});
+ const r=make(View,View,renderInfo,GEO,skinFor),piece=(uid,skin)=>({uid,kind:'chess',id:'chess_test',skin});
  const state={hand:[piece(1,'skin-a')],temp:[piece(2,'skin-a')],board:[{...piece(3,'skin-a'),row:9,col:5}],prepMapChars:[{id:4,uid:4,kind:'op',side:'ally',defId:'chess_test',spine:'char_test',skin:'skin-a',x:6,y:9}]};
  r.setPrep(state,{editable:false});
  for(const key of ['p:1','p:2','p:3','m:4'])assert.equal(r.views.get(key).info.skin,'skin-a',key);
