@@ -97,11 +97,22 @@ export function aiLastOption(room, myId) {
   return { on: room.aiPicksLast === true, editable: room.hostId != null && room.hostId === myId };
 }
 
-/** Invite link for a room code (current page URL with ?room=CODE). */
+/**
+ * Invite link for a room code (current page URL with ?room=CODE).
+ *
+ * 手机端（安卓宿主把内置引擎跑在 127.0.0.1:3000、页面就在这个源里）必须特殊处理：照 `location.origin` 复制出来的链接
+ * 对同伴是**死链**（`http://127.0.0.1:3000/?room=XXXX` 指的是他自己的手机）。所以有原生桥时改用这台机器在局域网 /
+ * 虚拟专网上的真实地址（`AndroidBridge.getLocalIp` → NetworkUtils，与「开服做房主」那张卡列出的地址同源），端口与内置
+ * 服务一致。docs/START-MODES-PLAN.md P1-4。
+ */
 export function inviteLink(code) {
+  const q = `?room=${encodeURIComponent(code)}`;
+  const native = globalThis.AndroidNative;
+  const ip = typeof native?.getLocalIp === 'function' ? String(native.getLocalIp() || '') : '';
+  if (ip && ip !== '127.0.0.1') return `http://${ip}:3000/${q}`;
   const loc = globalThis.location;
   const base = loc ? `${loc.origin}${loc.pathname}` : '';
-  return `${base}?room=${encodeURIComponent(code)}`;
+  return `${base}${q}`;
 }
 
 /**

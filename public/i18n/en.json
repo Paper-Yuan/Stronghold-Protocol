@@ -1818,5 +1818,12 @@
   "弹幕关": "Danmaku off",
   "发送": "Send",
   "打开对话": "Open the chat",
-  "本服务器未加载该模组": "This server has not loaded that mod"
+  "本服务器未加载该模组": "This server has not loaded that mod",
+  "版本与更新": "Version & update",
+  "检测更新": "Check for updates",
+  "发现新版本 {build}": "New version available: {build}",
+  "下载并应用补丁": "Download and apply patch",
+  "当前已是最新版本 (v{v})": "Already on the latest version (v{v})",
+  "正在下载补丁…": "Downloading the patch…",
+  "检测更新失败，请检查网络连接": "Update check failed — check your connection"
 }

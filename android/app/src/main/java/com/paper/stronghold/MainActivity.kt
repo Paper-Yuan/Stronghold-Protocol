@@ -39,6 +39,8 @@ class MainActivity : AppCompatActivity() {
         private const val TAG = "MainActivity"
         private const val PREFS_NAME = "stronghold_prefs"
         private const val KEY_SERVER_MODE = "server_mode" // "local" or "remote"
+    /** 上次选的**起始档位**（三张卡）："solo" 自己玩 / "lan" 开服给同伴 / "remote" 去加朋友。P1-3。 */
+    private const val KEY_SERVER_ROLE = "server_role"
         private const val KEY_REMOTE_URL = "remote_url"
         private val IP_V4 = Regex("""^\d{1,3}(\.\d{1,3}){3}$""")
         private const val ROOM_CODE_MAX = 8
@@ -685,6 +687,7 @@ class MainActivity : AppCompatActivity() {
         runOnUiThread {
             getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE).edit()
                 .putString(KEY_SERVER_MODE, "remote")
+                .putString(KEY_SERVER_ROLE, "remote")
                 .putString(KEY_REMOTE_URL, base)
                 .apply()
             loadServerUrl(if (code.isEmpty()) base else "$base?room=$code")
@@ -996,7 +999,11 @@ class MainActivity : AppCompatActivity() {
             "http://127.0.0.1:3000"
         }
 
-        var picked = if (currentMode == "remote") "remote" else "solo"
+        // P1-3 (docs/START-MODES-PLAN.md)：预选**上次选的那一档**。以前只从 KEY_SERVER_MODE（local/remote）反推，
+        // 于是「开服给同伴」下次进来会跳回「一个人玩」；没存过 role 的老版本才退回原来的推断。
+        val savedRole = prefs.getString(KEY_SERVER_ROLE, null)
+        var picked = if (savedRole == "solo" || savedRole == "lan" || savedRole == "remote") savedRole!!
+        else if (currentMode == "remote") "remote" else "solo"
 
         fun updateIpHint() {
             when (picked) {
@@ -1087,7 +1094,7 @@ class MainActivity : AppCompatActivity() {
         btnFirstRunSolo.setOnClickListener {
             FileLogger.i("ui", "chooser decision: first-run solo")
             val boardMode = if (rbBoard2D.isChecked) "2d" else "3d"
-            prefs.edit().putString(KEY_BOARD_MODE, boardMode).putBoolean(KEY_COMPAT_MODE, false).apply()
+            prefs.edit().putString(KEY_SERVER_ROLE, "solo").putString(KEY_BOARD_MODE, boardMode).putBoolean(KEY_COMPAT_MODE, false).apply()
             dialog.dismiss()
             startLocalFlow()
         }
@@ -1110,13 +1117,14 @@ class MainActivity : AppCompatActivity() {
                     return@setOnClickListener
                 }
                 FileLogger.i("ui", "chooser decision: remote url=$url board=$boardMode")
-                editor.putString(KEY_SERVER_MODE, "remote").putString(KEY_REMOTE_URL, url)
+                editor.putString(KEY_SERVER_MODE, "remote").putString(KEY_SERVER_ROLE, "remote").putString(KEY_REMOTE_URL, url)
                 editor.apply()
                 dialog.dismiss()
                 loadServerUrl(url)
             } else {
                 FileLogger.i("ui", "chooser decision: local ($picked) board=$boardMode")
-                editor.putString(KEY_SERVER_MODE, "local")
+                // 「自己玩」与「开服给同伴」都跑本机引擎（KEY_SERVER_MODE 都是 local），差别只在记不记住这张卡。
+                editor.putString(KEY_SERVER_MODE, "local").putString(KEY_SERVER_ROLE, picked)
                 editor.apply()
                 dialog.dismiss()
                 startLocalFlow()

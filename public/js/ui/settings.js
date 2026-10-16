@@ -41,6 +41,7 @@ import { pluginMicro } from './pluginTag.js';
 import { fxAvailable } from '../render/vfx/available.js';
 import { resolveOfficialFx } from '../render/vfx/tier.js';
 import { ModManagerModal } from './modManagerModal.js';
+import { fetchBuild } from './buildGuard.js';
 
 const cx = (...p) => p.flat().filter(Boolean).join(' ');
 
@@ -330,6 +331,14 @@ function UiPluginSection() {
 }
 
 /**
+ * 本页启动时服务端报告的那个构建（`/healthz.build`，与 `/api/app/version` 的 `build` 同源）：「我这一页是哪一版」。
+ * 与服务器当前的 build 不同 = 页面还在跑旧代码（buildGuard 也会据此自动重载；这里让用户看到并手动更新）。
+ */
+const pageBuildP = (() => {
+  try { return fetchBuild(globalThis.fetch, { timeoutMs: 5000 }).catch(() => null); } catch { return Promise.resolve(null); }
+})();
+
+/**
  * Settings modal.
  * @param {{ open: boolean, onClose: Function }} props
  */
@@ -348,6 +357,46 @@ export function SettingsModal({ open, onClose }) {
     fxAvailable(null).then((ok) => { if (live) setFxOk(!!ok); }, () => {});
     return () => { live = false; };
   }, [open]);
+  // 版本与热更 (docs/START-MODES-PLAN.md)：`/api/app/version` 说这台服务器是什么版本、补丁在哪（server/http/appApi.js）；
+  // 真正的下载与应用交给原生宿主（AndroidBridge.downloadAndApplyPatch），浏览器里只能提示重载。
+  const [checkingUpdate, setCheckingUpdate] = useState(false);
+  /** @type {{ app: string, build: string, stale: boolean, patchUrl: string, native: boolean } | null} */
+  const [updateInfo, setUpdateInfo] = useState(null);
+  const checkUpdate = async () => {
+    setCheckingUpdate(true);
+    try {
+      const res = await fetch('/api/app/version', { cache: 'no-cache' });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      const pageBuild = await pageBuildP;
+      const build = typeof data.build === 'string' ? data.build : '';
+      setUpdateInfo({
+        app: typeof data.app === 'string' ? data.app : '',
+        build,
+        stale: Boolean(pageBuild && build && pageBuild !== build),
+        patchUrl: typeof data.hotUpdate?.patchUrl === 'string' ? data.hotUpdate.patchUrl : '',
+        native: typeof globalThis.AndroidNative?.downloadAndApplyPatch === 'function',
+      });
+    } catch {
+      setUpdateInfo(null);
+      toast(t('检测更新失败，请检查网络连接'), 'warn');
+    } finally { setCheckingUpdate(false); }
+  };
+  const applyUpdate = () => {
+    const native = globalThis.AndroidNative;
+    if (!updateInfo?.patchUrl || typeof native?.downloadAndApplyPatch !== 'function') return;
+    toast(t('正在下载补丁…'), 'info');
+    native.downloadAndApplyPatch(updateInfo.patchUrl, updateInfo.build || updateInfo.app);
+  };
+  // 原生宿主在下载/应用补丁时回调这两个（MainActivity.downloadAndApplyPatch → webView.evaluateJavascript）。
+  useEffect(() => {
+    const g = globalThis;
+    const prevProgress = g.__onHotUpdateProgress;
+    const prevResult = g.__onHotUpdateResult;
+    g.__onHotUpdateProgress = (p, msg) => { if (msg) toast(String(msg), 'info'); };
+    g.__onHotUpdateResult = (ok, msg) => { if (msg) toast(String(msg), ok ? 'info' : 'warn'); };
+    return () => { g.__onHotUpdateProgress = prevProgress; g.__onHotUpdateResult = prevResult; };
+  }, []);
   // 模组仓库 (docs/MOD-CDN-ARCHITECTURE.md, W-C)：列出磁盘上的模组、下载 ZIP、从别的服务器同步 (server/http/modApi.js)
   const [modModalOpen, setModModalOpen] = useState(false);
   const fxTier = resolveOfficialFx(s.officialFx, true);
@@ -412,10 +461,24 @@ export function SettingsModal({ open, onClose }) {
       <${CosmeticSection} />
       <${UiPluginSection} />
       <${DiagSection} />
+      <div class="set-row" data-testid="app-update">
+        <span class="set-row__label">${t('版本与更新')}<${MicroLabel}>VERSION & UPDATE<//></span>
+        <button type="button" class="btn btn--secondary btn--sm" disabled=${checkingUpdate} onClick=${checkUpdate}>
+          <${Icon} name="refresh" /><span>${t('检测更新')}</span>
+        </button>
+      </div>
+      ${updateInfo && updateInfo.native && updateInfo.patchUrl ? html`<div class="set-row" data-testid="app-update-apply">
+        <span class="set-row__label">${t('发现新版本 {build}', { build: updateInfo.build })}<${MicroLabel}>HOT UPDATE<//></span>
+        <button type="button" class="btn btn--primary btn--sm" onClick=${applyUpdate}>
+          <${Icon} name="check" /><span>${t('下载并应用补丁')}</span>
+        </button>
+      </div>` : null}
+      ${updateInfo && !updateInfo.stale ? html`<p class="set-hint" data-testid="app-update-note">${t('当前已是最新版本 (v{v})', { v: updateInfo.app })}</p>` : null}
+
       <div class="set-row" data-testid="mod-management">
         <span class="set-row__label">${t('模组管理')}<${MicroLabel}>MOD MANAGEMENT<//></span>
         <button type="button" class="btn btn--secondary btn--sm" onClick=${() => setModModalOpen(true)}>
-          <${GIcon} name="sparkle" /><span>${t('模组仓库')}</span>
+          <${Icon} name="box" /><span>${t('模组仓库')}</span>
         </button>
       </div>
       <p class="set-hint">${touchUi ? t('触屏操作：点击单位选中（撤退 / 出售）· 长按单位或卡牌查看详情 · 拖动部署后滑动选择朝向') : t('右键查看详情')}</p>
