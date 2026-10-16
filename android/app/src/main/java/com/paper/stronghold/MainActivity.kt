@@ -396,6 +396,9 @@ class MainActivity : AppCompatActivity() {
                 // Intercept static assets to always serve from local bundled assets
                 val bundleDir = AssetManagerHelper.getBundleDir(applicationContext)
                 if (bundleDir.exists()) {
+                    // 内容寻址的 URL（`/assets/~<hash>/…`、`/media/~<hash>/…`）先走「本地全量素材」快路径：本地有同名文件且
+                    // 哈希对得上就地发，对不上返回 null 走网络。连别人的服务器时，绝大多数美术/音频因此不必再从对方下载。
+                    AssetFastPath.open(applicationContext, bundleDir, uri) { name -> getMimeType(name) }?.let { return it }
                     try {
                         if (path.startsWith("/assets/") || path.startsWith("/fonts/") || path.startsWith("/vendor/")) {
                             val file = File(bundleDir, "public$path")
@@ -680,6 +683,12 @@ class MainActivity : AppCompatActivity() {
      * cannot switch the shell's server mode itself, so this stays the one entry point for it. Both arguments come from
      * JavaScript, so each is validated before it reaches a URL.
      */
+    /** 地址栏里「等于没填」的值：空、回环、以及早期开发用的那个内网示例。 */
+    private fun isBlankRemoteUrl(url: String?): Boolean {
+        if (url.isNullOrBlank()) return true
+        val v = url.trim().lowercase()
+        return v.startsWith("http://127.0.0.1") || v.startsWith("http://localhost") || v == "http://192.168.10.25:3000"
+    }
     fun connectToHost(ip: String, room: String) {
         if (!IP_V4.matches(ip)) return
         val code = room.filter { it.isLetterOrDigit() }.uppercase().take(ROOM_CODE_MAX)
@@ -1059,7 +1068,8 @@ class MainActivity : AppCompatActivity() {
         }
 
         if (currentBoardMode == "2d") rbBoard2D.isChecked = true else rbBoard3D.isChecked = true
-        val initialRemoteUrl = if (currentRemoteUrl.isNullOrBlank() || currentRemoteUrl == "http://192.168.10.25:3000") DEFAULT_LAN_URL else currentRemoteUrl
+        // ③「去加朋友」的地址栏默认填**官方远程服务器**（也可以用保存过的地址；回环/遗留的开发 IP 一律当作没填）。
+        val initialRemoteUrl = if (isBlankRemoteUrl(currentRemoteUrl)) DEFAULT_LAN_URL else currentRemoteUrl
         etAddress.setText(initialRemoteUrl)
 
         fun preview() {
@@ -1082,7 +1092,12 @@ class MainActivity : AppCompatActivity() {
             if (remote) preview()
         }
 
-        for ((key, card) in cards) card.setOnClickListener { picked = key; paint() }
+        for ((key, card) in cards) card.setOnClickListener {
+            picked = key
+            // 选到 ③ 时把地址栏补成默认的远程服务器（用户自己填过的就留着）——见 isBlankRemoteUrl。
+            if (key == "remote" && isBlankRemoteUrl(etAddress.text?.toString())) etAddress.setText(DEFAULT_LAN_URL)
+            paint()
+        }
         etAddress.addTextChangedListener(object : android.text.TextWatcher {
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
