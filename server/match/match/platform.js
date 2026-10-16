@@ -78,6 +78,27 @@ export class MatchPlatform {
     return res;
   }
 
+  /**
+   * room.skins (docs/SKINS.md): a player's chess→skinId choice. Unlike room.loadout there is **no phase window** — a
+   * skin is cosmetic and public, so it applies whenever it arrives and the others see the new model at once
+   * (markPublic). The lobby already checked the ids against the data; PlayerState.setSkins re-checks them and an empty
+   * selection clears the player's skins (a bot keeps its operator's own model).
+   * @param {string} playerId
+   * @param {Record<string, string> | null} skins
+   * @returns {{ ok: true } | { error: string, detail?: string }}
+   */
+  setSkins(playerId, skins) {
+    const ps = this.players.get(playerId);
+    if (!ps || ps.isBot || ps.left) return fail(ERR.NOT_IN_ROOM);
+    if (this.disposed || this.ended) return fail(ERR.WRONG_PHASE, 'the match is over');
+    let res = OK;
+    this.guard(() => {
+      ps.setSkins(skins);
+      this.markPublic();
+    });
+    return res;
+  }
+
   onDisconnect(playerId) {
     const ps = this.players.get(playerId);
     if (!ps || ps.isBot || this.disposed) return;

@@ -213,6 +213,29 @@ function freezeLoadout(loadout) {
   return Object.freeze(out);
 }
 
+/**
+ * Deep-frozen copy of a checked chess→skinId choice (docs/SKINS.md). The choice is keyed by **base chessId** — a golden
+ * / promoted piece reads its base's skin back — and the operator's charId is accepted as an alias so a client that only
+ * knows the operator still works (the fork's freezeSkins, SKINS-BUILTIN-PLAN §3 item 4). An id no chess record settles
+ * is dropped, and a skinId that is not a string is ignored.
+ */
+function freezeSkins(skins, getChess) {
+  const out = {};
+  for (const [id, skinId] of Object.entries(skins || {})) {
+    if (typeof skinId !== 'string' || !skinId) continue;
+    if (typeof id === 'string' && (id.startsWith('char_') || (id.startsWith('chess_char_') && id.includes('_diy')))) {
+      out[id] = String(skinId);
+      continue;
+    }
+    const rec = getChess(id);
+    if (!rec) continue;
+    out[id] = String(skinId);
+    if (rec.baseId) out[rec.baseId] = String(skinId);
+    if (rec.charId) out[rec.charId] = String(skinId);
+  }
+  return Object.freeze(out);
+}
+
 /** Deep-frozen copy of checked operator settings (0.2.2 潜能 / 练度; shared by the session, the seat and the match). */
 function freezeOps(ops) {
   const out = {};
@@ -590,6 +613,7 @@ export class Lobby {
       case 'room.loadout': return this.loadout(session, msg);
       case 'room.ownership': return this.ownership(session, msg);
       case 'room.diy': return this.diy(session, msg);
+      case 'room.skins': return this.skins(session, msg);
       case 'room.spectate': return this.spectate(session, msg);
       case 'room.removeSpectator': return this.removeSpectator(session, msg);
       case 'room.setPlugins': return this.setPlugins(session, msg);
@@ -1157,6 +1181,34 @@ export class Lobby {
     return OK;
   }
 
+  /**
+   * 干员皮肤 (docs/SKINS.md): the chess→skinId choice, stored on the session and the seat like room.diy. A skin is
+   * cosmetic and public, so unlike the loadout there is **no phase gate** — during a match it goes straight to
+   * Match.setSkins and the others see it at once (a seat without one keeps the operator's own model).
+   */
+  skins(session, { skins }) {
+    const data = this.safeData();
+    const cleaned = freezeSkins(skins, (id) => lookup('chess', id, data));
+    session.skins = cleaned;
+    const room = this.roomOf(session);
+    if (!room) return OK;
+    const seat = room.seatOf(session.playerId);
+    if (seat) seat.skins = cleaned;
+    if (!room.match) return OK;
+    if (typeof room.match.setSkins !== 'function') return fail(ERR.ROOM_STARTED, 'stored for the next match');
+    let r;
+    try {
+      r = room.match.setSkins(session.playerId, cleaned);
+    } catch (e) {
+      this.log.error(`[lobby] ${room.code} match.setSkins threw`, e);
+      return fail(ERR.INTERNAL);
+    }
+    if (r && typeof r === 'object' && r.error) {
+      return fail(isErrCode(r.error) ? r.error : ERR.INTERNAL, typeof r.detail === 'string' ? r.detail : undefined);
+    }
+    return OK;
+  }
+
   /** The game data of a room's content (header "Gameplay plugins"): its content set's, else the server's. @param {Room | null} room */
   dataFor(room) {
     if (room?.modded) {
@@ -1223,7 +1275,7 @@ export class Lobby {
       const r = checkDiyPicks({ ...diy }, { data, kitted: this.kittedFor(room) });
       diy = r && 'ok' in r ? freezeDiy(r.picks) : null;
     }
-    return { loadout, ops, notOwned, diy };
+    return { loadout, ops, notOwned, diy, skins: s.skins || null };
   }
 
   /**
@@ -1259,6 +1311,8 @@ export class Lobby {
         notOwned: own ? own.notOwned : null,
         // 0.2.0 自选编队: the human's checked DIY picks (bots field no 自选 piece [ASSUMED])
         diy: own ? own.diy : null,
+        // 干员皮肤 (docs/SKINS.md): the seat's chess→skinId choice, straight through (cosmetic, no content filter)
+        skins: own ? own.skins : null,
       };
     });
     // lastPublic / results: the latest m.public broadcast and the m.result frames (encoded), kept for the replay.
@@ -1572,6 +1626,7 @@ export class Lobby {
       ops: session.ops || null,
       notOwned: session.notOwned || null,
       diy: session.diy || null,
+      skins: session.skins || null,
       // the content each was checked for (header "Gameplay plugins": filtered at the match start when it is another)
       loadoutCs: session.loadoutCs ?? null,
       notOwnedCs: session.notOwnedCs ?? null,
