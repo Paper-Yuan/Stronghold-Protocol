@@ -102,6 +102,61 @@ for (const mod of prodModules) {
   }
 }
 
+// server/ 会**静态** import 仓库根下的文件（现在有 5 处 tools/assets/*.mjs：plugins/pack.js 的 skel / anim-roles /
+// atlas，studio/edit.js 与 studio/index.js 的 atlas）。安卓包里原本没有 tools/，于是 Node 一启动就
+// ERR_MODULE_NOT_FOUND（2026-10-16 真机：Cannot find module .../files/bundle/tools/assets/atlas.mjs）——静态 import
+// 在任何开关之前就解析完了，所以 SP_STUDIO=off 也救不了。这里扫出这些「包内还没有」的文件连同传递依赖一起拷进来，
+// 并在拷完后校验，让这类引用在**打包时**就报错，而不是装到手机上才发现。
+console.log('[bundle-android] Resolving repository files that server/ imports statically...');
+const BUNDLED_ROOTS = ['server', 'shared', 'data', 'public', 'workshop', 'node_modules', 'licenses'];
+const bundledAbs = BUNDLED_ROOTS.map((r) => path.join(ROOT, r));
+const isBundled = (p) => bundledAbs.some((r) => p === r || p.startsWith(r + path.sep));
+const walkCode = (dir, out = []) => {
+  for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
+    const p = path.join(dir, e.name);
+    if (e.isDirectory()) { if (e.name !== 'node_modules') walkCode(p, out); }
+    else if (/\.(mjs|js|cjs|json)$/.test(e.name)) out.push(p);
+  }
+  return out;
+};
+const needsCopy = new Set();
+const scanned = new Set();
+const scanImports = (file) => {
+  if (scanned.has(file)) return;
+  scanned.add(file);
+  let src;
+  try { src = fs.readFileSync(file, 'utf8'); } catch { return; }
+  for (const m of src.matchAll(/(?:from|import)\s*\(?\s*['"](\.[^'"]+)['"]/g)) {
+    const target = path.resolve(path.dirname(file), m[1]);
+    if (!target.startsWith(ROOT + path.sep)) continue; // 仓库之外（node: 内置等）
+    if (isBundled(target)) continue;                   // 已经在包里
+    if (!fs.existsSync(target)) continue;              // 运行时才需要、或本身就是错的
+    const rel = path.relative(ROOT, target);
+    const stat = fs.statSync(target);
+    if (stat.isFile() && stat.size > 2 * 1024 * 1024) {
+      console.warn(`[bundle-android] 跳过过大的静态引用（${(stat.size / 1048576).toFixed(1)} MB）: ${rel}`);
+      continue;
+    }
+    needsCopy.add(rel);
+    const dest = path.join(STAGING_DIR, rel);
+    if (stat.isDirectory()) {
+      copyRecursive(target, dest);
+      for (const f of walkCode(target)) scanImports(f);
+    } else {
+      fs.mkdirSync(path.dirname(dest), { recursive: true });
+      if (!fs.existsSync(dest)) fs.copyFileSync(target, dest);
+      scanImports(target);
+    }
+  }
+};
+for (const dir of [path.join(ROOT, 'server'), path.join(ROOT, 'shared')]) {
+  for (const f of walkCode(dir)) scanImports(f);
+}
+for (const rel of needsCopy) {
+  if (!fs.existsSync(path.join(STAGING_DIR, rel))) throw new Error(`[bundle-android] 缺少 server/ 静态引用的文件: ${rel}`);
+}
+if (needsCopy.size) console.log(`[bundle-android] Copied ${needsCopy.size} file(s) server/ imports: ${[...needsCopy].join(', ')}`);
+
 // 3. Compress into app_bundle.zip using python zipfile
 fs.mkdirSync(ANDROID_ASSETS_DIR, { recursive: true });
 console.log(`[bundle-android] Creating zip archive at ${ZIP_TARGET}...`);
