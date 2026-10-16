@@ -88,6 +88,7 @@ import { ChoiceOverlay } from '../ui/choiceOverlay.js';
 import { EnemyDrawer } from '../ui/enemyDrawer.js';
 import { Ticker } from '../ui/ticker.js';
 import { EmoteWheel } from '../ui/emotes.js';
+import { ChatBox } from '../ui/chatBox.js';
 import { EffectsList } from '../ui/effectsList.js';
 import { CombatHud } from '../ui/combatHud.js';
 import { CombatMetricsPanel } from '../ui/combatMetrics.js';
@@ -218,6 +219,8 @@ function MatchScreen() {
   const showMetrics = metricsSetting && !modRoom && !spectator;
   useEffect(() => { if (!showMetrics) setMetricsOpen(false); }, [showMetrics]);
   const [emoteOpen, setEmoteOpen] = useState(false);
+  // 房间与局内文字聊天 (room.chat): the log/input panel; the gear below toggles it (ui/chatBox.js)
+  const [chatOpen, setChatOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [exitOpen, setExitOpen] = useState(false);
   const [drag, setDrag] = useState(null);                // { uid, kind, id } while dragging a piece
@@ -1626,9 +1629,12 @@ function MatchScreen() {
 
       <div class="ui-slot gm__ui-slot" data-ui-slot="hud.right" aria-label=${t('界面插件')} dangerouslySetInnerHTML=${{ __html: '' }}></div>
 
+      <${ChatBox} active=${chatOpen} onToggle=${setChatOpen} />
+
       <div class="gm__corner">
+        <button type="button" class=${`gm__gear gm__chat ${chatOpen ? 'is-on' : ''}`} aria-label=${t('发言')} title=${t('发言')} onClick=${() => { setChatOpen((v) => { const n = !v; if (n) setEmoteOpen(false); return n; }); }}><${GIcon} name="chat" /></button>
         ${showMetrics && metricsOpen ? html`<${CombatMetricsPanel} myId=${myId} onClose=${() => setMetricsOpen(false)} />` : null}
-        ${spectator ? null : html`<${EmoteWheel} open=${emoteOpen} onToggle=${setEmoteOpen} onSend=${(id) => actions.emote(id)} disabled=${conn.status !== 'online'} />`}
+        ${spectator ? null : html`<${EmoteWheel} open=${emoteOpen} onToggle=${(v) => { setEmoteOpen(v); if (v) setChatOpen(false); }} onSend=${(id) => actions.emote(id)} disabled=${conn.status !== 'online'} />`}
         ${showMetrics ? html`<button type="button" class="gm__gear gm__metrics" aria-label=${t('作战统计')} title=${t('作战统计')} aria-expanded=${metricsOpen}
           aria-controls="combat-metrics-panel" onKeyDown=${(e) => { if (e.key === ' ') e.stopPropagation(); }} onClick=${() => {
             setMetricsOpen(!metricsOpen);

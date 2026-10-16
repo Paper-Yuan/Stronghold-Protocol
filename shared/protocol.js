@@ -431,6 +431,11 @@ export const C2S = {
   // host confirmed — a seat that changed hands meanwhile is refused
   'room.kick': { seat: (v) => isInt(v, 0, MAX_SEATS - 1), playerId: isId },
   'room.start': {},
+  // Room-scoped text chat (房间与局内文字聊天): available in the waiting room and throughout its match.
+  'room.chat': { text: (v) => typeof v === 'string' && v.trim().length > 0 && v.length <= 120,
+    code: (v) => isStr(v, ROOM_CODE_LEN) && /^[A-Z0-9]+$/.test(v),
+    $optional: ['code'] },
+  'room.chat.history': { code: (v) => isStr(v, ROOM_CODE_LEN) && /^[A-Z0-9]+$/.test(v) },
   'room.rerollSetup': { setupRevision: (v) => isInt(v, 0, 2 ** 31) },
   'room.cancelReroll': { voteId: (v) => isInt(v, 1, 2 ** 31) },
   // operator loadout (DESIGN §16): stored per session/seat; accepted until the match leaves INFO_CHECK — `ops` (0.2.2):
@@ -538,7 +543,7 @@ export const C2S = {
 // Server → client message types (documentation + client dispatch table keys).
 export const S2C = [
   'welcome', 'ok', 'error', 'pong',
-  'room.state', 'room.closed',
+  'room.state', 'room.closed', 'room.chat', 'room.chat.history',
   'm.public', 'm.private', 'm.field', 'm.toast', 'm.ticker', 'm.emote', 'm.result',
   // m.layer { playerId, bondId, add } — own live prep layer gain; ephemeral, never replayed on resync.
   'm.layer',

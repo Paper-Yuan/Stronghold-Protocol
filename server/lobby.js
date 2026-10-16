@@ -185,6 +185,13 @@ export const SOLO_RECONNECT_FALLBACK_SEC = 86_400;
 /** Display names for AI teammates (the tutorial NPCs first, then a few familiar faces). */
 export const BOT_NAMES = Object.freeze(['AI·华法琳', 'AI·阿米娅', 'AI·惊蛰', 'AI·杜宾', 'AI·凯尔希', 'AI·可露希尔']); // i18n-ignore: player names (docs/I18N.md)
 
+/** Room chat (room.chat): the length the server actually sends (the wire bound in shared/protocol.js is looser). */
+export const CHAT_MAX = 80;
+/** Room chat: the minimum gap between two lines from one session (a flood guard, not a display limit). */
+export const CHAT_MIN_GAP_MS = 1000;
+/** Control characters a chat line may never carry (terminal escapes, bells, NUL): stripped, never escaped. */
+const CHAT_CTRL = /[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g;
+
 const OK = Object.freeze({ ok: true });
 const fail = (code, detail) => (detail ? { error: code, detail } : { error: code });
 /** A match's answer to a request as the platform replies it: OK, or its error (an unknown code: INTERNAL). */
@@ -297,6 +304,9 @@ export class Room {
     /** @type {string | null} per-network limit key of whoever started the running match */
     this.matchKey = null;
     this.createdAt = now;
+    /** Latest room-scoped chat messages (room.chat), replayed only to a member asking for them. */
+    this.chatMessages = [];
+    this.chatSequence = 0;
     this.disposed = false;
     /**
      * The content set the room plays (DESIGN §32): `{ cs, vanilla, plugins }` — the server's vanilla set, or with the
@@ -614,6 +624,8 @@ export class Lobby {
       case 'room.ownership': return this.ownership(session, msg);
       case 'room.diy': return this.diy(session, msg);
       case 'room.skins': return this.skins(session, msg);
+      case 'room.chat': return this.chat(session, msg);
+      case 'room.chat.history': return this.chatHistory(session, msg);
       case 'room.spectate': return this.spectate(session, msg);
       case 'room.removeSpectator': return this.removeSpectator(session, msg);
       case 'room.setPlugins': return this.setPlugins(session, msg);
@@ -1206,6 +1218,61 @@ export class Lobby {
     if (r && typeof r === 'object' && r.error) {
       return fail(isErrCode(r.error) ? r.error : ERR.INTERNAL, typeof r.detail === 'string' ? r.detail : undefined);
     }
+    return OK;
+  }
+
+  /**
+   * Room-scoped text chat (房间与局内文字聊天): the line goes to every member of the room — players and spectators, the
+   * sender included — as one `room.chat` frame carrying the speaker's name, seat (-1 for a spectator) and timestamp.
+   * A flood guard (CHAT_MIN_GAP_MS per session) and the text hygiene live here: control characters are stripped (never
+   * escaped), the result is trimmed and clipped to CHAT_MAX, and a line that is empty once stripped is refused.
+   */
+  chat(session, msg) {
+    const room = this.roomOf(session);
+    if (!room) return fail(ERR.NOT_IN_ROOM, 'not in a room');
+    if (msg?.code && msg.code !== room.code) return fail(ERR.NOT_IN_ROOM);
+    const now = this.now();
+    if (now - (session.lastChatAt || 0) < CHAT_MIN_GAP_MS) return fail(ERR.RATE, 'chat too fast');
+    session.lastChatAt = now;
+    const raw = typeof msg?.text === 'string' ? msg.text : '';
+    const text = raw.replace(CHAT_CTRL, '').trim().slice(0, CHAT_MAX);
+    if (!text) return fail(ERR.BAD_MSG, 'empty message');
+    const seat = room.seatOf(session.playerId);
+    const spectator = room.spectatorOf(session.playerId);
+    if ((!seat || seat.isBot || seat.left) && !spectator) return fail(ERR.NOT_IN_ROOM);
+    const messages = room.chatMessages ||= [];
+    room.chatSequence = (room.chatSequence || 0) + 1;
+    const message = {
+      t: 'room.chat',
+      code: room.code,
+      id: room.chatSequence,
+      playerId: session.playerId,
+      name: seat?.name || spectator?.name || session.name || '',
+      seat: seat ? seat.seat : -1,
+      isSpectator: !seat && !!spectator,
+      text,
+      at: now,
+      time: now,
+    };
+    messages.push(message);
+    if (messages.length > 80) messages.splice(0, messages.length - 80);
+    this.broadcastRoom(room, message);
+    return OK;
+  }
+
+  /**
+   * The room's recent lines, for a member that just (re)opened the chat panel. Coop only (a solo room has no one to
+   * talk to), and rate-limited like a line of its own so a reconnect storm cannot pump the replay.
+   */
+  chatHistory(session, msg) {
+    const room = this.roomOf(session);
+    if (!room || room.mode !== 'coop' || msg.code !== room.code) return fail(ERR.NOT_IN_ROOM);
+    const at = this.now();
+    if (session.lastChatHistoryRoom === room.code && Number.isFinite(session.lastChatHistoryAt) && at - session.lastChatHistoryAt < 1000)
+      return fail(ERR.RATE);
+    session.lastChatHistoryAt = at;
+    session.lastChatHistoryRoom = room.code;
+    sendSession(session, { t: 'room.chat.history', code: room.code, messages: (room.chatMessages || []).slice(-80) });
     return OK;
   }
 

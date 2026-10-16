@@ -1804,5 +1804,18 @@
   "其余 {n} 个已移到 plugins/_removed/。": "The other {n} {n|was|were} moved to plugins/_removed/.",
   "已移到 plugins/_removed/：{n} 个插件": "Moved to plugins/_removed/: {n} {n|plugin|plugins}",
   "选中「{name}」": "Select \"{name}\"",
-  "符号链接的插件文件夹不能在这里删除。": "A plugin folder that is a symbolic link cannot be deleted here."
+  "符号链接的插件文件夹不能在这里删除。": "A plugin folder that is a symbolic link cannot be deleted here.",
+  "发言": "Chat",
+  "发言过于频繁，请稍候": "Too many messages, please wait",
+  "发送失败，请重试": "Sending failed, please retry",
+  "展开对话框": "Expand the chat",
+  "收起一半对话框": "Collapse the chat halfway",
+  "展开": "Expand",
+  "输入对话 (Enter发送, Esc取消)...": "Type a message (Enter to send, Esc to cancel)...",
+  "弹幕已开启 (点击关闭)": "Danmaku on (click to turn off)",
+  "弹幕已关闭 (点击开启)": "Danmaku off (click to turn on)",
+  "弹幕开": "Danmaku on",
+  "弹幕关": "Danmaku off",
+  "发送": "Send",
+  "打开对话": "Open the chat"
 }
