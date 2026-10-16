@@ -42,6 +42,65 @@ import { ASSETS_DIGEST_PATH, listPackFiles } from './packFiles.js';
 /** Default pack root: `<repo>/workshop`. */
 export const WORKSHOP_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', 'workshop');
 
+/**
+ * 用户在「设置 → 模组」里**从远端同步下来**的包的家。
+ *
+ * 故意放在**装载目录之外**（默认是它的兄弟目录，手机上即 `files/workshop-user/`）：一次 APK 更新会把
+ * `files/bundle/` 整个重解压，装在里面的包会被内置那份覆盖掉（实测：远端同步来的 rimbilliton v1.2.0
+ * 退回了内置 v1.0.0）。放在外面，升级就动不到它们；启动时由 {@link restoreUserPacks} 放回装载目录。
+ * `SP_WORKSHOP_USER` 可以覆盖这个位置。
+ */
+export const WORKSHOP_USER_DIR = process.env.SP_WORKSHOP_USER || path.resolve(WORKSHOP_DIR, '..', '..', 'workshop-user');
+
+/**
+ * 把用户目录里的包**恢复**到装载目录：缺哪个补哪个，已存在就跳过（所以常态是几次 stat，不复制）。
+ * 升级后第一次启动会在这里把同步下来的包放回去。任何失败都只记一条警告，绝不让服务器起不来。
+ * @param {string} workshopDir 装载目录（bundled `workshop/`）
+ * @param {string} [userDir] 用户目录（默认 {@link WORKSHOP_USER_DIR}）
+ * @param {any} [log]
+ * @returns {string[]} 实际恢复的包 id
+ */
+export function restoreUserPacks(workshopDir, userDir = WORKSHOP_USER_DIR, log = console) {
+  const restored = [];
+  try {
+    if (!workshopDir || !userDir || userDir === workshopDir || !fs.existsSync(userDir)) return restored;
+    for (const entry of fs.readdirSync(userDir, { withFileTypes: true })) {
+      if (!entry.isDirectory() || entry.name.startsWith('.')) continue;
+      const target = path.join(workshopDir, entry.name);
+      if (fs.existsSync(target)) continue;                    // 已在装载目录里：不动它
+      fs.mkdirSync(workshopDir, { recursive: true });
+      fs.cpSync(path.join(userDir, entry.name), target, { recursive: true });
+      restored.push(entry.name);
+    }
+    if (restored.length) log?.info?.(`[workshop] 从用户目录恢复了 ${restored.length} 个包: ${restored.join(', ')}`);
+  } catch (err) {
+    log?.warn?.(`[workshop] 恢复用户包失败（继续用装载目录里的）: ${err && err.message ? err.message : err}`);
+  }
+  return restored;
+}
+
+/**
+ * 把一个**刚同步下来**的包备份进用户目录，供下次升级后恢复。
+ * @param {string} modId @param {string} workshopDir @param {string} [userDir] @param {any} [log]
+ * @returns {boolean} 是否备份成功
+ */
+export function backupUserPack(modId, workshopDir, userDir = WORKSHOP_USER_DIR, log = console) {
+  try {
+    if (!modId || !workshopDir || !userDir || userDir === workshopDir) return false;
+    const src = path.join(workshopDir, modId);
+    if (!fs.existsSync(src)) return false;
+    const dst = path.join(userDir, modId);
+    fs.mkdirSync(userDir, { recursive: true });
+    fs.rmSync(dst, { recursive: true, force: true });          // 覆盖旧备份，保持与刚同步的一致
+    fs.cpSync(src, dst, { recursive: true });
+    log?.info?.(`[workshop] 已把 ${modId} 备份到用户目录（升级后可恢复）`);
+    return true;
+  } catch (err) {
+    log?.warn?.(`[workshop] 备份 ${modId} 到用户目录失败: ${err && err.message ? err.message : err}`);
+    return false;
+  }
+}
+
 /** Repository root — the base a whitelisted specifier's workspace-relative file is resolved against. */
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
