@@ -52,6 +52,25 @@ html:not(.sp-in-match) .toast-host { margin-top: var(--sa-t); }
 .conn-banner { margin-bottom: var(--sa-b); }
 .rotate-hint { padding: calc(24px + var(--sa-t)) calc(24px + var(--sa-r)) calc(24px + var(--sa-b)) calc(24px + var(--sa-l)); }
 
+/* ---- 2b. phone micro-text floor -------------------------------------------------------------------------------
+   On a short landscape phone the layout root 1rem drops to its 40 px clamp while the design's micro type is sized in
+   rem too: .micro (calc(.11 * var(--t))) measured 4.4 px, the title console secondary buttons 6 px and the 玩法说明 /
+   下载完整素材 hints 4.8 px — 29 of 77 text nodes sat under 8 px on a 761x360 phone (2026-10-16). These are the
+   smallest interface labels; they get a readable floor ON TOUCH DEVICES ONLY. Only a minimum is set, so a wide screen
+   (1rem >= 64 px) renders as before, and no layout the design keeps in rem (board, cards, HUD) is touched. */
+.sp-touch .micro, .sp-coarse .micro,
+.sp-touch .micro--mint, .sp-coarse .micro--mint,
+.sp-touch .micro--gold, .sp-coarse .micro--gold,
+.sp-touch .micro--hi, .sp-coarse .micro--hi,
+.sp-touch .title-thanks__sep, .sp-coarse .title-thanks__sep { font-size: max(calc(.11 * var(--t)), 9px); }
+.sp-touch .btn__label, .sp-coarse .btn__label { font-size: max(calc(.15 * var(--t)), 9px); }
+.sp-touch .title-screen .title-en__a, .sp-coarse .title-screen .title-en__a { font-size: max(.2rem, 10px); }
+.sp-touch .title-screen .title-en__b, .sp-coarse .title-screen .title-en__b { font-size: max(.22rem, 10px); }
+.sp-touch .title-foot .micro, .sp-coarse .title-foot .micro { font-size: max(calc(.12 * var(--t)), 9px); }
+.sp-touch small, .sp-coarse small,
+.sp-touch .modal__text small, .sp-coarse .modal__text small,
+.sp-touch .set-row small, .sp-coarse .set-row small { font-size: max(calc(.13 * var(--t)), 9px); }
+
 /* ---- 3. touch targets ---------------------------------------------------------------------------------------------- */
 /* An invisible hit area of at least --tap-min around small controls on touch screens: centred, never smaller than the
    control, no layout change. Only controls that do not use ::before themselves are listed. */
@@ -361,3 +380,17 @@ html[data-fit] :is(.app-root, .st, .sw, .proto, .lo, .guide, .ach) {
   color: var(--text-hi); font-size: calc(.2 * var(--t)); line-height: 1; cursor: pointer; }
 .set-fit__step:disabled { opacity: .35; cursor: default; }
 
+
+/* Short landscape phones: the title console's secondary buttons and the download hint are the screen's main
+   entries, so on a coarse pointer they get a real hit area (the design's ::before tap pads are invisible but only
+   44 px when 1rem = 40 px, and a 6 px label is hard to read under a thumb). Layout in rem is untouched. */
+@media (max-height: 600px) and (pointer: coarse), (max-height: 600px) and (any-pointer: coarse) {
+  .title-screen .btn--secondary, .title-screen .btn--ghost, .title-screen .btn--sm { min-height: 32px; }
+  .title-screen .btn--secondary .btn__label, .title-screen .btn--ghost .btn__label { letter-spacing: .04em; }
+  .title-settings, .title-fs { min-width: 28px; min-height: 28px; }
+  .title-repo { min-height: 22px; padding-left: .08rem; padding-right: .08rem; }
+  .title-thanks__tag { min-height: 20px; }
+  .field--lg .field__box { min-height: 36px; }
+  .title-screen .btn--xl { min-height: 36px; }
+  .guide-btn { min-height: 22px; }
+}
