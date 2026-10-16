@@ -31,10 +31,7 @@ function useActiveMods() {
   return useMemo(() => {
     if (room?.mode === 'solo_infinite') return new Set();
     if (room?.modIds) return new Set(room.modIds);
-    // 空 = 没设过（或还没选）⇒ **不过滤**，包盟约/分队照常显示。
-    // 以前返回空集，被当成「一个都没启用」，于是所有 packId 的条目被整条过滤掉（owner：看不到 mod 内容）。
-    const sel = getSelectedModIds();
-    return sel.length ? new Set(sel) : null;
+    return new Set(getSelectedModIds());
   }, [room?.mode, room?.modIds]);
 }
 
@@ -203,7 +200,7 @@ function BondPanel({ bond, m, notOwned, simMode = 'normal' }) {
         return !c.packId && !getPackIdForChess(c.chessId);
       }
       const pId = c.packId || getPackIdForChess(c.chessId);
-      return !pId || !activeMods || activeMods.has(pId);
+      return !pId || activeMods.has(pId);
     })
     .sort((a, b) => (b.tier - a.tier) || ((a.shopSortId ?? 0) - (b.shopSortId ?? 0)));
   const anyOff = members.some((c) => off.has(c.chessId));
@@ -245,7 +242,7 @@ function BondsTab({ m, sel, onSel, simMode = 'normal' }) {
         // 超限模式绝不显示 Mod 盟约
         return !b.packId;
       }
-      return !b.packId || !activeMods || activeMods.has(b.packId);
+      return !b.packId || activeMods.has(b.packId);
     })
     .sort((a, b) => (a.identifier ?? 99) - (b.identifier ?? 99));
   const sections = [
@@ -284,7 +281,7 @@ function BandPanel({ band, m }) {
 function BandsTab({ m, sel, onSel }) {
   const activeMods = useActiveMods();
   const all = (data.list('bands') || [])
-    .filter((b) => b && b.bandId && (!b.packId || !activeMods || activeMods.has(b.packId)))
+    .filter((b) => b && b.bandId && (!b.packId || activeMods.has(b.packId)))
     .sort((a, b) => (a.sortId ?? 99) - (b.sortId ?? 99));
   return html`<${Section} name=${t('策略')} glyph=${html`<${Icon} name="rook" />`} count=${all.length}>
     ${all.map((b) => html`<${Tile} key=${b.bandId} kind="band" on=${sel === b.bandId} onClick=${() => onSel(b.bandId)} title=${b.name}>
@@ -495,8 +492,8 @@ export function SweepReport({ onClose }) {
 
   const activeMods = useActiveMods();
   // defaults once the data is there: the first tile of each tab
-  const bonds = ready ? (data.list('bonds') || []).filter((b) => b && b.bondId && (!b.packId || !activeMods || activeMods.has(b.packId))).sort((a, b) => (a.identifier ?? 99) - (b.identifier ?? 99)) : [];
-  const bands = ready ? (data.list('bands') || []).filter((b) => b && b.bandId && (!b.packId || !activeMods || activeMods.has(b.packId))).sort((a, b) => (a.sortId ?? 99) - (b.sortId ?? 99)) : [];
+  const bonds = ready ? (data.list('bonds') || []).filter((b) => b && b.bondId && (!b.packId || activeMods.has(b.packId))).sort((a, b) => (a.identifier ?? 99) - (b.identifier ?? 99)) : [];
+  const bands = ready ? (data.list('bands') || []).filter((b) => b && b.bandId && (!b.packId || activeMods.has(b.packId))).sort((a, b) => (a.sortId ?? 99) - (b.sortId ?? 99)) : [];
   const bond = data.lookup('bonds', bondSel) || bonds[0] || null;
   const band = data.lookup('bands', bandSel) || bands[0] || null;
   const firstBoss = ready ? bossList()[0] : null;

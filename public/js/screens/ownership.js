@@ -29,9 +29,7 @@ export function useOwnershipRoster(ready) {
   const enabledMods = useMemo(() => {
     if (room?.mode === 'solo_infinite') return new Set();
     if (room?.modIds) return new Set(room.modIds);
-    // 空 = 没设过 ⇒ 不过滤（与 sweep.js / loadout.js 同一语义）。
-    const sel = getSelectedModIds();
-    return sel.length ? new Set(sel) : null;
+    return new Set(getSelectedModIds());
   }, [room?.mode, room?.modIds]);
   return useMemo(() => ownershipRoster(data.list('chess'), enabledMods), [ready, data.locale(), enabledMods]);
 }
