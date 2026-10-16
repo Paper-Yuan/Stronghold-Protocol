@@ -1,4 +1,4 @@
-﻿# deploy/deploy-align.ps1 — 一键：打包 → 上传 → 蓝绿热切换 → 验收（阿里云生产）
+# deploy/deploy-align.ps1 — 一键：打包 → 上传 → 蓝绿热切换 → 验收（阿里云生产）
 #
 # 为什么有它（2026-10-16 手工部署踩的两个坑，这里是防护）：
 #   1. 用 stdin 把命令喂给 ssh 会被 CRLF 污染：hot-swap.sh 收到的 $1 变成 "…tar.gz\r"，
@@ -71,6 +71,24 @@ if ($DryRun) { Write-Host "== -DryRun：到此为止（未上传）==" -Foregrou
 Write-Host "== 2/4 上传 ==" -ForegroundColor Cyan
 & scp -i $Key -o StrictHostKeyChecking=accept-new $local $scpTarget
 if ($LASTEXITCODE -ne 0) { throw "scp 失败 ($LASTEXITCODE)" }
+
+Write-Host "== 2.5/4 同步服务器自有目录（workshop/config/assets）==" -ForegroundColor Cyan
+# 第三次踩坑的固化：这些目录**不进发布包**（服主自己的模组、管理员配置、892 MB 素材），
+# 但热切换会切到另一个节点 —— 如果那边是空的，线上就会「模组全没了」。所以切换前先补齐：
+# 只在目标节点该目录为空时才从当前活动节点复制（幂等，不会覆盖目标已有的东西）。
+$syncScript = @'
+ACTIVE=$(grep -oE "127.0.0.1:300[12]" /etc/nginx/sites-available/default | head -1)
+if [ "$ACTIVE" = "127.0.0.1:3001" ]; then A=/opt/stronghold-blue; T=/opt/stronghold-green; else A=/opt/stronghold-green; T=/opt/stronghold-blue; fi
+echo "  active=$A target=$T"
+for d in workshop config public/assets; do
+  if [ -d "$A/$d" ] && [ -z "$(ls -A "$T/$d" 2>/dev/null)" ]; then
+    mkdir -p "$T/$d"; cp -a "$A/$d/." "$T/$d/" && echo "  synced $d -> $T"
+  else
+    echo "  skip $d"
+  fi
+done
+'@
+& ssh -i $Key -o StrictHostKeyChecking=accept-new $sshTarget $syncScript
 
 Write-Host "== 3/4 蓝绿热切换（命令走参数，CRLF 免疫）==" -ForegroundColor Cyan
 & ssh -i $Key -o StrictHostKeyChecking=accept-new $sshTarget "bash $HotSwap $remote"

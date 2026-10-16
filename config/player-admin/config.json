@@ -1,7 +1,8 @@
 {
   "version": 1,
-  "username": "admin",
-  "publicOrigin": "http://101.37.150.107:3000",
-  "salt": "0953e35dc69ce3fa6a4051e7208a902f",
-  "passwordHash": "5af8b4c735b44a63895a03450def5f858b2b2f10af3403d42b9116f0d9b0587f"
+  "username": "tester",
+  "admin": true,
+  "publicOrigin": "http://127.0.0.1:3000",
+  "salt": "884448dc1d741eb816dd287cd3afa4ec",
+  "passwordHash": "05c4915eddac767b11387eb7146960a1c9d76f72aaf97ac13db56c0a3b1d713e"
 }
