@@ -255,7 +255,14 @@
 .bonds-toggle[aria-expanded="false"] { opacity: .8; }
 .bonds-toggle:hover, .bonds-toggle:focus-visible { opacity: 1; color: var(--mint-500); }
 .bonds-toggle:focus-visible { outline: 2px solid var(--mint-500); outline-offset: -4px; }
-.bstrip { display: flex; align-items: flex-start; gap: .1rem; flex-wrap: nowrap; }
+/* The strip scrolls horizontally: bondStrip.js draws the左右渐隐 mask (updateMask) and turns a vertical wheel into
+   scrollLeft, and both need a real scroll container to act on — without this it was a dead no-op and the discs past the
+   right edge were unreachable (the mask said "there is more", nothing could get there). The strip's own pointer-events
+   stays none: the discs (.bslot, auto) are the hit targets, so a touch that starts on a disc pans this scroller while the
+   board under the strip's empty box stays reachable (playtest2 item 8). No scrollbar: the mask is the affordance. */
+.bstrip { display: flex; align-items: flex-start; gap: .1rem; flex-wrap: nowrap;
+  overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: none; -ms-overflow-style: none; }
+.bstrip::-webkit-scrollbar { display: none; }
 .bstrip.is-frozen .bslot { opacity: .5; filter: saturate(.4); }
 .bstrip--empty { display: inline-flex; align-items: center; gap: .12rem; padding: .08rem .16rem; font-size: .15rem; color: var(--text-dim); background: rgba(8, 11, 10, .6); border: 1px dashed var(--line-2); }
 /* a watched teammate's bonds (DESIGN §20.15): an amber "👁 name" pill in front of the discs, amber rings. Horizontal at
