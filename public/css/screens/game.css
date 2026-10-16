@@ -237,7 +237,9 @@
 .readybtn.is-busy { opacity: .7; }
 
 /* ---- bond strip ---------------------------------------------------------------------------------------- */
-.gm__bonds { position: absolute; left: 1.56rem; top: 1.36rem; right: 5.2rem; pointer-events: none;
+/* 左右内缩**对称**：盟约条要严格居中（本仓库自己的要求）。上游那版是 left 1.56rem / right 5.2rem 的偏置，
+   配上 .bstrip-container 的 align-items: center，整条会明显偏左。 */
+.gm__bonds { position: absolute; left: 2.5rem; top: 1.36rem; right: 2.5rem; pointer-events: none;
   display: flex; flex-direction: column; align-items: center; justify-content: flex-start; }
 /* Only the bond discs (and the +N chip) take the pointer: the strip's box spans the width under the top bar, where the
    top board row's units stand (row 12 at 16:9 / 21:9 / 720p / phones, the boss field's row 5 in a boss prep) — it used

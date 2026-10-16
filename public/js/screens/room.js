@@ -26,6 +26,7 @@ import { copyText } from '../ui/clipboard.js';
 import { GuideButton } from '../ui/guide.js';
 import { openStats } from './stats.js';
 import { SettingsButton } from '../ui/settings.js';
+import { ChatBox } from '../ui/chatBox.js';
 import { LoadoutButton } from './loadout.js';
 import { PluginTag, isModdedRoom } from '../ui/pluginTag.js';
 import { hasScriptConsent, rememberScriptConsent } from '../content.js';
@@ -329,6 +330,8 @@ export function RoomScreen() {
         ? html`<span class="t-mint">${t('已就绪 · 等待创建者开始模拟')}</span>`
         : html`<span class="t-lo">${t('准备就绪后，创建者即可开始模拟')}</span>`;
 
+  // 房间聊天：ui/chatBox.js 的**非受控**用法（不传 active，面板自带圆形入口与开关；受控那套在局内 game.js）。
+  // 它的定位来自 css/room-chat.css 的 .chat-panel：左下角 16px / 底上 96px、230×220（本仓库旧聊天面板的位置）。
   return html`<div class="screen room-screen">
     <header class="topbar">
       <div class="topbar__left">
@@ -402,6 +405,7 @@ export function RoomScreen() {
             <//>`}
       </div>
     </footer>
+    <${ChatBox} />
   </div>`;
 }
 

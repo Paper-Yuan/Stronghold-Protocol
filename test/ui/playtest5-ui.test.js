@@ -120,7 +120,8 @@ describe('9: the prep camera keeps the bench clear of the shop bar on phones in 
     // bond strip: top 1.36rem + a .52rem disc and its name line → measured 2.14–2.15rem in Chrome; 2.16rem kept
     // for the discs, plus the vertical 收起 drawer's fold handle below the tray (.28rem + .04rem margin: game.css
     // .bstrip__fold-handle) → 2.48.
-    assert.match(game, /\.gm__bonds \{ position: absolute; left: 1\.56rem; top: 1\.36rem;/);
+    // 左右对称 = 盟约条严格居中（本仓库自己的取值，见 game.css 的注释）。
+    assert.match(game, /\.gm__bonds \{ position: absolute; left: 2\.5rem; top: 1\.36rem; right: 2\.5rem;/);
     assert.match(game, /\.bslot \.bond \{ --disc: \.52rem; \}/);
     assert.match(game, /\.bstrip__fold-handle \{[^}]*height: 0\.28rem;[^}]*margin-top: 0\.04rem;/, 'the handle the budget counts');
     assert.equal(HUD_REM.bondStripBottom, 2.48);
