@@ -42,6 +42,7 @@ import { ToastHost, toast, toastError, describeError } from './ui/toasts.js';
 import { net, identity, NetError } from './net.js';
 import { store, useStore, emptyMatch, selectRoute, sessionResetNotice, isSpectating, pushChatMessage, clearChat } from './store.js';
 import { getRoomDanmaku } from './ui/roomDanmaku.js';
+import { setWelcomeMods } from './roomMods.js';
 import { data } from './data.js';
 import { GAME_FILES } from './ui/gameComponents.js';
 import { TitleScreen, sanitizeName } from './screens/title.js';
@@ -159,6 +160,9 @@ function backToLobby() {
 const pluginCount = (content) => (content && Number.isInteger(content.plugins) && content.plugins > 0 ? content.plugins : 0);
 
 function onWelcome(msg) {
+  // 房间模组目录 (W-C)：记录 welcome.mods（本服务器加载的包与摘要）。一句 welcome 没有这个键 = 普通安装，
+  // roomMods 会退回 null（absent means absent），之后所有载荷都不带 mods/modIds。
+  setWelcomeMods(msg);
   identity.saveToken(msg.token);
   identity.rememberMatch(null);
   const prev = store.get();

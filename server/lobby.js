@@ -1428,10 +1428,16 @@ export class Lobby {
    * server's content identity (header "Content identity").
    */
   welcomeInfo() {
-    if (!this.vanilla) return { diyKitted: KITTED_CHARS };
+    // 房间模组目录 (W-C, DESIGN §28.2)：客户端 roomMods.setWelcomeMods 靠它知道本服务器加载了哪些包（两端的字节要能
+    // 对齐，W-D）；客户端必须把它回显到 room.create / room.join 的 `mods` 摘要上，否则它对模组服务器等于「看不见内容」。
+    // 普通安装没有 workshop → 没有这个键（「absent means absent」）。
+    const mods = this.workshop?.mods?.length
+      ? { mods: { digest: this.workshop.modSet?.digest || '', packs: this.workshop.mods } }
+      : {};
+    if (!this.vanilla) return { diyKitted: KITTED_CHARS, ...mods };
     let n;
     try { n = Number(this.plugins?.unofficial?.()) || 0; } catch { n = 0; }
-    return { diyKitted: KITTED_CHARS, content: n > 0 ? { vanilla: this.vanilla.cs, plugins: n } : { vanilla: this.vanilla.cs } };
+    return { diyKitted: KITTED_CHARS, ...mods, content: n > 0 ? { vanilla: this.vanilla.cs, plugins: n } : { vanilla: this.vanilla.cs } };
   }
 
   // ---------------------------------------------------------------------------------------------------
