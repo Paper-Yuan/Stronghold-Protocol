@@ -51,7 +51,7 @@ import { createPublicApi } from './publicApi.js';
 import { createAppApi } from './http/appApi.js';
 import { APP_VERSION } from '../shared/constants.js';
 import { Announcements } from './announcements.js';
-import { WORKSHOP_DIR, loadWorkshop, restoreUserPacks } from './workshop.js';
+import { WORKSHOP_DIR, loadWorkshop } from './workshop.js';
 import { applyWorkshop } from '../shared/workshop.js';
 import { createPluginRegistry } from './plugins/registry.js';
 import { computeVanillaContent } from './plugins/identity.js';
@@ -115,8 +115,6 @@ export async function startServer(opts = {}) {
   // 创意工坊的数据合并必须在会话栈之前：浏览器读的 /data/* 是「官方 + 包」的合并体（http/workshop.js），
   // 服务端重算、GameData 与对局都必须建立在同一份数据上（本文件 139 行那段注释的原意）。没有包时就是 data 本身。
   const workshopDir = opts.workshopDir || process.env.SP_WORKSHOP || WORKSHOP_DIR;
-  // 用户从远端同步下来的包放在解压目录之外，这里在装载前把它们放回去（APK 更新会重解压 bundle）。
-  restoreUserPacks(workshopDir, undefined, log);
   const preloadedWorkshop = (() => {
     try { return loadWorkshop(workshopDir, { log }); }
     catch (err) { log.warn?.(`[workshop] 预装载失败，服务端按基准数据处理: ${err && err.message ? err.message : err}`); return null; }

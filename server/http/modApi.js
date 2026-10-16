@@ -16,7 +16,7 @@ import path from 'node:path';
 
 import { sendError, sendJson } from './common.js';
 import { createZipFromDir } from '../simpleZip.js';
-import { loadWorkshop, backupUserPack } from '../workshop.js';
+import { loadWorkshop } from '../workshop.js';
 import { modSetOf } from '../../shared/modIdentity.js';
 
 /** 一个模组 id 只允许这些字符（也决定了它会成为 workshop/ 下的哪个目录名）。 */
@@ -194,8 +194,6 @@ export function createModApi({ workshopDir, log = console, reload = null }) {
         }
         zip.extractAllTo(targetDir, true);
         log.info?.(`[MOD-SYNC] ✓ ${modId} synced successfully`);
-        // 备份进用户目录（解压目录之外）：下次 APK 更新重解压 bundle 后，启动时由 restoreUserPacks 放回来。
-        backupUserPack(modId, workshopDir, undefined, log);
         const served = reload ? await reload() : null;
         const mods = (served?.packs || []).map((p) => ({ id: p.id, name: p.name || p.id, version: p.version }));
         sendJson(req, res, 200, {
