@@ -15,6 +15,17 @@ function emptyPrep() {
 for (const g of Object.values(DATA.garrisons).filter(g => g.effectKey === 'SERVER_GAIN_EQUIP')) {
   for (const owner of g.owners) test(`fixed gift ${g.garrisonId}/${owner} is produced past stock and still occupies it`, () => {
     const { m, p } = emptyPrep(), id = g.bbStr.chess, cap = m.itemPool.cap(id);
+    // 特性专属产出装备**没有库存上限**（server/match/gamedata.js itemPoolCopies 对缪缪变形同构体与耶拉谢拉格不融冰
+    // 明确返回 null，`itemPool.left` 因此是 Infinity）：这类礼物不占库存，「超出库存仍然占用」不成立，
+    // 改为断言无上限这一事实本身。实测：cap=null、left=Infinity、acquireChess 成功、held=count、debt=0。
+    if (cap === null) {
+      assert.equal(m.itemPool.left(id), Infinity, 'an unlimited gift never runs out of stock');
+      assert.ok(p.acquireChess(owner, { fromPool: false }), 'the trait still produces its gift');
+      assert.equal(m.itemPool.held(id), g.bb.count, 'the granted copies are held');
+      assert.equal(m.itemPool.debtOf(id), 0, 'an unlimited gift never borrows from stock');
+      checkInvariants(m); m.dispose();
+      return;
+    }
     assert.ok(Number.isInteger(cap));
     for (let i = 0; i < cap; i++) assert.ok(p.acquireItem(id));
     assert.equal(m.itemPool.left(id), 0);
@@ -53,8 +64,11 @@ for (const invest of [false, true]) test(`repeated Muelsyse acquisition and elit
   m.dispose();
 });
 
-test('Damazti strategy grants its fixed item at rounds 5/10/15 past cap; releasing overflow does not free stock early', () => {
+test('Damazti strategy grants its fixed item at rounds 5/10/15; an unlimited gift never touches stock', () => {
   const { m, p } = emptyPrep(), id = 'chess_item_6_09_e_a';
+  // 变形同构体没有库存上限：`left` 恒为 Infinity —— 它既不占用库存，释放时也不归还库存。
+  assert.equal(m.itemPool.cap(id), null);
+  assert.equal(m.itemPool.left(id), Infinity);
   for (let i = 0; i < 3; i++) assert.ok(p.acquireItem(id));
   p.bandId = 'band_damaztic'; p.recompute();
   for (const [i, round] of [5, 10, 15].entries()) {
@@ -62,9 +76,8 @@ test('Damazti strategy grants its fixed item at rounds 5/10/15 past cap; releasi
     assert.equal(m.itemPool.held(id), 4 + i); checkInvariants(m);
   }
   const copy = () => [...p.hand, ...p.temp].find(x => x?.kind === 'item' && x.id === id);
-  for (let i = 0; i < 3; i++) { assert.ok(p.destroy(copy().uid).ok); assert.equal(m.itemPool.left(id), 0); }
-  assert.ok(p.destroy(copy().uid).ok);
-  assert.equal(m.itemPool.held(id), 2); assert.equal(m.itemPool.left(id), 1);
+  for (let i = 0; i < 4; i++) { assert.ok(p.destroy(copy().uid).ok); assert.equal(m.itemPool.left(id), Infinity, 'an unlimited gift never frees stock'); }
+  assert.equal(m.itemPool.held(id), 2);
   checkInvariants(m); m.dispose();
 });
 

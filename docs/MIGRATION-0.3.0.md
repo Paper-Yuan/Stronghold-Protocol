@@ -195,3 +195,37 @@
 
 （本节更正了上面第 15 轮那段「本仓库数据就是它自己生成器的产出」——那是被 skipped 误导得出的结论；
 第 5 轮「提交的数据对不上生成器」是对的。）
+
+---
+
+## `data/` 与生成器对不上的**真正根因**：本机官方数据缓存比数据快照旧
+
+（本节取代上面第 18 轮那段「独立数据管线工程」的说法 —— 那次测量我把生成版强行美化后比、又混了字符数与字节数，结论是错的。）
+
+精确测量（紧凑 JSON 逐字节，两个生成器各自生成到临时目录）：
+
+| 文件 | 提交版 | 上游生成器 | 本仓库生成器 |
+|---|---|---|---|
+| config / stages / waves / items / enemies / choices / bands / bosses / effects / factions / garrisons | — | **逐字节一致** ✅ | config/stages/enemies/choices 不同 ✗ |
+| chess | 1,875,834 B | 差 500 B | 差 |
+| tokens | 263,683 B | 差 679 B | 差 |
+| bonds | 85,693 B | 差 616 B | 差 |
+| backups | 2,056,247 B | 差 22 KB | **不写这个文件** |
+
+四处内容差的**根因是同一个**：`.cache/gamedata`（官方数据缓存，**未纳入版本管理**）比提交数据所依据的快照**旧**：
+
+  * `excel/uniequip_table.json`：`equipDict` **没有 `uniequip_003_ulpia`**，`charEquip["char_4145_ulpia"]` 只列 2 个模组
+    → 重生成会丢掉**乌尔比安 CRU-Y「前路」**；而 `test/content/new-modules-023.test.js` 正因为提交数据里有它才 6/6 通过。
+  * `excel/character_table.json`（1375 条）：**没有 `char_4231_clemnt`（克莱门莎）** → 重生成会丢掉这位干员
+    （`backups.units` 89 → 88 项）。**这正是第 3 轮那次「重生成丢内容、35 个用例变红」的根因。**
+  * `bonds.json` 的 `egirShip` / `miraShip` 同理（提交版内容更多）。
+
+**另一个独立差异是排版**：`config.json` 与 `tokens.json` 在提交版里是 **2 空格美化**（4525 / 9900 行），而**两个**生成器都写紧凑。
+`config.json` 的美化后内容与生成结果**逐字节相同**；`tokens.json` 除排版外还有上述 679 B 内容差。
+
+**结论与操作**：
+
+1. `data/` 是**更新的权威快照**，**不要重生成** —— 测试（`new-modules-023` 等）依赖它，重生成会丢真实内容。
+2. 要让它可重生成：先把官方缓存**刷新到至少含 克莱门莎 与 乌尔比安 CRU-Y 的版本**（`npm run setup` / 取官方数据的工具），再重建；
+   同时让生成器对 `config.json`/`tokens.json` 输出 2 空格美化，格式差才会消失。
+3. `test/data.test.js` 那条 `data/ is not stale` 的提示（「run: node tools/build-data.mjs」）在上述前提下是**误导**的 —— 照做会破坏内容。
