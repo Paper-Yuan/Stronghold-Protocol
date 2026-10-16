@@ -6,7 +6,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { bgmKeyFor, resolveBgm, SfxLimiter, AudioManager, normalAttackSfx, installAudio, audio, combatTrackFor, COMBAT_TRACK_SWITCH_ROUND, VoiceGate, resultSpeaker, resultVoiceSlot, VOICE_PRIORITY, VOICE_COOLDOWN_MS, voiceLine } from '../../public/js/audio.js';
+import { bgmKeyFor, resolveBgm, SfxLimiter, AudioManager, normalAttackSfx, installAudio, audio, combatTrackFor, COMBAT_TRACK_SWITCH_ROUND, VoiceGate, resultSpeaker, resultVoiceSlot, VOICE_PRIORITY, VOICE_COOLDOWN_MS, voiceLine, VOICE_TREES } from '../../public/js/audio.js';
 import { mediaUrl } from '../../public/js/media.js';
 import { PHASE } from '../../shared/constants.js';
 import { makeBattle, chessRec } from '../helpers/battleHarness.js';
@@ -256,7 +256,7 @@ describe('operator battle voice', () => {
     // the owner's request of 2026-10-08 「添加一下干员点击上去的语气一样的语音」: the game screen lets the detail panel speak
     // in every phase — a tap on a piece in the field / hand, a shop card — not only while a battle runs
     const game = readFileSync(path.join(ROOT, 'public/js/screens/game.js'), 'utf8');
-    assert.match(game, /<\$\{DetailPanel\}[^`]*?voice=\$\{(?:true|!isShopUnbought)\}/, 'the detail panel speaks outside battle too');
+    assert.match(game, /<\$\{DetailPanel\}[^`]*?voice=\$\{true\}/, 'the detail panel speaks outside battle too');
     assert.doesNotMatch(game, /voice=\$\{combat\}/);
     assert.equal(VOICE_PRIORITY.select, 10, 'official FOCUS_CHAR priority');
     assert.equal(VOICE_COOLDOWN_MS.select, 0, 'official FOCUS_CHAR cooldown 0');
@@ -364,11 +364,62 @@ describe('operator battle voice', () => {
       assert.match(a.voiceNode?.url ?? '', /^\/a\/voice\/cn\/char_a\/cn_02[12]\.mp3$/, '中文 again');
       a._stopVoice();
       a.setVoiceLang('kr');
-      assert.equal(a.voiceLang, 'kr', 'supports kr dub');
+      assert.equal(a.voiceLang, 'kr', '한국어 is a dub');
+      a.setVoiceLang('xx');
+      assert.equal(a.voiceLang, 'cn', 'an unknown value stays 中文');
       // the settings store hands the choice over (installAudio and ui/settings.js)
       const settings = readFileSync(path.join(ROOT, 'public/js/ui/settings.js'), 'utf8');
       assert.match(settings, /audio\.setVoiceLang\(s\.voiceLang, s\.voiceOverrides\)/);
       assert.match(settings, /t\('语音语言'\)/);
+      assert.match(settings, /audio\.setVoiceNative\(s\.voiceNative\)/);
+    } finally {
+      globalThis.fetch = origFetch;
+    }
+  });
+
+  test('English, Korean and the own-language dub use the same fallback as 日本語; 试听 skips the gate', async () => {
+    assert.deepEqual(VOICE_TREES, { jp: 'voiceJp', en: 'voiceEn', kr: 'voiceKr', native: 'voiceNative' });
+    const id = 'char_102_texas';
+    const audioM = {
+      voice: { [id]: { select: '/a/voice/cn/char_a/cn_021.mp3', place: '/a/voice/cn/char_a/cn_023.mp3' } },
+      voiceEn: { [id]: { select: '/a/voice/en/char_a/cn_021.mp3' } },
+      voiceKr: { [id]: { place: '/a/voice/kr/char_a/cn_023.mp3' } },
+      voiceNative: { [id]: { select: '/a/voice/native/char_a_ita/cn_021.mp3' } },
+    };
+    assert.deepEqual(voiceLine(audioM, id, 'select', 'en'), { url: '/a/voice/en/char_a/cn_021.mp3', fallback: '/a/voice/cn/char_a/cn_021.mp3' });
+    assert.deepEqual(voiceLine(audioM, id, 'place', 'kr'), { url: '/a/voice/kr/char_a/cn_023.mp3', fallback: '/a/voice/cn/char_a/cn_023.mp3' });
+    assert.deepEqual(voiceLine(audioM, id, 'select', 'native'), { url: '/a/voice/native/char_a_ita/cn_021.mp3', fallback: '/a/voice/cn/char_a/cn_021.mp3' });
+    assert.deepEqual(voiceLine(audioM, id, 'place', 'en'), { url: '/a/voice/cn/char_a/cn_023.mp3', fallback: null }, 'a slot the EN tree lacks: the Chinese line');
+    assert.deepEqual(voiceLine(audioM, id, 'place', 'native'), { url: '/a/voice/cn/char_a/cn_023.mp3', fallback: null });
+
+    const fw = fakeWindow();
+    const origFetch = globalThis.fetch;
+    globalThis.fetch = async () => ({ ok: true, arrayBuffer: async () => new ArrayBuffer(8) });
+    const tick = () => new Promise((r) => setTimeout(r, 10));
+    try {
+      const a = new AudioManager({ win: fw.win, getManifest: () => ({ audio: { sfx: { ui: {}, battle: {}, units: {} }, ...audioM } }) });
+      a.voiceGate = new VoiceGate({ gapMs: 60_000 });
+      a.install();
+      fw.fire('pointerdown');
+      await tick();
+      assert.equal(a.voice(id, 'place', { unitKey: 1 }), true);
+      await tick();
+      assert.equal(a.voice(id, 'place', { unitKey: 1 }), false, 'the battle line is on cooldown');
+      assert.equal(a.previewVoice(id, 'en'), true, '试听 takes the channel and skips the cooldown');
+      await tick();
+      assert.equal(a.voiceNode?.url, '/a/voice/en/char_a/cn_021.mp3');
+      a.setVoiceLang('cn', { [id]: 'native' });
+      a.setVoiceNative(false);
+      assert.equal(a.previewVoice(id), true, 'no lang: the operator\'s own choice');
+      await tick();
+      assert.equal(a.voiceNode?.url, '/a/voice/native/char_a_ita/cn_021.mp3');
+      a.setVoiceLang('kr', {});
+      a.setVoiceNative(true);
+      assert.equal(a.voice(id, 'select'), true, '本土语言 wins over the global KR dub');
+      await tick();
+      assert.equal(a.voiceNode?.url, '/a/voice/native/char_a_ita/cn_021.mp3');
+      a.volumes.muted = true;
+      assert.equal(a.previewVoice(id, 'en'), false, 'muted stays silent');
     } finally {
       globalThis.fetch = origFetch;
     }
@@ -977,9 +1028,8 @@ describe('the running skill\'s own attack / impact sound (sfx.units[id].attacks 
   const swingAndHit = (a) => a.handleBattleEvents([['atk', 1, 2, 'none'], ['dmg', 2, 120, 'phys']]);
 
 
-  test('司霆惊蛰 S3: her attack rings the S3 mode\'s file while the skill runs, and only then', async (t) => {
-    const u = manifest.audio?.sfx?.units?.[LEIZI2];
-    if (!u) { t.skip('前提：清单无对应音频'); return; }
+  test('司霆惊蛰 S3: her attack rings the S3 mode\'s file while the skill runs, and only then', async () => {
+    const u = manifest.audio.sfx.units[LEIZI2];
     assert.equal(u.attack, undefined, '前提：她没有普通形态的攻击音（这正是那次「没有音效」）');
     assert.ok(u.attacks['2'] && /_s\.mp3$/.test(u.attacks['2']), '前提：清单带 S3 形态的攻击音');
     const { a, urls, settle, restore } = await rig([
@@ -1011,9 +1061,8 @@ describe('the running skill\'s own attack / impact sound (sfx.units[id].attacks 
     } finally { restore(); }
   });
 
-  test('a unit with both banks: the mode file inside the skill, its normal attack outside it', async (t) => {
-    const id = Object.keys(manifest.audio?.sfx?.units || {}).find((k) => k.startsWith('char_') && manifest.audio.sfx.units[k].attack && manifest.audio.sfx.units[k].attacks?.['2']);
-    if (!id) { t.skip('前提：清单无对应音频'); return; }
+  test('a unit with both banks: the mode file inside the skill, its normal attack outside it', async () => {
+    const id = Object.keys(manifest.audio.sfx.units).find((k) => k.startsWith('char_') && manifest.audio.sfx.units[k].attack && manifest.audio.sfx.units[k].attacks?.['2']);
     const u = manifest.audio.sfx.units[id];
     const { a, urls, settle, restore } = await rig([
       { id: 1, side: 'ally', kind: 'chess', spine: id, skillIndex: 2 }, { id: 2, side: 'enemy', kind: 'enemy', spine: enemyId() },
@@ -1032,9 +1081,8 @@ describe('the running skill\'s own attack / impact sound (sfx.units[id].attacks 
     } finally { restore(); }
   });
 
-  test('a unit whose manifest has no attacks table for that slot keeps its normal bank (and no crash)', async (t) => {
-    const id = Object.keys(manifest.audio?.sfx?.units || {}).find((k) => k.startsWith('char_') && manifest.audio.sfx.units[k].attack && !manifest.audio.sfx.units[k].attacks?.['2']);
-    if (!id) { t.skip('前提：清单无对应音频'); return; }
+  test('a unit whose manifest has no attacks table for that slot keeps its normal bank (and no crash)', async () => {
+    const id = Object.keys(manifest.audio.sfx.units).find((k) => k.startsWith('char_') && manifest.audio.sfx.units[k].attack && !manifest.audio.sfx.units[k].attacks?.['2']);
     const u = manifest.audio.sfx.units[id];
     const { a, urls, settle, restore } = await rig([
       { id: 1, side: 'ally', kind: 'chess', spine: id, skillIndex: 2 }, { id: 2, side: 'enemy', kind: 'enemy', spine: enemyId() },
@@ -1047,9 +1095,8 @@ describe('the running skill\'s own attack / impact sound (sfx.units[id].attacks 
     } finally { restore(); }
   });
 
-  test('赤刃明霄陈 S3: 挥砍与斩击都用 S3 的 `_s` 对，技能外回到普通 `_n` 对', async (t) => {
-    const u = manifest.audio?.sfx?.units?.[CHEN3];
-    if (!u) { t.skip('前提：清单无对应音频'); return; }
+  test('赤刃明霄陈 S3: 挥砍与斩击都用 S3 的 `_s` 对，技能外回到普通 `_n` 对', async () => {
+    const u = manifest.audio.sfx.units[CHEN3];
     assert.ok(u.attacks['2'] && u.hits['2'] && /_s\.mp3$/.test(u.attacks['2']) && /_s\.mp3$/.test(u.hits['2']), '前提：清单带 S3 的挥砍与斩击');
     const { a, urls, settle, restore } = await rig([
       { id: 1, side: 'ally', kind: 'chess', spine: CHEN3, skillIndex: 2 }, { id: 2, side: 'enemy', kind: 'enemy', spine: enemyId() },
@@ -1078,9 +1125,8 @@ describe('the running skill\'s own attack / impact sound (sfx.units[id].attacks 
     } finally { restore(); }
   });
 
-  test('a mode without a hits entry keeps the unit\'s normal impact while the skill runs', async (t) => {
-    const u = manifest.audio?.sfx?.units?.[LEIZI2];
-    if (!u) { t.skip('前提：清单无对应音频'); return; }
+  test('a mode without a hits entry keeps the unit\'s normal impact while the skill runs', async () => {
+    const u = manifest.audio.sfx.units[LEIZI2];
     assert.ok(u.attacks['2'] && !u.hits?.['2'], '前提：她的 S3 有挥砍、没有命中 bank（官方就没有）');
     const { a, urls, settle, restore } = await rig([
       { id: 1, side: 'ally', kind: 'chess', spine: LEIZI2, skillIndex: 2 }, { id: 2, side: 'enemy', kind: 'enemy', spine: enemyId() },

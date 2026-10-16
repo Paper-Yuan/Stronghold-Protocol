@@ -25,8 +25,9 @@
   <!-- Web fonts: never render-blocking (LAN/offline play must still start); system fallbacks in theme.css. -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link rel="stylesheet" media="print" onload="this.media='all'"
+  <link rel="stylesheet" media="print" data-web-fonts
         href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700;900&family=Oxanium:wght@400;500;600;700&family=Rajdhani:wght@500;600;700&display=swap" />
+  <script src="/js/webFonts.js" defer></script>
   <!-- Self-hosted Bender / Novecento (provided by the assets pipeline). -->
   <link rel="stylesheet" href="/fonts/fonts.css" />
 
@@ -46,7 +47,6 @@
   <link rel="stylesheet" href="/css/screens/stats.css" />
   <link rel="stylesheet" href="/css/emotes.css" />
   <link rel="stylesheet" href="/css/devices.css" />
-  <link rel="stylesheet" href="/css/fullscreen-prompt.css" />
 
   <script type="importmap">
     { "imports": { "preact": "/vendor/preact.module.js", "preact/hooks": "/vendor/hooks.module.js", "htm": "/vendor/htm.module.js" } }
@@ -54,14 +54,11 @@
   <link rel="modulepreload" href="/vendor/preact.module.js" />
   <link rel="modulepreload" href="/vendor/hooks.module.js" />
   <link rel="modulepreload" href="/vendor/htm.module.js" />
-  <link rel="modulepreload" href="/vendor/three.module.js" />
-  <link rel="modulepreload" href="/vendor/three.core.js" />
   <link rel="modulepreload" href="/js/main.js" />
   <!-- Battlefield renderer libs (classic scripts, injected by js/render/app.js when a match view mounts): warm the cache
        at low priority so entering the match doesn't wait on ~800 KB of script. -->
   <link rel="prefetch" href="/vendor/pixi.min.js" as="script" />
   <link rel="prefetch" href="/vendor/pixi-spine.js" as="script" />
-<link rel="stylesheet" href="/css/global-broadcast.css">
 </head>
 <body>
   <div id="app"></div>
@@ -78,44 +75,15 @@
     <div class="rotate-hint__phone"></div>
     <div class="rotate-hint__title">请将设备横屏</div>
     <div>卫戍协议：盟约 需要横屏显示以获得完整体验</div>
+    <button type="button" hidden class="btn btn--secondary btn--sm rotate-hint__pwa" id="rotate-hint-pwa">添加到桌面</button>
     <div class="rotate-hint__micro">ROTATE DEVICE</div>
   </div>
 
   <noscript><p style="color:#c3cbc7;text-align:center;padding:40px">需要启用 JavaScript 才能运行本游戏。</p></noscript>
-  <script>
-    // Boot diagnostics (plain ES5: runs everywhere). A browser too old for the app says so instead of spinning forever:
-    // no ES modules (nomodule below), a module graph that cannot load (e.g. import maps: Safari / iOS < 16.4), or no
-    // boot after 9 s.
-    window.__spBootFail = function (why, err) {
-      var e = document.getElementById('boot-err');
-      if (!e || e.getAttribute('data-final')) return;
-      var im = false;
-      try { im = !!(window.HTMLScriptElement && HTMLScriptElement.supports && HTMLScriptElement.supports('importmap')); } catch (x) { im = false; }
-      var detail = err ? (' (' + (err.message || err) + ')') : '';
-      e.textContent = why === 'old' || !im
-        ? '当前浏览器版本过旧，无法运行本游戏。请升级到 iOS / iPadOS 16.4+（Safari 16.4+）、Chrome / Edge 90+ 或 Firefox 108+ 后刷新。'
-        : ('游戏脚本加载失败，请检查网络连接后刷新页面。' + detail);
-      e.setAttribute('data-final', '1');
-    };
-    // a module graph that fails to link (bare specifier without import-map support) reports here, not on the <script>
-    window.addEventListener('error', function (ev) {
-      var b = document.getElementById('boot');
-      if (!b || b.classList.contains('is-done')) return;
-      var msg = String(ev && (ev.message || ev.error?.message || ''));
-      if (/specifier|resolve|import|module|syntax|unexpected|reference|type/i.test(msg)) {
-        window.__spBootFail('load', msg);
-      }
-    });
-  </script>
-  <script type="module" src="/js/main.js" onerror="window.__spBootFail && window.__spBootFail('load')"></script>
-  <script type="module" src="/fullscreen-guide.js"></script>
-  <script nomodule>window.__spBootFail && window.__spBootFail('old');</script>
-  <script>
-    // If modules never boot (very old browser / blocked script), explain instead of spinning forever.
-    setTimeout(function () {
-      var b = document.getElementById('boot'), e = document.getElementById('boot-err');
-      if (b && !b.classList.contains('is-done') && e && !e.textContent) e.textContent = '加载时间较长…如长时间无响应，请使用最新版 Chrome / Edge / Safari / Firefox 并刷新页面。';
-    }, 9000);
-  </script>
+
+  <script src="/js/boot.js"></script>
+  <script type="module" src="/js/main.js" id="sp-main"></script>
+  <script nomodule src="/js/bootLegacy.js"></script>
+
 </body>
 </html>

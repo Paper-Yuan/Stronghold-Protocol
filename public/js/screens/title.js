@@ -9,8 +9,19 @@
 // Backdrop art: if data/assets.json lists a UI backdrop (`ui.titleBackdrop`, or one of the
 // entry/loading illustration names) it is layered under the CSS art; otherwise the screen is
 // pure CSS/SVG (radar, ridgelines, glow), so it never issues a request that can 404.
+//
+// The full art, under the login box: 下载完整素材 (ui/assetDownload.js — its dialog downloads from this server) and
+// 导入素材包 (ui/assetImport.js — the player's own folder or zip, no server download) side by side, so an import never
+// opens the download (docs/history/0.3.0.md §32.14.39).
+//
+// Plugins (DESIGN §32 P1a, the design study's §7.4): when the server has unofficial plugins (content.plugins of /healthz or
+// welcome — content.js installedCount), the footer says 「本服务器安装了 N 个插件」 — a button that loads the list
+// (ui/pluginPanel.js InstalledPlugins, which fetches the catalogue when it opens); nothing on a server without any, which
+// the page never asks for its catalogue — and the title page loads none of the panel's code.
 
 import { ResumeMatchButton } from '../ui/resumeMatch.js';
+import { AssetDownloadButton } from '../ui/assetDownload.js';
+import { AssetImportButton } from '../ui/assetImport.js';
 import { useEffect, useMemo, useState } from '../../vendor/hooks.module.js';
 import { NAME_MAX_LEN, APP_VERSION, DEV_BUILD } from '../../../shared/constants.js';
 import { html, Button, Icon, MicroLabel, TextField, PingPill } from '../ui/components.js';
@@ -26,52 +37,10 @@ import { t, N_ } from '../../../shared/i18n.js';
 import { scriptOf } from '../../../shared/i18nPacks.js';
 import { GIcon } from '../ui/gameComponents.js';
 import { SettingsModal } from '../ui/settings.js';
-import { PreloadPill, PreloadModal, usePreloadState } from '../ui/preloadModal.js';
-import { ServerPicker, currentGameNode } from '../ui/serverPicker.js';
-import { GAME_NODES, serverEntryUrl } from '../../../shared/serverSelection.js';
+import { installedCount } from '../content.js';
+import { sanitizeName, isValidName } from '../ui/playerName.js';
 
-// Same character classes as server/net.js sanitizeName (control, zero-width, bidi, BOM), so a name
-// the client accepts is never rejected by the server's hello validation.
-const CONTROL_CHARS = /[\u0000-\u001f\u007f-\u009f\u00ad\u200b-\u200f\u2028-\u202e\u2060-\u206f\ufeff]/g;
-// Lone surrogates are removed by a scan, not a regex: the lookbehind such a regex needs is a *syntax error* in Safari
-// < 16.4, which would stop the whole client from loading there.
-export function stripLoneSurrogates(str) {
-  let out = '';
-  for (let i = 0; i < str.length; i++) {
-    const c = str.charCodeAt(i);
-    if (c >= 0xd800 && c <= 0xdbff) {
-      const n = i + 1 < str.length ? str.charCodeAt(i + 1) : 0;
-      if (n >= 0xdc00 && n <= 0xdfff) { out += str[i] + str[i + 1]; i++; }
-      continue;
-    }
-    if (c >= 0xdc00 && c <= 0xdfff) continue;
-    out += str[i];
-  }
-  return out;
-}
-
-/**
- * Normalise a nickname like the server does (NFC, strip lone surrogates / control / invisible /
- * bidi characters, collapse whitespace, trim), then clamp to NAME_MAX_LEN UTF-16 code units — the
- * protocol's `hello.name` limit — without splitting a surrogate pair.
- * @param {any} raw
- * @returns {string}
- */
-export function sanitizeName(raw) {
-  let s = String(raw ?? '');
-  try { s = s.normalize('NFC'); } catch { /* keep as is */ }
-  s = stripLoneSurrogates(s).replace(/\s+/g, ' ').replace(CONTROL_CHARS, '').replace(/ {2,}/g, ' ').trim();
-  if (s.length > NAME_MAX_LEN) {
-    s = s.slice(0, NAME_MAX_LEN);
-    // Don't leave half a surrogate pair at the end.
-    if (/[\ud800-\udbff]$/.test(s)) s = s.slice(0, -1);
-    s = s.trim();
-  }
-  return s;
-}
-
-/** @param {any} raw @returns {boolean} */
-export const isValidName = (raw) => sanitizeName(raw).length > 0;
+export { stripLoneSurrogates, sanitizeName, isValidName } from '../ui/playerName.js';
 
 /**
  * Enter the game shell with a nickname (title → lobby).
@@ -81,8 +50,6 @@ export const isValidName = (raw) => sanitizeName(raw).length > 0;
 export function enterSession(rawName) {
   const name = sanitizeName(rawName);
   if (!name) return false;
-  const session = store.get().session;
-  if (session.preloadRequired && !session.preloadReady) return false;
   identity.saveName(name);
   identity.setEntered(true);
   store.set((s) => ({ me: { ...s.me, name }, session: { ...s.session, entered: true } }));
@@ -142,7 +109,7 @@ const EMBLEM = [
   'XXXXXXXXXXXXX',
 ];
 
-export function Emblem() {
+function Emblem() {
   const dots = useMemo(() => {
     const out = [];
     EMBLEM.forEach((row, r) => {
@@ -192,123 +159,28 @@ const STATUS_TEXT = {
   online: N_('已连接服务器'), reconnecting: N_('连接中断，正在重连'), closed: N_('连接已关闭'),
 };
 
-const THANKS_FALLBACK = [
-  { name: 'Ausevay', role: '一切的起点' },
-  { name: '纸鸢安好', role: '安卓端适配的神' },
-  { name: '水沫沐沐', role: 'MOD管理器作者' },
-  { name: 'jingjiangze', role: '兼容MOD管理器' },
-  { name: '剑光卤煮-斩尽牛杂', role: '新开一期卫' },
-  { name: '不知名信箱', role: '' },
-  { name: '雨千代Chiyo', role: '' },
-  { name: '伊佐那邪_', role: '多功能优化Mod' },
-  { name: 'Sakanine', role: '' },
-  { name: '万い（千万言语）', role: '百人服家宽暴力开' },
-  { name: '服务器', role: 'Mod 管理器，mod 制作，三端开发' },
-];
-
-function ThanksMarquee() {
-  const [list, setList] = useState(THANKS_FALLBACK);
-
-  useEffect(() => {
-    let dead = false;
-    const fetchThanks = async () => {
-      try {
-        const ctrl = new AbortController();
-        const tid = setTimeout(() => ctrl.abort(), 4000);
-        // 使用标准简单请求（不带自定义 header），避免跨域预检 preflight 被拦截
-        const res = await fetch(`https://ganxiemingdan.jiangjiangze.icu/api/thanks?_t=${Date.now()}`, {
-          signal: ctrl.signal,
-        });
-        clearTimeout(tid);
-        if (res.ok) {
-          const json = await res.json();
-          if (!dead && Array.isArray(json?.names) && json.names.length) {
-            const combined = [...json.names];
-            if (json.dedication?.name) combined.push(json.dedication);
-            setList(combined);
-            return;
-          }
-        }
-      } catch { /* ignore and try fallback */ }
-
-      try {
-        const resLocal = await fetch(`/data/thanks.json?_t=${Date.now()}`, { cache: 'no-store' });
-        if (resLocal.ok) {
-          const json = await resLocal.json();
-          if (!dead && Array.isArray(json?.names)) {
-            const combined = [...json.names];
-            if (json.dedication?.name) combined.push(json.dedication);
-            setList(combined);
-          }
-        }
-      } catch { /* use default fallback */ }
-    };
-
-    fetchThanks();
-    // 热更新机制：每 25 秒自动重新检查并热更新名单
-    const timer = setInterval(fetchThanks, 25000);
-    return () => { dead = true; clearInterval(timer); };
-  }, []);
-
-  return html`<div class="title-thanks">
-    <a class="title-thanks__tag" href="https://ganxiemingdan.jiangjiangze.icu/" target="_blank" rel="noopener noreferrer" title="查看完整感谢名单">
-      <span class="title-thanks__dot"></span>
-      <span>感谢名单</span>
-    </a>
-    <div class="title-thanks__viewport">
-      <div class="title-thanks__track">
-        <div class="title-thanks__group">
-          ${list.map((item, idx) => html`<span key=${idx} class="title-thanks__item">
-            <b class="title-thanks__name">${item.name}</b>
-            ${item.role ? html`<span class="title-thanks__role">${item.role}</span>` : null}
-            <span class="title-thanks__sep" aria-hidden="true">◆</span>
-          </span>`)}
-        </div>
-        <div class="title-thanks__group" aria-hidden="true">
-          ${list.map((item, idx) => html`<span key=${`dup-${idx}`} class="title-thanks__item">
-            <b class="title-thanks__name">${item.name}</b>
-            ${item.role ? html`<span class="title-thanks__role">${item.role}</span>` : null}
-            <span class="title-thanks__sep" aria-hidden="true">◆</span>
-          </span>`)}
-        </div>
-      </div>
-    </div>
-  </div>`;
-}
-
 /** Title screen component. */
 export function TitleScreen() {
   const conn = useStore((s) => s.connection, shallowEqual);
   const pendingJoin = useStore((s) => s.ui.pendingJoin);
-  const preloadRequired = useStore(s => !!s.session.preloadRequired);
-  const preloadReady = useStore(s => !!s.session.preloadReady);
   useLang(); // re-render on a language switch
-  const [name, setName] = useState(() => store.get().me.name || identity.loadName() || '');
-  const [entering, setEntering] = useState(false);
+  const currentName = useStore((s) => s.me.name);
+  const [name, setName] = useState(() => currentName || identity.loadName() || '');
+  // An import may restore the current name while this screen remains behind the stats overlay.
+  useEffect(() => {
+    if (currentName) setName((draft) => draft || currentName);
+  }, [currentName]);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [preloadOpen, setPreloadOpen] = useState(false);
-  const resourceState = usePreloadState();
-  useEffect(() => {
-    if (preloadRequired && !preloadReady &&
-        (['missing', 'error'].includes(resourceState.status) || resourceState.lastError)) setPreloadOpen(true);
-  }, [preloadRequired, preloadReady, resourceState.status, resourceState.lastError]);
-  const [selectedNode, setSelectedNode] = useState(currentGameNode);
-  // A server switch transfers only a nickname in a fragment, never reconnect tokens or room keys.
-  const [switchName] = useState(() => {
-    const p = new URLSearchParams(location.hash.slice(1));
-    const value = sanitizeName(p.get('sp-enter') || '');
-    if (p.has('sp-enter')) { p.delete('sp-enter'); history.replaceState(null, '', location.pathname + location.search + (p.size ? '#' + p : '')); }
-    return value;
-  });
-  useEffect(() => {
-    if (switchName && !pendingJoin && (!preloadRequired || preloadReady)) enterSession(switchName);
-  }, [switchName, pendingJoin, preloadRequired, preloadReady]);
+  // the list of the server's plugins once loaded (ui/pluginPanel.js — a component in state: set through an updater)
+  const [Installed, setInstalled] = useState(null);
+  const openPlugins = () => {
+    import('../ui/pluginPanel.js').then((m) => setInstalled(() => m.InstalledPlugins), (err) => console.warn('[plugins] the list did not load', err));
+  };
+  const installed = useStore(installedCount);
   const assetsSettled = useData('assets');
   const assets = data.get('assets');
-  const backdropBase = findUiAsset(assets, BACKDROP_KEYS);
-  const backdrop = backdropBase && preloadReady ? backdropBase + (backdropBase.includes('?') ? '&' : '?') + 'resources=f3216bd82a48' : backdropBase;
-  const ridgesBase = findUiAsset(assets, RIDGE_KEYS);
-  const ridges = ridgesBase && preloadReady ? ridgesBase + (ridgesBase.includes('?') ? '&' : '?') + 'resources=f3216bd82a48' : ridgesBase;
+  const backdrop = findUiAsset(assets, BACKDROP_KEYS);
+  const ridges = findUiAsset(assets, RIDGE_KEYS);
   // Track load/fail per URL (not as booleans reset in effects: an image can load before an effect runs).
   const [bgLoadedUrl, setBgLoadedUrl] = useState(null);
   const [ridgesLoadedUrl, setRidgesLoadedUrl] = useState(null);
@@ -321,12 +193,8 @@ export function TitleScreen() {
 
   const valid = isValidName(name);
   const start = () => {
-    if (!valid) { toast('请输入博士代号', 'warn'); return; }
-    if (entering) return;
-    setEntering(true);
-    setTimeout(() => {
-      enterSession(name);
-    }, 240);
+    if (!valid) { toast(t('请输入博士代号'), 'warn'); return; }
+    enterSession(name);
   };
 
   const online = conn.status === 'online' || conn.status === 'connected';
@@ -337,7 +205,7 @@ export function TitleScreen() {
   // a title in an alphabetic script (English, French …) is the big one in the display face and the wordmark above it
   // hides; a CJK / kana / Hangul title keeps the Chinese layout (shared/i18nPacks.js scriptOf — a pack needs no flag)
   const alphabetic = scriptOf(t('卫戍协议')) === 'alphabetic';
-  return html`<div class=${`screen title-screen${entering ? ' is-entering' : ''}`}>
+  return html`<div class="screen title-screen">
     <div class=${`title-bg${bgLoaded ? ' has-art' : ''}${ridgesLoaded ? ' has-ridges' : ''}`} aria-hidden="true">
       ${backdrop ? html`<img class="title-bg__art" src=${backdrop} alt="" draggable=${false}
         onLoad=${() => setBgLoadedUrl(backdrop)} />` : null}
@@ -380,7 +248,6 @@ export function TitleScreen() {
       <p class="title-tag">${t('调配资金与干员，与同伴协同布防，抵御多波次进攻，直至击败敌方领袖。')}</p>
 
       <div class="title-login">
-        <${ServerPicker} selected=${selectedNode} onSelect=${setSelectedNode} locked=${!!pendingJoin} />
         ${pendingJoin ? html`<div class="title-invite">
           <${Icon} name="key" />
           <span>${t('收到同盟邀请')}</span><b class="num">${pendingJoin}</b><span class="t-lo">${t('· 输入代号后将自动加入')}</span>
@@ -388,8 +255,7 @@ export function TitleScreen() {
         <${TextField} label=${t('博士代号')} micro="CALLSIGN" size="lg" icon="user" value=${name} maxLength=${NAME_MAX_LEN}
           placeholder=${t('输入你的代号（最多 {NAME_MAX_LEN} 字）', { NAME_MAX_LEN })} autoFocus=${!touchUi}
           onInput=${setName} onEnter=${start} />
-        <${Button} variant="primary" size="xl" block=${true} iconRight="chevrons" disabled=${!valid || entering} onClick=${start}>
-          ${t('开始')}<//>
+        <${Button} variant="primary" size="xl" block=${true} iconRight="chevrons" disabled=${!valid} onClick=${start}>${t('开始')}<//>
         <div class="title-conn">
           <span class=${`status-dot ${dotClass}`}></span>
           <span>${STATUS_TEXT[conn.status] ? t(STATUS_TEXT[conn.status]) : conn.status}</span>
@@ -400,25 +266,26 @@ export function TitleScreen() {
           <${FullscreenButton} class="title-fs" />
         </div>
       </div>
+      <div class="title-assets">
+        <${AssetDownloadButton} />
+        <${AssetImportButton} />
+      </div>
     </main>
 
     <${SettingsModal} open=${settingsOpen} onClose=${() => setSettingsOpen(false)} />
-    <${PreloadModal} open=${preloadOpen} required=${preloadRequired} onClose=${() => setPreloadOpen(false)}
-      onContinue=${() => { setPreloadOpen(false); if (valid) start(); }} />
+    ${Installed ? html`<${Installed} open=${true} onClose=${() => setInstalled(null)} />` : null}
 
     <footer class="title-foot">
       <${ResumeMatchButton} />
       <${PwaInstallButton} />
-      <div class="title-foot__col">
-        <span class="title-foot__copyright">${t('非官方同人复刻 · 游戏素材版权归 上海鹰角网络 / Yostar 所有')}</span>
-        <${ThanksMarquee} />
-      </div>
+      ${installed ? html`<button type="button" class="title-plugins" data-testid="title-plugins" onClick=${openPlugins}>
+        <${Icon} name="info" />${t('本服务器安装了 {n} 个插件', { n: installed })}</button>` : null}
+      <span>${t('非官方同人复刻 · 游戏素材版权归 上海鹰角网络 / Yostar 所有')}</span>
       <span class="title-foot__meta">
         <a class="title-repo" href="https://github.com/sganggs/Stronghold-Protocol" target="_blank" rel="noopener noreferrer">${t('项目仓库')}</a>
         <${MicroLabel}>v${APP_VERSION} · WEB SIMULATION<//>
         ${DEV_BUILD ? html`<span class="title-dev" role="note">${t('开发版 · 不稳定，请勿用于公开服务器')}</span>` : null}
       </span>
-
     </footer>
   </div>`;
 }

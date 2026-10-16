@@ -16,6 +16,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { forgetOfficialBounds, rememberOfficialBounds } from '../shared/plugins/officialBounds.js';
 
 /** Repository root (…/Stronghold-Protocol). */
 export const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -48,23 +49,24 @@ export function deepFreeze(root) {
   return root;
 }
 
+/** data/*.json files the server never reads, so never loads: the official effects' file list (data/local-fx.json, written
+ * by tools/local-extract/fx.py, DESIGN §33 — ~1 MB the browser alone fetches, through its served view). */
+export const UNLOADED_DATA = Object.freeze(['local-fx.json']);
+
 /**
- * Read every `*.json` in `dir` into `{ [basename]: parsed }`, deep-frozen.
+ * Read every `*.json` in `dir` into `{ [basename]: parsed }`, deep-frozen (but UNLOADED_DATA).
  * Never throws: an unreadable directory yields `{}`; bad files are skipped with an error log.
  * @param {string} [dir] data directory (default ROOT/data)
  * @param {{ log?: { warn: Function, error: Function, info?: Function }, expected?: readonly string[] }} [opts]
  * @returns {Readonly<Record<string, any>>}
  */
-import { loadWorkshop, WORKSHOP_DIR } from './workshop.js';
-import { applyWorkshop, workshopSummary } from '../shared/workshop.js';
-
-export function loadData(dir = DATA_DIR, { log = console, expected = DATA_FILES, workshopDir = WORKSHOP_DIR, excludePacks = null } = {}) {
+export function loadData(dir = DATA_DIR, { log = console, expected = DATA_FILES } = {}) {
   /** @type {Record<string, any>} */
   const out = {};
   let names = [];
   try {
     names = fs.readdirSync(dir, { withFileTypes: true })
-      .filter((d) => d.isFile() && d.name.toLowerCase().endsWith('.json'))
+      .filter((d) => d.isFile() && d.name.toLowerCase().endsWith('.json') && !UNLOADED_DATA.includes(d.name.toLowerCase()))
       .map((d) => d.name)
       .sort();
   } catch (e) {
@@ -80,21 +82,6 @@ export function loadData(dir = DATA_DIR, { log = console, expected = DATA_FILES,
   }
   const missing = expected.filter((k) => !(k in out));
   if (missing.length) log.warn(`[data] missing data files: ${missing.map((k) => k + '.json').join(', ')}`);
-
-  // 创意工坊 overlay: merged in before deepFreeze
-  if (workshopDir) {
-    const loaded = loadWorkshop(workshopDir, { log });
-    const packs = excludePacks && excludePacks.size ? loaded.packs.filter((p) => !excludePacks.has(p.id)) : loaded.packs;
-    if (packs.length) {
-      const { data: merged, report } = applyWorkshop(out, packs);
-      for (const [k, v] of Object.entries(merged)) out[k] = v;
-      log.info?.(`[workshop] applied ${packs.length} pack(s): ${workshopSummary(report)}`);
-      for (const e of report.errors) log.warn?.(`[workshop] ${e.pack}: ${e.reason}`);
-      for (const l of report.looks || []) log.warn?.(`[workshop] ${l.pack}: ${l.reason}`);
-      for (const g of report.traitGrants || []) log.warn?.(`[workshop] ${g.pack}: ${g.code}: ${g.reason}`);
-    }
-  }
-
   return deepFreeze(out);
 }
 
@@ -103,16 +90,38 @@ let singleton = null;
 
 /**
  * Process-wide data singleton; loads on first call (later calls ignore the options).
- * @param {{ dir?: string, log?: object, workshopDir?: string|null, excludePacks?: Set<string>|null }} [opts]
+ * @param {{ dir?: string, log?: object }} [opts]
  * @returns {Readonly<Record<string, any>>}
  */
-export function getData({ dir = DATA_DIR, log = console, workshopDir = WORKSHOP_DIR, excludePacks = null } = {}) {
-  if (!singleton) singleton = loadData(dir, { log, workshopDir, excludePacks });
+export function getData({ dir = DATA_DIR, log = console } = {}) {
+  if (!singleton) {
+    singleton = loadData(dir, { log });
+    rememberOfficialBounds(singleton);
+  }
   return singleton;
 }
 
 /** Drop the singleton so the next getData() reloads (tests / hot reload). */
-export function resetData() { singleton = null; }
+export function resetData() {
+  singleton = null;
+  forgetOfficialBounds();
+}
+
+/**
+ * Make `data` the process-wide singleton (deep-frozen) — a match host worker (server/match/host/entry.js, DESIGN §32
+ * P1c) calls it with its content set's merged data before it imports the match: every module of that worker that reads
+ * getData() (the content modules' gameData(), builtinMeta, the sim's default DataSource) then sees the content set,
+ * never the vanilla files. The main process never calls it. The official-bounds cache (shared/plugins/officialBounds.js,
+ * filled by getData() from the vanilla files in the main process) is never filled from `data` (a plugin must not raise its
+ * own caps): the match host installs the content set's snapshot after this (entry.js), as its pages do (runner.js).
+ * @param {Record<string, any>} data
+ * @returns {Readonly<Record<string, any>>}
+ */
+export function setData(data) {
+  if (!data || typeof data !== 'object' || Array.isArray(data)) throw new TypeError('setData: a data object { <file>: record map } is required');
+  singleton = deepFreeze(data);
+  return singleton;
+}
 
 // ---------------------------------------------------------------------------------------------------
 // Index getters

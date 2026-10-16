@@ -9,10 +9,14 @@
 // (the plain 源石虫) is drawn tinted toward the slug's own colours (ALIAS_TINT). A model that failed or timed out is
 // loaded again after SPINE_RETRY_MS (bounded), and `retryAssets()` re-resolves a view's picture and model when the
 // asset manifest arrives after the view was built or the tab is shown again (render/app.js; public issue #8 item 5:
-// after a reload whose manifest was slow or failed, every operator stayed the image-less placeholder for good); a load
-// begun while the tab was hidden and still in flight SPINE_STUCK_MS after it is shown again is started again
-// (assets.js spine.restart: GitHub #68, such a load may never settle — its view stayed the placeholder). Every
-// bar is a tinted Texture.WHITE sprite, so HUDs batch into few draw calls.
+// after a reload whose manifest was slow or failed, every operator stayed the image-less placeholder for good) — and
+// whenever the manifest changes under a view that is already drawn (a room's cosmetic plugins arriving after the board
+// was built — a reconnect, a spectator joining a match —, a personal plugin switched during a match, a plugin file that
+// failed and fell back: DESIGN §32 P1a): a picture or model other than the one the manifest names now is loaded again
+// (the new model replaces the old in place, like a Front ⇄ Back swap); a load begun while the tab was hidden and still
+// in flight SPINE_STUCK_MS after it is shown again is started again (assets.js spine.restart: GitHub #68, such a load
+// may never settle — its view stayed the placeholder). Every bar is a tinted Texture.WHITE sprite, so HUDs batch into
+// few draw calls.
 //
 // Placement: feet anchored at world (x, y, z); scale = camera px-per-tile at the feet × UNIT.modelScale, so
 // chibis shrink with distance like the original. An enemy's model is also scaled by its official prefab factor
@@ -98,6 +102,18 @@ export function unitDir(info) {
 export function enemyModelScale(rec) {
   const k = Number(rec && rec.modelScale);
   return Number.isFinite(k) && k > 0.05 && k < 20 ? k : 1;
+}
+/**
+ * Vertical stretch of an enemy's model on top of `enemyModelScale` (enemies.json `modelScaleY`, the official battle
+ * prefab's `Graphic` scale sy ÷ sx; 1 when absent or unusable). `modelScale` only carries the horizontal product of
+ * Graphic / FaceSwitcher / Spine, so a model whose prefab has a non-uniform scale is drawn too short without this.
+ * Two enemies have one — 帝国炮火先兆者 and 帝国炮火中枢先兆者 at 1.263 (Graphic (0.19, 0.24, 0.24): the official draws
+ * them 26 % taller than their width implies); a sweep of all 242 readable enemy prefabs found no other
+ * (tools/local-extract/enemy_model_offsets.py, docs/research/12 §3.1; PR #211 by @xcdoge).
+ */
+export function enemyModelScaleY(rec) {
+  const k = Number(rec && rec.modelScaleY);
+  return Number.isFinite(k) && k > 0.2 && k < 5 ? k : 1;
 }
 /**
  * Seconds of the death clip of a manifest Spine entry (`anims.die`, else a 'Die' clip, as SpineActor.dieClip; its
@@ -302,6 +318,11 @@ export const WOLF_PIPS = Object.freeze({ size: 0.1, min: 5, max: 9, gap: 2, pad:
  *   clip (`end`) is timed from the 重生's `dur` (the 'telegraph' fx) to end with it, so the second form walks and
  *   attacks on its own clips at once (a view that missed the timing — built mid-重生 — skips the closing clip);
  * - 守墓石像 (forms 'stone' → 'fly'): the statue on Sleep [ASSUMED by name], then the flyer's *_2 clips.
+ * - the 孤岛风云 prisoners (sim content/enemies/archetypes.js prisoner: forms 'warning' → 'liberty'), as their official
+ *   battle prefabs' modes: confined on the manifest's clips (the grey collar light: 普通囚犯 / 老练囚犯 Idle3 … through
+ *   tools/assets/spine.mjs PREFAB_SPINE_ROLES, 强壮囚犯 Idle …, 拳师囚犯 / 重犯 / 传奇重犯 *_grey), mode R — the warning
+ *   before the last confined attack — on the blinking orange set (*2, *_orange), mode L — 【解放】 — on the red set
+ *   (普通囚犯 / 老练囚犯 Idle …, 强壮囚犯 *3, the others *_red); no change clip (the prefab switches the set at once).
  * - the 傀儡师 operators' <替身> (sim professions.js installDollkeeper: form 'doll' from the start of the switch to it
  *   until the switch back starts, GitHub issue #44): the skeletons draw it on their *_B clips (their own slots — the
  *   本体's are hidden). 归溟幽灵鲨: Start_B fades it in (the 1 s switch), Idle_B (it never attacks), Die_B breaks it
@@ -336,24 +357,26 @@ const rebirth = (begin, hold, end, form2 = Object.freeze({})) => Object.freeze({
   reborn: Object.freeze({ change: begin, end, next: 'form2', roles: Object.freeze({ idle: hold, deploy: hold, move: loop(hold), stun: loop(hold), attack: null, skill: null }) }),
   form2: Object.freeze({ change: null, roles: form2 }),
 });
-/** 孤岛风云 prisoners (community report of 2026-10-06): the collar light's three clip sets, one per mode — the
- *  prefab's default (confined, the grey / unnumbered set the manifest's roles now name), R (warning, orange) and
- *  L (liberty, red). The prefab switches the set at once (`change: null`); the sim's phase / liberate fx carry the
- *  mode (Units.js setForm). 普通/老练囚犯 number theirs 3/2/'' , 强壮囚犯_Id and the 牢房 boxes suffix them. */
-const prisoner = (conf, warn, free) => Object.freeze({
-  warning: Object.freeze({ change: null, roles: clipSet(`Idle${warn}`, `Move${warn}`, `Die${warn}`, `Attack${warn}`) }),
-  liberty: Object.freeze({ change: null, roles: clipSet(`Idle${free}`, `Move${free}`, `Die${free}`, `Attack${free}`) }),
-});
 const STATUE = Object.freeze({
   stone: Object.freeze({ change: null, roles: Object.freeze({ idle: 'Sleep', deploy: 'Sleep', move: loop('Sleep'), stun: loop('Sleep'), attack: null, skill: null }) }),
   fly: Object.freeze({ change: null, roles: clipSet('Idle_2', 'Move_2', 'Die_2', 'Attack_2') }),
 });
 const JAKILL2 = clipSet('C2_Idle', 'C2_Move', 'C2_Die', 'C2_Attack');
+/** A prisoner's 'warning' (mode R) and 'liberty' (mode L) clip sets: the clip-name suffix of each (see the list above). */
+const prisoner = (warn, free) => Object.freeze({
+  warning: Object.freeze({ change: null, roles: clipSet(`Idle${warn}`, `Move${warn}`, `Die${warn}`, `Attack${warn}`) }),
+  liberty: Object.freeze({ change: null, roles: clipSet(`Idle${free}`, `Move${free}`, `Die${free}`, `Attack${free}`) }),
+});
+const PRISONER = prisoner('2', '');
+const PRISONER_COLOURED = prisoner('_orange', '_red');
 /** A 傀儡师's 替身 roles: idle `idle`, death `die`, attack `attack` (null: none), no skill clip of its own. */
 const dollRoles = (idle, die, attack = null) => Object.freeze({
   idle, deploy: idle, die, attack: attack ? Object.freeze({ begin: null, loop: attack, end: null }) : null, attackDown: null, skill: null,
 });
 export const FORMS = Object.freeze({
+  enemy_9011_acrefr: Object.freeze({
+    stopped: Object.freeze({ change: null, roles: clipSet('B_Idle', 'B_Move', 'B_Die', 'B_Attack') }),
+  }),
   char_1023_ghost2: Object.freeze({
     doll: Object.freeze({ change: 'Start_B', end: 'Die_B', leave: 'Start_2', roles: dollRoles('Idle_B', 'Die_B_2') }),
   }),
@@ -389,18 +412,30 @@ export const FORMS = Object.freeze({
   enemy_1525_blkswb: rebirth('Revive1', 'Revive2', 'Revive3', clipSet('B_Idle', 'B_Move', 'B_Die', 'B_Attack')),
   enemy_1535_wlfmster: rebirth('A_revive_1', 'A_revive_2', 'A_revive_3', clipSet('B_Idle', 'B_Move', 'B_Die', 'B_Attack')),
   enemy_1539_reid: rebirth('Revive_Begin', 'Revive_Loop', 'Revive_End'),
+  // 重生 on the skeleton's own Revive clip (PR #275 by @xcdoge; content/enemies/leaders.js kitUglyThing / kitXi): 巨大的丑东西
+  // — Revive 8.67 s of the 10 s 重生 (its self-destruct 2.17 s in), then the fleeing 大祭司 (Idle_2 / Move_2 / Stun_2;
+  // 不进行攻击) holding its idle while the sim still holds the 重生 (reported as a stun); 自在 — Revive_01 5.33 s for the
+  // 5 s 重生, then the same model, stronger (reborn.atk)
+  enemy_1512_mcmstr: Object.freeze({
+    reborn: Object.freeze({ change: 'Revive', next: 'form2', roles: Object.freeze({ idle: 'Idle_2', deploy: 'Idle_2', move: loop('Idle_2'), stun: loop('Idle_2'), attack: null, skill: null }) }),
+    form2: Object.freeze({ change: null, roles: Object.freeze({ ...clipSet('Idle_2', 'Move_2', 'Die'), stun: loop('Stun_2') }) }),
+  }),
+  enemy_1517_xi: Object.freeze({
+    reborn: Object.freeze({ change: 'Revive_01', next: 'form2', roles: Object.freeze({}) }),
+    form2: Object.freeze({ change: null, roles: Object.freeze({}) }),
+  }),
   enemy_1516_jakill: Object.freeze({
     reborn: Object.freeze({ change: 'C1_Die', roles: JAKILL2 }),
     form2: Object.freeze({ change: null, roles: JAKILL2 }),
   }),
-  enemy_1116_liprr: prisoner('3', '2', ''),
-  enemy_1116_liprr_2: prisoner('3', '2', ''),
-  enemy_1119_vofsd: prisoner('', '2', '3'),
-  enemy_1118_lidbox_2: prisoner('_grey', '_orange', '_red'),
-  enemy_1121_lifbos: prisoner('_grey', '_orange', '_red'),
-  enemy_1121_lifbos_2: prisoner('_grey', '_orange', '_red'),
   enemy_1172_dugago: STATUE,
   enemy_1172_dugago_2: STATUE,
+  enemy_1116_liprr: PRISONER,
+  enemy_1116_liprr_2: PRISONER,
+  enemy_1119_vofsd: prisoner('2', '3'),
+  enemy_1118_lidbox_2: PRISONER_COLOURED,
+  enemy_1121_lifbos: PRISONER_COLOURED,
+  enemy_1121_lifbos_2: PRISONER_COLOURED,
 });
 
 /**
@@ -505,6 +540,23 @@ export function groundZ(ctx, x, y) {
 /** Enemy Spine models face right by default like operators (verified by eye on Ark-Models skeletons). */
 export const ENEMY_MODEL_FACES_LEFT = false;
 
+/**
+ * Leaders the official draws one way only (1 = right, the authored way), by enemy key (GitHub #648). The Hidden Core's
+ * 假想敌：管: its prefab enemy_9021_acduml_2 differs from the Final Assault's enemy_9021_acduml only in the BoxCollider2D
+ * offset (+1, +1 — data/enemies.json hitArea dx 1) and the boss HUD offset `_bossHudOffset` (+1.4, 0) (local client,
+ * 2026-10-15). Both lie right of its spawn tile (row 3, col 9), where its body lies when the model faces right as
+ * authored; mirrored to the left it reached 2½ tiles onto the left half (the report's screenshot), while the
+ * maintainer's official recording shows it over the boss block. The maintainer also saw the Hidden Core's 假想敌：胄
+ * face right; enemy_9013_acstmk_2 is the Final Assault 胄's own prefab, and the Final Assault 管's prefab differs from
+ * the hidden one in the collider and the HUD alone, so both Final Assault copies face right as well. [ASSUMED] they
+ * never turn (self-bound, SELF_BOUND in server/sim/content/bosses.js); their FaceSwitcher `_defaultLOrR` is 1 (regular
+ * enemies 3), read as "right". 阿利斯泰尔, “萨米的意志” and 假想敌：弦 share that 1 but nothing has shown their look yet,
+ * so they keep the regular start (left) and their turns.
+ */
+const FIXED_FACING = Object.freeze({ enemy_9013_acstmk: 1, enemy_9013_acstmk_2: 1, enemy_9021_acduml: 1, enemy_9021_acduml_2: 1 });
+/** The official boss HUD's sideways offset from the unit position, tiles (the prefab's `_bossHudOffset.x`), by key. */
+const BOSS_HUD_DX = Object.freeze({ enemy_9021_acduml_2: 1.4 });
+
 let _whiteTex = null;
 const white = () => (_whiteTex || (_whiteTex = globalThis.PIXI.Texture.WHITE));
 
@@ -521,8 +573,52 @@ function bar(P, parent, color, alpha = 1) {
  * Shared context handed to every view by app.js (`audio`: the audio manager of public/js/audio.js — prep landings, land()).
  * @typedef {{ P: any, layers: { shadow: any, units: any, bars: any, groundFx: any },
  *   assets: any, audio?: any, cam: () => any, heightAt: (r:number,c:number)=>number, fx: any, time: () => number,
- *   settings: { damageNumbers: boolean, quality: string, ammoCount?: boolean } }} ViewCtx
+ *   settings: { damageNumbers: boolean, quality: string, ammoCount?: boolean, mysticEnergy?: boolean } }} ViewCtx
  */
+
+/** Scratch skeletons per skeleton data (bonePose): one pose is computed and read at a time. */
+const POSE_SKELETONS = new WeakMap();
+/** Bones by name per skeleton (spine's findBone walks every bone): a skeleton's bones keep their identity. */
+const BONES = new WeakMap();
+
+/** A skeleton's bone by name (cached), or null. */
+function boneOf(sk, name) {
+  let m = BONES.get(sk);
+  if (!m) { m = new Map(); BONES.set(sk, m); }
+  let b = m.get(name);
+  if (b === undefined) { b = (typeof sk.findBone === 'function' && sk.findBone(name)) || null; m.set(name, b); }
+  return b;
+}
+
+/**
+ * A bone of a Spine display posed by one clip alone at a time — `anim` / `time`, else its first track's clip at the
+ * track's time — on a scratch skeleton of the same data, so the model drawn (and its cross-fade) is untouched; null
+ * when there is no clip or the runtime's shape is unknown.
+ * @param {any} sp a PIXI.spine Spine
+ * @param {any} bone a bone of its skeleton
+ * @param {any} [anim] a spine Animation
+ * @param {number} [time] seconds into it
+ */
+export function bonePose(sp, bone, anim, time) {
+  try {
+    const tr = sp.state && sp.state.tracks ? sp.state.tracks[0] : null;
+    const a = anim || (tr && tr.animation);
+    if (!a || typeof a.apply !== 'function') return null;
+    let s = POSE_SKELETONS.get(sp.spineData);
+    if (!s) { s = new sp.skeleton.constructor(sp.spineData); POSE_SKELETONS.set(sp.spineData, s); }
+    const t = Number.isFinite(time) ? time : typeof tr.getAnimationTime === 'function' ? tr.getAnimationTime() : tr.trackTime;
+    const loop = !anim && !!tr.loop;
+    // one pose serves every point read of it (a shot and its muzzle flash read the same strike frame)
+    if (s._poseOf !== a || s._poseAt !== t || s._poseLoop !== loop) {
+      s.setToSetupPose();
+      // MixBlend.setup (0), MixDirection.mixIn (0): the clip over the setup pose, as a track's first application does
+      a.apply(s, t, t, loop, null, 1, 0, 0);
+      s.updateWorldTransform();
+      s._poseOf = a; s._poseAt = t; s._poseLoop = loop;
+    }
+    return boneOf(s, bone.data ? bone.data.name : bone.name);
+  } catch { return null; }
+}
 
 export class UnitView {
   /**
@@ -537,6 +633,9 @@ export class UnitView {
     this.info = { ...info };
     this.id = info.id;
     this.uid = info.uid ?? null;
+    // the skill slot whose Spine clip the unit shows (DESIGN §16): an ally's equipped skill; an enemy's cast slot when the
+    // sim reports one (`cast` event, setSkillSlot — a multi-skill boss's Skill_01..04, PR #275)
+    this.skillIndex = Number.isInteger(info.skillIndex) ? info.skillIndex : null;
     this.prep = !!opts.prep;
     this.lodIdle = opts.lod === 'idle';
     this.culled = false;          // outside the viewport this frame (not animated, not drawn)
@@ -544,10 +643,20 @@ export class UnitView {
     this._far = false;            // small on screen (adaptive LOD, with hysteresis)
     this.isEnemy = info.side === 'enemy';
     this.isBoss = !!info.boss;
+    // a leader drawn one way only, and its boss HUD beside the model (FIXED_FACING / BOSS_HUD_DX, GitHub #648)
+    this.fixedFacing = (this.isEnemy && FIXED_FACING[info.defId]) || 0;
+    this.hudDx = (this.isEnemy && BOSS_HUD_DX[info.defId]) || 0;
     // enemies: the official prefab's size factor (1 for operators, summons and enemies at the standard size)
-    this.modelK = this.isEnemy ? enemyModelScale(ctx.lookupDef ? ctx.lookupDef(info) : null) : 1;
-    // Direct Spine drawing multiplies by this vertical factor, including operators and summons.
-    this.modelKY = 1;
+    const def = this.isEnemy && ctx.lookupDef ? ctx.lookupDef(info) : null;
+    this.modelK = this.isEnemy ? enemyModelScale(def) : 1;
+    // a fast enemy walks on its model's own Run cycle when it has one (PR #275 by @xcdoge: 猎狗pro, moveSpeed 1.9, Run_Loop
+    // 0.53 s next to Move_Loop 0.80 s; also 深池侦察犬 1.7). [ASSUMED] the threshold: faster than the standard 1
+    this.moveFast = this.isEnemy && Number(def?.stats?.moveSpeed) > 1;
+    // the official's own model quirks (enemies.json, read from its battle prefabs — tools/local-extract/enemy_model_offsets.py,
+    // PR #211): a vertical stretch (its Graphic scale's sy / sx, the two 帝国炮火先兆者 at 1.263) and a mirrored X scale
+    // (the Graphic's sx is negative, so the official draws the authored model flipped: 木制瑞印)
+    this.modelKY = this.isEnemy ? enemyModelScaleY(def) : 1;
+    this.mirrorX = this.isEnemy && !!(def && def.mirrorX);
     this.isToken = info.kind === 'token';
     this.golden = !!info.golden;
     this.tier = clamp(Number(info.tier) || 1, 1, 6);
@@ -559,7 +668,7 @@ export class UnitView {
     /** @type {number|null} */
     this.shadowZTarget = null;
     this.flying = info.motion === 'FLY';
-    this.hover = 0;               // flying: body height above the ground under it
+    this.hover = 0;               // flying: body height above the road / the ground under it
     this.dir = this.isEnemy ? null : unitDir(info);
     // whether the direction is known (UnitInfo / piece `dir`), not just the legacy ±1: battle and scouting views show
     // the ground wedge only then (a derived RIGHT would mislabel an UP / DOWN operator)
@@ -572,7 +681,11 @@ export class UnitView {
     this.wolves = null;           // [狼影 left, the talent's maximum] of a 狼群 (sync; b.snap `wolves`)
     this.coins = null;            // [balance, cap] of 琳琅诗怀雅's skill purse, including zero
     this.coinHud = null;
+    this.energy = null;           // [stored energies, the trait's maximum] of a 秘术师, including zero (sync; b.snap `energy`)
+    this.energyHud = null;
     this.neg = 0;                 // the share of its cap a negative-HP pool holds, 0 = none (sync; b.snap `neg`, 斩业星熊's 我执)
+    this.layers = 0;              // hit-negating 护盾 layers (sync; b.snap `layers`: the official layer effect, vfx/talentfx.js)
+    this.charges = null;          // [stored, maximum] of a charge skill (sync; b.snap `charges`: vfx/skillfx.js)
     this.flags = 0; this.anim = ANIM.IDLE;
     this.statuses = new Set();
     this.alive = true;
@@ -657,12 +770,19 @@ export class UnitView {
   // the first frame it is actually visible: never for a unit whose Spine model is ready before that, and never as
   // an image-less placeholder that the avatar replaces a moment later (the placeholder only shows when the avatar
   // is missing or still loading after PIC_WAIT_MS).
-  _loadPicture() {
+  /** The picture the manifest names for this unit now (an ICE_TOKENS unit takes none: the token fallback would be its
+   *  owner's face — assets.js tokenAvatarUrl). */
+  _pictureUrl() {
     const a = this.ctx.assets;
-    // (an ICE_TOKENS unit takes no picture: the token fallback would be its owner's face — assets.js tokenAvatarUrl)
-    const skinOpt = this.info.skin ? { skin: this.info.skin } : undefined;
-    const url = ICE_TOKENS.has(this.info.defId) ? null : a && (a.picture ? a.picture(this.info.avatar, skinOpt) || a.picture(this.info.defId, skinOpt) || a.picture(this.info.spine, skinOpt) : null);
-    this._pic = { key: String(this.info.avatar || this.info.defId || 'unknown') + (this.info.skin ? `|${this.info.skin}` : ''), color: this._frameColor(), img: null, state: 'none', shown: null, t0: nowMs() };
+    return ICE_TOKENS.has(this.info.defId) ? null : a && (a.picture ? a.picture(this.info.avatar) || a.picture(this.info.defId) || a.picture(this.info.spine) : null) || null;
+  }
+
+  /** @param {boolean} [replace] another picture replaces a shown one: the old one stays on the diamond until it is there */
+  _loadPicture(replace = false) {
+    const a = this.ctx.assets;
+    const url = this._pictureUrl();
+    const old = replace && this._pic && this._pic.state === 'img' ? this._pic : null;
+    this._pic = { key: String(this.info.avatar || this.info.defId || 'unknown'), color: this._frameColor(), img: null, state: 'none', shown: null, t0: nowMs(), url, prev: !!old };
     if (!url || !a.image) return;
     const cached = typeof a.imageNow === 'function' ? a.imageNow(url) : null;
     if (cached) { this._pic.img = cached; this._pic.state = 'img'; return; }
@@ -673,15 +793,59 @@ export class UnitView {
     }, () => { pic.state = 'none'; });
   }
 
+  /**
+   * No picture any more (the manifest names none: its layer went away): a fresh record — a load still in flight resolves
+   * into the old one and is never drawn — and nothing of the old picture on the diamond (the placeholder comes back with
+   * _ensurePicture while no model shows).
+   */
+  _clearPicture() {
+    this._pic = { key: String(this.info.avatar || this.info.defId || 'unknown'), color: this._frameColor(), img: null, state: 'none', shown: null, t0: nowMs(), url: null, prev: false };
+    try { this.fallback.texture = this.P.Texture.EMPTY; } catch { /* ignore */ }
+  }
+
+  /**
+   * No model any more (the manifest names none: a plugin's model for a slot the installation leaves empty, its layer gone):
+   * the model shown is dropped and released, a load in flight superseded (`_spineReq`: it releases its entry when it
+   * lands, never shown), the retries stopped — and the diamond shows again.
+   */
+  _dropModel() {
+    this._spineReq = (this._spineReq || 0) + 1;
+    if (this.actor) this._dropActor();
+    this._spineBusy = false;
+    this._spineHidden = false;
+    this._resolved = null;
+    this.entry = null;
+    this._retryAt = 0;
+    this._stuckAt = 0;
+    this.swapT = 0;
+    this.fallback.visible = true;
+    this.fallback.alpha = 1;
+  }
+
   /** Put the right diamond on the fallback sprite (called while the fallback is visible). */
   _ensurePicture() {
     const pic = this._pic;
     if (!pic || this.destroyed) return;
     let want = pic.state === 'img' ? 'img' : 'placeholder';
-    if (pic.state === 'wait' && nowMs() - pic.t0 < PIC_WAIT_MS) want = null;
+    // still loading: nothing new yet (a replaced picture keeps the old one meanwhile; else the placeholder after a while)
+    if (pic.state === 'wait' && (pic.prev || nowMs() - pic.t0 < PIC_WAIT_MS)) want = null;
     if (!want || pic.shown === want) return;
-    this.fallback.texture = diamondTexture(pic.key, want === 'img' ? pic.img : null, pic.color, { enemy: this.isEnemy, golden: this.golden, ice: ICE_TOKENS.has(this.info.defId) });
+    // a drawn picture is cached by its URL too: another picture of the same unit (a cosmetic plugin's) is another diamond
+    const key = want === 'img' && pic.url ? `${pic.key}|${pic.url}` : pic.key;
+    this.fallback.texture = diamondTexture(key, want === 'img' ? pic.img : null, pic.color, { enemy: this.isEnemy, golden: this.golden, ice: ICE_TOKENS.has(this.info.defId) });
     pic.shown = want;
+  }
+
+  /**
+   * The Spine entry the manifest names for this unit now — Front/Back rule (research 07 §5.5 / 09 §1.2): Front facing
+   * right/down (mirrored for left), Back facing up — while standing (a knocked-out operator lies with the model that has
+   * a fall: _wantsBack) —, or null.
+   * @param {boolean} [back]
+   */
+  _modelEntry(back = this._wantsBack()) {
+    const a = this.ctx.assets;
+    const id = this.info.spine || this.info.defId;
+    return a && a.spineEntry && id ? a.spineEntry(id, { back }) || null : null;
   }
 
   /** @param {boolean} [retry] load again even after a remembered failure (assets.js acquire `{ retry }`) */
@@ -689,28 +853,47 @@ export class UnitView {
     const a = this.ctx.assets;
     if (!a || !a.spineEntry || !a.spine) return;
     const id = this.info.spine || this.info.defId;
-    // Front/Back rule (research 07 §5.5 / 09 §1.2): Front facing right/down (mirrored for left), Back facing up — while
-    // standing (a knocked-out operator lies with the model that has a fall: _wantsBack).
     const back = this._wantsBack();
-    const entry = id ? a.spineEntry(id, { back, skin: this.info.skin }) : null;
+    const entry = this._modelEntry(back);
     if (!entry || this.ctx.settings?.quality === 'low' && this.isEnemy && !this.isBoss && this.ctx.crowded?.()) return;
     this.entryBack = back;
+    this._resolved = entry; // what the manifest named (the model drawn may be its `fallback`)
     this._acquireSpine(entry, id, retry);
   }
 
   /**
-   * Re-resolve what this view could not draw yet (public issue #8 item 5): the picture when it has none (no avatar URL —
-   * the asset manifest arrived after the view was built — or the image failed) and, at once, the Spine model when none
-   * is shown and none is loading (no manifest entry then, or a load that failed / timed out). render/app.js calls it for
-   * every view when a manifest arrives (assets.js onChange) and when the tab is shown again. A load still in flight that
-   * began while the tab was hidden gets SPINE_STUCK_MS from now (the tab visible) to finish, then `update` starts it again
-   * (GitHub #68). Nothing to do otherwise.
+   * Re-resolve what this view draws (public issue #8 item 5; DESIGN §32 P1a): the picture when it has none (no avatar URL —
+   * the asset manifest arrived after the view was built — or the image failed) or when the manifest names another one now,
+   * and, at once, the Spine model when none is shown and none is loading (no manifest entry then, or a load that failed /
+   * timed out) or when the manifest names another model than the one shown or loading — a room's cosmetic plugins that
+   * arrived after the board was built, a personal plugin switched during a match, a plugin file that failed and fell back
+   * (the new model replaces the old in place, no fallback diamond in between). render/app.js calls it for every view when
+   * the manifest changes (assets.js onChange) and when the tab is shown again. A load still in flight that began while the
+   * tab was hidden gets SPINE_STUCK_MS from now (the tab visible) to finish, then `update` starts it again (GitHub #68).
+   * Nothing to do otherwise.
    */
   retryAssets() {
     if (this.destroyed) return;
+    const url = this._pictureUrl();
     if (!this._pic || this._pic.state === 'none') this._loadPicture();
-    if (this.actor) return;
-    if (!this._spineBusy) { this._retryAt = 0; this._loadSpine(true); return; }
+    else if (url && url !== this._pic.url) this._loadPicture(true);
+    // the picture came from a layer that is gone — the manifest names none now (a plugin's art for a slot the installation
+    // leaves empty): off the diamond, and a load still in flight lands in the old record, never this view's
+    else if (!url && this._pic.url) this._clearPicture();
+    // another model than the one shown / loading (compared by skeleton URL: the same file is the same model), for the
+    // side it was resolved for (Front ⇄ Back stays _syncModel's); the optional local-client model that only arrived now
+    // (data/local-assets.json late: its `fallback` is the model shown) is no change — a view keeps its model then, as
+    // before cosmetic plugins (DESIGN §13)
+    const want = this._modelEntry(this._resolved ? !!this.entryBack : this._wantsBack());
+    // the model likewise: none named now → none drawn, a load in flight dropped (it releases its entry when it lands)
+    if (!want && this._resolved) { this._dropModel(); return; }
+    const moved = !!want && !!this._resolved && want.skel !== this._resolved.skel
+      && !(want.local && want.fallback && want.fallback.skel === this._resolved.skel);
+    if (this.actor) {
+      if (moved) { this._retryAt = 0; this._loadSpine(true); }
+      return;
+    }
+    if (!this._spineBusy || moved) { this._retryAt = 0; this._loadSpine(true); return; }
     if (this._spineHidden && !this._stuckAt && !globalThis.document?.hidden) this._stuckAt = nowMs() + SPINE_STUCK_MS;
   }
 
@@ -736,12 +919,16 @@ export class UnitView {
       let actor = null;
       try {
         actor = new SpineActor(data, entry);
-        actor.setSkillIndex(this.info.skillIndex);
+        actor.setSkillIndex(this.skillIndex ?? undefined);
+        actor.setRunMode(this.moveFast);
         // enemies play their attack clip once per attack, then walk on (GitHub #58: the sim stands them for that clip)
         actor.clipPerAttack = this.isEnemy;
       } catch (err) {
         console.warn('[render] spine build failed', id, err?.message || err);
         this._releaseEntry(entry);
+        // a cosmetic plugin's model the renderer cannot build falls back like one that did not load (assets.js `failed`:
+        // the manifest changes, retryAssets loads the installation's); the installation's own: no change
+        try { a.failed?.(entry.skel); } catch { /* ignore */ }
         return;
       }
       // a Front ⇄ Back swap (setDir, or knocked out / standing again: _syncModel) replaces the previous model in place:
@@ -917,6 +1104,9 @@ export class UnitView {
     const gz = this.isEnemy ? 0 : floor;
     if (this.zTarget == null) this.z = gz;
     this.zTarget = gz;
+    this.shadowZTarget = this.isEnemy && this.flying ? floor : null;
+    if (this.shadowZTarget == null) this.shadowZ = null;
+    else if (this.shadowZ == null) this.shadowZ = this.z;
     if (s.maxHp > 0) this.maxHp = s.maxHp;
     const hp = clamp(s.hp, 0, this.maxHp);
     if (hp < this.hp - 0.5 && this.isBoss) this.shake = 0.25;
@@ -924,6 +1114,8 @@ export class UnitView {
     this.sp = s.sp; this.spMax = s.spMax;
     this.ammo = s.ammo || null; this.wolves = s.wolves || null; this.neg = s.neg > 0 ? Math.min(1, s.neg) : 0;
     this.coins = s.coins || null;
+    this.energy = s.energy || null;
+    this.layers = s.layers > 0 ? s.layers | 0 : 0; this.charges = s.charges || null;
     const prevFlags = this.flags;
     this.flags = s.flags | 0;
     this.anim = s.anim | 0;
@@ -943,6 +1135,10 @@ export class UnitView {
     if (this.anim === ANIM.DIE && this.alive) this.die();
     if (this.actor && this.alive) this.actor.setBase(this._baseFromAnim());
   }
+
+  /** The way the model looks (−1 left, 1 right); a FIXED_FACING leader keeps its own way whatever turn it is given. */
+  get visFacing() { return this.fixedFacing || this._visFacing; }
+  set visFacing(v) { this._visFacing = v; }
 
   setWorld(x, y, z = 0) { this.x = x; this.y = y; this.z = z; }
 
@@ -1009,8 +1205,8 @@ export class UnitView {
   _wantsBack() {
     const a = this.ctx.assets;
     const id = this.info.spine || this.info.defId;
-    if (this.isEnemy || this.dir !== 'UP' || !id || !a || typeof a.hasBack !== 'function' || !a.hasBack(id, this.info.skin)) return false;
-    return this.alive || dieClipDur(typeof a.spineEntry === 'function' ? a.spineEntry(id, { back: true, skin: this.info.skin }) : null) > 0;
+    if (this.isEnemy || this.dir !== 'UP' || !id || !a || typeof a.hasBack !== 'function' || !a.hasBack(id)) return false;
+    return this.alive || dieClipDur(typeof a.spineEntry === 'function' ? a.spineEntry(id, { back: true }) : null) > 0;
   }
 
   /**
@@ -1020,6 +1216,50 @@ export class UnitView {
    */
   _syncModel() {
     if (this.entry && this._wantsBack() !== !!this.entryBack) this._loadSpine();
+  }
+
+  /** The model's horizontal draw sign: −1 when it is drawn mirrored (facing left; an enemy's own quirks applied). */
+  modelFlip() {
+    return (this.isEnemy ? (ENEMY_MODEL_FACES_LEFT ? -this.visFacing : this.visFacing) : this.visFacing) * (this.mirrorX ? -1 : 1);
+  }
+
+  /**
+   * Where a bone of the model is drawn now (render/vfx/mounts.js: the client's BoneFollower mount points — Muzzle, the
+   * Special points — move with the skeleton): the first of `names` the skeleton has, as `out.x` tiles along the
+   * screen's right from the feet (the facing applied), `out.up` tiles up the model (UNIT.modelScale and the enemy factors
+   * applied: the scale the model is drawn at), `out.angle` the bone's angle in the skeleton (degrees counter-clockwise
+   * from its x axis, before the facing) and `out.flip` the draw sign; null when no model is drawn or none of the names
+   * is a bone of it. `strike`: the bone as the attack clip playing now poses it at its strike frame (SpineActor
+   * strikePose — a shot leaves the muzzle at the attack's OnAttack frame, whatever frame the model was last posed in:
+   * a swung staff moves 0.3 tiles in a frame); else a clip started since the model was last posed (an attack nobody
+   * wound up starts at its strike frame, a wind-up just began) is read at its own pose at its track time (bonePose:
+   * not the previous clip's the cross-fade still shows).
+   * @param {string|string[]} names
+   * @param {{ x: number, up: number, angle: number, flip: number }} [out]
+   * @param {boolean} [strike]
+   */
+  boneOffset(names, out = { x: 0, up: 0, angle: 0, flip: 1 }, strike = false) {
+    const a = this.actor;
+    const sp = a && this.spineReady && !this.destroyed ? a.spine : null;
+    const sk = sp && sp.skeleton;
+    if (!sk || typeof sk.findBone !== 'function') return null;
+    let b = null;
+    for (const n of Array.isArray(names) ? names : [names]) if (n && (b = boneOf(sk, n))) break;
+    if (!b) return null;
+    const hit = strike && typeof a.strikePose === 'function' ? a.strikePose() : null;
+    if (hit) b = bonePose(sp, b, hit.anim, hit.time) || b;
+    else if (!a._applied && !a.frozen) b = bonePose(sp, b) || b;
+    // pixi-spine keeps the bone's world transform in `matrix` (skeleton space, y down; spine-ts's worldX / worldY else)
+    const m = b.matrix;
+    const tx = m ? m.tx : b.worldX, ty = m ? m.ty : b.worldY;
+    if (!Number.isFinite(tx) || !Number.isFinite(ty)) return null;
+    const flip = this.modelFlip();
+    const k = UNIT.modelScale * this.modelK;
+    out.x = tx * k * flip;
+    out.up = -ty * k * this.modelKY;
+    out.angle = m ? Math.atan2(-m.b, m.a) * (180 / Math.PI) : (typeof b.getWorldRotationX === 'function' ? -b.getWorldRotationX() : 0);
+    out.flip = flip;
+    return out;
   }
 
   /**
@@ -1062,7 +1302,6 @@ export class UnitView {
   /** An attack was made (b.ev 'atk'). `target` = view or null. */
   onAttack(target, now, kind) {
     if (!this.alive) return;
-    this.lastTargetId = target?.id ?? null;
     this._pendingDeployElapsed = null;
     // a one-off cast (PROJ[kind].once: 暴鸰's bomb drop) is no attack rhythm: its clip plays once at its own speed
     const once = !!PROJ[kind]?.once;
@@ -1088,11 +1327,6 @@ export class UnitView {
     if (this.imp) this.imp.dirty = true;
   }
 
-  finishAttack() {
-    this.lastTargetId = null;
-    if (this.actor?.finishAttack) this.actor.finishAttack();
-  }
-
   /**
    * An attack by this unit is `lead` game seconds ahead in the snapshot buffer: start the Spine attack wind-up now
    * so the strike frame lines up with the attack. True once started (then stop calling for that attack). `kind` = the
@@ -1110,6 +1344,17 @@ export class UnitView {
   setSkill(on) {
     if (on) this.statuses.add('skill'); else this.statuses.delete('skill');
     if (this.actor) this.actor.setSkill(on);
+  }
+
+  /**
+   * The skill slot an enemy casts (the sim's `cast` event; PR #275 by @xcdoge): its clip set swaps to that slot's skill
+   * clip (`anims.skills`, a multi-skill boss's Skill_01..04), which the SKILL flag right after plays. The same slot again
+   * or a non-slot changes nothing.
+   */
+  setSkillSlot(index) {
+    if (!Number.isInteger(index) || index < 0 || index === this.skillIndex) return;
+    this.skillIndex = index;
+    if (this.actor) this.actor.setSkillIndex(index);
   }
 
   onDeploy() {
@@ -1295,9 +1540,8 @@ export class UnitView {
     this.placed = true;
     const s = p.s;
     // fades
-    // below 0: still waiting for its arrival (the 联防 beam-in, render/app.js queueBeam) — hidden until then
     if (this.fadeIn < 1) this.fadeIn = Math.min(1, this.fadeIn + dt * 4);
-    let alpha = Math.max(0, this.fadeIn);
+    let alpha = this.fadeIn;
     if (this.down) {
       // knocked down: the Die clip ends and holds its last frame (the actor keeps its clock), no fade
       this.dieT += dt;
@@ -1325,11 +1569,13 @@ export class UnitView {
     this.root.zIndex = unitDepthKey(cam, this.x, this.y, this.lift);
     // off-screen: nothing to animate or draw (bounds / hit-testing still follow `screen`)
     if (this._cull(bx, by, s, dt)) return;
-    const flip = this.isEnemy ? (ENEMY_MODEL_FACES_LEFT ? -this.visFacing : this.visFacing) : this.visFacing;
+    const flip = this.modelFlip();
 
-    // shadow (on a raised top it is drawn with that block row, else in the shadow layer under everything)
-    placeOnGround(this.ctx, this.shadow, this.ctx.layers.shadow, this.y, this.z);
-    const sh = cam.project(this.x, this.y, this.z, SH_P);
+    // shadow (on a raised top it is drawn with that block row, else in the shadow layer under everything); an enemy
+    // flyer's lies on the tile under it while its body hovers from the road (shadowZ, GitHub #277)
+    const shz = this.shadowZ ?? this.z;
+    placeOnGround(this.ctx, this.shadow, this.ctx.layers.shadow, this.y, shz);
+    const sh = cam.project(this.x, this.y, shz, SH_P);
     this.shadow.position.set(sh.x, sh.y);
     const shw = s * (this.isBoss ? 1.6 : 0.95) / this.shadow.texture.width;
     this.shadow.scale.set(shw, shw * (this.shadow.texture === shadowTexture() ? 1 : 1.05));
@@ -1380,14 +1626,12 @@ export class UnitView {
     // the diamond is only needed while no model shows (a cross-fade keeps whatever diamond was already up)
     if (!spineShown) this._ensurePicture();
     if (!spineShown || this.swapT < 1) {
-      this.fallback.visible = true;
       const size = s * UNIT.diamond * (this.isBoss ? 1.5 : 1);
       const bob = this.alive ? Math.sin(t * 2.4 + this.bob) * s * 0.03 : 0;
       this.fallback.scale.set(size / 160);
       this.fallback.position.set(0, -s * 0.08 + bob);
       this.fallback.tint = this.down ? DOWN_LOOK.tint : this.flash > 0 ? mixTint(0xffffff, 0xff8a80, this.flash) : (this.flags & UF.FROZEN ? 0x9fd4ff : 0xffffff);
       if (!this.alive) this.fallback.alpha = Math.max(0, this.fallback.alpha);
-      else if (!spineShown) this.fallback.alpha = 1;
     }
     this.flash = Math.max(0, this.flash - dt * 6);
 
@@ -1434,7 +1678,9 @@ export class UnitView {
       modelK: this.modelK, modelKY: this.modelKY,
     });
     this.screen.top = by - headTiles * s;
-    this._updateHud(dt, s, bx, by - headTiles * s, alpha, t);
+    // the boss HUD `hudDx` tiles beside the model, where the official prefab puts it (BOSS_HUD_DX)
+    const hx = this.hudDx ? cam.project(this.x + this.hudDx, this.y, this.z + this.hover + this.lift, HUD_P).x : bx;
+    this._updateHud(dt, s, hx, by - headTiles * s, alpha, t);
   }
 
   /**
@@ -1540,14 +1786,17 @@ export class UnitView {
       ic.width = ic.height = isz;
       ic.position.set(x - ((icons.length - 1) * (isz + 2)) / 2 + i * (isz + 2), iy);
     }
-    // 狼影 pips under the bars (b.snap `wolves`), then the element gauge row under them (b.snap `elem`); redeploy ring above a
-    // knocked-down operator (b.snap `down`). 设置「弹药数量」 (off by default) first puts the magazine's count right under
-    // the ammo bar, and the rows below move down by its height
+    // 狼影 pips under the bars (b.snap `wolves`), then the purses and — 设置「秘术师能量」 on (off by default) — the stored
+    // energies (b.snap `coins` / `energy`), then the element gauge row under them (b.snap `elem`); redeploy ring above a
+    // knocked-down operator (b.snap `down`).
+    // 设置「弹药数量」 (off by default) first puts the magazine's count right under the ammo bar, and the rows below move
+    // down by its height
     let rowsTop = cy + bh / 2 + (showSp ? spH + 1.5 : 0);
     rowsTop += this._updateAmmoCount(showSp && !!ammo && this.ctx.settings?.ammoCount === true, x0 + bw / 2, rowsTop, s);
     const wolfH = this._updateWolfPips(showBars && !this.isEnemy && !!this.wolves, x0, rowsTop, s);
     const coinH = this._updateCoins(showBars && !this.isEnemy && !!this.coins, x0, rowsTop + wolfH, s);
-    this._updateElementBar(showBars && !!this.el, x0, bw, rowsTop + wolfH + coinH + 1, spH, s, t);
+    const energyH = this._updateEnergy(showBars && !this.isEnemy && !!this.energy && this.ctx.settings?.mysticEnergy === true, x0, rowsTop + wolfH + coinH, s);
+    this._updateElementBar(showBars && !!this.el, x0, bw, rowsTop + wolfH + coinH + energyH + 1, spH, s, t);
     this._updateDownRing(!prep && !!this.down && !this.alive, x, this.screen.y - DOWN_LOOK.height * s, s, t);
     // blocked marker at the feet (enemies held by a blocker)
     const blocked = !prep && this.alive && this.isEnemy && (this.flags & UF.BLOCKED);
@@ -1671,6 +1920,34 @@ export class UnitView {
     return Math.max(16, r.root.getLocalBounds?.().height || 24) * (size / 16) + 8;
   }
 
+  /**
+   * Energy orb and stored/cap of a 秘术师, read from the current snapshot (b.snap `energy`, snapshot.js mysticView):
+   * the trait stores one attack's energy whenever the attack finds no target and empties the lot into the next one, so
+   * the count sits in the same row stack as the purse above, in a violet of its own — no other HUD state uses one, and
+   * the orb is told apart from 琳琅诗怀雅's coin at a glance. Zero is shown: it is a count, not an absent state.
+   * 设置「秘术师能量」 (PR #636 by @zasx77771) turns it on — off by default: the official HUD has no such number and shows
+   * the energies as an effect on the operator (the maintainer's decision of 2026-10-15, GitHub #633).
+   */
+  _updateEnergy(show, x, top, s) {
+    let r = this.energyHud;
+    if (!show) { if (r) r.root.visible = false; return 0; }
+    if (!r) {
+      const P = this.P, root = new P.Container(), icon = new P.Sprite(fxAtlas().tex.orb);
+      icon.width = icon.height = 16;
+      icon.tint = COLORS.energy;
+      const text = new P.Text('', { fontFamily: 'Bender, Oxanium, sans-serif', fontSize: 16, fontWeight: '700', fill: '#b07dff', stroke: '#0b0f0e', strokeThickness: 3 });
+      text.position.set(19, -2); root.addChild(icon, text); this.hud.addChild(root);
+      r = this.energyHud = { root, text, label: '' };
+    }
+    const label = `${this.energy[0]}/${this.energy[1]}`;
+    if (r.label !== label) { r.label = label; r.text.text = label; }
+    const size = clamp(s * 0.2, 10, 16);
+    r.root.scale.set(size / 16); r.root.position.set(x, top + 3); r.root.visible = true;
+    // Text includes font metrics and stroke beyond its nominal 16 px size; reserve the measured row so the next
+    // elemental gauge cannot overlap it (especially with a substituted browser font).
+    return Math.max(16, r.root.getLocalBounds?.().height || 24) * (size / 16) + 8;
+  }
+
   /** True while the shown gauge is in its 爆发冷却 (b.snap `elem` carries the cooldown's end and length). */
   elementCooling() {
     return !!this.el && this.elDur > 0 && this.elUntil > 0;
@@ -1774,19 +2051,13 @@ export class UnitView {
   // skeleton (spine.js clipBounds) — no pose it plays is cut, and the atlas clips every slot to itself. A clip too large
   // for the box (`over`) is drawn directly while it plays; the slot stays the unit's (_impBypass).
 
-  /** The impostor box ({ x0, y0, w, h, over } in skeleton units), using provisional box during measurement to stay in atlas. */
+  /** The impostor box ({ x0, y0, w, h, over } in skeleton units), null while the model's clips are still measured. */
   _impBox() {
-    if (this._box && !this._box.provisional) return this._box;
+    if (this._box) return this._box;
     const a = this.actor;
     const names = this._clipNames();
     const rects = typeof a.clipBounds === 'function' ? a.clipBounds([...names.keys()]) : false;
-    if (rects === null) {
-      if (!this._box) {
-        this._box = this._legacyBox();
-        this._box.provisional = true;
-      }
-      return this._box;
-    }
+    if (rects === null) return null;
     let box = null;
     const unmeasured = new Set();   // clips whose sampling threw (false): drawn directly while they play
     if (rects) {
@@ -1800,14 +2071,7 @@ export class UnitView {
       box = impostorBox(idle && rect(idle) !== false ? rect(idle) : null, rest);
       if (box && idle && unmeasured.has(idle)) box.over.add(idle);
     }
-    const finalBox = box || this._legacyBox(unmeasured);
-    finalBox.provisional = false;
-    if (this._box?.provisional && this.imp) {
-      if (Math.abs(finalBox.w - this._box.w) > 8 || Math.abs(finalBox.h - this._box.h) > 8) {
-        this.imp.dirty = true;
-      }
-    }
-    this._box = finalBox;
+    this._box = box || this._legacyBox(unmeasured);
     return this._box;
   }
 
@@ -1956,12 +2220,13 @@ export class UnitView {
 
   _renderImpostor(sc, atlas) {
     const P = this.P, R = this.ctx.renderer, imp = this.imp;
+    const yK = this.modelKY; // the vertical stretch is baked into the impostor (the flip is the sprite's)
     const box = this._impBox();
-    const w = Math.max(8, Math.ceil(box.w * sc)), h = Math.max(8, Math.ceil(box.h * sc));
+    const w = Math.max(8, Math.ceil(box.w * sc)), h = Math.max(8, Math.ceil(box.h * sc * yK));
     const sp = this.actor.spine;
     sp.alpha = 1;
     if (this._tint !== 0xffffff) { this._tint = 0xffffff; sp.tint = 0xffffff; }
-    const ox = -box.x0 * sc, oy = -box.y0 * sc;
+    const ox = -box.x0 * sc, oy = -box.y0 * sc * yK;
     if (atlas) {
       let slot = imp.slot;
       const clip = !!(this.actor.clipped && this.actor.clipOn);
@@ -1971,7 +2236,7 @@ export class UnitView {
         if (slot && imp.rt) { imp.rt.destroy(true); imp.rt = null; }
       }
       if (slot) {
-        atlas.draw(slot, sp, { a: sc, d: sc, tx: ox, ty: oy });
+        atlas.draw(slot, sp, { a: sc, d: sc * yK, tx: ox, ty: oy });
         if (imp.sprite.texture !== slot.tex) imp.sprite.texture = slot.tex;
         imp.sprite.anchor.set(ox / slot.w, oy / slot.h);
         imp.sc = sc;
@@ -1990,7 +2255,7 @@ export class UnitView {
     sp.scale.set(1, 1);
     sp.visible = true;
     const m = this._m || (this._m = new P.Matrix());
-    m.set(sc, 0, 0, sc, ox, oy);
+    m.set(sc, 0, 0, sc * yK, ox, oy);
     try { R.render(sp, { renderTexture: rt, clear: true, transform: m }); } catch { /* lost context etc. */ }
     if (parent === atlas?.parked) sp.visible = false;
     imp.sprite.anchor.set(ox / rt.width, oy / rt.height);
@@ -2067,6 +2332,7 @@ const SH_P = { x: 0, y: 0, s: 0, depth: 0 };
 const FA_P = { x: 0, y: 0, s: 0, depth: 0 };
 const FA_C = { x: 0, y: 0, s: 0, depth: 0 };
 const LG_P = { x: 0, y: 0, s: 0, depth: 0 };
+const HUD_P = { x: 0, y: 0, s: 0, depth: 0 };
 const ICON_TMP = [];
 
 /**

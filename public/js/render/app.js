@@ -11,9 +11,6 @@
 //                                               false` = the folded shop: the official shop-collapsed prep camera
 //                                               (left_prepare / *_boss_prepare) clear of the folded shop's band (public
 //                                               issue #5: folding the shop did not grow the board)
-//   view.setUserZoom({ f, ax, ay }) | setUserZoom(null)  the map's own scale: a two-finger pinch on the field
-//                                               zooms / pans about the moving midpoint (f ∈ 0.5–2), without a release
-//                                               snap. Optional dx/dy compose gestures; null resets. view.getUserZoom() reads it.
 //   view.setPrep(privateState, { editable, canPlace })       hand/temp/board pieces; editable enables drag & drop; a
 //                                               new board piece flashes (fx.deploy), and so does a card that just arrived in the hand or temp; a merge's elite — on the tile of
 //                                               the deployed copy it replaced, or on its bench slot — gets the
@@ -51,6 +48,8 @@
 //        tileHover { row, col, area, idx } | null (while dragging: the drop target — the tile under the pointer)
 //   view.pieceScreenRect(uid) → { left, top, right, bottom, width, height, x, y } (client px: the drawn body) | null
 //                               (null also until the piece is first drawn)
+//   view.pieceArt(uid) → { picture, pictureState, model, shown } | null (dev / E2E: the picture URL a piece's view draws
+//                        and its state, the model the manifest named and the one shown — test/ui/plugins.e2e.test.js)
 // Picking (user playtest #4 item 1: the ground is drawn as tiles — a press on a tile is a press on the unit standing
 // there): every "which unit is under the pointer" — prep press / click / detail / drag start / hover (pieceAt), battle
 // clicks and hover (battleUnitAt), the pen (penUnitAt) — is render/pick.js over the tile under the pointer (groundTile:
@@ -65,9 +64,13 @@
 //   view.holdPiece(uid, {row,col} | null)       keep a dropped prep piece standing on a tile while its direction is
 //                                               chosen / the move is in flight (null releases; setPrep then settles it)
 //   view.setPieceDir(uid, dir)                  show a prep piece facing UP|RIGHT|DOWN|LEFT (wheel preview / stored dir)
-//   view.setSettings({ damageNumbers, officialDamageNumbers, ammoCount, quality: 'high'|'medium'|'low' }) ; view.resize() ; view.destroy()
-//                                               (ammoCount: 设置「弹药数量」, the count under an ammo skill's bar — PR #552)
-//   view.stats() → { fps, frameMs, cpuMs, renderMs, units, particles, impostor, impostorAtlas, boardArt, … } (dev / perf)
+//   view.setSettings({ damageNumbers, officialDamageNumbers, ammoCount, mysticEnergy, officialFx, quality: 'high'|'medium'|'low' }) ; view.resize() ; view.destroy()
+//                                               (ammoCount: 设置「弹药数量」, the count under an ammo skill's bar — PR #552;
+//                                                mysticEnergy: 设置「秘术师能量」, a 秘术师's stored/cap — PR #636;
+//                                                officialFx: 设置「官方特效」 'auto'|'off'|'lite'|'full', the official battle
+//                                                effects on the 3D board — render/vfx, DESIGN §9 "Official battle effects")
+//   view.stats() → { fps, frameMs, cpuMs, renderMs, units, particles, impostor, impostorAtlas, boardArt, pen, penHidden, … }
+//                                               (dev / perf; pen = the pen's figures, penHidden = the camera hides them)
 //
 // Enemy preview pen (research 09 §2.2 / 08 §4.2, render/pen.js): in prep the next round's enemies idle in the pen
 // (rows 14–18 × cols 7–13; upper-gate enemies rows 17–18, lower-gate rows 14–15; spawn-time order, ≤ 3 per tile,
@@ -77,10 +80,16 @@
 // pen enemy emits pieceClick { enemyKey, preview: true, unit: { side: 'enemy', defId, enemyKey, preview: true } }.
 //   view.setCamera('pen') pans to the pen in 0.25 s (configBlackBoard move_time); `view.setCamera(kind, opts)` goes
 //   back (the same kind without options returns to the exact camera used before the pen).
-//   The pen is shown ONLY by the pen camera (user playtest #2 item 6: the battlefield with the waiting enemies above it
-//   looked wrong — after 返回战场 and in every battle): the prep, battle, 联防 and boss cameras neither build its 3D
-//   area nor draw its 2D rows (`boardArea` / `bandFor`), and its figures hide (`penShown`, kept for the way back); a
-//   flight to / from the pen shows both while it lasts.
+//   The prep camera shows the pen too, as the official 休整期 does: the next round's enemies stand in its front rows and
+//   its two red gates show at the top right of the prep view, beyond the board behind the upper gate (research 09 §2.1;
+//   the maintainer's recording of the official game and decision of 2026-10-15, which supersedes user playtest #2 item 6
+//   "the pen only with the pen camera"), so 🔍▶▶ pans to what is already in view. The prep camera — the own board, its
+//   shop-folded framing, a scouted teammate's board (their pen), back from the pen view (返回战场) — and the pen camera
+//   build its 3D block, draw its 2D rows (`boardArea` / `bandFor` / `fieldRows`) and show its figures (`showsPen` /
+//   `penShown`); the battle, 联防, boss and hidden cameras do not, nor does the Final Assault / Hidden Core prep, whose
+//   frame ends far below the pen. A camera flight shows it when either end does (`flightView`) — except a flight from
+//   the prep camera into a battle camera: the pen goes with the battle start (a real battle also empties its figures,
+//   enterBattle), and the next prep's flight brings it back at once.
 // The round's leader (community report #12, owner's decision 2026-10-04; research 09 §2.2: in the official Final Assault
 // prep image the boss stands on the boss field with its HP bar): a nextEnemies entry with its spawn tile `start`
 // (render/prepfield.js leaderStand) stands there — idle, with its (full) HP bar, facing the player's half, a tap shows its
@@ -133,7 +142,10 @@ import { Camera, presetCamera, lerpCamera, easeInOutCubic, pickTile, normRect } 
 import { SnapshotBuffer, frameTime } from './interp.js';
 import { TileField } from './tiles.js';
 import { UnitView, ItemView, DeviceView, FORMS, syncView } from './units.js';
-import { FxSystem, ensureDamageFonts } from './fx.js';
+import { FxSystem, ensureDamageFonts, projSpeed } from './fx.js';
+import { OfficialFx } from './vfx/system.js';
+import { FxWiring } from './vfx/wiring.js';
+import { resolveOfficialFx } from './vfx/tier.js';
 import { createDragController, pieceTile, dragStandTile } from './drag.js';
 import { backdropTextures, shadowTexture, refreshTierChips, refreshDownLabels, silhouetteTexture } from './textures.js';
 import { TILE_H, TIER_COLORS, COLORS } from './style.js';
@@ -142,7 +154,6 @@ import { ImpostorAtlas } from './impostor.js';
 import { stepClipBounds } from './spine.js';
 import { loadThree, loadBoardPack, loadScenePack, webgl2Available, boardArtListed } from './board3d/load.js';
 import { BoardScene } from './board3d/scene.js';
-import { unionAreas } from './board3d/layout.js';
 import { layoutPen, penSignature } from './pen.js';
 import { IDENTITY, bossPrepField, tilesToDisp, leaderStand } from './prepfield.js';
 import { pickOnTile, pickBattle, hitTiles } from './pick.js';
@@ -150,22 +161,24 @@ import { promotionsOf } from './promote.js';
 import { ensurePixi } from './app/pixi.js';
 import { pieceDirOf, pickUnitOf } from './app/pick.js';
 import { CAMERA_MS, BOARD3D_STABLE_MS, BOARD3D_RETRY_MS, PEN_CAMERA_MS, RANGE_GROUPS, LEADER_HIT_STYLE, DRAG_HOLD_TILES, CHAIN_KINDS, DROP_PENDING_MS, DEPLOY_REPLAY_MS } from './app/tune.js';
-import { boardPreference, switchableBox, bandFor, fieldRows, boardArea, viewKind, penShown, leaderShown } from './app/view.js';
+import { boardPreference, switchableBox, bandFor, fieldRows, boardArea, viewKind, restView, flightView } from './app/view.js';
 import { renderInfo, FORCED_EXIT, showsDeathFx } from './app/info.js';
-import { resolveAssets, makeData, withTimeout, QUALITY_RES, BOARD_RES, MOBILE_QUALITY_RES, MOBILE_BOARD_RES, releaseGl } from './app/host.js';
-import { skinsStore, skinFor } from '../ui/skins.js';
+import { resolveAssets, makeData, withTimeout, QUALITY_RES, BOARD_RES, releaseGl } from './app/host.js';
 import { t } from '../../../shared/i18n.js';
 
 export { ensurePixi } from './app/pixi.js';
+
+/** fx.damage / fx.heal option: the official effect drew the hit (no procedural spark, slash or glow; numbers stay). */
+const NO_SPARK = Object.freeze({ noSpark: true });
 export { PEN_CAMERA_MS, LEADER_HIT_STYLE, DRAG_HOLD_TILES, DEPLOY_REPLAY_MS } from './app/tune.js';
-export { viewKind, boardArea, bandFor, fieldRows, penShown, leaderShown, boardPreference, switchableBox } from './app/view.js';
+export { viewKind, boardArea, bandFor, fieldRows, penShown, showsPen, leaderShown, restView, flightView, boardPreference, switchableBox } from './app/view.js';
 export { FORCED_EXIT, showsDeathFx, renderInfo } from './app/info.js';
 export { releaseGl } from './app/host.js';
 
 /**
  * Create the battlefield view inside `host` (an element sized by CSS; the canvas fills it).
  * @param {HTMLElement} host
- * @param {{ data?: any, assets?: any, audio?: any, settings?: { damageNumbers?: boolean, officialDamageNumbers?: boolean, ammoCount?: boolean, quality?: string }, signal?: AbortSignal,
+ * @param {{ data?: any, assets?: any, audio?: any, settings?: { damageNumbers?: boolean, officialDamageNumbers?: boolean, ammoCount?: boolean, mysticEnergy?: boolean, quality?: string }, signal?: AbortSignal,
  *           padding?: object|((kind:string, size:{width:number,height:number}) => object),
  *           hud?: {top:number,bottom:number}|((kind:'prep'|'bossPrep', size:{width:number,height:number}, o:{shop:boolean}) => {top:number,bottom:number}|null) }} [opts]
  */
@@ -178,9 +191,9 @@ export async function createFieldView(host, options = {}) {
   signal?.throwIfAborted();
   const assets = resolveAssets(opts.assets);
   const data = makeData(opts.data);
-  const settings = { damageNumbers: true, officialDamageNumbers: false, ammoCount: false, quality: 'high', ...(opts.settings || {}) };
+  const settings = { damageNumbers: true, officialDamageNumbers: false, ammoCount: false, mysticEnergy: false, quality: 'high', officialFx: 'auto', ...(opts.settings || {}) };
   // the 3D board (three.js + the official art) loads in parallel with everything else
-  const boardPref = boardPreference(opts.board || settings.board);
+  const boardPref = boardPreference(opts.board);
   const want3d = boardPref !== '2d' && webgl2Available(boardPref === '3d');
   // three.js (~2 MB) is fetched only when the local-art manifest lists the board atlas (in parallel with the art)
   const artListed = want3d ? boardArtListed(assets).catch(() => false) : Promise.resolve(false);
@@ -196,15 +209,8 @@ export async function createFieldView(host, options = {}) {
   signal?.throwIfAborted();
 
   const size = () => ({ width: Math.max(1, host.clientWidth || 1), height: Math.max(1, host.clientHeight || 1) });
-  const isMobileClient = typeof navigator !== 'undefined' && (/Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) || (navigator.maxTouchPoints > 1 && !globalThis.matchMedia?.('(pointer: fine)').matches));
-  const dpr = () => {
-    const table = isMobileClient ? MOBILE_QUALITY_RES : QUALITY_RES;
-    return Math.min(globalThis.devicePixelRatio || 1, table[settings.quality] || (isMobileClient ? 1.25 : 2));
-  };
-  const boardDpr = () => {
-    const table = isMobileClient ? MOBILE_BOARD_RES : BOARD_RES;
-    return Math.min(globalThis.devicePixelRatio || 1, table[settings.quality] || (isMobileClient ? 1.25 : 2));
-  };
+  const dpr = () => Math.min(globalThis.devicePixelRatio || 1, QUALITY_RES[settings.quality] || 2);
+  const boardDpr = () => Math.min(globalThis.devicePixelRatio || 1, BOARD_RES[settings.quality] || 2);
   const s0 = size();
   // Construction is synchronous until the complete view can own cancellation. If setup throws,
   // dispose only the resources acquired by this attempt, never another view's host contents.
@@ -218,12 +224,12 @@ export async function createFieldView(host, options = {}) {
   // own scissor rect, GitHub #542), and with those flushes the re-uploads stalled Apple GPUs — on an Apple M4 (Chrome,
   // ANGLE Metal) a 120-unit crowd at 1920 × 1080 ran at 42–58 fps instead of 60 (DPR 1 and 2, by the machine's load);
   // a buffer per flush costs ≈ 0.3 ms of render CPU there
-  const effectiveAntialias = typeof opts.antialias === 'boolean'
-    ? opts.antialias
-    : (typeof settings.antialias === 'boolean' ? settings.antialias : (!isMobileClient && settings.quality !== 'low'));
+  if (P.BatchRenderer && 'canUploadSameBuffer' in P.BatchRenderer) P.BatchRenderer.canUploadSameBuffer = false;
   const app = new P.Application({
-    width: s0.width, height: s0.height, antialias: effectiveAntialias, backgroundColor: 0x0a0e0d, backgroundAlpha: 0,
-    resolution: dpr(), autoDensity: true, powerPreference: isMobileClient ? 'default' : 'high-performance',
+    // MSAA only where it pays: dense (DPR ≥ 1.5) screens are sharp enough without it and it would cost 4× the fill
+    // transparent: the 3D board canvas shows through (the 2D board paints an opaque backdrop itself)
+    width: s0.width, height: s0.height, antialias: opts.antialias ?? (settings.quality === 'high' && (globalThis.devicePixelRatio || 1) < 1.5), backgroundColor: 0x0a0e0d, backgroundAlpha: 0,
+    resolution: dpr(), autoDensity: true, powerPreference: 'high-performance',
   });
   const canvas = app.view;
   setupCleanup.push(() => {
@@ -249,9 +255,11 @@ export async function createFieldView(host, options = {}) {
     ground: new P.Container(), anim: new P.Container(), overlay: new P.Container(), shadow: new P.Container(),
     groundFx: new P.Container(), fxNormal: new P.Container(), units: new P.Container(), fxAdd: new P.Container(),
     bars: new P.Container(), text: new P.Container(), screen: new P.Container(),
+    // the official battle effects (render/vfx): their ground pass under the units, their over pass above them
+    vfxGround: new P.Container(), vfxOver: new P.Container(),
   };
   layers.units.sortableChildren = true;
-  world.addChild(layers.ground, layers.anim, layers.overlay, layers.shadow, layers.groundFx, layers.fxNormal, layers.units, layers.fxAdd, layers.bars, layers.text);
+  world.addChild(layers.ground, layers.anim, layers.overlay, layers.shadow, layers.groundFx, layers.vfxGround, layers.fxNormal, layers.units, layers.fxAdd, layers.vfxOver, layers.bars, layers.text);
   stage.addChild(backdrop, world, layers.screen);
 
   const bg = backdropTextures();
@@ -266,14 +274,18 @@ export async function createFieldView(host, options = {}) {
   bgMountains2.alpha = 1;
   const bgVignette = new P.Sprite(bg.vignette);
   backdrop.addChild(bgGrad, bgMountains, bgMountains2, bgGrid, bgVignette);
-  let mountainsAsked = false;
-  /** The backdrop's mountain silhouette (optional art; asked again when the manifest arrives late). */
+  let mountainsUrl = null;
+  /**
+   * The backdrop's mountain silhouette (optional art): asked again whenever the manifest names another one — it arrived
+   * late, or a cosmetic plugin changed it (DESIGN §32 P1a); none named any more: none drawn.
+   */
   function loadMountains() {
-    const mountainUrl = !mountainsAsked && assets.ui ? assets.ui('entry/bg_mountains_tiled') : null;
-    if (!mountainUrl || !assets.image) return;
-    mountainsAsked = true;
-    assets.image(mountainUrl).then((img) => {
-      if (!img || destroyed) return;
+    const url = assets.ui ? assets.ui('entry/bg_mountains_tiled') : null;
+    if (url === mountainsUrl || !assets.image) return;
+    mountainsUrl = url;
+    if (!url) { bgMountains.texture = P.Texture.EMPTY; bgMountains2.texture = P.Texture.EMPTY; return; }
+    assets.image(url).then((img) => {
+      if (!img || destroyed || mountainsUrl !== url) return;
       try { const mt = silhouetteTexture(img); bgMountains.texture = mt; bgMountains2.texture = mt; } catch { /* optional art */ }
     }, () => {});
   }
@@ -289,16 +301,9 @@ export async function createFieldView(host, options = {}) {
 
   let mode = 'idle';          // 'idle' | 'prep' | 'battle'
   let stageRec = null;
-  let baseCam = presetCamera('prep', { width: s0.width, height: s0.height, padding: defaultPadding('prep', s0) }, { hud: hudBands('prep', s0) });
-  let cam = baseCam;          // the effective camera = baseCam with the user zoom applied (applyUserZoom)
+  let cam = presetCamera('prep', { width: s0.width, height: s0.height, padding: defaultPadding('prep', s0) }, { hud: hudBands('prep', s0) });
   let camFrom = null, camTo = null, camT0 = 0, camKind = 'prep', camOpts = {}, camMs = CAMERA_MS;
   let pendingView = null;     // tile band/focus to apply when the camera transition ends
-  // User zoom is an image transform: screen' = f * screen + (dx, dy), in canvas CSS px. Keeping the
-  // translation explicitly lets consecutive pinches use different midpoints without moving the old image first.
-  // camForZoom() wraps the framing camera with it — a 2D image transform like projection.js clearHud, so the
-  // official perspective is untouched and every consumer (3D sync, tiles, picking, screen rects) follows cam.
-  let userZoom = null;        // { f, ax, ay, dx, dy } | null
-  let zoomViewport = { width: s0.width, height: s0.height };
   const views = new Map();    // key → view (prep: 'p:'+uid; battle: unit id)
   let prepPieces = [];        // { uid, piece, area, idx, row, col, key }
   let prepMapChars = [];      // { unit (board space), display } — read-only, but inspectable
@@ -322,34 +327,6 @@ export async function createFieldView(host, options = {}) {
   let canPlaceFn = null;
   let editable = false;
   let dragState = null;       // { uid, key, view, from, home: {x,y,z} }
-  let thermalThrottled = false;
-  let lastTouchTime = performance.now();
-  const getTargetFps = () => {
-    if (settings.highRefresh === false) return 60;
-    if (thermalThrottled) return 60;
-    if (mode === 'battle') return 60;
-    if (isMobileClient) {
-      const idleSec = (performance.now() - lastTouchTime) / 1000;
-      // 手机端限制：拖拽/触控动态期间上限 90 帧；闲置 > 2.5 秒稳态锁定 60 帧
-      if (dragState || idleSec < 2.5) return 90;
-      return 60;
-    }
-    const idleSec = (performance.now() - lastTouchTime) / 1000;
-    if (idleSec > 8 && !dragState) return 60;
-    // 0 = unlimited in PixiJS: on a 144/165 Hz display the whole prep render (Spine, tiles, fx) ran at full
-    // refresh rate and starved pointer input (CPU spike + input lag during placement). Cap at the intended 120.
-    return 120;
-  };
-  const updateFpsLimit = () => {
-    if (app?.ticker) {
-      app.ticker.maxFPS = getTargetFps();
-    }
-  };
-  const markTouch = () => {
-    lastTouchTime = performance.now();
-    updateFpsLimit();
-  };
-  updateFpsLimit();
   const pending = new Map();  // key → { t, home } dropped pieces awaiting the server
   const held = new Map();     // uid → world { x, y, z }: prep pieces pinned to a tile by the direction step (holdPiece)
   let hoverUnit = null;
@@ -362,7 +339,7 @@ export async function createFieldView(host, options = {}) {
   // enemy preview pen (render/pen.js): figure key → UnitView (own map: never touched by the battle sync)
   const penViews = new Map();
   let penSig = null;
-  let penHidden = true;       // the pen's figures are shown only by the pen camera (setPenHidden)
+  let penHidden = true;       // the pen's figures show with the prep and pen cameras (setPenHidden, view.js penShown)
   let penList = null;
   let ownPen = null;          // the own m.private.nextEnemies (fallback composition of a scouted teammate's pen)
   let standInList = [];       // the own m.private.standIns (0.2.0 补位): pieces of these chess draw the stand-in
@@ -412,6 +389,32 @@ export async function createFieldView(host, options = {}) {
   });
   setupCleanup.push(() => fx.destroy());
   ctx.fx = fx;
+  // the official battle effects (设置「官方特效」, render/vfx): drawn on the 3D board only (the 2D board fallback keeps the
+  // procedural fx), on the battle clock; their files load on demand (data/local-fx.json)
+  const ofx = new OfficialFx({ P, renderer: app.renderer, assets, cam: () => cam, heightAt });
+  setupCleanup.push(() => ofx.destroy());
+  layers.vfxGround.addChild(ofx.ground);
+  layers.vfxOver.addChild(ofx.over);
+  const wiring = new FxWiring(ofx, {
+    speed: projSpeed,
+    // the index unit of a battle unit: the drawn operator (a stand-in's, a 自选 pick's), the chess' operator, the enemy / token
+    unitKey: (info) => {
+      if (!info) return null;
+      const c = info.side === 'ally' && info.kind === 'op' && !info.standInFor && !info.diy ? data.chess(info.defId) : null;
+      return [info.diy?.charId, info.spine, c?.charId, info.defId].filter(Boolean);
+    },
+    // the unit's data record (its skill: render/vfx/skills.js resolves the official skill and its plan from it)
+    record: (info) => (info ? ctx.lookupDef(info) : null),
+    // a battle view by id (the skill effects a kit fx stands for may land on its target)
+    view: (id) => views.get(id) || null,
+  });
+  ctx.ofx = ofx;
+  let ofxPrevT = null;        // renderT of the last effects step (the battle clock)
+  /** The tier the effects run at now: the setting (auto: 精简 on touch devices) while the 3D board draws. */
+  function syncOfficialFx() {
+    ofx.setTier(board3d ? resolveOfficialFx(settings.officialFx, ofx.available) : 'off');
+  }
+  ofx.init().then((ok) => { if (!destroyed && ok) { syncOfficialFx(); wiring.ready(); } }, () => {});
   // battle devices (crates / turrets as sim units): the official crate mesh in the 3D scene, else a Pixi box
   ctx.createBox = () => switchableBox({ board: () => board3d, pixi: () => tiles.createBox() });
   const impostors = new ImpostorAtlas(app.renderer);
@@ -433,34 +436,12 @@ export async function createFieldView(host, options = {}) {
   const recover = { THREE: null, pack: null, timer: 0, tries: 0, since: 0, off: false, count: 0 };
   setupCleanup.push(() => { clearTimeout(recover.timer); disable3d(); });
   /** The stage's official scene, once loaded (the procedural board shows meanwhile and when there is none). */
-  function useOfficialScene(st, retryCount = 0) {
+  function useOfficialScene(st) {
     const id = st && typeof st.id === 'string' ? st.id : '';
     if (!id || !board3d) return;
-    const pref = boardPreference(settings.board);
-    // 3d_std 明确指定仅使用程序化标准3D棋盘，不应用高模官方场景包
-    if (pref === '3d_std') {
-      board3d.setScenePack(id, null);
-      return;
-    }
     loadScenePack(assets, id).then((scene) => {
-      if (scene && !destroyed && board3d && stageRec && stageRec.id === id) {
-        if (boardPreference(settings.board) === '3d_std') {
-          board3d.setScenePack(id, null);
-          return;
-        }
-        console.log(`[board3d] applying official scene pack for ${id}`);
-        board3d.setScenePack(id, scene);
-      } else if (!scene && retryCount < 5 && !destroyed && stageRec && stageRec.id === id) {
-        // assets.local() might still be resolving asynchronously
-        setTimeout(() => {
-          if (!destroyed && board3d && stageRec && stageRec.id === id) {
-            useOfficialScene(st, retryCount + 1);
-          }
-        }, 1000);
-      }
-    }).catch((err) => {
-      console.warn(`[board3d] failed to load scene pack for ${id}`, err);
-    });
+      if (scene && !destroyed && board3d && stageRec && stageRec.id === id) board3d.setScenePack(id, scene);
+    }).catch(() => {});
   }
   function enable3d(THREE, pack) {
     if (destroyed || board3d || !THREE || !pack) return false;
@@ -470,14 +451,10 @@ export async function createFieldView(host, options = {}) {
       const c3 = document.createElement('canvas');
       c3.setAttribute('aria-hidden', 'true');
       Object.assign(c3.style, { position: 'absolute', left: '0', top: '0', width: '100%', height: '100%', display: 'block', pointerEvents: 'none', zIndex: '0' });
-      if (canvas && canvas.parentElement === host) {
-        host.insertBefore(c3, canvas);
-      } else {
-        host.appendChild(c3);
-      }
+      host.insertBefore(c3, canvas);
       board3dCanvas = c3;
       const b = new BoardScene(THREE, pack, {
-        canvas: c3, antialias: effectiveAntialias, shadows: isMobileClient ? (settings.quality === 'extreme' || settings.quality === 'high') : settings.quality !== 'low',
+        canvas: c3, antialias: settings.quality !== 'low' && (globalThis.devicePixelRatio || 1) < 2, shadows: settings.quality !== 'low',
       });
       const sz = size();
       b.resize(sz.width, sz.height, boardDpr());
@@ -491,6 +468,7 @@ export async function createFieldView(host, options = {}) {
       tiles.project(cam, true);
       recover.since = performance.now();
       for (const [g, r] of hlReq) drawHighlight(r.tiles, r.style, g);
+      syncOfficialFx();
       return true;
     } catch (err) {
       board3dError = String(err?.message || err);
@@ -508,6 +486,7 @@ export async function createFieldView(host, options = {}) {
     if (!destroyed) {
       tiles.setExternal(false); backdrop.visible = true; tiles.project(cam, true);
       for (const [g, r] of hlReq) drawHighlight(r.tiles, r.style, g);
+      syncOfficialFx();
     }
   }
   /**
@@ -544,41 +523,40 @@ export async function createFieldView(host, options = {}) {
       .then(([THREE, pack]) => enable3d(THREE, pack), () => false)
       .finally(() => { boardRetry = null; });
   }
-  // the official soft shadow sprite replaces the procedural one once loaded (may already be cached; asked again when the
-  // manifest arrives late)
-  let shadowAsked = false;
+  // the official soft shadow sprite replaces the procedural one once loaded (may already be cached); asked again whenever
+  // the manifest names another one (it arrived late, a cosmetic plugin changed it); none named any more: the procedural one
+  let shadowUrl = null;
   let offShadow = null;
   setupCleanup.push(() => offShadow?.());
+  const setShadow = (t) => {
+    ctx.shadowTex = t;
+    for (const v of views.values()) if (v.shadow && !v.destroyed) v.shadow.texture = t;
+    for (const v of penViews.values()) if (v.shadow && !v.destroyed) v.shadow.texture = t;
+  };
   function loadShadow() {
-    const shadowUrl = !shadowAsked && assets.ui ? assets.ui('battle/sprite_shadow') : null;
-    if (!shadowUrl) return;
-    shadowAsked = true;
+    const url = assets.ui ? assets.ui('battle/sprite_shadow') : null;
+    if (url === shadowUrl) return;
+    shadowUrl = url;
+    offShadow?.();
+    offShadow = null;
+    if (!url) { setShadow(shadowTexture()); return; }
     try {
-      const t = P.Texture.from(shadowUrl);
-      const use = () => {
-        if (destroyed) return;
-        ctx.shadowTex = t;
-        for (const v of views.values()) if (v.shadow && !v.destroyed) v.shadow.texture = t;
-        for (const v of penViews.values()) if (v.shadow && !v.destroyed) v.shadow.texture = t;
-      };
+      const t = P.Texture.from(url);
+      const use = () => { if (!destroyed && shadowUrl === url) setShadow(t); };
+      // a cosmetic plugin's sprite that will not load falls back (the manifest changes: loadShadow again)
+      const failed = () => { if (!destroyed) assets.failed?.(url); };
       if (t.baseTexture.valid) use();
       else {
         t.baseTexture.once('loaded', use);
-        offShadow = () => t.baseTexture.off('loaded', use);
+        t.baseTexture.once('error', failed);
+        offShadow = () => { t.baseTexture.off('loaded', use); t.baseTexture.off('error', failed); };
       }
     } catch { /* optional */ }
   }
   loadShadow();
-  let offSkins = null;
-  if (typeof skinsStore?.subscribe === 'function') {
-    offSkins = skinsStore.subscribe(() => {
-      if (destroyed || mode !== 'prep' || !lastPrep) return;
-      try {
-        setPrep(lastPrep.ps, lastPrep.o);
-      } catch { /* ignore */ }
-    });
-    setupCleanup.push(() => { try { offSkins?.(); } catch {} });
-  }
+  ensureDamageFonts();
+  // web fonts may land after the first chips / redeploy-ring labels were drawn
+  if (document.fonts?.ready) document.fonts.ready.then(() => { if (!destroyed) { refreshTierChips(); refreshDownLabels(); } }).catch(() => {});
 
   // ---- camera ---------------------------------------------------------------------------------------------
 
@@ -626,38 +604,13 @@ export async function createFieldView(host, options = {}) {
     });
   }
 
-  /**
-   * The user zoom (two-finger pinch, `setUserZoom`) as a 2D image transform of a framing camera — the same trick
-   * as projection.js clearHud: scale the focal length by f and translate by (dx, dy) in canvas CSS px, so
-   * the official perspective (pitch, position, fov) is untouched and 3D stays in sync (threeCameraParams reads the
-   * same scale / principal point). Only an identity transform returns the camera itself: f = 1 can still be panned.
-   */
-  function camForZoom(c) {
-    if (!userZoom || !c) return c;
-    const f = Math.max(0.5, Math.min(2, Number(userZoom.f) || 1));
-    const { dx, dy } = userZoom;
-    if (Math.abs(f - 1) < 1e-6 && Math.abs(dx) < 1e-6 && Math.abs(dy) < 1e-6) return c;
-    const out = c.clone();
-    out.scale = c.scale * f;
-    out.cx = f * c.cx + dx;
-    out.cy = f * c.cy + dy;
-    return out.update();
-  }
-
-  /** Re-apply the user zoom to the current framing camera (baseCam). Call after either changed. */
-  function applyUserZoom() {
-    const next = camForZoom(baseCam);
-    if (next === cam) return;
-    cam = next;
-  }
-
-  // rows drawn per camera kind: module `bandFor`; the active field rows: module `fieldRows`
+  // what a camera shows and builds (the 3D area, the drawn 2D rows, the active field rows, the pen's figures, the boss-prep
+  // leader): module `restView` at rest, `flightView` while it flies — the pen with the prep and pen cameras (`showsPen`)
 
   function setCamera(kind, options) {
     if (destroyed) return false;
     let o = options && typeof options === 'object' ? options : {};
     const prevView = viewKind(camKind, camOpts);
-    const prevBand = bandFor(prevView), prevField = fieldRows(prevView);
     const nextKind = typeof kind === 'string' ? kind : 'normal';
     // the enemy pen is a detour of the prep camera: remember where it came from; the same kind asked again without
     // framing options goes back to exactly that camera (Final Assault half, shop state…)
@@ -674,29 +627,29 @@ export async function createFieldView(host, options = {}) {
     if (vk === 'prep') setPrepField(IDENTITY);
     else if (vk === 'bossPrep') setPrepField(bossPrepField(camOpts.side === 'R' ? 'R' : 'L'));
     const target = targetCamera(camKind, camOpts);
-    const band = bandFor(vk);
-    const field = fieldRows(vk);
+    const rest = restView(vk);
     const focus = camRect();
     board3d?.setFocus(focus);
     camMs = Number.isFinite(o.ms) && o.ms >= 0 ? o.ms : (vk === 'pen' || prevView === 'pen' ? PEN_CAMERA_MS : CAMERA_MS);
     if (o.instant || camMs === 0 || mode === 'idle' && !camTo) {
-      board3d?.setArea(boardArea(vk));
-      baseCam = target; applyUserZoom();
-      camFrom = camTo = null;
-      tiles.setView(band, focus, field);
-      setPenHidden(!penShown(vk));
-      setLeaderHidden(!leaderShown(vk));
+      board3d?.setArea(rest.area);
+      cam = target; camFrom = camTo = null;
+      tiles.setView(rest.band, focus, rest.field);
+      setPenHidden(!rest.pen);
+      setLeaderHidden(!rest.leader);
       pendingView = null;
     } else {
-      camFrom = baseCam.clone();
+      camFrom = cam.clone();
       camTo = target;
       camT0 = performance.now();
-      // keep both fields drawn (and lit) while the camera flies between them
-      tiles.setView([Math.min(prevBand[0], band[0]), Math.max(prevBand[1], band[1])], focus, [Math.min(prevField[0], field[0]), Math.max(prevField[1], field[1])]);
-      board3d?.setArea(unionAreas(boardArea(prevView), boardArea(vk)));
-      setPenHidden(!penShown(vk, prevView));
-      setLeaderHidden(!leaderShown(vk, prevView));
-      pendingView = { band, focus, field, area: boardArea(vk), pen: penShown(vk), leader: leaderShown(vk) };
+      // keep both fields drawn (and lit) while the camera flies between them; the pen as flightView says (a flight from
+      // the prep camera into a battle drops it at once)
+      const fly = flightView(prevView, vk);
+      tiles.setView(fly.band, focus, fly.field);
+      board3d?.setArea(fly.area);
+      setPenHidden(!fly.pen);
+      setLeaderHidden(!fly.leader);
+      pendingView = { ...rest, focus };
     }
     return true;
   }
@@ -724,13 +677,10 @@ export async function createFieldView(host, options = {}) {
     if (!camTo) return;
     const k = camMs > 0 ? Math.min(1, (now - camT0) / camMs) : 1;
     const e = easeInOutCubic(k);
-    // the flight interpolates the framing cameras (camFrom → camTo, both without the user zoom); the pinch state
-    // re-wraps the result every frame, so zooming during a flight rides on top of it
-    baseCam = lerpCamera(camFrom, camTo, e, baseCam === camFrom || baseCam === camTo ? new Camera() : baseCam);
-    applyUserZoom();
+    if (!cam || cam === camFrom) cam = new Camera();
+    lerpCamera(camFrom, camTo, e, cam);
     if (k >= 1) {
-      baseCam = camTo; applyUserZoom();
-      camFrom = camTo = null;
+      cam = camTo; camFrom = camTo = null;
       if (pendingView) {
         tiles.setView(pendingView.band, pendingView.focus, pendingView.field);
         board3d?.setArea(pendingView.area);
@@ -818,13 +768,9 @@ export async function createFieldView(host, options = {}) {
     const pick = chess && chess.isDiy ? diyPicks[chess.baseId || chess.chessId] : null;
     const dr = pick ? data.diy(piece.id, pick) : null;
     const rec = si || dr || chess;
-    const baseId = rec?.baseId || chess?.baseId || piece.baseId || null;
-    const charId = rec?.charId || chess?.charId || null;
-    const resolvedSkin = si ? null : (piece.skin || skinFor(baseId) || (charId ? skinFor(charId) : null) || skinFor(piece.id) || null);
     return {
       kind: 'op', side: 'ally', defId: piece.id,
       spine: rec?.assets?.spine || rec?.charId || null, avatar: rec?.assets?.avatar || rec?.charId || null,
-      skin: resolvedSkin,
       tier: chess?.tier || piece.tier || 1, golden: !!(piece.golden || chess?.isGolden), dir,
       ...(si ? { standInFor: si.standInFor } : null),
       ...(dr ? { diy: { charId: pick.charId, skillIndex: pick.skillIndex ?? null, uniEquipId: pick.uniEquipId ?? null } } : null),
@@ -867,6 +813,7 @@ export async function createFieldView(host, options = {}) {
     const addList = (arr, area) => {
       if (!Array.isArray(arr)) return;
       arr.forEach((pc, i) => {
+        if (area === 'temp' && i >= GEO.TEMP_SIZE) return; // Hidden overflow waits for a visible slot.
         if (!pc || typeof pc !== 'object' || !Number.isInteger(pc.uid)) return;
         if (area === 'board') {
           if (!Number.isInteger(pc.row) || !Number.isInteger(pc.col)) return;
@@ -908,7 +855,7 @@ export async function createFieldView(host, options = {}) {
       e.key = key;
       const info = pieceInfo(e.piece, e.area);
       // (the model is part of it: a piece whose body changes — a merge, an own 补位 / 自选 setting arriving — is rebuilt)
-      const sig = `${info.kind}|${info.defId}|${info.golden ? 1 : 0}|${info.spine || ''}|${info.skin || ''}`;
+      const sig = `${info.kind}|${info.defId}|${info.golden ? 1 : 0}|${info.spine || ''}`;
       let v = views.get(key);
       if (v && v._sig !== sig) { dropView(key); v = null; }
       const w = slotWorld(e);
@@ -1035,7 +982,7 @@ export async function createFieldView(host, options = {}) {
       const info = u && Number.isInteger(u.uid) ? renderInfo({ ...u, id: `m:${u.uid}` }) : null;
       if (!info) continue;
       keep.add(info.id);
-      const sig = `${info.defId}|${info.golden ? 1 : 0}|${info.spine || ''}|${info.skin || ''}|${info.x},${info.y}|${info.dir || ''}|${(info.items || []).join(',')}`;
+      const sig = `${info.defId}|${info.golden ? 1 : 0}|${info.spine || ''}|${info.x},${info.y}|${info.dir || ''}|${(info.items || []).join(',')}`;
       let v = views.get(info.id);
       if (v && v._sig !== sig) { dropView(info.id); v = null; }
       if (v) continue;
@@ -1076,6 +1023,7 @@ export async function createFieldView(host, options = {}) {
     battleMeta = null;
     interp.reset();
     fx.clear();
+    ofx.clear(); wiring.clear(); ofxPrevT = null;
     meleePending.clear();
     consumedIds.clear();
     tiles.setBattleRect(null);
@@ -1114,7 +1062,7 @@ export async function createFieldView(host, options = {}) {
     }
   }
 
-  /** Hide (or show again) the pen's figures: only the pen camera shows them (see the header). */
+  /** Hide (or show again) the pen's figures: the prep and pen cameras show them, the battle cameras do not (see the header). */
   function setPenHidden(hidden) {
     penHidden = !!hidden;
     for (const v of penViews.values()) hidePenView(v, penHidden);
@@ -1417,9 +1365,9 @@ export async function createFieldView(host, options = {}) {
     emit('tileClick', { row: t.row, col: t.col, button: e.button, clientX: e.clientX, clientY: e.clientY });
   }
 
-  // Touch taps on the field resolve on release, so the first finger of a pinch does not open a unit / terrain panel.
-  let touchTap = null;
-  const fieldTap = (ev, e) => {
+  const onPointerDown = (e) => {
+    if (destroyed) return;
+    const ev = evPayload(e);
     if (mode === 'battle') {
       const v = battleUnitAt(ev.x, ev.y);
       if (v) {
@@ -1434,6 +1382,7 @@ export async function createFieldView(host, options = {}) {
       else emitTileClick(ev, e);
       return;
     }
+    if (drag.pointerDown(ev)) { try { canvas.setPointerCapture(e.pointerId); } catch { /* ignore */ } return; }
     const mapChar = mapCharAt(ev.x, ev.y);
     if (mapChar) {
       emit('pieceClick', { unit: mapChar, unitId: null, uid: mapChar.uid, prepMapChar: true,
@@ -1447,19 +1396,9 @@ export async function createFieldView(host, options = {}) {
     }
     emitTileClick(ev, e);
   };
-  const onPointerDown = (e) => {
-    markTouch();
-    if (destroyed || (e.pointerType === 'touch' && pinchActive)) return;
-    const ev = evPayload(e);
-    if (mode !== 'battle' && drag.pointerDown(ev)) { try { canvas.setPointerCapture(e.pointerId); } catch { /* ignore */ } return; }
-    if (e.pointerType === 'touch') { touchTap = { pointerId: e.pointerId, x: ev.x, y: ev.y, mode }; return; }
-    fieldTap(ev, e);
-  };
   const onPointerMove = (e) => {
-    if (isMobileClient && (dragState || e.pointerType === 'touch')) markTouch();
-    if (destroyed || (e.pointerType === 'touch' && pinchActive)) return;
+    if (destroyed) return;
     const ev = evPayload(e);
-    if (touchTap?.pointerId === e.pointerId && Math.hypot(ev.x - touchTap.x, ev.y - touchTap.y) > 10) touchTap = null;
     if (mode === 'battle') {
       if (e.pointerType === 'touch') return;
       const v = battleUnitAt(ev.x, ev.y);
@@ -1472,83 +1411,10 @@ export async function createFieldView(host, options = {}) {
     }
     drag.pointerMove(ev);
   };
-  const onPointerUp = (e) => {
-    const ev = evPayload(e);
-    const tap = touchTap?.pointerId === e.pointerId ? touchTap : null;
-    if (tap) touchTap = null;
-    if (!destroyed && !(e.pointerType === 'touch' && pinchActive)) {
-      if (mode !== 'battle') drag.pointerUp(ev);
-      if (tap && tap.mode === mode && Math.hypot(ev.x - tap.x, ev.y - tap.y) <= 10) fieldTap(ev, e);
-    }
-    try { canvas.releasePointerCapture(e.pointerId); } catch { /* ignore */ }
-  };
-  const onPointerCancel = (e) => { if (touchTap?.pointerId === e.pointerId) touchTap = null; if (!destroyed) drag.pointerCancel(evPayload(e)); };
-  const onPointerLeave = (e) => { if (!destroyed && !drag.dragging && !(e.pointerType === 'touch' && pinchActive)) drag.pointerLeave(evPayload(e)); if (hoverUnit) { hoverUnit = null; emit('pieceHover', { uid: null, unitId: null }); } };
+  const onPointerUp = (e) => { if (!destroyed && mode !== 'battle') drag.pointerUp(evPayload(e)); try { canvas.releasePointerCapture(e.pointerId); } catch { /* ignore */ } };
+  const onPointerCancel = (e) => { if (!destroyed) drag.pointerCancel(evPayload(e)); };
+  const onPointerLeave = (e) => { if (!destroyed && !drag.dragging) drag.pointerLeave(evPayload(e)); if (hoverUnit) { hoverUnit = null; emit('pieceHover', { uid: null, unitId: null }); } };
   const onContext = (e) => e.preventDefault();
-  // ---- two-finger pinch zoom (the field's map scale; see setUserZoom) -------------------------------------------
-  // Compose with the image at gesture start, keeping the point between the fingers under their moving midpoint.
-  // The second finger cancels a piece press / drag; all remaining fingers stay in gesture mode until lifted.
-  // Releasing preserves the exact view. Pointer capture also keeps the gesture alive outside the canvas.
-  const pinch = new Map();     // pointerId → { x, y } canvas CSS px
-  let pinchBase = null;        // { ids, dist, f0, dx0, dy0, ax, ay } at gesture start
-  let pinchActive = false;
-  let pinchSuspended = false;  // a size change ends this gesture until all fingers are lifted
-  const PINCH_MIN_PX = 24;     // ignore a pinch whose fingers are closer than this (a palm / jitter)
-  const pinchCancelDrag = () => {
-    touchTap = null;
-    if (mode !== 'battle') { try { drag.reset(); } catch { /* ignore */ } }
-  };
-  const pinchStart = () => {
-    const entries = [...pinch.entries()].slice(0, 2);
-    if (entries.length < 2) { pinchBase = null; return; }
-    const [[idA, a], [idB, b]] = entries;
-    const dist = Math.hypot(a.x - b.x, a.y - b.y);
-    if (dist < PINCH_MIN_PX) { pinchBase = null; return; }
-    pinchBase = { ids: [idA, idB], dist, f0: userZoom?.f ?? 1, dx0: userZoom?.dx ?? 0, dy0: userZoom?.dy ?? 0,
-      ax: (a.x + b.x) / 2, ay: (a.y + b.y) / 2 };
-  };
-  const pinchUpdate = () => {
-    if (pinch.size < 2) return;
-    if (!pinchBase) { pinchStart(); return; }
-    const [a, b] = pinchBase.ids.map(id => pinch.get(id));
-    if (!a || !b) { pinchStart(); return; }
-    const dist = Math.hypot(a.x - b.x, a.y - b.y);
-    const requested = pinchBase.f0 * (dist / pinchBase.dist);
-    const f = Math.max(0.5, Math.min(2, requested));
-    const ratio = f / pinchBase.f0;
-    const ax = (a.x + b.x) / 2, ay = (a.y + b.y) / 2;
-    pinchView?.setUserZoom({ f, ax, ay,
-      dx: ax + ratio * (pinchBase.dx0 - pinchBase.ax),
-      dy: ay + ratio * (pinchBase.dy0 - pinchBase.ay) });
-    // Reverse immediately at a limit, without making the fingers travel back through the overshoot first.
-    if (f !== requested) pinchStart();
-  };
-  const onPinchDown = (e) => {
-    if (destroyed || e.pointerType !== 'touch') return;
-    pinch.set(e.pointerId, canvasPoint(e));
-    try { canvas.setPointerCapture(e.pointerId); } catch { /* ignore */ }
-    if (pinch.size === 2) { pinchActive = true; pinchCancelDrag(); if (!pinchSuspended) pinchStart(); }
-  };
-  const onPinchMove = (e) => {
-    if (e.pointerType !== 'touch' || !pinch.has(e.pointerId)) return;
-    pinch.set(e.pointerId, canvasPoint(e));
-    if (pinch.size >= 2 && !pinchSuspended) pinchUpdate();
-  };
-  const onPinchUp = (e) => {
-    if (!pinch.has(e.pointerId)) return;
-    if (e.type === 'lostpointercapture' && touchTap?.pointerId === e.pointerId) touchTap = null;
-    pinch.delete(e.pointerId);
-    if (pinch.size < 2) pinchBase = null;
-    else if (!pinchSuspended && pinchBase?.ids.includes(e.pointerId)) pinchStart();
-    if (!pinch.size) { pinchActive = false; pinchSuspended = false; }
-  };
-  const clearPinch = () => { pinch.clear(); pinchBase = null; pinchActive = false; pinchSuspended = false; pinchCancelDrag(); };
-  canvas.addEventListener('pointerdown', onPinchDown, { passive: true });
-  canvas.addEventListener('pointermove', onPinchMove, { passive: true });
-  canvas.addEventListener('pointerup', onPinchUp, { passive: true });
-  canvas.addEventListener('pointercancel', onPinchUp, { passive: true });
-  canvas.addEventListener('lostpointercapture', onPinchUp, { passive: true });
-  globalThis.addEventListener?.('blur', clearPinch);
   // A finger is handled through the pointer events above only. The compatibility mouse events + click of a tap come
   // after touchend, hit-tested at the finger again — where the tap may just have opened DOM UI: a tap on a unit's tile
   // selects it and its underframe opens over the tile (clamped under the top bar on a phone), and the click pressed
@@ -1610,12 +1476,11 @@ export async function createFieldView(host, options = {}) {
     gone.clear();
     interp.reset();
     fx.clear();
+    ofx.clear(); wiring.clear(); ofxPrevT = null;
     meleePending.clear();
     consumedIds.clear();
     clearHl();
     renderT0Battle = null;
-    beamQ.length = 0;
-    beamSeq = 0;
     mode = 'battle';
     const rect = meta.rect ? normRect(meta.rect) : (meta.kind === 'boss' || meta.kind === 'hidden' ? { ...GEO.BOSS_RECT } : meta.kind === 'unite' ? { ...GEO.UNITE_RECT } : { ...GEO.NORMAL_RECT });
     // prep: true = a read-only scouting board (a teammate's lineup during prep): prep-style pieces, no bars
@@ -1631,6 +1496,12 @@ export async function createFieldView(host, options = {}) {
     tiles.setBattleRect(rect);
     board3d?.setBattleRect(rect);
     for (const u of Array.isArray(meta.units) ? meta.units : []) addInfo(u);
+    // the official effects of this battle's units load now (the prep → battle switch), the board's heights for their
+    // depth-tested materials
+    if (ofx.active && !battleMeta.prep) {
+      ofx.setGround(heightAt, stageRec?.id ?? null);
+      wiring.begin([...infos.values()].map((info) => ({ id: info.id, info }))).catch(() => {});
+    }
     return true;
   }
 
@@ -1686,11 +1557,15 @@ export async function createFieldView(host, options = {}) {
     if (!Array.isArray(list)) return 0;
     // spawn infos are needed as soon as possible (a snapshot may reference the unit first); a placeholder view made
     // for a snapshot unit nobody announced is rebuilt with the real info
+    let fresh = null;
     for (const e of list) {
       if (!Array.isArray(e) || e[0] !== 'spawn') continue;
       const info = addInfo(e[1]);
       if (info && views.get(info.id)?._unknown) dropView(info.id);
+      if (info && ofx.active) (fresh || (fresh = [])).push({ id: info.id, info });
     }
+    // the official effects of units joining the battle load ahead of their first attack (render/vfx/wiring.js more)
+    if (fresh) wiring.more(fresh);
     return interp.pushEvents(list, performance.now() / 1000, t);
   }
 
@@ -1698,14 +1573,25 @@ export async function createFieldView(host, options = {}) {
   // land when the event is rendered (the look-ahead is the interpolation delay, ~0.2 game s)
   function windUpAttacks(renderT) {
     upcomingT = renderT;
+    upSkill.clear();
     interp.forEachUpcoming(renderT, renderT + 1.5, onUpcoming);
   }
   let upcomingT = 0;
+  // the look-ahead's skill state: a ['skill', id, on] queued before an 'atk' of that unit (an instant skill sends 1, its
+  // attack and 0 in one tick) — the official cast effects of the wind-up are the skill's own then
+  const upSkill = new Map();
   function onUpcoming(e, t) {
+    if (e[0] === 'skill') { upSkill.set(e[1], !!e[2]); return; }
     if (e[0] !== 'atk' || woundUp.has(e) || CHAIN_KINDS.has(e[3])) return;
     const v = views.get(e[1]);
     if (!v || !v.windUp) return;
-    if (v.windUp(t - upcomingT, e[3])) woundUp.add(e);
+    if (v.windUp(t - upcomingT, e[3])) {
+      woundUp.add(e);
+      // the official cast effects that start with the cast play with the clip (render/vfx/wiring.js castStart)
+      const a = v.actor;
+      const skillOn = upSkill.has(e[1]) ? upSkill.get(e[1]) : undefined;
+      wiring.castStart(v, views.get(e[2]), e[3], a ? { skip: a.windSkip || 0, left: a.windCastLeft || 0, skillOn } : { skillOn });
+    }
   }
 
   const EVS = [];
@@ -1728,12 +1614,14 @@ export async function createFieldView(host, options = {}) {
         gone.delete(info.id);
         const v = battleView(info.id);
         if (v && info.side === 'enemy' && renderT0Battle != null && now - renderT0Battle > 0.2) fx.ring(info.x, info.y, 0, 0.1, 0.7, 0xff5a4a, 0.4);
+        // an enemy's or a summon's deploy talents (render/vfx/talentfx.js: auras, birth effects — once per life)
+        if (v) wiring.spawned(v);
         break;
       }
       case 'deploy': {
         gone.delete(e[1]);
         const v = battleView(e[1]);
-        if (v) { v.onDeploy?.(); if (!queueBeam(v, now) && v.info?.kind !== 'device') fx.deploy(v); }
+        if (v) { v.onDeploy?.(); if (v.info?.kind !== 'device' && !wiring.deploy(v)) fx.deploy(v); }
         break;
       }
       case 'atk': {
@@ -1742,7 +1630,10 @@ export async function createFieldView(host, options = {}) {
         // chain / chainHeal bounces: the "source" is the previous target of the bounce, not an attacker
         if (src && !CHAIN_KINDS.has(e[3])) src.onAttack?.(tgt, now, e[3]);
         if (e[3] === 'none' || !e[3]) { if (tgt && src) meleePending.set(tgt.id, { src, t: now }); }
-        fx.attack(src, tgt, e[3]);
+        // the unit's official attack (casts, projectile, melee hits — render/vfx/wiring.js) or a chain's bounce (the line of
+        // the official shot that opened the chain: wiring.chain), else the procedural one
+        const drew = !!src && (CHAIN_KINDS.has(e[3]) ? wiring.chain(src, tgt, e[3], now) : wiring.attack(src, tgt, e[3], now, woundUp.has(e)));
+        if (!drew) fx.attack(src, tgt, e[3]);
         break;
       }
       case 'dmg': {
@@ -1752,22 +1643,35 @@ export async function createFieldView(host, options = {}) {
         const m = meleePending.get(v.id);
         let src = null;
         if (m && now - m.t < 0.35) { src = m.src; meleePending.delete(v.id); fx._slashAt = src.id; }
-        fx.damage(v, amt, e[3], src, e[4]);
+        // an official hit drawn for this damage replaces the procedural spark / slash (the numbers stay)
+        const official = wiring.damage(v, e[3], src, now);
+        fx.damage(v, amt, e[3], src, e[4], official ? NO_SPARK : undefined);
         break;
       }
-      case 'heal': { const v = views.get(e[1]); if (v) fx.heal(v, Number(e[2]) || 0); break; }
-      case 'skill': { const v = views.get(e[1]); if (v) { v.setSkill?.(!!e[2]); fx.skill(v, !!e[2]); } break; }
+      case 'heal': { const v = views.get(e[1]); if (v) fx.heal(v, Number(e[2]) || 0, wiring.heal(v, now) ? NO_SPARK : undefined); break; }
+      // the skill's official effects (render/vfx/skillfx.js: start / range / loop on, end off) stand for the procedural
+      // activation burst and aura when the official layer shows the skill
+      case 'skill': {
+        const v = views.get(e[1]);
+        if (v) { v.setSkill?.(!!e[2]); if (!wiring.skill(v, !!e[2]) || !e[2]) fx.skill(v, !!e[2]); }
+        break;
+      }
       // the skill slot an enemy ability casts (PR #275): the view swaps to that slot's clip (a multi-skill boss's Skill_01..04)
-      case 'cast': { const v = views.get(e[1]); if (v) v.setSkillSlot?.(e[2] | 0); break; }
+      // (and its official skill effects: render/vfx/skillfx.js cast — index v2 has the enemies' skills)
+      case 'cast': { const v = views.get(e[1]); if (v) { v.setSkillSlot?.(e[2] | 0); wiring.enemyCast(v, e[2] | 0, Number(e[3]) || 0); } break; }
       case 'die': {
         const v = views.get(e[1]);
         const used = consumedIds.delete(e[1]);
-        if (v && v.alive) { v.die(e[2] === FORCED_EXIT); if (showsDeathFx(v.info, used, e[2])) fx.death(v); }
+        if (v && v.alive) {
+          v.die(e[2] === FORCED_EXIT);
+          if (showsDeathFx(v.info, used, e[2])) { if (!wiring.death(v)) fx.death(v); } else wiring.release(v);
+        }
         break;
       }
       case 'leak': {
         const v = views.get(e[1]);
         if (v) {
+          wiring.release(v);
           leakFlash(v.x, v.y);
           v.alive = false;
           v.dying = 0.25; v.dieDur = 0.25;
@@ -1775,7 +1679,7 @@ export async function createFieldView(host, options = {}) {
         fx.leak();
         break;
       }
-      case 'status': { const v = views.get(e[1]); if (v) v.onStatus?.(e[2], !!e[3]); break; }
+      case 'status': { const v = views.get(e[1]); if (v) { v.onStatus?.(e[2], !!e[3]); wiring.status(v, e[2], !!e[3]); } break; }
       case 'fx': {
         if (e[4] && typeof e[4] === 'object' && e[4].consumed && e[4].id != null) {
           consumedIds.add(e[4].id);
@@ -1800,13 +1704,19 @@ export async function createFieldView(host, options = {}) {
         // without its telegraph, its closing clip shortened by the lateness.
         const form = fxForm(e);
         const late = form !== undefined ? LATE.get(e) || 0 : 0;
+        let officialForm = false;
         if (form !== undefined) {
           const inf = infos.get(e[4].id);
           if (inf && (form === null || FORMS[inf.spine || inf.defId]?.[form])) inf.form = form;
           const x = late > 0 ? { ...e[4], late, ...(Number(e[4].dur) > 0 ? { dur: Math.max(0, Number(e[4].dur) - late) } : {}) } : e[4];
-          views.get(e[4].id)?.setForm?.(form, x);
+          const fv = views.get(e[4].id);
+          fv?.setForm?.(form, x);
+          // the unit's attack mode from now on and its talents' 重生 rows (render/vfx/wiring.js form, talentfx.js)
+          if (fv) officialForm = wiring.form(fv, form, x);
         }
-        if (!(late > 0)) fx.simFx(e[1], Number(e[2]), Number(e[3]), e[4]);
+        // a kit fx the official skill / talent effects stand for (render/vfx/skillfx.js, talentfx.js) is not drawn procedurally
+        const official = !(late > 0) && wiring.simFx(e[1], Number(e[2]), Number(e[3]), e[4]);
+        if (!(late > 0) && !official && !officialForm) fx.simFx(e[1], Number(e[2]), Number(e[3]), e[4]);
         break;
       }
       case 'layer': {
@@ -1855,33 +1765,6 @@ export async function createFieldView(host, options = {}) {
     });
   }
   let renderT0Battle = null;   // game time of the first rendered battle frame (spawn puffs skip the initial wave)
-  // 联防 (the event's, video 8:42): as the 联防 field opens (its first 2 game s), the operators carried onto it beam in
-  // one after another — each hidden until its beam lands (UnitView fadeIn below 0 counts up to it at the same rate), the
-  // opening's own deploy flash skipped. A field watched later, or a redeploy, keeps the plain deploy flash.
-  const beamQ = [];            // [{ v, id }] waiting for their beam (v._beamLeft: real seconds)
-  let beamSeq = 0;             // beams queued on this field (the stagger)
-  function queueBeam(v, renderT) {
-    if (!v) return false;
-    if (v._beamLeft > 0) { v.fadeIn = -v._beamLeft * 4; return true; } // queued already (a deploy event re-showed it)
-    if (v._beamed || battleMeta?.kind !== 'unite' || battleMeta.prep || !(renderT <= 2)) return false;
-    const info = v.info || null;
-    if (!info || info.side !== 'ally' || info.kind === 'device' || info.kind === 'item') return false;
-    v._beamed = true;
-    v._beamLeft = 0.35 + Math.min(beamSeq++, 10) * 0.16;
-    v.fadeIn = -v._beamLeft * 4;
-    beamQ.push({ v, id: info.id });
-    return true;
-  }
-  function pumpBeams(dt) {
-    for (let i = beamQ.length - 1; i >= 0; i--) {
-      const b = beamQ[i];
-      b.v._beamLeft -= dt;
-      if (b.v._beamLeft > 0) continue;
-      b.v._beamLeft = 0;
-      beamQ.splice(i, 1);
-      if (views.get(b.id) === b.v && b.v.alive !== false) fx.deploy(b.v, { beam: true });
-    }
-  }
   let downSeq = 0;             // syncBattle pass counter: a view still marked down after a pass left the `down` list
   function syncBattle(renderT) {
     if (renderT0Battle == null) renderT0Battle = renderT;
@@ -1900,7 +1783,7 @@ export async function createFieldView(host, options = {}) {
       }
       if (!v) v = battleView(id) || createUnknown(id, s);
       if (!v) continue;
-      if (!v._seen) { v._seen = true; v.fadeIn = 0; queueBeam(v, renderT); }
+      if (!v._seen) { v._seen = true; v.fadeIn = 0; }
       syncView(v, s, renderT);
     }
     // knocked-out operators waiting to redeploy (b.snap `down`, user playtest #4 item 9): their view stays on the
@@ -1958,87 +1841,14 @@ export async function createFieldView(host, options = {}) {
   let impSlot = 0;
   let vp = { width: s0.width, height: s0.height };   // viewport (CSS px) of this frame: unit culling
   let culledCount = 0;
-  class FramePacer {
-    constructor(target = '60') {
-      this.targetFps = String(target || '60');
-      this.intervals = [];
-      this.lastTs = 0;
-      this.lastPicture = 0;
-      this.next = 0;
-    }
-    setTarget(target) {
-      this.targetFps = String(target || '60');
-      this.lastPicture = 0;
-      this.next = 0;
-    }
-    shouldDraw(ts) {
-      if (this.targetFps === 'screen' || this.targetFps === '0') {
-        this.lastPicture = ts;
-        return true;
-      }
-      const targetFpsNum = Number(this.targetFps) || 60;
-      const I = 1000 / targetFpsNum;
-
-      if (this.lastTs > 0) {
-        const dt = ts - this.lastTs;
-        if (dt >= 1 && dt <= 100) {
-          this.intervals.push(dt);
-          if (this.intervals.length > 21) this.intervals.shift();
-        }
-      }
-      this.lastTs = ts;
-
-      if (this.intervals.length < 5) {
-        this.lastPicture = ts;
-        this.next = ts + I;
-        return true;
-      }
-
-      const sorted = [...this.intervals].sort((a, b) => a - b);
-      const P = sorted[Math.floor(sorted.length / 2)];
-      const r = I / P;
-
-      if (!this.lastPicture || (ts - this.lastPicture) > (I * 1.8)) {
-        this.lastPicture = ts;
-        this.next = ts + I;
-        return true;
-      }
-
-      let draw = false;
-      if (r <= 1.06) {
-        draw = true;
-      } else if (Math.abs(r - Math.round(r)) <= 0.06) {
-        if (ts - this.lastPicture >= (Math.round(r) - 0.5) * P) {
-          draw = true;
-        }
-      } else {
-        const tau = Math.min(P, I) / 2;
-        if (ts >= this.next - tau) {
-          draw = true;
-          this.next = Math.max(this.next + I, ts + I - tau);
-        }
-      }
-
-      if (draw) this.lastPicture = ts;
-      return draw;
-    }
-  }
-
-  const pacer = new FramePacer(settings.targetFps || '60');
-
   // Adaptive load level 0–3: a device that cannot hold the frame rate with the current work switches crowds to
   // impostors earlier and animates small / far units at a lower rate (units.js); it steps back after a calm spell.
   let loadLevel = 0, slowFor = 0, fastFor = 0;
   function adaptLoad(dtRaw) {
     if (!(dtRaw > 0) || dtRaw > 0.25 || globalThis.document?.hidden) return;
     const busy = views.size + penViews.size > 8;
-    const targetFpsNum = Number(pacer.targetFps) || 60;
-    const I = (pacer.targetFps === 'screen' || pacer.targetFps === '0') ? (1000 / 60) : (1000 / targetFpsNum);
-    const shift = Math.max(0, I - 1000 / 60);
-    const slowAt = 19.5 + shift;
-    const fastAt = 17.6 + shift;
-    if (frameMs > slowAt && busy) { slowFor += dtRaw; fastFor = 0; }
-    else if (frameMs < fastAt) { fastFor += dtRaw; slowFor = 0; }
+    if (frameMs > 19.5 && busy) { slowFor += dtRaw; fastFor = 0; }
+    else if (frameMs < 17.6) { fastFor += dtRaw; slowFor = 0; }
     if (slowFor > 1 && loadLevel < 3) { loadLevel++; slowFor = 0; fastFor = 0; impInterval = pickImpostorInterval(); }
     else if (loadLevel > 0 && (fastFor > 6 * loadLevel || !busy && fastFor > 2)) { loadLevel--; fastFor = 0; impInterval = pickImpostorInterval(); }
   }
@@ -2063,17 +1873,15 @@ export async function createFieldView(host, options = {}) {
     // a struggling device (load level ≥ 2) may refresh a big crowd more rarely (10 Hz at worst)
     return Math.min(loadLevel >= 2 ? 6 : 4, Math.max(2, Math.ceil(n / (base * 0.75))));
   }
-
-  let currentRafTs = performance.now();
   function frame() {
     if (destroyed) return;
-    const now = currentRafTs;
-    const t0 = performance.now();
-    try { frameBody(now); } finally { cpuMs = cpuMs * 0.9 + (performance.now() - t0) * 0.1; }
+    const now = performance.now();
+    try { frameBody(now); } finally { cpuMs = cpuMs * 0.9 + (performance.now() - now) * 0.1; }
   }
   function frameBody(now) {
     frameNo++;
     impSlot = 0;
+    ofx.frameStats();
     if (frameNo % 30 === 1) {
       impInterval = pickImpostorInterval(); clipAllowed = pickClipping();
       culledCount = 0;
@@ -2090,7 +1898,11 @@ export async function createFieldView(host, options = {}) {
     clock += dt;
     if ((globalThis.devicePixelRatio || 1) !== lastDpr) { lastDpr = globalThis.devicePixelRatio || 1; resize(); }
     try {
+      const flying = !!camTo;
       stepCamera(now);
+      // a drag under a still pointer follows a camera flight — the shop-collapsed zoom of a deploy (GitHub #602) starts
+      // as the piece is picked up: the target tile and the dragged piece are judged again at the pointer
+      if (flying && mode === 'prep' && drag.dragging) drag.refresh();
       if (board3d) {
         if (board3d.lost) onBoard3dLost();
         else board3d.render(cam, clock);
@@ -2103,8 +1915,13 @@ export async function createFieldView(host, options = {}) {
           processEvents(renderT);
           syncBattle(renderT);
           windUpAttacks(renderT);
+          // the official effects run on the battle clock (render time of the snapshots: 1× / 2×, still while paused); the
+          // skill effects' per-frame part reads the views' fresh sample (render/vfx/skillfx.js sync)
+          const gdt = ofxPrevT == null ? 0 : Math.min(0.25, Math.max(0, renderT - ofxPrevT));
+          ofxPrevT = renderT;
+          wiring.sync(views.values());
+          if (ofx.active) { wiring.tick(); ofx.update(gdt); }
         }
-        if (beamQ.length) pumpBeams(dt);
       } else if (mode === 'prep') {
         for (const [key, pd] of pending) {
           if (now - pd.t > DROP_PENDING_MS) {
@@ -2143,48 +1960,18 @@ export async function createFieldView(host, options = {}) {
   app.ticker.add(preRender, null, -24);
   app.ticker.add(postRender, null, -26);
 
-  // Stop auto ticker and drive with custom frame pacer loop
-  app.ticker.autoStart = false;
-  app.ticker.stop();
-  let rafId = 0;
-  function onPacerRaf(ts) {
-    if (destroyed) return;
-    rafId = requestAnimationFrame(onPacerRaf);
-    if (pacer.shouldDraw(ts)) {
-      currentRafTs = ts;
-      app.ticker.update(ts);
-    }
-  }
-  rafId = requestAnimationFrame(onPacerRaf);
-  setupCleanup.push(() => {
-    if (rafId) cancelAnimationFrame(rafId);
-  });
-
   // ---- resize ---------------------------------------------------------------------------------------------------
 
   function resize() {
     if (destroyed) return;
     const sz = size();
     const res = dpr();
-    const unchanged = app.renderer.resolution === res &&
-      app.renderer.screen.width === sz.width && app.renderer.screen.height === sz.height;
     if (app.renderer.resolution !== res) app.renderer.resolution = res;
-    // Do not clear the canvas again for duplicate window/ResizeObserver notifications.
-    if (!unchanged) app.renderer.resize(sz.width, sz.height);
+    app.renderer.resize(sz.width, sz.height);
     board3d?.resize(sz.width, sz.height, boardDpr());
     layoutBackdrop();
-    // Keep the same relative image transform after a resize. Same-size notifications must not shift the view.
-    if (userZoom) {
-      const rx = sz.width / Math.max(1, zoomViewport.width), ry = sz.height / Math.max(1, zoomViewport.height);
-      userZoom = { ...userZoom, ax: userZoom.ax * rx, ay: userZoom.ay * ry, dx: userZoom.dx * rx, dy: userZoom.dy * ry };
-    }
-    if (sz.width !== zoomViewport.width || sz.height !== zoomViewport.height) {
-      pinchBase = null;
-      if (pinchActive) pinchSuspended = true;
-    }
-    zoomViewport = { width: sz.width, height: sz.height };
     const target = targetCamera(camKind, camOpts);
-    if (camTo) camTo = target; else { baseCam = target; applyUserZoom(); }
+    if (camTo) camTo = target; else cam = target;
     tiles.project(cam, true);
   }
   let ro = null;
@@ -2200,9 +1987,11 @@ export async function createFieldView(host, options = {}) {
 
   // ---- late assets, hidden tabs (public issue #8 item 5: operators drawn as image-less placeholders) ----------------------
   // The asset manifest (or the local-client one) arrived after views were built — a reload whose manifest fetch was slow or
-  // failed (assets.js onChange): every view re-resolves what it could not draw (UnitView.retryAssets) and the prep pieces
-  // re-read their item icons. The tab shown again: a manifest still missing is asked for again and views without a model
-  // load it again at once (their bounded retries never run while hidden: no frames).
+  // failed — or changed under them — a room's cosmetic plugins, a personal one switched during a match, a plugin file that
+  // fell back (DESIGN §32 P1a) — (assets.js onChange): every view re-resolves what it draws (UnitView.retryAssets: what it
+  // could not draw, and a picture or model the manifest no longer names), the backdrop and the shadow follow the manifest
+  // and the prep pieces re-read their item icons. The tab shown again: a manifest still missing is asked for again and
+  // views without a model load it again at once (their bounded retries never run while hidden: no frames).
   function onAssets() {
     if (destroyed) return;
     retryBoard();
@@ -2228,9 +2017,6 @@ export async function createFieldView(host, options = {}) {
 
   // ---- public API ---------------------------------------------------------------------------------------------
 
-  // two-finger pinch (above) closes over this: the setters only exist once the view is built, but a pinch cannot
-  // start before the canvas is on the page, which is after — a plain late-bound let.
-  let pinchView = null; // set right below the view literal
   view = {
     setStage,
     setCamera,
@@ -2270,6 +2056,14 @@ export async function createFieldView(host, options = {}) {
       return () => listeners.get(name)?.delete(fn);
     },
     off(name, fn) { listeners.get(name)?.delete(fn); },
+    /** Current prep piece under an unobstructed client point; resolve again when a hotkey is pressed. */
+    pieceAtClientPoint(clientX, clientY) {
+      if (destroyed || mode !== 'prep' || camKind === 'pen' || drag.dragging
+        || !Number.isFinite(clientX) || !Number.isFinite(clientY)
+        || document.elementFromPoint(clientX, clientY) !== canvas) return null;
+      const p = canvasPoint({ clientX, clientY });
+      return pieceAt(p.x, p.y)?.uid ?? null;
+    },
     pieceScreenRect(uid) {
       let v = views.get('p:' + uid);
       if (!v) for (const x of views.values()) if (x.uid === uid || x.info?.uid === uid || x.id === uid) { v = x; break; }
@@ -2279,6 +2073,12 @@ export async function createFieldView(host, options = {}) {
       const r = canvas.getBoundingClientRect();
       const left = r.left + b.x, top = r.top + b.y;
       return { left, top, right: left + b.width, bottom: top + b.height, width: b.width, height: b.height, x: left, y: top };
+    },
+    pieceArt(uid) {
+      let v = views.get('p:' + uid);
+      if (!v) for (const x of views.values()) if (x.uid === uid || x.info?.uid === uid || x.id === uid) { v = x; break; }
+      if (!v || v.destroyed) return null;
+      return { picture: v._pic?.url ?? null, pictureState: v._pic?.state ?? null, model: v._resolved?.skel ?? null, shown: v._actorEntry?.skel ?? null };
     },
     /**
      * Screen geometry of a BOARD-space tile (in the Final Assault prep: where that board tile is drawn on the boss
@@ -2331,58 +2131,11 @@ export async function createFieldView(host, options = {}) {
       if (typeof s.damageNumbers === 'boolean') settings.damageNumbers = s.damageNumbers;
       if (typeof s.officialDamageNumbers === 'boolean') settings.officialDamageNumbers = s.officialDamageNumbers;
       if (typeof s.ammoCount === 'boolean') settings.ammoCount = s.ammoCount;   // the units read it every frame (ctx.settings)
-      if (s.quality === 'extreme' || s.quality === 'high' || s.quality === 'medium' || s.quality === 'low') settings.quality = s.quality;
-      if (typeof s.antialias === 'boolean') settings.antialias = s.antialias;
-      if (typeof s.highRefresh === 'boolean') { settings.highRefresh = s.highRefresh; updateFpsLimit(); }
-      if (s.board === '2d' || s.board === '3d' || s.board === '3d_pro' || s.board === '3d_std' || s.board === 'auto') {
-        const prevBoard = settings.board;
-        settings.board = s.board;
-        const want = s.board !== '2d';
-        if (!want && board3d) {
-          disable3d();
-        } else if (want && !board3d) {
-          retryBoard();
-        } else if (want && board3d && prevBoard !== s.board) {
-          if (stageRec) useOfficialScene(stageRec);
-        }
-      }
+      if (typeof s.mysticEnergy === 'boolean') settings.mysticEnergy = s.mysticEnergy;   // likewise
+      if (s.quality === 'high' || s.quality === 'medium' || s.quality === 'low') settings.quality = s.quality;
+      if (typeof s.officialFx === 'string' && s.officialFx !== settings.officialFx) { settings.officialFx = s.officialFx; syncOfficialFx(); }
       if (q !== settings.quality) { board3d?.setQuality?.(settings.quality); resize(); }
-      if (s.targetFps) pacer.setTarget(s.targetFps);
     },
-    setTargetFps(fps) {
-      pacer.setTarget(fps);
-    },
-    setThermalThrottle(on) {
-      if (destroyed) return false;
-      thermalThrottled = !!on;
-      updateFpsLimit();
-      return true;
-    },
-    /**
-     * The map's own scale (two-finger pinch on the field, see the header): { f, ax, ay } with f ∈ 0.5–2 (the clamp is
-     * advisory — camForZoom clamps again), (ax, ay) the anchor in canvas CSS px. Optional (dx, dy) specify a composed
-     * image translation (otherwise (1-f) * anchor); null resets. The factor multiplies the focal length, so the
-     * official perspective is untouched. Applied immediately and re-applied on every camera flight / resize.
-     */
-    setUserZoom(z) {
-      if (destroyed) return false;
-      if (!z || typeof z !== 'object') {
-        if (!userZoom) return true;
-        userZoom = null;
-        applyUserZoom();
-        return true;
-      }
-      const f = Math.max(0.5, Math.min(2, Number(z.f) || 1));
-      const sz = size();
-      const ax = Number.isFinite(z.ax) ? z.ax : sz.width / 2;
-      const ay = Number.isFinite(z.ay) ? z.ay : sz.height / 2;
-      const dx = Number.isFinite(z.dx) ? z.dx : (1 - f) * ax;
-      const dy = Number.isFinite(z.dy) ? z.dy : (1 - f) * ay;
-      userZoom = { f, ax, ay, dx, dy };
-      applyUserZoom();
-      return true;
-    },
-    getUserZoom() { return userZoom ? { ...userZoom } : null; },
     resize,
     /** Dev / settings: switch the board layer ('3d' loads three.js + the art when available; '2d' = atlas board). */
     async setBoardMode(m) {
@@ -2399,18 +2152,10 @@ export async function createFieldView(host, options = {}) {
       destroyed = true;
       try { ro?.disconnect(); } catch { /* ignore */ }
       try { offAssets?.(); } catch { /* ignore */ }
-      try { offSkins?.(); } catch { /* ignore */ }
       globalThis.document?.removeEventListener?.('visibilitychange', onVisible);
       removeInput();
       offShadow?.();
       signal?.removeEventListener('abort', onAbort);
-      canvas.removeEventListener('pointerdown', onPinchDown);
-      canvas.removeEventListener('pointermove', onPinchMove);
-      canvas.removeEventListener('pointerup', onPinchUp);
-      canvas.removeEventListener('pointercancel', onPinchUp);
-      if (rafId) { cancelAnimationFrame(rafId); rafId = 0; }
-      canvas.removeEventListener('lostpointercapture', onPinchUp);
-      globalThis.removeEventListener?.('blur', clearPinch);
       app.ticker.remove(frame);
       app.ticker.remove(preRender);
       app.ticker.remove(postRender);
@@ -2421,6 +2166,7 @@ export async function createFieldView(host, options = {}) {
       clearPen();
       holdScene(false); // no scene any more: the quiet budget may free the skeletons (lobby / room / result)
       try { fx.destroy(); } catch { /* ignore */ }
+      try { ofx.destroy(); } catch { /* ignore */ }
       try { tiles.destroy(); } catch { /* ignore */ }
       try { impostors.destroy(); } catch { /* ignore */ }
       listeners.clear();
@@ -2435,21 +2181,20 @@ export async function createFieldView(host, options = {}) {
       return {
         fps: Math.round(fps * 10) / 10, frameMs: Math.round(frameMs * 100) / 100, cpuMs: Math.round(cpuMs * 100) / 100, renderMs: Math.round(renderMs * 100) / 100, mode, units: views.size, impostor: impInterval, impostorAtlas: { ...impostors.stats }, boardArt: !!tiles.atlas.art,
         board3d: board3d ? { on: true, ...board3d.stats(), losses: recover.count } : { on: false, error: board3dError, recovering: !!recover.timer, losses: recover.count },
-        pen: penViews.size, prepField: prepXf.kind === 'bossPrep' ? prepXf.side : null, lod: loadLevel, culled: culledCount,
-        ...fx.counts, spine: assets.spine?.stats ? assets.spine.stats() : null, renderT: interp.renderT, rate: interp.rate,
+        pen: penViews.size, penHidden, prepField: prepXf.kind === 'bossPrep' ? prepXf.side : null, lod: loadLevel, culled: culledCount,
+        ...fx.counts, officialFx: ofx.stats(), spine: assets.spine?.stats ? assets.spine.stats() : null, renderT: interp.renderT, rate: interp.rate,
         buffered: interp.size, camera: cam.params(),
       };
     },
     get mode() { return mode; },
     /** Dev hooks (demo / tests). */
     debug: {
-      app, get cam() { return cam; }, get board3d() { return board3d; }, tiles, views, penViews, get leader() { return leader; }, interp, fx, ctx, drag, get camKind() { return viewKind(camKind, camOpts); },
+      app, get cam() { return cam; }, get board3d() { return board3d; }, tiles, views, penViews, get leader() { return leader; }, interp, fx, ofx, wiring, ctx, drag, get camKind() { return viewKind(camKind, camOpts); },
       promotions, landings, get replaying() { return !!replayTimer; },
       // picking (render/pick.js) at canvas px: the prep piece / battle view / pen view there, the ground tile under it
       pick: { pieceAt, mapCharAt, battleUnitAt, penUnitAt, groundTile },
     },
   };
-  pinchView = view;
   // All teardown dependencies now exist. Aborting during either asset wait immediately releases
   // the renderer, ticker and listeners; late shared asset results see destroyed and do nothing.
   setupCleanup.length = 0;

@@ -56,3 +56,10 @@ android/app/src/main/assets/bundle.sha256
 public/dev/simcheck/data/
 
 *.tar.gz
+
+# --- plugins (docs/PLUGINS.md): a server's own plugins and its policy file live in plugins/ and are never committed;
+# only the folder's readme, its guide for AI agents (AGENTS.md) and the templates are tracked.
+plugins/*
+!plugins/README.md
+!plugins/AGENTS.md
+!plugins/_template/

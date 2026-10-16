@@ -1,5 +1,6 @@
 // Player settings (BGM/SFX/voice volume, the voice dub 语音语言, mute, damage numbers, the optional 弹药数量 under an ammo
-// skill's bar — not in the official HUD, off by default, PR #552 —, render quality, 文字大小, the
+// skill's bar — not in the official HUD, off by default, PR #552 —, the optional 作战统计 panel — off by default,
+// PR #618 —, render quality, 文字大小, the
 // shortcut keys): a tiny observable store persisted in localStorage (`sp.pref.settings`), applied to the audio manager
 // and to the document on every change, plus the settings modal — which also holds the language switch (ui/lang.js; kept
 // apart in `sp.pref.lang`; under it a note while the current language's pack is a machine translation,
@@ -8,6 +9,11 @@
 // 问题反馈, which copies the diagnostics of this page for a bug report (diag.js: the error log, this browser, optionally
 // the battle on screen; nothing is uploaded). The lobby and the room open it from a 设置 button next to 玩法说明
 // (SettingsButton, GitHub #238); the title screen and the match have their own gear.
+// 外观插件 (DESIGN §32 P1a, the design study's §7.5): a switch for each cosmetic plugin of scope `personal` the server's
+// catalogue lists (content.js) — kept in this browser (`sp.pref.cosmetics`), never sent, seen by this player alone and
+// never part of a battle; the section is left out when the server has none. The switched-on ones form a set like a
+// room's (content.js personalSet): one another needs is on as 「自动」 and cannot be switched off alone, a switch that
+// would make a conflict is refused with the room's message, and a chosen one left out (it conflicts now) says so.
 //
 // 文字大小 (textSize, applied by applyTextSize): the interface text root `--t` of css/theme.css — a phone clamps the
 // layout root `1rem` at 40 px (theme.css), which left the .18rem body text at 7.2 CSS px while the browser's own font
@@ -22,22 +28,22 @@ import { createStore, useStore, loadPref, savePref, store } from '../store.js';
 import { sanitizeSettings, HOTKEY_ACTIONS, DEFAULT_HOTKEYS, hotkeyLabel, rebindHotkey, isDefaultHotkeys, captureHotkey, VOICE_LANGS, TEXT_SIZES } from './gameLogic.js';
 import { audio } from '../audio.js';
 import { openGuide } from './guide.js';
-import { getRoomDanmaku } from './roomDanmaku.js';
 import { detectFeatures } from './device.js';
 import { LangToggle, machineTranslationNote } from './lang.js';
 import { t, tc, N_ } from '../../../shared/i18n.js';
 import { errorCount, currentBattle, diagnosticsText } from '../diag.js';
 import { copyText } from './clipboard.js';
-import { HubSectionsRow } from './hubSections.js';
-import { toast } from './toasts.js';
-import { loadoutStore, setEntries, setOpsMap } from './loadoutSync.js';
-import { skinsStore, setSkins } from './skins.js';
-import { ModManagerModal } from './modManagerModal.js';
-import { ScreenFitSection } from './screenFit.js';
+import { catalog, loadCatalog, cosmeticPlugins, installedCount, personal, personalApplied, personalSet, pluginName, setPersonalPlugin } from '../content.js';
+import { setUiPlugin, uiPluginEntries, uiPlugins } from './uiPlugins.js';
+import { UI_LIMITS } from '../../../shared/plugins/ui.js';
+import { toast, describeError } from './toasts.js';
+import { pluginMicro } from './pluginTag.js';
+import { fxAvailable } from '../render/vfx/available.js';
+import { resolveOfficialFx } from '../render/vfx/tier.js';
 
 const cx = (...p) => p.flat().filter(Boolean).join(' ');
 
-/** Settings store: { bgm, sfx, voice, voiceLang, voiceOverrides, muted, damageNumbers, officialDamageNumbers, ammoCount, quality, textSize, keys }. */
+/** Settings store: { bgm, sfx, voice, voiceLang, voiceNative, voiceOverrides, muted, damageNumbers, officialDamageNumbers, ammoCount, combatMetrics, mysticEnergy, quality, textSize, keys }. */
 export const settingsStore = createStore(sanitizeSettings(loadPref('settings', null)));
 
 /**
@@ -52,32 +58,21 @@ export function applyTextSize(v) {
   if (el) el.dataset.text = TEXT_SIZES.includes(v) ? v : 'sm';
 }
 
-export function applyPerfLite(v) {
-  const el = globalThis.document?.documentElement;
-  if (el) {
-    if (v) el.setAttribute('data-perf-lite', 'hard');
-    else el.removeAttribute('data-perf-lite');
-  }
-}
-
 settingsStore.subscribe((s) => {
   savePref('settings', sanitizeSettings(s));
   audio.setVolumes(s);
   audio.setVoiceLang(s.voiceLang, s.voiceOverrides);
+  audio.setVoiceNative(s.voiceNative);
   applyTextSize(s.textSize);
-  applyPerfLite(s.perfLite);
 });
 audio.setVolumes(settingsStore.get());
 audio.setVoiceLang(settingsStore.get().voiceLang, settingsStore.get().voiceOverrides);
+audio.setVoiceNative(settingsStore.get().voiceNative);
 // before the first render (main.js boot renders after its imports ran): the stored step is on screen without a flash
 applyTextSize(settingsStore.get().textSize);
-applyPerfLite(settingsStore.get().perfLite);
 
 /** @param {Partial<ReturnType<typeof sanitizeSettings>>} patch */
 export function updateSettings(patch) {
-  if (patch?.board && globalThis.AndroidNative?.setBoardMode) {
-    try { globalThis.AndroidNative.setBoardMode(patch.board); } catch {}
-  }
   settingsStore.set(sanitizeSettings({ ...settingsStore.get(), ...patch }));
 }
 
@@ -87,7 +82,7 @@ export const useSettings = () => useStore((s) => s, Object.is, settingsStore);
 /**
  * The label of the key a rebindable shortcut has right now ('R', 'Space' …) — the HUD's key hints (shop bar, ready /
  * pause, underframe). Read at render: the game screen re-renders when the settings dialog closes.
- * @param {'refresh'|'freeze'|'levelUp'|'retreat'|'sell'|'ready'} action
+ * @param {'buy'|'refresh'|'freeze'|'levelUp'|'retreat'|'sell'|'ready'} action
  */
 export const hotkeyLabelOf = (action) => hotkeyLabel(settingsStore.get().keys?.[action]);
 
@@ -109,23 +104,30 @@ function Toggle({ label, micro, value, onChange }) {
   </div>`;
 }
 
-const QUALITY = [['extreme', N_('极高')], ['high', N_('高')], ['medium', N_('中')], ['low', N_('低')]];
+const QUALITY = [['high', N_('高')], ['medium', N_('中')], ['low', N_('低')]];
+/**
+ * 官方特效 (0.3.0, render/vfx): the official battle effects the server's owner extracted from their own client (the
+ * server serves them: every player of that server sees the owner's extraction) — normal attacks, projectiles, hits,
+ * statuses, deaths, deploys, the operators' skills and a 秘术师's stored energies; 关 / 精简 / 完整. The stored default
+ * 'auto' shows as the tier it resolves to (完整 on a desktop, 精简 on a touch device, render/vfx/tier.js); the row is
+ * left out when no effects were extracted (data/local-fx.json lists none).
+ */
+const OFFICIAL_FX = [['off', N_('关')], ['lite', N_('精简')], ['full', N_('完整')]];
 /**
  * 文字大小: one step of TEXT_SIZES (ui/gameLogic/settings.js) with its label — 小 is the design's own sizes, the others
  * raise the text root `--t` (css/theme.css) and with it every readable font-size; the board and the HUD's boxes stay.
  */
 const TEXT_SCALES = [['sm', N_('小')], ['md', N_('中')], ['lg', N_('大')], ['xl', N_('特大')]];
-const isTouchClient = typeof navigator !== 'undefined' && (/Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) || (navigator.maxTouchPoints > 1 && !globalThis.matchMedia?.('(pointer: fine)').matches));
-const FPS_OPTIONS_DESKTOP = [['30', N_('30帧')], ['60', N_('60帧')], ['120', N_('120帧')], ['screen', N_('跟随屏幕')]];
-const FPS_OPTIONS_MOBILE = [['30', N_('30帧')], ['60', N_('60帧')], ['screen', N_('跟随屏幕')]];
 /**
  * 语音语言: each dub named in its own language, like the interface language switch (ui/lang.js) — the owner's
- * 「中文 / 日本語」 (2026-10-08); VOICE_LANGS order.
+ * 「中文 / 日本語 / English / 한국어」; VOICE_LANGS order. Each name is that language's own script.
+ * The 本土语言 switch beside them is a separate boolean (voiceNative), not a fifth global dub.
  */
-const VOICE_LANG_NAMES = { cn: '中文', jp: '日本語', en: 'English', kr: '한국어', custom: '自定义' }; // i18n-ignore
+const VOICE_LANG_NAMES = { cn: '中文', jp: '日本語', en: 'English', kr: '한국어' }; // i18n-ignore
+const VOICE_LANG_TAGS = { cn: 'zh', jp: 'ja', en: 'en', kr: 'ko' };
 /** The rebindable shortcuts' names (msgids), by action. */
-const HOTKEY_NAMES = { refresh: N_('刷新商店'), freeze: N_('冻结 / 解冻商店'), levelUp: N_('升级调度中心'), retreat: N_('撤退选中干员'),
-  sell: N_('出售选中干员'), ready: N_('准备就绪 / 暂停（独立模拟）') };
+const HOTKEY_NAMES = { buy: N_('购买鼠标指向的商品'), refresh: N_('刷新商店'), freeze: N_('冻结 / 解冻商店'), levelUp: N_('升级调度中心'), retreat: N_('撤退鼠标指向的干员'),
+  sell: N_('出售鼠标指向的干员'), ready: N_('准备就绪 / 暂停（独立模拟）') };
 
 /**
  * 快捷键: each shortcut with its key. Click its key (or Enter / Space on it) and press the new one: Esc cancels (the
@@ -233,7 +235,7 @@ function DiagSection() {
   const n = errorCount();
   const battle = currentBattle();
   const copy = async () => {
-    const text = diagnosticsText({ state: store.get(), settings: settingsStore.get(), attachBattle: attach && !!battle });
+    const text = diagnosticsText({ state: store.get(), settings: settingsStore.get(), attachBattle: attach && !!battle, personal: personalApplied() });
     const ok = await copyText(text);
     setManual(ok ? null : text);
     setNote(ok ? 'copied' : 'refused');
@@ -257,94 +259,72 @@ function DiagSection() {
 }
 
 /**
- * 配置导出与导入 (设置、干员调配、皮肤、潜能练度一键备份与恢复)
+ * 外观插件 (see the header): the server's cosmetic plugins of scope `personal`, each with its switch; nothing when there
+ * is none. The catalogue is fetched again when the section opens (a plugin dropped in meanwhile shows) — on a server that
+ * has plugins only (content.js installedCount: a server without any is never asked for it).
  */
-function ConfigIoSection() {
-  const [open, setOpen] = useState(false);
-  const [text, setText] = useState('');
-  const [note, setNote] = useState('');
-
-  const handleExport = () => {
-    const payload = {
-      v: 2,
-      kind: 'stronghold.all_config',
-      timestamp: Date.now(),
-      settings: settingsStore.get(),
-      loadout: loadoutStore.get().entries || {},
-      ops: loadoutStore.get().ops || {},
-      skins: skinsStore.get().entries || {},
-    };
-    const str = JSON.stringify(payload, null, 2);
-    setText(str);
-    setOpen(true);
-    setNote(t('已生成完整配置JSON，可点击复制或直接编辑'));
-  };
-
-  const handleCopy = async () => {
-    if (!text) return;
-    const ok = await copyText(text);
-    toast(ok ? t('已复制到剪贴板') : t('复制失败，请手动长按全选复制'), ok ? 'success' : 'warn');
-  };
-
-  const handleImport = () => {
-    if (!text || !text.trim()) {
-      toast(t('请先在文本框中粘贴配置数据'), 'warn');
-      return;
-    }
-    try {
-      const data = JSON.parse(text.trim());
-      if (typeof data !== 'object' || !data) throw new Error('无效的 JSON 格式');
-      let count = 0;
-      if (data.settings && typeof data.settings === 'object') {
-        updateSettings(data.settings);
-        count++;
-      }
-      if (data.loadout && typeof data.loadout === 'object') {
-        setEntries(data.loadout);
-        count++;
-      }
-      if (data.ops && typeof data.ops === 'object') {
-        setOpsMap(data.ops);
-        count++;
-      }
-      if (data.skins && typeof data.skins === 'object') {
-        setSkins(data.skins);
-        count++;
-      }
-      if (count > 0) {
-        toast(t('配置已成功导入并生效！'), 'success');
-        setOpen(false);
-      } else {
-        toast(t('未检测到可用的配置项'), 'warn');
-      }
-    } catch (e) {
-      toast(t('导入失败：JSON 解析错误，请检查内容是否完整'), 'error');
-    }
-  };
-
-  return html`<section class="set-diag" aria-labelledby="set-io-title">
+function CosmeticSection() {
+  const cat = useStore((s) => s, Object.is, catalog);
+  const ids = useStore((s) => s.ids, Object.is, personal);
+  const installed = useStore(installedCount);
+  useEffect(() => { if (installed) loadCatalog({ force: true }); }, [installed]);
+  const list = installed ? cosmeticPlugins(cat.plugins, 'personal') : [];
+  if (!list.length) return null;
+  const set = personalSet(ids, list.filter((p) => typeof p.vs === 'string'));
+  const applied = new Set(set.order);
+  const auto = new Set(set.auto);
+  const flip = (id, on) => { const r = setPersonalPlugin(id, on); if ('error' in r) toast(describeError(r.error), 'warn'); };
+  return html`<section class="set-plugins" aria-labelledby="set-plugins-title" data-testid="personal-plugins">
     <div class="set-keys__head">
-      <span class="set-row__label" id="set-io-title">${t('配置备份与恢复')}<${MicroLabel}>CONFIG BACKUP / RESTORE<//></span>
-      <div style="display:flex;gap:.08rem">
-        <${Button} variant="secondary" size="sm" icon="copy" onClick=${handleExport}>${t('导出配置')}<//>
-        <${Button} variant="ghost" size="sm" icon="edit" onClick=${() => { setText(''); setOpen(true); setNote(t('请粘贴之前导出的配置 JSON 文本后点击「确认导入」')); }}>${t('导入配置')}<//>
-      </div>
+      <span class="set-row__label" id="set-plugins-title">${t('外观插件')}<${MicroLabel}>COSMETIC PLUGINS<//></span>
     </div>
-    <p class="set-hint">${t('导出或导入客户端全量偏好：系统设置、干员调配技能与模组、装配皮肤、潜能练度。')}</p>
-    ${open ? html`
-      <div style="display:flex;flex-direction:column;gap:.08rem;margin-top:.04rem">
-        <textarea class="set-diag__text" style="height:2.2rem" spellcheck=${false}
-          placeholder=${t('在此粘贴配置 JSON 数据…')} value=${text} onInput=${(e) => setText(e.currentTarget.value)}></textarea>
-        <div style="display:flex;justify-content:space-between;align-items:center">
-          <span style="font-size:calc(.14 * var(--t));color:var(--mint-400)">${note}</span>
-          <div style="display:flex;gap:.08rem">
-            ${text ? html`<${Button} variant="secondary" size="sm" icon="copy" onClick=${handleCopy}>${t('复制')}<//>` : null}
-            <${Button} variant="primary" size="sm" icon="check" onClick=${handleImport}>${t('确认导入')}<//>
-            <${Button} variant="ghost" size="sm" onClick=${() => setOpen(false)}>${t('收起')}<//>
-          </div>
-        </div>
-      </div>
-    ` : null}
+    <p class="set-hint">${t('只改变你自己看到的画面和声音，不影响其他博士，也不影响战斗；插件为非官方制作。')}</p>
+    ${list.map((p) => {
+      // on: applied (chosen, or 「自动」: another one needs it) — or chosen but left out now (a conflict): switch it off
+      const skipped = set.skipped.includes(p.id);
+      const on = applied.has(p.id) || skipped;
+      const isAuto = auto.has(p.id);
+      return html`<div key=${p.id} class="set-row" data-plugin=${p.id}>
+        <span class="set-row__label">${pluginName(p)}${isAuto ? html` <span class="plugrow__badge">${t('自动')}</span>` : null}<${MicroLabel}>${pluginMicro(p)}<//>
+          ${skipped ? html`<span class="set-hint is-warn">${t('与其他已开启的插件冲突或缺少所需插件，没有生效')}</span>` : null}</span>
+        <button type="button" class=${`set-toggle${on ? ' is-on' : ''}`} role="switch" aria-checked=${on ? 'true' : 'false'} aria-label=${pluginName(p)}
+          disabled=${isAuto && !ids.includes(p.id)} onClick=${() => flip(p.id, !on)}><i></i><span>${on ? tc('toggle', '开启') : tc('toggle', '关闭')}</span></button>
+      </div>`;
+    })}
+  </section>`;
+}
+
+/**
+ * 界面插件 (DESIGN §32.8): each loaded ui plugin of scope `personal`, switched on in this browser only
+ * (`sp.pref.ui-plugins`). It cannot play the match and it does not change what anyone else sees.
+ */
+function UiPluginSection() {
+  const cat = useStore((s) => s, Object.is, catalog);
+  const ids = useStore((s) => s.ids, Object.is, uiPlugins);
+  const installed = useStore(installedCount);
+  useEffect(() => { if (installed) loadCatalog({ force: true }); }, [installed]);
+  const list = installed ? uiPluginEntries(cat.plugins) : [];
+  if (!installed || (cat.status !== 'ready' && !list.length && !ids.length)) return null;
+  if (!list.length && !ids.length) return null;
+  const onIds = new Set(ids);
+  const flip = (id, on) => {
+    const r = setUiPlugin(id, on);
+    if (!r.error) return;
+    toast(r.error === 'PLUGIN_LIMIT' ? t('最多同时开启 {n} 个界面插件', { n: UI_LIMITS.maxPlugins }) : describeError(r.error), 'warn');
+  };
+  return html`<section class="set-plugins" aria-labelledby="set-ui-plugins-title" data-testid="ui-plugins">
+    <div class="set-keys__head">
+      <span class="set-row__label" id="set-ui-plugins-title">${t('界面插件')}<${MicroLabel}>UI PLUGINS<//></span>
+    </div>
+    <p class="set-hint">${t('只改变这个浏览器里的界面，不能替你操作对局，也不影响其他博士；插件为非官方制作。')}</p>
+    ${!list.length ? html`<p class="set-hint">${t('本服务器没有可开启的界面插件')}</p>` : list.map((p) => {
+      const on = onIds.has(p.id);
+      return html`<div key=${p.id} class="set-row" data-plugin=${p.id}>
+        <span class="set-row__label">${pluginName(p)}<${MicroLabel}>${pluginMicro(p)}<//></span>
+        <button type="button" class=${`set-toggle${on ? ' is-on' : ''}`} role="switch" aria-checked=${on ? 'true' : 'false'} aria-label=${pluginName(p)}
+          onClick=${() => flip(p.id, !on)}><i></i><span>${on ? tc('toggle', '开启') : tc('toggle', '关闭')}</span></button>
+      </div>`;
+    })}
   </section>`;
 }
 
@@ -354,84 +334,20 @@ function ConfigIoSection() {
  */
 export function SettingsModal({ open, onClose }) {
   const s = useSettings();
-  const [danmakuOn, setDanmakuOn] = useState(() => getRoomDanmaku().enabled);
   const [tested, setTested] = useState(false);
   const [touchUi] = useState(() => detectFeatures().coarse && !detectFeatures().fine);
-  const [modModalOpen, setModModalOpen] = useState(false);
-  const [checkingUpdate, setCheckingUpdate] = useState(false);
-  const [updateInfo, setUpdateInfo] = useState(null);
-  const [updating, setUpdating] = useState(false);
-  const [updateStatus, setUpdateStatus] = useState('');
-
-  useEffect(() => {
-    globalThis.__onHotUpdateProgress = (pct, msg) => {
-      setUpdateStatus(msg || `${pct}%`);
-    };
-    globalThis.__onHotUpdateResult = (ok, msg) => {
-      setUpdating(false);
-      if (ok) {
-        toast(t('热更新成功，正在重新载入…'), 'info');
-      } else {
-        toast(msg || t('热更新失败'), 'warn');
-      }
-    };
-    return () => {
-      delete globalThis.__onHotUpdateProgress;
-      delete globalThis.__onHotUpdateResult;
-    };
-  }, []);
-
-  const handleCheckUpdate = async () => {
-    setCheckingUpdate(true);
-    try {
-      const isSolo = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
-      const apiBase = isSolo ? 'http://101.37.150.107:3000' : '';
-      const res = await fetch(`${apiBase}/api/app/version`, { cache: 'no-cache', signal: AbortSignal.timeout(6000) });
-      if (!res.ok) throw new Error('Network error');
-      const data = await res.json();
-      const currentBuild = globalThis.__SP_BUILD__ || null;
-      const isOutdated = currentBuild && data.build && currentBuild !== data.build;
-      if (isOutdated) {
-        let patchUrl = data.hotUpdate?.patchUrl || '/api/app/patch.zip';
-        if (!patchUrl.startsWith('http://') && !patchUrl.startsWith('https://')) {
-          patchUrl = `${apiBase}${patchUrl}`;
-        }
-        setUpdateInfo({
-          hasUpdate: true,
-          version: data.app || '0.2.6',
-          build: data.build,
-          patchUrl,
-          changelog: data.hotUpdate?.changelog || '检测到新版本补丁',
-        });
-      } else {
-        toast(t('当前游戏已是最新版本 (v{v})', { v: data.app || '0.2.6' }), 'info');
-      }
-    } catch {
-      toast(t('检测更新失败，请检查网络或官方服务器连接'), 'warn');
-    } finally {
-      setCheckingUpdate(false);
-    }
-  };
-
-  const handleApplyUpdate = () => {
-    if (globalThis.AndroidNative?.downloadAndApplyPatch && updateInfo?.patchUrl) {
-      setUpdating(true);
-      setUpdateStatus(t('正在连接补丁服务器…'));
-      const patchUrl = updateInfo.patchUrl;
-      globalThis.AndroidNative.downloadAndApplyPatch(patchUrl, updateInfo.build || 'patch-update');
-      return;
-    }
-    toast(t('正在进行热更新重载…'), 'info');
-    setTimeout(() => {
-      if (globalThis.AndroidNative?.reloadClient) {
-        globalThis.AndroidNative.reloadClient();
-      } else {
-        location.reload(true);
-      }
-    }, 400);
-  };
-
   const mtNote = machineTranslationNote(); // a pack marked as machine translation says so under the switch
+  const [fxOk, setFxOk] = useState(false);  // effects extracted from the local client: the 官方特效 row shows
+  // only while it is open (the title page keeps the modal mounted, closed), and from the effects' own file list: the
+  // asset store (assets.js) is not loaded before a match (test/ui/plugins.e2e.test.js). A Phase 1a extraction (0.3.0
+  // development builds only) listed its effects in data/local-assets.json instead and shows no row: re-extract.
+  useEffect(() => {
+    if (!open) return undefined;
+    let live = true;
+    fxAvailable(null).then((ok) => { if (live) setFxOk(!!ok); }, () => {});
+    return () => { live = false; };
+  }, [open]);
+  const fxTier = resolveOfficialFx(s.officialFx, true);
   return html`<${Modal} open=${open} onClose=${onClose} title=${t('设置')} micro="SETTINGS" width="7.4rem"
                         actions=${html`<${Button} variant="secondary" icon="book" class="set-guide" onClick=${() => openGuide(0)}>${t('玩法说明')}<//>
                         <${Button} variant="primary" icon="check" onClick=${onClose}>${t('完成')}<//>`}>
@@ -445,29 +361,27 @@ export function SettingsModal({ open, onClose }) {
       <${Slider} label=${t('干员语音')} micro="VOICE" icon="mic" value=${s.voice} onInput=${(v) => updateSettings({ voice: v })} />
       <div class="set-row">
         <span class="set-row__label">${t('语音语言')}<${MicroLabel}>VOICE LANGUAGE<//></span>
-        <div class="set-seg" role="radiogroup" aria-label=${t('语音语言')} data-testid="voice-lang">
-          ${['jp', 'cn', 'en', 'kr', 'custom'].map((id) => html`<button key=${id} type="button" role="radio" aria-checked=${s.voiceLang === id ? 'true' : 'false'}
-            lang=${id === 'jp' ? 'ja' : id === 'kr' ? 'ko' : id === 'en' ? 'en' : 'zh'} class=${s.voiceLang === id ? 'is-on' : ''} onClick=${() => updateSettings({ voiceLang: id })}>${VOICE_LANG_NAMES[id] || id}</button>`)}
+        <div class="set-voice">
+          <div class="set-seg" role="radiogroup" aria-label=${t('语音语言')} data-testid="voice-lang">
+            ${VOICE_LANGS.map((id) => html`<button key=${id} type="button" role="radio" aria-checked=${s.voiceLang === id ? 'true' : 'false'}
+              lang=${VOICE_LANG_TAGS[id]} class=${s.voiceLang === id ? 'is-on' : ''} onClick=${() => updateSettings({ voiceLang: id })}>${VOICE_LANG_NAMES[id]}</button>`)}
+          </div>
+          <button type="button" class=${s.voiceNative ? 'set-native is-on' : 'set-native'} data-testid="voice-native" aria-pressed=${s.voiceNative ? 'true' : 'false'}
+            title=${t('有本土语言配音时使用')} onClick=${() => updateSettings({ voiceNative: !s.voiceNative })}>${tc('voice-lang', '本土语言')}</button>
         </div>
       </div>
-      ${s.voiceLang === 'custom' ? html`<p class="set-hint">${t('自定义：播放干员整备界面的个性化语音配置，未单独设置的默认日语。')}</p>` : null}
       <${Slider} label=${t('音效')} micro="SFX" icon="signal" value=${s.sfx}
                  onInput=${(v) => { updateSettings({ sfx: v }); if (!tested) { setTested(true); setTimeout(() => setTested(false), 400); audio.sfx('click'); } }} />
       <${Toggle} label=${t('静音')} micro="MUTE" value=${s.muted} onChange=${(v) => updateSettings({ muted: v })} />
       <${Toggle} label=${t('显示伤害数字')} micro="DAMAGE NUMBERS" value=${s.damageNumbers} onChange=${(v) => updateSettings({ damageNumbers: v })} />
-      <${Toggle} label=${t('局内弹幕')} micro="DANMAKU" value=${danmakuOn} onChange=${(v) => { getRoomDanmaku().setEnabled(v); setDanmakuOn(v); }} />
       <${Toggle} label=${t('官方伤害数字')} micro="OFFICIAL NUMBERS" value=${s.officialDamageNumbers} onChange=${(v) => updateSettings({ officialDamageNumbers: v })} />
       <p class="set-hint">${t('只显示达到官方暴击条件的红色数字。关闭时仍显示每一次命中。')}</p>
       <${Toggle} label=${t('弹药数量')} micro="AMMO COUNT" value=${s.ammoCount} onChange=${(v) => updateSettings({ ammoCount: v })} />
       <p class="set-hint">${t('弹药类技能开启时，在弹药条下方显示剩余弹药 / 总弹药数（如 13/14）。官方界面没有这个数字。')}</p>
-      <div class="set-row">
-        <span class="set-row__label">${t('画面帧率')}<${MicroLabel}>FRAME RATE<//></span>
-        <div class="set-seg" role="radiogroup">
-          ${(isTouchClient && s.targetFps !== '120' ? FPS_OPTIONS_MOBILE : FPS_OPTIONS_DESKTOP).map(([id, label]) => html`<button key=${id} type="button" role="radio" aria-checked=${(s.targetFps || '60') === id ? 'true' : 'false'}
-            class=${(s.targetFps || '60') === id ? 'is-on' : ''} onClick=${() => updateSettings({ targetFps: id })}>${t(label)}</button>`)}
-        </div>
-      </div>
-      <p class="set-hint">${t('默认推荐 60 帧，与官方一致，兼顾流畅度并大幅减轻手机发热耗电。高刷屏或低配设备可按需调节。')}</p>
+      <${Toggle} label=${t('秘术师能量')} micro="STORED ENERGY" value=${s.mysticEnergy} onChange=${(v) => updateSettings({ mysticEnergy: v })} />
+      <p class="set-hint">${t('在秘术师的血条下方显示储存的攻击能量 / 上限（如 2/3）。官方用干员身上的特效表示，没有这个数字。')}</p>
+      <${Toggle} label=${t('作战统计')} micro="COMBAT STATS" value=${s.combatMetrics} onChange=${(v) => updateSettings({ combatMetrics: v })} />
+      <p class="set-hint">${t('打开后，对局左下角可以查看自己干员的伤害、治疗和 DPS / HPS。官方界面没有这个窗口。改变玩法的插件对局在 Worker 里演算，统计不到，按钮不显示。')}</p>
       <div class="set-row">
         <span class="set-row__label">${t('画面质量')}<${MicroLabel}>QUALITY<//></span>
         <div class="set-seg" role="radiogroup">
@@ -475,37 +389,14 @@ export function SettingsModal({ open, onClose }) {
             class=${s.quality === id ? 'is-on' : ''} onClick=${() => updateSettings({ quality: id })}>${t(label)}</button>`)}
         </div>
       </div>
-      <div class="set-row">
-        <span class="set-row__label">${t('战场场景模式')}<${MicroLabel}>BOARD SCENE<//></span>
-        <div class="set-seg" role="radiogroup">
-          ${[['3d_pro', N_('3D 官方高模')], ['3d_std', N_('3D 标准立体')], ['2d', N_('2D 极速平面')]].map(([id, label]) => {
-            const current = (s.board === '3d' || !s.board) ? '3d_pro' : s.board;
-            return html`<button key=${id} type="button" role="radio" aria-checked=${current === id ? 'true' : 'false'}
-              class=${current === id ? 'is-on' : ''} onClick=${() => updateSettings({ board: id })}>${t(label)}</button>`;
-          })}
+      ${fxOk ? html`<div class="set-row" data-testid="official-fx">
+        <span class="set-row__label">${t('官方特效')}<${MicroLabel}>OFFICIAL FX<//></span>
+        <div class="set-seg" role="radiogroup" aria-label=${t('官方特效')}>
+          ${OFFICIAL_FX.map(([id, label]) => html`<button key=${id} type="button" role="radio" aria-checked=${fxTier === id ? 'true' : 'false'}
+            class=${fxTier === id ? 'is-on' : ''} onClick=${() => updateSettings({ officialFx: id })}>${t(label)}</button>`)}
         </div>
       </div>
-      <p class="set-hint">${t('【3D 官方高模】载入官方 1:1 提取的 3D 战场、光照烘焙与建筑模型；【3D 标准立体】使用轻量程序化 3D 棋盘；【2D 极速平面】纯二维渲染，极速省电。')}</p>
-      <${Toggle} label=${t('抗锯齿')} micro="ANTIALIAS" value=${s.antialias ?? true} onChange=${(v) => updateSettings({ antialias: v })} />
-      <p class="set-hint">${t('抗锯齿使画面边缘更平滑。手机端默认关闭以降低发热与功耗，可按需开启。')}</p>
-      <${Toggle} label=${t('低配优化')} micro="PERF LITE" value=${s.perfLite ?? false} onChange=${(v) => updateSettings({ perfLite: v })} />
-      <p class="set-hint">${t('关闭所有冗余动画与平滑过渡，显著提升运行帧率并降低手机端发热功耗。')}</p>
-      <${Toggle} label=${t('装备拆卸')} micro="UNEQUIP" value=${s.unequip ?? false} onChange=${(v) => updateSettings({ unequip: v })} />
-      <p class="set-hint">${t('允许休整期在干员详情面板中随时卸下已配发的装备退回整备区。')}</p>
-      <label class="set-row">
-        <span class="set-row__label"><${Icon} name="sun" />${t('地图亮度')}<${MicroLabel}>MAP BRIGHTNESS<//></span>
-        <input class="set-range" type="range" min="50" max="200" step="5" value=${Math.round((s.mapBrightness ?? 1.1) * 100)}
-          style=${`--pct:${Math.max(0, Math.min(100, (((s.mapBrightness ?? 1.1) * 100 - 50) / 150) * 100))}%`}
-          onInput=${(e) => updateSettings({ mapBrightness: Number(e.currentTarget.value) / 100 })} />
-        <span class="set-row__val num">${Math.round((s.mapBrightness ?? 1.1) * 100)}%</span>
-      </label>
-      <label class="set-row set-slider">
-        <span class="set-row__label"><${GIcon} name="sparkle" />${t('冷热度调整')}<${MicroLabel}>COLOR TEMPERATURE<//></span>
-        <input class="set-range" type="range" min="60" max="140" step="5" value=${Math.round((s.colorWarmth ?? 1.0) * 100)}
-          style=${`--pct:${Math.max(0, Math.min(100, (((s.colorWarmth ?? 1.0) * 100 - 60) / 80) * 100))}%`}
-          onInput=${(e) => updateSettings({ colorWarmth: Number(e.currentTarget.value) / 100 })} />
-        <span class="set-row__val num">${(s.colorWarmth ?? 1.0) < 0.98 ? t('冷调 {n}%', { n: Math.round((1 - (s.colorWarmth ?? 1.0)) * 250) }) : (s.colorWarmth ?? 1.0) > 1.02 ? t('暖调 +{n}%', { n: Math.round(((s.colorWarmth ?? 1.0) - 1) * 250) }) : t('标准')}</span>
-      </label>
+      <p class="set-hint">${t('使用服主从自己的游戏客户端提取的官方战斗特效（普攻、弹道、命中、状态、阵亡、部署，干员、召唤物和敌人的技能与天赋，以及秘术师储存的能量），连到这台服务器的玩家看到的都是服主提取的这一份；提取里没有的或对战中没有时机的（如只在游戏内部条件下触发的天赋效果）仍为本作的特效。精简：半分辨率贴图、粒子减半，适合手机。只在 3D 棋盘上显示。')}</p>` : null}
       <div class="set-row">
         <span class="set-row__label">${t('文字大小')}<${MicroLabel}>TEXT SIZE<//></span>
         <div class="set-seg set-textsize" role="radiogroup" aria-label=${t('文字大小')} data-testid="text-size">
@@ -514,56 +405,12 @@ export function SettingsModal({ open, onClose }) {
         </div>
       </div>
       <p class="set-hint set-textsize-note">${t('调整界面文字大小，棋盘保持原比例。')}</p>
-      <${ScreenFitSection} />
-      <div class="set-row">
-        <span class="set-row__label">${t('服务器配置')}<${MicroLabel}>SERVER / NETWORK<//></span>
-        <button type="button" class="btn btn--secondary btn--sm" onClick=${() => {
-          if (globalThis.AndroidNative?.openServerSettings) {
-            globalThis.AndroidNative.openServerSettings();
-          } else {
-            const url = window.prompt(t('请输入服务器地址（如 ws://192.168.1.x:9876）：'), localStorage.getItem('sp.serverUrl') || location.origin);
-            if (url) {
-              localStorage.setItem('sp.serverUrl', url);
-              location.reload();
-            }
-          }
-        }}><${GIcon} name="gear" /><span>${t('切换服务器与联机方式')}</span></button>
-      </div>
-      <div class="set-row">
-        <span class="set-row__label">${t('模组管理')}<${MicroLabel}>MOD MANAGEMENT<//></span>
-        <button type="button" class="btn btn--secondary btn--sm" onClick=${() => setModModalOpen(true)}>
-          <${GIcon} name="sparkle" /><span>${t('模组仓库')}</span>
-        </button>
-      </div>
-      <div class="set-row">
-        <span class="set-row__label">${t('版本与热更新')}<${MicroLabel}>HOT UPDATE<//></span>
-        <button type="button" class="btn btn--secondary btn--sm" onClick=${handleCheckUpdate} disabled=${checkingUpdate}>
-          <${GIcon} name="refresh" /><span>${checkingUpdate ? t('正在检测…') : t('检查游戏更新')}</span>
-        </button>
-      </div>
-      <p class="set-hint">
-        ${t('游戏版本: v{ver}', { ver: globalThis.__SP_VERSION__ || '0.2.6' })}
-        ${globalThis.AndroidNative?.getAppVersion ? ` · ${t('安卓终端: v{v}', { v: globalThis.AndroidNative.getAppVersion() })}` : ''}
-        ${globalThis.__SP_BUILD__ ? ` (Build: ${globalThis.__SP_BUILD__.slice(0, 8)})` : ''}
-      </p>
-      ${updateInfo?.hasUpdate ? html`
-        <div class="card" style="padding:.12rem .16rem;margin-top:.04rem;background:rgba(20,50,40,0.45);border:1px solid var(--mint-400);border-radius:4px">
-          <div style="display:flex;justify-content:space-between;align-items:center">
-            <div>
-              <div style="font-weight:bold;color:var(--mint-400)">🚀 ${t('发现游戏新版本 (v{v})', { v: updateInfo.version })}</div>
-              <div style="font-size:calc(.13 * var(--t));color:var(--text-lo);margin-top:.04rem">${updating ? (updateStatus || t('正在下载并覆盖补丁…')) : updateInfo.changelog}</div>
-            </div>
-            <${Button} variant="primary" size="sm" icon="check" disabled=${updating} onClick=${handleApplyUpdate}>${updating ? t('更新中…') : t('立即热更')}<//>
-          </div>
-        </div>
-      ` : null}
       <${HotkeySection} keys=${s.keys} touchUi=${touchUi} />
-      <${ConfigIoSection} />
+      <${CosmeticSection} />
+      <${UiPluginSection} />
       <${DiagSection} />
-      <${HubSectionsRow} />
       <p class="set-hint">${touchUi ? t('触屏操作：点击单位选中（撤退 / 出售）· 长按单位或卡牌查看详情 · 拖动部署后滑动选择朝向') : t('右键查看详情')}</p>
     </div>
-    <${ModManagerModal} open=${modModalOpen} onClose=${() => setModModalOpen(false)} />
   <//>`;
 }
 

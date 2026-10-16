@@ -2,7 +2,7 @@
 
 Stronghold Protocol's own code is licensed under **GPL-3.0-or-later** (see [LICENSE](LICENSE) and [NOTICE.md](NOTICE.md)).
 The components below are **not** part of that grant: each stays under its own licence, reproduced at the end of this
-file. Nothing here is committed to the repository except `tools/local-extract/aklz4.py`; the client libraries are
+file. The only third-party source committed here is `tools/local-extract/aklz4.py` and the transpiled Pixi no-eval adapter `public/js/render/app/pixiNoEval.js`; the client libraries are
 installed by npm and copied into `public/vendor/` by `tools/vendor.mjs` (postinstall), and the release bundle carries
 them (with `node_modules/`, which keeps each package's own licence file).
 
@@ -17,9 +17,10 @@ them (with `node_modules/`, which keeps each package's own licence file).
 | [Preact](https://github.com/preactjs/preact) | 10.29.8 | MIT | UI — `public/vendor/preact.module.js`, `hooks.module.js` | no (npm) | yes |
 | [htm](https://github.com/developit/htm) | 3.1.1 | Apache-2.0 | UI templates — `public/vendor/htm.module.js` | no (npm) | yes |
 | [three.js](https://github.com/mrdoob/three.js) | 0.186.1 | MIT | official 3D board — `public/vendor/three.core.js`, `three.module.js` | no (npm) | yes |
+| [SES](https://github.com/endojs/endo/tree/master/packages/ses) | 2.3.0 | Apache-2.0 (full text below, shared with htm) | script plugin compartments in isolated Workers/children — `public/vendor/ses.umd.js`; dependencies @endo/cache-map 1.1.0, @endo/env-options 1.1.11, @endo/immutable-arraybuffer 2.0.0, also Apache-2.0 | no (npm) | yes |
+| [Acorn](https://github.com/acornjs/acorn) | 8.18.0 | MIT | parsed sandbox module adapter — `public/vendor/acorn.mjs`, server | no (npm) | yes |
+| [@pixi/unsafe-eval](https://github.com/pixijs/pixijs/tree/v7.4.2/packages/unsafe-eval/src) | 7.4.2 | MIT (PixiJS notice below) | CSP-compatible shader uniform uploads; upstream syncUniforms transpiled, install adapted to lazy global PIXI | **yes**, `public/js/render/app/pixiNoEval.js` | yes |
 | [ws](https://github.com/websockets/ws) | 8.22.0 | MIT | WebSocket server (`server/`) | no (npm) | yes (`node_modules/`) |
-| [Node.js](https://nodejs.org/) (`libnode.so`) | 18.20.4 | MIT (Node core) & multi-license dependencies | Android in-process game server runtime — `android/app/src/main/jniLibs/{arm64-v8a,x86_64}/libnode.so` | **yes** | yes (APK `lib/`) |
-| [LLVM libc++](https://libcxx.llvm.org/) (`libc++_shared.so`) | NDK r25b (LLVM 14) | Apache-2.0 with LLVM Exception | Android C++ runtime support for Node.js — `android/app/src/main/jniLibs/{arm64-v8a,x86_64}/libc++_shared.so` | **yes** | yes (APK `lib/`) |
 | [Node.js](https://nodejs.org/) | v22.23.3 (pinned in `scripts/make-windows-bundle.mjs`) | MIT | the portable `node\node.exe` (**Windows portable package only** — the integration bundle in [Releases](../../releases/latest) ships no `node.exe`) | no (downloaded from nodejs.org at package time, sha256 verified) | **Windows portable package only** (`node\node.exe`, with `node\LICENSE-node.txt`) |
 | [puppeteer-core](https://github.com/puppeteer/puppeteer) | 25.12.0 | Apache-2.0 | optional browser tests (dev dependency) | no (npm) | no |
 | [Ark-Unpacker](https://github.com/isHarryh/Ark-Unpacker) LZ4AK decoder | — | BSD-3-Clause | `tools/local-extract/aklz4.py` (optional local extraction) | **yes** — keeps its notice; full text also in `tools/local-extract/LICENSE-Ark-Unpacker.txt` | yes |
@@ -50,8 +51,21 @@ All names, characters, artwork, Spine models, UI graphics, music, sound effects 
 [fexli/ArknightsResource](https://github.com/fexli/ArknightsResource),
 [isHarryh/Ark-Models](https://github.com/isHarryh/Ark-Models),
 [ArknightsAssets/ArknightsAssets2](https://github.com/ArknightsAssets/ArknightsAssets2) — thanks to their maintainers.
+The English game texts (`data/i18n/en.json`, `tools/build-i18n.mjs`) come from the official EN client tables mirrored by
+[ArknightsAssets/ArknightsGamedata](https://github.com/ArknightsAssets/ArknightsGamedata) (`en/gamedata`, the default
+source) and [Kengxxiao/ArknightsGameData_YoStar](https://github.com/Kengxxiao/ArknightsGameData_YoStar) (`en_US`,
+`--source yostar`); same terms as the rest of the game data.
 Quotations of PRTS Wiki, BWIKI, NGA, 巴哈姆特 and other community pages in `docs/` stay under the terms of their
 sources (the wikis' texts are CC BY-NC-SA).
+
+## Translations
+
+The English UI strings (`public/i18n/en.json`) and the fallback game-text translations (`tools/i18n/fallback-pr70.json`)
+are based on GitHub PR #70 (branch `en-translation`) by **@YuriRestia**, reused with credit and released with the project
+under GPL-3.0-or-later (docs/I18N.md). PR #70 named ak-spa-database.pages.dev and arknights.wiki.gg as references: texts
+it took from ak-spa-database.pages.dev (no licence) are excluded; arknights.wiki.gg is CC BY-SA 4.0, which may be combined
+into a GPL-3.0 work (the one-way compatibility Creative Commons declared) — thanks to its contributors. Official game
+terms and names in those files remain © Hypergryph / Yostar.
 
 ---
 
@@ -490,18 +504,19 @@ SOFTWARE.
    limitations under the License.
 ```
 
-### Node.js (libnode.so) — MIT & Dependencies
+
+### Acorn — MIT
 
 ```text
-Node.js is licensed for use as follows:
+MIT License
 
-Copyright Node.js contributors. All rights reserved.
+Copyright (C) 2012-2022 by various contributors (see AUTHORS)
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to
-deal in the Software without restriction, including without limitation the
-rights to use, copy, modify, merge, publish, distribute, sublicense, and/or
-sell copies of the Software, and to permit persons to whom the Software is
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
 furnished to do so, subject to the following conditions:
 
 The above copyright notice and this permission notice shall be included in
@@ -511,46 +526,13 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
 AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
-FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
-IN THE SOFTWARE.
-
-Node.js includes third-party software components licensed under different terms:
-- V8 (Google Inc.): BSD-3-Clause
-- libuv (Joyent, Inc. and Node.js contributors): MIT
-- OpenSSL (OpenSSL Project): Apache-2.0
-- zlib (Jean-loup Gailly and Mark Adler): zlib License
-- c-ares: MIT
-- nghttp2: MIT
-Full dependency license notices: https://github.com/nodejs/node/blob/v18.20.4/LICENSE
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
 ```
 
-### LLVM libc++ (libc++_shared.so) — Apache-2.0 with LLVM Exception
+### SES / Endo — Apache-2.0
 
-```text
-==============================================================================
-The LLVM Project is under the Apache License v2.0 with LLVM Exceptions:
-==============================================================================
-
-                                 Apache License
-                           Version 2.0, January 2004
-                        http://www.apache.org/licenses/
-
-    Licensed under the Apache License, Version 2.0 (the "License");
-    you may not use this file except in compliance with the License.
-    You may obtain a copy of the License at
-
-        http://www.apache.org/licenses/LICENSE-2.0
-
-    Unless required by applicable law or agreed to in writing, software
-    distributed under the License is distributed on an "AS IS" BASIS,
-    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-    See the License for the specific language governing permissions and
-    limitations under the License.
-
---- LLVM Exceptions to the Apache 2.0 License ---
-
-As an exception, if you use this Software to compile your code and bear
-to runtime the standard library, you do not need to provide an attribution
-notice in your binaries or documentation.
-```
+The Apache-2.0 licence text reproduced above applies to SES and its listed Endo dependencies as well.
+Their package licence files remain in the release bundle. Copyright and source notices are also retained
+in the vendored SES bundle.

@@ -44,7 +44,8 @@ import { kjeragColdWind } from '../devices.js';
 import * as items from '../items.js';
 import { FORCED_EXIT } from '../../constants.js';
 import { msg } from '../../../../shared/i18n.js';
-import { isInfiniteMode } from '../../../../shared/infiniteMode.js';
+import { bbCap } from '../../../../shared/plugins/officialBounds.js';
+import { textFinite } from '../../../../shared/plugins/textNumber.js';
 
 const num = S.num;
 
@@ -82,11 +83,11 @@ export function reached(battle, pid, bondId, cnt) {
   return idx >= 0 && S.bondTier(battle, pid, bondId) >= idx + 1;
 }
 
-/** "总和的30%" → 0.3 (炎佑 stat share, text only). */
+/** "总和的30%" → 0.3 (炎佑 stat share, text only). A percent, not a count: finite, not forced to 64. */
 export function yanyouShare() {
   const text = String(S.bondRecord('yanShip')?.effectDesc ?? S.bondRecord('yanShip')?.desc ?? '');
-  const m = /总和的\s*(\d+(?:\.\d+)?)\s*%/.exec(text);
-  const v = m ? +m[1] / 100 : NaN;
+  const raw = textFinite(text, /总和的\s*(\d+(?:\.\d+)?)\s*%/, NaN);
+  const v = Number(raw) / 100;
   return v > 0 && v <= 10 ? v : 0.3;
 }
 
@@ -313,7 +314,6 @@ function installKjerag(battle, pid, bb, members) {
 
 function installLaterano(battle, pid, bb, members) {
   const memberSet = new Set(members);
-  const isInf = isInfiniteMode(battle.opts?.mode) || isInfiniteMode(battle.opts?.roomMode);
   battle.on('skillStart', ({ unit, skill }) => {
     if (!memberSet.has(unit) || !skill || skill.kind !== 'ammo' || !(skill.ammoLeft > 0)) return;
     const mul = 1 + num(bb.base_ammo_percent, 0) + num(bb.ammo_percent_per_stack, 0) * S.bondLayers(battle, pid, 'lateranoShip');
@@ -321,34 +321,14 @@ function installLaterano(battle, pid, bb, members) {
     if (Number.isFinite(n) && n > skill.ammoLeft) skill.ammoLeft = n;
   }, { priority: -10 });
   if (!reached(battle, pid, 'lateranoShip', bb.power_bond_char_cnt)) return;
-  const per = num(bb.atk_per_consume, 0);
-  const cap = isInf ? 7.0 : num(bb.max_atk_for_consume, Infinity); // 超限模式上限调整至 +700% (7.0)
+  const per = num(bb.atk_per_consume, 0), cap = num(bb.max_atk_for_consume, Infinity);
   if (!(per > 0)) return;
-  const st = { used: 0, bonus: 0, totalUsed: 0 };
+  const st = { used: 0, bonus: 0 };
   battle.on('ammoUsed', ({ unit }) => {
-    if (!memberSet.has(unit)) return;
+    if (!memberSet.has(unit) || st.bonus >= cap) return;
     st.used++;
-    st.totalUsed++;
-    if (st.bonus < cap) {
-      st.bonus = Math.min(cap, st.used * per);
-      for (const m of members) S.passiveBuff(battle, m, 'bond:laterano:ammo', S.directMods({ atk: st.bonus }));
-    }
-    // 超限模式：每累计消耗 100 发弹药，触发一次全场「圣堂殉爆」（全队拉特兰干员攻击力总和 × 20% 真实伤害）
-    if (isInf && st.totalUsed > 0 && st.totalUsed % 100 === 0) {
-      let sumAtk = 0;
-      for (const m of members) {
-        if (m.alive && S.onField(m)) sumAtk += num(m.s?.atk, 0);
-      }
-      const burstDmg = Math.max(0, sumAtk * 0.20);
-      if (burstDmg > 0) {
-        for (const foe of battle.enemyUnits) {
-          if (foe.alive && S.onField(foe)) {
-            battle.dealDamage(unit, foe, { amount: burstDmg, type: 'true', canDodge: false, tags: ['bond:laterano:burst'] });
-          }
-        }
-        S.fxOn(battle, 'aoe', unit, 'bond:lateranoShip', 'sanctuary_burst', { dmg: burstDmg });
-      }
-    }
+    st.bonus = Math.min(cap, st.used * per);
+    for (const m of members) S.passiveBuff(battle, m, 'bond:laterano:ammo', S.directMods({ atk: st.bonus }));
   });
 }
 
@@ -530,23 +510,12 @@ function installEgir(battle, pid, bb, members) {
   // knock-out in the fight the slot is always the one used. Until 0.1.3 the slots were fixed at battle start for the
   // first 3 members by position (§23.20); until 0.1.2 the first 3 knocked out took them but a revived member's pending
   // marks could knock it out again (GitHub #33, fixed in devour since).
-  const isInf = isInfiniteMode(battle.opts?.mode) || isInfiniteMode(battle.opts?.roomMode);
-  const max = reached(battle, pid, 'egirShip', bb.power_bond_char_cnt) ? (isInf ? 99 : Math.max(0, Math.floor(num(bb.max_free_respawn_cnt, 0)))) : 0;
+  const max = reached(battle, pid, 'egirShip', bb.power_bond_char_cnt) ? Math.max(0, Math.floor(num(bb.max_free_respawn_cnt, 0))) : 0;
   const start = egirStart(battle);
   start.passes++;
   battle.on('battleStart', () => {
     start.depth++;
     try {
-      if (isInf) {
-        // 超限模式：战斗开始时，所有【阿戈尔】干员获得当前【阿戈尔】层数 50% 的攻击力
-        const L = S.bondLayers(battle, pid, 'egirShip');
-        const atkBonus = L * 0.5;
-        if (atkBonus > 0) {
-          for (const m of members) {
-            S.passiveBuff(battle, m, 'bond:egir:start_atk', S.directMods({ atk: atkBonus }));
-          }
-        }
-      }
       devour(battle, pid, bb, members);
     } finally {
       start.depth--;
@@ -561,10 +530,6 @@ function installEgir(battle, pid, bb, members) {
   const revive = (u) => {
     if (!battle.redeploy(u, { free: true })) return;
     revives++;
-    if (isInf) {
-      // 超限模式：【阿戈尔】干员首次被击倒时立刻复活并获得 50 攻速加成
-      battle.addBuff(u, { key: 'bond:egir:revive_aspd', duration: Infinity, mods: { aspd: 50 }, visible: true });
-    }
     S.fxOn(battle, 'revive', u, 'bond:egirShip', 'respawn', { n: revives });
   };
   start.flush.push(() => {
@@ -625,9 +590,7 @@ function installSiracusa(battle, pid, bb, members) {
     battle.addBuff(unit, { key: 'bond:siracusa:stealth', duration: dur, flags: { stealth: true }, status: 'stealth', onExpire: off, onRemove: off });
   });
   if (!six) return;
-  const isInf = isInfiniteMode(battle.opts?.mode) || isInfiniteMode(battle.opts?.roomMode);
-  const prob = isInf ? 0.08 : num(bb.prob, 0); // 超限模式触发概率提升至 8%
-  const c = prdConstant(prob);
+  const c = prdConstant(num(bb.prob, 0));
   if (!(c > 0)) return;
   const st = { n: 0 };
   const onDmg = (ctx) => {
@@ -638,25 +601,10 @@ function installSiracusa(battle, pid, bb, members) {
     st.n++;
     if (!(battle.rng() < Math.min(1, c * st.n))) return;
     st.n = 0;
-    let amount = num(bb.base_damage, 0) + num(bb.damage_per_stack, 0) * S.bondLayers(battle, pid, 'siracusaShip');
-    if (isInf) {
-      // 超限模式：基础真伤 + 目标最大生命值 0.5%（非精英/小怪不限，精英/Boss单次上限 250 万）
-      const hpRatioDmg = Math.min(2500000, num(t.s?.maxHp, 0) * 0.005);
-      amount += hpRatioDmg;
-    }
+    const amount = num(bb.base_damage, 0) + num(bb.damage_per_stack, 0) * S.bondLayers(battle, pid, 'siracusaShip');
     S.fxOn(battle, 'bondProc', t, 'bond:siracusaShip', 'assassin', { from: u.id, amount });
     if (amount > 0) battle.dealDamage(u, t, { amount, type: 'true', canDodge: false, tags: ['bond:siracusa'] });
-    if (t.alive) {
-      if (num(bb.fear, 0) > 0) {
-        const fearResisted = t.findBuff && (t.findBuff('cc_immune') || t.findBuff('fear_immune'));
-        if (fearResisted || (isInf && battle.infinite?.ccResist > 0)) {
-          // 若目标免疫恐惧或超限抗性抵抗，施加【血迹清算】：受到来自叙拉古干员的下一次攻击必定触发真伤并受脆弱加深
-          battle.addBuff(t, { key: 'bond:siracusa:blood_reckoning', duration: 5, flags: { blood_reckoning: true }, visible: true });
-        } else {
-          battle.applyStatus(t, 'fear', { duration: num(bb.fear, 0), source: u });
-        }
-      }
-    }
+    if (t.alive && num(bb.fear, 0) > 0) battle.applyStatus(t, 'fear', { duration: num(bb.fear, 0), source: u });
   };
   for (const u of members) onUnitDamaged(battle, u, onDmg);
 }
@@ -740,8 +688,10 @@ export function install(battle) {
 /**
  * 维多利亚 hammer milestones: every `layer` layers pay `count` item(s) of `pool` once (counter = milestones paid).
  * A bond effect, so it pays only while 维多利亚 is active (official tip "叠加的盟约…只有在盟约被激活时才会发挥作用");
- * milestones crossed while it was inactive ("无需激活" sources such as 烛煌) are paid the next time a hook sees it active
- * (research 02 §3.3 / §8 Q7: the payout counts layers added while inactive) — same rule as 远见 / 奇迹 (addon/meta.js).
+ * milestones crossed while it was inactive ("无需激活" sources such as 烛煌) are paid as soon as it lights up — the
+ * onActiveBonds hook of the recompute that activated it, e.g. placing the third member in prep (the maintainer's report
+ * of the official game, 2026-10-15; research 02 §3.3 / §8 Q7: the payout counts layers added while inactive) — and
+ * the hooks below catch up anything a capped nested dispatch skipped; same rule as 远见 / 奇迹 (addon/meta.js).
  */
 export function payHammers(ctx) {
   if (!ctx.bondActive('victoriaShip')) return 0;
@@ -749,7 +699,8 @@ export function payHammers(ctx) {
   const step = Math.floor(num(p?.layer, 0));
   if (!p || !(step > 0)) return 0;
   const due = Math.floor(ctx.layers('victoriaShip') / step);
-  const count = Math.max(0, Math.floor(num(p.count, 1)));
+  // [ASSUMED] DESIGN §32.5: each milestone pays at most the official `count` cap. Official count is 1.
+  const count = Math.min(bbCap('count'), Math.max(0, Math.floor(num(p.count, 1))));
   let granted = 0;
   // re-read the counter every milestone: grantItem dispatches onGain, which re-enters this function (nested payments
   // must not be paid twice by the outer loop)
@@ -768,8 +719,12 @@ export function payHammers(ctx) {
   return granted;
 }
 
-/** Hooks on which owed hammers are (caught up and) paid; onLayers only for 维多利亚's own gains. */
-const HAMMER_HOOKS = Object.freeze(['onLayers', 'onRoundStart', 'onPrepStart', 'onPrepEnd', 'onBuy', 'onGain', 'onSold', 'onMerge']);
+/**
+ * Hooks on which owed hammers are (caught up and) paid; onLayers only for 维多利亚's own gains; onActiveBonds when the
+ * active set changes (the bond lighting up — payHammers reads the counter, so the hammer of a milestone comes once
+ * however often the bond goes off and on again).
+ */
+const HAMMER_HOOKS = Object.freeze(['onLayers', 'onActiveBonds', 'onRoundStart', 'onPrepStart', 'onPrepEnd', 'onBuy', 'onGain', 'onSold', 'onMerge']);
 
 export function registerMeta(registry) {
   const prev = typeof registry.get === 'function' ? registry.get('bond:victoriaShip') : null;

@@ -1,0 +1,106 @@
+name: Bug 反馈
+description: 在使用的过程中遇到了 Bug。
+title: "[Bug]:"
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        感谢您进行 Bug 反馈。请在上面的文本框⬆️起一个能够清晰描述您的问题的标题，便于开发者解决您的问题。
+        
+        > [!important]
+        > 重要：如果要提出**多个 Bug**，请为每一个 Bug 开一个单独的 issue。
+        >
+        > 如果您不知道如何有效、精准地表述，我们建议您先阅读《提问的智慧》（[链接](https://github.com/ryanhanwu/How-To-Ask-Questions-The-Smart-Way/blob/main/README-zh_CN.md)）。
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: 检查清单
+      description: 在开始反馈这个问题之前，请先检查：
+      options:
+        - label: 我已更新到最新版 ![最新的版本号](https://img.shields.io/github/v/release/sganggs/Stronghold-Protocol?include_prereleases&style=flat-square&label=) 或 ![最新的版本号](https://img.shields.io/github/v/release/sganggs/Stronghold-Protocol?style=flat-square&label=) 测试，并看过 [最新提交](https://github.com/sganggs/Stronghold-Protocol/commits/master/)，确认这一 Bug 还没有修复。我也已在 [Issues](https://github.com/sganggs/Stronghold-Protocol/issues) 中检索，确认这一 Bug 未被提交过。
+          required: true
+        - label: 我已知晓并同意，此处仅用于汇报程序中存在的问题（关于其他非程序本身的问题应当在 Discussion 板块提出）。
+          required: true
+  - type: markdown
+    attributes:
+      value: |
+        ### Bug 信息
+
+        描述您遇到的 Bug。您可以附上截图、录屏、堆栈跟踪、日志等材料，便于开发者追踪问题。
+
+        > [!note]
+        > 上传附件时**请优先使用 GitHub 的附件系统上传附件**，将需要上传的附件粘贴或拖动到撰写区域即可上传。多个文件可打包为 zip 格式后上传。
+  - type: textarea
+    id: expected
+    attributes:
+      label: 期望的行为
+      description: 详细的描述你期望发生的行为，突出与目前（可能不正确的）行为的不同。
+    validations:
+      required: true
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: 实际结果
+      description: 实际发生的行为。
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce-steps
+    attributes:
+      label: 重现步骤
+      description: |
+        详细描述要怎么操作才能再次触发这个 Bug。
+      placeholder: |
+        1. 首先……
+        2. 然后……
+        3. ……
+    validations:
+      required: true
+  - type: dropdown
+    id: plugins
+    attributes:
+      label: 是否开了插件
+      description: |
+        插件为非官方制作。出问题的房间开着插件时，请先确认关掉插件（原版）后问题是否仍然出现；只在插件房里出现的问题请先反馈给插件作者。
+        游戏内「问题反馈」报告的第二行（content: …）写着本房间的内容：`vanilla` 为原版，`MODDED` 为开了改变玩法的插件。
+      options:
+        - 没有（原版）
+        - 只开了外观插件
+        - 开了改变玩法的插件（非官方对局）
+        - 不确定
+    validations:
+      required: true
+  - type: checkboxes
+    id: vanilla-repro
+    attributes:
+      label: 插件房的问题
+      description: 开着插件时出现的问题，请勾选下面一项（没有开插件可以跳过）。
+      options:
+        - label: 我已在原版（关掉所有插件）中复现了这个问题
+  - type: input
+    id: content-line
+    attributes:
+      label: 内容标识（可选）
+      description: "「问题反馈」报告第二行 content: 之后的内容（原版 / 插件与内容哈希），帮助开发者确认对局用的是哪套内容。"
+      placeholder: "vanilla cs=… 或 MODDED cs=… plugins=…"
+  - type: textarea
+    id: screenshots
+    attributes:
+      label: 截图/录屏（可选，建议）
+      description: |
+        如果可能，请提供可以用来进一步描述您的问题的截图或录屏。
+  - type: textarea
+    id: stacktrace
+    attributes:
+      label: 堆栈跟踪（可选）
+      description: 如果在遇到这个 Bug 时发生了崩溃（弹出崩溃提示），或者产生了错误日志，请将产生的堆栈跟踪信息粘贴到此处，便于开发者定位 Bug。
+      render: shell
+  - type: checkboxes
+    id: revision
+    attributes:
+      label: 最后一步
+      description: 回顾您的回答
+      options:
+        - label: 我认为上述的描述已经足以详细，以允许开发人员能复现该问题。如果我的 issue 没有按照上述的要求填写，可能会被无条件关闭。
+          required: true
