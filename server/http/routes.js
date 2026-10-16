@@ -79,7 +79,7 @@ const wantsTraffic = (query) => /(?:^|&)traffic(?:=(?:1|true|yes))?(?:&|$)/i.tes
  *   plugin studio (server/studio/index.js), or none
  * @returns {(req: import('node:http').IncomingMessage, res: import('node:http').ServerResponse) => void}
  */
-export function createRequestHandler({ serveStatic, health, log, trustProxy = 'auto', studio = null, csp = null, trustedRuntime = null, modApi = null, publicApi = null }) {
+export function createRequestHandler({ serveStatic, health, log, trustProxy = 'auto', studio = null, csp = null, trustedRuntime = null, modApi = null, publicApi = null, appApi = null }) {
   async function handleRequest(req, res) {
     const url = req.url || '/';
     if (url.length > MAX_URL_LENGTH) { sendError(req, res, 414, '请求地址过长 · URI too long'); return; }
@@ -93,6 +93,9 @@ export function createRequestHandler({ serveStatic, health, log, trustProxy = 'a
     // 公开只读 API (server/publicApi.js: /api/rooms · /api/create_room · /api/ping · /api/announcement)：它们自己
     // 判方法（含 POST/OPTIONS 与 405），所以也要在这一道方法门之前。
     if (publicApi && await publicApi(req, res, parts.rawPath)) return;
+    // 启动器 / Android 宿主用的只读端点 (server/http/appApi.js)：版本与热更补丁、局域网房间探针。它们只走 GET/HEAD，
+    // 非 GET/HEAD 交回下面那道方法门统一答 405（不在两处各写一遍 Allow）。
+    if (appApi && appApi(req, res, parts.rawPath)) return;
     if (req.method !== 'GET' && req.method !== 'HEAD') {
       res.setHeader('Allow', 'GET, HEAD');
       sendError(req, res, 405, '不支持的请求方法 · Method not allowed');

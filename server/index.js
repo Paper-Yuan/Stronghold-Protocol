@@ -48,6 +48,8 @@ import { createWorkshopServe } from './http/workshopServe.js';
 import { createModApi } from './http/modApi.js';
 import { mountPlayerAdmin } from './playerAdmin.js';
 import { createPublicApi } from './publicApi.js';
+import { createAppApi } from './http/appApi.js';
+import { APP_VERSION } from '../shared/constants.js';
 import { Announcements } from './announcements.js';
 import { WORKSHOP_DIR } from './workshop.js';
 import { createPluginRegistry } from './plugins/registry.js';
@@ -176,8 +178,11 @@ export async function startServer(opts = {}) {
   });
   await announcements.start();
   const publicApi = createPublicApi({ lobby, announcements, trustProxy: network.opts.trustProxy, sendJson, sendError });
+  // 启动器 / Android 宿主用的只读端点 (server/http/appApi.js)：`/api/app/version`（版本 + 热更 patchUrl）、
+  // `/api/app/patch.zip`（dist/ 或 public/ 下的补丁）与 `/lan/room`（局域网房间探针，只答私网/虚拟专网的请求）。
+  const appApi = createAppApi({ lobby, buildTag, appVersion: APP_VERSION, rootDir: ROOT, log });
   const traffic = createTrafficCounter();
-  const server = http.createServer(createRequestHandler({ serveStatic, modApi, publicApi, csp: process.env.SP_CSP === 'off' ? null : siteCsp(publicDir), health: { startedAt, network, registry, lobby, content, traffic, assetIndex, views, trusted:trustedRuntime?.health }, log, trustProxy: network.opts.trustProxy, studio, trustedRuntime }));
+  const server = http.createServer(createRequestHandler({ serveStatic, modApi, publicApi, appApi, csp: process.env.SP_CSP === 'off' ? null : siteCsp(publicDir), health: { startedAt, network, registry, lobby, content, traffic, assetIndex, views, trusted:trustedRuntime?.health }, log, trustProxy: network.opts.trustProxy, studio, trustedRuntime }));
   server.on('clientError', answerClientError);
   // 管理端 (server/playerAdmin.js): /admin/ 页面与 /admin/api/*（登录、快照、封禁、公告、模组上传/拉取…）。它读
   // config/player-admin/config.json：没有配置时 /admin* 一律 404，其余请求原样转给已有的监听器。
