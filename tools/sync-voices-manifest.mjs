@@ -31,6 +31,12 @@ function walkMp3(dir, base = '') {
 }
 
 /**
+ * 按语言下载的**原料**目录（官方客户端的一种语言一整份）：客户端从不按这些路径读，它读 `native/<干员>[_语言]` 那份
+ * 已登记在 `audio.voiceNative` 的精选子集。留空这个名单才是「有语音被漏登记」，所以它要显式列出、跟着新语言一起加。
+ */
+const RAW_LANGUAGE_DIRS = Object.freeze(['cn_topolect', 'ita', 'fre', 'ger', 'rus', 'spa']);
+
+/**
  * Read-only check: verify that all disk voice mp3 files are mapped in data/assets.json.
  * Does NOT touch or write any files.
  * @returns {{ ok: boolean, diskCount: number, manifestCount: number, missing: string[] }}
@@ -61,18 +67,25 @@ export function verifyVoicesManifest() {
     }
   }
 
-  // Collect from all voice trees (cn/jp/en/kr/custom/skin)
-  for (const key of ['voice', 'voiceJp', 'voiceEn', 'voiceKr', 'voiceCustom', 'skinVoice', 'skinVoiceJp', 'skinVoiceEn', 'skinVoiceKr']) {
+  // Collect from all voice trees the client can play: the five operator languages (`voiceNative` included - it holds
+  // the per-operator native-language clips and was missing from this list, so all 616 of its files were reported
+  // missing even though the manifest references every one of them) plus the four skin-voice trees.
+  for (const key of ['voice', 'voiceJp', 'voiceEn', 'voiceKr', 'voiceCustom', 'voiceNative', 'skinVoice', 'skinVoiceJp', 'skinVoiceEn', 'skinVoiceKr']) {
     if (audio[key]) collectUrls(audio[key]);
   }
 
   const missing = [];
   for (const rel of diskFiles) {
     const expectedUrl = `/assets/audio/voice/${rel}`;
-    // If registered in manifest, or under custom topolect/ita
+    // If registered in manifest, or under a raw per-language source directory.
+    //
+    // Those directories hold the WHOLE official voice set for one language as downloaded (`cn_topolect/`, `ita/`,
+    // `fre/`, `ger/`, `rus/`, `spa/` …). The client never reads them: it plays `native/<charId>[_<lang>]/…`, the
+    // curated subset registered in `audio.voiceNative`. `cn_topolect/` and `ita/` were always excused here; the
+    // other four languages were downloaded later and were not, so every one of their files tripped the gate.
     if (!manifestUrls.has(expectedUrl)) {
       const baseName = path.basename(rel, '.mp3');
-      if (!audio.voice?.[baseName] && !rel.startsWith('cn_topolect/') && !rel.startsWith('ita/')) {
+      if (!audio.voice?.[baseName] && !RAW_LANGUAGE_DIRS.some((d) => rel.startsWith(`${d}/`))) {
         missing.push(rel);
       }
     }
@@ -98,6 +111,17 @@ export function syncVoicesManifest() {
 
   const manifest = JSON.parse(fs.readFileSync(MANIFEST_PATH, 'utf8'));
   if (!manifest.audio) manifest.audio = {};
+
+  // 护栏：这个工具写的是 `audio.voice[jp|cn][charId]`，而 client 读的是 `audio.voice[charId][slot]`。形状不一样时
+  // **拒绝写入** —— 盲目覆盖会把整套语音查表结构换掉（public/js/audio.js 的 voiceLine 会因为查不到干员而全线哑掉）。
+  // 「磁盘上多出来的语音」多半是按语言下载的原料目录，那由 verifyVoicesManifest 的 RAW_LANGUAGE_DIRS 豁免处理，
+  // 不需要写清单。
+  const voiceTree = manifest.audio.voice;
+  if (voiceTree && typeof voiceTree === 'object' && Object.keys(voiceTree).some((k) => k.startsWith('char_'))) {
+    throw new Error('[sync-voices-manifest] 拒绝 --write: 现有 audio.voice 是「按干员」结构（audio.voice[charId][slot]），'
+      + '本工具写的是「按语言」结构（audio.voice[jp|cn][charId]）—— 覆盖会破坏客户端查表。'
+      + '若磁盘上多出的是按语言下载的原料目录，它们已在 verifyVoicesManifest 的豁免名单（RAW_LANGUAGE_DIRS）里，无需登记。');
+  }
 
   let structure = null;
   if (fs.existsSync(CACHE_STRUCTURE)) {
