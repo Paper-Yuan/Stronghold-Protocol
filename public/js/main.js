@@ -388,7 +388,41 @@ function installGlobalErrorHandlers() {
     if (!(ev instanceof ErrorEvent)) return; // resource load errors are not script errors
     console.error('[app] uncaught error', ev.error || ev.message);
     recordError('error', ev.error || ev.message, ev.error ? null : `${ev.filename || '?'}:${ev.lineno || 0}:${ev.colno || 0}`);
+    // 安卓外壳的黑屏看门狗与诊断弹窗靠这个知道「页面到底有没有起来」：崩了也要把错误报过去。
+    reportClientState({ error: String((ev.error && ev.error.message) || ev.message || 'unknown').slice(0, 200) });
   });
+}
+
+/**
+ * 把这一页的可见状态报给安卓外壳（MainActivity 的 12 秒黑屏看门狗 + 诊断弹窗；浏览器里没有桥，直接不管）。
+ * 判据就是「白屏/黑屏」那几样：布局尺寸是否塌成 0、渲染了几张画布、WebGL/WebGL2 能不能拿到上下文、设备像素比与窗口尺寸。
+ * 外壳拿不到任何一帧上报就先弹「兼容模式重启」，所以首帧渲染完成后要主动报一次（见下面的 reportClientState()）。
+ */
+function reportClientState(extra = {}) {
+  const native = globalThis.AndroidNative;
+  if (typeof native?.reportClientState !== 'function') return;
+  const gl = (type) => { try { return !!document.createElement('canvas').getContext(type); } catch { return false; } };
+  const root = document.querySelector('.app-root') || document.getElementById('app');
+  const renderedW = root?.clientWidth || 0;
+  const renderedH = root?.clientHeight || 0;
+  const layoutCollapsed = renderedW === 0 || renderedH === 0;
+  try {
+    native.reportClientState(JSON.stringify({
+      at: Date.now(),
+      booted: !!globalThis.__SP__ && !layoutCollapsed,
+      layoutCollapsed,
+      renderedW,
+      renderedH,
+      rootChildren: document.getElementById('app')?.childElementCount ?? -1,
+      canvases: document.querySelectorAll('canvas').length,
+      webgl2: gl('webgl2'), webgl: gl('webgl'),
+      dpr: globalThis.devicePixelRatio || 1,
+      vw: globalThis.innerWidth || 0, vh: globalThis.innerHeight || 0,
+      ua: String(navigator.userAgent).slice(0, 160),
+      ...(layoutCollapsed ? { error: `UI layout collapsed (w=${renderedW}, h=${renderedH})` } : {}),
+      ...extra,
+    }));
+  } catch { /* 外壳自己有时限兜底 */ }
 }
 
 async function boot() {
@@ -460,6 +494,7 @@ async function boot() {
     setTimeout(() => splash.remove(), 300);
   }
   globalThis.__SP__ = { store, net, data, version: 1 };
+  reportClientState();
   // A page keeps the modules it imported at load time for its whole lifetime, so a deploy cannot reach an open tab
   // (ui/buildGuard.js): watch `/healthz.build`. Outside a match the page reloads itself; during a match the guard says
   // so instead (the connection banner offers 刷新页面) and reloads once the match — settlement screen included — is over,
