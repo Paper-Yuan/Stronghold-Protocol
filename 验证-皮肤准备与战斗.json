@@ -6,19 +6,19 @@
       "skin": "char_498_inside@kitchen#2",
       "skel": "/assets/spine/op/char_498_inside/char_498_inside_kitchen_2/front/char_498_inside_kitchen_2.skel",
       "ready": true,
-      "scaleY": 0.1858044317198646
+      "scaleY": 1
     },
     {
       "skin": "char_498_inside@kitchen#2",
       "skel": "/assets/spine/op/char_498_inside/char_498_inside_kitchen_2/front/char_498_inside_kitchen_2.skel",
       "ready": true,
-      "scaleY": 0.17933615604280656
+      "scaleY": 1
     },
     {
       "skin": "char_498_inside@kitchen#2",
       "skel": "/assets/spine/op/char_498_inside/char_498_inside_kitchen_2/front/char_498_inside_kitchen_2.skel",
       "ready": true,
-      "scaleY": 0.1717023156489055
+      "scaleY": 1
     }
   ],
   "switched": {
@@ -31,13 +31,13 @@
     "skin": "char_498_inside@kitchen#2",
     "skel": "/assets/spine/op/char_498_inside/char_498_inside_kitchen_2/front/char_498_inside_kitchen_2.skel",
     "ready": true,
-    "scaleY": 0.1858044317198646
+    "scaleY": 1
   },
   "combat": {
     "skin": "char_498_inside@kitchen#2",
     "skel": "/assets/spine/op/char_498_inside/char_498_inside_kitchen_2/front/char_498_inside_kitchen_2.skel",
     "ready": true,
-    "scaleY": 1
+    "scaleY": 0.1717023156489055
   },
   "errors": []
 }

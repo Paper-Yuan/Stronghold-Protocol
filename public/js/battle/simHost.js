@@ -15,10 +15,13 @@ export class InPageSimHost {
     this.sim = await this.loadSim(content ? { ...content, cs } : undefined);
     return this;
   }
-  async start(spec, opts = {}) {
+  /**
+   * **同步**建战斗：`runner.js` 与工人线程建完就立刻读 `host.battle`（这条路径在战斗的每一帧上，不能变成 Promise）。
+   * 房间模组的 kit 表 (W-C) 因此由调用方先 await 好、放进 `opts` 传进来（`runner.js` / `simWorkerRuntime.js`）。
+   */
+  start(spec, opts = {}) {
     this.spec = spec;
-    // 房间模组的 kit 表 (W-C)：按规格里的 `modules` import 出来，和规格一起交给战斗 —— 只按 URL import 一次。
-    this.battle = this.sim.spec.createBattleFromSpec(spec, this.sim.ds, { ...opts, ...(await loadModuleKits(spec && spec.modules)) });
+    this.battle = this.sim.spec.createBattleFromSpec(spec, this.sim.ds, opts);
     this.meter = this.sim.spec.attachLpMeter(this.battle);
     return this;
   }

@@ -86,6 +86,7 @@ import { fxForm } from '../../../shared/protocol.js';
 import { spectateEffects } from './observe.js';
 import { recordError, setBattleSource } from '../diag.js';
 import { loadBrowserSim } from './simLoader.js';
+import { loadModuleKits } from './modKits.js';
 import { roomModsOf, currentModSet } from '../roomMods.js';
 import { roomDataBase } from '../mods/align.js';
 import { InPageSimHost, WorkerSimHost } from './simHost.js';
@@ -806,7 +807,11 @@ export function createBattleRunner(deps) {
           await e.host.load(sim.cs, sim.content);
           if (!wanted()) return;
           await e.host.start(e.spec);
-        } else { e.host.sim = sim; e.host.start(e.spec, { logger }); }
+        } else {
+          e.host.sim = sim;
+          // 房间模组的 kit 表 (W-C)：按规格里的 `modules` 先 import 好再建战斗（`start` 必须保持同步）
+          e.host.start(e.spec, { logger, ...(await loadModuleKits(e.spec && e.spec.modules)) });
+        }
         battle = e.host.battle;
       } catch (err) {
         if (e.host?.remote) failWorker(e, err);

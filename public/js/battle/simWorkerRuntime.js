@@ -1,5 +1,6 @@
 // Kept separate from the browser port so the same engine/packets can be verified with a Node worker.
 import { InPageSimHost } from './simHost.js';
+import { loadModuleKits } from './modKits.js';
 
 export function createSimWorker({ loadSim, prepareScripts = browserScripts } = {}) {
   const host = new InPageSimHost(loadSim ? { loadSim } : {});
@@ -45,8 +46,8 @@ export function createSimWorker({ loadSim, prepareScripts = browserScripts } = {
     }
     if (!loaded) throw new Error('simulation not loaded');
     switch (method) {
-      // `host.start` 现在是异步的：它要按规格里的 `modules` (W-C) import 出房间模组的 kit 表再建战斗。
-      case 'start': await host.start(args[0]); return packet();
+      // 房间模组的 kit 表 (W-C) 在**工人线程里**自己 import（函数过不了 RPC 边界）；`host.start` 保持同步。
+      case 'start': host.start(args[0], await loadModuleKits(args[0] && args[0].modules)); return packet();
       case 'step': {
         if (!Number.isInteger(args[0]) || args[0] < 0 || args[0] > 600) throw new Error('invalid step count');
         return packet(host.step(args[0], args[1] || {}));
