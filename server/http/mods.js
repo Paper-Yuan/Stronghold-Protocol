@@ -145,22 +145,9 @@ export function serveMods(req, res, decoded, query, routes) {
 function contentTypeFor(abs) {
   const ext = abs.slice(abs.lastIndexOf('.')).toLowerCase();
   // ONLY the allowlist names a type. Falling back to the general MIME table would name `.js` `text/javascript` again,
-  // which is exactly the hole this function exists to close. One exception, and it is the hole's own shape: a pack's
-  // OWN modules (ui/*.js, kits/*.js, battle/*.mjs, ui/*.css) must be executable by the page, while anything inside the
-  // hashed `assets/` container stays `application/octet-stream`. `nosniff` still keeps a mislabelled body from being
-  // sniffed back into a script. Without this the client panel host (public/js/ui/extensions.js) cannot import what a
-  // pack ships: the WebView answers "Failed to fetch dynamically imported module" for a module served as octet-stream
-  // (2026-10-16, phone log).
-  if (PACK_MODULE_TYPES.has(ext) && !/[\\/]assets[\\/]/.test(abs)) return PACK_MODULE_TYPES.get(ext);
+  // which is exactly the hole this function exists to close.
   return WORKSHOP_ASSET_TYPES.get(ext) || 'application/octet-stream';
 }
-
-/** The executable types a pack's own modules may use - never honoured inside the pack's `assets/` container. */
-const PACK_MODULE_TYPES = new Map([
-  ['.js', 'text/javascript; charset=utf-8'],
-  ['.mjs', 'text/javascript; charset=utf-8'],
-  ['.css', 'text/css; charset=utf-8'],
-]);
 
 /**
  * Send one pack file.
