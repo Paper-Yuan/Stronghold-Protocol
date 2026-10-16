@@ -907,6 +907,9 @@ export class Lobby {
     if (!room) return fail(ERR.NOT_IN_ROOM);
     if (room.hostId !== session.playerId) return fail(ERR.NOT_HOST);
     if (room.match) return fail(ERR.ROOM_STARTED);
+    // 规则（owner 2026-10-16）：单人房与多人房都可以声明模组，**超限模拟**不行 —— 它按设计只读 pack.json 元数据、
+    // 跳过全部内容文件（docs/OVERLIMIT-MODE.md），声明上去也只会让玩家在策略列表里点到必被拒的内容。
+    if (isSoloRoomMode(room.mode)) return fail(ERR.BAD_TARGET, '超限模拟不允许声明模组');
     const resolved = resolveRoomModSet(modIds, this.workshop?.mods);
     if (!resolved.ok) {
       const unknown = resolved.unknown.length ? resolved.unknown.join(', ') : '(none)';

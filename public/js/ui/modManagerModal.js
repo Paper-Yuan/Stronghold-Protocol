@@ -158,7 +158,8 @@ export function ModManagerModal({ open, onClose }) {
       const st = store.get();
       const room = st.room;
       const myId = st.me?.playerId;
-      if (room && (!room.hostId || room.hostId === myId || isSoloRoomMode(room.mode))) {   // 单人/超限房不声明房间模组，否则服务端回 BAD_TARGET
+      // 规则（owner 2026-10-16）：单人房与多人房都能声明房间模组，**超限模拟不能被声明**（它会把这些内容当无效请求拒掉）。
+      if (room && (!room.hostId || room.hostId === myId) && !isSoloRoomMode(room.mode)) {端回 BAD_TARGET
         net.request('room.setMods', { modIds: enabledIds }).catch((e) => {
           console.warn('[modManager] Failed to sync room.setMods:', e);
         });
