@@ -118,9 +118,12 @@ describe('9: the prep camera keeps the bench clear of the shop bar on phones in 
     const game = read('public/css/screens/game.css');
     const shop = read('public/css/screens/game-shop.css');
     // bond strip: top 1.36rem + a .52rem disc and its name line → measured 2.14–2.15rem in Chrome; 2.16rem kept
+    // for the discs, plus the vertical 收起 drawer's fold handle below the tray (.28rem + .04rem margin: game.css
+    // .bstrip__fold-handle) → 2.48.
     assert.match(game, /\.gm__bonds \{ position: absolute; left: 1\.56rem; top: 1\.36rem;/);
     assert.match(game, /\.bslot \.bond \{ --disc: \.52rem; \}/);
-    assert.equal(HUD_REM.bondStripBottom, 2.16);
+    assert.match(game, /\.bstrip__fold-handle \{[^}]*height: 0\.28rem;[^}]*margin-top: 0\.04rem;/, 'the handle the budget counts');
+    assert.equal(HUD_REM.bondStripBottom, 2.48);
     // shop bar: bottom .2rem + row padding .1rem × 2 + 2.24rem cards (level / operator / item) + 2 px + 1 px borders
     assert.match(shop, /\.shopbar \{\n {2}position: absolute; right: \.26rem; bottom: \.2rem;/);
     assert.match(shop, /\.shopbar__row \{\n {2}position: relative; display: flex; align-items: stretch; gap: \.08rem; padding: \.1rem;\n[^}]*border: 1px solid var\(--line-2\); border-top: 2px solid var\(--mint-700\);/);

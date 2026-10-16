@@ -54,9 +54,11 @@ export function hudPadding(kind, size) {
  */
 export const HUD_REM = Object.freeze({
   // Rem budget for the bond strip's bottom edge. `hudBands` takes the larger of this and the strip's measured
-  // bottom, because .bslot carries px floors that make it taller than this on a phone.
+  // bottom, because .bslot carries px floors that make it taller than this on a phone. The block includes the vertical
+  // 收起 drawer's fold handle, which hangs below the tray (css/screens/game.css .bstrip__fold-handle: .28rem tall plus
+  // a .04rem margin), so it is the discs' own bottom (2.16) plus that handle: 2.48.
   // shopBarTop carries the shop bar's +10 % css scale (game-shop.css): 2.64 × 1.1.
-  bondStripBottom: 2.16, shopBarTop: 2.9, shopBarBorderPx: 3, shopTabTop: 0.8, shopTabBorderPx: 3, cornerTop: 0.8,
+  bondStripBottom: 2.48, shopBarTop: 2.9, shopBarBorderPx: 3, shopTabTop: 0.8, shopTabBorderPx: 3, cornerTop: 0.8,
   // Extra air between the measured strip and the field's back row on a touch screen, where the strip lands flush on
   // it (1 px at 761×360): the top board row and the bond discs compete for the same pixels.
   bondStripGapPx: 10,
