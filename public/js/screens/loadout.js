@@ -66,11 +66,8 @@ function enabledPacks() {
   try {
     const raw = localStorage.getItem('sp.pref.enabledMods');
     const list = raw ? JSON.parse(raw) : null;
-    // 空 = **没设过** ⇒ 不过滤（全部显示），与 modManagerModal / loadoutModel 的默认语义一致。
-    // 以前这里返回空集，结果被当成「一个都没启用」，把包干员全藏了（owner：依旧不显示）。
-    if (!Array.isArray(list) || !list.length) return null;
-    return new Set(list);
-  } catch { return null; }
+    return new Set(Array.isArray(list) ? list : []);
+  } catch { return new Set(); }
 }
 
 export { openLoadout, closeLoadout };
