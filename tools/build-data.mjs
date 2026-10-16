@@ -48,6 +48,13 @@ import { FULL_RANK, atRank, stripPotential } from '../shared/potential.js';
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const RESEARCH_DIR = join(ROOT, 'docs', 'research');
 const GAMEDATA_URL = 'https://raw.githubusercontent.com/Kengxxiao/ArknightsGameData/master/zh_CN/gamedata/';
+/**
+ * 可选镜像 / 代理前缀，与 assets 流水线用同一个环境变量（tools/setup.mjs 的 --asset-source 说明）。
+ * `SP_GITHUB_PROXY=https://gh-proxy.com/` 时下载走 `<前缀><原始 URL>`；**留空即直连**（默认，与以前完全一致）。
+ * 这解决的是 raw.githubusercontent.com 在部分网络下不可达 —— 那会让 `--refresh` 直接失败、缓存永远停在旧快照。
+ */
+const GITHUB_PROXY = String(process.env.SP_GITHUB_PROXY || '').trim().replace(/\/+$/, '');
+const downloadUrl = (url) => (GITHUB_PROXY ? `${GITHUB_PROXY}/${url}` : url);
 const SEASON = 'act2autochess';
 const USAGE = 'usage: node tools/build-data.mjs [--refresh | --offline] [--out <dir>] [--cache <dir>] [--report <file>] [--quiet] [--no-research] [--force]';
 
@@ -112,7 +119,7 @@ async function ensureGamedata(rel) {
     throw new Error(`missing cached file ${rel} (offline mode)`);
   }
   await mkdir(dirname(abs), { recursive: true });
-  const url = GAMEDATA_URL + rel;
+  const url = downloadUrl(GAMEDATA_URL + rel);
   let lastErr;
   for (let attempt = 1; attempt <= 4; attempt++) {
     try {

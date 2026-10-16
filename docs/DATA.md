@@ -27,6 +27,14 @@ Unknown options or a missing option value are errors (exit code 2); `--refresh` 
   after four attempts aborts the build (exit code 1), even if an older cached file exists. Generated files and the
   previous report remain untouched, including with `--force`; successfully downloaded cache entries are not rolled
   back. Retry `--refresh` to complete the refresh; cached files are not verified to share an upstream revision.
+  **Refresh before you rebuild.** The cache is only ever filled in for *missing* files, so an old `.cache/gamedata`
+  stays old — and a rebuild against it silently drops everything newer than that snapshot (a new operator, a module, a
+  bond's text), which is how `data/` can end up holding more than the build would produce. When `data/` and a rebuild
+  disagree, check the cache age first: `SP_GITHUB_PROXY=<prefix> node tools/build-data.mjs --refresh --cache <dir>
+  --out <dir>` refreshes into a scratch directory without touching `data/`, then compare the two builds before you
+  replace anything. Behind a network that cannot reach `raw.githubusercontent.com`, set `SP_GITHUB_PROXY` (the same
+  variable the asset pipeline uses, e.g. `https://gh-proxy.com/`) and the download goes through `<prefix><url>`;
+  unset means a direct fetch, exactly as before.
 - **Report.** A run that reaches integrity validation writes `.cache/build-data-report.json` (counts, byte sizes, warnings (each once), errors, `written`).
   Integrity errors (see §17) make the exit code 1 **and leave the previous output untouched** (unless `--force`);
   warnings never do. Each output file is written atomically (temp file + rename).
