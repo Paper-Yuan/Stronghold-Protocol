@@ -175,7 +175,24 @@ export function createModApi({ workshopDir, log = console, reload = null }) {
           fs.rmSync(targetDir, { recursive: true, force: true });
         }
         const AdmZip = (await import('adm-zip')).default;
-        new AdmZip(buffer).extractAllTo(targetDir, true);
+        const zip = new AdmZip(buffer);
+        // 很多工坊包打包时自带一层顶层目录（`<id>/pack.json`），直接解压会把 pack.json 埋进子目录，
+        // 服务端就会报 "pack.json is missing"、这个包等于没装（2026-10-16 真机：rimbilliton 就是这样）。
+        // 所以这里看一遍条目：若所有条目都在同一个顶层目录下，就把它剥掉。
+        const entries = zip.getEntries().filter((e) => !e.isDirectory);
+        const tops = new Set(entries.map((e) => String(e.entryName).split('/')[0]));
+        if (tops.size === 1) {
+          const top = [...tops][0];
+          const prefix = `${top}/`;
+          if (entries.every((e) => String(e.entryName).startsWith(prefix))) {
+            for (const e of zip.getEntries()) {
+              if (!String(e.entryName).startsWith(prefix)) continue;
+              e.entryName = String(e.entryName).slice(prefix.length);
+            }
+            log.info?.(`[MOD-SYNC] ${modId}: stripped the single top-level folder "${top}/"`);
+          }
+        }
+        zip.extractAllTo(targetDir, true);
         log.info?.(`[MOD-SYNC] ✓ ${modId} synced successfully`);
         const served = reload ? await reload() : null;
         const mods = (served?.packs || []).map((p) => ({ id: p.id, name: p.name || p.id, version: p.version }));

@@ -1,0 +1,1082 @@
+{
+ "rimBilliton": {
+  "bondId": "rimBilliton",
+  "name": "雷姆必拓",
+  "identifier": 24,
+  "isCore": true,
+  "bondType": "SEASON",
+  "bondOrder": 2,
+  "powerIdList": [
+   "rim",
+   "rhodes"
+  ],
+  "iconId": "icon_rimBilliton",
+  "activeCount": 3,
+  "thresholds": [
+   3,
+   6
+  ],
+  "maxCount": null,
+  "thresholdTemplate": "count_threshold_upward",
+  "countMode": "BOARD",
+  "countsHand": false,
+  "countsGoldenOnly": false,
+  "activeType": "BATTLE",
+  "isActiveInDeck": false,
+  "noStack": false,
+  "weight": 10,
+  "maxInactiveBondCount": -1,
+  "layerMilestones": [],
+  "desc": "【雷姆必拓】最后上场的1名【雷姆必拓】干员获得“开拓心”：场上每存在1位不重复的【雷姆必拓】干员，其受到的伤害降低5%；持有“开拓心”的干员生命值+25%（受层数影响，每层+0.25%），攻击时额外附带5%生命上限的真实伤害（受层数影响，每层+0.05%）\n<在场6名不同【雷姆必拓】干员>场上的【雷姆必拓】干员获得等同于“开拓心”干员25%生命上限的攻击",
+  "descRaw": "【雷姆必拓】最后上场的<@autochess.dgreen>1</>名【雷姆必拓】干员获得<@ba.vup>“开拓心”</>：场上每存在1位不重复的【雷姆必拓】干员，其受到的伤害降低<@ba.vup>5%</>；持有<@ba.vup>“开拓心”</>的干员<@ba.vup>生命值</>+25%<@autochess.gray>（受层数影响，每层+0.25%）</>，攻击时额外附带<@ba.vup>5%生命上限</>的<@ba.vup>真实伤害</><@autochess.gray>（受层数影响，每层+0.05%）</>\n<在场<@autochess.dgreen>6</>名不同【雷姆必拓】干员>场上的【雷姆必拓】干员获得等同于<@ba.vup>“开拓心”</>干员<@ba.vup>25%生命上限</>的攻击",
+  "effectId": "bondeffect_rimbilliton",
+  "effectName": "雷姆必拓",
+  "effectDesc": "【雷姆必拓】最后上场的1名【雷姆必拓】干员获得“开拓心”：场上每存在1位不重复的【雷姆必拓】干员，其受到的伤害降低5%；持有“开拓心”的干员生命值+{0:0%}（受层数影响，每层+0.25%），攻击时额外附带{1:0%}生命上限的真实伤害（受层数影响，每层+0.05%）\n<在场6名不同【雷姆必拓】干员>场上的【雷姆必拓】干员获得等同于“开拓心”干员{2:0%}生命上限的攻击",
+  "effectDescRaw": "【雷姆必拓】最后上场的<@autochess.dgreen>1</>名【雷姆必拓】干员获得<@ba.vup>“开拓心”</>：场上每存在1位不重复的【雷姆必拓】干员，其受到的伤害降低<@ba.vup>5%</>；持有<@ba.vup>“开拓心”</>的干员<@ba.vup>生命值</>+{0:0%}<@autochess.gray>（受层数影响，每层+0.25%）</>，攻击时额外附带{1:0%}<@ba.vup>生命上限</>的<@ba.vup>真实伤害</><@autochess.gray>（受层数影响，每层+0.05%）</>\n<在场<@autochess.dgreen>6</>名不同【雷姆必拓】干员>场上的【雷姆必拓】干员获得等同于<@ba.vup>“开拓心”</>干员{2:0%}<@ba.vup>生命上限</>的攻击",
+  "effectDescParams": [
+   {
+    "index": 0,
+    "format": "0%",
+    "base": "hp",
+    "perStack": "hp_per_stack"
+   },
+   {
+    "index": 1,
+    "format": "0%",
+    "base": "true_dmg",
+    "perStack": "true_dmg_per_stack"
+   },
+   {
+    "index": 2,
+    "format": "0%",
+    "base": "atk_hp_share",
+    "perStack": null
+   }
+  ],
+  "bb": {
+   "power_bond_char_cnt": 3,
+   "ex_bond_char_cnt": 6,
+   "hp": 0.25,
+   "hp_per_stack": 0.0025,
+   "true_dmg": 0.05,
+   "true_dmg_per_stack": 0.0005,
+   "taken_reduce": 0.05,
+   "atk_hp_share": 0.25
+  },
+  "bbStr": {
+   "key": "act2autochess_bond_eff_rimbilliton"
+  },
+  "buffs": [
+   {
+    "key": "env_gbuff_new",
+    "bb": {
+     "power_bond_char_cnt": 3,
+     "ex_bond_char_cnt": 6,
+     "hp": 0.2,
+     "hp_per_stack": 0.005,
+     "true_dmg": 0.05,
+     "true_dmg_per_stack": 0.001,
+     "taken_reduce": 0.05,
+     "atk_hp_share": 0.25
+    },
+    "bbStr": {
+     "key": "act2autochess_bond_eff_rimbilliton"
+    }
+   }
+  ],
+  "baseParams": [
+   "hp",
+   "true_dmg",
+   "atk_hp_share"
+  ],
+  "perStackParams": [
+   "hp_per_stack",
+   "true_dmg_per_stack"
+  ],
+  "members": [
+   "chess_char_3_02_a",
+   "chess_char_4_14_a",
+   "chess_char_4_06_a",
+   "chess_char_1_21_a",
+   "chess_char_2_20_a",
+   "chess_char_2_21_a",
+   "chess_char_3_22_a",
+   "chess_char_4_27_a",
+   "chess_char_5_24_a",
+   "chess_char_5_25_a",
+   "chess_char_6_21_a",
+   "chess_char_6_22_a"
+  ],
+  "visibleMembers": [
+   "chess_char_3_02_a",
+   "chess_char_4_14_a",
+   "chess_char_4_06_a",
+   "chess_char_1_21_a",
+   "chess_char_2_20_a",
+   "chess_char_2_21_a",
+   "chess_char_3_22_a",
+   "chess_char_4_27_a",
+   "chess_char_5_24_a",
+   "chess_char_5_25_a",
+   "chess_char_6_21_a",
+   "chess_char_6_22_a"
+  ],
+  "spec": {
+   "tiers": [
+    {
+     "need": "3 distinct 雷姆必拓 on board",
+     "effect": "The last-deployed 雷姆必拓 operator gains \"开拓心\": while on the field, damage taken −5% for every distinct 雷姆必拓 operator on the board; max HP +25% (+0.25% per bond layer); every attack deals extra true damage = 5% of its max HP (+0.05% per bond layer)."
+    },
+    {
+     "need": "6 distinct",
+     "effect": "Every 雷姆必拓 operator on the field gains ATK equal to 25% of the 开拓心 holder's max HP (flat)."
+    }
+   ],
+   "formulas": {
+    "hpPct": "0.25 + 0.0025*L",
+    "trueDmgPctOfMaxHp": "0.05 + 0.0005*L",
+    "takenReducePerMember": "0.05",
+    "atkShareOfHolderMaxHp": "0.25"
+   },
+   "caps": "none",
+   "layerGain": "Economy-driven: sources that grant layers (strategies / cards) apply like every other core bond.",
+   "howToPlay": "Rush 3 雷姆必拓 operators to crown the 开拓心 holder; the holder's max HP then feeds the 6-tier ATK share for the whole 雷姆必拓 board.",
+   "assumed": [
+    "开拓心 holder = the most recently deployed 雷姆必拓 operator; on its death the mark passes to the most recently deployed surviving 雷姆必拓 operator on the field",
+    "6-tier ATK is a flat (atkFlat) bonus refreshed on deploy / layer gains",
+    "true damage procs on normal attacks (isAttack) and does not itself proc the bond"
+   ]
+  }
+ },
+ "siracusaShip": {
+  "bondId": "siracusaShip",
+  "name": "叙拉古",
+  "identifier": 7,
+  "isCore": true,
+  "bondType": "SEASON",
+  "bondOrder": 2,
+  "powerIdList": [
+   "siracusa",
+   "chiave"
+  ],
+  "iconId": "icon_siracusaShip",
+  "activeCount": 3,
+  "thresholds": [
+   3,
+   6
+  ],
+  "maxCount": null,
+  "thresholdTemplate": "count_threshold_upward",
+  "countMode": "BOARD",
+  "countsHand": false,
+  "countsGoldenOnly": false,
+  "activeType": "BATTLE",
+  "isActiveInDeck": false,
+  "noStack": false,
+  "weight": 10,
+  "maxInactiveBondCount": -1,
+  "layerMilestones": [],
+  "desc": "【叙拉古】干员部署后攻击速度提升，持续一定时间（受层数影响）\n<在场6名不同【叙拉古】干员>【叙拉古】干员部署后进入等时长的隐匿状态，【叙拉古】干员隐匿状态下和脱离隐匿10秒内对敌人攻击时有3%的概率造成一定真实伤害（受层数影响）并恐惧3秒",
+  "descRaw": "【叙拉古】干员部署后<@ba.vup>攻击速度</>提升，持续一定时间<@autochess.gray>（受层数影响）</>\n<在场<@autochess.dgreen>6</>名不同【叙拉古】干员>【叙拉古】干员部署后进入等时长的隐匿状态，【叙拉古】干员隐匿状态下和脱离隐匿<@ba.vup>10</>秒内对敌人攻击时有<@ba.vup>3%</>的概率造成一定真实伤害<@autochess.gray>（受层数影响）</>并<@ba.vup>恐惧</>3秒",
+  "effectId": "bondeffect_siracusa",
+  "effectName": "叙拉古",
+  "effectDesc": "【叙拉古】干员部署后攻击速度+{0:0}，持续{1:0}秒（受层数影响）\n<在场6名不同【叙拉古】干员>【叙拉古】干员部署后还会进入等时长的隐匿状态，【叙拉古】干员在隐匿状态和脱离隐匿10秒内对敌人攻击时有3%概率造成{2:0}（受层数影响）点真实伤害并恐惧目标3秒",
+  "effectDescRaw": "【叙拉古】干员部署后攻击速度<@ba.vup>+{0:0}</>，持续<@ba.vup>{1:0}</>秒<@ba.acrem>（受层数影响）</>\n<在场<@ba.vup>6</>名不同【叙拉古】干员>【叙拉古】干员部署后还会进入等时长的隐匿状态，【叙拉古】干员在隐匿状态和脱离隐匿10秒内对敌人攻击时有3%概率造成<@ba.vup>{2:0}</><@ba.acrem>（受层数影响）</>点真实伤害并<@ba.vup>恐惧</>目标3秒",
+  "effectDescParams": [
+   {
+    "index": 0,
+    "format": "0",
+    "base": "base_attack_speed",
+    "perStack": "attack_speed_per_stack"
+   },
+   {
+    "index": 1,
+    "format": "0",
+    "base": "base_duration",
+    "perStack": "duration_per_stack"
+   },
+   {
+    "index": 2,
+    "format": "0",
+    "base": "base_damage",
+    "perStack": "damage_per_stack"
+   }
+  ],
+  "bb": {
+   "base_duration": 32,
+   "duration_per_stack": 0.4,
+   "base_attack_speed": 25,
+   "attack_speed_per_stack": 0.8,
+   "power_bond_char_cnt": 6,
+   "ex_bond_char_cnt": 6,
+   "end_duration": 10,
+   "prob": 0.03,
+   "base_damage": 5000,
+   "damage_per_stack": 50,
+   "fear": 3
+  },
+  "bbStr": {
+   "key": "act2autochess_bond_eff_siracusa"
+  },
+  "buffs": [
+   {
+    "key": "env_gbuff_new",
+    "bb": {
+     "base_duration": 32,
+     "duration_per_stack": 0.4,
+     "base_attack_speed": 25,
+     "attack_speed_per_stack": 0.8,
+     "power_bond_char_cnt": 6,
+     "ex_bond_char_cnt": 6,
+     "end_duration": 10,
+     "prob": 0.03,
+     "base_damage": 5000,
+     "damage_per_stack": 50,
+     "fear": 3
+    },
+    "bbStr": {
+     "key": "act2autochess_bond_eff_siracusa"
+    }
+   }
+  ],
+  "baseParams": [
+   "base_attack_speed",
+   "base_duration",
+   "base_damage"
+  ],
+  "perStackParams": [
+   "attack_speed_per_stack",
+   "duration_per_stack",
+   "damage_per_stack"
+  ],
+  "members": [
+   "chess_char_1_07_a",
+   "chess_char_1_08_a",
+   "chess_char_2_16_a",
+   "chess_char_3_15_a",
+   "chess_char_3_18_a",
+   "chess_char_3_19_a",
+   "chess_char_4_10_a",
+   "chess_char_4_16_a",
+   "chess_char_5_10_a",
+   "chess_char_5_20_a",
+   "chess_char_6_18_a",
+   "chess_char_6_21_a",
+   "chess_char_5_32_a"
+  ],
+  "visibleMembers": [
+   "chess_char_1_07_a",
+   "chess_char_1_08_a",
+   "chess_char_2_16_a",
+   "chess_char_3_18_a",
+   "chess_char_3_19_a",
+   "chess_char_4_10_a",
+   "chess_char_4_16_a",
+   "chess_char_5_10_a",
+   "chess_char_5_20_a",
+   "chess_char_6_18_a",
+   "chess_char_6_21_a",
+   "chess_char_5_32_a"
+  ],
+  "spec": {
+   "tiers": [
+    {
+     "need": "3 distinct",
+     "effect": "After every deployment (incl. redeploy) a 叙拉古 member gains ASPD +(25 + 0.8*L) for (32 + 0.4*L) s."
+    },
+    {
+     "need": "6 distinct",
+     "effect": "After deployment also 隐匿 (camouflage) for the same duration. While camouflaged and for 10 s after it ends, each normal damage instance (普通伤害 = attack type NORMAL: attacks, skill hits, drone attacks; not 溅射 / 持续 / 附加 — `bonds/core.js siracusaRolls`) it deals may add (5000 + 50*L) true damage (source = the operator) and 恐惧 (fear) 3 s. Nominal 3% chance, implemented as pseudo-random: all 叙拉古 members share one counter; attempt n since last proc succeeds with p = 0.00139*n (guaranteed at n = 720); counter resets on proc."
+    }
+   ],
+   "formulas": {
+    "aspd": "25 + 0.8*L",
+    "durationSec": "32 + 0.4*L",
+    "procDamage": "5000 + 50*L",
+    "prdStep": "0.00139"
+   },
+   "caps": "none",
+   "layerGain": "Shop refresh-driven: 拉普兰德 first manual refresh each round +4 (works from bench); 安洁莉娜 休整期结束 +4 per refresh this round (<=12/round); 阿罗玛 +2 叙拉古/奥术 per refresh (<=6); 伺夜 first 3 kills +2 叙拉古 +1 奇迹; 荒芜拉普兰德 each kill +2 (elite: every 叙拉古 gets this, <=100/battle); 忍冬 获得时 +6 own bonds (x2/x3 with 投资人); 机变 \"德克萨斯的盟誓\" +10. Strategy 贾维: every 6 manual refreshes get a free 叙拉古 (<=2/round).",
+   "howToPlay": "Refresh a lot in prep (free refresh sources: 普罗旺斯, 德克萨斯, 缄默德克萨斯, 巫恋) to feed 拉普兰德/安洁莉娜; pair with 投资人 for 忍冬.",
+   "notes": [
+    "PRTS: the 10 s post-stealth window restarts if the operator's status effects or immunities change."
+   ],
+   "assumed": [
+    "隐匿 = standard AK camouflage (not targeted by ranged enemies unless blocking)"
+   ]
+  }
+ },
+ "preciShip": {
+  "bondId": "preciShip",
+  "name": "精准",
+  "identifier": 9,
+  "isCore": false,
+  "bondType": "REGULAR",
+  "bondOrder": 2,
+  "powerIdList": [],
+  "iconId": "icon_preciShip",
+  "activeCount": 2,
+  "thresholds": [
+   2,
+   3
+  ],
+  "maxCount": null,
+  "thresholdTemplate": "count_threshold_upward",
+  "countMode": "BOARD",
+  "countsHand": false,
+  "countsGoldenOnly": false,
+  "activeType": "BATTLE",
+  "isActiveInDeck": false,
+  "noStack": false,
+  "weight": 10,
+  "maxInactiveBondCount": -1,
+  "layerMilestones": [],
+  "desc": "【精准】干员攻击力提升（受层数影响）\n<在场3名不同【精准】干员>生效范围变为【精准】干员和所有远程干员，且攻击无视一定的防御力和法术抗性",
+  "descRaw": "【精准】干员<@ba.vup>攻击力</>提升<@autochess.gray>（受层数影响）</>\n<在场<@autochess.dgreen>3</>名不同【精准】干员>生效范围变为【精准】干员和所有远程干员，且攻击无视一定的<@ba.vup>防御力</>和<@ba.vup>法术抗性</>",
+  "effectId": "bondeffect_preci",
+  "effectName": "精准",
+  "effectDesc": "【精准】干员攻击力+{0:0%}（受层数影响）\n<在场3名不同【精准】干员>生效范围变为所有【精准】干员和远程干员，且攻击无视30%防御力和法术抗性",
+  "effectDescRaw": "【精准】干员攻击力<@ba.vup>+{0:0%}</><@ba.acrem>（受层数影响）</>\n<在场<@ba.vup>3</>名不同【精准】干员>生效范围变为所有【精准】干员和远程干员，且攻击无视<@ba.vup>30%</>防御力和法术抗性",
+  "effectDescParams": [
+   {
+    "index": 0,
+    "format": "0%",
+    "base": "base_atk",
+    "perStack": "atk_per_stack"
+   }
+  ],
+  "bb": {
+   "base_atk": 0.1,
+   "atk_per_stack": 0.012,
+   "power_def_penetrate": 0.3,
+   "power_magic_resist_penetrate": 0.3,
+   "power_bond_char_cnt": 3
+  },
+  "bbStr": {
+   "key": "act1autochess_bond_eff_preci"
+  },
+  "buffs": [
+   {
+    "key": "env_gbuff_new",
+    "bb": {
+     "base_atk": 0.1,
+     "atk_per_stack": 0.012,
+     "power_def_penetrate": 0.3,
+     "power_magic_resist_penetrate": 0.3,
+     "power_bond_char_cnt": 3
+    },
+    "bbStr": {
+     "key": "act1autochess_bond_eff_preci"
+    }
+   }
+  ],
+  "baseParams": [
+   "base_atk"
+  ],
+  "perStackParams": [
+   "atk_per_stack"
+  ],
+  "members": [
+   "chess_char_1_09_a",
+   "chess_char_1_17_a",
+   "chess_char_2_01_a",
+   "chess_char_3_11_a",
+   "chess_char_4_06_a",
+   "chess_char_4_14_a",
+   "chess_char_4_20_a",
+   "chess_char_5_02_a",
+   "chess_char_6_01_a",
+   "chess_char_6_05_a",
+   "chess_char_6_08_a",
+   "chess_char_6_12_a",
+   "chess_char_5_24_a",
+   "chess_ws_dos_holungday_a",
+   "chess_ws_col_jesca_a"
+  ],
+  "visibleMembers": [
+   "chess_char_1_09_a",
+   "chess_char_1_17_a",
+   "chess_char_2_01_a",
+   "chess_char_3_11_a",
+   "chess_char_4_06_a",
+   "chess_char_4_14_a",
+   "chess_char_4_20_a",
+   "chess_char_5_02_a",
+   "chess_char_6_01_a",
+   "chess_char_6_05_a",
+   "chess_char_6_08_a",
+   "chess_char_6_12_a",
+   "chess_char_5_24_a",
+   "chess_ws_dos_holungday_a",
+   "chess_ws_col_jesca_a"
+  ],
+  "spec": {
+   "tiers": [
+    {
+     "need": "2 distinct",
+     "effect": "精准 members ATK x(1 + 0.10 + 0.012*L)."
+    },
+    {
+     "need": "3 distinct",
+     "effect": "Scope becomes 精准 members + every RANGED operator; affected units also ignore 30% of target DEF and 30% of target RES."
+    }
+   ],
+   "formulas": {
+    "atkMultiplier": "1.10 + 0.012*L",
+    "defPenetrateRatio(3)": "0.3",
+    "resPenetrateRatio(3)": "0.3"
+   },
+   "layerGain": "Kill/skill/deploy in battle: 寒芒克洛丝 gives front operator \"开技能 +1 精准 (<=10/battle)\"; 远牙 grant (+4/deploy); 缇缇 +1 per sleep/stun; 蕾缪安, 送葬人; 莱恩哈特 休整期结束 +5 own active bonds; 获得时: 深靛 +2, 雪猎 +5. 机变 \"缇缇的盟誓\" +10.",
+   "assumed": [
+    "penetration = ratio ignore (like 无视 x% 防御)"
+   ]
+  }
+ },
+ "arcaneShip": {
+  "bondId": "arcaneShip",
+  "name": "奥术",
+  "identifier": 12,
+  "isCore": false,
+  "bondType": "REGULAR",
+  "bondOrder": 2,
+  "powerIdList": [],
+  "iconId": "icon_arcaneShip",
+  "activeCount": 2,
+  "thresholds": [
+   2,
+   3
+  ],
+  "maxCount": null,
+  "thresholdTemplate": "count_threshold_upward",
+  "countMode": "BOARD",
+  "countsHand": false,
+  "countsGoldenOnly": false,
+  "activeType": "BATTLE",
+  "isActiveInDeck": false,
+  "noStack": false,
+  "weight": 10,
+  "maxInactiveBondCount": -1,
+  "layerMilestones": [],
+  "desc": "【奥术】干员造成法术伤害时使目标受到的法术伤害提升（受层数影响），持续3秒\n<在场3名不同【奥术】干员>【奥术】干员对生命值低于50%的敌人施加的伤害提升比例提升（受层数影响）",
+  "descRaw": "【奥术】干员造成法术伤害时使目标受到的法术伤害提升<@autochess.gray>（受层数影响）</>，持续3秒\n<在场<@autochess.dgreen>3</>名不同【奥术】干员>【奥术】干员对生命值低于<@ba.vup>50%</>的敌人施加的伤害提升比例提升<@autochess.gray>（受层数影响）</>",
+  "effectId": "bondeffect_arcane",
+  "effectName": "奥术",
+  "effectDesc": "【奥术】干员造成法术伤害时使目标受到的法术伤害提升{0:0%}（受层数影响），持续3秒\n<在场3名不同【奥术】干员>【奥术】干员对生命值低于50%的敌人施加的伤害提升比例为{1:0%}（受层数影响）",
+  "effectDescRaw": "【奥术】干员造成法术伤害时使目标受到的法术伤害提升<@ba.vup>{0:0%}</><@ba.acrem>（受层数影响）</>，持续3秒\n<在场<@ba.vup>3</>名不同【奥术】干员>【奥术】干员对生命值低于50%的敌人施加的伤害提升比例为<@ba.vup>{1:0%}</><@ba.acrem>（受层数影响）</>",
+  "effectDescParams": [
+   {
+    "index": 0,
+    "format": "0%",
+    "base": "base_damage_scale_show",
+    "perStack": "damage_scale_per_stack"
+   },
+   {
+    "index": 1,
+    "format": "0%",
+    "base": "base_damage_scale_show_ex",
+    "perStack": "damage_scale_per_stack_show_ex"
+   }
+  ],
+  "bb": {
+   "weak_duration": 3,
+   "base_damage_scale": 1.2,
+   "damage_scale_per_stack": 0.01,
+   "power_bond_char_cnt": 3,
+   "power_weak_scale": 1.4,
+   "hp_ratio": 0.5,
+   "base_damage_scale_show": 0.2,
+   "base_damage_scale_show_ex": 0.68,
+   "damage_scale_per_stack_show_ex": 0.014
+  },
+  "bbStr": {
+   "key": "act2autochess_bond_eff_arcane"
+  },
+  "buffs": [
+   {
+    "key": "env_gbuff_new",
+    "bb": {
+     "weak_duration": 3,
+     "base_damage_scale": 1.2,
+     "damage_scale_per_stack": 0.01,
+     "power_bond_char_cnt": 3,
+     "power_weak_scale": 1.4,
+     "hp_ratio": 0.5,
+     "base_damage_scale_show": 0.2,
+     "base_damage_scale_show_ex": 0.68,
+     "damage_scale_per_stack_show_ex": 0.014
+    },
+    "bbStr": {
+     "key": "act2autochess_bond_eff_arcane"
+    }
+   }
+  ],
+  "baseParams": [
+   "base_damage_scale_show",
+   "base_damage_scale_show_ex"
+  ],
+  "perStackParams": [
+   "damage_scale_per_stack",
+   "damage_scale_per_stack_show_ex"
+  ],
+  "members": [
+   "chess_char_1_17_a",
+   "chess_char_2_10_a",
+   "chess_char_2_15_a",
+   "chess_char_3_09_a",
+   "chess_char_4_02_a",
+   "chess_char_4_10_a",
+   "chess_char_5_07_a",
+   "chess_char_5_12_a",
+   "chess_char_6_02_a",
+   "chess_char_6_16_a",
+   "chess_char_4_27_a",
+   "chess_ws_col_aphris_a"
+  ],
+  "visibleMembers": [
+   "chess_char_1_17_a",
+   "chess_char_2_10_a",
+   "chess_char_3_09_a",
+   "chess_char_4_02_a",
+   "chess_char_4_10_a",
+   "chess_char_5_07_a",
+   "chess_char_5_12_a",
+   "chess_char_6_02_a",
+   "chess_char_6_16_a",
+   "chess_char_4_27_a",
+   "chess_ws_col_aphris_a"
+  ],
+  "spec": {
+   "tiers": [
+    {
+     "need": "2 distinct",
+     "effect": "When an 奥术 member deals magic damage, the target takes magic damage x(1.20 + 0.01*L) (i.e. +(20+L)%) for 3 s. ONE instance per target whatever applies it: the strongest value wins, a weaker one resumes if it outlasts it; reapplying refreshes (corrected 2026-10-01: PRTS 作战机制 同名buff默认只表现出一个; 巴哈姆特 12316 the two players of a pair field compete for it)."
+    },
+    {
+     "need": "3 distinct",
+     "effect": "Against enemies below 50% HP the multiplier is 1.4 x (1.20 + 0.01*L) = 1.68 + 0.014*L (i.e. +(68+1.4L)%)."
+    }
+   ],
+   "formulas": {
+    "magicTakenMul": "1.20 + 0.01*L",
+    "magicTakenMulLowHp(3)": "1.4*(1.20 + 0.01*L)",
+    "hpThreshold": "0.5",
+    "durationSec": "3"
+   },
+   "layerGain": "夕 +2 per operator gained; 阿罗玛 +2 per refresh (<=6); 溯光星源 +2 per 3 gold spent; 海霓 first kill +3; 获得时: 深靛 +2, 协律 +4 (hidden). 机变 \"莫斯提马的盟誓\" +10.",
+   "assumed": [
+    "one instance per target, the strongest (the engine's default same-name rule; the two players of a pair field compete for it) — until v2.5 the remake kept one per player and they multiplied"
+   ]
+  }
+ },
+ "steadShip": {
+  "bondId": "steadShip",
+  "name": "坚守",
+  "identifier": 13,
+  "isCore": false,
+  "bondType": "REGULAR",
+  "bondOrder": 2,
+  "powerIdList": [],
+  "iconId": "icon_steadShip",
+  "activeCount": 2,
+  "thresholds": [
+   2,
+   3
+  ],
+  "maxCount": null,
+  "thresholdTemplate": "count_threshold_upward",
+  "countMode": "BOARD",
+  "countsHand": false,
+  "countsGoldenOnly": false,
+  "activeType": "BATTLE",
+  "isActiveInDeck": false,
+  "noStack": false,
+  "weight": 10,
+  "maxInactiveBondCount": -1,
+  "layerMilestones": [],
+  "desc": "所有干员生命值提升（受层数影响）\n<在场3名不同【坚守】干员>场上非【坚守】干员受到伤害时，所受伤害的40%由所有【坚守】干员平均承担。【坚守】干员受到伤害时，伤害来源将受到一定法术伤害（受层数影响，每0.2秒至多触发1次）和持续5秒的40%脆弱效果",
+  "descRaw": "所有干员<@ba.vup>生命值</>提升<@autochess.gray>（受层数影响）</>\n<在场<@autochess.dgreen>3</>名不同【坚守】干员>场上非【坚守】干员受到伤害时，所受伤害的<@ba.vup>40%</>由所有【坚守】干员<@ba.vup>平均承担</>。【坚守】干员受到伤害时，伤害来源将受到一定法术伤害<@autochess.gray>（受层数影响，每0.2秒至多触发1次）</>和持续<@ba.vup>5</>秒的<@ba.vup>40%</>脆弱效果",
+  "effectId": "bondeffect_stead",
+  "effectName": "坚守",
+  "effectDesc": "所有干员生命值+{0:0%}（受层数影响）\n<在场3名不同【坚守】干员>场上非【坚守】干员受到伤害时，所受伤害的40%由【坚守】干员平均承担；【坚守】干员受到伤害时，伤害来源受到{1:0}点法术伤害（受层数影响，每0.2秒至多触发1次）和持续5秒的40%的脆弱效果",
+  "effectDescRaw": "所有干员生命值<@ba.vup>+{0:0%}</><@ba.acrem>（受层数影响）</>\n<在场<@ba.vup>3</>名不同【坚守】干员>场上非【坚守】干员受到伤害时，所受伤害的<@ba.vup>40%</>由【坚守】干员平均承担；【坚守】干员受到伤害时，伤害来源受到<@ba.vup>{1:0}</>点法术伤害<@ba.acrem>（受层数影响，每0.2秒至多触发1次）</>和持续5秒的<@ba.vup>40%</>的脆弱效果",
+  "effectDescParams": [
+   {
+    "index": 0,
+    "format": "0%",
+    "base": "base_max_hp",
+    "perStack": "max_hp_per_stack"
+   },
+   {
+    "index": 1,
+    "format": "0",
+    "base": "base_damage_value",
+    "perStack": "damage_value_per_stack"
+   }
+  ],
+  "bb": {
+   "base_max_hp": 0.25,
+   "max_hp_per_stack": 0.012,
+   "damage_resistance": 0.4,
+   "power_bond_char_cnt": 3,
+   "cd_duration": 0.2,
+   "weak[limit]": 5,
+   "damage_scale": 1.4,
+   "base_damage_value": 850,
+   "damage_value_per_stack": 10
+  },
+  "bbStr": {
+   "key": "act1autochess_bond_eff_stead"
+  },
+  "buffs": [
+   {
+    "key": "env_gbuff_new",
+    "bb": {
+     "base_max_hp": 0.25,
+     "max_hp_per_stack": 0.012,
+     "damage_resistance": 0.4,
+     "power_bond_char_cnt": 3,
+     "cd_duration": 0.2,
+     "weak[limit]": 5,
+     "damage_scale": 1.4,
+     "base_damage_value": 850,
+     "damage_value_per_stack": 10
+    },
+    "bbStr": {
+     "key": "act1autochess_bond_eff_stead"
+    }
+   }
+  ],
+  "baseParams": [
+   "base_max_hp",
+   "base_damage_value"
+  ],
+  "perStackParams": [
+   "max_hp_per_stack",
+   "damage_value_per_stack"
+  ],
+  "members": [
+   "chess_char_1_02_a",
+   "chess_char_1_10_a",
+   "chess_char_2_08_a",
+   "chess_char_2_17_a",
+   "chess_char_2_18_a",
+   "chess_char_3_05_a",
+   "chess_char_3_16_a",
+   "chess_char_4_01_a",
+   "chess_char_5_11_a",
+   "chess_char_6_03_a",
+   "chess_char_6_22_a",
+   "chess_ws_col_jesca_a"
+  ],
+  "visibleMembers": [
+   "chess_char_1_02_a",
+   "chess_char_1_10_a",
+   "chess_char_2_08_a",
+   "chess_char_2_17_a",
+   "chess_char_2_18_a",
+   "chess_char_3_05_a",
+   "chess_char_3_16_a",
+   "chess_char_4_01_a",
+   "chess_char_5_11_a",
+   "chess_char_6_03_a",
+   "chess_char_6_22_a",
+   "chess_ws_col_jesca_a"
+  ],
+  "spec": {
+   "tiers": [
+    {
+     "need": "2 distinct",
+     "effect": "ALL operators maxHP x(1 + 0.25 + 0.012*L)."
+    },
+    {
+     "need": "3 distinct",
+     "effect": "When a non-坚守 operator takes damage, 40% of that damage is taken instead by the 坚守 members, split evenly. When a 坚守 member takes damage, the damage source takes (850 + 10*L) sourceless magic damage and 脆弱 (damage taken x1.4) for 5 s; each 坚守 member can reflect at most once per 0.2 s."
+    }
+   ],
+   "formulas": {
+    "hpMultiplier": "1.25 + 0.012*L",
+    "redirectRatio": "0.4",
+    "thornsDamage": "850 + 10*L",
+    "thornsCooldownSec": "0.2",
+    "fragile": "1.4 for 5 s"
+   },
+   "layerGain": "折桠 休整期结束 +4; 蛇屠箱 +1 per operator in same row; 斯卡蒂 kills; 获得时 角峰 +2; 机变 \"斯卡蒂的盟誓\" +8.",
+   "notes": [
+    "PRTS: thorns hit whatever the damage source is; sourceless damage can consume the thorns cooldown."
+   ]
+  }
+ },
+ "deputShip": {
+  "bondId": "deputShip",
+  "name": "助力",
+  "identifier": 14,
+  "isCore": false,
+  "bondType": "REGULAR",
+  "bondOrder": 2,
+  "powerIdList": [],
+  "iconId": "icon_deputShip",
+  "activeCount": 2,
+  "thresholds": [
+   2,
+   3
+  ],
+  "maxCount": null,
+  "thresholdTemplate": "count_threshold_upward",
+  "countMode": "BOARD",
+  "countsHand": false,
+  "countsGoldenOnly": false,
+  "activeType": "BATTLE",
+  "isActiveInDeck": false,
+  "noStack": false,
+  "weight": 10,
+  "maxInactiveBondCount": -1,
+  "layerMilestones": [],
+  "desc": "所有干员防御力提升（受层数影响），再部署时间减少\n休整期结束时，使当前所有已激活盟约层数+2\n<在场3名不同【助力】干员>改为层数+4",
+  "descRaw": "所有干员<@ba.vup>防御力</>提升<@autochess.gray>（受层数影响）</>，<@ba.vup>再部署时间</>减少\n休整期结束时，使当前所有已激活盟约层数<@ba.vup>+2</>\n<在场<@autochess.dgreen>3</>名不同【助力】干员>改为层数<@ba.vup>+4</>",
+  "effectId": "bondeffect_deput",
+  "effectName": "助力",
+  "effectDesc": "所有干员防御力+{0:0%}（受层数影响），再部署时间-30%\n休整期结束时，使当前所有已激活的盟约层数+2\n<在场3名不同【助力】干员>改为层数+4",
+  "effectDescRaw": "所有干员防御力<@ba.vup>+{0:0%}</><@ba.acrem>（受层数影响）</>，再部署时间<@ba.vup>-30%</>\n休整期结束时，使当前所有已激活的盟约层数<@ba.vup>+2</>\n<在场<@ba.vup>3</>名不同【助力】干员>改为层数<@ba.vup>+4</>",
+  "effectDescParams": [
+   {
+    "index": 0,
+    "format": "0%",
+    "base": "base_def",
+    "perStack": "def_per_stack"
+   }
+  ],
+  "bb": {
+   "base_def": 0.15,
+   "def_per_stack": 0.012,
+   "respawn_time": -0.3,
+   "layer": 2,
+   "count": 3,
+   "more_layer": 4
+  },
+  "bbStr": {
+   "key": "act1autochess_bond_eff_deput",
+   "bond": "deputShip"
+  },
+  "buffs": [
+   {
+    "key": "env_gbuff_new",
+    "bb": {
+     "base_def": 0.15,
+     "def_per_stack": 0.012,
+     "respawn_time": -0.3
+    },
+    "bbStr": {
+     "key": "act1autochess_bond_eff_deput"
+    }
+   },
+   {
+    "key": "bond_activated_add_layer",
+    "bb": {
+     "layer": 2,
+     "count": 3,
+     "more_layer": 4
+    },
+    "bbStr": {
+     "bond": "deputShip"
+    }
+   }
+  ],
+  "baseParams": [
+   "base_def"
+  ],
+  "perStackParams": [
+   "def_per_stack"
+  ],
+  "members": [
+   "chess_char_1_06_a",
+   "chess_char_1_13_a",
+   "chess_char_2_14_a",
+   "chess_char_2_15_a",
+   "chess_char_3_15_a",
+   "chess_char_3_20_a",
+   "chess_char_4_03_a",
+   "chess_char_4_05_a",
+   "chess_char_4_21_a",
+   "chess_char_4_24_a",
+   "chess_char_5_16_a",
+   "chess_char_6_14_a",
+   "chess_char_6_20_a",
+   "chess_char_2_21_a",
+   "chess_char_5_30_a",
+   "chess_ws_col_nasti_a",
+   "chess_ws_col_ceylon_a"
+  ],
+  "visibleMembers": [
+   "chess_char_1_06_a",
+   "chess_char_1_13_a",
+   "chess_char_2_14_a",
+   "chess_char_3_20_a",
+   "chess_char_4_21_a",
+   "chess_char_4_24_a",
+   "chess_char_6_14_a",
+   "chess_char_6_20_a",
+   "chess_char_2_21_a",
+   "chess_char_5_30_a",
+   "chess_ws_col_nasti_a",
+   "chess_ws_col_ceylon_a"
+  ],
+  "spec": {
+   "tiers": [
+    {
+     "need": "2 distinct",
+     "effect": "ALL operators DEF x(1 + 0.15 + 0.012*L); redeploy time -30%. At the end of every prep phase (休整期结束时) every currently active bond (incl. 助力) gets +2 layers."
+    },
+    {
+     "need": "3 助力 (distinct name or elite state)",
+     "effect": "+4 layers instead of +2."
+    }
+   ],
+   "formulas": {
+    "defMultiplier": "1.15 + 0.012*L",
+    "redeployTimeMul": "0.7",
+    "layersPerRound": "2 (4 at 3 members) to every active bond"
+   },
+   "layerGain": "波登可 +1 / 调香师 +2 to highest-layer bond at prep end (work from bench); 流明 +2 to active bonds of every bench operator; 纯烬艾雅法拉 +3 highest-layer bond per skill; its own +2/+4 per round.",
+   "howToPlay": "Cheap universal layer engine: activate as many bonds as possible so each gets +2/+4 every round (helps the hidden-round threshold)."
+  }
+ },
+ "visiShip": {
+  "bondId": "visiShip",
+  "name": "远见",
+  "identifier": 15,
+  "isCore": false,
+  "bondType": "REGULAR",
+  "bondOrder": 2,
+  "powerIdList": [],
+  "iconId": "icon_visiShip",
+  "activeCount": 2,
+  "thresholds": [
+   2
+  ],
+  "maxCount": null,
+  "thresholdTemplate": "count_threshold_upward",
+  "countMode": "BOARD_AND_DECK",
+  "countsHand": true,
+  "countsGoldenOnly": false,
+  "activeType": "ALL",
+  "isActiveInDeck": false,
+  "noStack": false,
+  "weight": 10,
+  "maxInactiveBondCount": -1,
+  "layerMilestones": [
+   {
+    "layer": 10,
+    "mode": "every",
+    "effect": "bond_layer_gain_coin"
+   },
+   {
+    "layer": 80,
+    "mode": "first",
+    "effect": "bond_multi_layer_char_goods_price_bond_discount"
+   },
+   {
+    "layer": 150,
+    "mode": "first",
+    "effect": "bond_multi_layer_char_goods_price_bond_discount"
+   }
+  ],
+  "desc": "<每叠加10层>获得一次2资金\n<首次达到80层>所有【远见】干员购买价格永久-1资金\n<首次达到150层>以上效果改为调度中心内所有干员的购买价格永久-1资金（整备区的【远见】干员也可用于激活盟约）",
+  "descRaw": "<每叠加<@autochess.dgreen>10</>层>获得一次<@ba.vup>2</>资金\n<首次达到<@autochess.dgreen>80</>层>所有【远见】干员购买价格<@ba.vup>永久-1</>资金\n<首次达到<@autochess.dgreen>150</>层>以上效果改为调度中心内所有干员的购买价格<@ba.vup>永久-1</>资金（整备区的【远见】干员也可用于激活盟约）",
+  "effectId": "bondeffect_visi",
+  "effectName": "远见",
+  "effectDesc": "<每叠加10层>获得一次2资金\n<首次达到80层>所有【远见】干员购买价格永久-1资金\n<首次达到150层>上述效果改为所有干员购买价格永久-1资金\n整备区的【远见】干员也可用于激活盟约",
+  "effectDescRaw": "<每叠加<@ba.vup>10</>层>获得一次<@ba.vup>2</>资金\n<首次达到<@ba.vup>80</>层>所有【远见】干员购买价格永久-1资金\n<首次达到<@ba.vup>150</>层>上述效果改为所有干员购买价格永久-1资金\n整备区的【远见】干员也可用于激活盟约",
+  "effectDescParams": [],
+  "bb": {
+   "layer": 10,
+   "count": 2,
+   "layer1": 80,
+   "discount": 1,
+   "layer2": 150
+  },
+  "bbStr": {
+   "bond": "visiShip"
+  },
+  "buffs": [
+   {
+    "key": "bond_layer_gain_coin",
+    "bb": {
+     "layer": 10,
+     "count": 2
+    },
+    "bbStr": {}
+   },
+   {
+    "key": "bond_multi_layer_char_goods_price_bond_discount",
+    "bb": {
+     "layer1": 80,
+     "discount": 1,
+     "layer2": 150
+    },
+    "bbStr": {
+     "bond": "visiShip"
+    }
+   }
+  ],
+  "baseParams": [],
+  "perStackParams": [],
+  "members": [
+   "chess_char_1_11_a",
+   "chess_char_2_02_a",
+   "chess_char_3_03_a",
+   "chess_char_3_14_a",
+   "chess_char_4_04_a",
+   "chess_char_4_07_a",
+   "chess_char_5_01_a",
+   "chess_char_5_21_a",
+   "chess_char_6_12_a",
+   "chess_char_3_22_a"
+  ],
+  "visibleMembers": [
+   "chess_char_2_02_a",
+   "chess_char_3_03_a",
+   "chess_char_3_14_a",
+   "chess_char_4_04_a",
+   "chess_char_4_07_a",
+   "chess_char_5_01_a",
+   "chess_char_5_21_a",
+   "chess_char_6_12_a",
+   "chess_char_3_22_a"
+  ],
+  "spec": {
+   "tiers": [
+    {
+     "need": "2 distinct (board + bench)",
+     "effect": "Each time cumulative L passes a multiple of 10: +2 gold."
+    },
+    {
+     "need": "first time L >= 80",
+     "effect": "All 远见 operators' shop price permanently -1."
+    },
+    {
+     "need": "first time L >= 150",
+     "effect": "Replaces the above: every operator in the shop permanently -1 (overrides, does not stack; 3/27 update)."
+    }
+   ],
+   "formulas": {
+    "goldPayouts": "2 * floor(L/10)"
+   },
+   "layerGain": "寒檀 进入/结束休整期 +4 each; 伊内丝 +5 own active bonds; 赫默 +2; 圣约送葬人 +3 per 7 bullets (<=21/battle); 风笛 kills +2; 机变 \"风笛的盟誓\" +8.",
+   "assumed": [
+    "no floor but 0 (owner's decision 2026-10-04; a floor of 1 was assumed until 0.1.3)"
+   ]
+  }
+ },
+ "indomShip": {
+  "bondId": "indomShip",
+  "name": "不屈",
+  "identifier": 19,
+  "isCore": false,
+  "bondType": "REGULAR",
+  "bondOrder": 2,
+  "powerIdList": [],
+  "iconId": "icon_indomShip",
+  "activeCount": 2,
+  "thresholds": [
+   2,
+   3
+  ],
+  "maxCount": null,
+  "thresholdTemplate": "count_threshold_upward",
+  "countMode": "BOARD",
+  "countsHand": false,
+  "countsGoldenOnly": false,
+  "activeType": "BATTLE",
+  "isActiveInDeck": false,
+  "noStack": false,
+  "weight": 10,
+  "maxInactiveBondCount": -1,
+  "layerMilestones": [],
+  "desc": "地面干员被击倒时，有概率立即重新部署（受层数影响）\n<在场3名不同【不屈】干员>地面干员被击倒时使场上所有干员技力+5",
+  "descRaw": "<@ba.vup>地面干员</>被击倒时，有概率立即<@ba.vup>重新部署</><@autochess.gray>（受层数影响）</>\n<在场<@autochess.dgreen>3</>名不同【不屈】干员><@ba.vup>地面干员</>被击倒时使场上所有干员<@ba.vup>技力+5</>",
+  "effectId": "bondeffect_indom",
+  "effectName": "不屈",
+  "effectDesc": "地面干员被击倒时，有{0:0%}（受层数影响）概率立即重新部署\n<在场3名不同【不屈】干员>地面干员被击倒时使场上所有干员技力+5",
+  "effectDescRaw": "<@ba.vup>地面干员</>被击倒时，有<@ba.vup>{0:0%}</><@ba.acrem>（受层数影响）</>概率立即重新部署\n<在场<@ba.vup>3</>名不同【不屈】干员><@ba.vup>地面干员</>被击倒时使场上所有干员技力<@ba.vup>+5</>",
+  "effectDescParams": [
+   {
+    "index": 0,
+    "format": "0%",
+    "base": "base_prob",
+    "perStack": "prob_per_stack"
+   }
+  ],
+  "bb": {
+   "base_prob": 0.18,
+   "prob_per_stack": 0.004,
+   "power_bond_stack_cnt": 0,
+   "sp": 5,
+   "power_bond_char_cnt": 3
+  },
+  "bbStr": {
+   "key": "act1autochess_bond_eff_indom"
+  },
+  "buffs": [
+   {
+    "key": "env_gbuff_new",
+    "bb": {
+     "base_prob": 0.18,
+     "prob_per_stack": 0.004,
+     "power_bond_stack_cnt": 0,
+     "sp": 5,
+     "power_bond_char_cnt": 3
+    },
+    "bbStr": {
+     "key": "act1autochess_bond_eff_indom"
+    }
+   }
+  ],
+  "baseParams": [
+   "base_prob"
+  ],
+  "perStackParams": [
+   "prob_per_stack"
+  ],
+  "members": [
+   "chess_char_1_05_a",
+   "chess_char_1_20_a",
+   "chess_char_2_03_a",
+   "chess_char_2_12_a",
+   "chess_char_3_16_a",
+   "chess_char_4_07_a",
+   "chess_char_5_06_a",
+   "chess_char_5_13_a",
+   "chess_char_6_06_a",
+   "chess_char_5_25_a",
+   "chess_ws_dos_crow_a"
+  ],
+  "visibleMembers": [
+   "chess_char_1_20_a",
+   "chess_char_2_12_a",
+   "chess_char_3_16_a",
+   "chess_char_4_07_a",
+   "chess_char_5_06_a",
+   "chess_char_5_13_a",
+   "chess_char_6_06_a",
+   "chess_char_5_25_a",
+   "chess_ws_dos_crow_a"
+  ],
+  "spec": {
+   "tiers": [
+    {
+     "need": "2 distinct",
+     "effect": "When a ground operator (地面干员 = melee position, on any tile) is knocked out / retreats / swaps 替身<->本体: with p = min(1, 0.18 + 0.004*L) it is redeployed at once (next deployment has 0 redeploy time and 0 cost). Also consumes a \"复活\" charge if it had one."
+    },
+    {
+     "need": "3 distinct",
+     "effect": "When a ground (melee-position) operator is knocked out: every operator on the field +5 SP."
+    }
+   ],
+   "formulas": {
+    "p": "min(1, 0.18 + 0.004*L)",
+    "reaches100%AtL": "205"
+   },
+   "layerGain": "雷蛇 休整期结束 +1; 砾 被击倒 +2; 归溟幽灵鲨 +5; 风笛 kills +2; 机变 \"风笛的盟誓\" +8."
+  }
+ }
+}

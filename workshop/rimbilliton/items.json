@@ -1,0 +1,234 @@
+{
+ "chess_item_6_12_e_a": {
+  "id": "chess_item_6_12_e_a",
+  "baseId": "chess_item_6_12_e_a",
+  "goldenId": "chess_item_6_12_e_b",
+  "isGolden": false,
+  "trapId": "trap_2001_mod_happy",
+  "iconId": "trap_2001_mod_happy",
+  "identifier": 381,
+  "name": "“幸福在途”补给包",
+  "itemType": "EQUIP",
+  "tier": 6,
+  "shopSortId": 12,
+  "price": 4,
+  "hideInShop": false,
+  "shopExcluded": false,
+  "shopExcludedBy": null,
+  "mergeable": true,
+  "upgradeNum": 2,
+  "upgradeChessId": "chess_item_6_12_e_b",
+  "duration": -1,
+  "giveBondId": null,
+  "givePowerId": null,
+  "canGiveBond": false,
+  "requiresBondId": null,
+  "effectId": "eff_mod_happy_supply",
+  "effectName": "“幸福在途”补给包",
+  "desc": "造成的伤害提升40%；若携带者为【雷姆必拓】盟约干员，造成伤害时，额外造成1次等于“开拓心”干员2.5%生命上限的真实伤害",
+  "descRaw": "造成的伤害<@ba.vup>提升40%</>；若携带者为【<@ba.vup>雷姆必拓</>】盟约干员，造成伤害时，额外造成1次等于<@ba.vup>“开拓心”</>干员<@ba.vup>2.5%生命上限</>的<@ba.vup>真实伤害</>",
+  "buffs": [
+   {
+    "key": "env_gbuff_new_with_verify",
+    "countType": "NONE",
+    "bb": {
+     "damage_scale": 1.4,
+     "true_damage_hp_scale": 0.025
+    },
+    "bbStr": {
+     "key": "mod_rimbilliton_happy_supply"
+    }
+   }
+  ],
+  "params": {
+   "damage_scale": 1.4,
+   "true_damage_hp_scale": 0.025,
+   "key": "mod_rimbilliton_happy_supply"
+  },
+  "category": "ON_HIT",
+  "kind": "passive",
+  "family": null,
+  "implFormula": "Carrier damage ×damage_scale (dmgDealtMul); as a 雷姆必拓 member, each damage instance also deals true_damage_hp_scale × the 开拓心 holder’s max HP true damage (holder = the last-deployed 雷姆必拓 on the field).",
+  "note": null,
+  "rangeGrid": [
+   [
+    0,
+    0
+   ]
+  ],
+  "flavor": "“谁说《健身热身指南》没用？在雷姆必拓你很有可能打不过一只有袋牙兽！”"
+ },
+ "chess_item_6_12_e_b": {
+  "id": "chess_item_6_12_e_b",
+  "baseId": "chess_item_6_12_e_a",
+  "goldenId": "chess_item_6_12_e_b",
+  "isGolden": true,
+  "trapId": "trap_2001_mod_happy",
+  "iconId": "trap_2001_mod_happy",
+  "identifier": 382,
+  "name": "“幸福在途”补给包",
+  "itemType": "EQUIP",
+  "tier": 6,
+  "shopSortId": 12,
+  "price": 5,
+  "hideInShop": false,
+  "shopExcluded": false,
+  "shopExcludedBy": null,
+  "mergeable": false,
+  "upgradeNum": 0,
+  "upgradeChessId": null,
+  "duration": 0,
+  "giveBondId": null,
+  "givePowerId": null,
+  "canGiveBond": false,
+  "requiresBondId": null,
+  "effectId": "eff_modg_happy_supply",
+  "effectName": "“幸福在途”补给包",
+  "desc": "造成的伤害提升80%；若携带者为【雷姆必拓】盟约干员，造成伤害时，额外造成1次等于“开拓心”干员5%生命上限的真实伤害",
+  "descRaw": "造成的伤害<@ba.vup>提升80%</>；若携带者为【<@ba.vup>雷姆必拓</>】盟约干员，造成伤害时，额外造成1次等于<@ba.vup>“开拓心”</>干员<@ba.vup>5%生命上限</>的<@ba.vup>真实伤害</>",
+  "buffs": [
+   {
+    "key": "env_gbuff_new_with_verify",
+    "countType": "NONE",
+    "bb": {
+     "damage_scale": 1.8,
+     "true_damage_hp_scale": 0.05
+    },
+    "bbStr": {
+     "key": "mod_rimbilliton_happy_supply"
+    }
+   }
+  ],
+  "params": {
+   "damage_scale": 1.8,
+   "true_damage_hp_scale": 0.05,
+   "key": "mod_rimbilliton_happy_supply"
+  },
+  "category": "ON_HIT",
+  "kind": "passive",
+  "family": null,
+  "implFormula": "Carrier damage ×damage_scale (dmgDealtMul); as a 雷姆必拓 member, each damage instance also deals true_damage_hp_scale × the 开拓心 holder’s max HP true damage (holder = the last-deployed 雷姆必拓 on the field).",
+  "note": null,
+  "rangeGrid": [
+   [
+    0,
+    0
+   ]
+  ],
+  "flavor": "“谁说《健身热身指南》没用？在雷姆必拓你很有可能打不过一只有袋牙兽！”"
+ },
+ "chess_item_2_08_e_a": {
+  "id": "chess_item_2_08_e_a",
+  "baseId": "chess_item_2_08_e_a",
+  "goldenId": "chess_item_2_08_e_b",
+  "isGolden": false,
+  "trapId": "trap_2002_mod_greens",
+  "iconId": "trap_2002_mod_greens",
+  "identifier": 383,
+  "name": "绿叶菜罐头",
+  "itemType": "EQUIP",
+  "tier": 2,
+  "shopSortId": 8,
+  "price": 1,
+  "hideInShop": false,
+  "shopExcluded": false,
+  "shopExcludedBy": null,
+  "mergeable": true,
+  "upgradeNum": 2,
+  "upgradeChessId": "chess_item_2_08_e_b",
+  "duration": -1,
+  "giveBondId": "rimBilliton",
+  "givePowerId": null,
+  "canGiveBond": false,
+  "requiresBondId": null,
+  "effectId": "eff_mod_greens_can",
+  "effectName": "绿叶菜罐头",
+  "desc": "受到的伤害降低5%",
+  "descRaw": "受到的伤害<@ba.vup>降低5%</>",
+  "buffs": [
+   {
+    "key": "env_gbuff_new_with_verify",
+    "countType": "NONE",
+    "bb": {
+     "dmg_taken_mul": 0.95
+    },
+    "bbStr": {
+     "key": "mod_rimbilliton_greens_can"
+    }
+   }
+  ],
+  "params": {
+   "dmg_taken_mul": 0.95,
+   "key": "mod_rimbilliton_greens_can"
+  },
+  "category": "SURVIVAL",
+  "kind": "passive",
+  "family": null,
+  "implFormula": "Damage taken ×dmg_taken_mul (dmgTakenMul). giveBondId rimBilliton: with 变形同构体 the carrier additionally counts as a 雷姆必拓 member (the can alone grants nothing).",
+  "note": null,
+  "rangeGrid": [
+   [
+    0,
+    0
+   ]
+  ],
+  "flavor": "“很多卡特斯相信吃下这盒罐头，他们就会变得力大无穷。出色的广告效果，业界经典成功案例。”"
+ },
+ "chess_item_2_08_e_b": {
+  "id": "chess_item_2_08_e_b",
+  "baseId": "chess_item_2_08_e_a",
+  "goldenId": "chess_item_2_08_e_b",
+  "isGolden": true,
+  "trapId": "trap_2002_mod_greens",
+  "iconId": "trap_2002_mod_greens",
+  "identifier": 384,
+  "name": "绿叶菜罐头",
+  "itemType": "EQUIP",
+  "tier": 2,
+  "shopSortId": 8,
+  "price": 5,
+  "hideInShop": false,
+  "shopExcluded": false,
+  "shopExcludedBy": null,
+  "mergeable": false,
+  "upgradeNum": 0,
+  "upgradeChessId": null,
+  "duration": 0,
+  "giveBondId": "rimBilliton",
+  "givePowerId": null,
+  "canGiveBond": false,
+  "requiresBondId": null,
+  "effectId": "eff_modg_greens_can",
+  "effectName": "绿叶菜罐头",
+  "desc": "受到的伤害降低10%",
+  "descRaw": "受到的伤害<@ba.vup>降低10%</>",
+  "buffs": [
+   {
+    "key": "env_gbuff_new_with_verify",
+    "countType": "NONE",
+    "bb": {
+     "dmg_taken_mul": 0.9
+    },
+    "bbStr": {
+     "key": "mod_rimbilliton_greens_can"
+    }
+   }
+  ],
+  "params": {
+   "dmg_taken_mul": 0.9,
+   "key": "mod_rimbilliton_greens_can"
+  },
+  "category": "SURVIVAL",
+  "kind": "passive",
+  "family": null,
+  "implFormula": "Damage taken ×dmg_taken_mul (dmgTakenMul). giveBondId rimBilliton: with 变形同构体 the carrier additionally counts as a 雷姆必拓 member (the can alone grants nothing).",
+  "note": null,
+  "rangeGrid": [
+   [
+    0,
+    0
+   ]
+  ],
+  "flavor": "“很多卡特斯相信吃下这盒罐头，他们就会变得力大无穷。出色的广告效果，业界经典成功案例。”"
+ }
+}

@@ -2532,9 +2532,3 @@ button.ally-card:disabled { filter: grayscale(.7) brightness(.7); cursor: defaul
 .hub-entries { position: relative; }
 .hub-fold--modes { position: absolute; top: -.26rem; right: .06rem; z-index: 3; }
 .hub-entries.is-folded .hub-entries__row { display: none; }
-
-/* 房间座位：把顶部那条「*」刻线挪到立绘**下面**，玩家的立绘因此更长（owner：* 号那段下移，让玩家显示更长）。 */
-.rseat { display: flex; flex-direction: column; }
-.rseat__art { order: 2; }
-.rseat__strip { order: 3; height: max(.2rem, 12px); margin: .04rem 0 0; }
-.rseat__plate { order: 4; }

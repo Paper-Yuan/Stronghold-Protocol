@@ -1,0 +1,1673 @@
+{
+ "id": "rimbilliton",
+ "name": "雷姆必拓",
+ "version": "1.2.0",
+ "author": "the Rim Billiton mod",
+ "license": "GPL-3.0-or-later",
+ "description": "雷姆必拓 mod：9 名卡池干员 / 核心盟约（开拓心）/ 特质 / 装备 / 开拓大地策略 / 沙地兽 token。数据与素材走创意工坊叠加层，官方 data/*.json 不被改动。",
+ "gameVersion": "0.2.6",
+ "combat": true,
+ "server": {
+  "battle": {
+   "module": "battle/main.mjs"
+  },
+  "meta": {
+   "module": "meta/main.mjs",
+   "registers": [
+    "band:band_kaituo",
+    "garrison:SERVER_ADD_ACT_BOND_LAYER_BY_BOARD_BOND_CHAR",
+    "garrison:SERVER_GAIN_PIONEER_HOLDER",
+    "garrison:SERVER_GRANT_NO_REDEPLOY_CHAR"
+   ]
+  }
+ },
+ "content": [
+  "chess",
+  "bonds",
+  "garrisons",
+  "items",
+  "effects",
+  "tokens",
+  "bands"
+ ],
+ "overrides": [
+  "chess:chess_char_3_02_a",
+  "chess:chess_char_3_02_b",
+  "chess:chess_char_4_06_a",
+  "chess:chess_char_4_06_b",
+  "chess:chess_char_4_14_a",
+  "chess:chess_char_4_14_b",
+  "bonds:siracusaShip",
+  "bonds:preciShip",
+  "bonds:arcaneShip",
+  "bonds:steadShip",
+  "bonds:deputShip",
+  "bonds:visiShip",
+  "bonds:indomShip"
+ ],
+ "art": {
+  "chars": {
+   "char_1037_amiya3": {
+    "avatar": "char/avatar/char_1037_amiya3_2.png",
+    "avatarE2": "char/avatar/char_1037_amiya3_2.png",
+    "portrait": "char/portrait/char_1037_amiya3_2.png",
+    "portraitE2": "char/portrait/char_1037_amiya3_2.png",
+    "spine": {
+     "front": {
+      "skel": "spine/op/char_1037_amiya3/front/char_1037_amiya3.skel",
+      "atlas": "spine/op/char_1037_amiya3/front/char_1037_amiya3.atlas",
+      "textures": [
+       "spine/op/char_1037_amiya3/front/char_1037_amiya3.png"
+      ],
+      "anims": {
+       "idle": "Idle",
+       "deploy": "Start",
+       "attack": {
+        "begin": null,
+        "loop": "Attack",
+        "end": null
+       },
+       "attackDown": null,
+       "skill": {
+        "begin": "Skill_1_Begin",
+        "loop": "Skill_1_Loop",
+        "end": "Skill_1_End",
+        "index": 0,
+        "idle": null
+       },
+       "die": "Die",
+       "move": null,
+       "stun": null,
+       "skills": {
+        "0": {
+         "begin": "Skill_1_Begin",
+         "loop": "Skill_1_Loop",
+         "end": "Skill_1_End",
+         "index": 0,
+         "idle": null
+        },
+        "1": {
+         "begin": "Skill_2_Begin",
+         "loop": "Skill_2_Loop",
+         "end": "Skill_2_End",
+         "index": 1,
+         "idle": null
+        },
+        "2": {
+         "begin": null,
+         "loop": "Attack",
+         "end": null,
+         "via": "attack",
+         "index": 2,
+         "idle": null
+        }
+       }
+      }
+     },
+     "back": {
+      "skel": "spine/op/char_1037_amiya3/back/char_1037_amiya3.skel",
+      "atlas": "spine/op/char_1037_amiya3/back/char_1037_amiya3.atlas",
+      "textures": [
+       "spine/op/char_1037_amiya3/back/char_1037_amiya3.png"
+      ],
+      "anims": {
+       "idle": "Idle",
+       "deploy": "Start",
+       "attack": {
+        "begin": null,
+        "loop": "Attack",
+        "end": null
+       },
+       "attackDown": null,
+       "skill": {
+        "begin": "Skill_1_Begin",
+        "loop": "Skill_1_Loop",
+        "end": "Skill_1_End",
+        "index": 0,
+        "idle": null
+       },
+       "die": null,
+       "move": null,
+       "stun": null,
+       "skills": {
+        "0": {
+         "begin": "Skill_1_Begin",
+         "loop": "Skill_1_Loop",
+         "end": "Skill_1_End",
+         "index": 0,
+         "idle": null
+        },
+        "1": {
+         "begin": "Skill_2_Begin",
+         "loop": "Skill_2_Loop",
+         "end": "Skill_2_End",
+         "index": 1,
+         "idle": null
+        },
+        "2": {
+         "begin": null,
+         "loop": "Attack",
+         "end": null,
+         "via": "attack",
+         "index": 2,
+         "idle": null
+        }
+       }
+      }
+     }
+    }
+   },
+   "char_193_frostl": {
+    "avatar": "char/avatar/char_193_frostl.png",
+    "avatarE2": "char/avatar/char_193_frostl_2.png",
+    "portrait": "char/portrait/char_193_frostl_1.png",
+    "portraitE2": "char/portrait/char_193_frostl_2.png",
+    "spine": {
+     "front": {
+      "skel": "spine/op/char_193_frostl/front/char_193_frostl.skel",
+      "atlas": "spine/op/char_193_frostl/front/char_193_frostl.atlas",
+      "textures": [
+       "spine/op/char_193_frostl/front/char_193_frostl.png"
+      ],
+      "anims": {
+       "idle": "Idle",
+       "deploy": "Start",
+       "attack": {
+        "begin": null,
+        "loop": "Attack",
+        "end": null
+       },
+       "attackDown": {
+        "begin": null,
+        "loop": "Combat_Down",
+        "end": null,
+        "via": "combat"
+       },
+       "skill": {
+        "begin": null,
+        "loop": "Attack",
+        "end": null,
+        "via": "attack",
+        "index": 0,
+        "idle": null
+       },
+       "die": "Die",
+       "move": null,
+       "stun": null,
+       "skills": {
+        "0": {
+         "begin": null,
+         "loop": "Attack",
+         "end": null,
+         "via": "attack",
+         "index": 0,
+         "idle": null
+        },
+        "1": {
+         "begin": null,
+         "loop": "Attack",
+         "end": null,
+         "via": "attack",
+         "index": 1,
+         "idle": null
+        },
+        "2": {
+         "begin": null,
+         "loop": "Attack",
+         "end": null,
+         "via": "attack",
+         "index": 2,
+         "idle": null
+        }
+       }
+      }
+     },
+     "back": {
+      "skel": "spine/op/char_193_frostl/back/char_193_frostl.skel",
+      "atlas": "spine/op/char_193_frostl/back/char_193_frostl.atlas",
+      "textures": [
+       "spine/op/char_193_frostl/back/char_193_frostl.png"
+      ],
+      "anims": {
+       "idle": "Idle",
+       "deploy": "Start",
+       "attack": {
+        "begin": null,
+        "loop": "Attack",
+        "end": null
+       },
+       "attackDown": null,
+       "skill": {
+        "begin": null,
+        "loop": "Attack",
+        "end": null,
+        "via": "attack",
+        "index": 0,
+        "idle": null
+       },
+       "die": null,
+       "move": null,
+       "stun": null,
+       "skills": {
+        "0": {
+         "begin": null,
+         "loop": "Attack",
+         "end": null,
+         "via": "attack",
+         "index": 0,
+         "idle": null
+        },
+        "1": {
+         "begin": null,
+         "loop": "Attack",
+         "end": null,
+         "via": "attack",
+         "index": 1,
+         "idle": null
+        },
+        "2": {
+         "begin": null,
+         "loop": "Attack",
+         "end": null,
+         "via": "attack",
+         "index": 2,
+         "idle": null
+        }
+       }
+      }
+     }
+    }
+   },
+   "char_230_savage": {
+    "avatar": "char/avatar/char_230_savage.png",
+    "avatarE2": "char/avatar/char_230_savage_2.png",
+    "portrait": "char/portrait/char_230_savage_1.png",
+    "portraitE2": "char/portrait/char_230_savage_2.png",
+    "spine": {
+     "front": {
+      "skel": "spine/op/char_230_savage/front/char_230_savage.skel",
+      "atlas": "spine/op/char_230_savage/front/char_230_savage.atlas",
+      "textures": [
+       "spine/op/char_230_savage/front/char_230_savage.png"
+      ],
+      "anims": {
+       "idle": "Idle",
+       "deploy": "Start",
+       "attack": {
+        "begin": null,
+        "loop": "Attack",
+        "end": null
+       },
+       "attackDown": null,
+       "skill": {
+        "begin": null,
+        "loop": "Skill",
+        "end": null,
+        "index": 0,
+        "idle": null
+       },
+       "die": "Die",
+       "move": null,
+       "stun": null,
+       "skills": {
+        "0": {
+         "begin": null,
+         "loop": "Skill",
+         "end": null,
+         "index": 0,
+         "idle": null
+        },
+        "1": {
+         "begin": null,
+         "loop": "Skill",
+         "end": null,
+         "index": 1,
+         "idle": null
+        },
+        "2": {
+         "begin": null,
+         "loop": "Skill",
+         "end": null,
+         "index": 2,
+         "idle": null
+        }
+       }
+      }
+     },
+     "back": {
+      "skel": "spine/op/char_230_savage/back/char_230_savage.skel",
+      "atlas": "spine/op/char_230_savage/back/char_230_savage.atlas",
+      "textures": [
+       "spine/op/char_230_savage/back/char_230_savage.png"
+      ],
+      "anims": {
+       "idle": "Idle",
+       "deploy": "Start",
+       "attack": {
+        "begin": null,
+        "loop": "Attack",
+        "end": null
+       },
+       "attackDown": null,
+       "skill": {
+        "begin": null,
+        "loop": "Skill",
+        "end": null,
+        "index": 0,
+        "idle": null
+       },
+       "die": null,
+       "move": null,
+       "stun": null,
+       "skills": {
+        "0": {
+         "begin": null,
+         "loop": "Skill",
+         "end": null,
+         "index": 0,
+         "idle": null
+        },
+        "1": {
+         "begin": null,
+         "loop": "Skill",
+         "end": null,
+         "index": 1,
+         "idle": null
+        },
+        "2": {
+         "begin": null,
+         "loop": "Skill",
+         "end": null,
+         "index": 2,
+         "idle": null
+        }
+       }
+      }
+     }
+    }
+   },
+   "char_449_glider": {
+    "avatar": "char/avatar/char_449_glider.png",
+    "avatarE2": "char/avatar/char_449_glider_2.png",
+    "portrait": "char/portrait/char_449_glider_1.png",
+    "portraitE2": "char/portrait/char_449_glider_2.png",
+    "spine": {
+     "front": {
+      "skel": "spine/op/char_449_glider/front/char_449_glider.skel",
+      "atlas": "spine/op/char_449_glider/front/char_449_glider.atlas",
+      "textures": [
+       "spine/op/char_449_glider/front/char_449_glider.png"
+      ],
+      "anims": {
+       "idle": "Idle",
+       "deploy": "Start",
+       "attack": {
+        "begin": null,
+        "loop": "Attack",
+        "end": null
+       },
+       "attackDown": null,
+       "skill": {
+        "begin": null,
+        "loop": "Skill",
+        "end": null,
+        "index": 0,
+        "idle": null
+       },
+       "die": "Die",
+       "move": null,
+       "stun": null,
+       "skills": {
+        "0": {
+         "begin": null,
+         "loop": "Skill",
+         "end": null,
+         "index": 0,
+         "idle": null
+        },
+        "1": {
+         "begin": "skill_2_Begin",
+         "loop": "skill_2_Loop",
+         "end": "skill_2_End",
+         "index": 1,
+         "idle": null
+        },
+        "2": {
+         "begin": null,
+         "loop": "Skill",
+         "end": null,
+         "index": 2,
+         "idle": null
+        }
+       }
+      }
+     },
+     "back": {
+      "skel": "spine/op/char_449_glider/back/char_449_glider.skel",
+      "atlas": "spine/op/char_449_glider/back/char_449_glider.atlas",
+      "textures": [
+       "spine/op/char_449_glider/back/char_449_glider.png"
+      ],
+      "anims": {
+       "idle": "Idle",
+       "deploy": "Start",
+       "attack": {
+        "begin": null,
+        "loop": "Attack",
+        "end": null
+       },
+       "attackDown": null,
+       "skill": {
+        "begin": null,
+        "loop": "Skill",
+        "end": null,
+        "index": 0,
+        "idle": null
+       },
+       "die": null,
+       "move": null,
+       "stun": null,
+       "skills": {
+        "0": {
+         "begin": null,
+         "loop": "Skill",
+         "end": null,
+         "index": 0,
+         "idle": null
+        },
+        "1": {
+         "begin": "skill_2_Begin",
+         "loop": "skill_2_Loop",
+         "end": "skill_2_End",
+         "index": 1,
+         "idle": null
+        },
+        "2": {
+         "begin": null,
+         "loop": "Skill",
+         "end": null,
+         "index": 2,
+         "idle": null
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "skills": {
+   "skchr_amiya3_1": "skill/skchr_amiya3_1.png",
+   "skchr_amiya3_2": "skill/skchr_amiya3_2.png",
+   "skchr_frostl_1": "skill/skchr_frostl_1.png",
+   "skchr_frostl_2": "skill/skchr_frostl_2.png",
+   "skchr_glider_1": "skill/skchr_glider_1.png",
+   "skchr_glider_2": "skill/skchr_glider_2.png",
+   "skchr_savage_2": "skill/skchr_savage_2.png"
+  },
+  "bands": {
+   "band_kaituo": "band/band_kaituo.png"
+  }
+ },
+ "bondIcons": {
+  "rimBilliton": "bond/icon_rimBilliton.png"
+ },
+ "itemIcons": {
+  "trap_2001_mod_happy": "item/trap_2001_mod_happy.png",
+  "trap_2002_mod_greens": "item/trap_2002_mod_greens.png"
+ },
+ "voices": {
+  "char_193_frostl": {
+   "start": [
+    "voice/jp/char_193_frostl/cn_019.mp3"
+   ],
+   "faceEnemy": [
+    "voice/jp/char_193_frostl/cn_020.mp3"
+   ],
+   "select": [
+    "voice/jp/char_193_frostl/cn_021.mp3",
+    "voice/jp/char_193_frostl/cn_022.mp3"
+   ],
+   "place": [
+    "voice/jp/char_193_frostl/cn_023.mp3",
+    "voice/jp/char_193_frostl/cn_024.mp3"
+   ],
+   "skill1": [
+    "voice/jp/char_193_frostl/cn_025.mp3"
+   ],
+   "skill2": [
+    "voice/jp/char_193_frostl/cn_026.mp3"
+   ],
+   "skill3": [
+    "voice/jp/char_193_frostl/cn_027.mp3"
+   ],
+   "skill4": [
+    "voice/jp/char_193_frostl/cn_028.mp3"
+   ],
+   "resultFour": [
+    "voice/jp/char_193_frostl/cn_029.mp3"
+   ],
+   "resultThree": [
+    "voice/jp/char_193_frostl/cn_030.mp3"
+   ],
+   "resultTwo": [
+    "voice/jp/char_193_frostl/cn_031.mp3"
+   ],
+   "resultLose": [
+    "voice/jp/char_193_frostl/cn_032.mp3"
+   ]
+  },
+  "char_230_savage": {
+   "start": [
+    "voice/jp/char_230_savage/cn_019.mp3"
+   ],
+   "faceEnemy": [
+    "voice/jp/char_230_savage/cn_020.mp3"
+   ],
+   "select": [
+    "voice/jp/char_230_savage/cn_021.mp3",
+    "voice/jp/char_230_savage/cn_022.mp3"
+   ],
+   "place": [
+    "voice/jp/char_230_savage/cn_023.mp3",
+    "voice/jp/char_230_savage/cn_024.mp3"
+   ],
+   "skill1": [
+    "voice/jp/char_230_savage/cn_025.mp3"
+   ],
+   "skill2": [
+    "voice/jp/char_230_savage/cn_026.mp3"
+   ],
+   "skill3": [
+    "voice/jp/char_230_savage/cn_027.mp3"
+   ],
+   "skill4": [
+    "voice/jp/char_230_savage/cn_028.mp3"
+   ],
+   "resultFour": [
+    "voice/jp/char_230_savage/cn_029.mp3"
+   ],
+   "resultThree": [
+    "voice/jp/char_230_savage/cn_030.mp3"
+   ],
+   "resultTwo": [
+    "voice/jp/char_230_savage/cn_031.mp3"
+   ],
+   "resultLose": [
+    "voice/jp/char_230_savage/cn_032.mp3"
+   ]
+  },
+  "char_449_glider": {
+   "start": [
+    "voice/jp/char_449_glider/cn_019.mp3"
+   ],
+   "faceEnemy": [
+    "voice/jp/char_449_glider/cn_020.mp3"
+   ],
+   "select": [
+    "voice/jp/char_449_glider/cn_021.mp3",
+    "voice/jp/char_449_glider/cn_022.mp3"
+   ],
+   "place": [
+    "voice/jp/char_449_glider/cn_023.mp3",
+    "voice/jp/char_449_glider/cn_024.mp3"
+   ],
+   "skill1": [
+    "voice/jp/char_449_glider/cn_025.mp3"
+   ],
+   "skill2": [
+    "voice/jp/char_449_glider/cn_026.mp3"
+   ],
+   "skill3": [
+    "voice/jp/char_449_glider/cn_027.mp3"
+   ],
+   "skill4": [
+    "voice/jp/char_449_glider/cn_028.mp3"
+   ],
+   "resultFour": [
+    "voice/jp/char_449_glider/cn_029.mp3"
+   ],
+   "resultThree": [
+    "voice/jp/char_449_glider/cn_030.mp3"
+   ],
+   "resultTwo": [
+    "voice/jp/char_449_glider/cn_031.mp3"
+   ],
+   "resultLose": [
+    "voice/jp/char_449_glider/cn_032.mp3"
+   ]
+  },
+  "char_1037_amiya3": {
+   "start": [
+    "voice/jp/char_1037_amiya3/cn_019.mp3"
+   ],
+   "faceEnemy": [
+    "voice/jp/char_1037_amiya3/cn_020.mp3"
+   ],
+   "select": [
+    "voice/jp/char_1037_amiya3/cn_021.mp3",
+    "voice/jp/char_1037_amiya3/cn_022.mp3"
+   ],
+   "place": [
+    "voice/jp/char_1037_amiya3/cn_023.mp3",
+    "voice/jp/char_1037_amiya3/cn_024.mp3"
+   ],
+   "skill1": [
+    "voice/jp/char_1037_amiya3/cn_025.mp3"
+   ],
+   "skill2": [
+    "voice/jp/char_1037_amiya3/cn_026.mp3"
+   ],
+   "skill3": [
+    "voice/jp/char_1037_amiya3/cn_027.mp3"
+   ],
+   "skill4": [
+    "voice/jp/char_1037_amiya3/cn_028.mp3"
+   ],
+   "resultFour": [
+    "voice/jp/char_1037_amiya3/cn_029.mp3"
+   ],
+   "resultThree": [
+    "voice/jp/char_1037_amiya3/cn_030.mp3"
+   ],
+   "resultTwo": [
+    "voice/jp/char_1037_amiya3/cn_031.mp3"
+   ],
+   "resultLose": [
+    "voice/jp/char_1037_amiya3/cn_032.mp3"
+   ]
+  },
+  "char_4183_mortis": {
+   "start": [
+    "voice/jp/char_4183_mortis/cn_019.mp3"
+   ],
+   "faceEnemy": [
+    "voice/jp/char_4183_mortis/cn_020.mp3"
+   ],
+   "select": [
+    "voice/jp/char_4183_mortis/cn_021.mp3",
+    "voice/jp/char_4183_mortis/cn_022.mp3"
+   ],
+   "place": [
+    "voice/jp/char_4183_mortis/cn_023.mp3",
+    "voice/jp/char_4183_mortis/cn_024.mp3"
+   ],
+   "skill1": [
+    "voice/jp/char_4183_mortis/cn_025.mp3"
+   ],
+   "skill2": [
+    "voice/jp/char_4183_mortis/cn_026.mp3"
+   ],
+   "skill3": [
+    "voice/jp/char_4183_mortis/cn_027.mp3"
+   ],
+   "skill4": [
+    "voice/jp/char_4183_mortis/cn_028.mp3"
+   ],
+   "resultFour": [
+    "voice/jp/char_4183_mortis/cn_029.mp3"
+   ],
+   "resultThree": [
+    "voice/jp/char_4183_mortis/cn_030.mp3"
+   ],
+   "resultTwo": [
+    "voice/jp/char_4183_mortis/cn_031.mp3"
+   ],
+   "resultLose": [
+    "voice/jp/char_4183_mortis/cn_032.mp3"
+   ]
+  }
+ },
+ "voiceLangs": {
+  "cn": {
+   "char_193_frostl": {
+    "start": [
+     "voice/cn/char_193_frostl/cn_019.mp3"
+    ],
+    "faceEnemy": [
+     "voice/cn/char_193_frostl/cn_020.mp3"
+    ],
+    "select": [
+     "voice/cn/char_193_frostl/cn_021.mp3",
+     "voice/cn/char_193_frostl/cn_022.mp3"
+    ],
+    "place": [
+     "voice/cn/char_193_frostl/cn_023.mp3",
+     "voice/cn/char_193_frostl/cn_024.mp3"
+    ],
+    "skill1": [
+     "voice/cn/char_193_frostl/cn_025.mp3"
+    ],
+    "skill2": [
+     "voice/cn/char_193_frostl/cn_026.mp3"
+    ],
+    "skill3": [
+     "voice/cn/char_193_frostl/cn_027.mp3"
+    ],
+    "skill4": [
+     "voice/cn/char_193_frostl/cn_028.mp3"
+    ],
+    "resultFour": [
+     "voice/cn/char_193_frostl/cn_029.mp3"
+    ],
+    "resultThree": [
+     "voice/cn/char_193_frostl/cn_030.mp3"
+    ],
+    "resultTwo": [
+     "voice/cn/char_193_frostl/cn_031.mp3"
+    ],
+    "resultLose": [
+     "voice/cn/char_193_frostl/cn_032.mp3"
+    ]
+   },
+   "char_230_savage": {
+    "start": [
+     "voice/cn/char_230_savage/cn_019.mp3"
+    ],
+    "faceEnemy": [
+     "voice/cn/char_230_savage/cn_020.mp3"
+    ],
+    "select": [
+     "voice/cn/char_230_savage/cn_021.mp3",
+     "voice/cn/char_230_savage/cn_022.mp3"
+    ],
+    "place": [
+     "voice/cn/char_230_savage/cn_023.mp3",
+     "voice/cn/char_230_savage/cn_024.mp3"
+    ],
+    "skill1": [
+     "voice/cn/char_230_savage/cn_025.mp3"
+    ],
+    "skill2": [
+     "voice/cn/char_230_savage/cn_026.mp3"
+    ],
+    "skill3": [
+     "voice/cn/char_230_savage/cn_027.mp3"
+    ],
+    "skill4": [
+     "voice/cn/char_230_savage/cn_028.mp3"
+    ],
+    "resultFour": [
+     "voice/cn/char_230_savage/cn_029.mp3"
+    ],
+    "resultThree": [
+     "voice/cn/char_230_savage/cn_030.mp3"
+    ],
+    "resultTwo": [
+     "voice/cn/char_230_savage/cn_031.mp3"
+    ],
+    "resultLose": [
+     "voice/cn/char_230_savage/cn_032.mp3"
+    ]
+   },
+   "char_449_glider": {
+    "start": [
+     "voice/cn/char_449_glider/cn_019.mp3"
+    ],
+    "faceEnemy": [
+     "voice/cn/char_449_glider/cn_020.mp3"
+    ],
+    "select": [
+     "voice/cn/char_449_glider/cn_021.mp3",
+     "voice/cn/char_449_glider/cn_022.mp3"
+    ],
+    "place": [
+     "voice/cn/char_449_glider/cn_023.mp3",
+     "voice/cn/char_449_glider/cn_024.mp3"
+    ],
+    "skill1": [
+     "voice/cn/char_449_glider/cn_025.mp3"
+    ],
+    "skill2": [
+     "voice/cn/char_449_glider/cn_026.mp3"
+    ],
+    "skill3": [
+     "voice/cn/char_449_glider/cn_027.mp3"
+    ],
+    "skill4": [
+     "voice/cn/char_449_glider/cn_028.mp3"
+    ],
+    "resultFour": [
+     "voice/cn/char_449_glider/cn_029.mp3"
+    ],
+    "resultThree": [
+     "voice/cn/char_449_glider/cn_030.mp3"
+    ],
+    "resultTwo": [
+     "voice/cn/char_449_glider/cn_031.mp3"
+    ],
+    "resultLose": [
+     "voice/cn/char_449_glider/cn_032.mp3"
+    ]
+   },
+   "char_1037_amiya3": {
+    "start": [
+     "voice/cn/char_1037_amiya3/cn_019.mp3"
+    ],
+    "faceEnemy": [
+     "voice/cn/char_1037_amiya3/cn_020.mp3"
+    ],
+    "select": [
+     "voice/cn/char_1037_amiya3/cn_021.mp3",
+     "voice/cn/char_1037_amiya3/cn_022.mp3"
+    ],
+    "place": [
+     "voice/cn/char_1037_amiya3/cn_023.mp3",
+     "voice/cn/char_1037_amiya3/cn_024.mp3"
+    ],
+    "skill1": [
+     "voice/cn/char_1037_amiya3/cn_025.mp3"
+    ],
+    "skill2": [
+     "voice/cn/char_1037_amiya3/cn_026.mp3"
+    ],
+    "skill3": [
+     "voice/cn/char_1037_amiya3/cn_027.mp3"
+    ],
+    "skill4": [
+     "voice/cn/char_1037_amiya3/cn_028.mp3"
+    ],
+    "resultFour": [
+     "voice/cn/char_1037_amiya3/cn_029.mp3"
+    ],
+    "resultThree": [
+     "voice/cn/char_1037_amiya3/cn_030.mp3"
+    ],
+    "resultTwo": [
+     "voice/cn/char_1037_amiya3/cn_031.mp3"
+    ],
+    "resultLose": [
+     "voice/cn/char_1037_amiya3/cn_032.mp3"
+    ]
+   }
+  },
+  "en": {
+   "char_193_frostl": {
+    "start": [
+     "voice/en/char_193_frostl/cn_019.mp3"
+    ],
+    "faceEnemy": [
+     "voice/en/char_193_frostl/cn_020.mp3"
+    ],
+    "select": [
+     "voice/en/char_193_frostl/cn_021.mp3",
+     "voice/en/char_193_frostl/cn_022.mp3"
+    ],
+    "place": [
+     "voice/en/char_193_frostl/cn_023.mp3",
+     "voice/en/char_193_frostl/cn_024.mp3"
+    ],
+    "skill1": [
+     "voice/en/char_193_frostl/cn_025.mp3"
+    ],
+    "skill2": [
+     "voice/en/char_193_frostl/cn_026.mp3"
+    ],
+    "skill3": [
+     "voice/en/char_193_frostl/cn_027.mp3"
+    ],
+    "skill4": [
+     "voice/en/char_193_frostl/cn_028.mp3"
+    ],
+    "resultFour": [
+     "voice/en/char_193_frostl/cn_029.mp3"
+    ],
+    "resultThree": [
+     "voice/en/char_193_frostl/cn_030.mp3"
+    ],
+    "resultTwo": [
+     "voice/en/char_193_frostl/cn_031.mp3"
+    ],
+    "resultLose": [
+     "voice/en/char_193_frostl/cn_032.mp3"
+    ]
+   },
+   "char_230_savage": {
+    "start": [
+     "voice/en/char_230_savage/cn_019.mp3"
+    ],
+    "faceEnemy": [
+     "voice/en/char_230_savage/cn_020.mp3"
+    ],
+    "select": [
+     "voice/en/char_230_savage/cn_021.mp3",
+     "voice/en/char_230_savage/cn_022.mp3"
+    ],
+    "place": [
+     "voice/en/char_230_savage/cn_023.mp3",
+     "voice/en/char_230_savage/cn_024.mp3"
+    ],
+    "skill1": [
+     "voice/en/char_230_savage/cn_025.mp3"
+    ],
+    "skill2": [
+     "voice/en/char_230_savage/cn_026.mp3"
+    ],
+    "skill3": [
+     "voice/en/char_230_savage/cn_027.mp3"
+    ],
+    "skill4": [
+     "voice/en/char_230_savage/cn_028.mp3"
+    ],
+    "resultFour": [
+     "voice/en/char_230_savage/cn_029.mp3"
+    ],
+    "resultThree": [
+     "voice/en/char_230_savage/cn_030.mp3"
+    ],
+    "resultTwo": [
+     "voice/en/char_230_savage/cn_031.mp3"
+    ],
+    "resultLose": [
+     "voice/en/char_230_savage/cn_032.mp3"
+    ]
+   },
+   "char_449_glider": {
+    "start": [
+     "voice/en/char_449_glider/cn_019.mp3"
+    ],
+    "faceEnemy": [
+     "voice/en/char_449_glider/cn_020.mp3"
+    ],
+    "select": [
+     "voice/en/char_449_glider/cn_021.mp3",
+     "voice/en/char_449_glider/cn_022.mp3"
+    ],
+    "place": [
+     "voice/en/char_449_glider/cn_023.mp3",
+     "voice/en/char_449_glider/cn_024.mp3"
+    ],
+    "skill1": [
+     "voice/en/char_449_glider/cn_025.mp3"
+    ],
+    "skill2": [
+     "voice/en/char_449_glider/cn_026.mp3"
+    ],
+    "skill3": [
+     "voice/en/char_449_glider/cn_027.mp3"
+    ],
+    "skill4": [
+     "voice/en/char_449_glider/cn_028.mp3"
+    ],
+    "resultFour": [
+     "voice/en/char_449_glider/cn_029.mp3"
+    ],
+    "resultThree": [
+     "voice/en/char_449_glider/cn_030.mp3"
+    ],
+    "resultTwo": [
+     "voice/en/char_449_glider/cn_031.mp3"
+    ],
+    "resultLose": [
+     "voice/en/char_449_glider/cn_032.mp3"
+    ]
+   },
+   "char_1037_amiya3": {
+    "start": [
+     "voice/en/char_1037_amiya3/cn_019.mp3"
+    ],
+    "faceEnemy": [
+     "voice/en/char_1037_amiya3/cn_020.mp3"
+    ],
+    "select": [
+     "voice/en/char_1037_amiya3/cn_021.mp3",
+     "voice/en/char_1037_amiya3/cn_022.mp3"
+    ],
+    "place": [
+     "voice/en/char_1037_amiya3/cn_023.mp3",
+     "voice/en/char_1037_amiya3/cn_024.mp3"
+    ],
+    "skill1": [
+     "voice/en/char_1037_amiya3/cn_025.mp3"
+    ],
+    "skill2": [
+     "voice/en/char_1037_amiya3/cn_026.mp3"
+    ],
+    "skill3": [
+     "voice/en/char_1037_amiya3/cn_027.mp3"
+    ],
+    "skill4": [
+     "voice/en/char_1037_amiya3/cn_028.mp3"
+    ],
+    "resultFour": [
+     "voice/en/char_1037_amiya3/cn_029.mp3"
+    ],
+    "resultThree": [
+     "voice/en/char_1037_amiya3/cn_030.mp3"
+    ],
+    "resultTwo": [
+     "voice/en/char_1037_amiya3/cn_031.mp3"
+    ],
+    "resultLose": [
+     "voice/en/char_1037_amiya3/cn_032.mp3"
+    ]
+   }
+  },
+  "kr": {
+   "char_193_frostl": {
+    "start": [
+     "voice/kr/char_193_frostl/cn_019.mp3"
+    ],
+    "faceEnemy": [
+     "voice/kr/char_193_frostl/cn_020.mp3"
+    ],
+    "select": [
+     "voice/kr/char_193_frostl/cn_021.mp3",
+     "voice/kr/char_193_frostl/cn_022.mp3"
+    ],
+    "place": [
+     "voice/kr/char_193_frostl/cn_023.mp3",
+     "voice/kr/char_193_frostl/cn_024.mp3"
+    ],
+    "skill1": [
+     "voice/kr/char_193_frostl/cn_025.mp3"
+    ],
+    "skill2": [
+     "voice/kr/char_193_frostl/cn_026.mp3"
+    ],
+    "skill3": [
+     "voice/kr/char_193_frostl/cn_027.mp3"
+    ],
+    "skill4": [
+     "voice/kr/char_193_frostl/cn_028.mp3"
+    ],
+    "resultFour": [
+     "voice/kr/char_193_frostl/cn_029.mp3"
+    ],
+    "resultThree": [
+     "voice/kr/char_193_frostl/cn_030.mp3"
+    ],
+    "resultTwo": [
+     "voice/kr/char_193_frostl/cn_031.mp3"
+    ],
+    "resultLose": [
+     "voice/kr/char_193_frostl/cn_032.mp3"
+    ]
+   },
+   "char_230_savage": {
+    "start": [
+     "voice/kr/char_230_savage/cn_019.mp3"
+    ],
+    "faceEnemy": [
+     "voice/kr/char_230_savage/cn_020.mp3"
+    ],
+    "select": [
+     "voice/kr/char_230_savage/cn_021.mp3",
+     "voice/kr/char_230_savage/cn_022.mp3"
+    ],
+    "place": [
+     "voice/kr/char_230_savage/cn_023.mp3",
+     "voice/kr/char_230_savage/cn_024.mp3"
+    ],
+    "skill1": [
+     "voice/kr/char_230_savage/cn_025.mp3"
+    ],
+    "skill2": [
+     "voice/kr/char_230_savage/cn_026.mp3"
+    ],
+    "skill3": [
+     "voice/kr/char_230_savage/cn_027.mp3"
+    ],
+    "skill4": [
+     "voice/kr/char_230_savage/cn_028.mp3"
+    ],
+    "resultFour": [
+     "voice/kr/char_230_savage/cn_029.mp3"
+    ],
+    "resultThree": [
+     "voice/kr/char_230_savage/cn_030.mp3"
+    ],
+    "resultTwo": [
+     "voice/kr/char_230_savage/cn_031.mp3"
+    ],
+    "resultLose": [
+     "voice/kr/char_230_savage/cn_032.mp3"
+    ]
+   },
+   "char_449_glider": {
+    "start": [
+     "voice/kr/char_449_glider/cn_019.mp3"
+    ],
+    "faceEnemy": [
+     "voice/kr/char_449_glider/cn_020.mp3"
+    ],
+    "select": [
+     "voice/kr/char_449_glider/cn_021.mp3",
+     "voice/kr/char_449_glider/cn_022.mp3"
+    ],
+    "place": [
+     "voice/kr/char_449_glider/cn_023.mp3",
+     "voice/kr/char_449_glider/cn_024.mp3"
+    ],
+    "skill1": [
+     "voice/kr/char_449_glider/cn_025.mp3"
+    ],
+    "skill2": [
+     "voice/kr/char_449_glider/cn_026.mp3"
+    ],
+    "skill3": [
+     "voice/kr/char_449_glider/cn_027.mp3"
+    ],
+    "skill4": [
+     "voice/kr/char_449_glider/cn_028.mp3"
+    ],
+    "resultFour": [
+     "voice/kr/char_449_glider/cn_029.mp3"
+    ],
+    "resultThree": [
+     "voice/kr/char_449_glider/cn_030.mp3"
+    ],
+    "resultTwo": [
+     "voice/kr/char_449_glider/cn_031.mp3"
+    ],
+    "resultLose": [
+     "voice/kr/char_449_glider/cn_032.mp3"
+    ]
+   },
+   "char_1037_amiya3": {
+    "start": [
+     "voice/kr/char_1037_amiya3/cn_019.mp3"
+    ],
+    "faceEnemy": [
+     "voice/kr/char_1037_amiya3/cn_020.mp3"
+    ],
+    "select": [
+     "voice/kr/char_1037_amiya3/cn_021.mp3",
+     "voice/kr/char_1037_amiya3/cn_022.mp3"
+    ],
+    "place": [
+     "voice/kr/char_1037_amiya3/cn_023.mp3",
+     "voice/kr/char_1037_amiya3/cn_024.mp3"
+    ],
+    "skill1": [
+     "voice/kr/char_1037_amiya3/cn_025.mp3"
+    ],
+    "skill2": [
+     "voice/kr/char_1037_amiya3/cn_026.mp3"
+    ],
+    "skill3": [
+     "voice/kr/char_1037_amiya3/cn_027.mp3"
+    ],
+    "skill4": [
+     "voice/kr/char_1037_amiya3/cn_028.mp3"
+    ],
+    "resultFour": [
+     "voice/kr/char_1037_amiya3/cn_029.mp3"
+    ],
+    "resultThree": [
+     "voice/kr/char_1037_amiya3/cn_030.mp3"
+    ],
+    "resultTwo": [
+     "voice/kr/char_1037_amiya3/cn_031.mp3"
+    ],
+    "resultLose": [
+     "voice/kr/char_1037_amiya3/cn_032.mp3"
+    ]
+   }
+  }
+ },
+ "skins": [
+  {
+   "id": "boc-frostl",
+   "charId": "char_193_frostl",
+   "name": "破冰",
+   "series": "斗争血脉",
+   "art": {
+    "avatar": "skin/op/char_193_frostl/avatar.png",
+    "portrait": "skin/op/char_193_frostl/portrait.png",
+    "spine": {
+     "front": {
+      "skel": "skin/op/char_193_frostl/front/char_193_frostl_boc_4.skel",
+      "atlas": "skin/op/char_193_frostl/front/char_193_frostl_boc_4.atlas",
+      "textures": [
+       "skin/op/char_193_frostl/front/char_193_frostl_boc_4.png"
+      ],
+      "anims": {
+       "idle": "Idle",
+       "deploy": "Start",
+       "attack": {
+        "begin": null,
+        "loop": "Attack",
+        "end": null
+       },
+       "attackDown": {
+        "begin": null,
+        "loop": "Combat_Down",
+        "end": null,
+        "via": "combat"
+       },
+       "skill": {
+        "begin": null,
+        "loop": "Attack",
+        "end": null,
+        "via": "attack",
+        "index": 0,
+        "idle": null
+       },
+       "die": "Die",
+       "move": null,
+       "stun": null,
+       "skills": {
+        "0": {
+         "begin": null,
+         "loop": "Attack",
+         "end": null,
+         "via": "attack",
+         "index": 0,
+         "idle": null
+        },
+        "1": {
+         "begin": null,
+         "loop": "Attack",
+         "end": null,
+         "via": "attack",
+         "index": 1,
+         "idle": null
+        },
+        "2": {
+         "begin": null,
+         "loop": "Attack",
+         "end": null,
+         "via": "attack",
+         "index": 2,
+         "idle": null
+        }
+       }
+      }
+     },
+     "back": {
+      "skel": "skin/op/char_193_frostl/back/char_193_frostl_boc_4.skel",
+      "atlas": "skin/op/char_193_frostl/back/char_193_frostl_boc_4.atlas",
+      "textures": [
+       "skin/op/char_193_frostl/back/char_193_frostl_boc_4.png"
+      ],
+      "anims": {
+       "idle": "Idle",
+       "deploy": "Start",
+       "attack": {
+        "begin": null,
+        "loop": "Attack",
+        "end": null
+       },
+       "attackDown": null,
+       "skill": {
+        "begin": null,
+        "loop": "Attack",
+        "end": null,
+        "via": "attack",
+        "index": 0,
+        "idle": null
+       },
+       "die": null,
+       "move": null,
+       "stun": null,
+       "skills": {
+        "0": {
+         "begin": null,
+         "loop": "Attack",
+         "end": null,
+         "via": "attack",
+         "index": 0,
+         "idle": null
+        },
+        "1": {
+         "begin": null,
+         "loop": "Attack",
+         "end": null,
+         "via": "attack",
+         "index": 1,
+         "idle": null
+        },
+        "2": {
+         "begin": null,
+         "loop": "Attack",
+         "end": null,
+         "via": "attack",
+         "index": 2,
+         "idle": null
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  {
+   "id": "sale-savage",
+   "charId": "char_230_savage",
+   "name": "又一年秋季",
+   "series": "忒斯特收藏",
+   "art": {
+    "avatar": "skin/op/char_230_savage/avatar.png",
+    "portrait": "skin/op/char_230_savage/portrait.png",
+    "spine": {
+     "front": {
+      "skel": "skin/op/char_230_savage/front/char_230_savage_sale_17.skel",
+      "atlas": "skin/op/char_230_savage/front/char_230_savage_sale_17.atlas",
+      "textures": [
+       "skin/op/char_230_savage/front/char_230_savage_sale_17.png"
+      ],
+      "anims": {
+       "idle": "Idle",
+       "deploy": "Start",
+       "attack": {
+        "begin": null,
+        "loop": "Attack",
+        "end": null
+       },
+       "attackDown": null,
+       "skill": {
+        "begin": null,
+        "loop": "Skill",
+        "end": null,
+        "index": 0,
+        "idle": null
+       },
+       "die": "Die",
+       "move": null,
+       "stun": null,
+       "skills": {
+        "0": {
+         "begin": null,
+         "loop": "Skill",
+         "end": null,
+         "index": 0,
+         "idle": null
+        },
+        "1": {
+         "begin": null,
+         "loop": "Skill",
+         "end": null,
+         "index": 1,
+         "idle": null
+        },
+        "2": {
+         "begin": null,
+         "loop": "Skill",
+         "end": null,
+         "index": 2,
+         "idle": null
+        }
+       }
+      }
+     },
+     "back": {
+      "skel": "skin/op/char_230_savage/back/char_230_savage_sale_17.skel",
+      "atlas": "skin/op/char_230_savage/back/char_230_savage_sale_17.atlas",
+      "textures": [
+       "skin/op/char_230_savage/back/char_230_savage_sale_17.png"
+      ],
+      "anims": {
+       "idle": "Idle",
+       "deploy": "Start",
+       "attack": {
+        "begin": null,
+        "loop": "Attack",
+        "end": null
+       },
+       "attackDown": null,
+       "skill": {
+        "begin": null,
+        "loop": "Skill",
+        "end": null,
+        "index": 0,
+        "idle": null
+       },
+       "die": null,
+       "move": null,
+       "stun": null,
+       "skills": {
+        "0": {
+         "begin": null,
+         "loop": "Skill",
+         "end": null,
+         "index": 0,
+         "idle": null
+        },
+        "1": {
+         "begin": null,
+         "loop": "Skill",
+         "end": null,
+         "index": 1,
+         "idle": null
+        },
+        "2": {
+         "begin": null,
+         "loop": "Skill",
+         "end": null,
+         "index": 2,
+         "idle": null
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  {
+   "id": "nian-glider",
+   "charId": "char_449_glider",
+   "name": "洇灵雨",
+   "series": "0011制造",
+   "art": {
+    "avatar": "skin/op/char_449_glider/avatar.png",
+    "portrait": "skin/op/char_449_glider/portrait.png",
+    "spine": {
+     "front": {
+      "skel": "skin/op/char_449_glider/front/char_449_glider_nian_10.skel",
+      "atlas": "skin/op/char_449_glider/front/char_449_glider_nian_10.atlas",
+      "textures": [
+       "skin/op/char_449_glider/front/char_449_glider_nian_10.png"
+      ],
+      "anims": {
+       "idle": "Idle",
+       "deploy": "Start",
+       "attack": {
+        "begin": null,
+        "loop": "Attack",
+        "end": null
+       },
+       "attackDown": null,
+       "skill": {
+        "begin": null,
+        "loop": "Skill",
+        "end": null,
+        "index": 0,
+        "idle": null
+       },
+       "die": "Die",
+       "move": null,
+       "stun": null,
+       "skills": {
+        "0": {
+         "begin": null,
+         "loop": "Skill",
+         "end": null,
+         "index": 0,
+         "idle": null
+        },
+        "1": {
+         "begin": "skill_2_Begin",
+         "loop": "skill_2_Loop",
+         "end": "skill_2_End",
+         "index": 1,
+         "idle": null
+        },
+        "2": {
+         "begin": null,
+         "loop": "Skill",
+         "end": null,
+         "index": 2,
+         "idle": null
+        }
+       }
+      }
+     },
+     "back": {
+      "skel": "skin/op/char_449_glider/back/char_449_glider_nian_10.skel",
+      "atlas": "skin/op/char_449_glider/back/char_449_glider_nian_10.atlas",
+      "textures": [
+       "skin/op/char_449_glider/back/char_449_glider_nian_10.png"
+      ],
+      "anims": {
+       "idle": "Idle",
+       "deploy": "Start",
+       "attack": {
+        "begin": null,
+        "loop": "Attack",
+        "end": null
+       },
+       "attackDown": null,
+       "skill": {
+        "begin": null,
+        "loop": "Skill",
+        "end": null,
+        "index": 0,
+        "idle": null
+       },
+       "die": null,
+       "move": null,
+       "stun": null,
+       "skills": {
+        "0": {
+         "begin": null,
+         "loop": "Skill",
+         "end": null,
+         "index": 0,
+         "idle": null
+        },
+        "1": {
+         "begin": "skill_2_Begin",
+         "loop": "skill_2_Loop",
+         "end": "skill_2_End",
+         "index": 1,
+         "idle": null
+        },
+        "2": {
+         "begin": null,
+         "loop": "Skill",
+         "end": null,
+         "index": 2,
+         "idle": null
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  {
+   "id": "sale-amiya3",
+   "charId": "char_1037_amiya3",
+   "name": "寰宇独奏",
+   "series": "忒斯特收藏",
+   "art": {
+    "avatar": "skin/op/char_1037_amiya3/avatar.png",
+    "portrait": "skin/op/char_1037_amiya3/portrait.png",
+    "spine": {
+     "front": {
+      "skel": "skin/op/char_1037_amiya3/front/char_1037_amiya3_sale_13.skel",
+      "atlas": "skin/op/char_1037_amiya3/front/char_1037_amiya3_sale_13.atlas",
+      "textures": [
+       "skin/op/char_1037_amiya3/front/char_1037_amiya3_sale_13.png"
+      ],
+      "anims": {
+       "idle": "Idle",
+       "deploy": "Start",
+       "attack": {
+        "begin": null,
+        "loop": "Attack",
+        "end": null
+       },
+       "attackDown": null,
+       "skill": {
+        "begin": "Skill_1_Begin",
+        "loop": "Skill_1_Loop",
+        "end": "Skill_1_End",
+        "index": 0,
+        "idle": null
+       },
+       "die": "Die",
+       "move": null,
+       "stun": null,
+       "skills": {
+        "0": {
+         "begin": "Skill_1_Begin",
+         "loop": "Skill_1_Loop",
+         "end": "Skill_1_End",
+         "index": 0,
+         "idle": null
+        },
+        "1": {
+         "begin": "Skill_2_Begin",
+         "loop": "Skill_2_Loop",
+         "end": "Skill_2_End",
+         "index": 1,
+         "idle": null
+        },
+        "2": {
+         "begin": null,
+         "loop": "Attack",
+         "end": null,
+         "via": "attack",
+         "index": 2,
+         "idle": null
+        }
+       }
+      }
+     },
+     "back": {
+      "skel": "skin/op/char_1037_amiya3/back/char_1037_amiya3_sale_13.skel",
+      "atlas": "skin/op/char_1037_amiya3/back/char_1037_amiya3_sale_13.atlas",
+      "textures": [
+       "skin/op/char_1037_amiya3/back/char_1037_amiya3_sale_13.png"
+      ],
+      "anims": {
+       "idle": "Idle",
+       "deploy": "Start",
+       "attack": {
+        "begin": null,
+        "loop": "Attack",
+        "end": null
+       },
+       "attackDown": null,
+       "skill": {
+        "begin": "Skill_1_Begin",
+        "loop": "Skill_1_Loop",
+        "end": "Skill_1_End",
+        "index": 0,
+        "idle": null
+       },
+       "die": null,
+       "move": null,
+       "stun": null,
+       "skills": {
+        "0": {
+         "begin": "Skill_1_Begin",
+         "loop": "Skill_1_Loop",
+         "end": "Skill_1_End",
+         "index": 0,
+         "idle": null
+        },
+        "1": {
+         "begin": "Skill_2_Begin",
+         "loop": "Skill_2_Loop",
+         "end": "Skill_2_End",
+         "index": 1,
+         "idle": null
+        },
+        "2": {
+         "begin": null,
+         "loop": "Attack",
+         "end": null,
+         "via": "attack",
+         "index": 2,
+         "idle": null
+        }
+       }
+      }
+     }
+    }
+   }
+  }
+ ]
+}
