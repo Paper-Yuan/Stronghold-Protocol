@@ -88,7 +88,9 @@ export function playerSnapshot({ network, lobby, registry, now = Date.now() }) {
   const players = [];
   for (const session of registry.all()) {
     const room = lobby.roomOf(session);
-    const ctx = lobby.activeMatchOf(session);
+    // 0.3.0 的 lobby 没有 activeMatchOf（0.2.6 fork 有）：必须留空值保护，否则快照接口抛 TypeError
+    // → /admin/api/* 一律 5xx → 控制台显示「刷新失败…管理服务暂不可用，请稍后重试」（2026-10-16 线上实测）。
+    const ctx = lobby.activeMatchOf?.(session) || lobby.matchOf?.(session) || null;
     if (!session.connected && !room && !ctx && !session.matchQueue) continue;
     let pub = null;
     if (ctx) {
