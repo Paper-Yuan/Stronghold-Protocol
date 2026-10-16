@@ -63,3 +63,11 @@ plugins/*
 !plugins/README.md
 !plugins/AGENTS.md
 !plugins/_template/
+.npm-cache/
+data/local-fx.json
+/node_modules
+/public/vendor
+/public/assets
+/public/fonts
+/.cache
+packs/index.json
