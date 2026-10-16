@@ -218,6 +218,7 @@ export function serveWorkshop(req, res, decoded, query, t, log = console) {
   // (server/data.js) 是同一个对象；没有包 touch 的文件落到上游挂载，普通安装逐字节不变。
   if (t.workshopJson && t.workshopJson.size && decoded.startsWith('/data/') && decoded.endsWith('.json')) {
     const name = decoded.slice('/data/'.length, -'.json'.length);
+    const buf = name && !name.includes('/') ? t.workshopJson.get(name) : null;
     if (buf) return sendBuffer(req, res, buf, 'ws', MIME['.json'], 'no-cache');
   }
   // 包给**已有语种**补的词条 (`pack.json.i18n`, docs/WORKSHOP.md §1.10)：/i18n/<code>.json 送合并体（已有键绝不覆盖），
