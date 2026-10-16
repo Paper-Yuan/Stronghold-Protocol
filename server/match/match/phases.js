@@ -178,7 +178,8 @@ export class MatchPhases {
     if (d.picks[ps.playerId]) return fail(ERR.ALREADY);
     if (!(d.focus instanceof Map)) d.focus = new Map();
     if (bandId == null) { d.focus.delete(ps.playerId); return OK; }
-    if (typeof bandId !== 'string' || !this.gd.bandAllowed(bandId)) return fail(ERR.BAD_TARGET);
+    if (typeof bandId !== 'string' || !this.gd.bandAllowed(bandId))
+      return fail(ERR.BAD_TARGET, `band ${String(bandId)} not allowed here (${this.isSolo ? 'SINGLE' : 'MULTI'}; modeTypeList ${JSON.stringify(this.gd.band(String(bandId))?.modeTypeList ?? null)})`);
     d.focus.set(ps.playerId, bandId);
     return OK;
   }
@@ -187,7 +188,8 @@ export class MatchPhases {
     if (this.phase !== PHASE.BAND_DRAFT || !this.draft) return fail(ERR.WRONG_PHASE);
     if (this.draft.picks[ps.playerId]) return fail(ERR.ALREADY);
     if (this.draftTurn() !== ps.playerId) return fail(ERR.NOT_YOUR_TURN);
-    if (typeof bandId !== 'string' || !this.gd.bandAllowed(bandId)) return fail(ERR.BAD_TARGET);
+    if (typeof bandId !== 'string' || !this.gd.bandAllowed(bandId))
+      return fail(ERR.BAD_TARGET, `band ${String(bandId)} not allowed here (${this.isSolo ? 'SINGLE' : 'MULTI'}; modeTypeList ${JSON.stringify(this.gd.band(String(bandId))?.modeTypeList ?? null)})`);
     if (this.bandTaken(bandId, ps.playerId)) return fail(ERR.BAD_TARGET, '队友已选'); // i18n-ignore: developer detail (players see ERR_TEXT)
     this._applyBand(ps, bandId);
     return OK;
