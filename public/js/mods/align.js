@@ -47,7 +47,10 @@ export function setStore(next) { store = next || null; }
 export function roomDataBase(mods, welcomeMods) {
   const digest = mods && typeof mods.digest === 'string' ? mods.digest : '';
   const process = welcomeMods && typeof welcomeMods.digest === 'string' ? welcomeMods.digest : '';
-  if (!DIGEST_RE.test(digest) || digest === process) return DATA_PREFIX;
+  // 三种情况都落在进程面：没声明集合、声明的就是进程那一份、以及**普通安装**（服务器没有进程集，`vanilla` 无处可去 ——
+  // 它在普通安装上就是不装任何工坊包时的 `/data/`）。只有「模组服务器 + 房间显式声明空集」才要纯净官方那一份，
+  // 因为那种服务器上的 `/data/` 是「官方 + 全部已装包」。
+  if (!DIGEST_RE.test(digest) || digest === process || (digest === 'vanilla' && !process)) return DATA_PREFIX;
   return `${ROOM_DATA_PREFIX}${digest}/`;
 }
 

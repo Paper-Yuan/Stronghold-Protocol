@@ -86,6 +86,8 @@ import { fxForm } from '../../../shared/protocol.js';
 import { spectateEffects } from './observe.js';
 import { recordError, setBattleSource } from '../diag.js';
 import { loadBrowserSim } from './simLoader.js';
+import { roomModsOf, currentModSet } from '../roomMods.js';
+import { roomDataBase } from '../mods/align.js';
 import { InPageSimHost, WorkerSimHost } from './simHost.js';
 import { trackCombat, combineCombat } from './metrics.js';
 import { t } from '../../../shared/i18n.js';
@@ -170,8 +172,16 @@ export function createBattleRunner(deps) {
   const setIv = deps.setInterval || ((fn, ms) => globalThis.setInterval(fn, ms));
   const clearIv = deps.clearInterval || ((h) => globalThis.clearInterval(h));
   const doc = deps.doc !== undefined ? deps.doc : (typeof document !== 'undefined' ? document : null);
+  // 数据面 (W-B)：房间声明了模组集合就模拟在它自己的那一份数据上（`/room-data/<摘要>/`，服务端为它物化的「官方 + 它点名
+  // 的那几个包」），否则 `/data/` —— 普通房间、普通安装逐字节不变（public/js/mods/align.js roomDataBase）。
+  const simDataBase = () => {
+    try {
+      const mods = roomModsOf(store?.get?.()?.room);
+      return mods ? roomDataBase(mods, currentModSet()) : '/data/';
+    } catch { return '/data/'; }
+  };
   // `content` (DESIGN §32.6): `{ cs, data }` of a room's content set → the sim on it; null → the original content
-  const loadSim = deps.loadSim || ((content) => (content ? loadBrowserSim({ data: content.data, cs: content.cs, bounds: content.bounds ?? null, scripts:content.scripts || [], hashInput:content.hashInput, nativeVerified:content.nativeVerified }) : loadBrowserSim()));
+  const loadSim = deps.loadSim || ((content) => (content ? loadBrowserSim({ data: content.data, cs: content.cs, bounds: content.bounds ?? null, scripts:content.scripts || [], hashInput:content.hashInput, nativeVerified:content.nativeVerified }) : loadBrowserSim({ dataBase: simDataBase() })));
   const logger = deps.logger || SIM_LOGGER;
   // the content sets (DESIGN §32.6): the room's set the page holds (content.js) and the server's original one
   const contentFor = deps.contentFor || appContentFor;
