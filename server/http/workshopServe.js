@@ -135,47 +135,6 @@ export async function createWorkshopServe({ data = null, workshopDir = WORKSHOP_
     workshopAssets: workshopAssetsFor(loaded, workshopDir),
     resourcePolicy: 'serve',
   };
-  // ── /data/assets.json：资源视图（官方哈希 URL）+ 工坊增量 ──────────────────────────────────────
-  // 视图把官方条目改写成 /assets/~<hash>/（不可变缓存），但索引是**监听后在后台**建的，启动期算不出哈希 ——
-  // 这正是 2026-10-16 直接改写导致官方 URL 全退化的原因。做法改成：等视图就绪后，以**已改写**的 doc 为底
-  // 把工坊增量并上去（包条目本来就是 /workshop-assets/… 的绝对 URL，不需要索引），再塞回 workshopJson 的
-  // `assets` 条目 —— 路由一个字不用改（workshopDataFiles 在有视图时本来就把这个条目删掉了）。
-  let mergedAssets = null;
-  let mergedAssetsPending = null;
-  if (views && typeof views.get === 'function' && (loaded.packs || []).length) {
-    // **一个承诺跑完整个重试预算**（以前是「失败就另起一个 setTimeout」，于是第一个 promise 立刻 resolve 成
-    // null，等它的路由当场走兜底 —— 那时资源视图往往也还没好，只能 404。本机两次实测都是这个坑）。
-    const attemptMergedAssets = async () => {
-      const view = await views.get('assets.json');
-      if (!view || !view.body) return null;
-      const base = JSON.parse(view.body.toString('utf8'));
-      const { data: withPacks } = applyWorkshop({ ...data, assets: base }, loaded.packs);
-      return Buffer.from(JSON.stringify(withPacks.assets), 'utf8');
-    };
-    mergedAssetsPending = (async () => {
-      for (let i = 0; i < 60; i++) {
-        try {
-          const buf = await attemptMergedAssets();
-          if (buf) {
-            mergedAssets = buf;
-            tables.workshopJson.set('assets', buf);
-            log?.info?.(`[workshop] /data/assets.json: 官方哈希 URL + 工坊增量（${buf.length} B）`);
-            return buf;
-          }
-        } catch (err) {
-          log?.warn?.(`[workshop] /data/assets.json 合并工坊增量失败，退回视图版本: ${err && err.message ? err.message : err}`);
-        }
-        await new Promise((r) => setTimeout(r, 1000));
-      }
-      return null;
-    })();
-  }
-  // 合并是否就绪 + 没就绪时的兜底（视图那一份：官方哈希 URL，无工坊条目）。两者都给路由用，见下面的 /data/ 分支。
-  tables.mergedAssetsState = () => ({ ready: !!mergedAssets, buf: mergedAssets, pending: mergedAssetsPending });
-  tables.viewAssets = async () => {
-    try { const v = views && typeof views.get === 'function' ? await views.get('assets.json') : null; return v && v.body ? v.body : null; }
-    catch { return null; }
-  };
   // The workshop state the lobby runs on (W-C): the catalogue a room may declare, the set those picks resolve to, the
   // loaded kits/modules and the per-room asset view. server/index.js hands this to the Lobby after boot (the lobby is
   // built before the workshop finishes loading, so it is assigned to `lobby.workshop` rather than constructed with it).
@@ -259,29 +218,6 @@ export function serveWorkshop(req, res, decoded, query, t, log = console) {
   // (server/data.js) 是同一个对象；没有包 touch 的文件落到上游挂载，普通安装逐字节不变。
   if (t.workshopJson && t.workshopJson.size && decoded.startsWith('/data/') && decoded.endsWith('.json')) {
     const name = decoded.slice('/data/'.length, -'.json'.length);
-    // assets.json：索引是监听后在后台建的，合并会晚几秒就绪。客户端的数据 store 每次页面加载只取一次，
-    // 早取就会拿到「还没并包」的那一版并一直用下去（2026-10-16 实测：图鉴有条目、美术走文字兜底、无报错）。
-    // 所以这里**等**合并就绪（有界 30 秒）再回答；超时或失败就退回资源视图那一份（形态正确，只是没有工坊条目）。
-    if (name === 'assets' && typeof t.mergedAssetsState === 'function') {
-      const st = t.mergedAssetsState();
-      if (!st.ready && st.pending) {
-        (async () => {
-          // 等合并自己跑完：它内部就是「视图没好就每秒重试，最多 60 次」，所以这里不需要再加超时竞争
-          // （加 30 秒竞争会先超时，而那时资源视图往往也还没好，结果答 404 —— 本机实测就是这样）。
-          try { await st.pending; } catch { /* 合并失败也继续走兜底 */ }
-          const now = t.mergedAssetsState();
-          const out = (now.ready && now.buf)
-            || (await t.viewAssets())
-            || (t.workshopJson && t.workshopJson.get('assets'))
-            || null;
-          if (out) sendBuffer(req, res, out, 'ws', MIME['.json'], 'no-cache');
-          // 两条路都没就绪（索引异常慢）时才 404：客户端 data.js 自带重试，会再取一次。
-          else sendError(req, res, 404, '页面不存在 · Not found');
-        })();
-        return true;
-      }
-    }
-    const buf = name && !name.includes('/') ? t.workshopJson.get(name) : null;
     if (buf) return sendBuffer(req, res, buf, 'ws', MIME['.json'], 'no-cache');
   }
   // 包给**已有语种**补的词条 (`pack.json.i18n`, docs/WORKSHOP.md §1.10)：/i18n/<code>.json 送合并体（已有键绝不覆盖），

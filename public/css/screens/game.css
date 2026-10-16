@@ -958,6 +958,3 @@
 .pauseov__btns { display: flex; gap: .2rem; }
 
 /* 工坊包的客户端面板宿主（slot screen.game.overlay）：铺满对局屏、不吃指针 ——
-   包的 mount(ctx) 会往这里 append 它自己的图层（ave-mujica 的 Fever 图标就是 fixed 定位在棋子旁边）。 */
-.mod-host { position: fixed; inset: 0; pointer-events: none; z-index: 40; }
-.mod-host > * { pointer-events: none; }
