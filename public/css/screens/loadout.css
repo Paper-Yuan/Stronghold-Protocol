@@ -639,18 +639,6 @@
 .lo-voice { display: flex; flex-wrap: wrap; align-items: center; gap: .12rem; padding: .14rem 0; font-size: calc(.18 * var(--t)); }
 .lo-voice > small { flex-basis: 100%; color: var(--text-dim); font-size: calc(.15 * var(--t)); }
 .lo-voice .lo-select { min-width: 1.6rem; max-width: 100%; }
-.lo-voice__preview { height: max(.4rem, 24px); padding: 0 .12rem; font: inherit; font-size: max(.15rem, 11px); color: var(--mint-400); background: transparent; border: 1px solid var(--line-2); cursor: pointer; }
-.lo-voice__preview:hover, .lo-voice__preview:focus-visible { border-color: var(--mint-700); }
-
-/* The coarse-pointer picker (ui/voicePicker.js): a whole-row button that opens a bottom sheet of --tap-min rows
-   (a native select inside a scrolling panel is unusable on a phone; devices.css guarantees the 44 px target). */
-.lo-voice__pick { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .12rem; width: 100%; min-height: var(--tap-min); padding: .1rem .12rem; border: 1px solid var(--line); border-radius: .1rem; background: none; color: inherit; font: inherit; font-size: calc(.18 * var(--t)); text-align: left; cursor: pointer; }
-.lo-voice__value { color: var(--text-dim); }
-.lo-sheet { position: fixed; left: 0; right: 0; bottom: 0; z-index: 60; display: flex; flex-direction: column; padding: .14rem .14rem calc(.14rem + env(safe-area-inset-bottom, 0px)); background: var(--panel, #171b1a); border-top: 1px solid var(--line); border-radius: .18rem .18rem 0 0; }
-.lo-sheet__list { display: flex; flex-direction: column; max-height: 60vh; overflow-y: auto; }
-.lo-sheet__opt { display: flex; flex-direction: column; justify-content: center; gap: .04rem; min-height: var(--tap-min); padding: .08rem .1rem; border: 0; background: none; color: inherit; font: inherit; font-size: calc(.18 * var(--t)); text-align: left; cursor: pointer; }
-.lo-sheet__opt[aria-selected="true"] { color: var(--mint-700); }
-.lo-sheet__sub { color: var(--text-dim); font-size: calc(.15 * var(--t)); }
 
 /* Server custom skin picker */
 

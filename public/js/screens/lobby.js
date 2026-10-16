@@ -204,6 +204,23 @@ function FirepowerBrief({ variant, onVariant }) {
  * @returns {{ code: string, desc: string, effects: string[], rounds: number, hidden: boolean, stageNote: string }}
  */
 export function difficultyInfo(roomMode, difficulty, { random = false, variant = 'blitz' } = {}) {
+  // 超限模拟的 modeId 与「独立模拟」是同一个（mode_single_*），直接沿用会把单人的描述当成超限的规则介绍，
+  // 所以这里用自己的文案（来源：docs/INFINITE_MODE.md）。owner：超限房间里的描述页要显示超限模式的规则。
+  if (isInfiniteMode(roomMode)) {
+    return {
+      code: 'INFINITE',
+      desc: t('单人无限模式：前 4 回合是普通怪与精英怪混合的高压波次，突破关底后进入无限循环，边打边滚雪球。'),
+      effects: [
+        t('从第 15 回合起，敌人生命、攻击与速度按回合数指数膨胀'),
+        t('突破第 15 回合后解除单局 3 个阵营的限制，在全部怪池里跨阵营抽取混合编组'),
+        t('单次伤害上限放宽到 99,999,999（普通模式为 300,000），避免巨额伤害被截断'),
+        t('建立专用单机房间，与常规战绩、同盟匹配完全隔离'),
+      ],
+      rounds: '∞',
+      hidden: false,
+      stageNote: stageNote(STAGE_POOL[difficulty]),
+    };
+  }
   const fallback = MODE_TEXT[roomMode === 'single' || roomMode === 'solo' || roomMode === 'solo_infinite' ? 'single' : 'multi'][difficulty] || { code: '', desc: '', effects: [] };
   // modeIdFor() lower-cases the difficulty: never call it with a value the server did not validate.
   const m = DIFFICULTIES.includes(difficulty) ? getMode(modeIdFor(roomMode, difficulty)) : null;

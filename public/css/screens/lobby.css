@@ -926,7 +926,7 @@
 
 .hub-recruit { flex: none; background: linear-gradient(180deg, rgba(9, 17, 16, .88), rgba(6, 11, 10, .9)); border: 1px solid rgba(223, 230, 226, .14);
   border-top: 2px solid var(--mint-500); box-shadow: 0 .06rem .24rem rgba(0, 0, 0, .45); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
-.hub-recruit__head { display: flex; align-items: center; gap: .08rem; height: .42rem; padding: 0 .08rem 0 .14rem; border-bottom: 1px solid rgba(223, 230, 226, .08); }
+.hub-recruit__head { display: flex; align-items: center; gap: .08rem; height: .36rem; padding: 0 .08rem 0 .14rem; border-bottom: 1px solid rgba(223, 230, 226, .08); }
 .hub-recruit__pulse { width: .08rem; height: .08rem; flex: none; border-radius: 50%; background: var(--text-dim); }
 .hub-recruit__pulse.is-live { background: var(--mint-400); animation: hub-pulse 1.8s ease-out infinite; }
 .hub-recruit__title { font-size: .17rem; font-weight: 800; color: var(--text-hi); letter-spacing: .06em; white-space: nowrap; }
@@ -935,7 +935,7 @@
 .hub-recruit__all { margin-left: auto; display: inline-flex; align-items: center; gap: .02rem; padding: .04rem .06rem; font-size: .13rem;
   color: rgba(223, 230, 226, .72); background: none; border: 0; cursor: pointer; white-space: nowrap; }
 .hub-recruit__all:hover { color: var(--mint-400); }
-.hub-recruit__list { --row-h: .56rem; height: calc(var(--row-h) * 3 + .08rem + .16rem); padding: .08rem; display: flex; flex-direction: column; gap: .04rem; }
+.hub-recruit__list { --row-h: .47rem; height: calc(var(--row-h) * 3 + .08rem + .16rem); padding: .08rem; display: flex; flex-direction: column; gap: .04rem; }
 .hub-recruit__row { position: relative; display: flex; align-items: center; gap: .1rem; height: var(--row-h); flex: none; padding: 0 .08rem 0 .14rem;
   background: rgba(223, 230, 226, .035); border: 1px solid rgba(223, 230, 226, .06); transition: background var(--t-fast), border-color var(--t-fast); }
 .hub-recruit__row::before { content: ''; position: absolute; left: 0; top: .08rem; bottom: .08rem; width: 3px; background: var(--d-color); }
@@ -962,9 +962,9 @@
 .hub-recruit__create:hover { background: rgba(78, 216, 175, .1); }
 
 /* light plates with bracket marks (S.W.E.E.P.报告 opens screens/sweep.js, 干员调配 is loadout.js's LoadoutButton) */
-.hub-right__plates { display: flex; flex-direction: column; gap: .12rem; }
+.hub-right__plates { display: flex; flex-direction: column; gap: .09rem; }
 .hub-plate { --pl-ink: #222b28; position: relative; display: flex !important; align-items: center; justify-content: flex-start !important; gap: .14rem;
-  width: 100%; height: .7rem !important; min-width: 0; padding: 0 .22rem 0 .2rem !important; color: #111816 !important; text-align: left;
+  width: 100%; height: .58rem !important; min-width: 0; padding: 0 .18rem 0 .16rem !important; color: #111816 !important; text-align: left;
   background:
     linear-gradient(var(--pl-ink), var(--pl-ink)) left .07rem center / 2px 54% no-repeat,
     linear-gradient(var(--pl-ink), var(--pl-ink)) left .07rem top 23% / .06rem 2px no-repeat,
@@ -977,7 +977,7 @@
 .hub-plate__glyph, .hub-plate .lo-entry__icon, .hub-plate > .btn__icon { width: .40rem !important; height: .40rem !important; flex: none; display: grid; place-items: center;
   padding: .07rem; background: #182120; color: var(--mint-400); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .08); box-sizing: border-box; }
 .hub-plate__glyph svg { width: 100%; height: 100%; }
-.hub-plate__label, .hub-plate .btn__label { font-size: .2rem; font-weight: 900; letter-spacing: .04em; color: #111816; white-space: nowrap; }
+.hub-plate__label, .hub-plate .btn__label { font-size: .18rem; font-weight: 900; letter-spacing: .04em; color: #111816; white-space: nowrap; }
 .hub-plate__tag { margin-left: auto; padding: .03rem .07rem; font-size: .11rem; font-weight: 700; letter-spacing: .12em; color: rgba(17, 24, 22, .6);
   border: 1px solid rgba(17, 24, 22, .28); white-space: nowrap; }
 .hub-plate--sweep { font: inherit; cursor: pointer; }
@@ -2532,3 +2532,9 @@ button.ally-card:disabled { filter: grayscale(.7) brightness(.7); cursor: defaul
 .hub-entries { position: relative; }
 .hub-fold--modes { position: absolute; top: -.26rem; right: .06rem; z-index: 3; }
 .hub-entries.is-folded .hub-entries__row { display: none; }
+
+/* 房间座位：把顶部那条「*」刻线挪到立绘**下面**，玩家的立绘因此更长（owner：* 号那段下移，让玩家显示更长）。 */
+.rseat { display: flex; flex-direction: column; }
+.rseat__art { order: 2; }
+.rseat__strip { order: 3; height: max(.2rem, 12px); margin: .04rem 0 0; }
+.rseat__plate { order: 4; }
