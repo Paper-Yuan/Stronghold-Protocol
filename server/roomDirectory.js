@@ -1,3 +1,4 @@
+import { isSoloRoomMode } from '../shared/infiniteMode.js';
 import { MAX_SEATS } from '../shared/constants.js';
 import { clientAddress, limitKeyOf, TokenBucket } from './net.js';
 
@@ -14,7 +15,7 @@ export function directoryRoom(room) {
     random: !!room.random, variant: room.variant,
     visibility: room.visibility === 'public' ? 'public' : 'invite',
     playerCount: seats.length,
-    maxPlayers: room.mode === 'solo' ? 1 : MAX_SEATS,
+    maxPlayers: isSoloRoomMode(room.mode) ? 1 : MAX_SEATS,
     status: room.match ? 'playing' : 'waiting',
     hostName: seats.find(s => s.playerId === room.hostId)?.name || null,
     players: seats.map(s => s.name),

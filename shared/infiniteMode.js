@@ -18,6 +18,21 @@ export const MIN_ATTACK_INTERVAL_SEC = 0.066;
  * @param {string} mode
  * @returns {boolean}
  */
+/**
+ * 「独占单人」的房间模式：`solo` 与 `solo_infinite`（超限模拟）。房间的座位上限、能否加入、能否加 AI、
+ * 续局窗口这些判定都必须走它 —— 之前它们写成 `mode === 'solo'`，于是超限模拟被当成同盟房：能被别人加入、
+ * 能加 AI 队友、对外报 4 个座位（owner 报告：进超限模拟结果进了同盟房）。
+ * @param {string|undefined|null} mode
+ * @returns {boolean}
+ */
+export function isSoloRoomMode(mode) {
+  return mode === 'solo' || mode === SOLO_INFINITE;
+}
+
+/**
+ * @param {string|undefined|null} mode
+ * @returns {boolean}
+ */
 export function isInfiniteMode(mode) {
   return mode === SOLO_INFINITE;
 }

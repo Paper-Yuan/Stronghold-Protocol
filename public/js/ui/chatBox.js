@@ -142,7 +142,7 @@ export function ChatBox({ active: controlledActive, onToggle, showTrigger = cont
           title=${halfCollapsed ? t('展开对话框') : t('收起一半对话框')}
           aria-label=${halfCollapsed ? t('展开') : t('收起')}
         >
-          <span class="chat-collapse-icon">${halfCollapsed ? '▲ 展开' : '▼ 收起'}</span>
+          <span class="chat-collapse-icon" aria-hidden="true">${halfCollapsed ? '▴' : '▾'}</span>
         </button>
       </div>
       <div class="chat-log" ref=${logRef}>

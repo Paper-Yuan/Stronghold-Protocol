@@ -11,6 +11,7 @@
 
 import { randomBytes } from 'node:crypto';
 import { MAX_SEATS } from '../shared/constants.js';
+import { isSoloRoomMode } from '../shared/infiniteMode.js';
 import { sendSession } from './net.js';
 
 const MATCHMAKING_DEFAULTS = Object.freeze({
@@ -97,7 +98,7 @@ export class Matchmaker {
     // 场景 B：大厅无房散人快速匹配
     const entry = {
       session,
-      mode: mode === 'solo' ? 'solo' : 'coop',
+      mode: isSoloRoomMode(mode) ? 'solo' : 'coop',
       difficulty: String(difficulty),
       fillBots: fillBots !== false,
       joinedAt: this.lobby.now(),

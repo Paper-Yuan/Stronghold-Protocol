@@ -2,6 +2,7 @@ import { createRoomDirectoryApi } from './roomDirectory.js';
 // Read-only public HTTP APIs. Project only documented fields, never session ids or private match data.
 import { createHash } from 'node:crypto';
 import { DIFFICULTY_NAMES, MAX_SEATS } from '../shared/constants.js';
+import { isSoloRoomMode } from '../shared/infiniteMode.js';
 import { clientAddress, limitKeyOf, TokenBucket } from './net.js';
 
 export function roomStatus(room, serverNow) {
@@ -10,7 +11,7 @@ export function roomStatus(room, serverNow) {
   // Read the last published frame: querying must not calculate a new match view or expose unbroadcast progress.
   const pub = inMatch && room.matchCtx?.lastPublic ? JSON.parse(room.matchCtx.lastPublic) : null;
   const players = new Map((pub?.players || []).map((p) => [p.playerId, p]));
-  const capacity = room.mode === 'solo' ? 1 : MAX_SEATS;
+  const capacity = isSoloRoomMode(room.mode) ? 1 : MAX_SEATS;
   const seats = room.seats.slice(0, capacity).map((s) => {
     if (!s) return null;
     const p = players.get(s.playerId);
@@ -43,7 +44,7 @@ function botRoomSummary(room) {
   const host = room.seatOf(room.hostId);
   return {
     code: room.code, mode: room.mode, difficulty: room.difficulty,
-    playerCount: seats.length, maxPlayers: room.mode === 'solo' ? 1 : MAX_SEATS,
+    playerCount: seats.length, maxPlayers: isSoloRoomMode(room.mode) ? 1 : MAX_SEATS,
     status: room.match ? 'playing' : 'waiting',
     hostName: host && !host.left ? host.name : null,
     players: seats.map(seat => seat.name),

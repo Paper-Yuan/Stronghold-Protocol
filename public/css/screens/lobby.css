@@ -974,7 +974,7 @@
     linear-gradient(var(--pl-ink), var(--pl-ink)) right .07rem bottom 23% / .06rem 2px no-repeat,
     linear-gradient(180deg, #e8edea, #c6cfcb) !important;
   border: 1px solid rgba(255, 255, 255, .5) !important; box-shadow: 0 .05rem .18rem rgba(0, 0, 0, .5), inset 0 -2px 0 rgba(0, 0, 0, .14); }
-.hub-plate__glyph, .hub-plate .lo-entry__icon, .hub-plate > .btn__icon { width: .46rem !important; height: .46rem !important; flex: none; display: grid; place-items: center;
+.hub-plate__glyph, .hub-plate .lo-entry__icon, .hub-plate > .btn__icon { width: .40rem !important; height: .40rem !important; flex: none; display: grid; place-items: center;
   padding: .07rem; background: #182120; color: var(--mint-400); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .08); box-sizing: border-box; }
 .hub-plate__glyph svg { width: 100%; height: 100%; }
 .hub-plate__label, .hub-plate .btn__label { font-size: .2rem; font-weight: 900; letter-spacing: .04em; color: #111816; white-space: nowrap; }
@@ -1071,7 +1071,7 @@
   .hub-recruit__row:nth-child(n + 3) { display: none; }
   .hub-right__plates { gap: .08rem; }
   .hub-plate { height: max(.5rem, 32px) !important; gap: .1rem; }
-  .hub-plate__glyph, .hub-plate .lo-entry__icon, .hub-plate > .btn__icon { width: max(.36rem, 22px) !important; height: max(.36rem, 22px) !important; padding: .04rem; }
+  .hub-plate__glyph, .hub-plate .lo-entry__icon, .hub-plate > .btn__icon { width: max(.31rem, 19px) !important; height: max(.31rem, 19px) !important; padding: .04rem; }
   .hub-plate__label, .hub-plate .btn__label { font-size: max(.16rem, 12px); }
   .hub-plate__tag { font-size: max(.1rem, 9px); }
 }
@@ -1891,7 +1891,7 @@ button.ally-card:disabled { filter: grayscale(.7) brightness(.7); cursor: defaul
 .rs-foot__left { min-width: 0; }
 .rs-top__right { display: flex; align-items: center; gap: .14rem; }
 .rs-loadout.hub-plate { width: auto !important; height: max(.56rem, 34px) !important; min-width: 0; padding: 0 .2rem 0 .14rem !important; }
-.rs-loadout.hub-plate .lo-entry__icon, .rs-loadout.hub-plate > .btn__icon { width: max(.36rem, 22px) !important; height: max(.36rem, 22px) !important; padding: .04rem; }
+.rs-loadout.hub-plate .lo-entry__icon, .rs-loadout.hub-plate > .btn__icon { width: max(.31rem, 19px) !important; height: max(.31rem, 19px) !important; padding: .04rem; }
 .rs-loadout.hub-plate .btn__label { font-size: max(.18rem, 12px); }
 .rs-ready { display: inline-flex; align-items: center; gap: 2px; margin-right: .14rem; font-size: max(.16rem, 11px); color: #9aa19e; vertical-align: middle; }
 .rs-ready .icon { width: max(.2rem, 13px); height: max(.2rem, 13px); color: #4b504e; }
