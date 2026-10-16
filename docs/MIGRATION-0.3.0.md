@@ -157,3 +157,41 @@
 `runner-pending` 14、`feedback1-runner-forms` 10 …）。修复：`start` 恢复同步，kit 表由**已经是异步的调用方**先 await
 好再传进 `opts`（页面 `runner.js`、工人线程 `simWorkerRuntime.js`；排练 worker 本来就是先解析后建候选）。该 6 个套件
 回到 67/67。
+
+---
+
+## `test/data.test.js` 的 2 个失败：**本仓库既有**（严谨复验 + 方法论陷阱）
+
+### 陷阱（我先踩了两次）
+
+那两个缓存相关的套件在 `.cache/gamedata/` 缺席时是 **skipped**（node 只报 `skipped 2`，`fail 0`）。而 `.cache/` **不在版本管理里**，
+所以任何新建的 `git worktree` 都没有它 —— 用它做 A/B 会静默跳过这两条，得出「本仓库本来是绿的」这种**错的**结论。
+
+正确做法：往 worktree 里放一个 **目录联接**（无需提权）`cmd /c mklink /J .cache\fork\.cache\gamedata <主工作区缓存>`；
+拆的时候必须用 `cmd /c rmdir`（**绝不能**递归删除：那会穿透联接删掉真实缓存）。
+
+### 复验结果
+
+在本仓库树（`2bed2e7f`）+ 官方缓存下跑 `test/data.test.js`：**30 用例 / 28 通过 / 2 失败**，报错与 HEAD 完全一样
+（`data/config.json is stale — run: node tools/build-data.mjs`）。→ **这 2 个失败与合并无关**。
+
+### 为什么重生成对不上（实测数字）
+
+把**本仓库自己的生成器**换回来后 `--offline --out <tmp>` 生成，与提交的 `data/` 逐文件比对：
+
+| 文件 | 提交版 | 本仓库生成器 | 上游生成器（第 3 轮实测） |
+|---|---|---|---|
+| `config.json` | 109 KB（美化 4525 行） | 63 KB（紧凑） | 61 KB（紧凑） |
+| `chess.json` | 1.88 MB | 1.66 MB | — |
+| `tokens.json` | 264 KB（美化 9900 行） | 134 KB（紧凑） | 119 KB（紧凑） |
+| `stages.json` | 266 KB | 257 KB | — |
+| `choices.json` | 124 KB | 124 KB（`pools` 有差异） | 106 KB |
+
+`bands/bosses/effects/factions/garrisons/items/waves` 两版都**逐字节一致** ✓。
+
+结论：提交的 `data/` 相对**两个**生成器 + **当前**官方缓存都是「历史遗留/手工扩充」的产物（不只是排版差异，`chess.json` 就差了 220 KB 内容）。
+要让 `data/` 重新可生成，得先对齐生成器的**输入**（`docs/research/*` 与官方缓存的版本）—— 那是一件独立的数据管线工程，
+**不是**「把某个 hunk 并回来」就能解决的。在此之前：**不要**重生成 `data/`。
+
+（本节更正了上面第 15 轮那段「本仓库数据就是它自己生成器的产出」——那是被 skipped 误导得出的结论；
+第 5 轮「提交的数据对不上生成器」是对的。）
