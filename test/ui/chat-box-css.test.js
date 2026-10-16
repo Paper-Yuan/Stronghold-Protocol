@@ -46,10 +46,17 @@ describe('the chat panel is styled and placed', () => {
     assert.match(css, /\.chat-trigger-btn::before \{[^}]*44px/, 'the touch target, on a phone');
   });
 
-  test('the room screen mounts it (uncontrolled: the panel carries its own trigger)', () => {
-    assert.match(room, /import \{ ChatBox \} from '\.\.\/ui\/chatBox\.js'/);
-    assert.match(room, /<\$\{ChatBox\} \/>/);
-    assert.doesNotMatch(room, /<\$\{ChatBox\} active=/, 'the room uses the uncontrolled form');
+  test('the room screen mounts the repository own draggable chat, the match keeps this one', () => {
+    assert.match(room, /import \{ mountRoomChat \} from '\.\.\/ui\/roomChat\.js'/);
+    assert.match(room, /useEffect\(\(\) => mountRoomChat\(\), \[\]\)/);
+    assert.doesNotMatch(room, /<\$\{ChatBox\}/, 'the room does not use the in-match panel');
+    const game = read('public/js/screens/game.js');
+    assert.match(game, /<\$\{ChatBox\} active=/, 'in a match the fixed log is ChatBox');
+    // 可拖动那套的样式（.spchat）必须在，且带着拖动/收起/位置记忆的实现
+    assert.match(css, /\.spchat__panel \{/);
+    assert.match(css, /\.spchat__toggle \{/, 'the summon button');
+    const chat = read('public/js/ui/roomChat.js');
+    assert.match(chat, /sp\.chat\.toggle\.position\.v1/, 'drag position is remembered');
   });
 
   test('the log clears when the room changes (leaving included), not only on room.closed', async () => {

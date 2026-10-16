@@ -26,7 +26,7 @@ import { copyText } from '../ui/clipboard.js';
 import { GuideButton } from '../ui/guide.js';
 import { openStats } from './stats.js';
 import { SettingsButton } from '../ui/settings.js';
-import { ChatBox } from '../ui/chatBox.js';
+import { mountRoomChat } from '../ui/roomChat.js';
 import { LoadoutButton } from './loadout.js';
 import { PluginTag, isModdedRoom } from '../ui/pluginTag.js';
 import { hasScriptConsent, rememberScriptConsent } from '../content.js';
@@ -251,6 +251,10 @@ function AiLastToggle({ option, busy, onToggle }) {
 
 /** Room screen component. */
 export function RoomScreen() {
+  // 房间聊天用本仓库自己那套（ui/roomChat.js）：可**拖动**（位置记在 sp.chat.toggle.position.v1）、
+  // 可**收起**（标题栏的 −）、用左下角的圆形入口**唤出**。它自己建 DOM 挂到 body，
+  // useEffect 返回的就是它的清理函数。局内那份是 ui/chatBox.js 的固定日志条（见 screens/game.js）。
+  useEffect(() => mountRoomChat(), []);
   const room = useStore((s) => s.room);
   const me = useStore((s) => s.me, shallowEqual);
   const conn = useStore((s) => s.connection, shallowEqual);
@@ -330,8 +334,6 @@ export function RoomScreen() {
         ? html`<span class="t-mint">${t('已就绪 · 等待创建者开始模拟')}</span>`
         : html`<span class="t-lo">${t('准备就绪后，创建者即可开始模拟')}</span>`;
 
-  // 房间聊天：ui/chatBox.js 的**非受控**用法（不传 active，面板自带圆形入口与开关；受控那套在局内 game.js）。
-  // 它的定位来自 css/room-chat.css 的 .chat-panel：左下角 16px / 底上 96px、230×220（本仓库旧聊天面板的位置）。
   return html`<div class="screen room-screen">
     <header class="topbar">
       <div class="topbar__left">
@@ -405,7 +407,6 @@ export function RoomScreen() {
             <//>`}
       </div>
     </footer>
-    <${ChatBox} />
   </div>`;
 }
 
