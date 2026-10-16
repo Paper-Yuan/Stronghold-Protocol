@@ -45,7 +45,8 @@ export function createSimWorker({ loadSim, prepareScripts = browserScripts } = {
     }
     if (!loaded) throw new Error('simulation not loaded');
     switch (method) {
-      case 'start': host.start(args[0]); return packet();
+      // `host.start` 现在是异步的：它要按规格里的 `modules` (W-C) import 出房间模组的 kit 表再建战斗。
+      case 'start': await host.start(args[0]); return packet();
       case 'step': {
         if (!Number.isInteger(args[0]) || args[0] < 0 || args[0] > 600) throw new Error('invalid step count');
         return packet(host.step(args[0], args[1] || {}));

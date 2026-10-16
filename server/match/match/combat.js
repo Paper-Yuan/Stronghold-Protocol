@@ -15,6 +15,8 @@ export class MatchCombat {
   /** Construct a battle; a constructor failure yields a finished stand-in (clean result) and is logged. */
   newBattle(opts, { preview = false } = {}) {
     const full = { data: this.ds, content: this.battleContent, logger: this.log, ...opts,
+      // 房间模组的 kit 注入 (W-C)：只有服务端自己跑的战斗走这里（接管 / 校验 / SP_COMBAT=server）
+      ...(this.kits ? { kits: this.kits } : {}), ...(this.tokenKits ? { tokenKits: this.tokenKits } : {}),
       ...(preview ? { logger: {}, quiet: true } : {}) };
     try {
       return new this.BattleClass(full);

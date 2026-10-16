@@ -277,6 +277,18 @@ export class Match {
     this.cs = isContentHash(opts.cs) ? opts.cs : null;
     /** the room's visual set (opts.vs, DESIGN §32.6): every BattleSpec names it */
     this.vs = isContentHash(opts.vs) ? opts.vs : null;
+    /**
+     * 房间声明的模组包带来的 **kit 注入**（W-C, server/roomAssets.js）：服务端**自己**跑的战斗（接管、校验、
+     * SP_COMBAT=server）把它们交给 sim（`battle.opts.kits` / `tokenKits`，server/sim/content/index.js）。
+     */
+    this.kits = opts.kits && typeof opts.kits === 'object' ? opts.kits : null;
+    this.tokenKits = opts.tokenKits && typeof opts.tokenKits === 'object' ? opts.tokenKits : null;
+    /**
+     * 那些包的**模块 URL**。浏览器收不到函数，所以战斗规格带的是这份 JSON 安全的列表
+     * （`{ id, pack, url, kind? }`，opts.modules），客户端 import 它们自己建出 kits / tokenKits 两张表
+     * （public/js/battle/runner.js；两侧的表必须一致，否则客户端算出的战报会被服务端判为不可信）。
+     */
+    this.modules = Array.isArray(opts.modules) ? opts.modules : [];
     /** a room with gameplay plugins (opts.requireCs): a client result must name this match's cs (reports.js) */
     this.requireCs = opts.requireCs === true && !!this.cs;
     this.gd = new GameData(this.data, this.modeId);

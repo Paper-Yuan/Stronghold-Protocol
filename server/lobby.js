@@ -1500,7 +1500,7 @@ export class Lobby {
         ...(modded ? { requireCs: true } : {}),
         // 房间声明的模组集合与它的资源视图：`data` 是模组感知的那一份（官方 + 点名的包），kits/tokenKits 是这一局可用的
         // 注入表（server/sim/content/index.js 的 battle.opts.kits / tokenKits 取它们），mods 让战报带上集合身份。
-        ...(roomAssets ? { kits: roomAssets.kits, tokenKits: roomAssets.tokenKits, mods: room.modSet } : {}),
+        ...(roomAssets ? { kits: roomAssets.kits, tokenKits: roomAssets.tokenKits, modules: roomAssets.modules, mods: room.modSet } : {}),
         data: roomAssets ? roomAssets.data : data,
         log: this.log,
         now: this.now,

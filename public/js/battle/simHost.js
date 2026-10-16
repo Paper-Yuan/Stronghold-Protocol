@@ -1,5 +1,6 @@
 // C4 simulation hosts (DESIGN §32.11). The clock belongs to runner.js. Only the vanilla host has a Battle on the page.
 import { loadBrowserSim } from './simLoader.js';
+import { loadModuleKits } from './modKits.js';
 import { unitStatsEntry } from '../../../shared/protocol.js';
 
 /** [ASSUMED] 2 s per RPC, including construction and forceEnd (both can execute plugin hooks). */
@@ -14,9 +15,10 @@ export class InPageSimHost {
     this.sim = await this.loadSim(content ? { ...content, cs } : undefined);
     return this;
   }
-  start(spec, opts = {}) {
+  async start(spec, opts = {}) {
     this.spec = spec;
-    this.battle = this.sim.spec.createBattleFromSpec(spec, this.sim.ds, opts);
+    // 房间模组的 kit 表 (W-C)：按规格里的 `modules` import 出来，和规格一起交给战斗 —— 只按 URL import 一次。
+    this.battle = this.sim.spec.createBattleFromSpec(spec, this.sim.ds, { ...opts, ...(await loadModuleKits(spec && spec.modules)) });
     this.meter = this.sim.spec.attachLpMeter(this.battle);
     return this;
   }

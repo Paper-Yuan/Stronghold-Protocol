@@ -22,6 +22,7 @@
 const { createBattleFromSpec } = await import('/sim/spec.js');
 const { DataSource, setSimData } = await import('/sim/simdata.js');
 const { RehearsalRun } = await import('/sim/rehearsal.js');
+const { loadModuleKits } = await import('./modKits.js');
 
 /** The page's simulation data as a DataSource (null before the data frame arrives). */
 let ds = null;
@@ -30,18 +31,21 @@ let ds = null;
  * Run one task and return the winning candidate index.
  * @param {{ taskId: string, playerId: string, cap: number, specs: object[] }} task
  */
-function rehearse(task) {
+async function rehearse(task) {
   if (!ds) throw new Error('simulation data not loaded');
   // this worker has only the official data the page posted. A spec that names a content set (plugin data or scripts)
   // is the server's rehearsal, never this one.
   if ((task.specs || []).some((s) => s && typeof s.cs === 'string' && s.cs !== '')) throw new Error('content set is not rehearsed here');
+  // 房间模组的 kit 表 (W-C)：每个候选的规格各自点名 `modules`，先把它们 import 成表再建战斗 —— 少一个 kit 就意味着
+  // 这个候选建不起来（被 run 跳过），模组房里的排练会静默退化成「只有官方干员」。
+  const kitMaps = await Promise.all((task.specs || []).map((s) => loadModuleKits(s && s.modules)));
   // a candidate is built when the run reaches it (server/sim/rehearsal.js): a spec that does not build is skipped
-  const run = new RehearsalRun(task.specs.map((spec) => () => createBattleFromSpec(spec, ds, { quiet: true, recordEvents: false })), task.playerId, task.cap);
+  const run = new RehearsalRun(task.specs.map((spec, i) => () => createBattleFromSpec(spec, ds, { quiet: true, recordEvents: false, ...kitMaps[i] })), task.playerId, task.cap);
   run.run();
   return run.score.index;
 }
 
-self.onmessage = (ev) => {
+self.onmessage = async (ev) => {
   const msg = ev && ev.data;
   if (!msg || typeof msg !== 'object') return;
   if (msg.t === 'data') {
@@ -51,7 +55,7 @@ self.onmessage = (ev) => {
   }
   if (msg.t !== 'rehearsal') return;
   try {
-    self.postMessage({ t: 'done', taskId: msg.taskId, choice: rehearse(msg) });
+    self.postMessage({ t: 'done', taskId: msg.taskId, choice: await rehearse(msg) });
   } catch (e) {
     self.postMessage({ t: 'error', taskId: msg.taskId, message: String((e && e.message) || e) });
   }
