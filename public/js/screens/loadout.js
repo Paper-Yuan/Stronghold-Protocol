@@ -487,7 +487,8 @@ export function OpCard({ m, chess, golden, entries, ops = {}, selected = false, 
         ${golden ? modules.map((mo) => html`<${QuickModule} key=${mo.id} m=${m} opt=${mo} on=${mo.id === choice.module}
           onPick=${(module) => onChange(chess.chessId, { module })} />`) : html`<span class="lo-op__none">${t('无精锐')}</span>`}
       </div>`
-      : quick === 'cult' ? html`<div class="lo-op__quick lo-op__quick--cult"><${CultivationSelects} charId=${chess.charId} ops=${ops} onSet=${onOps} note=${standInNote} /></div>` : null}
+      : quick === 'cult' ? html`<div class="lo-op__quick lo-op__quick--cult"><${CultivationSelects} charId=${chess.charId} ops=${ops} onSet=${onOps} note=${standInNote} /></div>`
+      : quick === 'skin' ? html`<div class="lo-op__quick lo-op__quick--skin"><${SkinSection} chess=${chess} /></div>` : null}
   </div>`;
 }
 
@@ -1085,7 +1086,7 @@ function LoadoutScreen({ st, leaving = false }) {
         ${inMatch && hasDeadline(infoDeadline) ? html`<${Countdown} deadline=${infoDeadline} size="sm" gauge=${false} label=${t('调配截止')} class="lo-deadline" />` : null}
         ${quick ? html`<span class="lo-qbar__k">${t('快速编辑')}</span>
           <div class="lo-qseg" role="tablist" aria-label=${t('快速编辑')}>
-            ${[['skill', N_('技能')], ['module', N_('模组')], ['cult', N_('潜能·练度')]].map(([k, l]) => html`<button key=${k} type="button" role="tab"
+            ${[['skill', N_('技能')], ['module', N_('模组')], ['cult', N_('潜能·练度')], ['skin', N_('皮肤')]].map(([k, l]) => html`<button key=${k} type="button" role="tab"
               aria-selected=${quick === k ? 'true' : 'false'} class=${cx(quick === k && 'is-on')} onClick=${() => setQuick(k)}>${t(l)}</button>`)}
           </div>`
         : html`${syncText ? html`<span class=${cx('lo-sync', syncCls)} role="status">${t(syncText)}</span>` : null}
