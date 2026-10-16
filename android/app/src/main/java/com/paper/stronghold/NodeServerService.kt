@@ -236,6 +236,10 @@ class NodeServerService : Service() {
             }
         }, "node-main", 8 * 1024 * 1024)
 
+        // Below the UI threads: the in-process server answers this phone's own WebView, and a full JS event loop
+        // competing with the renderer's input/scroll threads is what makes a heavy round (many units, VFX) stutter.
+        // NORM_PRIORITY - 1 is still far above background, so the health poller and the log tailer keep working.
+        try { nodeThread.priority = Thread.NORM_PRIORITY - 1 } catch (e: Exception) { Log.w(TAG, "node thread priority: ${e.message}") }
         nodeThread.start()
     }
 

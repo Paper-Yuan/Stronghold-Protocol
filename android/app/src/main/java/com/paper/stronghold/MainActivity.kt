@@ -342,8 +342,14 @@ class MainActivity : AppCompatActivity() {
             allowContentAccess = true
             setSupportZoom(false)
             displayZoomControls = false
-            useWideViewPort = true
-            loadWithOverviewMode = true
+            // The page owns its own scaling: css/theme.css sizes the layout root from min(vw/1920, vh/1080) with svh, so
+            // the WebView must NOT help. useWideViewPort + loadWithOverviewMode lay the page out at 980 CSS px and then
+            // zoom the result to fit: on a 761x360 landscape phone that re-rasterises every glyph and the title screen —
+            // the first thing the player sees — takes the hit. The viewport meta already pins width=device-width,
+            // initial-scale=1 (public/index.html), so nothing here needs the desktop fallback. (2026-10-16)
+            useWideViewPort = false
+            loadWithOverviewMode = false
+            setInitialScale(0) // 0 = do not zoom; a non-zero value would scale on top of the CSS root scale
             textZoom = 100 // Prevent Android system accessibility font scaling from breaking layout
             cacheMode = WebSettings.LOAD_DEFAULT
             mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
