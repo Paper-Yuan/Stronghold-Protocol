@@ -410,3 +410,8 @@ html[data-script="alphabetic"] .title-login .btn--xl { letter-spacing: .3em; }
 /* 本仓库页脚是横向一行，所以让它占最左边一块。 */
 .title-foot { flex-wrap: wrap; }
 .title-thanks { order: -1; flex: 1 1 12rem; min-width: 0; max-width: 46%; }
+
+@keyframes thanks-scroll {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}

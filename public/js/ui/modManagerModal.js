@@ -111,7 +111,8 @@ export function ModManagerModal({ open, onClose }) {
       const saved = getLocalEnabledMods();
       const initMap = {};
       allMods.forEach((m) => {
-        if (saved && Array.isArray(saved)) {
+        // 只有**非空**的已启用列表才算数：空数组以前会被当成「全部禁用」，于是刚启用也什么都不显示。
+        if (saved && Array.isArray(saved) && saved.length) {
           initMap[m.id] = saved.includes(m.id);
         } else {
           initMap[m.id] = m.enabled !== false;
