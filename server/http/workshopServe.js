@@ -10,6 +10,7 @@
 //   * `/mod/<包id>/…` 动态只读端点（需要 server/http/routeMount.js 的 mountServerModules）
 //   * `/room-data/<digest>/<name>.json`（需要 server/roomAssets.js 的房间资源层）
 //   * 包自备 CDN 语音的 voiceCdn 覆盖（需要装载器核验过的状态目录）
+import { applyWorkshop } from '../../shared/workshop.js';
 import fs from 'node:fs';
 import fsp from 'node:fs/promises';
 import path from 'node:path';
@@ -85,7 +86,17 @@ function resolvePackRelativeKit(decoded, kitDirs) {
  * @returns {Map<string, Buffer>}
  */
 function workshopDataFiles(data, loaded, views, log) {
-  const out = buildWorkshopDataFiles(data, loaded);
+  // buildWorkshopDataFiles 的文档说的是「**已合并**的游戏数据」，而调用方交来的是基准 data（从没并过包），
+  // 所以 /data/*.json 一直只有官方那份 —— 包里的干员、盟约、分队因此在这一层永远到不了浏览器
+  // （2026-10-16：手机与本机都复现，/data/chess.json 里没有 chess_char_5_30_a）。这里补上合并。
+  let merged = data;
+  try {
+    if (loaded && Array.isArray(loaded.packs) && loaded.packs.length) merged = applyWorkshop(data, loaded.packs).data;
+  } catch (err) {
+    log?.warn?.(`[workshop] 合并包数据失败，/data/* 退回基准数据: ${err && err.message ? err.message : err}`);
+    merged = data;
+  }
+  const out = buildWorkshopDataFiles(merged, loaded);
   if (!views) return out;
   for (const name of VIEW_MANIFESTS) {
     if (out.delete(name.replace(/\.json$/, ''))) log?.warn?.(`[workshop] /data/${name} 由资源视图提供（哈希 URL），工坊对它的增补暂不合并`);
