@@ -66,18 +66,23 @@
    都从 index.html 掉了，于是面板按文档流随便落在界面里 —— 「位置显示不对」。位置照本仓库旧聊天面板（下面 .spchat
    那套，ui/roomChat.js）：左下角，左 16px、底上 96px，230×220；手机上给圆形入口留 44px 触控目标（与 .spvoice__fab
    同一套做法）。收起 = 只剩入口圆点，半收起 = 矮面板。座位颜色 seat-0..3 上游只写了类名没给颜色，这里补上。 */
+/* z-index 110：**低于**表情栏（.ewheel__panel 是 120）。表情栏从角落按钮向上弹出，永远盖在日志之上 ——
+   「显示栏置于唤出的表情栏下方」。 */
 .chat-panel {
-  position: fixed; z-index: 160; left: 16px; bottom: 96px;
-  width: 230px; max-width: calc(100vw - 32px); height: 220px; max-height: calc(100vh - 112px);
+  position: fixed; z-index: 110; left: 16px; bottom: 16px;
+  width: 230px; max-width: calc(100vw - 32px); height: auto; max-height: calc(100vh - 32px);
   display: flex; flex-direction: column; box-sizing: border-box;
   background: rgba(24, 24, 27, .96); border: 1px solid #27272a; border-radius: 9px;
   box-shadow: 0 8px 28px #0008; overflow: hidden; pointer-events: auto;
   font: 12px/1.35 system-ui, sans-serif; color: #e4e4e7;
 }
 .chat-panel.is-collapsed { height: 140px; }
-/* 收起状态只剩那个圆形入口：面板本体不占位、不显示标题栏与日志。 */
-.chat-panel:not(.is-active) { width: auto; height: auto; background: transparent; border: 0; box-shadow: none; }
-.chat-panel:not(.is-active) .chat-header-bar, .chat-panel:not(.is-active) .chat-log { display: none; }
+/* 聊天文字显示栏**常显**（固定在左下）：收起时只是不显示输入行，日志与标题栏都留着。唤出对话 = 出输入框。 */
+.chat-panel:not(.is-active) .chat-form { display: none; }
+.chat-log { max-height: 118px; }
+/* 半收起（标题栏那个 ▼/▲）：只留一行。 */
+.chat-panel.is-collapsed { height: auto; }
+.chat-panel.is-collapsed .chat-log { max-height: 34px; }
 .chat-header-bar { display: flex; align-items: center; justify-content: flex-end; flex: 0 0 26px; padding: 0 6px; border-bottom: 1px solid #27272a; }
 .chat-collapse-btn { font: inherit; height: 20px; padding: 0 8px; border: 1px solid #27272a; border-radius: 5px;
   background: #27272a; color: #e4e4e7; cursor: pointer; touch-action: manipulation; }
@@ -100,16 +105,25 @@
 .chat-danmaku-btn { border: 1px solid #27272a; background: #27272a; color: #e4e4e7; }
 .chat-danmaku-btn.is-on { border-color: #34d399; color: #34d399; }
 .chat-send-btn { border: 1px solid #34d39966; background: #065f46; color: #ecfdf5; padding: 0 8px; }
+/* 房间界面的「唤出对话」按钮：就在标题栏里（点它出输入框）。局内用角落的发言齿轮切换（受控）。 */
 .chat-trigger-btn {
-  position: fixed; z-index: 161; left: 16px; bottom: 96px;
-  width: 36px; height: 36px; padding: 0; font-size: 16px; line-height: 1;
-  background: #18181b !important; border: 1px solid #34d399 !important; border-radius: 50% !important;
-  box-shadow: 0 4px 16px #0008; color: #e4e4e7; cursor: pointer; touch-action: manipulation;
+  width: 24px; height: 20px; padding: 0; font-size: 12px; line-height: 1;
+  background: #27272a !important; border: 1px solid #34d39966 !important; border-radius: 5px !important;
+  color: #e4e4e7; cursor: pointer; touch-action: manipulation;
 }
+.chat-header-bar { justify-content: space-between; }
+/* 局内（.gm 之下）：日志条贴在左下、让开角落按钮那一列（.gm__corner 在 left .24rem / bottom .24rem，
+   表情栏从那里向上弹出、宽 3.13rem）—— 所以日志从 3.45rem 起，且永远在表情栏之下。 */
+.gm .chat-panel { left: 3.45rem; bottom: .2rem; width: min(11rem, 46vw); }
 @media (pointer: coarse) { .chat-input { font-size: 16px; } }
 /* 可见圆点跟 HUD 的 rem 缩放走，不可见的触控目标始终 44px（与 .spvoice__fab 同一条规则）。 */
 @media (orientation: landscape) and (max-height: 600px) and (any-pointer: coarse) {
-  .chat-trigger-btn { width: max(.56rem, 24px) !important; height: max(.56rem, 24px) !important; }
+  /* 手机上日志更矮，别压住棋盘；触控目标仍按 44px 撑开（不可见）。 */
+  .chat-log { max-height: 82px; }
+  .chat-panel.is-collapsed .chat-log { max-height: 30px; }
+  .chat-collapse-btn { position: relative; }
+  .chat-collapse-btn::before { content: ''; position: absolute; left: 50%; top: 50%; width: 44px; height: 44px; transform: translate(-50%, -50%); }
+  .chat-trigger-btn { position: relative; }
   .chat-trigger-btn::before { content: ''; position: absolute; left: 50%; top: 50%; width: 44px; height: 44px; transform: translate(-50%, -50%); }
 }
 

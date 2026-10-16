@@ -124,6 +124,17 @@ export function clearChat() {
   if (store.get().chatMessages?.length) store.set({ chatMessages: [] });
 }
 
+/**
+ * 房间身份变了没有：`room.code` 不同（变成 null = 退出房间，也算）即变了。main.js 的 store 订阅用它清空对话 ——
+ * `room.closed` 那条路早就清了，但玩家自己点「离开同盟」不走那里，于是上一局的对话会留在下一局里。
+ * @param {{ code?: string }|null|undefined} prev
+ * @param {{ code?: string }|null|undefined} next
+ * @returns {boolean}
+ */
+export function roomIdentityChanged(prev, next) {
+  return (prev?.code || null) !== (next?.code || null);
+}
+
 /** The app-wide store singleton. */
 export const store = createStore(initialState);
 

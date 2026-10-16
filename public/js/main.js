@@ -40,7 +40,7 @@ import { html, UiHosts, Button, MicroLabel, closeAllDialogs } from './ui/compone
 import { ConnectionBanner } from './ui/connBanner.js';
 import { ToastHost, toast, toastError, describeError } from './ui/toasts.js';
 import { net, identity, NetError } from './net.js';
-import { store, useStore, emptyMatch, selectRoute, sessionResetNotice, isSpectating, pushChatMessage, clearChat } from './store.js';
+import { store, useStore, emptyMatch, selectRoute, sessionResetNotice, isSpectating, pushChatMessage, clearChat, roomIdentityChanged } from './store.js';
 import { getRoomDanmaku } from './ui/roomDanmaku.js';
 import { setWelcomeMods } from './roomMods.js';
 import { data } from './data.js';
@@ -305,6 +305,8 @@ function wireNet() {
 
   // Entering (title → lobby) while already online also needs the deep-link join.
   store.subscribe((s, prev) => {
+    // 换了房间（或退出房间）：上一局的对话不能留在这一局 —— room.closed 那条路早就在清，自己点「离开同盟」不走那里。
+    if (roomIdentityChanged(prev.room, s.room)) clearChat();
     if (s.session.entered && !prev.session.entered) schedulePendingJoin();
     // in a room (co-op or solo, also a resumed one) a match is near: its data starts downloading
     if (s.room && !prev.room) warmGameData();

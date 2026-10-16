@@ -25,20 +25,36 @@ describe('the chat panel is styled and placed', () => {
     const panel = /\.chat-panel \{([^}]*)\}/.exec(css)?.[1] || '';
     assert.match(panel, /position:\s*fixed/, 'a chat that scrolls away with the page is the bug being fixed');
     assert.match(panel, /left:\s*16px/);
-    assert.match(panel, /bottom:\s*96px/);
+    assert.match(panel, /bottom:\s*16px/);
     assert.match(panel, /width:\s*230px/);
-    assert.match(panel, /height:\s*220px/);
+    assert.match(panel, /z-index:\s*110/, 'under the emote panel (ewheel__panel is 120)');
+    // 日志常显：收起只去掉输入行，不再整块藏起来
+    assert.match(css, /\.chat-panel:not\(\.is-active\) \.chat-form \{ display: none; \}/);
+    assert.doesNotMatch(css, /\.chat-panel:not\(\.is-active\) \.chat-log \{ display: none; \}/);
+    // 半收起 = 只留一行；局内让开角落按钮那一列
+    assert.match(css, /\.chat-panel\.is-collapsed \.chat-log \{ max-height: 34px; \}/);
+    assert.match(css, /\.gm \.chat-panel \{ left: 3\.45rem;/, 'clear of the emote column');
+    // 唤出对话按键 = 出输入框（按钮在标题栏里，不再是固定圆点）
     const trig = /\.chat-trigger-btn \{([^}]*)\}/.exec(css)?.[1] || '';
-    assert.match(trig, /position:\s*fixed/);
-    assert.match(trig, /border-radius:\s*50%/, 'the closed state is a round entry point');
-    assert.match(css, /\.chat-trigger-btn::before \{[^}]*width: 44px; height: 44px;/, 'the touch target, not the visible dot');
-    assert.match(css, /\.chat-panel:not\(\.is-active\) \{/, 'closed = only the entry point');
+    assert.doesNotMatch(trig, /position:\s*fixed/);
+    assert.match(css, /\.chat-trigger-btn::before \{[^}]*44px/, 'the touch target, on a phone');
   });
 
   test('the room screen mounts it (uncontrolled: the panel carries its own trigger)', () => {
     assert.match(room, /import \{ ChatBox \} from '\.\.\/ui\/chatBox\.js'/);
     assert.match(room, /<\$\{ChatBox\} \/>/);
     assert.doesNotMatch(room, /<\$\{ChatBox\} active=/, 'the room uses the uncontrolled form');
+  });
+
+  test('the log clears when the room changes (leaving included), not only on room.closed', async () => {
+    const { roomIdentityChanged } = await import('../../public/js/store.js');
+    assert.equal(roomIdentityChanged({ code: 'ABCD' }, { code: 'ABCD' }), false, 'same room: keep the log');
+    assert.equal(roomIdentityChanged({ code: 'ABCD' }, { code: 'WXYZ' }), true, 'another room');
+    assert.equal(roomIdentityChanged({ code: 'ABCD' }, null), true, 'left the room');
+    assert.equal(roomIdentityChanged(null, null), false);
+    assert.equal(roomIdentityChanged(undefined, { code: 'ABCD' }), true);
+    const main = read('public/js/main.js');
+    assert.match(main, /if \(roomIdentityChanged\(prev\.room, s\.room\)\) clearChat\(\);/);
   });
 
   test('the seat classes the component emits have colours', () => {
