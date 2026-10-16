@@ -46,6 +46,7 @@ const ROOM_CODE_RE = /^[A-Z]{4}$/;
  */
 export function createAppApi({ lobby = null, buildTag = () => '', appVersion = '0.0.0', rootDir = process.cwd(), now = Date.now, log = null } = {}) {
   const PATCH_PATHS = [path.join(rootDir, 'dist', 'patch.zip'), path.join(rootDir, 'public', 'patch.zip')];
+
   /** 补丁文件（问到才算 stat）；两个位置都没有则 null。 */
   const patchFile = () => {
     for (const p of PATCH_PATHS) {
@@ -68,9 +69,11 @@ export function createAppApi({ lobby = null, buildTag = () => '', appVersion = '
         build,
         serverNow: now(),
         hotUpdate: {
-          supported: true,
+          // 只有**真的存在补丁文件**时才宣称支持热更新，否则 App 会按 patchUrl 去下载、拿到 404 并在
+          // 界面报「补丁包下载失败，服务器返回 HTTP 404」（owner：手机端热更新会显示 404）。
+          supported: !!patchFile(),
           bundleVersion: build,
-          patchUrl: '/api/app/patch.zip',
+          ...(patchFile() ? { patchUrl: '/api/app/patch.zip' } : {}),
           changelog: `Stronghold Protocol v${appVersion} (build ${build}) ready`,
         },
       });

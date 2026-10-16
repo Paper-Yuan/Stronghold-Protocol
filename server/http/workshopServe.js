@@ -270,7 +270,10 @@ export function serveWorkshop(req, res, decoded, query, t, log = console) {
           // （加 30 秒竞争会先超时，而那时资源视图往往也还没好，结果答 404 —— 本机实测就是这样）。
           try { await st.pending; } catch { /* 合并失败也继续走兜底 */ }
           const now = t.mergedAssetsState();
-          const out = now.ready && now.buf ? now.buf : await t.viewAssets();
+          const out = (now.ready && now.buf)
+            || (await t.viewAssets())
+            || (t.workshopJson && t.workshopJson.get('assets'))
+            || null;
           if (out) sendBuffer(req, res, out, 'ws', MIME['.json'], 'no-cache');
           // 两条路都没就绪（索引异常慢）时才 404：客户端 data.js 自带重试，会再取一次。
           else sendError(req, res, 404, '页面不存在 · Not found');
