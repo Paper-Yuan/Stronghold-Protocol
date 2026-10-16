@@ -1355,9 +1355,13 @@ export class Lobby {
     return OK;
   }
 
-  /** The game data of a room's content (header "Gameplay plugins"): its content set's, else the server's. @param {Room | null} room */
   dataFor(room) {
     if (room?.modded) {
+      // 工坊房间（`room.modSet`）：对局拿的是 roomAssets 合并出来的那份（见下面的 Match opts.data），所以
+      // 干员调配 / 自选 / loadout 的校验也必须拿同一份 —— 否则服务端用基础数据一查「没这个模组干员」，
+      // 客户端每次同步都收到 BAD_TARGET（2026-10-16 手机实测：选完 mod 策略后 8 秒 43 次 BAD_TARGET）。
+      const ra = this.workshop?.roomAssets?.forRoom?.(room.modSet);
+      if (ra?.data) return ra.data;
       try {
         const d = this.plugins?.dataOf?.(room.content.cs);
         if (d) return d;
@@ -1369,6 +1373,9 @@ export class Lobby {
   /** The operators a 自选 slot may field in a room (its content set's list, else the vanilla one). @param {Room | null} room */
   kittedFor(room) {
     if (room?.modded) {
+      // 和 dataFor 同一个理由：工坊房间的 自选 名单来自它自己那份数据（roomAssets 的 kits），不是服务端基础表。
+      const ra = this.workshop?.roomAssets?.forRoom?.(room.modSet);
+      if (Array.isArray(ra?.kitted)) return ra.kitted;
       try {
         const k = this.plugins?.kittedOf?.(room.content.cs);
         if (Array.isArray(k)) return k;
