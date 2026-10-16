@@ -209,6 +209,7 @@ export const ERR_TEXT = {
   PLUGIN_SCRIPT_OVERRIDE: N_('插件未声明要替换的官方技能'),
   PLUGIN_SCRIPT_CHECK: N_('脚本未通过兼容性检查'),
   CONTENT_NOT_READY: N_('仍有博士未载入房间的插件内容'),
+  MOD_UNKNOWN: N_('本服务器未加载该模组'),   // 房间声明的工坊包不在服务器目录里 (W-D)
 };
 
 // ---- Emotes (交流, research 09 §4) -----------------------------------------------------------------------------
