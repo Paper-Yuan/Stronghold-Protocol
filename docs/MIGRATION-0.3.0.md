@@ -97,3 +97,33 @@
   `chat = false`（注释写明「只作为纯弹幕飘屏展示，不存储在对话框中」），且**没有任何调用点传 `chat: true`** →
   两个用例失败。这两个文件与合并前逐字节一致，所以是**本仓库既有**的矛盾。
 * 要接线必须先定：AI 的话进不进聊天记录？（进 = 测试通过、聊天面板会混入 AI 台词；不进 = 改测试）。
+
+---
+
+## 客户端模组缓存：服务端这一面已就绪，客户端接线待做（Phase C 下半）
+
+**服务端（本轮完成，已实测）**
+
+| 面 | URL | 状态 |
+|---|---|---|
+| 模组目录 | `GET /mods/catalog.json` | 200，66 KB，列出每个包与其每个文件的 sha256 |
+| 包文件 | `GET /mods/file/<pack>/<path>` | 200（`server/http/mods.js`；`sync.js` 的 `fileUrl()`） |
+| 房间数据面 | `GET /room-data/<digest>/<name>.json` | 200（本轮新增，`server/http/workshopServe.js`） |
+
+`/room-data/` 的语义（W-B）：**只有真的被某个房间声明过的摘要**才作答（`createRoomAssets.byDigest` 的登记来自
+`create`/`setMods` 的 `forRoom`），文件名白名单就是 `DATA_FILES`；未登记摘要 / 未登记文件名 / 非法摘要一律 404。
+实测：`/room-data/vanilla/chess.json` → 266 棋子；真实房间摘要 → **276**（官方 + ave-mujica）；`/data/chess.json` 仍是 266。
+
+**客户端（待接线；三个模块都在，但没有任何文件 import 它们）**
+
+1. `public/js/mods/store.js`（305 行）—— OPFS / IndexedDB / 内存三级后端，键 `mods/<pack>/<path>`。
+2. `public/js/mods/sync.js`（307 行）—— 拉 `/mods/catalog.json`、比哈希、按并发/重试/超时下载缺的文件，
+   `modDigest`/`modManifestDigest`/`sha256Hex` 校验。
+3. `public/js/mods/align.js`（151 行）—— `roomDataBase(mods, welcomeMods)`：房间声明了集合就返回 `/room-data/<摘要>/`，
+   否则 `/data/`（普通房间逐字节不变）。
+
+接线点（已探明）：
+  * `public/js/data.js` 的 `createDataStore({ base = '/data/' })` —— base 可注入，换面就靠它；
+  * 对局侧要把**房间那一份**数据喂给 sim（`/sim/simdata.js` 的 `setSimData`），不只是 UI 的 store；
+  * 浏览器的 kit 执行还需要 `@kit/` / `@sim/` 的解析 —— 服务端现在是**改写后**再给浏览器（`rewriteKitImports`），
+    而 `shared/kitImports.js` 的 `kitImportMap()` **没有任何消费者**；从缓存里跑包字节这条路要先把这一环定下来。

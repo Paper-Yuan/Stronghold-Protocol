@@ -29,7 +29,12 @@ import { WORKSHOP_DIR, loadWorkshop, loadWorkshopKits, loadWorkshopPanels } from
 import { buildModCatalog } from '../modCatalog.js';
 import { modSetOf } from '../../shared/modIdentity.js';
 import { createRoomAssets } from '../roomAssets.js';
+import { DATA_FILES } from '../data.js';
 import { VIEW_MANIFESTS } from './assetViews.js';
+
+/** 按房间的游戏数据 (W-B) 的 URL 前缀与摘要形状（`shared/modIdentity.js` modDigest = sha256 hex）。 */
+export const ROOM_DATA_PREFIX = '/room-data/';
+const ROOM_DIGEST_RE = /^(?:[0-9a-f]{64}|vanilla)$/;
 
 /** 包声明的战斗逻辑模块（`pack.json.server.battle`, DESIGN §28.17）的 URL 前缀。 */
 export const WORKSHOP_BATTLE_PREFIX = '/workshop-battle/';
@@ -106,6 +111,9 @@ export async function createWorkshopServe({ data = null, workshopDir = WORKSHOP_
     modsJson: createModsRoute(loaded, catalog),
     workshopRoutes: routes.routes,
     workshopJson: workshopDataFiles(data, loaded, views, log),
+    // 按房间的游戏数据 (W-B, DESIGN §28.16)：`(digest) => { data } | null`。只有**真的被某个房间声明过**的摘要
+    // 才作答（createRoomAssets.byDigest 的登记来自 create/setMods 的 forRoom），客户端编不出组合让服务器合并。
+    roomData: (digest) => workshop.roomAssets.byDigest(digest),
     workshopI18n: buildWorkshopI18nFiles(loaded, { log }),
     workshopBattleFiles: workshopBattleFilesFor(kits.modules, workshopDir),
     workshopKitFiles: workshopKitFilesFor(kits.modules, workshopDir),
@@ -176,6 +184,24 @@ export function serveWorkshop(req, res, decoded, query, t, log = console) {
       return true;
     }
   }
+  // 按房间的游戏数据（W-B, DESIGN §28.16）：声明了集合的房间跑「官方 + 它点名的那几个包」，而 /data/*.json 送的是
+  // 「官方 + 全部已装包」。所以这一局的对局数据从这里取：/room-data/<摘要>/<文件>.json。未登记摘要与未登记文件名
+  // 一律 404（文件名白名单就是 /data/ 那一份 DATA_FILES）。
+  if (t.roomData && decoded.startsWith(ROOM_DATA_PREFIX) && decoded.endsWith('.json')) {
+    const rest = decoded.slice(ROOM_DATA_PREFIX.length);
+    const slash = rest.indexOf('/');
+    const digest = slash > 0 ? rest.slice(0, slash).toLowerCase() : '';
+    const name = slash > 0 ? rest.slice(slash + 1, -'.json'.length) : '';
+    const set = ROOM_DIGEST_RE.test(digest) && DATA_FILES.includes(name) ? t.roomData(digest) : null;
+    const rec = set && set.data && Object.hasOwn(set.data, name) ? set.data[name] : null;
+    if (rec !== null && rec !== undefined) {
+      const buf = Buffer.from(JSON.stringify(rec), 'utf8');
+      return sendBuffer(req, res, buf, `room-${digest}`, MIME['.json'], 'no-cache');
+    }
+    sendError(req, res, 404, '页面不存在 · Not found');
+    return true;
+  }
+
   // 包 touch 过的 /data/<file>.json 送**合并体**（官方 + 包），使浏览器的 data (public/js/data.js) 与服务端的
   // (server/data.js) 是同一个对象；没有包 touch 的文件落到上游挂载，普通安装逐字节不变。
   if (t.workshopJson && t.workshopJson.size && decoded.startsWith('/data/') && decoded.endsWith('.json')) {
