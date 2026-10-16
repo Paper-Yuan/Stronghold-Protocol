@@ -53,6 +53,9 @@ object AssetFastPath {
      */
     fun open(context: Context, bundleDir: File, uri: Uri, mimeOf: (String) -> String): WebResourceResponse? {
         if (!bundleDir.exists()) return null
+        // 只对**别人的**服务器生效：手机内置引擎（127.0.0.1 / localhost）本来就从本地磁盘读，对它的请求做哈希校验
+        // 纯属烧 CPU（每张图一次 SHA-256，真机上这是最重的一环）。连别人的服务器时才走快路径。
+        if (isOwnServer(uri)) return null
         val path = uri.path ?: return null
         val m = HASHED.find(path) ?: return null
         val kind = m.groupValues[1].lowercase()
@@ -75,6 +78,12 @@ object AssetFastPath {
             FileLogger.w("fastpath", "open failed: $path (${e.message})")
             null
         }
+    }
+
+    /** 这条请求指向手机自己的内置服务？那就不需要本地快路径。 */
+    private fun isOwnServer(uri: Uri): Boolean {
+        val h = uri.host?.lowercase() ?: return false
+        return h == "127.0.0.1" || h == "localhost" || h == "::1"
     }
 
     private fun count(hit: Boolean) {

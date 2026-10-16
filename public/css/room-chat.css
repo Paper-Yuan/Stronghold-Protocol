@@ -124,7 +124,17 @@
 /* 局内（.gm 之下）：日志条就贴在**左下四个按键之上**（.gm__corner：left .24rem / bottom .24rem，按钮 .56rem 高
    → 按键顶边 ≈ .8rem，日志从 .9rem 起）。z-index 110 低于表情栏的 120：表情栏从同一列向上弹出时会盖住日志
    —— 「显示栏置于唤出的表情栏下方」。 */
-.gm .chat-panel { left: .24rem; bottom: .9rem; width: min(11rem, 46vw); }
+/* 局内：**全透明**、宽度与左下四个按键相当（.gm__gear 每个 .56rem，四个加间隙 ≈ 2.5rem）、日志**可滑动**、
+   一条消息一行（超出省略），日志最高 5 行、半收起 3 行。 */
+.gm .chat-panel {
+  left: .24rem; bottom: .9rem; width: 2.5rem; max-width: 40vw;
+  background: transparent; border-color: transparent; box-shadow: none;
+}
+.gm .chat-panel .chat-header-bar { padding: 0; border-bottom: 0; background: transparent; }
+.gm .chat-panel .chat-log { padding: 0 2px; max-height: 80px; overflow-y: auto; pointer-events: auto; }
+.gm .chat-panel.is-collapsed .chat-log { max-height: 48px; }
+.gm .chat-panel .chat-item { height: 16px; line-height: 16px; margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.gm .chat-panel .chat-seat { margin-right: 2px; }
 @media (pointer: coarse) { .chat-input { font-size: 16px; } }
 /* 可见圆点跟 HUD 的 rem 缩放走，不可见的触控目标始终 44px（与 .spvoice__fab 同一条规则）。 */
 @media (orientation: landscape) and (max-height: 600px) and (any-pointer: coarse) {

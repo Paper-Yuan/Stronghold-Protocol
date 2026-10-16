@@ -33,11 +33,18 @@ describe('the chat panel is styled and placed', () => {
     assert.doesNotMatch(css, /\.chat-panel:not\(\.is-active\) \.chat-log \{ display: none; \}/);
     // 半收起 = 只留一行；局内让开角落按钮那一列
     assert.match(css, /\.chat-panel\.is-collapsed \.chat-log \{ max-height: 34px; \}/);
-    assert.match(css, /\.gm \.chat-panel \{ left: \.24rem; bottom: \.9rem;/, 'above the four corner buttons');
+    assert.match(css, /\.gm \.chat-panel \{\s*left: \.24rem; bottom: \.9rem;/, 'above the four corner buttons');
     // 更透明 + 不吃指针（只有控件接收点击，日志区域穿透到棋盘）
     assert.match(css, /\.chat-panel \{[^}]*background: rgba\(14, 18, 17, \.52\)/);
     assert.match(css, /\.chat-panel \{[^}]*pointer-events: none/);
     assert.match(css, /\.chat-panel \.chat-log \{ pointer-events: none; \}/);
+    // 局内那份是全透明、窄、可滑动的（一条一行 / 5 行 / 半收起 3 行）
+    assert.match(css, /\.gm \.chat-panel \{[^}]*background: transparent/);
+    assert.match(css, /\.gm \.chat-panel \{[^}]*width: 2\.5rem/);
+    assert.match(css, /\.gm \.chat-panel \.chat-log \{[^}]*overflow-y: auto; pointer-events: auto/);
+    assert.match(css, /\.gm \.chat-panel \.chat-log \{[^}]*max-height: 80px/);
+    assert.match(css, /\.gm \.chat-panel\.is-collapsed \.chat-log \{ max-height: 48px; \}/);
+    assert.match(css, /\.gm \.chat-panel \.chat-item \{[^}]*white-space: nowrap/);
     assert.match(css, /\.chat-panel \.chat-header-bar[\s\S]{0,220}pointer-events: auto/);
     assert.match(css, /\.chat-panel \.chat-send-btn \{ pointer-events: auto; \}/);
     // 唤出对话按键 = 出输入框（按钮在标题栏里，不再是固定圆点）
