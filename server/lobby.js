@@ -1471,6 +1471,10 @@ export class Lobby {
     let seed = 0;
     try { seed = this.seedFn() >>> 0; } catch { seed = randomInt(2 ** 32); }
     const modded = room.modded;
+    // 房间模组 (W-C)：只有**真的点名了包**的房间才换资源视图（`modSet` 始终是对象 —— 空选择解析成 { digest: 'vanilla',
+    // packs: [] } —— 所以判据是 packs 非空，不是 modSet 的真值）。没点名 = 进程级那一份原样，所有既有房间不受影响。
+    const hasMods = Boolean(room.modSet && Array.isArray(room.modSet.packs) && room.modSet.packs.length > 0);
+    const roomAssets = hasMods && this.workshop?.roomAssets ? this.workshop.roomAssets.forRoom(room.modSet) : null;
     try {
       const opts = {
         roomCode: room.code,
@@ -1494,7 +1498,10 @@ export class Lobby {
         ...(room.content ? { cs: room.content.cs } : {}),
         ...(room.content?.vs ? { vs: room.content.vs } : {}),
         ...(modded ? { requireCs: true } : {}),
-        data,
+        // 房间声明的模组集合与它的资源视图：`data` 是模组感知的那一份（官方 + 点名的包），kits/tokenKits 是这一局可用的
+        // 注入表（server/sim/content/index.js 的 battle.opts.kits / tokenKits 取它们），mods 让战报带上集合身份。
+        ...(roomAssets ? { kits: roomAssets.kits, tokenKits: roomAssets.tokenKits, mods: room.modSet } : {}),
+        data: roomAssets ? roomAssets.data : data,
         log: this.log,
         now: this.now,
         send: (playerId, msg) => (ctx.live ? this.matchSend(room, ctx, playerId, msg) : false),
