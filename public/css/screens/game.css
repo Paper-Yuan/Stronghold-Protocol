@@ -48,14 +48,124 @@
 .spec__name { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: calc(.19 * var(--t)); color: var(--text-hi); }
 .spec__hint { margin: .04rem 0 0; font-size: calc(.15 * var(--t)); line-height: 1.45; }
 .gtop__exit { box-shadow: 0 .06rem .2rem rgba(0, 0, 0, .5); }
-.gtop__center {
-  --bk-c: var(--mint-700);
-  display: flex; align-items: center; gap: .18rem;
-  height: .78rem; padding: 0 .24rem 0 .14rem; margin-top: .02rem;
-  background: linear-gradient(180deg, rgba(10, 14, 12, .92), rgba(10, 14, 12, .78));
-  border: 1px solid var(--line);
-  box-shadow: 0 .08rem .28rem rgba(0, 0, 0, .45);
-  position: relative;
+/* 顶部中栏 (2026-10-13, the event's top bar, video 8:01; ui/hud.js TopBar): [🔍] in a bracket frame + a long thin band —
+   回合 N centred in its left half, the LP tower in its right half, faint type above both — with the phase capsule as a
+   bevelled plate in a grey outer frame across the middle, then [🔍▶▶] in its own bracket frame. Outlines of bevelled
+   shapes are two clipped layers (the line colour, then the fill 1–2 px inside). */
+.gtop__center { position: relative; display: flex; align-items: center; margin-top: .02rem; }
+.gtop__frame { position: relative; display: flex; align-items: center; justify-content: center; height: .64rem; padding: 0 .17rem; }
+.gtop__frame::before, .gtop__frame::after { content: ''; position: absolute; top: 0; bottom: 0; width: .12rem; border: 2px solid rgba(200, 206, 208, .42); pointer-events: none; }
+.gtop__frame::before { left: 0; border-right: 0; }
+.gtop__frame::after { right: 0; border-left: 0; }
+.gtop__plus { flex: none; width: .2rem; height: .2rem; margin: 0 .05rem; opacity: .45;
+  background: linear-gradient(#c8cecf, #c8cecf) center / 100% 1px no-repeat, linear-gradient(#c8cecf, #c8cecf) center / 1px 100% no-repeat; }
+.gtop__band { position: relative; display: grid; grid-template-columns: minmax(2.3rem, auto) auto minmax(2.3rem, auto); align-items: center;
+  filter: drop-shadow(0 .04rem .1rem rgba(0, 0, 0, .45)); }
+.gm__hud .gtop__band::before, .gm__hud .gtop__band::after { content: 'STRONGHOLD TERMINAL SERVICE'; position: absolute; top: -.16rem; font-family: var(--font-num);
+  font-size: .085rem; font-weight: 700; line-height: 1; letter-spacing: .14em; color: rgba(225, 232, 232, .28); white-space: nowrap; pointer-events: none; }
+.gtop__band::before { left: .24rem; }
+.gtop__band::after { right: .24rem; }
+.gtop__half { position: relative; display: flex; align-items: center; justify-content: center; height: .42rem; padding: 0 .3rem; }
+.gtop__half::before, .gtop__half::after { content: ''; position: absolute; pointer-events: none; }
+.gtop__half::before { inset: 0; background: rgba(176, 184, 186, .45); }
+.gtop__half::after { inset: 1px; background: linear-gradient(180deg, rgba(14, 18, 18, .86), rgba(9, 12, 12, .8));
+  box-shadow: inset 0 0 0 .06rem rgba(12, 15, 15, 0), inset 0 0 0 calc(.06rem + 1px) rgba(255, 255, 255, .06); }
+.gtop__half--l::before, .gtop__half--l::after { clip-path: polygon(.1rem 0, 100% 0, 100% 100%, .1rem 100%, 0 calc(100% - .1rem), 0 .1rem); }
+.gtop__half--r::before, .gtop__half--r::after { clip-path: polygon(0 0, calc(100% - .1rem) 0, 100% .1rem, 100% calc(100% - .1rem), calc(100% - .1rem) 100%, 0 100%); }
+.gtop__half > * { position: relative; z-index: 1; }
+.gtop__half--l { margin-right: -.06rem; }
+.gtop__half--r { margin-left: -.06rem; }
+.gtop__half .roundbox { gap: .12rem; }
+.gtop__half .roundbox__label { font-size: .2rem; color: #d8dcdc; letter-spacing: .1em; }
+.gtop__half .roundbox__num { min-width: .48rem; height: .34rem; padding: 0 .07rem; font-size: .28rem; background: #cfd3d3; color: #121516; border-radius: .03rem; clip-path: none; }
+.gtop__half .lp--lg { font-size: .32rem; gap: .03rem; }
+.gtop__half .lp--lg:not(.lp--danger):not(.lp--team) .lp__val { color: #eef2f2; }
+.gtop__half .lp--lg .lp__icon { width: .34rem; height: .34rem; }
+/* the capsule plate: a grey outer frame, then the capsule's own bevelled 2 px outline in its phase colour */
+.gtop__cap { position: relative; z-index: 2; display: flex; padding: .08rem .13rem; }
+.gtop__cap::before, .gtop__cap::after { content: ''; position: absolute; pointer-events: none;
+  clip-path: polygon(.2rem 0, calc(100% - .2rem) 0, 100% .2rem, 100% calc(100% - .2rem), calc(100% - .2rem) 100%, .2rem 100%, 0 calc(100% - .2rem), 0 .2rem); }
+.gtop__cap::before { inset: 0; background: rgba(176, 184, 186, .5); }
+.gtop__cap::after { inset: 1px; background: rgba(9, 12, 12, .9); }
+.gtop__cap .capsule { position: relative; z-index: 1; isolation: isolate; justify-content: center; height: .54rem; min-width: 2.12rem; padding: 0 .28rem 0 .2rem;
+  border: 0; border-radius: 0; box-shadow: none; background: var(--cap);
+  clip-path: polygon(.15rem 0, calc(100% - .15rem) 0, 100% .15rem, 100% calc(100% - .15rem), calc(100% - .15rem) 100%, .15rem 100%, 0 calc(100% - .15rem), 0 .15rem); }
+.gtop__cap .capsule::before { content: ''; position: absolute; inset: 2px; z-index: -1;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--cap) 14%, #0b1513), #0a1412);
+  clip-path: polygon(.14rem 0, calc(100% - .14rem) 0, 100% .14rem, 100% calc(100% - .14rem), calc(100% - .14rem) 100%, .14rem 100%, 0 calc(100% - .14rem), 0 .14rem); }
+.gtop__cap .capsule__icon { width: .4rem; height: .4rem; }
+.gtop__cap .capsule--prep .capsule__label { font-size: .28rem; letter-spacing: .1em; color: var(--mint-400); }
+.gtop__cap .capsule--boss { min-width: 4.2rem; }
+.gtop__cap .capsule--unite { --cap: #ff6d2e; }
+.gtop__cap .capsule--combat .capsule__kills { color: #eef1f1; }
+.gtop__cap .capsule--combat .capsule__kills b { color: #ff6a48; }
+/* 顶栏动效 (2026-10-13, video 7:55–8:00 / 8:32–8:52; ui/hud.js capsuleFxKind): the centre drops in with the match screen;
+   the round number and the kills flip; at a phase change the capsule's content rises in from below, after the little
+   scene of that phase (kettles while the round starts; robot meets enemy → 开始作战 / 联防开始). */
+.gtop__center { animation: gtop-drop 420ms var(--ease-out) both; }
+.gtop__half .roundbox__num, .gtop__cap .capsule__kills b { display: inline-block; animation: capfx-flip 260ms var(--ease-out) both; }
+/* the round number keeps its centred box (inline-block above dropped .roundbox__num's grid: the digit sat top-left) */
+.gtop__half .roundbox__num { display: inline-grid; place-items: center; line-height: 1; }
+.gtop__cap.is-fx-wait .capsule > * { visibility: hidden; }
+.gtop__cap.is-fx-enter .capsule__icon { animation: capfx-rise 260ms var(--ease-out) both; }
+.gtop__cap.is-fx-enter .capsule > :not(.capsule__icon) { animation: capfx-slide 280ms 120ms var(--ease-out) both; }
+.gtop__cap.is-fx-rest .capsule__icon { animation: capfx-rise 260ms 200ms var(--ease-out) both; }
+.gtop__cap.is-fx-rest .capsule > :not(.capsule__icon) { animation: capfx-slide 300ms 440ms var(--ease-out) both; }
+.gtop__cap.is-fx-clash .capsule > * { animation: capfx-rise 260ms 2100ms var(--ease-out) both; }
+.gtop__cap.is-fx-unite .capsule > * { animation: capfx-rise 260ms 2750ms var(--ease-out) both; }
+.gtop__cap.is-fx-clash .capsule { animation: capfx-glow 700ms 1100ms ease-out both; }
+.gtop__cap.is-fx-unite .capsule { animation: capfx-glow 700ms 1420ms ease-out both; }
+.capsule-fx { position: absolute; inset: .1rem .15rem; z-index: 3; display: flex; align-items: center; justify-content: center; gap: .1rem;
+  overflow: hidden; pointer-events: none; color: var(--mint-400);
+  clip-path: polygon(.13rem 0, calc(100% - .13rem) 0, 100% .13rem, 100% calc(100% - .13rem), calc(100% - .13rem) 100%, .13rem 100%, 0 calc(100% - .13rem), 0 .13rem); }
+.capsule-fx .pix { flex: none; height: auto; }
+.capsule-fx .pix__b { opacity: .6; }
+.capsule-fx__k { width: .36rem; animation: capfx-drop 260ms calc(var(--i) * 140ms) var(--ease-out) both, capfx-bob 900ms calc(420ms + var(--i) * 150ms) ease-in-out infinite; }
+.capsule-fx--rest .capsule-fx__k { animation: capfx-up 220ms calc(var(--i) * 40ms) ease-in forwards; }
+.capsule-fx--clash { color: #ffbf3a; animation: capfx-out 200ms 1950ms ease-in forwards; }
+.capsule-fx--unite { color: #ff8a3a; animation: capfx-out 200ms 2600ms ease-in forwards; }
+.capsule-fx__meet, .capsule-fx__clash { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; }
+.capsule-fx__meet { gap: .12rem; }
+.capsule-fx__allies, .capsule-fx__foes { display: flex; align-items: flex-end; gap: .04rem; }
+.capsule-fx__ally { width: .36rem; animation: capfx-drop 240ms var(--ease-out) both; }
+.capsule-fx__ally--2 { opacity: .8; animation: capfx-join 260ms 900ms var(--ease-out) both; }
+.capsule-fx__foe { width: .42rem; animation: capfx-hop 900ms 120ms linear both; }
+.capsule-fx__foe--2 { animation-delay: 260ms; }
+.capsule-fx--clash .capsule-fx__meet { animation: capfx-ghost 260ms 1080ms forwards; }
+.capsule-fx--unite .capsule-fx__meet { animation: capfx-ghost 260ms 1400ms forwards; }
+.capsule-fx__clash { gap: .08rem; }
+.capsule-fx__swords { width: .34rem; filter: drop-shadow(0 0 .05rem currentColor); }
+.capsule-fx__word { font-size: .27rem; font-weight: 900; letter-spacing: .08em; color: #ffd76a; text-shadow: 0 0 .1rem rgba(255, 170, 40, .8); white-space: nowrap; }
+.capsule-fx--unite .capsule-fx__word { color: #ffb06a; text-shadow: 0 0 .1rem rgba(255, 110, 40, .85); }
+.capsule-fx--clash .capsule-fx__swords { animation: capfx-pop 280ms 1100ms var(--ease-out) both; }
+.capsule-fx--clash .capsule-fx__word { animation: capfx-word 320ms 1240ms var(--ease-out) both; }
+.capsule-fx--unite .capsule-fx__swords { animation: capfx-pop 280ms 1420ms var(--ease-out) both; }
+.capsule-fx--unite .capsule-fx__word { animation: capfx-word 320ms 1560ms var(--ease-out) both; }
+@keyframes gtop-drop { from { transform: translateY(-.5rem); opacity: 0; } }
+@keyframes capfx-flip { from { transform: translateY(-55%); opacity: 0; } }
+@keyframes capfx-rise { from { transform: translateY(110%); opacity: 0; } }
+@keyframes capfx-slide { from { transform: translateX(.4rem); opacity: 0; } }
+@keyframes capfx-drop { from { transform: translateY(-130%); opacity: 0; } }
+@keyframes capfx-up { to { transform: translateY(-140%); opacity: 0; } }
+@keyframes capfx-bob { 50% { transform: translateY(-14%); } }
+@keyframes capfx-out { to { transform: translateY(-100%); opacity: 0; } }
+@keyframes capfx-join { from { transform: translateX(-.3rem); opacity: 0; } }
+@keyframes capfx-hop {
+  0% { transform: translateX(1.5rem); opacity: 0; } 10% { opacity: 1; }
+  25% { transform: translateX(1.1rem) translateY(-18%); } 50% { transform: translateX(.72rem); }
+  75% { transform: translateX(.34rem) translateY(-18%); } 100% { transform: translateX(0); }
+}
+@keyframes capfx-ghost { to { opacity: .22; filter: blur(.6px); } }
+@keyframes capfx-glow { 30% { filter: brightness(1.55); } }
+@keyframes capfx-pop { 0% { transform: scale(1.9) rotate(-12deg); opacity: 0; filter: brightness(2.4); } 60% { opacity: 1; } }
+@keyframes capfx-word {
+  0% { transform: translateX(.12rem); opacity: 0; text-shadow: -.04rem 0 rgba(255, 60, 60, .8), .04rem 0 rgba(60, 220, 255, .8); }
+  60% { opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .gtop__center, .gtop__half .roundbox__num, .gtop__cap .capsule__kills b, .gtop__cap .capsule, .gtop__cap .capsule > * { animation: none; }
+  .capsule-fx { display: none; }
+  .gtop__cap.is-fx-wait .capsule > * { visibility: visible; }
 }
 /* the two official 🔍 buttons (ui/hud.js CheckBtn): btn_check_player (mint, left) and btn_check_enemy (amber, right);
    sprites are 35×29 (plain) / 61×29 (with chevrons) → .555rem / .967rem × .46rem */
@@ -350,6 +460,15 @@
 .team__name { font-size: .15rem; font-weight: 500; color: var(--text-md); max-width: 1.5rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-shadow: 0 1px 2px #000; }
 .team__line { display: flex; align-items: center; gap: .1rem; }
 .team__status { width: .26rem; height: .26rem; display: grid; place-items: center; border: 1px solid currentColor; background: rgba(0, 0, 0, .5); }
+/* the shared 机变 draft's pick order on the portrait (ui/choiceOverlay.js spMarks): ✓ picked, ••• deciding */
+.team__spmark { position: absolute; right: -.07rem; bottom: -.05rem; z-index: 2; display: grid; place-items: center; width: .24rem; height: .24rem; border-radius: 50%;
+  background: var(--mint-500); color: #05261e; box-shadow: 0 0 0 2px rgba(6, 9, 8, .9), 0 0 .08rem rgba(23, 249, 183, .5); }
+.team__spmark .icon { width: .17rem; height: .17rem; }
+.team__spmark.is-turn { display: flex; gap: 2px; width: auto; padding: 0 .05rem; border-radius: .12rem; background: rgba(8, 11, 10, .92); box-shadow: 0 0 0 1px rgba(255, 255, 255, .35); }
+.team__spmark.is-turn i { width: 3px; height: 3px; border-radius: 50%; background: #f2f5f4; animation: spmark-dot 1s ease-in-out infinite; }
+.team__spmark.is-turn i:nth-child(2) { animation-delay: .16s; }
+.team__spmark.is-turn i:nth-child(3) { animation-delay: .32s; }
+@keyframes spmark-dot { 0%, 100% { opacity: .35; } 40% { opacity: 1; } }
 .team__status .icon { width: .18rem; height: .18rem; }
 .team__status .lsprite { width: .2rem; height: .2rem; object-fit: contain; }
 .team__status.has-sprite { border-color: transparent; background: none; animation: none; }
