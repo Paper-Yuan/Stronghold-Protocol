@@ -276,6 +276,7 @@ export function TitleScreen() {
     ${Installed ? html`<${Installed} open=${true} onClose=${() => setInstalled(null)} />` : null}
 
     <footer class="title-foot">
+      <${ThanksMarquee} />
       <${ResumeMatchButton} />
       <${PwaInstallButton} />
       ${installed ? html`<button type="button" class="title-plugins" data-testid="title-plugins" onClick=${openPlugins}>
@@ -287,5 +288,90 @@ export function TitleScreen() {
         ${DEV_BUILD ? html`<span class="title-dev" role="note">${t('开发版 · 不稳定，请勿用于公开服务器')}</span>` : null}
       </span>
     </footer>
+  </div>`;
+}
+
+// i18n-ignore: 兜底名单（名字与角色都来自网络名单接口，这里只是它不可达时的静态兜底）
+const THANKS_FALLBACK = [
+  { name: 'Ausevay', role: '一切的起点' },
+  { name: '纸鸢安好', role: '安卓端适配的神' },
+  { name: '水沫沐沐', role: 'MOD管理器作者' },
+  { name: 'jingjiangze', role: '兼容MOD管理器' },
+  { name: '剑光卤煮-斩尽牛杂', role: '新开一期卫' },
+  { name: '不知名信箱', role: '' },
+  { name: '雨千代Chiyo', role: '' },
+  { name: '伊佐那邪_', role: '多功能优化Mod' },
+  { name: 'Sakanine', role: '' },
+  { name: '万い（千万言语）', role: '百人服家宽暴力开' },
+  { name: '服务器', role: 'Mod 管理器，mod 制作，三端开发' },
+];
+
+function ThanksMarquee() {
+  const [list, setList] = useState(THANKS_FALLBACK);
+
+  useEffect(() => {
+    let dead = false;
+    const fetchThanks = async () => {
+      try {
+        const ctrl = new AbortController();
+        const tid = setTimeout(() => ctrl.abort(), 4000);
+        // 使用标准简单请求（不带自定义 header），避免跨域预检 preflight 被拦截
+        const res = await fetch(`https://ganxiemingdan.jiangjiangze.icu/api/thanks?_t=${Date.now()}`, {
+          signal: ctrl.signal,
+        });
+        clearTimeout(tid);
+        if (res.ok) {
+          const json = await res.json();
+          if (!dead && Array.isArray(json?.names) && json.names.length) {
+            const combined = [...json.names];
+            if (json.dedication?.name) combined.push(json.dedication);
+            setList(combined);
+            return;
+          }
+        }
+      } catch { /* ignore and try fallback */ }
+
+      try {
+        const resLocal = await fetch(`/data/thanks.json?_t=${Date.now()}`, { cache: 'no-store' });
+        if (resLocal.ok) {
+          const json = await resLocal.json();
+          if (!dead && Array.isArray(json?.names)) {
+            const combined = [...json.names];
+            if (json.dedication?.name) combined.push(json.dedication);
+            setList(combined);
+          }
+        }
+      } catch { /* use default fallback */ }
+    };
+
+    fetchThanks();
+    // 热更新机制：每 25 秒自动重新检查并热更新名单
+    const timer = setInterval(fetchThanks, 25000);
+    return () => { dead = true; clearInterval(timer); };
+  }, []);
+
+  return html`<div class="title-thanks">
+    <a class="title-thanks__tag" href="https://ganxiemingdan.jiangjiangze.icu/" target="_blank" rel="noopener noreferrer" title=${t('查看完整感谢名单')}>
+      <span class="title-thanks__dot"></span>
+      <span>${t('感谢名单')}</span>
+    </a>
+    <div class="title-thanks__viewport">
+      <div class="title-thanks__track">
+        <div class="title-thanks__group">
+          ${list.map((item, idx) => html`<span key=${idx} class="title-thanks__item">
+            <b class="title-thanks__name">${item.name}</b>
+            ${item.role ? html`<span class="title-thanks__role">${item.role}</span>` : null}
+            <span class="title-thanks__sep" aria-hidden="true">◆</span>
+          </span>`)}
+        </div>
+        <div class="title-thanks__group" aria-hidden="true">
+          ${list.map((item, idx) => html`<span key=${`dup-${idx}`} class="title-thanks__item">
+            <b class="title-thanks__name">${item.name}</b>
+            ${item.role ? html`<span class="title-thanks__role">${item.role}</span>` : null}
+            <span class="title-thanks__sep" aria-hidden="true">◆</span>
+          </span>`)}
+        </div>
+      </div>
+    </div>
   </div>`;
 }

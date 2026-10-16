@@ -322,3 +322,91 @@ html[data-script="alphabetic"] .title-login .btn--xl { letter-spacing: .3em; }
   border: 1px solid rgba(255, 159, 67, .5); color: #ffb066; background: rgba(255, 159, 67, .08); font-size: inherit;
 }
 .title-plugins .icon { width: .15rem; height: .15rem; }
+
+/* 感谢名单滚动条（从本仓库自己的 title.js 还原；合并 0.3.0 时整块丢了）：标题页页脚最左边。
+   组件每 25 秒热更新一次名单（ui 里的 ThanksMarquee），这里只负责它在页脚里的位置。 */
+.title-thanks {
+  display: flex;
+  align-items: center;
+  gap: .08rem;
+  min-width: 0;
+  max-width: 100%;
+  margin-top: .02rem;
+}
+.title-thanks__tag {
+  display: inline-flex;
+  align-items: center;
+  gap: .04rem;
+  flex: none;
+  padding: .02rem .08rem;
+  background: rgba(23, 249, 183, .08);
+  border: 1px solid rgba(23, 249, 183, .3);
+  border-radius: 3px;
+  color: var(--mint-400);
+  font-size: max(calc(.11 * var(--t)), 10px);
+  font-weight: 700;
+  text-decoration: none;
+  letter-spacing: .05em;
+  transition: all var(--t-fast);
+}
+.title-thanks__tag:hover {
+  background: rgba(23, 249, 183, .16);
+  border-color: var(--mint-400);
+  color: #fff;
+}
+.title-thanks__dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--mint-400);
+  box-shadow: 0 0 6px var(--mint-400);
+}
+
+.title-thanks__viewport {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  mask-image: linear-gradient(90deg, transparent, #000 3%, #000 97%, transparent);
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 3%, #000 97%, transparent);
+}
+.title-thanks__track {
+  display: inline-flex;
+  width: max-content;
+  will-change: transform;
+  animation: thanks-scroll 32s linear infinite;
+}
+.title-thanks:hover .title-thanks__track,
+.title-thanks:active .title-thanks__track {
+  animation-play-state: paused;
+}
+.title-thanks__group {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+.title-thanks__item {
+  display: inline-flex;
+  align-items: center;
+  gap: .04rem;
+  padding: 0 .02rem;
+  font-size: max(calc(.12 * var(--t)), 11px);
+}
+.title-thanks__name {
+  color: var(--text-hi);
+  font-weight: 700;
+}
+.title-thanks__role {
+  color: var(--text-lo);
+  font-size: max(calc(.105 * var(--t)), 10px);
+}
+.title-thanks__sep {
+  margin: 0 .08rem;
+  color: rgba(23, 249, 183, .45);
+  font-size: .65em;
+}
+
+/* 本仓库页脚是横向一行，所以让它占最左边一块。 */
+.title-foot { flex-wrap: wrap; }
+.title-thanks { order: -1; flex: 1 1 12rem; min-width: 0; max-width: 46%; }
