@@ -147,6 +147,9 @@ export async function startServer(opts = {}) {
   };
   try {
     const served = await loadWorkshopTables();
+  // 房间模组声明 (W-C)：lobby 在工坊装载完成之前就建好了，所以这里把工坊状态挂上去（属性赋值，不重排启动顺序）。
+  lobby.workshop = served.workshop;
+  if (served.workshop?.mods?.length) log.info(`[workshop] rooms may declare ${served.workshop.mods.length} mod(s): ${served.workshop.mods.map((m) => m.id).join(', ')}`);
     if ((served.packs || []).length) log.info(`[workshop] ${served.packs.length} 个包已装载 · ${(served.catalog?.packs || []).length} 个进入 mod 目录`);
   } catch (e) {
     log.error('[workshop] 创意工坊装载失败，本次以无工坊模式启动', e);

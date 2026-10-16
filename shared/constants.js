@@ -149,6 +149,7 @@ export const ERR = Object.freeze({
   ROOM_FULL: 'ROOM_FULL',
   ROOM_STARTED: 'ROOM_STARTED',
   NOT_HOST: 'NOT_HOST',
+  MOD_UNKNOWN: 'MOD_UNKNOWN',      // 房间声明的模组不在本服务器加载的目录里 (W-D)
   NOT_READY: 'NOT_READY',
   WRONG_PHASE: 'WRONG_PHASE',
   NO_FUNDS: 'NO_FUNDS',

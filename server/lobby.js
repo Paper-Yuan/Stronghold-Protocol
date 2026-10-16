@@ -158,6 +158,7 @@ import { randomBytes, randomInt } from 'node:crypto';
 import { DIFFICULTIES, ERR, MAX_SEATS, MAX_SPECTATORS, ROOM_CODE_LEN, modeIdFor } from '../shared/constants.js';
 import { checkLoadout, checkLoadoutOps, cultivationCharIds, checkNotOwned, checkDiyPicks, charPotentialChanges } from '../shared/protocol.js';
 import { encode, isDroppable, isErrCode, sendRaw, sendSession } from './net.js';
+import { isModId, modSetOf } from '../shared/modIdentity.js';
 import { getData as defaultGetData, lookup } from './data.js';
 import { Match as DefaultMatch } from './match/Match.js';
 import { KITTED_CHARS } from './sim/content/kits/index.js';
@@ -165,6 +166,36 @@ import { KITTED_CHARS } from './sim/content/kits/index.js';
 const VANILLA_KITTED = new Set(KITTED_CHARS);
 import { isContentHash } from '../shared/plugins/identity.js';
 import { msg, wireMessage } from '../shared/i18n.js';
+
+/**
+ * 房间声明的模组集合 (W-C/W-D)：房主从**服务端已加载**的目录里挑一个子集，`requested` 里出现目录之外的名字就整条拒绝
+ * （`unknown`），所以客户端永远点不到服务端没有的内容。空选择是合法的 vanilla 集合（`digest: 'vanilla'`）。
+ * @param {unknown} requested 房主点名的包 id 列表
+ * @param {Array<{id: string, hash?: string, layer?: string, combat?: boolean, api?: string}>|undefined} catalogue
+ * @returns {{ ok: true, modIds: readonly string[], modSet: { digest: string, packs: Array<object> } }
+ *   | { ok: false, unknown: string[], available: string[] }}
+ */
+export function resolveRoomModSet(requested, catalogue) {
+  const available = Array.isArray(catalogue) ? catalogue : [];
+  const known = new Set(available.map((p) => p.id));
+  const ids = [];
+  const unknown = [];
+  for (const raw of Array.isArray(requested) ? requested : []) {
+    if (typeof raw !== 'string' || !isModId(raw)) continue;
+    if (!known.has(raw)) { if (!unknown.includes(raw)) unknown.push(raw); continue; }
+    if (!ids.includes(raw)) ids.push(raw);
+  }
+  if (unknown.length) return { ok: false, unknown: unknown.sort(), available: [...known].sort() };
+  if (!ids.length) return { ok: true, modIds: [], modSet: { digest: 'vanilla', packs: [] } };
+  const picked = ids.map((id) => {
+    const p = available.find((e) => e.id === id);
+    return p.api == null ? { id: p.id, hash: p.hash, layer: p.layer, combat: p.combat }
+      : { id: p.id, hash: p.hash, layer: p.layer, combat: p.combat, api: p.api };
+  });
+  const modSet = modSetOf(picked);
+  if (!modSet) return { ok: false, unknown: [], available: [...known].sort() };
+  return { ok: true, modIds: Object.freeze(ids.slice().sort()), modSet };
+}
 
 /** Room code alphabet: uppercase letters without I and O (and no digits, so no 0/1). */
 export const CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
@@ -307,6 +338,10 @@ export class Room {
     /** Latest room-scoped chat messages (room.chat), replayed only to a member asking for them. */
     this.chatMessages = [];
     this.chatSequence = 0;
+    /** The host's mod picks (W-C); null until a setMods/create resolved them. */
+    this.modIds = null;
+    /** The resolved mod set ({ digest, packs }), or null; `room.state.mods` is this object. */
+    this.modSet = null;
     this.disposed = false;
     /**
      * The content set the room plays (DESIGN §32): `{ cs, vanilla, plugins }` — the server's vanilla set, or with the
@@ -355,6 +390,9 @@ export class Room {
           ...(this.modded && !s.isBot ? { content: s.content || 'loading' } : {}) }
         : null)),
       spectators: this.spectators.map((s) => ({ playerId: s.playerId, name: s.name, connected: s.connected, ...(this.modded ? { content: s.content || 'loading' } : {}) })),
+      // 房间模组声明 (W-C)：`mods` 是解析后的集合（{ digest, packs }），`modIds` 是主机点名的 id 列表。
+      ...(this.modSet ? { mods: this.modSet } : {}),
+      modIds: this.modIds || (this.modSet?.packs?.map((p) => p.id) || []),
       ...(this.content ? { content: this.content.trusted ? {...this.content, trusted:{...this.content.trusted, consent:Object.fromEntries(this.seats.filter(x => x && !x.isBot).map(x => [x.seat,x.consentCs === this.content.cs]))}} : this.content } : {}),
     };
   }
@@ -384,7 +422,7 @@ export class Lobby {
    *   plugins", "Gameplay plugins"); hosts: the match hosts a room with gameplay plugins runs its match in
    *   (server/match/host/index.js; none: such a match runs here, unit tests)
    */
-  constructor({ registry, log = noopLog, MatchClass = DefaultMatch, getData = defaultGetData, now = Date.now, seedFn, content = null, plugins = null, hosts = null, options = {} }) {
+  constructor({ registry, log = noopLog, MatchClass = DefaultMatch, getData = defaultGetData, now = Date.now, seedFn, content = null, plugins = null, hosts = null, workshop = null, options = {} }) {
     this.registry = registry;
     /** the vanilla content set every room plays (header "Content identity"), or null */
     this.vanilla = content && isContentHash(content.cs) ? Object.freeze({ cs: content.cs, vanilla: true, plugins: Object.freeze([]) }) : null;
@@ -392,6 +430,9 @@ export class Lobby {
     this.plugins = plugins;
     /** the match hosts (header "Gameplay plugins"), or null */
     this.hosts = hosts;
+    /** the loaded workshop (server/http/workshopServe.js): its `mods` catalogue is what a room may declare, and
+     *  `roomAssets` is the per-room asset view for the set it declared (W-C); null on a plain install. */
+    this.workshop = workshop;
     this.log = log;
     this.MatchClass = MatchClass;
     this.getData = getData;
@@ -613,6 +654,7 @@ export class Lobby {
       case 'room.leave': return this.leave(session);
       case 'room.ready': return this.ready(session, msg);
       case 'room.setDifficulty': return this.setDifficulty(session, msg);
+      case 'room.setMods': return this.setMods(session, msg);
       case 'room.setAiPicksLast': return this.setAiPicksLast(session, msg);
       case 'room.addBot': return this.addBot(session);
       case 'room.removeBot': return this.removeBot(session, msg);
@@ -700,7 +742,7 @@ export class Lobby {
   // room.* handlers
   // ---------------------------------------------------------------------------------------------------
 
-  create(session, { mode, difficulty }) {
+  create(session, { mode, difficulty, modIds = [] }) {
     const cur = this.roomOf(session);
     if (cur && cur.match) return fail(ERR.ROOM_STARTED, 'leave your running match first');
     if (this.rooms.size >= this.opts.maxRooms) return fail(ERR.INTERNAL, 'too many rooms');
@@ -713,10 +755,22 @@ export class Lobby {
         return fail(ERR.RATE, 'too many rooms from your network');
       }
     }
+    // 房间模组声明 (W-C/W-D)：超限模拟是单人模式，不加载房间模组（本仓库的既定行为）。
+    if (mode === 'solo_infinite') modIds = [];
+    const resolved = resolveRoomModSet(modIds, this.workshop?.mods);
+    if (!resolved.ok) {
+      const unknown = resolved.unknown.length ? resolved.unknown.join(', ') : '(none)';
+      const available = resolved.available.length ? resolved.available.join(', ') : '(none)';
+      return fail(ERR.MOD_UNKNOWN, `本服务器未加载该模组 (${unknown})；可用模组: ${available}`);
+    }
     const code = this.genCode();
     if (!code) return fail(ERR.INTERNAL, 'no room code available');
     if (cur) this.removeMember(cur, session.playerId);
     const room = new Room(code, mode, difficulty, this.now());
+    room.modIds = resolved.modIds;
+    room.modSet = resolved.modSet;
+    // 提前算一次本房间的资源视图（W-C）：开局前 room.state 就要能报出它加载了哪几个包。
+    if (room.modSet && this.workshop?.roomAssets) this.workshop.roomAssets.forRoom(room.modSet);
     room.content = this.vanilla;
     // the server owner's default plugins (plugins/config.json `default`; header "Gameplay plugins"): none — the original game
     const defaults = this.plugins?.defaults?.() || [];
@@ -840,6 +894,30 @@ export class Lobby {
       for (const s of room.seats) if (s && !s.isBot && s.playerId !== room.hostId) s.ready = false;
       this.broadcastState(room);
     }
+    return OK;
+  }
+
+  /**
+   * 房间模组声明 (W-C/W-D)：主机在开局前挑选本房间加载的包。目录之外的名字整条拒绝（ERR.MOD_UNKNOWN），空选择等于
+   * vanilla；改集合会把其他座位的「已准备」清掉（内容变了，他们得重新确认）。
+   */
+  setMods(session, { modIds = [] } = {}) {
+    const room = this.roomOf(session);
+    if (!room) return fail(ERR.NOT_IN_ROOM);
+    if (room.hostId !== session.playerId) return fail(ERR.NOT_HOST);
+    if (room.match) return fail(ERR.ROOM_STARTED);
+    const resolved = resolveRoomModSet(modIds, this.workshop?.mods);
+    if (!resolved.ok) {
+      const unknown = resolved.unknown.length ? resolved.unknown.join(', ') : '(none)';
+      const available = resolved.available.length ? resolved.available.join(', ') : '(none)';
+      return fail(ERR.MOD_UNKNOWN, `本服务器未加载该模组 (${unknown})；可用模组: ${available}`);
+    }
+    room.modIds = resolved.modIds;
+    room.modSet = resolved.modSet;
+    if (room.modSet && this.workshop?.roomAssets) this.workshop.roomAssets.forRoom(room.modSet);
+    for (const s of room.seats) if (s && !s.isBot && s.playerId !== room.hostId) s.ready = false;
+    this.log.info(`[lobby] ${room.code} mods updated (${room.modSet?.packs?.length ? `${room.modSet.packs.length} mods` : 'none (vanilla)'}) by host ${session.name}`);
+    this.broadcastState(room);
     return OK;
   }
 

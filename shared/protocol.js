@@ -417,11 +417,20 @@ export const C2S = {
   hello: { name: (v) => isStr(v, NAME_MAX_LEN) && v.trim().length > 0, token: (v) => v == null || isStr(v, 64), version: (v) => v == null || isInt(v, 0, 1e6),
     noReplace: isBool, claimAt: (v) => isNum(v, 0, Number.MAX_SAFE_INTEGER), $optional: ['token', 'version', 'noReplace', 'claimAt'] },
   ping: { c: (v) => typeof v === 'number' && Number.isFinite(v) },
-  'room.create': { mode: (v) => v === 'solo' || v === 'coop', difficulty: (v) => DIFFICULTIES.includes(v) },
-  'room.join': { code: (v) => isStr(v, ROOM_CODE_LEN + 2) && /^[A-Za-z0-9]+$/.test(v) },
+  // `mode` 含 `solo_infinite`（超限模拟，shared/infiniteMode.js）；`modIds` 是房主从服务端声明的模组目录里挑的子集
+  // （welcome.mods.packs，W-C/W-D）—— 服务端用 ERR.MOD_UNKNOWN 答复它没加载的包。`private` / `random` / `variant`
+  // 与 `mods`（兼容用的摘要串）都是客户端同一个载荷里既有的字段，一起收下以免白写。
+  'room.create': { mode: (v) => v === 'solo' || v === 'coop' || v === 'solo_infinite', difficulty: (v) => DIFFICULTIES.includes(v),
+    random: (v) => v == null || isBool(v), variant: (v) => v == null || v === 'blitz' || v === 'endurance' || v === 'marathon',
+    private: (v) => v == null || isBool(v), mods: (v) => v == null || typeof v === 'string',
+    modIds: (v) => v == null || (Array.isArray(v) && v.every((id) => typeof id === 'string')),
+    $optional: ['random', 'variant', 'private', 'mods', 'modIds'] },
+  'room.join': { code: (v) => isStr(v, ROOM_CODE_LEN + 2) && /^[A-Za-z0-9]+$/.test(v), mods: (v) => v == null || typeof v === 'string', $optional: ['mods'] },
   'room.leave': {},
   'room.ready': { ready: isBool },
   'room.setDifficulty': { difficulty: (v) => DIFFICULTIES.includes(v) },
+  // 房间模组声明 (W-C)：房主在开局前挑选本房间加载的包（服务端已加载目录的子集）。
+  'room.setMods': { modIds: (v) => v == null || (Array.isArray(v) && v.every((id) => typeof id === 'string')), $optional: ['modIds'] },
   // the co-op room option 「AI 队友最后选择」 (GitHub #338; host, before the match): the strategy and 机变 drafts order every
   // human seat before every AI seat (server/match/match/phases.js humansFirst); room.state.aiPicksLast
   'room.setAiPicksLast': { on: isBool },

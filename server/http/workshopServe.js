@@ -27,6 +27,8 @@ import {
 import { WORKSHOP_PANEL_PREFIX, WORKSHOP_RESOURCE_PREFIX } from '../../shared/workshop.js';
 import { WORKSHOP_DIR, loadWorkshop, loadWorkshopKits, loadWorkshopPanels } from '../workshop.js';
 import { buildModCatalog } from '../modCatalog.js';
+import { modSetOf } from '../../shared/modIdentity.js';
+import { createRoomAssets } from '../roomAssets.js';
 import { VIEW_MANIFESTS } from './assetViews.js';
 
 /** 包声明的战斗逻辑模块（`pack.json.server.battle`, DESIGN §28.17）的 URL 前缀。 */
@@ -113,7 +115,29 @@ export async function createWorkshopServe({ data = null, workshopDir = WORKSHOP_
     workshopAssets: workshopAssetsFor(loaded, workshopDir),
     resourcePolicy: 'serve',
   };
-  return { tables, errors: routes.errors, packs: loaded.packs || [], catalog };
+  // The workshop state the lobby runs on (W-C): the catalogue a room may declare, the set those picks resolve to, the
+  // loaded kits/modules and the per-room asset view. server/index.js hands this to the Lobby after boot (the lobby is
+  // built before the workshop finishes loading, so it is assigned to `lobby.workshop` rather than constructed with it).
+  const packs = loaded.packs || [];
+  const mods = packs.map((p) => ({
+    id: p.id, name: p.name || p.id, hash: p.hash, layer: p.layer, combat: !!p.combat,
+    operators: Object.keys(p.operators || {}),
+  }));
+  const workshop = {
+    packs,
+    mods,
+    modSet: mods.length ? modSetOf(mods) : null,
+    kits: kits.kits,
+    tokenKits: kits.tokenKits,
+    modules: kits.modules,
+    // `official` and `processData` are the same object here: upstream's data loader has no workshop merge, so the
+    // vanilla data IS the running data. The per-room view is what roomAssets.forRoom(modSet) derives from both.
+    roomAssets: createRoomAssets({
+      official: data, processData: data, packs, kits: kits.kits, kitOwners: kits.owners,
+      tokenKits: kits.tokenKits, tokenKitOwners: kits.tokenOwners, modules: kits.modules, log,
+    }),
+  };
+  return { tables, errors: routes.errors, packs, catalog, workshop };
 }
 
 /**
