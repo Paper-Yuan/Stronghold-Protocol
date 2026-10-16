@@ -115,6 +115,10 @@ const QUALITY = [['high', N_('高')], ['medium', N_('中')], ['low', N_('低')]]
  * left out when no effects were extracted (data/local-fx.json lists none).
  */
 const OFFICIAL_FX = [['off', N_('关')], ['lite', N_('精简')], ['full', N_('完整')]];
+/** 设置「棋盘渲染」(ui/gameLogic/settings.js BOARD_MODES)：2D 极速省电 / 内置 3D / 官方场景 3D。 */
+const BOARD = [['2d', N_('2D 极速省电')], ['3d', N_('3D 内置')], ['3dscene', N_('3D 官方场景')]];
+/** 设置「帧率」(FPS_MODES)：30 / 60 / 120。 */
+const FPS = [[30, N_('30 帧')], [60, N_('60 帧')], [120, N_('120 帧')]];
 /**
  * 文字大小: one step of TEXT_SIZES (ui/gameLogic/settings.js) with its label — 小 is the design's own sizes, the others
  * raise the text root `--t` (css/theme.css) and with it every readable font-size; the board and the HUD's boxes stay.
@@ -399,6 +403,16 @@ export function SettingsModal({ open, onClose }) {
   }, []);
   // 模组仓库 (docs/MOD-CDN-ARCHITECTURE.md, W-C)：列出磁盘上的模组、下载 ZIP、从别的服务器同步 (server/http/modApi.js)
   const [modModalOpen, setModModalOpen] = useState(false);
+  // 棋盘渲染：先写设置（渲染端 setSettings 按需切 3D 层），手机上再让外壳记住 2d/3d，下次启动照它开。
+  const pickBoard = (id) => {
+    updateSettings({ boardMode: id });
+    globalThis.AndroidNative?.setBoardMode?.(id === '2d' ? '2d' : '3d');
+  };
+  // 帧率：写设置（渲染端改 app.ticker.maxFPS），120 帧顺带通知外壳切高刷模式。
+  const pickFps = (id) => {
+    updateSettings({ fps: id });
+    globalThis.AndroidNative?.setHighRefresh?.(id >= 120);
+  };
   const fxTier = resolveOfficialFx(s.officialFx, true);
   return html`<${Modal} open=${open} onClose=${onClose} title=${t('设置')} micro="SETTINGS" width="7.4rem"
                         actions=${html`<${Button} variant="secondary" icon="book" class="set-guide" onClick=${() => openGuide(0)}>${t('玩法说明')}<//>
@@ -449,6 +463,22 @@ export function SettingsModal({ open, onClose }) {
         </div>
       </div>
       <p class="set-hint">${t('使用服主从自己的游戏客户端提取的官方战斗特效（普攻、弹道、命中、状态、阵亡、部署，干员、召唤物和敌人的技能与天赋，以及秘术师储存的能量），连到这台服务器的玩家看到的都是服主提取的这一份；提取里没有的或对战中没有时机的（如只在游戏内部条件下触发的天赋效果）仍为本作的特效。精简：半分辨率贴图、粒子减半，适合手机。只在 3D 棋盘上显示。')}</p>` : null}
+      <div class="set-row" data-testid="board-mode">
+        <span class="set-row__label">${t('棋盘渲染')}<${MicroLabel}>BOARD<//></span>
+        <div class="set-seg" role="radiogroup" aria-label=${t('棋盘渲染')}>
+          ${BOARD.map(([id, label]) => html`<button key=${id} type="button" role="radio" aria-checked=${(s.boardMode || '3dscene') === id ? 'true' : 'false'}
+            class=${(s.boardMode || '3dscene') === id ? 'is-on' : ''} onClick=${() => pickBoard(id)}>${t(label)}</button>`)}
+        </div>
+      </div>
+      <p class="set-hint">${t('2D 最省电也最快；内置 3D 用程序化贴图；官方场景 3D 用本地客户端提取的战场场景（没提取过就退回内置）。手机卡顿时选 2D。')}</p>
+      <div class="set-row" data-testid="fps">
+        <span class="set-row__label">${t('帧率')}<${MicroLabel}>FRAME RATE<//></span>
+        <div class="set-seg" role="radiogroup" aria-label=${t('帧率')}>
+          ${FPS.map(([id, label]) => html`<button key=${id} type="button" role="radio" aria-checked=${(s.fps || 60) === id ? 'true' : 'false'}
+            class=${(s.fps || 60) === id ? 'is-on' : ''} onClick=${() => pickFps(id)}>${t(label)}</button>`)}
+        </div>
+      </div>
+      <p class="set-hint">${t('限制渲染帧率以省电降温。120 帧还会让安卓外壳切到高刷模式；发烫或卡顿就降到 60 或 30。')}</p>
       <div class="set-row">
         <span class="set-row__label">${t('文字大小')}<${MicroLabel}>TEXT SIZE<//></span>
         <div class="set-seg set-textsize" role="radiogroup" aria-label=${t('文字大小')} data-testid="text-size">

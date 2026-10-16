@@ -34,10 +34,20 @@ export const TEXT_SIZES = Object.freeze(['sm', 'md', 'lg', 'xl']);
  *  maintainer's decision of 2026-10-15).
  *  officialFx: 设置「官方特效」 (0.3.0, render/vfx): 'auto' (完整 on a desktop, 精简 on a touch device — render/vfx/tier.js),
  *  'off', 'lite' (精简), 'full' (完整); only shown when effects were extracted from the local client. */
-export const DEFAULT_SETTINGS = Object.freeze({ bgm: 0.6, sfx: 0.8, voice: 0.8, voiceLang: 'cn', voiceNative: false, voiceOverrides: Object.freeze({}), muted: false, damageNumbers: true, officialDamageNumbers: false, ammoCount: false, combatMetrics: false, mysticEnergy: false, quality: 'high', officialFx: 'auto', textSize: 'sm', keys: DEFAULT_HOTKEYS });
+export const DEFAULT_SETTINGS = Object.freeze({ bgm: 0.6, sfx: 0.8, voice: 0.8, voiceLang: 'cn', voiceNative: false, voiceOverrides: Object.freeze({}), muted: false, damageNumbers: true, officialDamageNumbers: false, ammoCount: false, combatMetrics: false, mysticEnergy: false, quality: 'high', officialFx: 'auto', boardMode: '3dscene', fps: 60, textSize: 'sm', keys: DEFAULT_HOTKEYS });
 const QUALITIES = ['high', 'medium', 'low'];
 /** The values of 设置「官方特效」 (render/vfx/tier.js OFFICIAL_FX). */
 export const OFFICIAL_FX_MODES = Object.freeze(['auto', 'off', 'lite', 'full']);
+
+/**
+ * 设置「棋盘渲染」(render/app.js)：'2d' = 图集 2D 极速省电、'3d' = 内置 3D 棋盘（程序化贴图）、
+ * '3dscene' = 官方场景 3D（本地客户端提取过该战场的场景包时；没有就退回内置）。
+ * 手机端默认 '3dscene'（与 0.3.0 提取到场景后的行为一致），省电可以在设置里切 '2d'。
+ */
+export const BOARD_MODES = Object.freeze(['2d', '3d', '3dscene']);
+
+/** 设置「帧率」(render/app.js 的 app.ticker.maxFPS；120 还会通知安卓外壳切高刷模式)。 */
+export const FPS_MODES = Object.freeze([30, 60, 120]);
 
 /**
  * Sanitize persisted settings.
@@ -63,6 +73,8 @@ export function sanitizeSettings(raw) {
     mysticEnergy: typeof r.mysticEnergy === 'boolean' ? r.mysticEnergy : DEFAULT_SETTINGS.mysticEnergy,
     quality: QUALITIES.includes(r.quality) ? r.quality : DEFAULT_SETTINGS.quality,
     officialFx: OFFICIAL_FX_MODES.includes(r.officialFx) ? r.officialFx : DEFAULT_SETTINGS.officialFx,
+    boardMode: BOARD_MODES.includes(r.boardMode) ? r.boardMode : DEFAULT_SETTINGS.boardMode,
+    fps: FPS_MODES.includes(r.fps) ? r.fps : DEFAULT_SETTINGS.fps,
     textSize: TEXT_SIZES.includes(r.textSize) ? r.textSize : DEFAULT_SETTINGS.textSize,
     keys: sanitizeHotkeys(r.keys),
   };

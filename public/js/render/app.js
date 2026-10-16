@@ -192,9 +192,10 @@ export async function createFieldView(host, options = {}) {
   signal?.throwIfAborted();
   const assets = resolveAssets(opts.assets);
   const data = makeData(opts.data);
-  const settings = { damageNumbers: true, officialDamageNumbers: false, ammoCount: false, mysticEnergy: false, quality: 'high', officialFx: 'auto', ...(opts.settings || {}) };
+  const settings = { damageNumbers: true, officialDamageNumbers: false, ammoCount: false, mysticEnergy: false, quality: 'high', officialFx: 'auto', boardMode: '3dscene', fps: 60, ...(opts.settings || {}) };
   // the 3D board (three.js + the official art) loads in parallel with everything else
-  const boardPref = boardPreference(opts.board);
+  // 设置「棋盘渲染」优先于 URL 参数：'2d' 直接走图集棋盘；'3d'/'3dscene' 都由 3D 层负责，差别是套不套官方场景包。
+  const boardPref = settings.boardMode === '2d' ? '2d' : boardPreference(opts.board);
   const want3d = boardPref !== '2d' && webgl2Available(boardPref === '3d');
   // three.js (~2 MB) is fetched only when the local-art manifest lists the board atlas (in parallel with the art)
   const artListed = want3d ? boardArtListed(assets).catch(() => false) : Promise.resolve(false);
@@ -438,12 +439,30 @@ export async function createFieldView(host, options = {}) {
   setupCleanup.push(() => { clearTimeout(recover.timer); disable3d(); });
   /** The stage's official scene, once loaded (the procedural board shows meanwhile and when there is none). */
   function useOfficialScene(st) {
+    // 设置「棋盘渲染」= 内置 3D 时不套官方场景包（两版 3D 的区别就在这里）。
+    if (settings.boardMode === '3d') return;
     const id = st && typeof st.id === 'string' ? st.id : '';
     if (!id || !board3d) return;
     loadScenePack(assets, id).then((scene) => {
       if (scene && !destroyed && board3d && stageRec && stageRec.id === id) board3d.setScenePack(id, scene);
     }).catch(() => {});
   }
+  /**
+   * 设置「棋盘渲染」的运行期切换：'2d' 收掉 3D 层；'3d'/'3dscene' 按需重新载入 3D 层并（后者）套官方场景包。
+   * 与 API 的 setBoardMode 同一套内部调用，只是这里还要处理「内置 3D ⇄ 官方场景」这一档差别。
+   */
+  function applyBoardMode() {
+    if (destroyed) return;
+    const m = settings.boardMode;
+    if (m === '2d') { recover.off = true; clearTimeout(recover.timer); disable3d(); return; }
+    recover.off = false; recover.tries = 0;
+    const after = () => { if (stageRec && board3d) { board3d.setStage(stageRec); useOfficialScene(stageRec); } };
+    if (board3d) { after(); return; }
+    Promise.all([loadThree(), loadBoardPack(assets)])
+      .then(([THREE, pack]) => { if (enable3d(THREE, pack)) after(); })
+      .catch(() => {});
+  }
+
   function enable3d(THREE, pack) {
     if (destroyed || board3d || !THREE || !pack) return false;
     recover.THREE = THREE; recover.pack = pack;
@@ -2002,6 +2021,8 @@ export async function createFieldView(host, options = {}) {
       if (!frame.warned) { frame.warned = true; console.error('[render] frame failed', err); }
     }
   }
+  // 设置「帧率」：30 / 60 / 120（0 = 不限制）。默认 60：这台 Adreno 机器上 120 很吃力（见 README/设置页）。
+  app.ticker.maxFPS = Number.isFinite(settings.fps) && settings.fps > 0 ? settings.fps : 60;
   app.ticker.add(frame);
   // render-cost probe (PIXI renders at UPDATE_PRIORITY.LOW = -25)
   let renderT0 = 0, renderMs = 0;
@@ -2183,7 +2204,10 @@ export async function createFieldView(host, options = {}) {
       if (typeof s.ammoCount === 'boolean') settings.ammoCount = s.ammoCount;   // the units read it every frame (ctx.settings)
       if (typeof s.mysticEnergy === 'boolean') settings.mysticEnergy = s.mysticEnergy;   // likewise
       if (s.quality === 'high' || s.quality === 'medium' || s.quality === 'low') settings.quality = s.quality;
-      if (typeof s.officialFx === 'string' && s.officialFx !== settings.officialFx) { settings.officialFx = s.officialFx; syncOfficialFx(); }
+      // 设置「棋盘渲染」与「帧率」（ui/gameLogic/settings.js BOARD_MODES / FPS_MODES）。
+    if (typeof s.boardMode === 'string' && s.boardMode !== settings.boardMode) { settings.boardMode = s.boardMode; applyBoardMode(); }
+    if (Number.isFinite(s.fps) && s.fps !== settings.fps) { settings.fps = s.fps; app.ticker.maxFPS = s.fps > 0 ? s.fps : 0; }
+    if (typeof s.officialFx === 'string' && s.officialFx !== settings.officialFx) { settings.officialFx = s.officialFx; syncOfficialFx(); }
       if (q !== settings.quality) { board3d?.setQuality?.(settings.quality); resize(); }
     },
     resize,

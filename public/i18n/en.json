@@ -1825,5 +1825,15 @@
   "下载并应用补丁": "Download and apply patch",
   "当前已是最新版本 (v{v})": "Already on the latest version (v{v})",
   "正在下载补丁…": "Downloading the patch…",
-  "检测更新失败，请检查网络连接": "Update check failed — check your connection"
+  "检测更新失败，请检查网络连接": "Update check failed — check your connection",
+  "棋盘渲染": "Board rendering",
+  "2D 极速省电": "2D (fastest)",
+  "3D 内置": "3D (built-in)",
+  "3D 官方场景": "3D (official scene)",
+  "2D 最省电也最快；内置 3D 用程序化贴图；官方场景 3D 用本地客户端提取的战场场景（没提取过就退回内置）。手机卡顿时选 2D。": "2D is the lightest and fastest; the built-in 3D board draws procedural textures; the official-scene 3D board uses the battlefield scenes extracted from a local client (falling back to built-in when there are none). Pick 2D if the phone stutters.",
+  "帧率": "Frame rate",
+  "30 帧": "30 fps",
+  "60 帧": "60 fps",
+  "120 帧": "120 fps",
+  "限制渲染帧率以省电降温。120 帧还会让安卓外壳切到高刷模式；发烫或卡顿就降到 60 或 30。": "Caps the render rate to save power and heat. 120 fps also switches the Android shell into its high-refresh mode; drop to 60 or 30 if the phone gets hot or stutters."
 }
