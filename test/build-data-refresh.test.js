@@ -33,6 +33,11 @@ function downloader(cache, fetchImpl, opts = { refresh: true }) {
   const env = {
     CACHE_DIR: cache, OPTS: { refresh: false, offline: false, ...opts },
     GAMEDATA_URL: 'https://example.invalid/gamedata/',
+    // ensureGamedata() calls downloadUrl() (and it reads GITHUB_PROXY from the module scope), so the sandbox the
+    // slice is evaluated in has to carry them too — the slice starts at `async function ensureGamedata(` and those
+    // two helpers live above it in tools/build-data.mjs (2026-10-16: the test threw ReferenceError without this).
+    GITHUB_PROXY: '',
+    downloadUrl: (url) => url,
     existsSync, mkdir, dirname, join, writeFile, rename, process, AbortSignal,
     log: () => {}, warn: (message) => warnings.push(message),
     // Skip only retry delays; all attempts, JSON validation and file writes are real.
