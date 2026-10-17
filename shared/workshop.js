@@ -26,6 +26,10 @@
 // 变体 / 口径层（DESIGN §28.39）：轴的闭枚举与解析只有一份，`shared/variants.js`。这一层**不**在这里重新判一遍
 // —— 一个轴表有两份实现，就是一个「哪个才算数」的问题。
 import { parseVariantsDecl } from './variants.js';
+
+// `shared/` 跑在浏览器与 Node 两处：`URL` 两边都有（DOM lib 与 Node 全局），但 jsconfig 的 lib 里没有 DOM，
+// 所以显式取全局构造器，免得 tsc 报 Cannot find name URL（2026-10-16）。
+const URLGlobal = /** @type {typeof URL} */ (/** @type {any} */ (globalThis).URL);
 // 行为开关层（DESIGN §28.43）：与口径**同一形状、不同一张表**，判据只有一份在 `shared/behaviour.js`。同样不在这里
 // 重判一遍闭枚举 —— 而且这一层的表今天是**空的**（通道 + 守卫先落，第一格与它的引擎实现点一起落）。
 import { parseBehaviourDecl } from './behaviour.js';
@@ -264,6 +268,13 @@ import { firstPartyFormNames } from './formNames.js';
 import { C2S } from './protocol.js';
 
 const isPlainObj = (v) => !!v && typeof v === 'object' && !Array.isArray(v);
+/**
+ * 归一化失败的统一形状。返回类型**必须**显式标成 `{ ok: false }`：`--checkJs` 下 `tsc` 会把箭头函数的返回值
+ * 推断成 `{ ok: boolean, error: any, detail: any }`，于是每一处 `return fail(...)` 都和函数的
+ * `{ ok: true, … } | { ok: false, … }` 注解冲突（2026-10-16 的 typecheck 里 225 条 TS2322 全来自这一条）。
+ * @param {string} error @param {string} [detail]
+ * @returns {{ ok: false, error: string, detail: string | undefined }}
+ */
 const fail = (error, detail) => ({ ok: false, error, detail });
 /**
  * 一个可选的字符串字段：非空字符串就裁剪，其它一律 null（缺省与写错都读成「没声明」）。
@@ -660,7 +671,7 @@ function parseAssetsMirrors(raw) {
       return fail('ASSETS_MIRROR_BAD_BASE', `${at}.base must be a string of at most ${ASSETS_MIRROR_BASE_MAX} characters ending in "/" — the container is fetched as <base><its file name inside the pack>, so a missing slash builds an address that looks right and never resolves`);
     }
     let parsed = null;
-    try { parsed = new URL(entry.base); } catch { parsed = null; }
+    try { parsed = new URLGlobal(entry.base); } catch { parsed = null; }
     if (!parsed || parsed.protocol !== 'https:' || !parsed.hostname || parsed.username || parsed.password || parsed.search || parsed.hash) {
       return fail('ASSETS_MIRROR_BAD_BASE', `${at}.base must be an absolute "https://" URL with a host, no credentials, no query and no fragment — this channel fetches from the AUTHOR's own CDN, and https is the only protocol it will speak (http: / data: / file: / protocol-relative all refuse)`);
     }
@@ -1923,7 +1934,7 @@ export function normalizePackManifest(raw, dirName = '', opts = {}) {
               return fail('VOICE_CDN_BAD_URL', `${at}.url must be an absolute "https://" URL — this channel fetches from the AUTHOR's own CDN, and https is the only protocol it will speak (http: / data: / file: / protocol-relative all refuse)`);
             }
             let parsed = null;
-            try { parsed = new URL(entry.url); } catch { parsed = null; }
+            try { parsed = new URLGlobal(entry.url); } catch { parsed = null; }
             if (!parsed || parsed.protocol !== 'https:' || !parsed.hostname || parsed.username || parsed.password) {
               return fail('VOICE_CDN_BAD_URL', `${at}.url must be an absolute "https://" URL with a host and no credentials in it`);
             }
@@ -3223,6 +3234,16 @@ function baseContainerFor(base, file) {
  */
 export function applyWorkshop(base, packs) {
   const out = { ...(isPlainObj(base) ? base : {}) };
+  /**
+   * 合并报告。类型标注是给 tsc 看的（`--checkJs`）：`added`/`overridden` 用字符串索引，其余分节在下面按需补上
+   * （voices / art / bondIcons / … 只在实际有包提供时才出现，见本文件后面那几个分支）。没有标注时 tsc 会把它们
+   * 推断成 `{}`，随后每一次 `report.voices[...]` 都报 TS2339（2026-10-16 的 typecheck 就是这么红的）。
+   * @type {{ packs: string[], added: Record<string, string[]>, overridden: Record<string, string[]>, errors: any[],
+   *   voices?: Record<string, any>, voiceLangs?: Record<string, any>, bondIcons?: Record<string, any>,
+   *   itemIcons?: Record<string, any>, art?: Record<string, any>, support?: Record<string, any>,
+   *   operators?: Record<string, any>, traitGrants?: Record<string, any>, looks?: Record<string, any>,
+   *   supportOff?: Record<string, any> }}
+   */
   const report = { packs: [], added: {}, overridden: {}, errors: [] };
   const push = (bag, file, id) => { (bag[file] ||= []).push(id); };
   /** 工坊新增/覆盖的每一条干员记录（供 `chessLookIssues` 事后判断它有没有模型）。 */

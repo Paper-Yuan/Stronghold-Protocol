@@ -25,6 +25,12 @@
   ],
   "exclude": [
     "shared/protocol.js",
-    "shared/bandBonds.js"
+    "shared/bandBonds.js",
+    // 工坊装载器（fork 带来的 4.5k 行）的 JSDoc 还没跟上实现：`applyWorkshop` 的返回分节、`fail()` 的窄化、
+    // 资源容器那几段的注解与代码不一致。types/README.md 的规则是「先放进 slice、修好注解再加回来」，这两个
+    // 文件就是下一批（已修 225 条 TS2322 里的绝大多数：fail() 的返回类型 + URL 的全局取法；剩下的分节类型
+    // 需要逐段补 JSDoc，另开一次提交做）。2026-10-16
+    "shared/workshop.js",
+    "shared/support.js"
   ]
 }

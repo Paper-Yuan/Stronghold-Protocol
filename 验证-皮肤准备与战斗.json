@@ -25,7 +25,7 @@
     "skin": "char_498_inside@summer#22",
     "skel": "/assets/spine/op/char_498_inside/char_498_inside_summer_22/front/char_498_inside_summer_22.skel",
     "ready": true,
-    "scaleY": 0.1858044317198646
+    "scaleY": 1
   },
   "restored": {
     "skin": "char_498_inside@kitchen#2",

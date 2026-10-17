@@ -49,10 +49,10 @@ export const grantsBond = (rec) => !!(rec && !rec.canGiveBond && typeof rec.give
  * @returns {'official'|'plus'}
  */
 export function morphPairingOf(decl) {
-  if (typeof decl === 'string') return MORPH_PAIRING_OPTIONS.includes(decl) ? decl : MORPH_PAIRING_DEFAULT;
+  if (typeof decl === 'string') return MORPH_PAIRING_OPTIONS.includes(decl) ? /** @type {'official'|'plus'} */ (decl) : MORPH_PAIRING_DEFAULT;
   if (!Array.isArray(decl)) return MORPH_PAIRING_DEFAULT;
   const hit = decl.find((e) => e && e.switch === 'morphPairing');
-  return hit && MORPH_PAIRING_OPTIONS.includes(hit.option) ? hit.option : MORPH_PAIRING_DEFAULT;
+  return hit && hit.option && MORPH_PAIRING_OPTIONS.includes(hit.option) ? /** @type {'official'|'plus'} */ (hit.option) : MORPH_PAIRING_DEFAULT;
 }
 
 /**
