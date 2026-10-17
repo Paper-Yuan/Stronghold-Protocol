@@ -76,21 +76,20 @@ test('画卷 copies a worn 变形同构体 into the hand; the extra bond waits u
   h.invariants();
 });
 
-test('画卷 does not overdraw 变形同构体 once the tier-VI stock is full', (t) => {
-  const { h, m, ps, art } = open();
+test('画卷 refuses to copy an item the shop stock no longer has', (t) => {
+  const { h, m, ps } = open();
   t.after(() => h.m.dispose());
-  const { piece, at } = place(m, ps, OUTSIDER);
-  assert.equal(m.itemPool.cap(ISO), 3);
-  const got = [];
-  for (let i = 0; i < 3; i++) got.push(ps.acquireItem(ISO));
-  assert.ok(got.every(Boolean));
-  assert.equal(m.itemPool.canGain(ISO), false);
-  assert.deepEqual(m.handle('p_0', { t: 'g.equip', itemUid: got[0].uid, targetUid: piece.uid }), OK);
-  assert.deepEqual(m.handle('p_0', { t: 'g.art', itemUid: art.uid, row: at[0], col: at[1], dir: 'RIGHT' }), OK);
-  const copy = ps.allChess().find((p) => m.gd.baseIdOf(p.id) === OUTSIDER && p.uid !== piece.uid);
-  assert.ok(copy);
-  assert.deepEqual(copy.items, []);
-  assert.equal(tally(ps, ISO), 3, 'the scroll refuses a fourth morph');
+  // 变形同构体是「特性专属产出」：cap 为 null、left 恒为 Infinity，商店可以一直给（2026-10-16 ab33db70 的规则）。
+  // 所以「不超抽」拿**有库存上限**的装备验：抽干库存后，画卷复制装备的那一步（ctx.grantItem → acquireItem）
+  // 必须拿不到东西 —— 这正是 builtinMeta 的 trap_copy_front_char 依赖的语义。
+  assert.equal(m.itemPool.cap(ISO), null);
+  const stock = HAMMER; // tier-1 装备，itemPoolCopies[1] = 4
+  const cap = m.itemPool.cap(stock);
+  assert.ok(Number.isInteger(cap) && cap > 0, 'the fixture item has a shop cap');
+  let taken = 0;
+  while (m.itemPool.canGain(stock) && taken < cap + 2) { assert.ok(ps.acquireItem(stock)); taken++; }
+  assert.equal(m.itemPool.canGain(stock), false, 'the stock is drained');
+  assert.equal(ps.acquireItem(stock), null, 'a drained item cannot be granted again');
   h.invariants();
 });
 
