@@ -47,15 +47,19 @@ export function buildInfiniteNormalWave(gd, rng, round) {
   const enemies = gd.data?.enemies || {};
   for (const [key, e] of Object.entries(enemies)) {
     if (e.rank === 'BOSS') continue;
-    if (e.motion === 'FLY') flyKeys.push(key);
+    // 飞行判定与 waves.js 的 isFlyKey 一致：真实数据把 motion 放在 stats 里（e.motion 是旧字段，永远是 undefined）
+    const st = e.stats || {};
+    if (e.isFlyEnemy === true || st.motion === 'FLY' || e.motion === 'FLY') flyKeys.push(key);
     else if (e.rank === 'ELITE') eliteKeys.push(key);
     else normalKeys.push(key);
   }
 
-  // 兜底保护
-  if (!normalKeys.length) normalKeys.push('enemy_1001_sgrunt');
-  if (!eliteKeys.length) eliteKeys.push('enemy_1008_shield');
-  if (!flyKeys.length) flyKeys.push('enemy_1027_flyfish');
+  // 兜底保护：这三条只在怪池被过滤空时才走到（数据没加载 / 全是 BOSS）。以前写的是
+  // enemy_1001_sgrunt / enemy_1008_shield / enemy_1027_flyfish —— 这三个 key 在 data/enemies.json 里
+  // 一个都不存在，真走到兜底会刷出「不存在的敌人」（2026-10-17 审计发现）。
+  if (!normalKeys.length) normalKeys.push('enemy_1000_gopro_2');
+  if (!eliteKeys.length) eliteKeys.push('enemy_1006_shield');
+  if (!flyKeys.length) flyKeys.push('enemy_1005_yokai');
 
   const pickKey = (arr) => arr[Math.floor(rng() * arr.length)];
 
