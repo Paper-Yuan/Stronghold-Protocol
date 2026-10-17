@@ -2574,6 +2574,10 @@ button.ally-card:disabled { filter: grayscale(.7) brightness(.7); cursor: defaul
 /* 业主 2026-10-17：收起键放在那块的左侧 —— 挂在那块的外面（否则 22px 的圆压在缺人同盟卡的左上角）。 */
 .hub-fold--right { position: absolute; top: 0; left: calc(-1 * max(.26rem, 18px)); right: auto; z-index: 3; }
 .hub-right.is-folded > :not(.hub-fold) { display: none !important; }
+/* 业主 2026-10-17：「收起按键也跟着收到页边」—— 面板收起来之后，把手跟着走到版心右边缘，
+   不再孤零零留在被收起面板的原位置。两处（右栏 / 模拟方式）同一套做法：left: auto + right: 0。 */
+.hub-right.is-folded .hub-fold--right { left: auto; right: 0; }
+.hub-entries.is-folded .hub-fold--modes { left: auto; right: 0; }
 .hub-entries { position: relative; transition: none; }
 .hub-fold--modes { position: absolute; top: 50%; transform: translateY(-50%); left: calc(-1 * max(.26rem, 18px)); right: auto; z-index: 3; } /* 同上：左侧、挂在外面 */
 /* 业主 2026-10-17：「模式的收起是直接向右侧直接收起，不要影响其他的显示」。
