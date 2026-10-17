@@ -2519,17 +2519,61 @@ button.ally-card:disabled { filter: grayscale(.7) brightness(.7); cursor: defaul
      * 右栏三块（缺人同盟 / S.W.E.E.P. / 干员调配，**不含中央徽标**）一个开关；
      * 下面的模拟方式选择整块单独一个开关。
    按钮做得很小（18-22px 的圆角箭头），折起来只留按钮；状态记在本机 localStorage 的 sp.hub.fold.*。 */
+/* 收起键（业主 2026-10-17「优化下收起的按钮美术设计」）——
+   不再是 22px 的圆点：做成一块**竖向的舱门标签**，贴在面板左缘。
+   构成：深玻璃底 + 左侧一条薄荷色导轨（未收起时暗、收起后亮）+ 上下两道刻度线 + 中间 chevron。
+   状态全部由已有的 aria-expanded 驱动，不新增 javascript：
+     aria-expanded="true"  → 面板展开：导轨暗、chevron 朝左（点一下会收起）
+     aria-expanded="false" → 面板收起：导轨亮、chevron 朝右、标签本身泛一点薄荷光
+   hover / focus-visible 只动颜色与一道内发光，不做位移（位移在密集的 HUD 里看着像抖动）。 */
 .hub-fold {
-  width: max(.22rem, 18px); height: max(.22rem, 18px); display: grid; place-items: center; padding: 0;
-  border: 1px solid var(--line-2); border-radius: 50%; background: rgba(8, 11, 10, .72);
-  color: var(--text-lo); cursor: pointer; touch-action: manipulation; transition: color .15s, border-color .15s;
+  position: relative;
+  width: max(.26rem, 18px);
+  height: max(.82rem, 40px);
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 1px solid var(--line-2);
+  border-right: 0; /* 右侧不留边：贴在面板上，像面板自己的把手 */
+  border-radius: .05rem 0 0 .05rem;
+  color: var(--text-lo);
+  cursor: pointer;
+  touch-action: manipulation;
+  background:
+    /* 左侧导轨：收起后变亮，作为「这里有东西被藏起来了」的常驻提示 */
+    linear-gradient(var(--fold-rail, rgba(223, 230, 226, .28)), var(--fold-rail, rgba(223, 230, 226, .28))) left .035rem top .1rem / 2px calc(100% - .2rem) no-repeat,
+    linear-gradient(180deg, rgba(13, 20, 18, .94), rgba(7, 10, 9, .97));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .06), -1px 0 6px rgba(0, 0, 0, .45);
+  transition: color .14s ease, border-color .14s ease, box-shadow .14s ease;
 }
-.hub-fold:hover, .hub-fold:focus-visible { color: var(--mint-400); border-color: var(--mint-500); }
-.hub-fold .icon { width: 58%; height: 58%; }
+/* 上下两道刻度：和牌子上那对折角同一种语言 */
+.hub-fold::before,
+.hub-fold::after {
+  content: '';
+  position: absolute;
+  left: .035rem;
+  width: .09rem;
+  height: 1px;
+  background: var(--fold-rail, rgba(223, 230, 226, .28));
+  transition: background-color .14s ease;
+}
+.hub-fold::before { top: .1rem; }
+.hub-fold::after { bottom: .1rem; }
+.hub-fold .icon { width: 62%; height: 62%; opacity: .86; }
+.hub-fold:hover { color: var(--mint-300, #8ff5d4); border-color: var(--mint-500); --fold-rail: var(--mint-500); }
+.hub-fold:focus-visible { outline: 2px solid var(--mint-400); outline-offset: 2px; }
+/* 收起态：导轨点亮 + 一点外发光，标签自己说明「点我打开」 */
+.hub-fold[aria-expanded="false"] {
+  color: var(--mint-300, #8ff5d4);
+  border-color: rgba(23, 249, 183, .5);
+  --fold-rail: var(--mint-400);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .06), -1px 0 10px rgba(23, 249, 183, .18);
+}
+@media (prefers-reduced-motion: reduce) { .hub-fold, .hub-fold::before, .hub-fold::after { transition: none; } }
 .hub-right { position: relative; transition: none; }
 /* 业主 2026-10-17：收起键放在那块的左侧 —— 挂在那块的外面（否则 22px 的圆压在缺人同盟卡的左上角）。 */
 .hub-fold--right { position: absolute; top: 0; left: calc(-1 * max(.26rem, 18px)); right: auto; z-index: 3; }
 .hub-right.is-folded > :not(.hub-fold) { display: none !important; }
 .hub-entries { position: relative; transition: none; }
-.hub-fold--modes { position: absolute; top: -.26rem; left: calc(-1 * max(.26rem, 18px)); right: auto; z-index: 3; } /* 同上：左侧、挂在外面 */
+.hub-fold--modes { position: absolute; top: 50%; transform: translateY(-50%); left: calc(-1 * max(.26rem, 18px)); right: auto; z-index: 3; } /* 同上：左侧、挂在外面 */
 .hub-entries.is-folded .hub-entries__row { display: none; }
