@@ -165,3 +165,33 @@ export function buildInfiniteBossWave(gd, rng, round) {
     scale,
   };
 }
+
+/**
+ * 把一份波次的敌人种类收敛到 n 种（超限模拟的前 15 回合用）。
+ *
+ * 业主 2026-10-17 的规则：「前面初始的 3 种怪池限制，进入无限波次时不限制怪池」。
+ * 普通波次按阵营模板生成，一回合里能刷出十几种怪，前期读不出「这一波是什么套路」；
+ * 这里保留波次里最先出现的 n 个种类，其余一律换成这 n 种之一（时间、数量、缩放、路线都不动），
+ * 于是 R1–R15 的怪池就只有 3 种，R16 之后交给 buildInfiniteNormalWave，完全不收敛。
+ * @param {object} wave buildNormalWave 的返回值
+ * @param {number} n 允许的种类数
+ * @param {function} rng 0..1 的随机源（与波次同一个，保持可复现）
+ * @returns {object} 新的 wave（原对象不动）
+ */
+export function capWaveKinds(wave, n, rng) {
+  const spawns = Array.isArray(wave && wave.spawns) ? wave.spawns : [];
+  const keep = [];
+  for (const s of spawns) {
+    const key = s && s.enemyKey;
+    if (!key || keep.includes(key)) continue;
+    keep.push(key);
+    if (keep.length >= Math.max(1, n)) break;
+  }
+  if (!keep.length) return wave;
+  const out = spawns.map((s) => {
+    if (!s || keep.includes(s.enemyKey)) return s;
+    const key = keep[Math.min(keep.length - 1, Math.floor(rng() * keep.length))];
+    return { ...s, enemyKey: key };
+  });
+  return { ...wave, spawns: out, kindCap: keep.length };
+}

@@ -6,7 +6,7 @@
 
 import { PHASE, ERR } from '../../../shared/constants.js';
 import { buildNormalWave, buildBossWave } from '../waves.js';
-import { isInfiniteBossRound, buildInfiniteNormalWave, buildInfiniteBossWave } from '../infiniteWaves.js';
+import { isInfiniteBossRound, buildInfiniteNormalWave, buildInfiniteBossWave, capWaveKinds } from '../infiniteWaves.js';
 import { pairPlayers } from '../finalAssault.js';
 import { createRng, deriveSeed } from '../../sim/rng.js';
 import { botPickBand } from '../bot.js';
@@ -276,6 +276,8 @@ export class MatchPhases {
       this.wave = buildInfiniteNormalWave(this.gd, this.rngWaves, r);
     } else {
       this.wave = buildNormalWave(this.gd, this.rngWaves, this.factions, r);
+      // 超限的前 15 回合收敛到 3 种怪（业主 2026-10-17）；R16 起走上面的无限波次，不设上限。
+      if (this.isInfinite) this.wave = capWaveKinds(this.wave, 3, this.rngWaves);
     }
     for (const ps of alive) ps.startRound(r);
     for (const ps of alive) this.dispatch(ps, 'onRoundStart', { round: r });

@@ -18,7 +18,9 @@ function waveSize(w) {
   const spawns = Array.isArray(w && w.spawns) ? w.spawns : [];
   let n = 0;
   for (const s of spawns) n += Math.max(0, Number(s && s.count) || 0);
-  return { kinds: spawns.length, total: n };
+  // 「类」= **不同的敌人**（不是 spawn 条目数：普通波次一条 spawn 常常带 count > 1）
+  const kinds = new Set(spawns.map((x) => x && x.enemyKey).filter(Boolean)).size;
+  return { kinds, entries: spawns.length, total: n };
 }
 
 test('超限开关的作用域：只有 solo_infinite 的局 isInfinite 为真', () => {
@@ -43,9 +45,9 @@ test('超限局按自己的 bossRound 推进，Boss 输掉时在那里结束', (
     const ok = h.drive(() => h.ended != null || (h.m.phase === 'PREP' && h.m.round === r));
     if (!ok || h.ended) break;
     const size = waveSize(h.m.wave);
-    samples.push({ round: r, kinds: size.kinds, total: size.total, lp: h.ps('p_0')?.lp ?? null });
+    samples.push({ round: r, kinds: size.kinds, entries: size.entries, total: size.total, lp: h.ps('p_0')?.lp ?? null });
   }
-  for (const s of samples) console.log('    R' + s.round + '\t怪 ' + s.total + ' 只' + s.kinds + ' 类\tLP ' + s.lp);
+  for (const s of samples) console.log('    R' + s.round + '\t怪 ' + String(s.total).padStart(3) + ' 只 / ' + String(s.kinds).padStart(2) + ' 种 / ' + String(s.entries).padStart(2) + ' 条 spawn\tLP ' + s.lp);
   // 前 11 回合必须一路推进（普通单机在前 11 回合也这么走）—— 说明超限没有在开头就断
   assert.ok(samples.length >= 3, '至少推进到 R16 之前要采到几个点');
   // R16 起是无限波次的地盘：规模必须逐回合不降（实测 R16..R19 = 33 / 35 / 36 / 38）
