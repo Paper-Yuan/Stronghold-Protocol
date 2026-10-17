@@ -354,6 +354,10 @@ class MainActivity : AppCompatActivity() {
             mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
         }
 
+        // DEBUG 包开 WebView 远程调试（chrome://inspect / puppeteer 都靠它）：真机上量字号、点按区、
+        // 折叠是否“立即”生效，都只能在这个通道里做。release 包里这一行不执行，生产行为不变。
+        if (BuildConfig.DEBUG) { try { WebView.setWebContentsDebuggingEnabled(true) } catch (_: Throwable) {} }
+
         webView.addJavascriptInterface(AndroidBridge(this), "AndroidNative")
 
         // 渲染优先级：单机跑在手机上时的性能关键之一。默认策略下 WebView 的渲染进程在后台/低内存会被降级，

@@ -41,6 +41,7 @@ import { pluginMicro } from './pluginTag.js';
 import { fxAvailable } from '../render/vfx/available.js';
 import { resolveOfficialFx } from '../render/vfx/tier.js';
 import { ModManagerModal } from './modManagerModal.js';
+import { hasMods } from '../roomMods.js'; // 服务器没装工坊包时整块隐藏（2026-10-17 业主：移除内置 mod）
 import { fetchBuild } from './buildGuard.js';
 
 const cx = (...p) => p.flat().filter(Boolean).join(' ');
@@ -505,12 +506,12 @@ export function SettingsModal({ open, onClose }) {
       </div>` : null}
       ${updateInfo && !updateInfo.stale ? html`<p class="set-hint" data-testid="app-update-note">${t('当前已是最新版本 (v{v})', { v: updateInfo.app })}</p>` : null}
 
-      <div class="set-row" data-testid="mod-management">
+      ${hasMods() ? html`<div class="set-row" data-testid="mod-management">
         <span class="set-row__label">${t('模组管理')}<${MicroLabel}>MOD MANAGEMENT<//></span>
         <button type="button" class="btn btn--secondary btn--sm" onClick=${() => setModModalOpen(true)}>
           <${Icon} name="box" /><span>${t('模组仓库')}</span>
         </button>
-      </div>
+      </div>` : null}
       <p class="set-hint">${touchUi ? t('触屏操作：点击单位选中（撤退 / 出售）· 长按单位或卡牌查看详情 · 拖动部署后滑动选择朝向') : t('右键查看详情')}</p>
     </div>
     <${ModManagerModal} open=${modModalOpen} onClose=${() => setModModalOpen(false)} />
