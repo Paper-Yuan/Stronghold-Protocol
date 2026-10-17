@@ -121,7 +121,7 @@ export class FxGL {
         if (info.type === gl.SAMPLER_2D) u.unit = unit++;
         uniforms.push(u);
       }
-      rec = { prog, uniforms, vp: gl.getUniformLocation(prog, 'u_vp'), time: gl.getUniformLocation(prog, 'u_Time'), camPos: gl.getUniformLocation(prog, 'u_WorldSpaceCameraPos'), pass: -1, plans: new WeakMap() };
+      rec = { prog, uniforms, vp: gl.getUniformLocation(prog, 'u_vp'), time: gl.getUniformLocation(prog, 'u_Time'), camPos: gl.getUniformLocation(prog, 'u_WorldSpaceCameraPos'), boardClip: gl.getUniformLocation(prog, 'u_BoardClip'), pass: -1, plans: new WeakMap() };
       this.stats.programs++;
     } catch (err) {
       console.warn('[fx] program failed', mat.family, err?.message || err);
@@ -142,7 +142,7 @@ export class FxGL {
     p = { tex: [], f: [], v: [] };
     for (const u of rec.uniforms) {
       const nm = u.name;
-      if (nm === '_vp' || nm === '_Time' || nm === '_WorldSpaceCameraPos') continue;
+      if (nm === '_vp' || nm === '_Time' || nm === '_WorldSpaceCameraPos' || nm === '_BoardClip') continue;
       if (u.unit >= 0) {
         const t = mat.textures.find((x) => x.name === nm);
         p.tex.push({ loc: u.loc, unit: u.unit, key: t && t.key ? t.key : null, fallback: this.defaults[t?.def || 'white'] || this.defaults.white, glTex: null });
@@ -324,6 +324,7 @@ export class FxGL {
       // material uniforms (overrides from clips / UV tweeners first): all of them for another material; for the same
       // material with other overrides only the uniforms either set names (the textures are bound again regardless:
       // another frame's upload may have rebound a unit)
+      if (rec.boardClip) gl.uniform4fv(rec.boardClip, it.effect?.data?.boardClip || V0);
       const ov = it.ov;
       if (mat !== lastMat) {
         for (const e of plan.tex) { gl.activeTexture(gl.TEXTURE0 + e.unit); gl.bindTexture(gl.TEXTURE_2D, e.glTex); gl.uniform1i(e.loc, e.unit); }
