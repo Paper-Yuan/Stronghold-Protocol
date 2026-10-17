@@ -36,6 +36,7 @@
 //     which the community's measurement 路标月报#2 matches — GitHub #645).
 
 import { BOSS_ROW_OFFSET, COLS, BOSS_POOL_MIN_HP } from '../sim/constants.js';
+import { getInfiniteBossHp } from '../../shared/infiniteMode.js';
 import { mirrorDir, normDir } from '../sim/dir.js';
 import { bossPoolShareOf } from './gamedata.js';
 
@@ -77,7 +78,7 @@ export function pairPlayers(alive, rng, previous = null) {
 }
 
 /** Shared boss HP for a boss id with `aliveCount` alive players (GameData.bossPoolShare / bossPoolShareOf; omitted ⇒ a full team). */
-export function bossPoolHp(gd, bossId, aliveCount) {
+export function bossPoolHp(gd, bossId, aliveCount, round) {
   const boss = gd.boss(bossId);
   const diff = gd.difficulty;
   let base = boss && boss.bloodPoint && Number.isFinite(boss.bloodPoint[diff]) ? boss.bloodPoint[diff] : null;
@@ -86,7 +87,11 @@ export function bossPoolHp(gd, bossId, aliveCount) {
   const tune = typeof gd.bossHpMul === 'function' ? gd.bossHpMul(bossId) : 1;
   const share = typeof gd.bossPoolShare === 'function' ? gd.bossPoolShare(aliveCount)
     : bossPoolShareOf(gd.mode && gd.mode.bossHpScale, gd.config && gd.config.bossHpScale, !!gd.isSolo, aliveCount);
-  return Math.max(1, Math.round(base * share * tune));
+  // 超限模拟：Boss 池每 5 轮复利成长（shared/infiniteMode.js 的 getInfiniteBossHp，之前只被 import、
+  // 从没被调用过 —— 于是 R20 之后的 Boss 血量一直是 R15 的数值）。乘的是 bossPoolHp 这一个出口，
+  // 普通单机 / 同盟拿不到这一项（round 传不进来就没有），作用域仍只在超限局内（2026-10-17）。
+  const grown = Number.isInteger(round) && round > 15 ? getInfiniteBossHp(1, round) : 1;
+  return Math.max(1, Math.round(base * share * tune * grown));
 }
 
 /**

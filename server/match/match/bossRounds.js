@@ -51,7 +51,8 @@ export class MatchBoss {
     // the pool's own per-player tally, one pool per boss round. stats.bossDamage (the result's 领袖伤害) adds up both
     // rounds, so it would credit the Final Assault's damage to the hidden leader ("隐藏boss还没打就出了50%播报").
     const hitSteps = new Map();
-    const pool = new SharedBossPool(bossPoolHp(this.gd, bossId, alive.length), {
+    // 只有超限局把 round 传下去（→ bossPoolHp 才乘 Boss 血量成长）；普通模式 round 为 undefined，行为不变。
+    const pool = new SharedBossPool(bossPoolHp(this.gd, bossId, alive.length, this.isInfinite ? this.round : undefined), {
       onHit: (pid, dmg) => {
         const ps = this.players.get(pid);
         if (!ps) return;
