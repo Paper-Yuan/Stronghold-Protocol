@@ -45,6 +45,8 @@ try{
  assert.equal(result.restored.skel,result.prep[0].skel);
  assert.equal(result.combat.skin,result.skin);assert.equal(result.combat.skel,result.prep[2].skel);
  assert.equal(errors.length,0,JSON.stringify(errors));
- fs.writeFileSync(path.join(root,'验证-皮肤准备与战斗.json'),JSON.stringify({...result,errors},null,2));
+ // 写进 .cache（git-ignored）而不是仓库根：以前的路径每跑一次就在工作区留下一个「验证-*.json」脏文件（2026-10-17）。
+ fs.mkdirSync(path.join(root,'.cache'),{recursive:true});
+ fs.writeFileSync(path.join(root,'.cache','prep-skins.json'),JSON.stringify({...result,errors},null,2));
  console.log(JSON.stringify(result));
 }finally{await browser?.close();srv.closeAllConnections();await new Promise(r=>srv.close(r));}
