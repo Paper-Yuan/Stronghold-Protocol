@@ -758,6 +758,34 @@
 }
 
 
+/* ---- 快速配置里的皮肤：只留图标（业主 2026-10-17）------------------------------------------------------
+   快速配置那一列只有 --qw（约 .9rem / 48-90px）宽，皮肤的「名字 + 系列 + 已装配」三行文字把它挤成一条缝。
+   这一档里只显示缩略图本身：文字块与徽标都不占位，一格一图，铺成等宽网格；
+   装配中的用薄荷描边 + 右上角一个实心小三角标出来 —— 一眼能认，不需要读字。 */
+.lo-op__quick .lo-sec--skin { width: 100%; padding: 0 max(.04rem, 2px); }
+.lo-op__quick .lo-sec--skin .lo-sec__head { display: none; }
+.lo-op__quick .lo-skins {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(max(.38rem, 30px), 1fr));
+  gap: max(.05rem, 4px);
+  padding: max(.04rem, 3px) max(.02rem, 1px);
+}
+.lo-op__quick .lo-skin { width: auto; padding: max(.03rem, 2px); justify-content: center; border-radius: 3px; }
+/* 只留图标：文字块、系列名、已装配徽标统统不占位 */
+.lo-op__quick .lo-skin__text,
+.lo-op__quick .lo-skin__badge { display: none; }
+.lo-op__quick .lo-skin__art { width: 100%; height: auto; aspect-ratio: 1; border-radius: 2px; }
+/* 装配中的那一格：描边 + 右上角一个小三角，不再用文字解释 */
+.lo-op__quick .lo-skin.is-on::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  border-width: 0 max(.1rem, 7px) max(.1rem, 7px) 0;
+  border-style: solid;
+  border-color: transparent var(--mint-400) transparent transparent;
+}
+.lo-op__quick .lo-skin.is-on { background: rgba(78, 216, 175, .12); }
 /* ---- 自选专属皮肤选择网格 (嵌入 DiyPicker) ------------------------------------------------------------- */
 .diy-skin-grid {
   display: grid;
