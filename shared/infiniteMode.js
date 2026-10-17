@@ -85,7 +85,9 @@ export function enemyInfiniteScale(round, baseR15 = { hpMul: 2.5, atkMul: 1.8, s
 export function getInfiniteBossHp(baseHp, round) {
   const r = Number(round) || 15;
   if (r <= 15) return baseHp;
-  const delta = r - 15;
-  // 每 5 轮遭遇一次 Boss，每次血量增长 35% ~ 50%
-  return Math.round(baseHp * Math.pow(1.35, Math.floor(delta / 5) + 1));
+  // 逐回合平滑复利（业主 2026-10-17 定：原来是「每 5 回合跳一档 ×1.35」，
+  // R19→R20 血量直接翻倍、R24→R25 却一动不动，手感是突然变硬而不是逐渐变硬）。
+  // 每回合 ×1.06，5 回合累计 ×1.338，与原来 ×1.35 同量级，但曲线连续、没有跳档。
+  // 注意不要在外面再套 Math.round 到 1.x 量级的倍率上（那会把相邻两档并成同一档）。
+  return Math.round(baseHp * Math.pow(1.06, Math.max(0, r - 15)));
 }
