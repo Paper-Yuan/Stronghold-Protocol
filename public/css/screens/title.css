@@ -295,15 +295,26 @@ html[data-script="alphabetic"] .title-login .btn--xl { letter-spacing: .3em; }
   left: .44rem;
   right: .44rem;
   bottom: .3rem;
+  /* Two explicit rows (2026-10-17, 业主反馈「项目仓库 / 感谢名单 / 版本号 不在同一行」):
+     第一排 = 感谢名单 + 项目仓库 + 版本号（同一行、按中线对齐），第二排 = 添加到桌面 / 插件 / 版权。
+     以前是一整排 flex + space-between + wrap，页脚一变窄「项目仓库」和版本号就被挤到下一行，
+     而且 .micro 的字号比正文小，两行的基线还对不齐。 */
   display: flex;
-  justify-content: space-between;
-  align-items: flex-end;
-  flex-wrap: wrap;
-  gap: .12rem .2rem;
+  flex-direction: column;
+  align-items: stretch;
+  gap: .08rem;
   font-size: calc(.13 * var(--t));
   color: var(--text-dim);
 }
-.title-foot__meta { display: flex; align-items: flex-end; gap: .16rem; flex-wrap: wrap; justify-content: flex-end; }
+.title-foot__row { display: flex; align-items: center; gap: .16rem; min-width: 0; overflow: hidden; }
+.title-foot__row--meta { justify-content: space-between; }
+.title-foot__row--legal { justify-content: flex-end; flex-wrap: wrap; gap: .08rem .16rem; }
+.title-foot__row--legal > * { flex: 0 0 auto; }
+/* 感谢名单吃掉剩下的宽度；项目仓库与版本号保持自己的宽度，绝不被挤下去 */
+.title-foot__row--meta > .title-thanks { flex: 1 1 0; min-width: 0; overflow: hidden; }
+.title-foot__meta { display: flex; align-items: center; gap: .16rem; flex: 0 0 auto; flex-wrap: nowrap; justify-content: flex-end; }
+/* .micro 字号比页脚正文小，默认的 line-height 会让「项目仓库」和版本号差几个像素、看起来不在一行 */
+.title-foot__meta .micro, .title-foot__meta .title-repo { line-height: 1; }
 .title-repo { color: inherit; text-decoration: none; border-bottom: 1px solid transparent; }
 .title-repo:hover, .title-repo:focus-visible { color: var(--text-hi); border-bottom-color: currentColor; }
 /* a development build (shared/constants.js DEV_BUILD): an unmissable tag in the footer */
@@ -407,9 +418,9 @@ html[data-script="alphabetic"] .title-login .btn--xl { letter-spacing: .3em; }
   font-size: .65em;
 }
 
-/* 本仓库页脚是横向一行，所以让它占最左边一块。 */
-.title-foot { flex-wrap: wrap; }
-.title-thanks { order: -1; flex: 1 1 12rem; min-width: 0; max-width: 46%; }
+/* 页脚改成两排之后（见 .title-foot__row），下面这两条旧规则只剩「感谢名单排最左」还有意义：
+   旧的 flex-wrap 和 12rem 的 flex-basis 会把整排撑到 1400px，把「项目仓库 / 版本号」推出屏幕。 */
+.title-thanks { order: -1; flex: 1 1 0; min-width: 0; max-width: 46%; }
 
 @keyframes thanks-scroll {
   from { transform: translateX(0); }

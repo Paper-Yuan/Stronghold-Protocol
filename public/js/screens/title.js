@@ -176,6 +176,10 @@ export function TitleScreen() {
   const openPlugins = () => {
     import('../ui/pluginPanel.js').then((m) => setInstalled(() => m.InstalledPlugins), (err) => console.warn('[plugins] the list did not load', err));
   };
+  // 安卓外壳里素材是**全量内置**的（tools/bundle-android.mjs 把 public/ 整份打进 APK，
+  // 989 MB 的安装包里就有 public/assets），所以开始页不需要「下载完整素材」和「导入素材包」
+  // —— 那两个按钮是给浏览器端补素材用的，在手机上点开只会白等一场（2026-10-17 业主反馈）。
+  const nativeShell = Boolean(globalThis.AndroidNative?.isNativeApp?.());
   const installed = useStore(installedCount);
   const assetsSettled = useData('assets');
   const assets = data.get('assets');
@@ -266,27 +270,32 @@ export function TitleScreen() {
           <${FullscreenButton} class="title-fs" />
         </div>
       </div>
-      <div class="title-assets">
+      ${nativeShell ? null : html`<div class="title-assets">
         <${AssetDownloadButton} />
         <${AssetImportButton} />
       </div>
+      `}
     </main>
 
     <${SettingsModal} open=${settingsOpen} onClose=${() => setSettingsOpen(false)} />
     ${Installed ? html`<${Installed} open=${true} onClose=${() => setInstalled(null)} />` : null}
 
     <footer class="title-foot">
-      <${ThanksMarquee} />
-      <${ResumeMatchButton} />
-      <${PwaInstallButton} />
-      ${installed ? html`<button type="button" class="title-plugins" data-testid="title-plugins" onClick=${openPlugins}>
-        <${Icon} name="info" />${t('本服务器安装了 {n} 个插件', { n: installed })}</button>` : null}
-      <span>${t('非官方同人复刻 · 游戏素材版权归 上海鹰角网络 / Yostar 所有')}</span>
-      <span class="title-foot__meta">
-        <a class="title-repo" href="https://github.com/sganggs/Stronghold-Protocol" target="_blank" rel="noopener noreferrer">${t('项目仓库')}</a>
-        <${MicroLabel}>v${APP_VERSION} · WEB SIMULATION<//>
-        ${DEV_BUILD ? html`<span class="title-dev" role="note">${t('开发版 · 不稳定，请勿用于公开服务器')}</span>` : null}
-      </span>
+      <div class="title-foot__row title-foot__row--meta">
+        <${ThanksMarquee} />
+        <span class="title-foot__meta">
+          <a class="title-repo" href="https://github.com/sganggs/Stronghold-Protocol" target="_blank" rel="noopener noreferrer">${t('项目仓库')}</a>
+          <${MicroLabel}>v${APP_VERSION} · WEB SIMULATION<//>
+          ${DEV_BUILD ? html`<span class="title-dev" role="note">${t('开发版 · 不稳定，请勿用于公开服务器')}</span>` : null}
+        </span>
+      </div>
+      <div class="title-foot__row title-foot__row--legal">
+        <${ResumeMatchButton} />
+        <${PwaInstallButton} />
+        ${installed ? html`<button type="button" class="title-plugins" data-testid="title-plugins" onClick=${openPlugins}>
+          <${Icon} name="info" />${t('本服务器安装了 {n} 个插件', { n: installed })}</button>` : null}
+        <span>${t('非官方同人复刻 · 游戏素材版权归 上海鹰角网络 / Yostar 所有')}</span>
+      </div>
     </footer>
   </div>`;
 }

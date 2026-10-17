@@ -86,7 +86,8 @@ function ensureStyle() {
   if (!doc || doc.getElementById(STYLE_ID)) return;
   const el = doc.createElement('style');
   el.id = STYLE_ID;
-  const colW = 'calc(var(--hub-entry-w) * 2 + var(--hub-gap))';
+  // （瞬时折叠不再需要列宽：以前的滑出用了 calc(var(--hub-entry-w) * 2 + var(--hub-gap)），
+  //   现在只做 display:none，列宽由栅格自己决定 —— 2026-10-17 业主「收起都是直接收起」。）
   el.textContent = [
     // feature switches — the three inner ones scoped under .hub-right so room.js is never touched
     'html[data-hub-center="off"] .hub-center { display: none !important; }',
@@ -104,24 +105,17 @@ function ensureStyle() {
     '  width: .5rem; height: 1.05rem; padding: 0; display: grid; place-items: center;',
     '  font: 700 .3rem/1 ui-monospace, Consolas, monospace; color: rgba(223, 230, 226, .8);',
     '  background: rgba(9, 17, 16, .8); border: 1px solid rgba(223, 230, 226, .22); border-right: 0;',
-    '  cursor: pointer; transition: transform .28s ease, color .12s ease;',
+    '  cursor: pointer; transition: color .12s ease;',
     '  border-radius: .05rem 0 0 .05rem; }',
     '.sp-hub-handle:hover { color: var(--mint-400); }',
-    '.sp-hub-handle span { display: block; transition: transform .28s ease; }',
-    // collapse: the column slides out right; its content fades (not the column — the handle lives inside it)
-    '.hub-right { transition: transform .28s ease; }',
-    // the fade is on the column's CONTENT, and excludes the handle: at equal specificity a later rule would
-    // override the handle's own transition (losing its slide), and :not() also raises specificity here
-    '.hub-recruit, .hub-right__plates > :not(.sp-hub-handle) { transition: opacity .28s ease; }',
-    'html[data-hub-collapsed="on"] .hub-right { transform: translateX(calc(100% + 1rem)); pointer-events: none; }',
-    'html[data-hub-collapsed="on"] .hub-recruit { opacity: 0; }',
-    'html[data-hub-collapsed="on"] .hub-right__plates > :not(.sp-hub-handle) { opacity: 0; }',
-    // the handle rides the slide and then eases back to the screen edge. Geometry: the column shifts right by
-    // (W + 1rem), so the plates' left edge — and the handle .12rem before it — land (1rem - .36rem + .12rem) =
-    // .76rem beyond the viewport edge... netting the stage padding out, the parked spot is .54rem left of the
-    // slid spot. Same duration + easing as the column, so the two track exactly and it reads as one motion.
-    'html[data-hub-collapsed="on"] .sp-hub-handle { pointer-events: auto;',
-      '  transform: translateX(-.54rem) translateY(-50%); }',
+    '.sp-hub-handle span { display: block; }',
+    // collapse is INSTANT (业主 2026-10-17: 「收起都是直接收起」). It used to slide the column out to the right
+    // with a .28 s transform and fade its content, and the handle rode the slide. A half-second animation on a
+    // settings toggle reads as lag, not polish: now the column's content is display:none and the handle — which
+    // already sits on the LEFT of the plates — simply stays where it is.
+    'html[data-hub-collapsed="on"] .hub-right > :not(.sp-hub-handle) { display: none !important; }',
+    'html[data-hub-collapsed="on"] .hub-right__plates > :not(.sp-hub-handle) { display: none !important; }',
+    'html[data-hub-collapsed="on"] .sp-hub-handle { pointer-events: auto; }',
     'html[data-hub-collapsed="on"] .sp-hub-handle span { transform: rotate(180deg); }',
     // the slid-out column must not grow a scrollbar on the mobile stage (overflow-y:auto computes overflow-x to auto)
     'html[data-hub-collapsed="on"] .hub-stage { overflow-x: hidden; }',

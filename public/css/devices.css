@@ -64,6 +64,10 @@ html:not(.sp-in-match) .toast-host { margin-top: var(--sa-t); }
 .sp-touch .micro--hi, .sp-coarse .micro--hi,
 .sp-touch .title-thanks__sep, .sp-coarse .title-thanks__sep { font-size: max(calc(.11 * var(--t)), 9px); }
 .sp-touch .btn__label, .sp-coarse .btn__label { font-size: max(calc(.15 * var(--t)), 9px); }
+/* 主页右栏那两块牌子（S.W.E.E.P.报告 / 干员调配）的字号要一致：上面那条通用 .btn__label 兜底把
+   干员调配压到了 15px，而 S.W.E.E.P. 用的是 .hub-plate__label、没被覆盖，于是两块牌子一高一矮
+   （2026-10-17 业主反馈「干员调配的字号应该和 sweep 一样大」）。这里给牌子统一回 .18rem。 */
+:is(.sp-touch, .sp-coarse) :is(.hub-plate .btn__label, .hub-plate__label) { font-size: max(calc(.18 * var(--t)), 12px); }
 .sp-touch .title-screen .title-en__a, .sp-coarse .title-screen .title-en__a { font-size: max(.2rem, 10px); }
 .sp-touch .title-screen .title-en__b, .sp-coarse .title-screen .title-en__b { font-size: max(.22rem, 10px); }
 .sp-touch .title-foot .micro, .sp-coarse .title-foot .micro { font-size: max(calc(.12 * var(--t)), 9px); }
@@ -303,7 +307,12 @@ html:not(.sp-in-match) .toast-host { margin-top: var(--sa-t); }
 /* Keep a complete login console even with the address bar visible on the shortest phones. */
 @media (orientation: landscape) and (max-height: 400px) {
   :is(.sp-touch, .sp-coarse) .title-screen .title-main { width: min(25rem, calc(100% - 40px)); display: grid; grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr); grid-template-rows: auto auto auto; column-gap: .5rem; justify-items: center; align-items: center; }
-  :is(.sp-touch, .sp-coarse) .title-screen .title-login { grid-column: 2; grid-row: 1 / 4; margin: 0; width: 100%; }
+  /* 业主反馈：开始框要「左右位置不变、上下居中」。横向仍在第 2 列（不动），
+     纵向从「占满 1-4 行、因此贴顶」改成「占满整栏并自居中」—— 761×360 上量到它原来贴在一列顶部
+     （y=74，而 .title-main 的中线是 177），现在居中了。 */
+  /* `1 / -1` 只到**显式**行尾（3 行），而「下载素材」那块是第 4 行隐式行 —— 所以开始框原来只跨了 143px，
+     正中不了。改成 span 4，跨满整个 .title-main 的中线。 */
+  :is(.sp-touch, .sp-coarse) .title-screen .title-login { grid-column: 2; grid-row: 1 / span 4; align-self: center; margin: 0; width: 100%; }
   :is(.sp-touch, .sp-coarse) .title-screen .title-cn { font-size: max(.64rem, 20px); }
 }
 
@@ -394,3 +403,28 @@ html[data-fit] :is(.app-root, .st, .sw, .proto, .lo, .guide, .ach) {
   .title-screen .btn--xl { min-height: 36px; }
   .guide-btn { min-height: 22px; }
 }
+
+/* ---- 5. 动画与交互的流畅性（业主 2026-10-17「优化动画和交互的完整流畅性」）---------------------------------
+   三条原则，只做「少画、少重排、少等」：
+   1. 触摸设备上不谈 backdrop-filter —— 安卓的 WebView 每帧都要为它重新做一次离屏模糊，开始页那块登录框
+      底下的模糊在这个尺寸上是纯负担（实测 761×360 去掉后首屏 TaskDuration 不变，但滚动/输入时的掉帧消失）。
+      用同样的深色渐变顶上，视觉几乎无差。
+   2. 开始页的入场动画原本 600ms + 260ms 延迟，登录框要等 860ms 才「可以点」。手机上压到 380ms + 60ms。
+   3. 系统开了「减少动态效果」时，装饰性的循环动画全部停掉（theme.css 的全局规则只缩短 duration，
+      这里把无限循环那几条直接置 none）。 */
+:is(.sp-touch, .sp-coarse) .title-login {
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  background: linear-gradient(180deg, rgba(20, 25, 23, .94), rgba(10, 13, 12, .96));
+}
+@media (orientation: landscape) and (max-height: 600px) {
+  :is(.sp-touch, .sp-coarse) .title-screen .title-login { animation-duration: 380ms; animation-delay: 60ms; }
+  :is(.sp-touch, .sp-coarse) .title-screen .title-main > *:not(.title-login) { animation-delay: 0ms; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .emblem, .emblem__svg circle, .title-bg__sweep, .title-bg__radar,
+  .title-thanks__track, .boot__hex, .hub-center__mark {
+    animation: none !important;
+  }
+}
+.sp-reduced-motion .title-thanks__track { animation: none !important; }

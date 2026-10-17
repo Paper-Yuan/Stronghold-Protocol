@@ -2526,9 +2526,10 @@ button.ally-card:disabled { filter: grayscale(.7) brightness(.7); cursor: defaul
 }
 .hub-fold:hover, .hub-fold:focus-visible { color: var(--mint-400); border-color: var(--mint-500); }
 .hub-fold .icon { width: 58%; height: 58%; }
-.hub-right { position: relative; }
-.hub-fold--right { position: absolute; top: 0; right: 0; z-index: 3; }
+.hub-right { position: relative; transition: none; }
+/* 业主 2026-10-17：收起键放在那块的左侧 —— 挂在那块的外面（否则 22px 的圆压在缺人同盟卡的左上角）。 */
+.hub-fold--right { position: absolute; top: 0; left: calc(-1 * max(.26rem, 18px)); right: auto; z-index: 3; }
 .hub-right.is-folded > :not(.hub-fold) { display: none !important; }
-.hub-entries { position: relative; }
-.hub-fold--modes { position: absolute; top: -.26rem; right: .06rem; z-index: 3; }
+.hub-entries { position: relative; transition: none; }
+.hub-fold--modes { position: absolute; top: -.26rem; left: calc(-1 * max(.26rem, 18px)); right: auto; z-index: 3; } /* 同上：左侧、挂在外面 */
 .hub-entries.is-folded .hub-entries__row { display: none; }
