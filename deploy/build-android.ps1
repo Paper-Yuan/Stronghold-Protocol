@@ -42,7 +42,16 @@ $before = $null
 if (Test-Path $apk) { $before = (Get-Item $apk).LastWriteTime }
 Write-Host '== 2/4 构建（失败即停）==' -ForegroundColor Cyan
 Push-Location $repo
-try { & node scripts/build-android.mjs 2>&1 | Tee-Object -FilePath $log; $code = $LASTEXITCODE }
+try {
+  # 不把 node 的输出接进 PowerShell 管道：它往 stderr 写进度条时，PowerShell 会把每行当成
+  # NativeCommandError，$ErrorActionPreference='Stop' 会当场中断（2026-10-17 实测）。
+  # 直接重定向到日志文件，再用退出码判断成败。
+  # 用 cmd 包一层：PowerShell 5.1 会把原生程序的 stderr 每一行当成 NativeCommandError，
+  # 在 $ErrorActionPreference='Stop' 下直接抛（node 的进度条正是写 stderr 的）。
+  cmd /c "node scripts/build-android.mjs > .cache\build-android.log 2>&1"
+  $code = $LASTEXITCODE
+  Get-Content $log -Tail 8 | ForEach-Object { Write-Host ('   ' + $_) }
+}
 finally { Pop-Location }
 if ($code -ne 0) {
   Write-Host "✘ 构建失败 (exit $code) —— 不安装任何东西。" -ForegroundColor Red
