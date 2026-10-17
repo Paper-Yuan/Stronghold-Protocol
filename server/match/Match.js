@@ -199,7 +199,7 @@
 //   common.js        what the modules share (FLOW_TICKER_PRIORITY, DELAYS, BAND_TURN_SECONDS — re-exported here, OK,
 //                    fail, BOSS_CLOCK_MS)
 
-import { isSoloRoomMode } from '../../shared/infiniteMode.js';
+import { isSoloRoomMode, SOLO_INFINITE } from '../../shared/infiniteMode.js';
 import { PHASE, modeIdFor } from '../../shared/constants.js';
 import { isContentHash } from '../../shared/plugins/identity.js';
 import { Battle } from '../sim/Battle.js';
@@ -295,6 +295,16 @@ export class Match {
     this.gd = new GameData(this.data, this.modeId);
     if (!this.difficulty) this.difficulty = this.gd.difficulty;
     this.isSolo = this.mode === 'solo' || this.gd.isSolo;
+    /**
+     * 超限模拟（房间 mode = `solo_infinite`，shared/infiniteMode.js 的 SOLO_INFINITE）。
+     *
+     * 这个开关以前**从来没有被赋过值** —— phases.js / bossRounds.js / builtinMeta.js / items/meta.js 里
+     * 六处 `this.isInfinite` 判断因此恒为假，R16+ 无限波次、双 Boss 轮、超限胜负结算一次都没跑过；
+     * 战斗那侧的 `battle.infinite`（installInfiniteRule：限伤放宽到 99,999,999、密集索敌节流、6s/4s 霸体）
+     * 也从来没人装。也就是说：超限模拟此前只有入口，规则一条都没生效（2026-10-17 审计发现）。
+     * 这里按房间模式点亮它；别的模式一律 false，所以不会有任何超限规则漏进普通单机/同盟。
+     */
+    this.isInfinite = opts.mode === SOLO_INFINITE;
     /** 「AI 队友最后选择」 (opts.aiPicksLast, GitHub #338): humans draft before AI seats (MatchPhases.humansFirst) */
     this.aiPicksLast = !this.isSolo && opts.aiPicksLast === true;
     this.ownsScheduler = !opts.scheduler;

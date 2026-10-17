@@ -10,6 +10,7 @@ import { planUnite } from '../unite.js';
 import { FieldRunner, DeadBattle } from '../fields.js';
 import { DELAYS } from './common.js';
 import { previewPlayer } from '../preview.js';
+import { installInfiniteRule } from '../../sim/infiniteRule.js';
 
 export class MatchCombat {
   /** Construct a battle; a constructor failure yields a finished stand-in (clean result) and is logged. */
@@ -19,7 +20,10 @@ export class MatchCombat {
       ...(this.kits ? { kits: this.kits } : {}), ...(this.tokenKits ? { tokenKits: this.tokenKits } : {}),
       ...(preview ? { logger: {}, quiet: true } : {}) };
     try {
-      return new this.BattleClass(full);
+      const battle = new this.BattleClass(full);
+      // 超限模拟的性能/规则防护：只有超限局的战斗才装，其他模式拿到的是完全没动过的 engine（2026-10-17）。
+      if (this.isInfinite) installInfiniteRule(battle);
+      return battle;
     } catch (e) {
       if (!preview) this.reportError(`battle ${opts.fieldId} construct`, e);
       return new DeadBattle(full, 'forced');
