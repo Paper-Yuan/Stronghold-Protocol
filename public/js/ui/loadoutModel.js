@@ -260,7 +260,10 @@ export function parseImport(input) {
   const entries = parseStored(raw);
   const ops = isObj(raw.ops) ? parseStoredOps(raw) : null;
   const skins = isObj(raw.skins) ? sanitizeSkins(raw.skins) : null;
-  const diy = isObj(raw.diy) ? raw.diy : (kind === 'stronghold.diy' && isObj(raw.picks) ? raw.picks : null);
+  // 自选编队（diy）：可以是独立导出的信封（{ kind, v, picks }，exportDiy 的形状），也可以是裸的 picks 表。
+  // 统一取出 picks，交给调用方 sanitizeDiyPicks（业主 2026-10-18：一份导出带走全部配置）。
+  const diyRaw = isObj(raw.diy) ? raw.diy : (kind === 'stronghold.diy' ? raw : null);
+  const diy = isObj(diyRaw) ? (isObj(diyRaw.picks) ? diyRaw.picks : diyRaw) : null;
   if (!Object.keys(entries).length && (!skins || !Object.keys(skins).length) && !(ops && Object.keys(ops).length) && !(diy && Object.keys(diy).length)) {
     return { ok: false, error: '里面没有有效的调配或皮肤条目' };
   }

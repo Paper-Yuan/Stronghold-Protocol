@@ -572,7 +572,7 @@ function StatsScreen({ tab }) {
       <div class="st-top__right">
         <${Button} variant="ghost" size="sm" data-testid="stats-export" disabled=${empty || stats.newer} onClick=${doExport} title=${t('导出为文件（可在别的设备上导入）')}>${t('导出')}<//>
         <${Button} variant="ghost" size="sm" data-testid="stats-import" disabled=${stats.newer} onClick=${() => fileRef.current?.click()} title=${t('从导出的文件导入（与现有记录合并）')}>${t('导入')}<//>
-        <input ref=${fileRef} type="file" accept="application/json,.json" hidden onChange=${doFile} />
+        <input ref=${fileRef} type="file" hidden onChange=${doFile} />
         <${Button} variant="secondary" size="sm" data-testid="stats-clear" disabled=${empty || stats.newer} onClick=${doClear} title=${t('清空本机的统计数据')}>${t('清空')}<//>
       </div>
     </header>

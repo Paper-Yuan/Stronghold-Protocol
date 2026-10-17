@@ -51,7 +51,7 @@ import { OwnershipPanel, useOwnershipRoster } from './ownership.js';
 import { DiyPanel, diyData } from './diy.js';
 import { LoadoutStats } from '../ui/loadoutStats.js';
 export { LoadoutStats, statsPreview } from '../ui/loadoutStats.js';
-import { diyCount, sanitizeDiyPicks, setPick, serializeDiy, parseDiyImport, DIY_IMPORT_MAX_BYTES, diySlotList, slotRecord } from '../ui/diyModel.js';
+import { exportDiy, diyCount, sanitizeDiyPicks, setPick, serializeDiy, parseDiyImport, DIY_IMPORT_MAX_BYTES, diySlotList, slotRecord } from '../ui/diyModel.js';
 import { t, tParts, N_ } from '../../../shared/i18n.js';
 import { copyText } from '../ui/clipboard.js';
 import { toast } from '../ui/toasts.js';
@@ -891,7 +891,16 @@ function LoadoutScreen({ st, leaving = false }) {
   const openExport = () => setIo(tab === 'ownership'
     ? { mode: 'export', kind: 'ownership', text: serializeOwnership(loadoutStore.get().notOwned) }
     : tab === 'diy' ? { mode: 'export', kind: 'diy', text: serializeDiy(loadoutStore.get().diy) }
-      : { mode: 'export', kind: 'loadout', text: serializeExport(loadoutStore.get().entries, { ops: loadoutStore.get().ops, skins: skinsStore.get().entries }) });
+      // 业主 2026-10-18：一份导出要带走**全部**配置 —— 普通干员的技能/模组（entries）、潜能与练度（ops）、
+      // 每名干员穿的皮肤（skins），以及自选干员的编队（diy）。以前只带 entries + ops + skins，自选编队要单独导一次。
+      : {
+        mode: 'export', kind: 'loadout',
+        text: serializeExport(loadoutStore.get().entries, {
+          ops: loadoutStore.get().ops,
+          skins: skinsStore.get().entries,
+          diy: exportDiy(loadoutStore.get().diy),
+        }),
+      });
   const openImport = () => setIo({ mode: 'import', kind: tab, text: '' });
   const ioCopy = async () => {
     const ok = await copyText(ioText);
@@ -943,10 +952,18 @@ function LoadoutScreen({ st, leaving = false }) {
     const nOps = r.ops ?? 0;
     const skinsApplied = res.skins ? Object.keys(res.skins).length : 0;
     if (skinsApplied) setSkins(mergeSkins(skinsStore.get().entries, res.skins));
+    // 自选干员编队（diy）：导出时一并带上，导入时同样要恢复 —— 以前只导 entries/ops/skins，自选编队得单独导一次
+    // （业主 2026-10-18：「普通干员和自选干员所有配置的修改连同皮肤都做进去」）。
+    let diyApplied = 0;
+    if (res.diy && typeof res.diy === 'object') {
+      const r2 = applyDiyImport(res.diy.picks ?? res.diy, diyData(), loadoutStore.get().diyKitted || []);
+      diyApplied = r2?.applied ?? 0;
+    }
     // nothing survived sanitising (unknown chess, or every choice already the default): keep the current loadout
-    if (!applied && !nOps && !skinsApplied) { toast(t('导入失败：这份数据在当前版本没有可用的调配，未做任何改动'), 'error'); return; }
+    if (!applied && !nOps && !skinsApplied && !diyApplied) { toast(t('导入失败：这份数据在当前版本没有可用的调配，未做任何改动'), 'error'); return; }
     setIo(null);
     if (skinsApplied) toast(`已导入 ${skinsApplied} 款皮肤`, 'success');
+    if (diyApplied) toast(`已导入 ${diyApplied} 名自选干员`, 'success');
     toast(!applied ? t('已导入 {n} 名干员的潜能与练度', { n: nOps })
       : dropped ? t('已导入 {applied} 名干员（另有 {dropped} 项未导入）', { applied, dropped })
         : t('已导入 {applied} 名干员的调配', { applied }), dropped ? 'warn' : 'success');
@@ -1226,7 +1243,9 @@ function LoadoutScreen({ st, leaving = false }) {
       <textarea class="lo-io__text" data-testid="loadout-io-text" spellcheck=${false} readOnly=${io.mode === 'export'} value=${ioText}
         placeholder=${io.mode === 'export' ? '' : ioDiy ? t('在此粘贴导出的自选编队内容…') : ioOwn ? t('在此粘贴导出的干员持有内容…') : t('在此粘贴导出的调配内容…')}
         onInput=${(e) => setIo({ ...io, text: e.currentTarget.value })}></textarea>
-      <input type="file" accept=".json,application/json,text/plain" class="lo-io__file" ref=${fileRef} onChange=${ioFile} />
+      {/* 业主 2026-10-18：手机端（尤其安卓的文档选择器）会把 accept 当成硬过滤，压缩包、.txt、网盘下载的
+              无扩展名文件都选不中。这里不设 accept —— 选什么都能进来，内容对不对由下面的解析负责（读不出来才报错）。 */}
+          <input type="file" class="lo-io__file" ref=${fileRef} onChange=${ioFile} />
     <//>` : null}
 <//>`;
 }
