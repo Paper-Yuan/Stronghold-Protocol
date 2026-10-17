@@ -839,6 +839,7 @@ export function validateClientResult(spec, raw, { gd = null } = {}) {
         } else if (sourcePlayerId !== pid && !B.players.has(sourcePlayerId)) sourcePlayerId = pid;
         const lpr = finiteIn(l.lpr, 0, 1000) ? l.lpr : 1;
         const e = { enemyKey: key, mods, lpr, sourcePlayerId, tag: src ? (src.tag ?? null) : (typeof l.tag === 'string' ? l.tag : null), counted, spawned: true };
+        if (l.uniteRuntime === true) e.uniteRuntime = true; // kept: it is what stops the 联防 from billing this leak
         if (l.boss) e.boss = true;
         leaked.push(e);
       }

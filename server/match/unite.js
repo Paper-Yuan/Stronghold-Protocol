@@ -159,7 +159,9 @@ export function uniteSurvivors(plan, uniteResult) {
   const perPlayer = (uniteResult && uniteResult.perPlayer) || {};
   for (const pp of Object.values(perPlayer)) {
     for (const l of (pp && pp.leaked) || []) {
-      if (!l || l.counted === false || !l.sourcePlayerId) continue;
+      // 联防（#675）：只结算「漏过来的那一波自己送进场里的」敌人。场上才出生的（分裂子体、召唤物、
+      // 变身副本）从未经过漏怪者自己的终点，所以不计他的 LP，也不进 HUD 的 ×N（sim/battle/spawns.js 打标）。
+      if (!l || l.counted === false || l.uniteRuntime || !l.sourcePlayerId) continue;
       out.set(l.sourcePlayerId, (out.get(l.sourcePlayerId) || 0) + 1);
     }
   }
