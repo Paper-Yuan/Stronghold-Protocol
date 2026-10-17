@@ -273,7 +273,25 @@ export class FxWiring {
     return false;
   }
 
-  skinOf(u) { return u && u.skin && this.idx ? this.idx.skins[u.skin] || null : null; }
+  /**
+   * 单位身上「当前穿着的那套模型」的挂点表（HitPoint / Muzzle / …）。
+   *
+   * fx/index.json 的 skins 表目前**只导出了 defaultskin**（209 个干员各一条，键是 charId），
+   * 皮肤模型（assets.json 里 174 个带 spine 的皮肤）的挂点从未导出。而这里以前直接 skins[u.skin]，
+   * u.skin 是 char_003_kalts@sale#14 这种皮肤 id —— 永远查不到，于是 skinOf 恒为 null，
+   * 穿皮肤时技能特效的发射/命中点全部退回兜底位置（2026-10-17 审计）。
+   *
+   * 现在按「皮肤 id → charId」回退：至少拿到该干员自己的骨骼挂点，而不是完全兜底。
+   * 要做到「皮肤专属挂点」，得把 index 重新导出成按 skinId 建表（battleSkin.skinOrPrefabId 那 599 个），
+   * 那是素材管线的事，不在渲染层。
+   */
+  skinOf(u) {
+    if (!u || !u.skin || !this.idx) return null;
+    const direct = this.idx.skins[u.skin];
+    if (direct) return direct;
+    const base = String(u.skin).split('@')[0].split('#')[0];
+    return (base && this.idx.skins[base]) || null;
+  }
 
   /**
    * Where a view stands, as mounts.js reads it: board feet + facing, the view itself (its model's bones: the
