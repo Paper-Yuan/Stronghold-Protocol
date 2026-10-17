@@ -357,6 +357,11 @@ class MainActivity : AppCompatActivity() {
 
         webView.addJavascriptInterface(AndroidBridge(this), "AndroidNative")
 
+        // 渲染优先级：单机跑在手机上时的性能关键之一。默认策略下 WebView 的渲染进程在后台/低内存会被降级，
+        // 回到前台时先卡一下；这里让它保持 IMPORTANT（我们本来就是全屏游戏，页面里没有后台 WebView）。
+        // 配合 NodeServerService 里 node 线程降到 NORM_PRIORITY-1：渲染与逻辑各让一步。
+        try { webView.setRendererPriorityPolicy(WebView.RENDERER_PRIORITY_IMPORTANT, false) } catch (e: Exception) { Log.w(TAG, "renderer priority: ${e.message}") }
+
         webView.webChromeClient = object : WebChromeClient() {
             override fun onConsoleMessage(consoleMessage: ConsoleMessage?): Boolean {
                 consoleMessage?.let {
