@@ -28,21 +28,22 @@ const ALWAYS = ['suntShip'];
 const SLOT6 = 'chess_char_6_diy1_a';
 
 // ---- 队伍名单：每个大盟约的真实成员（同 baseId 只留精锐）
-const map = new Map();
-for (const [k, v] of Object.entries(backups.units)) {
-  for (const id of String(v.standsIn || '').split(',').map((s) => s.trim()).filter(Boolean)) map.set(id, k);
-}
+// 队伍 = 该大盟约的**真实干员**（data/chess.json 自带 stats/skills/talents，是满配精锐形态）。
+// 不要走 data/backups.json 的 standsIn：那是「预备干员替身」表，会把斯卡蒂换成一个叫「预备干员-近卫」的
+// 通用替身（实测 egir 全员变成替身、DPS 掉到 1/10）。
 const rosterOf = {};
 for (const m of MAJOR) {
   const byBase = new Map();
   for (const k of Object.keys(chess)) {
     const c = chess[k];
-    if (!Array.isArray(c.bonds) || !c.bonds.includes(m) || !map.has(k)) continue;
+    if (!Array.isArray(c.bonds) || !c.bonds.includes(m)) continue;
+    if (c.isDiy || c.isHidden) continue;
     const base = c.baseId || k;
     const cur = byBase.get(base);
+    // 同 baseId 只留精锐（_b）
     if (!cur || (k.endsWith('_b') && !cur.endsWith('_b'))) byBase.set(base, k);
   }
-  rosterOf[m] = [...byBase.values()];
+  rosterOf[m] = [...byBase.values()].slice(0, 8);
 }
 
 // ---- 层数
@@ -52,11 +53,9 @@ const bondState = (id, count, layers) => ({ count, active: true, tier: Math.min(
 
 function field(roster, majorId, minors, round, { punching = true } = {}) {
   const { major, minor } = layersOf(round);
-  const units = roster.slice(0, 8).map((id, i) => {
-    const c = chess[id];
-    const b = c.backup || {};
-    return { uid: i + 1, diy: { slot: SLOT6, charId: b.charId || c.charId, skillIndex: b.skillIndex ?? 1, uniEquipId: b.uniEquipId ?? null }, elite: true, row: 10, col: 4 + i };
-  });
+  // standIn: true —— 真实干员的正规入场方式（吃盟约加成、上满 8 人）。
+  // 用 diy 槽位只会进 4 人且完全不吃盟约层数（实测 Σatk 不随 layers 变化）。
+  const units = roster.slice(0, 8).map((id, i) => ({ chessId: id, row: 10, col: 3 + i }));
   const st = {};
   st[majorId] = bondState(majorId, Math.min(6, roster.length), major);
   for (const m of minors) st[m] = bondState(m, 3, minor);
@@ -65,10 +64,14 @@ function field(roster, majorId, minors, round, { punching = true } = {}) {
   const dummy = punching
     ? enemyRec({ key: 'e_dps', hp: 1e12, speed: 0, mass: 0, atk: 0 })
     : enemyRec({ key: 'e_hps', hp: 1e12, speed: 0, mass: 0, atk: 3000, bat: 1, range: 3 });
+  // 木桩铺成一整排（row 9..11 × col 8..10）：近战够得到、远程也够得到，
+  // 否则只有最靠前的那一个干员在输出，DPS 会被严重低估（kjerag 一开始测出 0 就是这个原因）。
+  const wall = [];
+  for (let r = 9; r <= 11; r++) for (let c = 8; c <= 10; c++) wall.push({ key: dummy.key, pos: [r, c] });
   const h = makeBattle({
     defs: { enemies: { [dummy.key]: dummy } },
     units,
-    enemies: [{ key: dummy.key, pos: [10, 9] }],
+    enemies: wall,
     timeLimit: 60, autoFinish: false, seed: 7,
     bonds: st,
     flags: { dpInit: 999, dpPerSec: 0, dpMax: 999 },
@@ -78,7 +81,10 @@ function field(roster, majorId, minors, round, { punching = true } = {}) {
   // 一击线：队伍里最脆的那个
   let physLine = Infinity, artsLine = Infinity;
   for (const u of allies) {
+    // 只算真正的干员：装置 / 召唤物（香槟炸弹 hp=1000）不该决定队伍的一击线
+    if (u.kind !== 'op') continue;
     const hp = Number(u.s.maxHp) || 0;
+    if (!(hp > 0)) continue;                       // 没上场的单位不参与一击线
     const def = Number(u.s.def) || 0;
     const res = Math.min(95, Number(u.s.res) || 0);
     physLine = Math.min(physLine, hp + def);
@@ -99,8 +105,8 @@ function combos(arr, k) {
   go(0, []);
   return out;
 }
-const COMBOS = combos(MINOR, 2);   // 2 小盟约组合（55 组）—— 3 组合留作抽样
-const ROUNDS = [15, 30, 45, 60];
+const COMBOS = [...combos(MINOR, 2), ...combos(MINOR, 3)];   // 2 小 + 3 小 全交叉（55 + 165 = 220 组）
+const ROUNDS = [15, 20, 30, 45, 60];
 
 const t0 = Date.now();
 const rows = [];
