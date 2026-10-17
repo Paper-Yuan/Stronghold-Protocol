@@ -56,22 +56,30 @@ export function getInfiniteCcResist(round) {
  * @param {{ hpMul?: number, atkMul?: number, speedMul?: number }} baseR15
  * @returns {{ hpMul: number, atkMul: number, speedMul: number }}
  */
-export function enemyInfiniteScale(round, baseR15 = { hpMul: 2.5, atkMul: 1.8, speedMul: 1.15 }) {
+export function enemyInfiniteScale(round, baseR15 = { hpMul: 1, atkMul: 1, speedMul: 1 }) {
   const r = Number(round) || 1;
-  if (r <= 15) {
-    return {
-      hpMul: Number(baseR15.hpMul) || 1,
-      atkMul: Number(baseR15.atkMul) || 1,
-      speedMul: Number(baseR15.speedMul) || 1,
-    };
-  }
-  const delta = r - 15;
-  // 生命值多项式+指数混合膨胀
-  const hpMul = (Number(baseR15.hpMul) || 2.5) * (1 + 0.12 * delta + 0.008 * delta * delta);
-  // 攻击力平滑线性递增
-  const atkMul = (Number(baseR15.atkMul) || 1.8) * (1 + 0.08 * delta);
-  // 移动速度硬上限限制在 2.5，防止敌人瞬移进门无法防御
-  const speedMul = Math.min(2.5, (Number(baseR15.speedMul) || 1.15) * (1 + 0.015 * delta));
+  const base = {
+    hpMul: Number(baseR15.hpMul) || 1,
+    atkMul: Number(baseR15.atkMul) || 1,
+    speedMul: Number(baseR15.speedMul) || 1,
+  };
+  if (r <= 15) return base;
+
+  // 业主 2026-10-17：「改成原指数，曲线稍微陡一点点」。
+  //
+  // 原版最高难度（ABYSS）R1–R15 的倍率是**纯指数**：hp = 1.2^k、atk = 1.1^k，k 基本每 5 回合 +1
+  // （R1 k=1 … R15 k=7）。超限以前用的是二次多项式 base×(1+0.12Δ+0.008Δ²)，到 R60 已经比
+  // 原版指数高 4.4 倍 —— 等于「原版的加速版」而不是「原版的延长」，玩家强度必然跟不上。
+  //
+  // 现在改成延续同一条指数，只把每档的底数从 1.2 抬到 1.24（hp）/ 1.12（atk）：
+  // 5 回合累计 ×1.71（原版 ×1.49），比原版陡一点，但仍是**同一种曲线形状**，后期不会失控。
+  const k = Math.max(0, Math.floor((r - 15) / 5)); // R16–R19 → 0，R20–R24 → 1 …
+  const HP_STEP = 1.24;
+  const ATK_STEP = 1.12;
+  const hpMul = base.hpMul * Math.pow(HP_STEP, k);
+  const atkMul = base.atkMul * Math.pow(ATK_STEP, k);
+  // 移动速度硬上限 2.5：防止敌人瞬移进门无法防御
+  const speedMul = Math.min(2.5, base.speedMul * (1 + 0.015 * (r - 15)));
 
   return { hpMul, atkMul, speedMul };
 }
@@ -85,9 +93,9 @@ export function enemyInfiniteScale(round, baseR15 = { hpMul: 2.5, atkMul: 1.8, s
 export function getInfiniteBossHp(baseHp, round) {
   const r = Number(round) || 15;
   if (r <= 15) return baseHp;
-  // 逐回合平滑复利（业主 2026-10-17 定：原来是「每 5 回合跳一档 ×1.35」，
-  // R19→R20 血量直接翻倍、R24→R25 却一动不动，手感是突然变硬而不是逐渐变硬）。
-  // 每回合 ×1.06，5 回合累计 ×1.338，与原来 ×1.35 同量级，但曲线连续、没有跳档。
-  // 注意不要在外面再套 Math.round 到 1.x 量级的倍率上（那会把相邻两档并成同一档）。
-  return Math.round(baseHp * Math.pow(1.06, Math.max(0, r - 15)));
+  // 与敌人倍率用同一条指数（enemyInfiniteScale 的 1.24 每档），Boss 才不会被杂兵反超。
+  // 原版 Boss 血点本身就是「一档 Boss 一个数」，这里把「档」对齐到每 5 回合 +1，
+  // 每档 ×1.24 —— 与杂兵同一条曲线，且逐档连续（不再是 1.06 的逐回合复利，也不是更早的 ×1.35 跳档）。
+  const k = Math.max(0, Math.floor((r - 15) / 5));
+  return Math.round(baseHp * Math.pow(1.24, k));
 }

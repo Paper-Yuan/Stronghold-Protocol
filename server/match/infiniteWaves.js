@@ -36,7 +36,7 @@ export function isInfiniteDoubleBossRound(round) {
  */
 export function buildInfiniteNormalWave(gd, rng, round) {
   const r = Number(round) || 16;
-  const baseScale = gd.enemyScale(15) || { hpMul: 2.5, atkMul: 1.8, speedMul: 1.15 };
+  const baseScale = gd.enemyScale(15) || { hpMul: 1, atkMul: 1, speedMul: 1 };
   const scale = enemyInfiniteScale(r, baseScale);
 
   // 从官方怪池中收集候选敌人
@@ -143,7 +143,7 @@ export function buildInfiniteBossWave(gd, rng, round) {
     ? (pool.length > 1 ? tierOf(Math.max(0, Math.min(pool.length - 2, bossIndex - 1))) : primaryBoss)
     : null;
 
-  const baseScale = gd.enemyScale(15) || { hpMul: 2.5, atkMul: 1.8, speedMul: 1.15 };
+  const baseScale = gd.enemyScale(15) || { hpMul: 1, atkMul: 1, speedMul: 1 };
   const scale = enemyInfiniteScale(r, baseScale);
 
   const spawns = [
