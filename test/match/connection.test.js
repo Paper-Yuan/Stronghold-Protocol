@@ -73,7 +73,9 @@ test('m.private shape in PREP matches DESIGN §8.3 (pieces, slots, bonds, effect
   assert.equal(priv.funds, 4);
   assert.equal(priv.shop.slots.length, 4);
   for (const s of priv.shop.slots) {
-    assert.deepEqual(Object.keys(s).sort(), ['basePrice', 'frozen', 'id', 'kind', 'price', 'sold']);
+    // `remaining`: fork 的商店槽位带上「本槽位还剩几个」（同 id 可重复出现时的计数），0.3.0 的槽位一直有它，
+    // 这条断言是那之前写的（2026-10-17 由 test/match 套件暴露）。
+    assert.deepEqual(Object.keys(s).sort(), ['basePrice', 'frozen', 'id', 'kind', 'price', 'remaining', 'sold']);
     assert.equal(s.frozen, false);
     assert.ok(s.kind === 'chess' || s.kind === 'item');
   }

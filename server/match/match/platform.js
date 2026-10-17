@@ -151,6 +151,53 @@ export class MatchPlatform {
     }
   }
 
+  /**
+   * 离场者的策略草稿状态：它还有没有未选的档位。
+   *
+   * 这两个方法（连同下面的 _fillBandDraftTurn）在 fork 与上游**都只有调用、没有定义** —— `_quit` 在
+   * BAND_DRAFT 阶段调用它们会抛 TypeError，被 `guard` 吞掉，于是离场者的 `draft.picks` 永远是 undefined，
+   * 而 `ps.eliminate` 之后的收尾也被跳过（2026-10-17 由 test/match 的 onLeave 用例暴露）。
+   * @param {any} d this.draft
+   * @param {string} playerId
+   * @returns {{ done: boolean, open: number[] }} open = 尚未选的档位序号
+   */
+  _bandPicksOf(d, playerId) {
+    const slots = Array.isArray(d && d.slots) ? d.slots : null;
+    if (slots) {
+      const open = [];
+      for (let i = 0; i < slots.length; i++) {
+        const picks = slots[i] && slots[i].picks;
+        if (!picks || !picks[playerId]) open.push(i);
+      }
+      return { done: open.length === 0, open };
+    }
+    // 单档草稿（标准/超限）：d.picks 是 playerId → bandId
+    const picked = !!(d && d.picks && d.picks[playerId]);
+    return { done: picked, open: picked ? [] : [0] };
+  }
+
+  /**
+   * 把一个离场者的草稿档位全部补成默认策略（`defaultBand` 会避开队友已选的）。
+   * 随机模式（多档）逐档补，单档只补一次。
+   * @param {any} d this.draft
+   * @param {any} ps the departing PlayerState
+   */
+  _fillBandDraftTurn(d, ps) {
+    const { open } = this._bandPicksOf(d, ps.playerId);
+    for (const slot of open) {
+      const id = this.defaultBand(ps.playerId);
+      if (Array.isArray(d.slots) && d.slots[slot]) {
+        d.slots[slot].picks = d.slots[slot].picks || {};
+        d.slots[slot].picks[ps.playerId] = id;
+      } else {
+        d.picks[ps.playerId] = id;
+      }
+      ps.bandId = ps.bandId || id;
+      if (!ps.lp) ps.lp = this.gd.startLp(id);
+    }
+    this.markPrivate(ps);
+  }
+
   onLeave(playerId) {
     const ps = this.players.get(playerId);
     if (!ps || ps.isBot || ps.left || this.disposed) return;
