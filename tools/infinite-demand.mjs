@@ -73,17 +73,15 @@ for (const x of rows) {
     Math.round(x.needHps).toLocaleString('en-US').padStart(9) + (x.boss ? '   BOSS ' + (x.bossId || '') : ''));
 }
 
-// ---- 对照表：固定同一个 Boss（boss_1，HARD 血点 1,800,000），只看超限成长带来的需求变化 ----
+// ---- 对照表：只列超限 Boss 轮的档位推进（先简单后难，不回环）----
 {
-  const FIXED = 'boss_1';
-  const rec = gd.boss(FIXED) || {};
-  const bp = num(rec.bloodPoint && (rec.bloodPoint[gd.difficulty] || rec.bloodPoint.HARD), 500000);
+  const pool = (gd.bossWeights(true) || []).slice();
+  const bloodOf = (id) => { const rec = gd.boss(id) || {}; const bp = rec.bloodPoint || {}; return num(bp[gd.difficulty] ?? bp.HARD, 0); };
+  pool.sort((a, b) => bloodOf(a[0]) - bloodOf(b[0]));
   console.log('');
-  console.log('  固定 ' + FIXED + '（血点 ' + bp.toLocaleString('en-US') + '）—— 排除「不同回合抽到不同 Boss」的噪声');
-  console.log('   R    Boss池(万)   时限   需求DPS');
-  for (const r of [20, 25, 30, 35, 40, 45, 50, 55, 60]) {
-    const hp = getInfiniteBossHp(bp, r) * (r >= 45 ? 2 : 1);
-    const limit = Math.max(1, num(gd.combatTimeLimit(r), 120));
-    console.log('  ' + String(r).padStart(2) + '  ' + (hp / 1e4).toFixed(1).padStart(10) + '  ' + String(Math.round(limit)).padStart(4) + '  ' + Math.round(hp / limit).toLocaleString('en-US').padStart(9) + (r >= 45 ? '  双BOSS' : ''));
+  console.log('  超限 Boss 档位（按血点升序，第 n 次 Boss 战取第 n 档，用完后停在最强档）');
+  console.log('   档   Boss     血点(万)   出场回合');
+  for (let i = 0; i < pool.length; i++) {
+    console.log('   ' + i + '   ' + pool[i][0].padEnd(7) + ' ' + (bloodOf(pool[i][0]) / 1e4).toFixed(1).padStart(9) + '   R' + (20 + i * 5));
   }
 }

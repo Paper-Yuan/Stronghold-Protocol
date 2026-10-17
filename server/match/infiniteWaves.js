@@ -115,12 +115,32 @@ export function buildInfiniteNormalWave(gd, rng, round) {
  */
 export function buildInfiniteBossWave(gd, rng, round) {
   const r = Number(round) || 20;
-  const bw = gd.bossWeights(false) || [];
-  const primaryBoss = bw.length ? weightedPick(rng, bw) : 'boss_01_crowns';
+  // 原版是**两个** Boss 池：普通 Boss 轮（bossWeights，HARD 78 万~210 万）与隐秘核心
+  // （hiddenBossWeights，280 万~380 万）。超限以前抽的是普通池，于是 R20 抽到 78 万的猩红血钻、
+  // R25 又抽到 210 万的昆图斯 —— 需求曲线在 3 倍之间乱跳。业主 2026-10-17：「无限 Boss 只保留更难的池」，
+  // 所以这里改用隐秘核心池；万一某个模式的隐秘池是空的，才退回普通池（不会变成没有 Boss）。
+  const hiddenPool = (gd.bossWeights(true) || []).slice();
+  const pool = hiddenPool.length ? hiddenPool : (gd.bossWeights(false) || []);
+  // 池内按血点从弱到强排序，再按「本场第几次 Boss 战」取档 —— 曲线单调往上，不再靠抽签。
+  const bloodOf = (id) => {
+    const rec = gd.boss(id) || {};
+    const bp = rec.bloodPoint || {};
+    return Number(bp[gd.difficulty] ?? bp.HARD ?? 0) || 0;
+  };
+  // 业主 2026-10-17：「无限 Boss 是先简单后难」。池内按血点升序（弱→强），
+  // 第 n 次 Boss 战取第 n 档；**不循环**——档位用完之后一直停在最强的那一个，
+  // 后面靠 getInfiniteBossHp 的逐回合成长继续加硬。以前用 `bossIndex % pool.length` 会回环，
+  // R35 又从最弱的 280 万开始，曲线呈锯齿（实测 R20→R35：2.8M → 3.6M → 3.8M → 2.8M）。
+  pool.sort((a, b) => bloodOf(a[0]) - bloodOf(b[0]));
+  const tierOf = (i) => pool[Math.min(pool.length - 1, Math.max(0, i))][0];
+  const bossIndex = Math.max(0, Math.floor((r - 20) / 5));   // R20→0, R25→1, R30→2 …
+  const primaryBoss = pool.length ? tierOf(bossIndex) : 'boss_8';
   const isDouble = isInfiniteDoubleBossRound(r);
 
+  // 双 Boss 轮（R45+）：主 Boss 用当前档，副 Boss 用**次强**那一档（不足两个就同款），
+  // 也不回环到弱 Boss —— 双 Boss 只会让这一轮更硬，不会忽然变软。
   const secondaryBoss = isDouble
-    ? (bw.length > 1 ? weightedPick(rng, bw.filter(([k]) => k !== primaryBoss)) : primaryBoss)
+    ? (pool.length > 1 ? tierOf(Math.max(0, Math.min(pool.length - 2, bossIndex - 1))) : primaryBoss)
     : null;
 
   const baseScale = gd.enemyScale(15) || { hpMul: 2.5, atkMul: 1.8, speedMul: 1.15 };
