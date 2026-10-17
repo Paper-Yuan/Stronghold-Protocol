@@ -33,11 +33,13 @@ test('超限开关的作用域：只有 solo_infinite 的局 isInfinite 为真',
 });
 
 test('超限局按自己的 bossRound 推进，Boss 输掉时在那里结束', () => {
+  // 假战自带 bossDps：每 tick 给 sharedBoss 掉血，池一空就 "cleared" —— 用它表达「Boss 战打赢」，
+  // 超限局才会走 bossRounds.js 的 isInfinite 分支继续下一回合（而不是收尾）。
   const h = makeMatch({ mode: 'solo_infinite', difficulty: 'HARD', seed: 11, fake: true,
-    script: () => ({ duration: 1, leaks: {} }) }).start();
+    script: () => ({ duration: 1, leaks: {}, bossDps: 1e9 }) }).start();
   h.autoHumans();
   const samples = [];
-  for (let r = 1; r <= 20; r++) {
+  for (let r = 1; r <= 60; r++) {
     const ok = h.drive(() => h.ended != null || (h.m.phase === 'PREP' && h.m.round === r));
     if (!ok || h.ended) break;
     const size = waveSize(h.m.wave);
@@ -46,6 +48,13 @@ test('超限局按自己的 bossRound 推进，Boss 输掉时在那里结束', (
   for (const s of samples) console.log('    R' + s.round + '\t怪 ' + s.total + ' 只' + s.kinds + ' 类\tLP ' + s.lp);
   // 前 11 回合必须一路推进（普通单机在前 11 回合也这么走）—— 说明超限没有在开头就断
   assert.ok(samples.length >= 3, '至少推进到 R16 之前要采到几个点');
+  // R16 起是无限波次的地盘：规模必须逐回合不降（实测 R16..R19 = 33 / 35 / 36 / 38）
+  const inf = samples.filter((x) => x.round >= 16 && x.total > 0);
+  assert.ok(inf.length >= 3, '没跑到 R16+ 的无限波次，最后一个采样点 R' + samples[samples.length - 1].round);
+  for (let i = 1; i < inf.length; i++) {
+    const prev = inf[i - 1], cur = inf[i];
+    assert.ok(cur.total >= prev.total, '无限波次规模回退：R' + prev.round + ' 的 ' + prev.total + ' → R' + cur.round + ' 的 ' + cur.total);
+  }
   // 结束只可能发生在 bossRound（这里 14）或更晚；不会在开头莫名结束
   if (h.ended) {
     assert.ok(h.ended.roundsPassed >= 10, '结束得太早：R' + h.ended.roundsPassed);
