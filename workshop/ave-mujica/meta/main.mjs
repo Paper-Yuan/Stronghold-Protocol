@@ -58,8 +58,10 @@ export function registerMeta(registry) {
       if (n > 0) ctx.addFunds(n * fund, 'bond:aveMujica');
     },
     // 4人: 可部署干员数量上限 +1（5人盟约效果翻倍 → +2）。固定值，不随成员数变化。改为在编队变化当帧即时结算
-    // —— 走 recompute 派发的 onBondChange（摆放 / 撤回成员都覆盖），不再等到下个休整期开始时才生效。
-    onBondChange(ctx, ev) {
+    // —— 走 recompute 派发的 onActiveBonds（摆放 / 撤回成员都覆盖），不再等到下个休整期开始时才生效。
+        // 本分支的 hook 名是 `onActiveBonds`（激活集合变化时派发，见 server/match/player/round.js _reportActiveBonds）；
+    // fork 里的 `onBondChange` 不在 effectsMeta.js 的 HOOKS 里，注册了也永远不会被调用（2026-10-17 实测）。
+    onActiveBonds(ctx, ev) {
       if (ev && ev.bondId && ev.bondId !== BOND) return;
       const p = params(ctx);
       const want = tierOf(ctx) >= 4 ? Math.max(1, Math.floor(num(p.deploy_slot, 1) * dblOf(ctx))) : 0;

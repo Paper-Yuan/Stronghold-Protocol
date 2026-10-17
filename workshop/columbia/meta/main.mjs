@@ -83,9 +83,9 @@ export function registerMeta(registry) {
    *   * 3 人 / 6 人档各发 1 件源石辅助仪（每档一次，幂等靠 counter）；
    *   * 6 人 <进入休整期时> 发 1 件阶级不超过调度中心的随机**进阶**装备。
    *
-   * ⚠ 发装置的时机必须挂在 **`onBondChange`** 而不是 `onBondActivate`：后者只在「未激活 → 激活」那一刻派发
+   * ⚠ 发装置的时机必须挂在 **`onActiveBonds`** 而不是 `onBondActivate`：后者只在「未激活 → 激活」那一刻派发
    * （server/match/player/round.js recompute），从 3 人档再加到 6 人档时盟约早就是激活态，不会再触发，6 人那件就永远发不出来
-   * （业主 2026-10-12 报告）。`onBondChange` 覆盖任意 count / tier 变化（激活那一次也在内），配合 counter 幂等。
+   * （业主 2026-10-12 报告）。`onActiveBonds` 覆盖任意 count / tier 变化（激活那一次也在内），配合 counter 幂等。
    */
   const columbiaBondPrep = () => {
     const grantDevice = (ctx, tag) => {
@@ -100,7 +100,9 @@ export function registerMeta(registry) {
       if (b.tier >= 2) grantDevice(ctx, 'six');
     };
     return {
-      onBondChange(ctx, ev) {
+          // 本分支的 hook 名是 `onActiveBonds`（激活集合变化时派发，见 server/match/player/round.js _reportActiveBonds）；
+    // fork 里的 `onBondChange` 不在 effectsMeta.js 的 HOOKS 里，注册了也永远不会被调用（2026-10-17 实测）。
+    onActiveBonds(ctx, ev) {
         if (!ev || ev.bondId !== BOND) return;
         grantTiers(ctx);
       },

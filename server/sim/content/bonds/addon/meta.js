@@ -175,7 +175,10 @@ export function registerMeta(registry) {
       const n = Math.min(2, memberCountAm(ctx));
       if (n > 0) ctx.addFunds(n * fund, 'bond:aveMujica');
     },
-    onBondChange(ctx, ev) {
+    // 本分支的 hook 名是 `onActiveBonds`（激活集合变化时派发，server/match/player/round.js _reportActiveBonds）：
+    // fork 里的 `onBondChange` 不在 effectsMeta.js 的 HOOKS 里，注册了永远不会被调用 —— 4 人档的「部署位 +1」
+    // 因此一直没生效（2026-10-17 实测：registry.warnings 里就是这一条）。
+    onActiveBonds(ctx, ev) {
       if (ev && ev.bondId && ev.bondId !== BOND_AM) return;
       const want = tierOfAm(ctx) >= 4 ? dblOfAm(ctx) : 0;
       const prev = ctx.counter('avemujica:deploy');
