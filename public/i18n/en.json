@@ -1884,5 +1884,9 @@
   "甄选干员": "Selected operators",
   "知道了": "Got it",
   "装备数据载入中…": "Loading equipment data…",
-  "装备一览": "Equipment list"
+  "装备一览": "Equipment list",
+  "加入一名 AI 队友": "Add an AI teammate",
+  "加 AI": "Add AI",
+  "补一名电脑队友": "Fill the seat with a bot",
+  "移除这名 AI 队友": "Remove this AI teammate"
 }

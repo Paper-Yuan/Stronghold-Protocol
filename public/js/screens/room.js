@@ -178,7 +178,7 @@ function CardPicker({ current, list, m, onPick, onClose }) {
   <//>`;
 }
 
-function SeatCard({ seat, index, room, facts, myId, busy, onKick, onInvite, searching, portraits, onPickCard = null }) {
+function SeatCard({ seat, index, room, facts, myId, busy, onKick, onInvite, onAddBot = null, onRemoveBot = null, searching, portraits, onPickCard = null }) {
   const seatAccount = useAccount(seat && !seat.isBot ? seat.playerId : null);
   const [bad, setBad] = useState(null);
   const flash = useRise(!!seat && (seat.ready || seat.isBot || seat.playerId === room.hostId));
@@ -191,8 +191,12 @@ function SeatCard({ seat, index, room, facts, myId, busy, onKick, onInvite, sear
         ${searching
           ? html`<span class="rseat__wait"><svg viewBox="0 0 40 48" aria-hidden="true"><path d="M20 2l5 5-5 5-5-5z" /><rect x="10" y="16" width="14" height="22" rx="3" /><path d="M24 22h10l-4 7 4 7H24" /></svg><small>STRONGHOLD PROTOCOL</small></span>`
           : invitable
-            ? html`<button type="button" class="rseat__invite" onClick=${onInvite} title=${t('复制同盟密钥以邀请队友')}>
-                <span class="rseat__plus" aria-hidden="true"></span><b>${t('邀请')}</b><small>${t('复制同盟密钥以邀请队友')}</small></button>`
+            ? html`<div class="rseat__actions">
+                <button type="button" class="rseat__invite" onClick=${onInvite} title=${t('复制同盟密钥以邀请队友')}>
+                  <span class="rseat__plus" aria-hidden="true"></span><b>${t('邀请')}</b><small>${t('复制同盟密钥以邀请队友')}</small></button>
+                ${onAddBot ? html`<button type="button" class="rseat__invite rseat__invite--ai" onClick=${onAddBot} title=${t('加入一名 AI 队友')}>
+                  <span class="rseat__plus rseat__plus--ai" aria-hidden="true"></span><b>${t('加 AI')}</b><small>${t('补一名电脑队友')}</small></button>` : null}
+              </div>`
             : html`<span class="rseat__wait"><small>${t('等待博士加入')}</small></span>`}
         <span class="rseat__noinfo" aria-hidden="true">NOINFO</span>
       </div>
@@ -220,6 +224,8 @@ function SeatCard({ seat, index, room, facts, myId, busy, onKick, onInvite, sear
         ? html`<span class="rseat__box"><${Icon} name="check" /></span>${isHostSeat && !seat.ready ? t('待命中') : t('已就绪')}`
         : html`<span class="rseat__box"></span>${t('准备中')}`}</span>
     </div>
+    ${seat.isBot && facts.isHost && onRemoveBot ? html`<button type="button" class="rseat__kick" disabled=${busy === `rmbot${index}`}
+      onClick=${() => onRemoveBot(index)} title=${t('移除这名 AI 队友')} aria-label=${t('移除 AI 队友')}><${Icon} name="robot" /><${Icon} name="close" /></button>` : null}
     ${!seat.isBot && !isMe && facts.isHost ? html`<button type="button" class="rseat__kick" disabled=${busy === `kick${index}`}
       onClick=${() => onKick(index, seat.name, seat.playerId)} title=${t('将该博士移出同盟')} aria-label=${t('移出该博士')}><${Icon} name="user" /><${Icon} name="close" /></button>` : null}
     <div class=${`rseat__plate${seatAccount?.card ? ' has-nc' : ''}`}>
@@ -453,6 +459,11 @@ export function RoomScreen() {
     const ok = await confirmDialog({ title: t('移出同盟'), text: t('确定将「{name}」移出同盟吗？对方可以凭同盟密钥重新加入。', { name: name || t('博士') }), okText: t('移出'), danger: true });
     if (ok) run(`kick${seat}`, () => net.request('room.kick', { seat, playerId }));
   };
+  // AI 队友（服务端 room.addBot / room.removeBot 早就有，只是客户端一直没给按钮）：
+  // 空座位「加 AI」，AI 座位「移除」。加了 AI 之后联机局里 pub.players 会带上 isBot=true，
+  // battle/aiDanmakuEvents.js 的 hasAiTeammates() 才会放行 AI 互动弹幕（此前联机局里那些弹幕永远不触发）。
+  const addBot = () => run('addbot', () => net.request('room.addBot', {}));
+  const removeBot = (seat) => run(`rmbot${seat}`, () => net.request('room.removeBot', { seat }));
   const setPrivate = (isPrivate) => run('privacy', () => net.request('room.setPrivate', { private: isPrivate }));
   const setMaxSeats = (n) => run('cap', () => net.request('room.setMaxSeats', { n })); // 2026-10-12: 4–10 seats
   const setDifficulty = (difficulty) => run('diff', async () => { await net.request('room.setDifficulty', { difficulty }); setPicker(false); });
@@ -540,7 +551,7 @@ export function RoomScreen() {
 
     <main class="rs-seats">
       ${facts.seats.map((s, i) => html`<${SeatCard} key=${s ? `p${s.playerId}` : `e${i}`} seat=${s} index=${i} room=${room} facts=${facts}
-        myId=${me.playerId} busy=${busy} onKick=${kick} onInvite=${() => copy('code')} searching=${searching} portraits=${portraits}
+        myId=${me.playerId} busy=${busy} onKick=${kick} onInvite=${() => copy('code')} onAddBot=${facts.isHost && coop && !searching ? addBot : null} onRemoveBot=${facts.isHost && coop && !searching ? removeBot : null} searching=${searching} portraits=${portraits}
         onPickCard=${cardList.length ? () => setPicking(true) : null} />`)}
       ${coop ? null : html`<aside class="solo-brief rs-brief brackets">
         <${MicroLabel} tone="mint">BRIEFING<//>
