@@ -69,6 +69,16 @@ if ($before -and $after -eq $before) { Write-Host '✘ 时间戳没变（没有�
 if ($SkipInstall) { Write-Host '== -SkipInstall：未安装 ==' -ForegroundColor Yellow; return }
 Write-Host '== 4/4 安装 ==' -ForegroundColor Cyan
 if (-not (Test-Path $Adb)) { throw "找不到 adb: $Adb" }
+# 没有设备时不要抛堆栈：构建已经成功，只是没法安装。给出可操作的提示并保留 APK。
+# 用 `adb devices` 的输出行数判断：每行形如 "<serial>\tdevice"，空列表只有表头。
+$devices = (@(& $Adb devices 2>&1) | Where-Object { $_ -match "\sdevice(\s|$)" } | Measure-Object).Count
+if ($devices -eq 0) {
+  Write-Host '⚠ 没有检测到已连接的手机（adb devices 为空）—— 构建已完成，APK 保留在：' -ForegroundColor Yellow
+  Write-Host ('   ' + $apk)
+  Write-Host '   接上 USB 并开启「USB 调试」后重跑本脚本，或手动执行：' -ForegroundColor DarkGray
+  Write-Host ('   adb install -r -d ' + [char]34 + $apk + [char]34) -ForegroundColor DarkGray
+  return
+}
 & $Adb install -r -d $apk
 if ($LASTEXITCODE -ne 0) { throw "adb install 失败 ($LASTEXITCODE)" }
 Write-Host '✔ 完成。首次启动会重新解压 bundle（2-5 分钟）。' -ForegroundColor Green
