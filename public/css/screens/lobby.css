@@ -2591,26 +2591,12 @@ button.ally-card:disabled { filter: grayscale(.7) brightness(.7); cursor: defaul
   pointer-events: none;
 }
 .hub-entries__row { transform-origin: right center; }
-/* 闲置淡出（业主 2026-10-17：「一段时间不点击默认透明些」）——ui/idleDim.js 在 <html> 上挂 is-idle。
-   只作用于大厅的操作类元素：两块牌子、模拟方式的格子、收起键、左上那排工具键。
-   信息类（标题、在线人数、版权之类）不动，避免整屏发灰。 */
-.lobby-hub .hub-plate,
-.lobby-hub .hub-entries__row > *,
-.lobby-hub .hub-fold,
-.lobby-hub .topbar__tools > .btn {
-  transition: opacity .45s ease;
-}
-.is-idle .lobby-hub .hub-plate,
-.is-idle .lobby-hub .hub-entries__row > *,
-.is-idle .lobby-hub .hub-fold,
-.is-idle .lobby-hub .topbar__tools > .btn { opacity: .42; }
-/* 指针落上去就是「我要用它」——立刻回到 100%，不等到下一次输入事件 */
-.is-idle .lobby-hub .hub-plate:hover,
-.is-idle .lobby-hub .hub-entries__row > *:hover,
+/* 闲置淡出（业主 2026-10-17：「透明只要要求收起键透明些」）——ui/idleDim.js 在 <html> 上挂 is-idle。
+   只作用于**两个收起键**：牌子、模拟方式格子、左上工具键一律不动（它们本来就是要被看见的操作入口）。
+   指针落上去立刻回到 100%，不等下一次输入事件；系统开了减少动态效果就不做过渡。 */
+.lobby-hub .hub-fold { transition: opacity .45s ease; }
+.is-idle .lobby-hub .hub-fold { opacity: .35; }
 .is-idle .lobby-hub .hub-fold:hover,
-.is-idle .lobby-hub .topbar__tools > .btn:hover,
 .is-idle .lobby-hub .hub-fold:focus-visible { opacity: 1; }
-@media (prefers-reduced-motion: reduce) {
-  .lobby-hub .hub-plate, .lobby-hub .hub-entries__row > *, .lobby-hub .hub-fold,
-  .lobby-hub .topbar__tools > .btn { transition: none; }
-}
+@media (prefers-reduced-motion: reduce) { .lobby-hub .hub-fold { transition: none; } }
+
