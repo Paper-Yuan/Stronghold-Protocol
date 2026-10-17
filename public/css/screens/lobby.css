@@ -2576,4 +2576,37 @@ button.ally-card:disabled { filter: grayscale(.7) brightness(.7); cursor: defaul
 .hub-right.is-folded > :not(.hub-fold) { display: none !important; }
 .hub-entries { position: relative; transition: none; }
 .hub-fold--modes { position: absolute; top: 50%; transform: translateY(-50%); left: calc(-1 * max(.26rem, 18px)); right: auto; z-index: 3; } /* 同上：左侧、挂在外面 */
-.hub-entries.is-folded .hub-entries__row { display: none; }
+/* 业主 2026-10-17：「模式的收起是直接向右侧直接收起，不要影响其他的显示」。
+   以前用 display:none，整排消失 → 下面的块整体上移，别的显示全被带动。
+   改成 transform: scaleX(0) + transform-origin: right：盒子仍占原位（transform 不触发重排），
+   内容向右收成一条线，立刻生效，右边其他显示一动不动。 */
+.hub-entries.is-folded .hub-entries__row {
+  transform: scaleX(0);
+  transform-origin: right center;
+  visibility: hidden;
+  pointer-events: none;
+}
+.hub-entries__row { transform-origin: right center; }
+/* 闲置淡出（业主 2026-10-17：「一段时间不点击默认透明些」）——ui/idleDim.js 在 <html> 上挂 is-idle。
+   只作用于大厅的操作类元素：两块牌子、模拟方式的格子、收起键、左上那排工具键。
+   信息类（标题、在线人数、版权之类）不动，避免整屏发灰。 */
+.lobby-hub .hub-plate,
+.lobby-hub .hub-entries__row > *,
+.lobby-hub .hub-fold,
+.lobby-hub .topbar__tools > .btn {
+  transition: opacity .45s ease;
+}
+.is-idle .lobby-hub .hub-plate,
+.is-idle .lobby-hub .hub-entries__row > *,
+.is-idle .lobby-hub .hub-fold,
+.is-idle .lobby-hub .topbar__tools > .btn { opacity: .42; }
+/* 指针落上去就是「我要用它」——立刻回到 100%，不等到下一次输入事件 */
+.is-idle .lobby-hub .hub-plate:hover,
+.is-idle .lobby-hub .hub-entries__row > *:hover,
+.is-idle .lobby-hub .hub-fold:hover,
+.is-idle .lobby-hub .topbar__tools > .btn:hover,
+.is-idle .lobby-hub .hub-fold:focus-visible { opacity: 1; }
+@media (prefers-reduced-motion: reduce) {
+  .lobby-hub .hub-plate, .lobby-hub .hub-entries__row > *, .lobby-hub .hub-fold,
+  .lobby-hub .topbar__tools > .btn { transition: none; }
+}
