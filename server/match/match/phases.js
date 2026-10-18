@@ -316,8 +316,10 @@ export class MatchPhases {
     // stages.json 的 groundPaths 同时包含 0..20 列的联机路径与两半场路径，而单人普通战场是
     // NORMAL_RECT(9..12, 0..10)：不过滤就会刷出起点在 col 18 的怪 —— 出生点在图外，看起来就是
     // 「怪从莫名其妙的地方出来 / 走到地图外面」。
-    const rect = this.isSolo ? GEO.NORMAL_RECT : (GEO.NORMAL_RECT);
-    const inRect = (p) => Array.isArray(p) && p.length === 2
+    // 这张图的战场矩形。超限是单人局，普通战场就是 NORMAL_RECT（9..12 行、0..10 列）。
+    // 匹配层没有 this.rect（那是 Battle 的字段）；超限是单人局，普通战场的矩形就是 NORMAL_RECT。
+    const rect = GEO.NORMAL_RECT;
+    const inRect = (p) => Array.isArray(p) && p.length === 2 && p.every(Number.isFinite)
       && p[0] >= rect.r0 - 0.5 && p[0] <= rect.r1 + 0.5
       && p[1] >= rect.c0 - 0.5 && p[1] <= rect.c1 + 0.5;
     for (const [key, pts] of Object.entries(paths)) {
@@ -326,8 +328,10 @@ export class MatchPhases {
       const s = from && from.split(",").map(Number);
       const e = to && to.split(",").map(Number);
       if (!s || !e || !s.every(Number.isFinite) || !e.every(Number.isFinite)) continue;
-      if (!inRect(s) || !inRect(e)) continue;   // 端点不在本战场 → 这条路径用不了
-      const mid = pts.slice(1, -1).filter((p) => Array.isArray(p) && p.length === 2 && p.every(Number.isFinite));
+      // 先按地图筛：**整条折线**（起、终、每一个折点）都必须落在这块战场里。
+      // 只查端点不够 —— 有一条路径可以两端都在场内、中间却绕到别的半场去。
+      if (!inRect(s) || !inRect(e) || !pts.every(inRect)) continue;
+      const mid = pts.slice(1, -1).filter(inRect);
       out.push({ motion: "WALK", start: [s[0], s[1]], end: [e[0], e[1]], checkpoints: mid });
     }
     if (!out.length) return [];
