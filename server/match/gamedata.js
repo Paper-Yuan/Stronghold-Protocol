@@ -97,6 +97,8 @@ export class GameData {
     this.raw = data && typeof data === 'object' ? data : {};
     this.config = getConfig(this.raw) || {};
     this.modeId = modeId;
+    /** 超限模拟：R1–R15 的敌人数值改用绝境表（Match 构造时置位） */
+    this.overlimit = false;
     this.mode = getMode(modeId, this.raw) || {};
     // Mode-level globals inherit field by field; the vanilla mode never changes its config object.
     const overrides = Object.fromEntries(Object.keys(this.config).filter(k => k !== 'modes' && Object.hasOwn(this.mode, k)).map(k => [k, this.mode[k]]));
@@ -446,7 +448,13 @@ export class GameData {
    * `enemy_exclude` leaves out the 14 器物 hit-count keys — they take hpMul / supplyHpMul (archetypes.js `times`).
    */
   baseEnemyScale(r) {
-    const e = this.mode.enemyScale && this.mode.enemyScale[String(r)];
+    // 超限模拟（界面上叫「绝境模拟」）的 R1–R15 用**绝境**的数值曲线（业主 2026-10-19）。
+    // 它的 modeId 是 mode_single_hard，但 HARD 的曲线是每 4 回合跳一档、R1 只有 ×0.8，
+    // 打起来前 15 回合几乎不涨；绝境是 R1 ×1.2、几乎每回合都在涨，才配得上「超限」。
+    const table = this.overlimit
+      ? (this.config?.modes?.mode_single_abyss?.enemyScale || this.mode.enemyScale)
+      : this.mode.enemyScale;
+    const e = table && table[String(r)];
     if (!e || typeof e !== 'object') return { hpMul: 1, atkMul: 1, speedMul: 1 };
     const supply = numOr(e.supplyHp, 1);
     return {

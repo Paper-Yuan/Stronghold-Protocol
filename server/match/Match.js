@@ -307,6 +307,8 @@ export class Match {
      * 这里按房间模式点亮它；别的模式一律 false，所以不会有任何超限规则漏进普通单机/同盟。
      */
     this.isInfinite = opts.mode === SOLO_INFINITE;
+    // 超限的 R1–R15 用绝境的数值曲线（gamedata.baseEnemyScale）
+    if (this.gd) this.gd.overlimit = this.isInfinite;
     // 超限局把盟约层数上限抬到 9999（普通模式仍是 999）。恢复放在 dispose 里，
     // 用「上一局的值」而不是常量，避免嵌套/并发时把别的对局的设置冲掉。
     this._bondCapPrev = this.isInfinite ? setBondLayerCap(INFINITE_BOND_LAYER_CAP) : null;

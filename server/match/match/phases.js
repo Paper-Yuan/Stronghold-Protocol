@@ -308,7 +308,7 @@ export class MatchPhases {
    * 飞行单位另走 FLY：没有现成的空中折线时，用地面路径的起终点直飞（原版飞行怪也是端点进出门）。
    * @returns {Array<{motion:string,start:number[],end:number[],checkpoints:Array}>}
    */
-  _infiniteRoutes(round) {
+  _infiniteRoutes(round, rect = GEO.NORMAL_RECT) {
     const stage = this.stage || (this.stageId ? this.gd.stage(this.stageId) : null);
     const paths = (stage && (stage.groundPaths || stage.groundPathsWithDevices)) || {};
     const out = [];
@@ -318,7 +318,6 @@ export class MatchPhases {
     // 「怪从莫名其妙的地方出来 / 走到地图外面」。
     // 这张图的战场矩形。超限是单人局，普通战场就是 NORMAL_RECT（9..12 行、0..10 列）。
     // 匹配层没有 this.rect（那是 Battle 的字段）；超限是单人局，普通战场的矩形就是 NORMAL_RECT。
-    const rect = GEO.NORMAL_RECT;
     const inRect = (p) => Array.isArray(p) && p.length === 2 && p.every(Number.isFinite)
       && p[0] >= rect.r0 - 0.5 && p[0] <= rect.r1 + 0.5
       && p[1] >= rect.c0 - 0.5 && p[1] <= rect.c1 + 0.5;
@@ -351,7 +350,7 @@ export class MatchPhases {
     this.bossWaves = groups.map((g) => ({
       players: g.map((p) => p.playerId),
       wave: (this.isInfinite && r >= 16)
-        ? buildInfiniteBossWave(this.gd, this.rngWaves, r, this._infiniteRoutes(r))
+        ? buildInfiniteBossWave(this.gd, this.rngWaves, r, this._infiniteRoutes(r, GEO.BOSS_RECT))
         : buildBossWave(this.gd, this.rngWaves, this.factions, r, { bossId, solo: this.isSolo || g.length === 1 }),
     }));
   }

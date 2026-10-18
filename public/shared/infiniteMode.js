@@ -76,10 +76,12 @@ export function enemyInfiniteScale(round, baseR15 = { hpMul: 1, atkMul: 1, speed
   //
   // 现在改成延续同一条指数，只把每档的底数从 1.2 抬到 1.24（hp）/ 1.12（atk）：
   // 5 回合累计 ×1.71（原版 ×1.49），比原版陡一点，但仍是**同一种曲线形状**，后期不会失控。
-  // 业主 2026-10-19：「进入无限轮次后怪没有吃到数值加成」——原来 R16–R19 的 k 是 0，
-  // 也就是这几轮和 R15 完全一样，玩家看不到任何增长。改成从 R16 起就计一档（R16–R20 → 1，R21–R25 → 2…），
-  // 保证「一进无限轮次就在涨」，同时保持同一条指数曲线的形状。
-  const k = Math.max(1, Math.ceil((r - 15) / 5)); // R16–R20 → 1，R21–R25 → 2 …
+  // 业主 2026-10-19：「进入无限轮次时依旧每回合平滑增长，中间不断」。
+  //
+  // 之前是每 5 回合跳一档（R16–R20 全一样、R21–R25 全一样），玩家打起来是「几轮没变，突然跳一下」。
+  // 现在把同一档的倍数摊到 5 个回合上：每回合 ×(1.24^(1/5)) ≈ ×1.0439，
+  // R15→R60 的总倍数和原来完全一致（1.24^9），只是曲线变成了连续上升。
+  const k = Math.max(0, (r - 15) / 5);
   const HP_STEP = 1.24;
   const ATK_STEP = 1.12;
   const hpMul = base.hpMul * Math.pow(HP_STEP, k);
@@ -99,9 +101,8 @@ export function enemyInfiniteScale(round, baseR15 = { hpMul: 1, atkMul: 1, speed
 export function getInfiniteBossHp(baseHp, round) {
   const r = Number(round) || 15;
   if (r <= 15) return baseHp;
-  // 与敌人倍率用同一条指数（enemyInfiniteScale 的 1.24 每档），Boss 才不会被杂兵反超。
-  // 原版 Boss 血点本身就是「一档 Boss 一个数」，这里把「档」对齐到每 5 回合 +1，
-  // 每档 ×1.24 —— 与杂兵同一条曲线，且逐档连续（不再是 1.06 的逐回合复利，也不是更早的 ×1.35 跳档）。
-  const k = Math.max(0, Math.floor((r - 15) / 5));
+  // 与杂兵同一条曲线、同样**每回合平滑**（业主 2026-10-19：「中间不断」）。
+  // 之前是每 5 回合跳一档（R20–R24 一样、R25–R29 一样），Boss 血量在两次 Boss 战之间完全不变。
+  const k = Math.max(0, (r - 15) / 5);
   return Math.round(baseHp * Math.pow(1.24, k));
 }

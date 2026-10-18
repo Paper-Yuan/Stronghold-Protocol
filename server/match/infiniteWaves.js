@@ -51,10 +51,22 @@ export function buildInfiniteNormalWave(gd, rng, round, routes = null) {
   for (const c of (gd.choices && Array.isArray(gd.choices.cards?.bounty) ? gd.choices.cards.bounty : [])) {
     if (c && typeof c.enemyKey === 'string') bountyKeys.add(c.enemyKey);
   }
+  // 召唤子怪全集：Boss / 精英召唤出来的那些（_msf*、_vts*、枯朽之种…）。
+  // 它们只在被召唤时出场，不该作为普通怪独立刷出来（业主 2026-10-19：「摒弃次数怪和 boss 附带的几个」）。
+  const summonChildren = new Set();
+  for (const rec of Object.values(enemies)) {
+    if (!Array.isArray(rec && rec.summons)) continue;
+    for (const sm of rec.summons) {
+      const key = typeof sm === 'string' ? sm : (sm && (sm.enemyKey || sm.key));
+      if (typeof key === 'string') summonChildren.add(key);
+    }
+  }
   for (const [key, e] of Object.entries(enemies)) {
     if (e.rank === 'BOSS') continue;              // BOSS 走 Boss 轮
     if (bountyKeys.has(key)) continue;            // 悬赏怪走悬赏 / 词条抉择
     if (e.tokenOnly) continue;                    // 召唤物 / 弹体不是独立敌人
+    if (summonChildren.has(key)) continue;        // 召唤子怪只由召唤者带出
+    if (/_msf|_vts/.test(key)) continue;          // 次数怪（Boss 的分身 / 计数靶）同理
     // 飞行判定与 waves.js 的 isFlyKey 一致：真实数据把 motion 放在 stats 里（e.motion 是旧字段，永远是 undefined）
     const st = e.stats || {};
     if (e.isFlyEnemy === true || st.motion === 'FLY' || e.motion === 'FLY') flyKeys.push(key);
@@ -171,12 +183,54 @@ export function buildInfiniteBossWave(gd, rng, round, routes = null) {
       count: 1,
       interval: 0,
       mods: {
+        // Boss 的血量由 bossPoolHp 单独算，但 mods.hpMul 必须给一个有限值，
+        // 否则预览 / sim 读到 undefined → NaN（业主 2026-10-19 看到的「R20 血量 NaN」）。
+        hpMul: 1,
         atkMul: scale.atkMul,
         speedMul: scale.speedMul,
       },
       preview: { fly: false, elite: false, boss: true },
     },
   ];
+
+  // Boss 的随从（data/enemies.json 的 summons）：原版 Boss 轮的模板里会带上它们，
+  // 超限是自己组波次，以前只放了 Boss 本体 —— 于是「假想敌：铳」没有碎铳之簧、
+  // 「假想敌：胄」没有刺胄之弹（业主 2026-10-19：「boss 生成时也得可以使用他们的能力来招出对应子怪」）。
+  const escorts = [];
+  for (const bossKey of [primaryBoss, secondaryBoss]) {
+    if (!bossKey) continue;
+    const ek = enemyKeyOf(bossKey);
+    // ① 数据里的 summons（胄 → 刺胄之弹、管 → 侍从…）
+    const rec = gd.enemy(ek);
+    for (const sm of (rec && Array.isArray(rec.summons)) ? rec.summons : []) {
+      const key = typeof sm === 'string' ? sm : (sm && (sm.enemyKey || sm.key));
+      if (typeof key === 'string' && !escorts.includes(key)) escorts.push(key);
+    }
+    // ② 原版 Boss 模板里的随从（铳的「碎铳之簧」只在这里 —— 它的 summons 是空的）
+    for (const tpl of Object.values(gd.raw?.waves || {})) {
+      const list = Array.isArray(tpl && tpl.spawns) ? tpl.spawns : [];
+      const hasBoss = list.some((sp) => sp && (sp.key || sp.enemyKey) === ek);
+      if (!hasBoss) continue;
+      for (const sp of list) {
+        const key = sp && (sp.key || sp.enemyKey);
+        if (typeof key !== 'string' || key === ek) continue;
+        // 只收「随从」：和 Boss 同一模板、且不是普通杂兵（模板里 Boss 同批出现的都算它的从属）
+        if (!escorts.includes(key)) escorts.push(key);
+      }
+      break;   // 一个 Boss 只取第一个模板
+    }
+  }
+  escorts.forEach((key, i) => {
+    spawns.push({
+      time: 4.5 + i * 1.5,
+      enemyKey: key,
+      routeIndex: (i + 1) % 3,
+      count: 1,
+      interval: 0,
+      mods: { hpMul: 1, atkMul: scale.atkMul, speedMul: scale.speedMul },
+      preview: { fly: false, elite: false, boss: false },
+    });
+  });
 
   if (isDouble && secondaryBoss) {
     spawns.push({
@@ -186,6 +240,9 @@ export function buildInfiniteBossWave(gd, rng, round, routes = null) {
       count: 1,
       interval: 0,
       mods: {
+        // Boss 的血量由 bossPoolHp 单独算，但 mods.hpMul 必须给一个有限值，
+        // 否则预览 / sim 读到 undefined → NaN（业主 2026-10-19 看到的「R20 血量 NaN」）。
+        hpMul: 1,
         atkMul: scale.atkMul,
         speedMul: scale.speedMul,
       },

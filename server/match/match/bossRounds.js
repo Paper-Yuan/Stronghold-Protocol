@@ -12,6 +12,7 @@ import { buildBossWave, bountySpawns } from '../waves.js';
 import { pairPlayers, bossPoolHp, SharedBossPool, CreditPool, hiddenEligible, BOSS_HIT_STEPS } from '../finalAssault.js';
 import { FieldRunner, HeadlessPacer, syntheticResult, BOSS_SILENCE_MS, CATCHUP_TICKS_PER_INTERVAL } from '../fields.js';
 import { FLOW_TICKER_PRIORITY, BOSS_CLOCK_MS, DELAYS } from './common.js';
+import { wantsTraitDraft } from './traitDraft.js';
 
 /** b.pool broadcasts at most this often (ms). */
 const POOL_MIN_GAP_MS = 250;
@@ -554,9 +555,15 @@ export class MatchBoss {
     this.runner = null;
     if (!hidden) {
       if (this.isInfinite && victory) {
-        this.later(this.scaled(DELAYS.SETTLE), () => {
+        // 业主 2026-10-19：「击败无限轮次的 boss 后及时显示词条选择」。
+        // 以前是 SETTLE(3s) → startRound(ROUND_START 2s) → afterRoundStart → TRAIT_DRAFT，一共 5 秒空等。
+        // 现在打完 Boss 直接进下一回合，并把 ROUND_START 的等待压到最短 —— 词条卡几乎是立刻弹出的。
+        this.later(this.scaled(800), () => {
           this.bossPool = null;
           this.startRound(this.round + 1);
+          if (this.phase === PHASE.ROUND_START && wantsTraitDraft(this, this.round)) {
+            this.enterTraitDraft(this.round);
+          }
         });
         return;
       }

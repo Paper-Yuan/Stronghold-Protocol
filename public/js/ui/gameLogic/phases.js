@@ -55,8 +55,14 @@ export function phaseBanner(phase, pub, { alive = true, spectator = false } = {}
     case PHASE.BATTLE_CHECK: return { title: t('协议启动'), micro: 'PROTOCOL START', tone: 'mint', sub: t('模拟即将开始'), duration: 2600 };
     // round income goes to the seats still in only (server/match/match/phases.js startRound; eliminate() zeroes funds
     // and pendingFunds): an eliminated player or a spectator seat reads 观战中, never 资金已到账 (GitHub #236, PR #237)
-    case PHASE.ROUND_START: return { title: t('第 {r} 回合', { r }), micro: `ROUND ${String(r).padStart(2, '0')}`, tone: 'mint',
-      sub: spectator || alive === false ? t('观战中') : t('资金已到账') };
+    case PHASE.ROUND_START: {
+      // 超限的 Boss 轮（R20/25/30…）：横幅要说清这是领袖轮，不是普通回合（业主 2026-10-19）
+      const infBoss = !!pub?.isInfinite && r >= 20 && r % 5 === 0;
+      if (infBoss) return { title: t('第 {r} 回合', { r }), micro: `ROUND ${String(r).padStart(2, '0')} // BOSS`, tone: 'red',
+        sub: spectator || alive === false ? t('观战中') : t('敌方领袖即将来袭') };
+      return { title: t('第 {r} 回合', { r }), micro: `ROUND ${String(r).padStart(2, '0')}`, tone: 'mint',
+        sub: spectator || alive === false ? t('观战中') : t('资金已到账') };
+    }
     case PHASE.SP_DRAFT: return { title: t('机变阶段'), micro: 'CONTINGENCY', tone: 'gold', sub: t('依次选择机变') };
     case PHASE.PREP: return { title: t('休整期'), micro: `ROUND ${String(r).padStart(2, '0')} // REST`, tone: 'mint', sub: t('部署干员，准备迎敌') };
     case PHASE.COMBAT: return { title: t('作战开始'), micro: 'COMBAT', tone: 'orange', sub: t('各自行动阶段') };
