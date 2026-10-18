@@ -41,6 +41,9 @@ export class MatchViews {
       case PHASE.BAND_DRAFT:
         if (this.draft && this.draft.picks[ps.playerId]) return 'ready';
         return this.draft && this.draftTurn() === ps.playerId ? 'deciding' : 'acting';
+      case PHASE.TRAIT_DRAFT:
+        return this.trait && this.trait.picks[ps.playerId] != null ? 'ready'
+          : (this.trait && this.traitTurn() === ps.playerId ? 'deciding' : 'acting');
       case PHASE.SP_DRAFT:
         if (this.sp && this.sp.picks[ps.playerId] != null) return 'ready';
         return this.sp && this.spTurn() === ps.playerId ? 'deciding' : 'acting';
@@ -136,6 +139,10 @@ export class MatchViews {
         order: d.order.slice(), turn: this.draftTurn(), picks: { ...d.picks }, skipsLeft: { ...d.skipsLeft }, turnDeadline: d.turnDeadline || 0,
         turnSeconds: d.untimed ? 0 : this.bandTurnMs() / 1000, untimed: !!d.untimed,
       };
+    }
+    if (this.phase === PHASE.TRAIT_DRAFT && this.trait) {
+      const t = this.trait;
+      v.trait = { round: t.round, polarity: t.polarity, cards: t.cards.slice(), turn: this.traitTurn(), picks: { ...t.picks } };
     }
     if (this.phase === PHASE.SP_DRAFT && this.sp) {
       const s = this.sp;

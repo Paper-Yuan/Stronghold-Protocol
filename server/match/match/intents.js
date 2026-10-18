@@ -40,6 +40,7 @@ export class MatchIntents {
       case 'g.choice': return msg.choiceId !== undefined
         ? this.pickPersonalChoice(ps, msg.idx, msg.choiceId)
         : this.pickCard(ps, msg.idx);
+      case 'g.traitChoice': return this.pickTrait(ps, msg.idx);
       case 'g.pickAny': return this.pickAnyChess(ps, msg.chessId);
       case 'g.ready': return ps.setReady(!!msg.ready);
       case 'g.emote': return this.emote(ps, msg.id);

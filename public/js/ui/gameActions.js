@@ -94,6 +94,8 @@ export const actions = {
   reroll: () => act('g.reroll', {}),
   reward: (idx) => act('g.reward', { idx }),
   choice: (idx, choiceId) => act('g.choice', choiceId === undefined ? { idx } : { idx, choiceId }),
+  /** 超限词条抉择：选第 idx 张 */
+  traitChoice: (idx) => act('g.traitChoice', { idx }),
   pickAny: (chessId) => act('g.pickAny', { chessId }),
   ready: (ready) => act('g.ready', { ready }, { sfx: ready ? 'ready' : 'back' }),
   emote: (id) => act('g.emote', { id }, { quiet: true }),

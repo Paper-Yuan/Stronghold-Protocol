@@ -20,6 +20,16 @@ export class PlayerRound {
     this.m.dispatch(this, 'onIncome', ev);
     const nonNeg = (v) => (Number.isFinite(v) && v > 0 ? Math.trunc(v) : 0);
     this.addFunds(nonNeg(ev.income) + nonNeg(ev.pending), { reason: 'income' });
+    // 超限词条（业主 2026-10-18）：富足 / 贫乏 的每回合资金，以及集群给的装备。
+    // 普通模式 this.m.traitSettleBundle 不存在 → 整段跳过，行为完全不变。
+    const ts = this.m && typeof this.m.traitSettleBundle === 'function' ? this.m.traitSettleBundle() : null;
+    if (ts) {
+      if (ts.funds) this.addFunds(ts.funds > 0 ? ts.funds : 0, { reason: 'trait' });
+      if (ts.funds < 0) this.funds = Math.max(0, this.funds + ts.funds);
+      for (const itemId of ts.giveItems || []) {
+        try { this.acquireItem(itemId, { source: 'trait' }); } catch { /* the pool refused: nothing to do */ }
+      }
+    }
     // temp is NOT wiped here: the last prep's deadline resolved what the player could act on (endPrep); what overflowed
     // after it (battle-result grants, SETTLE merges, returned equipment) is shown and usable in this prep (tempDue).
     // Queued reward offers (a promotion's pick, a strategy's special refresh, an item offer) are kept until picked —

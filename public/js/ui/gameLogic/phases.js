@@ -11,7 +11,8 @@ import { t } from '../../../../shared/i18n.js';
 // ---- phases ----------------------------------------------------------------------------------------
 
 const COMBAT_PHASES = new Set([PHASE.COMBAT, PHASE.UNITE, PHASE.FINAL_ASSAULT, PHASE.HIDDEN_CORE]);
-const PREP_PHASES = new Set([PHASE.PREP, PHASE.SP_DRAFT, PHASE.ROUND_START]);
+// TRAIT_DRAFT（超限词条抉择）沿用 prep 的画面：战场照常显示，抉择层叠在上面
+const PREP_PHASES = new Set([PHASE.PREP, PHASE.SP_DRAFT, PHASE.ROUND_START, PHASE.TRAIT_DRAFT]);
 
 /**
  * Which screen family a phase belongs to.

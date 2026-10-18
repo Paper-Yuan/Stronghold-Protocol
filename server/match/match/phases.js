@@ -7,6 +7,7 @@
 import { PHASE, ERR } from '../../../shared/constants.js';
 import { buildNormalWave, buildBossWave } from '../waves.js';
 import { isInfiniteBossRound, buildInfiniteNormalWave, buildInfiniteBossWave, capWaveKinds } from '../infiniteWaves.js';
+import { wantsTraitDraft } from './traitDraft.js';
 import { pairPlayers } from '../finalAssault.js';
 import { createRng, deriveSeed } from '../../sim/rng.js';
 import { botPickBand } from '../bot.js';
@@ -342,6 +343,8 @@ export class MatchPhases {
   }
 
   afterRoundStart() {
+    // 超限：通过 Boss 的下一回合先开词条抉择（业主 2026-10-18）；普通模式完全不走这里
+    if (wantsTraitDraft(this, this.round)) { this.enterTraitDraft(this.round); return; }
     if (this.gd.spRounds().includes(this.round)) this.enterSpDraft();
     else this.enterPrep();
   }

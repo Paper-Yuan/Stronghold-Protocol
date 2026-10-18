@@ -71,6 +71,37 @@ export class MatchSettle {
         ps.layers[bondId] = before + add;
         this.dispatch(ps, 'onLayers', { bondId, from: before, to: ps.layers[bondId], reason: 'battle' });
       }
+      // 超限词条（业主 2026-10-18）：再起 / 苛责 按完美作战回血或扣血；共栖 / 离散 调整本回合的层数增益。
+      // 普通模式 this.traitSettleBundle 不存在 → 整段跳过。
+      const ts = this.traitSettleBundle ? this.traitSettleBundle() : null;
+      if (ts) {
+        const perfect = counted === 0 && r.perfect !== false;
+        const dlp = (perfect ? ts.lpOnPerfect : 0) + (perfect ? 0 : ts.lpOnNotPerfect);
+        if (dlp) {
+          ps.lp = Math.max(0, ps.lp + dlp);
+          if (dlp > 0) ps.stats.lpGained = (ps.stats.lpGained || 0) + dlp;
+          else ps.stats.lpLost += -dlp;
+        }
+        if (ts.layerBonus) {
+          // 本回合战斗内获得的层数额外 ±1（逐条盟约）
+          for (const [bondId, n] of Object.entries(r.layerGains || {})) {
+            if (!this.gd.bond(bondId) || !(n > 0)) continue;
+            const extra = ts.layerBonus;
+            const before = ps.layers[bondId] || 0;
+            const add = layerGainRoom(before, Math.max(0, extra));
+            if (add > 0) { ps.layers[bondId] = before + add; }
+            else if (extra < 0) ps.layers[bondId] = Math.max(0, before + extra);
+          }
+        }
+        if (ts.stripLayers) {
+          // 不和：随机 N 个已激活盟约各扣 M 层
+          const ids = Object.entries(ps.layers || {}).filter(([, n]) => n > 0).map(([id]) => id);
+          this.rngMeta.shuffle(ids);
+          for (const id of ids.slice(0, ts.stripLayers.bonds)) {
+            ps.layers[id] = Math.max(0, (ps.layers[id] || 0) - ts.stripLayers.layers);
+          }
+        }
+      }
       this._charDamageTickers(ps, r);
       this.dispatch(ps, 'onBattleResult', { result: r, lpLoss: loss, perfect: counted === 0 && r.perfect !== false, unite: uniteResult || null });
       ps.recompute();

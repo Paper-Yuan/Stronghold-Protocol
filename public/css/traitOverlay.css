@@ -1,0 +1,213 @@
+/* public/css/traitOverlay.css — 超限「词条抉择」界面（业主 2026-10-18）
+   视觉与动效定稿自 public/dev/trait-preview；颜色全部走 theme.css 的既有变量。 */
+
+@property --trait-ring{syntax:'<angle>';initial-value:0deg;inherits:false}
+
+.traitov{
+  --pos:#39ffb0; --pos-hi:#8dffd4; --pos-a12:rgba(57,255,176,.12); --pos-a30:rgba(57,255,176,.30); --pos-a55:rgba(57,255,176,.55);
+  --neg:#e73118; --neg-hi:#ff6b52; --neg-a12:rgba(231,49,24,.13); --neg-a30:rgba(231,49,24,.34); --neg-a55:rgba(231,49,24,.56);
+  --acc:var(--pos); --acc-hi:var(--pos-hi); --acc-a12:var(--pos-a12); --acc-a30:var(--pos-a30); --acc-a55:var(--pos-a55);
+  position:absolute;inset:0;z-index:40;display:grid;place-items:center;
+  font-family:var(--font-cjk);color:var(--text-hi);
+}
+.traitov--neg{--acc:var(--neg);--acc-hi:var(--neg-hi);--acc-a12:var(--neg-a12);--acc-a30:var(--neg-a30);--acc-a55:var(--neg-a55)}
+.traitov__veil{position:absolute;inset:0;pointer-events:none;
+  background:linear-gradient(180deg,rgba(6,10,9,.62),rgba(6,10,9,.22) 40%,rgba(6,10,9,.34) 72%,rgba(6,10,9,.68));
+  animation:traitVeil .4s ease forwards}
+@keyframes traitVeil{from{opacity:0}to{opacity:1}}
+
+.traitov__head{position:absolute;top:9%;left:50%;transform:translateX(-50%);text-align:center;width:min(92vw,820px);pointer-events:none}
+.traitov__micro{display:inline-flex;align-items:center;gap:10px;font-family:var(--font-num);font-size:10px;
+  letter-spacing:.38em;color:var(--acc);opacity:0;animation:traitUp .46s .2s cubic-bezier(.2,.9,.2,1) forwards}
+.traitov__micro::before,.traitov__micro::after{content:'';width:26px;height:1px;background:linear-gradient(90deg,transparent,var(--acc))}
+.traitov__micro::after{background:linear-gradient(90deg,var(--acc),transparent)}
+.traitov__title-row{position:relative;display:inline-flex;align-items:center;gap:14px;margin-top:.32rem}
+.traitov__dia{width:9px;height:9px;border:1px solid var(--acc);transform:rotate(45deg);box-shadow:0 0 10px var(--acc-a55);
+  opacity:0;animation:traitDia .5s .34s cubic-bezier(.2,.9,.2,1) forwards}
+.traitov__title-row .traitov__dia:last-child{animation-delay:.4s}
+@keyframes traitDia{from{opacity:0;transform:rotate(45deg) scale(.4)}to{opacity:1;transform:rotate(45deg) scale(1)}}
+.traitov__title-row h2{margin:0;font-family:var(--font-display);font-size:clamp(21px,3.1vw,36px);font-weight:700;
+  letter-spacing:.14em;color:var(--text-hi);text-shadow:0 0 30px var(--acc-a55);
+  opacity:0;animation:traitUp .5s .38s cubic-bezier(.2,.9,.2,1) forwards}
+.traitov__rule{position:relative;height:7px;margin:.6rem auto 0;width:0;animation:traitRule .64s .46s cubic-bezier(.2,.9,.2,1) forwards}
+.traitov__rule::before,.traitov__rule::after{content:'';position:absolute;left:0;right:0;height:1px;
+  background:linear-gradient(90deg,transparent,var(--acc),transparent)}
+.traitov__rule::before{top:0}
+.traitov__rule::after{top:6px;opacity:.42}
+@keyframes traitRule{to{width:min(70%,480px)}}
+.traitov__sub{margin:.5rem 0 0;font-size:clamp(10.5px,1.1vw,12.5px);color:var(--text-lo);letter-spacing:.05em;
+  opacity:0;animation:traitUp .46s .54s cubic-bezier(.2,.9,.2,1) forwards}
+.traitov__sub b{color:var(--acc-hi);font-weight:600}
+@keyframes traitUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+
+.traitov__cards{position:absolute;top:51%;left:50%;transform:translate(-50%,-45%);
+  display:flex;gap:clamp(10px,2vw,28px);perspective:1500px}
+
+.tcard{position:relative;width:clamp(150px,19vw,232px);height:clamp(232px,30vw,330px);
+  cursor:pointer;isolation:isolate;--cut:10px;
+  clip-path:polygon(var(--cut) 0,100% 0,100% calc(100% - var(--cut)),calc(100% - var(--cut)) 100%,0 100%,0 var(--cut));
+  background:linear-gradient(180deg,rgba(30,38,35,.46),rgba(16,21,19,.42));
+  -webkit-backdrop-filter:blur(10px) saturate(1.1);backdrop-filter:blur(10px) saturate(1.1);
+  transform-origin:50% 92%;opacity:0;transform:translateY(38px) rotateY(22deg) scale(.86);
+  animation:tcardIn .58s cubic-bezier(.18,.92,.24,1.05) forwards;
+  transition:transform .2s cubic-bezier(.2,.9,.2,1),box-shadow .2s ease}
+.tcard:nth-child(1){animation-delay:.5s}
+.tcard:nth-child(2){animation-delay:.62s}
+.tcard:nth-child(3){animation-delay:.74s}
+@keyframes tcardIn{0%{opacity:0;transform:translateY(38px) rotateY(22deg) scale(.86)}
+  64%{opacity:1;transform:translateY(-6px) rotateY(0) scale(1.03)}
+  100%{opacity:1;transform:translateY(0) rotateY(0) scale(1)}}
+.traitov__cards.is-ready .tcard{animation:none;opacity:1;transform:none}
+
+.tcard__ring{position:absolute;inset:0;pointer-events:none;z-index:4;padding:1.5px;
+  background:conic-gradient(from var(--trait-ring),transparent 0 214deg,var(--acc-a30) 252deg,var(--acc) 282deg,var(--acc-a30) 312deg,transparent 350deg);
+  -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;
+  mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);mask-composite:exclude;
+  opacity:0;animation:traitRingSpin 3.4s linear infinite;transition:opacity .3s ease}
+.tcard__ring--glow{padding:4px;filter:blur(4px);z-index:3;animation:traitRingSpin 3.4s linear infinite,traitRingGlow 3.4s ease-in-out infinite}
+.is-ready .tcard__ring{opacity:.95}
+.is-ready .tcard__ring--glow{opacity:.55}
+@keyframes traitRingSpin{to{--trait-ring:360deg}}
+@keyframes traitRingGlow{0%,100%{filter:blur(4px)}50%{filter:blur(6px)}}
+
+.tcard__frame{position:absolute;inset:0;pointer-events:none;z-index:2}
+.tcard__frame i{position:absolute;background:var(--acc);opacity:.5}
+.tcard__frame .t{left:var(--cut);right:0;top:0;height:1px;transform:scaleX(0);transform-origin:left}
+.tcard__frame .r{right:0;top:0;bottom:0;width:1px;transform:scaleY(0);transform-origin:top}
+.tcard__frame .b{right:0;left:0;bottom:0;height:1px;transform:scaleX(0);transform-origin:right}
+.tcard__frame .l{left:0;top:var(--cut);bottom:0;width:1px;transform:scaleY(0);transform-origin:bottom}
+.is-ready .tcard__frame i{animation:traitDrawX .42s cubic-bezier(.2,.9,.2,1) forwards}
+.is-ready .tcard__frame .r,.is-ready .tcard__frame .l{animation-name:traitDrawY;animation-duration:.3s}
+.is-ready .tcard__frame .r{animation-delay:.18s}
+.is-ready .tcard__frame .b{animation-delay:.3s}
+.is-ready .tcard__frame .l{animation-delay:.48s}
+@keyframes traitDrawX{to{transform:scaleX(1)}}
+@keyframes traitDrawY{to{transform:scaleY(1)}}
+
+.tcard__brk{position:absolute;width:12px;height:12px;border:1px solid var(--acc);opacity:0;z-index:2}
+.tcard__brk.tl{left:-1px;top:-1px;border-right:0;border-bottom:0}
+.tcard__brk.tr{right:-1px;top:-1px;border-left:0;border-bottom:0}
+.tcard__brk.bl{left:-1px;bottom:-1px;border-right:0;border-top:0}
+.tcard__brk.br{right:-1px;bottom:-1px;border-left:0;border-top:0}
+.is-ready .tcard__brk{animation:traitBrk .3s cubic-bezier(.2,.9,.2,1) forwards}
+.is-ready .tcard__brk.tr{animation-delay:.05s}
+.is-ready .tcard__brk.br{animation-delay:.1s}
+.is-ready .tcard__brk.bl{animation-delay:.15s}
+@keyframes traitBrk{from{opacity:0;transform:scale(.5)}to{opacity:.85;transform:scale(1)}}
+
+.tcard__scan{position:absolute;left:0;right:0;height:26%;top:-26%;pointer-events:none;z-index:3;opacity:0;
+  background:linear-gradient(180deg,transparent,var(--acc-a12) 62%,var(--acc-a55) 100%)}
+.is-ready .tcard__scan{animation:traitScan .72s cubic-bezier(.4,0,.6,1) forwards}
+@keyframes traitScan{0%{opacity:0;top:-26%}12%{opacity:1}100%{opacity:0;top:100%}}
+
+.tcard:hover{transform:translateY(-9px) scale(1.02);
+  box-shadow:0 24px 56px rgba(0,0,0,.55),0 0 0 1px var(--acc-a30),0 0 32px var(--acc-a30)}
+.tcard:hover .tcard__ring{opacity:1}
+.tcard:hover .tcard__ring--glow{opacity:.8}
+
+.tcard.is-selected{z-index:3;transform:translateY(-8px) scale(1.03);
+  transition:transform .34s cubic-bezier(.34,1.56,.64,1),box-shadow .3s ease;
+  box-shadow:0 28px 66px rgba(0,0,0,.6),0 0 0 1px var(--acc-a30),0 0 34px var(--acc-a12)}
+.tcard.is-selected .tcard__ring{opacity:1;animation-duration:.92s}
+.tcard.is-selected .tcard__brk{animation:none;opacity:1;transition:transform .3s cubic-bezier(.34,1.56,.64,1)}
+.tcard.is-selected .tcard__brk.tl{transform:translate(3px,3px)}
+.tcard.is-selected .tcard__brk.tr{transform:translate(-3px,3px)}
+.tcard.is-selected .tcard__brk.bl{transform:translate(3px,-3px)}
+.tcard.is-selected .tcard__brk.br{transform:translate(-3px,-3px)}
+.tcard.is-moving{transform:translateX(var(--to-center,0)) translateY(-10px) scale(1.045);
+  transition:transform .62s cubic-bezier(.3,.9,.25,1)}
+
+.tcard.is-deleting{z-index:1;pointer-events:none;
+  animation:traitCyberFlicker .58s steps(1,end) forwards;animation-delay:var(--del-delay,0ms)}
+.tcard.is-deleting .tcard__ring{opacity:0;transition:opacity .2s ease}
+.tcard.is-deleting::before,.tcard.is-deleting::after{content:'';position:absolute;inset:0;pointer-events:none;
+  mix-blend-mode:screen;z-index:5;animation:traitCyberSlices .58s steps(1,end) forwards;animation-delay:var(--del-delay,0ms)}
+.tcard.is-deleting::before{background:repeating-linear-gradient(180deg,var(--acc-a55) 0 2px,transparent 2px 9px);transform:translateX(-2px);opacity:.55}
+.tcard.is-deleting::after{background:repeating-linear-gradient(180deg,rgba(255,255,255,.22) 0 2px,transparent 2px 13px);transform:translateX(2px);opacity:.5}
+.tcard.is-deleting.is-wiped{animation:traitCyberWipe .4s cubic-bezier(.7,0,.3,1) forwards;animation-delay:var(--del-delay,0ms)}
+.tcard.is-deleting.is-wiped::before,.tcard.is-deleting.is-wiped::after{animation:none;opacity:0}
+@keyframes traitCyberFlicker{
+  0%{opacity:1;transform:translateX(0) scale(1);filter:none}
+  14%{opacity:.72;transform:translateX(-4px) scale(1.008);filter:contrast(1.25) brightness(1.12)}
+  24%{opacity:1;transform:translateX(3px) scale(1);filter:none}
+  40%{opacity:.62;transform:translateX(-3px) scale(.996);filter:contrast(1.35) brightness(1.18)}
+  50%{opacity:1;transform:translateX(2px) scale(1);filter:none}
+  70%{opacity:.78;transform:translateX(-2px) scale(1);filter:contrast(1.2)}
+  82%{opacity:1;transform:translateX(0) scale(1);filter:none}
+  100%{opacity:1;transform:translateX(0) scale(1);filter:none}}
+@keyframes traitCyberSlices{
+  0%{clip-path:inset(0 0 100% 0);opacity:0}
+  12%{clip-path:inset(14% 0 58% 0);opacity:.85}
+  26%{clip-path:inset(46% 0 32% 0);opacity:.85}
+  40%{clip-path:inset(8% 0 74% 0);opacity:.85}
+  54%{clip-path:inset(68% 0 10% 0);opacity:.85}
+  66%{clip-path:inset(32% 0 44% 0);opacity:.7}
+  78%{clip-path:inset(82% 0 4% 0);opacity:.7}
+  88%{clip-path:inset(22% 0 66% 0);opacity:.5}
+  100%{clip-path:inset(49% 0 49% 0);opacity:0}}
+@keyframes traitCyberWipe{
+  0%{opacity:1;transform:translateX(0) scaleY(1);filter:brightness(1.25)}
+  40%{opacity:1;transform:translateX(0) scaleY(.05);filter:brightness(1.6)}
+  100%{opacity:0;transform:translateX(0) scaleY(0);filter:brightness(1.6)}}
+
+.tcard__tag{position:absolute;top:10px;left:16px;z-index:2;font-family:var(--font-num);font-size:9px;
+  letter-spacing:.2em;padding:3px 7px;color:var(--acc-hi);background:var(--acc-a12);border-left:2px solid var(--acc)}
+.tcard__tag--special{color:#ff4d3d;background:rgba(231,49,24,.16);border-left-color:#e73118;
+  font-family:var(--font-cjk);font-size:clamp(10px,.95vw,11.5px);font-weight:800;letter-spacing:.06em;
+  text-shadow:0 0 10px rgba(231,49,24,.6)}
+.tcard__boss{position:absolute;top:10px;right:12px;z-index:2;font-family:var(--font-num);font-size:8.5px;
+  letter-spacing:.2em;padding:2px 6px;color:#ffd88a;background:rgba(255,198,0,.14);border:1px solid rgba(255,198,0,.4)}
+
+.tcard__art{height:40%;display:grid;place-items:center;margin-top:6px;position:relative;
+  background:radial-gradient(66% 66% at 50% 44%,var(--acc-a12),transparent 72%)}
+.tcard__diamond{position:absolute;width:56px;height:56px;transform:rotate(45deg) translateY(5px);
+  border:1px solid var(--acc-a30);pointer-events:none;box-shadow:inset 0 0 18px var(--acc-a12)}
+.tcard__icon{width:60px;height:60px;object-fit:contain;display:block;transform:translateY(7px);
+  -webkit-mask-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cfilter id='b'%3E%3CfeGaussianBlur stdDeviation='7'/%3E%3C/filter%3E%3Cpath d='M50 3 L97 50 L50 97 L3 50 Z' fill='%23fff' filter='url(%23b)'/%3E%3C/svg%3E");
+  mask-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cfilter id='b'%3E%3CfeGaussianBlur stdDeviation='7'/%3E%3C/filter%3E%3Cpath d='M50 3 L97 50 L50 97 L3 50 Z' fill='%23fff' filter='url(%23b)'/%3E%3C/svg%3E");
+  -webkit-mask-size:100% 100%;mask-size:100% 100%;-webkit-mask-repeat:no-repeat;mask-repeat:no-repeat;
+  filter:drop-shadow(0 3px 8px rgba(0,0,0,.5))}
+
+.tcard__body{position:relative;z-index:2;padding:0 13px 12px}
+.tcard__mob{font-size:clamp(12.5px,1.2vw,14.5px);font-weight:700;color:var(--text-hi);letter-spacing:.02em;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tcard__sep{position:relative;height:1px;margin:9px 0 8px;background:linear-gradient(90deg,rgba(255,255,255,.12),transparent)}
+.tcard__sep::before{content:'';position:absolute;left:0;top:-1px;width:14px;height:3px;background:var(--acc);opacity:.75}
+.tcard__sep--tight{margin:7px 0 6px;background:linear-gradient(90deg,rgba(255,255,255,.08),transparent)}
+.tcard__sep--tight::before{width:10px;height:2px;opacity:.6}
+.tcard__traitname{font-size:clamp(11.5px,1.05vw,13px);font-weight:800;letter-spacing:.04em;color:var(--acc-hi);margin-bottom:3px}
+.tcard__traitname::before{content:'';display:inline-block;width:3px;height:10px;margin-right:6px;vertical-align:-1px;
+  background:var(--acc);opacity:.9}
+.tcard__trait{font-size:clamp(11px,1vw,12.5px);line-height:1.52;color:var(--text-md)}
+.tcard__specdesc{font-size:clamp(11px,1vw,12.5px);line-height:1.52;color:var(--text-md)}
+
+.tcard--special{display:flex;flex-direction:column;
+  background:radial-gradient(120% 90% at 50% 8%,rgba(231,49,24,.2),transparent 62%),
+             linear-gradient(180deg,rgba(38,26,24,.62),rgba(16,11,10,.56))}
+.tcard--special .tcard__wm{position:absolute;inset:auto 0 -12% 0;height:78%;z-index:0;pointer-events:none;
+  background:var(--sigil) center/contain no-repeat;opacity:.16;
+  -webkit-mask-image:linear-gradient(180deg,transparent,#000 34%,#000 74%,transparent);
+  mask-image:linear-gradient(180deg,transparent,#000 34%,#000 74%,transparent)}
+.tcard--special .tcard__specdesc b{color:#ff8f7a;font-weight:700}
+
+.tcard__pick{position:absolute;inset:0;display:grid;place-items:center;pointer-events:none;opacity:0;z-index:6;
+  transition:opacity .16s ease}
+.tcard.is-selected .tcard__pick{opacity:1}
+.tcard.is-folder .tcard__pick{opacity:0}
+.tcard__pick span{font-family:var(--font-num);font-size:10.5px;letter-spacing:.32em;padding:7px 15px 7px 17px;
+  color:#06120e;background:var(--acc);
+  clip-path:polygon(7px 0,100% 0,100% calc(100% - 7px),calc(100% - 7px) 100%,0 100%,0 7px);
+  box-shadow:0 6px 22px var(--acc-a55)}
+
+@media (max-width:760px){
+  .traitov__cards{gap:8px}
+  .tcard{width:clamp(96px,29vw,200px);height:clamp(210px,62vw,320px)}
+  .tcard__icon{width:46px;height:46px}
+  .tcard__diamond{width:42px;height:42px}
+  .tcard__trait,.tcard__specdesc{font-size:10px;line-height:1.45}
+}
+@media (max-width:430px){
+  .traitov__cards{gap:6px}
+  .tcard{width:clamp(88px,28.5vw,150px)}
+  .tcard__trait,.tcard__specdesc{font-size:9.4px;line-height:1.42}
+}

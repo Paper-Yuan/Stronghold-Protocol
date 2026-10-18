@@ -56,6 +56,8 @@ export class MatchCombat {
     const input = ps.battleInput({ side: 'L', colOffset: 0 });
     // the client's list: bounty units inserted among their host action's own units, which are re-timed around them
     const spawns = withBounties(this.gd, this.round, wave, ps.bounties, ps.playerId).map((s) => ({ ...s, ownerPlayerId: ps.playerId }));
+    // 超限词条抉择选中的怪：本轮出场，且不带悬赏金（业主 2026-10-18）
+    for (const s of (this.traitSpawnFor ? this.traitSpawnFor(this.round) : [])) spawns.push(s);
     const ev = { input, kind: 'normal', round: this.round, spawns, ...(preview ? { preview: true } : {}) };
     // Preview construction failures go to the rehearsal's discard path, never Match.dispatch's live error sink.
     if (preview) this.dispatcher.dispatch(ps, 'onBattleStart', ev);
@@ -72,9 +74,10 @@ export class MatchCombat {
       spawns: this._sanitizeSpawns(Array.isArray(ev.spawns) ? ev.spawns : spawns, ps.playerId),
       routes: wave.routes,
       sharedBoss: null,
-      flags: this._rmSpecFlags({ layerGainsEnabled: true, ...this.gd.dp }),
+      // 超限词条：静态修正合并进 flags（普通模式 this.traitMods 为空，等价于原来的对象）
+      flags: this._rmSpecFlags({ layerGainsEnabled: true, ...this.gd.dp, ...(this.traitFlagBundle ? this.traitFlagBundle() : {}) }),
       fieldId: `n:${ps.playerId}`,
-      enemyOverrides: wave.overrides,
+      enemyOverrides: { ...(wave.overrides || {}), ...(this.specialOverrides ? this.specialOverrides() : {}) },
       waveId: wave.templateId,
     };
   }
