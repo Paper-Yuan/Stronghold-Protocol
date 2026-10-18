@@ -215,14 +215,13 @@ export const LOBBY_DEFAULTS = Object.freeze({
 export const SOLO_RECONNECT_FALLBACK_SEC = 86_400;
 
 /** Display names for AI teammates (the tutorial NPCs first, then a few familiar faces). */
-// AI 队友的名字（业主 2026-10-18：用明日方舟 B 站 UP 主 / 仙术杯选手，代替原来的干员名）。
-// 前半是业主点名的方舟区熟面孔，后半是从仙术杯历届赛程里能查到的参赛选手
-// （B 站检索「仙术杯」的录播/切片标题里出现的选手名）。
+// AI 队友的名字（业主 2026-10-18）：明日方舟区 B 站 UP 主 / 仙术杯选手，每局**随机**取一个没用过的。
+// 房间上限是 4 座（shared/constants.js MAX_SEATS），29 个名字远超需要，所以永远不会落到编号兜底。
 // 不加「AI·」前缀 —— 座位上的机器人图标和 AUTONOMOUS UNIT 已经说明了它是电脑。
 export const BOT_NAMES = Object.freeze([
-  '龙哥哥今天又鸽了', '魔法Zc目录', '卡特亚', '盐鱼OvO', '小狼XF', '血狼破军',
-  '极东折跃', '北伴', '罗德岛孙哥', '阿米娅的刀客塔',
-  '萧然Q', 'A2', '早咲', '仿佛', '三笙', '金有才',
+  '龙哥哥', '魔法Zc目录', '血狼破军', '萧然Q', '绝命笋干', '三笙ycyx', '维云斯', 'MR流星飞', '有毒的粽子', '时差',
+  '伊颜轩', '桐闲之空', '罗德岛德狗分岛', '号角鸽', '金乌_', '欧的堵', '棋棋steins', '若亭', 'E某人QAQ', '里雪',
+  '天离beta', '余余银', '重生之冰', '剑圣Kensei', '梦游的花舞', 'CSZDCR', '绵阳怪兽', '逗比寒MillerRHan', '久城kazuya',
 ]); // i18n-ignore: player names (docs/I18N.md)
 
 /** Room chat (room.chat): the length the server actually sends (the wire bound in shared/protocol.js is looser). */
@@ -1123,7 +1122,9 @@ export class Lobby {
     const idx = room.freeSeat();
     if (idx < 0) return fail(ERR.ROOM_FULL);
     const used = new Set(room.seats.filter((s) => s && s.isBot).map((s) => s.name));
-    const name = BOT_NAMES.find((n) => !used.has(n)) || `陪练${idx + 1}`;
+    // 从还没被占用的名字里随机取一个（业主 2026-10-18：随机，不按顺序）
+    const pool = BOT_NAMES.filter((n) => !used.has(n));
+    const name = pool.length ? pool[randomInt(pool.length)] : `陪练${idx + 1}`;
     let playerId;
     do playerId = 'ai_' + randomBytes(4).toString('hex'); while (room.seatOf(playerId));
     room.seats[idx] = { seat: idx, playerId, name, isBot: true, ready: true, connected: true, left: false };
