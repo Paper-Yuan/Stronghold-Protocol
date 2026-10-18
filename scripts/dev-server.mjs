@@ -13,6 +13,7 @@ const arg = (name, def) => {
 const wantRound = Number(arg('round', 16));
 const wantFunds = Number(arg('funds', 9999));
 const wantLevel = Number(arg('level', 6));
+const wantLp = Number(arg('lp', 999));
 const port = Number(process.env.PORT) || 3000;
 
 const srv = await startServer({ port, host: '127.0.0.1' });
@@ -32,6 +33,7 @@ setInterval(() => {
   for (const ps of m.players.values()) {
     ps.funds = wantFunds;
     ps.shop.level = wantLevel;
+    ps.lp = wantLp;   // 测 Boss 轮时把 LP 拉满，免得中途被淘汰
     ps.recompute?.();
     ps.dirty?.();
   }

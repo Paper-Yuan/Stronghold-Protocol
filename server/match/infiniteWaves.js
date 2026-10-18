@@ -248,6 +248,10 @@ export function buildInfiniteBossWave(gd, rng, round, routes = null) {
     {
       time: 3.0,
       enemyKey: enemyKeyOf(primaryBoss),
+      // **必须有 tag:'boss'**：sim 的 spawns.js 只有看到它才把 e.bossPool 绑到共享血池上。
+      // 丢了 tag → Boss 不绑血池 → 伤害不进池 → lifecycle 的 sharedBoss.hp<=0 永远不成立 →
+      // 战斗挂到 timeLimit 才结束，玩家看到的就是「R20 打完卡死」（业主 2026-10-19）。
+      tag: 'boss',
       routeIndex: routes && routes.length ? 0 : 0,
       count: 1,
       interval: 0,
@@ -312,6 +316,7 @@ export function buildInfiniteBossWave(gd, rng, round, routes = null) {
     spawns.push({
       time: 6.0,
       enemyKey: enemyKeyOf(secondaryBoss),
+      tag: 'boss',
       routeIndex: routes && routes.length > 1 ? 1 : 0,
       count: 1,
       interval: 0,

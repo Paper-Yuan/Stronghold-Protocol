@@ -74,7 +74,9 @@ export class MatchSettle {
       // 超限词条（业主 2026-10-18）：再起 / 苛责 按完美作战回血或扣血；共栖 / 离散 调整本回合的层数增益。
       // 普通模式 this.traitSettleBundle 不存在 → 整段跳过。
       const ts = this.traitSettleBundle ? this.traitSettleBundle() : null;
-      if (ts) {
+      // 全 0 的 bundle 等价于「没有词条」—— 普通模式永远走这一支，行为和以前完全一致。
+      const tsActive = ts && (ts.lpOnPerfect || ts.lpOnNotPerfect || ts.layerBonus || ts.stripLayers);
+      if (tsActive) {
         const perfect = counted === 0 && r.perfect !== false;
         const dlp = (perfect ? ts.lpOnPerfect : 0) + (perfect ? 0 : ts.lpOnNotPerfect);
         if (dlp) {

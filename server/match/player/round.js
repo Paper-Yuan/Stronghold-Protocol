@@ -23,7 +23,9 @@ export class PlayerRound {
     // 超限词条（业主 2026-10-18）：富足 / 贫乏 的每回合资金，以及集群给的装备。
     // 普通模式 this.m.traitSettleBundle 不存在 → 整段跳过，行为完全不变。
     const ts = this.m && typeof this.m.traitSettleBundle === 'function' ? this.m.traitSettleBundle() : null;
-    if (ts) {
+    // 全 0 / 空数组 = 没有词条（普通模式永远如此），整段跳过
+    const tsActive = ts && (ts.funds || (ts.giveItems && ts.giveItems.length));
+    if (tsActive) {
       if (ts.funds) this.addFunds(ts.funds > 0 ? ts.funds : 0, { reason: 'trait' });
       if (ts.funds < 0) this.funds = Math.max(0, this.funds + ts.funds);
       for (const itemId of ts.giveItems || []) {
