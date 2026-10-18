@@ -80,7 +80,11 @@ export function buildInfiniteNormalWave(gd, rng, round, routes = null) {
     // 业主 2026-10-19：「鸭爵策略出的不要加入轮次，炎佑也不要」。
     // 鸭爵是策略（choices 的鸭爵套牌）召出来的特殊单位，炎佑是盟约/阵营给玩家侧的召唤物 ——
     // 两者都不属于「这张图能出的野怪」，不能进普通波次。
-    if (/^enemy_2001_duckmi/.test(key)) continue;  // 鸭爵（策略）
+    // 业主 2026-10-19：「鸭爵套牌策略召唤出的特殊单位都不要」。
+    // 鸭爵套是 enemy_20xx 那一整组（鸭爵 / 高普尼克 / 流泪小子 / 圆仔 / 骇笑看客 /
+    // 喷气人 / 迷路的巨像 / “遗弃者” / “墓碑” / “邪魔的利刃” / 陷落雪祀 / 纠缠藤蔓），
+    // 它们是策略卡召唤出来的，不属于这张图的野怪。
+    if (/^enemy_20\d\d_/.test(key)) continue;      // 鸭爵套牌
     if (/^enemy_9012_acloon/.test(key)) continue;  // “炎佑”（盟约召唤物）
     // 飞行判定与 waves.js 的 isFlyKey 一致：真实数据把 motion 放在 stats 里（e.motion 是旧字段，永远是 undefined）
     const st = e.stats || {};

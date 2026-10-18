@@ -23,10 +23,10 @@ test('词条池：正面 13 条、负面 14 条，每条都有 id / 名字 / 正
 
 test('怪物池：悬赏 ≥ 3 的野怪在随机池里，另 3 只特化怪只在特化卡出现', () => {
   assert.equal(MONSTERS.NORMAL.length, 1);
-  assert.equal(MONSTERS.ELITE.length, 28);
-  assert.equal(MONSTERS.BOSS.length, 13);
+  assert.equal(MONSTERS.ELITE.length, 25);
+  assert.equal(MONSTERS.BOSS.length, 6);
   const total = MONSTERS.NORMAL.length + MONSTERS.ELITE.length + MONSTERS.BOSS.length;
-  assert.equal(total + SPECIAL_MOBS.length, 45, '42 随机 + 3 特化 = 45（鸭爵是策略单位，已排除）');
+  assert.equal(total + SPECIAL_MOBS.length, 35, '32 随机 + 3 特化 = 35（鸭爵套牌是策略单位，已排除）');
   // 特化怪不进普通随机池
   const all = [...MONSTERS.NORMAL, ...MONSTERS.ELITE, ...MONSTERS.BOSS].map((m) => m.key);
   for (const k of SPECIAL_MOBS) assert.ok(!all.includes(k), k + ' 不该在普通池里');
