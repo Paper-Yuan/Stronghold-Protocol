@@ -45,8 +45,16 @@ export function buildInfiniteNormalWave(gd, rng, round, routes = null) {
   const flyKeys = [];
 
   const enemies = gd.raw?.enemies || {};
+  // 悬赏怪的 key 集合：它们属于「带赏金出场」的那一套（choices.cards.bounty），
+  // 不该被普通波次免费刷出来（业主 2026-10-19：「排除」）。
+  const bountyKeys = new Set();
+  for (const c of (gd.choices && Array.isArray(gd.choices.cards?.bounty) ? gd.choices.cards.bounty : [])) {
+    if (c && typeof c.enemyKey === 'string') bountyKeys.add(c.enemyKey);
+  }
   for (const [key, e] of Object.entries(enemies)) {
-    if (e.rank === 'BOSS') continue;
+    if (e.rank === 'BOSS') continue;              // BOSS 走 Boss 轮
+    if (bountyKeys.has(key)) continue;            // 悬赏怪走悬赏 / 词条抉择
+    if (e.tokenOnly) continue;                    // 召唤物 / 弹体不是独立敌人
     // 飞行判定与 waves.js 的 isFlyKey 一致：真实数据把 motion 放在 stats 里（e.motion 是旧字段，永远是 undefined）
     const st = e.stats || {};
     if (e.isFlyEnemy === true || st.motion === 'FLY' || e.motion === 'FLY') flyKeys.push(key);
