@@ -244,6 +244,10 @@ export function scaleFor(gd, r) {
 export function roundMods(scale) {
   const m = { hpMul: scale.hpMul, atkMul: scale.atkMul, speedMul: scale.speedMul };
   if (scale.supplyHpMul != null) m.supplyHpMul = scale.supplyHpMul;
+  // 超限的 def / res 成长（业主 2026-10-19：「防御和法抗都长，但根据结算逻辑不同分别做」）。
+  // 普通模式的 scale 里没有这两个键 → 不写入，行为完全不变。
+  if (Number.isFinite(scale.defMul) && scale.defMul !== 1) m.defMul = scale.defMul;
+  if (Number.isFinite(scale.resMul) && scale.resMul !== 1) m.resMul = scale.resMul;
   return m;
 }
 

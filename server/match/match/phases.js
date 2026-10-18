@@ -271,11 +271,17 @@ export class MatchPhases {
     // round start: its recompute() checks the board on the field the player deploys on this round (deployFieldOf reads
     // the boss pairing), so R14 → R15 never re-checks a boss-field board against the normal field (user playtest #5
     // item 7). rngWaves is used only here, so the order leaves every random stream unchanged.
-    const isBoss = (this.isInfinite && isInfiniteBossRound(r)) || r === this.gd.bossRound || r === this.gd.hiddenRound;
+    // 业主 2026-10-19：「boss 轮次不是真正的 boss 轮次，而是有 boss 的特殊普通轮次」。
+    // 超限 R20/25/30… 不再进 FINAL_ASSAULT（共享血池 / 加时 / 双人分场那套），
+    // 而是照常走无限普通波次，只是额外塞一只领袖进去 —— 打完这只领袖就开词条抉择。
+    const infBossRound = this.isInfinite && isInfiniteBossRound(r);
+    const isBoss = r === this.gd.bossRound || r === this.gd.hiddenRound;
     if (isBoss) {
       this._planBossWaves();
     } else if (this.isInfinite && r >= 16) {
-      this.wave = buildInfiniteNormalWave(this.gd, this.rngWaves, r, this._infiniteRoutes(r));
+      this.wave = buildInfiniteNormalWave(this.gd, this.rngWaves, r, this._infiniteRoutes(r), {
+        withBoss: infBossRound,
+      });
     } else {
       this.wave = buildNormalWave(this.gd, this.rngWaves, this.factions, r);
       // 超限的前 15 回合收敛到 3 种怪（业主 2026-10-17）；R16 起走上面的无限波次，不设上限。

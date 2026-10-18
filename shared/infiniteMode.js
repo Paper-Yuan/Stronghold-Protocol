@@ -56,8 +56,8 @@ export function getInfiniteCcResist(round) {
 /**
  * R16+ 敌方属性指数膨胀公式
  * @param {number} round
- * @param {{ hpMul?: number, atkMul?: number, speedMul?: number }} baseR15
- * @returns {{ hpMul: number, atkMul: number, speedMul: number }}
+ * @param {{ hpMul?: number, atkMul?: number, speedMul?: number, defMul?: number, resMul?: number }} baseR15
+ * @returns {{ hpMul: number, atkMul: number, speedMul: number, defMul: number, resMul: number }}
  */
 export function enemyInfiniteScale(round, baseR15 = { hpMul: 1, atkMul: 1, speedMul: 1 }) {
   const r = Number(round) || 1;
@@ -66,7 +66,7 @@ export function enemyInfiniteScale(round, baseR15 = { hpMul: 1, atkMul: 1, speed
     atkMul: Number(baseR15.atkMul) || 1,
     speedMul: Number(baseR15.speedMul) || 1,
   };
-  if (r <= 15) return base;
+  if (r <= 15) return { ...base, defMul: 1, resMul: 1 };
 
   // 业主 2026-10-17：「改成原指数，曲线稍微陡一点点」。
   //
@@ -87,14 +87,21 @@ export function enemyInfiniteScale(round, baseR15 = { hpMul: 1, atkMul: 1, speed
   // 现在统一成**同一条逐回合指数**：hp ×1.0439、atk ×1.0371、speed ×1.01 每回合，
   // 从绝境 R15 的真实数值接着往上，不再有线性段、也不再有 5 回合台阶。
   const k = Math.max(0, r - 15);
-  const HP_STEP = Math.pow(1.24, 1 / 5);    // 每回合 ×1.0439（R15→R20 共 ×1.24）
-  const ATK_STEP = Math.pow(1.20, 1 / 5);   // 每回合 ×1.0371
+  // 业主 2026-10-19：「生命慢了一点，攻击原速度」——
+  //   hp  每回合 ×1.05（原来是 ×1.0439，略微加快）
+  //   atk 保持 ×1.0371（原速度不变）
+  //   speed 保持 ×1.01，硬上限 2.5
+  const HP_STEP = 1.05;
+  const ATK_STEP = Math.pow(1.20, 1 / 5);   // 1.0371，原速度
+  const DEF_STEP = Math.pow(1.16, 1 / 5);   // 防御 ×1.0301/回合
+  const RES_STEP = Math.pow(1.12, 1 / 5);   // 法抗 ×1.0229/回合（成长比防御慢：法抗是百分比，涨太快会免疫）
   const hpMul = base.hpMul * Math.pow(HP_STEP, k);
   const atkMul = base.atkMul * Math.pow(ATK_STEP, k);
-  // 速度同样走指数，硬上限 2.5：防止敌人瞬移进门无法防御
+  const defMul = Math.pow(DEF_STEP, k);
+  const resMul = Math.pow(RES_STEP, k);
   const speedMul = Math.min(2.5, base.speedMul * Math.pow(1.01, k));
 
-  return { hpMul, atkMul, speedMul };
+  return { hpMul, atkMul, speedMul, defMul, resMul };
 }
 
 /**

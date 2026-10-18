@@ -148,8 +148,29 @@ export class MatchSettle {
 
   afterSettle() {
     if (!this.alivePlayers().length) { this.finish({ victory: false, reason: 'eliminated' }); return; }
+    // 超限：在推进之前先把「本轮 Boss 是否被清」记下来 —— startRound 会覆盖 this.wave，
+    // 之后再问就只剩下一轮的波次了（业主 2026-10-19 的「有 Boss 的普通轮次」）。
+    if (this.isInfinite) this._infBossClearedRound = this._infiniteBossCleared() ? this.round : null;
     resetRoundCounters(this); // AI bot merge-counter resets each round (server/match/botEmotes.js)
     this.startRound(this.round + 1);
+  }
+
+  /**
+   * 超限的「有 Boss 的普通轮次」（业主 2026-10-19）：这一轮刷过领袖、并且它被消灭了
+   * → 下一轮开头开词条抉择。以前走 FINAL_ASSAULT，现在 Boss 就在普通波次里，
+   * 所以判定改成「本轮的 boss spawn 全部结算完毕（击杀或漏掉，漏了不算过）」。
+   */
+  _infiniteBossCleared() {
+    if (!this.isInfinite || !this.wave) return false;
+    const bossSpawns = (this.wave.spawns || []).filter((x) => x && x.tag === 'boss');
+    if (!bossSpawns.length) return false;
+    const keys = new Set(bossSpawns.map((x) => x.enemyKey));
+    const r = this.lastResults.get([...this.players.keys()].find((id) => this.players.get(id)?.alive));
+    if (!r) return false;
+    const leaked = new Set((r.leaked || []).filter((l) => l && l.counted !== false).map((l) => l.enemyKey));
+    // 有一只领袖漏了 → 这一轮不算通过（不给词条）
+    for (const k of keys) if (leaked.has(k)) return false;
+    return true;
   }
 
   finish({ victory, hiddenCleared = false, reason = 'defeat' }) {

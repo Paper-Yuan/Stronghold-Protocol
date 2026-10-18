@@ -18,7 +18,11 @@ export function wantsTraitDraft(m, round) {
   if (!m.isInfinite) return false;
   if (round < 16) return false;
   // 上一回合是 Boss 轮 → 这一回合开
-  return isInfiniteBossRoundSafe(round - 1);
+  if (!isInfiniteBossRoundSafe(round - 1)) return false;
+  // 而且那只领袖必须真的被消灭（漏掉就不给词条）。settle 在推进回合前把结果记在
+  // _infBossClearedRound 里 —— 那时 this.wave 还是本轮（带 Boss）的波次。
+  if (m._infBossClearedRound != null) return m._infBossClearedRound === round - 1;
+  return true;
 }
 
 /**

@@ -34,7 +34,27 @@ export function isInfiniteDoubleBossRound(round) {
  * @param {number} round
  * @returns {object} wave descriptor
  */
-export function buildInfiniteNormalWave(gd, rng, round, routes = null) {
+/** 超限第 n 次 Boss 战用池里第 n 档（弱→强，不循环），与 buildInfiniteBossWave 同一口径。 */
+function pickInfiniteBoss(gd, round) {
+  const hiddenPool = (gd.bossWeights(true) || []).slice();
+  const pool = hiddenPool.length ? hiddenPool : (gd.bossWeights(false) || []);
+  if (!pool.length) return 'boss_8';
+  const bloodOf = (id) => {
+    const rec = gd.boss(id) || {};
+    const bp = rec.bloodPoint || {};
+    return Number(bp[gd.difficulty] ?? bp.HARD ?? 0) || 0;
+  };
+  pool.sort((a, b) => bloodOf(a[0]) - bloodOf(b[0]));
+  const idx = Math.max(0, Math.floor((round - 20) / 5));
+  return pool[Math.min(pool.length - 1, idx)][0];
+}
+
+function bossEnemyKeyOf(gd, bossId) {
+  const rec = gd.boss(bossId);
+  return (rec && typeof rec.enemyKey === 'string' && rec.enemyKey) || bossId;
+}
+
+export function buildInfiniteNormalWave(gd, rng, round, routes = null, { withBoss = false } = {}) {
   const r = Number(round) || 16;
   const baseScale = gd.enemyScale(15) || { hpMul: 1, atkMul: 1, speedMul: 1 };
   const scale = enemyInfiniteScale(r, baseScale);
@@ -138,6 +158,26 @@ export function buildInfiniteNormalWave(gd, rng, round, routes = null) {
 
   const spawns = [];
   let curTime = 2.0;
+  // Boss 轮（业主 2026-10-19）：这不是「最终攻势」，而是「有 Boss 的特殊普通轮次」——
+  // 普通波次照旧，额外在中间放一只领袖，打完它就开词条抉择。用普通战场的路径与矩形，
+  // 不建共享血池、没有加时、不分场，所以不需要 FINAL_ASSAULT 那一套。
+  let bossSpawn = null;
+  if (withBoss) {
+    const bossId = pickInfiniteBoss(gd, r);
+    bossSpawn = {
+      time: 6.0,
+      enemyKey: bossEnemyKeyOf(gd, bossId),
+      // tag:'boss' 让 sim 把它标成 isBoss（视觉/血条）；这里**不绑共享血池**，
+      // 因为它走的是普通战斗（spec.kind === 'normal'，没有 sharedBoss）。
+      tag: 'boss',
+      routeIndex: 0,
+      count: 1,
+      interval: 0,
+      mods: { hpMul: scale.hpMul, atkMul: scale.atkMul, speedMul: scale.speedMul, defMul: scale.defMul, resMul: scale.resMul },
+      preview: { gate: gateOf(routes && routes[0] ? routes[0].start : null, false), fly: false, elite: true, boss: true },
+    };
+    spawns.push(bossSpawn);
+  }
   for (let i = 0; i < lineup.length; i++) {
     const isFly = lineup[i].fly;
     const enemyKey = lineup[i].key;
@@ -162,6 +202,9 @@ export function buildInfiniteNormalWave(gd, rng, round, routes = null) {
         hpMul: scale.hpMul,
         atkMul: scale.atkMul,
         speedMul: scale.speedMul,
+        // 防御 / 法抗各自一条曲线（业主：结算逻辑不同，分别做）
+        defMul: scale.defMul,
+        resMul: scale.resMul,
       },
       preview: {
         // 出怪预览要分上下路（业主 2026-10-19）：gate 按这条路径的起点算，

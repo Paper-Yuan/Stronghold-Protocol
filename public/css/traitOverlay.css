@@ -46,8 +46,12 @@
 .tcard{position:relative;width:clamp(150px,19vw,232px);height:clamp(232px,30vw,330px);
   cursor:pointer;isolation:isolate;--cut:10px;
   clip-path:polygon(var(--cut) 0,100% 0,100% calc(100% - var(--cut)),calc(100% - var(--cut)) 100%,0 100%,0 var(--cut));
-  background:linear-gradient(180deg,rgba(30,38,35,.46),rgba(16,21,19,.42));
-  -webkit-backdrop-filter:blur(10px) saturate(1.1);backdrop-filter:blur(10px) saturate(1.1);
+  /* 业主 2026-10-19：「卡牌亮度略微提高」—— 底衬的不透明度抬一档，再补一层微亮，
+     动画（入场 / 环带 / 扫描 / 删除）全部保持原样。 */
+  background:linear-gradient(180deg,rgba(42,52,48,.60),rgba(24,31,28,.56));
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.045), inset 0 1px 0 rgba(255,255,255,.06);
+  filter:brightness(1.06) saturate(1.04);
+  -webkit-backdrop-filter:blur(10px) saturate(1.18);backdrop-filter:blur(10px) saturate(1.18);
   transform-origin:50% 92%;opacity:0;transform:translateY(38px) rotateY(22deg) scale(.86);
   animation:tcardIn .58s cubic-bezier(.18,.92,.24,1.05) forwards;
   transition:transform .2s cubic-bezier(.2,.9,.2,1),box-shadow .2s ease}
@@ -127,14 +131,14 @@
 .tcard.is-deleting.is-wiped{animation:traitCyberWipe .4s cubic-bezier(.7,0,.3,1) forwards;animation-delay:var(--del-delay,0ms)}
 .tcard.is-deleting.is-wiped::before,.tcard.is-deleting.is-wiped::after{animation:none;opacity:0}
 @keyframes traitCyberFlicker{
-  0%{opacity:1;transform:translateX(0) scale(1);filter:none}
-  14%{opacity:.72;transform:translateX(-4px) scale(1.008);filter:contrast(1.25) brightness(1.12)}
-  24%{opacity:1;transform:translateX(3px) scale(1);filter:none}
-  40%{opacity:.62;transform:translateX(-3px) scale(.996);filter:contrast(1.35) brightness(1.18)}
-  50%{opacity:1;transform:translateX(2px) scale(1);filter:none}
+  0%{opacity:1;transform:translateX(0) scale(1);filter:brightness(1.06) saturate(1.04)}
+  14%{opacity:.72;transform:translateX(-4px) scale(1.008);filter:contrast(1.25) brightness(1.18) saturate(1.04)}
+  24%{opacity:1;transform:translateX(3px) scale(1);filter:brightness(1.06) saturate(1.04)}
+  40%{opacity:.62;transform:translateX(-3px) scale(.996);filter:contrast(1.35) brightness(1.24) saturate(1.04)}
+  50%{opacity:1;transform:translateX(2px) scale(1);filter:brightness(1.06) saturate(1.04)}
   70%{opacity:.78;transform:translateX(-2px) scale(1);filter:contrast(1.2)}
-  82%{opacity:1;transform:translateX(0) scale(1);filter:none}
-  100%{opacity:1;transform:translateX(0) scale(1);filter:none}}
+  82%{opacity:1;transform:translateX(0) scale(1);filter:brightness(1.06) saturate(1.04)}
+  100%{opacity:1;transform:translateX(0) scale(1);filter:brightness(1.06) saturate(1.04)}}
 @keyframes traitCyberSlices{
   0%{clip-path:inset(0 0 100% 0);opacity:0}
   12%{clip-path:inset(14% 0 58% 0);opacity:.85}
@@ -146,9 +150,9 @@
   88%{clip-path:inset(22% 0 66% 0);opacity:.5}
   100%{clip-path:inset(49% 0 49% 0);opacity:0}}
 @keyframes traitCyberWipe{
-  0%{opacity:1;transform:translateX(0) scaleY(1);filter:brightness(1.25)}
-  40%{opacity:1;transform:translateX(0) scaleY(.05);filter:brightness(1.6)}
-  100%{opacity:0;transform:translateX(0) scaleY(0);filter:brightness(1.6)}}
+  0%{opacity:1;transform:translateX(0) scaleY(1);filter:brightness(1.31) saturate(1.04)}
+  40%{opacity:1;transform:translateX(0) scaleY(.05);filter:brightness(1.66) saturate(1.04)}
+  100%{opacity:0;transform:translateX(0) scaleY(0);filter:brightness(1.66) saturate(1.04)}}
 
 .tcard__tag{position:absolute;top:10px;left:16px;z-index:2;font-family:var(--font-num);font-size:9px;
   letter-spacing:.2em;padding:3px 7px;color:var(--acc-hi);background:var(--acc-a12);border-left:2px solid var(--acc)}
