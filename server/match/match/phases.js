@@ -5,6 +5,7 @@
 // Installed on Match.prototype by server/match/Match.js (a method container: never instantiated; `this` is the match).
 
 import { PHASE, ERR } from '../../../shared/constants.js';
+import { GEO } from '../../../shared/constants.js';
 import { buildNormalWave, buildBossWave } from '../waves.js';
 import { isInfiniteBossRound, buildInfiniteNormalWave, buildInfiniteBossWave, capWaveKinds } from '../infiniteWaves.js';
 import { wantsTraitDraft } from './traitDraft.js';
@@ -311,12 +312,21 @@ export class MatchPhases {
     const stage = this.stage || (this.stageId ? this.gd.stage(this.stageId) : null);
     const paths = (stage && (stage.groundPaths || stage.groundPathsWithDevices)) || {};
     const out = [];
+    // 只用**落在这一块战场里**的路径（业主 2026-10-19：「路径对吗？」）。
+    // stages.json 的 groundPaths 同时包含 0..20 列的联机路径与两半场路径，而单人普通战场是
+    // NORMAL_RECT(9..12, 0..10)：不过滤就会刷出起点在 col 18 的怪 —— 出生点在图外，看起来就是
+    // 「怪从莫名其妙的地方出来 / 走到地图外面」。
+    const rect = this.isSolo ? GEO.NORMAL_RECT : (GEO.NORMAL_RECT);
+    const inRect = (p) => Array.isArray(p) && p.length === 2
+      && p[0] >= rect.r0 - 0.5 && p[0] <= rect.r1 + 0.5
+      && p[1] >= rect.c0 - 0.5 && p[1] <= rect.c1 + 0.5;
     for (const [key, pts] of Object.entries(paths)) {
       if (typeof key !== "string" || !Array.isArray(pts) || pts.length < 2) continue;
       const [from, to] = key.split("->");
       const s = from && from.split(",").map(Number);
       const e = to && to.split(",").map(Number);
       if (!s || !e || !s.every(Number.isFinite) || !e.every(Number.isFinite)) continue;
+      if (!inRect(s) || !inRect(e)) continue;   // 端点不在本战场 → 这条路径用不了
       const mid = pts.slice(1, -1).filter((p) => Array.isArray(p) && p.length === 2 && p.every(Number.isFinite));
       out.push({ motion: "WALK", start: [s[0], s[1]], end: [e[0], e[1]], checkpoints: mid });
     }

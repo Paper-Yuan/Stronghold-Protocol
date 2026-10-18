@@ -148,10 +148,17 @@ export function buildInfiniteBossWave(gd, rng, round, routes = null) {
   const baseScale = gd.enemyScale(15) || { hpMul: 1, atkMul: 1, speedMul: 1 };
   const scale = enemyInfiniteScale(r, baseScale);
 
+  // bossWeights 给的是 **boss id**（boss_9），不是敌人 key（enemy_9017_achunt_2）。
+  // 以前直接把 boss id 当 enemyKey 塞进 spawns —— sim 找不到这个敌人，客户端也查不到模型，
+  // 于是 R20 的 Boss「完全没显示美术素材、进战后无模型」（业主 2026-10-19）。
+  const enemyKeyOf = (bossId) => {
+    const rec = gd.boss(bossId);
+    return (rec && typeof rec.enemyKey === 'string' && rec.enemyKey) || bossId;
+  };
   const spawns = [
     {
       time: 3.0,
-      enemyKey: primaryBoss,
+      enemyKey: enemyKeyOf(primaryBoss),
       routeIndex: routes && routes.length ? 0 : 0,
       count: 1,
       interval: 0,
@@ -166,7 +173,7 @@ export function buildInfiniteBossWave(gd, rng, round, routes = null) {
   if (isDouble && secondaryBoss) {
     spawns.push({
       time: 6.0,
-      enemyKey: secondaryBoss,
+      enemyKey: enemyKeyOf(secondaryBoss),
       routeIndex: routes && routes.length > 1 ? 1 : 0,
       count: 1,
       interval: 0,
