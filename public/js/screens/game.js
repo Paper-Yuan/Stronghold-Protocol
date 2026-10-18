@@ -175,8 +175,23 @@ export function GameScreen() {
     setEndStage('on');
     const a = setTimeout(() => setEndStage('leaving'), END_PLATE_MS - 320);
     const b = setTimeout(() => setEndStage('done'), END_PLATE_MS);
-    return () => { clearTimeout(a); clearTimeout(b); };
+    return () => {
+      clearTimeout(a); clearTimeout(b);
+      // 业主 2026-10-18「卡在结算页只出背景」的根因：这个 effect 的 cleanup 一旦跑过（over 抖动一次、
+      // 或者外层重挂），两个定时器就被清掉，而 sawPlay 已经在上面被置成 false，effect 再进来会直接
+      // return —— endStage 永远停在 'on' / 'leaving'，endOn 恒为真，结算屏一次都不渲染，屏幕上只剩
+      // 那张 EndPlate 的背景。这里在 cleanup 里直接把状态落定，保证 endOn 一定会转成 false。
+      setEndStage((st) => (st === 'on' || st === 'leaving' ? 'done' : st));
+    };
   }, [over]);
+  // 最后一道保险：over 之后最多 END_PLATE_MS + 1500ms 还没落定，就强制推进。
+  // 上面那个 effect 的 cleanup 已经处理了「定时器被清掉」的情形；这里再兜一层「effect 压根没跑」
+  // （sawPlay 为 false、组件在结算途中被重挂），否则玩家会永远停在只有背景的页面上。
+  useEffect(() => {
+    if (!over || endStage === 'done') return undefined;
+    const t = setTimeout(() => setEndStage('done'), END_PLATE_MS + 1500);
+    return () => clearTimeout(t);
+  }, [over, endStage]);
   // (the render that first sees the end already holds the field: MatchScreen must not unmount for one frame)
   const endOn = over && (endStage === 'on' || endStage === 'leaving' || (endStage == null && sawPlay.current));
   if (!pub || !gd.ready) {
