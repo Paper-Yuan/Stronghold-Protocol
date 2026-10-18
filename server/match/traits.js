@@ -84,7 +84,6 @@ export const MONSTERS = Object.freeze({
     { key: 'enemy_1415_mmkabi_2', name: '温顺的武装大驮兽' },
     { key: 'enemy_10144_xdelk_2', name: '乌顶巨角卢鲁' },
     { key: 'enemy_1207_sfji_2', name: '新硎' },
-    { key: 'enemy_2001_duckmi', name: '鸭爵' },
     { key: 'enemy_10159_mntrjn', name: '伊利昂的木驮兽' },
     { key: 'enemy_1439_dslntf', name: '元核孽生者' },
     { key: 'enemy_2085_skzjxd', name: '圆仔' },

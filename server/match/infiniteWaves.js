@@ -1,7 +1,7 @@
 // server/match/infiniteWaves.js — 超限模拟 R16+ 无限波次与双 Boss 生成器
 // 纯 ESM，独立模块，不污染常规波次逻辑。
 
-import { weightedPick } from './waves.js';
+import { weightedPick, gateOf } from './waves.js';
 import { enemyInfiniteScale, getInfiniteBossHp } from '../../shared/infiniteMode.js';
 import { createRng, deriveSeed } from '../sim/rng.js';
 
@@ -77,6 +77,11 @@ export function buildInfiniteNormalWave(gd, rng, round, routes = null) {
     if (e.tokenOnly) continue;                    // 召唤物 / 弹体不是独立敌人
     if (summonChildren.has(key)) continue;        // 召唤子怪只由召唤者带出
     if (/_msf|_vts/.test(key)) continue;          // 次数怪（Boss 的分身 / 计数靶）同理
+    // 业主 2026-10-19：「鸭爵策略出的不要加入轮次，炎佑也不要」。
+    // 鸭爵是策略（choices 的鸭爵套牌）召出来的特殊单位，炎佑是盟约/阵营给玩家侧的召唤物 ——
+    // 两者都不属于「这张图能出的野怪」，不能进普通波次。
+    if (/^enemy_2001_duckmi/.test(key)) continue;  // 鸭爵（策略）
+    if (/^enemy_9012_acloon/.test(key)) continue;  // “炎佑”（盟约召唤物）
     // 飞行判定与 waves.js 的 isFlyKey 一致：真实数据把 motion 放在 stats 里（e.motion 是旧字段，永远是 undefined）
     const st = e.stats || {};
     if (e.isFlyEnemy === true || st.motion === 'FLY' || e.motion === 'FLY') flyKeys.push(key);
@@ -103,10 +108,19 @@ export function buildInfiniteNormalWave(gd, rng, round, routes = null) {
     const isElite = rng() < 0.2;
     const enemyKey = isFly ? pickKey(flyKeys) : (isElite ? pickKey(eliteKeys) : pickKey(normalKeys));
 
+    // 上下路要均匀（业主 2026-10-19：「出怪显示应该分上下路」）：
+    // 以前是 i % routes.length，而 routes 里飞行路径也占一格 —— 飞行怪落在下路、
+    // 地面怪又偏向 9 行那条，结果下路 23 : 上路 12。现在按「地面路径」轮流，
+    // 飞行怪只在飞行路径里取（没有就退回地面）。
+    const groundIdx = [];
+    const flyIdx = [];
+    if (routes) routes.forEach((rt, k) => (rt && rt.motion === 'FLY' ? flyIdx : groundIdx).push(k));
+    const laneList = isFly && flyIdx.length ? flyIdx : (groundIdx.length ? groundIdx : [0]);
+    const routeIdx = laneList[i % laneList.length];
     spawns.push({
       time: curTime,
       enemyKey,
-      routeIndex: routes && routes.length ? i % routes.length : 0,
+      routeIndex: routeIdx,
       count: 1,
       interval: 0,
       mods: {
@@ -115,6 +129,9 @@ export function buildInfiniteNormalWave(gd, rng, round, routes = null) {
         speedMul: scale.speedMul,
       },
       preview: {
+        // 出怪预览要分上下路（业主 2026-10-19）：gate 按这条路径的起点算，
+        // 不填的话 previewOf 会一律兜底成 'lower'，所有怪都显示在下路。
+        gate: gateOf(routes && routes[routeIdx] ? routes[routeIdx].start : null, false),
         fly: isFly,
         elite: isElite,
         boss: false,

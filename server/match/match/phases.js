@@ -339,7 +339,13 @@ export class MatchPhases {
     // 飞行路径不能是「起点→蓝门」的一条直线 —— 那看起来就是直冲蓝门（业主 2026-10-19）。
     // 原版模板给飞行怪的是自己的折点（act1autochess_01 的 FLY: [9,9],[12,9],[12,7],[9,7]…），
     // 这里沿用地面的折点作为绕行路线，飞行怪照样在空中走 S 形。
+    // 飞行路径：给两条（上/下各一条），这样出怪预览也能分出上下路
+    const others = out.filter((x) => x !== longest);
     out.push({ motion: "FLY", start: longest.start, end: longest.end, checkpoints: longest.checkpoints.slice() });
+    if (others.length) {
+      const o = others[0];
+      out.push({ motion: "FLY", start: o.start, end: o.end, checkpoints: o.checkpoints.slice() });
+    }
     void round;
     return out;
   }
