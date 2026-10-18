@@ -2599,16 +2599,28 @@ button.ally-card:disabled { filter: grayscale(.7) brightness(.7); cursor: defaul
 .is-idle .lobby-hub .hub-fold:hover,
 .is-idle .lobby-hub .hub-fold:focus-visible { opacity: 1; }
 @media (prefers-reduced-motion: reduce) { .lobby-hub .hub-fold { transition: none; } }
-/* AI 队友按钮（空座位「加 AI」）：与「邀请」同一套骨架，只把强调色换成薄荷，
-   一眼能分清「拉真人」和「补电脑」。画风沿用 rseat__invite 的加号与字重。 */
-.rseat__actions { display: flex; flex-direction: column; align-items: center; gap: max(.14rem, 8px); }
-.rseat__invite--ai { --ai-ink: var(--mint-400); }
-.rseat__invite--ai b { color: var(--mint-400); }
-.rseat__invite--ai small { color: rgba(78, 216, 175, .72); }
-.rseat__plus--ai::before, .rseat__plus--ai::after { background: var(--mint-400); }
-.rseat__plus--ai::after { transform: translateY(-50%) rotate(45deg); }
-.rseat__invite--ai:hover .rseat__plus--ai::before, .rseat__invite--ai:hover .rseat__plus--ai::after { background: var(--mint-300, #8ff5d4); }
-@media (max-width: 640px) {
-  .rseat__actions { gap: max(.1rem, 6px); }
-  .rseat__invite--ai small { display: none; }
+/* AI 队友（空座位）：一条细横条，压在「邀请」下面 —— 它是个次要入口，不该和「邀请真人」
+   抢同样的视觉重量。业主 2026-10-18：「太大太冗余，做个小横条就行」。 */
+.rseat__actions { display: flex; flex-direction: column; align-items: center; gap: max(.1rem, 7px); width: 100%; }
+.rseat__invite-ai {
+  display: inline-flex; align-items: center; justify-content: center; gap: max(.05rem, 5px);
+  width: 100%; max-width: max(1.5rem, 132px);
+  min-height: max(.2rem, 22px); padding: 0 max(.08rem, 8px);
+  font-size: max(.13rem, 11px); font-weight: 600; letter-spacing: .02em;
+  color: rgba(78, 216, 175, .92);
+  background: rgba(78, 216, 175, .1);
+  border: 1px solid rgba(78, 216, 175, .34);
+  border-radius: 2px;
+  transition: background 120ms ease, border-color 120ms ease, color 120ms ease;
+}
+.rseat__invite-ai:hover,
+.rseat__invite-ai:focus-visible {
+  color: #a8f0d2;
+  background: rgba(78, 216, 175, .2);
+  border-color: rgba(78, 216, 175, .62);
+}
+.rseat__invite-ai__dot {
+  width: 5px; height: 5px; flex: none; border-radius: 50%;
+  background: currentColor;
+  box-shadow: 0 0 0 2px rgba(78, 216, 175, .18);
 }

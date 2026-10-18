@@ -95,7 +95,7 @@ function getAiPlayers(pub) {
   if (list.length > 0) return list;
   // 仅在单人独立模拟与超限模拟模式下才使用兜底 AI，在联机模式下只使用真实加入房间的 bot
   if (pub?.mode === 'solo' || pub?.mode === 'solo_infinite') {
-    return [{ playerId: 'ai_fallback', name: 'AI·队友', seat: 1, isBot: true }];
+    return [{ playerId: 'ai_fallback', name: '龙哥哥今天又鸽了', seat: 1, isBot: true }];
   }
   return [];
 }

@@ -194,8 +194,8 @@ function SeatCard({ seat, index, room, facts, myId, busy, onKick, onInvite, onAd
             ? html`<div class="rseat__actions">
                 <button type="button" class="rseat__invite" onClick=${onInvite} title=${t('复制同盟密钥以邀请队友')}>
                   <span class="rseat__plus" aria-hidden="true"></span><b>${t('邀请')}</b><small>${t('复制同盟密钥以邀请队友')}</small></button>
-                ${onAddBot ? html`<button type="button" class="rseat__invite rseat__invite--ai" onClick=${onAddBot} title=${t('加入一名 AI 队友')}>
-                  <span class="rseat__plus rseat__plus--ai" aria-hidden="true"></span><b>${t('加 AI')}</b><small>${t('补一名电脑队友')}</small></button>` : null}
+                ${onAddBot ? html`<button type="button" class="rseat__invite-ai" onClick=${onAddBot} title=${t('加入一名 AI 队友')}>
+                  <span class="rseat__invite-ai__dot" aria-hidden="true"></span>${t('加 AI')}</button>` : null}
               </div>`
             : html`<span class="rseat__wait"><small>${t('等待博士加入')}</small></span>`}
         <span class="rseat__noinfo" aria-hidden="true">NOINFO</span>

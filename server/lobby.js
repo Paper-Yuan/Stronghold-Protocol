@@ -215,7 +215,13 @@ export const LOBBY_DEFAULTS = Object.freeze({
 export const SOLO_RECONNECT_FALLBACK_SEC = 86_400;
 
 /** Display names for AI teammates (the tutorial NPCs first, then a few familiar faces). */
-export const BOT_NAMES = Object.freeze(['AI·华法琳', 'AI·阿米娅', 'AI·惊蛰', 'AI·杜宾', 'AI·凯尔希', 'AI·可露希尔']); // i18n-ignore: player names (docs/I18N.md)
+// AI 队友的名字（业主 2026-10-18：用明日方舟 B 站 UP 主，代替原来的干员名）。
+// 阵容按「一眼能认出是方舟区」排：先放业主点名的两个，其余是同圈层的熟面孔，够 10 人房用。
+// 不加「AI·」前缀 —— 座位上的机器人图标和 AUTONOMOUS UNIT 已经说明了它是电脑。
+export const BOT_NAMES = Object.freeze([
+  '龙哥哥今天又鸽了', '魔法Zc目录', '卡特亚', '盐鱼OvO', '小狼XF',
+  '血狼破军', '极东折跃', '北伴', '罗德岛孙哥', '阿米娅的刀客塔',
+]); // i18n-ignore: player names (docs/I18N.md)
 
 /** Room chat (room.chat): the length the server actually sends (the wire bound in shared/protocol.js is looser). */
 export const CHAT_MAX = 80;
@@ -1115,7 +1121,7 @@ export class Lobby {
     const idx = room.freeSeat();
     if (idx < 0) return fail(ERR.ROOM_FULL);
     const used = new Set(room.seats.filter((s) => s && s.isBot).map((s) => s.name));
-    const name = BOT_NAMES.find((n) => !used.has(n)) || `AI·${idx + 1}`;
+    const name = BOT_NAMES.find((n) => !used.has(n)) || `陪练${idx + 1}`;
     let playerId;
     do playerId = 'ai_' + randomBytes(4).toString('hex'); while (room.seatOf(playerId));
     room.seats[idx] = { seat: idx, playerId, name, isBot: true, ready: true, connected: true, left: false };
