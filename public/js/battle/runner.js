@@ -990,7 +990,18 @@ export function createBattleRunner(deps) {
         // scouting another field must not replace the player's own current battle statistics
         const e = ownerId == null ? cur : localEntries.filter((entry) => entry.members.includes(ownerId))
           .sort((a, b) => b.seq - a.seq)[0];
-        return combineCombat(e?.combatMetrics ? [e.combatMetrics()] : [], ownerId);
+        // 战斗一结束 combatMetrics 就被 detach（rememberCombat 收进 combatHistory），于是「当前战斗」页
+        // 在回合之间永远是空的 —— 业主看到的就是「作战统计没生效」。这里回落到这一场的最后一份记录。
+        const live = e?.combatMetrics ? [e.combatMetrics()] : [];
+        if (live.length) return combineCombat(live, ownerId);
+        const own = (rec) => ownerId == null || (rec.rows || []).some((x) => x.ownerId === ownerId);
+        const last = e ? combatHistory.get(e.battleId) : null;
+        if (last && own(last)) return combineCombat([last], ownerId);
+        // 战斗结束后条目会从 entries 里移除，`e` 于是不存在 —— 这时从历史里取最近一份属于这个玩家的
+        // 记录，让「当前战斗」页在回合之间仍显示刚打完的那一场（以前永远是「暂无本地战斗记录」）。
+        let best = null;
+        for (const rec of combatHistory.values()) if (own(rec)) best = rec;
+        return combineCombat(best ? [best] : [], ownerId);
       }
       const records = new Map(combatHistory);
       for (const e of localEntries) if (e.combatMetrics) {

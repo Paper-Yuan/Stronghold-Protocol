@@ -958,3 +958,83 @@
 .pauseov__btns { display: flex; gap: .2rem; }
 
 /* 工坊包的客户端面板宿主（slot screen.game.overlay）：铺满对局屏、不吃指针 ——
+
+/* ── 作战统计面板 · 半透明重做（业主 2026-10-18） ─────────────────────────────
+   原来是一块 98% 不透明的深色板，压在战场上几乎把左下的地面全挡住，也看不出是
+   「叠在战斗上面」的浮层。现在改成毛玻璃：62% 底色 + backdrop blur，边框只留
+   一条细线，行与行之间用极淡的分隔线代替实心块。数值和标题仍然足够亮，能在
+   移动的战场上看清。 */
+.combat-metrics {
+  background: linear-gradient(180deg, rgba(18, 24, 22, .62), rgba(10, 14, 13, .58));
+  -webkit-backdrop-filter: blur(14px) saturate(1.15);
+  backdrop-filter: blur(14px) saturate(1.15);
+  border: 1px solid rgba(120, 220, 180, .18);
+  border-top: 1px solid rgba(120, 220, 180, .42);
+  border-radius: 2px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, .38), inset 0 1px 0 rgba(255, 255, 255, .04);
+  --cm-line: rgba(255, 255, 255, .07);
+}
+/* 顶部标题区：只留一条渐隐的细线，不再是一整块实心 */
+.combat-metrics__head {
+  background: linear-gradient(180deg, rgba(255, 255, 255, .045), rgba(255, 255, 255, 0));
+  border-bottom: 1px solid var(--cm-line);
+}
+.combat-metrics__micro { color: rgba(120, 220, 180, .78); }
+.combat-metrics__head h2 { color: rgba(240, 248, 244, .96); font-weight: 600; }
+.combat-metrics__close {
+  color: rgba(210, 224, 218, .68);
+  background: rgba(255, 255, 255, .05);
+  border: 1px solid var(--cm-line);
+  border-radius: 2px;
+}
+.combat-metrics__close:hover { background: rgba(255, 255, 255, .12); color: #fff; }
+/* 范围切换：胶囊化的轻量按钮 */
+.combat-metrics__scopes { gap: 6px; }
+.combat-metrics__scopes button {
+  background: rgba(255, 255, 255, .04);
+  border: 1px solid var(--cm-line);
+  border-radius: 2px;
+  color: rgba(200, 214, 208, .72);
+}
+.combat-metrics__scopes button[aria-pressed="true"] {
+  background: rgba(80, 220, 170, .16);
+  border-color: rgba(120, 220, 180, .5);
+  color: #a8f0d2;
+}
+/* 总计：加大数字，弱化标签 */
+.combat-metrics__totals { border-bottom: 1px solid var(--cm-line); padding-bottom: 10px; }
+.combat-metrics__totals span { color: rgba(190, 205, 199, .66); }
+.combat-metrics__totals b { color: rgba(244, 250, 247, .97); font-weight: 600; }
+.combat-metrics__totals span:last-child b { color: #8ce8c4; }
+/* 图例：小圆点代替色块，弱化 */
+.combat-metrics__type::before { width: 7px; height: 7px; border-radius: 50%; }
+.combat-metrics__legend { color: rgba(180, 196, 190, .6); }
+.combat-metrics__sort { color: rgba(170, 188, 181, .55); }
+/* 行：极淡分隔线，悬停时微微提亮 */
+.combat-metrics__list { padding-bottom: 4px; }
+.combat-metrics__row {
+  padding: 6px 4px;
+  border-bottom: 1px solid rgba(255, 255, 255, .045);
+  border-radius: 2px;
+}
+.combat-metrics__row:last-child { border-bottom: 0; }
+.combat-metrics__row:hover { background: rgba(255, 255, 255, .045); }
+.combat-metrics__rank { color: rgba(160, 180, 172, .55); font-variant-numeric: tabular-nums; }
+.combat-metrics__name b { color: rgba(240, 248, 244, .95); font-weight: 600; }
+/* 伤害构成条：细、圆、半透明底 */
+.combat-metrics__bar {
+  height: max(.04rem, 4px);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, .07);
+  overflow: hidden;
+}
+.combat-metrics__segment { border-radius: 999px; }
+.combat-metrics__values small { color: rgba(170, 188, 181, .55); letter-spacing: .04em; }
+.combat-metrics__values b { color: rgba(238, 246, 242, .94); }
+.combat-metrics__values .combat-metrics__heal b { color: #8ce8c4; }
+.combat-metrics__empty { color: rgba(190, 205, 199, .62); }
+.combat-metrics__foot { border-top: 1px solid var(--cm-line); color: rgba(160, 178, 171, .5); }
+/* 不支持 backdrop-filter 的老 WebView：退回一个仍然半透明但可读的底色 */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .combat-metrics { background: linear-gradient(180deg, rgba(18, 24, 22, .88), rgba(10, 14, 13, .86)); }
+}

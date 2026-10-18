@@ -33,7 +33,10 @@ export function trackCombat(battle) {
     const src = credit || source;
     if (!src || src.side !== 'ally') return;
     const total = positive(src.stats?.dmg);
-    const delta = positive(total - (damageMarks.get(src) || 0));
+    // 首次见到这个单位时不要把它已经打出的伤害当成 0：旧写法 `|| 0` 让第一击（以及任何在 trackCombat
+    // 挂上之前就出手的召唤物）永远记 0 分，面板上就只剩一排 0。
+    const mark = damageMarks.get(src);
+    const delta = mark === undefined ? total : positive(total - mark);
     damageMarks.set(src, total);
     const row = rowOf(src);
     if (!row || !delta) return;
