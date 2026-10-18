@@ -50,12 +50,15 @@ test('超限局按自己的 bossRound 推进，Boss 输掉时在那里结束', (
   for (const s of samples) console.log('    R' + s.round + '\t怪 ' + String(s.total).padStart(3) + ' 只 / ' + String(s.kinds).padStart(2) + ' 种 / ' + String(s.entries).padStart(2) + ' 条 spawn\tLP ' + s.lp);
   // 前 11 回合必须一路推进（普通单机在前 11 回合也这么走）—— 说明超限没有在开头就断
   assert.ok(samples.length >= 3, '至少推进到 R16 之前要采到几个点');
-  // R16 起是无限波次的地盘：规模必须逐回合不降（实测 R16..R19 = 33 / 35 / 36 / 38）
+  // 业主 2026-10-19：波次改成「4–5 种地面 + 2–3 种飞行，每种 4–8 只」，
+  // 总数因此会逐回合小幅波动（不再单调递增）。这里守的是：
+  //   · 种类数在约定区间（4–5 地面 + 2–3 飞行 = 5–9 种）
+  //   · 总数不会塌到「几只怪」或涨到「上百只」
   const inf = samples.filter((x) => x.round >= 16 && x.total > 0);
   assert.ok(inf.length >= 3, '没跑到 R16+ 的无限波次，最后一个采样点 R' + samples[samples.length - 1].round);
-  for (let i = 1; i < inf.length; i++) {
-    const prev = inf[i - 1], cur = inf[i];
-    assert.ok(cur.total >= prev.total, '无限波次规模回退：R' + prev.round + ' 的 ' + prev.total + ' → R' + cur.round + ' 的 ' + cur.total);
+  for (const s2 of inf) {
+    assert.ok(s2.total >= 20 && s2.total <= 90, 'R' + s2.round + ' 的怪数 ' + s2.total + ' 不在 20–90');
+    assert.ok(s2.kinds >= 5 && s2.kinds <= 9, 'R' + s2.round + ' 的种类 ' + s2.kinds + ' 不在 5–9');
   }
   // 结束只可能发生在 bossRound（这里 14）或更晚；不会在开头莫名结束
   if (h.ended) {

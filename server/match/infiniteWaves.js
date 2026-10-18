@@ -102,15 +102,46 @@ export function buildInfiniteNormalWave(gd, rng, round, routes = null) {
 
   const pickKey = (arr) => arr[Math.floor(rng() * arr.length)];
 
-  // 随波次递增怪物数量（35 ~ 60 只）
-  const baseCount = Math.min(60, 32 + Math.floor((r - 15) * 1.5));
-  const spawns = [];
+  // 业主 2026-10-19：「提高波次内单个种类怪的数量，同时不要那么多种类同时出现，
+  // 4-5 地面，2-3 飞行」。
+  //
+  // 以前每只怪都独立抽一次种类（33–60 只 → 28–37 种），屏幕上什么都有、每种一两只。
+  // 现在先抽「本轮的阵容」：4–5 种地面 + 2–3 种飞行，然后整波只出这几种，
+  // 每种出 4–8 只 —— 单种数量上去了，种类数下来了，看得出「这一轮主打什么」。
+  const groundKindCount = 4 + Math.floor(rng() * 2);   // 4–5
+  const flyKindCount = 2 + Math.floor(rng() * 2);      // 2–3
+  const pickDistinct = (arr, n) => {
+    const pool = arr.slice();
+    const out = [];
+    for (let i = 0; i < n && pool.length; i++) out.push(pool.splice(Math.floor(rng() * pool.length), 1)[0]);
+    return out;
+  };
+  // 地面阵容：精英和普通按 2:3 的比例掺着来，避免整波全是同一种等级
+  const elitePick = Math.min(groundKindCount, Math.max(1, Math.round(groundKindCount * 0.4)));
+  const groundKinds = [
+    ...pickDistinct(eliteKeys, elitePick),
+    ...pickDistinct(normalKeys, Math.max(0, groundKindCount - elitePick)),
+  ];
+  const flyKinds = pickDistinct(flyKeys, flyKindCount);
+  // 每种出 4–8 只（业主：单种数量要提高），每种独立抽
+  const perKindOf = () => 4 + Math.floor(rng() * 5);
 
+  // 按种类轮流出，保证每一种都足量出场（随机抽会让某些种类只出 2 只甚至 0 只）
+  const lineup = [];
+  for (const k of flyKinds) { const n = perKindOf(); for (let j = 0; j < n; j++) lineup.push({ key: k, fly: true }); }
+  for (const k of groundKinds) { const n = perKindOf(); for (let j = 0; j < n; j++) lineup.push({ key: k, fly: false }); }
+  // 洗牌：种类交错出现，不会「前 8 只全是同一种」
+  for (let i = lineup.length - 1; i > 0; i--) {
+    const j = Math.floor(rng() * (i + 1));
+    [lineup[i], lineup[j]] = [lineup[j], lineup[i]];
+  }
+
+  const spawns = [];
   let curTime = 2.0;
-  for (let i = 0; i < baseCount; i++) {
-    const isFly = rng() < 0.25;
-    const isElite = rng() < 0.2;
-    const enemyKey = isFly ? pickKey(flyKeys) : (isElite ? pickKey(eliteKeys) : pickKey(normalKeys));
+  for (let i = 0; i < lineup.length; i++) {
+    const isFly = lineup[i].fly;
+    const enemyKey = lineup[i].key;
+    const isElite = eliteKeys.includes(enemyKey);
 
     // 上下路要均匀（业主 2026-10-19：「出怪显示应该分上下路」）：
     // 以前是 i % routes.length，而 routes 里飞行路径也占一格 —— 飞行怪落在下路、
