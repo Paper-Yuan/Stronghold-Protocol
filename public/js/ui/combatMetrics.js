@@ -14,7 +14,10 @@ const rate = (n) => (n || 0).toLocaleString('zh-CN', { maximumFractionDigits: 1 
 
 /** A modeless panel: the battlefield stays visible and keeps playing. Mounted only while open. */
 export function CombatMetricsPanel({ myId, onClose, runner = battleRunner }) {
-  const [scope, setScope] = useState('battle');
+  // 默认停在「本局累计」：面板随时可以打开，而「当前战斗」在回合之间按设计是空的
+  //（scope: 'battle' 只描述正在打的那一场，见 runner.js combatMetrics 与 runner.test.js 的语义）。
+  // 战斗中切回「当前战斗」即可看实时数据。
+  const [scope, setScope] = useState('match');
   const closeRef = useRef(null);
   const panelRef = useRef(null);
   useTicker(250);

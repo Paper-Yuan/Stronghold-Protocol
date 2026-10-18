@@ -990,18 +990,13 @@ export function createBattleRunner(deps) {
         // scouting another field must not replace the player's own current battle statistics
         const e = ownerId == null ? cur : localEntries.filter((entry) => entry.members.includes(ownerId))
           .sort((a, b) => b.seq - a.seq)[0];
-        // 战斗一结束 combatMetrics 就被 detach（rememberCombat 收进 combatHistory），于是「当前战斗」页
-        // 在回合之间永远是空的 —— 业主看到的就是「作战统计没生效」。这里回落到这一场的最后一份记录。
-        const live = e?.combatMetrics ? [e.combatMetrics()] : [];
-        if (live.length) return combineCombat(live, ownerId);
-        const own = (rec) => ownerId == null || (rec.rows || []).some((x) => x.ownerId === ownerId);
-        const last = e ? combatHistory.get(e.battleId) : null;
-        if (last && own(last)) return combineCombat([last], ownerId);
-        // 战斗结束后条目会从 entries 里移除，`e` 于是不存在 —— 这时从历史里取最近一份属于这个玩家的
-        // 记录，让「当前战斗」页在回合之间仍显示刚打完的那一场（以前永远是「暂无本地战斗记录」）。
-        let best = null;
-        for (const rec of combatHistory.values()) if (own(rec)) best = rec;
-        return combineCombat(best ? [best] : [], ownerId);
+        // 「当前战斗」= 屏幕上这一场（或 ownerId 自己的那一场）的实时数据。
+        //
+        // 曾经为了修「回合之间面板永远空」，这里加过一条「回落到历史最近一份」的兜底 —— 那是错的：
+        // 战斗一结束条目就被移除、cur 归空，于是这条兜底会把**上一场**的数据当成「当前战斗」显示，
+        // 并且让 scope: 'battle' 在战斗结束后仍然有行（runner.test.js 的 'current battle clears at prep' 就是
+        // 在守这个语义）。面板在回合之间的空态本来就该是「暂无本地战斗记录」—— 它上面还有「本局累计」页。
+        return combineCombat(e?.combatMetrics ? [e.combatMetrics()] : [], ownerId);
       }
       const records = new Map(combatHistory);
       for (const e of localEntries) if (e.combatMetrics) {
