@@ -152,7 +152,7 @@ import { TILE_H, TIER_COLORS, COLORS } from './style.js';
 import { loadBoardArt } from './boardArt.js';
 import { ImpostorAtlas } from './impostor.js';
 import { stepClipBounds } from './spine.js';
-import { loadThree, loadBoardPack, loadScenePack, webgl2Available, boardArtListed } from './board3d/load.js';
+import { loadThree, loadBoardPack, loadScenePack, webgl2Available, webgl2Support, boardArtListed } from './board3d/load.js';
 import { BoardScene } from './board3d/scene.js';
 import { layoutPen, penSignature } from './pen.js';
 import { IDENTITY, bossPrepField, tilesToDisp, leaderStand } from './prepfield.js';
@@ -196,7 +196,11 @@ export async function createFieldView(host, options = {}) {
   // the 3D board (three.js + the official art) loads in parallel with everything else
   // 设置「棋盘渲染」优先于 URL 参数：'2d' 直接走图集棋盘；'3d'/'3dscene' 都由 3D 层负责，差别是套不套官方场景包。
   const boardPref = settings.boardMode === '2d' ? '2d' : boardPreference(opts.board);
-  const want3d = boardPref !== '2d' && webgl2Available(boardPref === '3d');
+  // 分级探测：'slow' 也照样上 3D —— 只在渲染分辨率上让步（见下面的 boardDpr），
+  // 否则部分荣耀 / Mali 机型会因为驱动被标成 major performance caveat 而完全没有 3D 地图。
+  const glSupport = webgl2Support();
+  const boardSlow = glSupport === 'slow';
+  const want3d = boardPref !== '2d' && (glSupport === 'ok' || boardSlow);
   // three.js (~2 MB) is fetched only when the local-art manifest lists the board atlas (in parallel with the art)
   const artListed = want3d ? boardArtListed(assets).catch(() => false) : Promise.resolve(false);
   const threePromise = artListed.then((ok) => (ok ? loadThree() : null)).catch(() => null);
@@ -212,7 +216,9 @@ export async function createFieldView(host, options = {}) {
 
   const size = () => ({ width: Math.max(1, host.clientWidth || 1), height: Math.max(1, host.clientHeight || 1) });
   const dpr = () => Math.min(globalThis.devicePixelRatio || 1, QUALITY_RES[settings.quality] || 2);
-  const boardDpr = () => Math.min(globalThis.devicePixelRatio || 1, BOARD_RES[settings.quality] || 2);
+  const boardDpr = () => Math.min(globalThis.devicePixelRatio || 1, BOARD_RES[settings.quality] || 2,
+    // 慢 GPU（驱动被 blocklist 的机型）：棋盘按 1x 渲染，省一半以上的填充率，画面仍完整
+    boardSlow ? 1 : Infinity);
   const s0 = size();
   // Construction is synchronous until the complete view can own cancellation. If setup throws,
   // dispose only the resources acquired by this attempt, never another view's host contents.
@@ -474,7 +480,10 @@ export async function createFieldView(host, options = {}) {
       host.insertBefore(c3, canvas);
       board3dCanvas = c3;
       const b = new BoardScene(THREE, pack, {
-        canvas: c3, antialias: settings.quality !== 'low' && (globalThis.devicePixelRatio || 1) < 2, shadows: settings.quality !== 'low',
+        // 上下文丢了就丢掉这块棋盘、退到 2D，然后按 retry 序列重建 —— 弱 GPU 上这是唯一能自愈的路径
+        onContextLost: () => { try { disable3d(); recover.tries = 0; scheduleRecover(); } catch { /* ignore */ } },
+        // 慢 GPU（boardSlow）：关阴影。画面差别很小，省下的是一整张阴影贴图的每帧开销。
+        canvas: c3, antialias: settings.quality !== 'low' && !boardSlow && (globalThis.devicePixelRatio || 1) < 2, shadows: !boardSlow && settings.quality !== 'low',
       });
       const sz = size();
       b.resize(sz.width, sz.height, boardDpr());
@@ -482,7 +491,8 @@ export async function createFieldView(host, options = {}) {
       tiles.setExternal(true);
       backdrop.visible = false;
       b.setArea(boardArea(viewKind(camKind, camOpts)));
-      if (stageRec) { b.setStage(stageRec); useOfficialScene(stageRec); }
+      // 慢 GPU 只画棋盘本体，不套官方场景包（水面 / 焦散 / 反射在 blocklist 驱动上最容易花屏或直接黑屏）
+      if (stageRec) { b.setStage(stageRec); if (!boardSlow) useOfficialScene(stageRec); }
       b.setFocus(camRect());
       b.setBattleRect(mode === 'battle' && battleMeta ? battleMeta.rect : null);
       tiles.project(cam, true);
@@ -530,7 +540,7 @@ export async function createFieldView(host, options = {}) {
     recover.timer = setTimeout(() => {
       recover.timer = 0;
       if (destroyed || recover.off || board3d) return;
-      if (!webgl2Available(boardPref === '3d')) { scheduleRecover(); return; }
+      if (webgl2Support() === 'none' && boardPref !== '3d') { scheduleRecover(); return; }
       if (!enable3d(recover.THREE, recover.pack)) scheduleRecover();
     }, delay);
   }

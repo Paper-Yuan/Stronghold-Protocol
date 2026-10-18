@@ -42,15 +42,47 @@ export function loadThree(url = THREE_URL) {
  * performance caveat") count as unavailable unless `allowSlow` (an explicit `?board=3d`).
  */
 export function webgl2Available(allowSlow = false) {
-  try {
-    if (typeof document === 'undefined') return false;
-    const c = document.createElement('canvas');
-    const gl = c.getContext('webgl2', allowSlow ? {} : { failIfMajorPerformanceCaveat: true });
-    if (!gl) return false;
-    const lose = gl.getExtension('WEBGL_lose_context');
-    if (lose) lose.loseContext();
-    return true;
-  } catch { return false; }
+  return webgl2Support() !== 'none' && (allowSlow || webgl2Support() === 'ok');
+}
+
+/** Memoised result of {@link probeWebgl2} — the probe creates a context, so run it once. */
+let supportCache = null;
+
+/**
+ * How well can this browser run the 3D board? (业主 2026-10-18：部分荣耀机型的 WebView 把自家 GPU 报成
+ * 「major performance caveat」，严格探测于是直接判死、整张 3D 地图都不出来。实际情况是它能跑，只是慢。)
+ *
+ * - `'ok'`   — WebGL2 with no performance caveat: full board.
+ * - `'slow'` — WebGL2 only when the caveat flag is dropped (driver blocklisted / software-ish, common on some
+ *               Mali / Honor WebViews): the board is worth trying at a lower render scale rather than not at all.
+ * - `'none'` — no WebGL2 at all: the 2D atlas board is the only option.
+ * @returns {'ok'|'slow'|'none'}
+ */
+export function webgl2Support() {
+  if (supportCache) return supportCache;
+  supportCache = probeWebgl2();
+  return supportCache;
+}
+
+function probeWebgl2() {
+  if (typeof document === 'undefined') return 'none';
+  const attempt = (opts) => {
+    try {
+      const c = document.createElement('canvas');
+      const gl = c.getContext('webgl2', opts);
+      if (!gl) return false;
+      // a context that cannot even report its renderer is not usable in practice
+      const ok = !!gl.getParameter(gl.VERSION);
+      const lose = gl.getExtension('WEBGL_lose_context');
+      if (lose) lose.loseContext();
+      return ok;
+    } catch { return false; }
+  };
+  if (attempt({ failIfMajorPerformanceCaveat: true })) return 'ok';
+  // 严格探测失败：再问一次不带 caveat 的。很多机型（含部分荣耀）这里就通了。
+  if (attempt({})) return 'slow';
+  if (attempt({ antialias: false, depth: true, alpha: false })) return 'slow';
+  return 'none';
 }
 
 const isObj = (v) => v !== null && typeof v === 'object' && !Array.isArray(v);

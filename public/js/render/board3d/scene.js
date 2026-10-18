@@ -162,8 +162,16 @@ export class BoardScene {
     R.shadowMap.type = T.PCFShadowMap;
     R.shadowMap.autoUpdate = false;
     this.canvas = R.domElement;
-    this._onLost = (e) => { e.preventDefault?.(); this.lost = true; };
+    // 上下文丢失在部分荣耀 / 华为机型上很常见（切后台、GPU 压力、省电模式切换）。以前只置 lost 标记，
+    // 棋盘从此不再绘制，玩家看到的就是「3D 地图加载不出来」。现在把事件交给宿主，由它安排重建。
+    this._onLost = (e) => {
+      e.preventDefault?.();
+      this.lost = true;
+      try { opts.onContextLost?.(e); } catch { /* host callback must not break the handler */ }
+    };
     this.canvas.addEventListener?.('webglcontextlost', this._onLost);
+    this._onRestored = () => { this.lost = false; };
+    this.canvas.addEventListener?.('webglcontextrestored', this._onRestored);
 
     this.scene = new T.Scene();
     this.scene.fog = new T.Fog(LIGHTING.fog.color, LIGHTING.fog.near, LIGHTING.fog.far);
@@ -745,6 +753,7 @@ export class BoardScene {
     for (const t of Object.values(this.tex)) t?.dispose?.();
     this.envMap?.dispose?.();
     this.canvas.removeEventListener?.('webglcontextlost', this._onLost);
+    this.canvas.removeEventListener?.('webglcontextrestored', this._onRestored);
     try { this.renderer.dispose(); } catch { /* ignore */ }
     try { this.renderer.forceContextLoss?.(); } catch { /* ignore */ }
   }
