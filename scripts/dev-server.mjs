@@ -10,7 +10,7 @@ const arg = (name, def) => {
   const i = process.argv.indexOf('--' + name);
   return i >= 0 && process.argv[i + 1] != null ? process.argv[i + 1] : def;
 };
-const wantRound = Number(arg('round', 13));
+const wantRound = Number(arg('round', 16));
 const wantFunds = Number(arg('funds', 9999));
 const wantLevel = Number(arg('level', 6));
 const port = Number(process.env.PORT) || 3000;

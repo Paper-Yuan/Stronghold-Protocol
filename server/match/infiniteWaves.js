@@ -114,8 +114,15 @@ export function buildInfiniteNormalWave(gd, rng, round, routes = null) {
     curTime += Math.max(0.6, 2.2 - (r - 15) * 0.05);
   }
 
+  // 战斗时限：以前这里没有 timeLimit，combat.js 兜底成 60 秒 ——
+  // 而 R16+ 最后一只怪要到 70 秒以上才出场，60 秒一到 _timeout() 把场上所有存活敌人
+  // 全部记成漏怪，玩家看到的就是「怪出来了但直接结算漏怪」（业主 2026-10-19）。
+  // 现在按出怪节奏算：最后一只的出场时间 + 走完全程的余量。
+  const lastSpawn = spawns.length ? Math.max(...spawns.map((x) => Number(x.time) || 0)) : 0;
+  const march = 60;   // 从出生点走到终点 + 战斗收尾的余量
   return {
     round: r,
+    timeLimit: Math.ceil(lastSpawn + march),
     spawns,
     // 路径**必须来自这一张地图**（业主 2026-10-18：「怪的波次只选择这个地图能出的」）。
     // 以前这里硬编码了三条坐标（[16,2]、[18,5]…），全都在 NORMAL_RECT(9..12, 0..10) 之外，
@@ -214,16 +221,23 @@ export function buildInfiniteBossWave(gd, rng, round, routes = null) {
       for (const sp of list) {
         const key = sp && (sp.key || sp.enemyKey);
         if (typeof key !== 'string' || key === ek) continue;
-        // 只收「随从」：和 Boss 同一模板、且不是普通杂兵（模板里 Boss 同批出现的都算它的从属）
-        if (!escorts.includes(key)) escorts.push(key);
+        // 只收「随从」：和 Boss 同一模板、且不是普通杂兵（模板里 Boss 同批出现的都算它的从属）。
+        // **tag 必须一起带过来**：碎铳之簧这类是 tag:'part' 的部件，丢了 tag 会让客户端算出
+        // counted=false、服务端算出 counted=true，上报的漏怪被判 'uncounted leak' 并触发重模拟（卡死）。
+        if (!escorts.some((e2) => e2.key === key)) {
+          escorts.push({ key, tag: sp.tag ?? null, countInTotal: sp.countInTotal });
+        }
       }
       break;   // 一个 Boss 只取第一个模板
     }
   }
-  escorts.forEach((key, i) => {
+  escorts.forEach((esc, i) => {
     spawns.push({
       time: 4.5 + i * 1.5,
-      enemyKey: key,
+      enemyKey: esc.key,
+      // 原模板的 tag（part = 部件，不计入总数、漏了不扣 LP）与 countInTotal 原样保留
+      ...(esc.tag ? { tag: esc.tag } : {}),
+      ...(esc.countInTotal === false ? { countInTotal: false } : {}),
       routeIndex: (i + 1) % 3,
       count: 1,
       interval: 0,
@@ -250,11 +264,14 @@ export function buildInfiniteBossWave(gd, rng, round, routes = null) {
     });
   }
 
+  // Boss 场同样要给足时限（Boss + 随从 + 收尾），否则 60 秒兜底会把还活着的 Boss 判成漏怪
+  const lastBossSpawn = spawns.length ? Math.max(...spawns.map((x) => Number(x.time) || 0)) : 0;
   return {
     round: r,
     primaryBoss,
     secondaryBoss,
     isDouble,
+    timeLimit: Math.ceil(lastBossSpawn + 180),
     spawns,
     // 同上：Boss 的路径也必须来自这一张地图（以前硬编码 [16,9] / [16,11]，同样在图外且缺 start/end，
     // 导致 R20 之后的超限 Boss 轮一只 Boss 都刷不出来 —— 业主 2026-10-18「20 轮后没法玩」）。

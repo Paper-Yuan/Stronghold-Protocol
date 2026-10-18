@@ -12,6 +12,14 @@ import { DELAYS } from './common.js';
 import { previewPlayer } from '../preview.js';
 import { installInfiniteRule } from '../../sim/infiniteRule.js';
 
+/** 兜底时限：最后一只出场时间 + 走完全程的余量（60 秒太短，超限会误判漏怪）。 */
+function estimateTimeLimit(wave) {
+  const sp = Array.isArray(wave && wave.spawns) ? wave.spawns : [];
+  const last = sp.length ? Math.max(...sp.map((x) => Number(x && x.time) || 0)) : 0;
+  return Math.max(60, Math.ceil(last + 60));
+}
+
+
 export class MatchCombat {
   /** Construct a battle; a constructor failure yields a finished stand-in (clean result) and is logged. */
   newBattle(opts, { preview = false } = {}) {
@@ -88,7 +96,9 @@ export class MatchCombat {
     const alive = this.alivePlayers();
     this.lastResults = new Map();
     this.fields = alive.map((ps) => ({ fieldId: `n:${ps.playerId}`, kind: 'normal', players: [ps.playerId], battle: this._normalBattle(ps), live: true }));
-    const limit = this.wave ? this.wave.timeLimit : 60;
+    // 拿不到 timeLimit 时按「怪的数量 × 出怪节奏」估一个，而不是硬编码 60 秒 ——
+    // 超限 R16+ 有 33–60 只怪、最后一只 70 秒后才出场，60 秒会把还活着的全判成漏怪。
+    const limit = this.wave && Number.isFinite(this.wave.timeLimit) ? this.wave.timeLimit : estimateTimeLimit(this.wave);
     this.deadline = this.sched.instant ? 0 : this.sched.now() + Math.round((limit / this.gameSpeed) * 1000);
     this._defaultWatch();
     this.markPublic();
@@ -102,7 +112,9 @@ export class MatchCombat {
     this.lastResults = new Map();
     this.watchers.clear();
     const fields = alive.map((ps) => this._ccField({ fieldId: `n:${ps.playerId}`, kind: 'normal', players: [ps.playerId], opts: this._normalOpts(ps) }));
-    const limit = this.wave ? this.wave.timeLimit : 60;
+    // 拿不到 timeLimit 时按「怪的数量 × 出怪节奏」估一个，而不是硬编码 60 秒 ——
+    // 超限 R16+ 有 33–60 只怪、最后一只 70 秒后才出场，60 秒会把还活着的全判成漏怪。
+    const limit = this.wave && Number.isFinite(this.wave.timeLimit) ? this.wave.timeLimit : estimateTimeLimit(this.wave);
     this.deadline = this.sched.instant ? 0 : this.sched.now() + Math.round((limit / this.gameSpeed) * 1000);
     this._launch(fields);
     // every fighting human runs its own field; eliminated humans (and spectator seats) keep watching (research 09 §3.1
