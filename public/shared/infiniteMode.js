@@ -81,13 +81,18 @@ export function enemyInfiniteScale(round, baseR15 = { hpMul: 1, atkMul: 1, speed
   // 之前是每 5 回合跳一档（R16–R20 全一样、R21–R25 全一样），玩家打起来是「几轮没变，突然跳一下」。
   // 现在把同一档的倍数摊到 5 个回合上：每回合 ×(1.24^(1/5)) ≈ ×1.0439，
   // R15→R60 的总倍数和原来完全一致（1.24^9），只是曲线变成了连续上升。
-  const k = Math.max(0, (r - 15) / 5);
-  const HP_STEP = 1.24;
-  const ATK_STEP = 1.12;
+  //
+  // 业主 2026-10-19：「数值依旧参考最难模式，但我要求一路以指数形式进行，而不是以模拟形式」。
+  // 三种量以前各走各的曲线（血量按档复利、攻击另一个底数、速度是线性 1+0.015Δ）——
+  // 现在统一成**同一条逐回合指数**：hp ×1.0439、atk ×1.0371、speed ×1.01 每回合，
+  // 从绝境 R15 的真实数值接着往上，不再有线性段、也不再有 5 回合台阶。
+  const k = Math.max(0, r - 15);
+  const HP_STEP = Math.pow(1.24, 1 / 5);    // 每回合 ×1.0439（R15→R20 共 ×1.24）
+  const ATK_STEP = Math.pow(1.20, 1 / 5);   // 每回合 ×1.0371
   const hpMul = base.hpMul * Math.pow(HP_STEP, k);
   const atkMul = base.atkMul * Math.pow(ATK_STEP, k);
-  // 移动速度硬上限 2.5：防止敌人瞬移进门无法防御
-  const speedMul = Math.min(2.5, base.speedMul * (1 + 0.015 * (r - 15)));
+  // 速度同样走指数，硬上限 2.5：防止敌人瞬移进门无法防御
+  const speedMul = Math.min(2.5, base.speedMul * Math.pow(1.01, k));
 
   return { hpMul, atkMul, speedMul };
 }
@@ -103,6 +108,7 @@ export function getInfiniteBossHp(baseHp, round) {
   if (r <= 15) return baseHp;
   // 与杂兵同一条曲线、同样**每回合平滑**（业主 2026-10-19：「中间不断」）。
   // 之前是每 5 回合跳一档（R20–R24 一样、R25–R29 一样），Boss 血量在两次 Boss 战之间完全不变。
-  const k = Math.max(0, (r - 15) / 5);
-  return Math.round(baseHp * Math.pow(1.24, k));
+  // 与杂兵同一条指数：逐回合复利，不再每 5 回合跳一档
+  const k = Math.max(0, r - 15);
+  return Math.round(baseHp * Math.pow(Math.pow(1.24, 1 / 5), k));
 }

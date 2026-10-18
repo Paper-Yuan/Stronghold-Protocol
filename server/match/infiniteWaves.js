@@ -61,8 +61,18 @@ export function buildInfiniteNormalWave(gd, rng, round, routes = null) {
       if (typeof key === 'string') summonChildren.add(key);
     }
   }
+  // Boss 组件（原版模板里 tag:'part' 的那些：「斩胄之剑」「碎铳之簧」「裂管之音」…）：
+  // 它们只属于某一场领袖战，不是独立的野怪（业主 2026-10-19：「等级为 boss 组件的东西不要放在普通波次里」）。
+  const bossParts = new Set();
+  for (const tpl of Object.values(gd.raw?.waves || {})) {
+    for (const sp of (Array.isArray(tpl && tpl.spawns) ? tpl.spawns : [])) {
+      const key = sp && (sp.key || sp.enemyKey);
+      if (key && sp.tag === 'part') bossParts.add(key);
+    }
+  }
   for (const [key, e] of Object.entries(enemies)) {
     if (e.rank === 'BOSS') continue;              // BOSS 走 Boss 轮
+    if (bossParts.has(key)) continue;             // Boss 组件只随领袖出场
     if (bountyKeys.has(key)) continue;            // 悬赏怪走悬赏 / 词条抉择
     if (e.tokenOnly) continue;                    // 召唤物 / 弹体不是独立敌人
     if (summonChildren.has(key)) continue;        // 召唤子怪只由召唤者带出

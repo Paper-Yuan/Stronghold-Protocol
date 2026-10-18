@@ -336,7 +336,10 @@ export class MatchPhases {
     if (!out.length) return [];
     // 飞行单位：沿最长的地面路径直飞（端点相同），数量够 spawn 轮流用
     const longest = out.reduce((a, b) => (b.checkpoints.length > a.checkpoints.length ? b : a), out[0]);
-    out.push({ motion: "FLY", start: longest.start, end: longest.end, checkpoints: [] });
+    // 飞行路径不能是「起点→蓝门」的一条直线 —— 那看起来就是直冲蓝门（业主 2026-10-19）。
+    // 原版模板给飞行怪的是自己的折点（act1autochess_01 的 FLY: [9,9],[12,9],[12,7],[9,7]…），
+    // 这里沿用地面的折点作为绕行路线，飞行怪照样在空中走 S 形。
+    out.push({ motion: "FLY", start: longest.start, end: longest.end, checkpoints: longest.checkpoints.slice() });
     void round;
     return out;
   }
