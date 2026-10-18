@@ -34,7 +34,7 @@ export function isInfiniteDoubleBossRound(round) {
  * @param {number} round
  * @returns {object} wave descriptor
  */
-export function buildInfiniteNormalWave(gd, rng, round) {
+export function buildInfiniteNormalWave(gd, rng, round, routes = null) {
   const r = Number(round) || 16;
   const baseScale = gd.enemyScale(15) || { hpMul: 1, atkMul: 1, speedMul: 1 };
   const scale = enemyInfiniteScale(r, baseScale);
@@ -97,11 +97,13 @@ export function buildInfiniteNormalWave(gd, rng, round) {
   return {
     round: r,
     spawns,
-    routes: [
-      { checkpoints: [[16, 2], [16, 18], [2, 18], [2, 2]] },
-      { checkpoints: [[18, 5], [10, 5], [10, 15], [2, 15]] },
-      { checkpoints: [[18, 15], [12, 15], [12, 5], [2, 5]] },
-    ],
+    // 路径**必须来自这一张地图**（业主 2026-10-18：「怪的波次只选择这个地图能出的」）。
+    // 以前这里硬编码了三条坐标（[16,2]、[18,5]…），全都在 NORMAL_RECT(9..12, 0..10) 之外，
+    // 而且缺 start/end —— normalizeRoute 得到 { start: null, end: null }，怪根本没有出生点，
+    // 于是 R16+ 一只怪都刷不出来、回合空转后直接进结算（同时还把「完美作战」判成失败扣 LP）。
+    // 现在只接受调用方传进来的 real routes（由 phase 代码从当前 stage / wave 取）；拿不到就不给路径，
+    // 让上层用一个「不会静默失败」的明确错误，而不是刷出一堆没有起点的怪。
+    routes: Array.isArray(routes) && routes.length ? routes : [],
     scale,
   };
 }
@@ -113,7 +115,7 @@ export function buildInfiniteNormalWave(gd, rng, round) {
  * @param {number} round
  * @returns {object}
  */
-export function buildInfiniteBossWave(gd, rng, round) {
+export function buildInfiniteBossWave(gd, rng, round, routes = null) {
   const r = Number(round) || 20;
   // 原版是**两个** Boss 池：普通 Boss 轮（bossWeights，HARD 78 万~210 万）与隐秘核心
   // （hiddenBossWeights，280 万~380 万）。超限以前抽的是普通池，于是 R20 抽到 78 万的猩红血钻、

@@ -273,7 +273,7 @@ export class MatchPhases {
     if (isBoss) {
       this._planBossWaves();
     } else if (this.isInfinite && r >= 16) {
-      this.wave = buildInfiniteNormalWave(this.gd, this.rngWaves, r);
+      this.wave = buildInfiniteNormalWave(this.gd, this.rngWaves, r, this._infiniteRoutes(r));
     } else {
       this.wave = buildNormalWave(this.gd, this.rngWaves, this.factions, r);
       // 超限的前 15 回合收敛到 3 种怪（业主 2026-10-17）；R16 起走上面的无限波次，不设上限。
@@ -295,6 +295,38 @@ export class MatchPhases {
   }
 
   /** Stable per-match pairs and their templates, generated before the prep preview / board validation. */
+  /**
+   * 这一张地图能走的路径（业主 2026-10-18：「怪的波次只选择这个地图能出的啊」）。
+   *
+   * 无限波次 / 无限 Boss 以前各自硬编码了三条坐标，全都在 NORMAL_RECT 之外、而且缺 start/end，
+   * normalizeRoute 之后 start=null → 怪没有出生点 → R16+ 一只都不刷、回合空转直接进结算
+   * （顺带把「完美作战」判成失败扣 LP）。这里改从 `gd.stage(stageId).groundPaths` 取真实路径：
+   * 键形如 "9,10->9,2"，值是整条折线（含起终点），正好能拼成 { motion, start, end, checkpoints }。
+   *
+   * 飞行单位另走 FLY：没有现成的空中折线时，用地面路径的起终点直飞（原版飞行怪也是端点进出门）。
+   * @returns {Array<{motion:string,start:number[],end:number[],checkpoints:Array}>}
+   */
+  _infiniteRoutes(round) {
+    const stage = this.stage || (this.stageId ? this.gd.stage(this.stageId) : null);
+    const paths = (stage && (stage.groundPaths || stage.groundPathsWithDevices)) || {};
+    const out = [];
+    for (const [key, pts] of Object.entries(paths)) {
+      if (typeof key !== "string" || !Array.isArray(pts) || pts.length < 2) continue;
+      const [from, to] = key.split("->");
+      const s = from && from.split(",").map(Number);
+      const e = to && to.split(",").map(Number);
+      if (!s || !e || !s.every(Number.isFinite) || !e.every(Number.isFinite)) continue;
+      const mid = pts.slice(1, -1).filter((p) => Array.isArray(p) && p.length === 2 && p.every(Number.isFinite));
+      out.push({ motion: "WALK", start: [s[0], s[1]], end: [e[0], e[1]], checkpoints: mid });
+    }
+    if (!out.length) return [];
+    // 飞行单位：沿最长的地面路径直飞（端点相同），数量够 spawn 轮流用
+    const longest = out.reduce((a, b) => (b.checkpoints.length > a.checkpoints.length ? b : a), out[0]);
+    out.push({ motion: "FLY", start: longest.start, end: longest.end, checkpoints: [] });
+    void round;
+    return out;
+  }
+
   _planBossWaves() {
     const r = this.round;
     const bossId = r === this.gd.hiddenRound && r !== this.gd.bossRound ? this.hiddenBossId : this.bossId;
@@ -304,7 +336,7 @@ export class MatchPhases {
     this.bossWaves = groups.map((g) => ({
       players: g.map((p) => p.playerId),
       wave: (this.isInfinite && r >= 16)
-        ? buildInfiniteBossWave(this.gd, this.rngWaves, r)
+        ? buildInfiniteBossWave(this.gd, this.rngWaves, r, this._infiniteRoutes(r))
         : buildBossWave(this.gd, this.rngWaves, this.factions, r, { bossId, solo: this.isSolo || g.length === 1 }),
     }));
   }

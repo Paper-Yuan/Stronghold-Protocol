@@ -7,6 +7,9 @@ export const SOLO_INFINITE = 'solo_infinite';
 /** 超限模拟单次伤害限额（99,999,999，防止溢出 32 位整型） */
 export const BOSS_HIT_LIMIT_INFINITE = 99999999;
 
+/** 超限模拟里盟约层数的上限（原版与普通模式是 999） */
+export const INFINITE_BOND_LAYER_CAP = 9999;
+
 /** 理论最大轮次 */
 export const INFINITE_MAX_ROUND = 9999;
 

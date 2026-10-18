@@ -5,7 +5,7 @@
 // Installed on Match.prototype by server/match/Match.js (a method container: never instantiated; `this` is the match).
 
 import { C2S } from '../../../shared/protocol.js';
-import { PHASE, ERR } from '../../../shared/constants.js';
+import { PHASE, ERR, setBondLayerCap } from '../../../shared/constants.js';
 import { syntheticResult } from '../fields.js';
 import { FLOW_TICKER_PRIORITY, OK, fail } from './common.js';
 import { msg } from '../../../shared/i18n.js';
@@ -274,6 +274,8 @@ export class MatchPlatform {
   }
 
   dispose() {
+    // 超限局在构造时把盟约层数上限抬到 9999 —— 这里恢复成上一局的值（普通模式从不设置，为 null）。
+    if (this._bondCapPrev != null) { setBondLayerCap(this._bondCapPrev); this._bondCapPrev = null; }
     if (this.disposed) return;
     this.disposed = true;
     if (this.runner) { try { this.runner.stop(); } catch { /* ignore */ } }

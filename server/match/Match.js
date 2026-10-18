@@ -199,8 +199,9 @@
 //   common.js        what the modules share (FLOW_TICKER_PRIORITY, DELAYS, BAND_TURN_SECONDS — re-exported here, OK,
 //                    fail, BOSS_CLOCK_MS)
 
-import { isSoloRoomMode, SOLO_INFINITE } from '../../shared/infiniteMode.js';
+import { isSoloRoomMode, SOLO_INFINITE, INFINITE_BOND_LAYER_CAP } from '../../shared/infiniteMode.js';
 import { PHASE, modeIdFor } from '../../shared/constants.js';
+import { setBondLayerCap } from '../../shared/constants.js';
 import { isContentHash } from '../../shared/plugins/identity.js';
 import { Battle } from '../sim/Battle.js';
 import { DataSource } from '../sim/simdata.js';
@@ -305,6 +306,9 @@ export class Match {
      * 这里按房间模式点亮它；别的模式一律 false，所以不会有任何超限规则漏进普通单机/同盟。
      */
     this.isInfinite = opts.mode === SOLO_INFINITE;
+    // 超限局把盟约层数上限抬到 9999（普通模式仍是 999）。恢复放在 dispose 里，
+    // 用「上一局的值」而不是常量，避免嵌套/并发时把别的对局的设置冲掉。
+    this._bondCapPrev = this.isInfinite ? setBondLayerCap(INFINITE_BOND_LAYER_CAP) : null;
     /** 「AI 队友最后选择」 (opts.aiPicksLast, GitHub #338): humans draft before AI seats (MatchPhases.humansFirst) */
     this.aiPicksLast = !this.isSolo && opts.aiPicksLast === true;
     this.ownsScheduler = !opts.scheduler;
