@@ -184,10 +184,9 @@ export function buildInfiniteBossWave(gd, rng, round, routes = null) {
     secondaryBoss,
     isDouble,
     spawns,
-    routes: [
-      { checkpoints: [[16, 9], [9, 9], [2, 9]] },
-      { checkpoints: [[16, 11], [9, 11], [2, 11]] },
-    ],
+    // 同上：Boss 的路径也必须来自这一张地图（以前硬编码 [16,9] / [16,11]，同样在图外且缺 start/end，
+    // 导致 R20 之后的超限 Boss 轮一只 Boss 都刷不出来 —— 业主 2026-10-18「20 轮后没法玩」）。
+    routes: Array.isArray(routes) && routes.length ? routes : [],
     scale,
   };
 }

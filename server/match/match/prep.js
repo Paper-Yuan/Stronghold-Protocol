@@ -4,6 +4,7 @@
 // Installed on Match.prototype by server/match/Match.js (a method container: never instantiated; `this` is the match).
 
 import { PHASE } from '../../../shared/constants.js';
+import { isInfiniteBossRound } from '../infiniteWaves.js';
 import { botPrepBeginSteps, botPrepEndSteps } from '../bot.js';
 import { DELAYS } from './common.js';
 
@@ -168,7 +169,13 @@ export class MatchPrep {
     for (const ps of alive) this.dispatch(ps, 'onPrepEnd', { round: this.round });
     for (const ps of alive) ps.endPrep();
     const r = this.round;
-    if (r === this.gd.bossRound) {
+    // 超限模拟的 Boss 轮（R20/25/30…，isInfiniteBossRound）也要走**最终攻势**：phases.js 已经为它生成了
+    // bossWaves，但这里以前只认 gd.bossRound(14)/hiddenRound(15)，于是 R20 掉进 startCombat ——
+    // 而 startCombat 用的是 m.wave（boss 轮没有给它赋值），结果 0 只怪、COMBAT 空转，
+    // 「20 轮后没法玩」（业主 2026-10-18）。bossRounds.js 的 `isInfinite && victory` 分支本来就会
+    // 在胜利后 startRound(round + 1) 继续，所以走这条路才是原本的设计意图。
+    const infBoss = this.isInfinite && isInfiniteBossRound(r);
+    if (r === this.gd.bossRound || infBoss) {
       this.hiddenLayerSum = alive.reduce((s, p) => s + p.activatedLayers(), 0);
       this.startFinalAssault(false);
     } else if (r === this.gd.hiddenRound) {
