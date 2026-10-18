@@ -76,7 +76,10 @@ export function enemyInfiniteScale(round, baseR15 = { hpMul: 1, atkMul: 1, speed
   //
   // 现在改成延续同一条指数，只把每档的底数从 1.2 抬到 1.24（hp）/ 1.12（atk）：
   // 5 回合累计 ×1.71（原版 ×1.49），比原版陡一点，但仍是**同一种曲线形状**，后期不会失控。
-  const k = Math.max(0, Math.floor((r - 15) / 5)); // R16–R19 → 0，R20–R24 → 1 …
+  // 业主 2026-10-19：「进入无限轮次后怪没有吃到数值加成」——原来 R16–R19 的 k 是 0，
+  // 也就是这几轮和 R15 完全一样，玩家看不到任何增长。改成从 R16 起就计一档（R16–R20 → 1，R21–R25 → 2…），
+  // 保证「一进无限轮次就在涨」，同时保持同一条指数曲线的形状。
+  const k = Math.max(1, Math.ceil((r - 15) / 5)); // R16–R20 → 1，R21–R25 → 2 …
   const HP_STEP = 1.24;
   const ATK_STEP = 1.12;
   const hpMul = base.hpMul * Math.pow(HP_STEP, k);

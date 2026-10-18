@@ -433,7 +433,9 @@ export function TopBar({ pub, priv, conn, hud, total, drawer, onExit, onDrawer, 
   const lp = boss && Number.isFinite(pub?.teamLp) ? pub.teamLp : Number.isFinite(priv?.lp) ? priv.lp : null;
   // normal rounds: the leaks of the own battle so far (boss rounds: the team LP above already moves live)
   const pending = !boss && Number.isFinite(lp) && live && live.pending > 0 ? Math.min(lp, live.pending) : 0;
-  const hidden = phase === PHASE.HIDDEN_CORE || (Number.isFinite(pub?.lastRound) && pub.round > pub.lastRound);
+  // 超限模式没有「隐藏核心」这一步，回合数一路涨下去：不能用 lastRound 把它判成 ??
+  const hidden = phase === PHASE.HIDDEN_CORE
+    || (!pub?.isInfinite && Number.isFinite(pub?.lastRound) && pub.round > pub.lastRound);
   const roundText = hidden ? '??' : pub?.round > 0 ? String(pub.round) : '--';
   // a spectator seat (no m.private, community report #26) never readies
   const showReady = phase === PHASE.PREP && !spectator && priv?.alive !== false;

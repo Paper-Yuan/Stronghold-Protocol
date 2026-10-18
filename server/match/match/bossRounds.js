@@ -46,7 +46,13 @@ export class MatchBoss {
       this.teamLp = alive.reduce((s, p) => s + Math.max(0, p.lp), 0);
       for (const ps of alive) ps.lpAtFinal = Math.max(0, ps.lp);
     }
-    const bossId = hidden ? this.hiddenBossId : this.bossId;
+    // 超限的 Boss 轮由 buildInfiniteBossWave 按档位挑 Boss（R20→最弱档、R25→次档…），
+    // 而 this.bossId 是开局时定的那一个（普通模式的 R14 领袖）。两者不一致会让
+    // 「场上刷出来的 Boss」和「血池/血条对应的 Boss」是两个不同的东西 —— 业主 2026-10-19
+    // 「进入第 20 轮次，boss 没有正确加载」就是这个。超限时以波次里的那个 Boss 为准。
+    const waveBoss = this.isInfinite && !hidden && this.bossWaves && this.bossWaves[0] && this.bossWaves[0].wave
+      ? (this.bossWaves[0].wave.primaryBoss || null) : null;
+    const bossId = hidden ? this.hiddenBossId : (waveBoss || this.bossId);
     // BOSS_HIT tickers ("对敌方领袖造成的伤害超过20% / 50% / 80%"): the player's damage to THIS leader over its pool —
     // the pool's own per-player tally, one pool per boss round. stats.bossDamage (the result's 领袖伤害) adds up both
     // rounds, so it would credit the Final Assault's damage to the hidden leader ("隐藏boss还没打就出了50%播报").

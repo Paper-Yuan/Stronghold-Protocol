@@ -44,7 +44,7 @@ export function buildInfiniteNormalWave(gd, rng, round, routes = null) {
   const eliteKeys = [];
   const flyKeys = [];
 
-  const enemies = gd.data?.enemies || {};
+  const enemies = gd.raw?.enemies || {};
   for (const [key, e] of Object.entries(enemies)) {
     if (e.rank === 'BOSS') continue;
     // 飞行判定与 waves.js 的 isFlyKey 一致：真实数据把 motion 放在 stats 里（e.motion 是旧字段，永远是 undefined）
@@ -76,7 +76,7 @@ export function buildInfiniteNormalWave(gd, rng, round, routes = null) {
     spawns.push({
       time: curTime,
       enemyKey,
-      routeIndex: i % 3,
+      routeIndex: routes && routes.length ? i % routes.length : 0,
       count: 1,
       interval: 0,
       mods: {
@@ -152,7 +152,7 @@ export function buildInfiniteBossWave(gd, rng, round, routes = null) {
     {
       time: 3.0,
       enemyKey: primaryBoss,
-      routeIndex: 0,
+      routeIndex: routes && routes.length ? 0 : 0,
       count: 1,
       interval: 0,
       mods: {
@@ -167,7 +167,7 @@ export function buildInfiniteBossWave(gd, rng, round, routes = null) {
     spawns.push({
       time: 6.0,
       enemyKey: secondaryBoss,
-      routeIndex: 1,
+      routeIndex: routes && routes.length > 1 ? 1 : 0,
       count: 1,
       interval: 0,
       mods: {

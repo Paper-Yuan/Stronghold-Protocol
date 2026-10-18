@@ -72,6 +72,8 @@ export class MatchViews {
       deadline: this.deadline,
       serverNow: this.sched.now(),
       modeId: this.modeId,
+      // 超限模式：客户端据此知道回合数没有上限（HUD 的「隐藏核心 ?? 」判定不能拿 lastRound 卡它）
+      isInfinite: !!this.isInfinite,
       difficulty: this.difficulty,
       stageId: this.stageId,
       setupRevision: this.setupRevision,
