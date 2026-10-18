@@ -21,8 +21,11 @@ export function wantsTraitDraft(m, round) {
   return isInfiniteBossRoundSafe(round - 1);
 }
 
+/**
+ * 与 server/match/infiniteWaves.js isInfiniteBossRound 同一口径：R20/25/30… 每 5 回合一次。
+ * 这里保留一份本地实现，避免匹配层为了一个纯函数再引一次 waves 模块。
+ */
 function isInfiniteBossRoundSafe(r) {
-  // R20/25/30… 每 5 回合一次 Boss；与 infiniteWaves 的判定保持一致
   return r >= 20 && r % 5 === 0;
 }
 

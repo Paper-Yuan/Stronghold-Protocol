@@ -15,9 +15,9 @@ const MOVE_MS = 620, MORPH_MS = 820;
 
 /** 特化配置：与服务端 server/match/traits.js SPECIALS 对应（只放卡面需要的字段） */
 const SPECIAL_VIEW = {
-  reid: { title: '复仇-火与钢', img: '/dev/enemy-reid.png' },
-  mdrock: { title: '坚甲随身Ⅲ', img: '/dev/enemy-mdrock.png' },
-  xi: { title: '气定神闲Ⅲ', img: '/dev/enemy-xi.png' },
+  reid: { title: '复仇-火与钢', img: '/ui/enemy-special/enemy-reid.png' },
+  mdrock: { title: '坚甲随身Ⅲ', img: '/ui/enemy-special/enemy-mdrock.png' },
+  xi: { title: '气定神闲Ⅲ', img: '/ui/enemy-special/enemy-xi.png' },
 };
 
 export function TraitOverlay({ trait, myId, busyIdx = null, onPick }) {
