@@ -99,16 +99,13 @@ export const MONSTERS = Object.freeze({
     { key: 'enemy_1535_wlfmster', name: '扎罗，“狼之主”' },
     { key: 'enemy_2008_flking', name: '“墓碑”' },
     { key: 'enemy_2005_axetro', name: '“遗弃者”' },
-    { key: 'enemy_1517_xi', name: '“自在”' },
     { key: 'enemy_1516_jakill', name: '杰斯顿·威廉姆斯' },
-    { key: 'enemy_1511_mdrock', name: '泥岩' },
     { key: 'enemy_2048_smgrd', name: '“邪魔的利刃”' },
     { key: 'enemy_1513_dekght_2', name: '凋零骑士' },
     { key: 'enemy_1513_dekght', name: '腐败骑士' },
     { key: 'enemy_2052_smgia', name: '纠缠藤蔓' },
     { key: 'enemy_2004_balloon', name: '喷气人' },
     { key: 'enemy_2050_smsha', name: '陷落雪祀' },
-    { key: 'enemy_1539_reid', name: '“复仇者”' },
   ]),
 });
 
@@ -153,7 +150,8 @@ export function drawTraitCards(rng, polarity) {
     if (rng.pick([1, 2, 3, 4, 5]) <= Math.round((sp.chance || 0.2) * 5)) { special = { id, sp }; break; }
   }
 
-  const used = new Set(special ? SPECIAL_MOBS : []);
+  // 特化怪永远不进普通随机（业主：特化和普通不要在随机中重复）
+  const used = new Set(SPECIAL_MOBS);
   const cards = [];
   const traits = rng.shuffle(pool.slice()).slice(0, 3);
 
