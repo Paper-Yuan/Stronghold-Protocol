@@ -215,12 +215,14 @@ export const LOBBY_DEFAULTS = Object.freeze({
 export const SOLO_RECONNECT_FALLBACK_SEC = 86_400;
 
 /** Display names for AI teammates (the tutorial NPCs first, then a few familiar faces). */
-// AI 队友的名字（业主 2026-10-18：用明日方舟 B 站 UP 主，代替原来的干员名）。
-// 阵容按「一眼能认出是方舟区」排：先放业主点名的两个，其余是同圈层的熟面孔，够 10 人房用。
+// AI 队友的名字（业主 2026-10-18：用明日方舟 B 站 UP 主 / 仙术杯选手，代替原来的干员名）。
+// 前半是业主点名的方舟区熟面孔，后半是从仙术杯历届赛程里能查到的参赛选手
+// （B 站检索「仙术杯」的录播/切片标题里出现的选手名）。
 // 不加「AI·」前缀 —— 座位上的机器人图标和 AUTONOMOUS UNIT 已经说明了它是电脑。
 export const BOT_NAMES = Object.freeze([
-  '龙哥哥今天又鸽了', '魔法Zc目录', '卡特亚', '盐鱼OvO', '小狼XF',
-  '血狼破军', '极东折跃', '北伴', '罗德岛孙哥', '阿米娅的刀客塔',
+  '龙哥哥今天又鸽了', '魔法Zc目录', '卡特亚', '盐鱼OvO', '小狼XF', '血狼破军',
+  '极东折跃', '北伴', '罗德岛孙哥', '阿米娅的刀客塔',
+  '萧然Q', 'A2', '早咲', '仿佛', '三笙', '金有才',
 ]); // i18n-ignore: player names (docs/I18N.md)
 
 /** Room chat (room.chat): the length the server actually sends (the wire bound in shared/protocol.js is looser). */
