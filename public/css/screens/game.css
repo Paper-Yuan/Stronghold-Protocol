@@ -1047,10 +1047,43 @@
   background:color-mix(in srgb,var(--pos) 12%,transparent);cursor:help}
 
 
-/* 超限已选词条（业主 2026-10-19）：HUD 右上角一排小标签 */
-.gtop__traits{display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end;max-width:260px}
-.tchip{font:600 10px/1 var(--font-cjk);letter-spacing:.04em;padding:3px 7px;border-radius:3px;
-  color:var(--pos);background:color-mix(in srgb,var(--pos) 12%,transparent);
-  border:1px solid color-mix(in srgb,var(--pos) 40%,transparent);cursor:help;white-space:nowrap}
-.tchip--neg{color:var(--neg-hi);background:color-mix(in srgb,var(--neg) 12%,transparent);
-  border-color:color-mix(in srgb,var(--neg) 40%,transparent)}
+
+/* 超限词条按钮 + 面板（业主 2026-10-20）：原来是时钟旁一排小标签，改成右侧一枚按钮 */
+.gtrait{position:relative;display:inline-flex}
+.gtrait__btn{display:inline-flex;align-items:center;gap:5px;height:24px;padding:0 9px;cursor:pointer;
+  font:600 11px/1 var(--font-cjk);letter-spacing:.04em;color:var(--pos);
+  background:color-mix(in srgb,var(--pos) 10%,rgba(10,16,14,.7));
+  border:1px solid color-mix(in srgb,var(--pos) 38%,transparent);border-radius:5px;
+  transition:background .16s ease,border-color .16s ease}
+.gtrait__btn:hover,.gtrait__btn.is-open{background:color-mix(in srgb,var(--pos) 20%,rgba(10,16,14,.7));
+  border-color:color-mix(in srgb,var(--pos) 60%,transparent)}
+.gtrait__ico{font-size:9px;opacity:.8}
+.gtrait__btn b{font:700 11px/1 var(--font-num);color:var(--pos-hi)}
+.gtrait__pop{position:absolute;top:calc(100% + 8px);right:0;width:min(340px,86vw);z-index:60;
+  background:rgba(10,16,14,.94);border:1px solid rgba(255,255,255,.12);border-radius:8px;
+  -webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);
+  box-shadow:0 18px 44px rgba(0,0,0,.55);padding:10px 0 6px;cursor:default}
+.gtrait__head{display:flex;align-items:center;gap:8px;padding:0 12px 8px;
+  border-bottom:1px solid rgba(255,255,255,.08);font:600 11.5px/1 var(--font-cjk);color:var(--text-hi)}
+.gtrait__sum{margin-left:auto;font:600 10.5px/1 var(--font-num);color:var(--text-lo)}
+.gtrait__sum b{color:var(--pos-hi)}
+.gtrait__x{width:20px;height:20px;margin-left:6px;cursor:pointer;color:var(--text-lo);
+  background:none;border:0;font-size:15px;line-height:1}
+.gtrait__x:hover{color:var(--text-hi)}
+.gtrait__list{margin:0;padding:4px 0;list-style:none;max-height:min(46vh,340px);overflow:auto}
+.gtrait__row{display:grid;grid-template-columns:34px auto 1fr;gap:8px;align-items:baseline;
+  padding:6px 12px;font-size:11px;line-height:1.5}
+.gtrait__row:hover{background:rgba(255,255,255,.04)}
+.gtrait__r{font:600 9.5px/1 var(--font-num);color:var(--text-lo)}
+.gtrait__n{font-weight:700;color:var(--pos-hi);white-space:nowrap}
+.gtrait__t{color:var(--text-md)}
+.gtrait__row.is-neg .gtrait__n{color:var(--neg-hi)}
+
+/* 超限倍速开关（业主 2026-10-20） */
+.gspeed{display:inline-flex;align-items:center;justify-content:center;min-width:34px;height:24px;
+  margin-right:6px;padding:0 7px;cursor:pointer;font:700 11px/1 var(--font-num);letter-spacing:.04em;
+  color:var(--text-lo);background:rgba(10,16,14,.6);border:1px solid rgba(255,255,255,.14);
+  border-radius:5px;transition:color .16s ease,border-color .16s ease,background .16s ease}
+.gspeed:hover{color:var(--text-hi);border-color:rgba(255,255,255,.3)}
+.gspeed.is-fast{color:var(--pos);background:color-mix(in srgb,var(--pos) 12%,rgba(10,16,14,.6));
+  border-color:color-mix(in srgb,var(--pos) 45%,transparent)}

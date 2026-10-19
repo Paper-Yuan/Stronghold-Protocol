@@ -263,7 +263,8 @@ export class MatchPhases {
     // （但倒计时依旧正常 1 倍速）」。
     // gameSpeed 只影响战斗推进（战斗时限 / 战斗时钟）；休整期的倒计时走的是
     // setDeadline 的秒数，与 gameSpeed 无关，所以倒计时仍是 1 倍速。
-    if (this.isInfinite) this.gameSpeed = r >= 16 ? 2 : 1;
+    // 业主 2026-10-20：倍速改成玩家自己开关（默认 R16+ 仍是 2 倍速）
+    if (this.isInfinite) this.gameSpeed = r < 16 ? 1 : (this.infiniteSpeedPref || 2);
     this.fields = [];
     this.watchers.clear();
     this.unitePlan = null;
@@ -371,6 +372,32 @@ export class MatchPhases {
         ? buildInfiniteBossWave(this.gd, this.rngWaves, r, this._infiniteRoutes(r, GEO.BOSS_RECT))
         : buildBossWave(this.gd, this.rngWaves, this.factions, r, { bossId, solo: this.isSolo || g.length === 1 }),
     }));
+  }
+
+  /**
+   * 玩家自己切换战斗倍速（业主 2026-10-20）：1 = 常速，2 = 双倍。
+   * 只改战斗推进（fields.js 的 tick 倍率），倒计时按剩余真实时间等比例换算，
+   * 这样切倍速不会凭空多出或少掉时间。
+   * @param {object} ps
+   * @param {number} speed
+   */
+  setCombatSpeed(ps, speed) {
+    if (!this.isInfinite) return fail(ERR.WRONG_PHASE);
+    const v = speed === 2 ? 2 : 1;
+    const old = Number(this.gameSpeed) > 0 ? this.gameSpeed : 1;
+    this.infiniteSpeedPref = v;
+    if (v === old) { this.markPublic(); return OK; }
+    const now = this.sched.now();
+    if (Number.isFinite(this.deadline) && this.deadline > now) {
+      this.deadline = now + Math.round(((this.deadline - now) * old) / v);
+    }
+    if (Number.isFinite(this.overtimeAt) && this.overtimeAt > now) {
+      this.overtimeAt = now + Math.round(((this.overtimeAt - now) * old) / v);
+    }
+    this.gameSpeed = v;
+    void ps;
+    this.markPublic();
+    return OK;
   }
 
   afterRoundStart() {

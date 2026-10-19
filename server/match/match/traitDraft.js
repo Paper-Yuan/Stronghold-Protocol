@@ -87,7 +87,11 @@ export class MatchTraitDraft {
 
     // ① 词条：整局累计（同一 id 叠层，flags 相乘 / 结算值相加）
     this.traitMods = this.traitMods || [];
-    this.traitMods.push({ id: card.traitId, name: card.traitName, polarity: t.polarity, round: this.round });
+    // text 也存下来：HUD 的词条面板要显示完整效果（业主 2026-10-20）
+    this.traitMods.push({
+      id: card.traitId, name: card.traitName, polarity: t.polarity, round: this.round,
+      ...(typeof card.traitText === 'string' ? { text: card.traitText } : {}),
+    });
 
     // ② 选中的怪：下一轮出场，不结算悬赏金
     this.traitSpawn = this.traitSpawn || [];

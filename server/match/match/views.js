@@ -78,7 +78,12 @@ export class MatchViews {
       gameSpeed: this.gameSpeed,
       // 超限：已选词条（HUD 上要能看到本局拿了什么）
       ...(this.isInfinite && Array.isArray(this.traitMods) && this.traitMods.length
-        ? { traitMods: this.traitMods.map((t) => ({ id: t.id, name: t.name, polarity: t.polarity, round: t.round })) }
+        ? {
+          traitMods: this.traitMods.map((t) => ({
+            id: t.id, name: t.name, polarity: t.polarity, round: t.round,
+            ...(typeof t.text === 'string' ? { text: t.text } : {}),
+          })),
+        }
         : {}),
       difficulty: this.difficulty,
       stageId: this.stageId,

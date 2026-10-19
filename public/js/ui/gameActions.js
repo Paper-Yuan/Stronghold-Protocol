@@ -98,6 +98,8 @@ export const actions = {
   traitChoice: (idx) => act('g.traitChoice', { idx }),
   // 超限：词条抉择右下角的【战术撤退】
   traitRetreat: () => act('g.traitRetreat', {}),
+  // 超限：玩家自己切换战斗倍速
+  combatSpeed: (speed) => act('g.combatSpeed', { speed }),
   pickAny: (chessId) => act('g.pickAny', { chessId }),
   ready: (ready) => act('g.ready', { ready }, { sfx: ready ? 'ready' : 'back' }),
   emote: (id) => act('g.emote', { id }, { quiet: true }),

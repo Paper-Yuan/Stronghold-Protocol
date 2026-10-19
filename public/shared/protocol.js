@@ -504,6 +504,8 @@ export const C2S = {
   'g.choice': { idx: (v) => isInt(v, 0, 5), choiceId: isId, $optional: ['choiceId'] }, 'g.traitChoice': { idx: (v) => isInt(v, 0, 2) },
   // 超限：词条抉择界面右下角的【战术撤退】（业主 2026-10-19）
   'g.traitRetreat': {},
+  // 超限：玩家自己切换战斗倍速（1 = 常速，2 = 双倍）
+  'g.combatSpeed': { speed: (v) => v === 1 || v === 2 },
   'g.ready': { ready: isBool },
   'g.emote': { id: (v) => EMOTES.includes(v) },
   // playerId: the player tapped in the team panel (a 联防 / boss pair field shows two) — what an eliminated viewer or a

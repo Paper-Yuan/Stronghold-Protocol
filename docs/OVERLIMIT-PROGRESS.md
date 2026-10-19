@@ -276,7 +276,6 @@ R20 假想敌：铳
 | `public/js/ui/overlimitBondText.js` | 六条超限文本（局内局外共用） |
 | `public/js/screens/sweep.js` | 盟约报告（含超限分支） |
 | `tools/bond-matrix.mjs` | 盟约 DPS 测量工具（`--fair` / `--marginal` / `--headroom` / `--solve` / `--simulate` / `--final` / `--calibrate` / `--survive`） |
-| `scripts/dev-server.mjs` | 测试用开发服务器（`--round / --funds / --level / --lp`） |
 
 ---
 

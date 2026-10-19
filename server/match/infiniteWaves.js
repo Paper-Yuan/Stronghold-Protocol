@@ -148,7 +148,9 @@ export function buildInfiniteNormalWave(gd, rng, round, routes = null, { withBos
   //
   // 以前是「每池只抽 1 只」，种类被压到 3 种；现在把 3 个池子的**全部怪**摊成一个候选集，
   // 按 普通:精英 = 2:8 的比例逐只抽（每次独立抽，所以同一只怪可能出现多次）。
-  const pickedKinds = pickDistinct(TACTIC_KINDS, 3);
+  // 业主 2026-10-20：「选中的怪种类加 1」—— 3 个池子 → 4 个（候选 9 只 → 12 只）。
+  // 每回合都重新抽（buildInfiniteNormalWave 每轮调一次，rng 是逐轮消耗的）。
+  const pickedKinds = pickDistinct(TACTIC_KINDS, 4);
   const candidates = pickedKinds.flat();
   const normalPool = candidates.filter((k) => (enemies[k]?.rank || 'NORMAL') === 'NORMAL');
   const elitePool = candidates.filter((k) => (enemies[k]?.rank || 'NORMAL') !== 'NORMAL');

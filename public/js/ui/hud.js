@@ -427,7 +427,7 @@ export function PauseButton({ paused, busy = false, onToggle }) {
  */
 export function TopBar({ pub, priv, conn, hud, total, drawer, onExit, onDrawer, onReady, readyBusy, readyCount, playerCount, pen = false, penAvail = false, onPen = () => {},
   config = null, frozenAt = null, pause = null, live = null, spectator = false,
-  spectators = null, myId = null, isHost = false, onRemoveSpectator = null, room = null }) {
+  spectators = null, myId = null, isHost = false, onRemoveSpectator = null, room = null, onSpeed = null }) {
   const phase = pub?.phase;
   const boss = isBossPhase(phase);
   const lp = boss && Number.isFinite(pub?.teamLp) ? pub.teamLp : Number.isFinite(priv?.lp) ? priv.lp : null;
@@ -498,8 +498,9 @@ export function TopBar({ pub, priv, conn, hud, total, drawer, onExit, onDrawer, 
     </div>
 
     <div class="gtop__right">
+      ${pub?.isInfinite ? html`<${SpeedToggle} speed=${pub?.gameSpeed} onSpeed=${onSpeed} />` : null}
       <div class="gtop__clock">
-        ${Number(pub?.gameSpeed) > 1 ? html`<span class="gtop__speed" title=${t('战斗以 {n} 倍速推进（倒计时仍是 1 倍速）', { n: pub.gameSpeed })}>${pub.gameSpeed}×</span>` : null}
+        ${Number(pub?.gameSpeed) > 1 && !pub?.isInfinite ? html`<span class="gtop__speed" title=${t('战斗以 {n} 倍速推进（倒计时仍是 1 倍速）', { n: pub.gameSpeed })}>${pub.gameSpeed}×</span>` : null}
         ${frozenSecs != null
           ? html`<${Countdown} seconds=${frozenSecs} total=${total ?? undefined} size="md" label="PAUSED" />`
           : html`<${Countdown} deadline=${pub?.deadline} total=${total ?? undefined} size="md" />`}
@@ -512,11 +513,43 @@ export function TopBar({ pub, priv, conn, hud, total, drawer, onExit, onDrawer, 
   </header>`;
 }
 
-/** 超限已选词条（业主 2026-10-19）：HUD 右上角一排小标签，鼠标悬停看完整效果。 */
+/**
+ * 超限已选词条（业主 2026-10-20）：右侧一枚【词条 N】按钮，点开一个面板列出本局拿到
+ * 的全部词条与效果 —— 以前是一排小标签常驻在时钟旁边，占地方还看不全。
+ */
 function TraitChips({ mods }) {
-  return html`<div class="gtop__traits">${mods.map((m) => html`<span key=${m.id + m.round}
-    class=${'tchip' + (m.polarity === 'neg' ? ' tchip--neg' : '')}
-    title=${t('第 {r} 回合 · {name}', { r: m.round, name: m.name })}>${m.name}</span>`)}</div>`;
+  const [open, setOpen] = useState(false);
+  const pos = mods.filter((m) => m.polarity !== 'neg').length;
+  const neg = mods.length - pos;
+  return html`<div class="gtrait">
+    <button type="button" class=${'gtrait__btn' + (open ? ' is-open' : '')} onClick=${() => setOpen((v) => !v)}
+      title=${t('查看本局已选词条')} data-testid="trait-view">
+      <span class="gtrait__ico">◆</span>${t('词条')}<b class="num">${mods.length}</b>
+    </button>
+    ${open ? html`<div class="gtrait__pop" role="dialog" aria-label=${t('本局词条')}>
+      <div class="gtrait__head">
+        <span>${t('本局词条')}</span>
+        <span class="gtrait__sum"><b class="num">${pos}</b> ${t('正')} · <b class="num">${neg}</b> ${t('负')}</span>
+        <button type="button" class="gtrait__x" onClick=${() => setOpen(false)} aria-label=${t('关闭')}>×</button>
+      </div>
+      <ul class="gtrait__list">
+        ${mods.map((m) => html`<li key=${m.id + m.round} class=${'gtrait__row' + (m.polarity === 'neg' ? ' is-neg' : '')}>
+          <span class="gtrait__r num">R${m.round}</span>
+          <span class="gtrait__n">${m.name}</span>
+          <span class="gtrait__t">${m.text || ''}</span>
+        </li>`)}
+      </ul>
+    </div>` : null}
+  </div>`;
+}
+
+/** 超限倍速开关（业主 2026-10-20）：玩家自己点，1× ↔ 2×。 */
+function SpeedToggle({ speed, onSpeed }) {
+  const fast = Number(speed) > 1;
+  return html`<button type="button" class=${'gspeed' + (fast ? ' is-fast' : '')}
+    onClick=${() => onSpeed?.(fast ? 1 : 2)}
+    title=${fast ? t('切回常速（倒计时不受影响）') : t('切换双倍速（只加快战斗推进）')}
+    data-testid="combat-speed">${fast ? '2×' : '1×'}</button>`;
 }
 
 /** DP counter shown at the right edge during combat. */
