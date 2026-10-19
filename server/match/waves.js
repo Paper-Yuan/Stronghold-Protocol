@@ -603,6 +603,18 @@ export function previewOf(spawns) {
       boss: tag === 'boss',
       source: tag === 'bounty' ? 'bounty' : 'wave',
       tag,
+      // 这一只怪的实际数值倍率（超限的逐回合成长、悬赏的加成）。详情卡用它把
+      // 「基础生命/攻击」换算成「实际生命/攻击」—— 以前只显示基础值，玩家看到的
+      // 和场上跑的差好几倍（业主 2026-10-19）。
+      ...(s.mods && typeof s.mods === 'object' ? {
+        mods: {
+          ...(Number.isFinite(s.mods.hpMul) ? { hpMul: s.mods.hpMul } : {}),
+          ...(Number.isFinite(s.mods.atkMul) ? { atkMul: s.mods.atkMul } : {}),
+          ...(Number.isFinite(s.mods.defMul) ? { defMul: s.mods.defMul } : {}),
+          ...(Number.isFinite(s.mods.resMul) ? { resMul: s.mods.resMul } : {}),
+          ...(Number.isFinite(s.mods.speedMul) ? { speedMul: s.mods.speedMul } : {}),
+        },
+      } : {}),
       ...(tag === 'boss' && Array.isArray(pv.start) && pv.start.length >= 2 && pv.start.every(Number.isFinite) ? { start: [pv.start[0], pv.start[1]] } : {}),
       _seq: seq++,
     });

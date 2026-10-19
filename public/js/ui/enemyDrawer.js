@@ -38,7 +38,7 @@ function EnemiesTab({ pub, priv, onEnemy }) {
     </div>
     ${rows.length ? html`<div class="elist">
       ${rows.map((r) => html`<button key=${`${r.enemyKey}|${r.tag}`} type="button" class=${cx('erow', r.tag && `erow--${r.tag}`, `erow--${r.rank.toLowerCase()}`)}
-          onClick=${() => onEnemy(r.enemyKey, r.count)}>
+          onClick=${() => onEnemy(r.enemyKey, r.count, r.mods)}>
         <${UnitThumb} kind="enemy" id=${r.enemyKey} size="md" />
         <span class="erow__text">
           <b class="erow__name">${r.name}</b>

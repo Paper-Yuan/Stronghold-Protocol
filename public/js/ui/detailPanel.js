@@ -528,7 +528,7 @@ export function ItemDetail({ item, piece, editable, onDestroy, offBonds = null }
     ${piece && editable ? html`<div class="dactions"><${Button} variant="danger" onClick=${() => onDestroy(piece, item)}>${t('销毁道具')}<//></div>` : null}`;
 }
 
-function EnemyDetail({ enemy, snapHp, count, live = null }) {
+function EnemyDetail({ enemy, snapHp, count, live = null, mods = null }) {
   const m = data.get('assets');
   const s = enemy.stats || {};
   const types = Array.isArray(enemy.acTypes) ? enemy.acTypes : enemy.acType ? [enemy.acType] : [];
@@ -536,10 +536,24 @@ function EnemyDetail({ enemy, snapHp, count, live = null }) {
   const imm = Object.entries(s.immunities || {}).filter(([, v]) => v).map(([k]) => ({ stun: t('晕眩'), silence: t('沉默'), sleep: t('沉睡'), frozen: t('冻结'), levitate: t('浮空') }[k] || k));
   const interval = attackInterval(s.bat, s.aspd);
   const hp = hpOf(live, snapHp);
+  // 出怪预览：这一只怪在本轮的实际数值 = 基础 × 本轮倍率（超限的逐回合成长、悬赏加成）。
+  // 以前这里只有基础值，玩家看到的和场上跑的差好几倍（业主 2026-10-19）。
+  const mm = mods && typeof mods === 'object' ? mods : null;
+  const scaled = (base, mul) => (mm && Number.isFinite(mul) && Number.isFinite(base) ? base * mul : base);
+  const stBase = mm ? {
+    maxHp: scaled(s.maxHp, mm.hpMul),
+    atk: scaled(s.atk, mm.atkMul),
+    def: scaled(s.def, mm.defMul),
+    res: scaled(s.res ?? 0, mm.resMul),
+    moveSpeed: scaled(s.moveSpeed, mm.speedMul),
+    interval: attackInterval(s.bat, s.aspd) / (Number.isFinite(mm.speedMul) ? 1 : 1),
+  } : null;
   // a battle enemy: its live stats against its spawned ones (the round's multipliers included — unitStatsEntry base)
   const st = {
-    maxHp: liveStat(live, 'maxHp', s.maxHp), atk: liveStat(live, 'atk', s.atk), def: liveStat(live, 'def', s.def),
-    res: liveStat(live, 'res', s.res ?? 0, fmtRes), moveSpeed: liveStat(live, 'moveSpeed', s.moveSpeed, (v) => String(Math.round(v * 100) / 100)),
+    maxHp: liveStat(live, 'maxHp', stBase ? stBase.maxHp : s.maxHp),
+    atk: liveStat(live, 'atk', stBase ? stBase.atk : s.atk),
+    def: liveStat(live, 'def', stBase ? stBase.def : s.def),
+    res: liveStat(live, 'res', stBase ? stBase.res : (s.res ?? 0), fmtRes), moveSpeed: liveStat(live, 'moveSpeed', stBase ? stBase.moveSpeed : s.moveSpeed, (v) => String(Math.round(v * 100) / 100)),
     interval: liveStat(live, 'interval', interval, (v) => (Number.isFinite(v) && v > 0 ? `${v.toFixed(1)}s` : '—')),
   };
   return html`
@@ -795,7 +809,7 @@ export function resolveDetail(target, pieces, { priv = null, backups = data.get(
     return c ? { type: 'chess', chess: c, hint: target.hint || null, standIn: si, ...(items.length ? { unitItems: items } : {}), ...(cv ? { cultOpts: cv } : {}), ...tap } : null;
   }
   if (target.kind === 'item') { const it = data.lookup('items', target.id); return it ? { type: 'item', item: it } : null; }
-  if (target.kind === 'enemy') { const en = data.lookup('enemies', target.id); return en ? { type: 'enemy', enemy: en, count: target.count } : null; }
+  if (target.kind === 'enemy') { const en = data.lookup('enemies', target.id); return en ? { type: 'enemy', enemy: en, mods: target.mods || null, count: target.count } : null; }
   if (target.kind === 'token') { const t = data.lookup('tokens', target.id) || diyToken(target.id); return t ? { type: 'token', token: t } : null; }
   if (target.kind === 'unit') {
     const u = target.unit || {};
@@ -891,7 +905,7 @@ export function DetailPanel({ detail, editable, snapHp, onClose, onSell, onDestr
         bonds=${bonds} offBonds=${offBonds} loadout=${loadout} onBond=${onBond} live=${liveNow} hint=${detail.hint || null} unitItems=${detail.unitItems || null}
         standIn=${detail.standIn || null} diy=${detail.diy || null} cultOpts=${detail.cultOpts || { ops }} />` : null}
       ${detail.type === 'item' ? html`<${ItemDetail} item=${detail.item} piece=${detail.piece} editable=${editable} onDestroy=${destroyIt} offBonds=${offBonds} />` : null}
-      ${detail.type === 'enemy' ? html`<${EnemyDetail} enemy=${detail.enemy} snapHp=${snapHp} count=${detail.count} live=${liveNow} />` : null}
+      ${detail.type === 'enemy' ? html`<${EnemyDetail} enemy=${detail.enemy} mods=${detail.mods || null} snapHp=${snapHp} count=${detail.count} live=${liveNow} />` : null}
       ${detail.type === 'token' ? html`<${TokenDetail} token=${detail.token} piece=${detail.piece} ownerId=${detail.ownerId ?? null} snapHp=${snapHp} live=${liveNow} />` : null}
       ${detail.type === 'terrain' ? html`<${TerrainDetail} terrain=${detail.terrain} />` : null}
       ${detail.type === 'device' ? html`<${DeviceDetail} device=${detail.device} snapHp=${snapHp} live=${liveNow} />` : null}

@@ -20,8 +20,11 @@ export function groupEnemies(list, getEnemy = () => null) {
     if (!isObj(e) || typeof e.enemyKey !== 'string') continue;
     const tag = typeof e.tag === 'string' ? e.tag : null;
     const k = `${e.enemyKey}|${tag}`;
-    const cur = map.get(k) || { enemyKey: e.enemyKey, tag, count: 0 };
+    const cur = map.get(k) || { enemyKey: e.enemyKey, tag, count: 0, mods: null };
     cur.count += Number.isFinite(e.count) && e.count > 0 ? e.count : 1;
+    // 同一只怪在这一轮的实际数值倍率（超限的逐回合成长）。同 key 的倍率相同，
+    // 保留第一个即可 —— 详情卡靠它把基础值换算成实际值。
+    if (!cur.mods && isObj(e.mods)) cur.mods = e.mods;
     map.set(k, cur);
   }
   return [...map.values()].map((row) => {
