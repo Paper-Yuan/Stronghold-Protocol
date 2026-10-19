@@ -128,6 +128,9 @@ export class MatchBoss {
     this.overtimeApplied = 0;
     // HUD: the boss level's countdown (maxPlayTime, 120 real s — the battle goes on past it) and the moment the
     // overtime drain starts (150 real s), both on the field clock
+    // 业主 2026-10-20：「2 倍速是出怪的速度，但游戏的倒计时依旧是 120 秒」。
+    // combatTimeScale 让关卡的 120 秒变成 240 秒**游戏时间**，gameSpeed 再把真实时间
+    // 压回去 —— 两者相抵，倒计时显示的仍是关卡自己的 120 秒。
     const onClock = (realS) => this.sched.now() + Math.round(((realS * this.gd.combatTimeScale) / this.gameSpeed) * 1000);
     const levelTime = this.gd.bossLevelTime(this.round);
     // Maintainer 2026-10-10: only teams with an AI teammate keep the extra grace after the visible countdown.
