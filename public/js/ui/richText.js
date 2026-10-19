@@ -163,11 +163,25 @@ export function fillPlaceholders(src, values, formats = []) {
  * @param {number} [layers]
  * @returns {string} rich text (markup kept)
  */
-export function formatBondEffect(bond, layers = 0) {
+export function formatBondEffect(bond, layers = 0, opts = null) {
   if (!bond || typeof bond !== 'object') return '';
   const src = bond.effectDescRaw || bond.effectDesc || '';
   const params = Array.isArray(bond.effectDescParams) ? bond.effectDescParams : [];
-  const bb = bond.bb && typeof bond.bb === 'object' ? bond.bb : {};
+  const bb = bond.bb && typeof bond.bb === 'object' ? { ...bond.bb } : {};
+  // 超限局（业主 2026-10-19）：sim 在 flags.overlimit 下改了几项数值，
+  // 局内的「当前效果」必须跟着显示改后的值，否则文本与实际战斗不一致。
+  if (opts && opts.overlimit) {
+    if (bond.bondId === 'egirShip') {
+      // 层数 0.8%/层转攻击（sim: atkPerStack = 0.008）
+      bb.__egir_atk = 0.008;
+    }
+    if (bond.bondId === 'lateranoShip') {
+      bb.atk_per_consume = (Number(bb.atk_per_consume) || 0) * 2;   // 4% → 8%
+    }
+    if (bond.bondId === 'siracusaShip') {
+      bb.prob = 0.08;                                              // 3% → 8%
+    }
+  }
   const L = Number.isFinite(Number(layers)) ? Math.max(0, Number(layers)) : 0;
   const values = [];
   const formats = [];

@@ -347,7 +347,9 @@ function installLaterano(battle, pid, bb, members) {
   // （文本：每累计消耗 100 发弹药，对全场敌人造成全队拉特兰攻击力总和 20% 的真实伤害）。
   // 只在超限局翻倍（普通模式保持原值）
   const inf = !!(battle.flags && battle.flags.overlimit);
-  const per = num(bb.atk_per_consume, 0) * (inf ? 2 : 1), cap = num(bb.max_atk_for_consume, Infinity);
+  // 上限：普通模式 200%（数据层 max_atk_for_consume=2），超限 700%（业主文本）
+  const per = num(bb.atk_per_consume, 0) * (inf ? 2 : 1);
+  const cap = inf ? 7 : num(bb.max_atk_for_consume, Infinity);
   if (!(per > 0)) return;
   const BLAST_EVERY = 100;      // 累计消耗 100 发触发一次
   const BLAST_SCALE = 0.2;      // 全队攻击力总和的 20%
@@ -652,10 +654,25 @@ function installSiracusa(battle, pid, bb, members) {
     st.n++;
     if (!(battle.rng() < Math.min(1, c * st.n))) return;
     st.n = 0;
-    const amount = num(bb.base_damage, 0) + num(bb.damage_per_stack, 0) * S.bondLayers(battle, pid, 'siracusaShip');
+    // 业主文本（sweep 超限）：5000+50×层数 + 0.5% 目标最大生命，精英/首领至多 250 万
+    const infSira = !!(battle.flags && battle.flags.overlimit);
+    const base = num(bb.base_damage, 0) + num(bb.damage_per_stack, 0) * S.bondLayers(battle, pid, 'siracusaShip');
+    let amount = base;
+    if (infSira) {
+      const maxHp = num(t.s && t.s.maxHp, 0);
+      const isElite = t.isBoss || (t.def && t.def.rank && t.def.rank !== 'NORMAL');
+      amount = base + maxHp * 0.005;          // +0.5% 最大生命
+      if (isElite) amount = Math.min(amount, 2_500_000);   // 精英/首领至多 250 万
+    }
     S.fxOn(battle, 'bondProc', t, 'bond:siracusaShip', 'assassin', { from: u.id, amount });
     if (amount > 0) battle.dealDamage(u, t, { amount, type: 'true', canDodge: false, tags: ['bond:siracusa'] });
-    if (t.alive && num(bb.fear, 0) > 0) battle.applyStatus(t, 'fear', { duration: num(bb.fear, 0), source: u });
+    if (t.alive && num(bb.fear, 0) > 0) {
+      const feared = battle.applyStatus(t, 'fear', { duration: num(bb.fear, 0), source: u });
+      // 超限：目标免疫控制 → 改为【血迹清算】追加等额真实伤害
+      if (infSira && feared === false && amount > 0) {
+        battle.dealDamage(u, t, { amount, type: 'true', canDodge: false, tags: ['bond:siracusa:blood'] });
+      }
+    }
   };
   for (const u of members) onUnitDamaged(battle, u, onDmg);
 }

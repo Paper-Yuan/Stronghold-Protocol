@@ -61,7 +61,7 @@ export class MatchUnite {
       spawns: this._sanitizeSpawns(wave.spawns),
       routes: wave.routes,
       sharedBoss: null,
-      flags: this._rmSpecFlags({ layerGainsEnabled: false, ...this.gd.dp }),
+      flags: this._rmSpecFlags({ layerGainsEnabled: false, ...this.gd.dp, ...(this.isInfinite ? { overlimit: true } : {}) }),
       fieldId: 'u',
       // leaked enemies re-enter with the stats they had: the round template's stat overrides apply again
       enemyOverrides: this.wave && this.wave.overrides ? this.wave.overrides : {},
