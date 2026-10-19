@@ -164,7 +164,7 @@ function resolveBondReportText(bond, isInf = false) {
       return '【萨尔贡】干员开启技能时，所有【萨尔贡】干员<@ba.vup>攻击速度+12</>（至多叠<@ba.vup>25</>层），持续<@ba.vup>(5+0.22×层数)</>秒<@autochess.gray>（受层数影响，每层持续时间独立计算）</>\n<在场<@autochess.dgreen>6</>名不同【萨尔贡】干员>每层攻击速度还会提供<@ba.vup>攻击力+12%</>（至多<@ba.vup>25</>层，即<@ba.vup>+300%</>）；【萨尔贡】<@ba.vup>盟约层数每达到100层</>，全体【萨尔贡】干员额外获得<@ba.vup>5%</>攻击力\n<@ba.acrem>选择策略【娜仁图亚】时，<在场<@autochess.dgreen>6</>名不同【萨尔贡】干员>的效果会有所改变</>';
     }
     if (bond.bondId === 'victoriaShip') {
-      return '携带装备的【维多利亚】干员造成的<@ba.vup>伤害提升至(125+0.8×层数)%</><@autochess.gray>（受层数影响）</>\n<每叠加<@autochess.dgreen>25</>层>获得<@ba.vup>1</>件带有随机效果的<@ba.vup>维式重锤</>\n<在场<@autochess.dgreen>6</>名不同【维多利亚】干员>携带装备的【维多利亚】干员<@ba.vup>攻击力+50%</>，携带进阶装备时改为<@ba.vup>+80%</>；<@ba.vup>盟约层数超过750层</>（30件维式重锤）后，每额外<@ba.vup>50</>层，造成的<@ba.vup>伤害额外提升1%</>';
+      return '携带装备的【维多利亚】干员造成的<@ba.vup>伤害提升至(125+0.8×层数)%</><@autochess.gray>（受层数影响）</>\n<每叠加<@autochess.dgreen>25</>层>获得<@ba.vup>1</>件带有随机效果的<@ba.vup>维式重锤</>，至多<@ba.vup>30</>件\n<在场<@autochess.dgreen>6</>名不同【维多利亚】干员>携带装备的【维多利亚】干员<@ba.vup>攻击力+50%</>，携带进阶装备时改为<@ba.vup>+80%</>；<@ba.vup>盟约层数超过750层</>（30件维式重锤）后，每额外<@ba.vup>50</>层，造成的<@ba.vup>伤害额外提升1%</>';
     }
     if (bond.bondId === 'egirShip') {
       return '【阿戈尔】干员<@ba.vup>生命值提升(35+1×层数)%</><@autochess.gray>（受层数影响）</>，<@ba.vup>攻击力提升0.8%×层数</><@autochess.gray>（受层数影响）</>\n战斗开始时，【阿戈尔】干员会<@ba.vup>吞噬</>身前一格干员对其造成<@ba.vdown>5000</>点物理伤害并获得其<@ba.vup>基础攻击力</>和<@ba.vup>阻挡数</>，使【阿戈尔】叠加等于被吞噬者等阶的<@ba.vup>盟约层数</><@autochess.gray>（【阿戈尔】之间优先更靠左和靠上的干员发起吞噬）</>\n<在场<@autochess.dgreen>5</>名不同【阿戈尔】干员>前<@ba.vup>3</>名【阿戈尔】干员首次被击倒时<@ba.vup>立刻复活</>并获得<@ba.vup>50</>攻击速度';
