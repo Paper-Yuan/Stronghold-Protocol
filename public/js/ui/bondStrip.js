@@ -34,7 +34,7 @@ import { html, BondDisc, Icon, MicroLabel, Tooltip } from './components.js';
 import { RichText, UnitThumb, BondGlyph, GIcon } from './gameComponents.js';
 import { sortBonds, bondMembers, nextThreshold, bondTier, harmonyMembers, HARMONY_BOND, memberHeadCount, briefingBondTip, diyGetter, diyRecordFor, memberStandIn, standInForText } from './gameLogic.js';
 import { formatBondEffect } from './richText.js';
-import { overlimitBondText } from './overlimitBondText.js';
+import { overlimitBondText, overlimitBondNow } from './overlimitBondText.js';
 import { bondIconUrl } from './assetUrls.js';
 import { data } from '../data.js';
 import { t, tc, tParts, tName } from '../../../shared/i18n.js';
@@ -267,7 +267,7 @@ export function BondPopup({ bondId, entry, priv, banned = [], onClose, onMember,
     </div>
     ${hasNow ? html`<section class="bpop__sec bpop__sec--now">
       <h4>${t('当前效果')} ${b.noStack ? null : html`<small class="num">${t('（{layers} 层）', { layers })}</small>`}</h4>
-      <${RichText} as="p" text=${formatBondEffect(b, layers, { overlimit })} class="bpop__desc" />
+      <${RichText} as="p" text=${(overlimit && overlimitBondNow(bondId, layers)) || formatBondEffect(b, layers, { overlimit })} class="bpop__desc" />
     </section>` : null}
     <section class="bpop__sec">
       <h4>${t('盟约效果')}</h4>

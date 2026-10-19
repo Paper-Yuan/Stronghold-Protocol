@@ -32,3 +32,27 @@ export function overlimitBondText(bondId) {
   }
   return null;
 }
+
+
+/**
+ * 把超限文本里的 `(基础+每层×层数)` 公式代入当前层数，得到「当前效果」用的纯数值文本。
+ * 业主 2026-10-19（方案 A）：当前效果只显示「现在多少」，公式留在「盟约效果」里。
+ * @param {string} bondId
+ * @param {number} layers
+ * @returns {string|null} 不是这六个大盟约时返回 null
+ */
+export function overlimitBondNow(bondId, layers) {
+  const raw = overlimitBondText(bondId);
+  if (!raw) return null;
+  const L = Number.isFinite(Number(layers)) ? Math.max(0, Number(layers)) : 0;
+  const fmt = (v) => String(Math.round(v * 100) / 100);
+  return raw
+    // (a+b×层数) / (a×层数)
+    .replace(/\((\d+(?:\.\d+)?)(?:\+([\d.]+)×层数|×层数)\)/g, (whole, a, b) => {
+      const base = Number(a) || 0;
+      const per = b == null ? 1 : (Number(b) || 0);
+      return fmt(base + per * L);
+    })
+    // 不带括号的 a%×层数（阿戈尔的攻击力那一项）
+    .replace(/(\d+(?:\.\d+)?)%×层数/g, (whole, pct) => fmt((Number(pct) || 0) * L) + '%');
+}
