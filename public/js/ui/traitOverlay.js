@@ -73,10 +73,11 @@ export function TraitOverlay({ trait, myId, busyIdx = null, onPick, onRetreat = 
       el.style.setProperty('--to-center', ((row.left + row.width / 2) - (box.left + box.width / 2)) + 'px');
       el.classList.add('is-moving');
       after(MOVE_MS + 60, () => {
-        // 业主 2026-10-19：滑到正中后「长成文件夹」—— 以前只改了 phase，
-        // 从没给卡片加 is-folder，所以卡面停在原地、也没有文件夹形态。
+        // 业主 2026-10-19：滑到正中后「长成文件夹」。
+        // 2026-10-20 按 public/dev/trait-preview 的 morphToFolder 重做：
+        // 卡片脱离行流、固定定位，从原位过渡到屏幕正中的 600px 宽信息板。
         setPhase('folder');
-        el.classList.add('is-folder');
+        morphToFolder(el, rootRef.current);
         after(MORPH_MS, () => onPick?.(idx));
       });
     };
@@ -123,6 +124,20 @@ export function TraitOverlay({ trait, myId, busyIdx = null, onPick, onRetreat = 
             <div class="tcard__trait">${c.traitText || ''}</div>
           </div>
           <div class="tcard__pick"><span>已选择</span></div>
+          <div class="tcard__folder" aria-hidden="true">
+            <div class="fade-in folder__top">
+              <span class="folder__kind">${'TRAIT ACQUIRED · ' + (neg ? '负面' : '正面')}</span>
+              <span class="folder__scope">INFINITE PROTOCOL</span>
+            </div>
+            ${sp ? html`<div class="fade-in"><p class="folder__title">${sp.title}</p></div>` : null}
+            ${sp ? html`<div class="fade-in"><p class="folder__desc">${specialDesc(c.special)}</p></div>` : null}
+            <div class="fade-in"><p class="folder__trait"><b>${c.traitName || ''}</b> ${c.traitText || ''}</p></div>
+            <div class="fade-in folder__rows">
+              <span class="folder__k">${t('选择敌人')}</span><span class="folder__v folder__v--mob">${c.name || ''}</span>
+              <span class="folder__k">${t('生效范围')}</span><span class="folder__v">${t('本局剩余的全部战斗（永久）')}</span>
+            </div>
+            <div class="fade-in folder__foot"><span class="folder__seal">${t('已生效')}</span></div>
+          </div>
         </div>`;
       })}
     </div>
@@ -131,6 +146,51 @@ export function TraitOverlay({ trait, myId, busyIdx = null, onPick, onRetreat = 
       <span class="traitov__retreat-ico">⏻</span><span>战术撤退</span>
     </button>` : null}
   </div>`;
+}
+
+/**
+ * 卡片 → 文件夹（照 public/dev/trait-preview 的定稿）：
+ * 脱离 flex 行流、固定定位到原位，再过渡到屏幕正中的 min(600px, 80vw) 宽信息板，
+ * 高度按内容量出来。内容逐段淡入由 CSS 的 .fade-in 负责。
+ * @param {HTMLElement} el
+ */
+function morphToFolder(el, host) {
+  // .traitov__cards 上有 transform，fixed 会相对它定位 —— 先把卡片挪到无 transform 的根节点
+  if (host && el.parentElement !== host) host.appendChild(el);
+  const cr = el.getBoundingClientRect();
+  const nw = Math.min(600, Math.round(window.innerWidth * 0.8));
+  el.style.position = 'fixed';
+  el.style.margin = '0';
+  el.style.transform = 'none';
+  el.style.transition = 'none';
+  el.style.left = cr.left + 'px';
+  el.style.top = cr.top + 'px';
+  el.style.width = cr.width + 'px';
+  el.style.height = cr.height + 'px';
+  el.style.zIndex = '9';
+  el.classList.add('is-folder');
+  // 量内容高度：先撑到目标宽度、高度交给内容，量完再退回原位。
+  // 卡片和里面那层都量一遍取大 —— 单量卡片会差十几像素，底部「已生效」会被切掉。
+  el.style.width = nw + 'px';
+  el.style.height = 'auto';
+  const face = el.querySelector('.tcard__folder');
+  const hCard = Math.round(el.getBoundingClientRect().height) || 0;
+  const hFace = face ? Math.round(face.scrollHeight) : 0;
+  const nh = Math.max(hCard, hFace, 210);
+  el.style.width = cr.width + 'px';
+  el.style.height = cr.height + 'px';
+  el.style.left = cr.left + 'px';
+  el.style.top = cr.top + 'px';
+  void el.offsetHeight;   // 强制一次回流，让上面的尺寸成为过渡起点
+  requestAnimationFrame(() => {
+    el.style.transition = '';
+    requestAnimationFrame(() => {
+      el.style.left = Math.round((window.innerWidth - nw) / 2) + 'px';
+      el.style.top = Math.round((window.innerHeight - nh) / 2) + 'px';
+      el.style.width = nw + 'px';
+      el.style.height = nh + 'px';
+    });
+  });
 }
 
 /** 特化的完整描述（与服务端一致；客户端只做展示） */

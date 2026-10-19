@@ -201,29 +201,66 @@
   pointer-events:none;opacity:0;z-index:6;transition:opacity .16s ease}
 .tcard.is-selected .tcard__pick{opacity:1}
 .tcard.is-folder .tcard__pick{opacity:0}
-/* 文件夹形态（业主 2026-10-19）：卡片压扁成一条横条，只留词条名与徽记，
-   正文与特化描述淡出 —— 之前 is-folder 类从未被加上，卡片停在卡牌状态。 */
+/* 文件夹形态 —— 照 public/dev/trait-preview 的定稿（业主 2026-10-20）：
+   卡片飞到正中、拉宽到 min(600px, 80vw)，内容换成一块信息板，逐段淡入。 */
+.tcard__folder{position:relative;padding:18px 22px 16px 24px;display:flex;flex-direction:column;
+  opacity:0;pointer-events:none;z-index:7;transition:opacity .46s ease .22s;display:none}
+.tcard.is-folder .tcard__folder{opacity:1;display:flex}
+/* 文件夹里旧卡面彻底不占位，卡片高度完全由信息板决定 */
+.tcard.is-folder > *:not(.tcard__folder){display:none}
 .tcard.is-folder{
-  width:clamp(260px,34vw,420px);height:clamp(64px,7.4vw,86px);
-  transform:translateX(var(--to-center,0)) translateY(-10px) scale(1);
-  transition:width .46s cubic-bezier(.3,.9,.25,1),height .46s cubic-bezier(.3,.9,.25,1),
-    transform .46s cubic-bezier(.3,.9,.25,1);
-  cursor:default}
-/* 文件夹形态的面板：整张卡变成一行 —— 徽记在左，词条名居中，标签与 BOSS 角标留在两端 */
-.tcard.is-folder{display:flex;align-items:center}
-.tcard.is-folder .tcard__art{position:relative;inset:auto;flex:0 0 auto;margin:0 0 0 14px;
-  width:38px;height:38px;transition:width .46s ease,height .46s ease,margin .46s ease}
-.tcard.is-folder .tcard__diamond{width:38px;height:38px;transition:width .46s ease,height .46s ease}
-.tcard.is-folder .tcard__icon{width:26px;height:26px;transition:width .46s ease,height .46s ease}
-.tcard.is-folder .tcard__body{position:relative;flex:1 1 auto;padding:0 56px 0 12px;
-  display:flex;align-items:center;justify-content:flex-start;min-width:0}
-.tcard.is-folder .tcard__mob,
-.tcard.is-folder .tcard__sep,
-.tcard.is-folder .tcard__specdesc,
-.tcard.is-folder .tcard__trait{display:none}
-.tcard.is-folder .tcard__traitname{margin:0;opacity:1;font-size:clamp(13px,1.3vw,16px);
-  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;transition:opacity .3s ease}
-.tcard.is-folder .tcard__ring--glow{opacity:.7}
+  clip-path:polygon(0 0,100% 0,100% 100%,100% 100%,0 100%,0 0);
+  transition:width .82s cubic-bezier(.2,.9,.2,1),height .82s cubic-bezier(.2,.9,.2,1),
+             left .82s cubic-bezier(.2,.9,.2,1),top .82s cubic-bezier(.2,.9,.2,1),
+             clip-path .82s cubic-bezier(.2,.9,.2,1),background .6s ease,box-shadow .6s ease;
+  background:linear-gradient(180deg,rgba(18,24,22,.82),rgba(10,14,13,.78));
+  -webkit-backdrop-filter:blur(12px) saturate(1.05);backdrop-filter:blur(12px) saturate(1.05);
+  box-shadow:0 24px 60px rgba(0,0,0,.5),0 0 0 1px rgba(255,255,255,.08);
+  cursor:default;filter:none}
+.folder__top{display:flex;align-items:baseline;justify-content:space-between;gap:12px;
+  padding-bottom:10px;border-bottom:1px solid rgba(255,255,255,.09)}
+.folder__kind{font-family:var(--font-num);font-size:9.5px;letter-spacing:.3em;color:var(--acc-hi)}
+.folder__scope{font-family:var(--font-num);font-size:9px;letter-spacing:.18em;color:var(--text-lo)}
+.folder__trait{margin:14px 0 0;font-size:clamp(14px,1.5vw,18px);font-weight:700;line-height:1.5;color:var(--text-hi)}
+.folder__trait b{color:var(--acc-hi)}
+.folder__rows{margin:14px 0 0;display:grid;grid-template-columns:auto 1fr;gap:7px 14px;font-size:11.5px}
+.folder__k{font-family:var(--font-num);font-size:9.5px;letter-spacing:.16em;color:var(--text-lo);padding-top:2px}
+.folder__v{color:var(--text-md)}
+.folder__v--mob{color:var(--acc-hi);font-weight:700}
+.folder__v--mob::before{content:'';display:inline-block;width:4px;height:10px;margin-right:7px;vertical-align:-1px;background:var(--acc);opacity:.85}
+.folder__foot{margin-top:auto;padding-top:12px;border-top:1px solid rgba(255,255,255,.07);
+  display:flex;align-items:center;justify-content:space-between;gap:10px}
+.folder__seal{font-family:var(--font-num);font-size:9px;letter-spacing:.22em;padding:4px 9px;
+  color:var(--acc-hi);border:1px solid var(--acc-a30);background:var(--acc-a12)}
+.tcard.is-folder.tcard--special{border-left:3px solid #e73118;
+  background:radial-gradient(120% 90% at 50% 4%,rgba(231,49,24,.26),transparent 58%),
+             linear-gradient(180deg,rgba(38,20,18,.9),rgba(12,7,6,.88));
+  box-shadow:0 28px 72px rgba(0,0,0,.6),0 0 0 1px rgba(231,49,24,.34),0 0 70px rgba(231,49,24,.2)}
+.tcard.is-folder.tcard--special .tcard__folder::before{content:'';position:absolute;right:-6%;bottom:-30%;width:230px;height:230px;
+  background:var(--sigil) center/contain no-repeat;opacity:.16;pointer-events:none;
+  -webkit-mask-image:radial-gradient(closest-side,#000 40%,transparent 78%);mask-image:radial-gradient(closest-side,#000 40%,transparent 78%)}
+.tcard.is-folder.tcard--special .tcard__folder::after{content:'';position:absolute;left:0;right:0;top:0;height:4px;pointer-events:none;
+  background:repeating-linear-gradient(45deg,rgba(231,49,24,.9) 0 7px,transparent 7px 14px);
+  animation:traitWarnStripe 1.4s linear infinite}
+@keyframes traitWarnStripe{to{background-position:19.8px 0}}
+.tcard.is-folder.tcard--special .folder__kind{color:#ff7a66;letter-spacing:.34em}
+.tcard.is-folder.tcard--special .folder__trait b{color:#ff8f7a}
+.tcard.is-folder.tcard--special .folder__seal{color:#fff;background:#c22a15;border-color:#ff5454;box-shadow:0 0 18px rgba(231,49,24,.55)}
+.tcard.is-folder.tcard--special .folder__seal::after{content:' · 特化';letter-spacing:.14em}
+.folder__title{margin:12px 0 0;font-size:clamp(14px,1.35vw,16px);font-weight:800;letter-spacing:.04em;
+  color:#ff4d3d;text-shadow:0 0 14px rgba(231,49,24,.5)}
+.folder__desc{margin:8px 0 0;font-size:11.5px;line-height:1.55;color:var(--text-md)}
+.tcard.is-folder.tcard--special .folder__trait{margin-top:12px;padding-top:12px;border-top:1px solid rgba(231,49,24,.22)}
+/* 文件夹内容逐段淡入 */
+.fade-in{opacity:0;transform:translateY(6px)}
+.tcard.is-folder .fade-in{animation:traitFadeIn .5s cubic-bezier(.2,.9,.2,1) forwards}
+.tcard.is-folder .fade-in:nth-child(1){animation-delay:.18s}
+.tcard.is-folder .fade-in:nth-child(2){animation-delay:.26s}
+.tcard.is-folder .fade-in:nth-child(3){animation-delay:.34s}
+.tcard.is-folder .fade-in:nth-child(4){animation-delay:.42s}
+.tcard.is-folder .fade-in:nth-child(5){animation-delay:.5s}
+.tcard.is-folder .fade-in:nth-child(6){animation-delay:.58s}
+@keyframes traitFadeIn{to{opacity:1;transform:none}}
 .tcard__pick span{width:100%;text-align:center;
   font-family:var(--font-num);font-size:10.5px;letter-spacing:.32em;padding:7px 0 7px .32em;
   color:#06120e;background:var(--acc);
