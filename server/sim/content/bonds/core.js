@@ -224,12 +224,23 @@ function installSargon(battle, pid, bb, members) {
   const atkStacks = six && !narant && !(bb.invalid_in_band && bb.invalid_in_band === band);
   const maxStacks = Math.max(1, Math.floor(num(main.max_buff_stack_cnt, 25)));
   const perAtk = num(bb.base_atk, 0);
+  // 业主 2026-10-19：「萨转攻 溢出100层加5%」——
+  // 攻速叠到 max_buff_stack_cnt（25 层）就封顶了，盟约层数继续涨却没用。
+  // 现在盟约层数每超过 100 的整数倍，全体【萨尔贡】额外 +5% 攻击。
+  const OVERFLOW_STEP = 100;
+  const OVERFLOW_ATK = 0.05;
+  const overflowAtk = () => {
+    if (!(battle.flags && battle.flags.overlimit)) return 0;   // 只在超限局
+    return Math.floor(S.bondLayers(battle, pid, 'sargonShip') / OVERFLOW_STEP) * OVERFLOW_ATK;
+  };
   const syncAtk = (u) => {
     if (!atkStacks) return;
     let n = 0;
     for (const b of u.buffs) if (b.key === 'bond:sargon') n++;
-    if (n > 0 && u.alive) battle.addBuff(u, { key: 'bond:sargon:atk', mods: S.directMods({ atk: perAtk * n }) });
-    else battle.removeBuff(u, 'bond:sargon:atk');
+    const over = overflowAtk();
+    if ((n > 0 || over > 0) && u.alive) {
+      battle.addBuff(u, { key: 'bond:sargon:atk', mods: S.directMods({ atk: perAtk * n + over }) });
+    } else battle.removeBuff(u, 'bond:sargon:atk');
   };
   battle.on('skillStart', ({ unit }) => {
     if (!memberSet.has(unit)) return;
@@ -271,8 +282,19 @@ function lendAround(battle, from, share, L) {
 // 维多利亚
 
 function installVictoria(battle, pid, bb, members) {
+  // 业主 2026-10-19：锤子 30 件（750 层）之后没人能带 —— 溢出层数转成伤害。
+  // 6 人激活后，每超出 750 层 50 层，base_damage_scale +1%。
+  const HAMMER_CAP_LAYERS = 25 * 30;   // 每 25 层 1 件，30 件 = 750 层
+  const OVERFLOW_STEP = 50;            // 每 50 层
+  const OVERFLOW_BONUS = 0.01;         // +1% 伤害
+  const overflowMul = (layers) => {
+    if (!(battle.flags && battle.flags.overlimit)) return 0;   // 只在超限局
+    const over = Math.max(0, layers - HAMMER_CAP_LAYERS);
+    return Math.floor(over / OVERFLOW_STEP) * OVERFLOW_BONUS;
+  };
   const apply = () => {
-    const mul = num(bb.base_damage_scale, 1) + num(bb.damage_scale_per_stack, 0) * S.bondLayers(battle, pid, 'victoriaShip');
+    const layers = S.bondLayers(battle, pid, 'victoriaShip');
+    const mul = num(bb.base_damage_scale, 1) + num(bb.damage_scale_per_stack, 0) * layers + overflowMul(layers);
     for (const u of members) {
       if (S.itemsOf(u).length >= 1) S.passiveBuff(battle, u, 'bond:victoria', { dmgDealtMul: mul });
     }
@@ -321,14 +343,36 @@ function installLaterano(battle, pid, bb, members) {
     if (Number.isFinite(n) && n > skill.ammoLeft) skill.ammoLeft = n;
   }, { priority: -10 });
   if (!reached(battle, pid, 'lateranoShip', bb.power_bond_char_cnt)) return;
-  const per = num(bb.atk_per_consume, 0), cap = num(bb.max_atk_for_consume, Infinity);
+  // 业主 2026-10-19：每发收益 4% → 8%，并实装【圣堂殉爆】
+  // （文本：每累计消耗 100 发弹药，对全场敌人造成全队拉特兰攻击力总和 20% 的真实伤害）。
+  // 只在超限局翻倍（普通模式保持原值）
+  const inf = !!(battle.flags && battle.flags.overlimit);
+  const per = num(bb.atk_per_consume, 0) * (inf ? 2 : 1), cap = num(bb.max_atk_for_consume, Infinity);
   if (!(per > 0)) return;
-  const st = { used: 0, bonus: 0 };
+  const BLAST_EVERY = 100;      // 累计消耗 100 发触发一次
+  const BLAST_SCALE = 0.2;      // 全队攻击力总和的 20%
+  const st = { used: 0, bonus: 0, blastAt: BLAST_EVERY };
   battle.on('ammoUsed', ({ unit }) => {
-    if (!memberSet.has(unit) || st.bonus >= cap) return;
+    if (!memberSet.has(unit)) return;
     st.used++;
-    st.bonus = Math.min(cap, st.used * per);
-    for (const m of members) S.passiveBuff(battle, m, 'bond:laterano:ammo', S.directMods({ atk: st.bonus }));
+    if (st.bonus < cap) {
+      st.bonus = Math.min(cap, st.used * per);
+      for (const m of members) S.passiveBuff(battle, m, 'bond:laterano:ammo', S.directMods({ atk: st.bonus }));
+    }
+    // 【圣堂殉爆】：全队拉特兰攻击力总和 × 20% 真实伤害，打全场敌人（只在超限局）
+    if (inf && st.used >= st.blastAt) {
+      st.blastAt += BLAST_EVERY;
+      let totalAtk = 0;
+      for (const m of members) if (m.alive) totalAtk += m.s.atk;
+      const dmg = totalAtk * BLAST_SCALE;
+      if (dmg > 0) {
+        for (const e of battle.enemies) {
+          if (!e.alive || e.side !== 'enemy') continue;
+          try { battle.dealDamage(null, e, { amount: dmg, type: 'true', isAttack: false }); } catch { /* ignore */ }
+        }
+        battle.fx?.('blast', { x: 0, y: 0, scale: 1 });
+      }
+    }
   });
 }
 
@@ -478,7 +522,12 @@ function installEgir(battle, pid, bb, members) {
   // stands from 15 layers on, 2904 × 1.50 = 4356). The layers the devour adds raise it one tick later (onLayers; the HP
   // ratio is kept).
   const apply = () => {
-    const mods = S.directMods({ hp: num(bb.base_max_hp, 0) + num(bb.max_hp_per_stack, 0) * S.bondLayers(battle, pid, 'egirShip') });
+    // 业主 2026-10-19：「阿戈尔就改 0.8%」—— 每层额外 +0.8% 攻击力（30 层 = +24%）。
+    // **只在超限局生效**（flags.overlimit）：普通模式的金样本必须保持原样。
+    const atkPerStack = battle.flags && battle.flags.overlimit ? 0.008 : 0;
+    const mods = S.directMods({
+      atk: atkPerStack * S.bondLayers(battle, pid, 'egirShip'),
+      hp: num(bb.base_max_hp, 0) + num(bb.max_hp_per_stack, 0) * S.bondLayers(battle, pid, 'egirShip') });
     for (const u of members) S.passiveBuff(battle, u, 'bond:egir', mods);
   };
   apply();
@@ -590,7 +639,9 @@ function installSiracusa(battle, pid, bb, members) {
     battle.addBuff(unit, { key: 'bond:siracusa:stealth', duration: dur, flags: { stealth: true }, status: 'stealth', onExpire: off, onRemove: off });
   });
   if (!six) return;
-  const c = prdConstant(num(bb.prob, 0));
+  // 业主 2026-10-19：超限局 8%（普通模式保持原值 3%）
+  const probMul = battle.flags && battle.flags.overlimit ? (0.08 / Math.max(1e-9, num(bb.prob, 0.03))) : 1;
+  const c = prdConstant(num(bb.prob, 0) * probMul);
   if (!(c > 0)) return;
   const st = { n: 0 };
   const onDmg = (ctx) => {

@@ -83,7 +83,7 @@ export class MatchCombat {
       routes: wave.routes,
       sharedBoss: null,
       // 超限词条：静态修正合并进 flags（普通模式 this.traitMods 为空，等价于原来的对象）
-      flags: this._rmSpecFlags({ layerGainsEnabled: true, ...this.gd.dp, ...(this.traitFlagBundle ? this.traitFlagBundle() : {}) }),
+      flags: this._rmSpecFlags({ layerGainsEnabled: true, ...this.gd.dp, ...(this.isInfinite ? { overlimit: true } : {}), ...(this.traitFlagBundle ? this.traitFlagBundle() : {}) }),
       fieldId: `n:${ps.playerId}`,
       enemyOverrides: { ...(wave.overrides || {}), ...(this.specialOverrides ? this.specialOverrides() : {}) },
       waveId: wave.templateId,
