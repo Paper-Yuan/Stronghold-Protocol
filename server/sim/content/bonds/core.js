@@ -229,7 +229,13 @@ function installSargon(battle, pid, bb, members) {
   const narant = !!(share && band && share.valid_in_band === band);
   const main = narant ? share : bb;
   const six = reached(battle, pid, 'sargonShip', num(main.power_bond_char_cnt, 6));
-  const atkStacks = six && !narant && !(bb.invalid_in_band && bb.invalid_in_band === band);
+  // 业主 2026-10-19：娜仁图亚下原本「每层 +12% 攻击力」被整段关掉（invalid_in_band），
+  // 只剩「借装备」，实测攻击力只有普通萨尔贡的 1/4（900 vs 3600）。
+  // 现在娜仁图亚保留借装备，同时按**一半**的层数收益给攻击力（每层 +6%，25 层 = +150%）。
+  const NARANT_ATK_SCALE = 0.5;
+  // 用 main（娜仁图亚时是 share）的 invalid_in_band 判定：
+  // 普通 bb 标了 invalid_in_band: band_narant（娜仁图亚下无效），而 share 没有这个字段。
+  const atkStacks = six && !(main.invalid_in_band && main.invalid_in_band === band);
   const maxStacks = Math.max(1, Math.floor(num(main.max_buff_stack_cnt, 25)));
   const perAtk = num(bb.base_atk, 0);
   // 业主 2026-10-19：「萨转攻 溢出100层加5%」——
@@ -246,8 +252,9 @@ function installSargon(battle, pid, bb, members) {
     let n = 0;
     for (const b of u.buffs) if (b.key === 'bond:sargon') n++;
     const over = overflowAtk();
+    const scale = narant ? NARANT_ATK_SCALE : 1;
     if ((n > 0 || over > 0) && u.alive) {
-      battle.addBuff(u, { key: 'bond:sargon:atk', mods: S.directMods({ atk: perAtk * n + over }) });
+      battle.addBuff(u, { key: 'bond:sargon:atk', mods: S.directMods({ atk: perAtk * n * scale + over }) });
     } else battle.removeBuff(u, 'bond:sargon:atk');
   };
   battle.on('skillStart', ({ unit }) => {
