@@ -377,7 +377,8 @@ export class MatchPhases {
 
   afterRoundStart() {
     // 超限：通过 Boss 的下一回合先开词条抉择（业主 2026-10-18）；普通模式完全不走这里
-    if (wantsTraitDraft(this, this.round)) { this.enterTraitDraft(this.round); return; }
+    // 词条抉择已经在 afterSettle 里开过了（Boss 轮结束的时点），这里不再重复
+    if (this._traitDoneRound !== this.round - 1 && wantsTraitDraft(this, this.round)) { this.enterTraitDraft(this.round); return; }
     if (this.gd.spRounds().includes(this.round)) this.enterSpDraft();
     else this.enterPrep();
   }

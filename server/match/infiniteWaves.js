@@ -2,6 +2,7 @@
 // 纯 ESM，独立模块，不污染常规波次逻辑。
 
 import { weightedPick, gateOf } from './waves.js';
+import { bossPoolHp } from './finalAssault.js';
 import { enemyInfiniteScale, getInfiniteBossHp } from '../../shared/infiniteMode.js';
 import { createRng, deriveSeed } from '../sim/rng.js';
 
@@ -142,27 +143,29 @@ export function buildInfiniteNormalWave(gd, rng, round, routes = null, { withBos
     for (let i = 0; i < n && pool.length; i++) out.push(pool.splice(Math.floor(rng() * pool.length), 1)[0]);
     return out;
   };
-  // 抽 3 类 → 每类抽 1 只
+  // 业主 2026-10-19：「每回合都重新从七个池子随机抽选 3 个池子，
+  // 然后从三个池子里所有的怪里进行按比例抽选」。
+  //
+  // 以前是「每池只抽 1 只」，种类被压到 3 种；现在把 3 个池子的**全部怪**摊成一个候选集，
+  // 按 普通:精英 = 2:8 的比例逐只抽（每次独立抽，所以同一只怪可能出现多次）。
   const pickedKinds = pickDistinct(TACTIC_KINDS, 3);
-  const lineupKeys = [];
-  for (const kind of pickedKinds) {
-    // 普通/精英 2:8 —— 每类里按这个比例选一只（类里没有对应等级就用现有的）
-    const normals = kind.filter((k) => (enemies[k]?.rank || 'NORMAL') === 'NORMAL');
-    const elites = kind.filter((k) => (enemies[k]?.rank || 'NORMAL') !== 'NORMAL');
+  const candidates = pickedKinds.flat();
+  const normalPool = candidates.filter((k) => (enemies[k]?.rank || 'NORMAL') === 'NORMAL');
+  const elitePool = candidates.filter((k) => (enemies[k]?.rank || 'NORMAL') !== 'NORMAL');
+  const drawOne = () => {
     const wantElite = rng() < 0.8;
-    const pool = wantElite && elites.length ? elites : (normals.length ? normals : kind);
-    lineupKeys.push(pool[Math.floor(rng() * pool.length)]);
-  }
-  // 数量随波次缓慢增加：R16 约 12 只，每 5 轮 +3，上限 60
-  const perKind = Math.min(20, 4 + Math.floor((r - 16) / 5) * 1);
-  const perKindOf = () => perKind;
+    const pool = wantElite && elitePool.length ? elitePool : (normalPool.length ? normalPool : candidates);
+    return pool[Math.floor(rng() * pool.length)];
+  };
+  // 数量随波次缓慢增加：R16 约 24 只，每 5 轮 +6，上限 90
+  const waveCount = Math.min(90, 24 + Math.floor((r - 16) / 5) * 6);
 
-  // 三种各出 perKind 只，洗牌交错
+  // 逐只抽，洗牌交错
   const lineup = [];
-  for (const k of lineupKeys) {
-    const n = perKindOf();
-    const fly = enemies[k] && (enemies[k].isFlyEnemy === true || (enemies[k].stats || {}).motion === 'FLY');
-    for (let j = 0; j < n; j++) lineup.push({ key: k, fly: !!fly });
+  for (let i = 0; i < waveCount; i++) {
+    const k = drawOne();
+    const fly = !!(enemies[k] && (enemies[k].isFlyEnemy === true || (enemies[k].stats || {}).motion === 'FLY'));
+    lineup.push({ key: k, fly });
   }
   // 洗牌：种类交错出现，不会「前 8 只全是同一种」
   for (let i = lineup.length - 1; i > 0; i--) {
@@ -187,7 +190,20 @@ export function buildInfiniteNormalWave(gd, rng, round, routes = null, { withBos
       routeIndex: 0,
       count: 1,
       interval: 0,
-      mods: { hpMul: scale.hpMul, atkMul: scale.atkMul, speedMul: scale.speedMul, defMul: scale.defMul, resMul: scale.resMul },
+      // 业主 2026-10-19：「20 轮之后的所有 boss 轮次血量不对」——
+      // 以前直接用普通怪的 scale.hpMul（基础 12 万 × 4.57 ≈ 55 万），
+      // 而 Boss 的血点口径是 bossPoolHp（R20 的 280 万），差了 5 倍。
+      // 现在把「Boss 池血量 ÷ 基础血量」作为 hpMul，让普通战斗里的领袖也有 Boss 级血量。
+      mods: {
+        hpMul: (() => {
+          const base = gd.enemy(bossEnemyKeyOf(gd, bossId));
+          const baseHp = base && base.stats && base.stats.maxHp ? base.stats.maxHp : 0;
+          if (!(baseHp > 0)) return scale.hpMul;
+          const poolHp = bossPoolHp(gd, bossId, 1, r);
+          return Math.max(scale.hpMul, poolHp / baseHp);
+        })(),
+        atkMul: scale.atkMul, speedMul: scale.speedMul, defMul: scale.defMul, resMul: scale.resMul,
+      },
       preview: { gate: gateOf(routes && routes[0] ? routes[0].start : null, false), fly: false, elite: true, boss: true },
     };
     spawns.push(bossSpawn);

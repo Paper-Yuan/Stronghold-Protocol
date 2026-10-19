@@ -506,9 +506,17 @@ export function TopBar({ pub, priv, conn, hud, total, drawer, onExit, onDrawer, 
         ${pause && (pause.show || pause.paused) ? html`<${PauseButton} paused=${!!pause.paused} busy=${pause.busy} onToggle=${pause.onToggle} />` : null}
       </div>
       <${OvertimeWarning} ot=${ot} />
+      ${Array.isArray(pub?.traitMods) && pub.traitMods.length ? html`<${TraitChips} mods=${pub.traitMods} />` : null}
       ${showReady ? html`<${ReadyToggle} priv=${priv} onToggle=${onReady} busy=${readyBusy} readyCount=${readyCount} total=${playerCount} />` : null}
     </div>
   </header>`;
+}
+
+/** 超限已选词条（业主 2026-10-19）：HUD 右上角一排小标签，鼠标悬停看完整效果。 */
+function TraitChips({ mods }) {
+  return html`<div class="gtop__traits">${mods.map((m) => html`<span key=${m.id + m.round}
+    class=${'tchip' + (m.polarity === 'neg' ? ' tchip--neg' : '')}
+    title=${t('第 {r} 回合 · {name}', { r: m.round, name: m.name })}>${m.name}</span>`)}</div>`;
 }
 
 /** DP counter shown at the right edge during combat. */

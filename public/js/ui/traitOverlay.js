@@ -11,7 +11,7 @@ import { html } from './components.js';
 import { t } from '../../../shared/i18n.js';
 
 const DEL_STAGGER = 120, DEL_FLICKER = 580, DEL_WIPE = 400, DEL_PAD = 100;
-const MOVE_MS = 620, MORPH_MS = 820;
+const MOVE_MS = 620, MORPH_MS = 1500;
 
 /** 特化配置：与服务端 server/match/traits.js SPECIALS 对应（只放卡面需要的字段） */
 const SPECIAL_VIEW = {
@@ -72,7 +72,13 @@ export function TraitOverlay({ trait, myId, busyIdx = null, onPick, onRetreat = 
       const box = el.getBoundingClientRect();
       el.style.setProperty('--to-center', ((row.left + row.width / 2) - (box.left + box.width / 2)) + 'px');
       el.classList.add('is-moving');
-      after(MOVE_MS + 60, () => { setPhase('folder'); after(240, () => onPick?.(idx)); });
+      after(MOVE_MS + 60, () => {
+        // 业主 2026-10-19：滑到正中后「长成文件夹」—— 以前只改了 phase，
+        // 从没给卡片加 is-folder，所以卡面停在原地、也没有文件夹形态。
+        setPhase('folder');
+        el.classList.add('is-folder');
+        after(MORPH_MS, () => onPick?.(idx));
+      });
     };
     let remaining = dels.length;
     for (const c of dels) {

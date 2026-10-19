@@ -1045,3 +1045,12 @@
   font:700 11px/1 var(--font-num);letter-spacing:.04em;color:var(--pos);
   border:1px solid color-mix(in srgb,var(--pos) 45%,transparent);border-radius:4px;
   background:color-mix(in srgb,var(--pos) 12%,transparent);cursor:help}
+
+
+/* 超限已选词条（业主 2026-10-19）：HUD 右上角一排小标签 */
+.gtop__traits{display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end;max-width:260px}
+.tchip{font:600 10px/1 var(--font-cjk);letter-spacing:.04em;padding:3px 7px;border-radius:3px;
+  color:var(--pos);background:color-mix(in srgb,var(--pos) 12%,transparent);
+  border:1px solid color-mix(in srgb,var(--pos) 40%,transparent);cursor:help;white-space:nowrap}
+.tchip--neg{color:var(--neg-hi);background:color-mix(in srgb,var(--neg) 12%,transparent);
+  border-color:color-mix(in srgb,var(--neg) 40%,transparent)}

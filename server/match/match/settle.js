@@ -152,6 +152,15 @@ export class MatchSettle {
     // 之后再问就只剩下一轮的波次了（业主 2026-10-19 的「有 Boss 的普通轮次」）。
     if (this.isInfinite) this._infBossClearedRound = this._infiniteBossCleared() ? this.round : null;
     resetRoundCounters(this); // AI bot merge-counter resets each round (server/match/botEmotes.js)
+    // 业主 2026-10-19：「词条选择应该在 boss 轮次结束下一轮次还未进入的时点切入，
+    // 以方便下一轮就出现选择的怪」。
+    // 所以先开词条抉择，**选完**再 startRound(round+1) —— 那时 traitSpawn 已经记好，
+    // 下一轮的波次生成就能直接把它带出来。
+    if (this.isInfinite && this._infBossClearedRound === this.round) {
+      this._traitPendingRound = this.round + 1;
+      this._traitDoneRound = this.round;   // 标记「这个 Boss 轮的词条已经开过」
+      if (this.enterTraitDraft(this.round + 1)) return;
+    }
     this.startRound(this.round + 1);
   }
 

@@ -104,6 +104,10 @@ export class MatchTraitDraft {
     if (this.phase !== PHASE.TRAIT_DRAFT) return;
     this.traitDraftCount = (this.traitDraftCount || 0) + 1;
     this.trait = null;
+    // 从 afterSettle 进来（Boss 轮刚结束）：选完才真正进入下一轮
+    const next = this._traitPendingRound;
+    this._traitPendingRound = null;
+    if (Number.isInteger(next) && next > 0) { this.startRound(next); return; }
     this.enterPrep();
   }
 
