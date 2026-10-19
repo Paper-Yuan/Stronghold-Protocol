@@ -173,6 +173,8 @@
   filter:drop-shadow(0 3px 8px rgba(0,0,0,.5))}
 
 .tcard__body{position:relative;z-index:2;padding:0 13px 12px}
+/* 选中时给底部横幅让位，正文最后一行不会被压住 */
+.tcard.is-selected .tcard__body{padding-bottom:38px}
 .tcard__mob{font-size:clamp(12.5px,1.2vw,14.5px);font-weight:700;color:var(--text-hi);letter-spacing:.02em;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .tcard__sep{position:relative;height:1px;margin:9px 0 8px;background:linear-gradient(90deg,rgba(255,255,255,.12),transparent)}
@@ -194,14 +196,15 @@
   mask-image:linear-gradient(180deg,transparent,#000 34%,#000 74%,transparent)}
 .tcard--special .tcard__specdesc b{color:#ff8f7a;font-weight:700}
 
-.tcard__pick{position:absolute;inset:0;display:grid;place-items:center;pointer-events:none;opacity:0;z-index:6;
-  transition:opacity .16s ease}
+/* 「已选择」：贴在卡片底部的一条横幅，不再垂直居中压在正文上（业主 2026-10-25） */
+.tcard__pick{position:absolute;left:0;right:0;bottom:0;display:grid;place-items:center;
+  pointer-events:none;opacity:0;z-index:6;transition:opacity .16s ease}
 .tcard.is-selected .tcard__pick{opacity:1}
 .tcard.is-folder .tcard__pick{opacity:0}
-.tcard__pick span{font-family:var(--font-num);font-size:10.5px;letter-spacing:.32em;padding:7px 15px 7px 17px;
+.tcard__pick span{width:100%;text-align:center;
+  font-family:var(--font-num);font-size:10.5px;letter-spacing:.32em;padding:7px 0 7px .32em;
   color:#06120e;background:var(--acc);
-  clip-path:polygon(7px 0,100% 0,100% calc(100% - 7px),calc(100% - 7px) 100%,0 100%,0 7px);
-  box-shadow:0 6px 22px var(--acc-a55)}
+  box-shadow:0 -6px 22px var(--acc-a55)}
 
 @media (max-width:760px){
   .traitov__cards{gap:8px}
