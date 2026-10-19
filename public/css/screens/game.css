@@ -1038,3 +1038,10 @@
 @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
   .combat-metrics { background: linear-gradient(180deg, rgba(18, 24, 22, .88), rgba(10, 14, 13, .86)); }
 }
+
+
+/* 超限 R16+ 的战斗倍速标记（业主 2026-10-19）：只提示战斗推进是 2 倍，倒计时仍是 1 倍速 */
+.gtop__speed{display:inline-flex;align-items:center;height:20px;padding:0 6px;margin-right:6px;
+  font:700 11px/1 var(--font-num);letter-spacing:.04em;color:var(--pos);
+  border:1px solid color-mix(in srgb,var(--pos) 45%,transparent);border-radius:4px;
+  background:color-mix(in srgb,var(--pos) 12%,transparent);cursor:help}

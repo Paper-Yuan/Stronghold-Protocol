@@ -581,6 +581,10 @@ function installEgir(battle, pid, bb, members) {
   const revive = (u) => {
     if (!battle.redeploy(u, { free: true })) return;
     revives++;
+    // 超限推演强化（业主 2026-10-19）：复活后额外 +50 攻速
+    if (battle.flags && battle.flags.overlimit) {
+      battle.addBuff(u, { key: 'bond:egir:revive-aspd', duration: Infinity, persist: true, mods: { aspd: 50 } });
+    }
     S.fxOn(battle, 'revive', u, 'bond:egirShip', 'respawn', { n: revives });
   };
   start.flush.push(() => {

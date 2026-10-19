@@ -56,9 +56,13 @@ test('超限局按自己的 bossRound 推进，Boss 输掉时在那里结束', (
   //   · 总数不会塌到「几只怪」或涨到「上百只」
   const inf = samples.filter((x) => x.round >= 16 && x.total > 0);
   assert.ok(inf.length >= 3, '没跑到 R16+ 的无限波次，最后一个采样点 R' + samples[samples.length - 1].round);
+  // 业主 2026-10-19：无限普通轮次固定「3 种 × 4–20 只」（12–60 只），
+  // 种类数固定 3，数量随波次缓慢增加。
   for (const s2 of inf) {
-    assert.ok(s2.total >= 20 && s2.total <= 90, 'R' + s2.round + ' 的怪数 ' + s2.total + ' 不在 20–90');
-    assert.ok(s2.kinds >= 5 && s2.kinds <= 9, 'R' + s2.round + ' 的种类 ' + s2.kinds + ' 不在 5–9');
+    // Boss 轮额外多一只领袖 → 4 种
+    const wantKinds = s2.round % 5 === 0 ? 4 : 3;
+    assert.equal(s2.kinds, wantKinds, 'R' + s2.round + ' 的种类应为 ' + wantKinds + '，实际 ' + s2.kinds);
+    assert.ok(s2.total >= 10 && s2.total <= 65, 'R' + s2.round + ' 的怪数 ' + s2.total + ' 不在 10–65');
   }
   // 结束只可能发生在 bossRound（这里 14）或更晚；不会在开头莫名结束
   if (h.ended) {

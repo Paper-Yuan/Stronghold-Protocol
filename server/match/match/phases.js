@@ -259,6 +259,11 @@ export class MatchPhases {
   startRound(r) {
     this.phase = PHASE.ROUND_START;
     this.round = r;
+    // 业主 2026-10-19：「后续无限轮次的游戏速度改为 2 倍速并出现右上角倒计时处提示
+    // （但倒计时依旧正常 1 倍速）」。
+    // gameSpeed 只影响战斗推进（战斗时限 / 战斗时钟）；休整期的倒计时走的是
+    // setDeadline 的秒数，与 gameSpeed 无关，所以倒计时仍是 1 倍速。
+    if (this.isInfinite) this.gameSpeed = r >= 16 ? 2 : 1;
     this.fields = [];
     this.watchers.clear();
     this.unitePlan = null;

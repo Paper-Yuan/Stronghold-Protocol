@@ -122,34 +122,48 @@ export function buildInfiniteNormalWave(gd, rng, round, routes = null, { withBos
 
   const pickKey = (arr) => arr[Math.floor(rng() * arr.length)];
 
-  // 业主 2026-10-19：「提高波次内单个种类怪的数量，同时不要那么多种类同时出现，
-  // 4-5 地面，2-3 飞行」。
+  // 业主 2026-10-19：「无限普通轮次的出怪逻辑改为从七种类的战术特训敌人中先随机选 3，
+  // 再以普通/精英 2:8 的形式分配，怪的数量也随波次缓慢增加」。
   //
-  // 以前每只怪都独立抽一次种类（33–60 只 → 28–37 种），屏幕上什么都有、每种一两只。
-  // 现在先抽「本轮的阵容」：4–5 种地面 + 2–3 种飞行，然后整波只出这几种，
-  // 每种出 4–8 只 —— 单种数量上去了，种类数下来了，看得出「这一轮主打什么」。
-  const groundKindCount = 4 + Math.floor(rng() * 2);   // 4–5
-  const flyKindCount = 2 + Math.floor(rng() * 2);      // 2–3
+  // 七类 = 飞行 / 频次 / 损伤 / 持续 / 隐匿 / 折射 / 护障（data/choices.json 的战术特训系列）。
+  // 每轮随机抽 3 类，再从每类里抽 1 只；其中 20% 是普通、80% 是精英（不够就回退）。
+  const TACTIC_KINDS = [
+    ['enemy_1005_yokai', 'enemy_1040_bombd', 'enemy_1112_emppnt_2'],   // 飞行
+    ['enemy_1195_sfyin', 'enemy_1203_sfhu', 'enemy_1207_sfji_2'],       // 频次
+    ['enemy_1148_dssbr', 'enemy_1305_mhslim_2', 'enemy_10067_ftsjc'],   // 损伤
+    ['enemy_1270_nhstlk', 'enemy_1267_nhpbr_2', 'enemy_1272_nhtank_2'], // 持续
+    ['enemy_1019_jshoot', 'enemy_10034_cnvsax', 'enemy_1283_sgkill'],   // 隐匿
+    ['enemy_1169_duphlx', 'enemy_1168_dumage_2', 'enemy_1174_duholy_2'],// 折射
+    ['enemy_1355_mrfly_2'],                                             // 护障
+  ];
   const pickDistinct = (arr, n) => {
     const pool = arr.slice();
     const out = [];
     for (let i = 0; i < n && pool.length; i++) out.push(pool.splice(Math.floor(rng() * pool.length), 1)[0]);
     return out;
   };
-  // 地面阵容：精英和普通按 2:3 的比例掺着来，避免整波全是同一种等级
-  const elitePick = Math.min(groundKindCount, Math.max(1, Math.round(groundKindCount * 0.4)));
-  const groundKinds = [
-    ...pickDistinct(eliteKeys, elitePick),
-    ...pickDistinct(normalKeys, Math.max(0, groundKindCount - elitePick)),
-  ];
-  const flyKinds = pickDistinct(flyKeys, flyKindCount);
-  // 每种出 4–8 只（业主：单种数量要提高），每种独立抽
-  const perKindOf = () => 4 + Math.floor(rng() * 5);
+  // 抽 3 类 → 每类抽 1 只
+  const pickedKinds = pickDistinct(TACTIC_KINDS, 3);
+  const lineupKeys = [];
+  for (const kind of pickedKinds) {
+    // 普通/精英 2:8 —— 每类里按这个比例选一只（类里没有对应等级就用现有的）
+    const normals = kind.filter((k) => (enemies[k]?.rank || 'NORMAL') === 'NORMAL');
+    const elites = kind.filter((k) => (enemies[k]?.rank || 'NORMAL') !== 'NORMAL');
+    const wantElite = rng() < 0.8;
+    const pool = wantElite && elites.length ? elites : (normals.length ? normals : kind);
+    lineupKeys.push(pool[Math.floor(rng() * pool.length)]);
+  }
+  // 数量随波次缓慢增加：R16 约 12 只，每 5 轮 +3，上限 60
+  const perKind = Math.min(20, 4 + Math.floor((r - 16) / 5) * 1);
+  const perKindOf = () => perKind;
 
-  // 按种类轮流出，保证每一种都足量出场（随机抽会让某些种类只出 2 只甚至 0 只）
+  // 三种各出 perKind 只，洗牌交错
   const lineup = [];
-  for (const k of flyKinds) { const n = perKindOf(); for (let j = 0; j < n; j++) lineup.push({ key: k, fly: true }); }
-  for (const k of groundKinds) { const n = perKindOf(); for (let j = 0; j < n; j++) lineup.push({ key: k, fly: false }); }
+  for (const k of lineupKeys) {
+    const n = perKindOf();
+    const fly = enemies[k] && (enemies[k].isFlyEnemy === true || (enemies[k].stats || {}).motion === 'FLY');
+    for (let j = 0; j < n; j++) lineup.push({ key: k, fly: !!fly });
+  }
   // 洗牌：种类交错出现，不会「前 8 只全是同一种」
   for (let i = lineup.length - 1; i > 0; i--) {
     const j = Math.floor(rng() * (i + 1));

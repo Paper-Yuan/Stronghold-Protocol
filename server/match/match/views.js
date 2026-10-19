@@ -74,6 +74,8 @@ export class MatchViews {
       modeId: this.modeId,
       // 超限模式：客户端据此知道回合数没有上限（HUD 的「隐藏核心 ?? 」判定不能拿 lastRound 卡它）
       isInfinite: !!this.isInfinite,
+      // 战斗推进倍速（超限 R16+ 是 2）；倒计时与它无关，仍是 1 倍
+      gameSpeed: this.gameSpeed,
       difficulty: this.difficulty,
       stageId: this.stageId,
       setupRevision: this.setupRevision,

@@ -499,6 +499,7 @@ export function TopBar({ pub, priv, conn, hud, total, drawer, onExit, onDrawer, 
 
     <div class="gtop__right">
       <div class="gtop__clock">
+        ${Number(pub?.gameSpeed) > 1 ? html`<span class="gtop__speed" title=${t('战斗以 {n} 倍速推进（倒计时仍是 1 倍速）', { n: pub.gameSpeed })}>${pub.gameSpeed}×</span>` : null}
         ${frozenSecs != null
           ? html`<${Countdown} seconds=${frozenSecs} total=${total ?? undefined} size="md" label="PAUSED" />`
           : html`<${Countdown} deadline=${pub?.deadline} total=${total ?? undefined} size="md" />`}
