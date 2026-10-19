@@ -181,6 +181,10 @@ export function formatBondEffect(bond, layers = 0, opts = null) {
     if (bond.bondId === 'siracusaShip') {
       bb.prob = 0.08;                                              // 3% → 8%
     }
+    if (bond.bondId === 'yanShip') {
+      // 超限额外给生命（sim: YAN_HP_BASE 0.15 + 0.002/层）
+      bb.__yan_hp = 0.15;
+    }
   }
   const L = Number.isFinite(Number(layers)) ? Math.max(0, Number(layers)) : 0;
   const values = [];

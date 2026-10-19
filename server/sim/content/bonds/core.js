@@ -183,8 +183,16 @@ const ownTag = (dmg, tag) => !!dmg && Array.isArray(dmg.tags) && dmg.tags.includ
 
 function installYan(battle, pid, bb, members) {
   const L = () => S.bondLayers(battle, pid, 'yanShip');
+  // 业主 2026-10-19：「炎加个生命区间」—— 超限局额外给生命值（幅度不高）。
+  // 基础 +15%，每层 +0.2%（30 层 = +21%）。
+  const YAN_HP_BASE = 0.15;
+  const YAN_HP_PER_STACK = 0.002;
   const apply = () => {
-    const mods = S.directMods({ atk: num(bb.base_atk) + num(bb.atk_per_stack) * L() });
+    const inf = !!(battle.flags && battle.flags.overlimit);
+    const mods = S.directMods({
+      atk: num(bb.base_atk) + num(bb.atk_per_stack) * L(),
+      ...(inf ? { hp: YAN_HP_BASE + YAN_HP_PER_STACK * L() } : {}),
+    });
     for (const u of members) S.passiveBuff(battle, u, 'bond:yan', mods);
   };
   apply();
