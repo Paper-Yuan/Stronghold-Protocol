@@ -468,6 +468,9 @@ export function applyHpLoss(battle, source, target, amount, dmg, mark) {
       }
     }
     dealt = Math.max(0, before - Math.max(0, target.hp));
+    // 浴血 / 颓势（超限词条）：血量变了就重算攻击力。只对注入了该标记的单位生效，
+    // 普通战斗里 mem.atkByMissingHp 不存在 → 不会多一次重算，确定性不变。
+    if (target.mem && Number.isFinite(target.mem.atkByMissingHp) && target.mem.atkByMissingHp !== 0) target.markDirty();
   }
   // damage dealt (unit stats, the results screen's 造成伤害) never counts a unit's own side — its own drain or 流失 (源石溶剂,
   // 史尔特尔 S3 …), friendly damage; `taken` and the kill credit do
@@ -702,7 +705,11 @@ export function heal(battle, source, target, amount, opts = {}) {
   if (!self && ((target.s.flags.noHeal && !through) || (target.profile && target.profile.noHeal))) return 0;
   const regen = !!opts.regen;
   if (target.s.flags.healFree && !regen && !opts.ignoreHealFree && !through) return 0;
+  // 盛发 / 萎靡（超限词条）：本局我方受到的治疗与生命回复全局倍率。普通战斗没有这个 flag → 乘 1，不变。
+  const traitHeal = target.side === 'ally' && battle.flags && Number.isFinite(battle.flags.allyHealMul)
+    ? Math.max(0, battle.flags.allyHealMul) : 1;
   let amt = regen ? amount : amount * (source && source.s ? source.s.healingDealtMul : 1) * target.s.healingTakenMul;
+  if (traitHeal !== 1) amt *= traitHeal;
   if (!(amt > 0) || !Number.isFinite(amt)) return 0;
   if (battle._hooks.heal) {
     const ctx = { source, target, amount: amt, opts };

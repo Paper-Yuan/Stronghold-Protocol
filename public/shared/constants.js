@@ -110,13 +110,33 @@ export const SKILL_SUMMON_START_DEPLOY = true;
 export const BOND_LAYER_CAP = 999;
 
 /**
+ * 实际生效的层数上限（业主 2026-10-18：超限模拟里盟约层数应该能叠到 9999）。
+ *
+ * `BOND_LAYER_CAP` 是原版（以及所有普通模式）的 999；超限局在 Match 构造时把这里抬到 9999，
+ * 对局结束再恢复 —— 改动**只在一个超限局的生命周期内**，普通单机 / 同盟读到的仍是 999。
+ * 用它而不是直接改常量，是因为 `layerGainRoom` 是纯函数、被 service 与 sim 两侧共用，
+ * 参数化比「按模式到处传参」改动面小得多。
+ */
+let bondLayerCapLive = BOND_LAYER_CAP;
+
+/** The cap `layerGainRoom` enforces right now (999 normally, 9999 inside an overlimit match). */
+export function currentBondLayerCap() { return bondLayerCapLive; }
+
+/** Set the live cap; returns the previous one so a caller can restore it. */
+export function setBondLayerCap(v) {
+  const prev = bondLayerCapLive;
+  bondLayerCapLive = Number.isFinite(v) && v > 0 ? Math.floor(v) : BOND_LAYER_CAP;
+  return prev;
+}
+
+/**
  * The layers a gain of `n` actually adds to a bond holding `before` under BOND_LAYER_CAP: min(n, cap − before), never
  * negative (a count already at or over the cap gains 0 and is never lowered); 0 for a non-positive / non-finite `n`
  * except +Infinity (= "the room left").
  */
 export function layerGainRoom(before, n) {
   if (!(n > 0)) return 0;
-  const cap = BOND_LAYER_CAP > 0 ? BOND_LAYER_CAP : Infinity;
+  const cap = bondLayerCapLive > 0 ? bondLayerCapLive : Infinity;
   const b = Number.isFinite(before) && before > 0 ? before : 0;
   return Math.max(0, Math.min(n, cap - b));
 }
@@ -150,6 +170,7 @@ export const ERR = Object.freeze({
   ROOM_FULL: 'ROOM_FULL',
   ROOM_STARTED: 'ROOM_STARTED',
   NOT_HOST: 'NOT_HOST',
+  MOD_UNKNOWN: 'MOD_UNKNOWN',      // 房间声明的模组不在本服务器加载的目录里 (W-D)
   NOT_READY: 'NOT_READY',
   WRONG_PHASE: 'WRONG_PHASE',
   NO_FUNDS: 'NO_FUNDS',
@@ -209,6 +230,7 @@ export const ERR_TEXT = {
   PLUGIN_SCRIPT_OVERRIDE: N_('插件未声明要替换的官方技能'),
   PLUGIN_SCRIPT_CHECK: N_('脚本未通过兼容性检查'),
   CONTENT_NOT_READY: N_('仍有博士未载入房间的插件内容'),
+  MOD_UNKNOWN: N_('本服务器未加载该模组'),   // 房间声明的工坊包不在服务器目录里 (W-D)
 };
 
 // ---- Emotes (交流, research 09 §4) -----------------------------------------------------------------------------

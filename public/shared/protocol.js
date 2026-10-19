@@ -417,11 +417,20 @@ export const C2S = {
   hello: { name: (v) => isStr(v, NAME_MAX_LEN) && v.trim().length > 0, token: (v) => v == null || isStr(v, 64), version: (v) => v == null || isInt(v, 0, 1e6),
     noReplace: isBool, claimAt: (v) => isNum(v, 0, Number.MAX_SAFE_INTEGER), $optional: ['token', 'version', 'noReplace', 'claimAt'] },
   ping: { c: (v) => typeof v === 'number' && Number.isFinite(v) },
-  'room.create': { mode: (v) => v === 'solo' || v === 'coop', difficulty: (v) => DIFFICULTIES.includes(v) },
-  'room.join': { code: (v) => isStr(v, ROOM_CODE_LEN + 2) && /^[A-Za-z0-9]+$/.test(v) },
+  // `mode` 含 `solo_infinite`（超限模拟，shared/infiniteMode.js）；`modIds` 是房主从服务端声明的模组目录里挑的子集
+  // （welcome.mods.packs，W-C/W-D）—— 服务端用 ERR.MOD_UNKNOWN 答复它没加载的包。`private` / `random` / `variant`
+  // 与 `mods`（兼容用的摘要串）都是客户端同一个载荷里既有的字段，一起收下以免白写。
+  'room.create': { mode: (v) => v === 'solo' || v === 'coop' || v === 'solo_infinite', difficulty: (v) => DIFFICULTIES.includes(v),
+    random: (v) => v == null || isBool(v), variant: (v) => v == null || v === 'blitz' || v === 'endurance' || v === 'marathon',
+    private: (v) => v == null || isBool(v), mods: (v) => v == null || typeof v === 'string',
+    modIds: (v) => v == null || (Array.isArray(v) && v.every((id) => typeof id === 'string')),
+    $optional: ['random', 'variant', 'private', 'mods', 'modIds'] },
+  'room.join': { code: (v) => isStr(v, ROOM_CODE_LEN + 2) && /^[A-Za-z0-9]+$/.test(v), mods: (v) => v == null || typeof v === 'string', $optional: ['mods'] },
   'room.leave': {},
   'room.ready': { ready: isBool },
   'room.setDifficulty': { difficulty: (v) => DIFFICULTIES.includes(v) },
+  // 房间模组声明 (W-C)：房主在开局前挑选本房间加载的包（服务端已加载目录的子集）。
+  'room.setMods': { modIds: (v) => v == null || (Array.isArray(v) && v.every((id) => typeof id === 'string')), $optional: ['modIds'] },
   // the co-op room option 「AI 队友最后选择」 (GitHub #338; host, before the match): the strategy and 机变 drafts order every
   // human seat before every AI seat (server/match/match/phases.js humansFirst); room.state.aiPicksLast
   'room.setAiPicksLast': { on: isBool },
@@ -431,6 +440,11 @@ export const C2S = {
   // host confirmed — a seat that changed hands meanwhile is refused
   'room.kick': { seat: (v) => isInt(v, 0, MAX_SEATS - 1), playerId: isId },
   'room.start': {},
+  // Room-scoped text chat (房间与局内文字聊天): available in the waiting room and throughout its match.
+  'room.chat': { text: (v) => typeof v === 'string' && v.trim().length > 0 && v.length <= 120,
+    code: (v) => isStr(v, ROOM_CODE_LEN) && /^[A-Z0-9]+$/.test(v),
+    $optional: ['code'] },
+  'room.chat.history': { code: (v) => isStr(v, ROOM_CODE_LEN) && /^[A-Z0-9]+$/.test(v) },
   'room.rerollSetup': { setupRevision: (v) => isInt(v, 0, 2 ** 31) },
   'room.cancelReroll': { voteId: (v) => isInt(v, 1, 2 ** 31) },
   // operator loadout (DESIGN §16): stored per session/seat; accepted until the match leaves INFO_CHECK — `ops` (0.2.2):
@@ -487,7 +501,9 @@ export const C2S = {
   'g.art': { itemUid: isUid, row: (v) => isInt(v, 0, GEO.ROWS - 1), col: (v) => isInt(v, 0, GEO.COLS - 1), dir: isDir, $optional: ['dir'] },
   'g.destroy': { uid: isUid },
   'g.reward': { idx: (v) => isInt(v, 0, 5) },
-  'g.choice': { idx: (v) => isInt(v, 0, 5), choiceId: isId, $optional: ['choiceId'] },
+  'g.choice': { idx: (v) => isInt(v, 0, 5), choiceId: isId, $optional: ['choiceId'] }, 'g.traitChoice': { idx: (v) => isInt(v, 0, 2) },
+  // 超限：词条抉择界面右下角的【战术撤退】（业主 2026-10-19）
+  'g.traitRetreat': {},
   'g.ready': { ready: isBool },
   'g.emote': { id: (v) => EMOTES.includes(v) },
   // playerId: the player tapped in the team panel (a 联防 / boss pair field shows two) — what an eliminated viewer or a
@@ -538,7 +554,7 @@ export const C2S = {
 // Server → client message types (documentation + client dispatch table keys).
 export const S2C = [
   'welcome', 'ok', 'error', 'pong',
-  'room.state', 'room.closed',
+  'room.state', 'room.closed', 'room.chat', 'room.chat.history',
   'm.public', 'm.private', 'm.field', 'm.toast', 'm.ticker', 'm.emote', 'm.result',
   // m.layer { playerId, bondId, add } — own live prep layer gain; ephemeral, never replayed on resync.
   'm.layer',

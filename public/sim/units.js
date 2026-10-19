@@ -158,8 +158,19 @@ export class Unit {
       interval = MIN_ATTACK_INTERVAL_SEC;
       finalAtk = atk * (MIN_ATTACK_INTERVAL_SEC / rawInterval);
     }
+    // 浴血 / 颓势（超限词条，业主 2026-10-18）：按「已损失生命比例」给攻击力加算。
+    // 只在这一局注入了 mem.atkByMissingHp 的单位上生效；普通模式 mem 里没有这个键 → 完全不变。
+    let atkWithHp = finalAtk;
+    const miss = this.mem && Number.isFinite(this.mem.atkByMissingHp) ? this.mem.atkByMissingHp : 0;
+    if (miss) {
+      const floor = Number.isFinite(this.mem.atkByMissingHpFloor) ? this.mem.atkByMissingHpFloor : 0.3;
+      const lost = Math.max(0, Math.min(1, 1 - (this.hp / Math.max(1, maxHp))));
+      // 到 floor 处达到最大加成，之后保持（与描述「30% 生命值时达到最大」一致）
+      const k = floor > 0 ? Math.min(1, lost / (1 - floor)) : 1;
+      atkWithHp = Math.max(0, finalAtk * (1 + miss * k));
+    }
     const s = {
-      maxHp, atk: finalAtk, def, res, aspd, bat,
+      maxHp, atk: atkWithHp, def, res, aspd, bat,
       interval,
       blockCnt: Math.max(0, fin(Math.round(b.blockCnt + a('blockCnt')), 0)),
       moveSpeed: Math.max(this.mem.moveSpeedFloor ?? 0, fin((b.moveSpeed + a('moveFlat')) * m('moveMul'), fin(b.moveSpeed, 0))),

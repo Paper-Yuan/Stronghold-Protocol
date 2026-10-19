@@ -61,6 +61,19 @@ const specReplacer = (k, v) => (typeof v === 'number' && !Number.isFinite(v) ? (
  * minus object references: `stageId` instead of a stage object, `boss: { poolHp, poolMax }` instead of a pool.
  * @returns {object} a fresh JSON-safe object
  */
+/**
+ * `opts.modules` 的消毒 (W-C)：一条 `{ id, pack, url, kind? }`，id 是棋子/召唤 id、url 是浏览器能 import 的路径。
+ * 形状不对的整条丢掉（规格是要发给客户端的 JSON，不能夹带别的东西）。
+ * @param {unknown} v
+ * @returns {Array<{ id: string, pack: string, url: string, kind?: 'token' }>}
+ */
+function modModules(v) {
+  return (Array.isArray(v) ? v : [])
+    .filter((m) => m && typeof m.id === 'string' && m.id.length > 0 && m.id.length <= 64
+      && typeof m.url === 'string' && m.url.startsWith('/') && m.url.length <= 512)
+    .map((m) => ({ id: m.id, pack: typeof m.pack === 'string' ? m.pack : '', url: m.url, ...(m.kind === 'token' ? { kind: 'token' } : {}) }));
+}
+
 export function buildBattleSpec(o = {}) {
   const bossLike = o.kind === 'boss' || o.kind === 'hidden';
   const tl = Number(o.timeLimit);
@@ -90,6 +103,9 @@ export function buildBattleSpec(o = {}) {
     ...(isContentHash(o.cs) ? { cs: o.cs } : {}),
     ...(isContentHash(o.vs) ? { vs: o.vs } : {}),
   };
+  // 房间模组包的模块 URL (W-C)：只留形状对的那几条 —— 客户端拿它们 import 自己的 kits 表，两端必须一致
+  const mods = modModules(o.modules);
+  if (mods.length) spec.modules = mods;
   const out = JSON.parse(JSON.stringify(spec, specReplacer));
   for (const p of out.players) for (const u of (p && Array.isArray(p.units) ? p.units : [])) if (u && typeof u === 'object') sanitizeUnitLoadout(u);
   return out;
@@ -270,14 +286,14 @@ export function uniteLeft(battle) {
   if (battle.finished && typeof battle.result === 'function') {
     const r = battle.result();
     if (!r || !r.perPlayer) return null;
-    for (const pp of Object.values(r.perPlayer)) for (const l of (pp && pp.leaked) || []) if (l && l.counted !== false) add(l.sourcePlayerId);
+    for (const pp of Object.values(r.perPlayer)) for (const l of (pp && pp.leaked) || []) if (l && l.counted !== false && !l.uniteRuntime) add(l.sourcePlayerId);
     for (const u of r.unspawned || []) if (u) add(u.sourcePlayerId);
     return out;
   }
   if (!battle._perPlayer || !Array.isArray(battle._pending) || !Array.isArray(battle.enemies)) return null;
   for (const p of battle._pending) if (p) add(p.sourcePlayerId);
   for (const e of battle.enemies) if (e && e.alive && e.counted) add(e.sourcePlayerId ?? e.ownerId);
-  for (const pp of Object.values(battle._perPlayer)) for (const l of (pp && pp.leaked) || []) if (l && l.counted !== false) add(l.sourcePlayerId);
+  for (const pp of Object.values(battle._perPlayer)) for (const l of (pp && pp.leaked) || []) if (l && l.counted !== false && !l.uniteRuntime) add(l.sourcePlayerId);
   return out;
 }
 

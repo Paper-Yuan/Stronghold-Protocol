@@ -87,12 +87,14 @@ export function enemyInfiniteScale(round, baseR15 = { hpMul: 1, atkMul: 1, speed
   // 现在统一成**同一条逐回合指数**：hp ×1.0439、atk ×1.0371、speed ×1.01 每回合，
   // 从绝境 R15 的真实数值接着往上，不再有线性段、也不再有 5 回合台阶。
   const k = Math.max(0, r - 15);
-  // 业主 2026-10-19：「生命慢了一点，攻击原速度」——
-  //   hp  每回合 ×1.05（原来是 ×1.0439，略微加快）
-  //   atk 保持 ×1.0371（原速度不变）
+  // 业主 2026-10-20：「攻击力的曲线降低一点，生命力抬高一点」——A 方案。
+  //   hp  每回合 ×1.06（从 ×1.05 抬高：R60 32.2 → 49.3 倍）
+  //   atk 每回合 ×1.16^(1/5) = ×1.0301（从 1.20^(1/5) 降低，和防御同底数：
+  //       R60 10.05 → 7.41 倍）
   //   speed 保持 ×1.01，硬上限 2.5
-  const HP_STEP = 1.05;
-  const ATK_STEP = Math.pow(1.20, 1 / 5);   // 1.0371，原速度
+  // 效果：atk/hp 从 0.31 降到 0.15（R60），威胁从「会被打死」偏向「打不动」。
+  const HP_STEP = 1.06;
+  const ATK_STEP = Math.pow(1.16, 1 / 5);   // 1.0301
   const DEF_STEP = Math.pow(1.16, 1 / 5);   // 防御 ×1.0301/回合
   const RES_STEP = Math.pow(1.12, 1 / 5);   // 法抗 ×1.0229/回合（成长比防御慢：法抗是百分比，涨太快会免疫）
   const hpMul = base.hpMul * Math.pow(HP_STEP, k);
@@ -115,7 +117,9 @@ export function getInfiniteBossHp(baseHp, round) {
   if (r <= 15) return baseHp;
   // 与杂兵同一条曲线、同样**每回合平滑**（业主 2026-10-19：「中间不断」）。
   // 之前是每 5 回合跳一档（R20–R24 一样、R25–R29 一样），Boss 血量在两次 Boss 战之间完全不变。
-  // 与杂兵同一条指数：逐回合复利，不再每 5 回合跳一档
+  // 与杂兵同一条指数：逐回合复利，不再每 5 回合跳一档。
+  // 业主 2026-10-20（A 方案）：Boss 血跟着杂兵一起抬到每回合 ×1.06，
+  // 否则杂兵变厚而 Boss 相对变软。
   const k = Math.max(0, r - 15);
-  return Math.round(baseHp * Math.pow(Math.pow(1.24, 1 / 5), k));
+  return Math.round(baseHp * Math.pow(1.06, k));
 }

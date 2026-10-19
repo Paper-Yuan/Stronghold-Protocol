@@ -58,8 +58,10 @@ export function projectElite(rec, donor) {
     if (Object.prototype.hasOwnProperty.call(rec, k)) out[k] = rec[k];
     else delete out[k];
   }
-  out.chessId = rec.chessId ?? rec.id ?? out.chessId;
-  out.baseId = rec.baseId ?? out.baseId;
+  // `rec` 是调用方给的记录（可能是精锐兄弟那份），字段名不完全一致 —— 窄类型转换只为了让 tsc 认得，运行不变。
+  const r = /** @type {any} */ (rec);
+  out.chessId = r.chessId ?? r.id ?? out.chessId;
+  out.baseId = r.baseId ?? out.baseId;
   out.goldenId = donor.chessId ?? donor.id ?? out.goldenId;
   out.isGolden = false;
   return out;
@@ -77,7 +79,7 @@ export function projectElite(rec, donor) {
  * @returns {T} 原对象（无需投影）、或一份 `variants` 已换过的新对象
  */
 export function projectEliteToken(rec, chessOf) {
-  const variants = rec && typeof rec === 'object' ? rec.variants : null;
+  const variants = rec && typeof rec === 'object' ? /** @type {any} */ (rec).variants : null;
   if (!variants || typeof variants !== 'object') return rec;
   let out = null;
   for (const owner of Object.keys(variants)) {
