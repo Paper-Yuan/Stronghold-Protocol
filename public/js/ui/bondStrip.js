@@ -34,6 +34,7 @@ import { html, BondDisc, Icon, MicroLabel, Tooltip } from './components.js';
 import { RichText, UnitThumb, BondGlyph, GIcon } from './gameComponents.js';
 import { sortBonds, bondMembers, nextThreshold, bondTier, harmonyMembers, HARMONY_BOND, memberHeadCount, briefingBondTip, diyGetter, diyRecordFor, memberStandIn, standInForText } from './gameLogic.js';
 import { formatBondEffect } from './richText.js';
+import { overlimitBondText } from './overlimitBondText.js';
 import { bondIconUrl } from './assetUrls.js';
 import { data } from '../data.js';
 import { t, tc, tParts, tName } from '../../../shared/i18n.js';
@@ -270,7 +271,7 @@ export function BondPopup({ bondId, entry, priv, banned = [], onClose, onMember,
     </section>` : null}
     <section class="bpop__sec">
       <h4>${t('盟约效果')}</h4>
-      <${RichText} as="p" text=${b.descRaw || b.desc} class="bpop__desc" />
+      <${RichText} as="p" text=${(overlimit && overlimitBondText(bondId)) || b.descRaw || b.desc} class="bpop__desc" />
     </section>
     <section class="bpop__sec">
       <h4>${t('成员')} <small>${memberHeadCount(members, countsHand)}/${members.length}</small></h4>
