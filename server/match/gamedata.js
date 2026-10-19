@@ -439,7 +439,24 @@ export class GameData {
   bossLevelTime(r) {
     const rc = this.roundCfg(r);
     const v = rc ? rc.levelMaxPlayTime : undefined;
-    return typeof v === 'number' && Number.isFinite(v) && v > 0 ? v : null;
+    if (typeof v === 'number' && Number.isFinite(v) && v > 0) return v;
+    // 业主 2026-10-20：超限的 Boss 轮（R20/25/30…）在 config 里没有自己的回合行，
+    // bossLevelTime 返回 null → deadline=0 → 顶部没有倒计时。
+    // 沿用 R14 最终攻势的 120 秒，并按档位每往后一档 +10 秒（R20=120、R25=130、R30=140…）。
+    if (this.overlimit) {
+      const base = this.bossLevelTimeBase();
+      if (!(base > 0)) return null;
+      const step = Math.max(0, Math.floor((r - 20) / 5));
+      return base + step * 10;
+    }
+    return null;
+  }
+
+  /** 超限 Boss 轮的基准时限：取最终攻势那一关的 levelMaxPlayTime（config rounds[bossRound]）。 */
+  bossLevelTimeBase() {
+    const rc = this.roundCfg(this.bossRound || 14);
+    const v = rc ? rc.levelMaxPlayTime : undefined;
+    return typeof v === 'number' && Number.isFinite(v) && v > 0 ? v : 120;
   }
 
   /**

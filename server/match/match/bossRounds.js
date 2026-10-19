@@ -560,10 +560,15 @@ export class MatchBoss {
         // 现在打完 Boss 直接进下一回合，并把 ROUND_START 的等待压到最短 —— 词条卡几乎是立刻弹出的。
         this.later(this.scaled(800), () => {
           this.bossPool = null;
-          this.startRound(this.round + 1);
-          if (this.phase === PHASE.ROUND_START && wantsTraitDraft(this, this.round)) {
-            this.enterTraitDraft(this.round);
+          // 业主 2026-10-20：词条抉择在「Boss 轮结束、下一轮还没进」的时点切入 ——
+          // 以前是先 startRound(21) 再弹，界面上的回合计已经跳到 21 了。
+          // 现在先开词条，选完由 finishTraitDraft 调 startRound(21)，选中的怪正好进下一轮。
+          if (wantsTraitDraft(this, this.round + 1)) {
+            this._traitPendingRound = this.round + 1;
+            this._traitDoneRound = this.round;
+            if (this.enterTraitDraft(this.round + 1)) return;
           }
+          this.startRound(this.round + 1);
         });
         return;
       }

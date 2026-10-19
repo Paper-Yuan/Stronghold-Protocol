@@ -6,6 +6,7 @@
 import { PHASE } from '../../../shared/constants.js';
 import { botPrepBeginSteps, botPrepEndSteps } from '../bot.js';
 import { DELAYS } from './common.js';
+import { isInfiniteBossRound } from '../infiniteWaves.js';
 
 export class MatchPrep {
   enterPrep() {
@@ -168,11 +169,10 @@ export class MatchPrep {
     for (const ps of alive) this.dispatch(ps, 'onPrepEnd', { round: this.round });
     for (const ps of alive) ps.endPrep();
     const r = this.round;
-    // 业主 2026-10-19：超限的 Boss 轮**不再走最终攻势** —— phases.js 已经把它做成
-    // 「普通波次 + 1 只领袖」，走 startCombat 才会用上那个 wave（含 Boss）。
-    // 以前这里让 infBoss 也走 startFinalAssault，于是 R20 进 FINAL_ASSAULT 但没有 bossWaves，
-    // 场上 0 只怪、Boss 不刷新、也没有倒计时。
-    if (r === this.gd.bossRound) {
+    // 业主 2026-10-20：超限 R20/25/30… 是真正的 Boss 轮，走最终攻势 ——
+    // phases.js 的 _planBossWaves 已经为它建好 bossWaves（buildInfiniteBossWave）。
+    const infBoss = this.isInfinite && isInfiniteBossRound(r);
+    if (r === this.gd.bossRound || infBoss) {
       this.hiddenLayerSum = alive.reduce((s, p) => s + p.activatedLayers(), 0);
       this.startFinalAssault(false);
     } else if (r === this.gd.hiddenRound) {
