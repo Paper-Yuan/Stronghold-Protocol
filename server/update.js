@@ -112,7 +112,8 @@ export function removalProblem(rel) {
 }
 
 const HEX64 = /^[0-9a-f]{64}$/;
-const VERSION = /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/;
+  // 业主 2026-10-20：版本可以带第四个数字（0.3.1.1），用于同一次发布里的热修小版本。
+  const VERSION = /^\d+\.\d+\.\d+(?:\.\d+)?(?:-[0-9A-Za-z.-]+)?$/;
 const isObj = (v) => !!v && typeof v === 'object' && !Array.isArray(v);
 const isCount = (v) => Number.isSafeInteger(v) && v >= 0;
 
