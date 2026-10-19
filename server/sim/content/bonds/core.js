@@ -351,9 +351,15 @@ function installKjerag(battle, pid, bb, members) {
 
 function installLaterano(battle, pid, bb, members) {
   const memberSet = new Set(members);
+  // 业主 2026-10-19：弹药加成在 600 层封顶（约 10 倍弹药）—— 避免单次技能发数上千
+  // 导致技能永久不结束与黄色弹药格 UI 渲染崩溃。溢出层数在 6 人效果里转穿透与攻血。
+  const infAmmo = !!(battle.flags && battle.flags.overlimit);
   battle.on('skillStart', ({ unit, skill }) => {
     if (!memberSet.has(unit) || !skill || skill.kind !== 'ammo' || !(skill.ammoLeft > 0)) return;
-    const mul = 1 + num(bb.base_ammo_percent, 0) + num(bb.ammo_percent_per_stack, 0) * S.bondLayers(battle, pid, 'lateranoShip');
+    // 层数每次实时读（原版行为）；超限时 600 层封顶
+    const rawLayers = S.bondLayers(battle, pid, 'lateranoShip');
+    const cappedLayers = infAmmo ? Math.min(600, rawLayers) : rawLayers;
+    const mul = 1 + num(bb.base_ammo_percent, 0) + num(bb.ammo_percent_per_stack, 0) * cappedLayers;
     const n = Math.floor(skill.ammoLeft * mul + 1e-9);
     if (Number.isFinite(n) && n > skill.ammoLeft) skill.ammoLeft = n;
   }, { priority: -10 });
@@ -362,6 +368,20 @@ function installLaterano(battle, pid, bb, members) {
   // （文本：每累计消耗 100 发弹药，对全场敌人造成全队拉特兰攻击力总和 20% 的真实伤害）。
   // 只在超限局翻倍（普通模式保持原值）
   const inf = !!(battle.flags && battle.flags.overlimit);
+  // 业主 2026-10-19：600 层之后弹药不再涨，溢出层数转为穿透与攻血
+  // （每超出 100 层：无视防御 +0.4%、生命 +1%、攻击 +1%）。
+  if (inf) {
+    const infLayers = S.bondLayers(battle, pid, 'lateranoShip');
+    const over = Math.max(0, infLayers - 600);
+    const steps = Math.floor(over / 100);
+    if (steps > 0) {
+      for (const m of members) {
+        // defIgnorePct 不是 directMods 的参数，作为第二个参数直接并进 mods
+        S.passiveBuff(battle, m, 'bond:laterano:overflow',
+          S.directMods({ hp: 0.01 * steps, atk: 0.01 * steps }, { defIgnorePct: 0.004 * steps }));
+      }
+    }
+  }
   // 上限：普通模式 200%（数据层 max_atk_for_consume=2），超限 700%（业主文本）
   const per = num(bb.atk_per_consume, 0) * (inf ? 2 : 1);
   const cap = inf ? 7 : num(bb.max_atk_for_consume, Infinity);

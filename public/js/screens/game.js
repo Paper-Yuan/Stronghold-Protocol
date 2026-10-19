@@ -1763,7 +1763,8 @@ function MatchScreen() {
     </div>
 
     ${traitDraft ? html`<${TraitOverlay} trait=${traitDraft} myId=${myId} busyIdx=${traitBusy}
-      onPick=${async (i) => { setTraitBusy(i); await actions.traitChoice(i); setTraitBusy(null); }} />` : null}
+      onPick=${async (i) => { setTraitBusy(i); await actions.traitChoice(i); setTraitBusy(null); }}
+      onRetreat=${async () => { if (confirm('以当前回合结算本局？')) await actions.traitRetreat(); }} />` : null}
     ${sp ? html`<${ChoiceOverlay} pub=${pub} sp=${sp} myId=${myId} solo=${solo} busyIdx=${spBusy} total=${total}
       onPick=${async (i) => { setSpBusy(i); await actions.choice(i); setSpBusy(null); }} />` : null}
     ${personalChoice ? html`<${ChoiceOverlay} key=${personalChoice.id} pub=${pub} sp=${personalChoice} myId=${myId} solo=${solo} personal=${true}

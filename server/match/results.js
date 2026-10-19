@@ -92,7 +92,11 @@ export function buildResult(m, outcome) {
   const { victory, hiddenReached, hiddenCleared } = outcome;
   const players = [...m.players.values()].sort((a, b) => a.seat - b.seat);
   const titles = assignTitles(gd, players, victory);
-  const teamRounds = victory ? gd.bossRound + (hiddenCleared ? 1 : 0) : Math.max(0, Math.min(m.round, gd.bossRound) - 1);
+  // 业主 2026-10-19：主动撤退（reason 'retreat'）带自己的 roundsPassed —— 以当回合为准，
+  // 不是常规的「通关 = bossRound」。
+  const teamRounds = Number.isInteger(outcome.roundsPassed)
+    ? outcome.roundsPassed
+    : (victory ? gd.bossRound + (hiddenCleared ? 1 : 0) : Math.max(0, Math.min(m.round, gd.bossRound) - 1));
   const rows = players.map((ps) => {
     const roundsPassed = !ps.alive && ps.eliminatedRound != null ? Math.max(0, ps.eliminatedRound - 1) : teamRounds;
     const lineup = boardOrder(ps.board).filter((x) => x.piece.kind === 'chess').map(({ r, c, piece }) => {

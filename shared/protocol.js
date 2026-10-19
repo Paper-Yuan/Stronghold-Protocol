@@ -502,6 +502,8 @@ export const C2S = {
   'g.destroy': { uid: isUid },
   'g.reward': { idx: (v) => isInt(v, 0, 5) },
   'g.choice': { idx: (v) => isInt(v, 0, 5), choiceId: isId, $optional: ['choiceId'] }, 'g.traitChoice': { idx: (v) => isInt(v, 0, 2) },
+  // 超限：词条抉择界面右下角的【战术撤退】（业主 2026-10-19）
+  'g.traitRetreat': {},
   'g.ready': { ready: isBool },
   'g.emote': { id: (v) => EMOTES.includes(v) },
   // playerId: the player tapped in the team panel (a 联防 / boss pair field shows two) — what an eliminated viewer or a

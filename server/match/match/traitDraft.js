@@ -59,6 +59,20 @@ export class MatchTraitDraft {
   }
 
   /**
+   * 主动战术撤退（业主 2026-10-19）：词条抉择界面右下角的按钮，点一下就以**当回合**结算。
+   * 只记录已通过的轮次，不算失败，也不继续下一轮。
+   * @param {object} ps
+   */
+  retreatNow(ps) {
+    if (this.phase !== PHASE.TRAIT_DRAFT) return fail(ERR.WRONG_PHASE);
+    if (!ps || !ps.alive) return fail(ERR.ELIMINATED);
+    // 以「这一轮的 Boss 已清」作为通过轮次（trait.round 是词条归属的回合）
+    const passed = Math.max(0, Math.min(this.round, Number(this.trait && this.trait.round) || this.round));
+    this.finish({ victory: true, reason: 'retreat', roundsPassed: passed });
+    return OK;
+  }
+
+  /**
    * g.traitChoice { idx }: 当前玩家选一张。
    * 记词条 + 记下一轮要出的怪 + 记特化，然后推进到下一个玩家（单人就结束）。
    */

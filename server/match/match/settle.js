@@ -173,7 +173,7 @@ export class MatchSettle {
     return true;
   }
 
-  finish({ victory, hiddenCleared = false, reason = 'defeat' }) {
+  finish({ victory, hiddenCleared = false, reason = 'defeat', roundsPassed = null }) {
     if (this.ended || this.disposed) return;
     this.ended = true;
     if (this.runner) { try { this.runner.stop(); } catch { /* ignore */ } this.runner = null; }
@@ -185,7 +185,8 @@ export class MatchSettle {
     this.phase = PHASE.RESULT;
     this.deadline = 0;
     for (const f of this.fields) f.live = false;
-    this.outcome = { victory: !!victory, hiddenReached: this.hiddenReached, hiddenCleared: !!hiddenCleared, reason };
+    this.outcome = { victory: !!victory, hiddenReached: this.hiddenReached, hiddenCleared: !!hiddenCleared, reason,
+      ...(Number.isInteger(roundsPassed) ? { roundsPassed } : {}) };;
     let result;
     try {
       result = buildResult(this, this.outcome);

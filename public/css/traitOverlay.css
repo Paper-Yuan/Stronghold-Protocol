@@ -218,3 +218,15 @@
   .tcard{width:clamp(88px,28.5vw,150px)}
   .tcard__trait,.tcard__specdesc{font-size:9.4px;line-height:1.42}
 }
+
+
+/* 战术撤退（业主 2026-10-19）：词条抉择右下角，点击以当回合结算 */
+.traitov__retreat{position:absolute;right:28px;bottom:24px;display:inline-flex;align-items:center;gap:7px;
+  padding:9px 16px;cursor:pointer;z-index:8;
+  font:600 12.5px/1 var(--font-cjk);letter-spacing:.06em;color:var(--text-md);
+  background:rgba(10,16,14,.72);border:1px solid rgba(255,255,255,.14);border-radius:6px;
+  -webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);
+  transition:color .16s ease,border-color .16s ease,background .16s ease}
+.traitov__retreat:hover{color:var(--neg-hi);border-color:color-mix(in srgb,var(--neg) 55%,transparent);
+  background:color-mix(in srgb,var(--neg) 12%,rgba(10,16,14,.72))}
+.traitov__retreat-ico{font-size:14px;line-height:1;opacity:.8}

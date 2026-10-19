@@ -20,7 +20,7 @@ const SPECIAL_VIEW = {
   xi: { title: '气定神闲Ⅲ', img: '/ui/enemy-special/enemy-xi.png' },
 };
 
-export function TraitOverlay({ trait, myId, busyIdx = null, onPick }) {
+export function TraitOverlay({ trait, myId, busyIdx = null, onPick, onRetreat = null }) {
   const [phase, setPhase] = useState('enter');   // enter → idle → choosing → moving → folder
   const [picked, setPicked] = useState(null);
   const cardsRef = useRef(null);
@@ -120,6 +120,10 @@ export function TraitOverlay({ trait, myId, busyIdx = null, onPick }) {
         </div>`;
       })}
     </div>
+    ${onRetreat && !picked ? html`<button type="button" class="traitov__retreat" onClick=${onRetreat}
+      title=${'以当前回合结算本局（不再继续后面的轮次）'}>
+      <span class="traitov__retreat-ico">⏻</span><span>战术撤退</span>
+    </button>` : null}
   </div>`;
 }
 
