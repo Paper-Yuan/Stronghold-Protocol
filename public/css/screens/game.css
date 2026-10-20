@@ -1100,6 +1100,88 @@
 .gspeed,.gtrait{--pos:#39ffb0;--pos-hi:#8dffd4;--neg:#e73118;--neg-hi:#ff6b52;
   --text-hi:#eef6f2;--text-md:#c6d4cd;--text-lo:#8ea39a}
 
+/* 超限出怪倍速开关（业主 2026-10-20 定稿）：左边 SPEED 小字，右边 1×/2× 两格滑轨。
+   滑块与格子严格同宽同高，位移正好一格；双倍速时滑块滑满右格并转荧光绿。
+   倒计时与它无关，始终是关卡自己的秒数。 */
+.gspeed{display:inline-flex;align-items:center;gap:8px;height:28px;margin-right:8px;
+  padding:0 10px 0 11px;cursor:pointer;border-radius:14px;
+  background:rgba(8,13,12,.86);border:1px solid rgba(255,255,255,.16);
+  -webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);
+  transition:border-color .18s ease,background .18s ease,box-shadow .18s ease}
+.gspeed:hover{border-color:rgba(255,255,255,.34);background:rgba(12,20,18,.92)}
+.gspeed:focus-visible{outline:2px solid var(--pos);outline-offset:2px}
+.gspeed__cap{font:700 8.5px/1 var(--font-num);letter-spacing:.18em;color:var(--text-md);transition:color .18s ease}
+
+/* 滑轨：--opt 是每格宽度，滑块与它同宽，位移也是一格 */
+.gspeed__rail{--opt:26px;position:relative;display:inline-flex;height:20px;padding:2px;
+  border-radius:11px;background:rgba(0,0,0,.5);box-shadow:inset 0 0 0 1px rgba(255,255,255,.09)}
+.gspeed__opt{position:relative;z-index:1;display:grid;place-items:center;width:var(--opt);height:16px;
+  font:700 10px/1 var(--font-num);letter-spacing:.02em;color:var(--text-md);
+  transition:color .2s ease}
+.gspeed__opt.is-on{color:#04100c}
+.gspeed__thumb{position:absolute;left:2px;top:2px;width:var(--opt);height:16px;border-radius:8px;
+  background:#c6d4cd;pointer-events:none;
+  transition:transform .24s cubic-bezier(.3,.9,.25,1),background .24s ease,box-shadow .24s ease}
+.gspeed.is-fast{border-color:color-mix(in srgb,var(--pos) 60%,transparent);
+  background:color-mix(in srgb,var(--pos) 16%,rgba(8,13,12,.9));
+  box-shadow:0 0 0 1px color-mix(in srgb,var(--pos) 26%,transparent),
+             0 0 18px color-mix(in srgb,var(--pos) 26%,transparent)}
+.gspeed.is-fast .gspeed__cap{color:var(--pos-hi)}
+.gspeed.is-fast .gspeed__thumb{transform:translateX(var(--opt));background:var(--pos);
+  box-shadow:0 0 12px color-mix(in srgb,var(--pos) 65%,transparent)}
+
+/* 超限词条按钮 + 面板（业主 2026-10-20）：原来是时钟旁一排小标签，改成右侧一枚按钮 */
+.gtrait{position:relative;display:inline-flex}
+.gtrait__btn{display:inline-flex;align-items:center;gap:5px;height:24px;padding:0 9px;cursor:pointer;
+  font:600 11px/1 var(--font-cjk);letter-spacing:.04em;color:var(--pos);
+  background:color-mix(in srgb,var(--pos) 10%,rgba(10,16,14,.7));
+  border:1px solid color-mix(in srgb,var(--pos) 38%,transparent);border-radius:5px;
+  transition:background .16s ease,border-color .16s ease}
+.gtrait__btn:hover,.gtrait__btn.is-open{background:color-mix(in srgb,var(--pos) 20%,rgba(10,16,14,.7));
+  border-color:color-mix(in srgb,var(--pos) 60%,transparent)}
+.gtrait__ico{font-size:9px;opacity:.8}
+.gtrait__btn b{font:700 11px/1 var(--font-num);color:var(--pos-hi)}
+.gtrait__pop{position:absolute;top:calc(100% + 10px);right:0;width:min(430px,94vw);z-index:60;
+  background:rgba(10,16,14,.94);border:1px solid rgba(255,255,255,.12);border-radius:8px;
+  -webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);
+  box-shadow:0 18px 44px rgba(0,0,0,.55);padding:10px 0 6px;cursor:default}
+.gtrait__head{display:flex;align-items:flex-start;gap:8px;padding:12px 14px 10px;
+  border-bottom:1px solid rgba(255,255,255,.08)}
+.gtrait__title{display:flex;flex-direction:column;gap:4px}
+.gtrait__micro{font:700 8.5px/1 var(--font-num);letter-spacing:.22em;color:var(--pos);opacity:.8}
+.gtrait__title b{font:700 14px/1.2 var(--font-cjk);letter-spacing:.04em;color:var(--text-hi)}
+/* 正 / 负 / 合计 三个计数块 */
+.gtrait__tally{display:flex;gap:1px;margin:10px 14px 0;background:rgba(255,255,255,.07);border-radius:6px;overflow:hidden}
+.gtrait__tal{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;padding:8px 4px;
+  background:rgba(12,18,16,.9)}
+.gtrait__tal b{font:700 16px/1 var(--font-num)}
+.gtrait__tal i{font:600 9px/1 var(--font-cjk);font-style:normal;letter-spacing:.1em;color:var(--text-lo)}
+.gtrait__tal.is-pos b{color:var(--pos-hi)}
+.gtrait__tal.is-neg b{color:var(--neg-hi)}
+.gtrait__tal.is-total b{color:var(--text-hi)}
+.gtrait__note{margin:10px 14px 0;font-size:10.5px;line-height:1.5;color:var(--text-lo)}
+.gtrait__foot{padding:10px 14px 12px;border-top:1px solid rgba(255,255,255,.07);margin-top:8px}
+.gtrait__seal{font:700 9px/1 var(--font-num);letter-spacing:.2em;padding:5px 10px;border-radius:3px;
+  color:var(--pos-hi);border:1px solid color-mix(in srgb,var(--pos) 35%,transparent);
+  background:color-mix(in srgb,var(--pos) 12%,transparent)}
+.gtrait__x{width:20px;height:20px;margin-left:6px;cursor:pointer;color:var(--text-lo);
+  background:none;border:0;font-size:15px;line-height:1}
+.gtrait__x:hover{color:var(--text-hi)}
+.gtrait__list{margin:0;padding:4px 0;list-style:none;max-height:min(46vh,340px);overflow:auto}
+.gtrait__row{display:grid;grid-template-columns:36px auto 1fr;gap:9px;align-items:baseline;
+  padding:7px 14px;font-size:11.5px;line-height:1.55}
+.gtrait__row:hover{background:rgba(255,255,255,.04)}
+.gtrait__r{font:600 9.5px/1 var(--font-num);color:var(--text-lo)}
+.gtrait__n{font-weight:700;color:var(--pos-hi);white-space:nowrap}
+.gtrait__t{color:var(--text-md)}
+.gtrait__row.is-neg .gtrait__n{color:var(--neg-hi)}
+
+/* 超限倍速开关（业主 2026-10-20） */
+/* 超限 HUD 的两个控件自己带颜色变量 —— --pos/--neg/--text-* 只在 .traitov 作用域里定义，
+    HUD 在它外面，直接引用会取到空值。 */
+.gspeed,.gtrait{--pos:#39ffb0;--pos-hi:#8dffd4;--neg:#e73118;--neg-hi:#ff6b52;
+  --text-hi:#eef6f2;--text-md:#c6d4cd;--text-lo:#8ea39a}
+
 /* 超限出怪倍速开关（业主 2026-10-20 定稿）：左边 SPEED 小字，右边 1×/2× 滑轨。
    双倍速时滑块滑到右侧、整枚按钮转荧光绿；倒计时与它无关，始终是关卡自己的秒数。 */
 .gspeed{display:inline-flex;align-items:center;gap:8px;height:28px;margin-right:8px;
@@ -1184,17 +1266,4 @@
 .gspeed:hover{border-color:rgba(255,255,255,.3);background:rgba(14,22,20,.78)}
 .gspeed:focus-visible{outline:2px solid var(--pos);outline-offset:2px}
 .gspeed__cap{font:700 8.5px/1 var(--font-num);letter-spacing:.18em;color:var(--text-lo);transition:color .18s ease}
-.gspeed__rail{position:relative;display:inline-flex;align-items:center;height:18px;padding:0 2px;
-  border-radius:9px;background:rgba(255,255,255,.06);box-shadow:inset 0 0 0 1px rgba(255,255,255,.06)}
-.gspeed__opt{position:relative;z-index:1;display:grid;place-items:center;min-width:22px;height:18px;
-  font:700 9.5px/1 var(--font-num);letter-spacing:.02em;color:var(--text-lo);
-  transition:color .18s ease}
-.gspeed__opt.is-on{color:#06120e}
-.gspeed__thumb{position:absolute;left:2px;top:2px;width:22px;height:14px;border-radius:7px;
-  background:var(--text-lo);opacity:.28;transition:transform .22s cubic-bezier(.3,.9,.25,1),background .22s ease,opacity .22s ease}
-.gspeed.is-fast{border-color:color-mix(in srgb,var(--pos) 45%,transparent);
-  background:color-mix(in srgb,var(--pos) 10%,rgba(10,16,14,.62));
-  box-shadow:0 0 0 1px color-mix(in srgb,var(--pos) 18%,transparent),0 0 14px color-mix(in srgb,var(--pos) 18%,transparent)}
-.gspeed.is-fast .gspeed__cap{color:var(--pos)}
-.gspeed.is-fast .gspeed__thumb{transform:translateX(22px);background:var(--pos);opacity:1;
-  box-shadow:0 0 10px color-mix(in srgb,var(--pos) 55%,transparent)}
+
