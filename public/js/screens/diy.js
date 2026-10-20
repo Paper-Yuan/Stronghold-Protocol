@@ -10,6 +10,7 @@
 // 练度 selects (0.2.2, screens/cultivation.js — the same per-operator settings as 干员调配, `ops`); a prototype has neither.
 
 import { useEffect, useLayoutEffect, useState } from '../../vendor/hooks.module.js';
+import { skinFor } from '../ui/skins.js';
 import { html, Icon, Button, TierChip } from '../ui/components.js';
 import { Img, RichText, BondGlyph } from '../ui/gameComponents.js';
 import { chessAvatarUrl, chessPortraitUrl, profIconUrl, skillRecordIconUrl, moduleTypeIconUrl } from '../ui/assetUrls.js';
@@ -89,7 +90,7 @@ function SlotCard({ m, slot, pick, illegal, onOpen, onClear, ops = {}, onOps = n
       })()}
       ${proto ? html`<small class="diy-slot__cult t-dim">${t('原型干员没有潜能与练度')}</small>`
         : onOps ? html`<span class="diy-slot__cult"><${CultivationSelects} charId=${rec.charId} ops=${ops} onSet=${onOps} /></span>` : null}
-      <${OperatorVoice} charId=${rec.charId} />
+      <${OperatorVoice} charId=${rec.charId} skinId=${skinFor(rec.chessId) || skinFor(rec.charId)} />
       ${illegal ? html`<p class="diy-slot__bad"><${Icon} name="warn" />${t('这项自选在当前版本不可用，开局时会被移除')}</p>` : null}
     </div>
     <div class="diy-slot__acts">
@@ -306,7 +307,7 @@ export function DiyPickerView({ m, slot, picks, kitted, onDone, onClose, filter,
                   onPick=${(id) => setDraft({ ...draft, uniEquipId: id })} />`)]}
           </div>
           <div class="diy-pick__voice">
-            <${OperatorVoice} charId=${draft.charId} />
+            <${OperatorVoice} charId=${draft.charId} skinId=${skinFor(draft.charId)} />
           </div>
           <${DiySkinSection} charId=${draft.charId} slotId=${slot.slotId} />
         ` : html`<p class="lo-empty t-dim">${t('从左侧选择一名干员')}</p>`}

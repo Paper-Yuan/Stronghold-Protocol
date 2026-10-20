@@ -1175,18 +1175,25 @@ export class AudioManager {
    * plays that tree, with the Chinese file of the same name when the line is missing.
    * @param {string} charId
    * @param {string} [lang] cn | jp | en | kr | native
+   * @param {string|null} [skinId] 身上穿的皮肤（有专属配音时先放它）
    * @returns {boolean} whether a line exists and started
    */
-  previewVoice(charId, lang) {
+  previewVoice(charId, lang, skinId = null) {
     try {
       if (!this.ctx || !this.voiceGain || this.volumes.muted || this.volumes.voice <= 0) return false;
       if (typeof charId !== 'string') return false;
-      const slots = this.getManifest()?.audio?.voice?.[charId];
+      const audio = this.getManifest()?.audio;
+      const skinKey = typeof skinId === 'string' && skinId ? skinId.replace('@', '_') : null;
+      const skinTree = skinKey && SKIN_TREES[lang] ? audio?.[SKIN_TREES[lang]] : null;
+      const skinSlots = skinKey ? (skinTree?.[skinKey] || audio?.skinVoice?.[skinKey]) : null;
+      const baseSlots = audio?.voice?.[charId];
+      const hasSkin = !!skinSlots && typeof skinSlots === 'object' && Object.keys(skinSlots).length > 0;
+      const slots = hasSkin ? skinSlots : baseSlots;
       if (!slots || typeof slots !== 'object') return false;
-      const slot = ['select', 'place', 'start'].find((s) => slots[s]) || Object.keys(slots)[0];
+      const slot = ['select', 'place', 'start'].find((k) => slots[k]) || Object.keys(slots)[0];
       if (!slot) return false;
       const resolved = VOICE_PICKS.includes(lang) ? lang : this._voiceLangOf(charId);
-      const line = voiceLine(this.getManifest()?.audio, charId, slot, resolved);
+      const line = voiceLine(audio, charId, slot, resolved, Math.random, hasSkin ? skinId : null);
       if (!line) return false;
       this._stopVoice();
       this.voiceGate.start(slot, null, typeof performance !== 'undefined' ? performance.now() : Date.now());

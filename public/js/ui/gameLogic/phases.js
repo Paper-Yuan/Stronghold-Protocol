@@ -64,7 +64,13 @@ export function phaseBanner(phase, pub, { alive = true, spectator = false } = {}
         sub: spectator || alive === false ? t('观战中') : t('资金已到账') };
     }
     case PHASE.SP_DRAFT: return { title: t('机变阶段'), micro: 'CONTINGENCY', tone: 'gold', sub: t('依次选择机变') };
-    case PHASE.PREP: return { title: t('休整期'), micro: `ROUND ${String(r).padStart(2, '0')} // REST`, tone: 'mint', sub: t('部署干员，准备迎敌') };
+    case PHASE.PREP: {
+      // 业主 2026-10-20：超限的 Boss 轮在**休整期**就要提示，让玩家提前调整阵容。
+      const infBoss = !!pub?.isInfinite && r >= 20 && r % 5 === 0;
+      if (infBoss) return { title: t('休整期'), micro: `ROUND ${String(r).padStart(2, '0')} // BOSS NEXT`, tone: 'red',
+        sub: spectator || alive === false ? t('观战中') : t('本回合为领袖轮：打完它开启词条抉择') };
+      return { title: t('休整期'), micro: `ROUND ${String(r).padStart(2, '0')} // REST`, tone: 'mint', sub: t('部署干员，准备迎敌') };
+    }
     case PHASE.COMBAT: return { title: t('作战开始'), micro: 'COMBAT', tone: 'orange', sub: t('各自行动阶段') };
     case PHASE.UNITE: {
       const names = new Map(sortedPlayers(pub).map((p) => [p.playerId, p.name || t('博士')]));

@@ -53,7 +53,7 @@ export function operatorVoiceOptions(audioManifest, charId, saved) {
   return options;
 }
 
-export function OperatorVoice({ charId }) {
+export function OperatorVoice({ charId, skinId = null }) {
   const settings = useSettings();
   if (!charId) return null;
   const value = settings.voiceOverrides[charId] || '';
@@ -66,8 +66,9 @@ export function OperatorVoice({ charId }) {
   };
   const preview = () => {
     const chosen = options.find((o) => o.value === value);
-    if (chosen && chosen.value && !chosen.unavailable) audio.previewVoice(charId, chosen.value);
-    else audio.previewVoice(charId);
+    // 皮肤有专属配音时优先放它（audio.previewVoice 自己判断，皮肤没有就回落到本人）
+    const lang = chosen && chosen.value && !chosen.unavailable ? chosen.value : undefined;
+    audio.previewVoice(charId, lang, skinId);
   };
   return html`<label class="lo-voice" data-voice-char=${charId}>
     <span>${t('此干员语音')}</span>
