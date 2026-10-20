@@ -222,14 +222,11 @@ export function leaderHitCancelled(battle, target, amount) {
   // 随机模式 (无限火力)：彻底移除领袖限伤——模组 ×5 + 盟约无上限叠层的单刀伤害远超限值，原限伤把大额伤害
   // 整笔取消（不是封顶），阿利斯泰尔等终局 boss 打不动、血条不动。普通模式保留原版 30 万。
   if (battle.rm) return false;
-  // 超限模拟 (无限模式)：限伤上限放宽到 99,999,999，匹配巨幅伤害成长且避免 32 位溢出
-  if (battle.infinite) {
-    if (Math.ceil(amount) >= BOSS_HIT_LIMIT_INFINITE) {
-      battle.fx('hitCap', { x: target.x, y: target.y, id: target.id, n: Math.ceil(amount) });
-      return true;
-    }
-    return false;
-  }
+  // 超限模拟 (无限模式)：业主 2026-10-20 —— 上限抬到 9,999,999,999（BOSS_HIT_LIMIT_INFINITE）。
+  // 而且这里**不再整笔取消**：超限的伤害成长是指数级的，原版「超过限额就 0 伤害」会让
+  // 高轮次的刀变成完全打不动。现在改成在调用处封顶（hitCapClamp），只夹住超出部分。
+  // 超限判定：battle.infinite（installInfiniteRule）或 flags.overlimit（battle 构造）任一即可
+  if (battle.infinite || (battle.flags && battle.flags.overlimit)) return false;
   if (!(Math.ceil(amount) >= BOSS_HIT_LIMIT)) return false;
   battle.fx('hitCap', { x: target.x, y: target.y, id: target.id, n: Math.ceil(amount) });
   return true;
@@ -397,6 +394,13 @@ export function dealDamage(battle, source, target, dmgIn) {
   // 限伤: a leader's hit of ≥ BOSS_HIT_LIMIT in a boss / hidden battle is cancelled before it reaches shields / HP — what
   // ran before it (the attack, its SP, `hit` hook effects, separate element 损伤) stays; nothing after it happens
   if (final > 0 && leaderHitCancelled(battle, target, final)) return 0;
+  // 超限模拟（业主 2026-10-20）：单次伤害在 9,999,999,999 处**封顶**，超出的部分夹掉，
+  // 而不是像上面那样整笔取消 —— 超限的伤害成长是指数级，整笔取消等于高轮次完全打不动。
+  // 只对玩家侧打在敌人身上的刀生效，避免影响杂兵/精英的常规结算。
+  if ((battle.infinite || (battle.flags && battle.flags.overlimit)) && final > BOSS_HIT_LIMIT_INFINITE && target.side === 'enemy') {
+    battle.fx('hitCap', { x: target.x, y: target.y, id: target.id, n: Math.ceil(final) });
+    final = BOSS_HIT_LIMIT_INFINITE;
+  }
   // 无限火力 单击封顶（仅随机模式；玩家侧来源对敌人，含真实伤害）：单次 ≤ 目标 maxHp × cap，在 absorbShields 之前。
   // 799 特效豁免：拉特兰圣光 / 阿戈尔复活爆炸 / 炎穿透 / 谢拉格即死 对杂兵和精英豁免，只对 Boss 生效。
   if (battle.rm && battle.rm.budget && final > 0 && target.side === 'enemy' && battle._rmIsPlayerSource(source, dmg)) {

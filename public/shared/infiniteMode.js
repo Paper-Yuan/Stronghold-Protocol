@@ -4,8 +4,12 @@
 /** 无限模式专用房间模式标识 */
 export const SOLO_INFINITE = 'solo_infinite';
 
-/** 超限模拟单次伤害限额（99,999,999，防止溢出 32 位整型） */
-export const BOSS_HIT_LIMIT_INFINITE = 99999999;
+/**
+ * 超限模拟单次伤害限额（业主 2026-10-20：99,999,999 → 9,999,999,999）。
+ * 这是**单次**伤害的上限，不是总伤害；9,999,999,999 仍在 Number 的安全整数范围内
+ * （2^53 ≈ 9.007e15），也远小于 Boss 血池随轮次的增长。
+ */
+export const BOSS_HIT_LIMIT_INFINITE = 9999999999;
 
 /** 超限模拟里盟约层数的上限（原版与普通模式是 999） */
 export const INFINITE_BOND_LAYER_CAP = 9999;
