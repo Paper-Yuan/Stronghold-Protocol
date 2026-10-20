@@ -2624,3 +2624,45 @@ button.ally-card:disabled { filter: grayscale(.7) brightness(.7); cursor: defaul
   background: currentColor;
   box-shadow: 0 0 0 2px rgba(78, 216, 175, .18);
 }
+
+/* ── 大厅音乐面板（业主 2026-10-20 重做）────────────────────────────────────
+   原来是一段说明 + 一个绿框 + 三个等宽按钮，手机上：
+     · 说明占 3 行，把内容挤到面板 210px 的滚动区里（总高 305px，要滚）
+     · 按钮高 36px，低于触摸最小 44px
+     · 当前音乐和状态挤在一格里，看不出哪个是文件名
+   现在：说明压成一行、当前音乐独立成块（名字大、状态小、自定义时描边变紫绿）、
+   按钮排成一行三枚且高 52px（足够拇指点），全部落在 360px 高度内不用滚。 */
+.lmp{display:flex;flex-direction:column;gap:10px}
+.lmp__hint{margin:0;color:var(--text-lo,#8ea39a);font-size:11.5px;line-height:1.5}
+.lmp__now{display:flex;flex-direction:column;gap:3px;padding:10px 12px;border-radius:6px;
+  background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.09);min-width:0}
+.lmp__now.is-custom{border-color:color-mix(in srgb,var(--mint-500,#4ed8af) 45%,transparent);
+  background:color-mix(in srgb,var(--mint-500,#4ed8af) 8%,rgba(255,255,255,.035))}
+.lmp__cap{font:700 8.5px/1 var(--font-num,monospace);letter-spacing:.18em;color:var(--text-lo,#8ea39a);text-transform:uppercase}
+.lmp__name{font-size:14px;font-weight:800;line-height:1.25;overflow-wrap:anywhere;color:var(--text-hi,#eef6f2)}
+.lmp__sub{font-size:11px;color:var(--mint-500,#4ed8af)}
+.lmp__acts{display:grid;grid-template-columns:1.2fr 1fr 1fr;gap:8px}
+.lmp__btn{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;
+  min-height:52px;padding:6px 4px;cursor:pointer;border-radius:6px;
+  background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.12);color:var(--text-hi,#eef6f2);
+  transition:background .15s ease,border-color .15s ease,opacity .15s ease}
+.lmp__btn:hover:not(:disabled){background:rgba(255,255,255,.09);border-color:rgba(255,255,255,.24)}
+.lmp__btn:active:not(:disabled){transform:scale(.97)}
+.lmp__btn:disabled{opacity:.4;cursor:default}
+.lmp__btn span{font-size:11.5px;font-weight:700;line-height:1}
+.lmp__ico{font:700 15px/1 var(--font-num,monospace);font-style:normal;color:var(--mint-500,#4ed8af)}
+.lmp__btn--main{background:color-mix(in srgb,var(--mint-500,#4ed8af) 16%,rgba(255,255,255,.05));
+  border-color:color-mix(in srgb,var(--mint-500,#4ed8af) 50%,transparent)}
+.lmp__btn--main .lmp__ico{color:var(--mint-300,#8dffd4)}
+.lmp__btn--quiet .lmp__ico{color:var(--text-lo,#8ea39a)}
+.lmp__foot{font-size:10.5px;line-height:1.5;color:var(--text-lo,#8ea39a);opacity:.85}
+.lmp__err{margin:0;font-size:11.5px;color:#ff9393;overflow-wrap:anywhere}
+/* 短屏手机：再压一档 */
+@media (max-height: 460px) {
+  .lmp{gap:8px}
+  .lmp__hint{display:none}
+  .lmp__now{padding:7px 10px}
+  .lmp__name{font-size:12.5px}
+  .lmp__btn{min-height:46px}
+  .lmp__foot{font-size:10px}
+}
