@@ -428,7 +428,9 @@ export function RoomScreen() {
   const myReady = !!facts.mine?.ready;
   const info = difficultyInfo(room.mode, room.difficulty, { random: firepower, variant });
   const variantName = variant === 'endurance' ? '持久鏖战' : variant === 'marathon' ? '最长时赛' : '快速突袭';
-  const modeName = firepower ? `${RANDOM_MODE_NAME} · ${variantName}` : coop ? t('同盟模拟') : isInfiniteMode(room.mode) ? t('超限模拟') : t('独立模拟');
+  // 超限模拟（业主 2026-10-20）：模式名用紫色，和普通模拟一眼分开
+  const infinite = !firepower && !coop && isInfiniteMode(room.mode);
+  const modeName = firepower ? `${RANDOM_MODE_NAME} · ${variantName}` : coop ? t('同盟模拟') : infinite ? t('超限模拟') : t('独立模拟');
   const searchElapsed = facts.isHost && searchSince ? (Date.now() - searchSince) / 1000
     : room.matching?.startedAt ? (serverNow() - room.matching.startedAt) / 1000 : 0;
 
@@ -525,7 +527,7 @@ export function RoomScreen() {
           <button type="button" class="rs-exit" disabled=${busy === 'leave'} onClick=${leave} aria-label=${t('离开同盟')}><${Icon} name="exit" /></button>
         <//>
         <div class="rs-clock">
-          <b>${modeName}<span class="rs-clock__sep"></span>${t('同盟已等待')} <span class="num">${clock((Date.now() - since) / 1000)}</span></b>
+          <b>${infinite ? html`<span class="rmode-inf">${modeName}</span>` : modeName}<span class="rs-clock__sep"></span>${t('同盟已等待')} <span class="num">${clock((Date.now() - since) / 1000)}</span></b>
           <span>${t('当前延迟')}<b class=${`num rs-ping rs-ping--${!online || !Number.isFinite(conn.ping) ? 'off' : conn.ping < 60 ? 'low' : conn.ping < 200 ? 'mid' : 'high'}`}>${online && Number.isFinite(conn.ping) ? Math.round(conn.ping) : '--'}</b>ms</span>
         </div>
         <div class="rs-tools">

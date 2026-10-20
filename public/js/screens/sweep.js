@@ -209,7 +209,7 @@ function BondPanel({ bond, m, notOwned, simMode = 'normal' }) {
     <div class="sw-facts">
       <span class="sw-pill">${t('激活所需人数')}<b class="num">${bond.activeCount ?? steps[0] ?? '—'}</b></span>
       ${steps.length > 1 ? html`<span class="sw-pill sw-pill--ghost" title=${t('达到这些人数时效果增强')}>${t('档位')}<b class="num">${steps.join(' / ')}</b></span>` : null}
-      <span class="sw-kind">${isInf ? html`<span style="color:#c988ff;font-weight:700;">∞ 超限推演</span>` : (bond.isCore ? t('核心盟约') : t('附加盟约'))}</span>
+      <span class="sw-kind">${isInf ? html`<span class="sw-inf">∞ 超限推演</span>` : (bond.isCore ? t('核心盟约') : t('附加盟约'))}</span>
     </div>
     <div class="sw-text">
       <${RichText} as="p" text=${resolveBondReportText(bond, isInf)} />

@@ -461,6 +461,7 @@ export function TopBar({ pub, priv, conn, hud, total, drawer, onExit, onDrawer, 
           <${SpectatorPill} spectators=${spectators} myId=${myId} isHost=${isHost} onRemove=${onRemoveSpectator} />
         </div>
         ${pub?.difficulty ? html`<${DifficultyTag} difficulty=${pub.difficulty} size="sm" />` : null}
+        ${pub?.isInfinite ? html`<span class="gtop__inf" title=${t('超限模拟：R16 起无限回合')}>∞ ${t('超限')}</span>` : null}
         <${UnofficialMark} room=${room} compact=${true} class="gtop__mod" />
       </div>
     </div>

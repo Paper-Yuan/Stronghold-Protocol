@@ -346,6 +346,7 @@ function ModePill({ r }) {
   return html`<span class="smode">
     ${r.difficulty ? html`<${DifficultyTag} difficulty=${r.difficulty} size="lg" />` : null}
     ${r.randomMode ? html`<span class="smode__rm">${RANDOM_MODE_NAME}</span>` : null}
+    ${r.isInfinite ? html`<span class="smode__inf">${t('超限模拟')}</span>` : null}
   </span>`;
 }
 
@@ -581,7 +582,7 @@ export function SettleFlow({ res, pub = null, myId = null, backLabel, onBack }) 
   const rootRef = useRef(null);
   useStageFit(rootRef);
   const lose = self ? !rowCleared(rawSelf, self, r.victory) : !r.victory;
-  return html`<div ref=${rootRef} class=${cx('screen', 'result', 'settle', `settle--${page}`)} data-testid="settle">
+  return html`<div ref=${rootRef} class=${cx('screen', 'result', 'settle', `settle--${page}`, pub?.isInfinite && 'is-infinite')} data-testid="settle">
     ${page === 'intro' ? html`<${SettleIntro} players=${r.players} myId=${myId} lose=${lose} onDone=${() => setPage('self')} />` : null}
     ${page === 'self' ? html`<${SelfPage} r=${r} raw=${rawSelf} self=${self} gd=${gd} prog=${ctx.prog} seed=${res?.seed} onNext=${() => setPage('team')} />` : null}
     ${page === 'team' ? html`<${TeamPage} r=${r} res=${res} gd=${gd} myId=${myId} at=${ctx.at} rid=${ctx.rid} backLabel=${backLabel} onBack=${onBack} onDetail=${() => setDetail(true)} />` : null}

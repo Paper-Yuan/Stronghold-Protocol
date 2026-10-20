@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8">
+<link rel="stylesheet" href="/css/theme.css" />
+<link rel="stylesheet" href="/css/components.css" />
+<link rel="stylesheet" href="/css/screens/game.css" />
+<link rel="stylesheet" href="/css/screens/result.css" />
+<style>
+  html,body{margin:0;background:#0b1210;color:#eef6f2;font-family:"Noto Sans SC",sans-serif}
+  .wrap{max-width:1000px;margin:0 auto;padding:28px 24px 60px}
+  h1{font-size:19px;letter-spacing:.1em;margin:0 0 4px;color:#8dffd4}
+  .sub{font-size:12px;color:#8ea39a;margin:0 0 26px}
+  .pair{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:26px}
+  .card{background:rgba(14,22,20,.9);border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:16px 18px}
+  .cap{font-size:11px;letter-spacing:.14em;color:#8ea39a;margin:0 0 12px}
+  .row{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+  /* 结算标题预览 */
+  .title-demo{font-size:26px;font-weight:900;letter-spacing:.03em;white-space:nowrap}
+  .title-normal{color:#4af2c4;text-shadow:0 0 .2rem rgba(30,240,180,.45)}
+  .title-inf{color:var(--inf-300);text-shadow:0 0 .2rem var(--inf-glow)}
+  .rounds{font:700 30px/1 "Bender",monospace}
+  .rounds b{font-weight:900}
+  .r-normal{color:#4af2c4}
+  .r-inf{color:var(--inf-300)}
+  .pillrow{display:flex;gap:8px;align-items:center}
+</style></head>
+<body>
+<div class="wrap">
+  <h1>超限模拟 · 紫色标识</h1>
+  <p class="sub">同一套版式，只换强调色 —— 任何界面上紫色 = 超限。</p>
+
+  <div class="pair">
+    <div class="card">
+      <p class="cap">普通模拟</p>
+      <div class="row">
+        <span class="dtag" style="height:.5rem;display:inline-flex;align-items:center;padding:0 .2rem;border-radius:.25rem;background:rgba(120,28,18,.55);box-shadow:inset 0 0 0 1px rgba(255,110,70,.22);font-size:11px;font-weight:800">困难</span>
+      </div>
+      <p style="font-size:11px;color:#8ea39a;margin:10px 0 0">难度标签：红色系</p>
+    </div>
+    <div class="card" style="border-color:rgba(168,85,247,.35)">
+      <p class="cap" style="color:var(--inf-400)">超限模拟</p>
+      <div class="pillrow">
+        <span class="dtag" style="height:.5rem;display:inline-flex;align-items:center;padding:0 .2rem;border-radius:.25rem;background:rgba(120,28,18,.55);box-shadow:inset 0 0 0 1px rgba(255,110,70,.22);font-size:11px;font-weight:800">困难</span>
+        <span class="smode__inf">超限模拟</span>
+      </div>
+      <p style="font-size:11px;color:var(--inf-400);margin:10px 0 0">紫标：一眼看出是超限</p>
+    </div>
+  </div>
+
+  <div class="pair">
+    <div class="card">
+      <p class="cap">结算标题 · 普通</p>
+      <div class="title-demo title-normal">模拟完成</div>
+      <div class="rounds r-normal" style="margin-top:12px"><b>14</b><span style="font-size:16px;opacity:.6"> / 14</span></div>
+    </div>
+    <div class="card" style="border-color:rgba(168,85,247,.35)">
+      <p class="cap" style="color:var(--inf-400)">结算标题 · 超限</p>
+      <div class="title-demo title-inf">模拟完成</div>
+      <div class="rounds r-inf" style="margin-top:12px"><b>30</b><span style="font-size:16px;opacity:.6"> 无上限</span></div>
+    </div>
+  </div>
+
+  <div class="pair">
+    <div class="card">
+      <p class="cap">HUD 左上 · 普通</p>
+      <div class="row"><span style="font-size:10px;padding:2px 7px;border-radius:9px;background:rgba(120,28,18,.55);font-weight:800">困难</span></div>
+    </div>
+    <div class="card" style="border-color:rgba(168,85,247,.35)">
+      <p class="cap" style="color:var(--inf-400)">HUD 左上 · 超限</p>
+      <div class="row"><span style="font-size:10px;padding:2px 7px;border-radius:9px;background:rgba(120,28,18,.55);font-weight:800">困难</span>
+        <span class="gtop__inf">∞ 超限</span></div>
+    </div>
+  </div>
+</div>
+</body></html>

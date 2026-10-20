@@ -1170,3 +1170,10 @@
     max-height:70vh;border-radius:10px}
   .gtrait__row{grid-template-columns:32px auto 1fr;font-size:11px}
 }
+
+/* 超限模拟的 HUD 标识（业主 2026-10-20）：难度标签旁边一枚紫标，
+   玩家在战斗里随时知道自己打的是超限而不是普通模拟。 */
+.gtop__inf { display: inline-flex; align-items: center; height: 18px; padding: 0 7px;
+  border-radius: 9px; font: 800 10px/1 var(--font-num); letter-spacing: .06em;
+  color: var(--inf-300); background: var(--inf-a20);
+  box-shadow: inset 0 0 0 1px var(--inf-a35), 0 0 10px var(--inf-glow); }

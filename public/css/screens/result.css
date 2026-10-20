@@ -177,6 +177,11 @@
 .smode { display: inline-flex; align-items: center; gap: .1rem; }
 .smode .dtag { height: .5rem; padding: 0 .2rem 0 .14rem; border-radius: .25rem; background: rgba(120, 28, 18, .55); box-shadow: inset 0 0 0 1px rgba(255, 110, 70, .22); font-size: calc(.24 * var(--t)); }
 .smode__rm { height: .5rem; display: inline-flex; align-items: center; padding: 0 .16rem; border-radius: .25rem; background: rgba(120, 80, 200, .35); color: #d9c8ff; font-size: calc(.2 * var(--t)); font-weight: 700; }
+.smode__inf { height: .5rem; display: inline-flex; align-items: center; padding: 0 .18rem; border-radius: .25rem;
+  background: linear-gradient(135deg, var(--inf-a35), rgba(78, 36, 150, .45));
+  box-shadow: inset 0 0 0 1px var(--inf-a35), 0 0 .18rem var(--inf-glow);
+  color: var(--inf-300); font-size: calc(.2 * var(--t)); font-weight: 800; letter-spacing: .08em;
+  text-shadow: 0 .02rem .12rem var(--inf-glow); }
 .sself__mode { position: absolute; left: 2.4rem; top: 2.24rem; animation: sself-slide 420ms var(--ease-out) 260ms both; }
 .sself__title { position: absolute; left: 2.42rem; top: 2.8rem; margin: 0; white-space: nowrap; font-size: calc(.9 * var(--t)); font-weight: 900; letter-spacing: .03em; line-height: 1.15;
   color: #4af2c4; text-shadow: 0 0 .2rem rgba(30, 240, 180, .45), 0 .03rem 0 rgba(0, 0, 0, .5); animation: sself-title 560ms var(--ease-out) 300ms both; }
@@ -423,3 +428,14 @@
 
 /* a match with gameplay plugins (DESIGN §32.6): the unofficial mark under the headline */
 .result__modmark { align-self: flex-start; margin-top: .06rem; }
+
+/* ── 超限模拟的结算（业主 2026-10-20）：紫色，与普通模拟（青绿）一眼分开 ────────
+   只换强调色，版式不动。 */
+.settle.is-infinite .sself__title { color: var(--inf-300);
+  text-shadow: 0 0 .2rem var(--inf-glow), 0 .03rem 0 rgba(0, 0, 0, .5); }
+.settle.is-infinite .sself.is-lose .sself__title { color: #ff6b52;
+  text-shadow: 0 0 .2rem rgba(255, 60, 50, .45), 0 .03rem 0 rgba(0, 0, 0, .5); }
+.settle.is-infinite .steam__title { color: var(--inf-300); }
+.settle.is-infinite .slv__up { color: var(--inf-300); }
+.settle.is-infinite .sself__rounds b { color: var(--inf-300); }
+.settle.is-infinite .settle__next { border-color: var(--inf-a35); }
