@@ -884,6 +884,10 @@ export class AudioManager {
   playBgm(key) {
     try {
       this.lastBgmKey = key;
+      // 业主 2026-10-20：自定义/预设大厅音乐在放时，**别再把游戏自己的 lobby BGM 也放起来**。
+      // 这个挂点在 0.3.0 对齐上游时丢了（lobbyMusic.js 一直在注册 audio.lobbyMusicOverride，
+      // 但 audio.js 再也没调用过它），结果选了自己的音乐后两首同时播。
+      if (this.lobbyMusicOverride?.(key)) { this.wantBgm = null; ++this.bgmToken; this._fadeOutBgm(); return; }
       if (!this.ctx) { this.wantBgm = key; return; }
       if (this.bgmSilent) {
         this.wantBgm = key;
@@ -955,6 +959,9 @@ export class AudioManager {
       s.start(loopAt);
       nodes.push({ src: s, gain: g });
       this.bgm = { key, loopUrl: track.loop, nodes, gain };
+      // 业主 2026-10-20：游戏 BGM 真的开始了 —— 让 lobbyMusic 知道（离开音乐区时淡出自定义曲）。
+      // 同样在 0.3.0 对齐上游时丢了。
+      this.lobbyMusicBgmStarted?.(key);
     } catch (err) { this._warn('bgm-start', err); }
   }
 
