@@ -2632,9 +2632,9 @@ button.ally-card:disabled { filter: grayscale(.7) brightness(.7); cursor: defaul
      · 当前音乐和状态挤在一格里，看不出哪个是文件名
    现在：说明压成一行、当前音乐独立成块（名字大、状态小、自定义时描边变紫绿）、
    按钮排成一行三枚且高 52px（足够拇指点），全部落在 360px 高度内不用滚。 */
-.lmp{display:flex;flex-direction:column;gap:10px}
+.lmp{display:flex;flex-direction:column;gap:9px;min-height:0}
 .lmp__hint{margin:0;color:var(--text-lo,#8ea39a);font-size:11.5px;line-height:1.5}
-.lmp__now{display:flex;flex-direction:column;gap:3px;padding:10px 12px;border-radius:6px;
+.lmp__now{display:flex;flex-direction:column;gap:2px;padding:8px 12px;border-radius:6px;
   background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.09);min-width:0}
 .lmp__now.is-custom{border-color:color-mix(in srgb,var(--mint-500,#4ed8af) 45%,transparent);
   background:color-mix(in srgb,var(--mint-500,#4ed8af) 8%,rgba(255,255,255,.035))}
@@ -2642,8 +2642,8 @@ button.ally-card:disabled { filter: grayscale(.7) brightness(.7); cursor: defaul
 .lmp__name{font-size:14px;font-weight:800;line-height:1.25;overflow-wrap:anywhere;color:var(--text-hi,#eef6f2)}
 .lmp__sub{font-size:11px;color:var(--mint-500,#4ed8af)}
 .lmp__acts{display:grid;grid-template-columns:1.2fr 1fr 1fr;gap:8px}
-.lmp__btn{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;
-  min-height:52px;padding:6px 4px;cursor:pointer;border-radius:6px;
+.lmp__btn{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;
+  min-height:46px;padding:4px;cursor:pointer;border-radius:6px;
   background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.12);color:var(--text-hi,#eef6f2);
   transition:background .15s ease,border-color .15s ease,opacity .15s ease}
 .lmp__btn:hover:not(:disabled){background:rgba(255,255,255,.09);border-color:rgba(255,255,255,.24)}
@@ -2666,3 +2666,35 @@ button.ally-card:disabled { filter: grayscale(.7) brightness(.7); cursor: defaul
   .lmp__btn{min-height:46px}
   .lmp__foot{font-size:10px}
 }
+
+/* 预设曲目列表（业主 2026-10-20）：37 首内置曲目，滚动选一首。
+   手机横屏 360px 高时列表自己限高并滚动，不会把面板顶出去。 */
+.lmp__presets{display:flex;flex-direction:column;gap:6px;min-height:0}
+.lmp__presets-cap{font:700 8.5px/1 var(--font-num,monospace);letter-spacing:.18em;
+  color:var(--text-lo,#8ea39a);text-transform:uppercase}
+.lmp__presets-cap b{color:var(--mint-500,#4ed8af);letter-spacing:0;margin-left:4px}
+.lmp__presets-list{display:flex;flex-direction:column;gap:2px;
+  /* 固定高度（不参与 flex 伸缩），这样下面的按钮永远在同一位置 */
+  height:min(26vh,140px);overflow-y:auto;overscroll-behavior:contain;
+  touch-action:pan-y;-webkit-overflow-scrolling:touch;
+  padding:2px;border-radius:5px;background:rgba(0,0,0,.22);box-shadow:inset 0 0 0 1px rgba(255,255,255,.06)}
+.lmp__preset{display:flex;align-items:center;gap:8px;min-height:34px;padding:0 10px;
+  cursor:pointer;border:0;border-radius:4px;background:transparent;color:var(--text-md,#c6d4cd);
+  font:inherit;font-size:12px;text-align:left;transition:background .13s ease,color .13s ease}
+.lmp__preset:hover:not(:disabled){background:rgba(255,255,255,.07);color:var(--text-hi,#eef6f2)}
+.lmp__preset:disabled{opacity:.45;cursor:default}
+.lmp__preset.is-on{background:color-mix(in srgb,var(--mint-500,#4ed8af) 16%,transparent);
+  color:var(--mint-300,#8dffd4);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--mint-500,#4ed8af) 40%,transparent)}
+.lmp__preset-n{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lmp__preset-on{font:700 8px/1 var(--font-num,monospace);letter-spacing:.1em;font-style:normal;
+  padding:3px 6px;border-radius:3px;color:#04100c;background:var(--mint-500,#4ed8af)}
+@media (max-height: 460px) {
+  .lmp__presets-list{max-height:min(30vh,150px)}
+  .lmp__preset{min-height:30px;font-size:11.5px}
+}
+
+/* 大厅音乐面板的框体（业主 2026-10-20）：37 首预设会把面板撑过屏，
+   所以框体自己限高、body 滚动、底部按钮永远可见。 */
+.lobby-music-panel{display:flex;flex-direction:column;max-height:calc(100vh - 24px)}
+.lobby-music-panel .modal__body{flex:0 0 auto;overflow:visible}
+.lobby-music-panel .modal__actions{flex:0 0 auto}

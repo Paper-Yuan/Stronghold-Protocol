@@ -2,6 +2,7 @@ import { PHASE } from '../../../shared/constants.js';
 import { html, Button, Modal } from './components.js';
 import { useEffect, useRef, useState } from '../../vendor/hooks.module.js';
 import { store, selectRoute } from '../store.js';
+import { data } from '../data.js';
 import { audio, bgmKeyFor } from '../audio.js';
 
 export const MAX_MUSIC_BYTES = 20 * 1024 * 1024;
@@ -47,7 +48,9 @@ async function validate(file) {
 function replace(next) {
   if (media) { media.pause(); media.removeAttribute('src'); media.load(); }
   if (url) URL.revokeObjectURL(url);
-  record = next; url = next?.blob ? URL.createObjectURL(next.blob) : null;
+  record = next;
+  // 预设曲目：直接用站内 URL（没有 blob）
+  url = next?.preset ? next.preset : next?.blob ? URL.createObjectURL(next.blob) : null;
   if (media && url) media.src = url;
 }
 function fadeCustom(on, immediate = false) {
@@ -100,12 +103,14 @@ function install() {
   window.addEventListener('pointerdown', () => { if (record?.enabled) { audio._unlock(); sync(); } }, { passive: true });
   const initialRevision = revision;
   saved(false).then(value => {
-    if (revision !== initialRevision || !value?.blob || value.blob.size > MAX_MUSIC_BYTES) return;
+    if (revision !== initialRevision) return;
+    if (value?.preset) { replace(value); status = value.paused ? '已暂停' : '点击“播放”开始音乐'; refresh(); return; }
+    if (!value?.blob || value.blob.size > MAX_MUSIC_BYTES) return;
     replace(value); status = value.paused ? '已暂停' : '点击“播放”开始音乐'; refresh();
   }).catch(() => { status = '浏览器暂不能保存音乐，可稍后重试'; notify(); });
 }
 export const music = {
-  snapshot: () => ({ name: record?.name || '', size: record?.blob?.size || 0, enabled: !!record?.enabled, paused: !!record?.paused, playing: !!media && !media.paused, status, busy }),
+  snapshot: () => ({ name: record?.name || '', size: record?.blob?.size || 0, preset: record?.preset || null, enabled: !!record?.enabled, paused: !!record?.paused, playing: !!media && !media.paused, status, busy }),
   async upload(file) {
     if (busy) return; install(); ++revision; busy = true; notify();
     try { await validate(file); const next = { blob: file, name: file.name.slice(0,180), enabled: true, paused: false }; await saved(true, next); replace(next); status = '已保存音乐'; audio._unlock(); refresh(); }
@@ -116,6 +121,15 @@ export const music = {
     if (!record || busy) return; ++revision;
     const next = { ...record, enabled: true, paused: !!record.enabled && !media.paused };
     await saved(true,next); record=next; status=next.paused?'已暂停':'正在播放 · 单曲循环'; audio._unlock(); refresh();
+  },
+  /** 选用一首内置预设曲目（业主 2026-10-20）：存 URL，不占 IndexedDB。 */
+  async selectPreset(name, url) {
+    if (busy) return; install(); ++revision; busy = true; notify();
+    try {
+      const next = { preset: url, name: (name || '').slice(0, 180), enabled: true, paused: false };
+      await saved(true, next); replace(next); status = '正在播放 · 单曲循环'; audio._unlock(); refresh();
+    } catch (e) { status = e.message || '切换预设失败'; throw e; }
+    finally { busy = false; notify(); }
   },
   async reset() { if (busy) return; ++revision; await saved(true,null); replace(null); status='默认大厅音乐'; refresh(); },
 };
@@ -132,6 +146,15 @@ export function LobbyMusicButton() {
     listeners.add(fn);
     fn(music.snapshot());
     return () => listeners.delete(fn);
+  }, []);
+  // 预设曲目来自 data/assets.json 的 audio.lobbyPresets（用 data store，不是全局 store）
+  const [presets, setPresets] = useState(() => data.get('assets')?.audio?.lobbyPresets || []);
+  useEffect(() => {
+    let dead = false;
+    const read = () => { if (!dead) setPresets(data.get('assets')?.audio?.lobbyPresets || []); };
+    data.load('assets').then?.(read, read) ?? read();
+    const off = data.subscribe?.(read);
+    return () => { dead = true; off?.(); };
   }, []);
   const action = async (fn) => { setError(''); try { await fn(); } catch (e) { setError(e.message || '操作失败'); } };
   const pick = async (e) => {
@@ -150,6 +173,19 @@ export function LobbyMusicButton() {
           <span class="lmp__cap">当前音乐</span>
           <b class="lmp__name">${state.name || '默认大厅音乐'}</b>
           <span class="lmp__sub">${state.status}${state.size ? ` · ${(state.size / 1024 / 1024).toFixed(1)} MB` : ''}</span>
+        </div>
+
+        <div class="lmp__presets" role="listbox" aria-label="预设曲目">
+          <div class="lmp__presets-cap">预设曲目 <b class="num">${presets.length}</b></div>
+          <div class="lmp__presets-list">
+            ${presets.map((x) => html`<button key=${x.url} type="button" role="option"
+                aria-selected=${state.name === x.name && state.preset === x.url ? 'true' : 'false'}
+                class=${'lmp__preset' + (state.preset === x.url ? ' is-on' : '')}
+                disabled=${state.busy} onClick=${() => action(() => music.selectPreset(x.name, x.url))}>
+                <span class="lmp__preset-n">${x.name}</span>
+                ${state.preset === x.url ? html`<i class="lmp__preset-on">播放中</i>` : null}
+              </button>`)}
+          </div>
         </div>
 
         <input ref=${input} type="file" accept="audio/*,.mp3,.m4a,.ogg,.wav,.aac,.flac,.webm" hidden onChange=${pick} />

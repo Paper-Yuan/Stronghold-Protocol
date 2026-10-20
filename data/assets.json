@@ -108453,7 +108453,157 @@
         "resultTwo": "/assets/audio/voice/kr/char_4134_cetsyr_epoque#50/cn_031.mp3",
         "resultLose": "/assets/audio/voice/kr/char_4134_cetsyr_epoque#50/cn_032.mp3"
       }
-    }
+    },
+    "lobbyPresets": [
+      {
+        "name": "编织光流",
+        "url": "/assets/audio/bgm/编织光流.m4a"
+      },
+      {
+        "name": "潮曦作战",
+        "url": "/assets/audio/bgm/潮曦作战.m4a"
+      },
+      {
+        "name": "春景故人来",
+        "url": "/assets/audio/bgm/春景故人来.m4a"
+      },
+      {
+        "name": "崔林特尔梅之金",
+        "url": "/assets/audio/bgm/崔林特尔梅之金.m4a"
+      },
+      {
+        "name": "焚蝶",
+        "url": "/assets/audio/bgm/焚蝶.m4a"
+      },
+      {
+        "name": "浮舟",
+        "url": "/assets/audio/bgm/浮舟.m4a"
+      },
+      {
+        "name": "怀黍离",
+        "url": "/assets/audio/bgm/怀黍离.m4a"
+      },
+      {
+        "name": "浸春芜",
+        "url": "/assets/audio/bgm/浸春芜.m4a"
+      },
+      {
+        "name": "惊蛰时",
+        "url": "/assets/audio/bgm/惊蛰时.m4a"
+      },
+      {
+        "name": "敬属春山",
+        "url": "/assets/audio/bgm/敬属春山.m4a"
+      },
+      {
+        "name": "空想花庭",
+        "url": "/assets/audio/bgm/空想花庭.m4a"
+      },
+      {
+        "name": "起源行动",
+        "url": "/assets/audio/bgm/起源行动.m4a"
+      },
+      {
+        "name": "清平乐",
+        "url": "/assets/audio/bgm/清平乐.m4a"
+      },
+      {
+        "name": "舍盘持难题纳婆罗为谛",
+        "url": "/assets/audio/bgm/舍盘持难题纳婆罗为谛.m4a"
+      },
+      {
+        "name": "酸橙色信笺",
+        "url": "/assets/audio/bgm/酸橙色信笺.m4a"
+      },
+      {
+        "name": "夏日远去之后",
+        "url": "/assets/audio/bgm/夏日远去之后.m4a"
+      },
+      {
+        "name": "相见欢",
+        "url": "/assets/audio/bgm/相见欢.m4a"
+      },
+      {
+        "name": "已至",
+        "url": "/assets/audio/bgm/已至.m4a"
+      },
+      {
+        "name": "直到大地变成一颗酸橙",
+        "url": "/assets/audio/bgm/直到大地变成一颗酸橙.m4a"
+      },
+      {
+        "name": "浊燃作战",
+        "url": "/assets/audio/bgm/浊燃作战.m4a"
+      },
+      {
+        "name": "BATTLEPLAN ARCLIGHT",
+        "url": "/assets/audio/bgm/BATTLEPLAN ARCLIGHT.m4a"
+      },
+      {
+        "name": "Canto IX Boss 6",
+        "url": "/assets/audio/bgm/Canto IX Boss 6.m4a"
+      },
+      {
+        "name": "Effervescence",
+        "url": "/assets/audio/bgm/Effervescence.m4a"
+      },
+      {
+        "name": "Give Me Something",
+        "url": "/assets/audio/bgm/Give Me Something.m4a"
+      },
+      {
+        "name": "Heavenly Me",
+        "url": "/assets/audio/bgm/Heavenly Me.m4a"
+      },
+      {
+        "name": "In Hell We Live, Lament",
+        "url": "/assets/audio/bgm/In Hell We Live, Lament.m4a"
+      },
+      {
+        "name": "Operation Ashring",
+        "url": "/assets/audio/bgm/Operation Ashring.m4a"
+      },
+      {
+        "name": "Operation Pine Soot",
+        "url": "/assets/audio/bgm/Operation Pine Soot.m4a"
+      },
+      {
+        "name": "POSTERGIRL",
+        "url": "/assets/audio/bgm/POSTERGIRL.m4a"
+      },
+      {
+        "name": "Rendezvous",
+        "url": "/assets/audio/bgm/Rendezvous.m4a"
+      },
+      {
+        "name": "SAIKAI",
+        "url": "/assets/audio/bgm/SAIKAI.m4a"
+      },
+      {
+        "name": "THE FEAR",
+        "url": "/assets/audio/bgm/THE FEAR.m4a"
+      },
+      {
+        "name": "The Survivor, The Winner",
+        "url": "/assets/audio/bgm/The Survivor, The Winner.m4a"
+      },
+      {
+        "name": "TIAN TIAN",
+        "url": "/assets/audio/bgm/TIAN TIAN.m4a"
+      },
+      {
+        "name": "Under My Breath",
+        "url": "/assets/audio/bgm/Under My Breath.m4a"
+      },
+      {
+        "name": "Vermilion",
+        "url": "/assets/audio/bgm/Vermilion.m4a"
+      },
+      {
+        "name": "We Are Empire",
+        "url": "/assets/audio/bgm/We Are Empire.m4a"
+      }
+    ]
   },
   "fonts": {
     "css": "/fonts/fonts.css",
