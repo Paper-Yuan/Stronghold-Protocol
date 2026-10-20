@@ -143,31 +143,41 @@ export function buildInfiniteNormalWave(gd, rng, round, routes = null, { withBos
     for (let i = 0; i < n && pool.length; i++) out.push(pool.splice(Math.floor(rng() * pool.length), 1)[0]);
     return out;
   };
-  // 业主 2026-10-19：「每回合都重新从七个池子随机抽选 3 个池子，
-  // 然后从三个池子里所有的怪里进行按比例抽选」。
-  //
-  // 以前是「每池只抽 1 只」，种类被压到 3 种；现在把 3 个池子的**全部怪**摊成一个候选集，
-  // 按 普通:精英 = 2:8 的比例逐只抽（每次独立抽，所以同一只怪可能出现多次）。
-  // 业主 2026-10-20：「选中的怪种类加 1」—— 3 个池子 → 4 个（候选 9 只 → 12 只）。
-  // 每回合都重新抽（buildInfiniteNormalWave 每轮调一次，rng 是逐轮消耗的）。
-  const pickedKinds = pickDistinct(TACTIC_KINDS, 4);
-  const candidates = pickedKinds.flat();
-  const normalPool = candidates.filter((k) => (enemies[k]?.rank || 'NORMAL') === 'NORMAL');
-  const elitePool = candidates.filter((k) => (enemies[k]?.rank || 'NORMAL') !== 'NORMAL');
-  const drawOne = () => {
-    const wantElite = rng() < 0.8;
-    const pool = wantElite && elitePool.length ? elitePool : (normalPool.length ? normalPool : candidates);
-    return pool[Math.floor(rng() * pool.length)];
-  };
-  // 数量随波次缓慢增加：R16 约 24 只，每 5 轮 +6，上限 90
-  const waveCount = Math.min(90, 24 + Math.floor((r - 16) / 5) * 6);
+  // 业主 2026-10-20 定稿（替换前面几版）：
+  //   · 每回合都重新从七个池子随机抽 **3 个池子**
+  //   · 池子里的怪 **全部摊平**，按 普通:精英 = **4:6** 逐只抽
+  //   · 一局出 **6–7 种** 怪（3 池最多 9 只候选，抽够 6–7 种）
+  //   · **单种数量** 从 R16 的 3 只，随波次慢慢升到 5–6 只
+  const pickedKinds = pickDistinct(TACTIC_KINDS, 3);
+  const candidates = [...new Set(pickedKinds.flat())];
+  const isElite = (k) => (enemies[k]?.rank || 'NORMAL') !== 'NORMAL';
+  const normalPool = candidates.filter((k) => !isElite(k));
+  const elitePool = candidates.filter(isElite);
 
-  // 逐只抽，洗牌交错
+  // 单种数量：R16 = 3 只，每 6 轮 +1，上限 6（R34 左右摸到 6）
+  const perKind = Math.min(6, 3 + Math.floor((r - 16) / 6));
+  // 本轮的种类数：6 或 7（不超过候选数）
+  const kindCount = Math.min(candidates.length, rng() < 0.5 ? 6 : 7);
+
+  // 4:6 落在**挑种类**这一步：先从普通池挑约 40%，剩下的从精英池补。
+  // 一边不够就从另一边补足，保证种类数严格等于 kindCount，不会多出来。
+  const wantNormal = Math.min(normalPool.length, Math.max(0, Math.round(kindCount * 0.4)));
+  const wantElite = Math.min(elitePool.length, kindCount - wantNormal);
+  const lineupKinds = [
+    ...pickDistinct(normalPool, wantNormal),
+    ...pickDistinct(elitePool, wantElite),
+  ];
+  // 两边都不够（候选本身就少）：从剩下的候选里补齐
+  if (lineupKinds.length < kindCount) {
+    const rest = candidates.filter((k) => !lineupKinds.includes(k));
+    lineupKinds.push(...pickDistinct(rest, kindCount - lineupKinds.length));
+  }
+
+  // 每种出 perKind 只，洗牌交错
   const lineup = [];
-  for (let i = 0; i < waveCount; i++) {
-    const k = drawOne();
+  for (const k of lineupKinds) {
     const fly = !!(enemies[k] && (enemies[k].isFlyEnemy === true || (enemies[k].stats || {}).motion === 'FLY'));
-    lineup.push({ key: k, fly });
+    for (let i = 0; i < perKind; i++) lineup.push({ key: k, fly });
   }
   // 洗牌：种类交错出现，不会「前 8 只全是同一种」
   for (let i = lineup.length - 1; i > 0; i--) {
