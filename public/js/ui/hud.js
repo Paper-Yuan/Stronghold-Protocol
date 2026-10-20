@@ -498,9 +498,8 @@ export function TopBar({ pub, priv, conn, hud, total, drawer, onExit, onDrawer, 
     </div>
 
     <div class="gtop__right">
-      ${pub?.isInfinite ? html`<${SpeedToggle} speed=${pub?.gameSpeed} onSpeed=${onSpeed} />` : null}
+      ${pub?.isInfinite ? html`<${SpeedToggle} speed=${pub?.speedPref ?? 1} onSpeed=${onSpeed} />` : null}
       <div class="gtop__clock">
-        ${Number(pub?.gameSpeed) > 1 && !pub?.isInfinite ? html`<span class="gtop__speed" title=${t('战斗以 {n} 倍速推进（倒计时仍是 1 倍速）', { n: pub.gameSpeed })}>${pub.gameSpeed}×</span>` : null}
         ${frozenSecs != null
           ? html`<${Countdown} seconds=${frozenSecs} total=${total ?? undefined} size="md" label="PAUSED" />`
           : html`<${Countdown} deadline=${pub?.deadline} total=${total ?? undefined} size="md" />`}
@@ -528,10 +527,18 @@ function TraitChips({ mods }) {
     </button>
     ${open ? html`<div class="gtrait__pop" role="dialog" aria-label=${t('本局词条')}>
       <div class="gtrait__head">
-        <span>${t('本局词条')}</span>
-        <span class="gtrait__sum"><b class="num">${pos}</b> ${t('正')} · <b class="num">${neg}</b> ${t('负')}</span>
+        <div class="gtrait__title">
+          <span class="gtrait__micro">INFINITE PROTOCOL · TRAIT</span>
+          <b>${t('本局生效词条')}</b>
+        </div>
         <button type="button" class="gtrait__x" onClick=${() => setOpen(false)} aria-label=${t('关闭')}>×</button>
       </div>
+      <div class="gtrait__tally">
+        <span class="gtrait__tal is-pos"><b class="num">${pos}</b><i>${t('正面')}</i></span>
+        <span class="gtrait__tal is-neg"><b class="num">${neg}</b><i>${t('负面')}</i></span>
+        <span class="gtrait__tal is-total"><b class="num">${mods.length}</b><i>${t('合计')}</i></span>
+      </div>
+      <p class="gtrait__note">${t('词条从选定回合起生效，贯穿本局剩余的全部战斗。')}</p>
       <ul class="gtrait__list">
         ${mods.map((m) => html`<li key=${m.id + m.round} class=${'gtrait__row' + (m.polarity === 'neg' ? ' is-neg' : '')}>
           <span class="gtrait__r num">R${m.round}</span>
@@ -539,17 +546,31 @@ function TraitChips({ mods }) {
           <span class="gtrait__t">${m.text || ''}</span>
         </li>`)}
       </ul>
+      <div class="gtrait__foot">
+        <span class="gtrait__seal">${t('全部生效中')}</span>
+      </div>
     </div>` : null}
   </div>`;
 }
 
 /** 超限倍速开关（业主 2026-10-20）：玩家自己点，1× ↔ 2×。 */
 function SpeedToggle({ speed, onSpeed }) {
-  const fast = Number(speed) > 1;
+  // speed 是开关位置（1 / 2），不是绝对倍率；基准倍率见服务端 GAME_SPEED
+  const fast = Number(speed) >= 2;
+  const label = t('出怪速度');
   return html`<button type="button" class=${'gspeed' + (fast ? ' is-fast' : '')}
-    onClick=${() => onSpeed?.(fast ? 1 : 2)}
-    title=${fast ? t('切回常速（倒计时不受影响）') : t('切换双倍速（只加快战斗推进）')}
-    data-testid="combat-speed">${fast ? '2×' : '1×'}</button>`;
+    onClick=${() => onSpeed?.(fast ? 1 : 2)} role="switch" aria-checked=${fast ? 'true' : 'false'}
+    aria-label=${label}
+    title=${fast ? t('出怪与战斗推进 2 倍速 · 倒计时仍是 1 倍速（点一下切回常速）')
+                : t('出怪与战斗推进 1 倍速（点一下切到 2 倍速，倒计时不受影响）')}
+    data-testid="combat-speed">
+    <span class="gspeed__cap">${t('SPEED')}</span>
+    <span class="gspeed__rail" aria-hidden="true">
+      <span class="gspeed__opt${fast ? '' : ' is-on'}">1×</span>
+      <span class="gspeed__opt${fast ? ' is-on' : ''}">2×</span>
+      <span class="gspeed__thumb"></span>
+    </span>
+  </button>`;
 }
 
 /** DP counter shown at the right edge during combat. */

@@ -131,7 +131,10 @@ export class MatchBoss {
     // 业主 2026-10-20：「2 倍速是出怪的速度，但游戏的倒计时依旧是 120 秒」。
     // combatTimeScale 让关卡的 120 秒变成 240 秒**游戏时间**，gameSpeed 再把真实时间
     // 压回去 —— 两者相抵，倒计时显示的仍是关卡自己的 120 秒。
-    const onClock = (realS) => this.sched.now() + Math.round(((realS * this.gd.combatTimeScale) / this.gameSpeed) * 1000);
+    // 业主 2026-10-20：「倒计时依旧是正常的 120 秒」—— 倍速不缩短倒计时。
+    // 超限局这里不除 gameSpeed（1×/2× 都按关卡秒数走），普通局保持原来的换算。
+    const clockDiv = this.isInfinite ? 1 : this.gameSpeed;
+    const onClock = (realS) => this.sched.now() + Math.round(((realS * this.gd.combatTimeScale) / clockDiv) * 1000);
     const levelTime = this.gd.bossLevelTime(this.round);
     // Maintainer 2026-10-10: only teams with an AI teammate keep the extra grace after the visible countdown.
     // Freeze this choice for the fight; a disconnect / host transfer cannot change its LP clock midway.

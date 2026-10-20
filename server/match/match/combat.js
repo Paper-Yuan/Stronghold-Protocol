@@ -99,7 +99,9 @@ export class MatchCombat {
     // 拿不到 timeLimit 时按「怪的数量 × 出怪节奏」估一个，而不是硬编码 60 秒 ——
     // 超限 R16+ 有 33–60 只怪、最后一只 70 秒后才出场，60 秒会把还活着的全判成漏怪。
     const limit = this.wave && Number.isFinite(this.wave.timeLimit) ? this.wave.timeLimit : estimateTimeLimit(this.wave);
-    this.deadline = this.sched.instant ? 0 : this.sched.now() + Math.round((limit / this.gameSpeed) * 1000);
+    // 业主 2026-10-20：「2 倍速不减倒计时，倒计时依旧是正常的 120 秒」。
+    // 倍速只加快出怪与战斗推进；倒计时是关卡自己的秒数，按真实时间走，与倍速无关。
+    this.deadline = this.sched.instant ? 0 : this.sched.now() + Math.round((limit / (this.isInfinite ? 1 : this.gameSpeed)) * 1000);
     this._defaultWatch();
     this.markPublic();
     this.runner = new FieldRunner(this, this.fields, { onDone: (runner) => this.combatDone(runner) });
@@ -115,7 +117,9 @@ export class MatchCombat {
     // 拿不到 timeLimit 时按「怪的数量 × 出怪节奏」估一个，而不是硬编码 60 秒 ——
     // 超限 R16+ 有 33–60 只怪、最后一只 70 秒后才出场，60 秒会把还活着的全判成漏怪。
     const limit = this.wave && Number.isFinite(this.wave.timeLimit) ? this.wave.timeLimit : estimateTimeLimit(this.wave);
-    this.deadline = this.sched.instant ? 0 : this.sched.now() + Math.round((limit / this.gameSpeed) * 1000);
+    // 业主 2026-10-20：「2 倍速不减倒计时，倒计时依旧是正常的 120 秒」。
+    // 倍速只加快出怪与战斗推进；倒计时是关卡自己的秒数，按真实时间走，与倍速无关。
+    this.deadline = this.sched.instant ? 0 : this.sched.now() + Math.round((limit / (this.isInfinite ? 1 : this.gameSpeed)) * 1000);
     this._launch(fields);
     // every fighting human runs its own field; eliminated humans (and spectator seats) keep watching (research 09 §3.1
     // "Keep-watching auto-observes the first available field", switching freely with 前往查看): a replica of the field

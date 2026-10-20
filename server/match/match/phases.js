@@ -5,6 +5,8 @@
 // Installed on Match.prototype by server/match/Match.js (a method container: never instantiated; `this` is the match).
 
 import { PHASE, ERR } from '../../../shared/constants.js';
+import { GAME_SPEED } from '../fields.js';
+const BASE = GAME_SPEED;
 import { GEO } from '../../../shared/constants.js';
 import { buildNormalWave, buildBossWave } from '../waves.js';
 import { isInfiniteBossRound, buildInfiniteNormalWave, buildInfiniteBossWave, capWaveKinds } from '../infiniteWaves.js';
@@ -263,8 +265,9 @@ export class MatchPhases {
     // （但倒计时依旧正常 1 倍速）」。
     // gameSpeed 只影响战斗推进（战斗时限 / 战斗时钟）；休整期的倒计时走的是
     // setDeadline 的秒数，与 gameSpeed 无关，所以倒计时仍是 1 倍速。
-    // 业主 2026-10-20：倍速改成玩家自己开关（默认 R16+ 仍是 2 倍速）
-    if (this.isInfinite) this.gameSpeed = r < 16 ? 1 : (this.infiniteSpeedPref || 2);
+    // 业主 2026-10-20：「一倍速和之前的很快的速度一样，二倍速是一倍速两倍」——
+    // 基准（1×）就是全模式的 GAME_SPEED=2，2× 是它的 4。R16 前固定 1×。
+    if (this.isInfinite) this.gameSpeed = r < 16 ? GAME_SPEED : (BASE * (this.infiniteSpeedPref || 1));
     this.fields = [];
     this.watchers.clear();
     this.unitePlan = null;
@@ -383,17 +386,14 @@ export class MatchPhases {
    */
   setCombatSpeed(ps, speed) {
     if (!this.isInfinite) return fail(ERR.WRONG_PHASE);
-    const v = speed === 2 ? 2 : 1;
-    const old = Number(this.gameSpeed) > 0 ? this.gameSpeed : 1;
-    this.infiniteSpeedPref = v;
+    // 开关上的 1× / 2× 是**相对基准**的说法：1× = 全模式的 GAME_SPEED（原来就这么快），
+    // 2× = 它的两倍。内部 gameSpeed 仍是绝对倍率。
+    const pref = speed === 2 ? 2 : 1;
+    const v = BASE * pref;
+    const old = Number(this.gameSpeed) > 0 ? this.gameSpeed : BASE;
+    this.infiniteSpeedPref = pref;
     if (v === old) { this.markPublic(); return OK; }
-    const now = this.sched.now();
-    if (Number.isFinite(this.deadline) && this.deadline > now) {
-      this.deadline = now + Math.round(((this.deadline - now) * old) / v);
-    }
-    if (Number.isFinite(this.overtimeAt) && this.overtimeAt > now) {
-      this.overtimeAt = now + Math.round(((this.overtimeAt - now) * old) / v);
-    }
+    // 倒计时不跟着倍速换算（业主 2026-10-20）：切 1×/2× 时时钟照常走。
     this.gameSpeed = v;
     void ps;
     this.markPublic();

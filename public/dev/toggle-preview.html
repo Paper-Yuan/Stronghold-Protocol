@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8">
+<link rel="stylesheet" href="/css/theme.css" />
+<link rel="stylesheet" href="/css/components.css" />
+<link rel="stylesheet" href="/css/screens/game.css" />
+<style>
+  html,body{margin:0;height:100%;background:#0d1512;color:#eef6f2;font-family:"Noto Sans SC",sans-serif;
+    display:flex;align-items:center;justify-content:center}
+  .stack{display:flex;flex-direction:column;gap:16px}
+  .line{display:flex;align-items:center;gap:14px}
+  .cap{font:600 11px/1 system-ui;color:#8ea39a;width:56px;text-align:right}
+  .clock{display:flex;align-items:center;gap:8px;font:700 24px/1 "Bender",monospace;color:#eef6f2;
+    background:rgba(8,12,11,.85);border:1px solid rgba(255,255,255,.16);border-radius:6px;padding:7px 14px}
+  .clock small{font-size:9px;letter-spacing:.18em;color:#8ea39a}
+</style></head>
+<body>
+<div class="stack">
+  <div class="line">
+    <span class="cap">1× 原速</span>
+    <button type="button" class="gspeed" role="switch" aria-checked="false">
+      <span class="gspeed__cap">SPEED</span>
+      <span class="gspeed__rail">
+        <span class="gspeed__opt is-on">1×</span><span class="gspeed__opt">2×</span>
+        <span class="gspeed__thumb"></span>
+      </span>
+    </button>
+    <div class="clock">120<small>SEC</small></div>
+  </div>
+  <div class="line">
+    <span class="cap">2× 双倍</span>
+    <button type="button" class="gspeed is-fast" role="switch" aria-checked="true">
+      <span class="gspeed__cap">SPEED</span>
+      <span class="gspeed__rail">
+        <span class="gspeed__opt">1×</span><span class="gspeed__opt is-on">2×</span>
+        <span class="gspeed__thumb"></span>
+      </span>
+    </button>
+    <div class="clock">120<small>SEC</small></div>
+  </div>
+</div>
+</body></html>
