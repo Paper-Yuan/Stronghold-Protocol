@@ -153,7 +153,7 @@ export function ResultView({ res, pub = null, myId = null, backLabel, onBack, qu
         <div class="result__rounds">
           <span class="result__rlabel">${t('通过回合')}</span>
           <b class="result__rnum num">${r.roundsPassed}</b>
-          ${r.roundsPassed <= r.lastRound ? html`<span class="result__rof num">/${r.lastRound}</span>` : null}
+          ${!r.isInfinite && Number.isFinite(r.lastRound) && r.roundsPassed <= r.lastRound ? html`<span class="result__rof num">/${r.lastRound}</span>` : null}
         </div>
         <div class="result__medals">
           ${boss ? html`<div class=${cx('medal', r.victory && 'is-done')} title=${boss.name}>

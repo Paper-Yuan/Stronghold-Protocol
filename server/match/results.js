@@ -94,9 +94,16 @@ export function buildResult(m, outcome) {
   const titles = assignTitles(gd, players, victory);
   // 业主 2026-10-19：主动撤退（reason 'retreat'）带自己的 roundsPassed —— 以当回合为准，
   // 不是常规的「通关 = bossRound」。
+  // 业主 2026-10-20：超限模拟（solo_infinite）没有 `bossRound` 这个概念 ——
+  // gamedata.bossRound 对它是普通模式的 14，拿它去夹 m.round 会把「打到 R30」显示成 13。
+  // 超限的回合数就按实际打到的回合算：失败 = 已通过的回合（round - 1），
+  // 胜利 = 打到的回合（撤退会自己传 outcome.roundsPassed，那条路本来就对）。
+  const isInfinite = !!m.isInfinite;
   const teamRounds = Number.isInteger(outcome.roundsPassed)
     ? outcome.roundsPassed
-    : (victory ? gd.bossRound + (hiddenCleared ? 1 : 0) : Math.max(0, Math.min(m.round, gd.bossRound) - 1));
+    : (isInfinite
+      ? (victory ? Math.max(0, m.round) : Math.max(0, m.round - 1))
+      : (victory ? gd.bossRound + (hiddenCleared ? 1 : 0) : Math.max(0, Math.min(m.round, gd.bossRound) - 1)));
   const rows = players.map((ps) => {
     const roundsPassed = !ps.alive && ps.eliminatedRound != null ? Math.max(0, ps.eliminatedRound - 1) : teamRounds;
     const lineup = boardOrder(ps.board).filter((x) => x.piece.kind === 'chess').map(({ r, c, piece }) => {
@@ -143,6 +150,9 @@ export function buildResult(m, outcome) {
     t: 'm.result',
     victory,
     roundsPassed: teamRounds,
+    // 业主 2026-10-20：超限局没有「满 X 回合」这回事，结算页不该显示 /14。
+    ...(m.isInfinite ? { isInfinite: true } : {}),
+    lastRound: m.isInfinite ? null : gd.lastRound,
     hiddenReached,
     hiddenCleared,
     reason: outcome.reason,

@@ -41,10 +41,13 @@ export function normalizeResult(res, pub) {
       left: !!p.left,
     };
   }).sort((a, b) => a.seat - b.seat);
+  const isInfinite = !!(r.isInfinite || pub?.isInfinite);
   return {
     victory: !!r.victory,
     roundsPassed: Number.isFinite(r.roundsPassed) ? r.roundsPassed : Math.max(0, ...players.map((p) => p.roundsPassed), 0),
-    lastRound: Number.isFinite(r.lastRound) ? r.lastRound : (Number.isFinite(pub?.lastRound) ? pub.lastRound : 14),
+    // 业主 2026-10-20：超限局没有「满回合」，lastRound 传 null（结算页据此不显示 /N）。
+    lastRound: Number.isFinite(r.lastRound) ? r.lastRound : (isInfinite ? null : Number.isFinite(pub?.lastRound) ? pub.lastRound : 14),
+    isInfinite,
     hiddenCleared: !!r.hiddenCleared,
     // the Hidden Core (R15) was fought: only then does the result show its boss medal (m.result.hiddenReached;
     // older payloads without it: a clear implies it was reached)
