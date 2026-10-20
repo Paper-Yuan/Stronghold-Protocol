@@ -1092,7 +1092,7 @@ class MainActivity : AppCompatActivity() {
         fun preview() {
             val url = normalizeServerUrl(etAddress.text.toString())
             tvUrlPreview.text = url?.let { "将连接 $it" }
-            ?: "填房主的地址即可，形如 100.127.8.41:3000，或 https://域名"
+            ?: "填房主的地址即可，形如 http://121.4.51.247/ 或 https://域名"
             val alreadyBackup = url != null && url.trimEnd('/') == BACKUP_REMOTE_URL.trimEnd('/')
             tvBackupUrl.text = "备用：$BACKUP_REMOTE_URL（点一下换成备用）"
             tvBackupUrl.visibility = if (!alreadyBackup && picked == "remote") View.VISIBLE else View.GONE
@@ -1155,7 +1155,7 @@ class MainActivity : AppCompatActivity() {
             if (picked == "remote") {
                 val url = normalizeServerUrl(etAddress.text.toString())
                 if (url == null) {
-                    Toast.makeText(this, "请填写有效地址，形如 100.127.8.41:3000 或 https://域名", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this, "请填写有效地址，形如 http://121.4.51.247/ 或 https://域名", Toast.LENGTH_SHORT).show()
                     return@setOnClickListener
                 }
                 FileLogger.i("ui", "chooser decision: remote url=$url board=$boardMode")
@@ -1190,7 +1190,7 @@ class MainActivity : AppCompatActivity() {
      *
      * Note: Does NOT append :3000 to https:// URLs, so standard 443 domains remain intact!
      */
-    private fun normalizeServerUrl(input: String): String? {
+        private fun normalizeServerUrl(input: String): String? {
         val trimmed = input.trim()
         if (trimmed.isEmpty()) return null
         val lower = trimmed.lowercase()
@@ -1209,11 +1209,9 @@ class MainActivity : AppCompatActivity() {
         if (authority.isEmpty()) return null
         if (!authority.all { it.isLetterOrDigit() || it == '.' || it == ':' || it == '-' || it == '_' }) return null
 
-        val withPort = when {
-            authority.contains(':') -> authority // User explicitly provided port
-            isExplicitHttps -> authority          // Standard HTTPS port 443, do NOT append :3000
-            else -> "$authority:3000"             // HTTP bare IP or host, defaults to :3000
-        }
+        // 业主 2026-10-20：「默认的网页不要补 3000」。用户填什么就连什么 ——
+        // 只有本机局域网那台内置 Node 引擎固定 :3000（它的提示文案里已写明）。
+        val withPort = authority
         return "$scheme$withPort$path"
     }
 
