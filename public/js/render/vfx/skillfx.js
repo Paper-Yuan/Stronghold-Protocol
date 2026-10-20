@@ -83,6 +83,7 @@ import {
   eventNum, FX_BINDINGS, bindingEffects, bindingKeys, lifeOf, COND_BUFFS, condState, BOUND_BY_SKILL, coverOf,
 } from './skills.js';
 import { fxSpec } from '../fx/kinds.js';
+import { YuWall, YU_WALL_SOURCE } from './yuwall.js';
 import { UF, ANIM } from '../../../../shared/constants.js';
 
 /** Battle seconds a held (non-oneshot) row of a skill's single cast lasts (FxWiring's CAST_LOOP_S for attacks). */
@@ -186,6 +187,8 @@ export function castPhase(e) {
 export class SkillFx {
   /** @param {import('./wiring.js').FxWiring} w */
   constructor(w) {
+    /** 余 S3 的墙（YuWall 实例），每帧 update，回合结束清空 */
+    this.walls = new Set();
     this.w = w;
     this.units = new Map();    // battle id → unit record | null (nothing official to play)
     this.tloops = new Map();   // `${target id}|${key}` → { h, until, U, tgt, bySkill } (skills.js targetsOf `hit`)
@@ -812,6 +815,11 @@ export class SkillFx {
 
   /** Once per frame, after the views took the frame's sample (module header). */
   sync(views) {
+    // 余 S3 的墙：每帧推进（官方控制器每 2 秒补一次端头）
+    for (const wall of this.walls) {
+      if (!wall.alive) { this.walls.delete(wall); continue; }
+      wall.update();
+    }
     const active = this.active();
     const tier = this.w.ofx.tier;
     if (this.tier === null) { this.tier = tier; this.wasActive = active; }   // the first frame: nothing was cleared
@@ -930,6 +938,20 @@ export class SkillFx {
     const now = this.w.ofx.time;
     // a skill start cast with every charge stored (the kit's `charged`: 卡涅利安) — the `[eff_cond]` state (_cond)
     if (extra.charged === true && extra.id != null) { const C = this.units.get(extra.id); if (C) C.charged = true; }
+    // 余 S3 的墙（业主 2026-10-20）：kit 发 'firewall' → 官方 YuS3 控制器建整排格子；
+    // 'firewallBlock' 是挡刀，仍走程序化的橙色火花。以前 YuWall 写好了却没人调用，
+    // 所以 S3 只显示一个橙色方块。
+    if (kind === 'firewall' || kind === 'firewallBlock') {
+      const U = this.units.get(extra.id);
+      if (U && U.v) {
+        if (kind === 'firewall') {
+          if (!U.yuWall || !U.yuWall.alive) { U.yuWall = new YuWall(this.w, U.v); if (U.yuWall.alive) this.walls.add(U.yuWall); }
+          U.yuWall.update();
+          return true;
+        }
+        // 挡刀：官方没有对应特效，保留程序化（交给下面的通用路径）
+      }
+    }
     // (1) explicit bindings and what they cover
     for (const m of this.marks) {
       if (m.until > now && m.cover.includes(kind) && extra.id === m.owner && Math.round(y) === m.r && Math.round(x) === m.c) return true;
@@ -1056,6 +1078,8 @@ export class SkillFx {
 
   /** Battle reset: forget every unit (the effects themselves are cleared by OfficialFx.clear). */
   clear() {
+    for (const wall of this.walls) wall.stop();
+    this.walls.clear();
     this.units.clear();
     this.tloops.clear();
     this.marks = [];
