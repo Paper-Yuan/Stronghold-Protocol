@@ -101,6 +101,11 @@ export const FOLDER = 'Stronghold-Protocol';
 
 /** Root files a player gets. */
 export const ROOT_FILES = ['package.json', 'package-lock.json', 'LICENSE', 'NOTICE.md', 'THIRD-PARTY-NOTICES.md', 'README.md', 'CHANGELOG.md'];
+/**
+ * 业主 2026-10-20：包根目录放一个**显眼的一键启动**，玩家解压后直接双击就行，
+ * 不用先打开 scripts/ 找 start-windows.bat（以前那个藏在子目录里，很多人以为包坏了）。
+ */
+export const ROOT_LAUNCHERS = ['启动游戏.bat', 'start-windows.bat', 'run-server.bat', 'start.sh'];
 /** The player docs. */
 export const PLAYER_DOCS = ['docs/PLAYING.md', 'docs/DEPLOY.md', 'docs/PLUGINS.md', 'docs/PLUGIN-GUIDE.md',
   'docs/PLUGIN-DSL.md', 'docs/PLUGIN-API.md', 'docs/plugin-catalog.example.json'];
@@ -212,7 +217,8 @@ export function isPlayerFile(rel) {
   if (NOT_TRACKED_SHIP.some((d) => p.startsWith(d))) return false;
   if (isPluginResource(p) || AUTHOR_TEST_FILES.includes(p)) return true;
   if (RUNTIME_DIRS.some((d) => p.startsWith(d)) || PLAYER_TOOL_DIRS.some((d) => p.startsWith(d))) return true;
-  return ROOT_FILES.includes(p) || PLAYER_DOCS.includes(p) || RUNTIME_RESEARCH.includes(p) || PLAYER_SCRIPTS.includes(p) || PLAYER_TOOLS.includes(p);
+  return ROOT_FILES.includes(p) || ROOT_LAUNCHERS.includes(p) || PLAYER_DOCS.includes(p) || RUNTIME_RESEARCH.includes(p)
+    || PLAYER_SCRIPTS.includes(p) || PLAYER_TOOLS.includes(p);
 }
 
 /**

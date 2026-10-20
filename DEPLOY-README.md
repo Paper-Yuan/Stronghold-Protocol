@@ -62,7 +62,10 @@ docker compose up -d
 ### 方式 3：Windows / Windows Server 部署
 
 确保电脑或服务器已安装 Node.js ≥ 22：
-- 直接双击运行 `run-server.bat` 或 `start-windows.bat` 即可启动服务。
+
+- 解压后**直接双击根目录的 `启动游戏.bat`** 即可（推荐）。
+- 也可以用 `start-windows.bat` / `run-server.bat`（根目录和 `scripts/` 里都有）。
+- 启动后浏览器打开 <http://127.0.0.1:3000>。
 
 ---
 
