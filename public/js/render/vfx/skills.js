@@ -819,6 +819,15 @@ function place(plan, e, u, { attackOf, eachHit }) {
       return null;
     }
     if (HIT_EVENTS.has(ev) && role === 'hit') { e.at = 'target'; e.hold = oneShotHold(e); eachHit.push(e); return null; }
+    // 业主 2026-10-20：命中事件上给**自己**挂 buff 的常驻光效（魔王 S2 的 cetsyr_skill_02_tie：
+    // ON_OUTPUT_DAMAGE + CreateBuff on owner + role loop）。以前落到 conditional 不播，
+    // 但它在官方是「技能期间挂在自己身上的绑定光效」，按 loop（hold = skill）播放最接近。
+    if (HIT_EVENTS.has(ev) && role === 'loop' && u.on === 'owner' && /^CreateBuff/.test(u.action || '')) {
+      e.at = 'owner';
+      e.hold = 'skill';
+      plan.loop.push(e);
+      return null;
+    }
     if (CAST_EVENTS.has(ev) && role !== 'loop') { e.hold = oneShotHold(e); plan.each.cast.push(e); return null; }
     // a periodic tick of the buff (an effect / damage action; a buff created there is a condition's visual state —
     // played by state where the client's condition graph is known: COND_BUFFS, 卡涅利安's sand armour)
