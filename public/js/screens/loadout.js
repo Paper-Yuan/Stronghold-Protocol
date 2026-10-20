@@ -787,6 +787,9 @@ function LoadoutScreen({ st, leaving = false }) {
   // co-op briefing (INFO_CHECK, 25 s): the overlay covers the briefing's own countdown, so it shows the time left — the
   // match locks the loadout when it runs out (review fix: edits were silently only for the next match)
   const infoDeadline = useStore((s) => (s.match?.public?.phase === PHASE.INFO_CHECK ? s.match.public.deadline : 0));
+  // 业主 2026-10-20：换皮肤时这里要重渲染 —— 以前只订阅 loadoutStore，
+  // skinsStore 变了立绘不会刷新（卡片和详情页都还显示旧立绘）。
+  const skinRev = useStore((s) => s.entries && Object.keys(s.entries).length, Object.is, skinsStore);
   const m = data.get('assets');
   const getChess = (id) => data.lookup('chess', id);
   const getBond = (id) => data.lookup('bonds', id);
