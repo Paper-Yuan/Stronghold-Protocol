@@ -115,7 +115,7 @@ const QUALITY = [['high', N_('高')], ['medium', N_('中')], ['low', N_('低')]]
  * 'auto' shows as the tier it resolves to (完整 on a desktop, 精简 on a touch device, render/vfx/tier.js); the row is
  * left out when no effects were extracted (data/local-fx.json lists none).
  */
-const OFFICIAL_FX = [['off', N_('关')], ['lite', N_('精简')], ['full', N_('完整')]];
+const OFFICIAL_FX = [['auto', N_('自动')], ['full', N_('完整')], ['lite', N_('精简')], ['off', N_('关')]];
 /** 设置「棋盘渲染」(ui/gameLogic/settings.js BOARD_MODES)：2D 极速省电 / 内置 3D / 官方场景 3D。 */
 const BOARD = [['2d', N_('2D 极速省电')], ['3d', N_('3D 内置')], ['3dscene', N_('3D 官方场景')]];
 /** 设置「帧率」(FPS_MODES)：30 / 60 / 120。 */
@@ -414,6 +414,9 @@ export function SettingsModal({ open, onClose }) {
     updateSettings({ fps: id });
     globalThis.AndroidNative?.setHighRefresh?.(id >= 120);
   };
+  // 业主 2026-10-21：高亮要跟着**实际生效**的档走 —— 'auto' 在触屏上是精简、桌面上是完整。
+  // 以前这里传 available=true 但没传 touch，resolveOfficialFx 自己会探测，行为是对的；
+  // 但列表里没有 'auto'，选了自动的玩家看到的却是「精简」被点亮，以为设置没生效。
   const fxTier = resolveOfficialFx(s.officialFx, true);
   return html`<${Modal} open=${open} onClose=${onClose} title=${t('设置')} micro="SETTINGS" width="7.4rem"
                         actions=${html`<${Button} variant="secondary" icon="book" class="set-guide" onClick=${() => openGuide(0)}>${t('玩法说明')}<//>

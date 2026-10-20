@@ -267,7 +267,9 @@ export class MatchPhases {
     // setDeadline 的秒数，与 gameSpeed 无关，所以倒计时仍是 1 倍速。
     // 业主 2026-10-20：「一倍速和之前的很快的速度一样，二倍速是一倍速两倍」——
     // 基准（1×）就是全模式的 GAME_SPEED=2，2× 是它的 4。R16 前固定 1×。
-    if (this.isInfinite) this.gameSpeed = r < 16 ? GAME_SPEED : (BASE * (this.infiniteSpeedPref || 1));
+    // 业主 2026-10-21：按钮是**持久偏好**，只在作战里生效；回合开始（休整期/选人等）
+    // 先回到基准速，进 COMBAT / 联防 / Boss 时再按偏好提速。
+    if (this.isInfinite) this.gameSpeed = r < 16 ? GAME_SPEED : BASE;
     this.fields = [];
     this.watchers.clear();
     this.unitePlan = null;
@@ -389,12 +391,11 @@ export class MatchPhases {
     // 开关上的 1× / 2× 是**相对基准**的说法：1× = 全模式的 GAME_SPEED（原来就这么快），
     // 2× = 它的两倍。内部 gameSpeed 仍是绝对倍率。
     const pref = speed === 2 ? 2 : 1;
-    const v = BASE * pref;
-    const old = Number(this.gameSpeed) > 0 ? this.gameSpeed : BASE;
-    this.infiniteSpeedPref = pref;
-    if (v === old) { this.markPublic(); return OK; }
-    // 倒计时不跟着倍速换算（业主 2026-10-20）：切 1×/2× 时时钟照常走。
-    this.gameSpeed = v;
+    this.infiniteSpeedPref = pref;   // 偏好：之后的每一场作战都按它跑
+    // 只在作战阶段立即生效（业主 2026-10-21）：「二倍速按钮按下就一直在之后的作战中生效，
+    // 备战时保持原速」。休整期 / 选人 / 结算里点它只改偏好，不动当前 gameSpeed。
+    const inBattle = this.phase === PHASE.COMBAT || this.phase === PHASE.UNITE || this.phase === PHASE.FINAL_ASSAULT;
+    if (inBattle) this.gameSpeed = BASE * pref;
     void ps;
     this.markPublic();
     return OK;

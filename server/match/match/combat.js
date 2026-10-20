@@ -7,7 +7,7 @@ import { PHASE, GEO } from '../../../shared/constants.js';
 import { deriveSeed } from '../../sim/rng.js';
 import { withBounties } from '../waves.js';
 import { planUnite } from '../unite.js';
-import { FieldRunner, DeadBattle } from '../fields.js';
+import { FieldRunner, DeadBattle , GAME_SPEED } from '../fields.js';
 import { DELAYS } from './common.js';
 import { previewPlayer } from '../preview.js';
 import { installInfiniteRule } from '../../sim/infiniteRule.js';
@@ -93,6 +93,9 @@ export class MatchCombat {
   startCombat() {
     if (this.clientCombat) { this._startCombatClient(); return; }
     this.phase = PHASE.COMBAT;
+    // 超限：作战开始按玩家的持久偏好提速（业主 2026-10-21）。休整期一直是基准速，
+    // 进战斗才切到 2×，这样「按钮按了就一直在之后的作战里生效，备战保持原速」。
+    if (this.isInfinite) this.gameSpeed = GAME_SPEED * (this.infiniteSpeedPref || 1);
     const alive = this.alivePlayers();
     this.lastResults = new Map();
     this.fields = alive.map((ps) => ({ fieldId: `n:${ps.playerId}`, kind: 'normal', players: [ps.playerId], battle: this._normalBattle(ps), live: true }));
@@ -110,6 +113,7 @@ export class MatchCombat {
 
   _startCombatClient() {
     this.phase = PHASE.COMBAT;
+    if (this.isInfinite) this.gameSpeed = GAME_SPEED * (this.infiniteSpeedPref || 1);
     const alive = this.alivePlayers();
     this.lastResults = new Map();
     this.watchers.clear();
