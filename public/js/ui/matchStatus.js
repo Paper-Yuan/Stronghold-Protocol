@@ -31,7 +31,16 @@ export function bossLevelSeconds(pub, config) {
   if (!isObj(pub) || !BOSS_PHASES.has(pub.phase)) return null;
   const mode = isObj(config?.modes) ? config.modes[pub.modeId] : null;
   const v = mode?.rounds?.[String(pub.round)]?.levelMaxPlayTime;
-  return Number.isFinite(v) && v > 0 ? v : BOSS_LEVEL_SECONDS;
+  if (Number.isFinite(v) && v > 0) return v;
+  // 超限的 Boss 轮（R20/25/30…）在 config 里没有回合行：服务端 gamedata.bossLevelTime
+  // 按「基准 + 每档 +10 秒」给它时限（R20=120、R25=130…），这里必须跟着算，
+  // 否则 R25 之后进度条的满格值仍是 120，倒计时看着不对。
+  if (pub.isInfinite && Number.isFinite(pub.round) && pub.round >= 20 && pub.round % 5 === 0) {
+    const base = Number(config?.modes?.solo?.rounds?.['14']?.levelMaxPlayTime);
+    const b = Number.isFinite(base) && base > 0 ? base : BOSS_LEVEL_SECONDS;
+    return b + Math.max(0, Math.floor((pub.round - 20) / 5)) * 10;
+  }
+  return BOSS_LEVEL_SECONDS;
 }
 
 /** Team LP lost per real second of overtime (config.bossOvertimeDrainPerSec, default 1). */

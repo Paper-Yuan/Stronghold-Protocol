@@ -128,13 +128,16 @@ export class MatchBoss {
     this.overtimeApplied = 0;
     // HUD: the boss level's countdown (maxPlayTime, 120 real s — the battle goes on past it) and the moment the
     // overtime drain starts (150 real s), both on the field clock
-    // 业主 2026-10-20：「2 倍速是出怪的速度，但游戏的倒计时依旧是 120 秒」。
-    // combatTimeScale 让关卡的 120 秒变成 240 秒**游戏时间**，gameSpeed 再把真实时间
-    // 压回去 —— 两者相抵，倒计时显示的仍是关卡自己的 120 秒。
-    // 业主 2026-10-20：「倒计时依旧是正常的 120 秒」—— 倍速不缩短倒计时。
-    // 超限局这里不除 gameSpeed（1×/2× 都按关卡秒数走），普通局保持原来的换算。
+    // 业主 2026-10-20：
+    //   · 倒计时显示的永远是关卡自己的秒数（120 秒），不随 1×/2× 变
+    //   · 扣血（overtime / bossTurnHpReduceTime 150 秒）也必须按**真实秒**走 ——
+    //     以前超限只改了倒计时、没改扣血，扣血仍按「游戏秒」算，于是 2× 时
+    //     要等 300 秒真实时间才开始扣血，玩家看到的是「倒计时正常但扣血时间不对」。
+    // 现在超限把两者都按真实秒：deadline = now + 120 s，overtimeAt = now + 150 s。
     const clockDiv = this.isInfinite ? 1 : this.gameSpeed;
-    const onClock = (realS) => this.sched.now() + Math.round(((realS * this.gd.combatTimeScale) / clockDiv) * 1000);
+    const onClock = this.isInfinite
+      ? (realS) => this.sched.now() + Math.round(realS * 1000)
+      : (realS) => this.sched.now() + Math.round(((realS * this.gd.combatTimeScale) / clockDiv) * 1000);
     const levelTime = this.gd.bossLevelTime(this.round);
     // Maintainer 2026-10-10: only teams with an AI teammate keep the extra grace after the visible countdown.
     // Freeze this choice for the fight; a disconnect / host transfer cannot change its LP clock midway.
@@ -501,7 +504,19 @@ export class MatchBoss {
    * (bossTurnHpReduceTime, gamedata.js bossOvertimeDue).
    */
   _applyOvertime(gt) {
-    const due = this.gd.bossOvertimeDue(gt, this.bossOvertimeStartReal);
+    // 普通局的战场时钟是「游戏秒」（combatTimeScale 口径），bossOvertimeDue 直接吃它。
+    //
+    // 超限局不一样：那边的倒计时与扣血起点都是**真实秒**（startFinalAssault 的 onClock），
+    // 而战场时钟按 gameSpeed 推进（2× 时 4 游戏秒/真实秒）。再拿 gt 去折算会差一倍，
+    // 所以超限直接用真实时钟算：过了 overtimeAt 就每秒扣 bossOvertimeDrainReal。
+    const due = this.isInfinite
+      ? (() => {
+        const at = Number(this.overtimeAt) || 0;
+        const now = this.sched.now();
+        const over = at > 0 ? Math.floor((now - at) / 1000) : 0;
+        return over >= 1 ? over * this.gd.bossOvertimeDrainReal : 0;
+      })()
+      : this.gd.bossOvertimeDue(gt, this.bossOvertimeStartReal);
     if (due > this.overtimeApplied) {
       const loss = due - this.overtimeApplied;
       this.overtimeApplied = due;

@@ -506,7 +506,7 @@ export function TopBar({ pub, priv, conn, hud, total, drawer, onExit, onDrawer, 
         ${pause && (pause.show || pause.paused) ? html`<${PauseButton} paused=${!!pause.paused} busy=${pause.busy} onToggle=${pause.onToggle} />` : null}
       </div>
       <${OvertimeWarning} ot=${ot} />
-      ${Array.isArray(pub?.traitMods) && pub.traitMods.length ? html`<${TraitChips} mods=${pub.traitMods} />` : null}
+      ${pub?.isInfinite && Array.isArray(pub?.traitMods) && pub.traitMods.length ? html`<${TraitChips} mods=${pub.traitMods} />` : null}
       ${showReady ? html`<${ReadyToggle} priv=${priv} onToggle=${onReady} busy=${readyBusy} readyCount=${readyCount} total=${playerCount} />` : null}
     </div>
   </header>`;
