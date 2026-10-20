@@ -42,6 +42,15 @@ const PLUGIN_AUDIO = /^\/p\/[a-z0-9][a-z0-9-]{1,31}\/[0-9a-f]{8}\/(.+)$/;
  */
 export function mediaUrl(url, origin = globalThis.location?.origin) {
   if (typeof url !== 'string' || !url) return url;
+  // 业主 2026-10-20：皮肤语音的目录名带 `#`（`char_472_pasngr_epoque#17`），而 `#` 在 URL 里是
+  // 片段分隔符 —— 不编码的话浏览器只请求到 `…_epoque`，服务器 404，试听永远没声音。
+  // 这里先把路径里的 `#` 编成 %23（其余部分不动），后面的 /media 改写照旧。
+  if (url.includes('#')) {
+    const q = url.indexOf('?');
+    const head = q >= 0 ? url.slice(0, q) : url;
+    const tail = q >= 0 ? url.slice(q) : '';
+    url = head.replace(/#/g, '%23') + tail;
+  }
   let u;
   // No origin known (Node / tests): parse relative URLs against a placeholder, absolute ones are rejected below.
   try { u = new URL(url, origin || 'http://localhost'); } catch { return url; }
