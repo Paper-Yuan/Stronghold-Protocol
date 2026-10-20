@@ -5,7 +5,7 @@
     <string name="switch_server_title">网络与服务器设置</string>
     <string name="local_mode">单人单机模式 (内置服务 127.0.0.1:3000)</string>
     <string name="remote_mode">远程联机模式 (连接到指定服务器)</string>
-    <string name="server_address_hint">例如: 100.127.8.41:3000、192.168.1.100:3000 或 https://wei.isomer319.xyz/</string>
+    <string name="server_address_hint">例如: http://121.4.51.247/、100.127.8.41:3000 或 192.168.1.100:3000</string>
     <string name="btn_confirm">确认切换</string>
     <string name="btn_cancel">取消</string>
     <string name="btn_restart_service">重启本地服务</string>

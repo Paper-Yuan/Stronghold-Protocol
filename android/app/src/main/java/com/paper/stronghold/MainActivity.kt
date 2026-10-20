@@ -52,7 +52,9 @@ class MainActivity : AppCompatActivity() {
         private const val KEY_HIGH_REFRESH = "high_refresh"      // true = pin the highest refresh mode (120 Hz+)
         private const val KEY_EDGE_PADDING = "edge_padding_px"   // 0-200 px inset from each side (notch/punch-hole)
         private const val DEFAULT_LOCAL_URL = "http://127.0.0.1:3000"
-        private const val DEFAULT_LAN_URL = "https://wei.isomer319.xyz/"
+        // 业主 2026-10-20：「去加朋友」的默认填新地址，不带 :3000 后缀；备用地址写在下面。
+        private const val DEFAULT_LAN_URL = "http://121.4.51.247/"
+        private const val BACKUP_REMOTE_URL = "https://wei.jiangjiangze.icu/"
     }
 
     private lateinit var webView: WebView
@@ -972,6 +974,7 @@ class MainActivity : AppCompatActivity() {
         val tvLocalIpHint = dialogView.findViewById<TextView>(R.id.tvLocalIpHint)
         val etAddress = dialogView.findViewById<EditText>(R.id.etServerAddress)
         val tvUrlPreview = dialogView.findViewById<TextView>(R.id.tvUrlPreview)
+        val tvBackupUrl = dialogView.findViewById<TextView>(R.id.tvBackupUrl)
         val boardBlock = dialogView.findViewById<View>(R.id.boardBlock)
         val rbBoard3D = dialogView.findViewById<RadioButton>(R.id.rbBoard3D)
         val rbBoard2D = dialogView.findViewById<RadioButton>(R.id.rbBoard2D)
@@ -1089,7 +1092,17 @@ class MainActivity : AppCompatActivity() {
         fun preview() {
             val url = normalizeServerUrl(etAddress.text.toString())
             tvUrlPreview.text = url?.let { "将连接 $it" }
-                ?: "填房主的地址即可，形如 100.127.8.41:3000，或 https://域名"
+            ?: "填房主的地址即可，形如 100.127.8.41:3000，或 https://域名"
+            val alreadyBackup = url != null && url.trimEnd('/') == BACKUP_REMOTE_URL.trimEnd('/')
+            tvBackupUrl.text = "备用：$BACKUP_REMOTE_URL（点一下换成备用）"
+            tvBackupUrl.visibility = if (!alreadyBackup && picked == "remote") View.VISIBLE else View.GONE
+        }
+
+        // 点一下备用行，把地址换成备用服务器（业主 2026-10-20）
+        tvBackupUrl.setOnClickListener {
+            etAddress.setText(BACKUP_REMOTE_URL)
+            etAddress.setSelection(etAddress.text.length)
+            preview()
         }
 
         fun paint() {

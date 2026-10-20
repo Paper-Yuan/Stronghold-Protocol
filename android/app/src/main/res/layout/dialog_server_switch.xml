@@ -245,6 +245,17 @@
                         android:textColor="@color/theme_teal"
                         android:textSize="10sp"
                         android:visibility="gone" />
+
+                    <!-- 备用服务器（业主 2026-10-20）：主地址连不上时点一下换成这个 -->
+                    <TextView
+                        android:id="@+id/tvBackupUrl"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:lineSpacingExtra="1dp"
+                        android:textColor="#50655d"
+                        android:textSize="10sp"
+                        android:visibility="gone" />
                 </LinearLayout>
 
                 <!-- Right Column: Board Rendering & Display Options -->
