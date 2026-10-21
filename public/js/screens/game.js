@@ -81,6 +81,23 @@ import { html, Spinner, PhaseBanner, ResultDialog, Icon, Button, confirmDialog, 
 import { useGameData, GIcon } from '../ui/gameComponents.js';
 import { useFieldView } from '../ui/fieldHost.js';
 import { BossPhaseWarn } from '../ui/bossPhaseWarn.js';
+
+/** 把超限词条并进右侧 EFFECTS 栏（业主 2026-10-21）：结构与普通 effect 一致，尺寸不额外放大。 */
+function withTraits(effects, mods) {
+  const base = Array.isArray(effects) ? effects : [];
+  if (!Array.isArray(mods) || !mods.length) return base;
+  const out = base.slice();
+  for (const t of mods) {
+    out.push({
+      id: 'trait:' + t.id + ':' + t.round,
+      name: t.name,
+      desc: t.text || '',
+      iconKind: t.polarity === 'neg' ? 'traitNeg' : 'trait',
+      counter: null,
+    });
+  }
+  return out;
+}
 import { TopBar, liveLp, ownLeaks, uniteRemaining, tempInfo, tempReadyReason } from '../ui/hud.js';
 import { BondStrip, BondPopup } from '../ui/bondStrip.js';
 import { TeamPanel } from '../ui/teamPanel.js';
@@ -145,6 +162,7 @@ import { t, tParts } from '../../../shared/i18n.js';
 // this screen pushes the switch. Outside a browser battleRunner is null, so this is a no-op.
 if (battleRunner) {
   const applyCombatMetrics = (s) => battleRunner.setCombatMetrics(s?.combatMetrics === true);
+  // 二倍速随开随切的同步放在 GameScreen 组件里（那里才有 pub），见 applyCombatMetrics 下方。
   applyCombatMetrics(settingsStore.get());
   settingsStore.subscribe(applyCombatMetrics);
 }
@@ -1695,7 +1713,7 @@ function MatchScreen() {
         self=${Number.isFinite(priv?.lp) ? { lp: priv.lp, pending: liveLpNow.pending, unite: liveLpNow.unite, left: liveLpNow.left } : null}
         observe=${cc ? { canObserve: (p) => observeTarget(p, pub, myId, { observing: watchingOther, ownDone: localDone }), observing: watchingOther, onBack: backHome } : null} />
 
-      <div class="gm__effects"><${EffectsList} effects=${watchingOther && field ? (field.effects ?? null) : priv?.effects} /></div>
+      <div class="gm__effects"><${EffectsList} effects=${withTraits(watchingOther && field ? (field.effects ?? null) : priv?.effects, pub?.isInfinite ? pub?.traitMods : null)} /></div>
 
       ${watchingOther && !combat ? html`<div class="gm__watching" role="status">
         <${GIcon} name="eye" /><span>${tParts('正在查看 {name} 的阵地（只读）', { name: html`<b>${watchedName}</b>` })}</span>

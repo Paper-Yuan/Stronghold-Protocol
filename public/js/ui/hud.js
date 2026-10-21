@@ -507,54 +507,11 @@ export function TopBar({ pub, priv, conn, hud, total, drawer, onExit, onDrawer, 
         ${pause && (pause.show || pause.paused) ? html`<${PauseButton} paused=${!!pause.paused} busy=${pause.busy} onToggle=${pause.onToggle} />` : null}
       </div>
       <${OvertimeWarning} ot=${ot} />
-      ${pub?.isInfinite && Array.isArray(pub?.traitMods) && pub.traitMods.length ? html`<${TraitChips} mods=${pub.traitMods} />` : null}
       ${showReady ? html`<${ReadyToggle} priv=${priv} onToggle=${onReady} busy=${readyBusy} readyCount=${readyCount} total=${playerCount} />` : null}
     </div>
   </header>`;
 }
 
-/**
- * 超限已选词条（业主 2026-10-20）：右侧一枚【词条 N】按钮，点开一个面板列出本局拿到
- * 的全部词条与效果 —— 以前是一排小标签常驻在时钟旁边，占地方还看不全。
- */
-function TraitChips({ mods }) {
-  const [open, setOpen] = useState(false);
-  const pos = mods.filter((m) => m.polarity !== 'neg').length;
-  const neg = mods.length - pos;
-  return html`<div class="gtrait">
-    <button type="button" class=${'gtrait__btn' + (open ? ' is-open' : '')} onClick=${() => setOpen((v) => !v)}
-      title=${t('查看本局已选词条')} data-testid="trait-view">
-      <span class="gtrait__ico">◆</span>${t('词条')}<b class="num">${mods.length}</b>
-    </button>
-    ${open ? html`<div class="gtrait__pop" role="dialog" aria-label=${t('本局词条')}>
-      <div class="gtrait__head">
-        <div class="gtrait__title">
-          <span class="gtrait__micro">INFINITE PROTOCOL · TRAIT</span>
-          <b>${t('本局生效词条')}</b>
-        </div>
-        <button type="button" class="gtrait__x" onClick=${() => setOpen(false)} aria-label=${t('关闭')}>×</button>
-      </div>
-      <div class="gtrait__tally">
-        <span class="gtrait__tal is-pos"><b class="num">${pos}</b><i>${t('正面')}</i></span>
-        <span class="gtrait__tal is-neg"><b class="num">${neg}</b><i>${t('负面')}</i></span>
-        <span class="gtrait__tal is-total"><b class="num">${mods.length}</b><i>${t('合计')}</i></span>
-      </div>
-      <p class="gtrait__note">${t('词条从选定回合起生效，贯穿本局剩余的全部战斗。')}</p>
-      <ul class="gtrait__list">
-        ${mods.map((m) => html`<li key=${m.id + m.round} class=${'gtrait__row' + (m.polarity === 'neg' ? ' is-neg' : '')}>
-          <span class="gtrait__r num">R${m.round}</span>
-          <span class="gtrait__n">${m.name}</span>
-          <span class="gtrait__t">${m.text || ''}</span>
-        </li>`)}
-      </ul>
-      <div class="gtrait__foot">
-        <span class="gtrait__seal">${t('全部生效中')}</span>
-      </div>
-    </div>` : null}
-  </div>`;
-}
-
-/** 超限倍速开关（业主 2026-10-20）：玩家自己点，1× ↔ 2×。 */
 function SpeedToggle({ speed, onSpeed }) {
   // speed 是开关位置（1 / 2），不是绝对倍率；基准倍率见服务端 GAME_SPEED
   const fast = Number(speed) >= 2;

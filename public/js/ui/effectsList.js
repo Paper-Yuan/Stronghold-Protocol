@@ -55,7 +55,9 @@ export function EffectsList({ effects }) {
         <${RichText} as="p" text=${effectDesc(e)} />
       </div>`}>
       <span class=${`effect effect--${e.iconKind || 'x'}`}>
-        <${Img} src=${effectIconUrl(m, e)} fallback=${html`<${GIcon} name="bolt" />`} />
+        ${e.iconKind === 'trait' || e.iconKind === 'traitNeg'
+            ? html`<span class="effect__trait">\u25C6</span>`
+          : html`<${Img} src=${effectIconUrl(m, e)} fallback=${html`<${GIcon} name="bolt" />`} />`}
         ${e.counter != null && e.counter !== '' ? html`<b class="effect__n num">${e.counter}</b>` : null}
       </span>
     <//>`)}

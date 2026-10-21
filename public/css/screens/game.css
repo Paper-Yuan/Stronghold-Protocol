@@ -530,6 +530,11 @@
 .effect .icon { width: .28rem; height: .28rem; color: var(--mint-500); }
 .effect--band { border-color: var(--mint-800); }
 .effect--team { border-color: rgba(78, 216, 175, .6); }
+/* 超限词条的图标（业主 2026-10-21）：盒子与 .effect 完全同尺寸（.5rem），只换配色 */
+.effect--trait { border-color: rgba(78, 216, 175, .75); }
+.effect--traitNeg { border-color: rgba(231, 49, 24, .75); }
+.effect__trait { font-size: .26rem; line-height: 1; color: var(--mint-500); }
+.effect--traitNeg .effect__trait { color: #ff5a44; }
 .effect__n { position: absolute; right: -.05rem; bottom: -.05rem; min-width: .2rem; font-size: .12rem; line-height: 1.4; text-align: center; background: var(--gold); color: #1d1400; padding: 0 .03rem; }
 .efftip { display: flex; flex-direction: column; gap: .04rem; max-width: 3.6rem; }
 .efftip b { font-size: .17rem; color: var(--mint-400); }

@@ -973,6 +973,25 @@ export function createBattleRunner(deps) {
     },
     state,
     /**
+     * 业主 2026-10-21：「二倍速随开随切」。
+     * 以前 speed 只在 onStart 时读一次 msg.speed，改服务端 gameSpeed 对**已经在跑**的本地 sim 完全无效
+     * —— 必须等下一场作战才生效。这里把运行中条目的速度换掉，并按已推进的游戏时间重算 t0，
+     * 保证切换瞬间进度不跳。
+     * @param {number} speed 1 | 2（绝对倍率由服务端下发，前端原样使用）
+     */
+    setBattleSpeed(speed) {
+      const v = Number(speed) > 0 ? Number(speed) : 2;
+      for (const e of [...entries.values(), ...pending.values()]) {
+        if (!e || e.done || !(e.speed > 0)) continue;
+        if (e.speed === v) continue;
+        const elapsedGame = ((clock() - e.t0) / 1000) * e.speed;   // 已推进的游戏时间（秒）
+        e.speed = v;
+        e.t0 = clock() - (elapsedGame / v) * 1000;
+        e.lastProgressAt = -Infinity;
+      }
+      publishState();
+    },
+    /**
      * 设置「作战统计」. Ignored when `deps.combatMetrics` pins the runner. Off detaches meters already attached.
      * On does not attach to a battle that was prepared while the meter was off.
      * @param {boolean} on
