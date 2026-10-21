@@ -788,17 +788,21 @@ def scene_ids(only):
 
 def scene_roots(ab_root, extra):
     """AB roots searched for the scene bundles, in order: the client, --scenes dirs, then every version kept under
-    .cache/official-scenes (newest name first)."""
+    .cache/official-scenes (newest name first).
+
+    2026-10-22: `ab_root` may be None — `--only scene` no longer requires an install, and the scene bundles
+    usually still sit in .cache/official-scenes after the client is gone."""
     kept = ROOT / '.cache' / 'official-scenes'
     cached = sorted((p for p in kept.iterdir() if p.is_dir()), reverse=True) if kept.is_dir() else []
-    return [Path(ab_root), *[Path(p) for p in extra], *cached]
+    first = [Path(ab_root)] if ab_root else []
+    return [*first, *[Path(p) for p in (extra or [])], *cached]
 
 
 def export_scenes(ab_root, out_root, manifest, log, ids, roots):
     """scenes.SCENES (the ids in `ids`) → scene/<stageId>/ (scenes.export_scene); a stage without a scene bundle in
     any root is skipped."""
-    root = Path(ab_root)
-    shader_deps = dep_bundles(root, {'Material'})
+    root = Path(ab_root) if ab_root else None
+    shader_deps = dep_bundles(root, {'Material'}) if root else {}
     n = 0
     for sid, deps in scenes.SCENES:
         if sid not in ids:
@@ -931,10 +935,6 @@ def main():
     if args.webp:
         return webp_only(Path(args.out), Path(args.manifest), print)
 
-    ab_root = Path(args.game) if args.game else next((p for p in CANDIDATES if p.exists()), None)
-    if not ab_root or not ab_root.exists():
-        print('No Arknights install found. Pass --game <AssetBundle root>.', file=sys.stderr)
-        return 2
     jobs = select_jobs(args.only)
     enemy_ids = spine_ids(args.only, ENEMY_SPINE_SUB, ENEMY_SPINES)
     token_ids = spine_ids(args.only, TOKEN_SPINE_SUB, TOKEN_SPINES)
@@ -942,6 +942,14 @@ def main():
     fx_on = fx_selected(args.only)
     if not jobs and not enemy_ids and not token_ids and not stage_ids and not fx_on:
         print(f'--only {args.only}: no job matches', file=sys.stderr)
+        return 2
+    # 业主 2026-10-22：**只有需要 AssetBundle 的任务才要求客户端**。
+    # 以前这个检查在算出任务表之前，于是 `--only scene` 明明从 --scenes 读（季节结束后
+    # 场景包留在 .cache，客户端可能已经删了）也会报 "No Arknights install found"。
+    need_ab = bool(jobs or enemy_ids or token_ids or fx_on)
+    ab_root = Path(args.game) if args.game else next((p for p in CANDIDATES if p.exists()), None)
+    if need_ab and (not ab_root or not ab_root.exists()):
+        print('No Arknights install found. Pass --game <AssetBundle root>.', file=sys.stderr)
         return 2
     out_root = Path(args.out)
     out_root.mkdir(parents=True, exist_ok=True)

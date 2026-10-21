@@ -252,7 +252,10 @@ def export_scene(stage_id, deps, scene_path, ab_root, out_root, manifest, log, m
     scene_objs = list(objects.values())
     light_bundle = scene_path.with_suffix('') / 'lightingdata.ab'
     extra = [light_bundle] if light_bundle.is_file() else []
-    for dep in [*(Path(ab_root) / d for d in [*deps, *COMMON_DEPS]), *shader_deps]:
+    # 2026-10-22: ab_root may be None (--only scene without an install); the scene's own bundle and the
+    # .cache/official-scenes copies are enough — the client's dependency bundles are then simply skipped.
+    dep_roots = [Path(ab_root)] if ab_root else []
+    for dep in [*(r / d for r in dep_roots for d in [*deps, *COMMON_DEPS]), *shader_deps]:
         if Path(dep).is_file():
             extra.append(Path(dep))
         else:

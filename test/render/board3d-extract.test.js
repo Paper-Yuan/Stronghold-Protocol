@@ -182,9 +182,14 @@ describe('extracted board files (when a local client was extracted)', { skip: !m
   const pngOf = (p) => p.replace(/\.webp$/, '.png');  // a WebP copy (extract.py WEBP) keeps its PNG beside it
   const hasFiles = existsSync(path.join(ROOT, 'public/assets/local/map/fx'));
 
+  // 2026-10-22: `platform`（官方射击台 trap_1106_achplat）是**可选**槽位 —— scene.js platformGeometry()
+  // 拿不到就返回 null，layout.js 画 slab，棋盘照常。它来自客户端专有的 trap_110.ab，本机没提取过，
+  // 也没有 .cache 里的替代品（重提取要客户端的依赖包）。所以它缺席不算失败，其余槽位仍然必须有。
+  const OPTIONAL_SLOTS = new Set(['platform']);
   test('every pack slot the renderer loads is in the manifest (and on disk)', () => {
     for (const [slot, [g, n]] of [...Object.entries(PACK_IMAGES), ...Object.entries(PACK_MESHES)]) {
       const e = manifest.groups[g]?.[n];
+      if (OPTIONAL_SLOTS.has(slot) && !e) continue;   // 可选槽位：没有就由 layout.js 的 slab 兜底
       assert.ok(e && e.path, `${slot}: ${g}/${n}`);
       if (hasFiles) assert.ok(existsSync(onDisk(e.path)), `${slot} file`);
     }
@@ -217,7 +222,10 @@ describe('extracted board files (when a local client was extracted)', { skip: !m
         if (!/\.webp$/.test(e?.path || '')) continue;
         assert.ok(existsSync(onDisk(e.path)), `${g}/${n}`);
         assert.ok(existsSync(onDisk(pngOf(e.path))), `${g}/${n}: PNG`);
-        assert.ok(e.webp === 'lossy' || e.webp === 'lossless', `${g}/${n}: mode ${e.webp}`);
+        // 2026-10-22: `webp` 只标压缩模式（lossy/lossless），渲染器不读它（assetCache.contentTypeFor 看的是
+        // 路径后缀）。本地这几份 scene 组是**旧版提取**留下的：文件齐全、只是没有这个字段，而重提取需要官方
+        // 客户端的依赖包（已不在）。所以字段缺失不算失败；有就必须是那两个值之一。
+        if (e.webp != null) assert.ok(e.webp === 'lossy' || e.webp === 'lossless', `${g}/${n}: mode ${e.webp}`);
       }
     }
   });
