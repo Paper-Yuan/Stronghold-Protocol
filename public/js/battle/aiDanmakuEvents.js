@@ -55,6 +55,16 @@ export const BOND_QUOTE_THRESHOLDS = Object.freeze([
   { bondId: 'sargonShip', layer: 350, text: '娜仁图亚：砰——太阳被我吞掉啦！', color: '#dc2626' },
 ]);
 
+/**
+ * 弹幕的落点。生产环境走 ui/roomDanmaku 的飘屏单例；
+ * 测试可以 `setDanmakuSink` 换成一个收集器 —— 否则无 document 时 show() 是空操作，测不到任何东西。
+ * 默认 **不进聊天记录**（业主 2026-10-21 定案：AI 弹幕只飘屏，不占聊天）。
+ */
+let danmakuSink = null;
+
+/** 测试用：替换弹幕落点。传 null 恢复默认。 */
+export function setDanmakuSink(fn) { danmakuSink = typeof fn === 'function' ? fn : null; }
+
 export function emitDanmaku({ text, name, seat, color, gradient, noPrefix = false, delayMs = 0, chat = false }) {
   const run = () => {
     const msg = {
@@ -68,7 +78,8 @@ export function emitDanmaku({ text, name, seat, color, gradient, noPrefix = fals
       at: Date.now(),
     };
     try {
-      getRoomDanmaku().show(msg, false);
+      if (danmakuSink) danmakuSink(msg);
+      else getRoomDanmaku().show(msg, false);
       // 特殊叠层/AI弹幕只作为纯弹幕飘屏展示，不存储在对话框中
       if (chat) {
         pushChatMessage(msg);
@@ -77,6 +88,8 @@ export function emitDanmaku({ text, name, seat, color, gradient, noPrefix = fals
       console.warn('[aiDanmaku] emit failed', err);
     }
   };
+  // 有 sink（测试）时立即跑，不受 delayMs 影响的异步抖动
+  if (danmakuSink) { run(); return; }
   if (delayMs > 0 && typeof window !== 'undefined') setTimeout(run, delayMs);
   else run();
 }
@@ -151,7 +164,9 @@ export class AiDanmakuManager {
     const layerMap = new Map(); // bondId -> maxLayers
     // 本地私有 bonds
     for (const b of (priv?.bonds || [])) {
-      if (b && typeof b.bondId === 'string') {
+      // 防御性修复（2026-10-21）：只有**激活**的盟约才算层数 —— 以前不看 active，
+      // 一个 active:false 但 layers:500 的盟约会让 AI 把 7 条台词全背一遍。
+      if (b && typeof b.bondId === 'string' && b.active !== false) {
         const cur = layerMap.get(b.bondId) || 0;
         layerMap.set(b.bondId, Math.max(cur, Number(b.layers) || 0));
       }
@@ -168,7 +183,7 @@ export class AiDanmakuManager {
     // 所有玩家（联机队友）在 pub.players 中的 bonds
     for (const p of (pub.players || [])) {
       for (const b of (p.bonds || [])) {
-        if (b && typeof b.bondId === 'string') {
+        if (b && typeof b.bondId === 'string' && b.active !== false) {
           const cur = layerMap.get(b.bondId) || 0;
           layerMap.set(b.bondId, Math.max(cur, Number(b.layers) || 0));
         }

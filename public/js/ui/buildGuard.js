@@ -73,7 +73,7 @@ export async function checkBuildOnce(o = {}) {
 
 /**
  * Watch for a new build.
- * @param {{ fetchFn?: Function, reload?: Function, inMatch?: () => boolean, intervalMs?: number, timeoutMs?: number,
+ * @param {{ fetchFn?: Function, reload?: Function, inMatch?: () => boolean, settled?: () => boolean, intervalMs?: number, timeoutMs?: number,
  *           setInterval?: Function, clearInterval?: Function, setTimeout?: Function, clearTimeout?: Function,
  *           onStale?: (info: { build: string, known: string|null, waiting: boolean }) => void,
  *           onHealth?: (body: any) => void }} [o]  onHealth: every /healthz body a check reads (see the header)
@@ -83,6 +83,9 @@ export function startBuildGuard(o = {}) {
   const fetchFn = o.fetchFn || ((url, init) => globalThis.fetch(url, init));
   const reload = o.reload || (() => globalThis.location.reload());
   const inMatch = typeof o.inMatch === 'function' ? o.inMatch : () => false;
+  // 业主 2026-10-21：等「整局彻底走完」再刷新 —— 结算页也算对局的一部分。
+  // 以前只看 inMatch()（是不是 game 路由），玩家打完一局看到结算页会突然被刷掉。
+  const settled = typeof o.settled === 'function' ? o.settled : () => true;
   const setIv = o.setInterval || ((fn, ms) => globalThis.setInterval(fn, ms));
   const clearIv = o.clearInterval || ((h) => globalThis.clearInterval(h));
   const intervalMs = Number.isFinite(o.intervalMs) && o.intervalMs > 0 ? o.intervalMs : BUILD_CHECK_MS;
@@ -114,7 +117,8 @@ export function startBuildGuard(o = {}) {
     if (seen < BUILD_CONFIRMATIONS) return { status: 'new', build: r.build };
     const first = !stale;
     stale = true;
-    const waiting = inMatch();
+    // 「还要等」= 还在对局里，或对局刚结束但结算页还没走完
+    const waiting = inMatch() || !settled();
     if (first) { try { o.onStale?.({ build: r.build, known, waiting }); } catch { /* ignore */ } }
     if (!waiting) reloadNow();
     return { status: 'stale', build: r.build, known };

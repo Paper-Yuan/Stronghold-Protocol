@@ -34,12 +34,13 @@ test('checkBuildOnce: first sighting, unchanged, changed, and unknown when the s
 });
 
 /** A guard driven by hand: run the interval callback on demand. */
-function manual({ inMatch = false, autoRefresh = true } = {}) {
+function manual({ inMatch = false, autoRefresh = true, settled = true } = {}) {
   const ticks = [];
   const calls = { reload: 0, stale: [] };
   let build = 'aaa';
   let reachable = true;
   let busy = inMatch;
+  let done = settled;
   const guard = startBuildGuard({
     fetchFn: async () => {
       if (!reachable) throw new Error('offline');
@@ -47,6 +48,7 @@ function manual({ inMatch = false, autoRefresh = true } = {}) {
     },
     reload: () => { calls.reload++; },
     inMatch: () => busy,
+    settled: () => done,
     autoRefresh,
     setInterval: (fn) => { ticks.push(fn); return ticks.length; },
     clearInterval: () => {},
@@ -57,22 +59,28 @@ function manual({ inMatch = false, autoRefresh = true } = {}) {
     setBuild: (b) => { build = b; },
     setReachable: (b) => { reachable = b; },
     setInMatch: (b) => { busy = b; },
+    setSettled: (b) => { done = b; },
     /** run the interval callback and let its await settle */
     tick: async () => { for (const fn of ticks) fn(); await new Promise((r) => setTimeout(r, 0)); },
   };
 }
 
 test('custom deployment: a confirmed update only shows a notice until the player manually refreshes', async () => {
-  const m = manual({ inMatch: true, autoRefresh: false });
+  const m = manual({ inMatch: true, autoRefresh: false, settled: false });
   await m.tick();
   m.setBuild('bbb');
   await m.tick(); await m.tick();
   assert.equal(m.guard.stale(), true);
   assert.equal(m.calls.stale.length, 1);
   assert.equal(m.calls.reload, 0);
+  // 业主 2026-10-21（B）：结算页也算对局的一部分 —— 退出战斗但结算页还在，仍然不刷新
   m.setInMatch(false);
   await m.tick(); await m.tick();
-  assert.equal(m.calls.reload, 0, 'leaving the battle and settlement must not refresh the open page');
+  assert.equal(m.calls.reload, 0, 'the settlement screen still holds the page');
+  // 结算页走完之后才自动刷新
+  m.setSettled(true);
+  await m.tick(); await m.tick();
+  assert.equal(m.calls.reload, 1, 'once the whole match is over the page reloads');
   m.guard.stop();
 });
 

@@ -513,6 +513,14 @@ startIdleDim();
   try {
     startBuildGuard({
       inMatch: () => selectRoute(store.get()) === 'game',
+      // 业主 2026-10-21：结算页也算对局的一部分 —— 有了 match.result 之后再多等一会儿，
+      // 让玩家看完结算再自动刷新，而不是一退出战斗就闪一下。
+      settled: () => {
+        const st = store.get();
+        if (!st.match?.result) return true;                       // 没有结算页：不用等
+        const at = Number(st.match.result.endedAt) || 0;
+        return at > 0 ? Date.now() - at > 30000 : false;          // 结算页出现 30 秒后才算结束
+      },
       onStale: ({ waiting }) => { if (waiting) store.patch('ui', { buildStale: true }); },
       // the same /healthz names how many plugins the server has: the title screen shows it before any hello
       onHealth: (h) => { const n = pluginCount(h.content); if (n !== store.get().installedPlugins) store.set({ installedPlugins: n }); },
