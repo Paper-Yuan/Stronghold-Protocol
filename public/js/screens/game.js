@@ -170,6 +170,13 @@ if (battleRunner) {
 /** Router for the in-match screens. */
 export function GameScreen() {
   const pub = useStore((s) => s.match.public);
+  // 业主 2026-10-21：二倍速随开随切 —— pub.gameSpeed 一变就把速度同步给**正在跑**的本地 sim。
+  // 以前 runner 只在 onStart 读一次 msg.speed，中途按 2× 对当前这场完全无效。
+  const pubSpeed = pub?.gameSpeed;
+  useEffect(() => {
+    if (!battleRunner || !(pubSpeed > 0)) return;
+    battleRunner.setBattleSpeed(pubSpeed);
+  }, [pubSpeed]);
   const hasResult = useStore((s) => !!s.match.result);
   const ended = useStore((s) => !!s.room && !s.room.inMatch && !!s.match.public);
   const away = useStore((s) => s.away, Object.is, awayStore);
