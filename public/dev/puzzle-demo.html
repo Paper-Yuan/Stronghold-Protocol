@@ -1,0 +1,252 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>REC 00 · 访问验证</title>
+<link rel="stylesheet" href="/fonts/fonts.css">
+<style>
+  :root{
+    --bg:#07090a; --ink:#e8eceb; --dim:#7d8a86; --line:#222d29;
+    --amber:#e8b445; --amber-hi:#ffd88a; --err:#e2593c; --ok:#4ed8af;
+    --mono:'Bender','Rajdhani','Noto Sans SC',monospace;
+    --wide:'Novecento Wide','Saira Condensed','Noto Sans SC',sans-serif;
+    --cjk:'Noto Sans SC','Microsoft YaHei',sans-serif;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);
+    font-family:var(--cjk);-webkit-font-smoothing:antialiased;overflow:hidden}
+  /* 极细网格 + 噪点，EP 的冷感 */
+  body::before{content:'';position:fixed;inset:0;pointer-events:none;opacity:.5;
+    background:linear-gradient(rgba(232,180,69,.028) 1px,transparent 1px) 0 0/100% 3px,
+               radial-gradient(circle at 50% 40%,rgba(232,180,69,.05),transparent 62%)}
+  body::after{content:'';position:fixed;inset:0;pointer-events:none;opacity:.035;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E")}
+
+  .wrap{position:relative;min-height:100%;display:flex;align-items:center;justify-content:center;
+    padding:28px 22px}
+
+  .panel{width:min(760px,100%);position:relative}
+  /* 左上角的档案编号 */
+  .stamp{display:flex;align-items:baseline;gap:12px;margin-bottom:22px;
+    font:400 11px/1 var(--mono);letter-spacing:.42em;color:var(--dim);text-transform:uppercase}
+  .stamp b{color:var(--amber);letter-spacing:.2em}
+  .stamp i{flex:1;height:1px;background:linear-gradient(90deg,var(--line),transparent)}
+
+  h1{margin:0 0 6px;font:400 clamp(25px,4.2vw,38px)/1.1 var(--wide);
+    letter-spacing:.02em;color:var(--ink)}
+  h1 small{display:block;margin-top:9px;font:400 11px/1.5 var(--mono);
+    letter-spacing:.3em;color:var(--dim);text-transform:uppercase}
+  .lede{margin:16px 0 0;max-width:52ch;font-size:12.5px;line-height:1.85;color:var(--dim)}
+  .lede b{color:var(--amber);font-weight:600}
+
+  /* ── 登录 ── */
+  form{margin-top:26px;display:grid;gap:12px;max-width:400px}
+  .field{position:relative}
+  .field label{display:block;margin:0 0 6px;font:400 9.5px/1 var(--mono);
+    letter-spacing:.28em;color:var(--dim);text-transform:uppercase}
+  .field input{width:100%;height:44px;padding:0 14px;border-radius:3px;
+    background:rgba(255,255,255,.028);border:1px solid var(--line);color:var(--ink);
+    font:400 15px/1 var(--mono);letter-spacing:.08em;outline:none;
+    transition:border-color .18s,background .18s,box-shadow .18s}
+  .field input:focus{border-color:color-mix(in srgb,var(--amber) 62%,transparent);
+    background:rgba(232,180,69,.045);box-shadow:0 0 0 3px rgba(232,180,69,.09)}
+  .field input::placeholder{color:#455049;letter-spacing:.1em}
+
+  button.go{margin-top:6px;height:46px;cursor:pointer;border-radius:3px;
+    background:var(--amber);color:#0a0d0c;border:0;
+    font:700 12px/1 var(--mono);letter-spacing:.28em;text-transform:uppercase;
+    transition:background .16s,transform .1s}
+  button.go:hover{background:var(--amber-hi)}
+  button.go:active{transform:scale(.985)}
+
+  .msg{margin:0;min-height:18px;font:400 11.5px/1.6 var(--mono);letter-spacing:.04em}
+  .msg.err{color:var(--err)}
+  .msg.ok{color:var(--ok)}
+
+  /* ── 密码提示弹窗（未输入密码时自动出现）── */
+  .hintbox{margin-top:4px;padding:13px 15px;border-radius:3px;
+    border:1px solid rgba(232,180,69,.28);background:rgba(232,180,69,.05);
+    animation:hintIn .5s cubic-bezier(.2,.9,.25,1) both}
+  .hintbox .cap{display:block;margin-bottom:8px;font:400 9px/1 var(--mono);
+    letter-spacing:.3em;color:var(--amber);text-transform:uppercase}
+  .hintbox code{display:block;font:400 16px/1.5 var(--mono);letter-spacing:.36em;
+    color:var(--amber-hi);word-break:break-all}
+  .hintbox p{margin:9px 0 0;font-size:11px;line-height:1.65;color:var(--dim)}
+  @keyframes hintIn{from{opacity:0;transform:translateY(-6px)}}
+
+  /* ── 填词表（通过第二关后展开）── */
+  .sheet{margin-top:26px;display:none}
+  .sheet.on{display:block;animation:sheetIn .55s cubic-bezier(.2,.9,.25,1) both}
+  @keyframes sheetIn{from{opacity:0;transform:translateY(10px)}}
+  .sheet__head{display:flex;align-items:baseline;gap:10px;margin-bottom:12px;
+    font:400 10px/1 var(--mono);letter-spacing:.26em;color:var(--dim);text-transform:uppercase}
+  .sheet__head b{color:var(--amber)}
+  .sheet__head i{flex:1;height:1px;background:var(--line)}
+
+  .clues{display:grid;grid-template-columns:repeat(auto-fill,minmax(228px,1fr));gap:8px}
+  .clue{display:flex;align-items:center;gap:10px;padding:9px 11px;border-radius:3px;
+    background:rgba(255,255,255,.022);border:1px solid var(--line)}
+  .clue__n{flex:0 0 auto;width:16px;font:400 10px/1 var(--mono);color:var(--dim);text-align:right}
+  .clue__w{flex:1 1 auto;font:400 15px/1 var(--mono);letter-spacing:.18em;color:var(--ink)}
+  .clue__w u{text-decoration:none;color:var(--amber);border-bottom:2px solid rgba(232,180,69,.5);
+    padding-bottom:1px}
+  .clue__c{flex:0 0 100%;font-size:10.5px;line-height:1.5;color:var(--dim);padding-left:26px}
+
+  .code{margin-top:16px;padding:14px;border-radius:3px;border:1px dashed rgba(232,180,69,.3);
+    display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+  .code__cap{font:400 9.5px/1 var(--mono);letter-spacing:.26em;color:var(--dim);text-transform:uppercase}
+  .code__val{font:400 22px/1 var(--mono);letter-spacing:.42em;color:var(--amber-hi)}
+  .code__val.blank{color:#333c37}
+
+  .foot{margin-top:24px;font:400 10px/1.7 var(--mono);letter-spacing:.1em;color:#4a5550}
+
+  @media (max-width:640px){
+    .wrap{padding:20px 16px;align-items:flex-start}
+    .clues{grid-template-columns:1fr}
+    h1 small{letter-spacing:.2em}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="panel">
+    <div class="stamp"><b>REC 00</b><span>ACCESS CONTROL</span><i></i><span id="clock">--:--:--</span></div>
+
+    <h1>访问验证<small>IDENTITY CONFIRMATION REQUIRED</small></h1>
+    <p class="lede">
+      该档案需要凭据才能打开。账号与密码由<b>记录者</b>留下 ——
+      账号写在验证码里，密码分散在一张表的九个空位上。
+    </p>
+
+    <form id="login" autocomplete="off">
+      <div class="field">
+        <label for="user">账号 / ACCOUNT</label>
+        <input id="user" name="user" placeholder="＿＿＿＿＿＿" spellcheck="false">
+      </div>
+
+      <!-- 提示：没输入密码时自动出现 -->
+      <div class="hintbox" id="hintbox">
+        <span class="cap">// 校验码 · CHECKSUM</span>
+        <code>lhwuan</code>
+        <p>它被向左挪了四格。挪回来，你就看见账号了。</p>
+      </div>
+
+      <div class="field">
+        <label for="pass">密码 / PASSPHRASE</label>
+        <input id="pass" name="pass" placeholder="＿＿＿＿＿＿＿＿＿＿" spellcheck="false">
+      </div>
+
+      <p class="msg" id="msg"></p>
+      <button class="go" type="submit">验证 / VERIFY</button>
+    </form>
+
+    <!-- 第二关：填词表 -->
+    <div class="sheet" id="sheet">
+      <div class="sheet__head"><b>附件 01</b><span>九个空位 · 九个字母</span><i></i></div>
+      <div class="clues" id="clues"></div>
+      <div class="code">
+        <span class="code__cap">提取结果</span>
+        <span class="code__val blank" id="code">?????????</span>
+      </div>
+      <p class="foot">每一行都少一个字母。把它们按顺序读出来。</p>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── 数据 ──
+const ACCOUNT = 'player';
+const CIPHER = 'lhwuan';                 // 'player' 左移 4
+const PASS = 'paperyuan';               // 九个空位拼出的密码
+
+// 每个词挖掉的字母依次 = P A P E R Y U A N
+const TABLE = [
+  { clue: '纸张；论文；报纸',            word: 'PAPER',  hole: 0 },
+  { clue: '能够的；有能力的',            word: 'ABLE',   hole: 0 },
+  { clue: '和平；安宁',                  word: 'PEACE',  hole: 0 },
+  { clue: '回声；附和',                  word: 'ECHO',   hole: 0 },
+  { clue: '河流',                        word: 'RIVER',  hole: 0 },
+  { clue: '年；年度',                    word: 'YEAR',   hole: 0 },
+  { clue: '团结；整体',                  word: 'UNITY',  hole: 0 },
+  { clue: '警觉的；警报',                word: 'ALERT',  hole: 0 },
+  { clue: '夜晚；黑暗',                  word: 'NIGHT',  hole: 0 },
+];
+
+const $ = (id) => document.getElementById(id);
+const msg = $('msg');
+
+// ── 时钟 ──
+const pad = (n) => String(n).padStart(2, '0');
+setInterval(() => {
+  const d = new Date();
+  $('clock').textContent = pad(d.getHours()) + ':' + pad(d.getMinutes()) + ':' + pad(d.getSeconds());
+}, 1000);
+
+// ── 解出账号（左移 4 = 右移 22）──
+// 左移 4 加密 → 解密时右移 4
+const decode = (s) => s.toLowerCase().replace(/[a-z]/g, (c) =>
+  String.fromCharCode((c.charCodeAt(0) - 97 + 4) % 26 + 97));
+
+// ── 未输入密码时：提示框呼吸；输入后淡出 ──
+const passEl = $('pass');
+const hintEl = $('hintbox');
+passEl.addEventListener('input', () => {
+  hintEl.style.opacity = passEl.value ? '0.25' : '1';
+});
+
+// ── 填词表渲染 ──
+const cluesEl = $('clues');
+TABLE.forEach((row, i) => {
+  const shown = row.word.split('').map((c, k) =>
+    k === row.hole ? '<u>＿</u>' : c).join('');
+  const el = document.createElement('div');
+  el.className = 'clue';
+  el.innerHTML =
+    '<span class="clue__n">' + String(i + 1).padStart(2, '0') + '</span>' +
+    '<span class="clue__w">' + shown + '</span>' +
+    '<span class="clue__c">' + row.clue + '</span>';
+  cluesEl.appendChild(el);
+});
+
+// ── 登录 ──
+$('login').addEventListener('submit', (e) => {
+  e.preventDefault();
+  const user = $('user').value.trim().toLowerCase();
+  const pass = $('pass').value.trim().toLowerCase();
+
+  if (!user && !pass) { msg.className = 'msg err'; msg.textContent = '两个都是空的。'; return; }
+
+  // 第一步：账号
+  if (user !== ACCOUNT) {
+    msg.className = 'msg err';
+    msg.textContent = '账号不对。' + (user ? '（提示：' + CIPHER + ' 往左挪四格）' : '先解出账号。');
+    hintEl.style.opacity = '1';
+    return;
+  }
+
+  // 账号对了，展开填词表，等密码
+  $('sheet').classList.add('on');
+  if (!pass) {
+    msg.className = 'msg ok';
+    msg.textContent = '账号正确。密码在下面的表里 —— 九个空位，九个字母。';
+    return;
+  }
+
+  if (pass !== PASS) {
+    msg.className = 'msg err';
+    msg.textContent = '密码不对。看看填词表的九个空位。';
+    return;
+  }
+
+  // 通过
+  msg.className = 'msg ok';
+  msg.textContent = '验证通过。正在打开档案……';
+  $('code').textContent = 'PAPERYUAN';
+  $('code').classList.remove('blank');
+  document.body.style.transition = 'opacity 1.1s ease';
+  setTimeout(() => { document.body.style.opacity = '0'; }, 900);
+});
+</script>
+</body>
+</html>

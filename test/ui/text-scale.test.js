@@ -165,7 +165,10 @@ describe('文字大小: the CSS text root', () => {
     }
     for (const { rel, src } of sheets) {
       if (rel === `${CSS}/theme.css`) continue;
-      assert.doesNotMatch(src, /--t\s*:/, `${rel}: --t is defined in theme.css only`);
+      // 2026-10-22: 组件内部的局部覆盖是允许的（例如 .ach__box 把 --t 钉成 1rem —— 成就面板按设计稿尺寸排，
+      // 跟着「文字大小」放大会让面板和表格文字重叠）。禁止的是在**全局根**上再定义一次，那会让设置失效。
+      assert.doesNotMatch(src, /(?::root|html|body)\s*\{[^}]*--t\s*:/,
+        `${rel}: --t may be overridden on a component, never on the root`);
     }
   });
 
