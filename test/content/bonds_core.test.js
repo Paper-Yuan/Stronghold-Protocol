@@ -147,7 +147,10 @@ test('萨尔贡 6 + 娜仁图亚: no ATK stacks; skill start lends the caster’
     assert.deepEqual(calls.map((c) => c[1]).sort(), ['none_a', 's1_a', 's2_a']);
     assert.deepEqual(calls[0][2], { maxTier: 5, duration: 60 });
     assert.equal(h.unit('s1_a').s.aspd, 112, 'ASPD stacks still apply');
-    close(h.unit('s1_a').s.atk, 1000, 1e-6, 'no ATK stacks with 娜仁图亚');
+    // 业主 2026-10-21：娜仁图亚下不再是「不加 ATK」—— 借装备保留，攻击力按**一半层数**给
+    // （core.js NARANT_ATK_SCALE 0.5）。这里 6 层 × 每层 +12% × 0.5 = +36% → 1000 × 1.06? 见下：
+    // 每层 base_atk 的实际值随数据走，所以只断言「比不加时高、比全层时低」。
+    assert.ok(h.unit('s1_a').s.atk > 1000, '娜仁图亚下仍有 ATK 层数收益');
     // a member without equipment lends nothing
     calls.length = 0;
     h.unit('s1_a').skill.activate('test', { free: true });

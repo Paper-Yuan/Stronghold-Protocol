@@ -40,6 +40,10 @@ function randomIntent(rng, m, ps) {
     case 'g.watch': return { t, fieldId: rng.pick(['n:p_0', 'n:p_1', 'n:ai_0', 'u', 'b1', 'b2', 'zz', '']) };
     case 'g.autoplay': return { t, on: rng() < 0.05 };
     case 'g.pause': return { t, on: rng() < 0.5 };
+    // 业主 2026-10-21：新增的两条超限消息 —— GAME 是从 C2S 自动生成的，不补这里就会
+    // 造出 {t:'g.combatSpeed'} 没有 speed 字段，协议校验报 'bad field speed'，fuzz 失败。
+    case 'g.combatSpeed': return { t, speed: rng() < 0.5 ? 1 : 2 };
+    case 'g.traitRetreat': return { t };
     default: return { t };
   }
 }

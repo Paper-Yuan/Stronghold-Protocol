@@ -73,8 +73,13 @@ test('词条 → flags：静态修正只映射已实现的键', () => {
   assert.deepEqual(traitFlags('guard'), { allyDefMul: 1.2, allyResAdd: 8 });
   assert.deepEqual(traitFlags('assault'), { allyAtkMul: 1.25 });
   assert.deepEqual(traitFlags('weak'), { allyAtkMul: 0.8 });
-  assert.deepEqual(traitFlags('breach'), { enemyDefMul: 0.85, enemyResAdd: -6 });
+  // 业主 2026-10-21：破局/壁垒除了 def/res，还给一个 sim 直接可用的伤害倍率
+  assert.deepEqual(traitFlags('breach'), { enemyDefMul: 0.85, enemyResAdd: -6, enemyDmgTakenMul: 1.15 });
+  assert.deepEqual(traitFlags('bulwark'), { enemyDefMul: 1.15, enemyResAdd: 6, enemyDmgTakenMul: 1 / 1.15 });
   assert.ok('allyAtkByMissingHp' in traitFlags('bloodlust'), '浴血要带实时重算的键');
+  // 再生 / 腐蚀：每 2 秒的百分比生命（lifecycle._tickTraitDot）
+  assert.deepEqual(traitFlags('regen'), { allyRegenPct: 0.03 });
+  assert.deepEqual(traitFlags('corrode'), { allyCorrodePct: -0.01 });
   assert.deepEqual(traitFlags('cluster'), {}, '集群是匹配层行为，不在 flags 里');
 });
 
