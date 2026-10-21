@@ -1,0 +1,473 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>双 Boss 战 · 第二阶段预警（预览）</title>
+<link rel="stylesheet" href="/css/theme.css" />
+<link rel="stylesheet" href="/css/components.css" />
+<style>
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; height: 100%; overflow: hidden;
+    background: #07090a; color: #eef6f2;
+    font-family: "Noto Sans SC", "Microsoft YaHei", system-ui, sans-serif;
+    user-select: none; -webkit-tap-highlight-color: transparent;
+  }
+
+  /* ── 战场背景（模拟游戏内战场） ─────────────────────────────── */
+  .field {
+    position: absolute; inset: 0;
+    background:
+      radial-gradient(ellipse 60% 40% at 50% 62%, rgba(60, 18, 16, .55), transparent 70%),
+      radial-gradient(ellipse 90% 60% at 50% 30%, rgba(20, 40, 36, .55), transparent 75%),
+      linear-gradient(180deg, #0a1412 0%, #060a09 100%);
+    transition: filter .5s ease;
+  }
+  .field::after {
+    content: ''; position: absolute; inset: 0;
+    background-image:
+      linear-gradient(rgba(78,216,175,.045) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(78,216,175,.045) 1px, transparent 1px);
+    background-size: 44px 44px;
+    mask-image: radial-gradient(ellipse at 50% 55%, #000 30%, transparent 78%);
+  }
+  .field.is-dim { filter: brightness(.35) saturate(.4); }
+
+  /* ── HUD（简化版，让画面像在打 Boss 轮） ───────────────────── */
+  .hud { position: absolute; inset: 0; pointer-events: none; z-index: 5; }
+  .hud__top {
+    position: absolute; top: 0; left: 0; right: 0; height: 76px;
+    display: flex; align-items: center; gap: 14px; padding: 0 18px;
+    background: linear-gradient(180deg, rgba(6,10,9,.96) 40%, rgba(6,10,9,.6) 75%, transparent);
+    padding-top: 4px;
+  }
+  .hud__round {
+    font: 700 12px/1 ui-monospace, monospace; letter-spacing: .18em;
+    color: #8dffd4; padding: 6px 12px; border-radius: 4px;
+    background: rgba(78,216,175,.1); box-shadow: inset 0 0 0 1px rgba(78,216,175,.3);
+  }
+  .hud__round.is-phase2 { color: #ff8b7a; background: rgba(231,49,24,.12); box-shadow: inset 0 0 0 1px rgba(231,49,24,.4); }
+  .hud__boss { flex: 1; display: flex; flex-direction: column; gap: 6px; max-width: 520px;
+    padding-top: 2px; }
+  .hud__bossname { display: flex; align-items: center; gap: 8px; font-size: 12px; color: #c6d4cd;
+    text-shadow: 0 1px 3px rgba(0,0,0,.9); min-width: 0; }
+  .hud__bossname b { font-size: 14px; color: #ffffff; font-weight: 800;
+    background: rgba(6,10,9,.72); padding: 3px 9px; border-radius: 4px;
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,.14); }
+  .hud__bossname i { font-style: normal; font-size: 10px; letter-spacing: .14em; color: #ff6b52;
+    background: rgba(6,10,9,.72); padding: 3px 8px; border-radius: 4px; }
+  .hud__top.is-phase2 .hud__bossname b { color: #ffd9d2; box-shadow: inset 0 0 0 1px rgba(231,49,24,.55); }
+  .bar { height: 11px; border-radius: 6px; background: rgba(0,0,0,.72); overflow: hidden;
+         box-shadow: inset 0 0 0 1px rgba(255,255,255,.18), 0 2px 6px rgba(0,0,0,.5); }
+  .bar__fill { height: 100%; width: 100%; border-radius: 5px;
+    background: linear-gradient(90deg, #7a1408, #e73118 60%, #ff6b52);
+    transition: width .28s cubic-bezier(.3,.9,.25,1); }
+  .hud__clock {
+    font: 700 22px/1 ui-monospace, monospace; color: #eef6f2;
+    padding: 5px 14px; border-radius: 5px; background: rgba(8,12,11,.8);
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,.14); letter-spacing: .04em;
+  }
+  .hud__clock small { font-size: 9px; letter-spacing: .18em; color: #8ea39a; margin-left: 4px; }
+  .hud__hint {
+    position: absolute; left: 50%; bottom: 22px; transform: translateX(-50%);
+    font-size: 12px; color: #8ea39a; letter-spacing: .08em;
+    pointer-events: auto; cursor: default;
+  }
+  .hud__hint b { color: #8dffd4; }
+
+  /* ── Boss 本体（简化剪影，仅占位示意） ────────────────────── */
+  .bossstage { position: absolute; left: 50%; top: 52%; transform: translate(-50%,-50%);
+    width: 220px; height: 220px; display: grid; place-items: center; z-index: 2; }
+  .bossstage.is-hidden { display: none; }
+  .bossbody {
+    width: 100%; height: 100%; border-radius: 50%;
+    background: radial-gradient(circle at 50% 45%, rgba(255,90,60,.5), rgba(120,20,10,.15) 55%, transparent 72%);
+    display: grid; place-items: center;
+    animation: breathe 2.6s ease-in-out infinite;
+  }
+  .bossbody__core {
+    width: 74%; height: 74%; border-radius: 50%;
+    background: radial-gradient(circle at 42% 38%, #2a1512, #120807 60%);
+    box-shadow: 0 0 60px rgba(255,70,40,.45), inset 0 0 30px rgba(255,80,50,.35);
+    display: grid; place-items: center;
+    font-size: 58px; filter: drop-shadow(0 0 18px rgba(255,90,60,.7));
+  }
+  @keyframes breathe { 0%,100% { transform: scale(1); } 50% { transform: scale(1.045); } }
+  .hitfx {
+    position: absolute; inset: -20%; border-radius: 50%; pointer-events: none;
+    background: radial-gradient(circle, rgba(255,220,180,.9), rgba(255,90,50,.5) 30%, transparent 62%);
+    opacity: 0; animation: hitburst .45s ease-out forwards;
+  }
+  @keyframes hitburst { 0% { opacity: .95; transform: scale(.5); } 100% { opacity: 0; transform: scale(1.9); } }
+
+
+
+
+  /* ── 全屏红色预警 · 明日方舟机能风 v3（业主 2026-10-21：加动效）──────────
+     骨架同 v2（黑-红横板 + 居中白字），这里补足「动起来」的部分：
+       ① 横板从中间劈开（clip-path 上下展开）
+       ② 红线自中心向两侧点亮
+       ③ 标题逐字浮现 + 轻微抖屏
+       ④ 背景持续呼吸的红色暗涌
+       ⑤ 扫光循环 + 扫描线滚动
+       ⑥ 四角十字刻度逐个亮起（0.1s 递增）
+       ⑦ 进度条斜纹流动
+       ⑧ 退出时整体上浮淡出                                             */
+  .warn {
+    position: fixed; inset: 0; z-index: 50;
+    display: grid; place-items: center;
+    opacity: 0; pointer-events: none;
+    transition: opacity .22s ease;
+  }
+  .warn.is-on { opacity: 1; pointer-events: auto; }
+  .warn.is-out { opacity: 0; pointer-events: none; transition: opacity .3s ease; }
+
+  /* ① 全屏底色：黑-红-黑，带持续呼吸的红色暗涌 */
+  .warn__flush {
+    position: absolute; inset: 0;
+    background:
+      linear-gradient(180deg,
+        #000 0%, #000 26%,
+        rgba(28,4,2,.96) 30%,
+        rgba(96,14,8,.92) 50%,
+        rgba(28,4,2,.96) 70%,
+        #000 74%, #000 100%);
+  }
+  .warn__flush::after {
+    content: ''; position: absolute; inset: 30% 0 26%;
+    background: repeating-linear-gradient(0deg, rgba(255,255,255,.02) 0 1px, transparent 1px 3px);
+  }
+  /* ④ 红色暗涌：一层缓慢放大的径向光，循环呼吸 */
+  .warn__pulse {
+    position: absolute; left: 50%; top: 50%;
+    width: 130vw; height: 60vh; transform: translate(-50%,-50%);
+    background: radial-gradient(ellipse at center, rgba(255,70,40,.22), transparent 62%);
+    animation: warnpulse 2.4s ease-in-out infinite;
+    pointer-events: none;
+  }
+  @keyframes warnpulse {
+    0%, 100% { opacity: .5; transform: translate(-50%,-50%) scale(.92); }
+    50%      { opacity: 1;   transform: translate(-50%,-50%) scale(1.08); }
+  }
+
+  /* ② 上下细红线：从中心向两侧点亮（scaleX 0 → 1） */
+  .warn__edge {
+    position: absolute; left: 0; right: 0; height: 2px;
+    background: linear-gradient(90deg, transparent, #ff3b26 12%, #ff6a52 50%, #ff3b26 88%, transparent);
+    box-shadow: 0 0 18px rgba(255,60,40,.7);
+    transform: scaleX(0); transform-origin: center;
+  }
+  .warn__edge--top { top: 26%; }
+  .warn__edge--bottom { bottom: 26%; }
+  .warn.is-on .warn__edge--top    { animation: edgein .5s .05s cubic-bezier(.2,.9,.25,1) forwards; }
+  .warn.is-on .warn__edge--bottom { animation: edgein .5s .11s cubic-bezier(.2,.9,.25,1) forwards; }
+  @keyframes edgein { to { transform: scaleX(1); } }
+
+  /* ⑥ 四角十字刻度：逐个亮起 */
+  .warn__corner { position: absolute; width: 34px; height: 34px; opacity: 0; }
+  .warn__corner::before, .warn__corner::after {
+    content: ''; position: absolute; background: #ff3b26;
+    box-shadow: 0 0 8px rgba(255,60,40,.8);
+  }
+  .warn__corner::before { width: 100%; height: 1.5px; }
+  .warn__corner::after  { width: 1.5px; height: 100%; }
+  .warn__corner--tl { top: 16px; left: 16px; }
+  .warn__corner--tl::before, .warn__corner--tl::after { top: 0; left: 0; }
+  .warn__corner--tr { top: 16px; right: 16px; }
+  .warn__corner--tr::before, .warn__corner--tr::after { top: 0; right: 0; }
+  .warn__corner--bl { bottom: 16px; left: 16px; }
+  .warn__corner--bl::before, .warn__corner--bl::after { bottom: 0; left: 0; }
+  .warn__corner--br { bottom: 16px; right: 16px; }
+  .warn__corner--br::before, .warn__corner--br::after { bottom: 0; right: 0; }
+  .warn.is-on .warn__corner--tl { animation: tickin .28s .30s ease-out forwards; }
+  .warn.is-on .warn__corner--tr { animation: tickin .28s .40s ease-out forwards; }
+  .warn.is-on .warn__corner--bl { animation: tickin .28s .50s ease-out forwards; }
+  .warn.is-on .warn__corner--br { animation: tickin .28s .60s ease-out forwards; }
+  @keyframes tickin { from { opacity: 0; transform: scale(.5); } to { opacity: .6; transform: scale(1); } }
+
+  /* ① 主横板：从中线劈开（上下展开） */
+  .warn__body {
+    position: relative; z-index: 2;
+    width: 100%;
+    padding: clamp(46px, 7vh, 74px) 24px clamp(44px, 6.5vh, 70px);
+    display: flex; flex-direction: column; align-items: center;
+    text-align: center;
+    background:
+      linear-gradient(180deg,
+        rgba(18,3,2,.9) 0%,
+        rgba(104,16,9,.86) 26%,
+        rgba(120,20,11,.9) 50%,
+        rgba(104,16,9,.86) 74%,
+        rgba(18,3,2,.9) 100%);
+    border-top: 1px solid rgba(255,80,60,.28);
+    border-bottom: 1px solid rgba(255,80,60,.28);
+    clip-path: inset(50% 0 50% 0);
+    opacity: 0;
+    overflow: hidden;
+  }
+  .warn.is-on .warn__body {
+    animation: bandopen .52s cubic-bezier(.16,.9,.24,1) .06s forwards;
+  }
+  @keyframes bandopen {
+    0%   { clip-path: inset(50% 0 50% 0); opacity: 0; }
+    30%  { opacity: 1; }
+    100% { clip-path: inset(0 0 0 0);     opacity: 1; }
+  }
+
+  /* ⑤ 扫光：循环三次 */
+  .warn__sweep {
+    position: absolute; top: 0; bottom: 0; left: -30%; width: 22%;
+    background: linear-gradient(90deg, transparent, rgba(255,220,210,.18), transparent);
+    transform: skewX(-20deg); pointer-events: none; opacity: 0;
+  }
+  .warn.is-on .warn__sweep { animation: scansw 900ms 420ms cubic-bezier(.2,.9,.25,1) 2 forwards; }
+  @keyframes scansw {
+    0%   { left: -30%; opacity: 1; }
+    100% { left: 118%; opacity: 0; }
+  }
+
+  /* 横向扫描线（持续滚动，机能风） */
+  .warn__scanline {
+    position: absolute; inset: 0; pointer-events: none; opacity: 0;
+    background: linear-gradient(180deg, transparent, rgba(255,90,60,.0) 46%,
+      rgba(255,90,60,.14) 50%, rgba(255,90,60,.0) 54%, transparent);
+    background-size: 100% 42%;
+  }
+  .warn.is-on .warn__scanline { animation: scanroll 2.2s 400ms linear infinite; opacity: 1; }
+  @keyframes scanroll { from { background-position: 0 -60%; } to { background-position: 0 160%; } }
+
+  /* 顶部等宽小标：打字机式擦入 + 字距收紧 */
+  .warn__micro {
+    font: 700 10px/1 ui-monospace, "SF Mono", monospace;
+    letter-spacing: .62em; color: rgba(255,130,110,.9);
+    margin-bottom: 15px; opacity: 0;
+  }
+  .warn.is-on .warn__micro { animation: microin .5s .34s cubic-bezier(.2,.9,.25,1) forwards; }
+  @keyframes microin {
+    0%   { opacity: 0; letter-spacing: .62em; clip-path: inset(0 100% 0 0); }
+    100% { opacity: 1; letter-spacing: .46em; clip-path: inset(0 0 0 0); }
+  }
+
+  /* ③ 主标题：逐字浮现（每字 40ms 递增）+ 轻微抖屏 */
+  .warn__title {
+    display: flex; flex-wrap: wrap; justify-content: center; gap: 0 .06em;
+    font-size: clamp(22px, 3.6vw, 40px);
+    font-weight: 900; line-height: 1.3;
+    letter-spacing: .12em; color: #fff;
+    text-shadow: 0 0 22px rgba(255,60,40,.55), 0 2px 0 rgba(0,0,0,.7);
+  }
+  .warn__title span {
+    display: inline-block; opacity: 0;
+    animation: charin .34s cubic-bezier(.2,.9,.25,1) forwards;
+  }
+  .warn__title span:nth-child(1) { animation-delay: .46s; }
+  .warn__title span:nth-child(2) { animation-delay: .50s; }
+  .warn__title span:nth-child(3) { animation-delay: .54s; }
+  .warn__title span:nth-child(4) { animation-delay: .58s; }
+  .warn__title span:nth-child(5) { animation-delay: .68s; }
+  .warn__title span:nth-child(6) { animation-delay: .72s; }
+  .warn__title span:nth-child(7) { animation-delay: .76s; }
+  .warn__title span:nth-child(8) { animation-delay: .80s; }
+  .warn__title span:nth-child(9) { animation-delay: .84s; }
+  @keyframes charin {
+    0%   { opacity: 0; transform: translateY(8px) scale(1.14); filter: blur(4px); }
+    100% { opacity: 1; transform: translateY(0)   scale(1);    filter: blur(0); }
+  }
+  .warn__title em span { color: #ffb3a8; }
+
+  /* 副行 */
+  .warn__sub {
+    margin-top: 14px;
+    display: flex; flex-direction: column; gap: 6px; align-items: center;
+    font-size: clamp(11px, 1.35vw, 13.5px); letter-spacing: .1em;
+    color: #ffc9c0; line-height: 1.8; opacity: 0;
+  }
+  .warn.is-on .warn__sub { animation: fadeup .4s .92s ease-out forwards; }
+  .warn__sub b { color: #fff; font-weight: 800; }
+  @keyframes fadeup { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+
+  /* ⑦ 进度：细轨 + 斜纹流动 */
+  .warn__foot {
+    display: flex; align-items: center; gap: 14px;
+    width: min(560px, 78vw); margin-top: 24px; opacity: 0;
+  }
+  .warn.is-on .warn__foot { animation: fadeup .4s 1.05s ease-out forwards; }
+  .warn__read {
+    font: 700 10px/1 ui-monospace, monospace; letter-spacing: .2em;
+    color: #ff8b7a; white-space: nowrap;
+  }
+  .warn__read b { color: #fff; }
+  .warn__track {
+    flex: 1; height: 4px; background: rgba(0,0,0,.6);
+    box-shadow: inset 0 0 0 1px rgba(255,59,38,.3);
+    overflow: hidden;
+  }
+  .warn__timer {
+    height: 100%; width: 100%; transform-origin: left center; transform: scaleX(0);
+    background: repeating-linear-gradient(115deg, #ff3b26 0 6px, #a81c0d 6px 12px);
+    background-size: 200% 100%;
+    box-shadow: 0 0 12px rgba(255,60,40,.85);
+    animation: stripeflow .9s linear infinite;
+  }
+  @keyframes stripeflow { from { background-position: 0 0; } to { background-position: 24px 0; } }
+
+  /* ⑧ 抖屏：横板展开瞬间整体轻微位移 */
+  .warn.is-on .warn__body { animation: bandopen .52s cubic-bezier(.16,.9,.24,1) .06s forwards,
+                                        shake .38s .5s ease-out; }
+  @keyframes shake {
+    0%, 100% { transform: translate(0, 0); }
+    20% { transform: translate(-2px, 1px); }
+    40% { transform: translate(2px, -1px); }
+    60% { transform: translate(-1.5px, -1px); }
+    80% { transform: translate(1.5px, 1px); }
+  }
+
+  /* ── 危机合约式读数条（等宽小字 + 上下虚线框）────────────────────────── */
+  .warn__data {
+    position: absolute; left: 0; right: 0;
+    display: flex; justify-content: center; gap: 28px;
+    font: 700 9.5px/1 ui-monospace, "SF Mono", monospace;
+    letter-spacing: .22em; color: rgba(255,140,120,.8);
+    padding: 8px 0; opacity: 0;
+  }
+  .warn__data::before {
+    content: ''; position: absolute; left: 24px; right: 24px; height: 1px;
+    background: repeating-linear-gradient(90deg, rgba(255,59,38,.55) 0 6px, transparent 6px 12px);
+  }
+  .warn__data--top { top: 0; }
+  .warn__data--top::before { bottom: 0; }
+  .warn__data--bottom { bottom: 0; }
+  .warn__data--bottom::before { top: 0; }
+  .warn__data b { color: #fff; font-weight: 800; letter-spacing: .1em; }
+  .warn.is-on .warn__data--top    { animation: fadeup .4s .30s ease-out forwards; }
+  .warn.is-on .warn__data--bottom { animation: fadeup .4s 1.15s ease-out forwards; }
+
+  @media (max-width: 560px) {
+    .warn__title { font-size: 20px; letter-spacing: .08em; }
+    .warn__micro { font-size: 8.5px; }
+    .warn__sub { font-size: 11px; }
+    .warn__foot { width: 86vw; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .warn__body, .warn__title span, .warn__micro, .warn__sub, .warn__foot,
+    .warn__edge, .warn__corner, .warn__sweep, .warn__scanline, .warn__pulse, .warn__timer {
+      animation-duration: .01ms !important; animation-iteration-count: 1 !important;
+    }
+  }
+
+  /* ── 阶段二 boss 入场 ─────────────────────────────────────── */
+  .bossstage.is-enter { animation: bossin .85s cubic-bezier(.2,.9,.25,1) both; }
+  @keyframes bossin {
+    0% { opacity: 0; transform: translate(-50%,-50%) scale(.4); filter: blur(14px); }
+    60% { opacity: 1; filter: blur(0); }
+    100% { opacity: 1; transform: translate(-50%,-50%) scale(1); }
+  }
+
+  /* ── 控制按钮 ─────────────────────────────────────────────── */
+  .controls {
+    position: fixed; right: 16px; bottom: 16px; z-index: 60;
+    display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end;
+  }
+  .ctl {
+    font: 700 12px/1 inherit; letter-spacing: .04em; cursor: pointer;
+    padding: 9px 14px; border-radius: 5px; color: #eef6f2;
+    background: rgba(10,16,14,.88); border: 1px solid rgba(255,255,255,.16);
+    transition: background .15s ease, border-color .15s ease;
+  }
+  .ctl:hover { background: rgba(18,28,25,.95); border-color: rgba(255,255,255,.32); }
+  .ctl--main { background: rgba(231,49,24,.2); border-color: rgba(231,49,24,.55); color: #ffb3a8; }
+  .ctl--main:hover { background: rgba(231,49,24,.32); }
+
+  /* ── 状态条（左上，显示现在处于哪一阶段） ─────────────────── */
+  .state {
+    position: fixed; left: 16px; bottom: 16px; z-index: 60;
+    font: 700 11px/1.6 ui-monospace, monospace; letter-spacing: .06em;
+    color: #8ea39a; padding: 8px 12px; border-radius: 5px;
+    background: rgba(10,16,14,.8); border: 1px solid rgba(255,255,255,.1);
+  }
+  .state b { color: #8dffd4; }
+  .state.is-phase2 b { color: #ff6b52; }
+
+  /* 移动端：缩小字号 */
+  @media (max-width: 560px) {
+    .warn__title { font-size: 26px; }
+    .warn__micro { font-size: 9px; letter-spacing: .3em; }
+    .hud__boss { max-width: none; }
+  }
+</style>
+</head>
+<body>
+
+<div class="field" id="field"></div>
+
+<!-- HUD -->
+<div class="hud">
+  <div class="hud__top">
+    <span class="hud__round" id="hudRound">ROUND 45 // BOSS</span>
+    <div class="hud__boss">
+      <div class="hud__bossname">
+        <b id="bossName">假想敌 · 其一</b>
+        <i id="bossPhase">PHASE 1 / 2</i>
+      </div>
+      <div class="bar"><div class="bar__fill" id="hpFill"></div></div>
+    </div>
+    <div class="hud__clock">120<small>SEC</small></div>
+  </div>
+</div>
+
+<!-- Boss 占位剪影 -->
+<div class="bossstage" id="bossStage">
+  <div class="bossbody">
+    <div class="bossbody__core" id="bossCore">◈</div>
+  </div>
+</div>
+
+<!-- 全屏红色预警 -->
+<div class="warn" id="warn">
+  <div class="warn__flush"></div>
+  <div class="warn__pulse"></div>
+  <div class="warn__edge warn__edge--top"></div>
+  <div class="warn__edge warn__edge--bottom"></div>
+  <span class="warn__corner warn__corner--tl"></span>
+  <span class="warn__corner warn__corner--tr"></span>
+  <span class="warn__corner warn__corner--bl"></span>
+  <span class="warn__corner warn__corner--br"></span>
+
+  <div class="warn__body">
+    <div class="warn__sweep"></div>
+    <div class="warn__scanline"></div>
+    <!-- 危机合约式数据读数条 -->
+    <div class="warn__data warn__data--top">
+      <span>PHASE <b>01</b>/02</span>
+      <span>CORE <b>ACTIVE</b></span>
+      <span>THREAT <b>▮▮▮▮▮</b></span>
+    </div>
+    <div class="warn__micro">SECOND PHASE INCOMING</div>
+    <div class="warn__title"><span>隐</span><span>秘</span><span>核</span><span>心</span><span> </span><em><span>正</span><span>在</span><span>觉</span><span>醒</span></em></div>
+    <div class="warn__sub">
+      <span>敌方领袖已失去战斗能力，但污染源仍在扩散</span>
+      <span><b>检测到更高强度的核心反应</b> —— 重新建立接触</span>
+    </div>
+    <div class="warn__data warn__data--bottom">
+      <span>SEAL <b>BREACHED</b></span>
+      <span>RE-ENTRY <b>2.6s</b></span>
+    </div>
+    <div class="warn__foot">
+      <span class="warn__read">PHASE <b>1</b> → <b>2</b></span>
+      <div class="warn__track"><div class="warn__timer" id="warnTimer"></div></div>
+    </div>
+  </div>
+</div>
+
+<div class="state" id="state">阶段：<b>1 / 2</b> · 战斗中（点击 Boss 削血）</div>
+
+<div class="controls">
+  <button class="ctl ctl--main" id="btnKill">一击击败当前 Boss</button>
+  <button class="ctl" id="btnReplay">重播预警</button>
+  <button class="ctl" id="btnReset">重新开始</button>
+</div>
+
+<script src="/dev/double-boss-preview.js"></script>
+</body>
+</html>

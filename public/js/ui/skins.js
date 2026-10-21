@@ -24,7 +24,12 @@ function readStored() {
   const out = {};
   if (raw && typeof raw === 'object' && !Array.isArray(raw)) {
     for (const [chessId, skinId] of Object.entries(raw)) {
-      if (typeof chessId === 'string' && typeof skinId === 'string' && skinId) out[chessId] = skinId;
+      // 业主 2026-10-21：只认干员 id（char_…）与棋种 id（chess_…）。
+      // 自选编队以前会把槽位 id（slot_N）也写进来，那是脏数据 —— 读了会让
+      // skinFor 反查出上一个干员的皮肤（见 skinFor 的注释）。这里顺手丢掉。
+      if (typeof chessId !== 'string' || typeof skinId !== 'string' || !skinId) continue;
+      if (!/^(char_|chess_)/.test(chessId)) continue;
+      out[chessId] = skinId;
     }
   }
   return out;
@@ -67,22 +72,24 @@ export function clearSkin(chessId) {
   setSkins(next);
 }
 
-/** The skin this browser picked for an operator, or null. */
+/**
+ * The skin this browser picked for an operator, or null.
+ *
+ * 业主 2026-10-21（Bug 反馈）：以前末尾有一个「反查」——
+ * `for (const [k, sId] of entries) if (chess[k]?.charId === id) return sId`。
+ * 自选编队会给槽位也写一份 entries[slotId]，那段反查就把**上一个干员的皮肤**
+ * 顺着槽位 key 找回来了：换成没皮肤的干员时，卡片/头像/「时装：xxx」都还是旧的，
+ * 清空也清不掉。现在只按干员 id（以及它的精锐形态 baseId）查，不再反查。
+ */
 export const skinFor = (id) => {
   if (!id) return null;
   const entries = skinsStore.get().entries;
   if (entries[id]) return entries[id];
   const chess = data.get('chess');
-  if (chess && typeof chess === 'object') {
-    const rec = chess[id];
-    if (rec) {
-      if (rec.charId && entries[rec.charId]) return entries[rec.charId];
-      if (rec.baseId && entries[rec.baseId]) return entries[rec.baseId];
-    }
-    for (const [k, sId] of Object.entries(entries)) {
-      if (chess[k]?.charId === id || chess[k]?.baseId === id) return sId;
-    }
-  }
+  const rec = chess && typeof chess === 'object' ? chess[id] : null;
+  if (!rec) return null;                      // 不是干员（槽位 / 其他 id）：到此为止
+  if (rec.charId && entries[rec.charId]) return entries[rec.charId];
+  if (rec.baseId && entries[rec.baseId]) return entries[rec.baseId];
   return null;
 };
 

@@ -80,7 +80,8 @@ function SlotCard({ m, slot, pick, illegal, onOpen, onClear, ops = {}, onOps = n
         <span>${mod ? html`<b class="num">${mod.type || ''}</b> ${mod.name || ''}` : t('不装备模组')} <small class="t-dim">${t('（精锐时生效）')}</small></span>
       </span>
       ${(() => {
-        const skinId = skinsStore.get().entries[rec.charId] || skinsStore.get().entries[slot.slotId];
+        // 只按干员 id 取（业主 2026-10-21）：槽位 key 不再参与，避免继承上一个干员的皮肤
+        const skinId = skinsStore.get().entries[rec.charId];
         if (!skinId) return null;
         const skinInfo = availableSkins(rec.charId).find((s) => s.id === skinId);
         return html`<span class="diy-slot__kit" data-skin=${skinId}>
@@ -184,10 +185,10 @@ export const skinAvatarUrl = (skinId) => (skinId ? `/assets/char/skin_avatar/${s
 function DiySkinSection({ charId, slotId }) {
   useData('skins');
   useData('assets');
-  const [equipped, setEquipped] = useState(() => skinsStore.get().entries[charId] || skinsStore.get().entries[slotId] || null);
+  const [equipped, setEquipped] = useState(() => skinsStore.get().entries[charId] || null);   // 只按干员 id（业主 2026-10-21）
   useEffect(() => {
     loadSkinData();
-    setEquipped(skinsStore.get().entries[charId] || skinsStore.get().entries[slotId] || null);
+    setEquipped(skinsStore.get().entries[charId] || null);   // 同上：槽位 key 不参与
   }, [charId, slotId]);
 
   const skins = availableSkins(charId);
@@ -196,15 +197,11 @@ function DiySkinSection({ charId, slotId }) {
   const defAvatar = data.get('assets')?.chars?.[charId]?.avatar || `/assets/char/avatar/${charId}.png`;
 
   const onChoose = (skinId) => {
-    if (skinId) {
-      setSkin(charId, skinId);
-      if (slotId) setSkin(slotId, skinId);
-      setEquipped(skinId);
-    } else {
-      clearSkin(charId);
-      if (slotId) clearSkin(slotId);
-      setEquipped(null);
-    }
+    // 业主 2026-10-21：**只按干员 id 存**。以前还额外 setSkin(slotId, …)，
+    // 把槽位 id 写进 entries —— 换干员后那段脏数据会让 skinFor 反查出旧皮肤。
+    if (skinId) setSkin(charId, skinId);
+    else clearSkin(charId);
+    setEquipped(skinId || null);
   };
 
   return html`

@@ -289,7 +289,7 @@ export function buildInfiniteNormalWave(gd, rng, round, routes = null, { withBos
  * @param {number} round
  * @returns {object}
  */
-export function buildInfiniteBossWave(gd, rng, round, routes = null) {
+export function buildInfiniteBossWave(gd, rng, round, routes = null, opts = {}) {
   const r = Number(round) || 20;
   // 原版是**两个** Boss 池：普通 Boss 轮（bossWeights，HARD 78 万~210 万）与隐秘核心
   // （hiddenBossWeights，280 万~380 万）。超限以前抽的是普通池，于是 R20 抽到 78 万的猩红血钻、
@@ -312,6 +312,8 @@ export function buildInfiniteBossWave(gd, rng, round, routes = null) {
   const bossIndex = Math.max(0, Math.floor((r - 20) / 5));   // R20→0, R25→1, R30→2 …
   const primaryBoss = pool.length ? tierOf(bossIndex) : 'boss_8';
   const isDouble = isInfiniteDoubleBossRound(r);
+  // 业主 2026-10-21：双 Boss 轮分两阶段打。opts.phase=1 只出主 Boss，2 只出副 Boss。
+  const phase = opts.phase === 2 ? 2 : 1;
 
   // 双 Boss 轮（R45+）：主 Boss 用当前档，副 Boss 用**次强**那一档（不足两个就同款），
   // 也不回环到弱 Boss —— 双 Boss 只会让这一轮更硬，不会忽然变软。
@@ -329,7 +331,7 @@ export function buildInfiniteBossWave(gd, rng, round, routes = null) {
     const rec = gd.boss(bossId);
     return (rec && typeof rec.enemyKey === 'string' && rec.enemyKey) || bossId;
   };
-  const spawns = [
+  const spawns = phase === 2 ? [] : [
     {
       time: 3.0,
       enemyKey: enemyKeyOf(primaryBoss),
@@ -397,9 +399,9 @@ export function buildInfiniteBossWave(gd, rng, round, routes = null) {
     });
   });
 
-  if (isDouble && secondaryBoss) {
+  if (isDouble && secondaryBoss && phase === 2) {
     spawns.push({
-      time: 6.0,
+      time: 3.0,
       enemyKey: enemyKeyOf(secondaryBoss),
       tag: 'boss',
       routeIndex: routes && routes.length > 1 ? 1 : 0,
@@ -423,6 +425,8 @@ export function buildInfiniteBossWave(gd, rng, round, routes = null) {
     primaryBoss,
     secondaryBoss,
     isDouble,
+    // 当前波次属于第几阶段（1 = 主 Boss，2 = 副 Boss）
+    bossPhase: phase,
     timeLimit: Math.ceil(lastBossSpawn + 180),
     spawns,
     // 同上：Boss 的路径也必须来自这一张地图（以前硬编码 [16,9] / [16,11]，同样在图外且缺 start/end，

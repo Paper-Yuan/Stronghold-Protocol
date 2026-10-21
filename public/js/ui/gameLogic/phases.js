@@ -40,7 +40,10 @@ export const isCombatPhase = (phase) => COMBAT_PHASES.has(phase);
  * @param {string|null|undefined} phase
  */
 export const showDeadPill = (alive, phase) => !alive && !COMBAT_PHASES.has(phase) && phase !== PHASE.SETTLE;
-export const isBossPhase = (phase) => phase === PHASE.FINAL_ASSAULT || phase === PHASE.HIDDEN_CORE;
+export const isBossPhase = (phase) => phase === PHASE.FINAL_ASSAULT || phase === PHASE.HIDDEN_CORE
+  // 业主 2026-10-21：双 Boss 的 2.6 秒预警里血条继续挂在顶部（数字停在 0），
+  // 阶段切换后服务端换血池，它自己从 100% 重开 —— 这里不额外画任何东西。
+  || phase === PHASE.BOSS_PHASE2_WARN;
 
 /**
  * Banner shown when a phase starts: { title, sub?, tone } or null.

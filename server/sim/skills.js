@@ -387,7 +387,10 @@ export class SkillRuntime {
     // keep the unit from acting: PRTS 技能 "在阻回状态或技力条已满时，保留剩余冷却时间，计时暂停"; PRTS 异常效果 STUNNED
     // "无法攻击、释放技能、阻挡敌人类单位" says nothing of SP (community report #18: 洛洛's S2 self-stun froze her SP)
     if (this.spType === 'time' && !(this.active && this.isTimed) && !u.s.flags.noSp && u.alive && u.deployed && !u.hidden) {
-      const rate = u.s.spRecovery;
+      // 超限词条「熟稔 / 迟滞」：自然回复技力 ±0.2/秒（业主 2026-10-21，只对玩家侧、只在超限局）
+      const tf = this.battle?.flags;
+      const bonus = tf && tf.overlimit && u.side === 'ally' ? (Number(tf.allySpRegen) || 0) : 0;
+      const rate = Math.max(0, u.s.spRecovery + bonus);
       if (rate > 0) this.gainSp(rate * dt, 'time');
     }
     if (!u.canAct) return;

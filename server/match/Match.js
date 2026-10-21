@@ -424,6 +424,8 @@ export class Match {
     this.deadline = 0;
     /** Final Assault / Hidden Core: ms epoch when the overtime drain starts (m.public.overtimeAt) */
     this.overtimeAt = 0;
+    /** 双 Boss 轮当前阶段（业主 2026-10-21）：1 = 主 Boss，2 = 副 Boss */
+    this.bossPhaseNo = 1;
     this.uidSeq = 0;
     this.ended = false;
     this.disposed = false;

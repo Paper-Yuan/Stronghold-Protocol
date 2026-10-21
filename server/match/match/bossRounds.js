@@ -13,6 +13,10 @@ import { pairPlayers, bossPoolHp, SharedBossPool, CreditPool, hiddenEligible, BO
 import { FieldRunner, HeadlessPacer, syntheticResult, BOSS_SILENCE_MS, CATCHUP_TICKS_PER_INTERVAL , GAME_SPEED } from '../fields.js';
 import { FLOW_TICKER_PRIORITY, BOSS_CLOCK_MS, DELAYS } from './common.js';
 import { wantsTraitDraft } from './traitDraft.js';
+import { buildInfiniteBossWave } from '../infiniteWaves.js';
+
+/** 双 Boss 第二阶段的预警时长（业主 2026-10-21）：2.6 秒全屏红色过场。 */
+export const BOSS_PHASE2_WARN_MS = 2600;
 
 /** b.pool broadcasts at most this often (ms). */
 const POOL_MIN_GAP_MS = 250;
@@ -577,6 +581,12 @@ export class MatchBoss {
     this.markPublic();
     this.runner = null;
     if (!hidden) {
+      // 业主 2026-10-21：超限双 Boss 轮（R45+）——击败主 Boss 后不结算，
+      // 先进 2.6 秒的全屏预警，再换一个「按当前难度曲线重算血量」的副 Boss 血池。
+      if (this.isInfinite && victory && this._doubleBossPending(victory)) {
+        this._enterBossPhase2();
+        return;
+      }
       if (this.isInfinite && victory) {
         // 业主 2026-10-19：「击败无限轮次的 boss 后及时显示词条选择」。
         // 以前是 SETTLE(3s) → startRound(ROUND_START 2s) → afterRoundStart → TRAIT_DRAFT，一共 5 秒空等。
@@ -617,4 +627,43 @@ export class MatchBoss {
       this.later(this.scaled(DELAYS.SETTLE), () => this.finish({ victory: true, hiddenCleared: victory, reason: 'victory' }));
     }
   }
+
+  /** 双 Boss 轮还有第二阶段吗（业主 2026-10-21）。 */
+  _doubleBossPending(victory) {
+    if (!victory) return false;
+    if (this.bossPhaseNo >= 2) return false;
+    const w = this.bossWaves && this.bossWaves[0] && this.bossWaves[0].wave;
+    return !!(w && w.isDouble && w.secondaryBoss);
+  }
+
+  /** 进入第二阶段：2.6 秒全屏预警，然后换副 Boss 血池重开一场 Boss 战。 */
+  _enterBossPhase2() {
+    this.phase = PHASE.BOSS_PHASE2_WARN;
+    this.deadline = 0;
+    this.overtimeAt = 0;
+    this.bossPhaseNo = 2;
+    this._stopClientCombat();
+    this.markPublic();
+    this.later(BOSS_PHASE2_WARN_MS, () => {
+      if (this.phase !== PHASE.BOSS_PHASE2_WARN) return;
+      this._startBossPhase2Battle();
+    });
+  }
+
+  /** 用副 Boss 重建波次与血池，把战斗重新开起来。 */
+  _startBossPhase2Battle() {
+    const groups = this.bossPairs && this.bossPairs.length
+      ? this.bossPairs
+      : [this.alivePlayers().map((q) => q.playerId)];
+    this.bossWaves = groups.map((g) => ({
+      players: g.slice(),
+      wave: buildInfiniteBossWave(this.gd, this.rngWaves, this.round,
+        this._infiniteRoutes(this.round, GEO.BOSS_RECT), { phase: 2 }),
+    }));
+    this.lastResults = new Map();
+    this._finalEnding = null;
+    this.overtimeApplied = 0;
+    this.startFinalAssault(false);
+  }
+
 }

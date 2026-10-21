@@ -133,10 +133,14 @@ const specialOf = new Map(Object.entries(SPECIALS).map(([id, s]) => [s.mob, id])
 export function drawTraitCards(rng, polarity) {
   const pool = TRAITS[polarity] || TRAITS.pos;
 
-  // ① 特化：按概率掷一次，命中则占第一张
+  // ① 特化：按概率掷一次，命中则占第一张。
+  // 业主 2026-10-21：**特化卡只在负面池出现** —— 它们是「复仇-火与钢 / 坚甲随身Ⅲ / 气定神闲Ⅲ」
+  // 这种高压 Boss 怪，放进正面池等于给玩家白送强敌+正面词条，语义也不对。
   let special = null;
-  for (const [id, sp] of Object.entries(SPECIALS)) {
-    if (rng.pick([1, 2, 3, 4, 5]) <= Math.round((sp.chance || 0.2) * 5)) { special = { id, sp }; break; }
+  if (polarity === 'neg') {
+    for (const [id, sp] of Object.entries(SPECIALS)) {
+      if (rng.pick([1, 2, 3, 4, 5]) <= Math.round((sp.chance || 0.2) * 5)) { special = { id, sp }; break; }
+    }
   }
 
   // 特化怪永远不进普通随机（业主：特化和普通不要在随机中重复）
@@ -182,10 +186,14 @@ export function traitFlags(traitId) {
     case 'slow': return { allySpRegen: -0.2 };
     case 'will': return { allyBarrierPct: 0.5 };
     case 'brittle': return { allyBarrierPct: -0.2 };
-    case 'breach': return { enemyDefMul: 0.85, enemyResAdd: -6 };
-    case 'bulwark': return { enemyDefMul: 1.15, enemyResAdd: 6 };
+    // 破局 / 壁垒：敌人防御 -15% / +15%。sim 里按「防御越低伤害越高」换算成倍率，
+    // 所以这里给一个直接可用的伤害倍率（1.15 = +15% 伤害）。
+    case 'breach': return { enemyDefMul: 0.85, enemyResAdd: -6, enemyDmgTakenMul: 1.15 };
+    case 'bulwark': return { enemyDefMul: 1.15, enemyResAdd: 6, enemyDmgTakenMul: 1 / 1.15 };
     case 'bloodlust': return { allyAtkByMissingHp: 0.5, allyAtkByMissingHpFloor: 0.3 };
     case 'decay': return { allyAtkByMissingHp: -0.3, allyAtkByMissingHpFloor: 0.3 };
+    case 'regen': return { allyRegenPct: 0.03 };      // 再生：每 2 秒 +3%
+    case 'corrode': return { allyCorrodePct: -0.01 }; // 腐蚀：每 2 秒 -1%
     default: return {};
   }
 }

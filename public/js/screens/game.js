@@ -80,6 +80,7 @@ import { PHASE, GEO } from '../../../shared/constants.js';
 import { html, Spinner, PhaseBanner, ResultDialog, Icon, Button, confirmDialog, closeAllDialogs, useTicker } from '../ui/components.js';
 import { useGameData, GIcon } from '../ui/gameComponents.js';
 import { useFieldView } from '../ui/fieldHost.js';
+import { BossPhaseWarn } from '../ui/bossPhaseWarn.js';
 import { TopBar, liveLp, ownLeaks, uniteRemaining, tempInfo, tempReadyReason } from '../ui/hud.js';
 import { BondStrip, BondPopup } from '../ui/bondStrip.js';
 import { TeamPanel } from '../ui/teamPanel.js';
@@ -1789,6 +1790,7 @@ function MatchScreen() {
       icon=${bossIconOf(gd, pub?.bossId)} onDone=${() => setBossPlate(null)} />` : null}
     ${bossPlate?.kind === 'core' ? html`<${HiddenCorePlate} key=${bossPlate.key} icon=${bossIconOf(gd, pub?.hiddenBossId)}
       onDone=${() => setBossPlate(null)} />` : null}
+    ${pub?.phase === 'BOSS_PHASE2_WARN' ? html`<${BossPhaseWarn} on=${true} />` : null}
     ${downed && !resultBox && !matchOver ? html`<${DownedPlate} onWatch=${() => setDowned(false)}
       onSettle=${() => { setDowned(false); setExitOpen(true); }} />` : null}
 

@@ -270,6 +270,7 @@ export class MatchPhases {
     // 业主 2026-10-21：按钮是**持久偏好**，只在作战里生效；回合开始（休整期/选人等）
     // 先回到基准速，进 COMBAT / 联防 / Boss 时再按偏好提速。
     if (this.isInfinite) this.gameSpeed = r < 16 ? GAME_SPEED : BASE;
+    this.bossPhaseNo = 1;   // 双 Boss 阶段计数每轮重置（业主 2026-10-21）
     this.fields = [];
     this.watchers.clear();
     this.unitePlan = null;

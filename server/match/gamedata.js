@@ -484,7 +484,15 @@ export class GameData {
 
   /** Enemy multipliers of round r = the official table (baseEnemyScale; no custom multiplier). */
   enemyScale(r) {
-    return this.baseEnemyScale(r);
+    const base = this.baseEnemyScale(r);
+    // 业主 2026-10-21：超限模式敌方生命每回合 ×1.19 —— 原来的表到 R20 以后几乎不涨，
+    // 玩家伤害又是指数级的，血量跟不上。只改 hpMul，攻击/速度保持不变。
+    if (!this.overlimit) return base;
+    // 官方表只到 R15，R16 以后 baseEnemyScale 回落到 1 —— 所以超限用「表内取到 R15 的基准 × 1.19^(r-1)」。
+    const rr = Math.max(0, Math.round(Number(r) || 0));
+    const anchor = rr <= 15 ? base : this.baseEnemyScale(15);
+    const n = Math.max(0, rr - 1);
+    return { ...anchor, hpMul: anchor.hpMul * Math.pow(1.19, n) };
   }
 
   timer(key) {

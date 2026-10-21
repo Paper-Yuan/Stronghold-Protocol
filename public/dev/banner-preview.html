@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8">
+<link rel="stylesheet" href="/css/theme.css" />
+<link rel="stylesheet" href="/css/components.css" />
+<link rel="stylesheet" href="/css/screens/game.css" />
+<style>
+  html,body{margin:0;background:#0a100e;color:#eef6f2;font-family:"Noto Sans SC",sans-serif}
+  .wrap{max-width:760px;margin:0 auto;padding:26px 22px 50px}
+  h1{font-size:18px;letter-spacing:.1em;margin:0 0 4px;color:#8dffd4}
+  .sub{font-size:12px;color:#8ea39a;margin:0 0 22px}
+  .box{background:rgba(14,22,20,.9);border:1px solid rgba(255,255,255,.1);border-radius:8px;padding:12px 14px;margin-bottom:12px}
+  .cap{font-size:11px;letter-spacing:.14em;color:#8ea39a;margin:0 0 10px}
+  .stage{height:150px;border-radius:6px;background:linear-gradient(180deg,#0d1714,#08100d);
+    border:1px solid rgba(255,255,255,.06);display:grid;place-items:center;position:relative;overflow:hidden}
+  /* 横幅本体（仿 game.css 的 gbanner） */
+  .bn{text-align:center;padding:14px 30px;border-radius:4px;position:relative}
+  .bn::before,.bn::after{content:'';position:absolute;left:0;right:0;height:1px}
+  .bn::before{top:0}.bn::after{bottom:0}
+  .bn__micro{font:700 9px/1 monospace;letter-spacing:.3em;margin-bottom:7px}
+  .bn__title{font-size:26px;font-weight:900;letter-spacing:.04em;line-height:1.1}
+  .bn__sub{font-size:11px;margin-top:6px;letter-spacing:.08em;opacity:.85}
+  .bn--mint{color:#4af2c4}.bn--mint::before,.bn--mint::after{background:linear-gradient(90deg,transparent,#4af2c4,transparent)}
+  .bn--mint .bn__micro{color:#4af2c4}
+  .bn--red{color:#ff4b3e}.bn--red::before,.bn--red::after{background:linear-gradient(90deg,transparent,#ff4b3e,transparent)}
+  .bn--red .bn__micro{color:#ff6b52}.bn--red .bn__title{text-shadow:0 0 .3rem rgba(255,60,50,.6)}
+  .bn--orange{color:#f6a329}.bn--orange::before,.bn--orange::after{background:linear-gradient(90deg,transparent,#f6a329,transparent)}
+  .bn--orange .bn__micro{color:#f6a329}
+</style></head>
+<body>
+<div class="wrap">
+  <h1>回合横幅 · 对照</h1>
+  <p class="sub">超限的 R20/25/30 应该显示红色「最终攻势」那一款。</p>
+
+  <div class="box">
+    <p class="cap">① 普通回合 R19（现在是这个）</p>
+    <div class="stage"><div class="bn bn--mint">
+      <div class="bn__micro">ROUND 19</div>
+      <div class="bn__title">第 19 回合</div>
+      <div class="bn__sub">资金已到账</div>
+    </div></div>
+  </div>
+
+  <div class="box">
+    <p class="cap">② 休整期 R19（现在是这个）</p>
+    <div class="stage"><div class="bn bn--mint">
+      <div class="bn__micro">ROUND 19 // REST</div>
+      <div class="bn__title">休整期</div>
+      <div class="bn__sub">部署干员，准备迎敌</div>
+    </div></div>
+  </div>
+
+  <div class="box" style="border-color:rgba(231,49,24,.45)">
+    <p class="cap" style="color:#ff6b52">③ 超限 Boss 轮 R20 —— 应该是这个（红）</p>
+    <div class="stage"><div class="bn bn--red">
+      <div class="bn__micro">ROUND 20 // BOSS</div>
+      <div class="bn__title">第 20 回合</div>
+      <div class="bn__sub">敌方领袖即将来袭</div>
+    </div></div>
+  </div>
+
+  <div class="box" style="border-color:rgba(231,49,24,.45)">
+    <p class="cap" style="color:#ff6b52">④ 最终攻势（战斗阶段）—— 应该是这个</p>
+    <div class="stage"><div class="bn bn--red">
+      <div class="bn__micro">FINAL ASSAULT</div>
+      <div class="bn__title">最终攻势</div>
+      <div class="bn__sub">击败敌方领袖</div>
+    </div></div>
+  </div>
+</div>
+</body></html>

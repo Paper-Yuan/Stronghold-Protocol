@@ -47,6 +47,13 @@ export class BattleDeploy {
     u.ground = this.grid.isLow(R0, C0) && !this._elevated?.has(k);
     u.markDirty();
     u.hp = u.s.maxHp;
+    // 超限词条「意志 / 脆壳」（业主 2026-10-21）：部署时按最大生命比例加屏障或直接掉血。
+    // 只对玩家侧、只在超限局生效。
+    if (u.side === 'ally' && this.flags && this.flags.overlimit) {
+      const bar = Number(this.flags.allyBarrierPct) || 0;
+      if (bar > 0) this.addBuff(u, { key: 'trait:will', mods: { shield: u.s.maxHp * bar }, duration: Infinity, persist: true });
+      else if (bar < 0) u.hp = Math.max(1, u.hp + u.s.maxHp * bar);
+    }
     // 联防 carry (PRTS 卫戍协议/帮助 §联防阶段 "将对应单位的生命比例、技力修改至与上一阶段结束时相同（召唤物仅修改技力…）"):
     // an operator restores HP/SP, a summon SP only; actual 联防 opening restoration is deferred until Battle.start ends
     const cs = initial || (first && this._startDeploying) ? (carry ?? u.carry) : null;

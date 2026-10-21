@@ -1,0 +1,258 @@
+/* public/css/screens/bossPhaseWarn.css
+   超限双 Boss 第二阶段的过场（业主 2026-10-21）。
+   设计语言取自危机合约：黑-红横板 + 中心白字 + 数据读数条 + 虚线框 + 等宽字。
+   与 public/dev/double-boss-preview.html 是同一套视觉。 */
+
+/* ── 全屏红色预警 · 明日方舟机能风 v3（业主 2026-10-21：加动效）──────────
+   骨架同 v2（黑-红横板 + 居中白字），这里补足「动起来」的部分：
+     ① 横板从中间劈开（clip-path 上下展开）
+     ② 红线自中心向两侧点亮
+     ③ 标题逐字浮现 + 轻微抖屏
+     ④ 背景持续呼吸的红色暗涌
+     ⑤ 扫光循环 + 扫描线滚动
+     ⑥ 四角十字刻度逐个亮起（0.1s 递增）
+     ⑦ 进度条斜纹流动
+     ⑧ 退出时整体上浮淡出                                             */
+.bpwarn {
+  position: fixed; inset: 0; z-index: 50;
+  display: grid; place-items: center;
+  opacity: 0; pointer-events: none;
+  transition: opacity .22s ease;
+}
+.bpwarn.is-on { opacity: 1; pointer-events: auto; }
+.bpwarn.is-out { opacity: 0; pointer-events: none; transition: opacity .3s ease; }
+
+/* ① 全屏底色：黑-红-黑，带持续呼吸的红色暗涌 */
+.warn__flush {
+  position: absolute; inset: 0;
+  background:
+    linear-gradient(180deg,
+      #000 0%, #000 26%,
+      rgba(28,4,2,.96) 30%,
+      rgba(96,14,8,.92) 50%,
+      rgba(28,4,2,.96) 70%,
+      #000 74%, #000 100%);
+}
+.warn__flush::after {
+  content: ''; position: absolute; inset: 30% 0 26%;
+  background: repeating-linear-gradient(0deg, rgba(255,255,255,.02) 0 1px, transparent 1px 3px);
+}
+/* ④ 红色暗涌：一层缓慢放大的径向光，循环呼吸 */
+.warn__pulse {
+  position: absolute; left: 50%; top: 50%;
+  width: 130vw; height: 60vh; transform: translate(-50%,-50%);
+  background: radial-gradient(ellipse at center, rgba(255,70,40,.22), transparent 62%);
+  animation: bpw_warnpulse 2.4s ease-in-out infinite;
+  pointer-events: none;
+}
+@keyframes bpw_warnpulse {
+  0%, 100% { opacity: .5; transform: translate(-50%,-50%) scale(.92); }
+  50%      { opacity: 1;   transform: translate(-50%,-50%) scale(1.08); }
+}
+
+/* ② 上下细红线：从中心向两侧点亮（scaleX 0 → 1） */
+.warn__edge {
+  position: absolute; left: 0; right: 0; height: 2px;
+  background: linear-gradient(90deg, transparent, #ff3b26 12%, #ff6a52 50%, #ff3b26 88%, transparent);
+  box-shadow: 0 0 18px rgba(255,60,40,.7);
+  transform: scaleX(0); transform-origin: center;
+}
+.warn__edge--top { top: 26%; }
+.warn__edge--bottom { bottom: 26%; }
+.bpwarn.is-on .warn__edge--top    { animation: bpw_edgein .5s .05s cubic-bezier(.2,.9,.25,1) forwards; }
+.bpwarn.is-on .warn__edge--bottom { animation: bpw_edgein .5s .11s cubic-bezier(.2,.9,.25,1) forwards; }
+@keyframes bpw_edgein { to { transform: scaleX(1); } }
+
+/* ⑥ 四角十字刻度：逐个亮起 */
+.warn__corner { position: absolute; width: 34px; height: 34px; opacity: 0; }
+.warn__corner::before, .warn__corner::after {
+  content: ''; position: absolute; background: #ff3b26;
+  box-shadow: 0 0 8px rgba(255,60,40,.8);
+}
+.warn__corner::before { width: 100%; height: 1.5px; }
+.warn__corner::after  { width: 1.5px; height: 100%; }
+.warn__corner--tl { top: 16px; left: 16px; }
+.warn__corner--tl::before, .warn__corner--tl::after { top: 0; left: 0; }
+.warn__corner--tr { top: 16px; right: 16px; }
+.warn__corner--tr::before, .warn__corner--tr::after { top: 0; right: 0; }
+.warn__corner--bl { bottom: 16px; left: 16px; }
+.warn__corner--bl::before, .warn__corner--bl::after { bottom: 0; left: 0; }
+.warn__corner--br { bottom: 16px; right: 16px; }
+.warn__corner--br::before, .warn__corner--br::after { bottom: 0; right: 0; }
+.bpwarn.is-on .warn__corner--tl { animation: bpw_tickin .28s .30s ease-out forwards; }
+.bpwarn.is-on .warn__corner--tr { animation: bpw_tickin .28s .40s ease-out forwards; }
+.bpwarn.is-on .warn__corner--bl { animation: bpw_tickin .28s .50s ease-out forwards; }
+.bpwarn.is-on .warn__corner--br { animation: bpw_tickin .28s .60s ease-out forwards; }
+@keyframes bpw_tickin { from { opacity: 0; transform: scale(.5); } to { opacity: .6; transform: scale(1); } }
+
+/* ① 主横板：从中线劈开（上下展开） */
+.warn__body {
+  position: relative; z-index: 2;
+  width: 100%;
+  padding: clamp(46px, 7vh, 74px) 24px clamp(44px, 6.5vh, 70px);
+  display: flex; flex-direction: column; align-items: center;
+  text-align: center;
+  background:
+    linear-gradient(180deg,
+      rgba(18,3,2,.9) 0%,
+      rgba(104,16,9,.86) 26%,
+      rgba(120,20,11,.9) 50%,
+      rgba(104,16,9,.86) 74%,
+      rgba(18,3,2,.9) 100%);
+  border-top: 1px solid rgba(255,80,60,.28);
+  border-bottom: 1px solid rgba(255,80,60,.28);
+  clip-path: inset(50% 0 50% 0);
+  opacity: 0;
+  overflow: hidden;
+}
+.bpwarn.is-on .warn__body {
+  animation: bpw_bandopen .52s cubic-bezier(.16,.9,.24,1) .06s forwards;
+}
+@keyframes bpw_bandopen {
+  0%   { clip-path: inset(50% 0 50% 0); opacity: 0; }
+  30%  { opacity: 1; }
+  100% { clip-path: inset(0 0 0 0);     opacity: 1; }
+}
+
+/* ⑤ 扫光：循环三次 */
+.warn__sweep {
+  position: absolute; top: 0; bottom: 0; left: -30%; width: 22%;
+  background: linear-gradient(90deg, transparent, rgba(255,220,210,.18), transparent);
+  transform: skewX(-20deg); pointer-events: none; opacity: 0;
+}
+.bpwarn.is-on .warn__sweep { animation: bpw_scansw 900ms 420ms cubic-bezier(.2,.9,.25,1) 2 forwards; }
+@keyframes bpw_scansw {
+  0%   { left: -30%; opacity: 1; }
+  100% { left: 118%; opacity: 0; }
+}
+
+/* 横向扫描线（持续滚动，机能风） */
+.warn__scanline {
+  position: absolute; inset: 0; pointer-events: none; opacity: 0;
+  background: linear-gradient(180deg, transparent, rgba(255,90,60,.0) 46%,
+    rgba(255,90,60,.14) 50%, rgba(255,90,60,.0) 54%, transparent);
+  background-size: 100% 42%;
+}
+.bpwarn.is-on .warn__scanline { animation: bpw_scanroll 2.2s 400ms linear infinite; opacity: 1; }
+@keyframes bpw_scanroll { from { background-position: 0 -60%; } to { background-position: 0 160%; } }
+
+/* 顶部等宽小标：打字机式擦入 + 字距收紧 */
+.warn__micro {
+  font: 700 10px/1 ui-monospace, "SF Mono", monospace;
+  letter-spacing: .62em; color: rgba(255,130,110,.9);
+  margin-bottom: 15px; opacity: 0;
+}
+.bpwarn.is-on .warn__micro { animation: bpw_microin .5s .34s cubic-bezier(.2,.9,.25,1) forwards; }
+@keyframes bpw_microin {
+  0%   { opacity: 0; letter-spacing: .62em; clip-path: inset(0 100% 0 0); }
+  100% { opacity: 1; letter-spacing: .46em; clip-path: inset(0 0 0 0); }
+}
+
+/* ③ 主标题：逐字浮现（每字 40ms 递增）+ 轻微抖屏 */
+.warn__title {
+  display: flex; flex-wrap: wrap; justify-content: center; gap: 0 .06em;
+  font-size: clamp(22px, 3.6vw, 40px);
+  font-weight: 900; line-height: 1.3;
+  letter-spacing: .12em; color: #fff;
+  text-shadow: 0 0 22px rgba(255,60,40,.55), 0 2px 0 rgba(0,0,0,.7);
+}
+.warn__title span {
+  display: inline-block; opacity: 0;
+  animation: bpw_charin .34s cubic-bezier(.2,.9,.25,1) forwards;
+}
+.warn__title span:nth-child(1) { animation-delay: .46s; }
+.warn__title span:nth-child(2) { animation-delay: .50s; }
+.warn__title span:nth-child(3) { animation-delay: .54s; }
+.warn__title span:nth-child(4) { animation-delay: .58s; }
+.warn__title span:nth-child(5) { animation-delay: .68s; }
+.warn__title span:nth-child(6) { animation-delay: .72s; }
+.warn__title span:nth-child(7) { animation-delay: .76s; }
+.warn__title span:nth-child(8) { animation-delay: .80s; }
+.warn__title span:nth-child(9) { animation-delay: .84s; }
+@keyframes bpw_charin {
+  0%   { opacity: 0; transform: translateY(8px) scale(1.14); filter: blur(4px); }
+  100% { opacity: 1; transform: translateY(0)   scale(1);    filter: blur(0); }
+}
+.warn__title em span { color: #ffb3a8; }
+
+/* 副行 */
+.warn__sub {
+  margin-top: 14px;
+  display: flex; flex-direction: column; gap: 6px; align-items: center;
+  font-size: clamp(11px, 1.35vw, 13.5px); letter-spacing: .1em;
+  color: #ffc9c0; line-height: 1.8; opacity: 0;
+}
+.bpwarn.is-on .warn__sub { animation: bpw_fadeup .4s .92s ease-out forwards; }
+.warn__sub b { color: #fff; font-weight: 800; }
+@keyframes bpw_fadeup { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+
+/* ⑦ 进度：细轨 + 斜纹流动 */
+.warn__foot {
+  display: flex; align-items: center; gap: 14px;
+  width: min(560px, 78vw); margin-top: 24px; opacity: 0;
+}
+.bpwarn.is-on .warn__foot { animation: bpw_fadeup .4s 1.05s ease-out forwards; }
+.warn__read {
+  font: 700 10px/1 ui-monospace, monospace; letter-spacing: .2em;
+  color: #ff8b7a; white-space: nowrap;
+}
+.warn__read b { color: #fff; }
+.warn__track {
+  flex: 1; height: 4px; background: rgba(0,0,0,.6);
+  box-shadow: inset 0 0 0 1px rgba(255,59,38,.3);
+  overflow: hidden;
+}
+.warn__timer {
+  height: 100%; width: 100%; transform-origin: left center; transform: scaleX(0);
+  background: repeating-linear-gradient(115deg, #ff3b26 0 6px, #a81c0d 6px 12px);
+  background-size: 200% 100%;
+  box-shadow: 0 0 12px rgba(255,60,40,.85);
+  animation: bpw_stripeflow .9s linear infinite;
+}
+@keyframes bpw_stripeflow { from { background-position: 0 0; } to { background-position: 24px 0; } }
+
+/* ⑧ 抖屏：横板展开瞬间整体轻微位移 */
+.bpwarn.is-on .warn__body { animation: bpw_bandopen .52s cubic-bezier(.16,.9,.24,1) .06s forwards,
+                                      bpw_shake .38s .5s ease-out; }
+@keyframes bpw_shake {
+  0%, 100% { transform: translate(0, 0); }
+  20% { transform: translate(-2px, 1px); }
+  40% { transform: translate(2px, -1px); }
+  60% { transform: translate(-1.5px, -1px); }
+  80% { transform: translate(1.5px, 1px); }
+}
+
+/* ── 危机合约式读数条（等宽小字 + 上下虚线框）────────────────────────── */
+.warn__data {
+  position: absolute; left: 0; right: 0;
+  display: flex; justify-content: center; gap: 28px;
+  font: 700 9.5px/1 ui-monospace, "SF Mono", monospace;
+  letter-spacing: .22em; color: rgba(255,140,120,.8);
+  padding: 8px 0; opacity: 0;
+}
+.warn__data::before {
+  content: ''; position: absolute; left: 24px; right: 24px; height: 1px;
+  background: repeating-linear-gradient(90deg, rgba(255,59,38,.55) 0 6px, transparent 6px 12px);
+}
+.warn__data--top { top: 0; }
+.warn__data--top::before { bottom: 0; }
+.warn__data--bottom { bottom: 0; }
+.warn__data--bottom::before { top: 0; }
+.warn__data b { color: #fff; font-weight: 800; letter-spacing: .1em; }
+.bpwarn.is-on .warn__data--top    { animation: bpw_fadeup .4s .30s ease-out forwards; }
+.bpwarn.is-on .warn__data--bottom { animation: bpw_fadeup .4s 1.15s ease-out forwards; }
+
+@media (max-width: 560px) {
+  .warn__title { font-size: 20px; letter-spacing: .08em; }
+  .warn__micro { font-size: 8.5px; }
+  .warn__sub { font-size: 11px; }
+  .warn__foot { width: 86vw; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .warn__body, .warn__title span, .warn__micro, .warn__sub, .warn__foot,
+  .warn__edge, .warn__corner, .warn__sweep, .warn__scanline, .warn__pulse, .warn__timer {
+    animation-duration: .01ms !important; animation-iteration-count: 1 !important;
+  }
+}
+
+
