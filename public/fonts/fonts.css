@@ -30,3 +30,14 @@
   src: url('/fonts/novecento-wide-normal.woff2') format('woff2'),
        url('/fonts/novecento-wide-normal.otf') format('opentype');
 }
+
+  /* 萨卡兹古文字（业主 2026-10-22）：来源 PRTS「泰拉文字」页的 EndfieldFonts，
+     (c) @罗醭坦 自制版本，按 PRTS 授权一览使用。字符与拉丁字母一一对应。 */
+  @font-face {
+    font-family: 'Endfield';
+    font-style: normal;
+    font-weight: 400;
+    font-display: swap;
+    src: url('/fonts/endfield-bold.woff2') format('woff2'),
+         url('/fonts/endfield-bold.ttf') format('truetype');
+  }

@@ -1,4 +1,6 @@
 // public/js/battle/aiDanmakuEvents.js — AI 玩家互动与羁绊/层数名言专属弹幕系统
+// i18n-ignore-file — 这里的文本是**角色原声台词**（律诗与语音原文），不参与界面翻译：
+// 译成英文就不再是那句台词了，官方国际服也保留原文。
 import { getRoomDanmaku } from '../ui/roomDanmaku.js';
 import { pushChatMessage } from '../store.js';
 import { indexPieces } from '../ui/gameLogic.js';
