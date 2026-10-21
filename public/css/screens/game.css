@@ -1182,3 +1182,45 @@
   border-radius: 9px; font: 800 10px/1 var(--font-num); letter-spacing: .06em;
   color: var(--inf-300); background: var(--inf-a20);
   box-shadow: inset 0 0 0 1px var(--inf-a35), 0 0 10px var(--inf-glow); }
+
+/* ── 右侧 EFFECTS 栏 · 横屏手机（业主 2026-10-21）─────────────────────────────
+   以前永远是单列竖排：761×360 的横屏手机，20 条 effect 会有 461px 高、溢出 197px。
+   现在横屏改成「竖排换行」——一列填满就换到左边一列，方向从右往左（靠近屏幕边的先出现），
+   最多两列，超出的收进 +N 角标。竖屏与小屏以上保持原来的单列。 */
+@media (max-height: 460px) {
+  .gm__effects {
+    right: .24rem;
+    top: 2.1rem;
+    max-width: 34vw;
+  }
+  /* 业主 2026-10-21：A 方案 —— 竖排填满几行就换到左边一列（列优先网格，从右往左）。
+     MicroLabel「EFFECTS」隐藏，横屏位置本来就紧。 */
+  .effects {
+    display: grid;
+    grid-auto-flow: column;                                  /* 列优先：先竖满一列再换下一列 */
+    grid-template-rows: repeat(5, .42rem);                   /* 每列 5 个 */
+    grid-auto-columns: .42rem;
+    gap: .06rem;
+    direction: rtl;                                          /* 列从右往左累积 */
+    justify-content: flex-end;
+    align-content: flex-start;
+    max-width: 34vw;
+    overflow: hidden;
+  }
+  .effects > * { direction: ltr; }                           /* 图标内部正常方向 */
+  .effects > .micro { display: none; }                       /* 横屏不显示 EFFECTS 小标 */
+  .effects__more { width: .42rem; height: .42rem; }
+  /* 横屏下图标略收一档，两列排得下更多 */
+  .effect { width: .42rem; height: .42rem; }
+  .effect .icon { width: .24rem; height: .24rem; }
+  .effect__trait { font-size: .22rem; }
+  .effect__n { min-width: .17rem; font-size: .1rem; }
+  .effects .effects__more {
+    display: grid; place-items: center;
+    width: .42rem; height: .42rem;
+    font: 700 .14rem/1 var(--font-num, monospace);
+    color: var(--mint-400);
+    background: rgba(8, 11, 10, .85);
+    border: 1px solid var(--line-2);
+  }
+}

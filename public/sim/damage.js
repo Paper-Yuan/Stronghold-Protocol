@@ -329,6 +329,49 @@ function peekStats(unit) {
 /**
  * Full damage pipeline. Returns the HP actually removed (0 when dodged/cancelled/absorbed).
  */
+/**
+ * 超限词条在战斗里的实际效果（业主 2026-10-21）。
+ * battle.flags 里由 traits.js traitFlags() 写明，但 sim 原本从不读取 —— 这个词条等于白选。
+ * 只处理超限局（flags.overlimit），普通模式原样不动。
+ * @returns {number} 修正后的伤害
+ */
+export function applyTraitModifiers(battle, source, target, dmg, amount) {
+  const f = battle && battle.flags;
+  if (!f || !f.overlimit || !(amount > 0)) return amount;
+  const srcAlly = source && source.side === 'ally';
+  const tgtEnemy = target && target.side === 'enemy';
+  let out = amount;
+  // —— 玩家 → 敌人 ——
+  if (srcAlly && tgtEnemy) {
+    if (f.allyAtkMul > 0) out *= f.allyAtkMul;                       // 强攻 / 虚弱
+    if (f.enemyDmgTakenMul > 0) out *= f.enemyDmgTakenMul;            // 破局 / 壁垒
+  }
+  // —— 敌人 → 玩家 ——
+  if (!srcAlly && target && target.side === 'ally') {
+    if (f.allyTakenMul > 0) out *= f.allyTakenMul;                    // 暴露
+    if (f.allyDefMul > 0) out /= f.allyDefMul;                        // 坚守（防御越高受伤越少）
+    if (f.allyResAdd) {                                               // 坚守 / 破防：法抗 +8 / -8 ≈ ±8% 法术伤害
+      if (dmg && dmg.type === 'arts') out *= Math.max(0.1, 1 - f.allyResAdd / 100);
+    }
+  }
+  // —— 敌人防御（破局 / 壁垒）对玩家刀的影响已在上面按倍率算过；
+  //     敌人法抗（enemyResAdd）同理，按比例折算到法术伤害上。
+  if (srcAlly && tgtEnemy && dmg && dmg.type === 'arts' && f.enemyResAdd) {
+    out *= Math.max(0.1, 1 - f.enemyResAdd / 100);
+  }
+  // —— 浴血 / 颓势：按自身缺失生命提升/降低攻击力 ——
+  if (srcAlly && f.allyAtkByMissingHp) {
+    const u = source;
+    if (u && u.s && u.s.maxHp > 0) {
+      const missing = Math.max(0, 1 - (u.hp / u.s.maxHp));
+      const floor = Number(f.allyAtkByMissingHpFloor) || 0.3;
+      const ratio = Math.max(0, (missing - floor) / Math.max(1e-9, 1 - floor));
+      out *= 1 + f.allyAtkByMissingHp * ratio;
+    }
+  }
+  return out;
+}
+
 export function dealDamage(battle, source, target, dmgIn) {
   if (!target || !target.alive || target.removed || target.hidden || !target.deployed) return 0;
   const dmg = dmgIn && dmgIn._norm ? dmgIn : makeDamageInfo(dmgIn);
@@ -350,7 +393,12 @@ export function dealDamage(battle, source, target, dmgIn) {
   // dodge. The yellow MISS (PRTS: a hit that would have been red, dodged) is classified after the existing roll
   // and does not roll again. Source stats are peeked so a dirty attacker is not refreshed just to label the dodge.
   if (dmg.canDodge && (type === 'phys' || type === 'arts')) {
-    const p = type === 'phys' ? ts.dodgePhys : ts.dodgeArts;
+    let p = type === 'phys' ? ts.dodgePhys : ts.dodgeArts;
+    // 超限词条「灵巧」：所有我方单位 +15% 物理/法术闪避
+    const tf = battle.flags;
+    if (tf && tf.overlimit && target.side === 'ally') {
+      p = Math.min(0.95, p + (type === 'phys' ? (tf.allyDodgePhys || 0) : (tf.allyDodgeArts || 0)));
+    }
     if (p > 0 && battle.rng() < p) {
       const peeked = !dmg.sourceless ? peekStats(source) : null;
       const red = officialDamageMark(landedPreShield(dmg, type, ts, peeked, target), officialExpectedAmount(dmg, type, ts, target)) === 'r';
@@ -374,6 +422,10 @@ export function dealDamage(battle, source, target, dmgIn) {
   // 无来源 damage (element bursts) takes nothing from its source's stats; the source still gets the credit below
   const ss = source && source.s && !dmg.sourceless ? source.s : null;
   let final = landedPreShield(dmg, type, ts, ss, target);
+  // 业主 2026-10-21：超限词条的战斗效果。traitFlags() 一直在往 battle.flags 里塞
+  // allyAtkMul / allyTakenMul / enemyDefMul 等，但 sim 从来没人读 —— 词条等于没生效。
+  // 这里在伤害落定之后统一应用（玩家→敌人 / 敌人→玩家两个方向）。
+  final = applyTraitModifiers(battle, source, target, dmg, final);
   // 无限火力 复活免伤窗口：复活后 invulnSec 秒内受到的所有伤害 ×0.1（含真伤/即死线）。
   if (battle.rm && battle.rm.budget && target.side === 'enemy' && target._reviveInvulnUntil != null && battle.time < target._reviveInvulnUntil) {
     final *= battle.rm.budget.revive.invulnMul ?? 0.1;

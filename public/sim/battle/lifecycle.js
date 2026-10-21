@@ -81,6 +81,8 @@ export class BattleLifecycle {
         for (const ps of this.players) ps.dp = Math.min(this.flags.dpMax, ps.dp + this.flags.dpPerSec * dt);
       });
       this._phase('buffs', () => this._tickBuffs(dt));
+      // 超限词条「再生 / 腐蚀」（业主 2026-10-21）：每 2 秒全体干员回复 / 损失百分比生命。
+      this._phase('traitDot', () => this._tickTraitDot(dt));
       // Allies whose attack comes off cooldown this tick keep the target they have now, before enemies move.
       this._phase('attackCommit', () => noteAttackCommit(this, dt));
       this._phase('enemies', () => {
@@ -255,4 +257,27 @@ export class BattleLifecycle {
     if (this._result) return this._result;
     return this._buildResult();
   }
+  /**
+   * 超限词条「再生 / 腐蚀」：每 2 秒给所有存活干员回复 / 扣除百分比生命。
+   * flags.allyRegenPct / allyCorrodePct（traits.js traitFlags）。
+   */
+  _tickTraitDot(dt) {
+    const f = this.flags;
+    if (!f || !f.overlimit) return;
+    const regen = Number(f.allyRegenPct) || 0;
+    const corrode = Number(f.allyCorrodePct) || 0;
+    if (!regen && !corrode) return;
+    this._traitDotAcc = (this._traitDotAcc || 0) + dt;
+    if (this._traitDotAcc < 2) return;
+    this._traitDotAcc -= 2;
+    for (const u of this.allies || []) {
+      if (!u || !u.alive || !u.deployed || !u.s) continue;
+      const delta = u.s.maxHp * (regen + corrode);
+      if (!delta) continue;
+      u.hp = Math.max(0, Math.min(u.s.maxHp, u.hp + delta));
+      u.markDirty?.();
+      if (u.hp <= 0) this._kill?.(u, 'trait');
+    }
+  }
+
 }
