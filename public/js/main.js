@@ -34,6 +34,7 @@
 
 // Polyfills first (older Safari / Firefox ESR): every module evaluated after this one sees them.
 import './ui/compat.js';
+import { installDeviceTier } from './ui/deviceTier.js';
 import { startIdleDim } from './ui/idleDim.js';
 import { render } from '../vendor/preact.module.js';
 import { useErrorBoundary } from '../vendor/hooks.module.js';
@@ -67,6 +68,11 @@ import { t, N_, translateWire } from '../../shared/i18n.js';
 import { recordError, installTrafficMeter } from './diag.js';
 import { installContent, installContentSet } from './content.js';
 import { cosmetics } from './cosmetics.js';
+
+// 设备档位探测（业主 2026-10-21）：内存 + GPU 型号 → window.__GAME_QUALITY__.isLowEnd。
+// 以前是内联 IIFE，探测用的 WebGL 上下文不释放（浏览器活跃上限 2–4 个，可能挤掉战场那个），
+// 还会全局劫持 getContext。现在放进 ui/deviceTier.js，探测完立刻 loseContext。
+installDeviceTier();
 
 const RESTORE_GRACE_MS = 1500;
 const JOIN_DELAY_MS = 350;

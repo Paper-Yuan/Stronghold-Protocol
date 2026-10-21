@@ -242,6 +242,11 @@ export function seedAssets(store) {
  * @param {{ signal?: AbortSignal }} [options] Cancels a pending mount without creating a fallback.
  * @returns {Promise<ReturnType<typeof guardView>>}
  */
+/** 荣耀 / 华为：那批机型的 WebGL 有已知的假渲染问题，检测只为它们做。 */
+function isHonorDevice() {
+  try { return /Honor|HONOR|Huawei|HUAWEI/i.test(navigator.userAgent || ''); } catch { return false; }
+}
+
 export async function mountFieldView(host, { signal } = {}) {
   checkActive(signal);
   const pref = renderPref();
@@ -275,6 +280,28 @@ export async function mountFieldView(host, { signal } = {}) {
       });
       const view = await withTimeout(pending, LOAD_TIMEOUT_MS, 'createFieldView', controller.signal);
       checkActive(controller.signal);
+      // 荣耀/华为的「假渲染」检测（业主 2026-10-21 重做）：
+      //   以前新建一个 canvas 去 getContext 读型号 —— 浏览器同时在活的 WebGL 上下文只有 2–4 个，
+      //   战场已经占了一个，再开一个可能把战场那个挤掉，反而自己造出黑屏；而且硬等 800ms 才检测。
+      //   现在复用战场自己的 gl，只等一帧，判据也从「左下角 1 个像素全 0」改成「读画面中心 8×8 全空」，
+      //   背景本来就是透明的（backgroundAlpha 0），单点读 0 是正常现象。
+      if (isHonorDevice()) {
+        try {
+          const gl = view?.renderer?.gl || view?.app?.renderer?.gl || null;
+          if (gl) {
+            await new Promise((r) => requestAnimationFrame(() => r()));
+            const w = gl.drawingBufferWidth || 0;
+            const h = gl.drawingBufferHeight || 0;
+            if (w >= 8 && h >= 8) {
+              const buf = new Uint8Array(8 * 8 * 4);
+              gl.readPixels(Math.max(0, (w >> 1) - 4), Math.max(0, (h >> 1) - 4), 8, 8, gl.RGBA, gl.UNSIGNED_BYTE, buf);
+              let any = false;
+              for (let k = 3; k < buf.length; k += 4) { if (buf[k] !== 0) { any = true; break; } }
+              if (!any) throw new Error('GPU_RENDER_FALSE_POSITIVE_BLACK_SCREEN');
+            }
+          }
+        } catch (e) { if (String(e && e.message).includes('FALSE_POSITIVE')) throw e; /* 其他异常放行 */ }
+      }
       const missing = METHODS.filter((k) => typeof view?.[k] !== 'function');
       if (missing.length) throw new Error(`view lacks ${missing.join(', ')}`);
       return guardView(view, 'engine');

@@ -136,6 +136,7 @@
 // The helpers live in public/js/render/app/*.js and are re-exported below, so existing imports keep
 // working. createFieldView stays here: it is one closure over the view's own state.
 
+import { isLowEndDevice } from '../ui/deviceTier.js';
 import { GEO, ANIM } from '../../../shared/constants.js';
 import { fxForm } from '../../../shared/protocol.js';
 import { Camera, presetCamera, lerpCamera, easeInOutCubic, pickTile, normRect } from './projection.js';
@@ -215,7 +216,11 @@ export async function createFieldView(host, options = {}) {
   signal?.throwIfAborted();
 
   const size = () => ({ width: Math.max(1, host.clientWidth || 1), height: Math.max(1, host.clientHeight || 1) });
-  const dpr = () => Math.min(globalThis.devicePixelRatio || 1, QUALITY_RES[settings.quality] || 2);
+    // 设备档位（业主 2026-10-21）：低端机**封顶 1.5**，不是硬锁 1.0 ——
+    // 以前 <8GB 一律锁 1.0，骁龙 7 系 + 6GB 也跟着糊；而且 high 档本身就允许 2.0。
+    // 现在只把上限压下来一档，画质损失小、性能收益仍在（填充率降一半以上）。
+    const dprCap = isLowEndDevice() ? Math.min(QUALITY_RES[settings.quality] || 2, 1.5) : (QUALITY_RES[settings.quality] || 2);
+    const dpr = () => Math.min(globalThis.devicePixelRatio || 1, dprCap);
   const boardDpr = () => Math.min(globalThis.devicePixelRatio || 1, BOARD_RES[settings.quality] || 2,
     // 慢 GPU（驱动被 blocklist 的机型）：棋盘按 1x 渲染，省一半以上的填充率，画面仍完整
     boardSlow ? 1 : Infinity);
