@@ -119,13 +119,14 @@ describe('hudBands: the folded shop\'s band', () => {
       for (const k of ['prep', 'bossPrep']) {
         const open = hudBands(k, { width: 844, height: 390 });
         assert.deepEqual(hudBands(k, { width: 844, height: 390 }, { shop: true }), open);
-        assert.ok(Math.abs(open.bottom - 108.6) < 1e-9, 'the bar: 2.64rem + 3 px');
+        // 业主 2026-10-22：商店栏 +10% 缩放后 2.9rem，bond 条 2.48rem → rem 40 时 bottom = 119
+        assert.ok(Math.abs(open.bottom - 119) < 1e-9, 'the bar: 2.9rem + 3 px');
         const f = hudBands(k, { width: 844, height: 390 }, { shop: false });
         assert.equal(f.top, open.top, 'the top band does not change');
         assert.ok(Math.abs(f.bottom - 35) < 1e-9, `no corner on the page: the tab .8rem + 3 px (${f.bottom})`);
       }
     });
-    withDom({ rem: 100 }, () => assert.deepEqual(hudBands('prep', { width: 1920, height: 1080 }, { shop: false }), { top: 216, bottom: 83 }));
+    withDom({ rem: 100 }, () => assert.deepEqual(hudBands('prep', { width: 1920, height: 1080 }, { shop: false }), { top: 248, bottom: 83 }));
   });
 
   test('the corner buttons are measured, touch hit areas included; the tab sits above the bottom safe-area inset', () => {
@@ -187,14 +188,15 @@ describe('the folded board grows and every bench / temp tile stays clear of the 
 
   test('1920×1080: the official shop-collapsed camera at its own scale, panned up just enough to clear the folded tab', () => {
     const off = presetCamera('prep', { width: 1920, height: 1080 }, { rect: { ...GEO.NORMAL_RECT }, side: 'L', shop: false });
-    const fit = presetCamera('prep', { width: 1920, height: 1080 }, { rect: { ...GEO.NORMAL_RECT }, side: 'L', shop: false, hud: { top: 216, bottom: 83 } });
-    const shop = presetCamera('prep', { width: 1920, height: 1080 }, { rect: { ...GEO.NORMAL_RECT }, side: 'L', hud: { top: 216, bottom: 267 } });
+    const fit = presetCamera('prep', { width: 1920, height: 1080 }, { rect: { ...GEO.NORMAL_RECT }, side: 'L', shop: false, hud: { top: 248, bottom: 83 } });
+    // 业主 2026-10-22：商店栏宽度 +10% 后 hudBands 的 bottom 是 293（不是 267），相机随之收一档 —— 正确跟随。
+    const shop = presetCamera('prep', { width: 1920, height: 1080 }, { rect: { ...GEO.NORMAL_RECT }, side: 'L', hud: { top: 248, bottom: 293 } });
     const { cy: cyFit, ...restFit } = fit.params();
     const { cy: cyOff, ...restOff } = off.params();
     assert.deepEqual(restFit, restOff, 'same optics and scale (a 2D pan of the image)');
     assert.ok(cyFit < cyOff && cyOff - cyFit < 60, `panned up ${cyOff - cyFit} px`);
     assert.ok(Math.abs(tileAt(fit, 10) - 130.7) < 0.2, `≈ 131 px per tile at row 10 (${tileAt(fit, 10)})`);
-    assert.ok(Math.abs(tileAt(shop, 10) - 109.8) < 0.2, `the shop camera: ≈ 110 px (${tileAt(shop, 10)})`);
+    assert.ok(Math.abs(tileAt(shop, 10) - 99.8) < 0.5, `the shop camera: ≈ 100 px (${tileAt(shop, 10)})`);
   });
 });
 

@@ -166,7 +166,8 @@ test('the module card reads its talent changes at the operator\'s 潜能, as 局
   // the detail hands the operator's 潜能 to it — the stored one (cultivationView: opsOf(ops, charId).potential) when the
   // operator has a 潜能 curve; a data plugin's operator without one gets none, the full-potential text (DESIGN §32.5)
   const src = readFileSync(path.join(ROOT, 'public/js/screens/loadout.js'), 'utf8');
-  assert.match(src, /<\$\{ModuleInfo\} m=\$\{m\} golden=\$\{golden\} opt=\$\{modOpt\} potential=\$\{cv\.potentialOn \? cv\.potential : null\} \/>/);
+  // 业主 2026-10-22：潜力值改由 opsOf(ops, chess.charId).potential 直接算（cv.potentialOn 那套没了）。
+  assert.match(src, /<\$\{ModuleInfo\} m=\$\{m\} golden=\$\{golden\} opt=\$\{modOpt\} potential=\$\{opsOf\(ops, chess\.charId\)\.potential\} \/>/);
   const cult = readFileSync(path.join(ROOT, 'public/js/screens/cultivation.js'), 'utf8');
   assert.match(cult, /const cur = opsOf\(ops, charId\);\n  const potentialOn = potentialEditable\(charId, tables\);\n  return \{\n    potential: cur\.potential,/);
 });
@@ -189,8 +190,11 @@ test('css: the head and the rows share one grid (columns aligned), quick targets
   const css = readFileSync(path.join(ROOT, 'public/css/screens/loadout.css'), 'utf8');
   assert.match(css, /\.lo-list__head, \.lo \.lo-card \{ display: grid; grid-template-columns: var\(--cols\);/);
   assert.match(css, /\.sp-coarse \.lo-list \{ --q: max\(\.44rem, 40px\); \}/);
-  const block = css.slice(css.indexOf('@media (max-width: 1000px) {\n  .lo-body'));
-  assert.match(block, /\.lo-body \{ grid-template-columns: minmax\(0, 1fr\); \}/);
+  // 2026-10-22: 该媒体块的第一个规则不再是 .lo-body（前面多了 .lo-count / .lo-top 那些），
+  // 切片改成从块首开始，后面再断言 .lo-body 的单列规则。
+  const block = css.slice(css.indexOf('@media (max-width: 1000px) {'));
+  // 2026-10-22: 该块现在前面多了注释，断言放宽到「含这条规则」。
+  assert.match(block, /\.lo-body \{[^}]*grid-template-columns: minmax\(0, 1fr\)[^}]*\}/);
   assert.match(block, /\.lo-detail-wrap \{ display: none; \}/);
   assert.ok(!/\.lo-grid\b/.test(css), 'the old card grid is gone');
 });

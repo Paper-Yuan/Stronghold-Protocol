@@ -113,6 +113,10 @@ html:not(.sp-in-match) .toast-host { margin-top: var(--sa-t); }
 /* Match controls keep the same rem proportions on landscape phones. The invisible touch targets above provide
    the extra tap area without enlarging the HUD or pushing the board out of its normal frame. */
 @media (max-height: 600px) and (pointer: coarse), (max-height: 600px) and (any-pointer: coarse) {
+  /* 业主 2026-10-22：横屏手机上齿轮要有 34 px 的可点区（.56rem 在窄屏只有 ~19 px 点不准），
+     图标保持它的一半。桌面端仍是 .56rem / .28rem。 */
+  .gm__gear { width: max(.56rem, 34px); height: max(.56rem, 34px); }
+  .gm__corner .gm__gear .icon { width: max(.28rem, 17px); height: max(.28rem, 17px); }
   .ewheel__panel { scale: 1.3; transform-origin: 0 100%; }
   .fwheel__cancel { min-height: 30px; }
   .set-toggle, .set-seg button { height: max(.38rem, 30px); }

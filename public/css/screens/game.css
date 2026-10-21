@@ -543,6 +543,7 @@
 
 /* ---- corner: emote + settings --------------------------------------------------------------------------------- */
 .gm__corner { position: absolute; left: .24rem; bottom: .24rem; display: flex; align-items: flex-end; gap: .1rem; }
+/* 业主 2026-10-22：手机上齿轮要有 34 px 的可点区（.56rem 在窄屏只有 ~19 px 点不准）；max() 同时保住桌面 rem 缩放。 */
 .gm__gear {
   width: .56rem; height: .56rem; display: grid; place-items: center; background: rgba(8, 11, 10, .85);
   border: 1px solid var(--line-2); color: var(--text-lo); transition: color var(--t-fast), border-color var(--t-fast);

@@ -981,15 +981,18 @@ export function createBattleRunner(deps) {
      */
     setBattleSpeed(speed) {
       const v = Number(speed) > 0 ? Number(speed) : 2;
-      for (const e of [...entries.values(), ...pending.values()]) {
-        if (!e || e.done || !(e.speed > 0)) continue;
-        if (e.speed === v) continue;
+      let changed = false;
+      // 只动**已经在跑**的战斗。pending 里那些内容集还没加载好，碰它们会把
+      // 「content set ... is not loaded on this page」广播出去（plugins-content 测试）。
+      for (const e of entries.values()) {
+        if (!e || e.done || !(e.speed > 0) || e.speed === v) continue;
         const elapsedGame = ((clock() - e.t0) / 1000) * e.speed;   // 已推进的游戏时间（秒）
         e.speed = v;
-        e.t0 = clock() - (elapsedGame / v) * 1000;
+        e.t0 = clock() - (elapsedGame / v) * 1000;                 // 换速不跳进度
         e.lastProgressAt = -Infinity;
+        changed = true;
       }
-      publishState();
+      if (changed) publishState();
     },
     /**
      * 设置「作战统计」. Ignored when `deps.combatMetrics` pins the runner. Off detaches meters already attached.

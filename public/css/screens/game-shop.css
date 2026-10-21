@@ -88,6 +88,7 @@
 /* A tap anywhere on a card is the card's tap (no ⓘ corner — user playtest #6 item 10); the 确认购买 strip takes no
    pointer. The detail opens with the first tap, a right-click / long press, or a tap while the bar is not editable. */
 .scard-wrap { display: flex; }
+/* 业主 2026-10-22：卡片宽度 1.56rem → 1.72rem（+10%），为了放下更长的名字与价格。 */
 .scard {
   --tc: var(--tier-1);
   position: relative; width: 1.72rem; height: 2.24rem; padding: 0; overflow: hidden; text-align: left;

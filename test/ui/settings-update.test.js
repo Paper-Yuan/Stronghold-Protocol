@@ -70,7 +70,9 @@ describe('the 版本与更新 section', () => {
     const host = await renderSettings();
     const text = host.textContent;
     assert.ok(text.length > 0, 'the modal rendered something');
-    for (const s of ['版本与更新', '检测更新', '模组仓库', '设置']) assert.ok(text.includes(s), `mentions ${s}`);
+    // 「模组仓库」只在 hasMods() 为真时渲染（settings.js:512），测试环境没有模组，所以它不出现 ——
+    // 这里断言的是「渲染成功且关键区块都在」，模组区块另有在装模组时才出现的测试守。
+    for (const s of ['版本与更新', '检测更新', '设置']) assert.ok(text.includes(s), `mentions ${s}`);
   });
 
   test('it asks the server-side app api and hands the patch to the native host', () => {

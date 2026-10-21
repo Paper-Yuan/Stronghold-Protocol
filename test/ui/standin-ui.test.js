@@ -248,7 +248,12 @@ describe('match UI of a not-owned chess', () => {
     assert.match(card.props['aria-label'], /^Sharp（银灰的替补），价格 3/);
     assert.ok(srcsOf(card).some((u) => u.includes('char_609_acguad_1')), 'the stand-in\'s portrait');
     assert.ok(!srcsOf(card).some((u) => u.includes('svrash')), 'not the replaced operator\'s');
-    assert.ok(textOf(nodes.find((v) => hasClass(v, 'scard__class'))).includes(sharp().subProfessionName), 'the stand-in\'s class (无畏者)');
+    // 2026-10-22：卡面上的职介已经改成**图标**（.scard__prof，profIconUrl(c.profession)），文字位置让给「剩余 N 张」，
+    // 所以断言换成「图标在、且是这个替补的职业图标」。
+    const cls = nodes.find((v) => hasClass(v, 'scard__class'));
+    const profImg = cls ? [...walk(cls)].find((v) => v?.props?.class === 'scard__prof') : null;
+    assert.ok(profImg, 'the class icon');
+    assert.match(String(profImg.props.src || ''), /warrior/, `the stand-in's class icon (${sharp().subProfessionName})`);
     const bonds = nodes.filter((v) => hasClass(v, 'scard__bond')).map((v) => v.key);
     assert.deepEqual(bonds, getChess(SILVER).bonds, 'the chess\'s bonds still count');
     const skill = nodes.find((v) => v?.type && v.props?.lo);

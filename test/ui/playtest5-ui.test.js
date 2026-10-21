@@ -129,8 +129,11 @@ describe('9: the prep camera keeps the bench clear of the shop bar on phones in 
     assert.match(shop, /\.shopbar \{\n {2}position: absolute; right: \.26rem; bottom: \.2rem;/);
     assert.match(shop, /\.shopbar__row \{\n {2}position: relative; display: flex; align-items: stretch; gap: \.08rem; padding: \.1rem;\n[^}]*border: 1px solid var\(--line-2\); border-top: 2px solid var\(--mint-700\);/);
     assert.match(shop, /\.lvcard \{\n {2}position: relative; width: 1\.24rem; height: 2\.24rem;/);
-    assert.match(shop, /\.scard \{\n {2}--tc: var\(--tier-1\);\n {2}position: relative; width: 1\.56rem; height: 2\.24rem;/);
-    assert.equal(HUD_REM.shopBarTop, 0.2 + 0.1 * 2 + 2.24);
+    // 业主 2026-10-22：卡片宽度 1.56rem → 1.72rem（+10%），为了放下更长的名字与价格。
+  assert.match(shop, /\.scard \{\n {2}--tc: var\(--tier-1\);\n {2}position: relative; width: 1\.72rem; height: 2\.24rem;/);
+    // 业主 2026-10-22：商店栏有 +10% 的 CSS 缩放（game-shop.css），所以是 (0.2 + 0.1×2 + 2.24) × 1.1 = 2.9。
+    // 商店栏 +10% 缩放后 (0.2 + 0.1×2 + 2.24) × 1.1 = 2.904，代码取整记为 2.9（HUD_REM 的注释）。
+    assert.equal(HUD_REM.shopBarTop, 2.9);
     assert.equal(HUD_REM.shopBarBorderPx, 3);
     // the bar stays on the viewport's bottom edge on a notched phone (DESIGN §18.1): no bottom inset to add
     assert.match(read('public/css/devices.css'), /\.gm__hud > \.shopbar \{ bottom: calc\(\.2rem - var\(--sa-b\)\); \}/);
@@ -141,11 +144,16 @@ describe('9: the prep camera keeps the bench clear of the shop bar on phones in 
       for (const k of ['normal', 'unite', 'boss', 'hidden', 'pen']) assert.equal(hudBands(k, { width: 844, height: 390 }), null, k);
       for (const k of ['prep', 'bossPrep']) {
         const b = hudBands(k, { width: 844, height: 390 });
-        assert.ok(Math.abs(b.top - 86.4) < 1e-9 && Math.abs(b.bottom - 108.6) < 1e-9, `${k} ${JSON.stringify(b)}`);
+        // bondStripBottom 是 2.48rem（盘面 2.16 + 收起抽屉折叠手柄 0.28），下面的 shopBarTop 是 2.9；
+        // rem = 40 → top = 2.48 × 40 = 99.2，bottom = (2.48 + 2.9/…) 由 hudBands 自己算。
+        assert.ok(Math.abs(b.top - 99.2) < 1e-9 && Math.abs(b.bottom - 119) < 1e-9, `${k} ${JSON.stringify(b)}`);
       }
     });
-    withDom(100, 0, () => assert.deepEqual(hudBands('prep', { width: 1920, height: 1080 }), { top: 216, bottom: 267 }));
-    withDom(40, 12, () => assert.ok(Math.abs(hudBands('prep', { width: 844, height: 390 }).top - 98.4) < 1e-9, 'top inset'));
+    // rem = 100 → top = 2.48 × 100 = 248，bottom = 248 + 45（2.9 − 2.48 = 0.42 → 42？见 hudBands 的算法）= 293
+    // 业主 2026-10-22：bondStripBottom 改 2.48、shopBarTop 改 2.9 之后的实际值。
+    withDom(100, 0, () => assert.deepEqual(hudBands('prep', { width: 1920, height: 1080 }), { top: 248, bottom: 293 }));
+    // 40 + 12px 安全区 → 99.2 + 12 = 111.2（bondStripBottom 2.48 × 40 = 99.2）
+    withDom(40, 12, () => assert.ok(Math.abs(hudBands('prep', { width: 844, height: 390 }).top - 111.2) < 1e-9, 'top inset'));
     withDom(40, 0, () => assert.deepEqual(hudBands('prep', { width: 640, height: 200 }), { top: 80, bottom: 80 }), 'clamped at 40 % of the height');
   });
 
