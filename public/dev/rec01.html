@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>REC 01 · FREQUENCY</title>
+<link rel="stylesheet" href="/dev/puzzle-demo.css">
+</head>
+<body>
+<div class="corner"><span class="sarkaz">whhzkypkn</span></div>
+
+<main class="wrap">
+  <header class="rec-head">
+    <span class="rec-head__no">REC 01</span>
+    <h1 class="rec-head__title">FREQUENCY</h1>
+    <p class="rec-head__sub">五段信号，五种写法。逐段读回来。</p>
+  </header>
+
+  <section class="fragwall" id="fragwall"></section>
+
+  <section class="lockrow">
+    <span class="lockrow__cap">FREQUENCY</span>
+    <div class="lockrow__slots" id="slots"></div>
+    <span class="lockrow__state" id="lockState">0 / 5</span>
+  </section>
+
+  <div class="rec-form">
+    <p class="msg" id="msg"></p>
+    <button class="enter" id="go" type="button" aria-label="ACCESS" disabled></button>
+  </div>
+</main>
+
+<script type="module" src="/dev/rec01.js"></script>
+</body>
+</html>

@@ -22,7 +22,7 @@
 import { ResumeMatchButton } from '../ui/resumeMatch.js';
 import { AssetDownloadButton } from '../ui/assetDownload.js';
 import { AssetImportButton } from '../ui/assetImport.js';
-import { useEffect, useMemo, useState } from '../../vendor/hooks.module.js';
+import { useEffect, useMemo, useState , useRef } from '../../vendor/hooks.module.js';
 import { NAME_MAX_LEN, APP_VERSION, DEV_BUILD } from '../../../shared/constants.js';
 import { html, Button, Icon, MicroLabel, TextField, PingPill } from '../ui/components.js';
 import { GuideButton } from '../ui/guide.js';
@@ -171,6 +171,16 @@ export function TitleScreen() {
     if (currentName) setName((draft) => draft || currentName);
   }, [currentName]);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  // 彩蛋入口（业主 2026-10-22）：连点页脚的版本号 5 次进 /arg/ —— 那套 REC 解谜页不放在任何菜单里，
+  // 只有知道的人点得到。计数放在 ref 里，5 次后整页跳转。
+  const egg = useRef({ n: 0, at: 0 });
+  const eggClick = () => {
+    const now = Date.now();
+    const e = egg.current;
+    e.n = now - e.at > 1500 ? 1 : e.n + 1;
+    e.at = now;
+    if (e.n >= 5) { e.n = 0; globalThis.location.href = '/arg/puzzle-demo.html'; }
+  };
   // the list of the server's plugins once loaded (ui/pluginPanel.js — a component in state: set through an updater)
   const [Installed, setInstalled] = useState(null);
   const openPlugins = () => {
@@ -285,7 +295,10 @@ export function TitleScreen() {
         <${ThanksMarquee} />
         <span class="title-foot__meta">
           <a class="title-repo" href="https://github.com/sganggs/Stronghold-Protocol" target="_blank" rel="noopener noreferrer">${t('项目仓库')}</a>
-          <${MicroLabel}>v${APP_VERSION} · WEB SIMULATION<//>
+          <span class="title-egg" role="button" tabIndex=0 title="" onClick=${eggClick}
+            onKeyDown=${(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); eggClick(); } }}>
+            <${MicroLabel}>v${APP_VERSION} · WEB SIMULATION<//>
+          </span>
           ${DEV_BUILD ? html`<span class="title-dev" role="note">${t('开发版 · 不稳定，请勿用于公开服务器')}</span>` : null}
         </span>
       </div>

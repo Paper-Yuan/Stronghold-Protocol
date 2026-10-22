@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>REC 02 · TRANSMISSION</title>
+<link rel="stylesheet" href="/fonts/fonts.css">
+<link rel="stylesheet" href="/arg/puzzle-demo.css">
+</head>
+<body>
+<div class="corner"><span class="sarkaz">whhzkypkn</span></div>
+
+<main class="wrap">
+  <header class="rec-head">
+    <span class="rec-head__no">REC 02</span>
+    <h1 class="rec-head__title">TRANSMISSION</h1>
+    <p class="rec-head__sub">八段电报。点与划，都是名字的形状。</p>
+  </header>
+
+  <section class="fragwall fragwall--morse" id="fragwall"></section>
+
+  <section class="lockrow">
+    <span class="lockrow__cap">CALLSIGN</span>
+    <div class="lockrow__slots" id="slots"></div>
+    <span class="lockrow__state" id="lockState">0 / 8</span>
+  </section>
+
+  <div class="rec-form">
+    <p class="msg" id="msg"></p>
+    <button class="enter" id="go" type="button" aria-label="ACCESS" disabled></button>
+  </div>
+</main>
+
+<script type="module" src="/arg/rec02.js"></script>
+</body>
+</html>

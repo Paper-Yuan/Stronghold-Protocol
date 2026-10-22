@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>REC 00 · ACCESS</title>
+<link rel="stylesheet" href="/fonts/fonts.css">
+<link rel="stylesheet" href="/arg/puzzle-demo.css">
+</head>
+<body>
+<!-- 左上角：极淡的萨卡兹文档号 -->
+<div class="corner" aria-label="校验">
+  <span class="sarkaz">whhzkypkn</span>
+  <span class="sarkaz">L4</span>
+</div>
+
+<main class="wrap">
+  <!-- 登录区（参考 standbyherside） -->
+  <section class="login-sec">
+    <form id="login" autocomplete="off">
+      <div class="fld">
+        <div class="fld__cap">USERNAME/</div>
+        <input class="fld__in" id="user" name="user" spellcheck="false">
+      </div>
+      <div class="fld">
+        <div class="fld__cap">PASSWORD/</div>
+        <input class="fld__in" id="pass" name="pass" type="password" spellcheck="false">
+      </div>
+      <p class="msg" id="msg"></p>
+      <span class="forget">FORGET PASSWORD?</span>
+      <button class="enter" type="submit" aria-label="ACCESS"></button>
+    </form>
+  </section>
+
+  <!-- 棋盘 -->
+  <section class="boardsec">
+    <div class="board" id="board"></div>
+    <div class="legend">
+      <div class="legend__row"><span class="legend__cap">ACROSS</span><div class="legend__nums" id="across"></div></div>
+      <div class="legend__row"><span class="legend__cap">DOWN</span><div class="legend__nums" id="down"></div></div>
+    </div>
+  </section>
+
+  <div class="foot">
+    <span class="foot__cap">EXTRACT</span>
+    <span class="foot__val" id="code">?????????</span>
+  </div>
+</main>
+
+<script type="module" src="/arg/puzzle-demo.js"></script>
+</body>
+</html>
