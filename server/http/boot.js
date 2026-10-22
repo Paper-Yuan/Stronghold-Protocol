@@ -25,14 +25,38 @@ import { ROOT } from './config.js';
  * to one URL (`limitKeyOf`).
  * @param {number} port
  */
+// 2026-10-22: 加速器 / 虚拟机 / 隧道会装上自己的网卡，它们的地址既连不到别的设备，
+// 还会排到真局域网前面（UU 加速器一启动，横幅就从 192.168.x.x 变成 26.26.26.26，
+// 群里的人照着输就连不上）。下面把这类网卡和无效地址挑掉，并让常见家用网段排在前面。
+// 网卡名里**含**这些词就算虚拟（VMware 的是 "VMware Network Adapter VMnet8"，不是以 vmware 结尾）
+const VIRTUAL_IFACE = /(tap|tun|wintun|wireguard|openvpn|vethernet|vmware|vmnet|virtualbox|vbox|hyper-?v|hamachi|zerotier|tailscale|uu加速|uu加速器|netease|clash|v2ray|xray)/i;
+const VIRTUAL_NET = [
+  /^26\./,                       // 网易 UU 加速器的虚拟网段
+  /^169\.254\./,                // APIPA：拿不到 DHCP 时的自分配地址，连不通
+  /^198\.1[89]\./,              // 基准测试段，虚拟机/隧道常借来用
+];
+const isVirtualAddress = (name, address) => VIRTUAL_IFACE.test(name || '') || VIRTUAL_NET.some((re) => re.test(address));
+
+/** 家用局域网优先级：192.168 → 10 → 172.16–31 → 其它。 */
+const lanRank = (address) => {
+  if (/^192\.168\./.test(address)) return 0;
+  if (/^10\./.test(address)) return 1;
+  if (/^172\.(1[6-9]|2\d|3[01])\./.test(address)) return 2;
+  return 3;
+};
+
+/**
+ * @param {number} port
+ */
 export function lanUrls(port) {
   const v4 = [];
   const v6 = [];
   const v6Seen = new Set();
-  for (const addrs of Object.values(os.networkInterfaces())) {
+  for (const [name, addrs] of Object.entries(os.networkInterfaces())) {
     for (const a of addrs || []) {
       if (a.internal) continue;
-      if (a.family === 'IPv4' || a.family === 4) { v4.push(`http://${a.address}:${port}`); continue; }
+      if (isVirtualAddress(name, a.address)) continue;
+      if (a.family === 'IPv4' || a.family === 4) { v4.push(a.address); continue; }
       if (a.family !== 'IPv6' && a.family !== 6) continue;
       if (/^fe80:/i.test(a.address)) continue;
       const prefix = limitKeyOf(a.address);
@@ -41,7 +65,9 @@ export function lanUrls(port) {
       v6.push(`http://[${a.address}]:${port}`);
     }
   }
-  return [...v4, ...v6];
+  // 真局域网排在前面（同一档里保持系统给的顺序），再拼回 URL
+  v4.sort((x, y) => lanRank(x) - lanRank(y));
+  return [...v4.map((ip) => `http://${ip}:${port}`), ...v6];
 }
 
 /**
