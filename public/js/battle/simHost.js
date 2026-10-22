@@ -121,7 +121,13 @@ export class WorkerSimHost {
     this.meter = packet.meter;
     return packet;
   }
-  async start(spec) { this.spec = spec; this.accept(await this.rpc('start', [spec])); return this; }
+  async start(spec, opts = {}) {
+    this.spec = spec;
+    // 业主 2026-10-22：超限局的盟约层数上限随 start 传给工人线程 —— 那边是另一个模块实例，
+    // 主线程调 setBondLayerCap 影响不到它（layers 会卡在 999）。
+    this.accept(await this.rpc('start', [spec, { bondLayerCap: opts.bondLayerCap ?? null }]));
+    return this;
+  }
   async step(n, opts) { return this.accept(await this.rpc('step', [n, opts])); }
   progress() { return this.packet.progress; }
   uniteLeft() { return this.packet.left; }

@@ -5,6 +5,7 @@
 // Installed on Match.prototype by server/match/Match.js (a method container: never instantiated; `this` is the match).
 
 import { PHASE } from '../../../shared/constants.js';
+import { INFINITE_BOND_LAYER_CAP } from '../../../shared/infiniteMode.js';
 import { DeadBattle, syntheticResult, RESULT_GRACE_MS, HARD_CAP_SECONDS, HeadlessJob } from '../fields.js';
 import { buildBattleSpec, createBattleFromSpec } from '../../sim/spec.js';
 
@@ -97,6 +98,11 @@ export class MatchClientCombat {
       authoritative: !!(!f.done && !f.verifyJob && f.mode === 'client' && f.authority === pid && !watch),
       startAt: f.startAt, serverNow: this.sched.now(), elapsed: Math.round(this._fieldElapsed(f) * 1000) / 1000,
       speed: this.gameSpeed, watch: !!watch, done: !!f.done,
+      // 业主 2026-10-22：超限局的盟约层数上限要传给客户端的本地 sim —— 浏览器里那份
+      // shared/constants.js 是独立模块，永远不会被服务的 setBondLayerCap 影响到，
+      // 于是战斗中叠层卡在 999（荒芜拉普兰德等叙拉古干员的层数就上不去）。
+      // **普通局不带这个字段**，客户端读不到就保持默认 999。
+      ...(this.isInfinite ? { bondLayerCap: INFINITE_BOND_LAYER_CAP } : {}),
     };
   }
 

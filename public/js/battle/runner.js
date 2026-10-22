@@ -83,6 +83,7 @@ import { net as appNet } from '../net.js';
 import { store as appStore } from '../store.js';
 import { contentFor as appContentFor, simContent as appSimContent, contentSet as appContentSet } from '../content.js';
 import { fxForm } from '../../../shared/protocol.js';
+import { setBondLayerCap } from '../../../shared/constants.js';
 import { spectateEffects } from './observe.js';
 import { recordError, setBattleSource } from '../diag.js';
 import { loadBrowserSim } from './simLoader.js';
@@ -718,6 +719,11 @@ export function createBattleRunner(deps) {
   async function onStart(msg) {
     if (!msg || typeof msg !== 'object' || !msg.spec || typeof msg.battleId !== 'string') return;
     const speed = Number(msg.speed) > 0 ? Number(msg.speed) : 2;
+    // 业主 2026-10-22：超限局的盟约层数上限（b.start 只在超限时带这个字段）。
+    // 浏览器里的 shared/constants.js 是独立模块，服务端的 setBondLayerCap 影响不到它，
+    // 不设就会让战斗中叠层卡在 999。普通局没有这个字段，什么都不做。
+    const capIn = Number(msg.bondLayerCap);
+    if (capIn > 0) setBondLayerCap(capIn);
     const seq = ++startSeq;
     const prep = pending.get(msg.battleId);
     const existing = entries.get(msg.battleId) || prep;
@@ -726,6 +732,7 @@ export function createBattleRunner(deps) {
       const was = existing.authoritative;
       existing.authoritative = !!msg.authoritative && !existing.failed && !existing.resultSent && csAccepted(existing.spec.cs, { loading: !existing.battle });
       existing.watch = !!msg.watch;
+      if (capIn > 0) existing.bondLayerCap = capIn;   // 超限局：工人线程重建战斗时要带上
       // the server still waits for this finished battle's result (lost with the socket, or its answer was): again
       if (msg.authoritative && existing.resultSent) deliver(existing);
       if (!existing.battle) {
@@ -757,6 +764,8 @@ export function createBattleRunner(deps) {
       sim: null, battle: null, meter: null, seq, elapsed: Number(msg.elapsed) || 0, endReason: null, ready: null,
       // (a spec of another content than the page's: a display replica only — see the header)
       authoritative: !!msg.authoritative && csAccepted(msg.spec.cs, { loading: true }), watch: !!msg.watch, own: !msg.watch, speed,
+      // 超限局的盟约层数上限（普通局为 null）；工人线程重建战斗时要带上
+      bondLayerCap: capIn > 0 ? capIn : null,
       members: (msg.spec.players || []).map((p) => p && p.playerId).filter(Boolean),
       t0: null, lastProgressAt: -Infinity, done: false, resultSent: false,
       result: null, delivery: null,
@@ -806,7 +815,7 @@ export function createBattleRunner(deps) {
         if (e.host.remote) {
           await e.host.load(sim.cs, sim.content);
           if (!wanted()) return;
-          await e.host.start(e.spec);
+          await e.host.start(e.spec, { bondLayerCap: e.bondLayerCap ?? null });
         } else {
           e.host.sim = sim;
           // 房间模组的 kit 表 (W-C)：按规格里的 `modules` 先 import 好再建战斗（`start` 必须保持同步）

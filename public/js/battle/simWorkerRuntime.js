@@ -47,7 +47,13 @@ export function createSimWorker({ loadSim, prepareScripts = browserScripts } = {
     if (!loaded) throw new Error('simulation not loaded');
     switch (method) {
       // 房间模组的 kit 表 (W-C) 在**工人线程里**自己 import（函数过不了 RPC 边界）；`host.start` 保持同步。
-      case 'start': host.start(args[0], await loadModuleKits(args[0] && args[0].modules)); return packet();
+      case 'start': {
+        // 超限局的上限要在**工人线程自己的** shared/constants.js 上设一次
+        const cap = Number(args[1] && args[1].bondLayerCap);
+        if (cap > 0) { const { setBondLayerCap } = await import('../../../shared/constants.js'); setBondLayerCap(cap); }
+        host.start(args[0], await loadModuleKits(args[0] && args[0].modules));
+        return packet();
+      }
       case 'step': {
         if (!Number.isInteger(args[0]) || args[0] < 0 || args[0] > 600) throw new Error('invalid step count');
         return packet(host.step(args[0], args[1] || {}));
