@@ -61,8 +61,12 @@ export function phaseBanner(phase, pub, { alive = true, spectator = false } = {}
     case PHASE.ROUND_START: {
       // 超限的 Boss 轮（R20/25/30…）：横幅要说清这是领袖轮，不是普通回合（业主 2026-10-19）
       const infBoss = !!pub?.isInfinite && r >= 20 && r % 5 === 0;
-      if (infBoss) return { title: t('第 {r} 回合', { r }), micro: `ROUND ${String(r).padStart(2, '0')} // BOSS`, tone: 'red',
-        sub: spectator || alive === false ? t('观战中') : t('敌方领袖即将来袭') };
+      if (infBoss) return { 
+        title: t('⚔️ 领袖来袭 · R{r}', { r }), 
+        micro: `ROUND ${String(r).padStart(2, '0')} /// BOSS WAVE`, 
+        tone: 'red',
+        sub: spectator || alive === false ? t('观战中') : t('敌方领袖部队正在入场') 
+      };
       return { title: t('第 {r} 回合', { r }), micro: `ROUND ${String(r).padStart(2, '0')}`, tone: 'mint',
         sub: spectator || alive === false ? t('观战中') : t('资金已到账') };
     }
@@ -70,8 +74,12 @@ export function phaseBanner(phase, pub, { alive = true, spectator = false } = {}
     case PHASE.PREP: {
       // 业主 2026-10-20：超限的 Boss 轮在**休整期**就要提示，让玩家提前调整阵容。
       const infBoss = !!pub?.isInfinite && r >= 20 && r % 5 === 0;
-      if (infBoss) return { title: t('休整期'), micro: `ROUND ${String(r).padStart(2, '0')} // BOSS NEXT`, tone: 'red',
-        sub: spectator || alive === false ? t('观战中') : t('本回合为领袖轮：打完它开启词条抉择') };
+      if (infBoss) return { 
+        title: t('⚠️ 领袖战预警'), 
+        micro: `ROUND ${String(r).padStart(2, '0')} /// BOSS INCOMING`, 
+        tone: 'red',
+        sub: spectator || alive === false ? t('观战中') : t('下一轮为领袖战，战胜后选择一项超限词条') 
+      };
       return { title: t('休整期'), micro: `ROUND ${String(r).padStart(2, '0')} // REST`, tone: 'mint', sub: t('部署干员，准备迎敌') };
     }
     case PHASE.COMBAT: return { title: t('作战开始'), micro: 'COMBAT', tone: 'orange', sub: t('各自行动阶段') };
