@@ -228,19 +228,21 @@ export function LobbyMusicButton() {
 
 
         
-        <div class="lmp__progress" style="margin: 16px 0; padding: 12px; background: rgba(0,0,0,0.15); border-radius: 8px;">
-          <div style="display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 12px; color: #999; font-family: 'Courier New', monospace;">
+        <div class="lmp__progress">
+          <div class="lmp__time-display">
             <span class="lmp__time-current">00:00</span>
             <span class="lmp__time-total">00:00</span>
           </div>
-          <div class="lmp__track" style="position: relative; height: 4px; background: rgba(255,255,255,0.1); border-radius: 2px; cursor: pointer;"
+          <div class="lmp__track"
                onClick=${(e) => {
                  if (!media || !isFinite(media.duration)) return;
                  const rect = e.currentTarget.getBoundingClientRect();
                  const percent = (e.clientX - rect.left) / rect.width;
                  media.currentTime = percent * media.duration;
                }}>
-            <div class="lmp__bar" style="position: absolute; left: 0; top: 0; height: 100%; background: linear-gradient(90deg, #4a9eff, #00d4ff); border-radius: 2px; width: 0%; transition: width 0.1s linear; pointer-events: none;"></div>
+            <div class="lmp__track-inner">
+              <div class="lmp__bar" style="width: 0%;"></div>
+            </div>
           </div>
         </div>
 

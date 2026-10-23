@@ -1,0 +1,93 @@
+/* 大厅音乐播放器样式 */
+
+.lmp__progress {
+  margin: 16px 0;
+  padding: 12px;
+  background: rgba(0, 0, 0, 0.15);
+  border-radius: 8px;
+}
+
+.lmp__time-display {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 8px;
+  font-size: 12px;
+  color: #999;
+  font-family: 'Courier New', monospace;
+}
+
+.lmp__track {
+  position: relative;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 2px;
+  cursor: pointer;
+  /* 增大可点击区域 */
+  padding: 8px 0;
+  margin: -8px 0;
+}
+
+.lmp__track-inner {
+  position: relative;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 2px;
+}
+
+.lmp__bar {
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 100%;
+  background: linear-gradient(90deg, #4a9eff, #00d4ff);
+  border-radius: 2px;
+  width: 0%;
+  transition: width 0.1s linear;
+  pointer-events: none;
+}
+
+/* 手机横屏优化：高度 <= 896px */
+@media screen and (max-height: 896px) and (orientation: landscape) {
+  .lmp__progress {
+    margin: 12px 0;
+    padding: 8px 10px;
+  }
+  
+  .lmp__time-display {
+    font-size: 11px;
+    margin-bottom: 6px;
+  }
+  
+  .lmp__track {
+    height: 6px;
+    padding: 10px 0;
+    margin: -10px 0;
+  }
+  
+  .lmp__track-inner {
+    height: 6px;
+  }
+}
+
+/* 更小的屏幕（高度 <= 640px） */
+@media screen and (max-height: 640px) and (orientation: landscape) {
+  .lmp__progress {
+    margin: 10px 0;
+    padding: 6px 8px;
+  }
+  
+  .lmp__time-display {
+    font-size: 10px;
+    margin-bottom: 4px;
+  }
+  
+  .lmp__track {
+    height: 8px;
+    padding: 12px 0;
+    margin: -12px 0;
+  }
+  
+  .lmp__track-inner {
+    height: 8px;
+  }
+}
