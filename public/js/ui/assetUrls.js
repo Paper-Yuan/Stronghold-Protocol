@@ -22,6 +22,14 @@ export function chessAvatarUrl(m, chess) {
   const isStandIn = !!chess?.standInFor;
   const chosenSkin = !isStandIn && (str(chess?.skinId) || skinFor(chess?.chessId) || skinFor(chess?.charId) || skinFor(chess?.id));
   if (chosenSkin) {
+    // 优先从 manifest 查皮肤路径（manifest.chars[charId].skins[skinId].avatar）
+    const charId = str(chess?.charId);
+    if (charId) {
+      const skinEntry = obj(obj(obj(m)?.chars)?.[charId]?.skins)?.[chosenSkin];
+      const manifestPath = str(skinEntry?.avatar);
+      if (manifestPath) return manifestPath;
+    }
+    // 兜底：拼接路径（向后兼容没有 manifest 条目的情况）
     const skinStem = chosenSkin.replace(/@/g, '_').replace(/#/g, '_');
     return `/assets/char/skin_avatar/${skinStem}.png`;
   }
@@ -49,6 +57,14 @@ export function chessPortraitUrl(m, chess) {
   const isStandIn = !!chess?.standInFor;
   const chosenSkin = !isStandIn && (str(chess?.skinId) || skinFor(chess?.chessId) || skinFor(chess?.charId) || skinFor(chess?.id));
   if (chosenSkin) {
+    // 优先从 manifest 查皮肤路径（manifest.chars[charId].skins[skinId].portrait）
+    const charId = str(chess?.charId);
+    if (charId) {
+      const skinEntry = obj(obj(obj(m)?.chars)?.[charId]?.skins)?.[chosenSkin];
+      const manifestPath = str(skinEntry?.portrait);
+      if (manifestPath) return manifestPath;
+    }
+    // 兜底：拼接路径（向后兼容没有 manifest 条目的情况）
     const skinStem = chosenSkin.replace(/@/g, '_').replace(/#/g, '_');
     return `/assets/char/portrait/${skinStem}.png`;
   }
