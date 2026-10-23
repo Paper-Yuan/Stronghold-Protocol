@@ -254,6 +254,13 @@ export function RosterRow({ m, chess, golden, entries, ops = {}, selected, onPic
 
 /** The same attribute records and rich-text renderer as the in-match card, including literal trigger markers. */
 export function LoadoutGarrisons({ chess, m }) {
+
+  // 监听皮肤状态变化，触发重新渲染
+  const [skinsRev, setSkinsRev] = useState(0);
+  useEffect(() => {
+    const unsubscribe = skinsStore.subscribe(() => setSkinsRev(r => r + 1));
+    return unsubscribe;
+  }, []);
   const records = (chess?.garrisonIds || []).map((id) => data.lookup('garrisons', id)).filter(Boolean);
   return records.length ? html`<section class="lo-garrisons" data-variant=${chess.isGolden ? 'elite' : 'normal'}>
     ${records.map((garrison) => html`<${GarrisonBlock} key=${garrison.garrisonId} garrison=${garrison} m=${m} />`)}
@@ -1267,6 +1274,7 @@ export function shouldAutoClose(st, phase, inMatch, wasInMatch) {
 /** Mounted once (main.js): renders the overlay while open. */
 export function LoadoutHost() {
   const st = useStore((s) => s, Object.is, loadoutStore);
+  const skins = useStore(skinsStore); // 监听皮肤变化
   const phase = useStore((s) => s.match?.public?.phase || null);
   const inMatch = useStore((s) => !!s.room?.inMatch);
   const wasInMatch = useRef(inMatch);

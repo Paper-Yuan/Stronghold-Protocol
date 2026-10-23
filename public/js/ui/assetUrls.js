@@ -20,7 +20,7 @@ export function uiUrl(m, key) {
  */
 export function chessAvatarUrl(m, chess) {
   const isStandIn = !!chess?.standInFor;
-  const chosenSkin = !isStandIn && (str(chess?.skinId) || skinFor(chess?.chessId) || skinFor(chess?.charId) || skinFor(chess?.id));
+  const chosenSkin = !isStandIn && (skinFor(chess?.chessId) || skinFor(chess?.charId) || skinFor(chess?.id) || str(chess?.skinId));
   if (chosenSkin) {
     // 优先从 manifest 查皮肤路径（manifest.chars[charId].skins[skinId].avatar）
     const charId = str(chess?.charId);
@@ -55,7 +55,7 @@ export function chessAvatarUrl(m, chess) {
  */
 export function chessPortraitUrl(m, chess) {
   const isStandIn = !!chess?.standInFor;
-  const chosenSkin = !isStandIn && (str(chess?.skinId) || skinFor(chess?.chessId) || skinFor(chess?.charId) || skinFor(chess?.id));
+  const chosenSkin = !isStandIn && (skinFor(chess?.chessId) || skinFor(chess?.charId) || skinFor(chess?.id) || str(chess?.skinId));
   if (chosenSkin) {
     // 优先从 manifest 查皮肤路径（manifest.chars[charId].skins[skinId].portrait）
     const charId = str(chess?.charId);
