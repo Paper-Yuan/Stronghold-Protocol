@@ -5,6 +5,14 @@ import { store, selectRoute } from '../store.js';
 import { data } from '../data.js';
 import { audio, bgmKeyFor } from '../audio.js';
 
+// 格式化播放时间（秒 -> mm:ss）
+function formatTime(seconds) {
+  if (!isFinite(seconds) || seconds < 0) return '00:00';
+  const m = Math.floor(seconds / 60);
+  const s = Math.floor(seconds % 60);
+  return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+}
+
 export const MAX_MUSIC_BYTES = 20 * 1024 * 1024;
 const listeners = new Set();
 let record = null, url = null, media = null, source = null, revision = 0, installed = false, dbPromise;
@@ -14,6 +22,15 @@ let videoAudible=false;
 const inMusicArea = () => { const s=store.get(),route=selectRoute(s);return ['lobby','room'].includes(route)||(route==='game'&&[PHASE.INFO_CHECK,PHASE.BAND_DRAFT,PHASE.BATTLE_CHECK].includes(s.match?.public?.phase)); };
 let customGain=null,fadeTarget=0,fadeTimer,handoff=false,handoffTimer;
 const areaKey = () => selectRoute(store.get()) + ':' + inMusicArea();
+
+// 格式化时间（秒 -> mm:ss）
+function formatTime(seconds) {
+  if (!isFinite(seconds) || seconds < 0) return '00:00';
+  const m = Math.floor(seconds / 60);
+  const s = Math.floor(seconds % 60);
+  return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+}
+
 function db() {
   return dbPromise ||= new Promise((resolve, reject) => {
     const req = indexedDB.open('sp-lobby-music', 1);
@@ -150,7 +167,42 @@ export function LobbyMusicButton() {
     const fn = (s) => setState(s);
     listeners.add(fn);
     fn(music.snapshot());
-    return () => listeners.delete(fn);
+
+    // 更新播放进度条
+    const updateProgress = () => {
+      const currentSpan = document.querySelector('.lmp__time-current');
+      const totalSpan = document.querySelector('.lmp__time-total');
+      const bar = document.querySelector('.lmp__bar');
+      if (!currentSpan || !totalSpan || !bar || !media) return;
+      
+      if (isFinite(media.duration) && media.duration > 0) {
+        const percent = (media.currentTime / media.duration) * 100;
+        bar.style.width = percent + '%';
+        currentSpan.textContent = formatTime(media.currentTime);
+        totalSpan.textContent = formatTime(media.duration);
+      } else {
+        bar.style.width = '0%';
+        currentSpan.textContent = '00:00';
+        totalSpan.textContent = '00:00';
+      }
+    };
+    
+    const onTimeUpdate = () => updateProgress();
+    const onLoadedMetadata = () => updateProgress();
+    
+    if (media) {
+      media.addEventListener('timeupdate', onTimeUpdate);
+      media.addEventListener('loadedmetadata', onLoadedMetadata);
+      updateProgress();
+    }
+    
+    return () => {
+      if (media) {
+        media.removeEventListener('timeupdate', onTimeUpdate);
+        media.removeEventListener('loadedmetadata', onLoadedMetadata);
+      }
+      listeners.delete(fn);
+    };
   }, []);
   // 预设曲目来自 data/assets.json 的 audio.lobbyPresets（用 data store，不是全局 store）
   const [presets, setPresets] = useState(() => data.get('assets')?.audio?.lobbyPresets || []);
@@ -179,6 +231,24 @@ export function LobbyMusicButton() {
           <span class="lmp__cap">当前音乐</span>
           <b class="lmp__name">${state.name || '默认大厅音乐'}</b>
           <span class="lmp__sub">${state.status}${state.size ? ` · ${(state.size / 1024 / 1024).toFixed(1)} MB` : ''}</span>
+        </div>
+
+
+        
+        <div class="lmp__progress" style="margin: 16px 0; padding: 12px; background: rgba(0,0,0,0.15); border-radius: 8px;">
+          <div style="display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 12px; color: #999; font-family: 'Courier New', monospace;">
+            <span class="lmp__time-current">00:00</span>
+            <span class="lmp__time-total">00:00</span>
+          </div>
+          <div class="lmp__track" style="position: relative; height: 4px; background: rgba(255,255,255,0.1); border-radius: 2px; cursor: pointer;"
+               onClick=${(e) => {
+                 if (!media || !isFinite(media.duration)) return;
+                 const rect = e.currentTarget.getBoundingClientRect();
+                 const percent = (e.clientX - rect.left) / rect.width;
+                 media.currentTime = percent * media.duration;
+               }}>
+            <div class="lmp__bar" style="position: absolute; left: 0; top: 0; height: 100%; background: linear-gradient(90deg, #4a9eff, #00d4ff); border-radius: 2px; width: 0%; transition: width 0.1s linear; pointer-events: none;"></div>
+          </div>
         </div>
 
         <div class="lmp__presets" role="listbox" aria-label="预设曲目">
