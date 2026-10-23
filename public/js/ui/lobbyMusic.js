@@ -32,6 +32,7 @@ async function saved(write, value) {
   });
 }
 async function validate(file) {
+  console.log('[lobbyMusic] 验证文件:', file?.name, file?.size, file?.type);
   if (!file || file.size <= 0) throw Error('请选择有效的音频文件');
   if (file.size > MAX_MUSIC_BYTES) throw Error('音乐不能超过 20MB，请选择较小的文件');
   if (!/\.(mp3|wav|ogg|m4a|aac|flac|webm)$/i.test(file.name || '') || (file.type && !file.type.startsWith('audio/') && file.type !== 'video/webm' && file.type !== 'application/ogg')) throw Error('请选择 MP3、M4A、OGG、WAV 等音频文件');
@@ -112,6 +113,7 @@ function install() {
 export const music = {
   snapshot: () => ({ name: record?.name || '', size: record?.blob?.size || 0, preset: record?.preset || null, enabled: !!record?.enabled, paused: !!record?.paused, playing: !!media && !media.paused, status, busy }),
   async upload(file) {
+    console.log('[lobbyMusic] 开始上传:', file.name, file.size, 'bytes');
     if (busy) return; install(); ++revision; busy = true; notify();
     try { await validate(file); const next = { blob: file, name: file.name.slice(0,180), enabled: true, paused: false }; await saved(true, next); replace(next); status = '已保存音乐'; audio._unlock(); refresh(); }
     catch(e) { status = e.message || '音乐导入失败'; throw e; }
@@ -160,6 +162,7 @@ export function LobbyMusicButton() {
   const pick = async (e) => {
     const file = e.currentTarget.files?.[0];
     e.currentTarget.value = '';
+    console.log('[lobbyMusic] 文件已选择:', file);
     if (file) await action(() => music.upload(file));
   };
   return html`<${Button} variant="secondary" size="sm" square=${true} class="hub-music-btn" title="大厅音乐" aria-label="大厅音乐" onClick=${() => setOpen(true)}><span class="hub-music-btn__ico">♪</span><//>
