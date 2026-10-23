@@ -58,19 +58,53 @@ export function getInfiniteCcResist(round) {
 }
 
 /**
- * R16+ 敌方属性指数膨胀公式
+ * 敌方属性指数膨胀公式（分段式）
+ * R1-R15: 使用终极模式（ABYSS）的逐回合曲线
+ * R16+: 在 R15 基础上使用更高的指数增长
  * @param {number} round
- * @param {{ hpMul?: number, atkMul?: number, speedMul?: number, defMul?: number, resMul?: number }} baseR15
+ * @param {(round: number) => { hpMul?: number, atkMul?: number, speedMul?: number, defMul?: number, resMul?: number }} enemyScaleFn 获取指定回合倍率的函数
  * @returns {{ hpMul: number, atkMul: number, speedMul: number, defMul: number, resMul: number }}
  */
-export function enemyInfiniteScale(round, baseR15 = { hpMul: 1, atkMul: 1, speedMul: 1 }) {
+export function enemyInfiniteScale(round, enemyScaleFn) {
   const r = Number(round) || 1;
+  
+  // R1-R15: 使用终极模式的逐回合曲线
+  if (r <= 15) {
+    if (typeof enemyScaleFn === 'function') {
+      const scale = enemyScaleFn(r) || { hpMul: 1, atkMul: 1, speedMul: 1 };
+      return {
+        hpMul: Number(scale.hpMul) || 1,
+        atkMul: Number(scale.atkMul) || 1,
+        speedMul: Number(scale.speedMul) || 1,
+        defMul: 1,
+        resMul: 1
+      };
+    }
+    // 向后兼容：如果传入的是对象（旧代码），直接返回
+    const base = enemyScaleFn || { hpMul: 1, atkMul: 1, speedMul: 1 };
+    return {
+      hpMul: Number(base.hpMul) || 1,
+      atkMul: Number(base.atkMul) || 1,
+      speedMul: Number(base.speedMul) || 1,
+      defMul: 1,
+      resMul: 1
+    };
+  }
+  
+  // R16+: 获取 R15 的倍率作为基础
+  let baseR15;
+  if (typeof enemyScaleFn === 'function') {
+    baseR15 = enemyScaleFn(15) || { hpMul: 1, atkMul: 1, speedMul: 1 };
+  } else {
+    // 向后兼容：如果传入的是对象，直接使用
+    baseR15 = enemyScaleFn || { hpMul: 1, atkMul: 1, speedMul: 1 };
+  }
+  
   const base = {
     hpMul: Number(baseR15.hpMul) || 1,
     atkMul: Number(baseR15.atkMul) || 1,
     speedMul: Number(baseR15.speedMul) || 1,
   };
-  if (r <= 15) return { ...base, defMul: 1, resMul: 1 };
 
   // 业主 2026-10-17：「改成原指数，曲线稍微陡一点点」。
   //

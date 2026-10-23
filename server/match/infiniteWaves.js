@@ -57,8 +57,10 @@ function bossEnemyKeyOf(gd, bossId) {
 
 export function buildInfiniteNormalWave(gd, rng, round, routes = null, { withBoss = false } = {}) {
   const r = Number(round) || 16;
-  const baseScale = gd.enemyScale(15) || { hpMul: 1, atkMul: 1, speedMul: 1 };
-  const scale = enemyInfiniteScale(r, baseScale);
+  // 传入 enemyScale 函数而不是固定值，实现分段式曲线
+  // R1-R15: 使用终极模式的逐回合曲线
+  // R16+: 在 R15 基础上使用更高的指数增长
+  const scale = enemyInfiniteScale(r, (round) => gd.enemyScale(round) || { hpMul: 1, atkMul: 1, speedMul: 1 });
 
   // 从官方怪池中收集候选敌人
   const normalKeys = [];
@@ -321,8 +323,8 @@ export function buildInfiniteBossWave(gd, rng, round, routes = null, opts = {}) 
     ? (pool.length > 1 ? tierOf(Math.max(0, Math.min(pool.length - 2, bossIndex - 1))) : primaryBoss)
     : null;
 
-  const baseScale = gd.enemyScale(15) || { hpMul: 1, atkMul: 1, speedMul: 1 };
-  const scale = enemyInfiniteScale(r, baseScale);
+  // 传入 enemyScale 函数而不是固定值，实现分段式曲线
+  const scale = enemyInfiniteScale(r, (round) => gd.enemyScale(round) || { hpMul: 1, atkMul: 1, speedMul: 1 });
 
   // bossWeights 给的是 **boss id**（boss_9），不是敌人 key（enemy_9017_achunt_2）。
   // 以前直接把 boss id 当 enemyKey 塞进 spawns —— sim 找不到这个敌人，客户端也查不到模型，
