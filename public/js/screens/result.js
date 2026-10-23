@@ -27,6 +27,33 @@ import { sentText } from '../ui/lang.js';
 import { UnofficialMark } from '../ui/pluginTag.js';
 import { t, tParts, N_ } from '../../../shared/i18n.js';
 
+
+// 超限模式里程碑定义
+const INFINITE_MILESTONES = [
+  { round: 20, name: '铜蚀刻章', tier: 'bronze', label: 'R20' },
+  { round: 40, name: '银蚀刻章', tier: 'silver', label: 'R40' },
+  { round: 60, name: '金蚀刻章', tier: 'gold', label: 'R60' },
+  { round: 80, name: '钻蚀刻章', tier: 'diamond', label: 'R80' }
+];
+
+// 蚀刻章组件
+function InfiniteMilestones({ roundsPassed }) {
+  return html`<div class="infinite-milestones">
+    <div class="infinite-milestones__label">${t('里程碑达成')}</div>
+    <div class="infinite-milestones__list">
+      ${INFINITE_MILESTONES.map(m => {
+        const achieved = roundsPassed >= m.round;
+        return html`<div key=${m.tier} class=${cx('infinite-milestone', `infinite-milestone--${m.tier}`, achieved && 'is-achieved')} title=${m.name}>
+          <div class="infinite-milestone__icon">
+            <span class="infinite-milestone__round">${m.label}</span>
+          </div>
+          <div class="infinite-milestone__name">${m.name}</div>
+        </div>`;
+      })}
+    </div>
+  </div>`;
+}
+
 const cx = (...p) => p.flat().filter(Boolean).join(' ');
 
 // The first seven present are shown (+ remaining LP = a 4×2 grid); the title (评语) stats come first.
@@ -155,6 +182,7 @@ export function ResultView({ res, pub = null, myId = null, backLabel, onBack, qu
           <b class="result__rnum num">${r.roundsPassed}</b>
           ${!r.isInfinite && Number.isFinite(r.lastRound) && r.roundsPassed <= r.lastRound ? html`<span class="result__rof num">/${r.lastRound}</span>` : null}
         </div>
+        ${r.isInfinite && r.victory ? html`<${InfiniteMilestones} roundsPassed=${r.roundsPassed} />` : null}
         <div class="result__medals">
           ${boss ? html`<div class=${cx('medal', r.victory && 'is-done')} title=${boss.name}>
             <${Img} src=${enemyIconUrl(gd.m, boss.enemyKey)} /><span class="medal__check">${r.victory ? html`<${Icon} name="check" />` : html`<${Icon} name="close" />`}</span>

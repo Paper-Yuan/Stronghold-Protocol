@@ -131,11 +131,38 @@ export function enemyInfiniteScale(round, enemyScaleFn) {
   //       R60 10.05 → 7.41 倍）
   //   speed 保持 ×1.01，硬上限 2.5
   // 效果：atk/hp 从 0.31 降到 0.15（R60），威胁从「会被打死」偏向「打不动」。
-  const HP_STEP = 1.06;
+  // 分段式增长率（业主 2026-10-23）：后期放缓，延长可玩性
+  // R16-R30: HP ×1.06/回合
+  // R31-R50: HP ×1.05/回合
+  // R51+:    HP ×1.04/回合
+  let HP_STEP = 1.06;
+  if (r >= 51) {
+    HP_STEP = 1.04;
+  } else if (r >= 31) {
+    HP_STEP = 1.05;
+  }
+  
   const ATK_STEP = Math.pow(1.16, 1 / 5);   // 1.0301
   const DEF_STEP = Math.pow(1.16, 1 / 5);   // 防御 ×1.0301/回合
   const RES_STEP = Math.pow(1.12, 1 / 5);   // 法抗 ×1.0229/回合（成长比防御慢：法抗是百分比，涨太快会免疫）
-  const hpMul = base.hpMul * Math.pow(HP_STEP, k);
+  
+  // 分段计算：不同区间使用不同增长率
+  let hpMul = base.hpMul;
+  if (r <= 30) {
+    // R16-R30: 统一 ×1.06
+    hpMul = base.hpMul * Math.pow(1.06, k);
+  } else if (r <= 50) {
+    // R31-R50: R16-R30 用 1.06，R31-R50 用 1.05
+    const k1 = 30 - 15;  // R16-R30 的回合数
+    const k2 = r - 30;    // R31-当前 的回合数
+    hpMul = base.hpMul * Math.pow(1.06, k1) * Math.pow(1.05, k2);
+  } else {
+    // R51+: R16-R30 用 1.06，R31-R50 用 1.05，R51+ 用 1.04
+    const k1 = 30 - 15;
+    const k2 = 50 - 30;
+    const k3 = r - 50;
+    hpMul = base.hpMul * Math.pow(1.06, k1) * Math.pow(1.05, k2) * Math.pow(1.04, k3);
+  }
   const atkMul = base.atkMul * Math.pow(ATK_STEP, k);
   const defMul = Math.pow(DEF_STEP, k);
   const resMul = Math.pow(RES_STEP, k);
@@ -159,5 +186,19 @@ export function getInfiniteBossHp(baseHp, round) {
   // 业主 2026-10-20（A 方案）：Boss 血跟着杂兵一起抬到每回合 ×1.06，
   // 否则杂兵变厚而 Boss 相对变软。
   const k = Math.max(0, r - 15);
-  return Math.round(baseHp * Math.pow(1.06, k));
+  // 分段式增长率（与杂兵一致）
+  let multiplier = 1;
+  if (r <= 30) {
+    multiplier = Math.pow(1.06, k);
+  } else if (r <= 50) {
+    const k1 = 30 - 15;
+    const k2 = r - 30;
+    multiplier = Math.pow(1.06, k1) * Math.pow(1.05, k2);
+  } else {
+    const k1 = 30 - 15;
+    const k2 = 50 - 30;
+    const k3 = r - 50;
+    multiplier = Math.pow(1.06, k1) * Math.pow(1.05, k2) * Math.pow(1.04, k3);
+  }
+  return Math.round(baseHp * multiplier);
 }

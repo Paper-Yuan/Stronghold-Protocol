@@ -1,0 +1,155 @@
+/* 超限模式里程碑蚀刻章样式 */
+
+.infinite-milestones {
+  margin-top: 24px;
+  padding: 16px;
+  background: rgba(0, 0, 0, 0.15);
+  border-radius: 8px;
+}
+
+.infinite-milestones__label {
+  font-size: 12px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.6);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 12px;
+  text-align: center;
+}
+
+.infinite-milestones__list {
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.infinite-milestone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  opacity: 0.4;
+  transition: opacity 0.3s, transform 0.3s;
+}
+
+.infinite-milestone.is-achieved {
+  opacity: 1;
+  animation: milestone-unlock 0.6s ease-out;
+}
+
+@keyframes milestone-unlock {
+  0% {
+    opacity: 0;
+    transform: scale(0.8) translateY(10px);
+  }
+  60% {
+    transform: scale(1.1);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.infinite-milestone__icon {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  border: 3px solid currentColor;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.1), transparent);
+  transition: all 0.3s;
+}
+
+.infinite-milestone.is-achieved .infinite-milestone__icon {
+  box-shadow: 0 0 20px currentColor;
+}
+
+.infinite-milestone__round {
+  font-size: 14px;
+  font-weight: 700;
+  font-family: 'Courier New', monospace;
+}
+
+.infinite-milestone__name {
+  font-size: 11px;
+  font-weight: 600;
+  text-align: center;
+  white-space: nowrap;
+}
+
+/* 各等级颜色 */
+.infinite-milestone--bronze {
+  color: #CD7F32;
+}
+
+.infinite-milestone--silver {
+  color: #C0C0C0;
+}
+
+.infinite-milestone--gold {
+  color: #FFD700;
+}
+
+.infinite-milestone--diamond {
+  color: #B9F2FF;
+}
+
+/* 未达成时灰色 */
+.infinite-milestone:not(.is-achieved) {
+  color: #666;
+}
+
+.infinite-milestone:not(.is-achieved) .infinite-milestone__icon {
+  box-shadow: none;
+}
+
+/* 手机横屏优化 */
+@media screen and (max-height: 896px) and (orientation: landscape) {
+  .infinite-milestones {
+    margin-top: 16px;
+    padding: 12px;
+  }
+  
+  .infinite-milestone__icon {
+    width: 48px;
+    height: 48px;
+    border-width: 2px;
+  }
+  
+  .infinite-milestone__round {
+    font-size: 12px;
+  }
+  
+  .infinite-milestone__name {
+    font-size: 10px;
+  }
+}
+
+@media screen and (max-height: 640px) and (orientation: landscape) {
+  .infinite-milestones {
+    margin-top: 12px;
+    padding: 8px;
+  }
+  
+  .infinite-milestones__list {
+    gap: 12px;
+  }
+  
+  .infinite-milestone__icon {
+    width: 40px;
+    height: 40px;
+  }
+  
+  .infinite-milestone__round {
+    font-size: 11px;
+  }
+  
+  .infinite-milestone__name {
+    font-size: 9px;
+  }
+}
