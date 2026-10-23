@@ -334,6 +334,7 @@ const standInName = (chess) => data.get('backups')?.units?.[chess?.backup?.charI
 
 
 function Detail({ m, chess, golden, entries, ops = {}, onChange, onOps, onReset, locked, level = 'normal', onLevel, notOwned = false }) {
+  const skins = useStore(skinsStore); // 监听皮肤变化
   const [statLevel, setStatLevel] = useState('elite'); // 局内数值: the 精锐 shows the chosen module's effect
   const setLevel = onLevel;
   const bodyRef = useRef(null);
@@ -465,6 +466,7 @@ function PotPips({ n }) {
  * column of quick choices beside the card — the same handlers as the list's RosterRow.
  */
 export function OpCard({ m, chess, golden, entries, ops = {}, selected = false, quick = null, onPick, onChange, onOps, notOwned = false }) {
+  const skins = useStore(skinsStore); // 监听皮肤变化
   const choice = effectiveChoice(entries, chess, golden);
   const opt = chessOptions(chess, golden);
   const cv = opsOf(ops, chess.charId);
