@@ -5,10 +5,6 @@ import { store, selectRoute } from '../store.js';
 import { data } from '../data.js';
 import { audio, bgmKeyFor } from '../audio.js';
 
-// 格式化播放时间（秒 -> mm:ss）
-  const s = Math.floor(seconds % 60);
-  return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
-}
 
 export const MAX_MUSIC_BYTES = 20 * 1024 * 1024;
 const listeners = new Set();
