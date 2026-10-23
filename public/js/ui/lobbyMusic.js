@@ -6,9 +6,6 @@ import { data } from '../data.js';
 import { audio, bgmKeyFor } from '../audio.js';
 
 // 格式化播放时间（秒 -> mm:ss）
-function formatTime(seconds) {
-  if (!isFinite(seconds) || seconds < 0) return '00:00';
-  const m = Math.floor(seconds / 60);
   const s = Math.floor(seconds % 60);
   return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
 }
