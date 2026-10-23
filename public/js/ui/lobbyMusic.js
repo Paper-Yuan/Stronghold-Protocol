@@ -35,7 +35,10 @@ async function validate(file) {
   console.log('[lobbyMusic] 验证文件:', file?.name, file?.size, file?.type);
   if (!file || file.size <= 0) throw Error('请选择有效的音频文件');
   if (file.size > MAX_MUSIC_BYTES) throw Error('音乐不能超过 20MB，请选择较小的文件');
-  if (!/\.(mp3|wav|ogg|m4a|aac|flac|webm)$/i.test(file.name || '') || (file.type && !file.type.startsWith('audio/') && file.type !== 'video/webm' && file.type !== 'application/ogg')) throw Error('请选择 MP3、M4A、OGG、WAV 等音频文件');
+  // 验证文件格式：扩展名正确 或 MIME 类型正确
+  const hasValidExt = /\.(mp3|wav|ogg|m4a|aac|flac|webm)$/i.test(file.name || '');
+  const hasValidMime = !file.type || file.type.startsWith('audio/') || file.type === 'video/webm' || file.type === 'application/ogg';
+  if (!hasValidExt && !hasValidMime) throw Error('请选择 MP3、M4A、OGG、WAV 等音频文件');
   const objectUrl = URL.createObjectURL(file), probe = new Audio(); probe.preload = 'metadata';
   try {
     await new Promise((resolve, reject) => {
