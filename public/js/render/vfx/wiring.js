@@ -276,7 +276,8 @@ export class FxWiring {
   /**
    * 单位身上「当前穿着的那套模型」的挂点表（HitPoint / Muzzle / …）。
    *
-   * fx/index.json 的 skins 表目前**只导出了 defaultskin**（209 个干员各一条，键是 charId），
+   * fx/index.json 的 skins 表包含 509 个皮肤的挂载点数据（从明日方舟国服客户端提取，
+ * 使用 tools/local-extract/extract.py --fx-set used），每个皮肤有独立的挂载点坐标。
    * 皮肤模型（assets.json 里 174 个带 spine 的皮肤）的挂点从未导出。而这里以前直接 skins[u.skin]，
    * u.skin 是 char_003_kalts@sale#14 这种皮肤 id —— 永远查不到，于是 skinOf 恒为 null，
    * 穿皮肤时技能特效的发射/命中点全部退回兜底位置（2026-10-17 审计）。
