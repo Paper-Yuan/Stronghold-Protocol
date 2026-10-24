@@ -1,4 +1,4 @@
-// 皮肤系统专项自动化测试 (docs/SKINS.md & SKINS-BUILTIN-PLAN.md)
+// 皮肤系统专项自动化测试 (docs/SKINS.md & handoff/SKINS-BUILTIN-PLAN.md)
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';

@@ -3,6 +3,10 @@ node_modules/
 # copied from node_modules by tools/vendor.mjs (postinstall); never commit third-party builds
 public/vendor/
 
+# --- build output (packaged releases) --------------------------------------------------------------
+# tools/package.mjs / scripts/build-android.mjs 的产物放 artifacts/（见 artifacts/README.md）
+artifacts/
+
 # --- game assets: (c) Hypergryph / Yostar, fetched or extracted locally, NEVER committed ----------
 # tools/fetch-assets.mjs → public/assets/** (~270 MB) and public/fonts/** (+ fonts.css)
 public/assets/
