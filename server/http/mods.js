@@ -108,7 +108,7 @@ export function serveMods(req, res, decoded, query, routes) {
     return true;
   }
   // The ONE row of the download list that has no file of its own: the reserved container digest (server/packFiles.js).
-  // `identifyPack` puts that digest into the pack's identity (DESIGN §28.13.5), so a client that cannot fetch the row can
+  // `identifyPack` puts that digest into the pack's identity (DESIGN §34.4), so a client that cannot fetch the row can
   // never rebuild the pack hash — and then it never proves it holds an asset pack at all. The row's payload is the digest
   // text (64 bytes), uniquely determined by a value the loader verified against the container's real bytes.
   // A real file of the same name WINS: `identifyPack` prefers it, the catalogue then describes THAT file, and the route

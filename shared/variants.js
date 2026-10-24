@@ -1,4 +1,4 @@
-// shared/variants.js — 变体 / 口径层 (the 口径 a pack may declare, DESIGN §28.39).
+// shared/variants.js — 变体 / 口径层 (the 口径 a pack may declare, DESIGN §34.9).
 // (i18n-ignore-file: 工坊作者层的校验与推导文本 —— 给作者、编辑器与 AI 读的规则说明（编辑器有自己的中英词典，见 docs/EDITOR.md），不是客户端界面文案)
 //
 // 这一层要解决的那面墙，逐字记在 `docs/WORKSHOP.md` §1.1 与 `shared/workshop.js` 的 `PACK_FIELDS` 注释里：

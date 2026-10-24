@@ -1,4 +1,4 @@
-// shared/behaviour.js — 行为开关层 (the 行为 a pack may declare, DESIGN §28.43).
+// shared/behaviour.js — 行为开关层 (the 行为 a pack may declare, DESIGN §34.12).
 // (i18n-ignore-file: 工坊作者层的校验与推导文本 —— 给作者、编辑器与 AI 读的规则说明（编辑器有自己的中英词典，见 docs/EDITOR.md），不是客户端界面文案)
 //
 // 这一层要解决的那面墙，逐字记在 `docs/WORKSHOP.md` §1.1 与 `shared/workshop.js` 的 `PACK_FIELDS` 注释里：
@@ -6,7 +6,7 @@
 // `server/sim/**` 与整屏 UI（它的 `files.json` 自述：「Nothing is trimmed: a target that gets the whole file gets
 // the whole feature」）。`docs/WORKSHOP.md` §1.1 对 `official` / `config` / `meta` / `shared` / `theme` /
 // `serverModules` 那六格「刻意没有通道」的判断逐字成立，**本文件不推翻它**：一个能指定任意文件覆盖、或让包
-// 直接写数值的包格式**就是安装器**（`docs/design/mod-layer.md` §28.39）。
+// 直接写数值的包格式**就是安装器**（`docs/design/mod-layer.md` §34.9）。
 //
 // 所以这一层与 `shared/variants.js` 是**同一个形状、不同的一张表**：
 //   1. **闭枚举**。一个包只能声明**这张表里有的开关**，每个开关只能取**这个开关列出的选项名**。开关名不认识 ⇒
@@ -250,7 +250,7 @@ export function parseBehaviourDecl(raw, table = BEHAVIOUR_SWITCHES) {
       // 而 `module` / `entry` / `file` / `path` / `value` 这几个具体的名字更要在**这里**就死掉 —— 它们是
       // 「安装器」那半张脸的形状（本文件头那条红线），不是这一层将来可能加的东西。
       if (key !== 'switch' && key !== 'option' && key !== 'name' && key !== 'desc') {
-        return fail('BEHAVIOUR_BAD_SHAPE', `${where}: "${clip(key)}" is not a declared field (switch, option, name, desc). A behaviour declaration names a switch and one of its options — it never carries a module, a file, a path or a number (DESIGN §28.43)`);
+        return fail('BEHAVIOUR_BAD_SHAPE', `${where}: "${clip(key)}" is not a declared field (switch, option, name, desc). A behaviour declaration names a switch and one of its options — it never carries a module, a file, a path or a number (DESIGN §34.12)`);
       }
     }
     if (typeof entry.switch !== 'string' || !entry.switch) {

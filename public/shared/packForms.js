@@ -1,6 +1,6 @@
 // shared/packForms.js — 形态（clip set）通道的**统一入口**：第一方 `FORMS` 一件不动，包只做增量。
 //
-// 背景（docs/design/mod-layer.md §28.29）：`public/js/render/units.js` 的 `FORMS` 是一张**冻结的模块常量**，
+// 背景（docs/design/mod-layer.md §34.5）：`public/js/render/units.js` 的 `FORMS` 是一张**冻结的模块常量**，
 // 按 spine id 键、值是「形态名 → {change, end, leave, next, roles}」。它是第一方常量，语义不许变味，所以
 // 「包能不能改形态」这件事的答案不是去包一层可写表，而是：
 //
@@ -132,7 +132,7 @@ export function installPackForms(decl) {
         });
         continue;
       }
-      // 第一方优先是**合并规则**（§28.29 裁决 2）：第一方 `FORMS` 上已经有这个形态名时，包这条不生效。
+      // 第一方优先是**合并规则**（§34.5 裁决 2）：第一方 `FORMS` 上已经有这个形态名时，包这条不生效。
       // **但它不占位** —— 占位的只有包自己，否则同一个包的第二条声明会被误报成「另一个包抢了它」。
       if (FIRST_PARTY_KINDS[spineId]?.[kind]) {
         dropped.push({

@@ -11,7 +11,7 @@
 //                                                          browser by URL. A relative specifier resolves for one and not
 //                                                          the other, so a kit imports through `@kit/` (the kit SDK) or
 //                                                          `@sim/` (three pure engine helpers) — a prefix that resolves
-//                                                          in both worlds (shared/kitImports.js, DESIGN §28.12). This
+//                                                          in both worlds (shared/kitImports.js, DESIGN §34.1). This
 //                                                          check and the loader share one scanner, so the editor cannot
 //                                                          pass what loadWorkshopKits then refuses
 //   3. it must be DETERMINISTIC and environment-free         it runs in the player's browser (SP_COMBAT=client) and the
@@ -250,7 +250,7 @@ export function validateKit(source, opts = {}) {
 
   // ---- rule 2: imports come from the whitelist (shared/kitImports.js). Checked on the COMMENT-STRIPPED text, because
   // the rule itself is worth explaining in the file's own header (the shipped example kit does exactly that), and with
-  // the SAME scanner the loader uses — one verdict, two readers (DESIGN §28.12).
+  // the SAME scanner the loader uses — one verdict, two readers (DESIGN §34.1).
   for (const issue of kitImportIssues(text)) {
     err('source', issue.code, issue.reason, `a kit may import only: ${kitImportAllowedText()}`);
   }

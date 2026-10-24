@@ -1,4 +1,4 @@
-// shared/formProjection.js — 干员形态投影（口径轴 `form: "elite"`，DESIGN §28.41）。
+// shared/formProjection.js — 干员形态投影（口径轴 `form: "elite"`，DESIGN §34.11）。
 //
 // 这一层解决的是一面**能力**上的墙，不是数据上的：`data/chess.json` 里每名干员的两种形态是一对记录
 // （`_a` 普通 / `_b` 精锐，互为 `baseId` / `goldenId`），而 `_b` 的战斗职能是**引擎自己烘出来的**那份

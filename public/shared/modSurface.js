@@ -78,7 +78,7 @@ export const MOD_SURFACE = Object.freeze([
       'server/match/bondsMeta.js', 'server/sim/content/support/index.js', 'public/js/ui/gameLogic/bonds.js',
     ],
     tests: ['test/traitGrants.test.js'],
-    spec: '§28.49',
+    spec: '§34.17',
   },
   {
     id: 'overrides',
@@ -134,7 +134,7 @@ export const MOD_SURFACE = Object.freeze([
     ],
     files: ['shared/workshop.js', 'server/workshop.js', 'public/js/ui/portraitChain.js', 'public/js/ui/extensions.js'],
     tests: ['test/workshopSkins.test.js', 'test/ui/portraitChain.test.js', 'test/lobby-appearance.test.js'],
-    spec: '§28.28',
+    spec: '§34.19',
   },
   {
     id: 'notices',
@@ -201,8 +201,8 @@ export const MOD_SURFACE = Object.freeze([
       // 名字与面板那半边**共用一份判据**（`PACK_CHANNEL_RE`）、每条还必须被本包某个面板的 `messages` 声明过
       //（`MODULES_UNKNOWN_CHANNEL`，否则客户端根本发不出来），且该模块必须挂 `matchClass`（没有接收人就不许声明）。
       '`channels`（接收通道，§28.23）的每个名字要同时被本包的 `client.panels[].messages` 声明过，且该模块必须挂 `matchClass` —— 投递进对局 = 改得了结果，所以整包仍须 `combat: true`；发送者身份由平台从会话与座位解析（客户端载荷里自称的 from / seat 不作数）',
-      '`uses` 里含 `metrics` / `route` 的两格改不了对局（一个是只读标量快照，一个是只读 GET），所以都**不**要求 `combat: true`（§28.34 / §28.35）',
-      '`healthz` 与 `onBoot` 的读数口径见 §28.37：`/healthz` 的 `ok` 恒 true、恒 200（「不 ok 时 503」做不到，如实写在那一节）',
+      '`uses` 里含 `metrics` / `route` 的两格改不了对局（一个是只读标量快照，一个是只读 GET），所以都**不**要求 `combat: true`（§34.2 / §34.8）',
+      '`healthz` 与 `onBoot` 的读数口径见 §34.20：`/healthz` 的 `ok` 恒 true、恒 200（「不 ok 时 503」做不到，如实写在那一节）',
     ],
     files: ['shared/workshop.js', 'server/modModules.js', 'server/hostMetrics.js', 'server/http/routeMount.js', 'server/lobby.js', 'shared/kitAuthoring.js'],
     tests: ['test/packServerModules.test.js', 'test/packServerModulesWire.test.js', 'test/packMatchMsg.test.js', 'test/packServerSurface.test.js', 'test/modMatchChannels.test.mjs'],
@@ -221,7 +221,7 @@ export const MOD_SURFACE = Object.freeze([
     ],
     files: ['shared/workshop.js', 'server/index.js', 'server/http/websocket.js', 'server/lobby.js'],
     tests: ['test/packServerSurface.test.js'],
-    spec: '§28.33',
+    spec: '§34.7',
   },
   {
     id: 'server.modules.metrics',
@@ -237,7 +237,7 @@ export const MOD_SURFACE = Object.freeze([
     ],
     files: ['server/hostMetrics.js', 'server/modModules.js', 'server/index.js'],
     tests: ['test/packServerSurface.test.js'],
-    spec: '§28.34',
+    spec: '§34.2',
   },
   {
     id: 'server.modules.route',
@@ -249,11 +249,11 @@ export const MOD_SURFACE = Object.freeze([
       '只有 GET / HEAD；缓存只有 `no-store` / `no-cache`（没有 `public`）；响应体有上限（64 KB）',
       '回调必须**同步**返回 JSON 可序列化的值（`Promise` 点名拒绝并回 500 —— 单进程事件循环，这一格不做每请求隔离）',
       '认证口径与引擎其余 HTTP 面逐字一致：**没有认证**，所以 `host.route` 不是私有通道（要私有数据落 `host.io`）',
-      '静态 `pack.json.routes` 通道仍然按「声明过的路径就是声明过的路径」行事；保留路径表本批只施加在动态通道上（§28.35 记了这条不对称）',
+      '静态 `pack.json.routes` 通道仍然按「声明过的路径就是声明过的路径」行事；保留路径表本批只施加在动态通道上（§34.8 记了这条不对称）',
     ],
     files: ['server/http/routeMount.js', 'server/http/static.js', 'server/modModules.js', 'server/index.js'],
     tests: ['test/packServerSurface.test.js'],
-    spec: '§28.35',
+    spec: '§34.8',
   },
   {
     id: 'media.voices.cdn',
@@ -270,7 +270,7 @@ export const MOD_SURFACE = Object.freeze([
     ],
     files: ['shared/workshop.js', 'server/voiceCdn.js', 'server/http/static.js', 'server/index.js'],
     tests: ['test/packServerSurface.test.js'],
-    spec: '§28.36',
+    spec: '§34.7',
   },
   {
     id: 'server.battle',
@@ -317,7 +317,7 @@ export const MOD_SURFACE = Object.freeze([
     decl: 'pack.json.assets = { container, manifest, serverPolicy?, verify?, mirrors? }',
     anchors: [
       { symbol: 'ASSETS_SERVER_POLICIES' }, { symbol: 'ASSETS_VERIFY_ALGORITHMS' },
-      // 作者自备 CDN 的镜像（§28.40）：字段闭集与两条形态判据。与 `VOICE_CDN_FIELDS` 同一类 —— 它们是「一个包
+      // 作者自备 CDN 的镜像（§34.10）：字段闭集与两条形态判据。与 `VOICE_CDN_FIELDS` 同一类 —— 它们是「一个包
       // 可以写哪几个键」的那张表，写错的名字被点名拒绝（`ASSETS_MIRROR_UNKNOWN_FIELD`），所以必须被锚住。
       { symbol: 'ASSETS_MIRROR_FIELDS' }, { symbol: 'ASSETS_MIRROR_MAX' }, { symbol: 'ASSETS_MIRROR_ID_RE' },
     ],
@@ -333,7 +333,7 @@ export const MOD_SURFACE = Object.freeze([
   {
     id: 'behaviour',
     layer: 'B',
-    // 与 `variants`（§28.39）是**同一形状、不同一张表**：包声明的是「哪一格开关、哪一档」，不是「改成几」、
+    // 与 `variants`（§34.9）是**同一形状、不同一张表**：包声明的是「哪一格开关、哪一档」，不是「改成几」、
     // 更不是「改哪个文件」。第 4 刀落这一格时表是**空的**（通道 + 守卫本身）；第 8 刀起表里有实现好的格
     // （`shopBias` / `prepLoadout` / `morphPairing`），随后 `unequip` 也带着自己的读取点落了进来 —— 今天
     // **4 格**，每一格都带**引擎侧的读取点** —— 所以这里锚的是**表、顶层键，以及这四格的读取点**：
@@ -369,7 +369,7 @@ export const MOD_SURFACE = Object.freeze([
     ],
     files: ['shared/workshop.js', 'shared/behaviour.js', 'shared/morph.js', 'server/index.js', 'server/match/pool.js', 'server/match/player/economy.js', 'server/match/match/platform.js', 'server/match/player/items.js'],
     tests: ['test/packBehaviour.test.js', 'test/shopBias.test.js', 'test/prepLoadout.test.js', 'test/morphPairing.test.js', 'test/unequip.test.js'],
-    spec: '§28.43',
+    spec: '§34.12',
   },
   {
     id: 'target',
@@ -393,14 +393,14 @@ export const MOD_SURFACE = Object.freeze([
     ],
     files: ['shared/workshop.js', 'server/workshop.js'],
     tests: ['test/modTarget.test.mjs'],
-    spec: '§28.46',
+    spec: '§34.14',
   },
   {
     id: 'dependencies',
     layer: 'A',
     // 与 `content` / `notices` 同一类：一个**清单字段**（形状在 `shared/workshop.js` 判）。它的特殊性在
     // **语义只在装载期成立** —— 「缺不缺这个依赖」要等本机真的装了哪些包才知道，所以这一格的判据分两半：
-    // 形状在这一层（`parseModRefsDecl`），跨包裁决在加载器那一步（`adjudicatePackGraph`，§28.48）。
+    // 形状在这一层（`parseModRefsDecl`），跨包裁决在加载器那一步（`adjudicatePackGraph`，§34.16）。
     decl: 'pack.json.dependencies[] = { id, range? }',
     anchors: [{ symbol: 'PACK_FIELDS', members: ['dependencies'] }],
     requires: [
@@ -413,7 +413,7 @@ export const MOD_SURFACE = Object.freeze([
     ],
     files: ['shared/workshop.js', 'server/workshop.js', 'server/index.js'],
     tests: ['test/modDependencies.test.mjs'],
-    spec: '§28.48',
+    spec: '§34.16',
   },
   {
     id: 'conflicts',
@@ -425,18 +425,18 @@ export const MOD_SURFACE = Object.freeze([
     requires: [
       '形状与错误码同 `dependencies`（`CONFLICTS_` 前缀：`BAD_SHAPE` / `BAD_ENTRY` / `UNKNOWN_FIELD` / `BAD_ID` / `BAD_RANGE` / `CONFLICTING_RANGES`）',
       '**包 id 大的那个被拒**（与既有裁决「同 id 抢占按包 id 排序」同一条确定性来源）；双方都声明时同一条边只裁决一次',
-      '带 `range` 时只有**区间匹配**才互斥（依赖包没写 `version` 时视为满足，见 §28.48）',
+      '带 `range` 时只有**区间匹配**才互斥（依赖包没写 `version` 时视为满足，见 §34.16）',
       '**不是贡献项**：只声明互斥的包照旧 `EMPTY_PACK`',
       '不声明 ⇒ 归一化清单里不长这个键（§28.2）',
     ],
     files: ['shared/workshop.js', 'server/workshop.js', 'server/index.js'],
     tests: ['test/modDependencies.test.mjs'],
-    spec: '§28.48',
+    spec: '§34.16',
   },
   {
     id: 'enabled',
     layer: 'B',
-    // 装好 ≠ 生效（§28.50）。与 `variants` / `behaviour` 同一形状：包声明的是**一个布尔**，不是数值、不是路径。
+    // 装好 ≠ 生效（§34.18）。与 `variants` / `behaviour` 同一形状：包声明的是**一个布尔**，不是数值、不是路径。
     // 补的缺口是「留着这个包、但现在不要它生效」在今天没有表达方式 —— 只能删目录，而删目录与停用是两件事。
     decl: 'pack.json.enabled = true | false',
     anchors: [
@@ -453,7 +453,7 @@ export const MOD_SURFACE = Object.freeze([
     ],
     files: ['shared/workshop.js', 'shared/enabled.js', 'server/workshop.js'],
     tests: ['test/packEnabled.test.js'],
-    spec: '§28.50',
+    spec: '§34.18',
   },
   // ------------------------------------------------------------------ C 层：客户端界面
   {
@@ -585,7 +585,7 @@ export const MOD_SURFACE = Object.freeze([
     ],
     files: ['public/js/resources/sources.js', 'public/js/resources/host.js', 'public/js/ui/extensions.js', 'public/js/ui/settings.js'],
     tests: ['test/modAssetsMirrors.test.js', 'test/modClientPanels.test.js'],
-    spec: '§28.40',
+    spec: '§34.10',
   },
   {
     id: 'forms',
@@ -607,7 +607,7 @@ export const MOD_SURFACE = Object.freeze([
     ],
     files: ['shared/workshop.js', 'shared/packForms.js', 'shared/formNames.js', 'public/js/render/units.js', 'public/js/render/app.js', 'public/js/assets.js'],
     tests: ['test/packForms.test.js'],
-    spec: '§28.29',
+    spec: '§34.5',
   },
   {
     id: 'fx.silentPhases',
@@ -621,7 +621,7 @@ export const MOD_SURFACE = Object.freeze([
     ],
     files: ['shared/workshop.js', 'public/js/assets.js', 'public/js/render/fx/kinds.js'],
     tests: ['test/packForms.test.js'],
-    spec: '§28.29',
+    spec: '§34.5',
   },
   // ------------------------------------------------------------------ 发行：房间集合与对齐
   {
