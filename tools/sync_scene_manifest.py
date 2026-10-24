@@ -3,9 +3,12 @@ from pathlib import Path
 from PIL import Image
 
 def sync_scenes():
-    manifest_path = Path("data/local-assets.json")
+    # public/data/local-assets.json 是 git 跟踪的那份（客户端真正请求的清单、内容最全）；
+    # data/local-assets.json 是 extract.py 的产物且被 gitignore，常常是旧版本。
+    # 以前先读 data/ 那份，于是把 public/ 的完整清单覆盖成了残缺版（只剩 57 条）。
+    manifest_path = Path("public/data/local-assets.json")
     if not manifest_path.exists():
-        manifest_path = Path("public/data/local-assets.json")
+        manifest_path = Path("data/local-assets.json")
     doc = json.loads(manifest_path.read_text(encoding="utf-8"))
     groups = doc.setdefault("groups", {})
 
