@@ -91,19 +91,8 @@ export function buildResult(m, outcome) {
   const gd = m.gd;
   const { victory, hiddenReached, hiddenCleared } = outcome;
   const players = [...m.players.values()].sort((a, b) => a.seat - b.seat);
-  const titles = assignTitles(gd, players, victory);
-  // 业主 2026-10-19：主动撤退（reason 'retreat'）带自己的 roundsPassed —— 以当回合为准，
-  // 不是常规的「通关 = bossRound」。
-  // 业主 2026-10-20：超限模拟（solo_infinite）没有 `bossRound` 这个概念 ——
-  // gamedata.bossRound 对它是普通模式的 14，拿它去夹 m.round 会把「打到 R30」显示成 13。
-  // 超限的回合数就按实际打到的回合算：失败 = 已通过的回合（round - 1），
-  // 胜利 = 打到的回合（撤退会自己传 outcome.roundsPassed，那条路本来就对）。
-  const isInfinite = !!m.isInfinite;
-  const teamRounds = Number.isInteger(outcome.roundsPassed)
-    ? outcome.roundsPassed
-    : (isInfinite
-      ? (victory ? Math.max(0, m.round) : Math.max(0, m.round - 1))
-      : (victory ? gd.bossRound + (hiddenCleared ? 1 : 0) : Math.max(0, Math.min(m.round, gd.bossRound) - 1)));
+  const titles = assignTitles(gd, players.filter(ps => !Number.isInteger(ps.aiTakeoverRound)), victory);
+  const teamRounds = victory ? gd.bossRound + (hiddenCleared ? 1 : 0) : Math.max(0, Math.min(m.round, gd.bossRound) - 1);
   const rows = players.map((ps) => {
     const roundsPassed = !ps.alive && ps.eliminatedRound != null ? Math.max(0, ps.eliminatedRound - 1) : teamRounds;
     const lineup = boardOrder(ps.board).filter((x) => x.piece.kind === 'chess').map(({ r, c, piece }) => {
@@ -111,18 +100,20 @@ export function buildResult(m, outcome) {
       // 0.2.0 自选编队: a DIY slot's pick — the result screen names and draws the operator (shared/diy.js diyRecord)
       const pick = typeof ps.diyPickOf === 'function' ? ps.diyPickOf(piece.id) : null;
       if (pick) e.diy = { charId: pick.charId, skillIndex: pick.skillIndex, uniEquipId: pick.uniEquipId };
+      // 0.2.0 补位: a chess this player fielded as its stand-in — the result screen draws the stand-in (the owner's recall
+      // of the official mode, 2026-10-06); `standInFor` = the replaced operator's charId, like the sim's UnitInfo
       const si = typeof ps.fieldsStandIn === 'function' && ps.fieldsStandIn(piece.id) ? gd.standIn(piece.id) : null;
       if (si && si.standInFor) e.standInFor = si.standInFor;
       return e;
     });
-    // the team's clear counts for the players still in; an eliminated / departed teammate did not pass the boss round.
-    // 随机模式 负生: a player whose LP dropped below 0 (rmFailed) 已判负 — still on the seat, but cannot win this match
-    const cleared = victory && ps.alive && !(m.random && ps.rmFailed);
+    // the team's clear counts for the players still in; an eliminated / departed teammate did not pass the boss round
+    const cleared = victory && ps.alive;
     return {
       playerId: ps.playerId,
       seat: ps.seat,
       name: ps.name,
       isBot: ps.isBot,
+      ...(Number.isInteger(ps.aiTakeoverRound) ? { aiTakeoverRound: ps.aiTakeoverRound } : {}),
       left: ps.left,
       alive: ps.alive,
       victory: cleared,
@@ -131,8 +122,6 @@ export function buildResult(m, outcome) {
       eliminatedRound: ps.eliminatedRound,
       lp: Math.max(0, ps.lp),
       bandId: ps.bandId,
-      // 随机模式: the second pick, when the player holds two (the client shows both bands)
-      ...(m.random && Array.isArray(ps.bandIds) && ps.bandIds.length > 1 ? { bandId2: ps.bandIds[1] } : {}),
       lineup,
       bonds: bondList(gd, ps.bonds).filter((b) => b.active || b.layers > 0),
       stats: {
@@ -141,18 +130,15 @@ export function buildResult(m, outcome) {
         bossDamage: Math.round(ps.stats.bossDamage), activatedLayers: ps.activatedLayers(), lpLost: ps.stats.lpLost,
         perfectRounds: ps.stats.perfectRounds,
       },
-      title: titles.get(ps.playerId) ?? null,
-      trophies: trophiesFor(gd, roundsPassed, cleared && hiddenCleared),
-      reward: rewardFor(gd, roundsPassed),
+      title: m.test === true || Number.isInteger(ps.aiTakeoverRound) ? null : titles.get(ps.playerId) ?? null,
+      trophies: m.test === true || Number.isInteger(ps.aiTakeoverRound) ? 0 : trophiesFor(gd, roundsPassed, cleared && hiddenCleared),
+      reward: m.test === true || Number.isInteger(ps.aiTakeoverRound) ? 0 : rewardFor(gd, roundsPassed),
     };
   });
-  return {
+  const out = {
     t: 'm.result',
     victory,
     roundsPassed: teamRounds,
-    // 业主 2026-10-20：超限局没有「满 X 回合」这回事，结算页不该显示 /14。
-    ...(m.isInfinite ? { isInfinite: true } : {}),
-    lastRound: m.isInfinite ? null : gd.lastRound,
     hiddenReached,
     hiddenCleared,
     reason: outcome.reason,
@@ -161,10 +147,22 @@ export function buildResult(m, outcome) {
     modeId: m.modeId,
     difficulty: m.difficulty,
     stageId: m.stageId,
+    // a non-default official version's match (DESIGN §35.23): its registry id — the page records and draws the settlement
+    // with that version even when it never saw the room (the lobby's replay after a kick / grace timeout); absent for
+    // the default, so its result stays byte-identical
+    ...(m.version ? { version: m.version } : {}),
     bossId: m.bossId,
     hiddenBossId: m.hiddenBossId,
     seed: m.seed,
     durationMs: Math.max(0, m.sched.now() - m.startedAt),
     players: rows,
   };
+  // A test match is marked on the settlement the replay stores. The keys are absent otherwise, so a normal
+  // result stays byte-identical. Test results award nothing and are never persisted by the client.
+  if (m.test === true) {
+    out.test = true;
+    out.testActions = m.testActions | 0;
+    if (m.testReplayable === false) out.testReplayable = false;
+  }
+  return out;
 }

@@ -8,7 +8,6 @@ import { PHASE, ERR } from '../../../shared/constants.js';
 import { generateDraft, applyCard, bountyBattles, isMultiRoundBounty, bountyCard } from '../choices.js';
 import { onPickCard } from '../botEmotes.js';
 import { weightedPick } from '../waves.js';
-import { botPickCard } from '../bot.js';
 import { OK, fail, DELAYS } from './common.js';
 
 /** Cards of the personal choice (PRTS 卫戍协议：盟约 下半 §法术 教鞭: "于3个战术特训的悬赏任务中选择一项"). */
@@ -16,9 +15,9 @@ const PERSONAL_OFFER_SIZE = 3;
 
 export class MatchSpDraft {
   enterSpDraft() {
-    const draft = generateDraft(this.gd, this.rngDraft, this.round, { ...(this.random ? { forceFamily: 'bounty' } : {}), stageId: this.stageId, bondAvailable: (bondId) => this.bondLive(bondId), itemAvailable: id => this.itemPool.canGain(id) });
+    const draft = generateDraft(this.gd, this.rngDraft, this.round, { stageId: this.stageId, bondAvailable: (bondId) => this.bondLive(bondId), itemAvailable: id => this.itemPool.canGain(id) });
     const alive = this.alivePlayers();
-    if (!draft || !alive.length) { this.enterPrep(); return; }
+    if (!draft || !alive.length) { this.beforePrepOffers(); return; }
     this.phase = PHASE.SP_DRAFT;
     let order = alive.map((p) => p.playerId);
     if (!this.isSolo) this.rngDraft.shuffle(order);
@@ -54,7 +53,7 @@ export class MatchSpDraft {
     const token = ++this._turnToken;
     if (!s.untimed) {
       const first = s.idx === 0;
-      const secs = first ? this.gd.timer('spFirst') : this.gd.timer('spTurn');
+      const secs = this.isSolo && this.gd.config.version?.rules?.soloTimed ? 150 : first ? this.gd.timer('spFirst') : this.gd.timer('spTurn');
       this.setDeadline(secs, () => {
         if (this.phase !== PHASE.SP_DRAFT || token !== this._turnToken) return;
         const ps = this.players.get(this.spTurn());
@@ -80,7 +79,11 @@ export class MatchSpDraft {
       if (!ps || !ps.botControlled) return;
       const avail = this.sp.cards.filter(c => this.spCardAvailable(c)).map(c => c.idx);
       if (!avail.length) return;
-      this._applyCard(ps, botPickCard(this, ps, this.sp.cards, avail));
+      const fallback = () => this._applyCard(ps, this.bot.pickCard(this, ps, this.sp.cards, avail));
+      if (this.bot.decide?.(this, ps, { kind: 'card',
+        valid: () => this.phase === PHASE.SP_DRAFT && token === this._turnToken,
+        complete: () => this.sp?.picks[ps.playerId] != null, fallback })) return;
+      fallback();
     });
   }
 
@@ -101,14 +104,6 @@ export class MatchSpDraft {
     const card = s.cards[idx];
     if (!card) return;
     s.picks[ps.playerId] = idx;
-    // 阶段质变：各自独立选择，卡不互抢（taken 不写）
-    if (s.evolution) {
-      try { this._applyEvolutionCard(ps, card); } catch (e) { this.reportError(`applyEvolution ${card.id}`, e); }
-      this.markPrivate(ps);
-      this.markPublic();
-      this.startSpTurn();
-      return;
-    }
     s.taken[idx] = ps.playerId;
     try { applyCard(this, ps, card); } catch (e) { this.reportError(`applyCard ${card.id}`, e); }
     this.markPrivate(ps);
@@ -121,14 +116,7 @@ export class MatchSpDraft {
     if (this.phase !== PHASE.SP_DRAFT) return;
     this.cancel(this._turnTimer);
     this._turnTimer = null;
-    // 阶段质变之后：该回合若还是机变回合（3/6/9/12 与 spRounds 重叠），继续正常机变；否则进休整
-    if (this.sp && this.sp.evolution) {
-      this.sp = null;
-      if (this.gd.spRounds().includes(this.round)) { this.enterSpDraft(); return; }
-      this.enterPrep();
-      return;
-    }
-    this.enterPrep();
+    this.beforePrepOffers();
   }
 
   /**
@@ -178,7 +166,7 @@ export class MatchSpDraft {
     if (!pending) return undefined;
     const indices = pending.cards.map((c, i) => i);
     const idx = mode === 'bot'
-      ? botPickCard(this, ps, pending.cards.map((c) => bountyCard(this.gd, c)), indices)
+      ? this.bot.pickCard(this, ps, pending.cards.map((c) => bountyCard(this.gd, c)), indices)
       : this.rngMeta.pick(indices);
     return this.pickPersonalChoice(ps, idx, pending.id);
   }

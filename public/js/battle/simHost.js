@@ -1,6 +1,5 @@
 // C4 simulation hosts (DESIGN §32.11). The clock belongs to runner.js. Only the vanilla host has a Battle on the page.
-import { loadBrowserSim } from './simLoader.js';
-import { loadModuleKits } from './modKits.js';
+import { loadBrowserSim, checkOperatorTraitRuntime } from './simLoader.js';
 import { unitStatsEntry } from '../../../shared/protocol.js';
 
 /** [ASSUMED] 2 s per RPC, including construction and forceEnd (both can execute plugin hooks). */
@@ -15,10 +14,6 @@ export class InPageSimHost {
     this.sim = await this.loadSim(content ? { ...content, cs } : undefined);
     return this;
   }
-  /**
-   * **同步**建战斗：`runner.js` 与工人线程建完就立刻读 `host.battle`（这条路径在战斗的每一帧上，不能变成 Promise）。
-   * 房间模组的 kit 表 (W-C) 因此由调用方先 await 好、放进 `opts` 传进来（`runner.js` / `simWorkerRuntime.js`）。
-   */
   start(spec, opts = {}) {
     this.spec = spec;
     this.battle = this.sim.spec.createBattleFromSpec(spec, this.sim.ds, opts);
@@ -110,7 +105,8 @@ export class WorkerSimHost {
     content ||= await this.contentFor?.(cs);
     if (!content || content.cs !== cs || !content.data) throw failure('PLUGIN_WORKER_FAILED', 'no checked content set');
     this.cs = cs;
-    const ready = await this.rpc('load', [{ ...content, cs }], this.loadTimeoutMs);
+    const traitRuntimeVerified = await checkOperatorTraitRuntime(content.data);
+    const ready = await this.rpc('load', [{ ...content, cs, traitRuntimeVerified }], this.loadTimeoutMs);
     if (ready.install) await this.rpc('install');
     return this;
   }
@@ -121,11 +117,16 @@ export class WorkerSimHost {
     this.meter = packet.meter;
     return packet;
   }
-  async start(spec, opts = {}) {
+  async start(spec) {
     this.spec = spec;
-    // 业主 2026-10-22：超限局的盟约层数上限随 start 传给工人线程 —— 那边是另一个模块实例，
-    // 主线程调 setBondLayerCap 影响不到它（layers 会卡在 999）。
-    this.accept(await this.rpc('start', [spec, { bondLayerCap: opts.bondLayerCap ?? null }]));
+    // A reused worker still has the previous battle's events and stat RPCs. Drop them after `start` returns so a
+    // step that was already in flight cannot append onto the new battle, and ignore stat replies from the old one.
+    this.statsGeneration = (this.statsGeneration || 0) + 1;
+    this.statsPending.clear();
+    const packet = await this.rpc('start', [spec]);
+    this.events.length = 0;
+    this.statsCache.clear();
+    this.accept(packet);
     return this;
   }
   async step(n, opts) { return this.accept(await this.rpc('step', [n, opts])); }
@@ -135,7 +136,12 @@ export class WorkerSimHost {
   unitStats(id) {
     if (!this.stopped && !this.statsPending.has(id)) {
       this.statsPending.add(id);
-      this.rpc('unitStats', [id]).then(v => this.statsCache.set(id, v), () => {}).finally(() => this.statsPending.delete(id));
+      const generation = this.statsGeneration || 0;
+      this.rpc('unitStats', [id]).then(v => {
+        if (generation === (this.statsGeneration || 0)) this.statsCache.set(id, v);
+      }, () => {}).finally(() => {
+        if (generation === (this.statsGeneration || 0)) this.statsPending.delete(id);
+      });
     }
     return this.statsCache.get(id) || null;
   }

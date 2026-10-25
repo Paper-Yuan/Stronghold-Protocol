@@ -59,8 +59,10 @@ export class YuWall {
       this.started = true;
       const cam = ofx.ctx?.cam?.(), cameraX = cam?.position?.().x ?? 10;
       const r = this.rect;
-      // [ASSUMED] Clip wall fragments to this battle's tile edges, so adjacent benches/UI stay clear.
-      this.data = { boardClip: [r.c0 - 10.5, r.r0 - 9.5, r.c1 - 9.5, r.r1 - 8.5] };
+      // No clipping: the official wall spans the battlefield with its caps on the invalid tiles just past each end.
+      // (A world-space clip discarded most of the curtain — some vertex paths pass local positions as v_wpos — and
+      // left flat orange slivers; the maintainer's official video shows the whole crimson curtain.)
+      this.data = undefined;
       this.parts = yuWallLayout(this.origin, r, cfg, cameraX).map((p) => ({ ...p, key: p.root ? rootKey : p.key, h: null }));
       this.next = this.at + Math.max(0, Number(cfg._edgeEffectIntervalFirstTick) || 0);
     }

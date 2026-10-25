@@ -1,4 +1,4 @@
-// 机变 draft overlay (research 06 §4.4 / §11.5): family title | description over "倒计时结束仍未选定将自动分配",
+// 机变 draft overlay (research 06 §4.4 / §11.5): family title | description over "倒计时结束后仍未选定将自动分配",
 // whose turn ("当前轮到你决策" / name over "正在决策…") with countdown — the pick order as ✓ / ••• on the team panel's
 // portraits (spMarks) — and a 3×2 grid (solo: 3 cards) of cards in the official layout (the official 悬赏 / 机密商店 / 战术 screenshots): a
 // framed icon at the top-left with the bold name beside it (tags under the name), the effect text across the card under
@@ -9,17 +9,15 @@
 // playtest #6 item 6: at 756×366 it used to sit below a large centred icon, clipped away). Picking takes two taps, like
 // buying in the shop (user playtest #4 item 2 — extra enemies, items and tactics were picked by a slip of the finger;
 // research 09 §5 EventOnFirstClick → EventOnConfirm): the first tap on an available card selects it (it lifts with a
-// gold frame and a 确认选择 · 再次点击 strip; the header shows 确认选择), a second tap on the same card — or 确认选择 —
+// white frame and a ☑ 确认选择 · 再次点击 strip; the header shows 确认选择), a second tap on the same card — or 确认选择 —
 // sends g.choice; a tap on another card moves the selection, a tap elsewhere or Esc drops it. Cards are buttons (Tab /
 // Enter work the same way). While the pick is in flight the card shows a "选择中" strip with a sweeping bar (never a
 // spinner over its text — user playtest #3 item 9), dropped as soon as the pick shows in m.public (spBusy itself resets
 // when the request settles, ≤ 8 s, or the phase moves on). Untimed drafts (solo, a single-human match: sp.untimed) show
-// no countdown and say so. When the pick order comes round to the player, 轮到你选 drops in over the cards (the event's
-// video 10:08, ui/matchPlates.js TurnPopup); the selected card's frame and 确认选择 strip are white, as in the video.
+// no countdown and say so. The selected card's frame and its ☑ 确认选择 strip are white, as in the event's video (10:16).
 
-import { useEffect, useRef, useState } from '../../vendor/hooks.module.js';
+import { useEffect, useState } from '../../vendor/hooks.module.js';
 import { html, Icon, TierChip, Countdown, Button } from './components.js';
-import { TurnPopup } from './matchPlates.js';
 import { Img, RichText, PlayerAvatar, GIcon } from './gameComponents.js';
 import { itemIconUrl, enemyIconUrl, uiUrl } from './assetUrls.js';
 import { richTextPlain } from './richText.js';
@@ -132,7 +130,7 @@ export function armedCard(armed, sp, o) {
  * @param {{ pub:any, sp:any, myId:string, solo:boolean, personal?:boolean, onPick:(idx:number)=>void, busyIdx?:number|null, total?:number|null }} props
  */
 export function ChoiceOverlay(props) {
-  const { sp, myId, solo, personal = false, busyIdx = null, onPick } = props;
+  const { sp, myId, solo, busyIdx = null, onPick } = props;
   const [sel, setSel] = useState(null);
   const armed = armedCard(sel, sp, { myId, solo, busyIdx });
   // a selection whose card cannot be picked any more (taken, the turn moved on, a pick in flight) is dropped
@@ -143,14 +141,6 @@ export function ChoiceOverlay(props) {
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [armed]);
-  // 轮到你选 (the event's video 10:08): the disc drops in each time the pick order comes round to the player
-  const [turnPop, setTurnPop] = useState(0);
-  const turnNow = turnPopupDue(sp, { myId, solo, personal });
-  const turnSeen = useRef(false);
-  useEffect(() => {
-    if (turnNow && !turnSeen.current) setTurnPop((k) => k + 1);
-    turnSeen.current = turnNow;
-  }, [turnNow]);
   if (!sp) return null;
   const tap = (idx) => {
     const card = sp.cards.find((c) => c && c.idx === idx);
@@ -159,17 +149,7 @@ export function ChoiceOverlay(props) {
     if (r.pick != null) onPick(r.pick);
   };
   return html`<${ChoiceView} ...${props} armed=${armed} onTap=${tap}
-    onConfirm=${() => { if (armed != null) tap(armed); }} onDisarm=${() => setSel(null)} />
-    ${turnPop ? html`<${TurnPopup} key=${turnPop} onDone=${() => setTurnPop(0)} />` : null}`;
-}
-
-/**
- * Whether the 轮到你选 popup is due: a shared draft (not solo, not a personal 教鞭 pick) whose turn is the player's and
- * the player has not picked yet.
- * @param {any} sp normalizeSp(...) @param {{ myId: string, solo: boolean, personal?: boolean }} o
- */
-export function turnPopupDue(sp, { myId, solo, personal = false }) {
-  return !!sp && !solo && !personal && sp.turnPid === myId && sp.pickOf.get(myId) == null;
+    onConfirm=${() => { if (armed != null) tap(armed); }} onDisarm=${() => setSel(null)} />`;
 }
 
 /**
@@ -260,7 +240,7 @@ export function ChoiceView({ pub, sp, myId, solo, personal = false, busyIdx = nu
             ${card.soldOut && !taker ? html`<span class="spcard__busy" role="status">${t('库存不足')}</span>` : null}
             ${r.tier ? html`<${TierChip} tier=${r.tier} size="md" class="spcard__tier" />` : null}
             ${taker ? html`<span class="spcard__taker" title=${t('{name} 已选择', { name: taker.name })}><${PlayerAvatar} player=${taker} size="sm" /></span>` : null}
-            ${isArmed ? html`<span class="spcard__confirm" role="status"><b>${t('确认选择')}</b><small>${t('再次点击')}</small></span>` : null}
+            ${isArmed ? html`<span class="spcard__confirm" role="status"><span class="spcard__cbox"><${Icon} name="check" /></span><b>${t('确认选择')}</b><small>${t('再次点击')}</small></span>` : null}
             ${busy ? html`<span class="spcard__busy" role="status">${t('选择中')}</span>` : null}
           </button>`;
         })}

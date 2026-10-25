@@ -12,27 +12,35 @@
 // per operator, so the normal, elite and 自选 forms share them; only values that differ from the defaults (潜能 6,
 // 精英2 Lv.60) are kept; stored beside the entries (`sp.pref.loadout` = { v: 1, entries, ops }; an older stored loadout
 // has none = the defaults) and sent with `room.loadout { entries, ops }` (shared/protocol.js checkLoadoutOps).
+// By operator (DESIGN §35.23, M1): official versions reuse chess ids for other operators (第一期's chess_char_1_02_a is
+// 讯使, 第二期's 角峰), so the stored choices are keyed by charId — `sp.pref.loadout` = { v: 2, byChar, ops }, shared by
+// every version — and the screens keep working on chess ids: ui/loadoutSync.js shows `entries` as a view of `byChar`
+// for the data on screen (charKeyMap / entriesView) and writes an edit back through the map of the data the view was
+// built from (rebaseByChar). A stored v1 loadout ({ v: 1, entries } by 第二期下半's chess ids) is migrated through
+// 第二期下半's chess.json (entriesToChar); 导出 writes v2 (byChar), 导入 reads v1 (chess ids of 第二期下半) and v2.
+// A v2 store also carries `entries` — the same choices by 第二期下半's chess ids, when the page has that map — which this
+// build ignores (v === 2) and an older build on the same origin (a rollback, builds side by side) still reads, so its
+// 干员调配 does not look reset.
 
-import { loadoutOptions, checkLoadout, checkLoadoutOps, resolveLoadout, MODULE_NONE, LOADOUT_LIMITS, isSkinId, SKIN_LIMITS } from '../../../shared/protocol.js';
+import { loadoutOptions, checkLoadout, checkLoadoutOps, resolveLoadout, MODULE_NONE, LOADOUT_LIMITS } from '../../../shared/protocol.js';
 import { isPotential, isCultivate, POTENTIAL_DEFAULT, CULTIVATE_DEFAULT } from '../../../shared/potential.js';
 import { t, N_ } from '../../../shared/i18n.js';
-import { getPackIdForChess } from '../roomMods.js';
 
 export { MODULE_NONE };
 
 /** localStorage key (store.js loadPref/savePref prefix `sp.pref.`) and format version. */
 export const LOADOUT_PREF = 'loadout';
-export const LOADOUT_VERSION = 1;
+export const LOADOUT_VERSION = 2;
 
 export const PROF_ORDER = ['PIONEER', 'WARRIOR', 'TANK', 'SNIPER', 'CASTER', 'MEDIC', 'SUPPORT', 'SPECIAL'];
-export const PROF_NAME = Object.freeze({ PIONEER: '先锋', WARRIOR: '近卫', TANK: '重装', SNIPER: '狙击', CASTER: '术师', MEDIC: '医疗', SUPPORT: '辅助', SPECIAL: '特种' });
-export const SP_TYPE = Object.freeze({ INCREASE_WITH_TIME: '自动回复', INCREASE_WHEN_ATTACK: '攻击回复', INCREASE_WHEN_TAKEN_DAMAGE: '受击回复', ON_DEPLOY: '被动', 8: '被动' });
+export const PROF_NAME = Object.freeze({ PIONEER: N_('先锋'), WARRIOR: N_('近卫'), TANK: N_('重装'), SNIPER: N_('狙击'), CASTER: N_('术师'), MEDIC: N_('医疗'), SUPPORT: N_('辅助'), SPECIAL: N_('特种') });
+export const SP_TYPE = Object.freeze({ INCREASE_WITH_TIME: N_('自动回复'), INCREASE_WHEN_ATTACK: N_('攻击回复'), INCREASE_WHEN_TAKEN_DAMAGE: N_('受击回复'), ON_DEPLOY: N_('被动'), 8: N_('被动') });
 /** Module attribute keys (ModuleRecord.attr / battle_equip attributeBlackboard) → label + unit. */
 export const ATTR_LABEL = Object.freeze({
-  maxHp: ['生命上限', ''], max_hp: ['生命上限', ''], atk: ['攻击力', ''], def: ['防御力', ''], res: ['法术抗性', ''],
-  magic_resistance: ['法术抗性', ''], aspd: ['攻击速度', ''], attack_speed: ['攻击速度', ''], cost: ['部署费用', ''],
-  blockCnt: ['阻挡数', ''], block_cnt: ['阻挡数', ''], respawnTime: ['再部署时间', '秒'], respawn_time: ['再部署时间', '秒'],
-  baseAttackTime: ['攻击间隔', '秒'], base_attack_time: ['攻击间隔', '秒'], moveSpeed: ['移动速度', ''], hpRecoveryPerSec: ['每秒回复', ''],
+  maxHp: [N_('生命上限'), ''], max_hp: [N_('生命上限'), ''], atk: [N_('攻击力'), ''], def: [N_('防御力'), ''], res: [N_('法术抗性'), ''],
+  magic_resistance: [N_('法术抗性'), ''], aspd: [N_('攻击速度'), ''], attack_speed: [N_('攻击速度'), ''], cost: [N_('部署费用'), ''],
+  blockCnt: [N_('阻挡数'), ''], block_cnt: [N_('阻挡数'), ''], respawnTime: [N_('再部署时间'), N_('秒')], respawn_time: [N_('再部署时间'), N_('秒')],
+  baseAttackTime: [N_('攻击间隔'), N_('秒')], base_attack_time: [N_('攻击间隔'), N_('秒')], moveSpeed: [N_('移动速度'), ''], hpRecoveryPerSec: [N_('每秒回复'), ''],
 });
 
 const isObj = (v) => !!v && typeof v === 'object' && !Array.isArray(v);
@@ -83,8 +91,92 @@ export function parseStoredOps(raw) {
   return out;
 }
 
-/** Serialised form for localStorage (`ops`: the per-operator 潜能 / 练度, 0.2.2). */
-export const toStored = (entries, ops = {}) => ({ v: LOADOUT_VERSION, entries: entries || {}, ops: ops || {} });
+/**
+ * Parse the stored choices by operator (v2: `{ v: 2, byChar, ops }`; any junk → {}): structurally valid entries only.
+ * @param {any} raw
+ * @returns {Record<string, { skill?: number, module?: string }>}
+ */
+export function parseStoredByChar(raw) {
+  return isObj(raw) && raw.v === 2 && isObj(raw.byChar) ? parseStored({ entries: raw.byChar }) : {};
+}
+
+/**
+ * Serialised form for localStorage (v2: the choices by charId; `ops`: the per-operator 潜能 / 练度, 0.2.2; `entries`: the
+ * copy by 第二期下半's chess ids for older builds — omitted when not given; this build never reads it from a v2 store).
+ */
+export const toStored = (byChar, ops = {}, entries = undefined) => ({ v: LOADOUT_VERSION, byChar: byChar || {}, ops: ops || {},
+  ...(isObj(entries) ? { entries } : {}) });
+/** The v1 form (by chess id), written only while a v1 store still waits for its migration (ui/loadoutSync.js). */
+export const toStoredV1 = (entries, ops = {}) => ({ v: 1, entries: entries || {}, ops: ops || {} });
+
+// ---- by operator (DESIGN §35.23) -----------------------------------------------------------------------------------
+
+/**
+ * chess id ↔ charId of a data set's normal chess (see the header): `toChar` every normal chess's operator, `toChess`
+ * each operator's chess — its loadout slot first (a retired hidden chess of the same operator only when it has none).
+ * @param {any[]} list the data's chess records
+ * @returns {{ toChar: Map<string, string>, toChess: Map<string, string> }}
+ */
+export function charKeyMap(list) {
+  const normal = (Array.isArray(list) ? list : []).filter((c) => c && !c.isGolden && !c.isDiy && typeof c.chessId === 'string'
+    && typeof c.charId === 'string' && c.charId && (!c.baseId || c.baseId === c.chessId));
+  const toChar = new Map(normal.map((c) => [c.chessId, c.charId]));
+  const toChess = new Map();
+  for (const c of [...normal.filter(isLoadoutSlot), ...normal.filter((x) => !isLoadoutSlot(x))]) if (!toChess.has(c.charId)) toChess.set(c.charId, c.chessId);
+  return { toChar, toChess };
+}
+
+/**
+ * Choices by chess id → by charId (a v1 store or import: `charOf` of 第二期下半's chess); a chess that maps to no
+ * operator is dropped, and of two chess of one operator the loadout slot's choice wins.
+ * @param {Record<string, any>} entries @param {(chessId: string) => string|null|undefined} charOf
+ * @param {(chessId: string) => boolean} [isSlot]
+ */
+export function entriesToChar(entries, charOf, isSlot = () => true) {
+  const out = {};
+  const ids = Object.keys(entries || {}).sort((a, b) => Number(isSlot(b)) - Number(isSlot(a)));
+  for (const id of ids) {
+    const charId = charOf(id);
+    if (typeof charId !== 'string' || !charId || UNSAFE_IDS.has(charId) || Object.hasOwn(out, charId)) continue;
+    if (isObj(entries[id])) out[charId] = { ...entries[id] };
+  }
+  return out;
+}
+
+/**
+ * The view of the choices by operator for a data set (`map`: charKeyMap): `{ [chessId]: choice }` of every operator the
+ * data has; the others are left out of the view (and kept in `byChar`).
+ * @param {Record<string, any>} byChar @param {{ toChess: Map<string, string> }} map
+ */
+export function entriesView(byChar, map) {
+  const out = {};
+  for (const [charId, e] of Object.entries(byChar || {})) {
+    const id = map?.toChess?.get(charId);
+    if (id && isObj(e)) out[id] = { ...e };
+  }
+  return out;
+}
+
+/**
+ * Write an edit of a view back by operator — only what the edit changed (`prev` → `next`): a chess it removed clears its
+ * operator, a chess it added or changed sets its operator, through `charOf` of the data the view was built from, so an
+ * edit is never filed under another version's operator and an edit made on an older copy of the view never undoes a
+ * newer one; a chess it cannot map is left out. Operators the view did not show stay.
+ * @param {Record<string, any>} byChar @param {Record<string, any>} prev @param {Record<string, any>} next
+ * @param {(chessId: string) => string|null|undefined} charOf
+ * @returns {Record<string, any>} a new map
+ */
+export function rebaseByChar(byChar, prev, next, charOf) {
+  const out = { ...(byChar || {}) };
+  const before = prev || {};
+  for (const id of Object.keys(before)) if (!Object.hasOwn(next || {}, id)) { const c = charOf(id); if (c) delete out[c]; }
+  for (const [id, e] of Object.entries(next || {})) {
+    if (Object.hasOwn(before, id) && JSON.stringify(before[id]) === JSON.stringify(e)) continue;
+    const c = charOf(id);
+    if (typeof c === 'string' && c && !UNSAFE_IDS.has(c) && isObj(e)) out[c] = { ...e };
+  }
+  return out;
+}
 
 // ---- 潜能 / 练度 (0.2.2) ------------------------------------------------------------------------------------------------
 
@@ -168,69 +260,29 @@ export const LOADOUT_EXPORT_KIND = 'stronghold.loadout';
 export const LOADOUT_IMPORT_MAX_BYTES = 256 * 1024;
 
 /**
- * Filter and sanitize skin choices `{ [baseChessId]: skinId }`.
+ * Portable payload of a loadout, as downloaded / copied by 导出 — v2 (DESIGN §35.23): the choices by operator
+ * (`byChar`, every version's), with the per-operator 潜能 / 练度 (`ops`, 0.2.2).
+ * @param {Record<string, any>} byChar the stored choices by charId
+ * @param {{ now?: number, ops?: Record<string, any> }} [o]
  */
-export function sanitizeSkins(raw) {
-  const out = {};
-  if (!isObj(raw)) return out;
-  const limit = (SKIN_LIMITS && SKIN_LIMITS.entries) || 160;
-  for (const [id, skinId] of Object.entries(raw)) {
-    if (Object.keys(out).length >= limit) break;
-    if (UNSAFE_IDS.has(id) || !/^[A-Za-z0-9_\-.:]{1,64}$/.test(id)) continue;
-    if (isSkinId(skinId)) out[id] = skinId;
-  }
-  return out;
-}
-
-/**
- * 增量合并皮肤：仅覆盖 importedSkins 中声明了的干员，其余干员保留玩家当前配置。
- */
-export function mergeSkins(currentSkins, importedSkins) {
-  if (!isObj(importedSkins)) return currentSkins || {};
-  const next = { ...(currentSkins || {}) };
-  for (const [id, skinId] of Object.entries(importedSkins)) {
-    if (skinId) {
-      next[id] = skinId;
-    } else {
-      delete next[id];
-    }
-  }
-  return next;
-}
-
-/**
- * Portable payload of a loadout, as downloaded / copied by 导出.
- * @param {Record<string, any>} entries `room.loadout.entries`
- * @param {{ now?: number, ops?: Record<string, any>, skins?: Record<string, any>, diy?: Record<string, any> }} [o]
- */
-export function exportPayload(entries, { now = Date.now(), ops = {}, skins = null, diy = null } = {}) {
+export function exportPayload(byChar, { now = Date.now(), ops = {} } = {}) {
   const clean = {};
-  for (const [id, e] of Object.entries(entries || {})) if (isObj(e)) clean[id] = { ...e };
+  for (const [id, e] of Object.entries(byChar || {})) if (isObj(e)) clean[id] = { ...e };
   const cleanOps = {};
   for (const [id, e] of Object.entries(ops || {})) if (isObj(e)) cleanOps[id] = { ...e };
-  const out = {
+  return {
     kind: LOADOUT_EXPORT_KIND,
     v: LOADOUT_VERSION,
     exportedAt: new Date(Number.isFinite(now) ? now : Date.now()).toISOString(),
     count: Object.keys(clean).length,
-    entries: clean,
+    byChar: clean,
     ops: cleanOps,
   };
-  if (skins && isObj(skins)) {
-    const cleanSkins = sanitizeSkins(skins);
-    if (Object.keys(cleanSkins).length > 0) {
-      out.skins = cleanSkins;
-    }
-  }
-  if (diy && isObj(diy) && Object.keys(diy).length > 0) {
-    out.diy = { ...diy };
-  }
-  return out;
 }
 
 /** Pretty JSON of `exportPayload` — one preset per file / clipboard payload. */
-export function serializeExport(entries, opts) {
-  return JSON.stringify(exportPayload(entries, opts), null, 2);
+export function serializeExport(byChar, opts) {
+  return JSON.stringify(exportPayload(byChar, opts), null, 2);
 }
 
 /**
@@ -240,38 +292,34 @@ export function serializeExport(entries, opts) {
  * chess / skills / modules this build does not have. `__proto__` / `constructor` keys are skipped (see parseStored).
  * A payload with `ops` (0.2.2) brings the per-operator 潜能 / 练度 too (`ops` in the result — absent when the payload has
  * none: an older export leaves the current settings alone); a payload of settings only imports.
+ * A v2 payload (DESIGN §35.23) gives `byChar` (choices by operator) instead of `entries`; a v1 one gives `entries` by
+ * 第二期下半's chess ids (the caller maps them: ui/loadoutSync.js).
  * @param {any} input payload object or serialised text
- * @returns {{ ok: true, entries: Record<string, any>, ops?: Record<string, any>, skins?: Record<string, any>, diy?: Record<string, any> } | { ok: false, error: string }}
+ * @returns {{ ok: true, entries?: Record<string, any>, byChar?: Record<string, any>, ops?: Record<string, any> } | { ok: false, error: string }}
  */
 export function parseImport(input) {
   let raw = input;
   if (typeof raw === 'string') {
-    if (raw.length > LOADOUT_IMPORT_MAX_BYTES) return { ok: false, error: '内容过长，无法导入' };
+    if (raw.length > LOADOUT_IMPORT_MAX_BYTES) return { ok: false, error: t('内容过长，无法导入') };
     const text = raw.trim();
-    if (!text) return { ok: false, error: '没有可导入的内容' };
-    try { raw = JSON.parse(text); } catch { return { ok: false, error: '无法识别的内容' }; }
+    if (!text) return { ok: false, error: t('没有可导入的内容') };
+    try { raw = JSON.parse(text); } catch { return { ok: false, error: t('无法识别的内容') }; }
   }
-  if (!isObj(raw)) return { ok: false, error: '无法识别的格式' };
+  if (!isObj(raw)) return { ok: false, error: t('无法识别的格式') };
   const v = isInt(raw.v) ? raw.v : null;
   // a newer envelope may reshuffle fields — refuse instead of silently reading it as something else
-  if (v != null && v > LOADOUT_VERSION) return { ok: false, error: `这份调配来自更新的版本（v${v}），请先更新游戏` };
+  if (v != null && v > LOADOUT_VERSION) return { ok: false, error: t('这份调配来自更新的版本（v{v}），请先更新游戏', { v }) };
   const kind = typeof raw.kind === 'string' ? raw.kind : null;
-  if (kind && kind !== LOADOUT_EXPORT_KIND && kind !== 'stronghold.diy') return { ok: false, error: '这不是干员调配的数据' };
-  const entries = parseStored(raw);
+  if (kind && kind !== LOADOUT_EXPORT_KIND) return { ok: false, error: t('这不是干员调配的数据') };
   const ops = isObj(raw.ops) ? parseStoredOps(raw) : null;
-  const skins = isObj(raw.skins) ? sanitizeSkins(raw.skins) : null;
-  // 自选编队（diy）：可以是独立导出的信封（{ kind, v, picks }，exportDiy 的形状），也可以是裸的 picks 表。
-  // 统一取出 picks，交给调用方 sanitizeDiyPicks（业主 2026-10-18：一份导出带走全部配置）。
-  const diyRaw = isObj(raw.diy) ? raw.diy : (kind === 'stronghold.diy' ? raw : null);
-  const diy = isObj(diyRaw) ? (isObj(diyRaw.picks) ? diyRaw.picks : diyRaw) : null;
-  if (!Object.keys(entries).length && (!skins || !Object.keys(skins).length) && !(ops && Object.keys(ops).length) && !(diy && Object.keys(diy).length)) {
-    return { ok: false, error: '里面没有有效的调配或皮肤条目' };
+  if (v === 2) {
+    const byChar = parseStoredByChar(raw);
+    if (!Object.keys(byChar).length && !(ops && Object.keys(ops).length)) return { ok: false, error: t('里面没有有效的调配条目') };
+    return ops ? { ok: true, byChar, ops } : { ok: true, byChar };
   }
-  const result = { ok: true, entries };
-  if (ops) result.ops = ops;
-  if (skins) result.skins = skins;
-  if (diy) result.diy = diy;
-  return result;
+  const entries = parseStored(raw);
+  if (!Object.keys(entries).length && !(ops && Object.keys(ops).length)) return { ok: false, error: t('里面没有有效的调配条目') };
+  return ops ? { ok: true, entries, ops } : { ok: true, entries };
 }
 
 // ---- options & choices ---------------------------------------------------------------------------------------------
@@ -387,15 +435,16 @@ export function sanitizeEntries(entries, getChess) {
     if (typeof e?.module === 'string') one.module = e.module;
     if (!Object.keys(one).length) continue;
     const res = checkLoadout({ [id]: one }, getChess);
-    if (res.ok && res.loadout[id]) { out[id] = one; continue; }
-    // checkLoadout skips what it cannot accept instead of refusing the message (a mod pack's chess disappears with
-    // its pack), so an entry missing from the result means one of its parts was illegal — keep the part that still
-    // passes on its own (e.g. the skill when a module disappeared)
-    for (const k of ['skill', 'module']) {
-      if (one[k] === undefined) continue;
-      const r = checkLoadout({ [id]: { [k]: one[k] } }, getChess);
-      if (r.ok && r.loadout[id]) out[id] = { ...(out[id] || {}), [k]: one[k] };
+    if (!res.ok) {
+      // keep the part that is still legal (e.g. the skill when a module disappeared)
+      for (const k of ['skill', 'module']) {
+        if (one[k] === undefined) continue;
+        const r = checkLoadout({ [id]: { [k]: one[k] } }, getChess);
+        if (r.ok && r.loadout[id]) out[id] = { ...(out[id] || {}), [k]: one[k] };
+      }
+      continue;
     }
+    if (res.loadout[id]) out[id] = one;
   }
   return out;
 }
@@ -420,16 +469,11 @@ export function selectedModule(loadout, chess, getChess) {
  * @param {any[]} list data.list('chess')
  */
 /** Whether a chess record is a loadout slot (a visible normal chess — what the server's checkLoadout accepts). */
-export const isLoadoutSlot = (c, enabledModIds = null) => {
-  if (!c || c.isGolden || c.visible === false || c.isHidden || c.isDiy || (c.baseId && c.baseId !== c.chessId)) return false;
-  const pId = c.packId || getPackIdForChess(c.chessId);
-  if (pId && (!enabledModIds || !enabledModIds.has(pId))) return false;
-  return true;
-};
+export const isLoadoutSlot = (c) => !!c && !c.isGolden && c.visible !== false && !c.isHidden && !c.isDiy && (!c.baseId || c.baseId === c.chessId);
 
-export function rosterOf(list, enabledModIds = null) {
+export function rosterOf(list) {
   return (Array.isArray(list) ? list : [])
-    .filter((c) => isLoadoutSlot(c, enabledModIds))
+    .filter(isLoadoutSlot)
     .sort((a, b) => (a.tier ?? 0) - (b.tier ?? 0) || (a.shopSortId ?? 0) - (b.shopSortId ?? 0) || String(a.chessId).localeCompare(String(b.chessId)));
 }
 
@@ -463,7 +507,7 @@ export function filterRoster(roster, f = {}, entries = {}, getChess = () => null
       if (!effectiveChoice(entries, c, golden).changed && !opsVisibleChange(ops, c.charId, potentialCounts)) return false;
     }
     if (q) {
-      const hay = [c.name, c.appellation, c.subProfessionName, PROF_NAME[c.profession], ...(c.bonds || []).map((b) => getBond(b)?.name)]
+      const hay = [c.name, c.appellation, c.subProfessionName, t(PROF_NAME[c.profession]), ...(c.bonds || []).map((b) => getBond(b)?.name)]
         .filter(Boolean).join(' ').toLowerCase();
       if (!hay.includes(q)) return false;
     }
@@ -500,7 +544,10 @@ export function moduleBadge(rec, id = null) {
 /**
  * The two lines of a trait record (data `trait` / `traitBase`, ModuleRecord `traitOverride`, DATA.md §2): `base` = the
  * 特性 the unit fights with — the class trait, or the module's own wording where the module rewrites it (official
- * `overrideDescripton`) — and `added` = the module's extra line (official `additionalDescription`), or null.
+ * `overrideDescripton`) — and `added` = the module's extra line (official `additionalDescription`), or null. The extra
+ * line comes after the class trait, never instead of it: PRTS flags it 「特性追加」 on every such module, and the sim keeps
+ * the class trait with the module equipped (community report of 2026-10-06, item 16.2: until 0.2.0 the 干员调配 module
+ * card, its 局内数值 and the detail card showed the extra line alone on 114 of the 164 modules the screen offers).
  * @param {any} trait
  * @returns {{ base: string, added: string|null }}
  */
@@ -529,7 +576,7 @@ export function attrRows(attr) {
     if (typeof v !== 'number' || !Number.isFinite(v) || v === 0) continue;
     const [label, unit] = ATTR_LABEL[k] || [k, ''];
     const n = Math.abs(v) < 10 && !Number.isInteger(v) ? Number(v.toFixed(2)) : Math.round(v);
-    out.push({ key: k, label, text: `${v > 0 ? '+' : ''}${n}${unit}`, positive: k === 'cost' || k === 'respawnTime' || k === 'respawn_time' || k === 'baseAttackTime' || k === 'base_attack_time' ? v < 0 : v > 0 });
+    out.push({ key: k, label: t(label), text: `${v > 0 ? '+' : ''}${n}${t(unit)}`, positive: k === 'cost' || k === 'respawnTime' || k === 'respawn_time' || k === 'baseAttackTime' || k === 'base_attack_time' ? v < 0 : v > 0 });
   }
   return out;
 }
@@ -543,10 +590,10 @@ export function skillTags(rec) {
   const passive = rec.skillType === 'PASSIVE' || rec.spType === 'ON_DEPLOY' || rec.spType === 8;
   const spKind = passive ? 'passive' : rec.spType === 'INCREASE_WHEN_ATTACK' ? 'atk' : rec.spType === 'INCREASE_WHEN_TAKEN_DAMAGE' ? 'def' : 'time';
   let duration = null;
-  if (rec.durationType === 'AMMO') duration = '弹药';
-  else if (Number(rec.duration) > 0) duration = `${Number(rec.duration)}秒`;
+  if (rec.durationType === 'AMMO') duration = t('弹药');
+  else if (Number(rec.duration) > 0) duration = t('{n}秒', { n: Number(rec.duration) });
   return {
-    sp: SP_TYPE[rec.spType] || (passive ? '被动' : '技力'),
+    sp: t(SP_TYPE[rec.spType]) || (passive ? t('被动') : t('技力')),
     spKind,
     init: passive ? null : Number.isFinite(rec.initSp) ? rec.initSp : 0,
     cost: passive ? null : Number.isFinite(rec.spCost) ? rec.spCost : 0,

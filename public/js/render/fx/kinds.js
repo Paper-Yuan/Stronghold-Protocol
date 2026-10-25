@@ -69,7 +69,7 @@ export const FX_KINDS = Object.freeze({
   thorns: { a: 'counter', c: 0xff9aa6 }, downed: { a: 'down', c: 0xbfeee2 }, stone: { a: 'down', c: 0xc0b8a8, smoke: 0x5a5448 },
   dp: { a: 'dp', c: 0x9fd4ff }, coin: { a: 'coin', c: 0xffc600 }, steal: { a: 'coin', c: 0xffc600 }, crateBreak: { a: 'crate', c: 0xc89a5a },
   lpLoss: { a: 'lp', c: 0xff3b30 },
-  // 限伤 (sim/damage.js leaderHitCancelled): a leader's hit of ≥ 300000 dealt nothing — the official shows no number and
+  // 限伤 (sim/attack/health.js leaderHitCancelled): a leader's hit of ≥ 300000 dealt nothing — the official shows no number and
   // no effect [ASSUMED], so nothing is drawn (`a: 'none'`)
   hitCap: { a: 'none', c: 0xffffff },
   // 自选 operator kits (0.2.0): 逻各斯, 真言, 维伊 (O3); 早露, 提丰, 娜仁图亚 (O7); 嵯峨's 重伤 (O8)

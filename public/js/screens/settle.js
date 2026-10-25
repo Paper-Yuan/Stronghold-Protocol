@@ -1,84 +1,157 @@
-// The settlement flow of a match on screen (the event video 11:39–12:32, 2026-10-13): a radar intro, then two pages.
-//   个人战报 (SelfPage): my own outcome (模拟完成, or 模拟中断 when the team lost or I was out before the end), the rounds I
-//     passed, the leaders I helped defeat, my final lineup (ten slots: tier, elite level and gear of each operator), my
-//     bonds and their layers, my plate with the trophies, and the level settlement (the LV bar filling with this match's
-//     experience) — then 下一步. The official 卫戍认证 / 每日防卫目标 strip is left out: the owner's servers have no such
-//     currency (2026-10-13).
+// The settlement flow of the match on screen (research 06 §10.6; the official act's settlement): a radar intro, then
+// two pages, drawn with the official settlement sprites (assets `settle/*`, `elite/*`, `entry/season_logo_settle`;
+// docs/ASSETS.md) — every sprite falls back to text / plain CSS when the resource pack is not there.
+//   个人战报 (SelfPage): my own outcome (模拟完成, or 模拟中断 when the team lost or I was out before the end) over the
+//     terrain and its target point, the rounds I passed, the leaders I helped defeat, my final lineup (ten slots: tier,
+//     elite level and gear of each operator), my bonds and their layers, my plate with the trophies, the level
+//     settlement — 获得卫戍认证 +N and 每日防卫目标 (data/config.json rewards) filling the LV bar — then 下一步.
 //   同盟 (TeamPage): one card per seat (its ace operator's art, the 评语, the rounds passed, the player plate, the
-//     trophies; under a teammate 加好友 and 点赞, under my own card the likes this match brought me — 2026-10-14, bound
-//     to the accounts: ui/friends.js, the sidecar's social.mjs), the team's outcome and rounds, the match time and date,
-//     数据详情 (the full report: screens/result.js ResultView) and 返回同盟 / 返回大厅.
-// The LV is counted from the match records: the logged-in account's list (ui/cloudStats.js), else this device's. A
-// match's experience is its settlement row's `reward`; 300 a level, LV 60 at most. Everything is drawn here (SVG / CSS);
-// only the data's own art (operator portraits, item / bond / title / enemy icons, avatars) comes from the resource pack.
-// A spectator seat (no row of its own) opens on the team page. The stats page re-views a stored match with ResultView.
+//     trophies), the team's outcome and rounds, the match time and date, 数据详情 (the full report: screens/result.js
+//     ResultView) and 返回同盟 / 返回大厅. A match with gameplay plugins carries the 「非官方」 mark (DESIGN §32.6) and
+//     leaves the level alone; the 结算 tab plugin slot (result.tab) sits on this page.
+// The LV is counted from this device's match records (ui/stats.js): the 卫戍认证 of each settled official match (its
+// settlement row's `reward`) and the 每日防卫目标 bonus of each day that reached it, against the levels of
+// config.rewards.milestones. [ASSUMED] the official game keeps the total on the account; this project has no accounts,
+// so a device counts what it recorded (cleared browser data starts again at LV 0). A spectator seat (no row of its own)
+// opens on the team page. The stats page re-views a stored match with ResultView.
 
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from '../../vendor/hooks.module.js';
-import { RANDOM_MODE_NAME } from '../../../shared/randomMode.js';
-import { html, Icon, DifficultyTag } from '../ui/components.js';
-import { useGameData, Img, Sprite, PlayerAvatar, BondGlyph, BandIcon } from '../ui/gameComponents.js';
+import { html, Icon, DifficultyIcon, Spinner } from '../ui/components.js';
+import { OperatorImage, useGameData, Img, Sprite, PromotionIcon, PlayerAvatar, BondGlyph, BandIcon } from '../ui/gameComponents.js';
 import { normalizeResult, diyRecordFor, cardStandIn, standInForText } from '../ui/gameLogic.js';
 import { data } from '../data.js';
-import { chessPortraitUrl, chessAvatarUrl, itemIconUrl, enemyIconUrl, titleIconUrl } from '../ui/assetUrls.js';
+import { itemIconUrl, enemyIconUrl, titleIconUrl } from '../ui/assetUrls.js';
 import { store, useStore, emptyMatch } from '../store.js';
 import { audio } from '../audio.js';
 import { sentText } from '../ui/lang.js';
-import { AccountTag, useAccount, useCurrentAccount } from '../ui/accounts.js';
-import { TrophyBadge } from '../ui/trophies.js';
 import { reducedMotion } from '../ui/device.js';
-import { recordId, selfRowOf } from '../ui/stats.js';
-import { currentRecords, ensureUploaded, accountApi } from '../ui/cloudStats.js';
-import { NameCardLayer } from '../ui/namecards.js';
-import { toast } from '../ui/toasts.js';
+import { recordId, selfRowOf, loadStats, isModdedRecord, recordsOfSeason } from '../ui/stats.js';
+import { UnofficialMark, VersionTag, isModdedRoom } from '../ui/pluginTag.js';
+import { shownVersion, seasonOf } from '../versions.js';
+import { TestMark } from '../ui/testConsole.js';
 import { ResultView, resultBonds } from './result.js';
+import { DIFFICULTY_NAMES, DIFFICULTY_COLORS } from '../../../shared/constants.js';
 import { t } from '../../../shared/i18n.js';
 
 const cx = (...p) => p.flat().filter(Boolean).join(' ');
 const pad2 = (n) => String(Math.max(0, Math.trunc(n) || 0)).padStart(2, '0');
+const int = (v) => Math.max(0, Math.round(Number(v) || 0));
 const ROMAN = ['', 'I', 'II', 'III', 'IV', 'V', 'VI'];
+/** A stage position (1920×1080 design pixels) as rem (1rem = 100px). */
+const at = (x, y) => `left:${x / 100}rem;top:${y / 100}rem`;
 
-/** Experience a level and the top level of the LV bar. */
-export const LV_EXP = 300;
-export const LV_MAX = 60;
 /** The radar intro, and the page change after 下一步. */
 export const INTRO_MS = 1500;
 const LEAVE_MS = 380;
 
-/** LV of an experience total: `exp` is the progress into the level (the full bar at the top level). */
-export function levelOf(total) {
-  const n = Math.max(0, Math.floor(Number(total) || 0));
-  const lv = Math.min(LV_MAX, 1 + Math.floor(n / LV_EXP));
-  return lv >= LV_MAX ? { lv: LV_MAX, exp: LV_EXP, max: true } : { lv, exp: n % LV_EXP, max: false };
+/** [ASSUMED] Fit translated text into #698's fixed title boxes without enlarging short labels (DESIGN §35.1). */
+export function titleScale(width, height, textWidth, textHeight) {
+  return Math.min(1, width / (textWidth || 1), height / (textHeight || 1));
+}
+
+function SettleTitle({ as: Tag = 'h1', class: cls, children }) {
+  const ref = useRef(null);
+  useLayoutEffect(() => {
+    const box = ref.current;
+    const text = box?.firstElementChild;
+    if (!text) return undefined;
+    const fit = () => box.style.setProperty('--title-scale', String(titleScale(box.clientWidth, box.clientHeight, text.offsetWidth, text.offsetHeight)));
+    fit();
+    // Observe the untransformed text too: late fonts and the text-size preference change its natural size.
+    const ro = new ResizeObserver(fit);
+    ro.observe(box);
+    ro.observe(text);
+    return () => ro.disconnect();
+  }, [children]);
+  return html`<${Tag} ref=${ref} class=${cx('settle__title', cls)}><span>${children}</span></${Tag}>`;
+}
+
+/** Official settle sprites (research 07-assets.json); CSS is used only for an absent/failed image. */
+export function SettleButtonArt({ ghost = false }) {
+  return html`<${Sprite} k=${ghost ? 'settle/btn_bg_02' : 'settle/btn_next_bg'} class="settle__btnbg"
+    fallback=${html`<span aria-hidden="true" class=${cx('settle__btnbg', ghost ? 'settle__btnbg--ghost' : 'settle__btnbg--primary')}></span>`} />`;
+}
+
+// ---- the level settlement ---------------------------------------------------------------------------------------------
+
+/**
+ * LV of a 卫戍认证 total against config.rewards.milestones (cumulative `tokens` per `level`): the levels reached (0 before
+ * the first), the progress into the next (`into` of `need`), `max` past the last.
+ * @param {number} total @param {{ level: number, tokens: number }[]} milestones
+ */
+export function levelOf(total, milestones) {
+  const n = int(total);
+  let lv = 0;
+  let prev = 0;
+  for (const m of Array.isArray(milestones) ? milestones : []) {
+    if (!Number.isFinite(m?.tokens)) continue;
+    if (n < m.tokens) return { lv, into: n - prev, need: m.tokens - prev, max: false };
+    lv = Number.isFinite(m.level) ? m.level : lv + 1;
+    prev = m.tokens;
+  }
+  return { lv, into: 0, need: 0, max: true };
+}
+
+/** The 每日防卫目标 day of a time: local, turning over at `resetHour` (04:00). */
+export function dayKey(ts, resetHour = 4) {
+  const d = new Date(ts - resetHour * 3600000);
+  return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`;
 }
 
 /**
- * This match's LV bar from the local records (ui/stats.js, any order; the match's own record — `id` — and anything after
- * it left out). A match's experience is the settlement's per-player `reward` (server/match/results.js rewardFor: the
- * rounds passed × the difficulty and mode factors). Returns the totals before and after this match and my trophies so far.
- * @param {any[]} records
- * @param {{ id?: string|null, exp?: number, trophies?: number, at?: number }} cur
+ * The 每日防卫目标 points of a match: the row of the rounds passed in config.rewards.baseByRoundsPassed (its
+ * dailyMissionPoint — [ASSUMED] unscaled by difficulty and mode, as the table gives it apart from the scaled reward).
  */
-export function levelProgress(records, { id = null, exp = 0, trophies = 0, at = Date.now() } = {}) {
-  const int = (v) => Math.max(0, Math.round(Number(v) || 0));
+export function dailyPointsFor(roundsPassed, table) {
+  const n = Number(roundsPassed) || 0;
+  const row = (Array.isArray(table) ? table : []).filter((r) => r && r.round <= n).pop();
+  return int(row?.dailyPoint);
+}
+
+/**
+ * This match's level settlement from the local records (ui/stats.js, any order; the match's own record — `id` — and
+ * anything after it left out). An official settled match earns its row's `reward` (server/match/results.js rewardFor);
+ * a day whose matches reached the daily goal earned the bonus once ([ASSUMED] the bonus is 卫戍认证 too, so it counts
+ * toward the level; the day is the local one). `counted` false (gameplay plugins): this match earns
+ * nothing. Returns the totals before and after this match, its gain and bonus, my trophies so far, today's daily goal.
+ * `season` (DESIGN §35.23): only the records of that activity count (null: every record).
+ * @param {any[]} records
+ * @param {{ id?: string|null, gain?: number, rounds?: number, trophies?: number, at?: number, counted?: boolean, rewards?: any, season?: string|null }} cur
+ */
+export function levelProgress(records, { id = null, gain = 0, rounds = 0, trophies = 0, at: now = Date.now(), counted = true, rewards = null, season = null } = {}) {
+  // one season's records (DESIGN §35.23: 第一期 and 第二期 each have their own 卫戍认证 table — ui/stats.js recordsOfSeason)
+  records = recordsOfSeason(records, season);
+  const daily = rewards?.daily && rewards.daily.need > 0 ? rewards.daily : null;
+  const table = rewards?.baseByRoundsPassed;
+  const reset = Number.isFinite(daily?.resetHour) ? daily.resetHour : 4;
+  const days = new Map();
   let total = 0;
   let cups = 0;
   for (const rec of Array.isArray(records) ? records : []) {
-    if (!rec || rec.id === id || !Number.isFinite(rec.t) || rec.t > at) continue;
+    // a quit record had no settlement: nothing earned
+    // (a 测试 match never counts: its record is not kept, and an old or imported one marked test is skipped too)
+    if (!rec || rec.id === id || !Number.isFinite(rec.t) || rec.t > now || rec.end === 'quit' || rec.test === true || isModdedRecord(rec)) continue;
     const row = selfRowOf(rec);
     total += int(row?.reward);
     cups += int(row?.trophies);
+    if (daily) { const k = dayKey(rec.t, reset); days.set(k, (days.get(k) || 0) + dailyPointsFor(row?.roundsPassed, table)); }
   }
-  const gain = int(exp);
-  return { gain, before: total, after: total + gain, trophies: cups + int(trophies) };
+  if (daily) for (const pts of days.values()) if (pts >= daily.need) total += int(daily.bonus);
+  const today = daily ? days.get(dayKey(now, reset)) || 0 : 0;
+  const pts = counted && daily ? dailyPointsFor(rounds, table) : 0;
+  const bonus = daily && today < daily.need && today + pts >= daily.need ? int(daily.bonus) : 0;
+  const g = counted ? int(gain) : 0;
+  return {
+    gain: g, bonus, before: total, after: total + g + bonus, trophies: cups + (counted ? int(trophies) : 0), counted,
+    daily: daily ? { name: daily.name, need: daily.need, today: Math.min(daily.need, today + pts) } : null,
+  };
 }
 
-// The operator's elite phase and level on the board, by tier, plain / elite (research 01-core-data charPriceByTier):
-// tiers I and II field E1 operators (55 / 60) and elite E2 ones (50 / 55); III–VI E2 at 1, elite at 60.
-const OP_LEVEL = { 1: [[1, 55], [2, 50]], 2: [[1, 60], [2, 55]] };
-/** @returns {{ phase: number, level: number }} */
-export function opLevel(tier, golden) {
-  const [phase, level] = (OP_LEVEL[tier] || [[2, 1], [2, 60]])[golden ? 1 : 0];
-  return { phase, level };
+// ---- small facts --------------------------------------------------------------------------------------------------------
+
+/** Read the resolved chess / backup form, including the active version or plugin's status (#811). */
+export function opLevel(rec) {
+  return { phase: rec?.status?.phase, level: rec?.status?.level ?? '—' };
 }
 
 /** The ace of a lineup — the team card's art: the highest tier, elite first, the earliest on the board. */
@@ -112,8 +185,6 @@ export function rowCleared(raw, row, victory) {
   return !!victory && row?.alive !== false && !row?.left;
 }
 
-// ---- hooks ------------------------------------------------------------------------------------------------------------
-
 /** A number counting from `from` to `to` (ease-out) once `run` holds; timers, not frames, so a hidden tab still ends. */
 function useCountUp(to, { ms = 700, delay = 0, from = 0, run = true } = {}) {
   const target = Math.round(Number(to) || 0);
@@ -133,7 +204,10 @@ function useCountUp(to, { ms = 700, delay = 0, from = 0, run = true } = {}) {
   return v;
 }
 
-/** Scale the 1920×1080 stage (19.2rem × 10.8rem) to fit the screen: sets --k on the element. */
+/**
+ * Fit the 1920×1080 stage (19.2rem × 10.8rem) into the screen: 1rem already fits it to the window (theme.css), but not
+ * below the 40px floor (a phone held sideways) or inside the safe-area insets — there it is scaled down (--k on the root).
+ */
 function useStageFit(ref) {
   useLayoutEffect(() => {
     const el = ref.current;
@@ -151,96 +225,30 @@ function useStageFit(ref) {
   }, []);
 }
 
-// ---- drawn pieces (original shapes) ---------------------------------------------------------------------------------
+// ---- shared pieces ------------------------------------------------------------------------------------------------------
 
 function Logo() {
   return html`<div class="slogo" aria-hidden="true">
-    <${Sprite} k="entry/season_logo_settle" class="slogo__img" fallback=${html`<svg class="slogo__mark" viewBox="0 0 60 60">
-      <rect x="1" y="1" width="58" height="58" fill="none" stroke="currentColor" stroke-width="2" />
-      <path d="M30 10 50 46H10z" fill="none" stroke="currentColor" stroke-width="3" /><path d="M30 22 40 40H20z" fill="currentColor" /></svg>`} />
-    <span class="slogo__txt"><svg viewBox="0 0 40 30" class="slogo__knot"><path d="M8 4h10v8H8zM22 4h10v8H22zM8 18h10v8H8zM22 18h10v8H22z" fill="none" stroke="currentColor" stroke-width="2.4" /><path d="M2 2v26M38 2v26" stroke="currentColor" stroke-width="2" /></svg>
-      <b>STRONGHOLD<br />PROTOCOL</b></span>
+    <${Sprite} k="entry/season_logo_settle" class="slogo__img"
+      fallback=${html`<${Sprite} k="settle/common_logo" class="slogo__img" fallback=${html`<b class="slogo__txt">STRONGHOLD<br />PROTOCOL</b>`} />`} />
   </div>`;
 }
 
-/** Elite phase emblem: one chevron for E1, two for E2. */
-function EliteMark({ phase }) {
-  if (!(phase > 0)) return null;
-  return html`<svg class="selite" viewBox="0 0 20 20" aria-hidden="true"><path d=${phase >= 2
-    ? 'M10 2 17 8 14.5 10.5 10 6.5 5.5 10.5 3 8zM10 9.5 17 15.5 14.5 18 10 14 5.5 18 3 15.5z'
-    : 'M10 5 17 12 14.5 14.5 10 10 5.5 14.5 3 12z'} /></svg>`;
+/** The mode pill: the official difficulty plate (its emblem, no text) under the difficulty's name. */
+function ModePill({ r }) {
+  const d = r.difficulty;
+  if (!d) return null;
+  const key = String(d).toLowerCase();
+  return html`<span class=${cx('smode', `smode--${key}`)} style=${`--d-color:${DIFFICULTY_COLORS[d] || 'var(--text-lo)'}`}>
+    <${Sprite} k=${`settle/mode_${key}`} class="smode__bg" fallback=${html`<span class="smode__bg smode__bg--css"><${DifficultyIcon} difficulty=${d} /></span>`} />
+    <b class="smode__name">${DIFFICULTY_NAMES[d] ? t(DIFFICULTY_NAMES[d]) : d}</b>
+  </span>`;
 }
 
-const CLOCK = 'M12 2a10 10 0 1 1 0 20 10 10 0 0 1 0-20zm0 2.2a7.8 7.8 0 1 0 0 15.6 7.8 7.8 0 0 0 0-15.6zM11 6.5h2v5l3.6 2.1-1 1.7L11 12.6z';
-const CALENDAR = 'M6 2h2v2h8V2h2v2h3v18H3V4h3zm-1 7v11h14V9zm2 2h4v4H7z';
-const SvgPath = ({ d, cls }) => html`<svg class=${cx('sico', cls)} viewBox="0 0 24 24" aria-hidden="true"><path d=${d} fill-rule="evenodd" /></svg>`;
-
-const AIM = [682, 345];
-const RAYS = [[1057, 192], [1410, 312], [1080, 402], [960, 585], [1080, 697], [900, 735], [682, 615]];
-const CROSSES = [[930, 240], [845, 640]];
-
-/**
- * The page's terrain: noise land (teal; red-dark for 模拟中断), a hot zone round the target point, the target point and
- * the rays to the lineup. Stage coordinates (1920×1080), drawn wider so a wide screen's margins are covered.
- */
-function SettleMap({ lose, seed }) {
-  const s = Math.abs(Math.trunc(Number(seed) || 7)) % 997;
-  const id = useMemo(() => `sm${Math.random().toString(36).slice(2, 8)}`, []);
-  // the hillshade (a lit height noise) tinted: teal land and an orange zone, or slate and red for 模拟中断
-  const land = lose ? '.12 0 0 0 .02  .26 0 0 0 .05  .27 0 0 0 .06  0 0 0 0 1' : '.1 0 0 0 0  .56 0 0 0 .05  .5 0 0 0 .06  0 0 0 0 1';
-  const zone = lose ? '.82 0 0 0 .1  .12 0 0 0 .02  .1 0 0 0 .02  0 0 0 0 1' : '.86 0 0 0 .12  .5 0 0 0 .05  .08 0 0 0 0  0 0 0 0 1';
-  const noise = (k, steps) => html`<filter id=${id + k} x="-640" y="-360" width="3200" height="1800" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
-    <feTurbulence type="fractalNoise" baseFrequency="0.0016 0.0022" numOctaves="3" seed=${s} result="n" />
-    <feColorMatrix in="n" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  1.5 0 0 0 -.25" result="a" />
-    <feComponentTransfer in="a" result="m"><feFuncA type="discrete" tableValues=${steps} /></feComponentTransfer>
-    <feTurbulence type="fractalNoise" baseFrequency="0.011" numOctaves="5" seed=${s + 17} result="h" />
-    <feDiffuseLighting in="h" surfaceScale="34" diffuseConstant="1.2" lighting-color="#fff" result="sh"><feDistantLight azimuth="235" elevation="28" /></feDiffuseLighting>
-    <feColorMatrix in="sh" type="matrix" values=${k === 'l' ? land : zone} result="c" />
-    <feComposite in="c" in2="m" operator="in" />
-  </filter>`;
-  return html`<svg class="smap" viewBox="-640 -360 3200 1800" aria-hidden="true">
-    <defs>
-      ${noise('l', '0 0 0 0 0 1 1 1 1 1')}
-      ${noise('z', '0 0 0 0 0 0 1 1 1 1')}
-      <radialGradient id=${`${id}g`} cx=${AIM[0] - 40} cy=${AIM[1] - 30} r="560" gradientUnits="userSpaceOnUse">
-        <stop offset="0" stop-color="#fff" /><stop offset=".55" stop-color="#fff" stop-opacity=".85" /><stop offset="1" stop-color="#fff" stop-opacity="0" />
-      </radialGradient>
-      <mask id=${`${id}k`} maskUnits="userSpaceOnUse" x="-640" y="-360" width="3200" height="1800"><rect x="-640" y="-360" width="3200" height="1800" fill=${`url(#${id}g)`} /></mask>
-    </defs>
-    <rect class="smap__sea" x="-640" y="-360" width="3200" height="1800" />
-    <rect x="-640" y="-360" width="3200" height="1800" filter=${`url(#${id}l)`} />
-    <g mask=${`url(#${id}k)`}><rect class="smap__zone" x="-640" y="-360" width="3200" height="1800" filter=${`url(#${id}z)`} /></g>
-    <g class="smap__rays">
-      ${RAYS.map(([x, y], i) => {
-        const mx = AIM[0] + (x - AIM[0]) * 0.5, my = AIM[1] + (y - AIM[1]) * 0.5;
-        const a = (Math.atan2(y - AIM[1], x - AIM[0]) * 180) / Math.PI;
-        return html`<g key=${i} style=${`--i:${i}`}>
-          <line x1=${AIM[0]} y1=${AIM[1]} x2=${x} y2=${y} pathLength="1" />
-          <path class="smap__arrow" d="M-11 -8 9 0 -11 8z" transform=${`translate(${mx} ${my}) rotate(${a + 180})`} />
-          <circle class="smap__end" cx=${x} cy=${y} r="13" />
-        </g>`;
-      })}
-      ${lose ? CROSSES.map(([x, y], i) => html`<path key=${`x${i}`} class="smap__x" d=${`M${x - 14} ${y - 14}l28 28M${x + 14} ${y - 14}l-28 28`} />`) : null}
-    </g>
-    <g class="smap__aim" transform=${`translate(${AIM[0]} ${AIM[1]})`}>
-      <circle class="smap__glow" r="190" />
-      <circle class="smap__ring smap__ring--o" r="118" />
-      <circle class="smap__ring" r="72" />
-      <circle class="smap__core" r="40" />
-      ${lose ? html`<path class="smap__tri" d="M0 -22 20 14H-20z" /><path class="smap__tri-in" d="M0 -9 9 7H-9z" />`
-        : html`<circle class="smap__dot" r="16" /><path class="smap__stripe" d="M-14 -4h28M-14 4h28" />`}
-      <path class="smap__pin" d="M-102 0l14-9v18zM102 0l-14-9v18z" />
-    </g>
-    <g class="smap__label" transform=${`translate(${AIM[0] + 32} ${AIM[1] - 128})`}>
-      <rect x="0" y="0" width="128" height="26" /><text x="64" y="18">TARGET POINT</text>
-      <text class="smap__sub" x="0" y="52">STRONGHOLD PROTOCOL</text>
-    </g>
-  </svg>`;
-}
-
-// ---- the radar intro -------------------------------------------------------------------------------------------------
+// ---- the radar intro ----------------------------------------------------------------------------------------------------
 
 const SEAT_BOX = [[640, 355], [1145, 355], [640, 640], [1145, 640]];
+const GHOSTS = [['left_up', 480, 200], ['right_up', 1310, 200], ['left_down', 480, 750], ['right_down', 1310, 750]];
 
 function SettleIntro({ players, myId, lose, onDone }) {
   const done = useRef(onDone);
@@ -251,77 +259,113 @@ function SettleIntro({ players, myId, lose, onDone }) {
     addEventListener('keydown', skip);
     return () => { clearTimeout(id); removeEventListener('keydown', skip); };
   }, []);
+  const s = lose ? 'f' : 's';
   const seats = SEAT_BOX.map((xy, i) => ({ xy, p: players.find((p) => p.seat === i) || null }));
   return html`<div class=${cx('sintro', lose && 'is-lose')} data-testid="settle-intro" onClick=${() => done.current()}>
-    <div class="settle__stage">
-      <svg class="sintro__svg" viewBox="0 0 1920 1080" aria-hidden="true">
-        <g class="sintro__frame">
-          ${[[150, 160], [1770, 160], [150, 940], [1770, 940]].map(([x, y], i) => html`<path key=${i} d=${`M${x - 26} ${y}h52M${x} ${y - 26}v52`} />`)}
-          <path d="M270 380v330M262 380h16M262 710h16M1650 380v330M1642 380h16M1642 710h16M0 540h270M1650 540h270" />
-        </g>
-        <circle class="sintro__ring" cx="960" cy="540" r="500" pathLength="1" />
-        <path class="sintro__cross" d="M960 40v300M960 740v300" />
-        <path class="sintro__bracket" d="M845 430h230M845 650h230M845 430v10M1075 430v10M845 650v-10M1075 650v-10" />
-        ${seats.map(({ xy: [x, y], p }, i) => html`<g key=${i} class=${cx('sintro__seat', !p && 'is-empty', p && (p.playerId === myId) && 'is-me', p && p.alive === false && 'is-out', p && p.left && 'is-left')} style=${`--i:${i}`}>
-          <rect x=${x} y=${y} width="135" height="135" /><text x=${x + 14} y=${y + 40}>${pad2(i + 1)}</text>
-          <path class="sintro__hatch" d=${`M${x + 70} ${y + 135}l65-65M${x + 98} ${y + 135}l37-37M${x + 40} ${y + 135}l95-95`} />
-        </g>`)}
-        ${[[480, 200], [1310, 200], [480, 750], [1310, 750]].map(([x, y], i) => html`<g key=${`g${i}`} class="sintro__ghost" style=${`--i:${i}`}>
-          <rect x=${x} y=${y} width="130" height="130" /><path d=${`M${x + 92} ${y + 104}h12v12h-12zM${x + 108} ${y + 104}h12v12h-12z`} /></g>`)}
-        <g class="sintro__core"><rect x="892" y="472" width="136" height="136" /><text x="906" y="512">00</text></g>
-        <text class="sintro__foot" x="960" y="985">RHODES ISLAND STRONGHOLD PROTOCOL</text>
-      </svg>
+    <div class="settle__stage" aria-hidden="true">
+      <${Sprite} k="settle/aim" class="sintro__aim" />
+      <${Sprite} k=${`settle/before_round_${s}`} class="sintro__ring" fallback=${html`<i class="sintro__ring sintro__ring--css"></i>`} />
+      <${Sprite} k=${`settle/before_up_frame_${s}`} class="sintro__frame sintro__frame--up" />
+      <${Sprite} k=${`settle/before_down_frame_${s}`} class="sintro__frame sintro__frame--down" />
+      ${GHOSTS.map(([k, x, y], i) => html`<span key=${k} class="sintro__ghost" style=${`${at(x, y)};--i:${i}`}>
+        <${Sprite} k=${k === 'right_down' ? 'settle/blank_right_down' : `settle/blank_${k}_${s}`} /></span>`)}
+      ${seats.map(({ xy: [x, y], p }, i) => html`<span key=${i} style=${`${at(x, y)};--i:${i}`}
+          class=${cx('sintro__seat', !p && 'is-empty', p && p.playerId === myId && 'is-me', p && p.alive === false && 'is-out', p && p.left && 'is-left')}>
+        <${Sprite} k=${`settle/before_middle_${s}_${pad2(i + 1)}`} fallback=${html`<b class="sintro__tile num">${pad2(i + 1)}</b>`} /></span>`)}
+      <span class="sintro__core" style=${at(888, 469)}><${Sprite} k=${`settle/before_middle_${s}`} fallback=${html`<b class="sintro__tile num">00</b>`} /></span>
+      <${Sprite} k="settle/img_text" class="sintro__foot" fallback=${html`<small class="sintro__foot">RHODES ISLAND STRONGHOLD PROTOCOL</small>`} />
       <${Logo} />
     </div>
   </div>`;
 }
 
-// ---- 个人战报 ----------------------------------------------------------------------------------------------------------
+// ---- 个人战报 -------------------------------------------------------------------------------------------------------------
+
+// The terrain's target point and the rays to the lineup (stage pixels). [ASSUMED] read off the official settlement as
+// the event footage shows it (the client's layout is not in the extracted data); the background art is laid so that
+// its target — at (389, 349) of the 1020×960 team-show art, the same terrain — falls on AIM.
+const AIM = [682, 345];
+const BG_AT = [AIM[0] - 389, AIM[1] - 349];
+const RAYS = [[1057, 192], [1410, 312], [1080, 402], [960, 585], [1080, 697], [900, 735], [682, 615]];
+const CROSSES = [[930, 240], [845, 640]];
+
+/** A quarter sprite turned four ways round its corner: the full ring / disc of the target. */
+const Quad = ({ k, cls }) => html`<span class=${cx('squad', cls)}>${[0, 1, 2, 3].map((n) => html`<${Sprite} key=${n} k=${k} class=${`squad__q squad__q--${n}`} />`)}</span>`;
+
+function Target({ lose }) {
+  const s = lose ? 'f' : 's';
+  return html`<div class="starget" style=${at(AIM[0], AIM[1])} aria-hidden="true">
+    <${Quad} k=${`settle/target_bg_color_${s}`} cls="starget__color" />
+    <${Sprite} k="settle/target_bg_round_02" class="starget__disc" />
+    <${Quad} k="settle/target_bg_round_01" cls="starget__arc" />
+    <${Quad} k=${`settle/target_round_${s}`} cls="starget__ring" />
+    <${Sprite} k="settle/target_dot" class="starget__dot" fallback=${html`<i class="starget__dot starget__dot--css"></i>`} />
+    <${Sprite} k=${`settle/target_dot_middle_${s}`} class="starget__mid" />
+    <span class="starget__label">
+      <${Sprite} k="settle/target_title_up" class="starget__up" fallback=${html`<b class="starget__up">TARGET POINT</b>`} />
+      <${Sprite} k="settle/target_title_down" class="starget__down" fallback=${html`<small class="starget__down">STRONGHOLD PROTOCOL</small>`} />
+    </span>
+  </div>`;
+}
+
+function Rays({ lose }) {
+  return html`<div class="srays" aria-hidden="true">
+    ${RAYS.map(([x, y], i) => {
+      const dx = x - AIM[0];
+      const dy = y - AIM[1];
+      const a = (Math.atan2(dy, dx) * 180) / Math.PI;
+      return html`<span key=${i} class="sray" style=${`${at(AIM[0], AIM[1])};width:${Math.hypot(dx, dy) / 100}rem;transform:rotate(${a}deg);--i:${i}`}>
+        <${Sprite} k="settle/dot_line_01" class="sray__line" fallback=${html`<i class="sray__line sray__line--css"></i>`} />
+        <${Sprite} k="settle/arrow_02" class="sray__arrow" />
+      </span>`;
+    })}
+    ${RAYS.map(([x, y], i) => html`<span key=${`e${i}`} class="sray__end" style=${`${at(x, y)};--i:${i}`}>
+      <${Sprite} k="settle/dot_line_round" fallback=${html`<i class="sray__ring"></i>`} /></span>`)}
+    ${lose ? CROSSES.map(([x, y], i) => html`<span key=${`x${i}`} class="sray__ban" style=${at(x, y)}>
+      <${Sprite} k="settle/dot_line_ban" fallback=${html`<${Icon} name="close" />`} /></span>`) : null}
+  </div>`;
+}
 
 /** One unit of a lineup as the cards draw it (自选 pick / 补位 stand-in resolved as on the report's thumbnails). */
 function unitView(u, gd) {
-  const m = gd.m;
   const chess = u.kind === 'token' ? null : gd.chess(u.id);
   const dr = u.diy && chess ? diyRecordFor(chess, u.diy, { chess: data.get('chess'), backups: data.get('backups') }) : null;
   const si = !dr && chess ? cardStandIn(chess, { unit: u, backups: gd.backups }) : null;
   const rec = dr || si || chess;
   const tier = Math.max(0, Math.min(6, Number(u.tier) || Number(rec?.tier) || 0));
   return {
+    rec,
     si,
     tier,
     golden: !!(u.golden ?? rec?.isGolden),
     name: rec?.name || '',
-    art: rec ? chessPortraitUrl(m, rec) : null,
-    avatar: rec ? chessAvatarUrl(m, rec) : null,
     title: si ? t('{name}（{note}）', { name: si.name, note: standInForText(chess.name) }) : (rec?.name || ''),
     items: (Array.isArray(u.items) ? u.items : []).map((id) => data.lookup('items', id)).filter(Boolean),
   };
 }
 
-function NoInfo() {
-  return html`<span class="sop__noinfo"><svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="7" /><path d="M3 10h14" /></svg><small>NO INFO</small></span>`;
-}
+const NoInfo = () => html`<small class="sop__noinfo">NO INFO</small>`;
 
-/** One lineup slot as a tall card (also the 成就统计 panel's 战果纪录, ui/achievements.js); `u` null = an empty slot. */
-export function OpCard({ u, gd, i }) {
+/** One lineup slot as a tall card; `u` null = an empty slot (the official NO INFO card). */
+export function OpCard({ u, gd, i, ownerId }) {
   if (!u) {
     return html`<div class="sop is-empty" style=${`--i:${i}`}>
-      <span class="sop__art"><small>NO INFO</small></span>
-      <span class="sop__slots"><i class="sop__slot"></i><i class="sop__slot"></i></span>
+      <${Sprite} k="settle/operator_bg" class="sop__empty" fallback=${html`<span class="sop__art"><${NoInfo} /></span>`} />
     </div>`;
   }
   const v = unitView(u, gd);
-  const lv = opLevel(v.tier, v.golden);
-  const src = v.art || v.avatar;
+  const lv = opLevel(v.rec);
   return html`<div class=${cx('sop', v.tier && `sop--t${v.tier}`, v.golden && 'is-golden')} style=${`--i:${i}`} title=${v.title}>
-    <span class="sop__art"><${Img} src=${src} class=${v.art ? 'is-portrait' : 'is-avatar'} fallback=${html`<span class="sop__glyph">${[...(v.name || '?')][0]}</span>`} /></span>
+    <span class="sop__art"><${OperatorImage} m=${gd.m} chess=${v.rec} ownerId=${ownerId} skin=${u.skin} portrait avatarFallback portraitClass="is-portrait" avatarClass="is-avatar" fallback=${html`<span class="sop__glyph">${[...(v.name || '?')][0]}</span>`} /></span>
+    <${Sprite} k="settle/operator_frame" class="sop__frame" />
     ${v.tier ? html`<b class="sop__tier">${ROMAN[v.tier]}</b>` : null}
-    <span class="sop__lv"><${EliteMark} phase=${lv.phase} /><b class="num">${lv.level}</b></span>
+    <span class="sop__lv"><${Sprite} k="settle/operator_lv_bg" class="sop__lvbg" /><${PromotionIcon} m=${gd.m} phase=${lv.phase} class="selite" /><b class="num">${lv.level}</b></span>
     ${v.si ? html`<span class="sop__si" data-standin=${v.si.charId}>${t('替补')}</span>` : null}
     <span class="sop__slots">${[0, 1].map((k) => {
       const it = v.items[k];
       return html`<i key=${k} class=${cx('sop__slot', it && 'has-item')} title=${it?.name || ''}>${it
-        ? html`<${Img} src=${itemIconUrl(gd.m, it)} fallback=${html`<b>${[...(it.name || '?')][0]}</b>`} />` : html`<${NoInfo} />`}</i>`;
+        ? html`<${Img} src=${itemIconUrl(gd.m, it)} fallback=${html`<b>${[...(it.name || '?')][0]}</b>`} />`
+        : html`<${Sprite} k="settle/operator_trap_bg" class="sop__trap" fallback=${html`<${NoInfo} />`} />`}</i>`;
     })}</span>
   </div>`;
 }
@@ -332,52 +376,73 @@ function BondBar({ bonds, gd }) {
   const [more, setMore] = useState(false);
   useLayoutEffect(() => { const el = ref.current; if (el) setMore(el.scrollWidth > el.clientWidth + 2); }, [list.length]);
   return html`<div class="sbonds">
-    <span class="sbonds__mark" aria-hidden="true"><svg viewBox="0 0 64 40"><path d="M23 7h-7a13 13 0 0 0 0 26h7v-6h-7a7 7 0 0 1 0-14h7zM41 7h7a13 13 0 0 1 0 26h-7v-6h7a7 7 0 0 0 0-14h-7zM21 17h22v6H21z" /></svg><small>BONDS</small></span>
+    <span class="sbonds__mark" aria-hidden="true"><${Sprite} k="settle/band_icon" fallback=${html`<small>BONDS</small>`} /></span>
     <div class="sbonds__list" ref=${ref}>
       ${list.length ? list.map((b, i) => html`<span key=${b.bondId} class=${cx('sbond', b.active && 'is-on')} style=${`--i:${i}`} title=${gd.bond(b.bondId)?.name || b.bondId}>
         <span class="sbond__disc"><${BondGlyph} bondId=${b.bondId} /></span>${b.hideLayers ? html`<b class="num">—</b>` : html`<b class="num">${b.layers ?? 0}</b>`}</span>`)
-        : html`<span class="sbonds__none">NO INFO</span>`}
+        : html`<${Sprite} k="settle/band_noinfo" class="sbonds__none" fallback=${html`<span class="sbonds__none">NO INFO</span>`} />`}
     </div>
     ${more ? html`<button type="button" class="sbonds__more" aria-label=${t('更多')} onClick=${() => ref.current?.scrollBy({ left: 300, behavior: 'smooth' })}><${Icon} name="chevronRight" /></button>` : null}
   </div>`;
 }
 
-function ModePill({ r }) {
-  return html`<span class="smode">
-    ${r.difficulty ? html`<${DifficultyTag} difficulty=${r.difficulty} size="lg" />` : null}
-    ${r.randomMode ? html`<span class="smode__rm">${RANDOM_MODE_NAME}</span>` : null}
-    ${r.isInfinite ? html`<span class="smode__inf">${t('超限模拟')}</span>` : null}
-  </span>`;
-}
-
-/** The level settlement: LV, the bar filling with this match's experience (LEVEL UP! / MAX), the experience gained. */
-function LevelStrip({ prog }) {
+/**
+ * The level settlement: LV, the bar filling with this match's 卫戍认证 (LEVEL UP! / MAX), what it earned and the daily
+ * goal — or, for a match with gameplay plugins, that it counts for nothing.
+ */
+function LevelStrip({ prog, milestones }) {
   const gain = useCountUp(prog.gain, { ms: 650, delay: 300 });
   const total = useCountUp(prog.after, { ms: 1300, delay: 700, from: prog.before });
-  const lv0 = levelOf(prog.before);
-  const lv = levelOf(total);
-  return html`<div class=${cx('slv', lv.max && 'is-max')} title=${t('等级：每局按通过回合与难度获得经验（登录后记在账号上）')}>
-    <span class="slv__lv"><small>LV.</small><b class="num">${lv.lv}</b></span>
+  const lv0 = levelOf(prog.before, milestones);
+  const lv = levelOf(total, milestones);
+  const d = prog.daily;
+  return html`<div class=${cx('slv', lv.max && 'is-max')} title=${t('等级：本机记录的官方对局累计获得的卫戍认证')}>
+    <span class="slv__lv"><${Sprite} k="settle/img_lv" class="slv__lvimg" fallback=${html`<small>LV.</small>`} /><b class="num">${lv.lv}</b></span>
     <div class="slv__track">
-      ${lv.lv > lv0.lv ? html`<span class="slv__up">LEVEL UP!</span>` : null}
-      ${lv.max ? html`<span class="slv__max">MAX</span>` : null}
-      <span class="slv__bar"><i style=${`width:${(lv.exp / LV_EXP) * 100}%`}></i></span>
-      <span class="slv__meta"><span class="slv__gain">${t('本局经验')}<b class="num">+${gain}</b></span>
-        ${lv.max ? null : html`<span class="slv__exp num"><b>${lv.exp}</b>/${LV_EXP}</span>`}</span>
+      ${lv.lv > lv0.lv ? html`<span class="slv__up"><${Sprite} k="settle/levelup" class="slv__flag" /><${Sprite} k="settle/img_lvup" fallback=${html`<b>LEVEL UP!</b>`} /></span>` : null}
+      ${lv.max ? html`<span class="slv__max"><${Sprite} k="settle/max_bg" class="slv__flag" /><${Sprite} k="settle/img_max" fallback=${html`<b>MAX</b>`} /></span>` : null}
+      <span class="slv__bar"><i style=${`width:${lv.max ? 100 : (lv.into / Math.max(1, lv.need)) * 100}%`}></i></span>
+      ${lv.max ? null : html`<span class="slv__exp num"><b>${lv.into}</b><${Sprite} k="settle/num_line" class="slv__slash" fallback="/" />${lv.need}</span>`}
+    </div>
+    <div class="slv__gains">
+      ${prog.counted ? html`
+        <span class="slv__gain"><${Sprite} k="settle/reward_normal_icon" class="slv__icon" />${t('获得卫戍认证 +{n}', { n: gain })}</span>
+        ${d ? html`<span class=${cx('slv__gain', 'slv__gain--daily', prog.bonus && 'is-done')} title=${t('每日防卫目标：{today}/{need}', { today: d.today, need: d.need })}>
+          <${Sprite} k="settle/reward_plus" class="slv__icon" />${t('每日防卫目标 +{n}', { n: prog.bonus })}<small class="num">${d.today}/${d.need}</small></span>` : null}`
+        : html`<span class="slv__gain slv__gain--off">${prog.test ? t('测试对局不计入等级') : t('非官方对局不计入等级')}</span>`}
     </div>
   </div>`;
 }
 
-function SelfPage({ r, raw, self, gd, prog, seed, onNext }) {
+/** One defeated leader on the report: the official medal (the 隐秘核心 one for the Hidden Core). */
+function Medal({ m, i }) {
+  const sp = m.kind === 'hidden' ? '_sp' : '';
+  const label = m.kind === 'boss' ? t('敌方领袖') : t('隐秘核心');
+  return html`<span class=${cx('smedal', `smedal--${m.kind}`, m.done ? 'is-done' : 'is-miss')} style=${`--i:${i}`} title=${m.rec?.name ? `${label} · ${m.rec.name}` : label}>
+    <${Sprite} k=${`settle/round_info_boss_bg${sp}`} class="smedal__bg" />
+    <${Sprite} k=${`settle/round_info_boss_icon${sp}`} class="smedal__icon"
+      fallback=${html`<${Img} src=${enemyIconUrl(m.gd.m, m.rec?.enemyKey)} class="smedal__icon" fallback=${html`<${Icon} name="crown" class="smedal__icon" />`} />`} />
+    ${m.done ? html`<${Sprite} k=${`settle/round_info_boss_complete${sp}`} class="smedal__check" fallback=${html`<i class="smedal__check"><${Icon} name="check" /></i>`} />`
+      : html`<i class="smedal__check is-miss"><${Icon} name="close" /></i>`}
+  </span>`;
+}
+
+/** The 测试 mark of a match of the 「测试」 mode (0.3.1, DESIGN §34.8) with its command count, as on the detail view. */
+function SettleTestMark({ res }) {
+  if (res?.test !== true) return null;
+  return html`<span class="settle__test" data-testid="settle-test"><${TestMark} /> ${t('测试对局')}${Number.isInteger(res.testActions) ? html` · ${t('测试指令 {n} 次', { n: res.testActions })}` : null}</span>`;
+}
+
+function SelfPage({ r, res, raw, self, gd, prog, content, onNext, version = null }) {
   const cleared = rowCleared(raw, self, r.victory);
   const [leaving, setLeaving] = useState(false);
   const nextRef = useRef(null);
   const rounds = useCountUp(self.roundsPassed, { ms: 700, delay: 350 });
   const boss = cleared && r.bossId ? gd.boss(r.bossId) : null;
   const hidden = cleared && r.hiddenReached && r.hiddenBossId ? gd.boss(r.hiddenBossId) : null;
-  const medals = [boss && { kind: 'boss', rec: boss, done: true }, hidden && { kind: 'hidden', rec: hidden, done: r.hiddenCleared }].filter(Boolean);
+  const medals = [boss && { kind: 'boss', rec: boss, done: true, gd }, hidden && { kind: 'hidden', rec: hidden, done: r.hiddenCleared, gd }].filter(Boolean);
   const slots = Array.from({ length: 10 }, (_, i) => self.lineup[i] || null);
-  const acct = useAccount(self.isBot ? null : self.playerId);
+  const milestones = gd.config?.rewards?.milestones;
   useEffect(() => {
     audio.sfx(cleared ? 'settlementSucceed' : 'settlementFail');
     const sign = medals.length ? setTimeout(() => audio.sfx('settlementBossSign'), 900) : null;
@@ -392,41 +457,44 @@ function SelfPage({ r, raw, self, gd, prog, seed, onNext }) {
   };
   return html`<section class=${cx('sself', cleared ? 'is-win' : 'is-lose', leaving && 'is-leaving')} data-testid="settle-self">
     <div class="settle__stage">
-      <${SettleMap} lose=${!cleared} seed=${seed} />
-      <div class="smap__fx" aria-hidden="true"></div>
+      <span class="sself__bg" style=${at(BG_AT[0], BG_AT[1])} aria-hidden="true"><${Sprite} k=${`settle/settlemen_personal_${cleared ? 'success' : 'fail'}`} /></span>
+      <${Rays} lose=${!cleared} />
+      <${Target} lose=${!cleared} />
+      <div class="sself__fx" aria-hidden="true"></div>
       <${Logo} />
       <div class="sself__band">${self.bandId ? html`<${BandIcon} bandId=${self.bandId} size="lg" />` : html`<${PlayerAvatar} player=${self} self=${true} />`}<i aria-hidden="true"></i></div>
-      <div class="sself__mode"><${ModePill} r=${r} /></div>
-      <h1 class="sself__title">${cleared ? t('模拟完成') : t('模拟中断')}</h1>
+      <div class="sself__mode"><${ModePill} r=${r} /><${UnofficialMark} room=${content ? { content } : null} class="sself__modmark" /><${VersionTag} version=${version} class="sself__vertag" /><${SettleTestMark} res=${res} /></div>
+      <${SettleTitle} class="sself__title">${cleared ? t('模拟完成') : t('模拟中断')}</${SettleTitle}>
       <div class="sself__rounds"><span>${t('通过回合')}</span><b class="num">${rounds}</b></div>
-      ${medals.length ? html`<div class="sself__medals">${medals.map((m, i) => html`<span key=${m.kind} class=${cx('smedal', `smedal--${m.kind}`, m.done ? 'is-done' : 'is-miss')} style=${`--i:${i}`}
-          title=${m.kind === 'boss' ? t('敌方领袖') : t('隐秘核心')}>
-        <${Img} src=${enemyIconUrl(gd.m, m.rec.enemyKey)} fallback=${html`<${Icon} name="crown" class="smedal__glyph" />`} />
-        <i class="smedal__check"><${Icon} name=${m.done ? 'check' : 'close'} /></i></span>`)}</div>` : null}
+      ${medals.length ? html`<div class="sself__medals">${medals.map((m, i) => html`<${Medal} key=${m.kind} m=${m} i=${i} />`)}</div>` : null}
       <div class="splate">
         <${PlayerAvatar} player=${self} self=${true} class="splate__ava" />
-        <div class=${cx('splate__info', acct?.card && 'has-nc')}>
-          <${NameCardLayer} card=${acct?.card} />
-          <b class="splate__name">${self.name}<${AccountTag} playerId=${self.isBot ? null : self.playerId} /></b>
-          <span class="splate__rank" title=${t('累计奖杯')}><${TrophyBadge} count=${prog.trophies} /><small><${Icon} name="crown" />${prog.trophies}</small></span>
+        <div class="splate__info">
+          <b class="splate__name"><${Sprite} k=${plateArt(self, true)} class="splate__namebg" /><span>${self.name}</span></b>
+          <span class="splate__rank" title=${t('累计奖杯')}><${Sprite} k="settle/id_info_cup_icon" class="splate__cup" fallback=${html`<${Icon} name="crown" />`} /><b class="num">${prog.trophies}</b></span>
           <span class="splate__gain"><small><${Icon} name="crown" />${t('获得奖杯')}</small><b class="num">${self.trophies}</b></span>
         </div>
       </div>
       <div class="sops">
-        <div class="sops__row sops__row--1">${slots.slice(0, 5).map((u, i) => html`<${OpCard} key=${i} u=${u} gd=${gd} i=${i} />`)}</div>
-        <div class="sops__row sops__row--2">${slots.slice(5).map((u, i) => html`<${OpCard} key=${i} u=${u} gd=${gd} i=${i + 5} />`)}</div>
+        <div class="sops__row sops__row--1">${slots.slice(0, 5).map((u, i) => html`<${OpCard} key=${i} u=${u} gd=${gd} ownerId=${self.playerId} i=${i} />`)}</div>
+        <div class="sops__row sops__row--2">${slots.slice(5).map((u, i) => html`<${OpCard} key=${i} u=${u} gd=${gd} ownerId=${self.playerId} i=${i + 5} />`)}</div>
       </div>
       <${BondBar} bonds=${self.bonds} gd=${gd} />
-      <div class="settle__barbg" aria-hidden="true"></div>
-      <${LevelStrip} prog=${prog} />
+      <div class="settle__barbg" aria-hidden="true"><${Sprite} k="settle/bottom_bg" /></div>
+      ${Array.isArray(milestones) && milestones.length ? html`<${LevelStrip} prog=${prog} milestones=${milestones} />` : null}
       <button type="button" ref=${nextRef} class="settle__next" onClick=${next}>
-        <span class="settle__nexticon"><${Icon} name="exit" /></span><span>${t('下一步')}</span>
+        <${SettleButtonArt} />
+        <${Sprite} k="settle/next_icon" class="settle__nexticon" fallback=${html`<span class="settle__nexticon"><${Icon} name="chevronRight" /></span>`} /><span class="settle__nextlabel">${t('下一步')}</span>
       </button>
     </div>
   </section>`;
 }
 
-// ---- 同盟 --------------------------------------------------------------------------------------------------------------
+// ---- 同盟 ----------------------------------------------------------------------------------------------------------------
+
+/** A player plate's bar: red for a seat that left, mint for mine, grey for a teammate's ([ASSUMED] the art has the three
+ * bars — id_info_bg, _quit, _single — not which seat takes which). */
+const plateArt = (p, self) => `settle/${p.left ? 'id_info_bg_quit' : self ? 'id_info_bg' : 'id_info_bg_single'}`;
 
 function titleView(p, gd) {
   if (!p.title) return null;
@@ -442,161 +510,127 @@ function titleView(p, gd) {
   };
 }
 
-/**
- * 点赞 of this match (my record `rid`; null for a spectator or a guest): the likes per player (polled while the page
- * is open, the first two minutes), the teammates I liked.
- */
-function useMatchSocial(rid) {
-  const { me: acct } = useCurrentAccount();
-  const [likes, setLikes] = useState({ counts: {}, mine: [] });
-  const [busy, setBusy] = useState(null);
-  const on = !!(acct && rid);
-  useEffect(() => {
-    if (!on) return undefined;
-    let n = 0;
-    const poll = async () => {
-      n++;
-      try { if (await ensureUploaded(rid)) { const d = await accountApi(`likes?record=${encodeURIComponent(rid)}`); setLikes({ counts: d.counts || {}, mine: d.mine || [] }); } } catch { /* next tick */ }
-    };
-    poll();
-    const id = setInterval(() => { if (n >= 24) clearInterval(id); else if (!document.hidden) poll(); }, 5000);
-    return () => clearInterval(id);
-  }, [on, rid]);
-  const like = async (pid) => {
-    if (busy) return;
-    setBusy('like:' + pid);
-    try {
-      if (!(await ensureUploaded(rid))) throw new Error(t('战绩还没有同步到账号，请稍后再试'));
-      await accountApi('likes', { body: { record: rid, playerId: pid } });
-      setLikes((l) => ({ counts: { ...l.counts, [pid]: (l.counts[pid] || 0) + (l.mine.includes(pid) ? 0 : 1) }, mine: [...new Set([...l.mine, pid])] }));
-    } catch (err) { toast(err?.message || t('点赞失败'), 'error'); } finally { setBusy(null); }
-  };
-  return { on, acct: !!acct, likes, busy, like };
-}
-
-/** The chips of a teammate (点赞) or of my own card (the likes I got). */
-function SocialChips({ p, self, social }) {
-  const info = useAccount(p.isBot ? null : p.playerId);
-  if (p.isBot || !social) return null;
-  const got = social.likes.counts[p.playerId] || 0;
-  if (self) {
-    return social.on && got ? html`<span class="tchip tchip--liked" title=${t('本局收到的点赞')}><${Icon} name="thumb" /><b class="num">${got}</b></span>` : null;
-  }
-  const guest = !info;
-  const why = !social.on ? t('登录账号后可以点赞') : guest ? t('点赞需要服务器的账号服务（对方没有账号）') : '';
-  const liked = social.likes.mine.includes(p.playerId);
-  return html`
-    <button type="button" class=${cx('tchip', 'tchip--like', liked && 'is-done')} disabled=${!!why || liked || social.busy === 'like:' + p.playerId}
-      title=${why || (liked ? t('已点赞') : t('点赞'))} aria-label=${t('点赞')} onClick=${() => social.like(p.playerId)}>
-      <${Icon} name="thumb" />${got ? html`<b class="num">${got}</b>` : null}</button>`;
-}
-
-function TeamCard({ p, i, gd, self, victory, raw, social }) {
+function TeamCard({ p, i, gd, self, victory, raw }) {
   const ace = aceOf(p.lineup);
   const v = ace ? unitView(ace, gd) : null;
   const title = titleView(p, gd);
   const cleared = rowCleared(raw, p, victory);
   const band = p.bandId ? gd.band(p.bandId) : null;
-  const acct = useAccount(p.isBot ? null : p.playerId);
   return html`<article class=${cx('tcard', self && 'is-self', p.alive === false && 'is-dead', p.left && 'is-left', cleared ? 'is-clear' : 'is-fail')} style=${`--i:${i}`}>
     <header class="tcard__head" aria-hidden="true"><i class="tcard__pin"></i><span class="tcard__code"><i></i><i></i><i></i>STRONGHOLD PROTOCOL</span><span class="tcard__seat num">${pad2(p.seat + 1)}</span></header>
     <div class="tcard__art">
-      <${Img} src=${v?.art || v?.avatar} class=${cx('tcard__img', v?.art ? 'is-portrait' : 'is-avatar')} fallback=${html`<span class="tcard__glyph">${[...(p.name || '?')][0]}</span>`} />
-      ${p.left ? html`<span class="tcard__cut">${t('中断连接')}</span>` : null}
+      <${OperatorImage} m=${gd.m} chess=${v?.rec} ownerId=${p.playerId} skin=${ace?.skin} portrait avatarFallback portraitClass="tcard__img is-portrait" avatarClass="tcard__img is-avatar" fallback=${html`<span class="tcard__glyph">${[...(p.name || '?')][0]}</span>`} />
+      ${p.left ? html`<span class="tcard__cut">${t('连接中断')}</span>` : null}
       ${title ? html`<div class="tcard__title" title=${title.text}>
         <${Img} src=${title.icon} class="tcard__ticon" fallback=${html`<${Icon} name="crown" class="tcard__ticon" />`} /><b>${title.name}</b></div>` : null}
       <div class="tcard__rounds"><span>${t('通过回合')}</span><b class="num">${p.roundsPassed}</b></div>
     </div>
-    <div class=${cx('tcard__plate', acct?.card && 'has-nc')}>
-      <${NameCardLayer} card=${acct?.card} />
-      ${self ? html`<i class="tcard__me" aria-hidden="true"><${Icon} name="user" /></i>` : null}
+    <div class="tcard__plate">
+      <${Sprite} k=${plateArt(p, self)} class="tcard__platebg" />
       <${PlayerAvatar} player=${p} self=${self} class="tcard__ava" />
       <span class="tcard__who">
-        <b class="tcard__name"><${TrophyBadge} count=${acct?.trophies} class="tbadge--inline" /><span>${p.name}</span><${AccountTag} playerId=${p.isBot ? null : p.playerId} />${p.isBot ? html`<span class="tcard__ai">AI</span>` : null}</b>
+        <b class="tcard__name"><span>${p.name}</span>${p.isBot ? html`<span class="tcard__ai">AI</span>` : null}</b>
         ${band ? html`<span class="tcard__band"><${BandIcon} bandId=${band.bandId} size="xs" /><span>${band.name}</span></span>` : null}
       </span>
     </div>
     <div class="tcard__chips">
-      <span class="tchip tchip--cup" title=${t('获得奖杯')}><${Icon} name="crown" /><b class="num">+${p.trophies}</b></span>
-      <${SocialChips} p=${p} self=${self} social=${social} />
+      <span class="tchip tchip--cup" title=${t('获得奖杯')}><${Sprite} k="settle/id_info_cup_icon" class="tchip__cup" fallback=${html`<${Icon} name="crown" />`} /><b class="num">+${p.trophies}</b></span>
     </div>
   </article>`;
 }
 
-function TeamPage({ r, res, gd, myId, at, rid, backLabel, onBack, onDetail }) {
+function TeamPage({ r, res, gd, myId, at: when, content, backLabel, onBack, onDetail, version = null }) {
   const rounds = useCountUp(r.roundsPassed, { ms: 900, delay: 450 });
-  const social = useMatchSocial(rid);
   const backRef = useRef(null);
   const rawOf = (pid) => (Array.isArray(res?.players) ? res.players.find((x) => x && x.playerId === pid) : null) || null;
+  const self = r.players.find((p) => p.playerId === myId) || null;
+  const bg = self?.left ? 'quit' : r.victory ? 'success' : 'fail';
   useEffect(() => {
     audio.sfx('settlementTeam');
     const id = setTimeout(() => backRef.current?.focus({ preventScroll: true }), 900);
     return () => clearTimeout(id);
   }, []);
   return html`<section class=${cx('steam', r.victory ? 'is-win' : 'is-lose')} data-testid="settle-team">
+    <div class="steam__bg" aria-hidden="true"><${Sprite} k=${`settle/settlemen_teamshow_${bg}`} /></div>
     <div class="settle__stage">
-      <div class="steam__bg" aria-hidden="true"></div>
       <${Logo} />
       <div class="steam__cards" style=${`--n:${r.players.length}`}>
-        ${r.players.length ? r.players.map((p, i) => html`<${TeamCard} key=${p.playerId} p=${p} i=${i} gd=${gd} self=${p.playerId === myId} victory=${r.victory} raw=${rawOf(p.playerId)} social=${r.players.length > 1 ? social : null} />`)
+        ${r.players.length ? r.players.map((p, i) => html`<${TeamCard} key=${p.playerId} p=${p} i=${i} gd=${gd} self=${p.playerId === myId} victory=${r.victory} raw=${rawOf(p.playerId)} />`)
           : html`<p class="steam__none">${t('暂无结算数据')}</p>`}
       </div>
-      <div class="settle__barbg steam__barbg" aria-hidden="true"></div>
-      <div class="steam__outcome"><${ModePill} r=${r} /><b class="steam__title">${r.victory ? t('模拟完成') : t('模拟中断')}</b></div>
+      <div class="settle__barbg steam__barbg" aria-hidden="true"><${Sprite} k="settle/bottom_bg" /></div>
+      <div class="steam__outcome">
+        <span class="steam__tags"><${ModePill} r=${r} /><${UnofficialMark} room=${content ? { content } : null} /><${VersionTag} version=${version} /><${SettleTestMark} res=${res} /></span>
+        <${SettleTitle} as="b" class="steam__title">${r.victory ? t('模拟完成') : t('模拟中断')}</${SettleTitle}>
+      </div>
       <div class="steam__rounds"><span>${t('同盟通过回合')}</span><b class="num">${rounds}</b></div>
       <div class="steam__when">
-        <span class="steam__row"><${SvgPath} d=${CLOCK} />${fmtDuration(r.durationMs)}</span>
-        <span class="steam__row"><${SvgPath} d=${CALENDAR} />${fmtDate(at)}</span>
+        <span class="steam__row"><${Sprite} k="settle/date_time_bg" class="steam__rowbg" /><${Sprite} k="settle/time_icon" class="steam__ico" />${fmtDuration(r.durationMs)}</span>
+        <span class="steam__row"><${Sprite} k="settle/date_time_bg" class="steam__rowbg" /><${Sprite} k="settle/date_icon" class="steam__ico" />${fmtDate(when)}</span>
       </div>
-      <button type="button" class="sbtn sbtn--ghost steam__detail" onClick=${onDetail}><${Icon} name="chart" /><span>${t('数据详情')}</span></button>
+      <button type="button" class="sbtn sbtn--ghost steam__detail" onClick=${onDetail}>
+        <${SettleButtonArt} ghost=${true} /><${Icon} name="chart" /><span>${t('数据详情')}</span></button>
       <button type="button" ref=${backRef} class="sbtn sbtn--primary settle__back" onClick=${onBack}>
-        <span class="sbtn__mark" aria-hidden="true"><svg viewBox="0 0 40 30"><path d="M8 4h10v8H8zM22 4h10v8H22zM8 18h10v8H8zM22 18h10v8H22z" fill="none" stroke="currentColor" stroke-width="2.6" /><path d="M2 2v26M38 2v26" stroke="currentColor" stroke-width="2.4" /></svg></span>
-        <span>${backLabel}</span></button>
+        <${SettleButtonArt} />
+        <${Sprite} k="settle/btn_back_icon_01" class="sbtn__mark" fallback=${html`<${Icon} name="chevronLeft" />`} /><span>${backLabel}</span></button>
+      <div class="ui-slot steam__slot" data-ui-slot="result.tab" aria-label=${t('界面插件')} dangerouslySetInnerHTML=${{ __html: '' }}></div>
     </div>
   </section>`;
 }
 
-// ---- the flow ----------------------------------------------------------------------------------------------------------
+// ---- the flow -----------------------------------------------------------------------------------------------------------
 
 /**
  * The settlement of one m.result: intro → 个人战报 → 同盟; 数据详情 opens the full report over it.
- * @param {{ res: any, pub?: any, myId?: string|null, backLabel: string, onBack: () => void }} props
+ * `content`: the room's content (room.state.content) — gameplay plugins mark the match unofficial (DESIGN §32.6).
+ * @param {{ res: any, pub?: any, myId?: string|null, content?: any, backLabel: string, onBack: () => void }} props
  */
-export function SettleFlow({ res, pub = null, myId = null, backLabel, onBack }) {
+export function SettleFlow({ res, pub = null, myId = null, content = null, backLabel, onBack, version = null }) {
   const gd = useGameData();
   const r = normalizeResult(res, pub);
   const self = r.players.find((p) => p.playerId === myId) || null;
   const rawSelf = self && Array.isArray(res?.players) ? res.players.find((x) => x && x.playerId === myId) || null : null;
   const [page, setPage] = useState(() => (!self ? 'team' : reducedMotion() ? 'self' : 'intro'));
   const [detail, setDetail] = useState(false);
+  // this device's records as the match ended (m.result is recorded as it arrives: the match's own record is left out)
   const ctx = useMemo(() => {
-    // the account's list when logged in (this match is in its outbox already), else this device's
-    const { records } = currentRecords();
+    const { records } = loadStats();
     const id = recordId(res, myId);
     const own = records.find((x) => x.id === id);
-    const at = own?.t || Date.now();
-    // rid even when the record is not listed yet (m.result is recorded as it arrives, the account list syncs after):
-    // ensureUploaded waits for it — a null here left 点赞 / 加好友 greyed for the whole page (the owner, 2026-10-14)
-    return { at, rid: self ? id : null, prog: self ? levelProgress(records, { id, exp: self.reward, trophies: self.trophies, at }) : null };
+    return { records, id, at: own?.t || Date.now() };
   }, []);
+  // a 测试 match earns nothing toward the level or the daily goal (its server reward is 0 and its record is not kept)
+  const isTest = res?.test === true;
+  const prog = useMemo(() => (self ? { ...levelProgress(ctx.records, {
+    id: ctx.id, gain: self.reward, rounds: self.roundsPassed, trophies: self.trophies, at: ctx.at,
+    counted: !isTest && !isModdedRoom(content ? { content } : null), rewards: gd.config?.rewards, season: seasonOf(version),
+  }), test: isTest } : null), [gd.config]);
   const rootRef = useRef(null);
   useStageFit(rootRef);
   const lose = self ? !rowCleared(rawSelf, self, r.victory) : !r.victory;
-  return html`<div ref=${rootRef} class=${cx('screen', 'result', 'settle', `settle--${page}`, pub?.isInfinite && 'is-infinite')} data-testid="settle">
+  return html`<div ref=${rootRef} class=${cx('screen', 'result', 'settle', `settle--${page}`)} data-testid="settle">
     ${page === 'intro' ? html`<${SettleIntro} players=${r.players} myId=${myId} lose=${lose} onDone=${() => setPage('self')} />` : null}
-    ${page === 'self' ? html`<${SelfPage} r=${r} raw=${rawSelf} self=${self} gd=${gd} prog=${ctx.prog} seed=${res?.seed} onNext=${() => setPage('team')} />` : null}
-    ${page === 'team' ? html`<${TeamPage} r=${r} res=${res} gd=${gd} myId=${myId} at=${ctx.at} rid=${ctx.rid} backLabel=${backLabel} onBack=${onBack} onDetail=${() => setDetail(true)} />` : null}
+    ${page === 'self' ? html`<${SelfPage} r=${r} res=${res} raw=${rawSelf} self=${self} gd=${gd} prog=${prog} content=${content} version=${version} onNext=${() => setPage('team')} />` : null}
+    ${page === 'team' ? html`<${TeamPage} r=${r} res=${res} gd=${gd} myId=${myId} at=${ctx.at} content=${content} version=${version} backLabel=${backLabel} onBack=${onBack} onDetail=${() => setDetail(true)} />` : null}
     ${detail ? html`<div class="settle__detail" data-testid="settle-detail">
-      <${ResultView} res=${res} pub=${pub} myId=${myId} quiet=${true} backLabel=${t('返回')} onBack=${() => setDetail(false)} /></div>` : null}
+      <${ResultView} res=${res} pub=${pub} myId=${myId} quiet=${true} slot=${false} content=${content} version=${version} backLabel=${t('返回')} onBack=${() => setDetail(false)} /></div>` : null}
   </div>`;
 }
 
-/** RESULT screen of the match on screen: reads the store; 返回同盟 / 返回大厅 drops the match. */
+/**
+ * RESULT screen of the match on screen: reads the store; 返回同盟 / 返回大厅 drops the match.
+ * The RESULT phase can reach the client before m.result: the flow starts once the payload is here, since its own row
+ * decides intro → 个人战报 (a seat) or 同盟 (a spectator).
+ */
 export function ResultScreen() {
   const res = useStore((s) => s.match.result);
   const pub = useStore((s) => s.match.public);
   const myId = useStore((s) => s.me.playerId);
   const hasRoom = useStore((s) => !!s.room);
+  const content = useStore((s) => s.room?.content ?? null);
+  // the official version the match played (DESIGN §35.23): the room's, or the last room's once it is gone
+  const version = useStore(shownVersion);
   const back = () => store.set({ match: emptyMatch() });
-  return html`<${SettleFlow} res=${res} pub=${pub} myId=${myId} backLabel=${hasRoom ? t('返回同盟') : t('返回大厅')} onBack=${back} />`;
+  if (!res) return html`<div class="screen result settle" data-testid="settle-wait"><${Spinner} size="lg" /></div>`;
+  return html`<${SettleFlow} res=${res} pub=${pub} myId=${myId} content=${content} version=${version} backLabel=${hasRoom ? t('返回同盟') : t('返回大厅')} onBack=${back} />`;
 }

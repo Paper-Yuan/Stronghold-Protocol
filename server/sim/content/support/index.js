@@ -18,6 +18,8 @@
 //     `PlayerBattleInput.contentInfo`, written by the `global:contentb_info` meta handler (support/meta.js).
 
 import { getData } from '../../../data.js';
+import { grantedBondsByMorph } from '../../../../shared/plugins/rules.js';
+import { RECORD_MAPS } from '../../../../shared/plugins/dataUtils.js';
 import { COLS, DIRECT_BONUS_STACKING } from '../../constants.js';
 import { frontOf, offsetTile } from '../../dir.js';
 import { bodyInKeys, bodyDist, bodyInRadius, bodyOnTile, bodyTileReach, bodyInRange } from '../../body.js';
@@ -43,7 +45,7 @@ export function gameData() {
   return DATA;
 }
 /** Tests only: swap the data object (null → reload the singleton). Also drops derived caches. */
-export function setGameData(d) { DATA = d ?? null; CORE = null; }
+export function setGameData(d) { DATA = d ?? null; CORE = null; EFFECT_ITEMS = new WeakMap(); }
 
 export const bondRecord = (id) => own(gameData().bonds, id);
 export const itemRecord = (id) => own(gameData().items, id);
@@ -57,6 +59,83 @@ export const chessRecord = (id) => own(gameData().chess, id);
 export const itemKeyOf = (id) => String(itemRecord(id)?.effectRef ?? id ?? '').replace(/_[ab]$/, '');
 /** True for golden (进阶) items / elite chess ids. */
 export const isGoldenId = (id) => /_b$/.test(String(id ?? ''));
+
+/**
+ * Whether `data` (default: the loaded data) is another official version's build (config.version, data/versions/*;
+ * DESIGN §35.22.3). Only such data finds hand-written behaviour by charId / effectId: the default data and the plugin
+ * content sets built on it carry no config.version and keep the by-id lookups of before versions M0, so a plugin that
+ * patches an official record's charId or effectId changes that record, not which kit or item behaviour runs.
+ */
+export const isVersionData = (data = gameData()) => !!(data && typeof data === 'object' && data.config?.version);
+
+/** Historical season-one semantics; absent version metadata always means today's rules. */
+export const isFirstPeriod = (data = gameData()) => isVersionData(data) && data.config.season === 'act1autochess';
+
+/**
+ * Whether `id` names an official record of data file `file` (`chess`, `items` …), not a plugin's namespaced one
+ * (shared/plugins/dataUtils.js RECORD_MAPS: chess_x_ / item_x_ …).
+ */
+export const isOfficialId = (file, id) => !String(id ?? '').startsWith(`${RECORD_MAPS[file]?.[0] ?? '\0'}_`);
+
+/**
+ * The behaviour of an item is named by the normal record's effectId (versions M0, docs/SIM.md §7.2): another official
+ * version reuses item ids for other effects, while an effectId keeps its meaning. A golden record (effectId
+ * eff_acgarmNNN) counts as its normal one (baseId); a plugin record follows its effectRef; a plugin record without one
+ * (item_x_) has no official behaviour (null). itemKeyOf stays the item's identity (combo partners, buff keys, labels).
+ * The dispatchers use it on another version's build only (isVersionData); the default data keeps the item key.
+ */
+export function itemEffectKey(id) {
+  let rec = itemRecord(id);
+  if (!rec) return null;
+  if (rec.effectRef != null) rec = itemRecord(rec.effectRef);
+  else if (!isOfficialId('items', rec.id ?? id)) return null;
+  if (rec && rec.baseId && rec.baseId !== rec.id) rec = itemRecord(rec.baseId);
+  return typeof rec?.effectId === 'string' ? rec.effectId : null;
+}
+
+/**
+ * Ids of the official item records of `items` ({ id: record }) whose behaviour is `effectId` (itemEffectKey), in data
+ * order: no plugin record (item_x_, or one that carries an effectRef — it copies its base's effectId). `normalOnly`
+ * drops the golden records.
+ */
+export function officialItemIdsWithEffect(items, effectId, { normalOnly = false } = {}) {
+  const out = [];
+  if (!items || typeof items !== 'object' || typeof effectId !== 'string') return out;
+  for (const [id, rec] of Object.entries(items)) {
+    if (!rec || typeof rec !== 'object' || rec.effectRef != null || !isOfficialId('items', id)) continue;
+    const golden = !!rec.baseId && rec.baseId !== id;
+    if (golden ? !normalOnly && own(items, rec.baseId)?.effectId === effectId : rec.effectId === effectId) out.push(id);
+  }
+  return out;
+}
+
+let EFFECT_ITEMS = new WeakMap();
+/** officialItemIdsWithEffect over the loaded data (gameData()), cached per data object. */
+export function itemIdsWithEffect(effectId, { normalOnly = false } = {}) {
+  const d = gameData();
+  let m = EFFECT_ITEMS.get(d);
+  if (!m) { m = new Map(); EFFECT_ITEMS.set(d, m); }
+  const k = `${normalOnly ? 'n' : 'a'}:${effectId}`;
+  if (!m.has(k)) m.set(k, Object.freeze(officialItemIdsWithEffect(d.items, effectId, { normalOnly })));
+  return m.get(k);
+}
+
+/** 突变细胞's effect: 凯瑟琳's one-cell allowance (bands/meta.js, server/match/player/prep.js) counts its normal records. */
+export const MUTATION_CELL_EFFECT = 'eff_acarm072';
+/** 突变细胞's normal record in the default data: data without config.version (isVersionData) counts it by this id. */
+export const MUTATION_CELL_ID = 'chess_item_5_08_e_a';
+/**
+ * The 突变细胞 ids 凯瑟琳's one-cell allowance counts in `data`: MUTATION_CELL_ID, or on another version's build the
+ * official normal records of MUTATION_CELL_EFFECT (上半: chess_item_6_08_e_a).
+ */
+export const mutationCellIds = (data = gameData()) => (isVersionData(data)
+  ? officialItemIdsWithEffect(data.items, MUTATION_CELL_EFFECT, { normalOnly: true }) : [MUTATION_CELL_ID]);
+/** Whether item `id` is a 突变细胞 the allowance counts (mutationCellIds). */
+export function isMutationCell(id, data = gameData()) {
+  if (!isVersionData(data)) return id === MUTATION_CELL_ID;
+  const rec = own(data.items, id);
+  return !!rec && rec.effectRef == null && isOfficialId('items', id) && rec.effectId === MUTATION_CELL_EFFECT;
+}
 
 /**
  * Buffs of a data record (bond / item / band / effect / garrison-like) as `{ key, bbKey, p }` where `key` is the
@@ -162,7 +241,7 @@ export function tierOf(u) {
  */
 export const isGroundOp = (u) => isOp(u) && u.def?.position === 'MELEE';
 /** Base (normal) chess id of an operator (normal and elite share it). */
-export const baseChessId = (u) => String(u?.def?.baseId ?? u?.defId ?? '').replace(/_b$/, '_a');
+export const baseChessId = (u) => u?.def?.baseId ?? String(u?.defId ?? '').replace(/_b$/, '_a');
 
 /** Equipment ids carried by a unit (golden ids when merged). */
 export const itemsOf = (u) => (u && Array.isArray(u.items) ? u.items : EMPTY);
@@ -178,17 +257,13 @@ export function unitBonds(u) {
   if (!isOp(u)) return EMPTY;
   const cached = BONDS.get(u);
   const items = itemsOf(u);
-  const key = items.join('|');
+  const plus = u.player?.morphPairing === 'plus';
+  // The official key stays items.join('|'), so a cached official result is unchanged.
+  const key = (plus ? 'plus|' : '') + items.join('|');
   if (cached && cached.key === key) return cached.bonds;
   const out = [...(Array.isArray(u.def?.bonds) ? u.def.bonds : Array.isArray(u.def?.raw?.bonds) ? u.def.raw.bonds : [])];
-  if (items.length >= 2) {
-    const recs = items.map((id) => itemRecord(id)).filter(Boolean);
-    if (recs.some((r) => r.canGiveBond)) {
-      for (const r of recs) {
-        if (r.canGiveBond) continue;
-        if (typeof r.giveBondId === 'string' && bondRecord(r.giveBondId) && !out.includes(r.giveBondId)) out.push(r.giveBondId);
-      }
-    }
+  for (const b of grantedBondsByMorph(items, (id) => itemRecord(id), { mode: plus ? 'plus' : 'official', bondOk: (id) => !!bondRecord(id) })) {
+    if (!out.includes(b)) out.push(b);
   }
   const bonds = Object.freeze(out);
   BONDS.set(u, { key, bonds });

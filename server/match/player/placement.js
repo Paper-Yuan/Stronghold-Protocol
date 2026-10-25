@@ -4,6 +4,7 @@
 // Installed on PlayerState.prototype by server/match/PlayerState.js (a method container: never instantiated; `this` is
 // the player state).
 
+import { hasTraitFor } from '../operatorTraits.js';
 import { ERR } from '../../../shared/constants.js';
 import { msg, dn } from '../../../shared/i18n.js';
 import { tileKey, parseKey, inField, canPlace, placeClass, freeSlot, pieceDir, parseDir, ownerRangeKeys } from '../board.js';
@@ -180,7 +181,7 @@ export class PlayerPlacement {
       this.recompute();
       return OK;
     }
-    // hand/temp → board
+    // hand/temp → board: a chess swap reuses the source slot, even with a full bench (round53).
     if (!occ || occ.kind !== 'chess') {
       if (this.deployCount >= this.deployCap) return fail(ERR.BOARD_FULL);
     }
@@ -198,6 +199,7 @@ export class PlayerPlacement {
     this.board.set(key, piece);
     this.grantTokensFor(piece);
     this.recompute();
+    if (hasTraitFor(this.gd, this.gd.chess(piece.id)?.charId)) this.m.dispatch(this, 'onTraitDeploy', { piece });
     return OK;
   }
 

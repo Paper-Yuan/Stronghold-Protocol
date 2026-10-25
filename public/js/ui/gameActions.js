@@ -6,12 +6,11 @@
 import { net } from '../net.js';
 import { toastError } from './toasts.js';
 import { audio } from '../audio.js';
-import { createWatchQueue } from './watchRequests.js';
 
 const SUCCESS_SFX = {
   'g.buy': 'buy', 'g.sell': 'sell', 'g.refresh': 'refresh', 'g.freeze': 'freeze', 'g.levelUp': 'levelup',
-  'g.move': 'drop', 'g.equip': 'equip', 'g.art': 'artPlace', 'g.reward': 'pick', 'g.choice': 'pick', 'g.pickAny': 'pick',
-  'g.band': 'confirm', 'g.bandSkip': 'back', 'g.infoReady': 'ready', 'g.emote': 'emote', 'g.destroy': 'back',
+  'g.move': 'drop', 'g.equip': 'equip', 'g.art': 'artPlace', 'g.reward': 'pick', 'g.choice': 'pick',
+  'g.band': 'confirm', 'g.bandSkip': 'back', 'g.infoReady': 'ready', 'g.emote': 'emote', 'g.destroy': 'back', 'g.unequip': 'back',
 };
 
 let inflight = 0;
@@ -64,7 +63,6 @@ export async function act(t, fields = {}, opts = {}) {
   }
 }
 
-const watchQueue = createWatchQueue(fieldId => act('g.watch', { fieldId }, { sfx: 'tab' }));
 export const actions = {
   infoReady: (setupRevision = 0) => act('g.infoReady', { setupRevision }),
   rerollSetup: (setupRevision) => act('room.rerollSetup', { setupRevision }, { sfx: 'confirm' }),
@@ -91,20 +89,13 @@ export const actions = {
   art: (itemUid, row, col, dir) => act('g.art', dir ? { itemUid, row, col, dir } : { itemUid, row, col }),
   destroy: (uid) => act('g.destroy', { uid }),
   unequip: (itemUid) => act('g.unequip', { itemUid }),
-  reroll: () => act('g.reroll', {}),
   reward: (idx) => act('g.reward', { idx }),
+  offer: (offer, idx, refresh = false, cardId) => act(refresh ? 'g.offerRefresh' : 'g.offer', { offerId: offer.id, pluginId: offer.pluginId, seq: offer.seq, idx, cardId }),
   choice: (idx, choiceId) => act('g.choice', choiceId === undefined ? { idx } : { idx, choiceId }),
-  /** 超限词条抉择：选第 idx 张 */
-  traitChoice: (idx) => act('g.traitChoice', { idx }),
-  // 超限：词条抉择右下角的【战术撤退】
-  traitRetreat: () => act('g.traitRetreat', {}),
-  // 超限：玩家自己切换战斗倍速
-  combatSpeed: (speed) => act('g.combatSpeed', { speed }),
-  pickAny: (chessId) => act('g.pickAny', { chessId }),
   ready: (ready) => act('g.ready', { ready }, { sfx: ready ? 'ready' : 'back' }),
   emote: (id) => act('g.emote', { id }, { quiet: true }),
-  watch: (fieldId, playerId = null) => playerId ? act('g.watch', { fieldId, playerId }, { sfx: 'tab' }) : watchQueue.request(fieldId),
-  cancelWatch: () => watchQueue.cancel(),
+  // `playerId`: the player tapped in the team panel (a shared field shows two) — what an eliminated viewer follows
+  watch: (fieldId, playerId = null) => act('g.watch', typeof playerId === 'string' && playerId ? { fieldId, playerId } : { fieldId }, { sfx: 'tab' }),
   autoplay: (on) => act('g.autoplay', { on }),
   // solo battles only (ui/matchStatus.js pauseAvailable): m.public.paused follows
   pause: (on) => act('g.pause', { on: !!on }, { sfx: on ? 'click' : 'confirm' }),
@@ -112,8 +103,3 @@ export const actions = {
   // any time (server/lobby.js removeSpectator), the game screen had no entry for it (ui/hud.js SpectatorPill; GitHub #120)
   removeSpectator: (playerId) => act('room.removeSpectator', { playerId }, { sfx: 'back' }),
 };
-
-let unequipAllowed = false;
-export function setUnequipAllowed(v) { unequipAllowed = !!v; }
-export function isUnequipAllowed() { return unequipAllowed; }
-

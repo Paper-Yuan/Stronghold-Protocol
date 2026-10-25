@@ -44,14 +44,14 @@ describe('0.2.0 补位 — a not-owned operator fights as its stand-in (real ser
       const card = await c.page.evaluate((id) => document.querySelector(`.own-card[data-chess="${id}"]`)?.textContent || '', SILVER);
       assert.ok(card.includes('银灰') && card.includes('Sharp') && card.includes('未持有'), card);
       const stored = await c.page.evaluate(() => JSON.parse(localStorage.getItem('sp.pref.ownership') || 'null'));
-      assert.deepEqual(stored, { v: 1, notOwned: [SILVER] });
+      assert.deepEqual(stored, { v: 2, notOwnedChars: ['char_172_svrash'], notOwned: [SILVER] }, 'stored by operator with the older-build copy (DESIGN §35.23)');
       await c.shot('ownership');
       await c.page.keyboard.press('Escape');
       await c.page.waitForFunction(() => !document.querySelector('.lo'), { timeout: 3000 });
 
       // 2) a solo 标准 match: the briefing's m.private carries the list
+      // 独立模拟 → 选择模拟协议 (标准 preselected in a fresh browser) → 开始独立模拟 (§35.51: the old lobby's difficulty cards)
       await c.click('.mode-card', '独立模拟');
-      await c.click('.diff-card', '标准模拟');
       await c.click('.create-box button', '开始独立模拟');
       await c.waitFor((s) => !!s.room, 'solo room');
       if (!(await c.st()).phase) await c.click('.room-bar__right button', '开始模拟', { timeout: 20000 });
@@ -151,12 +151,12 @@ describe('0.2.0 补位 — a not-owned operator fights as its stand-in (real ser
       await sleep(800);
       await c.shot('combat');
       // 6) the battle ends, the round settles (the result upload is accepted) and the match ends (finishAfter 1): the
-      // result screen's lineup shows Sharp with the 「替补」 mark
+      // settlement's own report (screens/settle.js, after its intro) shows Sharp's card with the 「替补」 mark
       await c.waitFor((s) => !!s.result, 'result', 180000);
-      await c.page.waitForSelector('.rcard.is-self .rcard__lineup .uthumb', { visible: true, timeout: 15000 });
-      const lineup = await c.page.evaluate(() => [...document.querySelectorAll('.rcard.is-self .rcard__lineup .uthumb')].map((el) => ({
-        title: el.getAttribute('title') || '', mark: el.querySelector('.uthumb__si')?.textContent || '',
-        standIn: el.querySelector('.uthumb__si')?.dataset.standin || '', art: el.querySelector('img')?.getAttribute('src') || '',
+      await c.page.waitForSelector('[data-testid="settle-self"] .sop:not(.is-empty)', { visible: true, timeout: 15000 });
+      const lineup = await c.page.evaluate(() => [...document.querySelectorAll('[data-testid="settle-self"] .sop:not(.is-empty)')].map((el) => ({
+        title: el.getAttribute('title') || '', mark: el.querySelector('.sop__si')?.textContent || '',
+        standIn: el.querySelector('.sop__si')?.dataset.standin || '', art: el.querySelector('.sop__art img')?.getAttribute('src') || '',
       })));
       assert.equal(lineup.length, 1, 'the one operator fielded');
       assert.deepEqual([lineup[0].title, lineup[0].mark, lineup[0].standIn], ['Sharp（银灰的替补）', '替补', SHARP]);

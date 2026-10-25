@@ -12,15 +12,19 @@ import { useEffect, useRef, useState } from '../../vendor/hooks.module.js';
 import { createFallbackView } from './fallbackField.js';
 import { data } from '../data.js';
 import { audio } from '../audio.js';
+import { store } from '../store.js';
 import { settingsStore } from './settings.js';
 
 const LOAD_TIMEOUT_MS = 12000;
+// [ASSUMED] Two automatic retries; keep the existing two event retries available for a later network/tab recovery.
+const RECOVERY_DELAYS_MS = [2000, 8000];
+const EVENT_RETRY_LIMIT = 2;
 const METHODS = ['setStage', 'setCamera', 'setPrep', 'enterBattle', 'pushSnapshot', 'pushEvents', 'highlightTiles', 'on', 'resize', 'destroy'];
 // direction-step hooks (ui/facingWheel.js): optional — the wheel falls back to the engine's dev hooks when absent;
 // setPen (enemy preview pen list), prepField ({ kind, side, mirror } of the Final Assault prep), stripesUnder (the view
 // stripes range previews under the units itself), replayDeploys (the round start's Start-clip replay, PR #416) —
 // render/app.js; the DOM fallback lacks them (→ null)
-const OPTIONAL = ['pieceScreenRect', 'pieceAtClientPoint', 'setSettings', 'off', 'tileScreen', 'holdPiece', 'setPieceDir', 'setPen', 'prepField', 'stripesUnder', 'replayDeploys'];
+const OPTIONAL = ['finishBattle', 'pieceScreenRect', 'pieceAtClientPoint', 'setSettings', 'setMe', 'setSkins', 'off', 'tileScreen', 'holdPiece', 'setPieceDir', 'setPen', 'prepField', 'stripesUnder', 'replayDeploys'];
 
 /**
  * Camera padding (px) that keeps the field clear of the DOM HUD (top bar + bond strip, team panel, shop bar /
@@ -42,8 +46,9 @@ export function hudPadding(kind, size) {
 
 /**
  * HUD geometry (rem) the prep cameras keep clear (they mirror the CSS; test/ui/playtest5-ui.test.js checks the rules):
- * the bond strip's bottom edge (css/screens/game.css .gm__bonds top 1.36rem + a .bslot: disc .52rem + name ≈
- * 2.15rem measured) and the shop bar's top edge above the viewport's bottom (css/screens/game-shop.css .shopbar
+ * the bond scroller's bottom edge (css/screens/game.css .gm__bonds top 1.36rem + a .bslot's disc and name ≈
+ * .8rem, or its 44 px arrow height, whichever is taller; negative margins offset the clip padding) and the shop bar's top edge
+ * above the viewport's bottom (css/screens/game-shop.css .shopbar
  * bottom .2rem + .shopbar__row padding .1rem ×2 + card height 2.24rem, plus its 2 px + 1 px borders). The shop bar
  * sits on the viewport's bottom edge even on a notched phone (css/devices.css, DESIGN §18.1).
  * The folded shop (public issue #5): the tab's top edge (.shopbar-tab bottom .2rem + padding .08rem ×2 + its .44rem
@@ -53,15 +58,8 @@ export function hudPadding(kind, size) {
  * css/devices.css).
  */
 export const HUD_REM = Object.freeze({
-  // Rem budget for the bond strip's bottom edge. `hudBands` takes the larger of this and the strip's measured
-  // bottom, because .bslot carries px floors that make it taller than this on a phone. The block includes the vertical
-  // 收起 drawer's fold handle, which hangs below the tray (css/screens/game.css .bstrip__fold-handle: .28rem tall plus
-  // a .04rem margin), so it is the discs' own bottom (2.16) plus that handle: 2.48.
-  // shopBarTop carries the shop bar's +10 % css scale (game-shop.css): 2.64 × 1.1.
-  bondStripBottom: 2.48, shopBarTop: 2.9, shopBarBorderPx: 3, shopTabTop: 0.8, shopTabBorderPx: 3, cornerTop: 0.8,
-  // Extra air between the measured strip and the field's back row on a touch screen, where the strip lands flush on
-  // it (1 px at 761×360): the top board row and the bond discs compete for the same pixels.
-  bondStripGapPx: 10,
+  bondStripTop: 1.36, bondStripBottom: 2.16, bondArrowPx: 44,
+  shopBarTop: 2.64, shopBarBorderPx: 3, shopTabTop: 0.8, shopTabBorderPx: 3, cornerTop: 0.8,
 });
 
 /**
@@ -91,31 +89,21 @@ export function hudBands(kind, size, opts) {
   const folded = !!opts && opts.shop === false;
   const h = size?.height || 1080;
   let rem = 100;
-  // 异形屏适配 (ui/screenFit.js): the board's host may not start at the viewport's top — the HUD rects are measured from it
-  let oy = 0;
   let safeTop = 0;
   let safeBottom = 0;
   let corner = 0;
-  let stripBottom = 0;
-  let shopBottom = 0;
-  let coarse = false;
+  let bondsBottom = 0;
   try {
     rem = parseFloat(getComputedStyle(document.documentElement).fontSize) || 100;
-    oy = document.querySelector('.gm__field')?.getBoundingClientRect()?.top || 0;
-    // The bond strip's slots and labels carry px floors (css/screens/game.css .bslot), so on a phone it is taller than
-    // its rem budget suggests and would cover the field's back row. Measure the strip itself; fall back to the rem
-    // constant when it is not on the page (a player with no bonds yet).
-    stripBottom = document.querySelector('.gm__bonds')?.getBoundingClientRect()?.bottom || 0;
-    // Read the visible card row after CSS scaling. Short phones use a different shop scale, and safe-area offsets
-    // also change its actual top edge; a fixed rem budget can needlessly shrink the board there.
-    if (!folded) {
-      const row = document.querySelector('.shopbar__row')?.getBoundingClientRect();
-      if (row && row.height > 0 && row.top - oy > 0 && row.top - oy < h) shopBottom = h - (row.top - oy);
-    }
-    coarse = !!document.documentElement?.classList?.contains('sp-coarse');
+    // 异形屏适配 (ui/screenFit.js): the board's host may not start at the viewport's top — the HUD rects are measured from it
+    const oy = document.querySelector('.gm__field')?.getBoundingClientRect()?.top || 0;
     // the HUD layer starts below the top safe-area inset and ends above the bottom one (css/devices.css .gm__hud)
     const hud = document.querySelector('.gm__hud')?.getBoundingClientRect();
     safeTop = Math.max(0, (hud?.top || 0) - oy);
+    // #678 adds 44 px arrows; a native scrollbar can make the strip taller still.
+    // Keep the same minimum band before mount and while collapsed, so toggling cannot shrink it.
+    const bonds = document.querySelector('.gm__bonds')?.getBoundingClientRect();
+    if (bonds?.height > 0) bondsBottom = Math.max(0, bonds.bottom - oy);
     if (folded) {
       if (hud && hud.bottom - oy > 0) safeBottom = Math.max(0, h - (hud.bottom - oy));
       corner = cornerBand(h, oy);
@@ -123,9 +111,10 @@ export function hudBands(kind, size, opts) {
   } catch { /* ignore */ }
   const bottom = folded
     ? Math.max(safeBottom + rem * HUD_REM.shopTabTop + HUD_REM.shopTabBorderPx, corner || safeBottom + rem * HUD_REM.cornerTop)
-    : shopBottom || rem * HUD_REM.shopBarTop + HUD_REM.shopBarBorderPx;
+    : rem * HUD_REM.shopBarTop + HUD_REM.shopBarBorderPx;
   return {
-    top: Math.min(h * 0.4, safeTop + rem * HUD_REM.bondStripBottom),
+    top: Math.min(h * 0.4, Math.max(bondsBottom, safeTop + Math.max(rem * HUD_REM.bondStripBottom,
+      rem * HUD_REM.bondStripTop + HUD_REM.bondArrowPx))),
     bottom: Math.min(h * 0.4, bottom),
   };
 }
@@ -136,7 +125,7 @@ export function hudBands(kind, size, opts) {
  * of at least --tap-min (44 px) centred on it (css/devices.css touch targets), 5 px above a 34 px phone button — a bench
  * pad edge there is not pressable.
  * @param {number} h
- * @param {number} [oy]
+ * @param {number} [oy] the board host's top in client px (异形屏适配 moves it down)
  */
 function cornerBand(h, oy = 0) {
   const btns = document.querySelectorAll('.gm__corner .gm__gear, .gm__corner .ewheel__btn');
@@ -180,7 +169,7 @@ function withTimeout(p, ms, what, signal) {
     };
     const onAbort = () => finish(reject, abortError(signal));
     signal?.addEventListener('abort', onAbort, { once: true });
-    timer = setTimeout(() => finish(reject, new Error(`${what} timed out`)), ms);
+    timer = setTimeout(() => finish(reject, new DOMException(`${what} timed out`, 'TimeoutError')), ms);
     // Keep a rejection handler attached even when cancellation wins before this promise settles.
     Promise.resolve(p).then((value) => finish(resolve, value), (err) => finish(reject, err));
     if (signal?.aborted) onAbort();
@@ -242,14 +231,10 @@ export function seedAssets(store) {
  * @param {{ signal?: AbortSignal }} [options] Cancels a pending mount without creating a fallback.
  * @returns {Promise<ReturnType<typeof guardView>>}
  */
-/** 荣耀 / 华为：那批机型的 WebGL 有已知的假渲染问题，检测只为它们做。 */
-function isHonorDevice() {
-  try { return /Honor|HONOR|Huawei|HUAWEI/i.test(navigator.userAgent || ''); } catch { return false; }
-}
-
 export async function mountFieldView(host, { signal } = {}) {
   checkActive(signal);
   const pref = renderPref();
+  let fallbackReason = 'explicit';
   const opts = { data, assets: data.get('assets'), audio, settings: settingsStore.get(), padding: hudPadding, hud: hudBands };
   if (pref !== 'fallback') {
     const controller = new AbortController();
@@ -280,32 +265,11 @@ export async function mountFieldView(host, { signal } = {}) {
       });
       const view = await withTimeout(pending, LOAD_TIMEOUT_MS, 'createFieldView', controller.signal);
       checkActive(controller.signal);
-      // 荣耀/华为的「假渲染」检测（业主 2026-10-21 重做）：
-      //   以前新建一个 canvas 去 getContext 读型号 —— 浏览器同时在活的 WebGL 上下文只有 2–4 个，
-      //   战场已经占了一个，再开一个可能把战场那个挤掉，反而自己造出黑屏；而且硬等 800ms 才检测。
-      //   现在复用战场自己的 gl，只等一帧，判据也从「左下角 1 个像素全 0」改成「读画面中心 8×8 全空」，
-      //   背景本来就是透明的（backgroundAlpha 0），单点读 0 是正常现象。
-      if (isHonorDevice()) {
-        try {
-          const gl = view?.renderer?.gl || view?.app?.renderer?.gl || null;
-          if (gl) {
-            await new Promise((r) => requestAnimationFrame(() => r()));
-            const w = gl.drawingBufferWidth || 0;
-            const h = gl.drawingBufferHeight || 0;
-            if (w >= 8 && h >= 8) {
-              const buf = new Uint8Array(8 * 8 * 4);
-              gl.readPixels(Math.max(0, (w >> 1) - 4), Math.max(0, (h >> 1) - 4), 8, 8, gl.RGBA, gl.UNSIGNED_BYTE, buf);
-              let any = false;
-              for (let k = 3; k < buf.length; k += 4) { if (buf[k] !== 0) { any = true; break; } }
-              if (!any) throw new Error('GPU_RENDER_FALSE_POSITIVE_BLACK_SCREEN');
-            }
-          }
-        } catch (e) { if (String(e && e.message).includes('FALSE_POSITIVE')) throw e; /* 其他异常放行 */ }
-      }
       const missing = METHODS.filter((k) => typeof view?.[k] !== 'function');
       if (missing.length) throw new Error(`view lacks ${missing.join(', ')}`);
       return guardView(view, 'engine');
     } catch (err) {
+      fallbackReason = err?.name === 'TimeoutError' ? 'timeout' : 'error';
       controller.abort();
       dispose(engineView);
       checkActive(signal);
@@ -315,7 +279,7 @@ export async function mountFieldView(host, { signal } = {}) {
     }
   }
   checkActive(signal);
-  return guardView(createFallbackView(host, { ...opts, assets: data.get('assets') }), 'fallback');
+  return Object.assign(guardView(createFallbackView(host, { ...opts, assets: data.get('assets') }), 'fallback'), { fallbackReason });
 }
 
 /**
@@ -326,36 +290,57 @@ export function useFieldView(hostRef) {
   const [state, setState] = useState({ view: null, kind: 'loading' });
   const [attempt, setAttempt] = useState(0);
   const retries = useRef(0);
+  const automaticRetries = useRef(0);
   const viewRef = useRef(null);
   useEffect(() => {
     let dead = false, retrying = false;
+    let retryTimer = null;
     const host = hostRef.current;
     if (!host) return undefined;
     setState({ view: null, kind: 'loading' });
     const controller = new AbortController();
+    const retry = (automatic) => {
+      const budget = automatic ? automaticRetries : retries;
+      const limit = automatic ? RECOVERY_DELAYS_MS.length : EVENT_RETRY_LIMIT;
+      if (dead || retrying || viewRef.current?.kind !== 'fallback' || renderPref() === 'fallback'
+        || document.visibilityState !== 'visible' || globalThis.navigator?.onLine === false || budget.current >= limit) return;
+      retrying = true; budget.current++; setAttempt((n) => n + 1);
+    };
+    const onRetry = () => retry(false);
     mountFieldView(host, { signal: controller.signal }).then((view) => {
       if (dead) { view.destroy(); return; }
       viewRef.current = view;
-      if (view.kind === 'engine') retries.current = 0;
+      if (view.kind === 'engine') { retries.current = 0; automaticRetries.current = 0; }
+      // Preserve the upstream skin/identity initialization before the first board arrives.
+      view.setMe?.(store.get().me?.playerId || null);
+      view.setSkins?.(store.get().match?.public?.players);
       globalThis.__SP_VIEW__ = view; // dev / E2E introspection (view.raw.stats?.())
       setState({ view, kind: view.kind });
+      // A page reopened directly into a match has no pre-game time to warm its renderer. The shared imports/Pixi
+      // download can finish after the first 12 s timeout: recover without requiring a tab switch or window restore.
+      if (view.kind === 'fallback' && view.fallbackReason === 'timeout' && renderPref() !== 'fallback'
+        && automaticRetries.current < RECOVERY_DELAYS_MS.length) {
+        retryTimer = setTimeout(() => retry(true), RECOVERY_DELAYS_MS[automaticRetries.current]);
+      }
     }, (err) => { if (!dead && !controller.signal.aborted) console.error('[field] mount failed', err); });
     const unsub = settingsStore.subscribe((s) => viewRef.current?.setSettings?.(s));
+    // room.skins is accepted in every phase: update the current field without restarting its battle runner.
+    const unsubSkins = store.subscribe((s, prev) => {
+      if (s.me?.playerId !== prev.me?.playerId) viewRef.current?.setMe?.(s.me?.playerId || null);
+      if (s.match?.public?.players !== prev.match?.public?.players) viewRef.current?.setSkins?.(s.match?.public?.players);
+    });
     const onResize = () => viewRef.current?.resize();
-    // A temporary network/vendor failure must not pin this mounted match to fallback forever. Retry on a useful
-    // user event, at most twice in succession; the effect cleanup disposes the old view before creating its successor.
-    const onRetry = () => {
-      if (dead || retrying || viewRef.current?.kind !== 'fallback' || renderPref() === 'fallback'
-        || document.visibilityState !== 'visible' || globalThis.navigator?.onLine === false || retries.current >= 2) return;
-      retrying = true; retries.current++; setAttempt((n) => n + 1);
-    };
+    // Events can retry sooner than the timer, but never race it into duplicate mounts. Automatic failures must not
+    // consume the two existing user-event retries before a long outage ends or the player returns to the tab.
     window.addEventListener('resize', onResize);
     window.addEventListener('online', onRetry);
     document.addEventListener('visibilitychange', onRetry);
     return () => {
       dead = true;
+      if (retryTimer !== null) clearTimeout(retryTimer);
       controller.abort();
       unsub();
+      unsubSkins();
       window.removeEventListener('resize', onResize);
       window.removeEventListener('online', onRetry);
       document.removeEventListener('visibilitychange', onRetry);

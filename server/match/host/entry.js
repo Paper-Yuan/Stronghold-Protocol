@@ -22,7 +22,9 @@
 // Messages (from index.js / proxy.js; queued until booted, then handled in order):
 //   { type: 'create', matchId, opts }       new Match({ ...options.matchOptions, ...opts, data, log, now, send, broadcast,
 //                                           onEnd }) and start() — send / broadcast / onEnd post 'send' / 'broadcast' /
-//                                           'end' back; a match that cannot be created posts 'failed'
+//                                           'end' back; a match that cannot be created posts 'failed', and so does one whose
+//                                           opts.version (absent: act2autochess) is not the installed data's version
+//                                           (shared/versions.js versionOfData; DESIGN §35.23 — an official version's host)
 //   { type: 'call', matchId, method, args, id? }   one MATCH INTERFACE call; with `id` its answer is posted as 'reply'
 //   { type: 'dispose', matchId }            the match is disposed and forgotten
 // Logs go to the main process ('log': its logger prefixes them with the set's `[cs:<8 hex>]`).
@@ -35,6 +37,7 @@ import { pathToFileURL } from 'node:url';
 import { getData, setData } from '../../data.js';
 import { installOfficialBounds } from '../../../shared/plugins/officialBounds.js';
 import { contentHashOf } from '../../../shared/plugins/identity.js';
+import { DEFAULT_VERSION, versionOfData } from '../../../shared/versions.js';
 
 /** A worker thread (parentPort), else a child process (its IPC channel). */
 const viaWorker = !!parentPort;
@@ -47,8 +50,10 @@ let files = null;
 let bounds = null;
 let scripts = [];
 let sandbox = false;
+/** PLUGIN API v2: the content set's interaction windows (docs/PLUGINS.md §10b) — data, injected into every match. */
+let offers = [];
 let options = {};
-const adopt = (init) => { ({ cs, hashInput, files, bounds = null, scripts = [], sandbox = false } = init || {}); options = (init && init.options) || {}; };
+const adopt = (init) => { ({ cs, hashInput, files, bounds = null, scripts = [], sandbox = false, offers = [] } = init || {}); options = (init && init.options) || {}; };
 if (viaWorker) adopt(workerData);
 // a child process whose parent is gone has nothing left to do
 if (!viaWorker) process.on('disconnect', () => process.exit(0));
@@ -145,6 +150,10 @@ async function boot() {
   for (const name of Object.keys(hashInput.data)) data[name] = JSON.parse(decoder.decode(files[name]));
   setData(data);
   installOfficialBounds(bounds && bounds.v === 1 ? bounds : null);
+  if (Object.values(data.garrisons ?? {}).some(g => g.operatorTrait)) {
+    const { installServerOperatorTraits } = await import('../../plugins/operatorTraits.js');
+    await installServerOperatorTraits(data);
+  }
   if (scripts.length) {
     const { verifyScripts, scriptExecution, loadScripts } = await import('../../../shared/plugins/scriptLoad.js');
     verifyScripts(scripts, hashInput);
@@ -165,7 +174,14 @@ async function boot() {
   if (typeof Inner !== 'function') throw new Error('the match module exports no Match');
   // [ASSUMED] Grant the prep EffectRefs after super(), once players exist (DESIGN §32.7).
   MatchClass = class ContentMatch extends Inner {
-    constructor(opts) { super(opts); grantPrepDsl(this, dslGrants); }
+    constructor(opts) {
+      // Rules come from the verified content identity, never the per-room create payload.
+      const bound = { ...opts, offers };
+      delete bound.rules;
+      if (hashInput.rules) bound.rules = hashInput.rules;
+      super(bound);
+      grantPrepDsl(this, dslGrants);
+    }
   };
   if (options.virtualTime) ({ VirtualScheduler } = await import('../scheduler.js'));
 }
@@ -188,6 +204,7 @@ function plain(r) {
 function diag(match) {
   return {
     phase: match.phase ?? null, round: match.round ?? null, ended: !!match.ended, cs: match.cs ?? null, modeId: match.modeId ?? null,
+    version: versionOfData(installed),
     errorCount: match.errorCount ?? 0, errors: (match.errors || []).slice(0, 3).map((e) => String(e?.label || e?.message || e).slice(0, 200)),
     verifyStats: match.verifyStats ? { ...match.verifyStats } : null, simErrors: match.simErrors ?? 0,
     fields: Array.isArray(match.fields) ? match.fields.map((f) => ({ fieldId: f.fieldId, kind: f.kind, players: Array.isArray(f.players) ? [...f.players] : [], mode: f.mode ?? null,
@@ -196,6 +213,13 @@ function diag(match) {
 }
 
 function create(matchId, opts) {
+  // an official version's match runs on that version's data only (DESIGN §35.23): never another version's data set
+  const want = typeof opts.version === 'string' ? opts.version : DEFAULT_VERSION;
+  if (want !== versionOfData(installed)) {
+    log.error(`[host] match ${matchId} asks for version ${want}, this host runs ${versionOfData(installed)}`);
+    post({ type: 'failed', matchId, error: `version ${want} is not this host's (${versionOfData(installed)})` });
+    return;
+  }
   const sched = options.virtualTime && VirtualScheduler ? new VirtualScheduler({ start: Date.now() }) : null;
   let match;
   try {

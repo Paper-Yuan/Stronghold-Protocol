@@ -36,14 +36,13 @@ export class MatchIntents {
       case 'g.destroy': return ps.destroy(msg.uid);
       case 'g.unequip': return ps.unequip(msg.itemUid);
       case 'g.reward': return ps.pickReward(msg.idx);
-      case 'g.reroll': return ps.rerollReward();
       case 'g.choice': return msg.choiceId !== undefined
         ? this.pickPersonalChoice(ps, msg.idx, msg.choiceId)
         : this.pickCard(ps, msg.idx);
-      case 'g.traitChoice': return this.pickTrait(ps, msg.idx);
-    case 'g.traitRetreat': return this.retreatNow(ps);
-    case 'g.combatSpeed': return this.setCombatSpeed(ps, msg.speed);
-      case 'g.pickAny': return this.pickAnyChess(ps, msg.chessId);
+      // a plugin interaction window (PLUGIN API v2, docs/PLUGINS.md §10b): the window's own id, not a draft card —
+      // the host applies the declared primitive, a plugin never reaches the match state itself
+      case 'g.offer': return this.requestOffer(ps, msg.offerId, msg.idx, msg);
+      case 'g.offerRefresh': return this.requestOfferRefresh(ps, msg.offerId, msg.idx, msg);
       case 'g.ready': return ps.setReady(!!msg.ready);
       case 'g.emote': return this.emote(ps, msg.id);
       // playerId: the player tapped (a shared field names two) — the watch preference (item 56)
@@ -53,6 +52,7 @@ export class MatchIntents {
       // the stats the board's units start their next battle with (the detail card in prep, user playtest #4 item 7)
       case 'g.unitStats': return this.unitStats(ps, msg.seq ?? null);
       case 'g.leave': this.onLeave(ps.playerId); return OK;
+      case 'g.test': return this.applyTestCommand(ps, msg);
       case 'b.progress': return this._onProgress(ps, msg);
       case 'b.result': return this._onResult(ps, msg);
       // the host's answer to a delegated bot layout rehearsal (DESIGN §14): a report, never an error — an unknown,
@@ -61,7 +61,6 @@ export class MatchIntents {
       default: return fail(ERR.BAD_MSG);
     }
   }
-
 
   emote(ps, id) {
     if (!EMOTES.includes(id)) return fail(ERR.BAD_MSG, 'unknown emote');
@@ -85,6 +84,7 @@ export class MatchIntents {
   /** Let the bot act for a (newly) bot-controlled seat in the current phase. */
   kickBot(ps) {
     if (!ps.botControlled || this.ended) return;
+    this.offersChanged();
     if (this.phase === PHASE.INFO_CHECK && !ps.infoReady) { ps.infoReady = true; this.markPublic(); this.maybeEndInfo(); }
     else if (this.phase === PHASE.BAND_DRAFT && this.draftTurn() === ps.playerId) this.scheduleBandBot();
     else if (this.phase === PHASE.SP_DRAFT && this.spTurn() === ps.playerId) this.scheduleSpBot();
@@ -129,7 +129,7 @@ export class MatchIntents {
     const b = this.newBattle({
       seed: deriveSeed(this.seed, `preview:${this.round}:${ps.seat}`), kind: 'normal', modeId: this.modeId, round: this.round,
       stageId: this.stageId, rect: { ...GEO.NORMAL_RECT }, timeLimit: 60, players, spawns: [], routes: this.wave ? this.wave.routes : [],
-      sharedBoss: null, flags: this._rmSpecFlags({ layerGainsEnabled: !bossRound, ...this.gd.dp, ...(this.isInfinite ? { overlimit: true } : {}) }), fieldId: `n:${ps.playerId}`, recordEvents: false,
+      sharedBoss: null, flags: { layerGainsEnabled: !bossRound, ...this.gd.dp }, fieldId: `n:${ps.playerId}`, recordEvents: false,
     });
     try {
       if (typeof b.start === 'function') b.start();

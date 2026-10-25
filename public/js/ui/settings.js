@@ -7,7 +7,9 @@
 // `_meta.machineTranslated`) and the 快捷键 section that rebinds the in-match shortcuts (the key map:
 // ui/gameLogic/shortcuts.js; the community request 「快捷键可不可以自己设置」, the owner's decision of 2026-10-07) and
 // 问题反馈, which copies the diagnostics of this page for a bug report (diag.js: the error log, this browser, optionally
-// the battle on screen; nothing is uploaded). The lobby and the room open it from a 设置 button next to 玩法说明
+// the battle on screen; nothing is uploaded). 素材存储 asks the browser to keep this site's storage, where an imported asset
+// pack lives (assetCache.js), and 清理旧版本素材 deletes the imported copies this server's version no longer uses
+// (assetPack.js pruneImportedAssets; both the maintainer's requests of 2026-10-17). The lobby and the room open it from a 设置 button next to 玩法说明
 // (SettingsButton, GitHub #238); the title screen and the match have their own gear.
 // 外观插件 (DESIGN §32 P1a, the design study's §7.5): a switch for each cosmetic plugin of scope `personal` the server's
 // catalogue lists (content.js) — kept in this browser (`sp.pref.cosmetics`), never sent, seen by this player alone and
@@ -20,34 +22,41 @@
 // settings only inflate the glyphs inside fixed boxes (and page zoom is off: index.html's viewport, ui/device.js).
 // Only font-size declarations read `--t`, so the board, the HUD bands the prep camera keeps clear and the detail
 // card's side do not move — the field is sized from the host element's clientWidth (render/app.js).
+// 异形屏适配 (ui/screenFit.js): imported here, ahead of main.js's first render, so the stored offsets are on at boot.
 
 import { useEffect, useLayoutEffect, useRef, useState } from '../../vendor/hooks.module.js';
-import { html, Modal, Button, Icon, MicroLabel } from './components.js';
+import { html, Modal, Button, Icon, MicroLabel, Tooltip, confirmDialog } from './components.js';
 import { GIcon } from './gameComponents.js';
-import { createStore, useStore, loadPref, savePref, store } from '../store.js';
+import { useStore, savePref, store } from '../store.js';
+import { settingsStore } from './settingsStore.js';
+export { settingsStore } from './settingsStore.js';
 import { sanitizeSettings, HOTKEY_ACTIONS, DEFAULT_HOTKEYS, hotkeyLabel, rebindHotkey, isDefaultHotkeys, captureHotkey, VOICE_LANGS, TEXT_SIZES } from './gameLogic.js';
 import { audio } from '../audio.js';
 import { openGuide } from './guide.js';
-import { detectFeatures } from './device.js';
+import { detectFeatures, isIOS } from './device.js';
 import { LangToggle, machineTranslationNote } from './lang.js';
-import { t, tc, N_ } from '../../../shared/i18n.js';
+import { t, tc, tParts, N_ } from '../../../shared/i18n.js';
 import { errorCount, currentBattle, diagnosticsText } from '../diag.js';
 import { copyText } from './clipboard.js';
-import { catalog, loadCatalog, cosmeticPlugins, installedCount, personal, personalApplied, personalSet, pluginName, setPersonalPlugin } from '../content.js';
+import { catalog, loadCatalog, cosmeticPlugins, installedCount, isPersonalCosmetic, personal, personalApplied, personalSet, pluginName, setPersonalPlugin } from '../content.js';
+import { resolveThemeVars, themeVarsOf } from '../../../shared/plugins/theme.js';
 import { setUiPlugin, uiPluginEntries, uiPlugins } from './uiPlugins.js';
 import { UI_LIMITS } from '../../../shared/plugins/ui.js';
 import { toast, describeError } from './toasts.js';
 import { pluginMicro } from './pluginTag.js';
+// 皮肤 (docs/SKINS.md): the global display rule the 显示其他玩家的皮肤 switch follows. ui/skins.js costs nothing new here:
+// it is already on the boot path (main.js → screens/loadout.js / ui/loadoutSync.js) and imports only store.js and
+// data.js, both of which settings.js reaches through content.js — no cycle, no asset store (it must NOT load assets.js:
+// test/ui/plugins.e2e.test.js pins that a server without plugins never fetches it).
+import { hasAnySkinChoices } from './skins.js';
 import { fxAvailable } from '../render/vfx/available.js';
 import { resolveOfficialFx } from '../render/vfx/tier.js';
-import { ModManagerModal } from './modManagerModal.js';
-import { hasMods } from '../roomMods.js'; // 服务器没装工坊包时整块隐藏（2026-10-17 业主：移除内置 mod）
-import { fetchBuild } from './buildGuard.js';
+import { ScreenFitSection } from './screenFit.js';
+import { askPersistStorage, importSupport, storagePersisted } from '../assetCache.js';
+import { assetImport, pruneImportedAssets } from '../assetPack.js';
+import { cosmetics } from '../cosmetics.js';
 
 const cx = (...p) => p.flat().filter(Boolean).join(' ');
-
-/** Settings store: { bgm, sfx, voice, voiceLang, voiceNative, voiceOverrides, muted, damageNumbers, officialDamageNumbers, ammoCount, combatMetrics, mysticEnergy, quality, textSize, keys }. */
-export const settingsStore = createStore(sanitizeSettings(loadPref('settings', null)));
 
 /**
  * 设置 →「文字大小」: put the step on <html data-text> — css/theme.css turns it into the text root `--t`
@@ -107,7 +116,8 @@ function Toggle({ label, micro, value, onChange }) {
   </div>`;
 }
 
-const QUALITY = [['high', N_('高')], ['medium', N_('中')], ['low', N_('低')]];
+/** Display order only: 低 / 中 / 高, the same direction as 官方特效 关 / 精简 / 完整. Stored values stay high | medium | low. */
+const QUALITY = [['low', N_('低')], ['medium', N_('中')], ['high', N_('高')]];
 /**
  * 官方特效 (0.3.0, render/vfx): the official battle effects the server's owner extracted from their own client (the
  * server serves them: every player of that server sees the owner's extraction) — normal attacks, projectiles, hits,
@@ -115,11 +125,7 @@ const QUALITY = [['high', N_('高')], ['medium', N_('中')], ['low', N_('低')]]
  * 'auto' shows as the tier it resolves to (完整 on a desktop, 精简 on a touch device, render/vfx/tier.js); the row is
  * left out when no effects were extracted (data/local-fx.json lists none).
  */
-const OFFICIAL_FX = [['auto', N_('自动')], ['full', N_('完整')], ['lite', N_('精简')], ['off', N_('关')]];
-/** 设置「棋盘渲染」(ui/gameLogic/settings.js BOARD_MODES)：2D 极速省电 / 内置 3D / 官方场景 3D。 */
-const BOARD = [['2d', N_('2D 极速省电')], ['3d', N_('3D 内置')], ['3dscene', N_('3D 官方场景')]];
-/** 设置「帧率」(FPS_MODES)：30 / 60 / 120。 */
-const FPS = [[30, N_('30 帧')], [60, N_('60 帧')], [120, N_('120 帧')]];
+const OFFICIAL_FX = [['off', N_('关')], ['lite', N_('精简')], ['full', N_('完整')]];
 /**
  * 文字大小: one step of TEXT_SIZES (ui/gameLogic/settings.js) with its label — 小 is the design's own sizes, the others
  * raise the text root `--t` (css/theme.css) and with it every readable font-size; the board and the HUD's boxes stay.
@@ -133,8 +139,8 @@ const TEXT_SCALES = [['sm', N_('小')], ['md', N_('中')], ['lg', N_('大')], ['
 const VOICE_LANG_NAMES = { cn: '中文', jp: '日本語', en: 'English', kr: '한국어' }; // i18n-ignore
 const VOICE_LANG_TAGS = { cn: 'zh', jp: 'ja', en: 'en', kr: 'ko' };
 /** The rebindable shortcuts' names (msgids), by action. */
-const HOTKEY_NAMES = { buy: N_('购买鼠标指向的商品'), refresh: N_('刷新商店'), freeze: N_('冻结 / 解冻商店'), levelUp: N_('升级调度中心'), retreat: N_('撤退鼠标指向的干员'),
-  sell: N_('出售鼠标指向的干员'), ready: N_('准备就绪 / 暂停（独立模拟）') };
+const HOTKEY_NAMES = { buy: N_('购买鼠标指向的商品'), refresh: N_('刷新商店'), freeze: N_('冻结 / 解冻商店'), levelUp: N_('升级调度中心'), retreat: N_('撤退干员（选中优先）'),
+  sell: N_('出售干员（选中优先）'), ready: N_('准备就绪 / 暂停（独立模拟）') };
 
 /**
  * 快捷键: each shortcut with its key. Click its key (or Enter / Space on it) and press the new one: Esc cancels (the
@@ -274,18 +280,39 @@ function CosmeticSection() {
   const cat = useStore((s) => s, Object.is, catalog);
   const ids = useStore((s) => s.ids, Object.is, personal);
   const installed = useStore(installedCount);
+  const s = useSettings();
   useEffect(() => { if (installed) loadCatalog({ force: true }); }, [installed]);
-  const list = installed ? cosmeticPlugins(cat.plugins, 'personal') : [];
-  if (!list.length) return null;
-  const set = personalSet(ids, list.filter((p) => typeof p.vs === 'string'));
+  const entries = installed ? cosmeticPlugins(cat.plugins, 'personal') : [];
+  const list = entries.filter(isPersonalCosmetic);
+  // The 显示其他玩家的皮肤 switch is on screen with or without a PERSONAL plugin — an appearance can also come from a
+  // set the player is not in (a watched match's cosmetics are the watcher's own layers), and a switch that appears only
+  // when the catalogue happens to have loaded would look like a bug. It follows the same GLOBAL rule the 皮肤 section
+  // does (ui/skins.js hasAnySkinChoices: at least one operator of the composed manifest has a wear-able skin), so a
+  // session with no such appearance draws nothing here — an installation without a cosmetic layer keeps exactly the
+  // settings it had before this feature, the switch included (test/ui/plugins.e2e.test.js asserts the section is absent
+  // on a server without plugins). The list below is NOT gated: it is where a switched-off plugin is switched back on.
+  if (!list.length) {
+    if (!hasAnySkinChoices()) return null;
+    return html`<section class="set-plugins" aria-labelledby="set-skins-title" data-testid="personal-plugins">
+      <div class="set-keys__head"><span class="set-row__label" id="set-skins-title">${t('外观插件')}<${MicroLabel}>COSMETIC PLUGINS<//></span></div>
+      <${OtherSkinsRow} value=${s.otherSkins !== false} onSet=${(v) => updateSettings({ otherSkins: v })} />
+    </section>`;
+  }
+  const set = personalSet(ids, entries);
   const applied = new Set(set.order);
   const auto = new Set(set.auto);
+  const winners = resolveThemeVars(set.order.map((id) => {
+    const p = entries.find((x) => x.id === id);
+    return { id, vars: themeVarsOf(p) };
+  }));
   const flip = (id, on) => { const r = setPersonalPlugin(id, on); if ('error' in r) toast(describeError(r.error), 'warn'); };
   return html`<section class="set-plugins" aria-labelledby="set-plugins-title" data-testid="personal-plugins">
     <div class="set-keys__head">
       <span class="set-row__label" id="set-plugins-title">${t('外观插件')}<${MicroLabel}>COSMETIC PLUGINS<//></span>
     </div>
     <p class="set-hint">${t('只改变你自己看到的画面和声音，不影响其他博士，也不影响战斗；插件为非官方制作。')}</p>
+    <${OtherSkinsRow} value=${s.otherSkins !== false} onSet=${(v) => updateSettings({ otherSkins: v })} />
+    ${winners.map((w) => html`<p key=${w.name} class="set-hint set-theme-win">${t('{token} 由「{name}」生效', { token: w.name, name: pluginName(list.find((p) => p.id === w.pluginId) || { id: w.pluginId }) })}</p>`)}
     ${list.map((p) => {
       // on: applied (chosen, or 「自动」: another one needs it) — or chosen but left out now (a conflict): switch it off
       const skipped = set.skipped.includes(p.id);
@@ -299,6 +326,21 @@ function CosmeticSection() {
       </div>`;
     })}
   </section>`;
+}
+
+/**
+ * 设置「显示其他玩家的皮肤」 (docs/SKINS.md): whether this browser draws the appearance another player chose
+ * (`UnitInfo.skin`, published by the match — `Match.publicView().players[].skins`).
+ *
+ * Pure client preference, never sent: turning it off makes every OTHER seat's piece draw the operator's own model,
+ * 干员调配 its own choice alone. The asymmetry is deliberate and documented — their screen keeps showing their skin, so
+ * a co-op's players may see different models for the same piece. On by default: the appearance is what its owner chose
+ * it for, and this is the switch for a player who prefers the official model of everyone else.
+ * @param {{ value: boolean, onSet: (v: boolean) => void }} props
+ */
+function OtherSkinsRow({ value, onSet }) {
+  return html`<${Toggle} label=${t('显示其他玩家的皮肤')} micro="OTHER SKINS"
+    value=${value} onChange=${(v) => onSet(v)} />`;
 }
 
 /**
@@ -336,17 +378,80 @@ function UiPluginSection() {
 }
 
 /**
- * 本页启动时服务端报告的那个构建（`/healthz.build`，与 `/api/app/version` 的 `build` 同源）：「我这一页是哪一版」。
- * 与服务器当前的 build 不同 = 页面还在跑旧代码（buildGuard 也会据此自动重载；这里让用户看到并手动更新）。
- */
-const pageBuildP = (() => {
-  try { return fetchBuild(globalThis.fetch, { timeoutMs: 5000 }).catch(() => null); } catch { return Promise.resolve(null); }
-})();
-
-/**
  * Settings modal.
  * @param {{ open: boolean, onClose: Function }} props
  */
+/**
+ * 素材存储: the 导入素材包 dialog asks for persistent storage once, as an import ends (ui/assetImport.js); this button asks
+ * again whenever the player wants, and the line under it says what the browser answers now (navigator.storage.persisted).
+ * Chrome and Edge decide silently from their own signals, Firefox asks the player; neither answer outlives a manual clear
+ * of the site's data. StorageManager exists only in a secure context: on plain http to a LAN IP the line says so and
+ * there is no button. Laid out like 问题反馈 below it.
+ */
+const PERSIST_NOTES = {
+  on: N_('已持久保存：存储空间不足时，浏览器不会自动清掉导入的素材。'),
+  off: N_('未持久保存：存储空间不足时，浏览器可能清掉导入的素材。'),
+  refused: N_('浏览器没有同意。Chrome 和 Edge 会根据本站的使用情况自行决定，常用或安装为应用后更容易同意，可以之后再试。'),
+  insecure: N_('需要通过 https 或 localhost 打开本站，才能申请持久保存。'),
+  unsupported: N_('这个浏览器不支持持久保存。'),
+};
+/** The result line of 清理旧版本素材 (msgids: translated when shown). */
+const PRUNE_NOTES = {
+  done: N_('已清理 {n} 个旧版本文件。'),
+  none: N_('没有需要清理的旧版本文件。'),
+  failed: N_('读不到服务器的素材清单，没有删除任何文件。'),
+};
+
+function StorageSection() {
+  const [state, setState] = useState(null);  // a PERSIST_NOTES key, null while the browser is asked
+  const [busy, setBusy] = useState(false);
+  useEffect(() => {
+    let live = true;
+    const unknown = () => (globalThis.isSecureContext ? 'unsupported' : 'insecure');
+    storagePersisted().then((kept) => { if (live) setState(kept === null ? unknown() : kept ? 'on' : 'off'); });
+    return () => { live = false; };
+  }, []);
+  const ask = async () => {
+    setBusy(true);
+    const kept = await askPersistStorage();
+    setBusy(false);
+    setState(kept === null ? 'unsupported' : kept ? 'on' : 'refused');
+  };
+  const askable = state === 'on' || state === 'off' || state === 'refused';
+  // 清理旧版本素材: only where an import can exist (a secure context with Cache Storage), never while one runs
+  const [importing, setImporting] = useState(() => ['reading', 'importing'].includes(assetImport.get().phase));
+  useEffect(() => assetImport.subscribe((s) => setImporting(['reading', 'importing'].includes(s.phase))), []);
+  const [pruning, setPruning] = useState(false);
+  const [pruned, setPruned] = useState(null); // { kind: 'done' | 'none' | 'failed', n }
+  const prune = async () => {
+    const ok = await confirmDialog({ title: t('清理旧版本素材'), text: t('删除这台浏览器里、当前服务器版本已经用不到的导入素材；仍在使用的会保留。'), okText: t('清理') });
+    if (!ok) return;
+    setPruning(true);
+    try {
+      const r = await pruneImportedAssets();
+      setPruned(r.removedFiles > 0 ? { kind: 'done', n: r.removedFiles } : { kind: 'none' });
+    } catch {
+      setPruned({ kind: 'failed' });
+    } finally { setPruning(false); }
+  };
+  return html`<section class="set-storage" aria-labelledby="set-storage-title" data-testid="storage-section">
+    <div class="set-keys__head">
+      <span class="set-row__label" id="set-storage-title">${t('素材存储')}<${MicroLabel}>STORAGE<//></span>
+      <span class="set-storage__actions">
+        ${importSupport().ok ? html`<${Button} variant="ghost" size="sm" icon="refresh" data-testid="storage-prune" disabled=${pruning || importing}
+          loading=${pruning} onClick=${prune}>${t('清理旧版本素材')}<//>` : null}
+        ${askable ? html`<${Button} variant="ghost" size="sm" icon="shield" data-testid="storage-persist" disabled=${state === 'on' || busy}
+          loading=${busy} onClick=${ask}>${state === 'on' ? t('已持久保存') : t('申请持久保存')}<//>` : null}
+      </span>
+    </div>
+    <p class="set-hint">${t('导入的素材包保存在这个浏览器里。手动清除网站数据会删除它们；Safari 约 7 天没打开本站也可能清除。')}</p>
+    ${state ? html`<p class=${cx('set-keys__note', state !== 'on' && state !== 'off' && 'is-warn')} role="status" aria-live="polite"
+      data-testid="storage-note">${t(PERSIST_NOTES[state])}</p>` : null}
+    ${pruned ? html`<p class=${cx('set-keys__note', pruned.kind === 'failed' && 'is-warn')} role="status" aria-live="polite"
+      data-testid="storage-prune-note">${t(PRUNE_NOTES[pruned.kind], { n: pruned.n })}</p>` : null}
+  </section>`;
+}
+
 export function SettingsModal({ open, onClose }) {
   const s = useSettings();
   const [tested, setTested] = useState(false);
@@ -359,64 +464,11 @@ export function SettingsModal({ open, onClose }) {
   useEffect(() => {
     if (!open) return undefined;
     let live = true;
-    fxAvailable(null).then((ok) => { if (live) setFxOk(!!ok); }, () => {});
-    return () => { live = false; };
+    const update = () => fxAvailable(null).then((ok) => { if (live) setFxOk(!!ok || Object.values(cosmetics.apply({}).fx || {}).some(e => Object.keys(e.config?.flipbooks || {}).length || e.index)); }, () => {});
+    update();
+    const off = cosmetics.subscribe(update);
+    return () => { live = false; off(); };
   }, [open]);
-  // 版本与热更 (docs/START-MODES-PLAN.md)：`/api/app/version` 说这台服务器是什么版本、补丁在哪（server/http/appApi.js）；
-  // 真正的下载与应用交给原生宿主（AndroidBridge.downloadAndApplyPatch），浏览器里只能提示重载。
-  const [checkingUpdate, setCheckingUpdate] = useState(false);
-  /** @type {{ app: string, build: string, stale: boolean, patchUrl: string, native: boolean } | null} */
-  const [updateInfo, setUpdateInfo] = useState(null);
-  const checkUpdate = async () => {
-    setCheckingUpdate(true);
-    try {
-      const res = await fetch('/api/app/version', { cache: 'no-cache' });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = await res.json();
-      const pageBuild = await pageBuildP;
-      const build = typeof data.build === 'string' ? data.build : '';
-      setUpdateInfo({
-        app: typeof data.app === 'string' ? data.app : '',
-        build,
-        stale: Boolean(pageBuild && build && pageBuild !== build),
-        patchUrl: typeof data.hotUpdate?.patchUrl === 'string' ? data.hotUpdate.patchUrl : '',
-        native: typeof globalThis.AndroidNative?.downloadAndApplyPatch === 'function',
-      });
-    } catch {
-      setUpdateInfo(null);
-      toast(t('检测更新失败，请检查网络连接'), 'warn');
-    } finally { setCheckingUpdate(false); }
-  };
-  const applyUpdate = () => {
-    const native = globalThis.AndroidNative;
-    if (!updateInfo?.patchUrl || typeof native?.downloadAndApplyPatch !== 'function') return;
-    toast(t('正在下载补丁…'), 'info');
-    native.downloadAndApplyPatch(updateInfo.patchUrl, updateInfo.build || updateInfo.app);
-  };
-  // 原生宿主在下载/应用补丁时回调这两个（MainActivity.downloadAndApplyPatch → webView.evaluateJavascript）。
-  useEffect(() => {
-    const g = globalThis;
-    const prevProgress = g.__onHotUpdateProgress;
-    const prevResult = g.__onHotUpdateResult;
-    g.__onHotUpdateProgress = (p, msg) => { if (msg) toast(String(msg), 'info'); };
-    g.__onHotUpdateResult = (ok, msg) => { if (msg) toast(String(msg), ok ? 'info' : 'warn'); };
-    return () => { g.__onHotUpdateProgress = prevProgress; g.__onHotUpdateResult = prevResult; };
-  }, []);
-  // 模组仓库 (docs/MOD-CDN-ARCHITECTURE.md, W-C)：列出磁盘上的模组、下载 ZIP、从别的服务器同步 (server/http/modApi.js)
-  const [modModalOpen, setModModalOpen] = useState(false);
-  // 棋盘渲染：先写设置（渲染端 setSettings 按需切 3D 层），手机上再让外壳记住 2d/3d，下次启动照它开。
-  const pickBoard = (id) => {
-    updateSettings({ boardMode: id });
-    globalThis.AndroidNative?.setBoardMode?.(id === '2d' ? '2d' : '3d');
-  };
-  // 帧率：写设置（渲染端改 app.ticker.maxFPS），120 帧顺带通知外壳切高刷模式。
-  const pickFps = (id) => {
-    updateSettings({ fps: id });
-    globalThis.AndroidNative?.setHighRefresh?.(id >= 120);
-  };
-  // 业主 2026-10-21：高亮要跟着**实际生效**的档走 —— 'auto' 在触屏上是精简、桌面上是完整。
-  // 以前这里传 available=true 但没传 touch，resolveOfficialFx 自己会探测，行为是对的；
-  // 但列表里没有 'auto'，选了自动的玩家看到的却是「精简」被点亮，以为设置没生效。
   const fxTier = resolveOfficialFx(s.officialFx, true);
   return html`<${Modal} open=${open} onClose=${onClose} title=${t('设置')} micro="SETTINGS" width="7.4rem"
                         actions=${html`<${Button} variant="secondary" icon="book" class="set-guide" onClick=${() => openGuide(0)}>${t('玩法说明')}<//>
@@ -446,12 +498,23 @@ export function SettingsModal({ open, onClose }) {
       <${Toggle} label=${t('显示伤害数字')} micro="DAMAGE NUMBERS" value=${s.damageNumbers} onChange=${(v) => updateSettings({ damageNumbers: v })} />
       <${Toggle} label=${t('官方伤害数字')} micro="OFFICIAL NUMBERS" value=${s.officialDamageNumbers} onChange=${(v) => updateSettings({ officialDamageNumbers: v })} />
       <p class="set-hint">${t('只显示达到官方暴击条件的红色数字。关闭时仍显示每一次命中。')}</p>
-      <${Toggle} label=${t('弹药数量')} micro="AMMO COUNT" value=${s.ammoCount} onChange=${(v) => updateSettings({ ammoCount: v })} />
-      <p class="set-hint">${t('弹药类技能开启时，在弹药条下方显示剩余弹药 / 总弹药数（如 13/14）。官方界面没有这个数字。')}</p>
-      <${Toggle} label=${t('秘术师能量')} micro="STORED ENERGY" value=${s.mysticEnergy} onChange=${(v) => updateSettings({ mysticEnergy: v })} />
-      <p class="set-hint">${t('在秘术师的血条下方显示储存的攻击能量 / 上限（如 2/3）。官方用干员身上的特效表示，没有这个数字。')}</p>
+      <${Toggle} label=${t('显示弹药与能量数量')} micro="AMMO & ENERGY" value=${s.ammoEnergyCount} onChange=${(v) => updateSettings({ ammoEnergyCount: v })} />
+      <p class="set-hint">${t('弹药类技能开启时，在弹药条下方显示剩余弹药 / 总弹药数（如 13/14）；秘术师的血条下方显示储存的攻击能量 / 上限（如 2/3）。官方界面没有这些数字。')}</p>
+      <${Toggle} label=${t('盟约效果剩余时间')} micro="BOND TIMERS" value=${s.bondTimers} onChange=${(v) => updateSettings({ bondTimers: v })} />
+      <p class="set-hint">${t('在选中单位的详情中显示叙拉古、萨尔贡效果的剩余时间；萨尔贡显示层数与下一层到期时间。官方界面没有这些数字。')}</p>
       <${Toggle} label=${t('作战统计')} micro="COMBAT STATS" value=${s.combatMetrics} onChange=${(v) => updateSettings({ combatMetrics: v })} />
       <p class="set-hint">${t('打开后，对局左下角可以查看自己干员的伤害、治疗和 DPS / HPS。官方界面没有这个窗口。改变玩法的插件对局在 Worker 里演算，统计不到，按钮不显示。')}</p>
+      <${Toggle} label=${t('部署时收起商店')} micro="DEPLOY FOLD" value=${s.prepDeployFold} onChange=${(v) => updateSettings({ prepDeployFold: v })} />
+      <p class="set-hint">${t('拖起干员、装备或召唤物，以及放下后选择朝向时，临时收起商店并放大棋盘。关闭后，拿起时既不改变商店的收起状态，也不缩放镜头。')}</p>
+      <${Toggle} label=${t('全屏时保持屏幕常亮')} micro="SCREEN WAKE LOCK" value=${s.fullscreenWakeLock} onChange=${(v) => updateSettings({ fullscreenWakeLock: v })} />
+      <p class="set-hint" data-testid="wake-lock-hint">${tParts(isIOS()
+        ? N_('全屏期间始终保持屏幕常亮（{support}）；iOS低电量模式下可能不生效。')
+        : N_('全屏期间始终保持屏幕常亮（{support}）。'), {
+        support: html`<${Tooltip} tap=${true} id="wake-lock-requirements" placement="bottom"
+          text=${t('需要 HTTPS 或可信的本地地址（如 localhost），浏览器支持 Screen Wake Lock API，且页面保持在前台。系统设置仍可能限制生效。')}>
+          <button type="button" class="set-hint__help" aria-describedby="wake-lock-requirements">${t('需要环境支持')}<${Icon} name="info" /></button>
+        <//>`,
+      })}</p>
       <div class="set-row">
         <span class="set-row__label">${t('画面质量')}<${MicroLabel}>QUALITY<//></span>
         <div class="set-seg" role="radiogroup">
@@ -467,22 +530,6 @@ export function SettingsModal({ open, onClose }) {
         </div>
       </div>
       <p class="set-hint">${t('使用服主从自己的游戏客户端提取的官方战斗特效（普攻、弹道、命中、状态、阵亡、部署，干员、召唤物和敌人的技能与天赋，以及秘术师储存的能量），连到这台服务器的玩家看到的都是服主提取的这一份；提取里没有的或对战中没有时机的（如只在游戏内部条件下触发的天赋效果）仍为本作的特效。精简：半分辨率贴图、粒子减半，适合手机。只在 3D 棋盘上显示。')}</p>` : null}
-      <div class="set-row" data-testid="board-mode">
-        <span class="set-row__label">${t('棋盘渲染')}<${MicroLabel}>BOARD<//></span>
-        <div class="set-seg" role="radiogroup" aria-label=${t('棋盘渲染')}>
-          ${BOARD.map(([id, label]) => html`<button key=${id} type="button" role="radio" aria-checked=${(s.boardMode || '3dscene') === id ? 'true' : 'false'}
-            class=${(s.boardMode || '3dscene') === id ? 'is-on' : ''} onClick=${() => pickBoard(id)}>${t(label)}</button>`)}
-        </div>
-      </div>
-      <p class="set-hint">${t('2D 最省电也最快；内置 3D 用程序化贴图；官方场景 3D 用本地客户端提取的战场场景（没提取过就退回内置）。手机卡顿时选 2D。')}</p>
-      <div class="set-row" data-testid="fps">
-        <span class="set-row__label">${t('帧率')}<${MicroLabel}>FRAME RATE<//></span>
-        <div class="set-seg" role="radiogroup" aria-label=${t('帧率')}>
-          ${FPS.map(([id, label]) => html`<button key=${id} type="button" role="radio" aria-checked=${(s.fps || 60) === id ? 'true' : 'false'}
-            class=${(s.fps || 60) === id ? 'is-on' : ''} onClick=${() => pickFps(id)}>${t(label)}</button>`)}
-        </div>
-      </div>
-      <p class="set-hint">${t('限制渲染帧率以省电降温。120 帧还会让安卓外壳切到高刷模式；发烫或卡顿就降到 60 或 30。')}</p>
       <div class="set-row">
         <span class="set-row__label">${t('文字大小')}<${MicroLabel}>TEXT SIZE<//></span>
         <div class="set-seg set-textsize" role="radiogroup" aria-label=${t('文字大小')} data-testid="text-size">
@@ -491,33 +538,14 @@ export function SettingsModal({ open, onClose }) {
         </div>
       </div>
       <p class="set-hint set-textsize-note">${t('调整界面文字大小，棋盘保持原比例。')}</p>
+      <${ScreenFitSection} />
       <${HotkeySection} keys=${s.keys} touchUi=${touchUi} />
       <${CosmeticSection} />
       <${UiPluginSection} />
+      <${StorageSection} />
       <${DiagSection} />
-      <div class="set-row" data-testid="app-update">
-        <span class="set-row__label">${t('版本与更新')}<${MicroLabel}>VERSION & UPDATE<//></span>
-        <button type="button" class="btn btn--secondary btn--sm" disabled=${checkingUpdate} onClick=${checkUpdate}>
-          <${Icon} name="refresh" /><span>${t('检测更新')}</span>
-        </button>
-      </div>
-      ${updateInfo && updateInfo.native && updateInfo.patchUrl ? html`<div class="set-row" data-testid="app-update-apply">
-        <span class="set-row__label">${t('发现新版本 {build}', { build: updateInfo.build })}<${MicroLabel}>HOT UPDATE<//></span>
-        <button type="button" class="btn btn--primary btn--sm" onClick=${applyUpdate}>
-          <${Icon} name="check" /><span>${t('下载并应用补丁')}</span>
-        </button>
-      </div>` : null}
-      ${updateInfo && !updateInfo.stale ? html`<p class="set-hint" data-testid="app-update-note">${t('当前已是最新版本 (v{v})', { v: updateInfo.app })}</p>` : null}
-
-      ${hasMods() ? html`<div class="set-row" data-testid="mod-management">
-        <span class="set-row__label">${t('模组管理')}<${MicroLabel}>MOD MANAGEMENT<//></span>
-        <button type="button" class="btn btn--secondary btn--sm" onClick=${() => setModModalOpen(true)}>
-          <${Icon} name="box" /><span>${t('模组仓库')}</span>
-        </button>
-      </div>` : null}
       <p class="set-hint">${touchUi ? t('触屏操作：点击单位选中（撤退 / 出售）· 长按单位或卡牌查看详情 · 拖动部署后滑动选择朝向') : t('右键查看详情')}</p>
     </div>
-    <${ModManagerModal} open=${modModalOpen} onClose=${() => setModModalOpen(false)} />
   <//>`;
 }
 

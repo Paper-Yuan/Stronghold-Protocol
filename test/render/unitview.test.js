@@ -43,6 +43,17 @@ function view(info, opts = {}, assets = store()) {
   return new UnitView(ctx, { id: 1, side: 'ally', kind: 'chess', defId: 'char_x', tier: 3, x: 5, y: 12, maxHp: 1000, ...info }, opts);
 }
 
+test('prep pips retain both equipment slots and a zero-slot morph, then remove only unequipped pips', () => {
+  const v = view({}, { prep: true });
+  v.setItems(['one', 'two', 'morph']);
+  assert.deepEqual(v.itemPips.map((p) => p._url), ['one', 'two', 'morph']);
+  v.setItems(['one', 'two']);
+  assert.deepEqual(v.itemPips.map((p) => p._url), ['one', 'two']);
+  v.setItems([]);
+  assert.equal(v.itemPips.length, 0);
+  v.destroy();
+});
+
 describe('tier chips', () => {
   test('summon tokens in the hand show no tier chip (tokens have no tier)', async () => {
     const v = view({ kind: 'token', defId: 'token_10028_vigil_wolf', avatar: 'token_10028_vigil_wolf' }, { prep: true });
@@ -611,6 +622,20 @@ describe('a push / pull slide (推拉: the official impulse under friction)', ()
       step(v, v.slide.dur / 2);
       assert.equal(v.visFacing, sign, 'the slide and sampled velocity retain that facing');
     }
+  });
+
+  test('a scripted face turns a standing enemy, and a slide keeps its own facing', async () => {
+    const v = await view(11);
+    v.sync({ x: 5, y: 12, hp: 100, maxHp: 100, sp: 0, spMax: 0, flags: 0, anim: 0, vx: 0, face: 1 });
+    assert.equal(v.visFacing, 1, 'a block freezes velocity; the published sign still turns the model');
+    v.sync({ x: 5, y: 12, hp: 100, maxHp: 100, sp: 0, spMax: 0, flags: 0, anim: 0, vx: 0 });
+    assert.equal(v.visFacing, 1, 'no face leaves the last sign');
+    v.sync({ x: 4.5, y: 12, hp: 100, maxHp: 100, sp: 0, spMax: 0, flags: 0, anim: 0, vx: -1 });
+    assert.equal(v.visFacing, -1, 'a walk without a published face follows velocity');
+    v.slideTo(6.5, 12, { keepFacing: true });
+    v.sync({ x: 6.5, y: 12, hp: 100, maxHp: 100, sp: 0, spMax: 0, flags: 0, anim: 0, vx: 0, face: 1 });
+    assert.equal(v.visFacing, -1, 'a slide ignores the published sign');
+    v.destroy();
   });
 
   test('a snapshot in flight does not teleport it (the slide owns the position until it lands)', async () => {

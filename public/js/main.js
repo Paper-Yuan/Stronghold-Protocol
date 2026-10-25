@@ -31,48 +31,48 @@
 // Cosmetic plugins (DESIGN §32 P1a): installContent (content.js) lays the room's visual set and the player's personal
 // plugins over the art manifest every screen reads. Gameplay plugins (§32.6): installContentSet (content.js) downloads and
 // checks a room's content set and makes it the data every screen and the battle runner read.
+// Official versions (DESIGN §35.23, versions.js): welcome.versions turns the lobby's version switch on; installContentSet
+// also loads and checks the version the page shows (the lobby's choice, a room's version). A room whose version changes
+// while a result is on screen drops that result (the server dropped the room's replay: its chess ids are the old
+// version's), and a result that arrives after the room is gone keeps the version its frames name (m.result / m.public
+// `version`, versions.js matchFrameVersion), also on a freshly loaded page that never saw the room.
 
 // Polyfills first (older Safari / Firefox ESR): every module evaluated after this one sees them.
 import './ui/compat.js';
-import { installDeviceTier } from './ui/deviceTier.js';
-import { startIdleDim } from './ui/idleDim.js';
 import { render } from '../vendor/preact.module.js';
 import { useErrorBoundary } from '../vendor/hooks.module.js';
 import { html, UiHosts, Button, MicroLabel, closeAllDialogs } from './ui/components.js';
 import { ConnectionBanner } from './ui/connBanner.js';
 import { ToastHost, toast, toastError, describeError } from './ui/toasts.js';
 import { net, identity, NetError } from './net.js';
-import { store, useStore, emptyMatch, selectRoute, sessionResetNotice, isSpectating, pushChatMessage, clearChat, roomIdentityChanged } from './store.js';
-import { getRoomDanmaku } from './ui/roomDanmaku.js';
-import { setWelcomeMods } from './roomMods.js';
+import { store, useStore, emptyMatch, selectRoute, sessionResetNotice, isSpectating } from './store.js';
 import { data } from './data.js';
 import { GAME_FILES } from './ui/gameComponents.js';
 import { TitleScreen, sanitizeName } from './screens/title.js';
-import { LobbyScreen, rememberRoom, parseRoomParam } from './screens/lobby.js';
+import { LobbyScreen, rememberRoom, parseRoomParam, joinKnown } from './screens/lobby.js';
 import { RoomScreen, TrustedNotice } from './screens/room.js';
 import { GameScreen } from './screens/game.js';
+import { preloadBootArt } from './ui/protocolBoot.js';
 import { audio, installAudio } from './audio.js';
+import { installLobbyMedia } from './ui/lobbyMedia.js';
 import { settingsStore } from './ui/settings.js';
 import { GuideHost } from './ui/guide.js';
-import { installDeviceSupport } from './ui/device.js';
+import { installDeviceSupport, useFullscreen, useScreenWakeLock } from './ui/device.js';
+import { isCombatPhase } from './ui/gameLogic/phases.js';
 import { registerImportedAssetWorker } from './assetCache.js';
 import { LoadoutHost } from './screens/loadout.js';
-import { StatsHost } from './screens/stats.js';
+import { StatsHost, useStatsOpen } from './screens/stats.js';
+import { CoveredVersionVote } from './ui/versionVote.js';
 import { installRehearsal } from './battle/rehearsal.js';
 import { recordResult, installStatsRecorder } from './ui/stats.js';
-import { installLoadoutSync, installOwnershipSync, installDiySync } from './ui/loadoutSync.js';
-import { installSkinsSync } from './ui/skins.js';
+import { installLoadoutSync, installOwnershipSync, installDiySync, installSkinsSync, installCardSync, installSettingsViews, loadoutStore } from './ui/loadoutSync.js';
 import { startBuildGuard } from './ui/buildGuard.js';
 import { initLang, useLang, tickerText } from './ui/lang.js';
 import { t, N_, translateWire } from '../../shared/i18n.js';
 import { recordError, installTrafficMeter } from './diag.js';
 import { installContent, installContentSet } from './content.js';
 import { cosmetics } from './cosmetics.js';
-
-// 设备档位探测（业主 2026-10-21）：内存 + GPU 型号 → window.__GAME_QUALITY__.isLowEnd。
-// 以前是内联 IIFE，探测用的 WebGL 上下文不释放（浏览器活跃上限 2–4 个，可能挤掉战场那个），
-// 还会全局劫持 getContext。现在放进 ui/deviceTier.js，探测完立刻 loseContext。
-installDeviceTier();
+import { sanitizeVersions, roomVersion, isDefaultVersion, matchFrameVersion } from './versions.js';
 
 const RESTORE_GRACE_MS = 1500;
 const JOIN_DELAY_MS = 350;
@@ -127,7 +127,7 @@ function schedulePendingJoin() {
     }
     joinInFlight = true;
     try {
-      await net.request('room.join', { code });
+      await joinKnown('room.join', code);
     } catch (err) {
       toastError(err);
     } finally {
@@ -167,9 +167,6 @@ function backToLobby() {
 const pluginCount = (content) => (content && Number.isInteger(content.plugins) && content.plugins > 0 ? content.plugins : 0);
 
 function onWelcome(msg) {
-  // 房间模组目录 (W-C)：记录 welcome.mods（本服务器加载的包与摘要）。一句 welcome 没有这个键 = 普通安装，
-  // roomMods 会退回 null（absent means absent），之后所有载荷都不带 mods/modIds。
-  setWelcomeMods(msg);
   identity.saveToken(msg.token);
   identity.rememberMatch(null);
   const prev = store.get();
@@ -182,10 +179,16 @@ function onWelcome(msg) {
     content: msg.content && typeof msg.content.vanilla === 'string' ? { vanilla: msg.content.vanilla } : null,
     // how many unofficial plugins it has (P1a — absent: none; content.js fetches the catalogue only when there are some)
     installedPlugins: pluginCount(msg.content),
+    installedNotices: msg.content?.notices === true,
+    testMode: msg.testMode === true,
+    // the official versions the server enables (protocol §2; absent: the switch is off — versions.js)
+    versions: sanitizeVersions(msg.versions),
   });
   welcomeAt = Date.now();
 
-  if (prevId != null && prevId !== msg.playerId) {
+  if (msg.takeoverFrom === prevId && prevId != null) {
+    toast(t('你已接管AI席位，资金、阵容与席位已保留'), 'info');
+  } else if (prevId != null && prevId !== msg.playerId) {
     // A brand-new server session (the server restarted — crashed / killed, so no room.closed arrived — or this session
     // expired on it): whatever we showed before is gone — back to the lobby cleanly and say why.
     const notice = sessionResetNotice(prev, msg.playerId);
@@ -221,10 +224,13 @@ function onRoomState(msg) {
   const prevRoom = store.get().room;
   // A (new) match starts: forget the previous match's state so stale results never show.
   if (room.inMatch && !(prevRoom && prevRoom.inMatch && prevRoom.code === room.code)) store.set({ match: emptyMatch() });
+  // The room switched its version (DESIGN §35.23): a result still on screen (a settlement, a spectator's view) names the old
+  // version's chess ids, and the server dropped the room's replay — it closes, back to the room.
+  else if (prevRoom && prevRoom.code === room.code && !room.inMatch && roomVersion(prevRoom) !== roomVersion(room) && store.get().match.public) store.set({ match: emptyMatch() });
   store.set({ room });
   identity.rememberMatch(room.inMatch && seats.some((seat) => seat?.playerId === myId)
     ? { name: store.get().me.name, code: room.code || '' } : null);
-  if (room.mode === 'coop' && typeof room.code === 'string') rememberRoom(room.code);
+  if (room.mode === 'coop' && typeof room.code === 'string') rememberRoom(room.code, room.test === true);
   maybeFinishRestore();
 }
 
@@ -253,24 +259,8 @@ function wireNet() {
   net.on('replaced', () => toast(t('该身份已在其他页面登录，本页已断开'), 'warn', { ttl: 6000 }));
   net.on('unhandledError', (err) => toastError(err));
   net.on('room.state', onRoomState);
-  // 房间与局内文字聊天 (room.chat): the server broadcasts every line to the whole room, so the client keeps the tail
-  // (store.pushChatMessage) and shows it as a danmaku while a match is on screen (ui/roomDanmaku.js)
-  net.on('room.chat', (msg) => {
-    pushChatMessage(msg);
-    const st = store.get();
-    const inMatch = Boolean(st.room?.inMatch || st.screen === 'game' || st.match?.public);
-    if (!inMatch) return;
-    const myId = st.me?.playerId;
-    const isMine = Boolean(msg?.playerId && myId && msg.playerId === myId);
-    // 自己的消息在 chatBox 发送时已乐观弹出过弹幕，避免重复
-    if (!isMine) getRoomDanmaku().show(msg, false);
-  });
-  net.on('room.chat.history', (msg) => {
-    if (Array.isArray(msg?.messages)) for (const m of msg.messages) pushChatMessage(m);
-  });
   net.on('room.closed', (msg) => {
     backToLobby();
-    clearChat();
     const known = Object.hasOwn(CLOSE_REASON, String(msg.reason)) ? CLOSE_REASON[msg.reason] : null;
     toast(known ? t(known) : typeof msg.reason === 'string' && msg.reason.length < 60 ? t('同盟已关闭：{reason}', { reason: msg.reason }) : t('同盟已关闭'), 'warn');
   });
@@ -288,7 +278,11 @@ function wireNet() {
     // replays dedupe by content id inside recordResult (spectator seats' copies build no record at all)
     // (`vs`: the room's cosmetic plugins, recorded — such a match still counts as the original game: ui/stats.js)
     // (`content`: the room's content set when it played gameplay plugins — such a match is unofficial: ui/stats.js)
-    recordResult(res, { myId: store.get().me.playerId, roomMode: store.get().room?.mode ?? null, vs: store.get().room?.content?.vs ?? null, content: store.get().room?.content ?? null, now: Date.now() });
+    // (`version`: the official version the match played, DESIGN §35.23 — the room's, or the result's own `version` when
+    // it arrives after the room is gone, also to a freshly loaded page; only a non-default one is written)
+    const s = store.get();
+    const version = s.room ? roomVersion(s.room) : matchFrameVersion({ result: res, public: s.match.public });
+    if (s.room?.test !== true && s.match.public?.test !== true) recordResult(res, { myId: s.me.playerId, roomMode: s.room?.mode ?? null, vs: s.room?.content?.vs ?? null, content: s.room?.content ?? null, version: isDefaultVersion(version) ? null : version, now: Date.now() });
   });
   net.on('m.toast', (msg) => {
     const kind = ['info', 'success', 'warn', 'error'].includes(msg.kind) ? msg.kind : 'info';
@@ -312,8 +306,6 @@ function wireNet() {
 
   // Entering (title → lobby) while already online also needs the deep-link join.
   store.subscribe((s, prev) => {
-    // 换了房间（或退出房间）：上一局的对话不能留在这一局 —— room.closed 那条路早就在清，自己点「离开同盟」不走那里。
-    if (roomIdentityChanged(prev.room, s.room)) clearChat();
     if (s.session.entered && !prev.session.entered) schedulePendingJoin();
     // in a room (co-op or solo, also a resumed one) a match is near: its data starts downloading
     if (s.room && !prev.room) warmGameData();
@@ -325,14 +317,24 @@ function wireNet() {
 
 /**
  * Download every data file of the match UI (gameComponents GAME_FILES: operators, skills, bonds, items, enemies, 特质 …)
- * in the background once the player is in a room — a match is near (the lobby alone never downloads them). The game's
+ * and the pre-game sprites in the background once the player is in a room — a match is near (the lobby alone never
+ * downloads them). The game's
  * texts are static data loaded once per page — never fetched during a match — and the match screen waits for these
  * files, so with them warmed it opens at once and no text ever appears late (user playtest #3 item 9). Idempotent (the
  * data store shares each file's promise).
  */
 function warmGameData() {
-  // a room with gameplay plugins: content.js downloads its content set's files instead (DESIGN §32.6)
-  const go = () => { if (store.get().room?.content?.vanilla === false) return; data.loadAll(GAME_FILES).catch(() => {}); };
+  // a room with gameplay plugins: content.js downloads its content set's files instead (DESIGN §32.6). With the art list
+  // in, the pre-game sprites (协议启动！ and the 请选择策略 band, ui/protocolBoot.js) start too: a solo player who starts
+  // at once and skips through the briefing meets the band draft's first turn with them at hand (§35.18's leftover)
+  // Another official version's room (DESIGN §35.23): its version set brings those files (content.js) — the server's
+  // default ones would race it; only the art list the sprites need is fetched.
+  const go = () => {
+    const room = store.get().room;
+    if (room?.content?.vanilla === false) return;
+    if (typeof room?.version === 'string') { data.load('assets').then(() => preloadBootArt(), () => {}); return; }
+    data.loadAll(GAME_FILES).then(() => preloadBootArt(), () => {});
+  };
   if (typeof globalThis.requestIdleCallback === 'function') globalThis.requestIdleCallback(go, { timeout: 2500 });
   else setTimeout(go, 600);
 }
@@ -352,6 +354,11 @@ function ScreenCrashed({ error, reset }) {
 
 function App() {
   const route = useStore(selectRoute);
+  const combatActive = useStore((s) => selectRoute(s) === 'game' && s.room?.inMatch === true
+    && !s.match?.result && isCombatPhase(s.match?.public?.phase));
+  const fullscreenWakeLock = useStore((s) => s.fullscreenWakeLock, Object.is, settingsStore);
+  const fullscreenActive = useFullscreen();
+  useScreenWakeLock(combatActive || (fullscreenWakeLock && fullscreenActive));
   useLang(); // a language switch re-renders the whole tree in place
   const [error, resetError] = useErrorBoundary((err) => console.error('[ui] screen crashed', err));
   const Screen = SCREENS[route] || LobbyScreen;
@@ -365,7 +372,15 @@ function App() {
     <${GuideHost} />
     <${LoadoutHost} />
     <${StatsHost} />
+    <${VoteOverOverlays} />
   </div>`;
+}
+
+/** The room's version vote above 干员调配 / 统计数据 while one covers the room (ui/versionVote.js CoveredVersionVote). */
+function VoteOverOverlays() {
+  const lo = useStore((s) => !!s.open, Object.is, loadoutStore);
+  const st = useStatsOpen();
+  return html`<${CoveredVersionVote} covered=${lo || st} />`;
 }
 
 // ---- boot -----------------------------------------------------------------------------------------
@@ -397,41 +412,7 @@ function installGlobalErrorHandlers() {
     if (!(ev instanceof ErrorEvent)) return; // resource load errors are not script errors
     console.error('[app] uncaught error', ev.error || ev.message);
     recordError('error', ev.error || ev.message, ev.error ? null : `${ev.filename || '?'}:${ev.lineno || 0}:${ev.colno || 0}`);
-    // 安卓外壳的黑屏看门狗与诊断弹窗靠这个知道「页面到底有没有起来」：崩了也要把错误报过去。
-    reportClientState({ error: String((ev.error && ev.error.message) || ev.message || 'unknown').slice(0, 200) });
   });
-}
-
-/**
- * 把这一页的可见状态报给安卓外壳（MainActivity 的 12 秒黑屏看门狗 + 诊断弹窗；浏览器里没有桥，直接不管）。
- * 判据就是「白屏/黑屏」那几样：布局尺寸是否塌成 0、渲染了几张画布、WebGL/WebGL2 能不能拿到上下文、设备像素比与窗口尺寸。
- * 外壳拿不到任何一帧上报就先弹「兼容模式重启」，所以首帧渲染完成后要主动报一次（见下面的 reportClientState()）。
- */
-function reportClientState(extra = {}) {
-  const native = globalThis.AndroidNative;
-  if (typeof native?.reportClientState !== 'function') return;
-  const gl = (type) => { try { return !!document.createElement('canvas').getContext(type); } catch { return false; } };
-  const root = document.querySelector('.app-root') || document.getElementById('app');
-  const renderedW = root?.clientWidth || 0;
-  const renderedH = root?.clientHeight || 0;
-  const layoutCollapsed = renderedW === 0 || renderedH === 0;
-  try {
-    native.reportClientState(JSON.stringify({
-      at: Date.now(),
-      booted: !!globalThis.__SP__ && !layoutCollapsed,
-      layoutCollapsed,
-      renderedW,
-      renderedH,
-      rootChildren: document.getElementById('app')?.childElementCount ?? -1,
-      canvases: document.querySelectorAll('canvas').length,
-      webgl2: gl('webgl2'), webgl: gl('webgl'),
-      dpr: globalThis.devicePixelRatio || 1,
-      vw: globalThis.innerWidth || 0, vh: globalThis.innerHeight || 0,
-      ua: String(navigator.userAgent).slice(0, 160),
-      ...(layoutCollapsed ? { error: `UI layout collapsed (w=${renderedW}, h=${renderedH})` } : {}),
-      ...extra,
-    }));
-  } catch { /* 外壳自己有时限兜底 */ }
 }
 
 async function boot() {
@@ -458,11 +439,17 @@ async function boot() {
 
   wireNet();
   installStatsRecorder(store); // follows the match on screen, so a 放弃模拟 can be recorded (ui/stats.js)
+  // the loadout / 干员持有 / 自选 settings by operator, shown for the data on screen (DESIGN §35.23; a v1 store migrates)
+  installSettingsViews();
   installLoadoutSync({ net });
   installOwnershipSync({ net });
   installDiySync({ net });
-  // 干员皮肤 (docs/SKINS.md): the local choice, mirrored to the room through room.skins (ui/skins.js)
+  // 干员皮肤 (docs/SKINS.md): keeps the server's copy of this browser's chosen appearances current (room.skins), from
+  // ui/skins.js' own store — its 皮肤 section is rendered by screens/loadout.js.
   installSkinsSync({ net });
+  // 名片干员 (PR #643 split 6): the operator on this browser's seat card (room.card, ui/seatArt.js cardStore) — after every
+  // welcome, pick and content change, with the engine's retries (the room screen only reads and sets the pick)
+  installCardSync({ net });
   // the room's cosmetic plugins and the player's own over the art manifest (content.js; nothing is fetched without them)
   installContent({ toast });
   // a room with gameplay plugins: its content set downloaded, checked and shown (content.js — DESIGN §32.6)
@@ -479,13 +466,13 @@ async function boot() {
     onFailed: (url) => cosmetics.fail(url) });
   // …and the music follows the art: the screen's track again when the cosmetic layers change its URLs
   cosmetics.subscribe(() => audio.refreshBgm());
+  // 自定义大厅背景与音乐 (ui/lobbyMedia.js): the player's own files of this browser, the music from the title on
+  installLobbyMedia();
   data.load('assets').catch(() => {});
   // Warm the data cache in the background (missing files are tolerated).
   data.loadAll('config').catch(() => {});
   // Optional local-client art manifest (emotes, tutorial pages, official UI sprites; DESIGN §13).
   data.load('local').catch(() => {});
-  // 干员皮肤: the client's catalogue (data/skins.json) — 干员调配's 皮肤 section reads it, and it is a GAME_FILE
-  data.load('skins').catch(() => {});
 
   const connectWhenReady = identityReady.then(() => {
     if (entered) net.setName(savedName);
@@ -503,9 +490,6 @@ async function boot() {
     setTimeout(() => splash.remove(), 300);
   }
   globalThis.__SP__ = { store, net, data, version: 1 };
-  reportClientState();
-  // 闲置 8 秒后大厅的操作件变淡（ui/idleDim.js + css），任何输入立刻恢复。
-  startIdleDim();
   // A page keeps the modules it imported at load time for its whole lifetime, so a deploy cannot reach an open tab
   // (ui/buildGuard.js): watch `/healthz.build`. Outside a match the page reloads itself; during a match the guard says
   // so instead (the connection banner offers 刷新页面) and reloads once the match — settlement screen included — is over,
@@ -513,17 +497,12 @@ async function boot() {
   try {
     startBuildGuard({
       inMatch: () => selectRoute(store.get()) === 'game',
-      // 业主 2026-10-21：结算页也算对局的一部分 —— 有了 match.result 之后再多等一会儿，
-      // 让玩家看完结算再自动刷新，而不是一退出战斗就闪一下。
-      settled: () => {
-        const st = store.get();
-        if (!st.match?.result) return true;                       // 没有结算页：不用等
-        const at = Number(st.match.result.endedAt) || 0;
-        return at > 0 ? Date.now() - at > 30000 : false;          // 结算页出现 30 秒后才算结束
-      },
       onStale: ({ waiting }) => { if (waiting) store.patch('ui', { buildStale: true }); },
       // the same /healthz names how many plugins the server has: the title screen shows it before any hello
-      onHealth: (h) => { const n = pluginCount(h.content); if (n !== store.get().installedPlugins) store.set({ installedPlugins: n }); },
+      onHealth: (h) => {
+        const n = pluginCount(h.content), notices = h.content?.notices === true;
+        if (n !== store.get().installedPlugins || notices !== store.get().installedNotices) store.set({ installedPlugins: n, installedNotices: notices });
+      },
     });
   } catch (err) {
     console.warn('[app] build guard failed to start', err);

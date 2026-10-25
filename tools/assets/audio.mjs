@@ -61,15 +61,32 @@ export function bankMix(sounds, path) {
 }
 
 /**
+ * Official pool limits and per-file playback parameters (excel/audio_data.json soundFXBanks).
+ * Keep the bank id: unrelated banks may use the same file, and aliases share their target's pool.
+ * [ASSUMED] Sparse/custom banks default to the legacy cap 2, no takeover, pitch 1 and no delay.
+ */
+export function bankPool(bank) {
+  const sounds = {};
+  for (const s of bank.sounds || []) {
+    const path = assetToPath(s?.asset);
+    if (!path || sounds[path]) continue;
+    sounds[path] = { minPitch: s.minPitch ?? 1, maxPitch: s.maxPitch ?? 1, delay: s.delay ?? 0 };
+  }
+  return { id: bank.name, maxSoundAllowed: bank.maxSoundAllowed ?? 2, popOldest: bank.popOldest ?? false, sounds };
+}
+
+/**
  * Index an audio_data.json object.
  * @param {any} audioData parsed excel/audio_data.json
  * @returns {{ bank: (name:string)=>string[], bgm: (name:string)=>({intro:string|null, loop:string}|null),
  *   unitBanks: Map<string, Map<string, string[]>>, skillBanks: Map<string, Map<string,string[]>>,
- *   mixOf: (paths: string[]|null|undefined) => ({ p?: number, vol?: number }|null) }}
+ *   mixOf: (paths: string[]|null|undefined) => ({ p?: number, vol?: number }|null),
+ *   poolOf: (paths: string[]|null|undefined) => (ReturnType<typeof bankPool>|null) }}
  */
 export function indexAudio(audioData) {
   const banks = new Map();
   const mixes = new WeakMap(); // a bank's path list (the very array every lookup hands out) → bankMix
+  const pools = new WeakMap();
   for (const b of Array.isArray(audioData?.soundFXBanks) ? audioData.soundFXBanks : []) {
     if (!b || typeof b.name !== 'string') continue;
     const paths = (Array.isArray(b.sounds) ? b.sounds : []).map((s) => assetToPath(s?.asset)).filter(Boolean);
@@ -77,6 +94,7 @@ export function indexAudio(audioData) {
     const list = banks.get(b.name);
     for (const p of paths) if (!list.includes(p)) list.push(p);
     if (list.length && !mixes.has(list)) { const m = bankMix(b.sounds, list[0]); if (m) mixes.set(list, m); }
+    if (list.length && !pools.has(list)) pools.set(list, bankPool(b));
   }
   const alias = audioData?.bankAlias && typeof audioData.bankAlias === 'object' ? audioData.bankAlias : {};
   const bank = (name, depth = 0) => {
@@ -116,7 +134,8 @@ export function indexAudio(audioData) {
   for (const [name, paths] of banks) if (paths.length) addUnit(name, paths);
   for (const name of Object.keys(alias)) if (!banks.has(name)) { const p = bank(name); if (p.length) addUnit(name, p); }
   const mixOf = (paths) => (paths && typeof paths === 'object' && mixes.get(paths)) || null;
-  return { bank, bgm, unitBanks, skillBanks, mixOf };
+  const poolOf = (paths) => (paths && typeof paths === 'object' && pools.get(paths)) || null;
+  return { bank, bgm, unitBanks, skillBanks, mixOf, poolOf };
 }
 
 /** Sort key for ability sub-keys: plain first, then numeric suffixes ascending. */
@@ -210,6 +229,238 @@ export const pickModeAttacks = (banks) => pickModeBanks(banks, ['ON_ABILITY_STAR
  */
 export const pickModeHits = (banks) => pickModeBanks(banks, ['ON_ABILITY_HIT']);
 
+/** The planned skill id is that skill's own number (`skchr_…_2` → index 1). A `skcom_` substitute is not. */
+function ownsSkillNumber(skillId, index) {
+  return typeof skillId === 'string' && !/^skcom_/i.test(skillId) && skillId.endsWith(`_${index + 1}`);
+}
+
+/**
+ * Skill indexes a mode name names, when no skill switches to that mode.
+ * `S1-2` / `S2-3` is the inclusive range; `S2+`, `S1_Landing`, `Sk3_Zero` name the first number.
+ * `Default`, `Stand`, `Empty`, `T2`, `Changed` name none. [ASSUMED] The grammar is the names in the local fx index.
+ * @param {string} name
+ * @param {{index:number, skillId?:string|null}[]} skills
+ * @param {Set<number>} explicit skill indexes that already switch to a mode
+ */
+function skillIndicesFromModeName(name, skills, explicit) {
+  const s = String(name || '');
+  const range = /^(?:sk|s)(\d+)\s*-\s*(\d+)/i.exec(s);
+  const idxs = [];
+  if (range) {
+    const a = Number(range[1]) - 1;
+    const b = Number(range[2]) - 1;
+    for (let i = Math.min(a, b); i <= Math.max(a, b); i++) idxs.push(i);
+  } else {
+    const one = /^(?:sk|s)(\d+)/i.exec(s);
+    if (one) idxs.push(Number(one[1]) - 1);
+  }
+  return idxs.filter((i) => {
+    const row = skills.find((k) => k.index === i);
+    return row && !explicit.has(i) && ownsSkillNumber(row.skillId, i);
+  });
+}
+
+/**
+ * A phase of a skill mode (`S3_Resapwn`, `S2Respawn`, `S2+`, `S1_Landing`), not a range (`S2-3`) and not the
+ * skill's closing clip (`S3_End`). [ASSUMED] Only the name marks it; the client has no per-phase playback.
+ * @param {string} name
+ * @returns {{index:number, end:boolean}|null}
+ */
+function phaseOfModeName(name) {
+  const m = /^(?:sk|s)(\d+)(?!\s*-\s*\d\b)(.+)$/i.exec(String(name || '').trim());
+  if (!m) return null;
+  return { index: Number(m[1]) - 1, end: /end/i.test(m[2]) };
+}
+
+/**
+ * Per-skill attack / impact banks.
+ *
+ * The filename letter is not the skill slot. 玛恩纳's S2 swing is `p_imp_loyalsword_d` and his S3 swing is
+ * `p_imp_loyalsword_h` (official banks `attack.2` / `attack.3`); the letter fallback therefore played `_d` during S1,
+ * `_h` during S2, and nothing during S3 (#679). The first number of an attack/combat key is the mode index in that
+ * operator's own mode list (`attack` and `attack.0` are mode 0; `attack.1.2.1` stays on mode 1). It is not
+ * skill N−1: 银灰's `attack.2` is his S3 mode, and 司霆惊蛰's banks are dotted.
+ *
+ * `modes` null (no local fx index, or an operator it does not list) keeps the old letter fallback exactly:
+ * the activation sound's letter, else {@link SLOT_MODE_LETTER}.
+ *
+ * [ASSUMED] One bank per skill: the same rank as {@link pickModeBanks} (START before ON, plain before numbered,
+ * then abilityOrder). A mode with several variants plays the first of that rank. `skills[].mode` (the mode
+ * the skill switches to) wins over the mode's name, except a mode named exactly `S<n>` or `Sk<n>` that no skill
+ * switches to: that uniform bank is skill n's, in place of a differently named link. The fx extract records the
+ * link; nothing in the tables says the unlinked name is the swing that plays. 麦哲伦's three skills link to
+ * `S1_Default` (no `_d/_h/_s` bank) while unclaimed `S1`/`S2`/`S3` each carry `p_atk_icecamera_h` and
+ * `p_imp_icecamera_h`. 白铁 S2 links to `S1` while unclaimed `S2` carries `p_atk_elecdrill_h`. 归溟幽灵鲨 S1 links
+ * to `Empty` while unclaimed `S1` carries `p_atk_sharpsaw_d` and `p_imp_sharpsaw_d`. A mode another skill already
+ * links is not taken (水月 S3 owns the mode named S2). Any other name is used only when no skill switches to that
+ * mode, and only onto a skill that itself switches to nothing and whose id is that skill number. A phase name fills
+ * a skill whose own mode has no d/h/s bank; a name ending in End does not (that clip is not the attack). A skill
+ * that does switch stays quiet rather than borrow a numbered mode's letter — except an unsuffixed bank, which is
+ * not numbered to a skill mode, and except the exact `S<n>` case above. A record whose letter is a plain `_n` file
+ * stays out of the skill table, except a numbered mode bank that plays a file the unit's normal attack (the bare
+ * ability bank, or a numbered default `attack.0`) never does — 宴's S2 impact `p_imp_darksword_n` beside her normal
+ * `p_imp_sword_n` is that mode's sound, while 银灰's S3 swing `p_atk_silver_n` (no plain swing bank to compare with)
+ * still stays out. Judged per kind (swing / impact); without the local fx mode links nothing is assigned, as before.
+ * Such a plain bank only fills a skill no lettered bank fills, and only for the skill's own mode, never as a phase
+ * fill (PR #848 review, DESIGN §35.38).
+ *
+ * @param {Map<string,string[]>|undefined} banks unit bank table (indexAudio().unitBanks)
+ * @param {{index:number, skillId?:string|null, mode?:number|null, start?:string|null}[]} skills planned skills
+ * @param {{name?:string}[]|null} [modes] the operator's mode list, in order; null keeps the letter fallback
+ * @param {Map<string, number|null>|null} [allLinks] every skill on the unit (including ones the plan does not ship)
+ *   → the mode index it switches to. A mode such a skill claims is not given to another slot by name or by letter.
+ * @returns {{attacks: Record<string, string[]>, hits: Record<string, string[]>}}
+ */
+export function assignSkillModeSfx(banks, skills, modes = null, allLinks = null) {
+  const list = Array.isArray(skills) ? skills : [];
+  const explicit = new Set();
+  const reserved = new Set();
+  if (Array.isArray(modes)) {
+    for (const s of list) {
+      if (Number.isInteger(s.mode) && s.mode >= 0 && s.mode < modes.length) explicit.add(s.index);
+    }
+    if (allLinks && typeof allLinks.values === 'function') {
+      for (const mode of allLinks.values()) {
+        if (Number.isInteger(mode) && mode >= 0 && mode < modes.length) reserved.add(mode);
+      }
+    }
+    for (const s of list) if (explicit.has(s.index)) reserved.add(s.mode);
+  }
+  const owners = (modeIndex) => {
+    if (!Array.isArray(modes) || !Number.isInteger(modeIndex) || modeIndex < 0 || modeIndex >= modes.length) return [];
+    if (reserved.has(modeIndex)) return list.filter((s) => s.mode === modeIndex).map((s) => s.index);
+    return skillIndicesFromModeName(modes[modeIndex]?.name, list, explicit);
+  };
+  const collect = (events) => {
+    const found = [];
+    if (!banks || !banks.size) return found;
+    // The unit's normal-mode files of this kind: the bare ability banks (attack / combat) and a numbered default
+    // (attack.0). They only tell a mode's own plain `_n` sound from the normal attack's same-suffix file.
+    const normalFiles = new Set();
+    for (const [name, paths] of banks) {
+      const ev = events.find((e) => name.startsWith(e + '.'));
+      if (!ev || !Array.isArray(paths) || !paths.length) continue;
+      const ability = name.slice(ev.length + 1).split('.')[0];
+      if (!/attack|combat/i.test(ability)) continue;
+      const rest = name.slice(ev.length + 1 + ability.length);
+      // mode 0's sub-abilities count too (仇白's `combat.0.1` stab plays in her S2 mode as well)
+      if (rest === '' || /^\.0(?:\.\d+)*$/.test(rest)) for (const p of paths) normalFiles.add(p);
+    }
+    for (const [name, paths] of banks) {
+      const ev = events.find((e) => name.startsWith(e + '.'));
+      if (!ev || !Array.isArray(paths) || !paths.length) continue;
+      const ability = name.slice(ev.length + 1).split('.')[0];
+      if (!/attack|combat/i.test(ability)) continue;
+      const rest = name.slice(ev.length + 1 + ability.length);
+      const letter = skillModeLetter(paths[0]);
+      const uniform = !!letter && paths.every((p) => skillModeLetter(p) === letter);
+      const numbered = rest ? 1 : 0;
+      const rank = `${events.indexOf(ev)}${numbered}`;
+      let modeIndex = null;
+      if (!rest) modeIndex = 0;
+      else {
+        const seg = rest.slice(1).split('.')[0];
+        if (/^\d+$/.test(seg)) modeIndex = Number(seg);
+      }
+      // A numbered mode bank of plain `_n` files is that mode's sound when it plays a file the unit's normal attack
+      // never does: 宴's S2 impact `p_imp_darksword_n` beside her normal `p_imp_sword_n`, 银灰's S2/S3 `p_imp_sword_n`
+      // beside the Combat `p_imp_spear_n`. Judged per kind, so his S3 swing (no plain swing bank to compare with) stays
+      // out, and the client's normal-attack gate is untouched.
+      // Every file plain: a mixed bank (a plain first file, a lettered later one) stays skipped, as ASSETS.md says.
+      const ownPlain = !uniform && paths.every((p) => !skillModeLetter(p)) && Number.isInteger(modeIndex) && modeIndex > 0
+        && normalFiles.size > 0 && paths.some((p) => !normalFiles.has(p));
+      if (!uniform && !ownPlain) continue;
+      found.push({ rank, rest, paths, letter, modeIndex, bare: rest === '', plain: ownPlain });
+    }
+    return found;
+  };
+  // A lettered bank beats a plain one for the same skill: a plain mode bank only fills a skill no `_d` / `_h` / `_s`
+  // bank does (假日威龙陈's START `p_atk_watergun_d_cast` never displaces her ON `p_atk_watergun_d`, PR #848 review).
+  const best = (cands) => cands.slice().sort((a, b) => (a.plain !== b.plain ? (a.plain ? 1 : -1)
+    : a.rank !== b.rank ? (a.rank < b.rank ? -1 : 1) : abilityOrder(a.rest, b.rest)))[0];
+  const assignKind = (events) => {
+    const bySkill = new Map();
+    const phase = new Map();
+    const unclaimed = [];
+    for (const c of collect(events)) {
+      const own = owners(c.modeIndex);
+      if (own.length) {
+        for (const i of own) {
+          if (!bySkill.has(i)) bySkill.set(i, []);
+          bySkill.get(i).push(c);
+        }
+        continue;
+      }
+      const reservedEmpty = Number.isInteger(c.modeIndex) && c.modeIndex >= 0 && c.modeIndex < (modes?.length || 0) && reserved.has(c.modeIndex);
+      if (reservedEmpty) continue;
+      const ph = Array.isArray(modes) && Number.isInteger(c.modeIndex) && c.modeIndex >= 0 && c.modeIndex < modes.length
+        ? phaseOfModeName(modes[c.modeIndex]?.name) : null;
+      if (ph && !ph.end) {
+        // a plain bank speaks only for its own linked mode, never as a phase fill (乌尔比安's S3_Respawn_A swing is not
+        // her S3 mode's sound, which is the normal `_n` file)
+        if (c.plain) continue;
+        if (!phase.has(ph.index)) phase.set(ph.index, []);
+        phase.get(ph.index).push(c);
+      } else unclaimed.push(c);
+    }
+    const chosen = new Map();
+    const take = (i, cands) => { if (!chosen.has(i)) chosen.set(i, best(cands).paths); };
+    for (const [i, cands] of bySkill) take(i, cands);
+    // [ASSUMED] Exact `S<n>` / `Sk<n>` that nobody links: skill n plays it instead of a differently named link.
+    // Reserved modes stay with the skill that links to them (水月 S3 owns the mode named S2).
+    const namedSkill = new Map();
+    const namedUsed = new Set();
+    if (Array.isArray(modes)) {
+      for (const c of unclaimed) {
+        if (!Number.isInteger(c.modeIndex) || c.modeIndex < 0 || c.modeIndex >= modes.length) continue;
+        if (reserved.has(c.modeIndex)) continue;
+        const raw = String(modes[c.modeIndex]?.name || '').trim();
+        const named = /^(?:sk|s)(\d+)$/i.exec(raw);
+        if (!named) continue;
+        const i = Number(named[1]) - 1;
+        const row = list.find((s) => s.index === i);
+        if (!row || !ownsSkillNumber(row.skillId, i)) continue;
+        if (!namedSkill.has(i)) namedSkill.set(i, []);
+        namedSkill.get(i).push(c);
+        namedUsed.add(c);
+      }
+    }
+    for (const [i, cands] of namedSkill) chosen.set(i, best(cands).paths);
+    for (const [i, cands] of phase) {
+      const row = list.find((s) => s.index === i);
+      if (!row || chosen.has(i) || !explicit.has(i) || !ownsSkillNumber(row.skillId, i)) continue;
+      take(i, cands);
+    }
+    const byLetter = new Map();
+    for (const c of unclaimed) {
+      if (namedUsed.has(c) || !c.letter) continue;   // a letterless (plain `_n`) bank belongs to a mode, never a fallback slot
+      if (!byLetter.has(c.letter)) byLetter.set(c.letter, []);
+      byLetter.get(c.letter).push(c);
+    }
+    const letterBest = {};
+    const bareBest = {};
+    for (const [letter, cands] of byLetter) {
+      letterBest[letter] = best(cands);
+      const bares = cands.filter((c) => c.bare);
+      if (bares.length) bareBest[letter] = best(bares);
+    }
+    for (const s of list) {
+      if (chosen.has(s.index)) continue;
+      const letter = skillModeLetter(s.start) ?? SLOT_MODE_LETTER[s.index];
+      const bank = letter ? (explicit.has(s.index) ? bareBest[letter] : letterBest[letter]) : null;
+      if (bank) chosen.set(s.index, bank.paths);
+    }
+    // Same key order as the old slot loop: the plan's skill order, not bank order.
+    const out = {};
+    for (const s of list) if (chosen.has(s.index) && !Object.prototype.hasOwnProperty.call(out, String(s.index))) out[String(s.index)] = chosen.get(s.index);
+    return out;
+  };
+  return {
+    attacks: assignKind(['ON_ABILITY_START', 'ON_ABILITY_ON']),
+    hits: assignKind(['ON_ABILITY_HIT']),
+  };
+}
+
 /**
  * Pick role → candidate sound paths for one unit.
  * @param {Map<string,string[]>|undefined} banks unit bank table (from indexAudio().unitBanks)
@@ -250,13 +501,23 @@ export function pickUnitSfx(banks, opts = {}) {
     if (banks.get('ON_UNIT_BORN')?.length) out.born = banks.get('ON_UNIT_BORN');
     return out;
   }
-  // operators: the plain ability of either event before any numbered variant
+  // operators: the plain ability of either event before any numbered variant, then the default mode's banks (attack.0,
+  // attack.0.1 …) before any other number — firstMatching orders by depth, so 弑君者's S3 `attack.3` (p_imp_asndgrsmk) and S2
+  // `attack.4` (p_atk_asndgrbm) outranked her normal `attack.0.1` / `attack.0.2` (p_*_asndgr_n) and rang on every normal
+  // attack; 望 / 莱伊 / 灰毫 kept a skill's START swing over their mode-0 ON swing (the #848 merge review, DESIGN §35.38;
+  // assignSkillModeSfx already counts every mode 0 bank as the normal attack)
+  const mode0 = (event) => {
+    if (!opts.operator) return null;
+    const keys = [...banks.keys()].filter((k) => new RegExp(`^${event}\\.(attack|combat)\\.0(\\.\\d+)*$`).test(k)).sort(abilityOrder);
+    for (const k of keys) if (banks.get(k)?.length && ok(banks.get(k))) return banks.get(k);
+    return null;
+  };
   const plain = opts.operator ? exact('ON_ABILITY_START') ?? exact('ON_ABILITY_ON') : null;
-  const attack = plain
+  const attack = plain ?? mode0('ON_ABILITY_START') ?? mode0('ON_ABILITY_ON')
     ?? firstMatching(banks, 'ON_ABILITY_START', ['attack', 'combat'], ok)
     ?? firstMatching(banks, 'ON_ABILITY_ON', ['attack', 'combat'], ok)
     ?? own(proj.born) ?? attackLike('ON_ABILITY_START') ?? attackLike('ON_ABILITY_ON');
-  const hit = firstMatching(banks, 'ON_ABILITY_HIT', ['attack', 'combat'], ok) ?? own(proj.hit) ?? attackLike('ON_ABILITY_HIT');
+  const hit = mode0('ON_ABILITY_HIT') ?? firstMatching(banks, 'ON_ABILITY_HIT', ['attack', 'combat'], ok) ?? own(proj.hit) ?? attackLike('ON_ABILITY_HIT');
   if (attack) out.attack = attack;
   if (hit) out.hit = hit;
   if (banks.get('ON_UNIT_DEAD')?.length) out.die = banks.get('ON_UNIT_DEAD');

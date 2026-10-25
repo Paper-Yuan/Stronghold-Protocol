@@ -11,12 +11,8 @@ import { bountyText, bountyCard } from '../choices.js';
 export class PlayerViews {
   pieceView(p, rc = null) {
     const rec = p.kind === 'item' ? this.gd.item(p.id) : p.kind === 'token' ? this.gd.token(p.id) : this.gd.chess(p.id);
-    const baseId = (rec && rec.baseId) || p.id;
-    const charId = rec && rec.charId;
-    const diy = p.kind === 'chess' && typeof this.diyPickOf === 'function' ? this.diyPickOf(p.id) : null;
-    const skin = p.kind === 'chess'
-      ? (this.skins[baseId] || this.skins[p.id] || (charId ? this.skins[charId] : null) || (diy ? (this.skins[diy.charId] || this.skins[baseId]) : null))
-      : null;
+    // 皮肤 (docs/SKINS.md): skinFor resolves the effective body, including stand-ins and 自选 picks, on every surface.
+    const skinId = p.kind === 'chess' ? this.skinFor(rec) : null;
     const v = {
       uid: p.uid,
       kind: p.kind,
@@ -26,21 +22,18 @@ export class PlayerViews {
       items: p.kind === 'chess' ? (p.items || []).map((it) => ({ uid: it.uid, id: it.id })) : [],
       count: p.kind === 'token' ? (p.count || 1) : 1,
       ownerUid: p.kind === 'token' ? p.ownerUid ?? null : null,
-      ...(skin ? { skin } : {}),
+      // 皮肤: the prep board / hand / temp views carry it too, so a piece shows its appearance before it is deployed and
+      // the deploy wheel's preview matches the model that will actually fight
+      ...(skinId ? { skin: skinId } : {}),
     };
     if (rc) { v.row = rc[0]; v.col = rc[1]; v.dir = pieceDir(p); }
     return v;
   }
 
-
   effectsView() {
     const out = [];
-    // 随机模式: every held band shows (two picks; duplicates show twice — they do stack there)
-    const bandIds = (this.m.random && Array.isArray(this.bandIds) && this.bandIds.length ? this.bandIds : (this.bandId ? [this.bandId] : []));
-    for (const bid of bandIds) {
-      const band = bid ? this.gd.band(bid) : null;
-      if (band) out.push({ id: band.effectId || band.bandId, name: band.effectName || band.name, desc: band.desc || '', iconKind: 'band', iconId: band.iconId || band.bandId });
-    }
+    const band = this.bandId ? this.gd.band(this.bandId) : null;
+    if (band) out.push({ id: band.effectId || band.bandId, name: band.effectName || band.name, desc: band.desc || '', iconKind: 'band', iconId: band.iconId || band.bandId });
     for (const e of this.effects) {
       if (e.hidden) continue;
       const v = { id: e.id, name: e.name || e.id, desc: e.desc || '', iconKind: e.iconKind || 'choice', iconId: e.iconId || e.id };
@@ -61,20 +54,8 @@ export class PlayerViews {
     return out;
   }
 
-
   privateView() {
-    // 随机模式 盲盒: the slot is sanitized — no id, no basePrice (a sold one keeps nothing either: the candidates
-    const slots = this.shop.slots.map((s) => {
-      if (!s) return null;
-      let remaining = null;
-      if (s.kind === 'chess' && s.id) {
-        const pool = typeof this.poolOf === 'function' ? this.poolOf(s.id) : this.m.pool;
-        remaining = pool ? pool.left(s.id) : null;
-      }
-      return s.mystery
-        ? { kind: s.kind, id: null, mystery: true, faction: s.mysteryFaction || null, price: this.priceOf(s), sold: !!s.sold, frozen: !!s.frozen, remaining }
-        : { kind: s.kind, id: s.id, price: this.priceOf(s), basePrice: s.basePrice, sold: !!s.sold, frozen: !!s.frozen, remaining };
-    });
+    const slots = this.shop.slots.map((s) => (s ? { kind: s.kind, id: s.id, price: this.priceOf(s), basePrice: s.basePrice, sold: !!s.sold, frozen: !!s.frozen } : null));
     const offer = this.offers[0] || null;
     const free = this.shop.freeRefreshes > 0;
     const board = [];
@@ -84,15 +65,12 @@ export class PlayerViews {
     return {
       t: 'm.private',
       playerId: this.playerId,
+      ...(Number.isInteger(this.aiTakeoverRound) ? { aiTakeoverRound: this.aiTakeoverRound } : {}),
       seat: this.seat,
       alive: this.alive,
       lp: this.lp,
       funds: this.funds,
       bandId: this.bandId,
-      // 随机模式: every held band (two picks; the client badge strip can show both)
-      bandIds: this.m.random && Array.isArray(this.bandIds) && this.bandIds.length ? this.bandIds.slice() : (this.bandId ? [this.bandId] : []),
-      // 随机模式 R5 核心干员自选：机会待使用（客户端弹全池选择器，g.pickAny 提交）
-      pickAny: !!this.rmPickAny,
       ready: this.ready,
       canReady: this.alive && this.tempEmpty && !this.personalChoice && this.m.phase === PHASE.PREP,
       personalChoice: this.personalChoice ? {
@@ -108,10 +86,11 @@ export class PlayerViews {
         refreshPrice: free ? 0 : this.gd.refreshPrice,
         freeRefreshes: this.shop.freeRefreshes,
         frozen: this.shop.frozen,
+        layout: { ...(this.shop.layout || this.gd.shopSlots(this.shop.level)) },
         slots,
         // `source` 'merge' = the promotion reward (晋升奖励); any other offer (a strategy, an item, a 特质) carries the
         // `label` the bar shows instead; `queued` = offers waiting behind it (player report #6 after 0.1.0)
-        rewardOffer: offer ? { tier: offer.tier, source: offer.source === 'merge' ? 'merge' : 'special', label: offer.label || null, queued: this.offers.length - 1, mystery: offer.source === 'mystery', rerolls: Number.isFinite(offer.rerolls) ? offer.rerolls : 0, slots: offer.slots.map((s) => ({ kind: s.kind === 'item' ? 'item' : 'chess', id: s.id, price: s.price, sold: !!s.sold })) } : null,
+        rewardOffer: offer ? { tier: offer.tier, source: offer.source === 'merge' ? 'merge' : 'special', label: offer.label || null, queued: this.offers.length - 1, slots: offer.slots.map((s) => ({ kind: s.kind === 'item' ? 'item' : 'chess', id: s.id, price: s.price, sold: !!s.sold })) } : null,
       },
       hand: this.hand.map((p) => (p ? this.pieceView(p) : null)),
       temp: this.temp.map((p) => (p ? this.pieceView(p) : null)),
@@ -149,6 +128,4 @@ export class PlayerViews {
       },
     };
   }
-
-
 }

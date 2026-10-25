@@ -106,8 +106,8 @@ export class MatchUnite {
    * It falls as the helpers strike them down; a split or a summon raises nothing (a 联防 field tags its runtime spawns
    * `uniteRuntime`, spawns.js — they never crossed the leaker's own goal, so they are neither billed nor shown here).
    * Live from the field (client run: the authority's b.progress `left`; server run: the headless timeline on the field
-   * clock, or the streamed battle itself), clamped to what settlement can bill that leaker (fields.js uniteBillBounds:
-   * sent in + the offspring bound, validateClientResult's budget); exact once the field has its result (unite.js
+   * clock, or the streamed battle itself), clamped to what the escaped wave sent that leaker (fields.js uniteBillBounds:
+   * keySourceCounts only — the same set settlement bills); exact once the field has its result (unite.js
    * uniteSurvivors; a synthetic result charges the own leaks, as settle()). null for anyone but a leaker of the running
    * 联防.
    * @returns {number|null}

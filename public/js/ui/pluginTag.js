@@ -7,11 +7,16 @@
 //   * roomPluginFacts — what the room's plugins are for this player; pluginTagText, sizeText, pluginMicro — their words.
 //   * UnofficialMark — the small 「非官方」 / MOD mark of a match with gameplay plugins (the briefing, the HUD corner, the
 //     result; DESIGN §32.6, the design study's §7.4); nothing for the original game (cosmetic plugins only included).
+//   * VersionTag — the name of the official version a room or a record plays when it is not 第二期下半 (DESIGN §35.23:
+//     the room's top bar beside the mode, the briefing, the settlement and the result beside UnofficialMark, a 统计数据
+//     row [ASSUMED placement]); nothing for 第二期下半. Not unofficial: an official version is the original game.
 // Texts go through t() (docs/I18N.md).
 
 import { useState } from '../../vendor/hooks.module.js';
 import { html, Icon } from './components.js';
 import { t } from '../../../shared/i18n.js';
+import { rulePhrases } from '../../../shared/plugins/rules.js';
+import { DEFAULT_VERSION, versionById } from '../../../shared/versions.js';
 
 const cx = (...p) => p.flat().filter(Boolean).join(' ');
 
@@ -43,7 +48,18 @@ export function roomPluginFacts(room, myId) {
     modes: Array.isArray(c?.modes) ? c.modes.filter((m) => m && typeof m.id === 'string') : [],
     modeId: typeof c?.modeId === 'string' ? c.modeId : null,
     dataBytes: Number.isFinite(c?.dataBytes) ? c.dataBytes : 0,
+    rules: c?.rules && typeof c.rules === 'object' && !Array.isArray(c.rules) ? c.rules : null,
   };
+}
+
+/**
+ * The active non-default rules in words, or '' when the room plays the official options.
+ * @param {Record<string, string>|null|undefined} rules
+ */
+export function ruleLine(rules) {
+  const phrases = rulePhrases(rules);
+  if (!phrases.length) return '';
+  return t('规则：{text}', { text: phrases.map((p) => t(p)).join('；') });
 }
 
 /** Does the room play gameplay plugins (a content set of its own: unofficial — DESIGN §32.6)? @param {any} room */
@@ -64,7 +80,10 @@ export function UnofficialMark({ room, compact = false, class: cls = '' }) {
 }
 
 /** What the tag says: 「插件 ×N」 or 「原版」. @param {any} room */
-export const pluginTagText = (room) => { const n = roomPluginFacts(room, null).count; return n ? t('插件 ×{n}', { n }) : t('原版'); };
+export const pluginTagText = (room) => {
+  const f = roomPluginFacts(room, null);
+  return [f.count ? t('插件 ×{n}', { n: f.count }) : t('原版'), ruleLine(f.rules)].filter(Boolean).join(' · ');
+};
 
 /** A label for a catalogue entry's micro line in 设置 (ui/settings.js). @param {any} p */
 export const pluginMicro = (p) => [p?.id, p?.version ? `v${p.version}` : null, Number.isFinite(p?.artBytes) ? sizeText(p.artBytes) : null].filter(Boolean).join(' · ');
@@ -74,12 +93,26 @@ export function PluginTag({ room, myId }) {
   // the panel's component once loaded (a function in state: set through an updater)
   const [Panel, setPanel] = useState(null);
   const f = roomPluginFacts(room, myId);
+  const rulesText = ruleLine(f.rules);
   const open = () => {
     import('./pluginPanel.js').then((m) => setPanel(() => m.PluginPanel), (err) => console.warn('[plugins] the panel did not load', err));
   };
-  return html`<button type="button" class=${cx('plugtag', f.count && 'is-modded', f.modded && 'is-unofficial')} data-testid="plugin-tag" onClick=${open}
-      title=${f.modded ? t('本房间使用了改变玩法的插件（非官方）') : t('插件')} aria-label=${f.count ? t('插件 ×{n}', { n: f.count }) : t('原版')}>
-    <${Icon} name=${f.count ? 'edit' : 'check'} />${f.count ? t('插件 ×{n}', { n: f.count }) : t('原版')}${f.modded ? html`<b class="plugtag__mod">${t('非官方')}</b>` : null}
+  return html`<button type="button" class=${cx('plugtag', f.count && 'is-modded', f.modded && 'is-unofficial', rulesText && 'plugtag--rules')} data-testid="plugin-tag" onClick=${open}
+      title=${f.modded ? t('本房间使用了改变玩法的插件（非官方）') : t('插件')} aria-label=${pluginTagText(room)}>
+    <${Icon} name=${f.count ? 'edit' : 'check'} />${f.count ? t('插件 ×{n}', { n: f.count }) : t('原版')}${f.modded ? html`<b class="plugtag__mod">${t('非官方')}</b>` : null}${rulesText ? html`<span class="plugtag__rules" data-testid="plugin-rules">${rulesText}</span>` : null}
   </button>
   ${Panel ? html`<${Panel} open=${true} room=${room} myId=${myId} onClose=${() => setPanel(null)} />` : null}`;
+}
+
+/**
+ * The official version's tag (see the header): its name, nothing for 第二期下半 or an unknown id.
+ * @param {{ version?: string|null, room?: any, compact?: boolean, class?: string }} props `room` reads room.state.version
+ */
+export function VersionTag({ version = null, room = null, compact = false, class: cls = '' }) {
+  const id = version ?? room?.version ?? null;
+  const v = typeof id === 'string' && id !== DEFAULT_VERSION ? versionById(id) : null;
+  if (!v) return null;
+  const name = t(v.label);
+  return html`<span class=${cx('vertag', compact && 'vertag--compact', cls)} data-testid="version-tag" data-version=${v.id}
+      title=${t('游戏版本：{name}', { name })} aria-label=${t('游戏版本：{name}', { name })}><span class="vertag__label">${name}</span></span>`;
 }

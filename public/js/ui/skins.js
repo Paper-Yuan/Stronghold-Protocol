@@ -1,188 +1,259 @@
 // 干员皮肤：客户端状态与同步 (docs/SKINS.md).
 //
-// Two different things live here, and keeping them apart is what makes 「按需安装」 work:
+// Where an appearance comes from: NOT from data/*.json. A skin is written by a COSMETIC PLUGIN's overlay
+// (docs/PLUGINS.md §9) — `chars[<charId>].illust` and `chars[<charId>].skins[<skinKey>] = { name, group, avatar,
+// avatarE2, portrait, portraitE2, illust, spine: { front, back? } }` — so the source of truth is the composed asset
+// manifest: data.get('assets'), which data.js shows through public/js/cosmetics.js `cosmetics.apply` (the room's visual
+// set, then this player's personal plugins, over the installation's own manifest). The plugin is INSTALLED by the
+// server's owner and switched on by each player in 设置 → 外观插件 (`scope: ["personal"]`: no room, no host, no cs).
 //
-//   * the CATALOGUE (data/skins.json) — every skin the project knows about, installed or not: ids, names, series.
-//     It carries no URLs, because a skin that is not installed has no files to point at.
-//   * what is INSTALLED (data/assets.json → chars[charId].skins) — the skins whose models are actually on this
-//     server. `availableSkins()` marks which is which, and the picker greys out (or offers to install) the rest.
+// Two different things live here and keeping them apart is what makes the picker work:
 //
-// The choice itself is a plain `{ [chessId]: skinId }` map, persisted per browser in localStorage and mirrored to
-// the server through `room.skins` — the same shape and the same wiring as the operator loadout (ui/loadoutSync.js),
-// except that this one is PUBLIC: the server puts it in `Match.publicView().players[]`, which is how a teammate
-// sees your skin.
+//   * the CATALOGUE — `chars[<charId>].skins` of the manifest above: whatever the enabled plugins write, plus the
+//     operator's own `illust` as the 默认 tile's art. Picture-only outfits are wearable too (B6, maintainer option A,
+//     2026-10-18): their missing model stays the operator's default.
+//   * the CHOICE — a plain `{ [charId]: skinId }` map, persisted per browser in localStorage and mirrored to the
+//     server through `room.skins` — the shape the loadout uses (ui/loadoutSync.js installPrefSync), except that this
+//     one is PUBLIC: the server puts it in `Match.publicView().players[].skins` and in every unit of a watched board,
+//     which is how a teammate sees your skin (server/match/match/views.js).
+//
+// The key is the OPERATOR id (`char_498_inside`), not the chess id: the manifest groups skins under the operator, and
+// an operator's normal, elite and 自选 pieces are the same operator — one entry covers all three. The renderer agrees:
+// a unit's skin is looked up by `charId` (server/match/match/views.js `skinFor`).
 
 import { createStore, loadPref, savePref } from '../store.js';
 import { data } from '../data.js';
+import { SKIN_LIMITS } from '../../../shared/protocol.js';
 
+/** The localStorage preference (`sp.pref.<key>`) of this browser's skin choices: `{ [charId]: skinId }`. */
 export const SKINS_PREF = 'skins';
-export const SYNC_DEBOUNCE_MS = 500;
-export const RETRY_MS = 1500;
 
-function readStored() {
-  const raw = loadPref(SKINS_PREF, null);
+/** The store field the sync engine watches (ui/loadoutSync.js installPrefSync `key`) and its sync state field. */
+export const SKINS_KEY = 'skins';
+export const SKINS_SYNC_KEY = 'skinsSync';
+
+const isObj = (v) => v !== null && typeof v === 'object' && !Array.isArray(v);
+const str = (v) => (typeof v === 'string' && v ? v : null);
+
+/**
+ * Whether a skin record names a Spine model (not whether it can be worn). Like assets.js
+ * `skinHasModel`; actual model loading additionally checks `validSpine`. This module is on the
+ * boot path (main.js → screens/lobby.js → screens/loadout.js → ui/loadoutSync.js) and pulling the asset store in with
+ * its Spine cache there would be a cost the title page never needs (test/ui/plugins-client.test.js pins that). The
+ * difference can only be a skin whose model is written but does not resolve — the picker would offer it once and the
+ * renderer would draw the operator's own body, which is the same fallback a plugin-withdrawn model gets.
+ */
+export const skinHasModel = (skin) => !!skin && isObj(skin.spine) && isObj(skin.spine.front) && typeof skin.spine.front.skel === 'string';
+
+// B6: maintainer option A (2026-10-18), docs/history/0.3.2.md §35.4. [ASSUMED] The existing E2 and
+// illust slots count as pictures too; metadata alone never offers a selectable outfit.
+export const skinHasPictures = (skin) => !!skin && ['avatar', 'avatarE2', 'portrait', 'portraitE2', 'illust'].some((key) => str(skin[key]));
+
+/**
+ * Display choice for an effective operator body. #686 keeps each seat independent; no viewer choice leaks into
+ * another seat. [ASSUMED] Latest public choices (including clears) beat old unit metadata, as in render/app.js.
+ * An omitted owner means the local picker; null means an unowned catalogue entry. Official skin_table.charSkins
+ * groups pictures by charId; activity_table backupCharId / the DIY pick decides which charId callers pass.
+ */
+export function ownerSkin(charId, { ownerId, myId = null, players = [], localSkins = {}, skin = null, otherSkins = true } = {}) {
+  if (!charId || ownerId === null) return null;
+  if (ownerId === undefined) return str(localSkins[charId]);
+  if (ownerId !== myId && !otherSkins) return null;
+  const owner = players.find((p) => p.playerId === ownerId);
+  if (owner) return str(owner.skins?.[charId]);
+  return str(skin);
+}
+
+/**
+ * A stored selection as the store holds it: `{ [charId]: skinId }`, both non-empty strings, at most
+ * `SKIN_LIMITS.entries` of them.
+ *
+ * The cap is the WIRE's own (shared/protocol.js isSkinSelection) and it is applied here because this is the only parse
+ * of a stored selection: the store's initial state, every edit (setSkins / setSkin / clearSkin) and what the sync sends
+ * (ui/loadoutSync.js installSkinsSync `prepare`) all come through it. Over the limit is not a bigger message the server
+ * trims — it is BAD_MSG for the whole `room.skins`, so nothing would be stored and the sync would sit in 'error'
+ * (ui/loadoutSync.js installPrefSync). Pairs are kept in insertion order, the way the not-owned list keeps the first ids
+ * it can hold (ui/ownershipModel.js cleanIds); only a hand-edited localStorage gets near the limit, and junk that is not
+ * a pair does not spend the budget.
+ */
+export function parseStoredSkins(raw) {
   const out = {};
-  if (raw && typeof raw === 'object' && !Array.isArray(raw)) {
-    for (const [chessId, skinId] of Object.entries(raw)) {
-      // 业主 2026-10-21：只认干员 id（char_…）与棋种 id（chess_…）。
-      // 自选编队以前会把槽位 id（slot_N）也写进来，那是脏数据 —— 读了会让
-      // skinFor 反查出上一个干员的皮肤（见 skinFor 的注释）。这里顺手丢掉。
-      if (typeof chessId !== 'string' || typeof skinId !== 'string' || !skinId) continue;
-      if (!/^(char_|chess_)/.test(chessId)) continue;
-      out[chessId] = skinId;
-    }
+  if (!isObj(raw)) return out;
+  let kept = 0;
+  for (const [charId, skinId] of Object.entries(raw)) {
+    if (kept >= SKIN_LIMITS.entries) break;
+    if (!str(charId) || !str(skinId)) continue;
+    out[charId] = skinId;
+    kept++;
   }
   return out;
 }
 
 /**
- * The chosen skins (per browser), the sync state, and the skin currently being installed — kept apart from the
- * app store for the same reason the loadout is.
+ * This browser's choices and their sync state, kept apart from the app store for the same reason the loadout is
+ * (ui/loadoutSync.js: it must survive a room / match reset). `ui/loadoutSync.js installSkinsSync` watches
+ * `SKINS_KEY` and mirrors it to the server as `room.skins`.
  */
-export const skinsStore = createStore({ entries: readStored(), sync: 'idle' });
+export const skinsStore = createStore({ [SKINS_KEY]: parseStoredSkins(loadPref(SKINS_PREF, null)), [SKINS_SYNC_KEY]: 'idle' });
 
-/** Replace the whole selection (persisted at once; the sync picks the change up). */
+/**
+ * Replace the whole stored selection (persisted at once; the sync engine picks the change up). Out-of-match data, so
+ * nothing is sanitised away here: a stored id whose plugin is switched off today is kept, and comes back with it
+ * (`chosenSkin` reports it as 默认 while it resolves to nothing).
+ * @param {Record<string, string>} entries
+ */
 export function setSkins(entries) {
-  const next = {};
-  for (const [chessId, skinId] of Object.entries(entries && typeof entries === 'object' ? entries : {})) {
-    if (typeof skinId === 'string' && skinId) next[chessId] = skinId;
-  }
-  savePref(SKINS_PREF, next);
-  skinsStore.set({ entries: next });
+  const next = parseStoredSkins(entries);
+  try { savePref(SKINS_PREF, next); } catch { /* private mode: the session keeps it */ }
+  skinsStore.set({ [SKINS_KEY]: next });
 }
 
-/** Choose a skin for one operator. */
-export function setSkin(chessId, skinId) {
-  const chess = data.get('chess');
-  const rec = chess?.[chessId] || data.lookup?.('chess', chessId);
-  const charId = rec?.charId;
-  const next = { ...skinsStore.get().entries, [chessId]: skinId };
-  if (charId) next[charId] = skinId;
-  setSkins(next);
+/** Choose one operator's appearance. */
+export function setSkin(charId, skinId) {
+  const id = str(charId), skin = str(skinId);
+  if (!id || !skin) return;
+  setSkins({ ...(skinsStore.get()[SKINS_KEY] || {}), [id]: skin });
 }
 
 /** Drop one operator's choice (it goes back to its default model). */
-export function clearSkin(chessId) {
-  const chess = data.get('chess');
-  const rec = chess?.[chessId] || data.lookup?.('chess', chessId);
-  const charId = rec?.charId;
-  const next = { ...skinsStore.get().entries };
-  delete next[chessId];
-  if (charId) delete next[charId];
+export function clearSkin(charId) {
+  const id = str(charId);
+  const next = { ...(skinsStore.get()[SKINS_KEY] || {}) };
+  if (!(id in next)) return;
+  delete next[id];
   setSkins(next);
 }
 
-/**
- * The skin this browser picked for an operator, or null.
- *
- * 业主 2026-10-21（Bug 反馈）：以前末尾有一个「反查」——
- * `for (const [k, sId] of entries) if (chess[k]?.charId === id) return sId`。
- * 自选编队会给槽位也写一份 entries[slotId]，那段反查就把**上一个干员的皮肤**
- * 顺着槽位 key 找回来了：换成没皮肤的干员时，卡片/头像/「时装：xxx」都还是旧的，
- * 清空也清不掉。现在只按干员 id（以及它的精锐形态 baseId）查，不再反查。
- */
-export const skinFor = (id) => {
-  if (!id) return null;
-  const entries = skinsStore.get().entries;
-  if (entries[id]) return entries[id];
-  const chess = data.get('chess');
-  const rec = chess && typeof chess === 'object' ? chess[id] : null;
-  if (!rec) return null;                      // 不是干员（槽位 / 其他 id）：到此为止
-  if (rec.charId && entries[rec.charId]) return entries[rec.charId];
-  if (rec.baseId && entries[rec.baseId]) return entries[rec.baseId];
-  return null;
-};
+/** This browser's choice for one operator, or null. */
+export const skinFor = (charId) => (str(charId) ? (skinsStore.get()[SKINS_KEY] || {})[charId] || null : null);
+
+// ---- the catalogue (the composed asset manifest) --------------------------------------------------------------
 
 /**
- * Every skin of an operator (built-in full set).
+ * Every appearance of an operator the enabled plugins write, plus what the renderer makes of each (docs/SKINS.md).
  *
- * Takes the OPERATOR id (`char_498_inside`), not the chess id (`chess_char_1_01_a`): both data/skins.json and
- * data/assets.json are grouped per operator, while a skin *choice* is stored per chess — see ui/skinPicker.js.
- * @param {string} charId
- * @returns {{ id: string, name: string, group: string, installed: boolean }[]}
+ * `playable` accepts a model or pictures. `pictureOnly` marks outfits using the default battle model.
+ *
+ * Art falls back the way the renderer falls back, and NEVER to a placeholder: a skin that ships no portrait shows the
+ * operator's own (its `illust`, then its `portrait`). That is why `portrait` / `avatar` / `illust` here are already
+ * resolved URLs, not raw manifest fields.
+ * @param {string} charId operator id (`char_498_inside`)
+ * @returns {{ id: string, name: string, group: string, playable: boolean, portrait: string|null, avatar: string|null,
+ *   illust: string|null }[]}
  */
 export function availableSkins(charId) {
-  const list = data.get('skins')?.chars?.[charId];
-  if (!Array.isArray(list)) return [];
-  return list.map((s) => ({ id: s.id, name: s.name, group: s.group || '', installed: true }));
-}
-
-/** Whether this install has the files for a skin (all 174 skins are built-in). @param {string} charId */
-export function isInstalled(charId, skinId) {
-  return true;
-}
-
-/** Load what the picker needs (the catalogue, and the manifest that says what is installed). */
-export function loadSkinData() {
-  data.load('skins').catch(() => {});
-  data.load('assets').catch(() => {});
+  const id = str(charId);
+  if (!id) return [];
+  const m = data.get('assets');
+  const rec = m && isObj(m.chars) ? m.chars[id] : null;
+  // a record without `skins` still has its own appearance (the 默认 row below), because the picker's global display rule
+  // shows the section for an operator the plugins wrote no skin for (hasAnySkinChoices, docs/SKINS.md)
+  if (!rec) return [];
+  const ownIllust = str(rec.illust);
+  const ownPortrait = str(rec.portrait);
+  const ownAvatar = str(rec.avatar);
+  const rows = [];
+  for (const [skinId, skin] of Object.entries(isObj(rec.skins) ? rec.skins : {})) {
+    if (!str(skinId) || !isObj(skin)) continue;
+    const hasModel = skinHasModel(skin);
+    const playable = hasModel || skinHasPictures(skin);
+    // the tile art: the fixed-size portrait family first (a 1:2 box the grid lines up on), then the illustration, then
+    // the avatar; the operator's own portrait when the skin ships none (`fallbackArt`, which the picker draws a little
+    // differently so a plugin that replaced only the model is legible)
+    const ownArt = str(skin.portrait) || str(skin.portraitE2) || str(skin.illust);
+    const portrait = ownArt || ownPortrait;
+    const avatar = str(skin.avatar) || str(skin.avatarE2) || str(skin.illust) || ownAvatar;
+    const illust = str(skin.illust) || portrait;
+    rows.push({
+      id: skinId,
+      name: str(skin.name) || skinId,
+      group: str(skin.group) || '',
+      playable,
+      pictureOnly: playable && !hasModel,
+      portrait,
+      avatar,
+      illust,
+      fallbackArt: !ownArt && !str(skin.avatar) && !str(skin.avatarE2),
+      own: false,
+    });
+  }
+  // The operator's OWN appearance, always the first row — even for a record the plugins wrote no `skins` under, because
+  // the picker shows the section for every operator as soon as one of them has a skin (hasAnySkinChoices).
+  //
+  // The art is what a plugin wrote for the operator: its 立绘 `chars[<charId>].illust` when there is one — the picture a
+  // plugin replaces for the operator itself (docs/PLUGINS.md §9), which the 默认 tile is the only place to see — else its
+  // portrait, else its avatar. Preferring the 立绘 is deliberate: a plugin may give an operator a picture and no skin at
+  // all, and that picture must be visible rather than staying in the manifest unread. The tile box is 1:2 and crops to
+  // the top, exactly as it already does for a skin that ships only an illust. Never null while the record has any of
+  // the three: an empty art box is the one thing this row must not draw.
+  rows.unshift({
+    id: '', name: '', group: '', playable: true,
+    portrait: ownIllust || ownPortrait, avatar: ownAvatar,
+    illust: ownIllust || ownPortrait, fallbackArt: false, own: true,
+  });
+  return rows;
 }
 
 /**
- * Keep the server's copy of this browser's skins current.
+ * Whether the composed manifest offers a skin choice ANYWHERE: at least one operator of `data.get('assets').chars` has
+ * one wear-able skin. This is the picker's display rule (docs/SKINS.md), and it is GLOBAL on purpose.
  *
- * Mirrors installLoadoutSync, minus the sanitising: the loadout has to be checked against data/chess.json before
- * it is sent (a stale entry would be dropped by the server), whereas a skinId needs no lookup to be sent — the
- * server keeps the entries whose chess it recognises and drops the rest, and an unknown skinId is harmless.
- * @param {{ net: any, timers?: { setTimeout: Function, clearTimeout: Function } }} deps
- * @returns {{ flush: () => Promise<void>, dispose: () => void }}
+ * The rule it replaced (a per-operator one, still available as `hasSkinChoices`) hid the whole section from every
+ * operator a plugin wrote no skin for — so a player looking at such an operator could not tell "this operator has no
+ * skin" from "the plugin did not load", and the feature read as broken. Since this rule, an operator without a skin
+ * shows the section holding its 默认 tile alone: the plugin is plainly on, this operator simply has no look of its own.
+ * Do NOT turn this back into a per-operator gate — that is the whole point of the change, and it reverses it.
+ *
+ * Nothing wearing anything means no section anywhere, keeping the promise that an installation without a cosmetic layer
+ * looks exactly as it did before the feature: no plugin, a plugin that writes only pictures (`illust`) and no skin, or
+ * only metadata-only skins (no model or pictures to wear).
+ *
+ * Counted through `hasSkinChoices` (one operator's rows at a time) so the global and the per-operator judgement can
+ * never disagree about what a "wear-able skin" is.
+ * @returns {boolean}
  */
-export function installSkinsSync({ net, timers } = {}) {
-  const T = timers || { setTimeout: (fn, ms) => globalThis.setTimeout(fn, ms), clearTimeout: (id) => globalThis.clearTimeout(id) };
-  let timer = null;
-  let seq = 0;
-  let pendingJson = null;
-  let lastSent = null;
-  let disposed = false;
+export function hasAnySkinChoices() {
+  const m = data.get('assets');
+  const chars = m && isObj(m.chars) ? m.chars : null;
+  if (!chars) return false;
+  return Object.keys(chars).some((charId) => hasSkinChoices(charId));
+}
 
-  const setState = (sync) => { if (skinsStore.get().sync !== sync) skinsStore.set({ sync }); };
-  const schedule = (ms = SYNC_DEBOUNCE_MS) => {
-    if (disposed) return;
-    T.clearTimeout(timer);
-    setState('pending');
-    timer = T.setTimeout(() => { timer = null; void flush(); }, ms);
-  };
+/**
+ * Whether ONE operator has a choice to offer at all: **默认 plus at least one wear-able appearance**.
+ *
+ * This is NOT the picker's display rule any more (that is `hasAnySkinChoices`, docs/SKINS.md): the section is shown for
+ * every operator once one of them has a skin, so the single- 默认 box this returns false for is deliberately drawn.
+ * Kept exported as the single-operator criterion — the question a badge, a filter or a future rule would ask, and what
+ * `hasAnySkinChoices` is built from.
+ *
+ * A skin with art but no model counts too (B6); a metadata-only record does not.
+ * @param {string} charId
+ * @returns {boolean}
+ */
+export function hasSkinChoices(charId) {
+  return availableSkins(charId).some((x) => !x.own && x.playable);
+}
 
-  async function flush() {
-    if (disposed || net.status !== 'online') { setState('idle'); return; }
-    try {
-      const skins = skinsStore.get().entries;
-      const json = JSON.stringify(skins);
-      if (json === pendingJson) return;
-      if (json === lastSent && pendingJson == null) { setState('synced'); return; }
-      const my = ++seq;
-      pendingJson = json;
-      setState('sending');
-      try {
-        await net.request('room.skins', { skins });
-        if (my !== seq) return;
-        pendingJson = null;
-        lastSent = json;
-        setState('synced');
-      } catch (err) {
-        if (my !== seq) return;
-        pendingJson = null;
-        const code = err && err.code;
-        if (code === 'RATE' || code === 'TIMEOUT' || code === 'OFFLINE') { schedule(RETRY_MS); return; }
-        console.warn('[skins] room.skins refused', code, err && err.detail);
-        setState('error');
-      }
-    } catch (e) {
-      console.warn('[skins] sync failed', e);
-      setState('error');
-    }
-  }
+/**
+ * The appearance this operator really wears for a stored selection, or null (默认).
+ *
+ * A stored id that is not one of THIS operator's wear-able appearances counts as no choice: the plugin may have been
+ * switched off, the skin removed from its overlay, or the entry may name a model this client cannot resolve. The
+ * entry itself is left alone — switching the plugin back on brings the appearance back — exactly as the renderer and
+ * the server fall back to the default model for a skin they cannot resolve (assets.js spineEntry).
+ * @param {string} charId @param {Record<string, string>} [entries] defaults to this browser's live selection
+ * @returns {string|null}
+ */
+export function chosenSkin(charId, entries = null) {
+  const id = str(charId);
+  if (!id) return null;
+  const want = str((entries || skinsStore.get()[SKINS_KEY] || {})[id]);
+  if (!want) return null;
+  return availableSkins(id).some((x) => !x.own && x.playable && x.id === want) ? want : null;
+}
 
-  const offWelcome = net.on('welcome', () => { lastSent = null; pendingJson = null; seq++; schedule(50); });
-  const offStore = skinsStore.subscribe((s, prev) => { if (s.entries !== prev.entries) schedule(); });
-
-  return {
-    flush,
-    dispose() {
-      disposed = true;
-      T.clearTimeout(timer);
-      offWelcome?.();
-      offStore?.();
-    },
-  };
+/** The files the picker reads: the composed manifest (the skins, and the 默认 tile's own art). */
+export function loadSkinData() {
+  data.load('assets').catch(() => {});
 }

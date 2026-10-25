@@ -3,10 +3,17 @@
 // (glyph, CSS shape) when null. Only URLs present in the manifest are ever returned, so the client
 // never requests files the asset pipeline did not produce (no 404 noise in the console).
 
-import { skinFor } from './skins.js';
-
 const str = (v) => (typeof v === 'string' && v ? v : null);
 const obj = (v) => (v && typeof v === 'object' ? v : null);
+
+/** Skin pictures belong to the effective operator, never the original chess of a stand-in / DIY slot. */
+function skinPicture(m, chess, skinId, field) {
+  if (!skinId) return null;
+  const id = chess?.charId || str(chess?.assets?.[field])?.replace(/_[12]$/, '');
+  const skin = m?.chars?.[id]?.skins?.[skinId];
+  const elite = chess?.isGolden || /_2$/.test(chess?.assets?.[field] || '');
+  return str(elite && skin?.[`${field}E2`]) || str(skin?.[field]) || (field === 'portrait' ? str(skin?.illust) : null);
+}
 
 /** @param {any} m manifest @param {string} key 'group/key' */
 export function uiUrl(m, key) {
@@ -14,81 +21,56 @@ export function uiUrl(m, key) {
 }
 
 /**
- * Operator avatar for a chess record (golden → E2 art when present, skin when selected).
+ * Operator avatar for a chess record (golden → E2 art when present).
  * @param {any} m manifest
  * @param {any} chess chess.json record (or { assets: { avatar } })
  */
-export function chessAvatarUrl(m, chess) {
-  const isStandIn = !!chess?.standInFor;
-  const chosenSkin = !isStandIn && (skinFor(chess?.chessId) || skinFor(chess?.charId) || skinFor(chess?.id) || str(chess?.skinId));
-  if (chosenSkin) {
-    // 优先从 manifest 查皮肤路径（manifest.chars[charId].skins[skinId].avatar）
-    const charId = str(chess?.charId);
-    if (charId) {
-      const skinEntry = obj(obj(obj(m)?.chars)?.[charId]?.skins)?.[chosenSkin];
-      const manifestPath = str(skinEntry?.avatar);
-      if (manifestPath) return manifestPath;
-    }
-    // 兜底：拼接路径（向后兼容没有 manifest 条目的情况）
-    const skinStem = chosenSkin.replace(/@/g, '_').replace(/#/g, '_');
-    return `/assets/char/skin_avatar/${skinStem}.png`;
-  }
+export function chessAvatarUrl(m, chess, { skin = null } = {}) {
+  const picture = skinPicture(m, chess, skin, 'avatar');
+  if (picture) return picture;
   const chars = obj(obj(m)?.chars);
   const id = str(chess?.assets?.avatar) || str(chess?.charId);
-  if (!id) return null;
-  if (chars) {
-    if (id.endsWith('_2') && !chars[id]) {
-      const base = chars[id.slice(0, -2)];
-      const res = str(base?.avatarE2) || str(base?.avatar);
-      if (res) return res;
-    }
-    const hit = str(chars[id]?.avatar) || (chess?.charId ? str(chars[chess.charId]?.avatar) : null);
-    if (hit) return hit;
+  if (!chars || !id) return null;
+  if (id.endsWith('_2') && !chars[id]) {
+    const base = chars[id.slice(0, -2)];
+    return str(base?.avatarE2) || str(base?.avatar);
   }
-  return `/assets/char/avatar/${id}.png`;
+  // A golden piece whose avatar id is the character key uses that entry's E2 art when it has one.
+  // Official ids are `charId` or `charId_2` (the suffix branch above). Model and voice have no E2
+  // field on the character entry: the composed `spine` / `voice` id is already the form's.
+  const entry = chars[id];
+  if (entry && chess?.isGolden && str(entry.avatarE2)) return str(entry.avatarE2);
+  return str(entry?.avatar) || (chess?.charId ? str(chars[chess.charId]?.avatar) : null);
 }
 
 /**
- * Half-body portrait (180×360) for a chess record (skin → skin portrait, golden → E2 portrait when present).
+ * Half-body portrait (180×360) for a chess record (golden → E2 portrait when present).
  * @param {any} m
  * @param {any} chess
  */
-export function chessPortraitUrl(m, chess) {
-  const isStandIn = !!chess?.standInFor;
-  const chosenSkin = !isStandIn && (skinFor(chess?.chessId) || skinFor(chess?.charId) || skinFor(chess?.id) || str(chess?.skinId));
-  if (chosenSkin) {
-    // 优先从 manifest 查皮肤路径（manifest.chars[charId].skins[skinId].portrait）
-    const charId = str(chess?.charId);
-    if (charId) {
-      const skinEntry = obj(obj(obj(m)?.chars)?.[charId]?.skins)?.[chosenSkin];
-      const manifestPath = str(skinEntry?.portrait);
-      if (manifestPath) return manifestPath;
-    }
-    // 兜底：拼接路径（向后兼容没有 manifest 条目的情况）
-    const skinStem = chosenSkin.replace(/@/g, '_').replace(/#/g, '_');
-    return `/assets/char/portrait/${skinStem}.png`;
-  }
+export function chessPortraitUrl(m, chess, { skin = null } = {}) {
+  const picture = skinPicture(m, chess, skin, 'portrait');
+  if (picture) return picture;
   const chars = obj(obj(m)?.chars);
-
   const id = str(chess?.assets?.portrait);
-  if (chars) {
-    if (id) {
-      if (id.endsWith('_2')) {
-        const base = chars[id.slice(0, -2)];
-        if (base) return str(base.portraitE2) || str(base.portrait);
-      }
-      if (id.endsWith('_1')) {
-        const base = chars[id.slice(0, -2)];
-        if (base) return str(base.portrait);
-      }
+  if (!chars) return null;
+  if (id) {
+    // A golden piece whose portrait id is the character key uses portraitE2 when the entry has one.
+    // An entry with only `portrait` (a custom golden URL included) keeps that URL. Official ids are
+    // `charId_1` / `charId_2` and are not character keys, so they stay on the suffix branches below.
+    if (chars[id]) return (chess?.isGolden ? str(chars[id].portraitE2) : null) || str(chars[id].portrait);
+    if (id.endsWith('_2')) {
+      const base = chars[id.slice(0, -2)];
+      if (base) return str(base.portraitE2) || str(base.portrait);
     }
-    const byChar = chess?.charId ? chars[chess.charId] : null;
-    if (byChar) {
-      return (chess?.isGolden ? str(byChar.portraitE2) : null) || str(byChar.portrait);
+    if (id.endsWith('_1')) {
+      const base = chars[id.slice(0, -2)];
+      if (base) return str(base.portrait);
     }
   }
-  const fallbackId = id || (chess?.charId ? `${chess.charId}_1` : null);
-  return fallbackId ? `/assets/char/portrait/${fallbackId}.png` : null;
+  const byChar = chess?.charId ? chars[chess.charId] : null;
+  if (!byChar) return null;
+  return (chess?.isGolden ? str(byChar.portraitE2) : null) || str(byChar.portrait);
 }
 
 /** Skill icon of a chess record (manifest `skills[iconId]`, else the empty skill sprite). */
@@ -125,6 +107,12 @@ const PROF_KEY = {
 export function profIconUrl(m, profession) {
   const k = PROF_KEY[String(profession || '').toUpperCase()];
   return k ? str(obj(obj(obj(m)?.prof)?.icon)?.[k]) : null;
+}
+
+/** Square profession glyph (manifest `prof.large`: a black glyph on white, drawn as a white one by loadout.css). */
+export function profGlyphUrl(m, profession) {
+  const v = obj(obj(obj(m)?.prof)?.large)?.[String(profession || '').toLowerCase()];
+  return str(v);
 }
 
 /** Sub-profession icon from a chess record (`assets.subProfIcon` = 'sub_<id>_icon'). */

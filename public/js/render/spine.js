@@ -13,10 +13,17 @@
 //                                         GitHub #58): every attack plays the clip once — at its own speed, faster
 //                                         only when the attacks come quicker than the clip —, then base (Move while
 //                                         the sim walks it: it stands for that clip, server/sim/ai.js attackStand)
-//   setSkill(on)                          skill begin, then — when the skill has an idle clip of its own (skill.idle,
-//                                         not its loop) — that idle between attacks, its loop (the skill's attack clip)
-//                                         only on attacks (community report #23: 折桠's S2 jump attack looped with no
-//                                         enemy engaged); end on stop. A skill clip with NEITHER a Begin nor an own Idle
+//   setSkill(on)                          skill begin once, then the loop for the whole skill when the clip is a
+//                                         begin/loop/end set with no idle of its own (DESIGN §34.4: 白面鸮 S2 holds
+//                                         Skill_Loop through every heal). An attack during that skill plays the skill's
+//                                         own attack clip when the skeleton has one (焰影苇草 Skill_3_Attack), or that
+//                                         loop when it has OnAttack (送葬人 S2: scaled to the interval, strikePose on
+//                                         that frame), then the loop again. A loop with no OnAttack is not restarted.
+//                                         A stun returns to the held loop; Begin waits until the stun ends if the skill
+//                                         turned on during it. A skill with an
+//                                         idle clip of its own (skill.idle, not its loop) stands in that idle between
+//                                         attacks and plays its loop only on attacks (community report #23: 折桠's S2
+//                                         jump). End on stop. A skill clip with NEITHER a Begin nor an own Idle
 //                                         (德克萨斯 剑雨 and the other 58 instant skills: anims.skill {begin:null,
 //                                         loop:'Skill', end:null}) plays that clip once for its own length: an instant
 //                                         skill's flag is off again within the same 0.5 s window (sim skills.js), so
@@ -38,9 +45,10 @@
 //                                         redraws the model, only advances `clock`)
 //   clipBounds(names)                     skeleton-space bounds of those clips (sampled once per skeleton data, see
 //                                         "clip bounds" below; render/units.js sizes the impostor box from them)
-// Each attack plays its clip once, then the end clip (if any) and base — except the attacks of a skill
-// with its own idle clip, which go straight back to that idle: the skill's end clip closes the skill, not each spell of
-// attacks while it runs.
+// Each attack plays its clip once, then the end clip (if any) and base — except a skill that holds its loop
+// (begin/loop/end and no idle of its own: the loop stays up, and a dedicated attack clip returns to that loop) and a
+// skill with its own idle clip (those attacks go straight back to that idle). The skill's end clip closes the skill,
+// not each attack while it runs.
 
 const clampN = (v, lo, hi) => (v < lo ? lo : v > hi ? hi : v);
 
@@ -85,6 +93,33 @@ export function hasClipping(data) {
 /**
  * Is (x, y) inside the polygon of `n` points `pts` (flat [x0, y0, x1, y1, …])? Ray casting (PR #384 by @Convey123).
  */
+/**
+ * PIXI texture of a named attachment of a slot in a pixi-spine skeleton (null without one). The region pixi-spine
+ * prepared (`RegionAttachment.region.texture`, already rotated / trimmed to the atlas frame) is preferred; an atlas
+ * region without one is cut out of its page's base texture.
+ * @param {any} spineData pixi-spine skeleton data (`spine.spineData`)
+ * @param {string} slotName slot name, e.g. 'C_Eff_Moire_B'
+ * @param {string} attachmentName attachment name, e.g. 'C_Eff_Moire_B'
+ * @param {any} [PIXI] the PIXI namespace (defaults to globalThis.PIXI)
+ * @returns {any} a PIXI Texture, or null
+ */
+export function attachmentTexture(spineData, slotName, attachmentName, PIXI = globalThis.PIXI) {
+  try {
+    const i = spineData?.slots?.findIndex((s) => s.name === slotName) ?? -1;
+    const skin = spineData?.skins?.[0];
+    const att = i >= 0 && typeof skin?.getAttachment === 'function' ? skin.getAttachment(i, attachmentName) : null;
+    const region = att?.region;
+    if (!region || !PIXI?.Texture) return null;
+    if (region.texture) return region.texture;              // pixi-spine's own cut (rotated regions included)
+    const page = region.page;
+    const base = page?.baseTexture;
+    if (!base || region.rotate || !PIXI.Rectangle) return null;
+    const w = base.width || page.width || 0, h = base.height || page.height || 0;
+    if (!w || !h) return null;
+    return new PIXI.Texture(base, new PIXI.Rectangle(Math.round(region.u * w), Math.round(region.v * h), region.width, region.height));
+  } catch { return null; }
+}
+
 export function pointInPolygon(x, y, pts, n) {
   let inside = false;
   for (let i = 0, j = n - 1; i < n; j = i++) {
@@ -408,11 +443,13 @@ export class SpineActor {
     this.endAt = 0;               // landing in endRoles (the next form's) when given
     this.endRoles = null;
     this.skillIndex = null;       // the skill slot whose clip `skill` plays (setSkillIndex), null = the manifest's primary
+    this.strike = null;           // the attack-class skill clip the next / current attack plays (castStrike)
     this.runMode = false;         // move on the model's own Run cycle (setRunMode)
     this.formRoles = null;        // the clip set of the form in force (setForm), over the unit's own roles
     this.skillOn = false;
     this.skillClipOnce = false;    // skillBegin: the skill's own clip plays once (a clip with no Begin / own Idle)
     this.skillEndPending = false;  // … and the skill turned off inside it: play its End clip / base when it ends
+    this.skillBeginPending = false; // setSkill(true) during a stun: Begin plays when the stun ends (§34.4.1)
     this.attackUntil = 0;
     this.clock = 0;
     this.current = '';
@@ -558,6 +595,9 @@ export class SpineActor {
 
   _idleName() {
     const sk = this.roles.skill;
+    // [ASSUMED] DESIGN §34.4.1: the resting clip of a held skill is its loop. Idle here is the stand-up a stun
+    // used to leave behind for the rest of the skill (白面鸮 S2).
+    if (this._skillLoopHeld()) return sk.loop;
     if (this.skillOn && sk && this.has(sk.idle)) return sk.idle;
     return this.has(this.roles.idle) ? this.roles.idle : (this.has('Idle') ? 'Idle' : [...this.names][0]);
   }
@@ -620,6 +660,18 @@ export class SpineActor {
   _leaveStun() {
     this.frozen = false;
     this.mode = 'base';
+    // [ASSUMED] DESIGN §34.4.1: Begin cannot play under a stun. A skill that turned on during it plays Begin
+    // now and queues the loop. A skill that was already on resumes the loop through _idleName (no second Begin).
+    if (this.skillBeginPending && this._skillLoopHeld()) {
+      this.skillBeginPending = false;
+      const sk = this.roles.skill;
+      this.mode = 'skillBegin';
+      this._play(sk.begin, false, { mix: 0.08 });
+      this.skillBeginUntil = this.clock + this.dur(sk.begin);
+      if (this.has(sk.loop)) this._queue(sk.loop, true);
+      return;
+    }
+    this.skillBeginPending = false;
     this._play(this._baseName(), true);
   }
 
@@ -719,16 +771,103 @@ export class SpineActor {
     }
   }
 
-  _attackClip() {
+  /**
+   * Begin / loop / end, and no idle of its own: the loop is the stance for the whole skill (DESIGN §34.4).
+   * A distinct skill.idle (折桠 Skill_2_Idle) is the stance between attacks, so the loop stays the attack clip.
+   * via:'attack' (远牙: the role is the normal attack triple) is not a skill stance.
+   */
+  _skillLoopHeld() {
     const sk = this.roles.skill;
-    if (this.skillOn && sk && this.has(sk.loop) && sk.via !== 'attack' && !this._skillIsBuffOnly()) return sk;
+    if (!this.skillOn || !sk || sk.via === 'attack') return false;
+    if (!this.has(sk.begin) || !this.has(sk.loop) || !this.has(sk.end)) return false;
+    if (sk.idle && sk.idle !== sk.loop && this.has(sk.idle)) return false;
+    return true;
+  }
+
+  /** Skill_3_Begin → Skill_3, Skill_Start → Skill, Skill1_Loop → Skill1. */
+  _skillPrefix() {
+    const sk = this.roles.skill;
+    const name = (sk && (sk.begin || sk.loop)) || '';
+    return String(name).replace(/_(?:Begin|Start|Loop|End|Idle)$/i, '').replace(/(?:Begin|Start|Loop|End|Idle)$/i, '');
+  }
+
+  /**
+   * This skill's own strike clip, which the resolver drops when a Loop exists (anim-roles skillFamily: loop =
+   * P_Loop before P_Attack). 焰影苇草 S3 is Skill_3_Attack beside Skill_3_Begin/Loop/End.
+   * [ASSUMED] (DESIGN §34.4.1): no table says which clip an atk plays during a held loop. Only a same-prefix
+   * `<prefix>_Attack` (or `<prefix>_Attack_*`, not Down / Begin / End / Idle) counts — not the normal Attack and
+   * not another skill's Attack_2 (塞雷娅). A loop that itself contains OnAttack is not a separate clip: `_attackClip`
+   * returns the skill role so the existing per-attack scale and strikePose path plays that loop.
+   */
+  _skillOwnAttack() {
+    const sk = this.roles.skill;
+    if (!sk || /attack/i.test(sk.loop || '')) return null;
+    const prefix = this._skillPrefix();
+    if (!prefix) return null;
+    const used = new Set([sk.begin, sk.loop, sk.end, sk.idle]);
+    const head = `${prefix}_Attack`;
+    const re = new RegExp(`^${prefix.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}_Attack(?:_|$)`, 'i');
+    const hits = (this.entry && this.entry.hits) || {};
+    const cands = [];
+    for (const n of this.names) {
+      if (used.has(n) || /down/i.test(n) || /_(?:begin|start|end|idle)(?:_|$)/i.test(n)) continue;
+      if (!re.test(n)) continue;
+      cands.push(n);
+    }
+    if (!cands.length) return null;
+    if (cands.includes(head)) return head;
+    cands.sort();
+    const withHit = cands.find((n) => Array.isArray(hits[n]) && hits[n].length);
+    return withHit || cands[0];
+  }
+
+  /**
+   * The clip of the attack-class skill the next attack is (render/units.js UnitView.onCast: an enemy's `strike` slot,
+   * `anims.skills[slot]` — 杰斯顿·威廉姆斯's C1_Skill): that attack plays it in place of its attack clip, then the clip's end
+   * restores the attack role; null = a plain attack. A clip the model lacks is ignored.
+   * @param {{ begin: string|null, loop: string, end: string|null }|null} clip
+   */
+  castStrike(clip) {
+    this.strike = clip && this.has(clip.loop) ? clip : null;
+  }
+
+  _attackClip() {
+    if (this.strike) return this.strike;
+    const sk = this.roles.skill;
+    const mode = this.skillOn ? this.skillAttackMode?.() : null;
+    if (this.skillOn && !this._skillLoopHeld()) {
+      if (mode?.animKey === 'Attack') {
+        const a = mode.down && this.has(this.roles.attackDown?.loop) ? this.roles.attackDown : this.roles.attack;
+        if (this.has(a?.loop)) return a;
+      } else if (this.has(mode?.animKey)) {
+        if (mode.animKey === sk?.loop) return sk; // keep a skill's own idle / End ownership
+        return { begin: null, loop: mode.animKey, end: null };
+      }
+      // [ASSUMED] A cosmetic skeleton missing the official clip retains its own roles (§34.31).
+    }
+    if (this.skillOn && sk && this.has(sk.loop) && sk.via !== 'attack' && !this._skillIsBuffOnly()) {
+      if (this._skillLoopHeld()) {
+        // A dedicated strike clip (焰影苇草 Skill_3_Attack) wins. Otherwise a loop that itself has OnAttack is
+        // the strike: return the skill role so windUp / attack scale it and strikePose is that frame. The attack
+        // end already returns to the looping loop and skips End. A loop with no OnAttack stays put — returning
+        // the normal attack would stand her up (白面鸮 S2). [ASSUMED] DESIGN §34.4.1.
+        const atk = this._skillOwnAttack();
+        if (atk) return { begin: null, loop: atk, end: null };
+        const hits = this.entry && this.entry.hits && this.entry.hits[sk.loop];
+        if (Array.isArray(hits) && hits.length) return sk;
+        return null;
+      }
+      // Without a verified mode mapping the skill clip stays the attack clip, as before §34.31: a lone clip without
+      // OnAttack is not proof of a cast (the integrator kept unverified operators unchanged, with or without the index).
+      return sk;
+    }
     const a = this.roles.attack;
     if (a && this.has(a.loop)) return a;
     return null;
   }
 
   // Skill loops that are pure stances (no OnAttack in the loop) are still valid attack visuals during a skill;
-  // only an idle-typed skill loop is treated as buff-only.
+  // only an idle-typed skill loop is treated as buff-only (a verified mode mapping wins first, §34.31).
   _skillIsBuffOnly() {
     const sk = this.roles.skill;
     return !!sk && sk.loop === this.roles.idle;
@@ -769,7 +908,13 @@ export class SpineActor {
     if (on === this.skillOn || this.dead) return;
     this.skillOn = on;
     const sk = this.roles.skill;
-    if (this.mode === 'stun' || this.mode === 'die') return;
+    if (this.mode === 'stun' || this.mode === 'die') {
+      // [ASSUMED] DESIGN §34.4.1: Begin waits out a stun. A skill that is already on keeps its loop via _idleName.
+      if (on && this.mode === 'stun' && this._skillLoopHeld()) this.skillBeginPending = true;
+      if (!on) this.skillBeginPending = false;
+      return;
+    }
+    this.skillBeginPending = false;
     // a skill that ends as the unit (re)deploys — 乌尔比安's 【返回】 is a 【移动】 (sim Battle.moveRedeploy) right before
     // his S3's 'skill' off event — lets the deploy clip play out (then the plain idle) instead of cutting it with the End
     if (!on && this.mode === 'deploy') return;
@@ -845,6 +990,7 @@ export class SpineActor {
     if (this.dead) return 0;
     this.dead = true;
     this.frozen = false;
+    this.skillBeginPending = false;
     this.mode = 'die';
     const d = this.dieClip();
     if (d) { this._play(d, false, { mix: 0.05 }); return this.dur(d); }
@@ -878,6 +1024,7 @@ export class SpineActor {
     this.frozen = false;
     this.mode = 'base';
     this.skillOn = false;
+    this.skillBeginPending = false;
     this._play(this._baseName(), true);
   }
 
@@ -900,7 +1047,14 @@ export class SpineActor {
         if (this.clock > this.attackUntil) {
           this.mode = 'base';
           this.wound = false;
+          // a held begin/loop/end skill: the dedicated attack clip (if the skeleton has one) returns to the
+          // looping loop. Skill_End and Idle would stand her up between heals (DESIGN §34.4).
+          if (this._skillLoopHeld() && this.has(this.roles.skill.loop)) {
+            this._play(this.roles.skill.loop, true, { mix: 0.15 });
+            break;
+          }
           const clip = this._attackClip() || this.roles.attack;
+          this.strike = null;   // a strike attack is over (castStrike)
           // a skill with its own idle: back to that idle (its end clip is for the end of the skill, setSkill(false))
           const toSkillIdle = clip === this.roles.skill && !!this._skillIdle();
           if (clip && this.has(clip.end) && !toSkillIdle) { this._play(clip.end, false); this._queue(this._baseName(), true); }
@@ -1032,6 +1186,23 @@ export class SpineActor {
       clips.set(n, rec.rects.get(n));
     }
     return clips;
+  }
+
+  /**
+   * PIXI texture of a named attachment of a slot of this model (null without one) — the official effect art a kit
+   * attaches at runtime: 魔王's three 「微尘」 live in the slots `C_Eff_Moire_B` / `B2` / `B3` (all sharing the region
+   * `C_Eff_Moire_B`), but every animation leaves those slots empty, so render/motes.js draws them itself and needs the
+   * region. The texture is cached per (slot, attachment).
+   * @param {string} slotName e.g. 'C_Eff_Moire_B'
+   * @param {string} attachmentName e.g. 'C_Eff_Moire_B'
+   * @returns {any} a PIXI Texture, or null (no such slot / attachment, no region, no PIXI)
+   */
+  effectTexture(slotName, attachmentName) {
+    const key = `${slotName}|${attachmentName}`;
+    if (this._effectTex?.has(key)) return this._effectTex.get(key);
+    const out = attachmentTexture(this.spine?.spineData, slotName, attachmentName, globalThis.PIXI);
+    (this._effectTex || (this._effectTex = new Map())).set(key, out);
+    return out;
   }
 
   /** Model height in skeleton units (setup-pose bounds, else a chibi default). */

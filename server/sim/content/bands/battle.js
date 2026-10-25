@@ -41,7 +41,7 @@
 
 import {
   num, buffsOf, bandRecord, isOp, onField, isElite, tierOf, unitBonds, activeBondIds, playerOps, passiveBuff, fxOn,
-  matchBands, gainLayers, alliesAround, N4, baseChessId, isGroundOp, directMods,
+  matchBands, gainLayers, alliesAround, N4, baseChessId, isGroundOp, directMods, isVersionData, isFirstPeriod,
 } from '../support/index.js';
 import { weaknessRetype, addShieldLayer, PRIO_RESPAWN, reviveNow } from '../items/battle.js';
 import { spawnMapChar } from '../tokens.js';
@@ -56,17 +56,12 @@ export const PRIO_BAND_REVIVE = PRIO_RESPAWN - 1;
 const keyOf = (bandId, part = '') => `band:${bandId}${part ? `:${part}` : ''}`;
 const deployedOps = (battle, pid) => playerOps(battle, pid, { fieldOnly: true });
 
-/** Every band id a battle player holds ([primary, secondary]; the duplicate id repeats when held twice). */
-const bandsOf = (ps) => (Array.isArray(ps.bandIds) && ps.bandIds.length ? ps.bandIds : ps.bandId ? [ps.bandId] : []);
-
 // ---------------------------------------------------------------------------------------------------------------
-// band buff behaviours: (battle, ps, params, bandId, dup) — `dup` is 1 for the primary copy of a held band, 2 for the
-// second one (随机模式 double pick); every buff key it builds is suffixed then, so the copy's numbers stack instead of
-// colliding on the same key ("same key keeps the highest" — support passiveBuff / addBuff 'replace').
+// band buff behaviours: (battle, ps, params, bandId)
 
 const BY_KEY = {
   // 阿米娅 众志合一
-  act1autochess_band2_buff(battle, ps, p, bandId, dup) {
+  act1autochess_band2_buff(battle, ps, p, bandId) {
     const n = activeBondIds(battle, ps.playerId).length;
     let atk = 0, hp = 0;
     for (let i = 1; i <= 9 && p[`value_${i}`] != null; i++) {
@@ -74,11 +69,11 @@ const BY_KEY = {
     }
     if (!(atk > 0 || hp > 0)) return;
     const mods = directMods({ atk, hp });
-    for (const u of playerOps(battle, ps.playerId)) passiveBuff(battle, u, keyOf(bandId, dup > 1 ? String(dup) : ''), mods);
+    for (const u of playerOps(battle, ps.playerId)) passiveBuff(battle, u, keyOf(bandId), mods);
   },
 
   // 埃芒加德 命结之秘
-  act1autochess_band28_buff(battle, ps, p, bandId, dup) {
+  act1autochess_band28_buff(battle, ps, p, bandId) {
     const max = Math.floor(num(p.max_respawn_cnt, 3));
     if (!(max > 0)) return;
     let used = 0;
@@ -86,31 +81,35 @@ const BY_KEY = {
       const u = c.unit;
       if (used >= max || !isOp(u) || u.ownerId !== ps.playerId || !reviveNow(battle, c, 'band')) return;
       used++;
-      fxOn(battle, 'revive', u, keyOf(bandId, dup > 1 ? String(dup) : ''), bandId, { left: max - used });
+      fxOn(battle, 'revive', u, keyOf(bandId), bandId, { left: max - used });
     }, { priority: PRIO_BAND_REVIVE });
   },
 
   // 克莱门莎 崇高牺牲: PRTS requires the 阿戈尔 bond to be active.
-  act1autochess_band13_buff(battle, ps, p, bandId, dup) {
+  act1autochess_band13_buff(battle, ps, p, bandId) {
     const bond = typeof p.bond_id === 'string' && p.bond_id ? p.bond_id : null;
     if (!bond) return;
     const byLevel = p.bond_add_type == null || p.bond_add_type === 'by_charlevel';
-    const key = keyOf(bandId, dup > 1 ? String(dup) : '');
     battle.on('death', (c) => {
       const u = c.unit;
       if (c.reason !== 'killed' || !isOp(u) || u.ownerId !== ps.playerId || !unitBonds(u).includes(bond)) return;
       const n = byLevel ? tierOf(u) : Math.max(1, Math.floor(num(p.value, 1)));
       if (gainLayers(battle, { playerId: ps.playerId, bonds: bond, n, requireActive: true, source: u, reason: 'band' }) > 0) {
-        fxOn(battle, 'layer', u, key, bandId, { bond, n });
+        fxOn(battle, 'layer', u, keyOf(bandId), bandId, { bond, n });
       }
     });
   },
 
   // 大帝 加急调派
-  act1autochess_band16_buff(battle, ps, p, bandId, dup) {
+  act1autochess_band16_buff(battle, ps, p, bandId) {
     const mul = Math.max(0, 1 + num(p.respawn_time, 0));
     if (mul === 1) return;
-    const key = keyOf(bandId, dup > 1 ? String(dup) : '');
+    const key = keyOf(bandId);
+    if (isFirstPeriod()) {
+      // The historical text has one reduction, without "每次部署后".
+      for (const u of playerOps(battle, ps.playerId)) passiveBuff(battle, u, key, { redeployMul: mul });
+      return;
+    }
     battle.on('deploy', (c) => {
       const u = c.unit;
       if (!isOp(u) || u.ownerId !== ps.playerId) return;
@@ -119,10 +118,10 @@ const BY_KEY = {
   },
 
   // 桑葚 药枚实验
-  act1autochess_band17_buff(battle, ps, p, bandId, dup) {
+  act1autochess_band17_buff(battle, ps, p, bandId) {
     const pr = num(p.prob);
     if (!(pr > 0)) return;
-    const key = keyOf(bandId, dup > 1 ? `2:${'shield'}` : 'shield');
+    const key = keyOf(bandId, 'shield');
     const chosen = new Set();
     battle.on('battleStart', () => {
       const units = battle.allies(ps.playerId);
@@ -137,15 +136,14 @@ const BY_KEY = {
       const u = c.attacker;
       if (!chosen.has(u) || !u.alive) return;
       if (!(pr >= 1 || battle.rng() < pr)) return;
-      if (addShieldLayer(battle, u, key, 1)) fxOn(battle, 'shield', u, keyOf(bandId, dup > 1 ? String(dup) : ''), bandId);
+      if (addShieldLayer(battle, u, key, 1)) fxOn(battle, 'shield', u, keyOf(bandId), bandId);
     });
   },
 
   // 休谟斯 回收利用 ("地面干员技能结束时…": a melee-position operator on any tile — support isGroundOp)
-  act1autochess_band18_buff(battle, ps, p, bandId, dup) {
+  act1autochess_band18_buff(battle, ps, p, bandId) {
     const sp = num(p.sp);
     if (!(sp > 0)) return;
-    const key = keyOf(bandId, dup > 1 ? String(dup) : '');
     battle.on('skillEnd', (c) => {
       const u = c.unit;
       if (!isOp(u) || u.ownerId !== ps.playerId || c.reason === 'death' || !onField(u) || !isGroundOp(u)) return;
@@ -153,16 +151,16 @@ const BY_KEY = {
       const t = cands.length ? battle.rng.pick(cands) : null;
       if (!t) return;
       t.skill.gainSp(sp, 'band');
-      fxOn(battle, 'spGain', t, key, bandId, { n: sp, from: u.id });
+      fxOn(battle, 'spGain', t, keyOf(bandId), bandId, { n: sp, from: u.id });
     });
   },
 
   // 卡莱莎 食腐之蝶
-  act1autochess_band15_buff(battle, ps, p, bandId, dup) {
+  act1autochess_band15_buff(battle, ps, p, bandId) {
     const step = num(p.atk);
     const cap = Math.max(1, Math.floor(num(p.max_stack_cnt, 10)));
     if (!(step > 0)) return;
-    const key = keyOf(bandId, dup > 1 ? String(dup) : '');
+    const key = keyOf(bandId);
     battle.on('death', (c) => {
       const d = c.unit;
       if (c.reason !== 'killed' || !isOp(d) || d.ownerId !== ps.playerId) return;
@@ -180,15 +178,21 @@ const BY_KEY = {
     battle.on('hit', (c) => {
       const s = c.source;
       if (!isOp(s) || s.ownerId !== ps.playerId || !c.target || c.target.side !== 'enemy') return;
+      if (isVersionData() && s.def?.position !== 'RANGED') return;
       weaknessRetype(c.dmg, s, c.target);
     }, { priority: 5 });
   },
 
+  // Season one: the four strategies' extra clause applies only in 标准模拟.
+  act1autochess_band31_buff(battle, ps, p, bandId) {
+    if (battle.data.raw.config?.modes?.[battle.opts.modeId]?.difficulty !== 'FUNNY') return;
+    for (const u of playerOps(battle, ps.playerId)) passiveBuff(battle, u, `${keyOf(bandId)}:standard`, directMods({ atk: num(p.atk), def: num(p.def), hp: num(p.max_hp) }));
+  },
+
   // 夕 墨色真颜
-  act2autochess_band12_buff(battle, ps, p, bandId, dup) {
+  act2autochess_band12_buff(battle, ps, p, bandId) {
     const atk = num(p.atk);
     if (!atk) return;
-    const key = keyOf(bandId, dup > 1 ? String(dup) : '');
     battle.on('battleStart', () => {
       const groups = new Map();
       for (const u of deployedOps(battle, ps.playerId)) {
@@ -198,22 +202,21 @@ const BY_KEY = {
       }
       for (const list of groups.values()) {
         if (list.length < 2) continue;
-        for (const u of list) passiveBuff(battle, u, key, directMods({ atk }));
+        for (const u of list) passiveBuff(battle, u, keyOf(bandId), directMods({ atk }));
       }
     });
   },
 
   // 伊奥莱塔 统御号令
-  act2autochess_band3_buff(battle, ps, p, bandId, dup) {
+  act2autochess_band3_buff(battle, ps, p, bandId) {
     const a = num(p.atk_per_cnt), h = num(p.max_hp_per_cnt);
     if (!(a > 0 || h > 0)) return;
-    const key = keyOf(bandId, dup > 1 ? String(dup) : '');
     battle.on('battleStart', () => {
       const elites = deployedOps(battle, ps.playerId).filter(isElite);
       const n = elites.length;
       if (!n) return;
       const mods = directMods({ atk: a * n, hp: h * n });
-      for (const u of elites) passiveBuff(battle, u, key, mods);
+      for (const u of elites) passiveBuff(battle, u, keyOf(bandId), mods);
     });
   },
 };
@@ -268,28 +271,24 @@ function installMapChars(battle) {
 /** Band buff keys with a battle part (tests / tooling). */
 export const BATTLE_BUFF_KEYS = Object.freeze([...Object.keys(BY_KEY), 'auto_chess_change_map']);
 
+/** Map-wide support: Touch's characters or historical 森蚺's device aliases. */
+export function isMapCharBuff(b) {
+  return b.key === 'auto_chess_change_map' && Object.keys(b.p || {}).some((k) => (k.startsWith('char_') || k.startsWith('trap_')) && k.includes('#'));
+}
+
 /** Does this band have a battle part? */
 export function hasBattlePart(bandId) {
-  return buffsOf(bandRecord(bandId)).some((b) => (b.bbKey && BY_KEY[b.bbKey]) || b.key === 'auto_chess_change_map');
+  return buffsOf(bandRecord(bandId)).some((b) => (b.bbKey && BY_KEY[b.bbKey]) || isMapCharBuff(b));
 }
 
 export function install(battle) {
   for (const ps of battle.players) {
-    // 随机模式: every held band installs (two picks). A duplicate band installs a second time under suffixed buff keys
-    // (band:<id> → band:<id>:2) so the sim's same-key "highest wins" rule does not swallow the doubled numbers; the
-    // per-band meta counters of the prep side (bands/meta.js) are shared, so a one-shot band holds only once there.
-    const ids = bandsOf(ps);
-    const seen = new Map();
-    for (const bandId of ids) {
-      const band = bandRecord(bandId);
-      if (!band) continue;
-      seen.set(bandId, (seen.get(bandId) || 0) + 1);
-      const dup = seen.get(bandId); // 1 = the primary, 2 = the second copy
-      for (const b of buffsOf(band)) {
-        const f = b.bbKey ? BY_KEY[b.bbKey] : null;
-        if (!f) continue;
-        try { f(battle, ps, b.p, bandId, dup); } catch (e) { battle._handlerError?.(`band:${bandId}`, null, e); }
-      }
+    const band = ps.bandId ? bandRecord(ps.bandId) : null;
+    if (!band) continue;
+    for (const b of buffsOf(band)) {
+      const f = b.bbKey ? BY_KEY[b.bbKey] : null;
+      if (!f) continue;
+      try { f(battle, ps, b.p, ps.bandId); } catch (e) { battle._handlerError?.(`band:${ps.bandId}`, null, e); }
     }
   }
   installMapChars(battle);

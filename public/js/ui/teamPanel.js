@@ -116,7 +116,7 @@ export function rowLpTip(lp, cap = 10) {
  *   observe?: null | { canObserve: (p:any) => { fieldId?: string, reason?: string|null, back?: boolean }, observing: boolean, onBack: () => void } }} props
  *   uniteLocal: the local 联防 replica's per-leaker counts while it is on screen (battle runner state().uniteLeft), else null
  */
-export function TeamPanel({ pub, myId, watching, bubbles, chatBubbles = null, onWatch, compact = false, observe = null, self: selfLive = null, cap = 10, uniteLocal = null, spMarks = null }) {
+export function TeamPanel({ pub, myId, watching, bubbles, onWatch, compact = false, observe = null, self: selfLive = null, cap = 10, uniteLocal = null, spMarks = null }) {
   const [openPid, setOpenPid] = useState(null);
   // the playerId whose avatar just called onWatch, so the other click of a double-click does not open the view again
   const askedAt = useRef(/** @type {{ id: string|null, at: number }} */ ({ id: null, at: 0 }));
@@ -162,7 +162,6 @@ export function TeamPanel({ pub, myId, watching, bubbles, chatBubbles = null, on
       const meta = STATUS_META[status] || STATUS_META.acting;
       const watched = teammateFieldShown(watching, p);
       const bubble = bubbles?.get(p.playerId);
-      const chatMsg = chatBubbles?.get(p.playerId);
       const offline = p.connected === false && !p.isBot;
       const open = !!observe && openPid === p.playerId && !self;
       const back = !!observe && self && observe.observing;
@@ -200,7 +199,6 @@ export function TeamPanel({ pub, myId, watching, bubbles, chatBubbles = null, on
             onClick=${() => observe.onBack()}><span class="btn__label">${t('返回战场')}</span></button>` : null}
         </div>
         ${bubble ? html`<${EmoteBubble} key=${bubble.seq} id=${bubble.id} class="team__bubble" />` : null}
-        ${chatMsg ? html`<div class=${cx('team__chat-bubble', p.seat != null ? `seat-${p.seat}` : 'seat-0')} key=${chatMsg.at}><span class="team__chat-text">${chatMsg.text}</span></div>` : null}
       </div>`;
     })}
   </aside>`;

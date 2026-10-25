@@ -29,11 +29,11 @@ carrying its file's content hash):
                        roles (start / loop / range / hit / end …, from the skill prefab and the buff templates, with
                        the buffs' lives), its abilities' projectiles and the mode it switches to; the projectiles; the
                        generic keys (hits, deaths, deploy, status loops)
-  textures.json        texture key → size, wrap, filter, alpha, the WebP files
+  textures.json        texture key → size, wrap, filter, alpha, the WebP or PNG files
   prefabs/<file>.json  one descriptor per effect prefab: nodes (Unity-native transforms), ParticleSystems (every
                        enabled module), renderers, materials (shader name + resolved render state), decoded clips,
                        behaviours
-  tex/<key>.webp       textures (WebP q90, alpha kept); tex/half/<key>.webp the half-size copy of the light tier
+  tex/<key>.webp       textures (WebP q90 by default, --fx-texture-format png for PNG); tex/half/ the light tier
   mesh/<key>.json      meshes of mesh particles, MeshRenderers, SkinnedMeshRenderers and mesh shapes
 Everything is (c) Hypergryph; for private, non-commercial fan use only. Nothing of it is ever committed.
 """
@@ -43,6 +43,7 @@ import math
 import os
 import re
 import struct
+import subprocess
 import sys
 import time
 import zlib
@@ -53,6 +54,7 @@ FX_SUB = 'fx'
 FORMAT_VERSION = 1      # the descriptors and textures.json (§33.4–§33.8)
 MESH_VERSION = 2        # the meshes (§33.9): 2 since Phase 1c — vertex colours 0…1 (version 1 wrote the bytes, 0…255)
 INDEX_VERSION = 3       # index.json (§33.12): 2 since Phase 1c, 3 since Phase 1d (2026-10-15) — vfx-format.md's changelog
+MANIFEST_VERSION = 1    # data/local-fx.json top-level "version" (the file list; index.json carries INDEX_VERSION)
 FX_MANIFEST = 'local-fx.json'                           # data/local-fx.json: every fx file, served as a hashed view
 FX_GROUPS = ('fx', 'fx/prefabs', 'fx/tex', 'fx/mesh')   # its groups (§33.1; none of them in data/local-assets.json)
 
@@ -859,10 +861,11 @@ def string_values(v, out):
 class Exporter:
     """Writes the descriptors, textures and meshes of the effect prefabs of one AssetEnv into <out>/fx."""
 
-    def __init__(self, env, out_root, log=print):
+    def __init__(self, env, out_root, log=print, texture_format='webp'):
         self.env = env
         self.out = Path(out_root) / FX_SUB
         self.log = log
+        self.texture_format = texture_format
         self.textures = {}      # key → meta
         self.meshes = {}        # key → meta
         self._tex_keys = {}     # (file id, path id) → key
@@ -897,21 +900,24 @@ class Exporter:
         has_alpha = 'A' in img.getbands() and img.getchannel('A').getextrema()[0] < 255
         img = img.convert('RGBA') if has_alpha else img.convert('RGB')
         tex_dir = self.out / 'tex'
-        full = tex_dir / f'{key}.webp'
-        half = tex_dir / 'half' / f'{key}.webp'
+        suffix = self.texture_format
+        full = tex_dir / f'{key}.{suffix}'
+        half = tex_dir / 'half' / f'{key}.{suffix}'
         meta = {'name': t.m_Name, 'w': t.m_Width, 'h': t.m_Height, 'format': TEXTURE_FORMATS.get(d.get('m_TextureFormat'), str(d.get('m_TextureFormat'))),
                 'mips': d.get('m_MipCount', 1), 'srgb': d.get('m_ColorSpace', 1) == 1, 'alpha': has_alpha,
-                'file': f'tex/{key}.webp', 'half': None}
+                'file': f'tex/{key}.{suffix}', 'half': None}
+        if suffix != 'webp':
+            meta['encoding'] = suffix
         ts = d.get('m_TextureSettings', {})
         meta.update({'wrapU': ['repeat', 'clamp', 'mirror', 'mirrorOnce'][min(3, ts.get('m_WrapU', 0))],
                      'wrapV': ['repeat', 'clamp', 'mirror', 'mirrorOnce'][min(3, ts.get('m_WrapV', 0))],
                      'filter': ['point', 'bilinear', 'trilinear'][min(2, ts.get('m_FilterMode', 1))], 'aniso': ts.get('m_Aniso', 0)})
-        save_webp(img, full)
+        save_texture(img, full, suffix)
         if t.m_Width >= HALF_MIN and t.m_Height >= HALF_MIN:
             size = (max(1, t.m_Width // 2), max(1, t.m_Height // 2))
             small = img.convert('RGBa').resize(size, Image.LANCZOS).convert('RGBA') if has_alpha else img.resize(size, Image.LANCZOS)
-            save_webp(small, half)
-            meta['half'] = f'tex/half/{key}.webp'
+            save_texture(small, half, suffix)
+            meta['half'] = f'tex/half/{key}.{suffix}'
         self.textures[key] = meta
         return key
 
@@ -1391,10 +1397,27 @@ class PrefabCtx:
                                    'property': c.get('attribute'), 'keys': enc_keys(c.get('curve'))})
 
 
-def save_webp(img, path):
+def check_texture_format(encoding):
+    """Reject unavailable encoders before an extraction can replace any existing output."""
+    if encoding not in ('png', 'webp'):
+        raise ValueError('effect texture format must be png or webp')
+    if encoding == 'webp':
+        from PIL import Image, features
+        if not features.check('webp'):
+            raise RuntimeError('Pillow WebP support is required for --fx-texture-format webp')
+        import io
+        Image.new('RGBA', (1, 1)).save(io.BytesIO(), 'WEBP', quality=WEBP_QUALITY, method=WEBP_METHOD)
+
+
+def save_texture(img, path, encoding='webp'):
     import io
     buf = io.BytesIO()
-    img.save(buf, 'WEBP', quality=WEBP_QUALITY, method=WEBP_METHOD)
+    if encoding == 'webp':
+        img.save(buf, 'WEBP', quality=WEBP_QUALITY, method=WEBP_METHOD)
+    elif encoding == 'png':
+        img.save(buf, 'PNG')
+    else:
+        raise ValueError('effect texture format must be png or webp')
     write_atomic(path, buf.getvalue())
 
 
@@ -2580,7 +2603,8 @@ def crawl_units(ab_root, cabs, unit_ids, gd, eff, enemy_idx, token_idx, log):
         key = pk(key)
         if key is None or key in projectiles or depth > 3:
             return
-        entry = {'main': None, 'lifeTime': None, 'movement': None, 'behaviours': []}
+        # Per-record marker: add-only runs can retain legacy records in the same index.
+        entry = {'rolesVersion': 1, 'main': None, 'lifeTime': None, 'movement': None, 'behaviours': []}
         projectiles[key] = entry
         strings, stack = set(), [proj_roots[key]]
         while stack:
@@ -2904,6 +2928,8 @@ def crawl_units(ab_root, cabs, unit_ids, gd, eff, enemy_idx, token_idx, log):
                     projectile(x)
             code = uid.split('_', 2)[2] if uid.startswith('char_') else None
             sids = set(gd['skills'].get(uid, [])) | set((gd.get('tokenSkills') or {}).get(uid, []))
+            overrides = (gd.get('skillOverrides') or {}).get(uid) or {}
+            sids.update(overrides.values())
             if code:
                 sids |= {k for k in skill_roots if k.startswith(f'skchr_{code}_')}
             sids = {skill(sid) for sid in sorted(sids)} - {None}
@@ -2914,6 +2940,13 @@ def crawl_units(ab_root, cabs, unit_ids, gd, eff, enemy_idx, token_idx, log):
                     skills[sid]['mode'] = names.index(f's{m.group(1)}')
                     skills[sid]['modeBy'] = 'name'
             u['skills'] = {sid: skills[sid] for sid in sorted(sids) if sid in skills}
+            # character_table.skills[].overridePrefabKey is an operator-local art override (e.g. 万顷 S1).
+            # Keep it local: a shared skcom_* id must never change another operator's skill presentation.
+            for alias, target in overrides.items():
+                target = skill_key(target)
+                if target in skills:
+                    u['skills'][alias] = skills[target]
+                    u.setdefault('skillAliases', {})[alias] = target
             # an enemy's own skills (their nodes in its prefab; keys like `1` repeat across enemies: not in index.skills)
             for key, entry in sorted(enemy_skills(env, found_skills).items()):
                 u['skills'].setdefault(key, entry)
@@ -2982,7 +3015,7 @@ def crawl_units(ab_root, cabs, unit_ids, gd, eff, enemy_idx, token_idx, log):
             whens[n.get('when')] = whens.get(n.get('when'), 0) + 1
         log(f'fx: {kind}: talents of {sum(1 for x in us if x.get("talents"))} units ({len(tk)} keys, '
             f'{sum(len(t["nodes"]) for t in tk)} nodes), abilities of {sum(1 for x in us if x.get("abilities"))} units '
-            f'({", ".join(f"{k} {sum(1 for a in ab if a["kind"] == k)}" for k in ("common", "general", "trait"))}); '
+            f'({", ".join("{} {}".format(k, sum(1 for a in ab if a["kind"] == k)) for k in ("common", "general", "trait"))}); '
             f'when: {", ".join(f"{k} {v}" for k, v in sorted(whens.items(), key=lambda kv: str(kv[0])))}; '
             f'{sum(1 for n in [n for t in tk for n in t["nodes"]] + ab if n.get("triggers"))} with template triggers')
     for p in projectiles.values():
@@ -2997,10 +3030,10 @@ def _export_worker(args, keys_all=None):
     (entries, textures meta, meshes meta, log lines)."""
     if keys_all is not None:
         _init_worker(keys_all)
-    ab_root, out_root, cabs, rel, keys = args
+    ab_root, out_root, cabs, rel, keys, texture_format = args
     lines = []
     env = AssetEnv(ab_root, cabs)
-    ex = Exporter(env, out_root, lines.append)
+    ex = Exporter(env, out_root, lines.append, texture_format=texture_format)
     entries = {}
     try:
         roots = env.prefabs(rel)
@@ -3024,10 +3057,23 @@ def game_data(root):
     backups.json record)."""
     data = Path(root) / 'data'
     def load(n):
-        try:
-            return json.loads((data / n).read_text(encoding='utf-8'))
-        except (OSError, ValueError):
-            return {}
+        combined = {}
+        # Default first. Chess ids repeat between seasons, so retain every record under a scoped key.
+        for folder in [data] + sorted((data / 'versions').glob('*')):
+            try:
+                records = json.loads((folder / n).read_text(encoding='utf-8'))
+            except (OSError, ValueError):
+                continue
+            if n == 'chess.json':
+                combined.update({str(folder) + '/' + k: v for k, v in records.items()})
+            elif n == 'backups.json':
+                for key in ('units', 'tokens'):
+                    for uid, rec in (records.get(key) or {}).items():
+                        combined.setdefault(key, {}).setdefault(uid, rec)
+            else:
+                for uid, rec in records.items():
+                    combined.setdefault(uid, rec)
+        return combined
     chess, backups, enemies, tokens = load('chess.json'), load('backups.json'), load('enemies.json'), load('tokens.json')
     chars, skills = [], {}
     for v in chess.values():
@@ -3059,11 +3105,38 @@ def game_data(root):
             return json.loads((excel / n).read_text(encoding='utf-8'))
         except (OSError, ValueError):
             return {}
+    # Repository-owned JSON reader; installed plugin code is never imported or executed.
+    try:
+        ref_reader = Path(__file__).with_name('plugin-fx.mjs')
+        refs = json.loads(subprocess.check_output(['node', str(ref_reader), str(root)], timeout=30))
+    except (OSError, ValueError, subprocess.SubprocessError):
+        refs = []
+    char_table = load_excel('character_table.json')
+    for cid in refs:
+        if cid not in chars:
+            chars.append(cid)
+        # Shared skills do not always follow skchr_<codename>_<slot>.
+        for skill_rec in (char_table.get(cid) or {}).get('skills') or []:
+            sid = skill_rec.get('skillId') if isinstance(skill_rec, dict) else None
+            if sid:
+                skills.setdefault(cid, set()).add(sid)
     return {'chars': chars, 'skills': {k: sorted(v) for k, v in skills.items()}, 'enemies': sorted(enemies), 'tokens': toks,
+            'skillOverrides': skill_overrides(chars, char_table),
             'tokenSkills': token_skills,
-            'talentKeys': talent_keys(chars + toks, load_excel('character_table.json'),
+            'talentKeys': talent_keys(chars + toks, char_table,
                                       load_excel('battle_equip_table.json'), load_excel('uniequip_table.json')),
             'enemyTalentKeys': {k: enemy_talent_prefixes(v) for k, v in enemies.items() if isinstance(v, dict)}}
+
+
+def skill_overrides(ids, char_table):
+    """Official per-operator prefab overrides, keyed as the runtime's skillIdsOf (lowercase, no [rank] suffix)."""
+    out = {}
+    for uid in ids:
+        for row in (char_table.get(uid) or {}).get('skills') or []:
+            if row.get('skillId') and row.get('overridePrefabKey'):
+                alias = re.sub(r'\[\d+\]$', '', row['skillId'].lower())
+                out.setdefault(uid, {})[alias] = row['overridePrefabKey'].lower()
+    return out
 
 
 def talent_keys(ids, char_table, equip_table, uniequip_table):
@@ -3132,11 +3205,13 @@ def _read_json(path):
         return None
 
 
-def export_fx(ab_root, out_root, manifest, log, selection='sample', keys=None, jobs=None, root=None, fx_manifest=None):
+def export_fx(ab_root, out_root, manifest, log, selection='sample', keys=None, jobs=None, root=None, fx_manifest=None,
+              texture_format='webp', add_only=False):
     """The fx run (extract.py --only fx): writes <out_root>/fx/** and `fx_manifest` (default <root>/data/local-fx.json:
     the groups FX_GROUPS, every file); returns the number of files written. `manifest` (the groups of
     data/local-assets.json) gets nothing: extract.py drops the fx groups an earlier run left there (ran_groups). A
     --fx-keys run (`keys`) updates those prefabs in the earlier set's index and file list."""
+    check_texture_format(texture_format)
     t_start = time.time()
     ab_root = Path(ab_root)
     root = Path(root) if root else Path(__file__).resolve().parents[2]
@@ -3144,6 +3219,9 @@ def export_fx(ab_root, out_root, manifest, log, selection='sample', keys=None, j
     jobs = max(1, jobs or min(8, os.cpu_count() or 2))
     out = Path(out_root) / FX_SUB
     out.mkdir(parents=True, exist_ok=True)
+    previous = _read_json(out / 'index.json') if add_only else None
+    if add_only and previous and (previous.get('format') != 'fx-index' or previous.get('version') != INDEX_VERSION):
+        raise ValueError('--fx-add-only requires a current fx index')
     timings = {}
 
     t0 = time.time()
@@ -3160,6 +3238,8 @@ def export_fx(ab_root, out_root, manifest, log, selection='sample', keys=None, j
         unit_ids = list(FX_SAMPLE_UNITS)
     else:
         unit_ids = gd['chars'] + gd['enemies'] + gd['tokens']
+    if add_only:
+        unit_ids = [uid for uid in unit_ids if uid not in ((previous or {}).get('units') or {})]
     enemy_idx = container_index(ab_root, (ENEMY_GLOB,), root / '.cache/fx/enemies.json', jobs, log) \
         if any(u.startswith('enemy_') for u in unit_ids) else {}
     token_idx = container_index(ab_root, (TOKEN_GLOB,), root / '.cache/fx/tokens.json', jobs, log) \
@@ -3177,6 +3257,8 @@ def export_fx(ab_root, out_root, manifest, log, selection='sample', keys=None, j
     for k in missing:
         log(f'  skip (no such effect prefab in this client) {k}')
     wanted -= set(missing)
+    existing_prefabs = set((previous or {}).get('prefabs') or {})
+    wanted -= existing_prefabs
 
     # -- descriptors, textures, meshes; then the keys the exported behaviours name (variants by facing, chained
     #    effects), until nothing new is named
@@ -3190,7 +3272,8 @@ def export_fx(ab_root, out_root, manifest, log, selection='sample', keys=None, j
             for k in sorted(todo):
                 by_bundle.setdefault(eff[k], []).append(k)
             log(f'fx: pass {rounds}: exporting {len(todo)} prefabs from {len(by_bundle)} bundles ({jobs} processes)')
-            work = [(str(ab_root), str(out_root), cabs, rel, ks) for rel, ks in sorted(by_bundle.items(), key=lambda kv: -len(kv[1]))]
+            work = [(str(ab_root), str(out_root), cabs, rel, ks, texture_format)
+                    for rel, ks in sorted(by_bundle.items(), key=lambda kv: -len(kv[1]))]
             results = list(pool.map(_export_worker, work)) if jobs > 1 and len(work) > 1 else [_export_worker(w, tuple(eff)) for w in work]
             done |= todo
             for e, tx, me, lines in results:
@@ -3200,7 +3283,7 @@ def export_fx(ab_root, out_root, manifest, log, selection='sample', keys=None, j
                 for line in lines:
                     log(line)
             named = {r for e in entries.values() for r in e.get('refs', [])}
-            todo = {k for k in named if k in eff and k not in done}
+            todo = {k for k in named if k in eff and k not in done and k not in existing_prefabs}
     timings['prefabs'] = time.time() - t0
 
     summaries = {k: {f: v[f] for f in ('file', 'bundle', 'nodes', 'particleSystems', 'liveParticles', 'duration', 'looping', 'refs',
@@ -3210,18 +3293,25 @@ def export_fx(ab_root, out_root, manifest, log, selection='sample', keys=None, j
     groups = {
         'fx/prefabs': {k: {'path': url(v['file']), 'kind': 'FxPrefab'} for k, v in entries.items()},
         'fx/tex': {k: {'path': url(v['file']), 'w': v['w'], 'h': v['h'], 'kind': 'Texture2D',
+                       **({'encoding': v['encoding']} if 'encoding' in v else {}),
                        **({'half': url(v['half'])} if v.get('half') else {})} for k, v in textures.items()},
         'fx/mesh': {k: {'path': url(v['file']), 'kind': 'FxMesh', 'verts': v['verts']} for k, v in meshes.items()},
     }
     tex_all, set_name = dict(textures), 'keys' if keys else selection
-    prev = _read_json(out / 'index.json') if keys else None
+    prev = previous if add_only else _read_json(out / 'index.json') if keys else None
     if isinstance(prev, dict) and prev.get('format') == 'fx-index' and prev.get('version') == INDEX_VERSION:
         # a --fx-keys run: these prefabs replace their earlier copies; the earlier set's units, skills, prefabs stay
-        units, projectiles, skills, skins = (prev.get(x) or {} for x in ('units', 'projectiles', 'skills', 'skins'))
+        if add_only:
+            units, projectiles, skills, skins = ({**v, **(prev.get(k) or {})} for k, v in
+                                               zip(('units', 'projectiles', 'skills', 'skins'), (units, projectiles, skills, skins)))
+        else:
+            units, projectiles, skills, skins = (prev.get(x) or {} for x in ('units', 'projectiles', 'skills', 'skins'))
         summaries = {**(prev.get('prefabs') or {}), **summaries}
-        tex_all = {**((_read_json(out / 'textures.json') or {}).get('textures') or {}), **textures}
+        old_textures = (_read_json(out / 'textures.json') or {}).get('textures') or {}
+        tex_all = {**textures, **old_textures} if add_only else {**old_textures, **textures}
         old_groups = (_read_json(fx_manifest) or {}).get('groups') or {}
-        groups = {g: {**(old_groups.get(g) or {}), **v} for g, v in groups.items()}
+        groups = {g: ({**v, **(old_groups.get(g) or {})} if add_only else {**(old_groups.get(g) or {}), **v})
+                  for g, v in groups.items()}
         set_name = prev.get('set') or set_name
     groups = {'fx': {'index': {'path': url('index.json'), 'kind': 'FxIndex', 'version': INDEX_VERSION, 'set': set_name,
                                'prefabs': len(summaries)},
@@ -3238,11 +3328,11 @@ def export_fx(ab_root, out_root, manifest, log, selection='sample', keys=None, j
     write_atomic(out / 'textures.json', json.dumps({'format': 'fx-textures', 'version': FORMAT_VERSION,
                                                    'textures': dict(sorted(tex_all.items()))}, separators=(',', ':')).encode('utf-8'))
     count = sum(len(v) for v in groups.values())
-    write_atomic(fx_manifest, json.dumps({'version': 1, 'format': 'fx-manifest', 'source': 'local-client',
+    write_atomic(fx_manifest, json.dumps({'version': MANIFEST_VERSION, 'format': 'fx-manifest', 'source': 'local-client',
                                           'client': client_version(ab_root), 'set': set_name, 'count': count,
                                           'groups': groups}, ensure_ascii=False, separators=(',', ':')).encode('utf-8'))
     total = 3 + len(entries) + len(meshes) + sum(1 + (1 if v.get('half') else 0) for v in textures.values())
-    if not keys:                                              # a full set: drop files an earlier run left behind
+    if not keys and not add_only:                             # a full set: drop files an earlier run left behind
         keep = {out / 'index.json', out / 'textures.json'} | {out / v['file'] for v in entries.values()}
         keep |= {out / v['file'] for v in meshes.values()} | {out / v['file'] for v in textures.values()}
         keep |= {out / v['half'] for v in textures.values() if v.get('half')}

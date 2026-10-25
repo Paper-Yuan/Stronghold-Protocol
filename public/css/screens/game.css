@@ -7,6 +7,35 @@
 
 /* ---- screen shell ---------------------------------------------------------------------------- */
 .gm { background: transparent; }
+/* Host test dock (public/js/ui/testDock.js DOCK_REM). Unitless rem, shared by the HUD and the dock.
+   team-right = .team left .22 + avatar .8 + gap .1 + name 1.5 + info padding .18.
+   bond-bottom = fieldHost.js HUD_REM.bondStripBottom. shop-top = HUD_REM.shopBarTop.
+   hand-clear = prep hudPadding bottom 3.2 + the bench piece 1.56. top = bottom of .gtop.
+   ready-h = .gtop padding .2 + clock --cd-h .7 + gap .1 + .readybtn .56. */
+.gm, .testconsole {
+  --dock-w: 3.6;
+  --dock-margin: 0.08;
+  --dock-team-left: 0.22;
+  --dock-team-right: 2.8;
+  --dock-team-top: 2.36;
+  --dock-team-avatar: 0.8;
+  --dock-team-gap: 0.14;
+  --dock-team-rows: 4;
+  --dock-bond-left: 1.56;
+  --dock-bond-top: 1.36;
+  --dock-bond-bottom: 2.16;
+  --dock-bond-slot: 0.74;
+  --dock-bond-gap: 0.1;
+  --dock-top: 1.02;
+  --dock-hand-clear: 4.76;
+  --dock-hand-left: 2.85;
+  --dock-ready-right: 0.3;
+  --dock-ready-w: 2.6;
+  --dock-ready-h: 1.56;
+  --dock-shop-top: 2.64;
+  --dock-funds-w: 1.18;
+  --dock-shop-right: 0.26;
+}
 .gm__field { position: absolute; inset: 0; z-index: 0; overflow: hidden; }
 .gm__field canvas { display: block; }
 .gm__vignette {
@@ -21,6 +50,59 @@
 .gm__hud > * { pointer-events: auto; }
 .gload { align-items: center; justify-content: center; gap: .2rem; }
 
+/* Host test console (DESIGN §34.8). A floating field panel. Its default left/top is the dock home
+   (right of .team, below the bond strip, above the hand) from the --dock-* rem above. The host drags
+   it by the header; JS then sets left/top in px. At ≤720px the top sheet wins, including over a stored position. */
+.testconsole {
+  position: fixed;
+  left: calc((var(--dock-team-right) + var(--dock-margin)) * 1rem);
+  top: calc((var(--dock-bond-bottom) + var(--dock-margin)) * 1rem);
+  z-index: 20; display: flex; flex-direction: column; align-items: flex-start;
+  gap: .06rem; width: auto; max-width: min(calc(var(--dock-w) * 1rem), 28vw);
+  max-height: calc(100vh - (var(--dock-hand-clear) + var(--dock-bond-bottom) + var(--dock-margin) * 2) * 1rem);
+  pointer-events: auto; box-sizing: border-box;
+}
+.testconsole.is-open {
+  width: min(calc(var(--dock-w) * 1rem), 28vw);
+  overflow: hidden;
+}
+.testconsole__tab, .testconsole__run, .testconsole__row button {
+  color: #1a1408; background: #e8b84a; border: 0; font-weight: 700; padding: .04rem .1rem; cursor: pointer;
+}
+.testconsole__run { flex: 0 0 auto; }
+.testconsole__body {
+  width: 100%; display: grid; gap: .06rem; padding: .1rem; background: rgba(12, 14, 12, .94);
+  border: 1px solid rgba(232, 184, 74, .7); color: var(--text-hi); font-size: calc(.15 * var(--t));
+  max-height: calc(100vh - (var(--dock-hand-clear) + var(--dock-bond-bottom) + var(--dock-margin) * 2) * 1rem - .4rem);
+  overflow: auto; box-sizing: border-box;
+}
+.testconsole.is-open .testconsole__body { flex: 1 1 auto; min-height: 0; max-height: none; }
+.testconsole__head, .testconsole__row, .testconsole__field, .testconsole__check { display: flex; flex-wrap: wrap; align-items: center; gap: .06rem; }
+.testconsole__head { cursor: grab; touch-action: none; user-select: none; }
+.testconsole__head:active { cursor: grabbing; }
+.testconsole__field { display: grid; gap: .02rem; min-width: 0; }
+.testconsole__row .testconsole__field { flex: 1 1 8em; }
+.testconsole__field input, .testconsole__field select {
+  color: var(--text-hi); background: var(--bg-2); border: 1px solid var(--line-2); padding: .03rem .06rem;
+  min-width: 0; width: 100%; box-sizing: border-box;
+}
+/* the audit log keeps about five rows: a scroll container's automatic minimum is 0, so in the open panel's grid the
+   other controls squeezed it to a few px at the default height (the panel body scrolls instead) */
+.testconsole__log { margin: 0; padding: 0; list-style: none; min-height: 1.1rem; max-height: 2.4rem; overflow: auto; overflow-wrap: anywhere; }
+.testconsole__log .is-bad { color: #ff8a5c; }
+@media (max-width: 720px) {
+  .testconsole {
+    top: 8px !important; left: 8px !important; width: auto !important;
+    max-width: calc(100vw - 16px) !important; max-height: none !important; font-size: 14px;
+  }
+  .testconsole.is-open { width: calc(100vw - 16px) !important; max-width: calc(100vw - 16px) !important; max-height: 55vh !important; }
+  .testconsole__body, .testconsole.is-open .testconsole__body { font-size: 14px; max-height: 48vh !important; flex: none; }
+  .testconsole__tab, .testconsole__run, .testconsole__row button,
+  .testconsole__field input, .testconsole__field select {
+    min-height: 32px; min-width: 32px; font-size: 14px; padding: 6px 10px;
+  }
+}
+
 /* ---- top bar -------------------------------------------------------------------------------------- */
 .gtop {
   position: absolute; left: 0; right: 0; top: 0;
@@ -32,8 +114,11 @@
 .gtop__meta { display: flex; flex-direction: column; align-items: flex-start; gap: .06rem; }
 /* a match with gameplay plugins (DESIGN §32.6): the HUD corner's MOD mark */
 .gtop__mod { pointer-events: auto; }
+.gtop__rules { max-width: 3.4rem; font-size: calc(.11 * var(--t)); line-height: 1.4; color: var(--text-md); overflow-wrap: anywhere; }
 /* the latency pill and, beside it, the 观战席 capsule (ui/hud.js SpectatorPill: an eye + how many are watching; opens the roster) */
 .gtop__net { display: flex; align-items: center; gap: .08rem; }
+/* the ping pill as tall as its value at a big 文字大小 (§35.51: cut 1 px at 特大 on the phones), as in the room and the hub */
+.gtop__net .ping { height: auto; min-height: .32rem; padding-top: 1px; padding-bottom: 1px; }
 .specpill { --btn-bg: rgba(0, 0, 0, .5); --btn-bg-hover: rgba(0, 0, 0, .66); --btn-bd: var(--line); height: .32rem; min-width: 0; padding: 0 .12rem; gap: .05rem; border-radius: 99px; }
 .specpill .btn__icon { width: .18rem; height: .18rem; color: var(--mint-500); }
 .specpill__num { font-size: .18rem; font-weight: 700; color: var(--mint-400); }
@@ -48,10 +133,13 @@
 .spec__name { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: calc(.19 * var(--t)); color: var(--text-hi); }
 .spec__hint { margin: .04rem 0 0; font-size: calc(.15 * var(--t)); line-height: 1.45; }
 .gtop__exit { box-shadow: 0 .06rem .2rem rgba(0, 0, 0, .5); }
-/* 顶部中栏 (2026-10-13, the event's top bar, video 8:01; ui/hud.js TopBar): [🔍] in a bracket frame + a long thin band —
-   回合 N centred in its left half, the LP tower in its right half, faint type above both — with the phase capsule as a
-   bevelled plate in a grey outer frame across the middle, then [🔍▶▶] in its own bracket frame. Outlines of bevelled
-   shapes are two clipped layers (the line colour, then the fill 1–2 px inside). */
+/* 顶部中栏 (PR #643 / #827, the event's top bar, video 8:01): [🔍] in a bracket frame · + · one long thin band — 回合 N
+   centred in its left half, the LP tower in its right half, the official deco type above (ui/hud.js DecoType) — with
+   the phase capsule as a bevelled plate in a grey outer frame across the middle · + · [🔍▶▶] in its own bracket frame.
+   Outlines of bevelled shapes are two clipped layers (the line colour, then the fill 1–2 px inside). [ASSUMED] these
+   CSS frames, halves, round chip and plate stand in for the official hudPanel bg_check_btn / frame_mid_normal (a boss
+   round's frame_mid_boss, by its name) / bg_round, which are not painted yet; the colours, read off the footage; the
+   second + mark and the round number's flip, #827's additions (#643 had one + and no flip). */
 .gtop__center { position: relative; display: flex; align-items: center; margin-top: .02rem; }
 .gtop__frame { position: relative; display: flex; align-items: center; justify-content: center; height: .64rem; padding: 0 .17rem; }
 .gtop__frame::before, .gtop__frame::after { content: ''; position: absolute; top: 0; bottom: 0; width: .12rem; border: 2px solid rgba(200, 206, 208, .42); pointer-events: none; }
@@ -61,111 +149,47 @@
   background: linear-gradient(#c8cecf, #c8cecf) center / 100% 1px no-repeat, linear-gradient(#c8cecf, #c8cecf) center / 1px 100% no-repeat; }
 .gtop__band { position: relative; display: grid; grid-template-columns: minmax(2.3rem, auto) auto minmax(2.3rem, auto); align-items: center;
   filter: drop-shadow(0 .04rem .1rem rgba(0, 0, 0, .45)); }
-.gm__hud .gtop__band::before, .gm__hud .gtop__band::after { content: 'STRONGHOLD TERMINAL SERVICE'; position: absolute; top: -.16rem; font-family: var(--font-num);
-  font-size: .085rem; font-weight: 700; line-height: 1; letter-spacing: .14em; color: rgba(225, 232, 232, .28); white-space: nowrap; pointer-events: none; }
-.gtop__band::before { left: .24rem; }
-.gtop__band::after { right: .24rem; }
+/* the deco type: hudPanel/frame_deco_txt1 / txt3 (RHODES ISLAND TERMINAL SERVICE, 103×6) over the two halves,
+   frame_deco_txt2 (STRONGHOLD PROTOCOL, 53×5) over the plate — [ASSUMED] the placement (txt2 fits the gap in the top
+   edge of frame_mid_normal) —, at the 🔍 buttons' scale (.01586rem a sprite pixel); text of the same size without them */
+.gtop__deco { position: absolute; top: -.16rem; display: block; line-height: 0; pointer-events: none; }
+.gtop__deco--l { left: .24rem; }
+.gtop__deco--r { right: .24rem; }
+.gtop__deco--c { left: 50%; transform: translateX(-50%); }
+.gtop__decoimg { display: block; height: auto; }
+.gtop__decoimg--txt1, .gtop__decoimg--txt3 { width: 1.634rem; }
+.gtop__decoimg--txt2 { width: .841rem; }
+.gtop__decotxt { display: block; font-family: var(--font-num); font-size: .085rem; font-weight: 700; line-height: 1; letter-spacing: .14em;
+  color: rgba(225, 232, 232, .28); white-space: nowrap; }
 .gtop__half { position: relative; display: flex; align-items: center; justify-content: center; height: .42rem; padding: 0 .3rem; }
 .gtop__half::before, .gtop__half::after { content: ''; position: absolute; pointer-events: none; }
 .gtop__half::before { inset: 0; background: rgba(176, 184, 186, .45); }
-.gtop__half::after { inset: 1px; background: linear-gradient(180deg, rgba(14, 18, 18, .86), rgba(9, 12, 12, .8));
-  box-shadow: inset 0 0 0 .06rem rgba(12, 15, 15, 0), inset 0 0 0 calc(.06rem + 1px) rgba(255, 255, 255, .06); }
+.gtop__half::after { inset: 1px; background: linear-gradient(180deg, rgba(14, 18, 18, .86), rgba(9, 12, 12, .8)); box-shadow: inset 0 0 0 calc(.06rem + 1px) rgba(255, 255, 255, .06); }
 .gtop__half--l::before, .gtop__half--l::after { clip-path: polygon(.1rem 0, 100% 0, 100% 100%, .1rem 100%, 0 calc(100% - .1rem), 0 .1rem); }
 .gtop__half--r::before, .gtop__half--r::after { clip-path: polygon(0 0, calc(100% - .1rem) 0, 100% .1rem, 100% calc(100% - .1rem), calc(100% - .1rem) 100%, 0 100%); }
 .gtop__half > * { position: relative; z-index: 1; }
-.gtop__half--l { margin-right: -.06rem; }
-.gtop__half--r { margin-left: -.06rem; }
+.gtop__half--l { margin-right: -.06rem; transform-origin: 100% 50%; }
+.gtop__half--r { margin-left: -.06rem; transform-origin: 0 50%; }
 .gtop__half .roundbox { gap: .12rem; }
+/* the round chip and the LP keep plain rem: HUD chrome in boxes the design fixed (test/ui/text-scale.test.js NOT_SCALED) */
 .gtop__half .roundbox__label { font-size: .2rem; color: #d8dcdc; letter-spacing: .1em; }
-.gtop__half .roundbox__num { min-width: .48rem; height: .34rem; padding: 0 .07rem; font-size: .28rem; background: #cfd3d3; color: #121516; border-radius: .03rem; clip-path: none; }
+.gtop__half .roundbox__num { display: inline-grid; place-items: center; min-width: .48rem; height: .34rem; padding: 0 .07rem; font-size: .28rem; line-height: 1;
+  background: #cfd3d3; color: #121516; border-radius: .03rem; clip-path: none; animation: gtop-flip 260ms var(--ease-out) both; }
 .gtop__half .lp--lg { font-size: .32rem; gap: .03rem; }
-.gtop__half .lp--lg:not(.lp--danger):not(.lp--team) .lp__val { color: #eef2f2; }
+/* a normal round's LP in white (the footage, video 8:01; [ASSUMED] the tint) — never over the pending-leak red
+   (.lp.is-pending, GitHub #479), the low-LP red (.lp--danger) or the boss rounds' team colour (.lp--team) */
+.gtop__half .lp--lg:not(.lp--danger):not(.lp--team):not(.is-pending) .lp__val { color: #eef2f2; }
 .gtop__half .lp--lg .lp__icon { width: .34rem; height: .34rem; }
-/* the capsule plate: a grey outer frame, then the capsule's own bevelled 2 px outline in its phase colour */
-.gtop__cap { position: relative; z-index: 2; display: flex; padding: .08rem .13rem; }
-.gtop__cap::before, .gtop__cap::after { content: ''; position: absolute; pointer-events: none;
-  clip-path: polygon(.2rem 0, calc(100% - .2rem) 0, 100% .2rem, 100% calc(100% - .2rem), calc(100% - .2rem) 100%, .2rem 100%, 0 calc(100% - .2rem), 0 .2rem); }
-.gtop__cap::before { inset: 0; background: rgba(176, 184, 186, .5); }
-.gtop__cap::after { inset: 1px; background: rgba(9, 12, 12, .9); }
-.gtop__cap .capsule { position: relative; z-index: 1; isolation: isolate; justify-content: center; height: .54rem; min-width: 2.12rem; padding: 0 .28rem 0 .2rem;
-  border: 0; border-radius: 0; box-shadow: none; background: var(--cap);
-  clip-path: polygon(.15rem 0, calc(100% - .15rem) 0, 100% .15rem, 100% calc(100% - .15rem), calc(100% - .15rem) 100%, .15rem 100%, 0 calc(100% - .15rem), 0 .15rem); }
-.gtop__cap .capsule::before { content: ''; position: absolute; inset: 2px; z-index: -1;
-  background: linear-gradient(180deg, color-mix(in srgb, var(--cap) 14%, #0b1513), #0a1412);
-  clip-path: polygon(.14rem 0, calc(100% - .14rem) 0, 100% .14rem, 100% calc(100% - .14rem), calc(100% - .14rem) 100%, .14rem 100%, 0 calc(100% - .14rem), 0 .14rem); }
-.gtop__cap .capsule__icon { width: .4rem; height: .4rem; }
-.gtop__cap .capsule--prep .capsule__label { font-size: .28rem; letter-spacing: .1em; color: var(--mint-400); }
-.gtop__cap .capsule--boss { min-width: 4.2rem; }
-.gtop__cap .capsule--unite { --cap: #ff6d2e; }
-.gtop__cap .capsule--combat .capsule__kills { color: #eef1f1; }
-.gtop__cap .capsule--combat .capsule__kills b { color: #ff6a48; }
-/* 顶栏动效 (2026-10-13, video 7:55–8:00 / 8:32–8:52; ui/hud.js capsuleFxKind): the centre drops in with the match screen;
-   the round number and the kills flip; at a phase change the capsule's content rises in from below, after the little
-   scene of that phase (kettles while the round starts; robot meets enemy → 开始作战 / 联防开始). */
-.gtop__center { animation: gtop-drop 420ms var(--ease-out) both; }
-.gtop__half .roundbox__num, .gtop__cap .capsule__kills b { display: inline-block; animation: capfx-flip 260ms var(--ease-out) both; }
-/* the round number keeps its centred box (inline-block above dropped .roundbox__num's grid: the digit sat top-left) */
-.gtop__half .roundbox__num { display: inline-grid; place-items: center; line-height: 1; }
-.gtop__cap.is-fx-wait .capsule > * { visibility: hidden; }
-.gtop__cap.is-fx-enter .capsule__icon { animation: capfx-rise 260ms var(--ease-out) both; }
-.gtop__cap.is-fx-enter .capsule > :not(.capsule__icon) { animation: capfx-slide 280ms 120ms var(--ease-out) both; }
-.gtop__cap.is-fx-rest .capsule__icon { animation: capfx-rise 260ms 200ms var(--ease-out) both; }
-.gtop__cap.is-fx-rest .capsule > :not(.capsule__icon) { animation: capfx-slide 300ms 440ms var(--ease-out) both; }
-.gtop__cap.is-fx-clash .capsule > * { animation: capfx-rise 260ms 2100ms var(--ease-out) both; }
-.gtop__cap.is-fx-unite .capsule > * { animation: capfx-rise 260ms 2750ms var(--ease-out) both; }
-.gtop__cap.is-fx-clash .capsule { animation: capfx-glow 700ms 1100ms ease-out both; }
-.gtop__cap.is-fx-unite .capsule { animation: capfx-glow 700ms 1420ms ease-out both; }
-.capsule-fx { position: absolute; inset: .1rem .15rem; z-index: 3; display: flex; align-items: center; justify-content: center; gap: .1rem;
-  overflow: hidden; pointer-events: none; color: var(--mint-400);
-  clip-path: polygon(.13rem 0, calc(100% - .13rem) 0, 100% .13rem, 100% calc(100% - .13rem), calc(100% - .13rem) 100%, .13rem 100%, 0 calc(100% - .13rem), 0 .13rem); }
-.capsule-fx .pix { flex: none; height: auto; }
-.capsule-fx .pix__b { opacity: .6; }
-.capsule-fx__k { width: .36rem; animation: capfx-drop 260ms calc(var(--i) * 140ms) var(--ease-out) both, capfx-bob 900ms calc(420ms + var(--i) * 150ms) ease-in-out infinite; }
-.capsule-fx--rest .capsule-fx__k { animation: capfx-up 220ms calc(var(--i) * 40ms) ease-in forwards; }
-.capsule-fx--clash { color: #ffbf3a; animation: capfx-out 200ms 1950ms ease-in forwards; }
-.capsule-fx--unite { color: #ff8a3a; animation: capfx-out 200ms 2600ms ease-in forwards; }
-.capsule-fx__meet, .capsule-fx__clash { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; }
-.capsule-fx__meet { gap: .12rem; }
-.capsule-fx__allies, .capsule-fx__foes { display: flex; align-items: flex-end; gap: .04rem; }
-.capsule-fx__ally { width: .36rem; animation: capfx-drop 240ms var(--ease-out) both; }
-.capsule-fx__ally--2 { opacity: .8; animation: capfx-join 260ms 900ms var(--ease-out) both; }
-.capsule-fx__foe { width: .42rem; animation: capfx-hop 900ms 120ms linear both; }
-.capsule-fx__foe--2 { animation-delay: 260ms; }
-.capsule-fx--clash .capsule-fx__meet { animation: capfx-ghost 260ms 1080ms forwards; }
-.capsule-fx--unite .capsule-fx__meet { animation: capfx-ghost 260ms 1400ms forwards; }
-.capsule-fx__clash { gap: .08rem; }
-.capsule-fx__swords { width: .34rem; filter: drop-shadow(0 0 .05rem currentColor); }
-.capsule-fx__word { font-size: .27rem; font-weight: 900; letter-spacing: .08em; color: #ffd76a; text-shadow: 0 0 .1rem rgba(255, 170, 40, .8); white-space: nowrap; }
-.capsule-fx--unite .capsule-fx__word { color: #ffb06a; text-shadow: 0 0 .1rem rgba(255, 110, 40, .85); }
-.capsule-fx--clash .capsule-fx__swords { animation: capfx-pop 280ms 1100ms var(--ease-out) both; }
-.capsule-fx--clash .capsule-fx__word { animation: capfx-word 320ms 1240ms var(--ease-out) both; }
-.capsule-fx--unite .capsule-fx__swords { animation: capfx-pop 280ms 1420ms var(--ease-out) both; }
-.capsule-fx--unite .capsule-fx__word { animation: capfx-word 320ms 1560ms var(--ease-out) both; }
-@keyframes gtop-drop { from { transform: translateY(-.5rem); opacity: 0; } }
-@keyframes capfx-flip { from { transform: translateY(-55%); opacity: 0; } }
-@keyframes capfx-rise { from { transform: translateY(110%); opacity: 0; } }
-@keyframes capfx-slide { from { transform: translateX(.4rem); opacity: 0; } }
-@keyframes capfx-drop { from { transform: translateY(-130%); opacity: 0; } }
-@keyframes capfx-up { to { transform: translateY(-140%); opacity: 0; } }
-@keyframes capfx-bob { 50% { transform: translateY(-14%); } }
-@keyframes capfx-out { to { transform: translateY(-100%); opacity: 0; } }
-@keyframes capfx-join { from { transform: translateX(-.3rem); opacity: 0; } }
-@keyframes capfx-hop {
-  0% { transform: translateX(1.5rem); opacity: 0; } 10% { opacity: 1; }
-  25% { transform: translateX(1.1rem) translateY(-18%); } 50% { transform: translateX(.72rem); }
-  75% { transform: translateX(.34rem) translateY(-18%); } 100% { transform: translateX(0); }
-}
-@keyframes capfx-ghost { to { opacity: .22; filter: blur(.6px); } }
-@keyframes capfx-glow { 30% { filter: brightness(1.55); } }
-@keyframes capfx-pop { 0% { transform: scale(1.9) rotate(-12deg); opacity: 0; filter: brightness(2.4); } 60% { opacity: 1; } }
-@keyframes capfx-word {
-  0% { transform: translateX(.12rem); opacity: 0; text-shadow: -.04rem 0 rgba(255, 60, 60, .8), .04rem 0 rgba(60, 220, 255, .8); }
-  60% { opacity: 1; }
-}
-@media (prefers-reduced-motion: reduce) {
-  .gtop__center, .gtop__half .roundbox__num, .gtop__cap .capsule__kills b, .gtop__cap .capsule, .gtop__cap .capsule > * { animation: none; }
-  .capsule-fx { display: none; }
-  .gtop__cap.is-fx-wait .capsule > * { visibility: visible; }
+@keyframes gtop-flip { from { transform: translateY(-55%); opacity: 0; } }
+/* a narrow screen (phone landscape 640×360 / 667×375: the root at its 40 px floor): the halves shrink to their content,
+   so a boss round's wide capsule leaves room for the corners (the exit, latency and 观战席 pills at the left; the solo
+   clock and pause at the right). The deco type's text stand-in (no art pack) is wider than the sprites it stands in for
+   and ran into itself over the narrowed band (§35.18's leftover): it gives way there — decoration only, aria-hidden; the
+   official sprites fit and stay */
+@media (max-width: 767px) {
+  .gtop__band { grid-template-columns: minmax(1.2rem, auto) auto minmax(1.2rem, auto); }
+  .gtop__half { padding: 0 .14rem; }
+  .gtop__decotxt { display: none; }
 }
 /* the two official 🔍 buttons (ui/hud.js CheckBtn): btn_check_player (mint, left) and btn_check_enemy (amber, right);
    sprites are 35×29 (plain) / 61×29 (with chevrons) → .555rem / .967rem × .46rem */
@@ -261,6 +285,103 @@
 .team__line .misstag__icon { font-size: .13rem; }
 .capsule--combat { --cap: var(--orange-hi); }
 .capsule--boss { --cap: var(--orange-hi); min-width: 4.2rem; }
+/* phase capsule scenes (ui/hud.js CapsuleScene, capsuleFxKind): the official hudPanel/trans_* sprites at ×1.3 of their
+   pixels over the capsule, which hides or holds its own content meanwhile. Timings from the event's top bar (video
+   7:55–7:58 回合开始 → 休整期, 8:32–8:34 作战, 8:38–8:41 联防); [ASSUMED] positions, sizes and timings estimated from it. */
+/* the capsule plate: a grey outer frame around the phase capsule */
+.gtop__cap { position: relative; z-index: 2; display: flex; padding: .08rem .13rem; }
+.gtop__cap::before, .gtop__cap::after { content: ''; position: absolute; pointer-events: none;
+  clip-path: polygon(.2rem 0, calc(100% - .2rem) 0, 100% .2rem, 100% calc(100% - .2rem), calc(100% - .2rem) 100%, .2rem 100%, 0 calc(100% - .2rem), 0 .2rem); }
+.gtop__cap::before { inset: 0; background: rgba(176, 184, 186, .5); }
+.gtop__cap::after { inset: 1px; background: rgba(9, 12, 12, .9); }
+.gtop__cap > .capsule { position: relative; z-index: 1; }
+.gtop__cap[class*="is-fx-"] .capsule { overflow: hidden; }
+.capfx {
+  position: absolute; inset: 2px; z-index: 2; display: flex; align-items: center; justify-content: center; gap: .1rem;
+  border-radius: .23rem; overflow: hidden; pointer-events: none;
+}
+/* inside the plate's padding: the scene stays on the capsule pill it was sized for, off the plate's frame (PR #827) */
+.gtop__cap > .capfx { inset: calc(.08rem + 2px) calc(.13rem + 2px); }
+.capfx .sprite { display: block; image-rendering: pixelated; }
+.gtop__cap.is-fx-wait .capsule > * { visibility: hidden; }
+.gtop__cap.is-fx-enter .capsule > * { animation: capfx-rise 240ms var(--ease-out) both; }
+.gtop__cap.is-fx-rest .capsule__icon { animation: capfx-rest-icon 560ms 150ms var(--ease-out) both; }
+.gtop__cap.is-fx-rest .capsule > :not(.capsule__icon) { animation: capfx-slide 260ms 450ms var(--ease-out) both; }
+.gtop__cap.is-fx-clash .capsule > * { animation: capfx-rise 160ms 1870ms var(--ease-out) both; }
+.gtop__cap.is-fx-unite .capsule > * { animation: capfx-rise 160ms 2800ms var(--ease-out) both; }
+/* 回合开始: three kettles (trans_cup 31×29) drop in one after another and bob out of step; at 休整期 they fly up */
+.capfx__k { width: .4rem; animation: capfx-drop 220ms calc(var(--i) * 70ms) var(--ease-out) both; }
+.capfx__k .sprite { width: 100%; height: auto; animation: capfx-bob 420ms calc(300ms + var(--i) * 140ms) steps(1, end) infinite; }
+.capfx--rest .capfx__k { animation: capfx-up 200ms calc(var(--i) * 50ms) ease-in forwards; }
+.capfx--rest .capfx__k .sprite { animation: none; }
+/* 作战 / 联防: the robot (trans_batte1 / coop1 31×33, its sword trans_batte2 / coop2 20×34 behind its left side) drops in,
+   the enemy (trans_worm1 46×31 / worm2 57×25) hops in from the right edge and stops beside it */
+.capfx__meet, .capfx__clash { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; }
+.capfx__meet { gap: .06rem; padding-top: .02rem; }
+.capfx__us { display: grid; justify-items: end; align-items: end; }
+.capfx__us > * { grid-area: 1 / 1; }
+.capfx__bot { position: relative; width: .4rem; height: .43rem; animation: capfx-drop 200ms var(--ease-out) both; }
+.capfx__body { position: relative; width: .4rem; height: .43rem; }
+.capfx__sword { position: absolute; left: -.14rem; top: -.08rem; width: .26rem; height: .44rem; }
+.capfx__foe { animation: capfx-hop 930ms linear both; }
+.capfx__foe .sprite { width: .6rem; height: .4rem; }
+.capfx--unite .capfx__bot { animation: capfx-drop 200ms 150ms var(--ease-out) both, capfx-hide 1ms 1500ms forwards; }
+.capfx--unite .capfx__foe { animation-duration: 800ms; }
+.capfx--unite .capfx__foe .sprite { width: .74rem; height: .33rem; }
+/* 联防: the robot turns into the two 联防 faces (trans_coop4 smiling, trans_coop3 worried; 31×33 / 30×33) */
+.capfx__faces { display: flex; gap: 0; opacity: 0; animation: capfx-show 1ms 1500ms forwards; }
+.capfx__face { width: .39rem; height: .43rem; }
+/* where they meet: the scene dims, the two crossed swords flash up and move left, 开始作战 / 联防开始 slides out of them */
+.capfx--clash .capfx__meet { animation: capfx-dim 200ms 930ms forwards; }
+.capfx--unite .capfx__meet { animation: capfx-dim 200ms 1600ms forwards; }
+.capfx__clash { gap: .08rem; }
+.capfx__swords { --sx: .6rem; position: relative; width: .45rem; height: .49rem; margin-top: -.03rem; opacity: 0; filter: drop-shadow(0 0 .05rem rgba(255, 190, 60, .7)); }
+/* trans_batte2 / coop2 (×1.45 here, as large as the footage's) lean ≈ 28°: turned to 45° and mirrored they cross
+   like the footage's ✕ */
+.capfx__x { position: absolute; left: .08rem; top: 0; width: .29rem; height: .49rem; transform: rotate(-17deg); }
+.capfx__x--flip { transform: scaleX(-1) rotate(-17deg); }
+.capfx__word {
+  font-family: var(--font-display); font-size: .27rem; font-weight: 900; letter-spacing: .06em; white-space: nowrap;
+  color: #ffd54a; text-shadow: 0 0 .1rem rgba(255, 170, 40, .75); opacity: 0;
+}
+.capfx--unite .capfx__word { color: #ffbf6a; text-shadow: 0 0 .1rem rgba(255, 110, 40, .8); }
+.capfx--clash .capfx__swords { animation: capfx-swords 450ms 930ms var(--ease-out) forwards; }
+.capfx--clash .capfx__word { animation: capfx-word 300ms 1050ms var(--ease-out) forwards; }
+.capfx--unite .capfx__swords { animation: capfx-swords 700ms 1600ms var(--ease-out) forwards; }
+.capfx--unite .capfx__word { animation: capfx-word 300ms 2050ms var(--ease-out) forwards; }
+/* then the words slide up out of the capsule and its own content rises in */
+.capfx--clash .capfx__clash { animation: capfx-out 120ms 1800ms ease-in forwards; }
+.capfx--unite .capfx__clash { animation: capfx-out 120ms 2700ms ease-in forwards; }
+@keyframes capfx-rise { from { transform: translateY(110%); opacity: 0; } }
+@keyframes capfx-slide { from { transform: translateX(-.4rem); opacity: 0; } }
+@keyframes capfx-rest-icon {
+  0% { transform: translate(.6rem, 110%); opacity: 0; }
+  45% { transform: translate(.6rem, 0); opacity: 1; }
+  100% { transform: none; opacity: 1; }
+}
+@keyframes capfx-drop { from { transform: translateY(-130%); opacity: 0; } }
+@keyframes capfx-up { to { transform: translateY(-140%); opacity: 0; } }
+@keyframes capfx-bob { 50% { transform: translateY(-.04rem); } }
+@keyframes capfx-hop {
+  0% { transform: translate(1.1rem, 0); } 12.5% { transform: translate(.96rem, -.06rem); } 25% { transform: translate(.82rem, 0); }
+  37.5% { transform: translate(.69rem, -.06rem); } 50% { transform: translate(.55rem, 0); } 62.5% { transform: translate(.41rem, -.06rem); }
+  75% { transform: translate(.28rem, 0); } 87.5% { transform: translate(.14rem, -.06rem); } 100% { transform: none; }
+}
+@keyframes capfx-hide { to { opacity: 0; } }
+@keyframes capfx-show { to { opacity: 1; } }
+@keyframes capfx-dim { 40% { opacity: .4; } 100% { opacity: 0; } }
+@keyframes capfx-swords {
+  0% { opacity: 0; transform: translateX(var(--sx)) scale(1.5); }
+  15% { opacity: 1; transform: translateX(var(--sx)); }
+  60% { opacity: 1; transform: translateX(var(--sx)); }
+  100% { opacity: 1; transform: none; }
+}
+@keyframes capfx-word { from { opacity: 0; transform: translateX(-.5rem); filter: blur(2px) brightness(1.8); } to { opacity: 1; transform: none; filter: none; } }
+@keyframes capfx-out { to { transform: translateY(-100%); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) {
+  .capfx { display: none; }
+  .gtop__cap .capsule > * { animation: none; visibility: visible; }
+}
 .bossbar { position: relative; flex: 1; min-width: 2.2rem; height: .2rem; background: rgba(0, 0, 0, .6); border: 1px solid rgba(255, 122, 51, .5); overflow: hidden; }
 .bossbar__fill { position: absolute; inset: 0 auto 0 0; background: linear-gradient(90deg, #b8340d, var(--orange-hi)); box-shadow: 0 0 .1rem rgba(255, 110, 40, .8); transition: width 300ms var(--ease-out); }
 .bossbar__txt { position: absolute; inset: 0; display: grid; place-items: center; font-size: .14rem; font-weight: 700; color: #fff; text-shadow: 0 1px 2px #000; }
@@ -347,74 +468,36 @@
 .readybtn.is-busy { opacity: .7; }
 
 /* ---- bond strip ---------------------------------------------------------------------------------------- */
-/* 左右内缩**对称**：盟约条要严格居中（本仓库自己的要求）。上游那版是 left 1.56rem / right 5.2rem 的偏置，
-   配上 .bstrip-container 的 align-items: center，整条会明显偏左。 */
-.gm__bonds { position: absolute; left: 2.5rem; top: 1.36rem; right: 2.5rem; pointer-events: none;
-  display: flex; flex-direction: column; align-items: center; justify-content: flex-start; }
+.gm__bonds { position: absolute; left: 1.56rem; top: 1.36rem; right: 5.2rem; pointer-events: none;
+  display: flex; align-items: flex-start; gap: max(.1rem, calc(8px * var(--sp-ui, 1))); }
 /* Only the bond discs (and the +N chip) take the pointer: the strip's box spans the width under the top bar, where the
    top board row's units stand (row 12 at 16:9 / 21:9 / 720p / phones, the boss field's row 5 in a boss prep) — it used
    to swallow the taps and drags on them (review of user playtest #2 item 8: every own unit reachable). */
 .gm__bonds > *, .gm__bonds .bstrip { pointer-events: none; }
-.gm__bonds .bstrip-container, .gm__bonds .bstrip-tray { pointer-events: none; }
 .gm__bonds .bslot, .gm__bonds .bstrip__more { pointer-events: auto; }
-.gm__bonds .bstrip__fold-handle { pointer-events: auto; }
-
-/* 盟约整体外层容器与把手（垂直抽屉收起方案，严格居中、零触控漂移）：收起时托盘向上滑到把手后面，把手图标翻转 180°。
-   这是**本仓库自己**的收起，不是上游那个左侧裸箭头 —— 上游的 .bonds-toggle 与 .gm__bond-list 随之删除，勾选状态记在
-   localStorage 的 sp_bonds_collapsed（public/js/ui/bondStrip.js）。 */
-.bstrip-container {
-  display: flex; flex-direction: column; align-items: center; justify-content: flex-start;
-  pointer-events: none; width: 100%;
-}
-.bstrip-tray {
-  display: flex; align-items: flex-start; justify-content: center; pointer-events: none;
-  max-height: 2.6rem; opacity: 1; transform: translateY(0); transform-origin: top center;
-  transition: max-height 0.24s cubic-bezier(0.2, 0.9, 0.3, 1),
-              opacity 0.2s cubic-bezier(0.2, 0.9, 0.3, 1),
-              transform 0.24s cubic-bezier(0.2, 0.9, 0.3, 1);
-  width: 100%;
-}
-.bstrip-container.is-collapsed .bstrip-tray {
-  max-height: 0; opacity: 0; transform: translateY(-0.35rem) scale(0.96);
-  pointer-events: none; overflow: hidden;
-}
-/* 紧贴在徽章正下方的半透明微型折叠把手 */
-.bstrip__fold-handle {
-  pointer-events: auto; cursor: pointer; display: inline-flex; align-items: center; justify-content: center;
-  width: 0.54rem; height: 0.28rem; margin-top: 0.04rem;
-  background: rgba(18, 25, 23, 0.88); border: 1px solid rgba(255, 255, 255, 0.18); border-radius: 2px;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.6); color: rgba(255, 255, 255, 0.65);
-  transition: all 0.18s ease-out; outline: none; padding: 0; flex: none;
-}
-.bstrip__fold-handle:hover {
-  background: rgba(28, 38, 35, 0.96); border-color: rgba(23, 249, 183, 0.6); color: #17f9b7;
-  box-shadow: 0 0 8px rgba(23, 249, 183, 0.35);
-}
-.bstrip__fold-handle:active { transform: scale(0.92); background: rgba(23, 249, 183, 0.2); }
-.bstrip__fold-icon { width: 0.24rem; height: 0.24rem; display: grid; place-items: center; transition: transform 0.25s cubic-bezier(0.2, 0.9, 0.3, 1); }
-.bstrip__fold-icon svg { width: 100%; height: 100%; fill: currentColor; display: block; }
-.bstrip-container.is-collapsed .bstrip__fold-handle { margin-top: 0; background: rgba(14, 20, 18, 0.92); border-color: rgba(255, 255, 255, 0.25); }
-.bstrip-container.is-collapsed .bstrip__fold-icon { transform: rotate(180deg); }
-/* The strip scrolls horizontally: bondStrip.js draws the左右渐隐 mask (updateMask) and turns a vertical wheel into
-   scrollLeft, and both need a real scroll container to act on — without this it was a dead no-op and the discs past the
-   right edge were unreachable (the mask said "there is more", nothing could get there). The strip's own pointer-events
-   stays none: the discs (.bslot, auto) are the hit targets, so a touch that starts on a disc pans this scroller while the
-   board under the strip's empty box stays reachable (playtest2 item 8). No scrollbar: the mask is the affordance. */
-.bstrip { display: flex; align-items: flex-start; justify-content: flex-start; gap: .1rem; flex-wrap: nowrap;
-  max-width: min(11.2rem, 66vw); overflow-x: auto; overflow-y: hidden; overscroll-behavior-x: contain;
-  -webkit-overflow-scrolling: touch; scrollbar-width: none; -ms-overflow-style: none; padding: 0 .12rem 0 .04rem; }
-.bstrip::-webkit-scrollbar { display: none; }
+.gm__bond-list { min-width: 0; }
+/* The hidden list leaves no hit area over the board; only this compact tab can reopen it (GitHub #142). */
+/* A bare arrow (the owner's request after 0.2.0: the boxed 「收起」 tab looked heavy): transparent, half-visible until
+   hovered or focused; the 44 × 44 touch target stays (an invisible hit area), the name is the aria-label. */
+.gm__bonds .bonds-toggle { pointer-events: auto; flex: none; display: inline-flex; align-items: center; justify-content: center;
+  min-width: 44px; min-height: 44px; padding: 0; color: var(--text-hi); background: transparent; border: 0; cursor: pointer;
+  opacity: .55; transition: opacity var(--t-fast) var(--ease-out), color var(--t-fast) var(--ease-out); line-height: 1; }
+.bonds-toggle .icon { width: max(.22rem, 18px); height: max(.22rem, 18px); filter: drop-shadow(0 0 2px rgba(0, 0, 0, .85)); }
+.bonds-toggle[aria-expanded="false"] { opacity: .8; }
+.bonds-toggle:hover, .bonds-toggle:focus-visible { opacity: 1; color: var(--mint-500); }
+.bonds-toggle:focus-visible { outline: 2px solid var(--mint-500); outline-offset: -4px; }
+.bstrip { display: flex; align-items: flex-start; gap: .1rem; flex-wrap: nowrap; }
 .bstrip.is-frozen .bslot { opacity: .5; filter: saturate(.4); }
 .bstrip--empty { display: inline-flex; align-items: center; gap: .12rem; padding: .08rem .16rem; font-size: .15rem; color: var(--text-dim); background: rgba(8, 11, 10, .6); border: 1px dashed var(--line-2); }
 /* a watched teammate's bonds (DESIGN §20.15): an amber "👁 name" pill in front of the discs, amber rings. Horizontal at
    every width with a pixel floor (a vertical .12rem name was ~6-8 px per glyph on desktop / tablet, ~5 px on phones
    where 1rem is clamped at 40 px); centred on the discs, clear of the team panel below */
-.bstrip__owner { align-self: center; flex: none; display: inline-flex; flex-direction: row; align-items: center; gap: max(.04rem, 3px);
-  padding: max(.03rem, 2px) max(.06rem, 4px); border: 1px solid rgba(246, 163, 41, .5); background: rgba(40, 26, 6, .7); }
-.bstrip__owner .micro { color: var(--amber); font-size: max(.15rem, 10px); letter-spacing: .04em; max-width: max(1.3rem, 72px);
+.bstrip__owner { align-self: center; flex: none; display: inline-flex; flex-direction: row; align-items: center; gap: max(.04rem, calc(3px * var(--sp-ui, 1)));
+  padding: max(.03rem, calc(2px * var(--sp-ui, 1))) max(.06rem, calc(4px * var(--sp-ui, 1))); border: 1px solid rgba(246, 163, 41, .5); background: rgba(40, 26, 6, .7); }
+.bstrip__owner .micro { color: var(--amber); font-size: max(.15rem, 10px); letter-spacing: .04em; max-width: max(1.3rem, calc(72px * var(--sp-ui, 1)));
   overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .bstrip__eye { color: var(--amber); font-size: max(.17rem, 11px); flex: none; }
-.bstrip--empty .bstrip__owner .micro { max-width: max(1.6rem, 80px); }
+.bstrip--empty .bstrip__owner .micro { max-width: max(1.6rem, calc(80px * var(--sp-ui, 1))); }
 .bstrip--empty.is-other { border-color: rgba(246, 163, 41, .5); }
 @media (max-width: 767px) {
   .bstrip__owner .micro { font-size: max(.12rem, 9px); }
@@ -469,6 +552,7 @@
 .team__spmark.is-turn i:nth-child(2) { animation-delay: .16s; }
 .team__spmark.is-turn i:nth-child(3) { animation-delay: .32s; }
 @keyframes spmark-dot { 0%, 100% { opacity: .35; } 40% { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .team__spmark.is-turn i { animation: none; } }
 .team__status .icon { width: .18rem; height: .18rem; }
 .team__status .lsprite { width: .2rem; height: .2rem; object-fit: contain; }
 .team__status.has-sprite { border-color: transparent; background: none; animation: none; }
@@ -520,7 +604,7 @@
 .gm__effects { position: absolute; right: .3rem; top: 2.4rem; }
 /* 准备就绪 refused (the temp row holds pieces): its reason shows under the button and pushes the ready count down —
    the effects column follows, or the count runs into it on phones */
-.gm.has-readywhy .gm__effects { top: calc(2.4rem + max(.3rem, 16px)); }
+.gm.has-readywhy .gm__effects { top: calc(2.4rem + max(.3rem, calc(16px * var(--sp-ui, 1)))); }
 .effects { display: flex; flex-direction: column; align-items: flex-end; gap: .08rem; }
 .effect {
   position: relative; width: .5rem; height: .5rem; display: grid; place-items: center;
@@ -530,11 +614,6 @@
 .effect .icon { width: .28rem; height: .28rem; color: var(--mint-500); }
 .effect--band { border-color: var(--mint-800); }
 .effect--team { border-color: rgba(78, 216, 175, .6); }
-/* 超限词条的图标（业主 2026-10-21）：盒子与 .effect 完全同尺寸（.5rem），只换配色 */
-.effect--trait { border-color: rgba(78, 216, 175, .75); }
-.effect--traitNeg { border-color: rgba(231, 49, 24, .75); }
-.effect__trait { font-size: .26rem; line-height: 1; color: var(--mint-500); }
-.effect--traitNeg .effect__trait { color: #ff5a44; }
 .effect__n { position: absolute; right: -.05rem; bottom: -.05rem; min-width: .2rem; font-size: .12rem; line-height: 1.4; text-align: center; background: var(--gold); color: #1d1400; padding: 0 .03rem; }
 .efftip { display: flex; flex-direction: column; gap: .04rem; max-width: 3.6rem; }
 .efftip b { font-size: .17rem; color: var(--mint-400); }
@@ -543,7 +622,6 @@
 
 /* ---- corner: emote + settings --------------------------------------------------------------------------------- */
 .gm__corner { position: absolute; left: .24rem; bottom: .24rem; display: flex; align-items: flex-end; gap: .1rem; }
-/* 业主 2026-10-22：手机上齿轮要有 34 px 的可点区（.56rem 在窄屏只有 ~19 px 点不准）；max() 同时保住桌面 rem 缩放。 */
 .gm__gear {
   width: .56rem; height: .56rem; display: grid; place-items: center; background: rgba(8, 11, 10, .85);
   border: 1px solid var(--line-2); color: var(--text-lo); transition: color var(--t-fast), border-color var(--t-fast);
@@ -556,32 +634,32 @@
 /* Local combat meter, docked above the corner's actual height (including mobile wrapped rows). */
 .combat-metrics {
   --bk-c: var(--mint-500);
-  position: absolute; left: 0; bottom: calc(100% + max(.1rem, 8px)); z-index: 12;
-  width: min(max(5.2rem, 340px), calc(100vw - var(--sa-l, 0px) - var(--sa-r, 0px) - .48rem));
-  max-height: min(max(6.6rem, 280px), calc(100vh - var(--combat-corner-height, 110px) - max(.9rem, 48px) - .34rem - var(--sa-t, 0px) - var(--sa-b, 0px)));
-  max-height: min(max(6.6rem, 280px), calc(100dvh - var(--combat-corner-height, 110px) - max(.9rem, 48px) - .34rem - var(--sa-t, 0px) - var(--sa-b, 0px)));
+  position: absolute; left: 0; bottom: calc(100% + max(.1rem, calc(8px * var(--sp-ui, 1)))); z-index: 12;
+  width: min(max(5.2rem, 32px, calc(340px * var(--sp-ui, 1))), calc(100vw - var(--sa-l, 0px) - var(--sa-r, 0px) - .48rem));
+  max-height: min(max(6.6rem, calc(280px * var(--sp-ui, 1))), calc(100vh - var(--combat-corner-height, 110px) - max(.9rem, calc(48px * var(--sp-ui, 1))) - .34rem - var(--sa-t, 0px) - var(--sa-b, 0px)));
+  max-height: min(max(6.6rem, calc(280px * var(--sp-ui, 1))), calc(100dvh - var(--combat-corner-height, 110px) - max(.9rem, calc(48px * var(--sp-ui, 1))) - .34rem - var(--sa-t, 0px) - var(--sa-b, 0px)));
   display: flex; flex-direction: column; overflow: hidden;
   background: linear-gradient(180deg, rgba(28, 35, 32, .98), rgba(17, 21, 19, .98));
   border: 1px solid var(--line-2); border-top: 2px solid var(--mint-700);
   box-shadow: 0 .12rem .4rem rgba(0, 0, 0, .6); color: var(--text-md);
   font-size: max(calc(.14 * var(--t)), 12px); line-height: 1.35; text-align: left;
 }
-.combat-metrics__head { display: flex; flex: none; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0 8px; padding: max(.1rem, 8px) max(.14rem, 10px) 0; }
+.combat-metrics__head { display: flex; flex: none; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0 8px; padding: max(.1rem, calc(8px * var(--sp-ui, 1))) max(.14rem, calc(10px * var(--sp-ui, 1))) 0; }
 .combat-metrics__micro { font-family: var(--font-display); font-size: max(calc(.1 * var(--t)), 10px); letter-spacing: .12em; color: var(--mint-500); }
 .combat-metrics__head h2 { margin: 0; font-size: max(calc(.2 * var(--t)), 16px); color: var(--text-hi); }
 .combat-metrics__body { display: flex; flex: 1 1 auto; flex-direction: column; min-height: 0; overflow: hidden; }
 .combat-metrics__close { display: grid; place-items: center; flex: none; width: max(.36rem, 32px); height: max(.36rem, 32px); color: var(--text-md); border: 1px solid var(--line-2); background: var(--bg-1); }
 .combat-metrics__close .icon { width: max(.18rem, 16px); height: max(.18rem, 16px); }
-.combat-metrics__tools { display: flex; flex: none; gap: 8px; padding: 8px max(.14rem, 10px); }
+.combat-metrics__tools { display: flex; flex: none; gap: 8px; padding: 8px max(.14rem, calc(10px * var(--sp-ui, 1))); }
 .combat-metrics__head > .combat-metrics__tools { flex-basis: 100%; padding-left: 0; padding-right: 0; }
 .combat-metrics__scopes { display: flex; flex: 1; min-width: 0; }
 .combat-metrics__scopes button { flex: 1; min-width: 0; padding: 4px 6px; min-height: 32px; color: var(--text-lo); background: var(--bg-1); border: 1px solid var(--line-2); white-space: nowrap; font-size: inherit; }
 .combat-metrics__scopes button[aria-pressed="true"] { background: var(--mint-900); color: var(--mint-400); border-color: var(--mint-700); }
-.combat-metrics__totals { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); flex: none; gap: 8px; padding: 0 max(.14rem, 10px) 8px; }
+.combat-metrics__totals { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); flex: none; gap: 8px; padding: 0 max(.14rem, calc(10px * var(--sp-ui, 1))) 8px; }
 .combat-metrics__totals span { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px; color: var(--text-lo); }
 .combat-metrics__totals b { font-family: var(--font-num); color: var(--text-hi); font-size: max(calc(.18 * var(--t)), 14px); overflow-wrap: anywhere; }
 .combat-metrics__totals span:last-child b { color: var(--mint-400); }
-.combat-metrics__legend { display: flex; flex: none; flex-wrap: wrap; align-items: center; gap: 6px 12px; padding: 0 max(.14rem, 10px) 8px; font-size: max(calc(.12 * var(--t)), 11px); }
+.combat-metrics__legend { display: flex; flex: none; flex-wrap: wrap; align-items: center; gap: 6px 12px; padding: 0 max(.14rem, calc(10px * var(--sp-ui, 1))) 8px; font-size: max(calc(.12 * var(--t)), 11px); }
 .combat-metrics__type { display: inline-flex; align-items: center; gap: 4px; }
 .combat-metrics__type::before { content: ''; width: 10px; height: 4px; background: var(--damage-color); }
 .combat-metrics__type--phys, .combat-metrics__segment--phys { --damage-color: #f6a329; }
@@ -589,8 +667,8 @@
 .combat-metrics__type--true, .combat-metrics__segment--true { --damage-color: #ff7272; }
 .combat-metrics__type--elemental, .combat-metrics__segment--elemental { --damage-color: #cf9fff; }
 .combat-metrics__sort { margin-left: auto; color: var(--text-lo); }
-.combat-metrics__list { flex: 1 1 auto; min-height: 0; margin: 0; padding: 0 max(.14rem, 10px); list-style: none; overflow-y: auto; overscroll-behavior: contain; touch-action: pan-y; -webkit-overflow-scrolling: touch; }
-.combat-metrics__row { display: grid; grid-template-columns: max(.2rem, 18px) max(.42rem, 30px) minmax(0, 1fr); gap: max(.08rem, 6px); align-items: center; padding: max(.09rem, 7px) 0; border-top: 1px solid var(--line); }
+.combat-metrics__list { flex: 1 1 auto; min-height: 0; margin: 0; padding: 0 max(.14rem, calc(10px * var(--sp-ui, 1))); list-style: none; overflow-y: auto; overscroll-behavior: contain; touch-action: pan-y; -webkit-overflow-scrolling: touch; }
+.combat-metrics__row { display: grid; grid-template-columns: max(.2rem, 18px) max(.42rem, 30px) minmax(0, 1fr); gap: max(.08rem, calc(6px * var(--sp-ui, 1))); align-items: center; padding: max(.09rem, calc(7px * var(--sp-ui, 1))) 0; border-top: 1px solid var(--line); }
 .combat-metrics__rank { align-self: start; color: var(--text-lo); font-family: var(--font-num); padding-top: 2px; }
 .combat-metrics__row > .uthumb { width: max(.42rem, 30px); height: max(.42rem, 30px); }
 .combat-metrics__unit { min-width: 0; }
@@ -605,7 +683,7 @@
 .combat-metrics__values .combat-metrics__heal b { color: var(--mint-400); }
 .combat-metrics__empty { padding: 20px 8px; color: var(--text-md); text-align: center; }
 .combat-metrics__empty small { display: inline-block; margin-top: 6px; color: var(--text-lo); }
-.combat-metrics__note { flex: none; margin: 0; padding: 8px max(.14rem, 10px); border-top: 1px solid var(--line); color: var(--text-lo); font-size: max(calc(.1 * var(--t)), 10px); }
+.combat-metrics__note { flex: none; margin: 0; padding: 8px max(.14rem, calc(10px * var(--sp-ui, 1))); border-top: 1px solid var(--line); color: var(--text-lo); font-size: max(calc(.1 * var(--t)), 10px); }
 .combat-metrics button:hover { color: var(--mint-400); border-color: var(--mint-700); }
 .combat-metrics button:focus-visible { outline: 2px solid var(--mint-400); outline-offset: -2px; }
 @media (pointer: coarse), (any-pointer: coarse) {
@@ -621,6 +699,37 @@
   .combat-metrics__totals, .combat-metrics__legend { padding-bottom: 4px; }
   .combat-metrics__note { padding-top: 4px; padding-bottom: 4px; }
   .combat-metrics__note br { display: none; }
+}
+/* Phones in landscape (short touch screens: 1rem is clamped at 40 px by theme.css): the ported desktop card — 12–16 px
+   text, 340 px wide, 30 px thumbs — took 40 % of an 844 × 390 screen, about twice the HUD's own 6–7 px text, and hid
+   the battle behind it. Scale the card by the HUD's proportion instead of the desktop one: 9–12 px text, 24 px thumbs,
+   36 px touch rows, 300 px wide (文字大小 still lifts every size through --t). Desktop/tablet keep the original sizes. */
+@media (max-height: 600px) and (pointer: coarse), (max-height: 600px) and (any-pointer: coarse) {
+  .combat-metrics {
+    width: min(max(5rem, 32px, calc(300px * var(--sp-ui, 1))), calc(100vw - var(--sa-l, 0px) - var(--sa-r, 0px) - .48rem));
+    font-size: max(calc(.2 * var(--t)), 9px);
+    line-height: 1.3;
+  }
+  .combat-metrics__head { padding: max(.06rem, calc(6px * var(--sp-ui, 1))) max(.12rem, calc(8px * var(--sp-ui, 1))) 0; gap: 0 6px; }
+  .combat-metrics__micro { font-size: max(calc(.12 * var(--t)), 8px); }
+  .combat-metrics__head h2 { font-size: max(calc(.3 * var(--t)), 12px); }
+  .combat-metrics__close { width: max(.3rem, 32px, calc(36px * var(--sp-ui, 1))); height: max(.3rem, 32px, calc(36px * var(--sp-ui, 1))); min-width: 36px; min-height: 36px; }
+  .combat-metrics__close .icon { width: max(.16rem, 15px); height: max(.16rem, 15px); }
+  .combat-metrics__tools { padding: max(.06rem, calc(6px * var(--sp-ui, 1))) max(.12rem, calc(8px * var(--sp-ui, 1))); gap: 6px; }
+  .combat-metrics__scopes button { min-height: 36px; padding: 2px 5px; }
+  .combat-metrics__totals { gap: 6px; padding: 0 max(.12rem, calc(8px * var(--sp-ui, 1))) max(.06rem, calc(6px * var(--sp-ui, 1))); }
+  .combat-metrics__totals b { font-size: max(calc(.26 * var(--t)), 11px); }
+  .combat-metrics__legend { gap: 4px 10px; padding: 0 max(.12rem, calc(8px * var(--sp-ui, 1))) max(.06rem, calc(6px * var(--sp-ui, 1))); font-size: max(calc(.16 * var(--t)), 8px); }
+  .combat-metrics__type::before { width: 8px; height: 3px; }
+  .combat-metrics__list { padding: 0 max(.12rem, calc(8px * var(--sp-ui, 1))); }
+  .combat-metrics__row { grid-template-columns: max(.24rem, 14px) max(.5rem, 24px) minmax(0, 1fr); gap: 5px; padding: max(.05rem, calc(4px * var(--sp-ui, 1))) 0; }
+  .combat-metrics__row > .uthumb { width: max(.5rem, 24px); height: max(.5rem, 24px); }
+  .combat-metrics__rank { padding-top: 1px; }
+  .combat-metrics__bar { height: max(.04rem, 4px); margin: 3px 0; }
+  .combat-metrics__values { gap: 4px; }
+  .combat-metrics__values small { font-size: max(calc(.14 * var(--t)), 8px); }
+  .combat-metrics__values b { font-size: max(calc(.18 * var(--t)), 9px); }
+  .combat-metrics__note { padding: max(.06rem, calc(6px * var(--sp-ui, 1))) max(.12rem, calc(8px * var(--sp-ui, 1))); font-size: max(calc(.14 * var(--t)), 8px); }
 }
 
 .ewheel { position: relative; }
@@ -782,10 +891,18 @@
 .set-toggle.is-on i { background: var(--mint-800); }
 .set-toggle.is-on i::after { transform: translateX(.22rem); background: var(--mint-400); }
 .set-seg { grid-column: 2 / 4; justify-self: start; display: flex; flex-wrap: wrap; max-width: 100%; border: 1px solid var(--line-2); }
-/* 语音语言: the four dubs plus the 本土语言 switch, wrapping on a narrow modal */
-.set-voice { grid-column: 2 / 4; justify-self: start; display: flex; flex-wrap: wrap; align-items: stretch; gap: .1rem; max-width: 100%; }
-.set-voice .set-seg { grid-column: auto; flex: 1 1 auto; }
-.set-native { min-height: .38rem; padding: 0 .12rem; background: #0a0d0c; border: 1px solid var(--line-2); color: var(--text-lo); font-size: calc(.16 * var(--t)); cursor: pointer; }
+/* 语音语言: the four endonyms plus the 本土语言 switch. A flex wrap left 한국어 on a row of its own (four .8rem
+   minima squeezed by the switch). The group wraps its four buttons four across or two by two, never 3 + 1: each
+   button's basis is clamp(25 %, (2.4rem − 100 %) × 999, 50 %) of the group — hugely negative (→ 25 %, four across)
+   while the group is wider than 2.4rem, hugely positive (→ 50 %, two by two) below it. The group's 1 px gaps over
+   its line-coloured background draw the dividers in both layouts. No container query (the CSS stays within the
+   supported browsers, test/client-static.test.js).
+   [ASSUMED] 2.4rem of the group (about 0.6rem a button): the usual control column (desktop, and a phone around
+   844 px where 1rem is 40 px) is wider, so the four names stay on one row beside 本土语言. */
+.set-voice { grid-column: 2 / 4; justify-self: stretch; display: flex; flex-wrap: nowrap; align-items: stretch; gap: .08rem; max-width: 100%; min-width: 0; }
+.set-voice .set-seg { grid-column: auto; flex: 1 1 auto; display: flex; flex-wrap: wrap; gap: 1px; min-width: 0; background: var(--line-2); }
+.set-voice .set-seg button { min-width: 0; padding: 0 .04rem; overflow-wrap: anywhere; border-right: 0; flex: 1 1 clamp(calc(25% - 1px), (2.4rem - 100%) * 999, calc(50% - 1px)); }
+.set-native { flex: none; display: inline-flex; align-items: center; justify-content: center; min-height: .38rem; padding: 0 .12rem; background: #0a0d0c; border: 1px solid var(--line-2); color: var(--text-lo); font-size: calc(.16 * var(--t)); cursor: pointer; }
 .set-native.is-on { background: var(--mint-500); color: var(--text-on-mint); font-weight: 700; }
 .set-seg button { flex: 1 1 auto; min-width: .8rem; min-height: .38rem; height: auto; white-space: normal; background: #0a0d0c; border: 0; border-right: 1px solid var(--line-2); color: var(--text-lo); font-size: calc(.16 * var(--t)); }
 /* 文字大小 (ui/settings.js): four steps, so its buttons are narrower than the two- and three-step groups' — at .8rem each
@@ -794,12 +911,16 @@
 .set-seg button:last-child { border-right: 0; }
 .set-seg button.is-on { background: var(--mint-500); color: var(--text-on-mint); font-weight: 700; }
 .set-hint { margin-top: .06rem; font-size: calc(.14 * var(--t)); color: var(--text-dim); line-height: 1.8; }
+.set-hint__help { display: inline-flex; align-items: center; gap: .03rem; padding: 0; border: 0; background: none; color: var(--text-lo); font: inherit; cursor: help; text-decoration: underline dotted; text-underline-offset: .03rem; }
+.set-hint__help .icon { width: .14rem; height: .14rem; }
+.set-hint__help:hover, .set-hint__help:focus-visible { color: var(--mint-400); }
 .set-hint kbd, .lvcard__key, .toolbtn kbd { font-family: var(--font-num); font-size: .11rem; border: 1px solid var(--line-2); padding: 0 .04rem; color: var(--text-lo); background: rgba(0, 0, 0, .3); }
 /* 快捷键 (ui/settings.js HotkeySection): each shortcut with its key — click the key, press the new one; two columns,
    one under 768 px (phones in landscape) */
 .set-keys { display: flex; flex-direction: column; gap: .08rem; padding-top: .1rem; border-top: 1px solid var(--line); }
 /* 外观插件 (DESIGN §32 P1a, ui/settings.js CosmeticSection): laid out like 快捷键 — a head, a hint, one switch per plugin */
 .set-plugins { display: flex; flex-direction: column; gap: .08rem; padding-top: .1rem; border-top: 1px solid var(--line); }
+.set-theme-win { margin: 0; font-family: var(--font-num); color: var(--text-lo); overflow-wrap: anywhere; }
 .set-keys__head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .12rem; min-height: .44rem; }
 .set-keys__list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .06rem .14rem; margin: 0; padding: 0; list-style: none; }
 .set-keys__row { display: flex; align-items: center; justify-content: space-between; gap: .1rem; min-height: .42rem; padding: .03rem .03rem .03rem .12rem; background: rgba(0, 0, 0, .22); border: 1px solid var(--line); }
@@ -815,6 +936,9 @@
 .set-keys__more > summary { padding: .06rem 0; font-size: calc(.15 * var(--t)); color: var(--mint-400); cursor: pointer; }
 .set-keys__more[open] > summary { margin-bottom: .08rem; }
 @keyframes set-key-wait { to { box-shadow: 0 0 .12rem rgba(246, 163, 41, .45); } }
+/* 素材存储 (ui/settings.js StorageSection): laid out like 问题反馈 below it — a head with its button, a hint, the answer */
+.set-storage { display: flex; flex-direction: column; gap: .08rem; padding-top: .1rem; border-top: 1px solid var(--line); }
+.set-storage__actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: .08rem; }
 /* 问题反馈 (ui/settings.js DiagSection): laid out like 快捷键 — a head with its button, a hint, the result line; the
    recorded-error count in the figure face of the slider values (amber once there is one); the report box only when the
    clipboard refused it, styled like 干员调配's 导出 box (screens/loadout.css .lo-io__text) */
@@ -826,8 +950,8 @@
 .set-diag__url { min-width: 0; font-size: calc(.13 * var(--t)); color: var(--text-dim); overflow-wrap: anywhere; -webkit-user-select: all; user-select: all; }
 .set-diag__battle-hint { margin-top: -.06rem; }
 .set-diag__text {
-  box-sizing: border-box; width: 100%; height: max(2rem, 140px); min-height: 120px; resize: vertical;
-  padding: max(.1rem, 8px) max(.12rem, 10px);
+  box-sizing: border-box; width: 100%; height: max(2rem, 32px, calc(140px * var(--sp-ui, 1))); min-height: 120px; resize: vertical;
+  padding: max(.1rem, calc(8px * var(--sp-ui, 1))) max(.12rem, calc(10px * var(--sp-ui, 1)));
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: max(.13rem, 11px); line-height: 1.5;
   color: var(--text-hi); background: rgba(4, 10, 8, .55); border: 1px solid var(--line-2); border-radius: 2px; outline: none;
   white-space: pre-wrap; overflow-wrap: anywhere; overflow-y: auto;
@@ -838,7 +962,7 @@
 @media (max-width: 767px) { .set-keys__list { grid-template-columns: minmax(0, 1fr); } }
 @media (max-height: 600px) and (pointer: coarse), (max-height: 600px) and (any-pointer: coarse) {
   .set-key { height: max(.38rem, 30px); }
-  .set-keys__more > summary { padding: max(.06rem, 8px) 0; }
+  .set-keys__more > summary { padding: max(.06rem, calc(8px * var(--sp-ui, 1))) 0; }
 }
 
 /* ---- exit / away ------------------------------------------------------------------------------------------------------ */
@@ -963,265 +1087,87 @@
 .pauseov__note { font-size: calc(.17 * var(--t)); color: var(--text-md); text-shadow: 0 1px 2px #000; }
 .pauseov__btns { display: flex; gap: .2rem; }
 
-/* 工坊包的客户端面板宿主（slot screen.game.overlay）：铺满对局屏、不吃指针 ——
-
-/* ── 作战统计面板 · 半透明重做（业主 2026-10-18） ─────────────────────────────
-   原来是一块 98% 不透明的深色板，压在战场上几乎把左下的地面全挡住，也看不出是
-   「叠在战斗上面」的浮层。现在改成毛玻璃：62% 底色 + backdrop blur，边框只留
-   一条细线，行与行之间用极淡的分隔线代替实心块。数值和标题仍然足够亮，能在
-   移动的战场上看清。 */
-.combat-metrics {
-  background: linear-gradient(180deg, rgba(18, 24, 22, .62), rgba(10, 14, 13, .58));
-  -webkit-backdrop-filter: blur(14px) saturate(1.15);
-  backdrop-filter: blur(14px) saturate(1.15);
-  border: 1px solid rgba(120, 220, 180, .18);
-  border-top: 1px solid rgba(120, 220, 180, .42);
-  border-radius: 2px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, .38), inset 0 1px 0 rgba(255, 255, 255, .04);
-  --cm-line: rgba(255, 255, 255, .07);
-}
-/* 顶部标题区：只留一条渐隐的细线，不再是一整块实心 */
-.combat-metrics__head {
-  background: linear-gradient(180deg, rgba(255, 255, 255, .045), rgba(255, 255, 255, 0));
-  border-bottom: 1px solid var(--cm-line);
-}
-.combat-metrics__micro { color: rgba(120, 220, 180, .78); }
-.combat-metrics__head h2 { color: rgba(240, 248, 244, .96); font-weight: 600; }
-.combat-metrics__close {
-  color: rgba(210, 224, 218, .68);
-  background: rgba(255, 255, 255, .05);
-  border: 1px solid var(--cm-line);
-  border-radius: 2px;
-}
-.combat-metrics__close:hover { background: rgba(255, 255, 255, .12); color: #fff; }
-/* 范围切换：胶囊化的轻量按钮 */
-.combat-metrics__scopes { gap: 6px; }
-.combat-metrics__scopes button {
-  background: rgba(255, 255, 255, .04);
-  border: 1px solid var(--cm-line);
-  border-radius: 2px;
-  color: rgba(200, 214, 208, .72);
-}
-.combat-metrics__scopes button[aria-pressed="true"] {
-  background: rgba(80, 220, 170, .16);
-  border-color: rgba(120, 220, 180, .5);
-  color: #a8f0d2;
-}
-/* 总计：加大数字，弱化标签 */
-.combat-metrics__totals { border-bottom: 1px solid var(--cm-line); padding-bottom: 10px; }
-.combat-metrics__totals span { color: rgba(190, 205, 199, .66); }
-.combat-metrics__totals b { color: rgba(244, 250, 247, .97); font-weight: 600; }
-.combat-metrics__totals span:last-child b { color: #8ce8c4; }
-/* 图例：小圆点代替色块，弱化 */
-.combat-metrics__type::before { width: 7px; height: 7px; border-radius: 50%; }
-.combat-metrics__legend { color: rgba(180, 196, 190, .6); }
-.combat-metrics__sort { color: rgba(170, 188, 181, .55); }
-/* 行：极淡分隔线，悬停时微微提亮 */
-.combat-metrics__list { padding-bottom: 4px; }
-.combat-metrics__row {
-  padding: 6px 4px;
-  border-bottom: 1px solid rgba(255, 255, 255, .045);
-  border-radius: 2px;
-}
-.combat-metrics__row:last-child { border-bottom: 0; }
-.combat-metrics__row:hover { background: rgba(255, 255, 255, .045); }
-.combat-metrics__rank { color: rgba(160, 180, 172, .55); font-variant-numeric: tabular-nums; }
-.combat-metrics__name b { color: rgba(240, 248, 244, .95); font-weight: 600; }
-/* 伤害构成条：细、圆、半透明底 */
-.combat-metrics__bar {
-  height: max(.04rem, 4px);
-  border-radius: 999px;
-  background: rgba(255, 255, 255, .07);
-  overflow: hidden;
-}
-.combat-metrics__segment { border-radius: 999px; }
-.combat-metrics__values small { color: rgba(170, 188, 181, .55); letter-spacing: .04em; }
-.combat-metrics__values b { color: rgba(238, 246, 242, .94); }
-.combat-metrics__values .combat-metrics__heal b { color: #8ce8c4; }
-.combat-metrics__empty { color: rgba(190, 205, 199, .62); }
-.combat-metrics__foot { border-top: 1px solid var(--cm-line); color: rgba(160, 178, 171, .5); }
-/* 不支持 backdrop-filter 的老 WebView：退回一个仍然半透明但可读的底色 */
-@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
-  .combat-metrics { background: linear-gradient(180deg, rgba(18, 24, 22, .88), rgba(10, 14, 13, .86)); }
+/* 协议已失效 (ui/downedPlate.js): the project's Modal restyled as the event's panel (video 10:56–10:58) — the official map
+   behind, the knocked-out face, the title, and the two buttons under the panel; design px ÷ 100 [ASSUMED: measured from
+   that footage]. The face turns from calm to knocked out after .5 s with a shake; with reduced motion it simply shows. */
+/* the footage dims the field but keeps it sharp: no blur behind this one */
+.modal.downm-veil { background: rgba(3, 5, 4, .6); -webkit-backdrop-filter: none; backdrop-filter: none; }
+.modal__box.downm { --bk-c: transparent; width: min(13.8rem, 96vw); max-height: none; background: none; border: 0; box-shadow: none; overflow: visible; }
+.downm .modal__stripe { display: none; }
+.downm .modal__body { padding: 0; overflow: visible; }
+.downm__panel { position: relative; height: 3.45rem; overflow: hidden; background: rgba(5, 11, 13, .9); box-shadow: 0 0 .5rem .25rem rgba(5, 11, 13, .7); }
+/* the official map is an opaque square: its edges fade into the panel */
+.downm__map { position: absolute; left: 1.6rem; top: -2.6rem; width: 8.67rem; max-width: none; opacity: .55;
+  -webkit-mask-image: radial-gradient(closest-side, #000 55%, transparent); mask-image: radial-gradient(closest-side, #000 55%, transparent); }
+.downm__x { position: absolute; width: .24rem; height: .24rem; opacity: .6;
+  background: linear-gradient(var(--red), var(--red)) center / 100% 2px no-repeat, linear-gradient(var(--red), var(--red)) center / 2px 100% no-repeat; }
+.downm__x--tl { left: 3.2rem; top: .5rem; }
+.downm__x--tr { right: 3.2rem; top: .5rem; }
+.downm__x--bl { left: 3.2rem; bottom: .5rem; }
+.downm__x--br { right: 3.2rem; bottom: .5rem; }
+.downm__face { position: absolute; left: 4.79rem; top: 1.05rem; width: 1.12rem; height: 1.04rem; color: #c9cccc; }
+.downm__face.is-out { animation: downm-shake 360ms steps(6, end); }
+.downm__pix { display: block; width: 100%; height: 100%; }
+.downm__title { position: absolute; left: 6.3rem; top: 1.2rem; margin: 0; color: #f0353b; font-size: calc(.6 * var(--t)); font-weight: 900; letter-spacing: .04em;
+  line-height: 1.1; white-space: nowrap; animation: downm-in 260ms 120ms var(--ease-out) both; }
+.downm__sub { position: absolute; left: 6.3rem; top: 2.05rem; color: #6d7779; font-family: var(--font-display); font-size: calc(.2 * var(--t)); letter-spacing: .08em; }
+.downm__btns { display: flex; justify-content: center; gap: 2rem; margin-top: .8rem; }
+.downm__btn { min-width: 3.06rem; min-height: .75rem; font-size: calc(.24 * var(--t)); }
+/* the footage's button glyphs are about as tall as the text block */
+.downm__btn .btn__icon { width: 1.5em; height: 1.5em; }
+.downm__btn--watch { background: #e9ecec; color: #15191a; border-color: #e9ecec; }
+@keyframes downm-shake { 0%, 100% { transform: none; } 20%, 60% { transform: translateX(-.06rem); } 40%, 80% { transform: translateX(.06rem); } }
+@keyframes downm-in { from { opacity: 0; transform: translateX(.3rem); } }
+@media (prefers-reduced-motion: reduce) {
+  .downm__face.is-out, .downm__title { animation: none; }
 }
 
-
-/* 超限 R16+ 的战斗倍速标记（业主 2026-10-19）：只提示战斗推进是 2 倍，倒计时仍是 1 倍速 */
-.gtop__speed{display:inline-flex;align-items:center;height:20px;padding:0 6px;margin-right:6px;
-  font:700 11px/1 var(--font-num);letter-spacing:.04em;color:var(--pos);
-  border:1px solid color-mix(in srgb,var(--pos) 45%,transparent);border-radius:4px;
-  background:color-mix(in srgb,var(--pos) 12%,transparent);cursor:help}
-
-
-
-/* 超限词条按钮 + 面板（业主 2026-10-20）：原来是时钟旁一排小标签，改成右侧一枚按钮 */
-.gtrait{position:relative;display:inline-flex}
-.gtrait__btn{display:inline-flex;align-items:center;gap:5px;height:24px;padding:0 9px;cursor:pointer;
-  font:600 11px/1 var(--font-cjk);letter-spacing:.04em;color:var(--pos);
-  background:color-mix(in srgb,var(--pos) 10%,rgba(10,16,14,.7));
-  border:1px solid color-mix(in srgb,var(--pos) 38%,transparent);border-radius:5px;
-  transition:background .16s ease,border-color .16s ease}
-.gtrait__btn:hover,.gtrait__btn.is-open{background:color-mix(in srgb,var(--pos) 20%,rgba(10,16,14,.7));
-  border-color:color-mix(in srgb,var(--pos) 60%,transparent)}
-.gtrait__ico{font-size:9px;opacity:.8}
-.gtrait__btn b{font:700 11px/1 var(--font-num);color:var(--pos-hi)}
-.gtrait__pop{position:absolute;top:calc(100% + 10px);right:0;width:min(430px,94vw);z-index:60;
-  /* 业主 2026-10-20：手机上（横屏 761×360 之类）面板会顶出屏幕底部，
-     所以它自己限高并在内部滚动 —— 头/计数/说明固定在顶部，只有词条列表滚。 */
-  display:flex;flex-direction:column;
-  max-height:calc(100dvh - 96px);max-height:calc(100vh - 96px);
-  background:rgba(10,16,14,.94);border:1px solid rgba(255,255,255,.12);border-radius:8px;
-  -webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);
-  box-shadow:0 18px 44px rgba(0,0,0,.55);padding:10px 0 6px;cursor:default;overflow:hidden}
-.gtrait__head{display:flex;align-items:flex-start;gap:8px;padding:12px 14px 10px;
-  border-bottom:1px solid rgba(255,255,255,.08)}
-.gtrait__title{display:flex;flex-direction:column;gap:4px}
-.gtrait__micro{font:700 8.5px/1 var(--font-num);letter-spacing:.22em;color:var(--pos);opacity:.8}
-.gtrait__title b{font:700 14px/1.2 var(--font-cjk);letter-spacing:.04em;color:var(--text-hi)}
-/* 正 / 负 / 合计 三个计数块 */
-.gtrait__tally{display:flex;gap:1px;margin:10px 14px 0;background:rgba(255,255,255,.07);border-radius:6px;overflow:hidden}
-.gtrait__tal{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;padding:8px 4px;
-  background:rgba(12,18,16,.9)}
-.gtrait__tal b{font:700 16px/1 var(--font-num)}
-.gtrait__tal i{font:600 9px/1 var(--font-cjk);font-style:normal;letter-spacing:.1em;color:var(--text-lo)}
-.gtrait__tal.is-pos b{color:var(--pos-hi)}
-.gtrait__tal.is-neg b{color:var(--neg-hi)}
-.gtrait__tal.is-total b{color:var(--text-hi)}
-.gtrait__note{margin:10px 14px 0;font-size:10.5px;line-height:1.5;color:var(--text-lo)}
-.gtrait__foot{padding:10px 14px 12px;border-top:1px solid rgba(255,255,255,.07);margin-top:8px}
-.gtrait__seal{font:700 9px/1 var(--font-num);letter-spacing:.2em;padding:5px 10px;border-radius:3px;
-  color:var(--pos-hi);border:1px solid color-mix(in srgb,var(--pos) 35%,transparent);
-  background:color-mix(in srgb,var(--pos) 12%,transparent)}
-.gtrait__x{width:20px;height:20px;margin-left:6px;cursor:pointer;color:var(--text-lo);
-  background:none;border:0;font-size:15px;line-height:1}
-.gtrait__x:hover{color:var(--text-hi)}
-/* 面板内的固定区（头/计数/说明/脚）不参与压缩，只有词条列表伸缩 */
-.gtrait__head,.gtrait__tally,.gtrait__note,.gtrait__foot{flex:0 0 auto}
-.gtrait__list{margin:0;padding:4px 0;list-style:none;flex:1 1 auto;min-height:0;
-  max-height:min(46vh,340px);overflow-y:auto;overscroll-behavior:contain;
-  touch-action:pan-y;-webkit-overflow-scrolling:touch}
-.gtrait__row{display:grid;grid-template-columns:36px auto 1fr;gap:9px;align-items:baseline;
-  padding:7px 14px;font-size:11.5px;line-height:1.55}
-.gtrait__row:hover{background:rgba(255,255,255,.04)}
-.gtrait__r{font:600 9.5px/1 var(--font-num);color:var(--text-lo)}
-.gtrait__n{font-weight:700;color:var(--pos-hi);white-space:nowrap}
-.gtrait__t{color:var(--text-md)}
-.gtrait__row.is-neg .gtrait__n{color:var(--neg-hi)}
-
-/* 超限倍速开关（业主 2026-10-20） */
-/* 超限 HUD 的两个控件自己带颜色变量 —— --pos/--neg/--text-* 只在 .traitov 作用域里定义，
-    HUD 在它外面，直接引用会取到空值。 */
-.gspeed,.gtrait{--pos:#39ffb0;--pos-hi:#8dffd4;--neg:#e73118;--neg-hi:#ff6b52;
-  --text-hi:#eef6f2;--text-md:#c6d4cd;--text-lo:#8ea39a}
-
-/* 超限出怪倍速开关（业主 2026-10-20 定稿）：左边 SPEED 小字，右边 1×/2× 两格滑轨。
-   滑块与格子严格同宽同高，位移正好一格；双倍速时滑块滑满右格并转荧光绿。
-   倒计时与它无关，始终是关卡自己的秒数。 */
-.gspeed{display:inline-flex;align-items:center;gap:8px;height:28px;margin-right:8px;
-  padding:0 10px 0 11px;cursor:pointer;border-radius:14px;
-  background:rgba(8,13,12,.86);border:1px solid rgba(255,255,255,.16);
-  -webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);
-  transition:border-color .18s ease,background .18s ease,box-shadow .18s ease}
-.gspeed:hover{border-color:rgba(255,255,255,.34);background:rgba(12,20,18,.92)}
-.gspeed:focus-visible{outline:2px solid var(--pos);outline-offset:2px}
-.gspeed__cap{font:700 8.5px/1 var(--font-num);letter-spacing:.18em;color:var(--text-md);transition:color .18s ease}
-
-/* 滑轨：--opt 是每格宽度，滑块与它同宽，位移也是一格 */
-.gspeed__rail{--opt:26px;position:relative;display:inline-flex;height:20px;padding:2px;
-  border-radius:11px;background:rgba(0,0,0,.5);box-shadow:inset 0 0 0 1px rgba(255,255,255,.09)}
-.gspeed__opt{position:relative;z-index:1;display:grid;place-items:center;width:var(--opt);height:16px;
-  font:700 10px/1 var(--font-num);letter-spacing:.02em;color:var(--text-md);
-  transition:color .2s ease}
-.gspeed__opt.is-on{color:#04100c}
-.gspeed__thumb{position:absolute;left:2px;top:2px;width:var(--opt);height:16px;border-radius:8px;
-  background:#c6d4cd;pointer-events:none;
-  transition:transform .24s cubic-bezier(.3,.9,.25,1),background .24s ease,box-shadow .24s ease}
-.gspeed.is-fast{border-color:color-mix(in srgb,var(--pos) 60%,transparent);
-  background:color-mix(in srgb,var(--pos) 16%,rgba(8,13,12,.9));
-  box-shadow:0 0 0 1px color-mix(in srgb,var(--pos) 26%,transparent),
-             0 0 18px color-mix(in srgb,var(--pos) 26%,transparent)}
-.gspeed.is-fast .gspeed__cap{color:var(--pos-hi)}
-.gspeed.is-fast .gspeed__thumb{transform:translateX(var(--opt));background:var(--pos);
-  box-shadow:0 0 12px color-mix(in srgb,var(--pos) 65%,transparent)}
-
-/* ── 超限词条面板 · 手机端（业主 2026-10-20）────────────────────────────────
-   横屏手机（761×360 这类）上原面板 400×285 会顶出屏幕底部 29px，
-   计数块挤成一条、词条行只有 29px 高。这里把它压成手机上真正能读的形态：
-   面板贴右上、行高加大、正负合计保持一行、列表自己滚。 */
-@media (max-height: 460px) {
-  /* 面板 originally absolute 挂在按钮下面；短屏上那个起点已经吃掉 100px，
-     所以这里改成 fixed 贴右下，高度才真正由视口决定。 */
-  .gtrait__pop{position:fixed;top:auto;right:8px;bottom:8px;
-    width:min(360px,88vw);max-height:calc(100vh - 16px);padding:6px 0 4px}
-  .gtrait__head{padding:8px 12px 6px}
-  .gtrait__micro{font-size:7.5px;letter-spacing:.16em}
-  .gtrait__title b{font-size:12px}
-  .gtrait__x{width:22px;height:22px;font-size:15px}
-  .gtrait__tally{margin:6px 12px 0}
-  .gtrait__tal{padding:5px 3px;gap:2px}
-  .gtrait__tal b{font-size:13px}
-  .gtrait__tal i{font-size:8px;letter-spacing:.06em}
-  .gtrait__note{margin:6px 12px 0;font-size:9.5px;line-height:1.4}
-  .gtrait__list{margin:4px 0 0}
-  .gtrait__row{padding:6px 12px;font-size:10.5px;line-height:1.4;gap:7px;grid-template-columns:30px auto 1fr}
-  .gtrait__r{font-size:9px}
-  .gtrait__foot{padding:6px 12px 8px;margin-top:4px}
-  .gtrait__seal{font-size:8px;padding:4px 8px}
-  .gtrait__btn{height:24px;padding:0 8px;font-size:10px}
-  .gtrait__ico{font-size:9px}
-}
-/* 竖屏手机：面板占满宽度、从下方浮出 */
-@media (max-width: 560px) and (orientation: portrait) {
-  .gtrait__pop{position:fixed;left:8px;right:8px;top:auto;bottom:8px;width:auto;
-    max-height:70vh;border-radius:10px}
-  .gtrait__row{grid-template-columns:32px auto 1fr;font-size:11px}
+/* ---- 进场 (PR #827; the maintainer's decision of 2026-10-21): the HUD waits hidden while 协议启动！ shows
+   (screens/game.js `hudIn`: .gm__hud.is-wait) and comes in as soon as it leaves — the event's top bar is up from the end
+   of 协议启动 (video 7:51) through the round-1 kettles and plate (7:55–8:01): the phase plate drops in with a flash, the
+   band opens from it to both sides, the + marks and the 🔍 frames slide out to the ends; the corners, the team column and
+   the shop follow, ~1.2 s in all. [ASSUMED] the order, the timings and the motion, read off the footage by the PR's
+   author. ---- */
+.gm__hud.is-wait > * { visibility: hidden; }
+.gm__hud.is-enter .gtop__cap { animation: gtop-cap-in 420ms cubic-bezier(.2, 1.35, .45, 1) both; }
+.gm__hud.is-enter .gtop__half { animation: gtop-open 380ms cubic-bezier(.16, .84, .3, 1) 150ms both; }
+.gm__hud.is-enter .gtop__deco { animation: gtop-fade 360ms ease-out 480ms both; }
+.gm__hud.is-enter .gtop__plus { animation: gtop-fade 240ms ease-out 400ms both; }
+.gm__hud.is-enter .gtop__frame--l { animation: gtop-out-l 320ms cubic-bezier(.16, .84, .3, 1) 440ms both; }
+.gm__hud.is-enter .gtop__frame--r { animation: gtop-out-r 320ms cubic-bezier(.16, .84, .3, 1) 440ms both; }
+.gm__hud.is-enter .gtop__left { animation: gtop-from-l 420ms cubic-bezier(.16, .84, .3, 1) 260ms both; }
+.gm__hud.is-enter .gtop__right { animation: gtop-from-r 420ms cubic-bezier(.16, .84, .3, 1) 260ms both; }
+.gm__hud.is-enter .team { animation: gtop-from-l 460ms cubic-bezier(.16, .84, .3, 1) 380ms both; }
+/* the shop keeps its own shop-up in the list, so it does not start again when .is-enter goes */
+.gm__hud.is-enter .shopbar { animation: shop-up var(--t-slow) var(--ease-out), gtop-rise 460ms cubic-bezier(.16, .84, .3, 1) 460ms both; }
+@keyframes gtop-cap-in { 0% { opacity: 0; transform: translateY(-.5rem) scale(.92); filter: brightness(2.2); } 60% { opacity: 1; } 100% { filter: none; } }
+@keyframes gtop-open { from { opacity: 0; transform: scaleX(.05); } }
+@keyframes gtop-fade { from { opacity: 0; } }
+@keyframes gtop-out-l { from { opacity: 0; transform: translateX(.6rem); } }
+@keyframes gtop-out-r { from { opacity: 0; transform: translateX(-.6rem); } }
+@keyframes gtop-from-l { from { opacity: 0; transform: translateX(-.4rem); } }
+@keyframes gtop-from-r { from { opacity: 0; transform: translateX(.4rem); } }
+@keyframes gtop-rise { from { opacity: 0; transform: translateY(.4rem); } }
+@media (prefers-reduced-motion: reduce) {
+  .gtop__half .roundbox__num, .gm__hud.is-enter .gtop__cap, .gm__hud.is-enter .gtop__half, .gm__hud.is-enter .gtop__deco,
+  .gm__hud.is-enter .gtop__plus, .gm__hud.is-enter .gtop__frame--l, .gm__hud.is-enter .gtop__frame--r, .gm__hud.is-enter .gtop__left, .gm__hud.is-enter .gtop__right,
+  .gm__hud.is-enter .team { animation: none; }
+  .gm__hud.is-enter .shopbar { animation: shop-up var(--t-slow) var(--ease-out); }
 }
 
-/* 超限模拟的 HUD 标识（业主 2026-10-20）：难度标签旁边一枚紫标，
-   玩家在战斗里随时知道自己打的是超限而不是普通模拟。 */
-.gtop__inf { display: inline-flex; align-items: center; height: 18px; padding: 0 7px;
-  border-radius: 9px; font: 800 10px/1 var(--font-num); letter-spacing: .06em;
-  color: var(--inf-300); background: var(--inf-a20);
-  box-shadow: inset 0 0 0 1px var(--inf-a35), 0 0 10px var(--inf-glow); }
+/* Keep every bond reachable without shrinking its disc or extending over the right HUD. */
+.gm__bond-list { flex: 1; }
+.bstrip-scroll { display: flex; align-items: center; min-width: 0; gap: .04rem; }
+/* Let the padding protect rings/counts from clipping without lowering the discs and names into the board. */
+.gm__bonds .bstrip-scroll .bstrip { min-width: 0; overflow-x: auto; overflow-y: hidden; padding: .08rem 0; margin: -.08rem 0;
+  pointer-events: auto; touch-action: pan-x; scrollbar-width: thin; }
+.bstrip-scroll .bslot { flex: none; }
+.gm__bonds .bstrip-scroll__arrow { flex: none; width: 44px; height: 44px; padding: 0;
+  background: rgba(8, 11, 10, .7); color: var(--mint); border: 1px solid var(--line-2); cursor: pointer; pointer-events: auto; }
+.bstrip-scroll__arrow:disabled { opacity: .3; cursor: default; }
+.gm.is-pen .gm__bonds .bstrip-scroll *, .gm.has-sp .gm__bonds .bstrip-scroll * { pointer-events: none; }
 
-/* ── 右侧 EFFECTS 栏 · 横屏手机（业主 2026-10-21）─────────────────────────────
-   以前永远是单列竖排：761×360 的横屏手机，20 条 effect 会有 461px 高、溢出 197px。
-   现在横屏改成「竖排换行」——一列填满就换到左边一列，方向从右往左（靠近屏幕边的先出现），
-   最多两列，超出的收进 +N 角标。竖屏与小屏以上保持原来的单列。 */
-@media (max-height: 460px) {
-  .gm__effects {
-    right: .24rem;
-    top: 2.1rem;
-    max-width: 34vw;
-  }
-  /* 业主 2026-10-21：A 方案 —— 竖排填满几行就换到左边一列（列优先网格，从右往左）。
-     MicroLabel「EFFECTS」隐藏，横屏位置本来就紧。 */
-  .effects {
-    display: grid;
-    grid-auto-flow: column;                                  /* 列优先：先竖满一列再换下一列 */
-    grid-template-rows: repeat(5, .42rem);                   /* 每列 5 个 */
-    grid-auto-columns: .42rem;
-    gap: .06rem;
-    direction: rtl;                                          /* 列从右往左累积 */
-    justify-content: flex-end;
-    align-content: flex-start;
-    max-width: 34vw;
-    overflow: hidden;
-  }
-  .effects > * { direction: ltr; }                           /* 图标内部正常方向 */
-  .effects > .micro { display: none; }                       /* 横屏不显示 EFFECTS 小标 */
-  .effects__more { width: .42rem; height: .42rem; }
-  /* 横屏下图标略收一档，两列排得下更多 */
-  .effect { width: .42rem; height: .42rem; }
-  .effect .icon { width: .24rem; height: .24rem; }
-  .effect__trait { font-size: .22rem; }
-  .effect__n { min-width: .17rem; font-size: .1rem; }
-  .effects .effects__more {
-    display: grid; place-items: center;
-    width: .42rem; height: .42rem;
-    font: 700 .14rem/1 var(--font-num, monospace);
-    color: var(--mint-400);
-    background: rgba(8, 11, 10, .85);
-    border: 1px solid var(--line-2);
-  }
-}
+.gm__bond-list > .tt-anchor { display: block; max-width: 100%; }
+
+.ai-vote { display:flex; flex-wrap:wrap; gap:.12rem; align-items:center; margin:.15rem 0; padding:.1rem; border:1px solid #426055; }
+.ai-participation-entry { flex:none; }

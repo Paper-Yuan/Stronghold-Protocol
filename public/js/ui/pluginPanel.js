@@ -18,6 +18,8 @@
 //     (content.js contentSet: its progress, ready, or failed — 「请刷新页面」). Below them (P4, DESIGN §32.8) the
 //     interface plugins of the server — each player switches them in 设置; the host may mark one 推荐 — and the
 //     room.panel slot.
+//     In a room of another official version (DESIGN §35.23) the gameplay plugins' switches are off — they play 第二期下半
+//     only (the server refuses them: VERSION_UNSUPPORTED) —; the cosmetic ones work as anywhere.
 //   * InstalledPlugins — the title screen's 「本服务器安装了 N 个插件」 (screens/title.js; §7.4): every unofficial plugin
 //     the catalogue lists — any class, with what this version does with it (the catalogue fetched when it opens).
 // The tag and the small facts (roomPluginFacts, sizeText, pluginTagText, pluginMicro) are ui/pluginTag.js's, re-exported
@@ -31,10 +33,11 @@ import { PluginSettings, settingsSelection } from './pluginSettings.js';
 import { toastError } from './toasts.js';
 import { net } from '../net.js';
 import { useStore } from '../store.js';
-import { catalog, contentSet, loadCatalog, cosmeticPlugins, installedCount, pluginName, unofficialPlugins } from '../content.js';
+import { catalog, contentSet, loadCatalog, cosmeticPlugins, installedCount, pluginName, unofficialPlugins, personal, personalSet } from '../content.js';
+import { appVersionMatches } from '../../../shared/plugins/manifest.js';
 import { toggleRecommend, uiPluginEntries, uiRecommend, visibleRecommend } from './uiPlugins.js';
 import { t, tc, N_ } from '../../../shared/i18n.js';
-import { sizeText, roomPluginFacts, pluginTagText, pluginMicro } from './pluginTag.js';
+import { sizeText, roomPluginFacts, pluginTagText, pluginMicro, ruleLine } from './pluginTag.js';
 
 const cx = (...p) => p.flat().filter(Boolean).join(' ');
 
@@ -60,6 +63,14 @@ export const roomPlugins = (plugins) => [
   ...(Array.isArray(plugins) ? plugins : []).filter((p) => p && ['content','script','trusted'].includes(p.class) && p.status === 'loaded' && Array.isArray(p.scope) && p.scope.includes('room')),
 ].sort((a, b) => (String(a.id) < String(b.id) ? -1 : String(a.id) > String(b.id) ? 1 : 0));
 
+/** [ASSUMED] Installed optional cosmetics are companion looks. A hint never changes a room or personal choice. */
+export function companionCosmeticHints(plugin, plugins, active) {
+  if (!['content', 'script', 'trusted'].includes(plugin.class)) return [];
+  return cosmeticPlugins(plugins, 'personal').filter(p => !active.has(p.id)
+    && Object.hasOwn(plugin.optional || {}, p.id) && appVersionMatches(plugin.optional[p.id], p.version))
+    .map(p => t('外观在『{name}』（设置 → 外观插件）', { name: pluginName(p) }));
+}
+
 /** One warning of the room's set as a sentence (room.state.content.warnings, server/plugins/visualSet.js / roomSets.js). */
 function warningText(w, nameOf, classOf = () => 'cosmetic') {
   if (w.code === 'override' && Array.isArray(w.params?.plugins)) {
@@ -74,7 +85,8 @@ function warningText(w, nameOf, classOf = () => 'cosmetic') {
 /** This page's download and check of the room's content set (content.js contentSet), as one line. */
 function ContentState({ cs }) {
   const c = useStore((s) => s, Object.is, contentSet);
-  if (!cs || c.cs !== cs) return null;
+  // (a version set the page loads is not the room's plugin content: DESIGN §35.23)
+  if (!cs || c.cs !== cs || c.kind !== 'plugins') return null;
   if (c.status === 'ready') return html`<p class="set-hint plugpanel__content is-ready" data-testid="content-state">${t('插件内容已载入并通过校验')}</p>`;
   if (c.status === 'failed') return html`<p class="set-hint plugpanel__content is-warn" data-testid="content-state">${t('插件内容未能通过校验，请刷新页面重试')}</p>`;
   const pct = c.total > 0 ? Math.min(100, Math.floor((c.loaded / c.total) * 100)) : 0;
@@ -100,6 +112,7 @@ function ModePicker({ room, f, busy, onPick }) {
 /** The room's 插件 panel (see the header). */
 export function PluginPanel({ open, room, myId, onClose }) {
   const cat = useStore((s) => s, Object.is, catalog);
+  const personalIds = useStore(s => s.ids, Object.is, personal);
   const installed = useStore(installedCount);
   const [busy, setBusy] = useState(null);
   const inFlight = useRef(false);
@@ -107,6 +120,7 @@ export function PluginPanel({ open, room, myId, onClose }) {
   // the catalogue — again each time the panel opens (a plugin dropped in meanwhile shows), never on a server without any
   useEffect(() => { alive.current = true; if (installed) loadCatalog({ force: true }); return () => { alive.current = false; }; }, [installed]);
   const f = roomPluginFacts(room, myId);
+  const activeCosmetics = new Set([...f.on, ...personalSet(personalIds, cosmeticPlugins(cat.plugins, 'personal')).order]);
   const recIds = useStore((s) => s.ids, Object.is, uiRecommend);
   const isHost = !!(room && room.hostId != null && room.hostId === myId);
   const recommended = visibleRecommend(room, isHost, recIds);
@@ -119,6 +133,8 @@ export function PluginPanel({ open, room, myId, onClose }) {
   const nameOf = (id) => { const p = cat.plugins.find((x) => x.id === id); return p ? pluginName(p) : String(id ?? ''); };
   const classOf = (id) => cat.plugins.find((x) => x.id === id)?.class || f.plugins.find((x) => x.id === id)?.class || 'cosmetic';
   const anyContent = f.modded || offered.some((p) => ['content','script','trusted'].includes(p.class));
+  // another official version (DESIGN §35.23): gameplay plugins play 第二期下半 only
+  const versionRoom = typeof room?.version === 'string';
   /** room.setPlugins with these ids (one request at a time; `what`: the row — or 'reapply' — that shows it busy). */
   const send = async (ids, what, change = null) => {
     if (inFlight.current || !f.editable) return;
@@ -152,6 +168,8 @@ export function PluginPanel({ open, room, myId, onClose }) {
         ${t('房间的外观插件只改变画面和声音，不影响战斗；插件为非官方制作。')}
       </p>
       ${anyContent ? html`<p class="set-hint">${t('改变玩法的插件会改变本房间的数据与规则；这样的对局为非官方对局，不计入统计总览。')}</p>` : null}
+      ${ruleLine(f.rules) ? html`<p class="set-hint" data-testid="plugin-rules">${ruleLine(f.rules)}</p>` : null}
+      ${versionRoom && anyContent ? html`<p class="set-hint is-warn" data-testid="plugin-version-note">${t('改变玩法的插件只能在第二期下半使用')}</p>` : null}
       <${ContentState} cs=${f.modded ? f.cs : null} />
       <${ModePicker} room=${room} f=${f} busy=${busy} onPick=${pickMode} />
       ${f.inMatch ? html`<p class="set-hint">${t('模拟进行中，插件不能更改')}</p>`
@@ -165,7 +183,7 @@ export function PluginPanel({ open, room, myId, onClose }) {
           const auto = f.auto.has(p.id);
           const content = ['content','script','trusted'].includes(p.class || classOf(p.id));
           // a gameplay plugin made for other game versions is refused (PLUGIN_INCOMPATIBLE): its switch only turns it off
-          const blocked = content && p.compatible === false && !on;
+          const blocked = content && ((p.compatible === false) || versionRoom) && !on;
           return html`<li key=${p.id} class=${cx('plugrow', on && 'is-on', content && 'is-content')} data-plugin=${p.id}>
             <button type="button" role="switch" aria-checked=${on ? 'true' : 'false'} class=${cx('set-toggle plugrow__switch', on && 'is-on')}
               disabled=${!f.editable || !!busy || (p.missing && !on) || (auto && on && !p.missing) || blocked} aria-label=${pluginName(p)}
@@ -179,6 +197,7 @@ export function PluginPanel({ open, room, myId, onClose }) {
                 ${Number.isFinite(p.artBytes) ? html`<span class="num">${sizeText(p.artBytes)}</span>` : null}
                 ${p.missing ? html`<span>${t('本服务器已不再提供')}</span>` : null}
               </div>
+              ${on ? companionCosmeticHints(p, cat.plugins, activeCosmetics).map(hint => html`<p class="set-hint" data-testid="companion-cosmetic">${hint}</p>`) : null}
               ${on && p.settings ? html`<${PluginSettings} definitions=${p.settings} values=${f.plugins.find(x => x.id === p.id)?.settings || {}}
                 disabled=${!f.editable || !!busy || p.missing} onSave=${settings => send([...new Set([...f.chosen, p.id])], p.id, { id: p.id, settings })} />` : null}
               ${p.compatible === false ? html`<div class="plugrow__warn">${content
@@ -237,7 +256,7 @@ export function InstalledPlugins({ open, onClose }) {
         ${plugins.map((p) => html`<li key=${p.id} class="plugrow" data-plugin=${p.id}>
           <div class="plugrow__body">
             <div class="plugrow__name"><b>${pluginName(p)}</b>${p.version ? html`<span class="num t-dim">v${p.version}</span>` : null}
-              <span class="plugrow__badge">${p.execution === 'sandbox' ? t('脚本（沙箱）') : t(CLASS_NAMES[p.class] || '插件')}</span><span class="plugrow__badge is-unofficial">${t('非官方')}</span></div>
+              <span class="plugrow__badge">${p.execution === 'sandbox' ? t('脚本（沙箱）') : (CLASS_NAMES[p.class] ? t(CLASS_NAMES[p.class]) : t('插件'))}</span><span class="plugrow__badge is-unofficial">${t('非官方')}</span></div>
             <div class="plugrow__meta t-dim">
               <span>${p.status === 'loaded' ? t('可以使用') : t('本版本不支持')}</span>
               ${Array.isArray(p.authors) && p.authors.length ? html`<span>${t('作者 {names}', { names: p.authors.join(', ') })}</span>` : null}

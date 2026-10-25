@@ -380,13 +380,14 @@ button.bpop__harmony:hover { border-style: solid; color: #fff; }
 
 /* ---- 机变 overlay ---- */
 .spov { position: absolute; inset: 0 0 0 2.8rem; z-index: 20; }
+/* the corner's buttons stay left of the veil (§35.51: in one row at 1280–1920 px 「玩法说明」 sat half and 「全屏」 wholly under it
+   — the HUD is below the overlay): they wrap upwards within the 2.8rem column, as a phone's always do (devices.css) */
+@media (min-width: 768px) {
+  .gm.has-sp .gm__corner { flex-wrap: wrap-reverse; align-content: flex-start; max-width: calc(2.8rem - .24rem - .1rem); }
+}
 .gm.has-sp .gm__bonds, .gm.has-sp .gm__effects { opacity: 0; pointer-events: none; transition: opacity var(--t-med); }
 .spov__veil { position: absolute; inset: 0; background: linear-gradient(90deg, rgba(8, 10, 10, .58) 0, rgba(8, 10, 10, .8) .5rem, rgba(8, 10, 10, .82)); -webkit-backdrop-filter: blur(2px); backdrop-filter: blur(2px); border-left: 1px solid var(--line); }
 .spov__inner { position: absolute; left: .3rem; right: .5rem; top: 1.14rem; bottom: .5rem; display: flex; flex-direction: column; gap: .16rem; animation: screen-in var(--t-slow) var(--ease-out); }
-/* the shared draft takes the whole screen like the official 悬赏决策 (the event's video 9:59 and its screenshot): the top
-   bar steps aside, the header sits at the top and the grid keeps clear of the right-hand HUD */
-.gm.has-spdraft .gtop { visibility: hidden; }
-.gm.has-spdraft .spov__inner { top: .3rem; }
 .spov__head { display: flex; align-items: center; justify-content: space-between; gap: .3rem; }
 /* 「悬赏决策 |」 then the description over the timing line, beside the bar; a faint bracket behind the title */
 .spov__titles { position: relative; display: grid; grid-template-columns: auto auto minmax(0, 1fr); grid-template-rows: auto auto; column-gap: .16rem; row-gap: .02rem;
@@ -402,6 +403,30 @@ button.bpop__harmony:hover { border-style: solid; color: #fff; }
 .spov__desc { grid-row: 1; grid-column: 3; align-self: end; font-size: calc(.26 * var(--t)); font-weight: 700; color: #d6fbef; letter-spacing: .04em; text-shadow: none; }
 .spov__sub { grid-row: 2; grid-column: 3; align-self: start; font-size: calc(.15 * var(--t)); color: #a2aaa8; }
 .spov__turn { display: flex; align-items: center; gap: .24rem; }
+/* the header's text keeps each language's breaking rules, as the room and the hub do (§35.51 review: on phones the
+   narrower column moved Korean 「처|치」 and Japanese 「カ|ード」 breaks around) */
+.spov__head:lang(ko) { word-break: keep-all; overflow-wrap: break-word; }
+.spov__head:lang(ja) { line-break: strict; }
+/* … and so do the cards' texts (§35.56: Korean 「이 존재|할 경우」, 「오퍼레이터|일 경우」 broke inside words on every phone
+   size); a word longer than its line still breaks */
+.spov .rt:lang(ko), .spov .rt-note:lang(ko), .spov .rt-vup:lang(ko) { word-break: keep-all; overflow-wrap: break-word; }
+.spov .rt:lang(ja), .spov .rt-note:lang(ja), .spov .rt-vup:lang(ja) { line-break: strict; }
+/* short landscape phones (≤ 520 px tall): the timing line goes under the title, across the whole title block, and the
+   title is capped, so neither runs under 「当前轮到你决策」 (§35.56: English 「If no choice is made before…」 over 「Your turn to
+   decide」 at 中 – 特大 on phones up to 844×390, both variants; at 特大 「Equipment Supply」 left the description one word a
+   line). Each cap grows a pixel or two a step above 中 (--t-step). [ASSUMED] the caps */
+@media (max-height: 520px) {
+  .spov__titles { flex: 1 1 auto; min-width: 0; }
+  .spov__sub { grid-row: 3; grid-column: 1 / -1; margin-top: .04rem; }
+  .spov__title { font-size: min(calc(.56 * var(--t)), calc(26px + 2 * var(--t-step))); }
+  .spov__desc { font-size: min(calc(.26 * var(--t)), calc(15px + var(--t-step))); }
+  .spov__sub { font-size: min(calc(.15 * var(--t)), calc(10px + var(--t-step) / 2)); }
+  /* at 大 / 特大 the description goes under the name too (beside it, English 「Obtain equipment…」 took one word a line
+     and ran under 「Your turn to decide」) */
+  :root[data-text="lg"] .spov__bar, :root[data-text="xl"] .spov__bar { display: none; }
+  :root[data-text="lg"] .spov__name, :root[data-text="xl"] .spov__name { grid-row: 1; }
+  :root[data-text="lg"] .spov__desc, :root[data-text="xl"] .spov__desc { grid-row: 2; grid-column: 1 / -1; align-self: start; }
+}
 .spov__turntxt { display: flex; align-items: center; gap: .08rem; font-size: calc(.24 * var(--t)); font-weight: 700; color: var(--text-md); }
 .spov__turntxt .icon { width: .26rem; height: .26rem; }
 .spov__turntxt.is-mine { color: var(--mint-400); text-shadow: 0 0 .16rem rgba(23, 249, 183, .45); animation: blink 1.2s ease-in-out infinite; }
@@ -414,6 +439,8 @@ button.bpop__harmony:hover { border-style: solid; color: #fff; }
 .spov__tw small { font-size: calc(.17 * var(--t)); font-weight: 400; color: #c2c8c6; }
 .spov__turn .countdown { padding-left: .22rem; border-left: 1px solid rgba(220, 228, 225, .22); }
 .spov__grid { flex: 1; min-height: 0; display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(2, 1fr); gap: .2rem; }
+/* the shared draft (the official 悬赏决策, the event's video 9:59): the grid keeps clear of the right-hand HUD; the top bar
+   stays (the round, the funds and the timer stay readable while the others pick) */
 @media (min-height: 432px) {
   .gm.has-spdraft .spov__inner { right: 1.5rem; bottom: .62rem; }
   .gm.has-spdraft .spov__grid { gap: .46rem .6rem; padding: .14rem .1rem 0 .06rem; }
@@ -459,7 +486,10 @@ button.bpop__harmony:hover { border-style: solid; color: #fff; }
 /* the effect text: the official rich text (highlighted numbers, set bonuses, line breaks), clamped by lines — 7 fit a 3×2
    card (the longest item, 信标, takes 7 at 16:9 and on phones narrower than ≈ 740 px); it never shrinks below them
    (flex: none) */
-.spcard__desc { flex: none; font-size: .2rem; line-height: 1.5; color: #c3c7c6; display: -webkit-box; -webkit-line-clamp: 7; -webkit-box-orient: vertical; overflow: hidden; }
+/* line-height 1.3 / 8 lines (as on phones): the longest supply text, 海沟实验体, takes 8 lines in the web font at 16:9 and
+   the card's room is about 8.3 of them — playtest #6 item 6 wants every card's whole text inside the card; the bottom
+   padding holds the last line's highlighted words, whose glyphs are a little taller than a 1.3 line */
+.spcard__desc { flex: none; font-size: .2rem; line-height: 1.3; color: #c3c7c6; display: -webkit-box; -webkit-line-clamp: 8; -webkit-box-orient: vertical; overflow: hidden; padding-bottom: .12em; }
 .spov__grid--3 .spcard__desc { -webkit-line-clamp: 10; }
 .spcard__tags { display: flex; flex-wrap: wrap; gap: .06rem; }
 .spcard__tag { font-size: .13rem; font-weight: 700; padding: .01rem .08rem; }
@@ -503,13 +533,12 @@ button.bpop__harmony:hover { border-style: solid; color: #fff; }
 .spcard__confirm small { font-size: .12rem; letter-spacing: .1em; opacity: .6; }
 .spov__confirm { animation: pulse-gold 1.2s var(--ease-in-out) infinite; }
 /* Short landscape phones (height < 10.8rem: the root size is clamped at 40 px, theme.css, so the page is only ≈ 9rem
-   tall): a tighter header (no CONTINGENCY micro line, smaller margins) gives the grid ≈ .65rem more, and a smaller icon
+   tall): a tighter header (smaller margins) gives the grid ≈ .65rem more, and a smaller icon
    and tighter spacing leave a 3×2 card room for 7 lines of text (≈ 4 – 5.4 × 2.9rem: 162 × 116 px at 640×360, the
    smallest supported phone; 201 × 119 at 756×366, the user's Android) — every shop item, bounty and tactic text fits in
    full, taken or not (test/ui/playtest6-ui.e2e.test.js). */
 @media (max-height: 431.98px) {
   .spov__inner { top: .84rem; bottom: .22rem; gap: .1rem; }
-  .spov__titles > .micro { display: none; }
   .spov__grid { gap: .12rem; }
   .spcard { --sp-px: .12rem; --tk: .4rem; --tk-at: .04rem; gap: .06rem; padding: .08rem var(--sp-px); }
   .spcard__tier { left: .03rem; top: .03rem; }
@@ -519,6 +548,41 @@ button.bpop__harmony:hover { border-style: solid; color: #fff; }
   .spcard__name { font-size: .23rem; }
   .spcard__desc { font-size: .19rem; }
   .spov__grid--3 .spcard__desc { -webkit-line-clamp: 10; }
+}
+/* 「轮到你选」 (ui/turnPopup.js): the official effectChoose/* sprites around the middle of the screen, in design px of the
+   1920×1080 footage (--px, fitted to the viewport; offsets from the centre). Pops in, holds, fades: 1.2 s. */
+.sptp {
+  --px: min(.01rem, calc(100vw / 1920), calc(100vh / 1080));
+  position: fixed; left: 50%; top: 50%; z-index: var(--z-banner); width: 0; height: 0; pointer-events: none;
+  animation: sptp-out 1200ms linear both;
+}
+.sptp img { position: absolute; display: block; max-width: none; }
+.sptp__disc { position: absolute; left: calc(-265 * var(--px)); top: calc(-295 * var(--px)); width: calc(540 * var(--px)); height: calc(500 * var(--px));
+  animation: sptp-disc 220ms cubic-bezier(.2, .8, .3, 1) both; }
+.sptp__bg { inset: 0; width: 100%; height: 100%; }
+.sptp__ring { position: absolute; left: calc(43 * var(--px)); top: calc(23 * var(--px)); width: calc(454 * var(--px)); height: calc(454 * var(--px)); border-radius: 50%;
+  background: radial-gradient(closest-side, transparent 63%, rgba(31, 230, 190, .3) 64%, rgba(31, 230, 190, .3) 70%, transparent 71%,
+    transparent 83%, rgba(31, 230, 190, .26) 84%, rgba(31, 230, 190, .18) 99%, transparent 100%); }
+.sptp__cube { left: calc(-62 * var(--px)); top: calc(-146 * var(--px)); width: calc(131 * var(--px)); height: calc(134 * var(--px));
+  animation: sptp-pop 260ms ease-out both; }
+.sptp__spark { left: calc(-111 * var(--px)); top: calc(-174 * var(--px)); width: calc(64 * var(--px)); height: calc(64 * var(--px));
+  animation: sptp-pop 260ms 40ms ease-out both; }
+.sptp__text { position: absolute; left: calc(-200 * var(--px)); top: calc(9 * var(--px)); width: calc(408 * var(--px)); text-align: center; white-space: nowrap;
+  color: #2ee6c0; font-size: calc(72 * var(--px)); font-weight: 900; line-height: 1; letter-spacing: .02em;
+  text-shadow: 0 0 calc(16 * var(--px)) rgba(31, 230, 190, .55); animation: sptp-pop 200ms 60ms ease-out both; }
+.sptp__bar { left: calc(-134 * var(--px)); top: calc(99 * var(--px)); width: calc(279 * var(--px)); height: calc(17 * var(--px));
+  animation: sptp-in 200ms 120ms ease-out both; }
+.sptp__x { width: calc(30 * var(--px)); height: calc(31 * var(--px)); opacity: .8; animation: sptp-in 200ms 120ms ease-out both; }
+.sptp__x--tl { left: calc(-195 * var(--px)); top: calc(-144 * var(--px)); }
+.sptp__x--tr { left: calc(176 * var(--px)); top: calc(-144 * var(--px)); }
+.sptp__x--bl { left: calc(-195 * var(--px)); top: calc(84 * var(--px)); }
+.sptp__x--br { left: calc(176 * var(--px)); top: calc(84 * var(--px)); }
+@keyframes sptp-out { 0%, 87.5% { opacity: 1; } 100% { opacity: 0; } }
+@keyframes sptp-disc { from { opacity: 0; transform: scale(.72); } }
+@keyframes sptp-pop { from { opacity: 0; transform: scale(1.25); filter: brightness(1.8); } }
+@keyframes sptp-in { from { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) {
+  .sptp { display: none; }
 }
 /* The narrowest of them (640×360): with Noto Sans SC — the page's web font and Android's CJK font — the longest text
    (海沟实验体) wraps to 8 lines in a 162 px card, one more than the clamp; a slightly tighter line height gives the 8th
@@ -543,17 +607,14 @@ button.bpop__harmony:hover { border-style: solid; color: #fff; }
 .fwheel__dia { position: absolute; transform: translate(-50%, -50%); pointer-events: none; animation: fwheel-in 160ms var(--ease-out); }
 @keyframes fwheel-in { from { opacity: 0; transform: translate(-50%, -50%) scale(.82); } }
 .fwheel__svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; filter: drop-shadow(0 0 .05rem rgba(0, 0, 0, .75)); }
-.fwheel__outer { fill: rgba(8, 14, 12, .35); stroke: rgba(255, 255, 255, .85); stroke-width: 2.2px; vector-effect: non-scaling-stroke; }
-.fwheel__subring { fill: none; stroke: rgba(255, 255, 255, .2); stroke-dasharray: 4 6; stroke-width: 1.2px; }
-.fwheel__axis { stroke: rgba(255, 255, 255, .25); stroke-width: 1.2px; stroke-dasharray: 2 4; }
+.fwheel__outer { fill: rgba(8, 12, 10, .1); stroke: #fff; stroke-width: 2.4px; vector-effect: non-scaling-stroke; }
 .fwheel__quad { fill: transparent; transition: fill var(--t-fast); }
-.fwheel__quad.is-on { fill: rgba(255, 156, 51, .28); stroke: rgba(255, 174, 61, .6); stroke-width: 1.5px; }
-.fwheel__inner { fill: rgba(255, 255, 255, .08); stroke: rgba(255, 255, 255, .7); stroke-width: 1.6px; vector-effect: non-scaling-stroke; }
-.fwheel.is-pressed .fwheel__inner { fill: rgba(255, 255, 255, .15); }
-.fwheel__stick { stroke: rgba(255, 174, 61, .85); stroke-width: 3.5px; stroke-linecap: round; filter: drop-shadow(0 0 4px rgba(255, 156, 51, .9)); }
-.fwheel__knob { fill: #ffae3d; stroke: #fff; stroke-width: 2.5px; filter: drop-shadow(0 0 6px rgba(255, 156, 51, 1)); }
+/* only the chevron lights (research 09 §1.2): a tinted quadrant would wash out the units standing under the diamond */
+.fwheel__quad.is-on { fill: transparent; }
+.fwheel__inner { fill: rgba(255, 255, 255, .06); stroke: rgba(255, 255, 255, .9); stroke-width: 1.6px; vector-effect: non-scaling-stroke; }
+.fwheel.is-pressed .fwheel__inner { fill: rgba(255, 255, 255, .1); }
 .fwheel__chev path { fill: rgba(255, 255, 255, .92); transform-box: fill-box; transform-origin: center; transition: transform var(--t-fast), fill var(--t-fast); }
-.fwheel__chev.is-on path { fill: #ffae3d; transform: scale(1.4); filter: drop-shadow(0 0 4px rgba(255, 156, 51, .95)); }
+.fwheel__chev.is-on path { fill: #ffae3d; transform: scale(1.4); filter: drop-shadow(0 0 3px rgba(255, 156, 51, .9)); }
 .fwheel__cancel {
   position: absolute; left: 25%; top: 25%; transform: translate(-92%, -118%); pointer-events: auto;
   display: inline-flex; align-items: center; gap: .05rem; padding: .03rem .1rem .03rem .05rem; white-space: nowrap;
@@ -713,3 +774,25 @@ button.bpop__harmony:hover { border-style: solid; color: #fff; }
 .eqr__hint { margin: .04rem 0 0; text-align: center; font-size: calc(.15 * var(--t)); color: var(--text-lo); min-height: .24rem; }
 .eqr__hint b { color: var(--text-hi); }
 .eqr__ok-icon { width: .2rem; height: .2rem; margin-right: .06rem; vertical-align: -.03rem; filter: brightness(0) invert(1); }
+
+/* Plugin offers share choice cards; text and controls remain reachable at large text scale. */
+.offerov { inset: 0; z-index: 24; }
+.offerov__dock { position: absolute; top: .8rem; right: .16rem; z-index: 24; display: flex; flex-wrap: wrap; gap: .08rem; max-width: 80%; max-height: 25%; overflow: auto; }
+.offerov__dock button { min-height: .44rem; }
+.offerov .spov__inner { top: .3rem; overflow: auto; padding: .2rem; }
+.offerov .spov__head { flex-wrap: wrap; font-size: calc(.18 * var(--t)); }
+.offerov .spov__grid { flex: none; grid-template-columns: repeat(3, minmax(0, 1fr)); grid-template-rows: none; grid-auto-rows: auto; overflow: visible; }
+.offerov__tabs { display: flex; flex-wrap: wrap; gap: .08rem; }
+.offerov__slot { display: flex; flex-direction: column; gap: .08rem; min-width: 0; }
+.offerov .spcard { flex: 1; min-height: 1.7rem; height: auto; }
+.offerov .spcard__name { font-size: calc(.27 * var(--t)); white-space: normal; overflow-wrap: anywhere; }
+.offerov .spcard__desc { font-size: calc(.2 * var(--t)); display: block; overflow: visible; -webkit-line-clamp: unset; overflow-wrap: anywhere; }
+.offerov button { min-height: .44rem; }
+@media (max-width: 640px) {
+  .offerov .spov__grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+.offerov .spcard__icon { width: .6rem; height: .6rem; }
+
+/* #746: optional selected-unit bond timers; labels wrap at narrow widths and large text sizes. */
+.dbond-times__row { display: flex; flex-wrap: wrap; justify-content: space-between; gap: .08rem .2rem; margin: .1rem 0; font-size: calc(.24 * var(--t)); }
+.dbond-times__row > span { min-width: 0; overflow-wrap: anywhere; }

@@ -2,6 +2,7 @@
 // from /vendor when the page did not include them as classic <script> tags.
 //
 //   const view = await createFieldView(host, { data, assets, audio, settings, padding, hud })
+//   Optional playbackTime: () => gameSeconds drives animations from an external simulation clock (studio stepping).
 //   view.setStage(stage)                        procedural tiles + devices (data/stages.json entry)
 //   view.setCamera(kind, { rect, side, padding, instant, shop })   'prep'|'normal'|'unite'|'boss'('hidden'); animated
 //                                               — the prep cameras (own board / Final Assault half) keep the bench
@@ -64,9 +65,9 @@
 //   view.holdPiece(uid, {row,col} | null)       keep a dropped prep piece standing on a tile while its direction is
 //                                               chosen / the move is in flight (null releases; setPrep then settles it)
 //   view.setPieceDir(uid, dir)                  show a prep piece facing UP|RIGHT|DOWN|LEFT (wheel preview / stored dir)
-//   view.setSettings({ damageNumbers, officialDamageNumbers, ammoCount, mysticEnergy, officialFx, quality: 'high'|'medium'|'low' }) ; view.resize() ; view.destroy()
-//                                               (ammoCount: 设置「弹药数量」, the count under an ammo skill's bar — PR #552;
-//                                                mysticEnergy: 设置「秘术师能量」, a 秘术师's stored/cap — PR #636;
+//   view.setSettings({ damageNumbers, officialDamageNumbers, ammoEnergyCount, officialFx, quality: 'high'|'medium'|'low' }) ; view.resize() ; view.destroy()
+//                                               (ammoEnergyCount: 设置「显示弹药与能量数量」, the count under an ammo skill's
+//                                                bar and a 秘术师's stored/cap — PR #552 / PR #636, one switch since 0.3.1;
 //                                                officialFx: 设置「官方特效」 'auto'|'off'|'lite'|'full', the official battle
 //                                                effects on the 3D board — render/vfx, DESIGN §9 "Official battle effects")
 //   view.stats() → { fps, frameMs, cpuMs, renderMs, units, particles, impostor, impostorAtlas, boardArt, pen, penHidden, … }
@@ -136,16 +137,18 @@
 // The helpers live in public/js/render/app/*.js and are re-exported below, so existing imports keep
 // working. createFieldView stays here: it is one closure over the view's own state.
 
-import { isLowEndDevice } from '../ui/deviceTier.js';
+import { attackRateEvents } from './attackRate.js';
 import { GEO, ANIM } from '../../../shared/constants.js';
 import { fxForm } from '../../../shared/protocol.js';
 import { Camera, presetCamera, lerpCamera, easeInOutCubic, pickTile, normRect } from './projection.js';
 import { SnapshotBuffer, frameTime } from './interp.js';
+import { BattlePresentation } from './battlePresentation.js';
 import { TileField } from './tiles.js';
 import { UnitView, ItemView, DeviceView, FORMS, syncView } from './units.js';
 import { FxSystem, ensureDamageFonts, projSpeed } from './fx.js';
 import { OfficialFx } from './vfx/system.js';
 import { FxWiring } from './vfx/wiring.js';
+import { PluginFxPlayer } from './vfx/pluginPlayer.js';
 import { resolveOfficialFx } from './vfx/tier.js';
 import { createDragController, pieceTile, dragStandTile } from './drag.js';
 import { backdropTextures, shadowTexture, refreshTierChips, refreshDownLabels, silhouetteTexture } from './textures.js';
@@ -153,14 +156,15 @@ import { TILE_H, TIER_COLORS, COLORS } from './style.js';
 import { loadBoardArt } from './boardArt.js';
 import { ImpostorAtlas } from './impostor.js';
 import { stepClipBounds } from './spine.js';
-import { loadThree, loadBoardPack, loadScenePack, webgl2Available, webgl2Support, boardArtListed } from './board3d/load.js';
+import { loadThree, loadBoardPack, loadScenePack, webgl2Available, boardArtListed } from './board3d/load.js';
 import { BoardScene } from './board3d/scene.js';
 import { layoutPen, penSignature } from './pen.js';
 import { IDENTITY, bossPrepField, tilesToDisp, leaderStand } from './prepfield.js';
 import { pickOnTile, pickBattle, hitTiles } from './pick.js';
-import { skinsStore, skinFor } from '../ui/skins.js';
 import { promotionsOf } from './promote.js';
 import { ensurePixi } from './app/pixi.js';
+import { advanceEffectClock } from './app/playback.js';
+import { createWindUpLookahead } from './app/windup.js';
 import { pieceDirOf, pickUnitOf } from './app/pick.js';
 import { CAMERA_MS, BOARD3D_STABLE_MS, BOARD3D_RETRY_MS, PEN_CAMERA_MS, RANGE_GROUPS, LEADER_HIT_STYLE, DRAG_HOLD_TILES, CHAIN_KINDS, DROP_PENDING_MS, DEPLOY_REPLAY_MS } from './app/tune.js';
 import { boardPreference, switchableBox, bandFor, fieldRows, boardArea, viewKind, restView, flightView } from './app/view.js';
@@ -180,9 +184,12 @@ export { releaseGl } from './app/host.js';
 /**
  * Create the battlefield view inside `host` (an element sized by CSS; the canvas fills it).
  * @param {HTMLElement} host
- * @param {{ data?: any, assets?: any, audio?: any, settings?: { damageNumbers?: boolean, officialDamageNumbers?: boolean, ammoCount?: boolean, mysticEnergy?: boolean, quality?: string }, signal?: AbortSignal,
+ * @param {{ data?: any, assets?: any, audio?: any, settings?: { damageNumbers?: boolean, officialDamageNumbers?: boolean, ammoEnergyCount?: boolean, otherSkins?: boolean, quality?: string }, signal?: AbortSignal,
  *           padding?: object|((kind:string, size:{width:number,height:number}) => object),
  *           hud?: {top:number,bottom:number}|((kind:'prep'|'bossPrep', size:{width:number,height:number}, o:{shop:boolean}) => {top:number,bottom:number}|null) }} [opts]
+ *   settings.otherSkins (docs/SKINS.md, default on): draw the appearance another player chose. The player the view
+ *   belongs to says who is "other" — `view.setMe(store.get().me.playerId)`, ui/fieldHost.js mounts it before the first
+ *   board arrives.
  */
 export async function createFieldView(host, options = {}) {
   if (!host || typeof host.appendChild !== 'function') throw new TypeError('createFieldView: host element required');
@@ -193,15 +200,13 @@ export async function createFieldView(host, options = {}) {
   signal?.throwIfAborted();
   const assets = resolveAssets(opts.assets);
   const data = makeData(opts.data);
-  const settings = { damageNumbers: true, officialDamageNumbers: false, ammoCount: false, mysticEnergy: false, quality: 'high', officialFx: 'auto', boardMode: '3dscene', fps: 60, ...(opts.settings || {}) };
+  const settings = { damageNumbers: true, officialDamageNumbers: false, ammoEnergyCount: false, quality: 'high', officialFx: 'auto', ...(opts.settings || {}) };
+  // 设置「显示其他玩家的皮肤」 (docs/SKINS.md), on unless the caller said off: kept out of the literal above so the shape
+  // the other settings the units read every frame are pinned by stays one line (test/ui/ammo-count.test.js)
+  settings.otherSkins = settings.otherSkins !== false;
   // the 3D board (three.js + the official art) loads in parallel with everything else
-  // 设置「棋盘渲染」优先于 URL 参数：'2d' 直接走图集棋盘；'3d'/'3dscene' 都由 3D 层负责，差别是套不套官方场景包。
-  const boardPref = settings.boardMode === '2d' ? '2d' : boardPreference(opts.board);
-  // 分级探测：'slow' 也照样上 3D —— 只在渲染分辨率上让步（见下面的 boardDpr），
-  // 否则部分荣耀 / Mali 机型会因为驱动被标成 major performance caveat 而完全没有 3D 地图。
-  const glSupport = webgl2Support();
-  const boardSlow = glSupport === 'slow';
-  const want3d = boardPref !== '2d' && (glSupport === 'ok' || boardSlow);
+  const boardPref = boardPreference(opts.board);
+  const want3d = boardPref !== '2d' && webgl2Available(boardPref === '3d');
   // three.js (~2 MB) is fetched only when the local-art manifest lists the board atlas (in parallel with the art)
   const artListed = want3d ? boardArtListed(assets).catch(() => false) : Promise.resolve(false);
   const threePromise = artListed.then((ok) => (ok ? loadThree() : null)).catch(() => null);
@@ -216,14 +221,8 @@ export async function createFieldView(host, options = {}) {
   signal?.throwIfAborted();
 
   const size = () => ({ width: Math.max(1, host.clientWidth || 1), height: Math.max(1, host.clientHeight || 1) });
-    // 设备档位（业主 2026-10-21）：低端机**封顶 1.5**，不是硬锁 1.0 ——
-    // 以前 <8GB 一律锁 1.0，骁龙 7 系 + 6GB 也跟着糊；而且 high 档本身就允许 2.0。
-    // 现在只把上限压下来一档，画质损失小、性能收益仍在（填充率降一半以上）。
-    const dprCap = isLowEndDevice() ? Math.min(QUALITY_RES[settings.quality] || 2, 1.5) : (QUALITY_RES[settings.quality] || 2);
-    const dpr = () => Math.min(globalThis.devicePixelRatio || 1, dprCap);
-  const boardDpr = () => Math.min(globalThis.devicePixelRatio || 1, BOARD_RES[settings.quality] || 2,
-    // 慢 GPU（驱动被 blocklist 的机型）：棋盘按 1x 渲染，省一半以上的填充率，画面仍完整
-    boardSlow ? 1 : Infinity);
+  const dpr = () => Math.min(globalThis.devicePixelRatio || 1, QUALITY_RES[settings.quality] || 2);
+  const boardDpr = () => Math.min(globalThis.devicePixelRatio || 1, BOARD_RES[settings.quality] || 2);
   const s0 = size();
   // Construction is synchronous until the complete view can own cancellation. If setup throws,
   // dispose only the resources acquired by this attempt, never another view's host contents.
@@ -334,6 +333,7 @@ export async function createFieldView(host, options = {}) {
   const gone = new Set();
   const woundUp = new WeakSet(); // atk event tuples whose attack wind-up already started
   const interp = new SnapshotBuffer({ delay: 0.1, rate: 2 });
+  const presentation = new BattlePresentation();
   const sample = new Map();
   const meleePending = new Map(); // target id → { src, t }
   const consumedIds = new Set();  // battle ids used up by their own effect (fx `consumed`): no death particles
@@ -365,12 +365,18 @@ export async function createFieldView(host, options = {}) {
   const ctx = {
     P, layers, assets, settings, fx: null, shadowTex: shadowTexture(),
     audio: opts.audio || null,   // the prep landings' sound (UnitView.land → audio.deployCue)
+    // 设置「显示其他玩家的皮肤」 (docs/SKINS.md): whose pieces count as this player's. Held here rather than read per
+    // frame, because it is a preference of the page (ui/fieldHost.js passes the settings it already subscribes to).
+    myPlayerId: typeof opts.myPlayerId === 'string' ? opts.myPlayerId : null,
     cam: () => cam, heightAt,
     animRate: () => (mode === 'battle' ? interp.rate : 1),
-    timeScale: () => (mode === 'battle' ? interp.rate : 1),
+    timeScale: () => (opts.playbackTime ? 1 : mode === 'battle' ? interp.rate : 1),
     // (a chess fighting as its 补位 stand-in — `standInFor` — reads the stand-in's record: its attack interval)
-    lookupDef: (info) => (info.side === 'enemy' ? data.enemy(info.defId)
-      : (info.standInFor && data.standIn(info.defId)) || (info.diy && data.diy(info.defId, info.diy)) || data.chess(info.defId) || data.token(info.defId)),
+    lookupDef: (info) => {
+      const rec = info.side === 'enemy' ? data.enemy(info.defId)
+        : (info.standInFor && data.standIn(info.defId)) || (info.diy && data.diy(info.defId, info.diy)) || data.chess(info.defId) || data.token(info.defId);
+      return rec;
+    },
     crowded: () => views.size > 90,
     renderer: app.renderer,
     frameNo: () => frameNo,
@@ -404,7 +410,7 @@ export async function createFieldView(host, options = {}) {
   ctx.fx = fx;
   // the official battle effects (设置「官方特效」, render/vfx): drawn on the 3D board only (the 2D board fallback keeps the
   // procedural fx), on the battle clock; their files load on demand (data/local-fx.json)
-  const ofx = new OfficialFx({ P, renderer: app.renderer, assets, cam: () => cam, heightAt });
+  const ofx = new OfficialFx({ P, renderer: app.renderer, assets, cam: () => cam, heightAt, fieldRect: fx.ctx.fieldRect });
   setupCleanup.push(() => ofx.destroy());
   layers.vfxGround.addChild(ofx.ground);
   layers.vfxOver.addChild(ofx.over);
@@ -422,6 +428,11 @@ export async function createFieldView(host, options = {}) {
     view: (id) => views.get(id) || null,
   });
   ctx.ofx = ofx;
+  // Read the index only after the existing effects path loads it; role selection never calls ready()/index().
+  ctx.skillAttackIndex = () => wiring.index;
+  const pluginFx = new PluginFxPlayer({ P, layer: layers.vfxOver, assets, cam: () => cam, enabled: () => settings.officialFx !== 'off',
+    record: info => info ? ctx.lookupDef(info) : null, speed: projSpeed, ofx });
+  setupCleanup.push(() => pluginFx.destroy());
   let ofxPrevT = null;        // renderT of the last effects step (the battle clock)
   /** The tier the effects run at now: the setting (auto: 精简 on touch devices) while the 3D board draws. */
   function syncOfficialFx() {
@@ -429,7 +440,7 @@ export async function createFieldView(host, options = {}) {
   }
   ofx.init().then((ok) => { if (!destroyed && ok) { syncOfficialFx(); wiring.ready(); } }, () => {});
   // battle devices (crates / turrets as sim units): the official crate mesh in the 3D scene, else a Pixi box
-  ctx.createBox = () => switchableBox({ board: () => board3d, pixi: () => tiles.createBox() });
+  ctx.createBox = (spec) => switchableBox({ board: () => board3d, pixi: () => tiles.createBox(), spec });
   const impostors = new ImpostorAtlas(app.renderer);
   setupCleanup.push(() => impostors.destroy());
   ctx.impostors = impostors;
@@ -450,30 +461,12 @@ export async function createFieldView(host, options = {}) {
   setupCleanup.push(() => { clearTimeout(recover.timer); disable3d(); });
   /** The stage's official scene, once loaded (the procedural board shows meanwhile and when there is none). */
   function useOfficialScene(st) {
-    // 设置「棋盘渲染」= 内置 3D 时不套官方场景包（两版 3D 的区别就在这里）。
-    if (settings.boardMode === '3d') return;
     const id = st && typeof st.id === 'string' ? st.id : '';
     if (!id || !board3d) return;
     loadScenePack(assets, id).then((scene) => {
       if (scene && !destroyed && board3d && stageRec && stageRec.id === id) board3d.setScenePack(id, scene);
     }).catch(() => {});
   }
-  /**
-   * 设置「棋盘渲染」的运行期切换：'2d' 收掉 3D 层；'3d'/'3dscene' 按需重新载入 3D 层并（后者）套官方场景包。
-   * 与 API 的 setBoardMode 同一套内部调用，只是这里还要处理「内置 3D ⇄ 官方场景」这一档差别。
-   */
-  function applyBoardMode() {
-    if (destroyed) return;
-    const m = settings.boardMode;
-    if (m === '2d') { recover.off = true; clearTimeout(recover.timer); disable3d(); return; }
-    recover.off = false; recover.tries = 0;
-    const after = () => { if (stageRec && board3d) { board3d.setStage(stageRec); useOfficialScene(stageRec); } };
-    if (board3d) { after(); return; }
-    Promise.all([loadThree(), loadBoardPack(assets)])
-      .then(([THREE, pack]) => { if (enable3d(THREE, pack)) after(); })
-      .catch(() => {});
-  }
-
   function enable3d(THREE, pack) {
     if (destroyed || board3d || !THREE || !pack) return false;
     recover.THREE = THREE; recover.pack = pack;
@@ -485,10 +478,7 @@ export async function createFieldView(host, options = {}) {
       host.insertBefore(c3, canvas);
       board3dCanvas = c3;
       const b = new BoardScene(THREE, pack, {
-        // 上下文丢了就丢掉这块棋盘、退到 2D，然后按 retry 序列重建 —— 弱 GPU 上这是唯一能自愈的路径
-        onContextLost: () => { try { disable3d(); recover.tries = 0; scheduleRecover(); } catch { /* ignore */ } },
-        // 慢 GPU（boardSlow）：关阴影。画面差别很小，省下的是一整张阴影贴图的每帧开销。
-        canvas: c3, antialias: settings.quality !== 'low' && !boardSlow && (globalThis.devicePixelRatio || 1) < 2, shadows: !boardSlow && settings.quality !== 'low',
+        canvas: c3, antialias: settings.quality !== 'low' && (globalThis.devicePixelRatio || 1) < 2, shadows: settings.quality !== 'low',
       });
       const sz = size();
       b.resize(sz.width, sz.height, boardDpr());
@@ -496,8 +486,7 @@ export async function createFieldView(host, options = {}) {
       tiles.setExternal(true);
       backdrop.visible = false;
       b.setArea(boardArea(viewKind(camKind, camOpts)));
-      // 慢 GPU 只画棋盘本体，不套官方场景包（水面 / 焦散 / 反射在 blocklist 驱动上最容易花屏或直接黑屏）
-      if (stageRec) { b.setStage(stageRec); if (!boardSlow) useOfficialScene(stageRec); }
+      if (stageRec) { b.setStage(stageRec); useOfficialScene(stageRec); }
       b.setFocus(camRect());
       b.setBattleRect(mode === 'battle' && battleMeta ? battleMeta.rect : null);
       tiles.project(cam, true);
@@ -545,7 +534,7 @@ export async function createFieldView(host, options = {}) {
     recover.timer = setTimeout(() => {
       recover.timer = 0;
       if (destroyed || recover.off || board3d) return;
-      if (webgl2Support() === 'none' && boardPref !== '3d') { scheduleRecover(); return; }
+      if (!webgl2Available(boardPref === '3d')) { scheduleRecover(); return; }
       if (!enable3d(recover.THREE, recover.pack)) scheduleRecover();
     }, delay);
   }
@@ -589,19 +578,6 @@ export async function createFieldView(host, options = {}) {
     } catch { /* optional */ }
   }
   loadShadow();
-  // 干员皮肤 (docs/SKINS.md): a skin picked while the prep board is up is a new body for that piece — setPrep rebuilds
-  // the views whose signature changed (pieceInfo's `sig` carries the skin). Outside prep nothing is rebuilt: a battle's
-  // units carry their own (render/app/info.js reads the snapshot's `skin`).
-  let offSkins = null;
-  if (typeof skinsStore?.subscribe === 'function') {
-    offSkins = skinsStore.subscribe(() => {
-      if (destroyed || mode !== 'prep' || !lastPrep) return;
-      try {
-        setPrep(lastPrep.ps, lastPrep.o);
-      } catch { /* ignore */ }
-    });
-    setupCleanup.push(() => { try { offSkins?.(); } catch {} });
-  }
   ensureDamageFonts();
   // web fonts may land after the first chips / redeploy-ring labels were drawn
   if (document.fonts?.ready) document.fonts.ready.then(() => { if (!destroyed) { refreshTierChips(); refreshDownLabels(); } }).catch(() => {});
@@ -816,16 +792,15 @@ export async function createFieldView(host, options = {}) {
     const pick = chess && chess.isDiy ? diyPicks[chess.baseId || chess.chessId] : null;
     const dr = pick ? data.diy(piece.id, pick) : null;
     const rec = si || dr || chess;
-    // 干员皮肤 (docs/SKINS.md): the piece's own choice, else the operator's — the chess record keys it by chess id, the
-    // catalogue by operator id, so both are asked (a golden / promoted piece reads its base's)
-    const baseId = rec?.baseId || chess?.baseId || piece.baseId || null;
-    const charId = rec?.charId || chess?.charId || null;
-    const resolvedSkin = si ? null : (piece.skin || skinFor(baseId) || (charId ? skinFor(charId) : null) || skinFor(piece.id) || null);
     return {
       kind: 'op', side: 'ally', defId: piece.id,
       spine: rec?.assets?.spine || rec?.charId || null, avatar: rec?.assets?.avatar || rec?.charId || null,
-      skin: resolvedSkin,
       tier: chess?.tier || piece.tier || 1, golden: !!(piece.golden || chess?.isGolden), dir,
+      // 皮肤 (docs/SKINS.md): the appearance this player chose for the piece's operator. It rides on the piece itself
+      // (server/match/player/views.js pieceView) — the prep board, the hand and the 临时整备区 used to ignore it and draw
+      // the default model until the first battle (the snapshot's UnitInfo.skin), while a teammate scouting the same
+      // board already saw the skin: the own pieces are all this player's, so no 设置「显示其他玩家的皮肤」 applies here.
+      skin: piece.skin || null,
       ...(si ? { standInFor: si.standInFor } : null),
       ...(dr ? { diy: { charId: pick.charId, skillIndex: pick.skillIndex ?? null, uniEquipId: pick.uniEquipId ?? null } } : null),
     };
@@ -909,7 +884,11 @@ export async function createFieldView(host, options = {}) {
       e.key = key;
       const info = pieceInfo(e.piece, e.area);
       // (the model is part of it: a piece whose body changes — a merge, an own 补位 / 自选 setting arriving — is rebuilt)
-      const sig = `${info.kind}|${info.defId}|${info.golden ? 1 : 0}|${info.spine || ''}|${info.skin || ''}`;
+      // 皮肤 (docs/SKINS.md): the appearance belongs to the model too — a view already up keeps the model its info named
+      // when it was built (render/units.js `_modelEntry` reads it once) — so a changed skin rebuilds the piece. It is
+      // appended after the template rather than folded into it because that exact line is pinned verbatim by
+      // test/ui/standin-ui.test.js (a 补位 test this change does not belong to).
+      const sig = `${info.kind}|${info.defId}|${info.golden ? 1 : 0}|${info.spine || ''}` + (info.skin ? `|${info.skin}` : '');
       let v = views.get(key);
       if (v && v._sig !== sig) { dropView(key); v = null; }
       const w = slotWorld(e);
@@ -1035,6 +1014,13 @@ export async function createFieldView(host, options = {}) {
     for (const u of units) {
       const info = u && Number.isInteger(u.uid) ? renderInfo({ ...u, id: `m:${u.uid}` }) : null;
       if (!info) continue;
+      // 设置「显示其他玩家的皮肤」 (docs/SKINS.md): these are another seat's pieces (a boss pair's partner half) or this
+      // player's own reserve medic, so the switch clears the skin of the ones this page does not own — the same rule
+      // applyInfo applies to a battle unit, and without it the partner's pieces kept their appearance while the switch
+      // was off. `skin` is part of the signature for the same reason it is in setPrep's: a view already up draws the
+      // model its info named when it was built (render/units.js `_modelEntry` reads it once). Unlike that one this
+      // signature is not pinned by a test, so the skin sits inside the template.
+      info.skin = shownSkin(info);
       keep.add(info.id);
       const sig = `${info.defId}|${info.golden ? 1 : 0}|${info.spine || ''}|${info.skin || ''}|${info.x},${info.y}|${info.dir || ''}|${(info.items || []).join(',')}`;
       let v = views.get(info.id);
@@ -1077,7 +1063,7 @@ export async function createFieldView(host, options = {}) {
     battleMeta = null;
     interp.reset();
     fx.clear();
-    ofx.clear(); wiring.clear(); ofxPrevT = null;
+    ofx.clear(); wiring.clear(); pluginFx.clear(); ofxPrevT = null;
     meleePending.clear();
     consumedIds.clear();
     tiles.setBattleRect(null);
@@ -1519,6 +1505,7 @@ export async function createFieldView(host, options = {}) {
   function enterBattle(meta) {
     if (destroyed || !meta || typeof meta !== 'object') return false;
     holdScene(true); // before the prep views go: the cache is never "quiet" across the switch
+    presentation.reset();
     drag.reset();
     endDragVisual(false);
     cancelReplay();  // the round start's replay is a prep-board thing: none of it reaches a battle (or a scouted board)
@@ -1530,13 +1517,11 @@ export async function createFieldView(host, options = {}) {
     gone.clear();
     interp.reset();
     fx.clear();
-    ofx.clear(); wiring.clear(); ofxPrevT = null;
+    ofx.clear(); wiring.clear(); pluginFx.clear(); ofxPrevT = null;
     meleePending.clear();
     consumedIds.clear();
     clearHl();
     renderT0Battle = null;
-    beamQ.length = 0;
-    beamSeq = 0;
     mode = 'battle';
     const rect = meta.rect ? normRect(meta.rect) : (meta.kind === 'boss' || meta.kind === 'hidden' ? { ...GEO.BOSS_RECT } : meta.kind === 'unite' ? { ...GEO.UNITE_RECT } : { ...GEO.NORMAL_RECT });
     // prep: true = a read-only scouting board (a teammate's lineup during prep): prep-style pieces, no bars
@@ -1551,7 +1536,7 @@ export async function createFieldView(host, options = {}) {
     }
     tiles.setBattleRect(rect);
     board3d?.setBattleRect(rect);
-    for (const u of Array.isArray(meta.units) ? meta.units : []) addInfo(u);
+    for (const u of Array.isArray(meta.units) ? meta.units : []) applyInfo(u);
     // the official effects of this battle's units load now (the prep → battle switch), the board's heights for their
     // depth-tested materials
     if (ofx.active && !battleMeta.prep) {
@@ -1561,10 +1546,73 @@ export async function createFieldView(host, options = {}) {
     return true;
   }
 
-  function addInfo(u) {
+  /**
+   * The appearance a view of this unit draws (docs/SKINS.md), from a given preference.
+   *
+   * 设置「显示其他玩家的皮肤」 (off = this client draws every other player's piece on the operator's own model): a unit
+   * another seat owns loses its skin — `ownerId` is on every UnitInfo, and a unit of no owner (a stage device, an
+   * enemy) has none to lose. The asymmetry is deliberate: what you draw is your choice, what others draw is theirs, so
+   * turning it off hides THEIR appearance from YOU and never changes what they see.
+   */
+  const skinOf = (info, myId, otherSkins) => {
+    // Keep the received choice intact across settings changes. A running battle's metadata may predate room.skins;
+    // [ASSUMED] the latest public choice wins for operator bodies (including stand-ins / DIY), purely in this view.
+    let skin = info.sourceSkin === undefined ? info.skin : info.sourceSkin;
+    if (info.kind === 'op' && playerSkins.has(info.ownerId)) {
+      skin = playerSkins.get(info.ownerId)[info.diy?.charId || info.spine] || null;
+    }
+    if (!skin) return null;
+    if (info.ownerId == null || !myId || info.ownerId === myId) return skin;
+    return otherSkins ? skin : null;
+  };
+  const playerSkins = new Map();
+  let skinSelectionKey = null;
+  const shownSkin = (info) => skinOf(info, ctx.myPlayerId, settings.otherSkins);
+
+  /**
+   * Register a battle unit's info (a 'spawn' event, `m.field` / fieldMeta units) and keep its view honest: a changed
+   * appearance (the owner switched skin mid-match, or the preference above was toggled) drops the view, so the next
+   * battleView builds it on the model the info now names — the skin is part of a view's model, its picture and its
+   * Front/Back pair, none of which changes under a view that is already up (render/units.js `_wantsBack` /
+   * `_pictureUrl` read `info` once per view).
+   */
+  function applyInfo(u) {
     const info = renderInfo(u);
-    if (info) infos.set(info.id, info);
+    if (!info) return null;
+    info.sourceSkin = u.sourceSkin === undefined ? info.skin : u.sourceSkin;
+    const skin = shownSkin(info);
+    const prev = infos.get(info.id);
+    if (prev && prev.skin !== skin) dropView(info.id);
+    info.skin = skin;
+    infos.set(info.id, info);
     return info;
+  }
+
+  /** The player whose pieces are this page's own (docs/SKINS.md): late (the view may be built before `welcome`). */
+  function setMe(playerId) {
+    const id = typeof playerId === 'string' && playerId ? playerId : null;
+    if (ctx.myPlayerId === id) return;
+    ctx.myPlayerId = id;
+    refreshSkins();
+  }
+
+  /** Apply public choices to existing and future units without changing the battle or restarting its playback. */
+  function setSkins(players) {
+    const key = JSON.stringify((players || []).map((p) => [p.playerId, p.skins || {}]));
+    if (key === skinSelectionKey) return;
+    skinSelectionKey = key;
+    playerSkins.clear();
+    for (const p of players || []) if (p?.playerId) playerSkins.set(p.playerId, p.skins || {});
+    refreshSkins();
+  }
+
+  function refreshSkins() {
+    for (const [id, info] of infos) {
+      const next = shownSkin(info);
+      if (next !== info.skin) { dropView(id); info.skin = next; }
+    }
+    // Boss partners use read-only prep views rather than infos. Reapply their signatures immediately too.
+    if (mode === 'prep' && lastPrep) setPrep(lastPrep.ps, lastPrep.o);
   }
 
   // a hand item on a scouted prep board (UnitInfo kind 'item'): the plate's icon and colour resolve client-side,
@@ -1616,39 +1664,19 @@ export async function createFieldView(host, options = {}) {
     let fresh = null;
     for (const e of list) {
       if (!Array.isArray(e) || e[0] !== 'spawn') continue;
-      const info = addInfo(e[1]);
+      const info = applyInfo(e[1]);
       if (info && views.get(info.id)?._unknown) dropView(info.id);
       if (info && ofx.active) (fresh || (fresh = [])).push({ id: info.id, info });
     }
     // the official effects of units joining the battle load ahead of their first attack (render/vfx/wiring.js more)
     if (fresh) wiring.more(fresh);
-    return interp.pushEvents(list, performance.now() / 1000, t);
+    return interp.pushEvents(attackRateEvents(list), performance.now() / 1000, t);
   }
 
   // attack wind-ups: an 'atk' still queued in the buffer starts its Spine clip early enough for the strike frame to
-  // land when the event is rendered (the look-ahead is the interpolation delay, ~0.2 game s)
-  function windUpAttacks(renderT) {
-    upcomingT = renderT;
-    upSkill.clear();
-    interp.forEachUpcoming(renderT, renderT + 1.5, onUpcoming);
-  }
-  let upcomingT = 0;
-  // the look-ahead's skill state: a ['skill', id, on] queued before an 'atk' of that unit (an instant skill sends 1, its
-  // attack and 0 in one tick) — the official cast effects of the wind-up are the skill's own then
-  const upSkill = new Map();
-  function onUpcoming(e, t) {
-    if (e[0] === 'skill') { upSkill.set(e[1], !!e[2]); return; }
-    if (e[0] !== 'atk' || woundUp.has(e) || CHAIN_KINDS.has(e[3])) return;
-    const v = views.get(e[1]);
-    if (!v || !v.windUp) return;
-    if (v.windUp(t - upcomingT, e[3])) {
-      woundUp.add(e);
-      // the official cast effects that start with the cast play with the clip (render/vfx/wiring.js castStart)
-      const a = v.actor;
-      const skillOn = upSkill.has(e[1]) ? upSkill.get(e[1]) : undefined;
-      wiring.castStart(v, views.get(e[2]), e[3], a ? { skip: a.windSkip || 0, left: a.windCastLeft || 0, skillOn } : { skillOn });
-    }
-  }
+  // land when the event is rendered (app/windup.js; the official cast effects play with the clip — vfx/wiring.js castStart)
+  const lookahead = createWindUpLookahead({ views, woundUp, castStart: (v, tv, kind, o) => wiring.castStart(v, tv, kind, o) });
+  function windUpAttacks(renderT) { lookahead.run(interp, renderT); }
 
   const EVS = [];
   /** State events handed out more than 1.5 game s late (a stall, a hidden tab, a field entered late) → how late. */
@@ -1665,10 +1693,12 @@ export async function createFieldView(host, options = {}) {
   function handleEvent(e, now) {
     switch (e[0]) {
       case 'spawn': {
-        const info = addInfo(e[1]);
+        const info = applyInfo(e[1]);
         if (!info) break;
         gone.delete(info.id);
+        const reused = views.get(info.id);   // a 重生 / a second life keeps the view: re-seed its pacing (#729)
         const v = battleView(info.id);
+        if (v && reused) v.respawn?.(info);
         if (v && info.side === 'enemy' && renderT0Battle != null && now - renderT0Battle > 0.2) fx.ring(info.x, info.y, 0, 0.1, 0.7, 0xff5a4a, 0.4);
         // an enemy's or a summon's deploy talents (render/vfx/talentfx.js: auras, birth effects — once per life)
         if (v) wiring.spawned(v);
@@ -1688,7 +1718,8 @@ export async function createFieldView(host, options = {}) {
         if (e[3] === 'none' || !e[3]) { if (tgt && src) meleePending.set(tgt.id, { src, t: now }); }
         // the unit's official attack (casts, projectile, melee hits — render/vfx/wiring.js) or a chain's bounce (the line of
         // the official shot that opened the chain: wiring.chain), else the procedural one
-        const drew = !!src && (CHAIN_KINDS.has(e[3]) ? wiring.chain(src, tgt, e[3], now) : wiring.attack(src, tgt, e[3], now, woundUp.has(e)));
+        const custom = !CHAIN_KINDS.has(e[3]) && pluginFx.attack(src, tgt, e[3]);
+        const drew = custom || !!src && (CHAIN_KINDS.has(e[3]) ? wiring.chain(src, tgt, e[3], now) : wiring.attack(src, tgt, e[3], now, woundUp.has(e)));
         if (!drew) fx.attack(src, tgt, e[3]);
         break;
       }
@@ -1700,7 +1731,7 @@ export async function createFieldView(host, options = {}) {
         let src = null;
         if (m && now - m.t < 0.35) { src = m.src; meleePending.delete(v.id); fx._slashAt = src.id; }
         // an official hit drawn for this damage replaces the procedural spark / slash (the numbers stay)
-        const official = wiring.damage(v, e[3], src, now);
+        const official = pluginFx.hit(src, v) || wiring.damage(v, e[3], src, now);
         fx.damage(v, amt, e[3], src, e[4], official ? NO_SPARK : undefined);
         break;
       }
@@ -1709,12 +1740,14 @@ export async function createFieldView(host, options = {}) {
       // activation burst and aura when the official layer shows the skill
       case 'skill': {
         const v = views.get(e[1]);
-        if (v) { v.setSkill?.(!!e[2]); if (!wiring.skill(v, !!e[2]) || !e[2]) fx.skill(v, !!e[2]); }
+        if (v) { const custom = pluginFx.skill(v, !!e[2]); v.setSkill?.(!!e[2]); if ((!wiring.skill(v, !!e[2]) && !custom) || !e[2]) fx.skill(v, !!e[2]); }
         break;
       }
       // the skill slot an enemy ability casts (PR #275): the view swaps to that slot's clip (a multi-skill boss's Skill_01..04)
       // (and its official skill effects: render/vfx/skillfx.js cast — index v2 has the enemies' skills)
-      case 'cast': { const v = views.get(e[1]); if (v) { v.setSkillSlot?.(e[2] | 0); wiring.enemyCast(v, e[2] | 0, Number(e[3]) || 0); } break; }
+      // an attack-class skill cast in the attack's turn ['cast', id, slot, dur, clip] plays its clip in place of the attack
+      // (UnitView.onCast; DESIGN §35.57)
+      case 'cast': { const v = views.get(e[1]); if (v) { v.setSkillSlot?.(e[2] | 0); v.onCast?.(e[2] | 0, now, e.length > 4 ? Number(e[4]) || 0 : null); wiring.enemyCast(v, e[2] | 0, Number(e[3]) || 0); } break; }
       case 'die': {
         const v = views.get(e[1]);
         const used = consumedIds.delete(e[1]);
@@ -1735,8 +1768,18 @@ export async function createFieldView(host, options = {}) {
         fx.leak();
         break;
       }
+      case 'rate': {
+        // the sim's own attack interval changed (a skill, an attack-speed buff): pace the clip over it from the next swing
+        const v = views.get(e[1]);
+        if (v && typeof v.setAtkInterval === 'function') v.setAtkInterval(Number(e[2]));
+        break;
+      }
       case 'status': { const v = views.get(e[1]); if (v) { v.onStatus?.(e[2], !!e[3]); wiring.status(v, e[2], !!e[3]); } break; }
       case 'fx': {
+        if (e[1] === 'copy' && e[4]?.id != null && e[4]?.src != null) {
+          const src = infos.get(e[4].src);
+          if (src) (views.get(e[4].id) || battleView(e[4].id))?.copyFrom?.(ctx.lookupDef(src));
+        }
         if (e[4] && typeof e[4] === 'object' && e[4].consumed && e[4].id != null) {
           consumedIds.add(e[4].id);
           if (consumedIds.size > 200) consumedIds.delete(consumedIds.values().next().value);
@@ -1771,8 +1814,9 @@ export async function createFieldView(host, options = {}) {
           if (fv) officialForm = wiring.form(fv, form, x);
         }
         // a kit fx the official skill / talent effects stand for (render/vfx/skillfx.js, talentfx.js) is not drawn procedurally
+        const custom = !(late > 0) && pluginFx.simFx(e[1], Number(e[2]), Number(e[3]), e[4]);
         const official = !(late > 0) && wiring.simFx(e[1], Number(e[2]), Number(e[3]), e[4]);
-        if (!(late > 0) && !official && !officialForm) fx.simFx(e[1], Number(e[2]), Number(e[3]), e[4]);
+        if (!(late > 0) && !official && !officialForm && !custom) fx.simFx(e[1], Number(e[2]), Number(e[3]), e[4]);
         break;
       }
       case 'layer': {
@@ -1821,33 +1865,6 @@ export async function createFieldView(host, options = {}) {
     });
   }
   let renderT0Battle = null;   // game time of the first rendered battle frame (spawn puffs skip the initial wave)
-  // 联防 (the event's, video 8:42): as the 联防 field opens (its first 2 game s), the operators carried onto it beam in
-  // one after another — each hidden until its beam lands (UnitView fadeIn below 0 counts up to it at the same rate), the
-  // opening's own deploy flash skipped. A field watched later, or a redeploy, keeps the plain deploy flash.
-  const beamQ = [];            // [{ v, id }] waiting for their beam (v._beamLeft: real seconds)
-  let beamSeq = 0;             // beams queued on this field (the stagger)
-  function queueBeam(v, renderT) {
-    if (!v) return false;
-    if (v._beamLeft > 0) { v.fadeIn = -v._beamLeft * 4; return true; } // queued already (a deploy event re-showed it)
-    if (v._beamed || battleMeta?.kind !== 'unite' || battleMeta.prep || !(renderT <= 2)) return false;
-    const info = v.info || null;
-    if (!info || info.side !== 'ally' || info.kind === 'device' || info.kind === 'item') return false;
-    v._beamed = true;
-    v._beamLeft = 0.35 + Math.min(beamSeq++, 10) * 0.16;
-    v.fadeIn = -v._beamLeft * 4;
-    beamQ.push({ v, id: info.id });
-    return true;
-  }
-  function pumpBeams(dt) {
-    for (let i = beamQ.length - 1; i >= 0; i--) {
-      const b = beamQ[i];
-      b.v._beamLeft -= dt;
-      if (b.v._beamLeft > 0) continue;
-      b.v._beamLeft = 0;
-      beamQ.splice(i, 1);
-      if (views.get(b.id) === b.v && b.v.alive !== false) fx.deploy(b.v, { beam: true });
-    }
-  }
   let downSeq = 0;             // syncBattle pass counter: a view still marked down after a pass left the `down` list
   function syncBattle(renderT) {
     if (renderT0Battle == null) renderT0Battle = renderT;
@@ -1866,8 +1883,8 @@ export async function createFieldView(host, options = {}) {
       }
       if (!v) v = battleView(id) || createUnknown(id, s);
       if (!v) continue;
-      if (!v._seen) { v._seen = true; v.fadeIn = 0; queueBeam(v, renderT); }
-      syncView(v, s, renderT);
+      if (!v._seen) { v._seen = true; v.fadeIn = 0; }
+      syncView(v, presentation.sample(s), renderT);
     }
     // knocked-out operators waiting to redeploy (b.snap `down`, user playtest #4 item 9): their view stays on the
     // field knocked down under a redeploy ring (UnitView.setDown) — made on the spot for one already down when this
@@ -1905,7 +1922,7 @@ export async function createFieldView(host, options = {}) {
 
   function createUnknown(id, s) {
     if (infos.has(id)) return null;
-    addInfo({ id, kind: 'enemy', side: 'enemy', defId: null, x: s.x, y: s.y, maxHp: s.maxHp });
+    applyInfo({ id, kind: 'enemy', side: 'enemy', defId: null, x: s.x, y: s.y, maxHp: s.maxHp });
     infos.get(id)._unknown = true;
     const v = battleView(id);
     if (v) v._unknown = true;
@@ -1973,7 +1990,10 @@ export async function createFieldView(host, options = {}) {
     }
     const dtRaw = (now - lastNow) / 1000;
     lastNow = now;
-    const dt = Math.min(0.1, Math.max(0, dtRaw));
+    // Optional studio clock: freeze animations and procedural effects with the simulation, including single steps.
+    const playbackT = opts.playbackTime?.();
+    const dt = Number.isFinite(playbackT) ? Math.max(0, playbackT - (frame.playbackT ?? playbackT)) : Math.min(0.1, Math.max(0, dtRaw));
+    frame.playbackT = playbackT;
     if (dtRaw < 0.25) frameMs = frameMs * 0.9 + dtRaw * 1000 * 0.1;
     fps = 1000 / Math.max(1, frameMs);
     adaptLoad(dtRaw);
@@ -1996,16 +2016,23 @@ export async function createFieldView(host, options = {}) {
         const renderT = interp.update(now / 1000);
         if (Number.isFinite(renderT)) {
           processEvents(renderT);
+          const justEnded = presentation.update(renderT, interp.newestT, dt);
           syncBattle(renderT);
-          windUpAttacks(renderT);
+          if (!presentation.ended) windUpAttacks(renderT);
           // the official effects run on the battle clock (render time of the snapshots: 1× / 2×, still while paused); the
           // skill effects' per-frame part reads the views' fresh sample (render/vfx/skillfx.js sync)
-          const gdt = ofxPrevT == null ? 0 : Math.min(0.25, Math.max(0, renderT - ofxPrevT));
+          const gdt = presentation.ended ? dt : ofxPrevT == null ? 0 : Math.min(opts.playbackTime ? Infinity : 0.25, Math.max(0, renderT - ofxPrevT));
           ofxPrevT = renderT;
-          wiring.sync(views.values());
-          if (ofx.active) { wiring.tick(); ofx.update(gdt); }
+          if (justEnded) { wiring.clear(); ofx.finish(); pluginFx.finish(); }
+          pluginFx.update(gdt);
+          if (!presentation.ended) { pluginFx.sync(views.values()); wiring.sync(views.values()); }
+          // [ASSUMED] Bound long-lived one-shots to two presentation seconds after completion.
+          if (presentation.ended && presentation.tail >= 2) { ofx.clear(); pluginFx.clear(); fx.clear(); }
+          if (ofx.active) {
+            if (!presentation.ended) wiring.tick();
+            if (opts.playbackTime) advanceEffectClock(ofx, gdt); else ofx.update(gdt);
+          }
         }
-        if (beamQ.length) pumpBeams(dt);
       } else if (mode === 'prep') {
         for (const [key, pd] of pending) {
           if (now - pd.t > DROP_PENDING_MS) {
@@ -2036,8 +2063,6 @@ export async function createFieldView(host, options = {}) {
       if (!frame.warned) { frame.warned = true; console.error('[render] frame failed', err); }
     }
   }
-  // 设置「帧率」：30 / 60 / 120（0 = 不限制）。默认 60：这台 Adreno 机器上 120 很吃力（见 README/设置页）。
-  app.ticker.maxFPS = Number.isFinite(settings.fps) && settings.fps > 0 ? settings.fps : 60;
   app.ticker.add(frame);
   // render-cost probe (PIXI renders at UPDATE_PRIORITY.LOW = -25)
   let renderT0 = 0, renderMs = 0;
@@ -2083,6 +2108,11 @@ export async function createFieldView(host, options = {}) {
     retryBoard();
     loadShadow();
     loadMountains();
+    if (pluginFx.source !== assets.manifest?.fx) {
+      pluginFx.refresh(); ofx.clear(); wiring.clear(); wiring.idx = null;
+      ofx.pool.clear(); ofx.warmQueue.length = 0; ofx.glr?.dropTextures();
+      ofx.lib.reloadPlugins().then(() => { if (!destroyed) { syncOfficialFx(); wiring.ready(); } });
+    }
     if (mode === 'prep' && lastPrep) setPrep(lastPrep.ps, lastPrep.o);
     for (const v of views.values()) v.retryAssets?.();
     for (const v of penViews.values()) v.retryAssets?.();
@@ -2105,12 +2135,17 @@ export async function createFieldView(host, options = {}) {
 
   view = {
     setStage,
+    /** 设置「显示其他玩家的皮肤」 (docs/SKINS.md): whose pieces are this page's own — the rest lose their skin when
+     * that switch is off. ui/fieldHost.js calls it with `store.get().me.playerId` on mount. */
+    setMe,
+    setSkins,
     setCamera,
     setPrep,
     replayDeploys,
     /** Enemy preview pen: a list in m.private.nextEnemies shape, or null to empty it (setPrep does this itself). */
     setPen(list) { if (destroyed) return false; setPenList(Array.isArray(list) ? list : null); return true; },
     enterBattle,
+    finishBattle() { if (!destroyed && mode === 'battle') presentation.finish(); },
     pushSnapshot,
     pushEvents,
     /**
@@ -2127,6 +2162,7 @@ export async function createFieldView(host, options = {}) {
       return true;
     },
     highlightTiles(tilesList, style) {
+      if (destroyed) return false;
       if (tilesList == null || (Array.isArray(tilesList) && !tilesList.length && style == null)) { clearHl(); return true; }
       const st = style ?? 'range';
       const key = hlKey(st);
@@ -2216,13 +2252,15 @@ export async function createFieldView(host, options = {}) {
       const q = settings.quality;
       if (typeof s.damageNumbers === 'boolean') settings.damageNumbers = s.damageNumbers;
       if (typeof s.officialDamageNumbers === 'boolean') settings.officialDamageNumbers = s.officialDamageNumbers;
-      if (typeof s.ammoCount === 'boolean') settings.ammoCount = s.ammoCount;   // the units read it every frame (ctx.settings)
-      if (typeof s.mysticEnergy === 'boolean') settings.mysticEnergy = s.mysticEnergy;   // likewise
+      if (typeof s.ammoEnergyCount === 'boolean') settings.ammoEnergyCount = s.ammoEnergyCount; // the units read it every frame (ctx.settings)
+      // 设置「显示其他玩家的皮肤」 (docs/SKINS.md): the views already up keep the appearance they were built on, so the
+      // ones the new choice changes are dropped and rebuilt from their own info on the next frame
+      if (typeof s.otherSkins === 'boolean' && s.otherSkins !== settings.otherSkins) {
+        settings.otherSkins = s.otherSkins;
+        refreshSkins();
+      }
       if (s.quality === 'high' || s.quality === 'medium' || s.quality === 'low') settings.quality = s.quality;
-      // 设置「棋盘渲染」与「帧率」（ui/gameLogic/settings.js BOARD_MODES / FPS_MODES）。
-    if (typeof s.boardMode === 'string' && s.boardMode !== settings.boardMode) { settings.boardMode = s.boardMode; applyBoardMode(); }
-    if (Number.isFinite(s.fps) && s.fps !== settings.fps) { settings.fps = s.fps; app.ticker.maxFPS = s.fps > 0 ? s.fps : 0; }
-    if (typeof s.officialFx === 'string' && s.officialFx !== settings.officialFx) { settings.officialFx = s.officialFx; syncOfficialFx(); }
+      if (typeof s.officialFx === 'string' && s.officialFx !== settings.officialFx) { settings.officialFx = s.officialFx; syncOfficialFx(); }
       if (q !== settings.quality) { board3d?.setQuality?.(settings.quality); resize(); }
     },
     resize,
@@ -2256,6 +2294,7 @@ export async function createFieldView(host, options = {}) {
       holdScene(false); // no scene any more: the quiet budget may free the skeletons (lobby / room / result)
       try { fx.destroy(); } catch { /* ignore */ }
       try { ofx.destroy(); } catch { /* ignore */ }
+      pluginFx.destroy();
       try { tiles.destroy(); } catch { /* ignore */ }
       try { impostors.destroy(); } catch { /* ignore */ }
       listeners.clear();

@@ -14,9 +14,10 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { unscaled } from '../helpers/uiSize.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
-const read = (p) => readFileSync(path.join(ROOT, p), 'utf8');
+const read = (p) => unscaled(readFileSync(path.join(ROOT, p), 'utf8'));
 
 const { GLYPHS, gearPath, GIcon } = await import('../../public/js/ui/gameComponents.js');
 const { hudBands, HUD_REM } = await import('../../public/js/ui/fieldHost.js');
@@ -105,11 +106,13 @@ describe('8: the settings gear is a clean, regular icon', () => {
 const remAt = (w, h) => Math.max(40, Math.min(w / 19.2, h / 10.8, 240));
 
 /** Run `fn` with a stubbed DOM: the root font size, and the HUD layer's top (safe-area inset). */
-function withDom(rem, hudTop, fn) {
+function withDom(rem, hudTop, fn, bondsBottom = 0) {
   const g = globalThis;
   const saved = { document: g.document, getComputedStyle: g.getComputedStyle };
   g.getComputedStyle = () => ({ fontSize: `${rem}px` });
-  g.document = { documentElement: {}, querySelector: (s) => (s === '.gm__hud' ? { getBoundingClientRect: () => ({ top: hudTop }) } : null) };
+  g.document = { documentElement: {}, querySelector: (s) => s === '.gm__hud'
+    ? { getBoundingClientRect: () => ({ top: hudTop }) }
+    : s === '.gm__bonds' && bondsBottom ? { getBoundingClientRect: () => ({ bottom: bondsBottom, height: 44 }) } : null };
   try { return fn(); } finally { g.document = saved.document; g.getComputedStyle = saved.getComputedStyle; }
 }
 
@@ -117,23 +120,20 @@ describe('9: the prep camera keeps the bench clear of the shop bar on phones in 
   test('HUD_REM mirrors the CSS it measures (bond strip bottom, shop bar top, the notched-phone rule)', () => {
     const game = read('public/css/screens/game.css');
     const shop = read('public/css/screens/game-shop.css');
-    // bond strip: top 1.36rem + a .52rem disc and its name line → measured 2.14–2.15rem in Chrome; 2.16rem kept
-    // for the discs, plus the vertical 收起 drawer's fold handle below the tray (.28rem + .04rem margin: game.css
-    // .bstrip__fold-handle) → 2.48.
-    // 左右对称 = 盟约条严格居中（本仓库自己的取值，见 game.css 的注释）。
-    assert.match(game, /\.gm__bonds \{ position: absolute; left: 2\.5rem; top: 1\.36rem; right: 2\.5rem;/);
+    // #678: clip padding is offset by margins; the 44 px arrows can still raise the band on phones.
+    assert.match(game, /\.gm__bonds \{ position: absolute; left: 1\.56rem; top: 1\.36rem;/);
     assert.match(game, /\.bslot \.bond \{ --disc: \.52rem; \}/);
-    assert.match(game, /\.bstrip__fold-handle \{[^}]*height: 0\.28rem;[^}]*margin-top: 0\.04rem;/, 'the handle the budget counts');
-    assert.equal(HUD_REM.bondStripBottom, 2.48);
+    assert.match(game, /\.gm__bonds \.bstrip-scroll \.bstrip \{[^}]*padding: \.08rem 0; margin: -\.08rem 0;/);
+    assert.match(game, /\.gm__bonds \.bstrip-scroll__arrow \{[^}]*height: 44px;/);
+    assert.equal(HUD_REM.bondStripTop, 1.36);
+    assert.equal(HUD_REM.bondStripBottom, 2.16);
+    assert.equal(HUD_REM.bondArrowPx, 44);
     // shop bar: bottom .2rem + row padding .1rem × 2 + 2.24rem cards (level / operator / item) + 2 px + 1 px borders
     assert.match(shop, /\.shopbar \{\n {2}position: absolute; right: \.26rem; bottom: \.2rem;/);
     assert.match(shop, /\.shopbar__row \{\n {2}position: relative; display: flex; align-items: stretch; gap: \.08rem; padding: \.1rem;\n[^}]*border: 1px solid var\(--line-2\); border-top: 2px solid var\(--mint-700\);/);
     assert.match(shop, /\.lvcard \{\n {2}position: relative; width: 1\.24rem; height: 2\.24rem;/);
-    // 业主 2026-10-22：卡片宽度 1.56rem → 1.72rem（+10%），为了放下更长的名字与价格。
-  assert.match(shop, /\.scard \{\n {2}--tc: var\(--tier-1\);\n {2}position: relative; width: 1\.72rem; height: 2\.24rem;/);
-    // 业主 2026-10-22：商店栏有 +10% 的 CSS 缩放（game-shop.css），所以是 (0.2 + 0.1×2 + 2.24) × 1.1 = 2.9。
-    // 商店栏 +10% 缩放后 (0.2 + 0.1×2 + 2.24) × 1.1 = 2.904，代码取整记为 2.9（HUD_REM 的注释）。
-    assert.equal(HUD_REM.shopBarTop, 2.9);
+    assert.match(shop, /\.scard \{\n {2}--tc: var\(--tier-1\);\n {2}position: relative; width: 1\.56rem; height: 2\.24rem;/);
+    assert.equal(HUD_REM.shopBarTop, 0.2 + 0.1 * 2 + 2.24);
     assert.equal(HUD_REM.shopBarBorderPx, 3);
     // the bar stays on the viewport's bottom edge on a notched phone (DESIGN §18.1): no bottom inset to add
     assert.match(read('public/css/devices.css'), /\.gm__hud > \.shopbar \{ bottom: calc\(\.2rem - var\(--sa-b\)\); \}/);
@@ -144,17 +144,18 @@ describe('9: the prep camera keeps the bench clear of the shop bar on phones in 
       for (const k of ['normal', 'unite', 'boss', 'hidden', 'pen']) assert.equal(hudBands(k, { width: 844, height: 390 }), null, k);
       for (const k of ['prep', 'bossPrep']) {
         const b = hudBands(k, { width: 844, height: 390 });
-        // bondStripBottom 是 2.48rem（盘面 2.16 + 收起抽屉折叠手柄 0.28），下面的 shopBarTop 是 2.9；
-        // rem = 40 → top = 2.48 × 40 = 99.2，bottom = (2.48 + 2.9/…) 由 hudBands 自己算。
-        assert.ok(Math.abs(b.top - 99.2) < 1e-9 && Math.abs(b.bottom - 119) < 1e-9, `${k} ${JSON.stringify(b)}`);
+        assert.ok(Math.abs(b.top - 98.4) < 1e-9 && Math.abs(b.bottom - 108.6) < 1e-9, `${k} ${JSON.stringify(b)}`);
       }
     });
-    // rem = 100 → top = 2.48 × 100 = 248，bottom = 248 + 45（2.9 − 2.48 = 0.42 → 42？见 hudBands 的算法）= 293
-    // 业主 2026-10-22：bondStripBottom 改 2.48、shopBarTop 改 2.9 之后的实际值。
-    withDom(100, 0, () => assert.deepEqual(hudBands('prep', { width: 1920, height: 1080 }), { top: 248, bottom: 293 }));
-    // 40 + 12px 安全区 → 99.2 + 12 = 111.2（bondStripBottom 2.48 × 40 = 99.2）
-    withDom(40, 12, () => assert.ok(Math.abs(hudBands('prep', { width: 844, height: 390 }).top - 111.2) < 1e-9, 'top inset'));
-    withDom(40, 0, () => assert.deepEqual(hudBands('prep', { width: 640, height: 200 }), { top: 80, bottom: 80 }), 'clamped at 40 % of the height');
+    withDom(100, 0, () => assert.deepEqual(hudBands('prep', { width: 1920, height: 1080 }), { top: 216, bottom: 267 }));
+    withDom(40, 12, () => assert.ok(Math.abs(hudBands('prep', { width: 844, height: 390 }).top - 110.4) < 1e-9, 'top inset'));
+    withDom(40, 0, () => assert.deepEqual(hudBands('prep', { width: 640, height: 200 }), { top: 80, bottom: 80 }, 'clamped at 40 % of the height'));
+  });
+
+  test('a taller measured scroller is kept clear; a collapsed strip keeps the minimum band', () => {
+    const size = { width: 844, height: 390 };
+    withDom(40, 12, () => assert.equal(hudBands('prep', size).top, 124), 124);
+    withDom(40, 12, () => assert.ok(Math.abs(hudBands('prep', size).top - 110.4) < 1e-9), 90);
   });
 
   test('wiring: the game hands hudBands to the view, the view to the prep cameras', () => {

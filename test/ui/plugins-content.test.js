@@ -373,7 +373,10 @@ describe('the runner\'s cs check (public/js/battle/runner.js)', () => {
     const s = realStart();
     s.spec.cs = 'cd'.repeat(32);
     const state = { held: null, loading: 'cd'.repeat(32) };
-    const r = rig({ state, contentFor: async (cs) => { await tick(); state.held = { cs, data: DATA }; state.loading = null; return state.held; } });
+    // the set arrives after one turn of the event loop the rig's run() flushes (setImmediate): a setTimeout(0) could
+    // still be pending when the 50 flushes finish on a fast runner (Node 24.21 on CI took 3.8 ms), and the battle then
+    // never became the authority before the clock ran out
+    const r = rig({ state, contentFor: async (cs) => { await new Promise((ok) => setImmediate(ok)); state.held = { cs, data: DATA }; state.loading = null; return state.held; } });
     r.net.emit('b.start', s);
     await r.run(60_000);
     const e = r.runner._entries.get(s.battleId);
@@ -409,12 +412,13 @@ describe('statistics and the room\'s facts with gameplay plugins', () => {
     assert.deepEqual([all.count, all.modded, all.rounds.max], [2, 0, 14]);
   });
 
-  test('stats v2: a v1 envelope migrates (its records played the original game)', () => {
-    assert.equal(STATS_VERSION, 2);
+  test('stats v2+: a v1 envelope migrates (its records played the original game; v3 added `version`, DESIGN §35.23)', () => {
+    assert.equal(STATS_VERSION, 3);
     const v1 = { v: 1, records: [{ id: 'r1', v: 1, t: 5, end: 'settled', players: [{ playerId: 'p1', stats: {} }], selfId: 'p1' }] };
     const { stats, changed } = migrateStats(v1);
     assert.equal(changed, true);
-    assert.equal(stats.v, 2);
+    assert.equal(stats.v, 3);
+    assert.equal('version' in stats.records[0], false, 'no version: 第二期下半');
     assert.equal(stats.records[0].content, null);
     assert.equal(stats.records[0].id, 'r1');
   });

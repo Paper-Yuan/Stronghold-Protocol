@@ -25,7 +25,7 @@
 // THIRD-PARTY-NOTICES.md, README.md, CHANGELOG.md, the player and plugin author docs. `npm ci --omit=dev` in the
 // stage adds the production node_modules and (postinstall) public/vendor. The full zip adds the git-ignored art: the
 // files data/assets.json lists, public/fonts, and the local-client extraction (public/assets/local/,
-// data/local-assets.json) when present, including the 0.2.5 battlefield scenes under public/assets/local/scene/
+// data/local-assets.json) when present, including the battlefield scenes under public/assets/local/scene/
 // when this machine extracted them. Missing scenes are not an error: the board keeps the metal tiles, and the
 // summary says so. Nothing else on disk ships, so art the data no longer lists (焰狐龙梓兰, left out of
 // 自选 in 0.2.0, or files of an old mapping) never ships even when this machine still has it. FULL_ZIP_JP_VOICE (below)
@@ -34,6 +34,16 @@
 // Left out: test/ except test/helpers/battleHarness.js, the maintainer tools (build-data, golden, botbench, i18n, check-imports, this file …),
 // scripts/make-windows-bundle.mjs, the other docs (DESIGN, SIM, the research notes, docs/img …), public/dev/, handoff/,
 // .github/, types/, lint / editor / Docker files (Docker builds from a git clone).
+// Also left out, by the maintainer's decision of 2026-10-23 (§35.66): the external-AI / LLM integration. The explicit
+// list is LLM_RELEASE_EXCLUDE in server/match/llmRelease.js (re-exported below). A release tree gets
+// server/release-without-llm and the server then ignores external-AI settings. The #673 framework and the built-in
+// bots stay, including server/match/aiPlan.js and server/match/aiEconomy.js (no host ships with them).
+//   server/match/externalAI.js, server/match/externalConfig.js, server/match/aiDigest.js
+//   server/ai/transport.js, knowledge.js, playbook.js, strategy.js, strategy-community.js,
+//     community-candidates.js, cycle-candidates.js, cycles.js
+//   docs/AI-STRATEGY.md, docs/EXTERNAL_AI.md, docs/EXTERNAL_AI_ZH.md
+//   tools/ai/   (the example agent and its knowledge / context / plan / playbook tools)
+//   test/fixtures/llm-advisor.json
 //
 // Checks, all of them in --dry-run too (which writes nothing): the refusal list below; every relative import of a
 // shipped module and every `node <file>` of the player npm scripts resolves to a shipped file; a full zip has every file
@@ -94,6 +104,11 @@ import {
   APPLIED_FILE, MANIFEST_FILE, UPDATE_FILE, affectsRuntime, digestFile, inManifest, isSetupArt, listedArtFiles,
   parseManifest, parseUpdate, pathProblem, removalProblem,
 } from '../server/update.js';
+// The one list of LLM paths a release must not contain, and the marker a release tree carries (§35.66).
+import {
+  LLM_RELEASE_EXCLUDE, LLM_RELEASE_MARKER, LLM_RELEASE_MARKER_TEXT, isLlmReleasePath, omitLlmFromRelease,
+} from '../server/match/llmRelease.js';
+export { LLM_RELEASE_EXCLUDE, LLM_RELEASE_MARKER, LLM_RELEASE_MARKER_TEXT, isLlmReleasePath, omitLlmFromRelease };
 
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 /** The one folder inside both zips (DEPLOY §1.1: "解压后把里面的 Stronghold-Protocol 文件夹放到…"). */
@@ -108,7 +123,7 @@ export const ROOT_FILES = ['package.json', 'package-lock.json', 'LICENSE', 'NOTI
 export const ROOT_LAUNCHERS = ['启动游戏.bat', 'start-windows.bat', 'run-server.bat', 'start.sh'];
 /** The player docs. */
 export const PLAYER_DOCS = ['docs/PLAYING.md', 'docs/DEPLOY.md', 'docs/PLUGINS.md', 'docs/PLUGIN-GUIDE.md',
-  'docs/PLUGIN-DSL.md', 'docs/PLUGIN-API.md', 'docs/plugin-catalog.example.json'];
+  'docs/PLUGIN-DSL.md', 'docs/PLUGIN-API.md', 'docs/SKINS.md', 'docs/plugin-catalog.example.json'];
 /** The author harness has no test-only dependencies; the rest of test/ stays out. */
 export const AUTHOR_TEST_FILES = ['test/helpers/battleHarness.js'];
 /** Only these repository-owned plugin resources ship, even if an owner's plugin was accidentally tracked. */
@@ -124,7 +139,7 @@ export const PLAYER_TOOLS = ['tools/crop-board-atlas.mjs', 'tools/doctor.mjs', '
 export const PLAYER_TOOL_DIRS = ['tools/assets/', 'tools/local-extract/'];
 /** Whole runtime directories (their tracked files). */
 export const RUNTIME_DIRS = ['server/', 'shared/', 'data/', 'public/', 'packs/', 'schemas/'];
-/** Written into the stage, never taken from the checkout: the pack index of the shipped packs. */
+/** Written into the stage, never taken from the checkout: the pack index of the shipped packs, and the release marker. */
 export const GENERATED_PACK_INDEX = 'packs/index.json';
 /** Whether shipped files include a content pack (then the stage gets GENERATED_PACK_INDEX). @param {string[]} files */
 export const shipsPacks = (files) => files.some((f) => /^public\/i18n\/[^/]+\.json$/.test(f) || /^packs\/[^/]+\/pack\.json$/.test(f));
@@ -160,7 +175,7 @@ export const JP_VOICE_DIR = 'public/assets/audio/voice/jp/';
 export const FULL_ZIP_OPTIONAL_VOICE = true;
 /** Where those dubs lie (plan.mjs voiceAlt / nativeVoiceAlt). */
 export const OPTIONAL_VOICE_DIRS = Object.freeze(['public/assets/audio/voice/en/', 'public/assets/audio/voice/kr/', 'public/assets/audio/voice/native/']);
-/** Extracted official battlefield scenes (0.2.5 asset pack). Already ignored with public/assets/. */
+/** Extracted official battlefield scenes (public/assets/local/scene/). Already ignored with public/assets/. */
 const SCENE_ART_PREFIX = 'public/assets/local/scene/';
 /**
  * The official battle effects (tools/local-extract/fx.py, DESIGN §33: public/assets/local/fx/ and their file list
@@ -214,6 +229,8 @@ export function isJunk(rel) {
 export function isPlayerFile(rel) {
   const p = posixRel(rel);
   if (!p || isRefused(p) || isJunk(p) || p === 'data/local-assets.json' || p === 'data/local-fx.json' || p === GENERATED_PACK_INDEX) return false;
+  // The marker is generated into the stage. The LLM paths stay on dev even if a later allowlist would have taken them.
+  if (p === LLM_RELEASE_MARKER || isLlmReleasePath(p)) return false;
   if (NOT_TRACKED_SHIP.some((d) => p.startsWith(d))) return false;
   if (isPluginResource(p) || AUTHOR_TEST_FILES.includes(p)) return true;
   if (RUNTIME_DIRS.some((d) => p.startsWith(d)) || PLAYER_TOOL_DIRS.some((d) => p.startsWith(d))) return true;
@@ -293,7 +310,7 @@ export const manifestFiles = listedArtFiles;
  * that nothing lists (left out); `held`: listed files the zip holds back on purpose — the JP voice dub when `jpVoice`
  * (FULL_ZIP_JP_VOICE) is off, the English / Korean / own-language dubs when `optionalVoice` (FULL_ZIP_OPTIONAL_VOICE)
  * is off: neither shipped nor missing, and never deleted by an update.
- * `scenes`: the files under public/assets/local/scene/ (the 0.2.5 battlefield scenes). They are also in `files`.
+ * `scenes`: the files under public/assets/local/scene/ (one folder per battlefield, plus the shared scene/tex). They are also in `files`.
  * A lite plan and a machine that has not extracted them return `scenes: []`; packaging still succeeds.
  */
 export function artPlan(root, { lite = false, jpVoice = FULL_ZIP_JP_VOICE, optionalVoice = FULL_ZIP_OPTIONAL_VOICE, fx = FULL_ZIP_FX } = {}) {
@@ -558,7 +575,7 @@ export function plan(root, opts = {}) {
   const art = artPlan(root, { lite, jpVoice: opts.jpVoice ?? FULL_ZIP_JP_VOICE, optionalVoice: opts.optionalVoice ?? FULL_ZIP_OPTIONAL_VOICE });
   const pkg = readJson(path.join(root, 'package.json')) || {};
   const lock = readJson(path.join(root, 'package-lock.json')) || {};
-  const generated = shipsPacks(keep) ? [GENERATED_PACK_INDEX] : [];
+  const generated = [...(shipsPacks(keep) ? [GENERATED_PACK_INDEX] : []), LLM_RELEASE_MARKER];
   const files = [...keep, ...art.files, ...generated];
   const problems = [];
   for (const f of files) if (isRefused(f) || isJunk(f)) problems.push(`refused: ${f}`);
@@ -620,12 +637,17 @@ export function formatSummary(p) {
     lines.push(`art: ${p.art.length} files, ${MB(p.bytes.art)} (data/assets.json, public/fonts${p.localArt ? ', public/assets/local + data/local-assets.json' : '; no local-client art here'})`);
     const sceneFiles = p.scenes?.files;
     if (sceneFiles?.length) {
-      lines.push(`battlefield scenes: ${sceneFiles.length} files, ${MB(p.scenes.bytes || 0)} (0.2.5 asset pack, public/assets/local/scene; the metal board is the fallback when a stage has none)`);
+      lines.push(`battlefield scenes: ${sceneFiles.length} files, ${MB(p.scenes.bytes || 0)} (public/assets/local/scene; the metal board is the fallback when a stage has none)`);
     } else if (p.scenes) {
       lines.push('battlefield scenes: none on this machine (the full bundle ships the metal board; fetch_scenes.py then extract.py --only scene before packaging to include the 11 official scenes)');
     }
   }
-  if (p.generated?.length) lines.push(`generated: ${p.generated.join(', ')} (the pack index of the shipped packs, for a static host)`);
+  if (p.generated?.length) {
+    const bits = [];
+    if (p.generated.includes(GENERATED_PACK_INDEX)) bits.push('the pack index of the shipped packs, for a static host');
+    if (p.generated.includes(LLM_RELEASE_MARKER)) bits.push('the release marker that keeps external AI off the package');
+    lines.push(`generated: ${p.generated.join(', ')} (${bits.join('; ')})`);
+  }
   lines.push(`production node_modules: ${MB(p.bytes.modules)} · public/vendor: ${MB(p.bytes.vendor)} (npm ci --omit=dev and its postinstall)`);
   lines.push(`uncompressed: ${MB(p.bytes.total)}; a 0.1.x whole-tree copy would add ${MB(p.bytes.leftOut)}`);
   const groups = Object.entries(p.dropped).sort((a, b) => b[1].bytes - a[1].bytes);
@@ -647,18 +669,40 @@ export function packageOutIsUnsafe(out, root = REPO) {
   return inside(r, o) || inside(o, r);
 }
 
+/** The first non-empty line of a tool's stderr: what it refused, before the usage hint tools print after it. */
+const errLine = (text) => String(text || '').trim().split(/\r?\n/).map((l) => l.trim()).filter(Boolean)[0] || '';
+
 /**
  * Zip `cwd`/`folder` (FOLDER unless named: the asset pack's folder) into `zipPath`: Info-ZIP `zip`, else a bsdtar
  * `tar --format zip` (Windows 10+, macOS). bsdtar writes
  * the names in UTF-8 (flag bit 11) only when told: its default is the system code page, which loses a name it cannot
- * spell (卫戍 becomes ?? on Windows code page 1252) and leaves no UTF-8 copy for a reader.
+ * spell (卫戍 becomes ?? on Windows code page 1252) and leaves no UTF-8 copy for a reader. No third attempt without
+ * `--options`: that tar may write the zip with the names it could not spell, which no reader can undo.
+ *
+ * A tool that is installed but refuses this folder is not a missing tool, and the difference used to be invisible:
+ * both branches threw one sentence and dropped the tool's own words. The error now names every attempt with its exit
+ * status or errno and the line the tool printed (#840).
  */
 export function zipFolder(cwd, zipPath, folder = FOLDER) {
   // deflate everything: storing PNG / MP3 as they are made the full zip 8.5 MB larger and saved no real time
-  const z = spawnSync('zip', ['-q', '-r', '-X', zipPath, folder], { cwd, stdio: 'inherit' });
-  if (!z.error && z.status === 0) return;
-  const t = spawnSync('tar', ['-c', '--format', 'zip', '--options', 'zip:hdrcharset=UTF-8', '-f', zipPath, folder], { cwd, stdio: 'inherit' });
-  if (t.error || t.status !== 0 || !isFile(zipPath)) throw new Error('zipping failed: install `zip` (or a bsdtar `tar`)');
+  const attempts = [
+    ['zip', ['-q', '-r', '-X', zipPath, folder]],
+    ['tar', ['-c', '--format', 'zip', '--options', 'zip:hdrcharset=UTF-8', '-f', zipPath, folder]],
+  ];
+  const failed = [];
+  for (const [cmd, args] of attempts) {
+    // a half-written zip from the attempt before must not pass for one this attempt made
+    fs.rmSync(zipPath, { force: true });
+    const r = spawnSync(cmd, args, { cwd, encoding: 'utf8' });
+    if (!r.error && r.status === 0 && isFile(zipPath)) return;
+    const end = r.status === null && r.signal ? `signal ${r.signal}` : `exit ${r.status}`;
+    const why = r.error ? String(r.error.code || r.error.message) : `${end}${errLine(r.stderr) ? ` (${errLine(r.stderr)})` : ''}`;
+    failed.push({ text: `${cmd}: ${why}`, missing: r.error?.code === 'ENOENT' });
+  }
+  fs.rmSync(zipPath, { force: true });
+  // neither tool exists at all: the old hint still says what to do
+  const hint = failed.every((f) => f.missing) ? ' — install `zip` (or a bsdtar `tar`)' : '';
+  throw new Error(`zipping failed: ${failed.map((f) => f.text).join('; ')}${hint}`);
 }
 
 const isLib = (f) => f.startsWith('node_modules/') || f.startsWith('public/vendor/');
@@ -743,6 +787,12 @@ function makeStage(root, p, stage, { install, env, log }) {
   if (generated.has(GENERATED_PACK_INDEX)) {
     const index = writePackIndex(stage, path.join(stage, GENERATED_PACK_INDEX));
     log(`${GENERATED_PACK_INDEX}: ${index.packs.map((x) => `${x.type} ${x.id}`).join(', ') || 'no pack'}`);
+  }
+  if (generated.has(LLM_RELEASE_MARKER)) {
+    const marker = path.join(stage, LLM_RELEASE_MARKER);
+    fs.mkdirSync(path.dirname(marker), { recursive: true });
+    fs.writeFileSync(marker, LLM_RELEASE_MARKER_TEXT);
+    log(`${LLM_RELEASE_MARKER}: external AI stays off this package`);
   }
   if (install) {
     log('npm ci --omit=dev …');

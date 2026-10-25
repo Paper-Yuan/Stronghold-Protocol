@@ -7,9 +7,10 @@
 import { h } from '../../vendor/preact.module.js';
 import { useEffect, useReducer } from '../../vendor/hooks.module.js';
 import htm from '../../vendor/htm.module.js';
-import { ERR_TEXT } from '../../../shared/constants.js';
-import { t } from '../../../shared/i18n.js';
+import { ERR_TEXT, SETUP_REROLL_COOLDOWN_MS } from '../../../shared/constants.js';
+import { t, N_ } from '../../../shared/i18n.js';
 import { recordError } from '../diag.js';
+import { catalog, pluginName } from '../content.js';
 
 // no shared static vnodes (see components.js hFresh: htm's static cache would retain unmounted DOM)
 function hFresh(type, props, ...children) {
@@ -97,6 +98,17 @@ export function dismissToast(id) {
 export function describeError(err) {
   if (!err) return t('发生未知错误');
   if (typeof err === 'string') return t(Object.hasOwn(ERR_TEXT, err) ? ERR_TEXT[err] : err);
+  if (err.code === 'PLUGIN_RULE_CONFLICT') {
+    // Existing wire detail is bounded to 120 characters. The ids precede the longer developer explanation.
+    const match = typeof err.detail === 'string' && /^PLUGIN_RULE_CONFLICT (\w+): ([a-z0-9-]{2,32}) and ([a-z0-9-]{2,32}) set /.exec(err.detail);
+    const labels = { shopBias: N_('商店装备偏向'), prepLoadout: N_('休整期调配'), morphPairing: N_('变形同构体配对'), unequip: N_('卸下装备') };
+    if (match && Object.hasOwn(labels, match[1])) {
+      const name = id => { const p = catalog.get().plugins.find(p => p.id === id); return p ? pluginName(p) : id; };
+      return t('「{a}」和「{b}」的规则开关「{rule}」选项冲突', { a: name(match[2]), b: name(match[3]), rule: t(labels[match[1]]) });
+    }
+  }
+  // the per-seat 重刷本局 cooldown (PR #860, DESIGN §28.21): say which limit it is, not the generic RATE text
+  if (err.code === 'RATE' && err.detail === 'setup reroll cooldown') return t('每人 {s} 秒内只能发起一次重刷投票', { s: SETUP_REROLL_COOLDOWN_MS / 1000 });
   if (err.code && Object.hasOwn(ERR_TEXT, err.code)) return t(ERR_TEXT[err.code]);
   if (typeof err.message === 'string' && err.message) return t(err.message);
   if (typeof err.msg === 'string' && err.msg) return t(err.msg);

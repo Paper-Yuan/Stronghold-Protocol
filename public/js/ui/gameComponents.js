@@ -6,16 +6,18 @@ import { html, Icon, TierChip, Tooltip } from './components.js';
 import { data, useData, localAsset } from '../data.js';
 import { parseRichText, rtClassName } from './richText.js';
 import { t as tr } from '../../../shared/i18n.js';
+import { useStore } from '../store.js';
+import { skinsStore, ownerSkin } from './skins.js';
+import { settingsStore } from './settingsStore.js';
 import {
   uiUrl, chessAvatarUrl, chessPortraitUrl, itemIconUrl, tokenAvatarUrl, enemyIconUrl, bondIconUrl, bandIconUrl,
 } from './assetUrls.js';
-import { standInOf } from './gameLogic.js';
 
 const cx = (...p) => p.flat().filter(Boolean).join(' ');
 
 /** Data files the in-match screens use (`backups`: the 补位 stand-ins' bodies — cards, the board model, the detail card). */
 export const GAME_FILES = ['config', 'assets', 'chess', 'bonds', 'items', 'bands', 'enemies', 'bosses', 'stages', 'tokens',
-  'choices', 'effects', 'garrisons', 'factions', 'local', 'backups', 'skins'];
+  'choices', 'effects', 'garrisons', 'factions', 'local', 'backups'];
 
 /**
  * Load every in-match data file; returns lookups (sync, null until loaded).
@@ -25,8 +27,9 @@ export const GAME_FILES = ['config', 'assets', 'chess', 'bonds', 'items', 'bands
  */
 export function useGameData() {
   const ready = useData(...GAME_FILES);
-  // (config / factions / choices are read once per memo: a language switch reads them again in the new locale)
-  return useMemo(() => makeLookups(ready), [ready, data.locale?.() || 'zh']);
+  // (config / factions / choices are read once per memo: a language switch reads them again in the new locale, a
+  // content switch — a version or a plugin set — from the new files)
+  return useMemo(() => makeLookups(ready), [ready, data.locale(), data.contentId()]);
 }
 
 /** A 自选 operator's summon record (data/backups.json `tokens`, 0.2.0), or null. */
@@ -69,9 +72,33 @@ export function Img({ src, class: cls, alt = '', fallback = null, style }) {
   return html`<img class=${cls} src=${src} alt=${alt} draggable=${false} loading="lazy" style=${style} onError=${() => setBad(src)} />`;
 }
 
+/** Owner-aware operator pictures, with live selection / settings updates even on an already open card.
+ * `ownerId` omitted = local picker; null = unowned catalogue art. Callers resolve stand-ins / DIY first.
+ * B6, maintainer option A (2026-10-18); docs/SKINS.md and §35.4. Model outfits retain their models.
+ */
+export function OperatorImage({ m, chess, ownerId, skin = null, portrait = false, avatarFallback = false,
+  portraitClass, avatarClass, ...props }) {
+  useData('assets');
+  m = data.get('assets') || m;
+  const localSkins = useStore((s) => s.skins, Object.is, skinsStore);
+  const otherSkins = useStore((s) => s.otherSkins, Object.is, settingsStore);
+  const selected = useStore((s) => ownerSkin(chess?.charId, { ownerId, skin, myId: s.me.playerId,
+    players: s.match.public?.players || [], localSkins, otherSkins }));
+  const art = portrait ? chessPortraitUrl(m, chess, { skin: selected }) : null;
+  const src = art || (!portrait || avatarFallback ? chessAvatarUrl(m, chess, { skin: selected }) : null);
+  return html`<${Img} ...${props} src=${src} class=${art ? portraitClass ?? props.class : avatarClass ?? props.class} />`;
+}
+
 /** Official UI sprite by 'group/key' with a fallback. */
 export function Sprite({ k, class: cls, fallback = null }) {
   return html`<${Img} src=${uiUrl(data.get('assets'), k)} class=${cx('sprite', cls)} fallback=${fallback} />`;
+}
+
+/** Official promotion phase from the resolved record's status (not its shop tier or normal / golden form). */
+export function PromotionIcon({ m, phase, class: cls }) {
+  if (!Number.isInteger(phase) || phase < 0 || phase > 2) return null;
+  return html`<${Img} src=${uiUrl(m, `elite/elite_${phase}`)} class=${cls}
+    fallback=${html`<small class=${cls}>E${phase}</small>`} />`;
 }
 
 /**
@@ -103,37 +130,19 @@ export const isGoldenPiece = (piece, chess) => !!(piece?.golden || chess?.isGold
 /**
  * Square unit thumbnail for a piece / chess / item / token / enemy: art + tier chip + elite frame.
  * @param {{ kind?: 'chess'|'item'|'token'|'enemy', id: string, golden?: boolean, size?: 'xs'|'sm'|'md'|'lg', tier?: number,
- *   showTier?: boolean, class?: string, dim?: boolean, badge?: any, title?: string, rec?: any }} props
+ *   showTier?: boolean, class?: string, dim?: boolean, badge?: any, title?: string, rec?: any, ownerId?: string|null, skin?: string|null }} props
  *   `rec`: the chess record to draw instead of the data's (a 自选 piece's composed record — 0.2.0, gameLogic/diy.js; a
  *   补位 stand-in's — gameLogic/standIn.js: drawn with a small 「替补」 mark in the corner)
  */
-export function UnitThumb({ kind = 'chess', id, golden, size = 'md', tier, showTier = true, class: cls, dim = false, badge = null, title, rec = null }) {
+export function UnitThumb({ kind = 'chess', id, golden, size = 'md', tier, showTier = true, class: cls, dim = false, badge = null, title, rec = null, ownerId, skin = null }) {
   const m = data.get('assets');
   let src = null;
   let name = '';
   let t = tier;
   let si = null;
   if (kind === 'chess') {
-    let c = rec || data.lookup('chess', id);
-    si = (rec && typeof rec.standInFor === 'string' && rec.standInFor) ? rec : null;
-    if (!si && c) {
-      const backups = data.get('backups');
-      // A match's stand-ins (m.private.standIns) are a message, not a data file: a generic thumbnail reads the
-      // client-side 「未持有」 list instead (the same information the player sets; screens/loadout.js reads it too).
-      // test/ui/playtest3.test.js requires every `data.get` of the in-match UI to be a GAME_FILE.
-      const notOwned = (typeof window !== 'undefined' && window.loadoutStore) ? window.loadoutStore.get()?.notOwned : null;
-      const isStandIn = !!(notOwned && (notOwned.includes(c.baseId || c.chessId) || notOwned.includes(c.charId)));
-      if (isStandIn && backups) {
-        try {
-          const sRec = standInOf(c, backups);
-          if (sRec) {
-            si = sRec;
-            c = sRec;
-          }
-        } catch (_) {}
-      }
-    }
-    src = chessAvatarUrl(m, c);
+    const c = rec || data.lookup('chess', id);
+    si = rec && typeof rec.standInFor === 'string' && rec.standInFor ? rec : null;
     name = c?.name || '';
     t = t ?? c?.tier;
     golden = golden ?? !!c?.isGolden;
@@ -156,7 +165,9 @@ export function UnitThumb({ kind = 'chess', id, golden, size = 'md', tier, showT
   return html`<span class=${cx('uthumb', `uthumb--${size}`, `uthumb--${kind}`, golden && 'is-golden', dim && 'is-dim', t && `uthumb--t${Math.max(1, Math.min(6, t | 0))}`, cls)}
       title=${title ?? name}>
     <span class="uthumb__art">
-      <${Img} src=${src} fallback=${html`<span class="uthumb__glyph">${glyph}</span>`} />
+      ${kind === 'chess'
+        ? html`<${OperatorImage} m=${m} chess=${rec || data.lookup('chess', id)} ownerId=${ownerId} skin=${skin} fallback=${html`<span class="uthumb__glyph">${glyph}</span>`} />`
+        : html`<${Img} src=${src} fallback=${html`<span class="uthumb__glyph">${glyph}</span>`} />`}
     </span>
     ${showTier && t && kind !== 'enemy' && kind !== 'token' ? html`<${TierChip} tier=${t} golden=${golden} size="sm" class="uthumb__tier" />` : null}
     ${kind === 'token' ? html`<span class="uthumb__tag">${tr('召唤')}</span>` : null}
@@ -169,7 +180,6 @@ export function UnitThumb({ kind = 'chess', id, golden, size = 'md', tier, showT
 export function PieceThumb({ piece, size = 'md', class: cls, badge }) {
   if (!piece) return null;
   return html`<${UnitThumb} kind=${piece.kind === 'item' ? 'item' : piece.kind === 'token' ? 'token' : 'chess'} id=${piece.id}
-    rec=${piece.rec || (piece.standInFor ? piece : null)}
     golden=${!!piece.golden} tier=${piece.tier} size=${size} class=${cls} badge=${badge} />`;
 }
 
@@ -198,7 +208,6 @@ export function gearPath({ teeth = 8, rTip = 10, rRoot = 7.4, tipW = 3.2, rootW 
 /** Extra 24×24 glyphs used by the in-match HUD (original shapes). */
 export const GLYPHS = Object.freeze({
   gear: gearPath(),
-  chat: 'M4 4h16a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H7l-4 4V6a2 2 0 0 1 2-2zm2 4v2h12V8H6zm0 4v2h8v-2H6z',
   eye: 'M12 5c5 0 9 4.5 10 7-1 2.5-5 7-10 7S3 14.5 2 12c1-2.5 5-7 10-7zm0 3a4 4 0 1 0 0 8 4 4 0 0 0 0-8zm0 2a2 2 0 1 1 0 4 2 2 0 0 1 0-4z',
   emote: 'M8.2 2h7.6L22 8.2v7.6L15.8 22H8.2L2 15.8V8.2zM8.5 8.5v3h2v-3zm5 0v3h2v-3zM7.8 14.2a5.5 5.5 0 0 0 8.4 0l-1.5-1.3a3.5 3.5 0 0 1-5.4 0z',
   dp: 'M13 2 4 13.5h6.2L9 22l11-12.5h-6.4z',

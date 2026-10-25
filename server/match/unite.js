@@ -5,7 +5,13 @@
 // players chosen by most units on the field (downed included) > has an active bond (存疑) > most undowned units, then
 // seat; with 2 helpers the one ranked first by most units > active bond > Σ active bond layers (存疑) > most undowned
 // units "率先迎敌" on the RIGHT-hand field (colOffset +8, where the escaped_multi routes enter), the other keeps the
-// left half (colOffset 0); a lone helper plays escaped_single on its own field. Their operators keep the HP ratio and
+// left half (colOffset 0); a lone helper plays escaped_single on its own field. The field is the round's battlefield —
+// the match stage with its terrain, crates, water, devices and runes — opened to both halves (GEO.UNITE_RECT, cols
+// 0–20; the stage's right half is its left half + 8 columns), every helper's pieces on their prep tiles
+// ("按休整期位置部署在场"), the right-hand one shifted 8 columns (= the stage config's player_map_lr_offset 8): the
+// owner's knowledge of the official mode, 2026-10-07 「官服保留地形」. 0.2.0 fielded it on the escaped levels' own map,
+// an empty road (GitHub #41) — withdrawn in 0.2.1; data/stages.json keeps those two records (kind 'unite'), which no
+// match fields. Their operators keep the HP ratio and
 // the SP (技力, stored charges included) from the end of their own combat, nothing else — a skill still running then
 // enters switched off (BattleResult.unitsEnd → PlayerBattleInput.units[].carryState `{ hpPct, sp }`, "阵地以其当前状态";
 // community report #34 / GitHub #82: it used to restart for free). An operator knocked out at the end of its own combat (alive false) is fielded with
@@ -18,13 +24,16 @@
 // them beside the operators; one off the field at the end enters fresh [ASSUMED]). Enemies = the union of every leaker's
 // counted leaks (same stats: the SpawnSpec mods travel with the leak), routed on the escaped template (`escaped_single`
 // for 1 helper, `escaped_multi` for 2): walkers on its `lrsldr` action, flyers on `yokai`, tokens on `gopro_2` /
-// `lazerd` (waves.js buildUniteWave); kill bounties keep paying the killer (a helper). No IN_BATTLE layer gains ("该阶段
-// 不能叠加层数"); the helpers' bonds carry the layers their own combat reached (PlayerState.battleInput `reached`: the
-// round's pending gains, capped like settle() — the strip's count; "以其阵地当前的状态" [ASSUMED] includes them; until 0.1.3
-// the round-start layers), and settle() still adds those gains once. Time limit = the round's combat limit.
+// `lazerd` (waves.js buildUniteWave); kill bounties keep paying the killer (a helper) — a death no operator caused pays
+// the helper whose half it fell on (Battle._bountyPayee). No IN_BATTLE layer gains ("该阶段不能叠加层数"); the helpers'
+// bonds carry the layers their own combat reached (PlayerState.battleInput `reached`: the round's pending gains, capped
+// like settle() — the strip's count; "以其阵地当前的状态" [ASSUMED] includes them; until 0.1.3 the round-start layers),
+// and settle() still adds those gains once. Time limit = the round's combat limit.
 // LP: an enemy still alive at the end (leaked in the unite battle, or never spawned before the limit) costs its
 // SOURCE player 1 LP; each player's round loss = min(lpCap, survivors attributed to them + leaks that could not
-// re-enter) — the same 10 cap as a normal round.
+// re-enter) — the same 10 cap as a normal round. Only what the escaped wave SENT IN is billable: an enemy that appears
+// while the field runs (a split child, a summon) never crossed the leaker's own goal, so the field tags it `uniteRuntime`
+// at birth (sim/battle/spawns.js) and neither uniteSurvivors nor the HUD's ×N reads it.
 
 import { buildUniteWave } from './waves.js';
 import { layerGainRoom } from '../../shared/constants.js';
@@ -36,9 +45,6 @@ import { layerGainRoom } from '../../shared/constants.js';
  */
 export function planUnite(m, results) {
   if (m.isSolo) return null;
-  // 随机模式 负生: a failed player (LP < 0 once) 禁止参与后续联防 — neither helper nor leaker (their leaks
-  // re-enter like any leaker's; only the helper seat is barred)
-  const canHelp = (ps) => !(m.random && ps.rmFailed);
   const alive = m.alivePlayers();
   const leakers = [];
   const perfects = [];
@@ -47,7 +53,7 @@ export function planUnite(m, results) {
     if (!r) continue;
     const counted = (r.leaked || []).filter((l) => l && l.counted !== false);
     if (counted.length > 0) leakers.push(ps);
-    else if (r.perfect !== false && canHelp(ps)) perfects.push(ps);
+    else if (r.perfect !== false) perfects.push(ps);
   }
   if (!leakers.length || !perfects.length) return null;
   const helpers = helperOrder(m, perfects, results);
@@ -150,7 +156,8 @@ export function uniteBattleOpts(m, plan, timeLimit) {
 
 /**
  * LP loss per leaker after the unite battle: survivors by source (+ unspawned re-entries + not re-entered leaks),
- * capped per round.
+ * capped per round. Only what the wave sent IN: a leak the field itself produced (`uniteRuntime` — a split child or a
+ * summon born while it ran, spawns.js) was never one of the leaker's own enemies, so nobody pays for it.
  * @returns {Map<string, number>} playerId → survivors (uncapped)
  */
 export function uniteSurvivors(plan, uniteResult) {
@@ -159,8 +166,6 @@ export function uniteSurvivors(plan, uniteResult) {
   const perPlayer = (uniteResult && uniteResult.perPlayer) || {};
   for (const pp of Object.values(perPlayer)) {
     for (const l of (pp && pp.leaked) || []) {
-      // 联防（#675）：只结算「漏过来的那一波自己送进场里的」敌人。场上才出生的（分裂子体、召唤物、
-      // 变身副本）从未经过漏怪者自己的终点，所以不计他的 LP，也不进 HUD 的 ×N（sim/battle/spawns.js 打标）。
       if (!l || l.counted === false || l.uniteRuntime || !l.sourcePlayerId) continue;
       out.set(l.sourcePlayerId, (out.get(l.sourcePlayerId) || 0) + 1);
     }

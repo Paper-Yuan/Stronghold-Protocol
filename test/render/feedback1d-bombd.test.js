@@ -97,12 +97,15 @@ describe('D4 暴鸰: the drone lets go of its bomb on screen', () => {
 
   test('render/app.js keeps UnitInfo.form (a field opened after the drop) and hands the atk kind to the view', async () => {
     const src = readFileSync(path.join(ROOT, 'public/js/render/app.js'), 'utf8');
-    // addInfo goes through renderInfo, which keeps the form (feedback1 WD: every enemy form, 转译基底·α's too)
-    assert.match(src, /function addInfo\(u\)\s*\{\s*const info = renderInfo\(u\)/);
+    // applyInfo (formerly addInfo) goes through renderInfo, which keeps the form (feedback1 WD: every enemy form, 转译基底·α's too)
+    assert.match(src, /function applyInfo\(u\)\s*\{\s*const info = renderInfo\(u\)/);
     const { renderInfo } = await import('../../public/js/render/app.js');
     assert.equal(renderInfo({ id: 7, kind: 'enemy', side: 'enemy', defId: 'enemy_1040_bombd', form: 'bombed' }).form, 'bombed');
     assert.match(src, /src\.onAttack\?\.\(tgt, now, e\[3\]\)/);
-    assert.match(src, /v\.windUp\(t - upcomingT, e\[3\]\)/);
+    // the wind-up look-ahead (render/app/windup.js) hands the kind to the view (+ the slot of a strike cast in its tick,
+    // §35.48 — its behaviour: test/render/enemy-strike-clip.test.js)
+    assert.match(readFileSync(path.join(ROOT, 'public/js/render/app/windup.js'), 'utf8'), /v\.windUp\(t - upcomingT, e\[3\], /);
+    assert.match(src, /createWindUpLookahead\(\{ views, woundUp, /);
   });
 
   test('the drop draws a falling bomb at the sim\'s speed and the mode change draws nothing of its own', () => {

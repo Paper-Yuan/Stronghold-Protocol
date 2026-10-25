@@ -17,6 +17,10 @@
 
 **房主帮 AI 试算布阵（可选）：**环境变量 `SP_BOT_REHEARSAL` 不设或设为 `server` 时，AI 布阵试算仍在服务器上（默认）。设为 `host` 后，当前房主的浏览器在整备阶段用同源的模块 Worker（`/js/battle/rehearsalWorker.js`，不绘图、不用 `eval`）比较 AI 队友的几种布阵，只把选中的序号发回；服务器直接采用，不再重算。房主掉线、换人、报错、答案不合法或超时（默认 3 秒）时，服务器用同一批候选自己算。整备先结束则取消试算、保留默认布阵，不延长回合。正式战斗和真人「AI 托管」不受影响。开了玩法插件的房间不走这条路：对局在内容组合自己的进程里，仍由服务器试算，避免浏览器用错数据包或绕过脚本额度。没有可用房主时也不会减少服务器负担。浏览器会多算一些，耗时取决于房主设备和局面。这个接口（任务、答案序号、超时、回退到服务器）以后可以换成本机或外部计算，当前版本不会对外发起网络请求。
 
+**外部 AI（目前仅开发分支，不随发布包提供）：**维护者 2026-10-23 决定，在语言模型席位的终极胜率接近 100% 之前，外部 AI 与顾问模式不进入发布包、更新包和 Docker 镜像（§35.66）。发布包里的服务器遇到 `SP_BOT_STRATEGY=external`、`SP_EXTERNAL_AI_*` 或 `SP_LLM_*` 时不崩溃、不连外网，忽略这些设置，用内置 AI，并打一行日志。内置 AI 和 #673 策略框架照常随包提供。从源码运行的开发分支仍可按
+[服主接入指南](EXTERNAL_AI_ZH.md)与 [External AI API](EXTERNAL_AI.md) 配置；本机程序具有服务器权限，第三方服务能看到该席位视图，请自行选择可信服务。
+
+
 ## 1. Windows 小主机：一步步
 
 ### 1.1 安装与首次启动
@@ -38,6 +42,17 @@
 4. 窗口里会打印朋友可用的地址，例如 `http://192.168.1.23:3000`。用另一台设备打开它确认能进入。关闭窗口即停止服务器。
 
 等价的手动命令：`npm ci`、`node tools/setup.mjs`、`npm start`。
+
+**插件需要的官方数据表（0.3.1）：**完整包和精简包都不内置官方 excel 缓存。只有 Forge 导入要推导名单外官方干员，
+或 setup（包括启动、更新前的缺项检查）发现已安装插件引用这类干员时，才补齐
+`.cache/gamedata/excel/` 的 `character_table.json`、`skill_table.json`、`range_table.json`、
+`uniequip_table.json`、`battle_equip_table.json`、`activity_table.json`（约 50 MB，未压缩估算；日志列出本次缺的表、大小与原因）。
+来源与语音表相同：Kengxxiao/ArknightsGameData 的 zh_CN 官方数据镜像，原始源 → jsDelivr，沿用下方的源与代理选项。
+已有表不再下载，只有 `--refresh-index` 会重新获取；JSON、表结构和大小校验通过才原子写入。
+`--check`、`--no-assets` 不下载这些表；新增 `--offline` / `--no-network` 等价于只读 `--check`，整个 setup 不联网。
+下载失败或拒绝不会阻断 setup / 导入：导入报告仍写明跳过的干员和原因，缺表的美术 / 特效发现保持原来的回退。
+表下载不等于同意提取美术，客户端素材提取仍按第 6 节单独选择。大厅、对局与游戏客户端不会获取这些表。
+规则与限制见 [§34.33](history/0.3.1.md#3433-official-tables-for-plugin-operators-outside-the-roster-downloaded-when-needed)（维护者 2026-10-17 决定）。
 
 #### 国内镜像下载
 
@@ -253,7 +268,7 @@ docker run -d --name stronghold -p 3000:3000 --restart unless-stopped \
   -v "$PWD/public/assets:/app/public/assets:ro" stronghold-protocol
 ```
 
-镜像从源码（`git clone`）构建，Releases 的整合包不含 `Dockerfile`。镜像基于 `node:22-alpine`，多阶段构建，只含生产依赖（包括 `ses@2.3.0` 和 `acorn@8.18.0`）；`public/vendor`（含 `ses.umd.js` / `acorn.mjs`）在构建时生成。`node_modules` 是镜像安装目录里的实际文件，不是指向镜像外的符号链接，脚本沙箱子进程可以在 `--allow-fs-read` 范围内读取。`.dockerignore` 排除了 `public/assets`（不会把宿主机素材打进构建上下文）；`public/fonts`、`data/assets.json` 和 `data/local-assets.json` 若存在会被复制进去。环境变量同 README（`-e SP_VERIFY=sample` 等）。健康检查：`GET /healthz`。
+镜像从源码（`git clone`）构建，Releases 的整合包不含 `Dockerfile`。镜像基于 `node:22-alpine`，多阶段构建，只含生产依赖（包括 `ses@2.3.0` 和 `acorn@8.18.0`）；`public/vendor`（含 `ses.umd.js` / `acorn.mjs`）在构建时生成。构建阶段会删掉外部 AI / 语言模型集成的文件并写入 `server/release-without-llm`，与发布包同一道门（§35.66）：镜像里的服务器忽略 `SP_BOT_STRATEGY=external` 及相关变量，用内置 AI。`node_modules` 是镜像安装目录里的实际文件，不是指向镜像外的符号链接，脚本沙箱子进程可以在 `--allow-fs-read` 范围内读取。`.dockerignore` 排除了 `public/assets`（不会把宿主机素材打进构建上下文）；`public/fonts`、`data/assets.json` 和 `data/local-assets.json` 若存在会被复制进去。环境变量同 README（`-e SP_VERIFY=sample` 等）。健康检查：`GET /healthz`。
 
 **持久化插件**：把命名卷或宿主机目录挂到 `/app/plugins`，例如加 `-v stronghold-plugins:/app/plugins`。
 镜像在 `/app/plugin-resources` 保留只读的 `_template/`、`README.md` 和 `AGENTS.md`，用
@@ -323,18 +338,18 @@ volumes:
 | 3D 棋盘没出现 | 需要本地提取的棋盘贴图（`node tools/doctor.mjs` 会显示「3D 棋盘可用」），以及支持 WebGL2 的浏览器。没有客户端的服务器可以从同一版本的整合包复制本地素材（第 6 节） |
 | 素材地址里的 `~` 加一串字母数字 | `/assets/~<哈希>/…` 是 0.2.6 起的带版本地址（见第 0 节「网络」），浏览器可以长期缓存，属于正常现象。怀疑它导致问题时，可以用 `SP_ASSET_INDEX=0` 启动服务器临时关闭（清单改回普通地址），并请在 issue 里说明 |
 | 想知道开服电脑上传了多少流量 | 浏览器打开 `http://localhost:3000/healthz?traffic=1`（换成你的端口）：`traffic.http` 是服务器启动以来各类内容（`assets` 图片和模型、`audio` 音频、`code` 页面和脚本、`data` 游戏数据和素材清单）发出的字节数和请求数（压缩后的实际字节，`notModified` 是只回了「没变」的 304），`traffic.ws` 是 WebSocket 的线上字节（`wireOut` / `wireIn`，压缩后）和压缩前的消息字节（`payloadOut` / `payloadIn`）。数字只在内存里，重启后从 0 开始；只有本机和局域网（含虚拟局域网地址）的访问能看到，公网访问者（包括经隧道 / 反代转发来的）只拿到普通的 `/healthz`。玩家那边：设置 →「问题反馈」复制的诊断里有一行 `traffic:`，是这个页面从打开起下载的字节数（`cached` 是浏览器缓存直接给的，不占流量；`external` 是其他网站，例如 Google 字体） |
-| 断线 | 同盟模拟 10 分钟内、独立模拟 24 小时内（`config.constants.singleReconnectTime`）用同一浏览器重新打开页面，自动回到原座位。同盟掉线期间按原阵容自动作战、到时自动准备（不会代为购买；想让 AI 代打请用「离开模拟 → 暂离（AI 托管）」）；独立模拟不计时，等你回来 |
+| 断线 | 同盟模拟 10 分钟内、独立模拟 24 小时内（`config.constants.singleReconnectTime`；第一期数据没有这项，24 小时是沿用的便利 [ASSUMED]）用同一浏览器重新打开页面，自动回到原座位。同盟掉线期间按原阵容自动作战、到时自动准备（不会代为购买；想让 AI 代打请用「离开模拟 → 暂离（AI 托管）」）；第二期独立模拟不计时，等你回来。第一期独立模拟的休整与机变按每轮计时，断线后仍可在这 24 小时内回来 |
 
 ## 6. 本地客户端素材（可选）
 
-`public/assets/local/` 和 `data/local-assets.json` 是从本机安装的《明日方舟》客户端里提取的官方素材（`tools/local-extract`，DESIGN §13）：`node tools/setup.mjs` 检测到客户端时会询问是否提取，之后可以用 `node tools/setup.mjs --local` 重新提取，或用 `--game "<…/StreamingAssets/AB/Windows>"` 指定客户端目录。setup 从公开镜像下载的素材不包含这部分，所以在没有客户端的电脑上（例如 Linux 服务器）用源码或精简包部署时不会有它；Releases 的完整包里已经带上了。
+`public/assets/local/` 和 `data/local-assets.json` 是从本机安装的《明日方舟》客户端里提取的官方素材（`tools/local-extract`，DESIGN §13）：`node tools/setup.mjs` 检测到客户端时会询问是否提取，之后可以用 `node tools/setup.mjs --local` 重新提取，或用 `--game "<安装目录或 …/StreamingAssets/AB/Windows>"` 指定客户端目录（安装目录和「Arknights Game」都可以，成功后记住解析出的资源目录）。setup 从公开镜像下载的素材不包含这部分，所以在没有客户端的电脑上（例如 Linux 服务器）用源码或精简包部署时不会有它；Releases 的完整包里已经带上了。
 
 没有本地素材时游戏照常运行，只是下面几样换成替代样式：
 
 | 内容 | 没有本地素材时 |
 |---|---|
 | 官方 3D 棋盘（贴图、模型、地图特效） | 2D 棋盘，地块由程序绘制 |
-| 各战场的官方场景（沙地等 11 个战场，0.2.5 素材包；完整包在提取后带上，精简包和源码可在本机下载并提取，见下） | 3D 棋盘用程序生成的金属地块 |
+| 各战场的官方场景（沙地等 11 个战场；完整包在提取后带上，精简包和源码可在本机下载并提取，见下） | 3D 棋盘用程序生成的金属地块 |
 | 部分官方界面图标与底板：交流按钮和表情面板的边框、暂停面板、装备替换窗口、干员调配界面、队友状态与漏怪标记、模组类型图标等 | 样式相近的替代图形、图标或文字 |
 | 灼热 / 炽焰源石虫的官方模型 | 染成橙色 / 红橙色的普通源石虫 |
 | 39 个召唤物的官方模型（多数自选召唤物，以及凯瑟琳的爬行号·防护单元、凛御银灰的风雪之眼；公开镜像没有） | 召唤物头像（菱形底板） |
@@ -342,11 +357,11 @@ volumes:
 
 表情（6 套 × 6 个）和「玩法说明」的 19 页教程图公开镜像也有：`node tools/setup.mjs` 会和其他素材一起下载（约 21 MB），不需要客户端；有本地素材时优先显示本地的。
 
-**没有客户端的服务器**想要上表中的官方素材：从**同一版本**的完整包（[Releases](https://github.com/sganggs/Stronghold-Protocol/releases)）里，把 `public/assets/local/` 文件夹和 `data/local-assets.json`（还有官方战斗特效的清单 `data/local-fx.json`）复制到服务器项目目录下的相同位置。服务器每次请求都会重新读取这两处，不必重启，玩家刷新页面即可。一定要用与服务器代码相同版本的完整包：各版本提取的内容和清单可能不同（例如灼热 / 炽焰源石虫的模型是 0.1.0 之后才加入的，召唤物模型是 0.2.0 加入的），混用其他版本的文件会缺图或用错图。复制后 `node tools/doctor.mjs` 会显示本地素材的条目数和「3D 棋盘可用」。
+**没有客户端的服务器**想要上表中的官方素材：从**同一版本**的完整包（[Releases](https://github.com/sganggs/Stronghold-Protocol/releases)）里，把 `public/assets/local/` 文件夹和 `data/local-assets.json`（还有官方战斗特效的清单 `data/local-fx.json`）复制到服务器项目目录下的相同位置。服务器每次请求都会重新读取这两处，不必重启，玩家刷新页面即可。一定要用与服务器代码相同版本的完整包：各版本提取的内容和清单可能不同（例如灼热 / 炽焰源石虫的模型是 0.1.0 之后才加入的，召唤物模型是 0.2.0 加入的），混用其他版本的文件会缺图或用错图。复制后 `node tools/doctor.mjs` 会显示本地素材的条目数和「3D 棋盘可用」。分组或官方特效清单和这一版对不上时，它会提示已有多少、这一版期望多少。
 
-**0.2.0 之前提取过的**：召唤物模型是 0.2.0 新增的提取项，旧的提取结果里没有（`node tools/setup.mjs` 会提示「缺少新版的自选召唤物模型」）。有客户端的电脑运行 `node tools/setup.mjs --local` 重新提取即可，只想补这一项也可以在提取用的 Python 环境里运行 `tools/local-extract/extract.py --only spine/token`（新文件写入 `public/assets/local/spine/token/`，清单里其他条目保持不变）。
+**分组对不上这一版提取器的**：`node tools/setup.mjs` 对照当前提取器会写出的分组（`tools/local-extract/extract.py --print-jobs` 里的 `expectedGroups`，不需要客户端）。少了分组，或清单写的条目数和分组里列出的不一致，会提示已有多少个分组、多少项，这一版期望多少个分组。缺的不是战场场景时，请用 `node tools/setup.mjs --local` 重新提取。缺的分组如果全是 `scene/`（某个战场，或共用贴图 `scene/tex`），有客户端时改为 `node tools/setup.mjs --scenes`，没有客户端时改为从同一版本的完整包复制 `public/assets/local` 和 `data/local-assets.json`：`--local` 不会下载战场场景。召唤物模型是 0.2.0 新增的提取项（`spine/token/<id>`）；只想补这一项也可以在提取用的 Python 环境里运行 `tools/local-extract/extract.py --only spine/token`（新文件写入 `public/assets/local/spine/token/`，清单里其他条目保持不变）。官方特效清单 `data/local-fx.json` 是另一步，用项目里的 `.venv-extract/bin/python`（Windows 是 `.venv-extract\Scripts\python.exe`）运行 `tools/local-extract/extract.py --only fx --fx-set used`：没有它只记一行「未提取」，不把本地美术算成失败；有了但分组、条目数或版本不对会单独警告。
 
-**各战场的官方场景**（0.2.5 素材包，维护者 2026-10-12：可以进完整包；精简包和源码安装可以在本机下载）：官方棋盘是每个战场一个做好的场景（11 个战场，其中 9 个是沙地）。场景包只在赛季开放期间随客户端分发，赛季外的客户端里没有。仓库不存放这些官方文件。有客户端的电脑可以 `node tools/setup.mjs --scenes`（询问或强制下载并提取；`--no-scenes` 跳过）。也可以分两步：`python3 tools/local-extract/fetch_scenes.py`（从官方 CDN 下载赛季版本 `26-04-13-12-31-42_e9b560` 的 33 个场景包，共 22,801,308 字节，放进 `.cache/official-scenes/`；`--list` 只看清单不下载），再用提取环境的 Python 运行 `tools/local-extract/extract.py --only scene`（材质和贴图仍取自本机客户端；`--game` 可指定客户端目录）。没有 Python 3.8+，或 UnityPy / lz4 / Pillow 没装好时，setup 只提示并继续，3D 棋盘用金属地块。没有客户端时贴图取不出来，从同一版本的完整包复制 `public/assets/local/` 和 `data/local-assets.json`。作者估计每个场景在进对局时另下载约 2–7 MB，各场景共用贴图约 3 MB；本机没有跑过提取，完整包因此增加的解压体积没有实测。
+**各战场的官方场景**（维护者 2026-10-12 起随完整包提供；精简包和源码安装可以在本机下载）：官方棋盘是每个战场一个做好的场景（11 个战场，其中 9 个是沙地）。提取不全（少了某个战场，或少了共用贴图 `scene/tex`）时，setup 不会把它报成已完成，而是提示已有多少个战场、这一版期望多少。分组都在、但每个战场清单里的 `scene` 记录（kind 为 Scene）不是这一版 `--print-jobs` 的 `scenes.version` 时，同样不算完成：有客户端请重新运行 `node tools/setup.mjs --scenes` 一次，没有客户端则从同一版本的完整包复制。`scene.json` 的网格版本不变，旧场景在重新提取前仍能显示。有客户端时请用 `--scenes` 补；没有客户端时改为从完整包复制，不提示 `--scenes`。已经有一部分战场时，直接回车或等待不会从客户端提取，回答「是」也不会；只有 `--scenes` 或 `--yes` 会。分组都在、只是清单里的场景版本旧了时，仍是这一句提问（默认否，回车和等待不提取）。回答「是」会像第一次一样下载并运行 `extract.py --only scene`；回答「否」会记住，之后不再问。场景包只在赛季开放期间随客户端分发，赛季外的客户端里没有。仓库不存放这些官方文件。有客户端的电脑可以 `node tools/setup.mjs --scenes`（询问或强制下载并提取；`--no-scenes` 跳过）。也可以分两步：`python3 tools/local-extract/fetch_scenes.py`（从官方 CDN 下载赛季版本 `26-04-13-12-31-42_e9b560` 的 33 个场景包，共 22,801,308 字节，放进 `.cache/official-scenes/`；`--list` 只看清单不下载），再用提取环境的 Python 运行 `tools/local-extract/extract.py --only scene`（材质和贴图仍取自本机客户端；`--game` 可指定客户端目录）。没有 Python 3.8+，或 UnityPy / lz4 / Pillow 没装好时，setup 只提示并继续，3D 棋盘用金属地块。没有客户端时贴图取不出来，从同一版本的完整包复制 `public/assets/local/` 和 `data/local-assets.json`。作者估计每个场景在进对局时另下载约 2–7 MB，各场景共用贴图约 3 MB；本机没有跑过提取，完整包因此增加的解压体积没有实测。
 
 **3D 棋盘贴图的下载量**：每位玩家进入对局时都要从开服的电脑下载 3D 棋盘的 12 张贴图。提取时会给这 12 张各写一份 WebP（颜色贴图有损、质量 95，法线和数据贴图无损），清单里列的是 WebP，同名 PNG 留在旁边给裁切工具和 setup 用。这部分下载量从约 6.7 MB 降到约 2 MB，网速慢的远程联机最明显。只有 PNG 的本地素材（例如在这一改动之前提取的）可以用提取时的 Python 环境运行 `tools/local-extract/extract.py --webp` 就地补上，只需要 Pillow，不需要客户端。
 
@@ -411,6 +426,30 @@ node tools/package.mjs --assets --out <目录>   # 素材包 Stronghold-Protocol
 - 有人反馈问题时，诊断信息里的 `content:` 一行写着房间用的内容（`MODDED cs=… plugins=…` 表示开了改变玩法的插件），问题模板也会问「是否开了插件」。插件房间的问题请先找插件作者，并尽量在原版里复现。
 
 
+### 测试控制台（0.3.1）
+
+从本机或局域网打开插件工作台，使用启动窗口里的同一把钥匙，点击顶栏「测试控制台」；也可访问
+`/studio/console.html`。它沿用工作台的访问限制和 `SP_STUDIO=off` 关闭开关，不新增端口。
+场景在服务器校验，战斗在浏览器运行，不创建对局、不记战绩，也不修改普通房间。场景只保存在浏览器，
+需长期保存或迁移时下载 JSON。操作见 [插件新手指南](PLUGIN-GUIDE.md#测试控制台)。
+
+战斗沙盒只跑一场战斗，不创建房间。完整对局的测试房间默认关闭。
+
+开启：环境变量 `SP_TEST_MODE=1`，或启动脚本 `scripts/start.sh --test-mode 1`（`scripts\start-windows.bat` 同样）。
+不带取值的 `--test-mode` 等同于 `--test-mode 1`。取值 `off` / `1` / `force`。`off` 会去掉继承来的变量。`1`（以及 `true` / `yes` / `on` / `local`）在明确的本机或局域网地址上生效。默认绑定 `::` / `0.0.0.0` 时，看这台机器的网卡：非内部地址都是回环、私网（含 CGNAT `100.64.0.0/10`）、链路本地或 IPv6 ULA 时，按局域网接受 `1`（[ASSUMED] 路由器上的端口转发和写明局域网地址一样，由服主自己负责）。任一公网地址，或监听地址本身是公网，则 `1` 不开启，启动脚本和服务器日志用中文说明：仅本机用 `--host 127.0.0.1`，局域网用 `--host <局域网IP>`，要在公网监听上开则用 `--test-mode force`（或 `SP_TEST_MODE=force`）。`force` 在公网监听上仍会警告。写了认不出的值（例如 `forced`）保持关闭，并在启动时警告。
+经公网反代转到本机回环的，仍按公网部署处理：进程只看自己绑定的地址和本机网卡。地址还不知道时（还没绑定）一律不开。没写这个变量就是关闭，欢迎消息里没有 `testMode`，大厅不显示「测试房间」，任何测试请求都拒绝。
+服务器已经在运行时，`--test-mode` 不会改它，要先停掉再开。
+
+谁能用：只有房主能建测试房，也只有当时的房主能下测试指令。同盟测试房可以有其他人，加入或观战前必须确认「测试」提示，最近房间入口和房间卡保留标记，指令仍只有房主能发。普通房间不能在开局前或对局中改成测试房。观战席不能发。
+
+指令走对局自己的操作（加资金、获得棋子和装备、开回合、商店刷新、升级、悬赏、选策略、休整倒计时），不另写一套规则。可以改资金、把内容里有的棋子 / 装备 / 所属召唤物拿到手牌、改自己的目标生命、改领袖池生命和队伍生命、跳到某一回合或阶段、指定下一次商店、关掉或恢复阶段计时、设置盟约额外人数来激活盟约并叠到指定层数、换策略、升一级调度中心、加一条悬赏、替自己选一张机变。数量和 id 不对就拒绝，不会悄悄改成合法值。过长的 id 或字符串同样直接拒绝，不会裁短，也不会写进输入日志。每种指令 10 秒内最多 8 条，房客和观战席的尝试也计入，并且先计数再记审计。目标生命已经是 0 时，跳回合会按结算同样的方式淘汰；场上没有存活玩家就结束对局，不再进入新回合。生命写成 0 本身不立刻淘汰，下一场战斗仍会进入结算。跳进隐藏首领回合时，如果队伍生命还没合并过，会按决战开始时的方式合并。
+
+记下什么：每一条送达测试对局的指令（包括拒绝）都进 `[test-audit ROOM]` 日志（谁、哪条、调度器时间、成功或错误码），局内面板能看到最近的记录。结算和回放带「测试」以及成功执行了几次。测试结果和退出都不保存到本地对局记录。服务端不授予称号、奖杯或奖励，统计、成就、徽章和卫戍认证也不算它；没有「含测试对局」开关。标记由服务端创建，不接受客户端更改。
+
+此外，`[test-input ROOM]` JSON 日志记录初始配置、平台输入和实际触发的计时回调。被时间片切开的回调额外记下走了多少步，重演按这个步数停下，不再读墙钟。一局日志最多 4096 行；写满后该局标成不能重演，日志以一条 capped 记录结束，而不是悄悄截断。保留同一局从 init 开始的完整日志，使用同版本和同内容集的 `server/match/testReplay.js` 离线重演；它不是客户端接口。日志由原有服务端 logger 输出，不单独开文件。房间可复用，按 init 行区分局次。真实调度器上的测试局仍用 8 毫秒的机器人休整和服务器战斗时间片，虚拟时间才不限。
+
+测试指令只改当前房间里房主自己的席位，不到别的房间、别人的私人状态、服务器文件或插件脚本。战斗沙盒仍只在浏览器里跑，不写服务器对局。官方 3D 场景和特效仍依赖第 6 节的本地素材。
+
 ## 9. 脚本沙箱与 CSP（0.3.0 起）
 
 `SP_PLUGIN_SCRIPTS=sandbox` 开启 script 类的 SES 沙箱执行，默认关闭；trusted 类遵循第 10 节的原生执行门槛，永远
@@ -428,8 +467,9 @@ Node 22 权限模型不是恶意代码安全边界，且不限制网络。SES/V8
 [Node 22 permissions](https://nodejs.org/docs/latest-v22.x/api/permissions.html)。
 
 整站默认发送 CSP，覆盖主页、开发页面和 `/studio/`；importmap 用精确内容的 SHA-256 放行，页面没有 unsafe-eval。
-字体保留 Google Fonts 域名，样式允许 unsafe-inline，图片允许 data/blob，WebSocket 与同源连接以及 blob Worker
-保留。Pixi 使用无动态求值的 uniform 适配器。服主可设 `SP_CSP=off` 关闭整站策略 [ASSUMED]；界面插件 `/p/` 和
+字体保留 Google Fonts 域名，样式允许 unsafe-inline，图片允许 data/blob，媒体允许 'self' 和 blob:（玩家在本机选的大厅视频背景和
+大厅音乐的时长检查，不加远程来源；反向代理不要拦截 blob: 媒体），WebSocket 与同源连接以及 blob Worker 保留。
+Pixi 使用无动态求值的 uniform 适配器。服主可设 `SP_CSP=off` 关闭整站策略 [ASSUMED]；界面插件 `/p/` 和
 模拟 Worker 自己的 CSP 不随此开关关闭。整站 connect-src 仅保留 'self'，现有同源 WebSocket 仍可连接。反向代理应保留 CSP 响应头，不要额外叠加会阻断 importmap 或 Worker 的策略。
 Worker 响应单独允许 unsafe-eval 供 SES evaluate 使用，并设 `connect-src 'none'`。
 受信任页面脚本从同源 `/cs/<cs16>/scripts/<id>/<entry>` 下发，先校验描述符与响应字节，再原生 import；
@@ -474,3 +514,63 @@ Node 22 的 `--permission` **不限制网络**（TCP/UDP/DNS/监听均可能可�
 扩大可读范围：不要在安装根中放此类链接，包括外链 node_modules、npm link 和配置/存储链接。建议使用容器或
 网络命名空间限制出站与内网访问，并设置 OS 内存/CPU 限额。父进程已对日志、启动错误、发送帧、RPC 回复等 IPC
 做形态和长度复核（DESIGN §32.11），但 Node 在复核前已解码 IPC，不能据此声称免疫内存炸弹或消息洪泛。
+
+## 11. 官方版本（0.3.2 起）
+
+除了现在的「第二期下半」（`act2autochess`），服务器还提供更早的三个官方版本：第二期上半（`act2autochess@V2_1`）、
+第一期下半（`act1autochess`）、第一期上半（`act1autochess@V1_1`）。数据随发布包和 Docker 镜像一起提供（`data/versions/`）。
+**不设置时四个版本都启用**（注册表顺序，默认版本仍是第二期下半），大厅右上角有「版本」。`npm start`、`scripts/start.sh` 和
+`scripts/start-windows.bat` 不用加参数。`SP_VERSIONS=act2autochess`（或只含第二期下半的列表）收窄到这一个版本，大厅不显示版本按钮。
+房间和消息里省略的版本字段仍表示代码常量 `act2autochess`（DESIGN §35.23.11）。
+
+| 环境变量 | 作用 |
+|---|---|
+| `SP_VERSIONS` | 启用哪些版本。不设置等于 `all`（四个都开）。也可写 `all`，或逗号分隔的版本 id，例如 `SP_VERSIONS=act2autochess,act1autochess`。写错的 id 在启动日志里提示并忽略。`SP_VERSIONS=act2autochess` 只开第二期下半 |
+| `SP_VERSION_DEFAULT` | 没有指定版本时新房间用哪个版本（默认第二期下半）；不在已启用列表里时提示，并改用第一个启用的版本 |
+| `SP_MAX_VERSION_HOSTS` | 版本对局子进程的上限（默认等于启用的非默认版本数；只要还有非默认版本，至少为 1） |
+
+- 启动日志会打印一行实际启用的版本，例如 `[versions] enabled: act2autochess (第二期下半, default), act1autochess (第一期下半)`。
+- 玩家在大厅里自己选版本（浏览器记住）；房间的版本由房主发起切换，房间里所有真人同意才生效（只有一个真人时立即生效）。
+- 非默认版本的对局在单独的子进程里运行（每个版本一个，同一版本的房间共用），和插件子进程分开计数。进程在该版本的第一局开局时才启动，
+  空闲的服务器不会额外拉起进程。载入数据和对局代码后每个约占 100+ MB 内存 [ASSUMED：按插件子进程实测的约 117 MB 估计]，空闲 10 分钟后自动结束；
+  冷启动约 0.2 秒到几秒。小主机内存紧张时用 `SP_VERSIONS` 只启用需要的版本，或用 `SP_MAX_VERSION_HOSTS` 限制同时存在的进程数。
+- 这些房间的 AI 布阵试算总在服务器上算（不会交给房主浏览器），CPU 比默认版本的房间略高。
+- 玩家第一次进入某个版本时，浏览器要下载该版本的数据（约 5 MB，之后缓存）。
+- `http://localhost:3000/healthz` 在启用了非默认版本时多一项 `versions`（不设置时就会有）：启用的版本、默认版本和版本子进程的数量。空闲时 `workers` 为 0。
+- 也可以在 `startServer({ versions: { enabled, default, maxHosts } })` 里设置（优先于环境变量）。
+
+## 12. 容量与调优（服务端配额）
+
+以下配额默认写死在代码里，都能用环境变量覆盖；显式传给 `startServer()` 的选项仍然优先，所以测试完全可控。
+启动时会打一行日志，写明实际生效的值：
+
+```
+[http] limits: rooms 1000 (16/network), matches 8/network, sockets 2000 (64/network)
+```
+
+`0` 在两类配额上含义不同：**全局配额**（`SP_MAX_ROOMS`、`SP_MAX_CONNECTIONS`）取 `0` 是全部拒绝；**按网络配额**
+（带 `_PER_ADDR` 的三个）取 `0` 才是不限制。
+
+| 变量 | 默认 | 含义 |
+| --- | --- | --- |
+| `SP_MAX_ROOMS` | 1000 | 全局房间数上限（`0` = 全部拒绝）。满员后新建房间返回「服务器内部错误」 |
+| `SP_MAX_ROOMS_PER_ADDR` | 16 | 单个客户端网络同时存在的房间数（`0` = 不限） |
+| `SP_MAX_MATCHES_PER_ADDR` | 8 | 单个客户端网络同时进行的对局数（`0` = 不限） |
+| `SP_MAX_CONNECTIONS` | 2000 | 并发 WebSocket 连接数（`0` = 全部拒绝）。全局满员时新连接在升级阶段返回 **503** |
+| `SP_MAX_CONNECTIONS_PER_ADDR` | 64 | 单个客户端网络的并发连接数（`0` = 不限）。单个网络超限时在升级阶段返回 **429** |
+| `SP_MAX_ONLINE` | 0 | 同时在线的**已认证玩家**上限（`0` = 不限）。满了只拒绝新会话（玩家看到「服务器已满」），重新连回来的 token 照常放行（只限在线人数这一层，见下面「重连不会被拒」的两条前提） |
+
+几点运维提醒：
+
+- **503 / 429 只描述连接数配额。** 全局连接数满了是 **503**，只有单个网络连接数超限才是 **429**；两者都在升级阶段就结束，
+  socket 根本建不起来，也不会进入游戏协议。另外两个配额不在这一层，别混着排查：**在线人数**（`SP_MAX_ONLINE`）满了是
+  `hello` 之后才回的一帧「服务器已满」（已经带着 token 在玩的人不受影响），**房间数**上限满了是游戏内的错误回包。
+- 「按网络」的口径来自 `clientAddress()`：只有在 `TRUST_PROXY` 允许时才会信任 `CF-Connecting-IP` / `X-Real-IP` /
+  `X-Forwarded-For`，否则整条 NAT / CGNAT 后面的玩家会共用一个配额 —— 家里直连、没有反代时不要打开 `TRUST_PROXY=1`。
+- 写了非法值（非整数、负数）会**告警并保持默认**，不会因为一个拼写错误把保护悄悄去掉。
+- 「重连不会被拒」只在**在线人数**这一层成立，另外两个前提照样生效：**连接数**上限（`SP_MAX_CONNECTIONS`）满了，
+  带 token 的连接同样在升级阶段被 **503** 挡住；会话还在另一条 socket 上活着时，`noReplace`（或更旧的 `claimAt`）
+  会让这个 `hello` 回「会话已在别处使用」而不是接管，拿不回原来的身份。
+- 房间要等它被真正从大厅移除（`disposeRoom`）才归还配额，玩家掉线不算：大厅断线宽限（`lobbyGraceMs`）和对局中的会话重连窗口是两只独立的时钟。
+  前者管理未开局房间中的断线成员，后者管理对局重连；不能用其中一个期限推断另一个期限或整个房间的销毁时间。
+  排查「明明没人了还开不出房」时，先看房间是否仍存在、是否正在等待断线成员。

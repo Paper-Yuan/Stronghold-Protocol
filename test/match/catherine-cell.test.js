@@ -6,6 +6,7 @@ import assert from 'node:assert/strict';
 import { DATA, makeMatch } from './harness.js';
 import { Match } from '../../server/match/Match.js';
 import { VirtualScheduler } from '../../server/match/scheduler.js';
+import { replayTestMatch } from '../../server/match/testReplay.js';
 import { botPrepBeginSteps } from '../../server/match/bot.js';
 import { createRegistry } from '../../server/match/effectsMeta.js';
 import { setGameData } from '../../server/sim/content/support/index.js';
@@ -96,7 +97,7 @@ for (const quintusFirst of [true, false]) test(`Quintus's R3 grant stays indepen
   const h = fixture(t);
   const quintus = () => {
     h.ps.bandId = 'band_quintus'; h.m.round = 3;
-    h.m.dispatch(h.ps, 'onRoundStart', { round: 3 });
+    h.m.dispatch(h.ps, 'onPrepStart', { round: 3 });
     h.ps.bandId = 'band_cathy';
   };
   if (quintusFirst) { quintus(); assert.equal(cellsOwned(h.ps), 1); }
@@ -144,9 +145,7 @@ test('inherited Cathy effects share the canonical source, queued offers and matc
 test('Cathy fills all three eligible choices after excluding the cell, across 300 seeds', (t) => {
   const h = fixture(t);
   h.upgrade(); h.pickCell();
-  // 本仓的规则（2026-10-16 业主定）：特性专属产出装备 cap = null，永远可以拿 —— 这类装备抽不干，
-  // 不属于「库存耗尽」这个前提，先从名单里去掉（上游 0.3.1 的原始用例假定所有商店装备都有上限）。
-  const shopIds = Object.values(h.m.gd.shopItemsByTier).flat().filter((id) => h.m.itemPool.cap(id) != null);
+  const shopIds = Object.values(h.m.gd.shopItemsByTier).flat();
   const eligible = shopIds.slice(0, 3);
   for (const id of shopIds.filter((id) => !eligible.includes(id))) {
     for (let copies = 0; copies < 30 && h.m.itemPool.canGain(id); copies++) {
@@ -154,20 +153,13 @@ test('Cathy fills all three eligible choices after excluding the cell, across 30
     }
     assert.equal(h.m.itemPool.canGain(id), false, `stock exhausted: ${id}`);
   }
-  // 断言的本意是「除了留出来的 3 个，其余库存都被抽干了」。本仓还有 cap=null 的无上限装备
-  // （特性专属产出），它们永远 canGain，所以按「留出来的 3 个必须在、其余**有上限**的必须空」来判。
-  const stillGainable = Object.values(h.m.gd.shopItemsByTier).flat().filter((id) => h.m.itemPool.cap(id) != null && h.m.itemPool.canGain(id));
-  assert.deepEqual(stillGainable.sort(), [...eligible].sort());
+  assert.deepEqual(shopIds.filter((id) => h.m.itemPool.canGain(id)), eligible);
   assert.ok(h.m.itemPool.canGain(CELL), 'the uncapped cell stays available in the underlying pool');
   for (let seed = 1; seed <= 300; seed++) {
     h.ps.offers = [];
     h.m.rngMeta = createRng(seed);
     h.m.dispatch(h.ps, 'onLevelUp', {});
-    // 本仓无上限装备（cap=null）也在可抽范围内，所以只断言「凑满 3 个、且不重复、且不含已被用掉的细胞」
-    const got = idsOf(h.ps.offers[0]);
-    assert.equal(got.length, 3, `seed ${seed}: three choices`);
-    assert.equal(new Set(got).size, 3, `seed ${seed}: no repeats`);
-    assert.ok(!got.includes(CELL), `seed ${seed}: the used cell is excluded`);
+    assert.deepEqual(idsOf(h.ps.offers[0]).sort(), [...eligible].sort(), `seed ${seed}: all eligible items`);
   }
 });
 
@@ -226,3 +218,33 @@ test('the Cathy allowance belongs to the player, even when the cell is the only 
   assert.equal(b.offers.length, 0, 'a cell-only pool cannot bypass the limit or create an empty offer');
 });
 
+test('test-console upgrades, strategy switches and reconnect replay the same source-specific allowance', (t) => {
+  const entries = [];
+  const scheduler = new VirtualScheduler();
+  const m = new Match({ mode: 'solo', difficulty: 'NORMAL', test: true, hostId: 'p', seed: 236,
+    seats: [{ playerId: 'p', seat: 0, name: 'P', connected: true }], data: DATA, scheduler,
+    send() {}, broadcast() {}, onEnd() {}, clientCombat: false, botRehearsal: 0,
+    log: { info(line) { if (line.startsWith('[test-input ')) entries.push(JSON.parse(line.slice(line.indexOf(']') + 2))); } },
+  });
+  t.after(() => m.dispose());
+  const cmd = (cmd, args = {}) => assert.deepEqual(m.handle('p', { t: 'g.test', cmd, args }), OK);
+  m.start();
+  assert.deepEqual(m.handle('p', { t: 'g.infoReady' }), OK);
+  assert.ok(scheduler.runUntil(() => m.phase === 'BAND_DRAFT'));
+  assert.deepEqual(m.handle('p', { t: 'g.band', bandId: 'band_cathy' }), OK);
+  assert.ok(scheduler.runUntil(() => m.phase === 'PREP'));
+  cmd('funds', { amount: 999 }); cmd('level');
+  const ps = m.players.get('p');
+  const idx = cellIndex(ps.offers[0]);
+  assert.ok(idx >= 0);
+  assert.deepEqual(m.handle('p', { t: 'g.reward', idx }), OK);
+  cmd('strategy', { id: 'band_quintus' }); cmd('strategy', { id: 'band_cathy' });
+  m.onDisconnect('p'); m.onReconnect('p');
+  cmd('level');
+  assert.ok(!idsOf(ps.offers[0]).includes(CELL));
+  const copy = replayTestMatch(DATA, entries);
+  t.after(() => copy.dispose());
+  assert.deepEqual(copy.players.get('p').counters, ps.counters);
+  assert.deepEqual(copy.players.get('p').privateView(), ps.privateView());
+  assert.deepEqual(copy.testLog, m.testLog);
+});

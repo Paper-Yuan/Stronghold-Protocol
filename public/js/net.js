@@ -1,4 +1,3 @@
-import { enabled as federationEnabled, currentNode, installFederation } from './federation.js';
 // WebSocket client for the game server (DESIGN §8).
 //
 // - One socket at ws(s)://<host>/ws, JSON text frames `{ t, ...payload }`.
@@ -33,11 +32,14 @@ import { enabled as federationEnabled, currentNode, installFederation } from './
 import { PROTOCOL_VERSION, ERR_TEXT } from '../../shared/constants.js';
 import { validateC2S } from '../../shared/protocol.js';
 import { N_ } from '../../shared/i18n.js';
+import { STATE_DELTA_VERSION, StateReceiver } from '../../shared/stateDelta.js';
 
 export const REQUEST_TIMEOUT_MS = 8000;
 export const HELLO_TIMEOUT_MS = 8000;
 export const PING_INTERVAL_MS = 4000;
 export const DEAD_AFTER_MS = 15000;
+/** Minimum gap between two `state.resync` requests: a gap in one channel is answered by the full frame of the next one. */
+export const RESYNC_GAP_MS = 1000;
 export const BACKOFF = Object.freeze({ base: 500, factor: 2, max: 10000, jitter: 0.2 });
 
 /** Client-side error codes (in addition to shared ERR codes). */
@@ -72,8 +74,7 @@ export class NetError extends Error {
   /** @param {string} code @param {string} [msg] server text @param {string} [detail] server developer detail */
   constructor(code, msg, detail) {
     const versionMismatch = typeof detail === 'string' && /version/i.test(detail);
-    const rateText = code === 'RATE' && detail === 'too many running matches from your network' ? '当前网络的同时开局数量已达上限，请结束旧对局后再开局' : code === 'RATE' && detail === 'too many rooms from your network' ? '当前网络的房间数量已达上限，请退出不用的房间后重试' : null;
-    super(versionMismatch ? CLIENT_ERR_TEXT.VERSION : rateText || errorText(code, msg));
+    super(versionMismatch ? CLIENT_ERR_TEXT.VERSION : errorText(code, msg));
     this.name = 'NetError';
     this.code = String(code || 'INTERNAL');
     this.serverMsg = msg ?? null;
@@ -100,16 +101,8 @@ export function backoffDelay(attempt, rand = Math.random) {
  * @returns {string}
  */
 export function defaultWsUrl(loc = globalThis.location) {
-  if(federationEnabled) return `${loc.protocol === 'https:' ? 'wss' : 'ws'}://${loc.host}/alliance/ws/${currentNode()}?build=fp100-upstream024-20261011`;
-  try {
-    const override = globalThis.localStorage?.getItem('sp_ws_url') || (new URLSearchParams(loc?.search || '')).get('ws');
-    if (override) return override;
-  } catch {}
   if (!loc || !loc.host) return 'ws://localhost:3000/ws';
-  if (loc.host.endsWith('.pages.dev')) {
-    return 'wss://stronghold-protocol-see7.onrender.com/ws';
-  }
-  return `${loc.protocol === 'https:' ? 'wss' : 'ws'}://${loc.host}/ws?build=fp100-upstream024-20261011`;
+  return `${loc.protocol === 'https:' ? 'wss' : 'ws'}://${loc.host}/ws`;
 }
 
 const WS_OPEN = 1;
@@ -133,7 +126,6 @@ export class Net {
     this.url = opts.url || null;
     this.WS = opts.WebSocket || null;
     this.getToken = typeof opts.getToken === 'function' ? opts.getToken : () => null;
-    this.getBrowserId = typeof opts.getBrowserId === 'function' ? opts.getBrowserId : () => null;
     this.getTokenClaim = typeof opts.getTokenClaim === 'function' ? opts.getTokenClaim : () => null;
     this.now = opts.now || (() => Date.now());
     this.random = opts.random || Math.random;
@@ -162,7 +154,6 @@ export class Net {
     this._pending = new Map(); // rid -> { msg, resolve, reject, timer, sent }
     this._expired = new Set(); // rids that timed out locally (their late error was already reported)
     this._listeners = new Map();
-    this._publicSkinCache = new Map();
     this._manualClose = false;
     this._quietSwap = false;   // next connect() keeps the current status (see CLOSE_HELLO_TIMEOUT)
     this._openedAt = 0;
@@ -175,6 +166,12 @@ export class Net {
     this._lastRx = 0;
     this._unansweredSince = null; // time of the oldest ping sent since the last inbound frame
     this._clockSamples = [];   // [{ offset, rtt }]
+    // State-delta decoding (shared/stateDelta.js): only ever fed frames a server chose to send this client after its
+    // hello named STATE_DELTA_VERSION. A missed frame blocks that channel, and one resync request per RESYNC_GAP_MS
+    // asks for a full one — the server answers it like a repeated hello (and throttles it the same way).
+    this._receiver = new StateReceiver();
+    this._stateRoom = null;
+    this._resyncAt = 0;        // epoch ms of the last resync request we sent
   }
 
   // ---- events ----------------------------------------------------------------------------------
@@ -235,7 +232,7 @@ export class Net {
     const url = this.url || defaultWsUrl();
     let ws;
     try {
-      ws = new WS(url, 'sp-skin-delta-v1');
+      ws = new WS(url);
     } catch (err) {
       console.warn('[net] cannot create WebSocket', err);
       this._scheduleReconnect();
@@ -319,13 +316,7 @@ export class Net {
 
   _onClose(ev) {
     this._teardownSocket();
-    if (ev?.code === 4003 || String(ev?.reason || '').startsWith('admin:')) {
-      this._failPending('DISCONNECTED', false);
-      this._setStatus('idle'); this._emit('adminKick', { banned: ev?.reason === 'admin:banned' }); return;
-    }
-
-    const canRecover = !this._manualClose && ev?.code !== CLOSE_REPLACED;
-    this._failPending('DISCONNECTED', false, canRecover);
+    this._failPending('DISCONNECTED', false);
     if (this._manualClose) { this._setStatus('closed'); return; }
     if (ev && ev.code === CLOSE_REPLACED) {
       // Another tab/socket took this session over: don't fight it; the user may reconnect manually.
@@ -368,10 +359,13 @@ export class Net {
     this._unansweredSince = null;
     this._clearTimer('_pingTimer', 'clearInterval');
     this._clearTimer('_helloTimer', 'clearTimeout');
-    // 清理时钟同步样本，防止旧网络条件的样本影响新连接
-    this._clearClockSamples();
     this._helloRid = null;
     this._helloSentName = null;
+    // A new socket is a new negotiation (server/net.js onHelloMsg re-baselines per connection): the sequences the old
+    // one used mean nothing here, so a stale baseline must never make the first full frame of the new one look old.
+    this._receiver?.reset();
+    this._stateRoom = null;
+    this._resyncAt = 0;
   }
 
   _clearTimer(field, fn) {
@@ -386,7 +380,9 @@ export class Net {
   _sendHello() {
     if (!this.name) return;
     const rid = this._nextRid();
-    const msg = { t: 'hello', rid, name: this.name, version: PROTOCOL_VERSION };
+    // `delta` says this build decodes `m.state` frames (shared/stateDelta.js). A server that does not speak it ignores
+    // the field, and the client then keeps receiving the plain m.public / m.private frames it always got.
+    const msg = { t: 'hello', rid, name: this.name, version: PROTOCOL_VERSION, delta: STATE_DELTA_VERSION };
     let token = null;
     try { token = this.getToken(); } catch { token = null; }
     if (typeof token === 'string' && token.length > 0 && token.length <= 64) {
@@ -396,9 +392,6 @@ export class Net {
       if (Number.isFinite(claim?.claimAt)) msg.claimAt = claim.claimAt;
     }
     this._helloToken = token;
-    let browserId = null;
-    try { browserId = this.getBrowserId(); } catch {}
-    if (isBrowserId(browserId)) msg.browserId = browserId;
     this._helloRid = rid;
     this._helloSentName = this.name;
     if (this.status !== 'handshaking') this._setStatus('handshaking');
@@ -532,12 +525,7 @@ export class Net {
       if (!entry.sent && !includeQueued) continue;
       this._pending.delete(rid);
       this._clearEntryTimer(entry);
-      try { 
-        entry.reject(new NetError(code)); 
-      } catch (err) { 
-        // 记录 rejection 回调错误，确保清理逻辑始终执行
-        console.warn('[net] pending request rejection handler threw:', err);
-      }
+      try { entry.reject(new NetError(code)); } catch { /* ignore */ }
     }
   }
 
@@ -553,12 +541,20 @@ export class Net {
     return this._pending.size;
   }
 
-  sendResourceMessage(msg) {
-    if (!['resource.proof', 'resource.challenge.request', 'resource.reset'].includes(msg?.t)) return false;
-    return this._sendRaw(msg);
-  }
-
   // ---- incoming --------------------------------------------------------------------------------
+
+  /**
+   * Ask the server for one full state frame (the answer to a gap in the delta stream). Rate-limited: one request per
+   * RESYNC_GAP_MS covers every channel, because the server re-sends the whole room state at once. Silent while offline —
+   * the next welcome resyncs anyway.
+   */
+  requestResync() {
+    const now = this.now();
+    if (now - this._resyncAt < RESYNC_GAP_MS) return;
+    this._resyncAt = now;
+    try { this.request('state.resync').catch(() => { /* the next full frame fixes it, or the room resyncs */ }); }
+    catch { /* offline: the reconnect resyncs the room from scratch */ }
+  }
 
   _onMessage(data) {
     this._lastRx = this.now();
@@ -571,22 +567,20 @@ export class Net {
       return;
     }
     if (!msg || typeof msg !== 'object' || Array.isArray(msg) || typeof msg.t !== 'string') return;
-    // Rebuild the original complete state before UI, battle, or spectator listeners run.
-    // Each new transport sends complete maps first; explicit {} also clears removed skins.
-    if (msg.t === 'm.public' && Array.isArray(msg.players)) {
-      const present = new Set();
-      for (const player of msg.players) {
-        const id = player.playerId;
-        present.add(id);
-        if (msg._skinDelta === 1) {
-          if (Object.prototype.hasOwnProperty.call(player, 'skins')) {
-            this._publicSkinCache.set(id, { ...player.skins });
-          }
-          player.skins = { ...(this._publicSkinCache.get(id) || {}) };
-        } else this._publicSkinCache.set(id, { ...(player.skins || {}) });
-      }
-      for (const id of this._publicSkinCache.keys()) if (!present.has(id)) this._publicSkinCache.delete(id);
-      delete msg._skinDelta;
+    // State-delta transport (shared/stateDelta.js): a negotiated server may compress the two big views into `m.state`
+    // frames. They are decoded here and continue as the ordinary m.public / m.private messages every listener already
+    // handles, so nothing above this line notices the difference. A frame that cannot be applied (a gap, a lost or
+    // reordered delta, an older full frame) is dropped and one rate-limited `state.resync` asks for a full one.
+    if (msg.t === 'room.closed' || (msg.t === 'room.state' && msg.code !== this._stateRoom)) {
+      this._stateRoom = msg.t === 'room.state' ? msg.code : null;
+      this._receiver.reset();
+      this._resyncAt = 0;
+    }
+    if (msg.t === 'm.state') {
+      const { message, resync } = this._receiver.receive(msg);
+      if (resync) this.requestResync();
+      if (message == null) return;
+      msg = message;
     }
     const { t } = msg;
     const rid = msg.rid;
@@ -595,13 +589,7 @@ export class Net {
     if (t === 'welcome') {
       // A local ownership election can revoke a token after its hello went onto the wire.
       // Do not publish or persist that stale welcome, even if the server had already accepted it.
-      // Lock the token during hello-welcome cycle to prevent TOCTOU (Time-Of-Check-Time-Of-Use) vulnerability
-      const currentToken = this.getToken();
-      if (this._helloToken !== currentToken) { 
-        console.warn('[net] Token changed during hello-welcome cycle:', { expected: this._helloToken, current: currentToken });
-        this.reconnectNow(); 
-        return; 
-      }
+      if (this._helloToken !== this.getToken()) { this.reconnectNow(); return; }
       this._onWelcome(msg);
     } else if (t === 'pong') {
       this._onPong(msg);
@@ -676,10 +664,6 @@ export class Net {
     this._emit('status', this.snapshot());
   }
 
-  /**
-   * Add a clock offset sample. Keeps at most 8 samples; older samples are dropped.
-   * Samples should be cleared on reconnect to avoid stale network conditions affecting sync.
-   */
   _addClockSample(offset, rtt) {
     if (!Number.isFinite(offset)) return;
     this._clockSamples.push({ offset, rtt });
@@ -693,15 +677,6 @@ export class Net {
     if (Math.abs(prev - this.clockOffset) >= 1 || wasSynced !== this.clockSynced || this._clockSamples.length === 1) {
       this._emit('clock', { offset: this.clockOffset, rtt: Number.isFinite(best.rtt) ? best.rtt : null, synced: this.clockSynced });
     }
-  }
-
-  /**
-   * Clear clock sync samples - called on disconnect to prevent stale samples
-   * from old network conditions affecting new connections.
-   */
-  _clearClockSamples() {
-    this._clockSamples.length = 0;
-    this.clockSynced = false;
   }
 
   /** Current server time estimate (ms epoch). */
@@ -743,24 +718,14 @@ export class Net {
 // its own token (never another tab's), so it can't steal a live session either.
 
 const K_NAME = 'sp.name';
-let federationSuffix = federationEnabled && currentNode() !== (globalThis.location?.hostname === 'wei.isomer319.xyz' ? 'hongkong2' : 'hongkong') ? '.' + currentNode() : '';
-let K_TOKEN = 'sp.token' + federationSuffix;      // sessionStorage: this tab's token
-let K_WELCOME = 'sp.tokenWelcome' + federationSuffix; // sessionStorage: { hash, at } from the first welcome for this token
-let K_RECENT = 'sp.tokens' + federationSuffix;    // localStorage: this browser's recent tokens, most recent first
-let K_MATCHES = 'sp.matches' + federationSuffix; // local metadata for explicit recovery of another closed tab's seat
+const K_TOKEN = 'sp.token';      // sessionStorage: this tab's token
+const K_WELCOME = 'sp.tokenWelcome'; // sessionStorage: { hash, at } from the first welcome for this token
+const K_RECENT = 'sp.tokens';    // localStorage: this browser's recent tokens, most recent first
+const K_MATCHES = 'sp.matches'; // local metadata for explicit recovery of another closed tab's seat
 const K_ENTERED = 'sp.entered';  // sessionStorage: this tab passed the title screen
-const K_BROWSER = 'sp.browserId'; // localStorage: presence only; sessions remain independent
 const RECENT_MAX = 4;
 const TOKEN_MAX_LEN = 64;        // protocol limit for hello.token
-let CHANNEL_NAME = 'sp.identity' + federationSuffix;
-const isBrowserId = (v) => typeof v === 'string' && v.length === 32 && /^[0-9a-f]{32}$/.test(v);
-
-function newBrowserId() {
-  const bytes = new Uint8Array(16);
-  try { globalThis.crypto.getRandomValues(bytes); }
-  catch { for (let i = 0; i < bytes.length; i++) bytes[i] = Math.floor(Math.random() * 256); }
-  return Array.from(bytes, (n) => n.toString(16).padStart(2, '0')).join('');
-}
+const CHANNEL_NAME = 'sp.identity';
 /** How long init() waits for other tabs to claim a candidate token (ms). */
 export const CLAIM_QUERY_MS = 150;
 
@@ -811,7 +776,7 @@ function defaultChannel() {
  * @param {{ local?: Storage|null, session?: Storage|null, tabId?: string,
  *           channel?: { postMessage: Function, addEventListener?: Function, onmessage?: any } | null,
  *           setTimeout?: (fn: Function, ms: number) => any, queryMs?: number, now?: () => number,
- *           onYield?: () => void, locks?: {request: Function}|null }} [deps]
+ *           onYield?: () => void }} [deps]
  */
 export function createIdentity(deps = {}) {
   const local = deps.local !== undefined ? deps.local : safeStorage('localStorage');
@@ -826,7 +791,6 @@ export function createIdentity(deps = {}) {
   let initialized = false;
   let resumeBusy = false;
   let current = null;    // token this tab uses (null = let the server create a session)
-  let browserId = null;
   let resolving = null;  // { hashes: Set<hash>, taken: Set<hash> } while init() waits for claims
   let owned = sget(session, K_TOKEN);
   if (!isToken(owned)) owned = null;
@@ -846,25 +810,6 @@ export function createIdentity(deps = {}) {
     }
   };
   const writeRecent = (list) => sset(local, K_RECENT, JSON.stringify([...new Set(list)].slice(0, RECENT_MAX)));
-
-  const getBrowserId = () => {
-    const saved = sget(local, K_BROWSER);
-    if (isBrowserId(saved)) browserId = saved;
-    else {
-      browserId ||= newBrowserId();
-      sset(local, K_BROWSER, browserId);
-    }
-    return browserId;
-  };
-
-  async function initBrowserId() {
-    // Web Locks serialize two simultaneously opened tabs' first ID creation.
-    try {
-      const locks = deps.locks !== undefined ? deps.locks : globalThis.navigator?.locks;
-      if (locks?.request) return await locks.request('sp.browser-presence', getBrowserId);
-    } catch { /* unavailable storage/locks still allow a normal game session */ }
-    return getBrowserId();
-  }
 
   const readMatches = () => {
     try {
@@ -962,13 +907,6 @@ export function createIdentity(deps = {}) {
 
   return {
     tabId,
-    async switchNode(node) {
-      channel?.close?.();channel=null;current=null;initialized=false;initPromise=null;resolving=null;
-      const home=globalThis.location?.hostname==='wei.isomer319.xyz'?'hongkong2':'hongkong';
-      federationSuffix=federationEnabled&&node!==home?'.'+node:'';
-      K_TOKEN='sp.token'+federationSuffix;K_WELCOME='sp.tokenWelcome'+federationSuffix;K_RECENT='sp.tokens'+federationSuffix;K_MATCHES='sp.matches'+federationSuffix;CHANNEL_NAME='sp.identity'+federationSuffix;
-      return this.init();
-    },
     /**
      * Decide which reconnect token this tab uses (once per page load; later calls return the same
      * promise). Call before the first `hello`. Never rejects.
@@ -976,7 +914,7 @@ export function createIdentity(deps = {}) {
      */
     init() {
       if (!initPromise) {
-        initPromise = initBrowserId().then(resolveToken).catch(() => null).then((pick) => {
+        initPromise = resolveToken().catch(() => null).then((pick) => {
           // A welcome may already have set a token while we were waiting: that one wins.
           if (!welcomed) {
             current = pick;
@@ -1021,8 +959,6 @@ export function createIdentity(deps = {}) {
     loadName: () => (sget(local, K_NAME) || '').slice(0, 64),
     /** @param {string} name */
     saveName: (name) => sset(local, K_NAME, String(name)),
-    /** Shared presence ID, separate from every tab's player token. No fingerprint or IP data. */
-    getBrowserId,
     /** Token for `hello` (null ⇒ new session). Before init() only this tab's own token is used. */
     getToken() {
       if (current) return current;
@@ -1073,6 +1009,4 @@ export function createIdentity(deps = {}) {
 export const identity = createIdentity({ onYield: () => net.reconnectNow(net.helloName || net.name) });
 
 /** Browser connection singleton (created lazily-safe: nothing touches the network until connect()). */
-export const net = new Net({ getToken: () => identity.getToken(), getBrowserId: () => identity.getBrowserId(), getTokenClaim: () => identity.getTokenClaim() });
-
-installFederation(net,identity);
+export const net = new Net({ getToken: () => identity.getToken(), getTokenClaim: () => identity.getTokenClaim() });

@@ -3,26 +3,22 @@
 import { N_ } from './i18n.js';
 
 export const PROTOCOL_VERSION = 1;
-export const MOD_API_VERSION = 1;
-export const VOICE_SLOTS = Object.freeze(['start', 'faceEnemy', 'select', 'place',
-  'skill1', 'skill2', 'skill3', 'skill4', 'resultFour', 'resultThree', 'resultTwo', 'resultLose']);
-export const VOICE_LANGS = Object.freeze(['cn', 'jp', 'en', 'kr']);
-export const DEFAULT_VOICE_LANG = 'jp';
 /** Release version shown to players (title screen, server banner, /healthz). Kept equal to package.json "version"
  * (test/version.test.js); PROTOCOL_VERSION above is the separate wire-format number. */
-export const APP_VERSION = '0.3.1.1';
+export const APP_VERSION = '0.3.3';
 /** A development build (the public `dev` branch): the title screen, the boot banner and the README say so, and
  * tools/package.mjs refuses to build a release zip from it without --allow-dev. */
 export const DEV_BUILD = /-dev$/.test(APP_VERSION);
 /**
  * The plugin API levels this build supports (DESIGN §32, shared/plugins/manifest.js): a manifest 2 states the level it
  * is written for (`api`); a level outside min…current keeps the plugin out. The level rises when the data shapes, the
- * DSL vocabulary or the SDK a plugin relies on change incompatibly (CHANGELOG says how to migrate). [ASSUMED]
+ * DSL vocabulary or the SDK a plugin relies on change incompatibly (CHANGELOG says how to migrate). Level 2 adds the
+ * declarative `offers` part (docs/PLUGINS.md): a manifest that uses it states `"api": 2`, and a build that knows only
+ * level 1 refuses that plugin instead of loading it without the part. [ASSUMED]
  */
-export const PLUGIN_API = Object.freeze({ current: 1, min: 1 });
+export const PLUGIN_API = Object.freeze({ current: 2, min: 1 });
 
 export const MAX_SEATS = 4;
-export const DEPLOY_CAP_MAX = 12;
 /**
  * Spectator seats of a co-op room (community report #26, owner's decision 2026-10-04) — a remake feature: the official
  * room has 1–4 players and no spectator seat (there only eliminated players and 联防 bystanders watch, research 09 §3.1).
@@ -30,6 +26,11 @@ export const DEPLOY_CAP_MAX = 12;
  * server/match/match/watch.js addSpectator).
  */
 export const MAX_SPECTATORS = 2;
+/**
+ * 重刷本局 (PR #860, DESIGN §28.21 [ASSUMED]): each seat may open one setup-reroll vote per this many ms. Shared so the
+ * client's refusal toast (ui/toasts.js) names the server's value (server/match/match/setupVote.js).
+ */
+export const SETUP_REROLL_COOLDOWN_MS = 30_000;
 export const ROOM_CODE_LEN = 4;
 export const NAME_MAX_LEN = 12;
 
@@ -39,10 +40,7 @@ export const DIFFICULTY_COLORS = { FUNNY: '#f6a329', NORMAL: '#e85a1a', HARD: '#
 
 // modeId in data/config.json = `mode_${type}_${difficulty.toLowerCase()}` with type single|multi
 export const modeIdFor = (roomMode, difficulty) =>
-  `mode_${(roomMode === 'solo' || roomMode === 'solo_infinite') ? 'single' : 'multi'}_${difficulty.toLowerCase()}`;
-
-export { SOLO_INFINITE, isInfiniteMode, BOSS_HIT_LIMIT_INFINITE, INFINITE_MAX_ROUND, MIN_ATTACK_INTERVAL_SEC } from './infiniteMode.js';
-
+  `mode_${roomMode === 'solo' ? 'single' : 'multi'}_${difficulty.toLowerCase()}`;
 
 export const PHASE = Object.freeze({
   LOBBY: 'LOBBY',
@@ -51,22 +49,19 @@ export const PHASE = Object.freeze({
   BATTLE_CHECK: 'BATTLE_CHECK',
   ROUND_START: 'ROUND_START',
   SP_DRAFT: 'SP_DRAFT',
-  TRAIT_DRAFT: 'TRAIT_DRAFT',
   PREP: 'PREP',
   COMBAT: 'COMBAT',
   UNITE: 'UNITE',
   SETTLE: 'SETTLE',
   FINAL_ASSAULT: 'FINAL_ASSAULT',
   HIDDEN_CORE: 'HIDDEN_CORE',
-  // 业主 2026-10-21：超限双 Boss 轮，击败第一个后进入 2.6 秒的全屏预警
-  BOSS_PHASE2_WARN: 'BOSS_PHASE2_WARN',
   RESULT: 'RESULT',
 });
 
 export const PHASE_NAMES = {
   LOBBY: N_('等待中'), INFO_CHECK: N_('确认本局信息'), BAND_DRAFT: N_('选择策略'), BATTLE_CHECK: N_('协议启动'),
-  ROUND_START: N_('回合开始'), SP_DRAFT: N_('机变阶段'), TRAIT_DRAFT: N_('词条抉择'), PREP: N_('休整期'), COMBAT: N_('作战中'), UNITE: N_('联防阶段'),
-  SETTLE: N_('结算'), FINAL_ASSAULT: N_('最终攻势'), HIDDEN_CORE: N_('隐秘核心'), BOSS_PHASE2_WARN: N_('第二阶段'), RESULT: N_('模拟结束'),
+  ROUND_START: N_('回合开始'), SP_DRAFT: N_('机变阶段'), PREP: N_('休整期'), COMBAT: N_('作战中'), UNITE: N_('联防阶段'),
+  SETTLE: N_('结算'), FINAL_ASSAULT: N_('最终攻势'), HIDDEN_CORE: N_('隐秘核心'), RESULT: N_('模拟结束'),
 };
 
 // Board geometry on the 19x21 stage grid (row 0 = bottom). See DESIGN §3.
@@ -112,33 +107,13 @@ export const SKILL_SUMMON_START_DEPLOY = true;
 export const BOND_LAYER_CAP = 999;
 
 /**
- * 实际生效的层数上限（业主 2026-10-18：超限模拟里盟约层数应该能叠到 9999）。
- *
- * `BOND_LAYER_CAP` 是原版（以及所有普通模式）的 999；超限局在 Match 构造时把这里抬到 9999，
- * 对局结束再恢复 —— 改动**只在一个超限局的生命周期内**，普通单机 / 同盟读到的仍是 999。
- * 用它而不是直接改常量，是因为 `layerGainRoom` 是纯函数、被 service 与 sim 两侧共用，
- * 参数化比「按模式到处传参」改动面小得多。
- */
-let bondLayerCapLive = BOND_LAYER_CAP;
-
-/** The cap `layerGainRoom` enforces right now (999 normally, 9999 inside an overlimit match). */
-export function currentBondLayerCap() { return bondLayerCapLive; }
-
-/** Set the live cap; returns the previous one so a caller can restore it. */
-export function setBondLayerCap(v) {
-  const prev = bondLayerCapLive;
-  bondLayerCapLive = Number.isFinite(v) && v > 0 ? Math.floor(v) : BOND_LAYER_CAP;
-  return prev;
-}
-
-/**
  * The layers a gain of `n` actually adds to a bond holding `before` under BOND_LAYER_CAP: min(n, cap − before), never
  * negative (a count already at or over the cap gains 0 and is never lowered); 0 for a non-positive / non-finite `n`
  * except +Infinity (= "the room left").
  */
 export function layerGainRoom(before, n) {
   if (!(n > 0)) return 0;
-  const cap = bondLayerCapLive > 0 ? bondLayerCapLive : Infinity;
+  const cap = BOND_LAYER_CAP > 0 ? BOND_LAYER_CAP : Infinity;
   const b = Number.isFinite(before) && before > 0 ? before : 0;
   return Math.max(0, Math.min(n, cap - b));
 }
@@ -150,7 +125,8 @@ export function layerGainRoom(before, n) {
  * = data/bosses.json `enemyKey`; in the sim the tag-'boss' units: those leaders and their mirrored copies, never parts,
  * escorts or drones) whose `ceil(final damage)` ≥ this is CANCELLED: 0 damage, nothing credited to the shared pool
  * (`AutoChessStepModeManager._OnBossEnemyTakeDamage` → `modifier.Cancel()`). It is not a clamp: a hit of 299999 lands.
- * Checked in server/sim/damage.js (dealDamage after DEF / RES and every multiplier, before shields; Battle.loseHp — not
+ * Checked in server/sim/attack/hit.js (resolveDamage: after the calculation and output stages and the target's damage-taken
+ * multipliers, before the ordered injury effects — barriers, shields, dodges) and server/sim/attack.js (dealHPLose — not
  * the 胄 drone link's pool share, `noHitLimit`, DESIGN §25.13.4). Minions, normal rounds and 联防 are unaffected.
  * 0 / Infinity = off.
  */
@@ -170,9 +146,11 @@ export const ERR = Object.freeze({
   NOT_IN_ROOM: 'NOT_IN_ROOM',
   ROOM_NOT_FOUND: 'ROOM_NOT_FOUND',
   ROOM_FULL: 'ROOM_FULL',
+  SERVER_FULL: 'SERVER_FULL',     // the online cap (SP_MAX_ONLINE) has no seat for a new player
   ROOM_STARTED: 'ROOM_STARTED',
+  // a fixed alliance key (--room-code): one room at a time can hold it
+  ROOM_CODE_TAKEN: 'ROOM_CODE_TAKEN',
   NOT_HOST: 'NOT_HOST',
-  MOD_UNKNOWN: 'MOD_UNKNOWN',      // 房间声明的模组不在本服务器加载的目录里 (W-D)
   NOT_READY: 'NOT_READY',
   WRONG_PHASE: 'WRONG_PHASE',
   NO_FUNDS: 'NO_FUNDS',
@@ -202,6 +180,7 @@ export const ERR = Object.freeze({
   PLUGIN_BLOCKED: 'PLUGIN_BLOCKED',
   PLUGIN_DEPENDENCY: 'PLUGIN_DEPENDENCY',
   PLUGIN_CONFLICT: 'PLUGIN_CONFLICT',
+  PLUGIN_RULE_CONFLICT: 'PLUGIN_RULE_CONFLICT',
   PLUGIN_LIMIT: 'PLUGIN_LIMIT',
   // P1c (DESIGN §32.6): a gameplay plugin made for other game versions or another plugin API (refused unless the server
   // owner allows it: plugins/config.json allowIncompatible); the server already runs as many plugin content sets as its
@@ -210,19 +189,31 @@ export const ERR = Object.freeze({
   PLUGIN_INCOMPATIBLE: 'PLUGIN_INCOMPATIBLE',
   PLUGIN_BUSY: 'PLUGIN_BUSY',
   CONTENT_NOT_READY: 'CONTENT_NOT_READY',
+  // match test mode (DESIGN §34.8 phase 2): the process switch is off, or this room was not created as a test room
+  TEST_CONFIRM: 'TEST_CONFIRM',
+  TEST_DISABLED: 'TEST_DISABLED',
+  TEST_FORBIDDEN: 'TEST_FORBIDDEN',
+  // official versions (DESIGN §35.23, M1): a version this server does not enable (room.create, room.proposeVersion); a
+  // version that cannot serve the room (its roomModes, or the room's gameplay plugins — they play 第二期下半 only); a room
+  // action refused while the room's version vote is open (room.start, room.setPlugins, room.setMode, room.proposeVersion)
+  VERSION_UNKNOWN: 'VERSION_UNKNOWN',
+  VERSION_UNSUPPORTED: 'VERSION_UNSUPPORTED',
+  VERSION_VOTE: 'VERSION_VOTE',
   INTERNAL: 'INTERNAL',
 });
 
 export const ERR_TEXT = {
   SESSION_IN_USE: N_('此对局仍在其他窗口中，或当前浏览器无法安全恢复。请关闭原窗口后重试。'),
   BAD_MSG: N_('无效的请求'), RATE: N_('操作过于频繁'), NOT_IN_ROOM: N_('你不在房间中'), ROOM_NOT_FOUND: N_('未找到该同盟密钥对应的房间'),
-  ROOM_FULL: N_('房间已满'), ROOM_STARTED: N_('模拟已开始'), NOT_HOST: N_('只有房主可以操作'), NOT_READY: N_('仍有玩家未就绪'),
+  ROOM_FULL: N_('房间已满'), SERVER_FULL: N_('服务器已满'), ROOM_STARTED: N_('模拟已开始'), NOT_HOST: N_('只有房主可以操作'), NOT_READY: N_('仍有玩家未就绪'),
+  ROOM_CODE_TAKEN: N_('固定同盟密钥已被另一个房间占用，请先关闭那个房间'),
   WRONG_PHASE: N_('当前阶段无法进行该操作'), NO_FUNDS: N_('资金不足'), HAND_FULL: N_('整备区已满'), BOARD_FULL: N_('已达到部署上限'),
   BAD_TILE: N_('无法部署在该位置'), BAD_TARGET: N_('无效的目标'), SOLD_OUT: N_('已售出'), MAX_LEVEL: N_('调度中心已达最高等级'),
   NOT_YOUR_TURN: N_('尚未轮到你'), ALREADY: N_('已完成该操作'), TEMP_NOT_EMPTY: N_('临时整备区不为空'), ELIMINATED: N_('你已被淘汰'),
   SPECTATOR: N_('观战中无法进行该操作'), INTERNAL: N_('服务器内部错误'),
   PLUGIN_UNKNOWN: N_('本服务器没有安装该插件'), PLUGIN_BLOCKED: N_('该插件不能在房间中启用'), PLUGIN_DEPENDENCY: N_('缺少该插件需要的其他插件'),
   PLUGIN_CONFLICT: N_('所选插件互相冲突'), PLUGIN_LIMIT: N_('所选插件的素材总量超出本服务器的上限'),
+  PLUGIN_RULE_CONFLICT: N_('两个插件把同一个规则开关设成了不同的选项'),
   PLUGIN_INCOMPATIBLE: N_('该插件不适配本服务器的游戏版本'), PLUGIN_BUSY: N_('本服务器同时运行的插件组合已达上限，请稍后再试'),
   PLUGIN_CONSENT: N_('还有玩家未同意运行受信任插件'),
   PLUGIN_SCRIPTS_DISABLED: N_('服主没有启用脚本插件'),
@@ -232,7 +223,12 @@ export const ERR_TEXT = {
   PLUGIN_SCRIPT_OVERRIDE: N_('插件未声明要替换的官方技能'),
   PLUGIN_SCRIPT_CHECK: N_('脚本未通过兼容性检查'),
   CONTENT_NOT_READY: N_('仍有博士未载入房间的插件内容'),
-  MOD_UNKNOWN: N_('本服务器未加载该模组'),   // 房间声明的工坊包不在服务器目录里 (W-D)
+  TEST_CONFIRM: N_('这是测试房间，不计入任何记录。确认加入？'),
+  TEST_DISABLED: N_('测试模式未开启'),
+  TEST_FORBIDDEN: N_('这不是测试房间'),
+  VERSION_UNKNOWN: N_('本服务器没有启用该版本'),
+  VERSION_UNSUPPORTED: N_('该版本不能用于当前房间（例如房间开着改变玩法的插件）'),
+  VERSION_VOTE: N_('切换版本投票进行中，请等投票结束'),
 };
 
 // ---- Emotes (交流, research 09 §4) -----------------------------------------------------------------------------

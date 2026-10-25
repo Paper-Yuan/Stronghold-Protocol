@@ -27,14 +27,15 @@
 // operator carries — the operator's name and portrait with the 「自选」 tag, dimmed until owned (not bought, or not in the
 // shop yet), ✕ when all its bonds are off this match (m.private.diyBanned) — and opens the operator's card; a watched
 // teammate's 自选 pieces on the field are rows too (their picks are not sent), opening THEIR operator's card (the unit's
-// pick goes with onMember: never the empty 甄选干员 slot's card).
+// pick goes with onMember: never the empty 甄选干员 slot's card). A 自选 piece that is a member through 变形同构体 shows its
+// operator too, with the 「同构」 tag (#846: it showed the empty slot's 「甄」).
 
-import { useState, useRef, useEffect } from '../../vendor/hooks.module.js';
+import { cloneElement } from '../../vendor/preact.module.js';
+import { useEffect, useRef, useState } from '../../vendor/hooks.module.js';
 import { html, BondDisc, Icon, MicroLabel, Tooltip } from './components.js';
 import { RichText, UnitThumb, BondGlyph, GIcon } from './gameComponents.js';
 import { sortBonds, bondMembers, nextThreshold, bondTier, harmonyMembers, HARMONY_BOND, memberHeadCount, briefingBondTip, diyGetter, diyRecordFor, memberStandIn, standInForText } from './gameLogic.js';
 import { formatBondEffect } from './richText.js';
-import { overlimitBondText, overlimitBondNow } from './overlimitBondText.js';
 import { bondIconUrl } from './assetUrls.js';
 import { data } from '../data.js';
 import { t, tc, tParts, tName } from '../../../shared/i18n.js';
@@ -48,115 +49,57 @@ function OwnerTag({ owner }) {
   </span>`;
 }
 
+function BondScroller({ count, children }) {
+  const viewport = useRef(null);
+  const [edges, setEdges] = useState({ left: false, right: false });
+  useEffect(() => {
+    const el = viewport.current;
+    if (!el) return;
+    const update = () => {
+      const left = el.scrollLeft > 1, right = el.scrollLeft + el.clientWidth < el.scrollWidth - 1;
+      setEdges((old) => old.left === left && old.right === right ? old : { left, right });
+    };
+    // A render can resize the observed slots too. Update after observer delivery, so those changes are measured in the
+    // next frame rather than producing "ResizeObserver loop completed with undelivered notifications" during prep.
+    let frame = null;
+    const observer = new ResizeObserver(() => {
+      if (frame !== null) return;
+      frame = requestAnimationFrame(() => { frame = null; update(); });
+    });
+    observer.observe(el);
+    for (const child of el.children) observer.observe(child);
+    el.addEventListener('scroll', update, { passive: true });
+    update();
+    return () => {
+      observer.disconnect();
+      if (frame !== null) cancelAnimationFrame(frame);
+      el.removeEventListener('scroll', update);
+    };
+  }, [viewport, count]);
+  const scroll = direction => viewport.current?.scrollBy({ left: direction * Math.max(80, viewport.current.clientWidth * .75), behavior: 'smooth' });
+  return html`<div class="bstrip-scroll">
+    <button type="button" class="bstrip-scroll__arrow" disabled=${!edges.left} aria-label=${t('向左滚动盟约')} onClick=${() => scroll(-1)}>‹</button>
+    ${cloneElement(children, { ref: viewport })}
+    <button type="button" class="bstrip-scroll__arrow" disabled=${!edges.right} aria-label=${t('向右滚动盟约')} onClick=${() => scroll(1)}>›</button>
+  </div>`;
+}
+
 /**
- * @param {{ bonds: any[], layersDisabled?: boolean, onOpen:(bondId:string)=>void, openId?: string|null, max?: number,
+ * @param {{ bonds: any[], layersDisabled?: boolean, onOpen:(bondId:string)=>void, openId?: string|null,
  *   owner?: string|null }} props — owner: the watched teammate's name (null = your own bonds)
  */
-export function BondStrip({ bonds, layersDisabled = false, onOpen, openId = null, max = 14, owner = null }) {
-  let collapsed = false;
-  let setCollapsed = null;
-  try {
-    [collapsed, setCollapsed] = useState(() => {
-      try {
-        return localStorage.getItem('sp_bonds_collapsed') === '1';
-      } catch {
-        return false;
-      }
-    });
-  } catch {
-    try {
-      collapsed = typeof localStorage !== 'undefined' && localStorage.getItem('sp_bonds_collapsed') === '1';
-    } catch {
-      collapsed = false;
-    }
-  }
-
-  const toggleCollapsed = (e) => {
-    e?.stopPropagation?.();
-    if (setCollapsed) {
-      setCollapsed((c) => {
-        const next = !c;
-        try {
-          localStorage.setItem('sp_bonds_collapsed', next ? '1' : '0');
-        } catch {}
-        return next;
-      });
-    }
-  };
-
+export function BondStrip({ bonds, layersDisabled = false, onOpen, openId = null, owner = null }) {
   const sorted = sortBonds(bonds, (id) => data.lookup('bonds', id));
   if (!sorted.length) {
     return html`<div class=${cx('bstrip', 'bstrip--empty', owner && 'is-other')} data-owner=${owner || null}>
-      ${owner ? html`<${OwnerTag} owner=${owner} />` : html`<${MicroLabel}>BONDS<//>`}<span>${owner ? t('{owner} 尚未激活盟约', { owner }) : t('部署干员以激活盟约')}</span></div>`;
+      ${owner ? html`<${OwnerTag} owner=${owner} />` : html`<${MicroLabel}>BONDS</${MicroLabel}>`}<span>${owner ? t('{owner} 尚未激活盟约', { owner }) : t('部署干员以激活盟约')}</span></div>`;
   }
-
   const m = data.get('assets');
-  // The strip is also called as a plain function (the node tests expand its vnode tree), where no preact render is in
-  // flight: like the useState guard above, a failed hook call falls back to a plain ref object.
-  let scrollRef = { current: null };
-  try { scrollRef = useRef(null); } catch { /* outside a render */ }
-
-  const updateMask = () => {
-    const el = scrollRef.current;
-    if (!el) return;
-    const overflow = el.scrollWidth > el.clientWidth + 4;
-    if (!overflow) {
-      el.style.webkitMaskImage = 'none';
-      el.style.maskImage = 'none';
-      return;
-    }
-    const hasLeft = el.scrollLeft > 6;
-    const hasRight = el.scrollWidth - (el.scrollLeft + el.clientWidth) > 6;
-    if (hasLeft && hasRight) {
-      const mask = 'linear-gradient(to right, transparent 0, black 0.5rem, black calc(100% - 0.75rem), transparent 100%)';
-      el.style.webkitMaskImage = mask;
-      el.style.maskImage = mask;
-    } else if (hasRight) {
-      const mask = 'linear-gradient(to right, black calc(100% - 0.75rem), transparent 100%)';
-      el.style.webkitMaskImage = mask;
-      el.style.maskImage = mask;
-    } else if (hasLeft) {
-      const mask = 'linear-gradient(to right, transparent 0, black 0.5rem, black 100%)';
-      el.style.webkitMaskImage = mask;
-      el.style.maskImage = mask;
-    } else {
-      el.style.webkitMaskImage = 'none';
-      el.style.maskImage = 'none';
-    }
-  };
-
-  try {
-    useEffect(() => {
-      updateMask();
-      const el = scrollRef.current;
-      if (!el) return;
-      const onScroll = () => updateMask();
-      el.addEventListener('scroll', onScroll, { passive: true });
-      let ro = null;
-      if (typeof ResizeObserver !== 'undefined') {
-        ro = new ResizeObserver(() => updateMask());
-        ro.observe(el);
-      }
-      return () => {
-        el.removeEventListener('scroll', onScroll);
-        ro?.disconnect();
-      };
-    }, [sorted.length]);
-  } catch { /* outside a render */ }
-
-  const onWheel = (e) => {
-    if (!scrollRef.current) return;
-    if (Math.abs(e.deltaX) < Math.abs(e.deltaY)) {
-      scrollRef.current.scrollLeft += e.deltaY;
-      e.preventDefault();
-    }
-  };
-
-  const strip = html`<div class=${cx('bstrip', layersDisabled && 'is-frozen', owner && 'is-other')} role="list"
-      ref=${scrollRef} onWheel=${onWheel} onScroll=${updateMask}
+  const shown = sorted;
+  const strip = html`<div tabindex="0" class=${cx('bstrip', layersDisabled && 'is-frozen', owner && 'is-other')} role="list"
       aria-label=${owner ? t('{owner} 的盟约', { owner }) : t('我的盟约')} data-owner=${owner || null}>
     ${owner ? html`<${OwnerTag} owner=${owner} />` : null}
-    ${sorted.map((b) => {
+    ${shown.map((b) => {
       const rec = data.lookup('bonds', b.bondId);
       const th = Array.isArray(b.thresholds) && b.thresholds.length ? b.thresholds : rec?.thresholds || [];
       if (b.off) {
@@ -181,25 +124,8 @@ export function BondStrip({ bonds, layersDisabled = false, onOpen, openId = null
       </div>`;
     })}
   </div>`;
-
-  const wrappedStrip = layersDisabled ? html`<${Tooltip} text=${t('层数叠加已禁用')} placement="bottom">${strip}<//>` : strip;
-
-  return html`
-    <div class=${cx('bstrip-container', collapsed && 'is-collapsed')}>
-      <div class="bstrip-tray">
-        ${wrappedStrip}
-      </div>
-      <button type="button" class="bstrip__fold-handle" onClick=${toggleCollapsed}
-        aria-label=${collapsed ? t('展开盟约') : t('收起盟约')}
-        title=${collapsed ? t('展开盟约') : t('收起盟约')}>
-        <span class="bstrip__fold-icon">
-          <svg viewBox="0 0 16 16">
-            <path d="M8 3.5l-4.5 4.5 1 1L8 5.5l3.5 3.5 1-1L8 3.5zm0 4.5l-4.5 4.5 1 1L8 10l3.5 3.5 1-1L8 8z"></path>
-          </svg>
-        </span>
-      </button>
-    </div>
-  `;
+  const content = html`<${BondScroller} count=${sorted.length}>${strip}<//>`;
+  return layersDisabled ? html`<${Tooltip} text=${t('层数叠加已禁用')} placement="bottom">${content}<//>` : content;
 }
 
 /**
@@ -216,7 +142,7 @@ export function BondStrip({ bonds, layersDisabled = false, onOpen, openId = null
  *   note, no 在场 count and no 当前效果 block (its numbers would promise an effect the mode never gives; the bond text stays).
  *   `entry.harmony` (the server's bond views: the +1 调和 added to `count`): 在场 n（含调和 +1） and the 调和 row
  */
-export function BondPopup({ bondId, entry, priv, banned = [], onClose, onMember, place = null, over = false, beside = null, owner = null, off = false, overlimit = false }) {
+export function BondPopup({ bondId, entry, priv, banned = [], onClose, onMember, place = null, over = false, beside = null, owner = null, ownerId, off = false, morphMode = 'official' }) {
   const b = data.lookup('bonds', bondId);
   if (!b) return null;
   const count = entry?.count ?? 0;
@@ -228,10 +154,10 @@ export function BondPopup({ bondId, entry, priv, banned = [], onClose, onMember,
   const dd = { chess: data.get('chess'), backups: data.get('backups') };
   const getChess = diyGetter((id) => data.lookup('chess', id), priv, dd);
   const pieceRecord = (p) => (p && p.diy && typeof p.diy === 'object' ? diyRecordFor(data.lookup('chess', p.id), p.diy, dd) : null) || getChess(p.id);
-  const members = bondMembers(b, priv, banned, getChess, (id) => data.lookup('items', id), pieceRecord);
-  // 补位: the stand-in a row shows (a 自选 row is its operator already)
+  const members = bondMembers(b, priv, banned, getChess, (id) => data.lookup('items', id), pieceRecord, morphMode);
+  // 补位: the stand-in a row shows (a 自选 row — a member, or one through 变形同构体 with its record `rec` — is its operator already)
   const rawChess = (id) => data.lookup('chess', id);
-  const siOf = (mb) => (mb.diy ? null : memberStandIn(priv, rawChess(mb.id), data.get('backups'), rawChess));
+  const siOf = (mb) => (mb.diy || mb.rec ? null : memberStandIn(priv, rawChess(mb.id), data.get('backups'), rawChess));
   const countsHand = entry?.countsHand ?? b.countsHand;
   const next = nextThreshold(count, th);
   const hasNow = !off && !!(b.effectDescRaw || b.effectDesc);
@@ -267,11 +193,11 @@ export function BondPopup({ bondId, entry, priv, banned = [], onClose, onMember,
     </div>
     ${hasNow ? html`<section class="bpop__sec bpop__sec--now">
       <h4>${t('当前效果')} ${b.noStack ? null : html`<small class="num">${t('（{layers} 层）', { layers })}</small>`}</h4>
-      <${RichText} as="p" text=${(overlimit && overlimitBondNow(bondId, layers)) || formatBondEffect(b, layers, { overlimit })} class="bpop__desc" />
+      <${RichText} as="p" text=${formatBondEffect(b, layers)} class="bpop__desc" />
     </section>` : null}
     <section class="bpop__sec">
       <h4>${t('盟约效果')}</h4>
-      <${RichText} as="p" text=${(overlimit && overlimitBondText(bondId)) || b.descRaw || b.desc} class="bpop__desc" />
+      <${RichText} as="p" text=${b.descRaw || b.desc} class="bpop__desc" />
     </section>
     <section class="bpop__sec">
       <h4>${t('成员')} <small>${memberHeadCount(members, countsHand)}/${members.length}</small></h4>
@@ -289,7 +215,7 @@ export function BondPopup({ bondId, entry, priv, banned = [], onClose, onMember,
               onClick=${() => (si ? onMember?.(mb.id, items, si.standInFor) : mb.pick ? onMember?.(mb.id, items, null, mb.pick) : onMember?.(mb.id, items))}
               data-granted=${mb.granted ? '1' : null} data-standin=${si ? si.charId : null} data-diy=${mb.diy ? mb.rec?.charId || '1' : null}
               title=${`${name}${si ? t('（{note}）', { note: standInForText(mb.name) }) : ''}${mb.granted ? t('（变形同构体：视为本盟约成员）') : ''}${mb.banned ? t('（本局禁用）') : mb.onBoard ? t('（在场）') : mb.owned ? t('（整备区）') : ''}`}>
-            <${UnitThumb} kind="chess" id=${mb.id} size="sm" dim=${!mb.owned || mb.banned} rec=${si || (mb.diy ? mb.rec : null)} title=${name} />
+            <${UnitThumb} kind="chess" id=${mb.id} ownerId=${ownerId ?? priv?.playerId} size="sm" dim=${!mb.owned || mb.banned} rec=${si || mb.rec || null} title=${name} />
             <span class="bpop__mname">${name}</span>
             ${mb.banned ? html`<span class="bpop__ban"><${Icon} name="close" /></span>` : null}
             ${mb.granted ? html`<span class="bpop__iso" aria-hidden="true">${t('同构')}</span>` : null}

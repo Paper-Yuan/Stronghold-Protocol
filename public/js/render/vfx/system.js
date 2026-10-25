@@ -182,6 +182,8 @@ export class OfficialFx {
     if (!this.lib.has(k)) return null;
     const lim = MAX_EFFECTS[this.tier] || 200;
     const important = !!opts.loop || !!opts.important;
+    // [ASSUMED] Author loops never bypass tier budgets; pending plugin loads also count toward 128 instances.
+    if (k.startsWith('plugin:') && (this.effects.length + this.pending.length >= Math.min(128, lim) || this.particles >= (MAX_PARTICLES[this.tier] || 5000))) { this.dropped++; return null; }
     if (!important && (this.effects.length >= lim || this.particles >= (MAX_PARTICLES[this.tier] || 5000))) { this.dropped++; return null; }
     const handle = new FxHandle(this, k, place, opts);
     const def = this.lib.def(k);
@@ -303,6 +305,14 @@ export class OfficialFx {
     if (!fx) return null;
     this.pooled++;
     return fx.reset(seed);
+  }
+
+  /** Stop persistent effects and late loads; existing one-shots finish on the presentation clock. */
+  finish() {
+    for (const h of this.pending) h.cancelled = true;
+    this.pending.length = 0;
+    for (const fx of this.effects) if (fx.handle?.opts.loop || fx.def.loops) fx.stop();
+    this.timers = [];
   }
 
   /** Remove every effect (battle reset). */
