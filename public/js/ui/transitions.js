@@ -48,3 +48,48 @@ export function useLeave(onClose, ms = 300) {
   };
   return [leaving, leave];
 }
+
+/**
+ * Presence transition hook for elements that appear/disappear based on a condition. Returns [shown, leaving] where:
+ * - shown: boolean indicating if element should be rendered (true during entrance, display, and exit)
+ * - leaving: boolean indicating if exit animation is playing
+ * @param {boolean} condition when true, element is shown; when false, exit animation plays then element unmounts
+ * @param {number} [ms] exit animation duration in milliseconds
+ * @returns {[boolean, boolean]}
+ */
+export function usePresence(condition, ms = 300) {
+  const [shown, setShown] = useState(condition);
+  const [leaving, setLeaving] = useState(false);
+  const timeoutRef = useRef(null);
+  
+  useEffect(() => {
+    if (condition) {
+      setShown(true);
+      setLeaving(false);
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+        timeoutRef.current = null;
+      }
+    } else if (shown) {
+      if (reducedMotion()) {
+        setShown(false);
+        setLeaving(false);
+      } else {
+        setLeaving(true);
+        timeoutRef.current = setTimeout(() => {
+          setShown(false);
+          setLeaving(false);
+          timeoutRef.current = null;
+        }, ms);
+      }
+    }
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+        timeoutRef.current = null;
+      }
+    };
+  }, [condition, shown, ms]);
+  
+  return [shown, leaving];
+}
