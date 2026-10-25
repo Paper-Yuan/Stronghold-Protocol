@@ -19,7 +19,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 /**
- * 身份清单里那条**合成**路径：声明的资源容器的 sha256（`pack.json.assets`，DESIGN §34.4）。
+ * 身份清单里那条**合成**路径：声明的资源容器的 sha256（`pack.json.assets`，DESIGN §37.4）。
  *
  * 它没有自己的字节 —— 它的贡献就是容器的 sha256（装载期 `assetsIssues` 已与容器的真实字节核对过），所以它**不在**
  * `listPackFiles` 的结果里，也永远不会与一个真实文件混淆（真实路径里带 `assets.` 的只有 `assets/` 目录下的文件，

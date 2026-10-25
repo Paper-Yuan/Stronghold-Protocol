@@ -244,7 +244,7 @@ export const ROUTE_CACHE_HEADERS = Object.freeze({
  * have at that path. Two packs declaring the same path: the smaller pack id wins (DESIGN §28.3's rule), and the loser
  * is reported — the same ordering rule the data overlay and the kit loader use.
  *
- * **核心先吃（DESIGN §34.8）。** `static.js` asks this table *before* the core mounts, so a declaration can answer a
+ * **核心先吃（DESIGN §37.8）。** `static.js` asks this table *before* the core mounts, so a declaration can answer a
  * path the engine itself serves. That is no longer allowed: `coreRouteShadow` (routeMount.js — the same table the
  * dynamic `host.route` channel judges with) decides whether a declared path is one the engine really serves, and such
  * a declaration is **dropped from the map** — the core mount answers, exactly as if the pack had declared nothing. The
@@ -290,19 +290,19 @@ export function workshopRoutesFor(loaded, workshopDir, { log = null, mount = [] 
         errors.push({ pack: p.id, path: at, reason: `already declared by pack "${routes.get(route.path).pack}" (the smaller pack id wins, DESIGN §28.3)` });
         continue;
       }
-      // 核心先吃（DESIGN §34.8）：引擎真的会服务这条路径 ⇒ 这条声明**不生效**（核心挂载照旧回答），但**不拒包**，
+      // 核心先吃（DESIGN §37.8）：引擎真的会服务这条路径 ⇒ 这条声明**不生效**（核心挂载照旧回答），但**不拒包**，
       // 并且响亮点名。判据只此一处（routeMount.js），与动态 `host.route` 通道读同一张保留表。
       //
       // 只有**真的撞上**（`exact` / `file`）才点名。`reserved`（落在引擎命名空间里、而核心今天没有那个文件，例如
       // 已发布的 ws-compression-reference 那条 `/data/ws-compression.json`）刻意**不报**：它今天一切照旧服务，
       // 报它只会让每一次 `/data/<自己的名字>.json` 声明都吐一行，把真正要紧的那一条淹掉 —— 而「将来核心长出这个
-      // 文件就让位」是 `coreRouteShadow` 求值的**自动**结果，不需要作者现在做什么。这条立场写在 DESIGN §34.8。
+      // 文件就让位」是 `coreRouteShadow` 求值的**自动**结果，不需要作者现在做什么。这条立场写在 DESIGN §37.8。
       const shadow = coreRouteShadow(route.path, { mount });
       if (shadow && shadow.kind !== 'reserved') {
         const where = shadow.kind === 'file'
           ? `the core mount "${shadow.mount}" already serves ${shadow.file}`
           : 'the engine answers that exact path before any pack';
-        errors.push({ pack: p.id, path: at, reason: `the engine answers this path first — ${where}; the declaration is ignored and the engine's own route serves it (a pack may not shadow a core path, DESIGN §34.8). The pack still loads.` });
+        errors.push({ pack: p.id, path: at, reason: `the engine answers this path first — ${where}; the declaration is ignored and the engine's own route serves it (a pack may not shadow a core path, DESIGN §37.8). The pack still loads.` });
         continue;
       }
       let exists = false;
@@ -411,7 +411,7 @@ export function workshopResourceFilesFor(packs, workshopDir, { digests = null } 
 }
 
 /**
- * `welcome.modAssets` —— 声明了 `assets` 的包的**声明清单**（DESIGN §34.4，docs/WORKSHOP.md §1.9.4）。
+ * `welcome.modAssets` —— 声明了 `assets` 的包的**声明清单**（DESIGN §37.4，docs/WORKSHOP.md §1.9.4）。
  *
  * 它是 `modPanels` 的同构物，就同一个理由：客户端要把「哪个包有一份资源容器、去哪儿取、它的字节是哪一份、服务端
  * 对 `/assets` 是什么策略」搞清楚，而这条信息只有服务端有。字段恰好是**声明的那四个**（`pack` 是身份）：
@@ -461,7 +461,7 @@ export function workshopModAssetsFrom(files, packs) {
       digest,
       serverPolicy: pack.assets.serverPolicy,
       verify: pack.assets.verify,
-      // 作者自备 CDN 的镜像（DESIGN §34.10）：**只在真的声明过时才存在** —— 与 `modPanels` 同一条纪律，没声明
+      // 作者自备 CDN 的镜像（DESIGN §37.10）：**只在真的声明过时才存在** —— 与 `modPanels` 同一条纪律，没声明
       // `mirrors` 的包这一条 `welcome` 帧与从前逐字节相同。与包内容器摘要不符的那几条已经在装载期被摘掉
       // （`server/workshop.js assetsMirrorIssues`），所以这里交出去的每一条都是**可用的**声明；
       // 至多 `ASSETS_MIRROR_MAX` 条，字段就是形状层判过的那三个。

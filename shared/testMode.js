@@ -1,4 +1,4 @@
-// shared/testMode.js — match test-mode command catalogue (DESIGN §34.8 phase 2).
+// shared/testMode.js — match test-mode command catalogue (DESIGN §37.8 phase 2).
 // Plain ESM, no Node APIs. The protocol and the browser import it. The server applies a parsed
 // command with the match's own primitives; this module only accepts or refuses the shape.
 //

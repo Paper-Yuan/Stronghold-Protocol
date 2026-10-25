@@ -1,4 +1,4 @@
-// shared/plugins/notices.js — plugin announcements (公告; DESIGN §34.14, docs/PLUGINS.md §9.2).
+// shared/plugins/notices.js — plugin announcements (公告; DESIGN §37.14, docs/PLUGINS.md §9.2).
 // Data on any plugin. Not gameplay: never a content-hash input, never a room's composition, never a match.
 // Plain text only — the page renders the strings as text, so "<" and ">" stay characters [ASSUMED]. Links are
 // not turned into anchors. Newlines in the body are kept.

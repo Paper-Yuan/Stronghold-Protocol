@@ -1,4 +1,4 @@
-// shared/enabled.js — 包的启用声明 (`pack.json.enabled`, DESIGN §34.18).
+// shared/enabled.js — 包的启用声明 (`pack.json.enabled`, DESIGN §37.18).
 // (i18n-ignore-file: 工坊作者层的校验与推导文本 —— 给作者、编辑器与 AI 读的规则说明（编辑器有自己的中英词典，见 docs/EDITOR.md），不是客户端界面文案)
 //
 // 这一格补的缺口：**装好 ≠ 生效**。`loadWorkshop` 今天读 `workshop/` 下的每个目录，只要 `pack.json`

@@ -1,4 +1,4 @@
-// shared/plugins/theme.js — cosmetic theme variables (DESIGN §34.14, docs/PLUGINS.md §9.1).
+// shared/plugins/theme.js — cosmetic theme variables (DESIGN §37.14, docs/PLUGINS.md §9.1).
 // A cosmetic (or trusted) plugin may set design tokens on this player's screen only. The allowlist is the
 // custom properties :root defines in public/css/theme.css whose defaults are a colour, a time or an easing.
 // [ASSUMED] Fonts (--cjk-faces, --font-*), z-index (--z-*), the text scale (--t), bracket lengths (--bk-l,

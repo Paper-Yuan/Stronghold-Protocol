@@ -1,5 +1,5 @@
 // shared/plugins/rules.js — the four gameplay rule switches a content / script / trusted plugin may declare
-// (DESIGN §34.15). One table is the only source of the names, options and the Chinese phrases the room shows.
+// (DESIGN §37.15). One table is the only source of the names, options and the Chinese phrases the room shows.
 // No Node API: the manifest, the content set, the match, the battle sim and the client all import it.
 //
 // An absent `rules` key is not a declaration. Vanilla and every existing plugin stay byte-identical.

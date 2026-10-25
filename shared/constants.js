@@ -190,7 +190,7 @@ export const ERR = Object.freeze({
   PLUGIN_INCOMPATIBLE: 'PLUGIN_INCOMPATIBLE',
   PLUGIN_BUSY: 'PLUGIN_BUSY',
   CONTENT_NOT_READY: 'CONTENT_NOT_READY',
-  // match test mode (DESIGN §34.8 phase 2): the process switch is off, or this room was not created as a test room
+  // match test mode (DESIGN §37.8 phase 2): the process switch is off, or this room was not created as a test room
   TEST_CONFIRM: 'TEST_CONFIRM',
   TEST_DISABLED: 'TEST_DISABLED',
   TEST_FORBIDDEN: 'TEST_FORBIDDEN',

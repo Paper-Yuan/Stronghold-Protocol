@@ -97,7 +97,7 @@ export function isReservedRoutePath(pathname) {
 }
 
 /**
- * `pack.json.routes` 的一条声明路径会不会**顶掉引擎自己的路由**（静态通道，DESIGN §28.13/§34.8）。
+ * `pack.json.routes` 的一条声明路径会不会**顶掉引擎自己的路由**（静态通道，DESIGN §28.13/§37.8）。
  *
  * 为什么静态通道也要这一条：`server/http/static.js` 把包声明的路由查在核心挂载**之前**，所以一条声明能回答
  * 一条与核心同名的路径。动态通道（`host.route`）本来就顶不掉（路径必须在 `/mod/<包id>/…` 里），静态通道今天

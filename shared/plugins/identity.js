@@ -18,7 +18,7 @@
 //               composition passes { <lang>: sha256 of the served i18n/<lang>.json } (a hex string, or { sha256 } as an
 //               index entry stores it). index.json is not an input: it embeds cs. [ASSUMED] the index cannot diverge
 //               while these inputs stay the same.
-//     rules     omitted unless a composition passes at least one switch a plugin declared (DESIGN §34.15). Only those
+//     rules     omitted unless a composition passes at least one switch a plugin declared (DESIGN §37.15). Only those
 //               switches are hashed; an undeclared switch is not filled with its default. Vanilla and a plugin that
 //               does not declare rules stay byte-identical.
 //   canonical(x) = JSON with the keys of every object sorted (UTF-16 code-unit order) and no white space; the string is

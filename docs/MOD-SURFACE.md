@@ -5,7 +5,7 @@
 **另见：**
 - **表面清单源文件**：[shared/modSurface.js](../shared/modSurface.js)
 - **守卫测试**：[test/modSurface.test.js](../test/modSurface.test.js)
-- **设计规范**：[design/mod-layer.md](design/mod-layer.md)（DESIGN §34）
+- **设计规范**：[design/mod-layer.md](design/mod-layer.md)（DESIGN §37）
 - **包作者指南**：[WORKSHOP.md](WORKSHOP.md)
 
 ---
@@ -102,7 +102,7 @@
 **测试文件：**
 - `test/traitGrants.test.js`
 
-**文档：** DESIGN §34.17
+**文档：** DESIGN §37.17
 
 ---
 
@@ -224,7 +224,7 @@
 - `test/ui/portraitChain.test.js`
 - `test/lobby-appearance.test.js`
 
-**文档：** DESIGN §34.19
+**文档：** DESIGN §37.19
 
 ---
 
@@ -267,7 +267,7 @@
 **测试文件：**
 - `test/workshopI18n.test.js`
 
-**文档：** DESIGN §34（§1.10）
+**文档：** DESIGN §37（§1.10）
 
 ---
 
@@ -295,7 +295,7 @@
 - `test/variants.test.js`
 - `test/workshopVariants.test.js`
 
-**文档：** DESIGN §34.9
+**文档：** DESIGN §37.9
 
 ---
 
@@ -324,7 +324,7 @@
 - `test/behaviour.test.js`
 - `test/workshopBehaviour.test.js`
 
-**文档：** DESIGN §34.12
+**文档：** DESIGN §37.12
 
 ---
 
@@ -345,7 +345,7 @@
 **测试文件：**
 - `test/workshopForms.test.js`
 
-**文档：** DESIGN §34.5
+**文档：** DESIGN §37.5
 
 ---
 
@@ -366,7 +366,7 @@
 **测试文件：**
 - `test/workshopFx.test.js`
 
-**文档：** DESIGN §34.5
+**文档：** DESIGN §37.5
 
 ---
 
@@ -390,7 +390,7 @@
 **测试文件：**
 - `test/modModules.test.js`
 
-**文档：** DESIGN §34（服务端模块章节）
+**文档：** DESIGN §37（服务端模块章节）
 
 ---
 
@@ -413,7 +413,7 @@
 **测试文件：**
 - `test/workshopTransport.test.js`
 
-**文档：** DESIGN §34.6
+**文档：** DESIGN §37.6
 
 ---
 
@@ -460,7 +460,7 @@
 **测试文件：**
 - `test/workshopDependencies.test.js`
 
-**文档：** DESIGN §34.16
+**文档：** DESIGN §37.16
 
 ---
 
@@ -483,7 +483,7 @@
 **测试文件：**
 - `test/workshopEnabled.test.js`
 
-**文档：** DESIGN §34.18
+**文档：** DESIGN §37.18
 
 ---
 
@@ -593,7 +593,7 @@ MOD_SURFACE_FROZEN = [
 
 ### 8.2 文档
 
-- [design/mod-layer.md](design/mod-layer.md)：DESIGN §34 完整规则
+- [design/mod-layer.md](design/mod-layer.md)：DESIGN §37 完整规则
 - [WORKSHOP.md](WORKSHOP.md)：包作者指南
 - [PLUGINS.md](PLUGINS.md)：插件系统（新格式）
 

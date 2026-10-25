@@ -26,13 +26,13 @@ import { sha256Hex, canonicalJson, modManifestDigest } from '../shared/modIdenti
 // `intercepts` 的运行时判据就是**真的装在这个服务器上的那份协议**（DESIGN §28.13）：A 段在形状层判过一次，这里再判
 // 一次 —— 一份包声明可以比协议活得久（协议收窄了、包还是老写法），那时要在加载期点名拒绝，而不是「装了但拦不住」。
 import { C2S } from '../shared/protocol.js';
-// the kit import whitelist + the narrow rewrite (DESIGN §34.1). shared/ because the VALIDATOR reads the same table —
+// the kit import whitelist + the narrow rewrite (DESIGN §37.1). shared/ because the VALIDATOR reads the same table —
 // the loader must reach the same verdict the editor did.
 import { kitImportDeclarations, kitImportIssues, packRelativePath, rewriteKitImports } from '../shared/kitImports.js';
 // 公告 / 鸣谢的装载期判据（DESIGN §28.15）：声明的 `.json` 在不在、是不是 JSON。合并体在 `server/index.js` 里经
 // 既有的合并数据通道送出 —— 形状与判据只有一份，这个 import 就是那一份。
 import { noticesIssues } from './notices.js';
-// 启用声明（DESIGN §34.18）：**装好 ≠ 生效**。判据只有一份在 `shared/enabled.js`（`packEnabled`）—— 这里只负责
+// 启用声明（DESIGN §37.18）：**装好 ≠ 生效**。判据只有一份在 `shared/enabled.js`（`packEnabled`）—— 这里只负责
 // 把它的裁决接进装载器那份 `errors` 报告，不在这里重判一遍布尔。
 import { packEnabled } from '../shared/enabled.js';
 // 包的**文件清单**（DESIGN §28.2, 业主裁决 B）：身份哈希与客户端下载清单读的是同一份 `listPackFiles` —— 两份
@@ -104,7 +104,7 @@ export function loadWorkshop(dir = WORKSHOP_DIR, { log = null, c2s = C2S, overli
   /** @type {Array<{ pack: string, reason: string }>} */
   const errors = [];
   /** @type {Array<{ pack: string, reason: string }>} */
-  const foreign = []; // target "stardust" 的包：认识、不装载（它们属于 Stardust 宿主，DESIGN §34.14）
+  const foreign = []; // target "stardust" 的包：认识、不装载（它们属于 Stardust 宿主，DESIGN §37.14）
   let names = [];
   try {
     names = fs.readdirSync(dir, { withFileTypes: true })
@@ -131,13 +131,13 @@ export function loadWorkshop(dir = WORKSHOP_DIR, { log = null, c2s = C2S, overli
       errors.push({ pack: name, reason: `${manifest.error}: ${manifest.detail}` });
       continue;
     }
-    // target "stardust"（DESIGN §34.14）：声明型包，本引擎只**认识**它 —— 不进 packs、不进数据叠加层、不装载
+    // target "stardust"（DESIGN §37.14）：声明型包，本引擎只**认识**它 —— 不进 packs、不进数据叠加层、不装载
     // 任何载荷，只在启动日志里说一句它在（那是 Stardust 宿主的包）。
     if (manifest.pack.target === 'stardust') {
       foreign.push({ pack: name, reason: 'target "stardust" — declaration-only, loaded by the Stardust host (not by this engine)' });
       continue;
     }
-    // 启用声明（DESIGN §34.18）：`pack.json.enabled === false` = 这个包装好了但现在不参与。放在这里 ——
+    // 启用声明（DESIGN §37.18）：`pack.json.enabled === false` = 这个包装好了但现在不参与。放在这里 ——
     // **归一化之后、读任何内容文件之前** —— 所以一个被关掉的包连 `chess.json` 都不读：它今天不贡献任何东西，
     // 为它报「缺文件」是噪声。判据只有一份（`shared/enabled.js packEnabled`），这里只负责把它接进同一个
     // `errors` 报告：一个静默消失的包比一个报错的包更难查，所以跳过必须响亮（与坏包同一个裁剪点）。
@@ -226,13 +226,13 @@ export function loadWorkshop(dir = WORKSHOP_DIR, { log = null, c2s = C2S, overli
       // C 层面板（`pack.json.client.panels`, DESIGN §28.8/§28.13, docs/WORKSHOP.md §1.9.3）：声明的模块必须**真的
       // 在包里**、是 `.js`、解析得到包目录里面。这就是本刀的纪律裁决 —— **声明了却不可用的声明拒绝整个包**，
       // 而不是「包照旧加载、只是那个面板不出现」。后者会让作者与服务端都以为自己有客户端界面，而浏览器里什么都
-      // 没有；B1 段的 `server.preDispatch` 只拒那个钩子，C 层这条线走得比它远，理由写在 DESIGN §34.3。
+      // 没有；B1 段的 `server.preDispatch` 只拒那个钩子，C 层这条线走得比它远，理由写在 DESIGN §37.3。
       const panelIssues = panelModuleIssues(manifest.pack, packDir);
       if (panelIssues.length) {
         errors.push({ pack: name, reason: `${panelIssues[0].code}: ${panelIssues[0].reason}` });
         continue;
       }
-      // B3a 段把同一条纪律铺到另外两组声明上（DESIGN §34.3「一条声明一个不可用的声明拒绝整个包」）：
+      // B3a 段把同一条纪律铺到另外两组声明上（DESIGN §37.3「一条声明一个不可用的声明拒绝整个包」）：
       //   * `assets` —— 容器 / 清单 / 声明的摘要必须真的在包里、且容器的字节必须**就是**那份摘要；
       //   * `server.preDispatch` —— 模块 / 策略文件必须真的在包里、策略必须是 JSON 对象、`intercepts` 必须是
       //     本服务器真的装着的协议里的类型。
@@ -259,9 +259,9 @@ export function loadWorkshop(dir = WORKSHOP_DIR, { log = null, c2s = C2S, overli
         errors.push({ pack: name, reason: `${gateIssues[0].code}: ${gateIssues[0].reason}` });
         continue;
       }
-      // `assets.mirrors[]`（DESIGN §34.10）：作者自备 CDN 承载**本包自己的容器**，所以每条镜像声明的 `sha256`
+      // `assets.mirrors[]`（DESIGN §37.10）：作者自备 CDN 承载**本包自己的容器**，所以每条镜像声明的 `sha256`
       // 必须等于**刚才从包内文件算出来的**那一份摘要。不相等的那条**停用**，而不是拒绝整个包 —— 包本身完整
-      // 可用，服务端算出来的摘要才是真相，这正是 §34.8「宁少不拒」在装载期的同一条姿态（静态 routes 撞上核心
+      // 可用，服务端算出来的摘要才是真相，这正是 §37.8「宁少不拒」在装载期的同一条姿态（静态 routes 撞上核心
       // 时也不拒包）。停用必须响亮：进 `errors`，`loadWorkshop` 的调用方逐条 warn 点名。
       //
       // **服务端一次网络请求都不发**：这里只做「声明与字节是否同一份」的比对，取字节的是客户端。所以没有服务端
@@ -298,11 +298,11 @@ export function loadWorkshop(dir = WORKSHOP_DIR, { log = null, c2s = C2S, overli
 /**
  * The **C-layer panels** a pack declares, judged against the pack on disk (`pack.json.client.panels`, DESIGN §28.8).
  *
- * This is the load-time half of *"a declaration that cannot be used refuses the whole pack"* (§34.3). A panel whose
+ * This is the load-time half of *"a declaration that cannot be used refuses the whole pack"* (§37.3). A panel whose
  * `module` is missing, is not a `.js`, or resolves outside its own pack is not "a panel that did not show up": it is a
  * pack whose author believes the client has an interface it does not have. `shared/workshop.js parseClientDecl` judged
  * the SHAPE (relative, no URL, `.js`); this judges the BYTES on disk, and the two readers must agree — the same
- * "the editor cannot pass what the loader then refuses" rule §34.1 states for kit imports.
+ * "the editor cannot pass what the loader then refuses" rule §37.1 states for kit imports.
  *
  * `packDir` is the second argument (not read from `pack.dir`) so the check runs inside `loadWorkshop` BEFORE the pack is
  * listed, and so a test can point it at a hand-built pack object.
@@ -394,7 +394,7 @@ export function readSha256Sidecar(containerAbs, verify) {
 }
 
 /**
- * The **load-time half of the `assets` declaration** (`pack.json.assets`, DESIGN §34.3, docs/WORKSHOP.md §1.9.4).
+ * The **load-time half of the `assets` declaration** (`pack.json.assets`, DESIGN §37.3, docs/WORKSHOP.md §1.9.4).
  *
  * Same stance as `panelModuleIssues`, for the same reason: a declared container or manifest that is not on disk is not
  * "a resource pack that did not load", it is a server the operator believes is serving a resource pack while every
@@ -474,14 +474,14 @@ export function assetsIssues(pack, packDir) {
 }
 
 /**
- * The **load-time half of the `assets.mirrors` declaration** (DESIGN §34.10): every mirror's declared `sha256` must
+ * The **load-time half of the `assets.mirrors` declaration** (DESIGN §37.10): every mirror's declared `sha256` must
  * equal the digest of the container **inside the pack**.
  *
  * The asymmetry with `assetsIssues` above is deliberate and is the whole point of this channel:
- *   * a wrong container path or an unverifiable container refuses **the whole pack** (§34.3 — the pack believes it
+ *   * a wrong container path or an unverifiable container refuses **the whole pack** (§37.3 — the pack believes it
  *     ships resources and it does not);
  *   * a mirror whose digest does not match refuses **only that mirror** — the pack is intact, the bytes it ships are
- *     intact, and the author simply pointed one download address at the wrong bytes. §34.8 took the same posture for a
+ *     intact, and the author simply pointed one download address at the wrong bytes. §37.8 took the same posture for a
  *     `pack.json.routes` declaration that collides with a core mount: name it loudly, drop the declaration, keep the pack.
  *
  * No network request is made here and none is made anywhere else on the server for this channel: whether those bytes
@@ -520,7 +520,7 @@ export function assetsMirrorIssues(pack, digest) {
 }
 
 /**
- * The **load-time half of the `server.preDispatch` declaration** (DESIGN §34.3, docs/WORKSHOP.md §1.9.1).
+ * The **load-time half of the `server.preDispatch` declaration** (DESIGN §37.3, docs/WORKSHOP.md §1.9.1).
  *
  * B1 段 judged the same things and refused **that hook**, letting the pack load. B3a 段 moved the judgement here, before
  * the pack is listed, because the two outcomes are not equally loud: a pack that declares an admission hook and loads
@@ -588,7 +588,7 @@ export function preDispatchIssues(pack, packDir, { c2s = C2S } = {}) {
  * 数据格式（`version` / `files` 是钩子的方言）。所以「策略文件的**内部形状**是坏的」这一格，装载期判不出来。
  * 没有这道自检时，唯一的信号是工厂在**每个连接**上抛异常，而工厂抛异常的姿态是「这条连接上这个钩子不存在，
  * 消息照常分发」（`server/modDispatch.js` 文件头）—— 也就是「包看着装好了、闸门其实一条都没拦」，正是
- * DESIGN §34.3 要消灭的那一类失败。
+ * DESIGN §37.3 要消灭的那一类失败。
  *
  * 有了它，一份用不了的策略与「策略不是 JSON 对象」得到**同一个结局**：点名拒绝（`PREDISPATCH_BAD_POLICY`）并把
  * 这个包移出已加载集合（`dropUnavailablePreDispatchPacks`）。
@@ -698,7 +698,7 @@ export function battleIssues(pack, packDir) {
  *
  * 与 `metaIssues` / `battleIssues` / `serverModuleIssues` / `panelModuleIssues` 逐字同一条纪律（「一条用不了的
  * 声明拒绝整个包」）：一个声明了「房间建起来时我要做事」却拿不出模块文件的包，会让房主以为这个房间有它的行为
- * 而实际上没有 —— 那正是 §34.3 立这条规矩要消灭的那一类静默失效。
+ * 而实际上没有 —— 那正是 §37.3 立这条规矩要消灭的那一类静默失效。
  *
  * 判不到的三件事留到装配路径（`server/roomPack.js`）：能不能 `import`（只有动态 import 知道）、有没有 `install`
  * 导出、以及它跑起来会不会抛 —— 最后一件由 `install(room)` 与每个事件**逐钩子** try/catch 隔离
@@ -758,7 +758,7 @@ export function serverModuleIssues(pack, packDir) {
  * `pack.json.i18n` 的**装载期**判据（fanpack G-04 / plugin-pack G4，docs/WORKSHOP.md §1.10）：
  * 声明的每一个 `.json` 必须真的在包里、必须是 JSON 对象、每一个值必须是**字符串且键不是 `_meta`**。
  *
- * 与 B2/B3a 同一条纪律（DESIGN §34.3「一条用不了的声明拒绝整个包」）：一份读不出来的译文如果只是被跳过，
+ * 与 B2/B3a 同一条纪律（DESIGN §37.3「一条用不了的声明拒绝整个包」）：一份读不出来的译文如果只是被跳过，
  * 作者看到的是「包加载了、我的界面词条没生效」—— 而 `t()` 会退回中文 msgid 或英文，页面上看不出任何异常。
  * 值这一层的判据**不是**在这里重写的：`mergeWorkshopI18n` 是合并与校验共用的那一个函数，所以服务面合并时
  * 不可能遇到「装载期放行、合并时丢掉」的值。
@@ -1075,7 +1075,7 @@ export function identifyPack(packDir, pack, files, { assetsDigest = null } = {})
   // 把它算进来的话，一个只做「观战人数播报」的诚实包会被推成 `combat: true`、进 golden 语料与摘要闸门 ——
   // 那是把「改结果的包」这条线稀释掉。分类规则见 §28.20「闸门分类」那一段。
   const combat = pack.combat === null || pack.combat === undefined ? kits > 0 : pack.combat;
-  // 6. 声明的资源容器的 sha256（`pack.json.assets`, DESIGN §34.4）。装载期已经拿它与容器的**字节**核对过
+  // 6. 声明的资源容器的 sha256（`pack.json.assets`, DESIGN §37.4）。装载期已经拿它与容器的**字节**核对过
   //    （`assetsIssues` 流式读过一遍），所以它是这份包的一个真实属性，而不是一句声明 —— 这就是「同一个房间摘要
   //    ⇒ 同一份容器」这条对齐的落点：换了容器、字节不同、摘要不同、包的内容哈希就不同，房间的摘要闸门随之拦下。
   //    只有声明了 `assets` 的包才有这个条目：没声明的包哈希逐字节不变（`test/packAssets.test.js` 钉了三份真实包）。
@@ -1147,7 +1147,7 @@ export function workshopTouchedFiles(loaded) {
     // 形态（`pack.json.forms` → `assets.modForms`）与静态相位（`pack.json.fx.silentPhases` → `assets.silentPhases`）
     // 落的是**同一个** `assets.json` —— 理由与上面几行逐字相同。漏掉这两行，服务端会说「包已加载、形态也在」，
     // 而浏览器拿到的是磁盘上那份没有 modForms / silentPhases 的清单：`formsFor()` 只看得见第一方那几条、
-    // `silentPhases()` 也只看得见第一方那两个（DESIGN §34.5）—— 一个不会报错的静默失效。
+    // `silentPhases()` 也只看得见第一方那两个（DESIGN §37.5）—— 一个不会报错的静默失效。
     if (p.forms && Object.keys(p.forms).length) out.add('assets');
     if (p.fx && Array.isArray(p.fx.silentPhases) && p.fx.silentPhases.length) out.add('assets');
     // 助战 pool entries are merged into `support` (mergeWorkshopSupport) — the browser picks 助战 from that file.
@@ -1211,7 +1211,7 @@ function relativeModuleUrl(baseDir, specifier) {
  * **Which files are kits** (§28.18): a top-level `kits/<id>.js` whose name does not start with `_`. A subdirectory is
  * not a kit (its files are the ones a kit imports with `./…`), and `kits/_shared.js` is a shared helper, not an
  * operator called `_shared` — so one big kit file can be split into several without every fragment being read as a kit.
- * A kit's imports: the `@kit/` / `@sim/` whitelist (§34.1) plus its OWN siblings under `kits/` as `./…` (§28.18),
+ * A kit's imports: the `@kit/` / `@sim/` whitelist (§37.1) plus its OWN siblings under `kits/` as `./…` (§28.18),
  * which the browser resolves against the kit's URL and this function rewrites against the kit file's directory.
  * @param {ReturnType<typeof loadWorkshop>} loaded
  * @param {{ log?: object|null, baseUrl?: string, knownIds?: Set<string>|null, knownTokenIds?: Set<string>|null }} [opts]
@@ -1324,7 +1324,7 @@ export async function loadWorkshopKits(loaded, { log = null, baseUrl = '/worksho
         // the mtime both defeats the server-side ESM cache AND versions the URL, so a browser that already loaded the
         // module imports the new one instead of running a stale kit against a server that verifies with the new code
         const v = Math.round(fs.statSync(file).mtimeMs);
-        // IMPORT SURFACE (DESIGN §34.1): the loader reaches the SAME verdict as shared/kitAuthoring.js validateKit,
+        // IMPORT SURFACE (DESIGN §37.1): the loader reaches the SAME verdict as shared/kitAuthoring.js validateKit,
         // because both call kitImportIssues() — the editor must not pass something this loop then refuses.
         const source = fs.readFileSync(file, 'utf8');
         const decls = kitImportDeclarations(source);
@@ -1376,7 +1376,7 @@ export async function loadWorkshopKits(loaded, { log = null, baseUrl = '/worksho
  * **Its refusals are a backstop, not the gate.** Since B3a 段 the load-time judgement lives in
  * `preDispatchIssues`, called by `loadWorkshop` BEFORE the pack is listed: a declaration whose module or policy
  * file is missing / unparsable, or whose `intercepts` names a type the installed protocol does not know, refuses the
- * **whole pack** (§34.3). What is left for this function is the half that cannot be decided synchronously — the
+ * **whole pack** (§37.3). What is left for this function is the half that cannot be decided synchronously — the
  * dynamic import and the factory call:
  *   * resolve `module` / `policy` inside the pack (checked again: this reader may see a hand-built loader object);
  *   * parse `policy` as a JSON object (the hook's own data: the reference implementation's `admission-files.json`);
@@ -1389,7 +1389,7 @@ export async function loadWorkshopKits(loaded, { log = null, baseUrl = '/worksho
  * that changed on disk between the two calls (or a hand-built `loaded` object in a test).
  *
  * The LAST two can only be decided here (a dynamic import is not synchronous), so they are the one remaining hole in
- * §34.3: `loadWorkshop` cannot refuse a module it has not imported yet. `server/index.js` therefore calls
+ * §37.3: `loadWorkshop` cannot refuse a module it has not imported yet. `server/index.js` therefore calls
  * `dropUnavailablePreDispatchPacks` with this function's `errors` on the **startup assembly path**, right after this
  * call and before anything derived from `loaded.packs` is built — so a pack whose declared gate cannot be installed
  * does not end up in the data overlay, in `welcome.mods`, in the kit list or in the resource tables either.
@@ -1414,7 +1414,7 @@ export async function loadWorkshopHooks(loaded, { log = null, c2s = C2S } = {}) 
     const decl = pack && pack.server && pack.server.preDispatch;
     if (!decl) continue;
     const dir = path.resolve(pack.dir || path.join(WORKSHOP_DIR, pack.id));
-    // One judgement, two callers (DESIGN §34.3): the loader's gate and this reader ask the same question here, so a
+    // One judgement, two callers (DESIGN §37.3): the loader's gate and this reader ask the same question here, so a
     // pack that is rejected before it is listed and a pack this function refuses can never disagree about why.
     const issues = preDispatchIssues(pack, dir, { c2s: known });
     if (issues.length) {
@@ -1462,7 +1462,7 @@ export async function loadWorkshopHooks(loaded, { log = null, c2s = C2S } = {}) 
 }
 
 /**
- * 把「声明了 `server.preDispatch` 却装不上」的包移出已加载集合 —— DESIGN §34.3 的**最后一格**。
+ * 把「声明了 `server.preDispatch` 却装不上」的包移出已加载集合 —— DESIGN §37.3 的**最后一格**。
  *
  * 为什么需要这一步：`loadWorkshop` 是同步的（`server/data.js` 在装叠加层时调它），而「模块能不能 import、有没有
  * 工厂导出、模块自己对策略的意见是什么」只有动态 import 之后才知道。于是在装载期这道闸门之外还剩三种结局：

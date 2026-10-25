@@ -9,7 +9,7 @@
 //   * 校验：`test/packForms.test.js` 把这里的每一格与 `FORMS` 逐条比对（少一个、多一个、拼错都红）。
 //
 // 消费点只有一处：`shared/workshop.js` 的 `parseFormsDecl` —— 一个包不许声明与第一方同名的形态
-// （`FORMS_FIRST_PARTY_OVERLAP`）。理由见 docs/design/mod-layer.md §34.5：第一方优先是**合并规则**，
+// （`FORMS_FIRST_PARTY_OVERLAP`）。理由见 docs/design/mod-layer.md §37.5：第一方优先是**合并规则**，
 // 而「声明了却不生效」正是这一层要消灭的静默失败，所以它在形状层就被点名拒绝，不是悄悄丢掉。
 //
 // 本文件是**生成物**：不要手改，改 `tools/build-form-names.mjs` 后重跑。目录不由脚本扫，直接 `npm run forms:names`。

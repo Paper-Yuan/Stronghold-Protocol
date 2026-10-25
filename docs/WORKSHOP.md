@@ -4,7 +4,7 @@
 
 **另见：**
 - **插件系统**（`plugins/`）：[PLUGINS.md](PLUGINS.md)、[PLUGIN-GUIDE.md](PLUGIN-GUIDE.md)（中文新手指南）、`plugins/AGENTS.md`（AI 代理指南）
-- **设计规范**：[design/mod-layer.md](design/mod-layer.md)（DESIGN §34：工坊层的完整规则）
+- **设计规范**：[design/mod-layer.md](design/mod-layer.md)（DESIGN §37：工坊层的完整规则）
 - **命令行工具**：`node tools/plugin.mjs`（检查、打包、安装插件）
 
 ---
@@ -104,8 +104,8 @@
 | `forms` | object | Spine clip 集合：`{ <spineId>: { <form>: { clips } } }` |
 | `fx` | object | 特效配置：`{ silentPhases: ["phase", …] }` |
 | `notices` | object | 公告/鸣谢文本 |
-| `variants` | object | 口径声明（需要 `combat: true`，§34.9） |
-| `behaviour` | object | 行为开关（需要 `combat: true`，§34.12） |
+| `variants` | object | 口径声明（需要 `combat: true`，§37.9） |
+| `behaviour` | object | 行为开关（需要 `combat: true`，§37.12） |
 | `playtest` | boolean | 测试模式开关 |
 | `enabled` | boolean | 是否启用（`false` = 装载期跳过） |
 
@@ -174,7 +174,7 @@
 }
 ```
 
-**tier（档位）：** 1–3，影响出现概率（见 §34 文档）。
+**tier（档位）：** 1–3，影响出现概率（见 §37 文档）。
 
 ---
 
@@ -217,7 +217,7 @@ Kit 是 `workshop/<packId>/kits/<chessId>.js` 文件，一个文件对应一个�
 - 服务器：`server/workshop.js loadWorkshopKits`（真实路径）
 - 浏览器：`public/js/battle/runner.js loadSpecKits`（URL）
 
-### 4.2 导入白名单（§34.1）
+### 4.2 导入白名单（§37.1）
 
 Kit 只能从以下几个前缀导入：
 - `@kit/...`（kit SDK）
@@ -296,7 +296,7 @@ export function setup(battle) {
 
 ## 6. 口径与行为开关
 
-### 6.1 口径（`variants`，§34.9）
+### 6.1 口径（`variants`，§37.9）
 
 口径是**闭枚举的选项名**，不是数据文件。轴的定义在 `shared/variants.js VARIANT_AXES`。
 
@@ -312,7 +312,7 @@ export function setup(battle) {
 
 **需要 `combat: true`**，因为它改变对局结果。
 
-### 6.2 行为开关（`behaviour`，§34.12）
+### 6.2 行为开关（`behaviour`，§37.12）
 
 与 `variants` 同一形状，但不同一张表（`shared/behaviour.js`）。
 
@@ -332,7 +332,7 @@ export function setup(battle) {
 
 ## 7. 多语言（i18n）
 
-### 7.1 补词条（§34 / §1.10）
+### 7.1 补词条（§37 / §1.10）
 
 给**已有语种**补词条（不能新增语种）：
 
@@ -381,7 +381,7 @@ export function setup(battle) {
 
 ---
 
-## 9. 皮肤（skins，§34.19）
+## 9. 皮肤（skins，§37.19）
 
 ### 9.1 声明格式
 
@@ -617,7 +617,7 @@ plugins/my-script/
 
 ### 13.2 文档
 
-- [DESIGN §34](design/mod-layer.md)：工坊层完整规则
+- [DESIGN §37](design/mod-layer.md)：工坊层完整规则
 - [PLUGINS.md](PLUGINS.md)：插件系统（新格式）
 - [PLUGIN-GUIDE.md](PLUGIN-GUIDE.md)：插件新手指南（中文）
 - `plugins/AGENTS.md`：AI 代理指南

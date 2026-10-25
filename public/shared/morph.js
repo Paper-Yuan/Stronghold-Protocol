@@ -1,5 +1,5 @@
 // shared/morph.js — 变形同构体（`data/items.json` 里 `canGiveBond: true` 的那件装备）的**配对规则**，一份判据三处用
-// （DESIGN §34.13 第三格，行为开关 `morphPairing`；投稿 `19ea65909cf6`）。
+// （DESIGN §37.13 第三格，行为开关 `morphPairing`；投稿 `19ea65909cf6`）。
 //
 // 官方规则（band 变形者集群「与特定装备一同装备时装备者将视为特定盟约成员」；装备天赋 character_table
 // trap_1073_acarm073 列出 14 条配对）在**本引擎今天**的实现里被读成两条：
@@ -102,7 +102,7 @@ export function morphCarrierIndexes(recs) {
   return out;
 }
 
-// ---- 特质授予盟约（`trait.grantsBonds`，DESIGN §34.17）----------------------------------------------------------
+// ---- 特质授予盟约（`trait.grantsBonds`，DESIGN §37.17）----------------------------------------------------------
 //
 // 业主原话：「我们的 forge 能不能做出游戏内的『特质』效果，即一般是用来**叠加盟约层数**的固有天赋」。这一节就是
 // 那条路的**纯数据声明面**：一条 chess 记录写 `trait.grantsBonds: ["<bondId>", …]` ⇔「带这条特质的棋子视为那些

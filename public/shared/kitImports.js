@@ -1,7 +1,7 @@
 // shared/kitImports.js — the IMPORT SURFACE of a workshop behaviour-layer kit (`<pack>/kits/<chessId>.js`).
 // (i18n-ignore-file: 作者/加载器/编辑器共用的规则文本 —— 给作者、编辑器与 AI 读的错误说明，不是客户端界面文案)
 //
-// WHY THIS FILE EXISTS (gap ④, docs/design/mod-layer.md §34.1)
+// WHY THIS FILE EXISTS (gap ④, docs/design/mod-layer.md §37.1)
 //
 // A kit is one file that is loaded TWICE from two different roots:
 //   * the SERVER, by real path  — `server/workshop.js loadWorkshopKits()`: `import(pathToFileURL(file))`
