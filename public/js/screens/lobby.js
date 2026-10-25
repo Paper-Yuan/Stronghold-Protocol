@@ -22,7 +22,8 @@ import { useHubBackdrop, HubBackdrop, HubRadar, BackdropSettings, BackdropGlyph,
 
 import { ResumeMatchButton } from '../ui/resumeMatch.js';
 import { useEffect, useRef, useState } from '../../vendor/hooks.module.js';
-import { DIFFICULTIES, DIFFICULTY_NAMES, DIFFICULTY_COLORS, ROOM_CODE_LEN, MAX_SEATS, MAX_SPECTATORS, modeIdFor, ERR, ERR_TEXT, SOLO_INFINITE, isInfiniteMode } from '../../../shared/constants.js';
+import { DIFFICULTIES, DIFFICULTY_NAMES, DIFFICULTY_COLORS, ROOM_CODE_LEN, MAX_SEATS, MAX_SPECTATORS, modeIdFor, ERR, ERR_TEXT } from '../../../shared/constants.js';
+import { SOLO_INFINITE, isInfiniteMode } from '../../../shared/infiniteMode.js';
 import { RANDOM_MODE } from '../../../shared/randomMode.js';
 import { html, Modal, Button, Icon, MicroLabel, Panel, TextField, PingPill, AvatarFrame, Tooltip, Spinner, DifficultyIcon, doctorNo } from '../ui/components.js';
 import { toast, toastError } from '../ui/toasts.js';
