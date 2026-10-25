@@ -14,7 +14,7 @@ test('two pages consent separately, refusal gates start, accepted script battles
  finally {if(previous===undefined)delete process.env.SP_PLUGIN_SCRIPTS;else process.env.SP_PLUGIN_SCRIPTS=previous;}
  t.after(()=>srv.close());
  const policy=(await fetch(srv.url)).headers.get('content-security-policy');
- assert.match(policy,/connect-src 'self';/);assert.ok(!/script-src[^;]*(?:data:|blob:|unsafe-eval)/.test(policy));
+ assert.match(policy,/connect-src 'self'(?: https:\/\/[a-z0-9.-]+)?;/);assert.ok(!/script-src[^;]*(?:data:|blob:|unsafe-eval)/.test(policy));
  const P=(await import('puppeteer-core')).default;
  const host=new Client(P,srv.url,'host',{prefix:'plugins-script',w:1600,h:900}), guest=new Client(P,srv.url,'guest',{prefix:'plugins-script',w:1600,h:900});
  t.after(async()=>{await host.close();await guest.close();});

@@ -3,9 +3,17 @@
 // (the simulation worker). Do not add a remote worker origin. SIM_WORKER_CSP is that worker's own policy and
 // must not gain the asset worker. media-src blob: is the player's own lobby video and the length check of the own lobby
 // music (ui/lobbyMedia.js: files of this browser read through an object URL); no remote media origin.
+//
+// connect-src names the one remote origin the page is allowed to read: the 感谢名单 ticker on the title screen
+// (screens/title.js ThanksMarquee) fetches https://ganxiemingdan.jiangjiangze.icu/api/thanks every 25 s. Without it
+// the fetch is refused by CSP and the ticker silently falls back to its built-in list — the "感谢名单不对" symptom.
+// Nothing else leaves 'self'.
 import fs from 'node:fs';
 import path from 'node:path';
 import { createHash } from 'node:crypto';
+
+/** The one remote origin the page may connect to (the 感谢名单 ticker's API). */
+export const THANKS_ORIGIN = 'https://ganxiemingdan.jiangjiangze.icu';
 
 // SES evaluates confined code. This relaxation belongs only to the simulation Worker, never its parent document.
 export const SIM_WORKER_CSP = "default-src 'none'; script-src 'self' 'unsafe-eval'; connect-src 'none'";
@@ -19,5 +27,5 @@ export function siteCsp(publicDir) {
       hashes.add(`'sha256-${createHash('sha256').update(m[1]).digest('base64')}'`);
     }
   }
-  return `default-src 'self'; script-src 'self'${hashes.size ? ' ' + [...hashes].join(' ') : ''}; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob:; media-src 'self' blob:; connect-src 'self'; worker-src 'self' blob:; frame-src 'self'; object-src 'none'; base-uri 'none'`;
+  return `default-src 'self'; script-src 'self'${hashes.size ? ' ' + [...hashes].join(' ') : ''}; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob:; media-src 'self' blob:; connect-src 'self' ${THANKS_ORIGIN}; worker-src 'self' blob:; frame-src 'self'; object-src 'none'; base-uri 'none'`;
 }

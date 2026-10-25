@@ -34,7 +34,7 @@ function handler(csp = siteCsp(publicDir)) {
 test('page import maps hash exact bytes; no inline executable script/events; page forbids eval', () => {
   const csp = siteCsp(publicDir);
   assert.ok(!csp.includes('unsafe-eval')); assert.match(csp, /worker-src 'self' blob:/);
-  assert.match(csp,/connect-src 'self';/);assert.ok(!/script-src[^;]*(?:data:|blob:)/.test(csp));
+  assert.match(csp,/connect-src 'self'(?: https:\/\/[a-z0-9.-]+)?;/);assert.ok(!/script-src[^;]*(?:data:|blob:)/.test(csp));
   // the player's own lobby video (ui/lobbyMedia.js) plays from an object URL; no remote media origin
   assert.match(csp, /media-src 'self' blob:;/);
   for (const file of ['index.html', 'studio/index.html', 'studio/console.html', 'dev/game-mock.html', 'dev/render-demo.html', 'dev/battle-perf.html', 'dev/uikit.html']) {

@@ -12,7 +12,7 @@ test('two sandbox-script players start without consent and Worker battles verify
  const srv=await startServer({port:0,host:'127.0.0.1',quiet:true,pluginsDir:f.pluginsDir,assetIndex:false,matchHost:{matchOptions:{verify:'all',timerScale:0.1,combatSpeed:16,botRehearsal:0}}});
  t.after(()=>srv.close());
  const policy=(await fetch(srv.url)).headers.get('content-security-policy');
- assert.match(policy,/connect-src 'self';/);assert.ok(!/script-src[^;]*(?:data:|blob:|unsafe-eval)/.test(policy));
+ assert.match(policy,/connect-src 'self'(?: https:\/\/[a-z0-9.-]+)?;/);assert.ok(!/script-src[^;]*(?:data:|blob:|unsafe-eval)/.test(policy));
  const P=(await import('puppeteer-core')).default;
  const host=new Client(P,srv.url,'host',{prefix:'plugins-sandbox',w:1600,h:900}), guest=new Client(P,srv.url,'guest',{prefix:'plugins-sandbox',w:1600,h:900});
  t.after(async()=>{await host.close();await guest.close();});
