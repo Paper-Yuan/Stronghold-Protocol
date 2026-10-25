@@ -273,6 +273,26 @@ export function codeArg(arg, field) {
 }
 
 /**
+ * Join a known room code (from deep link, remembered code, etc). Handles test room confirmation dialog.
+ * @param {string} type 'room.join' or 'room.spectate'
+ * @param {string} key the room code
+ */
+export async function joinKnown(type, key) {
+  try { 
+    return await net.request(type, { code: key }); 
+  } catch (err) {
+    if (err?.code !== ERR.TEST_CONFIRM) throw err;
+    const text = type === 'room.spectate'
+      ? t('这是测试房间，不计入任何记录。确认观战？')
+      : t('这是测试房间，不计入任何记录。确认加入？');
+    const { confirmDialog } = await import('../ui/dialogs.js');
+    if (await confirmDialog({ title: t('测试'), text })) {
+      return net.request(type, { code: key, testAck: true });
+    }
+  }
+}
+
+/**
  * Room code from a deep link query string (`?room=CODE`), or null when absent/malformed.
  * Accepts ROOM_CODE_LEN..ROOM_CODE_LEN+2 alphanumerics (the protocol's join limit).
  * @param {string} search e.g. location.search

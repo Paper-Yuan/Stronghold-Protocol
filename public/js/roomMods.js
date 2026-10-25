@@ -19,7 +19,6 @@
 
 import { mergeBehaviourDecls, behaviourValue } from '../../shared/behaviour.js';
 import { setMorphPairing, setMorphSlotPolicy } from './ui/gameLogic/bonds.js';
-// import { setUnequipAllowed } from './ui/gameActions.js'; // TODO: upstream v0.3.3 removed this export
 import { setPrepLoadout } from './ui/loadoutSync.js';
 
 /** @typedef {{ id: string, hash: string, layer: string, combat: boolean, api?: string }} ModEntry */
