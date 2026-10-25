@@ -27,3 +27,24 @@ export function useRise(value, ms = 700, fresh = false) {
   }, [!!value]);
   return on;
 }
+
+/**
+ * Leave transition hook for modal/dialog close animations. Returns [leaving, leave] where:
+ * - leaving: boolean state indicating if leave animation is playing
+ * - leave: function to trigger the leave animation, calls onClose after animation completes
+ * @param {() => void} onClose callback to invoke after leave animation completes
+ * @param {number} [ms] animation duration in milliseconds
+ * @returns {[boolean, () => void]}
+ */
+export function useLeave(onClose, ms = 300) {
+  const [leaving, setLeaving] = useState(false);
+  const leave = () => {
+    if (reducedMotion()) {
+      onClose();
+      return;
+    }
+    setLeaving(true);
+    setTimeout(onClose, ms);
+  };
+  return [leaving, leave];
+}
