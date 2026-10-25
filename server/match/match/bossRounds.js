@@ -42,15 +42,25 @@ const BOSS_LP_BURST = 10;
 const BOSS_LP_PER_GS = 1;
 
 export class MatchBoss {
+  /**
+   * 合并团队生命值：把每位存活玩家的当前 LP 加起来作为团队血池，并记下各自进场时的 LP
+   * （结算按份额分配用 `ps.lpAtFinal`）。
+   *
+   * 上游把它抽成方法，`testCommands.js` 的「跳到隐秘核心」也要调它 —— 本地这份之前只有内联写法，
+   * 于是 `g.test` 的 hidden 跳轮会抛 `this._openTeamLp is not a function`。
+   */
+  _openTeamLp() {
+    const alive = this.alivePlayers();
+    this.teamLp = alive.reduce((s, p) => s + Math.max(0, p.lp), 0);
+    for (const ps of alive) ps.lpAtFinal = Math.max(0, ps.lp);
+  }
+
   startFinalAssault(hidden) {
     const alive = this.alivePlayers();
     if (!alive.length) { this.finish({ victory: false, reason: 'eliminated' }); return; }
     this.phase = hidden ? PHASE.HIDDEN_CORE : PHASE.FINAL_ASSAULT;
     this.lastResults = new Map();
-    if (!hidden) {
-      this.teamLp = alive.reduce((s, p) => s + Math.max(0, p.lp), 0);
-      for (const ps of alive) ps.lpAtFinal = Math.max(0, ps.lp);
-    }
+    if (!hidden) this._openTeamLp();
     // 超限的 Boss 轮由 buildInfiniteBossWave 按档位挑 Boss（R20→最弱档、R25→次档…），
     // 而 this.bossId 是开局时定的那一个（普通模式的 R14 领袖）。两者不一致会让
     // 「场上刷出来的 Boss」和「血池/血条对应的 Boss」是两个不同的东西 —— 业主 2026-10-19
