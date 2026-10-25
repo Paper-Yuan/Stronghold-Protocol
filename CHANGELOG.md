@@ -1,3 +1,28 @@
+﻿## 0.3.3 (2026-10-25) — 对齐上游 v0.3.3
+
+**合并上游 v0.3.3（712 提交）**，同时保留本地特性：
+
+**保留的本地特性：**
+- ARG 解谜页面（public/arg/）
+- 超限模式（overlimit）：无限回合模拟、超限词条抉择、Boss 血量缩放
+- 手机端优化：大厅音乐面板、自定义 BGM 控制
+- 工坊层文档：WORKSHOP.md（作者指南）、MOD-SURFACE.md（ABI 表面）
+
+**接受上游更新：**
+- 插件覆层架构（cosmetic plugin overlay），放弃旧的皮肤安装系统
+- 新增版本选择（历史版本数据快照）
+- AI 接管与策略系统
+- 大量性能优化、渲染改进、测试完善
+
+**CSS 兼容性修复：**
+- 移除 color-mix()、:has()、cqw 等新特性，回退到 Safari 15.3+ 兼容方案
+- 添加 -webkit-backdrop-filter 前缀
+
+**本地修复：**
+- plugin.mjs: Windows pathToFileURL 修复
+- test/plugin-package.test.js: .dockerignore split 修复
+
+---
 ## 0.3.3 — 2026-10-25
 
 ### 界面与交互修复
