@@ -1,4 +1,4 @@
-/* ==========================================================================================
+﻿/* ==========================================================================================
    components.css — styles for js/ui/components.js and js/ui/toasts.js.
    Sizes in rem (1rem = 100 design px @1080p). Motion 150–250 ms.
    ========================================================================================== */
@@ -795,11 +795,11 @@
 .rdialog__tick--br { bottom: 8px; right: 8px; border-left: 0; border-top: 0; }
 .rdialog__micro {
   font-family: var(--font-display);
-  font-size: calc(.13 * var(--t));
-  letter-spacing: .48em;
-  padding-left: .48em;
+  font-size: calc(.12 * var(--t));
+  letter-spacing: .4em;
   color: var(--rd);
-  animation: rd-wipe 300ms 60ms var(--ease-out) backwards;
+  color: color-mix(in srgb, var(--rd) 70%, transparent);
+  animation: rd-wipe 300ms 120ms var(--ease-out) backwards;
 }
 .rdialog__row {
   position: relative;

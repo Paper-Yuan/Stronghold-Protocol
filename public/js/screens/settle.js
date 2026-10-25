@@ -1,4 +1,4 @@
-// The settlement flow of the match on screen (research 06 §10.6; the official act's settlement): a radar intro, then
+﻿// The settlement flow of the match on screen (research 06 §10.6; the official act's settlement): a radar intro, then
 // two pages, drawn with the official settlement sprites (assets `settle/*`, `elite/*`, `entry/season_logo_settle`;
 // docs/ASSETS.md) — every sprite falls back to text / plain CSS when the resource pack is not there.
 //   个人战报 (SelfPage): my own outcome (模拟完成, or 模拟中断 when the team lost or I was out before the end) over the
@@ -533,8 +533,9 @@ function TeamCard({ p, i, gd, self, victory, raw }) {
         ${band ? html`<span class="tcard__band"><${BandIcon} bandId=${band.bandId} size="xs" /><span>${band.name}</span></span>` : null}
       </span>
     </div>
-    <div class="tcard__chips">
-      <span class="tchip tchip--cup" title=${t('获得奖杯')}><${Sprite} k="settle/id_info_cup_icon" class="tchip__cup" fallback=${html`<${Icon} name="crown" />`} /><b class="num">+${p.trophies}</b></span>
+    <div class=${cx('tcard__chips', social && !p.isBot && 'has-like')}>
+      <span class="tchip tchip--cup" title=${t('获得奖杯')}><${Icon} name="crown" /><b class="num">+${p.trophies}</b></span>
+      <${SocialChips} p=${p} self=${self} social=${social} />
     </div>
   </article>`;
 }

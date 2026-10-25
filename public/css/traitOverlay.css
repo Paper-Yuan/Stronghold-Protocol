@@ -287,6 +287,7 @@
   background:rgba(10,16,14,.72);border:1px solid rgba(255,255,255,.14);border-radius:6px;
   -webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);
   transition:color .16s ease,border-color .16s ease,background .16s ease}
-.traitov__retreat:hover{color:var(--neg-hi);border-color:color-mix(in srgb,var(--neg) 55%,transparent);
-  background:color-mix(in srgb,var(--neg) 12%,rgba(10,16,14,.72))}
+.traitov__retreat:hover{color:var(--neg-hi);
+  border-color:var(--neg-a55);border-color:color-mix(in srgb,var(--neg) 55%,transparent);
+  background:rgba(45,21,16,.75);background:color-mix(in srgb,var(--neg) 12%,rgba(10,16,14,.72))}
 .traitov__retreat-ico{font-size:14px;line-height:1;opacity:.8}

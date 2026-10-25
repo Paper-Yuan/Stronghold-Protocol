@@ -158,9 +158,13 @@
 .scard--item { --tc: var(--gold-2); }
 /* 随机模式 盲盒卡: dark teal card, a "?" tier chip and the box glyph; no portrait to hide (the server sends no id) */
 .scard--mystery { --tc: #4fd6c2; }
-.scard--mystery .scard__bg { background:
-  radial-gradient(120% 70% at 80% 30%, color-mix(in srgb, #4fd6c2 20%, transparent), transparent 70%),
-  linear-gradient(180deg, #101d1b, #0a1110); }
+.scard--mystery .scard__bg {
+  background:
+    radial-gradient(120% 70% at 80% 30%, rgba(79, 214, 194, .2), transparent 70%), /* fallback: no color-mix() */
+    linear-gradient(180deg, #101d1b, #0a1110);
+  background:
+    radial-gradient(120% 70% at 80% 30%, color-mix(in srgb, #4fd6c2 20%, transparent), transparent 70%),
+    linear-gradient(180deg, #101d1b, #0a1110); }
 .scard__tierq { width: .32rem; height: .32rem; display: grid; place-items: center; background: rgba(0, 0, 0, .6); border: 1px solid var(--line-3); color: #4fd6c2; }
 .scard__tierq .icon { width: .2rem; height: .2rem; }
 .scard__mystery { position: absolute; left: 50%; top: .34rem; transform: translateX(-50%); width: 1rem; height: 1rem; display: grid; place-items: center;
