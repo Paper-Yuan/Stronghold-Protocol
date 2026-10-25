@@ -1,4 +1,4 @@
-﻿// Active effects list (m.private.effects: band / 机变 / team / item / garrison effects with counters):
+// Active effects list (m.private.effects: band / 机变 / team / item / garrison effects with counters):
 // compact icon column at the right edge, rich-text tooltip per effect. `counterText` (a 悬赏's "还剩 N 场作战", user
 // playtest #6 item 4) replaces the bare counter in the tooltip's kind line.
 

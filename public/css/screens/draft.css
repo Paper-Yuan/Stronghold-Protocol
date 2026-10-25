@@ -1,4 +1,4 @@
-﻿/* ==========================================================================================
+/* ==========================================================================================
    screens/draft.css — BAND_DRAFT strategy pick (js/screens/bandDraft.js). Research 06 §4.2: draft order on the left,
    portrait grid, detail pane with 初始生命值 and 确认选择; the 本局信息 dialog (js/ui/matchInfo.js MatchInfoDialog,
    GitHub issue #8 item 1). The 「请选择策略」 band is css/screens/protocol-boot.css.

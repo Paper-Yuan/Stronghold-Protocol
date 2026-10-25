@@ -1,4 +1,4 @@
-﻿// In-match top bar (research 06 §11.1): exit + ping (left); round box, phase capsule (prep label /
+// In-match top bar (research 06 §11.1): exit + ping (left); round box, phase capsule (prep label /
 // kills n/m / boss HP bar), LP tower, match-info and enemy-preview buttons (centre, bracket frame);
 // 7-segment countdown with gauge and the 准备就绪 toggle (right).
 // The two 🔍 buttons follow the official HUD bindings (research 09 §2.1 / §6.2 item 3):

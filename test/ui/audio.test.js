@@ -1,4 +1,4 @@
-﻿// Audio manager (public/js/audio.js): BGM selection, manifest resolution, SFX limiter, and the manager's
+// Audio manager (public/js/audio.js): BGM selection, manifest resolution, SFX limiter, and the manager's
 // never-throw behaviour with a fake Web Audio implementation.
 
 import { test, describe } from 'node:test';

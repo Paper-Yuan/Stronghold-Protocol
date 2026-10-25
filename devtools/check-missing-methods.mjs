@@ -1,4 +1,4 @@
-﻿// Find `this.<name>(` calls in the server's Mixin modules whose <name> is defined nowhere.
+// Find `this.<name>(` calls in the server's Mixin modules whose <name> is defined nowhere.
 // The `beforePrepOffers` bug (upstream spDraft calling a method only upstream phases defines,
 // while we kept the local phases) is exactly this shape 鈥?catch the rest the same way.
 import fs from 'node:fs';

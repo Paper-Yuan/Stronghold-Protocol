@@ -5,8 +5,7 @@
 // Installed on Match.prototype by server/match/Match.js (a method container: never instantiated; `this` is the match).
 
 import { C2S } from '../../../shared/protocol.js';
-import { PHASE, ERR } from '../../../shared/constants.js';
-import { setBondLayerCap } from '../../../public/shared/constants.js';
+import { PHASE, ERR, setBondLayerCap } from '../../../shared/constants.js';
 import { syntheticResult } from '../fields.js';
 import { FLOW_TICKER_PRIORITY, OK, fail } from './common.js';
 import { msg } from '../../../shared/i18n.js';

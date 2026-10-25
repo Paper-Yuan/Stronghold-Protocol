@@ -1,4 +1,4 @@
-﻿import WebSocket from "ws";
+import WebSocket from "ws";
 const ws = new WebSocket("ws://127.0.0.1:3000/ws");
 let rid = 0; const pending = new Map();
 const send = (t, f = {}) => { const id = ++rid; ws.send(JSON.stringify({ t, rid: id, ...f })); return new Promise(r => pending.set(id, r)); };

@@ -1,4 +1,4 @@
-﻿// The settlement flow of the match on screen (research 06 §10.6; the official act's settlement): a radar intro, then
+// The settlement flow of the match on screen (research 06 §10.6; the official act's settlement): a radar intro, then
 // two pages, drawn with the official settlement sprites (assets `settle/*`, `elite/*`, `entry/season_logo_settle`;
 // docs/ASSETS.md) — every sprite falls back to text / plain CSS when the resource pack is not there.
 //   个人战报 (SelfPage): my own outcome (模拟完成, or 模拟中断 when the team lost or I was out before the end) over the

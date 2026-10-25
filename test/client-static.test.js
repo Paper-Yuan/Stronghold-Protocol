@@ -1,4 +1,4 @@
-﻿// test/client-static.test.js — static and unit checks for the browser shell (public/).
+// test/client-static.test.js — static and unit checks for the browser shell (public/).
 //
 // Static:
 //   * shared/constants.js + shared/protocol.js import cleanly in Node (pure ESM, no Node APIs needed).

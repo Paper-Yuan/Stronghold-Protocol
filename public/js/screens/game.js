@@ -1,4 +1,4 @@
-﻿import { AiTakeoverPanel } from '../ui/aiTakeover.js';
+import { AiTakeoverPanel } from '../ui/aiTakeover.js';
 // Game screen — every in-match screen, dispatched by m.public.phase (DESIGN §10):
 //   INFO_CHECK → Briefing (screens/briefing.js), BAND_DRAFT → Band draft (screens/bandDraft.js),
 //   RESULT / m.result → the settlement flow (screens/settle.js), everything else → MatchScreen below.

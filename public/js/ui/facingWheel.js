@@ -1,4 +1,4 @@
-﻿// Direction step of a board placement — the standard Arknights 4-direction deploy wheel (research 09 §1.2 / §6.1 5).
+// Direction step of a board placement — the standard Arknights 4-direction deploy wheel (research 09 §1.2 / §6.1 5).
 //
 // After a legal drop of an operator / summon on a board tile (also its own tile: re-orient in place) — or of a
 // directional Art (画卷) — the piece stays on the tile as a ghost and this overlay opens:
