@@ -1,4 +1,4 @@
-// test/client-static.test.js — static and unit checks for the browser shell (public/).
+﻿// test/client-static.test.js — static and unit checks for the browser shell (public/).
 //
 // Static:
 //   * shared/constants.js + shared/protocol.js import cleanly in Node (pure ESM, no Node APIs needed).
@@ -422,8 +422,8 @@ describe('net.js', () => {
 
   test('defaultWsUrl', async () => {
     const { defaultWsUrl } = await mod('net.js');
-    assert.equal(defaultWsUrl({ protocol: 'http:', host: 'a:3000' }), 'ws://a:3000/ws?build=fp100-upstream024-20261011');
-    assert.equal(defaultWsUrl({ protocol: 'https:', host: 'x.io' }), 'wss://x.io/ws?build=fp100-upstream024-20261011');
+    assert.equal(defaultWsUrl({ protocol: 'http:', host: 'a:3000' }), 'ws://a:3000/ws');
+    assert.equal(defaultWsUrl({ protocol: 'https:', host: 'x.io' }), 'wss://x.io/ws');
   });
 
   test('connect without a name → connected + ping; setName → hello with token & version', async () => {
@@ -735,15 +735,6 @@ function channelHub() {
   };
 }
 
-/**
- * `init()` is asynchronous: it awaits Web Locks (browser-id presence) and only then broadcasts the
- * claim query. A test that moves fake time must let those ticks drain first, or the query is posted
- * after the clock moved and its timer lands past the window the test is about to advance into.
- */
-const settle = () => new Promise((r) => setImmediate(r));
-/** A lock that hands back synchronously, so fake-timer tests never wait on real time. */
-const instantLocks = { request: (_name, fn) => Promise.resolve(fn()) };
-
 describe('identity (reconnect-token selection across tabs)', () => {
   const recent = (local) => JSON.parse(local.getItem('sp.tokens') || '[]');
 
@@ -819,15 +810,14 @@ describe('identity (reconnect-token selection across tabs)', () => {
       local.setItem('sp.tokens', JSON.stringify(['tokShared']));
       const firstSession = memStorage(), secondSession = memStorage();
       const first = createIdentity({ local, session: firstSession, tabId: firstId,
-        channel: hub.create(), setTimeout: timers.setTimeout, locks: instantLocks });
+        channel: hub.create(), setTimeout: timers.setTimeout });
       const firstPick = first.init();
-      await settle(); // the query is on the channel before the clock moves
       timers.advance(30);
       // This channel did not exist when the first tab broadcast its query.
       const second = createIdentity({ local, session: secondSession, tabId: secondId,
-        channel: hub.create(), setTimeout: timers.setTimeout, locks: instantLocks });
+        channel: hub.create(), setTimeout: timers.setTimeout });
       const secondPick = second.init();
-      await settle();
+      await new Promise((r) => setImmediate(r));
       timers.advance(CLAIM_QUERY_MS - 30);
       assert.equal(await firstPick, expected[0]);
       timers.advance(30);
@@ -845,16 +835,15 @@ describe('identity (reconnect-token selection across tabs)', () => {
     owner.saveToken('tokOwned');
     local.setItem('sp.tokens', JSON.stringify(['tokOwned', 'tokFree']));
     const first = createIdentity({ local, session: memStorage(), tabId: 'a-tab',
-      channel: hub.create(), setTimeout: timers.setTimeout, locks: instantLocks });
+      channel: hub.create(), setTimeout: timers.setTimeout });
     const firstPick = first.init();
-    await settle(); // the query is on the channel before the clock moves
     timers.advance(30);
     const duplicateSession = memStorage();
     duplicateSession.setItem('sp.token', 'tokOwned');
     const second = createIdentity({ local, session: duplicateSession, tabId: 'b-tab',
-      channel: hub.create(), setTimeout: timers.setTimeout, locks: instantLocks });
+      channel: hub.create(), setTimeout: timers.setTimeout });
     const secondPick = second.init();
-    await settle();
+    await new Promise((r) => setImmediate(r));
     timers.advance(CLAIM_QUERY_MS - 30);
     assert.equal(await firstPick, 'tokFree');
     timers.advance(30);
@@ -1367,7 +1356,6 @@ describe('explicit local match recovery (#431)', () => {
     let finish;
     const reloaded = p.createIdentity({ local: p.local, session: p.ownerSession, tabId: 'zz-reloaded', channel: p.hub.create(), setTimeout: (fn) => { finish = fn; } });
     const pending = reloaded.init();
-    await settle(); // let init reach the claim query, so `finish` is the query's timer
     assert.equal(await p.guest.resume(p.id), false);
     finish();
     assert.equal(await pending, 'seat-owner');
@@ -1408,9 +1396,8 @@ describe('explicit local match recovery (#431)', () => {
     const local = memStorage(), session = memStorage(), hub = channelHub();
     session.setItem('sp.token', 'old');
     let finish;
-    const id = createIdentity({ local, session, channel: hub.create(), locks: instantLocks, setTimeout: (fn) => { finish = fn; } });
+    const id = createIdentity({ local, session, channel: hub.create(), setTimeout: (fn) => { finish = fn; } });
     const pending = id.init();
-    await settle(); // init() awaits Web Locks before it starts the claim query
     id.saveToken('new'); finish();
     assert.equal(await pending, 'new');
     assert.equal(session.getItem('sp.token'), 'new');

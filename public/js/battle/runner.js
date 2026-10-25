@@ -636,6 +636,30 @@ export function createBattleRunner(deps) {
     schedule();
   }
 
+  /**
+   * 超限的 1×/2× 倍速开关（业主 2026-10-20）：把速度同步给**正在跑**的本地战斗。
+   *
+   * 以前 runner 只在 `onStart` 读一次 `msg.speed`，中途按 2× 对当前这场完全无效。这里把每个条目的
+   * 时钟基准 `t0` 重新定位，使得「当前 tick 位置」不变 —— 变速瞬间不跳进度、不重复回合。
+   * 公式：tick = (t - t0)/1000 × speed / TICK ⇒ 新 t0 = t - (t - t0) × 旧速/新速。
+   * @param {number} speed the absolute multiplier (2 or 4)
+   * @returns {boolean} whether anything changed
+   */
+  function setBattleSpeed(speed) {
+    const s = Number(speed) > 0 ? Number(speed) : 0;
+    if (!s) return false;
+    const t = now();
+    let changed = false;
+    for (const e of [...entries.values(), ...pending.values()]) {
+      if (!e || e.speed === s) continue;
+      if (e.t0 != null) e.t0 = t - (t - e.t0) * (e.speed / s);
+      e.speed = s;
+      changed = true;
+    }
+    if (changed) { publishState(); schedule(); }
+    return changed;
+  }
+
   /** Advance one entry to its clock (bounded); render it when it is on screen. */
   function advance(e, t, render) {
     if (e.battle.finished) { if (!e.done) finished(e); return; }
@@ -1133,7 +1157,7 @@ export function createBattleRunner(deps) {
     _entries: entries,
     _frame: frame,
     _pump: pump,
-    onStart, onPool, onEnd, clear, ensureSim, redeliver, setPaused,
+    onStart, onPool, onEnd, clear, ensureSim, redeliver, setPaused, setBattleSpeed,
     dispose() {
       clear();
       releaseParked();

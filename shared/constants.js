@@ -39,8 +39,9 @@ export const DIFFICULTY_NAMES = { FUNNY: N_('标准模拟'), NORMAL: N_('险境�
 export const DIFFICULTY_COLORS = { FUNNY: '#f6a329', NORMAL: '#e85a1a', HARD: '#e73118', ABYSS: '#ff0024' };
 
 // modeId in data/config.json = `mode_${type}_${difficulty.toLowerCase()}` with type single|multi
+// 超限模拟（solo_infinite，shared/infiniteMode.js）沿用单人的 mode 表：它只是单人的无限延长
 export const modeIdFor = (roomMode, difficulty) =>
-  `mode_${roomMode === 'solo' ? 'single' : 'multi'}_${difficulty.toLowerCase()}`;
+  `mode_${roomMode === 'solo' || roomMode === 'solo_infinite' ? 'single' : 'multi'}_${difficulty.toLowerCase()}`;
 
 export const PHASE = Object.freeze({
   LOBBY: 'LOBBY',
