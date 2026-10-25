@@ -19,7 +19,7 @@
 
 import { mergeBehaviourDecls, behaviourValue } from '../../shared/behaviour.js';
 import { setMorphPairing, setMorphSlotPolicy } from './ui/gameLogic/bonds.js';
-import { setUnequipAllowed } from './ui/gameActions.js';
+// import { setUnequipAllowed } from './ui/gameActions.js'; // TODO: upstream v0.3.3 removed this export
 import { setPrepLoadout } from './ui/loadoutSync.js';
 
 /** @typedef {{ id: string, hash: string, layer: string, combat: boolean, api?: string }} ModEntry */
@@ -78,7 +78,7 @@ export function setWelcomeMods(msg) {
   const decl = mergeBehaviourDecls(packs).decl;
   setMorphPairing(behaviourValue(decl, 'morphPairing'));
   setMorphSlotPolicy(behaviourValue(decl, 'morphPairing'));
-  setUnequipAllowed(behaviourValue(decl, 'unequip') === 'allow');
+  // setUnequipAllowed(behaviourValue(decl, 'unequip') === 'allow'); // TODO: upstream v0.3.3 removed this feature
   setPrepLoadout(behaviourValue(decl, 'prepLoadout'));
   return same;
 }

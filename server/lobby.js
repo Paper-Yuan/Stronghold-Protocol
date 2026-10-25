@@ -167,6 +167,7 @@ import { KITTED_CHARS } from './sim/content/kits/index.js';
 const VANILLA_KITTED = new Set(KITTED_CHARS);
 import { isContentHash } from '../shared/plugins/identity.js';
 import { msg, wireMessage } from '../shared/i18n.js';
+import { parseTestModeEnv, testModeGate, unrecognizedTestMode } from './testMode.js';
 
 /**
  * 房间声明的模组集合 (W-C/W-D)：房主从**服务端已加载**的目录里挑一个子集，`requested` 里出现目录之外的名字就整条拒绝
@@ -446,7 +447,24 @@ export class Lobby {
     this.getData = getData;
     this.now = now;
     this.seedFn = seedFn || (() => randomInt(2 ** 32));
+    const testModeOpt = options.testMode;
+    const testHostOpt = options.testHost;
+    if (Object.hasOwn(options, 'testMode') || Object.hasOwn(options, 'testHost')) {
+      options = { ...options };
+      delete options.testMode;
+      delete options.testHost;
+    }
     this.opts = { ...LOBBY_DEFAULTS, ...options };
+    // Test rooms stay off until the bound address is known (setTestHost). An empty host fails closed, so a
+    // server that is about to bind 0.0.0.0 does not briefly accept test rooms on the default. [ASSUMED] the
+    // env words are parsed in server/testMode.js.
+    const rawMode = testModeOpt != null ? testModeOpt : (typeof process !== 'undefined' && process.env ? process.env.SP_TEST_MODE : undefined);
+    this.testMode = parseTestModeEnv(rawMode);
+    this.testUnrecognized = unrecognizedTestMode(rawMode);
+    this.testHost = '';
+    this.testEnabled = false;
+    this.testWarn = this.testUnrecognized;
+    if (testHostOpt != null) this.setTestHost(testHostOpt);
     /** @type {Map<string, Room>} */
     this.rooms = new Map();
     /** @type {Map<string, NodeJS.Timeout>} lobby grace timers by playerId */
@@ -466,6 +484,19 @@ export class Lobby {
      */
     this.autoApplyPlugins = null;
     this.offContentStale = plugins?.onContentStale?.((cs, ids) => this.pluginsChanged(cs, ids, 'content')) || null;
+  }
+
+  /**
+   * Set the bound host address for test mode gating.
+   * @param {string} host
+   * @returns {{ enabled: boolean, warn: string|null }}
+   */
+  setTestHost(host) {
+    this.testHost = typeof host === 'string' ? host : '';
+    const gate = testModeGate(this.testMode, this.testHost);
+    this.testEnabled = gate.enabled === true;
+    this.testWarn = this.testUnrecognized || gate.warn;
+    return { enabled: this.testEnabled, warn: this.testWarn };
   }
 
   /**
