@@ -407,6 +407,20 @@ export class MatchPhases {
     // 词条抉择已经在 afterSettle 里开过了（Boss 轮结束的时点），这里不再重复
     if (this._traitDoneRound !== this.round - 1 && wantsTraitDraft(this, this.round)) { this.enterTraitDraft(this.round); return; }
     if (this.gd.spRounds().includes(this.round)) this.enterSpDraft();
-    else this.enterPrep();
+    else this.beforePrepOffers();
+  }
+
+  /**
+   * 官方回合开场与它的抽卡／机变先走完，**只有「进入整备」等插件窗口**（上游 phases.js 的同名方法）。
+   *
+   * 本地这份 phases.js 是合并时保留下来的旧一代，里面没有这个方法，而 spDraft.js（上游一代）
+   * 的 finishSpDraft() 调的正是它 —— 缺了它，**任何含机变轮的局都会卡死在 SP_DRAFT**
+   * （Draft 选完、spTurn() 返回 null，但阶段永远不推进），实测 R3 就停。
+   */
+  beforePrepOffers() {
+    this.sp = null;
+    const step = () => this.enterPrep();
+    if (this.openOfferWindow('prep', this.round) !== 'open') { step(); return; }
+    this._offerResume = step;
   }
 }
