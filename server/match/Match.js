@@ -212,6 +212,7 @@
 //                    fail, BOSS_CLOCK_MS)
 
 import { PHASE, modeIdFor } from '../../shared/constants.js';
+import { isSoloRoomMode, isInfiniteMode } from '../../shared/infiniteMode.js';
 import { isContentHash } from '../../shared/plugins/identity.js';
 import { DEFAULT_VERSION, versionById } from '../../shared/versions.js';
 import { Battle } from '../sim/Battle.js';
@@ -282,7 +283,17 @@ export class Match {
     }
     this.opts = opts;
     this.roomCode = opts.roomCode ?? '----';
-    this.mode = opts.mode === 'solo' ? 'solo' : 'coop';
+    this.mode = isSoloRoomMode(opts.mode) ? 'solo' : 'coop';
+    /**
+     * 超限模拟（无限模式）：只有 mode === 'solo_infinite' 的局为真。
+     *
+     * 此前 `this.isInfinite` 被 combat / phases / bossRounds / clientCombat 读了 6 处，
+     * **却从来没有被赋过值** —— R16+ 无限波次、双 Boss 轮、限伤放宽、索敌节流这些
+     * 「超限专属」逻辑此前一行都没跑过（2026-10-17 审计）。这里把它接上：
+     * `mode` 仍然归一成 'solo'（沿用单人的全部既有判定与模式表），超限规则只由本开关点亮，
+     * 所以 solo / coop 一律为 false —— 超限逻辑不会漏进普通单机与同盟（业主明确要求的边界）。
+     */
+    this.isInfinite = isInfiniteMode(opts.mode);
     this.difficulty = opts.difficulty;
     this.modeId = opts.modeId || modeIdFor(this.mode, opts.difficulty);
     this.seed = (Number(opts.seed) >>> 0) || 1;
