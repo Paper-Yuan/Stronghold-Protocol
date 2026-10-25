@@ -296,16 +296,39 @@ html[data-script="alphabetic"] .title-login .btn--xl { letter-spacing: .3em; }
   right: .44rem;
   bottom: .3rem;
   display: flex;
+  flex-direction: column;
+  gap: .12rem;
+  font-size: calc(.13 * var(--t));
+  color: var(--text-dim);
+}
+.title-foot__row {
+  display: flex;
   justify-content: space-between;
   align-items: flex-end;
   flex-wrap: wrap;
   gap: .12rem .2rem;
-  font-size: calc(.13 * var(--t));
-  color: var(--text-dim);
+}
+.title-foot__row--meta {
+  /* thanks ticker + version meta row */
+}
+.title-foot__row--legal {
+  /* legal notice + plugins + resume button row */
 }
 .title-foot__meta { display: flex; align-items: flex-end; gap: .16rem; flex-wrap: wrap; justify-content: flex-end; }
 .title-repo { color: inherit; text-decoration: none; border-bottom: 1px solid transparent; }
 .title-repo:hover, .title-repo:focus-visible { color: var(--text-hi); border-bottom-color: currentColor; }
+/* easter egg entry (version label click 5 times → /arg/) */
+.title-egg {
+  display: inline-block;
+  cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
+  transition: color 120ms ease;
+}
+.title-egg:hover,
+.title-egg:focus-visible {
+  color: var(--text-hi);
+}
 /* a development build (shared/constants.js DEV_BUILD): an unmissable tag in the footer */
 .title-dev {
   padding: .03rem .1rem;
@@ -431,5 +454,5 @@ html[data-script="alphabetic"] .title-login .btn--xl { letter-spacing: .3em; }
 }
 
 /* footer layout: thanks ticker takes the left side */
-.title-foot { flex-wrap: wrap; }
-.title-thanks { order: -1; flex: 1 1 12rem; min-width: 0; max-width: 46%; }
+.title-foot { flex-direction: column; }
+.title-foot__row--meta .title-thanks { order: -1; flex: 1 1 12rem; min-width: 0; max-width: 46%; }

@@ -1098,7 +1098,7 @@ export function LobbyScreen() {
     pickMode('solo_infinite');
     run('create', () => net.request('room.create', {
       mode: 'solo_infinite',
-      difficulty: 'HARD',
+      difficulty: 'ABYSS',
       private: true,
       modIds: [],
     }));
