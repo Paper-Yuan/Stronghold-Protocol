@@ -1,4 +1,4 @@
-// Direction step of a board placement — the standard Arknights 4-direction deploy wheel (research 09 §1.2 / §6.1 5).
+﻿// Direction step of a board placement — the standard Arknights 4-direction deploy wheel (research 09 §1.2 / §6.1 5).
 //
 // After a legal drop of an operator / summon on a board tile (also its own tile: re-orient in place) — or of a
 // directional Art (画卷) — the piece stays on the tile as a ghost and this overlay opens:
@@ -153,29 +153,23 @@ export function useTileScreen(view, row, col) {
     let alive = true;
     // no tile (nothing selected): nothing to follow
     if (!view || !Number.isInteger(row) || !Number.isInteger(col)) { last.current = ''; setG(null); return undefined; }
-    // ~30 Hz is plenty for a follower of the camera's glide (CAMERA_MS); a per-rAF getBoundingClientRect +
-    // re-projection on a high-refresh display costs real main-thread time during the placement drag
-    const WHEEL_FOLLOW_MS = 1000 / 30;
     const tick = () => {
+      if (!alive) return;
       const t = tileScreen(view, row, col);
       const key = t ? `${t.x.toFixed(1)},${t.y.toFixed(1)},${t.s.toFixed(2)}` : '';
       if (key !== last.current) { last.current = key; setG(t); }
+      raf = requestAnimationFrame(tick);
     };
-    const loop = () => {
-      if (!alive) return;
-      tick();
-      raf = setTimeout(loop, WHEEL_FOLLOW_MS);
-    };
-    loop();
-    return () => { alive = false; clearTimeout(raf); };
+    tick();
+    return () => { alive = false; cancelAnimationFrame(raf); };
   }, [view, row, col]);
   return g;
 }
 
 // ---- the wheel -------------------------------------------------------------------------------------------------------
 
-/** Chevron centre (viewBox units, circle radius = 100) and rotation per direction. */
-const CHEV = { UP: [0, -68, -90], RIGHT: [68, 0, 0], DOWN: [0, 68, 90], LEFT: [-68, 0, 180] };
+/** Chevron centre (viewBox units, diamond half-diagonal = 100) and rotation per direction. */
+const CHEV = { UP: [0, -64, -90], RIGHT: [64, 0, 0], DOWN: [0, 64, 90], LEFT: [-64, 0, 180] };
 
 function Chevron({ dir, on }) {
   const [x, y, rot] = CHEV[dir];
@@ -185,7 +179,7 @@ function Chevron({ dir, on }) {
 }
 
 /**
- * The direction wheel overlay (standard circular deploy joystick with 4-way snap).
+ * The direction wheel overlay.
  * @param {{ view: any, row: number, col: number, grid: Array<[number, number]>|null, name?: string,
  *   onPreview?: (dir: string|null) => void, onCommit: (dir: string) => void, onCancel: () => void }} props
  */
@@ -193,11 +187,13 @@ export function FacingWheel({ view, row, col, grid, name = '', onPreview, onComm
   const g = useTileScreen(view, row, col);
   const [dir, setDir] = useState(null);
   const [drag, setDrag] = useState(null); // { id } while a pointer is down
-  const [knob, setKnob] = useState({ x: 0, y: 0, active: false });
   const live = useRef({});
   const s = g && g.s > 0 ? g.s : 64;
-  const half = s * 1.5;              // wheel radius in pixels: ~1.5 tiles
+  const half = s * 1.5;              // half-diagonal: ~3 tiles across
   const dead = s * DEAD_ZONE_TILES;  // centre dead-zone radius
+  // `dir` is the SCREEN direction (chevrons, swipe, arrow keys). On the mirrored right half of the Final Assault prep
+  // (research 09 §1.2: col c → 20 − c, RIGHT ↔ LEFT) the board direction differs: the range, the model preview and
+  // the committed g.move / g.art use the BOARD direction (render/prepfield.js maps it back for display).
   const mirror = viewMirrored(view) || !!(g && g.mirror);
   const bdir = boardDir(dir, mirror);
   live.current = { g, half, dead, dir, bdir, mirror, onCommit, onCancel, onPreview };
@@ -210,24 +206,14 @@ export function FacingWheel({ view, row, col, grid, name = '', onPreview, onComm
   const choose = (clientX, clientY) => {
     const L = live.current;
     if (!L.g) return null;
-    const dx = clientX - L.g.x;
-    const dy = clientY - L.g.y;
-    const dist = Math.hypot(dx, dy);
-    const maxR = L.half * 0.85;
-    const scale = dist > 0 ? Math.min(dist, maxR) / dist : 0;
-    // Map knob coordinates into SVG viewBox space (-100..100)
-    const svgScale = 100 / L.half;
-    setKnob({ x: dx * scale * svgScale, y: dy * scale * svgScale, active: true });
-
-    const d = dirFromDelta(dx, dy, L.dead);
+    const d = dirFromDelta(clientX - L.g.x, clientY - L.g.y, L.dead);
     setDir(d);
     return d;
   };
-
   const inside = (clientX, clientY) => {
     const L = live.current;
     if (!L.g) return true;
-    return Math.hypot(clientX - L.g.x, clientY - L.g.y) <= L.half * 1.6;
+    return Math.abs(clientX - L.g.x) + Math.abs(clientY - L.g.y) <= L.half * 1.18;
   };
 
   const onDown = (e) => {
@@ -246,16 +232,16 @@ export function FacingWheel({ view, row, col, grid, name = '', onPreview, onComm
   const onUp = (e) => {
     if (!drag || e.pointerId !== drag.id) return;
     setDrag(null);
-    setKnob({ x: 0, y: 0, active: false });
     const d = choose(e.clientX, e.clientY);
     if (d) onCommit(boardDir(d, live.current.mirror)); else onCancel();
   };
-  const onPointerCancel = () => {
-    setDrag(null);
-    setDir(null);
-    setKnob({ x: 0, y: 0, active: false });
-  };
+  const onPointerCancel = () => { setDrag(null); setDir(null); };
 
+  // keyboard: arrows preview, Enter commits, Esc cancels (capture: the game's own shortcuts must not see them). Enter
+  // follows the focus (gameLogic facingEnter, GitHub #394): on ✕ it cancels, on any other button (Tab reaches the HUD
+  // behind the wheel) it does nothing, elsewhere it commits the previewed direction. The wheel takes the focus when it
+  // opens, so a button focused before the drop (a click leaves it focused) cannot swallow the confirming Enter; Tab then
+  // reaches ✕ first. Nothing gives the focus back when it closes (a restored 准备 would take the next Enter / Space).
   const rootRef = useRef(null);
   useEffect(() => {
     const onKey = (e) => {
@@ -270,46 +256,29 @@ export function FacingWheel({ view, row, col, grid, name = '', onPreview, onComm
         else if (enter === 'commit') L.onCommit(L.bdir);
         return;
       }
+      // no ready / shop while choosing: Space and every key of the player's map (设置 → 快捷键)
       if (facingSwallows(e, settingsStore.get().keys)) { e.preventDefault(); e.stopImmediatePropagation(); }
     };
     window.addEventListener('keydown', onKey, true);
-    try { rootRef.current?.focus({ preventScroll: true }); } catch { /* ignore */ }
+    try { rootRef.current?.focus({ preventScroll: true }); } catch { /* no focus: Enter still follows whatever has it */ }
     return () => window.removeEventListener('keydown', onKey, true);
   }, []);
 
   const outside = !!drag && !!dir;
   const box = half * 2;
-  const deadR = (DEAD_ZONE_TILES / 1.5) * 100;
-
   return html`<div ref=${rootRef} tabIndex="-1" class=${cx('fwheel', drag && 'is-pressed', dir && `is-${dir.toLowerCase()}`)} role="dialog" aria-label=${name ? t('选择「{name}」的朝向', { name }) : t('选择朝向')}
       onPointerDown=${onDown} onPointerMove=${onMove} onPointerUp=${onUp} onPointerCancel=${onPointerCancel}
       onContextMenu=${(e) => { e.preventDefault(); onCancel(); }}>
     ${g ? html`<${Stripes} tiles=${tiles} view=${view} row=${row} col=${col} />` : null}
     ${g ? html`<div class="fwheel__dia" style=${`left:${g.x}px;top:${g.y}px;width:${box}px;height:${box}px`}>
       <svg class="fwheel__svg" viewBox="-110 -110 220 220" aria-hidden="true">
-        <!-- 4 circular sectors with 45° boundaries -->
-        <path class=${cx('fwheel__quad', dir === 'RIGHT' && 'is-on')} d="M0 0 L70.71 -70.71 A100 100 0 0 1 70.71 70.71 Z" />
-        <path class=${cx('fwheel__quad', dir === 'DOWN' && 'is-on')} d="M0 0 L70.71 70.71 A100 100 0 0 1 -70.71 70.71 Z" />
-        <path class=${cx('fwheel__quad', dir === 'LEFT' && 'is-on')} d="M0 0 L-70.71 70.71 A100 100 0 0 1 -70.71 -70.71 Z" />
-        <path class=${cx('fwheel__quad', dir === 'UP' && 'is-on')} d="M0 0 L-70.71 -70.71 A100 100 0 0 1 70.71 -70.71 Z" />
-
-        <!-- Wheel outer rings and quadrant dividers -->
-        <circle class="fwheel__outer" cx="0" cy="0" r="100" />
-        <circle class="fwheel__subring" cx="0" cy="0" r="75" />
-        <line class="fwheel__axis" x1="-70.71" y1="-70.71" x2="70.71" y2="70.71" />
-        <line class="fwheel__axis" x1="-70.71" y1="70.71" x2="70.71" y2="-70.71" />
-
-        <!-- Direction chevrons -->
+        <path class="fwheel__outer" d="M0 -100 L100 0 L0 100 L-100 0 Z" />
+        <path class=${cx('fwheel__quad', dir === 'UP' && 'is-on')} d="M0 -100 L50 -50 L0 0 L-50 -50 Z" />
+        <path class=${cx('fwheel__quad', dir === 'RIGHT' && 'is-on')} d="M100 0 L50 50 L0 0 L50 -50 Z" />
+        <path class=${cx('fwheel__quad', dir === 'DOWN' && 'is-on')} d="M0 100 L-50 50 L0 0 L50 50 Z" />
+        <path class=${cx('fwheel__quad', dir === 'LEFT' && 'is-on')} d="M-100 0 L-50 -50 L0 0 L-50 50 Z" />
+        <path class="fwheel__inner" d=${`M0 ${-DEAD_ZONE_TILES / 1.5 * 100} L${DEAD_ZONE_TILES / 1.5 * 100} 0 L0 ${DEAD_ZONE_TILES / 1.5 * 100} L${-DEAD_ZONE_TILES / 1.5 * 100} 0 Z`} />
         ${DIRS.map((d) => html`<${Chevron} key=${d} dir=${d} on=${dir === d} />`)}
-
-        <!-- Deadzone inner circle -->
-        <circle class="fwheel__inner" cx="0" cy="0" r=${deadR} />
-
-        <!-- Dynamic joystick knob & pointer beam when active -->
-        ${knob.active ? html`
-          <line class="fwheel__stick" x1="0" y1="0" x2=${knob.x} y2=${knob.y} />
-          <circle class="fwheel__knob" cx=${knob.x} cy=${knob.y} r="16" />
-        ` : null}
       </svg>
       <button type="button" class="fwheel__cancel" onPointerDown=${(e) => e.stopPropagation()}
         onClick=${(e) => { e.stopPropagation(); onCancel(); }} aria-label=${t('点击取消')}>
@@ -379,15 +348,7 @@ function Stripes({ tiles, view, row, col }) {
     svg.innerHTML = `<defs><pattern id="${id}" width="10" height="10" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">`
       + '<rect width="3.5" height="10" fill="rgba(255,178,70,.5)" /></pattern></defs><g></g>';
     const g = svg.lastChild;
-    try {
-      if (mount.before && mount.before.parentElement === mount.host) {
-        mount.host.insertBefore(svg, mount.before);
-      } else {
-        mount.host.appendChild(svg);
-      }
-    } catch {
-      return undefined;
-    }
+    mount.host.insertBefore(svg, mount.before);
     let raf = 0;
     let last = '';
     const tick = () => {
@@ -405,13 +366,10 @@ function Stripes({ tiles, view, row, col }) {
           return el;
         }));
       }
+      raf = requestAnimationFrame(tick);
     };
-    // ~30 Hz re-projection (see useTileScreen): full rAF here re-projected every polygon on each frame of a
-    // high-refresh display while the wheel was open
-    const STRIPE_FOLLOW_MS = 1000 / 30;
-    const loop = () => { tick(); raf = setTimeout(loop, STRIPE_FOLLOW_MS); };
-    loop();
-    return () => { clearTimeout(raf); svg.remove(); };
+    tick();
+    return () => { cancelAnimationFrame(raf); svg.remove(); };
   }, [key, view, !!mount]);
   // overlay (2D board / fallback): never over the piece's own tile, so the unit being placed stays visible
   const over = mount ? [] : tiles.filter(([r, c]) => r !== row || c !== col);
@@ -424,12 +382,10 @@ function Stripes({ tiles, view, row, col }) {
       const t = tileScreen(view, over[0][0], over[0][1]);
       const k = t ? `${t.x.toFixed(1)},${t.y.toFixed(1)}` : '';
       if (k !== last) { last = k; setN((n) => n + 1); }
+      raf = requestAnimationFrame(tick);
     };
-    // ~30 Hz (see useTileScreen)
-    const STRIPE_FOLLOW_MS = 1000 / 30;
-    const loop = () => { tick(); raf = setTimeout(loop, STRIPE_FOLLOW_MS); };
-    loop();
-    return () => clearTimeout(raf);
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
   }, [overKey, view]);
   if (!over.length) return null;
   const polys = stripePolys(view, over);

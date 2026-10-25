@@ -1,4 +1,4 @@
-// Active effects list (m.private.effects: band / 机变 / team / item / garrison effects with counters):
+﻿// Active effects list (m.private.effects: band / 机变 / team / item / garrison effects with counters):
 // compact icon column at the right edge, rich-text tooltip per effect. `counterText` (a 悬赏's "还剩 N 场作战", user
 // playtest #6 item 4) replaces the bare counter in the tooltip's kind line.
 
@@ -48,25 +48,16 @@ export function EffectsList({ effects }) {
   const list = (Array.isArray(effects) ? effects : []).filter((e) => e && (e.name || e.desc));
   if (!list.length) return null;
   const m = data.get('assets');
-  // 业主 2026-10-21：最多显示 14 个，多出的收进 +N（横屏两列能放 14 个而不会顶出屏幕）。
-  const SHOWN = 14;
-  const shown = list.slice(0, SHOWN);
-  const extra = Math.max(0, list.length - SHOWN);
   return html`<div class="effects" aria-label=${t('生效中的效果')}>
     <${MicroLabel}>EFFECTS</${MicroLabel}>
-    ${shown.map((e, i) => html`<${Tooltip} key=${e.id ?? i} placement="bottom" text=${html`<div class="efftip">
+    ${list.slice(0, 10).map((e, i) => html`<${Tooltip} key=${e.id ?? i} placement="bottom" text=${html`<div class="efftip">
         <b>${tName(e.name) || t('效果')}</b><span class="efftip__kind">${t(KIND[e.iconKind] || '')}${e.counterText ? ` · ${bountyCounterText(e)}` : e.counter != null ? ` · ${e.counter}` : ''}</span>
         <${RichText} as="p" text=${effectDesc(e)} />
       </div>`}>
       <span class=${`effect effect--${e.iconKind || 'x'}`}>
-        ${e.iconKind === 'trait' || e.iconKind === 'traitNeg'
-            ? html`<span class="effect__trait">\u25C6</span>`
-          : html`<${Img} src=${effectIconUrl(m, e)} fallback=${html`<${GIcon} name="bolt" />`} />`}
+        <${Img} src=${effectIconUrl(m, e)} fallback=${html`<${GIcon} name="bolt" />`} />
         ${e.counter != null && e.counter !== '' ? html`<b class="effect__n num">${e.counter}</b>` : null}
       </span>
     <//>`)}
-    ${extra > 0 ? html`<${Tooltip} placement="bottom" text=${html`<div class="efftip"><b>${t('还有 {n} 个效果', { n: extra })}</b></div>`}>
-      <span class="effects__more">+${extra}</span>
-    <//>` : null}
   </div>`;
 }
