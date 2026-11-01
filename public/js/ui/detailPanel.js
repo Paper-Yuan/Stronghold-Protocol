@@ -42,6 +42,9 @@ import { attackInterval, rangeGridBox, fmtNum, tileKey, chessLoadout, nextThresh
 import { skillIconUrl, skillRecordIconUrl, profIconUrl, subProfIconUrl, itemIconUrl, enemyIconUrl, tokenAvatarUrl, factionIconUrl, uiUrl, moduleTypeIconUrl } from './assetUrls.js';
 import { abilityRows } from './abilityLines.js';
 import { data } from '../data.js';
+// 玩法包专属内容的三态判据（官方 / 炸惊 / 湮灭）—— 业主 2026-10-28 P0-1
+import { officialBonds, extensionRoomOf } from './zjView.js';
+import { store } from '../store.js';
 import { attackRangeGrid } from '../../../shared/loadoutRecord.js';
 import { SKILL_SUMMON_START_DEPLOY } from '../../../shared/constants.js';
 import { moduleBadge, fullTraitText } from './loadoutModel.js';
@@ -190,7 +193,10 @@ const isOffIn = (off, bondId) => !!(off && typeof off.has === 'function' && off.
  * @param {{ off?: Set<string>|null, carried?: Array<string|{id:string}>|null, mode?: 'official'|'plus' }} props
  */
 export function MorphPairings({ off = null, carried = null, mode = 'official' }) {
-  const rows = morphPairings(data.list('items'), data.list('bonds'), { off, carried, mode });
+  // 玩法包专属装备 / 盟约按当前房间过滤（业主 2026-10-28 P0-1）：官方房与湮灭房里不列炸惊专属的配对
+  const pub = store.get()?.match?.public ?? null;
+  const diff = pub ? (pub.difficulty ?? pub.modeId ?? null) : null;
+  const rows = morphPairings(data.list('items'), officialBonds(data.list('bonds'), diff), { off, carried, mode, room: extensionRoomOf(diff) });
   if (!rows.length) return null;
   const wearer = Array.isArray(carried);
   return html`<div class=${cx('dmorph', wearer && 'is-wearer')}>

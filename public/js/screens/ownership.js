@@ -20,7 +20,9 @@ import { t, tParts } from '../../../shared/i18n.js';
 const cx = (...p) => p.flat().filter(Boolean).join(' ');
 const ROMAN = ['', 'I', 'II', 'III', 'IV', 'V', 'VI'];
 
-/** The roster of the tab, refreshed when the data, language or room's content changes. */
+/** The roster of the tab, refreshed when the data, language or room's content changes.
+ *  不传第二个参数：持有页不按插件包限制（ui/ownershipModel.js ownershipRoster 的 null = 调用方不限制）；玩法干员（炸惊/
+ *  湮灭）靠房间内容集 + visible 进出本页，与 packId 无关。 */
 export function useOwnershipRoster(ready) {
   return useMemo(() => ownershipRoster(data.list('chess')), [ready, data.locale(), data.contentId()]);
 }

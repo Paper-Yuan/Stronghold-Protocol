@@ -84,6 +84,31 @@ function rewardFor(gd, roundsPassed) {
 }
 
 /**
+ * 超限档案（业主 2026-10-26）：只在 solo_infinite 的 m.result 上出现。
+ * 普通模式的 result 不调用它，字节保持不变。
+ * @param {import('./Match.js').Match} m
+ * @param {any} gd
+ */
+export function overlimitArchive(m, gd) {
+  const kills = Array.isArray(m.infiniteBossKills) ? m.infiniteBossKills : [];
+  const layers = Object.entries(m.maxLayersSeen && typeof m.maxLayersSeen === 'object' ? m.maxLayersSeen : {})
+    .map(([id, n]) => ({ id, name: gd.bond(id)?.name || id, layers: Math.round(Number(n) || 0) }))
+    .filter((x) => x.layers > 0)
+    .sort((a, b) => b.layers - a.layers);
+  return {
+    maxRound: Math.max(Number(m.round) || 0, ...kills.map((k) => Number(k.round) || 0), 0),
+    partySize: Array.isArray(m.order) ? m.order.length : (m.players?.size || 1),
+    bossKills: kills.map(({ key, ...k }) => k), // key 只用于服务端去重
+    traitMods: (Array.isArray(m.traitMods) ? m.traitMods : []).map((t) => ({
+      round: t.round, id: t.id, name: t.name, polarity: t.polarity,
+      ...(typeof t.text === 'string' ? { text: t.text } : {}),
+    })),
+    maxLayers: layers.slice(0, 6),
+    bestBond: layers[0] || null,
+  };
+}
+
+/**
  * @param {import('./Match.js').Match} m
  * @param {{ victory: boolean, hiddenReached: boolean, hiddenCleared: boolean, reason: string }} outcome
  */
@@ -92,7 +117,18 @@ export function buildResult(m, outcome) {
   const { victory, hiddenReached, hiddenCleared } = outcome;
   const players = [...m.players.values()].sort((a, b) => a.seat - b.seat);
   const titles = assignTitles(gd, players.filter(ps => !Number.isInteger(ps.aiTakeoverRound)), victory);
-  const teamRounds = victory ? gd.bossRound + (hiddenCleared ? 1 : 0) : Math.max(0, Math.min(m.round, gd.bossRound) - 1);
+  // 无尽湮灭 (蚀流 6) 没有「满回合」：gd.bossRound 只是第一章的那一对（14），拿它封顶会把一场跑到 R40 的局报成 13 回合。
+  // 其它模式（含超限）的 bossRound 是终点，仍然封顶。victory 在无尽里不可达（赢了首领也继续，gd.continueAfterBoss）。
+  //
+  // 超限（solo_infinite / coop_infinite）同样没有终点：一局停在第 R 回合，就是打到了第 R 回合。
+  // 以前沿用 gd.bossRound（14）封顶 —— R37 的撤退局报 roundsPassed=14，而同一次结算里的
+  // overlimit.maxRound=37，两个分数打架（docs/proposals/OVERLIMIT.md §2 F3）。现在整条绕过 bossRound，
+  // 与 overlimitArchive 的 maxRound 同一个数；普通模式的算式逐字节不变。
+  const infinite = m.isInfinite === true;
+  const roundCap = gd.endless || infinite ? m.round : Math.min(m.round, gd.bossRound);
+  const teamRounds = infinite
+    ? Math.max(0, Number(m.round) || 0)
+    : victory ? gd.bossRound + (hiddenCleared ? 1 : 0) : Math.max(0, roundCap - 1);
   const rows = players.map((ps) => {
     const roundsPassed = !ps.alive && ps.eliminatedRound != null ? Math.max(0, ps.eliminatedRound - 1) : teamRounds;
     const lineup = boardOrder(ps.board).filter((x) => x.piece.kind === 'chess').map(({ r, c, piece }) => {
@@ -157,6 +193,13 @@ export function buildResult(m, outcome) {
     durationMs: Math.max(0, m.sched.now() - m.startedAt),
     players: rows,
   };
+  // 无尽湮灭 (蚀流 6) 没有「满回合」：m.result 本身不带 lastRound，客户端 normalizeResult 只能落 14 兜底。
+  // 历史记录回放（public/js/ui/stats.js recordToResult）拿不到 m.public，只能靠这一行认出「这是无尽局」，
+  // 否则结算页会给一场没有终点的局写「/14」。只有无尽局有这一行：官方模式 gd.endless 恒为 false（gamedata.js
+  // endless 读 mode.difficulty === ANNIHILATION_DIFFICULTY），它们的 m.result 仍然逐字节不变。
+  if (gd.endless) out.endless = true;
+  // 超限档案（业主 2026-10-26）：只在无限模式出现；普通模式没有这个键，result 字节不变
+  if (m.isInfinite) out.overlimit = overlimitArchive(m, gd);
   // A test match is marked on the settlement the replay stores. The keys are absent otherwise, so a normal
   // result stays byte-identical. Test results award nothing and are never persisted by the client.
   if (m.test === true) {

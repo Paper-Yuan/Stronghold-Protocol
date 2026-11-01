@@ -116,8 +116,22 @@ function Toggle({ label, micro, value, onChange }) {
   </div>`;
 }
 
-/** Display order only: 低 / 中 / 高, the same direction as 官方特效 关 / 精简 / 完整. Stored values stay high | medium | low. */
-const QUALITY = [['low', N_('低')], ['medium', N_('中')], ['high', N_('高')]];
+/**
+ * Display order only: 低 / 中 / 高 / 超清 / 极致, the same direction as 官方特效 关 / 精简 / 完整. Stored values are
+ * low | medium | high | ultra | extreme (ui/gameLogic/settings.js QUALITIES, all accepted there); the default stays
+ * 高, so an old profile needs no migration.
+ *
+ * 超清 / 极致 are not just two more rows: what they buy is the render resolution, and only render/app.js's dpr() can
+ * grant it — the tier tables (QUALITY_RES / BOARD_RES) are min-ed with devicePixelRatio and with 机型兼容's
+ * tuning.maxPixelRatio, so a new tier name alone renders exactly like 高. render/app/host.js carries the two
+ * multipliers that make the tiers real (TIER_SS = super-sampling past the device DPR, TIER_CAP_MUL = a higher 机型
+ * cap, both clamped by the GPU's own limit). What a tier CANNOT do is sharpen the art itself: this project ships one
+ * baked size per asset (data/assets.json, no texture-scale knob), so 超清 buys edges, MSAA and particle density, not
+ * extra detail — docs/design/client.md §10 ("settings (volume, quality, …)") still needs that sentence.
+ */
+const QUALITY = [['low', N_('低')], ['medium', N_('中')], ['high', N_('高')], ['ultra', N_('超清')], ['extreme', N_('极致')]];
+/** 机型兼容（ui/deviceTuning.js）：auto 按 UA/GPU 自动，smooth 强制最低档，hd 强制最高档。 */
+const COMPAT = [['auto', N_('自动')], ['smooth', N_('流畅')], ['hd', N_('高清')]];
 /**
  * 官方特效 (0.3.0, render/vfx): the official battle effects the server's owner extracted from their own client (the
  * server serves them: every player of that server sees the owner's extraction) — normal attacks, projectiles, hits,
@@ -515,13 +529,21 @@ export function SettingsModal({ open, onClose }) {
           <button type="button" class="set-hint__help" aria-describedby="wake-lock-requirements">${t('需要环境支持')}<${Icon} name="info" /></button>
         <//>`,
       })}</p>
-      <div class="set-row">
+      <div class="set-row" data-testid="quality">
         <span class="set-row__label">${t('画面质量')}<${MicroLabel}>QUALITY<//></span>
-        <div class="set-seg" role="radiogroup">
+        <div class="set-seg set-quality" role="radiogroup" aria-label=${t('画面质量')}>
           ${QUALITY.map(([id, label]) => html`<button key=${id} type="button" role="radio" aria-checked=${s.quality === id ? 'true' : 'false'}
             class=${s.quality === id ? 'is-on' : ''} onClick=${() => updateSettings({ quality: id })}>${t(label)}</button>`)}
         </div>
       </div>
+      <div class="set-row" data-testid="device-compat">
+        <span class="set-row__label">${t('机型兼容')}<${MicroLabel}>DEVICE COMPAT<//></span>
+        <div class="set-seg" role="radiogroup" aria-label=${t('机型兼容')}>
+          ${COMPAT.map(([id, label]) => html`<button key=${id} type="button" role="radio" aria-checked=${s.compatMode === id ? 'true' : 'false'}
+            class=${s.compatMode === id ? 'is-on' : ''} onClick=${() => updateSettings({ compatMode: id })}>${t(label)}</button>`)}
+        </div>
+      </div>
+      <p class="set-hint">${t('按机型自动选择渲染档位：荣耀 / 华为旧内核、小米天玑等机型会降低分辨率、关闭抗锯齿并限制帧率，避免卡顿或黑屏。流畅 = 强制最低档；高清 = 强制最高档（可能掉帧）。')}</p>
       ${fxOk ? html`<div class="set-row" data-testid="official-fx">
         <span class="set-row__label">${t('官方特效')}<${MicroLabel}>OFFICIAL FX<//></span>
         <div class="set-seg" role="radiogroup" aria-label=${t('官方特效')}>

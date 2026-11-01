@@ -2,6 +2,7 @@ import { createRoomDanmaku } from './roomDanmaku.js';
 import { outlineIcon } from './voiceIcons.js';
 import { net } from '../net.js';
 import { store } from '../store.js';
+import { t } from '../../../shared/i18n.js';
 
 export function mountRoomChat() {
   const danmaku = createRoomDanmaku();
@@ -17,31 +18,39 @@ export function mountRoomChat() {
   }
 
   const panel = make('section', 'spchat__panel');
-  panel.setAttribute('aria-label', '同盟聊天');
+  panel.setAttribute('aria-label', t('同盟聊天'));
   const header = make('header', 'spchat__header');
-  const title = make('span', 'spchat__title', '同盟通讯');
+  const title = make('span', 'spchat__title', t('同盟通讯'));
   const fold = make('button', 'spchat__fold', '−');
   fold.type = 'button';
-  fold.setAttribute('aria-label', '折叠聊天');
+  fold.setAttribute('aria-label', t('折叠聊天'));
   const danmakuButton = make('button', 'spchat__danmaku');
   danmakuButton.type = 'button';
   Object.assign(danmakuButton.style, { color: 'inherit', background: 'transparent', border: '1px solid currentColor', fontSize: '11px', minHeight: '28px', cursor: 'pointer' });
-  function updateDanmakuButton() { danmakuButton.textContent = danmaku.enabled ? '弹幕开' : '弹幕关';danmakuButton.setAttribute('aria-pressed', String(danmaku.enabled)); }
+  function updateDanmakuButton() { danmakuButton.textContent = danmaku.enabled ? t('弹幕开') : t('弹幕关');danmakuButton.setAttribute('aria-pressed', String(danmaku.enabled)); }
   updateDanmakuButton();
   header.append(title, danmakuButton, fold);
 
   const log = make('div', 'spchat__log');
   log.setAttribute('role', 'log');
   log.setAttribute('aria-live', 'polite');
-  const hint = make('div', 'spchat__hint', '同盟通讯已连接');
+  const hint = make('div', 'spchat__hint', t('同盟通讯已连接'));
   const form = make('form', 'spchat__form');
-  const input = make('input', 'spchat__input');
-  input.type = 'text';
+  // 发言框：多行起步（业主 2026-10-28「优化发言框高度」）—— textarea rows=1 + 随内容长高到 96px，超过就内部滚动。
+  // 回车发送、Shift+Enter 换行；输入法合成中（isComposing）回车不发送。
+  const input = make('textarea', 'spchat__input');
+  input.rows = 1;
   input.maxLength = 200;
-  input.placeholder = '输入消息…';
+  input.placeholder = t('输入消息…');
   input.autocomplete = 'off';
-  input.setAttribute('aria-label', '聊天消息');
-  const sendButton = make('button', 'spchat__send', '发送');
+  input.setAttribute('enterkeyhint', 'send');
+  input.setAttribute('aria-label', t('聊天消息'));
+  /** 让发言框跟着内容长高：先归零再取 scrollHeight，夹在 CSS 的 min/max 之间（CSS 负责 44–96px 的两端）。 */
+  const autoGrow = () => {
+    input.style.height = 'auto';
+    input.style.height = `${Math.min(input.scrollHeight, 400)}px`;
+  };
+  const sendButton = make('button', 'spchat__send', t('发送'));
   sendButton.type = 'submit';
   form.append(input, sendButton);
   panel.append(header, log, hint, form);
@@ -51,7 +60,7 @@ export function mountRoomChat() {
   unreadBadge.hidden = true;
   toggle.append(outlineIcon('chat'), unreadBadge);
   toggle.type = 'button';
-  toggle.setAttribute('aria-label', '展开或折叠聊天');
+  toggle.setAttribute('aria-label', t('展开或折叠聊天'));
   root.append(panel, toggle);
   document.body.append(root);
 
@@ -96,8 +105,9 @@ export function mountRoomChat() {
   function layout() {
     if (!alive || !identity) return;
     const v = viewport();
-    const w = Math.max(1, Math.min(230, v.w - 16));
-    const h = Math.max(1, Math.min(220, v.h - 16));
+    const compact = v.w < 760 || v.h < 520;
+    const w = Math.max(1, Math.min(compact ? 360 : 320, v.w - 16));
+    const h = Math.max(1, Math.min(compact ? 300 : 300, v.h - 16));
     const sx = Math.max(0, v.w - 52), sy = Math.max(0, v.h - 52);
     fabPosition = clamp(fabRatio
       ? { x: v.x + 8 + fabRatio.x * sx, y: v.y + 8 + fabRatio.y * sy }
@@ -105,7 +115,10 @@ export function mountRoomChat() {
     Object.assign(toggle.style, {
       left: fabPosition.x + 'px', top: fabPosition.y + 'px',
     });
-    let initial = { x: v.x + 16, y: v.y + v.h - h - 96 };
+    // 手机/矮屏：面板从底部居中出现（底部抽屉），不压住左侧座位卡；桌面仍是左下角。
+    let initial = compact
+      ? { x: v.x + Math.max(8, (v.w - w) / 2), y: v.y + Math.max(8, v.h - h - 8) }
+      : { x: v.x + 16, y: v.y + v.h - h - 96 };
     if (fabRatio) {
       initial = { x: fabPosition.x + 44, y: fabPosition.y - h + 36 };
       if (initial.x + w > v.x + v.w - 8)
@@ -121,7 +134,7 @@ export function mountRoomChat() {
   function controls() {
     input.disabled = !identity || net.status !== 'online';
     sendButton.disabled = pending || input.disabled;
-    hint.textContent = net.status === 'online' ? '同盟通讯已连接' : '等待连接恢复…';
+    hint.textContent = net.status === 'online' ? t('同盟通讯已连接') : t('等待连接恢复…');
   }
 
   function requestHistory() {
@@ -153,7 +166,8 @@ export function mountRoomChat() {
     const seat = room?.seats?.find(s => s?.playerId === playerId);
     const spectator = room?.spectators?.find(s => s?.playerId === playerId);
     const member = (seat && !seat.isBot && !seat.left) || spectator;
-    const next = state.session?.entered && room?.mode === 'coop' && playerId && member
+    // 只在等待室显示；对局内用 ui/chatBox.js 的局内面板（否则两套聊天/弹幕会叠在一起）
+    const next = state.session?.entered && room?.mode === 'coop' && !room?.inMatch && playerId && member
       ? { code: room.code, playerId } : null;
 
     if (next?.code === identity?.code && next?.playerId === identity?.playerId) return;
@@ -163,12 +177,15 @@ export function mountRoomChat() {
     danmaku.clear();
     historyRequest = null;
     log.replaceChildren();
-    input.value = '';
+    input.value = ''; input.style.height = ''; // 清空后缩回两行高度（多行发言框）
     desired = null;
     dragging = null;
-    title.textContent = next ? `同盟通讯 · ${next.code}` : '同盟通讯';
+    title.textContent = next ? t('同盟通讯 · {code}', { code: next.code }) : t('同盟通讯');
     controls();
-    open(true);
+    // 手机/矮屏默认收起成右下角圆点（点开是底部抽屉），避免 230×220 的卡片压住座位与开始按钮；
+    // 桌面保持展开。
+    const v = viewport();
+    open(!(v.w < 760 || v.h < 520));
     requestHistory();
   }
 
@@ -225,10 +242,10 @@ export function mountRoomChat() {
     try {
       await net.request('room.chat', { code: key.code, text });
       if (alive && identity?.code === key.code && identity?.playerId === key.playerId &&
-          input.value === original) input.value = '';
+          input.value === original) input.value = ''; input.style.height = ''; // 清空后缩回两行高度（多行发言框）
     } catch (error) {
       if (alive && identity?.code === key.code)
-        hint.textContent = error.message || '发送失败，请重试';
+        hint.textContent = error.message || t('发送失败，请重试');
     } finally {
       pending = false;
       if (alive) {
@@ -281,12 +298,16 @@ export function mountRoomChat() {
       open(false);
       return;
     }
+    // 多行发言框（业主 2026-10-28）：**回车发送、Shift+Enter 换行**。输入法合成中回车不发送（保持原逻辑）。
     if (event.key === 'Enter' && !event.isComposing && event.keyCode !== 229 && !composing) {
+      if (event.shiftKey) return; // Shift+Enter：插一个换行，交给浏览器（textarea 的默认行为）
       event.preventDefault();
       if (typeof form.requestSubmit === 'function') form.requestSubmit();
       else form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
     }
   });
+  // 内容一变就重新量高度（粘贴、删字、换行都要跟上）
+  listen(input, 'input', autoGrow);
   listen(toggle, 'click', event => {
     const pointerClick = event.detail > 0 || !!event.pointerType;
     if (pointerClick && performance.now() < blockClickUntil) {

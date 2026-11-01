@@ -1,6 +1,6 @@
 {
   "name": "stronghold-protocol-alliance",
-  "version": "0.3.3",
+  "version": "0.3.3-Yuan",
   "private": true,
   "description": "明日方舟「卫戍协议：盟约」非官方同人联机网页复刻（1–4 人合作，Node.js 服务器 + 浏览器客户端）",
   "license": "GPL-3.0-or-later",
@@ -21,6 +21,7 @@
     "fan-game"
   ],
   "type": "module",
+  "//main": "Source-repo entry stays `server/index.js` (what `npm start` / `npm run dev` run, and what the release packager checks). The *packaged* app runs Electron's main process instead: build.extraMetadata overrides package.json `main` to `desktop/main.mjs` inside the built app (handoff/desktop-electron/packaging.md §2.5).",
   "main": "server/index.js",
   "scripts": {
     "start": "node server/index.js",
@@ -32,6 +33,9 @@
     "vendor": "node tools/vendor.mjs",
     "build-data": "node tools/build-data.mjs",
     "assets": "node tools/vendor.mjs && node tools/fetch-assets.mjs",
+    "illusts": "node tools/fetch-illusts.mjs",
+    "skins": "node tools/set-skins-installed.mjs && node tools/build-skins.mjs && node tools/inject-skins-assets.mjs",
+    "voices:skins": "node tools/fetch-skin-voices.mjs",
     "postinstall": "node tools/vendor.mjs",
     "setup": "node tools/setup.mjs",
     "doctor": "node tools/doctor.mjs",
@@ -42,26 +46,84 @@
     "ci": "node tools/ci.mjs",
     "shards": "node tools/ci-shards.mjs",
     "package": "node tools/package.mjs",
-    "package:lite": "node tools/package.mjs --lite"
+    "package:lite": "node tools/package.mjs --lite",
+    "desktop:dev": "electron desktop/main.mjs --local",
+    "desktop:build": "node scripts/build-desktop.mjs"
   },
   "engines": {
     "node": ">=22"
   },
   "dependencies": {
+    "acorn": "8.18.0",
     "htm": "^3.1.1",
     "pixi-spine": "^4.0.6",
     "pixi.js": "^7.4.2",
     "preact": "^10.29.8",
     "ses": "2.3.0",
     "three": "^0.186.1",
-    "ws": "^8.22.0",
-    "acorn": "8.18.0"
+    "ws": "^8.22.0"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
+    "electron": "^45.2.1",
+    "electron-builder": "^26.18.0",
     "eslint": "^10.12.0",
     "globals": "^17.13.0",
     "puppeteer-core": "^25.12.0",
     "typescript": "^5.9.2"
+  },
+  "build": {
+    "appId": "com.paper.stronghold.desktop",
+    "productName": "Stronghold Protocol",
+    "copyright": "GPL-3.0-or-later · 非商业同人作品 · 游戏素材版权归上海鹰角网络 / Yostar 所有",
+    "electronVersion": "45.2.1",
+    "asar": false,
+    "npmRebuild": false,
+    "directories": {
+      "output": "dist/desktop"
+    },
+    "files": [
+      "package.json",
+      "LICENSE",
+      "NOTICE.md",
+      "THIRD-PARTY-NOTICES.md",
+      "server/**/*",
+      "shared/**/*",
+      "desktop/**/*",
+      "schemas/**/*",
+      "plugins/**/*",
+      "public/**/*",
+      "data/**/*",
+      "packs/**/*",
+      "tools/assets/**/*",
+      "tools/golden.mjs",
+      "tools/versions/runtime.mjs",
+      "!public/patch.zip",
+      "!public/dev/**/*",
+      "!**/*.map",
+      "!**/test/**/*",
+      "!**/*.md.bak"
+    ],
+    "extraMetadata": {
+      "version": "0.3.3-Yuan",
+      "main": "desktop/main.mjs"
+    },
+    "win": {
+      "target": [
+        "dir"
+      ],
+      "icon": "build/icon.ico",
+      "signExecutable": false,
+      "artifactName": "Stronghold-Protocol-v${version}-desktop-${arch}.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "shortcutName": "卫戍协议：盟约",
+      "artifactName": "Stronghold-Protocol-v${version}-desktop-${arch}-setup.${ext}"
+    },
+    "publish": null
   }
 }

@@ -16,7 +16,11 @@ import { unitInfo } from '../../server/sim/snapshot.js';
 const ISO = 'chess_item_6_09_e_a';
 const ISO_B = 'chess_item_6_09_e_b';
 const HAMMER = 'chess_item_1_01_e_a';
-const GRANTS = Object.values(DATA.items).filter((r) => r.giveBondId).map((r) => r.id).sort();
+// official bond items only: 炸惊模拟's S.E.E.S 袖章 / 谜の假面 are `zjOnly`, and its 装备组合激活盟约 table
+// (shared/zjBonds.js zjEquipCombos) never runs outside ZHAJING. 湮灭模拟's four bond items (8 records, `annOnly`) belong
+// to that mode's content mods: their bonds are not in an official `gd.bondIds` and the shop drops every `annOnly` item
+// (gamedata.js shopItemsByTier), so an official match can never pair them either.
+const GRANTS = Object.values(DATA.items).filter((r) => r.giveBondId && r.zjOnly !== true && r.annOnly !== true).map((r) => r.id).sort();
 
 /** A target chess outside `bond` (and not 调和: its +1 would blur the count). */
 const outsider = (bond) => Object.values(DATA.chess).find((c) => c.visible && !c.isGolden && c.tier <= 2 && !c.bonds.includes(bond) && !c.bonds.includes('maniShip')).chessId;
@@ -72,9 +76,22 @@ test('缪尔赛思 hands out 变形同构体 on purchase (garrison_76), the boug
   h.invariants();
 });
 
-test('every pairing (18 bond items × normal / golden, both 变形同构体): the wearer counts in prep, in the views, in the battle input and in the real battle', () => {
-  const grants = Object.values(DATA.items).filter((r) => r.giveBondId);
+test('every pairing (18 official bond items × normal / golden, both 变形同构体): the wearer counts in prep, in the views, in the battle input and in the real battle', () => {
+  const grants = Object.values(DATA.items).filter((r) => r.giveBondId && r.zjOnly !== true && r.annOnly !== true);
   assert.equal(grants.length, 36);
+  // 湮灭模拟's four bond items (萨卡兹的断角 / 提卡兹之根 / 罗德岛抑制环 / 罗德岛特制源石弧, 8 records with `annOnly: true`)
+  // take part in the same pairing on their OWN bonds — but only inside that mode: no official shop or item pool lists
+  // them, and 罗德岛 / 卡兹戴尔 are not official bonds at all.
+  const annGrants = Object.values(DATA.items).filter((r) => r.giveBondId && r.annOnly === true);
+  assert.equal(annGrants.length, 8);
+  assert.deepEqual([...new Set(annGrants.map((r) => r.giveBondId))].sort(), ['kazdelShip', 'rhodesShip']);
+  {
+    const official = prep({ fake: true });
+    const shopIds = new Set(Object.values(official.m.gd.shopItemsByTier).flat());
+    for (const r of annGrants) assert.ok(!shopIds.has(r.id), `${r.id}: an annOnly item never reaches an official shop`);
+    for (const bond of ['kazdelShip', 'rhodesShip']) assert.ok(!official.m.gd.bondIds.includes(bond), `${bond}: annihilation-only bond`);
+    official.m.dispose();
+  }
   assert.equal(new Set(grants.map((r) => r.giveBondId)).size, 14, '14 bonds have a bond item (the official talent\'s list)');
   for (const r of grants) {
     const bond = r.giveBondId;

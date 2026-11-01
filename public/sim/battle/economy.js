@@ -15,7 +15,8 @@ export class BattleEconomy {
 
   /**
    * Record an IN_BATTLE layer gain (no-op when gains are disabled). Returns the layers added: at most the room left
-   * under BOND_LAYER_CAP (999, shared/constants.js) on the live copy — the client's AddBondCount `min(L + n, 999)`; the
+   * under the bond's cap on the live copy — the client's AddBondCount `min(L + n, 999)`; the cap is BOND_LAYER_CAP (999,
+   * shared/constants.js) except in a mode that configures its own (`flags.bondLayerCap`, 炸惊模拟 规则1: 9999). The
    * `layerGain` hook (魔王's +1 …) runs first, then the clamp; a bond already at the cap gains 0 (no hook, no event).
    * Without a live copy of the bond (a partial PlayerBattleInput) the battle's own gains count; the match's settle
    * clamps the persistent count the same way.
@@ -45,11 +46,23 @@ export class BattleEconomy {
       }
     }
     const live = ps && ps.bonds[bondId] ? (ps.bonds[bondId].layers ?? 0) : (pp.layerGains[bondId] ?? 0);
-    if (!uncap && !(layerGainRoom(live, Infinity) > 0)) return 0;
+    // 炸惊模拟 规则1: the mode's own per-bond layer cap (`flags.bondLayerCap`, GameData.bondLayerCap) — NOT the process-wide
+    // setBondLayerCap() of shared/constants.js, which would lift a normal room running in the same process to 9999 too
+    // (the cross-room pollution this line exists to avoid). Undefined in every other mode ⇒ the branch below is dead and
+    // the official 999 cap applies unchanged.
+    // ★ The mode cap must bound the ROOM CHECK as well, not only the add: `layerGainRoom(live, Infinity)` reads the global
+    // 999, so a bond already at 999 used to short-circuit to 0 and never reach the mode's own 9999 (silent, audit B2
+    // 2026-10-29). `modeCap == null` (every other mode) keeps the two original `layerGainRoom` calls byte for byte.
+    const modeCap = Number(this.flags && this.flags.bondLayerCap) > 0 ? Number(this.flags.bondLayerCap) : null;
+    /** The room left on a bond holding `at` layers: under the mode's cap, or the official 999 of layerGainRoom. */
+    const roomAt = (at) => (modeCap == null ? layerGainRoom(at, Infinity) : Math.max(0, modeCap - at));
+    /** `n` clamped to that room — `layerGainRoom` when the mode configures no cap. */
+    const clampTo = (at, want) => (modeCap == null ? layerGainRoom(at, want) : Math.max(0, Math.min(want, modeCap - at)));
+    if (!uncap && !(roomAt(live) > 0)) return 0;
     const source = opts.source ?? null;
     const ctx = { playerId, bondId, n: amount, reason, source, tile: Array.isArray(opts.tile) ? opts.tile : this._sourceTile(source) };
     if (this._hooks.layerGain) { this.emit('layerGain', ctx); if (!(ctx.n > 0) || !Number.isFinite(ctx.n)) return 0; }
-    const add = uncap ? Math.max(0, Math.floor(ctx.n)) : layerGainRoom(live, ctx.n);
+    const add = uncap ? Math.max(0, Math.floor(ctx.n)) : clampTo(live, ctx.n);
     if (!(add > 0)) return 0;
     pp.layerGains[bondId] = (pp.layerGains[bondId] ?? 0) + add;
     if (ps && ps.bonds[bondId]) ps.bonds[bondId].layers = (ps.bonds[bondId].layers ?? 0) + add;

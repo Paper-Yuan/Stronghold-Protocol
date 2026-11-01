@@ -11,7 +11,7 @@
 //               square with a tail pointing left + the icon only); pop-in, 3 s, fade. The parent keys it by the emote's
 //               seq so a newer emote replaces the old one and pops again, and passes the arrival time (`at`) so a
 //               bubble mounted late resumes its timeline instead of restarting it.
-//   EmoteWheel  bottom-left 交流 button (official emoji_btn / emoji_btn_disable) + panel (emoji_bkg): one page per theme
+//   EmoteWheel  bottom-left square 表情 button (the official robot logo, centred) + panel (emoji_bkg): one page per theme
 //               with 3×2 cells (emoji_cell_bkg), pager dots, swipe / drag / arrow keys / wheel to change the page (the
 //               wheel turns one page per gesture, a plain vertical mouse wheel included, like Unity's ScrollRect). The
 //               panel reopens on the theme of the last emote sent (localStorage). Sending closes the panel and greys
@@ -303,15 +303,19 @@ export function EmoteWheel({ onSend, open, onToggle, disabled = false, cooldownM
   };
 
   const theme = EMOTE_THEMES[clampPage(page)];
-  const btnSprite = emoteUiSprite(disabled || cooling ? 'emoji_btn_disable' : 'emoji_btn');
   const panelBg = emoteUiSprite('emoji_bkg');
   const cellBg = emoteUiSprite('emoji_cell_bkg');
   const panelStyle = [panelBg && `--ewheel-bg:url("${panelBg}")`, cellBg && `--ewheel-cell:url("${cellBg}")`].filter(Boolean).join(';');
   return html`<div class="ewheel">
-    <button type="button" class=${cx('gm__gear', 'ewheel__btn', open && 'is-on', cooling && 'is-cooling')}
+    ${/* 角落的表情键（业主 2026-10-29 第三版）：正方形、与 ⚙ 等大，官方机器人 logo（GIcon emote）居中；不再用
+          153×55 的长条贴图，也没有可见的「交流」文字（aria-label / title 用「表情」，两种语言包都有）。类名里**不带**
+          `gm__gear` —— 那是设置键的类，`document.querySelector('.gm__gear')` 必须仍然先匹配到设置键。 */ null}
+    <button type="button" class=${cx('ewheel__btn', open && 'is-on', cooling && 'is-cooling')}
+      data-testid="hud-emoji"
       onClick=${() => onToggle(!open)}
+      aria-label=${t('表情')} title=${t('表情')}
       aria-expanded=${open ? 'true' : 'false'} aria-haspopup="dialog"
-      aria-label=${t('表情')} title=${t('表情')} disabled=${disabled || cooling}>
+      disabled=${disabled || cooling}>
       <${GIcon} name="emote" />
     </button>
     ${open ? html`<div class=${cx('ewheel__panel', panelBg && 'has-sprite', cellBg && 'has-cell')} style=${panelStyle} role="dialog" aria-label=${t('交流')}>

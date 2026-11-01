@@ -92,6 +92,25 @@ export const actions = {
   reward: (idx) => act('g.reward', { idx }),
   offer: (offer, idx, refresh = false, cardId) => act(refresh ? 'g.offerRefresh' : 'g.offer', { offerId: offer.id, pluginId: offer.pluginId, seq: offer.seq, idx, cardId }),
   choice: (idx, choiceId) => act('g.choice', choiceId === undefined ? { idx } : { idx, choiceId }),
+  // 炸惊模拟 · 锻造器 (业主 2026-10-14；engine-core T11 2026-10-28 落地)：点一张卡即选。`optId` 与这一组的 `rarity`
+  // **两个都必须带**（协议层只收 normal|epic|legend；服务端还会核对它与 `rolled.rarity` 一致，不一致 → BAD_TARGET）。
+  // 成功回一帧完整的新 `m.private.forge`（扣数 / 累计 / 抽好下一组），所以 UI 不需要任何乐观更新。
+  forgeTake: (optId, rarity) => act('g.forgeTake', { optId, rarity }, { sfx: 'pick' }),
+  // 湮灭模拟 · 藏品 draft (the 1-of-3 negative pick: server/match/relics.js pickRelic)
+  relic: (idx) => act('g.relic', { idx }),
+  // 炸惊模拟 · 惊变 重抽 (one offered 惊变 card, its own slot; the server's MatchSpDraft.refreshSpCard: once per card,
+  // `modes[*].jibian.rerolls` per player). **The protocol entry is engine-core's task (T5) — the key name and `{ idx }`
+  // shape are what shared/protocol.js will carry; if that lands under another name, this one line changes.**
+  // Refusals (BAD_TARGET / RATE / SOLD_OUT) come back as codes and are toasted by act() from ERR_TEXT — no new string here.
+  cardRefresh: (idx) => act('g.cardRefresh', { idx }, { sfx: 'refresh' }),
+  // 超限模拟 (solo_infinite): 词条抉择 / 战术撤退 / 战斗倍速（服务端只在超限局接受）
+  traitChoice: (idx) => act('g.traitChoice', { idx }),
+  traitReroll: () => act('g.traitReroll', {}, { quiet: true }),
+  traitSkip: () => act('g.traitSkip', {}, { quiet: true }),
+  traitLock: (idx) => act('g.traitLock', { idx }, { quiet: true }),
+  contract: (id) => act('g.contract', { id }, { sfx: 'tab' }),
+  retreat: () => act('g.retreat', {}, { sfx: 'back' }),
+  combatSpeed: (speed) => act('g.combatSpeed', { speed: speed === 2 ? 2 : 1 }, { quiet: true }),
   ready: (ready) => act('g.ready', { ready }, { sfx: ready ? 'ready' : 'back' }),
   emote: (id) => act('g.emote', { id }, { quiet: true }),
   // `playerId`: the player tapped in the team panel (a shared field shows two) — what an eliminated viewer follows

@@ -78,9 +78,14 @@ function setup({ mode = 'solo', bots = 0, round = 1, pid = 'p_0', seed = 70 } = 
 
 test('official data: a 进入休整期时 / 休整期结束时 / 刷新时 特质 works in the 整备区 exactly when its text says so', () => {
   const PREP = new Set(['SERVER_PREP_START', 'SERVER_PREP_FIN', 'SERVER_REFRESH_SHOP']);
+  // 炸惊模拟's own garrison records (238) are a different pool: 22 of their prep traits carry no official conditionkey,
+  // and no official chess can reach one (asserted below). Their ids are either `garrison_zj_*` or — the 颂乐人偶 collab
+  // operators, `garrison_mujica_*` — owned only by `chess_zj_*`. This test is about the official records only.
+  const zjChess = new Set(Object.values(DATA.chess).filter((c) => c.zhajing === true || /^chess_zj_/.test(c.chessId)).map((c) => c.chessId));
+  const isZj = (g) => /^garrison_zj_/.test(g.garrisonId) || ((g.owners || []).length > 0 && g.owners.every((id) => zjChess.has(id)));
   const bench = [];
   for (const g of Object.values(DATA.garrisons)) {
-    if (!PREP.has(g.eventType)) continue;
+    if (!PREP.has(g.eventType) || isZj(g)) continue;
     const key = g.bbStr && g.bbStr.conditionkey;
     if (/整备区时也有效|整备区也有效/.test(g.desc)) {
       assert.equal(key, undefined, `${g.garrisonId}: a bench trait carries no condition key`);
@@ -98,6 +103,12 @@ test('official data: a 进入休整期时 / 休整期结束时 / 刷新时 特�
     assert.equal(g.bbStr.conditionkey, 'character_target_inboard', `${id} (赫默): deployed only`);
     assert.doesNotMatch(g.desc, /整备区/);
   }
+  // 炸惊模拟's pool cannot leak into an official match: every garrison_zj_* / garrison_mujica_* record is unreachable
+  // from the official pool — a zj-named id has no official owner, and a collab garrison is owned by chess_zj_* only.
+  const zjIds = new Set(Object.keys(DATA.garrisons).filter((id) => /^garrison_zj_/.test(id) || /^garrison_mujica_/.test(id)));
+  const referencedByOfficial = Object.values(DATA.chess)
+    .filter((c) => !zjChess.has(c.chessId) && (c.garrisonIds || []).some((id) => zjIds.has(id)));
+  assert.deepEqual(referencedByOfficial.map((c) => c.chessId), [], 'no official chess carries a 炸惊 garrison');
   assert.equal(DATA.bonds.siracusaShip.countMode, 'BOARD', '叙拉古 counts deployed operators only');
   assert.equal(DATA.bonds.visiShip.countMode, 'BOARD_AND_DECK', '远见 also counts the 整备区');
 });

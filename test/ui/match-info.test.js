@@ -56,7 +56,11 @@ const PUB = {
   bannedChess: ['chess_char_5_02_a', 'chess_char_1_17_a', 'chess_nope_a', 'chess_char_3_09_a', 'chess_char_1_02_a'],
 };
 const MODE = { inactiveBondIds: ['arcaneShip'] };
-const model = () => matchInfoModel(PUB, { bonds: data.list('bonds'), chess: (id) => data.lookup('chess', id), mode: MODE });
+// Official bond view only: 炸惊模拟's 5 `zjOnly` bonds (S.E.E.S / 颂乐人偶 …) are deleted from every non-ZHAJING view by
+// shared/zjBonds.js zjBondView(bonds, {merge:false}), and 湮灭专属 mod's 2 `annOnly` bonds (罗德岛 / 卡兹戴尔) from every
+// non-ANNIHILATION view — the briefing is handed one of those views, never the raw data/bonds.json.
+const OFFICIAL_BONDS = () => data.list('bonds').filter((b) => b && b.zjOnly !== true && b.annOnly !== true);
+const model = () => matchInfoModel(PUB, { bonds: OFFICIAL_BONDS(), chess: (id) => data.lookup('chess', id), mode: MODE });
 
 test('matchInfoModel: the two greyed kinds, the briefing order, banned operators by tier (known only), banned members per bond', () => {
   const m = model();
@@ -68,7 +72,7 @@ test('matchInfoModel: the two greyed kinds, the briefing order, banned operators
   // bondOrder, then identifier: 调和 (bondOrder 1) leads the add-on row as in the official briefing
   assert.deepEqual(m.core.map((b) => b.name), ['炎', '萨尔贡', '维多利亚', '谢拉格', '拉特兰', '阿戈尔', '叙拉古', '卡西米尔']);
   assert.equal(m.addon[0].name, '调和');
-  assert.equal(m.core.length + m.addon.length, Object.keys(DATA.bonds).length, 'every bond, once');
+  assert.equal(m.core.length + m.addon.length, OFFICIAL_BONDS().length, 'every official bond, once (23 = 28 − 5 zjOnly)');
   assert.ok(m.core.every((b) => b.isCore) && m.addon.every((b) => !b.isCore));
   // tiers 1, 1, 3, 5 — ties keep the server's order; the unknown id is dropped
   assert.deepEqual(m.banned, ['chess_char_1_17_a', 'chess_char_1_02_a', 'chess_char_3_09_a', 'chess_char_5_02_a']);
@@ -361,14 +365,18 @@ test('the briefing, the strategy draft and the in-game 本局信息 tab all read
   assert.match(brief, /<\$\{MatchBondRow\} title=\$\{t\('附加盟约'\)\} micro="ADD-ON BONDS" bonds=\$\{info\.addon\} model=\$\{info\} \/>\s*<\$\{MatchLegend\} model=\$\{info\} \/>/);
   assert.match(brief, /<\$\{BannedOperators\} model=\$\{info\} \/>/);
   // (+ the viewer's 自选 pieces out of the shop: priv / diyData, 0.2.0 WE2)
-  assert.match(brief, /const info = matchInfoModel\(pub, \{ bonds: gd\.list\('bonds'\), chess: gd\.chess, mode, priv, diyData: \{ chess: data\.get\('chess'\), backups: data\.get\('backups'\) \} \}\);/);
+  // 炸惊模拟: the bond list goes through ui/zjView.js officialBonds() — the 5 `zjOnly` bonds must not reach an official
+  // room's blocks (GameData already drops them; a raw data.list('bonds') bypasses it). test/ui/zj-bonds-view.test.js
+  // owns that predicate; this line only guards the briefing's call.
+  assert.match(brief, /const info = matchInfoModel\(pub, \{ bonds: officialBonds\(gd\.list\('bonds'\), pub\?\.modeId \?\? pub\?\.difficulty\), chess: gd\.chess, mode, priv, diyData: \{ chess: data\.get\('chess'\), backups: data\.get\('backups'\) \} \}\);/);
   assert.doesNotMatch(brief, /brief-legend|brief-banned|function BondRow|bannedPerBond|disabledBondSets/, 'no own copy of the blocks');
   // (#484 / §35.6: the 本局遭遇敌方 section is ui/matchEnemies.js, also the draft dialog's enemy column)
   assert.match(brief, /<section class="brief-sec brief-sec--enemy" style="--i:1">\s*<\$\{MatchEnemies\} pub=\$\{pub\} gd=\$\{gd\} \/>\s*<\/section>/);
   assert.doesNotMatch(brief, /enemyIconUrl|factionIconUrl|brief-boss|brief-faction/, 'no own copy of the enemy section');
   const draft = read('public/js/screens/bandDraft.js');
   assert.match(draft, /import \{ MatchInfoDialog, matchInfoModel \} from '\.\.\/ui\/matchInfo\.js';/);
-  assert.match(draft, /const info = infoOpen \? matchInfoModel\(pub, \{ bonds: gd\.list\('bonds'\), chess: gd\.chess, mode, priv, diyData: \{ chess: data\.get\('chess'\), backups: data\.get\('backups'\) \} \}\) : null;/);
+  // 炸惊模拟: same official-view filter as the briefing (test/ui/zj-bonds-view.test.js owns the predicate).
+  assert.match(draft, /const info = infoOpen \? matchInfoModel\(pub, \{ bonds: officialBonds\(gd\.list\('bonds'\), pub\?\.modeId \?\? pub\?\.difficulty\), chess: gd\.chess, mode, priv, diyData: \{ chess: data\.get\('chess'\), backups: data\.get\('backups'\) \} \}\) : null;/);
   // (PR #643: 本局信息 in the step header, beside the difficulty)
   assert.match(draft, /class="stephead__info" data-testid="match-info-open" aria-haspopup="dialog" onClick=\$\{\(\) => setInfoOpen\(true\)\}\n\s+title=\$\{t\('本局信息'\)\}><\$\{Icon\} name="search" \/><span>\$\{t\('本局信息'\)\}<\/span><\/button>/);
   assert.match(draft, /<\$\{MatchInfoDialog\} open=\$\{infoOpen\} onClose=\$\{\(\) => setInfoOpen\(false\)\} model=\$\{info\}/);
@@ -377,6 +385,7 @@ test('the briefing, the strategy draft and the in-game 本局信息 tab all read
   assert.match(draft, /const turnKey = `\$\{draft\.turnPid \|\| ''\}\|\$\{myPick \|\| ''\}`;\n\s*useEffect\(\(\) => \{ setInfoOpen\(false\); \}, \[turnKey\]\);/);
   const drawer = read('public/js/ui/enemyDrawer.js');
   assert.match(drawer, /import \{ matchInfoModel, DiyBannedLine \} from '\.\/matchInfo\.js';/);
-  assert.match(drawer, /matchInfoModel\(pub, \{\s*bonds: data\.list\('bonds'\), chess: \(id\) => data\.lookup\('chess', id\), mode: data\.get\('config'\)\?\.modes\?\.\[pub\?\.modeId\],/);
+  // 炸惊模拟: the drawer reads the same official view (test/ui/zj-bonds-view.test.js owns the predicate).
+  assert.match(drawer, /matchInfoModel\(pub, \{\s*bonds: officialBonds\(data\.list\('bonds'\), pub\?\.modeId \?\? pub\?\.difficulty\), chess: \(id\) => data\.lookup\('chess', id\), mode: data\.get\('config'\)\?\.modes\?\.\[pub\?\.modeId\],/);
   assert.doesNotMatch(drawer, /bannedPerBond|disabledBondSets/, 'the drawer derives nothing on its own');
 });

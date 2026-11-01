@@ -1,58 +1,91 @@
-// public/js/ui/overlimitBondText.js — 超限模式下大盟约的效果文本（sweep 的盟约报告与局内的盟约详情共用）
+// public/js/ui/overlimitBondText.js — 超限盟约文案的「只强调数值片段」：**唯一实现**（分词 + 渲染）。
 //
-// 业主 2026-10-19：局内点开盟约详情时看到的是原版效果，和超限实际生效的数值不一致。
-// 这里把六条超限文本抽成一份，两处引用同一来源，避免再次走散。
+// S.W.E.E.P. 盟约报告的强化行（js/screens/sweep.js 的 BondPanel）与**局内**的盟约弹窗
+// （js/ui/bondStrip.js 的 BondPopup 盟约描述，只在超限局）都渲染这里的 OverlimitValueLine ——
+// 业主 2026-11-01：「局内显示盟约时也要按同一规则只强调数值片段」，并且「分色逻辑只有一份」，两处不许再各写一套。
+//
+// 口径（业主 2026-11-01）：一段盟约文案里**只有涉及数值的片段**用强调色，纯描述文字保持正文色，不整句染色。
+// 数据里的样式标记（`<@ba.vup>攻击力叠层上限由 25 层提高到 9999 层</>`）包的是整句短语，按这个口径不能复用 ——
+// 所以先把标记剥成明文（richTextPlain，纯函数、无 DOM），再用下面这条"值表达式"正则切段，不写标签解析器。
+//
+// 一个数值片段 = 一个「值表达式」：
+//   值      25 / 9999 / 0.2 / 1,000（小数与千分位），可带单位 % ％ 万 亿 —— +12% / 0.2% / 250万；
+//   式子    (15+0.2×层数)%：括号里用 ± × → ~ ～ / 连起来，括号外可再接单位；
+//   范围    25→9999、(1+0.25+0.01×层数) → 2×(1+0.25+0.01×层数)：`→` 与 `~` 是范围连接符，整段算一个数；
+//   因子    「层数」在式子里是变量（0.2×层数 是一个值），但**单独出现的「层数」是描述词、不是数值** ——
+//           因此式子必须以数值或括号开头（HEAD），"层数"只能出现在运算符后面。
+// 括号里的补充说明（（受层数影响）、（最终加算，不受攻击力加成影响））不含数值就不染色，含数值（（受层数影响，即每层 +0.2%））才染。
+//
+// 分色逻辑只有一份（业主 2026-11-01）：
+//   · 分词 = overlimitValueSegments（本文件，全仓唯一）；
+//   · 渲染 = OverlimitValueLine（本文件，全仓唯一）：数值片段是 <span class="olb-num">，其余是纯文本节点；
+//   · 颜色 = css/components.css 的 `.olb-num { color: var(--mint-400); }`（全仓唯一的一份颜色规则 ——
+//     css/screens/sweep.css 与局内的 css/screens/game-panels.css 都不再声明，只引用同一个类名）。
+//   两处渲染的都是本文件的同一个组件，所以片段序列与类名不可能走散（断言：test/ui/overlimit-bond-text.test.js）。
+//
+// ⚠ 本文件早先存过一版写死的超限盟约全文（`overlimitBondText` / `overlimitBondNow`）：全仓无 import、内容已过期，
+//   且与 data/bonds.json 的 `inf` 覆盖块冲突。那份内容已删除 —— 超限盟约文案的**唯一来源是数据**
+//   （data/bonds.json 的 `inf` 覆盖块，由 tools/build-data.mjs 生成），本文件只负责给文本片段分色。
+
+import { html } from './components.js';
+import { richTextPlain } from './richText.js';
+
+/** 数值片段用的共享类名。颜色规则全仓唯一一份：css/components.css 的 `.olb-num`。 */
+export const OVERLIMIT_NUM_CLASS = 'olb-num';
+
+const NUM_VALUE = String.raw`(?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d+)?`;
+const NUM_UNIT = String.raw`(?:[%％]|[万亿])?`;
+const NUM_TERM = String.raw`(?:${NUM_VALUE}${NUM_UNIT}|层数)`;
+const NUM_OP = String.raw`(?:\s*(?:[+\-×✕xX*→~～/])\s*)`;
+const NUM_GROUP = String.raw`\(\s*${NUM_TERM}(?:${NUM_OP}${NUM_TERM})*\s*\)`;
+const NUM_ITEM = String.raw`(?:${NUM_GROUP}${NUM_UNIT}|${NUM_TERM})`;
+const NUM_HEAD = String.raw`(?:${NUM_GROUP}${NUM_UNIT}|${NUM_VALUE}${NUM_UNIT})`;
+const OVERLIMIT_VALUE_RE = new RegExp(String.raw`[+\-]?${NUM_HEAD}(?:${NUM_OP}${NUM_ITEM})*`, 'g');
 
 /**
- * 超限模式下某个大盟约的效果文本（原版结构，一行一句；每项都带具体公式）。
- * 不是这六个大盟约时返回 null，调用方回落到 data/bonds.json 的 descRaw。
- * @param {string} bondId
- * @returns {string|null}
+ * 把一条盟约文案切成片段，`num: true` 的片段走强调色（`.olb-num`），其余是普通正文色。
+ * 只切不改字：片段文本按顺序拼起来逐字等于 `richTextPlain(line)`（断言见 test/ui/overlimit-bond-text.test.js）。
+ * @param {string} line 盟约文案原文（可带官方样式标记；`\n` = 换行，保留在普通片段里）
+ * @returns {{ text: string, num: boolean }[]}
  */
-export function overlimitBondText(bondId) {
-  // 业主 2026-10-19：超限文本要把每一项的具体数值公式写出来（基础值 + 每层值 × 层数）。
-  // 结构与原版一致：一行一句，不额外空行。
-  if (bondId === 'yanShip') {
-    return '【炎】干员<@ba.vup>攻击力</>提升<@ba.vup>(23+0.9×层数)%</><@autochess.gray>（受层数影响）</>，<@ba.vup>生命值</>额外提升<@ba.vup>(15+0.2×层数)%</><@autochess.gray>（受层数影响）</>\n<在场<@autochess.dgreen>6</>名不同【炎】干员>战斗开始时召唤可自主行动的<@ba.vup>“炎佑”</>，其攻击力生命值分别为开战时【炎】干员攻击力生命值总和的<@ba.vup>30%</>，“炎佑”同时攻击3个目标，可使用<@ba.vup>“祛恶之焰”</>，攻击时附带攻击力一定比例的灼燃损伤且周围敌人受到一定比例的元素脆弱\n<在场<@autochess.dgreen>9</>名不同【炎】干员>改为召唤<@ba.vup>2</>只<@ba.vup>“炎佑”</>，攻击力提升至<@ba.vup>1.5</>倍，受到的伤害<@ba.vup>-90%</>';
+export function overlimitValueSegments(line) {
+  const text = richTextPlain(line);
+  /** @type {{ text: string, num: boolean }[]} */
+  const out = [];
+  let last = 0;
+  for (const m of text.matchAll(OVERLIMIT_VALUE_RE)) {
+    const at = m.index ?? 0;
+    if (at > last) out.push({ text: text.slice(last, at), num: false });
+    out.push({ text: m[0], num: true });
+    last = at + m[0].length;
   }
-  if (bondId === 'sargonShip') {
-    return '【萨尔贡】干员开启技能时，所有【萨尔贡】干员<@ba.vup>攻击速度+12</>（至多叠<@ba.vup>25</>层），持续<@ba.vup>(5+0.22×层数)</>秒<@autochess.gray>（受层数影响，每层持续时间独立计算）</>\n<在场<@autochess.dgreen>6</>名不同【萨尔贡】干员>每层攻击速度还会提供<@ba.vup>攻击力+12%</>（至多<@ba.vup>25</>层，即<@ba.vup>+300%</>）；【萨尔贡】<@ba.vup>盟约层数每达到100层</>，全体【萨尔贡】干员额外获得<@ba.vup>5%</>攻击力\n<@ba.acrem>选择策略【娜仁图亚】时，<在场<@autochess.dgreen>6</>名不同【萨尔贡】干员>的攻击力加成减半（每层<@ba.vup>+6%</>），改为开启技能时把自身装备借给周围<@ba.vup>8</>名干员，持续<@ba.vup>60</>秒</>';
-  }
-  if (bondId === 'victoriaShip') {
-    return '携带装备的【维多利亚】干员造成的<@ba.vup>伤害提升至(125+0.8×层数)%</><@autochess.gray>（受层数影响）</>\n<每叠加<@autochess.dgreen>25</>层>获得<@ba.vup>1</>件带有随机效果的<@ba.vup>维式重锤</>，至多<@ba.vup>30</>件\n<在场<@autochess.dgreen>6</>名不同【维多利亚】干员>携带装备的【维多利亚】干员<@ba.vup>攻击力+50%</>，携带进阶装备时改为<@ba.vup>+80%</>；<@ba.vup>盟约层数超过750层</>（30件维式重锤）后，每额外<@ba.vup>50</>层，造成的<@ba.vup>伤害额外提升1%</>';
-  }
-  if (bondId === 'egirShip') {
-    return '【阿戈尔】干员<@ba.vup>生命值提升(35+1×层数)%</><@autochess.gray>（受层数影响）</>，<@ba.vup>攻击力提升0.8%×层数</><@autochess.gray>（受层数影响）</>\n战斗开始时，【阿戈尔】干员会<@ba.vup>吞噬</>身前一格干员对其造成<@ba.vdown>5000</>点物理伤害并获得其<@ba.vup>基础攻击力</>和<@ba.vup>阻挡数</>，使【阿戈尔】叠加等于被吞噬者等阶的<@ba.vup>盟约层数</><@autochess.gray>（【阿戈尔】之间优先更靠左和靠上的干员发起吞噬）</>\n<在场<@autochess.dgreen>5</>名不同【阿戈尔】干员>前<@ba.vup>3</>名【阿戈尔】干员首次被击倒时<@ba.vup>立刻复活</>并获得<@ba.vup>50</>攻击速度';
-  }
-  if (bondId === 'lateranoShip') {
-    return '【拉特兰】干员开启技能时获得的<@ba.vup>弹药量+(5+1.5×层数)%</><@autochess.gray>（受层数影响，<@ba.vup>600 层封顶</>）</>\n<在场<@autochess.dgreen>6</>名不同【拉特兰】干员>任意【拉特兰】干员每消耗<@ba.vup>1</>发弹药，全体【拉特兰】干员<@ba.vup>攻击力+8%</>（至多<@ba.vup>+700%</>，即<@ba.vup>88</>发叠满）；每累计消耗<@ba.vup>100</>发弹药，对全场敌人造成全队【拉特兰】干员<@ba.vup>攻击力总和20%</>的真实伤害；<@ba.vup>盟约层数超过600层</>后，每额外<@ba.vup>100</>层，全体【拉特兰】干员<@ba.vup>无视防御+0.4%、生命+1%、攻击+1%</>';
-  }
-  if (bondId === 'siracusaShip') {
-    return '【叙拉古】干员部署后<@ba.vup>攻击速度+(25+0.8×层数)</>，持续<@ba.vup>(32+0.4×层数)</>秒<@autochess.gray>（受层数影响）</>\n<在场<@autochess.dgreen>6</>名不同【叙拉古】干员>【叙拉古】干员部署后进入等时长的<@ba.vup>隐匿</>状态，【叙拉古】干员隐匿状态下和脱离隐匿<@ba.vup>10</>秒内对敌人攻击时有<@ba.vup>8%</>的概率造成<@ba.vup>(5000+50×层数)+目标最大生命值0.5%</><@autochess.gray>（受层数影响）</>点真实伤害并<@ba.vup>恐惧</>目标<@ba.vup>3</>秒，对<@ba.vup>精英</>与<@ba.vup>首领</>单位该伤害至多<@ba.vup>250万</>；若目标<@ba.vup>免疫控制</>或被超限抗性抵抗，则改为造成等额真实伤害';
-  }
-  return null;
+  if (last < text.length) out.push({ text: text.slice(last), num: false });
+  return out;
 }
 
-
 /**
- * 把超限文本里的 `(基础+每层×层数)` 公式代入当前层数，得到「当前效果」用的纯数值文本。
- * 业主 2026-10-19（方案 A）：当前效果只显示「现在多少」，公式留在「盟约效果」里。
- * @param {string} bondId
- * @param {number} layers
- * @returns {string|null} 不是这六个大盟约时返回 null
+ * 一行盟约文案：数值片段 `<span class="olb-num">`，其余是纯文本节点（不带类名，所以「整句都在强调节点里」在结构上
+ * 不可能发生）；原文里的换行渲染成 `<br>`（与 ui/gameComponents.js 的 RichText 同一个换行口径，局内的多行描述
+ * 不会挤成一行）。
+ *
+ * 故意不读 hooks（没有 useMemo）：组件是纯函数，测试可以直接调用它拿到 vnode 树——两处渲染的一致性断言
+ * （sweep 的强化行 vs 局内的盟约描述）就是这么比的，不需要 DOM、不需要浏览器。
+ * @param {{ text: string, class?: string|null }} props `class` 是外层 <p> 自己的类名（各调用方传自己的版式类名）
  */
-export function overlimitBondNow(bondId, layers) {
-  const raw = overlimitBondText(bondId);
-  if (!raw) return null;
-  const L = Number.isFinite(Number(layers)) ? Math.max(0, Number(layers)) : 0;
-  const fmt = (v) => String(Math.round(v * 100) / 100);
-  return raw
-    // (a+b×层数) / (a×层数)
-    .replace(/\((\d+(?:\.\d+)?)(?:\+([\d.]+)×层数|×层数)\)/g, (whole, a, b) => {
-      const base = Number(a) || 0;
-      const per = b == null ? 1 : (Number(b) || 0);
-      return fmt(base + per * L);
-    })
-    // 不带括号的 a%×层数（阿戈尔的攻击力那一项）
-    .replace(/(\d+(?:\.\d+)?)%×层数/g, (whole, pct) => fmt((Number(pct) || 0) * L) + '%');
+export function OverlimitValueLine({ text, class: cls = null }) {
+  const segs = overlimitValueSegments(text);
+  /** @type {any[]} */
+  const nodes = [];
+  segs.forEach((s, i) => {
+    // 一条片段里的换行切成 <br>：RichText 也是把 \n 画成 <br>（局内描述是多行的）
+    const parts = s.text.split('\n');
+    parts.forEach((part, j) => {
+      if (j) nodes.push(html`<br key=${`br-${i}-${j}`} />`);
+      if (!part) return;
+      nodes.push(s.num
+        ? html`<span class=${OVERLIMIT_NUM_CLASS} key=${`${i}-${j}`}>${part}</span>`
+        : part);
+    });
+  });
+  return html`<p class=${cls}>${nodes}</p>`;
 }

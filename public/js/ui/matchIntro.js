@@ -38,7 +38,7 @@ export function TurnBanner({ text, onDone }) {
     return () => clearTimeout(id);
   }, []);
   if (quiet) return null;
-  return html`<div class="tbanner" role="status" aria-live="polite">
+  return html`<div class="tbanner tbanner--intro" role="status" aria-live="polite">
     <div class="tbanner__dim"></div>
     <div class="tbanner__band">
       <div class="tbanner__bar">

@@ -247,7 +247,12 @@ describe('名片干员 seat cards (real server)', { skip: !ENABLED && 'set SP_E2
         await guest.page.waitForFunction(() => !document.querySelector('.modal__box.cardpick'));
       }
 
-      assert.deepEqual(problemsOf([host, guest]), []);
+      // The two third-party origins this page reaches for — the non-blocking web fonts (public/index.html) and the title
+      // screen's thanks list, whose /data/thanks.json fallback is what an offline machine gets — fail on a machine
+      // without internet, and the repo's other browser tests ignore them the same way (test/ui/i18n.e2e.test.js,
+      // test/ui/leftovers.e2e.test.js). Every other console error, failed request and HTTP error still fails here.
+      const external = /fonts\.(googleapis|gstatic)\.com|ganxiemingdan\.jiangjiangze\.icu/;
+      assert.deepEqual(problemsOf([host, guest]).filter((p) => !external.test(p)), []);
     } finally {
       await host.close();
       await guest.close();

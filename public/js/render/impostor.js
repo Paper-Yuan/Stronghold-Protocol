@@ -41,7 +41,9 @@ export class ImpostorAtlas {
   constructor(renderer) {
     this.P = globalThis.PIXI;
     this.R = renderer;
-    this.res = Math.max(1, Math.min(2, renderer.resolution || 1));
+    // 画面质量的超采样（host.js TIER_SS：ultra 1.25 / extreme 1.5）会把 resolution 抬到 2.5–3，人群精灵的
+    // 帧分辨率上限跟着放到 3，否则超清/极致仍停在 2× 的贴图上（业主 2026-10-29 加档的连带项）。
+    this.res = Math.max(1, Math.min((renderer.resolution || 1) >= 2.5 ? 3 : 2, renderer.resolution || 1));
     this.pages = [];
     this.parked = new this.P.Container(); // skeletons of impostor units (never rendered directly)
     this.parked.visible = false;

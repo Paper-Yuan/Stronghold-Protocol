@@ -1,0 +1,1207 @@
+{
+  "_doc": "湮灭模拟 data patch — merged into data/config.json + data/bosses.json by patch-data.mjs.",
+  "modes": {
+    "mode_single_annihilation": {
+      "modeId": "mode_single_annihilation",
+      "name": "湮灭模拟",
+      "code": "AC-5",
+      "sortId": 6,
+      "type": "SINGLE",
+      "difficulty": "ANNIHILATION",
+      "inScope": true,
+      "color": "#5b0a14",
+      "iconId": "mode_annihilation_icon",
+      "backgroundId": "background_annihilation",
+      "desc": "敌方攻击强度突破游戏设定上限的超限模拟训练",
+      "effectDescList": [
+        "·作战环境完全崩坏，所有地图机制全部升级为致命级",
+        "·究极危险敌人，攻击模式完全无规律",
+        "·房间内可选湮灭蚀流 1~6，逐级加码",
+        "·蚀流6「无尽湮灭」：回合无限、无毒雾、全随机、无上限成长",
+        "·蚀流2起加入藏品抽取"
+      ],
+      "featureList": [
+        "作战环境完全崩坏，所有地图机制全部升级为致命级",
+        "出现远超常规认知的究极危险敌人，攻击模式完全无规律",
+        "对局开始前可在房间内选择「湮灭蚀流 1~6」：核心/附加盟约按总数1/3（至少5个，附加不含绝技）→1/2禁选、4→5类随机敌人、毒雾60秒→20秒",
+        "蚀流2起出现藏品：开局3选1负面藏品、随机增益藏品；蚀流4改为每2回合一次负面3选1",
+        "蚀流3起所有敌人生命与攻击+20%；蚀流5回合数提升至30，终局Boss/隐秘核心移至第29/30回合",
+        "第14/15、24/25回合为高压精英关；真正触发隐藏核心结算的仍是第19/20（30回合版为第29/30）回合",
+        "开局从3个负面藏品中选择1个，此后按蚀流等级每4或每2回合再选一次；增益藏品开局、第10/15（蚀流5再+20/25）回合获得",
+        "第3、5、7、9、11、13、15、17、19、21、23、25、27、29回合各提供一次悬赏决策（即第2、4、…、28轮后）；此后每4回合一次",
+        "蚀流4：第8、12、16、20回合的悬赏决策额外获得1个随机增益藏品",
+        "蚀流5：第22、24、26、28回合的悬赏决策额外获得1个随机增益藏品",
+        "蚀流6「无尽湮灭」：回合数无限，只有全员淘汰才会结束；战场不再释放毒雾；盟约叠层无层数限制；干员装备道具数量无限制；所有盟约干员都不禁用",
+        "蚀流6：怪物种类增加至全部6类，Boss与隐秘核心Boss全随机（等概率）；第30回合后每经过3个回合出现一次Boss与隐秘核心",
+        "蚀流6：第8、12、14、16、18、20、22、24、26、28回合的悬赏决策各给1个随机增益藏品，此后每4个回合一次悬赏决策与增益藏品、每2个回合一次藏品3选1",
+        "蚀流6：藏品全部发完后不再发放，改为每次悬赏决策后我方干员攻击力与生命×1.2、敌方单位生命/攻击/防御×1.2（可无限叠加）"
+      ],
+      "unlockText": "通关【终极模拟】后解锁",
+      "specialPhaseTime": 150,
+      "activeBondIds": [
+        "yanShip",
+        "sargonShip",
+        "victoriaShip",
+        "kjeragShip",
+        "lateranoShip",
+        "egirShip",
+        "siracusaShip",
+        "kazimierzShip",
+        "preciShip",
+        "swiftShip",
+        "skillfulShip",
+        "arcaneShip",
+        "steadShip",
+        "deputShip",
+        "visiShip",
+        "miraShip",
+        "investShip",
+        "raidShip",
+        "indomShip",
+        "maniShip",
+        "emptyShip",
+        "soloShip",
+        "suntShip"
+      ],
+      "inactiveBondIds": [],
+      "inactiveEnemyKeys": [],
+      "lastRound": 19,
+      "bossRound": 19,
+      "hiddenRound": 20,
+      "rounds": {
+        "1": {
+          "template": "act1autochess_01",
+          "bossTemplates": null,
+          "combatTimeLimit": 45,
+          "levelMaxPlayTime": 45,
+          "prepTime": null,
+          "prepTimeData": 300,
+          "isSpPrepare": false,
+          "isBoss": false,
+          "isHidden": false,
+          "bossOvertimeAfter": null
+        },
+        "2": {
+          "template": "act1autochess_02",
+          "bossTemplates": null,
+          "combatTimeLimit": 45,
+          "levelMaxPlayTime": 45,
+          "prepTime": null,
+          "prepTimeData": 300,
+          "isSpPrepare": false,
+          "isBoss": false,
+          "isHidden": false,
+          "bossOvertimeAfter": null
+        },
+        "3": {
+          "template": "act1autochess_03",
+          "bossTemplates": null,
+          "combatTimeLimit": 55,
+          "levelMaxPlayTime": 55,
+          "prepTime": null,
+          "prepTimeData": 300,
+          "isSpPrepare": true,
+          "isBoss": false,
+          "isHidden": false,
+          "bossOvertimeAfter": null
+        },
+        "4": {
+          "template": "act1autochess_04",
+          "bossTemplates": null,
+          "combatTimeLimit": 55,
+          "levelMaxPlayTime": 55,
+          "prepTime": null,
+          "prepTimeData": 300,
+          "isSpPrepare": false,
+          "isBoss": false,
+          "isHidden": false,
+          "bossOvertimeAfter": null
+        },
+        "5": {
+          "template": "act1autochess_05",
+          "bossTemplates": null,
+          "combatTimeLimit": 55,
+          "levelMaxPlayTime": 55,
+          "prepTime": null,
+          "prepTimeData": 300,
+          "isSpPrepare": false,
+          "isBoss": false,
+          "isHidden": false,
+          "bossOvertimeAfter": null
+        },
+        "6": {
+          "template": "act1autochess_06",
+          "bossTemplates": null,
+          "combatTimeLimit": 70,
+          "levelMaxPlayTime": 70,
+          "prepTime": null,
+          "prepTimeData": 300,
+          "isSpPrepare": false,
+          "isBoss": false,
+          "isHidden": false,
+          "bossOvertimeAfter": null
+        },
+        "7": {
+          "template": "act1autochess_07",
+          "bossTemplates": null,
+          "combatTimeLimit": 85,
+          "levelMaxPlayTime": 85,
+          "prepTime": null,
+          "prepTimeData": 300,
+          "isSpPrepare": false,
+          "isBoss": false,
+          "isHidden": false,
+          "bossOvertimeAfter": null
+        },
+        "8": {
+          "template": "act1autochess_h01",
+          "bossTemplates": null,
+          "combatTimeLimit": 85,
+          "levelMaxPlayTime": 85,
+          "prepTime": null,
+          "prepTimeData": 300,
+          "isSpPrepare": false,
+          "isBoss": false,
+          "isHidden": false,
+          "bossOvertimeAfter": null
+        },
+        "9": {
+          "template": "act1autochess_h02",
+          "bossTemplates": null,
+          "combatTimeLimit": 95,
+          "levelMaxPlayTime": 95,
+          "prepTime": null,
+          "prepTimeData": 300,
+          "isSpPrepare": true,
+          "isBoss": false,
+          "isHidden": false,
+          "bossOvertimeAfter": null
+        },
+        "10": {
+          "template": "act1autochess_h03",
+          "bossTemplates": null,
+          "combatTimeLimit": 95,
+          "levelMaxPlayTime": 95,
+          "prepTime": null,
+          "prepTimeData": 300,
+          "isSpPrepare": false,
+          "isBoss": false,
+          "isHidden": false,
+          "bossOvertimeAfter": null
+        },
+        "11": {
+          "template": "act1autochess_h04",
+          "bossTemplates": null,
+          "combatTimeLimit": 115,
+          "levelMaxPlayTime": 115,
+          "prepTime": null,
+          "prepTimeData": 300,
+          "isSpPrepare": true,
+          "isBoss": false,
+          "isHidden": false,
+          "bossOvertimeAfter": null
+        },
+        "12": {
+          "template": "act1autochess_h05",
+          "bossTemplates": null,
+          "combatTimeLimit": 115,
+          "levelMaxPlayTime": 115,
+          "prepTime": null,
+          "prepTimeData": 300,
+          "isSpPrepare": false,
+          "isBoss": false,
+          "isHidden": false,
+          "bossOvertimeAfter": null
+        },
+        "13": {
+          "template": "act1autochess_h06",
+          "bossTemplates": null,
+          "combatTimeLimit": 115,
+          "levelMaxPlayTime": 115,
+          "prepTime": null,
+          "prepTimeData": 300,
+          "isSpPrepare": false,
+          "isBoss": false,
+          "isHidden": false,
+          "bossOvertimeAfter": null
+        },
+        "14": {
+          "template": "act1autochess_h01",
+          "bossTemplates": null,
+          "combatTimeLimit": 115,
+          "levelMaxPlayTime": 115,
+          "prepTime": null,
+          "prepTimeData": 300,
+          "isSpPrepare": false,
+          "isBoss": false,
+          "isHidden": false,
+          "bossOvertimeAfter": null
+        },
+        "15": {
+          "template": "act1autochess_h02",
+          "bossTemplates": null,
+          "combatTimeLimit": 115,
+          "levelMaxPlayTime": 115,
+          "prepTime": null,
+          "prepTimeData": 300,
+          "isSpPrepare": true,
+          "isBoss": false,
+          "isHidden": false,
+          "bossOvertimeAfter": null
+        },
+        "16": {
+          "template": "act1autochess_h03",
+          "bossTemplates": null,
+          "combatTimeLimit": 115,
+          "levelMaxPlayTime": 115,
+          "prepTime": null,
+          "prepTimeData": 300,
+          "isSpPrepare": false,
+          "isBoss": false,
+          "isHidden": false,
+          "bossOvertimeAfter": null
+        },
+        "17": {
+          "template": "act1autochess_h04",
+          "bossTemplates": null,
+          "combatTimeLimit": 115,
+          "levelMaxPlayTime": 115,
+          "prepTime": null,
+          "prepTimeData": 300,
+          "isSpPrepare": true,
+          "isBoss": false,
+          "isHidden": false,
+          "bossOvertimeAfter": null
+        },
+        "18": {
+          "template": "act1autochess_h05",
+          "bossTemplates": null,
+          "combatTimeLimit": 115,
+          "levelMaxPlayTime": 115,
+          "prepTime": null,
+          "prepTimeData": 300,
+          "isSpPrepare": false,
+          "isBoss": false,
+          "isHidden": false,
+          "bossOvertimeAfter": null
+        },
+        "19": {
+          "template": null,
+          "bossTemplates": {
+            "boss_1": "act1autochess_h07_01_s",
+            "boss_2": "act1autochess_h07_02_s",
+            "boss_3": "act1autochess_h07_03_s",
+            "boss_4": "act1autochess_h07_04_s",
+            "boss_5": "act2autochess_h07_05_s",
+            "boss_6": "act1autochess_h07_06_s",
+            "boss_7": "act1autochess_h07_07_s"
+          },
+          "combatTimeLimit": null,
+          "levelMaxPlayTime": 120,
+          "prepTime": null,
+          "prepTimeData": 300,
+          "isSpPrepare": false,
+          "isBoss": true,
+          "isHidden": false,
+          "bossOvertimeAfter": 150
+        },
+        "20": {
+          "template": null,
+          "bossTemplates": {
+            "boss_8": "act1autochess_h08_01_s",
+            "boss_9": "act1autochess_h08_02_s",
+            "boss_10": "act1autochess_h08_03_s"
+          },
+          "combatTimeLimit": null,
+          "levelMaxPlayTime": 120,
+          "prepTime": null,
+          "prepTimeData": 300,
+          "isSpPrepare": false,
+          "isBoss": true,
+          "isHidden": true,
+          "bossOvertimeAfter": 150
+        }
+      },
+      "spRounds": [
+        3,
+        9,
+        11,
+        13,
+        15,
+        17
+      ],
+      "combatTimeLimit": {
+        "1": 45,
+        "2": 45,
+        "3": 55,
+        "4": 55,
+        "5": 55,
+        "6": 70,
+        "7": 85,
+        "8": 85,
+        "9": 95,
+        "10": 95,
+        "11": 115,
+        "12": 115,
+        "13": 115,
+        "14": 115,
+        "15": 115,
+        "16": 115,
+        "17": 115,
+        "18": 115,
+        "19": null,
+        "20": null
+      },
+      "enemyScale": {
+        "1": {
+          "atk": 1.1,
+          "hp": 1.2,
+          "speed": 1,
+          "kAtk": 1,
+          "kHp": 1
+        },
+        "2": {
+          "atk": 1.21,
+          "hp": 1.44,
+          "speed": 1,
+          "kAtk": 1,
+          "kHp": 1
+        },
+        "3": {
+          "atk": 1.21,
+          "hp": 1.44,
+          "speed": 1.15,
+          "kAtk": 2,
+          "kHp": 2
+        },
+        "4": {
+          "atk": 1.21,
+          "hp": 1.44,
+          "speed": 1.15,
+          "kAtk": 2,
+          "kHp": 2
+        },
+        "5": {
+          "atk": 1.21,
+          "hp": 1.44,
+          "speed": 1.15,
+          "kAtk": 3,
+          "kHp": 3
+        },
+        "6": {
+          "atk": 1.331,
+          "hp": 1.728,
+          "speed": 1.15,
+          "kAtk": 3,
+          "kHp": 3
+        },
+        "7": {
+          "atk": 1.331,
+          "hp": 1.728,
+          "speed": 1.15,
+          "kAtk": 4,
+          "kHp": 4
+        },
+        "8": {
+          "atk": 1.331,
+          "hp": 1.728,
+          "speed": 1.15,
+          "kAtk": 4,
+          "kHp": 4
+        },
+        "9": {
+          "atk": 1.331,
+          "hp": 1.728,
+          "speed": 1.15,
+          "kAtk": 5,
+          "kHp": 5
+        },
+        "10": {
+          "atk": 1.4641,
+          "hp": 2.0736,
+          "speed": 1.15,
+          "kAtk": 5,
+          "kHp": 5
+        },
+        "11": {
+          "atk": 1.61051,
+          "hp": 2.48832,
+          "speed": 1.15,
+          "kAtk": 6,
+          "kHp": 6
+        },
+        "12": {
+          "atk": 1.61051,
+          "hp": 2.48832,
+          "speed": 1.15,
+          "kAtk": 6,
+          "kHp": 6
+        },
+        "13": {
+          "atk": 1.771561,
+          "hp": 2.985984,
+          "speed": 1.15,
+          "kAtk": 7,
+          "kHp": 7
+        },
+        "14": {
+          "atk": 1.948717,
+          "hp": 3.583181,
+          "speed": 1.15,
+          "kAtk": 7,
+          "kHp": 7
+        },
+        "15": {
+          "atk": 2.250768,
+          "hp": 4.514808,
+          "speed": 1.15,
+          "kAtk": 8,
+          "kHp": 8
+        },
+        "16": {
+          "atk": 2.357948,
+          "hp": 4.729799,
+          "speed": 1.15,
+          "kAtk": 8,
+          "kHp": 8
+        },
+        "17": {
+          "atk": 2.71164,
+          "hp": 5.933747,
+          "speed": 1.15,
+          "kAtk": 9,
+          "kHp": 9
+        },
+        "18": {
+          "atk": 2.829537,
+          "hp": 6.191736,
+          "speed": 1.15,
+          "kAtk": 9,
+          "kHp": 9
+        },
+        "19": {
+          "atk": 3.242178,
+          "hp": 7.739671,
+          "speed": 1.15,
+          "kAtk": 10,
+          "kHp": 10
+        },
+        "20": {
+          "atk": 3.371865,
+          "hp": 8.049257,
+          "speed": 1.15,
+          "kAtk": 10,
+          "kHp": 10
+        }
+      },
+      "bossHpScale": {
+        "bloodPointKey": "bloodPointAbyss",
+        "unaffectedByEnemyScale": true
+      },
+      "upgradePrices": [
+        5,
+        8,
+        11,
+        12,
+        13
+      ],
+      "maxShopLevel": 6,
+      "shopSlots": {
+        "1": {
+          "chess": 3,
+          "item": 1
+        },
+        "2": {
+          "chess": 4,
+          "item": 1
+        },
+        "3": {
+          "chess": 4,
+          "item": 1
+        },
+        "4": {
+          "chess": 5,
+          "item": 1
+        },
+        "5": {
+          "chess": 5,
+          "item": 1
+        },
+        "6": {
+          "chess": 5,
+          "item": 1
+        }
+      },
+      "levelTagColors": {
+        "1": "#434343",
+        "2": "#626654",
+        "3": "#445760",
+        "4": "#615B74",
+        "5": "#6C5E41",
+        "6": "#5d341e"
+      },
+      "stages": [
+        "act1autochess_m01",
+        "act1autochess_m02",
+        "act1autochess_m03",
+        "act1autochess_m04",
+        "act2autochess_m01",
+        "act2autochess_m02",
+        "act2autochess_m03",
+        "act2autochess_m04"
+      ],
+      "bossWeights": {
+        "boss_1": 6,
+        "boss_2": 6,
+        "boss_3": 6,
+        "boss_4": 5,
+        "boss_5": 10,
+        "boss_6": 5,
+        "boss_7": 5
+      },
+      "hiddenBossWeights": {
+        "boss_8": 50,
+        "boss_9": 40,
+        "boss_10": 40
+      },
+      "generation": {
+        "specialEnemyNum": 4,
+        "maxLevelCnt": 20
+      },
+      "annihilation": {
+        "fog": {
+          "afterReal": 60,
+          "rampReal": 20,
+          "maxRatio": 0.2
+        },
+        "terrainLethal": 5,
+        "chaosTargeting": true
+      },
+      "hiddenCore": {
+        "single": 350,
+        "multi": 1200,
+        "minTeamLpExclusive": 1,
+        "difficulties": [
+          "NORMAL",
+          "HARD",
+          "ABYSS",
+          "ANNIHILATION"
+        ],
+        "checkedAfterRound": 19
+      }
+    },
+    "mode_multi_annihilation": {
+      "modeId": "mode_multi_annihilation",
+      "name": "湮灭模拟",
+      "code": "AC-5",
+      "sortId": 6,
+      "type": "MULTI",
+      "difficulty": "ANNIHILATION",
+      "inScope": true,
+      "color": "#5b0a14",
+      "iconId": "mode_annihilation_icon",
+      "backgroundId": "background_annihilation",
+      "desc": "敌方攻击强度突破游戏设定上限的超限模拟训练",
+      "effectDescList": [
+        "·作战环境完全崩坏，所有地图机制全部升级为致命级",
+        "·究极危险敌人，攻击模式完全无规律",
+        "·房间内可选湮灭蚀流 1~6，逐级加码",
+        "·蚀流6「无尽湮灭」：回合无限、无毒雾、全随机、无上限成长",
+        "·蚀流2起加入藏品抽取"
+      ],
+      "featureList": [
+        "作战环境完全崩坏，所有地图机制全部升级为致命级",
+        "出现远超常规认知的究极危险敌人，攻击模式完全无规律",
+        "对局开始前可在房间内选择「湮灭蚀流 1~6」：核心/附加盟约按总数1/3（至少5个，附加不含绝技）→1/2禁选、4→5类随机敌人、毒雾60秒→20秒",
+        "蚀流2起出现藏品：开局3选1负面藏品、随机增益藏品；蚀流4改为每2回合一次负面3选1",
+        "蚀流3起所有敌人生命与攻击+20%；蚀流5回合数提升至30，终局Boss/隐秘核心移至第29/30回合",
+        "第14/15、24/25回合为高压精英关；真正触发隐藏核心结算的仍是第19/20（30回合版为第29/30）回合",
+        "开局从3个负面藏品中选择1个，此后按蚀流等级每4或每2回合再选一次；增益藏品开局、第10/15（蚀流5再+20/25）回合获得",
+        "第3、5、7、9、11、13、15、17、19、21、23、25、27、29回合各提供一次悬赏决策（即第2、4、…、28轮后）；此后每4回合一次",
+        "蚀流4：第8、12、16、20回合的悬赏决策额外获得1个随机增益藏品",
+        "蚀流5：第22、24、26、28回合的悬赏决策额外获得1个随机增益藏品",
+        "蚀流6「无尽湮灭」：回合数无限，只有全员淘汰才会结束；战场不再释放毒雾；盟约叠层无层数限制；干员装备道具数量无限制；所有盟约干员都不禁用",
+        "蚀流6：怪物种类增加至全部6类，Boss与隐秘核心Boss全随机（等概率）；第30回合后每经过3个回合出现一次Boss与隐秘核心",
+        "蚀流6：第8、12、14、16、18、20、22、24、26、28回合的悬赏决策各给1个随机增益藏品，此后每4个回合一次悬赏决策与增益藏品、每2个回合一次藏品3选1",
+        "蚀流6：藏品全部发完后不再发放，改为每次悬赏决策后我方干员攻击力与生命×1.2、敌方单位生命/攻击/防御×1.2（可无限叠加）"
+      ],
+      "unlockText": "通关【终极模拟】后解锁",
+      "specialPhaseTime": 150,
+      "activeBondIds": [
+        "yanShip",
+        "sargonShip",
+        "victoriaShip",
+        "kjeragShip",
+        "lateranoShip",
+        "egirShip",
+        "siracusaShip",
+        "kazimierzShip",
+        "preciShip",
+        "swiftShip",
+        "skillfulShip",
+        "arcaneShip",
+        "steadShip",
+        "deputShip",
+        "visiShip",
+        "miraShip",
+        "investShip",
+        "raidShip",
+        "indomShip",
+        "maniShip",
+        "emptyShip",
+        "soloShip",
+        "suntShip"
+      ],
+      "inactiveBondIds": [],
+      "inactiveEnemyKeys": [],
+      "lastRound": 19,
+      "bossRound": 19,
+      "hiddenRound": 20,
+      "rounds": {
+        "1": {
+          "template": "act1autochess_01",
+          "bossTemplates": null,
+          "combatTimeLimit": 45,
+          "levelMaxPlayTime": 45,
+          "prepTime": null,
+          "prepTimeData": 300,
+          "isSpPrepare": false,
+          "isBoss": false,
+          "isHidden": false,
+          "bossOvertimeAfter": null
+        },
+        "2": {
+          "template": "act1autochess_02",
+          "bossTemplates": null,
+          "combatTimeLimit": 45,
+          "levelMaxPlayTime": 45,
+          "prepTime": null,
+          "prepTimeData": 300,
+          "isSpPrepare": false,
+          "isBoss": false,
+          "isHidden": false,
+          "bossOvertimeAfter": null
+        },
+        "3": {
+          "template": "act1autochess_03",
+          "bossTemplates": null,
+          "combatTimeLimit": 55,
+          "levelMaxPlayTime": 55,
+          "prepTime": null,
+          "prepTimeData": 300,
+          "isSpPrepare": true,
+          "isBoss": false,
+          "isHidden": false,
+          "bossOvertimeAfter": null
+        },
+        "4": {
+          "template": "act1autochess_04",
+          "bossTemplates": null,
+          "combatTimeLimit": 55,
+          "levelMaxPlayTime": 55,
+          "prepTime": null,
+          "prepTimeData": 300,
+          "isSpPrepare": false,
+          "isBoss": false,
+          "isHidden": false,
+          "bossOvertimeAfter": null
+        },
+        "5": {
+          "template": "act1autochess_05",
+          "bossTemplates": null,
+          "combatTimeLimit": 55,
+          "levelMaxPlayTime": 55,
+          "prepTime": null,
+          "prepTimeData": 300,
+          "isSpPrepare": false,
+          "isBoss": false,
+          "isHidden": false,
+          "bossOvertimeAfter": null
+        },
+        "6": {
+          "template": "act1autochess_06",
+          "bossTemplates": null,
+          "combatTimeLimit": 70,
+          "levelMaxPlayTime": 70,
+          "prepTime": null,
+          "prepTimeData": 300,
+          "isSpPrepare": false,
+          "isBoss": false,
+          "isHidden": false,
+          "bossOvertimeAfter": null
+        },
+        "7": {
+          "template": "act1autochess_07",
+          "bossTemplates": null,
+          "combatTimeLimit": 85,
+          "levelMaxPlayTime": 85,
+          "prepTime": null,
+          "prepTimeData": 300,
+          "isSpPrepare": false,
+          "isBoss": false,
+          "isHidden": false,
+          "bossOvertimeAfter": null
+        },
+        "8": {
+          "template": "act1autochess_h01",
+          "bossTemplates": null,
+          "combatTimeLimit": 85,
+          "levelMaxPlayTime": 85,
+          "prepTime": null,
+          "prepTimeData": 300,
+          "isSpPrepare": false,
+          "isBoss": false,
+          "isHidden": false,
+          "bossOvertimeAfter": null
+        },
+        "9": {
+          "template": "act1autochess_h02",
+          "bossTemplates": null,
+          "combatTimeLimit": 95,
+          "levelMaxPlayTime": 95,
+          "prepTime": null,
+          "prepTimeData": 300,
+          "isSpPrepare": true,
+          "isBoss": false,
+          "isHidden": false,
+          "bossOvertimeAfter": null
+        },
+        "10": {
+          "template": "act1autochess_h03",
+          "bossTemplates": null,
+          "combatTimeLimit": 95,
+          "levelMaxPlayTime": 95,
+          "prepTime": null,
+          "prepTimeData": 300,
+          "isSpPrepare": false,
+          "isBoss": false,
+          "isHidden": false,
+          "bossOvertimeAfter": null
+        },
+        "11": {
+          "template": "act1autochess_h04",
+          "bossTemplates": null,
+          "combatTimeLimit": 115,
+          "levelMaxPlayTime": 115,
+          "prepTime": null,
+          "prepTimeData": 300,
+          "isSpPrepare": true,
+          "isBoss": false,
+          "isHidden": false,
+          "bossOvertimeAfter": null
+        },
+        "12": {
+          "template": "act1autochess_h05",
+          "bossTemplates": null,
+          "combatTimeLimit": 115,
+          "levelMaxPlayTime": 115,
+          "prepTime": null,
+          "prepTimeData": 300,
+          "isSpPrepare": false,
+          "isBoss": false,
+          "isHidden": false,
+          "bossOvertimeAfter": null
+        },
+        "13": {
+          "template": "act1autochess_h06",
+          "bossTemplates": null,
+          "combatTimeLimit": 115,
+          "levelMaxPlayTime": 115,
+          "prepTime": null,
+          "prepTimeData": 300,
+          "isSpPrepare": false,
+          "isBoss": false,
+          "isHidden": false,
+          "bossOvertimeAfter": null
+        },
+        "14": {
+          "template": "act1autochess_h01",
+          "bossTemplates": null,
+          "combatTimeLimit": 115,
+          "levelMaxPlayTime": 115,
+          "prepTime": null,
+          "prepTimeData": 300,
+          "isSpPrepare": false,
+          "isBoss": false,
+          "isHidden": false,
+          "bossOvertimeAfter": null
+        },
+        "15": {
+          "template": "act1autochess_h02",
+          "bossTemplates": null,
+          "combatTimeLimit": 115,
+          "levelMaxPlayTime": 115,
+          "prepTime": null,
+          "prepTimeData": 300,
+          "isSpPrepare": true,
+          "isBoss": false,
+          "isHidden": false,
+          "bossOvertimeAfter": null
+        },
+        "16": {
+          "template": "act1autochess_h03",
+          "bossTemplates": null,
+          "combatTimeLimit": 115,
+          "levelMaxPlayTime": 115,
+          "prepTime": null,
+          "prepTimeData": 300,
+          "isSpPrepare": false,
+          "isBoss": false,
+          "isHidden": false,
+          "bossOvertimeAfter": null
+        },
+        "17": {
+          "template": "act1autochess_h04",
+          "bossTemplates": null,
+          "combatTimeLimit": 115,
+          "levelMaxPlayTime": 115,
+          "prepTime": null,
+          "prepTimeData": 300,
+          "isSpPrepare": true,
+          "isBoss": false,
+          "isHidden": false,
+          "bossOvertimeAfter": null
+        },
+        "18": {
+          "template": "act1autochess_h05",
+          "bossTemplates": null,
+          "combatTimeLimit": 115,
+          "levelMaxPlayTime": 115,
+          "prepTime": null,
+          "prepTimeData": 300,
+          "isSpPrepare": false,
+          "isBoss": false,
+          "isHidden": false,
+          "bossOvertimeAfter": null
+        },
+        "19": {
+          "template": null,
+          "bossTemplates": {
+            "boss_1": "act1autochess_h07_01_s",
+            "boss_2": "act1autochess_h07_02_s",
+            "boss_3": "act1autochess_h07_03_s",
+            "boss_4": "act1autochess_h07_04_s",
+            "boss_5": "act2autochess_h07_05_s",
+            "boss_6": "act1autochess_h07_06_s",
+            "boss_7": "act1autochess_h07_07_s"
+          },
+          "combatTimeLimit": null,
+          "levelMaxPlayTime": 120,
+          "prepTime": null,
+          "prepTimeData": 300,
+          "isSpPrepare": false,
+          "isBoss": true,
+          "isHidden": false,
+          "bossOvertimeAfter": 150
+        },
+        "20": {
+          "template": null,
+          "bossTemplates": {
+            "boss_8": "act1autochess_h08_01_s",
+            "boss_9": "act1autochess_h08_02_s",
+            "boss_10": "act1autochess_h08_03_s"
+          },
+          "combatTimeLimit": null,
+          "levelMaxPlayTime": 120,
+          "prepTime": null,
+          "prepTimeData": 300,
+          "isSpPrepare": false,
+          "isBoss": true,
+          "isHidden": true,
+          "bossOvertimeAfter": 150
+        }
+      },
+      "spRounds": [
+        3,
+        9,
+        11,
+        13,
+        15,
+        17
+      ],
+      "combatTimeLimit": {
+        "1": 45,
+        "2": 45,
+        "3": 55,
+        "4": 55,
+        "5": 55,
+        "6": 70,
+        "7": 85,
+        "8": 85,
+        "9": 95,
+        "10": 95,
+        "11": 115,
+        "12": 115,
+        "13": 115,
+        "14": 115,
+        "15": 115,
+        "16": 115,
+        "17": 115,
+        "18": 115,
+        "19": null,
+        "20": null
+      },
+      "enemyScale": {
+        "1": {
+          "atk": 1.1,
+          "hp": 1.2,
+          "speed": 1,
+          "kAtk": 1,
+          "kHp": 1
+        },
+        "2": {
+          "atk": 1.21,
+          "hp": 1.44,
+          "speed": 1,
+          "kAtk": 1,
+          "kHp": 1
+        },
+        "3": {
+          "atk": 1.21,
+          "hp": 1.44,
+          "speed": 1.15,
+          "kAtk": 2,
+          "kHp": 2
+        },
+        "4": {
+          "atk": 1.21,
+          "hp": 1.44,
+          "speed": 1.15,
+          "kAtk": 2,
+          "kHp": 2
+        },
+        "5": {
+          "atk": 1.21,
+          "hp": 1.44,
+          "speed": 1.15,
+          "kAtk": 3,
+          "kHp": 3
+        },
+        "6": {
+          "atk": 1.331,
+          "hp": 1.728,
+          "speed": 1.15,
+          "kAtk": 3,
+          "kHp": 3
+        },
+        "7": {
+          "atk": 1.331,
+          "hp": 1.728,
+          "speed": 1.15,
+          "kAtk": 4,
+          "kHp": 4
+        },
+        "8": {
+          "atk": 1.331,
+          "hp": 1.728,
+          "speed": 1.15,
+          "kAtk": 4,
+          "kHp": 4
+        },
+        "9": {
+          "atk": 1.331,
+          "hp": 1.728,
+          "speed": 1.15,
+          "kAtk": 5,
+          "kHp": 5
+        },
+        "10": {
+          "atk": 1.4641,
+          "hp": 2.0736,
+          "speed": 1.15,
+          "kAtk": 5,
+          "kHp": 5
+        },
+        "11": {
+          "atk": 1.61051,
+          "hp": 2.48832,
+          "speed": 1.15,
+          "kAtk": 6,
+          "kHp": 6
+        },
+        "12": {
+          "atk": 1.61051,
+          "hp": 2.48832,
+          "speed": 1.15,
+          "kAtk": 6,
+          "kHp": 6
+        },
+        "13": {
+          "atk": 1.771561,
+          "hp": 2.985984,
+          "speed": 1.15,
+          "kAtk": 7,
+          "kHp": 7
+        },
+        "14": {
+          "atk": 1.948717,
+          "hp": 3.583181,
+          "speed": 1.15,
+          "kAtk": 7,
+          "kHp": 7
+        },
+        "15": {
+          "atk": 2.250768,
+          "hp": 4.514808,
+          "speed": 1.15,
+          "kAtk": 8,
+          "kHp": 8
+        },
+        "16": {
+          "atk": 2.357948,
+          "hp": 4.729799,
+          "speed": 1.15,
+          "kAtk": 8,
+          "kHp": 8
+        },
+        "17": {
+          "atk": 2.71164,
+          "hp": 5.933747,
+          "speed": 1.15,
+          "kAtk": 9,
+          "kHp": 9
+        },
+        "18": {
+          "atk": 2.829537,
+          "hp": 6.191736,
+          "speed": 1.15,
+          "kAtk": 9,
+          "kHp": 9
+        },
+        "19": {
+          "atk": 3.242178,
+          "hp": 7.739671,
+          "speed": 1.15,
+          "kAtk": 10,
+          "kHp": 10
+        },
+        "20": {
+          "atk": 3.371865,
+          "hp": 8.049257,
+          "speed": 1.15,
+          "kAtk": 10,
+          "kHp": 10
+        }
+      },
+      "bossHpScale": {
+        "bloodPointKey": "bloodPointAbyss",
+        "unaffectedByEnemyScale": true
+      },
+      "upgradePrices": [
+        5,
+        8,
+        11,
+        12,
+        13
+      ],
+      "maxShopLevel": 6,
+      "shopSlots": {
+        "1": {
+          "chess": 3,
+          "item": 1
+        },
+        "2": {
+          "chess": 4,
+          "item": 1
+        },
+        "3": {
+          "chess": 4,
+          "item": 1
+        },
+        "4": {
+          "chess": 5,
+          "item": 1
+        },
+        "5": {
+          "chess": 5,
+          "item": 1
+        },
+        "6": {
+          "chess": 5,
+          "item": 1
+        }
+      },
+      "levelTagColors": {
+        "1": "#434343",
+        "2": "#626654",
+        "3": "#445760",
+        "4": "#615B74",
+        "5": "#6C5E41",
+        "6": "#5d341e"
+      },
+      "stages": [
+        "act1autochess_m01",
+        "act1autochess_m02",
+        "act1autochess_m03",
+        "act1autochess_m04",
+        "act2autochess_m01",
+        "act2autochess_m02",
+        "act2autochess_m03",
+        "act2autochess_m04"
+      ],
+      "bossWeights": {
+        "boss_1": 6,
+        "boss_2": 6,
+        "boss_3": 6,
+        "boss_4": 5,
+        "boss_5": 10,
+        "boss_6": 5,
+        "boss_7": 5
+      },
+      "hiddenBossWeights": {
+        "boss_8": 50,
+        "boss_9": 40,
+        "boss_10": 40
+      },
+      "generation": {
+        "specialEnemyNum": 4,
+        "maxLevelCnt": 20
+      },
+      "annihilation": {
+        "fog": {
+          "afterReal": 60,
+          "rampReal": 20,
+          "maxRatio": 0.2
+        },
+        "terrainLethal": 5,
+        "chaosTargeting": true
+      },
+      "hiddenCore": {
+        "single": 350,
+        "multi": 1200,
+        "minTeamLpExclusive": 1,
+        "difficulties": [
+          "NORMAL",
+          "HARD",
+          "ABYSS",
+          "ANNIHILATION"
+        ],
+        "checkedAfterRound": 19
+      }
+    }
+  },
+  "bans": {
+    "ANNIHILATION": {
+      "core": 5,
+      "addon": 5
+    }
+  },
+  "hiddenCoreDifficulties": [
+    "ANNIHILATION"
+  ],
+  "rewardsDifficultyFactor": {
+    "ANNIHILATION": 2.2
+  },
+  "bossBloodPoints": {
+    "boss_1": 5760000,
+    "boss_2": 4800000,
+    "boss_3": 6400000,
+    "boss_4": 6720000,
+    "boss_5": 4800000,
+    "boss_6": 6368000,
+    "boss_7": 6400000,
+    "boss_8": 11520000,
+    "boss_9": 6320000,
+    "boss_10": 12160000
+  }
+}

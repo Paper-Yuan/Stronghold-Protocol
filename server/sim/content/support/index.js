@@ -20,6 +20,9 @@
 import { getData } from '../../../data.js';
 import { grantedBondsByMorph } from '../../../../shared/plugins/rules.js';
 import { RECORD_MAPS } from '../../../../shared/plugins/dataUtils.js';
+import { equipComboBonds } from '../../../../shared/zjBonds.js';
+// 湮灭内容开关的缺省表（整备侧 gamedata 与这里共用一份；见 shared/annihilation-constants.js 的注释）
+import { annModOn as annModOnShared } from '../../../../shared/annihilation-constants.js';
 import { COLS, DIRECT_BONUS_STACKING } from '../../constants.js';
 import { frontOf, offsetTile } from '../../dir.js';
 import { bodyInKeys, bodyDist, bodyInRadius, bodyOnTile, bodyTileReach, bodyInRange } from '../../body.js';
@@ -47,7 +50,30 @@ export function gameData() {
 /** Tests only: swap the data object (null → reload the singleton). Also drops derived caches. */
 export function setGameData(d) { DATA = d ?? null; CORE = null; EFFECT_ITEMS = new WeakMap(); }
 
-export const bondRecord = (id) => own(gameData().bonds, id);
+// =====================================================================================================================
+// 炸惊模拟的盟约 / 装备视图 (shared/zjBonds.js)
+//
+// 战斗模拟读的是**进程级单例** `gameData()`（服务端 server/data.js，浏览器是抓下来的 /data/*.json），它不知道房间
+// 难度。所以炸惊房间的 Battle 在构造、装内容与每一步推进时临时装上自己的视图，`bondRecord` / `itemRecord` 优先读它；
+// 普通房间的视图是 null，读到的仍是单例原样。JS 是单线程的、一步 `step()` 跑完才返回，同一进程里并行的其它难度房间
+// 不会读到这份视图（`withZjView` 用 try/finally 复原，嵌套时按栈还原）。
+//
+// 视图的形状：`{ bonds?, combos? }` —— `bonds` 是合并后的 bonds.json 映射（`zj` 覆盖块已合并），`combos` 是炸惊
+// 专用「装备组合激活盟约」表（zjEquipCombos）。
+
+let ZJ = null;
+/** Install (or clear, with null) the 炸惊 view. Prefer `withZjView`; this is for tests. */
+export function setZjView(v) { ZJ = v && typeof v === 'object' ? v : null; }
+/** The 炸惊 view in effect, or null. */
+export function zjView() { return ZJ; }
+/** Run `fn()` with `view` installed as the 炸惊 view, restoring the previous one afterwards. */
+export function withZjView(view, fn) {
+  const prev = ZJ;
+  ZJ = view && typeof view === 'object' ? view : null;
+  try { return fn(); } finally { ZJ = prev; }
+}
+
+export const bondRecord = (id) => own((ZJ && ZJ.bonds) || gameData().bonds, id);
 export const itemRecord = (id) => own(gameData().items, id);
 export const garrisonRecord = (id) => own(gameData().garrisons, id);
 export const bandRecord = (id) => own(gameData().bands, id);
@@ -249,21 +275,100 @@ export const hasItemKey = (u, key) => itemsOf(u).some((id) => itemKeyOf(id) === 
 export const goldenItemCount = (u) => itemsOf(u).filter(isGoldenId).length;
 
 const BONDS = new WeakMap();
+
+/**
+ * Whether this battle runs 湮灭模拟 (`difficulty: 'ANNIHILATION'`) — the one gate every annihilation-only content rule
+ * in the sim reads (官方四档与炸惊一律 false). The mode ids are that mode's two `config.modes` entries
+ * (`mode_single_annihilation` / `mode_multi_annihilation`); an explicit `battle.flags.annihilation === true` is accepted
+ * too, so a derived field / a test can open the same gate.
+ * @param {any} battle
+ */
+export function isAnnihilationBattle(battle) {
+  if (!battle) return false;
+  if (battle.flags && battle.flags.annihilation === true) return true;
+  return /^mode_(single|multi)_annihilation$/.test(String(battle.modeId || ''));
+}
+
+/**
+ * 湮灭模拟内容开关（房间级 `annMods`）的战斗侧读法：**显式 boolean 压过缺省**，缺省表在
+ * `shared/annihilation-constants.js`（`rhodesShip` / `kazdelShip` 默认开）。engine-core 只在房间有显式键时才下发
+ * `flags.annMods`，所以「没动过设置的湮灭局」这里读到的 m 是 undefined —— 缺省必须在这里兜住，否则默认开启的
+ * 两条盟约在真实对局里会**静默空转**（面板显示开、战斗里没效果，且没有任何报错）。
+ * 官方四档 / 炸惊先被模式门挡住，读不到这个键。
+ * @param {any} battle @param {string} name
+ */
+export const annModOn = (battle, name) => {
+  if (!battle || !isAnnihilationBattle(battle)) return false;
+  const m = battle.flags ? battle.flags.annMods : null;
+  return annModOnShared(m, name);
+};
+
+/**
+ * `chess[].annBonds` 里**真正生效**的那几条：模式门（`isAnnihilationBattle`）之后，每条按**自己的开关**判
+ * （`rhodesShip` / `kazdelShip` 各有一个，不是一个总开关）。开关全关 ⇒ `[]`，效果与本字段不存在时逐字节相同。
+ * @param {any} battle @param {any} def
+ * @returns {string[]}
+ */
+export function annBondsFor(battle, def) {
+  if (!isAnnihilationBattle(battle)) return EMPTY;
+  const extra = annBondsOf(def);
+  if (!extra.length) return EMPTY;
+  return extra.filter((b) => typeof b === 'string' && b && annModOn(battle, b));
+}
+
+/** `chess[].annBonds` of a def — the 湮灭模拟-only extra bonds (the caller's gate keeps them out of every other mode). */
+export const annBondsOf = (def) => (Array.isArray(def?.raw?.annBonds) ? def.raw.annBonds
+  : Array.isArray(def?.annBonds) ? def.annBonds : EMPTY);
+
+/**
+ * 内容模块给**某个单位**追加的盟约成员资格（`u.mem.extraBonds`）—— 不是数据字段，是战斗期的一条声明：
+ * 写它的模块负责在部署 / 开局把名单刷对（幂等），本文件只负责让 `unitBonds` / `isMember` / `bondMembers`
+ * 认这份名单。原版三条来源（棋子自己的 bonds、变形同构体配对、湮灭 annBonds）一条都不走这条路径，所以没人写它时
+ * 「这一格」的值逐字节等于改动前。
+ *
+ * 唯一的使用者：超限词条 FGO-SP 的[万色悠滞之核]（server/sim/content/overlimitRelics.js）——「携带该装备的
+ * 我方干员视作拥有 [调和] 盟约」。它不能写成装备记录的 `giveBondId`：那条路要求同时挂着变形同构体（
+ * shared/plugins/rules.js grantedBondsByMorph），而词条原文是无条件的；所以由词条本体在战斗侧声明。
+ * @param {any} u @returns {string[]}
+ */
+export function extraBondsOf(u) {
+  const list = u && u.mem && Array.isArray(u.mem.extraBonds) ? u.mem.extraBonds : null;
+  if (!list || !list.length) return EMPTY;
+  return list.filter((b) => typeof b === 'string' && b);
+}
+
 /**
  * A unit's own bonds: the chess's data bonds + bonds granted by 变形同构体 (an item with `canGiveBond` worn together
  * with an item that has a `giveBondId`; same rule as server/match/bondsMeta.js pieceBonds). Tokens / enemies: [].
+ * Pass `battle` to let the 湮灭模拟 content switches join in (`chess[].annBonds`, each behind its own switch); a caller
+ * that omits it gets exactly today's result (the cache key records which variant an entry holds).
  */
-export function unitBonds(u) {
+export function unitBonds(u, battle = null) {
   if (!isOp(u)) return EMPTY;
   const cached = BONDS.get(u);
   const items = itemsOf(u);
   const plus = u.player?.morphPairing === 'plus';
-  // The official key stays items.join('|'), so a cached official result is unchanged.
-  const key = (plus ? 'plus|' : '') + items.join('|');
+  const ann = annBondsFor(battle, u.def);
+  // 内容模块追加的成员资格（extraBondsOf）：进缓存键，否则「先按无这份名单查过一次」的缓存会盖住后来的声明。
+  const extra = extraBondsOf(u);
+  // The official key stays items.join('|'), so a cached official result is unchanged (a 炸惊 view never shares a cache
+  // entry with a normal battle: the `zj|` prefix; the 湮灭 variant carries the enabled switch names for the same reason).
+  const key = (ZJ ? 'zj|' : '') + (ann.length ? `ann:${ann.join(',')}|` : '') + (extra.length ? `extra:${extra.join(',')}|` : '')
+    + (plus ? 'plus|' : '') + items.join('|');
   if (cached && cached.key === key) return cached.bonds;
   const out = [...(Array.isArray(u.def?.bonds) ? u.def.bonds : Array.isArray(u.def?.raw?.bonds) ? u.def.raw.bonds : [])];
+  // 湮灭模拟: `chess[].annBonds` — 罗德岛 / 卡兹戴尔 这类「只在该模式、且开了对应开关时挂到这个棋子身上」的盟约。
+  // 每条按自己的开关判（见 annBondsFor）；开关全关时这里一条都不会进，其它模式连字段都读不到。
+  for (const b of ann) if (!out.includes(b)) out.push(b);
+  // 内容模块声明的成员资格（见 extraBondsOf）：只收数据里真的存在的盟约。
+  for (const b of extra) if (bondRecord(b) && !out.includes(b)) out.push(b);
   for (const b of grantedBondsByMorph(items, (id) => itemRecord(id), { mode: plus ? 'plus' : 'official', bondOk: (id) => !!bondRecord(id) })) {
     if (!out.includes(b)) out.push(b);
+  }
+  // 炸惊模拟：装备组合激活盟约（shared/zjBonds.js zjEquipCombos）——原版 `giveBondId` 之外的另一条路，
+  // 只在装了炸惊视图的战斗里生效（普通战斗 ZJ 为 null）。
+  if (ZJ && Array.isArray(ZJ.combos) && ZJ.combos.length && items.length) {
+    for (const id of equipComboBonds(items, ZJ.combos)) if (bondRecord(id) && !out.includes(id)) out.push(id);
   }
   const bonds = Object.freeze(out);
   BONDS.set(u, { key, bonds });
@@ -276,9 +381,37 @@ export function unitBonds(u) {
  * active themselves).
  */
 export function isMember(battle, u, bondId) {
-  const own = unitBonds(u);
+  const own = unitBonds(u, battle);
   if (own.includes(bondId)) return true;
-  return isCoreBond(bondId) && own.includes('maniShip') && bondActive(battle, u.ownerId, 'maniShip');
+  // 炸惊模拟 惊变 two cross-module rules (the cards themselves live in content/jibian.js, engine-cards; the battle side
+  // asks through hasJibian, so the sim never imports the card registry):
+  //   「Belua multorum es capitums.」(jibian_duoshouyeshou): the holder's 若叶睦 counts as a 调和 member;
+  //   「炎国人会飞」(jibian_yanrenhuifei): the holder's 【炎】 operators count as 突袭 members.
+  // Both are false in a room without those cards (and in every mode that is not ZHAJING, which has no 惊变 at all).
+  const zjMortis = !own.includes('maniShip') && hasJibian(battle, u.ownerId, 'jibian_duoshouyeshou')
+    && /^chess_zj_mortis_/.test(String(u?.def?.raw?.chessId ?? ''));
+  if (bondId === 'maniShip' && zjMortis) return true;
+  if (bondId === 'raidShip' && own.includes('yanShip') && hasJibian(battle, u.ownerId, 'jibian_yanrenhuifei')) return true;
+  return isCoreBond(bondId) && (own.includes('maniShip') || zjMortis) && bondActive(battle, u.ownerId, 'maniShip');
+}
+
+/**
+ * Whether player `pid` of `battle` owns 惊变 card `effectId` (炸惊模拟). The data lives in
+ * `battle.players[].playerEffects` (`key` = `jibian:<effectId>`, written by the match's choices.applyCard), so every
+ * battle-side module can ask directly — **never import the 惊变 module from the sim** (that would drag the whole card
+ * registry into every battle). Always false outside a room that drafted 惊变 (an official mode has no such refs).
+ * @param {any} battle @param {any} pid @param {string} effectId
+ * @returns {boolean}
+ */
+export function hasJibian(battle, pid, effectId) {
+  if (pid == null || !effectId) return false;
+  for (const ps of (battle && battle.players) || []) {
+    if (!ps || ps.playerId !== pid) continue;
+    for (const ref of ps.playerEffects || []) {
+      if (ref && ref.key === `jibian:${effectId}`) return true;
+    }
+  }
+  return false;
 }
 
 /**

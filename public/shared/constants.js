@@ -3,26 +3,60 @@
 import { N_ } from './i18n.js';
 
 export const PROTOCOL_VERSION = 1;
-export const MOD_API_VERSION = 1;
-export const VOICE_SLOTS = Object.freeze(['start', 'faceEnemy', 'select', 'place',
-  'skill1', 'skill2', 'skill3', 'skill4', 'resultFour', 'resultThree', 'resultTwo', 'resultLose']);
-export const VOICE_LANGS = Object.freeze(['cn', 'jp', 'en', 'kr']);
-export const DEFAULT_VOICE_LANG = 'jp';
 /** Release version shown to players (title screen, server banner, /healthz). Kept equal to package.json "version"
- * (test/version.test.js); PROTOCOL_VERSION above is the separate wire-format number. */
-export const APP_VERSION = '0.3.1.1';
+ * (test/version.test.js); PROTOCOL_VERSION above is the separate wire-format number.
+ * `-Yuan` is a semver prerelease tag, not a new release line: it marks the maintainer's Yuán desktop/Android build of
+ * 0.3.3. semver.valid('0.3.3-Yuan') === '0.3.3-Yuan' (prerelease ['Yuan']), the same shape the APK bundle already uses
+ * (`0.3.3-<hash>-parts3`). DEV_BUILD below stays false: this is a release build, not the public dev branch. */
+export const APP_VERSION = '0.3.3-Yuan';
 /** A development build (the public `dev` branch): the title screen, the boot banner and the README say so, and
  * tools/package.mjs refuses to build a release zip from it without --allow-dev. */
 export const DEV_BUILD = /-dev$/.test(APP_VERSION);
 /**
  * The plugin API levels this build supports (DESIGN §32, shared/plugins/manifest.js): a manifest 2 states the level it
  * is written for (`api`); a level outside min…current keeps the plugin out. The level rises when the data shapes, the
- * DSL vocabulary or the SDK a plugin relies on change incompatibly (CHANGELOG says how to migrate). [ASSUMED]
+ * DSL vocabulary or the SDK a plugin relies on change incompatibly (CHANGELOG says how to migrate). Level 2 adds the
+ * declarative `offers` part (docs/PLUGINS.md): a manifest that uses it states `"api": 2`, and a build that knows only
+ * level 1 refuses that plugin instead of loading it without the part. [ASSUMED]
  */
-export const PLUGIN_API = Object.freeze({ current: 1, min: 1 });
+export const PLUGIN_API = Object.freeze({ current: 2, min: 1 });
 
+/** Default seat capacity of a co-op room (the official 4-player alliance). A room's own `maxSeats` may be larger. */
 export const MAX_SEATS = 4;
-export const DEPLOY_CAP_MAX = 12;
+/**
+ * Hard ceiling of a room's seat capacity (房间人数 4 / 8 / 12, the owner's decision 2026-10-31). A room keeps
+ * `MAX_SEATS` unless its host raises it from the room's ⚙ 同盟设置 (`room.setSeats`); `room.state.maxSeats` carries the
+ * value only when it is above `MAX_SEATS`, so a default room's state stays byte-identical.
+ */
+export const MAX_SEATS_CAP = 12;
+/**
+ * The capacities a room may take (房间人数 4 / 8 / 12). Only these values are accepted by `room.setSeats`, and each is a
+ * whole number of 4-doctor teams — the client draws one column/chip per team.
+ */
+export const ROOM_SEAT_CAPS = Object.freeze([4, 8, 12]);
+/**
+ * 编制 (docs/TWELVE_PLAYER_MODE.md §1): one alliance team is 4 doctors — seats 0–3 are team 0, 4–7 team 1, 8–11 team 2.
+ * A 4-seat room is one team, i.e. exactly the match this repository always played.
+ */
+export const TEAM_SIZE = 4;
+/**
+ * The team a seat index fights for (0-based): floor(seat / TEAM_SIZE), clamped to 0 for a missing / negative seat.
+ * @param {number} seat
+ * @returns {number}
+ */
+export const teamIndexOf = (seat) => {
+  const s = Number.isInteger(seat) && seat > 0 ? seat : 0;
+  return Math.floor(s / TEAM_SIZE);
+};
+/**
+ * How many teams a room of `maxSeats` seats fields: 4 → 1, 8 → 2, 12 → 3 (anything else falls back to one team).
+ * @param {number} maxSeats
+ * @returns {number}
+ */
+export const teamCountOf = (maxSeats) => {
+  const n = Number.isInteger(maxSeats) && maxSeats > 0 ? maxSeats : MAX_SEATS;
+  return Math.max(1, Math.round(n / TEAM_SIZE));
+};
 /**
  * Spectator seats of a co-op room (community report #26, owner's decision 2026-10-04) — a remake feature: the official
  * room has 1–4 players and no spectator seat (there only eliminated players and 联防 bystanders watch, research 09 §3.1).
@@ -30,19 +64,34 @@ export const DEPLOY_CAP_MAX = 12;
  * server/match/match/watch.js addSpectator).
  */
 export const MAX_SPECTATORS = 2;
+/**
+ * 重刷本局 (PR #860, DESIGN §28.21 [ASSUMED]): each seat may open one setup-reroll vote per this many ms. Shared so the
+ * client's refusal toast (ui/toasts.js) names the server's value (server/match/match/setupVote.js).
+ */
+export const SETUP_REROLL_COOLDOWN_MS = 30_000;
 export const ROOM_CODE_LEN = 4;
 export const NAME_MAX_LEN = 12;
+/**
+ * The board ceiling a 口径 may raise `economy.deployCap` to (DESIGN §37.9): the official data ships 8
+ * (`data/config.json`, `test/data.test.js`), and a pack that pins `variants: [{ axis: 'deploy', default: 'max' }]`
+ * gets this instead — four more operators standing at once. The number is the engine's own, never the pack's:
+ * `shared/variants.js variantDataPatch` is the one place that writes it.
+ */
+export const DEPLOY_CAP_MAX = 12;
 
 export const DIFFICULTIES = ['FUNNY', 'NORMAL', 'HARD', 'ABYSS'];
-export const DIFFICULTY_NAMES = { FUNNY: N_('标准模拟'), NORMAL: N_('险境模拟'), HARD: N_('绝境模拟'), ABYSS: N_('终极模拟') };
-export const DIFFICULTY_COLORS = { FUNNY: '#f6a329', NORMAL: '#e85a1a', HARD: '#e73118', ABYSS: '#ff0024' };
+// 湮灭模拟's / 炸惊模拟's own difficulties are deliberately NOT in DIFFICULTIES: that list draws the official four-card
+// selector, and a fifth entry would appear in every 选择模拟协议. Their names and colours still live here so anything that
+// shows a difficulty by value (room pill, brief, settlement) finds them; a validator should use
+// shared/annihilation-constants.js ANNIHILATION_DIFFICULTY / shared/zhajing-constants.js ZHAJING_DIFFICULTY instead.
+// 炸惊模拟 (ZHAJING, 2026-10-28): colour #17d9a0 is the play set's own (its mode records' `color`).
+export const DIFFICULTY_NAMES = { FUNNY: N_('标准模拟'), NORMAL: N_('险境模拟'), HARD: N_('绝境模拟'), ABYSS: N_('终极模拟'), ANNIHILATION: N_('湮灭模拟'), ZHAJING: N_('炸惊模拟') };
+export const DIFFICULTY_COLORS = { FUNNY: '#f6a329', NORMAL: '#e85a1a', HARD: '#e73118', ABYSS: '#ff0024', ANNIHILATION: '#5b0a14', ZHAJING: '#17d9a0' };
 
 // modeId in data/config.json = `mode_${type}_${difficulty.toLowerCase()}` with type single|multi
+// 超限模拟（solo_infinite，shared/infiniteMode.js）沿用单人的 mode 表：它只是单人的无限延长
 export const modeIdFor = (roomMode, difficulty) =>
-  `mode_${(roomMode === 'solo' || roomMode === 'solo_infinite') ? 'single' : 'multi'}_${difficulty.toLowerCase()}`;
-
-export { SOLO_INFINITE, isInfiniteMode, BOSS_HIT_LIMIT_INFINITE, INFINITE_MAX_ROUND, MIN_ATTACK_INTERVAL_SEC } from './infiniteMode.js';
-
+  `mode_${roomMode === 'solo' || roomMode === 'solo_infinite' ? 'single' : 'multi'}_${difficulty.toLowerCase()}`;
 
 export const PHASE = Object.freeze({
   LOBBY: 'LOBBY',
@@ -51,22 +100,24 @@ export const PHASE = Object.freeze({
   BATTLE_CHECK: 'BATTLE_CHECK',
   ROUND_START: 'ROUND_START',
   SP_DRAFT: 'SP_DRAFT',
-  TRAIT_DRAFT: 'TRAIT_DRAFT',
   PREP: 'PREP',
   COMBAT: 'COMBAT',
   UNITE: 'UNITE',
   SETTLE: 'SETTLE',
   FINAL_ASSAULT: 'FINAL_ASSAULT',
   HIDDEN_CORE: 'HIDDEN_CORE',
-  // 业主 2026-10-21：超限双 Boss 轮，击败第一个后进入 2.6 秒的全屏预警
-  BOSS_PHASE2_WARN: 'BOSS_PHASE2_WARN',
   RESULT: 'RESULT',
+  // 超限模拟专属阶段（2026-10-26 修复：此前 PHASE 里没有这两个键，值是 undefined，
+  // 导致 m.public.phase 在词条抉择 / 双 Boss 预警时缺字段，只剩「undefined === undefined」的隐式匹配）
+  TRAIT_DRAFT: 'TRAIT_DRAFT',
+  BOSS_PHASE2_WARN: 'BOSS_PHASE2_WARN',
 });
 
 export const PHASE_NAMES = {
   LOBBY: N_('等待中'), INFO_CHECK: N_('确认本局信息'), BAND_DRAFT: N_('选择策略'), BATTLE_CHECK: N_('协议启动'),
-  ROUND_START: N_('回合开始'), SP_DRAFT: N_('机变阶段'), TRAIT_DRAFT: N_('词条抉择'), PREP: N_('休整期'), COMBAT: N_('作战中'), UNITE: N_('联防阶段'),
-  SETTLE: N_('结算'), FINAL_ASSAULT: N_('最终攻势'), HIDDEN_CORE: N_('隐秘核心'), BOSS_PHASE2_WARN: N_('第二阶段'), RESULT: N_('模拟结束'),
+  ROUND_START: N_('回合开始'), SP_DRAFT: N_('机变阶段'), PREP: N_('休整期'), COMBAT: N_('作战中'), UNITE: N_('联防阶段'),
+  SETTLE: N_('结算'), FINAL_ASSAULT: N_('最终攻势'), HIDDEN_CORE: N_('隐秘核心'), RESULT: N_('模拟结束'),
+  TRAIT_DRAFT: N_('词条抉择'), BOSS_PHASE2_WARN: N_('第二阶段预警'),
 };
 
 // Board geometry on the 19x21 stage grid (row 0 = bottom). See DESIGN §3.
@@ -76,10 +127,108 @@ export const GEO = Object.freeze({
   NORMAL_RECT: { r0: 9, r1: 12, c0: 0, c1: 10 },  // simulation rect for a normal battle
   UNITE_RECT: { r0: 9, r1: 12, c0: 0, c1: 20 },
   BOSS_RECT: { r0: 0, r1: 5, c0: 0, c1: 20 },
-  HAND_ROW: 7, HAND_SIZE: 10,                      // hand slot idx = col 0..9
-  TEMP_ROW: 8, TEMP_C0: 4, TEMP_SIZE: 5,           // temp slot idx 0..4 = cols 4..8
+  HAND_ROW: 7, HAND_SIZE: 10,                      // hand slot idx = col 0..9 (the DEFAULT bench width)
+  // The widest 整备区 any mode declares. The bench width is mode data — `data/config.json`
+  // `modes.*.economy.benchSize`, read by server/match/PlayerState.js (`new Array(gd.benchSize)`): 炸惊 = 20, every
+  // other mode falls back to `server/match/gamedata.js` DEFAULTS.benchSize = 10. The client takes the width of the
+  // match from its own `hand` array (`benchSizeOf` below), never from this constant; HAND_MAX is only the protocol
+  // bound (shared/protocol.js `target()`), which the server then re-checks against its own hand length, so the
+  // effective per-mode range does not move.
+  HAND_MAX: 20,
+  // 临时整备区 (the five visible overflow slots): row 6 cols 0..4 — the dry front rim under the bench, not the art's
+  // EQUIPMENTS band on row 8 (that band is the 炸惊 bench's second row now). `tempRowOf(stageId)` is the one source.
+  TEMP_ROW: 6, TEMP_C0: 0, TEMP_SIZE: 5,           // temp slot idx 0..4 = row 6 cols 0..4
   PARTNER_COL_OFFSET: 8,
 });
+
+/**
+ * The 整备区 width of one match, from its one authoritative source: the private view's `hand` array (the server builds
+ * it as `new Array(gd.benchSize)` — 20 in 炸惊, 10 in every other mode), so the client never carries a second number.
+ * `GEO.HAND_SIZE` stays only as the fallback for a view without a hand yet (a mock, a half-built state, a pure unit
+ * test that passes no priv), which keeps every official path byte-identical.
+ * Sites that used to read `GEO.HAND_SIZE` directly take this instead: render/drag.js (drop targets / hover),
+ * render/app.js (legal-tile highlight, prep camera), ui/gameLogic/placement.js (hand target + 撤退 free slot),
+ * ui/facing.js (retreat slot) and ui/fallbackField.js (the 2D bench slots).
+ * @param {{ hand?: any[] } | null | undefined} priv the match's private view
+ * @returns {number} slots of the bench (clamped to `GEO.HAND_MAX`, the protocol bound)
+ */
+export function benchSizeOf(priv) {
+  const hand = priv && Array.isArray(priv.hand) ? priv.hand : null;
+  if (!hand || hand.length < 1) return GEO.HAND_SIZE;
+  return Math.min(hand.length, GEO.HAND_MAX);
+}
+
+/** Rows one bench row holds — the width of a single bench row (a slot idx is `row * this + column`). */
+export const BENCH_PER_ROW = GEO.HAND_SIZE;
+
+/**
+ * How many rows the 整备区 of a bench `n` slots wide takes: 1 for every official mode (10 slots), 2 for 炸惊 (20).
+ * The second row is the row BEHIND the bench (`GEO.HAND_ROW + 1` = row 8), not a longer first row: the official prepare
+ * camera only frames the bench half's own columns (`left_prepare_camera_param`, cols 0..10), so a 20th pad at col 19
+ * would sit outside the view (owner, 2026-10-30: 「炸惊底下的部署位做成两条才对…不是一直向右，这样没法做了」).
+ * Row 8, not row 6 (owner, 2026-10-30, second decision): the shipped 炸惊 scene packs paint the bench deck on row 7
+ * (top z 0.37–0.46) and a second pad band on row 8 (z 0.38–0.50), while row 6 is the island's front rim (rock, with
+ * water notches at cols 6–7) and row 5 is open water — pads drawn there float over the art. See docs/design/client.md.
+ * @param {number} n bench slots (`benchSizeOf`)
+ * @returns {1|2}
+ */
+export function benchRows(n = GEO.HAND_SIZE) {
+  const v = Number.isFinite(n) ? Math.min(Math.max(Math.trunc(n), 1), GEO.HAND_MAX) : GEO.HAND_SIZE;
+  // `v >= 1` and the ceil of a positive number is a positive integer, so the clamp to 1…2 is exactly the annotated union
+  return /** @type {1|2} */ (Math.max(1, Math.min(2, Math.ceil(v / BENCH_PER_ROW))));
+}
+
+/**
+ * The one mapping between a bench slot index and the board grid — every client site goes through it (render/drag.js
+ * pieceTile / tileSlot, render/app.js hand highlights / prep camera / drag stand, ui/fallbackField.js slots), and it is
+ * the reference client's rule (`modref/v2.1 shared/constants.js handTileOf`), mirrored to the art: slots 0..9 on the
+ * bench row (`GEO.HAND_ROW` = row 7, cols 0..9), slots 10..19 one row FARTHER from the viewer (`GEO.HAND_ROW + 1` = row
+ * 8, cols 0..9 — the pack's EQUIPMENTS band). 10 slots → exactly the single row every official mode draws today.
+ * @param {number} idx bench slot 0..HAND_MAX-1
+ * @param {number} [handSize] this match's bench width (`benchSizeOf`)
+ * @param {number} [baseRow] the row of the first bench row (`GEO.HAND_ROW`; a caller that carries its own GEO does)
+ * @returns {{row:number, col:number}}
+ */
+export function benchTileOf(idx, handSize = GEO.HAND_SIZE, baseRow = GEO.HAND_ROW) {
+  const i = Math.max(0, Math.trunc(Number(idx) || 0));
+  const up = Math.min(benchRows(handSize) - 1, Math.floor(i / BENCH_PER_ROW));
+  return { row: baseRow + up, col: i % BENCH_PER_ROW };
+}
+
+/** The row `tempRowOf` falls back to where the art leaves no ground on row 6 (act2autochess_m01). */
+export const TEMP_ROW_FALLBACK = 9;
+
+/**
+ * The row the 临时整备区 (temp pads, five visible overflow slots) sits on for a stage — one source for every site that
+ * positions them: render/drag.js (drop targets / pieceTile), render/app.js (temp pieces / range highlights),
+ * ui/underframe.js (the red frame), ui/fallbackField.js (the 2D strip) and server/match/match/views.js (the scouted temp
+ * units). Row 6 (`GEO.TEMP_ROW`, cols 0..4, `GEO.TEMP_C0`) is the island's dry front rim under the bench — the only
+ * row near the bench that no bench row or field row claims now that the 炸惊 overflow row is row 8.
+ * act2autochess_m01 is the exception its art forces: its row 6 is a wall with two blowers standing on it
+ * (data/stages.json devices (6,5) / (6,9)), so its five cells move to row 9 (`TEMP_ROW_FALLBACK`).
+ * @param {string|null|undefined} stageId the match's stage id (`data/stages.json` key)
+ * @returns {number} board row of the temp pads
+ */
+export function tempRowOf(stageId) {
+  return stageId === 'act2autochess_m01' ? TEMP_ROW_FALLBACK : GEO.TEMP_ROW;
+}
+
+/**
+ * The bench slot on a grid tile, or null (the inverse of `benchTileOf`; rejects cols outside 0..9 and rows outside the
+ * rows this bench width uses — with 10 slots the row behind the bench is not a bench row).
+ * @param {number} row @param {number} col
+ * @param {number} [handSize] this match's bench width (`benchSizeOf`)
+ * @param {number} [baseRow] the row of the first bench row (`GEO.HAND_ROW`)
+ * @returns {number|null} slot idx
+ */
+export function benchIndexAt(row, col, handSize = GEO.HAND_SIZE, baseRow = GEO.HAND_ROW) {
+  if (!Number.isInteger(row) || !Number.isInteger(col)) return null;
+  if (col < 0 || col >= BENCH_PER_ROW) return null;
+  const up = row - baseRow;
+  if (up < 0 || up >= benchRows(handSize)) return null;
+  const idx = up * BENCH_PER_ROW + col;
+  return idx < Math.min(handSize, GEO.HAND_MAX) ? idx : null;
+}
 
 export const AREA = Object.freeze({ BOARD: 'board', HAND: 'hand', TEMP: 'temp', OUTSIDE: 'outside' });
 
@@ -118,6 +267,9 @@ export const BOND_LAYER_CAP = 999;
  * 对局结束再恢复 —— 改动**只在一个超限局的生命周期内**，普通单机 / 同盟读到的仍是 999。
  * 用它而不是直接改常量，是因为 `layerGainRoom` 是纯函数、被 service 与 sim 两侧共用，
  * 参数化比「按模式到处传参」改动面小得多。
+ *
+ * 服务端与浏览器各有一份 `constants.js`（`shared/` 与 `public/shared/`），两边的这份 API 必须一致：
+ * 服务器在对局开始/结束时调 setBondLayerCap，浏览器在自己的 worker 里调同一份。
  */
 let bondLayerCapLive = BOND_LAYER_CAP;
 
@@ -150,7 +302,8 @@ export function layerGainRoom(before, n) {
  * = data/bosses.json `enemyKey`; in the sim the tag-'boss' units: those leaders and their mirrored copies, never parts,
  * escorts or drones) whose `ceil(final damage)` ≥ this is CANCELLED: 0 damage, nothing credited to the shared pool
  * (`AutoChessStepModeManager._OnBossEnemyTakeDamage` → `modifier.Cancel()`). It is not a clamp: a hit of 299999 lands.
- * Checked in server/sim/damage.js (dealDamage after DEF / RES and every multiplier, before shields; Battle.loseHp — not
+ * Checked in server/sim/attack/hit.js (resolveDamage: after the calculation and output stages and the target's damage-taken
+ * multipliers, before the ordered injury effects — barriers, shields, dodges) and server/sim/attack.js (dealHPLose — not
  * the 胄 drone link's pool share, `noHitLimit`, DESIGN §25.13.4). Minions, normal rounds and 联防 are unaffected.
  * 0 / Infinity = off.
  */
@@ -170,9 +323,11 @@ export const ERR = Object.freeze({
   NOT_IN_ROOM: 'NOT_IN_ROOM',
   ROOM_NOT_FOUND: 'ROOM_NOT_FOUND',
   ROOM_FULL: 'ROOM_FULL',
+  SERVER_FULL: 'SERVER_FULL',     // the online cap (SP_MAX_ONLINE) has no seat for a new player
   ROOM_STARTED: 'ROOM_STARTED',
+  // a fixed alliance key (--room-code): one room at a time can hold it
+  ROOM_CODE_TAKEN: 'ROOM_CODE_TAKEN',
   NOT_HOST: 'NOT_HOST',
-  MOD_UNKNOWN: 'MOD_UNKNOWN',      // 房间声明的模组不在本服务器加载的目录里 (W-D)
   NOT_READY: 'NOT_READY',
   WRONG_PHASE: 'WRONG_PHASE',
   NO_FUNDS: 'NO_FUNDS',
@@ -202,6 +357,7 @@ export const ERR = Object.freeze({
   PLUGIN_BLOCKED: 'PLUGIN_BLOCKED',
   PLUGIN_DEPENDENCY: 'PLUGIN_DEPENDENCY',
   PLUGIN_CONFLICT: 'PLUGIN_CONFLICT',
+  PLUGIN_RULE_CONFLICT: 'PLUGIN_RULE_CONFLICT',
   PLUGIN_LIMIT: 'PLUGIN_LIMIT',
   // P1c (DESIGN §32.6): a gameplay plugin made for other game versions or another plugin API (refused unless the server
   // owner allows it: plugins/config.json allowIncompatible); the server already runs as many plugin content sets as its
@@ -210,19 +366,31 @@ export const ERR = Object.freeze({
   PLUGIN_INCOMPATIBLE: 'PLUGIN_INCOMPATIBLE',
   PLUGIN_BUSY: 'PLUGIN_BUSY',
   CONTENT_NOT_READY: 'CONTENT_NOT_READY',
+  // match test mode (DESIGN §37.8 phase 2): the process switch is off, or this room was not created as a test room
+  TEST_CONFIRM: 'TEST_CONFIRM',
+  TEST_DISABLED: 'TEST_DISABLED',
+  TEST_FORBIDDEN: 'TEST_FORBIDDEN',
+  // official versions (DESIGN §35.23, M1): a version this server does not enable (room.create, room.proposeVersion); a
+  // version that cannot serve the room (its roomModes, or the room's gameplay plugins — they play 第二期下半 only); a room
+  // action refused while the room's version vote is open (room.start, room.setPlugins, room.setMode, room.proposeVersion)
+  VERSION_UNKNOWN: 'VERSION_UNKNOWN',
+  VERSION_UNSUPPORTED: 'VERSION_UNSUPPORTED',
+  VERSION_VOTE: 'VERSION_VOTE',
   INTERNAL: 'INTERNAL',
 });
 
 export const ERR_TEXT = {
   SESSION_IN_USE: N_('此对局仍在其他窗口中，或当前浏览器无法安全恢复。请关闭原窗口后重试。'),
   BAD_MSG: N_('无效的请求'), RATE: N_('操作过于频繁'), NOT_IN_ROOM: N_('你不在房间中'), ROOM_NOT_FOUND: N_('未找到该同盟密钥对应的房间'),
-  ROOM_FULL: N_('房间已满'), ROOM_STARTED: N_('模拟已开始'), NOT_HOST: N_('只有房主可以操作'), NOT_READY: N_('仍有玩家未就绪'),
+  ROOM_FULL: N_('房间已满'), SERVER_FULL: N_('服务器已满'), ROOM_STARTED: N_('模拟已开始'), NOT_HOST: N_('只有房主可以操作'), NOT_READY: N_('仍有玩家未就绪'),
+  ROOM_CODE_TAKEN: N_('固定同盟密钥已被另一个房间占用，请先关闭那个房间'),
   WRONG_PHASE: N_('当前阶段无法进行该操作'), NO_FUNDS: N_('资金不足'), HAND_FULL: N_('整备区已满'), BOARD_FULL: N_('已达到部署上限'),
   BAD_TILE: N_('无法部署在该位置'), BAD_TARGET: N_('无效的目标'), SOLD_OUT: N_('已售出'), MAX_LEVEL: N_('调度中心已达最高等级'),
   NOT_YOUR_TURN: N_('尚未轮到你'), ALREADY: N_('已完成该操作'), TEMP_NOT_EMPTY: N_('临时整备区不为空'), ELIMINATED: N_('你已被淘汰'),
   SPECTATOR: N_('观战中无法进行该操作'), INTERNAL: N_('服务器内部错误'),
   PLUGIN_UNKNOWN: N_('本服务器没有安装该插件'), PLUGIN_BLOCKED: N_('该插件不能在房间中启用'), PLUGIN_DEPENDENCY: N_('缺少该插件需要的其他插件'),
   PLUGIN_CONFLICT: N_('所选插件互相冲突'), PLUGIN_LIMIT: N_('所选插件的素材总量超出本服务器的上限'),
+  PLUGIN_RULE_CONFLICT: N_('两个插件把同一个规则开关设成了不同的选项'),
   PLUGIN_INCOMPATIBLE: N_('该插件不适配本服务器的游戏版本'), PLUGIN_BUSY: N_('本服务器同时运行的插件组合已达上限，请稍后再试'),
   PLUGIN_CONSENT: N_('还有玩家未同意运行受信任插件'),
   PLUGIN_SCRIPTS_DISABLED: N_('服主没有启用脚本插件'),
@@ -232,7 +400,12 @@ export const ERR_TEXT = {
   PLUGIN_SCRIPT_OVERRIDE: N_('插件未声明要替换的官方技能'),
   PLUGIN_SCRIPT_CHECK: N_('脚本未通过兼容性检查'),
   CONTENT_NOT_READY: N_('仍有博士未载入房间的插件内容'),
-  MOD_UNKNOWN: N_('本服务器未加载该模组'),   // 房间声明的工坊包不在服务器目录里 (W-D)
+  TEST_CONFIRM: N_('这是测试房间，不计入任何记录。确认加入？'),
+  TEST_DISABLED: N_('测试模式未开启'),
+  TEST_FORBIDDEN: N_('这不是测试房间'),
+  VERSION_UNKNOWN: N_('本服务器没有启用该版本'),
+  VERSION_UNSUPPORTED: N_('该版本不能用于当前房间（例如房间开着改变玩法的插件）'),
+  VERSION_VOTE: N_('切换版本投票进行中，请等投票结束'),
 };
 
 // ---- Emotes (交流, research 09 §4) -----------------------------------------------------------------------------

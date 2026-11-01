@@ -4,9 +4,10 @@
 // coming enemies; in a boss round's prep on the player's half of the boss field).
 // Installed on Match.prototype by server/match/Match.js (a method container: never instantiated; `this` is the match).
 
-import { PHASE, GEO } from '../../../shared/constants.js';
+import { PHASE, GEO, benchTileOf, tempRowOf, teamIndexOf, teamCountOf } from '../../../shared/constants.js';
 import { TEST_PUBLIC_LOG } from '../../../shared/testMode.js';
 import { boardOrder, pieceDir } from '../board.js';
+import { hpDisplay, hpMaxDisplay } from '../teams.js';
 import { bondList, offBondCounts } from '../bondsMeta.js';
 import { cardView } from '../choices.js';
 import { bountySpawns, previewOf } from '../waves.js';
@@ -61,7 +62,11 @@ export class MatchViews {
         const f = this.fields.find((x) => x.players.includes(ps.playerId));
         return f && f.live ? 'combat' : 'done';
       }
-      case PHASE.UNITE: return this.unitePlan && this.unitePlan.helpers.includes(ps) ? 'helping' : 'done';
+      case PHASE.UNITE: {
+        // 多队（8 / 12 人房）: whoever is fielded in the running stage is 'helping' — the viewing stage fields nobody
+        if (this.multiTeam) return this._uniteHelpersNow().includes(ps.playerId) ? 'helping' : 'done';
+        return this.unitePlan && this.unitePlan.helpers.includes(ps) ? 'helping' : 'done';
+      }
       case PHASE.ROUND_START: return 'acting';
       default: return 'done';
     }
@@ -81,10 +86,26 @@ export class MatchViews {
       deadline: this.deadline,
       serverNow: this.sched.now(),
       modeId: this.modeId,
+      // 编制 (TWELVE_PLAYER_MODE §1): the room's capacity, present only in a room above MAX_SEATS — a 4-seat m.public
+      // keeps exactly the keys (and their order) it always had.
+      ...(this.multiTeam ? { maxSeats: this.maxSeats, teams: teamCountOf(this.maxSeats) } : {}),
       // 超限模式：客户端据此知道回合数没有上限（HUD 的「隐藏核心 ?? 」判定不能拿 lastRound 卡它）
       isInfinite: !!this.isInfinite,
       // 业主 2026-10-21：双 Boss 轮当前打到第几阶段（1 / 2），客户端据此播全屏预警
       bossPhase: this.isInfinite ? (this.bossPhaseNo || 1) : 1,
+      // Boss 词缀（业主 2026-10-26）：只在超限的 Boss 轮出现；第二阶段的波次也带同一个 affix
+      ...(this.isInfinite && (() => {
+        const a = this.roundBossAffix
+          || (this.wave && this.wave.affix)
+          || (this.bossWaves && this.bossWaves[0] && this.bossWaves[0].wave && this.bossWaves[0].wave.affix)
+          || null;
+        return a ? { bossAffix: { id: a.id, name: a.name, text: a.text } } : {};
+      })()),
+      // 风险契约（业主 2026-10-26）：Boss 轮 PREP 的 offer 与已签的契约
+      ...(this.isInfinite && this.contractOffer
+        ? { contractOffer: { round: this.contractOffer.round, cards: this.contractOffer.cards.map((c) => ({ ...c })) } }
+        : {}),
+      ...(this.isInfinite && this.contract ? { contract: { id: this.contract.id, round: this.contract.round } } : {}),
       // 战斗推进倍速（超限 R16+ 是 2）；倒计时与它无关，仍是 1 倍
       gameSpeed: this.gameSpeed,
       // 超限倍速开关的位置：1 = 基准速（GAME_SPEED），2 = 双倍
@@ -99,6 +120,9 @@ export class MatchViews {
         }
         : {}),
       difficulty: this.difficulty,
+      // 湮灭模拟: the run's 蚀流 tier (1..6) and 无尽湮灭's 「无尽」 flag (the client shows no round total /N then). Gated on
+      // the mode block, as every other optional key here, so an official mode's public view stays byte-identical.
+      ...(this.gd.annihilation ? { endless: this.gd.endless === true, erosion: this.gd.erosion } : {}),
       stageId: this.stageId,
       // a non-default official version's match (DESIGN §35.23): its registry id, so a page that never saw the room (a
       // reload after it closed: the lobby's result replay) reads the frames with that version's data; absent for the
@@ -117,10 +141,17 @@ export class MatchViews {
       bannedChess: this.bannedChess.slice(),
       bossId: this.bossId,
       hiddenBossId: this.hiddenBossId,
-      bossRound: this.gd.bossRound,
-      hiddenRound: this.gd.hiddenRound,
+      // 无尽湮灭: the round's own boss/hidden pair (a later pair is a new Final Assault, not the run's last one)
+      bossRound: this.gd.endless ? (this.gd.bossRoundFor?.(this.round) ?? this.gd.bossRound) : this.gd.bossRound,
+      hiddenRound: this.gd.endless ? (this.gd.hiddenRoundFor?.(this.round) ?? this.gd.hiddenRound) : this.gd.hiddenRound,
       bossPairs: this.bossWaves ? this.bossWaves.map(w => w.players.slice()) : this.bossPairs ? this.bossPairs.map(ids => ids.slice()) : null,
       spRound: this.gd.spRounds().includes(this.round),
+      /**
+       * 炸惊模拟 规则14 — 敌方惊变: the reveal of the card just drawn (the client plays `flickerMs` of rolling and then
+       * `resultMs` of the zoomed card) plus the whole mode pool so it can render the roulette. Both keys are absent for
+       * every other mode (`gd.enemyJibian()` is null there) — m.public does not grow a field in an official room.
+       */
+      ...(this.enemyJibian ? { enemyJibian: this._enemyJibianView() } : null),
       // DESIGN §14: 'client' = battles are simulated by the browsers (b.start specs), 'server' = legacy streaming
       combatMode: this.clientCombat ? 'client' : 'server',
       // solo pause (g.pause, DESIGN §14): the battle, its field clock and every deadline are frozen while true
@@ -134,6 +165,10 @@ export class MatchViews {
         connected: ps.isBot || (ps.connected && !ps.left),
         alive: ps.alive,
         lp: Math.max(0, ps.lp),
+        // 多队 (TWELVE_PLAYER_MODE §1/§3/§5): the team this seat fights for, and the player's OWN health bar — the display
+        // value is max(1, floor(hp)) while the real value is above 0 and 0 once down, with the ceiling its build reached
+        // as `hpMax`. Absent in a 4-seat room, whose rows keep exactly the keys (and order) they had.
+        ...(this.multiTeam ? { team: teamIndexOf(ps.seat), hp: hpDisplay(ps), hpMax: hpMaxDisplay(ps) } : {}),
         skins: ps.skins || {},
         bandId: ps.bandId,
         shopLevel: ps.shop.level,
@@ -178,17 +213,31 @@ export class MatchViews {
     }
     if (this.phase === PHASE.TRAIT_DRAFT && this.trait) {
       const t = this.trait;
-      v.trait = { round: t.round, polarity: t.polarity, cards: t.cards.slice(), turn: this.traitTurn(), picks: { ...t.picks } };
+      v.trait = {
+        round: t.round, polarity: t.polarity, cards: t.cards.slice(), turn: this.traitTurn(), picks: { ...t.picks },
+        rerollsLeft: t.rerollsLeft | 0, skips: t.skips | 0, lockedIdx: Number.isInteger(t.lockedIdx) ? t.lockedIdx : null,
+      };
     }
     if (this.phase === PHASE.SP_DRAFT && this.sp) {
       const s = this.sp;
       v.sp = {
-        family: s.family, name: s.name, desc: s.desc, eventId: s.eventId,
-        cards: s.cards.map(c => ({ ...cardView(c), soldOut: c.kind === 'item' && !this.itemPool.canGain(c.id) })), order: s.order.slice(),
+        family: s.family, name: s.name, desc: s.desc, eventId: s.eventId,        cards: s.cards.map(c => ({ ...cardView(c), soldOut: c.kind === 'item' && !this.itemPool.canGain(c.id) })), order: s.order.slice(),
         turn: this.spTurn(), picks: { ...s.picks }, taken: { ...s.taken }, untimed: !!s.untimed,
+        // 超限「词条」三选一（server/match/match/relicDraft.js）: 哪一种池（lc / infinite / negative）与它是为哪一回合开的。
+        // 其它 family 的 sp 没有这两个键，m.public 逐字节不变。
+        ...(s.relicKind ? { relicKind: s.relicKind, round: s.round } : null),
+        // 负面词条三选一（业主 2026-10-31 第二批）：`negative: true` 让客户端把浮层换成警示色 + 换眉题。
+        // 只有负面池带这个键；饰品池 / 其它 family 的 sp 逐字节不变。
+        ...(s.negative === true ? { negative: true } : null),
       };
     }
-    if (this.phase === PHASE.UNITE && this.unitePlan) v.unite = { helpers: this.unitePlan.helpers.map((p) => p.playerId), leakers: this.unitePlan.leakers.map((p) => p.playerId) };
+    if (this.phase === PHASE.UNITE && this.unitePlan) {
+      // 多队（8 / 12 人房）: the three-stage 联防 — team stage → viewing stop → cross-team stage — plus, per leaker, the
+      // enemies still standing (the HUD's 剩余敌人). A 4-seat room keeps the two keys it always published.
+      v.unite = this.multiTeam
+        ? this._multiUniteView()
+        : { helpers: this.unitePlan.helpers.map((p) => p.playerId), leakers: this.unitePlan.leakers.map((p) => p.playerId) };
+    }
     // SETTLE after a 联防: its outcome as data (settle.js uniteResultView; GitHub #235, PR #112) — { through, helpers,
     // leakers, losses: { playerId: the LP settlement charged this round } } — the client's result box reads the viewer's
     // own charge from it; absent when no 联防 resolved (the client then shows the round's own battle result)
@@ -212,6 +261,33 @@ export class MatchViews {
       }));
     }
     return v;
+  }
+
+  /**
+   * 炸惊模拟 规则14 — the 敌方惊变 reveal of m.public: the card just drawn (`rarity` as the view's display label, the
+   * card itself with name / desc / rarity), the round it belongs to and the timing the client animates with
+   * (`flickerMs` of rolling, then `resultMs` of the zoomed card). `cards` lists EVERY enemy card drawn this match (R1 and
+   * R6 are both in force at once, and the list survives a reconnect) — that is what the 已选惊变 panel's enemy page
+   * reads. `pool` carries the mode's whole enemy pool so the roulette can show the cards it rolls through (trimmed,
+   * presentation only).
+   * @returns {{ round: number, rarity: string|null, card: any, cards: any[], pool: any[], flickerMs: number, resultMs: number }}
+   */
+  _enemyJibianView() {
+    const ej = this.enemyJibian;
+    const cfg = typeof this.gd.enemyJibian === 'function' ? this.gd.enemyJibian() : null;
+    const pool = cfg && Array.isArray(cfg.pool) ? cfg.pool.slice(0, 24).map((c) => ({
+      id: c.effectId || c.id || c.key || null, name: c.name || null, rarity: c.rarity || null,
+    })) : [];
+    const cards = Array.isArray(this.enemyJibianList) ? this.enemyJibianList.map((c) => ({ ...c })) : [];
+    return {
+      round: ej.round, rarity: ej.rarity ?? null, card: ej.card, cards,
+      // 隐秘惊变 (R15): the reveal is the hidden card; `ordinaryCard` is the second one drawn with it, and the two
+      // `hidden*` numbers let the client animate that phase with its own timings.
+      ...(ej.hidden ? { hidden: true } : null),
+      ...(ej.ordinaryCard ? { ordinaryCard: ej.ordinaryCard } : null),
+      pool, flickerMs: cfg ? cfg.flickerMs : 0, resultMs: cfg ? cfg.resultMs : 0,
+      ...(cfg && cfg.hidden ? { hiddenLabel: cfg.hidden.label, hiddenFlickerMs: cfg.hidden.flickerMs, hiddenResultMs: cfg.hidden.resultMs } : null),
+    };
   }
 
   /**
@@ -265,15 +341,56 @@ export class MatchViews {
    * merged team LP live).
    * @returns {{ pendingLp?: number, uniteLeft?: number }}
    */
+  /**
+   * m.public.unite in a room above MAX_SEATS (TWELVE_PLAYER_MODE §7–§9): the stage the 联防 is in, every team's helpers and
+   * leakers, which teams are only watching (all four leaked, §7 末), the cross-team pair when that stage runs (§8), and —
+   * per leaker — how many of its enemies are still standing (`left`, the same live count the 4-player HUD shows as ×N).
+   * Keys only exist here: a 4-seat match publishes `{ helpers, leakers }` as before.
+   *
+   * `stage` is the real `Match.uniteStage` and nothing else: team → watch → cross while the 联防 runs, then **null** once
+   * `_finishMultiUnite` clears it (the settle waits one COMBAT_END delay after that). The client's 联防 bar (ui/multiHud.js
+   * uniteLive) mounts only for the three named stages, so the bar leaves the screen with the last stage instead of
+   * lingering until SETTLE — the old `|| 'team'` fallback made those frames read 「队内联防」 while no field was running.
+   * @returns {{ stage: string|null, teams: object[], helpers: string[], leakers: string[], left: Record<string, number>, cross?: object }}
+   */
+  _multiUniteView() {
+    const plan = this.unitePlan || {};
+    const teams = Array.isArray(plan.teams) ? plan.teams : [];
+    const cross = this.crossPlan || null;
+    const stage = this.uniteStage || null;
+    const ids = (list) => (Array.isArray(list) ? list.map((p) => p.playerId) : []);
+    const leakers = stage === 'cross' && cross ? [...new Set(cross.leaked.map((l) => l.sourcePlayerId))] : teams.flatMap((t) => ids(t.leakers));
+    /** @type {Record<string, number>} */
+    const left = {};
+    for (const pid of leakers) {
+      const ps = this.players.get(pid);
+      const n = ps ? this._uniteLeft(ps) : null;
+      if (n != null) left[pid] = n;
+    }
+    return {
+      stage,
+      teams: teams.map((t) => ({ index: t.index, helpers: ids(t.helpers), leakers: ids(t.leakers), watching: t.watch === true })),
+      helpers: teams.flatMap((t) => ids(t.helpers)),
+      leakers: teams.flatMap((t) => ids(t.leakers)),
+      ...(cross ? { cross: { source: cross.source, helpers: ids(cross.helpers), leakers } } : {}),
+      left,
+    };
+  }
+
   _pendingLpView(ps) {
     if (!ps || !ps.alive || (this.phase !== PHASE.COMBAT && this.phase !== PHASE.UNITE)) return {};
+    // 多队 (TWELVE_PLAYER_MODE §4): the round's damage is split across everyone still standing, so a single player has no
+    // deduction to preview — the leaker's remaining count still rides along (`uniteLeft`, the HUD's ×N tag).
+    const multi = this.multiTeam === true;
     const counted = (r) => (r && Array.isArray(r.leaked) ? r.leaked.filter((l) => l && l.counted !== false).length : 0);
     // 联防: a leaker's enemies still standing on the 联防 field (uncapped), the loss capped like settle()
     const left = this._uniteLeft(ps);
     if (left != null) {
       const loss = Math.min(this.gd.lpCapPerRound, left);
+      if (multi) return { uniteLeft: left };
       return loss > 0 ? { uniteLeft: left, pendingLp: loss } : { uniteLeft: left };
     }
+    if (multi) return {};
     let n = 0;
     if (this.lastResults.has(ps.playerId)) n = counted(this.lastResults.get(ps.playerId));
     else if (this.phase === PHASE.COMBAT) {
@@ -391,7 +508,8 @@ export class MatchViews {
     const units = this._prepBoardUnits(ps);
     const gd = ps.gd || this.gd;
     // the hand (整备区) and the 临时整备区 scout exactly like the own prep bench renders them: pieces as units on
-    // their rows (hand row 7, col = hand slot; temp row 8, cols 4..8 = temp slots; no dir — bench pieces face right),
+    // their rows (hand row 7, col = hand slot; a 炸惊 20-slot bench puts slots 10..19 on row 8; temp slots on the
+    // stage's temp row — row 6 cols 0..4, row 9 on act2autochess_m01 (`tempRowOf`); no dir — bench pieces face right),
     // items included (the client draws their floating plates). PRTS 帮助 counts the temp area with the hand (review of
     // PR #129). Part of the meta for every watcher alike — the spectator seat's copy equals a teammate's
     // (test/match/spectator.test.js). User playtest #2 item 1 (GitHub #44).
@@ -425,18 +543,29 @@ export class MatchViews {
       });
     };
     for (let i = 0; i < ps.hand.length; i++) {
-      if (ps.hand[i]) benchUnit(ps.hand[i], i, GEO.HAND_ROW, 'hand');
+      if (ps.hand[i]) {
+        // the bench slot's tile is the CLIENT's one mapping (shared/constants.js benchTileOf): row 7 cols 0..9 for the
+        // 10-slot bench, and the second row (row 8, the pack's EQUIPMENTS band) for slots 10..19 of a 20-slot 炸惊 bench
+        const bt = benchTileOf(i, ps.hand.length);
+        benchUnit(ps.hand[i], bt.col, bt.row, 'hand');
+      }
     }
     for (let i = 0; i < Math.min(ps.temp.length, GEO.TEMP_SIZE); i++) {
-      if (ps.temp[i]) benchUnit(ps.temp[i], GEO.TEMP_C0 + i, GEO.TEMP_ROW, 'temp');
+      if (ps.temp[i]) benchUnit(ps.temp[i], GEO.TEMP_C0 + i, tempRowOf(this.stageId), 'temp');
     }
     // `nextEnemies`: the scouted player's coming enemies — their preview pen shows on the scouting board too (research 09
     // §2.2 "Teammates"; render/app.js enterBattle({ prep: true, nextEnemies }))
     let nextEnemies = [];
     try { nextEnemies = this.nextEnemiesFor(ps); } catch (e) { this.reportError('nextEnemies', e); }
     // the scouted player's effects column (策略 / 机变 / 悬赏 …), display-ready (user playtest #2: while scouting, the
-    // right column shows the watched player's effects, not one's own)
-    const meta = { t: 'm.field', fieldId: `n:${ps.playerId}`, kind: 'normal', rect: { ...GEO.NORMAL_RECT }, stageId: this.stageId, units, effects: ps.effectsView(), prep: true, nextEnemies };
+    // right column shows the watched player's effects, not one's own). 炸惊模拟: their 惊变 are in here too (the `jibian:`
+    // refs, tagged `jibian === true`), and their 锻造器 summary rides beside it — the same shape as m.private.forge, so an
+    // eliminated player or a spectator watching them sees the window too. Only a ZHAJING match grows the `forge` key.
+    const meta = {
+      t: 'm.field', fieldId: `n:${ps.playerId}`, kind: 'normal', rect: { ...GEO.NORMAL_RECT }, stageId: this.stageId, units,
+      effects: ps.effectsView(), prep: true, nextEnemies,
+      ...(ps.forge ? { forge: ps.forgeView() } : null),
+    };
     // 最终攻势 / 隐秘核心 prep: the pieces stand on the player's half of the boss field — the scout shows them there (rows
     // − 7, the right half mirrored with RIGHT ↔ LEFT: finalAssault.js bossFieldPlacement, as the own prep view), with the
     // round's leader at its spawn tile (nextEnemies `start`), framed by the boss-field prep camera of the player's side

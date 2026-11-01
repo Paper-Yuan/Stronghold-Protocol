@@ -7,6 +7,10 @@
 //   a faulty content module is logged and skipped, never crashing the battle.
 // setupUnitKit(battle, unit, mode) — resolves a unit's Kit: kits[baseChessId]?.(bb, chess, def) ?? generic.
 //   Battle opts.kits ({ [baseChessId]: kitFn }) take precedence (tests / sandboxes).
+//   On another official version's build (support isVersionData: config.version) an official kit is checked against the
+//   operator it was written for (officialKitKey, kits/index.js KIT_CHAR_IDS): that version gives some chess ids to
+//   other operators, whose kit is then found by charId (the tier kit of the record's tier, else a 自选 op-* kit), or
+//   none (generic). The default data and the plugin content sets built on it keep the by-id lookup (DESIGN §35.22.3).
 //   补位 stand-ins (isStandInDef: the def of simdata getStandIn — the chess's ids, another character's body): the kit is
 //   kits[def.charId] (the stand-in's own, kits/ops/standin-<codename>.js), never the chess id's — that is the replaced
 //   operator's kit; without one, the generic kit plus the talents it can apply exactly (generic.js genericTalents).
@@ -32,6 +36,8 @@ import { compileDsl } from './dsl/compile.js';
 import { validateSkillSpec, matchesSchema, MODS_SCHEMA } from '../../../shared/plugins/skillSpec.js';
 import { withUnitLoadouts } from '../simdata.js';
 import { isPotential } from '../../../shared/potential.js';
+import { RECORD_MAPS } from '../../../shared/plugins/dataUtils.js';
+import { isVersionData } from './support/index.js';
 
 // Content files are loaded with guarded dynamic imports: a module that fails to load (syntax error, throwing
 // top-level code, missing file) is logged and replaced by an empty module instead of breaking the server.
@@ -45,9 +51,44 @@ async function safeImport(path) {
 }
 
 const KIT_REGISTRY = await safeImport('./kits/index.js');
-const DOMAIN_NAMES = ['tokens', 'devices', 'enemies', 'bosses', 'bonds', 'garrisons', 'items', 'bands', 'choices'];
+// 炸惊模拟 (拓展玩法模式 ZHAJING): `jibian` / `ejibian` install the 惊变 content domains, `jibianBonds` is the pure
+// helper module (惊变羁绊: activeBonds / ownedJibianIdsOf / bondHintsFor — no install of its own), and `forge` is the
+// 锻造器's battle side (shared/forgeData.js decides the numbers, this domain applies range / block / sp-cost and the
+// crit / lifesteal hooks — 惊变「黑闪」 sums its crit through the same hook). Missing a name here is a SILENT failure:
+// the domain's handlers never install and nothing throws (handoff/ZHAJING-SPLIT-PLAN §5.6). The files are the
+// engine-cards worker's; a file that is absent loads as {} through safeImport like any other.
+// `bonds/addon/annbonds` 是湮灭模拟两条专属盟约（罗德岛 / 卡兹戴尔）的战斗侧 + 整备侧（断角里程碑）。它放在
+// bonds/addon/ 里与 zjbonds 同类，所以这里的名字带路径（safeImport 拼成 './bonds/addon/annbonds.js'）；排在最后装，
+// 保证晚于 `bonds`（含 bonds/core 的官方钩子）。少一行 = 两条盟约的 20 个 bb 键全哑且不报错。
+// `overlimitRelics` 是超限模拟「词条」（饰品）的战斗侧 + 整备侧（server/sim/content/overlimitRelics.js）：只在
+// `flags.overlimit` 且 `battleInput.relicsOverlimit` 非空时才挂监听器，普通 / 湮灭 / 炸惊一帧不变。
+// `overlimitNegative` 是同一模式的「负面词条」（server/sim/content/overlimitNegative.js，业主 2026-10-31 第二批）：
+// 另一张表、另一个键（`battleInput.relicsOverlimitNegative`），同样只在 `flags.overlimit` 且选了负面词条时才挂监听器。
+const DOMAIN_NAMES = ['tokens', 'devices', 'enemies', 'bosses', 'bonds', 'garrisons', 'items', 'bands', 'choices', 'hazard', 'relics', 'overlimitRelics', 'overlimitNegative', 'jibian', 'ejibian', 'jibianBonds', 'forge', 'bonds/addon/annbonds'];
 const DOMAINS = await Promise.all(DOMAIN_NAMES.map((n) => safeImport(`./${n}.js`)));
 const tokens = DOMAINS[0];
+
+/**
+ * 惊变羁绊 helper module (server/sim/content/jibianBonds.js), guarded: `{}` while the file is absent, so every caller
+ * has to go through the wrappers below and nothing throws at load time.
+ */
+const JIBIAN_BONDS_MOD = DOMAINS[DOMAIN_NAMES.indexOf('jibianBonds')] ?? {};
+
+/**
+ * 惊变羁绊 queries for the match side (no sim import in the match: this module is reachable through content/index.js,
+ * which the match already loads for registerAllMeta). Every call is total: without the content file the answers are
+ * "no 羁绊 active" / "no hint", which is exactly what a mode without 惊变 needs.
+ */
+export const jibianBonds = Object.freeze({
+  /** The 惊变羁绊 the owned card ids complete: `[{ def, count, threshold }]`. */
+  activeBonds: (ids) => (typeof JIBIAN_BONDS_MOD.activeBonds === 'function' ? JIBIAN_BONDS_MOD.activeBonds(ids) : []),
+  /** Raw owned card ids of a player's effect refs (`key` = `jibian:<effectId>`). */
+  ownedJibianIdsOf: (ps) => (typeof JIBIAN_BONDS_MOD.ownedJibianIdsOf === 'function' ? JIBIAN_BONDS_MOD.ownedJibianIdsOf(ps) : []),
+  /** The 「羁绊名 已有/阈值」 line of one card (null when that card belongs to no 羁绊). */
+  bondHintsFor: (cardId, owned) => (typeof JIBIAN_BONDS_MOD.bondHintsFor === 'function' ? JIBIAN_BONDS_MOD.bondHintsFor(cardId, owned) : null),
+  /** Whether the content file loaded at all (tests / diagnostics). */
+  loaded: typeof JIBIAN_BONDS_MOD.activeBonds === 'function',
+});
 
 /**
  * Merged kit registry: baseChessId → (bb, chess, def) => Kit, then the 补位 stand-in kits: stand-in charId → builder
@@ -55,7 +96,7 @@ const tokens = DOMAINS[0];
  */
 export const KITS = KIT_REGISTRY.KITS ?? Object.freeze({});
 
-/** Domain modules in install order: tokens, devices, enemies, bosses, bonds, garrisons, items, bands, choices. */
+/** Domain modules in install order: tokens, devices, enemies, bosses, bonds, garrisons, items, bands, choices, hazard, relics, overlimitRelics, jibian, ejibian, jibianBonds, forge, bonds/addon/annbonds. */
 export const MODULES = Object.freeze(DOMAIN_NAMES.map((n, i) => [n, DOMAINS[i]]));
 
 /**
@@ -77,14 +118,62 @@ export function isDiyDef(def) {
 /** A def whose body is another character than its chess id names (补位 stand-in, 自选 piece): its kit is keyed by charId. */
 const isOtherBody = (def) => isStandInDef(def) || isDiyDef(def);
 
+/** Tier kit key → the charId it was written for (kits/index.js). */
+const KIT_CHAR_IDS = KIT_REGISTRY.KIT_CHAR_IDS ?? Object.freeze({});
+/** charId → its tier kit keys, in KIT_FILES order (kits/index.js). */
+const TIER_KIT_KEYS_BY_CHAR = KIT_REGISTRY.TIER_KIT_KEYS_BY_CHAR ?? Object.freeze({});
+const tierOfKitKey = (key) => Number(/^chess_char_(\d+)_/.exec(key)?.[1]);
+/** A plugin's chess record (shared/plugins/dataUtils.js RECORD_MAPS: chess_x_ ids). */
+const isPluginChess = (id) => String(id ?? '').startsWith(`${RECORD_MAPS.chess[0]}_`);
+
+/**
+ * The official kit of operator `charId`: its tier kit of `tier`, else its first tier kit, else a kit registered under
+ * the charId itself (a 自选 op-* or stand-in kit), else null.
+ */
+function kitKeyForChar(charId, tier, kits = KITS, tierKeys = TIER_KIT_KEYS_BY_CHAR) {
+  const keys = tierKeys[charId];
+  if (keys?.length) return keys.find((k) => tierOfKitKey(k) === tier) ?? keys[0];
+  return Object.hasOwn(kits, charId) ? charId : null;
+}
+
+/**
+ * The key of `def`'s kit in KITS, or null (generic). A stand-in's and a 自选 piece's: its charId (isOtherBody), on every
+ * data (a version's 自选 pick borrows its tier kit under the charId: kits/index.js DIY_BORROW_CHARS). Any
+ * other def: the kit of its id (baseId, the exact id, or the suffix-less id). On another version's build (`data`
+ * carries config.version; default: the loaded data) that kit counts only when it was written for the def's charId
+ * (KIT_CHAR_IDS), else the kit is found by its charId (kitKeyForChar); a chess whose own kit was written for its
+ * operator but failed to load stays generic, as on the default data. Only an official record with a real charId takes
+ * that path: test fixtures (charId defaults to the chess id) and plugin chess (chess_x_ ids; forgeImport leaves `kitRef`
+ * out on purpose to keep the generic kit) keep the by-id lookup. The default data and the plugin content sets built on
+ * it keep the by-id lookup of before versions M0 (test/versions-keying.test.js). `registries` replaces the official
+ * registries (KITS, KIT_CHAR_IDS, TIER_KIT_KEYS_BY_CHAR) for tests only, e.g. to model a kit file that failed to load.
+ */
+export function officialKitKey(def, data, { kits = KITS, kitCharIds = KIT_CHAR_IDS, tierKeys = TIER_KIT_KEYS_BY_CHAR } = {}) {
+  if (!def) return null;
+  if (isOtherBody(def)) return Object.hasOwn(kits, def.charId) ? def.charId : null;
+  const bare = String(def.baseId ?? def.id ?? '').replace(/_[ab]$/, '');
+  const byId = [def.baseId, def.id, bare].find((k) => k != null && Object.hasOwn(kits, k) && kits[k]) ?? null;
+  if (!isVersionData(data)) return byId;
+  const real = typeof def.charId === 'string' && def.charId.startsWith('char_') && !def.charId.startsWith('char_x_') ? def.charId : null;
+  if (!real || isPluginChess(def.baseId ?? def.id)) return byId;
+  if (byId && (kitCharIds[byId] ?? real) === real) return byId;
+  if (!byId && kitCharIds[`${bare}_a`] === real) return null;
+  return kitKeyForChar(real, def.tier, kits, tierKeys);
+}
+
 /**
  * The kit builder of an operator def in `reg` ({ [key]: (bb, chess, def) => Kit }), or undefined. A stand-in's and a
  * 自选 piece's kit is keyed by its charId (`char_609_acguad`, `char_112_siege`) and by nothing else: the chess id it keeps
  * names the replaced operator's kit (a DIY slot has none). Any other def: baseId (`…_a`, data/SIM.md), the exact id, or
- * the suffix-less id of DESIGN §5.6's example.
+ * the suffix-less id of DESIGN §5.6's example. The official registry (KITS) goes through officialKitKey, which also
+ * checks the operator; EXTENSIONS and injected Battle opts.kits keep the plain lookup.
  */
 function registeredKit(def, reg) {
   if (!def || !reg) return undefined;
+  if (reg === KITS) {
+    const key = officialKitKey(def);
+    return key == null ? undefined : KITS[key];
+  }
   if (isOtherBody(def)) return Object.prototype.hasOwnProperty.call(reg, def.charId) ? reg[def.charId] : undefined;
   const bare = String(def.baseId ?? def.id ?? '').replace(/_[ab]$/, '');
   return [def.baseId, def.id, bare].map(k => Object.hasOwn(reg, k) ? reg[k] : undefined).find(Boolean);
@@ -93,12 +182,14 @@ function registeredKit(def, reg) {
 /** Official kit key or file stem; no path supplied by a plugin is ever imported. */
 export function officialKit(ref) {
   if (Object.hasOwn(KITS, ref)) return KITS[ref];
-  const file = Object.values(KIT_REGISTRY.KIT_FILES || {}).flat().concat(KIT_REGISTRY.STANDIN_KIT_FILES || [], KIT_REGISTRY.OPERATOR_KIT_FILES || [])
-    .find(f => f.replace(/\.js$/, '') === ref);
+  const file = Object.values(KIT_REGISTRY.KIT_FILES || {}).flat().concat(
+    KIT_REGISTRY.STANDIN_KIT_FILES || [], KIT_REGISTRY.OPERATOR_KIT_FILES || [],
+    KIT_REGISTRY.VERSION_KIT_FILES || [], KIT_REGISTRY.DIY_BORROW_KIT_FILES || [],
+  ).find(f => f.replace(/\.js$/, '') === ref);
   if (!file) return undefined;
   const stem = file.replace(/\.js$/, '');
   if (stem.startsWith('chess_')) return KITS[stem.split('-')[0] + '_a'];
-  const code = stem.replace(/^(op|standin)-/, '');
+  const code = stem.replace(/^(op|standin|ver)-/, '');
   return Object.entries(KITS).find(([k]) => k.startsWith('char_') && k.endsWith('_' + code))?.[1];
 }
 

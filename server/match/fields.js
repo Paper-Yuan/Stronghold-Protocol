@@ -868,10 +868,15 @@ export function validateClientResult(spec, raw, { gd = null } = {}) {
       if (!bossLike && countedLeaks > p.total + B.maxTotal) return bad('leaks > total');
       if (typeof p.perfect !== 'boolean' || p.perfect !== (countedLeaks === 0)) return bad('perfect');
       const layerGains = {};
+      // 炸惊模拟 规则1: a mode that configures its own per-bond cap (gd.bondLayerCap, 9999) bounds the reported gain with it
+      // instead of the official 999 that layerGainRoom enforces process-wide (null in every other mode ⇒ unchanged)
+      const layerCap = gd && gd.bondLayerCap ? gd.bondLayerCap : null;
       for (const [bondId, n] of Object.entries(p.layerGains || {})) {
         // ≤ 60 + 4·round + what the player's layer 特质 can add to the bond (layerAllowanceOf; uncapped ones: no flat
-        // bound), and never past BOND_LAYER_CAP from the layers the bond started with (Battle.addLayers clamps)
-        const bound = Math.min(B.layerCap + (own.layerAllow.get(bondId) || 0), layerGainRoom(own.startLayers.get(bondId) || 0, Infinity));
+        // bound), and never past the bond's cap from the layers the bond started with (Battle.addLayers clamps)
+        const start = own.startLayers.get(bondId) || 0;
+        const room = layerCap ? Math.max(0, layerCap - start) : layerGainRoom(start, Infinity);
+        const bound = Math.min(B.layerCap + (own.layerAllow.get(bondId) || 0), room);
         if (!finiteIn(n, 0, bound)) return bad('layer bound');
         if (n > 0 && spec.flags && spec.flags.layerGainsEnabled === false) return bad('layers disabled');
         if (gd && typeof gd.bond === 'function' && !gd.bond(bondId)) return bad('bond');

@@ -118,7 +118,7 @@ test('the room screen: the strip between the 观战席 and the footer, the versi
   assert.match(src, /disabled=\$\{!facts\.canStart \|\| !online \|\| busy === 'start' \|\| !!vote\}/);
   assert.match(src, /t\('请先关闭改变玩法的插件'\)/);
   assert.match(src, /data-testid="version-banner"/);
-  assert.match(src, /t\('\{name\}邀请你加入卫戍协议：盟约·\{version\}【\{difficulty\}】'/);
+  assert.match(src, /t\('\{host\} 邀请你参加 \{room\}【\{n\}\/\{total\}】'/);
   assert.match(src, /net\.request\('room\.proposeVersion', \{ version \}\)/);
   const game = readFileSync(path.join(ROOT, 'public/js/screens/game.js'), 'utf8');
   assert.match(game, /voteRoom && \(hasResult \|\| mode === 'result'\) \? html`<\$\{VersionVote\} room=\$\{voteRoom\} class="vervote--float" \/>`/, 'the settlement screen shows the vote');

@@ -9,6 +9,7 @@ import { PHASE, ERR, EMOTES, EMOTE_COOLDOWN_MS, GEO } from '../../../shared/cons
 import { deriveSeed } from '../../sim/rng.js';
 import { OK, fail } from './common.js';
 import { onHumanEmote } from '../botEmotes.js';
+import { pickRelic, startRelicSpin, flushRelicToast } from '../relics.js';
 
 export class MatchIntents {
   _handle(ps, msg) {
@@ -39,10 +40,37 @@ export class MatchIntents {
       case 'g.choice': return msg.choiceId !== undefined
         ? this.pickPersonalChoice(ps, msg.idx, msg.choiceId)
         : this.pickCard(ps, msg.idx);
+      // 炸惊模拟 规则5/6 — 重抽一张惊变 (shared/protocol.js `g.cardRefresh`). A switch case is MANDATORY: an unlisted `g.*`
+      // intent is silently dropped by this dispatcher (the 「少 case = 静默丢弃」 pit of handoff §3.1), so a missing branch
+      // would look like a client bug. All the rules live in spDraft.refreshSpCard: outside a ZHAJING 惊变 draft / out of
+      // bounds / another player's turn → BAD_TARGET, an exhausted 重抽 budget → RATE, success → OK plus the fresh
+      // m.public.sp (it marks the views itself).
+      case 'g.cardRefresh': return this.refreshSpCard(ps, msg.idx);
+      // 炸惊模拟「锻造器」: `g.forgeTake { optId, rarity }` picks one of the three cards the server rolled. A switch case
+      // is MANDATORY here (the same 静默丢弃 trap as above). All the rules live in PlayerState.forgeTake: outside a
+      // ZHAJING match → BAD_TARGET, nothing left in hand → RATE, a card that is not on the table → BAD_TARGET.
+      case 'g.forgeTake': return this.forgeTake(ps, msg.optId, msg.rarity);
+      // 超限模拟 (solo_infinite): the 词条抉择 pick, its 战术撤退, and the 1×/2× battle speed switch. Each refuses
+      // outside its phase / mode inside the method (traitDraft.js / phases.js).
+      case 'g.traitChoice': return this.pickTrait(ps, msg.idx);
+      case 'g.traitReroll': return this.rerollTrait(ps);
+      case 'g.traitSkip': return this.skipTrait(ps);
+      case 'g.traitLock': return this.lockTrait(ps, msg.idx);
+      case 'g.contract': return this.chooseContract(ps, msg.id);
+      case 'g.retreat': return this.retreatNow(ps);
+      case 'g.combatSpeed': return this.setCombatSpeed(ps, msg.speed);
       // a plugin interaction window (PLUGIN API v2, docs/PLUGINS.md §10b): the window's own id, not a draft card —
       // the host applies the declared primitive, a plugin never reaches the match state itself
       case 'g.offer': return this.requestOffer(ps, msg.offerId, msg.idx, msg);
       case 'g.offerRefresh': return this.requestOfferRefresh(ps, msg.offerId, msg.idx, msg);
+      // 湮灭模拟 · 藏品 (server/match/relics.js): the 1-of-3 draft's spin (start), its pick (idx) and the 收下 acknowledgement
+      case 'g.relic': {
+        if (!this.gd.annihilation) return fail(ERR.BAD_MSG);
+        if (msg.start === true) return startRelicSpin(this, ps) ? OK : fail(ERR.BAD_TARGET);
+        const r = pickRelic(this, ps, msg.idx);
+        return r.ok ? OK : fail(r.error === 'NO_DRAFT' ? ERR.WRONG_PHASE : ERR.BAD_TARGET);
+      }
+      case 'g.relicSeen': if (!this.gd.annihilation) return fail(ERR.BAD_MSG); flushRelicToast(ps); return OK;
       case 'g.ready': return ps.setReady(!!msg.ready);
       case 'g.emote': return this.emote(ps, msg.id);
       // playerId: the player tapped (a shared field names two) — the watch preference (item 56)
@@ -129,7 +157,7 @@ export class MatchIntents {
     const b = this.newBattle({
       seed: deriveSeed(this.seed, `preview:${this.round}:${ps.seat}`), kind: 'normal', modeId: this.modeId, round: this.round,
       stageId: this.stageId, rect: { ...GEO.NORMAL_RECT }, timeLimit: 60, players, spawns: [], routes: this.wave ? this.wave.routes : [],
-      sharedBoss: null, flags: { layerGainsEnabled: !bossRound, ...this.gd.dp }, fieldId: `n:${ps.playerId}`, recordEvents: false,
+      sharedBoss: null, flags: { layerGainsEnabled: !bossRound, ...this.gd.dp, ...(this.gd.annihilation ? this.gd.annihilationFlags('normal', this.round) : null), ...(this.gd.zhajingFlags ? this.gd.zhajingFlags() : null), ...(this.enemyJibianCards && this.enemyJibianCards.length ? { enemyJibian: this.enemyJibianCards.slice() } : null) }, fieldId: `n:${ps.playerId}`, recordEvents: false,
     });
     try {
       if (typeof b.start === 'function') b.start();

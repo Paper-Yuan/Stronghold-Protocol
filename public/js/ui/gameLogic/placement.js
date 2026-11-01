@@ -1,6 +1,6 @@
 // ui/gameLogic/placement.js — deploy maps and the canPlace mirror of the server rules. Re-exported from ../gameLogic.js.
 
-import { GEO } from '../../../../shared/constants.js';
+import { GEO, benchSizeOf } from '../../../../shared/constants.js';
 import { attackRangeGrid } from '../../../../shared/loadoutRecord.js';
 import { meleeOnHighGround } from '../../../../shared/highGround.js';
 import { summonPlacementGrid } from '../../../../shared/summonPlacement.js';
@@ -213,7 +213,11 @@ export function placementContext({ priv, stage, editable, field = 'normal', getC
   const deploy = field === 'bossL' || field === 'bossR'
     ? deploySets(stage, field, ov)
     : deploySets(effectiveStage(stage, ov));
-  return { priv, pieces, boardAt, handAt, deploy, cap, count, field, editable: !!editable, getChess, getToken, getItem, backups, morphMode: morphMode === 'plus' ? 'plus' : 'official' };
+  // the 整备区 width of this match (炸惊 20, every other mode 10): read from the private view's own `hand` array, the
+  // server's authoritative bench (shared/constants.js benchSizeOf), never from GEO.HAND_SIZE — the constant is only the
+  // fallback for a priv that carries no hand (unit tests, a half-built state), which keeps the official paths identical
+  const handSize = benchSizeOf(priv);
+  return { priv, pieces, boardAt, handAt, handSize, deploy, cap, count, field, editable: !!editable, getChess, getToken, getItem, backups, morphMode: morphMode === 'plus' ? 'plus' : 'official' };
 }
 
 /**
@@ -328,7 +332,10 @@ export function canPlace(ctx, uid, target) {
 
   if (target.area === 'hand') {
     const idx = target.idx;
-    if (!Number.isInteger(idx) || idx < 0 || idx >= GEO.HAND_SIZE) return no('BAD_TILE', t('无法放置在该位置'));
+    // The bench width is mode data: `ctx.handSize` is the private view's own hand length (20 in 炸惊, 10 elsewhere;
+    // shared/constants.js benchSizeOf). A hand-made ctx without it keeps the default width.
+    const handSize = Number.isInteger(ctx.handSize) && ctx.handSize > 0 ? ctx.handSize : GEO.HAND_SIZE;
+    if (!Number.isInteger(idx) || idx < 0 || idx >= handSize) return no('BAD_TILE', t('无法放置在该位置'));
     if (src.area === 'hand' && src.idx === idx) return no('ALREADY', t('位置未变化'));
     const occ = ctx.handAt.get(idx);
     if (!occ) return { ok: true, action: 'move' };
@@ -343,7 +350,7 @@ export function canPlace(ctx, uid, target) {
         return { ok: true, action: 'swap' };
       }
       // Withdrawal removes the operator's own summon stacks, freeing their hand slots too.
-      const free = [...Array(GEO.HAND_SIZE).keys()].some((i) => {
+      const free = [...Array(handSize).keys()].some((i) => {
         const p = ctx.handAt.get(i)?.piece;
         return !p || (p.kind === 'token' && p.ownerUid === piece.uid);
       });

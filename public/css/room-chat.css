@@ -2,7 +2,8 @@
 .spchat { font: 12px/1.35 system-ui,sans-serif; color: #e4e4e7; }
 .spchat__panel {
   position: fixed; z-index: 160; display: flex; flex-direction: column;
-  width: 230px; height: 220px; box-sizing: border-box;
+  /* 面板宽度带 100vw 上限（业主 2026-10-28「优化聊天框宽度」），高度由内容撑开、格子上限跟视口走 */
+  width: min(340px, calc(100vw - 24px)); height: auto; max-height: min(320px, 46vh); box-sizing: border-box;
   background: #18181b; border: 1px solid #27272a; border-radius: 9px;
   box-shadow: 0 8px 28px #0008; overflow: hidden; pointer-events: auto;
 }
@@ -38,7 +39,9 @@
   display: flex; gap: 4px; padding: 5px; border-top: 1px solid #27272a; flex-shrink: 0;
 }
 .spchat__input {
-  min-width: 0; flex: 1; height: 28px; box-sizing: border-box; padding: 3px 6px;
+  /* 发言框：两行起步（44px），最多 96px，再多内部滚动；height 由 roomChat.js 的 autoGrow 按 scrollHeight 写 */
+  min-width: 0; flex: 1; min-height: 44px; max-height: 96px; box-sizing: border-box; padding: 6px 8px;
+  resize: none; overflow-y: auto; line-height: 1.35;
   background: #09090b; color: #fafafa; border: 1px solid #3f3f46; border-radius: 5px;
   font: 12px system-ui,sans-serif; outline-color: #34d399;
   -webkit-user-select: text !important; user-select: text !important;
@@ -51,6 +54,18 @@
   border-radius: 50% !important; box-shadow: 0 4px 16px #0008;
 }
 @media (pointer: coarse) { .spchat__input { font-size: 16px; } }
+/* 窄屏：面板再收一档，但两边永远留 8px，竖屏不溢出 */
+@media (max-width: 520px) {
+  .spchat__panel { width: min(300px, calc(100vw - 16px)); }
+}
+/* 矮屏：面板不超过 40vh，log 仍然自己滚（flex:1 1 auto; min-height:0 不动） */
+@media (max-height: 520px) {
+  .spchat__panel { max-height: 40vh; }
+}
+/* 减动效：高度不做过渡 */
+@media (prefers-reduced-motion: reduce) {
+  .spchat__panel, .spchat__input { transition: none; }
+}
 
 /* SPCHAT_DRAGGABLE_TOGGLE_V1 */
 .spchat .spchat__toggle {
@@ -66,8 +81,10 @@
    都从 index.html 掉了，于是面板按文档流随便落在界面里 —— 「位置显示不对」。位置照本仓库旧聊天面板（下面 .spchat
    那套，ui/roomChat.js）：左下角，左 16px、底上 96px，230×220；手机上给圆形入口留 44px 触控目标（与 .spvoice__fab
    同一套做法）。收起 = 只剩入口圆点，半收起 = 矮面板。座位颜色 seat-0..3 上游只写了类名没给颜色，这里补上。 */
-/* z-index 110：**低于**表情栏（.ewheel__panel 是 120）。表情栏从角落按钮向上弹出，永远盖在日志之上 ——
-   「显示栏置于唤出的表情栏下方」。 */
+/* z-index 110：房间面板用；局内那份在文件末尾被覆盖成 2（**低于**角落那一层：表情盘 emotes.css .ewheel__panel 是
+   z-index 5，而它整个挂在 .gm__corner（z-index 130）里 —— 所以「显示栏置于唤出的表情栏下方」成立）。
+   局内面板自 2026-10-29 第三版起**默认不显示**：只有点角落的「对话唤出」键（data-testid="hud-chat"）才在左下按钮
+   上方浮出 80% 不透明的聊天框 + 发言框，再点一次 / Esc 收起。 */
 .chat-panel {
   position: fixed; z-index: 110; left: 16px; bottom: 16px;
   width: 230px; max-width: calc(100vw - 32px); height: auto; max-height: calc(100vh - 32px);
@@ -117,21 +134,19 @@
 .chat-danmaku-btn { border: 1px solid #27272a; background: #27272a; color: #e4e4e7; }
 .chat-danmaku-btn.is-on { border-color: #34d399; color: #34d399; }
 .chat-send-btn { border: 1px solid #34d39966; background: #065f46; color: #ecfdf5; padding: 0 8px; }
-/* 房间界面的「唤出对话」按钮：就在标题栏里（点它出输入框）。局内用角落的发言齿轮切换（受控）。 */
+/* 房间界面的「唤出对话」按钮：就在标题栏里（点它出输入框）。局内不画它 —— 开关是左下角落那颗「对话唤出」键
+   （screens/game.js data-testid="hud-chat"，与 设置 同一个开关；业主 2026-10-29：触发方式与其它角落键一致）。 */
 .chat-trigger-btn {
   width: 24px; height: 20px; padding: 0; font-size: 12px; line-height: 1;
   background: #27272a !important; border: 1px solid #34d39966 !important; border-radius: 5px !important;
   color: #e4e4e7; cursor: pointer; touch-action: manipulation;
 }
 .chat-header-bar { justify-content: space-between; }
-/* 局内（.gm 之下）：日志条就贴在**左下四个按键之上**（.gm__corner：left .24rem / bottom .24rem，按钮 .56rem 高
-   → 按键顶边 ≈ .8rem，日志从 .9rem 起）。z-index 110 低于表情栏的 120：表情栏从同一列向上弹出时会盖住日志
-   —— 「显示栏置于唤出的表情栏下方」。 */
-/* 局内：**全透明**、宽度与左下四个按键相当（.gm__gear 每个 .56rem，四个加间隙 ≈ 2.5rem）、日志**可滑动**、
-   一条消息一行（超出省略），日志最高 5 行、半收起 3 行。 */
+/* 局内（.gm 之下）：面板就贴在**左下角落键那一行之上**（.gm__corner 是 left .24rem / bottom .24rem，按键 .56rem 高，
+   桌面按键顶边 .8rem，面板从 .9rem 起）。位置只写在这里；宽度 / 层级 / 底板由文件末尾那条同名的 `.gm .chat-panel`
+   给（它才是生效的那一条），手机上的宽度与底边也在那里的一条媒体查询里重算。 */
 .gm .chat-panel {
-  left: .24rem; bottom: .9rem; width: 2.5rem; max-width: 40vw;
-  background: transparent; border-color: transparent; box-shadow: none;
+  left: .24rem; bottom: .9rem;
 }
 .gm .chat-panel .chat-header-bar { padding: 0; border-bottom: 0; background: transparent; }
 .gm .chat-panel .chat-log { padding: 0 2px; max-height: 80px; overflow-y: auto; pointer-events: auto; }
@@ -156,4 +171,122 @@
   .spvoice__fab, .spchat .spchat__toggle { width: max(.56rem, 24px) !important; height: max(.56rem, 24px) !important; }
   .spvoice__fab svg, .spchat .spchat__toggle svg { width: max(.28rem, 14px) !important; height: max(.28rem, 14px) !important; }
   .spvoice__fab::before, .spchat .spchat__toggle::before { content: ''; position: absolute; width: 44px; height: 44px; left: 50%; top: 50%; transform: translate(-50%, -50%); }
+}
+
+/* 手机端（安全区 + 触控 + 键盘）：与 devices.css --sa-* 同一套 env()，只做覆盖，基础 .chat-panel 的
+   left/bottom/width/z-index（test/ui/chat-box-css.test.js 钉住的位置）保持不变。 */
+@media (orientation: landscape) and (max-height: 600px) and (any-pointer: coarse) {
+  .chat-panel {
+    left: calc(8px + env(safe-area-inset-left, 0px));
+    bottom: calc(8px + env(safe-area-inset-bottom, 0px));
+    max-height: calc(100vh - 16px - env(safe-area-inset-bottom, 0px));
+  }
+  .chat-panel .chat-input { font-size: max(16px, 1rem); }
+  .chat-panel .chat-send-btn { min-height: 32px; min-width: 32px; }
+  /* 标题栏只有 22px：半收起键保持 20px，别把 32px 的触控地板撑进日志区（弹幕键在下面单独缩到 19px）。 */
+  .chat-panel .chat-collapse-btn { min-height: 20px; min-width: 20px; }
+  .spchat__panel { max-height: calc(100vh - 16px - env(safe-area-inset-bottom, 0px)); }
+  .spchat__send, .spchat__fold, .spchat__danmaku { min-height: 32px; }
+}
+@media (max-width: 420px) {
+  .chat-panel, .spchat__panel { width: min(200px, calc(100vw - 24px)); }
+}
+
+/* ---- 聊天气泡 / 标题栏（房间与局内共用；局内 2026-10-29 第三版：标题文字「同盟通讯」已删） --------------------
+   局内面板标题栏只剩未读角标、缩小的弹幕开关与半收起键；每条消息一行，座位 / 名字 / 时间 / 正文分段着色。
+   房间面板仍是更大的卡片与气泡（见 .spchat 段）。 */
+.chat-title { display: inline-flex; align-items: center; gap: 4px; min-width: 0; color: #8ee7c9;
+  font-size: 10px; font-weight: 700; letter-spacing: .08em; white-space: nowrap; }
+.chat-actions { display: inline-flex; align-items: center; gap: 4px; }
+.chat-unread, .chat-trigger-badge {
+  display: inline-grid; place-items: center; min-width: 14px; height: 14px; padding: 0 3px;
+  border-radius: 7px; background: #f97316; color: #1a0d05; font: 700 9px/1 var(--font-num, system-ui);
+}
+.chat-trigger-badge { position: absolute; right: -4px; top: -4px; }
+/* 弹幕开/关：比原来小 20%（18px/10px → 14px/8px），默认隐藏；聊天框被唤出后才随标题栏出现。 */
+.chat-danmaku-mini {
+  display: none;
+  height: 14px; padding: 0 4px; border: 1px solid #3f3f46; border-radius: 4px;
+  background: rgba(39, 39, 42, .85); color: #a1a1aa; font: 8px/1 system-ui, sans-serif;
+  cursor: pointer; touch-action: manipulation;
+}
+.gm .chat-panel.is-active .chat-danmaku-mini { display: inline-block; }
+.chat-danmaku-mini.is-on { border-color: #34d399; color: #34d399; background: rgba(6, 95, 70, .55); }
+.chat-name { color: #c6d4cd; font-size: 11px; white-space: nowrap; }
+.chat-time { color: #7f8f88; font-size: 9px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.chat-text { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* 局内聊天框（业主 2026-10-29 第三版，宽度第四版）：**默认隐藏**，点「对话唤出」键才出现；80% 不透明底板（alpha .8，
+   不是全透明），高度由内容决定。位置在角落按钮之上（bottom .9rem）。
+   宽度：桌面按 3.4rem 走（1920 参考宽 ≈ 340px，约等于「表情→对话」三键跨度的 1.8 倍；第一版按三键跨度略窄做过，
+   真机看着太窄），并带 220px 地板与 34vw 上限；**手机是单独的一条**：角落键只有 34px（三键跨度 ≈ 107px），
+   不能跟着键宽走，改成 61vw / 240px 上限（业主 2026-10-29 在 76vw / 300px 的基础上要求再缩 20%），横竖屏都还能读。
+   层级：局内聊天在 HUD 之下（.gm__hud 是 z-index 3 的独立层），所以 z-index 2 —— 高于战场、低于整块 HUD；
+   角落那层是 130（表情盘在它里面，z-index 5），所以表情盘永远压在聊天框之上、始终可点。 */
+.gm .chat-panel {
+  z-index: 2;
+  display: none;
+  width: min(max(3.4rem, 32px, calc(220px * var(--sp-ui, 1))), 34vw);
+  max-width: calc(100vw - .48rem);
+  height: auto;
+  /* 空聊天时也别只剩一条输入行：至少留出约三行日志的高度（桌面 1.7rem；手机上 110px，且不超过 42vh）。 */
+  min-height: min(max(1.7rem, 32px, calc(110px * var(--sp-ui, 1))), 42vh);
+  background: rgba(14, 18, 17, .8);
+  border-color: rgba(255, 255, 255, .12);
+  box-shadow: 0 4px 18px #0006;
+  -webkit-backdrop-filter: none; backdrop-filter: none;
+}
+.gm .chat-panel.is-active { display: flex; }
+/* 手机端（触屏 / 窄屏）单独定宽、定底：角落键的跨度只有 ~107px，聊天文字放不下；业主 2026-10-29 看过真机后要求
+   再缩 20% —— 76vw / 300px 的上限改成 61vw / 240px。
+   底边也按手机上放大后的 34px 键重算（横屏 792×360：360 - (.34rem + 34px) = 312.4，键顶 316.4，正好留 4px）。 */
+@media (max-width: 767px), (max-height: 600px) and (pointer: coarse), (max-height: 600px) and (any-pointer: coarse) {
+  .gm .chat-panel {
+    width: min(61vw, 240px);
+    bottom: calc(.34rem + max(.56rem, 32px, calc(34px * var(--sp-ui, 1))));
+  }
+}
+.gm .chat-panel .chat-header-bar {
+  flex: 0 0 22px; padding: 0 5px; border-bottom: 1px solid rgba(255, 255, 255, .1);
+}
+/* 标题文字「同盟通讯」已删（业主 2026-10-29）：这一栏只剩未读角标与右侧两颗小键。 */
+.gm .chat-panel .chat-title { font-size: 0; letter-spacing: 0; }
+.gm .chat-panel .chat-log { padding: 4px 6px; max-height: 96px; }
+.gm .chat-panel.is-collapsed .chat-log { max-height: 54px; }
+.gm .chat-panel .chat-item {
+  display: flex; align-items: baseline; gap: 4px; height: 18px; line-height: 18px; margin: 0;
+  white-space: nowrap; overflow: hidden;
+}
+.gm .chat-panel .chat-seat { margin-right: 0; font-weight: 700; }
+.gm .chat-panel .chat-name { max-width: 28%; overflow: hidden; text-overflow: ellipsis; }
+.gm .chat-panel .chat-text { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.gm .chat-panel .chat-input { height: 26px; font-size: 12px; }
+.gm .chat-panel .chat-send-btn { min-height: 26px; }
+.gm .chat-panel .chat-trigger-btn { width: auto; min-width: 30px; height: 24px; }
+
+/* 短屏手机：面板再矮一点，仍保留标题栏与两行日志。 */
+@media (orientation: landscape) and (max-height: 600px) and (any-pointer: coarse) {
+  /* 宽度 / 底边由上面那条手机媒体查询给（76vw / 300px 上限；底边按 34px 键重算）。 */
+  .gm .chat-panel .chat-log { max-height: 54px; padding: 3px 5px; }
+  .gm .chat-panel.is-collapsed .chat-log { max-height: 36px; }
+  .gm .chat-panel .chat-item { height: 17px; line-height: 17px; gap: 3px; }
+  .gm .chat-panel .chat-time { display: none; } /* 窄屏优先留名字和正文 */
+  .chat-danmaku-mini { min-height: 19px; }
+  .chat-trigger-btn { position: relative; }
+  .chat-trigger-btn::before { content: ''; position: absolute; inset: -10px; }
+}
+
+/* 房间聊天卡片（.spchat）：更大、气泡化、标题栏更像通讯面板。JS 的 layout() 仍会给内联宽高。 */
+.spchat__panel { background: linear-gradient(180deg, rgba(24, 30, 27, .98), rgba(14, 18, 16, .98)); border-color: #3f4a45; }
+.spchat__header { flex: 0 0 32px; padding: 0 10px; font-weight: 700; letter-spacing: .04em; }
+.spchat__log { padding: 8px 10px; }
+.spchat__row { margin-bottom: 8px; }
+.spchat__name { font-size: 10px; letter-spacing: .02em; }
+.spchat__bubble { padding: 6px 9px; border-radius: 9px; line-height: 1.45; }
+.spchat__form { padding: 6px; gap: 5px; }
+.spchat__input { height: 30px; }
+.spchat__badge {
+  position: absolute; right: -4px; top: -4px; min-width: 15px; height: 15px; padding: 0 3px;
+  display: grid; place-items: center; border-radius: 8px; background: #f97316; color: #1a0d05;
+  font: 700 9px/1 system-ui, sans-serif;
 }

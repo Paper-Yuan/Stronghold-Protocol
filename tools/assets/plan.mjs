@@ -527,7 +527,10 @@ export function buildPlan({ assets07, ops03, enemies05, maps05, audio, modelsDat
   const chessById = new Map((ops03?.chess || []).map((c) => [c.chessId, c]));
   const tokens = {};
   const tokenIds = new Set(Object.keys(assets07?.tokens || {}));
-  for (const id of extraTokenIds) if (typeof id === 'string' && /^token_\d+_[a-z0-9_]+$/i.test(id)) tokenIds.add(id);
+  // Official token ids are `token_<number>_<name>`; the 炸惊 play set's Persona summons are `token_makoto_orpheus` /
+  // `token_makoto_thanatos` (data/backups.json `tokens`, referenced by 结城理's skills), so the number group is optional.
+  // They have no picture in any dump: the leaf is planned and reported as a miss when the file is absent (never silent).
+  for (const id of extraTokenIds) if (typeof id === 'string' && /^token_(\d+_)?[a-z0-9_]+$/i.test(id)) tokenIds.add(id);
   for (const id of [...tokenIds].sort()) {
     // Tokens unknown to research 07: default avatar/Spine locations (misses are tolerated).
     const t = assets07?.tokens?.[id] ?? {

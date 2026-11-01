@@ -13,11 +13,16 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const read = (p) => readFileSync(join(ROOT, p), 'utf8');
 const pkg = JSON.parse(read('package.json'));
 const lock = JSON.parse(read('package-lock.json'));
+/** The release number without its semver prerelease tag (`0.3.3-Yuan` → `0.3.3`), for comparing against a changelog heading. */
+const baseVersion = (v) => String(v).split('-')[0];
 
 test('one release version: package.json, package-lock.json and APP_VERSION', () => {
   // 2026-10-22: 版本号允许四段 —— 0.3.1.1 是本仓库当前的发布编号（x.y.z 之后再补一位修订），
   // 三段或四段都算正式版，-dev 后缀仍只用于公开开发分支。
-  assert.match(APP_VERSION, /^\d+\.\d+\.\d+(\.\d+)?(-dev)?$/);
+  // 2026-11-01: 任何 semver 预发布标签都允许 —— 0.3.3-Yuan 是维护者 0.3.3 的双端（桌面 / APK）发行标记，
+  // semver.valid('0.3.3-Yuan') 为真、prerelease 为 ['Yuan']，与 APK 包里已有的 0.3.3-<hash>-parts3 同形。
+  // DEV_BUILD 仍只认 -dev，所以带标签的发行版不会被当成开发分支。
+  assert.match(APP_VERSION, /^\d+\.\d+\.\d+(\.\d+)?(-[0-9A-Za-z][0-9A-Za-z.-]*)?$/);
   assert.equal(DEV_BUILD, APP_VERSION.endsWith('-dev'));
   assert.equal(pkg.version, APP_VERSION);
   assert.equal(lock.version, APP_VERSION);
@@ -35,7 +40,7 @@ test('CHANGELOG.md opens with the release version, and the README links it', () 
     const num = (v) => v.split(/[.-]/).slice(0, 3).map(Number);
     const [a, b] = [num(first[1]), num(APP_VERSION)];
     assert.ok(a[0] < b[0] || (a[0] === b[0] && (a[1] < b[1] || (a[1] === b[1] && a[2] < b[2]))), `the newest entry ${first[1]} precedes ${APP_VERSION}`);
-  } else assert.equal(first[1], APP_VERSION, 'the newest entry is the current version');
+  } else assert.equal(baseVersion(first[1]), baseVersion(APP_VERSION), 'the newest entry is the current version');
   assert.match(log, /^## 0\.1\.0 — 2026-10-02/m, 'the first public release stays listed');
   const readme = read('README.md');
   assert.match(readme, /\[CHANGELOG\.md\]\(CHANGELOG\.md\)/);

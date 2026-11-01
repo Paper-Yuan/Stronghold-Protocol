@@ -1,0 +1,49 @@
+{
+  "chess": {
+    "before": 474,
+    "after": 500,
+    "added": 26,
+    "removed": [],
+    "changed": []
+  },
+  "garrisons": {
+    "before": 497,
+    "after": 523,
+    "added": 26,
+    "removed": [],
+    "changed": []
+  },
+  "bonds": {
+    "before": 30,
+    "after": 30,
+    "added": 0,
+    "removed": [],
+    "changed": [
+      "yanShip",
+      "victoriaShip",
+      "preciShip",
+      "skillfulShip",
+      "steadShip",
+      "deputShip",
+      "visiShip",
+      "miraShip",
+      "indomShip",
+      "kazdelShip",
+      "rhodesShip"
+    ]
+  },
+  "items": {
+    "before": 134,
+    "after": 134,
+    "added": 0,
+    "removed": [],
+    "changed": []
+  },
+  "effects": {
+    "before": 367,
+    "after": 367,
+    "added": 0,
+    "removed": [],
+    "changed": []
+  }
+}

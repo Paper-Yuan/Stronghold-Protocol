@@ -163,6 +163,24 @@ describe('emotes and 玩法说明 pages: local art first, then the mirror copy (
     assert.ok(!src.includes('该页面暂时无法显示'), 'no blank notice left');
   });
 
+  // 攻略说明 (the owner's request of 2026-10-28): a play set's own pages go through the same viewer. They carry one ready
+  // `url` and no manifest copies, so the local→mirror chain does not apply: the url is the page, and a failure is a
+  // failure (no second copy to fall back to).
+  test('a play set\'s own page (攻略说明) is one ready url, and only that url', async () => {
+    const { guideStage } = await import('../../public/js/ui/guide.js');
+    const page = { key: 'slide-03', title: '四条核心规则', url: '/assets/annihilation-intro/slide-03.webp' };
+    assert.deepEqual(guideStage(page), { kind: 'image', src: page.url }, 'the url is the page');
+    assert.deepEqual(guideStage(page, new Set()), { kind: 'image', src: page.url }, 'an empty failure set shows it');
+    assert.deepEqual(guideStage(page, new Set([page.url])), { kind: 'tips' }, 'a failure falls back to the tips, not a blank stage');
+    // the store carries the caller's list, and clearing it restores the official 19
+    const g = await import('../../public/js/ui/guide.js');
+    g.openGuide(0, [page]);
+    assert.equal(g.guideStore.get().open, true);
+    assert.deepEqual(g.guideStore.get().pages, [page], 'the caller\'s list is what the viewer draws');
+    g.closeGuide();
+    assert.equal(g.guideStore.get().pages, null, 'closing drops it, so the next open is the mode\'s own guide again');
+  });
+
   test('the guide preloads only the next page (host bandwidth layer 0): wraps around, skips a failed copy, never the previous page', async () => {
     const { guidePreloadUrl } = await import('../../public/js/ui/guide.js');
     const page = (k) => ({ urls: [`/assets/local/guide/${k}.webp`, `/assets/ui/guide/${k}.png`] });

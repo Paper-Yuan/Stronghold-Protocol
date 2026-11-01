@@ -42,6 +42,7 @@ import { toDataSource, withUnitLoadouts } from './simdata.js';
 import { isPotential, isCultivate } from '../../shared/potential.js';
 import { isContentHash } from '../../shared/plugins/identity.js';
 import { BOSS_POOL_MIN_HP } from './constants.js';
+import { DEFAULT_VERSION, versionById, versionOfData } from '../../shared/versions.js';
 
 export const SPEC_VERSION = 1;
 
@@ -61,20 +62,8 @@ const specReplacer = (k, v) => (typeof v === 'number' && !Number.isFinite(v) ? (
  * minus object references: `stageId` instead of a stage object, `boss: { poolHp, poolMax }` instead of a pool.
  * @returns {object} a fresh JSON-safe object
  */
-/**
- * `opts.modules` 的消毒 (W-C)：一条 `{ id, pack, url, kind? }`，id 是棋子/召唤 id、url 是浏览器能 import 的路径。
- * 形状不对的整条丢掉（规格是要发给客户端的 JSON，不能夹带别的东西）。
- * @param {unknown} v
- * @returns {Array<{ id: string, pack: string, url: string, kind?: 'token' }>}
- */
-function modModules(v) {
-  return (Array.isArray(v) ? v : [])
-    .filter((m) => m && typeof m.id === 'string' && m.id.length > 0 && m.id.length <= 64
-      && typeof m.url === 'string' && m.url.startsWith('/') && m.url.length <= 512)
-    .map((m) => ({ id: m.id, pack: typeof m.pack === 'string' ? m.pack : '', url: m.url, ...(m.kind === 'token' ? { kind: 'token' } : {}) }));
-}
-
 export function buildBattleSpec(o = {}) {
+  if (o.version != null && !versionById(o.version)) throw new RangeError(`Unknown battle version ${o.version}`);
   const bossLike = o.kind === 'boss' || o.kind === 'hidden';
   const tl = Number(o.timeLimit);
   const spec = {
@@ -102,10 +91,10 @@ export function buildBattleSpec(o = {}) {
     // the content set the battle runs on and the art it was drawn with (header): not read by the sim
     ...(isContentHash(o.cs) ? { cs: o.cs } : {}),
     ...(isContentHash(o.vs) ? { vs: o.vs } : {}),
+    ...(o.version && o.version !== DEFAULT_VERSION ? { version: o.version } : {}),
+    // morphPairing plus only. An official spec grows no key (identity and extra-field tests).
+    ...(o.morphPairing === 'plus' ? { morphPairing: 'plus' } : {}),
   };
-  // 房间模组包的模块 URL (W-C)：只留形状对的那几条 —— 客户端拿它们 import 自己的 kits 表，两端必须一致
-  const mods = modModules(o.modules);
-  if (mods.length) spec.modules = mods;
   const out = JSON.parse(JSON.stringify(spec, specReplacer));
   for (const p of out.players) for (const u of (p && Array.isArray(p.units) ? p.units : [])) if (u && typeof u === 'object') sanitizeUnitLoadout(u);
   return out;
@@ -163,6 +152,9 @@ export { withUnitLoadouts };
 export function createBattleFromSpec(spec, dataSource, opts = {}) {
   if (!spec || typeof spec !== 'object') throw new TypeError('createBattleFromSpec: spec required');
   const s = jsonClone(spec);
+  if (s.version != null && (!versionById(s.version) || versionOfData(toDataSource(dataSource).raw) !== s.version)) {
+    throw new RangeError(`Battle version ${s.version} does not match loaded data`);
+  }
   const bossLike = s.kind === 'boss' || s.kind === 'hidden';
   let sharedBoss = opts.sharedBoss ?? null;
   if (!sharedBoss && bossLike && s.boss) sharedBoss = new LocalBossPool(s.boss.poolMax, s.boss.poolHp);
@@ -187,6 +179,7 @@ export function createBattleFromSpec(spec, dataSource, opts = {}) {
     content: opts.content ?? s.content ?? 'full',
   };
   if (s.bossId != null) battleOpts.bossId = s.bossId;
+  if (s.morphPairing === 'plus') battleOpts.morphPairing = 'plus';
   if (opts.logger) battleOpts.logger = opts.logger;
   if (opts.recordEvents === false) battleOpts.recordEvents = false;
   if (opts.quiet) battleOpts.quiet = true;
@@ -273,9 +266,11 @@ export function attachLpMeter(battle) {
 /**
  * 联防 (user playtest #6 item 7): each source player's enemies still standing on a unite field — not spawned yet,
  * alive, or already through the objective again — i.e. what settlement would charge them if the battle ended now
- * (server/match/unite.js uniteSurvivors: the unite result's counted leaks + unspawned entries by `sourcePlayerId`;
- * alive enemies become leaks on a timeout, keyed like Battle._recordLeak). It falls as the helpers strike them down and
- * rises when one splits or summons (content-spawned children inherit the parent's sourcePlayerId).
+ * (server/match/unite.js uniteSurvivors: the unite result's leaks + unspawned entries by `sourcePlayerId`; alive enemies
+ * become leaks on a timeout, keyed like Battle._recordLeak). It falls as the helpers strike them down; nothing that
+ * appears while the field runs ever raises it — a 联防 field tags its runtime spawns `uniteRuntime` at birth (spawns.js,
+ * player report 2026-10-16: a child or a summon never crossed the leaker's own goal), and every read here filters it
+ * out. Reports
  * `{ [playerId]: n }` (a player with none left is absent), or null for a battle without the sim's state (a stand-in).
  * @returns {Record<string, number> | null}
  */
@@ -292,7 +287,7 @@ export function uniteLeft(battle) {
   }
   if (!battle._perPlayer || !Array.isArray(battle._pending) || !Array.isArray(battle.enemies)) return null;
   for (const p of battle._pending) if (p) add(p.sourcePlayerId);
-  for (const e of battle.enemies) if (e && e.alive && e.counted) add(e.sourcePlayerId ?? e.ownerId);
+  for (const e of battle.enemies) if (e && e.alive && e.counted && !e.uniteRuntime) add(e.sourcePlayerId ?? e.ownerId);
   for (const pp of Object.values(battle._perPlayer)) for (const l of (pp && pp.leaked) || []) if (l && l.counted !== false && !l.uniteRuntime) add(l.sourcePlayerId);
   return out;
 }
@@ -371,7 +366,9 @@ export function resultDigest(result) {
       p.killed | 0, p.total | 0, !!p.perfect, r4(p.coins),
       Object.keys(lg).sort().map((k) => [k, r4(lg[k])]),
       // mods included: a leak re-enters the 联防 with them (round multipliers, bounty id)
-      (Array.isArray(p.leaked) ? p.leaked : []).map((l) => `${l && l.enemyKey}|${l && l.counted === false ? 0 : 1}|${(l && l.sourcePlayerId) || ''}|${modsKey(l && l.mods)}`).sort(),
+      // mods included: a leak re-enters the 联防 with them (round multipliers, bounty id); `uniteRuntime` too — it decides
+      // whether the 联防 bills the leak, so a client must not be able to report it differently from the re-simulation
+      (Array.isArray(p.leaked) ? p.leaked : []).map((l) => `${l && l.enemyKey}|${l && l.counted === false ? 0 : 1}|${l && l.uniteRuntime ? 'x' : ''}|${(l && l.sourcePlayerId) || ''}|${modsKey(l && l.mods)}`).sort(),
       Math.round(Number(p.damageDealt) || 0), Math.round(Number(p.bossDamage) || 0),
       (Array.isArray(p.unitsEnd) ? p.unitsEnd : []).map((u) => [u && u.uid, r4(u && u.hpPct), r4(u && u.sp), !!(u && u.alive)]),
     ];
@@ -424,6 +421,7 @@ export function compactResult(res) {
       total,
       leaked: leakEntries(p).map((l) => {
         const o = { enemyKey: l.enemyKey, mods: compactMods(l.mods), lpr: leakLpr(l), sourcePlayerId: keyOr(l.sourcePlayerId), tag: typeof l.tag === 'string' && l.tag.length <= 16 ? l.tag : null, counted: l.counted !== false };
+        if (l.uniteRuntime) o.uniteRuntime = true; // born on a 联防 field: the server must not bill it (unite.js uniteSurvivors)
         if (l.boss) o.boss = true;
         if (l.spawned) o.spawned = true;
         return o;

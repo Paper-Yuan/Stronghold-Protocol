@@ -12,7 +12,7 @@ import {
   battleOverSfx, ownRoundLoss, uniteResultBox, battleResultBox, roundResultBox, RESULT_BOX_MS,
   bondMembers, memberHeadCount, bannedPerBond, priceTone, mergeProgress, shopBlockReason, deploySets, indexPieces, placementContext, canPlace,
   boardTargets, dropIntent, normalizeDraft, heldDraftPub, normalizeSp, normalizePersonalChoice, groupEnemies, factionTypes, snapHud, bossFrac, attackInterval, fmtNum,
-  rangeGridBox, shortcutFor, sanitizeSettings, DEFAULT_SETTINGS, normalizeResult, cycleField, fieldLabel, homeFieldId,
+  rangeGridBox, shortcutFor, sanitizeSettings, DEFAULT_SETTINGS, QUALITY_TIERS, normalizeResult, cycleField, fieldLabel, homeFieldId,
   activeBubbles, sortedPlayers, tileKey, prepCapsuleLabel, prepCamera, dropFailureReason, terrainInfo,
 } from '../../public/js/ui/gameLogic.js';
 import { PHASE, GEO } from '../../shared/constants.js';
@@ -334,6 +334,9 @@ describe('shop', () => {
     assert.equal(shopBlockReason('refresh', { priv: { ...priv, funds: 0 }, editable: true }), '资金不足');
     assert.equal(shopBlockReason('refresh', { priv: { ...priv, funds: 0, shop: { ...priv.shop, refreshPrice: 0 } }, editable: true }), null, 'free refresh');
     assert.match(shopBlockReason('ready', { priv: { ...priv, canReady: false } }), /临时整备区/);
+    // 湮灭模拟 · 藏品三选一开着时，服务端 setReady 拒绝，客户端要说清是「藏品没选」而不是「整备区溢出」
+    assert.equal(shopBlockReason('ready', { priv: { ...priv, canReady: false, relics: { draft: { cards: [] } } } }), '请先完成藏品选择');
+    assert.match(shopBlockReason('ready', { priv: { ...priv, canReady: false, relics: { draft: null } } }), /临时整备区/, '草稿没开时仍是整备区文案');
     assert.equal(shopBlockReason('ready', { priv }), null);
     assert.equal(shopBlockReason('buy', { priv: { ...priv, alive: false }, editable: true }), '你已被淘汰');
     assert.equal(shopBlockReason('buy', {}), '尚未就绪');
@@ -739,9 +742,9 @@ describe('keyboard & settings', () => {
   });
   test('sanitizeSettings', () => {
     assert.deepEqual(sanitizeSettings(null), { ...DEFAULT_SETTINGS });
-    assert.deepEqual(sanitizeSettings({ bgm: 3, sfx: -1, voice: 2, muted: 'yes', damageNumbers: false, quality: 'ultra' }),
-      { bgm: 1, sfx: 0, voice: 1, voiceLang: 'cn', voiceNative: false, voiceOverrides: {}, muted: false, damageNumbers: false, officialDamageNumbers: false, ammoEnergyCount: false, fullscreenWakeLock: false, bondTimers: false, combatMetrics: false, prepDeployFold: true, quality: 'high', officialFx: 'auto', otherSkins: true, textSize: 'sm', keys: { ...DEFAULT_SETTINGS.keys } },
-      'a saved profile without `keys` (before 0.2.0) gets the default key map (test/ui/feedback5-hotkeys.test.js)');
+    assert.deepEqual(sanitizeSettings({ bgm: 3, sfx: -1, voice: 2, muted: 'yes', damageNumbers: false, quality: 'nope' }),
+      { bgm: 1, sfx: 0, voice: 1, voiceLang: 'cn', voiceNative: false, voiceOverrides: {}, muted: false, damageNumbers: false, officialDamageNumbers: false, ammoEnergyCount: false, fullscreenWakeLock: false, bondTimers: false, combatMetrics: false, prepDeployFold: true, quality: 'high', officialFx: 'auto', otherSkins: true, textSize: 'sm', compatMode: 'auto', keys: { ...DEFAULT_SETTINGS.keys } },
+      'a saved profile without `keys` (before 0.2.0) gets the default key map (test/ui/feedback5-hotkeys.test.js); an unknown quality falls back to 高');
     // 显示其他玩家的皮肤 (docs/SKINS.md): on by default, and off only when the profile says so
     assert.equal(DEFAULT_SETTINGS.otherSkins, true);
     assert.equal(sanitizeSettings({ bgm: 0.5 }).otherSkins, true, 'a profile saved before the switch draws other players\' skins');
@@ -769,6 +772,15 @@ describe('keyboard & settings', () => {
     for (const bad of ['native', 'JP', 'ja', 1, null]) assert.equal(sanitizeSettings({ voiceLang: bad }).voiceLang, 'cn', String(bad));
     assert.equal(sanitizeSettings({ bgm: 0.333 }).bgm, 0.33);
     assert.equal(sanitizeSettings({ quality: 'low' }).quality, 'low');
+    // 画面质量 (0.3.4): low / medium / high / ultra / extreme, all stored as-is. The three old values keep working
+    // untouched (no migration), an unknown one still falls back to 高, and 超清 / 极致 are LEGAL values now — this
+    // test used to probe 'ultra' as the illegal one, which is exactly what hid the tier from the sanitizer.
+    assert.deepEqual(QUALITY_TIERS, ['low', 'medium', 'high', 'ultra', 'extreme']);
+    for (const q of QUALITY_TIERS) assert.equal(sanitizeSettings({ quality: q }).quality, q, q);
+    assert.equal(DEFAULT_SETTINGS.quality, 'high', 'the default tier stays 高: an old profile and a new one see the same picture');
+    for (const bad of ['nope', 'HIGH', 'Ultra', 'exreme', 1, null, undefined]) {
+      assert.equal(sanitizeSettings({ quality: bad }).quality, 'high', String(bad));
+    }
   });
   test('fullscreen wake lock is opt-in and accepts only boolean saved values', () => {
     assert.equal(DEFAULT_SETTINGS.fullscreenWakeLock, false);

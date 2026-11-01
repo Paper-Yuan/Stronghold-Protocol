@@ -116,17 +116,22 @@ describe('hudBands: the folded shop\'s band', () => {
   test('prep / Final Assault prep only; open = the bar (unchanged), folded = the higher of the tab and the corner', () => {
     withDom({ rem: 40 }, () => {
       for (const k of ['normal', 'unite', 'boss', 'pen']) assert.equal(hudBands(k, { width: 844, height: 390 }, { shop: false }), null, k);
+      // the numbers come from HUD_REM (the CSS mirror), never from a literal: the bar's top edge is rem-scaled + borders
+      const barBottom = (rem) => HUD_REM.shopBarTop * rem + HUD_REM.shopBarBorderPx;
+      const stripBottom = (rem) => HUD_REM.bondStripBottom * rem;
       for (const k of ['prep', 'bossPrep']) {
         const open = hudBands(k, { width: 844, height: 390 });
         assert.deepEqual(hudBands(k, { width: 844, height: 390 }, { shop: true }), open);
-        // 业主 2026-10-22：商店栏 +10% 缩放后 2.9rem，bond 条 2.48rem → rem 40 时 bottom = 119
-        assert.ok(Math.abs(open.bottom - 119) < 1e-9, 'the bar: 2.9rem + 3 px');
+        // 商店栏 = HUD_REM.shopBarTop（.2 + .1×2 + 2.24 rem）+ 3 px 边框；bond 条 = HUD_REM.bondStripBottom（0.3.1 的 2.16rem）
+        assert.ok(Math.abs(open.bottom - barBottom(40)) < 1e-9, `the bar: ${HUD_REM.shopBarTop}rem + 3 px (${open.bottom})`);
+        assert.ok(Math.abs(open.top - stripBottom(40)) < 1e-9, `the strip band (${open.top})`);
         const f = hudBands(k, { width: 844, height: 390 }, { shop: false });
         assert.equal(f.top, open.top, 'the top band does not change');
         assert.ok(Math.abs(f.bottom - 35) < 1e-9, `no corner on the page: the tab .8rem + 3 px (${f.bottom})`);
       }
     });
-    withDom({ rem: 100 }, () => assert.deepEqual(hudBands('prep', { width: 1920, height: 1080 }, { shop: false }), { top: 248, bottom: 83 }));
+    withDom({ rem: 100 }, () => assert.deepEqual(hudBands('prep', { width: 1920, height: 1080 }, { shop: false }),
+      { top: HUD_REM.bondStripBottom * 100, bottom: 0.8 * 100 + 3 }));
   });
 
   test('the corner buttons are measured, touch hit areas included; the tab sits above the bottom safe-area inset', () => {

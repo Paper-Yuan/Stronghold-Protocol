@@ -48,9 +48,16 @@ test('screens/game.js: the dialog once the own alive turns false from real data;
 
 test('the stylesheet: keyframes defined, text follows 文字大小, reduced motion stops it, the project\'s rules', () => {
   const css = read('public/css/screens/game.css');
-  const block = css.slice(css.indexOf('/* 协议已失效'));
-  for (const n of ['downm-shake', 'downm-in']) assert.match(block, new RegExp(`@keyframes ${n} \\{`), n);
-  for (const m of block.matchAll(/font-size:\s*([^;]+);/g)) assert.match(m[1], /var\(--t\)/, m[1]);
-  assert.match(block, /@media \(prefers-reduced-motion: reduce\) \{\n\s+\.downm__face\.is-out, \.downm__title \{ animation: none; \}/);
-  assert.doesNotMatch(block, /!important|:has\(|--t\s*:/);
+  // The plate's own rules, by selector: game.css's later sections (the 超限 HUD) keep the px chrome sizes that
+  // test/ui/text-scale.test.js leaves alone, and where a section ends is not this test's business.
+  const rules = [...css.matchAll(/([^{}]+)\{([^{}]*)\}/g)]
+    .map(([, selector, body]) => ({ selector: selector.trim(), body }))
+    .filter((r) => /(^|[\s,])\.(modal\.downm-veil|modal__box\.downm|downm|downm__[\w-]+)/.test(r.selector));
+  assert.ok(rules.length >= 10, `the plate's rules (${rules.length})`);
+  for (const n of ['downm-shake', 'downm-in']) assert.match(css, new RegExp(`@keyframes ${n} \\{`), n);
+  for (const r of rules) {
+    for (const m of r.body.matchAll(/font-size:\s*([^;]+);/g)) assert.match(m[1], /var\(--t\)/, `${r.selector}: ${m[1]}`);
+  }
+  assert.match(css, /@media \(prefers-reduced-motion: reduce\) \{\n\s+\.downm__face\.is-out, \.downm__title \{ animation: none; \}/);
+  assert.doesNotMatch(rules.map((r) => r.body).join('\n'), /!important|:has\(|--t\s*:/);
 });

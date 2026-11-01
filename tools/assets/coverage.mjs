@@ -8,8 +8,16 @@ import { avatarUrl, portraitUrl, spineEntry, unitPictureUrl } from '../../public
 
 // These current-version tokens have no Spine: their presentation is an official effect / marker.
 // See docs/ASSETS.md "Token models from the local client"; the audit still lists their pictures and fx.
+// 结城理's Persona summons (炸惊 模拟, data/backups.json `tokens`, `displayType: HIDDEN`) are the same case: the reference
+// pack's own manifest lists `avatar` only for them (`modref/v2.1/data/assets.json`), no dump carries a model, and the
+// client falls back to the generic token battlecard when the avatar art is absent.
 const EFFECT_TOKENS = new Set(['token_10039_ulpia_block', 'token_10058_sbell2_icetgt',
-  'token_10055_phatm2_mndclv', 'token_10065_demetr_dmtpos', 'token_10071_aglna2_agairp']);
+  'token_10055_phatm2_mndclv', 'token_10065_demetr_dmtpos', 'token_10071_aglna2_agairp',
+  'token_makoto_orpheus', 'token_makoto_thanatos']);
+// 2026-10-29（更正）：湮灭那 4 件装备的图标 `trap_c_01..04` **是有的** —— 在湮灭 mod 自己的包里：
+//   modref/mods/{kazdel-ship,rhodes-ship}/…/payload/packs/<pack>/art/trap_c_0*.png（948×871 等大图）
+// 已按仓库道具图标口径（高 160、保比例）转存到 public/assets/item/ 并进清单，所以这里**不再登记缺口**；
+// 之前那条 ITEM_ICON_GAPS 豁免是查错了范围（只在炸惊整合包里找）造成的，已删除。
 const read = (path) => JSON.parse(readFileSync(path, 'utf8'));
 const optionalLocal = (root) => existsSync(join(root, 'data/local-assets.json')) ? read(join(root, 'data/local-assets.json')) : { groups: {} };
 
@@ -79,7 +87,8 @@ export function assetCoverage({ root, sets = versionAssetData(root), assets = re
       add('enemy', id, rec.name, checks, assets.enemies?.[id]?.spineAliasOf ? `existing alias: ${assets.enemies[id].spineAliasOf}` : '');
     }
     for (const kind of ['items', 'bands', 'bonds']) for (const [id, rec] of Object.entries(d[kind])) {
-      add(kind.slice(0, -1), id, rec.name, { icon: status(present(assets[kind]?.[kind === 'items' ? rec.iconId : id])) });
+      const iconId = kind === 'items' ? rec.iconId : id;
+      add(kind.slice(0, -1), id, rec.name, { icon: status(present(assets[kind]?.[iconId])) });
     }
     for (const [id, rec] of Object.entries(d.bosses)) {
       add('boss', id, rec.name, { icon: status(present(assets.enemies?.[rec.enemyKey]?.icon)),

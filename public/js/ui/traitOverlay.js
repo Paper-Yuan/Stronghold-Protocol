@@ -8,19 +8,19 @@
 
 import { useEffect, useLayoutEffect, useRef, useState } from '../../vendor/hooks.module.js';
 import { html } from './components.js';
-import { t } from '../../../shared/i18n.js';
+import { t, N_ } from '../../../shared/i18n.js';
 
 const DEL_STAGGER = 120, DEL_FLICKER = 580, DEL_WIPE = 400, DEL_PAD = 100;
 const MOVE_MS = 620, MORPH_MS = 1500;
 
 /** 特化配置：与服务端 server/match/traits.js SPECIALS 对应（只放卡面需要的字段） */
 const SPECIAL_VIEW = {
-  reid: { title: '复仇-火与钢', img: '/ui/enemy-special/enemy-reid.png' },
-  mdrock: { title: '坚甲随身Ⅲ', img: '/ui/enemy-special/enemy-mdrock.png' },
-  xi: { title: '气定神闲Ⅲ', img: '/ui/enemy-special/enemy-xi.png' },
+  reid: { title: N_('复仇-火与钢'), img: '/ui/enemy-special/enemy-reid.png' },
+  mdrock: { title: N_('坚甲随身Ⅲ'), img: '/ui/enemy-special/enemy-mdrock.png' },
+  xi: { title: N_('气定神闲Ⅲ'), img: '/ui/enemy-special/enemy-xi.png' },
 };
 
-export function TraitOverlay({ trait, myId, busyIdx = null, onPick, onRetreat = null }) {
+export function TraitOverlay({ trait, myId, busyIdx = null, onPick, onRetreat = null, onReroll = null, onSkip = null, onLock = null }) {
   const [phase, setPhase] = useState('enter');   // enter → idle → choosing → moving → folder
   const [picked, setPicked] = useState(null);
   const cardsRef = useRef(null);
@@ -30,6 +30,9 @@ export function TraitOverlay({ trait, myId, busyIdx = null, onPick, onRetreat = 
   const neg = trait?.polarity === 'neg';
   const cards = Array.isArray(trait?.cards) ? trait.cards : [];
   const myTurn = trait?.turn === myId;
+  const lockedIdx = Number.isInteger(trait?.lockedIdx) ? trait.lockedIdx : null;
+  const rerollsLeft = Math.max(0, Number(trait?.rerollsLeft) || 0);
+  const skips = Math.max(0, Number(trait?.skips) || 0);
 
   const after = (ms, fn) => { timers.current.push(setTimeout(fn, ms)); };
   useEffect(() => () => { for (const id of timers.current) clearTimeout(id); timers.current = []; }, []);
@@ -49,6 +52,7 @@ export function TraitOverlay({ trait, myId, busyIdx = null, onPick, onRetreat = 
 
   const choose = (idx) => {
     if (phase !== 'idle' || !myTurn || busyIdx != null) return;
+    if (idx === lockedIdx) return; // 锁定的卡留给下一次抉择
     setPhase('choosing');
     setPicked(idx);
     const list = [...(cardsRef.current?.children || [])];
@@ -94,14 +98,14 @@ export function TraitOverlay({ trait, myId, busyIdx = null, onPick, onRetreat = 
     <div class="traitov__veil"></div>
     <header class="traitov__head">
       <div class="traitov__micro">INFINITE PROTOCOL · TRAIT</div>
-      <div class="traitov__title-row"><span class="traitov__dia"></span><h2>词条抉择</h2><span class="traitov__dia"></span></div>
+      <div class="traitov__title-row"><span class="traitov__dia"></span><h2>${t('词条抉择')}</h2><span class="traitov__dia"></span></div>
       <div class="traitov__rule"></div>
-      <p class="traitov__sub">本次为<b>${neg ? '负面' : '正面'}</b>词条 · 效果立即生效并贯穿本局剩余战斗</p>
+      <p class="traitov__sub">${t('本次为')}<b>${neg ? t('负面') : t('正面')}</b>${t('词条 · 效果立即生效并贯穿本局剩余战斗')}</p>
     </header>
     <div ref=${cardsRef} class=${'traitov__cards' + (phase !== 'enter' ? ' is-ready' : '')}>
       ${cards.map((c, i) => {
         const sp = c.special ? SPECIAL_VIEW[c.special] : null;
-        return html`<div class=${'tcard' + (neg ? ' tcard--neg' : '') + (c.special ? ' tcard--special' : '')}
+        return html`<div class=${'tcard' + (neg ? ' tcard--neg' : '') + (c.special ? ' tcard--special' : '') + (i === lockedIdx ? ' is-locked' : '')}
             style=${sp ? `--sigil:url("${sp.img}")` : ''} key=${i}
             onClick=${() => choose(i)} role="button" tabindex="0">
           <span class="tcard__ring tcard__ring--glow"></span><span class="tcard__ring"></span>
@@ -109,7 +113,13 @@ export function TraitOverlay({ trait, myId, busyIdx = null, onPick, onRetreat = 
           <b class="tcard__brk tl"></b><b class="tcard__brk tr"></b><b class="tcard__brk bl"></b><b class="tcard__brk br"></b>
           <span class="tcard__scan"></span>
           ${c.special ? html`<span class="tcard__wm"></span>` : null}
-          <span class=${'tcard__tag' + (sp ? ' tcard__tag--special' : '')}>${sp ? sp.title : (neg ? '负面词条' : '正面词条')}</span>
+          <span class=${'tcard__tag' + (sp ? ' tcard__tag--special' : '')}>${sp ? t(sp.title) : (neg ? t('负面词条') : t('正面词条'))}</span>
+          ${onLock ? html`<button type="button" class=${'tcard__lock' + (i === lockedIdx ? ' is-on' : '')}
+              title=${i === lockedIdx ? t('已锁定到下一次抉择（点击取消）') : t('锁定到下一次抉择')}
+              aria-pressed=${i === lockedIdx ? 'true' : 'false'}
+              onClick=${(e) => { e.preventDefault(); e.stopPropagation(); if (myTurn && busyIdx == null && phase === 'idle') onLock(i); }}>
+            ${i === lockedIdx ? 'LOCKED' : 'LOCK'}
+          </button>` : null}
           ${c.boss ? html`<span class="tcard__boss">BOSS</span>` : null}
           <div class="tcard__art">
             <span class="tcard__diamond"></span>
@@ -123,13 +133,13 @@ export function TraitOverlay({ trait, myId, busyIdx = null, onPick, onRetreat = 
             <div class="tcard__traitname">${c.traitName || ''}</div>
             <div class="tcard__trait">${c.traitText || ''}</div>
           </div>
-          <div class="tcard__pick"><span>已选择</span></div>
+          <div class="tcard__pick"><span>${t('已选择')}</span></div>
           <div class="tcard__folder" aria-hidden="true">
             <div class="fade-in folder__top">
-              <span class="folder__kind">${'TRAIT ACQUIRED · ' + (neg ? '负面' : '正面')}</span>
+              <span class="folder__kind">${'TRAIT ACQUIRED · ' + (neg ? t('负面') : t('正面'))}</span>
               <span class="folder__scope">INFINITE PROTOCOL</span>
             </div>
-            ${sp ? html`<div class="fade-in"><p class="folder__title">${sp.title}</p></div>` : null}
+            ${sp ? html`<div class="fade-in"><p class="folder__title">${t(sp.title)}</p></div>` : null}
             ${sp ? html`<div class="fade-in"><p class="folder__desc">${specialDesc(c.special)}</p></div>` : null}
             <div class="fade-in"><p class="folder__trait"><b>${c.traitName || ''}</b> ${c.traitText || ''}</p></div>
             <div class="fade-in folder__rows">
@@ -141,9 +151,24 @@ export function TraitOverlay({ trait, myId, busyIdx = null, onPick, onRetreat = 
         </div>`;
       })}
     </div>
+    ${(onReroll || onSkip) && phase === 'idle' && !picked ? html`<div class="traitov__acts">
+      <span class="traitov__stat">${t('重抽')} <b class="num">${rerollsLeft}</b> · ${t('已跳过')} <b class="num">${skips}</b></span>
+      ${onReroll ? html`<button type="button" class="traitov__act traitov__act--reroll"
+        disabled=${!myTurn || busyIdx != null || rerollsLeft <= 0}
+        title=${rerollsLeft > 0 ? t('重抽本次的三张卡（每局一次）') : t('本局重抽已用完')}
+        onClick=${() => { if (myTurn && busyIdx == null && rerollsLeft > 0) onReroll(); }}>
+        <span class="traitov__act-ico">⟳</span><span>${t('重抽')} <b class="num">(${rerollsLeft})</b></span>
+      </button>` : null}
+      ${onSkip ? html`<button type="button" class="traitov__act"
+        disabled=${!myTurn || busyIdx != null}
+        title=${t('跳过本次词条抉择：不拿词条、不召怪，换 1 资金')}
+        onClick=${() => { if (myTurn && busyIdx == null) onSkip(); }}>
+        <span class="traitov__act-ico">»</span><span>${t('跳过 · +1 资金')}</span>
+      </button>` : null}
+    </div>` : null}
     ${onRetreat && !picked ? html`<button type="button" class="traitov__retreat" onClick=${onRetreat}
-      title=${'以当前回合结算本局（不再继续后面的轮次）'}>
-      <span class="traitov__retreat-ico">⏻</span><span>战术撤退</span>
+      title=${t('以当前回合结算本局（不再继续后面的轮次）')}>
+      <span class="traitov__retreat-ico">⏻</span><span>${t('战术撤退')}</span>
     </button>` : null}
   </div>`;
 }
@@ -195,8 +220,8 @@ function morphToFolder(el, host) {
 
 /** 特化的完整描述（与服务端一致；客户端只做展示） */
 function specialDesc(id) {
-  if (id === 'reid') return '“复仇者”的生命值提升 150%，获得抵抗，攻击速度提升 100，生命值低于一半时攻击力额外提升 100% 且受到的伤害减少 60%';
-  if (id === 'mdrock') return '泥岩的攻击力提升 90%，生命值提升 100%，法术抗性提升 45，泥岩的护盾值额外提升 100% 且护盾刷新冷却时间减少至 70%';
-  if (id === 'xi') return '“自在”的生命值提升 50%，防御力提升 250%，法术抗性提升 30，【破桎而出】的释放间隔缩短 50%，爆炸范围扩大 100%';
+  if (id === 'reid') return t('“复仇者”的生命值提升 150%，获得抵抗，攻击速度提升 100，生命值低于一半时攻击力额外提升 100% 且受到的伤害减少 60%');
+  if (id === 'mdrock') return t('泥岩的攻击力提升 90%，生命值提升 100%，法术抗性提升 45，泥岩的护盾值额外提升 100% 且护盾刷新冷却时间减少至 70%');
+  if (id === 'xi') return t('“自在”的生命值提升 50%，防御力提升 250%，法术抗性提升 30，【破桎而出】的释放间隔缩短 50%，爆炸范围扩大 100%');
   return '';
 }

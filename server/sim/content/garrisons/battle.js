@@ -367,6 +367,64 @@ const INSTALLERS = {
     });
   },
 
+  /**
+   * 炸惊模拟 · 岳羽由加莉 (garrison_zj_60_4_c/_d): 「每对敌方施加一次浮空，使自身已激活盟约 +bb.bond_add_count
+   * （**每名敌人仅一次**）；每次施加浮空，使自身已激活的【S.E.E.S】(bbStr.also_bond_id) 层数 +bb.also_bond_add_count」。
+   *
+   * The second gain is NOT limited to one per enemy (owner's clarification of 2026-10-20), so the two halves are separate
+   * writes: the first one goes through fireGain (which applies the 特质's own caps and the 加层 amount rules), the second
+   * one is an explicit gainLayers on the named bond (requireActive — the card says 「已激活的【S.E.E.S】」).
+   * [ASSUMED] The reference build rolls a 二极管/出老千 coin here; this repository has no garrison-side 二极管 (see
+   * handoff/ZHAJING-COVERAGE.md §7), so the multiplier is 1 — the numbers are the plain ones, only that 惊变 interaction
+   * is absent.
+   */
+  act1autochess_gar_levitate_once(battle, list) {
+    battle.on('statusApplied', ({ target, status, entered }) => {
+      if (!target || target.side !== 'enemy' || !entered) return;
+      for (const it of list) {
+        if (it.bbStr.status && status !== it.bbStr.status) continue;
+        if (!S.onField(it.unit)) continue;
+        const seen = it.seen ?? (it.seen = new Set());
+        const uid = target.id ?? target.uid;
+        const first = uid != null && !seen.has(uid);
+        if (first) { seen.add(uid); fireGain(battle, it); }
+        const extra = S.num(it.bb.also_bond_add_count, 0);
+        const bond = String(it.bbStr.also_bond_id || '');
+        if (extra > 0 && bond) {
+          const added = S.gainLayers(battle, {
+            playerId: it.unit.ownerId, bonds: [bond], n: extra, requireActive: true,
+            source: it.unit, reason: 'garrison', cap: it.cap, capKey: `${it.capKey}:${bond}`,
+          });
+          if (added > 0) S.fxOn(battle, 'garrison', it.unit, `gar:${it.gid}`, it.key, { n: added });
+        }
+      }
+    });
+  },
+
+  /**
+   * 炸惊模拟 · 埃癸斯 (garrison_zj_60_3_c/_d): 「<战斗中>陷入异常状态时，使自身已激活盟约 +bb.bond_add_count」。
+   * `bbStr.status` absent = ANY status counts (浮空/晕眩/冻结/恐惧…); when present only that one does. `entered` (the
+   * existing statusApplied semantics) means a refresh of the same status does not fire again, and the target must be the
+   * trait's own holder.
+   */
+  act2autochess_gar_event_self_status(battle, list) {
+    const byUnit = new Map();
+    for (const it of list) {
+      let arr = byUnit.get(it.unit);
+      if (!arr) byUnit.set(it.unit, (arr = []));
+      arr.push(it);
+    }
+    battle.on('statusApplied', ({ target, status, entered }) => {
+      if (!target || !entered) return;
+      const arr = byUnit.get(target);
+      if (!arr) return;
+      for (const it of arr) {
+        if (it.bbStr.status && status !== it.bbStr.status) continue;
+        fireGain(battle, it);
+      }
+    });
+  },
+
   act2autochess_gar_event_allyenemy_sleepstun_inrange(battle, list) {
     battle.on('statusApplied', ({ target, status, entered }) => { // "进入沉睡/晕眩时": new entries only (ctx.entered)
       if (!target || (status !== 'sleep' && status !== 'stun') || !entered) return;

@@ -219,7 +219,11 @@ class MainActivity : AppCompatActivity() {
         // before the player even finishes choosing a server mode.
         Thread {
             try {
-                AssetManagerHelper.ensureAssetsExtracted(applicationContext) {}
+                // 2026-10-29：预取也要报进度 —— 空 lambda 会让「正在解压素材包 2/3（… · 2,273 个文件）」这段
+                // 新文案在首启阶段全部丢掉（业主要求的按包文案）。
+                AssetManagerHelper.ensureAssetsExtracted(applicationContext) { msg ->
+                    runOnUiThread { tvLoadingStatus.text = msg }
+                }
             } catch (t: Throwable) {
                 Log.w(TAG, "Background pre-extraction warning: ${t.message}")
             }
@@ -635,7 +639,9 @@ class MainActivity : AppCompatActivity() {
             if (!remoteUrl.isNullOrBlank()) {
                 Thread {
                     try {
-                        AssetManagerHelper.ensureAssetsExtracted(this) {}
+                        AssetManagerHelper.ensureAssetsExtracted(this) { msg ->
+                            runOnUiThread { tvLoadingStatus.text = msg }
+                        }
                     } catch (_: Throwable) {}
                 }.start()
                 tvLoadingStatus.text = "正在连接目标服务器: $remoteUrl …"
@@ -662,6 +668,19 @@ class MainActivity : AppCompatActivity() {
             }
 
             runOnUiThread {
+                // 2026-10-29（业主真机撞到）：`/assets/**` 的回执是 `immutable, max-age=2592000`，换了 APK 之后
+                // WebView 仍可能拿旧缓存 → 「界面没变」「湮灭背景图消失」这类假 bug。bundle 版本一变就清一次缓存。
+                val expected = AssetManagerHelper.getExpectedBundleVersion(this)
+                val prefs = getSharedPreferences("sp-webview", MODE_PRIVATE)
+                if (prefs.getString("clearedBundle", null) != expected) {
+                    try {
+                        webView.clearCache(true)
+                        Log.i(TAG, "WebView cache cleared for bundle $expected")
+                    } catch (t: Throwable) {
+                        Log.w(TAG, "clearCache failed: ${t.message}")
+                    }
+                    prefs.edit().putString("clearedBundle", expected).apply()
+                }
                 startLocalServer()
             }
         }.start()

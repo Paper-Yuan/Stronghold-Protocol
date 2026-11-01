@@ -24,6 +24,7 @@
 
 import { loadoutOptions, checkLoadout, checkLoadoutOps, resolveLoadout, MODULE_NONE, LOADOUT_LIMITS } from '../../../shared/protocol.js';
 import { isPotential, isCultivate, POTENTIAL_DEFAULT, CULTIVATE_DEFAULT } from '../../../shared/potential.js';
+import { ANN_MOD_DEFAULT_ON, annModOn } from '../../../shared/annihilation-constants.js';
 import { t, N_ } from '../../../shared/i18n.js';
 
 export { MODULE_NONE };
@@ -45,6 +46,33 @@ export const ATTR_LABEL = Object.freeze({
 
 const isObj = (v) => !!v && typeof v === 'object' && !Array.isArray(v);
 const isInt = (v) => Number.isInteger(v);
+/** A trimmed non-empty string, else null (the `str` the skins and voice sanitisers use). */
+const str = (v) => (typeof v === 'string' && v.trim() ? v.trim() : null);
+/** An operator id: the shape every skin / voice key has (`char_<num>_<slug>`), the same test voicePrefs.js sanitises by. */
+const isCharId = (k) => typeof k === 'string' && /^char_[0-9]+_[a-z0-9]+$/.test(k) && k.length <= 80;
+/**
+ * The dub picks a payload may carry — voicePrefs.js VOICE_PICKS, repeated here rather than imported: importing that
+ * module from the UI layer made the test runner load voicePrefs before its own initialisers had run (a
+ * `Cannot access … before initialization` on the store), and the list is frozen in the protocol anyway. Keep the two in
+ * step; test/ui/loadout-model.test.js asserts they agree.
+ */
+export const PAYLOAD_VOICE_PICKS = Object.freeze(['cn', 'jp', 'en', 'kr', 'native']);
+
+/**
+ * A flat `charId → value` map out of a parsed payload, or null when nothing survives. Each value is kept as given
+ * (`raw[key]`) after `keep(key)` accepts it and `clip(value)` bounds it; unsafe ids are dropped like every other map
+ * here (`__proto__` and friends would rewrite the prototype).
+ */
+function flatMap(raw, keep, clip) {
+  if (!isObj(raw)) return null;
+  const out = {};
+  for (const key of Object.keys(raw)) {
+    if (UNSAFE_IDS.has(key) || !keep(key)) continue;
+    const v = clip(raw[key]);
+    if (typeof v === 'string' && v) out[key] = v;
+  }
+  return Object.keys(out).length ? out : null;
+}
 /** id keys a parsed payload must never inject into an entry map: `{ "__proto__": … }` would rewrite the prototype. */
 const UNSAFE_IDS = new Set(['__proto__', 'constructor', 'prototype']);
 
@@ -262,14 +290,28 @@ export const LOADOUT_IMPORT_MAX_BYTES = 256 * 1024;
 /**
  * Portable payload of a loadout, as downloaded / copied by 导出 — v2 (DESIGN §35.23): the choices by operator
  * (`byChar`, every version's), with the per-operator 潜能 / 练度 (`ops`, 0.2.2).
+ *
+ * `skins` / `voices` / `version` are additive keys of the SAME v2 envelope (the owner's request of 2026-10-28): an
+ * export now carries the appearance each operator wears, its dub pick, and the game version it was made on, so a
+ * backup restored on another machine brings the whole cosmetic setup rather than the skills alone. They are optional
+ * and omitted when empty, so a payload of settings only — and every v2 file written before this change — parses
+ * exactly as it did. `version` is informational: an importer never filters by it (a pre-v2 payload has no key at all,
+ * and charIds are version-independent — ui/loadoutSync.js), it is there to tell the player which data the file came
+ * from when something does not line up.
  * @param {Record<string, any>} byChar the stored choices by charId
- * @param {{ now?: number, ops?: Record<string, any> }} [o]
+ * @param {{ now?: number, ops?: Record<string, any>, skins?: Record<string, string>, voices?: Record<string, string>,
+ *   version?: string|null }} [o]
  */
-export function exportPayload(byChar, { now = Date.now(), ops = {} } = {}) {
+export function exportPayload(byChar, { now = Date.now(), ops = {}, skins = {}, voices = {}, version = null } = {}) {
   const clean = {};
   for (const [id, e] of Object.entries(byChar || {})) if (isObj(e)) clean[id] = { ...e };
   const cleanOps = {};
   for (const [id, e] of Object.entries(ops || {})) if (isObj(e)) cleanOps[id] = { ...e };
+  // a skin is a flat `charId → skin key` map and a voice pick a flat `charId → dub` map (ui/skins.js, voicePrefs.js)
+  const cleanSkins = {};
+  for (const [id, k] of Object.entries(skins || {})) if (str(id) && str(k)) cleanSkins[id] = k;
+  const cleanVoices = {};
+  for (const [id, lang] of Object.entries(voices || {})) if (str(id) && str(lang)) cleanVoices[id] = lang;
   return {
     kind: LOADOUT_EXPORT_KIND,
     v: LOADOUT_VERSION,
@@ -277,6 +319,10 @@ export function exportPayload(byChar, { now = Date.now(), ops = {} } = {}) {
     count: Object.keys(clean).length,
     byChar: clean,
     ops: cleanOps,
+    // omitted when empty: a settings-only payload keeps the shape it always had
+    ...(Object.keys(cleanSkins).length ? { skins: cleanSkins } : {}),
+    ...(Object.keys(cleanVoices).length ? { voices: cleanVoices } : {}),
+    ...(str(version) ? { version } : {}),
   };
 }
 
@@ -312,10 +358,19 @@ export function parseImport(input) {
   const kind = typeof raw.kind === 'string' ? raw.kind : null;
   if (kind && kind !== LOADOUT_EXPORT_KIND) return { ok: false, error: t('这不是干员调配的数据') };
   const ops = isObj(raw.ops) ? parseStoredOps(raw) : null;
+  // 外观 / 语音 / 版本 (the same v2 envelope's additive keys): flat `charId → value` maps, sanitised the way the live
+  // stores are. Absent in an older file ⇒ the corresponding settings are left alone, exactly like `ops` above.
+  const skins = flatMap(raw.skins, (k) => isCharId(k) && str(raw.skins[k]), (v) => v.slice(0, 120));
+  const voices = flatMap(raw.voices, (k) => isCharId(k) && PAYLOAD_VOICE_PICKS.includes(raw.voices[k]), (v) => v);
+  const version = str(raw.version) ? raw.version.slice(0, 40) : null;
+  const extras = {
+    ...(skins ? { skins } : {}), ...(voices ? { voices } : {}), ...(version ? { version } : {}),
+  };
   if (v === 2) {
     const byChar = parseStoredByChar(raw);
-    if (!Object.keys(byChar).length && !(ops && Object.keys(ops).length)) return { ok: false, error: t('里面没有有效的调配条目') };
-    return ops ? { ok: true, byChar, ops } : { ok: true, byChar };
+    if (!Object.keys(byChar).length && !(ops && Object.keys(ops).length)
+      && !extras.skins && !extras.voices) return { ok: false, error: t('里面没有有效的调配条目') };
+    return { ok: true, byChar, ...(ops ? { ops } : {}), ...extras };
   }
   const entries = parseStored(raw);
   if (!Object.keys(entries).length && !(ops && Object.keys(ops).length)) return { ok: false, error: t('里面没有有效的调配条目') };
@@ -468,12 +523,74 @@ export function selectedModule(loadout, chess, getChess) {
  * Visible normal chess (the loadout slots), in shop order: tier, then shopSortId.
  * @param {any[]} list data.list('chess')
  */
+/**
+ * 炸惊档的默认预填（业主 2026-10-28 晚）：`data/zjDefaultLoadout.json` 的 `byBaseId` 是「玩家没配置过这个干员时的默认模组
+ * 装配」。这里把它折成本仓的 entries 形状，并且**只留下与记录默认不同的部分**（与 `setChoice` / 服务端 `checkLoadout`
+ * 的「等于默认就不存」同一条规则）——于是「预填 = 默认」的条目根本不会产生，保存时也不会把默认值当成玩家改过的设置。
+ * 表里只有 `module`（没有 `skill`，data 2026-10-28 回执），所以技能永远沿用记录默认。
+ * @param {Record<string, any>} byBaseId `zjDefaultLoadout.json` 的 byBaseId
+ * @param {any[]} roster `zhajingRosterOf(...)`（只收名册里的棋子位）
+ * @param {(id: string) => any} getChess
+ * @returns {Record<string, { skill?: number, module?: string }>}
+ */
+export function zjPrefillEntries(byBaseId, roster, getChess) {
+  const keep = new Set((Array.isArray(roster) ? roster : []).map((c) => c && c.chessId).filter(Boolean));
+  const out = {};
+  for (const [id, e] of Object.entries(byBaseId && typeof byBaseId === 'object' ? byBaseId : {})) {
+    if (!keep.has(id) || !e || typeof e !== 'object') continue;
+    const { base, golden } = recordsOf(id, getChess);
+    if (!base) continue;
+    const opt = loadoutOptions(base, golden);
+    const next = {};
+    if (Number.isInteger(e.skill) && opt.skills.includes(e.skill) && e.skill !== opt.defaultSkill) next.skill = e.skill;
+    if (typeof e.module === 'string' && golden && opt.modules.includes(e.module) && e.module !== opt.defaultModule) next.module = e.module;
+    if (Object.keys(next).length) out[id] = next;
+  }
+  return out;
+}
+
 /** Whether a chess record is a loadout slot (a visible normal chess — what the server's checkLoadout accepts). */
 export const isLoadoutSlot = (c) => !!c && !c.isGolden && c.visible !== false && !c.isHidden && !c.isDiy && (!c.baseId || c.baseId === c.chessId);
 
 export function rosterOf(list) {
   return (Array.isArray(list) ? list : [])
     .filter(isLoadoutSlot)
+    .sort((a, b) => (a.tier ?? 0) - (b.tier ?? 0) || (a.shopSortId ?? 0) - (b.shopSortId ?? 0) || String(a.chessId).localeCompare(String(b.chessId)));
+}
+
+/**
+ * 炸惊模拟's own 调配档 roster (业主 2026-10-28 晚：卡池调整回到原版界面逻辑): the `zhajing === true` **base** records —
+ * 99 of them (97 the shop draws + 2 `grantOnly` handed out by a strategy; both are the server's roster). Unlike
+ * `rosterOf` this keeps records with `visible: false` (every zhajing record is hidden from the official pools) and never
+ * lists an elite `_b` (its modules are reached through its base's `goldenId`, exactly like the official tier).
+ * @param {any[]} list data.list('chess')
+ */
+export function zhajingRosterOf(list) {
+  return (Array.isArray(list) ? list : [])
+    .filter((c) => c && c.zhajing === true && !c.isGolden && typeof c.chessId === 'string')
+    .sort((a, b) => (a.tier ?? 0) - (b.tier ?? 0) || (a.shopSortId ?? 0) - (b.shopSortId ?? 0) || String(a.chessId).localeCompare(String(b.chessId)));
+}
+
+/**
+ * 湮灭模拟's own 调配档 roster：与引擎的 `annihilationRoster`（server/match/gamedata.js）**同一口径** ——
+ * 官方可见棋（`rosterOf`）+ 内容 mod 自带的干员（`annihilation === true`，`visible: false`），并按房间的内容开关
+ * 收窄：关掉一条 mod，只由它带进来的棋就不在名册里（`annModOn` 与引擎共用 shared/annihilation-constants.js 的缺省表）。
+ * 与 `zhajingRosterOf` 同形：只列基础形（精英的模组通过基础形的 `goldenId` 读），官方池仍然一条都看不见它们。
+ * @param {any[]} list data.list('chess')
+ * @param {Record<string, boolean> | null} [annMods] `room.state.annMods`（只含显式键；缺省 = 两条 mod 开）
+ */
+export function annihilationRosterOf(list, annMods = null) {
+  // 只看**属于内容 mod 的**那几条 `annBonds` 边（`steadShip` / `swiftShip` 这类不是 mod 带的，不影响名册资格）——
+  // 与引擎的 `annihilationRoster`（`brought = annBonds ∩ modBonds`）同一口径，否则 8 条带非 mod 边的官方棋会被误删。
+  const modEdges = (c) => (Array.isArray(c?.annBonds) ? c.annBonds : []).filter((b) => ANN_MOD_DEFAULT_ON.includes(b));
+  const kept = (c) => modEdges(c).some((b) => annModOn(annMods, b));
+  return (Array.isArray(list) ? list : [])
+    .filter((c) => {
+      if (!c || c.isGolden || c.isDiy || c.isHidden || c.grantOnly === true || !Number.isInteger(c.tier) || typeof c.chessId !== 'string') return false;
+      if (c.annihilation === true) return modEdges(c).length > 0 && kept(c);
+      if (c.visible !== true || c.zhajing === true || (c.baseId && c.baseId !== c.chessId)) return false;
+      return modEdges(c).length === 0 || kept(c);
+    })
     .sort((a, b) => (a.tier ?? 0) - (b.tier ?? 0) || (a.shopSortId ?? 0) - (b.shopSortId ?? 0) || String(a.chessId).localeCompare(String(b.chessId)));
 }
 
@@ -496,18 +613,43 @@ function opsVisibleChange(ops, charId, potentialCounts) {
  * @param {(charId: string) => boolean} [potentialCounts] false hides a potential-only change (no curve)
  */
 
-export function filterRoster(roster, f = {}, entries = {}, getChess = () => null, getBond = () => null, ops = null, potentialCounts = null) {
+/**
+ * The bond ids an operator carries **in this tier** — its own `chess.bonds` plus every bond whose `members` list the
+ * operator（业主 2026-10-30：「湮灭的两个盟约 mod 对应干员看不到」）。
+ *
+ * 数据里两种写法并存：官方 / 炸惊的盟约把成员写在**棋子**的 `bonds` 上；湮灭那两条 `annOnly` 盟约（罗德岛 /
+ * 卡兹戴尔，两个盟约 mod）只把成员写在 **`bonds[].members`** 里，棋子上一条都没有（data/chess.json 里对
+ * rhodesShip / kazdelShip 的引用数是 0）。干员调配原来只读 `chess.bonds`，于是这两条盟约在湮灭档里既不出现在
+ * 「按盟约筛选」里，也不出现在干员的盟约角标上 —— 对应干员因此「看不到」。
+ * `tierBonds` 传**该档可见的盟约**（`officialBonds(list, mode)`）：官方档不会把 annOnly / zjOnly 带进来。
+ * @param {any} chess a chess record
+ * @param {any[]} [tierBonds] the bonds this tier may show
+ * @returns {string[]} bond ids, the record's own first
+ */
+export function bondIdsOf(chess, tierBonds = null) {
+  if (!chess) return [];
+  const out = Array.isArray(chess.bonds) ? [...chess.bonds] : [];
+  for (const b of Array.isArray(tierBonds) ? tierBonds : []) {
+    if (!b || !b.bondId || out.includes(b.bondId)) continue;
+    if (Array.isArray(b.members) && b.members.includes(chess.chessId)) out.push(b.bondId);
+  }
+  return out;
+}
+
+export function filterRoster(roster, f = {}, entries = {}, getChess = () => null, getBond = () => null, ops = null, potentialCounts = null, tierBonds = null) {
   const q = String(f.query || '').trim().toLowerCase();
   return roster.filter((c) => {
     if (f.tier && c.tier !== f.tier) return false;
     if (f.prof && c.profession !== f.prof) return false;
-    if (f.bond && !(Array.isArray(c.bonds) && c.bonds.includes(f.bond))) return false;
+    // the bond filter also matches bonds whose members are listed on the bond (annOnly 罗德岛 / 卡兹戴尔), not only `chess.bonds`
+    const bondIds = f.bond || q ? bondIdsOf(c, tierBonds) : null;
+    if (f.bond && !bondIds.includes(f.bond)) return false;
     if (f.changedOnly) {
       const golden = c.goldenId ? getChess(c.goldenId) : null;
       if (!effectiveChoice(entries, c, golden).changed && !opsVisibleChange(ops, c.charId, potentialCounts)) return false;
     }
     if (q) {
-      const hay = [c.name, c.appellation, c.subProfessionName, t(PROF_NAME[c.profession]), ...(c.bonds || []).map((b) => getBond(b)?.name)]
+      const hay = [c.name, c.appellation, c.subProfessionName, t(PROF_NAME[c.profession]), ...(bondIds || c.bonds || []).map((b) => getBond(b)?.name)]
         .filter(Boolean).join(' ').toLowerCase();
       if (!hay.includes(q)) return false;
     }

@@ -105,7 +105,9 @@ test('levelProgress: a record marked test (0.3.1 测试 mode) counts toward neit
 
 test('the result flow marks a 测试 match on both pages and counts it toward nothing', () => {
   const src = readFileSync(new URL('../../public/js/screens/settle.js', import.meta.url), 'utf8');
-  assert.match(src, /<\$\{SettleTestMark\} res=\$\{res\} \/><\/div>/, 'the personal report');
+  // the personal report's mode line (`.sself__mode`): the mark sits with the mode / 非官方 / version chips — the 超限档案
+  // button follows it, so it is no longer the div's last child
+  assert.match(src, /<div class="sself__mode">[^\n]*<\$\{SettleTestMark\} res=\$\{res\} \/>/, 'the personal report');
   assert.match(src, /steam__tags[^\n]*<\$\{SettleTestMark\} res=\$\{res\} \/>/, 'the alliance page');
   assert.match(src, /counted: !isTest && !isModdedRoom/);
 });

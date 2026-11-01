@@ -127,8 +127,13 @@ describe('§21.26 3 — strategies tied to a bond the mode switches off', () => 
     assert.deepEqual(bandBondIdsOf({ desc: '在<阿戈尔>部分干员缺席时体验可能不完整；<寻呼模块>', buffs: [{ bb: { bond: 'kazimierzShip,nope' } }] }, ctx), ['egirShip', 'kazimierzShip'], 'the note, comma lists; an item in <…> is no bond');
     assert.deepEqual(bandBondIdsOf(DATA.bands.band_bldsk, ctx), []);
     assert.deepEqual(bandBondIdsOf(null, ctx), []);
-    // the build wrote exactly this for every band (data/bands.json is not stale against the helper)
-    for (const [id, b] of Object.entries(DATA.bands)) assert.deepEqual(b.bondIds, bandBondIdsOf(b, ctx), id);
+    // the build wrote exactly this for every band (data/bands.json is not stale against the helper).
+    // 官方子集：炸惊模拟的两条专属策略（`zjOnly`，`band_zj_fuuka` / `band_zj_si`）不由这条推导写字段
+    // （它们挂在 `zjOnly` 盟约上，只有炸惊模式读），所以这里只看官方那 40 条。
+    for (const [id, b] of Object.entries(DATA.bands)) {
+      if (b.zjOnly === true) continue;
+      assert.deepEqual(b.bondIds, bandBondIdsOf(b, ctx), id);
+    }
     // GameData reads the field (known bonds, data order) — never re-derives
     const gd = new GameData({ ...DATA, bands: { band_x: { ...DATA.bands.band_bldsk, bandId: 'band_x', bondIds: ['kazimierzShip', 'nope', 'egirShip'] }, band_old: { ...DATA.bands.band_paganini, bondIds: undefined } } }, 'mode_single_funny');
     assert.deepEqual(gd.bandBondIds('band_x'), ['egirShip', 'kazimierzShip']);

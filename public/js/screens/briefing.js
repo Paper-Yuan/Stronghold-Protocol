@@ -23,8 +23,12 @@ import { UnofficialMark, VersionTag } from '../ui/pluginTag.js';
 import { SetupReroll } from '../ui/setupReroll.js';
 import { actions } from '../ui/gameActions.js';
 import { sortedPlayers, phaseTotalSeconds } from '../ui/gameLogic.js';
+// 炸惊模拟（ZHAJING）：简报里只写玩法包自己的名字/简介与**阶段名**，不写惊变卡面 —— 卡面要到惊变阶段当场才揭晓
+// （包内同一条纪律；数据在 config 的 mode 记录里，spPhaseKinds 是回合 → 阶段种类）。
+import { ZHAJING_DIFFICULTY } from './extensionModes.js';
 import { useStore } from '../store.js';
 import { data } from '../data.js';
+import { officialBonds } from '../ui/zjView.js';
 import { t } from '../../../shared/i18n.js';
 
 const cx = (...p) => p.flat().filter(Boolean).join(' ');
@@ -47,7 +51,15 @@ export function BriefingScreen() {
   const readyN = players.filter((p) => p.ready).length;
   const mode = gd.config?.modes?.[pub.modeId];
   // (+ the own 自选 pieces this match leaves out of the shop: m.private.diyBanned)
-  const info = matchInfoModel(pub, { bonds: gd.list('bonds'), chess: gd.chess, mode, priv, diyData: { chess: data.get('chess'), backups: data.get('backups') } });
+  const info = matchInfoModel(pub, { bonds: officialBonds(gd.list('bonds'), pub?.modeId ?? pub?.difficulty), chess: gd.chess, mode, priv, diyData: { chess: data.get('chess'), backups: data.get('backups') } });
+  // 炸惊模拟: its own name / description, and the special 阶段 by NAME only — the 惊变 cards are drawn when the phase opens,
+  // so the briefing has nothing to leak and prints nothing but the round and the kind (spPhaseKinds: 1→jibian …).
+  const zhajing = mode && mode.difficulty === ZHAJING_DIFFICULTY ? mode : null;
+  const PHASE_KIND = { jibian: t('惊变阶段'), express: t('快递'), bountyHigh: t('悬赏') };
+  const phases = zhajing && zhajing.spPhaseKinds && typeof zhajing.spPhaseKinds === 'object'
+    ? Object.entries(zhajing.spPhaseKinds).map(([r, k]) => ({ round: Number(r), kind: k }))
+      .filter((x) => Number.isInteger(x.round)).sort((a, b) => a.round - b.round)
+    : [];
 
   const ready = async () => {
     if (busy || me?.ready) return;
@@ -72,6 +84,16 @@ export function BriefingScreen() {
         <${MatchLegend} model=${info} />
       </section>
       <section class="brief-sec brief-sec--banned" style="--i:4"><${BannedOperators} model=${info} /></section>
+      ${zhajing ? html`<section class="brief-sec brief-sec--zj" style="--i:5" data-testid="brief-zhajing">
+        <header class="brief-h"><span>${t('玩法包')}</span><span class="micro">${zhajing.code || ''}</span></header>
+        <div class="brief-zj">
+          <b class="brief-zj__name">${t(zhajing.name || '')}</b>
+          <p class="brief-zj__desc">${t(zhajing.desc || '')}</p>
+          ${phases.length ? html`<ul class="brief-zj__phases">
+            ${phases.map((x) => html`<li key=${x.round} data-kind=${x.kind}><span class="num">R${x.round}</span>${PHASE_KIND[x.kind] || x.kind}</li>`)}
+          </ul>` : null}
+        </div>
+      </section>` : null}
     </main>
     <${SetupReroll} pub=${pub} />
     <footer class="brief__foot">

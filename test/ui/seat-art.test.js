@@ -137,7 +137,13 @@ test('room.css: the seat cards and the picker follow 文字大小, no !important
   // (a capped size still follows 文字大小 below the cap — §35.18 review: the room's big button, and on a short screen the
   // seat cards, the top bar's text, the status line, 独立模拟's briefing and the picker's names)
   const STEP_CAP = /^calc\((\d+)px \+ var\(--t-step\)( \/ 2)?\)$/;
-  for (const v of sizes) assert.match(v, /^(calc\(\.\d+ \* var\(--t\)\)|min\(calc\(\.\d+ \* var\(--t\)\), (\.\d+rem|\d+px|calc\(\d+px \+ var\(--t-step\)( \/ 2)?\))\))$/, v);
+  // A bare px floor is 文字大小's readability exemption, not a stale size (docs/design/client.md「界面大小」, DESIGN §35.43:
+  // the size floors carry `calc(Npx * var(--sp-ui, 1))`, while the font-size / line-height / letter-spacing floors stay px
+  // and never shrink with 界面大小): a short screen clamps the layout root at 40 px, where .16 × --t is 6.4 px — 蚀流's chips
+  // hold 11 px and grow with --t above that floor.
+  for (const v of sizes) assert.match(v, /^(calc\(\.\d+ \* var\(--t\)\)|min\(calc\(\.\d+ \* var\(--t\)\), (\.\d+rem|\d+px|calc\(\d+px \+ var\(--t-step\)( \/ 2)?\))\)|max\(\d+px, calc\(\.\d+ \* var\(--t\)\)\))$/, v);
+  // the one px floor in the room: 蚀流's 1..6 / ∞ chips (the annihilation play set's level, `.rs-erosion__chip`)
+  assert.ok(sizes.includes('max(11px, calc(.16 * var(--t)))'), sizes.join(' | '));
   const caps = sizes.filter((v) => v.startsWith('min('));
   assert.ok(caps.length >= 19, `the GoButton's label, rook and mark, and the short screen's caps (${caps.length})`);
   // the short screen's px caps keep the text readable (11–20 px at 中) and still grow above 中 (+ --t-step, theme.css;

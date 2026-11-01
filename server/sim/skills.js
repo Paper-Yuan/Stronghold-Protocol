@@ -100,6 +100,7 @@ export class SkillRuntime {
     this.rule = String(trig.rule ?? 'DEFAULT').toUpperCase();
     if (this.rule === 'ALWAYS') this.rule = 'SP_FULL';
     if (this.rule === 'MANUAL') this.rule = 'NEVER';
+    if (this.rule === 'AUTO') this.rule = 'DEFAULT'; // the play sets' raw row: an AUTO skill waits for its own attack
     if (this.rule.startsWith('CUSTOM_RANGE')) this.rule = 'CUSTOM_RANGE';
     this.triggerGrid = trig.grid ?? trig.rangeGrid ?? d.trigger?.grid ?? null;
     // kit options: an injured, healable ally of the trigger grid with an HP ratio of at most `hpAtMost` (SKILL_RANGE:

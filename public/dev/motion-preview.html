@@ -1,0 +1,567 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="icon" href="data:," />
+  <title>UI 动效评审 · 交互演示（湮灭模拟 / 拓展模式）</title>
+  <!--
+    public/dev/motion-preview.html — 2026-10-27 动效评审的**演示页**（不是线上功能，不进构建）。
+    五个模块各自带「现状 / 优化」切换，数字全部来自真实测量与真实代码位置：
+      · --t = 1rem；根字号 66.67px（1280×720）与 40px（矮屏 / 手机），实测自 public/css/theme.css
+      · 转轮：REEL_CELL = 92 写死（public/js/ui/relics.js:134），窄屏 cell 72px / 增益 78px（relics.css:108/237）
+      · relics.css 全文 0 条 prefers-reduced-motion（对照 lobby.css 2 / room.css 1 / game.css 6）
+      · 停轮后 620ms 空拍（relics.js:241）
+      · 大厅列表只有 3 条 stagger 延迟（lobby.css:1157-1159）
+    样式只用于演示，照抄生产的选择器名以便对照；不用 :has() / 容器查询 / @layer / 嵌套 / color-mix。
+    行为在 motion-preview.js（CSP 是 script-src 'self'，脚本必须外链）。
+  -->
+  <style>
+    /* ---- 壳 ---- */
+    :root {
+      --bg: #0a0b0d;
+      --panel: #101114;
+      --panel-2: #15161a;
+      --line: #2a2c33;
+      --line-2: #3a3d46;
+      --txt: #e9e7e2;
+      --dim: #9a978f;
+      --lo: #6f6c66;
+      --gold: #d8b46a;
+      --mint: #4fe8c0;
+      --ext: #7cc6f2;
+      --ext-200: #bfe6ff;
+      --ext-300: #a5d8f7;
+      --ext-400: #7cc6f2;
+      --red: #b52c38;
+      --t-fast: 150ms;
+      --t-med: 200ms;
+      --t-slow: 250ms;
+      --ease-out: cubic-bezier(.2, .8, .2, 1);
+      --tr-ease: cubic-bezier(.16, .84, .3, 1);
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; }
+    /* 演示页自己用 hidden 属性控制显隐：.cards / .ovl / .rlc__confirm 都写了 display，必须让 [hidden] 赢 */
+    [hidden] { display: none !important; }
+    body {
+      background: var(--bg);
+      color: var(--txt);
+      font: 400 14px/1.5 'Noto Sans SC', 'Microsoft YaHei', system-ui, sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+    .bar {
+      position: sticky; top: 0; z-index: 50;
+      display: flex; flex-wrap: wrap; align-items: center; gap: 14px;
+      padding: 10px 16px;
+      background: rgba(10, 11, 13, .94);
+      border-bottom: 1px solid var(--line);
+    }
+    .bar__title { display: flex; flex-direction: column; gap: 2px; margin-right: auto; min-width: 220px; }
+    .bar__title b { font-size: 15px; letter-spacing: .02em; }
+    .bar__title span { font-size: 11.5px; color: var(--dim); }
+    .bar__ctl { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+    .seg { display: inline-flex; border: 1px solid var(--line-2); border-radius: 4px; overflow: hidden; }
+    .seg > button {
+      padding: 6px 10px; border: 0; background: transparent; color: var(--dim);
+      font: 600 12px/1 'Rajdhani', system-ui, sans-serif; letter-spacing: .04em; cursor: pointer;
+    }
+    .seg > button + button { border-left: 1px solid var(--line-2); }
+    .seg > button:hover { color: var(--txt); }
+    .seg > button.is-on { background: rgba(124, 198, 242, .16); color: var(--ext-200); }
+    .seg > button:focus-visible { outline: 2px solid var(--ext-300); outline-offset: -2px; }
+    .sw { display: inline-flex; align-items: center; gap: 7px; font-size: 12.5px; color: var(--dim); cursor: pointer; }
+    .sw input { width: 16px; height: 16px; accent-color: var(--mint); }
+    .ghost {
+      padding: 6px 12px; border: 1px solid var(--line-2); border-radius: 4px;
+      background: transparent; color: var(--txt); font: 600 12.5px/1 system-ui, sans-serif; cursor: pointer;
+    }
+    .ghost:hover { border-color: var(--gold); color: var(--gold); }
+    .ghost:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+
+    /* ---- 舞台：视口预设 = 5 档（改 --t 与 cell 尺寸，与生产同口径） ---- */
+    .stage {
+      margin: 14px auto 40px; padding: 16px;
+      border: 1px solid var(--line); border-radius: 8px;
+      background:
+        radial-gradient(ellipse at 20% 0%, rgba(124, 198, 242, .06), transparent 60%),
+        linear-gradient(180deg, #0d0e11, #0a0b0d);
+      overflow: auto;
+      width: var(--stage-w, calc(100% - 28px));
+      max-width: calc(100vw - 28px);
+      min-height: 320px;
+    }
+    .stage[data-vp="wide"] { --stage-w: 1260px; --t: 66.6667px; }
+    .stage[data-vp="short"] { --stage-w: 800px; min-height: 360px; --t: 40px; }
+    .stage[data-vp="phone"] { --stage-w: 667px; --t: 40px; }
+    .stage[data-vp="portrait"] { --stage-w: 390px; --t: 40px; }
+    .stage[data-vp="auto"] { --stage-w: calc(100% - 28px); --t: 1rem; }
+    .stage__tag {
+      display: inline-block; margin: 0 0 12px; padding: 3px 8px; border-radius: 999px;
+      border: 1px solid var(--line-2); color: var(--dim); font: 600 11px/1.5 'Rajdhani', system-ui, sans-serif;
+      letter-spacing: .08em;
+    }
+
+    /* ---- 模块 ---- */
+    .mod { margin: 0 0 16px; padding: 14px 16px 16px; border: 1px solid var(--line); border-radius: 6px; background: var(--panel); }
+    .mod__head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 10px; margin-bottom: 6px; }
+    .mod__head h2 { margin: 0; font-size: 15px; letter-spacing: .02em; }
+    .mod__head h2 small { margin-left: 6px; color: var(--dim); font-size: 11.5px; font-weight: 400; letter-spacing: .04em; }
+    .mod__head .seg { margin-left: auto; }
+    .mod__lead { margin: 0 0 12px; color: var(--dim); font-size: 12.5px; line-height: 1.6; }
+    .mod__lead b { color: var(--txt); font-weight: 600; }
+    .readout {
+      margin: 10px 0 0; padding: 8px 10px; border: 1px dashed var(--line-2); border-radius: 4px;
+      font: 12px/1.7 ui-monospace, 'Cascadia Mono', Consolas, monospace; color: var(--dim);
+      white-space: pre-wrap; word-break: break-word;
+    }
+    .readout b { color: var(--txt); font-weight: 600; }
+    .readout .bad { color: #ff9a9a; }
+    .readout .good { color: var(--mint); }
+
+    /* ---- ① 老虎机 ---- */
+    .slot { display: flex; flex-direction: column; align-items: flex-start; gap: 12px; }
+    .slot__frame {
+      position: relative; display: flex; align-items: center; padding: 16px 82px 22px 22px;
+      border: 1px solid rgba(190, 150, 90, .42); border-radius: 4px;
+      background: radial-gradient(ellipse at 50% 0%, rgba(120, 60, 30, .18), transparent 70%), linear-gradient(180deg, #17130f, #0d0c0d);
+      box-shadow: inset 0 0 0 1px rgba(255, 235, 200, .05), 0 12px 30px rgba(0, 0, 0, .5);
+    }
+    .slot__reels { display: flex; gap: 14px; }
+    .slot__reel {
+      position: relative; width: 92px; height: 92px; overflow: hidden; border: 1px solid #6b5434; border-radius: 3px;
+      background: radial-gradient(circle at 50% 45%, rgba(216, 180, 106, .14), rgba(10, 9, 10, .9) 70%);
+      box-shadow: inset 0 0 18px rgba(0, 0, 0, .8);
+    }
+    .slot__reel::before, .slot__reel::after {
+      content: ''; position: absolute; left: 0; right: 0; height: 12px; z-index: 2; pointer-events: none;
+    }
+    .slot__reel::before { top: 0; background: linear-gradient(#0b0a0b, transparent); }
+    .slot__reel::after { bottom: 0; background: linear-gradient(transparent, #0b0a0b); }
+    .slot__strip { display: flex; flex-direction: column; transition-property: transform; transition-timing-function: cubic-bezier(.08, .72, .12, 1); }
+    .slot__cell { flex: 0 0 92px; width: 92px; height: 92px; display: grid; place-items: center; }
+    .slot__cell i {
+      width: 46px; height: 46px; border-radius: 8px; transform: rotate(45deg);
+      background: linear-gradient(140deg, #9c2b2b, #401012); border: 1px solid #c46a6a;
+      box-shadow: inset 0 0 10px rgba(255, 240, 220, .18), 0 3px 8px rgba(0, 0, 0, .6);
+    }
+    .slot__cell.is-blue i { background: linear-gradient(140deg, #2f8f96, #0b2a2d); border-color: #6fd6dc; }
+    .slot__cell.is-gold i { background: linear-gradient(140deg, #d8b46a, #6b5434); border-color: #f0d79b; }
+    /* 待机时生产用「?」盖住转轮，不会提前露出本次抽到的卡（relics.css:257-260） */
+    .slot.is-ready .slot__cell i { opacity: 0; }
+    .slot.is-ready .slot__reel::after {
+      content: '?'; position: absolute; inset: 0; display: grid; place-items: center;
+      background: #0e0d0e; color: #6b5434; font: 700 26px/1 'Rajdhani', system-ui, sans-serif;
+    }
+    /* 窄屏（≤560px 宽）与增益浮层里的 cell：生产上这两个尺寸与 JS 的 92 不一致 —— 演示里照抄 */
+    .stage[data-vp="portrait"] .slot__cell { flex-basis: 72px; width: 72px; height: 72px; }
+    .stage[data-vp="portrait"] .slot__reel { width: 72px; height: 72px; }
+    .slot__payline {
+      position: absolute; left: 6px; right: 6px; top: 50%; height: 1px; z-index: 3; pointer-events: none;
+      background: linear-gradient(90deg, transparent, rgba(216, 180, 106, .75), transparent);
+      box-shadow: 0 0 8px rgba(216, 180, 106, .35);
+    }
+    .slot__lever {
+      position: absolute; right: 18px; top: 50%; transform: translateY(-50%);
+      width: 48px; height: 78px; padding: 0; background: none; border: 0; cursor: pointer;
+    }
+    .slot__lever:focus-visible { outline: 2px solid var(--gold); outline-offset: 4px; border-radius: 6px; }
+    .slot__lever-arm {
+      position: absolute; left: 50%; bottom: 2px; width: 8px; height: 50px; margin-left: -4px; border-radius: 4px;
+      background: linear-gradient(180deg, #d8b46a, #6b5434); transform-origin: 50% 100%;
+      transition: transform .6s cubic-bezier(.3, 1.35, .4, 1); box-shadow: 0 2px 6px rgba(0, 0, 0, .6);
+    }
+    .slot__lever-knob {
+      position: absolute; left: 50%; top: -11px; width: 22px; height: 22px; margin-left: -11px; border-radius: 50%;
+      background: radial-gradient(circle at 35% 30%, #ffe6ad, #b3402c 62%, #5a1010); box-shadow: 0 0 12px rgba(216, 120, 70, .55);
+    }
+    .slot__lever.is-pulled .slot__lever-arm { transform: rotate(112deg); }
+    .slot__actions { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; min-height: 34px; }
+    .slot__start, .rlpos__ok {
+      padding: 9px 22px; border: 1px solid var(--gold); border-radius: 3px; cursor: pointer;
+      background: linear-gradient(180deg, rgba(216, 180, 106, .24), rgba(120, 80, 30, .1)); color: #f4e2b6;
+      font: 600 13px/1 system-ui, sans-serif; letter-spacing: .1em;
+    }
+    .slot__start:hover, .rlpos__ok:hover { background: linear-gradient(180deg, rgba(216, 180, 106, .36), rgba(120, 80, 30, .16)); }
+    .slot__start:focus-visible, .rlpos__ok:focus-visible { outline: 2px solid #f0d79b; outline-offset: 3px; }
+    .slot__skip {
+      padding: 4px 2px; background: none; border: 0; border-bottom: 1px solid rgba(200, 180, 150, .35); cursor: pointer;
+      color: var(--dim); font: 400 12px/1 system-ui, sans-serif;
+    }
+    .slot__skip:focus-visible { outline: 2px solid var(--gold); outline-offset: 3px; }
+    .slot__status { font: 600 12px/1 'Rajdhani', system-ui, sans-serif; letter-spacing: .16em; color: var(--gold); }
+    .slot.is-done .slot__frame { border-color: rgba(216, 180, 106, .55); }
+    .slot.is-done .slot__reel { box-shadow: inset 0 0 18px rgba(0, 0, 0, .8), 0 0 12px rgba(216, 180, 106, .18); }
+    /* 停轮冲击（提案 A02/B 的 A1）：只动 payline 的 opacity/scaleY —— reel / cell 上有 transform:none!important 的冻结层 */
+    .slot.is-hit .slot__payline { animation: slot-hit 240ms var(--ease-out); }
+    @keyframes slot-hit {
+      0% { opacity: .55; transform: scaleY(1); }
+      22% { opacity: 1; transform: scaleY(3); }
+      100% { opacity: .8; transform: scaleY(1); }
+    }
+
+    /* ---- 卡牌（① 揭晓 / ② 三选一） ---- */
+    .cards { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; margin-top: 14px; }
+    .cards--wide { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .rlc {
+      position: relative; display: flex; flex-direction: column; gap: 10px; padding: 14px 14px 40px;
+      text-align: left; color: #e8ddca; background: linear-gradient(170deg, #1c1917, #121113 70%);
+      border: 1px solid #3a3430; border-radius: 3px; cursor: pointer; overflow: hidden;
+      transition: transform .13s ease, border-color .13s ease, box-shadow .13s ease, opacity var(--t-med) var(--ease-out);
+    }
+    .rlc::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 4px; background: #9c2b2b; }
+    .rlc--blue::before { background: #2f8f96; }
+    .rlc:hover:not(:disabled) { transform: translateY(-2px); border-color: #7d6a4c; box-shadow: 0 10px 26px rgba(0, 0, 0, .5); }
+    .rlc:focus-visible { outline: 2px solid var(--mint); outline-offset: 3px; }
+    .rlc.is-armed { border-color: var(--gold); box-shadow: 0 0 0 1px var(--gold), 0 12px 30px rgba(216, 180, 106, .18); }
+    .rlc.is-armed:hover:not(:disabled) { transform: none; }
+    .rlc__tier {
+      position: absolute; right: 8px; top: 8px; padding: 3px 6px; border-radius: 2px;
+      font: 700 10px/1 'Rajdhani', system-ui, sans-serif; letter-spacing: .16em; color: #0d0d0f; background: #9c2b2b;
+    }
+    .rlc--blue .rlc__tier { background: #2f8f96; }
+    .rlc__head { display: flex; gap: 12px; align-items: center; }
+    .rlc__icon {
+      flex: 0 0 56px; width: 56px; height: 56px; display: grid; place-items: center; border-radius: 2px;
+      background: radial-gradient(circle at 50% 45%, rgba(190, 150, 90, .16), transparent 68%);
+      border: 1px solid rgba(190, 150, 90, .22);
+    }
+    .rlc__icon i {
+      width: 26px; height: 26px; border-radius: 5px; transform: rotate(45deg);
+      background: linear-gradient(140deg, #9c2b2b, #401012); border: 1px solid #c46a6a;
+    }
+    .rlc--blue .rlc__icon i { background: linear-gradient(140deg, #2f8f96, #0b2a2d); border-color: #6fd6dc; }
+    .rlc__titles { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+    .rlc__name { font-size: 16px; letter-spacing: .04em; color: #f5ead6; }
+    .rlc__set { font-size: 10.5px; color: #9b9084; letter-spacing: .04em; }
+    .rlc__desc { font-size: 12.5px; line-height: 1.6; color: #c9c0b2; }
+    .rlc__confirm {
+      position: absolute; right: 8px; bottom: 8px; display: flex; flex-direction: column; align-items: flex-end;
+      padding: 5px 8px; background: rgba(216, 180, 106, .14); border: 1px solid rgba(216, 180, 106, .6); border-radius: 2px;
+    }
+    .rlc__confirm b { font-size: 11.5px; color: #f0d79b; letter-spacing: .06em; }
+    .rlc__confirm small { font-size: 9.5px; color: #b9a98a; }
+    /* ② 优化：armed 只做一次 220ms 金环脉冲 + 确认块 scale-in；其余两卡让位 */
+    .pick--after .rlc.is-armed::after {
+      content: ''; position: absolute; inset: 0; border-radius: 3px; pointer-events: none;
+      box-shadow: inset 0 0 0 1px #d8b46a; animation: rlc-armed 220ms var(--ease-out) 1;
+    }
+    @keyframes rlc-armed { from { opacity: .2; } to { opacity: 1; } }
+    .pick--after .rlc__confirm { transform-origin: 100% 100%; animation: rlc-confirm-in 140ms var(--ease-out) 1; }
+    @keyframes rlc-confirm-in { from { opacity: 0; transform: scale(.9); } }
+    .pick--after .cards.is-armed .rlc:not(.is-armed) { opacity: .66; }
+    .pick--after .rlc.is-armed { animation: none; }
+    .rlc.is-chosen { border-color: var(--mint); box-shadow: 0 0 0 1px var(--mint), 0 12px 30px rgba(79, 232, 192, .18); }
+    .rlc.is-chosen::before { background: var(--mint); }
+    /* ① 卡牌入场：优化用 backwards（不是 both —— both 会把 transform 钉死，hover 抬升从此失效） */
+    .reel--after .cards .rlc { animation: rlc-in 260ms var(--ease-out) backwards; }
+    .reel--after .cards .rlc:nth-child(2) { animation-delay: 70ms; }
+    .reel--after .cards .rlc:nth-child(3) { animation-delay: 140ms; }
+    @keyframes rlc-in { from { opacity: 0; transform: translateY(12px) scale(.985); } }
+
+    /* ---- ③ 层叠 ---- */
+    .stack { position: relative; height: 300px; border: 1px solid var(--line); border-radius: 4px; overflow: hidden; background: #07080a; }
+    .ovl { position: absolute; inset: 0; display: grid; place-items: center; padding: 14px; }
+    .ovl--low { z-index: 88; }
+    .ovl--high { z-index: 90; }
+    .ovl__veil { position: absolute; inset: 0; }
+    .ovl--low > .ovl__veil { background: radial-gradient(ellipse at 50% 40%, rgba(20, 8, 10, .72), rgba(4, 4, 6, .92)); -webkit-backdrop-filter: blur(2px); backdrop-filter: blur(2px); }
+    .ovl--high > .ovl__veil { background: radial-gradient(ellipse at 50% 42%, rgba(26, 18, 8, .6), rgba(4, 4, 6, .92)); -webkit-backdrop-filter: blur(2px); backdrop-filter: blur(2px); }
+    .ovl__panel {
+      position: relative; width: 100%; max-width: 460px; padding: 12px 14px 14px; border-radius: 4px;
+      border: 1px solid rgba(216, 180, 106, .5); background: linear-gradient(160deg, rgba(24, 20, 18, .97), rgba(12, 11, 12, .98));
+      box-shadow: 0 18px 50px rgba(0, 0, 0, .6);
+    }
+    /* 生产中负面浮层是 min(1100px, 94vw) 的整幅面板，增益浮层只有 min(760px, 94vw)：下层比上层宽，
+       所以在「现状」里它的标题会从上层黑幕后面露出来。演示里照样摆：下层贴顶整幅，上层居中。 */
+    .ovl--low { place-items: start stretch; }
+    .ovl--low .ovl__panel { max-width: none; }
+    .ovl__panel h3 { margin: 0 0 4px; font-size: 14px; letter-spacing: .06em; }
+    .ovl__panel p { margin: 0 0 10px; font-size: 11.5px; color: var(--dim); }
+    .mini-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+    .mini {
+      height: 58px; display: grid; place-items: center; border: 1px solid #3a3430; border-radius: 3px;
+      background: linear-gradient(170deg, #1c1917, #121113); color: #c9c0b2; font-size: 11px;
+    }
+    .mini.is-armed { border-color: var(--gold); box-shadow: 0 0 0 1px var(--gold) inset; }
+    /* 优化：被盖住的那层真退场（visibility:hidden 同时移出 Tab 序列与可访问性树），并省掉一整层全屏模糊 */
+    .stack--after .ovl--low.is-covered { pointer-events: none; }
+    .stack--after .ovl--low.is-covered .ovl__panel { visibility: hidden; }
+    .stack--after .ovl--low.is-covered > .ovl__veil { -webkit-backdrop-filter: none; backdrop-filter: none; }
+    .stack__btns { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+
+    /* ---- ④ 蚀流三处 ---- */
+    .erosion-grid { display: flex; flex-wrap: wrap; gap: 14px; }
+    .erosion-grid > div { flex: 1 1 260px; min-width: 240px; padding: 10px; border: 1px solid var(--line); border-radius: 4px; background: var(--panel-2); }
+    .erosion-grid h3 { margin: 0 0 8px; font-size: 12px; color: var(--dim); letter-spacing: .06em; font-weight: 600; }
+    .ext-tiers { display: flex; align-items: center; gap: .05rem; flex-wrap: wrap; }
+    .ext-tiers__label { font-size: calc(.16 * var(--t)); color: var(--dim); white-space: nowrap; margin-right: .03rem; }
+    .ext-tier {
+      min-width: max(.3rem, 24px); min-height: max(.3rem, 24px); padding: 0 .06rem;
+      font-size: calc(.17 * var(--t)); font-weight: 800; color: var(--lo);
+      background: rgba(255, 255, 255, .05); border: 1px solid rgba(255, 255, 255, .14); border-radius: .07rem; cursor: pointer;
+      transition: color var(--t-fast), border-color var(--t-fast), background var(--t-fast);
+    }
+    .ext-tier:hover { color: var(--ext-200); border-color: rgba(124, 198, 242, .35); }
+    .ext-tier.is-on { color: #06202e; background: var(--ext-400); border-color: var(--ext-300); }
+    .ext-tier:focus-visible { outline: 2px solid var(--ext-300); outline-offset: 2px; }
+    .ext-party { display: flex; align-items: center; gap: .05rem; }
+    .ext-party__chip {
+      min-width: max(.3rem, 24px); min-height: max(.3rem, 24px); padding: 0 .09rem;
+      font-size: calc(.16 * var(--t)); font-weight: 800; letter-spacing: .04em; white-space: nowrap; color: var(--lo);
+      background: rgba(255, 255, 255, .05); border: 1px solid rgba(255, 255, 255, .14); border-radius: .07rem; cursor: pointer;
+      transition: color var(--t-fast), border-color var(--t-fast), background var(--t-fast);
+    }
+    .ext-party__chip.is-on { color: #06202e; background: var(--ext-400); border-color: var(--ext-300); }
+    .ext-party__chip:focus-visible { outline: 2px solid var(--ext-300); outline-offset: 2px; }
+    .rs-erosion-chips { display: flex; align-items: center; gap: .04rem; flex-wrap: wrap; }
+    .rs-erosion__chip {
+      min-width: max(.26rem, 22px); min-height: max(.26rem, 22px); padding: 0 .05rem;
+      font: 700 calc(.15 * var(--t))/1 'Rajdhani', system-ui, sans-serif; color: var(--lo);
+      background: rgba(255, 255, 255, .05); border: 1px solid rgba(255, 255, 255, .14); border-radius: .06rem; cursor: pointer;
+    }
+    .rs-erosion__chip.is-on { color: #06202e; background: var(--ext-400); border-color: var(--ext-300); }
+    .rs-erosion__chip:focus-visible { outline: 2px solid var(--ext-300); outline-offset: 2px; }
+    .gm__erosion {
+      display: inline-flex; align-items: center; gap: .05rem; padding: .03rem .08rem .02rem;
+      border: 1px solid rgba(216, 180, 106, .35); border-radius: 2px; background: rgba(20, 16, 12, .72);
+      color: var(--gold); font: 600 calc(.1 * var(--t))/1 'Rajdhani', 'Noto Sans SC', system-ui, sans-serif;
+      letter-spacing: .18em; pointer-events: none;
+    }
+    .gm__erosion b { color: #f6e8c8; font-size: calc(.13 * var(--t)); letter-spacing: 0; }
+    .gm__erosion.is-endless { border-color: rgba(181, 44, 56, .75); background: rgba(38, 8, 12, .82); color: #f0b7b7; }
+    .gm__erosion.is-endless b { color: #ffdede; font-size: calc(.15 * var(--t)); }
+    /* 优化：像素地板（不是只调系数 —— --t 在矮屏是 40px，纯比例缩放只有 4–7px） */
+    .erosion--after .ext-tier { font-size: max(11px, calc(.17 * var(--t))); min-height: 28px; min-width: 28px; }
+    .erosion--after .ext-party__chip { font-size: max(11px, calc(.16 * var(--t))); min-height: 28px; }
+    .erosion--after .rs-erosion__chip { font-size: max(11px, calc(.15 * var(--t))); min-height: 28px; min-width: 28px; }
+    .erosion--after .gm__erosion { font-size: max(11px, calc(.1 * var(--t))); color: #f6e8c8; }
+    .erosion--after .gm__erosion b { font-size: max(14px, calc(.13 * var(--t))); }
+    .erosion--after .gm__erosion.is-endless b { font-size: max(16px, calc(.15 * var(--t))); }
+    /* 无尽态：色号与 game.css 的 .gm__erosion.is-endless 同族；∞ 是字形差，灰度下也不丢 */
+    .erosion--after .ext-tier[data-tier="6"].is-on,
+    .erosion--after .rs-erosion__chip[data-tier="6"].is-on { color: #ffe6e6; background: linear-gradient(180deg, #b52c38, #7d1620); border-color: #d2455a; }
+    .battle-strip { margin-top: 10px; display: flex; height: 46px; border-radius: 3px; overflow: hidden; }
+    .battle-strip i { flex: 1; }
+    .battle-strip i:nth-child(odd) { background: linear-gradient(180deg, #c9cbc6, #9ea39c); }
+    .battle-strip i:nth-child(even) { background: linear-gradient(180deg, #2b2f2c, #14171a); }
+    .badge-on-strip { display: flex; align-items: center; gap: 10px; margin-top: -30px; padding-left: 10px; }
+
+    /* ---- ⑤ 列表 stagger ---- */
+    .ext-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+    .ext-row {
+      display: flex; align-items: center; gap: 10px; width: 100%; height: 88px; padding: 0 12px;
+      border: 1px solid var(--line-2); border-radius: 4px; background: var(--panel-2); color: var(--txt);
+      text-align: left; cursor: pointer; animation: tr-right 400ms var(--tr-ease) backwards;
+    }
+    .ext-row__idx { font: 700 11px/1 'Rajdhani', system-ui, sans-serif; color: var(--lo); letter-spacing: .1em; }
+    .ext-row__name { font-size: 14px; font-weight: 600; }
+    .ext-row__desc { font-size: 11.5px; color: var(--dim); }
+    .ext-row__tail { margin-left: auto; }
+    .chip { padding: 3px 8px; border-radius: 999px; font-size: 11px; border: 1px solid var(--line-2); color: var(--dim); }
+    .chip--ready { border-color: rgba(79, 232, 192, .5); color: var(--mint); }
+    .stage[data-vp="short"] .ext-row, .stage[data-vp="phone"] .ext-row, .stage[data-vp="portrait"] .ext-row { height: 56px; }
+    /* 现状：只有前三条写了延迟（lobby.css:1157-1159），第 4 条起 0 延迟 —— 于是它们先出现 */
+    .list--before .ext-list > li:nth-child(1) .ext-row { animation-delay: 240ms; }
+    .list--before .ext-list > li:nth-child(2) .ext-row { animation-delay: 300ms; }
+    .list--before .ext-list > li:nth-child(3) .ext-row { animation-delay: 360ms; }
+    /* 优化：--n 由 JS 按行号写在行上，1 → N 不再漂 */
+    .list--after .ext-row { animation-delay: calc(240ms + var(--n, 0) * 60ms); }
+    @keyframes tr-right { from { opacity: 0; transform: translateX(.36rem); } }
+
+    .foot { margin: 0 auto 48px; max-width: 1180px; padding: 0 16px; color: var(--lo); font-size: 11.5px; line-height: 1.8; }
+    .foot code { color: var(--dim); font-family: ui-monospace, Consolas, monospace; }
+    .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+
+    /* ---- 减动效：@media 与 .rm 两份（后者让页面上的开关也能演示；生产只需要 @media 那份） ---- */
+    @media (prefers-reduced-motion: reduce) {
+      .slot__strip { transition: none !important; }
+      .slot.is-hit .slot__payline { animation: none !important; }
+      .slot__lever-arm { transition: none !important; }
+      .rlc, .rlc:hover:not(:disabled) { transform: none !important; transition: none !important; }
+      .reel--after .cards .rlc { animation: none !important; animation-delay: 0ms !important; }
+      .pick--after .rlc.is-armed::after { animation: none !important; opacity: 1 !important; }
+      .pick--after .rlc__confirm { animation: none !important; }
+      .ext-row { animation: none !important; animation-delay: 0ms !important; }
+    }
+    html.rm .slot__strip { transition: none !important; }
+    html.rm .slot.is-hit .slot__payline { animation: none !important; }
+    html.rm .slot__lever-arm { transition: none !important; }
+    html.rm .rlc, html.rm .rlc:hover:not(:disabled) { transform: none !important; transition: none !important; }
+    html.rm .reel--after .cards .rlc { animation: none !important; animation-delay: 0ms !important; }
+    html.rm .pick--after .rlc.is-armed::after { animation: none !important; opacity: 1 !important; }
+    html.rm .pick--after .rlc__confirm { animation: none !important; }
+    html.rm .ext-row { animation: none !important; animation-delay: 0ms !important; }
+  </style>
+</head>
+<body>
+  <header class="bar">
+    <div class="bar__title">
+      <b>UI 动效评审 · 交互演示</b>
+      <span>湮灭模拟 / 拓展模式 · 演示页，不是线上功能（脚本在 motion-preview.js）</span>
+    </div>
+    <div class="bar__ctl">
+      <div class="seg" data-seg="vp" role="group" aria-label="模拟视口">
+        <button data-vp="wide" class="is-on">1280×720</button>
+        <button data-vp="short">800×360</button>
+        <button data-vp="phone">667×375</button>
+        <button data-vp="portrait">390×844 竖屏</button>
+        <button data-vp="auto">跟随窗口</button>
+      </div>
+      <label class="sw"><input type="checkbox" id="rm" /> <span>减少动效</span></label>
+      <button class="ghost" id="replay">全部重播</button>
+    </div>
+  </header>
+
+  <main class="stage" id="stage" data-vp="wide">
+    <span class="stage__tag" id="stage-tag">视口 1280×720 · --t = 66.67px（生产实测：1rem，根字号随视口）</span>
+
+    <!-- ① 抽卡：节奏 + 几何 -->
+    <section class="mod reel--before" data-module="reel">
+      <div class="mod__head">
+        <h2>① 藏品抽卡<small>节奏 620ms 空拍 · 转轮几何 92 vs 72</small></h2>
+        <div class="seg" data-seg="reel" role="group" aria-label="抽卡模式">
+          <button data-mode="before" class="is-on">现状</button>
+          <button data-mode="after">优化</button>
+        </div>
+      </div>
+      <p class="mod__lead">现状：三只轮 1500 / 1880 / 2260ms，最后一只停后再空等 <b>620ms</b> 才出卡（<code>relics.js:241</code>），
+        三张卡同时硬出现 —— 这是每一回合都要付的固定税。转轮位移按写死的 <b>92px</b>（<code>relics.js:134</code>）算，而 <b>≤560px 宽</b>时格子是 72px
+        （<code>relics.css:108</code>）：行程 2392px 比条自身高 1944px 多 448px，起步有一小段空白、转速也随视口漂（<b>停点仍然是准的</b>，因为格数与格高都用同一个 92 ——
+        这是魔法数字耦合，不是当前肉眼可见的错位）。优化：900 / 1120 / 1340ms + 停轮冲击 + 360ms 出卡 + 70ms stagger，位移改成按条自身高度的百分比（26/27）。
+        切到「390×844 竖屏」两种模式各抽一次对照。</p>
+      <div class="slot" data-slot>
+        <div class="slot__frame">
+          <div class="slot__reels" data-reels></div>
+          <button class="slot__lever" data-lever aria-label="转动把手" title="转动把手">
+            <span class="slot__lever-arm"><span class="slot__lever-knob"></span></span>
+          </button>
+          <span class="slot__payline-label" aria-hidden="true"></span>
+        </div>
+        <div class="slot__actions">
+          <button class="slot__start" data-start>启动藏品抽取</button>
+          <button class="slot__skip" data-skip hidden>跳过动画</button>
+          <span class="slot__status" data-status>待抽取</span>
+        </div>
+      </div>
+      <div class="cards" data-cards hidden></div>
+      <div class="readout" data-readout="reel"></div>
+    </section>
+
+    <!-- ② 三选一：两拍确认 -->
+    <section class="mod pick--before" data-module="pick">
+      <div class="mod__head">
+        <h2>② 三选一<small>“选中 → 再点一次确认”的第二拍</small></h2>
+        <div class="seg" data-seg="pick" role="group" aria-label="确认模式">
+          <button data-mode="before" class="is-on">现状</button>
+          <button data-mode="after">优化</button>
+        </div>
+      </div>
+      <p class="mod__lead">现状：第一次点击只把边框变金 + 一个静态确认块（<code>relics.css:26,38-41</code>），另外两张卡毫无反应，
+        鼠标停在卡上还会继续上下浮动，看起来像 hover 而不是“已选中”。优化：<b>220ms 单次金环</b>（不是无限呼吸）+ 确认块 140ms 缩放入场 +
+        其余两卡让位到 66% + armed 时取消悬停位移。</p>
+      <div class="cards" data-pick-cards></div>
+      <div class="readout" data-readout="pick"></div>
+    </section>
+
+    <!-- ③ 层叠：增益盖负面 -->
+    <section class="mod stack--before" data-module="stack">
+      <div class="mod__head">
+        <h2>③ 层叠<small>z90 增益浮层盖住 z88 三选一</small></h2>
+        <div class="seg" data-seg="stack" role="group" aria-label="层叠模式">
+          <button data-mode="before" class="is-on">现状</button>
+          <button data-mode="after">优化</button>
+        </div>
+      </div>
+      <p class="mod__lead">现状（截图 <code>annihilation-relic-1280x720.png</code> 可见）：两层同时 <code>aria-modal="true"</code>、
+        两层全屏 <code>backdrop-filter</code>、下层标题从黑幕透出来、下层的卡还能 Tab 进去；按一次 Esc 会把两层一起关掉（下层的选中也丢了）。
+        优化：被盖住的那层 <code>visibility:hidden + pointer-events:none</code>（同时移出 Tab 序列），去掉它的全屏模糊，Esc 只作用于最上层。</p>
+      <div class="stack" data-stack>
+        <div class="ovl ovl--low" data-ovl-low role="dialog" aria-modal="true" aria-label="负面藏品三选一（演示）">
+          <div class="ovl__veil" aria-hidden="true"></div>
+          <div class="ovl__panel">
+            <h3>负面藏品 · 三选一</h3>
+            <p>第 1 回合 · 点击卡牌选中，再次点击确认</p>
+            <div class="mini-cards" data-mini-cards></div>
+          </div>
+        </div>
+        <div class="ovl ovl--high" data-ovl-high role="dialog" aria-modal="true" aria-label="增益藏品（演示）" hidden>
+          <div class="ovl__veil" aria-hidden="true"></div>
+          <div class="ovl__panel">
+            <h3>增益藏品 · 三连</h3>
+            <p>三个转轮都停在同一种藏品上</p>
+            <div class="mini-cards"><div class="mini">+攻击</div><div class="mini">+攻击</div><div class="mini">+攻击</div></div>
+            <div class="slot__actions" style="margin-top:10px">
+              <button class="rlpos__ok" data-ovl-ok>收下</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="stack__btns">
+        <button class="ghost" data-stack-open>增益浮层盖上来</button>
+        <button class="ghost" data-stack-esc>按 Esc</button>
+        <button class="ghost" data-stack-close>收下并关闭</button>
+      </div>
+      <div class="readout" data-readout="stack"></div>
+    </section>
+
+    <!-- ④ 蚀流：三处一致 + 字号地板 -->
+    <section class="mod erosion--before" data-module="erosion">
+      <div class="mod__head">
+        <h2>④ 蚀流三处<small>大厅 / 房内 / 局内 的说法与字号</small></h2>
+        <div class="seg" data-seg="erosion" role="group" aria-label="侵蚀模式">
+          <button data-mode="before" class="is-on">现状</button>
+          <button data-mode="after">优化</button>
+        </div>
+      </div>
+      <p class="mod__lead">现状：大厅第 6 档写「6」、房内写「∞」、局内写「无尽湮灭 ∞」；字号全是纯比例 <code>calc(.17 * var(--t))</code>，
+        而 <code>--t</code> 在矮屏只有 40px —— 实测大厅 chip <b>6.8px</b>、徽标标签 <b>4px</b>。优化：三处都用 <code>6∞</code>（读屏仍是“蚀流 6”）+
+        像素地板 <code>max(11px, …)</code> / 数字 <code>max(14px, …)</code> + 无尽态用同一族血红。</p>
+      <div class="erosion-grid" data-erosion>
+        <div>
+          <h3>大厅 · 蚀流 chips</h3>
+          <div class="ext-tiers"><span class="ext-tiers__label">蚀流</span><span data-tiers></span></div>
+          <h3 style="margin-top:12px">大厅 · 单人 / 同盟</h3>
+          <div class="ext-party"><button class="ext-party__chip is-on">单人</button><button class="ext-party__chip">同盟</button></div>
+        </div>
+        <div>
+          <h3>房内 · 蚀流胶囊</h3>
+          <div class="rs-erosion-chips" data-room-chips></div>
+        </div>
+        <div>
+          <h3>局内 · 角标（压在亮/暗两格上）</h3>
+          <div class="battle-strip"><i></i><i></i><i></i><i></i><i></i><i></i></div>
+          <div class="badge-on-strip"><span class="gm__erosion" data-badge><span>蚀流</span><b>4</b></span></div>
+        </div>
+      </div>
+      <div class="readout" data-readout="erosion"></div>
+    </section>
+
+    <!-- ⑤ 列表 stagger -->
+    <section class="mod list--before" data-module="list">
+      <div class="mod__head">
+        <h2>⑤ 大厅列表 stagger<small>1 → N 不能只写三条</small></h2>
+        <div class="seg" data-seg="list" role="group" aria-label="列表模式">
+          <button data-mode="before" class="is-on">现状</button>
+          <button data-mode="after">优化</button>
+        </div>
+      </div>
+      <p class="mod__lead">现状：延迟只硬写了前三条（<code>lobby.css:1157-1159</code>），而 <code>backwards</code> 让前三条在 240–360ms 之间是透明的 ——
+        第 4 条起 0 延迟，于是<b>后面的先出现</b>。优化：<code>--n</code> 按行号写在行上，延迟 240/300/360/420/480ms。</p>
+      <ul class="ext-list" data-list></ul>
+      <div class="stack__btns"><button class="ghost" data-list-replay>重播列表</button></div>
+      <div class="readout" data-readout="list"></div>
+    </section>
+  </main>
+
+  <p class="foot">
+    数字来源：<code>--t = 1rem</code>，根字号 66.67px / 40px（实测于 1280×720 与 800×360 / 667×375）；
+    <code>relics.js:134</code> REEL_CELL = 92；<code>relics.css</code> 全文 0 条 <code>prefers-reduced-motion</code>；
+    <code>relics.js:241</code> 停轮后 620ms；<code>lobby.css:1157-1159</code> 三条 stagger；
+    <code>game.css</code> .gm__erosion 与 <code>lobby.css</code> .ext-tier 的字号写法。
+    演示页只服务评审，生产改动另立。
+  </p>
+  <div class="sr" id="live" aria-live="polite"></div>
+  <script src="/dev/motion-preview.js"></script>
+</body>
+</html>

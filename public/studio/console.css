@@ -35,3 +35,22 @@
 .sc-error { border-left: 3px solid var(--amber); padding: 10px; color: var(--amber) !important; }
 .sc-support { margin-top: 20px; }
 @media (max-width: 1000px) { .sc-layout { grid-template-columns: 1fr; } .sc-live { position: static; grid-row: 1; } .sc-logs { grid-template-columns: 1fr; } }
+
+/* 手机端（竖屏 / 横屏矮屏）：控制台必须能滚动、按钮够大、画布不被地址栏/安全区吃掉。
+   这是「脚本控制台」在手机上打开游戏/试玩 mod 的入口。 */
+@media (max-width: 767px) {
+  .sc-main { padding: 10px calc(10px + env(safe-area-inset-right, 0px)) calc(10px + env(safe-area-inset-bottom, 0px)) calc(10px + env(safe-area-inset-left, 0px)); }
+  .sc-canvas { height: clamp(220px, 44vh, 420px); min-height: 220px; }
+  .sc-app input, .sc-app select, .sc-app textarea, .sc-app button { min-height: 38px; font-size: 16px; }
+  .sc-app button { min-width: 44px; }
+  .sc-toolbar { gap: 6px; }
+  .sc-toolbar label { font-size: 13px; }
+  .sc-grid { gap: 1px; }
+  .sc-tile { height: 34px; font-size: 9px !important; }
+  .sc-app .st-top { flex-wrap: wrap; gap: 8px; }
+  .sc-app pre { max-height: 200px; }
+}
+@media (max-width: 767px) and (orientation: landscape) {
+  .sc-canvas { height: clamp(160px, 46vh, 260px); min-height: 160px; }
+  .sc-main { padding: 8px; }
+}

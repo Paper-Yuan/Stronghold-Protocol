@@ -52,6 +52,9 @@ import { ProjectileSystem } from './projectiles.js';
 import { remainingDistance } from './ai.js';
 import { toDataSource, normalizeRoute, normalizeStage } from './simdata.js';
 import { installContent } from './content/index.js';
+import { withZjView, gameData } from './content/support/index.js';
+import { zjBondView, zjEquipCombos } from '../../shared/zjBonds.js';
+import { isZhajingMode } from '../../shared/zhajing-constants.js';
 import { BattlePlayers } from './battle/players.js';
 import { BattleLifecycle } from './battle/lifecycle.js';
 import { BattleHooks } from './battle/hooks.js';
@@ -71,6 +74,23 @@ export { pushTiles } from './battle/displacement.js';
 
 const DEFAULT_RECTS = { normal: GEO.NORMAL_RECT, unite: GEO.UNITE_RECT, boss: GEO.BOSS_RECT, hidden: GEO.BOSS_RECT };
 
+/**
+ * 炸惊模拟 (modeId ∈ shared/zhajing-constants.js ZHAJING_MODE_IDS) 的盟约 / 装备视图 (shared/zjBonds.js)，否则 null。
+ *
+ * 战斗模拟读的是进程级数据单例 (`content/support` 的 `gameData()`)，单例不知道房间难度；`modeId` 是 BattleSpec 的
+ * 一个字段，服务端与浏览器跑的是同一份 spec，所以按它现算一份视图就够了，不需要额外的战斗选项。普通房间这里是
+ * null，`bondRecord` 读到的仍是单例原样 —— 主玩法各难度逐字节不变。
+ */
+function zjViewFor(modeId) {
+  if (!isZhajingMode(modeId)) return null;
+  const bonds = gameData().bonds;
+  if (!bonds || typeof bonds !== 'object') return null;
+  const view = { bonds: zjBondView(bonds) };
+  const combos = zjEquipCombos(bonds);
+  if (combos.length) view.combos = combos;
+  return view;
+}
+
 export class Battle {
   constructor(opts = {}) {
     this.opts = opts;
@@ -85,6 +105,11 @@ export class Battle {
     /** When false the battle only ends by time limit / boss pool / forceEnd (tests, sandboxes). */
     this.autoFinish = opts.autoFinish !== false;
     this.data = toDataSource(opts.data);
+    /**
+     * 炸惊模拟的盟约 / 装备视图（见 zjViewFor），普通房间为 null。内容安装、单位装配与每一步推进期间装上
+     * （withZjView），所以 `bondRecord` / `itemRecord` 读到的是炸惊专用的记录。
+     */
+    this.zj = zjViewFor(this.modeId);
     let stage = opts.stage ?? (opts.stageId ? this.data.getStage(opts.stageId) : null);
     if (stage && !stage._norm) stage = normalizeStage(stage.id ?? opts.stageId, stage);
     this.stage = stage || { id: 'empty', rows: [], devices: [] };
@@ -176,7 +201,7 @@ export class Battle {
     // ---- content
     this.contentMode = opts.content ?? 'full';
     try {
-      installContent(this, { mode: this.contentMode, extra: opts.extraContent });
+      withZjView(this.zj, () => installContent(this, { mode: this.contentMode, extra: opts.extraContent }));
     } catch (e) {
       if (!this.contentFault) this._handlerError('installContent', null, e);
     }
@@ -190,7 +215,9 @@ export class Battle {
       try { this._result = this._buildResult(); }
       catch { this._result = { time: this.time, reason: 'forced', perPlayer: {}, killed: this.killed, total: this.total, resolved: this.resolved, errors: this.errorCount }; }
     } else {
-      for (const u of this.allyUnits) if (!u.kit) this._setupUnit(u);
+      // 炸惊模拟: the kit setup reads the mode's own bond / item records too (a kit asking bondRecord), so it runs with
+      // the view installed like installContent above.
+      withZjView(this.zj, () => { for (const u of this.allyUnits) if (!u.kit) this._setupUnit(u); });
       if (typeof opts.setup === 'function') this._safe(() => opts.setup(this), 'opts.setup');
     }
   }

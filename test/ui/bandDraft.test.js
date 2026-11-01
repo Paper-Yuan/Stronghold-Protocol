@@ -9,7 +9,7 @@ import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 import { ERR, PHASE } from '../../shared/constants.js';
 import { makeMatch, DATA } from '../match/harness.js';
-import { teammateBands, timeoutBand, allowedBands, autoPickBand, draftClock, draftTip, draftSelection } from '../../public/js/screens/bandDraft.js';
+import { teammateBands, timeoutBand, allowedBands, selectableBands, autoPickBand, draftClock, draftTip, draftSelection } from '../../public/js/screens/bandDraft.js';
 import { BAND_TURN_SECONDS } from '../../server/match/Match.js';
 
 const TURN_MS = BAND_TURN_SECONDS * 1000;
@@ -260,7 +260,9 @@ describe('UI: timeoutBand (the tip names what a timeout gives me)', () => {
   test('matches the server for every combination of taken strategies', () => {
     const h = draftOf({ humans: 4, seed: 3 });
     const m = h.m;
-    const all = allowedBands(Object.values(DATA.bands), 'MULTI');
+    // 客户端草稿可选项必须与服务端 `gd.bandIds()` 逐条一致 —— 走组件同一条 `selectableBands`
+    // （2026-10-29：`gd.list('bands')` 是整表，直接喂 `allowedBands` 会把炸惊的 2 条 `zjOnly` 泄漏到官方/湮灭房）
+    const all = selectableBands(Object.values(DATA.bands), m.gd.modeId, 'MULTI');
     assert.deepEqual(all.map((b) => b.bandId), m.gd.bandIds(), 'same order as gd.bandIds');
     const [a, b, c, d] = m.draft.order;
     for (const picks of [[], ['band_bldsk'], ['band_bldsk', 'band_amiya'], ['band_amiya', 'band_duyaoy'], ['band_bldsk', 'band_amiya', 'band_duyaoy']]) {

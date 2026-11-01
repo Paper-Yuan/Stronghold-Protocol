@@ -148,4 +148,8 @@ Offline checks and game runtime never fetch them; derived records and the plugin
 | §36 | [history/0.3.3.md](history/0.3.3.md) | 0.3.3 — released 2026-10-25，0.3.2 的热修复；第一期商店装备核查与空栏显示（§36.1）、满休整区互换（§36.2）、跨版本装备图标缓存（§36.3） |
 | §37 | [design/mod-layer.md](design/mod-layer.md) | The workshop (工坊) layer: pack identity, load-time refusals, the behaviour kits, the declaration tables (variants / behaviour / form), morphPairing, target, dependencies, enabled, skins[] — the rules the workshop code cites as §37.x |
 
+12 人联机（三队共抗）的玩法规则（业主 2026-10-31 定稿，**尚未实现**）另成一册，不属于 §0–§37 的现行规则：
+[docs/TWELVE_PLAYER_MODE.md](TWELVE_PLAYER_MODE.md)。12 条定稿规则、联防时序与 `[ASSUMED]` / 未定清单见该文；
+没有代码、没有 golden 位移，实现落地后按 docs follow the code 回改该文，并在 [§36.5](history/0.3.3.md) 续记。
+
 Default-off spectator AI handover (maintainer decision 2026-10-24, §35.100): [AI handover rules](history/0.3.2/ai-handover.md).

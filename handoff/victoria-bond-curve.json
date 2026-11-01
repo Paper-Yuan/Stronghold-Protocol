@@ -1,0 +1,742 @@
+{
+ "title": "维多利亚盟约 R1–R15 有效数值曲线",
+ "generated_by": "tmp/victoria-bond-curve.py（只读，从 data/*.json + 引擎公式现算）",
+ "bond": {
+  "id": "victoriaShip",
+  "base_damage_scale": 1.25,
+  "damage_scale_per_stack": 0.008,
+  "power_bond_char_cnt": 6,
+  "atk_normal_equip": 0.5,
+  "atk_golden_equip_add": 0.3,
+  "atk_golden_equip": 0.8,
+  "layer_step": 25,
+  "reward_pool": "pool_equip_vict",
+  "hammer_cap": 30
+ },
+ "formulas": {
+  "damageMultiplier": "1.25 + 0.008 * L   (only for members carrying >= 1 item; core.js:316-318)",
+  "atkPerItem": "0.5 normal / 0.8 golden, additive per item (core.js:324-330), only when reached(power_bond_char_cnt=6)",
+  "effective": "dmgMul * (1 + atkPct)",
+  "hammerPayout": "min(30, floor(L/25)) items, one per milestone (core.js payHammers)",
+  "goldenHammer": "merge 2 identical normal hammers (items.json mergeable, upgradeNum=2); a golden item occupies 2 stock slots (pool.js need=2)"
+ },
+ "layer_source": {
+  "mechanism": "维多利亚干员的特质(garrison)在休整期结束时给已激活的盟约叠层；不是每回合固定 +N",
+  "operators": [
+   {
+    "op": "刺玫",
+    "id": "chess_char_1_06_a",
+    "garrison": "garrison_154_a",
+    "add": "+1"
+   },
+   {
+    "op": "薄绿",
+    "id": "chess_char_3_08_a",
+    "garrison": "garrison_48_a",
+    "add": "+2×N"
+   },
+   {
+    "op": "号角",
+    "id": "chess_char_5_08_a",
+    "garrison": "garrison_61_a",
+    "add": "+2×N (层数最多的已激活盟约=维多利亚)"
+   },
+   {
+    "op": "维娜·维多利亚",
+    "id": "chess_char_6_07_a",
+    "garrison": "garrison_53_a",
+    "add": "+3×N"
+   }
+  ],
+  "excluded": [
+   "风笛 garrison_50_a（战斗中前 3 次击倒 +2，最多 +6/回合）",
+   "助力 deputShip（所有已激活盟约 +2/回合）",
+   "重点监护 band（开始作战时每阶 +2）",
+   "烛煌 获得时 +5"
+  ]
+ },
+ "hammer_pool": [
+  {
+   "id": "chess_item_4_09_e_a",
+   "name": "灼燃维式重锤",
+   "tier": 4,
+   "atk": 0.3,
+   "golden": "chess_item_4_09_e_b",
+   "stock": 8
+  },
+  {
+   "id": "chess_item_3_09_e_a",
+   "name": "坚固维式重锤",
+   "tier": 3,
+   "atk": 0.25,
+   "golden": "chess_item_3_09_e_b",
+   "stock": 7
+  },
+  {
+   "id": "chess_item_3_10_e_a",
+   "name": "加速维式重锤",
+   "tier": 3,
+   "atk": 0.25,
+   "golden": "chess_item_3_10_e_b",
+   "stock": 7
+  },
+  {
+   "id": "chess_item_2_03_e_a",
+   "name": "战栗维式重锤",
+   "tier": 2,
+   "atk": 0.2,
+   "golden": "chess_item_2_03_e_b",
+   "stock": 6
+  }
+ ],
+ "shop_buyable_hammers": [
+  "chess_item_1_01_e_a"
+ ],
+ "availability": {
+  "six_member_gate_round": 7,
+  "four_normal_hammers_round": 9,
+  "four_golden_hammers_median_round": 12.0,
+  "four_golden_hammers_p90_round": 13,
+  "p_four_golden_by_r15": 1.0
+ },
+ "rounds": [
+  {
+   "r": 1,
+   "shop_level": 1,
+   "funds": 2,
+   "board": [
+    "刺玫"
+   ],
+   "tiers": [
+    1
+   ],
+   "distinct_tiers": 1,
+   "six_member_gate": false,
+   "layer_gain": 0,
+   "layer_gain_parts": [],
+   "layers": 0,
+   "hammers_paid": 0,
+   "golden_median": 0.0,
+   "golden_p10": 0,
+   "golden_p90": 0,
+   "dmg_multiplier": 1.25,
+   "eff_baseline": 1.25,
+   "eff_4_normal": 1.25,
+   "eff_4_golden": 1.25,
+   "eff_golden_2per": 1.25,
+   "buys": [
+    "买刺玫"
+   ]
+  },
+  {
+   "r": 2,
+   "shop_level": 2,
+   "funds": 0,
+   "board": [
+    "刺玫",
+    "哈洛德"
+   ],
+   "tiers": [
+    1,
+    2
+   ],
+   "distinct_tiers": 2,
+   "six_member_gate": false,
+   "layer_gain": 0,
+   "layer_gain_parts": [],
+   "layers": 0,
+   "hammers_paid": 0,
+   "golden_median": 0.0,
+   "golden_p10": 0,
+   "golden_p90": 0,
+   "dmg_multiplier": 1.25,
+   "eff_baseline": 1.25,
+   "eff_4_normal": 1.25,
+   "eff_4_golden": 1.25,
+   "eff_golden_2per": 1.25,
+   "buys": [
+    "2级",
+    "买哈洛德"
+   ]
+  },
+  {
+   "r": 3,
+   "shop_level": 2,
+   "funds": 3,
+   "board": [
+    "刺玫",
+    "哈洛德",
+    "洛洛"
+   ],
+   "tiers": [
+    1,
+    2
+   ],
+   "distinct_tiers": 2,
+   "six_member_gate": false,
+   "layer_gain": 1,
+   "layer_gain_parts": [
+    "刺玫+1"
+   ],
+   "layers": 1,
+   "hammers_paid": 0,
+   "golden_median": 0.0,
+   "golden_p10": 0,
+   "golden_p90": 0,
+   "dmg_multiplier": 1.258,
+   "eff_baseline": 1.258,
+   "eff_4_normal": 1.258,
+   "eff_4_golden": 1.258,
+   "eff_golden_2per": 1.258,
+   "buys": [
+    "买洛洛"
+   ]
+  },
+  {
+   "r": 4,
+   "shop_level": 3,
+   "funds": 1,
+   "board": [
+    "刺玫",
+    "哈洛德",
+    "洛洛",
+    "薄绿"
+   ],
+   "tiers": [
+    1,
+    2,
+    3
+   ],
+   "distinct_tiers": 3,
+   "six_member_gate": false,
+   "layer_gain": 7,
+   "layer_gain_parts": [
+    "刺玫+1",
+    "薄绿+6"
+   ],
+   "layers": 8,
+   "hammers_paid": 0,
+   "golden_median": 0.0,
+   "golden_p10": 0,
+   "golden_p90": 0,
+   "dmg_multiplier": 1.314,
+   "eff_baseline": 1.314,
+   "eff_4_normal": 1.314,
+   "eff_4_golden": 1.314,
+   "eff_golden_2per": 1.314,
+   "buys": [
+    "3级",
+    "买薄绿"
+   ]
+  },
+  {
+   "r": 5,
+   "shop_level": 3,
+   "funds": 9,
+   "board": [
+    "刺玫",
+    "哈洛德",
+    "洛洛",
+    "薄绿"
+   ],
+   "tiers": [
+    1,
+    2,
+    3
+   ],
+   "distinct_tiers": 3,
+   "six_member_gate": false,
+   "layer_gain": 7,
+   "layer_gain_parts": [
+    "刺玫+1",
+    "薄绿+6"
+   ],
+   "layers": 15,
+   "hammers_paid": 0,
+   "golden_median": 0.0,
+   "golden_p10": 0,
+   "golden_p90": 0,
+   "dmg_multiplier": 1.37,
+   "eff_baseline": 1.37,
+   "eff_4_normal": 1.37,
+   "eff_4_golden": 1.37,
+   "eff_golden_2per": 1.37,
+   "buys": []
+  },
+  {
+   "r": 6,
+   "shop_level": 4,
+   "funds": 6,
+   "board": [
+    "刺玫",
+    "哈洛德",
+    "洛洛",
+    "薄绿",
+    "风笛"
+   ],
+   "tiers": [
+    1,
+    2,
+    3,
+    4
+   ],
+   "distinct_tiers": 4,
+   "six_member_gate": false,
+   "layer_gain": 9,
+   "layer_gain_parts": [
+    "刺玫+1",
+    "薄绿+8"
+   ],
+   "layers": 24,
+   "hammers_paid": 0,
+   "golden_median": 0.0,
+   "golden_p10": 0,
+   "golden_p90": 0,
+   "dmg_multiplier": 1.442,
+   "eff_baseline": 1.442,
+   "eff_4_normal": 1.442,
+   "eff_4_golden": 1.442,
+   "eff_golden_2per": 1.442,
+   "buys": [
+    "4级",
+    "买风笛"
+   ]
+  },
+  {
+   "r": 7,
+   "shop_level": 5,
+   "funds": 1,
+   "board": [
+    "刺玫",
+    "哈洛德",
+    "洛洛",
+    "薄绿",
+    "风笛",
+    "号角"
+   ],
+   "tiers": [
+    1,
+    2,
+    3,
+    4,
+    5
+   ],
+   "distinct_tiers": 5,
+   "six_member_gate": true,
+   "layer_gain": 21,
+   "layer_gain_parts": [
+    "刺玫+1",
+    "薄绿+10",
+    "号角+10"
+   ],
+   "layers": 45,
+   "hammers_paid": 1,
+   "golden_median": 0.0,
+   "golden_p10": 0,
+   "golden_p90": 0,
+   "dmg_multiplier": 1.61,
+   "eff_baseline": 1.61,
+   "eff_4_normal": 2.415,
+   "eff_4_golden": 2.898,
+   "eff_golden_2per": 4.186,
+   "buys": [
+    "5级",
+    "买号角"
+   ]
+  },
+  {
+   "r": 8,
+   "shop_level": 6,
+   "funds": 0,
+   "board": [
+    "刺玫",
+    "哈洛德",
+    "洛洛",
+    "薄绿",
+    "风笛",
+    "号角"
+   ],
+   "tiers": [
+    1,
+    2,
+    3,
+    4,
+    5
+   ],
+   "distinct_tiers": 5,
+   "six_member_gate": true,
+   "layer_gain": 21,
+   "layer_gain_parts": [
+    "刺玫+1",
+    "薄绿+10",
+    "号角+10"
+   ],
+   "layers": 66,
+   "hammers_paid": 2,
+   "golden_median": 0.0,
+   "golden_p10": 0,
+   "golden_p90": 1,
+   "dmg_multiplier": 1.778,
+   "eff_baseline": 1.778,
+   "eff_4_normal": 2.667,
+   "eff_4_golden": 3.2004,
+   "eff_golden_2per": 4.6228,
+   "buys": [
+    "6级"
+   ]
+  },
+  {
+   "r": 9,
+   "shop_level": 6,
+   "funds": 8,
+   "board": [
+    "刺玫",
+    "哈洛德",
+    "洛洛",
+    "薄绿",
+    "风笛",
+    "号角",
+    "维娜·维多利亚"
+   ],
+   "tiers": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6
+   ],
+   "distinct_tiers": 6,
+   "six_member_gate": true,
+   "layer_gain": 43,
+   "layer_gain_parts": [
+    "刺玫+1",
+    "薄绿+12",
+    "号角+12",
+    "维娜·维多利亚+18"
+   ],
+   "layers": 109,
+   "hammers_paid": 4,
+   "golden_median": 1.0,
+   "golden_p10": 1,
+   "golden_p90": 2,
+   "dmg_multiplier": 2.122,
+   "eff_baseline": 2.122,
+   "eff_4_normal": 3.183,
+   "eff_4_golden": 3.8196,
+   "eff_golden_2per": 5.5172,
+   "buys": [
+    "买维娜·维多利亚"
+   ]
+  },
+  {
+   "r": 10,
+   "shop_level": 6,
+   "funds": 20,
+   "board": [
+    "刺玫",
+    "哈洛德",
+    "洛洛",
+    "薄绿",
+    "风笛",
+    "号角",
+    "维娜·维多利亚"
+   ],
+   "tiers": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6
+   ],
+   "distinct_tiers": 6,
+   "six_member_gate": true,
+   "layer_gain": 43,
+   "layer_gain_parts": [
+    "刺玫+1",
+    "薄绿+12",
+    "号角+12",
+    "维娜·维多利亚+18"
+   ],
+   "layers": 152,
+   "hammers_paid": 6,
+   "golden_median": 2.0,
+   "golden_p10": 1,
+   "golden_p90": 3,
+   "dmg_multiplier": 2.466,
+   "eff_baseline": 2.466,
+   "eff_4_normal": 3.699,
+   "eff_4_golden": 4.4388,
+   "eff_golden_2per": 6.4116,
+   "buys": []
+  },
+  {
+   "r": 11,
+   "shop_level": 6,
+   "funds": 32,
+   "board": [
+    "刺玫",
+    "哈洛德",
+    "洛洛",
+    "薄绿",
+    "风笛",
+    "号角",
+    "维娜·维多利亚"
+   ],
+   "tiers": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6
+   ],
+   "distinct_tiers": 6,
+   "six_member_gate": true,
+   "layer_gain": 43,
+   "layer_gain_parts": [
+    "刺玫+1",
+    "薄绿+12",
+    "号角+12",
+    "维娜·维多利亚+18"
+   ],
+   "layers": 195,
+   "hammers_paid": 7,
+   "golden_median": 3.0,
+   "golden_p10": 2,
+   "golden_p90": 3,
+   "dmg_multiplier": 2.81,
+   "eff_baseline": 2.81,
+   "eff_4_normal": 4.215,
+   "eff_4_golden": 5.058,
+   "eff_golden_2per": 7.306,
+   "buys": []
+  },
+  {
+   "r": 12,
+   "shop_level": 6,
+   "funds": 44,
+   "board": [
+    "刺玫",
+    "哈洛德",
+    "洛洛",
+    "薄绿",
+    "风笛",
+    "号角",
+    "维娜·维多利亚"
+   ],
+   "tiers": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6
+   ],
+   "distinct_tiers": 6,
+   "six_member_gate": true,
+   "layer_gain": 43,
+   "layer_gain_parts": [
+    "刺玫+1",
+    "薄绿+12",
+    "号角+12",
+    "维娜·维多利亚+18"
+   ],
+   "layers": 238,
+   "hammers_paid": 9,
+   "golden_median": 4.0,
+   "golden_p10": 3,
+   "golden_p90": 4,
+   "dmg_multiplier": 3.154,
+   "eff_baseline": 3.154,
+   "eff_4_normal": 4.731,
+   "eff_4_golden": 5.6772,
+   "eff_golden_2per": 8.2004,
+   "buys": []
+  },
+  {
+   "r": 13,
+   "shop_level": 6,
+   "funds": 56,
+   "board": [
+    "刺玫",
+    "哈洛德",
+    "洛洛",
+    "薄绿",
+    "风笛",
+    "号角",
+    "维娜·维多利亚"
+   ],
+   "tiers": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6
+   ],
+   "distinct_tiers": 6,
+   "six_member_gate": true,
+   "layer_gain": 43,
+   "layer_gain_parts": [
+    "刺玫+1",
+    "薄绿+12",
+    "号角+12",
+    "维娜·维多利亚+18"
+   ],
+   "layers": 281,
+   "hammers_paid": 11,
+   "golden_median": 5.0,
+   "golden_p10": 4,
+   "golden_p90": 5,
+   "dmg_multiplier": 3.498,
+   "eff_baseline": 3.498,
+   "eff_4_normal": 5.247,
+   "eff_4_golden": 6.2964,
+   "eff_golden_2per": 9.0948,
+   "buys": []
+  },
+  {
+   "r": 14,
+   "shop_level": 6,
+   "funds": 68,
+   "board": [
+    "刺玫",
+    "哈洛德",
+    "洛洛",
+    "薄绿",
+    "风笛",
+    "号角",
+    "维娜·维多利亚"
+   ],
+   "tiers": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6
+   ],
+   "distinct_tiers": 6,
+   "six_member_gate": true,
+   "layer_gain": 43,
+   "layer_gain_parts": [
+    "刺玫+1",
+    "薄绿+12",
+    "号角+12",
+    "维娜·维多利亚+18"
+   ],
+   "layers": 324,
+   "hammers_paid": 12,
+   "golden_median": 5.0,
+   "golden_p10": 4,
+   "golden_p90": 6,
+   "dmg_multiplier": 3.842,
+   "eff_baseline": 3.842,
+   "eff_4_normal": 5.763,
+   "eff_4_golden": 6.9156,
+   "eff_golden_2per": 9.9892,
+   "buys": []
+  },
+  {
+   "r": 15,
+   "shop_level": 6,
+   "funds": 80,
+   "board": [
+    "刺玫",
+    "哈洛德",
+    "洛洛",
+    "薄绿",
+    "风笛",
+    "号角",
+    "维娜·维多利亚"
+   ],
+   "tiers": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6
+   ],
+   "distinct_tiers": 6,
+   "six_member_gate": true,
+   "layer_gain": 43,
+   "layer_gain_parts": [
+    "刺玫+1",
+    "薄绿+12",
+    "号角+12",
+    "维娜·维多利亚+18"
+   ],
+   "layers": 367,
+   "hammers_paid": 14,
+   "golden_median": 6.0,
+   "golden_p10": 5,
+   "golden_p90": 7,
+   "dmg_multiplier": 4.186,
+   "eff_baseline": 4.186,
+   "eff_4_normal": 6.279,
+   "eff_4_golden": 7.5348,
+   "eff_golden_2per": 10.8836,
+   "buys": []
+  }
+ ],
+ "key_rounds": {
+  "R1": {
+   "layers": 0,
+   "hammers": 0,
+   "golden_median": 0.0,
+   "baseline": 1.25,
+   "four_normal": 1.25,
+   "four_golden": 1.25
+  },
+  "R5": {
+   "layers": 15,
+   "hammers": 0,
+   "golden_median": 0.0,
+   "baseline": 1.37,
+   "four_normal": 1.37,
+   "four_golden": 1.37
+  },
+  "R7": {
+   "layers": 45,
+   "hammers": 1,
+   "golden_median": 0.0,
+   "baseline": 1.61,
+   "four_normal": 2.415,
+   "four_golden": 2.898
+  },
+  "R10": {
+   "layers": 152,
+   "hammers": 6,
+   "golden_median": 2.0,
+   "baseline": 2.466,
+   "four_normal": 3.699,
+   "four_golden": 4.439
+  },
+  "R13": {
+   "layers": 281,
+   "hammers": 11,
+   "golden_median": 5.0,
+   "baseline": 3.498,
+   "four_normal": 5.247,
+   "four_golden": 6.296
+  },
+  "R15": {
+   "layers": 367,
+   "hammers": 14,
+   "golden_median": 6.0,
+   "baseline": 4.186,
+   "four_normal": 6.279,
+   "four_golden": 7.535
+  }
+ },
+ "assumptions": [
+  "标准单人局，收入取 data/config.json economy.income（不再有额外收益）",
+  "干员按 刺玫→哈洛德→薄绿→风笛→号角→洛洛→维娜 的次序购买；升级价按 gamedata upgradePrices 与每回合 -1 衰减",
+  "只有 6 名不同维多利亚干员在场时 +50%/+80% 才挂上（reached(power_bond_char_cnt)）",
+  "同一名干员装备上限 2 件（economy.equipPerChess）；本图「4 人各 1 件」= 需要 4 件同型进阶锤",
+  "进阶锤合成发生在下一回合开始（prep-end 发放 deferMerge），图中按同一回合内合成计（乐观 1 回合）"
+ ]
+}

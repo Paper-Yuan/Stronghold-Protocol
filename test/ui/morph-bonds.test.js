@@ -54,10 +54,29 @@ describe('变形同构体 — the client rule', () => {
   });
 
   test('the client rule equals the server\'s (bondsMeta.pieceBonds) for every bond item, normal and golden', () => {
-    const gd = new GameData(getData({ log: { warn() {}, error() {}, info() {} } }), 'mode_multi_hard');
+    // Each item is compared in the room it belongs to: the 卡兹戴尔 / 罗德岛 bond items are annOnly (they exist only in
+    // 湮灭), and the server's bondOk drops an annOnly bond in an official room. Keeping them in their own room tests the
+    // pairing rule instead of the room filter.
+    const gds = new Map();
+    const gdFor = (mode) => {
+      if (!gds.has(mode)) gds.set(mode, new GameData(getData({ log: { warn() {}, error() {}, info() {} } }), mode));
+      return gds.get(mode);
+    };
     const grants = Object.values(items).filter((r) => r.giveBondId);
-    assert.equal(grants.length, 36, '18 bond items × normal / golden');
+    // The expectation is derived from the data: every bond item family (baseId) ships a normal and a 进阶 copy; the
+    // other 变形同构体s (canGiveBond: 谜の假面 / “S.E.E.S”袖章) grant a bond themselves and ship in one form only.
+    const bondItems = grants.filter((r) => !r.canGiveBond);
+    const families = new Set(bondItems.map((r) => r.baseId || r.id));
+    for (const fam of families) {
+      const forms = bondItems.filter((r) => (r.baseId || r.id) === fam);
+      assert.deepEqual(forms.map((r) => r.isGolden).sort(), [false, true], `${fam}: normal + 进阶`);
+    }
+    const giveBond = grants.filter((r) => r.canGiveBond);
+    assert.ok(giveBond.every((r) => !r.isGolden), 'the canGiveBond 变形同构体s: normal only');
+    assert.equal(grants.length, families.size * 2 + giveBond.length, 'each bond item in two forms, plus the give-bond 变形同构体s');
+    assert.ok([...families].every((fam) => bonds[bondItems.find((r) => (r.baseId || r.id) === fam).giveBondId]), 'every family names a bond in bonds.json');
     for (const r of grants) {
+      const gd = gdFor(r.annOnly ? 'mode_multi_annihilation' : 'mode_multi_hard');
       for (const iso of [ISO, ISO_B]) {
         const p = { id: WEARER, items: [{ id: r.id }, { id: iso }] };
         assert.deepEqual(pieceBondIds(chess[WEARER], p.items, getItem), pieceBonds(gd, p), `${r.id} + ${iso}`);

@@ -5,6 +5,7 @@ import { useState, useMemo } from '../../vendor/hooks.module.js';
 import { html, Icon, TierChip, Tooltip } from './components.js';
 import { data, useData, localAsset } from '../data.js';
 import { parseRichText, rtClassName } from './richText.js';
+import { lpDisplay } from './gameLogic/format.js';
 import { t as tr } from '../../../shared/i18n.js';
 import { useStore } from '../store.js';
 import { skinsStore, ownerSkin } from './skins.js';
@@ -15,9 +16,14 @@ import {
 
 const cx = (...p) => p.flat().filter(Boolean).join(' ');
 
-/** Data files the in-match screens use (`backups`: the 补位 stand-ins' bodies — cards, the board model, the detail card). */
+/** Data files the in-match screens use (`backups`: the 补位 stand-ins' bodies — cards, the board model, the detail card;
+ *  `jibianBonds`: 炸惊's 羁绊 table, read by ui/jibian.js when the mode has 惊变;
+ *  `relicsOverlimit`: 超限's 词条 table, read by ui/overlimitRelics.js for the 已选词条 panel — the private view carries
+ *  ids only, the names / 编号 / 分组 / 图标 live here;
+ *  `relicsOverlimitNegative`: 超限's 负面词条 table (业主 2026-10-31 第二批), read by the same panel and by the negative
+ *  three-choice overlay — same reason, ids only in the wire). */
 export const GAME_FILES = ['config', 'assets', 'chess', 'bonds', 'items', 'bands', 'enemies', 'bosses', 'stages', 'tokens',
-  'choices', 'effects', 'garrisons', 'factions', 'local', 'backups'];
+  'choices', 'effects', 'garrisons', 'factions', 'local', 'backups', 'jibianBonds', 'relicsOverlimit', 'relicsOverlimitNegative'];
 
 /**
  * Load every in-match data file; returns lookups (sync, null until loaded).
@@ -237,11 +243,15 @@ export function GIcon({ name, class: cls, title }) {
  */
 export function LpTower({ value, size = 'md', class: cls, tone, pending = 0, note = null, tip = null }) {
   const ok = Number.isFinite(value);
-  const p = ok && Number(pending) > 0 ? Math.min(value, Math.trunc(Number(pending))) : 0;
+  // the number is the settled LP rounded the one way every readout rounds it (lpDisplay = the server's hpDisplay
+  // rule): a multi-team room splits a round's loss between survivors, so a raw `private.lp` may be 25.9166…; an
+  // integer (a 4-seat room's LP) floors to itself, so those screens render exactly as before.
+  const shown = ok ? lpDisplay(value) : null;
+  const p = ok && Number(pending) > 0 ? Math.min(shown, Math.trunc(Number(pending))) : 0;
   return html`<span class=${cx('lp', `lp--${size}`, tone && `lp--${tone}`, p > 0 && 'is-pending', cls)} title=${tip || tr('目标生命值')}
       data-pending=${p > 0 ? p : null}>
     <${Sprite} k="hudPanel/icon_hp" class="lp__icon" fallback=${html`<${Icon} name="rook" class="lp__icon" />`} />
-    <b class="num lp__val">${ok ? Math.max(0, value) : '--'}</b>
+    <b class="num lp__val">${ok ? shown : '--'}</b>
     ${p > 0 ? html`<span key=${p} class="lp__pend num" aria-label=${tr('结算时扣除 {p}', { p })}>−${p}</span>` : null}
     ${note ? html`<span class="lp__note">${note}</span>` : null}
   </span>`;

@@ -44,7 +44,28 @@ export class BattleBlocking {
         if (d2 < r2 && d2 < bd) { u = o; bd = d2; }
       }
     }
-    if (!u) return false;
+    if (!u) {
+      // 炸惊模拟 惊变「轻拍背部」(jibian_qingpaibeibu): an operator in contact whose block slots are FULL — the enemy
+      // walks through it. Reported once per (enemy, operator) pair so a card's +1 shield is not granted every tick.
+      // Gated on a listener (`this._hooks.blockFull`), so a battle without that card does exactly what it did before.
+      if (this._hooks.blockFull) {
+        for (let r = r0 - 1; r <= r0 + 1; r++) {
+          if (r < 0 || r >= ROWS) continue;
+          for (let c = c0 - 1; c <= c0 + 1; c++) {
+            if (c < 0 || c >= COLS || (!fly && r !== r0 && c !== c0)) continue;
+            const o = this._occ[r * COLS + c];
+            if (!o || o.kind !== 'op' || !o.s || o.s.alive === false) continue;
+            if (Math.max(0, Number(o.s.blockCnt) || 0) > (o.blocking ? o.blocking.length : 0)) continue; // 还有空位
+            if (o.envBlocked) continue;
+            if (!e._blockFullSeen) e._blockFullSeen = new Set();
+            if (e._blockFullSeen.has(o.uid)) continue;
+            e._blockFullSeen.add(o.uid);
+            this.emit('blockFull', { blocker: o, enemy: e });
+          }
+        }
+      }
+      return false;
+    }
     e.blockedBy = u;
     u.blocking.push(e);
     e.moving = false;

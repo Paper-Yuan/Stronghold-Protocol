@@ -207,9 +207,14 @@ export class PlayerDiy {
     return { stock, banned: Object.freeze(banned) };
   }
 
-  /** The copy accounting of base chess `baseId` for this player: its own stock for a slotted DIY slot, else the shared pool. */
+  /**
+   * The copy accounting of base chess `baseId` for this player: its own stock for a slotted DIY slot, else the pool it
+   * draws from — its TEAM's pool in a room above MAX_SEATS (TWELVE_PLAYER_MODE §2 队内共用 / 队间独立, Match.poolFor),
+   * else the match's single shared pool (exactly the object `this.m.pool`, as before).
+   */
   poolOf(baseId) {
-    return this.diyStock && this.diyStock.has(baseId) ? this.diyStock : this.m.pool;
+    if (this.diyStock && this.diyStock.has(baseId)) return this.diyStock;
+    return typeof this.m.poolFor === 'function' ? this.m.poolFor(this) : this.m.pool;
   }
 
   /**

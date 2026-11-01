@@ -51,11 +51,18 @@ import { msg, dn } from '../../shared/i18n.js';
 import { onGiftTicker } from './botEmotes.js';
 import { previewContext } from './preview.js';
 import { deriveSeed } from '../sim/rng.js';
+import { negativeBattleList, overlimitActiveIds } from './relicsOverlimit.js';
 
 export const HOOKS = Object.freeze([
   'onRoundStart', 'onIncome', 'onPrepStart', 'onPrepEnd', 'onGain', 'onSold', 'onRefresh', 'onPrice', 'onBuy',
   'onSpend', 'onMerge', 'onLevelUp', 'onBattleStart', 'onBattleResult', 'onChoicePick', 'onEquip', 'onArt',
   'onDestroy', 'onLayers', 'onActiveBonds',
+  // 炸惊模拟's two "timing" hooks (2026-10-28): they run BEFORE the phase decides, so their event is writable —
+  // `onRoundWouldStart` may rewrite `ev.round` (match/match/phases.js startRound, before `this.round = r`) and
+  // `onWouldEliminate` may set `ev.saved = true` (match/match/settle.js, before the elimination is applied). They are
+  // registered here so the contract is declared; `dispatch` itself never filters by this list (an unlisted name only
+  // produced the "is not a hook" warning and still ran).
+  'onWouldEliminate', 'onRoundWouldStart',
 ]);
 /** Non-hook members a handler object may carry. */
 const HANDLER_EXTRAS = new Set(['run', 'garrisonHooks']);
@@ -70,7 +77,7 @@ export const GARRISON_HOOK = Object.freeze({
   SERVER_REFRESH_SHOP: 'onRefresh',
 });
 
-const KEY_RE = /^(garrison|band|bond|item|choice|effect|global):[A-Za-z0-9_\-.:#]+$/;
+const KEY_RE = /^(garrison|band|bond|item|choice|effect|global|jibian):[A-Za-z0-9_\-.:#]+$/;
 export const MAX_DEPTH = 6;
 
 export class MetaRegistry {
@@ -574,6 +581,19 @@ export function makeCtx(m, ps, source, hook, ev = null, preview = null) {
         .map((g) => ({ garrisonId: g.garrisonId, effectKey: g.effectKey, eventType: g.eventType, bb: g.bb || {}, bbStr: g.bbStr || {}, desc: g.desc || '' }));
     },
     stats: () => ({ ...ps.stats }),
+    /** 湮灭模拟's own state ({ owned, draft, counters, flags }) — see server/match/relics.js. */
+    relics: () => ps.relics || null,
+    /**
+     * 超限模拟「词条」——本局**生效**的词条 id（业主 2026-10-31 第二批；失效条款已在 `activeRelicIds` 里剔掉）。
+     * 非超限局 / 一条都没选：空数组。`content/overlimitRelics.js` 的 registerMeta 用它读每回合资金、免费刷新与价格。
+     */
+    overlimitRelics: () => (ps.m && typeof ps.m === 'object' ? overlimitActiveIds(ps.m) : []),
+    /**
+     * 超限模拟「负面词条」——本局选走的负面词条 `[{ id, at, tier }]`（业主 2026-10-31 第二批，与饰品那一份**分开**：
+     * 「每拥有一件饰品」这类条文只数饰品）。非超限局 / 一条都没选：空数组。
+     * `content/overlimitNegative.js` 的 registerMeta 用它读每回合经费（破坏力 Ⅰ/Ⅱ/Ⅲ）。
+     */
+    overlimitNegatives: () => (ps.m && typeof ps.m === 'object' ? negativeBattleList(ps.m) : []),
     roundStats: () => ({ ...ps.round }),
     shopSlots: () => ps.shop.slots.map((s) => (s ? { kind: s.kind, id: s.id, basePrice: s.basePrice, sold: !!s.sold, frozen: !!s.frozen } : null)),
 
@@ -637,24 +657,34 @@ export function makeCtx(m, ps, source, hook, ev = null, preview = null) {
      * Random chess id from the shared pool (copy-weighted) — and the player's own 自选 stock (player/diy.js
      * diyStockEntries, 0.2.0: 「自选干员放入后模拟中的补给池随机范围也将被相应扩大」). opts: { maxTier, tier, bond, filter(id) };
      * bonds are read through the player's data view (a slotted slot: its operator's).
+     * 炸惊模拟 · 卡池预选: this player's bans remove a chess whose bonds are all banned (PlayerState.chessBanFilter) —
+     * this is the generic draw path of every meta effect, the second of the three the panel did not reach (audit rules
+     * §1/§5.5). null when nothing is banned ⇒ `f` is the same predicate as before.
      */
     rollChess: (opts = {}) => {
+      const ban = typeof ps.chessBanFilter === 'function' ? ps.chessBanFilter() : null;
       const f = (id) => {
+        if (ban && !ban(id)) return false;
         if (opts.bond) { const c = gd.chess(id); if (!c || !Array.isArray(c.bonds) || !c.bonds.includes(opts.bond)) return false; }
         return typeof opts.filter === 'function' ? !!opts.filter(id) : true;
       };
       const extra = typeof ps.diyStockEntries === 'function' ? ps.diyStockEntries() : null;
-      return m.pool.roll(rng, { maxTier: Number.isInteger(opts.maxTier) ? opts.maxTier : 6, tier: Number.isInteger(opts.tier) ? opts.tier : null, filter: f, extra, ignoreCounts: opts.ignoreCounts === true });
+      // 队内共用 / 队间独立 (TWELVE_PLAYER_MODE §2): a draw of the drawing player's TEAM pool above MAX_SEATS
+      return m.poolFor(ps).roll(rng, { maxTier: Number.isInteger(opts.maxTier) ? opts.maxTier : 6, tier: Number.isInteger(opts.tier) ? opts.tier : null, filter: f, extra, ignoreCounts: opts.ignoreCounts === true });
     },
     rollItem: (opts = {}) => rolls.rollItemId(opts),
     /**
      * Roll a choices.json pool: equip pools → { kind: 'item', id }; chess pools (items / weighted / shopEligible with
      * tier, minTier, bond, golden) → { kind: 'chess', id, golden } (a pool chess needs a free copy). null when empty.
+     * 炸惊模拟 · 卡池预选: the drawing player's bans reach this pool too (spDraft.rollPool `ban`).
      */
     rollPool: (poolId, opts = {}) => rolls.rollPool(poolId, {
       shopLevel: ps.shop.level,
+      // 队内共用 / 队间独立 (TWELVE_PLAYER_MODE §2): the pool this draw reads is the drawing player's team pool
+      ps,
       // a shared-pool draw also takes the player's 自选 stock, its bonds read through the player's view (rollChess)
       extra: typeof ps.diyStockEntries === 'function' ? ps.diyStockEntries() : null, chessOf: (id) => gd.chess(id),
+      ...(typeof ps.chessBanFilter === 'function' ? { ban: ps.chessBanFilter() } : null),
       ...opts,
     }),
     /**
@@ -737,6 +767,14 @@ export function makeCtx(m, ps, source, hook, ev = null, preview = null) {
     },
     removeEffect: (id) => { const i = ps.effects.findIndex((e) => e.id === id); if (i < 0) return false; ps.effects.splice(i, 1); ps.dirty(); return true; },
     effect: (id) => ps.effects.find((e) => e.id === id) ?? null,
+    // 炸惊模拟 (2026-10-28): content that must ENUMERATE the player's EffectRefs — 金酒之杯 (攻速/攻生 by funds),
+    // 倒转区, 潘多拉魔盒 (lose every 惊变), 时光之末, jibian_325799 — reads `ctx.effects()`. The reference build has the
+    // same accessor; without it those handlers threw `ctx.effects is not a function` on every dispatch and the cards did
+    // nothing (the error only reached log.error, so no test noticed).
+    // The SNAPSHOT is taken to keep iteration safe while a handler removes refs (潘多拉魔盒 does), but the ITEMS are the
+    // player's own objects — content writes through them (`e.params.… = …`) and `ctx.removeEffect(e.id)` must still find
+    // the same entry, so a deep copy (the reference build's `{ ...e }`) is not enough here.
+    effects: () => ps.effects.slice(),
     setEffectCounter: (id, v) => { const e = ps.effects.find((x) => x.id === id); if (!e) return false; e.counter = v; ps.dirty(); return true; },
 
     // ---- bounties / choices

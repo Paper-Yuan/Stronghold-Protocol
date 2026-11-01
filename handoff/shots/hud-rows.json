@@ -1,0 +1,2366 @@
+{
+  "startedAt": "2026-10-31T15:13:53.434Z",
+  "shots": [
+    {
+      "file": "room12-match-roster-792x360.png",
+      "bytes": 402259,
+      "sha256": "c57def1f284f51183a33b79a046254a0c2c0c27ef547e4993dce86c150ba95e9"
+    },
+    {
+      "file": "room12-match-roster-1920x1080.png",
+      "bytes": 2273017,
+      "sha256": "2d0fcee47d930be317b4fbb185416913b1015bd36d5438e8439bb2de62ff9211"
+    },
+    {
+      "file": "room8-match-roster-792x360.png",
+      "bytes": 400764,
+      "sha256": "8d4cf34568cc7ace235130fb48e65398f2721daefe1587c8026e9d35c5638946"
+    },
+    {
+      "file": "room8-match-roster-1920x1080.png",
+      "bytes": 2260261,
+      "sha256": "e997a515a713583504f2293fc44ac13f1c557dc1013e63dd4acc582a50d432db"
+    }
+  ],
+  "rooms": {
+    "room12": {
+      "code": "SRUB"
+    },
+    "room8": {
+      "code": "XJDA"
+    },
+    "room4": {
+      "code": "YREM"
+    }
+  },
+  "problems": {
+    "r12": [
+      "http 404: http://127.0.0.1:62656/assets/char/portrait/char_128_plosis_2.png",
+      "console: Failed to load resource: the server responded with a status of 404 (Not Found) @ http://127.0.0.1:62656/assets/char/portrait/char_128_plosis_2.png",
+      "http 404: http://127.0.0.1:62656/assets/char/illust/char_128_plosis.png",
+      "console: Failed to load resource: the server responded with a status of 404 (Not Found) @ http://127.0.0.1:62656/assets/char/illust/char_128_plosis.png",
+      "http 404: http://127.0.0.1:62656/assets/char/portrait/char_102_texas_1.png",
+      "console: Failed to load resource: the server responded with a status of 404 (Not Found) @ http://127.0.0.1:62656/assets/char/portrait/char_102_texas_1.png",
+      "http 404: http://127.0.0.1:62656/assets/char/portrait/char_4100_caper_1.png",
+      "console: Failed to load resource: the server responded with a status of 404 (Not Found) @ http://127.0.0.1:62656/assets/char/portrait/char_4100_caper_1.png",
+      "http 404: http://127.0.0.1:62656/assets/char/portrait/char_496_wildmn_1.png",
+      "console: Failed to load resource: the server responded with a status of 404 (Not Found) @ http://127.0.0.1:62656/assets/char/portrait/char_496_wildmn_1.png"
+    ],
+    "r8": [
+      "http 404: http://127.0.0.1:62656/assets/char/portrait/char_108_silent_2.png",
+      "console: Failed to load resource: the server responded with a status of 404 (Not Found) @ http://127.0.0.1:62656/assets/char/portrait/char_108_silent_2.png",
+      "http 404: http://127.0.0.1:62656/assets/char/illust/char_108_silent.png",
+      "console: Failed to load resource: the server responded with a status of 404 (Not Found) @ http://127.0.0.1:62656/assets/char/illust/char_108_silent.png",
+      "http 404: http://127.0.0.1:62656/assets/char/portrait/char_496_wildmn_1.png",
+      "console: Failed to load resource: the server responded with a status of 404 (Not Found) @ http://127.0.0.1:62656/assets/char/portrait/char_496_wildmn_1.png",
+      "http 404: http://127.0.0.1:62656/assets/char/portrait/char_4100_caper_1.png",
+      "console: Failed to load resource: the server responded with a status of 404 (Not Found) @ http://127.0.0.1:62656/assets/char/portrait/char_4100_caper_1.png",
+      "http 404: http://127.0.0.1:62656/assets/char/portrait/char_496_wildmn_1.png",
+      "console: Failed to load resource: the server responded with a status of 404 (Not Found) @ http://127.0.0.1:62656/assets/char/portrait/char_496_wildmn_1.png"
+    ],
+    "r4": [
+      "http 404: http://127.0.0.1:62656/assets/char/portrait/char_388_mint_2.png",
+      "console: Failed to load resource: the server responded with a status of 404 (Not Found) @ http://127.0.0.1:62656/assets/char/portrait/char_388_mint_2.png",
+      "http 404: http://127.0.0.1:62656/assets/char/illust/char_388_mint.png",
+      "console: Failed to load resource: the server responded with a status of 404 (Not Found) @ http://127.0.0.1:62656/assets/char/illust/char_388_mint.png",
+      "http 404: http://127.0.0.1:62656/assets/char/portrait/char_196_sunbr_1.png",
+      "console: Failed to load resource: the server responded with a status of 404 (Not Found) @ http://127.0.0.1:62656/assets/char/portrait/char_196_sunbr_1.png",
+      "http 404: http://127.0.0.1:62656/assets/char/portrait/char_196_sunbr_1.png",
+      "console: Failed to load resource: the server responded with a status of 404 (Not Found) @ http://127.0.0.1:62656/assets/char/portrait/char_196_sunbr_1.png"
+    ]
+  },
+  "phases": {
+    "r12": [
+      "INFO_CHECK",
+      "BATTLE_CHECK",
+      "ROUND_START",
+      "SP_DRAFT",
+      "PREP"
+    ],
+    "r8": [
+      "INFO_CHECK",
+      "BATTLE_CHECK",
+      "ROUND_START",
+      "SP_DRAFT",
+      "PREP"
+    ],
+    "r4": [
+      "BATTLE_CHECK",
+      "ROUND_START",
+      "SP_DRAFT",
+      "PREP"
+    ]
+  },
+  "room12at792": {
+    "vw": 792,
+    "vh": 360,
+    "dpr": 1,
+    "scroll": {
+      "clientW": 792,
+      "clientH": 360,
+      "scrollW": 792,
+      "scrollH": 360
+    },
+    "phase": "PREP",
+    "round": 3,
+    "gmClass": "screen gm gm--prep has-multi",
+    "counts": {
+      ".gm-teams": 1,
+      ".gm-team": 3,
+      ".gm-team__list": 1,
+      ".gm-team__row": 4,
+      ".team": 0,
+      ".gm-unite": 0
+    },
+    "hudChildren": [
+      "gtop",
+      "gm__bonds",
+      "gm-teams",
+      "gm__effects",
+      "shopbar",
+      "chat-panel  ",
+      "ui-slot gm__ui-slot",
+      "gm__corner"
+    ],
+    "teams": {
+      "l": 8,
+      "t": 94.39,
+      "r": 96,
+      "b": 262.39,
+      "w": 88,
+      "h": 168
+    },
+    "teamRect": null,
+    "teamRows": 0,
+    "boxes": [
+      {
+        "rect": {
+          "l": 8,
+          "t": 94.39,
+          "r": 96,
+          "b": 262.39,
+          "w": 88,
+          "h": 168
+        },
+        "open": true,
+        "cls": "gm-team is-mine is-full is-open"
+      }
+    ],
+    "box": {
+      "l": 8,
+      "t": 94.39,
+      "r": 96,
+      "b": 262.39,
+      "w": 88,
+      "h": 168
+    },
+    "rows": [
+      {
+        "empty": false,
+        "rect": {
+          "l": 8,
+          "t": 126.39,
+          "r": 96,
+          "b": 160.39,
+          "w": 88,
+          "h": 34
+        },
+        "ava": {
+          "l": 15.19,
+          "t": 131.89,
+          "r": 39.19,
+          "b": 155.89,
+          "w": 24,
+          "h": 24
+        },
+        "avaBox": {
+          "l": 15.19,
+          "t": 131.89,
+          "r": 39.19,
+          "b": 155.89,
+          "w": 24,
+          "h": 24
+        },
+        "name": {
+          "l": 44.77,
+          "t": 131.19,
+          "r": 87.2,
+          "b": 140.19,
+          "w": 42.44,
+          "h": 9
+        },
+        "info": {
+          "l": 42.38,
+          "t": 129.59,
+          "r": 92,
+          "b": 158.19,
+          "w": 49.63,
+          "h": 28.59
+        },
+        "status": {
+          "l": 76.81,
+          "t": 143.59,
+          "r": 87.2,
+          "b": 153.98,
+          "w": 10.39,
+          "h": 10.39
+        },
+        "nameText": "凯尔希",
+        "nameBox": {
+          "clientW": 42,
+          "scrollW": 42,
+          "ellipsis": "ellipsis",
+          "nowrap": "nowrap",
+          "overflow": "hidden"
+        },
+        "statusTone": [
+          "is-lo"
+        ],
+        "statusSprite": false,
+        "statusLabel": "行动中",
+        "hp": "23",
+        "ai": false,
+        "avatar": {
+          "w": 24,
+          "h": 24
+        },
+        "aria": "我方同盟 凯尔希",
+        "role": "group",
+        "withinRow": true
+      },
+      {
+        "empty": false,
+        "rect": {
+          "l": 8,
+          "t": 160.39,
+          "r": 96,
+          "b": 194.39,
+          "w": 88,
+          "h": 34
+        },
+        "ava": {
+          "l": 15.19,
+          "t": 165.89,
+          "r": 39.19,
+          "b": 189.89,
+          "w": 24,
+          "h": 24
+        },
+        "avaBox": {
+          "l": 15.19,
+          "t": 165.89,
+          "r": 39.19,
+          "b": 189.89,
+          "w": 24,
+          "h": 24
+        },
+        "name": {
+          "l": 44.77,
+          "t": 165.19,
+          "r": 87.2,
+          "b": 174.19,
+          "w": 42.44,
+          "h": 9
+        },
+        "info": {
+          "l": 42.38,
+          "t": 163.59,
+          "r": 92,
+          "b": 192.19,
+          "w": 49.63,
+          "h": 28.59
+        },
+        "status": {
+          "l": 76.81,
+          "t": 177.59,
+          "r": 87.2,
+          "b": 187.98,
+          "w": 10.39,
+          "h": 10.39
+        },
+        "nameText": "AI·华法琳",
+        "nameBox": {
+          "clientW": 42,
+          "scrollW": 42,
+          "ellipsis": "ellipsis",
+          "nowrap": "nowrap",
+          "overflow": "hidden"
+        },
+        "statusTone": [
+          "is-mint"
+        ],
+        "statusSprite": true,
+        "statusLabel": "已就绪",
+        "hp": "28",
+        "ai": true,
+        "avatar": {
+          "w": 24,
+          "h": 24
+        },
+        "aria": "我方同盟 AI·华法琳",
+        "role": "group",
+        "withinRow": true
+      },
+      {
+        "empty": false,
+        "rect": {
+          "l": 8,
+          "t": 194.39,
+          "r": 96,
+          "b": 228.39,
+          "w": 88,
+          "h": 34
+        },
+        "ava": {
+          "l": 15.19,
+          "t": 199.89,
+          "r": 39.19,
+          "b": 223.89,
+          "w": 24,
+          "h": 24
+        },
+        "avaBox": {
+          "l": 15.19,
+          "t": 199.89,
+          "r": 39.19,
+          "b": 223.89,
+          "w": 24,
+          "h": 24
+        },
+        "name": {
+          "l": 44.77,
+          "t": 199.19,
+          "r": 87.2,
+          "b": 208.19,
+          "w": 42.44,
+          "h": 9
+        },
+        "info": {
+          "l": 42.38,
+          "t": 197.59,
+          "r": 92,
+          "b": 226.19,
+          "w": 49.63,
+          "h": 28.59
+        },
+        "status": {
+          "l": 76.81,
+          "t": 211.59,
+          "r": 87.2,
+          "b": 221.98,
+          "w": 10.39,
+          "h": 10.39
+        },
+        "nameText": "AI·阿米娅",
+        "nameBox": {
+          "clientW": 42,
+          "scrollW": 42,
+          "ellipsis": "ellipsis",
+          "nowrap": "nowrap",
+          "overflow": "hidden"
+        },
+        "statusTone": [
+          "is-mint"
+        ],
+        "statusSprite": true,
+        "statusLabel": "已就绪",
+        "hp": "27",
+        "ai": true,
+        "avatar": {
+          "w": 24,
+          "h": 24
+        },
+        "aria": "我方同盟 AI·阿米娅",
+        "role": "group",
+        "withinRow": true
+      },
+      {
+        "empty": false,
+        "rect": {
+          "l": 8,
+          "t": 228.39,
+          "r": 96,
+          "b": 262.39,
+          "w": 88,
+          "h": 34
+        },
+        "ava": {
+          "l": 15.19,
+          "t": 233.89,
+          "r": 39.19,
+          "b": 257.89,
+          "w": 24,
+          "h": 24
+        },
+        "avaBox": {
+          "l": 15.19,
+          "t": 233.89,
+          "r": 39.19,
+          "b": 257.89,
+          "w": 24,
+          "h": 24
+        },
+        "name": {
+          "l": 44.77,
+          "t": 233.19,
+          "r": 87.2,
+          "b": 242.19,
+          "w": 42.44,
+          "h": 9
+        },
+        "info": {
+          "l": 42.38,
+          "t": 231.59,
+          "r": 92,
+          "b": 260.19,
+          "w": 49.63,
+          "h": 28.59
+        },
+        "status": {
+          "l": 76.81,
+          "t": 245.59,
+          "r": 87.2,
+          "b": 255.98,
+          "w": 10.39,
+          "h": 10.39
+        },
+        "nameText": "AI·惊蛰",
+        "nameBox": {
+          "clientW": 42,
+          "scrollW": 42,
+          "ellipsis": "ellipsis",
+          "nowrap": "nowrap",
+          "overflow": "hidden"
+        },
+        "statusTone": [
+          "is-mint"
+        ],
+        "statusSprite": true,
+        "statusLabel": "已就绪",
+        "hp": "24",
+        "ai": true,
+        "avatar": {
+          "w": 24,
+          "h": 24
+        },
+        "aria": "我方同盟 AI·惊蛰",
+        "role": "group",
+        "withinRow": true
+      }
+    ],
+    "rowOverlaps": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "overlaps": [
+      {
+        "a": ".gm-teams",
+        "b": ".gm__corner",
+        "area": 0
+      },
+      {
+        "a": ".gm-teams",
+        "b": ".shopbar",
+        "area": 0
+      },
+      {
+        "a": ".gm-teams",
+        "b": ".gm__bonds",
+        "area": 0
+      },
+      {
+        "a": ".gm-teams",
+        "b": ".gm__effects",
+        "area": 0
+      },
+      {
+        "a": ".gm-teams",
+        "b": ".gtop",
+        "area": 0
+      },
+      {
+        "a": "box0",
+        "b": ".gm__corner",
+        "area": 0
+      },
+      {
+        "a": "box0",
+        "b": ".shopbar",
+        "area": 0
+      },
+      {
+        "a": "box0",
+        "b": ".gm__bonds",
+        "area": 0
+      },
+      {
+        "a": "box0",
+        "b": ".gm__effects",
+        "area": 0
+      },
+      {
+        "a": "box0",
+        "b": ".gtop",
+        "area": 0
+      }
+    ],
+    "headRect": {
+      "l": 8,
+      "t": 94.39,
+      "r": 96,
+      "b": 126.39,
+      "w": 88,
+      "h": 32
+    },
+    "listRect": {
+      "l": 8,
+      "t": 126.39,
+      "r": 96,
+      "b": 262.39,
+      "w": 88,
+      "h": 136
+    }
+  },
+  "room12at1920": {
+    "vw": 1920,
+    "vh": 1080,
+    "dpr": 1,
+    "scroll": {
+      "clientW": 1920,
+      "clientH": 1080,
+      "scrollW": 1920,
+      "scrollH": 1080
+    },
+    "phase": "PREP",
+    "round": 3,
+    "gmClass": "screen gm gm--prep has-multi",
+    "counts": {
+      ".gm-teams": 1,
+      ".gm-team": 3,
+      ".gm-team__list": 1,
+      ".gm-team__row": 4,
+      ".team": 0,
+      ".gm-unite": 0
+    },
+    "hudChildren": [
+      "gtop",
+      "gm__bonds",
+      "gm-teams",
+      "gm__effects",
+      "shopbar",
+      "chat-panel  ",
+      "ui-slot gm__ui-slot",
+      "gm__corner"
+    ],
+    "teams": {
+      "l": 20,
+      "t": 236,
+      "r": 240,
+      "b": 656,
+      "w": 220,
+      "h": 420
+    },
+    "teamRect": null,
+    "teamRows": 0,
+    "boxes": [
+      {
+        "rect": {
+          "l": 20,
+          "t": 236,
+          "r": 240,
+          "b": 656,
+          "w": 220,
+          "h": 420
+        },
+        "open": true,
+        "cls": "gm-team is-mine is-full is-open"
+      }
+    ],
+    "box": {
+      "l": 20,
+      "t": 236,
+      "r": 240,
+      "b": 656,
+      "w": 220,
+      "h": 420
+    },
+    "rows": [
+      {
+        "empty": false,
+        "rect": {
+          "l": 20,
+          "t": 316,
+          "r": 240,
+          "b": 401,
+          "w": 220,
+          "h": 85
+        },
+        "ava": {
+          "l": 38,
+          "t": 329,
+          "r": 98,
+          "b": 389,
+          "w": 60,
+          "h": 60
+        },
+        "avaBox": {
+          "l": 38,
+          "t": 329,
+          "r": 98,
+          "b": 389,
+          "w": 60,
+          "h": 60
+        },
+        "name": {
+          "l": 112,
+          "t": 327.25,
+          "r": 218,
+          "b": 349.75,
+          "w": 106,
+          "h": 22.5
+        },
+        "info": {
+          "l": 106,
+          "t": 323.25,
+          "r": 230,
+          "b": 394.75,
+          "w": 124,
+          "h": 71.5
+        },
+        "status": {
+          "l": 192,
+          "t": 358.25,
+          "r": 218,
+          "b": 384.25,
+          "w": 26,
+          "h": 26
+        },
+        "nameText": "凯尔希",
+        "nameBox": {
+          "clientW": 106,
+          "scrollW": 106,
+          "ellipsis": "ellipsis",
+          "nowrap": "nowrap",
+          "overflow": "hidden"
+        },
+        "statusTone": [
+          "is-lo"
+        ],
+        "statusSprite": false,
+        "statusLabel": "行动中",
+        "hp": "23",
+        "ai": false,
+        "avatar": {
+          "w": 60,
+          "h": 60
+        },
+        "aria": "我方同盟 凯尔希",
+        "role": "group",
+        "withinRow": true
+      },
+      {
+        "empty": false,
+        "rect": {
+          "l": 20,
+          "t": 401,
+          "r": 240,
+          "b": 486,
+          "w": 220,
+          "h": 85
+        },
+        "ava": {
+          "l": 38,
+          "t": 414,
+          "r": 98,
+          "b": 474,
+          "w": 60,
+          "h": 60
+        },
+        "avaBox": {
+          "l": 38,
+          "t": 414,
+          "r": 98,
+          "b": 474,
+          "w": 60,
+          "h": 60
+        },
+        "name": {
+          "l": 112,
+          "t": 412.25,
+          "r": 218,
+          "b": 434.75,
+          "w": 106,
+          "h": 22.5
+        },
+        "info": {
+          "l": 106,
+          "t": 408.25,
+          "r": 230,
+          "b": 479.75,
+          "w": 124,
+          "h": 71.5
+        },
+        "status": {
+          "l": 192,
+          "t": 443.25,
+          "r": 218,
+          "b": 469.25,
+          "w": 26,
+          "h": 26
+        },
+        "nameText": "AI·华法琳",
+        "nameBox": {
+          "clientW": 106,
+          "scrollW": 106,
+          "ellipsis": "ellipsis",
+          "nowrap": "nowrap",
+          "overflow": "hidden"
+        },
+        "statusTone": [
+          "is-mint"
+        ],
+        "statusSprite": true,
+        "statusLabel": "已就绪",
+        "hp": "28",
+        "ai": true,
+        "avatar": {
+          "w": 60,
+          "h": 60
+        },
+        "aria": "我方同盟 AI·华法琳",
+        "role": "group",
+        "withinRow": true
+      },
+      {
+        "empty": false,
+        "rect": {
+          "l": 20,
+          "t": 486,
+          "r": 240,
+          "b": 571,
+          "w": 220,
+          "h": 85
+        },
+        "ava": {
+          "l": 38,
+          "t": 499,
+          "r": 98,
+          "b": 559,
+          "w": 60,
+          "h": 60
+        },
+        "avaBox": {
+          "l": 38,
+          "t": 499,
+          "r": 98,
+          "b": 559,
+          "w": 60,
+          "h": 60
+        },
+        "name": {
+          "l": 112,
+          "t": 497.25,
+          "r": 218,
+          "b": 519.75,
+          "w": 106,
+          "h": 22.5
+        },
+        "info": {
+          "l": 106,
+          "t": 493.25,
+          "r": 230,
+          "b": 564.75,
+          "w": 124,
+          "h": 71.5
+        },
+        "status": {
+          "l": 192,
+          "t": 528.25,
+          "r": 218,
+          "b": 554.25,
+          "w": 26,
+          "h": 26
+        },
+        "nameText": "AI·阿米娅",
+        "nameBox": {
+          "clientW": 106,
+          "scrollW": 106,
+          "ellipsis": "ellipsis",
+          "nowrap": "nowrap",
+          "overflow": "hidden"
+        },
+        "statusTone": [
+          "is-mint"
+        ],
+        "statusSprite": true,
+        "statusLabel": "已就绪",
+        "hp": "27",
+        "ai": true,
+        "avatar": {
+          "w": 60,
+          "h": 60
+        },
+        "aria": "我方同盟 AI·阿米娅",
+        "role": "group",
+        "withinRow": true
+      },
+      {
+        "empty": false,
+        "rect": {
+          "l": 20,
+          "t": 571,
+          "r": 240,
+          "b": 656,
+          "w": 220,
+          "h": 85
+        },
+        "ava": {
+          "l": 38,
+          "t": 584,
+          "r": 98,
+          "b": 644,
+          "w": 60,
+          "h": 60
+        },
+        "avaBox": {
+          "l": 38,
+          "t": 584,
+          "r": 98,
+          "b": 644,
+          "w": 60,
+          "h": 60
+        },
+        "name": {
+          "l": 112,
+          "t": 582.25,
+          "r": 218,
+          "b": 604.75,
+          "w": 106,
+          "h": 22.5
+        },
+        "info": {
+          "l": 106,
+          "t": 578.25,
+          "r": 230,
+          "b": 649.75,
+          "w": 124,
+          "h": 71.5
+        },
+        "status": {
+          "l": 192,
+          "t": 613.25,
+          "r": 218,
+          "b": 639.25,
+          "w": 26,
+          "h": 26
+        },
+        "nameText": "AI·惊蛰",
+        "nameBox": {
+          "clientW": 106,
+          "scrollW": 106,
+          "ellipsis": "ellipsis",
+          "nowrap": "nowrap",
+          "overflow": "hidden"
+        },
+        "statusTone": [
+          "is-mint"
+        ],
+        "statusSprite": true,
+        "statusLabel": "已就绪",
+        "hp": "24",
+        "ai": true,
+        "avatar": {
+          "w": 60,
+          "h": 60
+        },
+        "aria": "我方同盟 AI·惊蛰",
+        "role": "group",
+        "withinRow": true
+      }
+    ],
+    "rowOverlaps": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "overlaps": [
+      {
+        "a": ".gm-teams",
+        "b": ".gm__corner",
+        "area": 0
+      },
+      {
+        "a": ".gm-teams",
+        "b": ".shopbar",
+        "area": 0
+      },
+      {
+        "a": ".gm-teams",
+        "b": ".gm__bonds",
+        "area": 0
+      },
+      {
+        "a": ".gm-teams",
+        "b": ".gm__effects",
+        "area": 0
+      },
+      {
+        "a": ".gm-teams",
+        "b": ".gtop",
+        "area": 0
+      },
+      {
+        "a": "box0",
+        "b": ".gm__corner",
+        "area": 0
+      },
+      {
+        "a": "box0",
+        "b": ".shopbar",
+        "area": 0
+      },
+      {
+        "a": "box0",
+        "b": ".gm__bonds",
+        "area": 0
+      },
+      {
+        "a": "box0",
+        "b": ".gm__effects",
+        "area": 0
+      },
+      {
+        "a": "box0",
+        "b": ".gtop",
+        "area": 0
+      }
+    ],
+    "headRect": {
+      "l": 20,
+      "t": 236,
+      "r": 240,
+      "b": 316,
+      "w": 220,
+      "h": 80
+    },
+    "listRect": {
+      "l": 20,
+      "t": 316,
+      "r": 240,
+      "b": 656,
+      "w": 220,
+      "h": 340
+    }
+  },
+  "room12tailat792": {
+    "vw": 792,
+    "vh": 360,
+    "dpr": 1,
+    "scroll": {
+      "clientW": 792,
+      "clientH": 360,
+      "scrollW": 792,
+      "scrollH": 360
+    },
+    "phase": "PREP",
+    "round": 3,
+    "gmClass": "screen gm gm--prep has-multi",
+    "counts": {
+      ".gm-teams": 1,
+      ".gm-team": 3,
+      ".gm-team__list": 1,
+      ".gm-team__row": 4,
+      ".team": 0,
+      ".gm-unite": 0
+    },
+    "hudChildren": [
+      "gtop",
+      "gm__bonds",
+      "gm-teams is-tail",
+      "gm__effects",
+      "shopbar",
+      "chat-panel  ",
+      "ui-slot gm__ui-slot",
+      "gm__corner"
+    ],
+    "teams": {
+      "l": 8,
+      "t": 94.39,
+      "r": 96,
+      "b": 234.39,
+      "w": 88,
+      "h": 140
+    },
+    "teamRect": null,
+    "teamRows": 0,
+    "boxes": [
+      {
+        "rect": {
+          "l": 8,
+          "t": 170.39,
+          "r": 96,
+          "b": 310.39,
+          "w": 88,
+          "h": 140
+        },
+        "open": true,
+        "cls": "gm-team is-red is-full is-open"
+      }
+    ],
+    "box": {
+      "l": 8,
+      "t": 170.39,
+      "r": 96,
+      "b": 310.39,
+      "w": 88,
+      "h": 140
+    },
+    "rows": [
+      {
+        "empty": false,
+        "rect": {
+          "l": 8,
+          "t": 202.39,
+          "r": 96,
+          "b": 229.39,
+          "w": 88,
+          "h": 27
+        },
+        "ava": {
+          "l": 15.19,
+          "t": 204.39,
+          "r": 39.19,
+          "b": 228.39,
+          "w": 24,
+          "h": 24
+        },
+        "avaBox": {
+          "l": 15.19,
+          "t": 204.39,
+          "r": 39.19,
+          "b": 228.39,
+          "w": 24,
+          "h": 24
+        },
+        "name": {
+          "l": 44.77,
+          "t": 206.3,
+          "r": 87.2,
+          "b": 215.3,
+          "w": 42.44,
+          "h": 9
+        },
+        "info": {
+          "l": 42.38,
+          "t": 204.7,
+          "r": 92,
+          "b": 228.08,
+          "w": 49.63,
+          "h": 23.38
+        },
+        "status": {
+          "l": 76.81,
+          "t": 216.09,
+          "r": 87.2,
+          "b": 226.48,
+          "w": 10.39,
+          "h": 10.39
+        },
+        "nameText": "AI·9",
+        "nameBox": {
+          "clientW": 42,
+          "scrollW": 42,
+          "ellipsis": "ellipsis",
+          "nowrap": "nowrap",
+          "overflow": "hidden"
+        },
+        "statusTone": [
+          "is-mint"
+        ],
+        "statusSprite": true,
+        "statusLabel": "已就绪",
+        "hp": null,
+        "ai": true,
+        "avatar": {
+          "w": 24,
+          "h": 24
+        },
+        "aria": "红方同盟 AI·9",
+        "role": "group",
+        "withinRow": true
+      },
+      {
+        "empty": false,
+        "rect": {
+          "l": 8,
+          "t": 229.39,
+          "r": 96,
+          "b": 256.39,
+          "w": 88,
+          "h": 27
+        },
+        "ava": {
+          "l": 15.19,
+          "t": 231.39,
+          "r": 39.19,
+          "b": 255.39,
+          "w": 24,
+          "h": 24
+        },
+        "avaBox": {
+          "l": 15.19,
+          "t": 231.39,
+          "r": 39.19,
+          "b": 255.39,
+          "w": 24,
+          "h": 24
+        },
+        "name": {
+          "l": 44.77,
+          "t": 233.3,
+          "r": 87.2,
+          "b": 242.3,
+          "w": 42.44,
+          "h": 9
+        },
+        "info": {
+          "l": 42.38,
+          "t": 231.7,
+          "r": 92,
+          "b": 255.08,
+          "w": 49.63,
+          "h": 23.38
+        },
+        "status": {
+          "l": 76.81,
+          "t": 243.09,
+          "r": 87.2,
+          "b": 253.48,
+          "w": 10.39,
+          "h": 10.39
+        },
+        "nameText": "AI·10",
+        "nameBox": {
+          "clientW": 42,
+          "scrollW": 42,
+          "ellipsis": "ellipsis",
+          "nowrap": "nowrap",
+          "overflow": "hidden"
+        },
+        "statusTone": [
+          "is-mint"
+        ],
+        "statusSprite": true,
+        "statusLabel": "已就绪",
+        "hp": null,
+        "ai": true,
+        "avatar": {
+          "w": 24,
+          "h": 24
+        },
+        "aria": "红方同盟 AI·10",
+        "role": "group",
+        "withinRow": true
+      },
+      {
+        "empty": false,
+        "rect": {
+          "l": 8,
+          "t": 256.39,
+          "r": 96,
+          "b": 283.39,
+          "w": 88,
+          "h": 27
+        },
+        "ava": {
+          "l": 15.19,
+          "t": 258.39,
+          "r": 39.19,
+          "b": 282.39,
+          "w": 24,
+          "h": 24
+        },
+        "avaBox": {
+          "l": 15.19,
+          "t": 258.39,
+          "r": 39.19,
+          "b": 282.39,
+          "w": 24,
+          "h": 24
+        },
+        "name": {
+          "l": 44.77,
+          "t": 260.3,
+          "r": 87.2,
+          "b": 269.3,
+          "w": 42.44,
+          "h": 9
+        },
+        "info": {
+          "l": 42.38,
+          "t": 258.7,
+          "r": 92,
+          "b": 282.08,
+          "w": 49.63,
+          "h": 23.38
+        },
+        "status": {
+          "l": 76.81,
+          "t": 270.09,
+          "r": 87.2,
+          "b": 280.48,
+          "w": 10.39,
+          "h": 10.39
+        },
+        "nameText": "AI·11",
+        "nameBox": {
+          "clientW": 42,
+          "scrollW": 42,
+          "ellipsis": "ellipsis",
+          "nowrap": "nowrap",
+          "overflow": "hidden"
+        },
+        "statusTone": [
+          "is-mint"
+        ],
+        "statusSprite": true,
+        "statusLabel": "已就绪",
+        "hp": null,
+        "ai": true,
+        "avatar": {
+          "w": 24,
+          "h": 24
+        },
+        "aria": "红方同盟 AI·11",
+        "role": "group",
+        "withinRow": true
+      },
+      {
+        "empty": false,
+        "rect": {
+          "l": 8,
+          "t": 283.39,
+          "r": 96,
+          "b": 310.39,
+          "w": 88,
+          "h": 27
+        },
+        "ava": {
+          "l": 15.19,
+          "t": 285.39,
+          "r": 39.19,
+          "b": 309.39,
+          "w": 24,
+          "h": 24
+        },
+        "avaBox": {
+          "l": 15.19,
+          "t": 285.39,
+          "r": 39.19,
+          "b": 309.39,
+          "w": 24,
+          "h": 24
+        },
+        "name": {
+          "l": 44.77,
+          "t": 287.3,
+          "r": 87.2,
+          "b": 296.3,
+          "w": 42.44,
+          "h": 9
+        },
+        "info": {
+          "l": 42.38,
+          "t": 285.7,
+          "r": 92,
+          "b": 309.08,
+          "w": 49.63,
+          "h": 23.38
+        },
+        "status": {
+          "l": 76.81,
+          "t": 297.09,
+          "r": 87.2,
+          "b": 307.48,
+          "w": 10.39,
+          "h": 10.39
+        },
+        "nameText": "AI·12",
+        "nameBox": {
+          "clientW": 42,
+          "scrollW": 42,
+          "ellipsis": "ellipsis",
+          "nowrap": "nowrap",
+          "overflow": "hidden"
+        },
+        "statusTone": [
+          "is-mint"
+        ],
+        "statusSprite": true,
+        "statusLabel": "已就绪",
+        "hp": null,
+        "ai": true,
+        "avatar": {
+          "w": 24,
+          "h": 24
+        },
+        "aria": "红方同盟 AI·12",
+        "role": "group",
+        "withinRow": true
+      }
+    ],
+    "rowOverlaps": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "overlaps": [
+      {
+        "a": ".gm-teams",
+        "b": ".gm__corner",
+        "area": 0
+      },
+      {
+        "a": ".gm-teams",
+        "b": ".shopbar",
+        "area": 0
+      },
+      {
+        "a": ".gm-teams",
+        "b": ".gm__bonds",
+        "area": 0
+      },
+      {
+        "a": ".gm-teams",
+        "b": ".gm__effects",
+        "area": 0
+      },
+      {
+        "a": ".gm-teams",
+        "b": ".gtop",
+        "area": 0
+      },
+      {
+        "a": "box0",
+        "b": ".gm__corner",
+        "area": 0
+      },
+      {
+        "a": "box0",
+        "b": ".shopbar",
+        "area": 0
+      },
+      {
+        "a": "box0",
+        "b": ".gm__bonds",
+        "area": 0
+      },
+      {
+        "a": "box0",
+        "b": ".gm__effects",
+        "area": 0
+      },
+      {
+        "a": "box0",
+        "b": ".gtop",
+        "area": 0
+      }
+    ],
+    "headRect": {
+      "l": 8,
+      "t": 170.39,
+      "r": 96,
+      "b": 202.39,
+      "w": 88,
+      "h": 32
+    },
+    "listRect": {
+      "l": 8,
+      "t": 202.39,
+      "r": 96,
+      "b": 310.39,
+      "w": 88,
+      "h": 108
+    }
+  },
+  "room8at792": {
+    "vw": 792,
+    "vh": 360,
+    "dpr": 1,
+    "scroll": {
+      "clientW": 792,
+      "clientH": 360,
+      "scrollW": 792,
+      "scrollH": 360
+    },
+    "phase": "PREP",
+    "round": 3,
+    "gmClass": "screen gm gm--prep has-multi",
+    "counts": {
+      ".gm-teams": 1,
+      ".gm-team": 2,
+      ".gm-team__list": 1,
+      ".gm-team__row": 4,
+      ".team": 0,
+      ".gm-unite": 0
+    },
+    "hudChildren": [
+      "gtop",
+      "gm__bonds",
+      "gm-teams",
+      "gm__effects",
+      "shopbar",
+      "chat-panel  ",
+      "ui-slot gm__ui-slot",
+      "gm__corner"
+    ],
+    "teams": {
+      "l": 8,
+      "t": 94.39,
+      "r": 96,
+      "b": 262.39,
+      "w": 88,
+      "h": 168
+    },
+    "teamRect": null,
+    "teamRows": 0,
+    "boxes": [
+      {
+        "rect": {
+          "l": 8,
+          "t": 94.39,
+          "r": 96,
+          "b": 262.39,
+          "w": 88,
+          "h": 168
+        },
+        "open": true,
+        "cls": "gm-team is-mine is-full is-open"
+      }
+    ],
+    "box": {
+      "l": 8,
+      "t": 94.39,
+      "r": 96,
+      "b": 262.39,
+      "w": 88,
+      "h": 168
+    },
+    "rows": [
+      {
+        "empty": false,
+        "rect": {
+          "l": 8,
+          "t": 126.39,
+          "r": 96,
+          "b": 160.39,
+          "w": 88,
+          "h": 34
+        },
+        "ava": {
+          "l": 15.19,
+          "t": 131.89,
+          "r": 39.19,
+          "b": 155.89,
+          "w": 24,
+          "h": 24
+        },
+        "avaBox": {
+          "l": 15.19,
+          "t": 131.89,
+          "r": 39.19,
+          "b": 155.89,
+          "w": 24,
+          "h": 24
+        },
+        "name": {
+          "l": 44.77,
+          "t": 131.19,
+          "r": 87.2,
+          "b": 140.19,
+          "w": 42.44,
+          "h": 9
+        },
+        "info": {
+          "l": 42.38,
+          "t": 129.59,
+          "r": 92,
+          "b": 158.19,
+          "w": 49.63,
+          "h": 28.59
+        },
+        "status": {
+          "l": 76.81,
+          "t": 143.59,
+          "r": 87.2,
+          "b": 153.98,
+          "w": 10.39,
+          "h": 10.39
+        },
+        "nameText": "凯尔希",
+        "nameBox": {
+          "clientW": 42,
+          "scrollW": 42,
+          "ellipsis": "ellipsis",
+          "nowrap": "nowrap",
+          "overflow": "hidden"
+        },
+        "statusTone": [
+          "is-lo"
+        ],
+        "statusSprite": false,
+        "statusLabel": "行动中",
+        "hp": "26",
+        "ai": false,
+        "avatar": {
+          "w": 24,
+          "h": 24
+        },
+        "aria": "我方同盟 凯尔希",
+        "role": "group",
+        "withinRow": true
+      },
+      {
+        "empty": false,
+        "rect": {
+          "l": 8,
+          "t": 160.39,
+          "r": 96,
+          "b": 194.39,
+          "w": 88,
+          "h": 34
+        },
+        "ava": {
+          "l": 15.19,
+          "t": 165.89,
+          "r": 39.19,
+          "b": 189.89,
+          "w": 24,
+          "h": 24
+        },
+        "avaBox": {
+          "l": 15.19,
+          "t": 165.89,
+          "r": 39.19,
+          "b": 189.89,
+          "w": 24,
+          "h": 24
+        },
+        "name": {
+          "l": 44.77,
+          "t": 165.19,
+          "r": 87.2,
+          "b": 174.19,
+          "w": 42.44,
+          "h": 9
+        },
+        "info": {
+          "l": 42.38,
+          "t": 163.59,
+          "r": 92,
+          "b": 192.19,
+          "w": 49.63,
+          "h": 28.59
+        },
+        "status": {
+          "l": 76.81,
+          "t": 177.59,
+          "r": 87.2,
+          "b": 187.98,
+          "w": 10.39,
+          "h": 10.39
+        },
+        "nameText": "AI·华法琳",
+        "nameBox": {
+          "clientW": 42,
+          "scrollW": 42,
+          "ellipsis": "ellipsis",
+          "nowrap": "nowrap",
+          "overflow": "hidden"
+        },
+        "statusTone": [
+          "is-mint"
+        ],
+        "statusSprite": true,
+        "statusLabel": "已就绪",
+        "hp": "23",
+        "ai": true,
+        "avatar": {
+          "w": 24,
+          "h": 24
+        },
+        "aria": "我方同盟 AI·华法琳",
+        "role": "group",
+        "withinRow": true
+      },
+      {
+        "empty": false,
+        "rect": {
+          "l": 8,
+          "t": 194.39,
+          "r": 96,
+          "b": 228.39,
+          "w": 88,
+          "h": 34
+        },
+        "ava": {
+          "l": 15.19,
+          "t": 199.89,
+          "r": 39.19,
+          "b": 223.89,
+          "w": 24,
+          "h": 24
+        },
+        "avaBox": {
+          "l": 15.19,
+          "t": 199.89,
+          "r": 39.19,
+          "b": 223.89,
+          "w": 24,
+          "h": 24
+        },
+        "name": {
+          "l": 44.77,
+          "t": 199.19,
+          "r": 87.2,
+          "b": 208.19,
+          "w": 42.44,
+          "h": 9
+        },
+        "info": {
+          "l": 42.38,
+          "t": 197.59,
+          "r": 92,
+          "b": 226.19,
+          "w": 49.63,
+          "h": 28.59
+        },
+        "status": {
+          "l": 76.81,
+          "t": 211.59,
+          "r": 87.2,
+          "b": 221.98,
+          "w": 10.39,
+          "h": 10.39
+        },
+        "nameText": "AI·阿米娅",
+        "nameBox": {
+          "clientW": 42,
+          "scrollW": 42,
+          "ellipsis": "ellipsis",
+          "nowrap": "nowrap",
+          "overflow": "hidden"
+        },
+        "statusTone": [
+          "is-mint"
+        ],
+        "statusSprite": true,
+        "statusLabel": "已就绪",
+        "hp": "22",
+        "ai": true,
+        "avatar": {
+          "w": 24,
+          "h": 24
+        },
+        "aria": "我方同盟 AI·阿米娅",
+        "role": "group",
+        "withinRow": true
+      },
+      {
+        "empty": false,
+        "rect": {
+          "l": 8,
+          "t": 228.39,
+          "r": 96,
+          "b": 262.39,
+          "w": 88,
+          "h": 34
+        },
+        "ava": {
+          "l": 15.19,
+          "t": 233.89,
+          "r": 39.19,
+          "b": 257.89,
+          "w": 24,
+          "h": 24
+        },
+        "avaBox": {
+          "l": 15.19,
+          "t": 233.89,
+          "r": 39.19,
+          "b": 257.89,
+          "w": 24,
+          "h": 24
+        },
+        "name": {
+          "l": 44.77,
+          "t": 233.19,
+          "r": 87.2,
+          "b": 242.19,
+          "w": 42.44,
+          "h": 9
+        },
+        "info": {
+          "l": 42.38,
+          "t": 231.59,
+          "r": 92,
+          "b": 260.19,
+          "w": 49.63,
+          "h": 28.59
+        },
+        "status": {
+          "l": 76.81,
+          "t": 245.59,
+          "r": 87.2,
+          "b": 255.98,
+          "w": 10.39,
+          "h": 10.39
+        },
+        "nameText": "AI·惊蛰",
+        "nameBox": {
+          "clientW": 42,
+          "scrollW": 42,
+          "ellipsis": "ellipsis",
+          "nowrap": "nowrap",
+          "overflow": "hidden"
+        },
+        "statusTone": [
+          "is-mint"
+        ],
+        "statusSprite": true,
+        "statusLabel": "已就绪",
+        "hp": "30",
+        "ai": true,
+        "avatar": {
+          "w": 24,
+          "h": 24
+        },
+        "aria": "我方同盟 AI·惊蛰",
+        "role": "group",
+        "withinRow": true
+      }
+    ],
+    "rowOverlaps": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "overlaps": [
+      {
+        "a": ".gm-teams",
+        "b": ".gm__corner",
+        "area": 0
+      },
+      {
+        "a": ".gm-teams",
+        "b": ".shopbar",
+        "area": 0
+      },
+      {
+        "a": ".gm-teams",
+        "b": ".gm__bonds",
+        "area": 0
+      },
+      {
+        "a": ".gm-teams",
+        "b": ".gm__effects",
+        "area": 0
+      },
+      {
+        "a": ".gm-teams",
+        "b": ".gtop",
+        "area": 0
+      },
+      {
+        "a": "box0",
+        "b": ".gm__corner",
+        "area": 0
+      },
+      {
+        "a": "box0",
+        "b": ".shopbar",
+        "area": 0
+      },
+      {
+        "a": "box0",
+        "b": ".gm__bonds",
+        "area": 0
+      },
+      {
+        "a": "box0",
+        "b": ".gm__effects",
+        "area": 0
+      },
+      {
+        "a": "box0",
+        "b": ".gtop",
+        "area": 0
+      }
+    ],
+    "headRect": {
+      "l": 8,
+      "t": 94.39,
+      "r": 96,
+      "b": 126.39,
+      "w": 88,
+      "h": 32
+    },
+    "listRect": {
+      "l": 8,
+      "t": 126.39,
+      "r": 96,
+      "b": 262.39,
+      "w": 88,
+      "h": 136
+    }
+  },
+  "room8at1920": {
+    "vw": 1920,
+    "vh": 1080,
+    "dpr": 1,
+    "scroll": {
+      "clientW": 1920,
+      "clientH": 1080,
+      "scrollW": 1920,
+      "scrollH": 1080
+    },
+    "phase": "PREP",
+    "round": 3,
+    "gmClass": "screen gm gm--prep has-multi",
+    "counts": {
+      ".gm-teams": 1,
+      ".gm-team": 2,
+      ".gm-team__list": 1,
+      ".gm-team__row": 4,
+      ".team": 0,
+      ".gm-unite": 0
+    },
+    "hudChildren": [
+      "gtop",
+      "gm__bonds",
+      "gm-teams",
+      "gm__effects",
+      "shopbar",
+      "chat-panel  ",
+      "ui-slot gm__ui-slot",
+      "gm__corner"
+    ],
+    "teams": {
+      "l": 20,
+      "t": 236,
+      "r": 240,
+      "b": 656,
+      "w": 220,
+      "h": 420
+    },
+    "teamRect": null,
+    "teamRows": 0,
+    "boxes": [
+      {
+        "rect": {
+          "l": 20,
+          "t": 236,
+          "r": 240,
+          "b": 656,
+          "w": 220,
+          "h": 420
+        },
+        "open": true,
+        "cls": "gm-team is-mine is-full is-open"
+      }
+    ],
+    "box": {
+      "l": 20,
+      "t": 236,
+      "r": 240,
+      "b": 656,
+      "w": 220,
+      "h": 420
+    },
+    "rows": [
+      {
+        "empty": false,
+        "rect": {
+          "l": 20,
+          "t": 316,
+          "r": 240,
+          "b": 401,
+          "w": 220,
+          "h": 85
+        },
+        "ava": {
+          "l": 38,
+          "t": 329,
+          "r": 98,
+          "b": 389,
+          "w": 60,
+          "h": 60
+        },
+        "avaBox": {
+          "l": 38,
+          "t": 329,
+          "r": 98,
+          "b": 389,
+          "w": 60,
+          "h": 60
+        },
+        "name": {
+          "l": 112,
+          "t": 327.25,
+          "r": 218,
+          "b": 349.75,
+          "w": 106,
+          "h": 22.5
+        },
+        "info": {
+          "l": 106,
+          "t": 323.25,
+          "r": 230,
+          "b": 394.75,
+          "w": 124,
+          "h": 71.5
+        },
+        "status": {
+          "l": 192,
+          "t": 358.25,
+          "r": 218,
+          "b": 384.25,
+          "w": 26,
+          "h": 26
+        },
+        "nameText": "凯尔希",
+        "nameBox": {
+          "clientW": 106,
+          "scrollW": 106,
+          "ellipsis": "ellipsis",
+          "nowrap": "nowrap",
+          "overflow": "hidden"
+        },
+        "statusTone": [
+          "is-lo"
+        ],
+        "statusSprite": false,
+        "statusLabel": "行动中",
+        "hp": "26",
+        "ai": false,
+        "avatar": {
+          "w": 60,
+          "h": 60
+        },
+        "aria": "我方同盟 凯尔希",
+        "role": "group",
+        "withinRow": true
+      },
+      {
+        "empty": false,
+        "rect": {
+          "l": 20,
+          "t": 401,
+          "r": 240,
+          "b": 486,
+          "w": 220,
+          "h": 85
+        },
+        "ava": {
+          "l": 38,
+          "t": 414,
+          "r": 98,
+          "b": 474,
+          "w": 60,
+          "h": 60
+        },
+        "avaBox": {
+          "l": 38,
+          "t": 414,
+          "r": 98,
+          "b": 474,
+          "w": 60,
+          "h": 60
+        },
+        "name": {
+          "l": 112,
+          "t": 412.25,
+          "r": 218,
+          "b": 434.75,
+          "w": 106,
+          "h": 22.5
+        },
+        "info": {
+          "l": 106,
+          "t": 408.25,
+          "r": 230,
+          "b": 479.75,
+          "w": 124,
+          "h": 71.5
+        },
+        "status": {
+          "l": 192,
+          "t": 443.25,
+          "r": 218,
+          "b": 469.25,
+          "w": 26,
+          "h": 26
+        },
+        "nameText": "AI·华法琳",
+        "nameBox": {
+          "clientW": 106,
+          "scrollW": 106,
+          "ellipsis": "ellipsis",
+          "nowrap": "nowrap",
+          "overflow": "hidden"
+        },
+        "statusTone": [
+          "is-mint"
+        ],
+        "statusSprite": true,
+        "statusLabel": "已就绪",
+        "hp": "23",
+        "ai": true,
+        "avatar": {
+          "w": 60,
+          "h": 60
+        },
+        "aria": "我方同盟 AI·华法琳",
+        "role": "group",
+        "withinRow": true
+      },
+      {
+        "empty": false,
+        "rect": {
+          "l": 20,
+          "t": 486,
+          "r": 240,
+          "b": 571,
+          "w": 220,
+          "h": 85
+        },
+        "ava": {
+          "l": 38,
+          "t": 499,
+          "r": 98,
+          "b": 559,
+          "w": 60,
+          "h": 60
+        },
+        "avaBox": {
+          "l": 38,
+          "t": 499,
+          "r": 98,
+          "b": 559,
+          "w": 60,
+          "h": 60
+        },
+        "name": {
+          "l": 112,
+          "t": 497.25,
+          "r": 218,
+          "b": 519.75,
+          "w": 106,
+          "h": 22.5
+        },
+        "info": {
+          "l": 106,
+          "t": 493.25,
+          "r": 230,
+          "b": 564.75,
+          "w": 124,
+          "h": 71.5
+        },
+        "status": {
+          "l": 192,
+          "t": 528.25,
+          "r": 218,
+          "b": 554.25,
+          "w": 26,
+          "h": 26
+        },
+        "nameText": "AI·阿米娅",
+        "nameBox": {
+          "clientW": 106,
+          "scrollW": 106,
+          "ellipsis": "ellipsis",
+          "nowrap": "nowrap",
+          "overflow": "hidden"
+        },
+        "statusTone": [
+          "is-mint"
+        ],
+        "statusSprite": true,
+        "statusLabel": "已就绪",
+        "hp": "22",
+        "ai": true,
+        "avatar": {
+          "w": 60,
+          "h": 60
+        },
+        "aria": "我方同盟 AI·阿米娅",
+        "role": "group",
+        "withinRow": true
+      },
+      {
+        "empty": false,
+        "rect": {
+          "l": 20,
+          "t": 571,
+          "r": 240,
+          "b": 656,
+          "w": 220,
+          "h": 85
+        },
+        "ava": {
+          "l": 38,
+          "t": 584,
+          "r": 98,
+          "b": 644,
+          "w": 60,
+          "h": 60
+        },
+        "avaBox": {
+          "l": 38,
+          "t": 584,
+          "r": 98,
+          "b": 644,
+          "w": 60,
+          "h": 60
+        },
+        "name": {
+          "l": 112,
+          "t": 582.25,
+          "r": 218,
+          "b": 604.75,
+          "w": 106,
+          "h": 22.5
+        },
+        "info": {
+          "l": 106,
+          "t": 578.25,
+          "r": 230,
+          "b": 649.75,
+          "w": 124,
+          "h": 71.5
+        },
+        "status": {
+          "l": 192,
+          "t": 613.25,
+          "r": 218,
+          "b": 639.25,
+          "w": 26,
+          "h": 26
+        },
+        "nameText": "AI·惊蛰",
+        "nameBox": {
+          "clientW": 106,
+          "scrollW": 106,
+          "ellipsis": "ellipsis",
+          "nowrap": "nowrap",
+          "overflow": "hidden"
+        },
+        "statusTone": [
+          "is-mint"
+        ],
+        "statusSprite": true,
+        "statusLabel": "已就绪",
+        "hp": "30",
+        "ai": true,
+        "avatar": {
+          "w": 60,
+          "h": 60
+        },
+        "aria": "我方同盟 AI·惊蛰",
+        "role": "group",
+        "withinRow": true
+      }
+    ],
+    "rowOverlaps": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "overlaps": [
+      {
+        "a": ".gm-teams",
+        "b": ".gm__corner",
+        "area": 0
+      },
+      {
+        "a": ".gm-teams",
+        "b": ".shopbar",
+        "area": 0
+      },
+      {
+        "a": ".gm-teams",
+        "b": ".gm__bonds",
+        "area": 0
+      },
+      {
+        "a": ".gm-teams",
+        "b": ".gm__effects",
+        "area": 0
+      },
+      {
+        "a": ".gm-teams",
+        "b": ".gtop",
+        "area": 0
+      },
+      {
+        "a": "box0",
+        "b": ".gm__corner",
+        "area": 0
+      },
+      {
+        "a": "box0",
+        "b": ".shopbar",
+        "area": 0
+      },
+      {
+        "a": "box0",
+        "b": ".gm__bonds",
+        "area": 0
+      },
+      {
+        "a": "box0",
+        "b": ".gm__effects",
+        "area": 0
+      },
+      {
+        "a": "box0",
+        "b": ".gtop",
+        "area": 0
+      }
+    ],
+    "headRect": {
+      "l": 20,
+      "t": 236,
+      "r": 240,
+      "b": 316,
+      "w": 220,
+      "h": 80
+    },
+    "listRect": {
+      "l": 20,
+      "t": 316,
+      "r": 240,
+      "b": 656,
+      "w": 220,
+      "h": 340
+    }
+  },
+  "room4at792": {
+    "vw": 792,
+    "vh": 360,
+    "dpr": 1,
+    "scroll": {
+      "clientW": 792,
+      "clientH": 360,
+      "scrollW": 792,
+      "scrollH": 360
+    },
+    "phase": "PREP",
+    "round": 3,
+    "gmClass": "screen gm gm--prep",
+    "counts": {
+      ".gm-teams": 0,
+      ".gm-team": 0,
+      ".gm-team__list": 0,
+      ".gm-team__row": 0,
+      ".team": 1,
+      ".gm-unite": 0
+    },
+    "hudChildren": [
+      "gtop",
+      "gm__bonds",
+      "team",
+      "gm__effects",
+      "shopbar",
+      "chat-panel  ",
+      "ui-slot gm__ui-slot",
+      "gm__corner"
+    ],
+    "teams": null,
+    "teamRect": {
+      "l": 8.8,
+      "t": 94.39,
+      "r": 85.7,
+      "b": 239.17,
+      "w": 76.91,
+      "h": 144.78
+    },
+    "teamRows": 4,
+    "boxes": [],
+    "box": null,
+    "rows": [],
+    "rowOverlaps": [],
+    "overlaps": [],
+    "headRect": null,
+    "listRect": null
+  },
+  "room4at1920": {
+    "vw": 1920,
+    "vh": 1080,
+    "dpr": 1,
+    "scroll": {
+      "clientW": 1920,
+      "clientH": 1080,
+      "scrollW": 1920,
+      "scrollH": 1080
+    },
+    "phase": "PREP",
+    "round": 3,
+    "gmClass": "screen gm gm--prep",
+    "counts": {
+      ".gm-teams": 0,
+      ".gm-team": 0,
+      ".gm-team__list": 0,
+      ".gm-team__row": 0,
+      ".team": 1,
+      ".gm-unite": 0
+    },
+    "hudChildren": [
+      "gtop",
+      "gm__bonds",
+      "team",
+      "gm__effects",
+      "shopbar",
+      "chat-panel  ",
+      "ui-slot gm__ui-slot",
+      "gm__corner"
+    ],
+    "teams": null,
+    "teamRect": {
+      "l": 22,
+      "t": 236,
+      "r": 214.3,
+      "b": 598,
+      "w": 192.3,
+      "h": 362
+    },
+    "teamRows": 4,
+    "boxes": [],
+    "box": null,
+    "rows": [],
+    "rowOverlaps": [],
+    "overlaps": [],
+    "headRect": null,
+    "listRect": null
+  },
+  "serverLog": [
+    "fast server on http://127.0.0.1:62656 (timers ×1, combat 2×, first round 3)"
+  ],
+  "finishedAt": "2026-10-31T15:14:56.394Z"
+}

@@ -3,11 +3,84 @@
   "reports": [
     {
       "dir": "data/versions/act2autochess-v2_1",
-      "findings": [],
+      "findings": [
+        {
+          "table": "garrisons",
+          "key": "act1autochess_gar_eff_attrByBond|act1autochess_gar_eff_attrByBond",
+          "buff": "env_gbuff_new_with_verify",
+          "field": "bond_type",
+          "reason": "A play-set garrison record merged into the default data adds this field under a shared 上半 effect key; V2_1's own record keeps the historical blackboard."
+        },
+        {
+          "table": "garrisons",
+          "key": "act1autochess_gar_eff_chaos|act1autochess_gar_eff_chaos",
+          "buff": "env_gbuff_new_with_verify",
+          "field": "bond_id",
+          "reason": "A play-set garrison record merged into the default data adds bond_id under the shared 上半 chaos effect key; V2_1's record has the historical blackboard only."
+        },
+        {
+          "table": "garrisons",
+          "key": "act1autochess_gar_eff_chaos|act1autochess_gar_eff_chaos",
+          "buff": "env_gbuff_new_with_verify",
+          "field": "bond_type",
+          "reason": "A play-set garrison record merged into the default data adds bond_type under the shared 上半 chaos effect key; the historical V2_1 record does not carry it."
+        },
+        {
+          "table": "garrisons",
+          "key": "act1autochess_gar_eff_respawnTimeByBond|act1autochess_gar_eff_respawnTimeByBond",
+          "buff": "env_gbuff_new_with_verify",
+          "field": "bond_type",
+          "reason": "A play-set garrison record merged into the default data adds bond_type under a shared 上半 effect key; V2_1's own record keeps the historical blackboard."
+        },
+        {
+          "table": "garrisons",
+          "key": "act1autochess_gar_event_useskill|act1autochess_gar_event_useskill",
+          "buff": "env_gbuff_new_with_verify",
+          "field": "also_bond_id",
+          "reason": "A play-set garrison record merged into the default data adds also_bond_id under the shared 上半 useskill key; V2_1's record has no such field."
+        },
+        {
+          "table": "garrisons",
+          "key": "act2autochess_gar_eff_attrByBond_add_onstart|act2autochess_gar_eff_attrByBond_add_onstart",
+          "buff": "env_gbuff_new_with_verify",
+          "field": "bond_type",
+          "reason": "A play-set garrison record adds bond_type under a shared 下半 effect key; V2_1 predates that record and keeps its historical blackboard."
+        },
+        {
+          "table": "garrisons",
+          "key": "act2autochess_gar_event_onstart|act2autochess_gar_event_onstart",
+          "buff": "env_gbuff_new_with_verify",
+          "field": "no_deploy_slot",
+          "reason": "A play-set garrison record adds no_deploy_slot under the shared 下半 onstart key; V2_1 has no such record, and the missing flag reads false."
+        },
+        {
+          "table": "garrisons",
+          "key": "ADD_BOND|",
+          "buff": "give_garrison_to_front",
+          "field": "check_ab_flag",
+          "reason": "The play-set garrison record adds check_ab_flag under SERVER_ADD_BOND; V2_1's historical row has no such gate, so the read uses its own default there (documented historical difference)."
+        }
+      ],
       "missingBuffKeys": [
+        {
+          "key": "act1autochess_gar_levitate_once",
+          "reason": "A 上半 (act1) garrison trait (岳羽由加莉); V2_1 is 下半 and has no such record — the 炸惊 play set merged it into the default data."
+        },
+        {
+          "key": "act2autochess_gar_event_self_status",
+          "reason": "A 炸惊 garrison trait (埃癸斯) merged into the default data after V2_1; no historical record carries this effect."
+        },
         {
           "key": "bond_multi_layer_char_goods_price_bond_discount",
           "reason": "visiDiscount normalizes the historical single-stage keys; the V2_2 replacement key is absent by design."
+        },
+        {
+          "key": "MUJICA_AMORIS",
+          "reason": "A 炸惊 collaboration garrison (颂乐人偶) named by its handler; V2_1 has no mujica content or record for it."
+        },
+        {
+          "key": "MUJICA_TMORIS",
+          "reason": "A 炸惊 collaboration garrison (颂乐人偶) named by its handler; V2_1 has no mujica content or record for it."
         },
         {
           "key": "SERVER_ADD_MULTIPLE_BOND",
@@ -209,6 +282,34 @@
         },
         {
           "table": "garrisons",
+          "key": "act1autochess_gar_eff_attrByBond|act1autochess_gar_eff_attrByBond",
+          "buff": "env_gbuff_new_with_verify",
+          "field": "bond_type",
+          "reason": "A play-set garrison record merged into the default data adds this field under a shared 上半 effect key; the historical version's own record keeps its blackboard."
+        },
+        {
+          "table": "garrisons",
+          "key": "act1autochess_gar_eff_chaos|act1autochess_gar_eff_chaos",
+          "buff": "env_gbuff_new_with_verify",
+          "field": "bond_id",
+          "reason": "A play-set garrison record merged into the default data adds bond_id under the shared 上半 chaos effect key; the historical version's record has the old blackboard only."
+        },
+        {
+          "table": "garrisons",
+          "key": "act1autochess_gar_eff_chaos|act1autochess_gar_eff_chaos",
+          "buff": "env_gbuff_new_with_verify",
+          "field": "bond_type",
+          "reason": "A play-set garrison record merged into the default data adds bond_type under the shared 上半 chaos effect key; the historical version's record does not carry it."
+        },
+        {
+          "table": "garrisons",
+          "key": "act1autochess_gar_eff_respawnTimeByBond|act1autochess_gar_eff_respawnTimeByBond",
+          "buff": "env_gbuff_new_with_verify",
+          "field": "bond_type",
+          "reason": "A play-set garrison record merged into the default data adds bond_type under a shared 上半 effect key; the historical version's own record keeps its blackboard."
+        },
+        {
+          "table": "garrisons",
           "key": "act1autochess_gar_event_consume_ammo|act1autochess_gar_event_consume_ammo",
           "buff": "char_dynamic_ability_new",
           "field": "max_add_count_per_battle",
@@ -227,6 +328,13 @@
           "buff": "env_gbuff_new_with_verify",
           "field": "max_add_count_per_battle",
           "reason": "The historical trait has no per-battle layer cap. The existing missing/nonpositive-cap path uses Infinity."
+        },
+        {
+          "table": "garrisons",
+          "key": "act1autochess_gar_event_useskill|act1autochess_gar_event_useskill",
+          "buff": "env_gbuff_new_with_verify",
+          "field": "also_bond_id",
+          "reason": "A play-set garrison record merged into the default data adds also_bond_id under the shared 上半 useskill key; the historical version's record has no such field."
         },
         {
           "table": "garrisons",
@@ -251,6 +359,10 @@
         }
       ],
       "missingBuffKeys": [
+        {
+          "key": "act1autochess_gar_levitate_once",
+          "reason": "A 炸惊 garrison trait (岳羽由加莉) merged into the default data; these first-season versions have no such record."
+        },
         {
           "key": "act2autochess_band12_buff",
           "reason": "The later Dusk dragon grant does not exist in these first-season band records."
@@ -328,6 +440,10 @@
           "reason": "No historical record carries this later effect or trait; its handler is intentionally not dispatched. Pinned activity_table and the version-only replacement inventory are the source."
         },
         {
+          "key": "act2autochess_gar_event_self_status",
+          "reason": "A 炸惊 garrison trait (埃癸斯) merged into the default data; these first-season versions have no such record."
+        },
+        {
           "key": "bond_multi_layer_char_goods_price_bond_discount",
           "reason": "visiDiscount normalizes the historical single-stage keys; the V2_2 replacement key is absent by design."
         },
@@ -338,6 +454,14 @@
         {
           "key": "gain_coin_when_round_start",
           "reason": "No historical record carries this later effect or trait; its handler is intentionally not dispatched. Pinned activity_table and the version-only replacement inventory are the source."
+        },
+        {
+          "key": "MUJICA_AMORIS",
+          "reason": "A 炸惊 collaboration garrison (颂乐人偶) named by its handler; these first-season versions have no mujica content."
+        },
+        {
+          "key": "MUJICA_TMORIS",
+          "reason": "A 炸惊 collaboration garrison (颂乐人偶) named by its handler; these first-season versions have no mujica content."
         },
         {
           "key": "periodic_damage",
@@ -728,6 +852,34 @@
         },
         {
           "table": "garrisons",
+          "key": "act1autochess_gar_eff_attrByBond|act1autochess_gar_eff_attrByBond",
+          "buff": "env_gbuff_new_with_verify",
+          "field": "bond_type",
+          "reason": "A play-set garrison record merged into the default data adds this field under a shared 上半 effect key; the historical version's own record keeps its blackboard."
+        },
+        {
+          "table": "garrisons",
+          "key": "act1autochess_gar_eff_chaos|act1autochess_gar_eff_chaos",
+          "buff": "env_gbuff_new_with_verify",
+          "field": "bond_id",
+          "reason": "A play-set garrison record merged into the default data adds bond_id under the shared 上半 chaos effect key; the historical version's record has the old blackboard only."
+        },
+        {
+          "table": "garrisons",
+          "key": "act1autochess_gar_eff_chaos|act1autochess_gar_eff_chaos",
+          "buff": "env_gbuff_new_with_verify",
+          "field": "bond_type",
+          "reason": "A play-set garrison record merged into the default data adds bond_type under the shared 上半 chaos effect key; the historical version's record does not carry it."
+        },
+        {
+          "table": "garrisons",
+          "key": "act1autochess_gar_eff_respawnTimeByBond|act1autochess_gar_eff_respawnTimeByBond",
+          "buff": "env_gbuff_new_with_verify",
+          "field": "bond_type",
+          "reason": "A play-set garrison record merged into the default data adds bond_type under a shared 上半 effect key; the historical version's own record keeps its blackboard."
+        },
+        {
+          "table": "garrisons",
           "key": "act1autochess_gar_event_consume_ammo|act1autochess_gar_event_consume_ammo",
           "buff": "char_dynamic_ability_new",
           "field": "max_add_count_per_battle",
@@ -746,6 +898,13 @@
           "buff": "env_gbuff_new_with_verify",
           "field": "max_add_count_per_battle",
           "reason": "The historical trait has no per-battle layer cap. The existing missing/nonpositive-cap path uses Infinity."
+        },
+        {
+          "table": "garrisons",
+          "key": "act1autochess_gar_event_useskill|act1autochess_gar_event_useskill",
+          "buff": "env_gbuff_new_with_verify",
+          "field": "also_bond_id",
+          "reason": "A play-set garrison record merged into the default data adds also_bond_id under the shared 上半 useskill key; the historical version's record has no such field."
         },
         {
           "table": "garrisons",
@@ -770,6 +929,10 @@
         }
       ],
       "missingBuffKeys": [
+        {
+          "key": "act1autochess_gar_levitate_once",
+          "reason": "A 炸惊 garrison trait (岳羽由加莉) merged into the default data; these first-season versions have no such record."
+        },
         {
           "key": "act2autochess_band12_buff",
           "reason": "The later Dusk dragon grant does not exist in these first-season band records."
@@ -847,6 +1010,10 @@
           "reason": "No historical record carries this later effect or trait; its handler is intentionally not dispatched. Pinned activity_table and the version-only replacement inventory are the source."
         },
         {
+          "key": "act2autochess_gar_event_self_status",
+          "reason": "A 炸惊 garrison trait (埃癸斯) merged into the default data; these first-season versions have no such record."
+        },
+        {
           "key": "bond_multi_layer_char_goods_price_bond_discount",
           "reason": "visiDiscount normalizes the historical single-stage keys; the V2_2 replacement key is absent by design."
         },
@@ -857,6 +1024,14 @@
         {
           "key": "gain_coin_when_round_start",
           "reason": "No historical record carries this later effect or trait; its handler is intentionally not dispatched. Pinned activity_table and the version-only replacement inventory are the source."
+        },
+        {
+          "key": "MUJICA_AMORIS",
+          "reason": "A 炸惊 collaboration garrison (颂乐人偶) named by its handler; these first-season versions have no mujica content."
+        },
+        {
+          "key": "MUJICA_TMORIS",
+          "reason": "A 炸惊 collaboration garrison (颂乐人偶) named by its handler; these first-season versions have no mujica content."
         },
         {
           "key": "periodic_damage",

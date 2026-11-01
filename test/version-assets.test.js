@@ -1,7 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
+import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { assetCoverage } from '../tools/assets/coverage.mjs';
 import { addManifestEntries, presentationUnion, versionAssetData } from '../tools/assets/versions.mjs';
@@ -9,6 +10,38 @@ import { fxFixture } from './helpers/fxFixtures.js';
 
 const root = path.resolve(import.meta.dirname, '..');
 const assets = JSON.parse(readFileSync(path.join(root, 'data/assets.json'), 'utf8'));
+
+/**
+ * The Python 3 executable of this machine. The fx tests below drive the extractor's own Python (`tools/local-extract/
+ * fx.py`), and the interpreter is `python3` on Linux/macOS but `python` (or `py -3`) on Windows — `spawnSync('python3')`
+ * is a plain ENOENT there, and every assertion after it would then pass on a null status.
+ * @returns {{cmd: string, pre: string[]} | null}
+ */
+function python() {
+  for (const [cmd, pre] of [['python3', []], ['python', []], ['py', ['-3']]]) {
+    // No piped stdio: a sandboxed run refuses to create the pipes (`spawnSync` fails with EPERM), while `ignore` works.
+    if (spawnSync(cmd, [...pre, '--version'], { stdio: 'ignore' }).status === 0) return { cmd, pre };
+  }
+  return null;
+}
+
+/**
+ * Run a Python script that writes its JSON result to the path in `sys.argv[1]`, and parse that result.
+ * The child's stdio is inherited, not piped, for the same reason as in {@link python}: a piped `spawnSync` fails with
+ * EPERM under a sandboxed run, and an inherited stderr still shows a crash's traceback. The assertions are unchanged.
+ * @param {{cmd: string, pre: string[]}} py
+ * @param {string} script Python source writing its result to `sys.argv[1]`
+ * @returns {any} the parsed JSON result
+ */
+function pyJson(py, script) {
+  const dir = mkdtempSync(path.join(tmpdir(), 'sp-fx-'));
+  const scriptPath = path.join(dir, 'run.py');
+  const outPath = path.join(dir, 'out.json');
+  writeFileSync(scriptPath, script, 'utf8');
+  const r = spawnSync(py.cmd, [...py.pre, '-B', scriptPath, outPath], { stdio: 'inherit' });
+  assert.equal(r.status, 0, 'the tools/local-extract/fx.py script failed (its traceback is above)');
+  return JSON.parse(readFileSync(outPath, 'utf8'));
+}
 
 test('every official version declares comparable pictures, models, clips, icons and scenes without installed art', () => {
   const result = assetCoverage({ root, local: { groups: {} } });
@@ -33,11 +66,21 @@ test('coverage fails for missing earlier-version pictures, model, skill icon, en
 
 test('presentation union retains the operators behind reused chess ids and their skills', () => {
   const sets = versionAssetData(root), all = presentationUnion(sets);
-  assert.equal(Object.keys(all.operators).length, 229);
+  // 242 = the 229 of the four official snapshots before 2026-10-29, the 炸惊 play set's nine exclusive operators
+  // (颂乐人偶五人 + 结城理 / 埃癸斯 / 岳羽由加莉 / 虎狼丸) and the four only the default data/chess.json's 湮灭 records
+  // select (陨星 / 霜叶 / 坚雷 / 阿米娅), which live in the default data/ (docs/ASSETS.md "Operators").
+  assert.equal(Object.keys(all.operators).length, 242);
+  // Every chess record contributes its top-level charId — never `backup.charId`, the 补位 prototype (docs/DATA.md).
+  for (const id of ['char_219_meteo', 'char_193_frostl', 'char_260_durnar', 'char_002_amiya']) {
+    assert.ok(all.operators[id], `${id}: the union takes the chess record's top-level charId`);
+  }
   assert.ok(all.operators.char_198_blackd.skills.some((s) => s.skillId === 'skchr_blackd_2'));
   assert.ok(all.enemies.enemy_1254_lypa);
   assert.ok(all.bands.band_zumama);
-  assert.equal(Object.keys(all.tokens).length, 60, 'including enemy/char-backed summons');
+  // 62 = 60 + 结城理's two Persona summons (token_makoto_orpheus / token_makoto_thanatos, data/backups.json tokens),
+  // including the enemy/char-backed summons (enemy_9012_acloon, char_605_cmedic, char_613_acmedc).
+  assert.equal(Object.keys(all.tokens).length, 62, 'including enemy/char-backed summons');
+  assert.ok(all.tokens.token_makoto_orpheus && all.tokens.token_makoto_thanatos);
 });
 
 test('add-only keeps existing nested values, arrays and null while admitting new identities', () => {
@@ -55,9 +98,13 @@ test('fx discovery includes each season even when their chess ids collide', (t) 
     char_9001_current: { skills: [{ skillId: 'sk_shared[3]' }] },
     char_9002_earlier: { skills: [{ skillId: 'sk_shared[3]', overridePrefabKey: 'skchr_earlier_1' }] },
   });
-  const r = spawnSync('python3', ['-B', '-c', `import sys,json\nsys.path.insert(0,${JSON.stringify(path.join(root, 'tools/local-extract'))})\nimport fx\nprint(json.dumps(fx.game_data(${JSON.stringify(f.root)})))`], { encoding: 'utf8' });
-  assert.equal(r.status, 0, r.stderr);
-  const gd = JSON.parse(r.stdout);
+  const py = python();
+  assert.ok(py, 'a Python 3 interpreter is needed to drive tools/local-extract/fx.py');
+  const gd = pyJson(py, `import sys, json
+sys.path.insert(0, ${JSON.stringify(path.join(root, 'tools/local-extract'))})
+import fx
+open(sys.argv[1], 'w', encoding='utf-8').write(json.dumps(fx.game_data(${JSON.stringify(f.root)})))
+`);
   assert.deepEqual(gd.chars, ['char_9001_current', 'char_9002_earlier']);
   assert.deepEqual(gd.skills.char_9002_earlier, ['sk_earlier']);
   assert.deepEqual(gd.skillOverrides, { char_9002_earlier: { sk_shared: 'skchr_earlier_1' } }, 'official art overrides stay scoped to their operator');
@@ -104,6 +151,8 @@ assert json.loads((dest/'textures.json').read_text())['textures']['shared']==tex
 assert json.loads(manifest.read_text())['groups']['fx/tex']==groups['fx/tex']
 assert (dest/'untouched.bin').read_bytes()==b'keep'
 `;
-  const r = spawnSync('python3', ['-B', '-c', script], { encoding: 'utf8' });
-  assert.equal(r.status, 0, r.stderr);
+  const py = python();
+  assert.ok(py, 'a Python 3 interpreter is needed to drive tools/local-extract/fx.py');
+  const r = spawnSync(py.cmd, [...py.pre, '-B', '-c', script], { stdio: 'inherit' });
+  assert.equal(r.status, 0, 'the add-only extraction failed (its traceback is above)');
 });

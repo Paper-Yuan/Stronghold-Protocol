@@ -164,6 +164,36 @@ export class PlayerState {
     this.ops = Object.freeze({});
     if (!this.isBot && (seat.loadout || seat.ops)) this.setLoadout(seat.loadout ?? null, seat.ops ?? null);
     /**
+     * 炸惊模拟 · 卡池调整 (`room.loadout { mode: 'zhajing' }`): the play set's OWN skill / module profile, `{ [chessId]:
+     * { skill, module } }` over its roster — the same shape as `this.loadout`, kept SEPARATE so neither profile can ever
+     * overwrite the other, and only ever non-empty in a ZHAJING match (the lobby drops it for any other room; here the
+     * match refuses to take one and battleInput ignores it). `{}` = every chess on its record defaults.
+     */
+    this.zjLoadout = Object.freeze({});
+    if (!this.isBot && seat.zjLoadout && this.gd.zhajing) this.setZjLoadout(seat.zjLoadout);
+    /**
+     * 湮灭模拟 · 卡池调整: THIS player's annihilation-loadout profile (`{ [chessId]: { skill, module } }`), the third of the
+     * three profiles. Annihilation plays the official roster, so it is validated against `gd.visibleChess` (not the 炸惊
+     * roster); `{}` = every chess on its record defaults, and it is only ever non-empty in an ANNIHILATION match.
+     */
+    this.annLoadout = Object.freeze({});
+    if (!this.isBot && seat.annLoadout && this.gd.annihilation) this.setAnnLoadout(seat.annLoadout);
+    /**
+     * 炸惊模拟 · 卡池预选 (the reference build's banPicker): the bonds THIS player banned from THEIR OWN shop pool, frozen as
+     * `{ zhajing: { core: [...], addon: [...] } }`; null when unset (every other mode, and a 炸惊 player who never opened
+     * the panel). The lobby validates the quotas / columns; here it is only read (player/economy.js `_rollChessSlot` skips
+     * a chess whose every bond is banned, the official `drawDisabledBonds` rule).
+     */
+    this.bans = null;
+    if (!this.isBot && this.gd.zhajing && seat.bans && typeof seat.bans === 'object') {
+      const zj = seat.bans.zhajing;
+      if (zj && (Array.isArray(zj.core) || Array.isArray(zj.addon))) {
+        const core = Object.freeze([...(Array.isArray(zj.core) ? zj.core : [])]);
+        const addon = Object.freeze([...(Array.isArray(zj.addon) ? zj.addon : [])]);
+        if (core.length || addon.length) this.bans = Object.freeze({ zhajing: Object.freeze({ core, addon }) });
+      }
+    }
+    /**
      * 补位 (0.2.0): the base chess ids this player fields as their stand-ins — the seat's not-owned list when the match
      * started, re-checked against this match's data; frozen, sorted; [] = every operator owned (bots always)
      */
@@ -196,8 +226,14 @@ export class PlayerState {
     this.shop = { level: 1, upgradePrice: this.gd.upgradeBase(1) ?? 0, slots: [], frozen: false, freeRefreshes: 0 };
     /** reward offers queue (merge rewards, special refreshes): { tier, source, label, slots: [{ kind, id, price, sold }] } */
     this.offers = [];
-    /** @type {Array<any>} */
-    this.hand = new Array(HAND_SIZE).fill(null);
+    /**
+     * 整备区 (the bench). The size is the MODE's: `gd.benchSize` (data/config.json economy.benchSize, a mode record may
+     * override it — 炸惊模拟's 20) with HAND_SIZE as the fallback. invariants.js checks `hand.length === gd.benchSize`
+     * every round, so a mode whose bench is 20 while the array is 10 breaks on the first frame of the match; the bots'
+     * 「bench nearly full → sell」 heuristic (bot.js, gd.benchSize - 1) reads the same number.
+     * @type {Array<any>}
+     */
+    this.hand = new Array(this.gd && this.gd.benchSize ? this.gd.benchSize : HAND_SIZE).fill(null);
     /** @type {Array<any>} */
     this.temp = new Array(TEMP_SIZE).fill(null);
     /** preps of this player that ended so far (endPrep) = index of the current (or next) prep */
@@ -230,6 +266,18 @@ export class PlayerState {
     this.personalChoice = null;
     /** free-form match-long content counters (ctx.counter / setCounter), including band:cathy:cellTaken (#677) */
     this.counters = {};
+    /**
+     * 炸惊模拟「锻造器」(owner 2026-10-14): the server-authoritative state, present ONLY in a ZHAJING match (`null`
+     * everywhere else, so `m.private.forge` and the whole mechanic stay absent from official / 湮灭 rooms):
+     *   count     forges in hand, not yet spent
+     *   killsPaid how many whole 「每 FORGE_KILLS_PER 击杀」 payouts have been granted (idempotent bookkeeping)
+     *   elites    how many operators this player made elite (each pays one forge)
+     *   forged    `{ [optId]: { total, count } }` — shared/forgeData.js's accumulated table
+     *   roll      the current `{ rarity, picks }` the server drew (the client only displays it)
+     * Grants: player/acquire.js forgeOnElite / forgeOnKills; spend: Match.forgeTake (`g.forgeTake`).
+     * @type {null | { count: number, killsPaid: number, elites: number, forged: Record<string, { total: number, count: number }>, roll: { rarity: string, picks: string[] } | null }}
+     */
+    this.forge = this.gd && this.gd.zhajing ? { count: 0, killsPaid: 0, elites: 0, forged: {}, roll: null } : null;
     /** per-round counters (reset at round start) */
     this.round = { refreshes: 0, buys: 0, sells: 0, spent: 0, gainedChess: 0, arts: 0 };
     this.deployCapBonus = 0;

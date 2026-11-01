@@ -52,11 +52,25 @@ import { isAbyssal as isAbyssalSkadi2 } from '../server/sim/content/kits/ops/che
 import { abyssalOf, isAbyssal as isAbyssalTier5 } from '../server/sim/content/kits/shared/tier5.js';
 import { isRhine, rhineOf } from '../server/sim/content/kits/ops/chess_char_6_11-mlyss.js';
 import { RHINE as RHINE_ALL } from '../server/sim/content/kits/ops/op-slent2.js';
+import { isOfficialChess, isOfficialItem } from '../shared/playSets.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const QUIET = Object.freeze({ warn() {}, error() {}, info() {} });
 const BASELINE = JSON.parse(readFileSync(path.join(ROOT, 'test/fixtures/versions-keying-baseline.json'), 'utf8'));
 const DEFAULT_DIR = path.join(ROOT, 'data');
+/**
+ * The play sets' imported content, excluded from the official keying checks below: 炸惊模拟's chess records carry the
+ * `zhajing` marker (or the chess_zj_ / chess_chen3_ id family) and their kits are keyed by **chess id**, so the charId →
+ * official kit lookup these tests assert cannot answer for them by design; 湮灭模拟's 26 cards carry `annihilation: true`
+ * and are fielded with the play set's own modded bodies. Same predicate as tools/golden.mjs (shared/playSets.js).
+ */
+const isPlaySetChess = (rec, id) => !!rec && !isOfficialChess(rec, id);
+/** Play-set-only equipment (炸惊 `zjOnly`, 湮灭 `annOnly`): its numbers live in the play set's handlers, not in
+ *  data/effects.json. */
+const isZjItem = (rec) => !!rec && !isOfficialItem(rec);
+/** The item keys (id without the _a/_b suffix) of the play-set-only equipment, which a version's data does not carry. */
+const ZJ_ITEM_KEYS = new Set(Object.entries(JSON.parse(readFileSync(path.join(DEFAULT_DIR, 'items.json'), 'utf8')))
+  .filter(([, rec]) => isZjItem(rec)).map(([id]) => id.replace(/_[ab]$/, '')));
 
 /** data/, every data/versions/<id>/ with a chess.json, and SP_VERSION_DATA_DIRS. */
 const DIRS = (() => {
@@ -209,6 +223,8 @@ for (const dir of DIRS) {
     let checked = 0;
     for (const { id, rec, def } of defsOf(data)) {
       if (rec.isDiy || rec.charId == null) continue;
+      // 炸惊 chess are keyed by chess id (ZHAJING_KIT_FILES), not by charId — the official lookup does not apply
+      if (isPlaySetChess(rec, id)) continue;
       checked++;
       const key = officialKitKey(def);
       if (!rec.baseId || rec.baseId === id) {
@@ -277,6 +293,8 @@ for (const dir of DIRS) {
     }
     const standIns = { kitted: 0, generic: 0 };
     for (const id of Object.keys(data.chess || {})) {
+      // 炸惊 records have their own body and no 补位 def (the play set ships them as owned)
+      if (isPlaySetChess(data.chess[id], id)) continue;
       const def = ds.getStandIn(id);
       if (!def) continue;
       const key = officialKitKey(def);
@@ -358,10 +376,11 @@ for (const dir of DIRS) {
   });
 }
 
-test('kits of data/: the new lookup equals the by-id lookup for all 266 records', () => {
-  const all = defsOf(dataOf(DEFAULT_DIR));
-  assert.equal(all.length, 266);
-  for (const { id, def } of all) assert.equal(officialKitKey(def), oldKitKey(def), id);
+test('kits of data/: the new lookup equals the by-id lookup for all 266 official records (500 = 266 + 208 zhajing + 26 annihilation)', () => {
+  const allOfficial = defsOf(dataOf(DEFAULT_DIR)).filter(({ id, rec }) => !isPlaySetChess(rec, id));
+  assert.equal(allOfficial.length, 266);
+  assert.equal(defsOf(dataOf(DEFAULT_DIR)).length, 500);
+  for (const { id, def } of defsOf(dataOf(DEFAULT_DIR)).filter(({ id, rec }) => !isPlaySetChess(rec, id))) assert.equal(officialKitKey(def), oldKitKey(def), id);
 });
 
 test('kits: on a version\'s build a chess id given to another operator takes that operator\'s kit (or none); plugin chess keep the by-id lookup', (t) => {
@@ -502,13 +521,16 @@ for (const dir of DIRS) {
     }
     const reg = createRegistry({ log: QUIET });
     for (const { keys } of itemMetaBindings()) for (const key of keys) assert.ok(reg.has(`item:${key}`), key);
-    for (const k of reg.keys().filter((x) => x.startsWith('item:'))) assert.ok(normalOf(items, k.slice(5)), `${k} names an item of this data`);
+    // a 炸惊-only item key exists in the registry (the play set's handlers are one code base for every data) but not in a
+    // version's data — the version's own records are what it must name
+    for (const k of reg.keys().filter((x) => x.startsWith('item:'))) assert.ok(normalOf(items, k.slice(5)) || ZJ_ITEM_KEYS.has(k.slice(5)), `${k} names an item of this data`);
     const want = EXPECT[label(dir)];
     assert.ok(want, `${label(dir)} has no EXPECT entry: pin its counts`);
     assert.ok(Object.keys(dispatch).length > 0, 'at least one official item resolves to a BY_EFFECT handler');
     assert.equal(Object.keys(dispatch).length, want.items, 'items with a BY_EFFECT handler');
     assert.equal(new Set(Object.values(dispatch)).size, want.handlers, 'distinct BY_EFFECT handlers');
-    assert.equal(Object.values(items).filter((r) => hasBattleEffect(r)).length, want.battleEffect, 'items with a battle part');
+    // official items only: 炸惊-only equipment has its own handlers in the play set (5 of them carry a battle part)
+    assert.equal(Object.values(items).filter((r) => hasBattleEffect(r) && !isZjItem(r)).length, want.battleEffect, 'items with a battle part (official only)');
     assert.deepEqual(Object.fromEntries(itemMetaBindings().map((b) => [b.name, b.keys])), want.meta);
     // 蒸汽之心 found by its effect: its hammers have a battle part (the hammer cache follows the data object: the
     // default directory runs first in this file, so a version directory exercises the reset)
@@ -518,11 +540,14 @@ for (const dir of DIRS) {
     if (isDefault(dir)) {
       const want = Object.fromEntries(Object.entries(BASELINE.battle.dispatch).map(([id, k]) => [id, BATTLE_KEY_TO_EFFECT[k]]));
       assert.deepEqual(dispatch, want, 'item → handler, as the baseline mapped by effectId');
-      assert.deepEqual(Object.keys(items).sort().filter((id) => hasBattleEffect(items[id])), BASELINE.battle.battleEffect);
+      // official items only: the 5 炸惊 items with a battle part are the play set's own (BASELINE pins the official set)
+      assert.deepEqual(Object.keys(items).sort().filter((id) => hasBattleEffect(items[id]) && !isZjItem(items[id])), BASELINE.battle.battleEffect);
       const bound = itemMetaBindings().map((b) => [b.effectId, b.keys]);
       const wantBound = BASELINE.meta.wraps.map((w) => [META_KEY_TO_EFFECT[w.key], [w.key]]);
       assert.deepEqual(bound, wantBound, 'the meta overrides bind the baseline keys, in the baseline order');
-      const keys = reg.keys().filter((x) => x.startsWith('item:')).sort();
+      // official item hooks only: the play set registers `item:` hooks for its 极速送达 packages (ZHAJING only, and the
+      // baseline pins the official registry)
+      const keys = reg.keys().filter((x) => x.startsWith('item:') && !ZJ_ITEM_KEYS.has(x.slice(5))).sort();
       assert.deepEqual(keys, Object.keys(BASELINE.registry.itemHooks).sort(), 'the item: entries of the meta registry');
       for (const k of keys) assert.deepEqual(hooksOf(reg.get(k)), BASELINE.registry.itemHooks[k], k);
     }

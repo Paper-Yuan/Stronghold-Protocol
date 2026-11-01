@@ -40,6 +40,12 @@
 // it (a record's id stays what it was). 统计数据 filters by version (recordsOfVersion: the version shown by default,
 // 全部版本 on request) and the levels count the records of one season (recordsOfSeason: 第一期 / 第二期 each have their own
 // 卫戍认证 table).
+// Endless annihilation (蚀流 6): a run of 无尽湮灭 has no final round — m.public.lastRound is null — and m.result carries
+// no lastRound, so the settlement's 14 fallback (gameLogic/result.js normalizeResult) would write 「/14」 on a match that
+// never ends. Such a result names itself (`endless: true`, server/match/results.js buildResult, only for gd.endless) and
+// the record keeps it, so recordToResult restores the flag and the re-viewed settlement writes no `/N`. A record from
+// before this field simply lacks it and keeps today's behaviour (still `/14`): no migration, no format bump — the key is
+// only ever the literal true, and an unknown one is dropped by normalizeRecord like any other.
 // Test matches (DESIGN §34.8) never create local records, including quits. Server awards are
 // zero; a live marker latches until the next match. Legacy marked imports are dropped on load
 // and merge, and pure aggregates/badge helpers exclude them even if handed a raw record.
@@ -294,6 +300,9 @@ export function normalizeRecord(raw) {
   if (r.test === true) rec.test = true;
   if (rec.test === true && Number.isInteger(r.testActions) && r.testActions >= 0 && r.testActions <= 1e6) rec.testActions = r.testActions;
   if (r.compact === true) rec.compact = true;
+  // 无尽湮灭 (蚀流 6): the run has no final round, so a re-viewed settlement must not write 「/N」. Only the literal true —
+  // a missing key leaves an old record exactly as it was (no migration: it still shows /14).
+  if (r.endless === true) rec.endless = true;
   // an id-less (hand-made) record gets a content id, so both copies of it land on the same key (`vs` and `content` left
   // out: the id of a record from before 0.3.0 stays the same)
   if (!rec.id) rec.id = `c.${fnv1a(JSON.stringify({ ...rec, vs: undefined, content: undefined, version: undefined }))}`;
@@ -397,7 +406,7 @@ export function peekStatsRecords() {
 // ---- compaction + the storage budget ---------------------------------------------------------------------------
 
 const COMPACT_FRAME = ['id', 'v', 't', 'end', 'victory', 'roundsPassed', 'lastRound', 'hiddenReached', 'hiddenCleared', 'reason', 'modeId',
-  'difficulty', 'roomMode', 'durationMs', 'selfId', 'vs', 'content', 'version', 'test', 'testActions'];
+  'difficulty', 'roomMode', 'durationMs', 'selfId', 'vs', 'content', 'version', 'test', 'testActions', 'endless'];
 
 /**
  * The compact form of a record: the frame and the player's OWN row without lineup, bonds and name — everything the
@@ -534,6 +543,8 @@ export function buildRecord(res, ctx = {}) {
     vs: vsOf(ctx.vs),
     content: contentOf(ctx.content),
     version: ctx.version ?? null,
+    // 无尽湮灭 (蚀流 6): copied from the settlement so the re-viewed one knows it has no final round (see the header)
+    endless: r.endless === true,
     players: r.players,
   });
 }
@@ -679,6 +690,8 @@ export function recordToResult(rec) {
   if (Number.isFinite(r.lastRound)) res.lastRound = r.lastRound;
   if (r.test === true) res.test = true;
   if (Number.isInteger(r.testActions)) res.testActions = r.testActions;
+  // 无尽湮灭 (蚀流 6): no final round — normalizeResult reads this instead of falling back to 14 (see the header)
+  if (r.endless === true) res.endless = true;
   return res;
 }
 

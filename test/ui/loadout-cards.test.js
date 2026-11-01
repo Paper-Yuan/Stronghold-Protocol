@@ -99,7 +99,12 @@ test('#811: every version, tier and normal / elite form uses its actual promotio
     const chess = JSON.parse(readFileSync(path.join(ROOT, 'data', version.dir, 'chess.json'), 'utf8'));
     const backups = JSON.parse(readFileSync(path.join(ROOT, 'data', version.dir, 'backups.json'), 'utf8'));
     for (const c of Object.values(chess)) {
-      assert.deepEqual([c.status.phase, c.status.level], (levels[c.tier] || [[2, 1], [2, 60]])[Number(c.isGolden)], `${version.id} ${c.chessId}`);
+      // 炸惊 (zhajing) chess carry the research pack's own promotion status, which the official activity table does not
+      // describe (`'zhajing' in c` is the build's marker — the value can be false: chess_zj_22_a, chess_zj_pure_a). The
+      // card rows below still check their real status.
+      if (!('zhajing' in c)) {
+        assert.deepEqual([c.status.phase, c.status.level], (levels[c.tier] || [[2, 1], [2, 60]])[Number(c.isGolden)], `${version.id} ${c.chessId}`);
+      }
       if (c.isGolden) continue;
       const forms = [c, chess[c.goldenId]].filter(Boolean);
       const rows = byClass(card({ m, chess: c, golden: forms[1] }), 'lo-op__lvrow');

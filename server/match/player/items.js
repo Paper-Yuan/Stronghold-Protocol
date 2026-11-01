@@ -10,6 +10,7 @@ import { tileKey, inField, parseDir, freeSlot } from '../board.js';
 import { offsetTile } from '../../sim/dir.js';
 import { itemKey } from '../gamedata.js';
 import { OK, fail } from './common.js';
+import { relicConsumableRefund, relicConsumableFree } from '../relics.js';
 
 export class PlayerItems {
   /**
@@ -73,6 +74,12 @@ export class PlayerItems {
       }
       // !ev.keep, or the carrier is gone: the consumed item left play. A kept item is on the carrier.
       if (!this.find(item.uid)) this.releaseItemStock(item);
+      // 复得之轮 (p43) / 果腹 (p44): 一次性装备「确实消耗掉」之后才结算 —— keep 的、还在场的都不算，
+      // 而寻呼模块 / 信标 这类会先开个人选择再销毁装备的道具同样算（和 v3.2.0 同一个触发点）。
+      if (!ev.keep && !this.find(item.uid)) {
+        try { relicConsumableRefund(this.m, this, rec); } catch { /* 藏品效果不许打断装备 */ }
+        try { relicConsumableFree(this, rec); } catch { /* best effort */ }
+      }
       this.stats.itemsEquipped++;
       this.checkItemMerges();
       this.recompute();
@@ -99,7 +106,8 @@ export class PlayerItems {
    */
   /** The room's equip-slot policy. Official returns the shared frozen singleton, so the numbers stay today's. */
   _slotPolicy() {
-    return morphSlotPolicy(ruleOption(this.m?.rules, 'morphPairing'), (it) => !!this.gd.item(it?.id)?.canGiveBond);
+    // GameData.rulesOf: official default → mode.annRules → room annMods → plugin content rules (strongest)
+    return morphSlotPolicy(this.gd.rulesOf('morphPairing'), (it) => !!this.gd.item(it?.id)?.canGiveBond);
   }
 
   _attach(target, item, replaceUid = null) {
@@ -191,7 +199,7 @@ export class PlayerItems {
    */
   unequip(itemUid) {
     const g = this._gate(); if (g) return g;
-    if (ruleOption(this.m?.rules, 'unequip') !== 'allow') return fail(ERR.BAD_TARGET, 'equipped items are locked');
+    if (this.gd.rulesOf('unequip') !== 'allow') return fail(ERR.BAD_TARGET, 'equipped items are locked');
     const loc = this.find(itemUid);
     if (!loc || loc.piece.kind !== 'item' || loc.area !== 'equipped') return fail(ERR.BAD_TARGET);
     const handAt = freeSlot(this.hand);

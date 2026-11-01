@@ -13,7 +13,7 @@
 
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync, readdirSync } from 'node:fs';
+import { readFileSync, readdirSync, existsSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { PHASE, GEO } from '../../shared/constants.js';
@@ -262,7 +262,8 @@ describe('3: the temp overflow row (临时整备区)', () => {
   test('the game screen frames the row only on the own prep board while it holds pieces (source contract)', () => {
     const game = read('public/js/screens/game.js');
     assert.match(game, /const tempNotice = temp\.count > 0 && !!view && viewKind !== 'loading' && showPrep && alive && !pen && !sp;/);
-    assert.match(game, /<\$\{TempRowNotice\} view=\$\{view\} count=\$\{temp\.count\} items=\$\{temp\.items\} label=\$\{!drag && !facing\}\s+ready=\$\{phase === PHASE\.PREP && !!priv\?\.ready\} \/>/);
+    assert.match(game, /<\$\{TempRowNotice\} view=\$\{view\} count=\$\{temp\.count\} items=\$\{temp\.items\} label=\$\{!drag && !facing\}\s+row=\$\{tempRowOf\(pub\?\.stageId\)\} ready=\$\{phase === PHASE\.PREP && !!priv\?\.ready\} \/>/);
+    assert.match(game, /row=\$\{tempRowOf\(/, 'the framed row is the stage\'s own temp row (tempRowOf), never a literal');
     assert.match(game, /toast\(tempReadyReason\(L\.priv\) \|\| refused, 'warn'\)/, 'Space says why');
     const css = read('public/css/screens/game-panels.css');
     assert.match(css, /\.tempnote \{ position: fixed; inset: 0; z-index: 2; pointer-events: none; \}/, 'over the field, under the HUD, never takes the pointer');
@@ -323,8 +324,26 @@ describe('8: 特质 right under the detail card\'s header', () => {
     await data.loadAll('garrisons', 'assets', 'chess');
     const all = data.list('garrisons');
     assert.ok(all.length > 200);
-    const bad = all.filter((g) => garrisonTypeIconKey(g) !== `s_${g.eventTypeIcon}`);
-    assert.deepEqual(bad.map((g) => g.garrisonId), [], 'every garrison shows its own type icon');
+    // a record that carries its official type icon shows exactly that icon
+    const official = all.filter((g) => /^icon_[a-z]+$/.test(String(g.eventTypeIcon || '')));
+    assert.ok(official.length > 400, `${official.length} of ${all.length} garrisons carry an eventTypeIcon`);
+    const bad = official.filter((g) => garrisonTypeIconKey(g) !== `s_${g.eventTypeIcon}`);
+    assert.deepEqual(bad.map((g) => g.garrisonId), [], 'every garrison with an official type icon shows its own');
+    // 炸惊数据待补: these 8 炸惊 特质s ship with an empty eventTypeIcon *and* an empty eventTypeDesc
+    // (data/garrisons.json still owes them — 炸惊's garrison extraction), so their chip has only the trigger's icon
+    const unfilled = all.filter((g) => !/^icon_[a-z]+$/.test(String(g.eventTypeIcon || '')));
+    assert.deepEqual(unfilled.map((g) => g.garrisonId).sort(), [
+      'garrison_zj_08_a', 'garrison_zj_08_b',
+      'garrison_zj_47_2_a', 'garrison_zj_47_2_b',
+      'garrison_zj_47_a', 'garrison_zj_47_b',
+      'garrison_zj_53_a', 'garrison_zj_53_b',
+    ], '炸惊数据待补: the only 特质s without an official type');
+    for (const g of unfilled) {
+      assert.equal(g.eventType, 'IN_BATTLE', g.garrisonId);
+      assert.equal(g.eventTypeDesc, '', `${g.garrisonId}: no type text either`);
+      // triggered fallback (detailPanel.js EVENT_ICON): IN_BATTLE → the battle icon, still a path under the assets' ui
+      assert.equal(garrisonTypeIconKey(g), 's_icon_battle', `${g.garrisonId}: the trigger's icon`);
+    }
     // (the spoked icon_support reads like a loading spinner: it used to stand before every <休整期开始时 / 结束时> 特质)
     const spoked = all.filter((g) => garrisonTypeIconKey(g) === 's_icon_support');
     assert.ok(spoked.length > 0 && spoked.every((g) => g.eventTypeDesc === '特异化'), 'icon_support = 特异化 only');
@@ -482,22 +501,46 @@ describe('9: busy indicators and data loading', () => {
   });
 
   test('every data file the in-match UI reads is in GAME_FILES (the match screen waits for them: no text appears late); main.js warms them in a room', () => {
-    const files = [
-      ...readdirSync(path.join(ROOT, 'public/js/ui')).filter((f) => f.endsWith('.js')).map((f) => `public/js/ui/${f}`),
-      ...['game', 'briefing', 'bandDraft', 'result'].map((s) => `public/js/screens/${s}.js`),
-    ];
+    // the in-match modules: screens/game.js, the public/js/ui tree its imports reach, and the screens it dispatches to.
+    // NOT every file of public/js/ui — the folder also holds the lobby / room / 设置 modules: ui/namecards.js is the 名片
+    // picker of screens/room.js and ui/accounts.js, ui/loadoutSync.js the sync behind screens/loadout.js / lobby.js /
+    // room.js (the 干员调配 button). A running match draws neither, so their data (namecards, zjDefaultLoadout) is no wait.
+    const inGame = (() => {
+      const importsOf = (f) => [...read(f).matchAll(/^\s*import\s+(?:[^'"]*?\sfrom\s+)?'(\.[^']+)'/gm)]
+        .map((m) => path.posix.normalize(path.posix.join(path.posix.dirname(f), m[1])))
+        .filter((rel) => existsSync(path.join(ROOT, rel)));
+      const game = 'public/js/screens/game.js';
+      const seen = new Set();
+      const queue = [game];
+      while (queue.length) {
+        const f = queue.pop();
+        if (seen.has(f)) continue;
+        seen.add(f);
+        for (const rel of importsOf(f)) if (rel.startsWith('public/js/ui/')) queue.push(rel);
+      }
+      // the screens the match screen routes to (briefing / bandDraft / settle / loadout), scanned themselves: their own
+      // imports are not the match's (screens/loadout.js imports ui/loadoutSync.js, which no match frame draws)
+      const screens = importsOf(game).filter((rel) => rel.startsWith('public/js/screens/') && !seen.has(rel));
+      return [...seen, ...screens];
+    })();
+    assert.ok(inGame.length >= 60, `${inGame.length} in-match modules: the walk found the match screen's own tree`);
     const used = new Set();
-    for (const f of files) for (const m of read(f).matchAll(/data\.(?:get|lookup|list|load|status)\('([A-Za-z-]+)'/g)) used.add(m[1]);
+    for (const f of inGame) for (const m of read(f).matchAll(/data\.(?:get|lookup|list|load|status)\('([A-Za-z-]+)'/g)) used.add(m[1]);
     for (const m of read('public/js/ui/gameComponents.js').matchAll(/useData\('([A-Za-z-]+)'/g)) used.add(m[1]);
     assert.ok(used.size >= 10, [...used].join(','));
     const missing = [...used].filter((n) => !GAME_FILES.includes(n));
     assert.deepEqual(missing, [], 'read by the match UI but not awaited by the match screen');
+    // and the other way round: the match screen waits for nothing the in-match modules never read (a dead wait). GAME_FILES
+    // is 16 files, so a walk that found no module — or the folder scan of screens that are not the match's — cannot pass.
+    assert.ok(used.size >= 16, `${used.size} data files read by ${inGame.length} in-match modules: ${[...used].sort().join(',')}`);
+    assert.deepEqual(GAME_FILES.filter((n) => !used.has(n)), [], 'awaited by the match screen but read by no in-match module');
+    assert.deepEqual([...used].sort(), [...GAME_FILES].sort());
     const main = read('public/js/main.js');
     assert.match(main, /if \(s\.room && !prev\.room\) warmGameData\(\);/);
     assert.match(main, /data\.loadAll\(GAME_FILES\)/);
   });
 });
 
-test('GEO: the temp row the notice frames is the server\'s (row 8, cols 4–8)', () => {
-  assert.deepEqual([GEO.TEMP_ROW, GEO.TEMP_C0, GEO.TEMP_SIZE], [8, 4, 5]);
+test('GEO: the temp row the notice frames is the server\'s (row 6, cols 0–4 — row 8 is the 炸惊 bench\'s second row)', () => {
+  assert.deepEqual([GEO.TEMP_ROW, GEO.TEMP_C0, GEO.TEMP_SIZE], [6, 0, 5]);
 });

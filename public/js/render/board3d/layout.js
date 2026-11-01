@@ -8,6 +8,12 @@
 // `raised` / `raisedDecal` repeat only the device slabs — 射击台, 特制水上平台, 封印的地面 — with their side faces
 // reaching below the ground: those are runtime devices that an official scene (scene.js) does not contain, so they are
 // drawn on it (GitHub #569). The 'h' high ground is part of the scenes (act2 m01 / m02 model it) and is not repeated.
+// A stage WITH a scene pack draws no procedural board at all, so the two-row bench's second pad row (row 8) exists only on
+// the procedural board (2D, and 3D on stages without a pack). Measured on the shipped packs (2026-10-30): the art's bench
+// deck is row 7 (top z 0.37–0.46, per stage) + the EQUIPMENTS band on row 8 (z ≈ 0.38) — which is exactly where the
+// 炸惊 bench's second row and its pieces sit (render/board3d/benchDeck.js, the art's own deck heights); row 6 is the
+// island's front rim (rock, z ≈ 0.1–0.21, water notches at cols 6–7, the 临时整备区's own row) and row 5 is open water.
+// A two-row bench used to paint row 6 and a 侧裙 on row 5 instead (task-27); that floated over the rim/water and is gone.
 // With `platformMesh` the 射击台 get no slab at all: scene.js draws the official model (trap_1106_achplat) on both
 // boards; the slab stays the fallback without the local art.
 // `devices` = the active stage devices standing on a built tile — separator walls included (act2 m01's blowers: the
@@ -36,6 +42,7 @@
 import { SURFACES, surfaceUV, sideRect, tintRgb } from './atlas.js';
 import { GLYPH, TILEKEY_GLYPH, TILE_H } from '../style.js';
 import { parsePenRect, PEN_RECT } from '../pen.js';
+import { GEO, BENCH_PER_ROW, benchRows, benchTileOf } from '../../../../shared/constants.js';
 
 export const ROWS = 19;
 export const COLS = 21;
@@ -82,6 +89,10 @@ export function unionAreas(...sets) {
   for (const s of sets) for (const a of s || []) { const k = `${a.r0},${a.r1},${a.c0},${a.c1}`; if (!seen.has(k)) { seen.add(k); out.push(a); } }
   return out;
 }
+
+/** The own bench row (shared/constants.js GEO.HAND_ROW) and the width of one bench row (BENCH_PER_ROW = 10). */
+const BENCH_ROW = GEO.HAND_ROW;
+const BENCH_COLS = BENCH_PER_ROW;
 
 /** Whether two area sets cover the same rectangles (a union allocates a new array, so identity is not enough). */
 function sameAreas(a, b) {
@@ -158,22 +169,37 @@ export function uvAt(uv, fx, fy) {
  * Per-tile description of a stage: `{ r, c, glyph, content, drawn, h (top height), raised, surf (top surface),
  * tint, side (side panel surface) }`. Tolerant of malformed stages (missing rows → forbidden). `area` = the built
  * areas (inclusive tile rects, see AREAS): content outside them is not built, like the client which only builds the
- * areas of the current phase (configBlackBoard leftNormal / rightNormal / leftBoss / rightBoss + the preview pen).
+ * areas of the current phase (configBlackBoard leftNormal / rightNormal / rightBoss + the preview pen).
+ * `benchSize` = the match's 整备区 slots (shared/constants.js benchSizeOf): the data's row 7 carries the 10 default
+ * pads, and a two-row bench (炸惊 20) also turns the row behind the bench (row 8, `benchTileOf(10..19)`) into pads —
+ * that row is the pack's EQUIPMENTS band in the data ('A' at cols 4..8, walls around it), so the pads replace whatever
+ * the data put there. Only in a build that shows the bench band (`showBench`: an area carrying the bench row), so the
+ * boss field's own view keeps its wall and its blowers.
  */
-export function classifyStage(stage, area = null) {
+export function classifyStage(stage, area = null, benchSize = BENCH_COLS) {
   const rows = Array.isArray(stage?.rows) ? stage.rows : [];
   const pen = parsePenRect(stage?.config?.enemy_place_rect) || PEN_RECT;
   const legend = stage && typeof stage.tiles === 'object' && stage.tiles ? stage.tiles : {};
+  // the slots of the bench's second row (idx 10..19 → row 8, cols 0..9 — shared/constants.js benchTileOf), only when
+  // this match's bench is two rows wide and the current build shows the bench band (the own prep / battle views)
+  const showBench = !area || area.some((a) => a.r0 <= BENCH_ROW && a.r1 >= BENCH_ROW);
+  const wide = Number.isInteger(benchSize) ? Math.min(benchSize, GEO.HAND_MAX) : BENCH_COLS;
+  const extraPads = new Set();
+  if (showBench && benchRows(wide) > 1) {
+    for (let i = BENCH_COLS; i < wide; i++) { const t = benchTileOf(i, wide); extraPads.add(`${t.row},${t.col}`); }
+  }
   const grid = [];
   for (let r = 0; r < ROWS; r++) {
     const line = typeof rows[r] === 'string' ? rows[r] : '';
     const row = [];
     for (let c = 0; c < COLS; c++) {
       let g = line[c] || '#';
+      const benchPad = extraPads.has(`${r},${c}`);
+      if (benchPad) g = 'a';
       if (!GLYPH[g]) g = TILEKEY_GLYPH[legend[g]?.tileKey] || (legend[g]?.height === 'HIGH' ? '#' : 'R');
       const def = GLYPH[g];
       const inArea = !area || area.some((a) => r >= a.r0 && r <= a.r1 && c >= a.c0 && c <= a.c1);
-      row.push({ r, c, glyph: g, content: inArea && CONTENT_OF(g), inArea, drawn: false, h: def.h ? TILE_H[def.h] : 0, raised: !!def.h });
+      row.push({ r, c, glyph: g, content: inArea && CONTENT_OF(g), inArea, drawn: false, h: def.h ? TILE_H[def.h] : 0, raised: !!def.h, benchPad });
     }
     grid.push(row);
   }
@@ -328,13 +354,14 @@ function sideFace(g, uvTable, surfName, dir, x0, x1, y0, y1, zb, zt, colBottom, 
 /**
  * Build the whole board of a stage.
  * @param {any} stage data/stages.json entry
- * @param {{ uv?: object, devices?: boolean, platformMesh?: boolean }} [opts] uv = resolveUvTable(tiles.json) (defaults
- *   to the built-in table); platformMesh: the 射击台 are drawn with the official model (scene.js), so they get no slab
+ * @param {{ uv?: object, devices?: boolean, platformMesh?: boolean, benchSize?: number }} [opts] uv =
+ *   resolveUvTable(tiles.json) (defaults to the built-in table); platformMesh: the 射击台 are drawn with the official
+ *   model (scene.js), so they get no slab; benchSize: 整备区 width of the match (classifyStage's row-8 pads)
  */
 export function buildBoard(stage, opts = {}) {
   const uvTable = opts.uv || null;
   const UVT = uvTable || Object.fromEntries(Object.entries(SURFACES).map(([k, v]) => [k, { ...v, rect: [...v.rect] }]));
-  const grid = classifyStage(stage, opts.area || null);
+  const grid = classifyStage(stage, opts.area || null, opts.benchSize);
   const at = (r, c) => grid[r]?.[c] || null;
   const topZ = (t) => (t.glyph === 'd' ? -BASIN : t.h);
   const board = new Geom(), decal = new Geom(), pipe = new Geom(), glass = new Geom();
@@ -538,6 +565,8 @@ export function stageDevices(stage, grid) {
     const [r, c] = d.pos;
     const t = grid?.[r]?.[c];
     if (!t || !t.drawn) continue;
+    // a tile the two-row bench turned into a pad (row 8, 炸惊) is no longer the wall this device stood on
+    if (t.benchPad) continue;
     out.push({ kind: d.role, r, c, dir: ['UP', 'DOWN', 'LEFT', 'RIGHT'].includes(d.dir) ? d.dir : 'UP', z0: t.h, key: d.key || null, alias: d.alias || null, rangeTiles: Array.isArray(d.rangeTiles) ? d.rangeTiles : null });
   }
   return out;

@@ -156,7 +156,7 @@ export class MatchWatch {
     if (!this.fields.some((f) => f.cc)) { this._followScout(ps, { keep: true }); return; }
     const fid = this.watchers.get(ps.playerId);
     let f = fid ? this.fields.find((x) => x.fieldId === fid) : null;
-    if (!f) f = this.fields.find((x) => x.players.includes(ps.playerId)) || (this.phase === PHASE.UNITE ? this.fields[0] : null);
+    if (!f) f = this.fields.find((x) => x.players.includes(ps.playerId)) || (this.phase === PHASE.UNITE ? this._uniteFieldFor(ps) : null);
     if (!f && !ps.alive) f = this._watchTargetField(ps, this.fields) || this.fields[0] || null;
     if (!f) return;
     this.watchers.set(ps.playerId, f.fieldId);

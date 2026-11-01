@@ -148,8 +148,14 @@ test('user: Given a saturated layout, When placing a self-range defender, Then p
 
 test('self-range blockers (range 0-1, only their own tile) fill the free enemy-road tiles before any other tile, on every stage and seed', () => {
   // official range_table "0-1": the one grid (0,0) — 角峰 古米 泡泡 折桠 菲莱 蛇屠箱 塞雷娅 余
-  const guards = Object.values(DATA.chess).filter((c) => c && !c.isGolden && c.rangeGrid && c.rangeGrid.length === 1 && c.rangeGrid[0].every((v) => v === 0));
+  const grid01 = (c) => !!c && !c.isGolden && !!c.rangeGrid && c.rangeGrid.length === 1 && c.rangeGrid[0].every((v) => v === 0);
+  const guards = Object.values(DATA.chess).filter((c) => grid01(c) && c.visible === true);
   assert.equal(guards.length, 8);
+  // The same grid on records OUTSIDE the official pool — 4 炸惊 (chess_zj_*) and 1 湮灭 (chess_char_9_13_a 坚雷, one of the
+  // mod's 13 operators merged on 2026-10-30). They share the rule (and its layout behaviour) but never reach an official
+  // match's shop: `visible: false`. Kept exact so a later roster change has to update this pin.
+  assert.deepEqual(Object.values(DATA.chess).filter((c) => grid01(c) && c.visible !== true).map((c) => c.chessId).sort(),
+    ['chess_char_9_13_a', 'chess_zj_21_a', 'chess_zj_58_a', 'chess_zj_69_a', 'chess_zj_80_a']);
   const stages = new Set();
   for (let seed = 1; seed <= 40; seed++) {
     const h = makeMatch({ mode: 'solo', seed }).start().toPrep();

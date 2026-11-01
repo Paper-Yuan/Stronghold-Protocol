@@ -1,0 +1,175 @@
+=== rhodes-ship
+bond rhodesShip members(14): chess_char_2_09_a, chess_char_4_25_a, chess_char_4_26_a, chess_char_5_03_a, chess_char_6_12_a, chess_char_9_09_a, chess_char_9_11_a, chess_char_9_13_a, chess_char_9_14_a, chess_char_9_16_a, chess_char_9_18_a, chess_char_9_21_a, chess_char_9_22_a, chess_char_4_27_a
+  thresholds [3,6]
+  visibleMembers(14): chess_char_2_09_a, chess_char_4_25_a, chess_char_4_26_a, chess_char_5_03_a, chess_char_6_12_a, chess_char_9_09_a, chess_char_9_11_a, chess_char_9_13_a, chess_char_9_14_a, chess_char_9_16_a, chess_char_9_18_a, chess_char_9_21_a, chess_char_9_22_a, chess_char_4_27_a
+  chess_char_9_09_a keys(45): chessId,baseId,goldenId,isGolden,tier,identifier,isHidden,isDiy,visible,chessType,backup,shopSortId,charId,name,appellation,rarity,profession,subProfessionId,subProfessionName,position,nationId,bonds,garrisonIds,price,sellPrice,upgradeNum,upgradeChessId,status,stats,immunities,rangeId,rangeGrid,dmgType,attackKind,projectile,canHitFly,targetPriority,trait,skill,talents,tokens,module,assets,skills,potDown
+     charId=char_4132_ascln name=阿斯卡纶 tier=5 isGolden=false upgradeNum=3 upgradeChessId=chess_char_9_09_b goldenId=chess_char_9_09_b baseId=chess_char_9_09_a status={"phase":2,"level":1,"skillLevel":4,"equipLevel":0} bonds=["rhodesShip","skillfulShip"] garrisonIds=["garrison_c_ascln_k_a"]
+  chess_char_9_09_b keys(49): chessId,baseId,goldenId,isGolden,tier,identifier,isHidden,isDiy,visible,chessType,backup,shopSortId,charId,name,appellation,rarity,profession,subProfessionId,subProfessionName,position,nationId,bonds,garrisonIds,price,sellPrice,upgradeNum,upgradeChessId,status,stats,immunities,rangeId,rangeGrid,dmgType,attackKind,projectile,canHitFly,targetPriority,trait,skill,talents,tokens,module,assets,skills,statsBase,traitBase,talentsBase,modules,potDown
+     charId=char_4132_ascln name=阿斯卡纶 tier=5 isGolden=true upgradeNum=0 upgradeChessId=null goldenId=chess_char_9_09_b baseId=chess_char_9_09_a status={"phase":2,"level":60,"skillLevel":7,"equipLevel":1} bonds=["rhodesShip","skillfulShip"] garrisonIds=["garrison_c_ascln_k_b"]
+  chess_char_9_11_a keys(45): chessId,baseId,goldenId,isGolden,tier,identifier,isHidden,isDiy,visible,chessType,backup,shopSortId,charId,name,appellation,rarity,profession,subProfessionId,subProfessionName,position,nationId,bonds,garrisonIds,price,sellPrice,upgradeNum,upgradeChessId,status,stats,immunities,rangeId,rangeGrid,dmgType,attackKind,projectile,canHitFly,targetPriority,trait,skill,talents,tokens,module,assets,skills,potDown
+     charId=char_193_frostl name=霜叶 tier=1 isGolden=false upgradeNum=3 upgradeChessId=chess_char_9_11_b goldenId=chess_char_9_11_b baseId=chess_char_9_11_a status={"phase":1,"level":55,"skillLevel":4,"equipLevel":0} bonds=["rhodesShip"] garrisonIds=["garrison_c_frostl_a"]
+  chess_char_9_11_b keys(49): chessId,baseId,goldenId,isGolden,tier,identifier,isHidden,isDiy,visible,chessType,backup,shopSortId,charId,name,appellation,rarity,profession,subProfessionId,subProfessionName,position,nationId,bonds,garrisonIds,price,sellPrice,upgradeNum,upgradeChessId,status,stats,immunities,rangeId,rangeGrid,dmgType,attackKind,projectile,canHitFly,targetPriority,trait,skill,talents,tokens,module,assets,skills,statsBase,traitBase,talentsBase,modules,potDown
+     charId=char_193_frostl name=霜叶 tier=1 isGolden=true upgradeNum=0 upgradeChessId=null goldenId=chess_char_9_11_b baseId=chess_char_9_11_a status={"phase":2,"level":50,"skillLevel":7,"equipLevel":1} bonds=["rhodesShip"] garrisonIds=["garrison_c_frostl_b"]
+  chess_char_9_13_a keys(45): chessId,baseId,goldenId,isGolden,tier,identifier,isHidden,isDiy,visible,chessType,backup,shopSortId,charId,name,appellation,rarity,profession,subProfessionId,subProfessionName,position,nationId,bonds,garrisonIds,price,sellPrice,upgradeNum,upgradeChessId,status,stats,immunities,rangeId,rangeGrid,dmgType,attackKind,projectile,canHitFly,targetPriority,trait,skill,talents,tokens,module,assets,skills,potDown
+     charId=char_260_durnar name=坚雷 tier=2 isGolden=false upgradeNum=3 upgradeChessId=chess_char_9_13_b goldenId=chess_char_9_13_b baseId=chess_char_9_13_a status={"phase":1,"level":60,"skillLevel":4,"equipLevel":0} bonds=["rhodesShip","steadShip"] garrisonIds=["garrison_c_durnar_a"]
+  chess_char_9_13_b keys(49): chessId,baseId,goldenId,isGolden,tier,identifier,isHidden,isDiy,visible,chessType,backup,shopSortId,charId,name,appellation,rarity,profession,subProfessionId,subProfessionName,position,nationId,bonds,garrisonIds,price,sellPrice,upgradeNum,upgradeChessId,status,stats,immunities,rangeId,rangeGrid,dmgType,attackKind,projectile,canHitFly,targetPriority,trait,skill,talents,tokens,module,assets,skills,statsBase,traitBase,talentsBase,modules,potDown
+     charId=char_260_durnar name=坚雷 tier=2 isGolden=true upgradeNum=0 upgradeChessId=null goldenId=chess_char_9_13_b baseId=chess_char_9_13_a status={"phase":2,"level":55,"skillLevel":7,"equipLevel":1} bonds=["rhodesShip","steadShip"] garrisonIds=["garrison_c_durnar_b"]
+  chess_char_9_14_a keys(45): chessId,baseId,goldenId,isGolden,tier,identifier,isHidden,isDiy,visible,chessType,backup,shopSortId,charId,name,appellation,rarity,profession,subProfessionId,subProfessionName,position,nationId,bonds,garrisonIds,price,sellPrice,upgradeNum,upgradeChessId,status,stats,immunities,rangeId,rangeGrid,dmgType,attackKind,projectile,canHitFly,targetPriority,trait,skill,talents,tokens,module,assets,skills,potDown
+     charId=char_002_amiya name=阿米娅 tier=3 isGolden=false upgradeNum=3 upgradeChessId=chess_char_9_14_b goldenId=chess_char_9_14_b baseId=chess_char_9_14_a status={"phase":2,"level":1,"skillLevel":4,"equipLevel":0} bonds=["rhodesShip","visiShip","rimBilliton"] garrisonIds=["garrison_c_amiya_a"]
+  chess_char_9_14_b keys(49): chessId,baseId,goldenId,isGolden,tier,identifier,isHidden,isDiy,visible,chessType,backup,shopSortId,charId,name,appellation,rarity,profession,subProfessionId,subProfessionName,position,nationId,bonds,garrisonIds,price,sellPrice,upgradeNum,upgradeChessId,status,stats,immunities,rangeId,rangeGrid,dmgType,attackKind,projectile,canHitFly,targetPriority,trait,skill,talents,tokens,module,assets,skills,statsBase,traitBase,talentsBase,modules,potDown
+     charId=char_002_amiya name=阿米娅 tier=3 isGolden=true upgradeNum=0 upgradeChessId=null goldenId=chess_char_9_14_b baseId=chess_char_9_14_a status={"phase":2,"level":60,"skillLevel":7,"equipLevel":1} bonds=["rhodesShip","visiShip","rimBilliton"] garrisonIds=["garrison_c_amiya_b"]
+  chess_char_9_16_a keys(45): chessId,baseId,goldenId,isGolden,tier,identifier,isHidden,isDiy,visible,chessType,backup,shopSortId,charId,name,appellation,rarity,profession,subProfessionId,subProfessionName,position,nationId,bonds,garrisonIds,price,sellPrice,upgradeNum,upgradeChessId,status,stats,immunities,rangeId,rangeGrid,dmgType,attackKind,projectile,canHitFly,targetPriority,trait,skill,talents,tokens,module,assets,skills,potDown
+     charId=char_017_huang name=煌 tier=4 isGolden=false upgradeNum=3 upgradeChessId=chess_char_9_16_b goldenId=chess_char_9_16_b baseId=chess_char_9_16_a status={"phase":2,"level":1,"skillLevel":4,"equipLevel":0} bonds=["rhodesShip","victoriaShip","yanShip"] garrisonIds=["garrison_c_huang_a"]
+  chess_char_9_16_b keys(49): chessId,baseId,goldenId,isGolden,tier,identifier,isHidden,isDiy,visible,chessType,backup,shopSortId,charId,name,appellation,rarity,profession,subProfessionId,subProfessionName,position,nationId,bonds,garrisonIds,price,sellPrice,upgradeNum,upgradeChessId,status,stats,immunities,rangeId,rangeGrid,dmgType,attackKind,projectile,canHitFly,targetPriority,trait,skill,talents,tokens,module,assets,skills,statsBase,traitBase,talentsBase,modules,potDown
+     charId=char_017_huang name=煌 tier=4 isGolden=true upgradeNum=0 upgradeChessId=null goldenId=chess_char_9_16_b baseId=chess_char_9_16_a status={"phase":2,"level":60,"skillLevel":7,"equipLevel":1} bonds=["rhodesShip","victoriaShip","yanShip"] garrisonIds=["garrison_c_huang_b"]
+  chess_char_9_18_a keys(45): chessId,baseId,goldenId,isGolden,tier,identifier,isHidden,isDiy,visible,chessType,backup,shopSortId,charId,name,appellation,rarity,profession,subProfessionId,subProfessionName,position,nationId,bonds,garrisonIds,price,sellPrice,upgradeNum,upgradeChessId,status,stats,immunities,rangeId,rangeGrid,dmgType,attackKind,projectile,canHitFly,targetPriority,trait,skill,talents,tokens,module,assets,skills,potDown
+     charId=char_003_kalts name=凯尔希 tier=4 isGolden=false upgradeNum=3 upgradeChessId=chess_char_9_18_b goldenId=chess_char_9_18_b baseId=chess_char_9_18_a status={"phase":2,"level":1,"skillLevel":4,"equipLevel":0} bonds=["rhodesShip","miraShip"] garrisonIds=["garrison_c_kalts_a"]
+  chess_char_9_18_b keys(49): chessId,baseId,goldenId,isGolden,tier,identifier,isHidden,isDiy,visible,chessType,backup,shopSortId,charId,name,appellation,rarity,profession,subProfessionId,subProfessionName,position,nationId,bonds,garrisonIds,price,sellPrice,upgradeNum,upgradeChessId,status,stats,immunities,rangeId,rangeGrid,dmgType,attackKind,projectile,canHitFly,targetPriority,trait,skill,talents,tokens,module,assets,skills,statsBase,traitBase,talentsBase,modules,potDown
+     charId=char_003_kalts name=凯尔希 tier=4 isGolden=true upgradeNum=0 upgradeChessId=null goldenId=chess_char_9_18_b baseId=chess_char_9_18_a status={"phase":2,"level":60,"skillLevel":7,"equipLevel":1} bonds=["rhodesShip","miraShip"] garrisonIds=["garrison_c_kalts_b"]
+  chess_char_9_21_a keys(45): chessId,baseId,goldenId,isGolden,tier,identifier,isHidden,isDiy,visible,chessType,backup,shopSortId,charId,name,appellation,rarity,profession,subProfessionId,subProfessionName,position,nationId,bonds,garrisonIds,price,sellPrice,upgradeNum,upgradeChessId,status,stats,immunities,rangeId,rangeGrid,dmgType,attackKind,projectile,canHitFly,targetPriority,trait,skill,talents,tokens,module,assets,skills,potDown
+     charId=char_4179_monstr name=Mon3tr tier=5 isGolden=false upgradeNum=3 upgradeChessId=chess_char_9_21_b goldenId=chess_char_9_21_b baseId=chess_char_9_21_a status={"phase":2,"level":1,"skillLevel":4,"equipLevel":0} bonds=["rhodesShip","steadShip"] garrisonIds=["garrison_c_monstr_gain_a","garrison_c_monstr_sell_a"]
+  chess_char_9_21_b keys(49): chessId,baseId,goldenId,isGolden,tier,identifier,isHidden,isDiy,visible,chessType,backup,shopSortId,charId,name,appellation,rarity,profession,subProfessionId,subProfessionName,position,nationId,bonds,garrisonIds,price,sellPrice,upgradeNum,upgradeChessId,status,stats,immunities,rangeId,rangeGrid,dmgType,attackKind,projectile,canHitFly,targetPriority,trait,skill,talents,tokens,module,assets,skills,statsBase,traitBase,talentsBase,modules,potDown
+     charId=char_4179_monstr name=Mon3tr tier=5 isGolden=true upgradeNum=0 upgradeChessId=null goldenId=chess_char_9_21_b baseId=chess_char_9_21_a status={"phase":2,"level":60,"skillLevel":7,"equipLevel":1} bonds=["rhodesShip","steadShip"] garrisonIds=["garrison_c_monstr_gain_b","garrison_c_monstr_sell_b"]
+  chess_char_9_22_a keys(45): chessId,baseId,goldenId,isGolden,tier,identifier,isHidden,isDiy,visible,chessType,backup,shopSortId,charId,name,appellation,rarity,profession,subProfessionId,subProfessionName,position,nationId,bonds,garrisonIds,price,sellPrice,upgradeNum,upgradeChessId,status,stats,immunities,rangeId,rangeGrid,dmgType,attackKind,projectile,canHitFly,targetPriority,trait,skill,talents,tokens,module,assets,skills,potDown
+     charId=char_4133_logos name=逻各斯 tier=6 isGolden=false upgradeNum=3 upgradeChessId=chess_char_9_22_b goldenId=chess_char_9_22_b baseId=chess_char_9_22_a status={"phase":2,"level":1,"skillLevel":4,"equipLevel":0} bonds=["rhodesShip","kazdelShip"] garrisonIds=["garrison_c_logos_a"]
+  chess_char_9_22_b keys(49): chessId,baseId,goldenId,isGolden,tier,identifier,isHidden,isDiy,visible,chessType,backup,shopSortId,charId,name,appellation,rarity,profession,subProfessionId,subProfessionName,position,nationId,bonds,garrisonIds,price,sellPrice,upgradeNum,upgradeChessId,status,stats,immunities,rangeId,rangeGrid,dmgType,attackKind,projectile,canHitFly,targetPriority,trait,skill,talents,tokens,module,assets,skills,statsBase,traitBase,talentsBase,modules,potDown
+     charId=char_4133_logos name=逻各斯 tier=6 isGolden=true upgradeNum=0 upgradeChessId=null goldenId=chess_char_9_22_b baseId=chess_char_9_22_a status={"phase":2,"level":60,"skillLevel":7,"equipLevel":3} bonds=["rhodesShip","kazdelShip"] garrisonIds=["garrison_c_logos_b"]
+  used garrisons: garrison_c_ascln_k_a garrison_c_ascln_k_b garrison_c_frostl_a garrison_c_frostl_b garrison_c_durnar_a garrison_c_durnar_b garrison_c_amiya_a garrison_c_amiya_b garrison_c_huang_a garrison_c_huang_b garrison_c_kalts_a garrison_c_kalts_b garrison_c_monstr_gain_a garrison_c_monstr_sell_a garrison_c_monstr_gain_b garrison_c_monstr_sell_b garrison_c_logos_a garrison_c_logos_b
+    garrison_c_amiya_a: exists=true keys=garrisonId,desc,eventType,effectType,effectKey,charLevel,bb,bbStr,owners,eventTypeDesc,eventTypeIcon,descRaw
+    garrison_c_amiya_b: exists=true keys=garrisonId,desc,eventType,effectType,effectKey,charLevel,bb,bbStr,owners,eventTypeDesc,eventTypeIcon,descRaw
+    garrison_c_ascln_k_a: exists=true keys=garrisonId,desc,eventType,effectType,effectKey,charLevel,bb,bbStr,owners,eventTypeDesc,eventTypeIcon,descRaw
+    garrison_c_ascln_k_b: exists=true keys=garrisonId,desc,eventType,effectType,effectKey,charLevel,bb,bbStr,owners,eventTypeDesc,eventTypeIcon,descRaw
+    garrison_c_durnar_a: exists=true keys=garrisonId,desc,eventType,effectType,effectKey,charLevel,bb,bbStr,owners,eventTypeDesc,eventTypeIcon,descRaw
+    garrison_c_durnar_b: exists=true keys=garrisonId,desc,eventType,effectType,effectKey,charLevel,bb,bbStr,owners,eventTypeDesc,eventTypeIcon,descRaw
+    garrison_c_frostl_a: exists=true keys=garrisonId,desc,eventType,effectType,effectKey,charLevel,bb,bbStr,owners,eventTypeDesc,eventTypeIcon,descRaw
+    garrison_c_frostl_b: exists=true keys=garrisonId,desc,eventType,effectType,effectKey,charLevel,bb,bbStr,owners,eventTypeDesc,eventTypeIcon,descRaw
+    garrison_c_huang_a: exists=true keys=garrisonId,desc,eventType,effectType,effectKey,charLevel,bb,bbStr,owners,eventTypeDesc,eventTypeIcon,descRaw
+    garrison_c_huang_b: exists=true keys=garrisonId,desc,eventType,effectType,effectKey,charLevel,bb,bbStr,owners,eventTypeDesc,eventTypeIcon,descRaw
+    garrison_c_kalts_a: exists=true keys=garrisonId,desc,eventType,effectType,effectKey,charLevel,bb,bbStr,owners,eventTypeDesc,eventTypeIcon,descRaw
+    garrison_c_kalts_b: exists=true keys=garrisonId,desc,eventType,effectType,effectKey,charLevel,bb,bbStr,owners,eventTypeDesc,eventTypeIcon,descRaw
+    garrison_c_logos_a: exists=true keys=garrisonId,desc,eventType,effectType,effectKey,charLevel,bb,bbStr,owners,eventTypeDesc,eventTypeIcon,descRaw
+    garrison_c_logos_b: exists=true keys=garrisonId,desc,eventType,effectType,effectKey,charLevel,bb,bbStr,owners,eventTypeDesc,eventTypeIcon,descRaw
+    garrison_c_monstr_gain_a: exists=true keys=garrisonId,desc,eventType,effectType,effectKey,charLevel,bb,bbStr,owners,eventTypeDesc,eventTypeIcon,descRaw
+    garrison_c_monstr_gain_b: exists=true keys=garrisonId,desc,eventType,effectType,effectKey,charLevel,bb,bbStr,owners,eventTypeDesc,eventTypeIcon,descRaw
+    garrison_c_monstr_sell_a: exists=true keys=garrisonId,desc,eventType,effectType,effectKey,charLevel,bb,bbStr,owners,eventTypeDesc,eventTypeIcon,descRaw
+    garrison_c_monstr_sell_b: exists=true keys=garrisonId,desc,eventType,effectType,effectKey,charLevel,bb,bbStr,owners,eventTypeDesc,eventTypeIcon,descRaw
+  all pack garrisons: garrison_35_a garrison_35_b garrison_c_durnar_a garrison_c_durnar_b garrison_c_ascln_k_a garrison_c_ascln_k_b garrison_c_frostl_a garrison_c_frostl_b garrison_c_logos_a garrison_c_logos_b garrison_c_humus_a garrison_c_humus_b garrison_c_amiya_a garrison_c_amiya_b garrison_c_monstr_gain_a garrison_c_monstr_gain_b garrison_c_monstr_sell_a garrison_c_monstr_sell_b garrison_c_rosmon_a garrison_c_rosmon_b garrison_c_kalts_a garrison_c_kalts_b garrison_c_huang_a garrison_c_huang_b
+  chess 4_27 present: (none)
+=== kazdel-ship
+bond kazdelShip members(11): chess_char_4_04_a, chess_char_4_25_a, chess_char_4_26_a, chess_char_5_06_a, chess_char_9_01_a, chess_char_9_02_a, chess_char_9_04_a, chess_char_9_06_a, chess_char_9_09_a, chess_char_9_10_a, chess_char_9_22_a
+  thresholds [3,6,9]
+  visibleMembers(11): chess_char_4_04_a, chess_char_4_25_a, chess_char_4_26_a, chess_char_5_06_a, chess_char_9_01_a, chess_char_9_02_a, chess_char_9_04_a, chess_char_9_06_a, chess_char_9_09_a, chess_char_9_10_a, chess_char_9_22_a
+  chess_char_9_01_a keys(45): chessId,baseId,goldenId,isGolden,tier,identifier,isHidden,isDiy,visible,chessType,backup,shopSortId,charId,name,appellation,rarity,profession,subProfessionId,subProfessionName,position,nationId,bonds,garrisonIds,price,sellPrice,upgradeNum,upgradeChessId,status,stats,immunities,rangeId,rangeGrid,dmgType,attackKind,projectile,canHitFly,targetPriority,trait,skill,talents,tokens,module,assets,skills,potDown
+     charId=char_290_vigna name=红豆 tier=1 isGolden=false upgradeNum=3 upgradeChessId=chess_char_9_01_b goldenId=chess_char_9_01_b baseId=chess_char_9_01_a status={"phase":1,"level":55,"skillLevel":4,"equipLevel":0} bonds=["kazdelShip","indomShip"] garrisonIds=["garrison_04_a"]
+  chess_char_9_01_b keys(49): chessId,baseId,goldenId,isGolden,tier,identifier,isHidden,isDiy,visible,chessType,backup,shopSortId,charId,name,appellation,rarity,profession,subProfessionId,subProfessionName,position,nationId,bonds,garrisonIds,price,sellPrice,upgradeNum,upgradeChessId,status,stats,immunities,rangeId,rangeGrid,dmgType,attackKind,projectile,canHitFly,targetPriority,trait,skill,talents,tokens,module,assets,skills,statsBase,traitBase,talentsBase,modules,potDown
+     charId=char_290_vigna name=红豆 tier=1 isGolden=true upgradeNum=0 upgradeChessId=null goldenId=chess_char_9_01_b baseId=chess_char_9_01_a status={"phase":2,"level":50,"skillLevel":7,"equipLevel":1} bonds=["kazdelShip","indomShip"] garrisonIds=["garrison_04_b"]
+  chess_char_9_02_a keys(45): chessId,baseId,goldenId,isGolden,tier,identifier,isHidden,isDiy,visible,chessType,backup,shopSortId,charId,name,appellation,rarity,profession,subProfessionId,subProfessionName,position,nationId,bonds,garrisonIds,price,sellPrice,upgradeNum,upgradeChessId,status,stats,immunities,rangeId,rangeGrid,dmgType,attackKind,projectile,canHitFly,targetPriority,trait,skill,talents,tokens,module,assets,skills,potDown
+     charId=char_219_meteo name=陨星 tier=2 isGolden=false upgradeNum=3 upgradeChessId=chess_char_9_02_b goldenId=chess_char_9_02_b baseId=chess_char_9_02_a status={"phase":1,"level":60,"skillLevel":4,"equipLevel":0} bonds=["kazdelShip","preciShip"] garrisonIds=["garrison_c_meteo_a"]
+  chess_char_9_02_b keys(49): chessId,baseId,goldenId,isGolden,tier,identifier,isHidden,isDiy,visible,chessType,backup,shopSortId,charId,name,appellation,rarity,profession,subProfessionId,subProfessionName,position,nationId,bonds,garrisonIds,price,sellPrice,upgradeNum,upgradeChessId,status,stats,immunities,rangeId,rangeGrid,dmgType,attackKind,projectile,canHitFly,targetPriority,trait,skill,talents,tokens,module,assets,skills,statsBase,traitBase,talentsBase,modules,potDown
+     charId=char_219_meteo name=陨星 tier=2 isGolden=true upgradeNum=0 upgradeChessId=null goldenId=chess_char_9_02_b baseId=chess_char_9_02_a status={"phase":2,"level":55,"skillLevel":7,"equipLevel":1} bonds=["kazdelShip","preciShip"] garrisonIds=["garrison_c_meteo_b"]
+  chess_char_9_04_a keys(45): chessId,baseId,goldenId,isGolden,tier,identifier,isHidden,isDiy,visible,chessType,backup,shopSortId,charId,name,appellation,rarity,profession,subProfessionId,subProfessionName,position,nationId,bonds,garrisonIds,price,sellPrice,upgradeNum,upgradeChessId,status,stats,immunities,rangeId,rangeGrid,dmgType,attackKind,projectile,canHitFly,targetPriority,trait,skill,talents,tokens,module,assets,skills,potDown
+     charId=char_147_shining name=闪灵 tier=3 isGolden=false upgradeNum=3 upgradeChessId=chess_char_9_04_b goldenId=chess_char_9_04_b baseId=chess_char_9_04_a status={"phase":2,"level":1,"skillLevel":4,"equipLevel":0} bonds=["kazdelShip","deputShip"] garrisonIds=["garrison_c_shining_a"]
+  chess_char_9_04_b keys(49): chessId,baseId,goldenId,isGolden,tier,identifier,isHidden,isDiy,visible,chessType,backup,shopSortId,charId,name,appellation,rarity,profession,subProfessionId,subProfessionName,position,nationId,bonds,garrisonIds,price,sellPrice,upgradeNum,upgradeChessId,status,stats,immunities,rangeId,rangeGrid,dmgType,attackKind,projectile,canHitFly,targetPriority,trait,skill,talents,tokens,module,assets,skills,statsBase,traitBase,talentsBase,modules,potDown
+     charId=char_147_shining name=闪灵 tier=3 isGolden=true upgradeNum=0 upgradeChessId=null goldenId=chess_char_9_04_b baseId=chess_char_9_04_a status={"phase":2,"level":60,"skillLevel":7,"equipLevel":1} bonds=["kazdelShip","deputShip"] garrisonIds=["garrison_c_shining_b"]
+  chess_char_9_06_a keys(45): chessId,baseId,goldenId,isGolden,tier,identifier,isHidden,isDiy,visible,chessType,backup,shopSortId,charId,name,appellation,rarity,profession,subProfessionId,subProfessionName,position,nationId,bonds,garrisonIds,price,sellPrice,upgradeNum,upgradeChessId,status,stats,immunities,rangeId,rangeGrid,dmgType,attackKind,projectile,canHitFly,targetPriority,trait,skill,talents,tokens,module,assets,skills,potDown
+     charId=char_4088_hodrer name=赫德雷 tier=4 isGolden=false upgradeNum=3 upgradeChessId=chess_char_9_06_b goldenId=chess_char_9_06_b baseId=chess_char_9_06_a status={"phase":2,"level":1,"skillLevel":4,"equipLevel":0} bonds=["kazdelShip","indomShip"] garrisonIds=["garrison_c_hodrer_a"]
+  chess_char_9_06_b keys(49): chessId,baseId,goldenId,isGolden,tier,identifier,isHidden,isDiy,visible,chessType,backup,shopSortId,charId,name,appellation,rarity,profession,subProfessionId,subProfessionName,position,nationId,bonds,garrisonIds,price,sellPrice,upgradeNum,upgradeChessId,status,stats,immunities,rangeId,rangeGrid,dmgType,attackKind,projectile,canHitFly,targetPriority,trait,skill,talents,tokens,module,assets,skills,statsBase,traitBase,talentsBase,modules,potDown
+     charId=char_4088_hodrer name=赫德雷 tier=4 isGolden=true upgradeNum=0 upgradeChessId=null goldenId=chess_char_9_06_b baseId=chess_char_9_06_a status={"phase":2,"level":60,"skillLevel":7,"equipLevel":1} bonds=["kazdelShip","indomShip"] garrisonIds=["garrison_c_hodrer_b"]
+  chess_char_9_10_a keys(45): chessId,baseId,goldenId,isGolden,tier,identifier,isHidden,isDiy,visible,chessType,backup,shopSortId,charId,name,appellation,rarity,profession,subProfessionId,subProfessionName,position,nationId,bonds,garrisonIds,price,sellPrice,upgradeNum,upgradeChessId,status,stats,immunities,rangeId,rangeGrid,dmgType,attackKind,projectile,canHitFly,targetPriority,trait,skill,talents,tokens,module,assets,skills,potDown
+     charId=char_1035_wisdel name=维什戴尔 tier=6 isGolden=false upgradeNum=3 upgradeChessId=chess_char_9_10_b goldenId=chess_char_9_10_b baseId=chess_char_9_10_a status={"phase":2,"level":1,"skillLevel":4,"equipLevel":0} bonds=["kazdelShip","skillfulShip","preciShip"] garrisonIds=["garrison_c_wisdel_a"]
+  chess_char_9_10_b keys(49): chessId,baseId,goldenId,isGolden,tier,identifier,isHidden,isDiy,visible,chessType,backup,shopSortId,charId,name,appellation,rarity,profession,subProfessionId,subProfessionName,position,nationId,bonds,garrisonIds,price,sellPrice,upgradeNum,upgradeChessId,status,stats,immunities,rangeId,rangeGrid,dmgType,attackKind,projectile,canHitFly,targetPriority,trait,skill,talents,tokens,module,assets,skills,statsBase,traitBase,talentsBase,modules,potDown
+     charId=char_1035_wisdel name=维什戴尔 tier=6 isGolden=true upgradeNum=0 upgradeChessId=null goldenId=chess_char_9_10_b baseId=chess_char_9_10_a status={"phase":2,"level":60,"skillLevel":7,"equipLevel":3} bonds=["kazdelShip","skillfulShip","preciShip"] garrisonIds=["garrison_c_wisdel_b"]
+  used garrisons: garrison_04_a garrison_04_b garrison_c_meteo_a garrison_c_meteo_b garrison_c_shining_a garrison_c_shining_b garrison_c_hodrer_a garrison_c_hodrer_b garrison_c_wisdel_a garrison_c_wisdel_b
+    garrison_04_a: exists=false keys=-
+    garrison_04_b: exists=false keys=-
+    garrison_c_hodrer_a: exists=true keys=garrisonId,desc,eventType,effectType,effectKey,charLevel,bb,bbStr,owners,eventTypeDesc,eventTypeIcon,descRaw
+    garrison_c_hodrer_b: exists=true keys=garrisonId,desc,eventType,effectType,effectKey,charLevel,bb,bbStr,owners,eventTypeDesc,eventTypeIcon,descRaw
+    garrison_c_meteo_a: exists=true keys=garrisonId,desc,eventType,effectType,effectKey,charLevel,bb,bbStr,owners,eventTypeDesc,eventTypeIcon,descRaw
+    garrison_c_meteo_b: exists=true keys=garrisonId,desc,eventType,effectType,effectKey,charLevel,bb,bbStr,owners,eventTypeDesc,eventTypeIcon,descRaw
+    garrison_c_shining_a: exists=true keys=garrisonId,desc,eventType,effectType,effectKey,charLevel,bb,bbStr,owners,eventTypeDesc,eventTypeIcon,descRaw
+    garrison_c_shining_b: exists=true keys=garrisonId,desc,eventType,effectType,effectKey,charLevel,bb,bbStr,owners,eventTypeDesc,eventTypeIcon,descRaw
+    garrison_c_wisdel_a: exists=true keys=garrisonId,desc,eventType,effectType,effectKey,charLevel,bb,bbStr,owners,eventTypeDesc,eventTypeIcon,descRaw
+    garrison_c_wisdel_b: exists=true keys=garrisonId,desc,eventType,effectType,effectKey,charLevel,bb,bbStr,owners,eventTypeDesc,eventTypeIcon,descRaw
+  all pack garrisons: garrison_c_meteo_a garrison_c_meteo_b garrison_c_shining_a garrison_c_shining_b garrison_c_hodrer_a garrison_c_hodrer_b garrison_c_wisdel_a garrison_c_wisdel_b garrison_10_a garrison_10_b
+  chess 4_27 present: (none)
+=== ours rhodesShip: members(5) chess_char_2_09_a, chess_char_4_25_a, chess_char_4_26_a, chess_char_5_03_a, chess_char_6_12_a
+  thresholds [3,6] visibleMembers(5) chess_char_2_09_a, chess_char_4_25_a, chess_char_4_26_a, chess_char_5_03_a, chess_char_6_12_a
+  missing from data/chess.json: (none)
+  member record keys: {
+ "bondId": "rhodesShip",
+ "name": "罗德岛",
+ "identifier": 102,
+ "isCore": true,
+ "bondType": "SEASON",
+ "bondOrder": 2,
+ "powerIdList": [
+  "rhodes"
+ ],
+ "iconId": "icon_rhodesShip",
+ "activeCount": 3,
+ "thresholds": [
+  3,
+  6
+ ],
+ "maxCount": null,
+ "thresholdTemplate": "count_threshold_upward",
+ "countMode": "BOARD",
+ "countsHand": false,
+ "countsGoldenOnly": false,
+ "activeType": "BATTLE",
+ "isActiveInDeck": false,
+ "noStack": false,
+ "weight": 10,
+ "maxInactiveBondCount": -1,
+ "layerMilestones": [],
+ "desc": "【罗德岛】干员攻击力与生命值提升（受层数影响）\n<在场6名不同【罗德岛】干员>所有【罗德岛】干员受到的治疗效果提升20%，每2秒回复1点技力，每秒回复1%最大生命值与元素损伤",
+ "descRaw": "【罗德岛】干员<@ba.vup>攻击力</>与<@ba.vup>生命值</>提升<@autochess.gray>（受层数影响）</>\n<在场<@autochess.dgreen>6</>名不同【罗德岛】干员>所有【罗德岛】干员<@ba.vup>受到的治疗效果提升20%</>，每2秒回复<@ba.vup>1</>点技力，每秒回复<@ba.vup>1%</>最大生命值与<@ba.vup>元素损伤</>",
+ "effectId": "bondeffect_rhodes",
+ "effectName": "罗德岛",
+ "effectDesc": "【罗德岛】干员攻击力+{0:0%}、生命值+{1:0%}（受层数影响）\n<在场6名不同【罗德岛】干员>所有【罗德岛】干员受到的治疗效果提升20%，每2秒回复1点技力，每秒回复1%最大生命值与元素损伤",
+ "effectDescRaw": "【罗德岛】干员<@ba.vup>攻击力+{0:0%}</>、<@ba.vup>生命值+{1:0%}</><@ba.acrem>（受层数影响）</>\n<在场<@autochess.dgreen>6</>名不同【罗德岛】干员>所有【罗德岛】干员<@ba.vup>受到的治疗效果提升20%</>，每2秒回复<@ba.vup>1</>点技力，每秒回复<@ba.
+=== ours kazdelShip: members(4) chess_char_4_04_a, chess_char_4_25_a, chess_char_4_26_a, chess_char_5_06_a
+  thresholds [3,6,9] visibleMembers(4) chess_char_4_04_a, chess_char_4_25_a, chess_char_4_26_a, chess_char_5_06_a
+  missing from data/chess.json: (none)
+  member record keys: {
+ "bondId": "kazdelShip",
+ "name": "卡兹戴尔",
+ "identifier": 101,
+ "isCore": true,
+ "bondType": "SEASON",
+ "bondOrder": 2,
+ "powerIdList": [
+  "kazdel",
+  "sarkaz",
+  "babel"
+ ],
+ "iconId": "icon_kazdelShip",
+ "activeCount": 3,
+ "thresholds": [
+  3,
+  6,
+  9
+ ],
+ "maxCount": null,
+ "thresholdTemplate": "count_threshold_upward",
+ "countMode": "BOARD",
+ "countsHand": false,
+ "countsGoldenOnly": false,
+ "activeType": "BATTLE",
+ "isActiveInDeck": false,
+ "noStack": false,
+ "weight": 10,
+ "maxInactiveBondCount": -1,
+ "layerMilestones": [
+  {
+   "layer": 100,
+   "mode": "every",
+   "effect": "bond_layer_added_reward_equip"
+  }
+ ],
+ "desc": "【卡兹戴尔】干员对处于眩晕、停顿、束缚、不动的单位造成的伤害提升（受层数影响）\n<每叠加100层>获得一件“萨卡兹的断角”\n<在场6名不同【卡兹戴尔】干员>所有【卡兹戴尔】干员攻击速度+50，且攻击附带20%攻击力的真实伤害\n<在场9名不同【卡兹戴尔】干员>开局在战场中央召唤“活性源石风暴”，每秒对全场所有敌方单位造成所有【卡兹戴尔】干员当前攻击力总和20%的无来源真实伤害；对处于眩晕、停顿、束缚、不动的单位伤害提升+10%（受层数影响）",
+ "descRaw": "【卡兹戴尔】干员对处于<@ba.vup>眩晕</>、<@ba.vup>停顿</>、<@ba.vup>束缚</>、<@ba.vup>不动</>的单位造成的伤害<@ba.vup>提升</><@autochess.gray>（受层数影响）</>\n<每叠加<@autochess.dgreen>100</>层>获得一件<@ba.vup>“萨卡兹的断角”</>\n<在场<@autochess.dgreen>6</>名不同【卡兹戴尔】干员>所有【卡兹戴尔】干员<@ba.vup>攻击速度+50</>，且攻击附带<@ba.vup>20%</>攻击力的<@ba.vup>真实伤害</>\n<在场<@autochess.dgreen>9</>名不同【卡
+=== our chess key union (58): annBonds,appellation,assets,attackKind,backup,baseId,bonds,canHitFly,charId,chessId,chessType,displayTokens,diyFor,diyRequirement,dmgType,garrisonIds,goldenId,grantOnly,identifier,immunities,isDiy,isGolden,isHidden,module,modules,name,nationId,noSkill,placeOnRanged,position,potDown,price,profession,projectile,pureStrong,rangeGrid,rangeId,rarity,sellPrice,shopSortId,skill,skills,stats,statsBase,status,subProfessionId,subProfessionName,talents,talentsBase,targetPriority,tier,tokens,trait,traitBase,upgradeChessId,upgradeNum,visible,zhajing
+=== pack 9_ key union (49): appellation,assets,attackKind,backup,baseId,bonds,canHitFly,charId,chessId,chessType,dmgType,garrisonIds,goldenId,identifier,immunities,isDiy,isGolden,isHidden,module,modules,name,nationId,position,potDown,price,profession,projectile,rangeGrid,rangeId,rarity,sellPrice,shopSortId,skill,skills,stats,statsBase,status,subProfessionId,subProfessionName,talents,talentsBase,targetPriority,tier,tokens,trait,traitBase,upgradeChessId,upgradeNum,visible
+=== pack-only keys: 
+=== ours-only keys: annBonds,displayTokens,diyFor,diyRequirement,grantOnly,noSkill,placeOnRanged,pureStrong,zhajing

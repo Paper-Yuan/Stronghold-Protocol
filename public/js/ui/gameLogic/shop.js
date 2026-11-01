@@ -1,7 +1,6 @@
 // ui/gameLogic/shop.js — shop prices, merges, offers, the ready-funds prompt, the shop bar's fold on 准备. Re-exported from
 // ../gameLogic.js.
 
-import { GEO } from '../../../../shared/constants.js';
 import { isObj } from './shared.js';
 import { t, tName } from '../../../../shared/i18n.js';
 
@@ -71,7 +70,10 @@ export function mergeTarget(priv, chessId, getChess = () => null) {
 /** Whether every hand slot is taken (the server refuses every purchase / reward pick then: HAND_FULL, GitHub #82). */
 export function handFull(priv) {
   const hand = Array.isArray(priv?.hand) ? priv.hand : [];
-  return hand.length >= GEO.HAND_SIZE && hand.every((p) => p != null);
+  // `hand.length` IS the bench width of this match (the server builds it from gd.benchSize: 20 in 炸惊, 10 elsewhere),
+  // so it needs no second number — the old comparison against the default width was always true for a 20-slot bench
+  // and only looked right.
+  return hand.length > 0 && hand.every((p) => p != null);
 }
 
 /**
@@ -134,14 +136,20 @@ export function offerHeader(offer) {
 /**
  * Why a shop action is unavailable (null when available).
  * @param {'buy'|'reward'|'refresh'|'freeze'|'levelUp'|'ready'} kind
- * @param {{ priv:any, editable:boolean, slot?:any }} ctx
+ * @param {{ priv:any, editable:boolean, slot?:any, jibianDraft?:boolean }} ctx
+ * `jibianDraft`: 炸惊模拟's 惊变 三选一 is open for this player (it lives in `m.public.sp`, not in `m.private`, so the
+ * caller hands the flag in — the 已选惊变 panel is not what blocks 准备就绪, an undecided draft is).
  * @returns {string|null} Chinese reason
  */
-export function shopBlockReason(kind, { priv, editable, slot } = {}) {
+export function shopBlockReason(kind, { priv, editable, slot, jibianDraft = false } = {}) {
   if (!priv) return t('尚未就绪');
   if (priv.alive === false) return t('你已被淘汰');
   if (kind === 'ready') {
     if (priv.personalChoice) return t('请先完成教鞭选择');
+    // 湮灭模拟 · 藏品三选一开着时，服务端 setReady 会拒绝（player/prep.js），文案要说清是哪一步没做
+    if (priv.relics && priv.relics.draft) return t('请先完成藏品选择');
+    // 炸惊模拟 · 惊变三选一对同一件事：草稿没选完就不该报「已准备就绪」
+    if (jibianDraft) return t('请先完成惊变选择');
     return priv.canReady === false ? t('临时整备区不为空，请先处理溢出的资源') : null;
   }
   if (!editable) {

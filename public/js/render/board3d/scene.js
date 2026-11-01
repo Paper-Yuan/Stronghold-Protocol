@@ -251,6 +251,7 @@ export class BoardScene {
     this.sceneWater = [];
     this.area = AREAS.normal;
     this.areaKey = areaKey(AREAS.normal);
+    this.benchSize = 10;           // 整备区 width of the match (setBenchSize: 炸惊 20, every other mode 10)
     this.battleRect = null;
     this.devices = new Set();
     this.flashes = [];
@@ -356,6 +357,18 @@ export class BoardScene {
     return true;
   }
 
+  /**
+   * 整备区 width of the match (shared/constants.js benchSizeOf: 炸惊 20, every other mode 10): the bench pad strip of
+   * row 7 (layout.js classifyStage). Rebuilds when it changes; 10 — the default — is a no-op.
+   */
+  setBenchSize(n) {
+    const v = Number.isInteger(n) && n > 0 ? n : 10;
+    if (v === this.benchSize) return false;
+    this.benchSize = v;
+    if (this.stage) { this.stageKey = null; this.setStage(this.stage); }
+    return true;
+  }
+
   /** Rebuild everything for a stage (no-op when the same stage object/grid is set again). */
   setStage(stage) {
     if (this.destroyed) return;
@@ -368,7 +381,7 @@ export class BoardScene {
     this.sceneWater = [];
     this.official = null;
     if (!stage) { applyWaterMaterial(this.mat.water, null); return; }
-    const board = buildBoard(stage, { uv: this.pack?.uv || null, area: this.area, platformMesh: !!this.platformGeometry() });
+    const board = buildBoard(stage, { uv: this.pack?.uv || null, area: this.area, benchSize: this.benchSize, platformMesh: !!this.platformGeometry() });
     this.board = board;
     const M = this.meshes = {};
     this.official = official && this._buildScene(official) ? official : null;
@@ -388,6 +401,13 @@ export class BoardScene {
       // drawn on it (units stand on them at tiles.js heightAt; GitHub #569)
       M.raised = this._mesh(board.buckets.raised, this.mat.board);
       M.raisedDecal = this._mesh(board.buckets.raisedDecal, this.mat.decal, { cast: false });
+      // The 整备区 band is art-only here: a pack paints ONE pad deck, on row 7 (its top z 0.37–0.46 in board space — per
+      // stage) plus the EQUIPMENTS band on row 8 (z ≈ 0.38, act2 m01 flat 0.37). That band is exactly where the 炸惊
+      // bench's second row sits (idx 10..19, shared/constants.js benchTileOf), so the scene path needs no pad mesh: the
+      // pieces stand on the art itself (board3d/benchDeck.js holds the measured deck heights). Row 6 is the island's
+      // front rim (rock top z 0.10–0.21, water notches at cols 6–7) and carries the 临时整备区's own row (tempRowOf);
+      // row 5 is open water. Drawing the procedural pads on the scene (whole board bucket, tops at TILE_H.bench, or
+      // lifted to the art deck's z) floated a second material over the rim/water — reverted (task-27, 2026-10-30).
     }
     this._buildDevices(board);
     this._buildGates(board);

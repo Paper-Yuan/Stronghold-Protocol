@@ -1,0 +1,1642 @@
+{
+  "startedAt": "2026-10-31T12:49:45.922Z",
+  "shots": [
+    {
+      "file": "room8-room-792x360.png",
+      "w": 792,
+      "h": 360,
+      "scene": "room8-room",
+      "meta": {
+        "room": "UHSX",
+        "occupied": 7,
+        "cap": 8
+      },
+      "probe": {
+        "vw": 792,
+        "vh": 360,
+        "clientW": 792,
+        "clientH": 360,
+        "scrollW": 792,
+        "scrollH": 360,
+        "bodyScrollW": 792,
+        "bodyScrollH": 360,
+        "scrollEqualsClient": true,
+        "overflow": [],
+        "overflowCount": 0,
+        "clippedCount": 0,
+        "clipped": [],
+        "interactive": 11,
+        "minEdge": 12,
+        "small": [
+          {
+            "el": "button.plugtag \"原版\"",
+            "w": 31,
+            "h": 12
+          },
+          {
+            "el": "button.rs-key__copy \"复制\"",
+            "w": 42,
+            "h": 25
+          },
+          {
+            "el": "button.rs-key__link \"复制链接\"",
+            "w": 28,
+            "h": 25
+          },
+          {
+            "el": "button.rs-pill__diff \"标准模拟AC-1\"",
+            "w": 91,
+            "h": 30
+          },
+          {
+            "el": "button.rs-pill__ver \"游戏版本：第二期下半\"",
+            "w": 89,
+            "h": 30
+          },
+          {
+            "el": "button.spchat__toggle \"展开或折叠聊天\"",
+            "w": 24,
+            "h": 24
+          }
+        ],
+        "smallCount": 6,
+        "rects": {},
+        "overlaps": [],
+        "scene": {
+          "strip": false,
+          "chips": 0,
+          "unite": false,
+          "mates": 0,
+          "panel": false,
+          "seat8": true,
+          "seat12": false,
+          "opts": false,
+          "roomCount": "7/8",
+          "stripLabel": null,
+          "uniteLabel": null,
+          "chipsLabel": ""
+        }
+      },
+      "phase": null,
+      "round": 0
+    },
+    {
+      "file": "room8-room-1920x1080.png",
+      "w": 1920,
+      "h": 1080,
+      "scene": "room8-room",
+      "meta": {
+        "room": "UHSX",
+        "occupied": 7,
+        "cap": 8
+      },
+      "probe": {
+        "vw": 1920,
+        "vh": 1080,
+        "clientW": 1920,
+        "clientH": 1080,
+        "scrollW": 1920,
+        "scrollH": 1080,
+        "bodyScrollW": 1920,
+        "bodyScrollH": 1080,
+        "scrollEqualsClient": true,
+        "overflow": [],
+        "overflowCount": 0,
+        "clippedCount": 0,
+        "clipped": [],
+        "interactive": 14,
+        "minEdge": 30,
+        "small": [
+          {
+            "el": "button.plugtag \"原版\"",
+            "w": 76,
+            "h": 30
+          }
+        ],
+        "smallCount": 1,
+        "rects": {},
+        "overlaps": [],
+        "scene": {
+          "strip": false,
+          "chips": 0,
+          "unite": false,
+          "mates": 0,
+          "panel": false,
+          "seat8": true,
+          "seat12": false,
+          "opts": false,
+          "roomCount": "7/8",
+          "stripLabel": null,
+          "uniteLabel": null,
+          "chipsLabel": ""
+        }
+      },
+      "phase": null,
+      "round": 0
+    },
+    {
+      "file": "room8-match-792x360.png",
+      "w": 792,
+      "h": 360,
+      "scene": "room8-match",
+      "meta": {
+        "room": "UHSX",
+        "note": "PREP, 8 seats, all AI seats idle"
+      },
+      "probe": {
+        "vw": 792,
+        "vh": 360,
+        "clientW": 792,
+        "clientH": 360,
+        "scrollW": 792,
+        "scrollH": 360,
+        "bodyScrollW": 792,
+        "bodyScrollH": 360,
+        "scrollEqualsClient": true,
+        "overflow": [],
+        "overflowCount": 0,
+        "clippedCount": 17,
+        "clipped": [
+          "aside.team \"同盟成员\"",
+          "div.team__row \"P8AIAI·829\"",
+          "button.team__btn \"P8AI\"",
+          "span.pavatar.pavatar--md",
+          "span.pavatar__img",
+          "img",
+          "span.team__seat.num \"P8\"",
+          "span.team__ai \"AI\""
+        ],
+        "interactive": 30,
+        "minEdge": 12.59,
+        "small": [
+          {
+            "el": "button.gtop__iconbtn.tapx \"本局信息\"",
+            "w": 31,
+            "h": 26
+          },
+          {
+            "el": "button.enemybtn.tapx \"敌方情报\"",
+            "w": 55,
+            "h": 26
+          },
+          {
+            "el": "button.bond.bond--sm \"0萨尔贡\"",
+            "w": 21,
+            "h": 31
+          },
+          {
+            "el": "button.bond.bond--sm \"0助力\"",
+            "w": 21,
+            "h": 31
+          },
+          {
+            "el": "button.bond.bond--sm \"灵巧\"",
+            "w": 21,
+            "h": 31
+          },
+          {
+            "el": "button.toolbtn.toolbtn--ice \"冻结F\"",
+            "w": 61,
+            "h": 30
+          },
+          {
+            "el": "button.toolbtn.toolbtn--amber \"刷新1R\"",
+            "w": 80,
+            "h": 30
+          },
+          {
+            "el": "button.funds__collapse \"收起\"",
+            "w": 29,
+            "h": 13
+          }
+        ],
+        "smallCount": 8,
+        "rects": {
+          ".gm-strip": {
+            "l": 10,
+            "t": 52,
+            "w": 773,
+            "h": 17
+          },
+          ".gm-chips": {
+            "l": 14,
+            "t": 76,
+            "w": 43,
+            "h": 96
+          },
+          ".gm-mates": {
+            "l": 14,
+            "t": 296,
+            "w": 154,
+            "h": 52
+          },
+          ".team": {
+            "l": 9,
+            "t": 94,
+            "w": 79,
+            "h": 295
+          },
+          ".gm__bonds": {
+            "l": 340,
+            "t": 54,
+            "w": 113,
+            "h": 40
+          },
+          ".shopbar": {
+            "l": 380,
+            "t": 195,
+            "w": 402,
+            "h": 157
+          }
+        },
+        "overlaps": [
+          ".gm-strip × .gm__bonds = 113×15px",
+          ".gm-chips × .team = 43×78px",
+          ".gm-mates × .team = 74×52px"
+        ],
+        "scene": {
+          "strip": true,
+          "chips": 2,
+          "unite": false,
+          "mates": 4,
+          "panel": false,
+          "seat8": false,
+          "seat12": false,
+          "opts": false,
+          "roomCount": null,
+          "stripLabel": "我方同盟 4/4 ｜ 对方同盟 4/4",
+          "uniteLabel": null,
+          "chipsLabel": "我方同盟 4/4 | 对方同盟 4/4"
+        }
+      },
+      "phase": "PREP",
+      "round": 3
+    },
+    {
+      "file": "room8-match-1920x1080.png",
+      "w": 1920,
+      "h": 1080,
+      "scene": "room8-match",
+      "meta": {
+        "room": "UHSX",
+        "note": "PREP, 8 seats, all AI seats idle"
+      },
+      "probe": {
+        "vw": 1920,
+        "vh": 1080,
+        "clientW": 1920,
+        "clientH": 1080,
+        "scrollW": 1920,
+        "scrollH": 1080,
+        "bodyScrollW": 1920,
+        "bodyScrollH": 1080,
+        "scrollEqualsClient": true,
+        "overflow": [],
+        "overflowCount": 0,
+        "clippedCount": 0,
+        "clipped": [],
+        "interactive": 30,
+        "minEdge": 28.5,
+        "small": [
+          {
+            "el": "button.funds__collapse \"收起\"",
+            "w": 70,
+            "h": 29
+          }
+        ],
+        "smallCount": 1,
+        "rects": {
+          ".gm-strip": {
+            "l": 24,
+            "t": 130,
+            "w": 1872,
+            "h": 42
+          },
+          ".gm-chips": {
+            "l": 36,
+            "t": 190,
+            "w": 108,
+            "h": 240
+          },
+          ".gm-mates": {
+            "l": 36,
+            "t": 921,
+            "w": 384,
+            "h": 129
+          },
+          ".team": {
+            "l": 22,
+            "t": 236,
+            "w": 197,
+            "h": 738
+          },
+          ".gm__bonds": {
+            "l": 819,
+            "t": 136,
+            "w": 282,
+            "h": 97
+          },
+          ".shopbar": {
+            "l": 893,
+            "t": 694,
+            "w": 1001,
+            "h": 366
+          }
+        },
+        "overlaps": [
+          ".gm-strip × .gm__bonds = 282×36px",
+          ".gm-chips × .team = 108×194px",
+          ".gm-mates × .team = 183×53px"
+        ],
+        "scene": {
+          "strip": true,
+          "chips": 2,
+          "unite": false,
+          "mates": 4,
+          "panel": false,
+          "seat8": false,
+          "seat12": false,
+          "opts": false,
+          "roomCount": null,
+          "stripLabel": "我方同盟 4/4 ｜ 对方同盟 4/4",
+          "uniteLabel": null,
+          "chipsLabel": "我方同盟 4/4 | 对方同盟 4/4"
+        }
+      },
+      "phase": "PREP",
+      "round": 3
+    },
+    {
+      "file": "room12-room-792x360.png",
+      "w": 792,
+      "h": 360,
+      "scene": "room12-room",
+      "meta": {
+        "room": "LSHA",
+        "occupied": 12,
+        "cap": 12
+      },
+      "probe": {
+        "vw": 792,
+        "vh": 360,
+        "clientW": 792,
+        "clientH": 360,
+        "scrollW": 792,
+        "scrollH": 360,
+        "bodyScrollW": 792,
+        "bodyScrollH": 360,
+        "scrollEqualsClient": true,
+        "overflow": [],
+        "overflowCount": 0,
+        "clippedCount": 0,
+        "clipped": [],
+        "interactive": 12,
+        "minEdge": 12,
+        "small": [
+          {
+            "el": "button.plugtag \"原版\"",
+            "w": 31,
+            "h": 12
+          },
+          {
+            "el": "button.rs-key__copy \"复制\"",
+            "w": 42,
+            "h": 25
+          },
+          {
+            "el": "button.rs-key__link \"复制链接\"",
+            "w": 28,
+            "h": 25
+          },
+          {
+            "el": "button.rs-pill__diff \"标准模拟AC-1\"",
+            "w": 91,
+            "h": 30
+          },
+          {
+            "el": "button.rs-pill__ver \"游戏版本：第二期下半\"",
+            "w": 89,
+            "h": 30
+          },
+          {
+            "el": "button.spchat__toggle \"展开或折叠聊天\"",
+            "w": 24,
+            "h": 24
+          }
+        ],
+        "smallCount": 6,
+        "rects": {},
+        "overlaps": [],
+        "scene": {
+          "strip": false,
+          "chips": 0,
+          "unite": false,
+          "mates": 0,
+          "panel": false,
+          "seat8": false,
+          "seat12": true,
+          "opts": false,
+          "roomCount": "12/12",
+          "stripLabel": null,
+          "uniteLabel": null,
+          "chipsLabel": ""
+        }
+      },
+      "phase": null,
+      "round": 0
+    },
+    {
+      "file": "room12-room-1920x1080.png",
+      "w": 1920,
+      "h": 1080,
+      "scene": "room12-room",
+      "meta": {
+        "room": "LSHA",
+        "occupied": 12,
+        "cap": 12
+      },
+      "probe": {
+        "vw": 1920,
+        "vh": 1080,
+        "clientW": 1920,
+        "clientH": 1080,
+        "scrollW": 1920,
+        "scrollH": 1080,
+        "bodyScrollW": 1920,
+        "bodyScrollH": 1080,
+        "scrollEqualsClient": true,
+        "overflow": [],
+        "overflowCount": 0,
+        "clippedCount": 0,
+        "clipped": [],
+        "interactive": 15,
+        "minEdge": 30,
+        "small": [
+          {
+            "el": "button.plugtag \"原版\"",
+            "w": 76,
+            "h": 30
+          }
+        ],
+        "smallCount": 1,
+        "rects": {},
+        "overlaps": [],
+        "scene": {
+          "strip": false,
+          "chips": 0,
+          "unite": false,
+          "mates": 0,
+          "panel": false,
+          "seat8": false,
+          "seat12": true,
+          "opts": false,
+          "roomCount": "12/12",
+          "stripLabel": null,
+          "uniteLabel": null,
+          "chipsLabel": ""
+        }
+      },
+      "phase": null,
+      "round": 0
+    },
+    {
+      "file": "room12-seats-sheet-792x360.png",
+      "w": 792,
+      "h": 360,
+      "scene": "room12-seats-sheet",
+      "meta": {
+        "room": "LSHA",
+        "selected": "12"
+      },
+      "probe": {
+        "vw": 792,
+        "vh": 360,
+        "clientW": 792,
+        "clientH": 360,
+        "scrollW": 792,
+        "scrollH": 360,
+        "bodyScrollW": 792,
+        "bodyScrollH": 360,
+        "scrollEqualsClient": true,
+        "overflow": [],
+        "overflowCount": 0,
+        "clippedCount": 22,
+        "clipped": [
+          "div.rs-opts \"同盟设置\"",
+          "h4 \"同盟设置\"",
+          "div.rs-opts__row \"模拟难度标准模拟AC-1更改\"",
+          "span.rs-opts__k \"模拟难度\"",
+          "div.rs-opts__seats \"房间人数4812将变成 3 队 × 4 人\"",
+          "div.rs-opts__row \"房间人数4812\"",
+          "span.rs-opts__k \"房间人数\"",
+          "p.rs-opts__note \"将变成 3 队 × 4 人\""
+        ],
+        "interactive": 19,
+        "minEdge": 12,
+        "small": [
+          {
+            "el": "button.plugtag \"原版\"",
+            "w": 31,
+            "h": 12
+          },
+          {
+            "el": "button.rs-key__copy \"复制\"",
+            "w": 42,
+            "h": 25
+          },
+          {
+            "el": "button.rs-key__link \"复制链接\"",
+            "w": 28,
+            "h": 25
+          },
+          {
+            "el": "button.rs-pill__diff \"标准模拟AC-1\"",
+            "w": 91,
+            "h": 30
+          },
+          {
+            "el": "button.rs-pill__ver \"游戏版本：第二期下半\"",
+            "w": 89,
+            "h": 30
+          },
+          {
+            "el": "button.rs-opts__diff \"标准模拟AC-1更改\"",
+            "w": 76,
+            "h": 14
+          },
+          {
+            "el": "button.rs-opts__diff.rs-opts__ver \"第二期下半切换\"",
+            "w": 69,
+            "h": 14
+          },
+          {
+            "el": "button.dpick__opt.ailast__opt \"允许观战者接替 AI\"",
+            "w": 75,
+            "h": 14
+          },
+          {
+            "el": "button.dpick__opt.ailast__opt \"AI 队友最后选择\"",
+            "w": 69,
+            "h": 14
+          },
+          {
+            "el": "button.spchat__toggle \"展开或折叠聊天\"",
+            "w": 24,
+            "h": 24
+          }
+        ],
+        "smallCount": 10,
+        "rects": {},
+        "overlaps": [],
+        "scene": {
+          "strip": false,
+          "chips": 0,
+          "unite": false,
+          "mates": 0,
+          "panel": false,
+          "seat8": false,
+          "seat12": true,
+          "opts": true,
+          "roomCount": "12/12",
+          "stripLabel": null,
+          "uniteLabel": null,
+          "chipsLabel": ""
+        }
+      },
+      "phase": null,
+      "round": 0
+    },
+    {
+      "file": "room12-seats-sheet-1920x1080.png",
+      "w": 1920,
+      "h": 1080,
+      "scene": "room12-seats-sheet",
+      "meta": {
+        "room": "LSHA",
+        "selected": "12"
+      },
+      "probe": {
+        "vw": 1920,
+        "vh": 1080,
+        "clientW": 1920,
+        "clientH": 1080,
+        "scrollW": 1920,
+        "scrollH": 1080,
+        "bodyScrollW": 1920,
+        "bodyScrollH": 1080,
+        "scrollEqualsClient": true,
+        "overflow": [],
+        "overflowCount": 0,
+        "clippedCount": 0,
+        "clipped": [],
+        "interactive": 22,
+        "minEdge": 30,
+        "small": [
+          {
+            "el": "button.plugtag \"原版\"",
+            "w": 76,
+            "h": 30
+          }
+        ],
+        "smallCount": 1,
+        "rects": {},
+        "overlaps": [],
+        "scene": {
+          "strip": false,
+          "chips": 0,
+          "unite": false,
+          "mates": 0,
+          "panel": false,
+          "seat8": false,
+          "seat12": true,
+          "opts": true,
+          "roomCount": "12/12",
+          "stripLabel": null,
+          "uniteLabel": null,
+          "chipsLabel": ""
+        }
+      },
+      "phase": null,
+      "round": 0
+    },
+    {
+      "file": "room12-match-792x360.png",
+      "w": 792,
+      "h": 360,
+      "scene": "room12-match",
+      "meta": {
+        "room": "LSHA",
+        "note": "PREP, 12 seats"
+      },
+      "probe": {
+        "vw": 792,
+        "vh": 360,
+        "clientW": 792,
+        "clientH": 360,
+        "scrollW": 792,
+        "scrollH": 360,
+        "bodyScrollW": 792,
+        "bodyScrollH": 360,
+        "scrollEqualsClient": true,
+        "overflow": [],
+        "overflowCount": 0,
+        "clippedCount": 81,
+        "clipped": [
+          "aside.team \"同盟成员\"",
+          "div.team__row \"P8AIAI·831\"",
+          "button.team__btn \"P8AI\"",
+          "span.pavatar.pavatar--md",
+          "span.pavatar__img",
+          "img",
+          "span.team__seat.num \"P8\"",
+          "span.team__ai \"AI\""
+        ],
+        "interactive": 34,
+        "minEdge": 12.59,
+        "small": [
+          {
+            "el": "button.gtop__iconbtn.tapx \"本局信息\"",
+            "w": 31,
+            "h": 26
+          },
+          {
+            "el": "button.enemybtn.tapx \"敌方情报\"",
+            "w": 55,
+            "h": 26
+          },
+          {
+            "el": "button.bond.bond--sm \"0萨尔贡\"",
+            "w": 21,
+            "h": 31
+          },
+          {
+            "el": "button.bond.bond--sm \"8维多利亚\"",
+            "w": 22,
+            "h": 31
+          },
+          {
+            "el": "button.bond.bond--sm \"8不屈\"",
+            "w": 21,
+            "h": 31
+          },
+          {
+            "el": "button.bond.bond--sm \"8远见\"",
+            "w": 21,
+            "h": 31
+          },
+          {
+            "el": "button.bond.bond--sm \"0助力\"",
+            "w": 21,
+            "h": 31
+          },
+          {
+            "el": "button.bond.bond--sm \"灵巧\"",
+            "w": 21,
+            "h": 31
+          },
+          {
+            "el": "button.toolbtn.toolbtn--ice \"冻结F\"",
+            "w": 61,
+            "h": 30
+          },
+          {
+            "el": "button.toolbtn.toolbtn--amber \"刷新1R\"",
+            "w": 80,
+            "h": 30
+          },
+          {
+            "el": "button.funds__collapse \"收起\"",
+            "w": 29,
+            "h": 13
+          }
+        ],
+        "smallCount": 11,
+        "rects": {
+          ".gm-strip": {
+            "l": 10,
+            "t": 52,
+            "w": 773,
+            "h": 17
+          },
+          ".gm-chips": {
+            "l": 14,
+            "t": 76,
+            "w": 43,
+            "h": 149
+          },
+          ".gm-mates": {
+            "l": 14,
+            "t": 296,
+            "w": 154,
+            "h": 52
+          },
+          ".team": {
+            "l": 9,
+            "t": 94,
+            "w": 79,
+            "h": 446
+          },
+          ".gm__bonds": {
+            "l": 289,
+            "t": 54,
+            "w": 214,
+            "h": 40
+          },
+          ".shopbar": {
+            "l": 380,
+            "t": 195,
+            "w": 402,
+            "h": 157
+          }
+        },
+        "overlaps": [
+          ".gm-strip × .gm__bonds = 214×15px",
+          ".gm-chips × .team = 43×131px",
+          ".gm-mates × .team = 74×52px"
+        ],
+        "scene": {
+          "strip": true,
+          "chips": 3,
+          "unite": false,
+          "mates": 4,
+          "panel": false,
+          "seat8": false,
+          "seat12": false,
+          "opts": false,
+          "roomCount": null,
+          "stripLabel": "我方同盟 4/4 ｜ 蓝方同盟 4/4 ｜ 红方同盟 4/4",
+          "uniteLabel": null,
+          "chipsLabel": "我方同盟 4/4 | 蓝方同盟 4/4 | 红方同盟 4/4"
+        }
+      },
+      "phase": "PREP",
+      "round": 3
+    },
+    {
+      "file": "room12-match-1920x1080.png",
+      "w": 1920,
+      "h": 1080,
+      "scene": "room12-match",
+      "meta": {
+        "room": "LSHA",
+        "note": "PREP, 12 seats"
+      },
+      "probe": {
+        "vw": 1920,
+        "vh": 1080,
+        "clientW": 1920,
+        "clientH": 1080,
+        "scrollW": 1920,
+        "scrollH": 1080,
+        "bodyScrollW": 1920,
+        "bodyScrollH": 1080,
+        "scrollEqualsClient": true,
+        "overflow": [],
+        "overflowCount": 0,
+        "clippedCount": 49,
+        "clipped": [
+          "aside.team \"同盟成员\"",
+          "div.team__row \"P10AIAI·1045\"",
+          "button.team__btn \"P10AI\"",
+          "span.pavatar.pavatar--md",
+          "span.pavatar__img",
+          "img",
+          "span.team__seat.num \"P10\"",
+          "span.team__ai \"AI\""
+        ],
+        "interactive": 35,
+        "minEdge": 28.5,
+        "small": [
+          {
+            "el": "button.funds__collapse \"收起\"",
+            "w": 70,
+            "h": 29
+          }
+        ],
+        "smallCount": 1,
+        "rects": {
+          ".gm-strip": {
+            "l": 24,
+            "t": 130,
+            "w": 1872,
+            "h": 42
+          },
+          ".gm-chips": {
+            "l": 36,
+            "t": 190,
+            "w": 108,
+            "h": 372
+          },
+          ".gm-mates": {
+            "l": 36,
+            "t": 921,
+            "w": 384,
+            "h": 129
+          },
+          ".team": {
+            "l": 22,
+            "t": 236,
+            "w": 197,
+            "h": 1114
+          },
+          ".gm__bonds": {
+            "l": 693,
+            "t": 136,
+            "w": 534,
+            "h": 97
+          },
+          ".shopbar": {
+            "l": 893,
+            "t": 694,
+            "w": 1001,
+            "h": 366
+          }
+        },
+        "overlaps": [
+          ".gm-strip × .gm__bonds = 534×36px",
+          ".gm-chips × .team = 108×326px",
+          ".gm-mates × .team = 183×129px"
+        ],
+        "scene": {
+          "strip": true,
+          "chips": 3,
+          "unite": false,
+          "mates": 4,
+          "panel": false,
+          "seat8": false,
+          "seat12": false,
+          "opts": false,
+          "roomCount": null,
+          "stripLabel": "我方同盟 4/4 ｜ 蓝方同盟 4/4 ｜ 红方同盟 4/4",
+          "uniteLabel": null,
+          "chipsLabel": "我方同盟 4/4 | 蓝方同盟 4/4 | 红方同盟 4/4"
+        }
+      },
+      "phase": "PREP",
+      "round": 3
+    },
+    {
+      "file": "room12-match-roster-792x360.png",
+      "w": 792,
+      "h": 360,
+      "scene": "room12-match-roster",
+      "meta": {
+        "room": "LSHA",
+        "note": "蓝方同盟 chip opened (read-only)"
+      },
+      "probe": {
+        "vw": 792,
+        "vh": 360,
+        "clientW": 792,
+        "clientH": 360,
+        "scrollW": 792,
+        "scrollH": 360,
+        "bodyScrollW": 792,
+        "bodyScrollH": 360,
+        "scrollEqualsClient": true,
+        "overflow": [],
+        "overflowCount": 0,
+        "clippedCount": 81,
+        "clipped": [
+          "aside.team \"同盟成员\"",
+          "div.team__row \"P8AIAI·831\"",
+          "button.team__btn \"P8AI\"",
+          "span.pavatar.pavatar--md",
+          "span.pavatar__img",
+          "img",
+          "span.team__seat.num \"P8\"",
+          "span.team__ai \"AI\""
+        ],
+        "interactive": 35,
+        "minEdge": 12.59,
+        "small": [
+          {
+            "el": "button.gtop__iconbtn.tapx \"本局信息\"",
+            "w": 31,
+            "h": 26
+          },
+          {
+            "el": "button.enemybtn.tapx \"敌方情报\"",
+            "w": 55,
+            "h": 26
+          },
+          {
+            "el": "button.bond.bond--sm \"0萨尔贡\"",
+            "w": 21,
+            "h": 31
+          },
+          {
+            "el": "button.bond.bond--sm \"8维多利亚\"",
+            "w": 22,
+            "h": 31
+          },
+          {
+            "el": "button.bond.bond--sm \"8不屈\"",
+            "w": 21,
+            "h": 31
+          },
+          {
+            "el": "button.bond.bond--sm \"8远见\"",
+            "w": 21,
+            "h": 31
+          },
+          {
+            "el": "button.bond.bond--sm \"0助力\"",
+            "w": 21,
+            "h": 31
+          },
+          {
+            "el": "button.bond.bond--sm \"灵巧\"",
+            "w": 21,
+            "h": 31
+          },
+          {
+            "el": "button.gm-panel__close \"关闭\"",
+            "w": 48,
+            "h": 26
+          },
+          {
+            "el": "button.toolbtn.toolbtn--ice \"冻结F\"",
+            "w": 61,
+            "h": 30
+          },
+          {
+            "el": "button.toolbtn.toolbtn--amber \"刷新1R\"",
+            "w": 80,
+            "h": 30
+          },
+          {
+            "el": "button.funds__collapse \"收起\"",
+            "w": 29,
+            "h": 13
+          }
+        ],
+        "smallCount": 12,
+        "rects": {
+          ".gm-strip": {
+            "l": 10,
+            "t": 52,
+            "w": 773,
+            "h": 17
+          },
+          ".gm-chips": {
+            "l": 14,
+            "t": 76,
+            "w": 43,
+            "h": 149
+          },
+          ".gm-panel": {
+            "l": 70,
+            "t": 76,
+            "w": 257,
+            "h": 190
+          },
+          ".gm-mates": {
+            "l": 14,
+            "t": 296,
+            "w": 154,
+            "h": 52
+          },
+          ".team": {
+            "l": 9,
+            "t": 94,
+            "w": 79,
+            "h": 446
+          },
+          ".gm__bonds": {
+            "l": 289,
+            "t": 54,
+            "w": 214,
+            "h": 40
+          },
+          ".shopbar": {
+            "l": 380,
+            "t": 195,
+            "w": 402,
+            "h": 157
+          }
+        },
+        "overlaps": [
+          ".gm-strip × .gm__bonds = 214×15px",
+          ".gm-chips × .team = 43×131px",
+          ".gm-panel × .team = 18×172px",
+          ".gm-panel × .gm__bonds = 38×18px",
+          ".gm-mates × .team = 74×52px"
+        ],
+        "scene": {
+          "strip": true,
+          "chips": 3,
+          "unite": false,
+          "mates": 4,
+          "panel": true,
+          "seat8": false,
+          "seat12": false,
+          "opts": false,
+          "roomCount": null,
+          "stripLabel": "我方同盟 4/4 ｜ 蓝方同盟 4/4 ｜ 红方同盟 4/4",
+          "uniteLabel": null,
+          "chipsLabel": "我方同盟 4/4 | 蓝方同盟 4/4 | 红方同盟 4/4"
+        }
+      },
+      "phase": "PREP",
+      "round": 3
+    },
+    {
+      "file": "room12-match-roster-1920x1080.png",
+      "w": 1920,
+      "h": 1080,
+      "scene": "room12-match-roster",
+      "meta": {
+        "room": "LSHA",
+        "note": "蓝方同盟 chip opened (read-only)"
+      },
+      "probe": {
+        "vw": 1920,
+        "vh": 1080,
+        "clientW": 1920,
+        "clientH": 1080,
+        "scrollW": 1920,
+        "scrollH": 1080,
+        "bodyScrollW": 1920,
+        "bodyScrollH": 1080,
+        "scrollEqualsClient": true,
+        "overflow": [],
+        "overflowCount": 0,
+        "clippedCount": 49,
+        "clipped": [
+          "aside.team \"同盟成员\"",
+          "div.team__row \"P10AIAI·1045\"",
+          "button.team__btn \"P10AI\"",
+          "span.pavatar.pavatar--md",
+          "span.pavatar__img",
+          "img",
+          "span.team__seat.num \"P10\"",
+          "span.team__ai \"AI\""
+        ],
+        "interactive": 36,
+        "minEdge": 28.5,
+        "small": [
+          {
+            "el": "button.funds__collapse \"收起\"",
+            "w": 70,
+            "h": 29
+          }
+        ],
+        "smallCount": 1,
+        "rects": {
+          ".gm-strip": {
+            "l": 24,
+            "t": 130,
+            "w": 1872,
+            "h": 42
+          },
+          ".gm-chips": {
+            "l": 36,
+            "t": 190,
+            "w": 108,
+            "h": 372
+          },
+          ".gm-panel": {
+            "l": 174,
+            "t": 190,
+            "w": 642,
+            "h": 472
+          },
+          ".gm-mates": {
+            "l": 36,
+            "t": 921,
+            "w": 384,
+            "h": 129
+          },
+          ".team": {
+            "l": 22,
+            "t": 236,
+            "w": 197,
+            "h": 1114
+          },
+          ".gm__bonds": {
+            "l": 693,
+            "t": 136,
+            "w": 534,
+            "h": 97
+          },
+          ".shopbar": {
+            "l": 893,
+            "t": 694,
+            "w": 1001,
+            "h": 366
+          }
+        },
+        "overlaps": [
+          ".gm-strip × .gm__bonds = 534×36px",
+          ".gm-chips × .team = 108×326px",
+          ".gm-panel × .team = 45×426px",
+          ".gm-panel × .gm__bonds = 123×43px",
+          ".gm-mates × .team = 183×129px"
+        ],
+        "scene": {
+          "strip": true,
+          "chips": 3,
+          "unite": false,
+          "mates": 4,
+          "panel": true,
+          "seat8": false,
+          "seat12": false,
+          "opts": false,
+          "roomCount": null,
+          "stripLabel": "我方同盟 4/4 ｜ 蓝方同盟 4/4 ｜ 红方同盟 4/4",
+          "uniteLabel": null,
+          "chipsLabel": "我方同盟 4/4 | 蓝方同盟 4/4 | 红方同盟 4/4"
+        }
+      },
+      "phase": "PREP",
+      "round": 3
+    },
+    {
+      "file": "room12-match-unite-792x360.png",
+      "w": 792,
+      "h": 360,
+      "scene": "room12-match-unite",
+      "meta": {
+        "room": "LSHA",
+        "stage": "team",
+        "note": "联防条 under the status strip"
+      },
+      "probe": {
+        "vw": 792,
+        "vh": 360,
+        "clientW": 792,
+        "clientH": 360,
+        "scrollW": 792,
+        "scrollH": 360,
+        "bodyScrollW": 792,
+        "bodyScrollH": 360,
+        "scrollEqualsClient": true,
+        "overflow": [],
+        "overflowCount": 0,
+        "clippedCount": 91,
+        "clipped": [
+          "aside.team \"同盟成员\"",
+          "div.team__row \"P8AIAI·8310\"",
+          "button.team__btn \"P8AI\"",
+          "span.pavatar.pavatar--md",
+          "span.pavatar__img",
+          "img",
+          "span.team__seat.num \"P8\"",
+          "span.team__ai \"AI\""
+        ],
+        "interactive": 26,
+        "minEdge": 16,
+        "small": [
+          {
+            "el": "button.gtop__iconbtn.tapx \"本局信息\"",
+            "w": 31,
+            "h": 26
+          },
+          {
+            "el": "button.bond.bond--sm \"9萨尔贡\"",
+            "w": 21,
+            "h": 31
+          },
+          {
+            "el": "button.bond.bond--sm \"8维多利亚\"",
+            "w": 22,
+            "h": 31
+          },
+          {
+            "el": "button.bond.bond--sm \"8不屈\"",
+            "w": 21,
+            "h": 31
+          },
+          {
+            "el": "button.bond.bond--sm \"8远见\"",
+            "w": 21,
+            "h": 31
+          },
+          {
+            "el": "button.bond.bond--sm \"0助力\"",
+            "w": 21,
+            "h": 31
+          },
+          {
+            "el": "button.bond.bond--sm \"灵巧\"",
+            "w": 21,
+            "h": 31
+          },
+          {
+            "el": "button.vswitch__arrow \"左侧战场\"",
+            "w": 16,
+            "h": 16
+          },
+          {
+            "el": "button.vswitch__arrow \"右侧战场\"",
+            "w": 16,
+            "h": 16
+          }
+        ],
+        "smallCount": 9,
+        "rects": {
+          ".gm-strip": {
+            "l": 10,
+            "t": 52,
+            "w": 773,
+            "h": 17
+          },
+          ".gm-unite": {
+            "l": 10,
+            "t": 76,
+            "w": 773,
+            "h": 48
+          },
+          ".gm-chips": {
+            "l": 14,
+            "t": 131,
+            "w": 43,
+            "h": 149
+          },
+          ".gm-mates": {
+            "l": 14,
+            "t": 296,
+            "w": 154,
+            "h": 52
+          },
+          ".team": {
+            "l": 9,
+            "t": 94,
+            "w": 117,
+            "h": 446
+          },
+          ".gm__bonds": {
+            "l": 289,
+            "t": 54,
+            "w": 214,
+            "h": 40
+          }
+        },
+        "overlaps": [
+          ".gm-strip × .gm__bonds = 214×15px",
+          ".gm-unite × .team = 116×30px",
+          ".gm-unite × .gm__bonds = 214×18px",
+          ".gm-chips × .team = 43×149px",
+          ".gm-mates × .team = 112×52px"
+        ],
+        "scene": {
+          "strip": true,
+          "chips": 3,
+          "unite": true,
+          "mates": 4,
+          "panel": false,
+          "seat8": false,
+          "seat12": false,
+          "opts": false,
+          "roomCount": null,
+          "stripLabel": "我方同盟 4/4 ｜ 蓝方同盟 4/4 ｜ 红方同盟 4/4",
+          "uniteLabel": "联防阶段队内联防剩余敌人 60联防中",
+          "chipsLabel": "我方同盟 4/4 | 蓝方同盟 4/4 | 红方同盟 4/4"
+        }
+      },
+      "phase": "UNITE",
+      "round": 3
+    },
+    {
+      "file": "room12-match-unite-1920x1080.png",
+      "w": 1920,
+      "h": 1080,
+      "scene": "room12-match-unite",
+      "meta": {
+        "room": "LSHA",
+        "stage": "team",
+        "note": "联防条 under the status strip"
+      },
+      "probe": {
+        "vw": 1920,
+        "vh": 1080,
+        "clientW": 1920,
+        "clientH": 1080,
+        "scrollW": 1920,
+        "scrollH": 1080,
+        "bodyScrollW": 1920,
+        "bodyScrollH": 1080,
+        "scrollEqualsClient": true,
+        "overflow": [],
+        "overflowCount": 0,
+        "clippedCount": 55,
+        "clipped": [
+          "aside.team \"同盟成员\"",
+          "div.team__row \"P10AIAI·10450\"",
+          "button.team__btn \"P10AI\"",
+          "span.pavatar.pavatar--md",
+          "span.pavatar__img",
+          "img",
+          "span.team__seat.num \"P10\"",
+          "span.team__ai \"AI\""
+        ],
+        "interactive": 27,
+        "minEdge": 40,
+        "small": [],
+        "smallCount": 0,
+        "rects": {
+          ".gm-strip": {
+            "l": 24,
+            "t": 130,
+            "w": 1872,
+            "h": 42
+          },
+          ".gm-unite": {
+            "l": 24,
+            "t": 190,
+            "w": 1872,
+            "h": 120
+          },
+          ".gm-chips": {
+            "l": 36,
+            "t": 328,
+            "w": 108,
+            "h": 372
+          },
+          ".gm-mates": {
+            "l": 36,
+            "t": 921,
+            "w": 384,
+            "h": 129
+          },
+          ".team": {
+            "l": 22,
+            "t": 236,
+            "w": 293,
+            "h": 1114
+          },
+          ".gm__bonds": {
+            "l": 693,
+            "t": 136,
+            "w": 534,
+            "h": 97
+          }
+        },
+        "overlaps": [
+          ".gm-strip × .gm__bonds = 534×36px",
+          ".gm-unite × .team = 291×74px",
+          ".gm-unite × .gm__bonds = 534×43px",
+          ".gm-chips × .team = 108×372px",
+          ".gm-mates × .team = 279×129px"
+        ],
+        "scene": {
+          "strip": true,
+          "chips": 3,
+          "unite": true,
+          "mates": 4,
+          "panel": false,
+          "seat8": false,
+          "seat12": false,
+          "opts": false,
+          "roomCount": null,
+          "stripLabel": "我方同盟 4/4 ｜ 蓝方同盟 4/4 ｜ 红方同盟 4/4",
+          "uniteLabel": "联防阶段队内联防剩余敌人 60联防中",
+          "chipsLabel": "我方同盟 4/4 | 蓝方同盟 4/4 | 红方同盟 4/4"
+        }
+      },
+      "phase": "UNITE",
+      "round": 3
+    }
+  ],
+  "notes": [
+    "12:49:50 room A UHSX created",
+    "12:49:51 room A seats → 8, bots → 7 occupied",
+    "12:49:53 shot room8-room-792x360.png scroll==client=true overflow=0 minEdge=12 small=6",
+    "12:49:54 shot room8-room-1920x1080.png scroll==client=true overflow=0 minEdge=30 small=1",
+    "12:49:54 room A bots → 8 occupied (full 8)",
+    "12:49:55 host8: phase INFO_CHECK",
+    "12:49:55 host8: phase BAND_DRAFT",
+    "12:49:56 host8: phase BATTLE_CHECK",
+    "12:50:00 host8: phase ROUND_START",
+    "12:50:01 host8: phase SP_DRAFT",
+    "12:50:08 shot room8-match-792x360.png scroll==client=true overflow=0 minEdge=12.59 small=8",
+    "12:50:10 shot room8-match-1920x1080.png scroll==client=true overflow=0 minEdge=28.5 small=1",
+    "12:50:10 room A reached PREP round 3",
+    "12:50:11 room B LSHA created",
+    "12:50:12 room B seats → 12, bots → 12 occupied",
+    "12:50:14 shot room12-room-792x360.png scroll==client=true overflow=0 minEdge=12 small=6",
+    "12:50:15 shot room12-room-1920x1080.png scroll==client=true overflow=0 minEdge=30 small=1",
+    "12:50:16 shot room12-seats-sheet-792x360.png scroll==client=true overflow=0 minEdge=12 small=10",
+    "12:50:17 shot room12-seats-sheet-1920x1080.png scroll==client=true overflow=0 minEdge=30 small=1",
+    "12:50:18 host12: phase INFO_CHECK",
+    "12:50:18 host12: phase BAND_DRAFT",
+    "12:50:19 host12: phase BATTLE_CHECK",
+    "12:50:22 host12: phase ROUND_START",
+    "12:50:23 host12: phase SP_DRAFT",
+    "12:50:31 shot room12-match-792x360.png scroll==client=true overflow=0 minEdge=12.59 small=11",
+    "12:50:32 shot room12-match-1920x1080.png scroll==client=true overflow=0 minEdge=28.5 small=1",
+    "12:50:34 shot room12-match-roster-792x360.png scroll==client=true overflow=0 minEdge=12.59 small=12",
+    "12:50:35 shot room12-match-roster-1920x1080.png scroll==client=true overflow=0 minEdge=28.5 small=1",
+    "12:50:36 room B: ready → waiting for 联防",
+    "12:51:14 room B phase UNITE",
+    "12:51:15 shot room12-match-unite-792x360.png scroll==client=true overflow=0 minEdge=16 small=9",
+    "12:51:17 shot room12-match-unite-1920x1080.png scroll==client=true overflow=0 minEdge=40 small=0"
+  ],
+  "seats": {
+    "room8": [
+      {
+        "seat": 0,
+        "name": "凯尔希",
+        "isBot": false
+      },
+      {
+        "seat": 1,
+        "name": "AI·华法琳",
+        "isBot": true
+      },
+      {
+        "seat": 2,
+        "name": "AI·阿米娅",
+        "isBot": true
+      },
+      {
+        "seat": 3,
+        "name": "AI·惊蛰",
+        "isBot": true
+      },
+      {
+        "seat": 4,
+        "name": "AI·杜宾",
+        "isBot": true
+      },
+      {
+        "seat": 5,
+        "name": "AI·凯尔希",
+        "isBot": true
+      },
+      {
+        "seat": 6,
+        "name": "AI·可露希尔",
+        "isBot": true
+      },
+      {
+        "seat": 7,
+        "empty": true
+      }
+    ],
+    "room12": [
+      {
+        "seat": 0,
+        "name": "凯尔希",
+        "isBot": false
+      },
+      {
+        "seat": 1,
+        "name": "AI·华法琳",
+        "isBot": true
+      },
+      {
+        "seat": 2,
+        "name": "AI·阿米娅",
+        "isBot": true
+      },
+      {
+        "seat": 3,
+        "name": "AI·惊蛰",
+        "isBot": true
+      },
+      {
+        "seat": 4,
+        "name": "AI·杜宾",
+        "isBot": true
+      },
+      {
+        "seat": 5,
+        "name": "AI·凯尔希",
+        "isBot": true
+      },
+      {
+        "seat": 6,
+        "name": "AI·可露希尔",
+        "isBot": true
+      },
+      {
+        "seat": 7,
+        "name": "AI·8",
+        "isBot": true
+      },
+      {
+        "seat": 8,
+        "name": "AI·9",
+        "isBot": true
+      },
+      {
+        "seat": 9,
+        "name": "AI·10",
+        "isBot": true
+      },
+      {
+        "seat": 10,
+        "name": "AI·11",
+        "isBot": true
+      },
+      {
+        "seat": 11,
+        "name": "AI·12",
+        "isBot": true
+      }
+    ]
+  },
+  "problems": {
+    "host8": [],
+    "host12": []
+  },
+  "errors": [],
+  "server": "http://127.0.0.1:58564",
+  "unite": {
+    "stage": "team",
+    "teams": [
+      {
+        "index": 0,
+        "helpers": [
+          "p_1cc0290567",
+          "ai_2d5bf620"
+        ],
+        "leakers": [
+          "ai_373f7de9",
+          "ai_755b11eb"
+        ],
+        "watching": false
+      },
+      {
+        "index": 1,
+        "helpers": [],
+        "leakers": [
+          "ai_bfa21662",
+          "ai_257a1dca",
+          "ai_20953d7e",
+          "ai_9e78816b"
+        ],
+        "watching": true
+      },
+      {
+        "index": 2,
+        "helpers": [],
+        "leakers": [
+          "ai_cc70ab43",
+          "ai_ef68ed87",
+          "ai_0541e767",
+          "ai_0fb700f9"
+        ],
+        "watching": true
+      }
+    ],
+    "left": {
+      "ai_373f7de9": 6,
+      "ai_755b11eb": 6,
+      "ai_bfa21662": 6,
+      "ai_257a1dca": 6,
+      "ai_20953d7e": 6,
+      "ai_9e78816b": 6,
+      "ai_cc70ab43": 6,
+      "ai_ef68ed87": 6,
+      "ai_0541e767": 6,
+      "ai_0fb700f9": 6
+    }
+  },
+  "serverLog": [
+    "fast server on http://127.0.0.1:58564 (timers ×1, combat 2×, first round 3)"
+  ],
+  "finishedAt": "2026-10-31T12:51:18.618Z"
+}

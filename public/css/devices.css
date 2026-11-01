@@ -44,7 +44,10 @@ input, textarea, select { -webkit-user-select: text; user-select: text; }
    render/projection.js clearHud, user playtest #5 item 9). Its right edge stays inside the inset (the notch / rounded
    corner). */
 .gm__hud > .shopbar { bottom: calc(.2rem - var(--sa-b)); }
-.gm > .spov { left: calc(2.8rem + var(--sa-l)); right: var(--sa-r); }
+/* 机变浮层（.spov）与左下角共边：0.3.1 是靠 < 768px 的 wrap-reverse 把角键折到上面去躲开的，宽屏上仍然会盖住角键的
+   右端。这里（本仓保留项，不是 0.3.1 的数值）把浮层左边界抬到「最宽的那一行键 + 间距」的实际宽度：宽屏不遮挡，
+   窄屏由下面的 wrap-reverse 接手；`max(2.8rem, …)` 保住窄屏不把浮层挤没。 */
+.gm > .spov { left: calc(max(2.8rem, .24rem + 6 * max(.56rem, 32px, calc(34px * var(--sp-ui, 1))) + 5 * .1rem + 2px) + var(--sa-l)); right: var(--sa-r); }
 /* every other screen is laid out inside the safe area (the app backdrop fills the notch strip) */
 .screen:not(.gm) { top: var(--sa-t); right: var(--sa-r); bottom: var(--sa-b); left: var(--sa-l); }
 .guide, .awayov { padding: var(--sa-t) var(--sa-r) var(--sa-b) var(--sa-l); }
@@ -79,12 +82,26 @@ html:not(.sp-in-match) .toast-host { margin-top: var(--sa-t); }
 .sp-coarse .ewheel__panel .ewheel__nav.is-prev::before { left: auto; right: 0; }
 .sp-coarse .ewheel__panel .ewheel__nav.is-next::before { left: 0; right: auto; }
 .sp-coarse .ewheel__dot::before { inset: -.02rem -.05rem -.2rem; width: auto; height: auto; transform: none; }
+/* 聊天面板的发送/弹幕/收起与超限 HUD 的倍速/词条按钮：同一条 44px 隐形热区规则（结构不改，只扩大命中区）。
+   与上一段分开写，避免改动已在多处测试里被钉住的通用选择器列表。 */
+.sp-coarse :is(.chat-send-btn, .chat-danmaku-btn, .chat-collapse-btn, .spchat__send, .spchat__fold, .spchat__danmaku,
+  .gspeed, .gtrait__btn) { position: relative; }
+.sp-coarse :is(.chat-send-btn, .chat-danmaku-btn, .chat-collapse-btn, .spchat__send, .spchat__fold, .spchat__danmaku,
+  .gspeed, .gtrait__btn)::before {
+  content: '';
+  position: absolute; left: 50%; top: 50%; z-index: 0;
+  width: max(100%, var(--tap-min)); height: max(100%, var(--tap-min));
+  transform: translate(-50%, -50%);
+  background: transparent; border: 0; box-shadow: none; clip-path: none; pointer-events: auto;
+}
 
 /* Phones in landscape (short touch screens: 1rem ≈ 40 px here): the most used controls grow a little so they are
    comfortable to hit and to read, without changing the official layout. */
 @media (max-height: 600px) and (pointer: coarse), (max-height: 600px) and (any-pointer: coarse) {
   .readybtn { height: max(.56rem, 32px, calc(34px * var(--sp-ui, 1))); }
   .toolbtn { min-height: max(.5rem, 30px); }
+  /* 角落键放大到 34px 档时，局内聊天框的宽度公式也跟着放大（room-chat.css 的 --gm-corner-key）。 */
+  .gm { --gm-corner-key: max(.56rem, 32px, calc(34px * var(--sp-ui, 1))); }
   .gm__gear { width: max(.56rem, 32px, calc(34px * var(--sp-ui, 1))); height: max(.56rem, 32px, calc(34px * var(--sp-ui, 1))); }
   /* ⚙ / 📖 / ⛶ keep their desktop proportion (half the button) instead of an 11 px glyph in the grown button */
   .gm__corner .gm__gear .icon { width: max(.28rem, 17px); height: max(.28rem, 17px); }
@@ -104,6 +121,11 @@ html:not(.sp-in-match) .toast-host { margin-top: var(--sa-t); }
 .fsbtn { display: grid; place-items: center; padding: 0; background: rgba(8, 11, 10, .85); border: 1px solid var(--line-2); color: var(--text-lo); transition: color var(--t-fast), border-color var(--t-fast); }
 .fsbtn .icon { width: .26rem; height: .26rem; }
 .fsbtn:hover, .fsbtn[aria-pressed="true"] { color: var(--mint-400); border-color: var(--mint-700); }
+/* 手机端没有全屏键（业主 2026-10-29）：触屏设备上元素全屏要么不可用（iPhone Safari）要么被浏览器手势接管；
+   桌面窄窗口仍然是 `(pointer: fine)`，这颗键照常出现。 */
+@media (pointer: coarse) {
+  .gm__corner .gm__fs { display: none; }
+}
 .title-fs, .title-settings { width: .4rem; height: .4rem; margin-left: .06rem; }
 /* standalone / fullscreen: the browser bars are gone, nothing to reserve */
 .sp-standalone .rotate-hint__micro::after { content: ' · PWA'; }
@@ -119,32 +141,29 @@ html:not(.sp-in-match) .toast-host { margin-top: var(--sa-t); }
    the confirming tap re-opened the detail instead; user playtest #6 item 10) */
 
 /* Narrow viewports (< 768 CSS px: the root scale is clamped at 40 px, so the layout is narrower than the 19.2 rem
-   design): the shop bar would cover the corner's ⚙ / 📖 / ⛶ buttons — they wrap into a row above the 交流 button. */
-/* The left-docked detail card then ends above that two-row corner (.24rem + 交流 + .1rem gap + ⚙ row + .1rem): at its
-   desktop bottom (1.02rem) it hid ⚙ / 📖 / ⛶. (gameLogic panelSlots keeps the taller desktop slot: conservative.)
-   The bottom copies the 交流 / ⚙ size floors exactly, their 32 px minimum included, or at 界面大小 ≤ 90 % it ends below
-   the ⚙ row (DESIGN §35.43; test/ui/ui-size.test.js checks such mirrors). */
+   design): the shop bar would cover the corner's keys — they wrap into a row above the three main keys
+   (flex-wrap: wrap-reverse; 业主 2026-10-29 第三版：下排三颗主键 表情 / 设置 / 对话唤出 正好占满这个宽度，
+   全屏在触屏上已隐藏，统计 / 调配 / AI 协作折到上一排)。
+   The left-docked detail card then ends above that two-row corner (.44rem + two key rows + a little air).
+   The key size mirrors the .gm__gear floor exactly (devices.css §3, 32 px minimum included), or at 界面大小 ≤ 90 % the
+   card would end inside the keys (DESIGN §35.43; test/ui/ui-size.test.js checks such mirrors). */
 @media (max-width: 767px) {
-  .gm__corner { flex-wrap: wrap-reverse; align-content: flex-start; width: max(32px, calc(72px * var(--sp-ui, 1)), calc(3 * .56rem + .2rem)); }
-  .dpanel:not(.dpanel--right) { bottom: calc(.44rem + max(1.51rem, 32px, calc(72px * var(--sp-ui, 1))) * 55 / 151 + .56rem); }
+  .gm__corner { flex-wrap: wrap-reverse; align-content: flex-start;
+    width: max(calc(72px * var(--sp-ui, 1)), 32px, calc(3 * .56rem + .2rem)); }
+  .dpanel:not(.dpanel--right) {
+    bottom: calc(.44rem + 2 * max(.56rem, 32px, calc(34px * var(--sp-ui, 1)))); }
 }
 @media (max-width: 767px) and (pointer: coarse), (max-width: 767px) and (any-pointer: coarse) {
-  .gm__corner { width: max(32px, calc(96px * var(--sp-ui, 1)), calc(3 * max(.56rem, 32px, calc(34px * var(--sp-ui, 1))) + .2rem)); }
-  /* the 机变 overlay starts right of that corner (§35.51: at 2.8rem, 112 px on a 667 px phone, it covered 8 px of ⛶) */
-  .gm.has-sp > .spov { left: calc(max(2.8rem, .24rem + max(32px, calc(96px * var(--sp-ui, 1)), calc(3 * max(.56rem, 32px, calc(34px * var(--sp-ui, 1))) + .2rem)) + 2px) + var(--sa-l)); }
-  .dpanel:not(.dpanel--right) { bottom: calc(.44rem + max(1.51rem, 32px, calc(96px * var(--sp-ui, 1))) * 55 / 151 + max(.56rem, 32px, calc(34px * var(--sp-ui, 1)))); }
+  .gm__corner { width: max(calc(96px * var(--sp-ui, 1)), 32px, calc(3 * max(.56rem, 32px, calc(34px * var(--sp-ui, 1))) + .2rem)); }
+  .dpanel:not(.dpanel--right) {
+    bottom: calc(.44rem + 2 * max(.56rem, 32px, calc(34px * var(--sp-ui, 1)))); }
+  /* the 机变 overlay starts right of the corner's widest row (keys at most: 表情 / 统计 / 调配 / 对话 / 设置 / 全屏) */
+  .gm.has-sp > .spov { left: calc(max(2.8rem, .24rem + 6 * max(.56rem, 32px, calc(34px * var(--sp-ui, 1))) + 5 * .1rem + 2px) + var(--sa-l)); }
 }
 /* With the shop folded (收起) no bar covers the corner: one row again, so the folded shop's prep camera, which keeps the
    bench above the corner's hit areas (ui/fieldHost.js hudBands), grows the board on narrow phones too (public issue #5). */
 @media (max-width: 767px) {
   .gm.is-collapsed .gm__corner { flex-wrap: nowrap; width: auto; }
-}
-/* … but not under the 机变 overlay, which starts at the corner's wrapped width (§35.51) */
-@media (max-width: 767px) {
-  .gm.is-collapsed.has-sp .gm__corner { flex-wrap: wrap-reverse; width: max(32px, calc(72px * var(--sp-ui, 1)), calc(3 * .56rem + .2rem)); }
-}
-@media (max-width: 767px) and (pointer: coarse), (max-width: 767px) and (any-pointer: coarse) {
-  .gm.is-collapsed.has-sp .gm__corner { width: max(32px, calc(96px * var(--sp-ui, 1)), calc(3 * max(.56rem, 32px, calc(34px * var(--sp-ui, 1))) + .2rem)); }
 }
 
 /* Short landscape phones (≤ 460 CSS px tall, 1rem = 40 px): the detail card's header is shorter (no romanised name,

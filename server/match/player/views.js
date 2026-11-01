@@ -7,6 +7,7 @@ import { PHASE } from '../../../shared/constants.js';
 import { boardOrder, pieceDir } from '../board.js';
 import { bondList, offBondCounts } from '../bondsMeta.js';
 import { bountyText, bountyCard } from '../choices.js';
+import { relicDraft, relicPrivateView } from '../relics.js';
 
 export class PlayerViews {
   pieceView(p, rc = null) {
@@ -55,7 +56,18 @@ export class PlayerViews {
   }
 
   privateView() {
-    const slots = this.shop.slots.map((s) => (s ? { kind: s.kind, id: s.id, price: this.priceOf(s), basePrice: s.basePrice, sold: !!s.sold, frozen: !!s.frozen } : null));
+    // 2026-10-29（业主：单人与多人的卡池数量应该不同、但局内看不出差异）：卡面「剩余 N 张」必须来自**真实份数**。
+    // `gd.poolCopies()` 早就是「单人 ×1 / 同盟 ×2」（`coopPoolMultiplier`），但这里的 slot 视图曾经漏掉 `remaining`，
+    // 客户端只好退回写死的 {1:30,2:25,…} 表 —— 单人房与同盟房逐字相同就是那个写死表造成的。
+    // 象棋槽走 `poolOf`（自选干员路由到该玩家私有库存）；装备槽走 `m.itemPool`（SharedItemPool，其 `left()` 对
+    // 无限库存返回 Infinity —— 客户端据此显示「—」，不会编数字）。悬赏槽没有池，不发这个字段。
+    const slots = this.shop.slots.map((s) => {
+      if (!s) return null;
+      const row = { kind: s.kind, id: s.id, price: this.priceOf(s), basePrice: s.basePrice, sold: !!s.sold, frozen: !!s.frozen };
+      if (s.kind === 'chess') row.remaining = this.poolOf(s.id).left(s.id);
+      else if (s.kind === 'item') row.remaining = this.m.itemPool ? this.m.itemPool.left(s.id) : 0;
+      return row;
+    });
     const offer = this.offers[0] || null;
     const free = this.shop.freeRefreshes > 0;
     const board = [];
@@ -72,7 +84,7 @@ export class PlayerViews {
       funds: this.funds,
       bandId: this.bandId,
       ready: this.ready,
-      canReady: this.alive && this.tempEmpty && !this.personalChoice && this.m.phase === PHASE.PREP,
+      canReady: this.alive && this.tempEmpty && !this.personalChoice && !(this.gd.annihilation && relicDraft(this)) && this.m.phase === PHASE.PREP,
       personalChoice: this.personalChoice ? {
         id: this.personalChoice.id,
         round: this.personalChoice.round,
@@ -105,6 +117,13 @@ export class PlayerViews {
       nextEnemies: this.m.nextEnemiesFor(this),
       // DESIGN §16: the effective operator loadout ({ [baseChessId]: { skill, module } }; chess not listed use defaults)
       loadout: this.loadout,
+      // 炸惊模拟 · 卡池调整: the play set's own profile ({} when unset) — only a ZHAJING match grows this key
+      ...(this.gd.zhajing ? { zjLoadout: this.zjLoadout } : {}),
+      // 湮灭模拟 · 卡池调整: the annihilation profile ({} when unset) — only an ANNIHILATION match grows this key
+      ...(this.gd.annihilation ? { annLoadout: this.annLoadout } : {}),
+      // 炸惊模拟 · 卡池预选: the bonds this player banned from their own pool (`{ zhajing: { core, addon } }`), absent when
+      // they banned nothing — and absent entirely outside a ZHAJING match.
+      ...(this.gd.zhajing && this.bans ? { bans: this.bans } : {}),
       // 0.2.2: the effective per-operator 潜能 / 练度 ({ [charId]: { potential, cultivate } }; operators not listed: 潜能 6,
       // 精英2 Lv.60) — the client's cards compose the numbers from it (shared/potential.js)
       ops: this.ops,
@@ -122,6 +141,19 @@ export class PlayerViews {
       // board pieces as UnitInfo on its half of the boss field (mirrored on the right half, as the battle places them);
       // the own prep view draws them beside the own half, read-only. Absent otherwise.
       ...(bossMate ? { bossMate } : {}),
+      // 湮灭模拟 · 藏品: the owned list, the open draft (cards / votes / spinner) and the reveal. Gated on the mode block so
+      // an official mode's private view keeps exactly the keys it has today.
+      ...(this.gd.annihilation ? { relics: relicPrivateView(this) } : {}),
+      // 炸惊模拟 · 惊变: the cards this player owns (ids, name, rarity, flavour, bond) and the 重抽 left in an open 惊变
+      // draft. Gated on the mode flag, so an official mode's private view keeps exactly the keys it has today.
+      ...(this.gd.zhajing ? { jibian: this.jibianView() } : {}),
+      // 超限模拟 「词条」（业主 2026-10-31）: 已选走的 id、无限段池子里还剩什么、还有哪几回合会开三选一。
+      // 只在超限局出现（Match.isInfinite），普通 / 湮灭 / 炸惊的私有视图一个字节都不变。
+      ...(this.m && this.m.isInfinite && typeof this.m.relicsOverlimitView === 'function'
+        ? { relicsOverlimit: this.m.relicsOverlimitView() } : {}),
+      // 炸惊模拟 · 锻造器: the grant counters (`count`/`killsPaid`/`elites`/`per`), the accumulated `forged` table and the
+      // current `rolled` cards. Only a ZHAJING private view grows the key — everywhere else `this.forge` is null.
+      ...(this.gd.zhajing && this.forge ? { forge: this.forgeView() } : {}),
       stats: {
         dmgDealt: Math.round(this.stats.dmgDealt), kills: this.stats.kills, leaks: this.stats.leaks, gold: this.stats.gold,
         refreshes: this.stats.refreshes, merges: this.stats.merges,

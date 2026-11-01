@@ -390,31 +390,35 @@
 .pmark { display: inline-flex; align-items: center; gap: .1rem; color: currentColor; }
 .pmark__glyph { width: .5rem; height: .5rem; fill: currentColor; flex: none; }
 .pmark__type { font-family: var(--font-num); font-size: calc(.17 * var(--t)); font-weight: 700; line-height: 1.05; letter-spacing: .08em; }
-.tbanner { position: fixed; inset: 0; z-index: var(--z-banner, 40); display: grid; align-items: center; pointer-events: none; overflow: hidden; }
-.tbanner__dim { position: absolute; inset: 0; background: rgba(0, 0, 0, .55); opacity: 0; animation: tbanner-dim 1650ms linear both; }
+/* 「请选择策略」横幅：protocol-boot.css 里还有一套旧版 .tbanner（absolute + top: 50% - 110*--px），
+   本文件加载在后，但旧版的 top/left/right 会渗进来，把横幅推到底部（2026-10-26 修）。
+   这里显式重置并居中，只保留本文件的相对定位 + 横向动画。 */
+.tbanner--intro { position: fixed; inset: 0; z-index: var(--z-banner, 40); display: grid; place-items: center; align-content: center; pointer-events: none; overflow: hidden; }
+.tbanner--intro .tbanner__dim { position: absolute; inset: 0; background: rgba(0, 0, 0, .55); opacity: 0; animation: tbanner-dim 1650ms linear both; }
 @keyframes tbanner-dim { 0% { opacity: 0; } 8%, 88% { opacity: 1; } 100% { opacity: 0; } }
-.tbanner__band { position: relative; display: flex; align-items: center; gap: .26rem; height: 2.1rem; animation: tbanner-band 1650ms cubic-bezier(.2, .7, .2, 1) both; }
+.tbanner--intro .tbanner__band { position: relative; top: auto; right: auto; bottom: auto; left: auto; margin: 0;
+  display: flex; align-items: center; gap: .26rem; height: 2.1rem; animation: tbanner-band 1650ms cubic-bezier(.2, .7, .2, 1) both; }
 @keyframes tbanner-band { 0% { transform: translateX(-46%); } 12% { transform: translateX(-1.6%); } 90% { transform: translateX(1.2%) scaleY(1); }
   97% { transform: translateX(1.2%) scaleY(.06); } 100% { transform: translateX(1.2%) scaleY(0); } }
-.tbanner__bar { position: relative; flex: none; width: 84vw; height: 100%; overflow: hidden; background: linear-gradient(180deg, #d5d7da, #b8bbbf); box-shadow: 0 .06rem .3rem rgba(0, 0, 0, .5); }
-.tbanner__grey { position: absolute; inset: 0; display: flex; align-items: center; padding-left: 1.3rem; color: #45494d; }
-.tbanner__logo { transform: scale(1.5); transform-origin: left center; }
-.tbanner__map { position: absolute; inset: 0 0 0 38%; pointer-events: none;
+.tbanner--intro .tbanner__bar { position: relative; flex: none; width: 84vw; height: 100%; overflow: hidden; background: linear-gradient(180deg, #d5d7da, #b8bbbf); box-shadow: 0 .06rem .3rem rgba(0, 0, 0, .5); }
+.tbanner--intro .tbanner__grey { position: absolute; inset: 0; display: flex; align-items: center; padding-left: 1.3rem; color: #45494d; }
+.tbanner--intro .tbanner__logo { transform: scale(1.5); transform-origin: left center; }
+.tbanner--intro .tbanner__map { position: absolute; inset: 0 0 0 38%; pointer-events: none;
   background: repeating-radial-gradient(ellipse at 72% 64%, rgba(0, 0, 0, .08) 0 1px, transparent 1px 14px), repeating-linear-gradient(90deg, rgba(0, 0, 0, .05) 0 1px, transparent 1px 1.2rem);
   -webkit-mask: linear-gradient(90deg, transparent, #000 30%); mask: linear-gradient(90deg, transparent, #000 30%); }
-.tbanner__mint { position: absolute; inset: 0; display: flex; align-items: center; justify-content: flex-end; padding-right: 2.5rem;
+.tbanner--intro .tbanner__mint { position: absolute; inset: 0; display: flex; align-items: center; justify-content: flex-end; padding-right: 2.5rem;
   background: linear-gradient(180deg, #59e6bd, #3dd1a5); clip-path: inset(0 100% 0 0); animation: tbanner-wipe 1650ms cubic-bezier(.5, 0, .2, 1) both; }
 @keyframes tbanner-wipe { 0%, 34% { clip-path: inset(0 100% 0 0); } 62%, 100% { clip-path: inset(0 0 0 0); } }
-.tbanner__mint .tbanner__map { inset: 0; background: repeating-radial-gradient(ellipse at 40% 50%, rgba(8, 60, 44, .13) 0 1px, transparent 1px 16px); -webkit-mask: none; mask: none; }
-.tbanner__text { position: relative; padding-bottom: .06rem; font-size: calc(.52 * var(--t)); font-weight: 900; letter-spacing: .1em; color: #0b2a21; border-bottom: .05rem solid #0b2a21;
+.tbanner--intro .tbanner__mint .tbanner__map { inset: 0; background: repeating-radial-gradient(ellipse at 40% 50%, rgba(8, 60, 44, .13) 0 1px, transparent 1px 16px); -webkit-mask: none; mask: none; }
+.tbanner--intro .tbanner__text { position: relative; padding-bottom: .06rem; font-size: calc(.52 * var(--t)); font-weight: 900; letter-spacing: .1em; color: #0b2a21; border-bottom: .05rem solid #0b2a21;
   animation: tbanner-text 1650ms ease-out both; }
 @keyframes tbanner-text { 0%, 46% { opacity: 0; transform: translateX(-.4rem); } 64% { opacity: 1; transform: translateX(0); } 100% { opacity: 1; transform: translateX(.14rem); } }
-.tbanner__ring { position: absolute; right: .7rem; top: 50%; width: 1.4rem; height: 1.4rem; border-radius: 50%; border: .1rem solid rgba(11, 42, 33, .7);
+.tbanner--intro .tbanner__ring { position: absolute; right: .7rem; top: 50%; width: 1.4rem; height: 1.4rem; border-radius: 50%; border: .1rem solid rgba(11, 42, 33, .7);
   border-left-color: transparent; border-bottom-color: transparent; animation: tbanner-ring 1650ms ease-out both; }
 @keyframes tbanner-ring { 0%, 40% { opacity: 0; transform: translateY(-50%) rotate(-150deg); } 70% { opacity: 1; } 100% { opacity: 1; transform: translateY(-50%) rotate(30deg); } }
-.tbanner__bot { flex: none; width: 1.12rem; height: 1.12rem; display: grid; place-items: center; background: #3dd1a5; color: #0b2a21; box-shadow: 0 0 .2rem rgba(61, 209, 165, .6);
+.tbanner--intro .tbanner__bot { flex: none; width: 1.12rem; height: 1.12rem; display: grid; place-items: center; background: #3dd1a5; color: #0b2a21; box-shadow: 0 0 .2rem rgba(61, 209, 165, .6);
   animation: tbanner-bot 1650ms ease-out both; }
-.tbanner__bot .icon { width: 70%; height: 70%; }
+.tbanner--intro .tbanner__bot .icon { width: 70%; height: 70%; }
 @keyframes tbanner-bot { 0%, 4% { opacity: 0; transform: scale(.4); } 12% { opacity: 1; transform: scale(1); } }
 
 /* ---- 协议启动！ (ui/matchIntro.js ProtocolBoot, BATTLE_CHECK): a 16:9 stage, sizes in stage units ---- */

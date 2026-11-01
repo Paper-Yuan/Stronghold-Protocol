@@ -26,7 +26,7 @@
 // battle only — since 0.2.2 a tap on an operator says 选中干员 in every phase).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync, readdirSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { GameData } from '../server/match/gamedata.js';
@@ -883,20 +883,41 @@ test('干员战斗语音 (DESIGN §21.30): the manifest data, the official prior
   const charIds = Object.keys(voice);
   assert.ok(charIds.length >= 100, `${charIds.length} operators carry official battle voice`);
   assert.equal(manifest.stats.voiceChars, charIds.length, 'stats.voiceChars counts them');
-  // one operator carries every slot a battle can play — and none of the prep-only ones (plan.mjs VOICE_BATTLE_SLOTS):
-  // 干员报到 / 编入队伍 / 任命队长 are never requested by the client, so planning them only made every `npm run assets`
-  // download 360 files (19.3 MB, one per operator and slot) nobody hears. `--voice-all` brings the complete set back.
+  // one operator carries every slot a battle can play — and the **plan** never schedules the prep-only ones
+  // (plan.mjs VOICE_BATTLE_SLOTS): 干员报到 / 编入队伍 / 任命队长 are never requested by the client, so planning them only
+  // made every `npm run assets` download 360 files (19.3 MB, one per operator and slot) nobody hears.
+  //
+  // 2026-10-29 修订：断言从「清单里必须没有 prep 槽」改成「**plan** 不排 prep 槽」——
+  // 清单是历史累积物：某次用 `--voice-all` 建过的仓库里这些 mp3 已经在盘上，重建时它们会被原样保留（不删已下载的文件），
+  // 那不是「计划又排了它们」。真正的红线是「默认不再去下载」，所以这里钉 plan 的槽位表；清单里若带着，只要求文件真实存在。
+  const { VOICE_BATTLE_SLOTS } = await import('../tools/assets/audio.mjs');
   const slots = ['start', 'faceEnemy', 'select', 'place', 'skill1', 'skill2', 'skill3', 'skill4', 'resultFour', 'resultThree', 'resultTwo', 'resultLose'];
   const prepOnly = ['gacha', 'squad', 'squadFirst'];
+  assert.deepEqual([...VOICE_BATTLE_SLOTS].sort(), [...slots].sort(), 'the battle slots the plan schedules');
+  for (const s of prepOnly) assert.ok(!VOICE_BATTLE_SLOTS.includes(s), `${s} is not planned by default`);
   const lines = [];
   const walk = (x) => {
     if (typeof x === 'string') lines.push(x);
     else if (Array.isArray(x)) x.forEach(walk);
     else if (x && typeof x === 'object') Object.values(x).forEach(walk);
   };
+  // 2026-10-29 修订二：唯一一个源侧就缺一条的干员 —— 锡兰的 4 技能语音在包里没有（盘上 `char_348_ceylon/` 只有 16 个
+  // mp3，没有第 4 技能那条），清单里也**已删掉这条悬空引用**（清单不能指向不存在的文件）。除它之外要求 12 槽齐全。
+  const VOICE_SOURCE_GAPS = Object.freeze({ char_348_ceylon: ['skill4'] });
   for (const id of charIds) {
-    for (const s of slots) assert.ok(voice[id][s], `${id}.${s}`);
-    for (const s of prepOnly) assert.equal(voice[id][s], undefined, `${id}.${s} is not planned by default`);
+    for (const s of slots) {
+      if ((VOICE_SOURCE_GAPS[id] || []).includes(s)) {
+        assert.equal(voice[id][s], undefined, `${id}.${s} 是源侧缺文件，清单里必须没有这条悬空引用`);
+        continue;
+      }
+      assert.ok(voice[id][s], `${id}.${s}`);
+    }
+    // 清单允许保留历史上已经下过的 prep 槽，但绝不能指向不存在的文件
+    for (const s of prepOnly) {
+      const v = voice[id][s];
+      if (v === undefined) continue;
+      for (const url of Array.isArray(v) ? v : [v]) assert.ok(existsSync(join(ROOT, 'public', url.replace(/^\//, ''))), `${id}.${s} → ${url}`);
+    }
     walk(voice[id]);
   }
   // a battle slot usually carries several lines (选中干员 / 部署 have two), so the battle set alone stays well above 10 each
@@ -918,8 +939,12 @@ test('干员战斗语音 (DESIGN §21.30): the manifest data, the official prior
   assert.match(doc('docs/ASSETS.md'), /\| 干员战斗语音 \|/);
   assert.match(doc('docs/ASSETS.md'), /voiceChars/);
   // 0.2.2: the Japanese dub beside the Chinese one (audio.voiceJp, settings 语音语言, the full zip's switch)
-  assert.equal(Object.keys(manifest.audio?.voiceJp ?? {}).length, charIds.length, 'every voiced operator has its JP tree');
-  assert.equal(manifest.stats.voiceJpChars, charIds.length);
+  // 2026-10-29 修订：断言从「JP 的条数 == CN 的条数」改成「每个有 CN 语音的干员都必须有 JP」——
+  // JP 树可以比 CN 覆盖更多干员（本次重建后 216 vs 211：有 5 位只有日配），条数相等并不是设计口径。
+  const jp = manifest.audio?.voiceJp ?? {};
+  for (const id of charIds) assert.ok(jp[id], `${id} has its JP tree`);
+  assert.ok(Object.keys(jp).length >= charIds.length, `JP covers at least the ${charIds.length} voiced operators (${Object.keys(jp).length})`);
+  assert.ok(manifest.stats.voiceJpChars >= charIds.length, 'stats.voiceJpChars counts them');
   assert.match(doc('docs/ASSETS.md'), /voiceJp: \{ \[charId\]: \{ …the slots of `voice` \} \}/);
   assert.match(doc('docs/DEPLOY.md'), /`FULL_ZIP_JP_VOICE` 改成 `false` 时/);
   assert.match(doc('docs/ASSETS.md'), /voiceEn\?: \{ \[charId\]: \{ …the slots of `voice` \} \}/);

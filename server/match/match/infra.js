@@ -5,6 +5,7 @@
 // Installed on Match.prototype by server/match/Match.js (a method container: never instantiated; `this` is the match).
 
 import { buildDeployMap } from '../board.js';
+import { teamIndexOf } from '../../../shared/constants.js';
 
 export class MatchInfra {
   /** Run a callback with error isolation, then flush the views. */
@@ -94,11 +95,39 @@ export class MatchInfra {
 
   alivePlayers() { return this.order.filter((p) => p.alive); }
 
-  /** Whether any chess of a bond is in this match's pool (a 驰援 card of a fully banned bond is never offered). */
+  /**
+   * The copy accounting of a player (TWELVE_PLAYER_MODE §2 队内共用 / 队间独立): the player's own team's pool in a room
+   * above MAX_SEATS, else the match's single shared pool. `PlayerState.poolOf` routes every take / give / remaining read
+   * through here, so a 4-seat match reads exactly the object it read before (`this.pool`).
+   * @param {import('../PlayerState.js').PlayerState | null} ps
+   */
+  poolFor(ps) {
+    const pools = this.teamPools;
+    if (!pools || !ps) return this.pool;
+    const t = teamIndexOf(ps.seat);
+    return pools[t] || this.pool;
+  }
+
+  /**
+   * Every pool this match keeps copies in (one per team in a multi-team room, else the single shared one). Readers that
+   * cannot name a player — a bond's presence in the pool, the accounting invariants — walk this list.
+   * @returns {any[]}
+   */
+  allPools() { return this.teamPools ? this.teamPools : [this.pool]; }
+
+  /**
+   * Whether any chess of a bond is in this match's pool (a 驰援 card of a fully banned bond is never offered).
+   * 湮灭模拟: 罗德岛 / 卡兹戴尔 members exist ONLY as `chess[].annBonds` (no record carries them in `bonds`), so without
+   * this clause `bondLive` is false for them in an annihilation match and their 盟誓 / 驰援 cards never enter the pool. The
+   * clause sits behind `gd.annihilation`, so every official mode and 炸惊 read exactly the `bonds` list they read before.
+   */
   bondInPool(bondId) {
-    for (const id of this.pool.entries.keys()) {
+    const ann = !!this.gd.annihilation;
+    for (const pool of this.allPools()) for (const id of pool.entries.keys()) {
       const c = this.gd.chess(id);
-      if (c && Array.isArray(c.bonds) && c.bonds.includes(bondId)) return true;
+      if (!c) continue;
+      if (Array.isArray(c.bonds) && c.bonds.includes(bondId)) return true;
+      if (ann && Array.isArray(c.annBonds) && c.annBonds.includes(bondId)) return true;
     }
     return false;
   }

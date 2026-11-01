@@ -68,7 +68,7 @@ const prepEnded = (ctx) => ctx.phase === 'PREP' && ctx.counter(C_PREP_ENDED) ===
 
 function latchVisiDiscount(ctx) {
   if (!ctx.bondActive('visiShip')) return;
-  const p = buff(ctx, 'visiShip', 'bond_multi_layer_char_goods_price_bond_discount');
+  const p = visiDiscount(ctx);
   const L = ctx.layers('visiShip');
   const cur = ctx.counter(C_VISI_DISC);
   const t = L >= n(p.layer2, Infinity) ? 2 : L >= n(p.layer1, Infinity) ? 1 : 0;
@@ -76,6 +76,14 @@ function latchVisiDiscount(ctx) {
     ctx.setCounter(C_VISI_DISC, t);
     ctx.toast(t >= 2 ? '【远见】所有干员购买价格永久降低' : '【远见】远见干员购买价格永久降低', 'info');
   }
+}
+
+function visiDiscount(ctx) {
+  const modern = buff(ctx, 'visiShip', 'bond_multi_layer_char_goods_price_bond_discount');
+  if (modern.layer1 != null) return modern;
+  const own = buff(ctx, 'visiShip', 'bond_layer_char_goods_price_bond_discount');
+  const all = buff(ctx, 'visiShip', 'bond_layer_char_goods_price_discount');
+  return { layer1: own.layer, layer2: all.layer, discount: all.discount ?? own.discount, bond: own.bond };
 }
 
 function visiSettle(ctx) {
@@ -114,7 +122,7 @@ export function registerMeta(registry) {
       if (!ev || ev.kind !== 'chess') return;
       const t = ctx.counter(C_VISI_DISC);
       if (t <= 0) return;
-      const p = buff(ctx, 'visiShip', 'bond_multi_layer_char_goods_price_bond_discount');
+      const p = visiDiscount(ctx);
       const disc = n(p.discount);
       if (!(disc > 0)) return;
       if (t < 2) {
@@ -139,107 +147,16 @@ export function registerMeta(registry) {
     },
   });
 
-  // Ave Mujica / 颂乐人偶 (工坊/模组内置扩展钩子，无该盟约时不触发)
-  const BOND_AM = 'aveMujica';
-  const tierOfAm = (ctx) => { const b = typeof ctx.bond === 'function' ? ctx.bond(BOND_AM) : null; return b && Number.isInteger(b.tier) ? b.tier : 0; };
-  const dblOfAm = (ctx) => (tierOfAm(ctx) >= 5 ? 2 : 1);
-  const memberCountAm = (ctx) => { const b = typeof ctx.bond === 'function' ? ctx.bond(BOND_AM) : null; return b && Number.isInteger(b.count) ? b.count : 0; };
-  const bondOrderAm = (ctx) => (Array.isArray(ctx.gd?.bondIds) ? ctx.gd.bondIds : Object.keys(ctx.data?.bonds || {}));
-
-  registry.bond(BOND_AM, {
-    onRefresh(ctx) {
-      if (tierOfAm(ctx) < 1) return;
-      const every = Math.max(1, Math.floor(9 / dblOfAm(ctx)));
-      const next = ctx.counter('avemujica:refresh') + 1;
-      ctx.setCounter('avemujica:refresh', next);
-      if (next % every !== 0) return;
-      const tier = Math.max(1, ctx.shopLevel());
-      const id = ctx.rollChess({ bond: BOND_AM, maxTier: tier });
-      if (id) ctx.grantChess(id, { source: 'bond:aveMujica' });
-    },
-    onPrepEnd(ctx) {
-      if (tierOfAm(ctx) < 2) return;
-      const per = dblOfAm(ctx);
-      const n = memberCountAm(ctx) * per;
-      if (n > 0) {
-        for (const b of bondOrderAm(ctx)) {
-          if (ctx.bondActive(b) || (b === BOND_AM && tierOfAm(ctx) >= 1)) {
-            ctx.addLayers(b, n, { requireActive: false });
-          }
-        }
+  registry.bond('skillfulShip', {
+    onRefresh(ctx, ev) {
+      if (ev?.trigger || !ctx.bondActive('skillfulShip') || ctx.roundStats().refreshes !== 1) return;
+      const p = buff(ctx, 'skillfulShip', 'bond_layer_refresh_shop_award_equip');
+      if (ctx.layers('skillfulShip') < n(p.layer, Infinity)) return;
+      let left = n(p.count);
+      for (const [i, slot] of ctx.shopSlots().entries()) {
+        if (left <= 0) break;
+        if (slot?.kind === 'item' && !slot.sold) { ctx.setShopSlot(i, { ...slot, price: n(p.price) }); left--; }
       }
-    },
-    onRoundStart(ctx) {
-      if (tierOfAm(ctx) < 3) return;
-      const fund = dblOfAm(ctx);
-      const n = Math.min(2, memberCountAm(ctx));
-      if (n > 0) ctx.addFunds(n * fund, 'bond:aveMujica');
-    },
-    // 本分支的 hook 名是 `onActiveBonds`（激活集合变化时派发，server/match/player/round.js _reportActiveBonds）：
-    // fork 里的 `onBondChange` 不在 effectsMeta.js 的 HOOKS 里，注册了永远不会被调用 —— 4 人档的「部署位 +1」
-    // 因此一直没生效（2026-10-17 实测：registry.warnings 里就是这一条）。
-    onActiveBonds(ctx, ev) {
-      if (ev && ev.bondId && ev.bondId !== BOND_AM) return;
-      const want = tierOfAm(ctx) >= 4 ? dblOfAm(ctx) : 0;
-      const prev = ctx.counter('avemujica:deploy');
-      if (want !== prev) {
-        ctx.addDeployCap(want - prev);
-        ctx.setCounter('avemujica:deploy', want);
-      }
-    },
-  });
-
-  registry.garrison('AVEMUJICA_REFRESH_LAYERS', {
-    run(ctx) {
-      const src = ctx.source || {};
-      const piece = src.piece;
-      const bb = src.bb || {};
-      if (!piece || !piece.id) return;
-      const rec = ctx.gd.chess(piece.id);
-      const n = Math.max(1, Math.floor(bb.layers || 1));
-      if (!rec || !Array.isArray(rec.bonds)) return;
-      const cap = Math.max(0, Math.floor(bb.max_count || 0));
-      if (cap > 0 && Number.isInteger(piece.uid) && piece.uid > 0 && typeof ctx.incPieceCounter === 'function') {
-        if (ctx.incPieceCounter(piece.uid, 'avemujica:refresh') > cap) return;
-      }
-      for (const b of rec.bonds) {
-        if (ctx.bondActive(b) || b === BOND_AM) {
-          ctx.addLayers(b, n, { requireActive: false });
-        }
-      }
-    },
-  });
-
-  registry.garrison('AVEMUJICA_PREP_REWARD', {
-    run(ctx) {
-      const src = ctx.source || {};
-      const bb = src.bb || {};
-      const count = typeof ctx.bondCount === 'function' ? ctx.bondCount(BOND_AM) : 0;
-      const check = Math.max(1, Math.floor(bb.check_count || 3));
-      if (count < check) {
-        const v = Math.max(1, Math.floor(bb.fund || 1));
-        ctx.addFunds(v, 'bond:aveMujica');
-      } else {
-        const f = Math.max(1, Math.floor(bb.refresh || 1));
-        if (typeof ctx.grantFreeRefresh === 'function') ctx.grantFreeRefresh(f);
-      }
-    },
-  });
-
-  registry.band('band_wuyouyoumeng', {
-    onGain(ctx, ev) {
-      const KEY = 'band:wuyouyoumeng:used';
-      if (ctx.counter(KEY) === ctx.round) return;
-      const piece = ev && ev.piece;
-      if (!piece || piece.kind !== 'chess') return;
-      const rec = typeof ctx.gd.chess === 'function' ? ctx.gd.chess(piece.id) : null;
-      if (!rec || !Array.isArray(rec.bonds) || !rec.bonds.includes(BOND_AM)) return;
-      ctx.setCounter(KEY, ctx.round);
-      const tier = Math.max(1, ctx.shopLevel());
-      const id = ctx.rollChess({ maxTier: tier });
-      if (id) ctx.grantChess(id, { source: 'band' });
     },
   });
 }
-
-

@@ -25,7 +25,7 @@
 //   卡西米尔 kazimierzShip every deployment of one of the player's operators (initial ones included): members ATK
 //                        +atk_when_born, total ≤ base_max_atk_when_born + max_atk_when_born_per_stack·L; 6: blocking
 //                        members pulse damage_atk_scale×ATK true damage + stun around them every damage_interval s,
-//                        non-blocking members' attacks add pure_atk_scale×ATK true damage
+//                        non-blocking members' NORMAL damage carries source-less true ADDITION damage
 //
 // Numbers: data/bonds.json buffs (support.buffParams by bbStr.key); 炎佑's 30 % is parsed from the effect text.
 // Tiers: a bond's upper tier is reached when count ≥ the blackboard threshold (power_bond_char_cnt / ex_bond_char_cnt)
@@ -38,11 +38,11 @@
 // death 10; every `fatal` saver runs before any death hook), layerGain −100 (after 魔王-style modifiers).
 
 import * as S from '../support/index.js';
-import { mitigate } from '../../damage.js';
 import { spawnYanyou } from '../tokens.js';
 import { kjeragColdWind } from '../devices.js';
 import * as items from '../items.js';
 import { FORCED_EXIT } from '../../constants.js';
+import { damageAttackType, isHpLoss } from '../../attack.js';
 import { msg } from '../../../../shared/i18n.js';
 import { bbCap } from '../../../../shared/plugins/officialBounds.js';
 import { textFinite } from '../../../../shared/plugins/textNumber.js';
@@ -63,6 +63,11 @@ const BUFF_KEYS = Object.freeze({
   kazimierzShip: 'act2autochess_bond_eff_kazimierz',
 });
 const SARGON_SHARE_KEY = 'act2autochess_bond_eff_sargon[share]';
+/**
+ * 业主 2026-10-31（超限 V2）：萨尔贡「攻击力叠层上限」取消后，用来数攻击力层数的标记 buff 的上限。
+ * 9999 与炸惊 `zj` 块对叠层上限用的是同一个数（`data/bonds.json` → `sargonShip.zj.bb.max_buff_stack_cnt`）。
+ */
+const SARGON_ATK_STACK_CAP = 9999;
 const VICTORIA_REWARD_KEY = 'bond_layer_added_reward_equip';
 const VICTORIA_COUNTER = 'bond:victoria:hammers';
 
@@ -76,7 +81,11 @@ export function reached(battle, pid, bondId, cnt) {
   const st = S.bondState(battle, pid, bondId);
   if (!st || !st.active) return false;
   const need = num(cnt, 0);
-  if (!(need > 0)) return true;
+  // On another version's build (S.isVersionData) a threshold the record lacks is a tier that data does not have: not
+  // reached. 上半's 炎 has no 9-member tier (no ex_bond_char_cnt); counting it as reached gave 6 炎 the 9-member tier's
+  // 2 炎佑. The default data never gets here (every core bond's main buff carries power_bond_char_cnt and 炎's
+  // ex_bond_char_cnt is 9); a plugin content set built on it keeps the old rule, reached.
+  if (!(need > 0)) return !S.isVersionData();
   if (num(st.count, 0) >= need) return true;
   const th = S.bondRecord(bondId)?.thresholds;
   const idx = Array.isArray(th) ? th.indexOf(need) : -1;
@@ -185,6 +194,7 @@ function installYan(battle, pid, bb, members) {
   const L = () => S.bondLayers(battle, pid, 'yanShip');
   // 业主 2026-10-19：「炎加个生命区间」—— 超限局额外给生命值（幅度不高）。
   // 基础 +15%，每层 +0.2%（30 层 = +21%）。
+  // 业主 2026-10-31（超限 V2）复核：「炎每层 +0.2% 生命值」= 就是这一行，数值不变，只补注释。
   const YAN_HP_BASE = 0.15;
   const YAN_HP_PER_STACK = 0.002;
   const apply = () => {
@@ -236,6 +246,12 @@ function installSargon(battle, pid, bb, members) {
   // 用 main（娜仁图亚时是 share）的 invalid_in_band 判定：
   // 普通 bb 标了 invalid_in_band: band_narant（娜仁图亚下无效），而 share 没有这个字段。
   const atkStacks = six && !(main.invalid_in_band && main.invalid_in_band === band);
+  // 业主 2026-10-31（超限 V2）：「萨尔贡去掉 6 人档提升攻击力的上限」——那个上限就是叠层上限
+  // `max_buff_stack_cnt = 25`（每层 +12% 攻击 ⇒ +300%）。业主口径（2026-10-31 补答）：**只放开攻击侧**，
+  // 攻速保持 +300 封顶（叠层上限仍然 25）。所以这里不改 `maxStacks`，而是给「数攻击力层数」单开一条**没有
+  // maxStacks 的标记 buff**：超限局里它每个技能次数都 +1（`bond:sargon:atk-stack`），攻击力按它的条数算；
+  // 普通 / 湮灭 / 炸惊不装这条标记，攻击力条数 = 攻速叠层条数（≤ 25），逐位等于改动前。
+  const INF_OL = !!(battle.flags && battle.flags.overlimit);
   const maxStacks = Math.max(1, Math.floor(num(main.max_buff_stack_cnt, 25)));
   const perAtk = num(bb.base_atk, 0);
   // 业主 2026-10-19：「萨转攻 溢出100层加5%」——
@@ -250,7 +266,9 @@ function installSargon(battle, pid, bb, members) {
   const syncAtk = (u) => {
     if (!atkStacks) return;
     let n = 0;
-    for (const b of u.buffs) if (b.key === 'bond:sargon') n++;
+    // 超限：攻击力层数 = 无上限的标记（攻速仍是 25 层）；其它模式：= 攻速叠层条数（同一个 25 层上限）
+    const key = INF_OL ? 'bond:sargon:atk-stack' : 'bond:sargon';
+    for (const b of u.buffs) if (b.key === key) n++;
     const over = overflowAtk();
     const scale = narant ? NARANT_ATK_SCALE : 1;
     if ((n > 0 || over > 0) && u.alive) {
@@ -269,6 +287,14 @@ function installSargon(battle, pid, bb, members) {
           mods: { aspd: num(main.base_attack_speed, 0) },
           onExpire: ({ unit: u }) => syncAtk(u), onRemove: ({ unit: u }) => syncAtk(u),
         });
+        if (INF_OL && atkStacks) {
+          // 只用来数攻击力层数：`maxStacks` 放到 9999（引擎的 `makeBuff` 缺省是 1 —— 不写就永远只剩一条，
+          // 这也是「+300% 上限」在超限局消失的唯一开关）
+          battle.addBuff(m, {
+            key: 'bond:sargon:atk-stack', duration: dur, refresh: 'independent', maxStacks: SARGON_ATK_STACK_CAP,
+            onExpire: ({ unit: u }) => syncAtk(u), onRemove: ({ unit: u }) => syncAtk(u),
+          });
+        }
         syncAtk(m);
       }
     }
@@ -302,6 +328,8 @@ function installVictoria(battle, pid, bb, members) {
   const HAMMER_CAP_LAYERS = 25 * 30;   // 每 25 层 1 件，30 件 = 750 层
   const OVERFLOW_STEP = 50;            // 每 50 层
   const OVERFLOW_BONUS = 0.01;         // +1% 伤害
+  // 业主 2026-10-31（超限 V2）：维多利亚每层 +0.2% 生命值（与炎同口径；炎是 15% 基础 + 0.2%/层）。
+  const VICTORIA_HP_PER_LAYER = 0.002;
   const overflowMul = (layers) => {
     if (!(battle.flags && battle.flags.overlimit)) return 0;   // 只在超限局
     const over = Math.max(0, layers - HAMMER_CAP_LAYERS);
@@ -316,19 +344,36 @@ function installVictoria(battle, pid, bb, members) {
   };
   apply();
   onLayers(battle, pid, 'victoriaShip', apply);
+  // 业主 2026-10-31（超限 V2）：「维多利亚加每层 +0.2% 生命值」。本条此前没有任何 hp 通道（apply() 只发
+  // dmgDealtMul，且要求携带装备 ≥ 1 件），所以这里单开一条，**不**走「携带装备」那道门（3 人档起，全员）。
+  // 只在超限局：普通 / 湮灭 / 炸惊不发这条 buff，血量与改动前逐位相同。
+  const applyHp = () => {
+    if (!(battle.flags && battle.flags.overlimit)) return;
+    const hp = VICTORIA_HP_PER_LAYER * S.bondLayers(battle, pid, 'victoriaShip');
+    for (const u of members) S.passiveBuff(battle, u, 'bond:victoria:hp', S.directMods({ hp }));
+  };
+  applyHp();
+  onLayers(battle, pid, 'victoriaShip', applyHp);
   if (!reached(battle, pid, 'victoriaShip', bb.power_bond_char_cnt)) return;
   const normal = num(bb.atk_normal_equip, 0), golden = normal + num(bb.atk_golden_equip, 0);
   for (const u of members) {
     const ids = S.itemsOf(u);
     if (!ids.length) continue;
-    let add = 0;
-    for (const id of ids) add += S.isGoldenId(id) ? golden : normal;
+    let add = num(bb.power_atk, 0);
+    if (bb.power_atk == null) for (const id of ids) add += S.isGoldenId(id) ? golden : normal;
     if (add > 0) S.passiveBuff(battle, u, 'bond:victoria:atk', S.directMods({ atk: add }));
   }
 }
 
 // =====================================================================================================================
 // 谢拉格
+
+/**
+ * 业主 2026-10-31（超限 V2）：「谢拉格 6 人档冰冻时间锁 20 秒；寒风每层、每次命中额外 400 真伤」。
+ * 两个数只在 `flags.overlimit` 下用（普通 / 湮灭 / 炸惊：冻结仍由引擎按寒冷时长算、寒风 0 伤害，一帧不变）。
+ */
+const KJERAG_FREEZE_LOCK = 20;            // 秒：超限局「寒风造成的冻结」的名义时长上限
+const KJERAG_WIND_TRUE_PER_LAYER = 400;   // 每层真伤：每阵风对每个存活敌人的伤害 = 400 × 谢拉格层数
 
 function installKjerag(battle, pid, bb, members) {
   const base = num(bb.base_damage_scale, 1);
@@ -343,7 +388,26 @@ function installKjerag(battle, pid, bb, members) {
     if (base > 0 && target > 0) c.dmg.mul *= target / base;
   };
   for (const u of members) onUnitHit(battle, u, onHit);
-  if (reached(battle, pid, 'kjeragShip', bb.power_bond_char_cnt)) kjeragColdWind(battle, pid, bb);
+  if (!reached(battle, pid, 'kjeragShip', bb.power_bond_char_cnt)) return;
+  // 业主 2026-10-31（超限 V2）：「谢拉格 6 人档冰冻时间锁 20 秒；寒风每层、每次命中额外 400 真伤」。
+  //
+  // 冻结时长：引擎里由「两段寒冷的较大值」决定（battle/status.js freezeFor），盟约侧没有参数能限它，所以在
+  // beforeStatus 里把**无来源的敌方冻结**夹到 20 s。范围刻意收窄：side === 'enemy' 且 source == null —— 寒风的
+  // 寒冷就是 `source: null`（devices.js startColdWind），冻结继承它，因此这只命中「寒风造成的冻结」。
+  // 寒冷时长**不改**：阵风间隔 25 s，若把寒冷也压到 20 s，下一次阵风时目标已不寒冷、永远不会冻结（炸惊 zj 块
+  // 正是这么写的，但炸惊走的是另一套判定）。
+  //
+  // 真伤：「每阵风 × 每层 × 每个存活敌人」400 点（`damagePerLayer`，见 devices.js kjeragColdWind）。无来源真伤，
+  // 不吃「造成伤害提升」、也不进任何玩家的伤害统计（与【圣堂殉爆】同一口径）。
+  const inf = !!(battle.flags && battle.flags.overlimit);
+  if (inf) {
+    battle.on('beforeStatus', (c) => {
+      if (!c || c.status !== 'freeze' || c.source != null) return;
+      if (!c.target || c.target.side !== 'enemy') return;
+      if (c.duration > KJERAG_FREEZE_LOCK) c.duration = KJERAG_FREEZE_LOCK;
+    });
+  }
+  kjeragColdWind(battle, pid, bb, { damagePerLayer: inf ? KJERAG_WIND_TRUE_PER_LAYER : 0 });
 }
 
 // =====================================================================================================================
@@ -382,9 +446,11 @@ function installLaterano(battle, pid, bb, members) {
       }
     }
   }
-  // 上限：普通模式 200%（数据层 max_atk_for_consume=2），超限 700%（业主文本）
+  // 上限：普通模式 200%（数据层 max_atk_for_consume=2）；业主 2026-10-31（超限 V2）「去掉消耗子弹数提升的攻击力的上限」
+  // ⇒ 超限局无上限（每发 +8% 一直叠）。弹药本身的 600 层封顶**保持**（上面 cappedLayers，业主原话「锁 600」）。
+  // [ASSUMED] 【圣堂殉爆】按「全体当前攻击力总和 × 20%」结算，ATK 无上限后它会二次放大（本轮按业主原话一起放开）。
   const per = num(bb.atk_per_consume, 0) * (inf ? 2 : 1);
-  const cap = inf ? 7 : num(bb.max_atk_for_consume, Infinity);
+  const cap = inf ? Infinity : num(bb.max_atk_for_consume, Infinity);
   if (!(per > 0)) return;
   const BLAST_EVERY = 100;      // 累计消耗 100 发触发一次
   const BLAST_SCALE = 0.2;      // 全队攻击力总和的 20%
@@ -443,6 +509,17 @@ function egirStart(battle) {
 }
 
 /**
+ * 湮灭模拟（difficulty: 'ANNIHILATION'）的阿戈尔加强①：把 `amount` 加到**基础面板**攻击力上（`unit.base.atk`，
+ * 不是乘区）；随后让 `s` 重算（`markDirty` + 读取 `u.s`，与 units.js 的惰性 stats 同一手法）。
+ */
+function addBaseAtk(u, amount) {
+  if (!u || !u.base || !(amount > 0)) return;
+  u.base.atk = Math.max(0, num(u.base.atk, 0) + amount);
+  if (typeof u.markDirty === 'function') u.markDirty();
+  void u.s;
+}
+
+/**
  * 联防: an operator forced out at the deployment (carry.down, Battle.start, before battleStart) still stands on its
  * deploy position for the devour (PRTS 盟约记录 最先部署). The forced exit is not a knock-out, so it takes no 5-tier slot.
  */
@@ -490,11 +567,12 @@ function devour(battle, pid, bb, members) {
   // nothing — it is forced out, so it is never knocked out again, revived or devoured. Per players' reports (community
   // report #3, GitHub #33 item 3), owner's decision 2026-10-04; until 0.1.2 the forced exit came first and the chain broke.
   const downAtStart = (u) => egirDownAtStart(battle, u);
-  const order = members.filter((u) => S.onField(u) || downAtStart(u)).sort(egirOrder);
+  // Historical text says bottom then left; [ASSUMED] season one's unspecified order follows its deployment.
+  const order = members.filter((u) => S.onField(u) || downAtStart(u)).sort(S.isVersionData()
+    ? (a, b) => a.tileR - b.tileR || boardCol(a) - boardCol(b) || a.id - b.id : egirOrder);
   // the operator in front, whoever owns it (until 0.1.3 only the player's own): a living one, else one lying there since
   // the 联防 start (carry.down, forced out) — a teammate's included
-  const opAt = (u) => {
-    const [r, c] = S.frontTile(u);
+  const opAtTile = (r, c) => {
     const a = S.allyAt(battle, r, c);
     if (a) return S.isOp(a) && a.alive ? a : null;
     const d = battle.downOn(r, c);
@@ -503,24 +581,32 @@ function devour(battle, pid, bb, members) {
   const markedBy = new Map(); // marker → [targets]
   const marks = [];
   for (const m of order) {
+    const trench = S.itemsOf(m).map((id) => S.buffParams(S.itemRecord(id), 'act1autochess_equip_acarm078_global_buff')).find(Boolean);
+    const targets = (u) => S.itemsOf(u).some((id) => S.buffParams(S.itemRecord(id), 'act1autochess_equip_acarm078_global_buff'))
+      ? S.N4.map(([dr, dc]) => opAtTile(u.tileR + dr, u.tileC + dc)).filter(Boolean) : [opAtTile(...S.frontTile(u))].filter(Boolean);
     const mine = [];
     const seen = new Set([m]);
     const queue = [m];
     for (let guard = 0; queue.length && guard < 64; guard++) {
       const x = queue.shift();
-      const t = opAt(x);
-      if (!t || seen.has(t)) continue;
-      if ((markedBy.get(t) ?? []).includes(m)) continue;
-      seen.add(t);
-      mine.push(t);
-      // through a marked 阿戈尔 (for the player's own operators: exactly its members; a teammate's by its own bonds)
-      if (S.isMember(battle, t, 'egirShip')) queue.push(t);
+      for (const t of targets(x)) {
+        if (seen.has(t)) continue;
+        if ((markedBy.get(t) ?? []).includes(m)) continue;
+        seen.add(t);
+        mine.push(t);
+        // through a marked 阿戈尔 (for the player's own operators: exactly its members; a teammate's by its own bonds)
+        if (S.isMember(battle, t, 'egirShip')) queue.push(t);
+      }
     }
     markedBy.set(m, mine);
     if (!mine.length) continue;
     let atk = 0, block = 0;
     for (const t of mine) { atk += num(t.base.atk, 0); block += num(t.base.blockCnt, 0); marks.push([m, t]); }
     const mods = {};
+    if (trench && S.itemsOf(m).some((id) => id.replace(/_[ab]$/, '') === trench.equip_chess_id)) {
+      // [ASSUMED] "等量生命值" uses the victims' base max HP, matching the devour's base ATK/block inheritance.
+      mods.hpFlat = mine.reduce((n, t) => n + num(t.base.maxHp), 0);
+    }
     if (atk > 0) mods.atkFinal = atk; // 最终加算 (units.js _recalc)
     if (block > 0) mods.blockCnt = block;
     if (Object.keys(mods).length) S.passiveBuff(battle, m, 'bond:egir:devour', mods);
@@ -544,13 +630,20 @@ function devour(battle, pid, bb, members) {
     // opening HP loss (or trigger deaths/revives) to an operator restored from the previous field. Battle.start
     // applies its exact HP ratio and SP after the opening hooks. Fresh units and all other battle kinds still pay.
     const restored = battle.kind === 'unite' && Number.isFinite(t.carry?.hpPct) && t.carry.hpPct > 0;
-    if (amount > 0 && !restored) battle.loseHp(t, mitigate(amount, 'phys', t.s), { source: m, tags: ['bond:egir:devour'] });
+  // PRTS: devour is physical HP loss sourced by its victim; the mark's owner receives the kill credit.
+  if (amount > 0 && !restored) battle.dealHPLose({ source: t, credit: m, target: t, amount, type: 'phys', tags: ['bond:egir:devour'] });
     if (!layered.has(t)) {
       layered.add(t);
       S.gainLayers(battle, { playerId: pid, bonds: 'egirShip', n: S.tierOf(t), source: m, reason: 'bond' });
     }
   }
 }
+
+/**
+ * 业主 2026-10-31（超限 V2）：「阿戈尔吞噬仍继承基础攻击，但额外每层 +0.25% 基础攻击力」。
+ * 超限专属（`flags.overlimit`）；普通 / 湮灭 / 炸惊不读它。写成 `atkFinal`（最终加算）的理由见 installEgir 的 apply()。
+ */
+const EGIR_BASE_ATK_PER_LAYER = 0.0025;
 
 function installEgir(battle, pid, bb, members) {
   // HP (every tier): a match-long buff put on the members when the battle is built, so each one is deployed with it
@@ -561,11 +654,20 @@ function installEgir(battle, pid, bb, members) {
   const apply = () => {
     // 业主 2026-10-19：「阿戈尔就改 0.8%」—— 每层额外 +0.8% 攻击力（30 层 = +24%）。
     // **只在超限局生效**（flags.overlimit）：普通模式的金样本必须保持原样。
-    const atkPerStack = battle.flags && battle.flags.overlimit ? 0.008 : 0;
-    const mods = S.directMods({
-      atk: atkPerStack * S.bondLayers(battle, pid, 'egirShip'),
-      hp: num(bb.base_max_hp, 0) + num(bb.max_hp_per_stack, 0) * S.bondLayers(battle, pid, 'egirShip') });
-    for (const u of members) S.passiveBuff(battle, u, 'bond:egir', mods);
+    const inf = !!(battle.flags && battle.flags.overlimit);
+    const atkPerStack = inf ? 0.008 : 0;
+    const L = S.bondLayers(battle, pid, 'egirShip');
+    const mods = S.directMods({ atk: atkPerStack * L, hp: num(bb.base_max_hp, 0) + num(bb.max_hp_per_stack, 0) * L });
+    for (const u of members) {
+      S.passiveBuff(battle, u, 'bond:egir', mods);
+      // 业主 2026-10-31（超限 V2）：「吞噬仍继承基础攻击，但额外每层 +0.25% 基础攻击力」。
+      // 读法（定稿）：**基础面板**的百分比，写成 `atkFinal`（最终加算）—— 先按层数乘出绝对值，再在计算末段加，
+      // 所以它不会被自身的攻击力百分比放大，也不会反过来改变吞噬继承的 `base.atk`（吞噬读的是基础面板）。
+      // 每层刷新一次（onLayers），与 devour 叠层同一时机。
+      if (!inf) continue;
+      const add = EGIR_BASE_ATK_PER_LAYER * L * num(u.base?.atk, 0);
+      if (add > 0) S.passiveBuff(battle, u, 'bond:egir:layer-atk', { atkFinal: add });
+    }
   };
   apply();
   onLayers(battle, pid, 'egirShip', apply);
@@ -597,6 +699,21 @@ function installEgir(battle, pid, bb, members) {
   // first 3 members by position (§23.20); until 0.1.2 the first 3 knocked out took them but a revived member's pending
   // marks could knock it out again (GitHub #33, fixed in devour since).
   const max = reached(battle, pid, 'egirShip', bb.power_bond_char_cnt) ? Math.max(0, Math.floor(num(bb.max_free_respawn_cnt, 0))) : 0;
+  // ---- 湮灭模拟（difficulty: 'ANNIHILATION'）：阿戈尔盟约加强（来源 modref/mods/egir-buff/battle/main.mjs）----
+  // 开关：房间级 `annMods.egirBuff`（全关 = 官方行为）。战斗侧**只在 `flags.annMods` 存在且该键为 true 时**生效
+  // （engine-core 只在至少开了一个开关时才下发 `flags.annMods`，所以这里不假设它存在）。
+  // 这个 mod 只补两件官方没有的事，其余（HP 公式、吞噬、层数、复活名额与复活本身）全部是上面这些官方代码；
+  // 因为挂在 installEgir **内部**，两者天然共享同一份 members / 复活点 / 层数口径（不需要外挂监听器，也不会双发）。
+  //   ① <战斗开始时> 所有【阿戈尔】干员获得「当前层数 × `ann_atk_per_layer`（默认 0.5）」的**基础面板攻击力**
+  //      （写 `unit.base.atk`，不是乘区；100 层 = +50 点）。层数在官方 devour 之后读，所以含本场吞噬叠加的那部分。
+  //   ② 5 名档「首次被击倒立刻复活」的那名干员额外 +`ann_revive_aspd`（默认 50）攻速 —— 直接加在 revive() 里，
+  //      所以只有**真的被复活**的那名拿到（名额用完 / 自己站起来的不给），与官方同一判据。
+  // 数值来自 `bonds.json` 的 `egirShip.ann.bb`（与炸惊 `zj` 块同一套覆盖块语义，shared/zjBonds.js），缺省用 mod 的数值。
+  const annMods = battle.flags && battle.flags.annMods ? battle.flags.annMods : null;
+  const annEgir = S.isAnnihilationBattle(battle) && !!(annMods && annMods.egirBuff === true);
+  const annBb = (annEgir && (S.bondRecord('egirShip')?.ann?.bb || null)) || {};
+  const annAtkPerLayer = num(annBb.ann_atk_per_layer, 0.5);
+  const annReviveAspd = num(annBb.ann_revive_aspd, 50);
   const start = egirStart(battle);
   start.passes++;
   battle.on('battleStart', () => {
@@ -607,6 +724,12 @@ function installEgir(battle, pid, bb, members) {
       start.depth--;
       if (--start.passes <= 0) for (const flush of start.flush.splice(0)) flush();
     }
+    // ①（注册在官方那个 battleStart **之后**，所以读到的层数已含本场吞噬）：只发一次，战斗中后续叠层不追溯。
+    if (!annEgir || !(annAtkPerLayer > 0)) return;
+    const L = S.bondLayers(battle, pid, 'egirShip');
+    const amount = annAtkPerLayer * L;
+    if (!(amount > 0)) return;
+    for (const u of members) addBaseAtk(u, amount);
   }, { once: true });
   if (!(max > 0)) return;
   const memberOps = new Set(members.filter(S.isOp));
@@ -619,6 +742,9 @@ function installEgir(battle, pid, bb, members) {
     // 超限推演强化（业主 2026-10-19）：复活后额外 +50 攻速
     if (battle.flags && battle.flags.overlimit) {
       battle.addBuff(u, { key: 'bond:egir:revive-aspd', duration: Infinity, persist: true, mods: { aspd: 50 } });
+    } else if (annEgir && annReviveAspd > 0) {
+      // ② 湮灭模拟：5 名档「首次被击倒立刻复活」的那名干员额外 +N 攻速（只有真的被这里复活的那名拿到）。
+      battle.addBuff(u, { key: 'bond:egir:revive-aspd', duration: Infinity, persist: true, mods: { aspd: annReviveAspd } });
     }
     S.fxOn(battle, 'revive', u, 'bond:egirShip', 'respawn', { n: revives });
   };
@@ -664,10 +790,29 @@ function siracusaRolls(dmg) {
   return true;
 }
 
+/**
+ * 业主 2026-10-31（超限 V2）：叙拉古的两条新数值（超限专属）。
+ *  · `SIRA_CUR_HP_SHARE`：真伤里补的那一份「目标当前生命值的 0.2%」。
+ *  · `SIRA_ATK_PER_LAYER`：3 人档起的「每层 +0.1% 攻击力」。
+ * 普通 / 湮灭 / 炸惊都不读这两个常量。
+ */
+const SIRA_CUR_HP_SHARE = 0.002;
+const SIRA_ATK_PER_LAYER = 0.001;
+
 function installSiracusa(battle, pid, bb, members) {
   const memberSet = new Set(members);
   const six = reached(battle, pid, 'siracusaShip', bb.power_bond_char_cnt);
   const end = num(bb.end_duration, 0);
+  // 业主 2026-10-31（超限 V2）：「3 人档补 0.1%/层攻击力」。超限专属；3 人档（本条 activeCount）起就发，
+  // 6 人档同样生效（层数越高越强，与 6 人档的真伤是两个独立通道）。普通 / 湮灭 / 炸惊：不发这条 buff。
+  if (battle.flags && battle.flags.overlimit) {
+    const applyAtk = () => {
+      const atk = SIRA_ATK_PER_LAYER * S.bondLayers(battle, pid, 'siracusaShip');
+      for (const u of members) S.passiveBuff(battle, u, 'bond:siracusa:atk', S.directMods({ atk }));
+    };
+    applyAtk();
+    onLayers(battle, pid, 'siracusaShip', applyAtk);
+  }
   battle.on('deploy', ({ unit }) => {
     if (!memberSet.has(unit)) return;
     const L = S.bondLayers(battle, pid, 'siracusaShip');
@@ -680,8 +825,8 @@ function installSiracusa(battle, pid, bb, members) {
     battle.addBuff(unit, { key: 'bond:siracusa:stealth', duration: dur, flags: { stealth: true }, status: 'stealth', onExpire: off, onRemove: off });
   });
   if (!six) return;
-  // 业主 2026-10-19：超限局 8%（普通模式保持原值 3%）
-  const probMul = battle.flags && battle.flags.overlimit ? (0.08 / Math.max(1e-9, num(bb.prob, 0.03))) : 1;
+  // 业主 2026-10-31（超限 V2）：真伤触发基础概率 3% → **10%**（普通模式保持数据里的 3%）。
+  const probMul = battle.flags && battle.flags.overlimit ? (0.1 / Math.max(1e-9, num(bb.prob, 0.03))) : 1;
   const c = prdConstant(num(bb.prob, 0) * probMul);
   if (!(c > 0)) return;
   const st = { n: 0 };
@@ -693,14 +838,17 @@ function installSiracusa(battle, pid, bb, members) {
     st.n++;
     if (!(battle.rng() < Math.min(1, c * st.n))) return;
     st.n = 0;
-    // 业主文本（sweep 超限）：5000+50×层数 + 0.5% 目标最大生命，精英/首领至多 250 万
+    // 业主 2026-10-31（超限 V2）：真伤 = (5000 + 50×层数) + **目标当前生命值的 0.2%**；
+    // 精英/首领仍按 250 万封顶（那是上一轮业主自己定的上限，本轮没改）。普通 / 湮灭 / 炸惊：只有 (5000 + 50×层数)。
+    // [ASSUMED] 「补 0.2% 当前生命值」读作**替换**上一轮的「0.5% 目标最大生命」（业主给的是最终数值；
+    // 若本意是两者叠加，把 SIRA_CUR_HP_SHARE 之外的旧项加回来即可 —— 见报告）。
     const infSira = !!(battle.flags && battle.flags.overlimit);
     const base = num(bb.base_damage, 0) + num(bb.damage_per_stack, 0) * S.bondLayers(battle, pid, 'siracusaShip');
     let amount = base;
     if (infSira) {
-      const maxHp = num(t.s && t.s.maxHp, 0);
+      const curHp = Math.max(0, num(t.hp, 0));
       const isElite = t.isBoss || (t.def && t.def.rank && t.def.rank !== 'NORMAL');
-      amount = base + maxHp * 0.005;          // +0.5% 最大生命
+      amount = base + curHp * SIRA_CUR_HP_SHARE;   // +0.2% 当前生命值
       if (isElite) amount = Math.min(amount, 2_500_000);   // 精英/首领至多 250 万
     }
     S.fxOn(battle, 'bondProc', t, 'bond:siracusaShip', 'assassin', { from: u.id, amount });
@@ -721,9 +869,17 @@ function installSiracusa(battle, pid, bb, members) {
 
 function installKazimierz(battle, pid, bb, members) {
   const st = { deploys: 0 };
+  // 业主 2026-10-31（超限 V2）：「卡西米尔攻击力乘区全翻倍」。这里没有「×乘区」这种东西 —— 攻击力是
+  // `min(上限, 部署次数 × 每次部署加成)` 的一条直接乘算 atkPct，两块（每次部署 `atk_when_born` 0.2 与上限
+  // `base_max_atk_when_born 0.5 + 0.01×L`）**都 ×2**：只翻「每次部署」在 L < 470 时上限先咬住、等于没改；
+  // 只翻上限则在 L > 470 时没变化。业主原话里的「突袭相关乘区」= 另一条盟约【突袭】的再部署乘区
+  // （bonds/addon/battle.js raidMods，`1 + 0.25 + 0.01L`），同一轮一并 ×2（见该处注释）。
+  // 普通 / 湮灭 / 炸惊：KAZ_ATK_SCALE = 1，逐位等于改动前。
+  const KAZ_ATK_SCALE = battle.flags && battle.flags.overlimit ? 2 : 1;
   const apply = () => {
-    const cap = num(bb.base_max_atk_when_born, 0) + num(bb.max_atk_when_born_per_stack, 0) * S.bondLayers(battle, pid, 'kazimierzShip');
-    const bonus = Math.max(0, Math.min(cap, st.deploys * num(bb.atk_when_born, 0)));
+    const L = S.bondLayers(battle, pid, 'kazimierzShip');
+    const cap = (num(bb.base_max_atk_when_born, 0) + num(bb.max_atk_when_born_per_stack, 0) * L) * KAZ_ATK_SCALE;
+    const bonus = Math.max(0, Math.min(cap, st.deploys * num(bb.atk_when_born, 0) * KAZ_ATK_SCALE));
     if (!(bonus > 0)) return;
     for (const u of members) S.passiveBuff(battle, u, 'bond:kazimierz', S.directMods({ atk: bonus }));
   };
@@ -744,7 +900,8 @@ function installKazimierz(battle, pid, bb, members) {
         const amount = scale * m.s.atk;
         for (const e of hits) {
           if (!e.alive) continue;
-          battle.dealDamage(m, e, { amount, type: 'true', canDodge: false, isSplash: true, tags: ['bond:kazimierz'] });
+          battle.dealDamage({ source: m, target: e, amount, type: 'true', attackType: 'NORMAL',
+            applyWay: 'NONE', dodgeMode: 'ignore', isSplash: true, tags: ['bond:kazimierz'] });
           if (e.alive && stun > 0) battle.applyStatus(e, 'stun', { duration: stun, source: m });
         }
         S.fxOn(battle, 'aoe', m, 'bond:kazimierzShip', 'pulse', { radius, dmgType: 'true', n: hits.length });
@@ -755,9 +912,13 @@ function installKazimierz(battle, pid, bb, members) {
   if (!(pure > 0)) return;
   const onDmg = (ctx) => {
     const u = ctx.source, t = ctx.target, dmg = ctx.dmg;
-    if (!dmg || !dmg.isAttack || !isEnemyTarget(t) || ownTag(dmg, 'bond:kazimierz')) return;
+    if (!dmg || isHpLoss(dmg) || damageAttackType(dmg) !== 'NORMAL' || dmg.type === 'element'
+      || !isEnemyTarget(t) || ownTag(dmg, 'bond:kazimierz')) return;
     if (u.blocking && u.blocking.length) return;
-    battle.dealDamage(u, t, { amount: pure * u.s.atk, type: 'true', canDodge: false, tags: ['bond:kazimierz'] });
+    // [ASSUMED] Retain the legacy damaged-listener timing; PRTS settles class/source, not this relative phase.
+    battle.dealDamage({ source: null, credit: u, target: t, amount: pure * u.s.atk, type: 'true',
+      attackType: 'ADDITION', applyWay: 'NONE', calculation: 'precomputed', dodgeMode: 'ignore',
+      origin: dmg, tags: ['bond:kazimierz'] });
   };
   for (const u of members) onUnitDamaged(battle, u, onDmg);
 }

@@ -1,0 +1,2380 @@
+{
+ "generatedAt": "2026-10-31T13:48:28.890Z",
+ "scenes": {
+  "room12": {
+   "code": "YJJQ",
+   "prep": {
+    "m792": {
+     "vw": 792,
+     "vh": 360,
+     "boxes": {
+      ".gm-chips": {
+       "l": 168,
+       "t": 320,
+       "r": 264,
+       "b": 348,
+       "w": 96,
+       "h": 28
+      },
+      ".gm-panel": null,
+      ".gm-unite": null,
+      ".gm-strip": null,
+      ".gm-mates": null,
+      ".team": {
+       "l": 8.8,
+       "t": 94.39,
+       "r": 87.58,
+       "b": 539.92,
+       "w": 78.78,
+       "h": 445.53
+      },
+      ".gm__bonds": {
+       "l": 339.61,
+       "t": 54.39,
+       "r": 452.39,
+       "b": 94.31,
+       "w": 112.78,
+       "h": 39.92
+      },
+      ".gm__corner": {
+       "l": 9.59,
+       "t": 316.41,
+       "r": 157.59,
+       "b": 350.41,
+       "w": 148,
+       "h": 34
+      },
+      ".shopbar": {
+       "l": 379.52,
+       "t": 194.66,
+       "r": 781.61,
+       "b": 352,
+       "w": 402.09,
+       "h": 157.34
+      },
+      ".gm__effects": {
+       "l": 755.28,
+       "t": 96,
+       "r": 780,
+       "b": 124.47,
+       "w": 24.72,
+       "h": 28.47
+      },
+      ".spchat__toggle": null,
+      ".spvoice__fab": null,
+      ".chud__layers": null
+     },
+     "chips": [
+      {
+       "cls": "gm-chip is-mine is-full",
+       "label": "我方同盟 4/4",
+       "expanded": "false",
+       "rect": {
+        "l": 168,
+        "t": 320,
+        "r": 196,
+        "b": 348,
+        "w": 28,
+        "h": 28
+       },
+       "radius": "50%",
+       "border": "1px solid rgba(79, 232, 192, 0.78)",
+       "hot": {
+        "w": 33,
+        "h": 33
+       }
+      },
+      {
+       "cls": "gm-chip is-blue is-full",
+       "label": "蓝方同盟 4/4",
+       "expanded": "false",
+       "rect": {
+        "l": 202,
+        "t": 320,
+        "r": 230,
+        "b": 348,
+        "w": 28,
+        "h": 28
+       },
+       "radius": "50%",
+       "border": "1px solid rgba(255, 255, 255, 0.66)",
+       "hot": {
+        "w": 33,
+        "h": 33
+       }
+      },
+      {
+       "cls": "gm-chip is-red is-full",
+       "label": "红方同盟 4/4",
+       "expanded": "false",
+       "rect": {
+        "l": 236,
+        "t": 320,
+        "r": 264,
+        "b": 348,
+        "w": 28,
+        "h": 28
+       },
+       "radius": "50%",
+       "border": "1px solid rgba(255, 255, 255, 0.66)",
+       "hot": {
+        "w": 33,
+        "h": 33
+       }
+      }
+     ],
+     "rows": [],
+     "hudKids": [
+      "gtop",
+      "gm__bonds",
+      "team",
+      "gm-chips-wrap",
+      "gm__effects",
+      "shopbar",
+      "chat-panel  ",
+      "ui-slot gm__ui-slot",
+      "gm__corner"
+     ],
+     "foot": null,
+     "strip": 0,
+     "mates": 0,
+     "phase": "PREP"
+    },
+    "m1920": {
+     "vw": 1920,
+     "vh": 1080,
+     "boxes": {
+      ".gm-chips": {
+       "l": 420,
+       "t": 980,
+       "r": 660,
+       "b": 1050,
+       "w": 240,
+       "h": 70
+      },
+      ".gm-panel": null,
+      ".gm-unite": null,
+      ".gm-strip": null,
+      ".gm-mates": null,
+      ".team": {
+       "l": 22,
+       "t": 236,
+       "r": 218.97,
+       "b": 1350,
+       "w": 196.97,
+       "h": 1114
+      },
+      ".gm__bonds": {
+       "l": 819,
+       "t": 136,
+       "r": 1101,
+       "b": 232.84,
+       "w": 282,
+       "h": 96.84
+      },
+      ".gm__corner": {
+       "l": 24,
+       "t": 1000,
+       "r": 278,
+       "b": 1056,
+       "w": 254,
+       "h": 56
+      },
+      ".shopbar": {
+       "l": 893,
+       "t": 694,
+       "r": 1894,
+       "b": 1060,
+       "w": 1001,
+       "h": 366
+      },
+      ".gm__effects": {
+       "l": 1828.2,
+       "t": 240,
+       "r": 1890,
+       "b": 311.19,
+       "w": 61.8,
+       "h": 71.19
+      },
+      ".spchat__toggle": null,
+      ".spvoice__fab": null,
+      ".chud__layers": null
+     },
+     "chips": [
+      {
+       "cls": "gm-chip is-mine is-full",
+       "label": "我方同盟 4/4",
+       "expanded": "false",
+       "rect": {
+        "l": 420,
+        "t": 980,
+        "r": 490,
+        "b": 1050,
+        "w": 70,
+        "h": 70
+       },
+       "radius": "50%",
+       "border": "1px solid rgba(79, 232, 192, 0.78)",
+       "hot": {
+        "w": 80,
+        "h": 80
+       }
+      },
+      {
+       "cls": "gm-chip is-blue is-full",
+       "label": "蓝方同盟 4/4",
+       "expanded": "false",
+       "rect": {
+        "l": 505,
+        "t": 980,
+        "r": 575,
+        "b": 1050,
+        "w": 70,
+        "h": 70
+       },
+       "radius": "50%",
+       "border": "1px solid rgba(255, 255, 255, 0.66)",
+       "hot": {
+        "w": 80,
+        "h": 80
+       }
+      },
+      {
+       "cls": "gm-chip is-red is-full",
+       "label": "红方同盟 4/4",
+       "expanded": "false",
+       "rect": {
+        "l": 590,
+        "t": 980,
+        "r": 660,
+        "b": 1050,
+        "w": 70,
+        "h": 70
+       },
+       "radius": "50%",
+       "border": "1px solid rgba(255, 255, 255, 0.66)",
+       "hot": {
+        "w": 80,
+        "h": 80
+       }
+      }
+     ],
+     "rows": [],
+     "hudKids": [
+      "gtop",
+      "gm__bonds",
+      "team",
+      "gm-chips-wrap",
+      "gm__effects",
+      "shopbar",
+      "chat-panel  ",
+      "ui-slot gm__ui-slot",
+      "gm__corner"
+     ],
+     "foot": null,
+     "strip": 0,
+     "mates": 0,
+     "phase": "PREP"
+    }
+   },
+   "prep792": {
+    "boxes": {
+     ".gm-chips": {
+      "l": 168,
+      "t": 320,
+      "r": 264,
+      "b": 348,
+      "w": 96,
+      "h": 28
+     },
+     ".gm-panel": null,
+     ".gm-unite": null,
+     ".gm-strip": null,
+     ".gm-mates": null,
+     ".team": {
+      "l": 8.8,
+      "t": 94.39,
+      "r": 87.58,
+      "b": 539.92,
+      "w": 78.78,
+      "h": 445.53
+     },
+     ".gm__bonds": {
+      "l": 339.61,
+      "t": 54.39,
+      "r": 452.39,
+      "b": 94.31,
+      "w": 112.78,
+      "h": 39.92
+     },
+     ".gm__corner": {
+      "l": 9.59,
+      "t": 316.41,
+      "r": 157.59,
+      "b": 350.41,
+      "w": 148,
+      "h": 34
+     },
+     ".shopbar": {
+      "l": 379.52,
+      "t": 194.66,
+      "r": 781.61,
+      "b": 352,
+      "w": 402.09,
+      "h": 157.34
+     },
+     ".gm__effects": {
+      "l": 755.28,
+      "t": 96,
+      "r": 780,
+      "b": 124.47,
+      "w": 24.72,
+      "h": 28.47
+     },
+     ".spchat__toggle": null,
+     ".spvoice__fab": null,
+     ".chud__layers": null
+    },
+    "chips": [
+     {
+      "cls": "gm-chip is-mine is-full",
+      "label": "我方同盟 4/4",
+      "expanded": "false",
+      "rect": {
+       "l": 168,
+       "t": 320,
+       "r": 196,
+       "b": 348,
+       "w": 28,
+       "h": 28
+      },
+      "radius": "50%",
+      "border": "1px solid rgba(79, 232, 192, 0.78)",
+      "hot": {
+       "w": 33,
+       "h": 33
+      }
+     },
+     {
+      "cls": "gm-chip is-blue is-full",
+      "label": "蓝方同盟 4/4",
+      "expanded": "false",
+      "rect": {
+       "l": 202,
+       "t": 320,
+       "r": 230,
+       "b": 348,
+       "w": 28,
+       "h": 28
+      },
+      "radius": "50%",
+      "border": "1px solid rgba(255, 255, 255, 0.66)",
+      "hot": {
+       "w": 33,
+       "h": 33
+      }
+     },
+     {
+      "cls": "gm-chip is-red is-full",
+      "label": "红方同盟 4/4",
+      "expanded": "false",
+      "rect": {
+       "l": 236,
+       "t": 320,
+       "r": 264,
+       "b": 348,
+       "w": 28,
+       "h": 28
+      },
+      "radius": "50%",
+      "border": "1px solid rgba(255, 255, 255, 0.66)",
+      "hot": {
+       "w": 33,
+       "h": 33
+      }
+     }
+    ],
+    "pairs": {
+     ".gm-chips × .team": 0,
+     ".gm-chips × .gm__bonds": 0,
+     ".gm-chips × .gm__corner": 0,
+     ".gm-chips × .shopbar": 0,
+     ".gm-chips × .gm__effects": 0,
+     ".gm-chips × .gm-strip": 0,
+     ".gm-chips × .gm-unite": 0,
+     ".team × .gm__bonds": 0,
+     ".team × .gm__corner": 2651.66,
+     ".team × .shopbar": 0,
+     ".team × .gm__effects": 0,
+     ".team × .gm-strip": 0,
+     ".team × .gm-unite": 0,
+     ".gm__bonds × .gm__corner": 0,
+     ".gm__bonds × .shopbar": 0,
+     ".gm__bonds × .gm__effects": 0,
+     ".gm__bonds × .gm-strip": 0,
+     ".gm__bonds × .gm-unite": 0,
+     ".gm__corner × .shopbar": 0,
+     ".gm__corner × .gm__effects": 0,
+     ".gm__corner × .gm-strip": 0,
+     ".gm__corner × .gm-unite": 0,
+     ".shopbar × .gm__effects": 0,
+     ".shopbar × .gm-strip": 0,
+     ".shopbar × .gm-unite": 0,
+     ".gm__effects × .gm-strip": 0,
+     ".gm__effects × .gm-unite": 0,
+     ".gm-strip × .gm-unite": 0
+    }
+   },
+   "prep1920": {
+    "boxes": {
+     ".gm-chips": {
+      "l": 420,
+      "t": 980,
+      "r": 660,
+      "b": 1050,
+      "w": 240,
+      "h": 70
+     },
+     ".gm-panel": null,
+     ".gm-unite": null,
+     ".gm-strip": null,
+     ".gm-mates": null,
+     ".team": {
+      "l": 22,
+      "t": 236,
+      "r": 218.97,
+      "b": 1350,
+      "w": 196.97,
+      "h": 1114
+     },
+     ".gm__bonds": {
+      "l": 819,
+      "t": 136,
+      "r": 1101,
+      "b": 232.84,
+      "w": 282,
+      "h": 96.84
+     },
+     ".gm__corner": {
+      "l": 24,
+      "t": 1000,
+      "r": 278,
+      "b": 1056,
+      "w": 254,
+      "h": 56
+     },
+     ".shopbar": {
+      "l": 893,
+      "t": 694,
+      "r": 1894,
+      "b": 1060,
+      "w": 1001,
+      "h": 366
+     },
+     ".gm__effects": {
+      "l": 1828.2,
+      "t": 240,
+      "r": 1890,
+      "b": 311.19,
+      "w": 61.8,
+      "h": 71.19
+     },
+     ".spchat__toggle": null,
+     ".spvoice__fab": null,
+     ".chud__layers": null
+    },
+    "chips": [
+     {
+      "cls": "gm-chip is-mine is-full",
+      "label": "我方同盟 4/4",
+      "expanded": "false",
+      "rect": {
+       "l": 420,
+       "t": 980,
+       "r": 490,
+       "b": 1050,
+       "w": 70,
+       "h": 70
+      },
+      "radius": "50%",
+      "border": "1px solid rgba(79, 232, 192, 0.78)",
+      "hot": {
+       "w": 80,
+       "h": 80
+      }
+     },
+     {
+      "cls": "gm-chip is-blue is-full",
+      "label": "蓝方同盟 4/4",
+      "expanded": "false",
+      "rect": {
+       "l": 505,
+       "t": 980,
+       "r": 575,
+       "b": 1050,
+       "w": 70,
+       "h": 70
+      },
+      "radius": "50%",
+      "border": "1px solid rgba(255, 255, 255, 0.66)",
+      "hot": {
+       "w": 80,
+       "h": 80
+      }
+     },
+     {
+      "cls": "gm-chip is-red is-full",
+      "label": "红方同盟 4/4",
+      "expanded": "false",
+      "rect": {
+       "l": 590,
+       "t": 980,
+       "r": 660,
+       "b": 1050,
+       "w": 70,
+       "h": 70
+      },
+      "radius": "50%",
+      "border": "1px solid rgba(255, 255, 255, 0.66)",
+      "hot": {
+       "w": 80,
+       "h": 80
+      }
+     }
+    ],
+    "pairs": {
+     ".gm-chips × .team": 0,
+     ".gm-chips × .gm__bonds": 0,
+     ".gm-chips × .gm__corner": 0,
+     ".gm-chips × .shopbar": 0,
+     ".gm-chips × .gm__effects": 0,
+     ".gm-chips × .gm-strip": 0,
+     ".gm-chips × .gm-unite": 0,
+     ".team × .gm__bonds": 0,
+     ".team × .gm__corner": 10918.32,
+     ".team × .shopbar": 0,
+     ".team × .gm__effects": 0,
+     ".team × .gm-strip": 0,
+     ".team × .gm-unite": 0,
+     ".gm__bonds × .gm__corner": 0,
+     ".gm__bonds × .shopbar": 0,
+     ".gm__bonds × .gm__effects": 0,
+     ".gm__bonds × .gm-strip": 0,
+     ".gm__bonds × .gm-unite": 0,
+     ".gm__corner × .shopbar": 0,
+     ".gm__corner × .gm__effects": 0,
+     ".gm__corner × .gm-strip": 0,
+     ".gm__corner × .gm-unite": 0,
+     ".shopbar × .gm__effects": 0,
+     ".shopbar × .gm-strip": 0,
+     ".shopbar × .gm-unite": 0,
+     ".gm__effects × .gm-strip": 0,
+     ".gm__effects × .gm-unite": 0,
+     ".gm-strip × .gm-unite": 0
+    }
+   },
+   "roster792": {
+    "boxes": {
+     ".gm-chips": {
+      "l": 168,
+      "t": 320,
+      "r": 264,
+      "b": 348,
+      "w": 96,
+      "h": 28
+     },
+     ".gm-panel": {
+      "l": 168,
+      "t": 182,
+      "r": 368,
+      "b": 348,
+      "w": 200,
+      "h": 166
+     },
+     ".gm-unite": null,
+     ".gm-strip": null,
+     ".gm-mates": null,
+     ".team": {
+      "l": 8.8,
+      "t": 94.39,
+      "r": 87.58,
+      "b": 539.92,
+      "w": 78.78,
+      "h": 445.53
+     },
+     ".gm__bonds": {
+      "l": 339.61,
+      "t": 54.39,
+      "r": 452.39,
+      "b": 94.31,
+      "w": 112.78,
+      "h": 39.92
+     },
+     ".gm__corner": {
+      "l": 9.59,
+      "t": 316.41,
+      "r": 157.59,
+      "b": 350.41,
+      "w": 148,
+      "h": 34
+     },
+     ".shopbar": {
+      "l": 379.52,
+      "t": 194.66,
+      "r": 781.61,
+      "b": 352,
+      "w": 402.09,
+      "h": 157.34
+     },
+     ".gm__effects": {
+      "l": 755.28,
+      "t": 96,
+      "r": 780,
+      "b": 124.47,
+      "w": 24.72,
+      "h": 28.47
+     },
+     ".spchat__toggle": null,
+     ".spvoice__fab": null,
+     ".chud__layers": null
+    },
+    "rows": [
+     {
+      "h": 34,
+      "text": "凯尔希29",
+      "cls": "gm-panel__row is-self",
+      "tag": null,
+      "hp": "29",
+      "name": "凯尔希"
+     },
+     {
+      "h": 34,
+      "text": "AI·华法琳28",
+      "cls": "gm-panel__row",
+      "tag": null,
+      "hp": "28",
+      "name": "AI·华法琳"
+     },
+     {
+      "h": 34,
+      "text": "AI·阿米娅27",
+      "cls": "gm-panel__row",
+      "tag": null,
+      "hp": "27",
+      "name": "AI·阿米娅"
+     },
+     {
+      "h": 34,
+      "text": "AI·惊蛰31",
+      "cls": "gm-panel__row",
+      "tag": null,
+      "hp": "31",
+      "name": "AI·惊蛰"
+     }
+    ],
+    "foot": "我方同盟4/4",
+    "pairs": {
+     ".gm-panel × .team": 0,
+     ".gm-panel × .gm__bonds": 0,
+     ".gm-panel × .gm__corner": 0,
+     ".gm-panel × .shopbar": 0,
+     ".gm-panel × .gm__effects": 0,
+     ".gm-panel × .spchat__toggle": 0,
+     ".gm-panel × .spvoice__fab": 0,
+     ".gm-panel × .chud__layers": 0,
+     ".team × .gm__bonds": 0,
+     ".team × .gm__corner": 2651.66,
+     ".team × .shopbar": 0,
+     ".team × .gm__effects": 0,
+     ".team × .spchat__toggle": 0,
+     ".team × .spvoice__fab": 0,
+     ".team × .chud__layers": 0,
+     ".gm__bonds × .gm__corner": 0,
+     ".gm__bonds × .shopbar": 0,
+     ".gm__bonds × .gm__effects": 0,
+     ".gm__bonds × .spchat__toggle": 0,
+     ".gm__bonds × .spvoice__fab": 0,
+     ".gm__bonds × .chud__layers": 0,
+     ".gm__corner × .shopbar": 0,
+     ".gm__corner × .gm__effects": 0,
+     ".gm__corner × .spchat__toggle": 0,
+     ".gm__corner × .spvoice__fab": 0,
+     ".gm__corner × .chud__layers": 0,
+     ".shopbar × .gm__effects": 0,
+     ".shopbar × .spchat__toggle": 0,
+     ".shopbar × .spvoice__fab": 0,
+     ".shopbar × .chud__layers": 0,
+     ".gm__effects × .spchat__toggle": 0,
+     ".gm__effects × .spvoice__fab": 0,
+     ".gm__effects × .chud__layers": 0,
+     ".spchat__toggle × .spvoice__fab": 0,
+     ".spchat__toggle × .chud__layers": 0,
+     ".spvoice__fab × .chud__layers": 0
+    },
+    "chips": [
+     {
+      "cls": "gm-chip is-mine is-full is-open",
+      "label": "我方同盟 4/4",
+      "expanded": "true",
+      "rect": {
+       "l": 168,
+       "t": 320,
+       "r": 196,
+       "b": 348,
+       "w": 28,
+       "h": 28
+      },
+      "radius": "50%",
+      "border": "1px solid rgba(79, 232, 192, 0.78)",
+      "hot": {
+       "w": 33,
+       "h": 33
+      }
+     },
+     {
+      "cls": "gm-chip is-blue is-full",
+      "label": "蓝方同盟 4/4",
+      "expanded": "false",
+      "rect": {
+       "l": 202,
+       "t": 320,
+       "r": 230,
+       "b": 348,
+       "w": 28,
+       "h": 28
+      },
+      "radius": "50%",
+      "border": "1px solid rgba(255, 255, 255, 0.66)",
+      "hot": {
+       "w": 33,
+       "h": 33
+      }
+     },
+     {
+      "cls": "gm-chip is-red is-full",
+      "label": "红方同盟 4/4",
+      "expanded": "false",
+      "rect": {
+       "l": 236,
+       "t": 320,
+       "r": 264,
+       "b": 348,
+       "w": 28,
+       "h": 28
+      },
+      "radius": "50%",
+      "border": "1px solid rgba(255, 255, 255, 0.66)",
+      "hot": {
+       "w": 33,
+       "h": 33
+      }
+     }
+    ]
+   },
+   "roster1920": {
+    "boxes": {
+     ".gm-chips": {
+      "l": 420,
+      "t": 980,
+      "r": 660,
+      "b": 1050,
+      "w": 240,
+      "h": 70
+     },
+     ".gm-panel": {
+      "l": 420,
+      "t": 638,
+      "r": 880,
+      "b": 1050,
+      "w": 460,
+      "h": 412
+     },
+     ".gm-unite": null,
+     ".gm-strip": null,
+     ".gm-mates": null,
+     ".team": {
+      "l": 22,
+      "t": 236,
+      "r": 218.97,
+      "b": 1350,
+      "w": 196.97,
+      "h": 1114
+     },
+     ".gm__bonds": {
+      "l": 819,
+      "t": 136,
+      "r": 1101,
+      "b": 232.84,
+      "w": 282,
+      "h": 96.84
+     },
+     ".gm__corner": {
+      "l": 24,
+      "t": 1000,
+      "r": 278,
+      "b": 1056,
+      "w": 254,
+      "h": 56
+     },
+     ".shopbar": {
+      "l": 893,
+      "t": 694,
+      "r": 1894,
+      "b": 1060,
+      "w": 1001,
+      "h": 366
+     },
+     ".gm__effects": {
+      "l": 1828.2,
+      "t": 240,
+      "r": 1890,
+      "b": 311.19,
+      "w": 61.8,
+      "h": 71.19
+     },
+     ".spchat__toggle": null,
+     ".spvoice__fab": null,
+     ".chud__layers": null
+    },
+    "rows": [
+     {
+      "h": 85,
+      "text": "凯尔希29",
+      "cls": "gm-panel__row is-self",
+      "tag": null,
+      "hp": "29",
+      "name": "凯尔希"
+     },
+     {
+      "h": 85,
+      "text": "AI·华法琳28",
+      "cls": "gm-panel__row",
+      "tag": null,
+      "hp": "28",
+      "name": "AI·华法琳"
+     },
+     {
+      "h": 85,
+      "text": "AI·阿米娅27",
+      "cls": "gm-panel__row",
+      "tag": null,
+      "hp": "27",
+      "name": "AI·阿米娅"
+     },
+     {
+      "h": 85,
+      "text": "AI·惊蛰31",
+      "cls": "gm-panel__row",
+      "tag": null,
+      "hp": "31",
+      "name": "AI·惊蛰"
+     }
+    ],
+    "foot": "我方同盟4/4",
+    "pairs": {
+     ".gm-panel × .team": 0,
+     ".gm-panel × .gm__bonds": 0,
+     ".gm-panel × .gm__corner": 0,
+     ".gm-panel × .shopbar": 0,
+     ".gm-panel × .gm__effects": 0,
+     ".gm-panel × .spchat__toggle": 0,
+     ".gm-panel × .spvoice__fab": 0,
+     ".gm-panel × .chud__layers": 0,
+     ".team × .gm__bonds": 0,
+     ".team × .gm__corner": 10918.32,
+     ".team × .shopbar": 0,
+     ".team × .gm__effects": 0,
+     ".team × .spchat__toggle": 0,
+     ".team × .spvoice__fab": 0,
+     ".team × .chud__layers": 0,
+     ".gm__bonds × .gm__corner": 0,
+     ".gm__bonds × .shopbar": 0,
+     ".gm__bonds × .gm__effects": 0,
+     ".gm__bonds × .spchat__toggle": 0,
+     ".gm__bonds × .spvoice__fab": 0,
+     ".gm__bonds × .chud__layers": 0,
+     ".gm__corner × .shopbar": 0,
+     ".gm__corner × .gm__effects": 0,
+     ".gm__corner × .spchat__toggle": 0,
+     ".gm__corner × .spvoice__fab": 0,
+     ".gm__corner × .chud__layers": 0,
+     ".shopbar × .gm__effects": 0,
+     ".shopbar × .spchat__toggle": 0,
+     ".shopbar × .spvoice__fab": 0,
+     ".shopbar × .chud__layers": 0,
+     ".gm__effects × .spchat__toggle": 0,
+     ".gm__effects × .spvoice__fab": 0,
+     ".gm__effects × .chud__layers": 0,
+     ".spchat__toggle × .spvoice__fab": 0,
+     ".spchat__toggle × .chud__layers": 0,
+     ".spvoice__fab × .chud__layers": 0
+    },
+    "chips": [
+     {
+      "cls": "gm-chip is-mine is-full is-open",
+      "label": "我方同盟 4/4",
+      "expanded": "true",
+      "rect": {
+       "l": 420,
+       "t": 980,
+       "r": 490,
+       "b": 1050,
+       "w": 70,
+       "h": 70
+      },
+      "radius": "50%",
+      "border": "1px solid rgba(79, 232, 192, 0.78)",
+      "hot": {
+       "w": 80,
+       "h": 80
+      }
+     },
+     {
+      "cls": "gm-chip is-blue is-full",
+      "label": "蓝方同盟 4/4",
+      "expanded": "false",
+      "rect": {
+       "l": 505,
+       "t": 980,
+       "r": 575,
+       "b": 1050,
+       "w": 70,
+       "h": 70
+      },
+      "radius": "50%",
+      "border": "1px solid rgba(255, 255, 255, 0.66)",
+      "hot": {
+       "w": 80,
+       "h": 80
+      }
+     },
+     {
+      "cls": "gm-chip is-red is-full",
+      "label": "红方同盟 4/4",
+      "expanded": "false",
+      "rect": {
+       "l": 590,
+       "t": 980,
+       "r": 660,
+       "b": 1050,
+       "w": 70,
+       "h": 70
+      },
+      "radius": "50%",
+      "border": "1px solid rgba(255, 255, 255, 0.66)",
+      "hot": {
+       "w": 80,
+       "h": 80
+      }
+     }
+    ]
+   },
+   "unite792": {
+    "boxes": {
+     ".gm-chips": {
+      "l": 168,
+      "t": 320,
+      "r": 264,
+      "b": 348,
+      "w": 96,
+      "h": 28
+     },
+     ".gm-panel": null,
+     ".gm-unite": {
+      "l": 144,
+      "t": 98.39,
+      "r": 744,
+      "b": 146.39,
+      "w": 600,
+      "h": 48
+     },
+     ".gm-strip": null,
+     ".gm-mates": null,
+     ".team": {
+      "l": 8.8,
+      "t": 94.39,
+      "r": 125.94,
+      "b": 539.92,
+      "w": 117.14,
+      "h": 445.53
+     },
+     ".gm__bonds": {
+      "l": 339.61,
+      "t": 54.39,
+      "r": 452.39,
+      "b": 94.31,
+      "w": 112.78,
+      "h": 39.92
+     },
+     ".gm__corner": {
+      "l": 9.59,
+      "t": 316.41,
+      "r": 157.59,
+      "b": 350.41,
+      "w": 148,
+      "h": 34
+     },
+     ".shopbar": null,
+     ".gm__effects": {
+      "l": 755.28,
+      "t": 96,
+      "r": 780,
+      "b": 124.47,
+      "w": 24.72,
+      "h": 28.47
+     },
+     ".spchat__toggle": null,
+     ".spvoice__fab": null,
+     ".chud__layers": {
+      "l": 340.61,
+      "t": 328,
+      "r": 451.39,
+      "b": 348,
+      "w": 110.78,
+      "h": 20
+     }
+    },
+    "chips": [
+     {
+      "cls": "gm-chip is-mine is-full",
+      "label": "我方同盟 4/4",
+      "expanded": "false",
+      "rect": {
+       "l": 168,
+       "t": 320,
+       "r": 196,
+       "b": 348,
+       "w": 28,
+       "h": 28
+      },
+      "radius": "50%",
+      "border": "1px solid rgba(79, 232, 192, 0.78)",
+      "hot": {
+       "w": 33,
+       "h": 33
+      }
+     },
+     {
+      "cls": "gm-chip is-blue is-full",
+      "label": "蓝方同盟 4/4",
+      "expanded": "false",
+      "rect": {
+       "l": 202,
+       "t": 320,
+       "r": 230,
+       "b": 348,
+       "w": 28,
+       "h": 28
+      },
+      "radius": "50%",
+      "border": "1px solid rgba(255, 255, 255, 0.66)",
+      "hot": {
+       "w": 33,
+       "h": 33
+      }
+     },
+     {
+      "cls": "gm-chip is-red is-full",
+      "label": "红方同盟 4/4",
+      "expanded": "false",
+      "rect": {
+       "l": 236,
+       "t": 320,
+       "r": 264,
+       "b": 348,
+       "w": 28,
+       "h": 28
+      },
+      "radius": "50%",
+      "border": "1px solid rgba(255, 255, 255, 0.66)",
+      "hot": {
+       "w": 33,
+       "h": 33
+      }
+     }
+    ],
+    "pairs": {
+     ".gm-chips × .team": 0,
+     ".gm-chips × .gm__bonds": 0,
+     ".gm-chips × .gm__corner": 0,
+     ".gm-chips × .shopbar": 0,
+     ".gm-chips × .gm__effects": 0,
+     ".gm-chips × .gm-strip": 0,
+     ".gm-chips × .gm-unite": 0,
+     ".team × .gm__bonds": 0,
+     ".team × .gm__corner": 3955.9,
+     ".team × .shopbar": 0,
+     ".team × .gm__effects": 0,
+     ".team × .gm-strip": 0,
+     ".team × .gm-unite": 0,
+     ".gm__bonds × .gm__corner": 0,
+     ".gm__bonds × .shopbar": 0,
+     ".gm__bonds × .gm__effects": 0,
+     ".gm__bonds × .gm-strip": 0,
+     ".gm__bonds × .gm-unite": 0,
+     ".gm__corner × .shopbar": 0,
+     ".gm__corner × .gm__effects": 0,
+     ".gm__corner × .gm-strip": 0,
+     ".gm__corner × .gm-unite": 0,
+     ".shopbar × .gm__effects": 0,
+     ".shopbar × .gm-strip": 0,
+     ".shopbar × .gm-unite": 0,
+     ".gm__effects × .gm-strip": 0,
+     ".gm__effects × .gm-unite": 0,
+     ".gm-strip × .gm-unite": 0
+    }
+   },
+   "unite1920": {
+    "boxes": {
+     ".gm-chips": {
+      "l": 420,
+      "t": 980,
+      "r": 660,
+      "b": 1050,
+      "w": 240,
+      "h": 70
+     },
+     ".gm-panel": null,
+     ".gm-unite": {
+      "l": 360,
+      "t": 246,
+      "r": 1800,
+      "b": 366,
+      "w": 1440,
+      "h": 120
+     },
+     ".gm-strip": null,
+     ".gm-mates": null,
+     ".team": {
+      "l": 22,
+      "t": 236,
+      "r": 315.19,
+      "b": 1350,
+      "w": 293.19,
+      "h": 1114
+     },
+     ".gm__bonds": {
+      "l": 819,
+      "t": 136,
+      "r": 1101,
+      "b": 232.84,
+      "w": 282,
+      "h": 96.84
+     },
+     ".gm__corner": {
+      "l": 24,
+      "t": 1000,
+      "r": 278,
+      "b": 1056,
+      "w": 254,
+      "h": 56
+     },
+     ".shopbar": null,
+     ".gm__effects": {
+      "l": 1828.2,
+      "t": 240,
+      "r": 1890,
+      "b": 311.19,
+      "w": 61.8,
+      "h": 71.19
+     },
+     ".spchat__toggle": null,
+     ".spvoice__fab": null,
+     ".chud__layers": {
+      "l": 823,
+      "t": 1000,
+      "r": 1097,
+      "b": 1050,
+      "w": 274,
+      "h": 50
+     }
+    },
+    "chips": [
+     {
+      "cls": "gm-chip is-mine is-full",
+      "label": "我方同盟 4/4",
+      "expanded": "false",
+      "rect": {
+       "l": 420,
+       "t": 980,
+       "r": 490,
+       "b": 1050,
+       "w": 70,
+       "h": 70
+      },
+      "radius": "50%",
+      "border": "1px solid rgba(79, 232, 192, 0.78)",
+      "hot": {
+       "w": 80,
+       "h": 80
+      }
+     },
+     {
+      "cls": "gm-chip is-blue is-full",
+      "label": "蓝方同盟 4/4",
+      "expanded": "false",
+      "rect": {
+       "l": 505,
+       "t": 980,
+       "r": 575,
+       "b": 1050,
+       "w": 70,
+       "h": 70
+      },
+      "radius": "50%",
+      "border": "1px solid rgba(255, 255, 255, 0.66)",
+      "hot": {
+       "w": 80,
+       "h": 80
+      }
+     },
+     {
+      "cls": "gm-chip is-red is-full",
+      "label": "红方同盟 4/4",
+      "expanded": "false",
+      "rect": {
+       "l": 590,
+       "t": 980,
+       "r": 660,
+       "b": 1050,
+       "w": 70,
+       "h": 70
+      },
+      "radius": "50%",
+      "border": "1px solid rgba(255, 255, 255, 0.66)",
+      "hot": {
+       "w": 80,
+       "h": 80
+      }
+     }
+    ],
+    "pairs": {
+     ".gm-chips × .team": 0,
+     ".gm-chips × .gm__bonds": 0,
+     ".gm-chips × .gm__corner": 0,
+     ".gm-chips × .shopbar": 0,
+     ".gm-chips × .gm__effects": 0,
+     ".gm-chips × .gm-strip": 0,
+     ".gm-chips × .gm-unite": 0,
+     ".team × .gm__bonds": 0,
+     ".team × .gm__corner": 14224,
+     ".team × .shopbar": 0,
+     ".team × .gm__effects": 0,
+     ".team × .gm-strip": 0,
+     ".team × .gm-unite": 0,
+     ".gm__bonds × .gm__corner": 0,
+     ".gm__bonds × .shopbar": 0,
+     ".gm__bonds × .gm__effects": 0,
+     ".gm__bonds × .gm-strip": 0,
+     ".gm__bonds × .gm-unite": 0,
+     ".gm__corner × .shopbar": 0,
+     ".gm__corner × .gm__effects": 0,
+     ".gm__corner × .gm-strip": 0,
+     ".gm__corner × .gm-unite": 0,
+     ".shopbar × .gm__effects": 0,
+     ".shopbar × .gm-strip": 0,
+     ".shopbar × .gm-unite": 0,
+     ".gm__effects × .gm-strip": 0,
+     ".gm__effects × .gm-unite": 0,
+     ".gm-strip × .gm-unite": 0
+    }
+   },
+   "uniteRoster792": {
+    "boxes": {
+     ".gm-chips": {
+      "l": 168,
+      "t": 320,
+      "r": 264,
+      "b": 348,
+      "w": 96,
+      "h": 28
+     },
+     ".gm-panel": {
+      "l": 168,
+      "t": 182,
+      "r": 368,
+      "b": 348,
+      "w": 200,
+      "h": 166
+     },
+     ".gm-unite": null,
+     ".gm-strip": null,
+     ".gm-mates": null,
+     ".team": {
+      "l": 8.8,
+      "t": 94.39,
+      "r": 87.58,
+      "b": 539.92,
+      "w": 78.78,
+      "h": 445.53
+     },
+     ".gm__bonds": {
+      "l": 339.61,
+      "t": 54.39,
+      "r": 452.39,
+      "b": 94.31,
+      "w": 112.78,
+      "h": 39.92
+     },
+     ".gm__corner": {
+      "l": 9.59,
+      "t": 316.41,
+      "r": 157.59,
+      "b": 350.41,
+      "w": 148,
+      "h": 34
+     },
+     ".shopbar": null,
+     ".gm__effects": {
+      "l": 755.28,
+      "t": 96,
+      "r": 780,
+      "b": 124.47,
+      "w": 24.72,
+      "h": 28.47
+     },
+     ".spchat__toggle": null,
+     ".spvoice__fab": null,
+     ".chud__layers": null
+    },
+    "pairs": {
+     ".gm-panel × .team": 0,
+     ".gm-panel × .gm__bonds": 0,
+     ".gm-panel × .gm__corner": 0,
+     ".gm-panel × .shopbar": 0,
+     ".gm-panel × .gm__effects": 0,
+     ".gm-panel × .spchat__toggle": 0,
+     ".gm-panel × .spvoice__fab": 0,
+     ".gm-panel × .chud__layers": 0,
+     ".team × .gm__bonds": 0,
+     ".team × .gm__corner": 2651.66,
+     ".team × .shopbar": 0,
+     ".team × .gm__effects": 0,
+     ".team × .spchat__toggle": 0,
+     ".team × .spvoice__fab": 0,
+     ".team × .chud__layers": 0,
+     ".gm__bonds × .gm__corner": 0,
+     ".gm__bonds × .shopbar": 0,
+     ".gm__bonds × .gm__effects": 0,
+     ".gm__bonds × .spchat__toggle": 0,
+     ".gm__bonds × .spvoice__fab": 0,
+     ".gm__bonds × .chud__layers": 0,
+     ".gm__corner × .shopbar": 0,
+     ".gm__corner × .gm__effects": 0,
+     ".gm__corner × .spchat__toggle": 0,
+     ".gm__corner × .spvoice__fab": 0,
+     ".gm__corner × .chud__layers": 0,
+     ".shopbar × .gm__effects": 0,
+     ".shopbar × .spchat__toggle": 0,
+     ".shopbar × .spvoice__fab": 0,
+     ".shopbar × .chud__layers": 0,
+     ".gm__effects × .spchat__toggle": 0,
+     ".gm__effects × .spvoice__fab": 0,
+     ".gm__effects × .chud__layers": 0,
+     ".spchat__toggle × .spvoice__fab": 0,
+     ".spchat__toggle × .chud__layers": 0,
+     ".spvoice__fab × .chud__layers": 0
+    }
+   },
+   "uniteRoster1920": {
+    "boxes": {
+     ".gm-chips": {
+      "l": 420,
+      "t": 980,
+      "r": 660,
+      "b": 1050,
+      "w": 240,
+      "h": 70
+     },
+     ".gm-panel": {
+      "l": 420,
+      "t": 638,
+      "r": 880,
+      "b": 1050,
+      "w": 460,
+      "h": 412
+     },
+     ".gm-unite": null,
+     ".gm-strip": null,
+     ".gm-mates": null,
+     ".team": {
+      "l": 22,
+      "t": 236,
+      "r": 218.97,
+      "b": 1350,
+      "w": 196.97,
+      "h": 1114
+     },
+     ".gm__bonds": {
+      "l": 819,
+      "t": 136,
+      "r": 1101,
+      "b": 232.84,
+      "w": 282,
+      "h": 96.84
+     },
+     ".gm__corner": {
+      "l": 24,
+      "t": 1000,
+      "r": 278,
+      "b": 1056,
+      "w": 254,
+      "h": 56
+     },
+     ".shopbar": {
+      "l": 893,
+      "t": 694,
+      "r": 1894,
+      "b": 1060,
+      "w": 1001,
+      "h": 366
+     },
+     ".gm__effects": {
+      "l": 1828.2,
+      "t": 240,
+      "r": 1890,
+      "b": 311.19,
+      "w": 61.8,
+      "h": 71.19
+     },
+     ".spchat__toggle": null,
+     ".spvoice__fab": null,
+     ".chud__layers": null
+    },
+    "pairs": {
+     ".gm-panel × .team": 0,
+     ".gm-panel × .gm__bonds": 0,
+     ".gm-panel × .gm__corner": 0,
+     ".gm-panel × .shopbar": 0,
+     ".gm-panel × .gm__effects": 0,
+     ".gm-panel × .spchat__toggle": 0,
+     ".gm-panel × .spvoice__fab": 0,
+     ".gm-panel × .chud__layers": 0,
+     ".team × .gm__bonds": 0,
+     ".team × .gm__corner": 10918.32,
+     ".team × .shopbar": 0,
+     ".team × .gm__effects": 0,
+     ".team × .spchat__toggle": 0,
+     ".team × .spvoice__fab": 0,
+     ".team × .chud__layers": 0,
+     ".gm__bonds × .gm__corner": 0,
+     ".gm__bonds × .shopbar": 0,
+     ".gm__bonds × .gm__effects": 0,
+     ".gm__bonds × .spchat__toggle": 0,
+     ".gm__bonds × .spvoice__fab": 0,
+     ".gm__bonds × .chud__layers": 0,
+     ".gm__corner × .shopbar": 0,
+     ".gm__corner × .gm__effects": 0,
+     ".gm__corner × .spchat__toggle": 0,
+     ".gm__corner × .spvoice__fab": 0,
+     ".gm__corner × .chud__layers": 0,
+     ".shopbar × .gm__effects": 0,
+     ".shopbar × .spchat__toggle": 0,
+     ".shopbar × .spvoice__fab": 0,
+     ".shopbar × .chud__layers": 0,
+     ".gm__effects × .spchat__toggle": 0,
+     ".gm__effects × .spvoice__fab": 0,
+     ".gm__effects × .chud__layers": 0,
+     ".spchat__toggle × .spvoice__fab": 0,
+     ".spchat__toggle × .chud__layers": 0,
+     ".spvoice__fab × .chud__layers": 0
+    }
+   }
+  },
+  "room8": {
+   "code": "FGSY",
+   "prep": {
+    "m792": {
+     "vw": 792,
+     "vh": 360,
+     "boxes": {
+      ".gm-chips": {
+       "l": 168,
+       "t": 320,
+       "r": 230,
+       "b": 348,
+       "w": 62,
+       "h": 28
+      },
+      ".gm-panel": null,
+      ".gm-unite": null,
+      ".gm-strip": null,
+      ".gm-mates": null,
+      ".team": {
+       "l": 8.8,
+       "t": 94.39,
+       "r": 87.58,
+       "b": 389.55,
+       "w": 78.78,
+       "h": 295.16
+      },
+      ".gm__bonds": {
+       "l": 339.61,
+       "t": 54.39,
+       "r": 452.39,
+       "b": 94.31,
+       "w": 112.78,
+       "h": 39.92
+      },
+      ".gm__corner": {
+       "l": 9.59,
+       "t": 316.41,
+       "r": 157.59,
+       "b": 350.41,
+       "w": 148,
+       "h": 34
+      },
+      ".shopbar": {
+       "l": 379.52,
+       "t": 194.66,
+       "r": 781.61,
+       "b": 352,
+       "w": 402.09,
+       "h": 157.34
+      },
+      ".gm__effects": {
+       "l": 755.28,
+       "t": 96,
+       "r": 780,
+       "b": 124.47,
+       "w": 24.72,
+       "h": 28.47
+      },
+      ".spchat__toggle": null,
+      ".spvoice__fab": null,
+      ".chud__layers": null
+     },
+     "chips": [
+      {
+       "cls": "gm-chip is-mine is-full",
+       "label": "我方同盟 4/4",
+       "expanded": "false",
+       "rect": {
+        "l": 168,
+        "t": 320,
+        "r": 196,
+        "b": 348,
+        "w": 28,
+        "h": 28
+       },
+       "radius": "50%",
+       "border": "1px solid rgba(79, 232, 192, 0.78)",
+       "hot": {
+        "w": 33,
+        "h": 33
+       }
+      },
+      {
+       "cls": "gm-chip is-full",
+       "label": "对方同盟 4/4",
+       "expanded": "false",
+       "rect": {
+        "l": 202,
+        "t": 320,
+        "r": 230,
+        "b": 348,
+        "w": 28,
+        "h": 28
+       },
+       "radius": "50%",
+       "border": "1px solid rgba(255, 255, 255, 0.66)",
+       "hot": {
+        "w": 33,
+        "h": 33
+       }
+      }
+     ],
+     "rows": [],
+     "hudKids": [
+      "gtop",
+      "gm__bonds",
+      "team",
+      "gm-chips-wrap",
+      "gm__effects",
+      "shopbar",
+      "chat-panel  ",
+      "ui-slot gm__ui-slot",
+      "gm__corner"
+     ],
+     "foot": null,
+     "strip": 0,
+     "mates": 0,
+     "phase": "PREP"
+    },
+    "m1920": {
+     "vw": 1920,
+     "vh": 1080,
+     "boxes": {
+      ".gm-chips": {
+       "l": 420,
+       "t": 980,
+       "r": 575,
+       "b": 1050,
+       "w": 155,
+       "h": 70
+      },
+      ".gm-panel": null,
+      ".gm-unite": null,
+      ".gm-strip": null,
+      ".gm-mates": null,
+      ".team": {
+       "l": 22,
+       "t": 236,
+       "r": 218.97,
+       "b": 974,
+       "w": 196.97,
+       "h": 738
+      },
+      ".gm__bonds": {
+       "l": 819,
+       "t": 136,
+       "r": 1101,
+       "b": 232.84,
+       "w": 282,
+       "h": 96.84
+      },
+      ".gm__corner": {
+       "l": 24,
+       "t": 1000,
+       "r": 278,
+       "b": 1056,
+       "w": 254,
+       "h": 56
+      },
+      ".shopbar": {
+       "l": 893,
+       "t": 694,
+       "r": 1894,
+       "b": 1060,
+       "w": 1001,
+       "h": 366
+      },
+      ".gm__effects": {
+       "l": 1828.2,
+       "t": 240,
+       "r": 1890,
+       "b": 311.19,
+       "w": 61.8,
+       "h": 71.19
+      },
+      ".spchat__toggle": null,
+      ".spvoice__fab": null,
+      ".chud__layers": null
+     },
+     "chips": [
+      {
+       "cls": "gm-chip is-mine is-full",
+       "label": "我方同盟 4/4",
+       "expanded": "false",
+       "rect": {
+        "l": 420,
+        "t": 980,
+        "r": 490,
+        "b": 1050,
+        "w": 70,
+        "h": 70
+       },
+       "radius": "50%",
+       "border": "1px solid rgba(79, 232, 192, 0.78)",
+       "hot": {
+        "w": 80,
+        "h": 80
+       }
+      },
+      {
+       "cls": "gm-chip is-full",
+       "label": "对方同盟 4/4",
+       "expanded": "false",
+       "rect": {
+        "l": 505,
+        "t": 980,
+        "r": 575,
+        "b": 1050,
+        "w": 70,
+        "h": 70
+       },
+       "radius": "50%",
+       "border": "1px solid rgba(255, 255, 255, 0.66)",
+       "hot": {
+        "w": 80,
+        "h": 80
+       }
+      }
+     ],
+     "rows": [],
+     "hudKids": [
+      "gtop",
+      "gm__bonds",
+      "team",
+      "gm-chips-wrap",
+      "gm__effects",
+      "shopbar",
+      "chat-panel  ",
+      "ui-slot gm__ui-slot",
+      "gm__corner"
+     ],
+     "foot": null,
+     "strip": 0,
+     "mates": 0,
+     "phase": "PREP"
+    }
+   },
+   "prep792": {
+    "boxes": {
+     ".gm-chips": {
+      "l": 168,
+      "t": 320,
+      "r": 230,
+      "b": 348,
+      "w": 62,
+      "h": 28
+     },
+     ".gm-panel": null,
+     ".gm-unite": null,
+     ".gm-strip": null,
+     ".gm-mates": null,
+     ".team": {
+      "l": 8.8,
+      "t": 94.39,
+      "r": 87.58,
+      "b": 389.55,
+      "w": 78.78,
+      "h": 295.16
+     },
+     ".gm__bonds": {
+      "l": 339.61,
+      "t": 54.39,
+      "r": 452.39,
+      "b": 94.31,
+      "w": 112.78,
+      "h": 39.92
+     },
+     ".gm__corner": {
+      "l": 9.59,
+      "t": 316.41,
+      "r": 157.59,
+      "b": 350.41,
+      "w": 148,
+      "h": 34
+     },
+     ".shopbar": {
+      "l": 379.52,
+      "t": 194.66,
+      "r": 781.61,
+      "b": 352,
+      "w": 402.09,
+      "h": 157.34
+     },
+     ".gm__effects": {
+      "l": 755.28,
+      "t": 96,
+      "r": 780,
+      "b": 124.47,
+      "w": 24.72,
+      "h": 28.47
+     },
+     ".spchat__toggle": null,
+     ".spvoice__fab": null,
+     ".chud__layers": null
+    },
+    "chips": [
+     {
+      "cls": "gm-chip is-mine is-full",
+      "label": "我方同盟 4/4",
+      "expanded": "false",
+      "rect": {
+       "l": 168,
+       "t": 320,
+       "r": 196,
+       "b": 348,
+       "w": 28,
+       "h": 28
+      },
+      "radius": "50%",
+      "border": "1px solid rgba(79, 232, 192, 0.78)",
+      "hot": {
+       "w": 33,
+       "h": 33
+      }
+     },
+     {
+      "cls": "gm-chip is-full",
+      "label": "对方同盟 4/4",
+      "expanded": "false",
+      "rect": {
+       "l": 202,
+       "t": 320,
+       "r": 230,
+       "b": 348,
+       "w": 28,
+       "h": 28
+      },
+      "radius": "50%",
+      "border": "1px solid rgba(255, 255, 255, 0.66)",
+      "hot": {
+       "w": 33,
+       "h": 33
+      }
+     }
+    ],
+    "pairs": {
+     ".gm-chips × .team": 0,
+     ".gm-chips × .gm__bonds": 0,
+     ".gm-chips × .gm__corner": 0,
+     ".gm-chips × .shopbar": 0,
+     ".gm-chips × .gm__effects": 0,
+     ".gm-chips × .gm-strip": 0,
+     ".gm-chips × .gm-unite": 0,
+     ".team × .gm__bonds": 0,
+     ".team × .gm__corner": 2651.66,
+     ".team × .shopbar": 0,
+     ".team × .gm__effects": 0,
+     ".team × .gm-strip": 0,
+     ".team × .gm-unite": 0,
+     ".gm__bonds × .gm__corner": 0,
+     ".gm__bonds × .shopbar": 0,
+     ".gm__bonds × .gm__effects": 0,
+     ".gm__bonds × .gm-strip": 0,
+     ".gm__bonds × .gm-unite": 0,
+     ".gm__corner × .shopbar": 0,
+     ".gm__corner × .gm__effects": 0,
+     ".gm__corner × .gm-strip": 0,
+     ".gm__corner × .gm-unite": 0,
+     ".shopbar × .gm__effects": 0,
+     ".shopbar × .gm-strip": 0,
+     ".shopbar × .gm-unite": 0,
+     ".gm__effects × .gm-strip": 0,
+     ".gm__effects × .gm-unite": 0,
+     ".gm-strip × .gm-unite": 0
+    }
+   },
+   "prep1920": {
+    "boxes": {
+     ".gm-chips": {
+      "l": 420,
+      "t": 980,
+      "r": 575,
+      "b": 1050,
+      "w": 155,
+      "h": 70
+     },
+     ".gm-panel": null,
+     ".gm-unite": null,
+     ".gm-strip": null,
+     ".gm-mates": null,
+     ".team": {
+      "l": 22,
+      "t": 236,
+      "r": 218.97,
+      "b": 974,
+      "w": 196.97,
+      "h": 738
+     },
+     ".gm__bonds": {
+      "l": 819,
+      "t": 136,
+      "r": 1101,
+      "b": 232.84,
+      "w": 282,
+      "h": 96.84
+     },
+     ".gm__corner": {
+      "l": 24,
+      "t": 1000,
+      "r": 278,
+      "b": 1056,
+      "w": 254,
+      "h": 56
+     },
+     ".shopbar": {
+      "l": 893,
+      "t": 694,
+      "r": 1894,
+      "b": 1060,
+      "w": 1001,
+      "h": 366
+     },
+     ".gm__effects": {
+      "l": 1828.2,
+      "t": 240,
+      "r": 1890,
+      "b": 311.19,
+      "w": 61.8,
+      "h": 71.19
+     },
+     ".spchat__toggle": null,
+     ".spvoice__fab": null,
+     ".chud__layers": null
+    },
+    "chips": [
+     {
+      "cls": "gm-chip is-mine is-full",
+      "label": "我方同盟 4/4",
+      "expanded": "false",
+      "rect": {
+       "l": 420,
+       "t": 980,
+       "r": 490,
+       "b": 1050,
+       "w": 70,
+       "h": 70
+      },
+      "radius": "50%",
+      "border": "1px solid rgba(79, 232, 192, 0.78)",
+      "hot": {
+       "w": 80,
+       "h": 80
+      }
+     },
+     {
+      "cls": "gm-chip is-full",
+      "label": "对方同盟 4/4",
+      "expanded": "false",
+      "rect": {
+       "l": 505,
+       "t": 980,
+       "r": 575,
+       "b": 1050,
+       "w": 70,
+       "h": 70
+      },
+      "radius": "50%",
+      "border": "1px solid rgba(255, 255, 255, 0.66)",
+      "hot": {
+       "w": 80,
+       "h": 80
+      }
+     }
+    ],
+    "pairs": {
+     ".gm-chips × .team": 0,
+     ".gm-chips × .gm__bonds": 0,
+     ".gm-chips × .gm__corner": 0,
+     ".gm-chips × .shopbar": 0,
+     ".gm-chips × .gm__effects": 0,
+     ".gm-chips × .gm-strip": 0,
+     ".gm-chips × .gm-unite": 0,
+     ".team × .gm__bonds": 0,
+     ".team × .gm__corner": 0,
+     ".team × .shopbar": 0,
+     ".team × .gm__effects": 0,
+     ".team × .gm-strip": 0,
+     ".team × .gm-unite": 0,
+     ".gm__bonds × .gm__corner": 0,
+     ".gm__bonds × .shopbar": 0,
+     ".gm__bonds × .gm__effects": 0,
+     ".gm__bonds × .gm-strip": 0,
+     ".gm__bonds × .gm-unite": 0,
+     ".gm__corner × .shopbar": 0,
+     ".gm__corner × .gm__effects": 0,
+     ".gm__corner × .gm-strip": 0,
+     ".gm__corner × .gm-unite": 0,
+     ".shopbar × .gm__effects": 0,
+     ".shopbar × .gm-strip": 0,
+     ".shopbar × .gm-unite": 0,
+     ".gm__effects × .gm-strip": 0,
+     ".gm__effects × .gm-unite": 0,
+     ".gm-strip × .gm-unite": 0
+    }
+   },
+   "roster792": {
+    "boxes": {
+     ".gm-chips": {
+      "l": 168,
+      "t": 320,
+      "r": 230,
+      "b": 348,
+      "w": 62,
+      "h": 28
+     },
+     ".gm-panel": {
+      "l": 168,
+      "t": 182,
+      "r": 368,
+      "b": 348,
+      "w": 200,
+      "h": 166
+     },
+     ".gm-unite": null,
+     ".gm-strip": null,
+     ".gm-mates": null,
+     ".team": {
+      "l": 8.8,
+      "t": 94.39,
+      "r": 87.58,
+      "b": 389.55,
+      "w": 78.78,
+      "h": 295.16
+     },
+     ".gm__bonds": {
+      "l": 339.61,
+      "t": 54.39,
+      "r": 452.39,
+      "b": 94.31,
+      "w": 112.78,
+      "h": 39.92
+     },
+     ".gm__corner": {
+      "l": 9.59,
+      "t": 316.41,
+      "r": 157.59,
+      "b": 350.41,
+      "w": 148,
+      "h": 34
+     },
+     ".shopbar": {
+      "l": 379.52,
+      "t": 194.66,
+      "r": 781.61,
+      "b": 352,
+      "w": 402.09,
+      "h": 157.34
+     },
+     ".gm__effects": {
+      "l": 755.28,
+      "t": 96,
+      "r": 780,
+      "b": 124.47,
+      "w": 24.72,
+      "h": 28.47
+     },
+     ".spchat__toggle": null,
+     ".spvoice__fab": null,
+     ".chud__layers": null
+    },
+    "rows": [
+     {
+      "h": 34,
+      "text": "凯尔希30",
+      "cls": "gm-panel__row is-self",
+      "tag": null,
+      "hp": "30",
+      "name": "凯尔希"
+     },
+     {
+      "h": 34,
+      "text": "AI·华法琳30",
+      "cls": "gm-panel__row",
+      "tag": null,
+      "hp": "30",
+      "name": "AI·华法琳"
+     },
+     {
+      "h": 34,
+      "text": "AI·阿米娅28",
+      "cls": "gm-panel__row",
+      "tag": null,
+      "hp": "28",
+      "name": "AI·阿米娅"
+     },
+     {
+      "h": 34,
+      "text": "AI·惊蛰29",
+      "cls": "gm-panel__row",
+      "tag": null,
+      "hp": "29",
+      "name": "AI·惊蛰"
+     }
+    ],
+    "foot": "我方同盟4/4",
+    "pairs": {
+     ".gm-panel × .team": 0,
+     ".gm-panel × .gm__bonds": 0,
+     ".gm-panel × .gm__corner": 0,
+     ".gm-panel × .shopbar": 0,
+     ".gm-panel × .gm__effects": 0,
+     ".gm-panel × .spchat__toggle": 0,
+     ".gm-panel × .spvoice__fab": 0,
+     ".gm-panel × .chud__layers": 0,
+     ".team × .gm__bonds": 0,
+     ".team × .gm__corner": 2651.66,
+     ".team × .shopbar": 0,
+     ".team × .gm__effects": 0,
+     ".team × .spchat__toggle": 0,
+     ".team × .spvoice__fab": 0,
+     ".team × .chud__layers": 0,
+     ".gm__bonds × .gm__corner": 0,
+     ".gm__bonds × .shopbar": 0,
+     ".gm__bonds × .gm__effects": 0,
+     ".gm__bonds × .spchat__toggle": 0,
+     ".gm__bonds × .spvoice__fab": 0,
+     ".gm__bonds × .chud__layers": 0,
+     ".gm__corner × .shopbar": 0,
+     ".gm__corner × .gm__effects": 0,
+     ".gm__corner × .spchat__toggle": 0,
+     ".gm__corner × .spvoice__fab": 0,
+     ".gm__corner × .chud__layers": 0,
+     ".shopbar × .gm__effects": 0,
+     ".shopbar × .spchat__toggle": 0,
+     ".shopbar × .spvoice__fab": 0,
+     ".shopbar × .chud__layers": 0,
+     ".gm__effects × .spchat__toggle": 0,
+     ".gm__effects × .spvoice__fab": 0,
+     ".gm__effects × .chud__layers": 0,
+     ".spchat__toggle × .spvoice__fab": 0,
+     ".spchat__toggle × .chud__layers": 0,
+     ".spvoice__fab × .chud__layers": 0
+    },
+    "chips": [
+     {
+      "cls": "gm-chip is-mine is-full is-open",
+      "label": "我方同盟 4/4",
+      "expanded": "true",
+      "rect": {
+       "l": 168,
+       "t": 320,
+       "r": 196,
+       "b": 348,
+       "w": 28,
+       "h": 28
+      },
+      "radius": "50%",
+      "border": "1px solid rgba(79, 232, 192, 0.78)",
+      "hot": {
+       "w": 33,
+       "h": 33
+      }
+     },
+     {
+      "cls": "gm-chip is-full",
+      "label": "对方同盟 4/4",
+      "expanded": "false",
+      "rect": {
+       "l": 202,
+       "t": 320,
+       "r": 230,
+       "b": 348,
+       "w": 28,
+       "h": 28
+      },
+      "radius": "50%",
+      "border": "1px solid rgba(255, 255, 255, 0.66)",
+      "hot": {
+       "w": 33,
+       "h": 33
+      }
+     }
+    ]
+   },
+   "roster1920": {
+    "boxes": {
+     ".gm-chips": {
+      "l": 420,
+      "t": 980,
+      "r": 575,
+      "b": 1050,
+      "w": 155,
+      "h": 70
+     },
+     ".gm-panel": {
+      "l": 420,
+      "t": 638,
+      "r": 880,
+      "b": 1050,
+      "w": 460,
+      "h": 412
+     },
+     ".gm-unite": null,
+     ".gm-strip": null,
+     ".gm-mates": null,
+     ".team": {
+      "l": 22,
+      "t": 236,
+      "r": 218.97,
+      "b": 974,
+      "w": 196.97,
+      "h": 738
+     },
+     ".gm__bonds": {
+      "l": 819,
+      "t": 136,
+      "r": 1101,
+      "b": 232.84,
+      "w": 282,
+      "h": 96.84
+     },
+     ".gm__corner": {
+      "l": 24,
+      "t": 1000,
+      "r": 278,
+      "b": 1056,
+      "w": 254,
+      "h": 56
+     },
+     ".shopbar": {
+      "l": 893,
+      "t": 694,
+      "r": 1894,
+      "b": 1060,
+      "w": 1001,
+      "h": 366
+     },
+     ".gm__effects": {
+      "l": 1828.2,
+      "t": 240,
+      "r": 1890,
+      "b": 311.19,
+      "w": 61.8,
+      "h": 71.19
+     },
+     ".spchat__toggle": null,
+     ".spvoice__fab": null,
+     ".chud__layers": null
+    },
+    "rows": [
+     {
+      "h": 85,
+      "text": "凯尔希30",
+      "cls": "gm-panel__row is-self",
+      "tag": null,
+      "hp": "30",
+      "name": "凯尔希"
+     },
+     {
+      "h": 85,
+      "text": "AI·华法琳30",
+      "cls": "gm-panel__row",
+      "tag": null,
+      "hp": "30",
+      "name": "AI·华法琳"
+     },
+     {
+      "h": 85,
+      "text": "AI·阿米娅28",
+      "cls": "gm-panel__row",
+      "tag": null,
+      "hp": "28",
+      "name": "AI·阿米娅"
+     },
+     {
+      "h": 85,
+      "text": "AI·惊蛰29",
+      "cls": "gm-panel__row",
+      "tag": null,
+      "hp": "29",
+      "name": "AI·惊蛰"
+     }
+    ],
+    "foot": "我方同盟4/4",
+    "pairs": {
+     ".gm-panel × .team": 0,
+     ".gm-panel × .gm__bonds": 0,
+     ".gm-panel × .gm__corner": 0,
+     ".gm-panel × .shopbar": 0,
+     ".gm-panel × .gm__effects": 0,
+     ".gm-panel × .spchat__toggle": 0,
+     ".gm-panel × .spvoice__fab": 0,
+     ".gm-panel × .chud__layers": 0,
+     ".team × .gm__bonds": 0,
+     ".team × .gm__corner": 0,
+     ".team × .shopbar": 0,
+     ".team × .gm__effects": 0,
+     ".team × .spchat__toggle": 0,
+     ".team × .spvoice__fab": 0,
+     ".team × .chud__layers": 0,
+     ".gm__bonds × .gm__corner": 0,
+     ".gm__bonds × .shopbar": 0,
+     ".gm__bonds × .gm__effects": 0,
+     ".gm__bonds × .spchat__toggle": 0,
+     ".gm__bonds × .spvoice__fab": 0,
+     ".gm__bonds × .chud__layers": 0,
+     ".gm__corner × .shopbar": 0,
+     ".gm__corner × .gm__effects": 0,
+     ".gm__corner × .spchat__toggle": 0,
+     ".gm__corner × .spvoice__fab": 0,
+     ".gm__corner × .chud__layers": 0,
+     ".shopbar × .gm__effects": 0,
+     ".shopbar × .spchat__toggle": 0,
+     ".shopbar × .spvoice__fab": 0,
+     ".shopbar × .chud__layers": 0,
+     ".gm__effects × .spchat__toggle": 0,
+     ".gm__effects × .spvoice__fab": 0,
+     ".gm__effects × .chud__layers": 0,
+     ".spchat__toggle × .spvoice__fab": 0,
+     ".spchat__toggle × .chud__layers": 0,
+     ".spvoice__fab × .chud__layers": 0
+    },
+    "chips": [
+     {
+      "cls": "gm-chip is-mine is-full is-open",
+      "label": "我方同盟 4/4",
+      "expanded": "true",
+      "rect": {
+       "l": 420,
+       "t": 980,
+       "r": 490,
+       "b": 1050,
+       "w": 70,
+       "h": 70
+      },
+      "radius": "50%",
+      "border": "1px solid rgba(79, 232, 192, 0.78)",
+      "hot": {
+       "w": 80,
+       "h": 80
+      }
+     },
+     {
+      "cls": "gm-chip is-full",
+      "label": "对方同盟 4/4",
+      "expanded": "false",
+      "rect": {
+       "l": 505,
+       "t": 980,
+       "r": 575,
+       "b": 1050,
+       "w": 70,
+       "h": 70
+      },
+      "radius": "50%",
+      "border": "1px solid rgba(255, 255, 255, 0.66)",
+      "hot": {
+       "w": 80,
+       "h": 80
+      }
+     }
+    ]
+   },
+   "unite792": null,
+   "unite1920": null,
+   "uniteRoster792": null,
+   "uniteRoster1920": null
+  },
+  "room4": {
+   "m792": {
+    "strip": 0,
+    "mates": 0,
+    "chips": 0,
+    "panel": false,
+    "hudKids": [
+     "gtop",
+     "gm__bonds",
+     "team",
+     "gm__effects",
+     "shopbar",
+     "chat-panel  ",
+     "ui-slot gm__ui-slot",
+     "gm__corner"
+    ],
+    "phase": "PREP"
+   },
+   "m1920": {
+    "strip": 0,
+    "mates": 0,
+    "chips": 0,
+    "panel": false,
+    "hudKids": [
+     "gtop",
+     "gm__bonds",
+     "team",
+     "gm__effects",
+     "shopbar",
+     "chat-panel  ",
+     "ui-slot gm__ui-slot",
+     "gm__corner"
+    ],
+    "phase": "PREP"
+   }
+  }
+ }
+}

@@ -23,7 +23,13 @@ test('named builds resolve every current operator/alias, list absence and replac
     assert.equal(DATA.chess[m.id].name, name);
     assert.ok(DATA.chess[m.id].visible && !DATA.chess[m.id].isGolden);
   }
-  assert.deepEqual(members.filter(m => !m.id).map(m => [m.name, m.records]), [['阿斯卡纶', []]]); // i18n-ignore: absent source operator name
+  // 阿斯卡纶在本仓**没有官方棋**（社区书点了名但买不到）。2026-10-30 起湮灭内容 mod 带进来一条同名记录
+  // （`chess_char_9_09_a`，`annihilation: true` / `visible: false`）：它不是买点，只留在 records 里可追溯 ——
+  // 所以这里钉的是「没有 id」+「records 是那条 mod 记录，不含官方棋」。
+  const absent = members.filter((m) => !m.id);
+  assert.deepEqual(absent.map((m) => m.name), ['阿斯卡纶']); // i18n-ignore: absent source operator name
+  assert.deepEqual(absent[0].records, DATA.chess.chess_char_9_09_a ? ['chess_char_9_09_a'] : []);
+  assert.ok(absent[0].records.every((id) => DATA.chess[id].annihilation === true), 'absent 的 records 只能来自内容 mod');
   assert.deepEqual(members.filter(m => m.alias).map(m => [m.alias, m.id]), [ // i18n-ignore: source aliases checked below
     ['异鲨', 'chess_char_5_13_a'], ['异银', 'chess_char_5_14_a'], // i18n-ignore: community aliases
   ]);

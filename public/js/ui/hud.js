@@ -41,8 +41,160 @@ import { hotkeyLabelOf } from './settings.js';
 import { t, tParts, N_ } from '../../../shared/i18n.js';
 import { UnofficialMark, ruleLine } from './pluginTag.js';
 import { TestMark } from './testConsole.js';
+import { InfiniteSpeedToggle, TraitBadge, BossAffixPill } from './infiniteHud.js';
+import { forgeOf, cardsOf, ForgeCardsView, FORGE_KILLS_PER } from './forge.js';
+import { JibianTabs, JibianCodexView, jibianPoolOf, ensureJibianCss } from './jibian.js';
 
 const cx = (...p) => p.flat().filter(Boolean).join(' ');
+
+// ---- 锻造器胶囊 + 惊变面板（业主 2026-10-29 第二次改版：照原版拆开；第三次改版：胶囊造型与位置） ---------------
+// 顶栏那一行（困难名右侧，TopBar 的 modeEntry slot）只留**一颗圆润胶囊**：左「锻造器数量」、右「击杀数」，
+// 有没决定的锻造器时右上角一颗红点。点开去哪由 screens/game.js 决定（rolled != null → forge.js 的抉择弹窗
+// ForgePanel，否则 → 已锻造属性整合 ForgedPanel）——顶栏不再挂页签入口，左列那颗「已锻造」徽标也删了。
+// 「已选惊变」搬到左下角的**独立键**（JibianHudButton，与角落键同一行/同一基线/同一尺寸），点开的面板是
+// ui/jibian.js 的 **JibianPanel 单层三页签**（已选惊变 / 敌方惊变 / 惊变羁绊）——screens/game.js 直接挂它，
+// 没有外层页签、也不挂一览。数据仍归 screens/game.js（m.private.forge、m.private.jibian、m.private.stats.kills）。
+// 胶囊的造型与「居中位」在 css/screens/game.css 的「模式工具」段（.gm__modetools / .gtop__moderow）。
+
+/**
+ * The forge capsule: 锻造器 count · 击杀 count, with a red dot while a rolled group is undecided.
+ * 业主 2026-10-29 第三次改版：外壳（`button`）只负责点击，样式全在里面的 `.gm__modetools__plate` 上 ——
+ * 视觉高度压扁 10%（32 → 28.8px），但按钮自己的 min-height 仍是 32px，触控热区一点没缩。
+ * @param {{ forge?: number, kills?: number, per?: number, rolled?: boolean, open?: boolean,
+ *   onClick?: (() => void)|null }} props
+ *   forge: 锻造器数量 (forgeOf(…).count); kills: m.private.stats.kills; per: forgeOf(…).per (the 击杀 tooltip);
+ *   rolled: forgeOf(…).rolled != null — an undecided forge → the red dot; open: the panel it opens is on screen
+ */
+export function ModeToolsButton({ forge = 0, kills = 0, per = 0, rolled = false, open = false, onClick = null }) {
+  const n = (v) => Math.max(0, Math.floor(Number(v) || 0));
+  const count = n(forge);
+  const k = n(kills);
+  const step = Math.max(1, Math.floor(Number(per) || FORGE_KILLS_PER));
+  const left = step - (k % step);
+  const label = `${t('锻造器')} ${count}`;
+  const killLabel = tParts('已击败 {n} 名敌人 · 再击败 {left} 名可获得锻造器',
+    { n: html`<b>${k}</b>`, left: html`<b>${left}</b>` });
+  const hasRoll = rolled === true;
+  return html`<button type="button" class=${cx('gm__modetools', hasRoll && 'has-roll', open && 'is-on')} data-testid="zj-tools"
+      aria-haspopup="dialog" aria-expanded=${open ? 'true' : 'false'} aria-label=${label} title=${label}
+      onClick=${onClick}>
+    <span class="gm__modetools__plate">
+      <span class="gm__modetools__cell">
+        <${GIcon} name="forge" class="gm__modetools__icon" />
+        <b class="gm__modetools__n num" data-testid="zj-tools-forge">${count}</b>
+      </span>
+      <span class="gm__modetools__sep" aria-hidden="true"></span>
+      <span class="gm__modetools__cell gm__modetools__cell--kills" title=${killLabel} aria-label=${killLabel}>
+        <${Icon} name="sword" class="gm__modetools__icon" />
+        <b class="gm__modetools__n num" data-testid="zj-tools-kills">${k}</b>
+      </span>
+      ${hasRoll ? html`<span class="gm__modetools__dot" data-testid="zj-tools-dot" role="status"
+          aria-label=${label} title=${label}></span>` : null}
+    </span>
+  </button>`;
+}
+
+/**
+ * 左下角「惊变」独立键（业主 2026-10-29）：惊变房特有，和角落键（设置 / 对话 …）同一行、同一基线、同一尺寸
+ * （尺寸复用 `.gm__gear` 的规则），观战队友时也照常出现。点开 = 已选惊变面板（screens/game.js 直接挂
+ * ui/jibian.js 的 JibianPanel：已选惊变 / 敌方惊变 / 惊变羁绊三页）。
+ * @param {{ count?: number, open?: boolean, onClick?: (() => void)|null }} props
+ */
+export function JibianHudButton({ count = 0, open = false, onClick = null }) {
+  const n = Math.max(0, Math.floor(Number(count) || 0));
+  return html`<button type="button" class=${cx('gm__gear', 'gm__jibian', open && 'is-on')} data-testid="zj-jibian"
+      aria-haspopup="dialog" aria-expanded=${open ? 'true' : 'false'} aria-label=${t('惊变')} title=${t('惊变')}
+      onClick=${onClick}>
+    <${GIcon} name="blast" />
+    ${n > 0 ? html`<b class="gm__jibian__n num" data-testid="zj-jibian-n">${n}</b>` : null}
+  </button>`;
+}
+
+/**
+ * 左下角「已选饰品」独立键（超限模拟，业主 2026-10-31；2026-10-31 第二次改名）—— **照抄炸惊的 JibianHudButton**：
+ * 同一行、同一基线、同一尺寸（尺寸 / 描边 / 背景全部复用 `.gm__gear`，32px 地板在 css/devices.css），右下角一枚
+ * 已选数量角标，0 条时不画角标（与炸惊同一个取舍：键留着、只是没有数字 —— 面板本身有空态）。点开 = 已选饰品面板
+ * （screens/game.js 直接挂 ui/overlimitRelics.js 的 OverlimitRelicPanel：一行一条饰品）。
+ * 叫「已选饰品」而不是「词条」：顶栏老 traits 徽标已经占着「本局词条」四个字，两个入口同名对玩家没有区分度
+ * （业主口径，老徽标保持不动）。面板自己的抬头仍用既有 msgid `t('词条')`。
+ * 只有超限局的私有视图带 `m.private.relicsOverlimit`，别的模式调用方根本不渲染这颗键。
+ * @param {{ count?: number, open?: boolean, onClick?: (() => void)|null }} props
+ */
+export function RelicHudButton({ count = 0, open = false, onClick = null }) {
+  const n = Math.max(0, Math.floor(Number(count) || 0));
+  return html`<button type="button" class=${cx('gm__gear', 'gm__relics', open && 'is-on')} data-testid="zj-relics"
+      aria-haspopup="dialog" aria-expanded=${open ? 'true' : 'false'} aria-label=${t('已选饰品')} title=${t('已选饰品')}
+      onClick=${onClick}>
+    <${GIcon} name="bolt" />
+    ${n > 0 ? html`<b class="gm__relics__n num" data-testid="zj-relics-n">${n}</b>` : null}
+  </button>`;
+}
+
+/**
+ * The 模式工具 panel with its own page state (the caller owns only open / close).
+ * @param {{ open?: boolean, onClose?: () => void, forge?: any, onTake?: ((optId: string, rarity: string) => void)|null,
+ *   jibian?: any, jibianOwn?: any, enemy?: any, watchingName?: string|null, modeId?: string|null }} props
+ */
+export function ModeToolsPanel({ open = false, onClose = () => {}, forge = null, onTake = null,
+  jibian = null, jibianOwn = null, enemy = null, watchingName = null, modeId = null }) {
+  const [tab, setTab] = useState('forge');
+  const [picked, setPicked] = useState(null);
+  // a new rolled group (the server answers a pick with the next one) clears the last pick's highlight
+  const rolled = forge && forge.rolled ? `${forge.rolled.rarity}:${(forge.rolled.picks || []).join(',')}` : '';
+  useEffect(() => { setPicked(null); }, [rolled]);
+  if (!open) return null;
+  return html`<${ModeToolsPanelView} tab=${tab} onTab=${setTab} onClose=${onClose} forge=${forge} picked=${picked}
+    onPick=${(optId, rarity) => { setPicked(optId); onTake?.(optId, rarity); }}
+    jibian=${jibian} jibianOwn=${jibianOwn} enemy=${enemy} watchingName=${watchingName} modeId=${modeId} />`;
+}
+
+/**
+ * The panel's pure view (no hooks): the three pages are the existing renderers.
+ * @param {{ tab?: string|null, onTab?: (id: string) => void, onClose?: () => void, forge?: any, picked?: string|null,
+ *   onPick?: ((optId: string, rarity: string) => void)|null, jibian?: any, jibianOwn?: any, enemy?: any,
+ *   watchingName?: string|null, modeId?: string|null }} props
+ */
+export function ModeToolsPanelView({ tab = null, onTab = () => {}, onClose = () => {}, forge = null, picked = null,
+  onPick = null, jibian = null, jibianOwn = null, enemy = null, watchingName = null, modeId = null }) {
+  ensureJibianCss();
+  const f = forge ? forgeOf(forge) : null;
+  const cards = f ? cardsOf(f.rolled) : { rarity: 'normal', picks: [] };
+  const owned = Array.isArray(jibianOwn?.owned) ? jibianOwn.owned : [];
+  const nOf = (v) => (Array.isArray(v) ? v.length : 0);
+  const tabs = [
+    ...(f ? [{ id: 'forge', text: t('锻造器'), n: f.count }] : []),
+    ...(jibian ? [{ id: 'mine', text: t('已选惊变'), n: nOf(jibian.cards) }] : []),
+    ...(jibian || jibianOwn ? [{ id: 'codex', text: t('惊变一览'), n: owned.length }] : []),
+  ];
+  const active = tabs.some((x) => x.id === tab) ? tab : (tabs.length ? tabs[0].id : null);
+  if (!tabs.length) return null;                 // neither m.private.forge nor m.private.jibian: nothing to show
+  const label = f ? `${t('锻造器')} / ${t('已选惊变')}` : t('已选惊变');
+  const micro = f ? 'MODE // TOOLS' : 'BLAST // MUTATIONS';
+  return html`<div class="zjpanel zjtools" role="dialog" aria-modal="false" aria-label=${label} data-testid="zj-tools-panel">
+    <div class="zjpanel__scrim" onClick=${onClose}></div>
+    <div class="zjpanel__box">
+      <header class="zjpanel__head">
+        <span class="zjpanel__micro">${micro}</span>
+        <b class="zjpanel__title">${label}</b>
+        ${watchingName ? html`<span class="zjpanel__who"><${GIcon} name="eye" />${watchingName}</span>` : null}
+        <button type="button" class="zjpanel__x" aria-label=${t('关闭')} title=${t('关闭')} onClick=${onClose}><${Icon} name="close" /></button>
+      </header>
+      <div class="zjpanel__tabs" role="tablist">
+        ${tabs.map((x) => html`<button type="button" key=${x.id} role="tab" aria-selected=${active === x.id ? 'true' : 'false'}
+            class=${cx('zjpanel__tab', active === x.id && 'is-on')} data-testid=${`zj-tools-tab-${x.id}`}
+            onClick=${() => onTab(x.id)}>${x.text}${x.n == null ? null : html`<b class="num">${x.n}</b>`}</button>`)}
+      </div>
+      <div class="zjpanel__body">
+        ${active === 'forge'
+          ? html`<${ForgeCardsView} rarity=${cards.rarity} picks=${cards.picks} left=${f ? f.count : 0} forged=${f ? f.forged : null}
+              picked=${picked} onPick=${(o) => onPick?.(o.id, cards.rarity)} />`
+          : active === 'mine'
+            ? html`<${JibianTabs} jibian=${jibian} enemy=${enemy} watchingName=${watchingName} />`
+            : html`<${JibianCodexView} bare=${true} pool=${jibianPoolOf(modeId)} owned=${owned} onClose=${onClose} />`}
+      </div>
+    </div>
+  </div>`;
+}
 
 /**
  * 观战席 capsule of the in-match top bar (GitHub #120, PR #120 by @salt-fishes; the spectator seats of community report #26):
@@ -114,7 +266,7 @@ export function PhaseCapsule({ pub, hud, miss = null }) {
   }
   return html`<div class="capsule capsule--prep" role="status">
     <${Sprite} k="hudPanel/icon_rest" class="capsule__icon" fallback=${html`<${Icon} name="rook" class="capsule__icon" />`} />
-    <span class="capsule__label">${prepCapsuleLabel(phase)}</span>
+    <span class="capsule__label">${prepCapsuleLabel(phase, pub)}</span>
   </div>`;
 }
 
@@ -478,10 +630,15 @@ export function PauseButton({ paused, busy = false, onToggle }) {
  *   live: the own battle's pending LP loss (liveLp): the tower keeps the settled lp and adds a red −N tick, 联防中 during 联防;
  *     `left` (a leaker in 联防): its enemies still standing — the capsule's ×N tag
  *   held: the HUD waits hidden under 协议启动！ — a phase change's capsule scene waits for it (useCapsuleFx)
+ *   modeEntry: screens/game.js's 锻造器胶囊 (锻造器数 · 击杀数), drawn on the difficulty row right of the tag
+ *     (.gtop__moderow: that column is a vertical stack, the tag and this button share one row; the button lives in
+ *     .gtop__modeslot, a zero-height layer right of the tag, so the capsule never sizes that row — see game.css)
+ *   The 已选惊变 panel is not mounted here: screens/game.js mounts ui/jibian.js's JibianPanel itself.
  */
 export function TopBar({ pub, priv, conn, hud, total, drawer, onExit, onDrawer, onReady, readyBusy, readyCount, playerCount, pen = false, penAvail = false, onPen = () => {},
   config = null, frozenAt = null, pause = null, live = null, spectator = false,
-  spectators = null, myId = null, isHost = false, onRemoveSpectator = null, room = null, held = false }) {
+  spectators = null, myId = null, isHost = false, onRemoveSpectator = null, room = null, held = false, onCombatSpeed = null,
+  modeEntry = null }) {
   const phase = pub?.phase;
   const boss = isBossPhase(phase);
   const lp = boss && Number.isFinite(pub?.teamLp) ? pub.teamLp : Number.isFinite(priv?.lp) ? priv.lp : null;
@@ -513,7 +670,10 @@ export function TopBar({ pub, priv, conn, hud, total, drawer, onExit, onDrawer, 
           <${PingPill} ms=${conn?.ping} online=${conn?.status === 'online'} />
           <${SpectatorPill} spectators=${spectators} myId=${myId} isHost=${isHost} onRemove=${onRemoveSpectator} />
         </div>
-        ${pub?.difficulty ? html`<${DifficultyTag} difficulty=${pub.difficulty} size="sm" />` : null}
+        <div class=${cx('gtop__moderow', modeEntry ? 'has-tools' : null)}>
+          ${pub?.difficulty ? html`<${DifficultyTag} difficulty=${pub.difficulty} size="sm" />` : null}
+          ${modeEntry ? html`<div class="gtop__modeslot">${modeEntry}</div>` : null}
+        </div>
         ${pub?.test ? html`<${TestMark} class="gtop__test" />` : null}
         <${UnofficialMark} room=${room} compact=${true} class="gtop__mod" />
         ${ruleLine(room?.content?.rules) ? html`<span class="gtop__rules" data-testid="plugin-rules">${ruleLine(room?.content?.rules)}</span>` : null}
@@ -557,6 +717,11 @@ export function TopBar({ pub, priv, conn, hud, total, drawer, onExit, onDrawer, 
     </div>
 
     <div class="gtop__right">
+      ${pub?.isInfinite ? html`
+        ${pub.bossAffix ? html`<${BossAffixPill} affix=${pub.bossAffix} />` : null}
+        <${InfiniteSpeedToggle} speed=${pub.speedPref || 1} onSpeed=${onCombatSpeed} />
+        ${Array.isArray(pub.traitMods) && pub.traitMods.length ? html`<${TraitBadge} mods=${pub.traitMods} />` : null}
+      ` : null}
       <div class="gtop__clock">
         ${frozenSecs != null
           ? html`<${Countdown} seconds=${frozenSecs} total=${total ?? undefined} size="md" label="PAUSED" />`

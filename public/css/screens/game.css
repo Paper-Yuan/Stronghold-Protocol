@@ -107,11 +107,108 @@
 .gtop {
   position: absolute; left: 0; right: 0; top: 0;
   display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: start;
-  padding: .2rem .3rem 0 .26rem; gap: .2rem; pointer-events: none;
+  /* --gtop-gap 就是格线间距：`.gtop__moderow` 的居中位靠它把「左格右缘」推到中栏左缘（见下面那一段），
+     改 gap 时只改这一个变量，别让两处各写一份 .2rem。 */
+  --gtop-gap: .2rem;
+  padding: .2rem .3rem 0 .26rem; gap: var(--gtop-gap); pointer-events: none;
 }
 .gtop > * { pointer-events: auto; }
 .gtop__left { display: flex; align-items: center; gap: .16rem; }
-.gtop__meta { display: flex; flex-direction: column; align-items: flex-start; gap: .06rem; }
+.gtop__meta { display: flex; flex-direction: column; align-items: flex-start; gap: .06rem; flex: 1 1 auto; min-width: 0; }
+/* 模式工具那一行（业主 2026-10-29；第三次改版把胶囊挪到「两侧组件的正中」）：难度名 + 锻造器胶囊同一行 ——
+   `.gtop__meta` 是竖列，这里只是那一行里面的横排；竖排里其余条目（ping / 测试标 / MOD / 规则）照旧各占一列。
+   居中位不写死 px：`.gtop__meta` 吃满左格剩下的宽度，这一行再 align-self: stretch 撑到左格右缘，并用
+   margin-right: calc(-1 * var(--gtop-gap)) 把顶栏格线那道 gap 也算进右边界 —— 于是这一行的右缘正好是
+   **中栏（.gtop__center，🔍 括号框）的左缘**；行内是 grid [难度名 auto | 1fr]，胶囊在 1fr 的那一格
+   （`.gtop__modeslot`，2026-10-30 起是 0 高的独立层，见下面那条注释）里居中 ⇒ 胶囊中心 = (难度名右缘 + 中栏左缘) / 2，
+   任何宽度都自动成立（不按模式分支，也不靠 JS 量）。
+   792×360 实测：难度名右缘 85.03px、中栏左缘 185.14px ⇒ 中心 135.08px（改前 119.7px，右移 15.4px；
+   左右余量 24.02 / 24.03px —— 误差 0.01px）。 */
+.gtop__moderow { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; column-gap: 0;
+  align-self: stretch; margin-right: calc(-1 * var(--gtop-gap)); min-width: 0; }
+/* 模式工具胶囊的**独立层**（业主 2026-10-30 / task-27：「两个模式的左上角模式位为什么显示位置不一样…你把炸惊
+   也和原本那样的显示一样」）：胶囊原来是这一行 grid 第二列里的一个格子，它自己的 min-height 32px 把只有 9px 高的
+   模式行撑到 32px —— `.gtop__meta` / `.gtop__left`（flex 居中）/ 整条顶栏跟着长高，模式位再被居中进那 32px ⇒
+   炸惊比官方低 6.6px、退出键低 6.6px、ping 高 4.9px（792×360 实测，见 handoff 报告的改前/改后对照表）。
+   现在胶囊装进 `.gtop__modeslot`：槽位仍是第二列（宽度 = 难度名右缘 → 中栏左缘），但**高度为 0**，不参与这一行
+   的定高；胶囊自身脱出布局流（absolute），以槽位中心为锚（left/top 50% + translate(-50%,-50%)）——
+   横向中心仍是 (难度名右缘 + 中栏左缘) / 2（792×360 = 135.08px，与改前逐像素相同，业主上一轮定的位置不动），
+   纵向跟着模式位中线走（胶囊相对难度名的上下关系与改前一致：板子中线比模式位中线高 .06rem 的视觉抬升还在
+   `.gm__modetools__plate` 的 transform 里）。**官方模式没有 modeEntry ⇒ 没有槽位、moderow 连 has-tools 都不带**，
+   DOM 与几何逐字段不变（`modeEntry` 为空时这里一行都不加）。
+   胶囊比槽位宽时（数字变长）两侧同时溢出，不会把模式位挤走 —— 槽位没有宽度下限（min-width: 0）。 */
+.gtop__modeslot { grid-column: 2; position: relative; align-self: center; height: 0; min-width: 0; pointer-events: none; }
+.gtop__modeslot > .gm__modetools { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); pointer-events: auto; }
+/* 锻造器胶囊（业主 2026-10-29 第三次改版，照原版重画；当晚两改内部）：**绿色细发光边框 + 细黑线内里隔开
+   + 更淡的超浅青绿半透明底**。外壳 `button` 只负责点击热区（min-height 仍是 32px，压扁的只有看得见的那块板子 ——
+   `.gm__modetools__plate` 的高度 = 32 × 0.9 = 28.8px），所以触控一点没缩小。颜色：
+     background rgba(246, 255, 254, .74)  ← 业主「背景再淡一点」：在原来那版 rgba(214,255,250,.66) 上把颜色
+       再往白推两档（#f6fffe，只留一丝青绿），alpha 提到 .74（26% 透）—— 压在暗底上也不再发灰；
+       深色墨字对比度只会更好。更淡 / 更实的对照（同一胶囊只换底 + 黑线）：
+         handoff/shots/zhajing-redesign-fill3-V1|V2|V3|current-…-792x360.png，V5 = 近白 rgba(250,255,255,.8)
+         （还要更白就把底换成 V5 那一行）。
+     border     1px solid rgba(23, 217, 160, .55)   ← 业主说的「现在这个绿色的描边」，不动
+     box-shadow 0 0 .08rem rgba(23, 217, 160, .45)（发光）+ 一道很浅的深色落影，压住亮底与战场背景的接缝
+   浅底让那条绿描边终于读得出来（原来 .8 的薄荷底把描边吃掉了一半）。中间那根分隔线 = 1px 黑线
+   rgba(4, 26, 21, .55)（「细白线改黑线」；用与数字同族的墨绿黑，纯黑在浅底上会显得生硬，
+   要纯黑就改成 rgba(0, 0, 0, .55)）—— 压在这块浅底上实测 3.6:1，是清楚的一条细线；
+   红点（.has-roll = rolled != null，选完就消失）贴板子右上角。
+   竖向仍留原版那 -.06rem 的抬升（板子的视觉中线对齐难度名的字肩）；水平方向不再平移 —— 中心就是上面量出来的中点。 */
+.gm__modetools { grid-column: 2; justify-self: center; display: inline-flex; align-items: center; justify-content: center;
+  min-height: max(.44rem, 32px); min-width: 0; padding: 0; background: none; border: 0; cursor: pointer;
+  -webkit-tap-highlight-color: transparent; }
+.gm__modetools__plate { position: relative; display: inline-flex; align-items: center;
+  gap: max(.05rem, calc(3px * var(--sp-ui, 1)));
+  height: max(calc(.44rem * .9), 28.8px);
+  padding: 0 max(.12rem, calc(6px * var(--sp-ui, 1))) 0 max(.1rem, calc(5px * var(--sp-ui, 1)));
+  border-radius: 99px; color: #06241d;
+  background: rgba(246, 255, 254, .74);
+  border: 1px solid rgba(23, 217, 160, .55);
+  box-shadow: 0 0 .08rem rgba(23, 217, 160, .45), 0 .04rem .14rem rgba(0, 0, 0, .42);
+  transform: translateY(-.06rem);
+  transition: background var(--t-fast), border-color var(--t-fast), box-shadow var(--t-fast), transform var(--t-fast); }
+.gm__modetools:hover .gm__modetools__plate, .gm__modetools.is-on .gm__modetools__plate {
+  background: rgba(250, 255, 255, .86); border-color: rgba(23, 217, 160, .8);
+  box-shadow: 0 0 .12rem rgba(23, 217, 160, .6), 0 .04rem .14rem rgba(0, 0, 0, .42);
+  transform: translateY(calc(-.06rem - 1px)); }
+.gm__modetools:active .gm__modetools__plate { transform: translateY(-.06rem) scale(.97); }
+.gm__modetools:focus-visible { outline: 2px solid var(--mint-500); outline-offset: 2px; border-radius: 99px; }
+.gm__modetools__cell { display: inline-flex; align-items: center; gap: max(.03rem, calc(2px * var(--sp-ui, 1))); min-width: 0; }
+.gm__modetools__icon { width: max(.2rem, 12px); height: max(.2rem, 12px); flex: none; color: #06241d; }
+.gm__modetools__cell--kills .gm__modetools__icon { color: rgba(6, 36, 29, .74); }
+.gm__modetools__n { font-size: max(12px, calc(.2 * var(--t))); font-weight: 800; color: #03130f; font-variant-numeric: tabular-nums; }
+/* 内里那道细线（业主 2026-10-29 晚：「细白线改黑线」）：1px 墨绿黑，高度跟着板子走，别用固定 rem 缩成一小截 */
+.gm__modetools__sep { width: 1px; height: 56%; flex: none; margin: 0 max(.04rem, calc(3px * var(--sp-ui, 1))); background: rgba(4, 26, 21, .55); }
+/* 红点（rolled != null）：板子右上角一颗，不抢点击（胶囊本体才是按钮）。 */
+.gm__modetools__dot { position: absolute; top: max(-2px, -.03rem); right: max(-1px, -.01rem);
+  width: max(.08rem, 7px); height: max(.08rem, 7px); border-radius: 50%; background: var(--red-premium);
+  box-shadow: 0 0 0 1px rgba(6, 10, 9, .9), 0 0 .14rem rgba(255, 84, 84, .72); pointer-events: none; }
+@media (prefers-reduced-motion: reduce) {
+  .gm__modetools__plate, .gm__modetools:hover .gm__modetools__plate, .gm__modetools:active .gm__modetools__plate {
+    transform: translateY(-.06rem); transition: none; }
+}
+/* 左下角「惊变」独立键（业主 2026-10-29）：尺寸 / 描边 / 背景沿用 .gm__gear（32px 地板 + devices.css 的随屏幕放大），
+   这里只补按下态与「已选数量」角标。 */
+.gm__jibian { position: relative; }
+.gm__jibian.is-on { color: var(--mint-400); border-color: var(--mint-700); background: var(--mint-900); }
+.gm__jibian__n { position: absolute; top: max(-4px, -.02rem); right: max(-4px, -.02rem); min-width: max(12px, .14rem);
+  padding: 0 max(calc(3px * var(--sp-ui, 1)), .02rem); font-size: max(10px, calc(.14 * var(--t))); line-height: max(12px, .16rem); text-align: center;
+  color: var(--text-on-mint); background: var(--mint-500); border-radius: 99px; }
+/* 左下角「词条」独立键（超限模拟，业主 2026-10-31）：**照抄上一颗惊变键** —— 尺寸 / 描边 / 背景仍是 .gm__gear
+   （32px 地板在 devices.css），这里只补按下态与已选条数角标，每个量都与 .gm__jibian / .gm__jibian__n 同一套。
+   只有超限局的私有视图带 m.private.relicsOverlimit，别的模式这颗键根本不渲染（screens/game.js）。 */
+.gm__relics { position: relative; }
+.gm__relics.is-on { color: var(--mint-400); border-color: var(--mint-700); background: var(--mint-900); }
+.gm__relics__n { position: absolute; top: max(-4px, -.02rem); right: max(-4px, -.02rem); min-width: max(12px, .14rem);
+  padding: 0 max(calc(3px * var(--sp-ui, 1)), .02rem); font-size: max(10px, calc(.14 * var(--t))); line-height: max(12px, .16rem); text-align: center;
+  color: var(--text-on-mint); background: var(--mint-500); border-radius: 99px; }
+/* 惊变面板（左下角那颗独立键）：外壳 / 页签全部复用 jibian.css 的 .zjpanel —— 业主 2026-10-29 第三次改版后
+   screens/game.js 直接挂 ui/jibian.js 的 **JibianPanel 单层三页签**（已选惊变 / 敌方惊变 / 惊变羁绊），
+   不再经 hud.js 的两层 ModeToolsPanel，也没有「惊变一览」那一页。
+   矮屏限高：jibian.css 的 .zjpanel__box 只有 max-height: 84%，而网格行是内容撑开的（不定高）⇒ 百分比其实不生效，
+   792×360 上羁绊页会把外壳撑出视口。这里只对这一个面板给一个视口单位上限，页体自己滚（.zjpanel__body 本来就是
+   overflow: auto），外壳仍留在视口内；别的 .zjpanel（惊变一览 / 揭晓）不归这条管。 */
+.gm .zjpanel[data-testid="jibian-panel"] .zjpanel__box { max-height: calc(100dvh - .6rem); overflow: hidden; }
 /* a match with gameplay plugins (DESIGN §32.6): the HUD corner's MOD mark */
 .gtop__mod { pointer-events: auto; }
 .gtop__rules { max-width: 3.4rem; font-size: calc(.11 * var(--t)); line-height: 1.4; color: var(--text-md); overflow-wrap: anywhere; }
@@ -242,6 +339,9 @@
 .capsule-fx--unite .capsule-fx__swords { animation: capfx-pop 280ms 1420ms var(--ease-out) both; }
 .capsule-fx--unite .capsule-fx__word { animation: capfx-word 320ms 1560ms var(--ease-out) both; }
 @keyframes gtop-drop { from { transform: translateY(-.5rem); opacity: 0; } }
+/* 回合数字翻进来（.roundbox__num 的 key 每换一个回合就重放一次）：和 capfx-flip 同一支动作 —— 目前在样式层被
+   下面 `.gtop__half .roundbox__num, .gtop__cap .capsule__kills b` 那条 capfx-flip 盖着，这里补上它引用的名字 */
+@keyframes gtop-flip { from { transform: translateY(-55%); opacity: 0; } }
 @keyframes capfx-flip { from { transform: translateY(-55%); opacity: 0; } }
 @keyframes capfx-rise { from { transform: translateY(110%); opacity: 0; } }
 @keyframes capfx-slide { from { transform: translateX(.4rem); opacity: 0; } }
@@ -267,6 +367,12 @@
   .capsule-fx { display: none; }
   .gtop__cap.is-fx-wait .capsule > * { visibility: visible; }
 }
+/* 窄屏（§35.18）：文字替身比它的官方精灵宽，压到 767px 以下的条上会自己撞自己 —— 两半收窄内边距，替身让位（精灵照留） */
+@media (max-width: 767px) {
+  .gtop__band { grid-template-columns: minmax(1.2rem, auto) auto minmax(1.2rem, auto); }
+  .gtop__half { padding: 0 .14rem; }
+  .gtop__decotxt { display: none; }
+}
 /* the two official 🔍 buttons (ui/hud.js CheckBtn): btn_check_player (mint, left) and btn_check_enemy (amber, right);
    sprites are 35×29 (plain) / 61×29 (with chevrons) → .555rem / .967rem × .46rem */
 .gtop__iconbtn {
@@ -282,6 +388,41 @@
 .gtop__right { display: flex; flex-direction: column; align-items: flex-end; gap: .1rem; justify-self: end; }
 .gtop__right .countdown { --cd-h: .7rem; filter: drop-shadow(0 0 .12rem rgba(0, 0, 0, .8)); }
 .gtop__clock { display: flex; align-items: flex-start; gap: .14rem; }
+
+/* ---- 进场 (PR #827, the maintainer's decision of 2026-10-21; screens/game.js hudIn) ------------------------------- */
+/* 局内 HUD 的进场：协议启动！在屏上时整个 HUD 隐着（.is-wait —— 不再靠 pboot 的 z-index 把它挡在后面），它一开始淡出
+   就切成 .is-enter，1.2 s 后类名清掉；reducedMotion 时两个类从头到尾都不出现，HUD 直接就在（screens/game.js）。
+   顺序照视频 7:51–8:01：顶栏左块 → 中栏长条（两半与中栏挡板各自错帧）→ 官方 deco 字 → 右块 → 队伍栏 / 效果列 →
+   商店栏（接在它自己的 shop-up 后面，见 game-shop.css）。[ASSUMED] 顺序与时长是 #827 的作者照视频读出来的。
+   .is-wait 只藏不拆布局：进场时每块的盒子已经在位，因此全程不重排。 */
+.gm__hud.is-wait > * { visibility: hidden; }
+.gm__hud.is-enter .gtop__left { animation: gtop-left-rise 520ms var(--ease-out) both; }
+.gm__hud.is-enter .gtop__band { animation: gtop-band-rise 560ms 90ms var(--ease-out) both; }
+.gm__hud.is-enter .gtop__half--l { animation: gtop-half-l-rise 520ms 160ms var(--ease-out) both; }
+.gm__hud.is-enter .gtop__half--r { animation: gtop-half-r-rise 520ms 220ms var(--ease-out) both; }
+.gm__hud.is-enter .gtop__cap { animation: gtop-cap-plate 560ms 140ms var(--ease-out) both; }
+.gm__hud.is-enter .gtop__deco { animation: gtop-deco-fade 420ms 260ms var(--ease-out) both; }
+.gm__hud.is-enter .gtop__right { animation: gtop-right-rise 520ms 300ms var(--ease-out) both; }
+.gm__hud.is-enter .team { animation: gtop-team-in 620ms 180ms var(--ease-out) both; }
+.gm__hud.is-enter .gm__effects { animation: gtop-fx-in 620ms 340ms var(--ease-out) both; }
+/* 商店栏留着自己的 shop-up 在列表里，它跟着整块升起；.is-enter 撤掉时不会让 shop-up 再起一遍 */
+.gm__hud.is-enter .shopbar { animation: shop-up var(--t-slow) var(--ease-out), gtop-rise 620ms 240ms var(--ease-out) both; }
+/* 各块从下方升起并淡入；deco 只淡入 —— 它靠 translateX(-50%) 居中，动 transform 会把它甩偏 */
+@keyframes gtop-rise { from { transform: translateY(.5rem); opacity: 0; } }
+@keyframes gtop-left-rise { from { transform: translateY(.6rem); opacity: 0; } }
+@keyframes gtop-band-rise { from { transform: translateY(.52rem); opacity: 0; } }
+@keyframes gtop-half-l-rise { from { transform: translateY(.34rem); opacity: 0; } }
+@keyframes gtop-half-r-rise { from { transform: translateY(.34rem); opacity: 0; } }
+@keyframes gtop-cap-plate { from { transform: translateY(.3rem); opacity: 0; } }
+@keyframes gtop-right-rise { from { transform: translateY(.5rem); opacity: 0; } }
+@keyframes gtop-deco-fade { from { opacity: 0; } }
+@keyframes gtop-team-in { from { transform: translateX(-.6rem); opacity: 0; } }
+@keyframes gtop-fx-in { from { transform: translateX(.6rem); opacity: 0; } }
+/* 减动态：reducedMotion 下这两个类根本不会出现（screens/game.js），这里只是兜底 —— 别让半截进场停在中间 */
+@media (prefers-reduced-motion: reduce) {
+  .gm__hud.is-enter .gtop__left, .gm__hud.is-enter .gtop__right, .gm__hud.is-enter .gtop__band, .gm__hud.is-enter .gtop__half, .gm__hud.is-enter .gtop__cap, .gm__hud.is-enter .gtop__deco, .gm__hud.is-enter .team, .gm__hud.is-enter .gm__effects { animation: none; }
+  .gm__hud.is-enter .shopbar { animation: shop-up var(--t-slow) var(--ease-out); }
+}
 
 /* solo pause / resume (ui/hud.js PauseButton, official battle pause: two bars on a dark square) */
 .pausebtn {
@@ -543,25 +684,56 @@
 .readybtn:disabled .readybtn__box { border-color: var(--line-2); }
 .readybtn.is-busy { opacity: .7; }
 
-/* ---- bond strip ---------------------------------------------------------------------------------------- */
-.gm__bonds { position: absolute; left: 1.56rem; top: 1.36rem; right: 5.2rem; pointer-events: none;
-  display: flex; align-items: flex-start; gap: max(.1rem, calc(8px * var(--sp-ui, 1))); }
+/* ---- bond strip（0.3.1 的居中一行 + 业主 2026-10-29 后续的收起 / 淡出 / 鼠标拖动） --------------------------- */
+/* 盟约栏：顶栏下方居中；右侧一颗裸箭头向上收起（收起后只剩它）；盟约多时条体自己横向滚动，两端淡出提示还有内容，
+   鼠标可以按住左右拖（两侧的 ‹ › 调整键已删除）。
+   ★ 0.3.1 原注释（owner：「这上面的盟约条会不会太长了」）：不再铺满整屏 —— 最多占 62vw（上限 46rem），
+   圆盘不再被压小。 */
+.gm__bonds { position: absolute; left: 50%; transform: translateX(-50%); top: 1.36rem;
+  max-width: min(62vw, 46rem);
+  pointer-events: none; display: flex; align-items: flex-start; justify-content: center; gap: max(.1rem, calc(8px * var(--sp-ui, 1))); }
+/* 业主 2026-10-29「盟约条太宽了」：窄屏不再放宽到 100% − 1.2rem（手机上会铺满 94%），任何宽度都不超过 62vw；
+   16:10 / 4:3 仍要让开右侧队伍栏与左侧效果列，两者取更窄的那个。 */
+@media (max-width: 900px) {
+  .gm__bonds { max-width: min(62vw, calc(100% - 1.2rem)); }
+}
+@media (max-aspect-ratio: 16/10) {
+  .gm__bonds { max-width: min(62vw, calc(100% - 6.2rem)); }
+}
 /* Only the bond discs (and the +N chip) take the pointer: the strip's box spans the width under the top bar, where the
    top board row's units stand (row 12 at 16:9 / 21:9 / 720p / phones, the boss field's row 5 in a boss prep) — it used
    to swallow the taps and drags on them (review of user playtest #2 item 8: every own unit reachable). */
 .gm__bonds > *, .gm__bonds .bstrip { pointer-events: none; }
 .gm__bonds .bslot, .gm__bonds .bstrip__more { pointer-events: auto; }
-.gm__bond-list { min-width: 0; }
-/* The hidden list leaves no hit area over the board; only this compact tab can reopen it (GitHub #142). */
-/* A bare arrow (the owner's request after 0.2.0: the boxed 「收起」 tab looked heavy): transparent, half-visible until
-   hovered or focused; the 44 × 44 touch target stays (an invisible hit area), the name is the aria-label. */
-.gm__bonds .bonds-toggle { pointer-events: auto; flex: none; display: inline-flex; align-items: center; justify-content: center;
-  min-width: 44px; min-height: 44px; padding: 0; color: var(--text-hi); background: transparent; border: 0; cursor: pointer;
-  opacity: .55; transition: opacity var(--t-fast) var(--ease-out), color var(--t-fast) var(--ease-out); line-height: 1; }
-.bonds-toggle .icon { width: max(.22rem, 18px); height: max(.22rem, 18px); filter: drop-shadow(0 0 2px rgba(0, 0, 0, .85)); }
-.bonds-toggle[aria-expanded="false"] { opacity: .8; }
-.bonds-toggle:hover, .bonds-toggle:focus-visible { opacity: 1; color: var(--mint-500); }
-.bonds-toggle:focus-visible { outline: 2px solid var(--mint-500); outline-offset: -4px; }
+.gm__bond-list { min-width: 0; max-width: 100%; flex: 0 1 auto; display: flex; justify-content: center; }
+/* 横向滚动壳（0.3.1 的外层；业主 2026-10-29 删掉两侧 ‹ › 键）：条体自己就是原生滚动盒（触屏 / 滚轮直接滚），
+   鼠标另外支持「按住左右拖」；条体过长时用 data-edge 让两端淡出。 */
+.bstrip-scroll { display: flex; align-items: center; min-width: 0; max-width: 100%; gap: .04rem; cursor: grab; user-select: none; -webkit-user-select: none; }
+.bstrip-scroll.is-dragging { cursor: grabbing; }
+/* 让内边距护住光环/层数，又不把圆盘压进棋盘。
+   横向也是内边距护住：圆环是 overflow:visible 的 SVG，描边会画出圆盘 7px 左右，落在滚动盒里就成了
+   「明明放得下却能滚 7px」的多余溢出让 data-edge 误判成右侧还有内容（右侧淡出凭空出现、条体还能被拖 7px）；
+   留出 .2rem（8px）把这段描边收进内边距，scrollWidth 就正好等于 clientWidth（2026-10-29 手机端实测）。 */
+.gm__bonds .bstrip-scroll .bstrip { min-width: 0; overflow-x: auto; overflow-y: hidden; padding: .08rem .2rem; margin: -.08rem 0;
+  pointer-events: auto; touch-action: pan-x; scrollbar-width: thin;
+  /* 两端淡出：滚动到中间时左右都淡，贴到某一端时那一端淡入（--fade-*a 由 1 变 0、宽度由 0 变 18px）。 */
+  --fade-l: 0px; --fade-r: 0px; --fade-la: 1; --fade-ra: 1;
+  -webkit-mask-image: linear-gradient(to right, rgba(0, 0, 0, var(--fade-la)) 0, #000 var(--fade-l), #000 calc(100% - var(--fade-r)), rgba(0, 0, 0, var(--fade-ra)) 100%);
+  mask-image: linear-gradient(to right, rgba(0, 0, 0, var(--fade-la)) 0, #000 var(--fade-l), #000 calc(100% - var(--fade-r)), rgba(0, 0, 0, var(--fade-ra)) 100%);
+}
+.bstrip-scroll[data-edge="left"] .bstrip { --fade-l: max(.24rem, 18px); --fade-la: 0; }
+.bstrip-scroll[data-edge="right"] .bstrip { --fade-r: max(.24rem, 18px); --fade-ra: 0; }
+.bstrip-scroll[data-edge="both"] .bstrip { --fade-l: max(.24rem, 18px); --fade-r: max(.24rem, 18px); --fade-la: 0; --fade-ra: 0; }
+.bstrip-scroll .bslot { flex: none; }
+/* 收起键：条体右侧一颗裸的上下箭头，绝对定位脱离居中流（条体本身严格居中）；收起后条体宽度为 0，键回到正中。 */
+.gm__bonds .bonds-toggle { position: absolute; left: calc(100% + .06rem); top: 0; pointer-events: auto; display: grid; place-items: center;
+  width: max(.4rem, 32px); height: max(.4rem, 32px); padding: 0; background: none; border: 0; color: var(--text-md); opacity: .7; cursor: pointer;
+  transition: opacity var(--t-fast), color var(--t-fast); }
+.gm__bonds.is-collapsed .bonds-toggle { left: 50%; transform: translateX(-50%); }
+.gm__bonds .bonds-toggle:hover, .gm__bonds .bonds-toggle:focus-visible { opacity: 1; color: var(--mint-400); }
+.gm__bonds .bonds-toggle .icon { width: max(.24rem, 18px); height: max(.24rem, 18px); }
+.gm__bond-list[hidden] { display: none; }
+.gm.is-pen .gm__bonds .bstrip-scroll *, .gm.has-sp .gm__bonds .bstrip-scroll * { pointer-events: none; }
 .bstrip { display: flex; align-items: flex-start; gap: .1rem; flex-wrap: nowrap; }
 .bstrip.is-frozen .bslot { opacity: .5; filter: saturate(.4); }
 .bstrip--empty { display: inline-flex; align-items: center; gap: .12rem; padding: .08rem .16rem; font-size: .15rem; color: var(--text-dim); background: rgba(8, 11, 10, .6); border: 1px dashed var(--line-2); }
@@ -697,7 +869,14 @@
 .efftip p { font-size: .15rem; line-height: 1.55; color: var(--text-md); }
 
 /* ---- corner: emote + settings --------------------------------------------------------------------------------- */
-.gm__corner { position: absolute; left: .24rem; bottom: .24rem; display: flex; align-items: flex-end; gap: .1rem; }
+/* 左下角落（业主 2026-10-29 第三版）：一行、靠底对齐，**不**写 flex-wrap —— 窄屏的两行由 css/devices.css 的
+   flex-wrap: wrap-reverse 管（那里同时给出下排三颗主键的固定宽度）。四颗主键 表情 → 设置 → 对话唤出 → 全屏
+   都是等大的正方形（表情键在 css/emotes.css，图标居中；全屏键在手机端由 devices.css 隐藏）。
+   `z-index: 130` 是本仓保留项：局内聊天面板（css/room-chat.css .gm .chat-panel, z-index 2）要落在这一层之下。 */
+/* 角落键的边长：局内聊天框的宽度按「三颗键 + 两道缝」算，所以这个值要和 .gm__gear 与表情键同步
+   （手机矮屏由 devices.css 改成 34px 档）。 */
+.gm { --gm-corner-key: .56rem; }
+.gm__corner { position: absolute; left: .24rem; bottom: .24rem; display: flex; align-items: flex-end; gap: .1rem; z-index: 130; }
 .gm__gear {
   width: .56rem; height: .56rem; display: grid; place-items: center; background: rgba(8, 11, 10, .85);
   border: 1px solid var(--line-2); color: var(--text-lo); transition: color var(--t-fast), border-color var(--t-fast);
@@ -808,35 +987,40 @@
   .combat-metrics__note { padding: max(.06rem, calc(6px * var(--sp-ui, 1))) max(.12rem, calc(8px * var(--sp-ui, 1))); font-size: max(calc(.14 * var(--t)), 8px); }
 }
 
-.ewheel { position: relative; }
-.ewheel__btn {
-  display: flex; align-items: center; gap: .08rem; height: .56rem; padding: 0 .2rem 0 .14rem;
-  background: rgba(8, 11, 10, .85); border: 1px solid var(--line-2); color: var(--text-md); font-size: .18rem; font-weight: 700; letter-spacing: .1em;
-  transition: color var(--t-fast), border-color var(--t-fast);
-}
-.ewheel__btn .icon { width: .3rem; height: .3rem; color: var(--mint-500); }
-.ewheel__btn:hover, .ewheel__btn.is-on { color: var(--mint-400); border-color: var(--mint-700); }
-.ewheel__btn:disabled { opacity: .5; cursor: not-allowed; }
+/* 交流按钮（.ewheel 与它的开关按钮）的唯一定义在 public/css/emotes.css —— 那份在 screen sheets 之后加载，
+   并且带 min-width / border-radius / filter 过渡与 has-sprite 贴图态。这里原来还留着 v1 的第二份（业主 2026-10-28
+   指出「两处定义」），已删除，以免两边维护、也避免谁后加载谁赢的隐式行为。表情盘的 panel / grid / item / art
+   仍在本文件（下面那一段）。 */
 .ewheel__panel {
   position: absolute; left: 0; bottom: calc(100% + .12rem); width: 4.1rem; padding: .14rem .16rem .16rem;
   background: linear-gradient(180deg, rgba(20, 26, 24, .97), rgba(10, 14, 12, .97)); border: 1px solid var(--line-2);
   box-shadow: 0 .1rem .3rem rgba(0, 0, 0, .6);
   animation: pop-in var(--t-med) var(--ease-out);
 }
-.ewheel__grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: .08rem; margin-top: .12rem; }
+/* 表情盘格子：**一律正方形**（业主 2026-10-28）。原来只给了列宽（repeat(4,1fr)），格子高 = 图 .6rem + 文字 + padding
+   ≈ .8rem ≠ 宽 ≈ .95rem，看着就是扁的；inset 纯文字态又换成 3 列 + 更大 padding，第二次变形。
+   现在：列宽用 minmax(0,1fr) 防内容撑开，格子 aspect-ratio:1 锁死方形（贴图态与纯文字态同一形状），
+   格内 1fr(图) + auto(文字) 两行，文字行固定高度；触屏格子最小 44px（devices.css 的命中区规则不被覆盖）。 */
+.ewheel__grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .08rem; margin-top: .12rem; }
 .ewheel__item {
-  position: relative; display: flex; flex-direction: column; align-items: center; gap: .02rem; padding: .06rem .02rem .05rem;
-  background: rgba(255, 255, 255, .025); border: 1px solid var(--line); font-size: .12rem; color: var(--text-lo);
+  position: relative; display: grid; grid-template-rows: 1fr auto; place-items: center; padding: 0; gap: 0;
+  aspect-ratio: 1; min-width: 0; min-height: 0;
+  background: rgba(255, 255, 255, .025); border: 1px solid var(--line); font-size: max(.12rem, 10px); color: var(--text-lo);
   transition: background var(--t-fast), border-color var(--t-fast), transform var(--t-fast), color var(--t-fast);
 }
 .ewheel__item:hover:not(:disabled) { background: var(--mint-a10); border-color: var(--mint-700); color: var(--mint-400); transform: translateY(-.02rem); }
 .ewheel__item:disabled { opacity: .45; cursor: default; }
-.ewheel__art { width: .6rem; height: .6rem; display: grid; place-items: center; }
+.ewheel__art { width: 62%; aspect-ratio: 1; display: grid; place-items: center; align-self: center; }
 .ewheel__art:empty { display: none; }
 .ewheel__art .eart { width: 100%; height: 100%; object-fit: contain; filter: drop-shadow(0 0 .06rem rgba(23, 249, 183, .25)); }
-.ewheel__txt { white-space: nowrap; }
-.ewheel__panel.is-text .ewheel__grid { grid-template-columns: repeat(3, 1fr); }
-.ewheel__panel.is-text .ewheel__item { padding: .12rem .04rem; font-size: .15rem; color: var(--text-md); }
+.ewheel__txt { display: grid; place-items: center; height: max(.14rem, 10px); white-space: nowrap; }
+.ewheel__panel.is-text .ewheel__grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+/* 纯文字态：格子仍是正方形，只是字号大一档（padding 归零，靠 place-items 居中） */
+.ewheel__panel.is-text .ewheel__item { aspect-ratio: 1; padding: 0; font-size: max(.15rem, 11px); color: var(--text-md); }
+/* 触屏：命中区不小于 44px（devices.css 里那套 .ewheel__nav 的规则不受影响） */
+@media (pointer: coarse) {
+  .ewheel__item { min-width: max(1em, 32px, calc(44px * var(--sp-ui, 1))); min-height: max(1em, 32px, calc(44px * var(--sp-ui, 1))); }
+}
 @keyframes pop-in { from { opacity: 0; transform: translateY(.08rem) scale(.97); } }
 
 /* speech bubble next to a team row: official emote art (+ phrase), or the phrase alone */
@@ -888,6 +1072,19 @@
 .gm__dead .icon { width: .22rem; height: .22rem; }
 /* a spectator seat (community report #26): the same place, the watching pill's amber — nobody was eliminated */
 .gm__dead--spectator { background: rgba(24, 16, 4, .92); border-color: rgba(246, 163, 41, .6); color: var(--amber); }
+
+/* 湮灭模拟 · 蚀流 level chip (m.public.erosion, the annihilation play set; screens/game.js) — ported from the play set's
+   game.css (18px/72px → .18rem/.72rem against this repo's rem scale), shown only for 湮灭 rooms, 蚀流 6 reads 无尽 ∞ */
+.gm__erosion { position: fixed; left: .18rem; top: .72rem; z-index: 30; display: flex; align-items: center; gap: .05rem;
+  padding: .03rem .08rem .02rem; border: 1px solid rgba(216, 180, 106, .35); border-radius: 2px; background: rgba(20, 16, 12, .72);
+  color: #d8b46a; font-family: 'Rajdhani', 'Noto Sans SC', sans-serif; font-weight: 600;
+  /* 像素地板：--t 只有 40px（矮屏）时 calc(.1 * --t) 是 4px，整块角标读不出来（实测 1280×720 是 6.67px） */
+  font-size: max(11px, calc(.1 * var(--t))); line-height: 1;
+  letter-spacing: .12em; pointer-events: none; }
+.gm__erosion b { color: #f6e8c8; font-size: max(14px, calc(.13 * var(--t))); letter-spacing: 0; }
+/* 蚀流 6 无尽湮灭: no round total — the chip reads 无尽 ∞ in the mode's blood tone */
+.gm__erosion.is-endless { border-color: rgba(181, 44, 56, .75); background: rgba(38, 8, 12, .82); color: #f0b7b7; }
+.gm__erosion.is-endless b { color: #ffdede; font-size: max(16px, calc(.15 * var(--t))); }
 
 .chud { position: absolute; inset: 0; pointer-events: none; }
 .chud > * { pointer-events: auto; }
@@ -984,6 +1181,8 @@
 /* 文字大小 (ui/settings.js): four steps, so its buttons are narrower than the two- and three-step groups' — at .8rem each
    the group would be wider than the row's 1fr column on a phone (1rem = 40 px) */
 .set-seg.set-textsize button { min-width: .62rem; }
+/* 画面质量 5 档（低/中/高/超清/极致，业主 2026-10-29）：手机上一行放不下 5 颗 .8rem 的键，收窄到与文字档同宽 */
+.set-seg.set-quality button { min-width: .62rem; }
 .set-seg button:last-child { border-right: 0; }
 .set-seg button.is-on { background: var(--mint-500); color: var(--text-on-mint); font-weight: 700; }
 .set-hint { margin-top: .06rem; font-size: calc(.14 * var(--t)); color: var(--text-dim); line-height: 1.8; }
@@ -1132,9 +1331,6 @@
 .gm--combat .ff-badge { display: none; }
 
 /* ---- small screens (1280×720 → root ≈ 66px) ------------------------------------------------------------------------ */
-@media (max-aspect-ratio: 16/10) {
-  .gm__bonds { right: 4.6rem; }
-}
 
 /* fallback view: enemy preview pen (setCamera('pen')) */
 .ff-board--pen .ff-pen__enemy { padding: 0; border: 0; background: none; cursor: pointer; border-radius: 50%; }
@@ -1211,6 +1407,13 @@
 
 /* 超限词条按钮 + 面板（业主 2026-10-20）：原来是时钟旁一排小标签，改成右侧一枚按钮 */
 .gtrait{position:relative;display:inline-flex}
+/* Boss 词缀 pill（业主 2026-10-26）：只在超限 Boss 轮出现 */
+.gaffix{display:inline-flex;align-items:center;gap:6px;height:24px;padding:0 8px;margin-right:8px;
+  border:1px solid rgba(231,49,24,.5);background:rgba(60,12,8,.55);color:#ffb3a8;
+  font:700 10px/1 var(--font-num);letter-spacing:.08em;white-space:nowrap}
+.gaffix i{font-style:normal;font-size:8px;letter-spacing:.14em;color:#ff8b7a;border:1px solid rgba(231,49,24,.45);padding:1px 4px}
+.gaffix b{color:#fff;font-weight:800;font-size:11px}
+@media (max-width:560px){.gaffix{height:22px;padding:0 6px;margin-right:4px}.gaffix b{font-size:10px}}
 .gtrait__btn{display:inline-flex;align-items:center;gap:5px;height:24px;padding:0 9px;cursor:pointer;
   font:600 11px/1 var(--font-cjk);letter-spacing:.04em;color:var(--pos);
   /* fallback: no color-mix() */
@@ -1335,19 +1538,13 @@
   .gtrait__row{grid-template-columns:32px auto 1fr;font-size:11px}
 }
 
-/* Keep every bond reachable without shrinking its disc or extending over the right HUD. */
-.gm__bond-list { flex: 1; }
-.bstrip-scroll { display: flex; align-items: center; min-width: 0; gap: .04rem; }
-/* Let the padding protect rings/counts from clipping without lowering the discs and names into the board. */
-.gm__bonds .bstrip-scroll .bstrip { min-width: 0; overflow-x: auto; overflow-y: hidden; padding: .08rem 0; margin: -.08rem 0;
-  pointer-events: auto; touch-action: pan-x; scrollbar-width: thin; }
-.bstrip-scroll .bslot { flex: none; }
-.gm__bonds .bstrip-scroll__arrow { flex: none; width: 44px; height: 44px; padding: 0;
-  background: rgba(8, 11, 10, .7); color: var(--mint); border: 1px solid var(--line-2); cursor: pointer; pointer-events: auto; }
-.bstrip-scroll__arrow:disabled { opacity: .3; cursor: default; }
-.gm.is-pen .gm__bonds .bstrip-scroll *, .gm.has-sp .gm__bonds .bstrip-scroll * { pointer-events: none; }
-
+/* 盟约条的形态在文件上方那一段（bond strip，0.3.1 的常显 / 居中 / 原生横向滚动；两侧 ‹ › 键已删）：
+   pen / 机变浮层的让步在那一节里（`.bstrip-scroll *`），这里只剩本仓新增的 Tooltip 锚点和窄屏的高度钉死。 */
 .gm__bond-list > .tt-anchor { display: block; max-width: 100%; }
+/* 窄屏：条体仍在顶栏下方同一条基线上（0.3.1 的 1.36rem，与上面 .gm__bonds 一致） */
+@media (max-width: 560px) {
+  .gm__bonds { top: 1.36rem; }
+}
 
 .ai-vote { display:flex; flex-wrap:wrap; gap:.12rem; align-items:center; margin:.15rem 0; padding:.1rem; border:1px solid #426055; }
 .ai-participation-entry { flex:none; }

@@ -1,0 +1,75 @@
+/* public/css/compat84.css — WebView / Chromium 84 兼容回退（业主 2026-10-26）
+ *
+ * WebView 84（Chrome 84，2020）不支持：
+ *   - `inset` 简写（Chrome 87+）→ 全屏层会丢掉定位，整块塌到文档流；
+ *   - `aspect-ratio`（Chrome 88+）→ 方形棋子/卡面没有高度；
+ *   - `dvh/svh`（Chrome 88+）→ 代码里已有 `vh` 前一行，84 会忽略 dvh、保留 vh，无需处理。
+ * 这里用 @supports 只在旧引擎生效，不影响现代浏览器：
+ *   1) 给关键全屏 / 弹层容器展开 top/right/bottom/left；
+ *   2) 给方形元素一个最小高度兜底，避免 84 上塌成一条线。
+ */
+
+@supports not (inset: 0) {
+  /* 全屏壳层与战场 */
+  .app-root,
+  .screen,
+  .gm,
+  .gm__field,
+  .gm__vignette,
+  .gm__hud,
+  .gm__loading,
+  .gm__fx,
+  .result,
+  .settle,
+  .settle__detail,
+  .steam,
+  .sself,
+  .traitov,
+  .traitov__veil,
+  .ctrov,
+  .ctrov__veil,
+  .olarch,
+  .warn,
+  .warn__flush,
+  .warn__pulse,
+  .bpwarn,
+  .awayov,
+  .ticker,
+  .chat-panel,
+  .spchat__panel,
+  .ewheel__panel,
+  .gtrait__pop,
+  .plugpanel,
+  .modal,
+  .modal__veil {
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+  }
+
+  /* 局部 inset（例如 inset: -.07rem）的常见写法：四向展开为 0 会略改变外观，
+     这里只处理「贴边」类；带负值的边框层保持原样、由父级定位兜底。 */
+  .gm__field > canvas,
+  .field,
+  .field__canvas {
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+  }
+}
+
+@supports not (aspect-ratio: 1 / 1) {
+  /* 方形棋子 / 卡面：84 没有 aspect-ratio，给最小高度，保证不是 0 高 */
+  .ff-piece,
+  .ff-piece__art,
+  .ff-unit__art,
+  .tcard__art,
+  .pcard__face,
+  .opcard__art,
+  .avatar,
+  .pavatar {
+    min-height: 1em;
+  }
+}

@@ -39,7 +39,6 @@
 
 import { ATTACK_PAUSE, ALLY_COLLIDER_RADIUS, MOVE_SCALE, PROJECTILE_SPEEDS, PROJECTILE_SPEED, BOOMERANG_RETURN_SPEED, COLS, CHAIN_RADIUS } from './constants.js';
 import { sortEnemyTargets, sortAllyTargets, canTargetEnemy, canTargetAlly, tileKeyOf } from './targeting.js';
-import { reduceElement } from './damage.js';
 import { straightClear } from './grid.js';
 import { moveFeared, endFear } from './fear.js';
 import { hypot, powi } from './detmath.js';
@@ -161,6 +160,7 @@ export function noteAttackCommit(b, dt) {
   const allies = b.allyUnits;
   if (!allies || !allies.length) return;
   let map = null;
+  const meleeState = { fortressMelee: false };
   for (let i = 0; i < allies.length; i++) {
     const u = allies[i];
     if (!u.alive || !u.deployed || !u.canAct || !u.profile) continue;
@@ -174,8 +174,10 @@ export function noteAttackCommit(b, dt) {
     if (prof.heal && prof.dmgType === 'heal') continue;
     if (prof.allInRange || prof.rangeAoe) continue;
     if (prof.canAttack && !prof.canAttack(b, u)) continue;
-    // acquireTargets writes `_fortressMelee` on the profile it is given; keep that off the live profile
-    const targets = acquireTargets(b, u, Object.assign({}, prof));
+    // The fortress melee/ranged switch is a per-search answer, not profile state: `acquireTargets` reports it in this
+    // scratch object instead of writing `_fortressMelee` on the live profile (a hook that runs during the search must
+    // never see it). Reused across calls — one object per battle, no copy per ally per tick.
+    const targets = acquireTargets(b, u, prof, meleeState);
     if (!targets.length) continue;
     (map ??= new Map()).set(u.id, targets.filter((t) => t && t.alive));
   }
@@ -192,15 +194,16 @@ function committedAttackTargets(b, u, prof) {
   return out;
 }
 
-/** Collect targets for an ally with profile `prof`. */
-export function acquireTargets(b, u, prof) {
-  // 超限模拟 (无限模式) 索敌节流保护：怪物数量密集 (>25) 时缓存非阻挡普攻索敌 3 帧
-  if (b.infinite && b.enemies.length > 25 && !u.blocking.length && !prof.isSkill && b.infinite.targetingCache) {
-    const cached = b.infinite.targetingCache.get(u.id);
-    if (cached && cached.length && cached.every((t) => t && t.alive && !t.removed && b.inRange(u, t))) {
-      return cached;
-    }
-  }
+/** Write the fortress switch where the caller expects it: a scratch object when one was given, else the profile. */
+function setFortressMelee(prof, state, v) {
+  if (state) state.fortressMelee = v; else prof._fortressMelee = v;
+}
+
+/**
+ * Collect targets for an ally with profile `prof`. `state` (optional) receives the fortress switch instead of it being
+ * written on `prof`: `{fortressMelee}` — a caller that must not touch the live profile passes a scratch object.
+ */
+export function acquireTargets(b, u, prof, state = null) {
   // a heal attack (医师 / 群愈师 / 疗养师 / 链愈师 / 行医, a skill attack turned into a heal) selects injured allies only,
   // never the enemies its unit blocks — a blocking healer keeps healing: PRTS 卫戍协议/帮助 "对于医疗干员（咒愈师分支除外），
   // 攻击目标为需要治疗的单位" (the blocked-first rule below is for attackers of enemies; community feedback after 0.1.0, E2)
@@ -217,10 +220,10 @@ export function acquireTargets(b, u, prof) {
   if (prof.fortress) {
     if (u.blocking.length) {
       const t = u.blocking.filter((e) => canTargetEnemy(u, e, { canHitFly: false }));
-      prof._fortressMelee = true;
+      setFortressMelee(prof, state, true);
       return t.slice(0, 1);
     }
-    prof._fortressMelee = false;
+    setFortressMelee(prof, state, false);
   }
   const cands = b.enemiesInKeys(u.rangeKeys, u, prof);
   // "可以选择且优先选择阻挡单位" (PRTS 选择器): the enemies a unit blocks are always selectable by it — the block radius
@@ -235,7 +238,7 @@ export function acquireTargets(b, u, prof) {
     const here = [u.tileR * COLS + u.tileC];
     const near = b.enemiesInKeys(here, u, prof);
     if (!near.length && b._allyTargets?.size) near.push(...b.allyTargetsInKeys(here, u));
-    prof._fortressMelee = near.length > 0;
+    setFortressMelee(prof, state, near.length > 0);
     sortEnemyTargets(b, u, near, prof.priority);
     return near.slice(0, 1);
   }
@@ -250,11 +253,7 @@ export function acquireTargets(b, u, prof) {
   if (prof.allInRange) return cands;
   const n = targetCount(u, prof);
   sortEnemyTargets(b, u, cands, prof.priority);
-  const res = n >= cands.length ? cands : cands.slice(0, n);
-  if (b.infinite && b.enemies.length > 25 && !u.blocking.length && !prof.isSkill && b.infinite.targetingCache && res.length) {
-    b.infinite.targetingCache.set(u.id, res);
-  }
-  return res;
+  return n >= cands.length ? cands : cands.slice(0, n);
 }
 
 /**
@@ -489,7 +488,7 @@ function doHeal(b, u, prof, t) {
   const h = prof.heal || { mode: 'single' };
   let amount = atk * scale;
   if (h.farMul && Math.max(Math.abs(t.tileR - u.tileR), Math.abs(t.tileC - u.tileC)) > (h.nearDist ?? 2)) amount *= h.farMul;
-  if (h.elementHealRatio) reduceElement(t, atk * h.elementHealRatio);
+  if (h.elementHealRatio) b.healElement({ target: t, amount: atk * h.elementHealRatio });
   b.heal(u, t, amount);
   if (h.mode === 'chain') {
     const seen = new Set([t.id]);
@@ -975,7 +974,7 @@ function enemyAttack(b, e, prevCd) {
     return canTargetAlly(e, t, radius > 0);
   };
   targets = locked.filter(still);
-  if (targets.length > 1) sortAllyTargets(e, targets);
+  if (targets.length > 1) sortAllyTargets(e, targets, b);
   // `enemyAttackStart` { enemy, targets }: the enemy starts a normal attack, before 麻痹 may interrupt it (the client's
   // ON_BEFORE_ABILITY_SPELL_ON of an attack that 麻痹 can interrupt — 酒神 堕梦 "攻击范围内的敌人普通攻击时受到70点神经损伤",
   // PRTS 备注 "于敌人成功普通攻击前之前触发（意味着触发的元素爆发可打断当次普攻…）": a burst it causes interrupts this attack)

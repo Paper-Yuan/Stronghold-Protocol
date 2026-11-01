@@ -12,14 +12,29 @@
 //     host changes it in the room — the event's 联合模拟 creates the room first (research 06 §3.2), the starting
 //     difficulty is not recorded [ASSUMED: 标准, the first one unlocked; the event room research 06 §3.2 describes shows
 //     ♜ 标准模拟 in its footer pill]. The game's own lobby always sends the remembered one.
-//   * Host-only: room.setDifficulty, room.setAiPicksLast, room.setSoloUnlimited, room.addBot, room.removeBot, room.kick,
-//     room.start.
-//     ▸ Changing the difficulty or the AI-picks-last option (co-op only) un-readies the other humans.
+//   * Host-only: room.setDifficulty, room.setAiPicksLast, room.setSoloUnlimited, room.setSeats, room.addBot,
+//     room.removeBot, room.kick, room.start.
+//     ▸ 房间人数 (room.setSeats { maxSeats }, the owner's decision 2026-10-31): a co-op room's seat capacity, 4 / 8 / 12.
+//       Before the match, the host may raise it (a jump 4 → 12 included) while the room holds no more doctors than the
+//       target; only a room with nobody but the host may lower it. It resizes room.seats and room.state.maxSeats carries
+//       the value only when it is above MAX_SEATS, so a default room.state stays identical (BAD_TARGET for a value
+//       outside 4/8/12 or a lower capacity with others seated; ROOM_STARTED after the match starts).
+//       ▸ 第一层临时闸 (temporary, until the match handles 8 / 12): room.start in a room above MAX_SEATS is refused with
+//         BAD_TARGET however many doctors are seated; the client disables 开始模拟 for the same reason (room.js
+//         startGate, hint = the existing msgid 暂不可用).
+//     ▸ Changing the difficulty, the AI-picks-last option (co-op only) or the room capacity un-readies the other humans.
 //     ▸ 「不限时」 (room.setSoloUnlimited { on }, DESIGN §35.23.10): a solo room of a version whose rules.soloTimed is
 //       true, off by default. On, the match is built with opts.soloUnlimited (preparation and 机变 untimed — the existing
 //       Match opt-out). room.state carries `soloUnlimited: true` only while it is on, so a default room.state stays
 //       identical. A switch to a version whose solo is not timed clears it. A create that sends the key on a co-op room
 //       or an untimed version is ignored.
+//     ▸ 蚀流 (room.setErosion { level }, the 湮灭模拟 play set; shared/annihilation-constants.js): host-only, before the
+//       match — the room's tier 1..EROSION_MAX on a room whose difficulty is `ANNIHILATION` (another difficulty refuses it:
+//       BAD_MSG, the room keeps its tier). Like a difficulty change it un-readies the other humans, it is kept across the
+//       room's matches, and room.state.erosion publishes it (that key exists on an ANNIHILATION room only, so a normal
+//       room.state stays identical). room.create { erosion } is the starting tier (absent ⇒ 1, never refused), and
+//       startMatch hands `room.erosion` to the match (Match opts.erosion → GameData's 蚀流), so any broken link on this
+//       chain silently plays tier 1.
 //     ▸ room.start requires every other human to be connected and ready; the host's start counts as the host's
 //     ready (the host may still toggle room.ready for display).
 //   * room.kick {seat, playerId} (community report #17, owner approved): before the match only, the host removes another
@@ -229,23 +244,41 @@
 
 import { aiTakeover, resetAiTakeover, reconcileAiTakeover } from './aiTakeover.js';
 import { randomBytes, randomInt } from 'node:crypto';
-import { isSoloRoomMode } from '../shared/infiniteMode.js';
-import { DIFFICULTIES, ERR, MAX_SEATS, MAX_SPECTATORS, ROOM_CODE_LEN, modeIdFor } from '../shared/constants.js';
-import { checkLoadout, checkLoadoutOps, cultivationCharIds, checkNotOwned, checkDiyPicks, charPotentialChanges, checkSkinSelection, operatorCharIds } from '../shared/protocol.js';
+import { isSoloRoomMode, isInfiniteMode, SOLO_INFINITE, COOP_INFINITE } from '../shared/infiniteMode.js';
+import { DIFFICULTIES, ERR, MAX_SEATS, MAX_SPECTATORS, ROOM_CODE_LEN, ROOM_SEAT_CAPS, modeIdFor } from '../shared/constants.js';
+// 湮灭模拟 (the 湮灭模拟 play set): `ANNIHILATION` is that play set's own difficulty — never a DIFFICULTIES member (the
+// official four-card selector draws that list) — and EROSION_MAX bounds its 蚀流 tiers.
+import { ANNIHILATION_DIFFICULTY, EROSION_MAX } from '../shared/annihilation-constants.js';
+// 炸惊模拟 (the second play set, 拓展模式): the same shape as ANNIHILATION — its own difficulty value, kept as asked and
+// never lowered to an official tier (shared/zhajing-constants.js, handoff/ZHAJING-SPLIT-PLAN-2026-10-28.md §2).
+import { ZHAJING_DIFFICULTY } from '../shared/zhajing-constants.js';
+import { zjRosterIds } from '../shared/zhajingBase.js';
+import { checkLoadout, checkLoadoutOps, cultivationCharIds, checkNotOwned, checkDiyPicks, charPotentialChanges, checkSkinSelection, operatorCharIds, ANN_MOD_NAMES } from '../shared/protocol.js';
 import { encode, isErrCode, sendRaw, sendSession } from './net.js';
 import { getData as defaultGetData, lookup } from './data.js';
 import { Match as DefaultMatch } from './match/Match.js';
+// 湮灭模拟的「干员调配」名册：与 GameData.visibleChess 同一份口径（官方可见棋 − 被关掉的 mod 带进来的棋）
+import { annihilationRoster } from './match/gamedata.js';
 import { KITTED_CHARS } from './sim/content/kits/index.js';
 
 const VANILLA_KITTED = new Set(KITTED_CHARS);
 import { isContentHash } from '../shared/plugins/identity.js';
 import { ruleOption } from '../shared/plugins/rules.js';
 import { msg, wireMessage } from '../shared/i18n.js';
-import { DEFAULT_VERSION } from '../shared/versions.js';
+import { DEFAULT_VERSION, baseRoomMode } from '../shared/versions.js';
 import { parseTestModeEnv, testModeGate, unrecognizedTestMode } from './testMode.js';
 
 /** Room code alphabet: uppercase letters without I and O (and no digits, so no 0/1). */
 export const CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
+
+/**
+ * room.chat (房间与局内文字聊天): the longest line the server broadcasts (the wire accepts up to 120 so an over-long
+ * client is refused rather than silently trimmed; the server clips to this bound), and the per-session gap between
+ * two lines. The room keeps its last CHAT_KEEP lines in memory for `room.chat.history` — nothing is persisted.
+ */
+export const CHAT_MAX = 100;
+export const CHAT_CD_MS = 1000;
+export const CHAT_KEEP = 80;
 
 /** Tunables. */
 export const LOBBY_DEFAULTS = Object.freeze({
@@ -300,8 +333,42 @@ const noopLog = { info() {}, warn() {}, error() {}, debug() {} };
  * @typedef {{ charId: string, skillIndex: number, uniEquipId: string|null }} DiyLoadout
  */
 
-/** Deep-frozen copy of a checked loadout (shared by the session, the seat and the match's PlayerState). */
-function freezeLoadout(loadout) {
+/**
+ * The room's 湮灭专属 mod switches (docs/ANNIHILATION-MODS.md §2.3.3) in their stored form: `comms` folded onto
+ * `commsPriority`, unknown names dropped, and the booleans kept as sent — `true` = 打开这把开关, `false` = **显式关掉**一条
+ * 缺省开的 mod（`ANN_MOD_DEFAULT_ON`：rhodesShip / kazdelShip）。玩家没写过的名字不进这张表（缺省在读的时候算），所以
+ * `{}` 仍然是「房间没动过设置」，只是那两条 mod 现在是开着而不是关着。`null` means the payload was not an object at all
+ * (the caller answers BAD_MSG).
+ * `room.state.annMods` 发的是 `true` 的那些键（见 `annModsEcho`），客户端据此渲染「哪些开着」。
+ * @param {unknown} annMods
+ * @returns {Readonly<Record<string, boolean>> | null}
+ */
+function normalizeAnnMods(annMods) {
+  if (!annMods || typeof annMods !== 'object' || Array.isArray(annMods)) return null;
+  const out = {};
+  for (const [k, v] of Object.entries(annMods)) {
+    const name = k === 'comms' ? 'commsPriority' : k;
+    if (typeof v !== 'boolean') continue;
+    if (!ANN_MOD_NAMES.includes(name)) continue;
+    out[name] = v;
+  }
+  return Object.freeze(out);
+}
+
+/**
+ * `room.state.annMods`: 房间的**显式**开关表（`true` 与 `false` 都发）。
+ * 缺省（`ANN_MOD_DEFAULT_ON` 的两条默认开）不进这张表 —— 客户端按同一份 shared 判据 `{ ...缺省, ...回显 }` 渲染，
+ * 所以「把一条默认开启的 mod 关掉」在回显里以 `false` 出现，面板不会骗人；没有任何显式键的房（老行）连这个键都不长。
+ * @param {Readonly<Record<string, boolean>> | null | undefined} annMods
+ * @returns {Readonly<Record<string, boolean>>}
+ */
+function annModsEcho(annMods) {
+  const out = {};
+  for (const [k, v] of Object.entries(annMods || {})) if (typeof v === 'boolean') out[k] = v;
+  return Object.freeze(out);
+}
+
+/** Deep-frozen copy of a checked loadout (shared by the session, the seat and the match's PlayerState). */function freezeLoadout(loadout) {
   const out = {};
   for (const [id, e] of Object.entries(loadout || {})) out[id] = Object.freeze({ skill: e.skill, module: e.module ?? null });
   return Object.freeze(out);
@@ -372,13 +439,20 @@ export class Room {
   /**
    * @param {string} code @param {'solo'|'coop'} mode @param {string} difficulty @param {number} now
    * @param {string} [version] the official version the room plays (header "Official versions")
+   * @param {number} [erosion] the 蚀流 tier (1..EROSION_MAX) of an ANNIHILATION room; anything else ⇒ 1 (header "蚀流")
    */
-  constructor(code, mode, difficulty, now, version = DEFAULT_VERSION) {
+  constructor(code, mode, difficulty, now, version = DEFAULT_VERSION, erosion = 1) {
     this.code = code;
     this.mode = mode;
     this.difficulty = difficulty;
     /** the official version the room plays (shared/versions.js id; header "Official versions") */
     this.version = version;
+    /**
+     * 业主 2026-10-28: a PLAY SET room (炸惊 / 湮灭) pins its version — the lobby default never moves it, no version vote is
+     * taken, and room.state always names it (`version` + `versionLocked`). Official rooms keep `false`, so their
+     * room.state stays byte-identical.
+     */
+    this.versionLocked = difficulty === ZHAJING_DIFFICULTY || difficulty === ANNIHILATION_DIFFICULTY;
     /**
      * the open version vote, else null: `{ id, proposerId, version, voters, agreed, expiresAt, timer }`
      * @type {{ id: number, proposerId: string, version: string, voters: string[], agreed: Set<string>, expiresAt: number, timer: any } | null}
@@ -401,10 +475,32 @@ export class Room {
      * opts.soloUnlimited. room.state omits the key unless this is true.
      */
     this.soloUnlimited = false;
+    /**
+     * 蚀流 (the 湮灭模拟 play set; room.setErosion, header "蚀流"): the room's tier 1..EROSION_MAX, which startMatch hands
+     * to the match (Match opts.erosion → GameData). Kept across the room's matches like the difficulty; it means nothing
+     * on an official difficulty (there no mode reads it) and defaults to 1.
+     */
+    this.erosion = Number.isInteger(erosion) && erosion >= 1 && erosion <= EROSION_MAX ? erosion : 1;
+    /**
+     * 湮灭专属 mod 的房间级开关 (docs/ANNIHILATION-MODS.md §2.3.3; room.setAnnMods / room.create.annMods): 玩家**写过**的
+     * 布尔值，`true` = 开、`false` = 显式关掉一条缺省开的 mod（rhodesShip / kazdelShip 缺省开，见 gamedata.js 的
+     * `ANN_MOD_DEFAULT_ON`）。`{}` = 房间没动过设置。A ROOM setting like `erosion` above — it does NOT enter the content
+     * hash `cs` — and it means nothing outside an ANNIHILATION room (GameData ignores it there, room.state does not
+     * publish it). Match 拿这张表（含 false）决定名册 / 装备池；`room.state.annMods` 另走 `annModsEcho`（只发 true）。
+     * @type {Readonly<Record<string, boolean>>}
+     */
+    this.annMods = Object.freeze({});
     /** @type {string | null} */
     this.hostId = null;
+    /**
+     * 房间人数 (room.setSeats, the owner's decision 2026-10-31): the room's seat capacity, 4 / 8 / 12. `MAX_SEATS` (4)
+     * unless the host raised it before the match; it sizes `seats` and is published as `room.state.maxSeats` only when
+     * above 4, so a default room's state stays byte-identical.
+     * @type {4|8|12}
+     */
+    this.maxSeats = MAX_SEATS;
     /** @type {(Seat | null)[]} */
-    this.seats = new Array(MAX_SEATS).fill(null);
+    this.seats = new Array(this.maxSeats).fill(null);
     /** @type {{ playerId: string, name: string, connected: boolean }[]} spectator seats, ≤ MAX_SPECTATORS (header) */
     this.spectators = [];
     /** @type {any} running Match instance */
@@ -441,6 +537,9 @@ export class Room {
     this.test = false;
     /** the room's queue (header "Gameplay plugins": Lobby.serial): what is still waiting or running, and its tail */
     this.queue = { pending: 0, tail: Promise.resolve() };
+    /** room.chat (房间与局内文字聊天): the last lines broadcast, and the id to give the next one (memory only) */
+    this.chatLog = [];
+    this.chatSeq = 0;
   }
 
   /** Does the room play a content set with gameplay plugins (its own cs; header "Gameplay plugins")? */
@@ -479,8 +578,17 @@ export class Room {
       hostId: this.hostId,
       mode: this.mode,
       difficulty: this.difficulty,
+      // 超限模拟 as a room setting (room.setInfinite): `mode` already says it (`solo_infinite` / `coop_infinite`), so
+      // this key is only the readable flag for the room's UI; omitted on a normal room, whose room.state is unchanged
+      ...(isInfiniteMode(this.mode) ? { infinite: true } : {}),
+      // 蚀流 (the 湮灭模拟 play set, header "蚀流"): the room's tier; omitted on every official difficulty, so a normal
+      // room.state stays identical. 八个 mod 开关只发开着的键（`annModsEcho`：客户端读这一份渲染）
+      ...(this.difficulty === ANNIHILATION_DIFFICULTY ? { erosion: this.erosion, annMods: annModsEcho(this.annMods) } : {}),
       aiPicksLast: this.aiPicksLast,
       inMatch: !!this.match,
+      // 房间人数 (room.setSeats): the room's capacity, published only when it is above the default — a default room's
+      // room.state keeps exactly the keys it had, and the client reads an absent key as MAX_SEATS.
+      ...(this.maxSeats > MAX_SEATS ? { maxSeats: this.maxSeats } : {}),
       seats: this.seats.map((s) => (s
         ? { seat: s.seat, playerId: s.playerId, name: s.name, isBot: s.isBot, ready: s.ready, connected: s.connected && !s.left,
           // a room with gameplay plugins (header "Gameplay plugins"): has this player's page loaded and checked its content?
@@ -489,13 +597,22 @@ export class Room {
           ...(!s.isBot && s.card ? { card: s.card } : {}),
           // 干员皮肤 (room.skins, PUBLIC like Match.publicView().players[].skins): the seat card's outfit (header);
           // only a human seat with a non-empty map carries the key
-          ...(!s.isBot && s.skins && Object.keys(s.skins).length ? { skins: s.skins } : {}) }
+          ...(!s.isBot && s.skins && Object.keys(s.skins).length ? { skins: s.skins } : {}),
+          // 炸惊模拟 · 卡池调整: the seat's saved skill / module profile, so the panel can prefill. Only a ZHAJING room, only
+          // a human seat and only when something is saved — every other room's room.state stays byte-identical.
+          ...(this.difficulty === ZHAJING_DIFFICULTY && !s.isBot && s.zjLoadout && Object.keys(s.zjLoadout).length ? { zjLoadout: s.zjLoadout } : {}),
+          // 湮灭模拟 · 卡池调整: the seat's saved annihilation profile (same rules — an ANNIHILATION room, a human seat, non-empty)
+          ...(this.difficulty === ANNIHILATION_DIFFICULTY && !s.isBot && s.annLoadout && Object.keys(s.annLoadout).length ? { annLoadout: s.annLoadout } : {}),
+          // 炸惊模拟 · 卡池预选: the seat's own bans (`{ zhajing: { core, addon } }`), only in a ZHAJING room, only a human
+          // seat, only when something is banned — every other room's room.state stays byte-identical
+          ...(this.difficulty === ZHAJING_DIFFICULTY && !s.isBot && s.bans ? { bans: s.bans } : {}) }
         : null)),
       spectators: this.spectators.map((s) => ({ playerId: s.playerId, name: s.name, connected: s.connected, ...(this.needsContent ? { content: /** @type {any} */ (s).content || 'loading' } : {}) })),
       ...(this.content ? { content: this.content.trusted ? {...this.content, trusted:{...this.content.trusted, consent:Object.fromEntries(this.seats.filter(x => x && !x.isBot).map(x => [x.seat,x.consentCs === this.content.cs]))}} : this.content } : {}),
       // another official version than 第二期下半, and its open vote (header "Official versions"): omitted otherwise, so a
-      // default room's room.state stays identical
-      ...(this.version !== DEFAULT_VERSION ? { version: this.version } : {}),
+      // default room's room.state stays identical. A play-set room (炸惊 / 湮灭) always names its LOCKED version and says so,
+      // because the client must not treat it as a moveable lobby setting (playSetVersion above).
+      ...(this.versionLocked ? { version: this.version, versionLocked: true } : this.version !== DEFAULT_VERSION ? { version: this.version } : {}),
       ...(this.versionVote ? { versionVote: { id: this.versionVote.id, proposerId: this.versionVote.proposerId, version: this.versionVote.version,
         voters: [...this.versionVote.voters], agreed: this.versionVote.voters.filter((id) => this.versionVote?.agreed.has(id)),
         remainingMs: Math.max(0, Math.round(this.versionVote.expiresAt - now)) } } : {}),
@@ -812,8 +929,20 @@ export class Lobby {
       case 'room.leave': return this.leave(session);
       case 'room.ready': return this.ready(session, msg);
       case 'room.setDifficulty': return this.setDifficulty(session, msg);
+      // 超限模拟 as a room setting: without this case the client's toggle is validated by the protocol and silently
+      // dropped (the same trap room.setErosion documented)
+      case 'room.setInfinite': return this.setInfinite(session, msg);
+      // 蚀流 (the 湮灭模拟 play set): without this case the client's tier click is silently dropped — the protocol
+      // validates room.setErosion and nobody handles it (header "蚀流")
+      case 'room.setErosion': return this.setErosion(session, msg);
+      // 湮灭专属 mod 的房间级开关 (docs/ANNIHILATION-MODS.md §2.3.3): the in-room twin of room.create.annMods. A missing case
+      // would let the protocol validate it and the server drop it SILENTLY — the very trap the two comment lines above name.
+      case 'room.setAnnMods': return this.setAnnMods(session, msg);
       case 'room.setAiPicksLast': return this.setAiPicksLast(session, msg);
       case 'room.setSoloUnlimited': return this.setSoloUnlimited(session, msg);
+      // 房间人数 (the owner's decision 2026-10-31): without this case the protocol would validate room.setSeats and the
+      // server would drop the host's click silently — the same trap room.setInfinite / room.setErosion documented.
+      case 'room.setSeats': return this.setSeats(session, msg);
       case 'room.setAiTakeover': return this.setAiTakeover(session, msg);
       case 'room.aiRequest':
       case 'room.aiVote': return aiTakeover(this, session, msg);
@@ -824,8 +953,11 @@ export class Lobby {
       case 'room.rerollSetup': return this.rerollSetup(session, msg);
       case 'room.cancelReroll': return this.rerollSetup(session, msg, true);
       case 'room.loadout': return this.loadout(session, msg);
+      case 'room.bans': return this.setBans(session, msg);
       case 'room.ownership': return this.ownership(session, msg);
       case 'room.diy': return this.diy(session, msg);
+      case 'room.chat': return this.chat(session, msg);
+      case 'room.chat.history': return this.chatHistory(session, msg);
       case 'room.skins': return this.skins(session, msg);
       case 'room.card': return this.card(session, msg);
       case 'room.spectate': return this.spectate(session, msg);
@@ -911,17 +1043,34 @@ export class Lobby {
   // room.* handlers
   // ---------------------------------------------------------------------------------------------------
 
-  create(session, { mode, difficulty: asked, test, version: askedVersion, soloUnlimited } = {}) {
+  /**
+   * The version an extension PLAY SET room is pinned to, else null. 业主 2026-10-28: 「拓展模式开启房间后不应该进行大厅版本
+   * 检测，即使大厅版本改变，对应模式的版本应该锁死且被房间使用」. A play set ships with the base data set (its chess / bonds /
+   * 惊变 records live in `data/`), so its rooms always play `DEFAULT_VERSION`; `defaultVersion()` (the lobby's own default,
+   * which the server owner can move in the welcome frame) never reaches them. `null` = an ordinary room, untouched.
+   * @param {string} difficulty
+   * @returns {string|null}
+   */
+  playSetVersion(difficulty) {
+    return difficulty === ZHAJING_DIFFICULTY || difficulty === ANNIHILATION_DIFFICULTY ? DEFAULT_VERSION : null;
+  }
+
+  create(session, { mode, difficulty: asked, test, version: askedVersion, soloUnlimited, erosion: askedErosion, annMods } = {}) {
     // A test room exists only when the process switch allowed it. The check runs before the room is built.
     if (test === true && this.testEnabled !== true) return fail(ERR.TEST_DISABLED);
-    // the official version (header "Official versions"): left out, the server's default
-    const version = askedVersion ?? this.defaultVersion();
+    // the official version (header "Official versions"): left out, the server's default. A play set pins it BEFORE that
+    // lookup, so neither the ask nor the lobby default can move it (playSetVersion above).
+    const askedDiff = DIFFICULTIES.includes(asked) || asked === ANNIHILATION_DIFFICULTY || asked === ZHAJING_DIFFICULTY ? asked : DEFAULT_DIFFICULTY;
+    const version = this.playSetVersion(askedDiff) ?? askedVersion ?? this.defaultVersion();
     if (!this.versionEnabled(version)) return fail(ERR.VERSION_UNKNOWN);
     if (!this.offered(version, mode).length) return fail(ERR.VERSION_UNSUPPORTED, `${version} has no ${mode} rooms`);
     if (!this.versionAvailable(version)) return fail(ERR.VERSION_UNSUPPORTED, 'the data of this version is not available');
     // left out: the default (header); the protocol refuses any other value that is not a difficulty; one the version
     // lacks is lowered (终极 → 绝境)
-    const difficulty = this.fallbackDifficulty(version, mode, DIFFICULTIES.includes(asked) ? asked : DEFAULT_DIFFICULTY);
+    // 湮灭模拟 is a play set, not one of the official four (ANNIHILATION_DIFFICULTY): it is taken as asked, never lowered
+    // to an official tier. Any other value is a difficulty — the protocol refuses anything else — and one the version
+    // lacks is lowered (终极 → 绝境)
+    const difficulty = this.fallbackDifficulty(version, mode, DIFFICULTIES.includes(asked) || asked === ANNIHILATION_DIFFICULTY || asked === ZHAJING_DIFFICULTY ? asked : DEFAULT_DIFFICULTY);
     const cur = this.roomOf(session);
     if (cur && cur.match) return fail(ERR.ROOM_STARTED, 'leave your running match first');
     if (this.rooms.size >= this.opts.maxRooms) return fail(ERR.INTERNAL, 'too many rooms');
@@ -967,7 +1116,16 @@ export class Lobby {
       } else initial = r.content;
     }
     if (cur) this.removeMember(cur, session.playerId);
-    const room = new Room(code, mode, difficulty, this.now(), version);
+    // 蚀流 (the 湮灭模拟 play set, header "蚀流"): the tier this create asked for, defaulting to 1 — never refused for
+    // being absent. The Room drops a value outside 1..EROSION_MAX to 1, and a create of another difficulty passes 1, so a
+    // stray erosion cannot change a normal room.
+    const room = new Room(code, mode, difficulty, this.now(), version, difficulty === ANNIHILATION_DIFFICULTY ? askedErosion : 1);
+    // 湮灭专属 mod 的房间级开关 (docs/ANNIHILATION-MODS.md §2.3.3): only an ANNIHILATION create reads the key — like `erosion`
+    // above, any other difficulty IGNORES it (a normal create stays the message it was, and its room.state grows no key).
+    if (difficulty === ANNIHILATION_DIFFICULTY && annMods !== undefined) {
+      const normalized = normalizeAnnMods(annMods);
+      if (normalized) room.annMods = normalized;
+    }
     room.test = test === true;
     // 「不限时」 only on a solo room of a version whose solo is timed (header). Anywhere else the key is ignored, so a
     // stray true cannot change a default or co-op create.
@@ -1081,21 +1239,146 @@ export class Lobby {
     return OK;
   }
 
+  /**
+   * 炸惊模拟 · 卡池预选 (`room.bans`, the reference build's banPicker): EVERY human seat sets THEIR OWN bans — the bonds this
+   * player's own shop pool must not offer — so unlike `setAnnMods` this is not a host right. Stored per seat (and on the
+   * session), read back as `room.state.seats[].bans` and, in the match, as `m.private.bans`; it takes effect from the NEXT
+   * match (the match snapshots the seat's list at construction, exactly like the loadout and the room's annMods).
+   * Accepted only in a ZHAJING room before the match — the quotas come from `config.bans[difficulty]` (炸惊 3 core / 4 addon),
+   * a bond must exist and sit in the right column, and the server normalises duplicates + order.
+   * @param {import('./net.js').Session} session
+   * @param {{ mode?: string, core?: string[], addon?: string[] }} msg
+   */
+  setBans(session, { mode, core, addon } = {}) {
+    const room = this.roomOf(session);
+    if (!room) return fail(ERR.NOT_IN_ROOM);
+    if (room.spectatorOf(session.playerId)) return fail(ERR.SPECTATOR);
+    if (room.match) return fail(ERR.ROOM_STARTED);
+    if (mode !== 'zhajing' || room.difficulty !== ZHAJING_DIFFICULTY) return fail(ERR.BAD_TARGET, 'bans are a ZHAJING option');
+    const data = this.dataFor(room);
+    const bonds = data.bonds && typeof data.bonds === 'object' ? data.bonds : {};
+    const cfg = (data.config && data.config.bans && data.config.bans[ZHAJING_DIFFICULTY]) || {};
+    const cap = { core: Number.isInteger(cfg.core) ? cfg.core : 3, addon: Number.isInteger(cfg.addon) ? cfg.addon : 4 };
+    const pick = (list, wantCore, limit, name) => {
+      const out = new Set();
+      for (const id of Array.isArray(list) ? list : []) {
+        const rec = bonds[id];
+        if (!rec) return { error: fail(ERR.BAD_MSG, `unknown bond in ${name}`) };
+        if ((rec.isCore === true) !== wantCore) return { error: fail(ERR.BAD_MSG, `bond ${id} is in the wrong column`) };
+        out.add(id);
+      }
+      if (out.size > limit) return { error: fail(ERR.BAD_MSG, `at most ${limit} bonds in ${name}`) };
+      // the canonical order: data order (identifier, then id) — the same one gd.bondIds uses
+      return { ids: [...out].sort((a, b) => ((Number(bonds[a].identifier) || 99) - (Number(bonds[b].identifier) || 99)) || (a < b ? -1 : 1)) };
+    };
+    const c = pick(core, true, cap.core, 'core');
+    if (c.error) return c.error;
+    const a = pick(addon, false, cap.addon, 'addon');
+    if (a.error) return a.error;
+    const bans = Object.freeze({ zhajing: Object.freeze({ core: Object.freeze(c.ids), addon: Object.freeze(a.ids) }) });
+    session.bans = bans;
+    const seat = room.seatOf(session.playerId);
+    if (seat) seat.bans = bans;
+    this.broadcastState(room);
+    return OK;
+  }
+
   setDifficulty(session, { difficulty }) {
     const room = this.roomOf(session);
     if (!room) return fail(ERR.NOT_IN_ROOM);
     if (room.hostId !== session.playerId) return fail(ERR.NOT_HOST);
     if (room.match) return fail(ERR.ROOM_STARTED);
+    // 炸惊模拟 (play set, shared/zhajing-constants.js): the difficulty is fixed at room.create — its card pool, 惊变 roster
+    // and bond overrides all key off it, so it can never be flipped to an official difficulty (and back) inside the room.
+    // Owner 2026-10-28: 「难度也锁定，因为卡池做了改动」. ANNIHILATION keeps its own rules untouched.
+    if (room.difficulty === ZHAJING_DIFFICULTY) return fail(ERR.BAD_TARGET, 'the difficulty of a play-set room is locked');
     // the room's version offers it (header "Official versions": 第二期上半 / 第一期 have no 终极)
     if (!this.offered(room.version, room.mode).includes(difficulty)) return fail(ERR.BAD_TARGET, 'not a mode of this version');
     this.dropReplay(room, session.playerId);
     // a plugin mode chosen (header "Gameplay plugins") carries its own difficulty: picking one leaves it
     if (room.difficulty !== difficulty || room.content?.modeId) {
       room.difficulty = difficulty;
+      // 业主 2026-10-28: the version is pinned by the PLAY SET, not by the lobby default. Entering / leaving one re-pins it
+      // (an annihilation room always plays the play set's own version), so the pair (difficulty, version) can never drift.
+      const pin = this.playSetVersion(difficulty);
+      if (pin || room.versionLocked !== (pin !== null)) {
+        room.versionLocked = pin !== null;
+        if (pin) room.version = pin;
+      }
       if (room.content?.modeId) { const rest = { ...room.content }; delete rest.modeId; room.content = Object.freeze(rest); }
       for (const s of room.seats) if (s && !s.isBot && s.playerId !== room.hostId) s.ready = false;
       this.broadcastState(room);
     }
+    return OK;
+  }
+
+  /**
+   * 超限模拟 as a room setting (room.setInfinite; the owner's decision of 2026-10-28): the host turns the room's party
+   * kind into its infinite mode, or back, from the room's own 选择模拟协议 dialog. Host-only, before the match. A room
+   * MODE and never a difficulty: `room.difficulty` is untouched (an infinite room runs its party's 终极 mode — modeIdFor
+   * keys off the party through baseRoomMode), and the version keeps offering what it offered (server/versions.js
+   * baseRoomMode maps `*_infinite` back to its party). Like a difficulty change it un-readies the other humans.
+   * @param {import('./net.js').Session} session @param {{ on: boolean }} msg
+   */
+  setInfinite(session, { on }) {
+    const room = this.roomOf(session);
+    if (!room) return fail(ERR.NOT_IN_ROOM);
+    if (room.hostId !== session.playerId) return fail(ERR.NOT_HOST);
+    if (room.match) return fail(ERR.ROOM_STARTED);
+    if (room.versionVote) return fail(ERR.VERSION_VOTE);
+    // a gameplay-plugin room carries its own modes: 超限 is a room mode of the official set, so it stays out of one
+    if (room.content?.modeId) return fail(ERR.BAD_TARGET, 'the room plays a plugin mode');
+    const solo = isSoloRoomMode(room.mode);
+    const next = on ? (solo ? SOLO_INFINITE : COOP_INFINITE) : (solo ? 'solo' : 'coop');
+    if (room.mode === next) return OK;
+    // 超限 rooms keep every seat a normal room of their party has (a solo stays 1; a co-op keeps its AI teammates)
+    this.dropReplay(room, session.playerId);
+    room.mode = next;
+    for (const s of room.seats) if (s && !s.isBot && s.playerId !== room.hostId) s.ready = false;
+    this.broadcastState(room);
+    return OK;
+  }
+
+  /**
+   * 房间人数 (room.setSeats; the owner's decision 2026-10-31): the host changes the room's seat capacity before the match.
+   * Only 4 / 8 / 12 (the protocol refuses anything else; this re-checks). While the room holds nobody but the host any
+   * value is taken (a lone host may go back down); as soon as another doctor is seated only a raise is accepted, and
+   * never below the seats already taken — a doctor or an AI teammate would otherwise lose its seat.
+   *
+   * The new capacity resizes `room.seats` (keeping every seat index) and is published as `room.state.maxSeats` only
+   * above MAX_SEATS. A default 4-seat room never takes this branch's state key, so its room.state is untouched.
+   *
+   * Errors: NOT_IN_ROOM, SPECTATOR (a spectator holds no seat and the host check would answer NOT_HOST anyway — kept
+   * explicit), NOT_HOST, ROOM_STARTED (a started room refuses it), BAD_TARGET (a value outside 4/8/12, a lower capacity
+   * while others are seated, or a target smaller than the seats already taken).
+   * @param {import('./net.js').Session} session @param {{ maxSeats: 4|8|12 }} msg
+   */
+  setSeats(session, { maxSeats }) {
+    const room = this.roomOf(session);
+    if (!room) return fail(ERR.NOT_IN_ROOM);
+    if (room.spectatorOf(session.playerId)) return fail(ERR.SPECTATOR);
+    if (room.hostId !== session.playerId) return fail(ERR.NOT_HOST);
+    if (room.match) return fail(ERR.ROOM_STARTED);
+    // 房间人数 is a co-op room's setting; a solo room shows its single seat and never reaches this message
+    if (isSoloRoomMode(room.mode)) return fail(ERR.BAD_TARGET, 'a solo room has one seat');
+    if (!ROOM_SEAT_CAPS.includes(maxSeats)) return fail(ERR.BAD_TARGET, 'the capacity must be 4, 8 or 12');
+    if (maxSeats === room.maxSeats) return OK;
+    const occupied = room.seats.filter(Boolean);
+    // 只有自己一人时允许任意改（升档、降档、跳档）；房里还有别的博士时只允许升档
+    const alone = room.activeHumans().length <= 1;
+    if (maxSeats < room.maxSeats && !alone) return fail(ERR.BAD_TARGET, 'lowering the capacity needs the other doctors to leave');
+    // 当前人数 ≤ 目标，且每个已占座位都还在新容量里（AI 队友也算人数）
+    if (occupied.length > maxSeats) return fail(ERR.BAD_TARGET, 'more doctors are seated than the target capacity');
+    if (occupied.some((s) => s.seat >= maxSeats)) return fail(ERR.BAD_TARGET, 'a doctor sits above the target capacity');
+    this.dropReplay(room, session.playerId);
+    const next = room.seats.slice(0, maxSeats);
+    while (next.length < maxSeats) next.push(null);
+    room.seats = next;
+    room.maxSeats = /** @type {4|8|12} */ (maxSeats);
+    // like a difficulty change: the other doctors are no longer ready
+    for (const s of room.seats) if (s && !s.isBot && s.playerId !== room.hostId) s.ready = false;
+    this.broadcastState(room);
+    this.log.info(`[lobby] ${room.code} room capacity → ${maxSeats}`);
     return OK;
   }
 
@@ -1153,6 +1436,60 @@ export class Lobby {
   }
 
   /**
+   * 蚀流 (erosion, the 湮灭模拟 play set; header "蚀流"): host-only, before the match, like room.setDifficulty. The level is
+   * a tier 1..EROSION_MAX the match reads as its difficulty's erosion (Match opts.erosion → GameData). A room whose
+   * difficulty is not `ANNIHILATION` refuses it — the tier means nothing there and a room state must not grow a key its
+   * mode ignores. Like a difficulty change it un-readies the other humans and drops the host's result replay.
+   */
+  setErosion(session, { level }) {
+    const room = this.roomOf(session);
+    if (!room) return fail(ERR.NOT_IN_ROOM);
+    if (room.spectatorOf(session.playerId)) return fail(ERR.SPECTATOR);
+    if (room.hostId !== session.playerId) return fail(ERR.NOT_HOST);
+    if (room.match) return fail(ERR.ROOM_STARTED);
+    if (room.difficulty !== ANNIHILATION_DIFFICULTY) return fail(ERR.BAD_MSG, 'erosion is an annihilation option');
+    this.dropReplay(room, session.playerId);
+    if (room.erosion !== level) {
+      room.erosion = level;
+      for (const s of room.seats) if (s && !s.isBot && s.playerId !== room.hostId) s.ready = false;
+      this.broadcastState(room);
+    }
+    return OK;
+  }
+
+  /**
+   * 湮灭专属 mod 的房间级开关 (docs/ANNIHILATION-MODS.md §2.3.3): host-only, before the match, the in-room twin of
+   * `room.create.annMods` — same rights and shape as room.setErosion just above.
+   * The payload is the room's WHOLE selection (`{ shopBias?: boolean, …, kazdelShip?: boolean }`); the room keeps the
+   * booleans it was sent (显式 `false` 就是「关掉一条缺省开的 mod」，见 `ANN_MOD_DEFAULT_ON`），`room.state.annMods` 回显的
+   * 是其中 `true` 的那些键。`{}` = 房间没动过设置（于是 rhodesShip / kazdelShip 按缺省开）。`comms` is normalised to
+   * `commsPriority`. A room whose difficulty is not `ANNIHILATION` refuses it with BAD_TARGET — the switches mean nothing
+   * there, and its room.state must not grow a key its mode ignores (the same reason setErosion uses BAD_MSG for a
+   * non-annihilation room: an unknown/ meaningless option).
+   * Like a difficulty change it un-readies the other humans and drops the host's result replay, and it takes effect from the
+   * NEXT match (the match snapshots `annMods` at construction).
+   * @param {import('./net.js').Session} session
+   * @param {{ annMods?: Record<string, boolean> }} msg
+   */
+  setAnnMods(session, { annMods } = {}) {
+    const room = this.roomOf(session);
+    if (!room) return fail(ERR.NOT_IN_ROOM);
+    if (room.spectatorOf(session.playerId)) return fail(ERR.SPECTATOR);
+    if (room.hostId !== session.playerId) return fail(ERR.NOT_HOST);
+    if (room.match) return fail(ERR.ROOM_STARTED);
+    if (room.difficulty !== ANNIHILATION_DIFFICULTY) return fail(ERR.BAD_TARGET, 'annMods are an annihilation option');
+    const next = normalizeAnnMods(annMods);
+    if (!next) return fail(ERR.BAD_MSG, 'bad annMods');
+    this.dropReplay(room, session.playerId);
+    if (JSON.stringify(room.annMods || {}) !== JSON.stringify(next)) {
+      room.annMods = next;
+      for (const s of room.seats) if (s && !s.isBot && s.playerId !== room.hostId) s.ready = false;
+      this.broadcastState(room);
+    }
+    return OK;
+  }
+
+  /**
    * room.setPlugins (header "The room's plugins", "Gameplay plugins"): host-only, before the match; the set of the plugins
    * asked for becomes the room's content and the other humans are un-readied — nothing changes (and nobody is un-readied)
    * when it is the set the room already has. The host's result replay (a settlement screen still open) is dropped only
@@ -1164,6 +1501,9 @@ export class Lobby {
     if (room.hostId !== session.playerId) return fail(ERR.NOT_HOST);
     if (room.match) return fail(ERR.ROOM_STARTED);
     if (room.versionVote) return fail(ERR.VERSION_VOTE);
+    // 炸惊模拟: the play set's content set is its own (card pool + 惊变 + bonds), so plugins are locked in this room
+    // (owner 2026-10-28: 「卡池与内容集锁定」).
+    if (room.difficulty === ZHAJING_DIFFICULTY) return fail(ERR.BAD_TARGET, 'the play set locks the room content');
     const ids = [...new Set(plugins.map((p) => p.id))];
     /** @type {Record<string, Record<string, unknown>>} */
     const settings = {};
@@ -1268,6 +1608,9 @@ export class Lobby {
     if (room.hostId !== session.playerId) return fail(ERR.NOT_HOST);
     if (room.match) return fail(ERR.ROOM_STARTED);
     if (room.versionVote) return fail(ERR.VERSION_VOTE);
+    // 炸惊模拟: room.setMode is already refused for a play set (its modeId is not an official mode of the room); the
+    // explicit branch keeps the REASON (and the code the client shows) stable if the official path ever learns it.
+    if (room.difficulty === ZHAJING_DIFFICULTY) return fail(ERR.BAD_TARGET, 'the play set locks the room mode');
     const official = DIFFICULTIES.find((d) => modeIdFor(room.mode, d) === modeId);
     let difficulty = room.difficulty;
     let content = room.content;
@@ -1372,11 +1715,11 @@ export class Lobby {
    * @param {string} v @param {string} mode @returns {readonly string[]}
    */
   offered(v, mode) {
-    // 超限模拟（solo_infinite）在版本数据里没有独立条目：它和普通单人用同一套难度表
-    // (the infinite overlay reuses the solo offers; only the room's mode differs)
-    const m = isSoloRoomMode(mode) ? 'solo' : mode;
+    // 超限模拟在版本数据里没有独立条目：单人（solo_infinite）沿用单人的难度表，
+    // 同盟（coop_infinite）沿用同盟的难度表。映射只在 shared/versions.js baseRoomMode 一处，
+    // 否则房间版本投票/结算会判 VERSION_UNSUPPORTED，而 match 层四版本 × 超限是能跑的。
     if (!this.versions || v === DEFAULT_VERSION) return DIFFICULTIES;
-    return this.versions.offered(v, /** @type {'solo' | 'coop'} */ (m));
+    return this.versions.offered(v, /** @type {'solo' | 'coop'} */ (baseRoomMode(mode)));
   }
 
   /**
@@ -1397,9 +1740,14 @@ export class Lobby {
 
   /**
    * `d`, or the difficulty the version offers instead: the highest below it, else its lowest (终极 → 绝境).
+   * The 湮灭模拟 play set's own difficulty is kept as it is (no version lists it; see below).
    * @param {string} v @param {string} mode @param {string} d
    */
   fallbackDifficulty(v, mode, d) {
+    // ANNIHILATION / ZHAJING are no DIFFICULTIES members and no version's official mode list names them (both are play
+    // sets of the default content, header "蚀流" / handoff/ZHAJING-SPLIT-PLAN): kept as asked — the lookup below would
+    // otherwise lower them to 标准模拟, silently dropping the room out of the play set while its other options stayed set.
+    if (d === ANNIHILATION_DIFFICULTY || d === ZHAJING_DIFFICULTY) return d;
     const offered = this.offered(v, mode);
     if (!offered.length || offered.includes(d)) return d;
     const below = DIFFICULTIES.slice(0, Math.max(0, DIFFICULTIES.indexOf(d))).reverse().find((x) => offered.includes(x));
@@ -1416,6 +1764,11 @@ export class Lobby {
     if (room.spectatorOf(session.playerId)) return fail(ERR.SPECTATOR);
     if (room.hostId !== session.playerId) return fail(ERR.NOT_HOST);
     if (room.match) return fail(ERR.ROOM_STARTED);
+    // 炸惊模拟: the play set is bound to the default content (its roster / 惊变 / bond overrides live there), so the room
+    // version is locked — no version vote can be proposed. VERSION_UNSUPPORTED rather than BAD_TARGET: it is the code this
+    // feature already returns for "this room cannot take that version" (see the two lines below), and the client's
+    // ERR_TEXT covers it without a new string.
+    if (room.versionLocked) return fail(ERR.VERSION_UNSUPPORTED, 'the play set locks the room version');
     if (!this.versionEnabled(version)) return fail(ERR.VERSION_UNKNOWN);
     if (!this.offered(version, room.mode).length) return fail(ERR.VERSION_UNSUPPORTED, `${version} has no ${room.mode} rooms`);
     if (room.modded && version !== DEFAULT_VERSION) return fail(ERR.VERSION_UNSUPPORTED, 'gameplay plugins play the default version (act2autochess) only');
@@ -1625,6 +1978,9 @@ export class Lobby {
     if (room.hostId !== session.playerId) return fail(ERR.NOT_HOST);
     if (room.match) return fail(ERR.ROOM_STARTED);
     if (room.versionVote) return fail(ERR.VERSION_VOTE);
+    // 房间人数 (room.setSeats): a room above MAX_SEATS now starts an 8 / 12-doctor match — the match layer takes the
+    // capacity down as `opts.maxSeats` (startMatch) and fields one team per 4 seats (server/match/teams.js). The temporary
+    // first-layer gate that refused this is gone.
     const humans = room.activeHumans();
     if (room.content?.trusted && humans.some(s => s.consentCs !== room.content.cs)) return fail(ERR.PLUGIN_CONSENT);
     for (const s of humans) {
@@ -1663,10 +2019,66 @@ export class Lobby {
    * game data, store both on the session and the seat, and — while a match runs — hand them to the match (accepted only
    * during INFO_CHECK, see the header). Either part refused: nothing is stored.
    */
-  loadout(session, { entries, ops }) {
+  loadout(session, { entries, ops, mode }) {
     const room = this.roomOf(session);
     // checked against the room's own data: a room with gameplay plugins knows its plugins' operators (header "Gameplay plugins")
     const data = this.dataFor(room);
+    // 炸惊模拟 · 卡池调整: `mode: 'zhajing'` writes the play set's OWN loadout profile (its roster records are
+    // `visible:false`, so it is checked against shared/zhajingBase.js zjRosterIds instead of the official visible list).
+    // The two profiles are stored side by side (session/seat `.zjLoadout` vs `.loadout`) and never overwrite each other;
+    // a 'zhajing' write to any other room is refused, so an official or 湮灭 match can never pick it up. `ops`
+    // (潜能/练度) is an official-ownership setting and does not apply to the play set's roster — it is ignored here.
+    const zj = mode === 'zhajing';
+    // 湮灭模拟 · 卡池调整: `mode: 'annihilation'` writes the THIRD profile (`.annLoadout`), the twin of the 炸惊 branch
+    // below. Annihilation plays the OFFICIAL roster (its ids are the visible ones), so the check runs against that roster
+    // rather than the 炸惊 one; a write to any other room is refused, so an official or 炸惊 match never carries it.
+    // 这个名册与 `GameData.visibleChess` 是**同一份口径**（`annihilationRoster`）：房间关掉一条内容 mod，它带进来的干员
+    // 立刻不在名册里，写入的调配也就被拒 —— 房间改开关 → 重广播 room.state → 客户端重算，这条链就通了。
+    if (mode === 'annihilation') {
+      if (!room || room.difficulty !== ANNIHILATION_DIFFICULTY) return fail(ERR.BAD_TARGET, 'not an ANNIHILATION room');
+      const annRoster = new Set(annihilationRoster(data.chess || {}, data.bonds || {}, room.annMods));
+      const resAnn = checkLoadout(entries, (id) => lookup('chess', id, data), { roster: annRoster });
+      if (!resAnn || resAnn.error) return fail(resAnn && isErrCode(resAnn.error) ? resAnn.error : ERR.BAD_MSG, resAnn && resAnn.detail);
+      const annLoadout = freezeLoadout(resAnn.loadout);
+      const annCs = this.settingsCs(room, session.playerId);
+      session.annLoadout = annLoadout;
+      session.annLoadoutCs = annCs;
+      const annSeat = room.seatOf(session.playerId);
+      if (annSeat) { annSeat.annLoadout = annLoadout; annSeat.annLoadoutCs = annCs; }
+      this.broadcastState(room);
+      if (!room.match || !annSeat || typeof room.match.setLoadout !== 'function') return OK; // stored for the next match
+      let ra;
+      try { ra = room.match.setLoadout(session.playerId, annLoadout, null, 'annihilation'); } catch (e) {
+        this.log.error(`[lobby] ${room.code} match.setLoadout(annihilation) threw`, e);
+        return fail(ERR.INTERNAL);
+      }
+      if (ra && typeof ra.then === 'function') return Promise.resolve(ra).then(matchAnswer, () => fail(ERR.INTERNAL));
+      const ansA = matchAnswer(ra);
+      // a match past INFO_CHECK refuses (its loadout is locked) — the profile is still stored for the next one
+      return ansA && ansA.error === ERR.WRONG_PHASE ? OK : ansA;
+    }
+    if (zj) {
+      if (!room || room.difficulty !== ZHAJING_DIFFICULTY) return fail(ERR.BAD_TARGET, 'not a ZHAJING room');
+      const resZj = checkLoadout(entries, (id) => lookup('chess', id, data), { roster: zjRosterIds(data.chess) });
+      if (!resZj || resZj.error) return fail(resZj && isErrCode(resZj.error) ? resZj.error : ERR.BAD_MSG, resZj && resZj.detail);
+      const zjLoadout = freezeLoadout(resZj.loadout);
+      const zjCs = this.settingsCs(room, session.playerId);
+      session.zjLoadout = zjLoadout;
+      session.zjLoadoutCs = zjCs;
+      const zjSeat = room.seatOf(session.playerId);
+      if (zjSeat) { zjSeat.zjLoadout = zjLoadout; zjSeat.zjLoadoutCs = zjCs; }
+      this.broadcastState(room);
+      if (!room.match || !zjSeat || typeof room.match.setLoadout !== 'function') return OK; // stored for the next match
+      let rz;
+      try { rz = room.match.setLoadout(session.playerId, zjLoadout, null, 'zhajing'); } catch (e) {
+        this.log.error(`[lobby] ${room.code} match.setLoadout(zhajing) threw`, e);
+        return fail(ERR.INTERNAL);
+      }
+      if (rz && typeof rz.then === 'function') return Promise.resolve(rz).then(matchAnswer, () => fail(ERR.INTERNAL));
+      const ans = matchAnswer(rz);
+      // a match past INFO_CHECK refuses (its loadout is locked) — the profile is still stored for the next one
+      return ans && ans.error === ERR.WRONG_PHASE ? OK : ans;
+    }
     const res = checkLoadout(entries, (id) => lookup('chess', id, data));
     if (!res || res.error) return fail(res && isErrCode(res.error) ? res.error : ERR.BAD_MSG, res && res.detail);
     const ids = opsCharIds(data);
@@ -1735,6 +2147,50 @@ export class Lobby {
     const seat = room.seatOf(session.playerId);
     if (seat) { seat.diy = kept; seat.diyCs = cs; }
     if (room.match && seat) return fail(ERR.ROOM_STARTED, 'stored for the next match');
+    return OK;
+  }
+
+  /**
+   * room.chat (房间与局内文字聊天): one line to the whole room — players and spectators, the sender included. The line
+   * loses control characters, is trimmed, clipped to CHAT_MAX and refused when nothing is left; a session may speak at
+   * most once per CHAT_CD_MS. The room keeps its tail in memory (CHAT_KEEP) for `room.chat.history`.
+   */
+  chat(session, msg) {
+    const room = this.roomOf(session);
+    if (!room) return fail(ERR.NOT_IN_ROOM);
+    const now = this.now();
+    if (Number.isFinite(session.lastChatAt) && now - session.lastChatAt < CHAT_CD_MS) return fail(ERR.RATE);
+    const text = String(msg.text || '').replace(/[\u0000-\u001F\u007F]/g, '').trim().slice(0, CHAT_MAX);
+    if (!text) return fail(ERR.BAD_MSG, 'empty after stripping');
+    session.lastChatAt = now;
+    const seat = room.seatOf(session.playerId);
+    const isSpectator = !seat && !!room.spectatorOf(session.playerId);
+    const payload = {
+      id: ++room.chatSeq,
+      code: room.code,
+      playerId: session.playerId,
+      name: session.name,
+      seat: seat ? seat.seat : -1,
+      isSpectator,
+      text,
+      at: now,
+      // `time` is the field the draggable room chat reads (ui/roomChat.js `receive`); both are the same clock reading
+      time: now,
+    };
+    room.chatLog.push(payload);
+    if (room.chatLog.length > CHAT_KEEP) room.chatLog.splice(0, room.chatLog.length - CHAT_KEEP);
+    this.broadcastRoom(room, { t: 'room.chat', ...payload });
+    return OK;
+  }
+
+  /**
+   * room.chat.history: the room's last lines, pushed to the requester only (a page that just entered the room). The
+   * request itself is answered with { ok } by the caller; `code` must be the room the session is in.
+   */
+  chatHistory(session, msg) {
+    const room = this.roomOf(session);
+    if (!room || (msg.code && msg.code !== room.code)) return fail(ERR.NOT_IN_ROOM);
+    sendSession(session, { t: 'room.chat.history', code: room.code, messages: room.chatLog.slice(-CHAT_KEEP) });
     return OK;
   }
 
@@ -1871,6 +2327,35 @@ export class Lobby {
     let ops = s.ops || null;
     let notOwned = s.notOwned || null;
     let diy = s.diy || null;
+    // 炸惊模拟 · 卡池调整: the play set's OWN loadout profile, filtered against its roster (zjRosterIds — those records are
+    // `visible:false`, so the official check would drop every entry). A profile stored while the room was something else,
+    // or a room that is not ZHAJING at all, leaves it OFF the seat entirely: it can never reach an official match.
+    let zjLoadout = null;
+    if (room.difficulty === ZHAJING_DIFFICULTY && s.zjLoadout) {
+      const chessRec = (id) => lookup('chess', id, data);
+      const roster = zjRosterIds(data.chess);
+      const keep = {};
+      for (const [id, e] of Object.entries(s.zjLoadout)) {
+        const r = checkLoadout({ [id]: { skill: e.skill, ...(e.module != null ? { module: e.module } : {}) } }, chessRec, { roster });
+        if (r && !r.error && r.loadout[id]) keep[id] = r.loadout[id];
+      }
+      zjLoadout = freezeLoadout(keep);
+    }
+    // 湮灭模拟 · 卡池调整: the seat's annihilation profile, filtered against the room's own OFFICIAL roster (annihilation
+    // plays the visible operators). A profile stored while the room was something else, or a room that is not
+    // ANNIHILATION at all, leaves it OFF the seat entirely: it can never reach an official or 炸惊 match.
+    let annLoadout = null;
+    if (room.difficulty === ANNIHILATION_DIFFICULTY && s.annLoadout) {
+      const chessRec = (id) => lookup('chess', id, data);
+      const roster = new Set(Object.entries(data.chess || {}).filter(([, c]) => c && !c.isGolden && !c.isDiy && !c.isHidden
+        && c.grantOnly !== true && Number.isInteger(c.tier) && c.visible === true && c.zhajing !== true).map(([id]) => id));
+      const keep = {};
+      for (const [id, e] of Object.entries(s.annLoadout)) {
+        const r = checkLoadout({ [id]: { skill: e.skill, ...(e.module != null ? { module: e.module } : {}) } }, chessRec, { roster });
+        if (r && !r.error && r.loadout[id]) keep[id] = r.loadout[id];
+      }
+      annLoadout = freezeLoadout(keep);
+    }
     const chess = (id) => lookup('chess', id, data);
     /** the chess ids of `from` whose operator is the room data's too (null `from`: every id) */
     const sameOperator = (from, id) => !from || (lookup('chess', id, from)?.charId ?? null) === (chess(id)?.charId ?? undefined);
@@ -1915,7 +2400,7 @@ export class Lobby {
       const res = checkSkinSelection(s.skins, (id) => ids.has(id));
       if (res.ok) skins = Object.freeze({ ...res.skins });
     }
-    return { loadout, ops, notOwned, diy, skins };
+    return { loadout, ops, notOwned, diy, skins, zjLoadout, annLoadout, bans: room.difficulty === ZHAJING_DIFFICULTY ? (s.bans || null) : null };
   }
 
   /**
@@ -1969,6 +2454,13 @@ export class Lobby {
         seat: s.seat, playerId: s.playerId, name: s.name, isBot: s.isBot, connected: s.connected,
         // DESIGN §16: the human's checked operator loadout and (0.2.2) per-operator 潜能 / 练度 (bots fight with the defaults)
         loadout: own ? own.loadout : null,
+        // 炸惊模拟 · 卡池调整: the play set's own skill / module profile (null in every other room, bots included)
+        zjLoadout: own ? own.zjLoadout : null,
+        // 湮灭模拟 · 卡池调整: the annihilation profile (null in every other room, bots included)
+        annLoadout: own ? own.annLoadout : null,
+        // 炸惊模拟 · 卡池预选: the seat's own bans (null in every other room, bots included) — PlayerState reads it once at
+        // construction, so a change made mid-match only takes effect from the NEXT match
+        bans: own ? own.bans : null,
         ops: own ? own.ops : null,
         // 0.2.0 补位: the chess the human marked as not owned (bots own every operator)
         notOwned: own ? own.notOwned : null,
@@ -1993,6 +2485,10 @@ export class Lobby {
         // 「AI 队友最后选择」 (GitHub #338): fixed for the match
         aiPicksLast: !isSoloRoomMode(room.mode) && room.aiPicksLast === true,
         seats,
+        // 房间人数 (room.setSeats, TWELVE_PLAYER_MODE §1): a room the host raised above MAX_SEATS hands the capacity to the
+        // match, which then fields one team per 4 seats (server/match/teams.js). A default 4-seat room's opts keep exactly
+        // the keys they had, so its match is the byte-identical four-doctor one.
+        ...(room.maxSeats > MAX_SEATS ? { maxSeats: room.maxSeats } : {}),
         // the spectator seats (header): watched like eliminated players, never players
         spectators: room.spectators.map((s) => s.playerId),
         // the room's host: the current executor of a delegated bot layout rehearsal (DESIGN §14; setHost follows a
@@ -2012,6 +2508,10 @@ export class Lobby {
         ...(versioned ? { version: room.version } : {}),
         // 「不限时」 (header): only while the room's flag is on, so a default match's opts keep their keys
         ...(isSoloRoomMode(room.mode) && room.soloUnlimited === true ? { soloUnlimited: true } : {}),
+        // 蚀流 (the 湮灭模拟 play set, header "蚀流"): the room's tier — only an ANNIHILATION room carries the key, so a
+        // default match's opts keep their keys (Match then defaults it to 1). annMods 传**存的整张表**（含显式 false）：
+        // 一局比赛要按它决定名册 / 装备池里有什么，回显用的 annModsEcho 只给客户端看。
+        ...(room.difficulty === ANNIHILATION_DIFFICULTY ? { erosion: room.erosion, annMods: room.annMods } : {}),
         // The list the lobby just checked the picks with (kittedFor). Vanilla rooms omit it: setDiy stays on
         // KITTED_CHARS, and the worker payload / test journal of a normal match do not grow a key.
         ...(modded ? { kitted: this.kittedFor(room) } : {}),

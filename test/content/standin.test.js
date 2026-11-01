@@ -22,14 +22,17 @@ import { statTalentMods } from '../../server/sim/content/generic.js';
 import { unitInfo } from '../../server/sim/snapshot.js';
 import { standInRecord, unitForm } from '../../shared/standIn.js';
 import { bodyInKeys } from '../../server/sim/body.js';
+import { isOfficialChess } from '../../shared/playSets.js';
 
 const load = (f) => JSON.parse(readFileSync(new URL(`../../data/${f}.json`, import.meta.url), 'utf8'));
 const CHESS = load('chess');
 const BACKUPS = load('backups');
 const ds = getDefaultSource();
 const RESERVES = ['char_600_cpione', 'char_601_cguard', 'char_602_cdfend', 'char_603_csnipe', 'char_604_ccast', 'char_605_cmedic', 'char_606_csuppo', 'char_607_cspec'];
-/** Every chess record (normal + elite) a 预备干员 stands in for. */
-const RESERVE_RECORDS = Object.values(CHESS).filter((c) => c.chessType === 'NORMAL' && RESERVES.includes(c.backup.charId))
+/** Every chess record (normal + elite) a 预备干员 stands in for — official records only: 炸惊模拟's imported copies share the
+ * same `charId`s (chess_zj_01 is char_603_csnipe …) but carry their own body and have no 补位 def, and 湮灭模拟's 26
+ * `annihilation: true` cards are 补位 stand-ins of the play set's own mods (shared/playSets.js isOfficialChess). */
+const RESERVE_RECORDS = Object.values(CHESS).filter((c) => isOfficialChess(c) && c.chessType === 'NORMAL' && RESERVES.includes(c.backup.charId))
   .sort((a, b) => a.chessId.localeCompare(b.chessId));
 const DUMMY = { enemy_dummy: enemyRec({ key: 'enemy_dummy', hp: 1e9, atk: 0, speed: 1 }) };
 const close = (a, b, msg) => assert.ok(Math.abs(a - b) < 1e-6, `${msg}: ${a} vs ${b}`);
@@ -40,6 +43,10 @@ const close = (a, b, msg) => assert.ok(Math.abs(a - b) < 1e-6, `${msg}: ${a} vs 
 test('data: every NORMAL chess record resolves to its stand-in def — the chess identity, the stand-in body and backup selection — cached and frozen; PRESET / DIY keep their own def', () => {
   let n = 0;
   for (const c of Object.values(CHESS)) {
+    // 炸惊模拟's imported records carry their own body and have no 补位 def (some are operators this version does not have at
+    // all — 颂乐人偶 five), so `standInRecord` is null for them by design; 湮灭模拟's 26 `annihilation: true` records are the
+    // play set's own cards, fielded with their own (modded) bodies. Official NORMAL records are what this checks.
+    if (!isOfficialChess(c)) continue;
     const d = ds.getChess(c.chessId, { standIn: true });
     if (c.chessType !== 'NORMAL') {
       assert.equal(d, ds.getChess(c.chessId), `${c.chessId}: a ${c.chessType} chess fights as itself`);

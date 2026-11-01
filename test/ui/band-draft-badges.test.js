@@ -23,8 +23,15 @@ function record(seed, { bandId = 'band_amiya', victory = true, difficulty = 'HAR
 
 test('every official strategy needs 3 clears for its badge (data/bands.json victorCount, from activity_table)', () => {
   const list = Object.values(BANDS);
-  assert.equal(list.length, 40);
-  assert.ok(list.every((b) => b.victorCount === 3), 'victorCount 3 for all 40');
+  // The official 40 are the activity_table rows; the 炸惊-only strategies (zjOnly, e.g. 山岸风花 / 祀) are appended to
+  // the same file and stay out of the official pool — officialBands() drops them outside a 炸惊 room (ui/zjView.js).
+  const official = list.filter((b) => b.zjOnly !== true);
+  const zjOnly = list.filter((b) => b.zjOnly === true);
+  assert.equal(official.length, 40, 'the official 40 strategies');
+  assert.equal(official.length + zjOnly.length, list.length, 'only zjOnly strategies may be added to the official 40');
+  assert.ok(official.every((b) => b.zjOnly === undefined), 'no official strategy is flagged zjOnly');
+  // The badge rule holds for every entry: the official 40 and the 炸惊 additions alike.
+  assert.ok(list.every((b) => b.victorCount === 3), `victorCount 3 for all ${list.length} entries`);
 });
 
 test('draftRecords: one win counts (已通过模拟 1 次) but gives no badge; the third clear does; training and quits never do', () => {

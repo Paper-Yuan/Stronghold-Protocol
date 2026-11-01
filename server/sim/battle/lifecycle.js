@@ -5,6 +5,7 @@
 
 import { FORCED_EXIT, MAX_BATTLE_TIME } from '../constants.js';
 import { noteAttackCommit, updateAlly, updateEnemy } from '../ai.js';
+import { withZjView } from '../content/support/index.js';
 
 export class BattleLifecycle {
   start() {
@@ -70,7 +71,17 @@ export class BattleLifecycle {
     }
   }
 
+  /**
+   * 炸惊模拟: one tick runs with the battle's own 盟约 / 装备视图 installed (Battle.zj; null for every other mode, and
+   * then `_stepBody` runs exactly as before — one branch, no behaviour change). The view is a process-wide swap guarded
+   * by withZjView, so a step never leaks it into another room's read.
+   */
   step() {
+    if (!this.zj) return this._stepBody();
+    return withZjView(this.zj, () => this._stepBody());
+  }
+
+  _stepBody() {
     if (this.finished || this._stepping) return; // re-entrant step() from a hook is a no-op
     // forceEnd() requested while stepping (content hook, repeated engine errors) is deferred to the end of the
     // current phase: the remaining phases are skipped and the result is built once, so nothing mutates it later.

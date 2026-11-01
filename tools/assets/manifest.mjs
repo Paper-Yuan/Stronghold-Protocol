@@ -19,6 +19,28 @@ import { assetUrl, githubSourceUrl, mirrorUrl } from './sources.mjs';
 /** Manifest schema version (bump on breaking shape changes). */
 export const MANIFEST_VERSION = 1;
 
+/**
+ * Art directories whose PNG files have been converted to WebP (handoff/asset-webp/BACKUP.md, and docs/ASSETS.md
+ * "WebP art"). `char/illust/` covers the skins under `char/illust/skin/`; `char/portrait/` does not cover
+ * `char/skin_portrait/`, which was not converted.
+ */
+export const WEBP_ART_DIRS = Object.freeze(['char/illust/', 'char/illustration/', 'char/portrait/']);
+
+/**
+ * The WebP twin of a PNG rel that is on disk, or null. These four directories serve WebP (≈1/5 the bytes, alpha
+ * bit-identical: handoff/asset-webp/MEASURE.md); the PNG stays the download identity because the upstreams serve PNG,
+ * and a leaf whose PNG is missing but whose WebP is on disk counts as present — a later run must not re-download it.
+ * @param {string} root public/assets
+ * @param {string} rel e.g. `char/portrait/char_002_amiya_1.png`
+ * @returns {string|null} e.g. `char/portrait/char_002_amiya_1.webp`
+ */
+export function webpVariant(root, rel) {
+  if (typeof rel !== 'string' || !rel.toLowerCase().endsWith('.png')) return null;
+  if (!WEBP_ART_DIRS.some((d) => rel.startsWith(d))) return null;
+  const webp = rel.replace(/\.png$/i, '.webp');
+  try { return statSync(join(root, webp)).size > 0 ? webp : null; } catch { return null; }
+}
+
 const isLeaf = (n) => !!n && typeof n === 'object' && Array.isArray(n.alts);
 const isModelRef = (n) => !!n && typeof n === 'object' && typeof n.model === 'string' && Object.keys(n).length === 1;
 const LITERAL = Symbol('literal');
@@ -59,9 +81,12 @@ export function collectLeaves(node, path = '', out = []) {
  */
 export async function downloadLeaves(leaves, dl, root, label = 'files') {
   const tried = new Map(leaves.map((l) => [l, 0]));
+  // A file already on disk counts as present whether it is the PNG or its WebP twin (webpVariant): the converted art
+  // directories serve WebP only, and re-downloading 1500 PNGs to replace them would undo the conversion.
+  const present = (rel) => existsSync(join(root, rel)) || !!webpVariant(root, rel);
   const blocked = new Set();
   const satisfied = (l) => l.leaf.alts.slice(0, tried.get(l)).some((a) =>
-    (!dl.verifier || dl.accepted.has(a.rel)) && existsSync(join(root, a.rel)));
+    (!dl.verifier || dl.accepted.has(a.rel)) && present(a.rel));
   let last = new Map();
   for (let round = 0; round < 8; round++) {
     const jobs = [];
@@ -75,6 +100,8 @@ export async function downloadLeaves(leaves, dl, root, label = 'files') {
         continue;
       }
       if (t > 0 && satisfied(l)) continue;
+      // Primary rel gone but its WebP twin on disk: nothing to download (resolveTemplate serves the WebP).
+      if (t === 0 && webpVariant(root, l.leaf.alts[0].rel)) { tried.set(l, 1); continue; }
       if (t >= l.leaf.alts.length) continue;
       jobs.push(l.leaf.alts[t]);
       tried.set(l, t + 1);
@@ -110,16 +137,19 @@ export function resolveTemplate(template, { root, spine, sourceOf = () => undefi
     if (isLeaf(node)) {
       for (let i = 0; i < node.alts.length; i++) {
         const a = node.alts[i];
-        if (available(a.rel) && existsSync(join(root, a.rel))) {
-          const src = sourceOf(a.rel);
-          // Provenance only: disabling/changing a proxy does not change the
-          // identity of a previously downloaded asset.
-          const primary = node.alts[0].urls.flatMap((u) => [u, mirrorUrl(u)]);
-          if (i > 0) fallbacks.push(`${path} ← ${src || a.urls[0]}`);
-          else if (src && !primary.includes(githubSourceUrl(src))) fallbacks.push(`${path} ← ${src}`);
-          files.add(a.rel);
-          return assetUrl(a.rel);
-        }
+        if (!available(a.rel)) continue;
+        // The PNG is the download identity (the upstreams serve PNG); in the converted art directories the manifest
+        // serves its WebP twin when that is what is on disk (webpVariant), so a URL always names a real file.
+        const rel = existsSync(join(root, a.rel)) ? a.rel : webpVariant(root, a.rel);
+        if (!rel) continue;
+        const src = sourceOf(a.rel);
+        // Provenance only: disabling/changing a proxy does not change the
+        // identity of a previously downloaded asset.
+        const primary = node.alts[0].urls.flatMap((u) => [u, mirrorUrl(u)]);
+        if (i > 0) fallbacks.push(`${path} ← ${src || a.urls[0]}`);
+        else if (src && !primary.includes(githubSourceUrl(src))) fallbacks.push(`${path} ← ${src}`);
+        files.add(rel);
+        return assetUrl(rel);
       }
       // No alternative on disk: the entry is left out of the manifest, which is a real loss (never a broken URL) — so
       // it is named as a dropped leaf, not only among the misses.

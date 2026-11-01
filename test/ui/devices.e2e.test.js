@@ -248,7 +248,7 @@ describe('multi-device (Chrome device emulation)', { skip: !ENABLED && 'set SP_E
   }
 
   for (const dev of ['phone-min', 'iphone14']) {
-    test(`${dev}: the left detail card leaves the corner buttons (⚙ 📖 ⛶) usable`, async () => {
+    test(`${dev}: the left detail card leaves the corner buttons (表情 / ⚙ / 对话; 全屏 is hidden on touch) usable`, async () => {
       const { page, problems } = await open(dev, 'phase=PREP');
       // not a card that completes a merge: it lights its elite's board tile, and the card moves to the right slot when that
       // tile lies under the left one (screens/game.js dSide, DESIGN §20.11) — 20–40 ms after it opened on the left, at
@@ -334,44 +334,30 @@ describe('multi-device (Chrome device emulation)', { skip: !ENABLED && 'set SP_E
     await page.close();
   });
 
-  test('交流 button: the label never runs into the robot icon (desktop sizes, phones, CJK 12 px minimum font size)', async () => {
-    const puppeteer = (await import('puppeteer-core')).default;
-    const { mkdtempSync, mkdirSync: mk, writeFileSync, rmSync } = await import('node:fs');
-    const os = await import('node:os');
-    const prof = mkdtempSync(path.join(os.tmpdir(), 'sp-minfont-'));
-    mk(path.join(prof, 'Default'), { recursive: true });
-    // Chrome / Edge in Chinese locales clamp text to 12 px (webkit.webprefs.minimum_font_size)
-    writeFileSync(path.join(prof, 'Default', 'Preferences'), JSON.stringify({ webkit: { webprefs: { minimum_font_size: 12, minimum_logical_font_size: 12 } } }));
-    const b12 = await puppeteer.launch({ executablePath: CHROME, headless: true, args: ['--no-sandbox'], userDataDir: prof });
-    try {
-      for (const b of [browser, b12]) {
-        for (const [w, h, touch] of [[1280, 720], [1366, 657], [1920, 1080], [2560, 1440], [844, 390, true], [640, 360, true]]) {
-          const page = await b.newPage();
-          await page.emulate({ viewport: { width: w, height: h, deviceScaleFactor: 1, isMobile: !!touch, hasTouch: !!touch, isLandscape: true }, userAgent: await b.userAgent() });
-          await page.goto(`${base}/dev/game-mock.html?shot=1&render=fallback&phase=PREP`, { waitUntil: 'networkidle0' });
-          await page.waitForSelector('.ewheel__btn');
-          await sleep(300);
-          const m = await page.$eval('.ewheel__btn', (btn) => {
-            const r = btn.getBoundingClientRect();
-            const lab = btn.querySelector('.ewheel__label');
-            const range = document.createRange();
-            range.selectNodeContents(lab);
-            const t = range.getBoundingClientRect();
-            const icon = btn.querySelector('.icon, svg');
-            const ir = icon ? icon.getBoundingClientRect() : null;
-            return { sprite: btn.classList.contains('has-sprite'), l: r.left, w: r.width, right: r.right, tl: t.left, tr: t.right, iconRight: ir ? ir.right : null, fs: parseFloat(getComputedStyle(lab).fontSize) };
-          });
-          const where = `${b === b12 ? 'min-font 12 ' : ''}${w}×${h}`;
-          // sprite: the robot + chevron end at x = 79/151 of the button; CSS fallback: after the icon
-          const iconEnd = m.sprite ? m.l + m.w * (80 / 151) : m.iconRight;
-          assert.ok(m.tl >= iconEnd - 0.5, `${where}: label starts at ${m.tl.toFixed(1)} < icon end ${iconEnd.toFixed(1)} (font ${m.fs}px)`);
-          assert.ok(m.tr <= m.right + 0.5, `${where}: label spills out of the button`);
-          await page.close();
-        }
-      }
-    } finally {
-      await b12.close();
-      try { rmSync(prof, { recursive: true, force: true }); } catch { /* ignore */ }
+  test('表情 button: square, robot logo centred, no text label (desktop sizes and phones)', async () => {
+    for (const [w, h, touch] of [[1280, 720], [1366, 657], [1920, 1080], [2560, 1440], [844, 390, true], [640, 360, true]]) {
+      const page = await browser.newPage();
+      await page.emulate({ viewport: { width: w, height: h, deviceScaleFactor: 1, isMobile: !!touch, hasTouch: !!touch, isLandscape: true }, userAgent: await browser.userAgent() });
+      await page.goto(`${base}/dev/game-mock.html?shot=1&render=fallback&phase=PREP`, { waitUntil: 'networkidle0' });
+      await page.waitForSelector('.ewheel__btn');
+      await sleep(300);
+      const m = await page.$eval('.ewheel__btn', (btn) => {
+        const r = btn.getBoundingClientRect();
+        const icon = btn.querySelector('.icon, svg');
+        const ir = icon ? icon.getBoundingClientRect() : null;
+        return {
+          w: r.width, h: r.height, cx: r.left + r.width / 2, cy: r.top + r.height / 2,
+          ix: ir ? ir.left + ir.width / 2 : null, iy: ir ? ir.top + ir.height / 2 : null,
+          label: btn.querySelector('.ewheel__label')?.textContent || null,
+          text: btn.textContent.trim(),
+        };
+      });
+      const where = `${w}×${h}`;
+      assert.ok(Math.abs(m.w - m.h) < 1, `${where}: square ${m.w.toFixed(1)}×${m.h.toFixed(1)}`);
+      assert.ok(m.ix != null && Math.abs(m.ix - m.cx) <= 1 && Math.abs(m.iy - m.cy) <= 1, `${where}: logo centred (${m.ix}, ${m.iy}) in (${m.cx}, ${m.cy})`);
+      assert.equal(m.label, null, `${where}: no visible 交流 label`);
+      assert.equal(m.text, '', `${where}: icon-only button`);
+      await page.close();
     }
   });
 
@@ -412,9 +398,11 @@ describe('multi-device (Chrome device emulation)', { skip: !ENABLED && 'set SP_E
     const st = await page.evaluate(() => ({
       chk: document.querySelector('.enemybtn')?.classList.contains('has-sprite'),
       emo: document.querySelector('.ewheel__btn')?.classList.contains('has-sprite'),
-      label: document.querySelector('.ewheel__label')?.textContent,
+      label: document.querySelector('.ewheel__label')?.textContent ?? null,
+      icon: !!document.querySelector('.ewheel__btn .icon'),
     }));
-    assert.deepEqual(st, { chk: false, emo: false, label: '交流' }, 'CSS look-alikes');
+    // the 表情 button is icon-only now: it never needs the emote art, so it is identical with or without the local assets
+    assert.deepEqual(st, { chk: false, emo: false, label: null, icon: true }, 'CSS look-alikes');
     await page.screenshot({ path: path.join(OUT, 'device-iphone14-noart.png') });
     assert.deepEqual(await layoutProblems(page), []);
     assert.deepEqual(problems, []);

@@ -291,3 +291,59 @@
   border-color:var(--neg-a55);border-color:color-mix(in srgb,var(--neg) 55%,transparent);
   background:rgba(45,21,16,.75);background:color-mix(in srgb,var(--neg) 12%,rgba(10,16,14,.72))}
 .traitov__retreat-ico{font-size:14px;line-height:1;opacity:.8}
+
+/* 手机端（横屏短屏）：撤退按钮贴近右下安全区，卡片整体不超出视口；触控目标 ≥ 32px。 */
+@media (orientation: landscape) and (max-height: 600px) and (any-pointer: coarse) {
+  .traitov__retreat{right:calc(10px + env(safe-area-inset-right, 0px));
+    bottom:calc(8px + env(safe-area-inset-bottom, 0px));
+    min-height:32px;padding:7px 12px;font-size:11.5px}
+  .traitov__retreat-ico{font-size:12px}
+}
+@media (max-height: 480px) {
+  .tcard{height:clamp(178px, 52vh, 260px)}
+  .traitov__cards{gap:6px}
+}
+
+/* ---- 词条抉择 2.0（业主 2026-10-26）：锁定 / 重抽 / 跳过 ------------------------------------------------ */
+.tcard__lock{
+  position:absolute;right:9px;top:9px;z-index:6;
+  height:20px;padding:0 6px;border:1px solid rgba(255,255,255,.22);border-radius:3px;
+  background:rgba(8,12,11,.8);color:var(--text-lo);
+  font:700 9px/1 var(--font-num);letter-spacing:.12em;cursor:pointer;
+  transition:color .15s ease,border-color .15s ease,background .15s ease}
+.tcard__lock:hover{color:var(--text-hi);border-color:rgba(255,255,255,.4)}
+.tcard__lock.is-on{color:#ffd75e;border-color:rgba(255,198,0,.6);background:rgba(255,198,0,.12)}
+.tcard.is-locked{box-shadow:0 0 0 1px rgba(255,198,0,.55),0 0 22px rgba(255,198,0,.18)}
+.tcard.is-locked .tcard__tag{color:#ffd75e}
+
+.traitov__acts{
+  position:absolute;left:28px;bottom:24px;z-index:9;
+  display:inline-flex;align-items:center;gap:8px;flex-wrap:wrap;pointer-events:auto}
+.traitov__stat{
+  font:600 10.5px/1 var(--font-num);letter-spacing:.08em;color:var(--text-dim);
+  padding:0 4px}
+.traitov__stat b{color:var(--text-md);font-weight:700}
+.traitov__act{
+  display:inline-flex;align-items:center;gap:6px;
+  min-height:32px;padding:7px 12px;cursor:pointer;
+  border:1px solid rgba(255,255,255,.14);border-radius:6px;
+  background:rgba(10,16,14,.72);color:var(--text-md);
+  font:600 12px/1 var(--font-cjk);letter-spacing:.04em;
+  -webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);
+  transition:color .16s ease,border-color .16s ease,background .16s ease}
+.traitov__act:hover:not(:disabled){color:var(--text-hi);border-color:rgba(255,255,255,.3)}
+.traitov__act:disabled{opacity:.4;cursor:not-allowed}
+.traitov__act--reroll{border-color:var(--acc-a55);color:var(--acc-hi);
+  background:rgba(16,49,36,.72);background:color-mix(in srgb,var(--acc) 12%,rgba(10,16,14,.72))}
+.traitov__act--reroll:hover:not(:disabled){background:rgba(19,61,47,.86);background:color-mix(in srgb,var(--acc) 22%,rgba(10,16,14,.72))}
+.traitov__act-ico{font-size:14px;line-height:1;opacity:.85}
+.traitov__act b{font:700 11px/1 var(--font-num);color:inherit}
+
+@media (orientation: landscape) and (max-height: 600px) and (any-pointer: coarse) {
+  .traitov__acts{left:calc(10px + env(safe-area-inset-left, 0px));bottom:calc(8px + env(safe-area-inset-bottom, 0px));
+    gap:6px;max-width:calc(100% - 180px)}
+  .traitov__act{min-height:32px;padding:6px 10px;font-size:11px}
+  .traitov__act-ico{font-size:12px}
+  .traitov__stat{display:none}
+  .tcard__lock{height:22px;min-width:30px;top:7px;right:7px}
+}

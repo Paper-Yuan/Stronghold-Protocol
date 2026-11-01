@@ -43,10 +43,17 @@ export class MatchTraitDraft {
     if (!alive.length) { this.enterPrep(); return; }
     const n = (this.traitDraftCount || 0);
     const polarity = n % 2 === 0 ? 'pos' : 'neg';
-    const cards = drawTraitCards(this.rngMeta, polarity);
+    // 词条锁定（业主 2026-10-26）：上次锁定的卡本次必带，用过即清
+    const locked = this.traitLock && typeof this.traitLock.traitId === 'string' ? this.traitLock : null;
+    this.traitLock = null;
+    const cards = drawTraitCards(this.rngMeta, polarity, { locked });
     if (!cards.length) { this.enterPrep(); return; }
     this.phase = PHASE.TRAIT_DRAFT;
-    this.trait = { round, polarity, cards, idx: 0, order: alive.map((p) => p.playerId), picks: {} };
+    this.trait = {
+      round, polarity, cards, idx: 0, order: alive.map((p) => p.playerId), picks: {},
+      rerollsLeft: 1 + (this.traitBonusReroll || 0), skips: this.traitSkips || 0, lockedIdx: null,
+    };
+    this.traitBonusReroll = 0;
     this.setDeadline(0);   // 单人无时限（超限是单人模式）
     this.markPublic();
     return true;
@@ -83,7 +90,10 @@ export class MatchTraitDraft {
     if (!t) return fail(ERR.WRONG_PHASE);
     if (this.traitTurn() !== ps.playerId) return fail(ERR.BAD_TARGET, 'not your turn');
     if (!Number.isInteger(idx) || idx < 0 || idx >= t.cards.length) return fail(ERR.BAD_TARGET);
+    if (t.lockedIdx != null && idx === t.lockedIdx) return fail(ERR.BAD_TARGET, 'locked for the next draft');
     const card = t.cards[idx];
+    // 锁定的那张带到下一次抉择；本次没有锁定则清空
+    this.traitLock = t.lockedIdx != null ? t.cards[t.lockedIdx] : null;
 
     // ① 词条：整局累计（同一 id 叠层，flags 相乘 / 结算值相加）
     this.traitMods = this.traitMods || [];
@@ -98,6 +108,63 @@ export class MatchTraitDraft {
     this.traitSpawn.push({ enemyKey: card.mob, name: card.name, round: this.round + 1, special: card.special || null });
 
     t.picks[ps.playerId] = idx;
+    t.idx++;
+    if (t.idx >= t.order.length) this.finishTraitDraft();
+    else this.markPublic();
+    return OK;
+  }
+
+  /**
+   * g.traitReroll (业主 2026-10-26)：重抽本次的三张卡（每局一次）；锁定的那张保留。
+   * 用 rngMeta，同种子同结果。
+   */
+  rerollTrait(ps) {
+    if (this.phase !== PHASE.TRAIT_DRAFT) return fail(ERR.WRONG_PHASE);
+    if (!ps || !ps.alive) return fail(ERR.ELIMINATED);
+    const t = this.trait;
+    if (!t) return fail(ERR.WRONG_PHASE);
+    if (this.traitTurn() !== ps.playerId) return fail(ERR.BAD_TARGET, 'not your turn');
+    if (!(t.rerollsLeft > 0)) return fail(ERR.ALREADY, 'no rerolls left');
+    const locked = t.lockedIdx != null ? t.cards[t.lockedIdx] : null;
+    const cards = drawTraitCards(this.rngMeta, t.polarity, { locked });
+    if (!cards.length) return fail(ERR.BAD_MSG, 'no cards');
+    t.cards = cards;
+    t.rerollsLeft = Math.max(0, (t.rerollsLeft | 0) - 1);
+    t.picks = {};
+    t.lockedIdx = locked ? 0 : null; // drawTraitCards 把锁定卡放在第一张
+    this.markPublic();
+    return OK;
+  }
+
+  /**
+   * g.traitLock { idx }：锁定/取消锁定一张卡，带到下一次词条抉择；本次仍从其余两张中选。
+   */
+  lockTrait(ps, idx) {
+    if (this.phase !== PHASE.TRAIT_DRAFT) return fail(ERR.WRONG_PHASE);
+    if (!ps || !ps.alive) return fail(ERR.ELIMINATED);
+    const t = this.trait;
+    if (!t) return fail(ERR.WRONG_PHASE);
+    if (this.traitTurn() !== ps.playerId) return fail(ERR.BAD_TARGET, 'not your turn');
+    if (!Number.isInteger(idx) || idx < 0 || idx >= t.cards.length) return fail(ERR.BAD_TARGET);
+    t.lockedIdx = t.lockedIdx === idx ? null : idx;
+    this.markPublic();
+    return OK;
+  }
+
+  /**
+   * g.traitSkip：跳过本次词条抉择（不拿词条、不召怪），换 1 资金；锁定的卡仍然带到下次。
+   */
+  skipTrait(ps) {
+    if (this.phase !== PHASE.TRAIT_DRAFT) return fail(ERR.WRONG_PHASE);
+    if (!ps || !ps.alive) return fail(ERR.ELIMINATED);
+    const t = this.trait;
+    if (!t) return fail(ERR.WRONG_PHASE);
+    if (this.traitTurn() !== ps.playerId) return fail(ERR.BAD_TARGET, 'not your turn');
+    this.traitLock = t.lockedIdx != null ? t.cards[t.lockedIdx] : null;
+    ps.funds = (Number(ps.funds) || 0) + 1;
+    if (typeof ps.dirty === 'function') ps.dirty();
+    this.traitSkips = (this.traitSkips || 0) + 1;
+    t.picks[ps.playerId] = -1;
     t.idx++;
     if (t.idx >= t.order.length) this.finishTraitDraft();
     else this.markPublic();

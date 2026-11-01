@@ -6,7 +6,7 @@
 import { MOVE_SCALE, COLS, STEALTH_RESTORE } from '../../constants.js';
 import {
   HUSK_REBIRTH, BOOM_RADIUS, POLLUTION_INTERVAL, STEALTH_RESTORE_BY_KEY, DUCK_STEALTH_RESTORE, nthOf, stOf, safe, num, T, elem, hurt,
-  areaAllies, areaAlliesInTiles, zone, spawnChildren, stepToward, setHits, hitCount, setForm, absorbArts, auraBuff,
+  areaAllies, areaAlliesInTiles, zone, spawnChildren, stepToward, setHits, hitCount, setForm, auraBuff,
   unbalancedNow, castSlot,
 } from './helpers.js';
 import { hypot } from '../../detmath.js';
@@ -43,11 +43,20 @@ const runWhenHit = (v) => ({ taken(c, b, e, a) { if (a.on || !(v > 0)) return; a
  * 终极 R5–R15) comes out again — a 频次 enemy's death spawn inherits the parent's mods, so it travels with them. Whole hits:
  * setHits rounds [ASSUMED: no source says how a fractional count rounds]. Until 0.2.1 the count was the data's whatever
  * the difficulty (PR #272).
+ *
+ * 超限模拟（`flags.overlimit`）: 次数怪的血量就是**要被打几次**（attack/health.js — 带 hitCount 的目标每段伤害只扣 1 点），
+ * 所以它不吃关卡/回合的敌方血量倍率，与炸惊同口径（ejibian.js pinBase: `!isHitCount(e)` 时才改写 base.maxHp）。不豁免的话
+ * spawnEnemy 的 `def.maxHp × mods.hpMul`（超限 R30 ≈ ×8.6）会把青铜镜的 30 次变成 258 次 —— 一个小怪要挨 258 下。
+ * 豁免只换「次数」的基数：atk / def / res / aspd / bat 仍由 spawnEnemy 照常放大（它在 times 之前就已乘好）。
+ * 普通 / 湮灭 / 炸惊没有 `flags.overlimit`，仍走含 hpMul 的 `e.base.maxHp`（以及补给线那份 supplyHpMul），一帧不变。
  */
 const times = (artsOnly = false) => ({
   spawn(b, e) {
     const s = Number(e.mods && e.mods.supplyHpMul);
-    setHits(e, e.base.maxHp / (Number.isFinite(s) && s > 0 ? s : 1));
+    const overlimit = !!(b.flags && b.flags.overlimit);
+    // 超限：基数取 def 的原始 maxHp（= 数据里的次数），hpMul / supplyHpMul 都不进次数。
+    const base = overlimit && e.def && e.def.maxHp > 0 ? e.def.maxHp : e.base.maxHp;
+    setHits(e, overlimit ? base : base / (Number.isFinite(s) && s > 0 ? s : 1));
     hitCount(b, e, true, artsOnly);
   },
 });
@@ -437,20 +446,19 @@ function artsBarrier(amount, { key = 'ab:artsBarrier', whileUp = null } = {}) {
     refresh(b, e, a) {
       a.left = amount;
       b.fx('phase', { x: e.x, y: e.y, id: e.id, kind: 'artsBarrier', value: amount });
-      if (whileUp) b.addBuff(e, { key, persist: true, visible: true, mods: whileUp });
+      b.addBuff(e, { key, persist: true, visible: true, mods: whileUp, injury(c) {
+        if (c.type !== 'arts' || !(a.left > 0)) return;
+        const take = Math.min(a.left, c.amount);
+        a.left -= take;
+        c.amount -= take;
+        if (a.left > 1e-6) return;
+        a.left = 0;
+        b.fx('shieldBreak', { x: e.x, y: e.y, id: e.id });
+        // Remove HP-changing bonuses after the breaking instance, even if a later effect dodges its overflow.
+        c.defer(() => b.removeBuff(e, c.buff));
+      } });
     },
     spawn(b, e, a) { if (amount > 0) a.refresh(b, e, a); },
-    hitIn(c, b, e, a) {
-      if (!(a.left > 0)) return;
-      a.left -= absorbArts(c, a.left);
-      if (a.left > 1e-6) return;
-      a.left = 0;
-      b.fx('shieldBreak', { x: e.x, y: e.y, id: e.id });
-      // the bonus it grants ends once the overflow of the breaking hit has landed (never before: an HP bonus removed
-      // first would rescale HP and make the overflow count twice)
-      if (c.dmg.cancel) b.removeBuff(e, key); else a.breaking = true;
-    },
-    taken(c, b, e, a) { if (a.breaking) { a.breaking = false; b.removeBuff(e, key); } },
   };
 }
 
@@ -584,7 +592,8 @@ function bleed(ab) {
  * her low tile: `low`); a unit inside several zones takes one tick per second (`mem.pollutedAt`: the last tick it took).
  */
 function pollution(b, src, x, y, r, life, low, high) {
-  zone(b, { x, y, r, life, iv: POLLUTION_INTERVAL, kind: 'pollution', tick(units) {
+  // the client's projectile knows its source; the zone fx carries that id so the effect binding can tell a 秽蚀轰击 pool from a death pool
+  zone(b, { x, y, r, life, iv: POLLUTION_INTERVAL, kind: 'pollution', id: src && src.id != null ? src.id : null, tick(units) {
     for (const u of units) {
       const v = u.ground ? low : high;
       if (!(v > 0) || b.time - (u.mem.pollutedAt ?? -Infinity) < POLLUTION_INTERVAL - 1e-6) continue;
@@ -611,9 +620,13 @@ function dmgZone(b, src, x, y, r, life, iv, amount, type = 'arts', kind = 'zone'
   } });
 }
 
-/** A cooldown skill ability (`id` labels it for tests / other abilities). */
-const skill = (s, fire, { cond = null, sil = false, cd = null, icd = null, id = null } = {}) => (s || cd != null) && fire ? ({
+/**
+ * A cooldown skill ability (`id` labels it for tests / other abilities). `turn`: the attack-turn fields of an attack-class
+ * skill (helpers.js attackSkillOf — `atk`, `clip`, `own`; DESIGN §35.52), cast in the attack's turn instead of on its own.
+ */
+const skill = (s, fire, { cond = null, sil = false, cd = null, icd = null, id = null, turn = null } = {}) => (s || cd != null) && fire ? ({
   id: id ?? null, sil, cd: cd ?? s.cd, icd: icd ?? s.icd, cond, fire, sk: s || null,   // sk: its slot for the 'cast' event
+  ...turn,
 }) : null;
 
 /** Blink past the blocker along the path (弑君者 / 卢西恩). Returns the start position. */

@@ -12,6 +12,16 @@ const PUBLIC = path.join(ROOT, 'public');
 const SKILL_DIR = path.join(PUBLIC, 'assets', 'skill');
 const SPINE_DIR = path.join(PUBLIC, 'assets', 'spine', 'op');
 
+/** 立绘目录已转 WebP（handoff/asset-webp/BACKUP.md）：盘上是 `.webp` 就写 `.webp`，否则保持 `.png`。 */
+const CONVERTED_DIRS = ['/assets/char/illust/', '/assets/char/illustration/', '/assets/char/portrait/'];
+const artUrl = (url) => {
+  if (/\.png$/i.test(url) && CONVERTED_DIRS.some((d) => url.startsWith(d))) {
+    const webp = url.replace(/\.png$/i, '.webp');
+    if (fs.existsSync(path.join(PUBLIC, webp.replace(/^\//, '')))) return webp;
+  }
+  return url;
+};
+
 fs.mkdirSync(SKILL_DIR, { recursive: true });
 fs.mkdirSync(SPINE_DIR, { recursive: true });
 
@@ -205,10 +215,10 @@ async function updateAssetsJson() {
     if (!assets.chars) assets.chars = {};
     if (!assets.chars[charId]) {
       assets.chars[charId] = {
-        avatar: `/assets/char/avatar/${charId}.png`,
-        avatarE2: `/assets/char/avatar/${charId}_2.png`,
-        portrait: `/assets/char/portrait/${charId}_1.png`,
-        portraitE2: `/assets/char/portrait/${charId}_2.png`,
+        avatar: artUrl(`/assets/char/avatar/${charId}.png`),
+        avatarE2: artUrl(`/assets/char/avatar/${charId}_2.png`),
+        portrait: artUrl(`/assets/char/portrait/${charId}_1.png`),
+        portraitE2: artUrl(`/assets/char/portrait/${charId}_2.png`),
       };
     }
 

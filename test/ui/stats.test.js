@@ -854,6 +854,43 @@ describe('local stats: recordToResult (history row → settlement re-view)', () 
   });
 });
 
+describe('local stats: 无尽湮灭 (蚀流 6) — the re-viewed settlement writes no /N', () => {
+  /** An endless run's m.result as server/match/results.js buildResult emits it: no lastRound, `endless: true`. */
+  const endlessResult = (over = {}) => baseResult({
+    victory: false, roundsPassed: 23, hiddenReached: false, hiddenCleared: false, reason: 'defeat',
+    difficulty: 'ANNIHILATION', modeId: 'mode_multi_annihilation', endless: true,
+    players: [{ ...baseResult().players[0], victory: false, roundsPassed: 23 }],
+    ...over,
+  });
+
+  test('the flag round-trips: record → recordToResult → normalizeResult keeps lastRound null, so no /N', () => {
+    const rec = buildRecord(endlessResult(), { myId: 'p1', roomMode: 'coop', now: 1000 });
+    assert.equal(rec.endless, true);
+    assert.equal(rec.lastRound, null, 'an endless run has no 满回合');
+    // it survives storage / export byte for byte (normalizeRecord keeps it) and the compact frame
+    assert.equal(normalizeRecord(JSON.parse(JSON.stringify(rec))).endless, true);
+    assert.equal(compactRecord(rec).endless, true);
+    const res = recordToResult(rec);
+    assert.equal(res.endless, true, 'recordToResult restores it: the replay has no m.public to read it from');
+    const view = normalizeResult(res, null);
+    assert.equal(view.lastRound, null, 'the 14 fallback must not apply to an endless run');
+    assert.equal(view.roundsPassed, 23);
+    // screens/result.js:176 writes 「/N」 only for a finite lastRound that the rounds did not pass
+    assert.equal(!view.isInfinite && Number.isFinite(view.lastRound) && view.roundsPassed <= view.lastRound, false);
+  });
+
+  test('an old record (no endless key) behaves exactly as before: the 14 fallback still writes /14', () => {
+    const old = buildRecord(baseResult({ lastRound: undefined }), { myId: 'p1', roomMode: 'coop', now: 1000 });
+    assert.equal('endless' in old, false, 'a missing key stays missing: no migration, no format bump');
+    const view = normalizeResult(recordToResult(old), null);
+    assert.equal(view.lastRound, 14, 'today\'s fallback, unchanged');
+    // only the literal true counts: a hand-edited value cannot mark a real match as endless
+    for (const bad of ['yes', 1, {}, false]) assert.equal('endless' in normalizeRecord({ ...old, endless: bad }), false, JSON.stringify(bad));
+    // a non-endless result never grows the key either (buildRecord copies the literal true only)
+    assert.equal('endless' in buildRecord(baseResult(), { myId: 'p1', now: 1 }), false);
+  });
+});
+
 describe('local stats: official versions (DESIGN §35.23, format v3)', () => {
   test('a record names another version (only a non-default one); its id does not include it; an unknown id is dropped', () => {
     const plain = buildRecord(baseResult(), { myId: 'p1', now: 1 });

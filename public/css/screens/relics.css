@@ -1,0 +1,329 @@
+/* public/css/screens/relics.css — 湮灭模拟 · 藏品 (loaded by ui/relics.js) */
+
+.rlov { position: fixed; inset: 0; z-index: 88; display: grid; place-items: center; padding: 4vh 3vw; }
+.rlov__veil { position: absolute; inset: 0; background: radial-gradient(ellipse at 50% 40%, rgba(20, 8, 10, .72), rgba(4, 4, 6, .92)); -webkit-backdrop-filter: blur(2px); backdrop-filter: blur(2px); }
+.rlov__inner { position: relative; width: min(1100px, 94vw); max-height: 92vh; overflow: auto; padding: 26px 30px 30px;
+  border: 1px solid rgba(190, 150, 90, .38); border-radius: 4px;
+  background: linear-gradient(160deg, rgba(24, 20, 18, .97), rgba(12, 11, 12, .98));
+  box-shadow: 0 24px 80px rgba(0, 0, 0, .65), inset 0 0 0 1px rgba(255, 235, 200, .04); }
+.rlov__head { display: flex; align-items: flex-end; justify-content: space-between; gap: 18px; margin-bottom: 20px;
+  border-bottom: 1px solid rgba(190, 150, 90, .22); padding-bottom: 14px; }
+.rlov__micro { font: 600 11px/1 'Rajdhani', 'Noto Sans SC', sans-serif; letter-spacing: .28em; color: #c9a063; text-transform: uppercase; }
+.rlov__title { margin: 8px 0 4px; font-size: 26px; letter-spacing: .12em; color: #f2e6d2; }
+.rlov__sub { margin: 0; font-size: 13px; color: #a99f92; }
+.rlov__count { font: 700 13px/1 'Rajdhani', sans-serif; letter-spacing: .2em; color: #c9a063; border: 1px solid rgba(201, 160, 99, .45); padding: 8px 12px; border-radius: 2px; }
+.rlov__grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; }
+@media (max-width: 820px) { .rlov__grid { grid-template-columns: 1fr; } }
+
+.rlc { position: relative; display: flex; flex-direction: column; gap: 12px; padding: 18px 16px 44px 20px; text-align: left;
+  color: #e8ddca; background: linear-gradient(170deg, #1c1917, #121113 70%); border: 1px solid #3a3430; border-radius: 3px;
+  cursor: pointer; transition: transform .13s ease, border-color .13s ease, box-shadow .13s ease; overflow: hidden; }
+.rlc:hover:not(:disabled) { transform: translateY(-2px); border-color: #7d6a4c; box-shadow: 0 10px 26px rgba(0, 0, 0, .5); }
+.rlc:disabled { cursor: default; opacity: .75; }
+.rlc::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 4px; background: #7d2a2a; }
+.rlc--blue::before { background: #2f8f96; }
+.rlc--red::before { background: #9c2b2b; }
+.rlc.is-armed { border-color: #d8b46a; box-shadow: 0 0 0 1px #d8b46a, 0 12px 30px rgba(216, 180, 106, .18); }
+/* 三张卡依次落下：用 backwards 而不是 both —— both 会把 transform 钉在关键帧值上，.rlc:hover 的抬升从此失效 */
+.rlov__grid .rlc { animation: rlc-in 220ms var(--ease-out) backwards; }
+.rlov__grid .rlc:nth-child(2) { animation-delay: 70ms; }
+.rlov__grid .rlc:nth-child(3) { animation-delay: 140ms; }
+@keyframes rlc-in { from { opacity: 0; transform: translateY(10px) scale(.985); } }
+.rlc__tier { position: absolute; right: 10px; top: 10px; font: 700 10px/1 'Rajdhani', sans-serif; letter-spacing: .2em;
+  padding: 4px 7px; border-radius: 2px; color: #0d0d0f; background: #9c2b2b; }
+.rlc--blue .rlc__tier { background: #2f8f96; }
+.rlc__head { display: flex; gap: 14px; align-items: center; }
+.rlc__icon { flex: 0 0 76px; width: 76px; height: 76px; display: grid; place-items: center;
+  background: radial-gradient(circle at 50% 45%, rgba(190, 150, 90, .16), transparent 68%); border: 1px solid rgba(190, 150, 90, .22); border-radius: 2px; }
+.rlc__icon img { max-width: 70px; max-height: 70px; object-fit: contain; filter: drop-shadow(0 3px 6px rgba(0, 0, 0, .7)); }
+.rlc__titles { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.rlc__name { font-size: 19px; letter-spacing: .06em; color: #f5ead6; }
+.rlc__set { font-size: 11px; color: #9b9084; letter-spacing: .05em; }
+.rlc__desc { font-size: 13.5px; line-height: 1.65; color: #c9c0b2; white-space: pre-wrap; }
+.rlc__confirm { position: absolute; right: 10px; bottom: 10px; display: flex; flex-direction: column; align-items: flex-end;
+  padding: 6px 9px; background: rgba(216, 180, 106, .14); border: 1px solid rgba(216, 180, 106, .6); border-radius: 2px; }
+.rlc__confirm b { font-size: 12px; color: #f0d79b; letter-spacing: .08em; }
+.rlc__confirm small { font-size: 10px; color: #b9a98a; }
+
+.rlstrip { position: absolute; left: 50%; bottom: 300px; transform: translateX(-50%); z-index: 12; display: flex; align-items: flex-end; gap: 8px; pointer-events: none; }
+.rlstrip__item { width: 42px; height: 42px; display: grid; place-items: center; pointer-events: auto; cursor: help;
+  background: linear-gradient(160deg, rgba(26, 22, 20, .94), rgba(12, 11, 12, .94)); border: 1px solid #4a3c2c; border-radius: 2px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, .5); }
+.rlstrip__item.is-red { border-bottom: 2px solid #9c2b2b; }
+.rlstrip__item.is-blue { border-bottom: 2px solid #2f8f96; }
+.rlstrip__item img { max-width: 36px; max-height: 36px; object-fit: contain; }
+.rlstrip__item:focus-visible { outline: 1px solid #d8b46a; outline-offset: 2px; }
+.rlstrip__more { pointer-events: auto; font: 700 12px/1 'Rajdhani', sans-serif; color: #c9a063; padding: 6px 8px;
+  border: 1px solid #4a3c2c; border-radius: 2px; background: rgba(12, 11, 12, .94); }
+.rlreveal { display: flex; align-items: center; gap: 10px; padding: 8px 12px 8px 8px; pointer-events: auto;
+  background: linear-gradient(120deg, rgba(28, 22, 16, .97), rgba(14, 12, 10, .97)); border: 1px solid #8a6a34; border-radius: 2px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, .55); animation: rlreveal-in .45s ease both; }
+.rlreveal img { width: 44px; height: 44px; object-fit: contain; }
+.rlreveal__txt { display: flex; flex-direction: column; gap: 2px; }
+.rlreveal__txt small { font-size: 10px; letter-spacing: .2em; color: #b39257; }
+.rlreveal__txt b { font-size: 15px; color: #f4e8d2; letter-spacing: .05em; }
+.rlreveal.is-red { border-color: #8a3434; }
+.rlreveal.is-blue { border-color: #2f8f96; }
+@keyframes rlreveal-in { from { opacity: 0; transform: translateY(8px) scale(.96); } to { opacity: 1; transform: none; } }
+
+/* ---- 老虎机抽取 (v1.1.1) ---- */
+.slot { display: flex; flex-direction: column; align-items: center; gap: 14px; margin: 2px 0 16px; }
+.slot__frame { position: relative; display: flex; align-items: center; padding: 18px 86px 24px 26px;
+  border: 1px solid rgba(190, 150, 90, .42); border-radius: 4px;
+  background: radial-gradient(ellipse at 50% 0%, rgba(120, 60, 30, .18), transparent 70%), linear-gradient(180deg, #17130f, #0d0c0d);
+  box-shadow: inset 0 0 0 1px rgba(255, 235, 200, .05), 0 12px 34px rgba(0, 0, 0, .5); }
+.slot__frame::before { content: ''; position: absolute; inset: 6px; border: 1px solid rgba(190, 150, 90, .12); border-radius: 2px; pointer-events: none; }
+.slot__reels { display: flex; gap: 14px; }
+.slot__reel { position: relative; width: 92px; height: 92px; overflow: hidden; border: 1px solid #6b5434; border-radius: 3px;
+  background: radial-gradient(circle at 50% 45%, rgba(216, 180, 106, .14), rgba(10, 9, 10, .9) 70%);
+  box-shadow: inset 0 0 18px rgba(0, 0, 0, .8); }
+.slot__reel::before, .slot__reel::after { content: ''; position: absolute; left: 0; right: 0; height: 14px; z-index: 2; pointer-events: none; }
+.slot__reel::before { top: 0; background: linear-gradient(#0b0a0b, transparent); }
+.slot__reel::after { bottom: 0; background: linear-gradient(transparent, #0b0a0b); }
+.slot__strip { display: flex; flex-direction: column; transition-property: transform; transition-timing-function: cubic-bezier(.08, .72, .12, 1); }
+/* 合成层只在转的时候要：常驻 will-change 会把 27 格（宽屏约 2484px 高）的条永久提升成独立层，
+   而 .rlov 与 .rlpos 可以同时挂载 —— 最坏同屏 6 条这样的层。 */
+.slot__reel.is-spinning .slot__strip { will-change: transform; }
+.slot__cell { flex: 0 0 92px; width: 92px; height: 92px; display: grid; place-items: center; }
+.slot__cell img { max-width: 78px; max-height: 78px; object-fit: contain; filter: drop-shadow(0 4px 7px rgba(0, 0, 0, .7)); }
+.slot__reel.is-spinning .slot__cell img { filter: blur(1.4px) brightness(.88); }
+.slot__payline { position: absolute; left: 6px; right: 6px; top: 50%; height: 1px; z-index: 3; pointer-events: none;
+  background: linear-gradient(90deg, transparent, rgba(216, 180, 106, .75), transparent); box-shadow: 0 0 8px rgba(216, 180, 106, .35); }
+.slot__lever { position: absolute; right: 20px; top: 50%; transform: translateY(-50%); width: 52px; height: 84px;
+  padding: 0; background: none; border: 0; cursor: pointer; }
+.slot__lever:disabled { cursor: default; }
+.slot__lever-arm { position: absolute; left: 50%; bottom: 4px; width: 8px; height: 54px; margin-left: -4px; border-radius: 4px;
+  background: linear-gradient(180deg, #d8b46a, #6b5434); transform-origin: 50% 100%;
+  transition: transform .6s cubic-bezier(.3, 1.35, .4, 1); box-shadow: 0 2px 6px rgba(0, 0, 0, .6); }
+.slot__lever-knob { position: absolute; left: 50%; top: -12px; width: 24px; height: 24px; margin-left: -12px; border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #ffe6ad, #b3402c 62%, #5a1010); box-shadow: 0 0 12px rgba(216, 120, 70, .55); }
+.slot__lever.is-pulled .slot__lever-arm { transform: rotate(112deg); }
+.slot__payline-label { position: absolute; left: 26px; bottom: 6px; font: 700 8px/1 'Rajdhani', sans-serif; letter-spacing: .34em; color: #7d6338; }
+.slot__actions { display: flex; align-items: center; justify-content: center; gap: 16px; min-height: 40px; }
+.slot__start { padding: 10px 30px; border: 1px solid #d8b46a; border-radius: 2px; cursor: pointer;
+  background: linear-gradient(180deg, rgba(216, 180, 106, .24), rgba(120, 80, 30, .1)); color: #f4e2b6;
+  font: 600 14px/1 'Rajdhani', 'Noto Sans SC', sans-serif; letter-spacing: .18em; }
+.slot__start:hover { background: linear-gradient(180deg, rgba(216, 180, 106, .36), rgba(120, 80, 30, .16)); }
+.slot__skip { padding: 4px 2px; background: none; border: 0; border-bottom: 1px solid rgba(200, 180, 150, .35); cursor: pointer;
+  color: #a99f92; font-size: 12px; letter-spacing: .08em; }
+.slot__spinning { color: #d8b46a; font: 600 12px/1 'Rajdhani', sans-serif; letter-spacing: .28em; }
+.slot__done-tip { color: #a99f92; font-size: 12px; letter-spacing: .1em; }
+.slot.is-done .slot__frame { border-color: rgba(216, 180, 106, .55); }
+.slot.is-done .slot__reel { box-shadow: inset 0 0 18px rgba(0, 0, 0, .8), 0 0 12px rgba(216, 180, 106, .18); }
+/* 停轮的第一拍：只让「刚停的那只」闪一下中奖线。reel / cell / img 上有 transform:none!important 的冻结层
+   （见文件末尾的「转轮保持正立」两条），所以冲击只能挂在 payline 上；data-stopped 由 SlotReel 的 stopped 给出，
+   每只轮只会翻一次，不需要定时器去摘类。 */
+.slot__reel[data-stopped] .slot__payline { animation: slot-hit 240ms var(--ease-out); }
+@keyframes slot-hit {
+  0% { opacity: .55; transform: scaleY(1); }
+  22% { opacity: 1; transform: scaleY(3); }
+  100% { opacity: .8; transform: scaleY(1); }
+}
+@media (max-width: 560px) {
+  .slot__frame { padding: 14px 64px 20px 16px; }
+  .slot__reels { gap: 8px; }
+  .slot__reel, .slot__cell { width: 72px; height: 72px; flex-basis: 72px; }
+  .slot__cell img { max-width: 62px; max-height: 62px; }
+  .slot__lever { right: 10px; }
+}
+
+/* ---- 藏品图鉴 (v1.1.2) ---- */
+.rlcodex-btn { position: absolute; top: 92px; right: 18px; z-index: 14; display: flex; align-items: center; gap: 7px;
+  height: 34px; padding: 0 10px 0 5px; border: 1px solid rgba(190, 150, 90, .5); border-radius: 2px; pointer-events: auto;
+  background: linear-gradient(180deg, rgba(26, 21, 17, .95), rgba(11, 10, 10, .95)); color: #e9dcc4; cursor: pointer;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, .45); }
+.rlcodex-btn:hover { border-color: #d8b46a; box-shadow: 0 0 0 1px rgba(216, 180, 106, .35), 0 4px 16px rgba(0, 0, 0, .5); }
+.rlcodex-btn__mark { width: 24px; height: 24px; display: grid; place-items: center; border: 1px solid rgba(216, 180, 106, .55);
+  color: #f0d79b; font: 700 13px/1 'Noto Sans SC', sans-serif; border-radius: 2px; background: rgba(216, 180, 106, .08); }
+.rlcodex-btn__label { font-size: 12px; letter-spacing: .14em; }
+.rlcodex-btn__n { min-width: 18px; padding: 1px 5px; border-radius: 9px; background: #9c2b2b; color: #fff3e4;
+  font: 700 11px/1.35 'Rajdhani', sans-serif; }
+/* 蚀流 6 无尽湮灭: 藏品已尽之后的决策加成 (×1.2 per decision, compounding) */
+.rlcodex-btn__esc { padding: 1px 6px; border-radius: 9px; border: 1px solid rgba(210, 74, 88, .65);
+  background: rgba(60, 12, 16, .85); color: #ffbcbc; font: 700 11px/1.35 'Rajdhani', sans-serif; letter-spacing: .04em; }
+@media (max-width: 760px) { .rlcodex-btn { top: auto; bottom: 210px; right: 12px; } .rlcodex-btn__label { display: none; } }
+
+.rlcodex { position: fixed; inset: 0; z-index: 86; display: grid; place-items: center; padding: 4vh 3vw; }
+.rlcodex__veil { position: absolute; inset: 0; background: rgba(4, 4, 6, .88); -webkit-backdrop-filter: blur(2px); backdrop-filter: blur(2px); }
+.rlcodex__panel { position: relative; display: flex; flex-direction: column; width: min(1180px, 94vw); height: min(86vh, 920px);
+  border: 1px solid rgba(190, 150, 90, .42); border-radius: 4px; overflow: hidden;
+  background: linear-gradient(160deg, rgba(24, 20, 18, .99), rgba(11, 10, 11, 1));
+  box-shadow: 0 26px 80px rgba(0, 0, 0, .7), inset 0 0 0 1px rgba(255, 235, 200, .04); }
+.rlcodex__head { display: flex; align-items: center; gap: 18px; padding: 14px 18px; border-bottom: 1px solid rgba(190, 150, 90, .22); }
+.rlcodex__micro { font: 600 10px/1 'Rajdhani', sans-serif; letter-spacing: .3em; color: #c9a063; }
+.rlcodex__title { margin: 6px 0 0; font-size: 22px; letter-spacing: .1em; color: #f2e6d2; }
+.rlcodex__title .num { margin-left: 10px; font: 700 14px/1 'Rajdhani', sans-serif; color: #c9a063; letter-spacing: .08em; }
+.rlcodex__tabs { margin-left: auto; display: flex; gap: 6px; }
+.rlcodex__tab { padding: 7px 14px; border: 1px solid #3c342c; border-radius: 2px; background: rgba(20, 17, 15, .8);
+  color: #a99f92; font-size: 12px; letter-spacing: .1em; cursor: pointer; }
+.rlcodex__tab:hover { border-color: #7d6a4c; color: #e8ddca; }
+.rlcodex__tab.is-on { border-color: #d8b46a; color: #f2dfb4; background: rgba(216, 180, 106, .12); }
+.rlcodex__close { width: 32px; height: 32px; border: 1px solid #3c342c; border-radius: 2px; background: transparent;
+  color: #c9c0b2; font-size: 20px; line-height: 1; cursor: pointer; }
+.rlcodex__close:hover { border-color: #9c2b2b; color: #fff; }
+.rlcodex__body { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) 340px; }
+.rlcodex__scroll { overflow: auto; padding: 14px 16px 20px; }
+.rlcodex__empty { padding: 40px; text-align: center; color: #8f8578; font-size: 13px; }
+.rlcodex__grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(136px, 1fr)); gap: 10px; }
+.rlcdx-card { position: relative; display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 10px 6px 8px;
+  border: 1px solid #34302c; border-left-width: 3px; border-radius: 3px; cursor: pointer; color: #d8cfc0;
+  background: linear-gradient(170deg, #1a1715, #111013); transition: transform .12s ease, border-color .12s ease; }
+.rlcdx-card:hover { transform: translateY(-1px); border-color: #6b5a40; }
+.rlcdx-card.is-blue { border-left-color: #2f8f96; }
+.rlcdx-card.is-red { border-left-color: #9c2b2b; }
+.rlcdx-card.is-owned { background: linear-gradient(170deg, #221c12, #121011); }
+.rlcdx-card.is-sel { border-color: #d8b46a; box-shadow: 0 0 0 1px rgba(216, 180, 106, .55) inset; }
+.rlcdx-card__icon { width: 62px; height: 62px; display: grid; place-items: center; }
+.rlcdx-card__icon img { max-width: 58px; max-height: 58px; object-fit: contain; filter: drop-shadow(0 3px 5px rgba(0, 0, 0, .6)); }
+.rlcdx-card__name { max-width: 100%; font-size: 12.5px; letter-spacing: .03em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rlcdx-card__meta { font-size: 10px; color: #8f8578; letter-spacing: .04em; }
+.rlcdx-card__own { position: absolute; top: 4px; right: 4px; padding: 1px 4px; border-radius: 2px;
+  background: #d8b46a; color: #14100b; font-size: 9px; letter-spacing: .06em; }
+/* 效果计数：p25 等按资金/购买/战斗累计的层数，直接标在卡面左上角 */
+.rlcdx-card__count { position: absolute; top: 4px; left: 4px; padding: 1px 5px; border-radius: 2px;
+  border: 1px solid rgba(216, 180, 106, .55); background: rgba(32, 24, 14, .9); color: #f4d99a;
+  font-size: 10px; letter-spacing: .04em; }
+.rlcodex__detail { display: flex; flex-direction: column; gap: 12px; overflow: auto; padding: 20px 18px;
+  border-left: 1px solid rgba(190, 150, 90, .22); background: linear-gradient(180deg, rgba(34, 27, 18, .35), transparent 55%); }
+.rlcdx-detail__icon { width: 128px; height: 128px; margin: 4px auto 2px; display: grid; place-items: center; border-radius: 3px;
+  border: 1px solid rgba(190, 150, 90, .32); background: radial-gradient(circle at 50% 45%, rgba(216, 180, 106, .14), rgba(10, 9, 10, .4) 70%); }
+.rlcdx-detail__icon.is-blue { border-color: rgba(47, 143, 150, .55); }
+.rlcdx-detail__icon.is-red { border-color: rgba(156, 43, 43, .55); }
+.rlcdx-detail__icon img { max-width: 112px; max-height: 112px; object-fit: contain; filter: drop-shadow(0 6px 12px rgba(0, 0, 0, .7)); }
+.rlcdx-detail__head { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.rlcdx-detail__head b { font-size: 19px; letter-spacing: .05em; color: #f4e8d2; }
+.rlcdx-detail__tier { padding: 2px 7px; border-radius: 2px; font-size: 10px; letter-spacing: .1em; }
+.rlcdx-detail__tier.is-blue { background: #2f8f96; color: #06181a; }
+.rlcdx-detail__tier.is-red { background: #9c2b2b; color: #fff0e8; }
+.rlcdx-detail__own { margin-left: auto; padding: 2px 7px; border-radius: 2px; background: #d8b46a; color: #14100b; font-size: 10px; }
+.rlcdx-detail__miss { margin-left: auto; padding: 2px 7px; border: 1px solid #5a5146; border-radius: 2px; color: #8f8578; font-size: 10px; }
+.rlcdx-detail__set { margin: 0; font-size: 11px; color: #9b9084; letter-spacing: .05em; }
+.rlcdx-detail__desc { margin: 0; padding-top: 12px; border-top: 1px solid rgba(190, 150, 90, .16);
+  font-size: 13.5px; line-height: 1.7; color: #cfc6b8; white-space: pre-wrap; }
+@media (max-width: 860px) {
+  .rlcodex__panel { height: min(90vh, 920px); }
+  .rlcodex__body { grid-template-columns: 1fr; }
+  .rlcodex__detail { border-left: 0; border-top: 1px solid rgba(190, 150, 90, .22); max-height: 34vh; }
+  .rlcodex__tabs { gap: 4px; }
+  .rlcodex__tab { padding: 6px 9px; }
+}
+
+.rlcodex-btn.is-flash { border-color: #d8b46a; animation: rlcodex-flash 1.3s ease-in-out infinite; }
+.rlcodex-btn.is-flash .rlcodex-btn__n { background: #d8b46a; color: #14100b; }
+@keyframes rlcodex-flash {
+  0%, 100% { box-shadow: 0 0 0 1px rgba(216, 180, 106, .35), 0 0 10px rgba(216, 180, 106, .2); }
+  50% { box-shadow: 0 0 0 1px #d8b46a, 0 0 22px rgba(216, 180, 106, .55); }
+}
+
+/* ---- 增益藏品三连老虎机 (v1.1.4) ---- */
+.rlpos { position: fixed; inset: 0; z-index: 90; display: grid; place-items: center; padding: 4vh 3vw; }
+.rlpos__veil { position: absolute; inset: 0; background: radial-gradient(ellipse at 50% 42%, rgba(26, 18, 8, .6), rgba(4, 4, 6, .92)); -webkit-backdrop-filter: blur(2px); backdrop-filter: blur(2px); }
+.rlpos__inner { position: relative; width: min(760px, 94vw); padding: 22px 26px 26px; border-radius: 4px;
+  border: 1px solid rgba(216, 180, 106, .55); background: linear-gradient(160deg, rgba(26, 21, 15, .98), rgba(11, 10, 11, .99));
+  box-shadow: 0 26px 80px rgba(0, 0, 0, .7), inset 0 0 0 1px rgba(255, 235, 200, .05); }
+.rlpos__head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 16px;
+  padding-bottom: 12px; border-bottom: 1px solid rgba(216, 180, 106, .22); }
+.rlpos__micro { font: 600 10px/1 'Rajdhani', sans-serif; letter-spacing: .3em; color: #d8b46a; }
+.rlpos__title { margin: 7px 0 4px; font-size: 23px; letter-spacing: .1em; color: #f6e8c8; }
+.rlpos__sub { margin: 0; font-size: 12px; color: #a99f92; }
+.rlpos__close { width: 32px; height: 32px; border: 1px solid #4a3c2c; border-radius: 2px; background: transparent;
+  color: #c9c0b2; font-size: 20px; line-height: 1; cursor: pointer; }
+.rlpos__close:hover { border-color: #d8b46a; color: #fff; }
+.rlpos__frame { position: relative; display: flex; justify-content: center; padding: 20px 10px 24px; border-radius: 4px;
+  border: 1px solid rgba(216, 180, 106, .3); background: radial-gradient(ellipse at 50% 0%, rgba(150, 100, 30, .18), transparent 70%), #0e0d0e;
+  box-shadow: inset 0 0 30px rgba(0, 0, 0, .7); }
+.rlpos__frame .slot__reels { gap: 18px; }
+.rlpos__line { position: absolute; left: 18px; bottom: 6px; font: 700 8px/1 'Rajdhani', sans-serif; letter-spacing: .34em; color: #8a6a34; }
+.rlpos__wait { padding: 18px 0 4px; text-align: center; color: #d8b46a; letter-spacing: .3em; font: 600 12px/1 'Rajdhani', sans-serif; }
+.rlpos__result { display: flex; align-items: center; gap: 16px; margin-top: 16px; padding: 14px 16px; border-radius: 3px;
+  border: 1px solid rgba(216, 180, 106, .4); background: linear-gradient(120deg, rgba(40, 30, 14, .55), rgba(14, 12, 10, .4)); }
+.rlpos__result.is-blue { border-color: rgba(47, 143, 150, .55); }
+.rlpos__result.is-red { border-color: rgba(156, 43, 43, .6); }
+.rlpos__icon { flex: 0 0 84px; width: 84px; height: 84px; display: grid; place-items: center; border-radius: 3px;
+  border: 1px solid rgba(216, 180, 106, .28); background: radial-gradient(circle at 50% 45%, rgba(216, 180, 106, .16), transparent 70%); }
+.rlpos__icon img { max-width: 74px; max-height: 74px; object-fit: contain; filter: drop-shadow(0 5px 10px rgba(0, 0, 0, .7)); }
+.rlpos__txt { min-width: 0; flex: 1; }
+.rlpos__txt b { display: block; font-size: 18px; letter-spacing: .05em; color: #f6e8c8; }
+.rlpos__txt small { color: #9b9084; font-size: 11px; letter-spacing: .05em; }
+.rlpos__txt p { margin: 7px 0 0; color: #cfc6b8; font-size: 13px; line-height: 1.65; }
+.rlpos__ok { flex: 0 0 auto; padding: 10px 22px; border: 1px solid #d8b46a; border-radius: 2px; cursor: pointer;
+  background: linear-gradient(180deg, rgba(216, 180, 106, .26), rgba(120, 80, 30, .12)); color: #f4e2b6;
+  font: 600 14px/1 'Rajdhani', 'Noto Sans SC', sans-serif; letter-spacing: .16em; }
+.rlpos__ok:hover { background: linear-gradient(180deg, rgba(216, 180, 106, .38), rgba(120, 80, 30, .18)); }
+@media (max-width: 560px) {
+  .rlpos__frame .slot__reel, .rlpos__frame .slot__cell { width: 78px; height: 78px; flex-basis: 78px; }
+  .rlpos__frame .slot__cell img { max-width: 66px; max-height: 66px; }
+  .rlpos__result { flex-wrap: wrap; }
+  .rlpos__ok { width: 100%; }
+}
+
+.slot__lever--inline { position: static; transform: none; flex: 0 0 52px; margin-left: 18px; }
+.rlpos__actions { display: flex; align-items: center; justify-content: center; gap: 16px; min-height: 40px; margin-top: 12px; }
+
+.rlcdx-detail__stack { margin: 10px 0 0; color: #d8b46a; font-size: 13px; letter-spacing: .06em; }
+.rlcdx-detail__stack b { color: #f6e8c8; font-size: 17px; }
+.rlcdx-detail__stack-hint { margin-left: 3px; color: #a99f92; font-size: 11px; letter-spacing: .02em; }
+
+/* 图鉴选中卡：用金色自绘边框，去掉浏览器默认的白色 focus outline */
+.rlcdx-card:focus, .rlcdx-card:focus-visible { outline: none; }
+.rlcdx-card.is-sel, .rlcdx-card[aria-selected="true"] {
+  border-color: #d8b46a !important;
+  box-shadow: 0 0 0 1px rgba(216, 180, 106, .55), 0 8px 22px rgba(0, 0, 0, .5) !important;
+}
+
+/* 待机时不要提前露出本次抽到的三张卡：转轮显示问号，启动后才显示并滚动 */
+.slot.is-ready .slot__cell img { opacity: 0; }
+.slot.is-ready .slot__reel::after { content: '?'; position: absolute; inset: 0; display: grid; place-items: center;
+  background: #0e0d0e; color: #6b5434; font: 700 26px/1 'Rajdhani', sans-serif; }
+
+/* 增益藏品三连：转轮必须保持正立、只做纵向滚筒位移，禁止任何旋转/菱形效果 */
+.rlpos .slot__reel, .rlpos .slot__cell, .rlpos .slot__cell img {
+  transform: none !important;
+  animation: none !important;
+}
+.rlpos .slot__strip { transition-property: transform !important; }
+.rlpos .slot__reel { border-radius: 3px !important; }
+
+/* 增益三连：正立显示，禁止父级/独立 rotate 属性造成的菱形或自转 */
+.rlpos__frame .slot__reel, .rlpos__frame .slot__cell, .rlpos__frame .slot__cell img { transform: none !important; rotate: none !important; animation: none !important; }
+
+/* 两种老虎机统一：转轮正立、只允许 strip 做纵向位移；禁止任何旋转/扇形/自转效果 */
+.slot__reels, .slot__reel, .slot__cell, .slot__cell img { transform: none !important; rotate: none !important; animation: none !important; }
+
+/* 同盟湮灭：三选一投票的票数角标 */.rlc__votes { position: absolute; top: 6px; right: 6px; padding: 1px 6px; font-size: 11px; line-height: 1.5;
+  font-weight: 700; letter-spacing: .04em; color: #0b0a0b; background: #d8b46a; border-radius: 3px; }
+.rlc.is-armed .rlc__votes { background: #4fe8c0; }
+
+/* 平票时非候选卡变暗 */
+.rlc.is-dimmed { opacity: .38; filter: grayscale(.6); }
+
+/* 同盟房：创建者点「开始抽取」之前的等待条 */
+.rlov__wait { display: flex; align-items: center; gap: 12px; justify-content: center; padding: 10px 0 4px; }
+.rlov__wait small { font-size: 11px; color: rgba(243, 222, 222, .55); }
+.rlov__wait-text { font-size: 14px; letter-spacing: 1px; color: rgba(243, 222, 222, .72); }
+.rlov__start { display: inline-flex; align-items: center; gap: 8px; padding: 10px 24px; cursor: pointer;
+  font-family: inherit; font-size: 14px; font-weight: 800; letter-spacing: 1px; color: #12080a;
+  background: linear-gradient(180deg, #ffd7dc, #d24a58); border: 1px solid #ff8d99; border-radius: 3px;
+  box-shadow: 0 0 14px rgba(210, 74, 88, .45); transition: transform 100ms, filter 120ms; }
+.rlov__start:hover:not(:disabled) { transform: translateY(-1px); filter: brightness(1.08); }
+.rlov__start:disabled { opacity: .5; cursor: not-allowed; }
+
+/* 增益浮层（z90）盖在三选一（z88）上时，下层真退场：visibility:hidden 同时把它移出 Tab 序列与可访问性树，
+   并省掉一整层全屏 backdrop-filter（Chrome 87 的 WebView 上这是最贵的一笔）。**不能**改成卸载：
+   .rlov 的 phase / stopped 是局部 state，卸载重挂会让转轮从头再转一遍。 */
+.rlov.is-covered { pointer-events: none; }
+.rlov.is-covered > .rlov__inner { visibility: hidden; }
+.rlov.is-covered > .rlov__veil { -webkit-backdrop-filter: none; backdrop-filter: none; }
+
+/* ---- 减动效 (prefers-reduced-motion)：本文件此前一条都没有（全仓 34 条，lobby 2 / room 1 / game 6）。----
+   归零块必须在文件末尾、所有动画声明之后；反向覆盖要 !important（.rlc:hover:not(:disabled) 是 0,3,0）。---- */
+@media (prefers-reduced-motion: reduce) {
+  .rlc, .rlc:hover:not(:disabled), .rlcdx-card:hover { transform: none !important; transition: none !important; }
+  .slot__lever-arm { transition: none !important; }
+  .slot__strip { transition: none !important; will-change: auto !important; }
+  .slot__reel[data-stopped] .slot__payline { animation: none !important; }
+  .rlov__grid .rlc { animation: none !important; animation-delay: 0ms !important; }
+  .rlreveal { animation: none !important; }
+  .rlcodex-btn.is-flash { animation: none !important; }
+  .slot__reel.is-spinning .slot__cell img { filter: none !important; }
+}

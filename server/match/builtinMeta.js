@@ -77,6 +77,52 @@ function mostBondMate(ctx, bonds, minCount = 0) {
   return best >= minCount ? ctx.rng.pick(pick) || null : null;
 }
 
+/**
+ * 湮灭模拟（difficulty: 'ANNIHILATION'）的「简易通讯机 / 寻呼模块」抽人顺序。
+ * 来源：`modref/mods/comms-priority/meta/comms.mjs`（原投稿 `shared/bondReward.js rewardBondOrder` 的语义）。
+ * 携带者**自己**的盟约按「层数最高的**核心**盟约在前（同层按 bondOrder、再按 gd.bondIds 的数据顺序）」排，
+ * 其余附加盟约跟在后面；一个核心盟约都没有时，在附加盟约里随机挑一个领头（`ctx.rng.pick`）。
+ * 与商店的装备偏向（`shopBias = bondBias`，`player/economy.js` 的 `pool.rollItem(…, bias)`）**不是同一件事**：
+ * 那一半只影响**商店刷出的装备**，本函数只影响**两件奖励装备结算时抽哪名干员**，所以两者不需要去重。
+ * 只在**房间开关** `annMods.commsPriority` 打开时被调用（`gd.annMod('commsPriority')`，见 docs/ANNIHILATION-MODS.md §2.2(c)）；
+ * 官方四档、炸惊、以及湮灭房里开关关掉时，两个处理器继续走 `rollSameBond`（随机一个同盟约干员），与现状逐字节相同。
+ */
+function commsOn(ctx) {
+  const gd = ctx && ctx.gd;
+  return !!(gd && typeof gd.annMod === 'function' && gd.annMod('commsPriority') === true);
+}
+
+function annRewardBondOrder(ctx, bonds) {
+  const list = [];
+  for (const b of Array.isArray(bonds) ? bonds : []) if (typeof b === 'string' && b && !list.includes(b)) list.push(b);
+  if (!list.length) return [];
+  const gd = ctx.gd;
+  const idx = new Map((Array.isArray(gd.bondIds) ? gd.bondIds : []).map((id, i) => [id, i]));
+  const layerOf = (id) => { const v = Number(ctx.layers(id)); return Number.isFinite(v) ? v : 0; };
+  const recOf = (id) => gd.bond(id);
+  const orderOf = (id) => { const b = recOf(id); return b && Number.isFinite(b.bondOrder) ? b.bondOrder : 99; };
+  const core = [];
+  const addon = [];
+  for (const id of list) { const b = recOf(id); if (b && b.isCore) core.push(id); else addon.push(id); }
+  core.sort((a, b) => (layerOf(b) - layerOf(a)) || (orderOf(a) - orderOf(b)) || ((idx.get(a) ?? 99) - (idx.get(b) ?? 99)));
+  if (core.length) return [...core, ...addon];
+  if (addon.length > 1 && ctx.rng && typeof ctx.rng.pick === 'function') {
+    const head = ctx.rng.pick(addon);
+    if (typeof head === 'string' && addon.includes(head)) return [head, ...addon.filter((x) => x !== head)];
+  }
+  return addon;
+}
+
+/** 按 `order` 顺序抽一名同盟约干员（某个盟约抽空 / 等阶不够就落到下一个）；与 comms.mjs 的 rollRewardChess 同口径。 */
+function rollAnnReward(ctx, order, maxTier, exclude = null) {
+  const skip = Array.isArray(exclude) && exclude.length ? exclude : null;
+  for (const bond of order) {
+    const id = ctx.rollChess(skip ? { maxTier, bond, filter: (x) => !skip.includes(x) } : { maxTier, bond });
+    if (id) return id;
+  }
+  return null;
+}
+
 const ITEM_HANDLERS = {
   equip_destory_gain_random_coin: {
     onEquip(ctx, ev) {
@@ -120,9 +166,12 @@ const ITEM_HANDLERS = {
     onEquip(ctx, ev) {
       const n = Math.max(1, int(paramsOf(ctx, ev.item).count, 1));
       const bonds = ctx.pieceBonds(ev.target.uid);
+      // 湮灭模拟：核心盟约优先（null = 官方四档 / 炸惊，走原来的随机一个同盟约干员）
+      // 湮灭模拟：房间开关 annMods.commsPriority 打开时核心盟约优先（否则 null = 官方随机同盟约）
+      const order = commsOn(ctx) ? annRewardBondOrder(ctx, bonds) : null;
       let got = 0;
       for (let k = 0; k < n; k++) {
-        const id = rollSameBond(ctx, bonds, ctx.shopLevel());
+        const id = order ? rollAnnReward(ctx, order, ctx.shopLevel()) : rollSameBond(ctx, bonds, ctx.shopLevel());
         if (id && ctx.grantChess(id)) got++;
       }
       if (!got) toastNothing(ctx, ev);
@@ -173,9 +222,15 @@ const ITEM_HANDLERS = {
     onEquip(ctx, ev) {
       const n = Math.max(1, int(paramsOf(ctx, ev.item).refresh_cnt, 3));
       const bonds = ctx.pieceBonds(ev.target.uid);
+      // 湮灭模拟：核心盟约优先（null = 官方四档 / 炸惊，走原来的随机同盟约）
+      // 湮灭模拟：房间开关 annMods.commsPriority 打开时核心盟约优先（否则 null = 官方随机同盟约）
+      const order = commsOn(ctx) ? annRewardBondOrder(ctx, bonds) : null;
       const ids = [];
       // a pick-one offer never shows one operator twice (user playtest #6 item 19); fewer cards when the pool runs out
-      for (let k = 0; k < n; k++) { const id = rollSameBond(ctx, bonds, ctx.shopLevel(), ids); if (id) ids.push(id); }
+      for (let k = 0; k < n; k++) {
+        const id = order ? rollAnnReward(ctx, order, ctx.shopLevel(), ids) : rollSameBond(ctx, bonds, ctx.shopLevel(), ids);
+        if (id) ids.push(id);
+      }
       if (ids.length) ctx.offerChess(ids, { source: 'item' });
       else toastNothing(ctx, ev);
     },

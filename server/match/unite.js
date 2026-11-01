@@ -57,6 +57,20 @@ export function planUnite(m, results) {
   }
   if (!leakers.length || !perfects.length) return null;
   const helpers = helperOrder(m, perfects, results);
+  const { leaked, notReentered } = collectLeaks(m, leakers, results);
+  return { helpers, leakers, leaked, notReentered };
+}
+
+/**
+ * The enemies of `leakers` that re-enter a 联防 field, and the leaks that cannot (no record in this match's data).
+ * Extracted from planUnite unchanged so the multi-team plan (server/match/teams.js) bills a TEAM's leakers with the
+ * very same rules: kill bounties keep paying the leaker, and an enemy the data no longer knows is a survivor.
+ * @param {import('./Match.js').Match} m
+ * @param {any[]} leakers
+ * @param {Map<string, object>} results playerId → BattleResult.perPlayer entry
+ * @returns {{ leaked: object[], notReentered: Map<string, number> }}
+ */
+export function collectLeaks(m, leakers, results) {
   const leaked = [];
   const notReentered = new Map();
   for (const ps of leakers) {
@@ -79,7 +93,7 @@ export function planUnite(m, results) {
       leaked.push({ enemyKey: l.enemyKey, mods: l.mods ? { ...l.mods } : null, lpr: l.lpr ?? 1, sourcePlayerId: ps.playerId, tag: l.tag ?? null, bounty });
     }
   }
-  return { helpers, leakers, leaked, notReentered };
+  return { leaked, notReentered };
 }
 
 /**
@@ -98,7 +112,11 @@ export function helperStats(m, ps, results) {
     active = true;
     const stored = Number(ps.layers && ps.layers[id]) || Number(b.layers) || 0;
     const gain = pending && Number(pending[id]);
-    const add = Number.isFinite(gain) && gain > 0 ? layerGainRoom(stored, Math.floor(gain)) : 0;
+    // 炸惊模拟 规则1: the mode's own per-bond cap (gd.bondLayerCap, 9999) instead of the official 999 when it configures one
+    const cap = m.gd && m.gd.bondLayerCap ? m.gd.bondLayerCap : null;
+    const add = Number.isFinite(gain) && gain > 0
+      ? (cap ? Math.max(0, Math.min(Math.floor(gain), cap - stored)) : layerGainRoom(stored, Math.floor(gain)))
+      : 0;
     layers += stored + add;
   }
   const r = results && typeof results.get === 'function' ? results.get(ps.playerId) : null;

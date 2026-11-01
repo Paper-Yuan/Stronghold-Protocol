@@ -1,0 +1,115 @@
+/* ---- 多人房局内 HUD（8 / 12 人） -------------------------------------------------------------------
+   docs/TWELVE_PLAYER_MODE.md 的局内形态（handoff/room12/MOCK-ROOM12.md §「多人房局内 HUD」），类名一律 `gm-` 前缀。
+   2026-10-31 业主定稿「队伍框」：左栏竖排三个框（一框 = 一支队伍 = 该队 4 名干员），收起态只写队名 + `n/4`，
+   点开某一框原地向下展开 4 行，另外两框暂时隐藏。上一版的底左三颗 28×28 芯片与向右弹出的名单（.gm-chips /
+   .gm-panel）整块删除。
+
+   现在的分工：
+     * 左栏 .gm-teams：左缘贴边 .2rem（8），从盟约栏（.gm__bonds）下沿 2.36rem 往下排，框间距 .15rem（6）；
+       三框一列 3 × 32 + 2 × 6 = 108 高（792×360）。
+     * 左栏只有这一列：多人房不再挂载左侧大名单 `.team`（game.js 按 maxSeats > 4 用 isMultiRoom 跳过 TeamPanel，
+       业主 2026-10-31「不要那份大名单」），所以上一版「把 .team 右移到 2.6rem、联防条跟着让到 5.8rem」的补偿规则
+       整段删除。联防条 2026-11-01 起是屏幕底部正中的一小条、按内容自适应（见下），不再是左栏旁边的整条横杠。
+     * 展开：框高 = 32 + 4 × 34 = 168；第三个框展开时行高收成 min(.85rem, (100vh − 6.3rem) / 4)（792 下 27）：
+       34 的话框底 338 会压住左下角键 .gm__corner（316.41），所以选「压缩行高」而不是「向上生长」。
+     * 收起 / 展开就是框头那颗按钮（88×32，Enter / Space / 点击都行），Esc 也收起（ui/multiHud.js）。
+   只有 m.public.maxSeats 存在（房间人数 > 4）时才渲染（public/js/ui/multiHud.js），4 人房一条规则都不命中。
+   mock 的 px 按 792×360 下 1rem = 40px 折算成 rem（1920×1080 下 1rem = 100px，同一套 rem 等比放大）。 */
+
+/* 联防条（业主 2026-11-01「太遮视野」→ 收窄；同日「挪到下侧居中、高一点」）：底部正中一小条，宽度按内容自适应
+   （阶段字 + 我方那一队的出手头像 + 阶段名 + 剩余敌人 + 状态），**下限 4rem**（792×360 下 160px、1920 下 400px）、
+   上限 9rem（792×360 下 360 = 屏宽的 45%，1920×1080 下 900），高 .8rem（792 下 32，上一版 .6rem = 24）；
+   半透明底 + 1px 细边框，棋盘从下面透出来。**不横贯屏幕**（更早一版是 left 3.6rem / right 1.2rem = 600 宽、1.2rem 高 = 48）。
+   2026-11-01 业主口径「联防条只显示我方那一队」：头像从最多 6 位（三队各 1–2 位合并）降到 1–2 位，内容会变窄，所以加
+   4rem 下限 —— 只画 1 个头像（甚至 0 个、读作观看）时条不至于缩成一条细缝；两档视口都仍然窄于上限、横向不压角落键。
+   落点：left 50% + translateX(-50%) 居中、bottom .2rem（792 下 8、1920 下 20）—— 条底贴屏底，条顶 792 下 320。
+   为什么不再放右上：那一条（top 2.46rem / right 1.2rem）是顶栏、盟约条、效果列之间唯一空着的带子，但业主 2026-11-01
+   要求「移到下侧居中」，于是改成底部。底部正中与左下角落键 .gm__corner（left .24rem、宽 110 @792 / 254 @1920）
+   横向不挨着：条最宽那一帧的左缘 = (792 − 360) / 2 = 216 > 角落键右缘 119.59（1920 是 510 > 278）；纵向虽然与
+   角落键、展开的队伍框同一条带子上，但横向已经分开，交叠面积 0。`.shopbar` 只在可编辑的休整期出现（UNITE 期收起，
+   实测 null）；万一它在，它是贴右 .26rem 的整块，条最宽 9rem 止于屏宽 80% 之前，横向同样分开。
+   只有真的在联防时才存在 —— 挂载判据是 ui/multiHud.js 的 uniteLive（UNITE 阶段 + unite.stage 为 team / watch /
+   cross）；其余任何一帧这个节点根本不在 DOM 里，所以这里一条 display/visibility 的隐藏规则都没有。
+   字号 .24 × --t（792 下 9.6px，9px 地板；1920 下 24px），与 --t 等比；条高只在「特大」文字档（--t ≥ 88px）才让开一点。 */
+.gm-unite {
+  position: absolute; left: 50%; bottom: .2rem; transform: translateX(-50%); z-index: 5;
+  display: flex; align-items: center; gap: .14rem;
+  min-width: 4rem; width: max-content; max-width: 9rem;
+  height: max(.8rem, calc(.24 * var(--t) + .12rem)); padding: 0 .16rem;
+  background: rgba(8, 11, 10, .72); border: 1px solid rgba(79, 232, 192, .42);
+  box-shadow: inset 2px 0 0 var(--rs-lit, #4fe8c0); pointer-events: none;
+}
+.gm-unite__phase { flex: none; font-size: max(9px, calc(.24 * var(--t))); font-weight: 900; letter-spacing: .04em; color: var(--rs-lit, #4fe8c0); }
+.gm-unite__who { flex: none; display: flex; gap: .1rem; }
+.gm-unite__who > * { width: .4rem; height: .4rem; overflow: hidden; border: 1px solid rgba(79, 232, 192, .58); }
+.gm-unite__txt { flex: 0 1 auto; min-width: 0; font-size: max(9px, calc(.24 * var(--t))); font-weight: 700; color: #e9eeec; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.gm-unite__count { flex: none; font-size: max(9px, calc(.24 * var(--t))); font-weight: 700; color: #b9c2be; white-space: nowrap; }
+.gm-unite__state {
+  flex: none; display: inline-flex; align-items: center; height: max(.46rem, calc(.24 * var(--t) + .06rem)); padding: 0 .18rem;
+  font-size: max(9px, calc(.24 * var(--t))); font-weight: 800; white-space: nowrap; color: #0d2a23;
+  background: var(--rs-lit, #4fe8c0); border-radius: .05rem;
+}
+.gm-unite__state.is-done { color: #d6ddd9; background: #1c2422; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .16); }
+/* 左栏：一列队伍框（多人房里左栏只有这一列：大名单 `.team` 不再挂载，见上）。 */
+.gm-teams {
+  position: absolute; left: .2rem; top: 2.36rem; z-index: 5;
+  display: flex; flex-direction: column; gap: .15rem; pointer-events: auto;
+}
+/* 一框 = 一队：收起 2.2rem × .8rem（88×32）。队色条是左侧 .1rem 那条 ::before；边框用 inset 阴影画（不占布局，
+   框头那颗按钮才能整块 88×32 都可点，视觉尺寸与热区同尺寸 ≥32）。 */
+.gm-team {
+  position: relative; width: 2.2rem; height: .8rem; overflow: hidden;
+  background: rgba(10, 18, 16, .86); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .36);
+}
+.gm-team[hidden] { display: none; }
+.gm-team::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: .1rem; background: var(--gm-tone, #6d7a75); }
+.gm-team.is-blue { --gm-tone: #58a6ff; }
+.gm-team.is-red { --gm-tone: #e2665c; }
+.gm-team.is-mine { --gm-tone: var(--rs-lit, #4fe8c0); box-shadow: inset 0 0 0 1px rgba(79, 232, 192, .66); }
+.gm-team.is-gap { box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .2); }
+.gm-team.is-off { box-shadow: inset 0 0 0 1px rgba(255, 122, 138, .9); }
+/* 展开：高度由内容定（.8rem 框头 + 4 行）。另外两框在 markup 里带 [hidden]（display: none），所以这一框用相对
+   定位补回自己那一格（--slot × (框高 + 间距)）—— 视觉上原地向下展开，父盒高度不虚长（不把 .gm-teams 的 rect
+   拉到视口外）。 */
+.gm-team.is-open { height: auto; box-shadow: inset 0 0 0 1px rgba(79, 232, 192, .9), 0 0 6px rgba(79, 232, 192, .28); }
+.gm-team.is-open { top: calc(var(--slot, 0) * (.8rem + .15rem)); }
+.gm-team__head {
+  display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: .08rem;
+  width: 100%; height: .8rem; padding: 0 .1rem 0 .18rem; border: 0; background: none;
+  font: inherit; text-align: left; color: #e9eeec; cursor: pointer;
+}
+.gm-team__head:focus-visible { outline: 2px solid var(--rs-lit, #4fe8c0); outline-offset: -2px; }
+.gm-team__title {
+  font-size: calc(.26 * var(--t)); font-weight: 800; color: #e9eeec;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.gm-team.is-mine .gm-team__title { color: var(--rs-lit, #4fe8c0); }
+.gm-team__num { font-size: calc(.24 * var(--t)); font-weight: 800; color: #b9c2be; font-variant-numeric: tabular-nums; }
+.gm-team.is-off .gm-team__num { color: #ff7a8a; }
+/* 展开的 4 行 = 大名单的一行（`.team__*` 的美工原样复用：`.team__row` / `.team__ai` / `.team__info` / `.team__name` /
+   `.team__line` / `.team__status`，样式全在 game.css:776–812，这里不再写第二份）。队伍框只负责容器与队列：
+     * 行高 34 @792（.85rem）/ 85 @1920，与上一单相同；
+     * 框宽仍是 2.2rem（88 / 220）：大名单的头像是 .8rem（32 / 80），88 里放不下「32 + 名字 + 状态」，
+       所以只在这一行里把 `.pavatar` 缩到 .6rem（24 / 60 = 大名单的 75%）—— 大名单自己的 .8rem 一个字都不改
+       （4 人房不受影响）。1920 下 220 里 60 + 8 + 信息条 124 足够「AI·华法琳」整名；
+     * `.gm-team__ava` 是头像的定位盒（大名单里那一层是 `.team__btn`）：只给 .team__ai 角标一个定位祖先，没有视觉。 */
+.gm-team__row {
+  display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: .08rem;
+  height: .85rem; padding: 0 .1rem 0 .18rem; border-top: 1px solid rgba(255, 255, 255, .08);
+}
+.gm-teams.is-tail .gm-team__row { height: min(.85rem, calc((100vh - 6.3rem) / 4)); }
+.gm-team__ava { position: relative; display: block; }
+.gm-team__row .pavatar { --pa: .6rem; }
+/* 名条第二行靠右：状态图标贴行的右缘（与框头 n/4 同一条竖线），我方的血量数字紧挨在它左边 */
+.gm-team__row .team__line { justify-content: flex-end; }
+.gm-team__hp { font-size: calc(.26 * var(--t)); font-weight: 900; color: var(--rs-lit, #4fe8c0); font-variant-numeric: tabular-nums; }
+/* 空位那两行仍是纯文字（没有头像/状态），不借用大名单的行美工 */
+.gm-team__who {
+  font-size: calc(.24 * var(--t)); font-weight: 700; color: #e9eeec;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.gm-team__row.is-empty .gm-team__who { color: #6d7a75; font-weight: 500; }
+.gm-team__invite {
+  font-size: calc(.2 * var(--t)); font-weight: 800; color: var(--rs-lit, #4fe8c0);
+  padding: 0 .06rem; border: 1px dashed rgba(79, 232, 192, .55);
+}

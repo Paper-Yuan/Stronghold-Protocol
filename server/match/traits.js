@@ -128,9 +128,10 @@ const specialOf = new Map(Object.entries(SPECIALS).map(([id, s]) => [s.mob, id])
  * 抽三张卡（超限词条抉择）。
  * @param {{ pick: (arr:any[])=>any, shuffle:(arr:any[])=>any[] }} rng 匹配层的 rngMeta
  * @param {'pos'|'neg'} polarity
+ * @param {{ locked?: any }} [opts] locked = 上次锁定、本次必带的卡（同一 traitId 去重后放第一张）
  * @returns {Array<{ mob:string, name:string, special:string|null, boss:boolean, traitId:string, traitName:string, traitText:string }>}
  */
-export function drawTraitCards(rng, polarity) {
+export function drawTraitCards(rng, polarity, opts = {}) {
   const pool = TRAITS[polarity] || TRAITS.pos;
 
   // ① 特化：按概率掷一次，命中则占第一张。
@@ -167,6 +168,13 @@ export function drawTraitCards(rng, polarity) {
     used.add(m.key);
     const t = traits[cards.length];
     cards.push({ mob: m.key, name: m.name, special: null, boss: rank === 'BOSS', traitId: t.id, traitName: t.name, traitText: t.text });
+  }
+  // 词条锁定（业主 2026-10-26）：上次锁定的卡本次必带，且同一 traitId 不重复
+  const locked = opts && opts.locked;
+  if (locked && typeof locked.traitId === 'string') {
+    const i = cards.findIndex((c) => c.traitId === locked.traitId);
+    if (i < 0) cards[0] = locked;
+    else { cards.splice(i, 1); cards.unshift(locked); }
   }
   return cards;
 }

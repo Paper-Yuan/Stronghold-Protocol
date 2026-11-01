@@ -1005,6 +1005,11 @@
 .conn-banner__sub { color: var(--text-lo); font-family: var(--font-num); font-size: calc(.15 * var(--t)); }
 
 /* ---- misc shared bits ------------------------------------------------------------------------------ */
+/* 超限盟约文案的数值片段（js/ui/overlimitBondText.js 的 OverlimitValueLine）。业主 2026-11-01：「只强调数值片段」，
+   而且**分色逻辑只有一份** —— 全仓只有这一条 `.olb-num` 颜色规则，S.W.E.E.P. 报告（css/screens/sweep.css）与局内的
+   盟约弹窗（css/screens/game-panels.css 的 .bpop__desc）都只引用这个类名，各自的样式表不再声明第二条。
+   颜色是既有的强调色 token（theme.css 的 --mint-400），与强化块左侧竖线 / `.rt-mint` 同一个色，不新造颜色。 */
+.olb-num { color: var(--mint-400); }
 .kv { display: flex; align-items: baseline; gap: .08rem; }
 .kv__k { color: var(--text-lo); font-size: calc(.14 * var(--t)); }
 .kv__v { font-family: var(--font-num); font-weight: 700; }
@@ -1137,6 +1142,21 @@
 .plugpanel__content { margin: 0; }
 .plugpanel__content.is-ready { color: var(--mint-400); }
 .plugpanel__content.is-warn { color: #ffb066; }
+
+/* 手机 / 矮屏：插件（脚本、内容模组）面板要能完整滚动并点得中 —— 这是把 mod 装进对局的入口。
+   列表限高、每行 ≥44px、开关触控目标 44px；标签允许换行，不把房间顶栏挤出去。 */
+@media (max-width: 767px), (max-height: 520px) {
+  .plugtag { max-width: 100%; flex-wrap: wrap; }
+  .plugpanel { gap: .1rem; }
+  .plugpanel__lead { font-size: calc(.15 * var(--t)); line-height: 1.5; }
+  .plugpanel__list { max-height: min(52vh, 5.4rem); overscroll-behavior: contain; }
+  .plugrow { align-items: center; padding: .12rem; min-height: 44px; }
+  .plugrow__name { font-size: calc(.15 * var(--t)); }
+  .plugrow__switch button, .plugrow__switch .toggle, .plugrow__switch .sw {
+    min-width: 44px; min-height: 44px;
+  }
+  .plugpanel__modes .dpick__opt { min-height: 36px; }
+}
 .modmark {
   display: inline-flex; align-items: center; height: .26rem; padding: 0 .1rem; border: 1px solid rgba(255, 106, 61, .75);
   background: rgba(255, 106, 61, .14); color: #ff8a5c; font-size: calc(.13 * var(--t)); font-weight: 800; letter-spacing: .08em;

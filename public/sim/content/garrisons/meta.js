@@ -91,8 +91,36 @@ function rowCondition(ctx, me) {
 
 const H = {};
 
+H.SERVER_GAIN_CHAR = {
+  run(ctx) {
+    for (let i = 0; i < Math.min(10, num(ctx.source.bb.count, 1)); i++) ctx.grantChess(ctx.source.bbStr.chess);
+  },
+};
+
+H.SERVER_ADD_BOND_ACTIVATED_RANDOM = {
+  run(ctx) {
+    const active = bondOrder(ctx).filter((id) => ctx.bondActive(id));
+    if (!active.length) return;
+    for (let i = 0; i < Math.min(10, num(ctx.source.bb.rand_count, 1)); i++) ctx.addLayers(ctx.rng.pick(active), num(ctx.source.bb.count), { requireActive: true });
+  },
+};
+
+H.SERVER_ADD_BOND_FRONT_ALL_LAYER = {
+  run(ctx) {
+    const me = selfView(ctx);
+    if (!onBoard(me)) return;
+    const dir = me.dir || 'RIGHT';
+    for (const p of chessOnBoard(ctx)) {
+      const ahead = dir === 'UP' ? p.col === me.col && p.row > me.row : dir === 'DOWN' ? p.col === me.col && p.row < me.row
+        : dir === 'LEFT' ? p.row === me.row && p.col < me.col : p.row === me.row && p.col > me.col;
+      if (ahead) addAll(ctx, metaBonds(ctx, p), num(ctx.source.bb.count), true);
+    }
+  },
+};
+
 H.SERVER_ADD_BOND = {
   run(ctx) {
+    if (!rowCondition(ctx, selfView(ctx))) return;
     const { bb, bbStr, garrison, piece } = ctx.source;
     const bonds = ids(bbStr.bond);
     // 录武官 (hidden 4_15) carries garrison_157 (【奇迹】+3) next to garrison_156 (【炎】+6、【奇迹】+3) with the same text:
@@ -127,6 +155,8 @@ H.SERVER_ADD_BOND_METHOD = {
       case 'hand_count': addAll(ctx, bonds, ctx.hand().filter((p) => p && p.kind === 'chess').length * multi, ra); break;
       case 'same_row': addAll(ctx, bonds, sameRowCount(ctx, me) * multi, ra); break;
       case 'same_bond_diff_lv':
+        // V1's garrison_53 text names both bonds although its blackboard names only Victoria.
+        if (ctx.data.config?.season === 'act1autochess' && /^garrison_53_[ab]$/.test(ctx.source.garrisonId)) bonds.push('miraShip');
         for (const b of bonds) addAll(ctx, [b], distinctTiers(ctx, (p) => metaBonds(ctx, p).includes(b)).size * multi, ra);
         break;
       default: break;
@@ -239,6 +269,34 @@ H.SERVER_GAIN_EQUIP = {
   run(ctx) {
     const { bb, bbStr } = ctx.source;
     for (let i = 0; i < Math.min(10, num(bb.count, 1)); i++) ctx.grantItem(bbStr.chess, { requirePool: false, ignoreCap: true });
+  },
+};
+
+// 湮灭专属 mod 的 13 名干员（docs/research/20-annihilation-mods.json）：包内把三条整备特质写成 `effectType: CUSTOM` +
+// 自己的 effectKey，语义逐字来自包内 `desc` / `bb` / `bbStr`：
+//   custom_grant_item_on_acquire  <获得时>获得 N 件 item      （阿米娅 / Mon3tr）
+//   custom_grant_item_on_sell     <售出时>获得 N 件 item      （Mon3tr）
+//   custom_transform_on_sell      <售出时>变为 N 个 chess    （煌 → 烛煌，凯尔希 → Mon3tr）
+// 发放口径与 SERVER_GAIN_EQUIP 一致（requirePool:false、ignoreCap:true：它们是 mod 的奖励，不是商店货）；「变为」按
+// 「售出后获得 N 个目标干员」实现 —— 不占卡池副本（fromPool:false），因为那件棋子是换来的，不是抽来的。[ASSUMED]
+H.custom_grant_item_on_acquire = {
+  run(ctx) {
+    const { bb, bbStr } = ctx.source;
+    for (let i = 0; i < Math.min(10, num(bb.count, 1)); i++) ctx.grantItem(bbStr.item, { requirePool: false, ignoreCap: true });
+  },
+};
+
+H.custom_grant_item_on_sell = {
+  onSold(ctx) {
+    const { bb, bbStr } = ctx.source;
+    for (let i = 0; i < Math.min(10, num(bb.count, 1)); i++) ctx.grantItem(bbStr.item, { requirePool: false, ignoreCap: true });
+  },
+};
+
+H.custom_transform_on_sell = {
+  onSold(ctx) {
+    const { bb, bbStr } = ctx.source;
+    for (let i = 0; i < Math.min(10, num(bb.count, 1)); i++) ctx.grantChess(bbStr.chess, { requirePool: false, fromPool: false });
   },
 };
 

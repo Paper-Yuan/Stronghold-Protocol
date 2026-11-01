@@ -163,7 +163,7 @@ function applyPassives(battle, st) {
       for (const u of st.ops) passiveBuff(battle, u, KEY.raidAspd, mods);
       if (!st.raidMilestone) { st.raidMilestone = true; for (const u of st.members[ID.raid]) if (onField(u)) { fxOn(battle, 'bondMilestone', u, KEY.raid, 'aspd'); break; } }
     }
-    st.raidMods = raidMods(bb, lv);
+    st.raidMods = raidMods(bb, lv, battle.flags && battle.flags.overlimit ? 2 : 1);
     for (const u of st.members[ID.raid]) {
       const b = u.findBuff(KEY.raid);
       if (b) { b.mods = st.raidMods; u.markDirty(); }
@@ -184,9 +184,21 @@ function applyPassives(battle, st) {
   }
 }
 
-function raidMods(bb, lv) {
+/**
+ * 【突袭】再部署乘区：`atk = 1 + base_atk + atk_per_stack × L`、`hp = 1 + base_max_hp + max_hp_per_stack × L`
+ * （即 `+25% + 1%×L`）。业主 2026-10-31（超限 V3）：「卡西米尔的突袭乘区翻倍**只翻攻击力，不翻生命值**」——
+ * 超限局只把攻击力乘区 ×2（L=100：`1+0.25+1.0 = 2.25` → `4.5`），生命值乘区保持 ×1（仍是 `2.25`）。
+ * 乘区含基数 1，所以翻倍后的加算是 `2×(1+base_atk+per·L) − 1`（与 public/js/ui/overlimitBondText.js 里
+ * 「(1+0.25+0.01×层数) → 2×(1+0.25+0.01×层数)」同一口径）。普通 / 湮灭 / 炸惊：k = 1，逐位等于改动前。
+ * @param {any} bb 突袭的数值袋
+ * @param {number} lv 突袭层数
+ * @param {number} [atkScale] 攻击力乘区倍数（超限 2，其余 1；生命值永远 ×1）
+ */
+function raidMods(bb, lv, atkScale = 1) {
+  const k = atkScale > 0 ? atkScale : 1;
+  const atkPct = num(bb.base_atk) + num(bb.atk_per_stack) * lv;
   const mods = directMods({
-    atk: num(bb.base_atk) + num(bb.atk_per_stack) * lv,
+    atk: k === 1 ? atkPct : (1 + atkPct) * k - 1,
     hp: num(bb.base_max_hp) + num(bb.max_hp_per_stack) * lv,
   });
   const aspd = num(bb.base_attack_speed) + num(bb.attack_speed_per_stack) * lv;

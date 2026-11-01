@@ -58,6 +58,9 @@ await page.screenshot({ path: `${OUT}/4-room.png` });
 const room = await page.evaluate(() => ({
   rs: !!document.querySelector('.rs, .room-screen'),
   seats: document.querySelectorAll('.rseat, .seat').length,
+  // 房间聊天 (ui/roomChat.js): the draggable panel exists in a co-op room; a solo room hides it by design
+  chatPanel: !!document.querySelector('.spchat__panel'),
+  chatToggle: !!document.querySelector('.spchat__toggle'),
   text: (document.body.innerText || '').slice(0, 160),
 }));
 console.log('room:', JSON.stringify(room));

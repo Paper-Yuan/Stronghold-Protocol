@@ -1,0 +1,111 @@
+/* ban-picker.css — 炸惊模拟 · 卡池预选（业主 2026-10-28 C 项；DOM 见 public/js/ui/banPicker.js）。
+ *
+ * 由 ui/banPicker.js 懒加载（与 ui/forge.js / ui/cardArt.js 同一个写法），不进 index.html。
+ * 硬约束与其它新面板一致：触摸地板 24px、字号 `max(<px>, calc(k * var(--t)))`、无 !important / :has()、
+ * 矮屏两列不塌成一列（名字要读得全）。 */
+
+.zjban__body {
+  display: flex;
+  flex-direction: column;
+  gap: .14rem;
+  min-width: 0;
+}
+.zjban__lead {
+  margin: 0;
+  font-size: max(11px, calc(.15 * var(--t)));
+  line-height: 1.5;
+  color: var(--text-lo);
+}
+
+.zjban__sec {
+  display: flex;
+  flex-direction: column;
+  gap: .08rem;
+}
+.zjban__head {
+  display: flex;
+  align-items: baseline;
+  gap: .1rem;
+}
+.zjban__title {
+  display: inline-flex;
+  align-items: baseline;
+  gap: .08rem;
+  margin: 0;
+  font-size: max(12px, calc(.19 * var(--t)));
+  font-weight: 800;
+  color: var(--text-hi);
+  letter-spacing: .02em;
+}
+.zjban__micro {
+  font-size: max(9px, calc(.11 * var(--t)));
+  font-weight: 700;
+  letter-spacing: .12em;
+  color: var(--mint-400);
+  opacity: .8;
+}
+.zjban__count {
+  margin-left: auto;
+  font-size: max(11px, calc(.15 * var(--t)));
+  font-weight: 800;
+  color: var(--mint-400);
+}
+
+.zjban__chips {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(max(3.2rem, 8.6em), 1fr));
+  font-size: max(11px, calc(.15 * var(--t)));
+  gap: .06rem;
+}
+.zjban__chip {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: .06rem;
+  min-width: 0;
+  min-height: 24px;
+  padding: .04rem .08rem;
+  border: 1px solid var(--line-2);
+  background: rgba(0, 0, 0, .3);
+  color: var(--text-md);
+  font: inherit;
+  font-size: inherit;
+  font-weight: 700;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color var(--t-fast), color var(--t-fast), background var(--t-fast);
+}
+.zjban__chip:hover:not(:disabled) { border-color: var(--line-3); color: var(--text-hi); }
+.zjban__chip:disabled { cursor: default; opacity: .6; }
+.zjban__chip.is-on {
+  border-color: var(--mint-400);
+  background: rgba(93, 240, 198, .12);
+  color: var(--text-hi);
+  box-shadow: 0 0 0 1px var(--mint-400) inset;
+}
+.zjban__name {
+  min-width: 0;
+  overflow-wrap: break-word;
+  line-height: 1.2;
+}
+.zjban__mark {
+  flex: none;
+  display: inline-grid;
+  place-items: center;
+  margin-left: auto;
+  width: 14px;
+  height: 14px;
+  color: var(--mint-400);
+}
+.zjban__mark .icon { width: 100%; height: 100%; }
+
+/* 矮屏（667×375 / 844×390）：两列起才读得全名字，间距收紧 */
+@media (max-height: 480px) {
+  .zjban__body { gap: .1rem; }
+  .zjban__chips { grid-template-columns: repeat(auto-fill, minmax(max(2.8rem, 7.4em), 1fr)); gap: .04rem; }
+  .zjban__chip { min-height: 26px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .zjban__chip { transition: none; }
+}

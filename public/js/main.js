@@ -44,8 +44,9 @@ import { useErrorBoundary } from '../vendor/hooks.module.js';
 import { html, UiHosts, Button, MicroLabel, closeAllDialogs } from './ui/components.js';
 import { ConnectionBanner } from './ui/connBanner.js';
 import { ToastHost, toast, toastError, describeError } from './ui/toasts.js';
+import { getRoomDanmaku } from './ui/roomDanmaku.js';
 import { net, identity, NetError } from './net.js';
-import { store, useStore, emptyMatch, selectRoute, sessionResetNotice, isSpectating } from './store.js';
+import { store, useStore, emptyMatch, selectRoute, sessionResetNotice, isSpectating, pushChatMessage, clearChat, roomIdentityChanged } from './store.js';
 import { data } from './data.js';
 import { GAME_FILES } from './ui/gameComponents.js';
 import { TitleScreen, sanitizeName } from './screens/title.js';
@@ -66,6 +67,7 @@ import { CoveredVersionVote } from './ui/versionVote.js';
 import { installRehearsal } from './battle/rehearsal.js';
 import { recordResult, installStatsRecorder } from './ui/stats.js';
 import { installLoadoutSync, installOwnershipSync, installDiySync, installSkinsSync, installCardSync, installSettingsViews, loadoutStore } from './ui/loadoutSync.js';
+import { skinsStore, SKINS_KEY } from './ui/skins.js';
 import { startBuildGuard } from './ui/buildGuard.js';
 import { initLang, useLang, tickerText } from './ui/lang.js';
 import { t, N_, translateWire } from '../../shared/i18n.js';
@@ -303,12 +305,24 @@ function wireNet() {
   net.on('m.emote', (msg) => {
     store.set((s) => ({ emotes: [...s.emotes.slice(-(EMOTE_KEEP - 1)), { seq: ++seq, playerId: msg.playerId, id: msg.id, at: Date.now() }] }));
   });
+  // 房间 / 局内文字聊天 (room.chat): the room screen's draggable panel and the in-match ChatBox both read the store's
+  // ring buffer, and every line also flies as a danmaku (ui/roomDanmaku.js; the switch lives in that module's store).
+  net.on('room.chat', (msg) => {
+    pushChatMessage(msg);
+    try {
+      // the waiting room's own panel draws its danmaku (ui/roomChat.js); the in-match ChatBox relies on this one
+      const s = store.get();
+      if (selectRoute(s) === 'game') getRoomDanmaku().show(msg, msg.playerId === s.me?.playerId);
+    } catch { /* the danmaku layer must never break the chat log */ }
+  });
 
   // Entering (title → lobby) while already online also needs the deep-link join.
   store.subscribe((s, prev) => {
     if (s.session.entered && !prev.session.entered) schedulePendingJoin();
     // in a room (co-op or solo, also a resumed one) a match is near: its data starts downloading
     if (s.room && !prev.room) warmGameData();
+    // the previous room's lines must not sit under the next room's (leaving included, not only on room.closed)
+    if (roomIdentityChanged(prev.room, s.room)) clearChat();
     // the match on screen is over (left, closed, kicked, a new session): a rehearsal task of it is dead, and the frame
     // that cancels it may never arrive (a disposed match sends nothing) — the page stops what it is running itself
     if (selectRoute(prev) === 'game' && selectRoute(s) !== 'game') rehearsal?.clear();
@@ -463,12 +477,16 @@ async function boot() {
   // Audio: unlock on first gesture, BGM follows the route / match phase (js/audio.js).
   // a cosmetic plugin's sound that will not load falls back like its art (content.js, DESIGN §32 P1a)
   installAudio({ getManifest: () => data.get('assets'), subscribe: store.subscribe, getState: store.get, selectRoute, settings: settingsStore.get(),
+    getSkinVoices: () => data.get('skinVoices'),
+    getSkin: (charId) => skinsStore.get()?.[SKINS_KEY]?.[charId] || null,
     onFailed: (url) => cosmetics.fail(url) });
   // …and the music follows the art: the screen's track again when the cosmetic layers change its URLs
   cosmetics.subscribe(() => audio.refreshBgm());
   // 自定义大厅背景与音乐 (ui/lobbyMedia.js): the player's own files of this browser, the music from the title on
   installLobbyMedia();
   data.load('assets').catch(() => {});
+  // 皮肤专属语音 (data/skin-voices.json): loaded with the art so the first voice of a worn outfit already has it
+  data.load('skinVoices').catch(() => {});
   // Warm the data cache in the background (missing files are tolerated).
   data.loadAll('config').catch(() => {});
   // Optional local-client art manifest (emotes, tutorial pages, official UI sprites; DESIGN §13).

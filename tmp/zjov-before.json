@@ -1,0 +1,796 @@
+{
+  "792x360": {
+    "viewport": {
+      "w": 792,
+      "h": 360
+    },
+    "rootFontSize": "40px",
+    "tVar": "1rem",
+    "docOverflowX": 0,
+    "overlay": {
+      "x": 0,
+      "y": 0,
+      "w": 792,
+      "h": 360,
+      "inView": true
+    },
+    "head": {
+      "x": 6.4,
+      "y": 4.8,
+      "w": 779.2,
+      "h": 38.4,
+      "inView": true
+    },
+    "title": {
+      "text": "惊变阶段"
+    },
+    "sub": {
+      "text": "选择一项（无时间限制） · 点击卡牌选中，再次点击确认",
+      "h": 0,
+      "lh": 16.5,
+      "lineCount": 0,
+      "clamp": "none",
+      "overflow": "visible",
+      "textOverflow": "clip",
+      "ws": "normal",
+      "scrollH": 0,
+      "clientH": 0,
+      "clipped": false,
+      "font": "11px"
+    },
+    "confirm": null,
+    "state": {
+      "x": 668.2,
+      "y": 10,
+      "w": 117.4,
+      "h": 28,
+      "inView": true,
+      "text": "当前轮到你决策"
+    },
+    "grid": {
+      "x": 6.4,
+      "y": 50.4,
+      "w": 779.2,
+      "h": 304,
+      "inView": true,
+      "cols": "256.531px 256.547px 256.531px",
+      "gap": "4.8px",
+      "overflowX": "hidden",
+      "overflowY": "auto",
+      "scrollH": 304,
+      "clientH": 304,
+      "scrolls": false
+    },
+    "cardCount": 3,
+    "cards": [
+      {
+        "idx": 0,
+        "testid": "jibian-card-0",
+        "rarity": "legend",
+        "card": {
+          "x": 6.4,
+          "y": 50.4,
+          "w": 256.5,
+          "h": 163.8,
+          "inView": true
+        },
+        "wrap": {
+          "x": 6.4,
+          "y": 50.4,
+          "w": 256.5,
+          "h": 198.2,
+          "inView": true
+        },
+        "icon": {
+          "x": 13,
+          "y": 65.8,
+          "w": 20,
+          "h": 20,
+          "inView": true
+        },
+        "name": {
+          "text": "银质子弹",
+          "h": 21,
+          "lh": 21,
+          "lineCount": 1,
+          "clamp": "none",
+          "overflow": "hidden",
+          "textOverflow": "ellipsis",
+          "ws": "nowrap",
+          "scrollH": 21,
+          "clientH": 21,
+          "clipped": false,
+          "font": "14px"
+        },
+        "rarityChip": {
+          "x": 37.8,
+          "y": 78.8,
+          "w": 29.6,
+          "h": 16.6,
+          "inView": true
+        },
+        "desc": {
+          "text": "你的【拉特兰】盟约干员造成伤害时会对目标施加一个可叠加的每秒扣除1%最大生命（最多不超过20w）的流血效果，持续3s",
+          "h": 52.8,
+          "lh": 17.6,
+          "lineCount": 3,
+          "clamp": "none",
+          "overflow": "visible",
+          "textOverflow": "clip",
+          "ws": "normal",
+          "scrollH": 53,
+          "clientH": 53,
+          "clipped": false,
+          "font": "11px"
+        },
+        "bondblocks": {
+          "x": 13,
+          "y": 154.5,
+          "w": 244.1,
+          "h": 53.9,
+          "inView": true
+        },
+        "bondboxes": [
+          {
+            "name": "共感",
+            "rect": {
+              "x": 13,
+              "y": 154.5,
+              "w": 244.1,
+              "h": 53.9,
+              "inView": true
+            },
+            "effect": {
+              "h": 29,
+              "lh": 14.5,
+              "lineCount": 2,
+              "clamp": "none",
+              "overflow": "visible",
+              "textOverflow": "clip",
+              "ws": "normal",
+              "scrollH": 29,
+              "clientH": 29,
+              "clipped": false,
+              "font": "10px"
+            }
+          }
+        ],
+        "bondHints": [],
+        "flavor": {
+          "text": "“这是一枚银子弹。”",
+          "display": "none",
+          "h": 0,
+          "lh": 15,
+          "lineCount": 0,
+          "clamp": "none",
+          "overflow": "visible",
+          "textOverflow": "clip",
+          "ws": "normal",
+          "scrollH": 0,
+          "clientH": 0,
+          "clipped": false,
+          "font": "10px"
+        },
+        "confirmInCard": null,
+        "reroll": {
+          "x": 6.4,
+          "y": 216.6,
+          "w": 256.5,
+          "h": 32,
+          "inView": true,
+          "disabled": false,
+          "text": "重抽3"
+        },
+        "order": [
+          "zjcard__top",
+          "zjcard__desc",
+          "zjcard__bondblocks",
+          "zjcard__flavor"
+        ]
+      },
+      {
+        "idx": 1,
+        "testid": "jibian-card-1",
+        "rarity": "legend",
+        "card": {
+          "x": 267.7,
+          "y": 50.4,
+          "w": 256.5,
+          "h": 131.7,
+          "inView": true
+        },
+        "wrap": {
+          "x": 267.7,
+          "y": 50.4,
+          "w": 256.5,
+          "h": 166.1,
+          "inView": true
+        },
+        "icon": {
+          "x": 274.3,
+          "y": 65.8,
+          "w": 20,
+          "h": 20,
+          "inView": true
+        },
+        "name": {
+          "text": "？！325799？！",
+          "h": 21,
+          "lh": 21,
+          "lineCount": 1,
+          "clamp": "none",
+          "overflow": "hidden",
+          "textOverflow": "ellipsis",
+          "ws": "nowrap",
+          "scrollH": 21,
+          "clientH": 21,
+          "clipped": false,
+          "font": "14px"
+        },
+        "rarityChip": {
+          "x": 299.1,
+          "y": 78.8,
+          "w": 29.6,
+          "h": 16.6,
+          "inView": true
+        },
+        "desc": {
+          "text": "获得任务：存活至7.99回合结束 奖励：使你随机一个已激活盟约的层数 +325",
+          "h": 35.2,
+          "lh": 17.6,
+          "lineCount": 2,
+          "clamp": "none",
+          "overflow": "visible",
+          "textOverflow": "clip",
+          "ws": "normal",
+          "scrollH": 35,
+          "clientH": 35,
+          "clipped": false,
+          "font": "11px"
+        },
+        "bondblocks": {
+          "x": 274.3,
+          "y": 136.9,
+          "w": 244.2,
+          "h": 39.4,
+          "inView": true
+        },
+        "bondboxes": [
+          {
+            "name": "层数厨",
+            "rect": {
+              "x": 274.3,
+              "y": 136.9,
+              "w": 244.2,
+              "h": 39.4,
+              "inView": true
+            },
+            "effect": {
+              "h": 14.5,
+              "lh": 14.5,
+              "lineCount": 1,
+              "clamp": "none",
+              "overflow": "visible",
+              "textOverflow": "clip",
+              "ws": "normal",
+              "scrollH": 15,
+              "clientH": 15,
+              "clipped": false,
+              "font": "10px"
+            }
+          }
+        ],
+        "bondHints": [],
+        "flavor": {
+          "text": "“kyzyyz”",
+          "display": "none",
+          "h": 0,
+          "lh": 15,
+          "lineCount": 0,
+          "clamp": "none",
+          "overflow": "visible",
+          "textOverflow": "clip",
+          "ws": "normal",
+          "scrollH": 0,
+          "clientH": 0,
+          "clipped": false,
+          "font": "10px"
+        },
+        "confirmInCard": null,
+        "reroll": {
+          "x": 267.7,
+          "y": 184.5,
+          "w": 256.5,
+          "h": 32,
+          "inView": true,
+          "disabled": false,
+          "text": "重抽3"
+        },
+        "order": [
+          "zjcard__top",
+          "zjcard__desc",
+          "zjcard__bondblocks",
+          "zjcard__flavor"
+        ]
+      },
+      {
+        "idx": 2,
+        "testid": "jibian-card-2",
+        "rarity": "rare",
+        "card": {
+          "x": 529.1,
+          "y": 50.4,
+          "w": 256.5,
+          "h": 114.1,
+          "inView": true
+        },
+        "wrap": {
+          "x": 529.1,
+          "y": 50.4,
+          "w": 256.5,
+          "h": 148.5,
+          "inView": true
+        },
+        "icon": {
+          "x": 535.7,
+          "y": 65.8,
+          "w": 20,
+          "h": 20,
+          "inView": true
+        },
+        "name": {
+          "text": "“叠层手”",
+          "h": 21,
+          "lh": 21,
+          "lineCount": 1,
+          "clamp": "none",
+          "overflow": "hidden",
+          "textOverflow": "ellipsis",
+          "ws": "nowrap",
+          "scrollH": 21,
+          "clientH": 21,
+          "clipped": false,
+          "font": "14px"
+        },
+        "rarityChip": {
+          "x": 560.5,
+          "y": 78.8,
+          "w": 29.6,
+          "h": 16.6,
+          "inView": true
+        },
+        "desc": {
+          "text": "接下来五回合你通过特质提高的层数翻倍",
+          "h": 17.6,
+          "lh": 17.6,
+          "lineCount": 1,
+          "clamp": "none",
+          "overflow": "visible",
+          "textOverflow": "clip",
+          "ws": "normal",
+          "scrollH": 18,
+          "clientH": 18,
+          "clipped": false,
+          "font": "11px"
+        },
+        "bondblocks": {
+          "x": 535.7,
+          "y": 119.3,
+          "w": 244.1,
+          "h": 39.4,
+          "inView": true
+        },
+        "bondboxes": [
+          {
+            "name": "层数厨",
+            "rect": {
+              "x": 535.7,
+              "y": 119.3,
+              "w": 244.1,
+              "h": 39.4,
+              "inView": true
+            },
+            "effect": {
+              "h": 14.5,
+              "lh": 14.5,
+              "lineCount": 1,
+              "clamp": "none",
+              "overflow": "visible",
+              "textOverflow": "clip",
+              "ws": "normal",
+              "scrollH": 15,
+              "clientH": 15,
+              "clipped": false,
+              "font": "10px"
+            }
+          }
+        ],
+        "bondHints": [],
+        "flavor": null,
+        "confirmInCard": null,
+        "reroll": {
+          "x": 529.1,
+          "y": 166.9,
+          "w": 256.5,
+          "h": 32,
+          "inView": true,
+          "disabled": false,
+          "text": "重抽3"
+        },
+        "order": [
+          "zjcard__top",
+          "zjcard__desc",
+          "zjcard__bondblocks"
+        ]
+      }
+    ],
+    "errors": [],
+    "shot": "E:/Workbox/系统/handoff/shots/zjov-before-792x360.png"
+  },
+  "1920x1080": {
+    "viewport": {
+      "w": 1920,
+      "h": 1080
+    },
+    "rootFontSize": "100px",
+    "tVar": "1rem",
+    "docOverflowX": 0,
+    "overlay": {
+      "x": 280,
+      "y": 0,
+      "w": 1640,
+      "h": 1080,
+      "inView": true
+    },
+    "head": {
+      "x": 310,
+      "y": 34,
+      "w": 1560,
+      "h": 142,
+      "inView": true
+    },
+    "title": {
+      "text": "惊变阶段"
+    },
+    "sub": {
+      "text": "选择一项（无时间限制） · 点击卡牌选中，再次点击确认",
+      "h": 33,
+      "lh": 33,
+      "lineCount": 1,
+      "clamp": "none",
+      "overflow": "visible",
+      "textOverflow": "clip",
+      "ws": "normal",
+      "scrollH": 33,
+      "clientH": 33,
+      "clipped": false,
+      "font": "22px"
+    },
+    "confirm": null,
+    "state": {
+      "x": 1623.9,
+      "y": 76,
+      "w": 246.1,
+      "h": 58,
+      "inView": true,
+      "text": "当前轮到你决策"
+    },
+    "grid": {
+      "x": 310,
+      "y": 194,
+      "w": 1560,
+      "h": 836,
+      "inView": true,
+      "cols": "506.656px 506.672px 506.656px",
+      "gap": "20px",
+      "overflowX": "hidden",
+      "overflowY": "auto",
+      "scrollH": 836,
+      "clientH": 836,
+      "scrolls": false
+    },
+    "cardCount": 3,
+    "cards": [
+      {
+        "idx": 0,
+        "testid": "jibian-card-0",
+        "rarity": "normal",
+        "card": {
+          "x": 310,
+          "y": 194,
+          "w": 506.7,
+          "h": 240,
+          "inView": true
+        },
+        "wrap": {
+          "x": 310,
+          "y": 194,
+          "w": 506.7,
+          "h": 290,
+          "inView": true
+        },
+        "icon": {
+          "x": 329,
+          "y": 222,
+          "w": 62,
+          "h": 62,
+          "inView": true
+        },
+        "name": {
+          "text": "元素大师",
+          "h": 45,
+          "lh": 45,
+          "lineCount": 1,
+          "clamp": "none",
+          "overflow": "hidden",
+          "textOverflow": "ellipsis",
+          "ws": "nowrap",
+          "scrollH": 45,
+          "clientH": 45,
+          "clipped": false,
+          "font": "30px"
+        },
+        "rarityChip": {
+          "x": 403,
+          "y": 262,
+          "w": 57.8,
+          "h": 31,
+          "inView": true
+        },
+        "desc": {
+          "text": "元素损伤爆发的伤害和效果翻倍",
+          "h": 35.2,
+          "lh": 35.2,
+          "lineCount": 1,
+          "clamp": "none",
+          "overflow": "visible",
+          "textOverflow": "clip",
+          "ws": "normal",
+          "scrollH": 35,
+          "clientH": 35,
+          "clipped": false,
+          "font": "22px"
+        },
+        "bondblocks": null,
+        "bondboxes": [],
+        "bondHints": [],
+        "flavor": {
+          "text": "“招募动画最安静之人问了吗？”",
+          "display": "block",
+          "h": 36,
+          "lh": 27,
+          "lineCount": 1,
+          "clamp": "none",
+          "overflow": "visible",
+          "textOverflow": "clip",
+          "ws": "normal",
+          "scrollH": 35,
+          "clientH": 35,
+          "clipped": false,
+          "font": "18px"
+        },
+        "confirmInCard": null,
+        "reroll": {
+          "x": 310,
+          "y": 440,
+          "w": 506.7,
+          "h": 44,
+          "inView": true,
+          "disabled": false,
+          "text": "重抽3"
+        },
+        "order": [
+          "zjcard__top",
+          "zjcard__desc",
+          "zjcard__flavor"
+        ]
+      },
+      {
+        "idx": 1,
+        "testid": "jibian-card-1",
+        "rarity": "normal",
+        "card": {
+          "x": 836.7,
+          "y": 194,
+          "w": 506.7,
+          "h": 322.5,
+          "inView": true
+        },
+        "wrap": {
+          "x": 836.7,
+          "y": 194,
+          "w": 506.7,
+          "h": 372.5,
+          "inView": true
+        },
+        "icon": {
+          "x": 855.7,
+          "y": 222,
+          "w": 62,
+          "h": 62,
+          "inView": true
+        },
+        "name": {
+          "text": "刀枪不入",
+          "h": 45,
+          "lh": 45,
+          "lineCount": 1,
+          "clamp": "none",
+          "overflow": "hidden",
+          "textOverflow": "ellipsis",
+          "ws": "nowrap",
+          "scrollH": 45,
+          "clientH": 45,
+          "clipped": false,
+          "font": "30px"
+        },
+        "rarityChip": {
+          "x": 929.7,
+          "y": 262,
+          "w": 57.8,
+          "h": 31,
+          "inView": true
+        },
+        "desc": {
+          "text": "你的所有干员防御力增加50%",
+          "h": 35.2,
+          "lh": 35.2,
+          "lineCount": 1,
+          "clamp": "none",
+          "overflow": "visible",
+          "textOverflow": "clip",
+          "ws": "normal",
+          "scrollH": 35,
+          "clientH": 35,
+          "clipped": false,
+          "font": "22px"
+        },
+        "bondblocks": {
+          "x": 855.7,
+          "y": 352.2,
+          "w": 470.7,
+          "h": 97.3,
+          "inView": true
+        },
+        "bondboxes": [
+          {
+            "name": "因为太怕痛就全点防御力了",
+            "rect": {
+              "x": 855.7,
+              "y": 352.2,
+              "w": 470.7,
+              "h": 97.3,
+              "inView": true
+            },
+            "effect": {
+              "h": 49.3,
+              "lh": 24.7,
+              "lineCount": 2,
+              "clamp": "none",
+              "overflow": "visible",
+              "textOverflow": "clip",
+              "ws": "normal",
+              "scrollH": 49,
+              "clientH": 49,
+              "clipped": false,
+              "font": "17px"
+            }
+          }
+        ],
+        "bondHints": [],
+        "flavor": {
+          "text": "“因为太怕痛所以全点防御力了”",
+          "display": "block",
+          "h": 36,
+          "lh": 27,
+          "lineCount": 1,
+          "clamp": "none",
+          "overflow": "visible",
+          "textOverflow": "clip",
+          "ws": "normal",
+          "scrollH": 35,
+          "clientH": 35,
+          "clipped": false,
+          "font": "18px"
+        },
+        "confirmInCard": null,
+        "reroll": {
+          "x": 836.7,
+          "y": 522.5,
+          "w": 506.7,
+          "h": 44,
+          "inView": true,
+          "disabled": false,
+          "text": "重抽3"
+        },
+        "order": [
+          "zjcard__top",
+          "zjcard__desc",
+          "zjcard__bondblocks",
+          "zjcard__flavor"
+        ]
+      },
+      {
+        "idx": 2,
+        "testid": "jibian-card-2",
+        "rarity": "rare",
+        "card": {
+          "x": 1363.3,
+          "y": 194,
+          "w": 506.7,
+          "h": 240,
+          "inView": true
+        },
+        "wrap": {
+          "x": 1363.3,
+          "y": 194,
+          "w": 506.7,
+          "h": 290,
+          "inView": true
+        },
+        "icon": {
+          "x": 1382.3,
+          "y": 222,
+          "w": 62,
+          "h": 62,
+          "inView": true
+        },
+        "name": {
+          "text": "踢踏舞",
+          "h": 45,
+          "lh": 45,
+          "lineCount": 1,
+          "clamp": "none",
+          "overflow": "hidden",
+          "textOverflow": "ellipsis",
+          "ws": "nowrap",
+          "scrollH": 45,
+          "clientH": 45,
+          "clipped": false,
+          "font": "30px"
+        },
+        "rarityChip": {
+          "x": 1456.3,
+          "y": 262,
+          "w": 57.8,
+          "h": 31,
+          "inView": true
+        },
+        "desc": {
+          "text": "你的所有干员获得一个效果：每次普通攻击后获得持续2s的攻击速度+2，可叠加，叠加后刷新持续时间",
+          "h": 105.6,
+          "lh": 35.2,
+          "lineCount": 3,
+          "clamp": "none",
+          "overflow": "visible",
+          "textOverflow": "clip",
+          "ws": "normal",
+          "scrollH": 106,
+          "clientH": 106,
+          "clipped": false,
+          "font": "22px"
+        },
+        "bondblocks": null,
+        "bondboxes": [],
+        "bondHints": [],
+        "flavor": null,
+        "confirmInCard": null,
+        "reroll": {
+          "x": 1363.3,
+          "y": 440,
+          "w": 506.7,
+          "h": 44,
+          "inView": true,
+          "disabled": false,
+          "text": "重抽3"
+        },
+        "order": [
+          "zjcard__top",
+          "zjcard__desc"
+        ]
+      }
+    ],
+    "errors": [],
+    "shot": "E:/Workbox/系统/handoff/shots/zjov-before-1920x1080.png"
+  }
+}

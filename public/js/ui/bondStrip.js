@@ -30,12 +30,12 @@
 // pick goes with onMember: never the empty 甄选干员 slot's card). A 自选 piece that is a member through 变形同构体 shows its
 // operator too, with the 「同构」 tag (#846: it showed the empty slot's 「甄」).
 
-import { cloneElement } from '../../vendor/preact.module.js';
 import { useEffect, useRef, useState } from '../../vendor/hooks.module.js';
 import { html, BondDisc, Icon, MicroLabel, Tooltip } from './components.js';
 import { RichText, UnitThumb, BondGlyph, GIcon } from './gameComponents.js';
 import { sortBonds, bondMembers, nextThreshold, bondTier, harmonyMembers, HARMONY_BOND, memberHeadCount, briefingBondTip, diyGetter, diyRecordFor, memberStandIn, standInForText } from './gameLogic.js';
 import { formatBondEffect } from './richText.js';
+import { OverlimitValueLine } from './overlimitBondText.js';
 import { bondIconUrl } from './assetUrls.js';
 import { data } from '../data.js';
 import { t, tc, tParts, tName } from '../../../shared/i18n.js';
@@ -49,38 +49,80 @@ function OwnerTag({ owner }) {
   </span>`;
 }
 
-function BondScroller({ count, children }) {
-  const viewport = useRef(null);
-  const [edges, setEdges] = useState({ left: false, right: false });
+/** 横向滚动容器：条体自己就是原生横向滚动盒（触屏 / 滚轮 / 触控板直接滚），另外给鼠标加了「按住左右拖」。
+ *  两侧不再有 ‹ › 键（业主 2026-10-29 删除）；条体过长时由 data-edge 让左右两端淡出，到头的那一侧淡入。
+ *  用外层容器 + querySelector 拿真正的滚动元素（条体是 BondStrip 画的兄弟节点）。 */
+export function BondScroller({ count, children }) {
+  const box = useRef(null);
+  const drag = useRef(null);
+  const swallowed = useRef(false);
+  const [edge, setEdge] = useState('');
+  const viewport = () => (box.current ? box.current.querySelector('.bstrip') : null);
+
   useEffect(() => {
-    const el = viewport.current;
-    if (!el) return;
+    const el = viewport();
+    if (!el) return undefined;
     const update = () => {
-      const left = el.scrollLeft > 1, right = el.scrollLeft + el.clientWidth < el.scrollWidth - 1;
-      setEdges((old) => old.left === left && old.right === right ? old : { left, right });
+      const left = el.scrollLeft > 1;
+      const right = el.scrollLeft + el.clientWidth < el.scrollWidth - 1;
+      const next = left && right ? 'both' : left ? 'left' : right ? 'right' : '';
+      setEdge((old) => (old === next ? old : next));
     };
-    // A render can resize the observed slots too. Update after observer delivery, so those changes are measured in the
-    // next frame rather than producing "ResizeObserver loop completed with undelivered notifications" during prep.
+    // 渲染本身也可能改变槽位宽度：在观察器回调之后的下一次帧再量，避免备战期 ResizeObserver 循环告警。
     let frame = null;
-    const observer = new ResizeObserver(() => {
+    const observer = typeof ResizeObserver === 'function' ? new ResizeObserver(() => {
       if (frame !== null) return;
       frame = requestAnimationFrame(() => { frame = null; update(); });
-    });
-    observer.observe(el);
-    for (const child of el.children) observer.observe(child);
+    }) : null;
+    observer?.observe(el);
+    for (const child of el.children) observer?.observe(child);
     el.addEventListener('scroll', update, { passive: true });
     update();
     return () => {
-      observer.disconnect();
+      observer?.disconnect();
       if (frame !== null) cancelAnimationFrame(frame);
       el.removeEventListener('scroll', update);
     };
-  }, [viewport, count]);
-  const scroll = direction => viewport.current?.scrollBy({ left: direction * Math.max(80, viewport.current.clientWidth * .75), behavior: 'smooth' });
-  return html`<div class="bstrip-scroll">
-    <button type="button" class="bstrip-scroll__arrow" disabled=${!edges.left} aria-label=${t('向左滚动盟约')} onClick=${() => scroll(-1)}>‹</button>
-    ${cloneElement(children, { ref: viewport })}
-    <button type="button" class="bstrip-scroll__arrow" disabled=${!edges.right} aria-label=${t('向右滚动盟约')} onClick=${() => scroll(1)}>›</button>
+  }, [count]);
+
+  // 鼠标按住左右拖（触屏交给原生 pan-x；按钮上的轻点仍然照常打开盟约弹窗，拖过 4px 就当滑动、吞掉那次 click）。
+  const onPointerDown = (e) => {
+    if (e.button !== 0 || e.pointerType === 'touch') return;
+    const el = viewport();
+    if (!el) return;
+    drag.current = { id: e.pointerId, x: e.clientX, left: el.scrollLeft, moved: false, el };
+  };
+  const onPointerMove = (e) => {
+    const d = drag.current;
+    if (!d || d.id !== e.pointerId) return;
+    if (!(e.buttons & 1)) { drag.current = null; box.current?.classList.remove('is-dragging'); return; }
+    const dx = e.clientX - d.x;
+    if (!d.moved && Math.abs(dx) > 4) {
+      d.moved = true;
+      box.current?.classList.add('is-dragging');
+      try { box.current?.setPointerCapture?.(e.pointerId); } catch { /* not capturable: the pointerup below still ends it */ }
+    }
+    if (!d.moved) return;
+    d.el.scrollLeft = d.left - dx;
+    e.preventDefault();
+  };
+  const endDrag = (e) => {
+    const d = drag.current;
+    if (!d || (e && d.id !== e.pointerId)) return;
+    if (d.moved) {
+      swallowed.current = true;
+      setTimeout(() => { swallowed.current = false; }, 0);
+    }
+    drag.current = null;
+    box.current?.classList.remove('is-dragging');
+  };
+
+  return html`<div class="bstrip-scroll" ref=${box} data-edge=${edge || null}
+      onPointerDown=${onPointerDown} onPointerMove=${onPointerMove}
+      onPointerUp=${endDrag} onPointerCancel=${endDrag}
+      onDragStart=${(e) => e.preventDefault()}
+      onClickCapture=${(e) => { if (swallowed.current) { e.preventDefault(); e.stopPropagation(); } }}>
+    ${children}
   </div>`;
 }
 
@@ -129,10 +171,28 @@ export function BondStrip({ bonds, layersDisabled = false, onOpen, openId = null
 }
 
 /**
+ * 盟约弹窗里的「盟约效果」描述节点。
+ * 业主 2026-11-01：超限局里盟约文本**只强调数值片段**，而且分色逻辑只有一份 —— 超限局渲染共享模块
+ * ui/overlimitBondText.js 的 `OverlimitValueLine`（数值片段带那个共享强调类，其余纯文本，
+ * 颜色规则只有 css/components.css 那一条），与 S.W.E.E.P. 报告的强化行是同一个组件、同一套片段序列。
+ * 非超限局（普通 / 湮灭 / 炸惊）**逐字节不变**：仍是原来的 `<RichText as="p" class="bpop__desc">` 节点
+ * （同一个组件、同一组 props，`test/ui/overlimit-bond-text.test.js` 拿它与改动前那一行 deepEqual）。
+ * @param {string} text 盟约描述原文（bonds.json 的 descRaw，可带官方样式标记与换行）
+ * @param {boolean} [overlimit] 本局是否超限（`m.public.isInfinite`）
+ */
+export function bondDescNode(text, overlimit = false) {
+  return overlimit
+    // `rt` 与 RichText 自己拼的类名一致（css/screens/game-panels.css 的 `.rt { white-space: normal; }`），版式不掉
+    ? html`<${OverlimitValueLine} text=${text} class="rt bpop__desc" />`
+    : html`<${RichText} as="p" text=${text} class="bpop__desc" />`;
+}
+
+/**
  * Bond detail popup.
  * @param {{ bondId: string, entry?: any, priv?: any, banned?: string[], onClose: Function,
  *   onMember?: (chessId:string, items?:string[]|null, standInFor?:string|null, diy?:any)=>void,
- *   place?: 'left'|'beside'|'besideR'|'right'|null, over?: boolean, beside?: 'left'|'right'|null, owner?: string|null, off?: boolean }} props —
+ *   place?: 'left'|'beside'|'besideR'|'right'|null, over?: boolean, beside?: 'left'|'right'|null, owner?: string|null,
+ *   off?: boolean, overlimit?: boolean }} props —
  *   `place`: where it opens (gameLogic bondPopupPlace; `beside: 'left'` = the older spelling of 'beside'); `over`: above the
  *   detail card; `owner`: the watched teammate's name (`entry` / `priv` are then theirs: ui/watchBonds.js); `onMember`
  *   gets a 变形同构体 row's item ids too (its card shows the pair and the granted chip), null for a plain member, and a
@@ -140,9 +200,11 @@ export function BondStrip({ bonds, layersDisabled = false, onOpen, openId = null
  *   pick (`diy`, its unit's: the card composes their operator; the own rows' card reads m.private.diy); `off`: the
  *   mode never activates this bond (gameLogic modeOffBonds — 标准's 10 inactive bonds): 本局禁用 instead of 未激活, with a
  *   note, no 在场 count and no 当前效果 block (its numbers would promise an effect the mode never gives; the bond text stays).
- *   `entry.harmony` (the server's bond views: the +1 调和 added to `count`): 在场 n（含调和 +1） and the 调和 row
+ *   `entry.harmony` (the server's bond views: the +1 调和 added to `count`): 在场 n（含调和 +1） and the 调和 row.
+ *   `overlimit`: 超限局 (`m.public.isInfinite`) — the 盟约效果 text goes through the shared value-accent renderer
+ *   (`bondDescNode`); every other mode keeps the plain RichText, byte for byte.
  */
-export function BondPopup({ bondId, entry, priv, banned = [], onClose, onMember, place = null, over = false, beside = null, owner = null, ownerId, off = false, morphMode = 'official' }) {
+export function BondPopup({ bondId, entry, priv, banned = [], onClose, onMember, place = null, over = false, beside = null, owner = null, ownerId, off = false, morphMode = 'official', overlimit = false }) {
   const b = data.lookup('bonds', bondId);
   if (!b) return null;
   const count = entry?.count ?? 0;
@@ -197,7 +259,7 @@ export function BondPopup({ bondId, entry, priv, banned = [], onClose, onMember,
     </section>` : null}
     <section class="bpop__sec">
       <h4>${t('盟约效果')}</h4>
-      <${RichText} as="p" text=${b.descRaw || b.desc} class="bpop__desc" />
+      ${bondDescNode(b.descRaw || b.desc, overlimit)}
     </section>
     <section class="bpop__sec">
       <h4>${t('成员')} <small>${memberHeadCount(members, countsHand)}/${members.length}</small></h4>

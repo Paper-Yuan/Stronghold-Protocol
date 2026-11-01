@@ -1,0 +1,609 @@
+{
+  "_doc": "炸惊模拟的「默认模组装配」表 —— 由 tools/extract-zhajing-default-loadout.mjs 从 modref/v2.1/data/zjDefaultLoadout.json\n（0.3.1-mod.4 的构建产物）抽取并**按本仓记录过滤**，tools/build-data.mjs 再生成 data/zjDefaultLoadout.json\n（默认版本专属：data/versions/* 不带）。客户端用它做 干员调配 的预填（T13）：玩家未配置的干员用本表，已配置的以玩家为准。\n\n形状：{ version, note, count, byBaseId }；byBaseId 的键 = **炸惊棋子的 base 棋-id**（`chess_zj_01_a` 这种 `_a` 形态），\n每条形如 { op, module, moduleName, typeName, choices }：\n  · `op`        = 干员名（与 data/chess.json 的 `name` 逐条相等，提取器核对过）；\n  · `module`    = 默认模组的 `uniEquipId`；`moduleName` / `typeName` = 该模组的显示名与类型名（如「能天使的杰作」/ MAR-X）；\n  · `choices`   = 该干员精锐记录 `modules[]` 的条数（= 可选模组个数；提取器核对过逐条相等，build-data 再校验一次）。\n  · 注意：记录本身**不在** `byBaseId` 里带技能 —— 包内 84 条一条都没有 `skill` 字段，本仓照原样；若日后出现，\n    build-data 会校验它在该记录的 `skills` 里。\n\n计数：包内 84 条 → 本仓保留 83 条（丢 1 条）。\n\n被丢掉的（每条都有理由，见 _extract.dropped）：\n  · chess_zj_22_a：not a 炸惊 record (zhajing: false, name 赫拉格)\n\n`chess_zj_22_a` 属于包内 6 条**忘了打 zhajing 标记**的记录（锡人/赫拉格/锏 的 a/b），本仓原样保留 `zhajing: false`\n（它们 visible:false，两边池子都进不去），所以这张表也不给它预填 —— 否则会得到一条指向「拿不到的干员位」的数据。\n\n默认模组不在 modules[] 里、只能继承不能选的：chess_zj_28_a\n（机械师 chess_zj_28：精锐记录的 `module.id` 是 uniequip_002_mcnist，但 `modules[]` 只有 uniequip_002_branch ——\n包内记录本身如此；`module` 与默认模组相同，所以「用它的默认装配」仍然成立，只是玩家选不到第二个模组。\nbuild-data 对这一类按「等于默认 module.id」放行，并在生成报告里点名。）\n\n包内原文 note（保留备查，本仓的 note 重写过）：\n  炸惊模拟默认模组装配（策略 A：取数据里第一个模组；只收有默认模组的干员）。接入方式：玩家未配置该干员时使用本表，已配置的以玩家为准。生成自 data/chess.json 的 zhajing 记录。",
+  "_extract": {
+    "source": "modref/v2.1/data/zjDefaultLoadout.json",
+    "generator": "tools/extract-zhajing-default-loadout.mjs",
+    "counts": {
+      "source": 84,
+      "emitted": 83,
+      "dropped": 1,
+      "inheritedDefaultModuleOnly": 1
+    },
+    "dropped": [
+      {
+        "baseId": "chess_zj_22_a",
+        "reason": "not a 炸惊 record (zhajing: false, name 赫拉格)"
+      }
+    ],
+    "inheritedDefaultModuleOnly": [
+      "chess_zj_28_a"
+    ],
+    "packageNote": "炸惊模拟默认模组装配（策略 A：取数据里第一个模组；只收有默认模组的干员）。接入方式：玩家未配置该干员时使用本表，已配置的以玩家为准。生成自 data/chess.json 的 zhajing 记录。"
+  },
+  "version": 1,
+  "note": "炸惊模拟默认模组装配：玩家未配置该干员时使用本表预填（已配置的以玩家为准）。生成自本仓 data/chess.json 的 zhajing 记录（取该干员精锐记录的默认模组）；每条 = 一个棋子位。",
+  "count": 83,
+  "byBaseId": {
+    "chess_zj_01_a": {
+      "op": "能天使",
+      "module": "uniequip_002_angel",
+      "moduleName": "能天使的杰作",
+      "typeName": "MAR-X",
+      "choices": 2
+    },
+    "chess_zj_02_a": {
+      "op": "银灰",
+      "module": "uniequip_002_svrash",
+      "moduleName": "雪境羽兽护理套组",
+      "typeName": "LOR-X",
+      "choices": 1
+    },
+    "chess_zj_03_a": {
+      "op": "司霆惊蛰",
+      "module": "uniequip_002_leizi2",
+      "moduleName": "“一念”",
+      "typeName": "LIB-X",
+      "choices": 1
+    },
+    "chess_zj_04_a": {
+      "op": "乌尔比安",
+      "module": "uniequip_002_ulpia",
+      "moduleName": "乌尔比安的衣橱",
+      "typeName": "CRU-X",
+      "choices": 2
+    },
+    "chess_zj_05_a": {
+      "op": "哈洛德",
+      "module": "uniequip_002_harold",
+      "moduleName": "腿部护理套装",
+      "typeName": "WDM-X",
+      "choices": 1
+    },
+    "chess_zj_07_a": {
+      "op": "德克萨斯",
+      "module": "uniequip_002_texas",
+      "moduleName": "外勤私人补给包",
+      "typeName": "SOL-Y",
+      "choices": 1
+    },
+    "chess_zj_08_a": {
+      "op": "黑",
+      "module": "uniequip_002_shwaz",
+      "moduleName": "定制弩配件套装",
+      "typeName": "ARC-X",
+      "choices": 2
+    },
+    "chess_zj_09_a": {
+      "op": "年",
+      "module": "uniequip_002_nian",
+      "moduleName": "混沌阵列",
+      "typeName": "PRO-X",
+      "choices": 2
+    },
+    "chess_zj_10_a": {
+      "op": "地灵",
+      "module": "uniequip_002_skgoat",
+      "moduleName": "待确认的申请表",
+      "typeName": "DEC-Y",
+      "choices": 1
+    },
+    "chess_zj_11_a": {
+      "op": "百炼嘉维尔",
+      "module": "uniequip_002_gvial2",
+      "moduleName": "嘉维尔的折磨",
+      "typeName": "CEN-X",
+      "choices": 3
+    },
+    "chess_zj_14_a": {
+      "op": "维伊",
+      "module": "uniequip_002_veen",
+      "moduleName": "军械库",
+      "typeName": "MSC-Y",
+      "choices": 1
+    },
+    "chess_zj_16_a": {
+      "op": "送葬人",
+      "module": "uniequip_002_excu",
+      "moduleName": "执行者随身包",
+      "typeName": "RPR-X",
+      "choices": 1
+    },
+    "chess_zj_17_a": {
+      "op": "锏",
+      "module": "uniequip_002_blkkgt",
+      "moduleName": "“过往的注脚”",
+      "typeName": "SWO-X",
+      "choices": 2
+    },
+    "chess_zj_18_a": {
+      "op": "左乐",
+      "module": "uniequip_002_zuole",
+      "moduleName": "“岂苦夜长”",
+      "typeName": "SBL-X",
+      "choices": 2
+    },
+    "chess_zj_19_a": {
+      "op": "莎草",
+      "module": "uniequip_002_papyrs",
+      "moduleName": "小小的种子",
+      "typeName": "XAH-X",
+      "choices": 1
+    },
+    "chess_zj_20_a": {
+      "op": "幽灵鲨",
+      "module": "uniequip_002_ghost",
+      "moduleName": "幽明烛光",
+      "typeName": "CEN-X",
+      "choices": 1
+    },
+    "chess_zj_21_a": {
+      "op": "泡泡",
+      "module": "uniequip_002_bubble",
+      "moduleName": "泡泡闪光必杀剑",
+      "typeName": "PRO-X",
+      "choices": 1
+    },
+    "chess_zj_23_a": {
+      "op": "薄绿",
+      "module": "uniequip_002_mint",
+      "moduleName": "注意力保持装置",
+      "typeName": "PLX-X",
+      "choices": 1
+    },
+    "chess_zj_25_a": {
+      "op": "砾",
+      "module": "uniequip_002_gravel",
+      "moduleName": "隐秘行动工具包",
+      "typeName": "EXE-X",
+      "choices": 1
+    },
+    "chess_zj_26_a": {
+      "op": "Mon3tr",
+      "module": "uniequip_002_monstr",
+      "moduleName": "记忆存档",
+      "typeName": "XAH-X",
+      "choices": 1
+    },
+    "chess_zj_27_a": {
+      "op": "拉普兰德",
+      "module": "uniequip_002_whitew",
+      "moduleName": "“幼狼的牙齿”",
+      "typeName": "LOR-X",
+      "choices": 1
+    },
+    "chess_zj_28_a": {
+      "op": "机械师",
+      "module": "uniequip_002_mcnist",
+      "moduleName": "机械师特勤证章",
+      "typeName": "SO-A",
+      "choices": 1
+    },
+    "chess_zj_29_a": {
+      "op": "灰毫",
+      "module": "uniequip_002_ashlok",
+      "moduleName": "出门必备套装",
+      "typeName": "FOR-X",
+      "choices": 1
+    },
+    "chess_zj_30_a": {
+      "op": "菲亚梅塔",
+      "module": "uniequip_002_phenxi",
+      "moduleName": "“律外”特种弹药配给组",
+      "typeName": "ART-Y",
+      "choices": 3
+    },
+    "chess_zj_31_a": {
+      "op": "棘刺",
+      "module": "uniequip_002_thorns",
+      "moduleName": "“盐与沙”",
+      "typeName": "LOR-X",
+      "choices": 2
+    },
+    "chess_zj_32_a": {
+      "op": "诗怀雅",
+      "module": "uniequip_002_swire",
+      "moduleName": "防身口红",
+      "typeName": "INS-X",
+      "choices": 1
+    },
+    "chess_zj_33_a": {
+      "op": "琳琅诗怀雅",
+      "module": "uniequip_002_swire2",
+      "moduleName": "“金币辉煌”",
+      "typeName": "MER-X",
+      "choices": 3
+    },
+    "chess_zj_34_a": {
+      "op": "斯卡蒂",
+      "module": "uniequip_002_skadi",
+      "moduleName": "潮湿的剑袋",
+      "typeName": "DRE-Y",
+      "choices": 2
+    },
+    "chess_zj_35_a": {
+      "op": "真言",
+      "module": "uniequip_002_mantra",
+      "moduleName": "中枢神经探测模块",
+      "typeName": "PRI-X",
+      "choices": 1
+    },
+    "chess_zj_36_a": {
+      "op": "凯瑟琳",
+      "module": "uniequip_002_cathy",
+      "moduleName": "闲暇时分",
+      "typeName": "CRA-X",
+      "choices": 1
+    },
+    "chess_zj_37_a": {
+      "op": "维什戴尔",
+      "module": "uniequip_002_wisdel",
+      "moduleName": "“祖宗发射器”",
+      "typeName": "BOM-X",
+      "choices": 1
+    },
+    "chess_zj_38_a": {
+      "op": "瑕光",
+      "module": "uniequip_002_blemsh",
+      "moduleName": "工匠团的回响",
+      "typeName": "GUA-Y",
+      "choices": 2
+    },
+    "chess_zj_39_a": {
+      "op": "至简",
+      "module": "uniequip_002_malist",
+      "moduleName": "“新家园”",
+      "typeName": "FUN-Y",
+      "choices": 1
+    },
+    "chess_zj_40_a": {
+      "op": "初雪",
+      "module": "uniequip_002_slbell",
+      "moduleName": "“续针”",
+      "typeName": "UMD-X",
+      "choices": 1
+    },
+    "chess_zj_41_a": {
+      "op": "薇薇安娜",
+      "module": "uniequip_002_vvana",
+      "moduleName": "目不能及之处",
+      "typeName": "AFT-D",
+      "choices": 2
+    },
+    "chess_zj_42_a": {
+      "op": "忍冬",
+      "module": "uniequip_002_vulpis",
+      "moduleName": "杀手也有假期",
+      "typeName": "SOL-X",
+      "choices": 2
+    },
+    "chess_zj_43_a": {
+      "op": "伺夜",
+      "module": "uniequip_002_vigil",
+      "moduleName": "叙拉古式入门礼",
+      "typeName": "TAC-X",
+      "choices": 2
+    },
+    "chess_zj_44_a": {
+      "op": "耶拉",
+      "module": "uniequip_002_kjera",
+      "moduleName": "以雪为线",
+      "typeName": "FUN-Y",
+      "choices": 1
+    },
+    "chess_zj_45_a": {
+      "op": "空弦",
+      "module": "uniequip_002_archet",
+      "moduleName": "“明天的种子”",
+      "typeName": "MAR-Y",
+      "choices": 3
+    },
+    "chess_zj_46_a": {
+      "op": "信仰搅拌机",
+      "module": "uniequip_002_rmixer",
+      "moduleName": "毛刷套装",
+      "typeName": "SPT-X",
+      "choices": 2
+    },
+    "chess_zj_47_a": {
+      "op": "莫斯提马",
+      "module": "uniequip_002_mostma",
+      "moduleName": "锁与匙之家",
+      "typeName": "SPC-Y",
+      "choices": 2
+    },
+    "chess_zj_48_a": {
+      "op": "寒芒克洛丝",
+      "module": "uniequip_002_kroos2",
+      "moduleName": "真心的话和想冒的险",
+      "typeName": "MAR-X",
+      "choices": 1
+    },
+    "chess_zj_49_a": {
+      "op": "风笛",
+      "module": "uniequip_002_bpipe",
+      "moduleName": "破城矛弹夹",
+      "typeName": "CHG-X",
+      "choices": 2
+    },
+    "chess_zj_50_a": {
+      "op": "逻各斯",
+      "module": "uniequip_002_logos",
+      "moduleName": "来自河谷的笔盒",
+      "typeName": "CCR-D",
+      "choices": 2
+    },
+    "chess_zj_52_a": {
+      "op": "阿罗玛",
+      "module": "uniequip_002_aroma",
+      "moduleName": "柠檬味的童年",
+      "typeName": "BLA-X",
+      "choices": 1
+    },
+    "chess_zj_53_a": {
+      "op": "酒神",
+      "module": "uniequip_002_phatm2",
+      "moduleName": "酒神之心",
+      "typeName": "RIT-X",
+      "choices": 1
+    },
+    "chess_zj_54_a": {
+      "op": "歌蕾蒂娅",
+      "module": "uniequip_002_glady",
+      "moduleName": "执政官手镜",
+      "typeName": "HOK-X",
+      "choices": 2
+    },
+    "chess_zj_55_a": {
+      "op": "灵知",
+      "module": "uniequip_002_gnosis",
+      "moduleName": "“誓言”",
+      "typeName": "UMD-X",
+      "choices": 3
+    },
+    "chess_zj_56_a": {
+      "op": "谬因",
+      "module": "uniequip_002_aphris",
+      "moduleName": "第三相态",
+      "typeName": "BLA-Y",
+      "choices": 1
+    },
+    "chess_zj_57_a": {
+      "op": "缄默德克萨斯",
+      "module": "uniequip_002_texas2",
+      "moduleName": "蓝莓与黑巧",
+      "typeName": "EXE-Y",
+      "choices": 2
+    },
+    "chess_zj_58_a": {
+      "op": "余",
+      "module": "uniequip_002_yu",
+      "moduleName": "人间百味",
+      "typeName": "PRP-X",
+      "choices": 1
+    },
+    "chess_zj_59_a": {
+      "op": "弑君者",
+      "module": "uniequip_002_crosly",
+      "moduleName": "弑君刃",
+      "typeName": "EXE-X",
+      "choices": 2
+    },
+    "chess_zj_60_a": {
+      "op": "焰尾",
+      "module": "uniequip_002_flamtl",
+      "moduleName": "红松的起点",
+      "typeName": "SOL-Y",
+      "choices": 2
+    },
+    "chess_zj_61_a": {
+      "op": "远牙",
+      "module": "uniequip_002_fartth",
+      "moduleName": "首战支援套组",
+      "typeName": "DEA-X",
+      "choices": 2
+    },
+    "chess_zj_62_a": {
+      "op": "白面鸮",
+      "module": "uniequip_002_plosis",
+      "moduleName": "医疗环境分析装置",
+      "typeName": "RIN-X",
+      "choices": 1
+    },
+    "chess_zj_63_a": {
+      "op": "妮芙",
+      "module": "uniequip_002_nymph",
+      "moduleName": "心声",
+      "typeName": "PRI-X",
+      "choices": 2
+    },
+    "chess_zj_64_a": {
+      "op": "圣约送葬人",
+      "module": "uniequip_002_excu2",
+      "moduleName": "待解答",
+      "typeName": "REA-X",
+      "choices": 2
+    },
+    "chess_zj_65_a": {
+      "op": "缇缇",
+      "module": "uniequip_002_titi",
+      "moduleName": "远方的礼物",
+      "typeName": "INC-X",
+      "choices": 1
+    },
+    "chess_zj_66_a": {
+      "op": "烛煌",
+      "module": "uniequip_002_blaze2",
+      "moduleName": "热切的期盼",
+      "typeName": "PRI-X",
+      "choices": 2
+    },
+    "chess_zj_67_a": {
+      "op": "隐德来希",
+      "module": "uniequip_002_etlchi",
+      "moduleName": "易枯萎的航船",
+      "typeName": "REA-X",
+      "choices": 2
+    },
+    "chess_zj_68_a": {
+      "op": "史尔特尔",
+      "module": "uniequip_002_surtr",
+      "moduleName": "萨米的不灭心脏碎片",
+      "typeName": "AFT-X",
+      "choices": 2
+    },
+    "chess_zj_69_a": {
+      "op": "塞雷娅",
+      "module": "uniequip_002_demkni",
+      "moduleName": "闲置的拳击手套",
+      "typeName": "GUA-X",
+      "choices": 2
+    },
+    "chess_zj_70_a": {
+      "op": "夕",
+      "module": "uniequip_002_dusk",
+      "moduleName": "无题长卷",
+      "typeName": "SPC-X",
+      "choices": 3
+    },
+    "chess_zj_71_a": {
+      "op": "归溟幽灵鲨",
+      "module": "uniequip_002_ghost2",
+      "moduleName": "“唱片”收藏箱",
+      "typeName": "PUM-X",
+      "choices": 3
+    },
+    "chess_zj_73_a": {
+      "op": "引星棘刺",
+      "module": "uniequip_002_thorn2",
+      "moduleName": "三面的金币",
+      "typeName": "ALC-X",
+      "choices": 1
+    },
+    "chess_zj_74_a": {
+      "op": "望",
+      "module": "uniequip_002_wang",
+      "moduleName": "兽形棋盒",
+      "typeName": "TRP-X",
+      "choices": 1
+    },
+    "chess_zj_75_a": {
+      "op": "玛恩纳",
+      "module": "uniequip_002_mlynar",
+      "moduleName": "“鞘中人”",
+      "typeName": "LIB-X",
+      "choices": 1
+    },
+    "chess_zj_76_a": {
+      "op": "贝洛内",
+      "module": "uniequip_002_demetr",
+      "moduleName": "实用的工具",
+      "typeName": "FGT-Y",
+      "choices": 1
+    },
+    "chess_zj_77_a": {
+      "op": "录武官",
+      "module": "uniequip_002_reckpr",
+      "moduleName": "未完成的录武簿",
+      "typeName": "PHY-X",
+      "choices": 1
+    },
+    "chess_zj_78_a": {
+      "op": "蕾缪安",
+      "module": "uniequip_002_lemuen",
+      "moduleName": "“弹匣与花窗”",
+      "typeName": "DEA-Y",
+      "choices": 1
+    },
+    "chess_zj_79_a": {
+      "op": "圣聆初雪",
+      "module": "uniequip_002_sbell2",
+      "moduleName": "千分之一的心",
+      "typeName": "PLX-Y",
+      "choices": 1
+    },
+    "chess_zj_80_a": {
+      "op": "黍",
+      "module": "uniequip_002_shu",
+      "moduleName": "“钦天司时”",
+      "typeName": "GUA-X",
+      "choices": 2
+    },
+    "chess_zj_81_a": {
+      "op": "浊心斯卡蒂",
+      "module": "uniequip_002_skadi2",
+      "moduleName": "蜕化的残迹",
+      "typeName": "BAR-X",
+      "choices": 2
+    },
+    "chess_zj_82_a": {
+      "op": "异客",
+      "module": "uniequip_002_pasngr",
+      "moduleName": "电磁调节器",
+      "typeName": "CHA-X",
+      "choices": 3
+    },
+    "chess_zj_83_a": {
+      "op": "佩佩",
+      "module": "uniequip_002_pepe",
+      "moduleName": "晴雨",
+      "typeName": "HAM-X",
+      "choices": 2
+    },
+    "chess_zj_84_a": {
+      "op": "焰影苇草",
+      "module": "uniequip_002_reed2",
+      "moduleName": "“赠予红龙的花冠”",
+      "typeName": "INC-X",
+      "choices": 2
+    },
+    "chess_zj_85_a": {
+      "op": "塑心",
+      "module": "uniequip_002_cello",
+      "moduleName": "强弱法",
+      "typeName": "RIT-X",
+      "choices": 2
+    },
+    "chess_zj_86_a": {
+      "op": "缪尔赛思",
+      "module": "uniequip_002_mlyss",
+      "moduleName": "梳妆流形",
+      "typeName": "TAC-X",
+      "choices": 2
+    },
+    "chess_zj_87_a": {
+      "op": "新约能天使",
+      "module": "uniequip_002_angel2",
+      "moduleName": "新朋友圣城生活套组",
+      "typeName": "GEE-X",
+      "choices": 1
+    },
+    "chess_zj_88_a": {
+      "op": "溯光星源",
+      "module": "uniequip_002_halo2",
+      "moduleName": "探索者的收藏",
+      "typeName": "DEC-Y",
+      "choices": 1
+    },
+    "chess_zj_89_a": {
+      "op": "耀骑士临光",
+      "module": "uniequip_002_nearl2",
+      "moduleName": "耀阳锋刃",
+      "typeName": "DRE-X",
+      "choices": 2
+    },
+    "chess_zj_90_a": {
+      "op": "荒芜拉普兰德",
+      "module": "uniequip_002_whitw2",
+      "moduleName": "狼时",
+      "typeName": "FUN-X",
+      "choices": 1
+    },
+    "chess_zj_92_a": {
+      "op": "纯烬艾雅法拉",
+      "module": "uniequip_002_agoat2",
+      "moduleName": "想要留住的声音",
+      "typeName": "WDM-X",
+      "choices": 2
+    }
+  }
+}

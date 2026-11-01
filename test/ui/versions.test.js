@@ -90,6 +90,22 @@ test('offeredDifficulties / fallbackDifficulty: a version\'s modes; the server\'
   assert.equal(V.fallbackDifficulty(['FUNNY', 'HARD'], 'NORMAL'), 'FUNNY');
 });
 
+// 超限房（solo_infinite / coop_infinite）在「版本适用性」上按同方阵的普通模式算：版本数据只声明 solo / coop，
+// 不归一的话版本选择器每一行都显示「该版本不支持当前的模拟方式」（public/js/ui/versionPicker.js）。
+test('baseRoomMode: 超限房按同方阵的基础模式判断版本适用性，选择器就用它', () => {
+  assert.equal(V.baseRoomMode('solo'), 'solo');
+  assert.equal(V.baseRoomMode('solo_infinite'), 'solo', '单人超限 = 单人');
+  assert.equal(V.baseRoomMode('coop'), 'coop');
+  assert.equal(V.baseRoomMode('coop_infinite'), 'coop', '同盟超限 = 同盟');
+  assert.equal(V.baseRoomMode('something'), 'something', '其他模式原样返回（普通房不受影响）');
+  // 注册表里的 roomModes 仍然只写 solo / coop：判定前把房间模式归一，而不是往登记表里加模式
+  for (const id of ['act2autochess', 'act1autochess']) assert.deepEqual(V.versionById(id).roomModes, ['solo', 'coop'], id);
+  // 选择器必须用 baseRoomMode 归一后再 includes，不能直接拿 solo_infinite 去比
+  const PICKER = fs.readFileSync(path.join(ROOT, 'public/js/ui/versionPicker.js'), 'utf8');
+  assert.match(PICKER, /v\.roomModes\.includes\(baseRoomMode\(roomMode\)\)/);
+  assert.doesNotMatch(PICKER, /roomModes\.includes\(roomMode\)/);
+});
+
 test('needsContent / seasonOf / versionLabel / periodLine', () => {
   assert.equal(V.needsContent(null), false);
   assert.equal(V.needsContent({ content: { vanilla: true } }), false, 'a default room');
@@ -129,5 +145,11 @@ test('the client renders no research texts of the data (spec / implFormula / how
   // the one allowed: 突变细胞's rule line (data/items.json `note`, tools/build-data.mjs ITEM_RULES — a corrected Chinese rule,
   // the same in every version's build), shown on the detail card on purpose
   const allowed = (h) => /^public\/js\/ui\/detailPanel\.js:\d+: \$\{item\.note \?/.test(h);
-  assert.deepEqual(hits.filter((h) => /\.(implFormula|howToPlay|note)\b/.test(h) && !allowed(h)), [], 'no research text is read');
+  // 设置 →「大厅栏位」 (ui/hubSections.js): that `note` is the client's own constant — HUB_SECTIONS in that module, the
+  // tooltip of each switch — not a data record's research text. The rule itself stays: this is the only line excluded,
+  // and it must stay the constant it is (a `note` read off a data record here would fail the check below).
+  const clientConstant = (h) => /^public\/js\/ui\/hubSections\.js:\d+: .*title=\$\{t\(x\.note\)\}$/.test(h);
+  assert.equal(hits.filter(clientConstant).length, 1, hits.filter(clientConstant).join('\n'));
+  assert.match(fs.readFileSync(path.join(ROOT, 'public/js/ui/hubSections.js'), 'utf8'), /export const HUB_SECTIONS = Object\.freeze\(\[/);
+  assert.deepEqual(hits.filter((h) => /\.(implFormula|howToPlay|note)\b/.test(h) && !allowed(h) && !clientConstant(h)), [], 'no research text is read');
 });

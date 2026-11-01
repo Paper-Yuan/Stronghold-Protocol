@@ -20,6 +20,10 @@ const OFFICIAL = JSON.parse(readFileSync(new URL('../fixtures/official-bounty-dr
 const SPEC = DATA.choices.tacticDraft;
 const TACTIC = DATA.choices.cards.tactic;
 const ALLY = TACTIC.filter((c) => c.kind === 'ally');
+/** 湮灭模拟's two 盟誓 (罗德岛 / 卡兹戴尔) carry `annOnly`: choices.js tacticDraftCards offers them only in an annihilation
+ *  match (the flag sits on the card and on its effect). They live in the same default-data table as the official cards. */
+const ANN_ALLY = ALLY.filter((c) => c.annOnly === true);
+const OFFICIAL_ALLY = ALLY.filter((c) => c.annOnly !== true);
 const byName = (name) => TACTIC.filter((c) => c.name === name);
 /** The official 战术决策: [{ match, names }]. */
 const DRAFTS = Object.entries(OFFICIAL.matches).flatMap(([m, rs]) => Object.entries(rs).filter(([, d]) => d.family === 'tactic').map(([r, d]) => ({ match: Number(m), round: Number(r), names: d.cards.map(([n]) => n) })));
@@ -90,7 +94,8 @@ test('战术决策 generated (co-op 绝境 / 终极 R11): six ally cards, each d
     assert.equal(drafts, 2000, modeId);
     assert.ok(dup / drafts > 0.4 && dup / drafts < 0.7, `${modeId}: a repeated card in ${(100 * dup / drafts).toFixed(0)} % (official 1 of 4)`);
     assert.ok(basic / drafts > 1.6 && basic / drafts < 2.5, `${modeId}: ${(basic / drafts).toFixed(2)} basic cards a draft (official 3; uniform 1.2)`);
-    for (const c of ALLY) assert.ok(freq[c.effectId] > 0, `${modeId}: ${c.name} can come`);
+    for (const c of OFFICIAL_ALLY) assert.ok(freq[c.effectId] > 0, `${modeId}: ${c.name} can come`);
+    for (const c of ANN_ALLY) assert.equal(freq[c.effectId], undefined, `${modeId}: ${c.name} is annihilation-only and never comes`);
     const of = (name) => freq[byName(name)[0].effectId];
     assert.ok(of('补给') > 2.5 * of('自愈'), `${modeId}: 补给 (weight 4) ${of('补给')} vs 自愈 (weight 1) ${of('自愈')}`);
   }
@@ -169,6 +174,11 @@ test('tacticDraftCards: a draw over one card fills every place; dead-bond cards 
   // a 驰援 whose bond is dead: never offered, even at R11
   const yan = byName('炎盟约驰援')[0].effectId;
   for (let s = 1; s <= 300; s++) assert.ok(!tacticDraftCards(gd, createRng(s), 6, { round: 11, bondAvailable: (b) => b !== 'yanShip' }).some((c) => c.id === yan));
+  // 湮灭模拟: the two annOnly 盟誓 do come there — the flag is a mode switch, not a dead card
+  const annGd = new GameData(DATA, 'mode_multi_annihilation');
+  const annNames = new Set();
+  for (let s = 1; s <= 400; s++) for (const c of tacticDraftCards(annGd, createRng(s), 6, { round: 11 })) annNames.add(c.name);
+  assert.deepEqual(ANN_ALLY.map((c) => c.name).filter((n) => annNames.has(n)).sort(), ANN_ALLY.map((c) => c.name).sort());
   // only one card left: six copies of it, six separate objects
   const only = { ...DATA, choices: { ...DATA.choices, cards: { ...DATA.choices.cards, tactic: TACTIC.filter((c) => c.name === '升华') } } };
   const six = tacticDraftCards(new GameData(only, 'mode_multi_hard'), createRng(1), 6, { round: 11 });

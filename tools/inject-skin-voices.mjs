@@ -42,6 +42,7 @@ for (const [lang, tree] of Object.entries(TREE)) {
 assets.stats = assets.stats || {};
 assets.stats.skinVoiceUrls = urls;
 
-// 仓库约定：2 空格缩进、结尾无换行
-fs.writeFileSync(ASSETS_PATH, JSON.stringify(assets, null, 2), 'utf8');
+// 排版跟 generated 清单保持一致：tools/fetch-assets.mjs 与 tools/inject-skins-assets.mjs 都是紧凑 JSON、结尾无换行。
+// 这里原本写 2 空格缩进，会把一个 fetch-assets 刚写好的 2.7 MB 单行清单整体重排成 5 MB 的多行文件（纯空白 diff）。
+fs.writeFileSync(ASSETS_PATH, JSON.stringify(assets), 'utf8');
 console.log(`✔ 皮肤专属语音并入清单：${Object.keys(TREE).length} 个语言树 / ${urls} 条 URL（audio.skinVoice*）`);

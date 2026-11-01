@@ -7,7 +7,7 @@
 //   stages, bosses, tokens, backups (every field is documented in docs/DATA.md).
 //
 // Usage:  node tools/build-data.mjs [--version <id>] [--refresh | --offline] [--out <dir>] [--cache <dir>]
-//                                   [--report <file>] [--quiet] [--no-research] [--force]
+//                                   [--research <dir>] [--report <file>] [--quiet] [--no-research] [--force]
 //   --version      the official version to build (shared/versions.js; default act2autochess, today's data/*.json).
 //                  Another version reads its profile tools/versions/<slug>.mjs: the official commits it is pinned to,
 //                  its field adapters and expected counts; it writes data/versions/<slug>/ (docs/DATA.md "Official
@@ -17,6 +17,8 @@
 //   --out          output directory (default: <repo>/data, or <repo>/data/versions/<slug> for another version)
 //   --cache        official-data cache directory (default: <repo>/.cache/gamedata; a file pinned to a commit is cached
 //                  in <cache>@<sha>)
+//   --research     research input directory (default: <repo>/docs/research; a preview build against a scratch copy of
+//                  the research files, e.g. one an extractor just wrote somewhere else)
 //   --report       build report file (default: <repo>/.cache/build-data-report.json, or build-data-report.<slug>.json)
 //   --no-research  ignore docs/research (research-only fields fall back to defaults; for testing)
 //   --force        write the output even when integrity checks fail (default: keep the old files)
@@ -36,7 +38,7 @@
 // waves · stages · bosses · config · validation · main.
 
 import { mkdir, readFile, writeFile, rename } from 'node:fs/promises';
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { isDeepStrictEqual } from 'node:util';
@@ -50,6 +52,7 @@ import { createOfficialUnitBuilders } from '../server/plugins/officialUnitBuilde
 import { DEFAULT_VERSION, VERSIONS } from '../shared/versions.js';
 import { loadProfile, pinnedShaOf } from './versions/profiles.mjs';
 import { applyAdapters } from './versions/adapters.mjs';
+import { officialGarrisonTypeIcons, richTextPlain } from './research-normalize.mjs';
 
 // ===== CLI & IO ==================================================================================
 
@@ -57,22 +60,22 @@ const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const RESEARCH_DIR = join(ROOT, 'docs', 'research');
 const GAMEDATA_URL = 'https://raw.githubusercontent.com/Kengxxiao/ArknightsGameData/master/zh_CN/gamedata/';
 const pinnedUrl = (sha) => `https://raw.githubusercontent.com/Kengxxiao/ArknightsGameData/${sha}/zh_CN/gamedata/`;
-const USAGE = 'usage: node tools/build-data.mjs [--version <id>] [--refresh | --offline] [--out <dir>] [--cache <dir>] [--report <file>] [--quiet] [--no-research] [--force]';
+const USAGE = 'usage: node tools/build-data.mjs [--version <id>] [--refresh | --offline] [--out <dir>] [--cache <dir>] [--research <dir>] [--report <file>] [--quiet] [--no-research] [--force]';
 
 /**
  * Parse the command line strictly (unknown options and missing values are errors, so a typo can
  * never silently write data somewhere unexpected).
  * @param {string[]} argv
- * @returns {{refresh:boolean, offline:boolean, quiet:boolean, noResearch:boolean, force:boolean, out:string|null, cache:string, report:string|null, version:string|null}}
+ * @returns {{refresh:boolean, offline:boolean, quiet:boolean, noResearch:boolean, force:boolean, out:string|null, cache:string, research:string, report:string|null, version:string|null}}
  *   out / report: null = the version's default (set once the version is known)
  */
 function parseArgs(argv) {
   const opts = {
     refresh: false, offline: false, quiet: false, noResearch: false, force: false,
-    out: null, cache: join(ROOT, '.cache', 'gamedata'), report: null, version: null,
+    out: null, cache: join(ROOT, '.cache', 'gamedata'), research: RESEARCH_DIR, report: null, version: null,
   };
   const flags = { '--refresh': 'refresh', '--offline': 'offline', '--quiet': 'quiet', '--no-research': 'noResearch', '--force': 'force' };
-  const dirs = { '--out': 'out', '--cache': 'cache', '--report': 'report' };
+  const dirs = { '--out': 'out', '--cache': 'cache', '--research': 'research', '--report': 'report' };
   for (let i = 0; i < argv.length; i++) {
     const [name, inline] = argv[i].includes('=') ? [argv[i].slice(0, argv[i].indexOf('=')), argv[i].slice(argv[i].indexOf('=') + 1)] : [argv[i], null];
     if (name === '--help' || name === '-h') { console.log(USAGE); process.exit(0); }
@@ -191,7 +194,7 @@ function sourceOf(rel) {
  */
 async function loadResearch(name) {
   if (OPTS.noResearch) return null;
-  let abs = join(RESEARCH_DIR, name);
+  let abs = join(OPTS.research, name);
   if (!IS_DEFAULT) {
     const own = PROFILE.research ? join(ROOT, PROFILE.research, name) : null;
     if (own && existsSync(own)) abs = own;
@@ -275,6 +278,35 @@ async function loadContext() {
     enemies: await loadResearch('05-enemies.json'),
     maps: await loadResearch('05-maps.json'),
     assets: await loadResearch('07-assets.json'),
+    // 湮灭模拟 (the 拓展模式 hall's first play set): neither table is in the official data — the play set brings its own
+    // mode objects and its 87-relic table, so they live in docs/research like every other hand-authored input here.
+    annihilationMode: await loadResearch('15-annihilation-mode.json'),
+    annihilationRelics: await loadResearch('16-annihilation-relics.json'),
+    // 炸惊模拟 (the hall's second play set): three inputs extracted from the reference package by
+    // tools/extract-zhajing-research.mjs — the two mode records (+ config increments), the zj 内容记录, and 惊变.
+    zhaijingMode: await loadResearch('17-zhaijing-mode.json'),
+    zhaijingContent: await loadResearch('18-zhaijing-content.json'),
+    zhaijingJibian: await loadResearch('19-zhaijing-jibian.json'),
+    // 湮灭专属 mod（8 个 workshop 包里的 3 个数据包）：两条新盟约 + 既有盟约的 `ann` 覆盖块 + chess 的 `annBonds`，
+    // 由 tools/extract-annihilation-mods.mjs 从 modref/mods/ 抽取（见该文件的头注释）。
+    annihilationMods: await loadResearch('20-annihilation-mods.json'),
+    // 炸惊模拟的默认模组装配表（客户端干员调配的预填）：由 tools/extract-zhajing-default-loadout.mjs 抽取，
+    // 本文件再生成 data/zjDefaultLoadout.json —— 默认版本专属，四个 data/versions/* 不带。
+    zhajingLoadout: await loadResearch('21-zhaijing-default-loadout.json'),
+    // 超限模拟（solo_infinite / coop_infinite）的盟约 `inf` 覆盖块（业主 2026-10-31）：只追加超限专属文案行，
+    // 原版原文一字不改。源文件临时脚本生成后固化在 docs/research（见该文件的 note）。
+    overlimitBonds: await loadResearch('22-overlimit-bonds.json'),
+    // 超限模拟的「词条」（饰品）表（业主 2026-10-31）：业主手写表 饰品效果表.xlsx 的 Sheet1 固化成的 research 源，
+    // 本文件生成 data/relicsOverlimit.json。权重也在这份源里（不写死在代码里）。
+    overlimitRelics: await loadResearch('23-overlimit-relics.json'),
+    // 超限模拟的「负面词条」表（业主 2026-10-31 第二批，与上面 36 条饰品并列）：业主手写表 负面词条列表_16项.xlsx
+    // 的 Sheet1 固化成的 research 源，本文件生成 data/relicsOverlimitNegative.json（等权，档位见该文件的 tierNote）。
+    overlimitNegativeRelics: await loadResearch('24-overlimit-negative-relics.json'),
+    // 超限词条要发放的装备（业主 2026-10-31 第四批）：FGO-SP『快楽天・胎蔵曼荼羅』要发一件[万色悠滞之核]，而这件
+    // 装备在官方 trapChessDataDict 里不存在（data/items.json 没有、官方 act1/act2 都没有）。与 20-annihilation-mods
+    // 同一条范式：research 里手写一条 effect + 一条 item，本文件在官方物品表之后**纯加法**并进 data/effects.json 与
+    // data/items.json（`olOnly: true` + `shopExcluded`，见 applyOverlimitItems）。
+    overlimitItems: await loadResearch('25-overlimit-items.json'),
   };
 
   return {
@@ -713,6 +745,11 @@ function buildBackups(ctx, chess) {
 function checkUnitFormParity(ctx, chess) {
   const errors = [];
   for (const c of Object.values(chess)) {
+    // 炸惊模拟's chess records are an imported snapshot (docs/research/18-zhaijing-content.json, built by the reference
+    // package's own 0.3.1 builder), not this build's output: their stats carry the play set's allyScale while the 补位
+    // form stays the official body — exactly the pair the reference package shipped — so the parity below cannot hold
+    // for them (see isImportedChess). Skipped, not weakened: every record the build itself produces is still checked.
+    if (isImportedChess(c)) continue;
     if (c.chessType !== 'PRESET' || c.backup?.charId !== c.charId) continue;
     if (c.backup.skillIndex !== c.skill?.index || (c.backup.uniEquipId ?? null) !== (c.module?.id ?? null)) {
       errors.push(`unit parity ${c.chessId}: the backup skill / module differ from the chess default`);
@@ -2397,7 +2434,9 @@ function buildBosses(ctx, enemies, waves) {
     out[bossId] = {
       bossId, enemyKey, handbookId: g.handbookEnemyId || enemyKey, name: e?.name || enemyKey, sortId: b.sortId,
       weight: b.weight, hidden: !!b.isHidingBoss,
-      bloodPoint: { FUNNY: b.bloodPoint, NORMAL: b.bloodPointNormal, HARD: b.bloodPointHard, ABYSS: b.bloodPointAbyss },
+      bloodPoint: { FUNNY: b.bloodPoint, NORMAL: b.bloodPointNormal, HARD: b.bloodPointHard, ABYSS: b.bloodPointAbyss,
+        // 湮灭模拟's own pool (about 1.6× the 终极 pool): the play set's table, docs/research/15-annihilation-mode.json
+        ...(ctx.research.annihilationMode?.bossBloodPoints?.[bossId] != null ? { ANNIHILATION: ctx.research.annihilationMode.bossBloodPoints[bossId] } : {}) },
       lpr: e?.stats?.lpr ?? null, templates, escortsByTemplate, parts: [...parts].sort(naturalCmp),
       abilities: e?.abilities?.map((a) => a.text) || [],
     };
@@ -2983,6 +3022,40 @@ function buildConfig(ctx, waves, stages, bands, chess, items) {
     };
   }
 
+  // 湮灭模拟 (Annihilation) — the 拓展模式 hall's first play set. Not an official mode: the official tables carry no such
+  // modeId, so its two mode objects come from docs/research/15-annihilation-mode.json already in this function's shape
+  // (the play set computed its rounds/enemyScale/boss tables itself, from the same official levels). Everything below stays
+  // additive: with the research file absent the build is byte-identical to before.
+  const annihilation = ctx.research.annihilationMode;
+  if (annihilation) {
+    for (const [modeId, m] of Object.entries(annihilation.modes || {})) {
+      if (modes[modeId]) throw new Error(`annihilation mode ${modeId} collides with an official mode`);
+      modes[modeId] = m;
+    }
+  } else warn('config: docs/research/15-annihilation-mode.json missing — 湮灭模拟 absent');
+  // 炸惊模拟 (ZHAJING) — the hall's second play set, same shape: its two mode records come from
+  // docs/research/17-zhaijing-mode.json, and its 惊变 pools (99 + 21 cards) from 19-zhaijing-jibian.json, where they are
+  // kept out of the mode object so that the card faces live in one place. `jibian` / `enemyJibian` are the only keys the
+  // two sources jointly own: the mode record carries everything else.
+  const zhaijing = ctx.research.zhaijingMode;
+  const zhajingCards = ctx.research.zhaijingJibian;
+  if (zhaijing) {
+    for (const [modeId, m] of Object.entries(zhaijing.modes || {})) {
+      if (modes[modeId]) throw new Error(`zhajing mode ${modeId} collides with an official mode`);
+      modes[modeId] = { ...m, ...(zhajingCards?.jibian ? { jibian: zhajingCards.jibian } : {}), ...(zhajingCards?.enemyJibian ? { enemyJibian: zhajingCards.enemyJibian } : {}) };
+    }
+    if (!zhajingCards) throw new Error('docs/research/17-zhaijing-mode.json present without 19-zhaijing-jibian.json: the 惊变 pools would be empty');
+  } else if (zhajingCards || ctx.research.zhaijingContent) warn('config: docs/research/17-zhaijing-mode.json missing — 炸惊模拟 absent (18/19 ignored)');
+  const hiddenCoreDifficulties = ['NORMAL', 'HARD', 'ABYSS', ...(annihilation?.hiddenCoreDifficulties || []), ...(zhaijing?.hiddenCoreDifficulties || [])];
+  // the ban counts are the mode's fallback; gamedata.bans() recomputes them by erosion (the play set's own rule)
+  const bans = {
+    FUNNY: { core: 0, addon: 1 }, NORMAL: { core: 3, addon: 4 }, HARD: { core: 3, addon: 4 }, ABYSS: { core: 3, addon: 4 }, TRAINING: { core: 0, addon: 0 },
+    ...(annihilation?.bans || {}),
+    ...(zhaijing?.bans || {}),
+    rule: 'banned iff every bond of a visible non-DIY chess is in (drawn set D ∪ mode.inactiveBondIds); core = isCore bonds, addon = other bonds with weight > 0; uniform draw',
+  };
+  const difficultyFactor = { ...act.difficultyFactorInfo, ...(annihilation?.rewardsDifficultyFactor || {}) };
+
   const priceTable = act.shopCharChessInfoData || {};
   const chessPrice = {}, chessSell = {}, chessStatus = {};
   for (const [tier, rows] of Object.entries(priceTable)) {
@@ -3047,7 +3120,7 @@ function buildConfig(ctx, waves, stages, bands, chess, items) {
     },
     // minTeamLpExclusive 1 = LP > 1 (at least 2 left): PRTS's user-contributed text, which the community's measurement
     // (Bilibili 路标月报#2, cited on GitHub #645) matches — kept by the owner on 2026-10-15
-    hiddenCore: { single: PROFILE.config.hiddenCore.single, multi: PROFILE.config.hiddenCore.multi, minTeamLpExclusive: 1, difficulties: ['NORMAL', 'HARD', 'ABYSS'], checkedAfterRound: 14 },
+    hiddenCore: { single: PROFILE.config.hiddenCore.single, multi: PROFILE.config.hiddenCore.multi, minTeamLpExclusive: 1, difficulties: hiddenCoreDifficulties, checkedAfterRound: 14 },
     dp: { init: 10, perSec: 1, max: 99 },
     unite: { maxHelpers: 2, helperOrder: 'unitsOnField>activeBond>undownedUnits; pair: unitsOnField>activeBond>activeLayers>undownedUnits, first = right field (PRTS 帮助)', layerGainsEnabled: false, keepsHpSpPositions: true, leakedEnemyFullHp: true,
       templates: { 1: templateIdOf(act.constData.escapedBattleTemplateMapSinglePlayer), 2: templateIdOf(act.constData.escapedBattleTemplateMapMultiPlayer) } },
@@ -3063,8 +3136,7 @@ function buildConfig(ctx, waves, stages, bands, chess, items) {
       chatCd: ac.constData?.chatCD ?? 1, chatBubble: ac.constData?.chatTime ?? 3, broadcastDelay: ac.constData?.broadcastBeginDelay ?? 1,
       enterSteps: (Array.isArray(ac.enterStepList) ? ac.enterStepList : Object.values(ac.enterStepList || {})).map((s) => ({ step: s.stepType, time: s.time, hint: s.hintTime, title: s.title })),
     },
-    bans: { FUNNY: { core: 0, addon: 1 }, NORMAL: { core: 3, addon: 4 }, HARD: { core: 3, addon: 4 }, ABYSS: { core: 3, addon: 4 }, TRAINING: { core: 0, addon: 0 },
-      rule: 'banned iff every bond of a visible non-DIY chess is in (drawn set D ∪ mode.inactiveBondIds); core = isCore bonds, addon = other bonds with weight > 0; uniform draw' },
+    bans,
     bandDraft: { skipsPerPlayer: 1, order: 'random', duplicatesAllowed: true, timeoutBandId: 'band_bldsk' },
     titles: Object.values(act.playerTitleDataDict || {}).map((t) => ({ id: t.id, picId: t.picId, name: t.txt, ...(titleRules[t.id] || {}) })),
     titleRule: 'each player gets at most one title; each title is used at most once per match; assign by the category where the player ranks best relative to teammates [ASSUMED]',
@@ -3089,7 +3161,7 @@ function buildConfig(ctx, waves, stages, bands, chess, items) {
       itemId: (Array.isArray(act.baseRewardDataList) ? act.baseRewardDataList : Object.values(act.baseRewardDataList || {}))[0]?.item?.id || null,
       baseByRoundsPassed: (Array.isArray(act.baseRewardDataList) ? act.baseRewardDataList : Object.values(act.baseRewardDataList || {})).map((r) => ({ round: r.round, count: r.item?.count ?? 0, dailyPoint: r.dailyMissionPoint ?? 0 })),
       formula: 'baseByRoundsPassed[roundsPassed].count * difficultyFactor[difficulty] * modeFactor[type]',
-      difficultyFactor: act.difficultyFactorInfo, modeFactor: act.modeFactorInfo,
+      difficultyFactor, modeFactor: act.modeFactorInfo,
       // the 功勋 levels: the 卫戍认证 earned in all, level by level (milestoneList tokenNum, cumulative)
       milestones: (Array.isArray(act.milestoneList) ? act.milestoneList : Object.values(act.milestoneList || {}))
         .map((m) => ({ level: m.milestoneLvl, tokens: m.tokenNum })).sort((a, b) => a.level - b.level),
@@ -3213,6 +3285,19 @@ function attachPotential(passes) {
 
 // ===== validation ===============================================================================
 
+/**
+ * A chess record this build did not produce: 炸惊模拟's records are imported as-is from the reference package
+ * (docs/research/18-zhaijing-content.json) and carry the `zhajing` marker — `true` on the 205 it flagged, and the
+ * package's own `false` on the six it forgot (they stay `false` in the data, see the extractor's `_doc`). 湮灭专属 mod's
+ * 13 operators (docs/research/20-annihilation-mods.json) are the same case: the packs' built 0.2.6 records carrying
+ * `annihilation: true`. The integrity checks below are statements about the *builder* (trigger rows derived from the
+ * official tables, the 补位 form parity), so they do not apply to an imported snapshot; `tools/extract-*` and
+ * test/data.test.js assert what those records must look like instead.
+ * @param {any} c a chess record
+ * @returns {boolean}
+ */
+const isImportedChess = (c) => !!c && ('zhajing' in c || c.annihilation === true);
+
 function validateAll(f) {
   const errors = validateReferences(f);
   const err = m => errors.push(m);
@@ -3237,7 +3322,7 @@ function validateAll(f) {
     }
   }
   for (const [charId, skillsOf] of checkDeviations ? Object.entries(TRIGGER_DEVIATIONS) : []) {
-    const recs = Object.values(chess).filter((c) => c.charId === charId);
+    const recs = Object.values(chess).filter((c) => c.charId === charId && !isImportedChess(c));
     if (onlyPresent && !recs.length) continue;
     if (recs.length !== 2) err(`trigger deviation ${charId}: expected the normal and the elite record, got ${recs.length}`);
     for (const [skillId, rule] of Object.entries(skillsOf)) {
@@ -3252,6 +3337,7 @@ function validateAll(f) {
   // the owner's ACTIVE_RANGE rule (2026-10-05): a MANUAL skill of the basic strategy (DEFAULT by its row or a deviation)
   // or of the SEARCH row whose running range strictly contains the record's own range, and no other
   for (const c of Object.values(chess)) {
+    if (isImportedChess(c)) continue;
     for (const s of c.skills || []) {
       if (s.trigger?.rule !== 'ACTIVE_RANGE') continue;
       const over = (s.trigger.rawRule === 'TAKE_DAMAGE' && TRIGGER_DEVIATIONS[c.charId]?.[s.skillId]) || s.trigger.rawRule;
@@ -3302,8 +3388,720 @@ function validateAll(f) {
 
 // ===== main =====================================================================================
 
-async function main() {
-  const t0 = Date.now();
+/**
+ * 炸惊模拟 (ZHAJING) content — docs/research/18-zhaijing-content.json merged into the official maps **by record marker**,
+ * never as a separate data set (handoff/ZHAJING-SPLIT-PLAN-2026-10-28.md §2):
+ *
+ *   * `chess`     — `zhajing: true` + `visible: false`. `GameData.visibleChess` requires `visible === true` outside
+ *                   ZHAJING, so no official mode's pool can reach them; the ZHAJING mode reads them by the marker.
+ *   * `items` / `bands` / `bonds` — `zjOnly: true` (the 5 new bonds included): `GameData.shopItemsByTier` /
+ *                   `bandAllowed` / `shared/zjBonds.js zjBondView` drop them everywhere else.
+ *   * `bonds`     — the 21 `zj` overlay blocks go onto the *existing* records; `shared/zjBonds.js` merges them only
+ *                   under ZHAJING and strips them (`merge: false`) for every other mode, so an official record stays
+ *                   byte-identical apart from the block itself.
+ *   * 惊变羁绊 (18 bonds) — `data/jibianBonds.json`, a file of its own: `server/data.js loadData` reads every `*.json`
+ *                   of the data directory, so no file list has to change.
+ *
+ * A colliding id throws: the merge is additive by construction, and a future package whose ids overlap an official
+ * record must be handled deliberately instead of silently overwriting one.
+ * @param {{[k: string]: any}} files the built data files (mutated)
+ * @param {any} content docs/research/18-zhaijing-content.json
+ * @returns {{[k: string]: number}} how many records each map received
+ */
+function applyZhajingContent(files, content) {
+  const counts = {};
+  /**
+   * Merge one record map. A colliding id throws **unless the existing record is already ZHAJING content** — the build is
+   * re-run after a promotion, when data/ still holds the previous merge (and the research file is the source of truth for
+   * those records, so they are replaced, never merged).
+   * @param {string} name the file key
+   * @param {Record<string, any>} [recs] the research records
+   * @param {(rec: any) => boolean} [isZjRecord] whether an existing record is 炸惊 content too
+   */
+  const mergeMap = (name, recs, isZjRecord = () => false) => {
+    if (!recs) return;
+    const map = files[name];
+    let n = 0;
+    for (const [id, rec] of Object.entries(recs)) {
+      if (map[id] && !isZjRecord(map[id])) throw new Error(`zhajing ${name} ${id} collides with an official record`);
+      map[id] = rec;
+      n++;
+    }
+    counts[name] = n;
+  };
+  const isZjItem = (r) => r && (r.zjOnly === true || /^chess_item_(jibian|sees|mujica)_/.test(r.id || ''));
+  mergeMap('chess', content.chess, (c) => c && 'zhajing' in c);
+  mergeMap('garrisons', content.garrisons, (g) => !!g && /^garrison_(zj|mujica)_/.test(g.garrisonId || ''));
+  mergeMap('bonds', content.bonds, (b) => b && b.zjOnly === true);
+  mergeMap('items', content.items, isZjItem);
+  mergeMap('bands', content.bands, (b) => b && b.zjOnly === true);
+  let overlays = 0;
+  for (const [bondId, zj] of Object.entries(content.bondZjOverrides || {})) {
+    const bond = files.bonds[bondId];
+    if (!bond) throw new Error(`zhajing bond overlay ${bondId}: no such bond`);
+    if (bond.zj) throw new Error(`zhajing bond overlay ${bondId}: the record already carries a zj block`);
+    bond.zj = zj;
+    overlays++;
+  }
+  counts.bondZjOverrides = overlays;
+  // 炸惊 summons go into backups.json, NEVER into tokens.json: simdata rawToken() is `raw.tokens[id] ?? … ??
+  // raw.backups.tokens[id]`, so a tokens.json copy would shadow a complete backups record this version already has (missing
+  // the official `char_XXXX@2/1/4/0` variant keys) and move the official DIY summons — measured on 2026-10-28, golden's 288
+  // scenarios all moved. The official variants are kept byte for byte; only 炸惊 keys and the package's own keys are added.
+  let variants = 0;
+  for (const [tokenId, rec] of Object.entries(content.backupTokens || {})) {
+    const existing = files.backups.tokens[tokenId];
+    if (existing) {
+      existing.variants = { ...(existing.variants || {}), ...(rec.variants || {}) };
+    } else {
+      files.backups.tokens[tokenId] = rec;
+      counts.backupTokens = (counts.backupTokens || 0) + 1;
+    }
+    variants++;
+  }
+  counts.backupTokenVariants = variants;
+  if (content.jibianBonds) {
+    files.jibianBonds = content.jibianBonds;
+    counts.jibianBonds = Array.isArray(content.jibianBonds.bonds) ? content.jibianBonds.bonds.length : 0;
+  }
+  return counts;
+}
+
+/**
+ * 湮灭专属 mod 的数据 —— docs/research/20-annihilation-mods.json 并进 data/bonds.json、data/chess.json、
+ * data/items.json 与 data/effects.json。
+ *
+ * 与炸惊同一范式（模式标记 + 模式门），**标记名分开**，因为两者可以同时存在：
+ *   · 新盟约 `annOnly: true` —— 官方四档与炸惊的 bondIds / bond() 都看不见它（只有 ANNIHILATION 视图收）；
+ *   · 既有盟约 `bonds[id].ann` —— 覆盖块，与炸惊的 `zj` 块同形（只写要覆盖的字段；`bb` 按键合并），只有 ANNIHILATION 合并；
+ *   · chess 的 `chess[id].annBonds` —— 该棋在湮灭下**额外计入**的盟约（数组），官方模式与炸惊不读；
+ *   · 盟约专属装备 `items[id].annOnly` —— 两条新盟约的 4 件 ×2 形（萨卡兹的断角等）。它们是**盟约里程碑的奖品**
+ *     （`bond_layer_added_reward_equip.reward_item` 指向的 id），不是商店货：每件强制 `shopExcluded`，
+ *     否则官方四档的商店与装备池（gamedata.shopItemsByTier 从 data/items.json 现算）会多出 4 件湮灭装备。
+ *     每件的 effect 记录同批并进 data/effects.json（research 里是派生的，见 extractor 的 deriveItemEffect）。
+ * 全部是纯加法：官方模式读到的记录逐字节不变（test/match/annihilation-mods-isolation.test.js 钉住它）。
+ * @param {{[k: string]: any}} files the built data files (mutated)
+ * @param {any} mods docs/research/20-annihilation-mods.json
+ * @returns {{[k: string]: number}} how many records each step wrote
+ */
+function applyAnnihilationMods(files, mods) {
+  const counts = {};
+  let n = 0;
+  for (const [bondId, rec] of Object.entries(mods.bonds || {})) {
+    const cur = files.bonds[bondId];
+    if (cur && cur.annOnly !== true) throw new Error(`annihilation bond ${bondId} collides with an official bond`);
+    files.bonds[bondId] = rec;
+    n++;
+  }
+  counts.bonds = n;
+  let overlays = 0;
+  for (const [bondId, ann] of Object.entries(mods.bondAnnOverrides || {})) {
+    const bond = files.bonds[bondId];
+    if (!bond) throw new Error(`annihilation bond overlay ${bondId}: no such bond`);
+    if (bond.zjOnly === true) throw new Error(`annihilation bond overlay ${bondId}: a 炸惊-only bond has no ANNIHILATION view`);
+    bond.ann = ann;
+    overlays++;
+  }
+  counts.bondAnnOverrides = overlays;
+  // 卫戍先并（chess 的 garrisonIds 要在同一份 files 里解析得到）。卫戍没有自己的标记：这一批是 `chess.annihilation`
+  // 记录的 `garrisonIds` 引用的那些，research 的 `garrisons` 段已经把范围收窄（docs/research/20 的 _extract.notes）。
+  let garrisonCount = 0;
+  for (const [garrisonId, rec] of Object.entries(mods.garrisons || {})) {
+    const cur = files.garrisons[garrisonId];
+    if (cur) throw new Error(`annihilation garrison ${garrisonId} collides with an official 特质`);
+    if (!rec || typeof rec !== 'object' || rec.garrisonId !== garrisonId) throw new Error(`annihilation garrison ${garrisonId}: bad research record`);
+    if (!('battleRuneKey' in rec)) throw new Error(`annihilation garrison ${garrisonId}: no battleRuneKey (the extractor fills null)`);
+    files.garrisons[garrisonId] = rec;
+    garrisonCount++;
+  }
+  counts.garrisons = garrisonCount;
+  // 13 名干员（26 条 chess）整条并入。与炸惊同构：`annihilation: true` + `visible: false`，官方池的判据
+  // （`isOfficialVisibleChess`）一个字不改也看不见它们；`annBonds` 是它们在湮灭下的额外盟约（由盟约 members 反推）。
+  let annChessCount = 0;
+  for (const [chessId, rec] of Object.entries(mods.chess || {})) {
+    const cur = files.chess[chessId];
+    if (cur) throw new Error(`annihilation chess ${chessId} collides with an official record`);
+    if (rec.chessId !== chessId) throw new Error(`annihilation chess ${chessId}: chessId ${rec.chessId}`);
+    if (rec.annihilation !== true) throw new Error(`annihilation chess ${chessId}: research record lacks annihilation: true`);
+    if (rec.visible !== false) throw new Error(`annihilation chess ${chessId}: visible must be false (the official pool reads visible)`);
+    if (!Number.isInteger(rec.tier) || rec.tier < 1 || rec.tier > 6) throw new Error(`annihilation chess ${chessId}: tier ${rec.tier}`);
+    for (const b of rec.bonds || []) if (!files.bonds[b]) throw new Error(`annihilation chess ${chessId}: bond ${b} missing`);
+    for (const g of rec.garrisonIds || []) if (!files.garrisons[g]) throw new Error(`annihilation chess ${chessId}: garrison ${g} missing`);
+    for (const t of rec.tokens || []) if (!files.tokens[t] && !files.backups?.tokens?.[t]) throw new Error(`annihilation chess ${chessId}: token ${t} missing`);
+    if (!Array.isArray(rec.annBonds) || !rec.annBonds.length) throw new Error(`annihilation chess ${chessId}: no annBonds — the roster switch could never show it`);
+    for (const b of rec.annBonds) {
+      const bond = files.bonds[b];
+      if (!bond) throw new Error(`annihilation chess ${chessId}: annBond ${b} missing`);
+      if (bond.annOnly !== true) throw new Error(`annihilation chess ${chessId}: annBond ${b} is not an annihilation bond`);
+      if (!Array.isArray(bond.members) || !bond.members.includes(rec.baseId)) throw new Error(`annihilation chess ${chessId}: ${b} does not list ${rec.baseId} as a member`);
+    }
+    files.chess[chessId] = rec;
+    annChessCount++;
+  }
+  counts.chess = annChessCount;
+  // 配对规则与官方记录同一条（shared/plugins/validate.js 的 PLUGIN_DATA_PAIR）：普通形指向自己的精锐，精锐不再升级；
+  // 全部插入之后再核（普通形先于精锐形，边插边核会误报）。
+  for (const [chessId, rec] of Object.entries(mods.chess || {})) {
+    if (rec.isGolden === true) {
+      if (rec.upgradeChessId != null) throw new Error(`annihilation chess ${chessId}: a golden must not upgrade (upgradeChessId ${rec.upgradeChessId})`);
+      if (rec.goldenId !== chessId || rec.baseId === chessId) throw new Error(`annihilation chess ${chessId}: goldenId/baseId`);
+      continue;
+    }
+    const golden = files.chess[rec.goldenId];
+    if (!golden || golden.isGolden !== true || golden.baseId !== chessId) throw new Error(`annihilation chess ${chessId}: golden ${rec.goldenId} is not its elite record`);
+    if (rec.upgradeChessId !== rec.goldenId) throw new Error(`annihilation chess ${chessId}: upgradeChessId ${rec.upgradeChessId} ≠ goldenId ${rec.goldenId}`);
+  }
+  // 卫戍的 owners 指向这些新棋（它们在包内也是这么写的）—— 两边必须互指，否则特质挂不到任何人身上。
+  for (const [garrisonId, rec] of Object.entries(mods.garrisons || {})) {
+    for (const owner of rec.owners || []) {
+      const c = files.chess[owner];
+      if (!c) throw new Error(`annihilation garrison ${garrisonId}: owner ${owner} missing`);
+      if (!(c.garrisonIds || []).includes(garrisonId)) throw new Error(`annihilation garrison ${garrisonId}: owner ${owner} does not carry it`);
+    }
+  }
+  let edgeCount = 0;
+  let chessCount = 0;
+  for (const [chessId, bondsList] of Object.entries(mods.chessAnnBonds || {})) {
+    const rec = files.chess[chessId];
+    if (!rec) throw new Error(`annihilation annBonds ${chessId}: no such chess record`);
+    for (const bondId of bondsList) if (!files.bonds[bondId]) throw new Error(`annihilation annBonds ${chessId}: bond ${bondId} missing`);
+    rec.annBonds = [...new Set([...(rec.annBonds || []), ...bondsList])];
+    chessCount++;
+    edgeCount += rec.annBonds.length;
+  }
+  counts.chessAnnBonds = chessCount;
+  counts.chessAnnBondEdges = edgeCount;
+  // 盟约专属装备（两条新盟约的 4 件 ×2 形）：先落 effect 记录（item 要能解析到它，= buildItems 对官方装备的同一口径），
+  // 再落 item。**纯加法的隔离保证**：普通形一律 shopExcluded（官方四档的商店 / 装备池是从 data/items.json 现算的），
+  // 否则官方四档会多卖 4 件湮灭装备。research 已经把理由写进 shopExcludedBy（生成期核对）。
+  let effectCount = 0;
+  for (const [effectId, eff] of Object.entries(mods.items?.effects || {})) {
+    const cur = files.effects[effectId];
+    if (cur && cur.annOnly !== true) throw new Error(`annihilation item effect ${effectId} collides with an official effect`);
+    if (eff.annOnly !== true) throw new Error(`annihilation item effect ${effectId}: research record lacks annOnly`);
+    if (eff.effectType !== 'EQUIP') throw new Error(`annihilation item effect ${effectId}: effectType ${eff.effectType}, expected EQUIP`);
+    files.effects[effectId] = eff;
+    effectCount++;
+  }
+  counts.itemEffects = effectCount;
+  let itemCount = 0;
+  for (const [itemId, rec] of Object.entries(mods.items?.records || {})) {
+    const cur = files.items[itemId];
+    if (cur && cur.annOnly !== true) throw new Error(`annihilation item ${itemId} collides with an official item`);
+    if (rec.annOnly !== true) throw new Error(`annihilation item ${itemId}: research record lacks annOnly`);
+    const bond = files.bonds[rec.giveBondId];
+    if (!bond || bond.annOnly !== true) throw new Error(`annihilation item ${itemId}: giveBondId ${rec.giveBondId} is not an annihilation bond`);
+    if (!files.effects[rec.effectId]) throw new Error(`annihilation item ${itemId}: effect ${rec.effectId} missing`);
+    if (!rec.isGolden) {
+      if (rec.shopExcluded !== true) throw new Error(`annihilation item ${itemId}: must be shopExcluded (official shops read data/items.json)`);
+      if (!rec.shopExcludedBy) throw new Error(`annihilation item ${itemId}: shopExcluded without a reason`);
+      if (!Number.isInteger(rec.tier)) throw new Error(`annihilation item ${itemId}: tier ${rec.tier}`);
+    }
+    files.items[itemId] = rec;
+    itemCount++;
+  }
+  counts.items = itemCount;
+  // golden 链在**全部插入之后**再核（同一批里普通形先于精锐形，边插边核会误报）
+  for (const [itemId, rec] of Object.entries(mods.items?.records || {})) {
+    if (!rec.goldenId || rec.isGolden) continue;   // 精锐记录的 goldenId 指向它自己
+    const golden = files.items[rec.goldenId];
+    if (!golden) throw new Error(`annihilation item ${itemId}: goldenId ${rec.goldenId} missing`);
+    if (golden.isGolden !== true || golden.baseId !== itemId) throw new Error(`annihilation item ${itemId}: golden ${rec.goldenId} is not its golden record`);
+    if (rec.upgradeChessId !== rec.goldenId) throw new Error(`annihilation item ${itemId}: upgradeChessId ${rec.upgradeChessId} ≠ goldenId ${rec.goldenId}`);
+  }
+  // 盟誓卡（派生自 data/effects.json 的 allybuff_select_2_7，见 docs/research/20 的 `_doc`）：effect 记录 + choices.cards.tactic
+  // 各一条。生成期把「卡只能落在湮灭专属盟约上」钉死：bond_list 里每个 id 必须存在且 `annOnly`，effectType/buff key/kind
+  // 必须是既有模板那几种 —— 不合格就报错，别留到运行期变成一张抽到也无效的牌。
+  let cards = 0;
+  for (const [effectId, eff] of Object.entries(mods.bondCards?.effects || {})) {
+    if (files.effects[effectId] && files.effects[effectId].annOnly !== true) throw new Error(`annihilation bond card ${effectId} collides with an official effect`);
+    if (eff.effectType !== 'BUFF_GAIN') throw new Error(`annihilation bond card ${effectId}: effectType ${eff.effectType}, expected BUFF_GAIN`);
+    for (const b of eff.buffs || []) {
+      if (b.key !== 'global_special_choice_bond_addlayer') throw new Error(`annihilation bond card ${effectId}: buff key ${b.key} is not a 盟誓 template key`);
+      if (!Number.isInteger(b.bb?.count) || b.bb.count <= 0) throw new Error(`annihilation bond card ${effectId}: count must be a positive integer`);
+      const bonds = String(b.bbStr?.bond_list || '').split(',').map((s) => s.trim()).filter(Boolean);
+      if (!bonds.length) throw new Error(`annihilation bond card ${effectId}: empty bond_list`);
+      for (const bondId of bonds) {
+        const bond = files.bonds[bondId];
+        if (!bond) throw new Error(`annihilation bond card ${effectId}: bond ${bondId} missing`);
+        if (bond.annOnly !== true) throw new Error(`annihilation bond card ${effectId}: bond ${bondId} is not annOnly`);
+      }
+    }
+    files.effects[effectId] = eff;
+    cards++;
+  }
+  for (const card of mods.bondCards?.tactic || []) {
+    if (!files.effects[card.effectId]) throw new Error(`annihilation bond card ${card.effectId}: no effect record`);
+    if (!['ally', 'enemyDebuff', 'terrain'].includes(card.kind)) throw new Error(`annihilation bond card ${card.effectId}: kind ${card.kind}`);
+    files.choices.cards ||= {};
+    files.choices.cards.tactic ||= [];
+    const list = files.choices.cards.tactic;
+    const at = list.findIndex((c) => c.effectId === card.effectId);
+    if (at >= 0) {
+      if (list[at].annOnly !== true) throw new Error(`annihilation bond card ${card.effectId} collides with an official tactic card`);
+      list[at] = card;
+    } else list.push(card);
+  }
+  counts.bondCards = cards;
+  // 湮灭的机变轮次表（docs/research/20 的 `schedule`，[ASSUMED] 派生自官方 ABYSS 的 R3/R9/R11 形状）：
+  // 只加湮灭两条模式，官方四档 + 训练 + 炸惊的 `schedule` 条目逐字节不变。生成期把两件事钉死：
+  //   · 每个 family id 必须在 `choices.cards` 里有对应键（否则 scheduleFor 抽到的 family 是空的）；
+  //   · `rounds` 必须覆盖该模式**运行时**的每一个机变轮（`isSpRound`：从 R3 起每 2 回合、到隐秘核心之前）。
+  let schedModes = 0;
+  for (const [modeId, sch] of Object.entries(mods.schedule || {})) {
+    const mode = files.config.modes[modeId];
+    if (!mode) throw new Error(`annihilation schedule ${modeId}: no such mode`);
+    if (mode.difficulty !== 'ANNIHILATION') throw new Error(`annihilation schedule ${modeId}: difficulty ${mode.difficulty}, expected ANNIHILATION`);
+    if (files.choices.schedule[modeId]) throw new Error(`annihilation schedule ${modeId} collides with an official entry`);
+    const everySpRound = [];
+    const end = Number.isInteger(mode.hiddenRound) ? mode.hiddenRound : (Number.isInteger(mode.lastRound) ? mode.lastRound + 1 : null);
+    if (!end) throw new Error(`annihilation schedule ${modeId}: the mode has neither hiddenRound nor lastRound`);
+    for (let r = 3; r < end; r += 2) if (!(r === mode.hiddenRound)) everySpRound.push(r);
+    for (const r of everySpRound) {
+      if (!sch.rounds || !sch.rounds[String(r)]) throw new Error(`annihilation schedule ${modeId}: round ${r} (a 机变 round) is missing`);
+    }
+    for (const [r, cfg] of Object.entries(sch.rounds || {})) {
+      if (!Array.isArray(cfg.families) || !cfg.families.length) throw new Error(`annihilation schedule ${modeId} r${r}: no families`);
+      for (const f of cfg.families) {
+        // family ids are the `choices.families` keys (bounty / supply / shop / tactic) — only bounty & tactic have a `cards`
+        // array; supply and shop are generated from the item pools, so `cards` is the wrong table to check against.
+        if (!files.choices.families || !(f.family in files.choices.families)) throw new Error(`annihilation schedule ${modeId} r${r}: unknown family ${f.family}`);
+        if (!Number.isFinite(f.weight) || f.weight <= 0) throw new Error(`annihilation schedule ${modeId} r${r}: family ${f.family} weight`);
+      }
+      if (!Number.isInteger(cfg.cards) || cfg.cards <= 0) throw new Error(`annihilation schedule ${modeId} r${r}: cards`);
+      if (cfg.supplyTiers != null && (!Array.isArray(cfg.supplyTiers) || cfg.supplyTiers.length !== 2 || !cfg.supplyTiers.every(Number.isInteger))) {
+        throw new Error(`annihilation schedule ${modeId} r${r}: supplyTiers must be two integers`);
+      }
+    }
+    if (!Object.values(sch.rounds).some((c) => c.families.some((f) => f.family === 'tactic'))) throw new Error(`annihilation schedule ${modeId}: no tactic round (the bond cards would be unreachable)`);
+    files.choices.schedule[modeId] = sch;
+    schedModes++;
+  }
+  counts.scheduleModes = schedModes;
+  counts.scheduleRounds = Object.values(mods.schedule || {}).reduce((n, s) => n + Object.keys(s.rounds || {}).length, 0);
+  return counts;
+}
+
+/**
+ * 超限模拟的盟约 `inf` 覆盖块 —— docs/research/22-overlimit-bonds.json → data/bonds.json 每条的 `inf` 键。
+ *
+ * 语义与炸惊的 `zj` / 湮灭的 `ann` **完全同一套**（shared/zjBonds.js overlayBondRecord）：`inf` 块只写要覆盖的字段
+ * （本轮只有 `desc` / `descRaw` / `effectDesc` / `effectDescRaw`，即「原版原文 + 追加的超限专属行」），
+ * 由 `overlayBondView(bonds, 'inf')` 在 **超限局**（`gd.overlimit`，server/match/gamedata.js）合并；
+ * 其它任何模式只把 `inf` 键剥掉，记录逐字节等于改动前。
+ *
+ * 全部是纯加法：官方四档 / 炸惊 / 湮灭读到的盟约记录不变（docs「generated data」）。
+ * @param {{[k: string]: any}} files the built data files (mutated)
+ * @param {any} src docs/research/22-overlimit-bonds.json
+ * @returns {{[k: string]: number}}
+ */
+function applyOverlimitBonds(files, src) {
+  let n = 0;
+  for (const [bondId, inf] of Object.entries(src.bondInfOverrides || {})) {
+    const bond = files.bonds[bondId];
+    if (!bond) throw new Error(`overlimit bond overlay ${bondId}: no such bond`);
+    if (bond.zjOnly === true || bond.annOnly === true) throw new Error(`overlimit bond overlay ${bondId}: a play-set-only bond has no 超限 view`);
+    if (bond.inf) throw new Error(`overlimit bond overlay ${bondId}: the record already carries an inf block`);
+    if (!inf || typeof inf !== 'object') throw new Error(`overlimit bond overlay ${bondId}: bad research record`);
+    bond.inf = inf;
+    n++;
+  }
+  return { bondInfOverrides: n };
+}
+
+/**
+ * 超限词条要发放的装备 —— docs/research/25-overlimit-items.json → data/effects.json + data/items.json
+ * （业主 2026-10-31 第四批：FGO-SP『快楽天・胎蔵曼荼羅』要「获得一个[万色悠滞之核]」）。
+ *
+ * 为什么需要这条链：这件装备**在官方数据里不存在**（官方 act1/act2 的 trapChessDataDict 都没有，
+ * data/items.json 里也没有），`buildItems` 只能从官方表生成，所以它只能像湮灭 mod 的盟约奖励装那样从 research
+ * 手写进来（与 applyAnnihilationMods 的 items 段同一条范式：先 effect、再 item）。
+ *
+ * 纯加法 + 生成期校验（不合格就抛 → 构建拒绝写盘，问题不留到对局里）：
+ *   · 每条必须 `olOnly: true`（本仓模式标记：只有超限局的词条链能发它）；
+ *   · 普通形必须 `shopExcluded: true` 且写明理由 —— 官方四档 / 炸惊 / 湮灭的商店与装备池都是从 data/items.json
+ *     现算的（gamedata.shopItemsByTier → simdata.isShopItem），漏了就会凭空多卖一件本模式专属装备；
+ *   · effect 必须存在且 `effectType === 'EQUIP'`；giveBondId / requiresBondId 指向的盟约必须真的在 data/bonds.json；
+ *   · trapId 必须非空；贴图键 `iconId` 缺省与它同名，**可以**被 research 显式覆盖（本件 [ASSUMED] derived icon：
+ *     trapId 仍指变形同构体那条同源记录（工具 / 工作台按它反查；运行时 match / sim 不读 trapId），
+ *     iconId = trap_ol_core 只决定 assets manifest 查哪张派生图 —— 见 tools/patch-assets-local.mjs）；
+ *   · id 与既有物品 / effect 不冲突（撞了就抛，绝不静默覆盖官方记录）；没有 golden 形。
+ * @param {{[k: string]: any}} files the built data files (mutated)
+ * @param {any} src docs/research/25-overlimit-items.json
+ * @returns {{[k: string]: number}} how many records each step wrote
+ */
+const OVERLIMIT_ICON_ID_RE = /^[A-Za-z0-9_.-]+$/;
+
+function applyOverlimitItems(files, src) {
+  const counts = { effects: 0, items: 0 };
+  const effects = (src && src.items && src.items.effects) || {};
+  const records = (src && src.items && src.items.records) || {};
+  for (const [effectId, eff] of Object.entries(effects)) {
+    if (files.effects[effectId]) throw new Error(`overlimit item effect ${effectId} collides with an official effect`);
+    if (!eff || typeof eff !== 'object') throw new Error(`overlimit item effect ${effectId}: bad research record`);
+    if (eff.olOnly !== true) throw new Error(`overlimit item effect ${effectId}: research record lacks olOnly`);
+    if (eff.effectType !== 'EQUIP') throw new Error(`overlimit item effect ${effectId}: effectType ${eff.effectType}, expected EQUIP`);
+    if (eff.effectId !== effectId) throw new Error(`overlimit item effect ${effectId}: effectId ${JSON.stringify(eff.effectId)}`);
+    files.effects[effectId] = eff;
+    counts.effects++;
+  }
+  for (const [itemId, rec] of Object.entries(records)) {
+    if (files.items[itemId]) throw new Error(`overlimit item ${itemId} collides with an official item`);
+    if (!rec || typeof rec !== 'object') throw new Error(`overlimit item ${itemId}: bad research record`);
+    if (rec.olOnly !== true) throw new Error(`overlimit item ${itemId}: research record lacks olOnly`);
+    if (rec.id !== itemId) throw new Error(`overlimit item ${itemId}: id ${JSON.stringify(rec.id)}`);
+    if (rec.shopExcluded !== true) throw new Error(`overlimit item ${itemId}: must be shopExcluded (every official shop / pool reads data/items.json)`);
+    if (!rec.shopExcludedBy) throw new Error(`overlimit item ${itemId}: shopExcluded without a reason`);
+    if (!files.effects[rec.effectId]) throw new Error(`overlimit item ${itemId}: effect ${rec.effectId} missing`);
+    if (!Number.isInteger(rec.tier) || rec.tier < 1 || rec.tier > 6) throw new Error(`overlimit item ${itemId}: tier ${JSON.stringify(rec.tier)}`);
+    // 贴图键：`iconId` 缺省 = `trapId`（既有的「同一张图」口径）；research 可以显式覆盖成另一张图。两条语义是分开的：
+    // trapId 是这条记录与变形同构体那条「同源记录」的键（工具 / 工作台按它反查；运行时 match / sim 不读它），
+    // iconId 只决定 assets manifest 查哪张图 —— 所以不要求同名，但覆盖值必须是
+    // **文件名形状**的非空字符串（它是 manifest 的键，又直接拼进 /assets/item/<iconId>.png，带路径分隔符就会逃出图标目录）。
+    // 这里**不校验文件是否存在**：public/assets/ 是 gitignore 的（AGENTS.md），干净 checkout / CI 上派生图本来就不在，
+    // 构建不该因此红；落盘后由 tools/patch-assets-local.mjs --slots items 登记进 manifest。
+    const iconId = rec.iconId == null ? rec.trapId : rec.iconId;
+    if (typeof rec.trapId !== 'string' || !rec.trapId) {
+      throw new Error(`overlimit item ${itemId}: trapId must be a non-empty string`);
+    }
+    if (!OVERLIMIT_ICON_ID_RE.test(iconId)) {
+      throw new Error(`overlimit item ${itemId}: iconId ${JSON.stringify(iconId)} must be a plain file name (letters, digits, dot, underscore, dash)`);
+    }
+    rec.iconId = iconId;
+    if (rec.giveBondId && !files.bonds[rec.giveBondId]) throw new Error(`overlimit item ${itemId}: giveBond ${rec.giveBondId} missing`);
+    if (rec.requiresBondId && !files.bonds[rec.requiresBondId]) throw new Error(`overlimit item ${itemId}: requiresBond ${rec.requiresBondId} missing`);
+    if (rec.goldenId) throw new Error(`overlimit item ${itemId}: no golden form (goldenId must be null)`);
+    if (rec.isGolden !== false) throw new Error(`overlimit item ${itemId}: isGolden must be false`);
+    files.items[itemId] = rec;
+    counts.items++;
+  }
+  return counts;
+}
+
+/**
+ * 超限模拟「词条」（饰品）表 —— docs/research/23-overlimit-relics.json → data/relicsOverlimit.json（业主 2026-10-31）。
+ *
+ * 这是**业主手写表的固化**（饰品效果表.xlsx Sheet1），不是官方数据：所以它进 docs/research、由本函数生成，data/ 里
+ * 那份永远是生成物（AGENTS.md「generated data」）。
+ *
+ * 生成期校验（不合格就进 integrity errors → 构建拒绝写盘，不把问题留到对局里）：
+ *   · 每条的 id 唯一、group 属于 lc / sp / ex / fgo / fgoX / fgoSP、name 与 desc 非空；
+ *   · 权重：lc / sp / ex / fgoX / fgoSP 是**每条**的显式百分比（正数），普通 fgo 必须是字符串 `'rest'`
+ *     （= 100 减去池里其它条目的显式权重之和，在池里当前剩下的 FGO 条目中均分）；显式合计必须 < 100，否则没有 rest；
+ *   · LC 必须正好 7 条：R3 三选一（7 → 剩 6）、R8 三选一（6 → 剩 5）是业主定稿的流程，条数变了规则就不成立；
+ *   · icon 必须是 null 或 `/assets/relics/overlimit/<id>.png`（业主表里的 DISPIMG 嵌入图已解出，见
+ *     docs/research/23-overlimit-relics.json 的 note），而且写了路径就必须在 public/ 下真能找到那个文件 ——
+ *     比原来的「一律 null」更严：路径写错 / 资源忘了落盘都在构建期炸掉，不把 404 留到对局里；
+ *     **例外**：`public/assets/relics/overlimit/` 整个目录都不在时（干净 checkout / CI 没有业主素材）只 warn 一次并
+ *     跳过存在性校验 —— 路径形状仍然逐条校验，目录在、单张缺仍然 error（参照 garrisonTypeIcon 的 check skipped）；
+ *   · impl 缺省 `'pending'`（第一批全部是桩：选中只记录、不生效）。
+ *
+ * 运行期**永远**按池子重算 rest/N（`server/match/relicsOverlimit.js`），所以这里只发权重原文，不发「4.753%」这类
+ * 写死的派生数 —— 池子里的 FGO 条目数会随「已选走」变化。
+ * @param {any} src docs/research/23-overlimit-relics.json
+ * @returns {{ errors: string[], file: any }}
+ */
+const RELIC_GROUPS = Object.freeze(['lc', 'sp', 'ex', 'fgo', 'fgoX', 'fgoSP']);
+const RELIC_EXPLICIT_GROUPS = Object.freeze(['lc', 'sp', 'ex', 'fgoX', 'fgoSP']);
+/** LC 条数：R3 / R8 各一次三选一，业主定稿的池子是 7 条（打完 R8 剩 5 条进无限池）。 */
+const RELIC_LC_COUNT = 7;
+/** 词条图标的唯一合法形状：站点绝对路径、落在 public/assets/relics/overlimit/ 下、png（业主 2026-10-31 解图）。 */
+const RELIC_ICON_RE = /^\/assets\/relics\/overlimit\/[A-Za-z0-9_.-]+\.png$/;
+
+function buildOverlimitRelics(src) {
+  const errors = [];
+  const raw = src && typeof src === 'object' ? src : {};
+  const rawWeights = raw.weights && typeof raw.weights === 'object' ? raw.weights : {};
+  const weights = {};
+  for (const g of RELIC_EXPLICIT_GROUPS) {
+    const v = rawWeights[g];
+    if (typeof v !== 'number' || !Number.isFinite(v) || v <= 0) errors.push(`relicsOverlimit weights.${g}: 需要正数（每条百分比），得到 ${JSON.stringify(v)}`);
+    else weights[g] = v;
+  }
+  if (rawWeights.fgo !== 'rest') errors.push(`relicsOverlimit weights.fgo: 必须是字符串 'rest'（普通 FGO 均分剩余），得到 ${JSON.stringify(rawWeights.fgo)}`);
+  weights.fgo = 'rest';
+
+  const entries = [];
+  const counts = {};
+  const seen = new Set();
+  // 图标目录在不在：整目录缺失（干净 checkout / CI / 没解业主表的机器）只 warn 一次并跳过**存在性**校验；路径形状
+  // （RELIC_ICON_RE）仍逐条校验，目录在、单张缺仍 error —— 只有「整目录缺失」这一种情况不硬失败。
+  const relicIconDir = join(ROOT, 'public', 'assets', 'relics', 'overlimit');
+  const haveRelicIconDir = existsSync(relicIconDir);
+  let relicIconsUnchecked = 0;
+  for (const e of Array.isArray(raw.entries) ? raw.entries : []) {
+    if (!e || typeof e !== 'object') { errors.push('relicsOverlimit: 条目不是对象'); continue; }
+    const id = typeof e.id === 'string' ? e.id.trim() : '';
+    if (!id) { errors.push('relicsOverlimit: 有条目缺 id'); continue; }
+    if (seen.has(id)) { errors.push(`relicsOverlimit ${id}: id 重复`); continue; }
+    if (!RELIC_GROUPS.includes(e.group)) { errors.push(`relicsOverlimit ${id}: group ${JSON.stringify(e.group)} 不在 ${RELIC_GROUPS.join(' / ')} 里`); continue; }
+    if (typeof e.name !== 'string' || !e.name.trim()) { errors.push(`relicsOverlimit ${id}: 缺 name`); continue; }
+    if (typeof e.desc !== 'string' || !e.desc.trim()) { errors.push(`relicsOverlimit ${id}: 缺 desc`); continue; }
+    // icon：null，或者 /assets/relics/overlimit/<id>.png 且**真的落盘**（路径写错 / 忘导资源都在构建期炸，不把 404 留到对局里）；
+    // 整目录缺失时只跳过存在性校验（clean checkout / CI 没有素材不该硬失败）
+    let icon = null;
+    if (e.icon != null) {
+      const want = typeof e.icon === 'string' ? e.icon.trim() : '';
+      if (!RELIC_ICON_RE.test(want)) errors.push(`relicsOverlimit ${id}: icon 必须是 null 或 /assets/relics/overlimit/<id>.png，得到 ${JSON.stringify(e.icon)}`);
+      else if (haveRelicIconDir && !existsSync(join(ROOT, 'public', want.slice(1)))) errors.push(`relicsOverlimit ${id}: icon ${want} 指向的文件不存在（public${want} 没落盘）`);
+      else { icon = want; if (!haveRelicIconDir) relicIconsUnchecked += 1; }
+    }
+    if (e.impl != null && typeof e.impl !== 'string') { errors.push(`relicsOverlimit ${id}: impl 必须是字符串`); continue; }
+    seen.add(id);
+    counts[e.group] = (counts[e.group] || 0) + 1;
+    entries.push({
+      id,
+      group: e.group,
+      name: e.name,
+      flavor: typeof e.flavor === 'string' ? e.flavor : '',
+      desc: e.desc,
+      // 表里「特殊颜色」那一列只有「何时用这种颜色」的描述、没有色值 → null；原文留在 research 的 spec.colorNote
+      effectColor: typeof e.effectColor === 'string' && e.effectColor ? e.effectColor : null,
+      weight: e.group === 'fgo' ? 'rest' : weights[e.group],
+      icon,
+      impl: typeof e.impl === 'string' && e.impl ? e.impl : 'pending',
+    });
+  }
+  if (!haveRelicIconDir && relicIconsUnchecked) {
+    warn(`relicsOverlimit: public/assets/relics/overlimit/ 整个目录不存在 —— 跳过 ${relicIconsUnchecked} 张词条图标的存在性校验` +
+      '（干净 checkout / CI 没有业主素材时不该硬失败）；路径形状仍逐条校验，单张缺失仍报错');
+  }
+  if (!entries.length) errors.push('relicsOverlimit: 一条都没有');
+  if ((counts.lc || 0) !== RELIC_LC_COUNT) errors.push(`relicsOverlimit: LC 必须正好 ${RELIC_LC_COUNT} 条（R3/R8 三选一的池子），得到 ${counts.lc || 0}`);
+  if (!(counts.fgo > 0)) errors.push('relicsOverlimit: 没有普通 FGO 条目，rest 无处可去（weights.fgo = rest）');
+  const explicit = RELIC_EXPLICIT_GROUPS.reduce((n, g) => n + (typeof weights[g] === 'number' ? weights[g] * (counts[g] || 0) : 0), 0);
+  if (explicit >= 100) errors.push(`relicsOverlimit: 显式权重合计 ${explicit.toFixed(2)}% 已经不小于 100%，普通 FGO 没有份额`);
+  return {
+    errors,
+    file: {
+      version: typeof raw.version === 'string' ? raw.version : null,
+      note: typeof raw.note === 'string' ? raw.note : '',
+      weightNote: typeof raw.weightNote === 'string' ? raw.weightNote : '',
+      weights,
+      counts,
+      entries,
+    },
+  };
+}
+
+/**
+ * 超限模拟「负面词条」表 —— docs/research/24-overlimit-negative-relics.json → data/relicsOverlimitNegative.json
+ * （业主 2026-10-31，与 36 条饰品词条并列的第二张表）。
+ *
+ * 与 `buildOverlimitRelics` 同一套纪律：业主手写表（负面词条列表_16项.xlsx Sheet1）固化进 docs/research，data/ 里
+ * 那份永远是生成物；不合格就在生成期炸掉，不留到对局里。两处**不同**：
+ *   · 没有分组 / 权重分档：负面池只有一组（group 固定 'neg'），每条等权 `weight: 1`（表里没有权重列，业主派单的
+ *     口径也是「先按每条等权」）；不是百分比、也不走普通 FGO 的 `'rest'` 均分 —— 抽取只看相对权重。
+ *   · 档位：表里 D01…D08 把 Ⅰ/Ⅱ/Ⅲ 三档写在同一行（三个数值用「/」分开）。生成期只校验「tiers 是数组、每档有 label
+ *     与全数字的 v」，**不**替业主决定怎么取值（判据见 research 的 tierNote；运行期在 relicsOverlimit.js 里按档抽取）。
+ * 条数：表里实到 17 行（D01…D15 + D16A/D16B），见 research 的 note；这里只校验「非空、id 唯一」，不钉死数字。
+ * @param {any} src docs/research/24-overlimit-negative-relics.json
+ * @returns {{ errors: string[], file: any }}
+ */
+const NEG_RELIC_GROUP = 'neg';
+const NEG_RELIC_ICON_RE = /^\/assets\/relics\/overlimit-negative\/[A-Za-z0-9_.-]+\.png$/;
+
+function buildOverlimitNegativeRelics(src) {
+  const errors = [];
+  const raw = src && typeof src === 'object' ? src : {};
+  const entries = [];
+  const seen = new Set();
+  const iconDir = join(ROOT, 'public', 'assets', 'relics', 'overlimit-negative');
+  const haveIconDir = existsSync(iconDir);
+  let iconsUnchecked = 0;
+  for (const e of Array.isArray(raw.entries) ? raw.entries : []) {
+    if (!e || typeof e !== 'object') { errors.push('relicsOverlimitNegative: 条目不是对象'); continue; }
+    const id = typeof e.id === 'string' ? e.id.trim() : '';
+    if (!id) { errors.push('relicsOverlimitNegative: 有条目缺 id'); continue; }
+    if (seen.has(id)) { errors.push(`relicsOverlimitNegative ${id}: id 重复`); continue; }
+    if (typeof e.name !== 'string' || !e.name.trim()) { errors.push(`relicsOverlimitNegative ${id}: 缺 name`); continue; }
+    if (typeof e.desc !== 'string' || !e.desc.trim()) { errors.push(`relicsOverlimitNegative ${id}: 缺 desc`); continue; }
+    if (typeof e.impl !== 'string' || !e.impl.trim()) { errors.push(`relicsOverlimitNegative ${id}: 缺 impl（实装 key）`); continue; }
+    let icon = null;
+    if (e.icon != null) {
+      const want = typeof e.icon === 'string' ? e.icon.trim() : '';
+      if (!NEG_RELIC_ICON_RE.test(want)) errors.push(`relicsOverlimitNegative ${id}: icon 必须是 null 或 /assets/relics/overlimit-negative/<id>.png，得到 ${JSON.stringify(e.icon)}`);
+      else if (haveIconDir && !existsSync(join(ROOT, 'public', want.slice(1)))) errors.push(`relicsOverlimitNegative ${id}: icon ${want} 指向的文件不存在（public${want} 没落盘）`);
+      else { icon = want; if (!haveIconDir) iconsUnchecked += 1; }
+    }
+    const tiers = [];
+    if (!Array.isArray(e.tiers)) errors.push(`relicsOverlimitNegative ${id}: tiers 必须是数组（没档位就写 []）`);
+    else {
+      for (const t of e.tiers) {
+        if (!t || typeof t !== 'object' || typeof t.label !== 'string' || !t.label.trim()) {
+          errors.push(`relicsOverlimitNegative ${id}: 每一档要有 label`);
+          continue;
+        }
+        if (!t.v || typeof t.v !== 'object' || Array.isArray(t.v)) { errors.push(`relicsOverlimitNegative ${id} ${t.label}: 缺 v（档位数值对象）`); continue; }
+        let ok = true;
+        for (const [k, v] of Object.entries(t.v)) {
+          if (typeof v !== 'number' || !Number.isFinite(v)) { errors.push(`relicsOverlimitNegative ${id} ${t.label}: v.${k} 必须是有限数字，得到 ${JSON.stringify(v)}`); ok = false; }
+        }
+        if (ok) tiers.push({ label: t.label, v: { ...t.v } });
+      }
+      if (tiers.length !== e.tiers.length) continue;
+    }
+    seen.add(id);
+    entries.push({
+      id,
+      group: NEG_RELIC_GROUP,
+      name: e.name,
+      desc: e.desc,
+      flavor: typeof e.flavor === 'string' ? e.flavor : '',
+      icon,
+      // 等权：表里没有权重列（业主派单口径「先按每条等权」）；抽取只用相对权重，所以 1 与 1 = 等概率
+      weight: 1,
+      impl: e.impl.trim(),
+      tiers,
+    });
+  }
+  if (!haveIconDir && iconsUnchecked) {
+    warn(`relicsOverlimitNegative: public/assets/relics/overlimit-negative/ 整个目录不存在 —— 跳过 ${iconsUnchecked} 张图标的存在性校验` +
+      '（干净 checkout / CI 没有业主素材时不该硬失败）；路径形状仍逐条校验，单张缺失仍报错');
+  }
+  if (!entries.length) errors.push('relicsOverlimitNegative: 一条都没有');
+  return {
+    errors,
+    file: {
+      version: typeof raw.version === 'string' ? raw.version : null,
+      note: typeof raw.note === 'string' ? raw.note : '',
+      weightNote: typeof raw.weightNote === 'string' ? raw.weightNote : '',
+      tierNote: typeof raw.tierNote === 'string' ? raw.tierNote : '',
+      group: NEG_RELIC_GROUP,
+      count: entries.length,
+      entries,
+    },
+  };
+}
+
+/**
+ * 炸惊模拟的**默认模组装配表** —— docs/research/21-zhaijing-default-loadout.json → data/zjDefaultLoadout.json。
+ *
+ * 客户端用它做「干员调配」的预填：玩家未配置的干员用本表，已配置的以玩家为准。所以这张表只能指向**真的存在、真的
+ * 能装配**的棋子位，否则运行期会得到一条静默无效的预填 —— 因此这里把三件事全部在生成期校验，不合格就进 integrity
+ * errors（构建失败并逐条列出，不留到运行期）：
+ *   1. 键 = data/chess.json 里存在且 `zhajing: true` 的棋子位（base 形态）；
+ *   2. `module` 在该位**精锐记录**的 `modules[]` 里，或等于它的默认 `module.id`（只有默认模组、选不到第二个的那种）；
+ *   3. `choices` = 精锐记录 `modules[]` 的条数（预填界面的「可选模组个数」）；`op` / `moduleName` / `typeName` 也要与记录一致
+ *      —— 上游改名/换模组时这里会先红。
+ * `skill`（包内 84 条都没有，将来若有）同理要在该记录的 `skills` 里。
+ * @param {{[k: string]: any}} files the built data files (mutated)
+ * @param {any} src docs/research/21-zhaijing-default-loadout.json
+ * @returns {{errors: string[], counts: object}}
+ */
+function buildZhajingDefaultLoadout(files, src) {
+  const errors = [];
+  const chess = files.chess;
+  const byBaseId = {};
+  for (const [baseId, entry] of Object.entries(src.byBaseId || {})) {
+    const rec = chess[baseId];
+    if (!rec) { errors.push(`zjDefaultLoadout ${baseId}: no such chess record`); continue; }
+    if (rec.zhajing !== true) { errors.push(`zjDefaultLoadout ${baseId}: not a 炸惊 chess (zhajing !== true)`); continue; }
+    const golden = rec.goldenId ? chess[rec.goldenId] : null;
+    if (!golden) { errors.push(`zjDefaultLoadout ${baseId}: no golden record ${rec.goldenId}`); continue; }
+    const mods = golden.modules || [];
+    const ids = mods.map((m) => m.uniEquipId);
+    const def = golden.module || {};
+    if (!entry.module) { errors.push(`zjDefaultLoadout ${baseId}: no module (the package only ships entries with a default module)`); continue; }
+    if (!ids.includes(entry.module) && entry.module !== def.id) {
+      errors.push(`zjDefaultLoadout ${baseId}: module ${entry.module} is on neither modules[] (${ids.join(', ') || 'empty'}) nor the default module ${def.id}`);
+      continue;
+    }
+    if (entry.choices !== mods.length) errors.push(`zjDefaultLoadout ${baseId}: choices ${entry.choices} but the golden has ${mods.length} module(s)`);
+    if (entry.op !== rec.name) errors.push(`zjDefaultLoadout ${baseId}: op ${JSON.stringify(entry.op)} but the record is ${JSON.stringify(rec.name)}`);
+    const m = ids.includes(entry.module) ? mods.find((x) => x.uniEquipId === entry.module) : def;
+    // a modules[] entry calls it `typeName` (DATA.md §2.2), the record's default `module` calls it `type`
+    const typeName = m ? (m.typeName ?? m.type ?? null) : null;
+    if (m && (entry.moduleName !== m.name || entry.typeName !== typeName)) {
+      errors.push(`zjDefaultLoadout ${baseId}: ${entry.module} is ${JSON.stringify(m.name)} / ${JSON.stringify(typeName)} but the table says ${JSON.stringify(entry.moduleName)} / ${JSON.stringify(entry.typeName)}`);
+    }
+    if (entry.skill != null && Array.isArray(rec.skills) && !rec.skills.some((s) => s.skillId === entry.skill || s.index === entry.skill)) {
+      errors.push(`zjDefaultLoadout ${baseId}: skill ${entry.skill} is not unlocked on the record`);
+    }
+    byBaseId[baseId] = entry;
+  }
+  const count = Object.keys(byBaseId).length;
+  if (typeof src.count === 'number' && src.count !== count) errors.push(`zjDefaultLoadout: count ${src.count} but ${count} entries`);
+  files.zjDefaultLoadout = { version: src.version, note: src.note, count, byBaseId };
+  return { errors, counts: { entries: count } };
+}
+
+// ===== text / icon contracts (generation-time guard) ============================================
+
+/**
+ * 炸惊模拟 / 湮灭专属 mod 的记录是从外部整合包的「已构建记录」导入的，包内 builder 有三类文本缺陷（见
+ * tools/research-normalize.mjs 头注释）：`desc` 存字面 `\n`、`desc = 纯文本(descRaw)` 不成立、`eventTypeIcon` 写了
+ * 官方集里不存在的名字。导入器负责修（research-normalize 的归一化），这里是**生成期的第二道护栏**：合并之后遍历
+ * 每个带 `desc`/`descRaw` 的对象，纯文本对不上就进既有的 warning 列表；`desc` 里出现字面 `\n`（没有 descRaw 时也查）、
+ * `eventTypeIcon` 不在官方集里，同样告警。
+ * 这几条都只告警、不改数据 —— 数据只能由 research 源修好后再 build（AGENTS.md「generated data」）。
+ * 当前数据是干净的：163 条 warning 里 162 条是 potDown 的既有噪音、1 条是 stage 注解，本护栏 0 条；条数突然变多说明
+ * 某份 research 输入退化了。
+ *
+ * 纯文本转换与导入器是同一个函数（research-normalize 转出的 richTextPlain），换行只做 CRLF→LF 归一：官方敌人的
+ * `desc`/`descRaw` 保留手册原文的 `\r\n`，UI 解析器对两种换行等价，这里不该把它报成文本不符。
+ *
+ * 不下钻的两个键：盟约的 `zj` / `ann` / `inf` 覆盖块 —— 它们是包内文案的原样片段，`desc` 不是由 `descRaw` 生成的（炸惊
+ * seesShip/suiShip 与湮灭 egirShip 的覆盖块在包内本身就不一致），归一化/告警都会把包内文案当成我们的生成物。
+ * bond 的 `effectDesc`/`effectDescRaw` 也不检查：占位符 `{i:fmt}` 是 formatBondEffect 的参数位（DATA.md §3）。
+ */
+const OVERLAY_BLOCKS = new Set(['zj', 'ann', 'inf']);
+const sameText = (a, b) => (typeof a === 'string' && typeof b === 'string' ? a.replace(/\r\n?/g, '\n') === b.replace(/\r\n?/g, '\n') : a === b);
+
+/** The official garrison type icons, derived from data/cdn-resource-config.json (null when unreadable → check skipped). */
+let garrisonIconCache;
+function garrisonTypeIcons() {
+  if (garrisonIconCache !== undefined) return garrisonIconCache;
+  try {
+    garrisonIconCache = officialGarrisonTypeIcons(JSON.parse(readFileSync(join(ROOT, 'data', 'cdn-resource-config.json'), 'utf8')));
+    if (!garrisonIconCache.size) { warn('data/cdn-resource-config.json lists no assets/ui/garrisonTypeIcon/*.png; garrison icon check skipped'); garrisonIconCache = null; }
+  } catch (e) {
+    warn(`data/cdn-resource-config.json unreadable (${e.message}); garrison icon check skipped`);
+    garrisonIconCache = null;
+  }
+  return garrisonIconCache;
+}
+
+/** Walk one record: every object carrying `descRaw` must have `desc === richTextPlain(descRaw)`.
+ *  ★ 业主 2026-10-30：这一类**升成 error**——坏文本不许静默写进 data/（踩过一次：湮灭包重导入把
+ *  kazdelShip 的 descRaw 写回「漏『每』+ 未解析 {1:0%}」）。当前数据 0 条命中，所以正常构建照旧通过；
+ *  一旦命中，build-data 拒绝写盘并以 exit 1 结束（除非 --force）。 */
+function checkDescPairs(value, label, path = '', errs) {
+  if (!value || typeof value !== 'object') return;
+  if (Array.isArray(value)) { value.forEach((v, i) => checkDescPairs(v, label, `${path}[${i}]`, errs)); return; }
+  if (typeof value.descRaw === 'string') {
+    if (!sameText(richTextPlain(value.descRaw), value.desc)) errs.push(`desc ≠ richTextPlain(descRaw): ${label}${path}`);
+  } else if (typeof value.desc === 'string' && /\\n/.test(value.desc)) {
+    // no descRaw to be authoritative: a `desc` may not keep the two-character escape (DATA.md §0)
+    errs.push(`desc contains a literal \\n: ${label}${path}`);
+  }
+  for (const [k, v] of Object.entries(value)) {
+    if (OVERLAY_BLOCKS.has(k)) continue;
+    if (v && typeof v === 'object') checkDescPairs(v, label, `${path}.${k}`, errs);
+  }
+}
+
+/** The generation-time text/icon guard over every built file (called once, after all research merges).
+ *  两类都是 error（同上）：坏图标会让特质 chip 画空，坏 desc 会直接显示给玩家。
+ *  @param {Record<string, any>} files the built file map
+ *  @param {string[]} errs main()'s integrity-error list — a hit here makes the build refuse to write (exit 1) */
+function checkTextContracts(files, errs) {
+  for (const [name, map] of Object.entries(files)) {
+    if (!map || typeof map !== 'object' || Array.isArray(map)) continue;
+    for (const [id, rec] of Object.entries(map)) checkDescPairs(rec, `${name} ${id}`, '', errs);
+  }
+  const icons = garrisonTypeIcons();
+  if (!icons) return;
+  for (const [id, g] of Object.entries(files.garrisons || {})) {
+    const icon = g && g.eventTypeIcon;
+    if (icon == null || icon === '') continue;   // absent / '' = UI falls back to the trigger timing (eventType)
+    if (!icons.has(icon)) {
+      errs.push(`eventTypeIcon ${JSON.stringify(icon)} is not an official garrison type icon: garrisons ${id} (eventTypeDesc ${JSON.stringify(g.eventTypeDesc ?? null)})`);
+    }
+  }
+}
+
+async function main() {  const t0 = Date.now();
   const ctx = await loadContext();
   log('building…');
   // one pass of the operator builders per potential rank (潜能 1–6, ctx.potRank): the full-potential pass is the data,
@@ -3333,10 +4131,113 @@ async function main() {
   for (const b of Object.values(bands)) b.bondIds = bandBondIds(b, { bonds, pools: choices.pools });
   const config = buildConfig(ctx, waves, stages, bands, chess, items);
   const files = { config, chess, bonds, garrisons, items, bands, effects, choices, enemies, factions, waves, stages, bosses, tokens, backups };
+  // 炸惊模拟's content records (207 chess / 248 garrisons / 5 bonds + 21 `zj` blocks / 11 items / 15 tokens / 2 bands and
+  // the 惊变羁绊 file), merged by record marker — default build only: a version directory's file set
+  // (server/data.js VERSION_DATA_FILES) stays unchanged, so no version's data hash moves (the same rule as
+  // 湮灭模拟's relics below).
+  if (IS_DEFAULT && ctx.research.zhaijingContent) {
+    const content = ctx.research.zhaijingContent;
+    // A few imported records carry `rangeId` but no grid (虎狼丸 / 结城理: the package's builder left `rangeGrid: null`).
+    // The official range table is right here, so resolve it exactly as buildChess does for a produced record — a
+    // derivation from official data, not a guess.
+    let derivedRanges = 0;
+    for (const rec of Object.values(content.chess || {})) {
+      if (Array.isArray(rec.rangeGrid) || !rec.rangeId) continue;
+      const grid = rangeGrid(ctx, rec.rangeId);
+      if (!Array.isArray(grid)) continue;
+      rec.rangeGrid = grid;
+      derivedRanges++;
+    }
+    const zj = applyZhajingContent(files, content);
+    // The 炸惊 records are the reference package's *built* records (a 0.3.1 snapshot at full potential). They carry
+    // their own `potDown` annotation, so every per-rank pass gets `atRank(rec, r)` — the same expansion the official
+    // records get — and attachPotential's round-trip comparison holds unchanged. Records without `potDown` are the same
+    // object at every rank (a lower potential cannot change them) [ASSUMED] for the 48 炸惊 chess that lack it.
+    for (let r = 0; r <= FULL_RANK; r++) {
+      const p = passes[r];
+      for (const [id, rec] of Object.entries(content.chess || {})) p.chess[id] = atRank(rec, r);
+      // the 炸惊 summon variants live in backups.json (see applyZhajingContent): mirror them into every rank, expanded with
+      // atRank like the builder's own variants, so attachPotential's round-trip comparison holds for them too.
+      for (const [tokenId, rec] of Object.entries(content.backupTokens || {})) {
+        const dest = p.backups.tokens[tokenId];
+        const variants = Object.fromEntries(Object.entries(rec.variants || {}).map(([owner, v]) => [owner, atRank(v, r)]));
+        p.backups.tokens[tokenId] = dest ? { ...dest, variants: { ...(dest.variants || {}), ...variants } } : { ...rec, variants };
+      }
+    }
+    log(`炸惊模拟 content: ${Object.entries(zj).map(([k, v]) => `${k}=${v}`).join(' ')} (rangeGrid derived for ${derivedRanges} record(s))`);
+  }
+  // 湮灭专属 mod 的数据（两条新盟约 + 既有盟约的 `ann` 覆盖 + chess 的 `annBonds`）：默认版本，纯加法，官方记录不动。
+  if (IS_DEFAULT && ctx.research.annihilationMods) {
+    const mods = ctx.research.annihilationMods;
+    const ann = applyAnnihilationMods(files, mods);
+    // The per-rank passes were built before this merge, and `annBonds` is not potential-dependent: put it on every rank so
+    // attachPotential's round-trip comparison holds (a record whose rank-4 copy lacked the key would look like a potential
+    // difference and fail the build). files.chess IS passes[FULL_RANK].chess, so the full rank is covered by the same loop.
+    for (const p of passes) {
+      for (const [chessId, bondsList] of Object.entries(mods.chessAnnBonds || {})) {
+        if (p.chess[chessId]) p.chess[chessId] = { ...p.chess[chessId], annBonds: bondsList };
+      }
+    }
+    // 13 名 mod 干员（26 条 chess）同样要进每一档：包内记录**自带 `potDown`**（0.2.6 builder 的产物）。这里把每一档
+    // 展成 atRank 的已展开形，满档去掉 `potDown` 这个键（内容仍是满潜），让 attachPotential 用本仓同一套算法**重算**
+    // potDown —— 各档键集一致，既不会在根路径上多报 warning（业主口径：warning 数不变），又得到与官方记录同形的潜能表。
+    let fullSeen = false;
+    for (let r = 0; r <= FULL_RANK; r++) {
+      const p = passes[r];
+      for (const [chessId, rec] of Object.entries(mods.chess || {})) {
+        if (r === FULL_RANK) {
+          const { potDown: _unusedPotDown, ...full } = rec;
+          p.chess[chessId] = full;
+          fullSeen = true;
+        } else p.chess[chessId] = atRank(rec, r);
+      }
+    }
+    if (fullSeen) log(`湮灭 mod 干员：潜能表由本仓 atRank 重算（${Object.keys(mods.chess || {}).length} 条）`);
+    log(`湮灭专属 mod content: ${Object.entries(ann).map(([k, v]) => `${k}=${v}`).join(' ')}`);
+  }
+  // 超限词条要发放的装备（docs/research/25-overlimit-items.json）：FGO-SP 的[万色悠滞之核]不在官方物品表里，
+  // 与湮灭 mod 同一条范式手写进来。默认版本专属（版本档不带超限模式），纯加法：官方记录一个键都不覆盖。
+  if (IS_DEFAULT && ctx.research.overlimitItems) {
+    const ol = applyOverlimitItems(files, ctx.research.overlimitItems);
+    log(`超限词条装备: ${Object.entries(ol).map(([k, v]) => `${k}=${v}`).join(' ')}`);
+  }
+  // 超限模拟的盟约 `inf` 覆盖块（只追加文案行；默认版本专属，版本档不带超限模式）。
+  if (IS_DEFAULT && ctx.research.overlimitBonds) {
+    const inf = applyOverlimitBonds(files, ctx.research.overlimitBonds);
+    log(`超限盟约覆盖块: ${Object.entries(inf).map(([k, v]) => `${k}=${v}`).join(' ')}`);
+  }
 
   // the unit forms rebuild every PRESET chess at every rank (before the annotation: each pass as built)
   const errors = [...validateAll(files), ...passes.flatMap((p) => checkUnitFormParity(p.ctx, p.chess).map((e) => `${e} (potential rank ${p.ctx.potRank})`))];
   errors.push(...attachPotential(passes));
+  // 炸惊模拟的默认模组装配表：生成 data/zjDefaultLoadout.json（默认版本专属；每一个棋子位都在生成期校验，见函数注释）
+  if (IS_DEFAULT && ctx.research.zhajingLoadout) {
+    const loadout = buildZhajingDefaultLoadout(files, ctx.research.zhajingLoadout);
+    errors.push(...loadout.errors);
+    log(`炸惊默认装配: ${Object.entries(loadout.counts).map(([k, v]) => `${k}=${v}`).join(' ')}`);
+  }
+  // 湮灭模拟's relic table (the play set's own, 87 relics): generated from docs/research/16-annihilation-relics.json so that
+  // data/ stays a build product rather than a hand-edited directory. Default build only — a version directory's file set
+  // (server/data.js VERSION_DATA_FILES) is unchanged, so no version's data hash moves.
+  if (IS_DEFAULT && ctx.research.annihilationRelics) files.relics = ctx.research.annihilationRelics;
+  // 超限模拟「词条」（饰品）表：业主手写表的固化（docs/research/23-overlimit-relics.json）。默认版本专属 ——
+  // 版本档（data/versions/*）不带超限模式，文件集也不动，所以任何版本的数据哈希都不变。
+  if (IS_DEFAULT && ctx.research.overlimitRelics) {
+    const relics = buildOverlimitRelics(ctx.research.overlimitRelics);
+    errors.push(...relics.errors);
+    files.relicsOverlimit = relics.file;
+    log(`超限词条: ${Object.entries(relics.file.counts).map(([k, v]) => `${k}=${v}`).join(' ')}`);
+  }
+  // 超限模拟「负面词条」表（业主 2026-10-31 第二批）：同一条生成链，默认版本专属（版本档不带超限模式）。
+  if (IS_DEFAULT && ctx.research.overlimitNegativeRelics) {
+    const neg = buildOverlimitNegativeRelics(ctx.research.overlimitNegativeRelics);
+    errors.push(...neg.errors);
+    files.relicsOverlimitNegative = neg.file;
+    log(`超限负面词条: ${neg.file.count} 条`);
+  }
+  // 生成期文本 / 图标护栏（见 checkTextContracts）：命中即 error —— 构建拒绝写盘、exit 1。
+  // 当前数据 0 条命中，所以 warning 总数应仍是 163、构建照常成功。
+  checkTextContracts(files, errors);
   let total = 0;
   const sizes = {};
   const texts = {};
@@ -3345,7 +4246,9 @@ async function main() {
     sizes[name] = Buffer.byteLength(texts[name]);
     total += sizes[name];
   }
-  if (total > 6 * 1024 * 1024) errors.push(`total data size ${total} exceeds 6 MB`); // per version
+  // 6 MB was the ceiling while data/ held the official season only. 炸惊模拟 adds its own operator library
+  // (+1.7 MB chess, +0.15 MB garrisons, …), so the ceiling moves to 9 MB (docs/DATA.md "Size").
+  if (total > 9 * 1024 * 1024) errors.push(`total data size ${total} exceeds 9 MB`); // per version
   // another version carries a byte copy of the hand-maintained data/tuning.json: a gameplay file that loadData and the
   // content hash read with the rest of a data directory [ASSUMED] the same tuning for every version
   const extra = IS_DEFAULT ? {} : { tuning: await readFile(join(ROOT, 'data', 'tuning.json')) };

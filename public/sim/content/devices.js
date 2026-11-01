@@ -38,6 +38,7 @@ import { performAttack, attackCountdown } from '../ai.js';
 import { sortEnemyTargets } from '../targeting.js';
 import { DIR_VEC, normDir, oppositeDir } from '../dir.js';
 import { hypot } from '../detmath.js';
+import { matchBands, bandRecord, buffsOf } from './support/index.js';
 
 const num = (v, d = 0) => (typeof v === 'number' && Number.isFinite(v) ? v : (typeof v === 'string' && v.trim() !== '' && Number.isFinite(+v) ? +v : d));
 /** ASPD blackboard values: a fraction (|v| < 1, e.g. −0.6 / −0.05) is ×100 ASPD, otherwise flat (+20). */
@@ -47,6 +48,21 @@ export const TERRAIN = Object.freeze({ mire: 1, smog: 2, deepsea: 3, infection: 
 const TERRAIN_NAME = ['', 'mire', 'smog', 'deepsea', 'infection'];
 const BUFF = { 1: 'terrain:mire', 2: 'terrain:smog', 3: 'terrain:deepsea', 4: 'terrain:infection' };
 const AIRFLOW = 'terrain:airflow';
+
+/**
+ * The lowest move-speed multiplier 沼泽 / 气流 may hand a GROUND-OR-AIR enemy: 15 % of its normal speed.
+ *
+ * Both are scaled by 致命级 (flags.terrainLethal = 5 in 湮灭模拟) and both used to be clamped at 0, which is not a slow but
+ * a freeze — the unit stops dead ON the tile and can never leave to shed the debuff:
+ *   * 气流 (blower, `blower_s_enemy[opposite].move_speed` = -0.5): 1 + (-0.5 × 5) = -1.5 → 0. A flyer crossing the
+ *     blower's 3 tiles against the flow stood still forever (owner report 2026-10-20, "飞行小怪会在叙拉古那张图卡住").
+ *   * 沼泽 (mire, −15 %/layer × 20 layers at 致命级): 1 + (-0.15 × 20) = -2 → 0. Ground enemies froze in the mire
+ *     (owner report 2026-10-20, "部分小怪会在沼泽那张图卡住").
+ * 15 % keeps both severe without trapping anything: the unit still walks out and the layers are dropped on leaving.
+ * 0.15 → 0.5 (v3.2.0): two sources multiply (沼泽 −15 %×layers with 气流/深水), and 0.15 × 0.15 = 2.25 % of the normal speed
+ * reads as "卡死" rather than "slow" — the anti-freeze floor was itself a trap.
+ */
+const MIN_TERRAIN_MOVE_MUL = 0.5;
 const CRATE_KEY = 'trap_1105_accrate';
 const TURRET_KEY = 'trap_1104_aclasert';
 /** Research 05 §2.3 values, used only when a stage has no `special` block / device blackboard. */
@@ -120,8 +136,13 @@ function isActive(battle, st, d) {
  * `duration` s (a number or `() => number`, evaluated per gust — layers can change mid-battle). A cold enemy that
  * gets cold again freezes (engine rule). `playerId` only tags the fx; `ownerOnly` limits the gust to enemies
  * attributed to that player. Returns { cancel() } or null for bad numbers.
+ *
+ * `onGust(battle, { playerId, duration, enemies })`, when given, runs once per gust after the cold was applied;
+ * `enemies` = the enemies the gust **looked at** (alive, not hidden, owner filter passed), whether or not `cold` took
+ * (超限's cold can be resisted — `sim/infiniteRule.js` ccResist). Errors are swallowed: a bond effect must never break
+ * the wind. Default `null` ⇒ the call is byte-identical to before (业主 2026-10-31, 超限 V2).
  */
-export function startColdWind(battle, { playerId = null, interval, duration, first, ownerOnly = false } = {}) {
+export function startColdWind(battle, { playerId = null, interval, duration, first, ownerOnly = false, onGust = null } = {}) {
   const iv = num(interval, 0);
   if (!(iv > 0)) return null;
   const durOf = () => num(typeof duration === 'function' ? duration() : duration, 0);
@@ -131,14 +152,17 @@ export function startColdWind(battle, { playerId = null, interval, duration, fir
     const dur = durOf();
     if (!(dur > 0)) return;
     let n = 0;
+    const seen = [];
     for (const e of battle.enemies) {
       if (!e.alive || e.hidden) continue;
       if (ownerOnly && playerId != null && e.ownerId !== playerId) continue;
+      seen.push(e);
       if (battle.applyStatus(e, 'cold', { duration: dur, source: null })) n++;
     }
     handle.gusts++;
     const R = battle.rect;
     battle.fx('coldWind', { x: (R.c0 + R.c1) / 2, y: (R.r0 + R.r1) / 2, playerId, n, duration: dur });
+    if (onGust) { try { onGust(battle, { playerId, duration: dur, enemies: seen }); } catch { /* 盟约效果不得打断风 */ } }
   };
   const firstDelay = Math.max(0, num(first, iv));
   handle.timer = battle.after(firstDelay, () => {
@@ -152,13 +176,28 @@ export function startColdWind(battle, { playerId = null, interval, duration, fir
 /**
  * 谢拉格 6-member wind from the bond effect blackboard (effects.json bondeffect_kjerag `env_gbuff_new` bb):
  * interval `bond_eff_kjerag[storm].interval`, duration `base_time + time_per_stack × layers` (live 谢拉格 layers).
+ *
+ * `damagePerLayer > 0` (超限 only, bonds/core.js KJERAG_WIND_TRUE_PER_LAYER = 400) makes every gust deal
+ * `damagePerLayer × layers` true damage to every enemy it looked at — source-less, so no 「造成伤害提升」 and no player's
+ * damage total (the same bookkeeping as 拉特兰's 【圣堂殉爆】). Default 0 ⇒ the wind still deals nothing.
  */
-export function kjeragColdWind(battle, playerId, bb = {}, { bondId = 'kjeragShip' } = {}) {
+export function kjeragColdWind(battle, playerId, bb = {}, { bondId = 'kjeragShip', damagePerLayer = 0 } = {}) {
   const interval = num(bb['bond_eff_kjerag[storm].interval'], 0);
   const base = num(bb['bond_eff_kjerag[storm].base_time'], 0);
   const per = num(bb['bond_eff_kjerag[storm].time_per_stack'], 0);
   const layers = () => num(battle.getPlayer(playerId)?.bonds?.[bondId]?.layers, 0);
-  return startColdWind(battle, { playerId, interval, duration: () => base + per * layers() });
+  const onGust = damagePerLayer > 0
+    ? (b, { enemies }) => {
+      const amount = damagePerLayer * layers();
+      if (!(amount > 0)) return;
+      for (const e of enemies) {
+        if (!e.alive || e.side !== 'enemy') continue;
+        b.dealDamage({ source: null, target: e, amount, type: 'true', canDodge: false, tags: ['bond:kjerag:wind'] });
+      }
+      b.fx?.('aoe', { x: 0, y: 0, scale: 1 });
+    }
+    : null;
+  return startColdWind(battle, { playerId, interval, duration: () => base + per * layers(), onGust });
 }
 
 // ---------------------------------------------------------------------------------------------------------------
@@ -278,7 +317,27 @@ export function activateTurrets(battle, { aliases = null } = {}) {
 // ---------------------------------------------------------------------------------------------------------------
 // terrain
 
+/**
+ * The mode's 致命级 multiplier on stage mechanics (Battle flags.terrainLethal, 湮灭模拟 = 5; 1 = the official numbers).
+ * Only the parts that hurt are scaled: 深水 / 活性源石 damage, 沼泽 layers, the blower's enemy push. Damage-like values
+ * grow linearly, the mire's stacks also double, and 烟雾 stops hiding operators (a smoke screen is no help once the
+ * battlefield itself is the enemy).
+ */
+const lethalOf = (battle) => {
+  const v = Number(battle.flags && battle.flags.terrainLethal);
+  return Number.isFinite(v) && v > 1 ? Math.min(20, v) : 1;
+};
+
 function buildTerrain(battle, st) {
+  const L = lethalOf(battle);
+  st.lethal = L;
+  // 致命级 is 1 for every mode but 湮灭模拟, and at 1 each expression below MUST be the exact identity — the golden battles
+  // pin every official number: `mul` scales a damage-like value, `floored` is that scale with the mode's own lower bound,
+  // and `shrunk` is 深水区's move-speed factor. (A plain `Math.max(-0.9, aspd * L)` is NOT the identity here: aspdOf
+  // returns ASPD already in points, −0.6 → −60, which the bound would have flattened to −0.9.)
+  const mul = (v) => (L > 1 ? v * L : v);
+  const floored = (v, lo) => (L > 1 ? Math.max(lo, v * L) : v);
+  const shrunk = (v, lo) => (L > 1 ? Math.max(lo, 1 - (1 - v) * L) : v);
   const R = battle.rect;
   let any = false;
   for (let r = R.r0; r <= R.r1; r++) {
@@ -297,24 +356,24 @@ function buildTerrain(battle, st) {
   const mInterval = num(m.intervalSec, RESEARCH.mire.intervalSec);
   st.mire = {
     interval: mInterval > 0 ? mInterval : RESEARCH.mire.intervalSec,
-    aspdPer: aspdOf(num(m.aspdPerStack ?? mdev.attack_speed, RESEARCH.mire.aspdPerStack)),
-    movePer: num(m.moveMulPerStack ?? mdev.move_speed, RESEARCH.mire.moveMulPerStack),
-    max: Math.max(1, Math.floor(num(m.maxStacks ?? mdev.max_stack_cnt, RESEARCH.mire.maxStacks))),
+    aspdPer: floored(aspdOf(num(m.aspdPerStack ?? mdev.attack_speed, RESEARCH.mire.aspdPerStack)), -0.25),
+    movePer: floored(num(m.moveMulPerStack ?? mdev.move_speed, RESEARCH.mire.moveMulPerStack), -0.15),
+    max: Math.max(1, Math.floor(num(m.maxStacks ?? mdev.max_stack_cnt, RESEARCH.mire.maxStacks) * (L > 1 ? 2 : 1))),
     heavyWeight: num(m.heavyWeight ?? mdev.value, RESEARCH.mire.heavyWeight),
   };
   // deep sea
   const ds = sp.deepsea?.bb || devSkill('tideController') || {};
   st.deepsea = {
-    damage: num(ds['sea_drown[enemy].damage'], RESEARCH.deepsea.damage),
-    aspd: aspdOf(num(ds['sea_drown[enemy].attack_speed'], RESEARCH.deepsea.attack_speed)),
-    moveMul: num(ds['sea_drown[enemy].move_speed'], RESEARCH.deepsea.move_speed),
+    damage: mul(num(ds['sea_drown[enemy].damage'], RESEARCH.deepsea.damage)),
+    aspd: floored(aspdOf(num(ds['sea_drown[enemy].attack_speed'], RESEARCH.deepsea.attack_speed)), -0.9),
+    moveMul: shrunk(num(ds['sea_drown[enemy].move_speed'], RESEARCH.deepsea.move_speed), MIN_TERRAIN_MOVE_MUL),
   };
   // active originium: `duration` is how long the effect lasts on a unit (PRTS tile template "部署于其上的我军和经过的
   // 敌军在{duration}s内…"), not a lifetime of the tiles
   const inf = sp.infection?.bb || {};
   const infDur = num(inf.duration, RESEARCH.infection.duration);
   st.infection = {
-    damage: num(inf.damage, RESEARCH.infection.damage),
+    damage: mul(num(inf.damage, RESEARCH.infection.damage)),
     atk: num(inf.atk, RESEARCH.infection.atk),
     aspd: aspdOf(num(inf.attack_speed, RESEARCH.infection.attack_speed)),
     duration: infDur > 0 ? infDur : RESEARCH.infection.duration,
@@ -331,7 +390,7 @@ function buildTerrain(battle, st) {
     for (const p of tiles) {
       if (!Array.isArray(p) || !battle.grid.inRect(p[0], p[1])) continue;
       // world vector: x = col, y = row
-      st.flow.set(p[0] * COLS + p[1], { fx: f[1], fy: f[0], dir, bb });
+      st.flow.set(p[0] * COLS + p[1], { fx: f[1], fy: f[0], dir, bb, lethal: L });
     }
   }
 }
@@ -360,7 +419,8 @@ function enterTerrain(battle, st, u, code) {
   m.mireStacks = 0;
   m.mireTriggers = 0;
   if (!code) return;
-  if (code === TERRAIN.smog) battle.addBuff(u, { key: BUFF[code], flags: { stealth: true } });
+  // 致命级 烟雾: the smoke screen no longer hides operators (it is the mode's fog that matters — content/hazard.js)
+  if (code === TERRAIN.smog) { if (!(st.lethal > 1)) battle.addBuff(u, { key: BUFF[code], flags: { stealth: true } }); }
   else if (code === TERRAIN.deepsea) {
     const D = st.deepsea;
     battle.addBuff(u, { key: BUFF[code], mods: { aspd: D.aspd, moveMul: D.moveMul }, interval: 1, onTick: deepWaterDamage(battle, D.damage) });
@@ -409,7 +469,10 @@ function tickMire(battle, st, u) {
   m.mireTriggers = due;
   if (n === m.mireStacks) return;
   m.mireStacks = n;
-  battle.addBuff(u, { key: BUFF[TERRAIN.mire], refresh: 'replace', mods: enemy ? { aspd: M.aspdPer * n, moveMul: Math.max(0, 1 + M.movePer * n) } : { aspd: M.aspdPer * n } });
+  // 致命级 (st.lethal > 1): the anti-freeze floor replaces the old 0 clamp — see MIN_TERRAIN_MOVE_MUL; at lethal 1 the
+  // expression is the original one, unchanged
+  const moveFloor = st.lethal > 1 ? MIN_TERRAIN_MOVE_MUL : 0;
+  battle.addBuff(u, { key: BUFF[TERRAIN.mire], refresh: 'replace', mods: enemy ? { aspd: M.aspdPer * n, moveMul: Math.max(moveFloor, 1 + M.movePer * n) } : { aspd: M.aspdPer * n } });
 }
 
 /**
@@ -459,10 +522,12 @@ function tickAirflowEnemy(battle, st, e) {
     const v = hypot(vx, vy);
     if (f && v > 1e-6) {
       const rel = airflowRelation((vx * f.fx + vy * f.fy) / v);
-      if (rel !== 'vertical') mul = 1 + num(f.bb[`blower_s_enemy[${rel}].move_speed`], 0);
+      // 致命级 airflow (flags.terrainLethal): the push on enemies grows with it, capped at ×3 move speed
+      if (rel !== 'vertical') mul = Math.min(3, 1 + num(f.bb[`blower_s_enemy[${rel}].move_speed`], 0) * (f.lethal > 1 ? f.lethal : 1));
     } else if (f && v <= 1e-6) mul = e.mem.airMul ?? 1; // paused this tick (attack pause / blocked): keep the last push
   }
-  if (!(mul >= 0)) mul = 0;
+  const mulFloor = st.lethal > 1 ? MIN_TERRAIN_MOVE_MUL : 0;   // never a freeze at 致命级: see MIN_TERRAIN_MOVE_MUL
+  if (!(mul >= mulFloor)) mul = mulFloor;
   if (mul === (e.mem.airMul ?? 1)) return;
   e.mem.airMul = mul;
   if (mul !== 1) battle.addBuff(e, { key: AIRFLOW, refresh: 'replace', mods: { moveMul: mul } });
@@ -526,6 +591,13 @@ export function install(battle) {
     crateOff: new Set(),
     ticking: false,
   };
+  // Historical 森蚺 grants a turret on every field, including a standalone BattleSpec with no prep dispatcher.
+  for (const ps of battle.players || []) for (const id of matchBands(battle, ps.playerId)) {
+    for (const b of buffsOf(bandRecord(id))) {
+      if (b.key !== 'auto_chess_change_map') continue;
+      for (const [alias, on] of Object.entries(b.p)) if (alias.startsWith('trap_') && alias.includes('#')) st.global.set(alias, truthy(on));
+    }
+  }
   STATE.set(battle, st);
   const devices = battle.stage?.devices || [];
   buildTerrain(battle, st); // grid, stage `special` and overrides are known at construction

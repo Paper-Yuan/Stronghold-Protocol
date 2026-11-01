@@ -25,6 +25,8 @@
 
 import { layerGainRoom } from '../../shared/constants.js';
 import { grantedBondsByMorph, ruleOption } from '../../shared/plugins/rules.js';
+import { equipComboBonds } from '../../shared/zjBonds.js';
+import { MORTIS_BEAST_CARD } from '../../shared/mujicaJibian.js';
 
 export const HARMONY_BOND = 'maniShip';
 export const DEPUTY_BOND = 'deputShip';
@@ -39,10 +41,22 @@ export const DEPUTY_BOND = 'deputShip';
 export function pieceBonds(gd, piece, rules = null) {
   const c = gd.chess(piece.id);
   const out = c && Array.isArray(c.bonds) ? c.bonds.slice() : [];
+  // 湮灭模拟（difficulty: 'ANNIHILATION'）：`chess[].annBonds` 只在该模式、且**该盟约自己的房间开关**打开时并入
+  // （罗德岛 / 卡兹戴尔 各有一个开关，不是一个总开关）。`gd.annihilation` 对官方四档与炸惊一律 null，
+  // `gd.annMod(id)` 在开关关时是 false ⇒ 记录本身也不带这个字段时逐字节不变；成员数 / 阶数因此完全跟着开关走。
+  if (gd.annihilation && c && Array.isArray(c.annBonds)) {
+    const on = typeof gd.annMod === 'function' ? gd.annMod : () => false;
+    for (const b of c.annBonds) if (typeof b === 'string' && b && on.call(gd, b) && gd.bond(b) && !out.includes(b)) out.push(b);
+  }
   const items = Array.isArray(piece.items) ? piece.items : [];
   const mode = ruleOption(rules, 'morphPairing');
   for (const b of grantedBondsByMorph(items, (id) => gd.item(id), { mode, bondOk: (id) => !!gd.bond(id) })) {
     if (!out.includes(b)) out.push(b);
+  }
+  // 炸惊模拟：装备组合激活盟约（shared/zjBonds.js zjEquipCombos，来自各盟约的 `zj.equipCombo`）—— 原版 `giveBondId`
+  // 之外的另一条路。`gd.zjCombos` 只在本模式下非空，所以其它难度一个分支都不走。
+  if (Array.isArray(gd.zjCombos) && gd.zjCombos.length) {
+    for (const id of equipComboBonds(items.map((it) => it && it.id), gd.zjCombos)) if (gd.bond(id) && !out.includes(id)) out.push(id);
   }
   return out;
 }
@@ -51,6 +65,18 @@ export function pieceBonds(gd, piece, rules = null) {
  * Who carries which bond (computeBonds' and offBondCounts' shared first step): bondId → Set(baseId) on the board / in
  * the hand (the 5 temporary slots never count), bondId → Set(baseId|golden) on the board, and the elite chess on the board.
  */
+/** 突袭的 bondId —— 惊变「炎国人会飞」要往它里面加人。 */
+const RAID_BOND = 'raidShip';
+
+/** 备战侧「该玩家有没有选到惊变 effectId」；战斗侧对应 content/support 的 hasJibian。不抛。 */
+const hasJibian = (ps, effectId) => !!(ps && typeof ps.jibianHas === 'function' && ps.jibianHas(effectId));
+
+/**
+ * 惊变「Belua multorum es capitums.」(multi-headed beast): the holder's 若叶睦 counts as a 调和 member. The card id has
+ * ONE source — shared/mujicaJibian.js (MORTIS_BEAST_CARD) — shared with the sim content and the UI.
+ */
+const BELUA_CARD = MORTIS_BEAST_CARD;
+
 function membership(gd, ps) {
   const boardChess = [];
   for (const p of ps.board.values()) if (p && p.kind === 'chess') boardChess.push(p);
@@ -59,10 +85,18 @@ function membership(gd, ps) {
   const onBoardVariant = new Map();
   const inHand = new Map();
   const add = (m, bond, key) => { let s = m.get(bond); if (!s) m.set(bond, (s = new Set())); s.add(key); };
+  // 惊变「多首野兽」: the holder's 若叶睦 is a 调和 member — the same rule as support/index.js `isMember` (which only
+  // matters once 调和 is active, and 调和's activation is decided by this very count).
+  const belua = hasJibian(ps, BELUA_CARD);
+  const bondsOfBoard = (p) => {
+    const list = pieceBonds(gd, p, ps.m?.rules);
+    if (belua && /mortis/i.test(String(gd.baseIdOf(p.id) ?? ''))) return list.includes(HARMONY_BOND) ? list : [...list, HARMONY_BOND];
+    return list;
+  };
   for (const p of boardChess) {
     const base = gd.baseIdOf(p.id);
     const golden = gd.isGolden(p.id);
-    for (const b of pieceBonds(gd, p, ps.m?.rules)) { add(onBoard, b, base); add(onBoardVariant, b, `${base}|${golden ? 1 : 0}`); }
+    for (const b of bondsOfBoard(p)) { add(onBoard, b, base); add(onBoardVariant, b, `${base}|${golden ? 1 : 0}`); }
   }
   for (const p of handChess) {
     const base = gd.baseIdOf(p.id);
@@ -82,6 +116,14 @@ function rawCount(gd, id, mem, ps) {
     count = s.size;
   } else {
     count = (mem.onBoard.get(id) || new Set()).size;
+    // 惊变「炎国人会飞」(jibian_yanrenhuifei): the holder's 【炎】 operators count as 【突袭】 members. The battle side
+    // (support/index.js isMember) does the same thing, but it only matters once 突袭 is ACTIVE — and activation is
+    // decided HERE, so both halves have to change together (a battle-side-only rule leaves 突袭 at 0 members forever).
+    if (id === RAID_BOND && hasJibian(ps, 'jibian_yanrenhuifei')) {
+      const yan = mem.onBoard.get('yanShip') || new Set();
+      const raid = mem.onBoard.get(id) || new Set();
+      count = new Set([...raid, ...yan]).size;
+    }
   }
   const bonus = ps.bondCountBonus || {};
   return Math.max(0, count + (Number.isInteger(bonus[id]) ? bonus[id] : 0));
@@ -223,19 +265,23 @@ export function bondList(gd, bonds, { full = false, off = null } = {}) {
 /**
  * The bond states the views show (m.private / m.public players[].bonds, DESIGN §20.15): `bonds` with this round's
  * IN_BATTLE gains of a finished normal battle (`gains` = the result's layerGains, PlayerState.pendingLayerGains, set
- * when the COMBAT phase ends) added the way settle() will add them — at most up to BOND_LAYER_CAP — so the strip of a
+ * when the COMBAT phase ends) added the way settle() will add them — at most up to the bond's cap — so the strip of a
  * player (and of a teammate watching him) keeps the layers his battle reached through the 联防 until the settlement
  * makes them persistent. `bonds` itself when there is nothing to add; the persistent state is never touched.
  * @param {ReturnType<typeof computeBonds>} bonds
  * @param {Record<string, number>|null|undefined} gains
+ * @param {number|null} [cap] the mode's own per-bond cap (`gd.bondLayerCap`, 炸惊模拟 规则1: 9999); null / omitted ⇒ the
+ *   official BOND_LAYER_CAP (999) that `layerGainRoom` enforces, so every other mode is unchanged
  */
-export function bondsWithGains(bonds, gains) {
+export function bondsWithGains(bonds, gains, cap = null) {
   if (!gains || typeof gains !== 'object') return bonds;
   let out = null;
   for (const [id, n] of Object.entries(gains)) {
     const b = bonds && bonds[id];
     if (!b) continue;
-    const add = layerGainRoom(b.layers, Math.floor(Number(n) || 0));
+    const add = Number.isFinite(cap) && cap > 0
+      ? Math.max(0, Math.min(Math.floor(Number(n) || 0), cap - (b.layers || 0)))
+      : layerGainRoom(b.layers, Math.floor(Number(n) || 0));
     if (!(add > 0)) continue;
     if (!out) out = { ...bonds };
     out[id] = { ...b, layers: (b.layers || 0) + add };

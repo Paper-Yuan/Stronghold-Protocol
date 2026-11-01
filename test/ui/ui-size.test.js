@@ -198,7 +198,7 @@ describe('the stylesheet side', () => {
     assert.deepEqual(bad, []);
   });
   test('guard: a value mirroring a scaled size floor of its file (same rem, same N) copies it exactly, 32 px included', () => {
-    // devices.css's narrow-touch .dpanel bottom mirrors the 交流 / ⚙ heights, sweep.css's header band the header: without
+    // devices.css's narrow-touch .dpanel bottom mirrors the 表情 / ⚙ heights, sweep.css's header band the header: without
     // the 32 px the card ended 6.5 px below the ⚙ row at 75 % (the merge review of 2026-10-23)
     const all = floors();
     const sigs = sizeSignatures(all);

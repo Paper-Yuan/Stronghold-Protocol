@@ -19,6 +19,21 @@ export const STATUS_META = Object.freeze({
   dead: { glyph: 'close', text: N_('已淘汰'), tone: 'red' },
 });
 
+/**
+ * The player's LP as every HUD readout prints it — the client twin of the server's `hpDisplay`
+ * (server/match/teams.js, TWELVE_PLAYER_MODE §5): `max(1, floor(lp))` while the value is above 0, and 0 once it is
+ * down (so 0 only ever means "eliminated", never "alive with 0.4 left"). Worth a name because a 8 / 12-seat room
+ * splits a round's loss between the survivors, so `lp` is fractional there: `25.916666666666668` must read 25.
+ * The one rule for both the top bar's LpTower (gameComponents.js) and the multi-team HUD's own row (multiHud.js).
+ * @param {any} value raw LP
+ * @returns {number} the whole number the HUD shows
+ */
+export function lpDisplay(value) {
+  const n = Number(value);
+  if (!Number.isFinite(n) || n <= 0) return 0;
+  return Math.max(1, Math.floor(n));
+}
+
 // ---- snapshots / battle HUD ---------------------------------------------------------------------------------
 
 /**

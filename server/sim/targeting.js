@@ -232,8 +232,12 @@ export function sortEnemyTargets(battle, attacker, cands, priority) {
  * character keeps an earlier aggro order). Special priorities
  * (优先攻击…) are the enemies' own content: `e.profile.canTarget` filters, key sorts broken by `aggroCmp`.
  */
-export function sortAllyTargets(enemy, cands) {
+export function sortAllyTargets(enemy, cands, battle = null) {
   if (cands.length <= 1) return cands;
+  // 湮灭模拟 (Battle flags.chaosTargeting): 攻击模式完全无规律 — every reachable ally is equally likely, instead of
+  // blocker → taunt → latest deployed. Shuffled with the battle's own rng, so the client-run field and the server's
+  // re-simulation pick the same targets.
+  if (battle && battle.flags && battle.flags.chaosTargeting && battle.rng && typeof battle.rng.shuffle === 'function') return battle.rng.shuffle(cands);
   const bl = enemy.profile && enemy.profile.blockFree ? null : enemy.blockedBy;   // 索敌不受阻挡影响: no blocker first
   cands.sort((a, b) => {
     const ba = bl === a ? 0 : 1, bb = bl === b ? 0 : 1;

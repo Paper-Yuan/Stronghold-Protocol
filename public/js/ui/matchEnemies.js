@@ -63,6 +63,9 @@ function factionCell({ type, info, m, scope }) {
 export function MatchEnemies({ pub, gd, idScope = 'brief' }) {
   if (!pub) return null;
   const mode = gd.config?.modes?.[pub.modeId];
+  // 无尽湮灭 / 蚀流 5 的最终攻势不是数据里那个定值（mode.bossRound 只有 19）：m.public.bossRound 是引擎按本回合所在
+  // 章节算的（server/match/match/views.js），先读它；旧帧 / 测试帧没有这个键时才回落到数据、lastRound。
+  const finalRound = pub.bossRound ?? mode?.bossRound ?? pub.lastRound ?? 14;
   const boss = pub.bossId ? gd.boss(pub.bossId) : null;
   const bossEnemy = boss ? gd.enemy(boss.enemyKey) : null;
   const stage = pub.stageId ? gd.stage(pub.stageId) : null;
@@ -85,7 +88,7 @@ export function MatchEnemies({ pub, gd, idScope = 'brief' }) {
       </div>
       <div class="brief-boss__text">
         <h2 class="brief-boss__name">${boss?.name || bossEnemy?.name || t('未知领袖')}</h2>
-        <span class="brief-boss__when">${tParts('第 {r} 回合 · 最终攻势', { r: html`<b class="num">${mode?.bossRound ?? pub.lastRound ?? 14}</b>` })}</span>
+        <span class="brief-boss__when">${tParts('第 {r} 回合 · 最终攻势', { r: html`<b class="num">${finalRound}</b>` })}</span>
         ${Array.isArray(boss?.abilities) && boss.abilities.length ? html`<ul class="brief-boss__abil">
           ${boss.abilities.slice(0, 3).map((a, i) => html`<li key=${i}><${RichText} text=${a} /></li>`)}
         </ul>` : null}

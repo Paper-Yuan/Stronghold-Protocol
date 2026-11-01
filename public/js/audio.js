@@ -80,7 +80,7 @@
 // `bgmKeyFor(route, pub)` picks the track for the current screen/phase (main.js calls `audio.install()`,
 // which follows the store).
 
-import { sanitizeVoiceOverrides, voiceLangFor, VOICE_LANGS, VOICE_TREES, VOICE_PICKS } from './voicePrefs.js';
+import { sanitizeVoiceOverrides, voiceLangFor, VOICE_LANGS, VOICE_TREES, VOICE_PICKS, SKIN_TREES } from './voicePrefs.js';
 export { VOICE_TREES } from './voicePrefs.js';
 import { PHASE } from '../../shared/constants.js';
 import { mediaUrl } from './media.js';
@@ -363,12 +363,21 @@ export const VOICE_TAP_SLOTS = Object.freeze(['select']);
  * @param {string} slot
  * @param {'cn'|'jp'|'en'|'kr'|'native'|string} [lang]
  * @param {() => number} [random]
+ * @param {{ key?: string, voices?: any }|null} [skin] the worn outfit's exclusive lines (data/skin-voices.json): a line it
+ *   has for this slot wins over the operator's own; a slot it lacks falls back to the operator's line
  * @returns {{ url: string, fallback: string|null } | null}
  */
-export function voiceLine(audio, charId, slot, lang = 'cn', random = Math.random) {
+export function voiceLine(audio, charId, slot, lang = 'cn', random = Math.random, skin = null) {
   const lines = (line) => (Array.isArray(line) ? line : [line]).filter((u) => typeof u === 'string' && u);
   const draw = (list) => (list.length ? list[Math.min(list.length - 1, Math.floor(random() * list.length))] : null);
   const cn = lines(audio?.voice?.[charId]?.[slot]);
+  // 皮肤专属语音 (skin-voices.json): only the four base dubs have a skin tree; a slot it lacks falls through to the
+  // operator's own line (never silence), and the Chinese operator line is the load fallback.
+  const skinSlot = SKIN_TREES[lang] ? skin?.voices?.[lang]?.[skin.key]?.[slot] : null;
+  if (skinSlot) {
+    const url = draw(lines(skinSlot));
+    if (url) return { url, fallback: draw(cn) };
+  }
   const tree = VOICE_TREES[lang];
   const dub = tree ? draw(lines(audio?.[tree]?.[charId]?.[slot])) : null;
   if (dub) {
@@ -605,6 +614,9 @@ export class AudioManager {
     this.voiceGate = new VoiceGate();
     this.voiceNode = null;    // { src, gain, url, token } of the line on air
     this.voiceToken = 0;
+    // 皮肤专属语音 (data/skin-voices.json): the worn outfit of an operator, installed by main.js installAudio
+    this.getSkinVoices = typeof opts.getSkinVoices === 'function' ? opts.getSkinVoices : () => null;
+    this.getSkin = typeof opts.getSkin === 'function' ? opts.getSkin : () => null;
     this.bondCueNode = null;
     this.bondCueToken = 0;
     this.bondCueScope = null;
@@ -790,6 +802,21 @@ export class AudioManager {
   /** The dub `charId` speaks now (voiceLangFor), given the manifest this manager reads. */
   _voiceLangOf(charId) {
     return voiceLangFor(charId, this.voiceLang, this.voiceOverrides, { native: this.voiceNative, audio: this.getManifest()?.audio });
+  }
+
+  /**
+   * The exclusive lines of the outfit this browser wears for `charId` (data/skin-voices.json): `{ key, voices }` or null.
+   * The data keys a skin by its voice word key (`skinId.replace('@','_')`); a skin without such a data file simply keeps
+   * the operator's own lines (voiceLine falls through).
+   */
+  _skinVoice(charId) {
+    try {
+      const skinId = this.getSkin?.(charId);
+      if (typeof skinId !== 'string' || !skinId) return null;
+      const voices = this.getSkinVoices?.();
+      if (!voices || typeof voices !== 'object') return null;
+      return { key: skinId.replaceAll('@', '_'), voices };
+    } catch { return null; }
   }
 
   _applyVolumes() {
@@ -1369,8 +1396,10 @@ export class AudioManager {
     try {
       if (!this.ctx || !this.voiceGain || this.volumes.muted || this.volumes.voice <= 0) return false;
       if (typeof charId !== 'string' || typeof slot !== 'string') return false;
-      // the chosen dub's line (settings 语音语言), with the Chinese file of the same name as its fallback (voiceLine)
-      const pick = () => voiceLine(this.getManifest()?.audio, charId, slot, this._voiceLangOf(charId));
+      // the chosen dub's line (settings 语音语言), with the Chinese file of the same name as its fallback (voiceLine);
+      // the worn outfit's exclusive line wins when it has one for this slot
+      const skin = this._skinVoice(charId);
+      const pick = () => voiceLine(this.getManifest()?.audio, charId, slot, this._voiceLangOf(charId), Math.random, skin);
       const line = pick();
       if (!line) return false;
       const now = typeof performance !== 'undefined' ? performance.now() : Date.now();
@@ -1402,7 +1431,7 @@ export class AudioManager {
       const slot = ['select', 'place', 'start'].find((s) => slots[s]) || Object.keys(slots)[0];
       if (!slot) return false;
       const resolved = VOICE_PICKS.includes(lang) ? lang : this._voiceLangOf(charId);
-      const line = voiceLine(this.getManifest()?.audio, charId, slot, resolved);
+      const line = voiceLine(this.getManifest()?.audio, charId, slot, resolved, Math.random, this._skinVoice(charId));
       if (!line) return false;
       this._stopVoice();
       this.voiceGate.start(slot, null, typeof performance !== 'undefined' ? performance.now() : Date.now());
@@ -1741,12 +1770,15 @@ export const audio = new AudioManager({ getManifest: () => manifestGetter() });
  * Wire the singleton to the app (called once by main.js): manifest source, settings and store-driven BGM.
  * @param {{ getManifest: () => any, subscribe: (fn: (s:any, prev:any) => void) => () => void, getState: () => any,
  *   selectRoute: (s:any) => string, settings?: { bgm:number, sfx:number, voice:number, muted:boolean, voiceLang?:string, voiceOverrides?:Record<string,string>, voiceNative?:boolean },
+ *   getSkinVoices?: () => any, getSkin?: (charId: string) => string|null,
  *   onFailed?: (url: string) => boolean }} deps  onFailed: a sound did not load (the cosmetic layers: see the header)
  */
 export function installAudio(deps) {
   try {
     manifestGetter = typeof deps?.getManifest === 'function' ? deps.getManifest : manifestGetter;
     if (typeof deps?.onFailed === 'function') audio.onFailed = deps.onFailed;
+    if (typeof deps?.getSkinVoices === 'function') audio.getSkinVoices = deps.getSkinVoices;
+    if (typeof deps?.getSkin === 'function') audio.getSkin = deps.getSkin;
     audio.install();
     if (deps?.settings) { audio.setVolumes(deps.settings); audio.setVoiceLang(deps.settings.voiceLang, deps.settings.voiceOverrides); audio.setVoiceNative(deps.settings.voiceNative); }
     if (typeof deps?.subscribe === 'function' && typeof deps?.getState === 'function') {

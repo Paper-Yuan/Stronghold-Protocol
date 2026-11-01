@@ -57,7 +57,14 @@ test('the wait is bounded: it covers the 机变阶段 banner (1.5 s + its 0.26 s
   const close = Number(c.match(/setTimeout\(\(\) => \{ setGone\(true\); onDone\?\.\(\); \}, duration \+ (\d+)\)/)[1]);
   assert.deepEqual([banner, close], [1500, 260]);
   // the SP_DRAFT banner keeps the default length (phases.js gives it no duration of its own)
-  assert.match(read('public/js/ui/gameLogic/phases.js'), /case PHASE\.SP_DRAFT: return \{ title: t\('机变阶段'\), micro: 'CONTINGENCY', tone: 'gold', sub: t\('依次选择机变'\) \};/);
+  // 炸惊's 惊变 is the same SP_DRAFT, and it is a different banner (惊变阶段, the 2026-10-28 real-machine fix);
+  // 超限's 词条三选一 (owner 2026-10-31) is the third family riding SP_DRAFT — its banner says 词条抉择, and since the
+  // negative-relic batch (owner 2026-10-31, second cut) the same family has two branches: 负面词条 NEGATIVE / red and the
+  // 饰品 RELIC / mint. Both must keep their exact 眉题 and title (the old regex only knew the RELIC one).
+  const phases = read('public/js/ui/gameLogic/phases.js');
+  const spCase = phases.slice(phases.indexOf('    case PHASE.SP_DRAFT:'), phases.indexOf('    case PHASE.PREP:'));
+  assert.match(spCase, /case PHASE\.SP_DRAFT: return isJibianDraft\(pub\)\n\s+\? \{ title: t\('惊变阶段'\), micro: 'MUTATION', tone: 'mint', sub: t\('选择一项'\) \}\n\s+: isOverlimitRelicDraft\(pub\)[\s\S]*?\{ title: t\('词条抉择'\), micro: 'NEGATIVE', tone: 'red', sub: t\('选择一项'\) \}[\s\S]*?\{ title: t\('词条抉择'\), micro: 'RELIC', tone: 'mint', sub: t\('选择一项'\) \}[\s\S]*?: \{ title: t\('机变阶段'\), micro: 'CONTINGENCY', tone: 'gold', sub: t\('依次选择机变'\) \};/);
+  assert.doesNotMatch(spCase, /duration/, 'neither SP_DRAFT banner sets a length: the 1.5 s default is what the wait covers');
   assert.ok(P.TURN_CUE_WAIT_MS >= banner + close, `${P.TURN_CUE_WAIT_MS} ms covers the banner`);
   assert.ok(P.TURN_CUE_WAIT_MS + P.TURN_POPUP_MS <= 3000, 'banner, then disc, all within 3 s');
   // the round plate still up from ROUND_START (the server's ROUND_START is 2 s, the plate 1.7 s + its 0.28 s leave):

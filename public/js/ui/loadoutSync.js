@@ -39,7 +39,7 @@ import { createStore, loadPref, savePref, store } from '../store.js';
 import { data, buildIndex } from '../data.js';
 import { contentSet as appContentSet, pageVersion } from '../content.js';
 import { LOADOUT_PREF, parseStored, parseStoredOps, parseStoredByChar, toStored, toStoredV1, sanitizeEntries, sanitizeOps, charKeyMap, entriesToChar,
-  entriesView, rebaseByChar } from './loadoutModel.js';
+  entriesView, rebaseByChar, zhajingRosterOf, annihilationRosterOf, zjPrefillEntries } from './loadoutModel.js';
 import { cultivationCharIds, charPotentialChanges, loadoutOptions, operatorCharIds } from '../../../shared/protocol.js';
 import { PHASE } from '../../../shared/constants.js';
 import { POTENTIAL_DEFAULT, CULTIVATE_DEFAULT } from '../../../shared/potential.js';
@@ -52,6 +52,7 @@ import { cardStore, CARD_KEY, CARD_SYNC_KEY, cardOperators } from './seatArt.js'
 import { needsContent, serverDefaultVersion } from '../versions.js';
 import { DEFAULT_VERSION } from '../../../shared/versions.js';
 import { toast } from './toasts.js';
+import { net } from '../net.js';
 import { t, N_ } from '../../../shared/i18n.js';
 
 export const SYNC_DEBOUNCE_MS = 500;
@@ -71,6 +72,21 @@ function readStoredDiy(version = DEFAULT_VERSION) {
 }
 
 /**
+ * 炸惊's own 调配档 (业主 2026-10-28 晚): a plain `{ [chessId]: { skill?, module? } }` map kept in this browser so the tier
+ * reopens where it was left. It is NOT the official loadout: it never mixes with `LOADOUT_PREF` / `byChar`, and it is
+ * saved to the server with `room.loadout { mode: 'zhajing', entries }`.
+ */
+export const ZJ_LOADOUT_PREF = 'loadout.zj';
+/** 湮灭档的本机副本（业主 2026-10-28 P1-1）：与炸惊档分开存，互不污染。 */
+export const ANN_LOADOUT_PREF = 'loadout.ann';
+function readAnnEntries() {
+  try { const raw = loadPref(ANN_LOADOUT_PREF, null); return raw && typeof raw === 'object' && !Array.isArray(raw) ? raw : {}; } catch { return {}; }
+}
+function readZjEntries() {
+  try { const raw = loadPref(ZJ_LOADOUT_PREF, null); return raw && typeof raw === 'object' && !Array.isArray(raw) ? raw : {}; } catch { return {}; }
+}
+
+/**
  * Loadout + ownership + screen state (separate from the app store: it must survive room / match resets). By operator
  * (DESIGN §35.23): `byChar` / `notOwnedChars` are the stored settings (null while a v1 store waits for its migration);
  * `entries` / `notOwned` are their views by the chess ids of the data on screen (what the screens and the sync read);
@@ -86,7 +102,17 @@ export const loadoutStore = createStore({
   diyVersion: DEFAULT_VERSION,
   diyKitted: null,     // the operators a DIY slot may field (welcome.diyKitted; null before the first welcome)
   open: false,
-  from: null,          // 'lobby' | 'room' | 'briefing' | 'prep'
+  from: null,          // 'lobby' | 'room' | 'briefing' | 'prep' | 'ext' (炸惊的二级页)
+  // 调配档 (业主 2026-10-28 晚): 'normal' = the official loadout (unchanged), 'zhajing' = 炸惊's own roster, saved as
+  // `room.loadout { mode: 'zhajing', entries }`. `entries` always shows the ACTIVE tier's map; the other one is parked in
+  // `normalEntries` / `zjEntries` so switching never writes one tier's choices into the other (see setLoadoutMode).
+  mode: 'normal',
+  normalEntries: null,
+  zjEntries: readZjEntries(),
+  zjSync: 'idle',      // 'idle' | 'sending' | 'ok' | 'failed' (the 炸惊 档's own save state)
+  // 湮灭档（P1-1）：名册 = 房间自己的湮灭名册（官方可见棋 + 两条内容 mod 自带的干员），保存 = room.loadout { mode:'annihilation' }
+  annEntries: readAnnEntries(),
+  annSync: 'idle',
   tab: 'loadout',      // 'loadout' (干员调配) | 'ownership' (干员持有) | 'diy' (自选编队)
   sel: null,           // selected base chess id
   filters: { tier: null, prof: null, bond: null, query: '', changedOnly: false },
@@ -240,6 +266,10 @@ function persistLoadout(s) {
  * @param {Record<string, any>} entries @param {{ base?: Record<string, any>, lookup?: (id: string) => any }} [opts]
  */
 export function setEntries(entries, { base, lookup } = {}) {
+  // 调配档 (业主 2026-10-28 晚): in 炸惊's tier every edit is that tier's own — it never touches the official loadout
+  if (loadoutStore.get().mode === 'zhajing') return setZjEntries(entries);
+  // 湮灭档（P1-1）：同上，编辑只落在湮灭那一档
+  if (loadoutStore.get().mode === 'annihilation') return setAnnEntries(entries);
   const next = entries && typeof entries === 'object' ? entries : {};
   const s = loadoutStore.get();
   const from = base || s.entries;
@@ -266,6 +296,134 @@ export function setOpsMap(ops) {
   const next = ops && typeof ops === 'object' ? ops : {};
   persistLoadout({ ...loadoutStore.get(), ops: next });
   loadoutStore.set({ ops: next });
+}
+
+// ---- 炸惊's own 调配档 (业主 2026-10-28 晚) --------------------------------------------------------------
+//
+// The 卡池调整 entry of 炸惊's 二级页 opens THIS screen in its own tier (按「原版界面逻辑」): the roster is the 99 zhajing
+// records, the entries shown and edited are `zjEntries`, and saving is `room.loadout { mode: 'zhajing', entries }`
+// (engine-core: the same message, one extra `mode`; absent = 'normal', so the official tier's traffic is unchanged).
+// `entries` in the store always holds the ACTIVE tier's map — the screen reads it everywhere — and the other tier parks in
+// `normalEntries` / `zjEntries`, so a switch can never file one tier's choices under the other.
+
+let zjTimer = null;
+/** Push the 炸惊 档 to the server (debounced by the edits; `flushZjLoadout` sends at once). */
+function scheduleZjSend() {
+  if (typeof setTimeout !== 'function') return;
+  if (zjTimer) clearTimeout(zjTimer);
+  zjTimer = setTimeout(() => { zjTimer = null; void flushZjLoadout(); }, SYNC_DEBOUNCE_MS);
+}
+
+/** Send the 炸惊 档 now: `room.loadout { mode: 'zhajing', entries }`. Never throws (the next edit retries). */
+export async function flushZjLoadout() {
+  if (zjTimer) { clearTimeout(zjTimer); zjTimer = null; }
+  const entries = loadoutStore.get().zjSync === 'sending' ? null : (loadoutStore.get().zjEntries || {});
+  if (!entries) return false;
+  loadoutStore.set({ zjSync: 'sending' });
+  try {
+    await net.request('room.loadout', { mode: 'zhajing', entries });
+    loadoutStore.set({ zjSync: 'ok' });
+    return true;
+  } catch {
+    loadoutStore.set({ zjSync: 'failed' });
+    return false;
+  }
+}
+
+/**
+ * Replace 炸惊's 档 entries (persisted in this browser at once; the server copy follows debounced). Only valid in the
+ * zhajing tier — the normal tier goes through `setEntries`.
+ * @param {Record<string, any>} entries
+ */
+export function setZjEntries(entries) {
+  const next = entries && typeof entries === 'object' ? entries : {};
+  savePref(ZJ_LOADOUT_PREF, next);
+  loadoutStore.set({ entries: next, zjEntries: next });
+  scheduleZjSend();
+}
+
+/**
+ * Switch the 调配档: 'zhajing' shows 炸惊's roster and saves `room.loadout { mode:'zhajing' }`; 'normal' is the official
+ * loadout, untouched. The active tier's map moves into `entries`; the other one is parked.
+ * @param {'normal'|'zhajing'|'annihilation'} mode
+ */
+export function setLoadoutMode(mode) {
+  const s = loadoutStore.get();
+  const want = mode === 'zhajing' ? 'zhajing' : mode === 'annihilation' ? 'annihilation' : 'normal';
+  if (s.mode === want) return;
+  // park the tier we are leaving, then load the one we enter (each tier owns its own map + pref)
+  const parked = s.mode === 'zhajing' ? { zjEntries: s.entries } : s.mode === 'annihilation' ? { annEntries: s.entries } : { normalEntries: s.entries };
+  if (want === 'zhajing') {
+    data.load('zjDefaultLoadout');
+    loadoutStore.set({ ...parked, mode: 'zhajing', entries: zjInitialEntries() });
+  } else if (want === 'annihilation') {
+    // 湮灭档（业主 2026-10-28 P1-1；engine-core 回执）：名册 = 房间自己的湮灭名册（官方可见棋 + 两条内容 mod 自带的
+    // 干员，server/match/gamedata.js annihilationRoster），所以这里**不做预填**（炸惊那张 zjDefaultLoadout 表只属于
+    // 99 条 zj 记录，别把它的 id 发到湮灭档）。
+    loadoutStore.set({ ...parked, mode: 'annihilation', entries: s.annEntries || {} });
+  } else {
+    loadoutStore.set({ ...parked, mode: 'normal', entries: s.normalEntries || {} });
+    void flushZjLoadout();
+    void flushAnnLoadout();
+  }
+}
+
+// ---- 湮灭档（业主 2026-10-28 P1-1）--------------------------------------------------------------------
+//
+// 与炸惊档同形，只是 mode 不同（engine-core 回执 2026-10-28）：
+//   · 写：`room.loadout { mode:'annihilation', entries }`，名册是**房间自己的湮灭名册**（官方可见棋 + 两条内容 mod 自带的
+//     干员；server/match/gamedata.js annihilationRoster），不是炸惊那 99 条 zj 记录；卸下模组要显式发 `module: 'none'`
+//     （不传 module = 保持默认，不是卸下）。
+//   · 读回：`m.private.annLoadout`（局内）/ `room.state.seats[].annLoadout`（房内预填）。
+//   · 门：只有 `difficulty === 'ANNIHILATION'` 的房接受，其余 BAD_TARGET。
+
+let annTimer = null;
+/** Push the 湮灭 档 to the server (debounced by the edits; `flushAnnLoadout` sends at once). */
+function scheduleAnnSend() {
+  if (typeof setTimeout !== 'function') return;
+  if (annTimer) clearTimeout(annTimer);
+  annTimer = setTimeout(() => { annTimer = null; void flushAnnLoadout(); }, SYNC_DEBOUNCE_MS);
+}
+
+/** Send the 湮灭 档 now: `room.loadout { mode: 'annihilation', entries }`. Never throws (the next edit retries). */
+export async function flushAnnLoadout() {
+  if (annTimer) { clearTimeout(annTimer); annTimer = null; }
+  let entries = loadoutStore.get().annSync === 'sending' ? null : (loadoutStore.get().annEntries || {});
+  if (!entries) return false;
+  // 名册 = 房间自己的湮灭名册（与 GameData.visibleChess / annihilationRoster 同一口径）：房间关掉一条内容 mod，它带进来的
+  // 干员立刻不在名册里 —— 存着的那条选择照旧留在本机（与官方档「房间不认识的那条不发送、也不删除」同一条规则），
+  // 只是这一次不发出去，否则服务端 checkLoadout 会整包 BAD_TARGET。
+  const roster = annRosterIds();
+  if (roster) entries = Object.fromEntries(Object.entries(entries).filter(([id]) => roster.has(id)));
+  loadoutStore.set({ annSync: 'sending' });
+  try {
+    await net.request('room.loadout', { mode: 'annihilation', entries });
+    loadoutStore.set({ annSync: 'ok' });
+    return true;
+  } catch {
+    loadoutStore.set({ annSync: 'failed' });
+    return false;
+  }
+}
+
+/** The ids of the annihilation room's roster on screen (`annihilationRosterOf`), or null while chess.json is not loaded. */
+function annRosterIds() {
+  if (data.status('chess') !== 'ready') return null;
+  try {
+    const mods = store.get?.()?.room?.annMods ?? null;
+    return new Set(annihilationRosterOf(data.list('chess'), mods).map((c) => c.chessId));
+  } catch { return null; }
+}
+
+/**
+ * Replace the 湮灭 tier's entries (persisted in this browser at once; the server copy follows debounced).
+ * @param {Record<string, any>} entries
+ */
+export function setAnnEntries(entries) {
+  const next = entries && typeof entries === 'object' ? entries : {};
+  savePref(ANN_LOADOUT_PREF, next);
+  loadoutStore.set({ entries: next, annEntries: next });
+  scheduleAnnSend();
 }
 
 /**
@@ -384,10 +542,27 @@ export function applyDiyImport(picks, data, kitted) {
 }
 
 /**
- * Open the 干员调配 overlay. @param {'lobby'|'room'|'briefing'|'prep'} from @param {string|null} [sel]
- * @param {'loadout'|'ownership'|'diy'|null} [tab] the tab to show (default: the last one)
+ * 炸惊档的**初始条目**（业主 2026-10-28 晚 / data T14）：本机没有任何存档时，用 `data/zjDefaultLoadout.json`
+ * （`{ version, note, count, byBaseId }`，83 条 `_a` 形态的 base id → `{ op, module, moduleName, typeName, choices }`）
+ * 预填默认模组装配。玩家改过的条目永远优先（本机存档非空就直接用它）；预填值等于记录默认值时**不产生条目**
+ * （`zjPrefillEntries`），与「只发非默认项」的保存语义一致。文件不存在（未生成 / 版本房）时什么都不做，绝不画假数据。
  */
-export function openLoadout(from = 'lobby', sel = null, tab = null) {
+function zjInitialEntries() {
+  const saved = loadoutStore.get().zjEntries || {};
+  if (Object.keys(saved).length) return saved;
+  const doc = data.get('zjDefaultLoadout');
+  if (!doc || typeof doc !== 'object' || !doc.byBaseId) return saved;
+  try {
+    return zjPrefillEntries(doc.byBaseId, zhajingRosterOf(data.list('chess')), (id) => data.lookup('chess', id));
+  } catch { return saved; }
+}
+
+/**
+ * Open the 干员调配 overlay. @param {'lobby'|'room'|'briefing'|'prep'|'ext'} from @param {string|null} [sel]
+ * @param {'loadout'|'ownership'|'diy'|null} [tab] the tab to show (default: the last one)
+ * @param {'normal'|'zhajing'} [mode] the 调配档 (炸惊's 二级页 opens the zhajing one; 缺省 is the official loadout)
+ */
+export function openLoadout(from = 'lobby', sel = null, tab = null, mode = 'normal') {
   data.load('chess');
   data.load('bonds');
   data.load('assets');
@@ -396,9 +571,37 @@ export function openLoadout(from = 'lobby', sel = null, tab = null) {
   data.load('effects'); // 0.2.2: the 练度 multipliers of the 局内数值 (effects.json CHAR_MAP)
   data.load('garrisons'); // the 特质 at the top of the detail (PR #301)
   void loadDefaultCharMap(); // a v1 导入 (第二期下半's chess ids) maps through it (DESIGN §35.23)
-  loadoutStore.set({ open: true, from, ...(sel ? { sel } : {}), ...(from === 'prep' ? { tab: 'loadout', sync: 'idle' } : {}), ...(tab === 'loadout' || tab === 'ownership' || tab === 'diy' ? { tab } : {}) });
+  const st = loadoutStore.get();
+  const zhajing = mode === 'zhajing';
+  const ann = mode === 'annihilation';
+  // park whatever tier is open, then enter the requested one (each tier's map is its own — see setLoadoutMode)
+  const parked = st.mode === 'zhajing' ? { zjEntries: st.entries } : st.mode === 'annihilation' ? { annEntries: st.entries } : { normalEntries: st.entries };
+  const target = zhajing ? 'zhajing' : ann ? 'annihilation' : 'normal';
+  const nextEntries = zhajing ? zjInitialEntries() : ann ? (st.annEntries || {}) : (st.normalEntries || {});
+  loadoutStore.set({
+    open: true, from, ...(sel ? { sel } : {}), ...(from === 'prep' ? { tab: 'loadout', sync: 'idle' } : {}),
+    ...(tab === 'loadout' || tab === 'ownership' || tab === 'diy' ? { tab } : {}),
+    ...(st.mode !== target ? { ...parked, mode: target, entries: nextEntries } : null),
+  });
 }
-export const closeLoadout = () => loadoutStore.set({ open: false });
+/**
+ * Close the overlay. Leaving a play-set tier puts the official loadout back into `entries` (and flushes that tier's own
+ * map), so the rest of the app never reads one tier's map as the other's.
+ */
+export const closeLoadout = () => {
+  const s = loadoutStore.get();
+  if (s.mode === 'zhajing') {
+    loadoutStore.set({ open: false, mode: 'normal', zjEntries: s.entries, entries: s.normalEntries || {} });
+    void flushZjLoadout();
+    return;
+  }
+  if (s.mode === 'annihilation') {
+    loadoutStore.set({ open: false, mode: 'normal', annEntries: s.entries, entries: s.normalEntries || {} });
+    void flushAnnLoadout();
+    return;
+  }
+  loadoutStore.set({ open: false });
+};
 
 /**
  * Whether the page may send its settings now (DESIGN §35.23; the server checks them against the data of the room, or

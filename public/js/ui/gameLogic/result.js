@@ -43,11 +43,14 @@ export function normalizeResult(res, pub) {
     };
   }).sort((a, b) => a.seat - b.seat);
   const isInfinite = !!(r.isInfinite || pub?.isInfinite);
+  // 蚀流 6 · 无尽湮灭同样没有「满回合」：m.public.lastRound 是 null（引擎不设结束回合），而 m.result 本身不带
+  // lastRound，所以下面的 14 兜底会把「/14」写到一场没有终点的结算上——同超限局，传 null（结算页据此不显示 /N）。
+  const noTotal = isInfinite || !!(r.endless || pub?.endless);
   return {
     victory: !!r.victory,
     roundsPassed: Number.isFinite(r.roundsPassed) ? r.roundsPassed : Math.max(0, ...players.map((p) => p.roundsPassed), 0),
     // 业主 2026-10-20：超限局没有「满回合」，lastRound 传 null（结算页据此不显示 /N）。
-    lastRound: Number.isFinite(r.lastRound) ? r.lastRound : (isInfinite ? null : Number.isFinite(pub?.lastRound) ? pub.lastRound : 14),
+    lastRound: Number.isFinite(r.lastRound) ? r.lastRound : (noTotal ? null : Number.isFinite(pub?.lastRound) ? pub.lastRound : 14),
     isInfinite,
     hiddenCleared: !!r.hiddenCleared,
     // the Hidden Core (R15) was fought: only then does the result show its boss medal (m.result.hiddenReached;

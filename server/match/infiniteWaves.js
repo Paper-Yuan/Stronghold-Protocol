@@ -5,6 +5,7 @@ import { weightedPick, gateOf } from './waves.js';
 import { bossPoolHp } from './finalAssault.js';
 import { enemyInfiniteScale, getInfiniteBossHp } from '../../shared/infiniteMode.js';
 import { createRng, deriveSeed } from '../sim/rng.js';
+import { applyBossAffix, drawBossAffix } from './bossAffixes.js';
 
 /**
  * 判断当前轮次是否为 Boss 关
@@ -35,19 +36,37 @@ export function isInfiniteDoubleBossRound(round) {
  * @param {number} round
  * @returns {object} wave descriptor
  */
+/**
+ * 超限 Boss 档位顺序（弱 → 强）：按**实际血池** bossPoolHp(gd, id, 1, round) 排序，不再用血点表 bloodPoint。
+ *
+ * 以前两个口径混用（docs/proposals/OVERLIMIT.md §2 F5）：档位键读 `bloodPoint[difficulty] ?? bloodPoint.HARD ?? 0`
+ * —— 该难度缺档时读成 0（等于「最弱」），而真正建池的 bossPoolHp 在缺档时退回「第一个有限值」再乘
+ * bossHpMul / 人数。于是「第 n 档 = 第 n 弱的 Boss」只是当前数据恰好成立，缺档或调参后档位顺序就不再等于
+ * 玩家的压力顺序。同一回合里成长因子（getInfiniteBossHp）与人数因子对所有 Boss 相同，所以排序键取本回合的
+ * 池血量即可。平局按 id 兜底（确定性，与 bossWeights 的键顺序无关）。
+ * @param {object} gd GameData
+ * @param {Array<[string, number]>} pool bossWeights(...) 的 [id, weight] 列表
+ * @param {number} round 本回合（决定池血量成长因子）
+ * @returns {string[]} boss id，弱 → 强
+ */
+function bossTierOrder(gd, pool, round) {
+  const r = Number(round) || 20;
+  return (Array.isArray(pool) ? pool : [])
+    .map((e) => (e && e[0]))
+    .filter((id) => typeof id === 'string')
+    .map((id) => ({ id, poolHp: bossPoolHp(gd, id, 1, r) }))
+    .sort((a, b) => a.poolHp - b.poolHp || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0))
+    .map((x) => x.id);
+}
+
 /** 超限第 n 次 Boss 战用池里第 n 档（弱→强，不循环），与 buildInfiniteBossWave 同一口径。 */
 function pickInfiniteBoss(gd, round) {
   const hiddenPool = (gd.bossWeights(true) || []).slice();
   const pool = hiddenPool.length ? hiddenPool : (gd.bossWeights(false) || []);
   if (!pool.length) return 'boss_8';
-  const bloodOf = (id) => {
-    const rec = gd.boss(id) || {};
-    const bp = rec.bloodPoint || {};
-    return Number(bp[gd.difficulty] ?? bp.HARD ?? 0) || 0;
-  };
-  pool.sort((a, b) => bloodOf(a[0]) - bloodOf(b[0]));
+  const order = bossTierOrder(gd, pool, round);
   const idx = Math.max(0, Math.floor((round - 20) / 5));
-  return pool[Math.min(pool.length - 1, idx)][0];
+  return order[Math.min(order.length - 1, idx)];
 }
 
 function bossEnemyKeyOf(gd, bossId) {
@@ -299,20 +318,15 @@ export function buildInfiniteBossWave(gd, rng, round, routes = null, opts = {}) 
   // 所以这里改用隐秘核心池；万一某个模式的隐秘池是空的，才退回普通池（不会变成没有 Boss）。
   const hiddenPool = (gd.bossWeights(true) || []).slice();
   const pool = hiddenPool.length ? hiddenPool : (gd.bossWeights(false) || []);
-  // 池内按血点从弱到强排序，再按「本场第几次 Boss 战」取档 —— 曲线单调往上，不再靠抽签。
-  const bloodOf = (id) => {
-    const rec = gd.boss(id) || {};
-    const bp = rec.bloodPoint || {};
-    return Number(bp[gd.difficulty] ?? bp.HARD ?? 0) || 0;
-  };
-  // 业主 2026-10-17：「无限 Boss 是先简单后难」。池内按血点升序（弱→强），
-  // 第 n 次 Boss 战取第 n 档；**不循环**——档位用完之后一直停在最强的那一个，
-  // 后面靠 getInfiniteBossHp 的逐回合成长继续加硬。以前用 `bossIndex % pool.length` 会回环，
+  // 池内按**实际血池**从弱到强排序，再按「本场第几次 Boss 战」取档 —— 曲线单调往上，不再靠抽签。
+  // 口径与理由见 bossTierOrder：以前按 bloodPoint 静态血点排序，缺档 / 调参后与真实压力不同序（F5）。
+  const order = bossTierOrder(gd, pool, r);
+  // 业主 2026-10-17：「无限 Boss 是先简单后难」。第 n 次 Boss 战取第 n 档；**不循环**——档位用完之后一直停在
+  // 最强的那一个，后面靠 getInfiniteBossHp 的逐回合成长继续加硬。以前用 `bossIndex % pool.length` 会回环，
   // R35 又从最弱的 280 万开始，曲线呈锯齿（实测 R20→R35：2.8M → 3.6M → 3.8M → 2.8M）。
-  pool.sort((a, b) => bloodOf(a[0]) - bloodOf(b[0]));
-  const tierOf = (i) => pool[Math.min(pool.length - 1, Math.max(0, i))][0];
+  const tierOf = (i) => order[Math.min(order.length - 1, Math.max(0, i))];
   const bossIndex = Math.max(0, Math.floor((r - 20) / 5));   // R20→0, R25→1, R30→2 …
-  const primaryBoss = pool.length ? tierOf(bossIndex) : 'boss_8';
+  const primaryBoss = order.length ? tierOf(bossIndex) : 'boss_8';
   const isDouble = isInfiniteDoubleBossRound(r);
   // 业主 2026-10-21：双 Boss 轮分两阶段打。opts.phase=1 只出主 Boss，2 只出副 Boss。
   const phase = opts.phase === 2 ? 2 : 1;
@@ -320,7 +334,7 @@ export function buildInfiniteBossWave(gd, rng, round, routes = null, opts = {}) 
   // 双 Boss 轮（R45+）：主 Boss 用当前档，副 Boss 用**次强**那一档（不足两个就同款），
   // 也不回环到弱 Boss —— 双 Boss 只会让这一轮更硬，不会忽然变软。
   const secondaryBoss = isDouble
-    ? (pool.length > 1 ? tierOf(Math.max(0, Math.min(pool.length - 2, bossIndex - 1))) : primaryBoss)
+    ? (order.length > 1 ? tierOf(Math.max(0, Math.min(order.length - 2, bossIndex - 1))) : primaryBoss)
     : null;
 
   // 传入 enemyScale 函数而不是固定值，实现分段式曲线
@@ -422,7 +436,7 @@ export function buildInfiniteBossWave(gd, rng, round, routes = null, opts = {}) 
 
   // Boss 场同样要给足时限（Boss + 随从 + 收尾），否则 60 秒兜底会把还活着的 Boss 判成漏怪
   const lastBossSpawn = spawns.length ? Math.max(...spawns.map((x) => Number(x.time) || 0)) : 0;
-  return {
+  const wave = {
     round: r,
     primaryBoss,
     secondaryBoss,
@@ -436,6 +450,10 @@ export function buildInfiniteBossWave(gd, rng, round, routes = null, opts = {}) 
     routes: Array.isArray(routes) && routes.length ? routes : [],
     scale,
   };
+  // Boss 词缀（业主 2026-10-26）：用本场的 rngWaves 抽，同种子同结果；只影响这一张 Boss 波。
+  // 双 Boss 第二阶段重开时传 opts.affix，保证同一轮两个阶段是同一个词缀。
+  applyBossAffix(wave, opts.affix || drawBossAffix(rng));
+  return wave;
 }
 
 /**

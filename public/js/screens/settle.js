@@ -433,9 +433,50 @@ function SettleTestMark({ res }) {
   return html`<span class="settle__test" data-testid="settle-test"><${TestMark} /> ${t('测试对局')}${Number.isInteger(res.testActions) ? html` · ${t('测试指令 {n} 次', { n: res.testActions })}` : null}</span>`;
 }
 
+/** 超限档案（业主 2026-10-26）：m.result.overlimit 的展示；本机最佳存 localStorage，只影响本机。 */
+const OL_BEST_KEY = 'sp.overlimit.best';
+function readOlBest() {
+  try { return Math.max(0, Number(localStorage.getItem(OL_BEST_KEY)) || 0); } catch { return 0; }
+}
+export function OverlimitArchive({ data, onClose }) {
+  const [best] = useState(readOlBest);
+  const newRecord = Number(data.maxRound) > best;
+  useEffect(() => {
+    if (!newRecord) return;
+    try { localStorage.setItem(OL_BEST_KEY, String(data.maxRound)); } catch { /* private mode */ }
+  }, [newRecord, data.maxRound]);
+  const kills = Array.isArray(data.bossKills) ? data.bossKills : [];
+  const mods = Array.isArray(data.traitMods) ? data.traitMods : [];
+  const bestBond = data.bestBond || null;
+  return html`<div class="olarch" role="dialog" aria-modal="true" aria-label=${t('超限档案')} data-testid="overlimit-archive">
+    <div class="olarch__card">
+      <div class="olarch__head">
+        <span class="olarch__micro">INFINITE PROTOCOL · ARCHIVE</span>
+        <b>${t('超限档案')}</b>
+        <button type="button" class="olarch__x" aria-label=${t('关闭')} title=${t('关闭')} onClick=${onClose}>✕</button>
+      </div>
+      <div class="olarch__big"><b class="num">${data.maxRound}</b><span>${t('最高回合')}</span>
+        ${newRecord ? html`<i class="olarch__new">NEW RECORD · ${t('本机最佳')}</i>` : null}</div>
+      <div class="olarch__stats">
+        <span><i>${t('Boss 击杀')}</i><b class="num">${kills.length}</b></span>
+        <span><i>${t('词条')}</i><b class="num">${mods.length}</b></span>
+        <span><i>${t('最高盟约')}</i><b class="num">${bestBond ? bestBond.layers : 0}</b><em>${bestBond ? bestBond.name : t('层')}</em></span>
+      </div>
+      ${kills.length ? html`<ul class="olarch__kills">
+        ${kills.slice(0, 6).map((k, i) => html`<li key=${i}><span class="r">R${k.round}${k.phase > 1 ? ' · 2' : ''}</span><span class="n">${k.name}</span><span class="tag">LEADER</span></li>`)}
+      </ul>` : null}
+      ${mods.length ? html`<div class="olarch__chips">
+        ${mods.slice(0, 12).map((x, i) => html`<span key=${i} class=${cx('olarch__chip', x.polarity === 'neg' && 'is-neg')}>${x.name}</span>`)}
+      </div>` : null}
+      <p class="olarch__note">${t('词条从选定回合起生效，贯穿本局剩余战斗；本机最佳只保存在这台设备上。')}</p>
+    </div>
+  </div>`;
+}
+
 function SelfPage({ r, res, raw, self, gd, prog, content, onNext, version = null }) {
   const cleared = rowCleared(raw, self, r.victory);
   const [leaving, setLeaving] = useState(false);
+  const [archive, setArchive] = useState(false);
   const nextRef = useRef(null);
   const rounds = useCountUp(self.roundsPassed, { ms: 700, delay: 350 });
   const boss = cleared && r.bossId ? gd.boss(r.bossId) : null;
@@ -463,7 +504,8 @@ function SelfPage({ r, res, raw, self, gd, prog, content, onNext, version = null
       <div class="sself__fx" aria-hidden="true"></div>
       <${Logo} />
       <div class="sself__band">${self.bandId ? html`<${BandIcon} bandId=${self.bandId} size="lg" />` : html`<${PlayerAvatar} player=${self} self=${true} />`}<i aria-hidden="true"></i></div>
-      <div class="sself__mode"><${ModePill} r=${r} /><${UnofficialMark} room=${content ? { content } : null} class="sself__modmark" /><${VersionTag} version=${version} class="sself__vertag" /><${SettleTestMark} res=${res} /></div>
+      <div class="sself__mode"><${ModePill} r=${r} /><${UnofficialMark} room=${content ? { content } : null} class="sself__modmark" /><${VersionTag} version=${version} class="sself__vertag" /><${SettleTestMark} res=${res} />
+        ${res?.overlimit ? html`<button type="button" class="sself__olbtn" data-testid="overlimit-open" onClick=${() => setArchive(true)}>∞ ${t('超限档案')}</button>` : null}</div>
       <${SettleTitle} class="sself__title">${cleared ? t('模拟完成') : t('模拟中断')}</${SettleTitle}>
       <div class="sself__rounds"><span>${t('通过回合')}</span><b class="num">${rounds}</b></div>
       ${medals.length ? html`<div class="sself__medals">${medals.map((m, i) => html`<${Medal} key=${m.kind} m=${m} i=${i} />`)}</div>` : null}
@@ -487,6 +529,7 @@ function SelfPage({ r, res, raw, self, gd, prog, content, onNext, version = null
         <${Sprite} k="settle/next_icon" class="settle__nexticon" fallback=${html`<span class="settle__nexticon"><${Icon} name="chevronRight" /></span>`} /><span class="settle__nextlabel">${t('下一步')}</span>
       </button>
     </div>
+    ${archive && res?.overlimit ? html`<${OverlimitArchive} data=${res.overlimit} onClose=${() => setArchive(false)} />` : null}
   </section>`;
 }
 

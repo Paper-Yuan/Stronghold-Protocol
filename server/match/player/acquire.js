@@ -9,6 +9,9 @@ import { hasTraitFor } from '../operatorTraits.js';
 import { pieceDir, parseDir, mergeTile } from '../board.js';
 import { MAX_OFFER_SLOTS } from './common.js';
 import { onMerge } from '../botEmotes.js';
+import { ERR } from '../../../shared/constants.js';
+import { OK, fail } from './common.js';
+import { applyForgePick, drawForge, forgeBattleMods, forgeModsEmpty, forgeOptionById, isForgeRarity, FORGE_KILLS_PER } from '../../../shared/forgeData.js';
 
 export class PlayerAcquire {
   /** Normal copies of a base chess currently owned (board/hand/temp). */
@@ -114,6 +117,7 @@ export class PlayerAcquire {
     // A deployed elite receives its summon stacks after the returned equipment.
     if (where === 'board') this.grantTokensFor(elite);
     this.stats.merges++;
+    this.forgeOnElite();   // 炸惊模拟「锻造器」: a merge that makes an operator elite pays one forge (no-op elsewhere)
     this.pushRewardOffer('merge');
     // (named as everyone sees the elite: a chess this player fields as its stand-in by the stand-in's name — 0.2.0 补位,
     // the owner's recall of the official mode, 2026-10-06 [ASSUMED for the ticker])
@@ -138,6 +142,7 @@ export class PlayerAcquire {
     // an elite on the board tops its summon stacks up to the elite's deploy limit, like an elite merged onto a tile
     // (_mergeChess → grantTokensFor): 麦哲伦 / 令 3 → 4, 望 6 → 7 with their modules (0.2.0 review round 17)
     if ([...this.board.values()].includes(piece)) this.grantTokensFor(piece);
+    this.forgeOnElite();   // 炸惊模拟「锻造器」: an in-place promotion to elite pays one forge (no-op elsewhere)
     return true;
   }
 
@@ -207,9 +212,14 @@ export class PlayerAcquire {
     if (!list) {
       list = [];
       const fresh = (id) => !list.includes(id);
+      // 炸惊模拟 · 卡池预选: this player's bans also remove a chess from the 特殊刷新 (they only filtered the shop before,
+      // audit rules §1). null when nothing is banned ⇒ the roll is exactly the one this method always made.
+      const ban = this.chessBanFilter();
+      const pickable = ban ? (id) => fresh(id) && ban(id) : fresh;
       for (let i = 0; i < ro.count; i++) { // loop-cap: rewardOffer().count ≤ MAX_OFFER_SLOTS
         let id = null;
-        for (let tt = t; tt >= 1 && !id; tt--) id = this.m.pool.roll(this.m.rngShop, { tier: tt, filter: fresh, extra: this.diyStockEntries() });
+        // 队内共用 / 队间独立 (TWELVE_PLAYER_MODE §2): a room above MAX_SEATS rolls the TEAM pool (Match.poolFor)
+        for (let tt = t; tt >= 1 && !id; tt--) id = this.m.poolFor(this).roll(this.m.rngShop, { tier: tt, filter: pickable, extra: this.diyStockEntries() });
         if (id) list.push(id);
       }
     }
@@ -335,5 +345,119 @@ export class PlayerAcquire {
       }
       if (!did) return;
     }
+  }
+
+  // ---- 炸惊模拟「锻造器」(owner 2026-10-14) -----------------------------------------------------------------------
+  //
+  // GRANTS: an operator made elite (a 三合一 merge or an in-place promotion) pays one forge, and every whole
+  // FORGE_KILLS_PER knock-outs pays one more (reconciled at settlement, idempotent through `killsPaid`).
+  // SPEND: Match.forgeTake (`g.forgeTake`) validates the pick against the roll the server drew, records it in `forged`
+  // and pays 资金 at once; everything else travels to the battle through `flags.forge` (forgeBattleMods).
+  // Every entry point is a no-op outside a ZHAJING match: `this.forge` is null there, so official / 湮灭 rooms are
+  // byte-identical to before this mechanic existed.
+
+  /**
+   * Hand `n` forges to this player (no roll is drawn here — `forgeRoll()` draws lazily when a client asks).
+   * @param {number} [n]
+   * @returns {number} how many were granted (0 outside 炸惊)
+   */
+  grantForge(n = 1) {
+    const k = Math.max(0, Math.floor(Number(n) || 0));
+    if (!(k > 0) || !this.forge) return 0;
+    this.forge.count += k;
+    this.dirty();
+    return k;
+  }
+
+  /**
+   * The three cards of the current roll (`{ rarity, picks }`), drawn once and kept until it is spent. Null when the
+   * player has no forge; outside 炸惊 there is nothing to roll.
+   * @returns {{ rarity: string, picks: string[] } | null}
+   */
+  forgeRoll() {
+    if (!this.forge) return null;
+    if (!(this.forge.count > 0)) { this.forge.roll = null; return null; }
+    if (!this.forge.roll) {
+      // the match's seeded meta stream — never Math.random, so a replayed match draws the same cards
+      const rng = this.m && typeof this.m.rngMeta === 'function' ? this.m.rngMeta : null;
+      if (!rng) return null;
+      this.forge.roll = drawForge(rng);
+    }
+    return this.forge.roll;
+  }
+
+  /** 精锐一名干员 → 一个锻造器。 */
+  forgeOnElite() {
+    if (!this.forge) return 0;
+    this.forge.elites++;
+    return this.grantForge(1);
+  }
+
+  /**
+   * Reconcile the 「每 FORGE_KILLS_PER 击杀」 payout against this player's accumulated kills (settled once per round, the
+   * 联防's kills included). Idempotent: `killsPaid` remembers how many whole payouts were already granted.
+   */
+  forgeOnKills() {
+    if (!this.forge) return 0;
+    const due = Math.floor((Number(this.stats && this.stats.kills) || 0) / FORGE_KILLS_PER);
+    const gain = due - (this.forge.killsPaid || 0);
+    if (!(gain > 0)) return 0;
+    this.forge.killsPaid = due;
+    return this.grantForge(gain);
+  }
+
+  /**
+   * Pick one card of the current roll (`g.forgeTake`). Validated against the roll the SERVER drew: an `optId`/`rarity`
+   * pair that is not on the table is refused, so a client can neither invent a card nor replay an old one.
+   * **Fail-closed**: `grantForge()` only adds to the count — the cards are drawn lazily by `forgeRoll()` on the next view
+   * push. A message that arrives before that push used to skip both checks (`if (roll && …)`) and take any option of any
+   * tier (audit B3, 2026-10-29). The roll is drawn here instead; when the server still has none, the pick is refused.
+   * @param {string} optId shared/forgeData.js option id @param {string} rarity this roll's rarity
+   * @returns {{ ok: true } | { error: string, detail?: string }}
+   */
+  forgeTake(optId, rarity) {
+    if (!this.forge) return fail(ERR.BAD_TARGET, 'forge is a ZHAJING mechanic');
+    if (!(this.forge.count > 0)) return fail(ERR.RATE, 'no forge left');
+    const opt = forgeOptionById(optId);
+    if (!opt || !isForgeRarity(rarity) || !opt.value[rarity]) return fail(ERR.BAD_TARGET, 'bad forge option');
+    // the roll this pick has to match — drawn now when the grant's view push has not drawn it yet (never Math.random: the
+    // match's seeded meta stream, so a replayed match draws the same cards)
+    const roll = this.forgeRoll();
+    if (!roll) return fail(ERR.RATE, 'no forge roll');
+    if (roll.rarity !== rarity) return fail(ERR.BAD_TARGET, 'rarity mismatch');
+    if (!Array.isArray(roll.picks) || !roll.picks.includes(optId)) return fail(ERR.BAD_TARGET, 'not in this roll');
+    const res = applyForgePick(this.forge.forged || {}, optId, rarity);
+    this.forge.forged = res.forged;
+    this.forge.count -= 1;
+    // the next roll is drawn lazily by forgeRoll(); drop the spent one so the view cannot show a card already taken
+    this.forge.roll = this.forge.count > 0 ? (this.m && typeof this.m.rngMeta === 'function' ? drawForge(this.m.rngMeta) : null) : null;
+    // 资金 is the one option that pays out at once; the other eight ride into the battle as flags.forge
+    if (optId === 'gold' && res.delta > 0) this.addFunds(res.delta, { reason: 'forge' });
+    this.dirty();
+    return OK;
+  }
+
+  /**
+   * The battle-side summary of everything this player has forged (`flags.forge`), or null when there is nothing to apply.
+   * @returns {{ forge: ReturnType<typeof forgeBattleMods> } | null}
+   */
+  forgeBattleFlags() {
+    if (!this.forge) return null;
+    const mods = forgeBattleMods(this.forge.forged);
+    return forgeModsEmpty(mods) ? null : { forge: mods };
+  }
+
+  /** The `m.private.forge` block: the grant counters, the accumulated table and the current roll. */
+  forgeView() {
+    if (!this.forge) return null;
+    return {
+      count: Math.max(0, Math.trunc(Number(this.forge.count) || 0)),
+      killsPaid: Math.max(0, Math.trunc(Number(this.forge.killsPaid) || 0)),
+      elites: Math.max(0, Math.trunc(Number(this.forge.elites) || 0)),
+      per: FORGE_KILLS_PER,
+      // the raw table `{ [optId]: { total, count } }` — the client folds it with shared/forgeData.js forgedEntries()
+      forged: { ...(this.forge.forged || {}) },
+      rolled: this.forgeRoll(),
+    };
   }
 }

@@ -18,8 +18,12 @@ async function load(path) {
   }
 }
 
-const [core, addon, supportMeta] = await Promise.all([load('./bonds/core.js'), load('./bonds/addon.js'), load('./support/meta.js')]);
-const PARTS = Object.freeze([['bonds/core', core], ['bonds/addon', addon]]);
+// 炸惊模拟 (ZHAJING): `mujicaBond.js` is a bond part, NOT a DOMAIN_NAMES entry — the reference build loads it here, after
+// bonds/core and bonds/addon, because it reads the player's owned 惊变 cards through jibianBonds' `ownedJibianIdsOf`
+// (server/sim/content/jibianBonds.js, itself registered as a domain). Load order: core → addon → mujicaBond. The file
+// belongs to the engine-cards worker; a missing file loads as {} and the two official parts still install.
+const [core, addon, mujica, supportMeta] = await Promise.all([load('./bonds/core.js'), load('./bonds/addon.js'), load('./mujicaBond.js'), load('./support/meta.js')]);
+const PARTS = Object.freeze([['bonds/core', core], ['bonds/addon', addon], ['mujicaBond', mujica]]);
 
 function runAll(fnName, arg, pre = null) {
   let first = null;

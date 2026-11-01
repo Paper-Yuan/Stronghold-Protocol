@@ -6,17 +6,31 @@
 // Installed on Match.prototype by server/match/Match.js (a method container: never instantiated; `this` is the match).
 
 import { PHASE, GEO } from '../../../shared/constants.js';
-import { createRng, deriveSeed } from '../../sim/rng.js';
+import { deriveSeed } from '../../sim/rng.js';
 import { creditedKillsOf } from '../../sim/spec.js';
 import { buildBossWave, bountySpawns } from '../waves.js';
-import { pairPlayers, bossPoolHp, SharedBossPool, CreditPool, hiddenEligible, BOSS_HIT_STEPS } from '../finalAssault.js';
+import { bossPoolHp, SharedBossPool, CreditPool, hiddenEligible, BOSS_HIT_STEPS } from '../finalAssault.js';
 import { FieldRunner, HeadlessPacer, syntheticResult, BOSS_SILENCE_MS, CATCHUP_TICKS_PER_INTERVAL , GAME_SPEED } from '../fields.js';
 import { FLOW_TICKER_PRIORITY, BOSS_CLOCK_MS, DELAYS } from './common.js';
+import { OK, fail } from './common.js';
+import { ERR } from '../../../shared/constants.js';
 import { wantsTraitDraft } from './traitDraft.js';
-import { buildInfiniteBossWave } from '../infiniteWaves.js';
+import { wantsRelicDraft } from './relicDraft.js';
+import { buildInfiniteBossWave, isInfiniteBossRound } from '../infiniteWaves.js';
+import { partyBossHpMul } from '../../../shared/infiniteMode.js';
 
 /** 双 Boss 第二阶段的预警时长（业主 2026-10-21）：2.6 秒全屏红色过场。 */
 export const BOSS_PHASE2_WARN_MS = 2600;
+
+/**
+ * 超限风险契约（业主 2026-10-26）：Boss 轮前的 PREP 三选一，加码换资源。
+ * 只影响**本轮** Boss 波；不选就是常规开战。
+ */
+export const BOSS_CONTRACTS = Object.freeze([
+  Object.freeze({ id: 'elite', name: '加一只精英', text: 'Boss 轮额外出现 1 只随机精英敌人。', reward: '资金 +2' }),
+  Object.freeze({ id: 'time', name: '限时 90 秒', text: 'Boss 轮时限缩短到 90 秒，超时按漏怪处理。', reward: '资金 +2' }),
+  Object.freeze({ id: 'aspd', name: '敌方攻速 +20%', text: 'Boss 与随从攻击力 +20%，持续整轮。', reward: '重抽 +1' }),
+]);
 
 /** b.pool broadcasts at most this often (ms). */
 const POOL_MIN_GAP_MS = 250;
@@ -68,12 +82,18 @@ export class MatchBoss {
     const waveBoss = this.isInfinite && !hidden && this.bossWaves && this.bossWaves[0] && this.bossWaves[0].wave
       ? (this.bossWaves[0].wave.primaryBoss || null) : null;
     const bossId = hidden ? this.hiddenBossId : (waveBoss || this.bossId);
+    // 超限 Boss 词缀（业主 2026-10-26）：固化本轮的那一个，第二阶段重开时复用
+    const roundAffix = !hidden && this.isInfinite && this.bossWaves && this.bossWaves[0] && this.bossWaves[0].wave
+      ? (this.bossWaves[0].wave.affix || null) : null;
+    if (roundAffix) this.roundBossAffix = roundAffix;
     // BOSS_HIT tickers ("对敌方领袖造成的伤害超过20% / 50% / 80%"): the player's damage to THIS leader over its pool —
     // the pool's own per-player tally, one pool per boss round. stats.bossDamage (the result's 领袖伤害) adds up both
     // rounds, so it would credit the Final Assault's damage to the hidden leader ("隐藏boss还没打就出了50%播报").
     const hitSteps = new Map();
     // 只有超限局把 round 传下去（→ bossPoolHp 才乘 Boss 血量成长）；普通模式 round 为 undefined，行为不变。
-    const pool = new SharedBossPool(bossPoolHp(this.gd, bossId, alive.length, this.isInfinite ? this.round : undefined), {
+    // 超限·同盟（业主 2026-10-26）：Boss 血池按在场人数放大（2 人 1.6×、3 人 2.2×、4 人 2.8×）；单人恒为 1
+    const partyHp = this.isInfinite && this.mode === 'coop' ? partyBossHpMul(alive.length) : 1;
+    const pool = new SharedBossPool(bossPoolHp(this.gd, bossId, alive.length, this.isInfinite ? this.round : undefined) * partyHp, {
       onHit: (pid, dmg) => {
         const ps = this.players.get(pid);
         if (!ps) return;
@@ -89,14 +109,17 @@ export class MatchBoss {
       },
     });
     this.bossPool = pool;
-    const groups = pairPlayers(alive, createRng(deriveSeed(this.seed, 'boss-pairs')), this.bossPairs);
-    this.bossPairs = groups.map(g => g.map(p => p.playerId));
+    const groups = this._drawBossPairs();
     const reuse = this.bossWaves && this.bossWaves.length === groups.length && this.bossWaves.every((w, i) => w.players.join() === groups[i].map((p) => p.playerId).join());
     this.fields = groups.map((g, i) => {
       const solo = this.isSolo || g.length === 1;
-      const wave = reuse ? this.bossWaves[i].wave : buildBossWave(this.gd, this.rngWaves, this.factions, this.round, { bossId, solo });
+      const wave = reuse ? this.bossWaves[i].wave : buildBossWave(this.gd, this.rngWaves, this.factions, this.round, { bossId, solo, plan: this.jibianPlan, jibian: this.enemyJibianCards });
       // one spawn list per field, shared by the field's players' onBattleStart handlers (edit it in place)
       const spawns = wave.spawns.map((s) => ({ ...s, mods: s.mods ? { ...s.mods } : undefined }));
+      // 鸭爵「神秘顾客」(#839): the draw reads this copy — the field's wave before the bounties, exactly what the bot
+      // rehearsal passes (bot.js bossCandidateOpts). Bounty units are per player, so drawing from the list below would
+      // give each player of the pair a different count / unit / enemy.
+      const waveSpawns = wave.spawns.map((s) => ({ ...s, mods: s.mods ? { ...s.mods } : undefined }));
       // bounties with battles left (a multi-round card lasts MULTI_ROUND_BOUNTY_BATTLES) follow their player into the
       // boss field, on the player's half
       g.forEach((ps, j) => {
@@ -106,11 +129,14 @@ export class MatchBoss {
         const input = ps.battleInput({ side: j === 0 ? 'L' : 'R', colOffset: j === 0 ? 0 : 8 });
         input.lpForBoss = this.teamLp;
         // `side` + `routes`: the player's half of a pair field (spawn-list edits for one player, e.g. 鸭爵's swap)
-        const ev = { input, kind: hidden ? 'hidden' : 'boss', round: this.round, spawns, routes: wave.routes, side: g.length > 1 ? (j === 0 ? 'L' : 'R') : null };
+        const ev = { input, kind: hidden ? 'hidden' : 'boss', round: this.round, spawns, waveSpawns, routes: wave.routes, side: g.length > 1 ? (j === 0 ? 'L' : 'R') : null };
         this.dispatch(ps, 'onBattleStart', ev);
         return ev.input && typeof ev.input === 'object' ? ev.input : input;
       });
       const fieldId = `b${i + 1}`;
+      // 炸惊模拟「锻造器」: a boss / hidden field is shared by the pair, so the summary travels per player
+      // (`flags.forgeByPlayer`); null when nobody forged, which leaves the flags object exactly as it was.
+      const forgeByPlayer = this._forgeByPlayer(g.map((p) => p.playerId));
       const bopts = {
         seed: deriveSeed(this.seed, `${fieldId}:${this.round}`),
         kind: hidden ? 'hidden' : 'boss',
@@ -124,7 +150,10 @@ export class MatchBoss {
         routes: wave.routes,
         sharedBoss: this.bossPool,
         // the round's enemy effects for the leaders' mid-fight summons (server/sim/content/bosses.js summonMods)
-        flags: { layerGainsEnabled: false, ...this.gd.dp, enemyScale: this.gd.enemyScale(this.round), ...(this.isInfinite ? { overlimit: true } : {}), ...(this.traitFlagBundle ? this.traitFlagBundle() : {}) },
+        // 湮灭模拟: the mode's own flags — a boss/hidden field carries the 致命级 terrain and the chaotic targeting, no fog
+        // 炸惊模拟: layer gains stay ON during a boss / hidden field (`!!gd.zhajing` — the reference build's rule); every
+        // other mode keeps the official `false`. flags.layerGainsEnabled gates Battle.addLayers and the settle bound.
+        flags: { layerGainsEnabled: !!this.gd.zhajing, ...this.gd.dp, enemyScale: this.gd.enemyScale(this.round), ...(this.isInfinite ? { overlimit: true } : {}), ...(this.traitFlagBundle ? this.traitFlagBundle() : {}), ...(this.gd.annihilation ? this.gd.annihilationFlags(hidden ? 'hidden' : 'boss', this.round) : null), ...(this.gd.zhajingFlags ? this.gd.zhajingFlags() : null), ...(this.enemyJibianCards && this.enemyJibianCards.length ? { enemyJibian: this.enemyJibianCards.slice() } : null), ...(forgeByPlayer ? { forgeByPlayer } : null) },
         fieldId,
         enemyOverrides: wave.overrides,
         waveId: wave.templateId,
@@ -150,18 +179,36 @@ export class MatchBoss {
     //     以前超限只改了倒计时、没改扣血，扣血仍按「游戏秒」算，于是 2× 时
     //     要等 300 秒真实时间才开始扣血，玩家看到的是「倒计时正常但扣血时间不对」。
     // 现在超限把两者都按真实秒：deadline = now + 120 s，overtimeAt = now + 150 s。
-    const clockDiv = this.isInfinite ? 1 : this.gameSpeed;
-    const onClock = this.isInfinite
-      ? (realS) => this.sched.now() + Math.round(realS * 1000)
-      : (realS) => this.sched.now() + Math.round(((realS * this.gd.combatTimeScale) / clockDiv) * 1000);
+    // 业主 2026-10-26：Boss 轮的倒计时与扣血也按当前倍速折算（与普通战斗同一规则）。
+    // 之前超限固定按真实秒，2× 时 120 秒倒计时却只打 60 秒的战斗，结算/扣血都偏晚。
+    // 2026-10-30（OVERLIMIT.md F2）：超限 R20/25/30… 的 120 s 以前拿不到（gd.overlimit 死开关，levelTime=null），
+    // 所以 deadline 一直是 0；现在由 gd.bossLevelTime 的超限分支给出（R20=120、R25=130、R30=140…）。
+    const clockDiv = this.gameSpeed;
+    const onClock = (realS) => this.sched.now() + Math.round(((realS * this.gd.combatTimeScale) / clockDiv) * 1000);
     const levelTime = this.gd.bossLevelTime(this.round);
+    /**
+     * 超限 R20/25/30… 的关卡秒数是 gamedata.bossLevelTime 的**超限分支合成**出来的（R20=120 s、每档 +10 s），
+     * config 里没有这些回合行。普通 R14/R15（以及任何非超限局）都不是合成时钟，行为逐字节不变。
+     * 加时起点仍按官方 bossOvertimeAfter（150 真实秒）：修倒计时之前（levelTime 为 null）扣血就是 150 s 开始的，
+     * 这里不顺手把它提前 30 秒 —— 本次只补倒计时，不动压力。
+     */
+    const synthBossClock = this.isInfinite && isInfiniteBossRound(this.round);
+    // 记录本场“游戏秒”基准，切倍速时由 _reclockForSpeed 用剩余游戏秒重算。
+    // _reclockForSpeed 的 remaining 是**游戏秒**：合成的 Boss 时钟要先把真实秒换算成游戏秒，
+    // 否则切 2× 时会把 120 s 的倒计时按混用单位缩到 30 s（以前 levelTime 为 null，这条分支根本走不到）。
+    this._combatLimit = synthBossClock ? levelTime * this.gd.combatTimeScale : levelTime;
+    this._combatStartAt = this.sched.now();
+    this._bossClockDiv = clockDiv;
     // Maintainer 2026-10-10: only teams with an AI teammate keep the extra grace after the visible countdown.
     // Freeze this choice for the fight; a disconnect / host transfer cannot change its LP clock midway.
     const team = this.order.filter((p) => !p.left);
     this.bossOvertimeStartReal = team.length > 1 && team.some((p) => p.isBot)
-      ? this.gd.bossOvertimeAfterReal : (levelTime || this.gd.bossOvertimeAfterReal);
+      ? this.gd.bossOvertimeAfterReal
+      : synthBossClock ? this.gd.bossOvertimeAfterReal : (levelTime || this.gd.bossOvertimeAfterReal);
     this.deadline = this.sched.instant || !levelTime ? 0 : onClock(levelTime);
     this.overtimeAt = this.sched.instant ? 0 : onClock(this.bossOvertimeStartReal);
+    // 切换倍速时重算扣血时刻：保留“扣血相对关卡结束的额外游戏秒”（合成时钟同样按游戏秒记）
+    this._overtimeGapGt = Math.max(0, (this.bossOvertimeStartReal - (levelTime || 0)) * (synthBossClock ? this.gd.combatTimeScale : 1));
     if (this.clientCombat) { this._startFinalClient(hidden); return; }
     this._defaultWatch();
     this.markPublic();
@@ -559,6 +606,11 @@ export class MatchBoss {
     // the end condition the server registered first decides (client-side combat: _endFinal — pool 0 → victory, team LP 0
     // → defeat); a boss field's final result may never turn a defeat into a victory (user playtest #6 item 5)
     const victory = this._finalEnding ? this._finalEnding === 'cleared' : this.bossPool.hp <= 0;
+    // 超限档案（业主 2026-10-26）：Boss 击杀与最高盟约层数，只在无限模式记录
+    if (this.isInfinite) {
+      this._trackInfiniteLayers();
+      if (victory && !hidden) this._trackInfiniteBossKill();
+    }
     for (const f of this.fields) {
       const res = resultOf(f);
       this._collectSimErrors(f, res);
@@ -603,6 +655,13 @@ export class MatchBoss {
         // 现在打完 Boss 直接进下一回合，并把 ROUND_START 的等待压到最短 —— 词条卡几乎是立刻弹出的。
         this.later(this.scaled(800), () => {
           this.bossPool = null;
+          // 超限「词条」（业主 2026-10-31）：Boss 轮之后先开一次**词条三选一**（SP/EX/FGO + 未被选走的 LC 的全池），
+          // 选完 finishRelicDraft 再回来走下面既有的词条抉择（TRAIT_DRAFT），这样两套三选一不会挤在同一个时点。
+          if (wantsRelicDraft(this, this.round + 1)) {
+            this._relicPendingRound = this.round + 1;
+            if (this.enterRelicDraft(this.round + 1)) return;
+            this._relicPendingRound = null;
+          }
           // 业主 2026-10-20：词条抉择在「Boss 轮结束、下一轮还没进」的时点切入 ——
           // 以前是先 startRound(21) 再弹，界面上的回合计已经跳到 21 了。
           // 现在先开词条，选完由 finishTraitDraft 调 startRound(21)，选中的怪正好进下一轮。
@@ -615,13 +674,19 @@ export class MatchBoss {
         });
         return;
       }
-      const eligible = victory && !!this.hiddenBossId && hiddenEligible(this.gd, { layerSum: this.hiddenLayerSum, teamLp: this.teamLp });
+      // 湮灭模拟: the pair this Final Assault belongs to (蚀流 3+ has several, 无尽湮灭 endlessly more); every other mode
+      // keeps reading gd.hiddenRound exactly as before
+      const hiddenRound = this.gd.annihilation && this.gd.hiddenAfter ? this.gd.hiddenAfter(this.round) : this.gd.hiddenRound;
+      // 无尽湮灭: the queue is the rule — a won Final Assault always opens its Hidden Core, the layer-sum gate does not apply
+      // (otherwise the endless run would end at the first boss won without 350 layers)
+      const eligible = victory && !!hiddenRound
+        && ((this.gd.annihilation && this.gd.endless === true) || (!!this.hiddenBossId && hiddenEligible(this.gd, { layerSum: this.hiddenLayerSum, teamLp: this.teamLp })));
       this.later(this.scaled(DELAYS.SETTLE), () => {
         if (eligible) {
           this.hiddenReached = true;
           this.bossPool = null;
           this.tickerText('隐秘核心已解锁', FLOW_TICKER_PRIORITY);
-          this.startRound(this.gd.hiddenRound);
+          this.startRound(hiddenRound);
         } else {
           this.finish({ victory, reason: victory ? 'victory' : 'defeat' });
         }
@@ -634,13 +699,111 @@ export class MatchBoss {
         });
         return;
       }
+      // 湮灭模拟（蚀流 3+ / 无尽）: the run has more than one Boss/Hidden-Core pair — a won Hidden Core only closes its
+      // chapter. The last pair (gd.isLastHidden) still ends the run and 无尽湮灭 has no last one; every other mode's gd
+      // has no isLastHidden, so it keeps finishing right here exactly as before.
+      if (victory && this.gd.annihilation && this.gd.isLastHidden && !this.gd.isLastHidden(this.round)) {
+        this.later(this.scaled(DELAYS.SETTLE), () => {
+          this.hiddenReached = false;
+          this.hiddenLayerSum = 0;
+          this.bossPool = null;
+          this._finalEnding = null;
+          this.tickerText(this.gd.isBossRound?.(this.round + 1) ? '下一段最终攻势' : '作战继续', FLOW_TICKER_PRIORITY);
+          this.startRound(this.round + 1);
+        });
+        return;
+      }
       this.later(this.scaled(DELAYS.SETTLE), () => this.finish({ victory: true, hiddenCleared: victory, reason: 'victory' }));
     }
   }
 
+  /**
+   * 超限风险契约：Boss 轮 PREP 时给出三选一（每轮一次）。由 prep.js 的 enterPrep 调用。
+   */
+  offerBossContract() {
+    if (!this.isInfinite || !isInfiniteBossRound(this.round)) return null;
+    if (this.contractOffer && this.contractOffer.round === this.round) return this.contractOffer;
+    if (this.contract && this.contract.round === this.round) return null; // 本轮已经选过
+    this.contractOffer = {
+      round: this.round,
+      cards: BOSS_CONTRACTS.map((c) => ({ id: c.id, name: c.name, text: c.text, reward: c.reward })),
+    };
+    return this.contractOffer;
+  }
+
+  /**
+   * g.contract { id }：选择/放弃本轮契约。'none' = 不签。
+   * 只改本轮 Boss 波（bossWaves[0].wave），奖励直接发到玩家。
+   */
+  chooseContract(ps, id) {
+    if (!this.isInfinite) return fail(ERR.WRONG_PHASE);
+    if (this.phase !== PHASE.PREP) return fail(ERR.WRONG_PHASE);
+    const offer = this.contractOffer;
+    if (!offer || offer.round !== this.round) return fail(ERR.WRONG_PHASE);
+    if (!ps || !ps.alive) return fail(ERR.ELIMINATED);
+    if (id !== 'none') {
+      const card = BOSS_CONTRACTS.find((c) => c.id === id);
+      if (!card) return fail(ERR.BAD_TARGET);
+      const wave = this.bossWaves && this.bossWaves[0] && this.bossWaves[0].wave;
+      if (!wave || !Array.isArray(wave.spawns)) return fail(ERR.WRONG_PHASE);
+      if (id === 'elite') {
+        const base = wave.spawns.find((s) => s && s.tag !== 'boss' && !(s.preview && s.preview.boss))
+          || { enemyKey: 'enemy_1007_slime', routeIndex: 0, mods: { hpMul: 1, atkMul: 1, speedMul: 1 } };
+        wave.spawns.push({
+          time: 8, enemyKey: base.enemyKey, routeIndex: Number.isInteger(base.routeIndex) ? base.routeIndex : 1,
+          count: 1, interval: 0, mods: { ...(base.mods || {}) }, preview: { fly: false, elite: true, boss: false },
+        });
+        ps.funds = (Number(ps.funds) || 0) + 2;
+      } else if (id === 'time') {
+        wave.timeLimit = Math.min(Number(wave.timeLimit) || 180, 90);
+        ps.funds = (Number(ps.funds) || 0) + 2;
+      } else if (id === 'aspd') {
+        for (const s of wave.spawns) {
+          if (!s || (s.tag !== 'boss' && !(s.preview && s.preview.boss))) continue;
+          s.mods = { ...(s.mods || {}), atkMul: (Number(s.mods && s.mods.atkMul) || 1) * 1.2 };
+        }
+        this.traitBonusReroll = (this.traitBonusReroll || 0) + 1;
+      }
+      if (typeof ps.dirty === 'function') ps.dirty();
+      this.contract = { id, round: this.round };
+    } else {
+      this.contract = { id: 'none', round: this.round };
+    }
+    this.contractOffer = null;
+    this.markPublic();
+    return OK;
+  }
+
+  /**
+   * 超限档案：记录一次 Boss 击杀（主/副阶段各一次；同一回合同一阶段只记一次）。
+   * 只在胜利且非隐秘核心时调用；`this.bossWaves[0].wave.primaryBoss` 在第二阶段就是副 Boss。
+   */
+  _trackInfiniteBossKill() {
+    const w = this.bossWaves && this.bossWaves[0] && this.bossWaves[0].wave;
+    const bossId = (w && w.primaryBoss) || this.bossId;
+    const phase = this.bossPhaseNo || 1;
+    const key = `${this.round}:${phase}`;
+    if (!Array.isArray(this.infiniteBossKills)) this.infiniteBossKills = [];
+    if (this.infiniteBossKills.some((k) => k.key === key)) return;
+    const rec = this.gd && typeof this.gd.boss === 'function' ? this.gd.boss(bossId) : null;
+    this.infiniteBossKills.push({ key, round: this.round, phase, id: bossId, name: (rec && rec.name) || bossId });
+  }
+
+  /** 超限档案：记下每个盟约见过的最高层数（每回合结算与 Boss 结算各取一次）。 */
+  _trackInfiniteLayers() {
+    if (!this.maxLayersSeen || typeof this.maxLayersSeen !== 'object') this.maxLayersSeen = {};
+    for (const ps of this.players.values()) {
+      const layers = ps && ps.layers;
+      if (!layers || typeof layers !== 'object') continue;
+      for (const [id, n] of Object.entries(layers)) {
+        const v = Number(n) || 0;
+        if (v > (this.maxLayersSeen[id] || 0)) this.maxLayersSeen[id] = v;
+      }
+    }
+  }
+
   /** 双 Boss 轮还有第二阶段吗（业主 2026-10-21）。 */
-  _doubleBossPending(victory) {
-    if (!victory) return false;
+  _doubleBossPending(victory) {    if (!victory) return false;
     if (this.bossPhaseNo >= 2) return false;
     const w = this.bossWaves && this.bossWaves[0] && this.bossWaves[0].wave;
     return !!(w && w.isDouble && w.secondaryBoss);
@@ -668,7 +831,7 @@ export class MatchBoss {
     this.bossWaves = groups.map((g) => ({
       players: g.slice(),
       wave: buildInfiniteBossWave(this.gd, this.rngWaves, this.round,
-        this._infiniteRoutes(this.round, GEO.BOSS_RECT), { phase: 2 }),
+        this._infiniteRoutes(this.round, GEO.BOSS_RECT), { phase: 2, affix: this.roundBossAffix || null }),
     }));
     this.lastResults = new Map();
     this._finalEnding = null;

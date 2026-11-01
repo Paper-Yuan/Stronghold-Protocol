@@ -1,0 +1,98 @@
+test/content/bonds_core.test.js:149: assert.equal(h.unit('s1_a').s.aspd, 112, 'ASPD stacks still apply');
+test/content/new-modules-023.test.js:39: assert.equal(a.s.aspd, tier === 6 ? 116 : 112);
+test/content/new-modules-023.test.js:43: assert.equal(u.s.aspd, tier === 6 ? 116 : 112);
+test/content/op_huang.test.js:261: if (x3) assert.equal(u.s.aspd, 112);
+test/content/sargon-remove-buff.test.js:52: assert.deepEqual(t.stats, [[1, 112, 1120], [0, 100, 1000]]);
+test/content/standin_sharp2.test.js:139: assert.equal(u.s.aspd, 112, `${id}: two (an air unit counts: she can target it)`);
+test/data-versions.test.js:97: assert.deepEqual(def.expect, { bonds: 30, bands: 42, visibleNonDiy: 112, triggerDeviations: 'default' });
+test/data.test.js:91: test('chess: 474 records (266 official + 207 zhajing + 1 pair scaffold), 112 visible non-DIY (16/17/19/22/19/19 per tier)', () => {
+test/data.test.js:96: assert.equal(visible.length, 112);
+test/doctor.test.js:21: iface('vEthernet (Default Switch)', '172.25.112.1'),
+test/doctor.test.js:28: assert.equal(kind('172.25.112.1'), 'virtual', 'Hyper-V 网卡');
+test/match/annihilation-mods-default.test.js:113: test('visibleChess：缺省 = 官方名册（112 条），关一条只少「只由它带进来」的棋', () => {
+test/match/annihilation-mods-default.test.js:114: assert.equal(OFFICIAL_ROSTER.length, 112, '官方可见棋 112 条（数据一变就该先在这里响）');
+test/match/extension-modes-regression.test.js:234: // ① 卡池：官方 112 条，一条 chess_zj_* 都没有
+test/match/extension-modes-regression.test.js:235: assert.equal(gd.visibleChess.length, 112, '官方四档的卡池规模（改动只能是有意的数据变更）');
+test/match/feedback1-gaps.test.js:226: // +112 谢拉格 layers passed the flat 60 + 4·12 = 108: the server rejected the client and re-simulated (SP_VERIFY=all
+test/match/feedback1-gaps.test.js:248: test('an uncapped freeze trait leaves 谢拉格 bounded only by 999: the honest +112 passes; a bond without such a trait keeps 60 + 4·round', () => {
+test/match/feedback1-gaps.test.js:250: assert.equal(check(s, { kjeragShip: 112 }), 'ok', 'the board of coop/FUNNY/107 R12');
+test/match/feedback1-gaps.test.js:255: assert.equal(check(s, { kjeragShip: 112 }, {}), 'layer bound', 'without game data: the flat bound as before');
+test/match/loadout.test.js:36: assert.equal(visible.length, 112);
+test/match/mode-isolation-matrix.test.js:85: test(`${modeId}：官方池子 = 基线（112 棋 / 51 道具 / 40 策略 / 23 盟约），零 zj 泄漏`, () => {
+test/match/mode-isolation-matrix.test.js:91: assert.equal(g.visibleChess.length, 112, '官方可见棋 112 条');
+test/match/mode-isolation-matrix.test.js:143: assert.equal(g.visibleChess.length, 112);
+test/match/playtest6-matchflow.test.js:474: // GitHub #235 (PR #112 by @Convey123): the official result box at settlement. The 联防's outcome rides the SETTLE
+test/match/pool.test.js:16: assert.equal(pool.entries.size, 112);
+test/match/pool.test.js:208: assert.equal(h.m.pool.entries.size + pub.bannedChess.length, 112);
+test/match/potential.test.js:45: // the operators one may set: the 112-chess roster's charIds (hidden twins share them) and the 71 owned 自选 picks
+test/render/board3d-scene.test.js:49: new Int8Array(buf, 112, 16).set([0, 0, 127, 0, 0, 0, 127, 0, 0, 0, 127, 0, 0, 0, 127, 0]);
+test/render/boardart.test.js:220: assert.deepEqual([a.x, a.y, a.w, a.h], [0, 0, 112, 112]);
+test/render/boardart.test.js:221: assert.deepEqual([b.x, b.y], [112, 0]);
+test/sim/loadout.test.js:298: assert.equal(rep.summary.chess, 112);
+test/sim/loadout.test.js:299: assert.equal(rep.chess.length, 112);
+test/sim/trait_attack_speed.test.js:24: // `interval = bat × (1 + ΣbatPct) × 100 / aspd` (the units.js header), so +12 means 100 → 112 (interval × 100/112), which is
+test/ui/gameLogic.test.js:99: // GitHub #235 (PR #112 by @Convey123): the official round result dialog and its 战斗结束 sound at SETTLE
+test/ui/gameLogic.test.js:103: // object never carried is how the Reduce variant was once dead code, review on PR #112)
+test/ui/gameLogic.test.js:153: // of PR #112) — the official title alone, orange (player report 2026-10-06 on PR #112)
+test/ui/loadout-cards.e2e.test.js:146: assert.equal(await page.$$eval('.lo-card', (els) => els.length), 112, 'the list is the default');
+test/ui/loadout-cards.e2e.test.js:163: assert.equal(deck.cards, 112, 'every visible chess as a card');
+test/ui/loadout.e2e.test.js:117: assert.equal(await page.$$eval('.lo-card', (els) => els.length), 112, 'every visible chess');
+test/ui/loadout.test.js:177: assert.equal(Object.keys(s).length, 112);
+test/ui/loadout.test.js:191: test('roster and filters: 112 visible chess in shop order; tier / class / bond / search / changed-only', () => {
+test/ui/loadout.test.js:193: assert.equal(roster.length, 112);
+test/ui/ownership-roster.test.js:98: assert.equal(list.filter((c) => c.visible === true).length, 224, '474 条里 224 条可见（= 112 名干员的基础 + 精英两形）');
+test/ui/resultbox.e2e.test.js:1: // Browser checks of the round's result box at settlement (ResultDialog; GitHub #235, PR #112 by @Convey123) on the
+test/ui/resultbox.e2e.test.js:5: // The box wears the official dialog's words only (the owner's review of PR #112): title 作战结束, then the LP THIS
+test/ui/versions.e2e.test.js:11: //     and agreeing there switches the open 干员调配 to the new version's operators (95, then 112 back); a replay open when
+test/ui/versions.e2e.test.js:235: assert.match(await guest.page.$eval('.lo-count', (e) => e.textContent), /\/112\b/, '第二期下半: 112 operators');
+test/ui/versions.e2e.test.js:237: for (const [id, n] of [['act1autochess', 95], ['act2autochess', 112]]) {
+devtools/lib/zhajing-panels.mjs:826: // ⑤ pool-ann（同一口径：不出现档位横行，模式名标在「说明」键右侧；名册 = 官方 112 ∪ annMods 带来的那几条）
+devtools/lib/zhajing-panels.mjs:835: // 两个默认开启的内容 mod 会把挂它们的棋带进名册（业主 2026-10-29 默认开）：所以不再写死 112，只要求 ≥112 且包含官方那套
+devtools/lib/zhajing-panels.mjs:836: assert(pool.chessIds >= 112, `湮灭档名册应 ≥112（默认开启两条 mod），实际 ${pool.chessIds}`);
+devtools/render-check-zhajing.mjs:20: // 本轮新增的 9 块面板（大厅两条目 / 炸惊与湮灭二级页 / 干员调配 99 与官方 112 / ban-picker / 名片立绘 / 个人资料 /
+docs/ANNIHILATION-MODS.md:130: | `morphPairing` | `server/match/bondsMeta.js:45`、`server/match/invariants.js:105-107`、`server/match/bot.js:2360`、`server/match/match/rehearsal.js:67/112` | `official` |
+docs/ARCHITECTURE.md:130: | `public/js/screens/sweep.js` | the lobby's S.W.E.E.P. report: bonds, strategies, leaders and the enemy codex; waits for both its files and the selected version's checked content set, with retry after a version check fa
+docs/BALANCE.md:350: | 同盟 标准 (4 AI) | 40 → 40 / 40 | 14.00 → 14.00 | 110.0 → 112.2 | 39.4 → 33.1 | 6 → 6 | 2.59 → 4.10 | 1.9 → 2.3 |
+docs/DATA.md:167: 112 are `visible` (non-hidden, non-DIY) normal chess: per tier 16/17/19/22/19/19. 17 are `isHidden` (retired
+docs/DATA.md:634: `chess 266 (112 visible; 283 selectable skills over the visible chess, 185 module choices over 129 goldens; 74 PRESET / 55 NORMAL / 4 DIY base chess)`, `bonds 23`, `garrisons 249 (43 effect keys)`, `items 115`, `bands 40
+docs/DATA.md:994: | `act2autochess` | 266 (112, 17, 4) | 23 | 40 | 115 | 361 | 249 | 249 | 38 | 13 | 10 | 22 | 5.81 MB |
+docs/design/client.md:295: Screens: **Title** (season art backdrop, 开始 → nickname), **Lobby** (laid out like the event's entry, PR #643 split 6: the official entry backdrop `entry/entry_bkg_01` / `entry_bkg_02` and emblem `entry/season_logo` in ra
+docs/design/client.md:306: version check shows 版本数据校验失败 and 重试 (§35.112).
+docs/design/client.md:507: as its own state (DeckBarLive), so a scroll across tiers redraws the bar, not the 112 cards. ⓘ opens 「卡片视图说明」,
+docs/design/engine.md:265: - kits: all 112 visible chess + hidden ones used by effects (盟约·辅助干员), default skill + talents + trait specifics; tokens. The 72 non-collaboration 6★ DIY operators include 克莱门莎 (§28.1); her launch-day provisional mechani
+docs/design/network.md:27: - `m.public` — full public state on every change (throttled ≤ 10/s): `{ phase, round, lastRound, deadline, serverNow, modeId, difficulty, stageId, factions, disabledBonds, bannedChess, bossId, hiddenBossId?, teamLp?, bos
+docs/design/overview.md:14: - Full content: 112 visible chess (+ elites), their default skills and talents, 23 bonds with layers, all 43 特质 (garrison) effect keys, 56 equipment + Arts, 40 bands, 机变 cards, enemy factions/special enemies, 10 bosses, 
+docs/design/vfx-format.md:1167: nothing. 333 skills have a mode (221 from their data, 112 by name).
+docs/history/0.1.1.md:174: - **Verified, not reproduced** (real Battle, skills made ready while blocking): the 炎 lineup (9 炎, tier 3, 2 炎佑) — 录武官 normal / elite × S1 / S2 holds 卢西恩 / 不祥幻影, casts while holding, deals 0 damage and keeps healing; eve
+docs/history/0.1.1.md:312: - **Found on the way — the client-result layer bound** (`match/fields.js layerAllowanceOf / validateClientResult`): with the bots' new picks the full-match suite's coop/FUNNY/107 (4 humans on AI 托管) reached a 6-谢拉格 freez
+docs/history/0.2.0.md:50: result box and battle-over sounds of the approved PR #112, #235) and four community reports of 2026-10-07 (the
+docs/history/0.2.0.md:347: as the official basic strategy does (§20.2); the 0.2.0 audit after GitHub #124 found 35 AUTO skills among the 112
+docs/history/0.2.0.md:1878: without its game data (#173, §25.22.3), the official result box and battle-over sounds of the approved PR #112 (#235,
+docs/history/0.2.0.md:1970: #### 25.22.4 「提问：联防结算播报没了」 (GitHub #235; PR #112 by @Convey123, approved, never merged): the official 「作战结束」 box and the three BATTLEOVER sounds at settlement — `match/settle.js`, `match/views.js`, `ui/gameLogic/phases.j
+docs/history/0.2.0.md:1975: every file the manifest lists, already carries them). PR #112 targeted 0.1.4's layout; the owner approved it on
+docs/history/0.2.0.md:1991: [ASSUMED mapping, PR #112's; the owner called the three right]. No ticker line for the outcome.
+docs/history/0.2.0.md:1993: in `losses`; a spectator seat or a player eliminated earlier — no box and no sound in any round, where PR #112's last
+docs/history/0.2.2.md:301: measured cadence ratio 112 / 100, back to base the tick the second dies, on again on re-entry; both blackboard routes;
+docs/history/0.2.2.md:874: 511 → 483 / bots 18063 → 18070 / meta 112 → 103) and `coop2-ABYSS-10-boosted` (ai_1 杜宾; first differs in R2; virtualMs 121650 → 124650, rng shop 590 → 589 /
+docs/history/0.3.1.md:254: - **Seen:** an independent review of the 45-pack import. Filtering an unknown bond id wrote the remaining `chess.bonds` and left the piece on `bond.members` and `visibleMembers`. `chess_char_6_12_a` and `_b` dropped `vis
+docs/history/0.3.2.md:1099: small window (1024×600: zh 53 px, en 112 px), and even at 小 the last card was cut by 2–26 px in 16:9 windows; the
+docs/history/0.3.2.md:1832: | 第二期下半 (`data/`) | 266 | 112 | 23 | 40 | 115 | 361 | 249 | 249 | 5 810 393 |
+docs/history/0.3.2.md:2820: over 干员调配 ends with its count on the new version's (95, and 112 back); the strip is an alertdialog and the room's
+docs/history/0.3.2.md:4041: phone's always does); on a coarse phone the overlay starts 2 px past the corner's wrapped width (at 2.8rem, 112 px on a
+docs/history/0.3.2.md:4100: put 「시뮬레이|션」 on every phone at 中 – 特大), Japanese by its line-breaking rules. No finding left in the 112 cases.
+docs/history/0.3.2.md:4726: - `test/golden/act2autochess-v2_1/diy.json` (106): `diy-001`, `diy-002`, `diy-004`, `diy-005`, `diy-007`, `diy-008`, `diy-009`, `diy-010`, `diy-011`, `diy-013`, `diy-014`, `diy-015`, `diy-016`, `diy-017`, `diy-018`, `diy
+docs/history/0.3.2.md:4920: 验证（macOS，Node 22.22.0）：FX 编码、#572 路径、提取/setup 及文档的 9 个定向测试文件为 `113 tests / 112 pass / 0 fail / 1 skipped`（跳过旧版 projectile 索引检查）。`node tools/ci.mjs --keep-going` 运行一次，七步骤全部通过：完整测试 `10172 tests / 10145 pass / 0 fail / 27 s
+docs/history/0.3.2.md:5054: ### 35.112 S.W.E.E.P. 等待所选版本的校验结果（fix53）
+docs/research/03-operators.json:36247: "def": 112,
+docs/research/03-operators.json:62683: "identifier": 112,
+docs/research/03-operators.md:350: | 10 | 阿罗玛 | 小心地滑 (S2) | 手动/自然 | 20/55 -> 21/48 | 23s | DEFAULT | 1288/638/103/20/1/2.9s/5-1 | 1664/778/112/20/1/2.9s/5-1 |
+docs/research/03-operators.md:1703: | all | 133 | 112 | 17 | 4 | 74 | 55 |
+docs/research/04-items.json:14: "EQUIP": "装备: attached to an operator (max 2). 56 distinct items x (normal _a + golden _b) = 112 chess entries.",
+docs/research/04-items.md:9: - 59 shop-table entries: **56 EQUIP** items (each has normal `_a` + golden/进阶 `_b` chess entry = 112) + **3 MAGIC** Arts (no golden) = 115 chess entries in `trapChessDataDict`. [DATA]
+docs/research/05-maps.json:490: {"key":"trap_040_canoe","name":"特制水上平台","pos":[9,16],"dir":"UP","hidden":false,"alias":"trap_040_canoe#112"},
+docs/research/07-assets.md:374: - **Backdrop:** a dark gradient `#15171b → #262a31`, with `bg_mountains_tiled.png` (act2 entry, 112 KB) parallaxed at 20% opacity. Lobby: `entry_bkg_01.png` (0.99 MB) and `season_logo.png`.
+docs/research/09-ux-official.md:285: | `[uc]emoticon_originium_slug.ab` | pic_nice_work_battle, pic_thanks_battle, pic_sorry_battle, pic_bye_battle, pic_distrust_battle, pic_very_soon_battle (≈102–112×79–99), plus room and pick pics (pic_hello, pic_bye, pic
+docs/research/09-ux-official.md:288: | `[uc]emoticon_foolsday_wisdel.ab` | pic_foolwisdel_0{1..6}_battle (112×115) |
+docs/research/18-zhaijing-content.json:2: "_doc": "炸惊模拟（ZHAJING）专属内容记录 —— 由 tools/extract-zhajing-research.mjs 从 modref/v2.1/data（炸惊模拟整合包公开版 v2.1 = Stronghold-Protocol-0.3.1-mod.4 的构建产物） 抽取。\ntools/build-data.mjs 把它们并进 data/chess.json / garrisons.json / bonds.js
+docs/research/18-zhaijing-content.json:47320: "def": 112,
+docs/research/18-zhaijing-content.json:47528: "def": 112,

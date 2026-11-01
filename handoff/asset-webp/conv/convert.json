@@ -1,0 +1,362 @@
+[
+ {
+  "dir": "illust/skin",
+  "name": "char_1035_wisdel_game_9.png",
+  "w": 860,
+  "h": 1019,
+  "pngBytes": 240210,
+  "pngMode": "RGBA",
+  "q90": {
+   "file": "illust_skin__char_1035_wisdel_game_9__q90.webp",
+   "bytes": 74654,
+   "sec": 5.43
+  },
+  "q80": {
+   "file": "illust_skin__char_1035_wisdel_game_9__q80.webp",
+   "bytes": 57400,
+   "sec": 4.496
+  }
+ },
+ {
+  "dir": "illustration",
+  "name": "char_4185_amoris_1.png",
+  "w": 1176,
+  "h": 1176,
+  "pngBytes": 430995,
+  "pngMode": "RGBA",
+  "q90": {
+   "file": "illustration__char_4185_amoris_1__q90.webp",
+   "bytes": 132698,
+   "sec": 3.12
+  },
+  "q80": {
+   "file": "illustration__char_4185_amoris_1__q80.webp",
+   "bytes": 96260,
+   "sec": 3.043
+  }
+ },
+ {
+  "dir": "illust",
+  "name": "char_183_skgoat.png",
+  "w": 1024,
+  "h": 1024,
+  "pngBytes": 637104,
+  "pngMode": "RGBA",
+  "q90": {
+   "file": "illust__char_183_skgoat__q90.webp",
+   "bytes": 222176,
+   "sec": 4.287
+  },
+  "q80": {
+   "file": "illust__char_183_skgoat__q80.webp",
+   "bytes": 170592,
+   "sec": 4.222
+  }
+ },
+ {
+  "dir": "illust/skin",
+  "name": "char_311_mudrok_ambienceSynesthesia_2.png",
+  "w": 1024,
+  "h": 1024,
+  "pngBytes": 653066,
+  "pngMode": "RGBA",
+  "q90": {
+   "file": "illust_skin__char_311_mudrok_ambienceSynesthesia_2__q90.webp",
+   "bytes": 194240,
+   "sec": 5.811
+  },
+  "q80": {
+   "file": "illust_skin__char_311_mudrok_ambienceSynesthesia_2__q80.webp",
+   "bytes": 133680,
+   "sec": 5.862
+  }
+ },
+ {
+  "dir": "illustration",
+  "name": "char_4182_oblvns_1.png",
+  "w": 1176,
+  "h": 1176,
+  "pngBytes": 656203,
+  "pngMode": "RGBA",
+  "q90": {
+   "file": "illustration__char_4182_oblvns_1__q90.webp",
+   "bytes": 195178,
+   "sec": 3.578
+  },
+  "q80": {
+   "file": "illustration__char_4182_oblvns_1__q80.webp",
+   "bytes": 146000,
+   "sec": 3.517
+  }
+ },
+ {
+  "dir": "illust",
+  "name": "char_472_pasngr.png",
+  "w": 1024,
+  "h": 1024,
+  "pngBytes": 809028,
+  "pngMode": "RGBA",
+  "q90": {
+   "file": "illust__char_472_pasngr__q90.webp",
+   "bytes": 254154,
+   "sec": 3.726
+  },
+  "q80": {
+   "file": "illust__char_472_pasngr__q80.webp",
+   "bytes": 185390,
+   "sec": 3.726
+  }
+ },
+ {
+  "dir": "illust/skin",
+  "name": "char_173_slchan_wwf_1.png",
+  "w": 1024,
+  "h": 1024,
+  "pngBytes": 928856,
+  "pngMode": "RGBA",
+  "q90": {
+   "file": "illust_skin__char_173_slchan_wwf_1__q90.webp",
+   "bytes": 279576,
+   "sec": 3.318
+  },
+  "q80": {
+   "file": "illust_skin__char_173_slchan_wwf_1__q80.webp",
+   "bytes": 195782,
+   "sec": 3.227
+  }
+ },
+ {
+  "dir": "illust",
+  "name": "char_127_estell.png",
+  "w": 1177,
+  "h": 1248,
+  "pngBytes": 1699695,
+  "pngMode": "RGBA",
+  "q90": {
+   "file": "illust__char_127_estell__q90.webp",
+   "bytes": 407362,
+   "sec": 8.212
+  },
+  "q80": {
+   "file": "illust__char_127_estell__q80.webp",
+   "bytes": 316088,
+   "sec": 8.109
+  }
+ },
+ {
+  "dir": "illust",
+  "name": "char_4183_mortis.png",
+  "w": 1664,
+  "h": 1664,
+  "pngBytes": 3490123,
+  "pngMode": "RGBA",
+  "q90": {
+   "file": "illust__char_4183_mortis__q90.webp",
+   "bytes": 758706,
+   "sec": 6.239
+  },
+  "q80": {
+   "file": "illust__char_4183_mortis__q80.webp",
+   "bytes": 534002,
+   "sec": 6.458
+  }
+ },
+ {
+  "dir": "illust/skin",
+  "name": "char_279_excu_boc_1.png",
+  "w": 2096,
+  "h": 1785,
+  "pngBytes": 3648900,
+  "pngMode": "RGBA",
+  "q90": {
+   "file": "illust_skin__char_279_excu_boc_1__q90.webp",
+   "bytes": 668538,
+   "sec": 5.053
+  },
+  "q80": {
+   "file": "illust_skin__char_279_excu_boc_1__q80.webp",
+   "bytes": 452106,
+   "sec": 4.69
+  }
+ },
+ {
+  "dir": "illust",
+  "name": "char_1021_kroos2.png",
+  "w": 2136,
+  "h": 2014,
+  "pngBytes": 3828593,
+  "pngMode": "RGBA",
+  "q90": {
+   "file": "illust__char_1021_kroos2__q90.webp",
+   "bytes": 589930,
+   "sec": 8.08
+  },
+  "q80": {
+   "file": "illust__char_1021_kroos2__q80.webp",
+   "bytes": 431388,
+   "sec": 8.117
+  }
+ },
+ {
+  "dir": "illust/skin",
+  "name": "char_1033_swire2_ambienceSynesthesia_4.png",
+  "w": 2348,
+  "h": 1955,
+  "pngBytes": 4980378,
+  "pngMode": "RGBA",
+  "q90": {
+   "file": "illust_skin__char_1033_swire2_ambienceSynesthesia_4__q90.webp",
+   "bytes": 915222,
+   "sec": 4.967
+  },
+  "q80": {
+   "file": "illust_skin__char_1033_swire2_ambienceSynesthesia_4__q80.webp",
+   "bytes": 641488,
+   "sec": 5.368
+  }
+ },
+ {
+  "dir": "illust",
+  "name": "char_4079_haini.png",
+  "w": 2548,
+  "h": 2256,
+  "pngBytes": 5124779,
+  "pngMode": "RGBA",
+  "q90": {
+   "file": "illust__char_4079_haini__q90.webp",
+   "bytes": 875540,
+   "sec": 7.426
+  },
+  "q80": {
+   "file": "illust__char_4079_haini__q80.webp",
+   "bytes": 648876,
+   "sec": 7.699
+  }
+ },
+ {
+  "dir": "illustration",
+  "name": "char_4184_dolris_skin1.png",
+  "w": 2304,
+  "h": 2304,
+  "pngBytes": 5989205,
+  "pngMode": "RGBA",
+  "q90": {
+   "file": "illustration__char_4184_dolris_skin1__q90.webp",
+   "bytes": 1315012,
+   "sec": 13.322
+  },
+  "q80": {
+   "file": "illustration__char_4184_dolris_skin1__q80.webp",
+   "bytes": 936002,
+   "sec": 12.713
+  }
+ },
+ {
+  "dir": "illust/skin",
+  "name": "char_1014_nearl2_epoque_17.png",
+  "w": 2057,
+  "h": 1870,
+  "pngBytes": 6035125,
+  "pngMode": "RGBA",
+  "q90": {
+   "file": "illust_skin__char_1014_nearl2_epoque_17__q90.webp",
+   "bytes": 1127480,
+   "sec": 10.887
+  },
+  "q80": {
+   "file": "illust_skin__char_1014_nearl2_epoque_17__q80.webp",
+   "bytes": 769692,
+   "sec": 10.758
+  }
+ },
+ {
+  "dir": "illust",
+  "name": "char_4137_udflow.png",
+  "w": 2534,
+  "h": 2034,
+  "pngBytes": 6452478,
+  "pngMode": "RGBA",
+  "q90": {
+   "file": "illust__char_4137_udflow__q90.webp",
+   "bytes": 1278332,
+   "sec": 8.728
+  },
+  "q80": {
+   "file": "illust__char_4137_udflow__q80.webp",
+   "bytes": 936470,
+   "sec": 8.527
+  }
+ },
+ {
+  "dir": "illustration",
+  "name": "char_4186_tmoris_skin1.png",
+  "w": 2560,
+  "h": 2560,
+  "pngBytes": 6799679,
+  "pngMode": "RGBA",
+  "q90": {
+   "file": "illustration__char_4186_tmoris_skin1__q90.webp",
+   "bytes": 996690,
+   "sec": 6.838
+  },
+  "q80": {
+   "file": "illustration__char_4186_tmoris_skin1__q80.webp",
+   "bytes": 671422,
+   "sec": 6.487
+  }
+ },
+ {
+  "dir": "illust/skin",
+  "name": "char_1035_wisdel_sale_14.png",
+  "w": 2550,
+  "h": 2501,
+  "pngBytes": 8339181,
+  "pngMode": "RGBA",
+  "q90": {
+   "file": "illust_skin__char_1035_wisdel_sale_14__q90.webp",
+   "bytes": 2001430,
+   "sec": 13.324
+  },
+  "q80": {
+   "file": "illust_skin__char_1035_wisdel_sale_14__q80.webp",
+   "bytes": 1571214,
+   "sec": 12.97
+  }
+ },
+ {
+  "dir": "illustration",
+  "name": "char_4186_tmoris_2.png",
+  "w": 2560,
+  "h": 2560,
+  "pngBytes": 8760866,
+  "pngMode": "RGBA",
+  "q90": {
+   "file": "illustration__char_4186_tmoris_2__q90.webp",
+   "bytes": 1605076,
+   "sec": 7.742
+  },
+  "q80": {
+   "file": "illustration__char_4186_tmoris_2__q80.webp",
+   "bytes": 1076346,
+   "sec": 7.322
+  }
+ },
+ {
+  "dir": "illust",
+  "name": "char_1046_sbell2.png",
+  "w": 2535,
+  "h": 2406,
+  "pngBytes": 8849539,
+  "pngMode": "RGBA",
+  "q90": {
+   "file": "illust__char_1046_sbell2__q90.webp",
+   "bytes": 1689030,
+   "sec": 18.142
+  },
+  "q80": {
+   "file": "illust__char_1046_sbell2__q80.webp",
+   "bytes": 1228618,
+   "sec": 17.921
+  }
+ }
+]

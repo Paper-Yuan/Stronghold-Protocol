@@ -19,7 +19,7 @@ import { useState } from '../../vendor/hooks.module.js';
 import { html, Button, Icon, Modal, Spinner } from './components.js';
 import { useStore } from '../store.js';
 import { contentSet, retryContentSet } from '../content.js';
-import { DEFAULT_VERSION, lobbyVersion, periodLine, serverDefaultVersion, setLobbyVersion, versionLabel } from '../versions.js';
+import { DEFAULT_VERSION, baseRoomMode, lobbyVersion, periodLine, serverDefaultVersion, setLobbyVersion, versionLabel } from '../versions.js';
 import { getLang, t } from '../../../shared/i18n.js';
 
 const cx = (...p) => p.flat().filter(Boolean).join(' ');
@@ -46,7 +46,9 @@ export function VersionPicker({ mode, versions, current, serverDefault, roomMode
     <ul class="verpick__list" role="listbox" aria-label=${t('游戏版本')} data-testid="version-picker">
       ${list.map((v) => {
         const on = v.id === current;
-        const usable = !roomMode || !Array.isArray(v.roomModes) || v.roomModes.includes(roomMode);
+        // 超限房（solo_infinite / coop_infinite）按同方阵的普通模式判断适用性（shared/versions.js baseRoomMode）：
+        // 版本数据只声明 solo / coop，直接 includes(roomMode) 会让超限房里每一行都显示「该版本不支持当前的模拟方式」。
+        const usable = !roomMode || !Array.isArray(v.roomModes) || v.roomModes.includes(baseRoomMode(roomMode));
         const preview = v.id !== DEFAULT_VERSION;
         return html`<li key=${v.id} role="option" aria-selected=${on ? 'true' : 'false'} class=${cx('verpick__row', on && 'is-on', preview && 'is-preview')}>
           <button type="button" class="verpick__pick" data-version=${v.id} data-autofocus=${on ? '' : undefined}

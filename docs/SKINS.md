@@ -10,6 +10,30 @@ each player switches on for themself.
 > `data/skins-installed.json` 又会让更新校验对不上。本实现没有安装报文、不写 `data/` 下的任何文件、不随包发布任何
 > 安装状态：皮肤属于插件，插件怎么落地是 `plugins/` 目录（安装、studio、ZIP）本来就有的问题。
 
+## 打包期内置皮肤（业主 2026-10-25 决定）
+
+本分支除「插件写入外观」外，还内置一份皮肤目录：构建期由 `tools/inject-skins-assets.mjs` 把
+`data/skins-installed.json` 里的皮肤（头像、180×360 立绘小图、Spine、全幅立绘）写进 `data/assets.json` 的
+`chars[<charId>].skins`，并给干员写 `chars[<charId>].illust`。这与上面的插件覆盖并不冲突：浏览器仍然先读
+安装的 manifest，再叠加房间 / 个人外观插件；插件写的同 key 记录优先。
+
+- **仍然没有安装通道**：没有 `room.skin.install`，服务器不下载、不改写任何共享文件；注入只发生在构建期（命令行），
+  素材在 `public/assets/` 下（git 忽略），清单是 `data/skins-installed.json`。
+- 一套内置皮肤只写磁盘上真实存在的字段（`avatar` 必有；`portrait` / `illust` / `spine` 可选）；
+  缺图不回落到远程 URL，选择器按既有规则回落到干员自己的图。
+- 重建顺序：`fetch-assets` → `fetch-skin-*` → `fetch-illusts` → `set-skins-installed` → `build-skins` →
+  `fetch-skin-voices` → `inject-skins-assets`（`npm run skins` 跑后四步；`npm run illusts`、`npm run voices:skins`
+  单独跑）。`fetch-assets` 会保留当前 manifest 里文件仍在的 `skins` / `illust`（`report.preservedBundled`）。
+- 细节与目录约定见 [docs/ASSETS.md](ASSETS.md#bundled-skins-and-full-illustrations-owner-decision-2026-10-25)。
+- 2026-10-25 的落地：**273 套**全部注入；273 张头像 / 273 张 180×360 立绘小图 / 271 张全幅立绘 / 174 套 Spine；
+  干员默认全幅立绘 228 张。上游缺失的 2 张皮肤立绘（`char_1042_phatm2@sightseer#4`、`char_4204_mantra@sightseer#4`）
+  不出现在 manifest 里，选择器按 `portrait → avatar` 回落。
+- 2026-10-31 追加：只有 `data/chess.json`（湮灭记录）选中的四名干员也补上了官方时装 —— 陨星 夏卉 FA240 / 石墨、
+  霜叶 破冰、坚雷 绒布蛋糕、阿米娅 报童 / 见习联结者（`docs/research/08-skins.json` 原只覆盖 research 07 的干员池）。
+  现在共 **279 套 / 178 名干员**：279 张头像、279 张立绘小图、277 张皮肤全幅立绘、180 套 Spine；干员默认全幅立绘 233 张。
+- 皮肤专属战斗语音：`tools/fetch-skin-voices.mjs` 按内置清单生成 `data/skin-voices.json`（cn/jp/en/kr），
+  `public/js/audio.js` 的 `voiceLine(..., skin)` 在该外观穿在身上时优先播放，缺槽回落到干员自己的台词。
+
 ## The data: one overlay, no catalogue file
 
 ```
@@ -243,7 +267,7 @@ exists) gets no section rather than an empty grid.
   740×360 … 932×430) while the 1:2 tile is 264–379 px there, which made 皮肤 the ONE section of that panel a phone could
   not see whole (潜能与练度 / 技能 / 局内数值 / 模组 are 135–163 px in the same panel). Both images of a tile are in the DOM
   (`public/js/ui/skinPicker.js`, `availableSkins().avatar`) and CSS alone decides, so no resize listener and no re-render;
-  273/273 of the installed skins ship an `avatar` of their own (measured), and a row whose manifest has none keeps its
+  279/279 of the installed skins ship an `avatar` of their own (measured), and a row whose manifest has none keeps its
   portrait on every screen. A 1:2 box is still what every wider panel draws, with `min-height: max(1.5rem, 130px)` as
   the floor of a narrow one. Portrait is not a case to solve: a portrait phone is covered by 「请将设备横屏」
   (`public/index.html .rotate-hint`, shown by `public/css/theme.css`

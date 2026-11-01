@@ -95,8 +95,14 @@ export function pieceBondIds(chess, items, getItem = () => null, mode = 'officia
  * @param {{ off?: Set<string>|null, carried?: Array<string|{id:string}>|null, mode?: 'official'|'plus' }} [opts]
  * @returns {Array<{ bondId: string, name: string, off: boolean, worn: boolean, items: Array<{ id: string, name: string, worn: boolean }> }>}
  */
-export function morphPairings(itemRecs, bondRecs, { off = null, carried = null, mode = 'official' } = {}) {
-  const recs = [...(itemRecs || [])].filter(isObj);
+export function morphPairings(itemRecs, bondRecs, { off = null, carried = null, mode = 'official', room = 'official' } = {}) {
+  // 玩法包专属内容（业主 2026-10-28 P0-1）：炸惊专属装备只在炸惊房里能搭出来，官方房 / 湮灭房不该列出这些配对。
+  // `room` = 'official' | 'zhajing' | 'annihilation'（ui/zjView.js extensionRoomOf）；缺省按官方处理。
+  // 另一侧同理：`bondRecs` 已经过 officialBonds() 过滤，配对里指向「这一档看不到的盟约」的行也一并丢掉。
+  const bondSet = Array.isArray(bondRecs) && bondRecs.length ? new Set(bondRecs.map((b) => b && b.bondId).filter(Boolean)) : null;
+  const recs = [...(itemRecs || [])].filter(isObj)
+    .filter((r) => !(r.zjOnly === true && room !== 'zhajing'))
+    .filter((r) => !bondSet || typeof r.giveBondId !== 'string' || bondSet.has(r.giveBondId));
   const byId = new Map(recs.map((r) => [r.id, r]));
   const getItem = (id) => byId.get(id) || null;
   const worn = new Set(grantedBonds(carried, getItem, mode));

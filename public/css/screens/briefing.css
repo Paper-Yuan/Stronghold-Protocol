@@ -271,3 +271,16 @@
 
 /* official versions (DESIGN §35.23): the version's tag beside the 非官方 mark */
 .brief__vertag { position: relative; z-index: 2; align-self: flex-start; margin: .06rem .5rem 0; }
+
+/* 炸惊模拟（briefing.js 的「玩法包」一节）：玩法包自己的名字与简介 + 特殊阶段表。
+   阶段只写名字（R1 惊变阶段 / R2 快递 …），卡面要到惊变阶段当场才揭晓 —— 这一节永远不画卡。 */
+.brief-sec--zj { --sec-icon: none; }
+.brief-zj { display: flex; flex-direction: column; gap: .08rem; padding: 0 .5rem .2rem; }
+.brief-zj__name { font-size: calc(.3 * var(--t)); letter-spacing: .06em; color: var(--text-hi); }
+.brief-zj__desc { margin: 0; font-size: calc(.22 * var(--t)); line-height: 1.6; color: var(--text-md); text-wrap: pretty; }
+.brief-zj__phases { display: flex; flex-wrap: wrap; gap: .06rem; margin: 0; padding: 0; list-style: none; }
+.brief-zj__phases li { display: inline-flex; align-items: baseline; gap: .06rem; padding: .03rem .1rem;
+  font-size: calc(.2 * var(--t)); color: var(--text-md); border: 1px solid var(--line-2); }
+.brief-zj__phases li .num { color: #17d9a0; letter-spacing: .08em; }
+.brief-zj__phases li[data-kind="jibian"] { border-color: rgba(23, 217, 160, .45); }
+.brief-zj__phases li[data-kind="bountyHigh"] { border-color: rgba(242, 189, 62, .4); }

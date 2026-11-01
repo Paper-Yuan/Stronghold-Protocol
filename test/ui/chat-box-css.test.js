@@ -28,25 +28,27 @@ describe('the chat panel is styled and placed', () => {
     assert.match(panel, /bottom:\s*16px/);
     assert.match(panel, /width:\s*230px/);
     assert.match(panel, /z-index:\s*110/, 'under the emote panel (ewheel__panel is 120)');
-    // 日志常显：收起只去掉输入行，不再整块藏起来
+    // 房间那份仍是「日志常显、收起只去掉输入行」；局内自 2026-10-29 第三版起整块默认隐藏（见末尾那条断言）
     assert.match(css, /\.chat-panel:not\(\.is-active\) \.chat-form \{ display: none; \}/);
     assert.doesNotMatch(css, /\.chat-panel:not\(\.is-active\) \.chat-log \{ display: none; \}/);
-    // 半收起 = 只留一行；局内让开角落按钮那一列
+    // 半收起 = 只留一行；局内让开角落按钮那一行
     assert.match(css, /\.chat-panel\.is-collapsed \.chat-log \{ max-height: 34px; \}/);
     assert.match(css, /\.gm \.chat-panel \{\s*left: \.24rem; bottom: \.9rem;/, 'above the four corner buttons');
-    // 更透明 + 不吃指针（只有控件接收点击，日志区域穿透到棋盘）
-    assert.match(css, /\.chat-panel \{[^}]*background: rgba\(14, 18, 17, \.52\)/);
+    // 面板不吃指针（只有控件接收点击，日志区域穿透到棋盘）
     assert.match(css, /\.chat-panel \{[^}]*pointer-events: none/);
     assert.match(css, /\.chat-panel \.chat-log \{ pointer-events: none; \}/);
-    // 局内那份是全透明、窄、可滑动的（一条一行 / 5 行 / 半收起 3 行）
-    assert.match(css, /\.gm \.chat-panel \{[^}]*background: transparent/);
-    assert.match(css, /\.gm \.chat-panel \{[^}]*width: 2\.5rem/);
+    // 局内那份：隐藏 / 唤出、80% 不透明、宽度按桌面 3.4rem（手机单独 61vw / 240px）、日志可滑动（一条一行 / 5 行 / 半收起 3 行）
+    assert.match(css, /\.gm \.chat-panel \{[^}]*display: none/);
+    assert.match(css, /\.gm \.chat-panel \{[^}]*width: min\(max\(3\.4rem, 32px, calc\(220px \* var\(--sp-ui, 1\)\)\), 34vw\)/);
+    assert.match(css, /\.gm \.chat-panel \{[^}]*background: rgba\(14, 18, 17, \.8\)/);
     assert.match(css, /\.gm \.chat-panel \.chat-log \{[^}]*overflow-y: auto; pointer-events: auto/);
-    assert.match(css, /\.gm \.chat-panel \.chat-log \{[^}]*max-height: 80px/);
-    assert.match(css, /\.gm \.chat-panel\.is-collapsed \.chat-log \{ max-height: 48px; \}/);
+    assert.match(css, /\.gm \.chat-panel \.chat-log \{[^}]*max-height: 96px/);
+    assert.match(css, /\.gm \.chat-panel\.is-collapsed \.chat-log \{ max-height: 54px; \}/);
     assert.match(css, /\.gm \.chat-panel \.chat-item \{[^}]*white-space: nowrap/);
     assert.match(css, /\.chat-panel \.chat-header-bar[\s\S]{0,220}pointer-events: auto/);
     assert.match(css, /\.chat-panel \.chat-send-btn \{ pointer-events: auto; \}/);
+    // 手机端单独一条：角落键只有 34px，聊天框不能跟着键宽
+    assert.match(css, /\.gm \.chat-panel \{\n {4}width: min\(61vw, 240px\);/);
     // 唤出对话按键 = 出输入框（按钮在标题栏里，不再是固定圆点）
     const trig = /\.chat-trigger-btn \{([^}]*)\}/.exec(css)?.[1] || '';
     assert.doesNotMatch(trig, /position:\s*fixed/);
@@ -82,11 +84,35 @@ describe('the chat panel is styled and placed', () => {
       assert.ok(css.includes(`.chat-seat.${c}`), `.chat-seat.${c}`);
     }
   });
-});
+  test('the in-match panel: hidden by default, 80% opaque plate, the LAST .gm .chat-panel rule wins, under the emote panel', () => {
+    // 业主 2026-10-29 第三版：聊天框不再常显、也不再全透明 —— 点「对话唤出」键后浮出 80% 不透明底板。
+    // 历史坑（透明版时代）：文件里更早的一条 .gm .chat-panel 写了 transparent，却被文件末尾同名同特异性的规则覆盖，
+    // 而旧测试只断言「文件里存在」。这里仍取**最后一条**（只允许一条声明 background）断言，坑再犯就会红。
+    const plain = css.replace(/\/\*[\s\S]*?\*\//g, '');
+    const bodies = [...plain.matchAll(/\.gm \.chat-panel \{([^}]*)\}/g)].map((m) => m[1]);
+    const plates = bodies.filter((b) => /background/.test(b));
+    assert.equal(plates.length, 1, 'exactly one .gm .chat-panel rule declares a background');
+    const body = plates[0];
+    assert.match(body, /display: none;/, 'nothing on screen until the corner key is pressed');
+    assert.match(plain, /\.gm \.chat-panel\.is-active \{ display: flex; \}/);
+    assert.match(body, /background: rgba\(14, 18, 17, \.8\)/, '80% opaque, not a fully transparent log');
+    assert.match(body, /border-color: rgba\(255, 255, 255, \.12\)/);
+    assert.match(body, /box-shadow: 0 4px 18px #0006/);
+    assert.match(body, /backdrop-filter: none/);
+    assert.doesNotMatch(body, /background: transparent/);
+    // 层级必须低于表情盘：局内聊天 z-index 2 < .gm__corner 的 130（表情盘在角落那层里，emotes.css 里是 5）
+    assert.match(body, /z-index: 2;/);
+    assert.match(read('public/css/screens/game.css'), /\.gm__corner \{[^}]*z-index: 130/);
+    assert.match(read('public/css/emotes.css'), /\.ewheel__panel \{\n {2}position: absolute;[^}]*z-index: 5;/);
+  });
 
-describe('the in-match bond strip is centred', () => {
-  test('.gm__bonds carries symmetric insets', () => {
-    const css = read('public/css/screens/game.css');
-    assert.match(css, /\.gm__bonds \{ position: absolute; left: 2\.5rem; top: 1\.36rem; right: 2\.5rem;/);
+  test('the corner key is the one trigger: no global Enter, no trigger button in the panel, no auto-close on blur', () => {
+    const panel = read('public/js/ui/chatBox.js');
+    assert.doesNotMatch(panel, /e\.key === 'Enter'/, 'a bare Enter must not open the panel (it belongs to the facing wheel)');
+    assert.match(panel, /e\.key === 'Escape'/, 'Esc still closes');
+    assert.doesNotMatch(panel, /onBlur=/, 'blur no longer toggles the panel off under the corner key');
+    const game = read('public/js/screens/game.js');
+    assert.match(game, /data-testid="hud-chat"/, 'the corner 交流 key');
+    assert.match(game, /<\\?\$\{ChatBox\} active=\$\{chatOpen\} onToggle=\$\{setChatOpen\} showTrigger=\$\{false\}/);
   });
 });

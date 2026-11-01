@@ -1,0 +1,973 @@
+{
+  "_doc": "炸惊模拟（ZHAJING）的惊变（jibian）内容 —— 由 tools/extract-zhajing-research.mjs 从 modref/v2.1/data（炸惊模拟整合包公开版 v2.1 = Stronghold-Protocol-0.3.1-mod.4 的构建产物） 的 mode 记录 jibian / enemyJibian 抽取。\ntools/build-data.mjs 把它们拼回 config.modes.mode_{single,multi}_zhajing 的 jibian / enemyJibian 字段（池级参数 + pool 卡片数组）。\n\n我方惊变 99 张（jibian.pool）、敌方惊变 21 张（enemyJibian.pool）；\n惊变羁绊（包内独立的 data/jibianBonds.json）放在本文件的 jibianBonds：{ bonds: [{id, name, tiers, members, effect}] }，\nbuild-data 原样写成 data/jibianBonds.json（服务端 loadData 会自动读成 data.jibianBonds，无需改 DATA_FILES）。\n\n卡片记录字段集（0.3.3 没有同类记录，故以包内全集为准，逐键列出）：bond, desc, effectId, flavor, hidden, iconBond, name, rarity, secondDrawOnly。\n  · rarity：normal / rare / epic / legend / hidden 五档，与 jibian.rarityWeights 的键一致（敌方为 normal / epic / legend）。\n  · bond / iconBond：卡面归属的盟约（选到后计入该盟约的盟约计数 / 惊变羁绊）。\n  · hidden / secondDrawOnly：包内 UI/抽取规则用的标记（原样保留）。\n\n池级参数：jibian.cards（每轮抽几张，包内 3）、jibian.rerolls（可重抽次数，4）、jibian.noCoreBondLegendWeight（20）、\njibian.rarityWeights、enemyJibian.rounds（[1,6]，第 1 / 第 6 回合各抽一次）、enemyJibian.rarityWeights、\nflickerMs / resultMs（揭示动画时长，客户端用）、hidden / testCards（包内调试开关，原样保留）。\n\n卡的实际效果不在这里：它们在 server/sim/content/{jibian,ejibian}.js 的 effectId 注册表里（P2 移植）。\n本文件只负责卡面（effectId/name/desc/rarity/flavor/bond…）与抽取参数，两者以 effectId 对齐。",
+  "_extract": {
+    "source": "modref/v2.1/data（炸惊模拟整合包公开版 v2.1 = Stronghold-Protocol-0.3.1-mod.4 的构建产物）",
+    "generator": "tools/extract-zhajing-research.mjs",
+    "counts": {
+      "own": 99,
+      "enemy": 21,
+      "bondCount": 18,
+      "keys": [
+        "bond",
+        "desc",
+        "effectId",
+        "flavor",
+        "hidden",
+        "iconBond",
+        "name",
+        "rarity",
+        "secondDrawOnly"
+      ]
+    }
+  },
+  "jibian": {
+    "cards": 3,
+    "rarityWeights": {
+      "normal": 35,
+      "rare": 30,
+      "epic": 20,
+      "legend": 10,
+      "hidden": 5
+    },
+    "rerolls": 4,
+    "noCoreBondLegendWeight": 20,
+    "pool": [
+      {
+        "effectId": "jibian_siwanghuigui",
+        "name": "死亡回归",
+        "desc": "仅一次，若你在某回合战斗阶段结束后因为目标生命降为0淘汰，你和你的小队回到此回合整备阶段。",
+        "rarity": "normal",
+        "flavor": "“你总是在想，出门前回应了妈妈的那句话该多好。”"
+      },
+      {
+        "effectId": "jibian_chixiaojianfa",
+        "name": "赤霄剑法",
+        "desc": "你的所有干员造成的伤害改为弱点伤害；获得一名精锐赤刃明霄陈（炎盟约，三技能的百分比伤害最高只会造成2亿）",
+        "rarity": "legend",
+        "flavor": "“拔刀之招，当破即破！”",
+        "bond": "yanShip"
+      },
+      {
+        "effectId": "jibian_cengshudaluan",
+        "name": "？*/）层数/¥）dgxu",
+        "desc": "每回合开始时，你的所有盟约层数会被随机打乱。",
+        "rarity": "hidden",
+        "flavor": "“感谢@凤 提供的灵感”（“阿巴阿巴”）"
+      },
+      {
+        "effectId": "jibian_xuedingedemao",
+        "name": "薛定谔的猫",
+        "desc": "战斗阶段开始时，你的干员各随机获得以下一个效果：·无法被击倒 ·立刻被击倒，并且无法再部署。战斗阶段结束时清空效果",
+        "rarity": "epic",
+        "flavor": "“开始之前，你无法确定干员的死活”"
+      },
+      {
+        "effectId": "jibian_zhuiji",
+        "name": "追忆",
+        "desc": "你和你的队伍在第十三回合结束时不进入第十四回合，变为进入第十回合整备阶段，之后该惊变失效。",
+        "rarity": "hidden",
+        "flavor": "“顺着黑流，我将回到尚有余温的襁褓，回到这片大地仍可被唤作‘婴孩’的旧日时光。”"
+      },
+      {
+        "effectId": "jibian_shenmishangdian",
+        "name": "“神秘”商店",
+        "desc": "你立刻获得一次特殊刷新，此后，你每过3回合获得一次特殊刷新，此次刷新到的干员无视当前商店等级，但价格会变为1-6中的随机整数。",
+        "rarity": "epic",
+        "flavor": "“神秘的不只是商品”"
+      },
+      {
+        "effectId": "jibian_emoxieyue",
+        "name": "恶魔契约",
+        "desc": "你将可以把目标生命值当成资金来使用（无法消耗至0），每回合战斗阶段开始时你会获得3目标生命。",
+        "rarity": "hidden",
+        "flavor": "“魔鬼之吻”"
+      },
+      {
+        "effectId": "jibian_111fuhuoma",
+        "name": "“111真复活吗哥”",
+        "desc": "你的某个干员特质发生了改变。",
+        "rarity": "normal",
+        "flavor": "“男人一生只哭三次”"
+      },
+      {
+        "effectId": "jibian_shiguangzhimo",
+        "name": "“时光之末”",
+        "desc": "仅一次，你和你的小队在非boss战中有玩家目标生命值降为0时不淘汰该玩家，使其目标生命+1并进入下一回合。",
+        "rarity": "rare",
+        "flavor": "“只要到达不了新的循环，过错就还有机会挽回。”"
+      },
+      {
+        "effectId": "jibian_bolidapao",
+        "name": "玻璃大炮",
+        "desc": "你的所有干员在战斗阶段开始时会损失60%最高生命，但是攻击力+100%",
+        "rarity": "normal",
+        "flavor": "“最好的防御是把对面先打死”"
+      },
+      {
+        "effectId": "jibian_fushi",
+        "name": "腐蚀",
+        "desc": "被阻挡的敌方单位每秒失去4%当前防御/法抗",
+        "rarity": "normal",
+        "flavor": "“钢铁也会生锈”"
+      },
+      {
+        "effectId": "jibian_shuangguanghuan",
+        "name": "冰霜光环",
+        "desc": "每10秒，你的干员会对周围敌人施加寒冷，持续2s",
+        "rarity": "normal",
+        "flavor": "“冷得像个笑话”"
+      },
+      {
+        "effectId": "jibian_renshibuwenjianjia",
+        "name": "人事部文件夹",
+        "desc": "使你的可部署人数+2。（可与人事部文档叠加）",
+        "rarity": "epic",
+        "flavor": "“新建文件夹”"
+      },
+      {
+        "effectId": "jibian_daluandou",
+        "name": "大乱斗",
+        "desc": "战斗阶段开始时，你的所有干员部署位置/方向将随机改变；但你的干员攻击力+100%。",
+        "rarity": "normal",
+        "flavor": "“够乱的”"
+      },
+      {
+        "effectId": "jibian_qiangqiang",
+        "name": "？！强强？！",
+        "desc": "你的所有干员基础数值增加15%（基础数值：生命、攻击力、防御力）",
+        "rarity": "normal",
+        "flavor": "纯粹的强大"
+      },
+      {
+        "effectId": "jibian_daoqiangburu",
+        "name": "刀枪不入",
+        "desc": "你的所有干员防御力增加50%",
+        "rarity": "normal",
+        "flavor": "“因为太怕痛所以全点防御力了”"
+      },
+      {
+        "effectId": "jibian_moshubiaoyan",
+        "name": "魔术表演",
+        "desc": "你的所有干员攻击速度+70",
+        "rarity": "normal",
+        "flavor": "“你真的看仔细了吗”"
+      },
+      {
+        "effectId": "jibian_zhebeiwuqing",
+        "name": "这杯我请",
+        "desc": "每回合购买的首个干员和装备售价为0",
+        "rarity": "epic",
+        "flavor": "“今晚全场消费……”"
+      },
+      {
+        "effectId": "jibian_yuansudashi",
+        "name": "元素大师",
+        "desc": "元素损伤爆发的伤害和效果翻倍",
+        "rarity": "normal",
+        "flavor": "“招募动画最安静之人问了吗？”"
+      },
+      {
+        "effectId": "jibian_nimobudao",
+        "name": "你摸不到",
+        "desc": "你的所有干员开启技能后无敌1s",
+        "rarity": "epic"
+      },
+      {
+        "effectId": "jibian_wananjiaoguan",
+        "name": "晚安教官",
+        "desc": "战斗阶段开始时给予场上生命最高的干员一个效果：生命+100%，防御力+400，阻挡数+2",
+        "rarity": "epic",
+        "flavor": "“这一次，我会保护好所有人”"
+      },
+      {
+        "effectId": "jibian_meiguozidan",
+        "name": "美国子弹",
+        "desc": "每次攻击对攻击范围内随机一名敌人发射子弹，造成 40% 攻击力的物理伤害",
+        "rarity": "normal",
+        "bond": "lateranoShip"
+      },
+      {
+        "effectId": "jibian_xunhuanwangfu",
+        "name": "循环往复",
+        "desc": "你的所有干员技力自动恢复速度+1.2/s",
+        "rarity": "rare"
+      },
+      {
+        "effectId": "jibian_tankeyinqing",
+        "name": "坦克引擎",
+        "desc": "你的所有干员获得特质：击杀敌人时获得一个层数，使体型增大 5% 并提升 5% 最大生命值，可无限叠加；阵亡时损失 65% 层数。",
+        "rarity": "epic"
+      },
+      {
+        "effectId": "jibian_suoxiaoyinqing",
+        "name": "缩小引擎",
+        "desc": "你的所有干员获得特质：击杀敌人时获得一个层数，使体型变小 4% 并提升技力恢复速度 0.05/s，可无限叠加；阵亡时损失 65% 层数。",
+        "rarity": "epic"
+      },
+      {
+        "effectId": "jibian_chaodabei",
+        "name": "超大杯",
+        "desc": "获得一件装备，使装备干员获得：攻击力+200%，技力恢复速度+2/s",
+        "rarity": "legend",
+        "flavor": "“你什么杯级？”"
+      },
+      {
+        "effectId": "jibian_chaoqianxiaofei",
+        "name": "超前消费",
+        "desc": "立刻获得 3x+30 资金（x 为选择时所在回合）；此后三个回合（x+1~x+3）整备结算的资金收入固定为 0　备注：不受悬赏怪影响",
+        "rarity": "legend"
+      },
+      {
+        "effectId": "jibian_juanzeng",
+        "name": "捐赠",
+        "desc": "获得15资金",
+        "rarity": "epic"
+      },
+      {
+        "effectId": "jibian_wenmingdecunxu",
+        "name": "文明的存续",
+        "desc": "对敌方造成的真实伤害增加200%",
+        "rarity": "rare",
+        "flavor": "“小小的黑色王冠。”"
+      },
+      {
+        "effectId": "jibian_banteng",
+        "name": "板藤",
+        "desc": "你获得一个“板藤”，你可以选择卖了它获得4资金，但从下一回合开始，每回合它会增加四资金，直到你卖了它",
+        "rarity": "legend",
+        "flavor": "抓住同类，不愿再放手。"
+      },
+      {
+        "effectId": "jibian_rencaishichang",
+        "name": "人才市场",
+        "desc": "你从干员池中随机获得一名干员（无视等级）",
+        "rarity": "normal",
+        "flavor": "“甜双1=1”"
+      },
+      {
+        "effectId": "jibian_xingjieshenti",
+        "name": "星界躯体",
+        "desc": "我方每个干员生命值 +150%。",
+        "rarity": "epic"
+      },
+      {
+        "effectId": "jibian_panduolamohe",
+        "name": "潘多拉魔盒",
+        "desc": "你失去所有惊变，获得三个随机惊变",
+        "rarity": "legend",
+        "flavor": "“你打开了潘多拉的魔盒，你并不知道后果是什么”",
+        "secondDrawOnly": true,
+        "hidden": "选择之后失去使其回到卡池并生效，在这之后卡池依然会生成此惊变，如若选择则无条件（则不失去所有惊变）给予3个随机（不重复）惊变"
+      },
+      {
+        "effectId": "jibian_malubian",
+        "name": "我在马路边捡到一分钱",
+        "desc": "获得5资金",
+        "rarity": "rare"
+      },
+      {
+        "effectId": "jibian_titawu",
+        "name": "踢踏舞",
+        "desc": "你的所有干员获得一个效果：每次普通攻击后获得持续2s的攻击速度+2，可叠加，叠加后刷新持续时间",
+        "rarity": "rare"
+      },
+      {
+        "effectId": "jibian_xixuexixing",
+        "name": "吸血习性",
+        "desc": "你的所有干员获得一个效果：每次普通攻击后恢复自身相当于此次攻击15%伤害的生命",
+        "rarity": "normal",
+        "flavor": "“我的拳头想喝血了”"
+      },
+      {
+        "effectId": "jibian_shixue",
+        "name": "嗜血",
+        "desc": "你的所有干员获得两个效果：每次普通攻击后恢复自身相当于此次攻击25%伤害的生命；你的干员不再成为友方单位的治疗目标",
+        "rarity": "normal",
+        "flavor": "“我不在棺材里睡觉”"
+      },
+      {
+        "effectId": "jibian_bing",
+        "name": "？！冰？！",
+        "desc": "你的所有干员施加的寒冷和冻结效果持续时间翻倍，并额外获得一个效果：对寒冷或冻结中的敌人造成的伤害提高50% 那么，代价是什么呢。。？",
+        "rarity": "rare",
+        "flavor": "“这你冰我？”",
+        "hidden": "选择此惊变后，此玩家每次触发寒冷或冻结时播放冰冰冰音效"
+      },
+      {
+        "effectId": "jibian_zuiegankuai",
+        "name": "罪恶快感",
+        "desc": "你的所有干员获得一个效果：击杀敌方单位后获得20技力",
+        "rarity": "rare",
+        "flavor": "“我可是一直在抑制杀死你的冲动啊”"
+      },
+      {
+        "effectId": "jibian_wocongshanzhonglai",
+        "name": "我从山中来",
+        "desc": "立刻获得一名精锐蕾缪安",
+        "rarity": "epic",
+        "flavor": "“手头端把狙，瞄到的是你”",
+        "bond": "lateranoShip"
+      },
+      {
+        "effectId": "jibian_325799",
+        "name": "？！325799？！",
+        "desc": "获得任务：存活至7.99回合结束 奖励：使你随机一个已激活盟约的层数 +325",
+        "rarity": "legend",
+        "flavor": "“kyzyyz”"
+      },
+      {
+        "effectId": "jibian_daozhuanqu",
+        "name": "倒转区",
+        "desc": "获得任务：任一盟约到达999层 奖励：20资金",
+        "rarity": "epic",
+        "flavor": "电表倒转能不能让我的token倒转"
+      },
+      {
+        "effectId": "jibian_diecengshou",
+        "name": "“叠层手”",
+        "desc": "接下来五回合你通过特质提高的层数翻倍",
+        "rarity": "rare"
+      },
+      {
+        "effectId": "jibian_laozishiguanjun",
+        "name": "老子是冠军他是什么",
+        "desc": "获得一个奖杯，可装备给任意干员使其获得效果：攻击力提升100%",
+        "rarity": "normal",
+        "flavor": "“kskblzdjd”"
+      },
+      {
+        "effectId": "jibian_yanguoyouji",
+        "name": "炎国游记",
+        "desc": "你立刻随机获得一名无视商店等级的【炎】盟约干员，之后每过两回合再次随机获得一名。",
+        "rarity": "epic",
+        "bond": "yanShip"
+      },
+      {
+        "effectId": "jibian_dengdaixue",
+        "name": "等待雪，埋葬这一切",
+        "desc": "你的【谢拉格】盟约干员造成伤害时有30%的概率对敌方施加3s的寒冷和20%脆弱",
+        "rarity": "legend",
+        "bond": "kjeragShip"
+      },
+      {
+        "effectId": "jibian_chunyinzidan",
+        "name": "银质子弹",
+        "desc": "你的【拉特兰】盟约干员造成伤害时会对目标施加一个可叠加的每秒扣除1%最大生命（最多不超过20w）的流血效果，持续3s",
+        "rarity": "legend",
+        "flavor": "“这是一枚银子弹。”",
+        "bond": "lateranoShip"
+      },
+      {
+        "effectId": "jibian_qishijingji",
+        "name": "骑士竞技",
+        "desc": "你的【卡西米尔】盟约干员在仅对一名敌方单位造成伤害时，此伤害提升400%\n获得一名精锐耀骑士临光",
+        "rarity": "legend",
+        "flavor": "“来一个我打一个”",
+        "bond": "kazimierzShip"
+      },
+      {
+        "effectId": "jibian_laobadao",
+        "name": "“老霸道了”",
+        "desc": "你的【卡西米尔】盟约干员在攻击范围总数大于7时，同时对多名敌人造成的伤害提升325%；获得一名精锐玛恩纳",
+        "rarity": "legend",
+        "flavor": "“卡西米尔无权为我授勋”",
+        "bond": "kazimierzShip"
+      },
+      {
+        "effectId": "jibian_jiarudaqun",
+        "name": "加入大群",
+        "desc": "你的【阿戈尔】盟约干员通过特质提升的层数增加100%，当你获得了“浊心斯卡蒂”时，此惊变效果翻倍",
+        "rarity": "legend",
+        "flavor": "“加入光荣的进化吧”",
+        "bond": "egirShip"
+      },
+      {
+        "effectId": "jibian_touziren",
+        "name": "“投资人”",
+        "desc": "你触发的每个【获得时】效果改为触发两次",
+        "rarity": "legend",
+        "flavor": "“hide了”",
+        "bond": "investShip"
+      },
+      {
+        "effectId": "jibian_weiduoliyademimi",
+        "name": "“维多利亚的秘密”",
+        "desc": "你每回合获得一次特殊刷新。效果为：无视商店等级且只会出现【维多利亚】盟约干员，此时购买的首个干员所需资金-1",
+        "rarity": "legend",
+        "bond": "victoriaShip"
+      },
+      {
+        "effectId": "jibian_lala",
+        "name": "？！拉拉？！",
+        "desc": "你的【叙拉古】盟约干员获得额外特质：击倒敌人时，使已激活的【叙拉古】层数+10",
+        "rarity": "rare",
+        "bond": "siracusaShip"
+      },
+      {
+        "effectId": "jibian_geigei",
+        "name": "？！给给？！",
+        "desc": "你获得一名精锐“贝洛内”",
+        "rarity": "legend",
+        "bond": "siracusaShip"
+      },
+      {
+        "effectId": "jibian_xunjie",
+        "name": "迅捷",
+        "desc": "你的【迅捷】盟约+80层（无需激活盟约）",
+        "rarity": "normal",
+        "bond": "swiftShip"
+      },
+      {
+        "effectId": "jibian_jingzhun",
+        "name": "精准",
+        "desc": "你的【精准】盟约+80层（无需激活盟约）",
+        "rarity": "normal",
+        "bond": "preciShip"
+      },
+      {
+        "effectId": "jibian_lingqiao",
+        "name": "灵巧",
+        "desc": "你的【灵巧】盟约+80层。（无需激活盟约）",
+        "rarity": "rare",
+        "bond": "skillfulShip"
+      },
+      {
+        "effectId": "jibian_jianshou",
+        "name": "坚守",
+        "desc": "你的【坚守】盟约+80层。（无需激活盟约）",
+        "rarity": "rare",
+        "bond": "steadShip"
+      },
+      {
+        "effectId": "jibian_huolibuzu",
+        "name": "火力不足恐惧症",
+        "desc": "你的所有干员开启技能后的子弹数翻倍。",
+        "rarity": "rare",
+        "flavor": "“一切恐惧源于火力不足。”",
+        "bond": "lateranoShip"
+      },
+      {
+        "effectId": "jibian_liuyan",
+        "name": "六眼",
+        "desc": "你的所有干员技力消耗-90%。",
+        "rarity": "hidden",
+        "flavor": "“那双眼睛，毋庸置疑！”"
+      },
+      {
+        "effectId": "jibian_qingpaibeibu",
+        "name": "轻拍背部",
+        "desc": "所有因阻挡数不足而穿过你的干员的敌人，每只都会为该干员提供一层次数盾。",
+        "rarity": "rare",
+        "flavor": "“老师，你的术式好碍事呀。”"
+      },
+      {
+        "effectId": "jibian_zheshe",
+        "name": "折射",
+        "desc": "你的所有干员法术抗性增加70。",
+        "rarity": "epic"
+      },
+      {
+        "effectId": "jibian_jiaxiangdi",
+        "name": "假想敌",
+        "desc": "你的干员可以攻击脸上的“空气”，以对攻击范围外的敌人造成伤害，此时的伤害降低至30%",
+        "rarity": "epic",
+        "flavor": "“我每天都在和想象中的敌人战斗”"
+      },
+      {
+        "effectId": "jibian_gaojizishen",
+        "name": "高级资深干员",
+        "desc": "你的下一次刷新变为特殊刷新。效果为：使当前商店槽位的所有干员变为随机六阶干员",
+        "rarity": "epic"
+      },
+      {
+        "effectId": "jibian_zishen",
+        "name": "资深干员",
+        "desc": "你的下一次刷新变为特殊刷新。效果为：使当前商店槽位的所有干员变为随机五阶干员",
+        "rarity": "epic"
+      },
+      {
+        "effectId": "jibian_zibaokache",
+        "name": "自爆卡车",
+        "desc": "你的干员被击倒时会对周围的敌人造成4000%攻击力的法术伤害",
+        "rarity": "normal",
+        "flavor": "“我跟你爆了！”"
+      },
+      {
+        "effectId": "jibian_mofazhuanwuli",
+        "name": "魔法转物理",
+        "desc": "你的干员造成的法术伤害变为物理伤害，此伤害增加30%",
+        "rarity": "normal"
+      },
+      {
+        "effectId": "jibian_wulizhuanmofa",
+        "name": "物理转魔法",
+        "desc": "你的干员造成的物理伤害变为法术伤害",
+        "rarity": "normal"
+      },
+      {
+        "effectId": "jibian_yingfenshen",
+        "name": "“影分身”",
+        "desc": "你的每个已部署干员对自身盟约的盟约人数+1",
+        "rarity": "rare"
+      },
+      {
+        "effectId": "jibian_jinjidiaopai",
+        "name": "紧急调派",
+        "desc": "如果该回合是完美作战，则回合结束给予你一名不超过当前商店等级，来自当前盟约层数最高盟约的干员",
+        "rarity": "rare"
+      },
+      {
+        "effectId": "jibian_gaoluzhipiao",
+        "name": "高卢银行支票",
+        "desc": "你获得一个“高卢银行支票”。每回合整备阶段，它的提现金额会在原有基础上随机增加“+10”“0”“-10”中的一种（最低不会低于0，极小概率为“+100”）；每击杀一个敌方单位、每漏掉一个敌方单位、每被队友兜住一只怪，都会让对应结果的概率在下次结算时提高。提现后它就被兑现掉了。",
+        "rarity": "legend",
+        "flavor": "镶金嵌银、奢华无比的支票本，现在已经无从兑现。"
+      },
+      {
+        "effectId": "jibian_jinjiuzhibei",
+        "name": "金酒之杯",
+        "desc": "整备阶段结束时，你每有 5 资金，所有我方单位的攻击速度 +7；资金超过 50 时，每 5 资金额外使所有我方单位获得 10% 攻击力与生命。",
+        "rarity": "rare",
+        "flavor": "圣人、骑士、虔信之徒，无人不为之疯狂。老天啊，连杯子本身都是纯金的！"
+      },
+      {
+        "effectId": "jibian_jisusongda_normal",
+        "name": "极速送达！",
+        "desc": "你获得一个来自企鹅物流的包裹，把它装备到任意干员身上时会消耗并开启。",
+        "rarity": "normal",
+        "flavor": "你也不知道里面究竟是炸弹还是意大利面。"
+      },
+      {
+        "effectId": "jibian_jisusongda_rare",
+        "name": "极速送达！！",
+        "desc": "你获得一个来自企鹅物流的包裹，把它装备到任意干员身上时会消耗并开启。",
+        "rarity": "rare",
+        "flavor": "你也不知道里面究竟是炸弹还是意大利面。"
+      },
+      {
+        "effectId": "jibian_jisusongda_epic",
+        "name": "极速送达！！！",
+        "desc": "你获得一个来自企鹅物流的包裹，把它装备到任意干员身上时会消耗并开启。",
+        "rarity": "epic",
+        "flavor": "你也不知道里面究竟是炸弹还是意大利面。"
+      },
+      {
+        "effectId": "jibian_erjiguan",
+        "name": "二极管",
+        "desc": "你的干员触发卫戍特质时，会获得以下随机一种效果：\n·此次特质效果翻倍\n·此次特质效果不生效",
+        "rarity": "epic",
+        "flavor": "“非黑即白”"
+      },
+      {
+        "effectId": "jibian_yanrenhuifei",
+        "name": "炎国人会飞",
+        "desc": "使你的所有【炎】干员获得【突袭】盟约，但主动再部署到敌人周围的【突袭】特质只会触发一次",
+        "rarity": "rare",
+        "bond": "yanShip",
+        "flavor": "感谢@凸（^▽^）凸 提供的灵感"
+      },
+      {
+        "effectId": "jibian_touziweilai",
+        "name": "投资未来",
+        "desc": "下一轮惊变阶段时，你的可选惊变只会生成史诗和传说品质",
+        "rarity": "normal",
+        "flavor": "感谢@寄意妖兰荃不察 的投稿"
+      },
+      {
+        "effectId": "jibian_chuncuideqiangda",
+        "name": "纯粹的强大",
+        "desc": "获得一名特殊的精锐斯卡蒂：其基础攻击力与生命 +100%，通过盟约效果获得的生命和攻击翻倍，但阻挡数无法被改变",
+        "rarity": "epic",
+        "flavor": "“一个不漏”\n感谢@培 的投稿"
+      },
+      {
+        "effectId": "jibian_hongsongqishituan",
+        "name": "红松骑士团",
+        "desc": "立刻获得野鬃、灰毫、远牙、焰尾各一名\n若你选择此惊变，本回合你不能出售干员",
+        "rarity": "epic",
+        "flavor": "“红松骑士团，集合！”",
+        "bond": "kazimierzShip"
+      },
+      {
+        "effectId": "jibian_shuwanzhenyan",
+        "name": "数万真言",
+        "desc": "你的干员开启技能所需的技力增加100%，但技能持续期间攻击力+300%。",
+        "rarity": "epic",
+        "flavor": ""
+      },
+      {
+        "effectId": "jibian_sanyuewuri",
+        "name": "三月五日",
+        "desc": "你获得一名精锐结城理。",
+        "rarity": "legend",
+        "flavor": "“要闭上眼睛吗？”",
+        "bond": "seesShip"
+      },
+      {
+        "effectId": "jibian_zonggongji",
+        "name": "总攻击",
+        "desc": "获得一名虎狼丸、一名岳羽由加莉、一名埃癸斯（精锐优先）。",
+        "rarity": "epic",
+        "flavor": "“一起上吧。”",
+        "bond": "seesShip"
+      },
+      {
+        "effectId": "jibian_wuxiaxian",
+        "name": "无下限术式",
+        "desc": "你的所有干员获得99.9%的闪避。",
+        "rarity": "legend",
+        "flavor": "“那你有六眼吗”"
+      },
+      {
+        "effectId": "jibian_jibengong",
+        "name": "回归基本功",
+        "desc": "你的干员不再自动回复技力，但攻击力提升1000%",
+        "rarity": "legend",
+        "flavor": "“别想着花活了。”"
+      },
+      {
+        "effectId": "jibian_moguiyu",
+        "name": "魔鬼鱼",
+        "desc": "获得一名精锐克莱门莎",
+        "rarity": "rare",
+        "flavor": "“遇见我是你的蝠鲼。”",
+        "bond": "egirShip"
+      },
+      {
+        "effectId": "jibian_yinhezhanjian",
+        "name": "银河战舰",
+        "rarity": "epic",
+        "desc": "获得一名八幡海铃、一名祐天寺若麦、一名三角初华（精锐优先）。",
+        "flavor": "“现在我们是一丘之貉了。”",
+        "iconBond": "mujicaShip"
+      },
+      {
+        "effectId": "jibian_yiwangnvshen",
+        "name": "遗忘女神",
+        "rarity": "epic",
+        "desc": "获得一名精锐丰川祥子。",
+        "flavor": "“你愿意将剩余的人生托付于我吗？”"
+      },
+      {
+        "effectId": "jibian_duoshouyeshou",
+        "name": "Belua multorum es capitums.",
+        "rarity": "hidden",
+        "desc": "使若叶睦获得【调和】盟约，并将若叶睦的特质改变为“玩家所有已激活盟约每叠加3层，本干员攻击附带相当于攻击力2%的凋亡损伤，若目标处于凋亡损伤爆发期间，还将额外附带相当于攻击力2%的元素伤害。（每满3层递增一档）”；获得一名精锐若叶睦。",
+        "flavor": "你是多首的怪物。"
+      },
+      {
+        "effectId": "jibian_heishan",
+        "name": "黑闪",
+        "rarity": "hidden",
+        "desc": "你的所有干员暴击率+50；干员触发暴击时，回复3点技力。",
+        "flavor": "“黑闪当平A”",
+        "bond": "modern_strongest"
+      },
+      {
+        "effectId": "jibian_jibangzhili",
+        "name": "羁绊之力",
+        "rarity": "hidden",
+        "desc": "此惊变没有特殊效果，但它属于所有羁绊。",
+        "flavor": "“他们喊着什么友情啊羁绊啊就冲上来了。”"
+      },
+      {
+        "effectId": "jibian_lumang",
+        "name": "鲁莽",
+        "rarity": "normal",
+        "desc": "你的所有干员攻击力提升200%，攻击速度+60，但你的所有干员攻击时会有30%的概率使此次攻击伤害为0。"
+      },
+      {
+        "effectId": "jibian_jizhongyidian",
+        "name": "集中一点",
+        "rarity": "rare",
+        "desc": "接下来的三个回合，你所有的叠层效果都只会给到你已激活盟约中层数最高的盟约。",
+        "bond": "layers_fan"
+      },
+      {
+        "effectId": "jibian_longdechuanren",
+        "name": "龙的传人",
+        "desc": "你的【炎】盟约不再会生成“炎佑”，但你每拥有1000层任意盟约，就会召唤一只攻击力和生命值为场上所有干员总和30%的“炎佑”，上限9只。",
+        "rarity": "legend",
+        "flavor": "“只有一只你说区我不挑你理，九只你该叫我什么？”",
+        "bond": "yanShip"
+      },
+      {
+        "effectId": "jibian_kuaishou",
+        "name": "快手",
+        "desc": "选择此惊变后，获得另外两张可选惊变。",
+        "rarity": "hidden",
+        "flavor": "手快全拿了。"
+      },
+      {
+        "effectId": "jibian_shuihaiyoumengxiang",
+        "name": "谁还有梦想",
+        "desc": "获得一名精锐白铁（维多利亚盟约）。",
+        "rarity": "epic",
+        "flavor": "大铁老师还在升值。",
+        "bond": "victoriaShip"
+      },
+      {
+        "effectId": "jibian_chouminglu",
+        "name": "仇名录",
+        "desc": "我方干员的攻击力+2%，每击倒一名敌人永久额外+0.2%。",
+        "rarity": "rare",
+        "flavor": "“它属于一位没有名字的大炎剑客。‘永远都差一个。’”"
+      },
+      {
+        "effectId": "jibian_bawangxuekai",
+        "name": "霸王血铠",
+        "desc": "我方干员获得相当于自身生命值 20% 的额外攻击力。",
+        "rarity": "rare"
+      },
+      {
+        "effectId": "jibian_xinzhigang",
+        "name": "心之钢",
+        "desc": "我方干员的攻击造成 700（+3% 最大生命值）的额外物理伤害，并为你提供相当于 10% 该伤害的永久最大生命值（每个目标 30 秒冷却时间）；每有 10000 最大生命值，获得 3% 体型提升，至多 30%。",
+        "rarity": "legend"
+      }
+    ]
+  },
+  "enemyJibian": {
+    "enabled": true,
+    "round": 1,
+    "rarityWeights": {
+      "normal": 7,
+      "epic": 2,
+      "legend": 1
+    },
+    "flickerMs": 3000,
+    "resultMs": 3000,
+    "rounds": [
+      1,
+      6
+    ],
+    "testCards": [
+      "ejibian_yijieshenjiang",
+      "ejibian_tiantangzhizao"
+    ],
+    "hidden": {
+      "enabled": true,
+      "label": "隐秘惊变",
+      "flickerMs": 2200,
+      "resultMs": 1800,
+      "pool": [
+        {
+          "effectId": "ejibian_hidden_snap",
+          "name": "打个响指",
+          "desc": "所有盟约层数-50%。",
+          "rarity": "hidden",
+          "flavor": "“蚁人去哪了？”"
+        },
+        {
+          "effectId": "ejibian_hidden_absolute",
+          "name": "绝对数值",
+          "desc": "boss生命值+1000%，攻击+100%。",
+          "rarity": "hidden",
+          "flavor": "“我要的是绝对碾压。”"
+        },
+        {
+          "effectId": "ejibian_hidden_song",
+          "name": "甜美歌喉",
+          "desc": "每15s对全场干员造成相当于boss30%攻击力的神经损伤。",
+          "rarity": "hidden",
+          "flavor": "“无需抵抗我的歌声。”"
+        },
+        {
+          "effectId": "ejibian_hidden_sacrifice",
+          "name": "献祭",
+          "desc": "玩家每拥有100层任意盟约层数，boss生命值+1%。",
+          "rarity": "hidden",
+          "flavor": ""
+        },
+        {
+          "effectId": "ejibian_hidden_purge",
+          "name": "诛伏赐死",
+          "desc": "使玩家的某个盟约层数变为0。（全场相同）",
+          "rarity": "hidden",
+          "flavor": "“有罪！没收！”"
+        },
+        {
+          "effectId": "ejibian_hidden_cannon",
+          "name": "钢铁大炮",
+          "desc": "boss的防御力+300%，攻击力+200%，法术抗性变为70。",
+          "rarity": "hidden",
+          "flavor": "“不是玻璃，但也是大炮。”"
+        },
+        {
+          "effectId": "ejibian_hidden_dps",
+          "name": "dps检测器",
+          "desc": "每50s，boss回复10%最大生命值。",
+          "rarity": "hidden",
+          "flavor": "“很遗憾。”"
+        },
+        {
+          "effectId": "ejibian_hidden_puppet",
+          "name": "傀儡把戏",
+          "desc": "当boss生命值降至1%时，变为随机boss并且恢复生命值至100%，仅一次。",
+          "rarity": "hidden",
+          "flavor": "“我是不灭的。”"
+        },
+        {
+          "effectId": "ejibian_hidden_random",
+          "name": "脚填数值",
+          "desc": "boss的基础数值随机变化。（50%-999%）",
+          "rarity": "hidden",
+          "flavor": "“致敬最没填错的数值。”"
+        },
+        {
+          "effectId": "ejibian_hidden_pandora",
+          "name": "潘多拉·敌",
+          "desc": "随机获得3个敌方惊变。（7.99%的概率为隐秘惊变）",
+          "rarity": "hidden",
+          "flavor": ""
+        }
+      ]
+    },
+    "pool": [
+      {
+        "effectId": "ejibian_qiangqiang",
+        "name": "？！强强？！",
+        "desc": "所有敌方单位（包括boss）基础数值增加20%",
+        "rarity": "normal",
+        "flavor": "“纯粹的强大”"
+      },
+      {
+        "effectId": "ejibian_liangbianzhibian",
+        "name": "量变→质变",
+        "desc": "每回合出怪量增加40%，但基础数值下降60%",
+        "rarity": "normal"
+      },
+      {
+        "effectId": "ejibian_zhibianliangbian",
+        "name": "质变→量变",
+        "desc": "每回合敌人基础数值增强30%，但出怪量减少40%",
+        "rarity": "epic"
+      },
+      {
+        "effectId": "ejibian_jixingjun",
+        "name": "“急行军”",
+        "desc": "所有敌方单位移动速度增加40%",
+        "rarity": "epic",
+        "flavor": "“我知道一个切刀很爽的刀”"
+      },
+      {
+        "effectId": "ejibian_longren",
+        "name": "龙刃，准备出鞘了",
+        "desc": "所有敌方单位的近战伤害增加200%，但失去远程攻击能力（boss不受影响）",
+        "rarity": "legend",
+        "flavor": "“有基佬开我裤链！”"
+      },
+      {
+        "effectId": "ejibian_yajue",
+        "name": "谁选的鸭爵？？",
+        "desc": "第7、8回合时，所有小怪会100%触发鸭爵的效果。",
+        "rarity": "legend",
+        "flavor": "“好了好了这下坏了坏了坏了这下好了”"
+      },
+      {
+        "effectId": "ejibian_xianfazhiren",
+        "name": "先发制人",
+        "desc": "所有敌方单位攻击速度+90",
+        "rarity": "normal"
+      },
+      {
+        "effectId": "ejibian_ruzhiceshi",
+        "name": "入职测试",
+        "desc": "接下来的每回合都有15%的概率使所有小怪变成100只加强版源石虫",
+        "rarity": "epic",
+        "hidden": "源石虫的数值按变之前的怪来"
+      },
+      {
+        "effectId": "ejibian_douququ",
+        "name": "斗蛐蛐",
+        "desc": "敌方单位有10%的概率复刻我方随机单位数值并携带金色特效",
+        "rarity": "epic",
+        "flavor": "“我寻思这边能行”"
+      },
+      {
+        "effectId": "ejibian_qiangxingdingma",
+        "name": "强行顶吗",
+        "desc": "所有怪会在同一时间进场",
+        "rarity": "epic",
+        "flavor": "“他就赌了！”"
+      },
+      {
+        "effectId": "ejibian_zhendejiade",
+        "name": "真的假的",
+        "desc": "所有敌方单位有0.1%的概率三项基础数值都变为1并携带彩色特效",
+        "rarity": "normal",
+        "flavor": "“dnys”"
+      },
+      {
+        "effectId": "ejibian_tongxingzheng",
+        "name": "“通行证”",
+        "desc": "所有敌方单位获得两层次数盾",
+        "rarity": "normal",
+        "flavor": "“我在女友柜子里发现了好几盒通行证”"
+      },
+      {
+        "effectId": "ejibian_shenweinancanglei",
+        "name": "虚化",
+        "desc": "所有敌方单位获得10%的物法双闪",
+        "rarity": "normal",
+        "flavor": "“神威难藏泪”"
+      },
+      {
+        "effectId": "ejibian_jiban",
+        "name": "羁绊",
+        "desc": "只有两只同名怪在场时，这两只怪基础属性+50%，直到其中一只死亡或进蓝门（注:boss可生效）",
+        "rarity": "legend",
+        "flavor": "“不要小瞧我们***所有人的羁绊啊”"
+      },
+      {
+        "effectId": "ejibian_gaodingtouer",
+        "name": "搞定他们的头儿",
+        "desc": "boss血量会降低50%，但道中的敌人基础数值增加30%",
+        "rarity": "epic",
+        "flavor": "“擒贼先擒王”"
+      },
+      {
+        "effectId": "ejibian_yijieshenjiang",
+        "name": "异戒神将",
+        "desc": "敌人获得效果：每次受到攻击增加对应伤害减免0.025%，上限90%",
+        "rarity": "legend",
+        "flavor": "“会适应的。”\n感谢@                  的投稿",
+        "hidden": "叠满 90% 时全场播报「注意！有敌人适应了你的攻击」"
+      },
+      {
+        "effectId": "ejibian_tiantangzhizao",
+        "name": "天堂制造",
+        "desc": "战斗阶段时间-40s",
+        "rarity": "legend",
+        "flavor": "“41、43、47。。。”\n感谢@                  的投稿"
+      },
+      {
+        "effectId": "ejibian_sakaziwushu",
+        "name": "萨卡兹巫术",
+        "desc": "所有敌人造成伤害时会携带此次伤害10%的凋亡损伤",
+        "rarity": "epic"
+      },
+      {
+        "effectId": "ejibian_quanjunchuji",
+        "name": "全军出击",
+        "rarity": "legend",
+        "desc": "boss战时，生成的小怪变为随机悬赏怪。",
+        "flavor": "感谢@                  的投稿"
+      },
+      {
+        "effectId": "ejibian_jingtianmodaotuan",
+        "name": "惊天魔盗团",
+        "rarity": "epic",
+        "desc": "你的上回合剩余资金被清0。",
+        "flavor": "“这是俺拾嘞。”\n感谢@                  的投稿"
+      },
+      {
+        "effectId": "ejibian_jiangshiweicheng",
+        "name": "丧尸围城",
+        "desc": "每回合出怪量增加100%",
+        "rarity": "legend",
+        "flavor": "“真正的量变。”"
+      }
+    ]
+  }
+}

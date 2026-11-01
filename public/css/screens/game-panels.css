@@ -380,11 +380,8 @@ button.bpop__harmony:hover { border-style: solid; color: #fff; }
 
 /* ---- 机变 overlay ---- */
 .spov { position: absolute; inset: 0 0 0 2.8rem; z-index: 20; }
-/* the corner's buttons stay left of the veil (§35.51: in one row at 1280–1920 px 「玩法说明」 sat half and 「全屏」 wholly under it
-   — the HUD is below the overlay): they wrap upwards within the 2.8rem column, as a phone's always do (devices.css) */
-@media (min-width: 768px) {
-  .gm.has-sp .gm__corner { flex-wrap: wrap-reverse; align-content: flex-start; max-width: calc(2.8rem - .24rem - .1rem); }
-}
+/* 左下角在 < 768px 会照 0.3.1 折成两行（css/devices.css 的 wrap-reverse），宽屏就是一行 —— 这里不再钉 flex-wrap：
+   机变浮层打开时角键左端那几颗仍在遮罩之下（HUD 整层在 .spov 之下，这是既有层级），关掉浮层即恢复。 */
 .gm.has-sp .gm__bonds, .gm.has-sp .gm__effects { opacity: 0; pointer-events: none; transition: opacity var(--t-med); }
 .spov__veil { position: absolute; inset: 0; background: linear-gradient(90deg, rgba(8, 10, 10, .58) 0, rgba(8, 10, 10, .8) .5rem, rgba(8, 10, 10, .82)); -webkit-backdrop-filter: blur(2px); backdrop-filter: blur(2px); border-left: 1px solid var(--line); }
 .spov__inner { position: absolute; left: .3rem; right: .5rem; top: 1.14rem; bottom: .5rem; display: flex; flex-direction: column; gap: .16rem; animation: screen-in var(--t-slow) var(--ease-out); }

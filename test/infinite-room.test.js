@@ -56,4 +56,47 @@ describe('超限模拟是单人房', () => {
       assert.ok(coop.seats.length >= 4, '同盟房仍是 4 个座位');
     } finally { await a.terminate().catch(() => {}); await b.terminate().catch(() => {}); }
   });
+
+  // 房内开关超限（业主 2026-10-28）：同盟不再有单独的「超限 · 同盟」建盟入口，改由房主在房间里打开 ——
+  // 与单人走同一条路，都从 选择模拟协议 的「特殊难度」卡进入。room.setInfinite 换的是房间 mode，不是难度。
+  test('房主可在房内开关超限：同盟 ↔ 超限同盟，难度不变、座位不变', async () => {
+    const host = await join('InfHost');
+    const other = await join('InfOther');
+    try {
+      await ok(host, { t: 'room.create', mode: 'coop', difficulty: 'ABYSS' });
+      const st = await host.waitFor('room.state', (s) => !!s.code, 4000);
+      assert.equal(st.mode, 'coop');
+      assert.equal(st.infinite, undefined, '普通房不长出 infinite 键');
+      const code = st.code;
+
+      await ok(host, { t: 'room.setInfinite', on: true });
+      const on = await host.waitFor('room.state', (s) => s.mode === 'coop_infinite', 4000);
+      assert.equal(on.infinite, true, 'room.state 带 infinite 标记');
+      assert.equal(on.difficulty, 'ABYSS', '超限是房间 mode，难度字段不动');
+      assert.equal(on.seats.filter(Boolean).length, 1, '同盟房仍保留 4 个座位槽');
+
+      await ok(host, { t: 'room.setInfinite', on: false });
+      const off = await host.waitFor('room.state', (s) => s.mode === 'coop', 4000);
+      assert.equal(off.infinite, undefined);
+      assert.equal(off.difficulty, 'ABYSS');
+
+      // 权限：非房主不能改
+      await ok(other, { t: 'room.join', code });
+      await err(other, { t: 'room.setInfinite', on: true }, 'NOT_HOST');
+    } finally { await host.terminate().catch(() => {}); await other.terminate().catch(() => {}); }
+  });
+
+  test('单人房房内开超限后仍是单人房：别人进不来', async () => {
+    const host = await join('SoloInfHost');
+    const other = await join('SoloInfOther');
+    try {
+      await ok(host, { t: 'room.create', mode: 'solo', difficulty: 'HARD' });
+      const st = await host.waitFor('room.state', (s) => !!s.code, 4000);
+      await ok(host, { t: 'room.setInfinite', on: true });
+      const on = await host.waitFor('room.state', (s) => s.mode === 'solo_infinite', 4000);
+      assert.equal(on.difficulty, 'HARD', '难度不变');
+      assert.equal(on.seats.filter(Boolean).length, 1, '仍只有 1 个占用座位');
+      await err(other, { t: 'room.join', code: st.code }, 'ROOM_FULL');
+    } finally { await host.terminate().catch(() => {}); await other.terminate().catch(() => {}); }
+  });
 });

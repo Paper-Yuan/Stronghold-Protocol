@@ -42,8 +42,25 @@ export const TEXT_SIZES = Object.freeze(['sm', 'md', 'lg', 'xl']);
  *  otherSkins: 设置「显示其他玩家的皮肤」 (docs/SKINS.md), ON by default — draw the appearance another player chose instead
  *  of the operator's own model. A pure client preference (never sent): off, only this player's own pieces wear a skin.
  */
-export const DEFAULT_SETTINGS = Object.freeze({ bgm: 0.6, sfx: 0.8, voice: 0.8, voiceLang: 'cn', voiceNative: false, voiceOverrides: Object.freeze({}), muted: false, damageNumbers: true, officialDamageNumbers: false, ammoEnergyCount: false, fullscreenWakeLock: false, bondTimers: false, combatMetrics: false, prepDeployFold: true, quality: 'high', officialFx: 'auto', otherSkins: true, textSize: 'sm', keys: DEFAULT_HOTKEYS });
-const QUALITIES = ['high', 'medium', 'low'];
+export const DEFAULT_SETTINGS = Object.freeze({ bgm: 0.6, sfx: 0.8, voice: 0.8, voiceLang: 'cn', voiceNative: false, voiceOverrides: Object.freeze({}), muted: false, damageNumbers: true, officialDamageNumbers: false, ammoEnergyCount: false, fullscreenWakeLock: false, bondTimers: false, combatMetrics: false, prepDeployFold: true, quality: 'high', officialFx: 'auto', otherSkins: true, textSize: 'sm', compatMode: 'auto', keys: DEFAULT_HOTKEYS });
+/**
+ * The values 设置「画面质量」 accepts, weakest first (the dialog's display order is LOW / MEDIUM / HIGH / ULTRA /
+ * EXTREME = 低 / 中 / 高 / 超清 / 极致, ui/settings.js QUALITY). `high` is the default, so a profile stored before
+ * 0.3.4 (`high` / `medium` / `low`) keeps exactly the picture it had — **no migration**; an unknown value (a profile
+ * written by a newer build that this one cannot render, junk) falls back to `high` like it always did.
+ *
+ * A tier's id only selects the numbers in render/app/host.js (QUALITY_RES / BOARD_RES / TIER_SS / TIER_CAP_MUL);
+ * the tier table alone does nothing, because render/app.js's dpr() takes the minimum with devicePixelRatio and with
+ * 机型兼容's tuning.maxPixelRatio (ui/deviceTuning.js). The two new tiers cannot raise the resolution by their table
+ * entry alone — they rely on TIER_SS (super-sampling, lets the ratio pass the device DPR) and TIER_CAP_MUL (raises
+ * the 机型 cap); see host.js. Renderer-side, `setSettings` must accept every id (render/app.js setSettings) or a
+ * click would be stored and then ignored.
+ */
+const QUALITIES = ['high', 'medium', 'low', 'ultra', 'extreme'];
+/** Every value 设置「画面质量」 accepts, weakest first (render/app/host.js QUALITY_IDS is the renderer's copy). */
+export const QUALITY_TIERS = Object.freeze(['low', 'medium', 'high', 'ultra', 'extreme']);
+/** 设置「机型兼容」：auto = 按 UA/GPU 自动；smooth = 强制低画质；hd = 强制高画质（ui/deviceTuning.js）。 */
+export const COMPAT_MODES = Object.freeze(['auto', 'smooth', 'hd']);
 /** The values of 设置「官方特效」 (render/vfx/tier.js OFFICIAL_FX). Display order in the dialog is low / medium / high. */
 export const OFFICIAL_FX_MODES = Object.freeze(['auto', 'off', 'lite', 'full']);
 
@@ -61,8 +78,8 @@ function ammoEnergyCountOf(r) {
 /**
  * Sanitize persisted settings. Retired keys `ammoCount` and `mysticEnergy` are read here and never returned.
  * @param {any} raw
- * @returns {{ bgm: number, sfx: number, voice: number, voiceLang: 'cn'|'jp'|'en'|'kr', voiceNative: boolean, voiceOverrides: Record<string, string>, muted: boolean, damageNumbers: boolean, officialDamageNumbers: boolean, ammoEnergyCount: boolean, fullscreenWakeLock: boolean, bondTimers: boolean, combatMetrics: boolean, prepDeployFold: boolean, quality: 'high'|'medium'|'low', officialFx: 'auto'|'off'|'lite'|'full', otherSkins: boolean,
- *   textSize: 'sm'|'md'|'lg'|'xl', keys: Record<'buy'|'refresh'|'freeze'|'levelUp'|'retreat'|'sell'|'ready', string> }}
+ * @returns {{ bgm: number, sfx: number, voice: number, voiceLang: 'cn'|'jp'|'en'|'kr', voiceNative: boolean, voiceOverrides: Record<string, string>, muted: boolean, damageNumbers: boolean, officialDamageNumbers: boolean, ammoEnergyCount: boolean, fullscreenWakeLock: boolean, bondTimers: boolean, combatMetrics: boolean, prepDeployFold: boolean, quality: 'low'|'medium'|'high'|'ultra'|'extreme', officialFx: 'auto'|'off'|'lite'|'full', otherSkins: boolean,
+ *   textSize: 'sm'|'md'|'lg'|'xl', compatMode: 'auto'|'smooth'|'hd', keys: Record<'buy'|'refresh'|'freeze'|'levelUp'|'retreat'|'sell'|'ready', string> }}
  */
 export function sanitizeSettings(raw) {
   const r = isObj(raw) ? raw : {};
@@ -86,6 +103,7 @@ export function sanitizeSettings(raw) {
     officialFx: OFFICIAL_FX_MODES.includes(r.officialFx) ? r.officialFx : DEFAULT_SETTINGS.officialFx,
     otherSkins: r.otherSkins !== false,
     textSize: TEXT_SIZES.includes(r.textSize) ? r.textSize : DEFAULT_SETTINGS.textSize,
+    compatMode: COMPAT_MODES.includes(r.compatMode) ? r.compatMode : DEFAULT_SETTINGS.compatMode,
     keys: sanitizeHotkeys(r.keys),
   };
 }

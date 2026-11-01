@@ -1,8 +1,9 @@
-/* Emotes (交流) — public/js/ui/emotes.js. Research 09 §4: picture-only bubbles, a 3×2 pager per theme, 1 s cooldown.
-   Sizes follow the official sprites at 1 px = .01rem (1920-wide reference): emoji_btn 151×55, emoji_bkg 313×231,
-   emoji_cell_bkg 85×85, emoji_bubble_bkg 108×97. With the local ui/battle extraction the official sprites are used
+/* Emotes (表情) — public/js/ui/emotes.js. Research 09 §4: picture-only bubbles, a 3×2 pager per theme, 1 s cooldown.
+   Sizes follow the official sprites at 1 px = .01rem (1920-wide reference): emoji_bkg 313×231, emoji_cell_bkg 85×85,
+   emoji_bubble_bkg 108×97. With the local ui/battle extraction the official sprites are used
    (inline --ewheel-* / --ebubble-bg); without it CSS draws look-alikes. Loaded after the screen sheets, so these rules
-   also override the v1 emote rules that may still sit in screens/game.css. */
+   also override the v1 emote rules that may still sit in screens/game.css.
+   业主 2026-10-29（第三版）：角落按钮是正方形（与 ⚙ 等大）的机器人 logo，官方 emoji_btn 151×55 长条贴图不再用于按钮。 */
 
 /* ---- picture / fallback glyph ------------------------------------------------------------------------------- */
 .eart { display: block; width: 100%; height: 100%; object-fit: contain; pointer-events: none; user-select: none; -webkit-user-drag: none; }
@@ -14,44 +15,36 @@
 .eart--glyph .icon { width: 58%; height: 58%; }
 .eart--pending { visibility: hidden; }
 
-/* ---- 交流 button -------------------------------------------------------------------------------------------- */
+/* ---- 表情 button -------------------------------------------------------------------------------------------- */
+/* 正方形、与 .gm__gear 同一套底板与尺寸（业主 2026-10-29：表情键保持正方形，logo 居中）。图标占按钮一半：
+   .28rem / .56rem，和设置键的齿轮一样大；手机上 devices.css 的 .gm__gear 会放大到 34px，这里跟着放大。 */
 .ewheel { position: relative; }
 .ewheel__btn {
-  position: relative; display: flex; align-items: center; justify-content: flex-start; gap: .08rem;
-  height: .56rem; min-width: 1.51rem; padding: 0 .2rem 0 .14rem;
-  background: rgba(8, 11, 10, .85); border: 1px solid var(--line-2); border-radius: .04rem;
-  color: var(--text-md); font-size: .18rem; font-weight: 700; letter-spacing: .1em; line-height: 1;
+  position: relative; display: grid; place-items: center;
+  width: .56rem; height: .56rem; min-width: 0; padding: 0;
+  background: rgba(8, 11, 10, .85); border: 1px solid var(--line-2); border-radius: 0;
+  color: var(--text-lo); line-height: 1;
   transition: color var(--t-fast), border-color var(--t-fast), filter var(--t-fast), opacity var(--t-fast);
 }
-.ewheel__btn .icon { width: .3rem; height: .3rem; color: var(--mint-500); }
+.ewheel__btn .icon { width: .28rem; height: .28rem; }
 .ewheel__btn:hover:not(:disabled), .ewheel__btn.is-on { color: var(--mint-400); border-color: var(--mint-700); }
 .ewheel__btn:disabled { opacity: .5; cursor: not-allowed; }
-/* emoji_btn 151×55: plate x 3–147, y 0–45 (a shadow below); the robot face + '<' chevron span x 22–79. The label gets
-   its own box right of the chevron (x ≥ 57 %), so a font clamped up by a browser minimum font size (CJK Chrome: 12 px)
-   or a small root can never run into the icon; the button never shrinks below 72 px (96 px on touch screens). */
-.ewheel__btn.has-sprite {
-  --ewb-w: max(1.51rem, 32px, calc(72px * var(--sp-ui, 1)));
-  width: var(--ewb-w); height: calc(var(--ewb-w) * 55 / 151); min-width: 0; padding: 0; display: block;
-  background: var(--ewheel-btn) left bottom / 100% 100% no-repeat; border: 0; border-radius: 0; color: #f2f2f2;
-}
-.ewheel__btn.has-sprite .ewheel__label {
-  position: absolute; left: 57%; right: 3%; top: 0; height: 82%;
-  display: flex; align-items: center; justify-content: center; overflow: hidden;
-  font-size: calc(var(--ewb-w) * 18 / 151); letter-spacing: .06em; line-height: 1;
-}
-.ewheel__btn.has-sprite:hover:not(:disabled), .ewheel__btn.has-sprite.is-on { color: #fff; filter: brightness(1.18); border: 0; }
-.ewheel__btn.has-sprite:disabled { opacity: 1; color: rgba(242, 242, 242, .45); }
 .ewheel__btn.is-cooling { cursor: default; }
-.ewheel__label { white-space: nowrap; }
 
 /* ---- panel: one page per theme ----------------------------------------------------------------------------- */
 /* emoji_bkg is 313×231 with a soft shadow margin; its opaque plate spans x 15–297, y 13–212. The cells, the pager
    and the CSS fallback plate all use that geometry. */
+/* 面板锚点 = 正方形表情键的左下角：left -.15rem 抵消官方 emoji_bkg 的透明外边距，让可见底板与键的左缘对齐。 */
 .ewheel__panel {
   position: absolute; left: -.15rem; bottom: calc(100% + .02rem); z-index: 5;
-  width: 3.13rem; height: 2.31rem; padding: 0; box-sizing: border-box;
+  /* 官方 emoji_bkg 的外框：313×231（3.13 × 2.31rem），高度必须写成实值 —— 面板里的格子 / 页点是绝对定位的，
+     写 height:auto 会塌成 0 高，整个面板从按钮顶部往下画（业主 2026-10-29「点出表情页的位置依旧不正确」）。
+     窄屏时宽高一起按 313:231 缩，永远在 100vw 内。 */
+  width: min(3.13rem, calc(100vw - 24px));
+  height: min(2.31rem, calc((100vw - 24px) * 0.738019));
+  padding: 0; box-sizing: border-box;
   background: none; border: 0; border-radius: 0; box-shadow: none;
-  transform-origin: .45rem 100%;
+  transform-origin: .28rem 100%;
   animation: emo-panel-in 160ms var(--ease-out);
   touch-action: pan-y; user-select: none; -webkit-user-select: none;
 }
@@ -140,8 +133,13 @@
 @keyframes emo-bubble-pop { 0% { opacity: 0; scale: .35; } 60% { opacity: 1; scale: 1.1; } 100% { opacity: 1; scale: 1; } }
 @keyframes emo-bubble-out { to { opacity: 0; scale: .92; } }
 
-@media (pointer: coarse) {
-  .ewheel__btn.has-sprite { --ewb-w: max(1.51rem, 32px, calc(96px * var(--sp-ui, 1))); }
+/* 手机（矮屏触屏）：角落键统一放大到 max(.56rem, 32px, 34px * 界面大小)，表情键跟 .gm__gear 一起长。 */
+@media (max-height: 600px) and (pointer: coarse), (max-height: 600px) and (any-pointer: coarse) {
+  .gm__corner .ewheel__btn {
+    width: max(.56rem, 32px, calc(34px * var(--sp-ui, 1)));
+    height: max(.56rem, 32px, calc(34px * var(--sp-ui, 1)));
+  }
+  .gm__corner .ewheel__btn .icon { width: max(.28rem, 17px); height: max(.28rem, 17px); }
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -15,6 +15,7 @@ import { fileURLToPath } from 'node:url';
 import { standInRecord, composeUnitRecord, unitForm, statusKey, IDENTITY_FIELDS } from '../shared/standIn.js';
 import { diyRecordOf, lockedSelection } from '../shared/diy.js';
 import { composeStats, composeTalents, resolveLoadout, loadoutRecord, normalizeChess } from '../server/sim/simdata.js';
+import { isOfficialChess, isOfficialBond } from '../shared/playSets.js';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const DATA = process.env.DATA_DIR || join(ROOT, 'data');
@@ -27,7 +28,12 @@ const bonds = load('bonds');
 const config = load('config');
 const raw = (f) => JSON.parse(readFileSync(join(CACHE, 'excel', `${f}.json`), 'utf8'));
 
-const all = Object.values(chess);
+// Official records only: data/chess.json also carries the play sets' cards merged next to the official roster — 炸惊模拟's
+// imported records (`zhajing` marker / chess_zj_ / chess_chen3_) and 湮灭模拟's 26 `annihilation: true` cards. Their
+// backups and stand-in rows belong to the play sets' own pools, never to the counts docs/DATA.md §18 pins here
+// (shared/playSets.js isOfficialChess — the same predicate tools/golden.mjs and the content tests use).
+const official = Object.values(chess).filter((c) => isOfficialChess(c));
+const all = official;
 const base = all.filter((c) => !c.isGolden);
 const ofType = (t) => base.filter((c) => c.chessType === t);
 const isFiniteNum = (v) => typeof v === 'number' && Number.isFinite(v);
@@ -273,8 +279,17 @@ test('DIY: the 72 owned 6★ picks — a form at every slot status with all thre
   }
   assert.equal(summoners, 27, 'owned picks with summons');
   for (const [id, rec] of Object.entries(backups.tokens)) {
-    assert.deepEqual(Object.keys(rec.variants), rec.owners, `${id}: owners = variant keys`);
-    for (const o of rec.owners) assert.ok(/^char_\w+@\d+\/\d+\/\d+\/\d+$/.test(o) && ownedPool.includes(o.split('@')[0]), `${id}: owner ${o}`);
+    // The merged 炸惊 records choose the same summons under their own chess ids: `variants` / `owners` may each carry
+    // play-set keys besides the official form keys (wisdel's variants name the zj chess, makoto's owners do). The
+    // official form keys must still agree between the two lists and be owned 自选 picks; every other key must be a
+    // play-set chess record, never an official operator that slipped in.
+    const isForm = (o) => /^char_\w+@\d+\/\d+\/\d+\/\d+$/.test(o);
+    const variants = Object.keys(rec.variants);
+    assert.deepEqual(variants.filter(isForm), rec.owners.filter(isForm), `${id}: owners = official variant keys`);
+    for (const o of [...variants, ...rec.owners]) {
+      if (isForm(o)) assert.ok(ownedPool.includes(o.split('@')[0]), `${id}: owner ${o}`);
+      else assert.ok(chess[o] && !isOfficialChess(chess[o]), `${id}: entry ${o} is neither an official form nor a play-set record`);
+    }
   }
   // spot checks (zh_CN client data): 推进之王 E2 Lv60 = 2046 HP / 484 ATK (+ 攻击力+25 at full potential: 509; cost 2 lower),
   // SOL-X stage 1 ATK +60 DEF +40 and its trait, stage 3 the 万兽之王 change; 令 S1 / S2 / S3 summon 清平 / 逍遥 / 弦惊
@@ -317,7 +332,8 @@ test('DIY: the owned-6★ pool and the faction → bond rule (mainPower + every 
     assert.deepEqual([operators[id].rarity, operators[id].obtainable], [6, true], id);
   }
   assert.deepEqual(Object.keys(operators).sort(), [...new Set([...ownedPool, ...prototypes['5'], ...prototypes['6']])].sort());
-  const core = Object.values(bonds).filter((b) => b.isCore && b.powerIdList.length);
+  // official bonds only: the play sets' `zjOnly` / `annOnly` bonds are not part of the official faction → bond rule
+  const core = Object.values(bonds).filter((b) => isOfficialBond(b) && b.isCore && b.powerIdList.length);
   assert.equal(core.length, 8);
   for (const [id, o] of Object.entries(operators)) {
     const hit = core.filter((b) => b.powerIdList.some((p) => o.powers.includes(p))).map((b) => b.bondId);
@@ -351,7 +367,7 @@ test('DIY: powers and the owned pool re-derived from character_table', { skip: !
   }
   // eight owned picks get their core bond from a subPower only (鸿雪, 真言, 假日威龙陈, 弑君者, 予愿安洁莉娜, 涤火杰西卡, 薇薇安娜, 煌;
   // the ninth of the excel, 结城理, is a collab)
-  const coreOf = (powers) => Object.values(bonds).filter((b) => b.isCore && b.powerIdList.some((p) => powers.includes(p))).map((b) => b.bondId);
+  const coreOf = (powers) => Object.values(bonds).filter((b) => isOfficialBond(b) && b.isCore && b.powerIdList.some((p) => powers.includes(p))).map((b) => b.bondId);
   const subOnly = backups.diy.ownedPool.filter((id) => {
     const m = CT[id].mainPower;
     return coreOf([m?.nationId, m?.groupId, m?.teamId].filter(Boolean)).join() !== coreOf(backups.diy.operators[id].powers).join();

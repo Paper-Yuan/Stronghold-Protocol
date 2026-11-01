@@ -19,6 +19,7 @@
 
 import { mergeBehaviourDecls, behaviourValue } from '../../shared/behaviour.js';
 import { setMorphPairing, setMorphSlotPolicy } from './ui/gameLogic/bonds.js';
+import { setPackIdResolver } from './ui/ownershipModel.js';
 import { setPrepLoadout } from './ui/loadoutSync.js';
 
 /** @typedef {{ id: string, hash: string, layer: string, combat: boolean, api?: string }} ModEntry */
@@ -153,6 +154,12 @@ export function registerPackOperators(packId, chessIds) {
 export function getPackIdForChess(chessId) {
   return chessToPackMap.get(chessId) || null;
 }
+
+// 干员持有的名册按玩法包过滤（ui/ownershipModel.js ownershipRoster）：chess → pack 的表在本模块，所以由这里把查表函数
+// 注册回去。ownershipModel 不静态 import 本文件 —— 那会闭合成 loadoutSync → ownershipModel → roomMods → loadoutSync
+// 的环，直接 import ui/loadoutSync.js 的模块会在 OWNERSHIP_PREF 声明之前读到它（TDZ 崩）。注册在这里，于是「谁填这张
+// 表，谁的查表函数就装在名册上」：本模块没加载时名册里没有包可过滤（未注册 = 原来查不到时的 null）。
+setPackIdResolver(getPackIdForChess);
 
 /**
  * 注销一个包的算子：取消启用后它就不该再出现在干员池/编队里（owner：取消启动后不该显示）。

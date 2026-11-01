@@ -8,7 +8,8 @@ per-release revisions and their evidence in `docs/history/`;
 the details in [SIM.md](SIM.md) (battle engine, hooks, SkillSpec), [META.md](META.md) (match engine, prep-phase
 effects), [DATA.md](DATA.md) (generated data), [ASSETS.md](ASSETS.md) (art and audio), [SKINS.md](SKINS.md) (operator
 skins: a cosmetic plugin's `chars[charId].skins`), [I18N.md](I18N.md)
-(languages) and [PLUGINS.md](PLUGINS.md) (plugins and the content hash; [PLUGIN-GUIDE.md](PLUGIN-GUIDE.md) the beginner's guide to
+(languages), [EXTENSION_MODE.md](EXTENSION_MODE.md) (拓展模式: the play-set hall beside the official four difficulties) and
+[PLUGINS.md](PLUGINS.md) (plugins and the content hash; [PLUGIN-GUIDE.md](PLUGIN-GUIDE.md) the beginner's guide to
 making one, in Chinese). The [settlement usage guide](../server/sim/AGENTS.md) gives short examples of the public API. How to set up, test and send a change: [CONTRIBUTING.md](../CONTRIBUTING.md).
 
 ## 1. What runs where
@@ -237,6 +238,7 @@ public/assets/ ─────────▶ public/js/render/, public/js/audio
 | a new client message | `shared/protocol.js` (`C2S`), then `server/match/match/intents.js` (or `server/lobby.js` for `room.*`) | DESIGN §8 |
 | data from the official tables | `tools/build-data.mjs` | rebuild `--offline`, JSON compare, DATA.md, golden |
 | a screen or a HUD panel | `public/js/screens/`, `public/js/ui/`; pure logic in `public/js/ui/gameLogic/` | `test/ui/` |
+| the hub's third entry or the 拓展玩法 hall | `public/js/screens/extensionModes.js` (`EXTENSION_MODES`, `ExtensionHall`), `public/js/screens/lobby.js` (`MODE_CARDS`, `openMode`) | [EXTENSION_MODE.md](EXTENSION_MODE.md) |
 | battle visuals | `public/js/render/fx/kinds.js`, `public/js/render/units.js`, `public/js/render/spine.js` | `test/render/` |
 | a UI text | `t('…')` in the code, the English in `public/i18n/en.json` | I18N.md |
 | a language | `public/i18n/<code>.json` (`node tools/i18n.mjs template <code>`), no code | I18N.md "Adding a language", PACKS.md |

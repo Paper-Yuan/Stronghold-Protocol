@@ -85,8 +85,12 @@ test('screens/bandDraft.js: the 请选择策略 band and the 轮到你 sound, co
   const banner = read('public/js/ui/turnBanner.js');
   assert.match(banner, /export const TURN_BANNER_LATE_MS = 5000;/, 'a bounded wait [ASSUMED], not the 1 s that skipped a cold cache');
   assert.match(banner, /pointer-events none/);
-  // the band never takes a click while it plays late over a turn under way
-  assert.match(read('public/css/screens/protocol-boot.css'), /\.tbanner \{[^}]*pointer-events: none;/);
+  // the band never takes a click while it plays late over a turn under way: the class turnBanner.js renders carries
+  // pointer-events: none (.tbanner--turn in protocol-boot.css — the old shared .tbanner rule is gone), and matchIntro's
+  // .tbanner--intro, now in draft.css, the same
+  assert.match(banner, /<div class="tbanner tbanner--turn"/);
+  assert.match(read('public/css/screens/protocol-boot.css'), /\.tbanner--turn \{[^}]*pointer-events: none;/);
+  assert.match(read('public/css/screens/draft.css'), /\.tbanner--intro \{[^}]*pointer-events: none;/);
   assert.doesNotMatch(banner, /co-op only/);
   assert.match(banner, /\[ASSUMED\] for solo/);
   const boot = read('public/js/ui/protocolBoot.js');

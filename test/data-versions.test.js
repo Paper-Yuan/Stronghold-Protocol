@@ -89,7 +89,12 @@ test('profiles: the default is today\'s build; pins pick a commit per file group
   assert.equal(def.tables, 'default');
   assert.deepEqual(def.config.hiddenCore, { single: 350, multi: 1200 });
   assert.equal(def.config.rules, undefined, 'no rules: the default build emits no config.version');
-  assert.deepEqual(def.expect, { bonds: 23, bands: 40, visibleNonDiy: 112, triggerDeviations: 'default' });
+  // 炸惊模拟 (the ZHAJING play set, 2026-10-28): the default build now merges its 5 bonds and 2 strategies, so the
+  // default profile's expectation carries them (23 official + 5 = 28 bonds, 40 + 2 = 42 strategies). The same evening
+  // 湮灭模拟's eight mods (docs/ANNIHILATION-MODS.md) added their two `annOnly` bonds → 30. The official subset is still
+  // guarded: test/data.test.js asserts「官方 N + 玩法包 M」separately, and the record markers keep them out of every
+  // official mode's view (docs/ZHAJING.md, devtools/check-mode-isolation.mjs).
+  assert.deepEqual(def.expect, { bonds: 30, bands: 42, visibleNonDiy: 112, triggerDeviations: 'default' });
   assert.equal(pinnedShaOf(def, 'excel/activity_table.json'), null);
 
   const { profile: v12 } = await loadProfile('act1autochess');
@@ -469,7 +474,11 @@ test('HTTP (M1, DESIGN §35.23): an enabled version\'s data is served (immutable
     const vanilla = await vr.json();
     assert.equal(Object.hasOwn(vanilla, 'version'), false);
     assert.equal(Object.hasOwn(vanilla, 'bounds'), false);
-    assert.ok(Object.values(vanilla.data).every((d) => /^\/data\/[a-z]+\.json\?v=[0-9a-f]{8}$/.test(d.url)));
+    // The data file names are the loader keys (server/data.js: basename → data.<name>), so they are flat names with
+    // letters, digits and dashes: the machine-written ones are hyphenated (`asset-hashes`, `cdn-resource-config`,
+    // `skin-voices`, `skins-installed`, …), and 炸惊模拟 adds the camelCase `jibianBonds.json`. The shape — one flat
+    // name, `.json`, the content hash — is what this guards (no path, no traversal, no query beyond `v`).
+    assert.ok(Object.values(vanilla.data).every((d) => /^\/data\/[A-Za-z0-9][A-Za-z0-9-]*\.json\?v=[0-9a-f]{8}$/.test(d.url)));
     assert.deepEqual(vanilla, srv.content.index);
     assert.equal((await get(`/cs/${srv.versions.csOf('act1autochess').slice(0, 16)}/data/chess.json`)).status, 404);
     // /healthz names them and their match hosts
@@ -597,8 +606,14 @@ test('pools: resolving by the normal item\'s effectId and the operator\'s charId
     ['eff_acarm052', 1], ['eff_acarm061', 4], ['eff_acarm053', 4]].map(([e, w]) => [byEffect(e), w]));
   assert.deepEqual(pools.pool_chess_glady.items, ['char_263_skadi', 'char_143_ghost', 'char_4137_udflow'].map(byChar));
   assert.deepEqual(pools.pool_char_pinus.weighted, [['char_496_wildmn', 10], ['char_431_ashlok', 10], ['char_430_fartth', 3]].map(([c, w]) => [byChar(c), w]));
-  // the shop-excluded items are the same five, keyed by effectId
-  assert.deepEqual(equip.filter((i) => i.shopExcluded).map((i) => i.effectId).sort(), ['eff_acarm042', 'eff_acarm043', 'eff_acarm044', 'eff_acarm045', 'eff_acarm072']);
+  // the shop-excluded items are the same five, keyed by effectId — 炸惊模拟's own items (`zjOnly`) are shop-excluded
+  // too but belong to the play set, not to the official shop (`GameData.shopItemsByTier` drops them outside ZHAJING);
+  // 湮灭专属 mod's 4 equipments (`annOnly`, bond-milestone rewards) are shop-excluded so that NO mode's shop lists
+  // them (there is no mod-gated annihilation shop pool yet — docs/ANNIHILATION-MODS.md §七 D-3).
+  assert.deepEqual(
+    equip.filter((i) => i.shopExcluded && i.zjOnly !== true && i.annOnly !== true).map((i) => i.effectId).sort(),
+    ['eff_acarm042', 'eff_acarm043', 'eff_acarm044', 'eff_acarm045', 'eff_acarm072'],
+  );
 });
 
 test('pools: 歌蕾蒂娅\'s pool_chess_glady holds the three operators her garrison_39 names in each version (第一期: 安哲拉, not 深巡)', () => {

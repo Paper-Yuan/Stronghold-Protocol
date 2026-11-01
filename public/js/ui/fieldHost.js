@@ -46,9 +46,8 @@ export function hudPadding(kind, size) {
 
 /**
  * HUD geometry (rem) the prep cameras keep clear (they mirror the CSS; test/ui/playtest5-ui.test.js checks the rules):
- * the bond scroller's bottom edge (css/screens/game.css .gm__bonds top 1.36rem + a .bslot's disc and name ≈
- * .8rem, or its 44 px arrow height, whichever is taller; negative margins offset the clip padding) and the shop bar's top edge
- * above the viewport's bottom (css/screens/game-shop.css .shopbar
+ * the bond strip's bottom edge (css/screens/game.css .gm__bonds top 1.36rem + a .bslot: disc .52rem + name ≈
+ * 2.15rem measured) and the shop bar's top edge above the viewport's bottom (css/screens/game-shop.css .shopbar
  * bottom .2rem + .shopbar__row padding .1rem ×2 + card height 2.24rem, plus its 2 px + 1 px borders). The shop bar
  * sits on the viewport's bottom edge even on a notched phone (css/devices.css, DESIGN §18.1).
  * The folded shop (public issue #5): the tab's top edge (.shopbar-tab bottom .2rem + padding .08rem ×2 + its .44rem
@@ -58,8 +57,7 @@ export function hudPadding(kind, size) {
  * css/devices.css).
  */
 export const HUD_REM = Object.freeze({
-  bondStripTop: 1.36, bondStripBottom: 2.16, bondArrowPx: 44,
-  shopBarTop: 2.64, shopBarBorderPx: 3, shopTabTop: 0.8, shopTabBorderPx: 3, cornerTop: 0.8,
+  bondStripBottom: 2.16, shopBarTop: 2.64, shopBarBorderPx: 3, shopTabTop: 0.8, shopTabBorderPx: 3, cornerTop: 0.8,
 });
 
 /**
@@ -72,8 +70,9 @@ export const HUD_REM = Object.freeze({
  * state arrives after the prep camera was set) — unless `opts.shop === false`: the player folded the shop (收起) and the
  * own prep board moved to the official shop-collapsed camera (public issue #5: the board did not grow; screens/game.js
  * asks for it only while a folded bar is shown). Its band is the higher of the folded tab (bottom right) and the corner
- * buttons' hit areas (交流 / ⚙ / 📖 / ⛶, bottom left, measured by `cornerBand`: on a narrow phone two rows of 34 px buttons
- * with 44 px touch areas) — under the official collapsed camera the bench's left pads reach under the corner, and with
+ * buttons' hit areas (交流 / ⚙ / 全屏 …, bottom left, measured by `cornerBand`: on a narrow phone two rows of 34 px keys
+ * with 44 px touch areas, css/devices.css) — under the official collapsed camera the bench's left pads reach under
+ * the corner, and with
  * the tab alone it would cover bench pad 0 at the user's 756×366 Android and the near edge of pads 0–2 at 844×390; both
  * are 1-D bands like the bar's, so every bench pad stays fully pressable. Scouting a
  * teammate's board uses the 'normal' camera: no band. An armed shop card (two-tap buy, css/screens/game-shop.css
@@ -92,7 +91,6 @@ export function hudBands(kind, size, opts) {
   let safeTop = 0;
   let safeBottom = 0;
   let corner = 0;
-  let bondsBottom = 0;
   try {
     rem = parseFloat(getComputedStyle(document.documentElement).fontSize) || 100;
     // 异形屏适配 (ui/screenFit.js): the board's host may not start at the viewport's top — the HUD rects are measured from it
@@ -100,10 +98,6 @@ export function hudBands(kind, size, opts) {
     // the HUD layer starts below the top safe-area inset and ends above the bottom one (css/devices.css .gm__hud)
     const hud = document.querySelector('.gm__hud')?.getBoundingClientRect();
     safeTop = Math.max(0, (hud?.top || 0) - oy);
-    // #678 adds 44 px arrows; a native scrollbar can make the strip taller still.
-    // Keep the same minimum band before mount and while collapsed, so toggling cannot shrink it.
-    const bonds = document.querySelector('.gm__bonds')?.getBoundingClientRect();
-    if (bonds?.height > 0) bondsBottom = Math.max(0, bonds.bottom - oy);
     if (folded) {
       if (hud && hud.bottom - oy > 0) safeBottom = Math.max(0, h - (hud.bottom - oy));
       corner = cornerBand(h, oy);
@@ -113,8 +107,7 @@ export function hudBands(kind, size, opts) {
     ? Math.max(safeBottom + rem * HUD_REM.shopTabTop + HUD_REM.shopTabBorderPx, corner || safeBottom + rem * HUD_REM.cornerTop)
     : rem * HUD_REM.shopBarTop + HUD_REM.shopBarBorderPx;
   return {
-    top: Math.min(h * 0.4, Math.max(bondsBottom, safeTop + Math.max(rem * HUD_REM.bondStripBottom,
-      rem * HUD_REM.bondStripTop + HUD_REM.bondArrowPx))),
+    top: Math.min(h * 0.4, safeTop + rem * HUD_REM.bondStripBottom),
     bottom: Math.min(h * 0.4, bottom),
   };
 }

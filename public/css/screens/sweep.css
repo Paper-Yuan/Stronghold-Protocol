@@ -57,6 +57,25 @@
 .sw-tab.is-on { color: #fff; background: linear-gradient(180deg, #2c3231, #151918); box-shadow: 0 .03rem .1rem rgba(0, 0, 0, .4); }
 .sw-tab__icon { display: grid; place-items: center; }
 .sw-tab__icon .icon { width: max(.28rem, 16px); height: max(.28rem, 16px); }
+/* 原版 / 超限 (业主 2026-10-31): the header's segmented switch — the same pill vocabulary as the tabs, inverted (a dark
+   frame with the lit pill being the current view) so the two controls never read as one row of four tabs. It only changes
+   the view: the tabs below still own the data tab. Both pills are ≥ 32 px tall (a touch target) at every size. */
+.sw-vars { flex: none; display: flex; padding: 3px; background: rgba(22, 27, 26, .55); border: 1px solid rgba(255, 255, 255, .16); border-radius: 999px;
+  box-shadow: 0 .04rem .16rem rgba(0, 0, 0, .25); -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px); }
+.sw-var { display: inline-flex; align-items: center; justify-content: center; min-width: max(1.7rem, 32px, calc(58px * var(--sp-ui, 1)));
+  height: max(.66rem, 32px, calc(36px * var(--sp-ui, 1))); padding: 0 .18rem; font: inherit; font-size: max(calc(.2 * var(--t)), 12px); font-weight: 800;
+  color: rgba(238, 242, 241, .72); background: none; border: 0; border-radius: 999px; cursor: pointer; white-space: nowrap; }
+.sw-var:hover:not(.is-on) { color: #fff; background: rgba(255, 255, 255, .12); }
+.sw-var.is-on { color: #141a19; background: linear-gradient(180deg, #f2f5f4, #c5cdcb); box-shadow: 0 .03rem .1rem rgba(0, 0, 0, .4); }
+.sw-var:focus-visible { outline: 2px solid var(--mint-400); outline-offset: 2px; }
+/* the overlimit view's thin band: a label, never a value — the numbers on this screen are still the official ones */
+.sw-banner { flex: none; display: flex; align-items: center; gap: .12rem; min-height: max(.5rem, 32px);
+  margin: 0 .34rem .08rem .3rem; padding: .03rem .16rem; font-size: max(calc(.17 * var(--t)), 11px); font-weight: 700; color: #2a1c07;
+  background: linear-gradient(90deg, rgba(242, 181, 68, .94), rgba(242, 181, 68, .4)); border: 1px solid rgba(22, 27, 26, .35); border-radius: 2px;
+  box-shadow: 0 .03rem .1rem rgba(0, 0, 0, .22); }
+.sw-banner__icon { flex: none; width: max(.2rem, 12px); height: max(.2rem, 12px); color: #2a1c07; }
+.sw-banner__txt { min-width: 0; }
+.sw-banner__live { margin-left: auto; padding-left: .14rem; border-left: 1px solid rgba(22, 27, 26, .38); color: #10130f; white-space: nowrap; }
 /* ---- body ---- */
 .sw-body { flex: 1 1 auto; min-height: 0; display: grid; grid-template-columns: minmax(0, 4.3fr) minmax(0, 5.7fr); gap: .5rem; padding: .1rem .34rem .26rem .3rem; }
 .sw-left { min-height: 0; display: flex; flex-direction: column; }
@@ -76,6 +95,11 @@
 .sw-hero__img img { width: 82%; height: 82%; object-fit: contain; filter: drop-shadow(0 0 .08rem rgba(255, 255, 255, .25)); }
 .sw-hero__box.is-art .sw-hero__img { width: 88%; height: 88%; border-radius: 0; background: none; box-shadow: none; }
 .sw-hero__box.is-art .sw-hero__img img { width: 100%; height: 100%; object-fit: cover; filter: none; }
+/* 词条详情 (业主 2026-10-31 第三批): the relic's 128 × 128 icon fills the same round ring the tiles use — cover, no
+   bond-glyph filter. The box keeps its size / brackets / ring, and a missing icon still falls back to the Hero's
+   first-character node. */
+.sw-hero__img.sw-hero__img--icon { overflow: hidden; }
+.sw-hero__img.sw-hero__img--icon img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; filter: none; display: block; }
 .sw-hero__txt { font-size: max(calc(.6 * var(--t)), 28px); font-weight: 900; color: rgba(255, 255, 255, .7); }
 .sw-hero__box > .sw-hero__img > .icon, .sw-hero__img > svg { width: 50%; height: 50%; color: rgba(255, 255, 255, .7); }
 .sw-hero__name { margin: .04rem 0 0; font-size: max(calc(.34 * var(--t)), 17px); font-weight: 900; letter-spacing: .06em; text-shadow: 0 1px .08rem rgba(0, 0, 0, .55); }
@@ -93,6 +117,18 @@
 .sw-text .rt span, .sw-cd__desc span, .sw-cd__abil .rt span { font-size: inherit; }
 .sw-text__h { margin: 0 0 .04rem; font-size: max(calc(.21 * var(--t)), 13px); color: var(--mint-300, #8ff0d2); }
 .sw-text .sw-text__bonds { margin-top: .12rem; display: flex; flex-wrap: wrap; align-items: center; gap: .08rem; font-size: max(calc(.16 * var(--t)), 11px); color: #c7cfcd; }
+/* 超限视图的盟约强化块 (业主 2026-11-01): the `inf` overlay's 超限模拟 lines, read from data/bonds.json. A lit plate
+   with the bond's own accent so the strengthening is visible without scrolling the description; the header reuses the
+   existing 超限模拟 msgid. */
+.sw-inf { flex: none; margin-top: .02rem; padding: .08rem .12rem .1rem; border-left: 2px solid var(--mint-400);
+  background: linear-gradient(90deg, rgba(28, 52, 46, .78), rgba(20, 32, 29, .58)); }
+.sw-inf__h { display: flex; align-items: center; gap: .06rem; }
+.sw-inf__line { font-size: max(calc(.2 * var(--t)), 12px); line-height: 1.55; color: #dff7ee; }
+/* 强化行里**只有数值片段**取强调色（业主 2026-11-01：不整句染色）。颜色规则不在这里 —— 它是一个与上下文无关的
+   共享类 `.olb-num`（css/components.css，唯一定义；局内的盟约弹窗 ui/bondStrip.js 用的是同一个类名）。本页只给
+   这一行自己的版式类名；非数值片段是纯文本节点，没有类名。 */
+.sw-inf .rt span { font-size: inherit; }
+.sw-inf__line + .sw-inf__line { margin-top: .06rem; }
 .sw-chip { display: inline-flex; align-items: center; gap: .05rem; padding: .02rem .1rem .02rem .05rem; font-size: max(calc(.16 * var(--t)), 11px); color: #eef2f1;
   background: rgba(24, 29, 28, .8); border: 1px solid rgba(255, 255, 255, .12); text-shadow: none; }
 .sw-chip img { width: max(.22rem, 14px); height: max(.22rem, 14px); object-fit: contain; }
@@ -158,11 +194,29 @@ button.sw-eth:hover { border-color: #fff; }
 .sw-tile__cap { position: absolute; left: 0; right: 0; bottom: 0; padding: .02rem .06rem .04rem; font-size: max(calc(.13 * var(--t)), 9px); line-height: 1.2; text-align: center;
   color: rgba(238, 242, 241, .78); background: linear-gradient(180deg, transparent, rgba(0, 0, 0, .5)); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .sw-tile__hp { position: absolute; right: 3px; top: 3px; padding: 0 .05rem; font-size: max(calc(.13 * var(--t)), 9px); font-weight: 800; line-height: 1.35; color: var(--mint-400); background: rgba(0, 0, 0, .6); }
+/* 超限专属：待定 (业主 2026-10-31) — the empty block standing where one of the five 超限-rewritten bonds' tile would be:
+   the same square (the grid must not reflow), a dashed amber frame, no click (there is nothing to open yet). */
+.sw-tile--pending { cursor: default; background: repeating-linear-gradient(135deg, rgba(24, 29, 28, .52) 0 8px, rgba(24, 29, 28, .32) 8px 16px);
+  border: 1px dashed rgba(242, 181, 68, .55); box-shadow: none; }
+.sw-tile--pending:hover { transform: none; box-shadow: none; }
+.sw-pending { display: grid; place-items: center; max-width: 100%; padding: 0 .02rem; text-align: center; font-size: max(calc(.15 * var(--t)), 10px);
+  font-weight: 800; line-height: 1.3; color: rgba(242, 181, 68, .95); }
+.sw-tile--pending .sw-tile__cap { color: rgba(238, 242, 241, .55); }
 /* 盟约: a dark glyph on a lit disc */
 .sw-disc { display: grid; place-items: center; width: 64%; aspect-ratio: 1; margin-bottom: 10%; border-radius: 50%;
   background: radial-gradient(circle, #f6faf9 0 42%, #d3dddb 64%, #9fb1ae 100%); box-shadow: 0 0 .16rem rgba(220, 240, 236, .45), inset 0 0 .06rem rgba(0, 0, 0, .25); }
 .sw-disc img { width: 70%; height: 70%; object-fit: contain; filter: brightness(0); opacity: .82; }
 .sw-disc__txt { font-size: max(calc(.3 * var(--t)), 15px); font-weight: 900; color: var(--sw-ink); }
+/* 词条: the owner's coloured 128 × 128 icons fill the same disc (no brightness/contain: that pair is for the black bond
+   glyphs). Size stays the container's (64% of the tile), so 1920 and 792 need no separate number. */
+.sw-disc.sw-disc--art { overflow: hidden; }
+.sw-disc.sw-disc--art img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; filter: none; opacity: 1; display: block; }
+/* 词条 · 负面那一段 (业主 2026-10-31 第二批): the same tile / disc / caption; only the ring and the id take the existing
+   `neg` group colour of the overlay and the picked panel (#ff4d4d / #ff8a8a, css/screens/overlimitRelics.css) — no new
+   colour, no new layout, no new text. */
+.sw-disc.sw-disc--neg { box-shadow: 0 0 .16rem rgba(255, 77, 77, .5), inset 0 0 0 2px #ff4d4d; }
+.sw-tile--neg { border-color: rgba(255, 77, 77, .38); }
+.sw-tile--neg .sw-tile__hp { color: #ff8a8a; }
 /* 策略: the portrait (its own ring is part of the icon) */
 .sw-face { display: grid; place-items: center; width: 92%; aspect-ratio: 1; margin-bottom: 4%; overflow: hidden; }
 .sw-face img { width: 100%; height: 100%; object-fit: cover; }
@@ -242,6 +296,10 @@ button.sw-eth:hover { border-color: #fff; }
 .sw-cd__abil { margin: 0; padding: 0 .1rem 0 .3rem; display: flex; flex-direction: column; gap: .05rem; font-size: max(calc(.18 * var(--t)), 12px); line-height: 1.5; color: #e4e9e7; }
 @media (max-height: 520px) {
   .sw-top, .sw-codex__top { height: 44px; }
+  /* 原版 / 超限 keeps its 32 px touch height on a short screen; only its padding gives way */
+  .sw-var { min-width: max(1.4rem, 32px); padding: 0 .12rem; }
+  .sw-banner { margin-bottom: .05rem; padding: 0 .12rem; min-height: max(.44rem, 32px); }
+  .sw-pending { padding: 0; font-size: max(calc(.13 * var(--t)), 9px); }
   .sw-body { gap: .3rem; padding-bottom: .16rem; }
   /* too short for a fixed column: the whole detail scrolls */
   .sw-left { overflow-y: auto; scrollbar-width: thin; scrollbar-color: rgba(255, 255, 255, .3) transparent; }
@@ -264,6 +322,9 @@ button.sw-eth:hover { border-color: #fff; }
 }
 @media (max-width: 640px) {
   .sw-back__mark { display: none; }
+  .sw-var { min-width: max(1.2rem, 32px); padding: 0 .1rem; font-size: max(calc(.28 * var(--t)), 12px); }
+  .sw-banner { margin-right: .2rem; margin-left: .2rem; font-size: max(calc(.15 * var(--t)), 11px); }
+  .sw-banner__live { white-space: normal; }
   .sw-tab { padding: 0 .12rem; font-size: max(calc(0.3 * var(--t)), 12px); }
   .sw-tab__icon { display: none; }
   .sw-sec__grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
@@ -272,3 +333,25 @@ button.sw-eth:hover { border-color: #fff; }
   .sw__mist { animation: none; }
   .sw-tile { transition: none; }
 }
+
+/* ---- 缺图兜底（业主 2026-10-28 P0-3）------------------------------------------------------------------
+   与 loadout.css 同一套：图标位留固定方框、里面居中一个单字、虚线边提示"这里本该有图"，于是名字/数值/行高都不被挤走。
+   三条复用裁决（Lead 2026-10-28，已在 data/assets.json 落盘，客户端已能解析）：
+     · itemIcon/mujica_mask            ← 复用官方 trap_1041_acarm041（public/assets/item/mujica_mask.png）；
+     · modeIcon/mode_annihilation_icon ← 复用 mode_zhajing_icon 同图（public/assets/ui/modeIcon/）；
+     · char_{4231_clemnt,4220_kormr,4218_aigis,4219_yukari,4217_makoto}:illust —— **上游无完整立绘**（只有
+       avatar / portrait / skin），这 5 位的立绘位按本节兜底呈现，不拉伸、不借用别的图。 */
+.sw-disc__txt, .sw-face__txt, .sw-hero__txt {
+  display: grid; place-items: center; width: 100%; height: 100%;
+  font-weight: 900; color: var(--sw-ink, var(--text-dim));
+  font-size: max(15px, calc(.3 * var(--t)));
+  border: 1px dashed rgba(255, 255, 255, .18); border-radius: 2px;
+}
+/* 大头像位（策略封面）字号大一档，但仍带地板 */
+.sw-hero__txt { font-size: max(28px, calc(.6 * var(--t))); }
+/* 相关盟约的小 chip：图标位固定方框 + 居中单字，名字不被挤走 */
+.sw-chip { display: inline-flex; align-items: center; gap: .05rem; min-height: max(.24rem, 16px);
+  padding: .02rem .1rem .02rem .05rem; }
+.sw-chip img, .sw-chip .sw-chip__txt { width: max(.22rem, 14px); height: max(.22rem, 14px); flex: none; }
+.sw-chip .sw-chip__txt { display: grid; place-items: center; font-size: max(10px, calc(.15 * var(--t)));
+  color: var(--text-lo); border: 1px dashed var(--line-2); border-radius: 2px; }

@@ -14,6 +14,27 @@ import { chessAvatarUrl, chessPortraitUrl, skillIconUrl, itemIconUrl, bondIconUr
 const read = (dir, file) => JSON.parse(readFileSync(new URL(`../../${dir}/${file}.json`, import.meta.url)));
 const files = ['config', 'chess', 'items', 'enemies', 'tokens', 'bonds', 'bands', 'garrisons', 'effects', 'backups'];
 const manifest = read('data', 'assets');
+// 湮灭内容 mod 的 4 位干员（陨星 / 霜叶 / 坚雷 / 阿米娅）在 2026-10-31 按干员补齐了本地素材，解析结果写死成当下的
+// 具体路径：`_a`（普通形）取 chars[id] 的 avatar / portrait，`_b`（精二 golden）取 avatarE2 / portraitE2。素材或
+// chess 记录任何一边变了都要让 reviewer 看见，而不是退化成「非 null 即可」。
+const ANNIL_LOCAL_ART = {
+  char_219_meteo: {
+    avatar: '/assets/char/avatar/char_219_meteo.png', avatarE2: '/assets/char/avatar/char_219_meteo_2.png',
+    portrait: '/assets/char/portrait/char_219_meteo_1.webp', portraitE2: '/assets/char/portrait/char_219_meteo_2.webp',
+  },
+  char_193_frostl: {
+    avatar: '/assets/char/avatar/char_193_frostl.png', avatarE2: '/assets/char/avatar/char_193_frostl_2.png',
+    portrait: '/assets/char/portrait/char_193_frostl_1.webp', portraitE2: '/assets/char/portrait/char_193_frostl_2.webp',
+  },
+  char_260_durnar: {
+    avatar: '/assets/char/avatar/char_260_durnar.png', avatarE2: '/assets/char/avatar/char_260_durnar_2.png',
+    portrait: '/assets/char/portrait/char_260_durnar_1.webp', portraitE2: '/assets/char/portrait/char_260_durnar_2.webp',
+  },
+  char_002_amiya: {
+    avatar: '/assets/char/avatar/char_002_amiya.png', avatarE2: '/assets/char/avatar/char_002_amiya_2.png',
+    portrait: '/assets/char/portrait/char_002_amiya_1.webp', portraitE2: '/assets/char/portrait/char_002_amiya_2.webp',
+  },
+};
 
 test('warm record indexes and art helpers follow every version, then restore the default without refetching', async () => {
   const originals = Object.fromEntries(files.map(name => [name, read('data', name)]));
@@ -34,11 +55,25 @@ test('warm record indexes and art helpers follow every version, then restore the
         assert.equal(store.lookup(file, id), record, `${set?.id || 'default'} ${file}/${id}: active names, descriptions and rules`);
       }
     }
+    // 湮灭内容 mod 自带的干员仍在名册里（盟约计数需要）；其中 4 位（陨星 / 霜叶 / 坚雷 / 阿米娅）素材已按干员补齐，
+    // 图解析写死成 ANNIL_LOCAL_ART 里的具体路径，其余记录照旧断言解析得到图。
     for (const c of Object.values(records.chess).filter(c => c.charId && !c.isDiy)) {
       assert.equal(view.chess(c.chessId), c);
-      assert.ok(chessAvatarUrl(manifest, c), c.chessId);
-      assert.ok(chessPortraitUrl(manifest, c), c.chessId);
-      assert.equal(skillIconUrl(manifest, c), manifest.skills[c.assets.skillIcon], c.chessId);
+      const art = c.annihilation === true ? ANNIL_LOCAL_ART[c.charId] : null;
+      if (art) {
+        assert.equal(chessAvatarUrl(manifest, c), c.isGolden ? art.avatarE2 : art.avatar, `${c.chessId}: local avatar`);
+        assert.equal(chessPortraitUrl(manifest, c), c.isGolden ? art.portraitE2 : art.portrait, `${c.chessId}: local portrait`);
+      } else {
+        assert.ok(chessAvatarUrl(manifest, c), c.chessId);
+        assert.ok(chessPortraitUrl(manifest, c), c.chessId);
+      }
+      // the documented chain of ui/assetUrls.js `skillIconUrl` (docs/ASSETS.md, test/render/assets.test.js): the record's
+      // iconId, else the skill's iconId / skillId, else `skillsById` — 10 炸惊 chess records (e.g. chess_zj_12_a) carry no
+      // `assets.skillIcon` and still resolve through `skill.iconId`
+      const icon = manifest.skills[c.assets.skillIcon || c.skill?.iconId || c.skill?.skillId]
+        || manifest.skills[manifest.skillsById?.[c.skill?.skillId]] || manifest.ui['skillIcon/empty'];
+      assert.ok(icon, `${c.chessId}: a skill icon URL`);
+      assert.equal(skillIconUrl(manifest, c), icon, c.chessId);
       assert.deepEqual(view.standIn(c.chessId), standInRecord(c, records.backups), `${c.chessId}: active stand-in`);
     }
     for (const c of Object.values(records.chess).filter(c => c.isDiy)) {
@@ -60,9 +95,12 @@ test('warm record indexes and art helpers follow every version, then restore the
       assert.equal(tokenAvatarUrl(manifest, id), t?.avatar || manifest.chars[t?.owner]?.avatar || null);
     }
     for (const g of Object.values(records.garrisons)) {
+      // The chip's icon is the record's own official `eventTypeIcon`; 8 炸惊 特质s ship without one and draw the trigger's
+      // icon instead (detailPanel.js EVENT_ICON — the gap test/ui/playtest3.test.js pins), so the audit asks the resolved
+      // key to have a sprite rather than the raw field to be non-empty.
       const iconId = garrisonTypeIconKey(g);
-      assert.equal(iconId, `s_${g.eventTypeIcon}`, g.garrisonId);
-      assert.ok(manifest.ui[`garrisonTypeIcon/${iconId}`]);
+      if (/^icon_[a-z]+$/.test(String(g.eventTypeIcon || ''))) assert.equal(iconId, `s_${g.eventTypeIcon}`, g.garrisonId);
+      assert.ok(manifest.ui[`garrisonTypeIcon/${iconId}`], `${g.garrisonId}: ${iconId} has no sprite in data/assets.json`);
       assert.equal(effectIconUrl(manifest, { iconKind: 'garrison', iconId }), manifest.ui[`garrisonTypeIcon/${iconId}`]);
     }
     const item = store.lookup('items', 'chess_item_2_07_e_a');

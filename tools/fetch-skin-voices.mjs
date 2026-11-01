@@ -1,7 +1,10 @@
 #!/usr/bin/env node
 // tools/fetch-skin-voices.mjs
-// 精确下载当前自走棋在场 10 位干员对应 11 款特殊皮肤的战斗槽位语音（中/日/英/韩）
-// 绝不下多余干员，绝不下非战斗槽位
+// 下载「内置皮肤」的战斗槽位语音（中/日/英/韩），并生成 data/skin-voices.json。
+//   默认：data/skins-installed.json 里的全部皮肤（skinId 的 @ 换 _ 即 charword_table 的 wordKey）
+//   --legacy：0.1.6 的 11 款在场皮肤列表
+// 只取 charword_table 里真实存在的 12 个战斗槽位；404 的文件跳过，不写进映射表。
+// 消费方：public/js/audio.js voiceLine(..., skin) —— 穿着该外观时优先播放，缺槽回落到干员自己的台词。
 
 import fs from 'node:fs';
 import path from 'node:path';
@@ -29,7 +32,8 @@ const BATTLE_SLOTS = {
   LOSE: 'resultLose',
 };
 
-// 目标：当前已在自走棋出场的 10 位干员与 11 款特殊皮肤
+// 目标：默认取 data/skins-installed.json 的全部内置皮肤（`--legacy` 保留 0.1.6 的 11 款在场列表）。
+// charword_table 里没有战斗语音的皮肤会自然落空（0 个任务，或全部 404），不会写坏 data/skin-voices.json。
 export const TARGET_SKIN_KEYS = [
   'char_472_pasngr_epoque#17',     // 异客 - 今昔须臾之梦
   'char_4064_mlynar_epoque#28',    // 玛恩纳 - 远路
@@ -44,6 +48,20 @@ export const TARGET_SKIN_KEYS = [
   'char_1041_angel2_iteration#6',  // 新约能天使 - 寻翼之歌
 ];
 
+/** 默认目标：内置清单（skinId 的 `@` 换成 `_`，保留 `#` —— charword_table 的 wordKey 正是这个形式）。 */
+function targetKeys() {
+  if (process.argv.includes('--legacy')) return TARGET_SKIN_KEYS;
+  const file = path.join(ROOT, 'data', 'skins-installed.json');
+  if (!fs.existsSync(file)) return TARGET_SKIN_KEYS;
+  try {
+    const list = JSON.parse(fs.readFileSync(file, 'utf8'));
+    if (Array.isArray(list) && list.length) {
+      return list.filter((x) => typeof x === 'string').map((id) => id.replaceAll('@', '_'));
+    }
+  } catch { /* fall through */ }
+  return TARGET_SKIN_KEYS;
+}
+
 const LANG_DIRS = {
   cn: 'voice_cn',
   jp: 'voice',
@@ -51,7 +69,7 @@ const LANG_DIRS = {
   kr: 'voice_kr',
 };
 
-function downloadFile(url, dest, retries = 3) {
+function downloadFile(url, dest, retries = 1) {
   return new Promise((resolve, reject) => {
     const parent = path.dirname(dest);
     if (!fs.existsSync(parent)) {
@@ -59,7 +77,7 @@ function downloadFile(url, dest, retries = 3) {
     }
 
     const attempt = (left) => {
-      https.get(url, (res) => {
+      const req = https.get(url, (res) => {
         if (res.statusCode === 200) {
           const stream = fs.createWriteStream(dest);
           res.pipe(stream);
@@ -77,7 +95,10 @@ function downloadFile(url, dest, retries = 3) {
           if (left > 1) setTimeout(() => attempt(left - 1), 1000);
           else reject(new Error(`HTTP ${res.statusCode} for ${url}`));
         }
-      }).on('error', (err) => {
+      });
+      // a hung request would make a 404-only tail take minutes; fail this attempt quickly
+      req.setTimeout(15000, () => req.destroy(new Error('timeout')));
+      req.on('error', (err) => {
         if (left > 1) setTimeout(() => attempt(left - 1), 1000);
         else reject(err);
       });
@@ -101,7 +122,7 @@ async function main() {
   const skinVoiceMap = { cn: {}, jp: {}, en: {}, kr: {} };
   const downloadTasks = [];
 
-  for (const skinKey of TARGET_SKIN_KEYS) {
+  for (const skinKey of targetKeys()) {
     const matched = words.filter((w) => w.wordKey === skinKey && BATTLE_SLOTS[w.placeType]);
     for (const w of matched) {
       const slot = BATTLE_SLOTS[w.placeType];
@@ -131,7 +152,7 @@ async function main() {
     }
   }
 
-  console.log(`准备下载 11 款在场皮肤的战斗语音，共 ${downloadTasks.length} 个文件任务...`);
+  console.log(`准备下载 ${new Set(downloadTasks.map((t) => t.skinKey)).size} 款皮肤的战斗语音，共 ${downloadTasks.length} 个文件任务...`);
 
   // 2. 并发下载
   const concurrency = 16;
@@ -167,13 +188,17 @@ async function main() {
 
   console.log(`\n下载完成！总计: ${done}, 新下: ${downloaded}, 已存在: ${skipped}, 不存在: ${failed}`);
 
-  // 3. 将单项数组展平成单个字符串方便结构紧凑
+  // 3. 只保留磁盘上真实存在的文件（404 的语种/槽位宁可缺席，也不要让 audio.js 去请求一个不存在的 URL）
   for (const lang of ['cn', 'jp', 'en', 'kr']) {
     for (const skinKey of Object.keys(skinVoiceMap[lang])) {
       for (const slot of Object.keys(skinVoiceMap[lang][skinKey])) {
-        const arr = skinVoiceMap[lang][skinKey][slot];
+        const arr = skinVoiceMap[lang][skinKey][slot]
+          .filter((webPath) => fs.existsSync(path.join(ROOT, 'public', webPath)));
+        if (!arr.length) { delete skinVoiceMap[lang][skinKey][slot]; continue; }
         if (arr.length === 1) skinVoiceMap[lang][skinKey][slot] = arr[0];
+        else skinVoiceMap[lang][skinKey][slot] = arr;
       }
+      if (!Object.keys(skinVoiceMap[lang][skinKey]).length) delete skinVoiceMap[lang][skinKey];
     }
   }
 

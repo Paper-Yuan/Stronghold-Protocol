@@ -1,0 +1,1510 @@
+rel	width	height	pngBytes	webpBytes	psnr792	psnrFull	alphaMaxDiff	verdict	reason
+char/illust/char_002_amiya_1.png	646	1305	574451	108836	40.97	40.56	0	webp	
+char/illust/char_002_amiya.png	2072	2232	3529890	589976	44.15	38.68	0	webp	
+char/illust/char_003_kalts_1.png	1024	1024	218728	62848	47.5	45.33	0	webp	
+char/illust/char_003_kalts.png	2381	2542	3193592	594534	48.45	42.49	0	webp	
+char/illust/char_010_chen_1.png	636	1176	492929	106912	40.78	40.35	0	webp	
+char/illust/char_010_chen.png	1765	2030	3351396	545386	42.53	37.97	0	webp	
+char/illust/char_017_huang_1.png	1118	1447	1137708	221236	42.87	40.87	0	webp	
+char/illust/char_017_huang.png	2022	1976	3708557	691396	41.62	36.28	0	webp	
+char/illust/char_1012_skadi2_1.png	1024	1024	607899	178466	42.57	40.11	0	webp	
+char/illust/char_1012_skadi2.png	2431	2010	5074630	854806	43.75	37.02	0	webp	
+char/illust/char_1013_chen2_1.png	1024	1024	302099	91160	45.29	43.04	0	webp	
+char/illust/char_1013_chen2.png	1024	1024	587185	185098	38.97	36.58	0	revert-to-png	PSNR@792 38.97 dB < 40.0 dB (tier 792 px)
+char/illust/char_1014_nearl2_1.png	1024	1024	956894	173536	43.65	41.97	0	webp	
+char/illust/char_1014_nearl2.png	2351	2160	6149728	1019128	44.56	38.06	0	webp	
+char/illust/char_1015_aglna2_1.png	1125	1415	1252475	235026	42.43	40.79	0	webp	
+char/illust/char_1015_aglna2.png	2048	1973	5485998	847838	42.61	37.43	0	webp	
+char/illust/char_1016_agoat2_1.png	1573	1997	2148696	469782	43.85	40.09	0	webp	
+char/illust/char_1016_agoat2.png	2500	2410	5925734	1333198	44.8	38.52	0	webp	
+char/illust/char_1019_siege2_1.png	1233	1490	1296031	219554	43.26	40.96	0	webp	
+char/illust/char_1019_siege2.png	1921	2042	5411415	1035032	42.04	36.76	0	webp	
+char/illust/char_102_texas_1.png	516	1321	506999	110964	40.21	39.82	0	webp	
+char/illust/char_102_texas.png	1053	1321	1651658	426942	37.6	36.24	0	revert-to-png	PSNR@792 37.6 dB < 40.0 dB (tier 792 px)
+char/illust/char_1020_reed2_1.png	1024	1024	542107	166118	44.57	42.41	0	webp	
+char/illust/char_1020_reed2.png	2503	1638	3511179	691870	46	38.81	0	webp	
+char/illust/char_1021_kroos2_1.png	1024	1024	319171	92718	48.48	46.13	0	webp	
+char/illust/char_1021_kroos2.png	2136	2014	3828593	557130	47.38	42.78	0	webp	
+char/illust/char_1023_ghost2_1.png	1024	1024	562537	172364	44.27	42.12	0	webp	
+char/illust/char_1023_ghost2.png	2209	1726	4486603	859808	43.86	37.57	0	webp	
+char/illust/char_1026_gvial2_1.png	1024	1024	419489	116188	44.86	42.68	0	webp	
+char/illust/char_1026_gvial2.png	2164	2471	4346876	683578	45.23	39.35	0	webp	
+char/illust/char_1028_texas2_1.png	1024	1024	417033	109896	46.47	44.28	0	webp	
+char/illust/char_1028_texas2.png	1024	1024	879012	195970	42	40.06	0	webp	
+char/illust/char_103_angel_1.png	597	1250	447224	101256	42.41	41.97	0	webp	
+char/illust/char_103_angel.png	1092	1254	1303780	354760	42.34	40.39	0	webp	
+char/illust/char_1031_slent2_1.png	1024	1024	534934	173236	46.6	44.44	0	webp	
+char/illust/char_1031_slent2.png	2489	1916	4986889	821620	46.6	39.86	0	webp	
+char/illust/char_1032_excu2_1.png	1024	1024	447003	136136	45.07	42.85	0	webp	
+char/illust/char_1032_excu2.png	2460	2273	6948841	1252502	46.51	39.52	0	webp	
+char/illust/char_1033_swire2_1.png	1659	1971	2237648	401678	46.2	42.23	0	webp	
+char/illust/char_1033_swire2.png	2507	2035	6822417	1279264	45.52	38.08	0	webp	
+char/illust/char_1034_jesca2_1.png	986	1990	1647432	252440	42.41	41.06	0	webp	
+char/illust/char_1034_jesca2.png	2223	1833	3350876	491018	45.45	39.43	0	webp	
+char/illust/char_1035_wisdel_1.png	1119	1605	1353583	341086	43.52	41.26	0	webp	
+char/illust/char_1035_wisdel.png	2489	2113	5446130	1027958	46.59	38.8	0	webp	
+char/illust/char_1038_whitw2_1.png	1667	1437	1863832	392070	48.27	43.87	0	webp	
+char/illust/char_1038_whitw2.png	2554	2082	3407163	596462	49.55	41.97	0	webp	
+char/illust/char_1039_thorn2_1.png	796	1306	1188435	287104	42.38	41.67	0	webp	
+char/illust/char_1039_thorn2.png	2552	2225	4336575	836224	48.63	40.46	0	webp	
+char/illust/char_1040_blaze2_1.png	1171	1488	1391248	300076	41.74	39.45	0	webp	
+char/illust/char_1040_blaze2.png	2284	2554	6597494	1119842	43.14	36.23	0	webp	
+char/illust/char_1041_angel2_1.png	1192	1336	1072109	236264	43.29	40.8	0	webp	
+char/illust/char_1041_angel2.png	2544	2495	4473417	822218	44.54	37.61	0	webp	
+char/illust/char_1042_phatm2_1.png	1210	1572	1568321	261572	43.75	41.49	0	webp	
+char/illust/char_1042_phatm2.png	2538	2411	7095813	1099578	45.08	37.13	0	webp	
+char/illust/char_1043_leizi2_1.png	831	1351	1162285	249524	36.5	35.9	0	revert-to-png	PSNR@792 36.5 dB < 40.0 dB (tier 792 px)
+char/illust/char_1043_leizi2.png	2417	2542	7821484	1327298	43.24	36.17	0	webp	
+char/illust/char_1044_hsgma2_1.png	1324	1587	1984504	393108	39.5	36.69	0	revert-to-png	PSNR@792 39.5 dB < 40.0 dB (tier 792 px)
+char/illust/char_1044_hsgma2.png	2422	2553	7172613	1350506	40.36	32.97	0	webp	
+char/illust/char_1045_svash2_1.png	1419	1535	2153767	341348	43	39.74	0	webp	
+char/illust/char_1045_svash2.png	2536	2167	6854084	1217604	45.06	38.7	0	webp	
+char/illust/char_1046_sbell2_1.png	1276	1391	2189411	421374	40.43	37.93	0	webp	
+char/illust/char_1046_sbell2.png	2535	2406	8849539	1650786	45.1	38.22	0	webp	
+char/illust/char_1047_halo2_1.png	1141	1360	1563849	308560	40.73	38.71	0	webp	
+char/illust/char_1047_halo2.png	2533	2345	6015323	830430	43.58	36.34	0	webp	
+char/illust/char_1050_chen3_1.png	983	1348	1062102	275558	40.73	39.38	0	webp	
+char/illust/char_1050_chen3.png	2519	1764	5381441	1165110	44.68	37.58	0	webp	
+char/illust/char_1051_headb2_1.png	1245	1350	1433010	239546	43.42	40.88	0	webp	
+char/illust/char_1051_headb2.png	2535	2317	5492526	974122	47.47	40.85	0	webp	
+char/illust/char_1052_kalts2_1.png	2173	2245	2952658	642234	48.09	42.26	0	webp	
+char/illust/char_1052_kalts2.png	2535	2403	7017613	1391968	45.02	37.84	0	webp	
+char/illust/char_107_liskam_1.png	694	1360	665588	104892	43	42.56	0	webp	
+char/illust/char_107_liskam.png	1024	1024	669747	218964	43.2	40.87	0	webp	
+char/illust/char_108_silent_1.png	691	1213	601627	130240	40.15	39.74	0	webp	
+char/illust/char_108_silent.png	1317	1186	1713315	377292	40.95	38.26	0	webp	
+char/illust/char_109_fmout_1.png	662	1291	602549	139364	41.18	40.68	0	webp	
+char/illust/char_109_fmout.png	1397	1354	1565106	370504	42.79	39.32	0	webp	
+char/illust/char_112_siege_1.png	645	1254	604959	130770	42.43	41.94	0	webp	
+char/illust/char_112_siege.png	1442	1234	1723982	320780	44.22	41.03	0	webp	
+char/illust/char_113_cqbw_1.png	772	1233	688604	146814	38.9	38.57	0	webp	
+char/illust/char_113_cqbw.png	1024	1024	1014532	325986	39.21	36.93	0	revert-to-png	PSNR@792 39.21 dB < 40.0 dB (tier 792 px)
+char/illust/char_126_shotst_1.png	522	1240	547162	108652	42.4	41.94	0	webp	
+char/illust/char_126_shotst.png	1019	1447	1129115	255240	42.97	41.43	0	webp	
+char/illust/char_127_estell_1.png	745	1076	672215	164188	39.61	39.15	0	webp	
+char/illust/char_127_estell.png	1177	1248	1699695	373046	38.9	36.39	0	revert-to-png	PSNR@792 38.9 dB < 40.0 dB (tier 792 px)
+char/illust/char_128_plosis_1.png	917	1245	627244	141334	39.59	38.76	0	revert-to-png	PSNR@792 39.59 dB < 40.0 dB (tier 792 px)
+char/illust/char_128_plosis.png	1410	1502	1956983	439494	38.46	35.69	0	revert-to-png	PSNR@792 38.46 dB < 40.0 dB (tier 792 px)
+char/illust/char_133_mm_1.png	853	1241	538234	111252	42.59	41.91	0	webp	
+char/illust/char_133_mm.png	1024	1024	471252	136124	44.76	42.68	0	webp	
+char/illust/char_134_ifrit_1.png	958	1260	814739	183024	39.7	38.68	0	revert-to-png	PSNR@792 39.7 dB < 40.0 dB (tier 792 px)
+char/illust/char_134_ifrit.png	1024	1024	737130	235972	41.6	39.36	0	webp	
+char/illust/char_135_halo_1.png	842	1205	848281	172988	42.33	41.55	0	webp	
+char/illust/char_135_halo.png	2523	2029	5000046	922518	45.86	37.88	0	webp	
+char/illust/char_136_hsguma_1.png	877	1311	872842	158050	45	43.84	0	webp	
+char/illust/char_136_hsguma.png	1024	1024	729612	240674	42.15	39.73	0	webp	
+char/illust/char_140_whitew_1.png	890	1221	739081	157590	46.33	45.12	0	webp	
+char/illust/char_140_whitew.png	1024	1024	656344	222064	44.97	42.69	0	webp	
+char/illust/char_143_ghost_1.png	1065	1282	1180267	190398	44.18	42.11	0	webp	
+char/illust/char_143_ghost.png	1024	1024	706756	215486	43.18	41.1	0	webp	
+char/illust/char_145_prove_1.png	849	1247	740557	135086	42.92	42.11	0	webp	
+char/illust/char_145_prove.png	1237	1320	1188864	211138	44.46	41.99	0	webp	
+char/illust/char_147_shining_1.png	587	1341	905174	171356	43.17	42.49	0	webp	
+char/illust/char_147_shining.png	1024	1024	913368	257182	40.22	38.14	0	webp	
+char/illust/char_150_snakek_1.png	915	1201	683013	121824	42.87	41.77	0	webp	
+char/illust/char_150_snakek.png	1208	1253	1989816	418980	42.88	40.22	0	webp	
+char/illust/char_1502_crosly_1.png	882	1300	832706	162198	42.97	41.94	0	webp	
+char/illust/char_1502_crosly.png	2547	2005	4574993	710364	49.55	42.28	0	webp	
+char/illust/char_171_bldsk_1.png	947	1177	536485	140320	44.95	43.62	0	webp	
+char/illust/char_171_bldsk.png	1024	1024	532599	213616	46.26	44.14	0	webp	
+char/illust/char_172_svrash_1.png	983	1435	1014178	150160	45.78	44.15	0	webp	
+char/illust/char_172_svrash.png	1024	1024	776999	252096	42.04	40.05	0	webp	
+char/illust/char_173_slchan_1.png	640	1188	514642	121258	43.53	42.97	0	webp	
+char/illust/char_173_slchan.png	1232	1160	2046888	421908	40.14	37.66	0	webp	
+char/illust/char_174_slbell_1.png	675	1148	838603	152338	42.09	41.49	0	webp	
+char/illust/char_174_slbell.png	1024	1024	1131274	285520	40.4	38.31	0	webp	
+char/illust/char_179_cgbird_1.png	1004	1393	1021330	207890	42.93	41.5	0	webp	
+char/illust/char_179_cgbird.png	1024	1024	844487	267258	42.31	40.11	0	webp	
+char/illust/char_180_amgoat_1.png	636	1155	681639	150242	40.95	40.48	0	webp	
+char/illust/char_180_amgoat.png	1024	1024	679331	235574	44.07	41.93	0	webp	
+char/illust/char_181_flower_1.png	1126	1176	772344	155864	42.71	41.04	0	webp	
+char/illust/char_181_flower.png	1267	1280	1459849	291512	42.17	39.94	0	webp	
+char/illust/char_183_skgoat_1.png	659	1308	537350	123392	42.32	41.86	0	webp	
+char/illust/char_183_skgoat.png	1024	1024	637104	208312	44.07	41.78	0	webp	
+char/illust/char_188_helage_1.png	861	1494	1107289	201788	42.55	41.75	0	webp	
+char/illust/char_188_helage.png	2428	1984	4369105	913320	48.79	42.14	0	webp	
+char/illust/char_193_frostl_1.png	606	1336	578670	113838	41.46	41.1	0	webp	
+char/illust/char_193_frostl.png	1024	1024	602968	176336	42.46	40.3	0	webp	
+char/illust/char_196_sunbr_1.png	748	1173	717643	139408	38.48	38.06	0	webp	
+char/illust/char_196_sunbr.png	1024	1024	654694	178796	41.41	39.09	0	webp	
+char/illust/char_197_poca_1.png	1024	1024	448698	123942	44.35	42.22	0	webp	
+char/illust/char_197_poca.png	2316	2135	4837819	646736	46.44	40.78	0	webp	
+char/illust/char_198_blackd_1.png	741	1377	627603	127344	41.05	40.66	0	webp	
+char/illust/char_198_blackd.png	1189	1297	1294548	277132	43.3	41.14	0	webp	
+char/illust/char_199_yak_1.png	760	1345	772273	127802	45.08	44.49	0	webp	
+char/illust/char_199_yak.png	1438	1423	2269307	369112	41.34	38.21	0	webp	
+char/illust/char_2012_typhon_1.png	1024	1024	702782	211732	44.93	42.78	0	webp	
+char/illust/char_2012_typhon.png	1024	1024	853849	252144	43.2	41.02	0	webp	
+char/illust/char_2013_cerber_1.png	1103	1262	1222663	270830	40.18	38.43	0	webp	
+char/illust/char_2013_cerber.png	1024	1024	830851	248574	41.29	38.96	0	webp	
+char/illust/char_2014_nian_1.png	1024	1024	575309	185736	43.29	40.89	0	webp	
+char/illust/char_2014_nian.png	2145	1721	3021455	529274	44.38	38.87	0	webp	
+char/illust/char_2015_dusk_1.png	1024	1024	515743	163556	44.77	42.48	0	webp	
+char/illust/char_2015_dusk.png	1024	1024	703239	212166	43.29	41.16	0	webp	
+char/illust/char_202_demkni_1.png	811	1352	921678	190062	40.26	39.8	0	webp	
+char/illust/char_202_demkni.png	1024	1024	713593	182952	44.09	41.85	0	webp	
+char/illust/char_2023_ling_1.png	1024	1024	560806	178278	46.05	43.76	0	webp	
+char/illust/char_2023_ling.png	2275	2125	4254590	850460	45.53	39.29	0	webp	
+char/illust/char_2024_chyue_1.png	1024	1024	370473	103390	45.95	43.83	0	webp	
+char/illust/char_2024_chyue.png	1965	2445	5896292	984622	43.11	37.34	0	webp	
+char/illust/char_2025_shu_1.png	1138	1451	1150081	225444	41.24	39.39	0	webp	
+char/illust/char_2025_shu.png	2005	2032	4482650	792038	42.09	36.87	0	webp	
+char/illust/char_2026_yu_1.png	1072	1345	1365477	283884	40.51	38.72	0	webp	
+char/illust/char_2026_yu.png	2470	2540	7977053	1302170	44.07	35.66	0	webp	
+char/illust/char_2027_wang_1.png	1148	1463	1457869	282398	44.29	42.09	0	webp	
+char/illust/char_2027_wang.png	2522	2081	3909900	592588	48.55	42.53	0	webp	
+char/illust/char_206_gnosis_1.png	1024	1024	357533	100964	47.13	44.81	0	webp	
+char/illust/char_206_gnosis.png	2432	2035	6013680	922858	47.77	40.06	0	webp	
+char/illust/char_213_mostma_1.png	874	1272	685579	149180	42.75	41.83	0	webp	
+char/illust/char_213_mostma.png	2214	1748	3909268	933162	45.17	39.32	0	webp	
+char/illust/char_215_mantic_1.png	869	1323	881496	167832	42.23	41.32	0	webp	
+char/illust/char_215_mantic.png	2466	1904	5420828	988400	43.36	37.11	0	webp	
+char/illust/char_218_cuttle_1.png	741	1167	580524	101386	42.18	41.71	0	webp	
+char/illust/char_218_cuttle.png	1024	1024	478623	147196	45.36	43.08	0	webp	
+char/illust/char_219_meteo_1.png	1058	1220	796586	156894	44.97	43.22	0	webp	
+char/illust/char_219_meteo.png	2219	1706	2745803	399042	47.18	42.67	0	webp	
+char/illust/char_222_bpipe_1.png	1024	1024	302649	91300	46.05	43.73	0	webp	
+char/illust/char_222_bpipe.png	1024	1024	785947	252506	42.84	40.67	0	webp	
+char/illust/char_225_haak_1.png	660	1259	519378	110694	39.19	38.81	0	webp	
+char/illust/char_225_haak.png	1024	1024	638757	191438	39.13	36.85	0	revert-to-png	PSNR@792 39.13 dB < 40.0 dB (tier 792 px)
+char/illust/char_230_savage_1.png	1085	1359	564530	107602	50.06	47.8	0	webp	
+char/illust/char_230_savage.png	2018	2009	2533588	277290	47.71	42.72	0	webp	
+char/illust/char_237_gravel_1.png	916	1156	562318	121468	44.75	43.48	0	webp	
+char/illust/char_237_gravel.png	1317	1302	1854276	344408	41.92	39.15	0	webp	
+char/illust/char_243_waaifu_1.png	574	1195	512723	115812	36.55	36.24	0	webp	
+char/illust/char_243_waaifu.png	1024	1024	739376	244608	38.96	36.79	0	revert-to-png	PSNR@792 38.96 dB < 40.0 dB (tier 792 px)
+char/illust/char_245_cello_1.png	1092	1338	1225916	270730	45.25	43.06	0	webp	
+char/illust/char_245_cello.png	2272	2009	5805440	1068022	46.17	39.32	0	webp	
+char/illust/char_248_mgllan_1.png	581	1258	674675	145018	36.72	36.34	0	webp	
+char/illust/char_248_mgllan.png	1024	1024	759340	221316	42.11	39.64	0	webp	
+char/illust/char_249_mlyss_1.png	1024	1024	535271	107868	41.65	40.12	0	webp	
+char/illust/char_249_mlyss.png	2496	2359	5127504	915080	46.47	39.55	0	webp	
+char/illust/char_250_phatom_1.png	1024	1024	298020	81432	48.39	46.1	0	webp	
+char/illust/char_250_phatom.png	2051	1740	3246478	476556	46.27	40.95	0	webp	
+char/illust/char_253_greyy_1.png	1024	1024	366060	100768	46.18	44	0	webp	
+char/illust/char_253_greyy.png	1250	1304	1540174	405692	41.61	39.51	0	webp	
+char/illust/char_254_vodfox_1.png	648	1086	589162	110528	41.74	41.25	0	webp	
+char/illust/char_254_vodfox.png	1024	1024	632779	176528	43.94	41.93	0	webp	
+char/illust/char_258_podego_1.png	1024	1024	266291	85684	46.75	44.39	0	webp	
+char/illust/char_258_podego.png	1024	1024	575734	195902	43.45	41.15	0	webp	
+char/illust/char_260_durnar_1.png	744	1220	779195	124826	43.27	42.71	0	webp	
+char/illust/char_260_durnar.png	2183	1383	2522667	480928	46.22	41.1	0	webp	
+char/illust/char_263_skadi_1.png	889	1230	751153	135872	44.59	43.52	0	webp	
+char/illust/char_263_skadi.png	1024	1024	736028	216008	43.19	41.17	0	webp	
+char/illust/char_264_f12yin_1.png	757	1239	827091	130898	43.37	42.8	0	webp	
+char/illust/char_264_f12yin.png	1254	1292	1663710	327086	45.27	42.6	0	webp	
+char/illust/char_271_spikes_1.png	904	1391	530739	125088	45.78	44.65	0	webp	
+char/illust/char_271_spikes.png	1113	1349	953708	252792	44.07	42.29	0	webp	
+char/illust/char_279_excu_1.png	751	1536	763922	144894	40.47	40.07	0	webp	
+char/illust/char_279_excu.png	2369	1648	3166315	482500	48.73	42.23	0	webp	
+char/illust/char_290_vigna_1.png	1205	1142	712177	148222	44.68	42.45	0	webp	
+char/illust/char_290_vigna.png	1024	1024	582441	185566	43.74	41.29	0	webp	
+char/illust/char_291_aglina_1.png	776	1263	952808	179786	40.53	40.08	0	webp	
+char/illust/char_291_aglina.png	1024	1024	568288	165556	43.63	41.28	0	webp	
+char/illust/char_293_thorns_1.png	1292	1939	1551316	305818	44.67	42.28	0	webp	
+char/illust/char_293_thorns.png	1940	1752	2765361	514130	45.06	40.23	0	webp	
+char/illust/char_294_ayer_1.png	1024	1024	403124	132512	46.01	43.87	0	webp	
+char/illust/char_294_ayer.png	1024	1024	625476	192172	44.36	42.36	0	webp	
+char/illust/char_300_phenxi_1.png	1024	1024	393599	109982	45.74	43.58	0	webp	
+char/illust/char_300_phenxi.png	2486	1964	3860109	765688	46.1	39.82	0	webp	
+char/illust/char_304_zebra_1.png	666	1257	531119	98730	45.04	44.44	0	webp	
+char/illust/char_304_zebra.png	1024	1024	553429	197518	46.23	44.2	0	webp	
+char/illust/char_306_leizi_1.png	1024	1024	464956	134970	45.06	42.92	0	webp	
+char/illust/char_306_leizi.png	1024	1024	962676	335878	38.95	36.76	0	revert-to-png	PSNR@792 38.95 dB < 40.0 dB (tier 792 px)
+char/illust/char_308_swire_1.png	833	1271	838282	170062	42.64	41.95	0	webp	
+char/illust/char_308_swire.png	1024	1024	632030	178496	44.33	42.32	0	webp	
+char/illust/char_311_mudrok_1.png	622	1226	660848	111104	42.58	42.08	0	webp	
+char/illust/char_311_mudrok.png	1024	1024	588918	153120	44.71	42.53	0	webp	
+char/illust/char_322_lmlee_1.png	1024	1024	319130	85590	46.6	44.28	0	webp	
+char/illust/char_322_lmlee.png	1024	1024	825453	261260	41.01	38.85	0	webp	
+char/illust/char_332_archet_1.png	835	1056	895700	193332	39.55	38.9	0	revert-to-png	PSNR@792 39.55 dB < 40.0 dB (tier 792 px)
+char/illust/char_332_archet.png	1024	1024	800424	254044	38.84	36.89	0	revert-to-png	PSNR@792 38.84 dB < 40.0 dB (tier 792 px)
+char/illust/char_337_utage_1.png	539	1018	443952	96916	39.77	39.24	0	webp	
+char/illust/char_337_utage.png	1024	1024	634245	213504	42.82	40.66	0	webp	
+char/illust/char_340_shwaz_1.png	716	1309	902355	186398	41.82	41.34	0	webp	
+char/illust/char_340_shwaz.png	1024	1024	952671	305776	41.49	39.29	0	webp	
+char/illust/char_341_sntlla_1.png	1024	1024	389063	119742	45.52	43.47	0	webp	
+char/illust/char_341_sntlla.png	2402	2296	6315352	1171328	44.29	37.35	0	webp	
+char/illust/char_344_beewax_1.png	1024	1024	265668	68666	46.62	44.21	0	webp	
+char/illust/char_344_beewax.png	1024	1024	746569	206508	42.71	40.39	0	webp	
+char/illust/char_345_folnic_1.png	1023	1350	754361	140438	46.35	44.65	0	webp	
+char/illust/char_345_folnic.png	1024	1024	680766	199750	44.57	42.5	0	webp	
+char/illust/char_348_ceylon_1.png	938	1428	1175850	205630	42.95	41.72	0	webp	
+char/illust/char_348_ceylon.png	1024	1024	755991	227538	41.95	39.78	0	webp	
+char/illust/char_350_surtr_1.png	1024	1024	244171	72104	47.52	45.37	0	webp	
+char/illust/char_350_surtr.png	1024	1024	580615	183978	42.6	40.12	0	webp	
+char/illust/char_355_ethan_1.png	680	1095	434542	88368	45.52	44.93	0	webp	
+char/illust/char_355_ethan.png	1024	1024	471409	136650	41.19	38.88	0	webp	
+char/illust/char_358_lisa_1.png	847	946	784229	154452	41.97	41.14	0	webp	
+char/illust/char_358_lisa.png	2147	2134	6065724	991178	44.31	38.17	0	webp	
+char/illust/char_362_saga_1.png	1024	1024	327691	87660	47.3	45.11	0	webp	
+char/illust/char_362_saga.png	1024	1024	553209	149526	42.71	40.65	0	webp	
+char/illust/char_373_lionhd_1.png	1293	1217	893846	185514	43.16	40.57	0	webp	
+char/illust/char_373_lionhd.png	1024	1024	1093799	346482	39.92	37.57	0	revert-to-png	PSNR@792 39.92 dB < 40.0 dB (tier 792 px)
+char/illust/char_377_gdglow_1.png	1024	1024	360684	111940	44.37	41.88	0	webp	
+char/illust/char_377_gdglow.png	1024	1024	924131	264186	39.18	36.69	0	revert-to-png	PSNR@792 39.18 dB < 40.0 dB (tier 792 px)
+char/illust/char_381_bubble_1.png	830	839	578547	91826	42.88	42.2	0	webp	
+char/illust/char_381_bubble.png	1024	1024	511750	149726	44.98	42.94	0	webp	
+char/illust/char_388_mint_1.png	716	1145	586985	130712	42.75	42.23	0	webp	
+char/illust/char_388_mint.png	1024	1024	569614	162266	43.34	41.14	0	webp	
+char/illust/char_391_rosmon_1.png	1024	1024	525425	150656	42.87	40.64	0	webp	
+char/illust/char_391_rosmon.png	1775	2044	3916150	606602	42.95	38.44	0	webp	
+char/illust/char_400_weedy_1.png	1257	1201	1011093	202032	46.09	43.43	0	webp	
+char/illust/char_400_weedy.png	1855	2040	3357661	677568	45.33	40.69	0	webp	
+char/illust/char_4004_pudd_1.png	547	1256	599842	131158	41.04	40.54	0	webp	
+char/illust/char_4004_pudd.png	1214	1225	1637958	323516	39.5	37.47	0	revert-to-png	PSNR@792 39.5 dB < 40.0 dB (tier 792 px)
+char/illust/char_4009_irene_1.png	1139	1914	1302421	227854	47.4	44.9	0	webp	
+char/illust/char_4009_irene.png	1024	1024	614542	185346	46.13	43.87	0	webp	
+char/illust/char_4010_etlchi_1.png	1398	1729	841066	155578	47.62	44.79	0	webp	
+char/illust/char_4010_etlchi.png	2414	2340	4272738	665802	45.55	38.91	0	webp	
+char/illust/char_4011_lessng_1.png	738	1406	980089	171938	41.79	41.28	0	webp	
+char/illust/char_4011_lessng.png	2478	2349	6484220	852706	46.83	39.48	0	webp	
+char/illust/char_4013_kjera_1.png	1024	1024	313821	93778	46.93	44.7	0	webp	
+char/illust/char_4013_kjera.png	2466	2005	5742793	840812	46.24	39.94	0	webp	
+char/illust/char_4016_kazema_1.png	1024	1024	378616	119720	45.3	42.8	0	webp	
+char/illust/char_4016_kazema.png	1024	1024	740999	258558	44.39	42.28	0	webp	
+char/illust/char_4026_vulpis_1.png	793	1343	919427	174970	43.01	42.33	0	webp	
+char/illust/char_4026_vulpis.png	2538	2231	5802046	999044	48.28	41.28	0	webp	
+char/illust/char_4027_heyak_1.png	1024	1024	544342	153046	43.9	41.42	0	webp	
+char/illust/char_4027_heyak.png	2166	2226	5788812	988862	42.4	36.11	0	webp	
+char/illust/char_4036_forcer_1.png	1024	1024	368162	106594	47.41	45.29	0	webp	
+char/illust/char_4036_forcer.png	1024	1024	653265	179652	44.24	42.2	0	webp	
+char/illust/char_4037_demetr_1.png	944	1586	1203828	245792	43.81	42.59	0	webp	
+char/illust/char_4037_demetr.png	2387	2308	5949325	889410	46.65	41.1	0	webp	
+char/illust/char_4039_horn_1.png	1024	1024	362680	95884	47.29	45.06	0	webp	
+char/illust/char_4039_horn.png	1024	1024	659270	167932	44.05	41.94	0	webp	
+char/illust/char_4040_rockr_1.png	1024	1024	318802	87686	48.14	45.93	0	webp	
+char/illust/char_4040_rockr.png	1024	1024	500828	154446	43.86	41.43	0	webp	
+char/illust/char_4042_lumen_1.png	1024	1024	370099	109170	45.12	42.96	0	webp	
+char/illust/char_4042_lumen.png	1024	1024	894069	277024	42.1	39.7	0	webp	
+char/illust/char_4045_heidi_1.png	1024	1024	297569	83718	46.38	43.96	0	webp	
+char/illust/char_4045_heidi.png	1024	1024	679806	199216	42.79	40.47	0	webp	
+char/illust/char_4046_ebnhlz_1.png	1024	1024	446165	115004	44.75	42.25	0	webp	
+char/illust/char_4046_ebnhlz.png	2377	1899	6491457	1040786	44.93	37.66	0	webp	
+char/illust/char_4048_doroth_1.png	1024	1024	486774	148790	45.77	43.55	0	webp	
+char/illust/char_4048_doroth.png	1024	1024	813946	236348	42.82	40.49	0	webp	
+char/illust/char_4051_akkord_1.png	821	1297	622588	130440	44.53	43.85	0	webp	
+char/illust/char_4051_akkord.png	1585	1753	2328741	494796	43.62	40.71	0	webp	
+char/illust/char_4054_malist_1.png	871	1196	603927	121492	45.27	44.15	0	webp	
+char/illust/char_4054_malist.png	2183	2080	5631439	1150948	44.67	35.27	0	webp	
+char/illust/char_4055_bgsnow_1.png	1024	1024	595594	192538	41.47	39.09	0	webp	
+char/illust/char_4055_bgsnow.png	2099	2343	5282089	955036	43.12	37.04	0	webp	
+char/illust/char_4056_titi_1.png	988	1463	1061927	210442	41.89	40.68	0	webp	
+char/illust/char_4056_titi.png	2010	2069	3473325	671142	45.5	41.5	0	webp	
+char/illust/char_4058_pepe_1.png	1019	1346	1023607	208116	40.1	38.58	0	webp	
+char/illust/char_4058_pepe.png	2142	2104	6961058	1291792	41.36	34.86	0	webp	
+char/illust/char_4064_mlynar_1.png	1024	1024	286953	74780	48.07	45.85	0	webp	
+char/illust/char_4064_mlynar.png	1024	1024	1240537	373552	39.74	37.68	0	revert-to-png	PSNR@792 39.74 dB < 40.0 dB (tier 792 px)
+char/illust/char_4065_judge_1.png	1024	1024	357263	98336	47.4	45.3	0	webp	
+char/illust/char_4065_judge.png	2396	2349	4567156	657464	47.5	41.71	0	webp	
+char/illust/char_4072_ironmn_1.png	1024	1024	452255	127178	45.59	43.37	0	webp	
+char/illust/char_4072_ironmn.png	1024	1024	922050	282070	41.89	39.61	0	webp	
+char/illust/char_4079_haini_1.png	955	1423	1131493	240042	44.3	42.8	0	webp	
+char/illust/char_4079_haini.png	2548	2256	5124779	861442	48.69	42.41	0	webp	
+char/illust/char_4080_lin_1.png	1024	1024	562510	175046	45.87	43.54	0	webp	
+char/illust/char_4080_lin.png	1024	1024	1347920	455102	41.82	39.75	0	webp	
+char/illust/char_4082_qiubai_1.png	1024	1024	476440	139508	46.24	44.01	0	webp	
+char/illust/char_4082_qiubai.png	2472	2364	6311564	1006600	47.81	40.54	0	webp	
+char/illust/char_4087_ines_1.png	1024	1024	426290	126270	45.8	43.54	0	webp	
+char/illust/char_4087_ines.png	2327	2445	5863881	994912	44.54	37.63	0	webp	
+char/illust/char_4088_hodrer_1.png	1900	1964	2523006	389728	48.17	42.8	0	webp	
+char/illust/char_4088_hodrer.png	2511	1754	4480968	986614	45.51	37.33	0	webp	
+char/illust/char_4098_vvana_1.png	1381	1722	1555730	311902	45.7	42.48	0	webp	
+char/illust/char_4098_vvana.png	2435	2535	6652909	1122868	44.23	36.99	0	webp	
+char/illust/char_4100_caper_1.png	725	1245	761005	148230	39.53	39.11	0	webp	
+char/illust/char_4100_caper.png	1828	1640	2915847	532780	44.32	40.28	0	webp	
+char/illust/char_4114_harold_1.png	867	1602	1144875	216428	41.21	40.37	0	webp	
+char/illust/char_4114_harold.png	2347	2560	7009343	1192972	45.1	37.78	0	webp	
+char/illust/char_4116_blkkgt_1.png	703	1504	750989	143778	41.93	41.44	0	webp	
+char/illust/char_4116_blkkgt.png	2474	2141	7144824	1290386	44.72	37.11	0	webp	
+char/illust/char_4117_ray_1.png	789	1467	984927	208690	41.25	40.75	0	webp	
+char/illust/char_4117_ray.png	2262	2186	5260642	624576	46.7	40.87	0	webp	
+char/illust/char_4119_wanqin_1.png	782	1285	857067	201102	42.68	42.11	0	webp	
+char/illust/char_4119_wanqin.png	1866	2002	4757923	671092	42.26	37.27	0	webp	
+char/illust/char_4121_zuole_1.png	840	1438	957820	166924	42.96	42.19	0	webp	
+char/illust/char_4121_zuole.png	2385	2286	5768398	947554	46.92	40.28	0	webp	
+char/illust/char_4122_grabds_1.png	792	1248	944641	196878	38.78	38.78	0	revert-to-png	PSNR@792 38.78 dB < 40.0 dB (tier 792 px)
+char/illust/char_4122_grabds.png	2380	2079	6675465	1162644	44.91	37.4	0	webp	
+char/illust/char_4132_ascln_1.png	1402	1368	1344236	266570	45.18	41.81	0	webp	
+char/illust/char_4132_ascln.png	2538	2149	6511982	1224454	43.86	36.53	0	webp	
+char/illust/char_4133_logos_1.png	1144	1517	1073330	196830	43.92	41.97	0	webp	
+char/illust/char_4133_logos.png	2511	2519	8301354	1597744	45.47	37.75	0	webp	
+char/illust/char_4134_cetsyr_1.png	753	1490	1130037	264952	42.89	42.32	0	webp	
+char/illust/char_4134_cetsyr.png	2183	2548	4489390	713880	47.11	41.22	0	webp	
+char/illust/char_4137_udflow_1.png	917	1369	1244876	243862	38.65	37.24	0	revert-to-png	PSNR@792 38.65 dB < 40.0 dB (tier 792 px)
+char/illust/char_4137_udflow.png	2534	2034	6452478	1243372	42.46	33.44	0	webp	
+char/illust/char_4138_narant_1.png	1107	1420	1536929	310488	39.53	37.64	0	revert-to-png	PSNR@792 39.53 dB < 40.0 dB (tier 792 px)
+char/illust/char_4138_narant.png	2429	2506	7506130	1556728	44.77	37.48	0	webp	
+char/illust/char_4139_papyrs_1.png	738	1216	737427	159616	39.84	39.36	0	webp	
+char/illust/char_4139_papyrs.png	1284	1248	1699401	296932	39.09	36.6	0	revert-to-png	PSNR@792 39.09 dB < 40.0 dB (tier 792 px)
+char/illust/char_4145_ulpia_1.png	1294	1553	1267821	212976	46.53	43.77	0	webp	
+char/illust/char_4145_ulpia.png	2510	2494	7082051	1416590	42.93	35.21	0	webp	
+char/illust/char_4146_nymph_1.png	1306	1317	1529501	274764	41.51	38.68	0	webp	
+char/illust/char_4146_nymph.png	2529	2228	6802105	1058530	45.51	37.4	0	webp	
+char/illust/char_4148_philae_1.png	912	1412	1210571	264464	37.02	36.17	0	revert-to-png	PSNR@792 37.02 dB < 40.0 dB (tier 792 px)
+char/illust/char_4148_philae.png	2389	2544	6518179	1083168	41.99	34.65	0	webp	
+char/illust/char_4151_tinman_1.png	951	1536	1340396	227640	41.95	40.7	0	webp	
+char/illust/char_4151_tinman.png	2188	2169	6642203	1037358	42.9	35.91	0	webp	
+char/illust/char_416_zumama_1.png	1024	1024	564875	168490	43.96	41.63	0	webp	
+char/illust/char_416_zumama.png	2636	2260	5289862	747872	47.2	39.67	0	webp	
+char/illust/char_4162_cathy_1.png	710	1417	926768	184190	39.98	39.55	0	webp	
+char/illust/char_4162_cathy.png	1823	1877	4057621	636262	42.42	38.26	0	webp	
+char/illust/char_4163_rosesa_1.png	1521	2002	2450316	444656	44.23	40.23	0	webp	
+char/illust/char_4163_rosesa.png	1927	1744	4653328	794152	42.55	36.83	0	webp	
+char/illust/char_4179_monstr_1.png	1129	1278	1088882	225646	42.32	40.38	0	webp	
+char/illust/char_4179_monstr.png	2555	2163	4570443	1106868	43.41	35.84	0	webp	
+char/illust/char_4182_oblvns_1.png	515	1142	477523	92708	41.74	41.2	0	webp	
+char/illust/char_4182_oblvns.png	2560	2560	7929207	1282578	42.29	33.74	0	webp	
+char/illust/char_4183_mortis_1.png	519	1137	419002	84254	39.43	38.95	0	webp	
+char/illust/char_4183_mortis.png	1664	1664	3490123	540320	39.45	35.38	0	revert-to-png	PSNR@792 39.45 dB < 40.0 dB (tier 792 px)
+char/illust/char_4184_dolris_1.png	498	1152	376949	72094	41.53	41.02	0	webp	
+char/illust/char_4184_dolris.png	2560	2560	7303763	1374088	44.82	35.54	0	webp	
+char/illust/char_4185_amoris_1.png	325	1165	324433	65230	39.71	39.25	0	webp	
+char/illust/char_4185_amoris.png	2560	2560	6895914	1053258	44.56	36.76	0	webp	
+char/illust/char_4186_tmoris_1.png	493	1175	434358	86972	42.57	42.01	0	webp	
+char/illust/char_4186_tmoris.png	2560	2560	8760866	1430146	45.22	37.01	0	webp	
+char/illust/char_4191_tippi_1.png	873	1293	1177618	242136	40.04	39.08	0	webp	
+char/illust/char_4191_tippi.png	1918	1793	5028802	927964	38.29	32.67	0	revert-to-png	PSNR@792 38.29 dB < 40.0 dB (tier 792 px)
+char/illust/char_4193_lemuen_1.png	781	1192	926221	202522	40.86	40.36	0	webp	
+char/illust/char_4193_lemuen.png	2114	2114	3659391	514580	44.62	39.53	0	webp	
+char/illust/char_4194_rmixer_1.png	1666	1675	2198087	360082	46	42.18	0	webp	
+char/illust/char_4194_rmixer.png	2558	1986	5856608	1151538	42.99	35.85	0	webp	
+char/illust/char_4195_radian_1.png	662	1119	382089	75790	43.83	43.33	0	webp	
+char/illust/char_4195_radian.png	1624	1893	2387070	390068	45.8	42.2	0	webp	
+char/illust/char_4196_reckpr_1.png	827	1456	831744	147684	44.76	43.95	0	webp	
+char/illust/char_4196_reckpr.png	2550	2197	5744235	885864	45.04	37.25	0	webp	
+char/illust/char_420_flamtl_1.png	721	1087	651288	170080	39.23	38.79	0	webp	
+char/illust/char_420_flamtl.png	1837	2037	2273093	434222	45.03	40.09	0	webp	
+char/illust/char_4202_haruka_1.png	936	1339	1284039	284672	37.95	36.81	0	revert-to-png	PSNR@792 37.95 dB < 40.0 dB (tier 792 px)
+char/illust/char_4202_haruka.png	1627	1629	4089734	789140	38.25	33.82	0	revert-to-png	PSNR@792 38.25 dB < 40.0 dB (tier 792 px)
+char/illust/char_4204_mantra_1.png	1006	1491	1420611	247934	41.73	40.42	0	webp	
+char/illust/char_4204_mantra.png	2536	2427	6696953	1362688	44.17	37.52	0	webp	
+char/illust/char_4207_branch_1.png	893	1153	1118903	199436	40.74	39.7	0	webp	
+char/illust/char_4207_branch.png	2423	1976	5480941	826354	46.93	40.79	0	webp	
+char/illust/char_4211_snhunt_1.png	681	1317	1023617	215436	41.18	40.61	0	webp	
+char/illust/char_4211_snhunt.png	2536	2128	5844295	1125676	47.52	41.02	0	webp	
+char/illust/char_4212_nasti_1.png	859	1455	1147809	247552	41.98	41.11	0	webp	
+char/illust/char_4212_nasti.png	2426	2543	7087957	1361716	42.42	33.54	0	webp	
+char/illust/char_4217_makoto_1.png	514	1490	480795	80302	43.66	43.19	0	webp	
+char/illust/char_4218_aigis_1.png	585	1390	493510	78266	43.39	43.03	0	webp	
+char/illust/char_4219_yukari_1.png	562	1363	382263	72918	42.92	42.56	0	webp	
+char/illust/char_422_aurora_1.png	1024	1024	444586	124110	45.96	43.85	0	webp	
+char/illust/char_422_aurora.png	2258	1939	4454317	721876	43.86	38	0	webp	
+char/illust/char_4220_kormr_1.png	601	781	417805	70102	41.85	41.4	0	webp	
+char/illust/char_4226_veen_1.png	1031	1690	1799028	329698	42.71	40.89	0	webp	
+char/illust/char_4226_veen.png	2536	2351	6942797	1174508	44.02	36.69	0	webp	
+char/illust/char_4228_closur_1.png	912	1431	1089153	212282	40.49	39.56	0	webp	
+char/illust/char_4228_closur.png	2369	1734	4722577	889286	44.59	37.77	0	webp	
+char/illust/char_4229_aphris_1.png	815	1296	1040713	219254	39.43	38.9	0	revert-to-png	PSNR@792 39.43 dB < 40.0 dB (tier 792 px)
+char/illust/char_4229_aphris.png	2548	2198	6607925	1305516	42.61	35.33	0	webp	
+char/illust/char_423_blemsh_1.png	1221	1207	1284756	208996	44.48	41.77	0	webp	
+char/illust/char_423_blemsh.png	2176	1591	4482424	786444	45.2	39.04	0	webp	
+char/illust/char_4230_mcnist_1.png	895	1244	1040020	192414	38.48	37.71	0	revert-to-png	PSNR@792 38.48 dB < 40.0 dB (tier 792 px)
+char/illust/char_4230_mcnist.png	2179	2093	4431253	718906	42.16	35.91	0	webp	
+char/illust/char_4235_thumpy_1.png	1001	1180	1052366	206888	42.67	41.33	0	webp	
+char/illust/char_4235_thumpy.png	2023	2100	4548606	728170	43.89	39.33	0	webp	
+char/illust/char_426_billro_1.png	1024	1024	244942	68194	46.92	44.4	0	webp	
+char/illust/char_426_billro.png	1024	1024	696701	173046	43.26	40.78	0	webp	
+char/illust/char_427_vigil_1.png	1024	1024	405652	111186	46.09	43.91	0	webp	
+char/illust/char_427_vigil.png	2536	2074	6214518	944330	43.38	35.21	0	webp	
+char/illust/char_430_fartth_1.png	1024	1024	307918	93838	48.75	46.57	0	webp	
+char/illust/char_430_fartth.png	2187	2212	3050377	602150	47.66	42.54	0	webp	
+char/illust/char_431_ashlok_1.png	1024	1024	489681	157306	46.24	44.12	0	webp	
+char/illust/char_431_ashlok.png	2467	2369	3636201	524190	48.81	42.81	0	webp	
+char/illust/char_437_mizuki_1.png	1024	1024	330178	99818	43.74	41.3	0	webp	
+char/illust/char_437_mizuki.png	2142	2484	8089934	1504838	38.1	30.53	0	revert-to-png	PSNR@792 38.1 dB < 40.0 dB (tier 792 px)
+char/illust/char_440_pinecn_1.png	1024	1024	371755	107900	46.11	43.96	0	webp	
+char/illust/char_440_pinecn.png	1024	1024	827103	277224	40.81	38.58	0	webp	
+char/illust/char_446_aroma_1.png	851	1158	693986	161796	41.05	40.23	0	webp	
+char/illust/char_446_aroma.png	1536	1701	2419697	464512	41.9	38.85	0	webp	
+char/illust/char_449_glider_1.png	761	1053	525027	114894	44.66	44.06	0	webp	
+char/illust/char_449_glider.png	1266	1544	2621659	502762	40.13	37.66	0	webp	
+char/illust/char_450_necras_1.png	1750	1865	2074945	401790	46.17	42	0	webp	
+char/illust/char_450_necras.png	2549	1835	5160824	1000436	46.77	39.81	0	webp	
+char/illust/char_469_indigo_1.png	589	1219	626246	162988	42.07	41.52	0	webp	
+char/illust/char_469_indigo.png	1024	1024	659968	220866	44.57	42.45	0	webp	
+char/illust/char_472_pasngr_1.png	1024	1024	554447	156622	44.5	42.36	0	webp	
+char/illust/char_472_pasngr.png	1024	1024	809028	244942	40.54	38.21	0	webp	
+char/illust/char_473_mberry_1.png	1024	1024	418624	125394	45.19	42.84	0	webp	
+char/illust/char_473_mberry.png	1024	1024	645546	204414	43.8	41.52	0	webp	
+char/illust/char_474_glady_1.png	1511	2043	1854382	377298	47.26	43.42	0	webp	
+char/illust/char_474_glady.png	2278	1786	3252903	675760	48.14	41.95	0	webp	
+char/illust/char_479_sleach_1.png	1024	1024	503805	147000	45.49	43.17	0	webp	
+char/illust/char_479_sleach.png	2229	1876	3401943	616266	45.34	39.72	0	webp	
+char/illust/char_485_pallas_1.png	1024	1024	389598	120058	48.29	46.08	0	webp	
+char/illust/char_485_pallas.png	1024	1024	753626	244858	44.01	41.88	0	webp	
+char/illust/char_491_humus_1.png	1024	1024	458706	128236	45.86	43.77	0	webp	
+char/illust/char_491_humus.png	2365	1897	4224983	721248	47.38	41.98	0	webp	
+char/illust/char_494_vendla_1.png	1291	1977	1862891	321478	44.31	41.88	0	webp	
+char/illust/char_494_vendla.png	2264	2012	3711056	648388	46.43	40.69	0	webp	
+char/illust/char_496_wildmn_1.png	1024	1024	563473	119208	45.51	43.95	0	webp	
+char/illust/char_496_wildmn.png	1024	1024	828401	163998	43.69	42.14	0	webp	
+char/illust/char_498_inside_1.png	1024	1024	267572	72720	48.21	46.09	0	webp	
+char/illust/char_498_inside.png	1024	1024	719059	198208	42.46	40.36	0	webp	
+char/illust/char_600_cpione_1.png	583	1151	484984	83070	40.86	40.42	0	webp	
+char/illust/char_600_cpione.png	583	1151	484984	83070	40.86	40.42	0	webp	
+char/illust/char_601_cguard_1.png	638	1095	527464	95584	42.4	41.81	0	webp	
+char/illust/char_601_cguard.png	638	1095	527464	95584	42.4	41.81	0	webp	
+char/illust/char_602_cdfend_1.png	704	1184	687886	95990	43.81	43.27	0	webp	
+char/illust/char_602_cdfend.png	704	1184	687886	95990	43.81	43.27	0	webp	
+char/illust/char_603_csnipe_1.png	766	1283	581113	104010	42	41.6	0	webp	
+char/illust/char_603_csnipe.png	766	1283	581113	104010	42	41.6	0	webp	
+char/illust/char_604_ccast_1.png	457	1110	403883	64532	43.53	43.06	0	webp	
+char/illust/char_604_ccast.png	457	1110	403883	64532	43.53	43.06	0	webp	
+char/illust/char_605_cmedic_1.png	356	1116	374928	65030	42.76	42.26	0	webp	
+char/illust/char_605_cmedic.png	356	1116	374928	65030	42.76	42.26	0	webp	
+char/illust/char_606_csuppo_1.png	553	1300	643793	118544	44.13	43.5	0	webp	
+char/illust/char_606_csuppo.png	553	1300	643793	118544	44.13	43.5	0	webp	
+char/illust/char_607_cspec_1.png	512	1227	513369	103766	44.24	43.6	0	webp	
+char/illust/char_607_cspec.png	512	1227	513369	103766	44.24	43.6	0	webp	
+char/illust/char_608_acpion_1.png	956	1522	934531	166294	46.31	44.91	0	webp	
+char/illust/char_608_acpion.png	956	1522	934531	166294	46.31	44.91	0	webp	
+char/illust/char_609_acguad_1.png	803	1279	577722	87744	46.3	45.66	0	webp	
+char/illust/char_609_acguad.png	803	1279	577722	87744	46.3	45.66	0	webp	
+char/illust/char_610_acfend_1.png	669	1195	561838	109878	39.26	38.87	0	webp	
+char/illust/char_610_acfend.png	669	1195	561838	109878	39.26	38.87	0	webp	
+char/illust/char_611_acnipe_1.png	760	1250	585501	106200	44.41	43.9	0	webp	
+char/illust/char_611_acnipe.png	760	1250	585501	106200	44.41	43.9	0	webp	
+char/illust/char_612_accast_1.png	738	1230	528342	92424	46.32	45.75	0	webp	
+char/illust/char_612_accast.png	738	1230	528342	92424	46.32	45.75	0	webp	
+char/illust/char_613_acmedc_1.png	772	1130	569337	107760	46.01	45.34	0	webp	
+char/illust/char_613_acmedc.png	772	1130	569337	107760	46.01	45.34	0	webp	
+char/illust/char_614_acsupo_1.png	710	1186	459105	95312	44.91	44.41	0	webp	
+char/illust/char_614_acsupo.png	710	1186	459105	95312	44.91	44.41	0	webp	
+char/illust/char_615_acspec_1.png	632	1456	711142	121420	41.62	41.22	0	webp	
+char/illust/char_615_acspec.png	632	1456	711142	121420	41.62	41.22	0	webp	
+char/illust/char_616_pithst_1.png	553	1300	643793	118544	44.13	43.5	0	webp	
+char/illust/char_616_pithst.png	553	1300	643793	118544	44.13	43.5	0	webp	
+char/illust/char_617_sharp2_1.png	803	1279	577722	87744	46.3	45.66	0	webp	
+char/illust/char_617_sharp2.png	803	1279	577722	87744	46.3	45.66	0	webp	
+char/illust/skin/char_002_amiya_epoque_4.png	1024	1024	418289	124356	44.43	42.25	0	webp	
+char/illust/skin/char_002_amiya_winter_1.png	1024	1024	306433	87492	46.65	44.49	0	webp	
+char/illust/skin/char_003_kalts_boc_6.png	2550	2034	5263996	728752	45.81	39.46	0	webp	
+char/illust/skin/char_003_kalts_sale_14.png	2560	2068	5893322	1340904	45.99	36.48	0	webp	
+char/illust/skin/char_010_chen_nian_2.png	1024	1024	545175	174112	42.68	40.36	0	webp	
+char/illust/skin/char_010_chen_sale_10.png	2364	2419	5526021	710042	46.83	40.45	0	webp	
+char/illust/skin/char_017_huang_as_1.png	1024	1024	577946	195648	42.51	40.31	0	webp	
+char/illust/skin/char_017_huang_witch_5.png	2118	2222	5184226	905176	42.71	36.48	0	webp	
+char/illust/skin/char_1012_skadi2_boc_4.png	2116	1535	4036071	622898	43.48	37.62	0	webp	
+char/illust/skin/char_1012_skadi2_iteration_2.png	2492	2164	5944386	905896	44.15	36.93	0	webp	
+char/illust/skin/char_1013_chen2_boc_6.png	1024	1024	839119	221310	40.03	37.81	0	webp	
+char/illust/skin/char_1013_chen2_summer_20.png	2284	1779	5659723	1116530	41.94	33.78	0	webp	
+char/illust/skin/char_1014_nearl2_epoque_17.png	2057	1870	6035125	1087904	43.19	37.49	0	webp	
+char/illust/skin/char_1016_agoat2_epoque_34.png	2538	1828	4074193	655642	45.75	38.93	0	webp	
+char/illust/skin/char_1016_agoat2_epoque_57.png	2186	1861	3585952	596786	46.57	40.99	0	webp	
+char/illust/skin/char_1019_siege2_epoque_50.png	2536	2501	7242960	1149072	47.39	40.26	0	webp	
+char/illust/skin/char_102_texas_epoque_7.png	1024	1024	540582	149308	43.24	41.07	0	webp	
+char/illust/skin/char_102_texas_winter_1.png	1024	1024	473705	128444	44.53	42.33	0	webp	
+char/illust/skin/char_1020_reed2_epoque_30.png	2518	1868	4371458	706636	46.01	38.8	0	webp	
+char/illust/skin/char_1020_reed2_snow_8.png	2536	2412	5580539	843762	45.32	39.05	0	webp	
+char/illust/skin/char_1020_reed2_summer_17.png	2555	1672	4453701	710832	45.08	38.39	0	webp	
+char/illust/skin/char_1021_kroos2_game_3.png	1831	1809	4186938	699046	42.89	38.44	0	webp	
+char/illust/skin/char_1021_kroos2_nian_8.png	1024	1024	814312	241310	42.51	40.26	0	webp	
+char/illust/skin/char_1026_gvial2_summer_12.png	2537	2043	5590897	797610	46.09	37.81	0	webp	
+char/illust/skin/char_1028_texas2_epoque_36.png	2241	1933	4575517	607478	44.45	37.86	0	webp	
+char/illust/skin/char_1028_texas2_iteration_1.png	2368	2020	3813840	521744	45.51	39.68	0	webp	
+char/illust/skin/char_103_angel_kfc_1.png	1024	1024	582392	160018	42.77	40.48	0	webp	
+char/illust/skin/char_103_angel_sale_8.png	1024	1024	621621	161720	43.41	41.12	0	webp	
+char/illust/skin/char_103_angel_wild_1.png	1024	1024	497410	144156	45.12	42.97	0	webp	
+char/illust/skin/char_1031_slent2_epoque_32.png	2478	1643	4222975	578760	47.31	40.39	0	webp	
+char/illust/skin/char_1032_excu2_sale_12.png	2532	2075	7182114	1171064	44.18	36.65	0	webp	
+char/illust/skin/char_1032_excu2_sanrio_2.png	2536	2159	7421654	1130370	45.12	37.59	0	webp	
+char/illust/skin/char_1033_swire2_ambienceSynesthesia_4.png	2348	1955	4980378	880834	45.7	39.54	0	webp	
+char/illust/skin/char_1035_wisdel_game_9.png	860	1019	240210	74656	41.45	40.88	0	webp	
+char/illust/skin/char_1035_wisdel_sale_14.png	2550	2501	8339181	1955124	48.23	40.76	0	webp	
+char/illust/skin/char_1038_whitw2_sale_15.png	2536	2401	5583892	989232	47.24	40.71	0	webp	
+char/illust/skin/char_1039_thorn2_marthe_9.png	2560	2121	7027058	1537388	45.27	36.39	0	webp	
+char/illust/skin/char_1040_blaze2_winter_5.png	2314	2089	5446627	765718	46.79	41.06	0	webp	
+char/illust/skin/char_1041_angel2_iteration_6.png	2536	2087	3571642	480978	47.32	41.89	0	webp	
+char/illust/skin/char_1043_leizi2_game_8.png	2314	2273	7047677	1170366	42.95	36.51	0	webp	
+char/illust/skin/char_1044_hsgma2_whirlwind_11.png	2949	2574	6795770	1062094	45.7	37.28	0	webp	
+char/illust/skin/char_1046_sbell2_ambienceSynesthesia_8.png	2423	2180	7525281	1298416	44.52	37.99	0	webp	
+char/illust/skin/char_107_liskam_nian_2.png	1024	1024	762147	226146	44.84	42.77	0	webp	
+char/illust/skin/char_107_liskam_striker_1.png	1024	1024	525866	144376	43.72	41.61	0	webp	
+char/illust/skin/char_108_silent_sweep_1.png	1024	1024	635169	184392	43.02	40.81	0	webp	
+char/illust/skin/char_108_silent_winter_2.png	1024	1024	587857	172562	44.67	42.39	0	webp	
+char/illust/skin/char_112_siege_striker_2.png	1024	1024	596637	164946	44.8	42.71	0	webp	
+char/illust/skin/char_112_siege_wild_2.png	1024	1024	1003904	333760	41.79	39.65	0	webp	
+char/illust/skin/char_113_cqbw_epoque_7.png	1024	1024	755444	192218	43.56	41.33	0	webp	
+char/illust/skin/char_126_shotst_epoque_10.png	1024	1024	503297	142446	44.08	41.9	0	webp	
+char/illust/skin/char_126_shotst_epoque_28.png	1235	1566	1785979	252880	43.82	41.5	0	webp	
+char/illust/skin/char_127_estell_epoque_50.png	2010	1877	3299440	482126	46.82	42.39	0	webp	
+char/illust/skin/char_128_plosis_epoque_3.png	1024	1024	922399	272580	40.25	37.93	0	webp	
+char/illust/skin/char_128_plosis_yun_4.png	1949	1555	3692866	725712	43.69	37.78	0	webp	
+char/illust/skin/char_134_ifrit_kfc_1.png	1024	1024	461305	138688	42.93	40.64	0	webp	
+char/illust/skin/char_134_ifrit_rilakkuma_1.png	1944	1943	4729629	896202	42.75	37.41	0	webp	
+char/illust/skin/char_134_ifrit_summer_1.png	1024	1024	781864	249856	41.51	39.37	0	webp	
+char/illust/skin/char_136_hsguma_nian_3.png	1024	1024	815636	234094	41.63	39.53	0	webp	
+char/illust/skin/char_136_hsguma_summer_16.png	2320	2373	5841032	1105412	43.8	33.72	0	webp	
+char/illust/skin/char_140_whitew_boc_1.png	1024	1024	677037	189996	44.34	42.26	0	webp	
+char/illust/skin/char_143_ghost_winter_1.png	1024	1024	603034	173528	42.9	40.59	0	webp	
+char/illust/skin/char_145_prove_summer_3.png	1024	1024	477429	145116	43.34	40.97	0	webp	
+char/illust/skin/char_145_prove_wild_5.png	2436	2299	4130873	602090	48.2	42.54	0	webp	
+char/illust/skin/char_147_shining_summer_1.png	1024	1024	844781	239146	42.49	40.27	0	webp	
+char/illust/skin/char_150_snakek_wild_1.png	1024	1024	682839	192122	42.02	39.83	0	webp	
+char/illust/skin/char_150_snakek_yun_7.png	1693	1656	3202966	515822	42.01	38.46	0	webp	
+char/illust/skin/char_1502_crosly_iteration_5.png	2536	2455	6086662	996196	45.33	38.1	0	webp	
+char/illust/skin/char_171_bldsk_summer_7.png	1024	1024	462608	158102	44.84	42.67	0	webp	
+char/illust/skin/char_171_bldsk_witch_1.png	1024	1024	667357	251368	43.36	41.18	0	webp	
+char/illust/skin/char_172_svrash_ambienceSynesthesia_4.png	2329	2155	6408097	1014198	46.5	39.17	0	webp	
+char/illust/skin/char_172_svrash_snow_1.png	1024	1024	906322	280148	41.95	39.82	0	webp	
+char/illust/skin/char_172_svrash_summer_4.png	1024	1024	884325	225750	40.89	38.47	0	webp	
+char/illust/skin/char_173_slchan_wild_1.png	1024	1024	715893	221532	43.01	40.8	0	webp	
+char/illust/skin/char_173_slchan_wwf_1.png	1024	1024	928856	280438	41.52	39.37	0	webp	
+char/illust/skin/char_174_slbell_snow_1.png	1024	1024	990376	279612	42.25	40.14	0	webp	
+char/illust/skin/char_179_cgbird_sightseer_1.png	2122	1939	5296254	912398	42.21	36.29	0	webp	
+char/illust/skin/char_179_cgbird_witch_1.png	1024	1024	815517	225260	41.37	39.28	0	webp	
+char/illust/skin/char_180_amgoat_sanrio_2.png	2355	2287	4690435	655012	45.5	40.23	0	webp	
+char/illust/skin/char_180_amgoat_summer_5.png	1024	1024	597847	169626	44.32	42.46	0	webp	
+char/illust/skin/char_181_flower_daily_1.png	1024	1024	610769	195812	42.55	40.09	0	webp	
+char/illust/skin/char_181_flower_epoque_9.png	1024	1024	600460	176032	42.45	40.14	0	webp	
+char/illust/skin/char_183_skgoat_epoque_30.png	1438	1618	2009019	269364	44.97	42.09	0	webp	
+char/illust/skin/char_188_helage_boc_2.png	2260	1430	3638671	775594	48.98	42.03	0	webp	
+char/illust/skin/char_193_frostl_boc_4.png	1024	1024	578955	149212	43.55	41.31	0	webp	
+char/illust/skin/char_196_sunbr_summer_1.png	1024	1024	803576	237582	41.15	38.96	0	webp	
+char/illust/skin/char_197_poca_epoque_12.png	1024	1024	810996	235476	40.41	38.2	0	webp	
+char/illust/skin/char_197_poca_rilakkuma_1.png	2173	2019	5218264	789768	41.88	36.72	0	webp	
+char/illust/skin/char_199_yak_summer_1.png	1024	1024	468467	138452	44.56	42.25	0	webp	
+char/illust/skin/char_2012_typhon_summer_17.png	1904	1804	4856944	701792	42.12	37.53	0	webp	
+char/illust/skin/char_2012_typhon_wild_9.png	1709	1999	4278208	666542	42.27	38.02	0	webp	
+char/illust/skin/char_2013_cerber_summer_4.png	1024	1024	836651	231988	40.57	38.17	0	webp	
+char/illust/skin/char_2013_cerber_whirlwind_2.png	1024	1024	609148	156262	42.38	40.23	0	webp	
+char/illust/skin/char_2014_nian_cfa_1.png	2199	2242	6628942	1144186	43.08	34.66	0	webp	
+char/illust/skin/char_2014_nian_nian_4.png	1024	1024	594521	157958	43.13	40.95	0	webp	
+char/illust/skin/char_2015_dusk_nian_12.png	2305	2425	6130221	1029682	44.46	38.65	0	webp	
+char/illust/skin/char_2015_dusk_nian_7.png	1024	1024	698190	198186	41.02	38.6	0	webp	
+char/illust/skin/char_202_demkni_ambienceSynesthesia_7.png	2536	2094	5868546	837806	45.87	38.95	0	webp	
+char/illust/skin/char_202_demkni_boc_1.png	2155	1783	3704549	713930	42.23	36.15	0	webp	
+char/illust/skin/char_202_demkni_test_1.png	1024	1024	548090	178810	41.9	39.61	0	webp	
+char/illust/skin/char_2023_ling_ncg_1.png	2557	2115	5694726	920574	45.77	38.49	0	webp	
+char/illust/skin/char_2023_ling_nian_12.png	2363	2543	6095554	1027210	44.75	38.8	0	webp	
+char/illust/skin/char_2023_ling_nian_9.png	1024	1024	900296	255034	41.85	39.75	0	webp	
+char/illust/skin/char_2024_chyue_cfa_1.png	1536	1339	2384237	466132	41.62	37.72	0	webp	
+char/illust/skin/char_2024_chyue_nian_10.png	2238	2320	5659047	881988	46.17	39.71	0	webp	
+char/illust/skin/char_2025_shu_nian_11.png	1700	1778	3424988	435832	41.31	37.39	0	webp	
+char/illust/skin/char_2026_yu_nian_12.png	2232	2135	6103418	1005654	43.55	37.86	0	webp	
+char/illust/skin/char_206_gnosis_boc_4.png	1024	1024	989821	275342	40.57	38.32	0	webp	
+char/illust/skin/char_213_mostma_ambienceSynesthesia_6.png	2391	2220	6013352	973754	45.6	38.62	0	webp	
+char/illust/skin/char_213_mostma_epoque_5.png	1024	1024	660777	170964	42.19	39.98	0	webp	
+char/illust/skin/char_219_meteo_summer_22.png	2375	1809	5628200	1021658	45.35	38.65	0	webp	
+char/illust/skin/char_219_meteo_sweep_1.png	1024	1024	518989	122026	44.55	42.51	0	webp	
+char/illust/skin/char_222_bpipe_epoque_28.png	2019	1439	3865417	690524	44.76	39.14	0	webp	
+char/illust/skin/char_222_bpipe_epoque_40.png	2190	1624	4351336	731042	43.57	38.6	0	webp	
+char/illust/skin/char_222_bpipe_race_1.png	1024	1024	786799	225248	39.94	37.58	0	revert-to-png	PSNR@792 39.94 dB < 40.0 dB (tier 792 px)
+char/illust/skin/char_225_haak_nian_4.png	1024	1024	559790	145240	42.14	40.04	0	webp	
+char/illust/skin/char_225_haak_nian_5.png	2008	1769	3928678	534500	42.97	37.55	0	webp	
+char/illust/skin/char_237_gravel_winter_2.png	1024	1024	613497	173762	45.45	43.17	0	webp	
+char/illust/skin/char_245_cello_sale_12.png	2280	2110	6284462	999964	46.37	40.19	0	webp	
+char/illust/skin/char_248_mgllan_kitchen_1.png	1024	1024	695162	237456	44.27	42.03	0	webp	
+char/illust/skin/char_249_mlyss_ambienceSynesthesia_6.png	2558	2385	5443868	797124	45.65	38.95	0	webp	
+char/illust/skin/char_249_mlyss_boc_8.png	2529	2285	6103571	1147214	45.06	38.1	0	webp	
+char/illust/skin/char_250_phatom_ghost_1.png	2202	1873	4776991	704384	46.07	40.18	0	webp	
+char/illust/skin/char_250_phatom_sale_4.png	1024	1024	902375	262818	41.48	39.32	0	webp	
+char/illust/skin/char_253_greyy_epoque_515.png	1507	1232	2362357	335260	44.29	41.06	0	webp	
+char/illust/skin/char_253_greyy_epoque_8.png	1024	1024	620916	170060	41.34	38.9	0	webp	
+char/illust/skin/char_254_vodfox_witch_2.png	1979	2041	2983346	427042	48.38	43.88	0	webp	
+char/illust/skin/char_254_vodfox_yun_8.png	1865	1670	3893535	779152	40.24	34.62	0	webp	
+char/illust/skin/char_258_podego_epoque_9.png	1024	1024	601904	198936	42.81	40.64	0	webp	
+char/illust/skin/char_260_durnar_epoque_42.png	1848	1499	2218564	355022	43.87	39.53	0	webp	
+char/illust/skin/char_263_skadi_marthe_5.png	2086	1555	3476434	450652	43.99	38.9	0	webp	
+char/illust/skin/char_263_skadi_summer_3.png	1024	1024	637234	172192	42.02	39.72	0	webp	
+char/illust/skin/char_264_f12yin_boc_3.png	2021	1956	3348201	636522	48.1	42.27	0	webp	
+char/illust/skin/char_264_f12yin_epoque_15.png	1024	1024	569322	151994	43.8	41.33	0	webp	
+char/illust/skin/char_264_f12yin_marthe_13.png	1804	1310	2049951	276642	45.31	41.42	0	webp	
+char/illust/skin/char_279_excu_boc_1.png	2096	1785	3648900	673918	43.15	37.12	0	webp	
+char/illust/skin/char_290_vigna_as_1.png	1024	1024	514729	160344	41.92	39.7	0	webp	
+char/illust/skin/char_290_vigna_summer_1.png	1024	1024	953176	262370	40.92	38.39	0	webp	
+char/illust/skin/char_291_aglina_boc_1.png	1024	1024	671567	199268	43.3	41.04	0	webp	
+char/illust/skin/char_291_aglina_summer_5.png	1024	1024	726766	200256	42.84	40.65	0	webp	
+char/illust/skin/char_293_thorns_boc_8.png	2527	2095	7452605	1331466	46.61	38.67	0	webp	
+char/illust/skin/char_293_thorns_it_1.png	1024	1024	462400	126324	42.69	40.4	0	webp	
+char/illust/skin/char_294_ayer_boc_3.png	1024	1024	626212	218800	42.38	40.15	0	webp	
+char/illust/skin/char_300_phenxi_boc_9.png	2543	1957	5124775	999752	48.51	40.32	0	webp	
+char/illust/skin/char_300_phenxi_witch_4.png	2514	2069	5779465	1044578	45.78	38.1	0	webp	
+char/illust/skin/char_306_leizi_game_3.png	2106	1868	5108338	865712	44.16	38.48	0	webp	
+char/illust/skin/char_308_swire_nian_2.png	1024	1024	822388	216336	40.67	38.48	0	webp	
+char/illust/skin/char_311_mudrok_ambienceSynesthesia_2.png	1024	1024	653066	189442	44.4	42.35	0	webp	
+char/illust/skin/char_311_mudrok_summer_6.png	1024	1024	573293	147144	44.82	42.82	0	webp	
+char/illust/skin/char_311_mudrok_wild_10.png	1883	1833	3634121	462688	45.69	41.38	0	webp	
+char/illust/skin/char_322_lmlee_sanrio_1.png	1404	1640	2684174	462084	40.76	37.68	0	webp	
+char/illust/skin/char_322_lmlee_whirlwind_10.png	2536	2089	6413388	1113774	42.19	34.53	0	webp	
+char/illust/skin/char_322_lmlee_witch_3.png	1024	1024	715064	188730	41.56	39.37	0	webp	
+char/illust/skin/char_332_archet_sale_14.png	2329	2089	5336878	714014	44.02	38.23	0	webp	
+char/illust/skin/char_332_archet_shining_1.png	1024	1024	684772	183134	42.01	39.69	0	webp	
+char/illust/skin/char_337_utage_epoque_15.png	1024	1024	528830	151560	43.93	41.7	0	webp	
+char/illust/skin/char_337_utage_summer_4.png	1024	1024	621695	184164	41.61	39.31	0	webp	
+char/illust/skin/char_340_shwaz_snow_1.png	1024	1024	899011	256384	41.51	39.24	0	webp	
+char/illust/skin/char_340_shwaz_striker_1.png	1024	1024	650598	181440	43.82	41.69	0	webp	
+char/illust/skin/char_341_sntlla_summer_15.png	1545	1464	2938797	543354	41.47	37.57	0	webp	
+char/illust/skin/char_344_beewax_epoque_9.png	1024	1024	548810	149238	42.58	40.13	0	webp	
+char/illust/skin/char_344_beewax_summer_11.png	1024	1024	673578	175392	41.05	38.81	0	webp	
+char/illust/skin/char_350_surtr_ambienceSynesthesia_6.png	2291	2195	3977987	576334	44.24	38.39	0	webp	
+char/illust/skin/char_350_surtr_it_1.png	1024	1024	536315	151544	42.06	39.67	0	webp	
+char/illust/skin/char_350_surtr_summer_9.png	2087	1913	3968413	716148	39.22	32.89	0	revert-to-png	PSNR@792 39.22 dB < 40.0 dB (tier 792 px)
+char/illust/skin/char_358_lisa_epoque_22.png	1024	1024	785614	227104	42.76	40.6	0	webp	
+char/illust/skin/char_358_lisa_lxh_1.png	1024	1024	1042896	298678	40.51	38.23	0	webp	
+char/illust/skin/char_358_lisa_wild_3.png	1024	1024	665134	169436	43.35	41.33	0	webp	
+char/illust/skin/char_362_saga_sale_9.png	2536	2199	4459176	579918	48.44	42.15	0	webp	
+char/illust/skin/char_373_lionhd_snow_3.png	1024	1024	910456	241764	41.06	38.84	0	webp	
+char/illust/skin/char_373_lionhd_wild_3.png	1024	1024	1048645	292206	40.2	37.93	0	webp	
+char/illust/skin/char_377_gdglow_sanrio_1.png	1671	1666	4428779	906998	38.83	34.62	0	revert-to-png	PSNR@792 38.83 dB < 40.0 dB (tier 792 px)
+char/illust/skin/char_377_gdglow_snow_5.png	1024	1024	995121	291258	37.94	35.55	0	revert-to-png	PSNR@792 37.94 dB < 40.0 dB (tier 792 px)
+char/illust/skin/char_377_gdglow_summer_12.png	1951	2032	5700853	1025928	38.87	33.23	0	revert-to-png	PSNR@792 38.87 dB < 40.0 dB (tier 792 px)
+char/illust/skin/char_381_bubble_marthe_11.png	1801	1623	3416737	693134	39.66	35.01	0	revert-to-png	PSNR@792 39.66 dB < 40.0 dB (tier 792 px)
+char/illust/skin/char_388_mint_epoque_22.png	1024	1024	789053	191720	41.38	39.04	0	webp	
+char/illust/skin/char_388_mint_epoque_30.png	1856	2121	3656676	559356	45.62	40.63	0	webp	
+char/illust/skin/char_391_rosmon_epoque_17.png	1024	1024	642554	173290	43.75	41.57	0	webp	
+char/illust/skin/char_391_rosmon_sale_16.png	2462	2543	6693887	1174494	47	39.53	0	webp	
+char/illust/skin/char_400_weedy_sightseer_1.png	2263	1853	4102636	702414	45.06	38.93	0	webp	
+char/illust/skin/char_400_weedy_snow_2.png	2029	1950	3700955	591202	44.66	39.72	0	webp	
+char/illust/skin/char_4009_irene_ambienceSynesthesia_3.png	1024	1024	646058	224238	46.18	44.1	0	webp	
+char/illust/skin/char_4009_irene_game_3.png	1572	2305	3024267	461934	46.85	43.24	0	webp	
+char/illust/skin/char_4010_etlchi_winter_5.png	2536	2303	5214307	641332	45.41	37.74	0	webp	
+char/illust/skin/char_4011_lessng_whirlwind_7.png	1893	2048	5034809	837694	34.56	28.85	0	revert-to-png	PSNR@792 34.56 dB < 40.0 dB (tier 792 px)
+char/illust/skin/char_4013_kjera_epoque_18.png	1024	1024	1147201	340254	39.7	37.44	0	revert-to-png	PSNR@792 39.7 dB < 40.0 dB (tier 792 px)
+char/illust/skin/char_4016_kazema_witch_3.png	1024	1024	591370	152518	44.22	42.08	0	webp	
+char/illust/skin/char_4026_vulpis_epoque_55.png	2033	1982	4513952	626836	45.31	40.32	0	webp	
+char/illust/skin/char_4027_heyak_ambienceSynesthesia_4.png	2128	1926	5512283	856080	43.83	37.85	0	webp	
+char/illust/skin/char_4027_heyak_epoque_50.png	2470	2181	6752934	944930	46.61	40.45	0	webp	
+char/illust/skin/char_4036_forcer_epoque_20.png	1024	1024	693858	192996	42.47	40.19	0	webp	
+char/illust/skin/char_4039_horn_epoque_24.png	1024	1024	761282	211054	42.96	40.83	0	webp	
+char/illust/skin/char_4040_rockr_lxh_1.png	1024	1024	653705	168306	42.56	40.56	0	webp	
+char/illust/skin/char_4042_lumen_ambienceSynesthesia_3.png	1024	1024	947970	283348	40.65	38.4	0	webp	
+char/illust/skin/char_4042_lumen_sanrio_2.png	1907	1948	4205578	643460	41.83	37.22	0	webp	
+char/illust/skin/char_4046_ebnhlz_boc_6.png	2483	2247	7778128	1399426	43.07	35.51	0	webp	
+char/illust/skin/char_4048_doroth_witch_4.png	2514	2147	4332297	601834	47.25	40.27	0	webp	
+char/illust/skin/char_4051_akkord_summer_23.png	1389	1408	2104862	316620	42.84	40.3	0	webp	
+char/illust/skin/char_4054_malist_summer_14.png	2311	2173	4875492	892166	42.74	36.25	0	webp	
+char/illust/skin/char_4055_bgsnow_wild_7.png	1024	1024	717920	196018	42.65	40.49	0	webp	
+char/illust/skin/char_4055_bgsnow_yun_7.png	2310	2552	6558479	977268	43.8	35.29	0	webp	
+char/illust/skin/char_4058_pepe_sightseer_2.png	2007	2251	6226948	965154	40.68	35	0	webp	
+char/illust/skin/char_4064_mlynar_epoque_28.png	2302	2144	6684947	1076306	46	39.21	0	webp	
+char/illust/skin/char_4065_judge_snow_6.png	2090	2160	4231924	584910	46.09	41.08	0	webp	
+char/illust/skin/char_4072_ironmn_ambienceSynesthesia_5.png	2555	1804	5614143	886758	46.29	38.41	0	webp	
+char/illust/skin/char_4072_ironmn_summer_11.png	1024	1024	771679	222642	40.88	38.41	0	webp	
+char/illust/skin/char_4079_haini_epoque_45.png	2317	2402	5835980	939090	46.02	40.13	0	webp	
+char/illust/skin/char_4080_lin_littlePony_1.png	2501	2118	5935748	960574	43.76	37.22	0	webp	
+char/illust/skin/char_4080_lin_nian_10.png	2154	2516	7740222	1804606	45.65	39.46	0	webp	
+char/illust/skin/char_4080_lin_summer_19.png	2303	1945	6724944	1384026	43.48	36.37	0	webp	
+char/illust/skin/char_4082_qiubai_epoque_31.png	2232	1982	5549383	950034	45.09	38.78	0	webp	
+char/illust/skin/char_4082_qiubai_ncg_1.png	2551	2121	6026833	939092	45.5	38.11	0	webp	
+char/illust/skin/char_4087_ines_ambienceSynesthesia_5.png	2552	2418	6517572	1163828	45.93	37.81	0	webp	
+char/illust/skin/char_4087_ines_boc_8.png	2500	2559	6692447	1365476	47.22	40.04	0	webp	
+char/illust/skin/char_4088_hodrer_sightseer_1.png	2399	2479	7090405	1044526	42.57	34.8	0	webp	
+char/illust/skin/char_4098_vvana_epoque_40.png	2504	2550	6349004	1060508	45.9	37.1	0	webp	
+char/illust/skin/char_4100_caper_summer_18.png	2259	1636	5234596	926990	45.21	39.06	0	webp	
+char/illust/skin/char_4114_harold_snow_7.png	2127	1781	4219336	669570	42.36	36.55	0	webp	
+char/illust/skin/char_4117_ray_shining_2.png	1762	1813	3707239	630774	40.77	36.25	0	webp	
+char/illust/skin/char_4117_ray_summer_22.png	1919	1738	3994426	653026	43.53	38.82	0	webp	
+char/illust/skin/char_4121_zuole_nian_11.png	2556	2248	5494310	823162	48.89	42.09	0	webp	
+char/illust/skin/char_4121_zuole_sale_16.png	2536	1906	4974599	841480	47.16	41.08	0	webp	
+char/illust/skin/char_4122_grabds_yun_3.png	2148	2091	6173857	1037410	40.88	34.11	0	webp	
+char/illust/skin/char_4132_ascln_iteration_4.png	2338	2538	6406329	824076	45.78	39.1	0	webp	
+char/illust/skin/char_4133_logos_ambienceSynesthesia_6.png	2339	2301	6246733	1139066	42.83	35.72	0	webp	
+char/illust/skin/char_4134_cetsyr_epoque_50.png	2182	2531	6545086	1044298	44.02	38.2	0	webp	
+char/illust/skin/char_4137_udflow_epoque_46.png	2245	2547	5834403	1004258	43.78	35.24	0	webp	
+char/illust/skin/char_4138_narant_breaker_1.png	2351	2047	5330714	955762	42.73	37.03	0	webp	
+char/illust/skin/char_4138_narant_littlePony_1.png	2055	2017	4993495	823766	42.01	37.42	0	webp	
+char/illust/skin/char_4139_papyrs_game_8.png	1706	1572	2684199	445350	41.09	37.28	0	webp	
+char/illust/skin/char_4145_ulpia_epoque_48.png	2295	2216	6205409	1086502	43.2	36.62	0	webp	
+char/illust/skin/char_4146_nymph_ambienceSynesthesia_6.png	2536	2248	6579038	939104	45.52	38.63	0	webp	
+char/illust/skin/char_4146_nymph_epoque_42.png	2480	2455	7574745	928958	43.64	37.45	0	webp	
+char/illust/skin/char_4148_philae_nian_12.png	1846	1892	3160793	596962	41.52	37.2	0	webp	
+char/illust/skin/char_4151_tinman_sale_11.png	2551	2179	5502160	1016894	45.36	36.96	0	webp	
+char/illust/skin/char_416_zumama_boc_3.png	1024	1024	680251	193024	43.49	41.23	0	webp	
+char/illust/skin/char_4163_rosesa_game_7.png	1263	1313	2269074	452856	36.13	33.74	0	revert-to-png	PSNR@792 36.13 dB < 40.0 dB (tier 792 px)
+char/illust/skin/char_4179_monstr_boc_11.png	2536	1849	4191268	985798	46.25	39.32	0	webp	
+char/illust/skin/char_4191_tippi_epoque_57.png	1442	1696	3555597	662692	38.23	35.26	0	revert-to-png	PSNR@792 38.23 dB < 40.0 dB (tier 792 px)
+char/illust/skin/char_4193_lemuen_ambienceSynesthesia_7.png	2033	2146	4730658	746064	42.55	36.62	0	webp	
+char/illust/skin/char_4194_rmixer_boc_12.png	2334	2154	5261091	749392	46.3	41.27	0	webp	
+char/illust/skin/char_4195_radian_game_8.png	2535	1784	4172863	786970	49.45	43.36	0	webp	
+char/illust/skin/char_4196_reckpr_yun_12.png	2636	2677	7102059	1046898	46.46	40.34	0	webp	
+char/illust/skin/char_420_flamtl_game_2.png	2175	1964	3598845	843680	43.46	37.81	0	webp	
+char/illust/skin/char_4202_haruka_iteration_6.png	2342	1902	5372060	780116	44.37	38.1	0	webp	
+char/illust/skin/char_4207_branch_yun_10.png	1817	1435	2787606	466024	42.45	37.98	0	webp	
+char/illust/skin/char_423_blemsh_littlePony_1.png	1921	1810	5018850	796596	41.2	36.56	0	webp	
+char/illust/skin/char_423_blemsh_witch_2.png	2389	2112	6478625	820834	46.2	39.34	0	webp	
+char/illust/skin/char_426_billro_snow_3.png	1024	1024	666405	167072	42.65	40.79	0	webp	
+char/illust/skin/char_426_billro_summer_8.png	1024	1024	713215	204450	42.12	39.97	0	webp	
+char/illust/skin/char_427_vigil_epoque_27.png	2030	1693	3755682	530480	44.52	39.42	0	webp	
+char/illust/skin/char_430_fartth_whirlwind_5.png	2460	2548	6489375	1278336	46.04	38.45	0	webp	
+char/illust/skin/char_431_ashlok_epoque_28.png	2366	2242	4443449	634920	46.99	40.96	0	webp	
+char/illust/skin/char_437_mizuki_game_6.png	1911	1721	5010982	815872	37.42	31.23	0	revert-to-png	PSNR@792 37.42 dB < 40.0 dB (tier 792 px)
+char/illust/skin/char_437_mizuki_sale_7.png	1024	1024	1177263	347484	38.73	36.41	0	revert-to-png	PSNR@792 38.73 dB < 40.0 dB (tier 792 px)
+char/illust/skin/char_440_pinecn_epoque_31.png	1355	1546	2295009	449362	38.37	36.23	0	revert-to-png	PSNR@792 38.37 dB < 40.0 dB (tier 792 px)
+char/illust/skin/char_440_pinecn_shining_1.png	2455	1802	4388694	771280	44.2	36.35	0	webp	
+char/illust/skin/char_446_aroma_epoque_54.png	1551	1714	3254530	595022	41.26	37.64	0	webp	
+char/illust/skin/char_450_necras_ambienceSynesthesia_7.png	3041	2295	6858437	1241944	46.15	37.51	0	webp	
+char/illust/skin/char_450_necras_summer_20.png	2544	1960	5565039	795800	45.12	38.36	0	webp	
+char/illust/skin/char_469_indigo_nian_7.png	1024	1024	610094	174480	43.67	41.63	0	webp	
+char/illust/skin/char_472_pasngr_epoque_17.png	1024	1024	1125467	342266	40.93	38.79	0	webp	
+char/illust/skin/char_474_glady_boc_5.png	1024	1024	1002860	327666	44.32	42.26	0	webp	
+char/illust/skin/char_474_glady_epoque_33.png	2547	2520	7769082	1260230	45.9	38.48	0	webp	
+char/illust/skin/char_479_sleach_epoque_14.png	2118	1856	4208584	678902	43.98	37.93	0	webp	
+char/illust/skin/char_479_sleach_summer_11.png	2506	2236	5543054	872418	45.94	39.28	0	webp	
+char/illust/skin/char_485_pallas_epoque_12.png	1024	1024	485470	127658	44.76	42.63	0	webp	
+char/illust/skin/char_485_pallas_epoque_19.png	1024	1024	685382	200828	43.61	41.49	0	webp	
+char/illust/skin/char_491_humus_marthe_10.png	2007	1528	4010241	622184	41.1	36.65	0	webp	
+char/illust/skin/char_494_vendla_game_10.png	2224	2542	5748668	843514	47.31	41.75	0	webp	
+char/illust/skin/char_496_wildmn_epoque_16.png	1024	1024	611633	200534	43.76	41.5	0	webp	
+char/illust/skin/char_498_inside_kitchen_2.png	1717	1856	2499805	407466	42.56	38.59	0	webp	
+char/illust/skin/char_498_inside_summer_22.png	1709	1701	2578435	386622	42.51	38.82	0	webp	
+char/illustration/char_4182_oblvns_1.png	1176	1176	656203	100132	47.38	44.99	0	webp	
+char/illustration/char_4182_oblvns_skin1.png	2176	2176	4007758	562856	46.1	40.53	0	webp	
+char/illustration/char_4183_mortis_1.png	1176	1176	588673	98454	44.55	41.97	0	webp	
+char/illustration/char_4184_dolris_1.png	1176	1176	540339	79246	47.48	44.98	0	webp	
+char/illustration/char_4185_amoris_1.png	1176	1176	430995	69950	47.27	44.93	0	webp	
+char/illustration/char_4186_tmoris_1.png	1200	1200	543141	92798	48.37	45.76	0	webp	
+char/illustration/char_4186_tmoris_skin1.png	2560	2560	6799679	905466	47.97	41.07	0	webp	
+char/portrait/char_002_amiya_1.png	180	360	119664	26106	34.8	34.41	0	webp	
+char/portrait/char_002_amiya_2.png	180	360	116213	24888	34.79	34.42	0	webp	
+char/portrait/char_002_amiya_epoque_4.png	180	360	114993	25248	34.31	33.93	0	revert-to-png	PSNR@1:1 33.93 dB < 34.0 dB (tier 1:1)
+char/portrait/char_002_amiya_winter_1.png	180	360	123601	28266	35.14	34.71	0	webp	
+char/portrait/char_003_kalts_1.png	180	360	115421	27242	35.96	35.49	0	webp	
+char/portrait/char_003_kalts_2.png	180	360	122872	28848	34.71	34.33	0	webp	
+char/portrait/char_003_kalts_boc_6.png	180	360	122177	25230	34.63	34.26	0	webp	
+char/portrait/char_003_kalts_sale_14.png	180	360	122508	27648	35.55	35	0	webp	
+char/portrait/char_010_chen_1.png	180	360	109181	26188	34.57	34.19	0	webp	
+char/portrait/char_010_chen_2.png	180	360	123570	26498	34.36	33.97	0	revert-to-png	PSNR@1:1 33.97 dB < 34.0 dB (tier 1:1)
+char/portrait/char_010_chen_nian_2.png	180	360	106089	26096	33.57	33.21	0	revert-to-png	PSNR@1:1 33.21 dB < 34.0 dB (tier 1:1)
+char/portrait/char_010_chen_sale_10.png	180	360	111488	25088	34.48	34.14	0	webp	
+char/portrait/char_017_huang_1.png	180	360	125101	27418	36.23	35.76	0	webp	
+char/portrait/char_017_huang_2.png	180	360	129537	29882	36.58	36.17	0	webp	
+char/portrait/char_017_huang_as_1.png	180	360	122445	31334	33.91	33.55	0	revert-to-png	PSNR@1:1 33.55 dB < 34.0 dB (tier 1:1)
+char/portrait/char_017_huang_witch_5.png	180	360	139646	32572	32.89	32.42	0	revert-to-png	PSNR@1:1 32.42 dB < 34.0 dB (tier 1:1)
+char/portrait/char_1012_skadi2_1.png	180	360	122647	28792	34.69	34.3	0	webp	
+char/portrait/char_1012_skadi2_2.png	180	360	109454	22392	35.34	34.94	0	webp	
+char/portrait/char_1012_skadi2_boc_4.png	180	360	137381	29176	35.94	35.47	0	webp	
+char/portrait/char_1012_skadi2_iteration_2.png	180	360	130741	35282	34.15	33.8	0	revert-to-png	PSNR@1:1 33.8 dB < 34.0 dB (tier 1:1)
+char/portrait/char_1013_chen2_1.png	180	360	123714	29340	34.32	33.87	0	revert-to-png	PSNR@1:1 33.87 dB < 34.0 dB (tier 1:1)
+char/portrait/char_1013_chen2_2.png	180	360	122904	29716	31.4	31.05	0	revert-to-png	PSNR@1:1 31.05 dB < 34.0 dB (tier 1:1)
+char/portrait/char_1013_chen2_boc_6.png	180	360	135119	28558	32.84	32.44	0	revert-to-png	PSNR@1:1 32.44 dB < 34.0 dB (tier 1:1)
+char/portrait/char_1013_chen2_summer_20.png	180	360	130426	32688	34.7	34.15	0	webp	
+char/portrait/char_1014_nearl2_1.png	180	360	131633	28712	35.92	35.46	0	webp	
+char/portrait/char_1014_nearl2_2.png	180	360	144180	31256	33.98	33.55	0	revert-to-png	PSNR@1:1 33.55 dB < 34.0 dB (tier 1:1)
+char/portrait/char_1014_nearl2_epoque_17.png	180	360	131186	29856	34.64	34.17	0	webp	
+char/portrait/char_1015_aglna2_1.png	180	360	133620	28322	34.83	34.45	0	webp	
+char/portrait/char_1015_aglna2_2.png	180	360	129384	29394	33.39	33.05	0	revert-to-png	PSNR@1:1 33.05 dB < 34.0 dB (tier 1:1)
+char/portrait/char_1016_agoat2_1.png	180	360	131818	28486	34.65	34.25	0	webp	
+char/portrait/char_1016_agoat2_2.png	180	360	123234	26212	34.64	34.24	0	webp	
+char/portrait/char_1016_agoat2_epoque_34.png	180	360	119829	28578	35.37	34.89	0	webp	
+char/portrait/char_1016_agoat2_epoque_57.png	180	360	125022	25876	36.78	36.31	0	webp	
+char/portrait/char_1019_siege2_1.png	180	360	140066	30514	34.51	34.04	0	webp	
+char/portrait/char_1019_siege2_2.png	180	360	143904	30714	33.51	33.05	0	revert-to-png	PSNR@1:1 33.05 dB < 34.0 dB (tier 1:1)
+char/portrait/char_1019_siege2_epoque_50.png	180	360	141903	29348	35.93	35.45	0	webp	
+char/portrait/char_102_texas_1.png	180	360	99931	21496	37.37	36.98	0	webp	
+char/portrait/char_102_texas_2.png	180	360	111283	23402	35.74	35.33	0	webp	
+char/portrait/char_102_texas_epoque_7.png	180	360	104449	20686	35.49	35.15	0	webp	
+char/portrait/char_102_texas_winter_1.png	180	360	112969	23052	35.88	35.44	0	webp	
+char/portrait/char_1020_reed2_1.png	180	360	124416	29378	37.29	36.82	0	webp	
+char/portrait/char_1020_reed2_2.png	180	360	124857	26400	37.67	37.23	0	webp	
+char/portrait/char_1020_reed2_epoque_30.png	180	360	130365	29528	36.77	36.33	0	webp	
+char/portrait/char_1020_reed2_snow_8.png	180	360	124447	26828	35.58	35.21	0	webp	
+char/portrait/char_1020_reed2_summer_17.png	180	360	130759	31372	35.92	35.49	0	webp	
+char/portrait/char_1021_kroos2_1.png	180	360	115673	26182	38.38	37.87	0	webp	
+char/portrait/char_1021_kroos2_2.png	180	360	119080	25112	37.7	37.25	0	webp	
+char/portrait/char_1021_kroos2_game_3.png	180	360	119298	26320	34.16	33.73	0	revert-to-png	PSNR@1:1 33.73 dB < 34.0 dB (tier 1:1)
+char/portrait/char_1021_kroos2_nian_8.png	180	360	120330	27274	35.69	35.25	0	webp	
+char/portrait/char_1023_ghost2_1.png	180	360	128276	26872	35.35	34.92	0	webp	
+char/portrait/char_1023_ghost2_2.png	180	360	120656	22488	36.62	36.21	0	webp	
+char/portrait/char_1023_ghost2_boc_6.png	180	360	132054	26946	36.34	35.86	0	webp	
+char/portrait/char_1026_gvial2_1.png	180	360	129506	27454	34.76	34.32	0	webp	
+char/portrait/char_1026_gvial2_2.png	180	360	116393	23722	36.55	36.11	0	webp	
+char/portrait/char_1026_gvial2_summer_12.png	180	360	122678	26104	33.81	33.3	0	revert-to-png	PSNR@1:1 33.3 dB < 34.0 dB (tier 1:1)
+char/portrait/char_1028_texas2_1.png	180	360	104692	19866	37.33	36.84	0	webp	
+char/portrait/char_1028_texas2_2.png	180	360	114592	23352	37.59	37.11	0	webp	
+char/portrait/char_1028_texas2_epoque_36.png	180	360	126227	25230	33.27	32.84	0	revert-to-png	PSNR@1:1 32.84 dB < 34.0 dB (tier 1:1)
+char/portrait/char_1028_texas2_iteration_1.png	180	360	110053	22544	38.35	37.86	0	webp	
+char/portrait/char_103_angel_1.png	180	360	107356	26592	37.3	36.91	0	webp	
+char/portrait/char_103_angel_2.png	180	360	119914	31246	36.36	35.94	0	webp	
+char/portrait/char_103_angel_kfc_1.png	180	360	119894	27908	34.06	33.72	0	revert-to-png	PSNR@1:1 33.72 dB < 34.0 dB (tier 1:1)
+char/portrait/char_103_angel_sale_8.png	180	360	116542	27486	34.92	34.57	0	webp	
+char/portrait/char_103_angel_wild_1.png	180	360	114769	26590	36.8	36.34	0	webp	
+char/portrait/char_1031_slent2_1.png	180	360	128092	27154	38.4	37.88	0	webp	
+char/portrait/char_1031_slent2_2.png	180	360	127950	27786	37.82	37.34	0	webp	
+char/portrait/char_1031_slent2_epoque_32.png	180	360	121649	24810	38.35	37.85	0	webp	
+char/portrait/char_1032_excu2_1.png	180	360	113216	27164	34.82	34.47	0	webp	
+char/portrait/char_1032_excu2_2.png	180	360	120912	27980	35.84	35.4	0	webp	
+char/portrait/char_1032_excu2_sale_12.png	180	360	115941	29348	34.6	34.16	0	webp	
+char/portrait/char_1032_excu2_sanrio_2.png	180	360	116523	27538	33.49	33.09	0	revert-to-png	PSNR@1:1 33.09 dB < 34.0 dB (tier 1:1)
+char/portrait/char_1033_swire2_1.png	180	360	115987	23472	37.04	36.58	0	webp	
+char/portrait/char_1033_swire2_2.png	180	360	122642	23900	36.06	35.62	0	webp	
+char/portrait/char_1033_swire2_ambienceSynesthesia_4.png	180	360	118487	23978	35.31	34.87	0	webp	
+char/portrait/char_1034_jesca2_1.png	180	360	128539	24694	36.83	36.37	0	webp	
+char/portrait/char_1034_jesca2_2.png	180	360	107929	18900	37.18	36.83	0	webp	
+char/portrait/char_1034_jesca2_cfa_1.png	180	360	118147	21966	35.38	34.98	0	webp	
+char/portrait/char_1035_wisdel_1.png	180	360	147523	35368	34.86	34.41	0	webp	
+char/portrait/char_1035_wisdel_2.png	180	360	140283	32554	34.26	33.8	0	revert-to-png	PSNR@1:1 33.8 dB < 34.0 dB (tier 1:1)
+char/portrait/char_1035_wisdel_game_9.png	180	360	43311	14366	36.84	36.51	0	webp	
+char/portrait/char_1035_wisdel_sale_14.png	180	360	129739	32260	36.82	36.31	0	webp	
+char/portrait/char_1038_whitw2_1.png	180	360	109132	24198	39.03	38.47	0	webp	
+char/portrait/char_1038_whitw2_2.png	180	360	114944	24170	38.99	38.43	0	webp	
+char/portrait/char_1038_whitw2_sale_15.png	180	360	132797	30512	39.33	38.71	0	webp	
+char/portrait/char_1039_thorn2_1.png	180	360	122165	24350	37.23	36.69	0	webp	
+char/portrait/char_1039_thorn2_2.png	180	360	123781	24924	36.16	35.68	0	webp	
+char/portrait/char_1039_thorn2_marthe_9.png	180	360	108348	24908	37.43	36.92	0	webp	
+char/portrait/char_1040_blaze2_1.png	180	360	136913	32572	34.24	33.8	0	revert-to-png	PSNR@1:1 33.8 dB < 34.0 dB (tier 1:1)
+char/portrait/char_1040_blaze2_2.png	180	360	127709	30144	34.35	33.96	0	revert-to-png	PSNR@1:1 33.96 dB < 34.0 dB (tier 1:1)
+char/portrait/char_1040_blaze2_winter_5.png	180	360	144374	33262	33.91	33.47	0	revert-to-png	PSNR@1:1 33.47 dB < 34.0 dB (tier 1:1)
+char/portrait/char_1041_angel2_1.png	180	360	124087	30290	33.45	33.05	0	revert-to-png	PSNR@1:1 33.05 dB < 34.0 dB (tier 1:1)
+char/portrait/char_1041_angel2_2.png	180	360	129833	31688	31.01	30.66	0	revert-to-png	PSNR@1:1 30.66 dB < 34.0 dB (tier 1:1)
+char/portrait/char_1041_angel2_iteration_6.png	180	360	111632	24500	34.15	33.83	0	revert-to-png	PSNR@1:1 33.83 dB < 34.0 dB (tier 1:1)
+char/portrait/char_1042_phatm2_1.png	180	360	128570	27462	37.1	36.6	0	webp	
+char/portrait/char_1042_phatm2_2.png	180	360	117694	24570	34.18	33.74	0	revert-to-png	PSNR@1:1 33.74 dB < 34.0 dB (tier 1:1)
+char/portrait/char_1042_phatm2_sightseer_4.png	180	360	126359	29336	34.04	33.63	0	revert-to-png	PSNR@1:1 33.63 dB < 34.0 dB (tier 1:1)
+char/portrait/char_1043_leizi2_1.png	180	360	140502	35664	30.16	29.76	0	revert-to-png	PSNR@1:1 29.76 dB < 34.0 dB (tier 1:1)
+char/portrait/char_1043_leizi2_2.png	180	360	150693	37928	31.75	31.32	0	revert-to-png	PSNR@1:1 31.32 dB < 34.0 dB (tier 1:1)
+char/portrait/char_1043_leizi2_game_8.png	180	360	142928	32272	33.25	32.82	0	revert-to-png	PSNR@1:1 32.82 dB < 34.0 dB (tier 1:1)
+char/portrait/char_1044_hsgma2_1.png	180	360	131193	29252	32.57	32.13	0	revert-to-png	PSNR@1:1 32.13 dB < 34.0 dB (tier 1:1)
+char/portrait/char_1044_hsgma2_2.png	180	360	148212	35792	29.11	28.69	0	revert-to-png	PSNR@1:1 28.69 dB < 34.0 dB (tier 1:1)
+char/portrait/char_1044_hsgma2_whirlwind_11.png	180	360	132238	33954	29.35	29	0	revert-to-png	PSNR@1:1 29.0 dB < 34.0 dB (tier 1:1)
+char/portrait/char_1045_svash2_1.png	180	360	141171	27156	37.03	36.54	0	webp	
+char/portrait/char_1045_svash2_2.png	180	360	139990	26132	38	37.46	0	webp	
+char/portrait/char_1046_sbell2_1.png	180	360	144389	32440	36.05	35.59	0	webp	
+char/portrait/char_1046_sbell2_2.png	180	360	147811	28086	35.76	35.33	0	webp	
+char/portrait/char_1046_sbell2_ambienceSynesthesia_8.png	180	360	148484	31748	35.33	34.81	0	webp	
+char/portrait/char_1047_halo2_1.png	180	360	141084	32172	32.84	32.43	0	revert-to-png	PSNR@1:1 32.43 dB < 34.0 dB (tier 1:1)
+char/portrait/char_1047_halo2_2.png	180	360	134731	30252	31.56	31.18	0	revert-to-png	PSNR@1:1 31.18 dB < 34.0 dB (tier 1:1)
+char/portrait/char_1050_chen3_1.png	180	360	127743	31802	34.77	34.3	0	webp	
+char/portrait/char_1050_chen3_2.png	180	360	120461	30298	33.41	32.96	0	revert-to-png	PSNR@1:1 32.96 dB < 34.0 dB (tier 1:1)
+char/portrait/char_1051_headb2_1.png	180	360	122420	22982	35.95	35.56	0	webp	
+char/portrait/char_1051_headb2_2.png	180	360	120733	24312	34.97	34.56	0	webp	
+char/portrait/char_1052_kalts2_1.png	180	360	129119	28634	36.28	35.81	0	webp	
+char/portrait/char_1052_kalts2_2.png	180	360	126674	27716	35.36	34.95	0	webp	
+char/portrait/char_107_liskam_1.png	180	360	104419	20780	37.86	37.42	0	webp	
+char/portrait/char_107_liskam_2.png	180	360	98437	19254	38.41	38.02	0	webp	
+char/portrait/char_107_liskam_nian_2.png	180	360	106806	22080	38.26	37.84	0	webp	
+char/portrait/char_107_liskam_striker_1.png	180	360	115536	22034	38.34	37.87	0	webp	
+char/portrait/char_108_silent_1.png	180	360	122490	27020	36.12	35.67	0	webp	
+char/portrait/char_108_silent_2.png	180	360	121523	27100	36.3	35.87	0	webp	
+char/portrait/char_108_silent_sweep_1.png	180	360	129952	30384	32.96	32.59	0	revert-to-png	PSNR@1:1 32.59 dB < 34.0 dB (tier 1:1)
+char/portrait/char_108_silent_winter_2.png	180	360	118316	26134	36.19	35.75	0	webp	
+char/portrait/char_109_fmout_1.png	180	360	94328	21304	36.5	36	0	webp	
+char/portrait/char_109_fmout_2.png	180	360	105019	23970	34.4	33.96	0	revert-to-png	PSNR@1:1 33.96 dB < 34.0 dB (tier 1:1)
+char/portrait/char_112_siege_1.png	180	360	128533	27622	36.71	36.24	0	webp	
+char/portrait/char_112_siege_2.png	180	360	119842	24138	36.78	36.31	0	webp	
+char/portrait/char_112_siege_striker_2.png	180	360	130215	25890	37.17	36.65	0	webp	
+char/portrait/char_112_siege_wild_2.png	180	360	124772	28386	35.07	34.63	0	webp	
+char/portrait/char_113_cqbw_1.png	180	360	115679	26032	34.05	33.69	0	revert-to-png	PSNR@1:1 33.69 dB < 34.0 dB (tier 1:1)
+char/portrait/char_113_cqbw_2.png	180	360	129522	29282	33.04	32.7	0	revert-to-png	PSNR@1:1 32.7 dB < 34.0 dB (tier 1:1)
+char/portrait/char_113_cqbw_epoque_7.png	180	360	108318	22886	38.87	38.4	0	webp	
+char/portrait/char_126_shotst_1.png	180	360	97221	21292	38.73	38.3	0	webp	
+char/portrait/char_126_shotst_2.png	180	360	118465	26288	36.55	36.15	0	webp	
+char/portrait/char_126_shotst_epoque_10.png	180	360	108700	22762	37.81	37.35	0	webp	
+char/portrait/char_126_shotst_epoque_28.png	180	360	105176	19834	40.05	39.5	0	webp	
+char/portrait/char_127_estell_1.png	180	360	137963	37468	32.91	32.54	0	revert-to-png	PSNR@1:1 32.54 dB < 34.0 dB (tier 1:1)
+char/portrait/char_127_estell_2.png	180	360	143855	37776	31.23	30.76	0	revert-to-png	PSNR@1:1 30.76 dB < 34.0 dB (tier 1:1)
+char/portrait/char_127_estell_epoque_50.png	180	360	126200	27498	37.53	37.06	0	webp	
+char/portrait/char_128_plosis_1.png	180	360	109332	24778	34.63	34.23	0	webp	
+char/portrait/char_128_plosis_2.png	180	360	117809	23778	34.66	34.27	0	webp	
+char/portrait/char_128_plosis_epoque_3.png	180	360	120835	24414	36.02	35.61	0	webp	
+char/portrait/char_128_plosis_yun_4.png	180	360	147269	36458	35.23	34.71	0	webp	
+char/portrait/char_133_mm_1.png	180	360	106783	25670	36.67	36.26	0	webp	
+char/portrait/char_133_mm_2.png	180	360	126426	27024	35.03	34.63	0	webp	
+char/portrait/char_134_ifrit_1.png	180	360	118446	26584	35.36	34.95	0	webp	
+char/portrait/char_134_ifrit_2.png	180	360	116216	26090	33.36	33	0	revert-to-png	PSNR@1:1 33.0 dB < 34.0 dB (tier 1:1)
+char/portrait/char_134_ifrit_kfc_1.png	180	360	123751	27016	32.42	32.06	0	revert-to-png	PSNR@1:1 32.06 dB < 34.0 dB (tier 1:1)
+char/portrait/char_134_ifrit_rilakkuma_1.png	180	360	124680	26790	34.48	34.11	0	webp	
+char/portrait/char_134_ifrit_summer_1.png	180	360	115181	26858	34.85	34.44	0	webp	
+char/portrait/char_135_halo_1.png	180	360	132744	28668	36.33	35.86	0	webp	
+char/portrait/char_135_halo_2.png	180	360	145121	30650	33.94	33.51	0	revert-to-png	PSNR@1:1 33.51 dB < 34.0 dB (tier 1:1)
+char/portrait/char_136_hsguma_1.png	180	360	89534	19962	39.32	38.87	0	webp	
+char/portrait/char_136_hsguma_2.png	180	360	114669	26006	37.06	36.62	0	webp	
+char/portrait/char_136_hsguma_nian_3.png	180	360	105681	22552	34.09	33.69	0	revert-to-png	PSNR@1:1 33.69 dB < 34.0 dB (tier 1:1)
+char/portrait/char_136_hsguma_summer_16.png	180	360	109492	22506	34.42	34.07	0	webp	
+char/portrait/char_140_whitew_1.png	180	360	111877	21494	41.45	40.81	0	webp	
+char/portrait/char_140_whitew_2.png	180	360	117363	23544	41.06	40.41	0	webp	
+char/portrait/char_140_whitew_boc_1.png	180	360	110138	21826	40.96	40.39	0	webp	
+char/portrait/char_143_ghost_1.png	180	360	113384	20416	37.97	37.42	0	webp	
+char/portrait/char_143_ghost_2.png	180	360	114816	21452	37.22	36.79	0	webp	
+char/portrait/char_143_ghost_winter_1.png	180	360	103896	19196	36.03	35.57	0	webp	
+char/portrait/char_145_prove_1.png	180	360	93848	19926	38.13	37.67	0	webp	
+char/portrait/char_145_prove_2.png	180	360	113064	24332	35.93	35.51	0	webp	
+char/portrait/char_145_prove_summer_3.png	180	360	103076	22736	36	35.57	0	webp	
+char/portrait/char_145_prove_wild_5.png	180	360	115274	22536	37.39	36.95	0	webp	
+char/portrait/char_147_shining_1.png	180	360	124214	24224	40.1	39.46	0	webp	
+char/portrait/char_147_shining_2.png	180	360	117279	21082	36.85	36.39	0	webp	
+char/portrait/char_147_shining_summer_1.png	180	360	128716	28332	38.6	38.04	0	webp	
+char/portrait/char_150_snakek_1.png	180	360	109598	21366	37.65	37.17	0	webp	
+char/portrait/char_150_snakek_2.png	180	360	90760	18336	38.52	38.05	0	webp	
+char/portrait/char_150_snakek_wild_1.png	180	360	128737	29118	34.68	34.29	0	webp	
+char/portrait/char_150_snakek_yun_7.png	180	360	115272	21922	33.9	33.49	0	revert-to-png	PSNR@1:1 33.49 dB < 34.0 dB (tier 1:1)
+char/portrait/char_1502_crosly_1.png	180	360	117541	23180	37.64	37.13	0	webp	
+char/portrait/char_1502_crosly_2.png	180	360	111840	22520	36.93	36.44	0	webp	
+char/portrait/char_1502_crosly_iteration_5.png	180	360	119360	23558	36.27	35.83	0	webp	
+char/portrait/char_171_bldsk_1.png	180	360	87468	19004	38.14	37.63	0	webp	
+char/portrait/char_171_bldsk_2.png	180	360	82577	18998	38.71	38.25	0	webp	
+char/portrait/char_171_bldsk_summer_7.png	180	360	108917	25662	40.59	40.01	0	webp	
+char/portrait/char_171_bldsk_witch_1.png	180	360	109560	27412	34.28	33.87	0	revert-to-png	PSNR@1:1 33.87 dB < 34.0 dB (tier 1:1)
+char/portrait/char_172_svrash_1.png	180	360	114210	21984	39.06	38.51	0	webp	
+char/portrait/char_172_svrash_2.png	180	360	129817	27078	35.92	35.39	0	webp	
+char/portrait/char_172_svrash_ambienceSynesthesia_4.png	180	360	115394	24420	36.72	36.26	0	webp	
+char/portrait/char_172_svrash_snow_1.png	180	360	135137	28784	35.16	34.76	0	webp	
+char/portrait/char_172_svrash_summer_4.png	180	360	124455	26344	35.43	34.99	0	webp	
+char/portrait/char_173_slchan_1.png	180	360	104839	24400	38.85	38.33	0	webp	
+char/portrait/char_173_slchan_2.png	180	360	118296	25708	37.2	36.72	0	webp	
+char/portrait/char_173_slchan_wild_1.png	180	360	141360	30102	34.58	34.12	0	webp	
+char/portrait/char_173_slchan_wwf_1.png	180	360	133986	30008	34.78	34.34	0	webp	
+char/portrait/char_174_slbell_1.png	180	360	129367	27138	37.68	37.14	0	webp	
+char/portrait/char_174_slbell_2.png	180	360	134256	27954	35.83	35.36	0	webp	
+char/portrait/char_174_slbell_snow_1.png	180	360	125812	24524	36.99	36.51	0	webp	
+char/portrait/char_179_cgbird_1.png	180	360	114100	23910	36.86	36.41	0	webp	
+char/portrait/char_179_cgbird_2.png	180	360	102640	21650	36.52	36.11	0	webp	
+char/portrait/char_179_cgbird_sightseer_1.png	180	360	133690	30580	33.51	33.05	0	revert-to-png	PSNR@1:1 33.05 dB < 34.0 dB (tier 1:1)
+char/portrait/char_179_cgbird_witch_1.png	180	360	128259	29702	36.58	36.1	0	webp	
+char/portrait/char_180_amgoat_1.png	180	360	123028	24790	37.16	36.69	0	webp	
+char/portrait/char_180_amgoat_2.png	180	360	119321	28072	37.87	37.38	0	webp	
+char/portrait/char_180_amgoat_sanrio_2.png	180	360	133606	31606	35.39	34.96	0	webp	
+char/portrait/char_180_amgoat_summer_5.png	180	360	119381	26014	37.24	36.76	0	webp	
+char/portrait/char_181_flower_1.png	180	360	113343	23286	35.77	35.39	0	webp	
+char/portrait/char_181_flower_2.png	180	360	115373	27478	36.47	36.06	0	webp	
+char/portrait/char_181_flower_daily_1.png	180	360	93401	21906	37.63	37.2	0	webp	
+char/portrait/char_181_flower_epoque_9.png	180	360	111526	22336	35.44	35.12	0	webp	
+char/portrait/char_183_skgoat_1.png	180	360	117322	30180	36.45	36	0	webp	
+char/portrait/char_183_skgoat_2.png	180	360	114986	26460	36.99	36.49	0	webp	
+char/portrait/char_183_skgoat_epoque_30.png	180	360	113824	26368	38.25	37.76	0	webp	
+char/portrait/char_188_helage_1.png	180	360	120841	23906	37.55	37.12	0	webp	
+char/portrait/char_188_helage_2.png	180	360	125924	22768	36.76	36.34	0	webp	
+char/portrait/char_188_helage_boc_2.png	180	360	126804	27876	35.58	35.12	0	webp	
+char/portrait/char_193_frostl_1.png	180	360	102730	20296	37.27	36.87	0	webp	
+char/portrait/char_193_frostl_2.png	180	360	109216	20302	37.91	37.45	0	webp	
+char/portrait/char_193_frostl_boc_4.png	180	360	105198	20114	39.78	39.26	0	webp	
+char/portrait/char_196_sunbr_1.png	180	360	105871	22326	34.38	33.99	0	revert-to-png	PSNR@1:1 33.99 dB < 34.0 dB (tier 1:1)
+char/portrait/char_196_sunbr_2.png	180	360	106205	23544	34.12	33.74	0	revert-to-png	PSNR@1:1 33.74 dB < 34.0 dB (tier 1:1)
+char/portrait/char_196_sunbr_summer_1.png	180	360	103405	25868	35.74	35.29	0	webp	
+char/portrait/char_197_poca_1.png	180	360	121424	24978	35.86	35.45	0	webp	
+char/portrait/char_197_poca_2.png	180	360	127454	25392	36.1	35.67	0	webp	
+char/portrait/char_197_poca_epoque_12.png	180	360	130566	29188	32.98	32.55	0	revert-to-png	PSNR@1:1 32.55 dB < 34.0 dB (tier 1:1)
+char/portrait/char_197_poca_rilakkuma_1.png	180	360	135089	29794	31.19	30.83	0	revert-to-png	PSNR@1:1 30.83 dB < 34.0 dB (tier 1:1)
+char/portrait/char_198_blackd_1.png	180	360	106900	23658	34.62	34.28	0	webp	
+char/portrait/char_198_blackd_2.png	180	360	98689	20104	36.86	36.46	0	webp	
+char/portrait/char_199_yak_1.png	180	360	102916	20918	39.76	39.21	0	webp	
+char/portrait/char_199_yak_2.png	180	360	120751	25686	37.72	37.2	0	webp	
+char/portrait/char_199_yak_summer_1.png	180	360	125952	27852	35.29	34.84	0	webp	
+char/portrait/char_2012_typhon_1.png	180	360	138642	28980	38.41	37.87	0	webp	
+char/portrait/char_2012_typhon_2.png	180	360	124659	23984	39.25	38.67	0	webp	
+char/portrait/char_2012_typhon_summer_17.png	180	360	131469	28174	35.71	35.23	0	webp	
+char/portrait/char_2012_typhon_wild_9.png	180	360	141789	29648	38.16	37.6	0	webp	
+char/portrait/char_2013_cerber_1.png	180	360	126670	26702	35.15	34.73	0	webp	
+char/portrait/char_2013_cerber_2.png	180	360	142740	31700	35.13	34.74	0	webp	
+char/portrait/char_2013_cerber_summer_4.png	180	360	112714	22442	34.75	34.41	0	webp	
+char/portrait/char_2013_cerber_whirlwind_2.png	180	360	124408	24690	37.08	36.63	0	webp	
+char/portrait/char_2014_nian_1.png	180	360	118297	25856	32.36	32.01	0	revert-to-png	PSNR@1:1 32.01 dB < 34.0 dB (tier 1:1)
+char/portrait/char_2014_nian_2.png	180	360	116652	25770	32.27	31.96	0	revert-to-png	PSNR@1:1 31.96 dB < 34.0 dB (tier 1:1)
+char/portrait/char_2014_nian_cfa_1.png	180	360	128467	29214	33.57	33.03	0	revert-to-png	PSNR@1:1 33.03 dB < 34.0 dB (tier 1:1)
+char/portrait/char_2014_nian_nian_4.png	180	360	113083	26842	31.91	31.54	0	revert-to-png	PSNR@1:1 31.54 dB < 34.0 dB (tier 1:1)
+char/portrait/char_2015_dusk_1.png	180	360	113902	25084	34.23	33.82	0	revert-to-png	PSNR@1:1 33.82 dB < 34.0 dB (tier 1:1)
+char/portrait/char_2015_dusk_2.png	180	360	129845	29078	31.82	31.47	0	revert-to-png	PSNR@1:1 31.47 dB < 34.0 dB (tier 1:1)
+char/portrait/char_2015_dusk_nian_12.png	180	360	132246	28232	33.11	32.77	0	revert-to-png	PSNR@1:1 32.77 dB < 34.0 dB (tier 1:1)
+char/portrait/char_2015_dusk_nian_7.png	180	360	117645	28086	33.31	32.94	0	revert-to-png	PSNR@1:1 32.94 dB < 34.0 dB (tier 1:1)
+char/portrait/char_202_demkni_1.png	180	360	113448	23584	34.65	34.31	0	webp	
+char/portrait/char_202_demkni_2.png	180	360	115711	24028	37.24	36.79	0	webp	
+char/portrait/char_202_demkni_ambienceSynesthesia_7.png	180	360	120451	24520	34.5	34.08	0	webp	
+char/portrait/char_202_demkni_boc_1.png	180	360	143897	32180	31.87	31.49	0	revert-to-png	PSNR@1:1 31.49 dB < 34.0 dB (tier 1:1)
+char/portrait/char_202_demkni_test_1.png	180	360	120960	27674	34.03	33.66	0	revert-to-png	PSNR@1:1 33.66 dB < 34.0 dB (tier 1:1)
+char/portrait/char_2023_ling_1.png	180	360	129932	29618	35.66	35.21	0	webp	
+char/portrait/char_2023_ling_2.png	180	360	125627	26044	36.01	35.55	0	webp	
+char/portrait/char_2023_ling_ncg_1.png	180	360	135452	28400	35.92	35.46	0	webp	
+char/portrait/char_2023_ling_nian_12.png	180	360	130683	29286	34.21	33.82	0	revert-to-png	PSNR@1:1 33.82 dB < 34.0 dB (tier 1:1)
+char/portrait/char_2023_ling_nian_9.png	180	360	136481	30842	34.34	33.93	0	revert-to-png	PSNR@1:1 33.93 dB < 34.0 dB (tier 1:1)
+char/portrait/char_2024_chyue_1.png	180	360	110564	24632	38.31	37.81	0	webp	
+char/portrait/char_2024_chyue_2.png	180	360	112515	25360	37.18	36.7	0	webp	
+char/portrait/char_2024_chyue_cfa_1.png	180	360	121253	28600	34.56	34.05	0	webp	
+char/portrait/char_2024_chyue_nian_10.png	180	360	119918	27348	38.25	37.7	0	webp	
+char/portrait/char_2025_shu_1.png	180	360	113688	26476	34.52	34.09	0	webp	
+char/portrait/char_2025_shu_2.png	180	360	131506	25814	31.16	30.79	0	revert-to-png	PSNR@1:1 30.79 dB < 34.0 dB (tier 1:1)
+char/portrait/char_2025_shu_nian_11.png	180	360	115782	25428	31.65	31.23	0	revert-to-png	PSNR@1:1 31.23 dB < 34.0 dB (tier 1:1)
+char/portrait/char_2026_yu_1.png	180	360	126341	29750	32.66	32.24	0	revert-to-png	PSNR@1:1 32.24 dB < 34.0 dB (tier 1:1)
+char/portrait/char_2026_yu_2.png	180	360	122942	28378	31.3	30.93	0	revert-to-png	PSNR@1:1 30.93 dB < 34.0 dB (tier 1:1)
+char/portrait/char_2026_yu_nian_12.png	180	360	139445	33456	31.36	31.02	0	revert-to-png	PSNR@1:1 31.02 dB < 34.0 dB (tier 1:1)
+char/portrait/char_2027_wang_1.png	180	360	122308	29100	38.41	37.89	0	webp	
+char/portrait/char_2027_wang_2.png	180	360	131891	31104	36.68	36.22	0	webp	
+char/portrait/char_206_gnosis_1.png	180	360	116658	22044	35.65	35.23	0	webp	
+char/portrait/char_206_gnosis_2.png	180	360	103927	19032	39.85	39.3	0	webp	
+char/portrait/char_206_gnosis_boc_4.png	180	360	123078	23858	35.92	35.46	0	webp	
+char/portrait/char_213_mostma_1.png	180	360	116153	25780	34.89	34.41	0	webp	
+char/portrait/char_213_mostma_2.png	180	360	123994	27896	32.84	32.45	0	revert-to-png	PSNR@1:1 32.45 dB < 34.0 dB (tier 1:1)
+char/portrait/char_213_mostma_ambienceSynesthesia_6.png	180	360	133213	32280	31.54	31.01	0	revert-to-png	PSNR@1:1 31.01 dB < 34.0 dB (tier 1:1)
+char/portrait/char_213_mostma_epoque_5.png	180	360	121335	29480	31.51	31.19	0	revert-to-png	PSNR@1:1 31.19 dB < 34.0 dB (tier 1:1)
+char/portrait/char_215_mantic_1.png	180	360	133610	30662	35.66	35.18	0	webp	
+char/portrait/char_215_mantic_2.png	180	360	111167	28368	37.61	37.1	0	webp	
+char/portrait/char_218_cuttle_1.png	180	360	99393	17806	38.65	38.18	0	webp	
+char/portrait/char_218_cuttle_2.png	180	360	104191	18198	38.03	37.54	0	webp	
+char/portrait/char_219_meteo_1.png	180	360	113498	23562	37.95	37.5	0	webp	
+char/portrait/char_219_meteo_2.png	180	360	112598	23856	36.7	36.31	0	webp	
+char/portrait/char_219_meteo_summer_22.png	180	360	139979	26586	35.5	35.05	0	webp	
+char/portrait/char_219_meteo_sweep_1.png	180	360	115435	22834	38.19	37.73	0	webp	
+char/portrait/char_222_bpipe_1.png	180	360	118978	24736	34.48	34.11	0	webp	
+char/portrait/char_222_bpipe_2.png	180	360	113211	22752	34.41	34.03	0	webp	
+char/portrait/char_222_bpipe_epoque_28.png	180	360	115516	21008	35.45	35.05	0	webp	
+char/portrait/char_222_bpipe_epoque_40.png	180	360	110926	22022	36.07	35.64	0	webp	
+char/portrait/char_222_bpipe_race_1.png	180	360	121476	24794	33.5	33.14	0	revert-to-png	PSNR@1:1 33.14 dB < 34.0 dB (tier 1:1)
+char/portrait/char_225_haak_1.png	180	360	97937	22806	36	35.62	0	webp	
+char/portrait/char_225_haak_2.png	180	360	98697	23338	33.38	33.03	0	revert-to-png	PSNR@1:1 33.03 dB < 34.0 dB (tier 1:1)
+char/portrait/char_225_haak_nian_4.png	180	360	120742	27960	33.84	33.44	0	revert-to-png	PSNR@1:1 33.44 dB < 34.0 dB (tier 1:1)
+char/portrait/char_225_haak_nian_5.png	180	360	118764	25922	35.48	35.14	0	webp	
+char/portrait/char_230_savage_1.png	180	360	100366	21562	41.31	40.66	0	webp	
+char/portrait/char_230_savage_2.png	180	360	89709	17118	42.53	41.93	0	webp	
+char/portrait/char_237_gravel_1.png	180	360	125431	26056	37.15	36.64	0	webp	
+char/portrait/char_237_gravel_2.png	180	360	121741	24502	37.05	36.55	0	webp	
+char/portrait/char_237_gravel_winter_2.png	180	360	121062	23254	37.17	36.69	0	webp	
+char/portrait/char_243_waaifu_1.png	180	360	107806	25652	30.79	30.53	0	revert-to-png	PSNR@1:1 30.53 dB < 34.0 dB (tier 1:1)
+char/portrait/char_243_waaifu_2.png	180	360	110582	25616	30.42	30.15	0	revert-to-png	PSNR@1:1 30.15 dB < 34.0 dB (tier 1:1)
+char/portrait/char_245_cello_1.png	180	360	112405	24380	39.92	39.34	0	webp	
+char/portrait/char_245_cello_2.png	180	360	111920	23496	39.44	38.89	0	webp	
+char/portrait/char_245_cello_sale_12.png	180	360	129339	31296	37.29	36.7	0	webp	
+char/portrait/char_248_mgllan_1.png	180	360	127327	27348	33.33	32.93	0	revert-to-png	PSNR@1:1 32.93 dB < 34.0 dB (tier 1:1)
+char/portrait/char_248_mgllan_2.png	180	360	121722	26314	34.56	34.19	0	webp	
+char/portrait/char_248_mgllan_kitchen_1.png	180	360	129037	30352	34.6	34.17	0	webp	
+char/portrait/char_249_mlyss_1.png	180	360	115402	25476	33.26	32.9	0	revert-to-png	PSNR@1:1 32.9 dB < 34.0 dB (tier 1:1)
+char/portrait/char_249_mlyss_2.png	180	360	133610	31426	33.6	33.19	0	revert-to-png	PSNR@1:1 33.19 dB < 34.0 dB (tier 1:1)
+char/portrait/char_249_mlyss_ambienceSynesthesia_6.png	180	360	135391	36756	33.83	33.34	0	revert-to-png	PSNR@1:1 33.34 dB < 34.0 dB (tier 1:1)
+char/portrait/char_249_mlyss_boc_8.png	180	360	131597	33292	32.69	32.33	0	revert-to-png	PSNR@1:1 32.33 dB < 34.0 dB (tier 1:1)
+char/portrait/char_250_phatom_1.png	180	360	105140	18844	39.03	38.44	0	webp	
+char/portrait/char_250_phatom_2.png	180	360	105529	19732	38.08	37.58	0	webp	
+char/portrait/char_250_phatom_ghost_1.png	180	360	108632	23668	38.36	37.85	0	webp	
+char/portrait/char_250_phatom_sale_4.png	180	360	123076	23522	35.31	34.91	0	webp	
+char/portrait/char_253_greyy_1.png	180	360	114718	23804	35.73	35.31	0	webp	
+char/portrait/char_253_greyy_2.png	180	360	120051	25720	35.86	35.45	0	webp	
+char/portrait/char_253_greyy_epoque_515.png	180	360	108230	19838	38.48	38.09	0	webp	
+char/portrait/char_253_greyy_epoque_8.png	180	360	123277	27708	33.58	33.24	0	revert-to-png	PSNR@1:1 33.24 dB < 34.0 dB (tier 1:1)
+char/portrait/char_254_vodfox_1.png	180	360	124826	25510	36.96	36.47	0	webp	
+char/portrait/char_254_vodfox_2.png	180	360	135782	28446	36.4	35.97	0	webp	
+char/portrait/char_254_vodfox_witch_2.png	180	360	113920	25866	39.93	39.41	0	webp	
+char/portrait/char_254_vodfox_yun_8.png	180	360	122247	28724	32.22	31.87	0	revert-to-png	PSNR@1:1 31.87 dB < 34.0 dB (tier 1:1)
+char/portrait/char_258_podego_1.png	180	360	104174	24002	36.04	35.65	0	webp	
+char/portrait/char_258_podego_2.png	180	360	104560	23818	36.67	36.21	0	webp	
+char/portrait/char_258_podego_epoque_9.png	180	360	94927	22514	36.93	36.48	0	webp	
+char/portrait/char_260_durnar_1.png	180	360	121613	23990	38.46	37.92	0	webp	
+char/portrait/char_260_durnar_2.png	180	360	118169	22306	38.74	38.21	0	webp	
+char/portrait/char_260_durnar_epoque_42.png	180	360	120993	26314	35.17	34.66	0	webp	
+char/portrait/char_263_skadi_1.png	180	360	110952	22562	37.64	37.19	0	webp	
+char/portrait/char_263_skadi_2.png	180	360	103139	19458	38.2	37.76	0	webp	
+char/portrait/char_263_skadi_marthe_5.png	180	360	116314	22258	39.8	39.23	0	webp	
+char/portrait/char_263_skadi_summer_3.png	180	360	115507	21092	36.66	36.24	0	webp	
+char/portrait/char_264_f12yin_1.png	180	360	113056	19434	40.29	39.72	0	webp	
+char/portrait/char_264_f12yin_2.png	180	360	110058	21588	40.14	39.56	0	webp	
+char/portrait/char_264_f12yin_boc_3.png	180	360	103934	19986	40.59	40.03	0	webp	
+char/portrait/char_264_f12yin_epoque_15.png	180	360	106398	17698	41.54	40.92	0	webp	
+char/portrait/char_264_f12yin_marthe_13.png	180	360	106956	17314	39.18	38.7	0	webp	
+char/portrait/char_271_spikes_1.png	180	360	80586	18860	42.2	41.65	0	webp	
+char/portrait/char_271_spikes_2.png	180	360	92889	23568	39.64	39.18	0	webp	
+char/portrait/char_279_excu_1.png	180	360	95937	21254	36.71	36.24	0	webp	
+char/portrait/char_279_excu_2.png	180	360	117714	28626	36.38	35.94	0	webp	
+char/portrait/char_279_excu_boc_1.png	180	360	119163	24250	36.42	35.95	0	webp	
+char/portrait/char_290_vigna_1.png	180	360	120047	25356	35.3	34.91	0	webp	
+char/portrait/char_290_vigna_2.png	180	360	116141	26340	35.51	35.1	0	webp	
+char/portrait/char_290_vigna_as_1.png	180	360	120767	26358	33.89	33.51	0	revert-to-png	PSNR@1:1 33.51 dB < 34.0 dB (tier 1:1)
+char/portrait/char_290_vigna_summer_1.png	180	360	126162	23060	36.66	36.16	0	webp	
+char/portrait/char_291_aglina_1.png	180	360	127482	26320	35.6	35.19	0	webp	
+char/portrait/char_291_aglina_2.png	180	360	127365	24140	35.96	35.55	0	webp	
+char/portrait/char_291_aglina_boc_1.png	180	360	130815	26068	35.35	34.97	0	webp	
+char/portrait/char_291_aglina_summer_5.png	180	360	120235	22322	35.66	35.25	0	webp	
+char/portrait/char_293_thorns_1.png	180	360	101128	21056	36.09	35.71	0	webp	
+char/portrait/char_293_thorns_2.png	180	360	98148	18866	36.8	36.38	0	webp	
+char/portrait/char_293_thorns_boc_8.png	180	360	128399	26794	38.92	38.34	0	webp	
+char/portrait/char_293_thorns_it_1.png	180	360	101779	19474	37.41	36.99	0	webp	
+char/portrait/char_294_ayer_1.png	180	360	130883	31262	35.27	34.8	0	webp	
+char/portrait/char_294_ayer_2.png	180	360	133021	31956	35.53	35.09	0	webp	
+char/portrait/char_294_ayer_boc_3.png	180	360	107913	22662	34.97	34.6	0	webp	
+char/portrait/char_300_phenxi_1.png	180	360	120188	27542	34.89	34.42	0	webp	
+char/portrait/char_300_phenxi_2.png	180	360	117028	26652	33.71	33.32	0	revert-to-png	PSNR@1:1 33.32 dB < 34.0 dB (tier 1:1)
+char/portrait/char_300_phenxi_boc_9.png	180	360	118142	24006	35.82	35.27	0	webp	
+char/portrait/char_300_phenxi_witch_4.png	180	360	138349	30024	34.92	34.41	0	webp	
+char/portrait/char_304_zebra_1.png	180	360	107825	21770	39.9	39.32	0	webp	
+char/portrait/char_304_zebra_2.png	180	360	113278	22794	39.42	38.85	0	webp	
+char/portrait/char_306_leizi_1.png	180	360	136692	30246	35.13	34.68	0	webp	
+char/portrait/char_306_leizi_2.png	180	360	129146	29394	34.16	33.74	0	revert-to-png	PSNR@1:1 33.74 dB < 34.0 dB (tier 1:1)
+char/portrait/char_306_leizi_game_3.png	180	360	141286	34860	33.15	32.6	0	revert-to-png	PSNR@1:1 32.6 dB < 34.0 dB (tier 1:1)
+char/portrait/char_308_swire_1.png	180	360	117531	22576	36.3	35.87	0	webp	
+char/portrait/char_308_swire_2.png	180	360	110424	22296	38.41	37.92	0	webp	
+char/portrait/char_308_swire_nian_2.png	180	360	120495	24340	34.35	33.97	0	revert-to-png	PSNR@1:1 33.97 dB < 34.0 dB (tier 1:1)
+char/portrait/char_311_mudrok_1.png	180	360	101902	20192	39.51	38.99	0	webp	
+char/portrait/char_311_mudrok_2.png	180	360	102023	20636	38.15	37.71	0	webp	
+char/portrait/char_311_mudrok_ambienceSynesthesia_2.png	180	360	105950	19806	39.61	39.04	0	webp	
+char/portrait/char_311_mudrok_summer_6.png	180	360	118632	22376	38.82	38.28	0	webp	
+char/portrait/char_311_mudrok_wild_10.png	180	360	112747	23690	39.21	38.62	0	webp	
+char/portrait/char_322_lmlee_1.png	180	360	109141	23688	35.99	35.63	0	webp	
+char/portrait/char_322_lmlee_2.png	180	360	119491	27460	33.8	33.45	0	revert-to-png	PSNR@1:1 33.45 dB < 34.0 dB (tier 1:1)
+char/portrait/char_322_lmlee_sanrio_1.png	180	360	123453	26358	34.73	34.31	0	webp	
+char/portrait/char_322_lmlee_whirlwind_10.png	180	360	135454	30214	31.92	31.54	0	revert-to-png	PSNR@1:1 31.54 dB < 34.0 dB (tier 1:1)
+char/portrait/char_322_lmlee_witch_3.png	180	360	116909	25618	34.58	34.23	0	webp	
+char/portrait/char_332_archet_1.png	180	360	120781	23888	35.23	34.85	0	webp	
+char/portrait/char_332_archet_2.png	180	360	129200	28986	34.05	33.67	0	revert-to-png	PSNR@1:1 33.67 dB < 34.0 dB (tier 1:1)
+char/portrait/char_332_archet_sale_14.png	180	360	112867	25004	33.7	33.28	0	revert-to-png	PSNR@1:1 33.28 dB < 34.0 dB (tier 1:1)
+char/portrait/char_332_archet_shining_1.png	180	360	132429	27344	33.23	32.86	0	revert-to-png	PSNR@1:1 32.86 dB < 34.0 dB (tier 1:1)
+char/portrait/char_337_utage_1.png	180	360	109621	20942	37.2	36.77	0	webp	
+char/portrait/char_337_utage_2.png	180	360	101298	20938	37.29	36.84	0	webp	
+char/portrait/char_337_utage_epoque_15.png	180	360	98910	20104	37.73	37.27	0	webp	
+char/portrait/char_337_utage_summer_4.png	180	360	116597	24834	35.36	34.9	0	webp	
+char/portrait/char_340_shwaz_1.png	180	360	119700	23466	38.86	38.33	0	webp	
+char/portrait/char_340_shwaz_2.png	180	360	136066	29654	39.56	38.96	0	webp	
+char/portrait/char_340_shwaz_snow_1.png	180	360	127793	24962	35.18	34.79	0	webp	
+char/portrait/char_340_shwaz_striker_1.png	180	360	119218	21384	39.19	38.67	0	webp	
+char/portrait/char_341_sntlla_1.png	180	360	112546	23074	38.36	37.83	0	webp	
+char/portrait/char_341_sntlla_2.png	180	360	114148	24242	36.94	36.49	0	webp	
+char/portrait/char_341_sntlla_summer_15.png	180	360	110386	23438	35.07	34.59	0	webp	
+char/portrait/char_344_beewax_1.png	180	360	112202	24042	35.11	34.67	0	webp	
+char/portrait/char_344_beewax_2.png	180	360	121357	23756	34.95	34.56	0	webp	
+char/portrait/char_344_beewax_epoque_9.png	180	360	116579	24914	36.76	36.3	0	webp	
+char/portrait/char_344_beewax_summer_11.png	180	360	121283	25162	36.73	36.27	0	webp	
+char/portrait/char_345_folnic_1.png	180	360	111447	21304	39.29	38.79	0	webp	
+char/portrait/char_345_folnic_2.png	180	360	114156	20234	37.48	37.07	0	webp	
+char/portrait/char_348_ceylon_1.png	180	360	123667	25798	36.14	35.65	0	webp	
+char/portrait/char_348_ceylon_2.png	180	360	113019	23854	36.49	36.04	0	webp	
+char/portrait/char_350_surtr_1.png	180	360	101745	22508	36.48	36.05	0	webp	
+char/portrait/char_350_surtr_2.png	180	360	104790	23296	35.69	35.28	0	webp	
+char/portrait/char_350_surtr_ambienceSynesthesia_6.png	180	360	102561	23394	33.06	32.69	0	revert-to-png	PSNR@1:1 32.69 dB < 34.0 dB (tier 1:1)
+char/portrait/char_350_surtr_it_1.png	180	360	101574	26446	33.63	33.27	0	revert-to-png	PSNR@1:1 33.27 dB < 34.0 dB (tier 1:1)
+char/portrait/char_350_surtr_summer_9.png	180	360	114109	26824	32.55	32.18	0	revert-to-png	PSNR@1:1 32.18 dB < 34.0 dB (tier 1:1)
+char/portrait/char_355_ethan_1.png	180	360	86073	19132	41.66	41.07	0	webp	
+char/portrait/char_355_ethan_2.png	180	360	65300	11052	43.76	43.15	0	webp	
+char/portrait/char_358_lisa_1.png	180	360	117138	25380	37.1	36.62	0	webp	
+char/portrait/char_358_lisa_2.png	180	360	135906	30792	34.6	34.19	0	webp	
+char/portrait/char_358_lisa_epoque_22.png	180	360	128539	27688	33.07	32.7	0	revert-to-png	PSNR@1:1 32.7 dB < 34.0 dB (tier 1:1)
+char/portrait/char_358_lisa_lxh_1.png	180	360	118394	23018	37.14	36.69	0	webp	
+char/portrait/char_358_lisa_wild_3.png	180	360	126181	25974	36.63	36.15	0	webp	
+char/portrait/char_362_saga_1.png	180	360	105426	19584	38.23	37.74	0	webp	
+char/portrait/char_362_saga_2.png	180	360	98044	18010	38.84	38.39	0	webp	
+char/portrait/char_362_saga_sale_9.png	180	360	98727	19458	39.27	38.83	0	webp	
+char/portrait/char_373_lionhd_1.png	180	360	139130	31348	33.46	33.05	0	revert-to-png	PSNR@1:1 33.05 dB < 34.0 dB (tier 1:1)
+char/portrait/char_373_lionhd_2.png	180	360	126242	27334	35.45	35.06	0	webp	
+char/portrait/char_373_lionhd_snow_3.png	180	360	136131	27208	33.93	33.5	0	revert-to-png	PSNR@1:1 33.5 dB < 34.0 dB (tier 1:1)
+char/portrait/char_373_lionhd_wild_3.png	180	360	142382	31940	33.71	33.25	0	revert-to-png	PSNR@1:1 33.25 dB < 34.0 dB (tier 1:1)
+char/portrait/char_377_gdglow_1.png	180	360	124878	27356	33.68	33.24	0	revert-to-png	PSNR@1:1 33.24 dB < 34.0 dB (tier 1:1)
+char/portrait/char_377_gdglow_2.png	180	360	132258	31114	31.64	31.23	0	revert-to-png	PSNR@1:1 31.23 dB < 34.0 dB (tier 1:1)
+char/portrait/char_377_gdglow_sanrio_1.png	180	360	134837	31586	30.42	30.07	0	revert-to-png	PSNR@1:1 30.07 dB < 34.0 dB (tier 1:1)
+char/portrait/char_377_gdglow_snow_5.png	180	360	135300	34660	30.33	29.92	0	revert-to-png	PSNR@1:1 29.92 dB < 34.0 dB (tier 1:1)
+char/portrait/char_377_gdglow_summer_12.png	180	360	116044	26518	33.09	32.69	0	revert-to-png	PSNR@1:1 32.69 dB < 34.0 dB (tier 1:1)
+char/portrait/char_381_bubble_1.png	180	360	90624	19544	39.06	38.54	0	webp	
+char/portrait/char_381_bubble_2.png	180	360	117804	24040	36.48	36.04	0	webp	
+char/portrait/char_381_bubble_marthe_11.png	180	360	124861	26920	33.81	33.38	0	revert-to-png	PSNR@1:1 33.38 dB < 34.0 dB (tier 1:1)
+char/portrait/char_388_mint_1.png	180	360	112483	24184	38.2	37.68	0	webp	
+char/portrait/char_388_mint_2.png	180	360	112211	23360	39.31	38.78	0	webp	
+char/portrait/char_388_mint_epoque_22.png	180	360	125813	26004	37.17	36.7	0	webp	
+char/portrait/char_388_mint_epoque_30.png	180	360	120562	25256	39.24	38.71	0	webp	
+char/portrait/char_391_rosmon_1.png	180	360	135121	29838	34.31	33.9	0	revert-to-png	PSNR@1:1 33.9 dB < 34.0 dB (tier 1:1)
+char/portrait/char_391_rosmon_2.png	180	360	126818	26424	35.67	35.25	0	webp	
+char/portrait/char_391_rosmon_epoque_17.png	180	360	117260	26746	37.33	36.85	0	webp	
+char/portrait/char_391_rosmon_sale_16.png	180	360	132036	30944	37.91	37.38	0	webp	
+char/portrait/char_400_weedy_1.png	180	360	121221	29478	38.57	38.06	0	webp	
+char/portrait/char_400_weedy_2.png	180	360	130862	30730	37.45	36.98	0	webp	
+char/portrait/char_400_weedy_sightseer_1.png	180	360	122683	29378	32.21	31.71	0	revert-to-png	PSNR@1:1 31.71 dB < 34.0 dB (tier 1:1)
+char/portrait/char_400_weedy_snow_2.png	180	360	130464	29596	34.72	34.33	0	webp	
+char/portrait/char_4004_pudd_1.png	180	360	110521	25316	37.32	36.82	0	webp	
+char/portrait/char_4004_pudd_2.png	180	360	118099	24952	36.33	35.86	0	webp	
+char/portrait/char_4009_irene_1.png	180	360	121763	24430	39.73	39.16	0	webp	
+char/portrait/char_4009_irene_2.png	180	360	114167	19936	40.96	40.33	0	webp	
+char/portrait/char_4009_irene_ambienceSynesthesia_3.png	180	360	109616	22316	39.37	38.8	0	webp	
+char/portrait/char_4009_irene_game_3.png	180	360	112857	22030	38.91	38.36	0	webp	
+char/portrait/char_4010_etlchi_1.png	180	360	97206	21366	36.91	36.47	0	webp	
+char/portrait/char_4010_etlchi_2.png	180	360	95890	21174	37.73	37.26	0	webp	
+char/portrait/char_4010_etlchi_winter_5.png	180	360	100051	21146	32.85	32.49	0	revert-to-png	PSNR@1:1 32.49 dB < 34.0 dB (tier 1:1)
+char/portrait/char_4011_lessng_1.png	180	360	118961	22958	38.7	38.15	0	webp	
+char/portrait/char_4011_lessng_2.png	180	360	112745	23314	38.55	38.05	0	webp	
+char/portrait/char_4011_lessng_whirlwind_7.png	180	360	108696	22950	35.24	34.72	0	webp	
+char/portrait/char_4013_kjera_1.png	180	360	113454	23732	38.19	37.65	0	webp	
+char/portrait/char_4013_kjera_2.png	180	360	116496	21486	37.78	37.3	0	webp	
+char/portrait/char_4013_kjera_epoque_18.png	180	360	122684	28420	36.12	35.63	0	webp	
+char/portrait/char_4016_kazema_1.png	180	360	129676	31034	33.87	33.44	0	revert-to-png	PSNR@1:1 33.44 dB < 34.0 dB (tier 1:1)
+char/portrait/char_4016_kazema_2.png	180	360	118400	23146	37.26	36.81	0	webp	
+char/portrait/char_4016_kazema_witch_3.png	180	360	116160	23898	38.49	37.99	0	webp	
+char/portrait/char_4026_vulpis_1.png	180	360	122790	24854	37.67	37.2	0	webp	
+char/portrait/char_4026_vulpis_2.png	180	360	112506	21586	39.35	38.84	0	webp	
+char/portrait/char_4026_vulpis_epoque_55.png	180	360	126484	26100	37.2	36.74	0	webp	
+char/portrait/char_4027_heyak_1.png	180	360	118453	22800	35.7	35.32	0	webp	
+char/portrait/char_4027_heyak_2.png	180	360	124884	23138	36.82	36.36	0	webp	
+char/portrait/char_4027_heyak_ambienceSynesthesia_4.png	180	360	125417	24258	37.02	36.55	0	webp	
+char/portrait/char_4027_heyak_epoque_50.png	180	360	121563	21370	37.92	37.49	0	webp	
+char/portrait/char_4036_forcer_1.png	180	360	114200	26288	38.14	37.69	0	webp	
+char/portrait/char_4036_forcer_2.png	180	360	118828	25998	39.94	39.36	0	webp	
+char/portrait/char_4036_forcer_epoque_20.png	180	360	123933	29302	36.81	36.36	0	webp	
+char/portrait/char_4037_demetr_1.png	180	360	128070	31088	36.68	36.21	0	webp	
+char/portrait/char_4037_demetr_2.png	180	360	130160	27900	35.48	35.01	0	webp	
+char/portrait/char_4039_horn_1.png	180	360	116823	21816	38.36	37.85	0	webp	
+char/portrait/char_4039_horn_2.png	180	360	124330	25436	37.5	36.99	0	webp	
+char/portrait/char_4039_horn_epoque_24.png	180	360	118954	22552	37.86	37.42	0	webp	
+char/portrait/char_4040_rockr_1.png	180	360	112675	23064	38.98	38.46	0	webp	
+char/portrait/char_4040_rockr_2.png	180	360	114471	24178	37.24	36.78	0	webp	
+char/portrait/char_4040_rockr_lxh_1.png	180	360	106833	21362	36.51	36.09	0	webp	
+char/portrait/char_4042_lumen_1.png	180	360	116923	26682	34.98	34.58	0	webp	
+char/portrait/char_4042_lumen_2.png	180	360	121672	27974	35.83	35.4	0	webp	
+char/portrait/char_4042_lumen_ambienceSynesthesia_3.png	180	360	120115	26564	36.36	35.9	0	webp	
+char/portrait/char_4042_lumen_sanrio_2.png	180	360	128852	28130	32.56	32.21	0	revert-to-png	PSNR@1:1 32.21 dB < 34.0 dB (tier 1:1)
+char/portrait/char_4045_heidi_1.png	180	360	116890	25438	35.5	35.08	0	webp	
+char/portrait/char_4045_heidi_2.png	180	360	113618	24586	34.95	34.54	0	webp	
+char/portrait/char_4046_ebnhlz_1.png	180	360	132995	29698	37.65	37.07	0	webp	
+char/portrait/char_4046_ebnhlz_2.png	180	360	120549	26784	38.72	38.16	0	webp	
+char/portrait/char_4046_ebnhlz_boc_6.png	180	360	133721	31482	34.16	33.73	0	revert-to-png	PSNR@1:1 33.73 dB < 34.0 dB (tier 1:1)
+char/portrait/char_4048_doroth_1.png	180	360	129047	29674	36.7	36.22	0	webp	
+char/portrait/char_4048_doroth_2.png	180	360	122239	27666	35.39	34.96	0	webp	
+char/portrait/char_4048_doroth_witch_4.png	180	360	117641	22834	35.94	35.47	0	webp	
+char/portrait/char_4051_akkord_1.png	180	360	102954	23582	37.61	37.19	0	webp	
+char/portrait/char_4051_akkord_2.png	180	360	104167	22568	39.41	38.97	0	webp	
+char/portrait/char_4051_akkord_summer_23.png	180	360	117256	26580	38.86	38.35	0	webp	
+char/portrait/char_4054_malist_1.png	180	360	102499	22754	40.88	40.24	0	webp	
+char/portrait/char_4054_malist_2.png	180	360	118999	24482	37.2	36.69	0	webp	
+char/portrait/char_4054_malist_summer_14.png	180	360	126343	31376	33.65	33.22	0	revert-to-png	PSNR@1:1 33.22 dB < 34.0 dB (tier 1:1)
+char/portrait/char_4055_bgsnow_1.png	180	360	119737	28244	34.26	33.87	0	revert-to-png	PSNR@1:1 33.87 dB < 34.0 dB (tier 1:1)
+char/portrait/char_4055_bgsnow_2.png	180	360	133945	33576	34.34	33.87	0	revert-to-png	PSNR@1:1 33.87 dB < 34.0 dB (tier 1:1)
+char/portrait/char_4055_bgsnow_wild_7.png	180	360	128209	27084	36.46	35.96	0	webp	
+char/portrait/char_4055_bgsnow_yun_7.png	180	360	132825	30592	32.58	31.91	0	revert-to-png	PSNR@1:1 31.91 dB < 34.0 dB (tier 1:1)
+char/portrait/char_4056_titi_1.png	180	360	95781	17568	37.47	37.06	0	webp	
+char/portrait/char_4056_titi_2.png	180	360	99886	18812	36.54	36.18	0	webp	
+char/portrait/char_4058_pepe_1.png	180	360	133765	28516	31.82	31.47	0	revert-to-png	PSNR@1:1 31.47 dB < 34.0 dB (tier 1:1)
+char/portrait/char_4058_pepe_2.png	180	360	136309	28704	31.43	31.06	0	revert-to-png	PSNR@1:1 31.06 dB < 34.0 dB (tier 1:1)
+char/portrait/char_4058_pepe_sightseer_2.png	180	360	135819	32648	32.22	31.75	0	revert-to-png	PSNR@1:1 31.75 dB < 34.0 dB (tier 1:1)
+char/portrait/char_4064_mlynar_1.png	180	360	112261	21944	38.3	37.78	0	webp	
+char/portrait/char_4064_mlynar_2.png	180	360	114143	22460	37.23	36.71	0	webp	
+char/portrait/char_4064_mlynar_epoque_28.png	180	360	115201	25638	36.37	35.87	0	webp	
+char/portrait/char_4064_mlynar_iteration_3.png	180	360	137374	29840	34.55	34.06	0	webp	
+char/portrait/char_4065_judge_1.png	180	360	107805	23536	39.55	39	0	webp	
+char/portrait/char_4065_judge_2.png	180	360	103797	19650	38.54	38.06	0	webp	
+char/portrait/char_4065_judge_epoque_33.png	180	360	108452	21758	37.74	37.26	0	webp	
+char/portrait/char_4065_judge_snow_6.png	180	360	106044	19616	39.51	38.94	0	webp	
+char/portrait/char_4072_ironmn_1.png	180	360	118562	26736	36.37	35.91	0	webp	
+char/portrait/char_4072_ironmn_2.png	180	360	122487	28246	36.13	35.69	0	webp	
+char/portrait/char_4072_ironmn_ambienceSynesthesia_5.png	180	360	118772	28850	35.22	34.65	0	webp	
+char/portrait/char_4072_ironmn_summer_11.png	180	360	120779	29160	33.98	33.56	0	revert-to-png	PSNR@1:1 33.56 dB < 34.0 dB (tier 1:1)
+char/portrait/char_4079_haini_1.png	180	360	126173	26870	38.73	38.17	0	webp	
+char/portrait/char_4079_haini_2.png	180	360	133830	26324	37.68	37.18	0	webp	
+char/portrait/char_4079_haini_epoque_45.png	180	360	124589	26468	34.64	34.18	0	webp	
+char/portrait/char_4080_lin_1.png	180	360	110187	23312	39.6	39.07	0	webp	
+char/portrait/char_4080_lin_2.png	180	360	107959	24840	39.29	38.72	0	webp	
+char/portrait/char_4080_lin_littlePony_1.png	180	360	121773	26526	32.8	32.39	0	revert-to-png	PSNR@1:1 32.39 dB < 34.0 dB (tier 1:1)
+char/portrait/char_4080_lin_nian_10.png	180	360	125091	27280	36.38	35.89	0	webp	
+char/portrait/char_4080_lin_summer_19.png	180	360	127764	30848	37.29	36.78	0	webp	
+char/portrait/char_4082_qiubai_1.png	180	360	123369	27018	36.52	36.09	0	webp	
+char/portrait/char_4082_qiubai_2.png	180	360	130934	29144	36.01	35.57	0	webp	
+char/portrait/char_4082_qiubai_epoque_31.png	180	360	129691	31010	36.84	36.37	0	webp	
+char/portrait/char_4082_qiubai_ncg_1.png	180	360	140044	32402	36.74	36.27	0	webp	
+char/portrait/char_4087_ines_1.png	180	360	111140	23298	37.76	37.24	0	webp	
+char/portrait/char_4087_ines_2.png	180	360	129922	26058	35.33	34.86	0	webp	
+char/portrait/char_4087_ines_ambienceSynesthesia_5.png	180	360	135859	31866	36.87	36.39	0	webp	
+char/portrait/char_4087_ines_boc_8.png	180	360	133951	29060	38.73	38.15	0	webp	
+char/portrait/char_4088_hodrer_1.png	180	360	124113	24600	36.67	36.24	0	webp	
+char/portrait/char_4088_hodrer_2.png	180	360	131632	33116	34.7	34.29	0	webp	
+char/portrait/char_4088_hodrer_sightseer_1.png	180	360	133583	29078	30.78	30.36	0	revert-to-png	PSNR@1:1 30.36 dB < 34.0 dB (tier 1:1)
+char/portrait/char_4098_vvana_1.png	180	360	141631	31294	35.82	35.33	0	webp	
+char/portrait/char_4098_vvana_2.png	180	360	143551	30658	34.87	34.39	0	webp	
+char/portrait/char_4098_vvana_epoque_40.png	180	360	125153	28346	34.16	33.58	0	revert-to-png	PSNR@1:1 33.58 dB < 34.0 dB (tier 1:1)
+char/portrait/char_4100_caper_1.png	180	360	123648	24438	36.49	36.04	0	webp	
+char/portrait/char_4100_caper_2.png	180	360	120460	25322	37	36.53	0	webp	
+char/portrait/char_4100_caper_summer_18.png	180	360	112357	22868	36.64	36.22	0	webp	
+char/portrait/char_4114_harold_1.png	180	360	131938	27800	36.23	35.7	0	webp	
+char/portrait/char_4114_harold_2.png	180	360	134601	26742	35.94	35.41	0	webp	
+char/portrait/char_4114_harold_snow_7.png	180	360	113468	24044	34.56	34.1	0	webp	
+char/portrait/char_4116_blkkgt_1.png	180	360	121638	26020	34.75	34.26	0	webp	
+char/portrait/char_4116_blkkgt_2.png	180	360	136768	30106	33.46	33.01	0	revert-to-png	PSNR@1:1 33.01 dB < 34.0 dB (tier 1:1)
+char/portrait/char_4116_blkkgt_witch_5.png	180	360	144604	32248	32.56	32.02	0	revert-to-png	PSNR@1:1 32.02 dB < 34.0 dB (tier 1:1)
+char/portrait/char_4117_ray_1.png	180	360	116972	24418	36.59	36.11	0	webp	
+char/portrait/char_4117_ray_2.png	180	360	118154	23844	36.3	35.79	0	webp	
+char/portrait/char_4117_ray_shining_2.png	180	360	121163	24022	31.87	31.53	0	revert-to-png	PSNR@1:1 31.53 dB < 34.0 dB (tier 1:1)
+char/portrait/char_4117_ray_summer_22.png	180	360	116822	26340	33.47	33.06	0	revert-to-png	PSNR@1:1 33.06 dB < 34.0 dB (tier 1:1)
+char/portrait/char_4119_wanqin_1.png	180	360	110486	25950	39.68	39.12	0	webp	
+char/portrait/char_4119_wanqin_2.png	180	360	135082	29304	38.15	37.59	0	webp	
+char/portrait/char_4121_zuole_1.png	180	360	117970	22824	39.11	38.6	0	webp	
+char/portrait/char_4121_zuole_2.png	180	360	132407	24588	37.98	37.5	0	webp	
+char/portrait/char_4121_zuole_nian_11.png	180	360	118441	23844	37.04	36.55	0	webp	
+char/portrait/char_4121_zuole_sale_16.png	180	360	126117	25400	36.9	36.41	0	webp	
+char/portrait/char_4122_grabds_1.png	180	360	133985	31632	33.56	33.05	0	revert-to-png	PSNR@1:1 33.05 dB < 34.0 dB (tier 1:1)
+char/portrait/char_4122_grabds_2.png	180	360	144691	33894	34.14	33.67	0	revert-to-png	PSNR@1:1 33.67 dB < 34.0 dB (tier 1:1)
+char/portrait/char_4122_grabds_yun_3.png	180	360	136113	33412	29.97	29.57	0	revert-to-png	PSNR@1:1 29.57 dB < 34.0 dB (tier 1:1)
+char/portrait/char_4132_ascln_1.png	180	360	138720	27148	34.25	33.81	0	revert-to-png	PSNR@1:1 33.81 dB < 34.0 dB (tier 1:1)
+char/portrait/char_4132_ascln_2.png	180	360	124234	25094	35.38	34.97	0	webp	
+char/portrait/char_4132_ascln_iteration_4.png	180	360	122527	25708	33.9	33.41	0	revert-to-png	PSNR@1:1 33.41 dB < 34.0 dB (tier 1:1)
+char/portrait/char_4133_logos_1.png	180	360	128384	29434	35.84	35.35	0	webp	
+char/portrait/char_4133_logos_2.png	180	360	121016	27782	37.66	37.13	0	webp	
+char/portrait/char_4133_logos_ambienceSynesthesia_6.png	180	360	128836	30682	35.2	34.64	0	webp	
+char/portrait/char_4134_cetsyr_1.png	180	360	128558	28408	37.76	37.22	0	webp	
+char/portrait/char_4134_cetsyr_2.png	180	360	134806	29114	36.68	36.16	0	webp	
+char/portrait/char_4134_cetsyr_epoque_50.png	180	360	136838	30140	37.67	37.17	0	webp	
+char/portrait/char_4137_udflow_1.png	180	360	128603	27612	34.64	34.07	0	webp	
+char/portrait/char_4137_udflow_2.png	180	360	137958	31698	28.8	28.4	0	revert-to-png	PSNR@1:1 28.4 dB < 34.0 dB (tier 1:1)
+char/portrait/char_4137_udflow_epoque_46.png	180	360	133646	29422	31.2	30.53	0	revert-to-png	PSNR@1:1 30.53 dB < 34.0 dB (tier 1:1)
+char/portrait/char_4138_narant_1.png	180	360	142840	30626	31.08	30.71	0	revert-to-png	PSNR@1:1 30.71 dB < 34.0 dB (tier 1:1)
+char/portrait/char_4138_narant_2.png	180	360	141423	31738	32.32	31.99	0	revert-to-png	PSNR@1:1 31.99 dB < 34.0 dB (tier 1:1)
+char/portrait/char_4138_narant_breaker_1.png	180	360	138270	29430	31.55	31.23	0	revert-to-png	PSNR@1:1 31.23 dB < 34.0 dB (tier 1:1)
+char/portrait/char_4138_narant_littlePony_1.png	180	360	137127	28640	31.6	31.25	0	revert-to-png	PSNR@1:1 31.25 dB < 34.0 dB (tier 1:1)
+char/portrait/char_4139_papyrs_1.png	180	360	131972	29536	33.78	33.36	0	revert-to-png	PSNR@1:1 33.36 dB < 34.0 dB (tier 1:1)
+char/portrait/char_4139_papyrs_2.png	180	360	131908	30238	33.49	33.09	0	revert-to-png	PSNR@1:1 33.09 dB < 34.0 dB (tier 1:1)
+char/portrait/char_4139_papyrs_game_8.png	180	360	123515	26988	33.29	32.9	0	revert-to-png	PSNR@1:1 32.9 dB < 34.0 dB (tier 1:1)
+char/portrait/char_4145_ulpia_1.png	180	360	105462	21170	36.64	36.22	0	webp	
+char/portrait/char_4145_ulpia_2.png	180	360	115847	23884	34.09	33.74	0	revert-to-png	PSNR@1:1 33.74 dB < 34.0 dB (tier 1:1)
+char/portrait/char_4145_ulpia_epoque_48.png	180	360	125395	28548	34.87	34.32	0	webp	
+char/portrait/char_4146_nymph_1.png	180	360	131073	28208	31.52	31.14	0	revert-to-png	PSNR@1:1 31.14 dB < 34.0 dB (tier 1:1)
+char/portrait/char_4146_nymph_2.png	180	360	133394	26920	32.12	31.73	0	revert-to-png	PSNR@1:1 31.73 dB < 34.0 dB (tier 1:1)
+char/portrait/char_4146_nymph_ambienceSynesthesia_6.png	180	360	129895	31716	32.53	32.12	0	revert-to-png	PSNR@1:1 32.12 dB < 34.0 dB (tier 1:1)
+char/portrait/char_4146_nymph_epoque_42.png	180	360	130955	31320	32.38	31.92	0	revert-to-png	PSNR@1:1 31.92 dB < 34.0 dB (tier 1:1)
+char/portrait/char_4148_philae_1.png	180	360	120363	29764	32.5	32.11	0	revert-to-png	PSNR@1:1 32.11 dB < 34.0 dB (tier 1:1)
+char/portrait/char_4148_philae_2.png	180	360	118140	28396	30.84	30.48	0	revert-to-png	PSNR@1:1 30.48 dB < 34.0 dB (tier 1:1)
+char/portrait/char_4148_philae_nian_12.png	180	360	117203	29932	30.34	30	0	revert-to-png	PSNR@1:1 30.0 dB < 34.0 dB (tier 1:1)
+char/portrait/char_4151_tinman_1.png	180	360	117006	22572	37.19	36.71	0	webp	
+char/portrait/char_4151_tinman_2.png	180	360	128347	25986	33.99	33.59	0	revert-to-png	PSNR@1:1 33.59 dB < 34.0 dB (tier 1:1)
+char/portrait/char_4151_tinman_sale_11.png	180	360	124793	25492	36.35	35.87	0	webp	
+char/portrait/char_416_zumama_1.png	180	360	128297	27012	34.7	34.29	0	webp	
+char/portrait/char_416_zumama_2.png	180	360	112018	24580	35.98	35.61	0	webp	
+char/portrait/char_416_zumama_boc_3.png	180	360	107037	23282	34.71	34.33	0	webp	
+char/portrait/char_4162_cathy_1.png	180	360	121426	26690	34.87	34.47	0	webp	
+char/portrait/char_4162_cathy_2.png	180	360	118305	26614	35.53	35.15	0	webp	
+char/portrait/char_4163_rosesa_1.png	180	360	130299	30200	37.05	36.57	0	webp	
+char/portrait/char_4163_rosesa_2.png	180	360	125107	30522	35.65	35.15	0	webp	
+char/portrait/char_4163_rosesa_game_7.png	180	360	133323	29518	32.75	32.36	0	revert-to-png	PSNR@1:1 32.36 dB < 34.0 dB (tier 1:1)
+char/portrait/char_4179_monstr_1.png	180	360	126699	28754	33.7	33.28	0	revert-to-png	PSNR@1:1 33.28 dB < 34.0 dB (tier 1:1)
+char/portrait/char_4179_monstr_2.png	180	360	137945	30780	31.49	31.07	0	revert-to-png	PSNR@1:1 31.07 dB < 34.0 dB (tier 1:1)
+char/portrait/char_4179_monstr_boc_11.png	180	360	129379	28914	32.95	32.59	0	revert-to-png	PSNR@1:1 32.59 dB < 34.0 dB (tier 1:1)
+char/portrait/char_4182_oblvns_1.png	180	360	122223	23330	37.87	37.35	0	webp	
+char/portrait/char_4182_oblvns_2.png	180	360	127540	29932	32.64	32.2	0	revert-to-png	PSNR@1:1 32.2 dB < 34.0 dB (tier 1:1)
+char/portrait/char_4182_oblvns.png	180	360	127540	29932	32.64	32.2	0	revert-to-png	PSNR@1:1 32.2 dB < 34.0 dB (tier 1:1)
+char/portrait/char_4183_mortis_1.png	180	360	108377	21404	35.99	35.53	0	webp	
+char/portrait/char_4183_mortis_2.png	180	360	130558	28192	32.26	31.89	0	revert-to-png	PSNR@1:1 31.89 dB < 34.0 dB (tier 1:1)
+char/portrait/char_4183_mortis.png	180	360	130558	28192	32.26	31.89	0	revert-to-png	PSNR@1:1 31.89 dB < 34.0 dB (tier 1:1)
+char/portrait/char_4184_dolris_1.png	180	360	109748	22218	38.06	37.57	0	webp	
+char/portrait/char_4184_dolris_2.png	180	360	106544	22002	35.52	35.11	0	webp	
+char/portrait/char_4184_dolris.png	180	360	106544	22002	35.52	35.11	0	webp	
+char/portrait/char_4185_amoris_1.png	180	360	107241	22788	37.74	37.27	0	webp	
+char/portrait/char_4185_amoris_2.png	180	360	114882	25002	34.29	33.85	0	revert-to-png	PSNR@1:1 33.85 dB < 34.0 dB (tier 1:1)
+char/portrait/char_4185_amoris.png	180	360	114882	25002	34.29	33.85	0	revert-to-png	PSNR@1:1 33.85 dB < 34.0 dB (tier 1:1)
+char/portrait/char_4186_tmoris_1.png	180	360	106762	21502	38.19	37.66	0	webp	
+char/portrait/char_4186_tmoris_2.png	180	360	135159	27238	34.46	33.97	0	revert-to-png	PSNR@1:1 33.97 dB < 34.0 dB (tier 1:1)
+char/portrait/char_4186_tmoris.png	180	360	135159	27238	34.46	33.97	0	revert-to-png	PSNR@1:1 33.97 dB < 34.0 dB (tier 1:1)
+char/portrait/char_4191_tippi_1.png	180	360	135167	30044	34.21	33.77	0	revert-to-png	PSNR@1:1 33.77 dB < 34.0 dB (tier 1:1)
+char/portrait/char_4191_tippi_2.png	180	360	134274	31154	34.62	34.15	0	webp	
+char/portrait/char_4191_tippi_epoque_57.png	180	360	142826	31044	32.08	31.69	0	revert-to-png	PSNR@1:1 31.69 dB < 34.0 dB (tier 1:1)
+char/portrait/char_4193_lemuen_1.png	180	360	108553	25274	37.23	36.78	0	webp	
+char/portrait/char_4193_lemuen_2.png	180	360	111088	22712	36.85	36.37	0	webp	
+char/portrait/char_4193_lemuen_ambienceSynesthesia_7.png	180	360	99917	21808	36.08	35.66	0	webp	
+char/portrait/char_4194_rmixer_1.png	180	360	116020	26602	37.18	36.74	0	webp	
+char/portrait/char_4194_rmixer_2.png	180	360	115790	27676	37.57	37.08	0	webp	
+char/portrait/char_4194_rmixer_boc_12.png	180	360	124560	26394	38.54	38.02	0	webp	
+char/portrait/char_4195_radian_1.png	180	360	107787	22332	37.19	36.7	0	webp	
+char/portrait/char_4195_radian_2.png	180	360	121398	24588	36.13	35.67	0	webp	
+char/portrait/char_4195_radian_game_8.png	180	360	119763	25176	38.59	38.08	0	webp	
+char/portrait/char_4196_reckpr_1.png	180	360	119638	24236	40.04	39.43	0	webp	
+char/portrait/char_4196_reckpr_2.png	180	360	113682	20776	40.53	39.91	0	webp	
+char/portrait/char_4196_reckpr_yun_12.png	180	360	132300	28226	36.59	36.11	0	webp	
+char/portrait/char_420_flamtl_1.png	180	360	138624	33260	31.72	31.38	0	revert-to-png	PSNR@1:1 31.38 dB < 34.0 dB (tier 1:1)
+char/portrait/char_420_flamtl_2.png	180	360	132148	29102	34.18	33.77	0	revert-to-png	PSNR@1:1 33.77 dB < 34.0 dB (tier 1:1)
+char/portrait/char_420_flamtl_game_2.png	180	360	129766	30656	30.61	30.25	0	revert-to-png	PSNR@1:1 30.25 dB < 34.0 dB (tier 1:1)
+char/portrait/char_4202_haruka_1.png	180	360	137832	29792	32.16	31.76	0	revert-to-png	PSNR@1:1 31.76 dB < 34.0 dB (tier 1:1)
+char/portrait/char_4202_haruka_2.png	180	360	144255	33662	31.24	30.82	0	revert-to-png	PSNR@1:1 30.82 dB < 34.0 dB (tier 1:1)
+char/portrait/char_4202_haruka_iteration_6.png	180	360	139063	31658	33.6	33.21	0	revert-to-png	PSNR@1:1 33.21 dB < 34.0 dB (tier 1:1)
+char/portrait/char_4204_mantra_1.png	180	360	123505	24180	38.18	37.7	0	webp	
+char/portrait/char_4204_mantra_2.png	180	360	147719	30058	34.79	34.38	0	webp	
+char/portrait/char_4204_mantra_sightseer_4.png	180	360	137329	24656	35.34	34.94	0	webp	
+char/portrait/char_4207_branch_1.png	180	360	125626	27676	34.81	34.34	0	webp	
+char/portrait/char_4207_branch_2.png	180	360	136471	28446	33.03	32.61	0	revert-to-png	PSNR@1:1 32.61 dB < 34.0 dB (tier 1:1)
+char/portrait/char_4207_branch_yun_10.png	180	360	125495	29480	32.23	31.79	0	revert-to-png	PSNR@1:1 31.79 dB < 34.0 dB (tier 1:1)
+char/portrait/char_4211_snhunt_1.png	180	360	145242	33178	35.61	35.11	0	webp	
+char/portrait/char_4211_snhunt_2.png	180	360	129832	27734	35.33	34.89	0	webp	
+char/portrait/char_4212_nasti_1.png	180	360	124459	26156	37.01	36.52	0	webp	
+char/portrait/char_4212_nasti_2.png	180	360	133207	27900	36.13	35.62	0	webp	
+char/portrait/char_4217_makoto_1.png	180	360	105794	23186	37.21	36.73	0	webp	
+char/portrait/char_4217_makoto_2.png	180	360	119087	29138	30.72	30.29	0	revert-to-png	PSNR@1:1 30.29 dB < 34.0 dB (tier 1:1)
+char/portrait/char_4217_makoto.png	180	360	119087	29138	30.72	30.29	0	revert-to-png	PSNR@1:1 30.29 dB < 34.0 dB (tier 1:1)
+char/portrait/char_4218_aigis_1.png	180	360	102525	19804	35.54	35.17	0	webp	
+char/portrait/char_4218_aigis_2.png	180	360	124990	26762	35.14	34.73	0	webp	
+char/portrait/char_4219_yukari_1.png	180	360	95050	20248	36.24	35.89	0	webp	
+char/portrait/char_4219_yukari_2.png	180	360	127516	27238	33.71	33.34	0	revert-to-png	PSNR@1:1 33.34 dB < 34.0 dB (tier 1:1)
+char/portrait/char_422_aurora_1.png	180	360	100068	21806	39.25	38.63	0	webp	
+char/portrait/char_422_aurora_2.png	180	360	114852	20676	40.08	39.46	0	webp	
+char/portrait/char_4220_kormr_1.png	180	360	101499	19812	37.47	37.03	0	webp	
+char/portrait/char_4226_veen_1.png	180	360	131305	28396	37.33	36.82	0	webp	
+char/portrait/char_4226_veen_2.png	180	360	122440	26424	37.35	36.82	0	webp	
+char/portrait/char_4228_closur_1.png	180	360	123481	23446	35.02	34.64	0	webp	
+char/portrait/char_4228_closur_2.png	180	360	131664	27890	34.55	34.16	0	webp	
+char/portrait/char_4229_aphris_1.png	180	360	123129	27854	35.42	35.01	0	webp	
+char/portrait/char_4229_aphris_2.png	180	360	125141	29542	33.99	33.61	0	revert-to-png	PSNR@1:1 33.61 dB < 34.0 dB (tier 1:1)
+char/portrait/char_423_blemsh_1.png	180	360	126564	24284	37.22	36.71	0	webp	
+char/portrait/char_423_blemsh_2.png	180	360	132635	28130	36.76	36.26	0	webp	
+char/portrait/char_423_blemsh_littlePony_1.png	180	360	131961	31066	34.09	33.63	0	revert-to-png	PSNR@1:1 33.63 dB < 34.0 dB (tier 1:1)
+char/portrait/char_423_blemsh_witch_2.png	180	360	138656	31226	33.32	32.93	0	revert-to-png	PSNR@1:1 32.93 dB < 34.0 dB (tier 1:1)
+char/portrait/char_4230_mcnist_1.png	180	360	111910	22900	33.09	32.74	0	revert-to-png	PSNR@1:1 32.74 dB < 34.0 dB (tier 1:1)
+char/portrait/char_4230_mcnist_2.png	180	360	112776	21142	33.55	33.19	0	revert-to-png	PSNR@1:1 33.19 dB < 34.0 dB (tier 1:1)
+char/portrait/char_4231_clemnt_1.png	180	360	123182	27180	36.06	35.6	0	webp	
+char/portrait/char_4231_clemnt_2.png	180	360	122030	29392	34.2	33.75	0	revert-to-png	PSNR@1:1 33.75 dB < 34.0 dB (tier 1:1)
+char/portrait/char_4235_thumpy_1.png	180	360	123535	25974	36.39	35.94	0	webp	
+char/portrait/char_4235_thumpy_2.png	180	360	136142	28082	35.96	35.47	0	webp	
+char/portrait/char_426_billro_1.png	180	360	115646	26052	36.8	36.35	0	webp	
+char/portrait/char_426_billro_2.png	180	360	116715	27408	37.85	37.32	0	webp	
+char/portrait/char_426_billro_snow_3.png	180	360	113306	23150	37.94	37.47	0	webp	
+char/portrait/char_426_billro_summer_8.png	180	360	116165	24890	37.75	37.3	0	webp	
+char/portrait/char_427_vigil_1.png	180	360	132191	27704	37.82	37.31	0	webp	
+char/portrait/char_427_vigil_2.png	180	360	136095	27804	34.91	34.46	0	webp	
+char/portrait/char_427_vigil_epoque_27.png	180	360	112892	21400	38.39	37.9	0	webp	
+char/portrait/char_430_fartth_1.png	180	360	135126	32908	37.52	37	0	webp	
+char/portrait/char_430_fartth_2.png	180	360	130214	29142	36.23	35.74	0	webp	
+char/portrait/char_430_fartth_whirlwind_5.png	180	360	129139	29318	33.3	32.93	0	revert-to-png	PSNR@1:1 32.93 dB < 34.0 dB (tier 1:1)
+char/portrait/char_431_ashlok_1.png	180	360	133947	31372	36.45	36.01	0	webp	
+char/portrait/char_431_ashlok_2.png	180	360	137773	30516	35.26	34.82	0	webp	
+char/portrait/char_431_ashlok_epoque_28.png	180	360	121769	25576	34.34	33.97	0	revert-to-png	PSNR@1:1 33.97 dB < 34.0 dB (tier 1:1)
+char/portrait/char_437_mizuki_1.png	180	360	124673	27928	32.41	32.02	0	revert-to-png	PSNR@1:1 32.02 dB < 34.0 dB (tier 1:1)
+char/portrait/char_437_mizuki_2.png	180	360	141332	33102	30.26	29.93	0	revert-to-png	PSNR@1:1 29.93 dB < 34.0 dB (tier 1:1)
+char/portrait/char_437_mizuki_game_6.png	180	360	128183	32268	30.52	30.08	0	revert-to-png	PSNR@1:1 30.08 dB < 34.0 dB (tier 1:1)
+char/portrait/char_437_mizuki_sale_7.png	180	360	135557	34260	30.5	30.16	0	revert-to-png	PSNR@1:1 30.16 dB < 34.0 dB (tier 1:1)
+char/portrait/char_440_pinecn_1.png	180	360	128808	27342	35.64	35.17	0	webp	
+char/portrait/char_440_pinecn_2.png	180	360	112776	25234	35.27	34.83	0	webp	
+char/portrait/char_440_pinecn_epoque_31.png	180	360	123887	26990	32.99	32.6	0	revert-to-png	PSNR@1:1 32.6 dB < 34.0 dB (tier 1:1)
+char/portrait/char_440_pinecn_shining_1.png	180	360	127259	28946	32.53	32.13	0	revert-to-png	PSNR@1:1 32.13 dB < 34.0 dB (tier 1:1)
+char/portrait/char_446_aroma_1.png	180	360	109814	24436	36.2	35.76	0	webp	
+char/portrait/char_446_aroma_2.png	180	360	127702	27552	36.07	35.62	0	webp	
+char/portrait/char_446_aroma_epoque_54.png	180	360	122777	28938	34.95	34.51	0	webp	
+char/portrait/char_449_glider_1.png	180	360	115409	22690	40.55	39.91	0	webp	
+char/portrait/char_449_glider_2.png	180	360	120508	25058	39.49	38.96	0	webp	
+char/portrait/char_450_necras_1.png	180	360	125839	28590	37.59	37.07	0	webp	
+char/portrait/char_450_necras_2.png	180	360	142000	26464	36.38	35.94	0	webp	
+char/portrait/char_450_necras_ambienceSynesthesia_7.png	180	360	128518	29672	35.77	35.35	0	webp	
+char/portrait/char_450_necras_summer_20.png	180	360	121468	27110	36.2	35.74	0	webp	
+char/portrait/char_469_indigo_1.png	180	360	116773	27708	38	37.46	0	webp	
+char/portrait/char_469_indigo_2.png	180	360	99284	21222	39.38	38.86	0	webp	
+char/portrait/char_469_indigo_nian_7.png	180	360	118422	24922	37.31	36.79	0	webp	
+char/portrait/char_472_pasngr_1.png	180	360	127526	28224	35.39	34.89	0	webp	
+char/portrait/char_472_pasngr_2.png	180	360	123569	28398	34.79	34.36	0	webp	
+char/portrait/char_472_pasngr_epoque_17.png	180	360	125925	28046	35.13	34.66	0	webp	
+char/portrait/char_473_mberry_1.png	180	360	112342	23582	33.47	33.1	0	revert-to-png	PSNR@1:1 33.1 dB < 34.0 dB (tier 1:1)
+char/portrait/char_473_mberry_2.png	180	360	117443	26576	34.18	33.76	0	revert-to-png	PSNR@1:1 33.76 dB < 34.0 dB (tier 1:1)
+char/portrait/char_474_glady_1.png	180	360	121297	25822	37.94	37.4	0	webp	
+char/portrait/char_474_glady_2.png	180	360	130505	25706	37.19	36.75	0	webp	
+char/portrait/char_474_glady_boc_5.png	180	360	123298	24996	38.33	37.85	0	webp	
+char/portrait/char_474_glady_epoque_33.png	180	360	127834	26884	36.93	36.42	0	webp	
+char/portrait/char_479_sleach_1.png	180	360	118870	24202	36.24	35.8	0	webp	
+char/portrait/char_479_sleach_2.png	180	360	122397	24696	36.85	36.41	0	webp	
+char/portrait/char_479_sleach_epoque_14.png	180	360	116781	23640	35.66	35.27	0	webp	
+char/portrait/char_479_sleach_summer_11.png	180	360	123272	26108	36.7	36.24	0	webp	
+char/portrait/char_485_pallas_1.png	180	360	131949	28204	38.41	37.87	0	webp	
+char/portrait/char_485_pallas_2.png	180	360	137713	26590	35.1	34.68	0	webp	
+char/portrait/char_485_pallas_epoque_12.png	180	360	119436	24742	39.48	38.95	0	webp	
+char/portrait/char_485_pallas_epoque_19.png	180	360	115144	23254	38.16	37.72	0	webp	
+char/portrait/char_491_humus_1.png	180	360	127744	24512	36.61	36.2	0	webp	
+char/portrait/char_491_humus_2.png	180	360	122502	21974	36.32	35.96	0	webp	
+char/portrait/char_491_humus_marthe_10.png	180	360	127737	24316	35.24	34.87	0	webp	
+char/portrait/char_494_vendla_1.png	180	360	128435	28798	36.46	36.04	0	webp	
+char/portrait/char_494_vendla_2.png	180	360	123601	24674	37.66	37.24	0	webp	
+char/portrait/char_494_vendla_game_10.png	180	360	130247	32080	37.74	37.22	0	webp	
+char/portrait/char_496_wildmn_1.png	180	360	133313	31054	35.57	35.15	0	webp	
+char/portrait/char_496_wildmn_2.png	180	360	133600	30548	35.8	35.38	0	webp	
+char/portrait/char_496_wildmn_epoque_16.png	180	360	128696	28948	34.59	34.18	0	webp	
+char/portrait/char_498_inside_1.png	180	360	93369	21504	38.46	37.99	0	webp	
+char/portrait/char_498_inside_2.png	180	360	101180	23916	38.14	37.68	0	webp	
+char/portrait/char_498_inside_kitchen_2.png	180	360	90217	22678	36.79	36.37	0	webp	
+char/portrait/char_498_inside_summer_22.png	180	360	106626	23206	37.27	36.86	0	webp	
+char/portrait/char_600_cpione_1.png	180	360	104892	18124	36.7	36.28	0	webp	
+char/portrait/char_601_cguard_1.png	180	360	124121	25842	36.93	36.48	0	webp	
+char/portrait/char_602_cdfend_1.png	180	360	91754	16734	40.13	39.61	0	webp	
+char/portrait/char_603_csnipe_1.png	180	360	98238	18622	36.83	36.41	0	webp	
+char/portrait/char_604_ccast_1.png	180	360	98760	17100	39.3	38.88	0	webp	
+char/portrait/char_605_cmedic_1.png	180	360	113327	20396	40.19	39.67	0	webp	
+char/portrait/char_606_csuppo_1.png	180	360	112954	20134	40.42	39.81	0	webp	
+char/portrait/char_607_cspec_1.png	180	360	113496	25806	39.85	39.29	0	webp	
+char/portrait/char_608_acpion_1.png	180	360	120748	25576	39.7	39.12	0	webp	
+char/portrait/char_609_acguad_1.png	180	360	89447	16850	41.59	40.98	0	webp	
+char/portrait/char_610_acfend_1.png	180	360	106375	22966	34.02	33.66	0	revert-to-png	PSNR@1:1 33.66 dB < 34.0 dB (tier 1:1)
+char/portrait/char_611_acnipe_1.png	180	360	97029	20364	39.51	39.05	0	webp	
+char/portrait/char_612_accast_1.png	180	360	100344	20582	41.09	40.49	0	webp	
+char/portrait/char_613_acmedc_1.png	180	360	102032	20734	41.91	41.22	0	webp	
+char/portrait/char_614_acsupo_1.png	180	360	107218	22612	38.73	38.24	0	webp	
+char/portrait/char_615_acspec_1.png	180	360	102336	22762	36.46	36.08	0	webp	
+char/portrait/char_616_pithst_1.png	180	360	112954	20134	40.42	39.81	0	webp	
+char/portrait/char_616_pithst_2.png	180	360	112954	20134	40.42	39.81	0	webp	
+char/portrait/char_617_sharp2_1.png	180	360	89447	16850	41.59	40.98	0	webp	
+char/portrait/char_617_sharp2_2.png	180	360	89447	16850	41.59	40.98	0	webp	

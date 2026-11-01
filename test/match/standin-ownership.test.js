@@ -28,7 +28,13 @@ const INSIDE = 'chess_char_1_01_a'; // 隐现 (PRESET) with a loadout choice
 
 test('droppable chess = the 55 NORMAL base chess; checkNotOwned keeps those, drops the rest; the wire validator is structural', () => {
   const all = Object.values(DATA.chess);
-  const drop = all.filter(isDroppableChess);
+  // 官方子集（仓库既有判据：`zhajing: true` **或** `chess_zj_*` 前缀 —— 有 2 条副本只带前缀、`zhajing` 是 false）：
+  // 炸惊模拟的记录同样带 `chessType: 'NORMAL'` + 补位 charId，不过滤会把这个「官方 55 个」的计数抬到 57/99
+  // （docs/ZHAJING.md 的隔离口径，与 devtools/check-mode-isolation.mjs 同源）。
+  // 内容 mod 自带的棋（`zhajing: true` / `chess_zj_*` 前缀 / 2026-10-30 起的 `annihilation: true`）都不是官方子集：
+  // 前两类是炸惊的，第三类是湮灭 mod 的 13 名干员（26 条记录）
+  const officialChess = (c) => !(c.zhajing === true || /^chess_zj_/.test(c.chessId) || c.annihilation === true);
+  const drop = all.filter((c) => officialChess(c) && isDroppableChess(c));
   assert.equal(drop.length, 55);
   assert.ok(drop.every((c) => c.chessType === 'NORMAL' && !c.isGolden && c.backup.charId !== c.charId));
   assert.equal(all.filter((c) => c.chessType === 'PRESET' && isDroppableChess(c)).length, 0, 'PRESET always fields its own operator');

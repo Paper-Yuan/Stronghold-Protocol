@@ -15,7 +15,7 @@ export function directoryRoom(room) {
     random: !!room.random, variant: room.variant,
     visibility: room.visibility === 'public' ? 'public' : 'invite',
     playerCount: seats.length,
-    maxPlayers: isSoloRoomMode(room.mode) ? 1 : MAX_SEATS,
+    maxPlayers: isSoloRoomMode(room.mode) ? 1 : (Number.isInteger(room.maxSeats) ? room.maxSeats : MAX_SEATS),
     status: room.match ? 'playing' : 'waiting',
     hostName: seats.find(s => s.playerId === room.hostId)?.name || null,
     players: seats.map(s => s.name),

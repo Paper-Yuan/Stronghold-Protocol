@@ -92,9 +92,13 @@ const guard = (o = {}) => chessRec({ id: 'test_guard', stats: { maxHp: 2000, atk
 test('coverage: every 悬赏 / 战术决策 effect and every 道具补给 / 机密商店 item has a content choice: handler', () => {
   const ids = choiceCardIds(DATA);
   assert.equal(ids.bounty.length, 129, '129 ENEMY_GAIN effects');
-  assert.equal(ids.tactic.length, 43, '43 BUFF_GAIN effects');
-  // 56 normal EQUIP items − the 5 effect-only ones (4 special 维式重锤, 突变细胞: never sold, user playtest #4)
-  assert.equal(ids.items.length, 51, '51 shop items');
+  assert.equal(ids.tactic.length, 45, '45 BUFF_GAIN effects（43 官方 + 2 张湮灭专属盟誓 annbuff_select_bond_rhodes / _kazdel）');
+  // 56 normal EQUIP items − the 5 effect-only ones (4 special 维式重锤, 突变细胞: never sold, user playtest #4).
+  // 炸惊模拟's own equipment (`zjOnly`: the S.E.E.S. armband and 谜の假面) is in the same table but belongs to the play
+  // set — `GameData.shopItemsByTier` drops it outside ZHAJING (53 in a 炸惊 room / 51 in an official one), so the
+  // official coverage below counts those two out (same 「官方子集」rule as devtools/check-mode-isolation.mjs).
+  assert.equal(ids.items.length - ids.items.filter((id) => DATA.items[id]?.zjOnly === true).length, 51, '51 official shop items');
+  assert.equal(ids.items.filter((id) => DATA.items[id]?.zjOnly === true).length, 2, '2 炸惊-only shop items');
   for (const id of ['chess_item_2_03_e_a', 'chess_item_3_09_e_a', 'chess_item_3_10_e_a', 'chess_item_4_09_e_a', 'chess_item_5_08_e_a']) assert.ok(!ids.items.includes(id), `${id} is never a supply card`);
   assert.ok(ids.items.includes('chess_item_1_01_e_a'), 'the plain 维式重锤 is');
   for (const id of [...ids.bounty, ...ids.tactic, ...ids.items]) {

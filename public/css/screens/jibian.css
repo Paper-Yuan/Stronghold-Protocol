@@ -1,0 +1,343 @@
+/* public/css/screens/jibian.css — 炸惊模拟 (ZHAJING) 惊变界面（loaded by ui/jibian.js）
+   四个面：三选一浮层 .zjov（与「机变」的 .spov 同层同位置，卡上带「惊变羁绊」补充）、已选惊变面板 .zjpanel
+   （局内**单行三页签**：已选惊变 / 敌方惊变 / 惊变羁绊）、敌方惊变揭晓 .zjrev（R1 / R6，全场共享）、
+   惊变一览 .zjcodex（99 张；业主 2026-10-29 已搬去局外，样式留在这里给那个页面用）。
+   尺寸一律 rem + var(--t)，跟 文字大小 一起缩放；**每个字号都带像素地板**（`max(11px, calc(k * var(--t)))`，
+   与 game.css 的 .gm__erosion 同一套写法）—— 手机上 1 rem 只有 40 px，纯比例会掉到 7 px。
+   触控目标的地板写成 `max(.44rem, 24px)`（本仓既有地板，见 .ext-party__chip）；ui-size.test.js 的两条守卫
+   要求 ≤32 px 的地板**裸写 px**、字号地板**不乘 --sp-ui**，这里都遵守。
+   颜色取玩法包自己的 #17d9a0 与五档稀有度。 */
+
+/* ---- 三选一浮层 (the draft) ----
+   双端**同一套版式**（业主 2026-10-31「手机端炸惊三选一要和电脑端显示一致，做到双端一致」）：下面没有第二套
+   手机版式，只有一个单元 --zj-u = min(1rem, 100svh / 10.8)。设计稿是 19.2×10.8 rem，而 1rem 已经是
+   min(100vw / 19.2, 100vh / 10.8) 的地板（theme.css），所以在 16:9 的窗口上 --zj-u 恒等于 1rem ——
+   1920×1080 / 1280×720 一个像素都不动；只有「按宽度算出来的 1rem > 按高度算出来的 1rem」时（792×360 的
+   手机横屏：1rem 被 40px 地板撑着，只有 9rem 高）才等于 100svh / 10.8 ≈ 33.3px，把整块按可用高度等比缩到 0.83。
+   于是三张竖卡照旧并排、卡内字段顺序与桌面同一份 DOM，描述 / flavor / 惊变羁绊块的行数与
+   -webkit-line-clamp 也是同一份声明（这里从来没有手机专用的截断）。几何尺寸写 calc(k * var(--zj-u))，
+   字号写 max(Npx, k * var(--t)) —— 文字继续吃 --t 与像素地板（文件头那套可变文字大小）。 */
+.zjov { --zj-u: min(1rem, calc(100vh / 10.8)); --zj-u: min(1rem, calc(100svh / 10.8));
+  position: absolute; inset: 0 0 0 calc(2.8 * var(--zj-u)); z-index: 21; display: grid; grid-template-rows: auto 1fr;
+  padding: calc(.34 * var(--zj-u)) calc(.5 * var(--zj-u)) calc(.5 * var(--zj-u)) calc(.3 * var(--zj-u)); gap: calc(.18 * var(--zj-u)); }
+.zjov__veil { position: absolute; inset: 0; z-index: -1; background: linear-gradient(90deg, rgba(6, 14, 13, .62), rgba(6, 14, 13, .86));
+  -webkit-backdrop-filter: blur(2px); backdrop-filter: blur(2px); border-left: 1px solid var(--line); }
+.zjov__inner { display: contents; }
+.zjov__head { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: end; column-gap: calc(.24 * var(--zj-u)); row-gap: calc(.02 * var(--zj-u)); }
+.zjov__micro { grid-column: 1; font-family: 'Rajdhani', 'Noto Sans SC', sans-serif; font-weight: 600; line-height: 1;
+  font-size: max(10px, calc(.17 * var(--t))); letter-spacing: .3em; color: #17d9a0; }
+.zjov__title { grid-column: 1; margin: calc(.04 * var(--zj-u)) 0 0; font-size: max(18px, calc(.56 * var(--t))); font-weight: 900; letter-spacing: .1em; color: var(--mint-400); text-shadow: 0 0 .2rem rgba(23, 217, 160, .3); }
+.zjov__sub { grid-column: 1; margin: 0; font-size: max(11px, calc(.22 * var(--t))); color: var(--text-lo); }
+.zjov__turn { grid-column: 2; grid-row: 1 / 4; align-self: center; display: inline-flex; align-items: center; gap: calc(.08 * var(--zj-u)); }
+.zjov__state { display: inline-flex; align-items: center; gap: calc(.08 * var(--zj-u)); min-height: max(calc(.44 * var(--zj-u)), 24px);
+  padding: calc(.1 * var(--zj-u)) calc(.18 * var(--zj-u)); font-size: max(12px, calc(.24 * var(--t))); letter-spacing: .06em; color: var(--text-md);
+  border: 1px solid var(--line-2); background: rgba(10, 18, 16, .8); }
+.zjov__state .icon, .zjov__turn .icon { width: calc(.22 * var(--zj-u)); height: calc(.22 * var(--zj-u)); }
+.zjov__state.is-mine { color: #17d9a0; border-color: rgba(23, 217, 160, .45); }
+/* 两步确认：选中后顶栏换成「确认选择」（与机变同一颗按钮的位置与尺寸）。
+   高度地板 32px 与字号地板 12px 写在这里（不是 media query 里）：矮屏上 .btn--lg 的 .64rem / .22rem
+   只有 21 / 9 px，而双端要用同一条规则 —— 桌面 .64rem=64px，手机落到 32px 的触控地板。 */
+.zjov__confirm { flex: none; min-height: max(calc(.64 * var(--zj-u)), 32px); font-size: max(12px, calc(.22 * var(--t))); }
+
+/* 竖卡三列：横向永不滚（overflow-x: hidden），真放不下时只允许浮层内部竖着滚。
+   align-items: start —— 网格项按内容高（长羁绊文案把卡撑高、由这一层竖滚），而不是被行高扯平后把卡内文案裁掉
+   （2026-10-29 真机 792×360 实拍：flex:1 的卡被行高压扁，羁绊效果被卡片自己的 overflow 切掉）。 */
+.zjov__grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(calc(2.5 * var(--zj-u)), 1fr)); gap: calc(.2 * var(--zj-u)); align-content: start;
+  align-items: start; min-height: 0; overflow-x: hidden; overflow-y: auto; overscroll-behavior: contain; }
+.zjov__grid--3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+
+/* ---- 一张惊变卡（与桌面同一套：字段顺序 = 贴图+名称+稀有度 / 描述 / 惊变羁绊块 / 羁绊提示 / flavor） ---- */
+.zjcard { --zj-r: #9fb6c6; position: relative; display: flex; flex-direction: column; gap: calc(.12 * var(--zj-u)); min-height: calc(2.4 * var(--zj-u));
+  padding: calc(.18 * var(--zj-u)) calc(.16 * var(--zj-u)) calc(.18 * var(--zj-u)) calc(.18 * var(--zj-u)); text-align: left; color: var(--text-md); cursor: default;
+  background: linear-gradient(170deg, rgba(17, 26, 24, .97), rgba(9, 13, 12, .98));
+  border: 1px solid #2c3a36; border-radius: 2px; overflow: hidden;
+  transition: transform .13s ease, border-color .13s ease, box-shadow .13s ease; }
+.zjcard::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--zj-r); opacity: .85; }
+.zjcard.is-pickable { cursor: pointer; }
+.zjcard.is-pickable:hover { transform: translateY(-2px); border-color: var(--zj-r); box-shadow: 0 calc(.1 * var(--zj-u)) calc(.26 * var(--zj-u)) rgba(0, 0, 0, .5); }
+.zjcard.is-pickable:focus-visible { outline: 2px solid #17d9a0; outline-offset: 2px; }
+/* 已选（两步里的第一步）：卡抬起来、亮框，右下角写清「确认选择 / 再次点击」 —— 与机变 .spcard.is-armed 同一套语义 */
+.zjcard.is-armed { transform: translateY(-2px); border-color: #17d9a0;
+  box-shadow: 0 0 0 1px #17d9a0, 0 calc(.12 * var(--zj-u)) calc(.3 * var(--zj-u)) rgba(23, 217, 160, .18); }
+.zjcard:disabled { opacity: .72; }
+.zjcard__top { display: flex; align-items: center; gap: calc(.12 * var(--zj-u)); min-width: 0; }
+/* 业主 2026-10-31：卡内图标放大一档（.62→.78 / 图 .54→.68 unit，约 +26%），其余几何不动。 */
+.zjcard__icon { flex: 0 0 calc(.78 * var(--zj-u)); width: calc(.78 * var(--zj-u)); height: calc(.78 * var(--zj-u)); display: grid; place-items: center;
+  background: radial-gradient(circle at 50% 45%, rgba(23, 217, 160, .16), transparent 68%); border: 1px solid rgba(23, 217, 160, .22); }
+.zjcard__icon img { max-width: calc(.68 * var(--zj-u)); max-height: calc(.68 * var(--zj-u)); object-fit: contain; filter: drop-shadow(0 calc(.03 * var(--zj-u)) calc(.06 * var(--zj-u)) rgba(0, 0, 0, .7)); }
+.zjcard__icon.is-white-glyph img { filter: brightness(0) invert(.92); }
+.zjcard__titles { display: flex; flex-direction: column; gap: calc(.04 * var(--zj-u)); min-width: 0; }
+.zjcard__name { font-size: max(14px, calc(.3 * var(--t))); letter-spacing: .04em; color: var(--text-hi); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.zjcard__rarity { align-self: flex-start; font-size: max(10px, calc(.18 * var(--t))); letter-spacing: .16em; padding: calc(.02 * var(--zj-u)) calc(.08 * var(--zj-u));
+  color: #0b1412; background: var(--zj-r); border-radius: 1px; }
+.zjcard__desc { font-size: max(11px, calc(.22 * var(--t))); line-height: 1.6; color: var(--text-md); }
+/* 所属**惊变羁绊**（竖卡的第二块信息，业主 2026-10-29）：羁绊名 + 该羁绊 effect 全文。一张卡可同时命中几条羁绊，
+   每一条画一块（.zjcard__bondblocks 竖排）。数据只认 data/jibianBonds.json 的 members 反查；一条都没有就不画块。
+   效果文案**整段照录、不截断**；太长时由 .zjov__grid 在浮层内部竖向滚动（它的 overflow-x 是 hidden，页面永不横向滚）。
+   截断规则双端共用一条：这里没有 -webkit-line-clamp，手机也不额外裁（业主 2026-10-31）。 */
+.zjcard__bondblocks { display: flex; flex-direction: column; gap: calc(.06 * var(--zj-u)); min-width: 0; }
+.zjcard__bondbox { display: flex; flex-direction: column; gap: calc(.04 * var(--zj-u)); padding: calc(.06 * var(--zj-u)) calc(.07 * var(--zj-u));
+  background: rgba(23, 217, 160, .05); border: 1px solid rgba(23, 217, 160, .2); border-radius: 2px; }
+.zjcard__bondhead { display: flex; align-items: baseline; flex-wrap: wrap; gap: calc(.05 * var(--zj-u)); min-width: 0; }
+.zjcard__bondtag { flex: none; padding: calc(.01 * var(--zj-u)) calc(.05 * var(--zj-u)); border-radius: 1px; color: #06201a; background: #17d9a0;
+  font-size: max(10px, calc(.16 * var(--t))); letter-spacing: .08em; }
+/* 羁绊名可能很长（「开始吧，今夜的假面舞会」）：整名换行读完，不省略号 */
+.zjcard__bondname { min-width: 0; overflow-wrap: anywhere; font-size: max(11px, calc(.2 * var(--t)));
+  letter-spacing: .04em; color: #9ff5d8; }
+.zjcard__bondtiers { margin-left: auto; flex: none; font-family: 'Rajdhani', sans-serif; font-weight: 700; line-height: 1;
+  font-size: max(10px, calc(.16 * var(--t))); letter-spacing: .1em; color: #7fae9f; }
+.zjcard__bondeffect { font-size: max(10px, calc(.17 * var(--t))); line-height: 1.45; color: var(--text-lo); overflow-wrap: anywhere; }
+/* 已选惊变面板**不再**复用这块竖卡的羁绊块（业主 2026-10-29 晚：面板是横行，见下面 .zjsel__bonds）。 */
+.zjcard__bonds { display: flex; flex-wrap: wrap; gap: calc(.06 * var(--zj-u)); }
+.zjcard__bond { font-size: max(10px, calc(.18 * var(--t))); padding: calc(.02 * var(--zj-u)) calc(.07 * var(--zj-u)); color: var(--text-lo); border: 1px solid var(--line-2); }
+.zjcard__bond.is-on { color: #17d9a0; border-color: rgba(23, 217, 160, .55); }
+.zjcard__flavor { margin-top: auto; padding-top: calc(.08 * var(--zj-u)); font-size: max(10px, calc(.18 * var(--t))); line-height: 1.5; color: #6f837e; font-style: italic;
+  border-top: 1px solid rgba(255, 255, 255, .06); }
+.zjcard__busy { position: absolute; right: calc(.1 * var(--zj-u)); bottom: calc(.1 * var(--zj-u)); font-size: max(10px, calc(.18 * var(--t))); letter-spacing: .12em;
+  padding: calc(.04 * var(--zj-u)) calc(.1 * var(--zj-u)); color: #0b1412; background: #17d9a0; }
+/* 已选标记：卡片自己的确认提示（与藏品 .rlc__confirm 同一句话、同一个位置感）。竖卡里改成一整条页脚放在内容之后，
+   不再绝对定位压在羁绊文案上（业主 2026-10-29 的竖版卡片式）。 */
+.zjcard__confirm { margin-top: auto; display: flex; flex-direction: row; align-items: center; justify-content: center; gap: calc(.08 * var(--zj-u));
+  padding: calc(.06 * var(--zj-u)) calc(.08 * var(--zj-u)); background: rgba(23, 217, 160, .16); border: 1px solid rgba(23, 217, 160, .6); border-radius: 2px; }
+.zjcard__confirm b { font-size: max(11px, calc(.2 * var(--t))); color: #9ff5d8; letter-spacing: .06em; }
+.zjcard__confirm small { font-size: max(10px, calc(.16 * var(--t))); color: #7fae9f; }
+
+/* 五档稀有度取色（普通 / 稀有 / 史诗 / 传说 / 隐秘） */
+.zjcard[data-rarity="normal"], .zjsel[data-rarity="normal"] { --zj-r: #9fb6c6; }
+.zjcard[data-rarity="rare"], .zjsel[data-rarity="rare"] { --zj-r: #4aa8ff; }
+.zjcard[data-rarity="epic"], .zjsel[data-rarity="epic"] { --zj-r: #a879ff; }
+.zjcard[data-rarity="legend"], .zjsel[data-rarity="legend"] { --zj-r: #f2bd3e; }
+.zjcard[data-rarity="hidden"], .zjsel[data-rarity="hidden"] { --zj-r: #17d9a0; }
+
+/* ---- 角标按钮：**已删除**（业主 2026-10-29）-------------------------------------------------------------
+   原来右上角有两枚绝对定位的角标按钮（「已选惊变」top 92px / right 18px，「惊变一览」再低一行），照抄藏品图鉴的挂点。
+   现在它们和锻造器合并成顶栏左上「炸惊模拟」右侧的一颗「模式工具」按钮（ui/hud.js ModeToolsButton，
+   样式 css/screens/game.css 的 .gm__modetools / .zjtools），面板的三页签复用本文件的 .zjpanel / .zjcodex。 */
+
+/* ---- 已选惊变面板 ---- */
+.zjpanel { position: fixed; inset: 0; z-index: 86; display: grid; place-items: center; padding: .3rem; }
+.zjpanel__scrim { position: absolute; inset: 0; background: rgba(4, 8, 7, .68); }
+/* 业主 2026-10-30：面板要「大出单行一截」——8.4rem（336px@792）时行只有 ~320 宽，读起来挤；
+   放宽到 10rem（400px@792），正文去掉左右内边距后一行约 368，面板两侧各多出 ~16px。 */
+.zjpanel__box { position: relative; display: flex; flex-direction: column; width: min(10rem, 92vw); max-height: 84%;
+  background: linear-gradient(160deg, rgba(15, 24, 22, .98), rgba(8, 12, 11, .99));
+  border: 1px solid rgba(23, 217, 160, .28); border-radius: 3px; box-shadow: 0 .2rem .6rem rgba(0, 0, 0, .6); }
+.zjpanel__head { display: flex; align-items: center; gap: .12rem; padding: .16rem .38rem; border-bottom: 1px solid var(--line); }
+.zjpanel__micro { font-family: 'Rajdhani', 'Noto Sans SC', sans-serif; font-weight: 600; line-height: 1;
+  font-size: max(10px, calc(.16 * var(--t))); letter-spacing: .28em; color: #17d9a0; }
+.zjpanel__title { font-size: max(15px, calc(.34 * var(--t))); letter-spacing: .08em; color: var(--text-hi); }
+.zjpanel__who { display: inline-flex; align-items: center; gap: .06rem; font-size: max(11px, calc(.2 * var(--t))); color: var(--text-lo); }
+.zjpanel__who .icon { width: .22rem; height: .22rem; }
+.zjpanel__x { margin-left: auto; display: grid; place-items: center; width: max(.44rem, 24px); height: max(.44rem, 24px); color: var(--text-md);
+  background: none; border: 1px solid var(--line-2); border-radius: 2px; cursor: pointer; }
+.zjpanel__x:hover { color: var(--text-hi); border-color: #17d9a0; }
+.zjpanel__x .icon { width: .24rem; height: .24rem; }
+/* 单行三页签（已选惊变 / 敌方惊变 / 惊变羁绊）：一排，永不换行成第二层（业主 2026-10-29） */
+.zjpanel__tabs { display: flex; flex-wrap: nowrap; gap: .06rem; padding: .1rem .38rem 0; }
+.zjpanel__tab { display: inline-flex; align-items: center; gap: .06rem; padding: .08rem .14rem; min-height: max(.44rem, 24px); cursor: pointer;
+  font-size: max(11px, calc(.22 * var(--t))); letter-spacing: .06em; color: var(--text-lo);
+  background: rgba(10, 16, 15, .8); border: 1px solid var(--line-2); border-bottom: 0; border-radius: 2px 2px 0 0; }
+.zjpanel__tab b { font-size: max(10px, calc(.2 * var(--t))); color: #17d9a0; }
+.zjpanel__tab.is-on { color: var(--text-hi); background: rgba(18, 32, 28, .96); border-color: rgba(23, 217, 160, .5); }
+.zjpanel__body { flex: 1; min-height: 0; overflow: auto; padding: .16rem .38rem .2rem; border-top: 1px solid rgba(23, 217, 160, .22); }
+/* 两页列表 = **横行**（业主 2026-10-29 晚：「已选惊变的显示逻辑是横行而不是选择时的竖排卡片」）。
+   .zjpanel__grid 是竖排容器（一行一张，行高按内容；面板正文 .zjpanel__body 自己竖滚，横向永不滚）；
+   .zjpanel__cell 只在敌方页出现：最左一列是 R1 / R6 轮次徽标，右边才是那一行。 */
+.zjpanel__grid { display: flex; flex-direction: column; gap: .06rem; }
+.zjpanel__cell { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; column-gap: .08rem; }
+.zjpanel__round { font-size: max(10px, calc(.18 * var(--t))); letter-spacing: .16em; color: #f2bd3e; }
+.zjpanel__none { margin: 0; padding: .4rem 0; text-align: center; font-size: max(11px, calc(.22 * var(--t))); color: var(--text-lo); }
+
+/* 一条惊变 = 一行：左图 | 名称 + 稀有度 + 已选/敌方标记 / 描述 · 羁绊（名 + tiers）。
+   描述与羁绊就地省略（不换行撑高），整段文案在行 title 上；行高与文案长短无关。 */
+.zjsel { --zj-r: #9fb6c6; position: relative; display: grid; grid-template-columns: auto minmax(0, 1fr);
+  align-items: center; column-gap: .1rem; min-width: 0; padding: .08rem .12rem .08rem .16rem;
+  background: linear-gradient(90deg, rgba(17, 26, 24, .96), rgba(9, 13, 12, .97)); border: 1px solid #2c3a36; border-radius: 2px; }
+.zjsel::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--zj-r); }
+.zjsel--enemy { border-color: rgba(196, 74, 58, .32); }
+.zjsel__icon { align-self: center; flex: none; display: grid; place-items: center; width: .44rem; height: .44rem; }
+.zjsel__icon img { max-width: .38rem; max-height: .38rem; object-fit: contain; }
+.zjsel__icon.is-white-glyph img { filter: brightness(0) invert(.92); }
+/* 行内右半边：第一行 名称 + 稀有度 + 标记，第二行 描述 + 羁绊 */
+.zjsel__main { display: flex; flex-direction: column; gap: .03rem; min-width: 0; }
+.zjsel__head { display: flex; align-items: baseline; gap: .08rem; min-width: 0; }
+/* 名称不换行、省略号收尾（全文在行的 title 上），稀有度与标记是 flex: none 的小块，永远看得见 */
+.zjsel__name { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font-size: max(12px, calc(.24 * var(--t))); letter-spacing: .04em; color: var(--text-hi); }
+.zjsel__rarity { flex: none; font-size: max(10px, calc(.16 * var(--t))); letter-spacing: .14em;
+  padding: .01rem .06rem; color: #0b1412; background: var(--zj-r); }
+.zjsel__mark { flex: none; display: inline-flex; align-items: center; gap: .03rem; padding: .01rem .06rem;
+  font-size: max(10px, calc(.15 * var(--t))); letter-spacing: .06em; color: #9ff5d8;
+  background: rgba(23, 217, 160, .12); border: 1px solid rgba(23, 217, 160, .4); border-radius: 1px; }
+.zjsel__mark .icon { width: .16rem; height: .16rem; }
+.zjsel__mark--enemy { color: #f0b3a8; background: rgba(196, 74, 58, .14); border-color: rgba(196, 74, 58, .45); }
+.zjsel__meta { display: flex; align-items: baseline; gap: .1rem; min-width: 0; }
+/* 描述：横向一行读完，放不下就省略号（最多两行由 -webkit-line-clamp 兜住长文案），完整文案在 title 上 */
+.zjsel__desc { flex: 1 1 auto; min-width: 0; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2;
+  overflow: hidden; overflow-wrap: anywhere; font-size: max(11px, calc(.2 * var(--t))); line-height: 1.45; color: var(--text-md); }
+/* 所属惊变羁绊：名 + tiers 同一枚小片（effect 全文只在 title 里，不再撑成竖卡的羁绊高块） */
+.zjsel__bonds { flex: 0 1 auto; max-width: 58%; display: flex; flex-wrap: nowrap; gap: .06rem; min-width: 0; overflow: hidden; }
+.zjsel__bond { display: inline-flex; align-items: baseline; gap: .05rem; min-width: 0; padding: .01rem .06rem;
+  background: rgba(23, 217, 160, .06); border: 1px solid rgba(23, 217, 160, .22); border-radius: 1px; }
+.zjsel__bondname { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font-size: max(10px, calc(.17 * var(--t))); letter-spacing: .04em; color: #9ff5d8; }
+.zjsel__bondtiers { flex: none; font-family: 'Rajdhani', sans-serif; font-weight: 700; line-height: 1;
+  font-size: max(10px, calc(.15 * var(--t))); letter-spacing: .08em; color: #7fae9f; }
+
+/* ---- 羁绊页 ---- */
+.zjpanel__bonds { display: flex; flex-direction: column; gap: .1rem; }
+.zjbon { position: relative; display: flex; flex-direction: column; gap: .05rem; padding: .1rem .12rem;
+  background: rgba(12, 18, 17, .8); border: 1px solid var(--line); border-radius: 2px; }
+.zjbon.is-on { border-color: rgba(23, 217, 160, .4); }
+.zjbon.is-full { border-color: #f2bd3e; }
+.zjbon__top { display: flex; align-items: baseline; gap: .1rem; }
+.zjbon__name { font-size: max(12px, calc(.24 * var(--t))); letter-spacing: .04em; color: var(--text-hi); }
+.zjbon__num { margin-left: auto; font-family: 'Rajdhani', sans-serif; font-weight: 700; line-height: 1;
+  font-size: max(11px, calc(.2 * var(--t))); letter-spacing: .1em; color: var(--text-lo); }
+.zjbon__num.is-on { color: #17d9a0; }
+.zjbon__num.is-full { color: #f2bd3e; }
+.zjbon__num--t2 { margin-left: .04rem; }
+.zjbon__bar { display: block; height: 2px; max-width: 100%; background: #17d9a0; opacity: .7; }
+.zjbon.is-full .zjbon__bar { background: #f2bd3e; }
+.zjbon__effect { font-size: max(11px, calc(.19 * var(--t))); line-height: 1.5; color: var(--text-md); }
+.zjbon__members { display: flex; flex-wrap: wrap; gap: .05rem; font-size: max(10px, calc(.16 * var(--t))); color: var(--text-lo); }
+.zjbon__mem { padding: .01rem .05rem; border: 1px solid var(--line-2); }
+.zjbon__mem.is-on { color: #17d9a0; border-color: rgba(23, 217, 160, .5); }
+
+/* ---- 三选一的卡位：卡 + 它自己的「重抽」键（两颗 button 不能嵌套，所以外面套一层 wrapper） ---- */
+.zjcardwrap { display: flex; flex-direction: column; gap: calc(.06 * var(--zj-u)); min-width: 0; }
+/* 卡是内容高（flex: none）：不用 flex:1 去填满 wrapper —— 那样卡会被行高掐住，卡面里最长的羁绊效果被 overflow 裁掉。 */
+.zjcardwrap > .zjcard { flex: none; }
+.zjcard__reroll { display: inline-flex; align-items: center; justify-content: center; gap: calc(.05 * var(--zj-u)); min-height: max(calc(.44 * var(--zj-u)), 32px);
+  padding: calc(.04 * var(--zj-u)) calc(.1 * var(--zj-u)); cursor: pointer; font-size: max(11px, calc(.19 * var(--t))); letter-spacing: .08em;
+  color: #17d9a0; background: rgba(10, 18, 16, .86); border: 1px solid rgba(23, 217, 160, .38); border-radius: 2px; }
+.zjcard__reroll:hover:not(:disabled) { border-color: #17d9a0; background: rgba(16, 30, 26, .92); }
+.zjcard__reroll:disabled { cursor: default; opacity: .45; }
+.zjcard__reroll:focus-visible { outline: 2px solid #17d9a0; outline-offset: 2px; }
+.zjcard__reroll .icon { width: calc(.22 * var(--zj-u)); height: calc(.22 * var(--zj-u)); }
+.zjcard__reroll b { font-size: max(11px, calc(.19 * var(--t))); }
+
+/* ---- 敌方惊变揭晓（全场共享；R1 / R6 各一次） ----
+   fixed + z-index 45：回合开场那两个过场板（ui/matchPopups.js 的 `.mpop--round` / `.mpop--phase`）是
+   `position: fixed; z-index: var(--z-banner)` = 40，它们和这一屏都在画面正中 —— 26 的时候两张板直接压在这张卡上
+   （2026-10-28 真机截图 zhajing-844x390-reveal / -jibian 就是这么糊在一起的）。抽到的那张卡是这一刻最重要的信息，
+   它在 40 之上、在真弹窗（--z-modal 80）与已选惊变/一览（86）之下。 */
+.zjrev { position: fixed; inset: 0; z-index: 45; display: grid; place-items: center; padding: .3rem; cursor: pointer; }
+.zjrev__veil { position: absolute; inset: 0; background: radial-gradient(ellipse at 50% 42%, rgba(10, 30, 26, .74), rgba(4, 8, 7, .94));
+  -webkit-backdrop-filter: blur(2px); backdrop-filter: blur(2px); }
+.zjrev__box { position: relative; display: flex; flex-direction: column; align-items: center; gap: .1rem;
+  width: min(5.2rem, 88vw); max-height: 100%; overflow: auto; padding: .26rem .24rem .2rem; text-align: center;
+  background: linear-gradient(160deg, rgba(14, 26, 23, .98), rgba(7, 12, 11, .99));
+  border: 1px solid rgba(196, 74, 58, .45); border-radius: 3px; box-shadow: 0 .24rem .7rem rgba(0, 0, 0, .68);
+  animation: zjrev-in 260ms var(--ease-out) backwards; }
+@keyframes zjrev-in { from { opacity: 0; transform: translateY(.1rem) scale(.97); } }
+.zjrev__micro { font-family: 'Rajdhani', 'Noto Sans SC', sans-serif; font-weight: 600; line-height: 1;
+  font-size: max(10px, calc(.16 * var(--t))); letter-spacing: .3em; color: #e0553f; }
+.zjrev__round { font-size: max(11px, calc(.22 * var(--t))); letter-spacing: .2em; color: #f2bd3e; }
+.zjrev__title { font-size: max(15px, calc(.34 * var(--t))); font-weight: 900; letter-spacing: .12em; color: var(--text-hi); }
+/* 定格帧：**竖版卡**（业主 2026-10-29「稍窄再拉高一点，让抽出来的词条显示更清晰」）—— 图 / 名字 / 稀有度 / 描述
+   从上到下排，描述再长也整段换行，不跟名字挤一行。整块仍由 .zjrev__box 收在视口内（max-height + overflow）。 */
+.zjrev__card { --zj-r: #9fb6c6; display: flex; flex-direction: column; align-items: center; gap: .06rem;
+  width: 100%; text-align: center; padding: .16rem .14rem;
+  background: linear-gradient(170deg, rgba(28, 18, 18, .96), rgba(10, 9, 9, .97));
+  border: 1px solid var(--zj-r); border-radius: 2px; }
+.zjrev__card[data-rarity="normal"] { --zj-r: #9fb6c6; }
+.zjrev__card[data-rarity="rare"] { --zj-r: #4aa8ff; }
+.zjrev__card[data-rarity="epic"] { --zj-r: #a879ff; }
+.zjrev__card[data-rarity="legend"] { --zj-r: #f2bd3e; }
+.zjrev__card[data-rarity="hidden"] { --zj-r: #17d9a0; }
+.zjrev__icon { display: grid; place-items: center; width: 1.06rem; height: 1.06rem;
+  background: radial-gradient(circle at 50% 45%, rgba(224, 85, 63, .18), transparent 68%); border: 1px solid rgba(224, 85, 63, .3); }
+.zjrev__icon img { max-width: .92rem; max-height: .92rem; object-fit: contain; filter: drop-shadow(0 .04rem .08rem rgba(0, 0, 0, .7)); }
+.zjrev__name { font-size: max(16px, calc(.36 * var(--t))); letter-spacing: .06em; line-height: 1.25; color: var(--text-hi); overflow-wrap: anywhere; }
+.zjrev__rarity { font-size: max(10px, calc(.18 * var(--t))); letter-spacing: .18em; padding: .02rem .1rem; color: #0b1412; background: var(--zj-r); }
+.zjrev__desc { width: 100%; text-align: left; font-size: max(11px, calc(.22 * var(--t))); line-height: 1.6; color: var(--text-md); }
+.zjrev__flavor { width: 100%; font-size: max(10px, calc(.18 * var(--t))); line-height: 1.5; color: #7d8a86; font-style: italic; }
+.zjrev__wait { display: grid; place-items: center; min-height: 1.4rem; }
+/* 「跳过」是一颗真的按钮（整块也能点，但它是唯一写着动作的字）：32px 高（Lead 2026-10-28 的明确要求），自己是
+   可点目标（真 <button>，不再只是根节点上的点击区） */
+.zjrev__skip { margin-top: .02rem; display: inline-flex; align-items: center; justify-content: center; min-height: max(.44rem, 32px);
+  padding: 0 .16rem; font: inherit; font-size: max(11px, calc(.18 * var(--t))); letter-spacing: .14em; color: #6f837e;
+  background: none; border: 1px solid transparent; border-radius: 2px; cursor: pointer; }
+.zjrev:hover .zjrev__skip, .zjrev__skip:hover { color: #9fb6c6; border-color: var(--line-2); }
+.zjrev__skip:focus-visible { outline: 2px solid #17d9a0; outline-offset: 2px; }
+/* 翻牌中：名字与图在高频换，模糊 + 抖动由 CSS 给（JS 只换内容），定格时一次性摘掉 */
+.zjrev.is-spinning .zjrev__card { filter: blur(1.2px) brightness(.88); }
+.zjrev.is-spinning .zjrev__name { animation: zjrev-flick 180ms steps(2) infinite; }
+@keyframes zjrev-flick { 50% { opacity: .45; } }
+.zjrev[data-stage="result"] .zjrev__card { animation: zjrev-settle 220ms var(--ease-out) backwards; }
+@keyframes zjrev-settle { from { transform: scale(1.06); filter: brightness(1.3); } }
+
+/* ---- 惊变一览（99 张，按稀有度分组，已拥有打勾） ---- */
+.zjcodex__total { margin-left: auto; font-family: 'Rajdhani', sans-serif; font-weight: 700; line-height: 1;
+  font-size: max(11px, calc(.22 * var(--t))); letter-spacing: .12em; color: #17d9a0; }
+.zjcodex__group { display: flex; flex-direction: column; gap: .05rem; margin-bottom: .12rem; }
+.zjcodex__ghead { display: flex; align-items: baseline; gap: .1rem; padding-bottom: .03rem; border-bottom: 1px solid var(--line); }
+.zjcodex__gname { font-size: max(11px, calc(.22 * var(--t))); letter-spacing: .1em; color: var(--text-hi); }
+.zjcodex__gnum { font-size: max(11px, calc(.2 * var(--t))); color: var(--text-lo); }
+.zjcodex__group[data-rarity="rare"] .zjcodex__gname { color: #4aa8ff; }
+.zjcodex__group[data-rarity="epic"] .zjcodex__gname { color: #a879ff; }
+.zjcodex__group[data-rarity="legend"] .zjcodex__gname { color: #f2bd3e; }
+.zjcodex__group[data-rarity="hidden"] .zjcodex__gname { color: #17d9a0; }
+.zjcodex__list { display: grid; grid-template-columns: repeat(auto-fill, minmax(1.7rem, 1fr)); gap: .03rem .1rem;
+  margin: 0; padding: 0; list-style: none; }
+.zjcodex__row { display: flex; align-items: center; gap: .05rem; min-width: 0; padding: .02rem .03rem;
+  font-size: max(11px, calc(.19 * var(--t))); color: var(--text-lo); }
+.zjcodex__row.is-owned { color: var(--text-hi); }
+.zjcodex__box { flex: none; display: grid; place-items: center; width: .17rem; height: .17rem;
+  border: 1px solid var(--line-2); }
+.zjcodex__row.is-owned .zjcodex__box { color: #06202e; background: #17d9a0; border-color: #17d9a0; }
+.zjcodex__box .icon { width: .14rem; height: .14rem; }
+.zjcodex__name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* ---- 矮屏 / 窄屏 ----
+   三选一浮层**没有**手机专用版式（业主 2026-10-31「手机端炸惊三选一要和电脑端显示一致」）：
+   卡宽、卡内 padding、图标、字段顺序、描述与羁绊块的行数全部由上面那一套（含 --zj-u 的按高度等比缩放）决定，
+   这里只留「浮层铺满屏宽」这一条 —— 手机横屏的角落键是好几排，浮层留出 2.8rem 的左边会白白吃掉 14% 宽度；
+   它跟 .spov 在 ≤900 上改 left 是同一类适配（浮层与 HUD 键的关系，不是卡片版式）。
+   下面的 .zjsel 是**已选惊变面板**的横行（另一块面，不在三选一里），保持 2026-10-30 的尺寸。 */
+@media (max-width: 900px) {
+  .zjov { inset: 0; }
+  /* 已选惊变的横行在手机上：描述与羁绊各占一整行，不再互相抢那半行宽度
+     （挤在一起两边都会被省略号切掉，羁绊名就读不全了）。行高一条行 = 抬头 / 描述 / 羁绊。
+     业主 2026-10-30：一行要 ~368×75 —— 面板放宽到 10rem 后行宽自然到 ~368，行高用 1.88rem 的下限
+     撑到 75px（原来 ~63px 太扁），内边距同时放大一档。 */
+  .zjsel { column-gap: .08rem; padding: .14rem .12rem .14rem .18rem; min-height: 1.88rem; }
+  .zjsel__meta { flex-wrap: wrap; row-gap: .03rem; }
+  .zjsel__desc { flex: 1 1 100%; }
+  .zjsel__meta--bonds .zjsel__desc { -webkit-line-clamp: 1; line-clamp: 1; }
+  .zjsel__bonds { flex: 1 1 100%; max-width: 100%; }
+}
+@media (max-height: 520px) {
+  /* 三选一浮层在这一档**不再**改任何东西：.zjov 的 padding / 标题字号 / .zjov__sub / .zjcard__flavor
+     / 「确认选择」的高度都由上面那份双端共用的声明按 --zj-u 缩（业主 2026-10-31）——
+     原来这里把 flavor 与副标题藏掉、标题压小，手机就少了两块桌面有的信息。 */
+  .zjpanel__box { max-height: 92%; }
+  .zjpanel__none { padding: .2rem 0; }
+  /* 揭晓浮层（矮屏）：**窄一点、高一点**（业主 2026-10-29「手机端不要太长，稍窄再拉高一点」）——
+     原来 96vw 把 792 宽的屏铺成一张 100px 高的横条，词条全挤在一行；现在 ~62vw / 12.4rem 上限，卡面竖排，
+     描述整段换行。整块仍在视口内（.zjrev fixed + box max-height/overflow）。 */
+  .zjrev { padding: .1rem; }
+  .zjrev__box { width: min(12.4rem, 62vw); max-width: none; padding: .14rem .16rem .1rem; gap: .05rem; }
+  .zjrev__card { padding: .12rem .14rem; gap: .05rem; }
+  .zjrev__icon { width: .96rem; height: .96rem; }
+  .zjrev__icon img { max-width: .84rem; max-height: .84rem; }
+  .zjrev__name { font-size: max(15px, calc(.3 * var(--t))); }
+  .zjrev__desc { font-size: max(12px, calc(.3 * var(--t))); line-height: 1.7; }
+  .zjrev__skip { min-height: max(.44rem, 32px); }
+  .zjrev__flavor { display: none; }
+  /* 一览：矮屏按手机宽度重排列宽 —— 1.4rem（≈56px）时四个字的名字全被省略号吃掉（截图 zhajing-844x390-codex），
+     2rem（≈80px）刚好放得下「四字 + 勾选框」，行数变多但名字读得全（列表本来就会滚）。 */
+  .zjcodex__list { grid-template-columns: repeat(auto-fill, minmax(2rem, 1fr)); }
+}
+
+/* 减动效：卡片的落位与抬升都归零（写在文件末尾，CSS 顺序就是行为）。
+   敌方惊变揭晓也在名单里：`.zjrev` 的入场、翻牌的抖动、定格的缩放全部摘掉 —— JS 侧同样跳过翻牌（ui/jibian.js
+   EnemyJibianReveal 的 reduced 分支），所以减动效下这一屏是「直接出结果、静默停 resultMs」。 */
+@media (prefers-reduced-motion: reduce) {
+  .zjcard, .zjcard.is-pickable:hover { transform: none; transition: none; }
+  .zjcard, .zjsel { animation: none; }
+  .zjrev__box, .zjrev.is-spinning .zjrev__name, .zjrev[data-stage="result"] .zjrev__card { animation: none; }
+  .zjrev.is-spinning .zjrev__card { filter: none; }
+  .zjcard__reroll { transition: none; }
+}

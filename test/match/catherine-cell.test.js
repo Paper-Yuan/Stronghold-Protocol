@@ -146,21 +146,41 @@ test('Cathy fills all three eligible choices after excluding the cell, across 30
   const h = fixture(t);
   h.upgrade(); h.pickCell();
   const shopIds = Object.values(h.m.gd.shopItemsByTier).flat();
-  const eligible = shopIds.slice(0, 3);
-  for (const id of shopIds.filter((id) => !eligible.includes(id))) {
+  // Two 特性专属产出装备 have NO stock cap — 耶拉谢拉格不融冰 (chess_item_5_02_e_a) and 缪缪变形同构体
+  // (chess_item_6_09_e_a): server/match/gamedata.js itemPoolCopies returns null for them since the 2026-10-16 rule, so
+  // `itemPool.left` is Infinity and they can never be bought out. The cap is a data-independent rule, so they join every
+  // offer beside the stocked items.
+  const uncapped = shopIds.filter((id) => h.m.gd.itemPoolCopies(id) == null);
+  assert.deepEqual(uncapped.slice().sort(), ['chess_item_5_02_e_a', 'chess_item_6_09_e_a'], 'the two uncapped 特性专属 items');
+  const stocked = shopIds.filter((id) => !uncapped.includes(id));
+  const eligible = stocked.slice(0, 3);
+  for (const id of stocked.filter((id) => !eligible.includes(id))) {
     for (let copies = 0; copies < 30 && h.m.itemPool.canGain(id); copies++) {
       assert.ok(h.ps.acquireItem(id, { toTemp: true, silent: true }));
     }
     assert.equal(h.m.itemPool.canGain(id), false, `stock exhausted: ${id}`);
   }
-  assert.deepEqual(shopIds.filter((id) => h.m.itemPool.canGain(id)), eligible);
+  assert.deepEqual(stocked.filter((id) => h.m.itemPool.canGain(id)), eligible);
   assert.ok(h.m.itemPool.canGain(CELL), 'the uncapped cell stays available in the underlying pool');
+  for (const id of uncapped) assert.ok(h.m.itemPool.canGain(id), `${id} stays in stock forever`);
+  // Everything still in stock: the three stocked items plus the two uncapped ones. An offer fills all three choices from
+  // exactly that set (never the cell — Cathy's allowance excludes it), and every one of them can come.
+  const available = [...eligible, ...uncapped];
+  const seen = new Set();
   for (let seed = 1; seed <= 300; seed++) {
     h.ps.offers = [];
     h.m.rngMeta = createRng(seed);
     h.m.dispatch(h.ps, 'onLevelUp', {});
-    assert.deepEqual(idsOf(h.ps.offers[0]).sort(), [...eligible].sort(), `seed ${seed}: all eligible items`);
+    const ids = idsOf(h.ps.offers[0]);
+    assert.equal(ids.length, 3, `seed ${seed}: three choices`);
+    assert.equal(new Set(ids).size, 3, `seed ${seed}: three different items`);
+    for (const id of ids) {
+      assert.ok(available.includes(id), `seed ${seed}: ${id} is still in stock`);
+      assert.notEqual(id, CELL, `seed ${seed}: the cell is excluded`);
+      seen.add(id);
+    }
   }
+  assert.deepEqual([...seen].sort(), [...available].sort(), 'every item still in stock is offered, nothing else');
 });
 
 test('Cathy samples eligible choices without replacement and stops only at exhaustion [ASSUMED]', (t) => {

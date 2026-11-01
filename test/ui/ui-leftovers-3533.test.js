@@ -20,16 +20,18 @@ const block = (text, head) => {
   return text.slice(i);
 };
 
-test('the 机变 overlay leaves the corner\'s buttons uncovered: they wrap within its 2.8rem column, a phone\'s overlay starts past them', () => {
+test('the corner follows 0.3.1 again: one row on wide screens, two rows (wrap-reverse) under 768px, the 机变 overlay on its own rail', () => {
   const panels = css('public/css/screens/game-panels.css');
   assert.match(panels, /\.spov \{ position: absolute; inset: 0 0 0 2\.8rem;/);
-  assert.match(block(panels, '@media (min-width: 768px) {\n  .gm.has-sp .gm__corner'),
-    /\.gm\.has-sp \.gm__corner \{ flex-wrap: wrap-reverse; align-content: flex-start; max-width: calc\(2\.8rem - \.24rem - \.1rem\); \}/);
+  // 业主 2026-10-29（第二次口径）：角落照 0.3.1 换回 —— 宽屏本来就一行（game.css 的 .gm__corner 不写 flex-wrap），
+  // 窄屏由 devices.css 折成两行；所以 game-panels.css 不再钉 nowrap。
+  assert.doesNotMatch(panels, /\.gm\.has-sp \.gm__corner/);
   const dev = css('public/css/devices.css');
-  // the coarse phone's overlay starts past the corner's wrapped width (measured in the browser: mock.e2e's 「the 机变
-  // overlay leaves every corner button clickable」, elementFromPoint at each button's centre, wide windows and a phone)
+  // the coarse phone's overlay starts past the corner's widest row
   assert.match(dev, /\.gm\.has-sp > \.spov \{ left: calc\(max\(2\.8rem,/);
-  assert.match(dev, /\.gm\.is-collapsed\.has-sp \.gm__corner \{ flex-wrap: wrap-reverse;/);
+  // 0.3.1's narrow-screen corner: the two-row wrap-reverse with the three-key width
+  assert.match(dev, /@media \(max-width: 767px\) \{\n {2}\.gm__corner \{ flex-wrap: wrap-reverse; align-content: flex-start;/);
+  assert.doesNotMatch(css('public/css/screens/game.css').slice(css('public/css/screens/game.css').indexOf('.gm__corner {')), /^\s*flex-wrap/m);
 });
 
 test('选择模拟协议 in a portrait window keeps the .5rem the chosen card slides into', () => {

@@ -82,14 +82,20 @@ import { AiTakeoverPanel } from '../ui/aiTakeover.js';
 // phase). Its pill reads 观战中, never "你已被淘汰"; its exit only leaves the seat (ui/matchChrome.js ExitModal).
 
 import { useCallback, useEffect, useMemo, useRef, useState } from '../../vendor/hooks.module.js';
-import { PHASE, GEO } from '../../../shared/constants.js';
+import { PHASE, GEO, tempRowOf } from '../../../shared/constants.js';
+// 炸惊的「重抽」键只在协议真的存在时才亮（C2S 是 shared/protocol.js 的唯一真源：engine-core 的 T5 一落地，
+// 按钮自己出现，不需要再改客户端；没落地时它根本不画，而不是画一个点了被 BAD_MSG 拒的按钮）。
+import { C2S } from '../../../shared/protocol.js';
+import { EROSION_ENDLESS } from '../../../shared/annihilation-constants.js';
 import { ruleOption } from '../../../shared/plugins/rules.js';
 import { html, Spinner, PhaseBanner, ResultDialog, Icon, Button, confirmDialog, closeAllDialogs, useTicker } from '../ui/components.js';
 import { useGameData, GIcon } from '../ui/gameComponents.js';
 import { useFieldView } from '../ui/fieldHost.js';
-import { TopBar, liveLp, ownLeaks, uniteRemaining, tempInfo, tempReadyReason } from '../ui/hud.js';
+import { TopBar, ModeToolsButton, JibianHudButton, RelicHudButton, liveLp, ownLeaks, uniteRemaining, tempInfo, tempReadyReason } from '../ui/hud.js';
 import { BondStrip, BondPopup } from '../ui/bondStrip.js';
 import { TeamPanel } from '../ui/teamPanel.js';
+// 多人房局内 HUD（8 / 12 人）: 顶部状态条 + 队伍芯片 + 联防条 + 我方 4 人血条。只有 m.public.maxSeats > 4 时才渲染
+import { MultiHud, isMultiRoom } from '../ui/multiHud.js';
 import { ShopBar } from '../ui/shopBar.js';
 import { selectedBondTimers } from '../ui/bondTimers.js';
 import { DetailPanel, resolveDetail } from '../ui/detailPanel.js';
@@ -98,6 +104,21 @@ import { FinalAssaultPlate, HiddenCorePlate, EndPlate, preloadBossPlateArt, boss
 import { DownedPlate, downedDue, preloadDownedArt, downedArtReady } from '../ui/downedPlate.js';
 import { OfferOverlay, offerBlocksPrep } from '../ui/offerOverlay.js';
 import { ChoiceOverlay, spMarks } from '../ui/choiceOverlay.js';
+// 湮灭模拟 · 藏品 (the 1-of-3 draft overlay, its codex and the 增益藏品 slot machine; server/match/relics.js)
+import { RelicOverlay, RelicCodex, RelicCodexButton, PositiveSlotOverlay, normalizeRelicDraft } from '../ui/relics.js';
+// 炸惊模拟 · 惊变 (ZHAJING): the 惊变 draft (an SP_DRAFT of family 'jibian'), the 敌方惊变 reveal and the panel itself
+  // (ui/jibian.js). 已选惊变自 2026-10-29 起由左下角那颗「惊变」独立键打开（ui/hud.js JibianHudButton → 这里直接挂
+  // JibianPanel 单层三页签：已选惊变 / 敌方惊变 / 惊变羁绊；没有外层页签，也没有「惊变一览」那一页）。
+  import { JibianOverlay, JibianPanel, EnemyJibianReveal, jibianFromEffects, isJibianRef } from '../ui/jibian.js';
+  // 超限模拟 · 词条三选一（业主 2026-10-31）：与惊变同一个 SP_DRAFT 槽位、同一套 .zjov/.zjcard 版式，
+  // 只是卡面换成词条（名 / 编号 / 效果 / 风味 / 图标占位 + 未实装角标）。
+  // 同一个文件里还有局内「已选词条」面板（照抄炸惊「已选惊变」的按钮 + 面板，只在超限局挂）。
+  import { OverlimitRelicOverlay, OverlimitRelicPanel, overlimitRelicsOf } from '../ui/overlimitRelics.js';
+// 炸惊模拟 · 锻造器（业主 2026-10-14；engine-core T11）：只在 `m.private.forge` 存在时画（= 炸惊房）。
+// 2026-10-29 第二次改版：数量与击杀进了顶栏的胶囊（ui/hud.js ModeToolsButton），点开 = 抉择弹窗 ForgePanel
+// 或已锻造属性整合 ForgedPanel（两条路都复用 ui/forge.js）；第三次改版把左下那颗「已锻造」徽标整段删了 ——
+// 胶囊点开已有整合面板，左下不再留第二个入口（ui/forge.js 里那个徽标组件与它在 forge.css 的规则因此成了死代码）。
+import { forgeOf, ForgePanel, ForgedPanel, cardsOf, forgePick } from '../ui/forge.js';
 import { EnemyDrawer } from '../ui/enemyDrawer.js';
 import { Ticker } from '../ui/ticker.js';
 import { EmoteWheel } from '../ui/emotes.js';
@@ -107,7 +128,6 @@ import { CombatMetricsPanel } from '../ui/combatMetrics.js';
 import { SettingsModal, settingsStore, useSettings } from '../ui/settings.js';
 import { ExitModal, AwayOverlay, awayStore } from '../ui/matchChrome.js';
 import { RoundPopup, PhasePopup, phasePopupOf, roundsToBoss, preloadPopupArt } from '../ui/matchPopups.js';
-import { openGuide } from '../ui/guide.js';
 import { actions, onRefreshBusy } from '../ui/gameActions.js';
 import { FacingWheel, holdPiece, setPieceDir, syncPieceDirs, showRange, useTileScreen } from '../ui/facingWheel.js';
 import { Underframe, underframeRect, TempRowNotice } from '../ui/underframe.js';
@@ -125,6 +145,8 @@ import {
   countdownState, shopBlockReason, stageOverrides, effectiveStage, watchTarget, dropFailureReason,
   previewEnemyKey, prepCamera, prepCameraFor, deployFoldsShop, deployZoomStep, deployZoomRemember, prepDeployCamera, deployFieldOf, fieldTile, panelSide, panelSlots, bondPopupPlace, unitLoadout, deployedRecord,
   mergeTarget, modeOffBonds, readyFundsPrompt, readyShopFold, ownerBandId, ownDiyRecord, ownStandIn, roundStartReplay, heldDraftPub,
+  isJibianDraft,
+  isOverlimitRelicDraft,
 } from '../ui/gameLogic.js';
 import { toast } from '../ui/toasts.js';
 import { LoadoutButton } from './loadout.js';
@@ -152,6 +174,10 @@ import { contentSet } from '../content.js';
 import { DEFAULT_VERSION, shownVersion } from '../versions.js';
 import { VersionVote } from '../ui/versionVote.js';
 import { TestConsole } from '../ui/testConsole.js';
+import { ChatBox } from '../ui/chatBox.js';
+import { TraitOverlay } from '../ui/traitOverlay.js';
+import { BossPhaseWarn } from '../ui/bossPhaseWarn.js';
+import { ContractOverlay } from '../ui/contractOverlay.js';
 
 // 作战统计 is opt-in (settings `combatMetrics`, default off). The runner does not import the settings store;
 // this screen pushes the switch. Outside a browser battleRunner is null, so this is a no-op.
@@ -174,6 +200,12 @@ if (battleRunner) {
  */
 export const DRAFT_HOLD_MS = 700;
 export const BOOT_MIN_MS = 2300;
+
+/** 右侧效果列的输入：已选惊变不进这一列（业主 2026-10-29「已选惊变不要显示在右侧」，见 ui/jibian.js isJibianRef）。
+ *  非数组原样返回（EffectList 自己对空输入安全），其它效果原样通过。 */
+export function effectsWithoutJibian(effects) {
+  return Array.isArray(effects) ? effects.filter((e) => !isJibianRef(e)) : effects;
+}
 
 /** Router for the in-match screens. */
 export function GameScreen() {
@@ -265,7 +297,7 @@ function MatchScreen() {
   const [watchWho, setWatchWho] = useState(null);        // { fieldId, playerId }: the teammate picked with 前往查看
   const [drawer, setDrawer] = useState(null);            // 'enemies' | 'info' | null
   const [bondOpen, setBondOpen] = useState(null);        // { id, ownerId, from }: the bond popup and whose bond it shows
-  const [bondsCollapsed, setBondsCollapsed] = useState(false);
+  const [bondsCollapsed, setBondsCollapsed] = useState(false); // the bond strip folded up (the board stays tappable)
   const [detail, setDetail] = useState(null);            // detail target
   // every shop / reward card opened by a tap is a new tap — `tap` in the target: two cards of one operator (the pool
   // deals duplicates) carry the same chess id and no piece, and each must say its 选中干员 (detailPanel selectVoiceKey)
@@ -302,7 +334,25 @@ function MatchScreen() {
   const [bossPlate, setBossPlate] = useState(null);      // ui/bossPlates.js: { kind: 'final'|'core'|'end', … , key }
   const [readyBusy, setReadyBusy] = useState(false);
   const [spBusy, setSpBusy] = useState(null);
+  const [traitBusy, setTraitBusy] = useState(null);      // 超限词条抉择: the card being sent (null = idle)
+  const [contractBusy, setContractBusy] = useState(false); // 超限风险契约: 选择中
+  const [chatOpen, setChatOpen] = useState(false);       // 局内聊天面板 (ui/chatBox.js)
   const [personalBusy, setPersonalBusy] = useState(null); // { choiceId, idx }: an older request cannot clear a newer pick
+  const [relicBusy, setRelicBusy] = useState(null);      // idx of the 藏品 pick in flight
+  const [codexOpen, setCodexOpen] = useState(false);     // 藏品图鉴 (all 87 relics; m.private.relics is the mode's own view)
+  // 模式工具（业主 2026-10-29 第二次改版）：顶栏那一颗胶囊（ui/hud.js ModeToolsButton）= 锻造器数量 + 击杀数，
+  // 点开走两条路（rolled != null → 抉择弹窗 ForgePanel；否则 → 已锻造属性 ForgedPanel）；左下角那颗「惊变」独立键
+  // （JibianHudButton）打开面板 = ui/jibian.js 的 JibianPanel 单层三页签（第三次改版：直接挂它，没有外层页签、不挂一览）。
+  // 两个状态都只是「开着没开着」，数据仍在上面的 forgeInfo / jibianShown。
+  const [zjToolsOpen, setZjToolsOpen] = useState(false);  // 惊变面板（左下角那颗键）
+  const [zjForgeOpen, setZjForgeOpen] = useState(false);  // 锻造器胶囊点开的弹窗
+  // 超限模拟 · 已选词条面板（左下角那颗「词条」键）：开关状态与惊变那颗同一个分法 —— 声明在这里，
+  // 数据现取（下面的 overlimitRelics），面板自己不带状态。
+  const [relicPanelOpen, setRelicPanelOpen] = useState(false);
+  const [jibianRerollBusy, setJibianRerollBusy] = useState(null); // 重抽的槽位 idx (在飞; 服务端拒绝时 act() 自己 toast)
+  // 增益藏品三连老虎机: opened by a NEW positive m.private.relics.reveal (the negative draft has its own overlay)
+  const [positiveReveal, setPositiveReveal] = useState(null);
+  const relicRevealSeq = useRef(null);
   const [layer, setLayer] = useState('ALL');             // 联防 / 最终攻势 camera: 'L' | 'ALL' | 'R'
   const [pen, setPen] = useState(false);                 // the camera shows the enemy preview pen (research 09 §2)
   const [camKind, setCamKind] = useState('prep');        // kind of the last camera request (data-camera)
@@ -339,15 +389,103 @@ function MatchScreen() {
   const scoutBandOwner = scoutPid ? (players.find((p) => p.playerId === scoutPid)?.name || null) : null;
   const personalChoice = !spectator && alive ? normalizePersonalChoice(pub, priv, myId) : null;
   const hasPersonalChoice = !!personalChoice;
+  // 湮灭模拟 · 藏品: the 1-of-3 negative draft (server/match/relics.js); modal, owned relics ride in the same view.
+  // A draft only ever belongs to a PREP — the overlay is a full-screen modal with pointer-events, so a stale draft left
+  // in a private view would swallow EVERY click of the battle underneath. Gate it on the prep-ish phases.
+  const RELIC_DRAFT_PHASES = [PHASE.INFO_CHECK, PHASE.BAND_DRAFT, PHASE.ROUND_START, PHASE.SP_DRAFT, PHASE.PREP];
+  const relicDraft = !spectator && alive && RELIC_DRAFT_PHASES.includes(phase) ? normalizeRelicDraft(priv) : null;
+  const relicReveal = (!spectator && alive && priv && priv.relics) ? (priv.relics.reveal || null) : null;
+  useEffect(() => {
+    if (!priv || !priv.relics || !relicReveal || relicReveal.kind !== 'positive') return;
+    // 同盟房：增益藏品是「3 选 1 投票」选出来的，选完直接入账，不再放抽卡机
+    if (relicReveal.team === true) return;
+    const seq = Number(relicReveal.seq) || 0;
+    // The server keeps a positive relic "pending" until the player presses 收下 (g.relicSeen), so the slot machine shows
+    // for the OPENING relic too — the old rule ("the first m.private counts as already seen") swallowed it and its draw
+    // never appeared. A strictly newer seq still opens it when the flag was cleared some other way (a reconnect).
+    if (relicReveal.pending ? seq !== relicRevealSeq.current : seq > relicRevealSeq.current) {
+      relicRevealSeq.current = seq;
+      setPositiveReveal(relicReveal);
+    }
+  }, [priv && priv.relics, relicReveal && relicReveal.seq, relicReveal && relicReveal.kind, relicReveal && relicReveal.pending]);
+  // same for the 增益藏品老虎机: it is modal too, and it must never sit on top of a running battle
+  useEffect(() => {
+    if (!positiveReveal) return;
+    if (RELIC_DRAFT_PHASES.includes(phase)) return;
+    net.request('g.relicSeen', {}).catch(() => {});
+    setPositiveReveal(null);
+  }, [positiveReveal, phase]);
   const roomRules = useStore((s) => s.room?.content?.rules ?? null);
   const morphMode = ruleOption(roomRules, 'morphPairing');
   const unequipAllow = ruleOption(roomRules, 'unequip') === 'allow';
   const prepLoadoutOpen = ruleOption(roomRules, 'prepLoadout') === 'prep';
   const hasOffers = !!pub?.offers?.length;
-  const editable = !offerBlocksPrep(pub?.offers) && phase === PHASE.PREP && !!priv && alive && !priv.ready && !watchingOther && !hasPersonalChoice;
+  const editable = !offerBlocksPrep(pub?.offers) && phase === PHASE.PREP && !!priv && alive && !priv.ready && !watchingOther && !hasPersonalChoice && !relicDraft;
   const showShop = !!priv && alive && (phase === PHASE.PREP || phase === PHASE.SP_DRAFT || phase === PHASE.ROUND_START) && !watchingOther;
   const layersDisabled = phase === PHASE.UNITE || isBossPhase(phase);
   const sp = phase === PHASE.SP_DRAFT ? normalizeSp(pub?.sp, players) : null;
+  // 炸惊模拟 · 惊变: the 惊变 draft is an ordinary SP_DRAFT with `family === 'jibian'` (server/match/match/spDraft.js), so it
+  // takes the 机变 slot and is picked with the same `g.choice { idx }` — no 炸惊-specific message exists (engine-core,
+  // 2026-10-28). `isJibianDraft` (ui/gameLogic/phases.js) also accepts a frame whose top-level `family` is missing while its
+  // cards carry it (choices.js stamps `family` on every card), so a 惊变 round never falls back to the 机变 overlay.
+  // The panel reads m.private.jibian (own cards; the only source, player/basics.js jibianView) and
+  // m.public.enemyJibian.cards (every 敌方惊变 drawn this match, R1 + R6).
+  const jibianDraft = sp && isJibianDraft(pub) ? sp : null;
+  // 超限模拟 · 词条（业主 2026-10-31）：同样是普通 SP_DRAFT，只是 `family === 'overlimit'`（server/match/match/relicDraft.js），
+  // 选卡仍走既有的 `g.choice { idx }`，浮层换成 .zjov/.zjcard 那一套词条卡面（ui/overlimitRelics.js）。
+  // 顺序要紧：先认惊变，再认词条，剩下的才是机变 —— 三者互斥，同一个阶段只有一种卡面。
+  const overlimitRelicDraft = sp && !jibianDraft && isOverlimitRelicDraft(pub) ? sp : null;
+  const jibianOwn = !spectator && priv && priv.jibian ? priv.jibian : null;
+  // 观战队友（业主 2026-10-28 晚）：面板显示**被观战者**的惊变 —— 数据就是效果栏那份 `field.effects`
+  // （game.js 一直按 `watchingOther ? field.effects : priv.effects` 读，包内 jibianPanel 同源），不新增协议、不动自己的 private。
+  const watchPid = watchingOther && typeof field?.fieldId === 'string' && field.fieldId.startsWith('n:') ? field.fieldId.slice(2) : null;
+  const watchJibian = watchPid && Array.isArray(field?.effects) ? jibianFromEffects(field.effects, pub?.modeId) : null;
+  const watchName = watchPid ? (players.find((p) => p.playerId === watchPid)?.name || null) : null;
+  // 面板 / 角标显示哪一份：观战中看被观战者，否则看自己
+  const jibianShown = watchJibian || jibianOwn;
+  const jibianWatchName = watchJibian ? (watchName || '—') : null;
+  // 锻造器（业主 2026-10-14；engine-core T11）：`m.private.forge` 只在炸惊房下发；观战时看被观战者的 `m.field.forge`
+  const forgeOwn = !spectator && priv && priv.forge ? priv.forge : null;
+  const forgeShown = (watchPid && field && field.forge) ? field.forge : forgeOwn;
+  const forgeInfo = forgeShown ? forgeOf(forgeShown) : null;
+  // 胶囊右半 = 击杀数（与 ui/forge.js KillCounter 同一个字段 m.private.stats.kills），左半 = 锻造器数量；
+  // rolled != null = 还有没决定的锻造器 → 胶囊右上角一颗红点，选完（服务端回 null）就消失。
+  const zjKills = priv && priv.stats && Number.isInteger(priv.stats.kills) ? priv.stats.kills : 0;
+  const zjRolledKey = forgeInfo && forgeInfo.rolled
+    ? `${forgeInfo.rolled.rarity}:${(forgeInfo.rolled.picks || []).join(',')}` : '';
+  const zjForgeCards = forgeInfo && forgeInfo.rolled ? cardsOf(forgeInfo.rolled) : null;
+  // 服务端回一组新的锻造器（或这一组被选完）→ 清掉上一次点选的高亮：同一张卡（optId）会在下一组里再出现。
+  useEffect(() => { forgePick(null); }, [zjRolledKey]);
+  // 胶囊的两条路（业主 2026-10-29）：开 = 抉择弹窗（rolled != null）/ 已锻造属性整合；关 = 顺手清高亮。
+  const closeForgeHud = () => { setZjForgeOpen(false); forgePick(null); };
+  const toggleForgeHud = () => {
+    if (zjForgeOpen) { closeForgeHud(); return; }
+    forgePick(null);
+    setZjForgeOpen(true);
+  };
+  const enemyJibian = pub?.enemyJibian || null;
+  const jibianCount = jibianShown && Array.isArray(jibianShown.cards) ? jibianShown.cards.length : 0;
+  // 超限模拟 · 已选词条（业主 2026-10-31）：`m.private.relicsOverlimit` **只在超限局下发**（server/match/player/views.js
+  // 的 gate 是 `Match.isInfinite` = shared/infiniteMode.js 的 isInfiniteMode(room.mode)）⇒ 普通 / 湮灭 / 炸惊的私有视图
+  // 没有这个键，左下角那颗「词条」键与它的面板在这三种模式里一个字节都不画。观战席没有 m.private，自然也没有。
+  const overlimitRelics = overlimitRelicsOf(spectator ? null : priv);
+  const relicPicked = overlimitRelics ? overlimitRelics.picked : [];
+  // 负面词条（业主 2026-10-31 第二批）：同一块面板里列出来，分组色区分（`neg` = 警示红）。角标仍然只数饰品那一段
+  // （「已选饰品」这个名字与业主批准的那条 msgid 都指饰品；负面条目在面板里另有色条）。
+  const relicNegPicked = overlimitRelics ? overlimitRelics.negPicked : [];
+  // 敌方惊变揭晓 (规则14): a NEW draw is `enemyJibian.cards` growing (or its `round` changing) — the reveal plays flickerMs
+  // then resultMs (ui/jibian.js EnemyJibianReveal). The reference is seeded with the draw already on screen, so a reload in
+  // R6 does not replay R1's card as if it had just been drawn.
+  const enemyDrawKey = enemyJibian && enemyJibian.card
+    ? `${enemyJibian.round}:${Array.isArray(enemyJibian.cards) ? enemyJibian.cards.length : 0}` : null;
+  const enemySeenRef = useRef(enemyDrawKey);
+  const [enemyReveal, setEnemyReveal] = useState(null);
+  useEffect(() => {
+    if (!enemyDrawKey) return;
+    if (enemySeenRef.current === enemyDrawKey) return;
+    enemySeenRef.current = enemyDrawKey;
+    setEnemyReveal({ key: enemyDrawKey, ...enemyJibian });
+  }, [enemyDrawKey]);
   const total = phaseTotalSeconds(pub, gd.config, myId);
   // solo pause: offered in the own battle; while m.public.paused every HUD clock stops at the pause moment
   const paused = isPaused(pub);
@@ -410,7 +548,7 @@ function MatchScreen() {
     getChess: (id) => { const c = gd.chess(id); return ownDiyRecord(c, priv, { chess: data.get('chess'), backups: data.get('backups') }) || c; },
     getToken: gd.token, getItem: gd.item, getEffect: gd.effect, backups: gd.backups, morphMode,
   }), [priv, pub?.stageId, editable, gd.ready, deployField, data.locale(), morphMode]);
-  live.current = { pub, priv, field, view, editable, hasPersonalChoice, placeCtx, watching, watchWho, watchingOther, home, myId, alive, spectator, detail, drawer, bondOpen, emoteOpen, settingsOpen, exitOpen, drag, facing, sel, selBusy, pen, collapsedNow: collapsed, localDone: false, canPause: false, paused };
+  live.current = { pub, priv, field, view, editable, hasPersonalChoice, jibianDraft: !!jibianDraft, placeCtx, watching, watchWho, watchingOther, home, myId, alive, spectator, detail, drawer, bondOpen, emoteOpen, settingsOpen, exitOpen, drag, facing, sel, selBusy, pen, collapsedNow: collapsed, localDone: false, canPause: false, paused };
 
   // ---- camera: every request goes through setCam, which remembers it for the pen's way back -----------------------
   // the own prep board: the normal board, or — in the prep of a boss round — the player's half of the boss field
@@ -1495,7 +1633,7 @@ function MatchScreen() {
   // the selected piece's underframe on screen: the detail card docks on the side away from it (user playtest #2
   // item 8 — at some aspect ratios a bench unit's 出售 sat under the left card); the underframe is drawn above every
   // panel anyway (css z-index), this keeps it visible too
-  const ufTile = selEntry && editable && showPrep ? pieceTile(selEntry) : null;
+  const ufTile = selEntry && editable && showPrep ? pieceTile(selEntry, placeCtx.handSize) : null;
   const ufGeo = useTileScreen(view, ufTile ? ufTile.row : null, ufTile ? ufTile.col : null);
   // the gold tile of an armed merge card (mergeAt): the detail card the first tap opened docks away from it (QA 6b — at
   // 1920×1080 the left card covered half of a target tile in the leftmost legal column)
@@ -1630,7 +1768,7 @@ function MatchScreen() {
         if (act !== 'escape') e.preventDefault();
         if (act === 'ready') {
           audio.sfx('error', { volume: 0.5 });
-          toast(shopBlockReason('ready', { priv: L.priv, editable: true }), 'warn');
+          toast(shopBlockReason('ready', { priv: L.priv, editable: true, jibianDraft: L.jibianDraft }), 'warn');
         }
         return; // ChoiceOverlay handles Escape without cancelling the server's pending choice.
       }
@@ -1655,7 +1793,7 @@ function MatchScreen() {
       e.preventDefault(); // a focused HUD button must not also activate (Space, or any key bound) — see shortcutFor
       if (act === 'ready' && e.target instanceof HTMLElement && e.target.closest('button, [role="button"]')) e.target.blur();
       if (act === 'ready') {
-        const refused = !L.priv.ready ? shopBlockReason('ready', { priv: L.priv, editable: true }) : null;
+        const refused = !L.priv.ready ? shopBlockReason('ready', { priv: L.priv, editable: true, jibianDraft: L.jibianDraft }) : null;
         // the temp overflow row blocks it: say why (the button shows it too — user playtest #3 item 3)
         if (refused) { audio.sfx('error', { volume: 0.5 }); toast(tempReadyReason(L.priv) || refused, 'warn'); return; }
         toggleReady(!L.priv.ready);
@@ -1824,16 +1962,17 @@ function MatchScreen() {
   // bonds this mode never activates (标准: 10 of 23, 奥术 among them) — shown 本局禁用 on cards, chips and the popup
   const offBonds = modeOffBonds(getMode(pub?.modeId));
 
-  return html`<div class=${cx('screen', 'gm', `gm--${mode}`, drag && 'is-dragging', barCollapsed && 'is-collapsed', (sp || hasPersonalChoice || offerBlocksPrep(pub?.offers)) && 'has-sp', sp && 'has-spdraft', pen && 'is-pen', readyWhy && 'has-readywhy')}
+  return html`<div class=${cx('screen', 'gm', `gm--${mode}`, isMultiRoom(pub) && 'has-multi', drag && 'is-dragging', barCollapsed && 'is-collapsed', (sp || hasPersonalChoice || offerBlocksPrep(pub?.offers)) && 'has-sp', sp && 'has-spdraft', pen && 'is-pen', readyWhy && 'has-readywhy')}
       data-camera=${pen ? 'pen' : camKind}>
     <div class="gm__field" ref=${hostRef} onContextMenu=${(e) => e.preventDefault()}></div>
     ${viewKind === 'loading' ? html`<div class="gm__loading"><${Spinner} label="LOADING FIELD" /></div>` : null}
     <div class="gm__vignette" aria-hidden="true"></div>
     ${tempNotice ? html`<${TempRowNotice} view=${view} count=${temp.count} items=${temp.items} label=${!drag && !facing}
-      ready=${phase === PHASE.PREP && !!priv?.ready} />` : null}
+      row=${tempRowOf(pub?.stageId)} ready=${phase === PHASE.PREP && !!priv?.ready} />` : null}
     ${showPrep && view && viewKind !== 'loading' && priv && !pen ? html`<${StandInTags} view=${view} priv=${priv} getChess=${gd.chess} backups=${gd.backups} diyData=${{ chess: data.get('chess'), backups: data.get('backups') }} />` : null}
 
     <div class=${cx('gm__hud', hudIn && `is-${hudIn}`)} ref=${hudElRef}>
+      ${pub && Number.isInteger(pub.erosion) ? html`<div class=${'gm__erosion' + (pub.erosion >= EROSION_ENDLESS ? ' is-endless' : '')} title=${pub.erosion >= EROSION_ENDLESS ? t('无尽湮灭') : t('蚀流')}><span>${pub.erosion >= EROSION_ENDLESS ? t('无尽湮灭') : t('蚀流')}</span><b class="num">${pub.erosion >= EROSION_ENDLESS ? '∞' : pub.erosion}</b></div>` : null}
       <${TopBar} pub=${pub} priv=${priv} conn=${conn} hud=${hud} total=${total} drawer=${drawer}
         onExit=${() => setExitOpen(true)} onDrawer=${(t) => setDrawer((d) => (d ? null : t))} onReady=${toggleReady}
         readyBusy=${readyBusy} readyCount=${readyCount} playerCount=${solo ? 1 : aliveCount}
@@ -1841,31 +1980,47 @@ function MatchScreen() {
         pause=${canPause || paused ? { show: canPause, paused, busy: pauseBusy, onToggle: () => togglePause(!paused) } : null}
         live=${liveLpNow} spectator=${spectator}
         spectators=${specFacts.list} myId=${myId} isHost=${specFacts.isHost} onRemoveSpectator=${removeSpectator} room=${modRoom}
+        onCombatSpeed=${(speed) => actions.combatSpeed(speed)}
+        modeEntry=${forgeInfo || jibianShown ? html`<${ModeToolsButton} forge=${forgeInfo ? forgeInfo.count : 0}
+          kills=${zjKills} per=${forgeInfo ? forgeInfo.per : 0} rolled=${!!zjRolledKey}
+          open=${zjForgeOpen} onClick=${toggleForgeHud} />` : null}
         held=${hudIn === 'wait'} />
 
-      <div class="gm__bonds">
-        <button type="button" class="bonds-toggle" aria-expanded=${!bondsCollapsed} aria-controls="match-bond-strip"
-          aria-label=${bondsCollapsed ? t('展开盟约') : t('收起盟约')} title=${bondsCollapsed ? t('展开盟约') : t('收起盟约')}
-          onKeyDown=${(e) => {
-            // Keep native Space activation here without also firing the global ready / pause shortcut.
-            if (e.key === ' ') e.stopPropagation();
-          }}
-          onClick=${() => {
-            if (!bondsCollapsed && bondOpen?.from === 'strip') setBondOpen(null);
-            setBondsCollapsed(!bondsCollapsed);
-          }}><${Icon} name=${bondsCollapsed ? 'chevronRight' : 'chevronLeft'} /></button>
+      ${priv?.relics ? html`<${RelicCodexButton} count=${priv.relics.owned ? priv.relics.owned.length : 0} revealSeq=${priv.relics.reveal ? priv.relics.reveal.seq : 0} escalation=${priv.relics.endless ? priv.relics.endless.escalation : 0} onClick=${() => setCodexOpen(true)} />` : null}
+      ${/** 炸惊的 锻造器 / 已选惊变 / 一览 都不再挂在这里（业主 2026-10-29）：锻造器成了顶栏那一颗胶囊
+            （TopBar 的 modeEntry slot），惊变是左下角那颗独立键；右上角那两枚 .zjbtn 角标也早删了。
+            左下这一列不再有「已锻造」徽标（第三次改版整段删除：胶囊点开已有已锻造整合面板）。 */ null}
+
+      ${/* 盟约栏（0.3.1 的常显 / 居中 / 原生横向滚动；业主 2026-10-29 后续要求）：右侧一颗裸的上下箭头把整条向上收起，
+             收起后只剩这颗键（再点展开）；条体过长时两端淡出淡入；鼠标可以按住左右拖。两侧的 ‹ › 调整键已删除。 */ null}
+      <div class=${cx('gm__bonds', bondsCollapsed && 'is-collapsed')}>
         <div id="match-bond-strip" class="gm__bond-list" hidden=${bondsCollapsed}>
           <${BondStrip} bonds=${stripBonds} layersDisabled=${layersDisabled} openId=${bondPop && bondPop.ownerId === strip.ownerId ? bondPop.bondId : null}
             owner=${strip.name} onOpen=${(id) => openBond(id, strip.ownerId, 'strip')} />
         </div>
+        <button type="button" class="bonds-toggle" aria-expanded=${!bondsCollapsed} aria-controls="match-bond-strip"
+          aria-label=${bondsCollapsed ? t('展开盟约') : t('收起盟约')} title=${bondsCollapsed ? t('展开盟约') : t('收起盟约')}
+          onKeyDown=${(e) => { if (e.key === ' ') e.stopPropagation(); }}
+          onClick=${() => {
+            if (!bondsCollapsed && bondOpen?.from === 'strip') setBondOpen(null);
+            setBondsCollapsed((v) => !v);
+          }}><${GIcon} name=${bondsCollapsed ? 'chevronDown' : 'chevronUp'} /></button>
       </div>
 
-      <${TeamPanel} pub=${pub} myId=${myId} watching=${watchingNow} bubbles=${bubbles} onWatch=${watchPlayer} cap=${gd.config?.lpCapPerRound ?? 10} uniteLocal=${uniteLocal}
+      ${/* 多人房（8 / 12 人，maxSeats > 4）：左侧大名单 `.team` 整个不挂载 —— 队伍框（.gm-teams）是局内唯一显示玩家的
+            地方（业主 2026-10-31「不要那份大名单」）。4 人房走原分支：同一个 TeamPanel、同一串 props，渲染不变。 */ null}
+      ${isMultiRoom(pub) ? null : html`<${TeamPanel} pub=${pub} myId=${myId} watching=${watchingNow} bubbles=${bubbles} onWatch=${watchPlayer} cap=${gd.config?.lpCapPerRound ?? 10} uniteLocal=${uniteLocal}
         spMarks=${sp ? spMarks(sp, { solo }) : null}
         self=${Number.isFinite(priv?.lp) ? { lp: priv.lp, pending: liveLpNow.pending, unite: liveLpNow.unite, left: liveLpNow.left } : null}
-        observe=${cc ? { canObserve: (p) => observeTarget(p, pub, myId, { observing: watchingOther, ownDone: localDone }), observing: watchingOther, onBack: backHome } : null} />
+        observe=${cc ? { canObserve: (p) => observeTarget(p, pub, myId, { observing: watchingOther, ownDone: localDone }), observing: watchingOther, onBack: backHome } : null} />`}
 
-      <div class="gm__effects"><${EffectsList} effects=${watchingOther && field ? (field.effects ?? null) : priv?.effects} /></div>
+      ${/* 多人房局内 HUD（8 / 12 人）: 只有房间人数 > 4 才有这一层，4 人房渲染完全不变（ui/multiHud.js） */ null}
+      <${MultiHud} pub=${pub} myId=${myId} />
+
+      ${/* 右侧效果列：已选惊变不进这一列（业主 2026-10-29「已选惊变不要显示在右侧」）—— 惊变在效果里的 ref 是
+            `jibian_<cardId>#<uid>`（ui/jibian.js jibianFromEffects），这里按前缀滤掉；ui/effectsList.js 本身不动
+            （它同时服务别的模式），未知形状照旧直通。 */ null}
+      <div class="gm__effects"><${EffectsList} effects=${effectsWithoutJibian(watchingOther && field ? (field.effects ?? null) : priv?.effects)} /></div>
 
       ${watchingOther && !combat ? html`<div class="gm__watching" role="status">
         <${GIcon} name="eye" /><span>${tParts('正在查看 {name} 的阵地（只读）', { name: html`<b>${watchedName}</b>` })}</span>
@@ -1894,13 +2049,38 @@ function MatchScreen() {
 
       <${Ticker} />
 
+      ${/* 局内文字聊天 (room.chat): the fixed lower-left log of ui/chatBox.js. Since 2026-10-29 it is opened by the corner's
+            对话唤出 key (data-testid="hud-chat", the same toggle as 设置) — not by a bare Enter press; inside the input Enter
+            still sends and Esc closes. */ null}
+      <${ChatBox} active=${chatOpen} onToggle=${setChatOpen} showTrigger=${false} />
+
       <div class="ui-slot gm__ui-slot" data-ui-slot="hud.right" aria-label=${t('界面插件')} dangerouslySetInnerHTML=${{ __html: '' }}></div>
 
+      ${/* 左下角落（业主 2026-10-29 第三版）：**表情 → 设置 → 对话唤出 → 全屏**，四颗都是等大的正方形键；
+             表情键是 emotes.css 的正方形机器人 logo 键（hud-emoji），对话唤出键就是局内聊天开关（hud-chat）。
+             全屏在手机端隐藏（css/devices.css 的 .gm__corner .gm__fs），因为手机浏览器没有元素全屏。
+             本仓保留项接在 对话 与 全屏 之间：作战统计（hud-metrics）、干员调配（prep）；房间内的「AI 协作」入口
+             排在最后。窄屏仍是 devices.css 的两行 wrap-reverse，前三颗主键正好占满下排。 */ null}
       <div class="gm__corner">
-        <${AiTakeoverPanel} />
         ${showMetrics && metricsOpen ? html`<${CombatMetricsPanel} myId=${myId} onClose=${() => setMetricsOpen(false)} />` : null}
         ${spectator ? null : html`<${EmoteWheel} open=${emoteOpen} onToggle=${setEmoteOpen} onSend=${(id) => actions.emote(id)} disabled=${conn.status !== 'online'} />`}
-        ${showMetrics ? html`<button type="button" class="gm__gear gm__metrics" aria-label=${t('作战统计')} title=${t('作战统计')} aria-expanded=${metricsOpen}
+        <button type="button" class="gm__gear" data-testid="hud-settings" aria-label=${t('设置')} title=${t('设置')} onClick=${() => setSettingsOpen(true)}><${GIcon} name="gear" /></button>
+        ${/* 对话唤出：与其它角落键同一颗（业主 2026-10-29：触发方式一致，不再靠全局 Enter 凭空打开）。排在 设置 之后：
+              `document.querySelector('.gm__gear')` 是各 e2e 里「点设置」的老写法，首匹配必须仍是设置键。 */ null}
+        ${spectator ? null : html`<button type="button" class="gm__gear gm__chat" data-testid="hud-chat"
+          aria-label=${t('打开对话')} title=${t('打开对话')} aria-pressed=${chatOpen ? 'true' : 'false'}
+          aria-controls="match-chat-panel" onClick=${() => setChatOpen(!chatOpen)}><${Icon} name="chat" /></button>`}
+        ${/* 左下角「惊变」独立键（业主 2026-10-29）：惊变房的已选惊变从锻造器里拆出来，独占一颗角落键 ——
+              与设置 / 对话同一行、同一基线、同一尺寸（ui/hud.js JibianHudButton，样式 css/screens/game.css .gm__jibian）。
+              数据门是 jibianShown（观战队友时就是被观战者的惊变），所以观战席上它也在；别的模式没有 m.private.jibian。 */ null}
+        ${jibianShown ? html`<${JibianHudButton} count=${jibianCount} open=${zjToolsOpen}
+          onClick=${() => setZjToolsOpen(!zjToolsOpen)} />` : null}
+        ${/* 左下角「词条」独立键（超限模拟，业主 2026-10-31）：与上面那颗惊变键、设置 / 对话同一行同一尺寸，
+              角标 = 本局已选词条条数（0 条不画角标，与炸惊同一个取舍）。门是 m.private.relicsOverlimit ——
+              服务端只对超限局下发这个键，所以普通 / 湮灭 / 炸惊这一行一帧不变（ui/overlimitRelics.js overlimitRelicsOf）。 */ null}
+        ${overlimitRelics ? html`<${RelicHudButton} count=${relicPicked.length} open=${relicPanelOpen}
+          onClick=${() => setRelicPanelOpen(!relicPanelOpen)} />` : null}
+        ${showMetrics ? html`<button type="button" class="gm__gear gm__metrics" data-testid="hud-metrics" aria-label=${t('作战统计')} title=${t('作战统计')} aria-expanded=${metricsOpen}
           aria-controls="combat-metrics-panel" onKeyDown=${(e) => { if (e.key === ' ') e.stopPropagation(); }} onClick=${() => {
             setMetricsOpen(!metricsOpen);
             setEmoteOpen(false);
@@ -1910,9 +2090,8 @@ function MatchScreen() {
           }}><${Icon} name="signal" /></button>` : null}
         ${prepLoadoutOpen && phase === PHASE.PREP && priv && !priv.ready && !spectator
           ? html`<${LoadoutButton} from="prep" size="sm" />` : null}
-        <button type="button" class="gm__gear" aria-label=${t('设置')} title=${t('设置')} onClick=${() => setSettingsOpen(true)}><${GIcon} name="gear" /></button>
-        <button type="button" class="gm__gear gm__guide" aria-label=${t('玩法说明')} title=${t('玩法说明')} onClick=${() => openGuide(0)}><${Icon} name="book" /></button>
         <${FullscreenButton} class="gm__gear gm__fs" />
+        <${AiTakeoverPanel} />
       </div>
 
       ${drawer ? html`<${EnemyDrawer} tab=${drawer} onTab=${setDrawer} pub=${pub} priv=${priv} onClose=${() => setDrawer(null)}
@@ -1921,6 +2100,7 @@ function MatchScreen() {
 
       ${bondPop ? html`<${BondPopup} bondId=${bondPop.bondId} entry=${bondPop.entry} priv=${bondPop.priv} banned=${pub?.bannedChess || []} owner=${bondPop.name} ownerId=${bondPop.ownerId}
         off=${offBonds.has(bondPop.bondId)} morphMode=${morphMode}
+        overlimit=${!!pub?.isInfinite}
         place=${bpPlace} over=${!!resolved && bpPlace === dSide}
         onClose=${() => setBondOpen(null)} onMember=${(id, items, standInFor, diy) => setDetail({ kind: 'chess', id, owner: bondPop.ownerId, items: items || null, standInFor: standInFor || null, diy: diy || null })} />` : null}
 
@@ -1931,14 +2111,23 @@ function MatchScreen() {
         onBond=${(id) => openBond(id, detailOwner, 'detail')} />` : null}
 
       ${selEntry && editable && !facing && !drag && showPrep ? html`<${Underframe} key=${sel.uid} view=${view} uid=${sel.uid}
-        row=${pieceTile(selEntry)?.row} col=${pieceTile(selEntry)?.col} actions=${underframeActions(placeCtx, sel.uid)} busy=${selBusy}
+        row=${pieceTile(selEntry, placeCtx.handSize)?.row} col=${pieceTile(selEntry, placeCtx.handSize)?.col} actions=${underframeActions(placeCtx, sel.uid)} busy=${selBusy}
         name=${(selEntry.piece.kind === 'item' ? gd.item(selEntry.piece.id) : selEntry.piece.kind === 'token' ? gd.token(selEntry.piece.id) : ownShown(selEntry.piece.id))?.name || ''}
         onRetreat=${retreatSel} onSell=${sellSel} onDestroy=${sellSel} />` : null}
     </div>
 
     ${hasOffers && !sp && !personalChoice ? html`<${OfferOverlay} pub=${pub} myId=${myId} readOnly=${spectator || !alive} onAction=${actions.offer} />` : null}
-    ${sp ? html`<${ChoiceOverlay} pub=${pub} sp=${sp} myId=${myId} solo=${solo} busyIdx=${spBusy} total=${total}
-      onPick=${async (i) => { setSpBusy(i); await actions.choice(i); setSpBusy(null); }} />` : null}
+    ${sp ? (jibianDraft
+      ? html`<${JibianOverlay} sp=${sp} myId=${myId} solo=${solo} busyIdx=${spBusy}
+          rerollsLeft=${jibianOwn && Number.isInteger(jibianOwn.rerollsLeft) ? jibianOwn.rerollsLeft : 0}
+          rerollBusy=${jibianRerollBusy}
+          onReroll=${C2S['g.cardRefresh'] ? async (i) => { setJibianRerollBusy(i); await actions.cardRefresh(i); setJibianRerollBusy(null); } : null}
+          onPick=${async (i) => { setSpBusy(i); await actions.choice(i); setSpBusy(null); }} />`
+      : overlimitRelicDraft
+        ? html`<${OverlimitRelicOverlay} sp=${sp} myId=${myId} solo=${solo} busyIdx=${spBusy}
+            onPick=${async (i) => { setSpBusy(i); await actions.choice(i); setSpBusy(null); }} />`
+        : html`<${ChoiceOverlay} pub=${pub} sp=${sp} myId=${myId} solo=${solo} busyIdx=${spBusy} total=${total}
+            onPick=${async (i) => { setSpBusy(i); await actions.choice(i); setSpBusy(null); }} />`) : null}
     ${personalChoice ? html`<${ChoiceOverlay} key=${personalChoice.id} pub=${pub} sp=${personalChoice} myId=${myId} solo=${solo} personal=${true}
       busyIdx=${personalBusy?.choiceId === personalChoice.id ? personalBusy.idx : null} total=${total}
       onPick=${async (i) => {
@@ -1947,6 +2136,18 @@ function MatchScreen() {
         await actions.choice(i, choiceId);
         setPersonalBusy((b) => b?.choiceId === choiceId ? null : b);
       }} />` : null}
+
+    ${relicDraft ? html`<${RelicOverlay} key=${relicDraft.id} draft=${relicDraft} busyIdx=${relicBusy} myId=${myId}
+      covered=${!!positiveReveal}
+      onPick=${async (i) => { setRelicBusy(i); await actions.relic(i); setRelicBusy(null); }}
+      onStart=${() => { net.request('g.relic', { start: true }).catch(() => {}); }} />` : null}
+    ${pub?.phase === PHASE.TRAIT_DRAFT && pub.trait ? html`<${TraitOverlay}
+      trait=${pub.trait} myId=${myId} busyIdx=${traitBusy}
+      onPick=${async (idx) => { setTraitBusy(idx); await actions.traitChoice(idx); setTraitBusy(null); }}
+      onReroll=${() => actions.traitReroll()}
+      onSkip=${() => actions.traitSkip()}
+      onLock=${(idx) => actions.traitLock(idx)}
+      onRetreat=${alive && !spectator ? () => actions.retreat() : null} />` : null}
     ${!hasOffers && turnPop ? html`<${TurnPopup} key=${turnPop} onDone=${() => setTurnPop(0)} />` : null}
 
     ${boot && !hasOffers ? html`<${ProtocolBoot} key=${boot.key} players=${players} myId=${myId} leaving=${bootLeaving} />` : null}
@@ -1956,6 +2157,12 @@ function MatchScreen() {
       chev=${banner.chev} duration=${banner.duration} onDone=${() => setBanner(null)} />` : null}
     ${!hasOffers && banner && !banner.plate && !roundPop ? html`<${PhaseBanner} key=${banner.key} mode="overlay" title=${banner.title} sub=${banner.sub} micro=${banner.micro}
       tone=${banner.tone} duration=${banner.duration || 1500} onDone=${() => setBanner(null)} />` : null}
+
+    ${/* 超限双 Boss: the full-screen warning the server holds for BOSS_PHASE2_WARN_MS (ui/bossPhaseWarn.js) */ null}
+    <${BossPhaseWarn} on=${pub?.phase === PHASE.BOSS_PHASE2_WARN} affix=${pub?.bossAffix || null} />
+    ${pub?.phase === PHASE.PREP && pub.contractOffer && !spectator ? html`<${ContractOverlay}
+      offer=${pub.contractOffer} busy=${contractBusy}
+      onPick=${async (id) => { if (contractBusy) return; setContractBusy(true); await actions.contract(id); setContractBusy(false); }} />` : null}
 
     ${resultBox ? html`<${ResultDialog} key=${resultBox.key} title=${resultBox.title} sub=${resultBox.sub} micro=${resultBox.micro}
       tone=${resultBox.tone} duration=${resultBox.duration} onDone=${() => setResultBox(null)} />` : null}
@@ -1973,6 +2180,38 @@ function MatchScreen() {
 
     ${replace ? html`<${EquipReplaceDialog} request=${replace.request} getItem=${gd.item}
       onConfirm=${(uid) => closeReplace(uid)} onCancel=${() => closeReplace(null)} />` : null}
+
+    <${PositiveSlotOverlay} card=${positiveReveal} onClose=${() => { net.request('g.relicSeen', {}).catch(() => {}); setPositiveReveal(null); }} />
+
+    ${priv?.relics ? html`<${RelicCodex} open=${codexOpen} owned=${priv.relics.owned || []} onClose=${() => setCodexOpen(false)} />` : null}
+
+    ${/* 锻造器胶囊点开的两条路（业主 2026-10-29 第二次改版，照原版）：
+           rolled != null → 抉择弹窗（ui/forge.js ForgePanel：三档稀有度 + 三张卡 + 点选，Esc / 遮罩 / ✕ 关）；
+           否则 → 已锻造属性整合（ui/forge.js ForgedPanel：已锻造的每一项聚合一行）。
+           最后一张点掉就关窗（forgeInfo.count 是点击前这一帧的数字），面板自身不再画第二份卡面。 */ null}
+    ${zjForgeOpen && forgeInfo ? (zjForgeCards && zjForgeCards.picks.length
+      ? html`<${ForgePanel} key=${zjRolledKey} rarity=${zjForgeCards.rarity} picks=${zjForgeCards.picks}
+          left=${forgeInfo.count} forged=${forgeInfo.forged} onClose=${closeForgeHud}
+          onPick=${(opt) => {
+            if (watchingOther) return;                       // 观战队友：只看，不替别人做选择
+            forgePick(opt.id);
+            actions.forgeTake(opt.id, zjForgeCards.rarity);
+            if (forgeInfo.count <= 1) closeForgeHud();
+          }} />`
+      : html`<${ForgedPanel} entries=${forgeInfo.forged} onClose=${closeForgeHud} />`) : null}
+
+    ${/* 惊变面板（左下角那颗独立键）：直接挂 ui/jibian.js 的 JibianPanel —— **单层三页签**（已选惊变 / 敌方惊变 /
+           惊变羁绊），没有外层页签、也没有「惊变一览」；外壳与页签样式全在 css/screens/jibian.css 的 .zjpanel 里
+           （矮屏限高由 css/screens/game.css 的 .gm .zjpanel[data-testid="jibian-panel"] 那条补）。锻造器不进这个面板。 */ null}
+    ${zjToolsOpen && jibianShown ? html`<${JibianPanel} jibian=${jibianShown} enemy=${enemyJibian}
+      watchingName=${jibianWatchName} onClose=${() => setZjToolsOpen(false)} />` : null}
+    ${/* 已选词条面板（左下角那颗「词条」键）：照抄炸惊那颗键与面板的分法 —— 开关在这张屏、面板只报关闭。
+           外壳与行版式全在 css/screens/jibian.css 的 .zjpanel / .zjsel 里（矮屏限高与分组色条由
+           css/screens/overlimitRelics.css 的 .zjpanel--relics 补）。数据只读 m.private.relicsOverlimit.picked，
+           面板关掉 / 服务端换了 picked 都只是重画，不发任何 g.*。 */ null}
+    ${relicPanelOpen && overlimitRelics ? html`<${OverlimitRelicPanel} picked=${relicPicked} negPicked=${relicNegPicked}
+      onClose=${() => setRelicPanelOpen(false)} />` : null}
+    ${enemyReveal ? html`<${EnemyJibianReveal} key=${enemyReveal.key} enemy=${enemyReveal} onClose=${() => setEnemyReveal(null)} />` : null}
 
     <${SettingsModal} open=${settingsOpen} onClose=${() => setSettingsOpen(false)} />
     <${DownedPlate} open=${downed} onWatch=${() => setDowned(false)} onLeave=${() => { setDowned(false); setExitOpen(true); }} />

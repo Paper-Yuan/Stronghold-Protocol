@@ -338,9 +338,12 @@ const loadoutsOf = (id) => (DATA.chess[DATA.chess[id].baseId].isHidden ? [null]
 test('高台 data: no chess stores placement; 「可以放置于远程位」 is the trait of exactly the six 钩索师 / 推击手 records, and every module keeps it', () => {
   assert.equal(Object.values(DATA.chess).some((c) => c.placement !== undefined), false);
   for (const t of Object.values(DATA.tokens)) assert.equal(t.placement, undefined, t.tokenId);
-  const widened = Object.values(DATA.chess).filter((c) => meleeOnHighGround(c)).map((c) => c.chessId).sort();
+  // 官方子集：炸惊模拟另有一条记录（`chess_zj_54_a/_b`）也带这个特质，但它属于玩法包，不在「官方恰好六条」里
+  // （docs/ZHAJING.md 的隔离口径）。
+  const official = Object.values(DATA.chess).filter((c) => !c.zhajing);
+  const widened = official.filter((c) => meleeOnHighGround(c)).map((c) => c.chessId).sort();
   assert.deepEqual(widened, HOLDERS.slice().sort());
-  const flagged = Object.values(DATA.chess).filter((c) => c.placeOnRanged === true).map((c) => c.chessId).sort();
+  const flagged = official.filter((c) => c.placeOnRanged === true).map((c) => c.chessId).sort();
   assert.deepEqual(flagged, HOLDERS.slice().sort(), 'placeOnRanged is exactly those six');
   for (const id of HOLDERS) {
     const c = DATA.chess[id];
@@ -348,8 +351,10 @@ test('高台 data: no chess stores placement; 「可以放置于远程位」 is 
     assert.ok(['钩索师', '推击手'].includes(c.subProfessionName), id);
     for (const x of c.modules || []) assert.ok(x.traitOverride.desc.includes(PLACE_ON_RANGED), `${id} ${x.typeName} keeps the line`);
   }
-  // the module text never adds the line to anybody else (教官 Y "可以额外部署在远程位" is a talent, not the trait)
+  // the module text never adds the line to anybody else (教官 Y "可以额外部署在远程位" is a talent, not the trait).
+  // 官方子集（`zhajing` 或 `chess_zj_*` 前缀都算玩法包）：炸惊的 `chess_zj_54_b` 带了同一条 module 文本覆盖。
   for (const c of Object.values(DATA.chess)) {
+    if (c.zhajing === true || /^chess_zj_/.test(c.chessId)) continue;
     if (HOLDERS.includes(c.chessId)) continue;
     for (const x of c.modules || []) assert.ok(!(x.traitOverride?.desc || '').includes(PLACE_ON_RANGED), `${c.chessId} ${x.typeName}`);
   }

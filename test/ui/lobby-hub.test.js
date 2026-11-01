@@ -21,7 +21,7 @@ globalThis.fetch = async (url) => {
 };
 const mem = new Map();
 globalThis.localStorage = { getItem: (k) => (mem.has(k) ? mem.get(k) : null), setItem: (k, v) => mem.set(k, String(v)), removeItem: (k) => mem.delete(k) };
-const { HubEntry, ProtocolSelect, AllianceSelect, normalizeCode, codeArg } = await import('../../public/js/screens/lobby.js');
+const { HubEntry, ProtocolSelect, AllianceSelect, normalizeCode, codeArg, difficultyInfo, INFINITE_OPTION } = await import('../../public/js/screens/lobby.js');
 const { Modal, TextField } = await import('../../public/js/ui/components.js');
 const { ReplayWait, BondAchievement } = await import('../../public/js/screens/stats.js');
 const { DIFFICULTIES } = await import('../../shared/constants.js');
@@ -216,6 +216,9 @@ test('选择同盟方式: a recent key fills the field (it never joins by itself
 });
 
 const lobbySrc = readFileSync(path.join(ROOT, 'public/js/screens/lobby.js'), 'utf8');
+// 本机账号（头像 + 名片）是**浏览器本地**的一套（ui/accounts.js: LOCAL_ACCOUNT = true，全部存 localStorage），
+// 不是这条守卫要拦的「服务端账号」；下面同时断言两者，防止有人把它换成真的账号服务。
+const accountsSrc = readFileSync(path.join(ROOT, 'public/js/ui/accounts.js'), 'utf8');
 const lobbyCss = unscaled(readFileSync(path.join(ROOT, 'public/css/screens/lobby.css'), 'utf8'));
 const roomCss = unscaled(readFileSync(path.join(ROOT, 'public/css/screens/room.css'), 'utf8'));
 
@@ -223,7 +226,7 @@ test('the key: a pasted invite link of any length, a 5th character or a dash are
   const link = 'https://crops-flexible-wedding-trademarks.trycloudflare.com/?room=QWER';
   assert.ok(link.length > 64);
   assert.equal(normalizeCode(link), 'QWER', 'the whole link reaches normalizeCode (the old maxlength 64 made it "HTTP")');
-  assert.equal(normalizeCode(`${link} 凯尔希邀请你加入卫戍协议：盟约【标准模拟】`), 'QWER', 'the copied invitation line too');
+  assert.equal(normalizeCode(`凯尔希 邀请你参加 同盟模拟 · 终极模拟【2/4】\n${link}`), 'QWER', 'the copied invitation text too');
   assert.equal(normalizeCode('abcde'), 'ABCD');
   assert.equal(normalizeCode('ab-'), 'AB');
   assert.equal(codeArg({ type: 'click' }, 'abcd'), 'ABCD', 'a click event falls back to the field');
@@ -253,7 +256,11 @@ test('成就统计 card: the lobby’s only statistics entry (no top-bar 统计�
 });
 
 test('选择模拟协议 scene: the official picture as an <image> of the drawn scene, the drawn hull when it fails to load', () => {
-  assert.match(lobbySrc, /<\$\{ProtocolScene\} difficulty=\$\{difficulty\} art=\$\{uiUrl\(data\.get\('assets'\), `modeChoice\/\$\{PROTOCOL_ART\[difficulty\]\}_rhodes_island`\)\} \/>/);
+  // every difficulty — 超限 included — draws the same scene: the official picture, keyed by PROTOCOL_ART, and 超限 uses
+  // 终极's (the mode an infinite room runs). No difficulty gets a wireframe of its own any more.
+  assert.match(lobbySrc, /const art = infinite \? 'abyss' : PROTOCOL_ART\[difficulty\];/);
+  assert.match(lobbySrc, /<\$\{ProtocolScene\} difficulty=\$\{mode\} tint=\$\{infinite\} art=\$\{uiUrl\(data\.get\('assets'\), `modeChoice\/\$\{art\}_rhodes_island`\)\} \/>/);
+  assert.doesNotMatch(lobbySrc, /art=\$\{null\}/, 'no difficulty falls back to the drawn hull by choice');
   const scene = readFileSync(path.join(ROOT, 'public/js/ui/protocolScene.js'), 'utf8');
   assert.match(scene, /<image href=\$\{pic\}[^>]*onError=\$\{\(\) => setBad\(art\)\}/);
   const ui = JSON.parse(readFileSync(path.join(ROOT, 'data/assets.json'), 'utf8')).ui;
@@ -279,16 +286,24 @@ test('成就统计 window (screens/stats.js AchievementDialog): the project Moda
 
 test('选择同盟方式 creates the room itself: the lobby never stacks 选择模拟协议 for a 同盟', () => {
   // (the remembered difficulty, or the server's fallback when the lobby's version lacks it: DESIGN §35.23)
+  // 超限 · 同盟 is no longer a second create entry here: the room's own 选择模拟协议 sets it (room.setInfinite)
   assert.match(lobbySrc, /onCreate=\$\{\(\) => create\('coop'\)\} difficulty=\$\{shownCoop\}/);
+  assert.doesNotMatch(lobbySrc, /onCreateInfinite/, '选择同盟方式 carries no 超限 entry of its own');
   assert.match(lobbySrc, /onCreate=\$\{\(\) => create\('solo'\)\}/);
   assert.doesNotMatch(lobbySrc, /setProtocol\('coop'\)/);
   assert.match(lobbySrc, /<\$\{ProtocolSelect\} roomMode="solo"/, '选择模拟协议 stays before 独立模拟');
 });
 
-test('no server-only features: accounts, friends, federation, matchmaking, 无限火力, Android', () => {
-  for (const re of [/accounts\.js/, /friends\.js/, /federation/, /matchmaking/i, /match\.queue/, /randomMode/, /AndroidNative/, /__onRoomFound/, /room\.list/]) {
+test('no server-only features: friends, federation, matchmaking, 无限火力, Android（本机账号例外，见下）', () => {
+  for (const re of [/friends\.js/, /federation/, /matchmaking/i, /match\.queue/, /randomMode/, /AndroidNative/, /__onRoomFound/, /room\.list/]) {
     assert.doesNotMatch(lobbySrc, re, String(re));
   }
+  // 业主 2026-10-28 B 项：大厅右上角必须有「个人资料」入口（头像 + 名片），且它只能是本机账号模块 ——
+  // 那条「服务端账号」在这里指的是登录 / 好友 / #tag 由服务器下发的那套，ui/accounts.js 是它的**本地替身**。
+  assert.match(lobbySrc, /import \{ AccountMeChip \} from '\.\.\/ui\/accounts\.js'/);
+  assert.match(lobbySrc, /<\$\{AccountMeChip\} \/>/);
+  assert.match(accountsSrc, /export const LOCAL_ACCOUNT = true/, 'ui/accounts.js 仍是浏览器本地的那种账号');
+  assert.doesNotMatch(accountsSrc, /fetch\(|XMLHttpRequest|WebSocket/, '本机账号不发任何网络请求');
 });
 
 test('lobby.css: text follows 文字大小 (var(--t)), no !important, no :has()', () => {
@@ -309,7 +324,7 @@ test('选择同盟方式 on a short screen (≤ 520 px tall): 创建同盟 keeps
   assert.equal(textOf(kids[1]), '创建同盟');
   const css = lobbyCss.replace(/\/\*[\s\S]*?\*\//g, '');
   // the column centres with auto margins (they give way when it is too tall; justify-content: center spilled it past both ends)
-  assert.match(css, /\n\.ally-side \{(?![^}]*justify-content)[^}]*\}\n\.ally-side > :first-child \{ margin-top: auto; \}\n\.ally-side > :last-child \{ margin-bottom: auto; \}/);
+  assert.match(css, /\r?\n\.ally-side \{(?![^}]*justify-content)[^}]*\}\r?\n\.ally-side > :first-child \{ margin-top: auto; \}\r?\n\.ally-side > :last-child \{ margin-bottom: auto; \}/);
   // the @media block, up to its own closing brace
   const at = css.indexOf('@media (max-height: 520px) {');
   let end = css.indexOf('{', at) + 1;
@@ -451,7 +466,7 @@ test('选择模拟协议 above 520 px tall (§35.18 leftover: the label cut, the
   const more = byClass(v, 'proto-brief__more')[0];
   assert.ok(byClass(more, 'proto-brief__effects')[0].props.children.length > 0, 'the chosen difficulty\'s effects');
   assert.equal(byClass(more, 'proto-brief__meta').length, 1);
-  assert.match(base, /\n\.proto-list \{[^}]*gap: \.1rem;\n {2}padding: \.07rem \.06rem \.07rem \.5rem;/);
+  assert.match(base, /\r?\n\.proto-list \{[^}]*gap: \.1rem;\r?\n {2}padding: \.07rem \.06rem \.07rem \.5rem;/);
   assert.match(base, /\n\.pcard \{[^}]*padding: \.08rem \.26rem \.09rem;/);
   // re-fitted at every render, on the list's resize and on every font load (late web fonts make the lines taller)
   assert.match(lobbySrc, /body\.dataset\.fit = pickCardFit\(\(level\) => \{ body\.dataset\.fit = level; return list\.scrollHeight > list\.clientHeight \+ 1; \}\);/);
@@ -462,7 +477,7 @@ test('选择模拟协议 above 520 px tall (§35.18 leftover: the label cut, the
   assert.match(lobbyCss, /\[ASSUMED\] the levels and the sizes/);
   assert.match(lobbyCss, /\[ASSUMED\] the label's caps \*\//);
   assert.match(lobbyCss, /\[ASSUMED\] the spacing \*\//);
-  assert.match(lobbyCss, /\[ASSUMED\] the\n {3}floor \*\//);
+  assert.match(lobbyCss, /\[ASSUMED\] the\r?\n {3}floor \*\//);
 });
 
 test('the room\'s 开始模拟 / 准备就绪 (screens/room.js GoButton, `.proto-start rs-go`) chooses its own label (§35.18 review: 选择模拟协议\'s wrapping label reached it, and its fixed 46 px on a phone cut every line)', () => {
@@ -577,7 +592,9 @@ test('the hub keeps its text whole (§35.18 review: English 「Solo / Team Simul
   // the top bar's ping grows here, not everywhere (review: the global min-height outgrew title.css's own height)
   assert.match(css, /\.lobby-hub > \.topbar \.ping \{ height: auto; min-height: \.32rem;/);
   const short = shortBlock();
-  assert.match(short, /\.lobby-hub \{ --hub-entry-w: max\(2\.1rem, 128px\); \}/);
+  // (read through `unscaled`: the --sp-ui factor is written back as its design px, as every other floor here)
+  assert.match(short, /--hub-entry-w: max\(2\.1rem, 128px\);/);
+  assert.match(short, /--hub-ach-w: max\(1\.5rem, 112px\);/);
   assert.match(short, /\.hub-entry \{ min-height: max\(1\.1rem, 64px\); padding: \.1rem \.14rem; \}/, 'no room above the text on a phone');
   assert.match(short, /\.hub-entry \{ width: calc\(var\(--hub-entry-w\) \+ 7 \* max\(0px, var\(--t-step\)\)\); \}/);
   assert.match(short, /\.lobby-hub \.hub-plate \{ font-size: min\(calc\(\.3 \* var\(--t\)\), calc\(18px \+ var\(--t-step\)\)\); \}/);
@@ -604,9 +621,11 @@ test('official versions (DESIGN §35.23): the cards of the version shown, the wa
   assert.equal(byId(failed, 'proto-loading').length, 0, 'no spinner');
   assert.ok(byClass(failed, 'diff-card').every((c) => c.props.disabled === true));
   // the lobby: the version only on a server that enables versions; the shown difficulty (the fallback) is the one sent
-  assert.match(lobbySrc, /mode, difficulty: mode === 'solo' \? shownSolo : shownCoop, \.\.\.\(testMode && asTest \? \{ test: true \} : \{\}\), \.\.\.\(versions \? \{ version \} : \{\}\),\n {4}\.\.\.\(mode === 'solo' && soloFree && soloTimed === true \? \{ soloUnlimited: true \} : \{\}\),/);
-  assert.match(lobbySrc, /const shownSolo = fallbackDifficulty\(solo, difficulty\);/);
-  assert.match(lobbySrc, /const pickDifficulty = \(d\) => \{ setDifficulty\(d\); savePref\('lobby\.difficulty', d\); \};/, 'the pref changes only on a pick');
+  assert.match(lobbySrc, /const chosen = mode === 'solo' \? shownSolo : shownCoop;/);
+  assert.match(lobbySrc, /const roomMode = infinite \? \(mode === 'solo' \? 'solo_infinite' : 'coop_infinite'\) : mode;/);
+  assert.match(lobbySrc, /mode: roomMode, difficulty, \.\.\.\(testMode && asTest \? \{ test: true \} : \{\}\), \.\.\.\(versions \? \{ version \} : \{\}\),/);
+  assert.match(lobbySrc, /const shownSolo = difficulty === INFINITE_OPTION \? INFINITE_OPTION : fallbackDifficulty\(solo, difficulty\);/);
+  assert.match(lobbySrc, /const pickDifficulty = \(d\) => \{\r?\n {4}setDifficulty\(d\);\r?\n {4}if \(d !== INFINITE_OPTION\) savePref\('lobby\.difficulty', d\);\r?\n {2}\};/, 'the pref changes only on a pick, and never remembers 超限 (a room mode, not a difficulty)');
   assert.match(lobbySrc, /<\$\{VersionSwitch\} \/>\s*<\$\{ResumeMatchButton\} \/>/, 'the chip before 恢复本机对局');
   assert.match(lobbySrc, /data-testid="hub-version"/);
 });
@@ -662,4 +681,85 @@ test('卫戍成就 (screens/stats.js BondAchievement): a peak of another version
   assert.equal(ops(trimmed).length, 0);
   assert.equal(find(trimmed, (x) => x.props?.['data-testid'] === 'achievement-other-version').length, 0, 'a trimmed same-version record needs no switch');
   assert.deepEqual(looked, [], 'drawn as vnodes only: nothing looked up here');
+});
+
+test('选择同盟方式: 创建同盟 / 加入同盟 keep their entrance timeline, declared ahead of the reduced-motion reset', () => {
+  // 入场动效：两个卡片同一套 tr-right 与 --tr-ease、同为 420ms，延迟一前一后（创建在前）。
+  // 这条同时钉住一个隐式契约：媒体查询不提升优先级，同特异性按源码顺序取后者 —— 只要 animation 声明被搬到
+  // prefers-reduced-motion 块之后，归零名单就会被反压，减动效静默失效，而截图与 console 都看不出来
+  // （2026-10-26 的 review 踩过）。（超限同盟卡片 2026-10-28 起不存在：它不再是建盟入口。）
+  const css = lobbyCss.replace(/\/\*[\s\S]*?\*\//g, '');
+  const create = Number(css.match(/\.ally-card--create \{ animation: tr-right 420ms var\(--tr-ease\) (\d+)ms backwards; \}/)[1]);
+  const join = Number(css.match(/\.ally-card--join \{ animation: tr-right 420ms var\(--tr-ease\) (\d+)ms backwards; \}/)[1]);
+  assert.ok(Number.isFinite(create) && Number.isFinite(join), 'both cards declare the entrance animation');
+  assert.ok(create < join, `创建 comes in first (${create}ms) then 加入 (${join}ms)`);
+  // 文件里不止一个 reduce 块（场景动画还有一个），归零卡片的那条是最后一个 —— 用 lastIndexOf 才是它。
+  const reset = css.lastIndexOf('@media (prefers-reduced-motion: reduce)');
+  assert.ok(reset > 0);
+  assert.ok(css.indexOf('.ally-card--create { animation:') < reset, 'declared before the reset block, or the reset never wins');
+  assert.match(css.slice(reset, reset + 1400), /\.ally-card--create, \.ally-card--join,/, 'the reset names them');
+});
+
+test('选择模拟协议: 特殊难度 joins the card timeline last, and the reduced-motion reset names it', () => {
+  // 超限那块是 .proto-list 的**兄弟**，不是它的行 —— 所以 `.proto-list .pcard` 的入场规则管不到它，
+  // 它会首帧就出现，而四张官方卡还在淡入（业主 2026-10-28 报告「超限先于其他出现」）。
+  // 它必须自己按同一套 keyframes / 时长 / 行距接在第四张卡之后：240 + 4×60 = 480ms。
+  const css = lobbyCss.replace(/\/\*[\s\S]*?\*\//g, '');
+  const row = css.match(/\.proto-list \.pcard \{ animation: tr-right 400ms var\(--tr-ease\) backwards; animation-delay: calc\((\d+)ms \+ var\(--n, 0\) \* (\d+)ms\); \}/);
+  assert.ok(row, 'the rows declare one shared keyframes + a stepped delay');
+  const base = Number(row[1]), step = Number(row[2]);
+  const special = css.match(/\.proto-list__special \{ animation: tr-right 400ms var\(--tr-ease\) (\d+)ms backwards; \}/);
+  assert.ok(special, 'the special block carries an entrance animation of its own (it is not a .proto-list row)');
+  const delay = Number(special[1]);
+  assert.equal(delay, base + 4 * step, `it waits for the fourth official card (${base} + 4×${step} = ${base + 4 * step}ms), got ${delay}ms`);
+  // 减动效归零必须点名它，否则它会在「减少动效」下继续滑入（截图与 console 都看不出来）
+  const reset = css.lastIndexOf('@media (prefers-reduced-motion: reduce)');
+  assert.ok(css.indexOf('.proto-list__special { animation:') < reset, 'declared before the reset block, or the reset never wins');
+  assert.match(css.slice(reset, reset + 1600), /\.proto-list__special,/, 'the reset names it');
+});
+
+test('超限模拟 is a special difficulty of the lobby\'s 选择模拟协议 only (a room\'s 确认 sends a difficulty, not a mode), and 选择同盟方式 carries its 同盟 form', () => {
+  // the lobby's dialog: the four official cards, then one purple card under its own 特殊难度 rule
+  const picked = [];
+  const lobby = proto({ allowInfinite: true, difficulty: 'HARD', onDifficulty: (d) => picked.push(d) });
+  const special = find(lobby, (x) => x.props?.['data-testid'] === 'proto-infinite');
+  assert.equal(special.length, 1, 'one special block');
+  assert.ok(textOf(special[0]).includes('特殊难度'), 'its group label');
+  const card = byClass(special[0], 'diff-card')[0];
+  assert.ok(hasClass(card, 'is-infinite') && card.props['data-special'] === 'infinite');
+  assert.equal(card.props['data-difficulty'], 'INFINITE');
+  assert.match(card.props.style, /--d-color:#a855f7/, 'purple, from the same --inf tokens as the HUD');
+  assert.ok(textOf(card).includes('超限模拟') && textOf(card).includes('∞'), 'the ∞ mark instead of a difficulty glyph');
+  assert.equal(byClass(lobby, 'diff-card').length, DIFFICULTIES.length + 1, 'five cards in all');
+  card.props.onClick();
+  assert.deepEqual(picked, ['INFINITE']);
+  // chosen: the brief names it, its rounds are ∞ (a card's meta line says 无上限 instead of 0 回合), and the left half is
+  // the same official picture every other difficulty draws (the 终极 one: an infinite room runs its party's 终极 mode)
+  const chosen = proto({ allowInfinite: true, difficulty: 'INFINITE' });
+  assert.equal(textOf(byClass(chosen, 'proto-brief__name')[0]), '超限模拟');
+  assert.equal(difficultyInfo('solo', INFINITE_OPTION).rounds, '∞', '∞ 回合, never 0 回合');
+  assert.equal(byClass(chosen, 'proto-brief__meta').length, 1);
+  assert.deepEqual(find(chosen, (x) => x.type?.name === 'ProtocolArt').map((x) => x.props.difficulty), ['INFINITE']);
+  // the scene it draws is 终极's (the mode an infinite room runs): the source-level assertion above pins the mapping, and
+  // the real render is checked in the browser (devtools/render-check-infinite-entry.mjs asserts the <image> loads)
+  // a room's dialog: the same 特殊难度 card as the lobby's, but only where the host may change the mode (allowInfinite);
+  // a read-only view never offers it
+  const hostRoom = proto({ allowInfinite: true, roomMode: 'coop' });
+  assert.equal(find(hostRoom, (x) => x.props?.['data-testid'] === 'proto-infinite').length, 1, 'a co-op host may set 超限 here');
+  for (const props of [{}, { allowInfinite: true, readOnly: true }]) {
+    const room = proto(props);
+    assert.equal(find(room, (x) => x.props?.['data-testid'] === 'proto-infinite').length, 0);
+    assert.equal(byClass(room, 'diff-card').length, DIFFICULTIES.length);
+  }
+  // an infinite room's own dialog: the header names the mode, and the brief keeps its party's texts
+  const soloInf = proto({ roomMode: 'solo_infinite', difficulty: 'INFINITE' });
+  const coopInf = proto({ roomMode: 'coop_infinite', difficulty: 'INFINITE' });
+  assert.ok(textOf(byClass(soloInf, 'proto-title__mode')[0]).includes('超限模拟'));
+  assert.ok(textOf(byClass(coopInf, 'proto-title__mode')[0]).includes('超限模拟'));
+  assert.doesNotMatch(textOf(byClass(soloInf, 'proto-brief')[0]), /同盟/);
+  assert.match(textOf(byClass(coopInf, 'proto-brief')[0]), /同盟/);
+  // 选择同盟方式: no 超限 entry of its own (the owner's decision of 2026-10-28) — a co-op room is created like any other
+  // and its host turns 超限 on in the room, from 选择模拟协议's 特殊难度 card (room.setInfinite)
+  assert.equal(find(ally({}), (x) => x.props?.['data-testid'] === 'alliance-create-infinite').length, 0, 'no separate 超限 entry');
+  assert.doesNotMatch(lobbySrc, /alliance-create-infinite/, 'and no such testid anywhere in the lobby');
 });

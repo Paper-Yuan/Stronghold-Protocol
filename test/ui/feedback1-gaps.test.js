@@ -39,6 +39,7 @@ await data.loadAll('bonds', 'chess', 'items', 'assets', 'garrisons', 'config');
 const { ItemDetail, ChessDetail, MorphPairings, MorphGrantLine, BondChips } = await import('../../public/js/ui/detailPanel.js');
 const { BondPopup, BondStrip } = await import('../../public/js/ui/bondStrip.js');
 const { popupView } = await import('../../public/js/ui/watchBonds.js');
+const { officialBonds } = await import('../../public/js/ui/zjView.js');
 const { HARMONY_BOND: SERVER_HARMONY_BOND } = await import('../../server/match/bondsMeta.js');
 const { makeMatch, give, giveItem, legalTileFor } = await import('../match/harness.js');
 const { tileKey } = await import('../../server/match/board.js');
@@ -90,12 +91,21 @@ function expectedPairings() {
   return out;
 }
 
+/**
+ * The 天赋栏 lines a card draws in an official room: the component lists over officialBonds(data.list('bonds')), which
+ * hides 炸惊-only and 湮灭-only bonds. 卡兹戴尔 / 罗德岛 are annOnly, so the official card keeps 14 lines even though
+ * gameLogic morphPairings over the whole bonds.json returns 16 (the extra two are 湮灭 content).
+ */
+function officialRoomLines() {
+  const want = expectedPairings();
+  return officialBonds(BONDS, null).filter((b) => want.has(b.bondId)).length;
+}
+
 describe('§21.26 1 — 变形同构体: the pairing list (gameLogic morphPairings)', () => {
-  test('from the data: 14 bonds in bonds.json order, 18 items, the same giveBondId the server counts with', () => {
+  test('from the data: every bond with a bond item, in bonds.json order, one line per item family, the same giveBondId the server counts with', () => {
     const rows = morphPairings(ITEMS, BONDS);
     const want = expectedPairings();
-    assert.equal(rows.length, 14);
-    assert.equal(want.size, 14);
+    assert.equal(rows.length, want.size, 'one line per bond that has a bond item');
     assert.deepEqual(rows.map((r) => r.bondId), BONDS.map((b) => b.bondId).filter((id) => want.has(id)), 'bonds.json order');
     for (const r of rows) {
       assert.equal(r.name, bonds[r.bondId].name);
@@ -104,7 +114,9 @@ describe('§21.26 1 — 变形同构体: the pairing list (gameLogic morphPairin
       assert.equal(r.off, false);
       assert.equal(r.worn, false);
     }
-    assert.equal(rows.reduce((n, r) => n + r.items.length, 0), 18, '18 bond items');
+    // The expected total is the data's own item families, not a literal: each family (baseId) is one equipment line.
+    const families = new Set(ITEMS.filter((r) => r.giveBondId && !r.canGiveBond).map((r) => r.baseId || r.id));
+    assert.equal(rows.reduce((n, r) => n + r.items.length, 0), families.size, 'one equipment line per bond item family');
     const vic = rows.find((r) => r.bondId === 'victoriaShip');
     assert.deepEqual(vic.items.map((it) => it.name), ['维式重锤', '战栗维式重锤', '坚固维式重锤', '加速维式重锤', '灼燃维式重锤'], 'by tier: the hammer series');
     assert.ok(!rows.some((r) => r.items.some((it) => items[it.id].canGiveBond)), '变形同构体 itself is no partner');
@@ -112,15 +124,18 @@ describe('§21.26 1 — 变形同构体: the pairing list (gameLogic morphPairin
     for (const r of rows) for (const it of r.items) assert.deepEqual(grantedBonds([ISO, it.id], (id) => items[id]), [r.bondId], it.name);
   });
 
-  test('the official 天赋栏 (character_table trap_1073_acarm073) lists the same 14 pairings', { skip: !existsSync(path.join(ROOT, '.cache/gamedata/excel/character_table.json')) && 'no official cache' }, () => {
+  test('the official 天赋栏 (character_table trap_1073_acarm073) lists pairings the client all has', { skip: !existsSync(path.join(ROOT, '.cache/gamedata/excel/character_table.json')) && 'no official cache' }, () => {
     const ct = JSON.parse(readFileSync(path.join(ROOT, '.cache/gamedata/excel/character_table.json'), 'utf8'));
     const talent = ct[items[ISO].trapId].talents[0].candidates.at(-1).description.replace(/\\n/g, '\n');
     const pairs = [...talent.matchAll(/“([^”]+)”(?:系列装备)?→【([^】]+)】盟约/g)].map(([, item, bond]) => ({ item, bond }));
     assert.equal(pairs.length, 14, talent);
+    // The client list is allowed to be larger than the official text: data/items.json now also ships 卡兹戴尔
+    // (萨卡兹的断角, 提卡兹之根) and 罗德岛 (抑制环, 特制源石弧) bond items the 0.x talent text predates, so the
+    // official lines are required to be a subset — every official pairing must be listed, but not the same count.
     const rows = morphPairings(ITEMS, BONDS);
-    assert.deepEqual(pairs.map((p) => p.bond).sort(), rows.map((r) => r.name).sort(), 'the same 14 bonds');
     for (const p of pairs) {
       const r = rows.find((x) => x.name === p.bond);
+      assert.ok(r, `【${p.bond}】 is in the client list`);
       assert.ok(r.items.some((it) => it.name.includes(p.item)), `“${p.item}”→【${p.bond}】`);
     }
   });
@@ -156,13 +171,13 @@ describe('§21.26 1 — 变形同构体: the pairing list (gameLogic morphPairin
 describe('§21.26 1 — 变形同构体 on the cards', () => {
   const funny = modeOffBonds(getMode('mode_multi_funny'));
 
-  test('the item card (shop / reward / hand): a 天赋 section with the 14 lines, 本局禁用 struck through, no highlight', () => {
+  test('the item card (shop / reward / hand): a 天赋 section with the official-room lines, 本局禁用 struck through, no highlight', () => {
     const v = ItemDetail({ item: items[ISO], piece: null, editable: false, onDestroy() {}, offBonds: funny });
     const sec = [...walk(v)].find((x) => x.type?.name === 'Section' && x.props.title === '天赋');
     assert.ok(sec, 'a 天赋 section (the item text points at its 天赋栏)');
     assert.match(textOf(v), /搭配以下装备时，携带者视为对应盟约的成员：/);
     const rows = byClass(v, 'dmorph__row');
-    assert.equal(rows.length, 14);
+    assert.equal(rows.length, officialRoomLines());
     const off = rows.filter((r) => hasClass(r, 'is-off'));
     assert.deepEqual(off.map((r) => r.props['data-bond']), ['lateranoShip', 'egirShip', 'kazimierzShip', 'arcaneShip', 'raidShip']);
     for (const r of off) assert.match(textOf(r), /本局禁用/);
@@ -179,7 +194,7 @@ describe('§21.26 1 — 变形同构体 on the cards', () => {
     const blocks = ChessDetail({ chess: chess[WEARER], piece, editable: false, bonds: [], offBonds: funny, loadout: null });
     const equip = blocks.find((b) => b?.key === 'equip');
     const rows = byClass(equip, 'dmorph__row');
-    assert.equal(rows.length, 14);
+    assert.equal(rows.length, officialRoomLines());
     const worn = rows.filter((r) => hasClass(r, 'is-worn'));
     assert.deepEqual(worn.map((r) => r.props['data-bond']), ['victoriaShip']);
     assert.match(textOf(worn[0]), /生效中/);
@@ -323,7 +338,11 @@ describe('§21.26 4 — the strategy draft marks a strategy built around a bond 
       assert.deepEqual(markedIn(id), [['band_paganini', ['lateranoShip']], ['band_clementia', ['egirShip']], ['band_mlynar', ['kazimierzShip']]], id);
     }
     for (const id of ['mode_single_normal', 'mode_multi_normal', 'mode_single_hard', 'mode_multi_hard', 'mode_single_abyss', 'mode_multi_abyss']) assert.deepEqual(markedIn(id), [], id);
-    for (const b of Object.values(bands).filter((x) => !x.bondIds.length)) {
+    // data/bands.json carries no `bondIds` for the two 炸惊-only bands (band_zj_fuuka / band_zj_si); every official
+    // band must keep the field, and a band with no tied bond is never marked.
+    const noField = Object.values(bands).filter((x) => !Array.isArray(x.bondIds));
+    assert.ok(noField.every((b) => b.zjOnly === true), 'only 炸惊-only bands may ship without a bondIds field');
+    for (const b of Object.values(bands).filter((x) => !x.bondIds?.length)) {
       for (const id of modeIds) assert.deepEqual(bandOffBonds(b, modeOffBonds(getMode(id))), [], `${b.name} in ${id}`);
     }
     // a tied band whose bond stays on (杜遥夜 炎) is not marked in 标准 either
@@ -339,7 +358,9 @@ describe('§21.26 4 — the strategy draft marks a strategy built around a bond 
     for (const modeId of modeIds) {
       const gd = new GameData(DATA, modeId);
       for (const id of Object.keys(bands)) {
-        assert.deepEqual([...gd.bandBondIds(id)], bands[id].bondIds, `${id}: the same field`);
+        // The 炸惊-only bands have no `bondIds` in data/bands.json; the server's bandBondIds() reads that as none.
+        const field = Array.isArray(bands[id].bondIds) ? bands[id].bondIds : [];
+        assert.deepEqual([...gd.bandBondIds(id)], field, `${id}: the same field`);
         const server = gd.bandBondIds(id).filter((b) => gd.modeInactiveBonds.has(b));
         assert.deepEqual(server, bandOffBonds(bands[id], modeOffBonds(getMode(modeId))), `${modeId} ${id}`);
       }

@@ -1,0 +1,1414 @@
+{
+ "390x844": {
+  "okLobby": true,
+  "hub": {
+   "overlaps": [],
+   "near": [
+    {
+     "a": "tips__nav \"上一条\"",
+     "b": "tips__nav \"下一条\"",
+     "axis": "x",
+     "gap": 4,
+     "ra": [
+      137,
+      176,
+      149,
+      188
+     ],
+     "rb": [
+      153,
+      176,
+      165,
+      188
+     ]
+    },
+    {
+     "a": "hub-ach \"0 成就统计 LV.0\"",
+     "b": "hub-tile.hub-tile--key \"密钥加入 JOIN WITH KEY\"",
+     "axis": "y",
+     "gap": 6,
+     "ra": [
+      14,
+      66,
+      174,
+      126
+     ],
+     "rb": [
+      14,
+      132,
+      174,
+      161
+     ]
+    }
+   ],
+   "small": [
+    {
+     "el": "hub-tile.hub-tile--key \"密钥加入 JOIN WITH KEY\"",
+     "w": 160,
+     "h": 30
+    },
+    {
+     "el": "tips__nav \"上一条\"",
+     "w": 12,
+     "h": 12
+    },
+    {
+     "el": "tips__nav \"下一条\"",
+     "w": 12,
+     "h": 12
+    },
+    {
+     "el": "hub-plate.hub-plate--sweep \"S.W.E.E.P.报告 REPORT\"",
+     "w": 169,
+     "h": 28
+    },
+    {
+     "el": "btn.btn--secondary[loadout-open] \"干员调配\"",
+     "w": 169,
+     "h": 28
+    }
+   ],
+   "scroll": {
+    "x": 0,
+    "y": 0
+   }
+  },
+  "hubRects": {
+   ".hub-stage": [
+    0,
+    50,
+    390,
+    794
+   ],
+   ".hub-entries": [
+    190,
+    740,
+    185,
+    90
+   ],
+   ".mode-card": [
+    190,
+    758,
+    55,
+    72
+   ],
+   ".hub-right": [
+    206,
+    54,
+    169,
+    79
+   ],
+   ".hub-plate--loadout": [
+    206,
+    104,
+    169,
+    28
+   ],
+   ".lobby-sweep": [
+    206,
+    66,
+    169,
+    28
+   ],
+   ".hub-side": [
+    14,
+    54,
+    160,
+    776
+   ],
+   ".hub-tile": [
+    14,
+    132,
+    160,
+    30
+   ],
+   ".hub-entry-wrap": [
+    190,
+    740,
+    55,
+    90
+   ],
+   ".hub-entry__group": [
+    190,
+    740,
+    55,
+    16
+   ]
+  },
+  "hall": {
+   "overlaps": [],
+   "near": [],
+   "small": [],
+   "scroll": {
+    "x": 0,
+    "y": 0
+   }
+  },
+  "hallRects": {},
+  "theme": {
+   "overlaps": [],
+   "near": [],
+   "small": [],
+   "scroll": {
+    "x": 0,
+    "y": 0
+   }
+  },
+  "themeRects": {},
+  "errors": [
+   "hall: Waiting for selector `.modal__box.ext` failed",
+   "theme: No element found for selector: .ext-row[data-ext=\"annihilation\"]"
+  ]
+ },
+ "360x640": {
+  "okLobby": true,
+  "hub": {
+   "overlaps": [],
+   "near": [
+    {
+     "a": "tips__nav \"上一条\"",
+     "b": "tips__nav \"下一条\"",
+     "axis": "x",
+     "gap": 4,
+     "ra": [
+      126,
+      189,
+      138,
+      201
+     ],
+     "rb": [
+      142,
+      189,
+      154,
+      201
+     ]
+    },
+    {
+     "a": "hub-ach \"0 成就统计 LV.0\"",
+     "b": "hub-tile.hub-tile--key \"密钥加入 JOIN WITH KEY\"",
+     "axis": "y",
+     "gap": 6,
+     "ra": [
+      14,
+      66,
+      164,
+      126
+     ],
+     "rb": [
+      14,
+      132,
+      164,
+      161
+     ]
+    }
+   ],
+   "small": [
+    {
+     "el": "hub-tile.hub-tile--key \"密钥加入 JOIN WITH KEY\"",
+     "w": 150,
+     "h": 30
+    },
+    {
+     "el": "tips__nav \"上一条\"",
+     "w": 12,
+     "h": 12
+    },
+    {
+     "el": "tips__nav \"下一条\"",
+     "w": 12,
+     "h": 12
+    },
+    {
+     "el": "hub-plate.hub-plate--sweep \"S.W.E.E.P.报告 REPORT\"",
+     "w": 150,
+     "h": 28
+    },
+    {
+     "el": "btn.btn--secondary[loadout-open] \"干员调配\"",
+     "w": 150,
+     "h": 28
+    }
+   ],
+   "scroll": {
+    "x": 0,
+    "y": 0
+   }
+  },
+  "hubRects": {
+   ".hub-stage": [
+    0,
+    50,
+    360,
+    590
+   ],
+   ".hub-entries": [
+    180,
+    528,
+    166,
+    97
+   ],
+   ".mode-card": [
+    180,
+    554,
+    48,
+    72
+   ],
+   ".hub-right": [
+    196,
+    54,
+    150,
+    79
+   ],
+   ".hub-plate--loadout": [
+    196,
+    104,
+    150,
+    28
+   ],
+   ".lobby-sweep": [
+    196,
+    66,
+    150,
+    28
+   ],
+   ".hub-side": [
+    14,
+    54,
+    150,
+    572
+   ],
+   ".hub-tile": [
+    14,
+    132,
+    150,
+    30
+   ],
+   ".hub-entry-wrap": [
+    180,
+    528,
+    48,
+    97
+   ],
+   ".hub-entry__group": [
+    180,
+    528,
+    48,
+    23
+   ]
+  },
+  "hall": {
+   "overlaps": [],
+   "near": [],
+   "small": [],
+   "scroll": {
+    "x": 0,
+    "y": 0
+   }
+  },
+  "hallRects": {},
+  "theme": {
+   "overlaps": [],
+   "near": [],
+   "small": [],
+   "scroll": {
+    "x": 0,
+    "y": 0
+   }
+  },
+  "themeRects": {},
+  "errors": [
+   "hall: Waiting for selector `.modal__box.ext` failed",
+   "theme: No element found for selector: .ext-row[data-ext=\"annihilation\"]"
+  ]
+ },
+ "768x1024": {
+  "okLobby": true,
+  "hub": {
+   "overlaps": [],
+   "near": [
+    {
+     "a": "tips__nav \"上一条\"",
+     "b": "tips__nav \"下一条\"",
+     "axis": "x",
+     "gap": 4,
+     "ra": [
+      137,
+      176,
+      149,
+      188
+     ],
+     "rb": [
+      153,
+      176,
+      165,
+      188
+     ]
+    },
+    {
+     "a": "hub-ach \"0 成就统计 LV.0\"",
+     "b": "hub-tile.hub-tile--key \"密钥加入 JOIN WITH KEY\"",
+     "axis": "y",
+     "gap": 6,
+     "ra": [
+      14,
+      66,
+      174,
+      126
+     ],
+     "rb": [
+      14,
+      132,
+      174,
+      161
+     ]
+    }
+   ],
+   "small": [
+    {
+     "el": "hub-tile.hub-tile--key \"密钥加入 JOIN WITH KEY\"",
+     "w": 160,
+     "h": 30
+    },
+    {
+     "el": "tips__nav \"上一条\"",
+     "w": 12,
+     "h": 12
+    },
+    {
+     "el": "tips__nav \"下一条\"",
+     "w": 12,
+     "h": 12
+    },
+    {
+     "el": "hub-plate.hub-plate--sweep \"S.W.E.E.P.报告 REPORT\"",
+     "w": 299,
+     "h": 28
+    },
+    {
+     "el": "btn.btn--secondary[loadout-open] \"干员调配\"",
+     "w": 299,
+     "h": 28
+    }
+   ],
+   "scroll": {
+    "x": 0,
+    "y": 0
+   }
+  },
+  "hubRects": {
+   ".hub-stage": [
+    0,
+    50,
+    768,
+    974
+   ],
+   ".hub-entries": [
+    190,
+    938,
+    563,
+    71
+   ],
+   ".mode-card": [
+    452,
+    956,
+    92,
+    54
+   ],
+   ".hub-right": [
+    454,
+    54,
+    299,
+    79
+   ],
+   ".hub-plate--loadout": [
+    454,
+    104,
+    299,
+    28
+   ],
+   ".lobby-sweep": [
+    454,
+    66,
+    299,
+    28
+   ],
+   ".hub-side": [
+    14,
+    54,
+    160,
+    956
+   ],
+   ".hub-tile": [
+    14,
+    132,
+    160,
+    30
+   ],
+   ".hub-entry-wrap": [
+    452,
+    938,
+    95,
+    71
+   ],
+   ".hub-entry__group": [
+    452,
+    938,
+    95,
+    16
+   ]
+  },
+  "hall": {
+   "overlaps": [],
+   "near": [],
+   "small": [],
+   "scroll": {
+    "x": 0,
+    "y": 0
+   }
+  },
+  "hallRects": {},
+  "theme": {
+   "overlaps": [],
+   "near": [],
+   "small": [],
+   "scroll": {
+    "x": 0,
+    "y": 0
+   }
+  },
+  "themeRects": {},
+  "errors": [
+   "hall: Waiting for selector `.modal__box.ext` failed",
+   "theme: No element found for selector: .ext-row[data-ext=\"annihilation\"]"
+  ]
+ },
+ "932x430": {
+  "okLobby": true,
+  "hub": {
+   "overlaps": [],
+   "near": [],
+   "small": [],
+   "scroll": {
+    "x": 0,
+    "y": 0
+   }
+  },
+  "hubRects": {
+   ".hub-stage": [
+    0,
+    50,
+    932,
+    380
+   ],
+   ".hub-entries": [
+    142,
+    336,
+    775,
+    79
+   ],
+   ".mode-card": [
+    514,
+    352,
+    128,
+    64
+   ],
+   ".hub-right": [
+    514,
+    54,
+    403,
+    81
+   ],
+   ".hub-plate--loadout": [
+    622,
+    100,
+    296,
+    34
+   ],
+   ".lobby-sweep": [
+    622,
+    58,
+    296,
+    34
+   ],
+   ".hub-side": [
+    14,
+    54,
+    112,
+    362
+   ],
+   ".hub-tile": [
+    0,
+    0,
+    0,
+    0
+   ],
+   ".hub-entry-wrap": [
+    514,
+    336,
+    128,
+    79
+   ],
+   ".hub-entry__group": [
+    514,
+    336,
+    128,
+    13
+   ]
+  },
+  "hall": {
+   "overlaps": [],
+   "near": [],
+   "small": [],
+   "scroll": {
+    "x": 0,
+    "y": 0
+   }
+  },
+  "hallRects": {
+   ".modal__box.ext": [
+    0,
+    0,
+    932,
+    430
+   ],
+   ".ext-stage": [
+    9,
+    53,
+    360,
+    359
+   ],
+   ".ext-pane": [
+    378,
+    53,
+    540,
+    359
+   ],
+   ".ext-list": [
+    378,
+    53,
+    540,
+    268
+   ],
+   ".ext-row": [
+    380,
+    55,
+    537,
+    56
+   ],
+   ".ext-foot": [
+    378,
+    362,
+    540,
+    50
+   ],
+   ".ext-foot__start": [
+    808,
+    368,
+    110,
+    44
+   ],
+   ".ext-party": null,
+   ".ext-party__chip": null,
+   ".ext-tier": null,
+   ".ext-hero": [
+    15,
+    59,
+    348,
+    19
+   ],
+   ".ext-stats": [
+    15,
+    81,
+    348,
+    23
+   ]
+  },
+  "theme": {
+   "overlaps": [],
+   "near": [
+    {
+     "a": "ext-party__chip.is-on \"单人\"",
+     "b": "ext-party__chip \"同盟\"",
+     "axis": "x",
+     "gap": 2,
+     "ra": [
+      305,
+      390,
+      337,
+      414
+     ],
+     "rb": [
+      339,
+      390,
+      371,
+      414
+     ]
+    },
+    {
+     "a": "ext-tier.num \"1\"",
+     "b": "ext-tier.num \"2\"",
+     "axis": "x",
+     "gap": 2,
+     "ra": [
+      638,
+      390,
+      662,
+      414
+     ],
+     "rb": [
+      664,
+      390,
+      688,
+      414
+     ]
+    },
+    {
+     "a": "ext-tier.num \"2\"",
+     "b": "ext-tier.num \"3\"",
+     "axis": "x",
+     "gap": 2,
+     "ra": [
+      664,
+      390,
+      688,
+      414
+     ],
+     "rb": [
+      690,
+      390,
+      714,
+      414
+     ]
+    },
+    {
+     "a": "ext-tier.num \"3\"",
+     "b": "ext-tier.num \"4\"",
+     "axis": "x",
+     "gap": 2,
+     "ra": [
+      690,
+      390,
+      714,
+      414
+     ],
+     "rb": [
+      716,
+      390,
+      740,
+      414
+     ]
+    },
+    {
+     "a": "ext-tier.num \"4\"",
+     "b": "ext-tier.num \"5\"",
+     "axis": "x",
+     "gap": 2,
+     "ra": [
+      716,
+      390,
+      740,
+      414
+     ],
+     "rb": [
+      742,
+      390,
+      766,
+      414
+     ]
+    },
+    {
+     "a": "ext-tier.num \"5\"",
+     "b": "ext-tier.num \"6\"",
+     "axis": "x",
+     "gap": 2,
+     "ra": [
+      742,
+      390,
+      766,
+      414
+     ],
+     "rb": [
+      768,
+      390,
+      792,
+      414
+     ]
+    },
+    {
+     "a": "ext-theme__guide[extension-guide] \"攻略说明 8\"",
+     "b": "ext-theme__guide.ext-theme__feat[extension-feature-settings] \"功能设置\"",
+     "axis": "x",
+     "gap": 4,
+     "ra": [
+      8,
+      57,
+      67,
+      87
+     ],
+     "rb": [
+      71,
+      57,
+      117,
+      87
+     ]
+    },
+    {
+     "a": "ext-theme__slot[ext-sweep] \"S.W.E.E.P.报告\"",
+     "b": "ext-theme__loadout[ext-loadout] \"干员调配\"",
+     "axis": "y",
+     "gap": 6,
+     "ra": [
+      8,
+      306,
+      112,
+      336
+     ],
+     "rb": [
+      8,
+      342,
+      112,
+      374
+     ]
+    }
+   ],
+   "small": [
+    {
+     "el": "ext-theme__guide[extension-guide] \"攻略说明 8\"",
+     "w": 59,
+     "h": 30
+    },
+    {
+     "el": "ext-theme__guide.ext-theme__feat[extension-feature-settings] \"功能设置\"",
+     "w": 47,
+     "h": 30
+    },
+    {
+     "el": "ext-theme__slot[ext-sweep] \"S.W.E.E.P.报告\"",
+     "w": 104,
+     "h": 30
+    },
+    {
+     "el": "ext-party__chip.is-on \"单人\"",
+     "w": 32,
+     "h": 24
+    },
+    {
+     "el": "ext-party__chip \"同盟\"",
+     "w": 32,
+     "h": 24
+    },
+    {
+     "el": "ext-tier.num \"1\"",
+     "w": 24,
+     "h": 24
+    },
+    {
+     "el": "ext-tier.num \"2\"",
+     "w": 24,
+     "h": 24
+    },
+    {
+     "el": "ext-tier.num \"3\"",
+     "w": 24,
+     "h": 24
+    },
+    {
+     "el": "ext-tier.num \"4\"",
+     "w": 24,
+     "h": 24
+    },
+    {
+     "el": "ext-tier.num \"5\"",
+     "w": 24,
+     "h": 24
+    },
+    {
+     "el": "ext-tier.num \"6\"",
+     "w": 24,
+     "h": 24
+    }
+   ],
+   "scroll": {
+    "x": 0,
+    "y": 0
+   }
+  },
+  "themeRects": {
+   ".ext-theme": [
+    0,
+    0,
+    932,
+    430
+   ],
+   ".ext-theme__top": [
+    8,
+    6,
+    916,
+    46
+   ],
+   ".ext-theme__title": [
+    154,
+    6,
+    217,
+    46
+   ],
+   ".ext-theme__name": [
+    163,
+    23,
+    208,
+    20
+   ],
+   ".ext-theme__body": [
+    8,
+    57,
+    916,
+    30
+   ],
+   ".ext-theme__guide": [
+    8,
+    57,
+    59,
+    30
+   ],
+   ".ext-theme__foot": [
+    8,
+    375,
+    916,
+    49
+   ],
+   ".ext-theme__pack": [
+    8,
+    397,
+    45,
+    10
+   ],
+   ".ext-party": [
+    305,
+    390,
+    66,
+    24
+   ],
+   ".ext-party__chip": [
+    305,
+    390,
+    32,
+    24
+   ],
+   ".ext-tiers": [
+    622,
+    390,
+    170,
+    24
+   ],
+   ".ext-tier": [
+    638,
+    390,
+    24,
+    24
+   ],
+   ".ext-theme__start": [
+    802,
+    379,
+    122,
+    44
+   ],
+   ".ext-theme__corner": [
+    8,
+    306,
+    104,
+    68
+   ],
+   ".ext-theme__dock": [
+    8,
+    306,
+    104,
+    68
+   ],
+   ".ext-theme__slot": [
+    8,
+    306,
+    104,
+    30
+   ],
+   ".ext-theme__loadout": [
+    8,
+    342,
+    104,
+    32
+   ]
+  },
+  "errors": []
+ },
+ "900x600": {
+  "okLobby": true,
+  "hub": {
+   "overlaps": [],
+   "near": [
+    {
+     "a": "tips__nav \"上一条\"",
+     "b": "tips__nav \"下一条\"",
+     "axis": "x",
+     "gap": 5,
+     "ra": [
+      160,
+      199,
+      174,
+      213
+     ],
+     "rb": [
+      179,
+      199,
+      193,
+      213
+     ]
+    },
+    {
+     "a": "hub-ach \"0 成就统计 LV.0\"",
+     "b": "hub-tile.hub-tile--key \"密钥加入 JOIN WITH KEY\"",
+     "axis": "y",
+     "gap": 7,
+     "ra": [
+      17,
+      70,
+      204,
+      141
+     ],
+     "rb": [
+      17,
+      147,
+      204,
+      182
+     ]
+    }
+   ],
+   "small": [
+    {
+     "el": "tips__nav \"上一条\"",
+     "w": 14,
+     "h": 14
+    },
+    {
+     "el": "tips__nav \"下一条\"",
+     "w": 14,
+     "h": 14
+    }
+   ],
+   "scroll": {
+    "x": 0,
+    "y": 0
+   }
+  },
+  "hubRects": {
+   ".hub-stage": [
+    0,
+    52,
+    900,
+    548
+   ],
+   ".hub-entries": [
+    223,
+    500,
+    660,
+    83
+   ],
+   ".mode-card": [
+    531,
+    520,
+    108,
+    63
+   ],
+   ".hub-right": [
+    535,
+    56,
+    349,
+    91
+   ],
+   ".hub-plate--loadout": [
+    535,
+    115,
+    349,
+    33
+   ],
+   ".lobby-sweep": [
+    535,
+    70,
+    349,
+    33
+   ],
+   ".hub-side": [
+    17,
+    56,
+    188,
+    527
+   ],
+   ".hub-tile": [
+    17,
+    147,
+    188,
+    35
+   ],
+   ".hub-entry-wrap": [
+    531,
+    500,
+    111,
+    83
+   ],
+   ".hub-entry__group": [
+    531,
+    500,
+    111,
+    18
+   ]
+  },
+  "hall": {
+   "overlaps": [],
+   "near": [],
+   "small": [],
+   "scroll": {
+    "x": 0,
+    "y": 0
+   }
+  },
+  "hallRects": {
+   ".modal__box.ext": [
+    0,
+    0,
+    900,
+    600
+   ],
+   ".ext-stage": [
+    10,
+    49,
+    345,
+    518
+   ],
+   ".ext-pane": [
+    367,
+    49,
+    518,
+    518
+   ],
+   ".ext-list": [
+    367,
+    67,
+    518,
+    403
+   ],
+   ".ext-row": [
+    368,
+    69,
+    514,
+    64
+   ],
+   ".ext-foot": [
+    367,
+    518,
+    518,
+    49
+   ],
+   ".ext-foot__start": [
+    811,
+    523,
+    73,
+    44
+   ],
+   ".ext-party": null,
+   ".ext-party__chip": null,
+   ".ext-tier": null,
+   ".ext-hero": [
+    18,
+    57,
+    329,
+    31
+   ],
+   ".ext-stats": [
+    18,
+    93,
+    329,
+    31
+   ]
+  },
+  "theme": {
+   "overlaps": [],
+   "near": [
+    {
+     "a": "ext-party__chip.is-on \"单人\"",
+     "b": "ext-party__chip \"同盟\"",
+     "axis": "x",
+     "gap": 2,
+     "ra": [
+      271,
+      553,
+      305,
+      577
+     ],
+     "rb": [
+      307,
+      553,
+      340,
+      577
+     ]
+    },
+    {
+     "a": "ext-tier.num \"1\"",
+     "b": "ext-tier.num \"2\"",
+     "axis": "x",
+     "gap": 2,
+     "ra": [
+      566,
+      553,
+      590,
+      577
+     ],
+     "rb": [
+      593,
+      553,
+      617,
+      577
+     ]
+    },
+    {
+     "a": "ext-tier.num \"2\"",
+     "b": "ext-tier.num \"3\"",
+     "axis": "x",
+     "gap": 2,
+     "ra": [
+      593,
+      553,
+      617,
+      577
+     ],
+     "rb": [
+      619,
+      553,
+      643,
+      577
+     ]
+    },
+    {
+     "a": "ext-tier.num \"3\"",
+     "b": "ext-tier.num \"4\"",
+     "axis": "x",
+     "gap": 2,
+     "ra": [
+      619,
+      553,
+      643,
+      577
+     ],
+     "rb": [
+      645,
+      553,
+      669,
+      577
+     ]
+    },
+    {
+     "a": "ext-tier.num \"4\"",
+     "b": "ext-tier.num \"5\"",
+     "axis": "x",
+     "gap": 2,
+     "ra": [
+      645,
+      553,
+      669,
+      577
+     ],
+     "rb": [
+      672,
+      553,
+      696,
+      577
+     ]
+    },
+    {
+     "a": "ext-tier.num \"5\"",
+     "b": "ext-tier.num \"6\"",
+     "axis": "x",
+     "gap": 2,
+     "ra": [
+      672,
+      553,
+      696,
+      577
+     ],
+     "rb": [
+      698,
+      553,
+      722,
+      577
+     ]
+    },
+    {
+     "a": "ext-theme__guide[extension-guide] \"攻略说明 8\"",
+     "b": "ext-theme__guide.ext-theme__feat[extension-feature-settings] \"功能设置\"",
+     "axis": "y",
+     "gap": 8,
+     "ra": [
+      11,
+      140,
+      89,
+      176
+     ],
+     "rb": [
+      11,
+      184,
+      74,
+      220
+     ]
+    }
+   ],
+   "small": [
+    {
+     "el": "ext-party__chip.is-on \"单人\"",
+     "w": 33,
+     "h": 24
+    },
+    {
+     "el": "ext-party__chip \"同盟\"",
+     "w": 33,
+     "h": 24
+    },
+    {
+     "el": "ext-tier.num \"1\"",
+     "w": 24,
+     "h": 24
+    },
+    {
+     "el": "ext-tier.num \"2\"",
+     "w": 24,
+     "h": 24
+    },
+    {
+     "el": "ext-tier.num \"3\"",
+     "w": 24,
+     "h": 24
+    },
+    {
+     "el": "ext-tier.num \"4\"",
+     "w": 24,
+     "h": 24
+    },
+    {
+     "el": "ext-tier.num \"5\"",
+     "w": 24,
+     "h": 24
+    },
+    {
+     "el": "ext-tier.num \"6\"",
+     "w": 24,
+     "h": 24
+    }
+   ],
+   "scroll": {
+    "x": 0,
+    "y": 0
+   }
+  },
+  "themeRects": {
+   ".ext-theme": [
+    0,
+    0,
+    900,
+    600
+   ],
+   ".ext-theme__top": [
+    11,
+    10,
+    878,
+    54
+   ],
+   ".ext-theme__title": [
+    161,
+    10,
+    127,
+    54
+   ],
+   ".ext-theme__name": [
+    172,
+    21,
+    117,
+    32
+   ],
+   ".ext-theme__body": [
+    11,
+    71,
+    649,
+    148
+   ],
+   ".ext-theme__guide": [
+    11,
+    140,
+    78,
+    36
+   ],
+   ".ext-theme__foot": [
+    11,
+    531,
+    878,
+    60
+   ],
+   ".ext-theme__pack": [
+    11,
+    559,
+    53,
+    12
+   ],
+   ".ext-party": [
+    271,
+    553,
+    69,
+    24
+   ],
+   ".ext-party__chip": [
+    271,
+    553,
+    33,
+    24
+   ],
+   ".ext-tiers": [
+    548,
+    553,
+    174,
+    24
+   ],
+   ".ext-tier": [
+    566,
+    553,
+    24,
+    24
+   ],
+   ".ext-theme__start": [
+    736,
+    538,
+    153,
+    52
+   ],
+   ".ext-theme__corner": [
+    11,
+    449,
+    110,
+    72
+   ],
+   ".ext-theme__dock": [
+    11,
+    449,
+    110,
+    72
+   ],
+   ".ext-theme__slot": [
+    11,
+    449,
+    110,
+    32
+   ],
+   ".ext-theme__loadout": [
+    11,
+    490,
+    110,
+    32
+   ]
+  },
+  "errors": []
+ }
+}

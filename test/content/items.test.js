@@ -8,6 +8,7 @@ import { makeMatch, give, giveItem, DATA, legalTileFor } from '../match/harness.
 import { createRegistry } from '../../server/match/effectsMeta.js';
 import { lendItemEffects, itemGrants, PRIO_REVIVE } from '../../server/sim/content/items/battle.js';
 import { unitBonds } from '../../server/sim/content/support/index.js';
+import { isOfficialItem } from '../../shared/playSets.js';
 
 const QUIET = { warn() {}, error() {}, info() {} };
 const REG = createRegistry({ log: QUIET });
@@ -686,8 +687,9 @@ test('变形同构体: carrier counts as a member of the other item\'s giveBondI
   assert.deepEqual([...unitBonds(h.unit('t_op'))], ['lateranoShip']);
   const h2 = fight({ units: [{ chessId: 't_op', row: 10, col: 4, items: [A('4_08')] }] });
   assert.deepEqual([...unitBonds(h2.unit('t_op'))], [], 'the bond item alone grants nothing');
-  // every giveBondId item grants its bond (14 bonds)
-  const grants = Object.values(DATA.items).filter((r) => r.giveBondId && !r.isGolden);
+  // every giveBondId item grants its bond (14 bonds) — official items only: 炸惊模拟's S.E.E.S 袖章 / 谜の假面 are `zjOnly`
+  // and 湮灭模拟's 萨卡兹的断角 etc. are `annOnly` (their combinations live in shared/zjBonds.js zjEquipCombos, ZHAJING only)
+  const grants = Object.values(DATA.items).filter((r) => r.giveBondId && !r.isGolden && isOfficialItem(r));
   assert.equal(grants.length, 18);
   assert.equal(new Set(grants.map((r) => r.giveBondId)).size, 14);
   for (const r of grants) {
@@ -770,7 +772,8 @@ const targetWithCandidates = (m, tier, maxTier, need, skip = 0) => plain((c) => 
   .filter((cid) => sameBondPool(m, cid, maxTier).length >= need)[skip];
 
 test('consume-on-equip items resolve once, are destroyed and never take a slot', () => {
-  const consume = Object.values(DATA.items).filter((r) => typeof r.kind === 'string' && r.kind.startsWith('consume_on_equip') && r.id !== A('5_06'));
+  // official items only: 炸惊模拟's 3 极速送达 packages are `zjOnly` (its own consume-on-equip family, ZHAJING only)
+  const consume = Object.values(DATA.items).filter((r) => typeof r.kind === 'string' && r.kind.startsWith('consume_on_equip') && r.id !== A('5_06') && r.zjOnly !== true);
   assert.equal(consume.length, 23, '11 consume items ×2 + golden 博士投影');
   const { m, ps, equip } = setup({ seed: 11 });
   const pool = plain((c) => c.tier === 1 && c.bonds.length);
@@ -1266,7 +1269,8 @@ test('教鞭: an open choice goes with a player who is eliminated, and nothing o
 
 test('merging: two identical normal items become the golden one (upgradeNum 2); upgradeNum-100 items never merge', () => {
   const never = Object.values(DATA.items).filter((r) => r.itemType === 'EQUIP' && !r.isGolden && r.upgradeNum === 100).map((r) => r.name).sort();
-  assert.deepEqual(never, ['人事部文档', '信标', '变形同构体', '寻呼模块', '拟态物质', '突变细胞'].sort());
+  // 万色悠滞之核（超限词条 FGO-SP 的发放，olOnly）也是 upgradeNum 100：永不合成精锐形。
+  assert.deepEqual(never, ['人事部文档', '信标', '变形同构体', '寻呼模块', '拟态物质', '突变细胞', '万色悠滞之核'].sort());
   const { m, ps } = setup();
   ps.acquireItem(A('3_07'));
   ps.acquireItem(A('3_07'));
@@ -1277,9 +1281,13 @@ test('merging: two identical normal items become the golden one (upgradeNum 2); 
   cover(A('3_07'), B('3_07'));
 });
 
-test('coverage: every equipment (normal + golden) and every Art is exercised by a test above', () => {
-  // items whose numbers are asserted in the stat table, the proc tests or the meta tests
-  const missing = Object.keys(DATA.items).filter((id) => !COVER.has(id)).sort();
+test('coverage: every official equipment (normal + golden) and every Art is exercised by a test above (official only)', () => {
+  // items whose numbers are asserted in the stat table, the proc tests or the meta tests. 炸惊模拟's 11 `zjOnly` items are
+  // covered by its own play set (they carry their numbers in the play set's handlers, not in a stat table here); the same
+  // holds for 湮灭模拟's 8 `annOnly` items (its two 专属 mods' reward equipment, shared/zjBonds.js ann view) and for
+  // 超限模拟's 1 `olOnly` item (万色悠滞之核: its numbers live in the FGO-SP relic, test/content/overlimit_relics_effects).
+  const missing = Object.keys(DATA.items).filter((id) => isOfficialItem(DATA.items[id]) && !COVER.has(id)).sort();
   assert.deepEqual(missing, []);
-  assert.equal(Object.keys(DATA.items).length, 115);
+  assert.equal(Object.keys(DATA.items).filter((id) => isOfficialItem(DATA.items[id])).length, 115);
+  assert.equal(Object.keys(DATA.items).length, 135, '135 = 115 official + 11 zjOnly + 8 annOnly + 1 olOnly（万色悠滞之核）');
 });

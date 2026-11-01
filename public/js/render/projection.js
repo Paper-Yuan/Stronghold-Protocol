@@ -456,7 +456,8 @@ export function presetCamera(kind, viewport, options) {
     const cfg = opts.config && typeof opts.config === 'object' ? opts.config : null;
     const param = (cfg && parseCameraParam(cfg[key])) || parseCameraParam(OFFICIAL_PARAMS[key]);
     const cam = officialCamera(param, { width: W, height: H }, opts);
-    return preset.keep && opts.hud ? clearHud(cam, opts.hud, preset.keep, { width: W, height: H }) : cam;
+    const keep = opts.keep && typeof opts.keep === 'object' ? opts.keep : preset.keep;
+    return keep && opts.hud ? clearHud(cam, opts.hud, keep, { width: W, height: H }) : cam;
   }
   if (!rect) {
     rect = { ...preset.rect };

@@ -22,17 +22,27 @@ export function validateReferences(f, { officialOwnedSkills = true } = {}) {
     if (c.goldenId && !chess[c.goldenId]) err(`chess ${c.chessId}: goldenId missing`);
     for (const b of c.bonds) if (!bonds[b]) err(`chess ${c.chessId}: bond ${b} missing`);
     for (const g of c.garrisonIds) if (!garrisons[g]) err(`chess ${c.chessId}: garrison ${g} missing`);
-    for (const t of c.tokens) if (!tokens[t]) err(`chess ${c.chessId}: token ${t} missing`);
+    for (const t of c.tokens) if (!tokens[t] && !backups?.tokens?.[t]) err(`chess ${c.chessId}: token ${t} missing`);
     for (const t of c.talents || []) if (t.tokenKey && !c.tokens.includes(t.tokenKey)) err(`chess ${c.chessId}: talent token ${t.tokenKey} not in tokens`);
     if (c.isDiy) continue;
+    // 炸惊模拟's records are imported whole from the reference package (docs/research/18-zhaijing-content.json), and three
+    // of the things below are statements about *this* build's output: 虎狼丸 (chess_zj_60_2_a/_b) really has no skill slot
+    // there (`skill: null`, `skills: []`); module-less goldens of the package carry a `modules[]` choice list without the
+    // `statsBase`/`traitBase`/`talentsBase` triple; and its `skills[]` flags are normalised by the extractor. Everything
+    // else — stats, the range grid (derived from `rangeId` by build-data), ids, bonds, garrisons, tokens — is still
+    // checked for an imported record.
+    const imported = 'zhajing' in c;
     if (!c.stats) err(`chess ${c.chessId}: no stats`);
-    if (!c.skill) err(`chess ${c.chessId}: no resolvable skill`);
+    if (!imported && !c.skill) err(`chess ${c.chessId}: no resolvable skill`);
     if (!Array.isArray(c.rangeGrid)) err(`chess ${c.chessId}: no range grid`);
     // DESIGN §16 loadout choices
-    if (!Array.isArray(c.skills) || c.skills.filter((s) => s.isDefault).length !== 1 || c.skills.find((s) => s.isDefault)?.skillId !== c.skill?.skillId) err(`chess ${c.chessId}: skills[] without exactly one default = skill`);
-    if (c.modules && (c.modules.filter((m) => m.isDefault).length !== (c.module?.active ? 1 : 0) || !c.statsBase || !c.traitBase || !c.talentsBase)) err(`chess ${c.chessId}: inconsistent module choices`);
-    // 高台 legality is read from the trait text at place time (shared/highGround.js), never a field on the record
+    if (!imported && (!Array.isArray(c.skills) || c.skills.filter((s) => s.isDefault).length !== 1 || c.skills.find((s) => s.isDefault)?.skillId !== c.skill?.skillId)) err(`chess ${c.chessId}: skills[] without exactly one default = skill`);
+    if (!imported && c.modules && (c.modules.filter((m) => m.isDefault).length !== (c.module?.active ? 1 : 0) || !c.statsBase || !c.traitBase || !c.talentsBase)) err(`chess ${c.chessId}: inconsistent module choices`);
+    // The old `placement` string is not a field. 高台 is the boolean `placeOnRanged` (build-data, from the Chinese
+    // trait), read by shared/highGround.js, which still matches the Simplified line when the flag is absent.
     if (c.placement !== undefined) err(`chess ${c.chessId}: placement is not a data field`);
+    if (c.placeOnRanged !== undefined && c.placeOnRanged !== true) err(`chess ${c.chessId}: placeOnRanged must be true when present`);
+    if (c.placeOnRanged === true && c.position !== 'MELEE') err(`chess ${c.chessId}: placeOnRanged on a non-MELEE record`);
   }
   // 补位 / 自选 (data/backups.json, DATA.md §18): a PRESET chess is its own backup; every NORMAL chess (both forms)
   // composes into its stand-in (shared/standIn.js standInRecord) with the chess's skill and module; every DIY slot is a
@@ -43,6 +53,11 @@ export function validateReferences(f, { officialOwnedSkills = true } = {}) {
       if (c.chessType === 'PRESET' && b?.charId !== c.charId) err(`chess ${c.chessId}: a PRESET chess's backup must be itself`);
       if (c.chessType === 'DIY' && b?.charId !== null) err(`chess ${c.chessId}: a DIY slot has no backup`);
       if (c.chessType !== 'NORMAL') continue;
+      // 炸惊模拟 brings operators this version's official tables do not carry (颂乐人偶 five, 赤刃明霄陈, 承曦格雷伊's
+      // variants …): their records are imported whole from the reference package, so no 补位 body can be built for them and
+      // `GameData.standIn` returns null — the imported record itself is the unit (the play set ships them as owned). Only
+      // imported records (those carrying the `zhajing` marker) are skipped; every record this build produces is checked.
+      if ('zhajing' in c) continue;
       const r = standInRecord(c, backups);
       if (!r) { err(`chess ${c.chessId}: no stand-in ${b?.charId}@${statusKey(c.status)} in backups.json`); continue; }
       if (!r.stats || !Array.isArray(r.rangeGrid) || !r.trait) err(`chess ${c.chessId}: stand-in ${b.charId} without stats / range / trait`);
@@ -84,15 +99,30 @@ export function validateReferences(f, { officialOwnedSkills = true } = {}) {
   for (const b of Object.values(bonds)) {
     for (const m of b.members) if (!chess[m]) err(`bond ${b.bondId}: member ${m} missing`);
     if (!b.thresholds.length) err(`bond ${b.bondId}: no thresholds`);
-    if (!effects[b.effectId]) err(`bond ${b.bondId}: effect ${b.effectId} missing`);
+    // 炸惊模拟's 5 new bonds declare their effect on the card itself (`effectDesc`, and the `zj` overlay block carries the
+    // ZHAJING numbers): four of them have no `effectId` at all, and mujicaShip points at `bondeffect_mujica`, which the
+    // reference package's own effects.json lacks too. Only `zjOnly` bonds are exempt — every official bond still resolves.
+    // 湮灭专属 mod's two bonds (`annOnly`) are the same case: their numbers sit in `buffs[].bb` and in the battle runes
+    // `act2autochess_bond_eff_rhodes` / `_kazdel`, with no effects.json record in either repository.
+    if (b.zjOnly !== true && b.annOnly !== true && !effects[b.effectId]) err(`bond ${b.bondId}: effect ${b.effectId} missing`);
   }
+  // 湮灭专属 mod: a chess's `annBonds` (bonds it additionally counts in ANNIHILATION) must name records that exist
+  for (const c of Object.values(chess)) for (const b of c.annBonds || []) if (!bonds[b]) err(`chess ${c.chessId}: annBond ${b} missing`);
+  // …and an `ann` overlay may only name records this data has (an overlay is applied only under ANNIHILATION, so a dangling
+  // member would break there and nowhere else — the worst kind of silent failure)
+  for (const b of Object.values(bonds)) for (const m of b.ann?.members || []) if (!chess[m]) err(`bond ${b.bondId}: ann member ${m} missing`);
+  // 炸惊模拟's own equipment (S.E.E.S. armband, 谜の假面, the 惊变 trophy items) and its two strategies carry their
+  // numbers in the play set's handlers (server/sim/content/jibian.js, content/bands/battle) instead of a data/effects.json
+  // record — the reference package ships them the same way (its own effects.json has no `eff_jibian_*` /
+  // `aceffect_band_zj_*` record either), and the item / strategy card shows the record's own `desc` / `effectName`.
+  // Only `zjOnly` records are exempt; every official record still has to resolve its effect.
   for (const it of Object.values(items)) {
-    if (!effects[it.effectId]) err(`item ${it.id}: effect missing`);
+    if (it.zjOnly !== true && !effects[it.effectId]) err(`item ${it.id}: effect missing`);
     if (it.goldenId && !items[it.goldenId]) err(`item ${it.id}: golden missing`);
     if (it.giveBondId && !bonds[it.giveBondId]) err(`item ${it.id}: giveBond ${it.giveBondId} missing`);
     if (it.requiresBondId && !bonds[it.requiresBondId]) err(`item ${it.id}: requiresBond ${it.requiresBondId} missing`);
   }
-  for (const b of Object.values(bands)) if (!effects[b.effectId]) err(`band ${b.bandId}: effect missing`);
+  for (const b of Object.values(bands)) if (b.zjOnly !== true && !effects[b.effectId]) err(`band ${b.bandId}: effect missing`);
   for (const b of Object.values(bands)) for (const id of b.bondIds || []) if (!bonds[id]) err(`band ${b.bandId}: bond ${id} missing`);
   for (const w of Object.values(waves)) {
     for (const sp of w.spawns) {
@@ -203,7 +233,11 @@ function checkData(data, { kitExists = null, vanilla = null, owners = null, vali
       || !(rec.stats.maxHp > 0) || !(rec.stats.bat > 0)) bad(at + '.stats', 'numeric core stats and positive maxHp/bat required');
     if (!matchesSchema(rec.rangeGrid, GRID_SCHEMA)) bad(at + '.rangeGrid', 'range grid required');
     if (!object(rec.trait) || !Array.isArray(rec.talents)) bad(at, 'trait and talents required');
-    if (!Array.isArray(rec.skills) || !rec.skills.length) { bad(at + '.skills', 'skills required'); return; }
+    // 官方没有技能的单位（虎狼丸 char_4220_kormr：character_table.skills === []，包内记录也是 skill:null/skills:[]）
+    // 由数据侧**显式标记** `noSkill: true`，不是「忘了填」：只有标记为真且确实空表才跳过这两条技能校验，
+    // 别处真丢了 skills 照旧红。
+    const noSkill = rec.noSkill === true && (rec.skills ?? []).length === 0 && rec.skill == null;
+    if (!noSkill && (!Array.isArray(rec.skills) || !rec.skills.length)) { bad(at + '.skills', 'skills required'); return; }
     const seen = new Set();
     for (const s of rec.skills) {
       if (!object(s) || typeof s.skillId !== 'string' || !Number.isInteger(s.index) || seen.has(s.index) || !object(s.bb)) bad(at + '.skills', 'skill id, unique index and blackboard required');
@@ -212,7 +246,7 @@ function checkData(data, { kitExists = null, vanilla = null, owners = null, vali
         || !['duration','spCost','initSp'].every(k => typeof s[k] === 'number' && Number.isFinite(s[k])))) bad(at + '.skills', 'invalid skill kind, SP type or numeric field');
       if (s?.skillSpec) problems.push(...validateSkillSpec(s.skillSpec, at + '.skills.skillSpec'));
     }
-    if (defaults && (rec.skills.filter(s => s?.isDefault === true).length !== 1 || rec.skills.find(s => s?.isDefault)?.skillId !== rec.skill?.skillId)) bad(at, 'exactly one default equal to skill required', 'PLUGIN_RECORD_SKILLS');
+    if (defaults && !noSkill && (rec.skills.filter(s => s?.isDefault === true).length !== 1 || rec.skills.find(s => s?.isDefault)?.skillId !== rec.skill?.skillId)) bad(at, 'exactly one default equal to skill required', 'PLUGIN_RECORD_SKILLS');
     if (defaults && rec.skill) {
       const { isDefault, ...s } = rec.skills.find(s => s?.isDefault) || {};
       if (JSON.stringify(s) !== JSON.stringify(rec.skill)) {
@@ -238,8 +272,10 @@ function checkData(data, { kitExists = null, vanilla = null, owners = null, vali
   for (const [id, c] of Object.entries(data.chess)) {
     for (const k of ['bonds', 'garrisonIds', 'tokens']) array(c[k], `chess.${id}.${k}`);
     const a = data.chess[c.baseId], b = data.chess[c.goldenId];
-    if (!a || !b || c.baseId !== id.replace(/_[ab]$/, '_a') || c.goldenId !== id.replace(/_[ab]$/, '_b')
-      || a.isGolden || !b.isGolden || a.charId !== b.charId || a.tier !== b.tier || c.isGolden !== id.endsWith('_b')) bad(id, 'inconsistent _a/_b pair', 'PLUGIN_DATA_PAIR');
+    if (c.chessId !== id || (id !== c.baseId && id !== c.goldenId) || !a || !b || a === b || a.chessId !== c.baseId || b.chessId !== c.goldenId
+      || a.baseId !== c.baseId || b.baseId !== c.baseId || a.goldenId !== c.goldenId || b.goldenId !== c.goldenId
+      || a.isGolden || !b.isGolden || a.charId !== b.charId || a.tier !== b.tier || c.isGolden !== (id === c.goldenId)
+      || a.upgradeChessId !== b.chessId || b.upgradeChessId != null) bad(id, 'inconsistent normal/elite pair', 'PLUGIN_DATA_PAIR');
     if (!c.isDiy) checkSkills(c, `chess.${id}`, true, `chess.${id}`);
   }
   for (const [id, u] of Object.entries(data.backups.units ?? {})) {

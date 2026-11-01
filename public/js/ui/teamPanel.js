@@ -30,8 +30,9 @@ import { t } from '../../../shared/i18n.js';
 
 const cx = (...p) => p.flat().filter(Boolean).join(' ');
 
-/** Official status glyphs (ui/battle) per m.public players[].status; CSS glyph fallback. */
-const STATUS_SPRITE = { ready: 'icon_ready', deciding: 'icon_waiting', done: 'icon_complete', dead: 'icon_dead' };
+/** Official status glyphs (ui/battle) per m.public players[].status; CSS glyph fallback. Shared with the multi-team
+ *  HUD's expanded rows (ui/multiHud.js), which draw the same `.team__status` icon. */
+export const STATUS_SPRITE = { ready: 'icon_ready', deciding: 'icon_waiting', done: 'icon_complete', dead: 'icon_dead' };
 
 /**
  * A row's LP tower: the settled LP and the pending loss of the round's battle (0 outside COMBAT / UNITE). The own row

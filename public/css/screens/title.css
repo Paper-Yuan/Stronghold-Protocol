@@ -308,11 +308,11 @@ html[data-script="alphabetic"] .title-login .btn--xl { letter-spacing: .3em; }
   flex-wrap: wrap;
   gap: .12rem .2rem;
 }
-.title-foot__row--meta {
-  /* thanks ticker + version meta row */
-}
 .title-foot__row--legal {
-  /* legal notice + plugins + resume button row */
+  /* 恢复对局 / PWA 安装 / 本服务器安装了 N 个插件 / 版权 — the top footer row */
+}
+.title-foot__row--thanks {
+  /* the thanks ticker at this row's head and the version meta at its tail (see the layout block below) */
 }
 .title-foot__meta { display: flex; align-items: flex-end; gap: .16rem; flex-wrap: wrap; justify-content: flex-end; }
 .title-repo { color: inherit; text-decoration: none; border-bottom: 1px solid transparent; }
@@ -416,7 +416,10 @@ html[data-script="alphabetic"] .title-login .btn--xl { letter-spacing: .3em; }
   display: inline-flex;
   width: max-content;
   will-change: transform;
-  animation: thanks-scroll 32s linear infinite;
+  /* 48s (was 32s): the ticker only shows a short window of the list — 32 % of the footer row on a desktop, 46 vw on a
+     phone since 2026-10-29 (it was 72 vw and read too fast there) — so the crawl is slow enough to read a name as it
+     passes. Keep it ≥ 44 s: shorter makes the 46 vw window unreadable. */
+  animation: thanks-scroll 48s linear infinite;
 }
 .title-thanks:hover .title-thanks__track,
 .title-thanks:active .title-thanks__track {
@@ -453,6 +456,30 @@ html[data-script="alphabetic"] .title-login .btn--xl { letter-spacing: .3em; }
   font-size: .65em;
 }
 
-/* footer layout: thanks ticker takes the left side */
+/* footer layout (业主口径 2026-10-29): TWO rows. The bottom row holds the thanks ticker at its head — flush with the
+   footer's left edge, i.e. the screen's lower-left corner — and the version meta at its tail, flush with the right edge:
+   the ticker starts bottom-left, the version number sits bottom-right. `space-between` + `nowrap` is what pins those two
+   ends; the ticker is the only flexible item, the meta keeps its natural width and is never wrapped onto a second line
+   (`.title-foot__meta` still wraps INSIDE itself when the text size is 特大). The --meta row of 0.3.3 is gone, which
+   also gives the footer back the height the third row cost on a phone.
+   Length: 32 % of the footer row on a desktop (was 46 % — 612 px measured at 1388 wide) and 46 vw on a phone (was 72 vw,
+   and centred, which is why its start point was not the corner there). Both still show 2–3 names scrolling. */
 .title-foot { flex-direction: column; }
-.title-foot__row--meta .title-thanks { order: -1; flex: 1 1 12rem; min-width: 0; max-width: 46%; }
+.title-foot__row--thanks { justify-content: space-between; align-items: flex-end; flex-wrap: nowrap; gap: .2rem; }
+.title-foot__row--thanks .title-thanks { flex: 1 1 auto; min-width: 0; max-width: min(22rem, 32%); margin-top: 0; }
+.title-foot__row--thanks .title-foot__meta { flex: 0 1 auto; min-width: 0; }
+/* a phone: 46 vw of ticker, still starting at the footer's left edge (no centring — the start point is the corner).
+   ≤ 520 px wide is the narrow case; ≤ 520 px high is this repo's short-screen case (room.css / lobby.css / stats.css …)
+   and the one a landscape phone really hits (e.g. 844 × 390), where the width rule alone would never fire. A desktop
+   window is on neither, so it keeps the 32 % above. */
+@media (max-width: 520px), (max-height: 520px) {
+  .title-foot { gap: .08rem; }
+  .title-foot__row--thanks { justify-content: space-between; }
+  .title-foot__row--thanks .title-thanks { width: auto; max-width: 46vw; margin-top: 0; }
+}
+/* 减动效 (prefers-reduced-motion): the ticker stands still instead of scrolling slowly (theme.css's global rule only
+   shortens the duration, which made a 48 s crawl look like a jump) */
+@media (prefers-reduced-motion: reduce) {
+  .title-thanks__track { animation: none; }
+  .title-thanks__dot { animation: none; }
+}

@@ -119,20 +119,25 @@ function withDom(rem, hudTop, fn, bondsBottom = 0) {
 describe('9: the prep camera keeps the bench clear of the shop bar on phones in landscape', () => {
   test('HUD_REM mirrors the CSS it measures (bond strip bottom, shop bar top, the notched-phone rule)', () => {
     const game = read('public/css/screens/game.css');
-    const shop = read('public/css/screens/game-shop.css');
-    // #678: clip padding is offset by margins; the 44 px arrows can still raise the band on phones.
-    assert.match(game, /\.gm__bonds \{ position: absolute; left: 1\.56rem; top: 1\.36rem;/);
+    // 盟约条 = 0.3.1 的形态（业主 2026-10-29 真机否掉重写后照旧版换回）：顶栏下方居中、常显、两侧 ‹ › 滚动。
+    // 条高来自 .bslot 的圆盘 .52rem + 名字，HUD_REM.bondStripBottom 就是它的下沿（2.16rem）。
+    assert.match(game, /\.gm__bonds \{ position: absolute; left: 50%; transform: translateX\(-50%\); top: 1\.36rem;/);
+    // 横向内边距（2026-10-29）：圆环 SVG 描边会画出圆盘右侧 ~7px，收进内边距后放得下的条体 scrollWidth 才等于
+    // clientWidth（否则右侧淡出会凭空出现）；竖向内边距与负外边距照旧护住光环/层数 (#678)。
+    assert.match(game, /\.gm__bonds \.bstrip-scroll \.bstrip \{[^}]*padding: \.08rem \.2rem; margin: -\.08rem 0;/);
+    assert.match(game, /\.bslot \{ position: relative; display: flex; flex-direction: column; align-items: center; width: \.74rem; \}/);
     assert.match(game, /\.bslot \.bond \{ --disc: \.52rem; \}/);
-    assert.match(game, /\.gm__bonds \.bstrip-scroll \.bstrip \{[^}]*padding: \.08rem 0; margin: -\.08rem 0;/);
-    assert.match(game, /\.gm__bonds \.bstrip-scroll__arrow \{[^}]*height: 44px;/);
-    assert.equal(HUD_REM.bondStripTop, 1.36);
     assert.equal(HUD_REM.bondStripBottom, 2.16);
-    assert.equal(HUD_REM.bondArrowPx, 44);
+    // 0.3.1 的 HUD_REM 只有 bondStripBottom：没有「1.36rem + 44px 收起键」那一条（收起键在旧版里不存在）
+    assert.equal('bondStripTop' in HUD_REM, false);
+    assert.equal('bondTogglePx' in HUD_REM, false);
     // shop bar: bottom .2rem + row padding .1rem × 2 + 2.24rem cards (level / operator / item) + 2 px + 1 px borders
-    assert.match(shop, /\.shopbar \{\n {2}position: absolute; right: \.26rem; bottom: \.2rem;/);
-    assert.match(shop, /\.shopbar__row \{\n {2}position: relative; display: flex; align-items: stretch; gap: \.08rem; padding: \.1rem;\n[^}]*border: 1px solid var\(--line-2\); border-top: 2px solid var\(--mint-700\);/);
-    assert.match(shop, /\.lvcard \{\n {2}position: relative; width: 1\.24rem; height: 2\.24rem;/);
-    assert.match(shop, /\.scard \{\n {2}--tc: var\(--tier-1\);\n {2}position: relative; width: 1\.56rem; height: 2\.24rem;/);
+    const shopCss = read('public/css/screens/game-shop.css');
+    assert.match(shopCss, /\.shopbar \{\n {2}position: absolute; right: \.26rem; bottom: \.2rem;/);
+    assert.match(shopCss, /\.shopbar__row \{\n {2}position: relative; display: flex; align-items: stretch; gap: \.08rem; padding: \.1rem;\n[^}]*border: 1px solid var\(--line-2\); border-top: 2px solid var\(--mint-700\);/);
+    assert.match(shopCss, /\.lvcard \{\n {2}position: relative; width: 1\.24rem; height: 2\.24rem;/);
+    // (width 1.72rem since 业主 2026-10-22: the card grew 10 % for longer names / prices; the HEIGHT is the HUD_REM input)
+    assert.match(shopCss, /\.scard \{\n {2}--tc: var\(--tier-1\);\n {2}position: relative; width: 1\.72rem; height: 2\.24rem;/);
     assert.equal(HUD_REM.shopBarTop, 0.2 + 0.1 * 2 + 2.24);
     assert.equal(HUD_REM.shopBarBorderPx, 3);
     // the bar stays on the viewport's bottom edge on a notched phone (DESIGN §18.1): no bottom inset to add
@@ -144,18 +149,22 @@ describe('9: the prep camera keeps the bench clear of the shop bar on phones in 
       for (const k of ['normal', 'unite', 'boss', 'hidden', 'pen']) assert.equal(hudBands(k, { width: 844, height: 390 }), null, k);
       for (const k of ['prep', 'bossPrep']) {
         const b = hudBands(k, { width: 844, height: 390 });
-        assert.ok(Math.abs(b.top - 98.4) < 1e-9 && Math.abs(b.bottom - 108.6) < 1e-9, `${k} ${JSON.stringify(b)}`);
+        // 2.16rem × 40 px = 86.4 (the strip's bottom edge); .shopBarTop 2.64rem × 40 + 3 px = 108.6
+        assert.ok(Math.abs(b.top - 86.4) < 1e-9 && Math.abs(b.bottom - 108.6) < 1e-9, `${k} ${JSON.stringify(b)}`);
       }
     });
     withDom(100, 0, () => assert.deepEqual(hudBands('prep', { width: 1920, height: 1080 }), { top: 216, bottom: 267 }));
-    withDom(40, 12, () => assert.ok(Math.abs(hudBands('prep', { width: 844, height: 390 }).top - 110.4) < 1e-9, 'top inset'));
+    withDom(40, 12, () => assert.ok(Math.abs(hudBands('prep', { width: 844, height: 390 }).top - 98.4) < 1e-9, 'top inset'));
     withDom(40, 0, () => assert.deepEqual(hudBands('prep', { width: 640, height: 200 }), { top: 80, bottom: 80 }, 'clamped at 40 % of the height'));
   });
 
-  test('a taller measured scroller is kept clear; a collapsed strip keeps the minimum band', () => {
+  test('the top band is the stylesheet contract, not a measurement of the strip', () => {
+    // The strip sits under the top bar (css/screens/game.css .gm__bonds top 1.36rem) and hudBands reads HUD_REM only: a
+    // measured `.gm__bonds` box is ignored (see its comment), so a taller / shorter stub below changes nothing.
     const size = { width: 844, height: 390 };
-    withDom(40, 12, () => assert.equal(hudBands('prep', size).top, 124), 124);
-    withDom(40, 12, () => assert.ok(Math.abs(hudBands('prep', size).top - 110.4) < 1e-9), 90);
+    withDom(40, 12, () => assert.ok(Math.abs(hudBands('prep', size).top - 98.4) < 1e-9));
+    withDom(40, 12, () => assert.ok(Math.abs(hudBands('prep', size).top - 98.4) < 1e-9), 124);
+    withDom(40, 12, () => assert.ok(Math.abs(hudBands('prep', size).top - 98.4) < 1e-9), 34);
   });
 
   test('wiring: the game hands hudBands to the view, the view to the prep cameras', () => {

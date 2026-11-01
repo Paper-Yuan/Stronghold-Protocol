@@ -33,6 +33,7 @@
 import { tileAtlas, fxAtlas, rng, groundTexture } from './textures.js';
 import { GLYPH, TILEKEY_GLYPH, TILE_H, COLORS, ORIGINIUM } from './style.js';
 import { parsePenRect, PEN_RECT } from './pen.js';
+import { GEO, BENCH_PER_ROW, benchRows, benchTileOf } from '../../../shared/constants.js';
 
 /**
  * Depth-sort key (unit layer zIndex) of block row `row`: the row's far edge. Units use
@@ -96,22 +97,35 @@ const SIDE_MAT = {
 /**
  * Parse a stage record into a per-tile info grid (tolerant of partial/malformed data). `band` = [r0, r1] rows drawn;
  * `field` = [f0, f1] rows of the active field — drawn rows outside it are dim, non-playable scenery (e.g. the enemy
- * preview pen behind the normal field, or the normal field behind the boss field).
+ * preview pen behind the normal field, or the normal field behind the boss field). `benchSize` = the match's 整备区
+ * slots (shared/constants.js benchSizeOf): the data's row 7 holds the 10 default pads, and a two-row bench (炸惊 20)
+ * turns the row behind the bench (row 8, `benchTileOf(10..19)`) into pads as well — the same rule as
+ * render/board3d/layout.js classifyStage, so the 2D board, the 3D board and the grid queries agree on every pad.
  */
-export function parseStage(stage, band = [0, ROWS - 1], field = [0, 13]) {
+export function parseStage(stage, band = [0, ROWS - 1], field = [0, 13], benchSize = BENCH_PER_ROW) {
   const rows = Array.isArray(stage?.rows) ? stage.rows : [];
   const legend = stage && typeof stage.tiles === 'object' && stage.tiles ? stage.tiles : {};
+  const wide = Number.isInteger(benchSize) ? Math.min(benchSize, GEO.HAND_MAX) : BENCH_PER_ROW;
+  // the bench band is shown when the ACTIVE field covers the bench row — the 2D mirror of the 3D rule (board3d/layout.js
+  // classifyStage: an area rect carrying the bench row), so the boss field's own view keeps its row-6 wall
+  const showBench = field[0] <= GEO.HAND_ROW && field[1] >= GEO.HAND_ROW;
+  const extraPads = new Set();
+  if (showBench && benchRows(wide) > 1) {
+    for (let i = BENCH_PER_ROW; i < wide; i++) { const t = benchTileOf(i, wide); extraPads.add(`${t.row},${t.col}`); }
+  }
   const grid = [];
   for (let r = 0; r < ROWS; r++) {
     const line = typeof rows[r] === 'string' ? rows[r] : '';
     const row = [];
     for (let c = 0; c < COLS; c++) {
       let g = line[c] || '#';
+      const benchPad = extraPads.has(`${r},${c}`);
+      if (benchPad) g = 'a';
       if (!GLYPH[g]) g = TILEKEY_GLYPH[legend[g]?.tileKey] || (legend[g]?.height === 'HIGH' ? '#' : 'R');
       const def = GLYPH[g];
       const inBand = r >= band[0] && r <= band[1];
       const scenery = r < field[0] || r > field[1];
-      row.push({ r, c, glyph: g, mat: def.mat, hClass: def.h, h: def.h ? TILE_H[def.h] : 0, playable: inBand && !scenery && g !== '#' && g !== 'X', inBand, scenery, dist: 0, alpha: 1, drawn: true, focus: true });
+      row.push({ r, c, glyph: g, mat: def.mat, hClass: def.h, h: def.h ? TILE_H[def.h] : 0, playable: inBand && !scenery && g !== '#' && g !== 'X', inBand, scenery, dist: 0, alpha: 1, drawn: true, focus: true, benchPad });
     }
     grid.push(row);
   }
@@ -265,6 +279,7 @@ export class TileField {
     this.levels = [0];
     this.band = [0, ROWS - 1];
     this.field = [0, 13];
+    this.benchSize = BENCH_PER_ROW; // 整备区 width of the match (setBenchSize: 炸惊 20 → two pad rows, else 10)
     this.focus = null;
     this.boxMeshes = new Set();    // live BoxMesh instances (re-textured on art swaps)
     this.external = false;         // true: the 3D board layer draws the board (see header)
@@ -328,6 +343,19 @@ export class TileField {
   tile(r, c) { return this.grid[r]?.[c] || { r, c, glyph: '#', mat: 'forbid', h: 0, playable: false, drawn: false }; }
   heightAt(r, c) { const t = this.grid[r]?.[c]; return t && t.drawn ? t.h + (t.devH || 0) : 0; }
 
+  /**
+   * 整备区 width of the match (shared/constants.js benchSizeOf: 炸惊 20 → two pad rows, every other mode 10): the grid
+   * (pads, heights, levels) follows, so picking, unit standing heights and the 2D board agree with the 3D board
+   * (render/board3d/layout.js classifyStage). 10 — the default — changes nothing.
+   */
+  setBenchSize(n) {
+    const v = Number.isInteger(n) && n > 0 ? Math.min(n, GEO.HAND_MAX) : BENCH_PER_ROW;
+    if (v === this.benchSize) return false;
+    this.benchSize = v;
+    if (this.stage) this._rebuild();
+    return true;
+  }
+
   setStage(stage) {
     this.stage = stage || null;
     this._rebuild();
@@ -335,7 +363,7 @@ export class TileField {
 
   _rebuild() {
     const stage = this.stage;
-    this.grid = parseStage(stage, this.band, this.field);
+    this.grid = parseStage(stage, this.band, this.field, this.benchSize);
     const F = this.focus;
     for (const row of this.grid) for (const t of row) {
       t.focus = !F || (t.r >= F.r0 && t.r <= F.r1 && t.c >= F.c0 && t.c <= F.c1);
@@ -380,6 +408,8 @@ export class TileField {
       // official normal rounds (user playtest #5 item 6 and its follow-up); the airflow (_drawFlow) only covers drawn
       // tiles, so the row-6 machines' shows in the Final Assault view alone
       if (gt && (!gt.drawn || gt.scenery || gt.dist > 1)) continue;
+      // a tile the two-row bench turned into a pad (row 8, 炸惊) no longer carries the wall this device stood on
+      if (gt && gt.benchPad) continue;
       out.push(d);
     }
     return out;

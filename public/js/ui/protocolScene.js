@@ -92,10 +92,12 @@ const SPIKE_PATHS = [
 const ART_BOX = { x: 170, y: 40, w: 650, h: 505 };
 
 /**
- * @param {{ difficulty: string, art?: string|null }} props difficulty FUNNY | NORMAL | HARD | ABYSS; art: the official
- *   picture's URL (null without the art pack)
+ * @param {{ difficulty: string, art?: string|null, tint?: boolean }} props difficulty FUNNY | NORMAL | HARD | ABYSS;
+ *   art: the official picture's URL (null without the art pack); tint: recolour the picture into --d-color — for a
+ *   difficulty with no picture of its own that draws another one (超限 draws 终极's, and the picture's own red would
+ *   fight the purple emphasis every other element of the screen uses)
  */
-export function ProtocolScene({ difficulty, art = null }) {
+export function ProtocolScene({ difficulty, art = null, tint = false }) {
   const [bad, setBad] = useState(null);
   const pic = art && bad !== art ? art : null;
   const pads = pic ? PADS_ART : PADS;
@@ -108,7 +110,7 @@ export function ProtocolScene({ difficulty, art = null }) {
   const mastTop = pic ? [644, 64] : iso(22.2, 4.3, 13.5); // the picture's crane top
   const cable = `M${mastTop[0] + 60} -10 C${mastTop[0] + 70} 120 ${mastTop[0] - 20} 110 ${mastTop[0]} ${mastTop[1]}`;
   const callAt = iso(8, -6, 15);
-  return html`<svg class=${pic ? 'ps has-art' : 'ps'} viewBox="0 0 1000 640" preserveAspectRatio="xMidYMid meet" aria-hidden="true" focusable="false">
+  return html`<svg class=${`ps${pic ? ' has-art' : ''}${pic && tint ? ' is-tinted' : ''}`} viewBox="0 0 1000 640" preserveAspectRatio="xMidYMid meet" aria-hidden="true" focusable="false">
     <g class="ps-grid">${grid}</g>
     <path class="ps-cable" d=${cable} />
     <path class="ps-cable__pulse" pathLength="1000" d=${cable} />

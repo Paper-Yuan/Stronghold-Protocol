@@ -1,0 +1,2195 @@
+{
+ "what": "12 人房局内 HUD 的联防条 .gm-unite：只在真的联防阶段挂载（phase UNITE + unite.stage ∈ team/watch/cross）",
+ "when": "2026-10-31T16:18:38.951Z",
+ "server": "test/e2e/fastServer.mjs (startServer + 真 Match), PORT 3191, SP_TIMER_SCALE=0.2 SP_COMBAT_SPEED=6 SP_START_ROUND=1 SP_IDLE_BOTS=1 SP_AUTO_PLACE=1 SP_START_KITS=[[6 名萨尔贡]]",
+ "room": {
+  "seats": 12,
+  "humans": 1,
+  "bots": 11,
+  "viewport": "792x360",
+  "chrome": "edge headless 1280x720 → 792x360 (no reload)"
+ },
+ "before": {
+  "note": "修前：UNITE 阶段、三段已走完（uniteStage 已清空、无 live unite 场），views.js 回落 stage=\"team\" ⇒ 横条仍挂着",
+  "leakFrame": {
+   "at": 24.48,
+   "phase": "UNITE",
+   "stage": "team",
+   "fields": [],
+   "uniteEl": 1,
+   "left": {
+    "ai_c70e2a09": 6,
+    "ai_518a3417": 6,
+    "ai_5ffb075b": 6,
+    "ai_095eaaba": 6,
+    "ai_15015ee6": 6,
+    "ai_fff2f43a": 6,
+    "ai_b2c0defa": 6,
+    "ai_675b75a8": 6,
+    "ai_2e5440df": 6,
+    "ai_6f737828": 3,
+    "ai_79861675": 6
+   }
+  },
+  "phases": {
+   "BAND_DRAFT": {
+    "frames": 2,
+    "withBar": 0,
+    "withBarNoLiveField": 0
+   },
+   "BATTLE_CHECK": {
+    "frames": 2,
+    "withBar": 0,
+    "withBarNoLiveField": 0
+   },
+   "ROUND_START": {
+    "frames": 2,
+    "withBar": 0,
+    "withBarNoLiveField": 0
+   },
+   "PREP": {
+    "frames": 2,
+    "withBar": 0,
+    "withBarNoLiveField": 0
+   },
+   "COMBAT": {
+    "frames": 20,
+    "withBar": 0,
+    "withBarNoLiveField": 0
+   },
+   "UNITE:team": {
+    "frames": 30,
+    "withBar": 30,
+    "withBarNoLiveField": 1
+   },
+   "UNITE:watch": {
+    "frames": 2,
+    "withBar": 2,
+    "withBarNoLiveField": 2
+   },
+   "UNITE:cross": {
+    "frames": 31,
+    "withBar": 31,
+    "withBarNoLiveField": 0
+   },
+   "SETTLE": {
+    "frames": 3,
+    "withBar": 0,
+    "withBarNoLiveField": 0
+   }
+  }
+ },
+ "after": {
+  "note": "修后：同一个窗口 stage=null ⇒ 不挂载；team/watch/cross 三段照旧挂载",
+  "phases": {
+   "BAND_DRAFT": {
+    "frames": 2,
+    "withBar": 0,
+    "withBarNoLiveField": 0
+   },
+   "BATTLE_CHECK": {
+    "frames": 2,
+    "withBar": 0,
+    "withBarNoLiveField": 0
+   },
+   "ROUND_START": {
+    "frames": 3,
+    "withBar": 0,
+    "withBarNoLiveField": 0
+   },
+   "PREP": {
+    "frames": 7,
+    "withBar": 0,
+    "withBarNoLiveField": 0
+   },
+   "COMBAT": {
+    "frames": 34,
+    "withBar": 0,
+    "withBarNoLiveField": 0
+   },
+   "UNITE:team": {
+    "frames": 34,
+    "withBar": 34,
+    "withBarNoLiveField": 0
+   },
+   "UNITE:watch": {
+    "frames": 1,
+    "withBar": 1,
+    "withBarNoLiveField": 1
+   },
+   "UNITE:cross": {
+    "frames": 36,
+    "withBar": 36,
+    "withBarNoLiveField": 0
+   },
+   "UNITE": {
+    "frames": 1,
+    "withBar": 0,
+    "withBarNoLiveField": 0
+   },
+   "SETTLE": {
+    "frames": 1,
+    "withBar": 0,
+    "withBarNoLiveField": 0
+   }
+  },
+  "endFrame": {
+   "at": 34.57,
+   "phase": "UNITE",
+   "stage": null,
+   "uniteEl": 0
+  },
+  "uniteFrame": {
+   "at": 14.3,
+   "phase": "UNITE",
+   "stage": "team",
+   "live": true,
+   "uniteEl": 1
+  }
+ },
+ "geometry792": {
+  "rects": {
+   "unite": {
+    "l": 144,
+    "t": 98.39,
+    "r": 744,
+    "b": 146.39
+   },
+   "teams": {
+    "l": 8,
+    "t": 94.39,
+    "r": 96,
+    "b": 202.39
+   },
+   "teamsBoxes": [
+    {
+     "l": 8,
+     "t": 94.39,
+     "r": 96,
+     "b": 126.39
+    },
+    {
+     "l": 8,
+     "t": 132.39,
+     "r": 96,
+     "b": 164.39
+    },
+    {
+     "l": 8,
+     "t": 170.39,
+     "r": 96,
+     "b": 202.39
+    }
+   ],
+   "bonds": {
+    "l": 339.61,
+    "t": 54.39,
+    "r": 452.39,
+    "b": 94.31
+   },
+   "corner": {
+    "l": 9.59,
+    "t": 316.41,
+    "r": 157.59,
+    "b": 350.41
+   },
+   "effects": {
+    "l": 755.28,
+    "t": 96,
+    "r": 780,
+    "b": 124.47
+   },
+   "shopbar": null,
+   "gtop": {
+    "l": 0,
+    "t": 0,
+    "r": 792,
+    "b": 42
+   }
+  },
+  "gaps": {
+   "bonds.b → unite.t": 4.08,
+   "teams.r → unite.l": 48,
+   "unite.r → effects.l": 11.28,
+   "unite.b → corner.t": 170.02,
+   "gtop.b → unite.t": 56.39
+  },
+  "overlaps": {
+   "unite × bonds": 0,
+   "unite × teams": 0,
+   "unite × teams[0]": 0,
+   "unite × teams[1]": 0,
+   "unite × teams[2]": 0,
+   "unite × corner": 0,
+   "unite × effects": 0,
+   "unite × shopbar": 0,
+   "unite × gtop": 0,
+   "teams × bonds": 0,
+   "teams × corner": 0
+  }
+ },
+ "shots": [
+  {
+   "file": "room12-unite-on-792x360.png",
+   "bytes": 444736,
+   "w": 792,
+   "h": 360,
+   "sha256": "d6ea053ecffb16fa7e388b712011145ddf01633c984ab3d483599eeec1ded9aa"
+  },
+  {
+   "file": "room12-unite-off-792x360.png",
+   "bytes": 378152,
+   "w": 792,
+   "h": 360,
+   "sha256": "763969ec1c333f671e521e91c9a0a3e8df98b9d878f91bdd9e7e8989120491bd"
+  },
+  {
+   "file": "room12-unite-end-792x360.png",
+   "bytes": 479931,
+   "w": 792,
+   "h": 360,
+   "sha256": "fd5ee7da08bd92b5924ca133c58658f38e03bd03b8b4e1af754cdfb22e50c317"
+  }
+ ],
+ "samples": {
+  "before": [
+   {
+    "at": 0.02,
+    "phase": "BAND_DRAFT",
+    "round": 0,
+    "stage": null,
+    "live": false,
+    "uniteEl": 0,
+    "teams": 0
+   },
+   {
+    "at": 0.27,
+    "phase": "BAND_DRAFT",
+    "round": 0,
+    "stage": null,
+    "live": false,
+    "uniteEl": 0,
+    "teams": 0
+   },
+   {
+    "at": 0.56,
+    "phase": "BATTLE_CHECK",
+    "round": 0,
+    "stage": null,
+    "live": false,
+    "uniteEl": 0,
+    "teams": 0
+   },
+   {
+    "at": 0.82,
+    "phase": "BATTLE_CHECK",
+    "round": 0,
+    "stage": null,
+    "live": false,
+    "uniteEl": 0,
+    "teams": 0
+   },
+   {
+    "at": 1.09,
+    "phase": "ROUND_START",
+    "round": 1,
+    "stage": null,
+    "live": false,
+    "uniteEl": 0,
+    "teams": 1
+   },
+   {
+    "at": 1.35,
+    "phase": "PREP",
+    "round": 1,
+    "stage": null,
+    "live": false,
+    "uniteEl": 0,
+    "teams": 1
+   },
+   {
+    "at": 1.79,
+    "phase": "COMBAT",
+    "round": 1,
+    "stage": null,
+    "live": false,
+    "uniteEl": 0,
+    "teams": 1
+   },
+   {
+    "at": 2.04,
+    "phase": "COMBAT",
+    "round": 1,
+    "stage": null,
+    "live": false,
+    "uniteEl": 0,
+    "teams": 1
+   },
+   {
+    "at": 2.3,
+    "phase": "COMBAT",
+    "round": 1,
+    "stage": null,
+    "live": false,
+    "uniteEl": 0,
+    "teams": 1
+   },
+   {
+    "at": 2.56,
+    "phase": "COMBAT",
+    "round": 1,
+    "stage": null,
+    "live": false,
+    "uniteEl": 0,
+    "teams": 1
+   },
+   {
+    "at": 3.6,
+    "phase": "COMBAT",
+    "round": 1,
+    "stage": null,
+    "live": false,
+    "uniteEl": 0,
+    "teams": 1
+   },
+   {
+    "at": 3.85,
+    "phase": "COMBAT",
+    "round": 1,
+    "stage": null,
+    "live": false,
+    "uniteEl": 0,
+    "teams": 1
+   },
+   {
+    "at": 4.4,
+    "phase": "COMBAT",
+    "round": 1,
+    "stage": null,
+    "live": false,
+    "uniteEl": 0,
+    "teams": 1
+   },
+   {
+    "at": 4.66,
+    "phase": "COMBAT",
+    "round": 1,
+    "stage": null,
+    "live": false,
+    "uniteEl": 0,
+    "teams": 1
+   },
+   {
+    "at": 4.93,
+    "phase": "COMBAT",
+    "round": 1,
+    "stage": null,
+    "live": false,
+    "uniteEl": 0,
+    "teams": 1
+   },
+   {
+    "at": 5.19,
+    "phase": "COMBAT",
+    "round": 1,
+    "stage": null,
+    "live": false,
+    "uniteEl": 0,
+    "teams": 1
+   },
+   {
+    "at": 5.45,
+    "phase": "COMBAT",
+    "round": 1,
+    "stage": null,
+    "live": false,
+    "uniteEl": 0,
+    "teams": 1
+   },
+   {
+    "at": 5.7,
+    "phase": "COMBAT",
+    "round": 1,
+    "stage": null,
+    "live": false,
+    "uniteEl": 0,
+    "teams": 1
+   },
+   {
+    "at": 5.96,
+    "phase": "COMBAT",
+    "round": 1,
+    "stage": null,
+    "live": false,
+    "uniteEl": 0,
+    "teams": 1
+   },
+   {
+    "at": 6.24,
+    "phase": "COMBAT",
+    "round": 1,
+    "stage": null,
+    "live": false,
+    "uniteEl": 0,
+    "teams": 1
+   },
+   {
+    "at": 6.49,
+    "phase": "COMBAT",
+    "round": 1,
+    "stage": null,
+    "live": false,
+    "uniteEl": 0,
+    "teams": 1
+   },
+   {
+    "at": 6.74,
+    "phase": "COMBAT",
+    "round": 1,
+    "stage": null,
+    "live": false,
+    "uniteEl": 0,
+    "teams": 1
+   },
+   {
+    "at": 7,
+    "phase": "COMBAT",
+    "round": 1,
+    "stage": null,
+    "live": false,
+    "uniteEl": 0,
+    "teams": 1
+   },
+   {
+    "at": 7.26,
+    "phase": "COMBAT",
+    "round": 1,
+    "stage": null,
+    "live": false,
+    "uniteEl": 0,
+    "teams": 1
+   },
+   {
+    "at": 7.52,
+    "phase": "COMBAT",
+    "round": 1,
+    "stage": null,
+    "live": false,
+    "uniteEl": 0,
+    "teams": 1
+   },
+   {
+    "at": 7.77,
+    "phase": "COMBAT",
+    "round": 1,
+    "stage": null,
+    "live": false,
+    "uniteEl": 0,
+    "teams": 1
+   },
+   {
+    "at": 8.03,
+    "phase": "UNITE",
+    "round": 1,
+    "stage": "team",
+    "live": true,
+    "uniteEl": 1,
+    "teams": 1
+   },
+   {
+    "at": 8.46,
+    "phase": "UNITE",
+    "round": 1,
+    "stage": "team",
+    "live": true,
+    "uniteEl": 1,
+    "teams": 1
+   },
+   {
+    "at": 8.72,
+    "phase": "UNITE",
+    "round": 1,
+    "stage": "team",
+    "live": true,
+    "uniteEl": 1,
+    "teams": 1
+   },
+   {
+    "at": 8.98,
+    "phase": "UNITE",
+    "round": 1,
+    "stage": "team",
+    "live": true,
+    "uniteEl": 1,
+    "teams": 1
+   },
+   {
+    "at": 9.24,
+    "phase": "UNITE",
+    "round": 1,
+    "stage": "team",
+    "live": true,
+    "uniteEl": 1,
+    "teams": 1
+   },
+   {
+    "at": 9.51,
+    "phase": "UNITE",
+    "round": 1,
+    "stage": "team",
+    "live": true,
+    "uniteEl": 1,
+    "teams": 1
+   },
+   {
+    "at": 9.76,
+    "phase": "UNITE",
+    "round": 1,
+    "stage": "team",
+    "live": true,
+    "uniteEl": 1,
+    "teams": 1
+   },
+   {
+    "at": 10.02,
+    "phase": "UNITE",
+    "round": 1,
+    "stage": "team",
+    "live": true,
+    "uniteEl": 1,
+    "teams": 1
+   },
+   {
+    "at": 10.28,
+    "phase": "UNITE",
+    "round": 1,
+    "stage": "team",
+    "live": true,
+    "uniteEl": 1,
+    "teams": 1
+   },
+   {
+    "at": 10.54,
+    "phase": "UNITE",
+    "round": 1,
+    "stage": "team",
+    "live": true,
+    "uniteEl": 1,
+    "teams": 1
+   },
+   {
+    "at": 10.79,
+    "phase": "UNITE",
+    "round": 1,
+    "stage": "team",
+    "live": true,
+    "uniteEl": 1,
+    "teams": 1
+   },
+   {
+    "at": 11.04,
+    "phase": "UNITE",
+    "round": 1,
+    "stage": "team",
+    "live": true,
+    "uniteEl": 1,
+    "teams": 1
+   },
+   {
+    "at": 11.3,
+    "phase": "UNITE",
+    "round": 1,
+    "stage": "team",
+    "live": true,
+    "uniteEl": 1,
+    "teams": 1
+   },
+   {
+    "at": 11.55,
+    "phase": "UNITE",
+    "round": 1,
+    "stage": "team",
+    "live": true,
+    "uniteEl": 1,
+    "teams": 1
+   },
+   {
+    "at": 11.81,
+    "phase": "UNITE",
+    "round": 1,
+    "stage": "team",
+    "live": true,
+    "uniteEl": 1,
+    "teams": 1
+   },
+   {
+    "at": 12.07,
+    "phase": "UNITE",
+    "round": 1,
+    "stage": "team",
+    "live": true,
+    "uniteEl": 1,
+    "teams": 1
+   },
+   {
+    "at": 12.34,
+    "phase": "UNITE",
+    "round": 1,
+    "stage": "team",
+    "live": true,
+    "uniteEl": 1,
+    "teams": 1
+   },
+   {
+    "at": 12.59,
+    "phase": "UNITE",
+    "round": 1,
+    "stage": "team",
+    "live": true,
+    "uniteEl": 1,
+    "teams": 1
+   },
+   {
+    "at": 12.84,
+    "phase": "UNITE",
+    "round": 1,
+    "stage": "team",
+    "live": true,
+    "uniteEl": 1,
+    "teams": 1
+   },
+   {
+    "at": 13.1,
+    "phase": "UNITE",
+    "round": 1,
+    "stage": "team",
+    "live": true,
+    "uniteEl": 1,
+    "teams": 1
+   },
+   {
+    "at": 13.36,
+    "phase": "UNITE",
+    "round": 1,
+    "stage": "team",
+    "live": true,
+    "uniteEl": 1,
+    "teams": 1
+   },
+   {
+    "at": 13.61,
+    "phase": "UNITE",
+    "round": 1,
+    "stage": "team",
+    "live": true,
+    "uniteEl": 1,
+    "teams": 1
+   },
+   {
+    "at": 13.87,
+    "phase": "UNITE",
+    "round": 1,
+    "stage": "team",
+    "live": true,
+    "uniteEl": 1,
+    "teams": 1
+   },
+   {
+    "at": 14.13,
+    "phase": "UNITE",
+    "round": 1,
+    "stage": "team",
+    "live": true,
+    "uniteEl": 1,
+    "teams": 1
+   },
+   {
+    "at": 14.39,
+    "phase": "UNITE",
+    "round": 1,
+    "stage": "team",
+    "live": true,
+    "uniteEl": 1,
+    "teams": 1
+   },
+   {
+    "at": 14.66,
+    "phase": "UNITE",
+    "round": 1,
+    "stage": "team",
+    "live": true,
+    "uniteEl": 1,
+    "teams": 1
+   },
+   {
+    "at": 14.92,
+    "phase": "UNITE",
+    "round": 1,
+    "stage": "team",
+    "live": true,
+    "uniteEl": 1,
+    "teams": 1
+   },
+   {
+    "at": 15.19,
+    "phase": "UNITE",
+    "round": 1,
+    "stage": "team",
+    "live": true,
+    "uniteEl": 1,
+    "teams": 1
+   },
+   {
+    "at": 15.45,
+    "phase": "UNITE",
+    "round": 1,
+    "stage": "team",
+    "live": true,
+    "uniteEl": 1,
+    "teams": 1
+   },
+   {
+    "at": 15.71,
+    "phase": "UNITE",
+    "round": 1,
+    "stage": "watch",
+    "live": false,
+    "uniteEl": 1,
+    "teams": 1
+   },
+   {
+    "at": 16.09,
+    "phase": "UNITE",
+    "round": 1,
+    "stage": "watch",
+    "live": false,
+    "uniteEl": 1,
+    "teams": 1
+   },
+   {
+    "at": 16.35,
+    "phase": "UNITE",
+    "round": 1,
+    "stage": "cross",
+    "live": true,
+    "uniteEl": 1,
+    "teams": 1
+   },
+   {
+    "at": 16.61,
+    "phase": "UNITE",
+    "round": 1,
+    "stage": "cross",
+    "live": true,
+    "uniteEl": 1,
+    "teams": 1
+   },
+   {
+    "at": 16.87,
+    "phase": "UNITE",
+    "round": 1,
+    "stage": "cross",
+    "live": true,
+    "uniteEl": 1,
+    "teams": 1
+   },
+   {
+    "at": 17.14,
+    "phase": "UNITE",
+    "round": 1,
+    "stage": "cross",
+    "live": true,
+    "uniteEl": 1,
+    "teams": 1
+   },
+   {
+    "at": 17.4,
+    "phase": "UNITE",
+    "round": 1,
+    "stage": "cross",
+    "live": true,
+    "uniteEl": 1,
+    "teams": 1
+   },
+   {
+    "at": 17.66,
+    "phase": "UNITE",
+    "round": 1,
+    "stage": "cross",
+    "live": true,
+    "uniteEl": 1,
+    "teams": 1
+   },
+   {
+    "at": 17.93,
+    "phase": "UNITE",
+    "round": 1,
+    "stage": "cross",
+    "live": true,
+    "uniteEl": 1,
+    "teams": 1
+   },
+   {
+    "at": 18.18,
+    "phase": "UNITE",
+    "round": 1,
+    "stage": "cross",
+    "live": true,
+    "uniteEl": 1,
+    "teams": 1
+   },
+   {
+    "at": 18.45,
+    "phase": "UNITE",
+    "round": 1,
+    "stage": "cross",
+    "live": true,
+    "uniteEl": 1,
+    "teams": 1
+   },
+   {
+    "at": 18.71,
+    "phase": "UNITE",
+    "round": 1,
+    "stage": "cross",
+    "live": true,
+    "uniteEl": 1,
+    "teams": 1
+   },
+   {
+    "at": 18.97,
+    "phase": "UNITE",
+    "round": 1,
+    "stage": "cross",
+    "live": true,
+    "uniteEl": 1,
+    "teams": 1
+   },
+   {
+    "at": 19.24,
+    "phase": "UNITE",
+    "round": 1,
+    "stage": "cross",
+    "live": true,
+    "uniteEl": 1,
+    "teams": 1
+   },
+   {
+    "at": 19.5,
+    "phase": "UNITE",
+    "round": 1,
+    "stage": "cross",
+    "live": true,
+    "uniteEl": 1,
+    "teams": 1
+   },
+   {
+    "at": 19.76,
+    "phase": "UNITE",
+    "round": 1,
+    "stage": "cross",
+    "live": true,
+    "uniteEl": 1,
+    "teams": 1
+   },
+   {
+    "at": 20.03,
+    "phase": "UNITE",
+    "round": 1,
+    "stage": "cross",
+    "live": true,
+    "uniteEl": 1,
+    "teams": 1
+   },
+   {
+    "at": 20.29,
+    "phase": "UNITE",
+    "round": 1,
+    "stage": "cross",
+    "live": true,
+    "uniteEl": 1,
+    "teams": 1
+   },
+   {
+    "at": 20.55,
+    "phase": "UNITE",
+    "round": 1,
+    "stage": "cross",
+    "live": true,
+    "uniteEl": 1,
+    "teams": 1
+   },
+   {
+    "at": 20.81,
+    "phase": "UNITE",
+    "round": 1,
+    "stage": "cross",
+    "live": true,
+    "uniteEl": 1,
+    "teams": 1
+   },
+   {
+    "at": 21.08,
+    "phase": "UNITE",
+    "round": 1,
+    "stage": "cross",
+    "live": true,
+    "uniteEl": 1,
+    "teams": 1
+   },
+   {
+    "at": 21.34,
+    "phase": "UNITE",
+    "round": 1,
+    "stage": "cross",
+    "live": true,
+    "uniteEl": 1,
+    "teams": 1
+   },
+   {
+    "at": 21.6,
+    "phase": "UNITE",
+    "round": 1,
+    "stage": "cross",
+    "live": true,
+    "uniteEl": 1,
+    "teams": 1
+   },
+   {
+    "at": 21.87,
+    "phase": "UNITE",
+    "round": 1,
+    "stage": "cross",
+    "live": true,
+    "uniteEl": 1,
+    "teams": 1
+   },
+   {
+    "at": 22.13,
+    "phase": "UNITE",
+    "round": 1,
+    "stage": "cross",
+    "live": true,
+    "uniteEl": 1,
+    "teams": 1
+   },
+   {
+    "at": 22.39,
+    "phase": "UNITE",
+    "round": 1,
+    "stage": "cross",
+    "live": true,
+    "uniteEl": 1,
+    "teams": 1
+   },
+   {
+    "at": 22.66,
+    "phase": "UNITE",
+    "round": 1,
+    "stage": "cross",
+    "live": true,
+    "uniteEl": 1,
+    "teams": 1
+   },
+   {
+    "at": 22.92,
+    "phase": "UNITE",
+    "round": 1,
+    "stage": "cross",
+    "live": true,
+    "uniteEl": 1,
+    "teams": 1
+   },
+   {
+    "at": 23.18,
+    "phase": "UNITE",
+    "round": 1,
+    "stage": "cross",
+    "live": true,
+    "uniteEl": 1,
+    "teams": 1
+   },
+   {
+    "at": 23.44,
+    "phase": "UNITE",
+    "round": 1,
+    "stage": "cross",
+    "live": true,
+    "uniteEl": 1,
+    "teams": 1
+   },
+   {
+    "at": 23.7,
+    "phase": "UNITE",
+    "round": 1,
+    "stage": "cross",
+    "live": true,
+    "uniteEl": 1,
+    "teams": 1
+   },
+   {
+    "at": 23.97,
+    "phase": "UNITE",
+    "round": 1,
+    "stage": "cross",
+    "live": true,
+    "uniteEl": 1,
+    "teams": 1
+   },
+   {
+    "at": 24.23,
+    "phase": "UNITE",
+    "round": 1,
+    "stage": "cross",
+    "live": true,
+    "uniteEl": 1,
+    "teams": 1
+   },
+   {
+    "at": 24.48,
+    "phase": "UNITE",
+    "round": 1,
+    "stage": "team",
+    "live": false,
+    "uniteEl": 1,
+    "teams": 1
+   },
+   {
+    "at": 24.75,
+    "phase": "SETTLE",
+    "round": 1,
+    "stage": null,
+    "live": false,
+    "uniteEl": 0,
+    "teams": 1
+   },
+   {
+    "at": 25.01,
+    "phase": "SETTLE",
+    "round": 1,
+    "stage": null,
+    "live": false,
+    "uniteEl": 0,
+    "teams": 1
+   },
+   {
+    "at": 25.27,
+    "phase": "SETTLE",
+    "round": 1,
+    "stage": null,
+    "live": false,
+    "uniteEl": 0,
+    "teams": 1
+   },
+   {
+    "at": 25.54,
+    "phase": "ROUND_START",
+    "round": 2,
+    "stage": null,
+    "live": false,
+    "uniteEl": 0,
+    "teams": 1
+   },
+   {
+    "at": 25.8,
+    "phase": "PREP",
+    "round": 2,
+    "stage": null,
+    "live": false,
+    "uniteEl": 0,
+    "teams": 1
+   }
+  ],
+  "after": [
+   {
+    "at": 0,
+    "phase": "BAND_DRAFT",
+    "round": 0,
+    "stage": null,
+    "live": false,
+    "uniteEl": 0,
+    "teams": 0
+   },
+   {
+    "at": 0.25,
+    "phase": "BAND_DRAFT",
+    "round": 0,
+    "stage": null,
+    "live": false,
+    "uniteEl": 0,
+    "teams": 0
+   },
+   {
+    "at": 0.53,
+    "phase": "BATTLE_CHECK",
+    "round": 0,
+    "stage": null,
+    "live": false,
+    "uniteEl": 0,
+    "teams": 0
+   },
+   {
+    "at": 0.79,
+    "phase": "BATTLE_CHECK",
+    "round": 0,
+    "stage": null,
+    "live": false,
+    "uniteEl": 0,
+    "teams": 0
+   },
+   {
+    "at": 1.07,
+    "phase": "ROUND_START",
+    "round": 1,
+    "stage": null,
+    "live": false,
+    "uniteEl": 0,
+    "teams": 1
+   },
+   {
+    "at": 1.33,
+    "phase": "PREP",
+    "round": 1,
+    "stage": null,
+    "live": false,
+    "uniteEl": 0,
+    "teams": 1
+   },
+   {
+    "at": 2.48,
+    "phase": "PREP",
+    "round": 1,
+    "stage": null,
+    "live": false,
+    "uniteEl": 0,
+    "teams": 1
+   },
+   {
+    "at": 2.74,
+    "phase": "PREP",
+    "round": 1,
+    "stage": null,
+    "live": false,
+    "uniteEl": 0,
+    "teams": 1
+   },
+   {
+    "at": 3.59,
+    "phase": "PREP",
+    "round": 1,
+    "stage": null,
+    "live": false,
+    "uniteEl": 0,
+    "teams": 1
+   },
+   {
+    "at": 4.73,
+    "phase": "PREP",
+    "round": 1,
+    "stage": null,
+    "live": false,
+    "uniteEl": 0,
+    "teams": 1
+   },
+   {
+    "at": 5.16,
+    "phase": "PREP",
+    "round": 1,
+    "stage": null,
+    "live": false,
+    "uniteEl": 0,
+    "teams": 1
+   },
+   {
+    "at": 5.45,
+    "phase": "COMBAT",
+    "round": 1,
+    "stage": null,
+    "live": false,
+    "uniteEl": 0,
+    "teams": 1
+   },
+   {
+    "at": 5.71,
+    "phase": "COMBAT",
+    "round": 1,
+    "stage": null,
+    "live": false,
+    "uniteEl": 0,
+    "teams": 1
+   },
+   {
+    "at": 5.97,
+    "phase": "COMBAT",
+    "round": 1,
+    "stage": null,
+    "live": false,
+    "uniteEl": 0,
+    "teams": 1
+   },
+   {
+    "at": 6.22,
+    "phase": "COMBAT",
+    "round": 1,
+    "stage": null,
+    "live": false,
+    "uniteEl": 0,
+    "teams": 1
+   },
+   {
+    "at": 6.49,
+    "phase": "COMBAT",
+    "round": 1,
+    "stage": null,
+    "live": false,
+    "uniteEl": 0,
+    "teams": 1
+   },
+   {
+    "at": 6.75,
+    "phase": "COMBAT",
+    "round": 1,
+    "stage": null,
+    "live": false,
+    "uniteEl": 0,
+    "teams": 1
+   },
+   {
+    "at": 7.04,
+    "phase": "COMBAT",
+    "round": 1,
+    "stage": null,
+    "live": false,
+    "uniteEl": 0,
+    "teams": 1
+   },
+   {
+    "at": 7.31,
+    "phase": "COMBAT",
+    "round": 1,
+    "stage": null,
+    "live": false,
+    "uniteEl": 0,
+    "teams": 1
+   },
+   {
+    "at": 7.57,
+    "phase": "COMBAT",
+    "round": 1,
+    "stage": null,
+    "live": false,
+    "uniteEl": 0,
+    "teams": 1
+   },
+   {
+    "at": 7.83,
+    "phase": "COMBAT",
+    "round": 1,
+    "stage": null,
+    "live": false,
+    "uniteEl": 0,
+    "teams": 1
+   },
+   {
+    "at": 8.09,
+    "phase": "COMBAT",
+    "round": 1,
+    "stage": null,
+    "live": false,
+    "uniteEl": 0,
+    "teams": 1
+   },
+   {
+    "at": 8.35,
+    "phase": "COMBAT",
+    "round": 1,
+    "stage": null,
+    "live": false,
+    "uniteEl": 0,
+    "teams": 1
+   },
+   {
+    "at": 8.61,
+    "phase": "COMBAT",
+    "round": 1,
+    "stage": null,
+    "live": false,
+    "uniteEl": 0,
+    "teams": 1
+   },
+   {
+    "at": 8.87,
+    "phase": "COMBAT",
+    "round": 1,
+    "stage": null,
+    "live": false,
+    "uniteEl": 0,
+    "teams": 1
+   },
+   {
+    "at": 9.14,
+    "phase": "COMBAT",
+    "round": 1,
+    "stage": null,
+    "live": false,
+    "uniteEl": 0,
+    "teams": 1
+   },
+   {
+    "at": 9.4,
+    "phase": "COMBAT",
+    "round": 1,
+    "stage": null,
+    "live": false,
+    "uniteEl": 0,
+    "teams": 1
+   },
+   {
+    "at": 9.66,
+    "phase": "COMBAT",
+    "round": 1,
+    "stage": null,
+    "live": false,
+    "uniteEl": 0,
+    "teams": 1
+   },
+   {
+    "at": 9.91,
+    "phase": "COMBAT",
+    "round": 1,
+    "stage": null,
+    "live": false,
+    "uniteEl": 0,
+    "teams": 1
+   },
+   {
+    "at": 10.17,
+    "phase": "COMBAT",
+    "round": 1,
+    "stage": null,
+    "live": false,
+    "uniteEl": 0,
+    "teams": 1
+   },
+   {
+    "at": 10.43,
+    "phase": "COMBAT",
+    "round": 1,
+    "stage": null,
+    "live": false,
+    "uniteEl": 0,
+    "teams": 1
+   },
+   {
+    "at": 10.69,
+    "phase": "COMBAT",
+    "round": 1,
+    "stage": null,
+    "live": false,
+    "uniteEl": 0,
+    "teams": 1
+   },
+   {
+    "at": 10.95,
+    "phase": "COMBAT",
+    "round": 1,
+    "stage": null,
+    "live": false,
+    "uniteEl": 0,
+    "teams": 1
+   },
+   {
+    "at": 11.21,
+    "phase": "COMBAT",
+    "round": 1,
+    "stage": null,
+    "live": false,
+    "uniteEl": 0,
+    "teams": 1
+   },
+   {
+    "at": 11.47,
+    "phase": "COMBAT",
+    "round": 1,
+    "stage": null,
+    "live": false,
+    "uniteEl": 0,
+    "teams": 1
+   },
+   {
+    "at": 11.72,
+    "phase": "COMBAT",
+    "round": 1,
+    "stage": null,
+    "live": false,
+    "uniteEl": 0,
+    "teams": 1
+   },
+   {
+    "at": 11.99,
+    "phase": "COMBAT",
+    "round": 1,
+    "stage": null,
+    "live": false,
+    "uniteEl": 0,
+    "teams": 1
+   },
+   {
+    "at": 12.25,
+    "phase": "COMBAT",
+    "round": 1,
+    "stage": null,
+    "live": false,
+    "uniteEl": 0,
+    "teams": 1
+   },
+   {
+    "at": 12.51,
+    "phase": "COMBAT",
+    "round": 1,
+    "stage": null,
+    "live": false,
+    "uniteEl": 0,
+    "teams": 1
+   },
+   {
+    "at": 12.76,
+    "phase": "COMBAT",
+    "round": 1,
+    "stage": null,
+    "live": false,
+    "uniteEl": 0,
+    "teams": 1
+   },
+   {
+    "at": 13.02,
+    "phase": "COMBAT",
+    "round": 1,
+    "stage": null,
+    "live": false,
+    "uniteEl": 0,
+    "teams": 1
+   },
+   {
+    "at": 13.27,
+    "phase": "COMBAT",
+    "round": 1,
+    "stage": null,
+    "live": false,
+    "uniteEl": 0,
+    "teams": 1
+   },
+   {
+    "at": 13.53,
+    "phase": "COMBAT",
+    "round": 1,
+    "stage": null,
+    "live": false,
+    "uniteEl": 0,
+    "teams": 1
+   },
+   {
+    "at": 13.79,
+    "phase": "COMBAT",
+    "round": 1,
+    "stage": null,
+    "live": false,
+    "uniteEl": 0,
+    "teams": 1
+   },
+   {
+    "at": 14.05,
+    "phase": "COMBAT",
+    "round": 1,
+    "stage": null,
+    "live": false,
+    "uniteEl": 0,
+    "teams": 1
+   },
+   {
+    "at": 14.3,
+    "phase": "UNITE",
+    "round": 1,
+    "stage": "team",
+    "live": true,
+    "uniteEl": 1,
+    "teams": 1
+   },
+   {
+    "at": 15.46,
+    "phase": "UNITE",
+    "round": 1,
+    "stage": "team",
+    "live": true,
+    "uniteEl": 1,
+    "teams": 1
+   },
+   {
+    "at": 15.72,
+    "phase": "UNITE",
+    "round": 1,
+    "stage": "team",
+    "live": true,
+    "uniteEl": 1,
+    "teams": 1
+   },
+   {
+    "at": 15.98,
+    "phase": "UNITE",
+    "round": 1,
+    "stage": "team",
+    "live": true,
+    "uniteEl": 1,
+    "teams": 1
+   },
+   {
+    "at": 16.24,
+    "phase": "UNITE",
+    "round": 1,
+    "stage": "team",
+    "live": true,
+    "uniteEl": 1,
+    "teams": 1
+   },
+   {
+    "at": 16.5,
+    "phase": "UNITE",
+    "round": 1,
+    "stage": "team",
+    "live": true,
+    "uniteEl": 1,
+    "teams": 1
+   },
+   {
+    "at": 16.76,
+    "phase": "UNITE",
+    "round": 1,
+    "stage": "team",
+    "live": true,
+    "uniteEl": 1,
+    "teams": 1
+   },
+   {
+    "at": 17.02,
+    "phase": "UNITE",
+    "round": 1,
+    "stage": "team",
+    "live": true,
+    "uniteEl": 1,
+    "teams": 1
+   },
+   {
+    "at": 17.28,
+    "phase": "UNITE",
+    "round": 1,
+    "stage": "team",
+    "live": true,
+    "uniteEl": 1,
+    "teams": 1
+   },
+   {
+    "at": 17.54,
+    "phase": "UNITE",
+    "round": 1,
+    "stage": "team",
+    "live": true,
+    "uniteEl": 1,
+    "teams": 1
+   },
+   {
+    "at": 17.8,
+    "phase": "UNITE",
+    "round": 1,
+    "stage": "team",
+    "live": true,
+    "uniteEl": 1,
+    "teams": 1
+   },
+   {
+    "at": 18.07,
+    "phase": "UNITE",
+    "round": 1,
+    "stage": "team",
+    "live": true,
+    "uniteEl": 1,
+    "teams": 1
+   },
+   {
+    "at": 18.33,
+    "phase": "UNITE",
+    "round": 1,
+    "stage": "team",
+    "live": true,
+    "uniteEl": 1,
+    "teams": 1
+   },
+   {
+    "at": 18.6,
+    "phase": "UNITE",
+    "round": 1,
+    "stage": "team",
+    "live": true,
+    "uniteEl": 1,
+    "teams": 1
+   },
+   {
+    "at": 18.86,
+    "phase": "UNITE",
+    "round": 1,
+    "stage": "team",
+    "live": true,
+    "uniteEl": 1,
+    "teams": 1
+   },
+   {
+    "at": 19.12,
+    "phase": "UNITE",
+    "round": 1,
+    "stage": "team",
+    "live": true,
+    "uniteEl": 1,
+    "teams": 1
+   },
+   {
+    "at": 19.38,
+    "phase": "UNITE",
+    "round": 1,
+    "stage": "team",
+    "live": true,
+    "uniteEl": 1,
+    "teams": 1
+   },
+   {
+    "at": 19.64,
+    "phase": "UNITE",
+    "round": 1,
+    "stage": "team",
+    "live": true,
+    "uniteEl": 1,
+    "teams": 1
+   },
+   {
+    "at": 19.9,
+    "phase": "UNITE",
+    "round": 1,
+    "stage": "team",
+    "live": true,
+    "uniteEl": 1,
+    "teams": 1
+   },
+   {
+    "at": 20.16,
+    "phase": "UNITE",
+    "round": 1,
+    "stage": "team",
+    "live": true,
+    "uniteEl": 1,
+    "teams": 1
+   },
+   {
+    "at": 20.42,
+    "phase": "UNITE",
+    "round": 1,
+    "stage": "team",
+    "live": true,
+    "uniteEl": 1,
+    "teams": 1
+   },
+   {
+    "at": 20.68,
+    "phase": "UNITE",
+    "round": 1,
+    "stage": "team",
+    "live": true,
+    "uniteEl": 1,
+    "teams": 1
+   },
+   {
+    "at": 20.94,
+    "phase": "UNITE",
+    "round": 1,
+    "stage": "team",
+    "live": true,
+    "uniteEl": 1,
+    "teams": 1
+   },
+   {
+    "at": 21.19,
+    "phase": "UNITE",
+    "round": 1,
+    "stage": "team",
+    "live": true,
+    "uniteEl": 1,
+    "teams": 1
+   },
+   {
+    "at": 21.45,
+    "phase": "UNITE",
+    "round": 1,
+    "stage": "team",
+    "live": true,
+    "uniteEl": 1,
+    "teams": 1
+   },
+   {
+    "at": 21.72,
+    "phase": "UNITE",
+    "round": 1,
+    "stage": "team",
+    "live": true,
+    "uniteEl": 1,
+    "teams": 1
+   },
+   {
+    "at": 21.98,
+    "phase": "UNITE",
+    "round": 1,
+    "stage": "team",
+    "live": true,
+    "uniteEl": 1,
+    "teams": 1
+   },
+   {
+    "at": 22.24,
+    "phase": "UNITE",
+    "round": 1,
+    "stage": "team",
+    "live": true,
+    "uniteEl": 1,
+    "teams": 1
+   },
+   {
+    "at": 22.51,
+    "phase": "UNITE",
+    "round": 1,
+    "stage": "team",
+    "live": true,
+    "uniteEl": 1,
+    "teams": 1
+   },
+   {
+    "at": 22.77,
+    "phase": "UNITE",
+    "round": 1,
+    "stage": "team",
+    "live": true,
+    "uniteEl": 1,
+    "teams": 1
+   },
+   {
+    "at": 23.03,
+    "phase": "UNITE",
+    "round": 1,
+    "stage": "team",
+    "live": true,
+    "uniteEl": 1,
+    "teams": 1
+   },
+   {
+    "at": 23.3,
+    "phase": "UNITE",
+    "round": 1,
+    "stage": "team",
+    "live": true,
+    "uniteEl": 1,
+    "teams": 1
+   },
+   {
+    "at": 23.56,
+    "phase": "UNITE",
+    "round": 1,
+    "stage": "team",
+    "live": true,
+    "uniteEl": 1,
+    "teams": 1
+   },
+   {
+    "at": 23.81,
+    "phase": "UNITE",
+    "round": 1,
+    "stage": "team",
+    "live": true,
+    "uniteEl": 1,
+    "teams": 1
+   },
+   {
+    "at": 24.07,
+    "phase": "UNITE",
+    "round": 1,
+    "stage": "watch",
+    "live": false,
+    "uniteEl": 1,
+    "teams": 1
+   },
+   {
+    "at": 25.19,
+    "phase": "UNITE",
+    "round": 1,
+    "stage": "cross",
+    "live": true,
+    "uniteEl": 1,
+    "teams": 1
+   },
+   {
+    "at": 25.45,
+    "phase": "UNITE",
+    "round": 1,
+    "stage": "cross",
+    "live": true,
+    "uniteEl": 1,
+    "teams": 1
+   },
+   {
+    "at": 25.71,
+    "phase": "UNITE",
+    "round": 1,
+    "stage": "cross",
+    "live": true,
+    "uniteEl": 1,
+    "teams": 1
+   },
+   {
+    "at": 25.98,
+    "phase": "UNITE",
+    "round": 1,
+    "stage": "cross",
+    "live": true,
+    "uniteEl": 1,
+    "teams": 1
+   },
+   {
+    "at": 26.24,
+    "phase": "UNITE",
+    "round": 1,
+    "stage": "cross",
+    "live": true,
+    "uniteEl": 1,
+    "teams": 1
+   },
+   {
+    "at": 26.49,
+    "phase": "UNITE",
+    "round": 1,
+    "stage": "cross",
+    "live": true,
+    "uniteEl": 1,
+    "teams": 1
+   },
+   {
+    "at": 26.76,
+    "phase": "UNITE",
+    "round": 1,
+    "stage": "cross",
+    "live": true,
+    "uniteEl": 1,
+    "teams": 1
+   },
+   {
+    "at": 27.02,
+    "phase": "UNITE",
+    "round": 1,
+    "stage": "cross",
+    "live": true,
+    "uniteEl": 1,
+    "teams": 1
+   },
+   {
+    "at": 27.28,
+    "phase": "UNITE",
+    "round": 1,
+    "stage": "cross",
+    "live": true,
+    "uniteEl": 1,
+    "teams": 1
+   },
+   {
+    "at": 27.54,
+    "phase": "UNITE",
+    "round": 1,
+    "stage": "cross",
+    "live": true,
+    "uniteEl": 1,
+    "teams": 1
+   },
+   {
+    "at": 27.79,
+    "phase": "UNITE",
+    "round": 1,
+    "stage": "cross",
+    "live": true,
+    "uniteEl": 1,
+    "teams": 1
+   },
+   {
+    "at": 28.06,
+    "phase": "UNITE",
+    "round": 1,
+    "stage": "cross",
+    "live": true,
+    "uniteEl": 1,
+    "teams": 1
+   },
+   {
+    "at": 28.32,
+    "phase": "UNITE",
+    "round": 1,
+    "stage": "cross",
+    "live": true,
+    "uniteEl": 1,
+    "teams": 1
+   },
+   {
+    "at": 28.58,
+    "phase": "UNITE",
+    "round": 1,
+    "stage": "cross",
+    "live": true,
+    "uniteEl": 1,
+    "teams": 1
+   },
+   {
+    "at": 28.85,
+    "phase": "UNITE",
+    "round": 1,
+    "stage": "cross",
+    "live": true,
+    "uniteEl": 1,
+    "teams": 1
+   },
+   {
+    "at": 29.1,
+    "phase": "UNITE",
+    "round": 1,
+    "stage": "cross",
+    "live": true,
+    "uniteEl": 1,
+    "teams": 1
+   },
+   {
+    "at": 29.36,
+    "phase": "UNITE",
+    "round": 1,
+    "stage": "cross",
+    "live": true,
+    "uniteEl": 1,
+    "teams": 1
+   },
+   {
+    "at": 29.61,
+    "phase": "UNITE",
+    "round": 1,
+    "stage": "cross",
+    "live": true,
+    "uniteEl": 1,
+    "teams": 1
+   },
+   {
+    "at": 29.88,
+    "phase": "UNITE",
+    "round": 1,
+    "stage": "cross",
+    "live": true,
+    "uniteEl": 1,
+    "teams": 1
+   },
+   {
+    "at": 30.14,
+    "phase": "UNITE",
+    "round": 1,
+    "stage": "cross",
+    "live": true,
+    "uniteEl": 1,
+    "teams": 1
+   },
+   {
+    "at": 30.4,
+    "phase": "UNITE",
+    "round": 1,
+    "stage": "cross",
+    "live": true,
+    "uniteEl": 1,
+    "teams": 1
+   },
+   {
+    "at": 30.66,
+    "phase": "UNITE",
+    "round": 1,
+    "stage": "cross",
+    "live": true,
+    "uniteEl": 1,
+    "teams": 1
+   },
+   {
+    "at": 30.93,
+    "phase": "UNITE",
+    "round": 1,
+    "stage": "cross",
+    "live": true,
+    "uniteEl": 1,
+    "teams": 1
+   },
+   {
+    "at": 31.2,
+    "phase": "UNITE",
+    "round": 1,
+    "stage": "cross",
+    "live": true,
+    "uniteEl": 1,
+    "teams": 1
+   },
+   {
+    "at": 31.45,
+    "phase": "UNITE",
+    "round": 1,
+    "stage": "cross",
+    "live": true,
+    "uniteEl": 1,
+    "teams": 1
+   },
+   {
+    "at": 31.71,
+    "phase": "UNITE",
+    "round": 1,
+    "stage": "cross",
+    "live": true,
+    "uniteEl": 1,
+    "teams": 1
+   },
+   {
+    "at": 31.97,
+    "phase": "UNITE",
+    "round": 1,
+    "stage": "cross",
+    "live": true,
+    "uniteEl": 1,
+    "teams": 1
+   },
+   {
+    "at": 32.23,
+    "phase": "UNITE",
+    "round": 1,
+    "stage": "cross",
+    "live": true,
+    "uniteEl": 1,
+    "teams": 1
+   },
+   {
+    "at": 32.49,
+    "phase": "UNITE",
+    "round": 1,
+    "stage": "cross",
+    "live": true,
+    "uniteEl": 1,
+    "teams": 1
+   },
+   {
+    "at": 32.76,
+    "phase": "UNITE",
+    "round": 1,
+    "stage": "cross",
+    "live": true,
+    "uniteEl": 1,
+    "teams": 1
+   },
+   {
+    "at": 33.02,
+    "phase": "UNITE",
+    "round": 1,
+    "stage": "cross",
+    "live": true,
+    "uniteEl": 1,
+    "teams": 1
+   },
+   {
+    "at": 33.28,
+    "phase": "UNITE",
+    "round": 1,
+    "stage": "cross",
+    "live": true,
+    "uniteEl": 1,
+    "teams": 1
+   },
+   {
+    "at": 33.54,
+    "phase": "UNITE",
+    "round": 1,
+    "stage": "cross",
+    "live": true,
+    "uniteEl": 1,
+    "teams": 1
+   },
+   {
+    "at": 33.8,
+    "phase": "UNITE",
+    "round": 1,
+    "stage": "cross",
+    "live": true,
+    "uniteEl": 1,
+    "teams": 1
+   },
+   {
+    "at": 34.06,
+    "phase": "UNITE",
+    "round": 1,
+    "stage": "cross",
+    "live": true,
+    "uniteEl": 1,
+    "teams": 1
+   },
+   {
+    "at": 34.31,
+    "phase": "UNITE",
+    "round": 1,
+    "stage": "cross",
+    "live": true,
+    "uniteEl": 1,
+    "teams": 1
+   },
+   {
+    "at": 34.57,
+    "phase": "UNITE",
+    "round": 1,
+    "stage": null,
+    "live": false,
+    "uniteEl": 0,
+    "teams": 1
+   },
+   {
+    "at": 35.04,
+    "phase": "SETTLE",
+    "round": 1,
+    "stage": null,
+    "live": false,
+    "uniteEl": 0,
+    "teams": 1
+   },
+   {
+    "at": 35.37,
+    "phase": "ROUND_START",
+    "round": 2,
+    "stage": null,
+    "live": false,
+    "uniteEl": 0,
+    "teams": 1
+   },
+   {
+    "at": 35.62,
+    "phase": "ROUND_START",
+    "round": 2,
+    "stage": null,
+    "live": false,
+    "uniteEl": 0,
+    "teams": 1
+   },
+   {
+    "at": 35.89,
+    "phase": "PREP",
+    "round": 2,
+    "stage": null,
+    "live": false,
+    "uniteEl": 0,
+    "teams": 1
+   }
+  ]
+ }
+}

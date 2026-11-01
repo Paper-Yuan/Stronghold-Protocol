@@ -19,12 +19,14 @@
 // data.js as it reads a gameplay plugin's content set.
 // Texts go through t() (docs/I18N.md).
 
-import { DEFAULT_VERSION, VERSIONS, versionById, versionSlug } from '../../shared/versions.js';
+import { DEFAULT_VERSION, VERSIONS, baseRoomMode, versionById, versionSlug } from '../../shared/versions.js';
 import { DIFFICULTIES, modeIdFor } from '../../shared/constants.js';
 import { t, N_ } from '../../shared/i18n.js';
 import { loadPref, savePref, store as appStore } from './store.js';
 
-export { DEFAULT_VERSION, versionById, versionSlug };
+// 超限房按同方阵的普通模式判断版本适用性（solo_infinite → solo、coop_infinite → coop）：映射本身只在
+// shared/versions.js baseRoomMode 一处，这里只再导出给 ui/versionPicker.js 用。
+export { DEFAULT_VERSION, baseRoomMode, versionById, versionSlug };
 
 /** The lobby preference (`sp.pref.lobby.version`): a registry id. */
 export const LOBBY_VERSION_PREF = 'lobby.version';

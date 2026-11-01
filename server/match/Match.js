@@ -211,7 +211,9 @@
 //   common.js        what the modules share (FLOW_TICKER_PRIORITY, DELAYS, BAND_TURN_SECONDS — re-exported here, OK,
 //                    fail, BOSS_CLOCK_MS)
 
-import { PHASE, modeIdFor } from '../../shared/constants.js';
+import { PHASE, modeIdFor, MAX_SEATS, MAX_SEATS_CAP, teamCountOf } from '../../shared/constants.js';
+// 湮灭模拟's 蚀流 tiers: `opts.erosion` is bounded by this before it reaches GameData (shared/annihilation-constants.js)
+import { EROSION_MAX } from '../../shared/annihilation-constants.js';
 import { isSoloRoomMode, isInfiniteMode } from '../../shared/infiniteMode.js';
 import { isContentHash } from '../../shared/plugins/identity.js';
 import { DEFAULT_VERSION, versionById } from '../../shared/versions.js';
@@ -243,6 +245,11 @@ import { MatchRehearsal, REHEARSAL_ANSWER_MS } from './match/rehearsal.js';
 import { MatchReports } from './match/reports.js';
 import { MatchUnite } from './match/unitePhase.js';
 import { MatchBoss } from './match/bossRounds.js';
+// 词条抉择（超限）：Match 的组合列表里缺了这一项，导致 enterTraitDraft / pickTrait 在真实对局里根本不存在，
+// R20 Boss 打完的回调直接抛 "this.enterTraitDraft is not a function"，卡在 FINAL_ASSAULT（2026-10-26 修）。
+import { MatchTraitDraft } from './match/traitDraft.js';
+// 超限「词条」（饰品）三选一（业主 2026-10-31）：复用 SP_DRAFT 与 g.choice，只多一条收尾链与一份记录。
+import { MatchRelicDraft } from './match/relicDraft.js';
 import { MatchSettle } from './match/settle.js';
 import { installTestTrace } from './testTrace.js';
 import { MatchTestCommands } from './match/testCommands.js';
@@ -294,6 +301,9 @@ export class Match {
      * 所以 solo / coop 一律为 false —— 超限逻辑不会漏进普通单机与同盟（业主明确要求的边界）。
      */
     this.isInfinite = isInfiniteMode(opts.mode);
+    /** 超限档案（业主 2026-10-26）：Boss 击杀与最高盟约层数，结算时由 results.js 输出 overlimit 对象 */
+    this.infiniteBossKills = [];
+    this.maxLayersSeen = {};
     this.difficulty = opts.difficulty;
     this.modeId = opts.modeId || modeIdFor(this.mode, opts.difficulty);
     this.seed = (Number(opts.seed) >>> 0) || 1;
@@ -334,7 +344,24 @@ export class Match {
     this._offerResume = null;
     /** window sequence (diagnostics and messages) */
     this.offerSeq = 0;
-    this.gd = new GameData(this.data, this.modeId);
+    /**
+     * 蚀流 (erosion, the 湮灭模拟 play set): the tier the room picked (server/lobby.js startMatch) — 1..EROSION_MAX, and 1
+     * for every match that carries no key, so an official difficulty is untouched. GameData reads it as its own
+     * `gd.erosion` and derives `gd.endless` / its bans / its rounds from it; anything outside 1..EROSION_MAX (missing,
+     * 0, 7, '3', NaN) is the default 1, exactly as GameData would treat it.
+     */
+    this.erosion = Number.isInteger(opts.erosion) && opts.erosion >= 1 && opts.erosion <= EROSION_MAX ? opts.erosion : 1;
+    /**
+     * 湮灭专属 mod 的房间级开关 (docs/ANNIHILATION-MODS.md §2.3.3): the host's choices, `{ shopBias?, prepLoadout?,
+     * morphPairing?, unequip?, egirBuff?, commsPriority?, rhodesShip?, kazdelShip? }`. A ROOM setting, never part of the
+     * content set (it does not enter `cs`); GameData reads it through `gd.rulesOf` / `gd.annMod` and ignores it in every
+     * mode that is not ANNIHILATION, so no other match can be switched onto a mod path by a stray value.
+     */
+    this.annMods = opts.annMods && typeof opts.annMods === 'object' && !Array.isArray(opts.annMods) ? Object.freeze({ ...opts.annMods }) : null;
+    // 超限开关（docs/proposals/OVERLIMIT.md §2 F1）：gd.overlimit 以前恒为 false、全仓无赋值，
+    // gamedata 里 bossLevelTime / baseEnemyScale 两处超限分支因此是死代码（Boss 轮没倒计时）。
+    // 只按 isInfinite 传入：普通单机 / 同盟 / 湮灭 / 炸惊一律 false，超限口径不会漏出去。
+    this.gd = new GameData(this.data, this.modeId, { erosion: this.erosion, annMods: this.annMods, contentRules: this.rules, overlimit: this.isInfinite });
     if (!this.difficulty) this.difficulty = this.gd.difficulty;
     this.isSolo = this.mode === 'solo' || this.gd.isSolo;
     /** 「AI 队友最后选择」 (opts.aiPicksLast, GitHub #338): humans draft before AI seats (MatchPhases.humansFirst) */
@@ -474,6 +501,21 @@ export class Match {
     this.staticInactiveBonds = bans.staticOff;
     this.bannedChess = bans.banned;
     this.pool = new SharedPool(this.gd, { banned: bans.banned });
+    /**
+     * 编制（房间人数 8 / 12，docs/TWELVE_PLAYER_MODE.md §1）：the lobby hands `opts.maxSeats` down only for a room whose
+     * host raised its capacity above `MAX_SEATS` (`room.setSeats`), so a default room's opts do not grow the key and this
+     * stays 4. `multiTeam` is the single switch of the whole second layer: every multi-team branch in the match, the
+     * 联防 tree, the pool split, the HP split and m.public's team keys sit behind it, and a 4-seat match behaves byte for
+     * byte as before.
+     */
+    this.maxSeats = Number.isInteger(opts.maxSeats) && opts.maxSeats > MAX_SEATS ? Math.min(opts.maxSeats, MAX_SEATS_CAP) : MAX_SEATS;
+    this.multiTeam = this.maxSeats > MAX_SEATS;
+    /** @type {SharedPool[] | null} 队内共用 / 队间独立 (TWELVE_PLAYER_MODE §2): one pool per team, null in a 4-seat room */
+    this.teamPools = null;
+    if (this.multiTeam) {
+      const n = teamCountOf(this.maxSeats);
+      this.teamPools = Array.from({ length: n }, () => new SharedPool(this.gd, { banned: bans.banned }));
+    }
     this.itemPool = new SharedItemPool(this.gd, () => this.order);
     // 自选编队 (0.2.0): each human's slotted DIY pieces get their own stock — none for one whose bonds are all off this
     // match (player/diy.js initDiyStock); no randomness is drawn here
@@ -514,6 +556,14 @@ export class Match {
 
     this.draft = null;
     this.sp = null;
+    /**
+     * 炸惊模拟 规则14 — 敌方惊变: the card ids drawn so far (appended, never removed) and the card of the current
+     * reveal. Both stay null / [] for every other mode, and no other mode reads them: they ride into a battle spec as
+     * `flags.enemyJibian` (sim/content/ejibian.js).
+     */
+    this.enemyJibianCards = [];
+    this.enemyJibian = null;
+    this.enemyJibianRoundsDone = new Set();
     this.wave = null;
     this.bossWaves = null;
     this.bossPairs = null; // drawn for the Final Assault, drawn anew for the Hidden Core (GitHub #845, DESIGN §35.27)
@@ -530,6 +580,16 @@ export class Match {
     this.watchPref = new Map();
     this.lastResults = new Map();
     this.unitePlan = null;
+    /**
+     * 多队联防 (TWELVE_PLAYER_MODE §9): the sub-stage of PHASE.UNITE — 'team' (队内联防 running), 'watch' (全漏队观看,
+     * auto-advancing) or 'cross' (跨队联防). null in a 4-seat room, whose 联防 is the single-field flow it always was.
+     * @type {'team'|'watch'|'cross'|null}
+     */
+    this.uniteStage = null;
+    /** @type {Map<number, { result: object|null, survivors: Map<string, number>, total: number }> | null} per team */
+    this.teamOutcomes = null;
+    /** @type {{ survivors: Map<string, number>, ran: boolean } | null} the round's survivors, what settle charges d from */
+    this.uniteCharge = null;
     /** 联防 outcome for the SETTLE view: { through, helpers, leakers, losses } (settle()), null when no 联防 resolved */
     this.uniteResultView = null;
     /** server-run 联防: the leakers' counts last published (_uniteTick) */
@@ -551,7 +611,7 @@ export class Match {
 }
 
 // the method modules, in this order (a name defined twice is an error, never a silent override)
-for (const part of [MatchPlatform, MatchInfra, MatchMessaging, MatchViews, MatchWatch, MatchIntents, MatchPause, MatchPhases, MatchSetupVote, MatchSpDraft, MatchPrep, MatchCombat, MatchClientCombat, MatchRehearsal, MatchReports, MatchUnite, MatchBoss, MatchSettle, MatchTestCommands, MatchOffers]) {
+for (const part of [MatchPlatform, MatchInfra, MatchMessaging, MatchViews, MatchWatch, MatchIntents, MatchPause, MatchPhases, MatchSetupVote, MatchSpDraft, MatchPrep, MatchCombat, MatchClientCombat, MatchRehearsal, MatchReports, MatchUnite, MatchBoss, MatchTraitDraft, MatchRelicDraft, MatchSettle, MatchTestCommands, MatchOffers]) {
   for (const key of Reflect.ownKeys(part.prototype)) {
     if (key === 'constructor') continue;
     if (Object.prototype.hasOwnProperty.call(Match.prototype, key)) throw new Error(`Match.${String(key)} is defined twice`);

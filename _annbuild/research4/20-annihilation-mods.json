@@ -1,0 +1,692 @@
+{
+  "_doc": "湮灭专属 mod 的数据 —— 由 tools/extract-annihilation-mods.mjs 从 modref/mods/（8 个湮灭专属 workshop 包的本地解压，不是本仓 git 内容） 抽取，\ntools/build-data.mjs 合并进 data/bonds.json 与 data/chess.json（默认版本；另一版本的目录不动）。\n\n隔离范式与炸惊模拟一致，但**标记名分开**（因为两者可能同时存在）：\n  · 新盟约（rhodesShip / kazdelShip）：`annOnly: true` —— 官方四档与炸惊的 bondIds / bond() 都拿不到它；\n  · 既有盟约的覆盖：`bonds[<id>].ann` 块（与炸惊的 `zj` 块同形：只写要覆盖的字段；`members`/`visibleMembers` 是整表替换，\n    `bb` 按键合并）—— 只有 ANNIHILATION 视图合并它，其它模式读到逐字节原记录；\n  · chess 的追加盟约：`chess[<id>].annBonds`（数组）—— 只在 ANNIHILATION 下参与盟约计数；官方模式与炸惊不读。\n\n计数：新盟约 2、既有盟约 ann 覆盖 2 条（含 egirShip 的 4 个文案字段）、\nchessAnnBonds 20 条棋 / 26 条边；本仓没有的干员 26 条（跳过）。\n\n逐来源：\n  · egir-buff（bonds.json + chess.json）：records.bonds.egirShip (ann)；chess.chess_char_1_04_a → steadShip；chess.chess_char_1_04_b → steadShip；chess.chess_char_4_12_a → swiftShip；chess.chess_char_4_12_b → swiftShip；chess.chess_char_5_05_a → raidShip；chess.chess_char_5_05_b → raidShip\n  · rhodes-ship（records.json + chess.json）：records.bonds.rhodesShip；chess.chess_char_6_12_a → rhodesShip；chess.chess_char_6_12_b → rhodesShip；chess.chess_char_2_09_a → rhodesShip；chess.chess_char_2_09_b → rhodesShip；chess.chess_char_5_03_a → rhodesShip；chess.chess_char_5_03_b → rhodesShip\n  · kazdel-ship（records.json + chess.json）：records.bonds.kazdelShip；records.bonds.raidShip (ann)；chess.chess_char_4_26_a → kazdelShip+rhodesShip；chess.chess_char_4_26_b → kazdelShip+rhodesShip；chess.chess_char_4_04_a → kazdelShip；chess.chess_char_4_04_b → kazdelShip；chess.chess_char_4_25_a → kazdelShip+rhodesShip；chess.chess_char_4_25_b → kazdelShip+rhodesShip；chess.chess_char_5_06_a → kazdelShip+raidShip；chess.chess_char_5_06_b → kazdelShip+raidShip\n  · comms-priority：只声明 behaviour 开关，数据侧不搬（本仓 shared/plugins/rules.js 已有该开关）\n  · prep-loadout：只声明 behaviour 开关，数据侧不搬（本仓 shared/plugins/rules.js 已有该开关）\n  · unequip：只声明 behaviour 开关，数据侧不搬（本仓 shared/plugins/rules.js 已有该开关）\n  · morph-plus：只声明 behaviour 开关，数据侧不搬（本仓 shared/plugins/rules.js 已有该开关）\n  · shop-bond-bias：只声明 behaviour 开关，数据侧不搬（本仓 shared/plugins/rules.js 已有该开关）\n\negirShip 的 `ann` 块只有 4 个文案字段（desc / descRaw / effectDesc / effectDescRaw）：\n  生命值公式 (35+1×层数)% 与「吞噬」本身官方已有（bb 不变）；新增的两件事写在 battle/main.mjs 里，交 engine-cards：\n  (1) <战斗开始时> 所有【阿戈尔】干员获得「当前层数 × 0.5」的**基础面板攻击力**（固定加算 atkFlat，不吃攻击力百分比）；\n  (2) 5 名不同成员那一档：官方复活逻辑真的救起来的那名干员额外 +50 攻速（持续到战斗结束）。\n  这两条**没有数据表达**（引擎行为），所以本文件不写 bb —— 若日后要数据化，请连同 battle/main.mjs 的判据一起搬。\n\n丢掉的（每个都有理由）：\n  · 美术（art/*.png、asset-additions.json）、install.mjs（49 KB 工坊安装器）、manifest.json / pack.json 的工坊元数据；\n  · 包自带的新内容：items（2 条 ×2 形）、garrisons（24 + 10 条）、tokens / variants —— 它们挂在包自己的干员上，\n    本仓没有那些干员，搬进来只会得到悬空引用；业主要的是「盟约部分」，其余等干员本体落地再说；\n  · 本仓没有的干员（chess_char_9_* 等）：见 _extract.notes.skippedChess —— 它们只在包的名册里存在；\n  · 对既有 chess 的**上游版本漂移**字段（包按 gameVersion 0.2.6 构建）：见 _extract.notes.upstreamDrift，例如\n    chess_char_6_12 的 tier/price/stats/skills、chess_char_4_25/_26 的 chessType/backup、chess_char_2_09 的 garrisonIds。\n    这些**不是**湮灭特性，搬进来等于把 0.3.3 的数据改回 0.2.6。\n\n两条新盟约的 effectId（bondeffect_rhodes / bondeffect_kazdel）在本仓 data/effects.json 里**没有**记录（包里也没有）：\n它们的数值在 `buffs[].bb` 里，战斗 rune 键是 act2autochess_bond_eff_rhodes / _kazdel —— 引擎要认这两个键。\n因此 shared/plugins/validate.js 对 `annOnly` 记录豁免「effect 必须存在」（与 zjOnly 同一处理）。\n\nmembers 过滤：rhodesShip 14 名成员里本仓只有 5 名、kazdelShip 11 名里只有 4 名（其余是包自带干员），\n只保留本仓存在的 id（见 _extract.notes.skippedBondMembers）—— 阈值仍是包内的 [3,6] / [3,6,9]，所以两者都能激活。\n\n**只写真的有变化的覆盖块**：包给 11 条既有盟约写了 members/visibleMembers，但其中 9 条追加的成员全是本仓没有的干员\n（chess_char_9_* 等），过滤后与本仓原表**逐项相同** → 不产出 `ann` 块（见 _extract.notes.noopOverrides）。\n真正有变化的两条：`raidShip`（+chess_char_5_06_a）与 `egirShip`（4 个文案字段）。\n\n**盟誓卡（bondCards）—— 不是从包里抽的，是按既有模板派生的**：包里没有给这两个盟约配任何抉择卡/悬赏卡/驰援卡\n（全 `data/*.json` 里提到 rhodesShip/kazdelShip 的只有 bonds 与 chess，见 Lead 2026-10-28 的探针）。\n所以按 `data/effects.json` 的 **`allybuff_select_2_7`（玛恩纳的盟誓：单盟约、count 12）** 逐字段克隆出两条：\n  · `annbuff_select_bond_rhodes` / `annbuff_select_bond_kazdel`：effectType BUFF_GAIN，\n    buff `global_special_choice_bond_addlayer`，`bb.count = 12`，`bbStr.bond_list = <盟约 id>`（该键是**逗号分隔字符串**，\n    见 server/match/choices.js:642 —— 不是数组），`decoIconId = icon_team_buff`；两条都带 `annOnly: true`（只有湮灭的卡池收）。\n  · 同时在 `choices.cards.tactic` 各加一条 `kind: ally / team: true`。\n  为什么不用驰援模板（`single_special_choice_gain_bond_chess`）：它的 handler 按 `c.bonds.includes(bs.bond)` 找棋子\n  （choices.js:667），而这两个盟约的成员只写在 `chess[].annBonds` 里（`bonds` 数组没有它们）→ 会**静默发不出棋子**。\n  盟誓模板走 `ps.addLayers(bond, count, {requireActive:false})`，无需激活也生效，是这两个盟约唯一能用的模板。\n\n⚠ 这两张卡目前还**抽不到**，缺两个引擎侧条件（数据侧已备齐）：\n  1. `choices.schedule` 里没有 `mode_{single,multi}_annihilation` 条目 → `scheduleFor()` 回落到「道具补给」\n     （choices.js:117-123），湮灭局的机变**永远不会出战术决策**；实测 R3/6/9/11/13/15/20 全是 supply。\n  2. `Match.bondInPool()` 只认 `c.bonds.includes(bond)`（match/infra.js:98-104），不认 `chess[].annBonds` →\n     `bondLive(\"rhodesShip\")` 为 false → 盟誓卡即便有 schedule 也会被 `tacticDraftCards()` 过滤掉。",
+  "_extract": {
+    "source": "modref/mods/（8 个湮灭专属 workshop 包的本地解压，不是本仓 git 内容）",
+    "generator": "tools/extract-annihilation-mods.mjs",
+    "counts": {
+      "bonds": 2,
+      "bondAnnOverrides": 2,
+      "chessAnnBonds": 20,
+      "chessAnnBondEdges": 26,
+      "skippedChess": 26,
+      "skippedBondMembers": 16,
+      "bondCards": 2
+    },
+    "sources": {
+      "egir-buff": [
+        "records.bonds.egirShip (ann)",
+        "chess.chess_char_1_04_a → steadShip",
+        "chess.chess_char_1_04_b → steadShip",
+        "chess.chess_char_4_12_a → swiftShip",
+        "chess.chess_char_4_12_b → swiftShip",
+        "chess.chess_char_5_05_a → raidShip",
+        "chess.chess_char_5_05_b → raidShip"
+      ],
+      "rhodes-ship": [
+        "records.bonds.rhodesShip",
+        "chess.chess_char_6_12_a → rhodesShip",
+        "chess.chess_char_6_12_b → rhodesShip",
+        "chess.chess_char_2_09_a → rhodesShip",
+        "chess.chess_char_2_09_b → rhodesShip",
+        "chess.chess_char_5_03_a → rhodesShip",
+        "chess.chess_char_5_03_b → rhodesShip"
+      ],
+      "kazdel-ship": [
+        "records.bonds.kazdelShip",
+        "records.bonds.raidShip (ann)",
+        "chess.chess_char_4_26_a → kazdelShip+rhodesShip",
+        "chess.chess_char_4_26_b → kazdelShip+rhodesShip",
+        "chess.chess_char_4_04_a → kazdelShip",
+        "chess.chess_char_4_04_b → kazdelShip",
+        "chess.chess_char_4_25_a → kazdelShip+rhodesShip",
+        "chess.chess_char_4_25_b → kazdelShip+rhodesShip",
+        "chess.chess_char_5_06_a → kazdelShip+raidShip",
+        "chess.chess_char_5_06_b → kazdelShip+raidShip"
+      ],
+      "bondCards": [
+        "annbuff_select_bond_rhodes（派生自 allybuff_select_2_7，非包内内容）",
+        "annbuff_select_bond_kazdel（派生自 allybuff_select_2_7，非包内内容）"
+      ]
+    },
+    "notes": {
+      "skippedChess": {
+        "rhodes-ship": [
+          "chess_char_9_09_a",
+          "chess_char_9_09_b",
+          "chess_char_9_11_a",
+          "chess_char_9_11_b",
+          "chess_char_9_13_a",
+          "chess_char_9_13_b",
+          "chess_char_9_14_a",
+          "chess_char_9_14_b",
+          "chess_char_9_16_a",
+          "chess_char_9_16_b",
+          "chess_char_9_18_a",
+          "chess_char_9_18_b",
+          "chess_char_9_21_a",
+          "chess_char_9_21_b",
+          "chess_char_9_22_a",
+          "chess_char_9_22_b"
+        ],
+        "kazdel-ship": [
+          "chess_char_9_01_a",
+          "chess_char_9_01_b",
+          "chess_char_9_02_a",
+          "chess_char_9_02_b",
+          "chess_char_9_04_a",
+          "chess_char_9_04_b",
+          "chess_char_9_06_a",
+          "chess_char_9_06_b",
+          "chess_char_9_10_a",
+          "chess_char_9_10_b"
+        ]
+      },
+      "skippedBondMembers": {
+        "rhodesShip": [
+          "chess_char_9_09_a",
+          "chess_char_9_11_a",
+          "chess_char_9_13_a",
+          "chess_char_9_14_a",
+          "chess_char_9_16_a",
+          "chess_char_9_18_a",
+          "chess_char_9_21_a",
+          "chess_char_9_22_a",
+          "chess_char_4_27_a"
+        ],
+        "kazdelShip": [
+          "chess_char_9_01_a",
+          "chess_char_9_02_a",
+          "chess_char_9_04_a",
+          "chess_char_9_06_a",
+          "chess_char_9_09_a",
+          "chess_char_9_10_a",
+          "chess_char_9_22_a"
+        ]
+      },
+      "noopOverrides": {
+        "skillfulShip": [
+          "members",
+          "visibleMembers",
+          "members",
+          "visibleMembers"
+        ],
+        "steadShip": [
+          "members",
+          "visibleMembers"
+        ],
+        "visiShip": [
+          "members",
+          "visibleMembers"
+        ],
+        "victoriaShip": [
+          "members",
+          "visibleMembers"
+        ],
+        "yanShip": [
+          "members",
+          "visibleMembers"
+        ],
+        "miraShip": [
+          "members",
+          "visibleMembers"
+        ],
+        "indomShip": [
+          "members",
+          "visibleMembers"
+        ],
+        "preciShip": [
+          "members",
+          "visibleMembers"
+        ],
+        "deputShip": [
+          "members",
+          "visibleMembers"
+        ]
+      },
+      "upstreamDrift": {
+        "chess_char_6_12_a": {
+          "mods": [
+            "rhodes-ship"
+          ],
+          "fields": [
+            "tier",
+            "identifier",
+            "backup",
+            "shopSortId",
+            "garrisonIds",
+            "price",
+            "skill",
+            "talents",
+            "skills"
+          ]
+        },
+        "chess_char_6_12_b": {
+          "mods": [
+            "rhodes-ship"
+          ],
+          "fields": [
+            "tier",
+            "identifier",
+            "backup",
+            "shopSortId",
+            "garrisonIds",
+            "price",
+            "status",
+            "stats",
+            "skill",
+            "talents",
+            "module",
+            "assets",
+            "skills",
+            "talentsBase",
+            "modules",
+            "potDown"
+          ]
+        },
+        "chess_char_2_09_a": {
+          "mods": [
+            "rhodes-ship"
+          ],
+          "fields": [
+            "garrisonIds"
+          ]
+        },
+        "chess_char_2_09_b": {
+          "mods": [
+            "rhodes-ship"
+          ],
+          "fields": [
+            "garrisonIds"
+          ]
+        },
+        "chess_char_4_26_a": {
+          "mods": [
+            "kazdel-ship"
+          ],
+          "fields": [
+            "chessType",
+            "backup"
+          ]
+        },
+        "chess_char_4_26_b": {
+          "mods": [
+            "kazdel-ship"
+          ],
+          "fields": [
+            "chessType",
+            "backup"
+          ]
+        },
+        "chess_char_4_25_a": {
+          "mods": [
+            "kazdel-ship"
+          ],
+          "fields": [
+            "chessType",
+            "backup"
+          ]
+        },
+        "chess_char_4_25_b": {
+          "mods": [
+            "kazdel-ship"
+          ],
+          "fields": [
+            "chessType",
+            "backup"
+          ]
+        }
+      },
+      "droppedEvidence": {}
+    },
+    "behaviourOnlyMods": [
+      "comms-priority",
+      "prep-loadout",
+      "unequip",
+      "morph-plus",
+      "shop-bond-bias"
+    ]
+  },
+  "bonds": {
+    "kazdelShip": {
+      "bondId": "kazdelShip",
+      "name": "卡兹戴尔",
+      "identifier": 101,
+      "isCore": true,
+      "bondType": "SEASON",
+      "bondOrder": 2,
+      "powerIdList": [
+        "kazdel",
+        "sarkaz",
+        "babel"
+      ],
+      "iconId": "icon_kazdelShip",
+      "activeCount": 3,
+      "thresholds": [
+        3,
+        6,
+        9
+      ],
+      "maxCount": null,
+      "thresholdTemplate": "count_threshold_upward",
+      "countMode": "BOARD",
+      "countsHand": false,
+      "countsGoldenOnly": false,
+      "activeType": "BATTLE",
+      "isActiveInDeck": false,
+      "noStack": false,
+      "weight": 10,
+      "maxInactiveBondCount": -1,
+      "layerMilestones": [
+        {
+          "layer": 100,
+          "mode": "every",
+          "effect": "bond_layer_added_reward_equip"
+        }
+      ],
+      "desc": "【卡兹戴尔】干员对处于眩晕、停顿、束缚、不动的单位造成的伤害提升（受层数影响）\n<每叠加100层>获得一件“萨卡兹的断角”\n<在场6名不同【卡兹戴尔】干员>所有【卡兹戴尔】干员攻击速度+50，且攻击附带20%攻击力的真实伤害\n<在场9名不同【卡兹戴尔】干员>开局在战场中央召唤“活性源石风暴”，每秒对全场所有敌方单位造成所有【卡兹戴尔】干员当前攻击力总和20%的无来源真实伤害；对处于眩晕、停顿、束缚、不动的单位伤害提升+10%（受层数影响）",
+      "descRaw": "【卡兹戴尔】干员对处于<@ba.vup>眩晕</>、<@ba.vup>停顿</>、<@ba.vup>束缚</>、<@ba.vup>不动</>的单位造成的伤害<@ba.vup>提升</><@autochess.gray>（受层数影响）</>\n<叠加<@autochess.dgreen>100</>层>获得一件<@ba.vup>“萨卡兹的断角”</>\n<在场<@autochess.dgreen>6</>名不同【卡兹戴尔】干员>所有【卡兹戴尔】干员<@ba.vup>攻击速度+50</>，且攻击附带<@ba.vup>20%</>攻击力的<@ba.vup>真实伤害</>\n<在场<@autochess.dgreen>9</>名不同【卡兹戴尔】干员>开局在战场中央召唤<@ba.vup>“活性源石风暴”</>，每秒对全场所有敌方单位造成所有【卡兹戴尔】干员当前攻击力总和<@ba.vup>20%</>的<@ba.vup>无来源真实伤害</>；对处于<@ba.vup>眩晕</>、<@ba.vup>停顿</>、<@ba.vup>束缚</>、<@ba.vup>不动</>的单位伤害<@ba.vup>提升+{1:0%}</><@autochess.gray>（受层数影响）</>",
+      "effectId": "bondeffect_kazdel",
+      "effectName": "卡兹戴尔",
+      "effectDesc": "【卡兹戴尔】干员对处于眩晕、停顿、束缚、不动的单位造成的伤害+{0:0%}（受层数影响）\n<每叠加100层>获得一件“萨卡兹的断角”\n<在场6名不同【卡兹戴尔】干员>所有【卡兹戴尔】干员攻击速度+50，且攻击附带20%攻击力的真实伤害\n<在场9名不同【卡兹戴尔】干员>开局在战场中央召唤“活性源石风暴”，每秒对全场所有敌方单位造成所有【卡兹戴尔】干员当前攻击力总和20%的无来源真实伤害；对处于眩晕、停顿、束缚、不动的单位伤害提升+{1:0%}（受层数影响）",
+      "effectDescRaw": "【卡兹戴尔】干员对处于<@ba.vup>眩晕</>、<@ba.vup>停顿</>、<@ba.vup>束缚</>、<@ba.vup>不动</>的单位造成的伤害<@ba.vup>+{0:0%}</><@ba.acrem>（受层数影响）</>\n<叠加<@autochess.dgreen>100</>层>获得一件<@ba.vup>“萨卡兹的断角”</>\n<在场<@autochess.dgreen>6</>名不同【卡兹戴尔】干员>所有【卡兹戴尔】干员<@ba.vup>攻击速度+50</>，且攻击附带<@ba.vup>20%</>攻击力的<@ba.vup>真实伤害</>\n<在场<@autochess.dgreen>9</>名不同【卡兹戴尔】干员>开局在战场中央召唤<@ba.vup>“活性源石风暴”</>，每秒对全场所有敌方单位造成所有【卡兹戴尔】干员当前攻击力总和<@ba.vup>20%</>的<@ba.vup>无来源真实伤害</>；对处于<@ba.vup>眩晕</>、<@ba.vup>停顿</>、<@ba.vup>束缚</>、<@ba.vup>不动</>的单位伤害<@ba.vup>提升+{1:0%}</><@autochess.gray>（受层数影响）</>",
+      "effectDescParams": [
+        {
+          "index": 0,
+          "format": "0%",
+          "base": "base_damage_scale",
+          "perStack": "damage_scale_per_stack"
+        },
+        {
+          "index": 1,
+          "format": "0%",
+          "base": "storm_base_damage_scale",
+          "perStack": "storm_damage_scale_per_stack"
+        }
+      ],
+      "bb": {
+        "base_damage_scale": 0.2,
+        "damage_scale_per_stack": 0.009,
+        "power_bond_char_cnt": 6,
+        "bonus_attack_speed": 50,
+        "true_damage_scale": 0.2,
+        "storm_char_cnt": 9,
+        "storm_atk_scale": 0.2,
+        "storm_base_damage_scale": 0.1,
+        "storm_damage_scale_per_stack": 0.0045,
+        "layer": 100,
+        "count": 1
+      },
+      "bbStr": {
+        "key": "act2autochess_bond_eff_kazdel"
+      },
+      "buffs": [
+        {
+          "key": "env_gbuff_new",
+          "bb": {
+            "base_damage_scale": 0.2,
+            "damage_scale_per_stack": 0.009,
+            "power_bond_char_cnt": 6,
+            "bonus_attack_speed": 50,
+            "true_damage_scale": 0.2,
+            "storm_char_cnt": 9,
+            "storm_atk_scale": 0.2,
+            "storm_base_damage_scale": 0.1,
+            "storm_damage_scale_per_stack": 0.0045
+          },
+          "bbStr": {
+            "key": "act2autochess_bond_eff_kazdel"
+          }
+        },
+        {
+          "key": "bond_layer_added_reward_equip",
+          "bb": {
+            "layer": 100,
+            "count": 1
+          },
+          "bbStr": {
+            "reward_item": "chess_item_c_01_e_a"
+          }
+        }
+      ],
+      "baseParams": [
+        "base_damage_scale"
+      ],
+      "perStackParams": [
+        "damage_scale_per_stack"
+      ],
+      "members": [
+        "chess_char_4_04_a",
+        "chess_char_4_25_a",
+        "chess_char_4_26_a",
+        "chess_char_5_06_a"
+      ],
+      "visibleMembers": [
+        "chess_char_4_04_a",
+        "chess_char_4_25_a",
+        "chess_char_4_26_a",
+        "chess_char_5_06_a"
+      ],
+      "spec": {
+        "tiers": [
+          {
+            "need": "3 distinct",
+            "effect": "卡兹戴尔 members deal +20% + 0.9%×L damage to 眩晕/停顿/束缚/不动 enemies."
+          },
+          {
+            "need": "6 distinct",
+            "effect": "All 卡兹戴尔 members +50 ASPD and their attacks deal 20% of ATK as TRUE damage."
+          },
+          {
+            "need": "9 distinct",
+            "effect": "At battle start a 活性源石风暴 gathers at the field centre: every second every enemy on the field takes 20% of the summed current ATK of all 卡兹戴尔 operators as sourceless TRUE damage, +10% + 0.45%×L more against 眩晕/停顿/束缚/不动 enemies."
+          },
+          {
+            "need": "every 100 layers",
+            "effect": "Gain one 萨卡兹的断角 (chess_item_c_01_e_a)."
+          }
+        ]
+      },
+      "annOnly": true
+    },
+    "rhodesShip": {
+      "bondId": "rhodesShip",
+      "name": "罗德岛",
+      "identifier": 102,
+      "isCore": true,
+      "bondType": "SEASON",
+      "bondOrder": 2,
+      "powerIdList": [
+        "rhodes"
+      ],
+      "iconId": "icon_rhodesShip",
+      "activeCount": 3,
+      "thresholds": [
+        3,
+        6
+      ],
+      "maxCount": null,
+      "thresholdTemplate": "count_threshold_upward",
+      "countMode": "BOARD",
+      "countsHand": false,
+      "countsGoldenOnly": false,
+      "activeType": "BATTLE",
+      "isActiveInDeck": false,
+      "noStack": false,
+      "weight": 10,
+      "maxInactiveBondCount": -1,
+      "layerMilestones": [],
+      "desc": "【罗德岛】干员攻击力与生命值提升（受层数影响）\n<在场6名不同【罗德岛】干员>所有【罗德岛】干员受到的治疗效果提升20%，每2秒回复1点技力，每秒回复1%最大生命值与元素损伤",
+      "descRaw": "【罗德岛】干员<@ba.vup>攻击力</>与<@ba.vup>生命值</>提升<@autochess.gray>（受层数影响）</>\n<在场<@autochess.dgreen>6</>名不同【罗德岛】干员>所有【罗德岛】干员<@ba.vup>受到的治疗效果提升20%</>，每2秒回复<@ba.vup>1</>点技力，每秒回复<@ba.vup>1%</>最大生命值与<@ba.vup>元素损伤</>",
+      "effectId": "bondeffect_rhodes",
+      "effectName": "罗德岛",
+      "effectDesc": "【罗德岛】干员攻击力+{0:0%}、生命值+{1:0%}（受层数影响）\n<在场6名不同【罗德岛】干员>所有【罗德岛】干员受到的治疗效果提升20%，每2秒回复1点技力，每秒回复1%最大生命值与元素损伤",
+      "effectDescRaw": "【罗德岛】干员<@ba.vup>攻击力+{0:0%}</>、<@ba.vup>生命值+{1:0%}</><@ba.acrem>（受层数影响）</>\n<在场<@autochess.dgreen>6</>名不同【罗德岛】干员>所有【罗德岛】干员<@ba.vup>受到的治疗效果提升20%</>，每2秒回复<@ba.vup>1</>点技力，每秒回复<@ba.vup>1%</>最大生命值与<@ba.vup>元素损伤</>",
+      "effectDescParams": [
+        {
+          "index": 0,
+          "format": "0%",
+          "base": "base_atk",
+          "perStack": "atk_per_stack"
+        },
+        {
+          "index": 1,
+          "format": "0%",
+          "base": "base_max_hp",
+          "perStack": "max_hp_per_stack"
+        }
+      ],
+      "bb": {
+        "base_atk": 0.25,
+        "atk_per_stack": 0.005,
+        "base_max_hp": 0.2,
+        "max_hp_per_stack": 0.005,
+        "power_bond_char_cnt": 6,
+        "heal_scale": 0.2,
+        "sp_interval": 2,
+        "sp_per_interval": 1,
+        "regen_hp_scale": 0.01,
+        "regen_element_scale": 0.01
+      },
+      "bbStr": {
+        "key": "act2autochess_bond_eff_rhodes"
+      },
+      "buffs": [
+        {
+          "key": "env_gbuff_new",
+          "bb": {
+            "base_atk": 0.25,
+            "atk_per_stack": 0.005,
+            "base_max_hp": 0.2,
+            "max_hp_per_stack": 0.005,
+            "power_bond_char_cnt": 6,
+            "heal_scale": 0.2,
+            "sp_interval": 2,
+            "sp_per_interval": 1,
+            "regen_hp_scale": 0.01,
+            "regen_element_scale": 0.01
+          },
+          "bbStr": {
+            "key": "act2autochess_bond_eff_rhodes"
+          }
+        }
+      ],
+      "baseParams": [
+        "base_atk",
+        "base_max_hp"
+      ],
+      "perStackParams": [
+        "atk_per_stack",
+        "max_hp_per_stack"
+      ],
+      "members": [
+        "chess_char_2_09_a",
+        "chess_char_4_25_a",
+        "chess_char_4_26_a",
+        "chess_char_5_03_a",
+        "chess_char_6_12_a"
+      ],
+      "visibleMembers": [
+        "chess_char_2_09_a",
+        "chess_char_4_25_a",
+        "chess_char_4_26_a",
+        "chess_char_5_03_a",
+        "chess_char_6_12_a"
+      ],
+      "spec": {
+        "tiers": [
+          {
+            "need": "3 distinct",
+            "effect": "罗德岛 members ATK +25% + 0.5%×L, max HP +20% + 0.5%×L."
+          },
+          {
+            "need": "6 distinct",
+            "effect": "All 罗德岛 members: healing received +20%, +1 SP per 2 s, +1% max HP and elemental damage recovery per second."
+          }
+        ]
+      },
+      "annOnly": true
+    }
+  },
+  "bondAnnOverrides": {
+    "egirShip": {
+      "desc": "【阿戈尔】干员生命值提升+(35+1×层数)%（受层数影响）\n战斗开始时，所有【阿戈尔】干员获得当前【阿戈尔】层数×0.5的基础面板攻击力然后会吞噬身前一格干员对其造成5000点物理流失并获得其基础攻击力和阻挡数，使【阿戈尔】叠加等于被吞噬者等阶的盟约层数 （【阿戈尔】之间优先更靠左和靠上的干员发起吞噬）\n<在场5名不同【阿戈尔】干员>【阿戈尔】干员首次被击倒时立刻复活并获得50攻速加成",
+      "descRaw": "【阿戈尔】干员<@ba.vup>生命值</>提升<@ba.vup>+(35+1×层数)%</><@autochess.gray>（受层数影响）</>\n战斗开始时，所有【阿戈尔】干员获得<@ba.vup>当前【阿戈尔】层数×0.5的基础面板攻击力</>然后会<@ba.vup>吞噬</>身前一格干员对其造成<@ba.vdown>5000</>点<@ba.vup>物理流失</>并获得其<@ba.vup>基础攻击力</>和<@ba.vup>阻挡数</>，使【阿戈尔】叠加等于被吞噬者等阶的<@ba.vup>盟约层数</><@autochess.gray>（【阿戈尔】之间优先更靠左和靠上的干员发起吞噬）</>\n<在场<@autochess.dgreen>5</>名不同【阿戈尔】干员>【阿戈尔】干员首次被击倒时<@ba.vup>立刻复活</>并获得<@ba.vup>50攻速加成</>",
+      "effectDesc": "【阿戈尔】干员生命值+{0:0%}（受层数影响）\n战斗开始时所有【阿戈尔】干员获得当前【阿戈尔】层数×0.5的基础面板攻击力然后依次吞噬身前一格干员造成5000点物理流失并获得其基础攻击力和阻挡数，并叠加等于被吞噬者等阶的盟约层数（【阿戈尔】之间优先更靠左和靠上的干员发起吞噬）\n<在场5名不同【阿戈尔】干员>【阿戈尔】干员首次被击倒时立刻复活并获得50攻速加成",
+      "effectDescRaw": "【阿戈尔】干员生命值<@ba.vup>+{0:0%}</><@ba.acrem>（受层数影响）</>\n战斗开始时所有【阿戈尔】干员获得<@ba.vup>当前【阿戈尔】层数×0.5的基础面板攻击力</>然后依次吞噬身前一格干员造成<@ba.vdown>5000</>点<@ba.vup>物理流失</>并获得其<@ba.vup>基础攻击力</>和<@ba.vup>阻挡数</>，并叠加等于被吞噬者等阶的盟约层数<@ba.acrem>（【阿戈尔】之间优先更靠左和靠上的干员发起吞噬）</>\n<在场<@ba.vup>5</>名不同【阿戈尔】干员>【阿戈尔】干员首次被击倒时<@ba.vup>立刻复活</>并获得<@ba.vup>50攻速加成</>"
+    },
+    "raidShip": {
+      "members": [
+        "chess_char_1_18_a",
+        "chess_char_2_09_a",
+        "chess_char_3_05_a",
+        "chess_char_3_12_a",
+        "chess_char_4_04_a",
+        "chess_char_4_16_a",
+        "chess_char_5_07_a",
+        "chess_char_6_15_a",
+        "chess_char_6_17_a",
+        "chess_char_5_06_a"
+      ],
+      "visibleMembers": [
+        "chess_char_1_18_a",
+        "chess_char_2_09_a",
+        "chess_char_3_05_a",
+        "chess_char_3_12_a",
+        "chess_char_4_04_a",
+        "chess_char_4_16_a",
+        "chess_char_5_07_a",
+        "chess_char_6_15_a",
+        "chess_char_6_17_a",
+        "chess_char_5_06_a"
+      ]
+    }
+  },
+  "chessAnnBonds": {
+    "chess_char_1_04_a": [
+      "steadShip"
+    ],
+    "chess_char_1_04_b": [
+      "steadShip"
+    ],
+    "chess_char_2_09_a": [
+      "rhodesShip"
+    ],
+    "chess_char_2_09_b": [
+      "rhodesShip"
+    ],
+    "chess_char_4_04_a": [
+      "kazdelShip"
+    ],
+    "chess_char_4_04_b": [
+      "kazdelShip"
+    ],
+    "chess_char_4_12_a": [
+      "swiftShip"
+    ],
+    "chess_char_4_12_b": [
+      "swiftShip"
+    ],
+    "chess_char_4_25_a": [
+      "kazdelShip",
+      "rhodesShip"
+    ],
+    "chess_char_4_25_b": [
+      "kazdelShip",
+      "rhodesShip"
+    ],
+    "chess_char_4_26_a": [
+      "kazdelShip",
+      "rhodesShip"
+    ],
+    "chess_char_4_26_b": [
+      "kazdelShip",
+      "rhodesShip"
+    ],
+    "chess_char_5_03_a": [
+      "rhodesShip"
+    ],
+    "chess_char_5_03_b": [
+      "rhodesShip"
+    ],
+    "chess_char_5_05_a": [
+      "raidShip"
+    ],
+    "chess_char_5_05_b": [
+      "raidShip"
+    ],
+    "chess_char_5_06_a": [
+      "kazdelShip",
+      "raidShip"
+    ],
+    "chess_char_5_06_b": [
+      "kazdelShip",
+      "raidShip"
+    ],
+    "chess_char_6_12_a": [
+      "rhodesShip"
+    ],
+    "chess_char_6_12_b": [
+      "rhodesShip"
+    ]
+  },
+  "bondCards": {
+    "effects": {
+      "annbuff_select_bond_kazdel": {
+        "effectId": "annbuff_select_bond_kazdel",
+        "effectType": "BUFF_GAIN",
+        "name": "卡兹戴尔的盟誓",
+        "desc": "你的卡兹戴尔盟约层数+12，若存在其他队友则他们也获得",
+        "descRaw": "你的卡兹戴尔盟约层数<@ba.vup>+12</>，若存在<@ba.vup>其他队友</>则他们也获得",
+        "counterType": "NONE",
+        "continuedRound": -1,
+        "decoIconId": "icon_team_buff",
+        "enemyPrice": 0,
+        "buffs": [
+          {
+            "key": "global_special_choice_bond_addlayer",
+            "countType": "NONE",
+            "bb": {
+              "count": 12
+            },
+            "bbStr": {
+              "bond_list": "kazdelShip"
+            }
+          }
+        ],
+        "params": {
+          "count": 12,
+          "bond_list": "kazdelShip"
+        },
+        "annOnly": true
+      },
+      "annbuff_select_bond_rhodes": {
+        "effectId": "annbuff_select_bond_rhodes",
+        "effectType": "BUFF_GAIN",
+        "name": "罗德岛的盟誓",
+        "desc": "你的罗德岛盟约层数+12，若存在其他队友则他们也获得",
+        "descRaw": "你的罗德岛盟约层数<@ba.vup>+12</>，若存在<@ba.vup>其他队友</>则他们也获得",
+        "counterType": "NONE",
+        "continuedRound": -1,
+        "decoIconId": "icon_team_buff",
+        "enemyPrice": 0,
+        "buffs": [
+          {
+            "key": "global_special_choice_bond_addlayer",
+            "countType": "NONE",
+            "bb": {
+              "count": 12
+            },
+            "bbStr": {
+              "bond_list": "rhodesShip"
+            }
+          }
+        ],
+        "params": {
+          "count": 12,
+          "bond_list": "rhodesShip"
+        },
+        "annOnly": true
+      }
+    },
+    "tactic": [
+      {
+        "effectId": "annbuff_select_bond_rhodes",
+        "name": "罗德岛的盟誓",
+        "desc": "你的罗德岛盟约层数+12，若存在其他队友则他们也获得",
+        "kind": "ally",
+        "stageId": null,
+        "team": true,
+        "annOnly": true
+      },
+      {
+        "effectId": "annbuff_select_bond_kazdel",
+        "name": "卡兹戴尔的盟誓",
+        "desc": "你的卡兹戴尔盟约层数+12，若存在其他队友则他们也获得",
+        "kind": "ally",
+        "stageId": null,
+        "team": true,
+        "annOnly": true
+      }
+    ]
+  }
+}

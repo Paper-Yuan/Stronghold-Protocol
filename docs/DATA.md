@@ -15,6 +15,7 @@ node tools/build-data.mjs --offline    # never download; fail if a cached file i
 node tools/build-data.mjs --refresh    # re-download every official file; fail if any download fails
 node tools/build-data.mjs --no-research --out /tmp/x   # research-free build (fallback defaults), other dir
 node tools/build-data.mjs --cache <dir> --report <file> # other cache dir / report file (tests, CI)
+node tools/build-data.mjs --research <dir> # other research input dir (default docs/research; e.g. one an extractor just wrote)
 node tools/build-data.mjs --force      # write data/ even when integrity checks fail (debugging only)
 node tools/build-data.mjs --version act1autochess   # another official version → data/versions/<slug>/ (see "Official versions (M0)")
 node --test test/data.test.js          # integrity tests (+ raw-data cross-check and rebuild check when .cache/gamedata exists)
@@ -40,7 +41,10 @@ Unknown options or a missing option value are errors (exit code 2); `--refresh` 
   Integrity errors (see §17) make the exit code 1 **and leave the previous output untouched** (unless `--force`);
   warnings never do. Each output file is written atomically (temp file + rename).
 - **Determinism.** Same inputs ⇒ byte-identical outputs (stable key order, no timestamps, no randomness).
-- **Size.** ≈5.8 MB for the 15 built files (limit 6 MB; `chess.json` ≈1.88 MB with the loadout choices, `backups.json` ≈2.06 MB), compact JSON (no indentation).
+- **Size.** ≈7.9 MB for the 16 built files (limit 9 MB; `chess.json` ≈3.59 MB with the 炸惊 operator library and the loadout
+  choices, `backups.json` ≈2.11 MB), compact JSON (no indentation). The ceiling was 6 MB while `data/` held the official season
+  only; 炸惊模拟 adds its own content (+1.71 MB chess, +0.15 MB garrisons, +0.10 MB backups, … — net +2.31 MB, handoff
+  ZHAJING-SPLIT-PLAN-2026-10-28 §5.7), so the limit moved to 9 MB rather than splitting the data into a second directory.
 - **Plugin compositions (0.3.0).** Generated files stay official and unchanged. P1b applies patches and compact records to immutable in-memory copies (PLUGINS.md §10); `shared/plugins/validate.js` checks their references without the official quantity assertions. New modes inherit an official base; mode-level economy, DP, timers and other global keys override those defaults. Plugin translations retain the existing i18n overlay format and receive source hashes (`_h`) from the final merged records. A content selection's `cs` also includes the sha256 of each served `i18n/<lang>.json`; the vanilla P0 hash still excludes `data/i18n/`.
 - **Derived paths.** `stages.json groundPaths*` come from `server/sim/groundPaths.js`, using the sim's own `server/sim/grid.js` pathing: a change there
   needs a rebuild (the offline-rebuild test catches a stale `data/`).
@@ -63,13 +67,15 @@ tiers III–VI normal E2 Lv.1, elite E2 Lv.60. This is a data observation, not a
 | round-keyed maps | JSON object keys are strings: `rounds["14"]`. |
 | `[ASSUMED]` / `assumed: true` | Value is a documented reconstruction (research), not client data. Keep it tunable. |
 
+**Imported records.** 炸惊模拟 / 湮灭专属 mod 的记录来自外部整合包的「已构建记录」，导入器（`tools/extract-zhajing-research.mjs`、`tools/extract-annihilation-mods.mjs`）在写 research JSON 前用 `tools/research-normalize.mjs` 归一化三类包内文本缺陷：`desc` 的字面 `\n` 解成真换行、`desc = richTextPlain(descRaw)`（descRaw 为权威；黑板上限「（每场作战至多N层）」被包内 builder 从 descRaw 漏掉时从记录自己的 `bb` 补回）、`eventTypeIcon` 只写官方图标集里的名字（见 §4）。生成期还有第二道护栏（`tools/build-data.mjs` 的 `checkTextContracts`）：合并后任何 `desc ≠ 纯文本(descRaw)` 或非官方 `eventTypeIcon` 都进 warning 列表。research 源里已修好的记录与这两条兼容，所以归一化对当前输入是 no-op。湮灭导入器另外直接改写**导入 chess 记录**里少数几条仍带富文本标记的 talent `potBelow.desc`（包内 0.2.6 builder 的缺陷），并用 `annihilation: true` / `visible: false` 把 mod 自带的干员与官方池隔离（§2）。
+
 ---
 
 ## 1. `config.json` — modes, economy and all global tunables
 
 Top level: `{ season, seasonName, modes, economy, lpCapPerRound, bossOvertimeAfter, bossOvertimeDrainPerSec, bossHpScale, hiddenCore, dp, unite, finalAssault, timers, bans, bandDraft, titles, titleRule, tips, broadcasts, trophies, roundScores, rewards, constants }`.
 
-### 1.1 `modes[modeId]` (9 modes; `modeId = mode_${single|multi}_${difficulty}` + `mode_training_1`)
+### 1.1 `modes[modeId]` (13 modes: the 8 official + `mode_training_1` + 湮灭模拟's 2 + 炸惊模拟's 2; `modeId = mode_${single|multi}_${difficulty}` + `mode_training_1`)
 
 | Field | Example | Meaning |
 |---|---|---|
@@ -156,10 +162,16 @@ Top level: `{ season, seasonName, modes, economy, lpCapPerRound, bossOvertimeAft
 
 ---
 
-## 2. `chess.json` — `{ [chessId]: Chess }` (266 = 133 normal + 133 golden)
+## 2. `chess.json` — `{ [chessId]: Chess }` (500 = 266 official + 207 zhajing + 26 annihilation + 1 pair scaffold: the 炸惊 operator library is imported by `tools/extract-zhajing-research.mjs` and is all `visible: false` + `zhajing: true`; the annihilation mod's 13 operators (26 records) are imported by `tools/extract-annihilation-mods.mjs` and are all `visible: false` + `annihilation: true` + `annBonds: ['rhodesShip'|'kazdelShip']`; `chess_zj_pure_a` is a synthetic normal half for `chess_zj_pure_b` — `zhajing: false`, `visible: false`, in no roster, it exists only so the normal/elite pairing rule holds)
 
 112 are `visible` (non-hidden, non-DIY) normal chess: per tier 16/17/19/22/19/19. 17 are `isHidden` (retired
 上半 entries or effect-only such as `chess_char_1_15_a` 盟约·辅助干员 from band Pith); 4 are DIY (甄选) slots.
+
+**湮灭 mod 自带的干员（2026-10-30）**：13 名（rhodes-ship 8 + kazdel-ship 5）× `_a`/`_b` = 26 条，逐字段来自包内的已构建
+记录，`annihilation: true` + `visible: false`，所以官方四档与炸惊的任何池子都看不见它们；`annBonds` 由两条 `annOnly`
+盟约的 `members` 反推（9_09 / 9_22 同时属罗德岛与卡兹戴尔）。它们与官方记录的唯一结构差别是**不是本仓 builder 的输出**：
+`checkUnitFormParity` / ACTIVE_RANGE 偏离检查按「导入快照」跳过（`isImportedChess`），`potDown` 由 build-data 用与官方
+记录同一套 `atRank` 算法重算（与包内值逐字节相同）。`annihilationRoster` = 官方可见棋 + 这些干员位（默认开关 125 条）。
 
 | Field | Example | Meaning |
 |---|---|---|
@@ -289,7 +301,7 @@ full-rank build from the others; the build fails unless `atRank` rebuilds every 
 
 ---
 
-## 3. `bonds.json` — `{ [bondId]: Bond }` (23 bonds, 8 core)
+## 3. `bonds.json` — `{ [bondId]: Bond }` (30 = 23 official (8 core) + 5 `zjOnly` + 2 `annOnly`; 21 records carry a `zj` overlay block that only 炸惊模拟 merges, 2 carry an `ann` block that only 湮灭模拟 merges — `shared/zjBonds.js`)
 
 | Field | Example (`deputShip`) | Meaning |
 |---|---|---|
@@ -313,20 +325,26 @@ full-rank build from the others; the build fails unless `atRank` rebuilds every 
 | `members[]`, `visibleMembers[]` | `["chess_char_1_06_a",…]` | base (normal) chessIds incl. hidden / only visible |
 | `spec` | `{"tiers":[{"need":"…","effect":"…"}],"formulas":{…},"layerGain":"…",…}` | research 02 implementer spec (null without research) |
 
-## 4. `garrisons.json` — `{ [garrisonId]: Garrison }` (249; 43 distinct `effectKey`s)
+## 4. `garrisons.json` — `{ [garrisonId]: Garrison }` (523 = 249 official + 248 炸惊 + 26 annihilation; 65 distinct `effectKey`s. A 卫戍 carries no isolation marker: the 炸惊 ones are reachable only through a `chess_zj_*.garrisonIds` reference, the annihilation ones only through the 13 imported operators' `garrisonIds`)
 
 | Field | Example | Meaning |
 |---|---|---|
 | `garrisonId` | `"garrison_30_a"` | `_a` normal, `_b` golden version |
 | `desc`, `descRaw` | `"<获得时>获得等于当前调度中心等级的【炎】层数（无需激活盟约）"` | |
-| `eventType`, `eventTypeDesc`, `eventTypeIcon` | `"SERVER_GAIN"`, `"单次叠加"`, `"icon_bond"` | `IN_BATTLE`, `SERVER_GAIN` 获得时, `SERVER_PREP_START` 进入休整期时, `SERVER_PREP_FIN` 休整期结束时, `SERVER_CHESS_SOLD`, `SERVER_PRICE`, `SERVER_REFRESH_SHOP` |
+| `eventType`, `eventTypeDesc`, `eventTypeIcon` | `"SERVER_GAIN"`, `"单次叠加"`, `"icon_bond"` | `IN_BATTLE`, `SERVER_GAIN` 获得时, `SERVER_PREP_START` 进入休整期时, `SERVER_PREP_FIN` 休整期结束时, `SERVER_CHESS_SOLD`, `SERVER_PRICE`, `SERVER_REFRESH_SHOP`. `eventTypeIcon` is one of the four official icons derived from `data/cdn-resource-config.json` (`assets/ui/garrisonTypeIcon/*.png`: `icon_battle` 作战能力 / `icon_gold` 整备能力 / `icon_bond` 单次·持续叠加 / `icon_support` 特异化); absent or `""` means the UI falls back to the trigger timing. Imported records with any other name are mapped by `eventTypeDesc` at import (unmappable → `""`) and reported by the build guard. |
 | `effectType` | `"SERVER_ADD_BOND_METHOD"` | |
 | `effectKey` | `"SERVER_ADD_BOND_METHOD"` / `"act1autochess_gar_eff_attrByBond"` | handler key: `bbStr.key` (battle runes) else `effectType` |
 | `battleRuneKey`, `charLevel` | `null`, `0` | |
 | `bb`, `bbStr` | `{"multi":1}`, `{"add_method":"shoplv","bond":"yanShip"}` | |
 | `owners[]` | `["chess_char_1_03_a"]` | chess carrying it (includes garrisons referenced by other garrisons, which may have no owner) |
 
-## 5. `items.json` — `{ [itemChessId]: Item }` (115 = 56 EQUIP × 2 + 3 MAGIC)
+## 5. `items.json` — `{ [itemChessId]: Item }` (134 = 115 official (56 EQUIP × 2 + 3 MAGIC) + 11 `zjOnly` + 8 `annOnly`)
+
+> +8 = 湮灭专属 mod 的 4 件装备 ×2 形（萨卡兹的断角 / 提卡兹之根 / 罗德岛抑制环 / 罗德岛特制源石弧），来自
+> `docs/research/20-annihilation-mods.json` 的 `items`（由 `tools/extract-annihilation-mods.mjs` 从 kazdel-ship /
+> rhodes-ship 包抽取，effect 记录按 EQUIP 的既有形状派生）。全部 `annOnly` + `hideInShop` + `shopExcluded`：它们是盟约
+> 里程碑 / mod 专属装备（`<每叠加100层>` 发的那件就是 `chess_item_c_01_e_a`），不是商品 —— 官方四档与湮灭局的商店 /
+> 装备池都不会出现它们（`isShopItem` 为 false），`tools/golden.mjs` 的 EQUIPS 游标也按 `annOnly` 排除。
 
 | Field | Example (`chess_item_1_01_e_a`) | Meaning |
 |---|---|---|
@@ -348,7 +366,7 @@ full-rank build from the others; the build fails unless `atRank` rebuilds every 
 | `rangeGrid` | `[[0,0]]` | Arts area (画卷 `[[0,0],[0,1]]`) |
 | `flavor` | | |
 
-## 6. `bands.json` — `{ [bandId]: Band }` (40)
+## 6. `bands.json` — `{ [bandId]: Band }` (42 = 40 official + 2 `zjOnly`)
 
 | Field | Example | Meaning |
 |---|---|---|
@@ -768,6 +786,54 @@ burn hammers 2 each; limited accelerator 1; shield drone and laser emitter 4 eac
 Ashlock 10, Fartooth 3. Rebuild `choices.json` offline; these weights do not exempt draws from shared availability.
 The runtime derives unlimited fixed-gift families from `SERVER_GAIN_EQUIP`; this is a grant-source exemption,
 not a zero-occupancy flag or a manually maintained second list in generated data.
+
+## 19. `relicsOverlimit.json` — 超限模拟's 「词条」(relics) table (36 entries, default version only)
+
+Not official data: the table is the maintainer's own hand-written sheet (饰品效果表.xlsx, Sheet1), frozen into
+`docs/research/23-overlimit-relics.json` and generated by `tools/build-data.mjs` → `data/relicsOverlimit.json`
+(`buildOverlimitRelics`, which refuses to write when a rule below is broken). `AN-001…014` are empty placeholders in the
+sheet and are not in the file. It is written for the default version only, so no version directory's file set or hash moves.
+
+```
+{ version, note, weightNote,
+  weights: { lc, sp, ex, fgoX, fgoSP, fgo: 'rest' },
+  counts:  { lc, sp, ex, fgo, fgoX, fgoSP },
+  entries: [{ id, group, name, flavor, desc, effectColor, weight, icon, impl }] }
+```
+
+| Field | Example | Meaning |
+|---|---|---|
+| `id` | `"LC-001"`, `"LC-SP1"`, `"LC-EX1"`, `"FGO-01"`, `"FGO_X"`, `"FGO_SP"` | the sheet's own numbering; the sheet's `FGO-Ⅹ` row (its 10th FGO entry, so `FGO-01…09` + `11…17` are the 16 ordinary ones) becomes `FGO_X` |
+| `group` | `lc` / `sp` / `ex` / `fgo` / `fgoX` / `fgoSP` | which pool rule the entry follows (`lc` = 7 entries, R3/R8; `fgo` = the ordinary FGO rows that share `rest`) |
+| `name`, `flavor`, `desc` | | the card's title, grey flavour line and effect text, verbatim from the sheet |
+| `effectColor` | `null` | the sheet's 「特殊颜色」 column only says *when* to use a colour, no value — the sentence lives in the research `spec.colorNote` |
+| `weight` | `1.8` / `'rest'` | **per entry**, percent. `'rest'` (ordinary FGO only) = `100 − Σ` the pool's explicit weights, split evenly over the FGO entries **left in the pool** — recomputed at runtime (`server/match/relicsOverlimit.js`), never a baked 4.753 % |
+| `icon` | `null` | the sheet embeds the icons as `DISPIMG(…)`; no art has been converted yet (TODO) |
+| `impl` | `'pending'`, `'bleed'`, `'fgo06'` … | which effect implementation backs the entry, or `'pending'` for a stub (recorded on pick, never applied). All 36 are implemented (`server/sim/content/overlimitRelics.js`); `FGO_SP` is `'fgoSP'` — it hands out the equipment record [万色悠滞之核] built in §19.1 |
+
+`weights` is the single source of the numbers: the builder stamps every entry's `weight` from it and validates
+`lc = 7` (R3 draws 3 of 7, R8 draws 3 of the 6 left → 5 remain for the infinite pool) and `Σ explicit < 100`.
+Pools: `lc` = the LC entries nobody has picked yet; `infinite` = every entry not yet picked (SP + EX + FGO-SP + FGO-Ⅹ +
+ordinary FGO + the LC left over). The match reads it through `GameData.relicsOverlimit`, which is `null` outside an
+overlimit match, so no other mode can see the table.
+
+### 19.1 The equipment FGO-SP hands out: 万色悠滞之核
+
+`FGO_SP`'s own text is 「获得一个[万色悠滞之核]，携带该装备的我方干员视作拥有 [调和] 盟约且攻击力 + 50%」, and no
+official table carries that equipment (neither `act1autochess` nor `act2autochess`). It is therefore hand-authored in
+`docs/research/25-overlimit-items.json` (one `effects` record + one `items` record) and merged **additively** by
+`tools/build-data.mjs` → `applyOverlimitItems` into `data/effects.json` (`eff_ol_core`) and `data/items.json`
+(`chess_item_ol_01_e_a`) — the pattern of the 湮灭 mod's bond-reward equipment (§18), never an edit of an official record.
+Every record carries `olOnly: true`, and the builder refuses to write unless the item is `shopExcluded` with a reason
+(every shop / equip pool is computed from `data/items.json`: `GameData.shopItemsByTier` → `simdata.isShopItem`). So it is
+**not purchasable** — only the overlimit relic grants it. `shared/playSets.js isOfficialItem` skips `olOnly` records, which
+keeps them out of the golden corpus' equipment cursors exactly like `zjOnly` / `annOnly`.
+
+The item's `buffs` are empty (the shape 变形同构体 has): the numbers live in the relic
+(`server/sim/content/overlimitRelics.js`, `FGO_SP` branch — the item is granted through `ctx.grantItem` at prep start,
+and the carrier gets ATK +50% plus 调和 membership via `u.mem.extraBonds`), so nothing is counted twice.
+**[ASSUMED]** icon: `trap_1073_acarm073` (变形同构体的 icon) — the maintainer's table only says the art is a recolour of
+变形同构体 and no recoloured asset exists.
 
 ## Plugin compact metadata (0.3.1)
 

@@ -38,7 +38,9 @@ export class MatchClientCombat {
     const seq = `${this.battlePrefix}.${this.round}.${++this._battleSeq}`;
     // protocol ids are ≤ 64 chars (shared/protocol.js isId): the field id is informational, the sequence is unique
     const battleId = seq.length + 1 + String(fieldId).length <= 64 ? `${seq}.${fieldId}` : seq;
-    const spec = buildBattleSpec({ ...opts, battleId, fieldId, kind, content: this.battleContent, boss, cs: this.cs, vs: this.vs, modules: this.modules });
+    // `...this._morphBattleOpt()`: the room's morphPairing must reach the SPEC the browser runs ({} unless the room chose
+    // plus, so an official spec grows no key). sim/spec.js writes it into the spec and sim/battle/players.js reads it.
+    const spec = buildBattleSpec({ ...opts, ...this._morphBattleOpt(), battleId, fieldId, kind, content: this.battleContent, boss, cs: this.cs, vs: this.vs, modules: this.modules });
     let total = 0;
     for (const x of spec.spawns) if (x && x.tag !== 'boss' && x.tag !== 'part' && x.countInTotal !== false) total += Math.max(1, Math.floor(Number(x.count) || 1));
     return {

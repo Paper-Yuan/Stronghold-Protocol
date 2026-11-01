@@ -7,6 +7,7 @@ import { PHASE } from '../../../shared/constants.js';
 import { testSlice } from '../testTrace.js';
 import { DELAYS } from './common.js';
 import { isInfiniteBossRound } from '../infiniteWaves.js';
+import { relicPrepStart, autoPickRelic } from '../relics.js';
 
 export class MatchPrep {
   enterPrep() {
@@ -20,6 +21,9 @@ export class MatchPrep {
       // that granted them and would take an equipped copy off for the fight about to start.
       ps.checkItemMerges();
       ps.recompute();
+      // 湮灭模拟 · 藏品: the round's draft / positive grants (server/match/relics.js); annihilation only, and erosion 1
+      // opens nothing anyway
+      if (this.gd.annihilation) relicPrepStart(this, ps);
       this.dispatch(ps, 'onPrepStart', { round: this.round });
       ps.recompute();
       // 常规手牌区出现空位时自动移入 (GitHub #82): the deferred merges / the grants above may free hand slots
@@ -31,6 +35,8 @@ export class MatchPrep {
     this.setDeadline(secs, () => this.prepDeadline());
     let i = 0;
     for (const ps of alive) if (ps.botControlled) this.scheduleBotPrep(ps, i++);
+    // 超限风险契约（业主 2026-10-26）：Boss 轮的 PREP 先挂出三选一，玩家选完/不签才开战
+    if (typeof this.offerBossContract === 'function') this.offerBossContract();
     this.markPublic();
     this.maybeEndPrep();
   }
@@ -181,6 +187,8 @@ export class MatchPrep {
     this._cancelRehearsal();
     this.setDeadline(0);
     const alive = this.alivePlayers();
+    // 湮灭模拟 · 藏品: a draft nobody answered before the deadline takes a random card (annihilation only)
+    if (this.gd.annihilation) for (const ps of alive) autoPickRelic(this, ps);
     for (const ps of alive) this.dispatch(ps, 'onPrepEnd', { round: this.round });
     for (const ps of alive) ps.endPrep();
     const r = this.round;

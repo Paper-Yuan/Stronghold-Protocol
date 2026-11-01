@@ -480,3 +480,35 @@ describe('public/js/ui/emotes.js helpers', () => {
     }
   });
 });
+
+// ---- 表情盘格子：一律正方形（业主 2026-10-28）-----------------------------------------------
+// 形状错误的根因：两处定义 + 网格只给列宽。这里钉住 CSS 契约；运行期的
+// 「每个 .ewheel__item 的 offsetWidth === offsetHeight ±1px（含 is-text 态）」由 e2e 的 DOM 断言守。
+describe("表情盘格子是正方形", () => {
+  const read = (rel) => readFileSync(path.join(ROOT, rel), "utf8");
+  const GAME = read("public/css/screens/game.css");
+  const EMOTES = read("public/css/emotes.css");
+
+  test("交流按钮只有 emotes.css 一份定义（game.css 不再有第二份）", () => {
+    assert.doesNotMatch(GAME, /\.ewheel__btn/, "game.css 里不应再有 .ewheel__btn（v1 重复定义已删）");
+    assert.match(EMOTES, /\.ewheel__btn \{/, "唯一定义在 emotes.css");
+  });
+
+  test("格子 aspect-ratio: 1，网格 minmax 防撑开，is-text 态同样方形", () => {
+    assert.match(GAME, /\.ewheel__grid \{ display: grid; grid-template-columns: repeat\(4, minmax\(0, 1fr\)\);/);
+    assert.match(GAME, /\.ewheel__item \{[^}]*aspect-ratio: 1;/);
+    assert.match(GAME, /\.ewheel__item \{[^}]*grid-template-rows: 1fr auto;/);
+    assert.match(GAME, /\.ewheel__panel\.is-text \.ewheel__grid \{ grid-template-columns: repeat\(3, minmax\(0, 1fr\)\); \}/);
+    assert.match(GAME, /\.ewheel__panel\.is-text \.ewheel__item \{[^}]*aspect-ratio: 1;/);
+    // 图标按比例（62%），不再固定 .6rem 方块；文字行固定高度
+    assert.match(GAME, /\.ewheel__art \{ width: 62%; aspect-ratio: 1;/);
+    assert.match(GAME, /\.ewheel__txt \{[^}]*height: max\(\.14rem, 10px\);/);
+  });
+
+  test("面板宽度跟格子走、带 100vw 上限；触屏格子 ≥44px 命中区", () => {
+    // 官方 emoji_bkg 外框 313×231：高度写成实值，否则绝对定位的格子会把面板塌成 0 高（位置会从按钮顶部往下画）
+    assert.match(EMOTES, /\.ewheel__panel \{[^}]*width: min\(3\.13rem, calc\(100vw - 24px\)\);/);
+    assert.match(EMOTES, /\.ewheel__panel \{[^}]*height: min\(2\.31rem, calc\(\(100vw - 24px\) \* 0\.738019\)\);/);
+    assert.match(GAME, /@media \(pointer: coarse\) \{\n  \.ewheel__item \{ min-width: max\(1em, 32px, calc\(44px \* var\(--sp-ui, 1\)\)\);/);
+  });
+});

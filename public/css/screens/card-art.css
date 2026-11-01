@@ -1,0 +1,159 @@
+/* card-art.css — 名片立绘微调（业主 2026-10-28 A 项；DOM 见 public/js/ui/cardArt.js）。
+ *
+ * 由 ui/cardArt.js 懒加载（与 ui/forge.js / ui/jibian.js / ui/relics.js 同一个写法），不进 index.html。
+ *
+ * 三条硬约束：
+ *   1. 精一与精二是同一套全幅立绘的两个精英阶段（`char/illust/<id>_1.png` / `<id>.png`，同尺寸），
+ *      两者一律 `object-fit: cover`（框比图窄，靠缩放/平移取景）；没有「简略图」角标/contain 特例。
+ *   2. 触屏：滑杆与按键的地板 24px（本仓 TOUCH_MIN），矮屏不缩到点不着。
+ *   3. 字号全部 `max(<px 地板>, calc(k * var(--t)))` —— test/ui/ui-size.test.js 的六档地板口径。 */
+
+.cardart {
+  display: flex;
+  flex-direction: column;
+  gap: .1rem;
+  min-width: 0;
+}
+
+/* ---- 头：标题 / 精一精二 / 重置 ------------------------------------------------------------------------------------ */
+.cardart__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .1rem;
+}
+.cardart__title {
+  font-size: max(12px, calc(.2 * var(--t)));
+  font-weight: 800;
+  color: var(--text-hi);
+  letter-spacing: .02em;
+}
+.cardart__ver {
+  display: inline-flex;
+  border: 1px solid var(--line-2);
+  background: rgba(0, 0, 0, .3);
+}
+.cardart__vbtn {
+  min-height: 24px;
+  min-width: 40px;
+  padding: 0 .12rem;
+  border: 0;
+  border-right: 1px solid var(--line);
+  background: none;
+  color: var(--text-lo);
+  font-size: max(11px, calc(.16 * var(--t)));
+  font-weight: 800;
+  cursor: pointer;
+  transition: color var(--t-fast), background var(--t-fast);
+}
+.cardart__vbtn:last-child { border-right: 0; }
+.cardart__vbtn:hover { color: var(--text-hi); }
+.cardart__vbtn.is-on { background: var(--mint-500); color: var(--text-on-mint); }
+.cardart__reset {
+  margin-left: auto;
+  min-height: 24px;
+  min-width: 48px;
+  padding: 0 .12rem;
+  border: 1px solid var(--line-2);
+  background: rgba(0, 0, 0, .3);
+  color: var(--text-lo);
+  font-size: max(11px, calc(.16 * var(--t)));
+  font-weight: 700;
+  cursor: pointer;
+}
+.cardart__reset:hover { border-color: var(--line-3); color: var(--text-hi); }
+
+/* ---- 取景框 ------------------------------------------------------------------------------------------------------- */
+.cardart__frame {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 3 / 4;
+  max-height: 3.4rem;
+  overflow: hidden;
+  border: 1px solid var(--line-2);
+  background: linear-gradient(180deg, #2a302d, #151917);
+  cursor: grab;
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+.cardart__frame:active { cursor: grabbing; }
+.cardart__frame:focus-within { border-color: var(--mint-600); }
+.cardart__img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  transform-origin: center center;
+  -webkit-user-select: none;
+  user-select: none;
+  pointer-events: none;
+}
+.cardart__glyph {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-size: max(18px, calc(.62 * var(--t)));
+  font-weight: 900;
+  color: rgba(255, 255, 255, .24);
+}
+.cardart__hint {
+  position: absolute;
+  left: .05rem;
+  bottom: .04rem;
+  font-size: max(10px, calc(.12 * var(--t)));
+  color: rgba(255, 255, 255, .52);
+  pointer-events: none;
+}
+
+/* ---- 缩放 / 位置 ------------------------------------------------------------------------------------------------- */
+.cardart__zoom {
+  display: flex;
+  align-items: center;
+  gap: .08rem;
+}
+.cardart__zlabel {
+  flex: none;
+  font-size: max(11px, calc(.15 * var(--t)));
+  color: var(--text-lo);
+}
+.cardart__range {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 24px;
+  accent-color: var(--mint-500);
+}
+.cardart__znum {
+  flex: none;
+  min-width: 2.2em;
+  text-align: right;
+  font-size: max(11px, calc(.15 * var(--t)));
+  color: var(--text-hi);
+}
+.cardart__pos {
+  margin: 0;
+  font-size: max(11px, calc(.14 * var(--t)));
+  color: var(--text-lo);
+}
+
+/* ---- 座位卡上的立绘：按存下来的设置画（精一/精二同一口径：cover + 缩放平移；object-fit 由组件内联）-------- */
+.seat__portrait[data-art] {
+  transform-origin: center center;
+}
+/* 第二枚入口键（立绘调整）：与「更换立绘」同一条视觉，只把触摸地板抬到 24px */
+.rseat__pick--art {
+  min-height: max(.36rem, 24px);
+}
+
+/* ---- 矮屏（667×375 / 844×390）：框矮一点，滑杆仍留 24px ---------------------------------------------------------- */
+@media (max-height: 480px) {
+  .cardart__frame { max-height: 2.2rem; }
+  .cardart { gap: .06rem; }
+}
+@media (max-height: 380px) {
+  .cardart__frame { aspect-ratio: 16 / 9; max-height: 1.9rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cardart__vbtn, .cardart__reset { transition: none; }
+}

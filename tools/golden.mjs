@@ -80,6 +80,7 @@ import { VirtualScheduler } from '../server/match/scheduler.js';
 import { resolveRecordLoadout, loadoutRecord, attackRangeGrid } from '../shared/loadoutRecord.js';
 import { diyRecordOf, DIY_TIERS } from '../shared/diy.js';
 import { unitForm } from '../shared/standIn.js';
+import { isPlaySetChess, isOfficialChess, isOfficialItem, isOfficialBond, isOfficialBand } from '../shared/playSets.js';
 import { POTENTIAL_DEFAULT, CULTIVATE_DEFAULT } from '../shared/potential.js';
 import { OPERATOR_KITS, KITTED_CHARS } from '../server/sim/content/kits/index.js';
 import { GEO } from '../shared/constants.js';
@@ -256,8 +257,16 @@ const CHESS = Object.values(data.chess).sort((a, b) => byId(a.chessId, b.chessId
 const VISIBLE = CHESS.filter((c) => c.visible);
 // the battle stages (data/stages.json also keeps the escaped levels' two maps, kind 'unite', which no field uses)
 const STAGES = Object.keys(data.stages).filter((id) => data.stages[id].kind !== 'unite').sort(byId);
-const BANDS = Object.keys(data.bands).sort(byId);
-const EQUIPS = Object.values(data.items).filter((i) => i.itemType === 'EQUIP').map((i) => i.id).sort(byId);
+// 炸惊模拟's strategies (data/bands.json `zjOnly: true`) and equipment (data/items.json `zjOnly: true`) only exist in
+// that play set — `GameData` drops them for every other mode (`bandAllowed`, `shopItemsByTier`) — so the official
+// scenario generators must not pick them either (handoff/ZHAJING-SPLIT-PLAN-2026-10-28.md §2).
+// 湮灭模拟 the same way (2026-10-29): the two 专属 mods' equipment carries `annOnly: true` (罗德岛 / 卡兹戴尔的
+// 「每 100 层发一件」奖励装), so the official generators must skip those too — otherwise every scenario's item cursor
+// shifts (measured: 42 roster + 8 bonds + 20 fields scenarios moved on 2026-10-29 while the shop pool table looked equal).
+const BANDS = Object.keys(data.bands).filter((id) => isOfficialBand(data.bands[id])).sort(byId);
+const EQUIPS = Object.values(data.items)
+  .filter((i) => i.itemType === 'EQUIP' && isOfficialItem(i))
+  .map((i) => i.id).sort(byId);
 const BOSSES = Object.keys(data.bosses).sort((a, b) => Number(a.replace(/\D/g, '')) - Number(b.replace(/\D/g, '')));
 const LEADER_KEYS = new Set();
 for (const bo of Object.values(data.bosses)) { LEADER_KEYS.add(bo.enemyKey); for (const p of bo.parts || []) LEADER_KEYS.add(typeof p === 'string' ? p : p.enemyKey ?? p.key); }
@@ -503,7 +512,11 @@ const BOND_MODES = Object.freeze(['mode_multi_normal', 'mode_multi_hard', 'mode_
 
 export function bondScenarios() {
   const scenarios = [];
-  const bondIds = Object.keys(data.bonds).sort(byId);
+  // 炸惊模拟's 5 extra bonds (data/bonds.json `zjOnly: true`) only exist inside a ZHAJING room, and 湮灭专属 mod's 2
+  // (`annOnly: true`: rhodesShip / kazdelShip) only inside an ANNIHILATION room — `GameData` drops them from `bondIds` for
+  // every other mode (`shared/zjBonds.js` overlay views), so an official bond scenario must skip them too
+  // (handoff/ZHAJING-SPLIT-PLAN-2026-10-28.md §2; the same marker the pools filter on).
+  const bondIds = Object.keys(data.bonds).filter((id) => isOfficialBond(data.bonds[id])).sort(byId);
   const items = cursor(EQUIPS.filter((id) => /_b$/.test(id)));
   const fillLow = cursor(VISIBLE.filter((c) => !c.isGolden && c.tier >= 3 && c.tier <= 4).map((c) => c.chessId));
   const fillHigh = cursor(VISIBLE.filter((c) => c.isGolden && c.tier >= 4 && c.tier <= 5).map((c) => c.chessId));
@@ -515,7 +528,10 @@ export function bondScenarios() {
     const downward = bond.thresholdTemplate === 'count_threshold_downward';
     // members by base id (visible records first); 绝技 counts every elite on the board
     const bases = [];
-    const pool = golden ? VISIBLE.filter((c) => c.isGolden) : CHESS.filter((c) => (c.bonds || []).includes(bondId));
+    // 炸惊模拟's roster (chess.json records carrying `zhajing: true`) is a separate card pool: it is never part of an
+    // official scenario, and its records deliberately carry official bond ids, so the bond pool must skip it
+    // (handoff/ZHAJING-SPLIT-PLAN-2026-10-28.md §2 — the same marker `GameData.visibleChess` filters on).
+    const pool = golden ? VISIBLE.filter((c) => c.isGolden) : CHESS.filter((c) => !isPlaySetChess(c) && (c.bonds || []).includes(bondId));
     for (const c of pool.sort((a, b) => (b.visible - a.visible) || byId(a.chessId, b.chessId))) if (!bases.includes(c.baseId)) bases.push(c.baseId);
     for (const level of ['low', 'high']) {
       const i = n++;
@@ -654,8 +670,15 @@ export function fieldScenarios() {
 // ---------------------------------------------------------------------------------------------------------------
 // family: standins (0.2.0 补位)
 
-/** The NORMAL chess records (normal + elite) that have a stand-in (shared/standIn.js: PRESET / 自选 have none). */
-const STANDIN_CHESS = CHESS.filter((c) => c.chessType === 'NORMAL' && !c.isDiy && c.backup && c.backup.charId && c.backup.charId !== c.charId);
+/**
+ * The NORMAL chess records (normal + elite) that have a stand-in (shared/standIn.js: PRESET / 自选 have none).
+ * 炸惊模拟's imported records are `chessType: 'NORMAL'` with a `backup` that names an official body, so they look like
+ * stand-ins; 湮灭模拟's 26 `annihilation: true` cards are the same shape. Both are separate card pools and never part of an
+ * official scenario (handoff/ZHAJING-SPLIT-PLAN-2026-10-28.md §2; the 湮灭 line, 2026-10-29): shared/playSets.js
+ * isOfficialChess is the one predicate every generator and test applies. Leaving the 26 湮灭 records in re-chunks the
+ * whole family (measured 2026-10-31: 12 battles instead of 10, standin-01…10 all moved, standin-11/12 new).
+ */
+const STANDIN_CHESS = CHESS.filter((c) => isOfficialChess(c) && c.chessType === 'NORMAL' && !c.isDiy && c.backup && c.backup.charId && c.backup.charId !== c.charId);
 
 export function standInScenarios() {
   // normal records first, then the elites; within them by strength band (tier + elite) and id; a battle takes up to 12

@@ -105,5 +105,6 @@ test('ui/hud.js useCapsuleFx: a phase change while the HUD is held waits and pla
   assert.match(hud, /function useCapsuleFx\(phase, round, held = false\) \{/);
   assert.match(hud, /if \(s\.key !== key && !\(held && s\.key !== null\)\) \{/);
   assert.match(hud, /const fx = useCapsuleFx\(phase, pub\?\.round, held\);/);
-  assert.match(hud, /onRemoveSpectator = null, room = null, held = false \}\) \{/);
+  // (modeEntry: screens/game.js's 模式工具 button, drawn right of the difficulty tag since 2026-10-29)
+  assert.match(hud, /onRemoveSpectator = null, room = null, held = false, onCombatSpeed = null,\n  modeEntry = null \}\) \{/);
 });

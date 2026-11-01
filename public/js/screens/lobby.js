@@ -42,6 +42,8 @@ import { html, confirmDialog, Button, Icon, MicroLabel, Modal, PingPill, Spinner
 import { Sprite, Img } from '../ui/gameComponents.js';
 import { uiUrl } from '../ui/assetUrls.js';
 import { peekStatsRecords, trophyMedalOf, aggregateStats, recordsOfSeason } from '../ui/stats.js';
+// 大厅个人条 → 个人资料面板（头像 + 名片两分区；业主 2026-10-28 B 项，ui/accounts.js 之前没有调用点）
+import { AccountMeChip } from '../ui/accounts.js';
 import { levelProgress, levelOf } from './settle.js';
 import { OwnBackdrop, LobbyScene, LobbyMediaButton } from '../ui/lobbyMedia.js';
 import { toast, toastError } from '../ui/toasts.js';
@@ -50,10 +52,18 @@ import { RadarScene, CreateArt, JoinArt } from '../ui/allyArt.js';
 import { ProtocolScene } from '../ui/protocolScene.js';
 import { AchievementDialog, useStatsOpen } from './stats.js';
 import { SweepReport } from './sweep.js';
+import { ExtensionHall, extensionModeById, extensionModeCount, defaultExtensionPick, ZHAJING_DIFFICULTY } from './extensionModes.js';
 import { Emblem } from './title.js';
 import { SettingsButton } from '../ui/settings.js';
 import { PwaInstallButton, detectFeatures, useMediaQuery, SHORT_SCREEN_QUERY } from '../ui/device.js';
 import { LoadoutButton } from './loadout.js';
+// 卡池调整（业主 2026-10-28 晚，口径改为「回到原版界面逻辑」）：从拓展二级页进的是**既有的干员调配整屏**，只是以炸惊档进入
+// （名册 = 99 条 zhajing 记录，保存 = room.loadout { mode:'zhajing' }）；from='ext' 让它的返回落回二级页而不是大厅。
+import { openLoadout } from '../ui/loadoutSync.js';
+// 规则速览（二级页的「规则」）：与房内那颗是同一份表（数字从 config 现算）
+import { ZhajingRulesDialog } from '../ui/zhajingRules.js';
+// 功能设置（业主 2026-10-28 晚，湮灭）：房间级 annMods 的八个开关；大厅是草稿（随 room.create 发出），房内走 room.setAnnMods
+import { AnnSettingsView, annModRows, annModsWire, sendAnnMods } from '../ui/annihilationSettings.js';
 import { net, identity } from '../net.js';
 import { store, useStore, shallowEqual, loadPref, savePref } from '../store.js';
 import { data, getConfig, getMode, getStage, useData } from '../data.js';
@@ -63,6 +73,10 @@ import { NoticesButton } from '../ui/notices.js';
 import { VersionSwitch } from '../ui/versionPicker.js';
 import { contentSet, retryContentSet } from '../content.js';
 import { DEFAULT_VERSION, lobbyVersion, offeredDifficulties, fallbackDifficulty, seasonOf, soloTimedOf, soloTimeMsgid, versionLabel } from '../versions.js';
+import { isSoloRoomMode, isInfiniteMode } from '../../../shared/infiniteMode.js';
+// 湮灭模拟's difficulty is not in DIFFICULTIES (that list draws the official four-card selector); the constant lives with
+// the play set's own values, so the client and the server name it the same way. EROSION_ENDLESS bounds its 蚀流 tiers.
+import { ANNIHILATION_DIFFICULTY, EROSION_ENDLESS } from '../../../shared/annihilation-constants.js';
 
 /** Official mode texts (activity_table act2autochess.modeDataDict), fallback when config.json is absent. */
 export const MODE_TEXT = {
@@ -81,7 +95,7 @@ export const MODE_TEXT = {
 };
 
 /** Battlefield pool per difficulty when config.json is absent (the modes' `stages` lists; same for solo and co-op). */
-export const STAGE_POOL = { FUNNY: ['act1autochess_m01'], NORMAL: 8, HARD: 7, ABYSS: 7 };
+export const STAGE_POOL = { FUNNY: ['act1autochess_m01'], NORMAL: 8, HARD: 7, ABYSS: 7, ANNIHILATION: 8, ZHAJING: 7 };
 
 /**
  * Display name of a stage: stages.json when it is loaded, else derived from the id (act1 m0N → 战场#0N, act2 m0N → 战场#0(N+4)).
@@ -126,28 +140,63 @@ const MODE_CARDS = [
     // the hub's line above the entry on a short screen, where the whole line is wider than the entry (§35.51)
     pointShort: N_('1–{n} 名博士'),
   },
-  // 超限模拟（无限模式，本仓库的本地特性）：独立单人的无限回合推演，直接以终极难度开局
+  // 拓展模式 (the maintainer's decision of 2026-10-26): a catalogue of play sets beside the official simulations — not a
+  // difficulty and not a room mode, so this entry opens 选择拓展玩法 (screens/extensionModes.js) and never creates a room by
+  // itself. Its line counts the play sets that can start now, which keeps it honest while all of them are still 待接入.
   {
-    id: 'solo_infinite', name: N_('超限模拟'), en: 'INFINITE SIMULATION', icon: 'cpu',
-    desc: N_('终极难度的无限推演：第 16 回合起敌人按指数成长，回合数一路涨下去。'),
-    points: [N_('1 名博士'), N_('终极难度 · R16 起无限回合')],
+    id: 'ext', name: N_('拓展模式'), en: 'EXTENSION MODE', icon: 'expand',
+    desc: N_('在官方模拟之外尝试额外的玩法与规则。'),
+    points: [N_('{n} 个玩法 · 不计入官方战绩')], pointParams: { n: extensionModeCount() },
+    pointShort: N_('{n} 个玩法'),
   },
 ];
+
+// 超限模拟作为「特殊难度」放在难度列表最下方（业主 2026-10-26）：它不是官方难度，不进 shared/constants 的 DIFFICULTIES，
+// 只在 UI 层作为虚拟项存在；选中后建房改用 solo_infinite / coop_infinite，难度字段仍传 ABYSS。
+export const INFINITE_OPTION = 'INFINITE';
+const INFINITE_COLOR = '#a855f7';
 
 /**
  * Text for a difficulty card, preferring data/config.json.
  * @param {'solo'|'coop'} roomMode
  * @param {string} difficulty
- * @returns {{ code: string, desc: string, effects: string[], rounds: number, hidden: boolean, stageNote: string }}
+ * @param {number} [erosion] 蚀流档位（只有湮灭房有；决定简报里的回合数：1–4 → 19，5 → 30，6 → ∞）
+ * @returns {{ code: string, desc: string, effects: string[], rounds: number|string, hidden: boolean, stageNote: string }}
  */
-export function difficultyInfo(roomMode, difficulty) {
-  const fallback = MODE_TEXT[roomMode === 'solo' ? 'single' : 'multi'][difficulty] || { code: '', desc: '', effects: [] };
-  // modeIdFor() lower-cases the difficulty: never call it with a value the server did not validate.
-  const m = DIFFICULTIES.includes(difficulty) ? getMode(modeIdFor(roomMode, difficulty)) : null;
+export function difficultyInfo(roomMode, difficulty, erosion = 1) {
+  // an infinite room (`solo_infinite` / `coop_infinite`) picks its texts by the party it allows, not by its raw mode name
+  const soloMode = isSoloRoomMode(roomMode);
+  if (difficulty === INFINITE_OPTION) {
+    return {
+      code: 'INF-∞',
+      desc: soloMode
+        ? t('终极难度的无限推演：第 16 回合起敌人按指数成长，回合数一路涨下去。')
+        : t('与至多 3 名博士一起无限推演：敌人数量与 Boss 血池按在场人数放大。'),
+      effects: soloMode
+        ? [t('R16 起无限回合'), t('每 5 轮 Boss 关口'), t('词条抉择 · Boss 词缀 · 风险契约')]
+        : [t('2–4 人同盟'), t('人数越多，敌人越强'), t('词条抉择 · Boss 词缀 · 风险契约')],
+      // no last round: the brief reads 「∞ 回合」 (the card's own meta line says 无上限)
+      rounds: '∞',
+      hidden: false,
+      stageNote: '',
+    };
+  }
+  const fallback = MODE_TEXT[soloMode ? 'single' : 'multi'][difficulty] || { code: '', desc: '', effects: [] };
+  // modeIdFor() lower-cases the difficulty: never call it with a value the server did not validate (nor with an infinite
+  // room mode, which no config mode is keyed by — an infinite room runs the 终极 mode of its party kind).
+  // 湮灭模拟 / 炸惊模拟 are looked up like an official difficulty (their modes are in data/config.json) even though they
+  // are not in DIFFICULTIES — that list stays the official four-card selector.
+  const known = DIFFICULTIES.includes(difficulty) || difficulty === ANNIHILATION_DIFFICULTY || difficulty === ZHAJING_DIFFICULTY;
+  const m = known ? getMode(modeIdFor(soloMode ? 'solo' : 'coop', difficulty)) : null;
   const effects = Array.isArray(m?.effectDescList)
     ? m.effectDescList.map((e) => String(e).replace(/^[·•・･\s]+/, '')).filter(Boolean)
     : fallback.effects.map((e) => t(e));
-  const rounds = Number.isFinite(m?.lastRound) ? m.lastRound : roomMode === 'solo' && difficulty === 'FUNNY' ? 9 : 14;
+  let rounds = Number.isFinite(m?.lastRound) ? m.lastRound : soloMode && difficulty === 'FUNNY' ? 9 : 14;
+  if (difficulty === ANNIHILATION_DIFFICULTY) {
+    // 蚀流 5 是 30 回合、蚀流 6 是无尽——这两档的回合数由引擎按档位合成（server/match/gamedata.js），数据里的 mode 只有
+    // 19，所以简报必须自己按档位覆盖，否则房间会写「共 14 回合」（一个 19 回合的模式）。
+    rounds = erosion >= EROSION_ENDLESS ? '∞' : erosion === EROSION_ENDLESS - 1 ? 30 : rounds;
+  }
   return {
     code: typeof m?.code === 'string' ? m.code : fallback.code,
     desc: typeof m?.desc === 'string' ? m.desc : t(fallback.desc),
@@ -290,18 +339,22 @@ function DifficultyRounds({ info }) {
  */
 function DifficultyCard({ roomMode, difficulty, selected, onSelect, disabled = false }) {
   const info = difficultyInfo(roomMode, difficulty);
-  return html`<button type="button" class=${`pcard diff-card${selected ? ' is-on is-selected' : ''}`} style=${`--d-color:${DIFFICULTY_COLORS[difficulty]}`}
+  const infinite = difficulty === INFINITE_OPTION;
+  const color = infinite ? INFINITE_COLOR : DIFFICULTY_COLORS[difficulty];
+  const name = infinite ? (isSoloRoomMode(roomMode) ? t('超限模拟') : t('超限模拟 · 同盟')) : t(DIFFICULTY_NAMES[difficulty]);
+  return html`<button type="button" class=${`pcard diff-card${selected ? ' is-on is-selected' : ''}${infinite ? ' is-infinite' : ''}`}
+      style=${`--d-color:${color}`} data-special=${infinite ? 'infinite' : undefined} data-difficulty=${difficulty}
       disabled=${disabled} onClick=${() => onSelect(difficulty)} aria-pressed=${selected ? 'true' : 'false'}>
     <span class="pcard__glow" aria-hidden="true"></span>
     <span class="pcard__head">
-      <${DifficultyIcon} difficulty=${difficulty} class="pcard__glyph" />
-      <span class="pcard__name">${t(DIFFICULTY_NAMES[difficulty])}</span>
+      ${infinite ? html`<span class="pcard__inf" aria-hidden="true">∞</span>` : html`<${DifficultyIcon} difficulty=${difficulty} class="pcard__glyph" />`}
+      <span class="pcard__name">${name}</span>
     </span>
     <span class="pcard__desc">${info.desc}</span>
     <span class="pcard__effects">${info.effects.map((e) => html`<span key=${e}>${e}</span>`)}</span>
     <span class="pcard__meta">
       ${info.code ? html`<span class="num">${info.code}</span>` : null}
-      <${DifficultyRounds} info=${info} />
+      ${infinite ? html`<span class="pcard__infmeta">∞ ${t('无上限')}</span>` : html`<${DifficultyRounds} info=${info} />`}
     </span>
     <span class="pcard__stamp" aria-hidden="true"><${StampRing} /><span class="pcard__tick"><${Icon} name="check" /></span><span class="pcard__ok">${t('已选定')}</span></span>
   </button>`;
@@ -505,7 +558,15 @@ const PROTOCOL_ART = { FUNNY: 'funny', NORMAL: 'normal', HARD: 'hard', ABYSS: 'a
 /** The selected difficulty's scene (ui/protocolScene.js): the official picture on the drawn grid, squares and cable. */
 function ProtocolArt({ difficulty }) {
   useData('assets');
-  return html`<${ProtocolScene} difficulty=${difficulty} art=${uiUrl(data.get('assets'), `modeChoice/${PROTOCOL_ART[difficulty]}_rhodes_island`)} />`;
+  // 超限 runs its party's 终极 mode (modeIdFor keys off the party), so it shows that mode's official picture: the same
+  // composition, grid, squares and cable as every other entry. Its picture is tinted into the difficulty's own violet —
+  // the source picture is red, and left alone it fights the --d-color every other element of the screen takes. Drawing a
+  // separate wireframe hull here made 超限 the one difficulty whose left half looked like a different screen (the owner's
+  // report of 2026-10-28: 「要完全和其他难度一致」).
+  const infinite = difficulty === INFINITE_OPTION;
+  const art = infinite ? 'abyss' : PROTOCOL_ART[difficulty];
+  const mode = infinite ? 'ABYSS' : difficulty;
+  return html`<${ProtocolScene} difficulty=${mode} tint=${infinite} art=${uiUrl(data.get('assets'), `modeChoice/${art}_rhodes_island`)} />`;
 }
 
 /** The ‹ + dotted rook plate at the top left of the full-screen dialogs: back to the hub (or the dialog below). */
@@ -523,21 +584,26 @@ function BackPlate({ onClick, class: cls = '' }) {
  * from 选择同盟方式 and its difficulty changed in the room); the room (screens/room.js) opens it with `action` / `hint`
  * replacing the button's label and the hint (the host's 确认), or `readOnly` — the cards shown, not chosen, and no
  * button (the other doctors: the host chooses).
+ * `allowInfinite`: the lobby's own dialog only. 超限模拟 is a room *mode*, not a difficulty — the room's 确认 can only
+ * send a difficulty (protocol `room.setDifficulty`), so the special card must never appear where a difficulty is picked
+ * for an existing room.
  */
 export function ProtocolSelect({ roomMode, difficulty, onDifficulty, onClose, onCreate, busy, online, testMode, asTest, onTest, action = null, hint = null, readOnly = false,
-  difficulties = DIFFICULTIES, loading = false, failed = false, soloTime = null }) {
-  const card = MODE_CARDS.find((c) => c.id === roomMode) || MODE_CARDS[0];
+  difficulties = DIFFICULTIES, loading = false, failed = false, soloTime = null, allowInfinite = false }) {
+  const infMode = isInfiniteMode(roomMode);
+  const card = MODE_CARDS.find((c) => c.id === (infMode ? (isSoloRoomMode(roomMode) ? 'solo' : 'coop') : roomMode)) || MODE_CARDS[0];
   const info = difficultyInfo(roomMode, difficulty);
+  const infinite = difficulty === INFINITE_OPTION;
   const label = action || (roomMode === 'solo' ? t('开始独立模拟') : t('创建同盟'));
   return html`<${Modal} open=${true} onClose=${onClose} class="proto" veilClass="proto-veil">
-    <div class="proto__body" style=${`--d-color:${DIFFICULTY_COLORS[difficulty]}`} data-difficulty=${difficulty} data-mode=${roomMode}>
+    <div class="proto__body" style=${`--d-color:${infinite ? INFINITE_COLOR : DIFFICULTY_COLORS[difficulty]}`} data-difficulty=${difficulty} data-mode=${roomMode}>
       <div class="proto__bg" aria-hidden="true"></div>
       <${ProtoFit} />
       <header class="proto-top">
         <${BackPlate} onClick=${onClose} class="proto__back" />
         <div class="proto-title">
           <h2 class="modal__title">${t('选择模拟协议')}</h2>
-          <span class="proto-title__mode"><${Icon} name=${card.icon} />${t(card.name)}<i>${card.en}</i></span>
+          <span class="proto-title__mode"><${Icon} name=${card.icon} />${infMode ? t('超限模拟') : t(card.name)}<i>${infMode ? 'INFINITE SIMULATION' : card.en}</i></span>
         </div>
       </header>
       <div class="proto-body">
@@ -545,7 +611,7 @@ export function ProtocolSelect({ roomMode, difficulty, onDifficulty, onClose, on
           <div key=${difficulty} class="proto__pic"><${ProtocolArt} difficulty=${difficulty} /></div>
           <div class="proto-brief">
             <span class="proto-brief__code num">${info.code}</span>
-            <b class="proto-brief__name">${t(DIFFICULTY_NAMES[difficulty])}</b>
+            <b class="proto-brief__name">${infinite ? (isSoloRoomMode(roomMode) ? t('超限模拟') : t('超限模拟 · 同盟')) : t(DIFFICULTY_NAMES[difficulty])}</b>
             <p>${info.desc}</p>
             <div class="proto-brief__more" data-testid="proto-brief-more">
               <span class="proto-brief__effects">${info.effects.map((e) => html`<span key=${e}>${e}</span>`)}</span>
@@ -558,8 +624,14 @@ export function ProtocolSelect({ roomMode, difficulty, onDifficulty, onClose, on
             ${failed ? html`<p class="proto-list__wait is-failed" data-testid="proto-failed"><${Icon} name="warn" />${t('版本数据校验失败')}
                 <${Button} size="sm" variant="secondary" data-testid="proto-retry" onClick=${retryContentSet}>${t('重试')}<//></p>`
               : loading ? html`<p class="proto-list__wait" data-testid="proto-loading"><${Spinner} size="sm" />${t('正在载入版本数据…')}</p>` : null}
-            ${difficulties.map((d) => html`<${DifficultyCard} key=${d} roomMode=${roomMode} difficulty=${d} selected=${difficulty === d} onSelect=${onDifficulty} disabled=${readOnly || loading} />`)}
+            ${difficulties.filter((d) => d !== INFINITE_OPTION).map((d) => html`<${DifficultyCard} key=${d} roomMode=${roomMode} difficulty=${d} selected=${difficulty === d}
+              onSelect=${onDifficulty} disabled=${readOnly || loading} />`)}
           </div>
+          ${allowInfinite && !readOnly ? html`<div class="proto-list__special" data-testid="proto-infinite">
+            <span class="proto-list__special-label">${t('特殊难度')}</span>
+            <${DifficultyCard} roomMode=${roomMode} difficulty=${INFINITE_OPTION} selected=${difficulty === INFINITE_OPTION}
+              onSelect=${onDifficulty} disabled=${loading} />
+          </div>` : null}
           ${readOnly ? html`<div class="proto-foot proto-foot--ro">
             <p class="proto-hint proto-hint--ro"><${Icon} name="info" />${hint || t('由创建者选择')}</p>
           </div>` : html`<div class="proto-foot create-box">
@@ -602,6 +674,10 @@ export function ProtocolSelect({ roomMode, difficulty, onDifficulty, onClose, on
  * On a taller screen the field's name stands in too wherever the whole sentence does not fit the field (TextField
  * `placeholderShort`, by the field's width: English and Japanese at 特大 on every desktop, the default Chinese at 特大
  * in a 1024 px window — it ended in an ellipsis there).
+ *
+ * 超限模拟 · 同盟 is not an entry here (the owner's decision of 2026-10-28): a co-op room is created like any other and
+ * the host turns 超限 on in the room, from the same 选择模拟协议 dialog that picks the difficulty (room.setInfinite), so
+ * 单人 and 同盟 reach 超限 the same way.
  */
 export function AllianceSelect({ onClose, onCreate, difficulty = 'FUNNY', code, onCode, codeOk, online, busy, onJoin, onSpectate, recent, marks, focusKey,
   testMode = false, asTest = false, onTest = () => {}, short = false }) {
@@ -670,9 +746,31 @@ export function LobbyScreen() {
   // 「不限时」 for the next timed solo (DESIGN §35.23.10; default off). The room's 模拟设置 is the authority once the
   // room exists; this pref is what the lobby card and the create message say before that.
   const [soloFree, setSoloFree] = useState(() => loadPref('lobby.soloUnlimited', false) === true);
-  // the open dialogs: 选择同盟方式 (同盟模拟 / 密钥加入) and 选择模拟协议 (独立模拟)
+  // the open dialogs: 选择同盟方式 (同盟模拟 / 密钥加入), 选择模拟协议 (独立模拟) and 选择拓展玩法 (拓展模式)
   const [allyOpen, setAllyOpen] = useState(false);
   const [soloOpen, setSoloOpen] = useState(false);
+  const [extOpen, setExtOpen] = useState(false);
+  // 选择拓展玩法's dossier: the play set the hall shows (the lobby holds it, as it holds the protocol's difficulty, so the
+  // hall is a function of its props — and the choice survives closing and reopening the hall). The 蚀流 tier and the
+  // 单人 / 同盟 form are the same kind of state: the hall shows them as chips and hands them to onPick, which turns them
+  // into `room.create.erosion` and `room.create.mode`.
+  const [extPick, setExtPick] = useState(defaultExtensionPick);
+  const [extErosion, setExtErosion] = useState(1);
+  const [extParty, setExtParty] = useState('solo');
+  // 主题大厅（业主 2026-10-28）：选中声明了 theme 的玩法包后先进它自己的大厅（单人/同盟 + 蚀流 + 开始都在那一屏）。
+  // 与上面三个一样是大厅的状态：关闭大厅时复位，重新打开从列表开始。
+  const [extEntered, setExtEntered] = useState(false);
+  // 每次「进入」+1：主题屏用它当 key，保证「退出再进（哪怕换条目）」都是**重新挂载**，
+  // 而不是复用上一次那棵树（业主 2026-10-28 e2e：退出过一次之后进任何二级页都不渲染）。
+  const [extEnterCount, setExtEnterCount] = useState(0);
+  // 卡池调整（业主 2026-10-28 晚）：二级页的那颗键打开**既有的干员调配整屏**（炸惊档），
+  // 打开时大厅与二级页都留在下面，所以关掉它就是「回到二级页」。
+  // 规则速览（同一屏）：二级页的「规则」开的是房内那张同一份表（ui/zhajingRules.js，数字从 config 现算）。
+  const [extRulesOpen, setExtRulesOpen] = useState(false);
+  // 功能设置（业主 2026-10-28 晚，湮灭）：房间级 annMods 的八个开关。大厅这一侧是**草稿**——它随 room.create 一起发出；
+  // 若此刻已经在房里（房主、未开局），确认那一刻改走 room.setAnnMods。
+  const [extAnnMods, setExtAnnMods] = useState({});
+  const [annSettingsOpen, setAnnSettingsOpen] = useState(false);
   const [code, setCode] = useState('');
   const [asTest, setAsTest] = useState(false);
   const testMode = useStore((s) => s.testMode === true);
@@ -688,6 +786,15 @@ export function LobbyScreen() {
   useEffect(() => () => { alive.current = false; }, []);
 
   const online = conn.status === 'online';
+  // 功能设置：房里读 room.state.annMods（只含 true 的键；非湮灭房连键都没有），房外读大厅的草稿。
+  // 只读条件照 engine-core：非房主 / 已开局 / 观战都不给改（服务端同码拒绝，提示本地画）。
+  const liveRoom = useStore((s) => s.room ?? null, Object.is);
+  // 原版 / 超限 视图（业主 2026-10-31）：超限不是玩法包，是官方模式上的难度标记 —— 房里是超限局
+  // （solo_infinite / coop_infinite），或者大厅此刻选中的难度就是列表最下面那个「超限」，报告就默认落在超限视图；
+  // 其余情况一律 official（与改动前逐字节相同）。切换键在报告里，两种都能看。
+  const overlimitCtx = isInfiniteMode(liveRoom?.mode) || difficulty === INFINITE_OPTION;
+  const annModsShown = (liveRoom && liveRoom.annMods) || extAnnMods;
+  const annLocked = !!liveRoom && (liveRoom.inMatch === true || (!!liveRoom.hostId && liveRoom.hostId !== identity.playerId));
   const codeOk = CODE_RE.test(code);
   // official versions (DESIGN §35.23): the lobby's version, the difficulties it offers and the one shown — the remembered
   // one, or the server's fallback when the version lacks it (the pref is only overwritten when the player picks)
@@ -701,19 +808,23 @@ export function LobbyScreen() {
   const soloTimed = soloTimedOf(versionLoading ? null : cfg, version);
   const solo = offeredDifficulties(versionLoading ? null : cfg, 'solo');
   const coop = offeredDifficulties(versionLoading ? null : cfg, 'coop');
-  const shownSolo = fallbackDifficulty(solo, difficulty);
-  const shownCoop = fallbackDifficulty(coop, difficulty);
+  // 选中的「超限」是虚拟项，不能被 fallbackDifficulty 洗回普通难度
+  const shownSolo = difficulty === INFINITE_OPTION ? INFINITE_OPTION : fallbackDifficulty(solo, difficulty);
+  const shownCoop = difficulty === INFINITE_OPTION ? INFINITE_OPTION : fallbackDifficulty(coop, difficulty);
 
-  // 超限模拟（solo_infinite）：不走「选择模拟协议」，直接以终极难度建房（本仓库的本地特性）
+  // 超限模拟：作为难度列表最下方的特殊项，选中后建房用 solo_infinite / coop_infinite，难度字段仍传 ABYSS
   const INFINITE_DIFFICULTY = 'ABYSS';
-  const createInfinite = () => run('create', () => net.request('room.create', {
-    mode: 'solo_infinite', difficulty: INFINITE_DIFFICULTY, ...(testMode && asTest ? { test: true } : {}), ...(versions ? { version } : {}),
-  }));
+  // 拓展模式：第三张卡开的不是「选择同盟方式」，而是拓展玩法大厅 —— 这个分支必须显式写出来，
+  // 落进下面的 else 会让拓展模式弹出同盟方式（reference: b/report.md §9.1）。
   const openMode = (m) => {
-    if (m === 'solo_infinite') { createInfinite(); return; }
-    if (m === 'solo') setSoloOpen(true); else setAllyOpen(true);
+    if (m === 'solo') setSoloOpen(true);
+    else if (m === 'ext') setExtOpen(true);
+    else setAllyOpen(true);
   };
-  const pickDifficulty = (d) => { setDifficulty(d); savePref('lobby.difficulty', d); };
+  const pickDifficulty = (d) => {
+    setDifficulty(d);
+    if (d !== INFINITE_OPTION) savePref('lobby.difficulty', d);
+  };
   const setSoloFreePref = (on) => { const next = on === true; setSoloFree(next); savePref('lobby.soloUnlimited', next); };
 
   const run = async (kind, fn) => {
@@ -728,10 +839,39 @@ export function LobbyScreen() {
   };
   // 独立模拟: at the difficulty picked on 选择模拟协议; 创建同盟: at the remembered one, changed in the room by the host
   // (`version`: the lobby's, only when welcome.versions is present — protocol §4; omitted when the server offers 第二期下半 alone)
-  const create = (mode) => run('create', () => net.request('room.create', {
-    mode, difficulty: mode === 'solo' ? shownSolo : shownCoop, ...(testMode && asTest ? { test: true } : {}), ...(versions ? { version } : {}),
-    ...(mode === 'solo' && soloFree && soloTimed === true ? { soloUnlimited: true } : {}),
-  }));
+  // 超限模拟 stays a pick of 独立模拟's own dialog (the purple 特殊难度 card). A co-op room is no longer created infinite from
+  // here: its host turns 超限 on in the room (room.setInfinite), the same way the difficulty is changed there.
+  const create = (mode) => run('create', () => {
+    const chosen = mode === 'solo' ? shownSolo : shownCoop;
+    const infinite = chosen === INFINITE_OPTION;
+    const roomMode = infinite ? (mode === 'solo' ? 'solo_infinite' : 'coop_infinite') : mode;
+    const difficulty = infinite ? INFINITE_DIFFICULTY : chosen;
+    return net.request('room.create', {
+      mode: roomMode, difficulty, ...(testMode && asTest ? { test: true } : {}), ...(versions ? { version } : {}),
+      ...(roomMode === 'solo' && soloFree && soloTimed === true ? { soloUnlimited: true } : {}),
+    });
+  });
+  // 拓展模式's create path (docs/EXTENSION_MODE.md §3): a play set is not a room mode — the room is an ordinary room whose
+  // `difficulty` is the play set's own value (湮灭模拟 ANNIHILATION + its 蚀流 tier; 炸惊模拟 ZHAJING, no tier at all). The
+  // server derives mode_single_annihilation / mode_single_zhajing from that pair (modeIdFor), so nothing new goes on the
+  // wire beyond `mode` + `difficulty` (+ `erosion` for a play set that declares tiers).
+  // The hall's 单人 / 同盟 switch is the third argument: `coop` is the same room, difficulty and tier, and modeIdFor turns
+  // that pair into mode_multi_*. 不限时 stays solo-only — the server takes it only on a `mode === 'solo'` room
+  // (Lobby.create) — so it rides along exactly like the lobby's own create path above.
+  const createExtension = (id, erosion, party) => {
+    const entry = extensionModeById(id);
+    const kind = party === 'coop' ? 'coop' : 'solo';
+    const difficulty = entry?.difficulty || ANNIHILATION_DIFFICULTY;
+    // only a play set with a 蚀流 ladder sends one: 炸惊模拟's room is created without `erosion` (the server reads 1)
+    const tiers = Number.isInteger(entry?.erosionTiers) && entry.erosionTiers > 1;
+    return run('create', () => net.request('room.create', {
+      mode: kind, difficulty, ...(tiers ? { erosion: Number.isInteger(erosion) ? erosion : 1 } : {}),
+      // 功能设置（湮灭的房间级 annMods）：大厅这一侧的草稿随建房带过去；空 = 不带这个键（老行为逐字节不变）
+      ...(Object.keys(extAnnMods).length ? { annMods: annModsWire(extAnnMods) } : null),
+      ...(testMode && asTest ? { test: true } : {}), ...(versions ? { version } : {}),
+      ...(kind === 'solo' && soloFree && soloTimed === true ? { soloUnlimited: true } : {}),
+    }));
+  };
   const join = (c = code) => {
     // `onClick=${join}` hands the click EVENT as the first argument, and a default parameter only applies to
     // `undefined` — codeArg keeps an event target out of the key and falls back to the input field
@@ -779,6 +919,7 @@ export function LobbyScreen() {
         </div>
       </div>
       <div class="topbar__right">
+        <${AccountMeChip} />
         <${VersionSwitch} />
         <${ResumeMatchButton} />
       </div>
@@ -810,11 +951,32 @@ export function LobbyScreen() {
       code=${code} onCode=${(v) => setCode(normalizeCode(v))} codeOk=${codeOk} online=${online} busy=${busy}
       onJoin=${join} onSpectate=${spectate} recent=${recent} marks=${marks} focusKey=${!coarse}
       testMode=${testMode} asTest=${asTest} onTest=${setAsTest} short=${shortScreen} />` : null}
-    ${soloOpen ? html`<${ProtocolSelect} roomMode="solo" difficulty=${shownSolo} onDifficulty=${pickDifficulty}
+    ${soloOpen ? html`<${ProtocolSelect} roomMode="solo" difficulty=${shownSolo} onDifficulty=${pickDifficulty} allowInfinite=${true}
       onClose=${() => setSoloOpen(false)} onCreate=${() => create('solo')} busy=${busy} online=${online}
       testMode=${testMode} asTest=${asTest} onTest=${setAsTest} difficulties=${solo} loading=${versionLoading} failed=${versionFailed}
       soloTime=${soloTimed === true ? { on: soloFree, onToggle: setSoloFreePref } : null} />` : null}
-    ${sweepOpen ? html`<${SweepReport} onClose=${() => setSweepOpen(false)} />` : null}
+    ${extOpen ? html`<${ExtensionHall} selected=${extPick} onSelect=${setExtPick}
+      onClose=${() => { setExtEntered(false); setExtPick(null); setExtOpen(false); }}
+      entered=${extEntered} enterKey=${extEnterCount}
+      onEnter=${(id) => { if (id) setExtPick(id); setExtEnterCount((n) => n + 1); setExtEntered(true); }}
+      onBack=${() => { setExtEntered(false); setExtPick(null); }}
+      erosion=${extErosion} onErosion=${setExtErosion} party=${extParty} onParty=${setExtParty} onPick=${createExtension}
+      onPoolEdit=${(id) => openLoadout('ext', null, 'loadout', id === 'annihilation' ? 'annihilation' : 'zhajing')}
+      onRules=${() => setExtRulesOpen(true)}
+      onFeatureSettings=${() => setAnnSettingsOpen(true)}
+      online=${online} busy=${busy} />` : null}
+    ${extRulesOpen ? html`<${ZhajingRulesDialog} onClose=${() => setExtRulesOpen(false)} />` : null}
+    ${annSettingsOpen ? html`<${AnnSettingsView} rows=${annModRows(annModsShown)} readOnly=${!online || annLocked}
+        hint=${annLocked ? t('由创建者设置') : null}
+        onToggle=${(id, on) => setExtAnnMods((prev) => ({ ...prev, [id]: on }))}
+        onSave=${async () => {
+          // 已在房里：这颗键就是房主的 room.setAnnMods（服务端对非房主 / 已开局回码，toast 由 toastError 给）
+          const inRoom = !!store.get()?.room;
+          if (inRoom) { try { await sendAnnMods(net, annModsShown); } catch (err) { toastError(err); return; } }
+          setAnnSettingsOpen(false);
+        }}
+        onClose=${() => setAnnSettingsOpen(false)} />` : null}
+    ${sweepOpen ? html`<${SweepReport} variant=${overlimitCtx ? 'overlimit' : 'official'} onClose=${() => setSweepOpen(false)} />` : null}
     ${achOpen ? html`<${AchievementDialog} onClose=${() => setAchOpen(false)} />` : null}
   </div>`;
 }

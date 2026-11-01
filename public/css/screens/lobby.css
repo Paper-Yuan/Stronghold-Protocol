@@ -195,7 +195,7 @@
   flex: 1 1 auto;
   min-height: 0;
   display: grid;
-  grid-template-columns: minmax(0, 4rem) minmax(0, 1fr) minmax(0, calc(var(--hub-entry-w) * 2 + var(--hub-gap)));
+  grid-template-columns: minmax(0, 4rem) minmax(0, 1fr) minmax(0, calc(var(--hub-entry-w) * 3 + 2 * var(--hub-gap)));
   grid-template-rows: minmax(0, 1fr) auto;
   grid-template-areas: "side center right" "side entries entries";
   gap: .2rem .4rem;
@@ -427,6 +427,37 @@
 @media (max-width: 900px) and (min-height: 521px) {
   .hub-entry__group { min-height: 3em; white-space: normal; overflow: visible; text-overflow: clip; }
   .hub-entry__long { white-space: normal; overflow: visible; text-overflow: clip; }
+  /* 拓展模式（选择拓展玩法）的窄屏一档：同一套两列逻辑，数值等比缩小 —— 行 64px / gap 8px（参考实机页 800×360 实测） */
+  .ext-body .ext-stage { gap: .12rem; padding: .15rem; border-radius: .15rem; }
+  .ext-body .ext-hero { gap: .14rem; }
+  .ext-body .ext-hero__art { width: .66rem; height: .66rem; border-radius: .14rem; }
+  .ext-body .ext-hero__art .icon { width: .33rem; height: .33rem; }
+  .ext-body .ext-hero__code { display: none; }
+  .ext-body .ext-hero__name { font-size: calc(.26 * var(--t)); }
+  .ext-body .ext-hero__en { font-size: calc(.12 * var(--t)); letter-spacing: .14em; }
+  .ext-body .ext-stat { padding: .08rem .11rem; }
+  .ext-body .ext-stat b { font-size: calc(.19 * var(--t)); }
+  .ext-body .ext-stat span { font-size: calc(.14 * var(--t)); }
+  .ext-body .ext-desc { font-size: calc(.17 * var(--t)); line-height: 1.5; }
+  .ext-body .ext-feats li { font-size: calc(.165 * var(--t)); line-height: 1.45; }
+  .ext-body .ext-note { padding: .11rem .12rem; font-size: calc(.16 * var(--t)); }
+  .ext-body .ext-pane__lead { font-size: calc(.17 * var(--t)); line-height: 1.45; }
+  .ext-body .ext-row { grid-template-columns: .33rem minmax(0, 1fr) auto; gap: .12rem; height: 64px; padding: 0 .14rem; }
+  /* 业主 2026-10-29（真机）：模式选择列表行间距再松一点，避免手机端相邻行贴着（与二级页上移同理）。
+     选择器必须是 li —— 行是 `<li><button class="ext-row">`（screens/extensionModes.js row()），
+     `.ext-row + .ext-row` 永远命中不到，这条 2026-10-29 加的间距一直没生效（业主 2026-11-01 又报了一次）。 */
+  .ext-body .ext-list > li + li { margin-top: .06rem; }
+  .ext-body .ext-row__idx { font-size: calc(.165 * var(--t)); }
+  .ext-body .ext-row__name { font-size: calc(.21 * var(--t)); }
+  .ext-body .ext-row__desc { font-size: calc(.16 * var(--t)); }
+  .ext-body .ext-row__code { display: none; }
+  .ext-body .ext-list { gap: 8px; }
+  .ext-body .ext-foot { padding-top: .09rem; }
+  .ext-body .ext-foot__start { min-width: 1.56rem; min-height: 44px; font-size: calc(.2 * var(--t)); }
+  .ext-body .ext-foot__pack { font-size: calc(.15 * var(--t)); }
+  .ext-body .ext-party { gap: .04rem; }
+  .ext-body .ext-party__chip { min-width: max(.26rem, 24px); min-height: max(.26rem, 24px); padding: 0 .07rem; font-size: calc(.145 * var(--t)); }
+  .ext-body .ext-note-line { font-size: calc(.16 * var(--t)); }
 }
 .hub-entry {
   position: relative;
@@ -469,6 +500,14 @@
 .hub-entry--coop .hub-entry__en { color: rgba(4, 20, 15, .75); }
 .hub-entry--coop .hub-entry__icon { color: rgba(4, 20, 15, .25); }
 .hub-entry--coop .hub-entry__corner { background: linear-gradient(135deg, transparent 50%, #e8fff7 50%); }
+/* 拓展模式（业主 2026-10-26）：大厅的第三张卡，霜蓝 —— 它打开的是「选择拓展玩法」的目录，不是同盟，也不是难度；
+   颜色取自参考实机页 public/dev/extension-hall-preview.html 的 .hub-entry--ext，px 按 1 : 1.5 折到 1920 设计稿 */
+.hub-entry--ext { background: linear-gradient(160deg, #12222e, #07121b); border-color: var(--ext-a35); }
+.hub-entry--ext .hub-entry__en { color: var(--ext-400); }
+.hub-entry--ext .hub-entry__icon { color: rgba(169, 220, 248, .85); }
+.hub-entry--ext .hub-entry__corner { background: linear-gradient(135deg, transparent 50%, var(--ext-400) 50%); }
+.hub-entry--ext:hover { border-color: var(--ext-400); box-shadow: 0 .08rem .3rem rgba(0, 0, 0, .55), 0 0 .2rem var(--ext-glow); }
+.hub-entry--ext:focus-visible { border-color: var(--ext-400); box-shadow: 0 .08rem .3rem rgba(0, 0, 0, .55), 0 0 .2rem var(--ext-glow); outline: 2px solid var(--ext-300); outline-offset: 2px; }
 @keyframes card-in { from { opacity: 0; transform: translateY(.14rem); } }
 
 /* ---- tips -------------------------------------------------------------------------------------------- */
@@ -502,7 +541,7 @@
 
 /* ---- the two full-screen dialogs (Modal .proto / .ally) --------------------------------------------- */
 .modal.proto-veil { padding: 0; background: #0b0c0c; -webkit-backdrop-filter: none; backdrop-filter: none; }
-.modal__box.proto, .modal__box.ally {
+.modal__box.proto, .modal__box.ally, .modal__box.ext {
   position: fixed;
   inset: 0;
   width: auto;
@@ -515,9 +554,9 @@
   overscroll-behavior: contain;
   animation: proto-in 200ms var(--ease-out) backwards;
 }
-.modal__box.proto::after, .modal__box.proto > .modal__stripe, .modal__box.ally::after, .modal__box.ally > .modal__stripe { display: none; }
-.modal__box.proto > .modal__body, .modal__box.ally > .modal__body { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; padding: 0; overflow: hidden; color: inherit; }
-.proto__body, .ally__body { position: relative; flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
+.modal__box.proto::after, .modal__box.proto > .modal__stripe, .modal__box.ally::after, .modal__box.ally > .modal__stripe, .modal__box.ext::after, .modal__box.ext > .modal__stripe { display: none; }
+.modal__box.proto > .modal__body, .modal__box.ally > .modal__body, .modal__box.ext > .modal__body { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; padding: 0; overflow: hidden; color: inherit; }
+.proto__body, .ally__body, .ext__body { position: relative; flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
 @keyframes proto-in { from { opacity: 0; } }
 .proto__bg {
   position: absolute;
@@ -602,6 +641,9 @@
 .ps-pad__edge { fill: none; stroke: currentColor; stroke-opacity: .7; stroke-width: 2; stroke-dasharray: 26 8; }
 .ps-hull { filter: drop-shadow(0 0 6px var(--d-color)); }
 .ps-ship image { filter: drop-shadow(0 0 10px var(--d-color)); filter: drop-shadow(0 0 10px color-mix(in srgb, var(--d-color) 55%, transparent)); }
+/* 超限 draws 终极's official picture (it runs that mode) and its own emphasis is violet, so the picture is rotated into
+   that violet instead of sitting red inside an otherwise violet scene (.is-tinted, from ProtocolScene's `tint`). */
+.ps.is-tinted .ps-ship image { filter: drop-shadow(0 0 10px var(--d-color)) hue-rotate(258deg) saturate(0.6); }
 .ps-face { stroke: currentColor; stroke-width: 1.3; stroke-linejoin: round; fill: currentColor; }
 .ps-face--top { fill-opacity: .42; }
 .ps-face--front { fill-opacity: .26; }
@@ -977,6 +1019,342 @@ button.ally-card:disabled .ally-card__bar { filter: grayscale(.5) brightness(.8)
 }
 .code-chip:hover { border-color: var(--amber); background: rgba(246, 163, 41, .08); }
 
+/* ---- 拓展模式（业主 2026-10-26）：选择拓展玩法 —— 左档案舞台 + 右等距选项列 ---------------------------------
+   版式取自参考实机页 public/dev/extension-hall-preview.html（1280×720 / 800×360 / 667×375 三档实测）：左边是所选
+   玩法的档案（编号、名称、它自己的数值、简介、要点，以及「能不能开局」的说明），右边是玩法包列表和底栏（包名 / 开始）。
+   参考页的 px 按 1 : 1.5 折到本仓的 1920 设计稿（14px → .21rem），字号折成 --t 的倍数（1px ≈ .015 × --t）跟着
+   「文字大小」走；行高与列表 gap 用参考页实测的 88 / 10px（≤900px 宽 64 / 8，≤520px 高 56 / 6）—— 名字和简介都
+   nowrap + 省略号，文案再长也不会把下一行推下去。舞台用玩法包自己的颜色（.ext-stage 上的 --x-color，大厅传），列表
+   保持目录的赤色。媒体查询里的覆盖一律写成 .ext-body …：不与基础规则重名，也天然压过同名的 .proto-body。 */
+.ext__bg {
+  background:
+    radial-gradient(60% 40% at 18% 0%, rgba(194, 49, 61, .14), transparent 60%),
+    radial-gradient(70% 50% at 100% 0%, rgba(124, 198, 242, .1), transparent 62%),
+    repeating-linear-gradient(90deg, rgba(255, 255, 255, .022) 0 1px, transparent 1px 4px),
+    linear-gradient(rgba(255, 255, 255, .03) 1px, transparent 1px) 0 0 / 1.1rem 1.1rem,
+    linear-gradient(90deg, rgba(255, 255, 255, .03) 1px, transparent 1px) 0 0 / 1.1rem 1.1rem,
+    radial-gradient(120% 90% at 50% 40%, #151616, #070808);
+}
+/* 标题右侧的模式行是霜蓝，不是难度色 */
+.ext__mode { color: var(--ext-400); }
+/* 40 / 60 两列 + 底部说明行；两个类名：媒体查询里的 .proto-body 不提升优先级，这里在任何窗口都保持两列 */
+.proto-body.ext-body {
+  grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
+  grid-template-rows: minmax(0, 1fr) auto;
+  gap: .2rem .24rem;
+}
+.ext-note-line {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: flex-start;
+  gap: .12rem;
+  margin: 0;
+  font-size: calc(.17 * var(--t));
+  line-height: 1.5;
+  color: var(--text-dim);
+}
+.ext-note-line .icon { flex: none; width: 1.1em; height: 1.1em; margin-top: .02rem; color: var(--ext-400); }
+
+/* 左：档案舞台（玩法包自己的颜色） */
+/* 舞台的底色与描边都来自玩法包自己的颜色。color-mix() 是 Chrome 111+，而本仓 Android 的底线是 WebView 87
+   （docs/ANDROID.md）：每处 color-mix 前面先给一条纯色 / 纯渐变的同类声明 —— 旧内核拿到实心的玩法包颜色细线与
+   霜蓝光晕（和参考页同一层级的观感），新内核才换成按比例混出来的那层（写法同下面 .ps-ship 的 filter 对） */
+.ext-stage {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: .18rem;
+  min-height: 0;
+  overflow: hidden;
+  padding: .27rem;
+  border: 1px solid var(--x-color, var(--ext-400));
+  border: 1px solid color-mix(in srgb, var(--x-color, var(--ext-400)) 34%, transparent);
+  border-radius: .21rem;
+  background:
+    radial-gradient(90% 70% at 50% 0%, var(--ext-a35), transparent 62%),
+    linear-gradient(180deg, rgba(20, 14, 16, .94), rgba(8, 10, 11, .98));
+  background:
+    radial-gradient(90% 70% at 50% 0%, color-mix(in srgb, var(--x-color, var(--ext-400)) 22%, transparent), transparent 62%),
+    linear-gradient(180deg, rgba(20, 14, 16, .94), rgba(8, 10, 11, .98));
+  animation: tr-right 400ms var(--tr-ease) 180ms backwards;
+}
+/* 舞台的扫描线 + 四角框，贴着官方活动页的语言 */
+.ext-stage::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: .5;
+  background: repeating-linear-gradient(180deg, rgba(255, 255, 255, .035) 0 1px, transparent 1px 4px);
+  -webkit-mask-image: linear-gradient(180deg, #000, transparent 78%);
+  mask-image: linear-gradient(180deg, #000, transparent 78%);
+}
+.ext-stage__frame { position: absolute; inset: .12rem; pointer-events: none; border: 1px solid var(--x-color, var(--ext-400)); border: 1px solid color-mix(in srgb, var(--x-color, var(--ext-400)) 28%, transparent); border-radius: .15rem; }
+.ext-stage__frame::before, .ext-stage__frame::after { content: ''; position: absolute; width: .21rem; height: .21rem; border: 2px solid var(--x-color, var(--ext-400)); }
+.ext-stage__frame::before { left: -1px; top: -1px; border-right: 0; border-bottom: 0; }
+.ext-stage__frame::after { right: -1px; bottom: -1px; border-left: 0; border-top: 0; }
+/* 档案的主视觉（玩法包自己的美术，theme.art）：铺满左栏、沉在文字下面。压暗到只剩轮廓 —— 上面的标题、数值与
+   要点都要读得清，所以它只回答「这一页属于哪个玩法包」，不承载信息。底图缺失时 <img> 自己隐藏（onError），
+   下面那层渐变照旧，版面不塌。 */
+.ext-stage__art { position: absolute; inset: 0; z-index: 0; overflow: hidden; border-radius: inherit; pointer-events: none; }
+.ext-stage__art img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: 62% 20%; opacity: .46; }
+.ext-stage__art::after {
+  content: ''; position: absolute; inset: 0;
+  background:
+    linear-gradient(180deg, rgba(8, 10, 11, .46) 0%, rgba(8, 10, 11, .24) 32%, rgba(8, 10, 11, .84) 72%, rgba(8, 10, 11, .97) 100%),
+    linear-gradient(90deg, rgba(8, 10, 11, .9) 0%, rgba(8, 10, 11, .32) 48%, transparent 80%);
+}
+
+.ext-hero { position: relative; display: flex; align-items: center; gap: .21rem; }
+.ext-hero__art {
+  display: grid;
+  place-items: center;
+  width: .96rem;
+  height: .96rem;
+  flex: none;
+  border-radius: .18rem;
+  color: #ffe9ec;
+  background: radial-gradient(60% 60% at 50% 38%, var(--x-color, var(--ext-400)), var(--ext-900));
+  background: radial-gradient(60% 60% at 50% 38%, color-mix(in srgb, var(--x-color, var(--ext-400)) 72%, transparent), color-mix(in srgb, var(--x-color, var(--ext-400)) 50%, transparent));
+  border: 1px solid var(--x-color, var(--ext-400));
+  border: 1px solid color-mix(in srgb, var(--x-color, var(--ext-400)) 60%, transparent);
+  box-shadow: 0 0 .33rem var(--ext-glow), inset 0 0 .27rem rgba(0, 0, 0, .45);
+  box-shadow: 0 0 .33rem color-mix(in srgb, var(--x-color, var(--ext-400)) 35%, transparent), inset 0 0 .27rem rgba(0, 0, 0, .45);
+}
+.ext-hero__art .icon { width: .48rem; height: .48rem; }
+.ext-hero__meta { display: flex; flex-direction: column; gap: .05rem; min-width: 0; }
+.ext-hero__code { font-family: var(--font-num); font-size: calc(.165 * var(--t)); font-weight: 700; letter-spacing: .18em; color: var(--ext-300); }
+.ext-hero__name { margin: 0; font-size: min(calc(.39 * var(--t)), .39rem); font-weight: 900; letter-spacing: .04em; color: #fff; text-shadow: 0 0 .27rem var(--ext-glow); text-shadow: 0 0 .27rem color-mix(in srgb, var(--x-color, var(--ext-400)) 50%, transparent); }
+.ext-hero__en { font-family: var(--font-mono); font-size: calc(.14 * var(--t)); font-weight: 600; letter-spacing: .2em; color: rgba(255, 255, 255, .45); }
+
+.ext-stats { position: relative; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .12rem; }
+.ext-stat { display: flex; flex-direction: column; gap: .03rem; padding: .12rem .15rem; border-radius: .12rem; background: rgba(255, 255, 255, .04); border: 1px solid rgba(255, 255, 255, .1); }
+.ext-stat b { font-family: var(--font-num); font-size: calc(.23 * var(--t)); font-weight: 800; line-height: 1.2; color: #fff; }
+.ext-stat span { font-size: calc(.16 * var(--t)); letter-spacing: .04em; color: var(--text-dim); }
+
+.ext-desc { position: relative; margin: 0; font-size: calc(.2 * var(--t)); line-height: 1.6; color: var(--text-lo); }
+.ext-feats { position: relative; display: flex; flex-direction: column; gap: .08rem; min-height: 0; margin: 0; padding: 0; list-style: none; overflow: auto; }
+.ext-feats li { position: relative; display: -webkit-box; padding-left: .18rem; font-size: calc(.19 * var(--t)); line-height: 1.5; color: var(--text-md); -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
+.ext-feats li::before { content: ''; position: absolute; left: 0; top: .62em; width: .06rem; height: .06rem; border-radius: 1px; background: var(--x-color, var(--ext-400)); transform: rotate(45deg); }
+
+/* 能不能开局的说明行：琥珀 = 还差一步，薄荷 = 已就位 */
+.ext-note { position: relative; display: flex; align-items: flex-start; gap: .11rem; margin-top: auto; padding: .14rem .15rem; border-radius: .12rem; font-size: calc(.17 * var(--t)); line-height: 1.5; color: #f0d9a8; background: rgba(251, 191, 36, .08); border: 1px solid rgba(251, 191, 36, .26); }
+.ext-note .icon { flex: none; width: 1.1em; height: 1.1em; margin-top: 1px; color: var(--amber); }
+.ext-note.is-ready { color: #c9ffe9; background: var(--mint-a10); border-color: var(--mint-a35); }
+.ext-note.is-ready .icon { color: var(--mint-400); }
+
+/* 右：等距选项列 */
+.ext-pane { display: flex; flex-direction: column; gap: .15rem; min-height: 0; }
+.ext-pane__lead { margin: 0; font-size: calc(.19 * var(--t)); line-height: 1.6; color: var(--text-dim); }
+/* 内边距留给焦点的外圈（outline-offset: 2px）：列表自己会滚动，不留这点空，第一行的焦点框会被裁掉。
+   列表只有 1–3 条时，右栏下半原本是一大片空白（业主 2026-10-28 要求优化这一页）：行必须保持等距（§4.2 的固定
+   行高铁律，列表要像一架梯子），所以不把行拉高，而是让列表在这块空间里居中 —— 空白平均分到上下，梯子仍然完整，
+   视线落在中间而不是贴顶。矮屏（≤520 px）空间本来就不够，仍从顶部自然排列、可滚动。 */
+.ext-list { list-style: none; margin: 0; padding: .04rem; display: flex; flex-direction: column; gap: 10px; flex: 1 1 auto; min-height: 0; overflow: auto; justify-content: center; }
+.ext-list > li { flex: none; }
+.ext-body .ext-list { justify-content: flex-start; }
+/* 固定行高 + 固定 gap：文案长短不会再改变选项间距（参考页 v2 的第二次修版） */
+.ext-row {
+  position: relative;
+  display: grid;
+  grid-template-columns: .51rem minmax(0, 1fr) auto;
+  align-items: center;
+  gap: .18rem;
+  flex: none;
+  width: 100%;
+  height: 88px;
+  padding: 0 .21rem;
+  text-align: left;
+  font: inherit;
+  color: var(--text-hi);
+  cursor: pointer;
+  background: linear-gradient(90deg, rgba(255, 255, 255, .05), rgba(255, 255, 255, .02));
+  border: 1px solid rgba(255, 255, 255, .1);
+  border-radius: .15rem;
+  transition: border-color var(--t-med), background var(--t-med), transform var(--t-med) var(--tr-ease);
+  animation: tr-right 400ms var(--tr-ease) backwards;
+  /* 逐行进场：延迟按行号算。以前只硬写了前三条（nth-child 1..3），而 backwards 让这三条在 240–360ms 之间是透明的，
+     第 4 条起没有延迟就先出现 —— 条目超过 3 条时顺序整个反过来。--n 由 extensionModes.js 的 row() 写在行上（0 起），
+     这样 1 → N 都不会漂。（必须写在 animation 之后：简写会把 animation-delay 重置回 0。） */
+  animation-delay: calc(240ms + var(--n, 0) * 60ms);
+}
+.ext-row:hover:not(.is-placeholder):not(:disabled) { border-color: rgba(194, 49, 61, .6); background: linear-gradient(90deg, rgba(194, 49, 61, .14), rgba(255, 255, 255, .03)); }
+.ext-row:focus-visible { outline: 2px solid var(--ext-300); outline-offset: 2px; }
+.ext-row.is-selected { border-color: rgba(194, 49, 61, .85); background: linear-gradient(90deg, rgba(194, 49, 61, .2), rgba(255, 255, 255, .03)); }
+.ext-row.is-selected::before { content: ''; position: absolute; left: 0; top: .21rem; bottom: .21rem; width: .05rem; border-radius: .05rem; background: linear-gradient(180deg, #c2313d, #8d1622); }
+.ext-row.is-placeholder { cursor: default; opacity: .62; background: none; border-style: dashed; }
+.ext-row.is-placeholder .ext-row__name { color: var(--text-lo); }
+.ext-row__idx { font-family: var(--font-num); font-size: calc(.2 * var(--t)); font-weight: 800; letter-spacing: .08em; color: rgba(255, 255, 255, .35); }
+.ext-row.is-selected .ext-row__idx { color: #c2313d; }
+.ext-row__main { display: flex; flex-direction: column; gap: .06rem; min-width: 0; }
+.ext-row__head { display: flex; align-items: center; gap: .12rem; min-width: 0; }
+/* 名字与简介都强制一行：名字是 .ext-row__head 里的 flex 项，不给 min-width: 0 它的自动最小尺寸就是整句宽度，
+   省略号永远不会出现（参考页只写了 nowrap + ellipsis） */
+.ext-row__name { min-width: 0; font-size: calc(.25 * var(--t)); font-weight: 900; letter-spacing: .03em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ext-row__code { flex: none; padding: 1px .08rem; border-radius: .06rem; font-family: var(--font-num); font-size: calc(.16 * var(--t)); font-weight: 700; color: var(--ext-300); background: rgba(124, 198, 242, .12); }
+/* 简介强制一行 —— 这是「文本别再撑开选项」的关键 */
+.ext-row__desc { margin: 0; font-size: calc(.18 * var(--t)); line-height: 1.4; color: var(--text-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ext-row__tail { display: flex; align-items: center; gap: .12rem; flex: none; }
+
+/* 状态胶囊：可开局 / 待接入 / 筹备中 */
+.chip { padding: 2px .12rem; border-radius: 99px; font-size: calc(.165 * var(--t)); font-weight: 700; white-space: nowrap; }
+.chip--pending { color: #ffd9a8; background: rgba(251, 191, 36, .14); border: 1px solid rgba(251, 191, 36, .35); }
+.chip--ready { color: #c9ffe9; background: rgba(93, 240, 198, .14); border: 1px solid rgba(93, 240, 198, .4); }
+.chip--missing { color: var(--text-lo); background: rgba(255, 255, 255, .06); border: 1px solid rgba(255, 255, 255, .1); }
+
+/* 列表下面的三个计数（玩法包 / 可开局 / 难度各自独立）：把它们放在这里，是因为列表只有两三条时右栏下半是空白的
+   —— 一排等距的小格既占住那片空白，又回答「这个目录里到底有几个、几个能玩」。数字是 modes 里数出来的，不是写死的。 */
+.ext-facts { flex: none; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .1rem; }
+.ext-fact { display: flex; flex-direction: column; gap: .02rem; padding: .1rem .12rem; border-radius: .1rem; background: rgba(255, 255, 255, .03); border: 1px solid rgba(255, 255, 255, .08); }
+.ext-fact b { font-family: var(--font-num); font-size: calc(.2 * var(--t)); font-weight: 800; line-height: 1.2; color: #eaf4f1; }
+.ext-fact small { font-size: calc(.14 * var(--t)); letter-spacing: .04em; color: var(--text-dim); }
+
+.ext-foot { display: flex; align-items: center; justify-content: space-between; gap: .18rem; flex: none; padding-top: .15rem; border-top: 1px solid rgba(255, 255, 255, .1); }
+.ext-foot__pack { min-width: 0; overflow: hidden; font-family: var(--font-num); font-size: calc(.165 * var(--t)); font-weight: 600; color: var(--text-dim); white-space: nowrap; text-overflow: ellipsis; }
+.ext-foot__start {
+  min-width: 1.98rem;
+  min-height: 44px;
+  padding: 0 .27rem;
+  font-size: calc(.23 * var(--t));
+  font-weight: 900;
+  line-height: 1;
+  letter-spacing: .06em;
+  color: #04210f;
+  cursor: pointer;
+  border: 0;
+  border-radius: .14rem;
+  background: linear-gradient(180deg, #4fe8c0, #2fcf9f);
+  transition: filter var(--t-fast), transform var(--t-fast);
+}
+.ext-foot__start:hover:not(:disabled) { filter: brightness(1.06); }
+.ext-foot__start:active:not(:disabled) { transform: translateY(1px); }
+.ext-foot__start:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+.ext-foot__start:disabled { cursor: not-allowed; color: var(--text-lo); background: rgba(255, 255, 255, .07); border: 1px solid rgba(255, 255, 255, .1); }
+/* 蚀流 1..6（玩法包自己的档位）：脚注里的选择器，只在条目声明 erosionTiers 时出现；6 = 无尽湮灭（title 说明） */
+.ext-tiers { display: flex; align-items: center; gap: .05rem; margin-left: auto; margin-right: .12rem; min-width: 0; }
+.ext-tiers__label { margin-right: .03rem; font-size: calc(.16 * var(--t)); color: var(--text-dim); white-space: nowrap; }
+.ext-tier {
+  min-width: max(.3rem, 24px);
+  min-height: max(.3rem, 24px);
+  padding: 0 .06rem;
+  font-size: max(11px, calc(.17 * var(--t)));   /* 像素地板：--t 在矮屏只有 40px，纯比例会掉到 6.8px */
+  font-weight: 800;
+  color: var(--text-lo);
+  background: rgba(255, 255, 255, .05);
+  border: 1px solid rgba(255, 255, 255, .14);
+  border-radius: .07rem;
+  cursor: pointer;
+  transition: color var(--t-fast), border-color var(--t-fast), background var(--t-fast);
+}
+.ext-tier:hover { color: var(--ext-200); border-color: var(--ext-a35); }
+.ext-tier.is-on { color: #06202e; background: var(--ext-400); border-color: var(--ext-300); }
+.ext-tier:focus-visible { outline: 2px solid var(--ext-300); outline-offset: 2px; }
+/* 单人 / 同盟（玩法包同一难度的两种形态）：和蚀流一样只在声明了玩法的条目上出现。两枚 chip 一组，选中的那枚走和蚀流
+   同一套霜蓝 —— 变的是房型（solo / coop），难度与蚀流档位都不变。脚注里的包名先用 min-width: 0 让位，这组不让 */
+.ext-party { display: flex; align-items: center; gap: .05rem; flex: none; }
+.ext-party__chip {
+  min-width: max(.3rem, 24px);
+  min-height: max(.3rem, 24px);
+  padding: 0 .09rem;
+  font-size: max(11px, calc(.16 * var(--t)));   /* 像素地板：--t 在矮屏只有 40px，纯比例会掉到 6.4px */
+  font-weight: 800;
+  letter-spacing: .04em;
+  white-space: nowrap;
+  color: var(--text-lo);
+  background: rgba(255, 255, 255, .05);
+  border: 1px solid rgba(255, 255, 255, .14);
+  border-radius: .07rem;
+  cursor: pointer;
+  transition: color var(--t-fast), border-color var(--t-fast), background var(--t-fast);
+}
+.ext-party__chip:hover { color: var(--ext-200); border-color: var(--ext-a35); }
+.ext-party__chip.is-on { color: #06202e; background: var(--ext-400); border-color: var(--ext-300); }
+.ext-party__chip:focus-visible { outline: 2px solid var(--ext-300); outline-offset: 2px; }
+
+/* 空状态：整张表都是筹备中 */
+.ext-empty { display: grid; place-items: center; gap: .12rem; min-height: 88px; padding: 0 .24rem; text-align: center; border: 1px dashed rgba(255, 255, 255, .18); border-radius: .15rem; color: var(--text-dim); }
+.ext-empty .icon { width: .36rem; height: .36rem; opacity: .5; }
+.ext-empty p { margin: 0; font-size: calc(.19 * var(--t)); color: var(--text-lo); }
+.ext-empty span { font-size: calc(.17 * var(--t)); }
+
+/* 窄屏（≤900px 宽）的一档在文件上半部分大厅说明的那个媒体块里：行 64px / gap 8px；短屏一档（行 56px / gap 6px）
+   在下面的短屏块里，两者不会同时命中（一个是 min-height 521px，一个是 max-height 520px） */
+
+/* ---- 主题大厅（业主 2026-10-28）：选中玩法包之后的下一级 ------------------------------------------------
+   流程：大厅 → 拓展模式（选择拓展玩法）→ 选中「湮灭模拟」进入 → 本屏 → 单人/同盟 + 蚀流 → 开始 → 房。
+   美术取自原玩法包：主视觉 crimson-knight.webp（不息恶火）铺满整屏，压暗后只留右侧赤色轮廓；排版语汇照它的封面
+   slide-01 —— 左上眉题、左侧赤红竖线、大标题、右侧光环，底栏一排选择。底图缺失时只剩渐变与排版，不会破版。
+   底栏的 单人/同盟 与 蚀流 沿用大厅那套 .ext-party / .ext-tier 结构（测试钩子不变），只换配色成本包的赤红/余烬橙。 */
+.ext-theme {
+  position: absolute; inset: 0; display: flex; flex-direction: column; gap: .16rem;
+  padding: .3rem .42rem .26rem; overflow: hidden; isolation: isolate;
+}
+.ext-theme__art { position: absolute; inset: 0; z-index: 0; pointer-events: none; }
+.ext-theme__art-img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: 50% 32%; opacity: .92; }
+.ext-theme__veil {
+  position: absolute; inset: 0;
+  background:
+    radial-gradient(58% 52% at 16% 8%, rgba(91, 10, 20, .5), transparent 62%),
+    linear-gradient(100deg, rgba(6, 5, 7, .94) 0%, rgba(6, 5, 7, .62) 44%, rgba(6, 5, 7, .22) 100%),
+    linear-gradient(0deg, rgba(6, 5, 7, .97) 0%, rgba(6, 5, 7, .25) 42%, rgba(6, 5, 7, .05) 100%);
+}
+/* 封面上那只发光的环：纯 CSS，窄屏与矮屏直接藏掉 */
+.ext-theme__ring {
+  position: absolute; right: 9%; top: 16%; width: 2.2rem; height: 2.2rem; border-radius: 50%;
+  border: 2px solid rgba(232, 92, 58, .5);
+  box-shadow: 0 0 1.1rem rgba(232, 92, 58, .32), inset 0 0 .9rem rgba(232, 92, 58, .26);
+  opacity: .75;
+}
+.ext-theme__top { position: relative; z-index: 1; display: flex; align-items: flex-start; gap: .2rem; flex: none; }
+.ext-theme__back { flex: none; }
+.ext-theme__title { display: flex; flex-direction: column; gap: .04rem; min-width: 0; padding-left: .16rem; border-left: 3px solid var(--x-color, #5b0a14); }
+.ext-theme__kicker { font-family: var(--font-mono); font-size: calc(.12 * var(--t)); font-weight: 600; letter-spacing: .22em; color: rgba(255, 255, 255, .5); white-space: nowrap; }
+.ext-theme__name { margin: 0; font-size: min(calc(.62 * var(--t)), .62rem); font-weight: 900; letter-spacing: .05em; color: #fff; text-shadow: 0 0 .4rem rgba(232, 92, 58, .45), 0 0 .9rem rgba(91, 10, 20, .8); }
+.ext-theme__meta { display: flex; align-items: baseline; gap: .12rem; font-family: var(--font-mono); font-size: calc(.13 * var(--t)); letter-spacing: .18em; color: rgba(255, 255, 255, .45); }
+.ext-theme__meta b { font-family: var(--font-num); font-weight: 800; color: #ff8a6a; }
+.ext-theme__meta i { font-style: normal; }
+.ext-theme__body { position: relative; z-index: 1; display: flex; flex-direction: column; gap: .1rem; max-width: 62%; min-height: 0; }
+.ext-theme__desc { margin: 0; font-size: calc(.19 * var(--t)); line-height: 1.65; color: rgba(255, 255, 255, .8); }
+.ext-theme__feats { display: flex; flex-direction: column; gap: .05rem; margin: 0; padding: 0; list-style: none; }
+.ext-theme__feats li { position: relative; padding-left: .16rem; font-size: calc(.17 * var(--t)); line-height: 1.55; color: rgba(255, 255, 255, .62); }
+.ext-theme__feats li::before { content: ''; position: absolute; left: 0; top: .1rem; width: .06rem; height: .06rem; background: #e85c3a; transform: rotate(45deg); }
+/* 攻略说明：翻开玩法包自己的战场手册（原包 slide-01…08）。quiet 的描边按钮 —— 它是这一屏的阅读入口，不能和右下
+   那颗「开始」抢注意力；页数写在右边，告诉玩家后面有几页。 */
+.ext-theme__guide {
+  position: relative; z-index: 1; display: inline-flex; align-items: center; gap: .1rem; align-self: flex-start;
+  margin-top: .06rem; padding: .1rem .16rem; min-height: max(.52rem, 32px, calc(36px * var(--sp-ui, 1)));
+  font: inherit; font-size: calc(.17 * var(--t)); font-weight: 700; letter-spacing: .04em; color: #ffd9cc;
+  background: rgba(232, 92, 58, .1); border: 1px solid rgba(232, 92, 58, .42); border-radius: .1rem; cursor: pointer;
+  transition: background var(--t-fast), border-color var(--t-fast), color var(--t-fast);
+}
+.ext-theme__guide .icon { flex: none; width: 1.05em; height: 1.05em; }
+.ext-theme__guide i { font-style: normal; padding: 0 .05rem; color: rgba(255, 217, 204, .62); }
+.ext-theme__guide:hover { background: rgba(232, 92, 58, .2); border-color: #ff8a6a; color: #fff; }
+.ext-theme__guide:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+.ext-theme__foot {
+  position: relative; z-index: 1; display: flex; align-items: center; justify-content: flex-end; gap: .18rem;
+  flex: none; margin-top: auto; padding-top: .14rem; border-top: 1px solid rgba(232, 92, 58, .28);
+}
+.ext-theme__pack { margin-right: auto; font-family: var(--font-num); font-size: calc(.165 * var(--t)); color: rgba(255, 255, 255, .45); }
+.ext-theme .ext-tiers__label { color: rgba(255, 255, 255, .55); }
+.ext-theme .ext-tier { color: rgba(255, 255, 255, .72); background: rgba(255, 255, 255, .05); border-color: rgba(255, 255, 255, .16); }
+.ext-theme .ext-tier:hover { color: #fff; border-color: #ff8a6a; }
+.ext-theme .ext-tier.is-on { color: #1a0708; background: linear-gradient(180deg, #ff8a6a, #e85c3a); border-color: #ffb59f; }
+.ext-theme .ext-party__chip { color: rgba(255, 255, 255, .72); border-color: rgba(255, 255, 255, .16); }
+.ext-theme .ext-party__chip.is-on { color: #1a0708; background: linear-gradient(180deg, #ff8a6a, #e85c3a); border-color: #ffb59f; }
+.ext-theme__start {
+  flex: none; min-width: 1.6rem; min-height: 44px; padding: 0 .3rem;
+  font-size: calc(.2 * var(--t)); font-weight: 900; letter-spacing: .06em; color: #1a0708;
+  background: linear-gradient(180deg, #ff8a6a, #e85c3a); border: 1px solid #ffb59f; border-radius: .1rem;
+  cursor: pointer; transition: filter var(--t-fast), transform var(--t-fast);
+}
+.ext-theme__start:hover:not(:disabled) { filter: brightness(1.08); }
+.ext-theme__start:active:not(:disabled) { transform: translateY(1px); }
+.ext-theme__start:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+.ext-theme__start:disabled { cursor: not-allowed; color: var(--text-lo); background: rgba(255, 255, 255, .07); border-color: rgba(255, 255, 255, .12); }
+/* 主题大厅的两档小屏覆盖写在文件末尾（见「主题大厅 · 小屏」）：大厅与协议页的测试按「第一条 max-width/height 媒体块」
+   取用，把新的同查询块插在它们前面会让那些断言读到错误的块。 */
+
 /* ---- 选择模拟协议's cards when they do not fit their column (screens/lobby.js pickCardFit: data-fit), above 520 px tall --
    (§35.18's leftover there: at 大 / 特大, in a small window or a long language the list ran under 开始独立模拟 with 终极模拟
    out of view.) 'brief': the description only in the brief at the left, where the chosen difficulty's already is;
@@ -1018,27 +1396,47 @@ button.ally-card:disabled .ally-card__bar { filter: grayscale(.5) brightness(.8)
 }
 
 /* ---- short landscape phones (≤ 520 CSS px tall) ---------------------------------------------------------- */
-/* The hub drops its left column and the radar; the dialogs keep the four cards and the button in view without scrolling
+/* The hub keeps its left column — 成就统计 stays there, as on a desktop (the owner, 2026-10-28: 「完全和电脑端一致的使用和显示逻辑」) —
+   and drops only the 密钥加入 tile and the tips, which the 作战提示 column cannot fit; the dialogs keep the four cards and the
+   button in view without scrolling
    at every 文字大小 (the cards keep only their names, the selected difficulty's description moves to the brief). */
 @media (max-height: 520px) {
   /* the entries span the screen's width here: at least 128 px each, so a wrapped English name has a line of its own
      (at 2.1rem, 84 px, 「Simulation」 was 95 px at 小). [ASSUMED] the width */
-  .lobby-hub { --hub-entry-w: max(2.1rem, 32px, calc(128px * var(--sp-ui, 1))); }
-  .hub-stage {
-    grid-template-columns: minmax(0, 1fr) minmax(0, calc(var(--hub-entry-w) * 2 + var(--hub-gap)));
-    grid-template-areas: "center right" "entries entries";
-    gap: .14rem .3rem;
-    padding: .1rem .4rem .24rem;
-  }
-  .hub-center { grid-column: 1; }
-  .hub-side, .hub-radar { display: none; }
+  .lobby-hub { --hub-entry-w: max(2.1rem, 32px, calc(128px * var(--sp-ui, 1))); --hub-ach-w: max(1.5rem, 32px, calc(112px * var(--sp-ui, 1))); }
+  .hub-center { grid-column: 2; }
+  .hub-radar { display: none; }
   .hub-center__mark { min-height: 0; margin-bottom: 0; }
   .hub-center__logo { width: .9rem; }
   .hub-center__mark .emblem__svg { width: .9rem; height: 1rem; }
   .hub-center__title { max-width: none; font-size: calc(.46 * var(--t)); }
-  .hub-right { padding-top: .1rem; }
   .lobby-hub .hub-plate { min-height: max(.7rem, 32px, calc(40px * var(--sp-ui, 1))); }
-  .lobby-hub .hub-plate--ach { display: flex; }
+  /* 手机端照搬电脑端的读法（业主 2026-10-28：完全一致的使用与显示逻辑）：成就统计卡在左，两个选项在右。
+     这里不再把左列整个藏掉再往右列塞一枚小卡片 —— 左列保留，只是收窄到一列卡片的宽度；右列的两个 plate
+     竖排（与桌面同一顺序：S.W.E.E.P. 在上、干员调配在下），因此右列矮了一行，中间那块不再被挤掉。 */
+  .hub-stage {
+    grid-template-columns: minmax(0, calc(var(--hub-ach-w))) minmax(0, 1fr) minmax(0, calc(var(--hub-entry-w) * 3 + 2 * var(--hub-gap)));
+    grid-template-areas: "side center right" "side entries entries";
+  }
+  .hub-side { display: flex; grid-area: side; padding-top: .1rem; }
+  .hub-side .hub-tile--key, .hub-side .tips { display: none; }
+  .hub-ach { width: 100%; }
+  .hub-right { padding-top: .1rem; align-items: flex-end; }
+  .lobby-hub .hub-plate--ach { display: none; }
+  /* 手机上两个选项不铺满右列（业主 2026-10-28：右侧这两个选项又太大了）：只占内容宽度、靠右对齐，高度也收回
+     .56rem。桌面上铺满一列是 479 px 宽，手机右列只有 395 px，同样的 width:100% 加 .7rem 下限会把一块 plate 拉成
+     又宽又扁的长条。文字仍按自己的长度换行（不截断），只是不再撑满。 */
+  /* `.lobby-hub .hub-plate` (0,2,0) sets width:100%, so a bare `.hub-right > *` (0,1,0) never wins — match its specificity. */
+  .hub-right .hub-plate, .hub-right .lo-entry { width: auto; max-width: 100%; }
+  .hub-right .hub-plate, .hub-right .lo-entry { min-height: max(.56rem, 32px, calc(34px * var(--sp-ui, 1))); padding-top: .02rem; padding-bottom: .02rem; }
+  .hub-right .hub-plate__glyph, .hub-right .hub-plate > .btn__icon, .hub-right .hub-plate .lo-entry__icon { width: .36rem; height: .36rem; padding: .04rem; }
+  /* 字号回到 .24（业主 2026-10-28：又有点小了）—— 与卡片名同档，比桌面的 .2 还大一档，因为手机上看的是缩小的整屏；
+     宽度下限跟着抬到 7.4rem，容量留给这号字，长语言仍按 max-width:100% 换行。 */
+  .hub-right .hub-plate__label, .hub-right .hub-plate .btn__label { font-size: clamp(15px, calc(.24 * var(--t)), 19px); }
+  .hub-right .hub-plate, .hub-right .lo-entry { min-width: max(7.4rem, 32px, calc(216px * var(--sp-ui, 1))); }
+  /* 内容宽度会随字号变窄（「S.W.E.E.P.报告」在 92 px 里折成两行），给一个下限把它撑回可读的一行；上限仍是右列宽，
+     所以长语言照样换行而不是溢出。 */
+  .hub-right .hub-plate__glyph, .hub-right .hub-plate > .btn__icon, .hub-right .hub-plate .lo-entry__icon { width: .4rem; height: .4rem; }
   /* (here the hub's height is the limit: a top padding for the icon made the English and Korean cards so tall at 大 /
      特大 that the line above them ran into the title on a 640 / 740 px phone. The decorative line keeps clear of the icon
      beside it instead, .44rem — at 小 it stays on one line there in every language) */
@@ -1131,9 +1529,34 @@ button.ally-card:disabled .ally-card__bar { filter: grayscale(.5) brightness(.8)
   .ally-recent { font-size: min(calc(.24 * var(--t)), 14px); line-height: 1.35; } /* [ASSUMED] the cap, like the difficulty line's */
   .code-chip { font-size: calc(.28 * var(--t)); }
   .ally-guide { font-size: calc(.3 * var(--t)); }
+  /* 拓展模式（选择拓展玩法）在短屏上只留行与按钮：行 56px / gap 6px；档案的说明行、列表导语与底部说明让位
+     （参考实机页同样在这里收起它们，否则两列的内容会在 360–520px 高的窗口里互相压） */
+  .ext-body .ext-stage { gap: .09rem; padding: .11rem .12rem; }
+  .ext-body .ext-hero__art { width: .48rem; height: .48rem; border-radius: .12rem; }
+  .ext-body .ext-hero__art .icon { width: .26rem; height: .26rem; }
+  .ext-body .ext-hero__name { font-size: calc(.21 * var(--t)); }
+  .ext-body .ext-hero__en, .ext-body .ext-hero__code { display: none; }
+  .ext-body .ext-stats { gap: .08rem; }
+  .ext-body .ext-stat { padding: .05rem .08rem; }
+  .ext-body .ext-stat b { font-size: calc(.165 * var(--t)); }
+  .ext-body .ext-stat span { font-size: calc(.13 * var(--t)); }
+  .ext-body .ext-desc { font-size: calc(.16 * var(--t)); line-height: 1.4; }
+  .ext-body .ext-feats { gap: .03rem; }
+  .ext-body .ext-feats li { padding-left: .14rem; font-size: calc(.14 * var(--t)); line-height: 1.35; }
+  .ext-body .ext-note { display: none; }
+  .ext-body .ext-pane__lead { display: none; }
+  .ext-body .ext-note-line { display: none; }
+  .ext-body .ext-row { height: 56px; padding: 0 .12rem; }
+  .ext-body .ext-row__name { font-size: calc(.23 * var(--t)); }
+  .ext-body .ext-row__desc { font-size: calc(.165 * var(--t)); }
+  .ext-body .ext-list { gap: 6px; }
+  .ext-body .ext-foot { padding-top: .12rem; }
+  .ext-body .ext-foot__start { min-width: 110px; min-height: 44px; font-size: calc(.21 * var(--t)); }
+  .ext-body .ext-party { gap: .04rem; }
+  .ext-body .ext-party__chip { min-width: max(.26rem, 24px); min-height: max(.26rem, 24px); padding: 0 .06rem; font-size: calc(.14 * var(--t)); }
 }
 /* ---- 转场 (PR #643, the event's screen changes): a screen comes up from black, its panels slide in one after another ---- */
-.lobby-hub, .modal__box.proto, .modal__box.ally { --tr-ease: cubic-bezier(.16, .84, .3, 1); }
+.lobby-hub, .modal__box.proto, .modal__box.ally, .modal__box.ext { --tr-ease: cubic-bezier(.16, .84, .3, 1); }
 @keyframes tr-fade { from { opacity: 0; } }
 @keyframes tr-veil { from { background-color: transparent; } }
 @keyframes tr-right { from { opacity: 0; transform: translateX(.36rem); } }
@@ -1154,7 +1577,7 @@ button.ally-card:disabled .ally-card__bar { filter: grayscale(.5) brightness(.8)
 .hub-entries .hub-entry-wrap:nth-child(3) { animation-delay: 420ms; }
 .hub-entries .hub-entry-wrap:nth-child(4) { animation-delay: 480ms; }
 /* 选择模拟协议 / 选择同盟方式: from black, then the title, the stage and the cards */
-.modal__box.proto, .modal__box.ally { animation: tr-veil 150ms linear backwards; }
+.modal__box.proto, .modal__box.ally, .modal__box.ext { animation: tr-veil 150ms linear backwards; }
 .proto__bg { animation: tr-fade 340ms ease-out 140ms backwards; }
 .proto-top { animation: tr-fade 260ms ease-out 170ms backwards; }
 .proto-title { animation: tr-right 400ms var(--tr-ease) 200ms backwards; }
@@ -1164,9 +1587,19 @@ button.ally-card:disabled .ally-card__bar { filter: grayscale(.5) brightness(.8)
 .proto-list .pcard:nth-child(3) { --n: 2; }
 .proto-list .pcard:nth-child(4) { --n: 3; }
 .proto-list .pcard:nth-child(5) { --n: 4; }
+/* 特殊难度 sits outside .proto-list (it is the list's sibling, see .proto-list__special below), so it never matched the
+   rule above and appeared on the first frame while the four official cards were still fading in — the one entry that did
+   not wait its turn. It joins the same timeline as the LAST official card: the same keyframes and duration, and the delay
+   the list's fifth row gets (240ms + 4 × 60ms), so 超限 comes in with them instead of ahead of them. */
+.proto-list__special { animation: tr-right 400ms var(--tr-ease) 480ms backwards; }
 .proto-foot { animation: tr-rise 400ms var(--tr-ease) 440ms backwards; }
 .ally-card--create { animation: tr-right 420ms var(--tr-ease) 240ms backwards; }
 .ally-card--join { animation: tr-right 420ms var(--tr-ease) 380ms backwards; }
+/* 超限模拟 · 同盟（紫色入口）补同一套入场：tr-right / var(--tr-ease) / 420ms 与上面两张完全一致，只把延迟取在
+   创建 240ms 与加入 380ms 之间的 310ms —— DOM 里它恰好排在这两张中间（lobby.js 的 .ally-side：创建 → 超限 → 加入），
+   于是它跟着同一条时间轴依次进场，而不是等前两张落定后自己“凭空”跳出来。没有新关键帧。
+   这条要留在下面那条「减少动效（reduced-motion）」媒体查询的归零名单之前：媒体查询不提升优先级，同优先级按源码
+   顺序取后者，写进文件末尾那块紫色配色规则（在名单之后）会把名单里的 animation: none 反压掉，减少动效就失效了。 */
 .ally-guide { animation: tr-rise 380ms var(--tr-ease) 450ms backwards; }
 /* the diamond at the bottom while it comes up */
 .proto__body::after, .ally__body::after { content: ''; position: absolute; left: 50%; bottom: .5rem; z-index: 9; width: .3rem; height: .3rem; pointer-events: none; opacity: 0;
@@ -1176,10 +1609,20 @@ button.ally-card:disabled .ally-card__bar { filter: grayscale(.5) brightness(.8)
 .pcard.is-on .pcard__ring path + path { animation-delay: 260ms; }
 
 @media (prefers-reduced-motion: reduce) {
-  .hub-bg__ship, .hub-center, .hub-entry-wrap, .hub-radar__sweep, .proto__pic, .modal__box.proto, .modal__box.ally, .pcard.is-on .pcard__stamp,
+  .hub-bg__ship, .hub-center, .hub-entry-wrap, .hub-radar__sweep, .proto__pic, .modal__box.proto, .modal__box.ally, .modal__box.ext, .pcard.is-on .pcard__stamp,
   .mf-radar__sweep, .mf-radar__blip, .mf-blk.is-lit, .hub-bg__own, .lobby-hub .hub-bg, .lobby-hub > .topbar, .lobby-hub .hub-center, .lobby-hub .hub-side,
   .lobby-hub .hub-right, .hub-entries .hub-entry-wrap, .proto__bg, .proto-top, .proto-title, .proto-stage, .ally-stage, .proto-list .pcard, .proto-foot,
-  .ally-card--create, .ally-card--join, .ally-guide, .pcard.is-on .pcard__ring path, .ps, .ps-fig, .ps-spike, .ps-call, .ps-beacon, .ps-scan { animation: none; }
+  .proto-list__special,
+  .ally-card--create, .ally-card--join, .ally-guide, .pcard.is-on .pcard__ring path, .ps, .ps-fig, .ps-spike, .ps-call, .ps-beacon, .ps-scan,
+  .ext-body .ext-row, .ext-body .ext-stage { animation: none; }
+  /* 卡池调整（业主 2026-10-28 晚）：二级页与页脚那颗键只有底色过渡，没有动画；减动效下连过渡也归零 */
+  .ext-foot__pool, .ext-theme__rules, .ext-theme__pool { transition: none; }
+  /* 主题大厅的主 CTA 与角落那颗「卡池调整」窄条：减动效下不做位移、不做提亮过渡 */
+  .ext-theme__start.is-cta { transition: none; }
+  .ext-theme__start.is-cta:hover:not(:disabled), .ext-theme__start.is-cta:active:not(:disabled) { transform: none; }
+  .ext-theme__slot { transition: none; }
+  /* 功能设置（湮灭）的滑块：位移是动效，减动效下直接跳到终点 */
+  .annmods__track, .annmods__track i { transition: none; }
   .ps-cable__pulse { display: none; }
   .pcard.is-on .pcard__ring path { stroke-dashoffset: 0; }
   .proto__body::after, .ally__body::after { display: none; }
@@ -1190,3 +1633,325 @@ button.ally-card:disabled .ally-card__bar { filter: grayscale(.5) brightness(.8)
 .proto-list__wait { display: flex; align-items: center; gap: .08rem; margin: 0; color: var(--text-lo); font-size: calc(.15 * var(--t)); }
 .proto-list__wait.is-failed { flex-wrap: wrap; color: var(--amber); }
 .proto-list__wait.is-failed .icon { flex: none; width: 1.1em; height: 1.1em; }
+
+/* ---- 超限模拟：难度列表最下方的特殊项（业主 2026-10-26） ------------------------------------------------
+   紫色 = 超限（css/theme.css 的 --inf-* 同一套色）。它不是官方难度，卡面用 ∞ 代替难度徽记，
+   边框 / 名称 / 选中光晕全部走紫色，与上面四张官方难度卡明显区分。 */
+.pcard.is-infinite {
+  border-color: rgba(168, 85, 247, .55);
+  background: linear-gradient(180deg, rgba(38, 20, 62, .92), rgba(16, 12, 24, .96));
+  box-shadow: inset 0 0 1.2rem rgba(122, 62, 220, .18);
+}
+.pcard.is-infinite .pcard__glow {
+  background: radial-gradient(60% 120% at 50% 0%, rgba(168, 85, 247, .45), transparent 70%);
+}
+.pcard.is-infinite .pcard__name { color: var(--inf-300); text-shadow: 0 0 .18rem var(--inf-glow); }
+.pcard.is-infinite .pcard__desc { color: #c9b9e8; border-bottom-color: rgba(168, 85, 247, .28); }
+.pcard.is-infinite .pcard__effects { color: #b9a6dd; }
+.pcard.is-infinite .pcard__effects span::before { color: var(--inf-400); }
+.pcard.is-infinite .pcard__meta { color: #a99ac9; }
+.pcard.is-infinite .pcard__meta .num { color: var(--inf-300); }
+.pcard.is-infinite .pcard__infmeta { color: var(--inf-300); font-weight: 700; letter-spacing: .06em; }
+.pcard__inf {
+  display: inline-grid; place-items: center; width: max(.3rem, 18px); height: max(.3rem, 18px);
+  font: 900 calc(.26 * var(--t))/1 var(--font-num); color: var(--inf-300);
+  text-shadow: 0 0 .16rem var(--inf-glow);
+}
+.pcard.is-infinite.is-on { border-color: var(--inf-400); box-shadow: inset 0 0 1.4rem rgba(122, 62, 220, .3), 0 0 .4rem rgba(150, 90, 255, .35); }
+/* the other cards' grey hover / focus ring would read as "no longer special": keep the purple one */
+.pcard.is-infinite:hover:not(.is-on), .pcard.is-infinite:focus-visible:not(.is-on) { border-color: var(--inf-400); }
+/* the special difficulty is not a row of the scrollable list: it sits under it, always visible, behind a 特殊难度 rule
+   (the four official cards keep their own centring inside the list) */
+.proto-list__special { flex: none; display: flex; flex-direction: column; gap: .05rem; padding: .02rem .06rem .08rem .5rem; }
+.proto-list__special .diff-card { width: 100%; }
+.proto-list__special-label {
+  display: flex; align-items: center; gap: .08rem; padding-left: .02rem;
+  font-size: max(calc(.1 * var(--t)), 10px); font-weight: 700; letter-spacing: .22em; color: var(--inf-400);
+}
+.proto-list__special-label::after {
+  content: ''; flex: 1 1 auto; height: 1px;
+  background: linear-gradient(90deg, rgba(168, 85, 247, .5), rgba(168, 85, 247, 0));
+}
+@media (max-width: 900px) { .proto-list__special { padding-left: 22px; } }
+/* a short screen (≤520 px tall) has no room for the group label; the purple card alone still reads as special */
+@media (max-height: 520px) { .proto-list__special-label { display: none; } }
+.proto__body[data-difficulty="INFINITE"] .proto-title__mode,
+.proto__body[data-difficulty="INFINITE"] .proto-brief__name { color: var(--inf-300); }
+
+/* ---- 主题大厅 · 小屏（业主 2026-10-28）-----------------------------------------------------------------
+   放在文件末尾是有意的：lobby-hub / extension-modes 两个测试都按「第一条 max-width:900px / max-height:520px 媒体块」
+   取用，新的同查询块插到前面会让它们读到错的块。这里只覆盖 .ext-theme*，不碰大厅与协议页的任何选择器。 */
+@media (max-width: 900px) {
+  .ext-theme { padding: .22rem .24rem .2rem; }
+  .ext-theme__name { font-size: min(calc(.46 * var(--t)), .46rem); }
+  .ext-theme__body { max-width: 74%; }
+  .ext-theme__ring { display: none; }
+}
+@media (max-height: 520px) {
+  .ext-theme { gap: .1rem; padding: .16rem .2rem .14rem; }
+  .ext-theme__kicker { font-size: max(10px, calc(.11 * var(--t))); }
+  .ext-theme__name { font-size: min(calc(.34 * var(--t)), .34rem); }
+  /* 简介与要点让位（矮屏没有空间），但「攻略说明」必须留下来 —— 它是这一屏唯一的阅读入口，藏掉它等于手机上
+     看不了玩法包的手册。所以 body 只收成一行：按钮在左，文字都不画。 */
+  .ext-theme__body { display: flex; flex-direction: row; align-items: center; gap: .1rem; max-width: none; }
+  .ext-theme__desc, .ext-theme__feats { display: none; }
+  .ext-theme__guide { margin-top: 0; padding: .06rem .12rem; min-height: max(.44rem, 30px); font-size: calc(.15 * var(--t)); }
+  .ext-theme__foot { gap: .12rem; padding-top: .1rem; }
+  .ext-theme__start { min-width: 1.3rem; font-size: calc(.17 * var(--t)); }
+}
+
+/* ==========================================================================================
+   主题大厅的主视觉与主 CTA（业主 2026-10-28 第二轮 UI 改造 P1-3 / P1-4 / P1-5）
+   · 背景图 816×564 在 2376×1080 上 cover 会放大 ~2.9×：叠一层轻模糊 + 暗化渐变压掉放大噪点，
+     并把正文区压到 ≥ 4.5:1（白字 on 5%–18% 的暗层）。
+   · 只作用于声明了 art 的主题（[data-theme]）：湮灭那一屏的既有观感不动。
+   · 矮屏（≤520 高）与减动效：图可省，遮罩与对比度规则保留。
+   ========================================================================================== */
+.ext-theme[data-theme] .ext-theme__art-img {
+  filter: blur(4px) saturate(1.05) brightness(.72);
+  transform: scale(1.04);
+  opacity: .9;
+}
+.ext-theme[data-theme] .ext-theme__veil {
+  background:
+    radial-gradient(58% 52% at 16% 8%, rgba(23, 217, 160, .18), transparent 62%),
+    linear-gradient(100deg, rgba(5, 9, 8, .95) 0%, rgba(5, 9, 8, .82) 46%, rgba(5, 9, 8, .5) 78%, rgba(5, 9, 8, .34) 100%),
+    linear-gradient(0deg, rgba(5, 9, 8, .96) 0%, rgba(5, 9, 8, .3) 44%, rgba(5, 9, 8, .12) 100%);
+}
+/* 左侧「玩法档案」也用同一张底图（P1-5）：压暗到只剩轮廓，右侧列表保持纯色，两层图不打架 */
+.ext-stage[data-art] .ext-stage__art-img { filter: blur(5px) saturate(1.05) brightness(.5); transform: scale(1.05); }
+.ext-stage[data-art]::after {
+  content: ''; position: absolute; inset: 0; pointer-events: none; z-index: 0;
+  background: linear-gradient(180deg, rgba(5, 9, 8, .9) 0%, rgba(5, 9, 8, .78) 52%, rgba(5, 9, 8, .94) 100%);
+}
+/* 干员调配 / S.W.E.E.P. 报告：二级页左下的一摞窄入口（不占正文流，业主 2026-10-29）。
+   角标挂在 .ext-theme__foot 里，`bottom: 100%` 就锚在页脚那条 border-top（左下那条横线）上 —— 页脚高度随字号与
+   界面大小变，不用手算偏移。列序：S.W.E.E.P. 报告 → 干员调配（越靠上的越先被看到）。
+   2026-10-29 修订：原先还有一颗「卡池调整」，与「干员调配」打开同一屏（重复），已删；两枚按钮**同宽**。 */
+.ext-theme__corner {
+  /* 业主 2026-10-29（真机）：两枚入口要再上移一点 —— 手机端横向挤压时它们会和页脚主 CTA 贴到一起。 */
+  position: absolute; left: 0; bottom: calc(100% + .22rem); z-index: 2;
+  display: flex; flex-direction: column; align-items: flex-start; gap: .06rem;
+}
+/* 一格宽由**较宽的那一枚**决定，两枚都撑满，所以宽度天然一致（业主：干员调配要和 S.W.E.E.P. 档案同宽） */
+.ext-theme__dock { display: grid; grid-auto-rows: auto; justify-items: stretch; gap: .05rem; width: max-content; }
+.ext-theme__dock > button { width: 100%; justify-content: flex-start; }
+.ext-theme__slot {
+  display: inline-flex; align-items: center; gap: .06rem;
+  min-height: max(.36rem, 32px); padding: 0 .14rem;
+  font: inherit; font-size: max(11px, calc(.16 * var(--t))); font-weight: 700; letter-spacing: .04em;
+  color: #bfeee2; cursor: pointer; background: rgba(6, 12, 11, .78);
+  border: 1px solid rgba(23, 217, 160, .38); border-radius: .06rem;
+  transition: background var(--t-fast), border-color var(--t-fast), color var(--t-fast);
+}
+.ext-theme__slot .icon { flex: none; width: 1.05em; height: 1.05em; }
+.ext-theme__slot:hover { color: #eafff8; background: rgba(23, 217, 160, .16); border-color: #17d9a0; }
+.ext-theme__slot:focus-visible { outline: 2px solid #17d9a0; outline-offset: 2px; }
+/* 干员调配：大厅首页那颗 .hub-plate--loadout 的同一套浅色薄板语汇（浅底 + 墨色字 + 墨绿字形块），
+   但宽度随文字、高度只到 32px 级 —— 比大厅那颗窄一档，压在两条窄条之间也不抢主 CTA。 */
+.ext-theme__loadout {
+  display: inline-flex; align-items: center; gap: .08rem;
+  min-height: max(.34rem, 32px); padding: .02rem .16rem .02rem .08rem;
+  font: inherit; font-size: max(12px, calc(.17 * var(--t))); font-weight: 900; letter-spacing: .04em;
+  color: #111816; text-align: left; cursor: pointer;
+  background: linear-gradient(180deg, #e8edea, #c6cfcb);
+  border: 1px solid rgba(255, 255, 255, .5); border-radius: .06rem;
+  box-shadow: 0 .03rem .12rem rgba(0, 0, 0, .45), inset 0 -2px 0 rgba(0, 0, 0, .14);
+}
+.ext-theme__loadout-glyph {
+  flex: none; display: grid; place-items: center; width: .26rem; height: .26rem;
+  color: var(--mint-400, #5df0c6); background: #182120;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .08);
+}
+.ext-theme__loadout-glyph .icon { width: 100%; height: 100%; }
+.ext-theme__loadout-label { min-width: 0; white-space: nowrap; }
+.ext-theme__loadout:hover { filter: brightness(1.06); }
+.ext-theme__loadout:focus-visible { outline: 2px solid var(--mint-400, #5df0c6); outline-offset: 2px; }
+/* 业主 2026-10-29：S.W.E.E.P. 报告与干员调配用**同一套白板**（原先一个是深色绿边窄条、一个是浅色薄板，看着像两种控件）。
+ * 只在二级页左下这一摞里覆盖，大厅首页那颗 .ext-theme__slot 不受影响。 */
+.ext-theme__dock > .ext-theme__slot {
+  background: linear-gradient(180deg, #e8edea, #c6cfcb);
+  color: #111816;
+  border-color: rgba(255, 255, 255, .5);
+  box-shadow: 0 .03rem .12rem rgba(0, 0, 0, .45), inset 0 -2px 0 rgba(0, 0, 0, .14);
+}
+.ext-theme__dock > .ext-theme__slot .icon { color: #1d6f5c; }
+.ext-theme__dock > .ext-theme__slot:hover {
+  background: linear-gradient(180deg, #f4f8f6, #d4ddd9);
+  color: #0b1210;
+  border-color: #ffffff;
+  filter: none;
+}
+/* 主 CTA（P1-3）：比原来大一档，带描边光晕；hover 提亮、按下回弹；减动效不做位移 */
+.ext-theme__start.is-cta {
+  display: inline-flex; align-items: center; justify-content: center; gap: .1rem;
+  min-width: 2.1rem; min-height: max(.56rem, 32px, calc(52px * var(--sp-ui, 1)));
+  padding: 0 .34rem; font-size: max(15px, calc(.24 * var(--t))); letter-spacing: .08em;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, .18) inset, 0 .06rem .3rem rgba(232, 92, 58, .42);
+  transition: filter var(--t-fast), transform var(--t-fast), box-shadow var(--t-fast);
+}
+.ext-theme__start.is-cta .ext-theme__starticon { flex: none; width: .26rem; height: .26rem; }
+.ext-theme__start.is-cta:hover:not(:disabled) {
+  filter: brightness(1.1); transform: translateY(-1px);
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, .28) inset, 0 .1rem .42rem rgba(232, 92, 58, .55);
+}
+.ext-theme__start.is-cta:active:not(:disabled) { transform: translateY(1px); box-shadow: 0 0 0 1px rgba(0, 0, 0, .25) inset; }
+.ext-theme__start.is-cta:disabled { box-shadow: none; }
+/* 炸惊那一屏的 CTA 用自己的绿（与它的 theme 配色一致） */
+.ext-theme[data-theme="zhajing"] .ext-theme__start.is-cta {
+  color: #04210f; background: linear-gradient(180deg, #4fe8c0, #2fcf9f); border-color: #9ff5d8;
+  box-shadow: 0 0 0 1px rgba(159, 245, 216, .5) inset, 0 .06rem .3rem rgba(23, 217, 160, .42);
+}
+.ext-theme[data-theme="zhajing"] .ext-theme__start.is-cta:hover:not(:disabled) {
+  box-shadow: 0 0 0 1px rgba(159, 245, 216, .75) inset, 0 .1rem .42rem rgba(23, 217, 160, .55);
+}
+/* 矮屏：角落那颗与 CTA 都收小但仍 ≥30px 触摸地板。
+   业主 2026-10-30：**背景图手机上也要画**（和桌面同一张），只把不透明度收一档、遮罩照旧，保证字仍可读
+   （原来这里是 `display: none`，手机二级页是纯深色底）。 */
+@media (max-height: 520px) {
+  .ext-theme[data-theme] .ext-theme__art-img { display: block; opacity: .5; }
+  .ext-theme__corner { left: 0; bottom: calc(100% + .06rem); gap: .04rem; }
+  .ext-theme__dock { gap: .04rem; }
+  .ext-theme__slot { min-height: max(.34rem, 30px); padding: 0 .1rem; }
+  /* 干员调配在矮屏仍是 32px 触摸地板（它是一扇门，不是装饰），只收窄不收高 */
+  .ext-theme__loadout { min-height: max(.32rem, 32px); padding: .02rem .12rem .02rem .06rem; font-size: max(11px, calc(.15 * var(--t))); }
+  /* 矮屏也守住 44px 触摸地板（业主 2026-10-28 e2e：844/667 曾掉到 32px）—— 只收窄，不收高；卡池调整窄条不低于 30px */
+  .ext-theme__start.is-cta { min-width: 1.5rem; min-height: max(.56rem, 32px, calc(44px * var(--sp-ui, 1))); padding: 0 .22rem; font-size: max(13px, calc(.2 * var(--t))); }
+}
+/* 减动效：CTA 不做位移与提亮过渡（规则写在上面的 reduce 块里，同一个块 —— 本文件的「最后一个 reduce 块」必须还是它） */
+
+/* ==========================================================================================
+   卡池调整（业主 2026-10-28 晚，口径 =「维持原版的界面逻辑」）：二级页那颗键打开的是**既有的干员调配整屏**
+   （.lo-mode 双档切换在 loadout.css 里），这里只剩二级页自己的两颗键：规则 / 卡池调整。
+   它们与「攻略说明」同一形状（.ext-theme__guide），只是各带自己的图标与色。
+   ========================================================================================== */
+.ext-theme__rules, .ext-theme__pool { color: #bfeee2; border-color: rgba(23, 217, 160, .45); }
+.ext-theme__rules:hover, .ext-theme__pool:hover { color: #eafff8; border-color: #17d9a0; }
+/* 没有 theme 的玩法包仍用列表页脚那颗（保留：条目声明 poolEdit 而暂时没有二级页时） */
+.ext-foot__pool {
+  flex: none;
+  min-height: max(.44rem, 32px, calc(44px * var(--sp-ui, 1)));
+  padding: 0 .2rem;
+  font-size: max(12px, calc(.2 * var(--t)));
+  font-weight: 800;
+  letter-spacing: .06em;
+  color: #bfeee2;
+  cursor: pointer;
+  border: 1px solid rgba(23, 217, 160, .45);
+  border-radius: .1rem;
+  background: rgba(23, 217, 160, .1);
+  transition: background var(--t-fast), border-color var(--t-fast);
+}
+.ext-foot__pool:hover { background: rgba(23, 217, 160, .18); border-color: #17d9a0; }
+.ext-foot__pool:focus-visible { outline: 2px solid #17d9a0; outline-offset: 2px; }
+
+/* 矮屏（≤520 高）：二级页那两颗键收小，仍在视口里 */
+@media (max-height: 520px) {
+  .ext-foot__pool { min-height: max(.44rem, 32px); font-size: max(11px, calc(.17 * var(--t))); padding: 0 .14rem; }
+  .ext-theme__rules, .ext-theme__pool { min-height: max(.44rem, 30px); padding: .04rem .1rem; }
+}
+
+/* 炸惊模拟的二级页：没有主视觉时把档案与要点**垂直居中**（业主 2026-10-28 晚）——让空白看起来是排版，而不是缺图。
+   只作用于 [data-theme="zhajing"]：湮灭那一屏有主视觉，逐字节不变。矮屏仍从顶部排列（见下面的 media）。 */
+.ext-theme[data-theme="zhajing"] .ext-theme__body { flex: 1; justify-content: center; }
+@media (max-height: 520px) {
+  .ext-theme[data-theme="zhajing"] .ext-theme__body { flex: none; justify-content: flex-start; }
+}
+
+/* ==========================================================================================
+   湮灭模拟 · 二级页的「功能设置」（业主 2026-10-28 晚）：8 个开关（4 条规则 + 4 条内容）。
+   规则行直接用规则表自己的 `phrase[option]`，内容行用四条新词条；开关是 role="switch" 的整行按钮，触摸地板 24px。
+   ========================================================================================== */
+.annmods__body { display: flex; flex-direction: column; gap: .1rem; min-height: 0; }
+.annmods__ro { display: flex; align-items: center; gap: .08rem; margin: 0; font-size: max(11px, calc(.15 * var(--t))); color: var(--amber, #f0b429); }
+.annmods__ro .icon { width: max(.16rem, 11px); height: max(.16rem, 11px); flex: none; }
+.annmods__list { display: flex; flex-direction: column; gap: .04rem; margin: 0; padding: 0; list-style: none;
+  max-height: 54vh; overflow: auto; }
+.annmods__sw { display: flex; align-items: center; gap: .1rem; width: 100%; min-height: max(.4rem, 32px); padding: .04rem .06rem;
+  font: inherit; text-align: left; color: var(--text-md); cursor: pointer; background: none; border: 0; border-radius: .06rem; }
+.annmods__sw:hover:not(:disabled) { background: rgba(23, 217, 160, .08); }
+.annmods__sw:disabled { cursor: default; opacity: .7; }
+.annmods__sw:focus-visible { outline: 2px solid #17d9a0; outline-offset: 2px; }
+.annmods__track { flex: none; position: relative; width: max(.6rem, 32px); height: max(.28rem, 16px); border-radius: 999px;
+  background: rgba(255, 255, 255, .12); border: 1px solid var(--line-2); transition: background var(--t-fast), border-color var(--t-fast); }
+.annmods__track i { position: absolute; top: 1px; left: 1px; width: max(.22rem, 12px); height: max(.22rem, 12px); border-radius: 50%;
+  background: #9fb6c6; transition: transform var(--t-fast), background var(--t-fast); }
+.annmods__sw[aria-checked="true"] .annmods__track { background: rgba(23, 217, 160, .28); border-color: rgba(23, 217, 160, .55); }
+.annmods__sw[aria-checked="true"] .annmods__track i { background: #17d9a0; transform: translateX(.3rem); }
+.annmods__label { min-width: 0; font-size: max(12px, calc(.18 * var(--t))); line-height: 1.45; }
+.annmods__row.is-content .annmods__label { color: var(--text-lo); }
+.annmods__foot { display: flex; align-items: center; justify-content: flex-end; gap: .12rem; padding-top: .1rem; border-top: 1px solid var(--line); }
+.annmods__note { margin-right: auto; font-size: max(10px, calc(.14 * var(--t))); color: var(--text-dim); }
+.annmods__count { font-family: var(--font-num); font-weight: 800; color: #17d9a0; }
+.annmods__save { min-height: max(.44rem, 32px, calc(44px * var(--sp-ui, 1))); padding: 0 .28rem;
+  font-size: max(13px, calc(.21 * var(--t))); font-weight: 900; color: #04210f; cursor: pointer;
+  border: 0; border-radius: .1rem; background: linear-gradient(180deg, #4fe8c0, #2fcf9f); }
+.annmods__save:disabled { cursor: not-allowed; color: var(--text-lo); background: rgba(255, 255, 255, .07); }
+.annmods__save:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+
+/* 矮屏（≤520 高）：列表自己滚，页脚按钮始终在视口里 */
+@media (max-height: 520px) {
+  .annmods__list { max-height: 46vh; }
+  .annmods__sw { min-height: max(.36rem, 28px); }
+}
+.ext-theme[data-theme="zhajing"] .ext-theme__kicker { color: rgba(200, 255, 240, .7); }
+.ext-theme[data-theme="zhajing"] .ext-theme__meta b { color: #4fe8c0; }
+.ext-theme[data-theme="zhajing"] .ext-theme__feats li::before { background: #17d9a0; }
+.ext-theme[data-theme="zhajing"] .ext-theme__ring {
+  border-color: rgba(23, 217, 160, .5);
+  box-shadow: 0 0 1.1rem rgba(23, 217, 160, .3), inset 0 0 .9rem rgba(23, 217, 160, .24);
+}
+.ext-theme[data-theme="zhajing"] .ext-theme__guide { color: #bfeee2; background: rgba(23, 217, 160, .1); border-color: rgba(23, 217, 160, .42); }
+.ext-theme[data-theme="zhajing"] .ext-theme__guide:hover { color: #eafff8; background: rgba(23, 217, 160, .18); border-color: #17d9a0; }
+.ext-theme[data-theme="zhajing"] .ext-theme__start {
+  color: #04210f; background: linear-gradient(180deg, #4fe8c0, #2fcf9f); border-color: #9ff5d8;
+}
+.ext-theme[data-theme="zhajing"] .ext-theme__start:disabled { color: var(--text-lo); background: rgba(255, 255, 255, .07); border-color: rgba(255, 255, 255, .12); }
+/* 单人 / 同盟与（若将来声明）蚀流档位在二级页里也是余烬红：炸惊换成自己的绿 */
+.ext-theme[data-theme="zhajing"] .ext-party__chip.is-on,
+.ext-theme[data-theme="zhajing"] .ext-tier.is-on {
+  color: #04210f; background: linear-gradient(180deg, #4fe8c0, #2fcf9f); border-color: #9ff5d8;
+}
+.ext-theme[data-theme="zhajing"] .ext-theme .ext-party__chip:hover,
+.ext-theme[data-theme="zhajing"] .ext-party__chip:hover,
+.ext-theme[data-theme="zhajing"] .ext-tier:hover { border-color: #17d9a0; }
+
+/* 惊变一览（业主 task-16，2026-10-29）：炸惊二级页上的只读入口。形状与「规则」「攻略说明」同一颗 .ext-theme__guide，
+   这里只补一件事 —— 手机横屏（≤520 高）时 .ext-theme__guide 被压到 30px，把它抬回 32px 触摸下限。别的尺寸沿用
+   那一颗自己的 max(.52rem, 32px, 36px * --sp-ui)：不在外面重复声明，免得 特大 字号下反而变小。 */
+@media (max-height: 520px) {
+  .ext-theme__codex { min-height: max(.44rem, 32px); }
+}
+/* 惊变一览（task-16）沿用的是局内 .zjpanel 壳。局内它挂在房内屏上；在大堂它是一条 .ext-theme 里的 fixed 层，
+   父级 grid 的隐式行是 auto（按内容撑高），.zjpanel__box 的 max-height: 84% 没有可解析的高度而失效 ——
+   792×360 实测盒子 788px 高、下沿伸出视口。这里只把那一行钉成视口高，百分比 max-height 重新生效，
+   99 张仍由 .zjpanel__body 自己滚。只作用于大堂，局内那份不受影响。 */
+.ext-theme .zjpanel { grid-template-rows: minmax(0, 1fr); }
+
+/* ==========================================================================================
+   手机端的按钮间距（业主 2026-11-01，真机所见）：「看来是叠在一起」实际都不是几何相交，而是**贴得太近** ——
+   实测（792×360 / 667×375 / 844×390）主题大厅左下 S.W.E.E.P.报告 与 干员调配 只隔 2px、大厅三张模式卡之间 6px、
+   选择拓展玩法 的两行玩法包 6px、大厅右侧两块板 5px。四对控件按同一口径各拉开一档：
+   ≤900 宽 +6px、≤520 高 +4px（两档互斥，与 `.ext-row` 的 64/8、56/6 那套阶梯同一约定）。
+   · 只改间距，不改任何可点区域的高度/宽度，也不动 `.ext-list` 的 8 / 6（test/ui/extension-modes.test.js:617-624
+     逐条断言那两个数）。
+   · 全部写在媒体查询里：1280×720 与 1920×1080 两条查询都不命中，桌面 rect 逐值不变。
+   · 放在文件末尾是有意的（见上面「主题大厅 · 小屏」与 §35 的说明）：lobby-hub / extension-modes / zhajing-loadout
+     几个测试都按「第一条同查询媒体块」取用，新的同查询块插到前面会让它们读到错的块。 */
+@media (max-width: 900px) and (min-height: 521px) {
+  /* ① 大厅第三张卡（拓展模式 = 写着「N 个玩法」的那张）与左右两张：--hub-gap 同时喂 .hub-entries 的 gap 与整列
+     宽度的算式（3 * --hub-entry-w + 2 * --hub-gap），改这一处，间距与列宽一起走，行不会溢出一列。 */
+  .lobby-hub { --hub-gap: calc(.14rem + 6px); }
+  /* ② 主题大厅左下那一摞：S.W.E.E.P.报告 在 干员调配 之上（矮屏的 4px 一档在下面那条块里） */
+  .ext-theme__dock { gap: calc(.05rem + 6px); }
+  /* ③ 大厅右侧：S.W.E.E.P.报告 / 干员调配 两块板 */
+  .hub-right { gap: calc(.12rem + 6px); }
+  /* ④ 选择拓展玩法 的两行玩法包（行高 64 / gap 8 不变，只在行与行之间再让出 6px；选择器是 li，见上面那条注释） */
+  .ext-body .ext-list > li + li { margin-top: calc(.06rem + 6px); }
+}
+@media (max-height: 520px) {
+  .lobby-hub { --hub-gap: calc(.14rem + 4px); }
+  .ext-theme__dock { gap: calc(.04rem + 4px); }
+  .hub-right { gap: calc(.12rem + 4px); }
+  .ext-body .ext-list > li + li { margin-top: 4px; }
+}

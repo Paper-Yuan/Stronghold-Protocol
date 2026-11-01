@@ -11,9 +11,10 @@ describe('slots & targets', () => {
     assert.deepEqual(tileSlot({ row: 7, col: 0 }), { area: 'hand', idx: 0 });
     assert.deepEqual(tileSlot({ row: 7, col: 9 }), { area: 'hand', idx: 9 });
     assert.equal(tileSlot({ row: 7, col: 10 }), null);
-    assert.deepEqual(tileSlot({ row: 8, col: 4 }), { area: 'temp', idx: 0 });
-    assert.deepEqual(tileSlot({ row: 8, col: 8 }), { area: 'temp', idx: 4 });
-    assert.equal(tileSlot({ row: 8, col: 3 }), null);
+    assert.deepEqual(tileSlot({ row: 6, col: 0 }), { area: 'temp', idx: 0 });
+    assert.deepEqual(tileSlot({ row: 6, col: 4 }), { area: 'temp', idx: 4 });
+    assert.equal(tileSlot({ row: 6, col: 5 }), null);
+    assert.equal(tileSlot({ row: 8, col: 0 }), null, 'row 8 只在 20 格长椅下才是格位（官方 10 格不是）');
     assert.deepEqual(tileSlot({ row: 9, col: 2 }), { area: 'board', row: 9, col: 2 });
     assert.deepEqual(tileSlot({ row: 12, col: 10 }), { area: 'board', row: 12, col: 10 });
     assert.equal(tileSlot({ row: 12, col: 11 }), null, 'partner half is not ours');
@@ -44,7 +45,8 @@ describe('slots & targets', () => {
     assert.deepEqual(resolveDrop({ ...base, tile: { row: 10, col: 5 } }), { kind: 'drop', target: { area: 'board', row: 10, col: 5 } });
     assert.deepEqual(resolveDrop({ ...base, tile: { row: 7, col: 6 } }), { kind: 'drop', target: { area: 'hand', idx: 6 } });
     assert.equal(resolveDrop({ ...base, tile: { row: 7, col: 2 } }).reason, 'same');
-    assert.equal(resolveDrop({ ...base, tile: { row: 8, col: 5 } }).reason, 'temp');
+    assert.equal(resolveDrop({ ...base, tile: { row: 6, col: 2 } }).reason, 'temp');
+    assert.equal(resolveDrop({ ...base, tile: { row: 8, col: 2 } }).reason, 'notTarget');
     assert.equal(resolveDrop({ ...base, tile: { row: 15, col: 9 } }).reason, 'notTarget');
     assert.deepEqual(resolveDrop({ ...base, tile: null }), { kind: 'drop', target: { area: 'outside', clientX: 10, clientY: 20 } });
     assert.deepEqual(resolveDrop({ ...base, tile: { row: 10, col: 5 }, overCanvas: false }).target.area, 'outside');

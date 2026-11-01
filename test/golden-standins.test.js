@@ -6,6 +6,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { isOfficialChess } from '../shared/playSets.js';
 
 const read = (p) => JSON.parse(readFileSync(new URL(p, import.meta.url), 'utf8'));
 const CHESS = read('../data/chess.json');
@@ -14,7 +15,10 @@ const STANDINS = read('./golden/standins.json');
 const MATCHES = read('./golden/matches.json');
 const COL = Object.fromEntries(STANDINS.columns.units.map((k, i) => [k, i]));
 
-const normal = Object.values(CHESS).filter((c) => c.chessType === 'NORMAL' && c.backup && c.backup.charId !== c.charId);
+// the official NORMAL records only: 炸惊模拟's imported copies and 湮灭模拟's 18 NORMAL `annihilation: true` cards have the
+// same shape (a `backup` naming another body) but are the play sets' own pools, never part of the official `standins` family
+// (shared/playSets.js isOfficialChess — the same predicate tools/golden.mjs builds STANDIN_CHESS with).
+const normal = Object.values(CHESS).filter((c) => isOfficialChess(c) && c.chessType === 'NORMAL' && c.backup && c.backup.charId !== c.charId);
 
 test('standins: every NORMAL chess record (normal + elite) is fielded once, with its backup skill, without content errors', () => {
   assert.equal(normal.length, 110);

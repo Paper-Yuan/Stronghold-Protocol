@@ -43,11 +43,20 @@ const runWhenHit = (v) => ({ taken(c, b, e, a) { if (a.on || !(v > 0)) return; a
  * 终极 R5–R15) comes out again — a 频次 enemy's death spawn inherits the parent's mods, so it travels with them. Whole hits:
  * setHits rounds [ASSUMED: no source says how a fractional count rounds]. Until 0.2.1 the count was the data's whatever
  * the difficulty (PR #272).
+ *
+ * 超限模拟（`flags.overlimit`）: 次数怪的血量就是**要被打几次**（attack/health.js — 带 hitCount 的目标每段伤害只扣 1 点），
+ * 所以它不吃关卡/回合的敌方血量倍率，与炸惊同口径（ejibian.js pinBase: `!isHitCount(e)` 时才改写 base.maxHp）。不豁免的话
+ * spawnEnemy 的 `def.maxHp × mods.hpMul`（超限 R30 ≈ ×8.6）会把青铜镜的 30 次变成 258 次 —— 一个小怪要挨 258 下。
+ * 豁免只换「次数」的基数：atk / def / res / aspd / bat 仍由 spawnEnemy 照常放大（它在 times 之前就已乘好）。
+ * 普通 / 湮灭 / 炸惊没有 `flags.overlimit`，仍走含 hpMul 的 `e.base.maxHp`（以及补给线那份 supplyHpMul），一帧不变。
  */
 const times = (artsOnly = false) => ({
   spawn(b, e) {
     const s = Number(e.mods && e.mods.supplyHpMul);
-    setHits(e, e.base.maxHp / (Number.isFinite(s) && s > 0 ? s : 1));
+    const overlimit = !!(b.flags && b.flags.overlimit);
+    // 超限：基数取 def 的原始 maxHp（= 数据里的次数），hpMul / supplyHpMul 都不进次数。
+    const base = overlimit && e.def && e.def.maxHp > 0 ? e.def.maxHp : e.base.maxHp;
+    setHits(e, overlimit ? base : base / (Number.isFinite(s) && s > 0 ? s : 1));
     hitCount(b, e, true, artsOnly);
   },
 });

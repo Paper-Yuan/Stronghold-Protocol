@@ -210,6 +210,14 @@ export const DIE_ANIM_TIME = 0.8;
 /** Time (s) the ATTACK / DEPLOY animation code is reported after the action. */
 export const ATTACK_ANIM_TIME = 0.35;
 export const DEPLOY_ANIM_TIME = 0.5;
+/**
+ * Delay (s) a deploy-triggered relic effect waits before it fires, so it lands after the deployment animation instead of
+ * on units still arriving. It is a *delay*, not a protection window: this build implements no deploy immunity, and the
+ * only reader today is the annihilation relic n19 「未尽的生命」 (content/relics.js), which waits this long and then
+ * stuns the units standing at that moment. 1.2 is the Annihilation mod v3.2.0's value for the same delay (its
+ * `DEPLOY_PROTECT`); no official table settles it — [ASSUMED], kept for parity with the play set.
+ */
+export const DEPLOY_PROTECT = 1.2;
 
 /** Stage devices that act as ground obstacles for pathing (阻隔工事). */
 export const OBSTACLE_DEVICES = Object.freeze({ trap_1105_accrate: { hp: 100, name: '阻隔工事' } });

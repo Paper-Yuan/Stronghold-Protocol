@@ -37,7 +37,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 /** Page-side helpers (installed once per page): the prep pieces, their views, the invariants of item 1. */
 function installHelpers() {
-  const G = { HAND_ROW: 7, TEMP_ROW: 8, TEMP_C0: 4 };
+  const G = { HAND_ROW: 7, TEMP_ROW: 6, TEMP_C0: 0 };  // shared/constants.js GEO (row 8 is the 炸惊 bench's second row)
   const raw = () => globalThis.__SP_VIEW__.raw;
   const priv = () => globalThis.__MOCK__.store.get().match.private;
   const texOk = (t) => !!t && !t.destroyed && !!t.baseTexture && !t.baseTexture.destroyed && t.baseTexture.valid !== false;

@@ -68,11 +68,14 @@ const slotOf = (id) => ({ kind: 'chess', id, basePrice: DATA.chess[id].tier === 
 // ---------------------------------------------------------------------------------------------------------------
 // data / wiring
 
-test('bands.js wires both parts: 28 bands with a prep handler, 10 with a battle part, 鸭爵 global, 歌利亚 = LP only', () => {
+test('bands.js wires both parts: 28 official bands with a prep handler, 11 with a battle part, 鸭爵 global, 歌利亚 = LP only', () => {
   assert.equal(typeof bands.install, 'function');
   assert.equal(typeof bands.registerMeta, 'function');
-  const ids = Object.keys(DATA.bands);
+  // Official strategies only: data/bands.json also carries 炸惊模拟's two `zjOnly` strategies (band_zj_si / band_zj_fuuka),
+  // whose numbers live in the play set's own modules and which are never offered outside ZHAJING (GameData.bandAllowed).
+  const ids = Object.keys(DATA.bands).filter((id) => DATA.bands[id].zjOnly !== true);
   assert.equal(ids.length, 40);
+  assert.equal(Object.keys(DATA.bands).length, 42, '42 records = 40 official + 2 zjOnly');
   const meta = ids.filter((id) => REG.has(`band:${id}`));
   const battle = ids.filter(hasBattlePart);
   assert.equal(meta.length, 28);
@@ -802,9 +805,10 @@ test('外勤医疗: 联防右侧 Touch retains its prepared targeting order', ()
   checkInvariants(h.b);
 });
 
-test('coverage: every band is exercised by a test above', () => {
+test('coverage: every official band is exercised by a test above (official only)', () => {
   cover('band_dusk'); // 夕: 画卷 grant (fixed-round test) + 墨色真颜 (battle test)
-  const missing = Object.keys(DATA.bands).filter((id) => !COVER.has(id)).sort();
+  // 炸惊模拟's two `zjOnly` strategies are covered by its own play set, not by this official coverage list
+  const missing = Object.keys(DATA.bands).filter((id) => DATA.bands[id].zjOnly !== true && !COVER.has(id)).sort();
   assert.deepEqual(missing, []);
 });
 

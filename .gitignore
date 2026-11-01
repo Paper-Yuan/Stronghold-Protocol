@@ -6,6 +6,8 @@ public/vendor/
 # --- build output (packaged releases) --------------------------------------------------------------
 # tools/package.mjs / scripts/build-android.mjs 的产物放 artifacts/（见 artifacts/README.md）
 artifacts/
+# electron-builder 的桌面端产物（scripts/build-desktop.mjs，dist/desktop/Stronghold-Protocol-v<版本>-desktop-x64/）
+dist/desktop/
 
 # --- game assets: (c) Hypergryph / Yostar, fetched or extracted locally, NEVER committed ----------
 # tools/fetch-assets.mjs → public/assets/** (~270 MB) and public/fonts/** (+ fonts.css)
@@ -60,6 +62,11 @@ android/app/src/main/assets/bundle.sha256
 public/dev/simcheck/data/
 
 *.tar.gz
+
+# --- local reference material ---------------------------------------------------------------
+# modref/ = the 炸惊 / 湮灭 mod packages unpacked for a port (handoff/ZHAJING-SPLIT-2026-10-28.md,
+# docs/ANNIHILATION-MODS.md). Third-party sources and art, never committed.
+modref/
 
 # --- plugins (docs/PLUGINS.md): a server's own plugins and its policy file live in plugins/ and are never committed;
 # only the folder's readme, its guide for AI agents (AGENTS.md) and the templates are tracked.

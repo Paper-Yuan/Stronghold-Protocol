@@ -21,7 +21,8 @@
 // never ship), schemas/, the plugin author harness,
 // the start scripts, the tools a player runs (setup, vendor = the postinstall, fetch-assets + tools/assets, doctor, plugin, and
 // what setup starts: tools/local-extract, crop-board-atlas), the research tables the Node server (server/sim/
-// nodeData.js fallback) and fetch-assets read, package.json / package-lock.json, LICENSE / NOTICE.md /
+// nodeData.js fallback) and fetch-assets read, plus the source tables shipped code only names by file (CITED_RESEARCH:
+// the source of a shipped record stays readable inside the package), package.json / package-lock.json, LICENSE / NOTICE.md /
 // THIRD-PARTY-NOTICES.md, README.md, CHANGELOG.md, the player and plugin author docs. `npm ci --omit=dev` in the
 // stage adds the production node_modules and (postinstall) public/vendor. The full zip adds the git-ignored art: the
 // files data/assets.json lists, public/fonts, and the local-client extraction (public/assets/local/,
@@ -130,6 +131,14 @@ export const AUTHOR_TEST_FILES = ['test/helpers/battleHarness.js'];
 export const isPluginResource = (rel) => rel === 'plugins/README.md' || rel === 'plugins/AGENTS.md' || rel.startsWith('plugins/_template/');
 /** Research tables read at run time: server/sim/nodeData.js (the Node sim's fallback) and tools/fetch-assets.mjs. */
 export const RUNTIME_RESEARCH = ['docs/research/03-operators.json', 'docs/research/05-enemies.json', 'docs/research/05-maps.json', 'docs/research/07-assets.json'];
+/**
+ * Source tables a shipped file only names by file (a comment such as `docs/research/25-overlimit-items.json` is the
+ * source of a shipped record, which the code never reads at run time). They ship too: a player who opens the package
+ * must be able to find the table the code points at. test/package.test.js fails a plan whose shipped code names a
+ * `NN-name.json` this list leaves out, so a table is registered here in the same change that first cites it.
+ */
+export const CITED_RESEARCH = ['docs/research/18-zhaijing-content.json', 'docs/research/20-annihilation-mods.json',
+  'docs/research/23-overlimit-relics.json', 'docs/research/24-overlimit-negative-relics.json', 'docs/research/25-overlimit-items.json'];
 /** The start scripts (scripts/make-windows-bundle.mjs is the maintainer's Windows pack, docs/WINDOWS.md). */
 export const PLAYER_SCRIPTS = ['scripts/install-service-windows.ps1', 'scripts/launch.mjs', 'scripts/open-browser.mjs',
   'scripts/run-server.cmd', 'scripts/start-windows-sandbox.bat', 'scripts/start-windows.bat', 'scripts/start-windows.ps1', 'scripts/start.sh'];
@@ -235,7 +244,7 @@ export function isPlayerFile(rel) {
   if (isPluginResource(p) || AUTHOR_TEST_FILES.includes(p)) return true;
   if (RUNTIME_DIRS.some((d) => p.startsWith(d)) || PLAYER_TOOL_DIRS.some((d) => p.startsWith(d))) return true;
   return ROOT_FILES.includes(p) || ROOT_LAUNCHERS.includes(p) || PLAYER_DOCS.includes(p) || RUNTIME_RESEARCH.includes(p)
-    || PLAYER_SCRIPTS.includes(p) || PLAYER_TOOLS.includes(p);
+    || CITED_RESEARCH.includes(p) || PLAYER_SCRIPTS.includes(p) || PLAYER_TOOLS.includes(p);
 }
 
 /**

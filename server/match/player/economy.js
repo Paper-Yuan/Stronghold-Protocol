@@ -39,13 +39,18 @@ export class PlayerEconomy {
 
   /**
    * Bond layer gain (prep-side). `requireActive` = "使已激活的【X】层数+N". Returns layers added: at most the room left
-   * under BOND_LAYER_CAP (999, shared/constants.js) — a gain at the cap adds 0 and dispatches nothing.
+   * under the bond's cap — BOND_LAYER_CAP (999, shared/constants.js) unless the mode configures its own (`gd.bondLayerCap`,
+   * 炸惊模拟 规则1: 9999) — a gain at the cap adds 0 and dispatches nothing.
    */
   addLayers(bondId, n, { requireActive = false, reason = '' } = {}) {
     if (!this.gd.bond(bondId) || !Number.isFinite(n) || n <= 0) return 0;
     if (requireActive && !(this.bonds[bondId] && this.bonds[bondId].active)) return 0;
     const before = this.layers[bondId] || 0;
-    const add = layerGainRoom(before, Math.floor(n));
+    // 炸惊模拟 规则1: the mode's own per-bond cap (null in every other mode, where `layerGainRoom` keeps the official 999)
+    const cap = this.gd.bondLayerCap;
+    // 无尽湮灭: 盟约叠层无层限制 — no cap, the gain is taken whole (annihilation only; every official mode keeps the cap)
+    const add = this.gd && this.gd.annihilation && this.gd.unlimitedLayers ? Math.floor(n)
+      : cap ? Math.max(0, Math.min(Math.floor(n), cap - before)) : layerGainRoom(before, Math.floor(n));
     if (add <= 0) return 0;
     this.layers[bondId] = before + add;
     this.recompute();
@@ -68,7 +73,17 @@ export class PlayerEconomy {
 
   _rollChessSlot() {
     // the slotted 自选 pieces join the draw once the 调度中心 reaches their slot's level (player/diy.js diyRollEntries)
-    const id = this.m.pool.roll(this.m.rngShop, { maxTier: this.shop.level, extra: this.diyRollEntries() });
+    // 炸惊模拟 · 卡池预选: this player's OWN bans remove a chess from THEIR draw once every one of its bonds is banned (the
+    // same rule the official `drawDisabledBonds` applies at match level). No bans ⇒ the options object is byte-identical to
+    // the ordinary roll, so every other mode and every player who never opened the panel draws exactly what they drew.
+    const ban = this.chessBanFilter();
+    // 队内共用 / 队间独立 (TWELVE_PLAYER_MODE §2): a room above MAX_SEATS draws from this player's TEAM pool
+    // (Match.poolFor); a 4-seat room gets `this.m.pool` back, so the roll is byte-identical.
+    const id = this.m.poolFor(this).roll(this.m.rngShop, {
+      maxTier: this.shop.level,
+      extra: this.diyRollEntries(),
+      ...(ban ? { filter: ban } : null),
+    });
     return id ? { kind: 'chess', id, basePrice: this.gd.chessPrice(id), frozen: false, sold: false } : null;
   }
 
@@ -77,13 +92,61 @@ export class PlayerEconomy {
     // bondBias therefore calls computeBonds at the roll (no rng). The official rule passes null and
     // does not call it, so the shop's rng stays today's two draws.
     let bias = null;
-    if (ruleOption(this.m?.rules, 'shopBias') === 'bondBias') {
+    // GameData.rulesOf: official default → mode.annRules → room annMods → plugin content rules (strongest)
+    if (this.gd.rulesOf('shopBias') === 'bondBias') {
       const bonds = computeBonds(this.gd, this);
       bias = new Set();
       for (const [id, st] of Object.entries(bonds)) if (st && st.active) bias.add(id);
     }
     const id = this.m.pool.rollItem(this.m.rngShop, this.shop.level, this.m.itemPool, bias);
     return id ? { kind: 'item', id, basePrice: this.gd.itemPrice(id), frozen: false, sold: false } : null;
+  }
+
+  /**
+   * 炸惊模拟 · 卡池预选: the set of bond ids this player banned from their own pool, or null when they banned nothing
+   * (every other mode included, where `this.bans` is null).
+   * @returns {Set<string> | null}
+   */
+  banSet() {
+    const zj = this.bans && this.bans.zhajing;
+    if (!zj) return null;
+    const set = new Set([...(zj.core || []), ...(zj.addon || [])]);
+    return set.size ? set : null;
+  }
+
+  /**
+   * Does this player's 卡池预选 remove chess `id` from their own draw? The rule is the official one (`pool.js
+   * drawDisabledBonds`): a chess whose bonds are ALL banned never appears; a chess with any live bond still does.
+   * @param {string} id
+   * @returns {boolean}
+   */
+  chessBannedByPreselect(id) {
+    const set = this.banSet();
+    if (!set) return false;
+    const c = this.gd.chess(id);
+    const bonds = c && Array.isArray(c.bonds) ? c.bonds : [];
+    return bonds.length > 0 && bonds.every((b) => set.has(b));
+  }
+
+  /**
+   * 炸惊模拟 · 卡池预选: the same rule as a `filter` for a shared-pool chess roll (`{ filter }` of pool.roll / a
+   * choices.json pool), or **null** when this player banned nothing — every caller then passes no filter at all, so an
+   * unbanned player's draw (and every other mode's) stays byte-identical to before the panel existed.
+   * Used by every chess draw of this player: the shop's chess slots (economy.js _rollChessSlot), the 特殊刷新
+   * (acquire.js pushRewardOffer), the 按盟约 special refresh (choices.js) and the 奖池 / ctx.rollChess
+   * (spDraft.js rollPool, effectsMeta.js). The 装备 slot is NOT filtered: bans name 盟约, and the item pool is another
+   * dimension.
+   * @returns {((id: string) => boolean) | null}
+   */
+  chessBanFilter() {
+    const set = this.banSet();
+    if (!set) return null;
+    const gd = this.gd;
+    return (id) => {
+      const c = gd.chess(id);
+      const bonds = c && Array.isArray(c.bonds) ? c.bonds : [];
+      return !(bonds.length > 0 && bonds.every((b) => set.has(b)));
+    };
   }
 
   /**

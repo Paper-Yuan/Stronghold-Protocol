@@ -17,7 +17,8 @@
 //            range); no items on the board; chess count ≤ deploy cap
 //            (where a merge's elite goes — a consumed deployed copy's tile, else the hand — needs the state before the
 //            merge: audit.js checks it per merge)
-//   bonds    ps.bonds equals a fresh computeBonds() (every mutation recomputed them); every bond's layers 0 … BOND_LAYER_CAP
+//   bonds    ps.bonds equals a fresh computeBonds() (every mutation recomputed them); every bond's layers 0 … the cap
+//            (BOND_LAYER_CAP 999, or the mode's own — 炸惊模拟 规则1: gd.bondLayerCap 9999)
 //   shop     slot count follows the rolled layout; ids known; banned chess never offered by the shop / rewards
 //   elim.    an eliminated player owns nothing (board, hand, temp, shop, offers, bounties, funds)
 //   choice   a player's open 教鞭 choice (`personalChoice`) is one of an alive, not-Ready player in the PREP of its own round,
@@ -40,7 +41,18 @@ export function collectViolations(m, { limit = 25 } = {}) {
   const out = [];
   const fail = (msg) => { if (out.length < limit) out.push(msg); };
   const gd = m.gd;
+  /**
+   * Copies held per POOL (多队 second layer, TWELVE_PLAYER_MODE §2): a pool → Map<baseId, copies>. A 4-seat match keeps
+   * exactly one pool (`m.pool`), so the accounting below is the check it always made; a room above MAX_SEATS keeps one
+   * pool per team and every player's copies count against its own team's pool.
+   */
   const held = new Map();
+  const heldOf = (pool) => {
+    let t = held.get(pool);
+    if (!t) { t = new Map(); held.set(pool, t); }
+    return t;
+  };
+  const pools = typeof m.allPools === 'function' ? m.allPools() : [m.pool];
   const uids = new Set();
   const banned = new Set(m.bannedChess || []);
   const note = (ps, p) => {
@@ -70,9 +82,11 @@ export function collectViolations(m, { limit = 25 } = {}) {
     if (!(ps.shop.level >= 1 && ps.shop.level <= gd.maxShopLevel)) fail(`${id}: shop level ${ps.shop.level}`);
     if (!(ps.shop.upgradePrice >= 0)) fail(`${id}: upgradePrice ${ps.shop.upgradePrice}`);
     if (!Number.isInteger(ps.shop.freeRefreshes) || ps.shop.freeRefreshes < 0) fail(`${id}: freeRefreshes ${ps.shop.freeRefreshes}`);
-    // the official per-bond layer cap (shared/constants.js): no writer may pass it
+    // the per-bond layer cap: the official 999 (shared/constants.js) unless the mode configures its own
+    // (炸惊模拟 规则1: gd.bondLayerCap = 9999, null in every other mode — so nothing else is relaxed)
+    const layerCap = gd.bondLayerCap || BOND_LAYER_CAP;
     for (const [b, v] of Object.entries(ps.layers || {})) {
-      if (!(Number.isFinite(v) && v >= 0 && (!(BOND_LAYER_CAP > 0) || v <= BOND_LAYER_CAP))) fail(`${id}: ${b} layers ${v}`);
+      if (!(Number.isFinite(v) && v >= 0 && (!(layerCap > 0) || v <= layerCap))) fail(`${id}: ${b} layers ${v}`);
     }
 
     if (!ps.alive) {
@@ -114,7 +128,7 @@ export function collectViolations(m, { limit = 25 } = {}) {
         const maxCopies = rec.isGolden ? gd.goldenCopies : 1;
         if (!Number.isInteger(p.poolCopies) || p.poolCopies < 0 || p.poolCopies > maxCopies) fail(`${id}: ${p.id} holds ${p.poolCopies} copies`);
         const base = gd.baseIdOf(p.id);
-        const tally = rec.isDiy ? diyHeld : held;
+        const tally = rec.isDiy ? diyHeld : heldOf(typeof m.poolFor === 'function' ? m.poolFor(ps) : m.pool);
         tally.set(base, (tally.get(base) || 0) + (p.poolCopies || 0));
       } else if (p.kind === 'item') {
         if (!gd.item(p.id)) fail(`${id}: unknown item ${p.id}`);
@@ -199,13 +213,16 @@ export function collectViolations(m, { limit = 25 } = {}) {
     for (const [base, n] of diyHeld) if (!(ps.diyStock && ps.diyStock.has(base)) && n !== 0) fail(`${id}: 自选 slot ${base} without stock holds ${n} copies`);
   }
 
-  // shared pool accounting
-  for (const [base, e] of m.pool.entries) {
-    if (!(Number.isInteger(e.left) && e.left <= e.cap)) fail(`pool ${base}: balance ${e.left} cap ${e.cap}`);
-    const h = held.get(base) || 0;
-    if (e.left + h !== e.cap) fail(`pool ${base}: left ${e.left} + held ${h} != cap ${e.cap}`);
+  // shared pool accounting (one pool per team in a room above MAX_SEATS, else the match's single pool)
+  for (const pool of pools) {
+    const tally = held.get(pool) || new Map();
+    for (const [base, e] of pool.entries) {
+      if (!(Number.isInteger(e.left) && e.left <= e.cap)) fail(`pool ${base}: balance ${e.left} cap ${e.cap}`);
+      const h = tally.get(base) || 0;
+      if (e.left + h !== e.cap) fail(`pool ${base}: left ${e.left} + held ${h} != cap ${e.cap}`);
+    }
+    for (const [base, n] of tally) if (!pool.has(base) && n !== 0) fail(`non-pool chess ${base} holds ${n} copies`);
   }
-  for (const [base, n] of held) if (!m.pool.has(base) && n !== 0) fail(`non-pool chess ${base} holds ${n} copies`);
 
   // Displayed shop cards and item rewards may overdraw; itemPool.debt is that overage (#624). Fixed gift families
   // may overdraw without a debt entry. debt > over is always a missed repay or a debt recorded for a piece not kept.

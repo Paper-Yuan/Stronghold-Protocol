@@ -26,13 +26,22 @@
 //   pieceDrop      { uid, piece, from, target }
 //   pieceDragEnd   { uid, piece, dropped, cancelled }
 
-import { GEO } from '../../../shared/constants.js';
+import { GEO, benchTileOf, benchIndexAt } from '../../../shared/constants.js';
 
-/** Where a piece currently sits, as a tile. `piece.area` 'board' uses row/col; 'hand'/'temp' use idx. */
-export function pieceTile(piece) {
+/**
+ * Where a piece currently sits, as a tile. `piece.area` 'board' uses row/col; 'hand'/'temp' use idx — the bench's own
+ * slot mapping (`shared/constants.js benchTileOf`: 10 slots = row 7 cols 0..9, the 20-slot 炸惊 bench = slots 0..9 on
+ * row 7 and 10..19 on the row behind it, row 8); a temp piece sits on the stage's own temp row (`tempRowOf`:
+ * row 6 cols 0..4, or row 9 on act2autochess_m01). `handSize` = this match's 整备区 width (`benchSizeOf`).
+ * @param {{area?:string,idx?:number,row?:number,col?:number}} piece
+ * @param {number} [handSize]
+ * @param {number} [baseRow] the row of the first bench row (`GEO.HAND_ROW`)
+ * @param {number} [tempRow] the stage's temp row (`tempRowOf`)
+ */
+export function pieceTile(piece, handSize = GEO.HAND_SIZE, baseRow = GEO.HAND_ROW, tempRow = GEO.TEMP_ROW) {
   if (!piece || typeof piece !== 'object') return null;
-  if (piece.area === 'hand' && Number.isInteger(piece.idx)) return { row: GEO.HAND_ROW, col: piece.idx };
-  if (piece.area === 'temp' && Number.isInteger(piece.idx)) return { row: GEO.TEMP_ROW, col: GEO.TEMP_C0 + piece.idx };
+  if (piece.area === 'hand' && Number.isInteger(piece.idx)) return benchTileOf(piece.idx, handSize, baseRow);
+  if (piece.area === 'temp' && Number.isInteger(piece.idx)) return { row: tempRow, col: GEO.TEMP_C0 + piece.idx };
   if (Number.isInteger(piece.row) && Number.isInteger(piece.col)) return { row: piece.row, col: piece.col };
   return null;
 }
@@ -48,12 +57,18 @@ export function pieceSlot(piece) {
 
 /**
  * Classify a grid tile as a potential drop slot.
+ * @param {{row:number,col:number}} tile
+ * @param {typeof GEO} [geo] GEO, or `{ ...GEO, HAND_SIZE: benchSize }` for a match whose 整备区 holds more than the
+ *   default 10 slots (炸惊 `economy.benchSize` = 20: shared/constants.js `benchSizeOf`). The bench slots are
+ *   `benchTileOf(0..HAND_SIZE-1, HAND_SIZE)` — one row for 10 slots, two rows (7 and 8) for 20 — and TEMP_ROW is the
+ *   stage's own temp row (`tempRowOf`, a drag controller's `setTempRow`).
  * @returns {{area:'board',row,col}|{area:'hand',idx}|{area:'temp',idx}|null}
  */
 export function tileSlot(tile, geo = GEO) {
   if (!tile || !Number.isInteger(tile.row) || !Number.isInteger(tile.col)) return null;
   const { row, col } = tile;
-  if (row === geo.HAND_ROW && col >= 0 && col < geo.HAND_SIZE) return { area: 'hand', idx: col };
+  const bench = benchIndexAt(row, col, geo.HAND_SIZE, geo.HAND_ROW);
+  if (bench != null) return { area: 'hand', idx: bench };
   if (row === geo.TEMP_ROW && col >= geo.TEMP_C0 && col < geo.TEMP_C0 + geo.TEMP_SIZE) return { area: 'temp', idx: col - geo.TEMP_C0 };
   const F = geo.FIELD;
   if (row >= F.r0 && row <= F.r1 && col >= F.c0 && col <= F.c1) return { area: 'board', row, col };
@@ -78,14 +93,15 @@ export function resolveDrop(p) {
   if (!slot) return { kind: 'cancel', reason: 'notTarget' };
   if (slot.area === 'temp') return { kind: 'cancel', reason: 'temp' };
   if (sameSlot(slot, from) && slot.area !== 'board') return { kind: 'cancel', reason: 'same' };
-  if (!isLegal(p.canPlace, piece, slot)) return { kind: 'cancel', reason: 'illegal' };
+  if (!isLegal(p.canPlace, piece, slot, p.geo || GEO)) return { kind: 'cancel', reason: 'illegal' };
   return { kind: 'drop', target: slot };
 }
 
 /**
  * The tile a dragged UNIT is drawn standing on, from a `pieceDragMove` payload: the drop target under the pointer while
- * it is legal — a board tile, or a bench slot (row HAND_ROW) — as `{ row, col, bench }` in board space; null otherwise
- * (no target, an illegal tile, a temp slot, the pointer over DOM UI such as the shop bar): the unit is then held under
+ * it is legal — a board tile, or a bench slot (one of the bench's rows, shared/constants.js `benchTileOf`) — as
+ * `{ row, col, bench }` in board space; null otherwise (no target, an illegal tile, a temp slot, the pointer over DOM
+ * UI such as the shop bar): the unit is then held under
  * the pointer. As in the official deploy drag (the owner's recording of 2026-10-09) the model stands on the tile the
  * finger is on, and moving within that tile leaves it where it is. app.js never snaps an item plate.
  */
@@ -93,20 +109,37 @@ export function dragStandTile(move, geo = GEO) {
   const t = move && move.legal === true ? move.target : null;
   if (!t) return null;
   if (t.area === 'board' && Number.isInteger(t.row) && Number.isInteger(t.col)) return { row: t.row, col: t.col, bench: false };
-  if (t.area === 'hand' && Number.isInteger(t.idx)) return { row: geo.HAND_ROW, col: t.idx, bench: true };
+  if (t.area === 'hand' && Number.isInteger(t.idx)) return { ...benchTileOf(t.idx, geo.HAND_SIZE, geo.HAND_ROW), bench: true };
   return null;
 }
 
-/** Legality via the UI callback (board → (piece,row,col); hand → (piece, HAND_ROW, idx)). Throwing ⇒ illegal. */
-export function isLegal(canPlace, piece, slot) {
+/**
+ * Legality via the UI callback (board → (piece,row,col); hand → (piece, benchTileOf(idx).row, col)). Throwing ⇒ illegal.
+ */
+export function isLegal(canPlace, piece, slot, geo = GEO) {
   if (!slot || slot.area === 'temp' || slot.area === 'outside') return false;
   if (typeof canPlace !== 'function') return true;
-  const row = slot.area === 'board' ? slot.row : GEO.HAND_ROW;
-  const col = slot.area === 'board' ? slot.col : slot.idx;
+  const tile = slot.area === 'board' ? { row: slot.row, col: slot.col } : benchTileOf(slot.idx, geo.HAND_SIZE, geo.HAND_ROW);
+  const row = tile.row, col = tile.col;
   try { return canPlace(piece, row, col, slot) !== false; } catch { return false; }
 }
 
 const DEFAULTS = { threshold: 6, touchThreshold: 10, longPressMs: 480 };
+
+/**
+ * GEO with this match's 整备区 width and stage temp row. `handSize` = GEO.HAND_SIZE (every official mode) and no temp
+ * row of its own returns GEO itself, so the official paths stay byte-identical; a wider bench (炸惊 20) makes the bench
+ * two rows (shared/constants.js `benchTileOf` / `benchIndexAt`, keyed off this HAND_SIZE), and a stage whose temp pads
+ * sit off row 6 (act2autochess_m01, `tempRowOf`) overrides TEMP_ROW.
+ * @param {number} handSize
+ * @param {number} [tempRow]
+ */
+function geoOf(handSize, tempRow = GEO.TEMP_ROW) {
+  const wide = Number.isInteger(handSize) && handSize > 0 && handSize !== GEO.HAND_SIZE;
+  const moved = Number.isInteger(tempRow) && tempRow !== GEO.TEMP_ROW;
+  if (!wide && !moved) return GEO;
+  return { ...GEO, ...(wide ? { HAND_SIZE: handSize } : null), ...(moved ? { TEMP_ROW: tempRow } : null) };
+}
 
 /**
  * Pointer state machine.
@@ -115,6 +148,8 @@ const DEFAULTS = { threshold: 6, touchThreshold: 10, longPressMs: 480 };
  *   pickTile: (x, y) => ({row, col}|null),        // grid tile under canvas point
  *   isOverCanvas?: (clientX, clientY) => boolean, // false when DOM UI covers the point (default true)
  *   canPlace?: (piece, row, col, target) => boolean,
+ *   handSize?: number,                            // 整备区 width of the match (shared/constants.js benchSizeOf)
+ *   tempRow?: number,                             // the stage's temp pads row (shared/constants.js tempRowOf)
  *   emit: (name, payload) => void,
  *   setTimeout?, clearTimeout?, threshold?, touchThreshold?, longPressMs?
  * }} hooks
@@ -124,7 +159,10 @@ export function createDragController(hooks) {
   const setT = h.setTimeout || ((fn, ms) => setTimeout(fn, ms));
   const clearT = h.clearTimeout || ((id) => clearTimeout(id));
   let editable = false;
+  let handSize = Number.isInteger(h.handSize) && h.handSize > 0 ? h.handSize : GEO.HAND_SIZE;
+  let tempRow = Number.isInteger(h.tempRow) && h.tempRow > 0 ? h.tempRow : GEO.TEMP_ROW;
   let canPlace = typeof h.canPlace === 'function' ? h.canPlace : null;
+  const geo = () => geoOf(handSize, tempRow);
   /** @type {null | { mode: 'pressed'|'dragging'|'held', pointerId, pointerType, piece, from, sx, sy, timer, last? }} */
   let st = null;
   let hoverUid = null;
@@ -137,7 +175,7 @@ export function createDragController(hooks) {
   const overCanvas = (cx, cy) => { try { return h.isOverCanvas ? h.isOverCanvas(cx, cy) !== false : true; } catch { return true; } };
 
   function setHoverTile(tile) {
-    const slot = tile ? tileSlot(tile) : null;
+    const slot = tile ? tileSlot(tile, geo()) : null;
     const key = tile ? `${tile.row},${tile.col}` : '';
     if (key === hoverTileKey) return;
     hoverTileKey = key;
@@ -165,8 +203,8 @@ export function createDragController(hooks) {
     st.last = e;
     const tile = tileAt(e.x, e.y);
     const over = overCanvas(e.clientX, e.clientY);
-    const slot = over && tile ? tileSlot(tile) : null;
-    const legal = !!slot && slot.area !== 'temp' && (slot.area === 'board' || !sameSlot(slot, st.from)) && isLegal(canPlace, st.piece, slot);
+    const slot = over && tile ? tileSlot(tile, geo()) : null;
+    const legal = !!slot && slot.area !== 'temp' && (slot.area === 'board' || !sameSlot(slot, st.from)) && isLegal(canPlace, st.piece, slot, geo());
     setHoverTile(over ? tile : null);
     emit('pieceDragMove', { uid: st.piece.uid, piece: st.piece, x: e.x, y: e.y, clientX: e.clientX, clientY: e.clientY, target: slot, legal });
   }
@@ -178,7 +216,7 @@ export function createDragController(hooks) {
     let dropped = false;
     if (!cancelled) {
       const tile = tileAt(e.x, e.y);
-      const d = resolveDrop({ piece: s.piece, from: s.from, tile, overCanvas: overCanvas(e.clientX, e.clientY), clientX: e.clientX, clientY: e.clientY, canPlace });
+      const d = resolveDrop({ piece: s.piece, from: s.from, tile, overCanvas: overCanvas(e.clientX, e.clientY), clientX: e.clientX, clientY: e.clientY, canPlace, geo: geo() });
       if (d.kind === 'drop') {
         dropped = true;
         emit('pieceDrop', { uid: s.piece.uid, piece: s.piece, from: s.from, target: d.target });
@@ -198,6 +236,32 @@ export function createDragController(hooks) {
       if (!editable && st && st.mode === 'dragging') endDrag(null, true);
     },
     setCanPlace(fn) { canPlace = typeof fn === 'function' ? fn : null; },
+
+    /**
+     * The 整备区 width of the match now on screen (shared/constants.js `benchSizeOf(priv)`): 10 for every official mode
+     * (the default, a no-op), 20 in 炸惊. A change re-judges a drag in flight so its highlight follows the new geometry.
+     */
+    setHandSize(n) {
+      const v = Number.isInteger(n) && n > 0 ? n : GEO.HAND_SIZE;
+      if (v === handSize) return false;
+      handSize = v;
+      if (st && st.mode === 'dragging' && st.last) moveDrag(st.last);
+      return true;
+    },
+    get handSize() { return handSize; },
+
+    /**
+     * The stage's 临时整备区 row (shared/constants.js `tempRowOf`: row 6, or row 9 on act2autochess_m01). A change
+     * re-judges a drag in flight, like `setHandSize`.
+     */
+    setTempRow(row) {
+      const v = Number.isInteger(row) && row > 0 ? row : GEO.TEMP_ROW;
+      if (v === tempRow) return false;
+      tempRow = v;
+      if (st && st.mode === 'dragging' && st.last) moveDrag(st.last);
+      return true;
+    },
+    get tempRow() { return tempRow; },
 
     /** e: { pointerId, pointerType, button, x, y (canvas CSS px), clientX, clientY } */
     pointerDown(e) {

@@ -111,7 +111,7 @@ test("PR #129 review: moving a hand piece to another slot is a scout change (x f
 
   const first = h.lastTo('p_0', 'm.field');
   const tu = first.units.find((x) => x.uid === c.uid);
-  assert.deepEqual([tu.x, tu.y], [GEO.TEMP_C0, GEO.TEMP_ROW], 'the temp piece scouts on the temp row (first slot, col 4)');
+  assert.deepEqual([tu.x, tu.y], [GEO.TEMP_C0, GEO.TEMP_ROW], 'the temp piece scouts on the stage\'s temp row (first slot)');
   assert.equal(tu.area, 'temp');
   const hu = first.units.find((x) => x.uid === a.uid);
   assert.equal(hu.x, 0);

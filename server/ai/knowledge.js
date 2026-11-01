@@ -83,6 +83,20 @@ export function knowledgePack(data, { language = 'zh-CN', modeId, rules = {}, of
     return { id, name: r.name || id, nameZh: raw.name || id, ...fn(r, id) };
   });
   const copies = gd.visibleChess.map(id => ({ tier: gd.tierOf(id), count: gd.poolCopies(id) }));
+  // 只把**本玩法能用到的**棋子写进提示（2026-10-28：炸惊模拟的 199 条记录曾把 advisor 的系统提示顶到 211 697
+  // 字符 > 200 000 上限）。口径 = 仓库既有的「官方子集」判据：`zhajing: true` 或 `chess_zj_*` 前缀都算玩法包记录，
+  // 官方模式（含 official 的 hidden / grantOnly 记录）一条不少 —— 简报的本意是「这一局能用的东西」，
+  // 而不是「把整个数据库塞过去」。
+  // 湮灭模拟（2026-10-30）：内容 mod 自带的 13 名干员（`chess[id].annihilation === true`，26 条）也进了默认数据，
+  // `visible: false`，官方池永远看不见它们（server/match/gamedata.js annihilationRoster 的注释）。同样的「本玩法
+  // 能用的东西」口径：非湮灭局的简报一条都不能带（官方 FUNNY 的英文简报加上它们就是 202 054 > 200 000 字符）。
+  const annMode = !!gd.annihilation;
+  const officialOnly = (id) => {
+    const c = data.chess?.[id];
+    if (c?.zhajing === true || /^chess_zj_/.test(id)) return false;
+    if (!annMode && c?.annihilation === true) return false;
+    return true;
+  };
   const gameVersion = versionOfData(data);
   const payload = {
     schema: 'sp-knowledge/1', language, modeId, contentId,
@@ -121,7 +135,7 @@ export function knowledgePack(data, { language = 'zh-CN', modeId, rules = {}, of
       class: r.profession, branch: r.subProfessionId, bonds: r.bonds, mergeCopies: gd.mergeCount(id),
       skill: { name: r.skill?.name, effect: short(r.skill?.desc), spCost: r.skill?.spCost },
       skills: (r.skills || []).map(s => ({ index: s.index, name: s.name, effect: short(s.desc), isDefault: s.isDefault })),
-      traits: (r.garrisonIds || []).map(id => short(localized.garrisons[id]?.desc)) })),
+      traits: (r.garrisonIds || []).map(id => short(localized.garrisons[id]?.desc)) })).filter(o => officialOnly(o.id)),
     items: rows('items', r => ({ tier: r.tier, cost: r.price, kind: r.kind, effect: short(r.desc), requiresBondId: r.requiresBondId })),
     bands: rows('bands', (r, id) => ({ lp: r.totalHp, effect: short(r.desc), carriesFunds: gd.leftoverKeptBands.includes(id), interest: interestRule(gd, id) })),
     enemies: rows('enemies', r => ({ effect: short(effectText([r.desc, ...(r.abilities || [])])), stats: r.stats, inactiveIn: r.inactiveIn })),

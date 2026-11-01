@@ -88,12 +88,35 @@ export class MatchPlatform {
    * @param {Record<string, { potential: number, cultivate: number }> | null} [ops]
    * @returns {{ ok: true } | { error: string, detail?: string }}
    */
-  setLoadout(playerId, loadout, ops = undefined) {
+  setLoadout(playerId, loadout, ops = undefined, mode = undefined) {
     const ps = this.players.get(playerId);
     if (!ps || ps.isBot || ps.left) return fail(ERR.NOT_IN_ROOM);
-    const prep = this.phase === PHASE.PREP && ruleOption(this.rules, 'prepLoadout') === 'prep';
+    // the rule switch comes from GameData.rulesOf — official default → mode.annRules → room annMods → plugin rules
+    const prep = this.phase === PHASE.PREP && this.gd.rulesOf('prepLoadout') === 'prep';
     if (this.disposed || this.ended || (this.phase !== PHASE.INFO_CHECK && !prep)) return fail(ERR.WRONG_PHASE, 'loadout locked for this match');
     if (prep && ps.ready) return fail(ERR.WRONG_PHASE, 'loadout locked for this match');
+    // 炸惊模拟 · 卡池调整 (`room.loadout { mode: 'zhajing' }`): a SEPARATE profile, so it never touches `ps.loadout` /
+    // `ps.ops`. Refused outside a ZHAJING match (an official or 湮灭 room can never be made to carry one), and it runs
+    // through the very same phase gate above — the briefing's 卡池调整 entry is the only in-match window.
+    if (mode === 'zhajing') {
+      if (!this.gd.zhajing) return fail(ERR.BAD_TARGET, 'not a ZHAJING match');
+      let ok = false;
+      this.guard(() => { ok = ps.setZjLoadout(loadout); });
+      if (!ok) return fail(ERR.BAD_TARGET, 'loadout does not match the play set roster');
+      this.markPrivate(ps);
+      return OK;
+    }
+    // 湮灭模拟 · 卡池调整 (`room.loadout { mode: 'annihilation' }`): the THIRD profile (`ps.annLoadout`). Same rules as the
+    // 炸惊 branch above — refused outside an ANNIHILATION match, behind the same INFO_CHECK / prep-unready gate — and it
+    // never touches `ps.loadout` / `ps.zjLoadout`.
+    if (mode === 'annihilation') {
+      if (!this.gd.annihilation) return fail(ERR.BAD_TARGET, 'not an ANNIHILATION match');
+      let ok = false;
+      this.guard(() => { ok = ps.setAnnLoadout(loadout); });
+      if (!ok) return fail(ERR.BAD_TARGET, 'loadout does not match this match roster');
+      this.markPrivate(ps);
+      return OK;
+    }
     let res = OK;
     this.guard(() => {
       const before = prep ? ps.allChess().map((owner) => ({ owner, loadout: ps.loadoutFor(ps.gd.chess(owner.id)) })) : [];
@@ -106,6 +129,27 @@ export class MatchPlatform {
         ps.recompute();
       } else this.markPrivate(ps);
     });
+    return res;
+  }
+
+  /**
+   * 炸惊模拟「锻造器」(`g.forgeTake`): spend one forge on one card of the roll the server drew. Everything substantive lives
+   * in PlayerState.forgeTake (validation against the current roll, the accumulated table, the immediate 资金 payout, the
+   * next roll); this wrapper only resolves the player, guards the match state and marks the private view.
+   * Accepted in ANY prep-ish phase, like a skin: a forge is spent by its owner whenever they open the window, and a battle
+   * in progress does not take it away (the cards apply to the NEXT field through `flags.forge`).
+   * @param {import('../PlayerState.js').PlayerState} ps
+   * @param {string} optId shared/forgeData.js option id
+   * @param {string} rarity that roll's rarity
+   * @returns {{ ok: true } | { error: string, detail?: string }}
+   */
+  forgeTake(ps, optId, rarity) {
+    if (!ps || ps.isBot || ps.left) return fail(ERR.NOT_IN_ROOM);
+    if (this.disposed || this.ended) return fail(ERR.ROOM_STARTED);
+    if (!this.gd.zhajing) return fail(ERR.BAD_TARGET, 'forge is a ZHAJING mechanic');
+    if (!ps.alive) return fail(ERR.ELIMINATED);
+    let res = OK;
+    this.guard(() => { res = ps.forgeTake(optId, rarity); });
     return res;
   }
 

@@ -65,6 +65,12 @@ export const DATA_FILES = Object.freeze({
   // Optional art extracted from a local game client (DESIGN §13): { groups: { '<subdir>': { name: { path, w, h } } } }.
   // The emotes and the 玩法说明 pages are in data/assets.json too (downloaded from the mirror): artUrls().
   local: 'local-assets.json',
+  // 皮肤专属战斗语音 (data/skin-voices.json): { cn|jp|en|kr: { <skin stem>: { <slot>: url | url[] } } }.
+  // tools/fetch-skin-voices.mjs writes it from charword_table; audio.js voiceLine plays it while that outfit is worn.
+  skinVoices: 'skin-voices.json',
+  // 炸惊档的默认模组装配 (data T14): { version, note, count, byBaseId: { <baseId>: { op, module, moduleName, typeName, choices } } }
+  // — the 干员调配 炸惊档 prefills from it when this browser has no save of its own (ui/loadoutSync.js zjInitialEntries).
+  zjDefaultLoadout: 'zjDefaultLoadout.json',
 });
 
 const ID_KEYS = ['id', 'chessId', 'bondId', 'itemId', 'bandId', 'enemyKey', 'enemyId', 'stageId', 'bossId', 'tokenId', 'choiceId', 'key'];

@@ -58,7 +58,9 @@ export function addManifestEntries(previous, next) {
 export function versionAssetJobs(root) {
   const all = presentationUnion(versionAssetData(root));
   const assets = JSON.parse(readFileSync(join(root, 'data/assets.json'), 'utf8'));
-  const missing = (url) => !url || !existsSync(join(root, 'public', url));
+  const missing = (url) => !url || !(existsSync(join(root, 'public', url))
+    // converted art directories serve the WebP twin (tools/assets/manifest.mjs webpVariant)
+    || existsSync(join(root, 'public', url.replace(/\.png$/i, '.webp'))));
   const operators = Object.keys(all.operators).filter((id) => {
     const c = assets.chars[id];
     return missing(c?.avatar || `/assets/char/avatar/${id}.png`)

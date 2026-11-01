@@ -79,6 +79,21 @@
 .lo-note.is-locked { color: var(--amber); background: linear-gradient(90deg, rgba(246, 163, 41, .12), transparent 70%); }
 .lo-note.is-locked .icon { color: var(--amber); }
 
+/* ---- 调配档 (业主 2026-10-28 晚)：从炸惊的二级页进来时的 normal / 炸惊 / 湮灭 切换 ----
+   只有 from='ext' 且不在玩法包档时才画（普通入口的干员调配逐像素不变；炸惊 / 湮灭档里模式名标在「说明」键右侧，
+   见下面的 .lo-set —— 业主 2026-10-29）；两颗键与筛选条同一语汇，触摸地板 24px。 */
+.lo-mode { flex: none; display: flex; align-items: center; gap: .06rem; padding: .06rem .36rem;
+  border-bottom: 1px solid rgba(47, 58, 53, .6); background: linear-gradient(90deg, rgba(23, 217, 160, .08), transparent 70%); }
+.lo-mode__btn { min-height: max(.3rem, 24px); padding: 0 .14rem; cursor: pointer;
+  font-size: max(.15rem, 11px); letter-spacing: .06em; color: var(--text-lo);
+  background: rgba(8, 12, 11, .7); border: 1px solid var(--line-2); border-radius: .05rem; }
+.lo-mode__btn:hover { color: var(--text-hi); border-color: rgba(23, 217, 160, .5); }
+.lo-mode__btn.is-on { color: #04210f; background: #17d9a0; border-color: #17d9a0; font-weight: 800; }
+.lo-mode__btn:focus-visible { outline: 2px solid #17d9a0; outline-offset: 2px; }
+/* 由策略发放的两位（grantOnly）：一个短标，不抢名字的宽度 */
+.lo-grant { margin-left: .04rem; padding: 0 .05rem; font-style: normal; font-size: max(.13rem, 10px);
+  color: #f2bd3e; border: 1px solid rgba(242, 189, 62, .5); border-radius: .04rem; white-space: nowrap; }
+
 .lo-loading { flex: 1; display: flex; align-items: center; justify-content: center; gap: .14rem; color: var(--text-lo); font-size: max(.18rem, 12px); }
 /* the tab's game data did not load (GitHub #173): said in place of the roster */
 .lo-missing { flex-direction: column; gap: .1rem; padding: .3rem; text-align: center; color: var(--amber); }
@@ -209,6 +224,14 @@
 .lo-q:not(.is-on):not(.lo-q--empty):hover { opacity: 1; }
 .lo-q__type { position: absolute; left: 0; bottom: 0; padding: 0 2px; font-size: max(.11rem, 8px); line-height: 1.3; color: var(--text-hi); background: rgba(0, 0, 0, .7); pointer-events: none; }
 .lo-q--mod.is-on .lo-mglyph { border-color: var(--gold-2); box-shadow: 0 0 .08rem rgba(255, 198, 0, .35); }
+/* 快速配置's 外观 column (screens/loadout.js QuickSkins): these tiles are PORTRAITS (1:2), not the square skill / module
+   glyphs, so they cannot share .lo-q's fixed square — a 1:2 image inside a square box overflows, and the next tile's
+   background hides the part that spilled, which read as overlapping tiles on a phone. The tile keeps the column's width
+   and takes its height from the portrait's own ratio; the image is object-fit, so a missing or odd-ratio picture cannot
+   paint outside either. */
+.lo-q--skin { width: var(--q); height: auto; aspect-ratio: 1 / 2; overflow: hidden; border-radius: max(.04rem, calc(3px * var(--sp-ui, 1))); }
+.lo-q--skin .lo-q__skin { width: 100%; height: 100%; object-fit: cover; object-position: 50% 18%; display: block; }
+.lo-q--skin.is-on { outline: 2px solid var(--mint-400); outline-offset: -2px; }
 
 /* 潜能 / 练度 (screens/cultivation.js): two compact selects side by side in the row's last column; at the defaults (潜能 6,
    精英2 Lv.60 — the same on every row) they stay quiet, a changed one is mint */
@@ -733,6 +756,15 @@
   background: rgba(255, 255, 255, .06); border: 1px solid var(--line-2); cursor: pointer; }
 .lo-info:hover { border-color: var(--mint-500); color: var(--mint-400); }
 .lo-info .icon { width: 56%; height: 56%; }
+/* 特殊玩法（玩法包）档的模式名（业主 2026-10-29）：炸惊 / 湮灭档里顶上那行档位不画，名字改标在「说明」键的右侧。
+   它只是标注、不可点（所以不必抢一颗键的地盘），字号与高度仍带 px 地板，手机与桌面都读得清。 */
+.lo-set { display: inline-flex; align-items: center; flex: none; height: max(.4rem, 24px);
+  padding: 0 max(.16rem, calc(8px * var(--sp-ui, 1)));
+  font-size: max(calc(.15 * var(--t)), 11px); font-weight: 800; letter-spacing: .08em; color: var(--mint-400);
+  background: linear-gradient(90deg, rgba(23, 217, 160, .14), rgba(23, 217, 160, .03)); border: 1px solid var(--mint-800);
+  white-space: nowrap; }
+.lo-set--zhajing { color: var(--amber); border-color: rgba(246, 163, 41, .5);
+  background: linear-gradient(90deg, rgba(246, 163, 41, .16), rgba(246, 163, 41, .03)); }
 /* never wider than the centre column (§35.51: centred in it at its own width, it ran under ⓘ and 已同步 at 1280–1440 px in
    English and Japanese) */
 .lo-top__note { margin: 0; max-width: min(8.4rem, 100%); font-size: max(calc(.15 * var(--t)), 10px); color: var(--text-lo); text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -858,6 +890,12 @@
 .lo-op__quick .lo-q:not(.is-on):not(.lo-q--empty) { opacity: .55; }
 .lo-op__quick .lo-q.is-on { opacity: 1; }
 .lo-op__quick--cult { width: var(--qcw); padding: max(.08rem, calc(5px * var(--sp-ui, 1))); justify-content: center; }
+/* 外观: its tiles are 1:2 portraits, so a vertical stack of three needs more height than a card has — stacked they
+   painted over each other (the owner, 2026-10-28: 「多皮肤选项会重叠」). The column keeps the card's own height and lays
+   the tiles out as a horizontal strip instead, scrolling sideways for an operator with more skins than fit; every tile
+   is one column's width and as tall as the strip allows, its portrait cropped by object-fit rather than overflowing. */
+.lo-op__quick--skin { width: max(1.5rem, 32px, calc(66px * var(--sp-ui, 1))); flex-direction: row; align-items: stretch; justify-content: flex-start; gap: max(.03rem, calc(2px * var(--sp-ui, 1))); overflow-x: auto; overflow-y: hidden; }
+.lo-op__quick--skin .lo-q--skin { flex: none; width: max(.7rem, 32px, calc(34px * var(--sp-ui, 1))); height: 100%; min-width: 0; }
 .lo-op__quick--cult .lo-cult { flex-direction: column; align-items: stretch; width: 100%; }
 .lo-op__quick--cult .lo-select { width: 100%; }
 .lo-op__none { margin: auto 0; font-size: max(calc(.12 * var(--t)), 9px); color: var(--text-dim); writing-mode: vertical-rl; letter-spacing: .2em; }
@@ -963,5 +1001,24 @@
 .lo--deck .own, .lo--deck .diy { animation: lo-tr-fade 300ms ease-out 150ms backwards; }
 @media (prefers-reduced-motion: reduce) {
   .lo--deck .lo__bg, .lo--deck .lo-top, .lo--deck .lo-top__center, .lo--deck .lo-top__right, .lo--deck .lo-note, .lo--deck .lo-tgroup,
-  .lo--deck .lo-bbar, .lo--deck .own, .lo--deck .diy { animation: none; }
+  .lo--deck .lo-bbar, .lo--deck .own, .lo--deck .diy { animation: none; }}
+
+/* ---- 缺图兜底（业主 2026-10-28 P0-3）------------------------------------------------------------------
+   缺图时**不要**把整块面板塌成纯文字：每个图标位都留一个固定方框，里面居中放一个单字，虚线边提示"这里本该有图"。
+   字号统一到 --glyph-size（干员头像位放大一档，因为它本来就是一块大头图），于是名字、数值、行高都不被挤走。
+   三条复用裁决（Lead 2026-10-28，已在 data/assets.json 里落盘）：
+     · itemIcon/mujica_mask          ← 复用官方 trap_1041_acarm041（public/assets/item/mujica_mask.png）；
+     · modeIcon/mode_annihilation_icon ← 复用 mode_zhajing_icon 同图（public/assets/ui/modeIcon/）；
+     · char_{4231_clemnt,4220_kormr,4218_aigis,4219_yukari,4217_makoto}:illust —— **上游无完整立绘**（只有
+       avatar / portrait / skin），这 5 位的立绘位按本节兜底呈现，不拉伸、不借用别的图。 */
+.lo-card__glyph, .lo-op__glyph {
+  display: grid; place-items: center; width: 100%; height: 100%;
+  font-size: max(12px, calc(.22 * var(--t))); font-weight: 900; color: var(--text-dim);
+  border: 1px dashed var(--line-2); border-radius: 2px; background: rgba(255, 255, 255, .03);
+}
+/* 盟约 / 阵营的小徽标：固定方框 + 居中单字（原来是 0.1rem 的实心圆点，缺图时看不出是什么） */
+.lo-bond__dot {
+  display: inline-grid; place-items: center; width: max(.2rem, 14px); height: max(.2rem, 14px);
+  font-size: max(10px, calc(.15 * var(--t))); line-height: 1; color: var(--text-lo);
+  border: 1px dashed var(--line-2); border-radius: 2px; background: transparent;
 }

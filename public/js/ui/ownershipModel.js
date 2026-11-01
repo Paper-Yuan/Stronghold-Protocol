@@ -18,8 +18,22 @@
 
 import { checkNotOwned, OWNERSHIP_LIMITS } from '../../../shared/protocol.js';
 import { isDroppableChess, standInRecord } from '../../../shared/standIn.js';
-import { getPackIdForChess } from '../roomMods.js';
 import { t } from '../../../shared/i18n.js';
+
+// 玩法包与干员的对应（ui/roomMods.js getPackIdForChess）由那边在加载时注册进来，这里不静态 import 它：
+// roomMods.js 要 import ui/loadoutSync.js（包启用/停用后 prep 编队同步），而 loadoutSync.js import 本文件 —— 静态 import
+// 就成了 loadoutSync → ownershipModel → roomMods → loadoutSync 的环，直接 import ui/loadoutSync.js 的模块会在本文件
+// 还没执行到 OWNERSHIP_PREF 的声明时去读它（ReferenceError: Cannot access 'OWNERSHIP_PREF' before initialization）。
+// 未注册时查表为 null，与原来 import 来的 getPackIdForChess 对一个不属于任何包的 chess 的返回值完全相同。
+let packIdOfChess = null;
+
+/**
+ * 注册 chess → 玩法包 的查表函数（ui/roomMods.js 在模块加载时注册自己的 getPackIdForChess）。
+ * @param {((chessId: string) => string | null | undefined) | null} fn
+ */
+export function setPackIdResolver(fn) {
+  packIdOfChess = typeof fn === 'function' ? fn : null;
+}
 
 /** localStorage key (store.js loadPref/savePref prefix `sp.pref.`) and format version. */
 export const OWNERSHIP_PREF = 'ownership';
@@ -119,16 +133,30 @@ export function setOwned(notOwned, chessId, owned = !isOwned(notOwned, chessId))
 
 // ---- roster -------------------------------------------------------------------------------------------------------
 
+// 这里的 `packId` 是**插件/模组包**（public/js/roomMods.js registerPackOperators → chessToPackMap，即 welcome.mods.packs
+// 的 operators 里列的棋子），与炸惊/湮灭这种**玩法包**无关：玩法干员从不带 packId，它们靠「房间内容集 + visible」进出本页
+// ——默认数据里炸惊记录（chess.zhajing）与湮灭 mod 自带的 13 名干员（chess.annihilation）全部 visible:false，
+// 474 + 26 条里只有 224 条可见（= 112 名干员的基础 + 精英两形）；炸惊房的名册是 chess.zhajing === true 的那 99 条
+// （server/match/gamedata.js，走 ui/loadoutModel.js zhajingRosterOf），湮灭房是官方可见棋 + 那 26 条
+// （ui/loadoutModel.js annihilationRosterOf，与引擎 annihilationRoster 同一口径）。所以本页的包过滤只可能因为调用方
+// **显式**给了集合才生效：null = 调用方不限制；空 Set = 一个包都没启用（带 packId 的棋子全部剔除）。
+// 绝不能把「没传」读成空集。
+// 持有页本身仍是**官方四档**的那 53 条可下掉干员：玩法干员不进这张表（它们只在自己的调配档名册里）。
+
 /**
  * The chess the screen lists: droppable chess in this season's shop (visible), in shop order (tier, shopSortId).
+ * `enabledModIds` is the caller's own restriction (the workshop/mod packs it allows): `null` — the default, and what
+ * every current caller passes — means the caller does not restrict the roster; an empty Set means "no pack enabled", so
+ * every chess of a pack is left out. A missing argument is never the same thing as an empty set.
  * @param {any[]} list data.list('chess')
+ * @param {Set<string> | null} [enabledModIds]
  */
 export function ownershipRoster(list, enabledModIds = null) {
   return (Array.isArray(list) ? list : [])
     .filter((c) => {
       if (!isDroppableChess(c) || c.visible === false || c.isHidden) return false;
-      const pId = c.packId || getPackIdForChess(c.chessId);
-      if (pId && (!enabledModIds || !enabledModIds.has(pId))) return false;
+      const pId = c.packId || (packIdOfChess ? packIdOfChess(c.chessId) : null);
+      if (pId && enabledModIds && !enabledModIds.has(pId)) return false;
       return true;
     })
     .sort((a, b) => (a.tier ?? 0) - (b.tier ?? 0) || (a.shopSortId ?? 0) - (b.shopSortId ?? 0) || String(a.chessId).localeCompare(String(b.chessId)));

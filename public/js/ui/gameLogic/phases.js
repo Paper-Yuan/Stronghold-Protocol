@@ -52,6 +52,34 @@ export const isBossPhase = (phase) => phase === PHASE.FINAL_ASSAULT || phase ===
  * @param {{ alive?: boolean, spectator?: boolean }} [viewer] the local viewer (screens/game.js): `alive` false for an
  *   eliminated player, `spectator` for a spectator seat — it has no row in m.public, so `pub` cannot tell
  */
+/**
+ * The family of the round's open SP draft (m.public.sp). `sp.family` is the server's own key (choices.js generateDraft
+ * returns it and every card carries it too); the first card's `family` is the fallback, so a frame whose top-level key is
+ * missing still reads as what it is — **炸惊模拟's 惊变 draft is an SP draft of family 'jibian'**, and calling it 机变阶段 was
+ * a real defect on the real machine (2026-10-28, handoff/shots/zhajing-667x375-jibian.png).
+ * @param {any} pub m.public
+ * @returns {string|null}
+ */
+export function draftFamilyOf(pub) {
+  const sp = pub && pub.sp;
+  if (!sp) return null;
+  if (typeof sp.family === 'string' && sp.family) return sp.family;
+  const cards = Array.isArray(sp.cards) ? sp.cards : [];
+  const card = cards.find((c) => c && typeof c.family === 'string' && c.family);
+  return card ? card.family : null;
+}
+
+/** Whether the round's open draft is 炸惊模拟's 惊变 (family 'jibian'). */
+export const isJibianDraft = (pub) => draftFamilyOf(pub) === 'jibian';
+
+/**
+ * Whether the round's open draft is 超限模拟's 「词条」三选一 (family 'overlimit', 业主 2026-10-31). It rides the same
+ * SP_DRAFT phase and the same `g.choice` intent as 机变 / 惊变 — only the card face (`.zjov` / `.zjcard`) and the pick's
+ * side effect differ, so the client needs one more branch, never a new phase.
+ * @param {any} pub m.public
+ */
+export const isOverlimitRelicDraft = (pub) => draftFamilyOf(pub) === 'overlimit';
+
 export function phaseBanner(phase, pub, { alive = true, spectator = false } = {}) {
   const r = int(pub?.round, 0);
   switch (phase) {
@@ -68,7 +96,18 @@ export function phaseBanner(phase, pub, { alive = true, spectator = false } = {}
       return { title: t('第 {r} 回合', { r }), micro: `ROUND ${String(r).padStart(2, '0')}`, tone: 'mint',
         sub: spectator || alive === false ? t('观战中') : t('资金已到账') };
     }
-    case PHASE.SP_DRAFT: return { title: t('机变阶段'), micro: 'CONTINGENCY', tone: 'gold', sub: t('依次选择机变') };
+    // 炸惊模拟的惊变阶段也是 SP_DRAFT，但它是**惊变**、不是机变：横幅与胶囊都必须说对（2026-10-28 真机 667×375 截图上
+    // 眉题写着 CONTINGENCY / 机变阶段，卡片却是惊变卡）。副标题沿用既有词条「选择一项」，不新增字面量。
+    // 超限「词条」同理：它也是 SP_DRAFT，但既不是机变也不是惊变（业主 2026-10-31），眉题与标题都换成词条那套。
+    case PHASE.SP_DRAFT: return isJibianDraft(pub)
+      ? { title: t('惊变阶段'), micro: 'MUTATION', tone: 'mint', sub: t('选择一项') }
+      : isOverlimitRelicDraft(pub)
+        // 负面词条三选一（业主 2026-10-31 第二批）也是 family 'overlimit'：眉题换成 NEGATIVE、色调走警示红，
+        // 与饰品那一档一眼分开。两条都是技术眉题（不是 i18n 词条），标题仍用既有 msgid `t('词条抉择')`。
+        ? (pub?.sp && pub.sp.negative === true
+          ? { title: t('词条抉择'), micro: 'NEGATIVE', tone: 'red', sub: t('选择一项') }
+          : { title: t('词条抉择'), micro: 'RELIC', tone: 'mint', sub: t('选择一项') })
+        : { title: t('机变阶段'), micro: 'CONTINGENCY', tone: 'gold', sub: t('依次选择机变') };
     case PHASE.PREP: {
       // 业主 2026-10-20：超限的 Boss 轮在**休整期**就要提示，让玩家提前调整阵容。
       const infBoss = !!pub?.isInfinite && r >= 20 && r % 5 === 0;
@@ -188,9 +227,16 @@ export function battleResultBox(cost) {
   return loss == null ? null : roundResultBox(loss);
 }
 
-/** Label of the prep capsule ("休息一下" in the original). */
-export function prepCapsuleLabel(phase) {
-  if (phase === PHASE.SP_DRAFT) return t('机变阶段');
+/**
+ * Label of the prep capsule ("休息一下" in the original).
+ * `pub` is optional: with it, a 炸惊 惊变 draft says 惊变阶段 instead of the generic 机变阶段 (see draftFamilyOf).
+ */
+export function prepCapsuleLabel(phase, pub = null) {
+  if (phase === PHASE.SP_DRAFT) {
+    if (isJibianDraft(pub)) return t('惊变阶段');
+    if (isOverlimitRelicDraft(pub)) return t('词条抉择');
+    return t('机变阶段');
+  }
   if (phase === PHASE.ROUND_START) return t('回合开始');
   if (phase === PHASE.BATTLE_CHECK) return t('协议启动');
   if (phase === PHASE.SETTLE) return t('回合结算');

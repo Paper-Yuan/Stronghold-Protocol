@@ -1,4 +1,4 @@
-﻿plugins {
+plugins {
     id 'com.android.application'
     id 'org.jetbrains.kotlin.android'
 }
@@ -20,8 +20,8 @@ android {
         applicationId "com.paper.stronghold"
         minSdk 24
         targetSdk 34
-        versionCode 312
-        versionName "0.3.3"
+        versionCode 313
+        versionName "0.3.3-Yuan"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         ndk {

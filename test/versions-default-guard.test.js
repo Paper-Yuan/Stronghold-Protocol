@@ -29,9 +29,14 @@ const UPDATE = process.env.SP_UPDATE_GUARD === '1';
 const HOW = 'an intended change of the default version must regenerate test/fixtures/versions-default-guard.json with '
   + 'SP_UPDATE_GUARD=1 node --test test/versions-default-guard.test.js and give the reason in the commit';
 
-/** The gameplay data files of the default version (gameplayDataFiles: data/*.json without the presentation files). */
-const GAMEPLAY = ['backups', 'bands', 'bonds', 'bosses', 'chess', 'choices', 'config', 'effects', 'enemies', 'factions',
-  'garrisons', 'items', 'stages', 'tokens', 'tuning', 'waves'];
+/** The gameplay data files of the default version (gameplayDataFiles: every data/*.json the server loads, without the
+ * presentation files PRESENTATION_DATA: assets / local-assets / local-fx / emotes). Pinned exactly, so a new data file
+ * must be registered here (and an accidental one caught): 2026-10-31 adds the skins / namecards / relics / thanks /
+ * ZHAJING · anniversary manifest files that server/data.js now loads. */
+const GAMEPLAY = ['asset-hashes', 'backups', 'bands', 'bonds', 'bosses', 'cdn-resource-config', 'chess', 'choices', 'config',
+  'effects', 'enemies', 'factions', 'garrisons', 'items', 'jibianBonds', 'namecards', 'relics', 'relicsOverlimit',
+  'resource-admission-files', 'resource-manifest-frozen', 'skin-voices', 'skins', 'skins-installed', 'stages', 'thanks',
+  'tokens', 'tuning', 'waves', 'zjDefaultLoadout'];
 
 const VERSION_ENV = ['SP_VERSIONS', 'SP_VERSION_DEFAULT', 'SP_MAX_VERSION_HOSTS'];
 const HEX64 = /^[0-9a-f]{64}$/;

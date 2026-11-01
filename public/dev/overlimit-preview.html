@@ -1,0 +1,352 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>超限模拟 · 娱乐化原型（档案 / 词条 / 词缀 / 契约）</title>
+<link rel="icon" href="/icons/favicon.ico" />
+<link rel="stylesheet" href="/fonts/fonts.css" />
+<link rel="stylesheet" href="/css/theme.css" />
+<link rel="stylesheet" href="/css/components.css" />
+<style>
+  :root{
+    --olo-bg:#060a09; --olo-panel:rgba(13,20,18,.94); --olo-line:rgba(255,255,255,.12);
+    --olo-mint:var(--mint-500); --olo-mint-hi:var(--mint-400);
+    --olo-inf:var(--inf-500); --olo-inf-hi:var(--inf-300); --olo-inf-soft:var(--inf-a35);
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;min-height:100%;background:var(--olo-bg);color:var(--text-hi);font-family:var(--font-cjk);}
+  body{overflow-x:hidden}
+  .olo-field{position:fixed;inset:0;pointer-events:none;z-index:0;
+    background:
+      radial-gradient(ellipse 55% 45% at 50% 42%, rgba(168,85,247,.10), transparent 70%),
+      radial-gradient(ellipse 80% 60% at 50% 100%, rgba(78,216,175,.07), transparent 72%),
+      linear-gradient(180deg,#08100e 0%,#050807 100%);}
+  .olo-field::after{content:'';position:absolute;inset:0;
+    background-image:linear-gradient(rgba(78,216,175,.045) 1px,transparent 1px),linear-gradient(90deg,rgba(78,216,175,.045) 1px,transparent 1px);
+    background-size:44px 44px;mask-image:radial-gradient(ellipse at 50% 45%,#000 28%,transparent 78%);}
+  .olo-wrap{position:relative;z-index:1;max-width:1180px;margin:0 auto;padding:26px 20px 54px}
+  .olo-head{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:18px}
+  .olo-eyebrow{font:700 10px/1 var(--font-num);letter-spacing:.28em;color:var(--olo-inf-hi);opacity:.9;margin:0 0 8px}
+  .olo-title{margin:0;font-family:var(--font-display);font-size:clamp(22px,3vw,34px);letter-spacing:.06em;color:#f4f7f5}
+  .olo-title b{color:var(--olo-inf-hi);font-weight:800}
+  .olo-sub{margin:8px 0 0;font-size:12px;color:var(--text-lo);line-height:1.6;max-width:640px}
+  .olo-tag{display:inline-flex;align-items:center;gap:6px;height:26px;padding:0 10px;border-radius:3px;
+    border:1px solid var(--olo-inf-soft);background:var(--inf-a20);color:var(--olo-inf-hi);
+    font:700 11px/1 var(--font-num);letter-spacing:.12em}
+  .olo-tabs{display:flex;gap:6px;flex-wrap:wrap;margin:6px 0 16px}
+  .olo-tab{appearance:none;border:1px solid var(--olo-line);background:rgba(10,16,14,.7);color:var(--text-md);
+    height:34px;padding:0 14px;border-radius:4px;font:600 12px/1 var(--font-cjk);letter-spacing:.06em;cursor:pointer;
+    transition:border-color .16s,color .16s,background .16s}
+  .olo-tab:hover{color:var(--text-hi);border-color:rgba(255,255,255,.28)}
+  .olo-tab.is-on{color:var(--olo-inf-hi);border-color:var(--olo-inf-soft);background:var(--inf-a20)}
+  .olo-tab small{font-family:var(--font-num);font-size:9px;opacity:.6;margin-left:6px;letter-spacing:.1em}
+  .olo-stage{position:relative;border:1px solid var(--olo-line);border-radius:8px;overflow:hidden;
+    background:linear-gradient(180deg,rgba(14,22,20,.92),rgba(7,11,10,.96));
+    box-shadow:0 18px 60px rgba(0,0,0,.55);min-height:520px}
+  .olo-hud{position:absolute;left:0;right:0;top:0;height:44px;display:flex;align-items:center;gap:10px;padding:0 14px;
+    background:linear-gradient(180deg,rgba(5,8,7,.96),rgba(5,8,7,.55),transparent);z-index:3;font-size:11px;color:var(--text-md)}
+  .olo-hud__round{font:700 11px/1 var(--font-num);letter-spacing:.16em;color:var(--olo-mint-hi);
+    padding:5px 9px;border-radius:3px;background:var(--mint-a10);box-shadow:inset 0 0 0 1px var(--mint-a35)}
+  .olo-hud__inf{font:700 10px/1 var(--font-num);letter-spacing:.12em;color:var(--olo-inf-hi);
+    padding:4px 8px;border-radius:3px;background:var(--inf-a20);box-shadow:inset 0 0 0 1px var(--olo-inf-soft)}
+  .olo-hud__spacer{flex:1}
+  .olo-pill{display:inline-flex;align-items:center;gap:5px;padding:3px 8px;border-radius:3px;
+    border:1px solid var(--olo-line);background:rgba(8,12,11,.7);color:var(--text-md);font-size:10px;letter-spacing:.04em}
+  .olo-pill b{color:var(--text-hi)}
+  .olo-pill.is-inf{border-color:var(--olo-inf-soft);color:var(--olo-inf-hi);background:rgba(60,28,100,.35)}
+  .olo-pill.is-warn{border-color:rgba(231,49,24,.5);color:#ff9a86;background:rgba(80,18,12,.35)}
+  .olo-body{position:relative;padding:64px 18px 26px;min-height:520px}
+  .olo-view{display:none;animation:oloIn .28s ease both}
+  .olo-view.is-on{display:block}
+  @keyframes oloIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+  .olo-note{font-size:11px;color:var(--text-lo);line-height:1.7;margin:10px 0 0}
+  .olo-note b{color:var(--text-md)}
+
+  /* ── 档案 ─────────────────────────────────────────────── */
+  .olo-file{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,.95fr);gap:14px;align-items:stretch}
+  .olo-card{position:relative;border:1px solid var(--olo-line);border-radius:6px;background:rgba(12,18,16,.85);padding:16px 16px 14px;overflow:hidden}
+  .olo-card::before{content:'';position:absolute;left:0;top:0;bottom:0;width:2px;background:var(--olo-mint);opacity:.7}
+  .olo-card.is-inf::before{background:var(--olo-inf)}
+  .olo-card.is-inf{border-color:var(--olo-inf-soft);box-shadow:inset 0 0 40px rgba(122,62,220,.08)}
+  /* 斜切角 + 右上角线：明日方舟机能 UI 的常用语言 */
+  .olo-card,.olo-tcard,.olo-ccard{clip-path:polygon(0 0,calc(100% - 12px) 0,100% 12px,100% 100%,12px 100%,0 calc(100% - 12px))}
+  .olo-card::after{content:'';position:absolute;right:0;top:0;width:12px;height:12px;
+    border-top:1px solid var(--olo-mint);border-right:1px solid var(--olo-mint);opacity:.55;pointer-events:none}
+  .olo-card.is-inf::after{border-color:var(--olo-inf)}
+  .olo-tcard__top{position:relative}
+  .olo-tcard__top::after{content:'';position:absolute;right:0;top:-4px;width:10px;height:10px;
+    border-top:1px solid currentColor;border-right:1px solid currentColor;opacity:.35}
+  .olo-bars{display:flex;align-items:flex-end;gap:6px;height:78px;margin-top:16px;padding-top:8px;border-top:1px solid var(--olo-line)}
+  .olo-bars .b{flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;height:100%;justify-content:flex-end}
+  .olo-bars .b i{display:block;width:100%;max-width:24px;background:linear-gradient(180deg,var(--olo-inf-hi),rgba(122,62,220,.35));
+    border-radius:1px;opacity:.85;box-shadow:0 0 10px rgba(150,90,255,.3)}
+  .olo-bars .b span{font:600 8.5px/1 var(--font-num);color:var(--text-dim);letter-spacing:.06em}
+  .olo-bars .b.is-best i{background:linear-gradient(180deg,#ffd75e,rgba(255,150,40,.4));box-shadow:0 0 12px rgba(255,198,0,.4)}
+  .olo-bars .b.is-best span{color:#ffd75e}
+  .olo-card__micro{font:700 9px/1 var(--font-num);letter-spacing:.24em;color:var(--text-lo);margin:0 0 8px}
+  .olo-card.is-inf .olo-card__micro{color:var(--olo-inf-hi);opacity:.9}
+  .olo-big{display:flex;align-items:baseline;gap:8px}
+  .olo-big b{font:800 clamp(44px,7vw,68px)/1 var(--font-display);color:var(--olo-inf-hi);
+    text-shadow:0 0 26px var(--inf-glow);letter-spacing:.02em}
+  .olo-big span{font-size:12px;color:var(--text-lo);letter-spacing:.08em}
+  .olo-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:14px}
+  .olo-stat{padding:9px 10px;border:1px solid var(--olo-line);border-radius:4px;background:rgba(8,12,11,.6)}
+  .olo-stat i{display:block;font-style:normal;font-size:9.5px;letter-spacing:.12em;color:var(--text-lo);margin-bottom:5px}
+  .olo-stat b{font:700 20px/1 var(--font-num);color:var(--text-hi)}
+  .olo-stat b em{font-style:normal;font-size:10px;color:var(--text-lo);margin-left:2px}
+  .olo-new{display:inline-flex;align-items:center;gap:5px;margin-top:10px;padding:3px 8px;border-radius:2px;
+    background:linear-gradient(135deg,rgba(255,198,0,.18),rgba(255,120,40,.12));border:1px solid rgba(255,198,0,.45);
+    color:#ffd75e;font:700 10px/1 var(--font-num);letter-spacing:.16em}
+  .olo-kills{list-style:none;margin:12px 0 0;padding:0;display:flex;flex-direction:column;gap:6px}
+  .olo-kills li{display:flex;align-items:center;gap:8px;padding:6px 8px;border:1px solid var(--olo-line);border-radius:3px;background:rgba(8,12,11,.55)}
+  .olo-kills .r{font:700 10px/1 var(--font-num);color:var(--olo-inf-hi);letter-spacing:.08em;min-width:34px}
+  .olo-kills .n{font-size:12px;color:var(--text-hi);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .olo-kills .tag{font:700 9px/1 var(--font-num);letter-spacing:.12em;color:#ff8b7a;border:1px solid rgba(231,49,24,.45);padding:2px 5px;border-radius:2px}
+  .olo-traits{display:flex;flex-wrap:wrap;gap:5px;margin-top:10px}
+  .olo-chip{display:inline-flex;align-items:center;gap:4px;padding:3px 7px;border-radius:2px;font-size:10.5px;
+    border:1px solid rgba(78,216,175,.3);background:rgba(78,216,175,.08);color:var(--mint-hi,var(--mint-400))}
+  .olo-chip.is-neg{border-color:rgba(231,49,24,.35);background:rgba(231,49,24,.08);color:#ff9a86}
+  .olo-picked{max-width:760px;margin:14px auto 0;padding:8px 10px;border:1px dashed rgba(255,255,255,.14);border-radius:3px;
+    font-size:11px;color:var(--text-lo);text-align:center}
+  .olo-picked b{color:var(--olo-inf-hi)}
+  .olo-switch{display:flex;gap:6px;margin-top:14px}
+  .olo-switch button{appearance:none;border:1px solid var(--olo-line);background:rgba(8,12,11,.7);color:var(--text-lo);
+    height:28px;padding:0 10px;border-radius:3px;font:600 11px/1 var(--font-num);letter-spacing:.08em;cursor:pointer}
+  .olo-switch button.is-on{color:var(--olo-inf-hi);border-color:var(--olo-inf-soft);background:var(--inf-a20)}
+
+  /* ── 词条卡 ───────────────────────────────────────────── */
+  .olo-cards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;max-width:760px;margin:8px auto 0}
+  .olo-tcard{position:relative;border:1px solid rgba(78,216,175,.35);border-radius:5px;background:linear-gradient(180deg,rgba(16,28,24,.96),rgba(8,13,11,.98));
+    padding:12px 12px 10px;min-height:196px;display:flex;flex-direction:column;gap:8px;cursor:pointer;
+    transition:transform .18s,border-color .18s,box-shadow .18s;overflow:hidden}
+  .olo-tcard::after{content:'';position:absolute;left:0;right:0;top:-40%;height:35%;
+    background:linear-gradient(180deg,transparent,rgba(78,216,175,.14),transparent);animation:oloScan 3.4s linear infinite;pointer-events:none}
+  @keyframes oloScan{to{top:110%}}
+  .olo-tcard:hover{transform:translateY(-4px);border-color:rgba(78,216,175,.7);box-shadow:0 10px 30px rgba(0,0,0,.45)}
+  .olo-tcard.is-locked{border-color:rgba(255,198,0,.65);box-shadow:inset 0 0 26px rgba(255,198,0,.08)}
+  .olo-tcard.is-neg{border-color:rgba(231,49,24,.4)}
+  .olo-tcard.is-neg::after{background:linear-gradient(180deg,transparent,rgba(231,49,24,.14),transparent)}
+  .olo-tcard__top{display:flex;align-items:center;justify-content:space-between;gap:6px}
+  .olo-tcard__kind{font:700 9px/1 var(--font-num);letter-spacing:.18em;color:var(--olo-mint-hi)}
+  .olo-tcard.is-neg .olo-tcard__kind{color:#ff9a86}
+  .olo-tcard__lock{appearance:none;border:1px solid var(--olo-line);background:rgba(8,12,11,.7);color:var(--text-lo);
+    width:22px;height:22px;border-radius:3px;display:grid;place-items:center;font-size:10px;cursor:pointer}
+  .olo-tcard.is-locked .olo-tcard__lock{color:#ffd75e;border-color:rgba(255,198,0,.6);background:rgba(255,198,0,.1)}
+  .olo-tcard__name{font:800 18px/1.15 var(--font-cjk);color:var(--text-hi);letter-spacing:.04em}
+  .olo-tcard__desc{font-size:11.5px;line-height:1.6;color:var(--text-md);flex:1}
+  .olo-tcard__mob{display:flex;align-items:center;gap:6px;padding-top:8px;border-top:1px dashed rgba(255,255,255,.1);
+    font-size:10px;color:var(--text-lo)}
+  .olo-tcard__mob b{color:var(--text-md);font-weight:600}
+  .olo-tcard__mob .badge{margin-left:auto;font:700 8.5px/1 var(--font-num);letter-spacing:.1em;color:#ff8b7a;
+    border:1px solid rgba(231,49,24,.45);padding:2px 5px;border-radius:2px}
+  .olo-actions{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin:16px 0 0}
+  .olo-btn{appearance:none;border:1px solid var(--olo-line);background:rgba(10,16,14,.85);color:var(--text-md);
+    height:34px;padding:0 14px;border-radius:4px;font:600 12px/1 var(--font-cjk);letter-spacing:.06em;cursor:pointer;
+    transition:border-color .16s,color .16s,background .16s}
+  .olo-btn:hover{color:var(--text-hi);border-color:rgba(255,255,255,.3)}
+  .olo-btn.is-primary{color:#06110d;background:var(--olo-mint-hi);border-color:var(--olo-mint-hi);font-weight:800}
+  .olo-btn.is-inf{color:var(--olo-inf-hi);border-color:var(--olo-inf-soft);background:var(--inf-a20)}
+  .olo-btn:disabled{opacity:.4;cursor:not-allowed}
+  .olo-toast{position:absolute;left:50%;bottom:18px;transform:translateX(-50%);padding:6px 12px;border-radius:3px;
+    background:rgba(8,12,11,.92);border:1px solid var(--olo-line);color:var(--text-md);font-size:11px;
+    opacity:0;transition:opacity .2s;pointer-events:none}
+  .olo-toast.is-on{opacity:1}
+
+  /* ── 词缀 / 契约 ──────────────────────────────────────── */
+  .olo-boss{display:grid;grid-template-columns:minmax(0,1fr) 260px;gap:14px;align-items:start}
+  .olo-boss__panel{position:relative;border:1px solid rgba(231,49,24,.35);border-radius:6px;padding:14px;
+    background:radial-gradient(ellipse at 50% 30%,rgba(120,20,12,.28),rgba(10,8,8,.96) 70%)}
+  .olo-boss__name{display:flex;align-items:center;gap:8px;font-size:13px;color:#ffd9d2}
+  .olo-boss__name b{font-size:16px;color:#fff}
+  .olo-boss__bar{height:10px;border-radius:5px;background:rgba(0,0,0,.7);box-shadow:inset 0 0 0 1px rgba(255,255,255,.16);margin:10px 0 12px;overflow:hidden}
+  .olo-boss__fill{height:100%;width:54%;background:linear-gradient(90deg,#7a1408,#e73118 60%,#ff6b52);border-radius:5px}
+  .olo-boss__affix{display:flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid rgba(231,49,24,.4);
+    border-radius:4px;background:rgba(60,12,8,.5);font-size:12px;color:#ffb3a8}
+  .olo-boss__affix b{color:#fff;font-size:13px}
+  .olo-boss__affix .tag{margin-left:auto;font:700 8.5px/1 var(--font-num);letter-spacing:.1em;color:#ff8b7a}
+  .olo-affixlist{display:flex;flex-direction:column;gap:7px;margin-top:12px}
+  .olo-affix{display:flex;align-items:flex-start;gap:8px;padding:9px 10px;border:1px solid var(--olo-line);border-radius:4px;
+    background:rgba(8,12,11,.6);cursor:pointer;transition:border-color .16s,background .16s}
+  .olo-affix:hover{border-color:rgba(255,255,255,.28)}
+  .olo-affix.is-on{border-color:rgba(231,49,24,.6);background:rgba(70,14,10,.4)}
+  .olo-affix .ico{width:22px;height:22px;flex:none;display:grid;place-items:center;border-radius:3px;
+    background:rgba(231,49,24,.16);color:#ff8b7a;font:800 11px/1 var(--font-num)}
+  .olo-affix .txt{min-width:0}
+  .olo-affix .txt b{display:block;font-size:12px;color:var(--text-hi);margin-bottom:2px}
+  .olo-affix .txt span{font-size:10.5px;line-height:1.45;color:var(--text-lo)}
+  .olo-affix .st{margin-left:auto;font:700 8.5px/1 var(--font-num);letter-spacing:.08em;color:var(--text-dim);white-space:nowrap}
+  .olo-affix.is-on .st{color:#ff8b7a}
+  .olo-contract{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;max-width:820px;margin:6px auto 0}
+  .olo-ccard{position:relative;border:1px solid var(--olo-line);border-radius:5px;padding:14px 13px;background:rgba(12,18,16,.86);
+    cursor:pointer;transition:border-color .18s,transform .18s,box-shadow .18s;min-height:168px;display:flex;flex-direction:column;gap:8px}
+  .olo-ccard:hover{transform:translateY(-3px);border-color:rgba(255,255,255,.3)}
+  .olo-ccard.is-on{border-color:var(--olo-inf-soft);box-shadow:inset 0 0 34px rgba(122,62,220,.12);background:rgba(20,14,30,.9)}
+  .olo-ccard__kind{font:700 9px/1 var(--font-num);letter-spacing:.18em;color:var(--olo-inf-hi);opacity:.85}
+  .olo-ccard__name{font:800 17px/1.1 var(--font-cjk);color:var(--text-hi)}
+  .olo-ccard__desc{font-size:11px;line-height:1.6;color:var(--text-md);flex:1}
+  .olo-ccard__reward{font-size:10.5px;color:var(--mint-hi,var(--mint-400));border-top:1px dashed rgba(255,255,255,.1);padding-top:7px}
+  .olo-ccard__reward b{color:#fff}
+  .olo-summary{margin:14px auto 0;max-width:820px;padding:12px 14px;border:1px solid var(--olo-inf-soft);border-radius:5px;
+    background:rgba(20,14,30,.55);display:flex;gap:14px;flex-wrap:wrap;align-items:center;font-size:12px;color:var(--text-md)}
+  .olo-summary b{color:var(--olo-inf-hi)}
+  .olo-summary .sep{color:var(--text-dim)}
+  .olo-summary button{margin-left:auto}
+
+  @media (max-width:760px){
+    .olo-wrap{padding:12px 10px 40px}
+    .olo-head{margin-bottom:10px;gap:8px}
+    .olo-eyebrow{font-size:9px;letter-spacing:.2em;margin-bottom:5px}
+    .olo-title{font-size:21px}
+    .olo-sub{font-size:10.5px;line-height:1.5;margin:5px 0 0}
+    .olo-tag{height:22px;font-size:9.5px;padding:0 8px}
+    .olo-tabs{margin:4px 0 10px}
+    .olo-tab{height:30px;padding:0 10px;font-size:11px}
+    .olo-stage{min-height:0}
+    .olo-tag{display:none}
+    .olo-body{padding:64px 10px 18px;min-height:0}
+    .olo-big b{font-size:44px}
+    .olo-stats{grid-template-columns:repeat(3,minmax(0,1fr))}
+    .olo-card{padding:12px 12px 10px}
+    .olo-file{grid-template-columns:1fr}
+    .olo-cards{grid-template-columns:1fr;max-width:none}
+    .olo-tcard{min-height:0}
+    .olo-boss{grid-template-columns:1fr}
+    .olo-contract{grid-template-columns:1fr;max-width:none}
+    .olo-ccard{min-height:0}
+    .olo-hud{height:auto;min-height:40px;gap:4px;padding:6px 8px;flex-wrap:wrap}
+    .olo-hud__round,.olo-hud__inf{font-size:9.5px;padding:3px 6px}
+    .olo-hud .olo-pill{display:inline-flex;font-size:9px;padding:2px 5px}
+    .olo-body{padding-top:64px}
+  }
+</style>
+</head>
+<body>
+<div class="olo-field"></div>
+<div class="olo-wrap">
+  <header class="olo-head">
+    <div>
+      <p class="olo-eyebrow">INFINITE PROTOCOL · ENTERTAINMENT PROTOTYPE</p>
+      <h1 class="olo-title">超限模拟 · <b>娱乐化原型</b></h1>
+      <p class="olo-sub">档案 / 词条重抽·跳过·锁定 / Boss 词缀 / 风险契约。全部使用游戏内真实配色与字体；点击即可交互，仅作视觉与手感确认。</p>
+    </div>
+    <span class="olo-tag">∞ 超限 · 演示</span>
+  </header>
+
+  <nav class="olo-tabs" role="tablist" aria-label="原型页面">
+    <button class="olo-tab is-on" data-tab="file" role="tab" aria-selected="true">超限档案<small>01</small></button>
+    <button class="olo-tab" data-tab="trait" role="tab" aria-selected="false">词条抉择<small>02</small></button>
+    <button class="olo-tab" data-tab="affix" role="tab" aria-selected="false">Boss 词缀<small>03</small></button>
+    <button class="olo-tab" data-tab="contract" role="tab" aria-selected="false">风险契约<small>04</small></button>
+  </nav>
+
+  <main class="olo-stage">
+    <div class="olo-hud">
+      <span class="olo-hud__round" id="hud-round">R 30</span>
+      <span class="olo-hud__inf">∞ 超限</span>
+      <span class="olo-hud__spacer"></span>
+      <span class="olo-pill" id="hud-affix">BOSS 词缀 · <b>狂暴</b></span>
+      <span class="olo-pill is-inf" id="hud-contract">契约 · <b>未选择</b></span>
+      <span class="olo-pill">词条 <b id="hud-traits">5</b></span>
+    </div>
+
+    <div class="olo-body">
+      <!-- ① 档案 -->
+      <section class="olo-view is-on" data-view="file" role="tabpanel">
+        <div class="olo-file">
+          <div class="olo-card is-inf">
+            <p class="olo-card__micro">SETTLEMENT · ARCHIVE</p>
+            <div class="olo-big"><b id="file-round">30</b><span>最高回合</span></div>
+            <div class="olo-stats">
+              <div class="olo-stat"><i>Boss 击杀</i><b id="file-boss">3</b></div>
+              <div class="olo-stat"><i>词条</i><b id="file-traits">5</b></div>
+              <div class="olo-stat"><i>最高盟约</i><b id="file-layers">412<em>层</em></b></div>
+            </div>
+            <span class="olo-new" id="file-new">NEW RECORD · 本机最佳</span>
+            <ul class="olo-kills" id="file-kills"></ul>
+            <div class="olo-switch" id="file-switch">
+              <button data-set="30" class="is-on">R30</button>
+              <button data-set="45">R45</button>
+              <button data-set="60">R60</button>
+            </div>
+          </div>
+          <div class="olo-card">
+            <p class="olo-card__micro">TRAITS THIS RUN</p>
+            <div class="olo-traits" id="file-chips"></div>
+            <p class="olo-note">词条从选定回合起生效，贯穿本局剩余战斗。<b>负面词条</b>以红色标示。</p>
+            <p class="olo-card__micro" style="margin-top:16px">MILESTONES</p>
+            <div class="olo-traits">
+              <span class="olo-chip">R20 抵达</span>
+              <span class="olo-chip">R30 抵达</span>
+              <span class="olo-chip is-neg">R40 · 双 Boss</span>
+              <span class="olo-chip">R45 双 Boss 击破</span>
+            </div>
+            <p class="olo-note">达到 R40 起进入双 Boss 关口；R45 的档案会多出一条「双 Boss 击破」。</p>
+            <p class="olo-card__micro" style="margin-top:16px">BEST RUNS · 本机</p>
+            <div class="olo-bars" id="file-bars">
+              <span class="b"><i style="height:26%"></i><span>R20</span></span>
+              <span class="b"><i style="height:42%"></i><span>R30</span></span>
+              <span class="b"><i style="height:58%"></i><span>R40</span></span>
+              <span class="b"><i style="height:74%"></i><span>R50</span></span>
+              <span class="b is-best"><i style="height:92%"></i><span>R60</span></span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ② 词条 -->
+      <section class="olo-view" data-view="trait" role="tabpanel">
+        <p class="olo-note" style="text-align:center;margin:0 0 4px">R30 词条抉择 · 正面向 <b>三选一</b>；每局 1 次重抽，可锁定一张到下次。</p>
+        <div class="olo-cards" id="trait-cards"></div>
+        <div class="olo-actions">
+          <button class="olo-btn" id="trait-lock-hint" disabled>未锁定</button>
+          <button class="olo-btn is-inf" id="trait-reroll">重抽 <span class="num">(1)</span></button>
+          <button class="olo-btn" id="trait-skip">跳过 · 下一轮 +1 资金</button>
+          <button class="olo-btn is-primary" id="trait-confirm">确认选择</button>
+        </div>
+        <div class="olo-picked" id="trait-picked">本局已选：<b>—</b></div>
+        <div class="olo-toast" id="trait-toast"></div>
+      </section>
+
+      <!-- ③ 词缀 -->
+      <section class="olo-view" data-view="affix" role="tabpanel">
+        <div class="olo-boss">
+          <div class="olo-boss__panel">
+            <div class="olo-boss__name"><span>R30 · 领袖</span><b>“巨大的丑东西”</b></div>
+            <div class="olo-boss__bar"><div class="olo-boss__fill"></div></div>
+            <div class="olo-boss__affix">词缀 · <b id="affix-title">狂暴</b><span class="tag" id="affix-stage">第一阶段</span></div>
+            <p class="olo-note" id="affix-desc">生命低于 50% 时攻击速度 +50%、攻击力 +20%。</p>
+            <div class="olo-affixlist" id="affix-list"></div>
+          </div>
+          <div class="olo-card">
+            <p class="olo-card__micro">HOW IT SHOWS</p>
+            <p class="olo-note">词缀进入 Boss 轮时在 HUD 上显示为 <b>红色 pill</b>；双 Boss 第二阶段预警板会重复一次词缀名。</p>
+            <div style="margin:12px 0;padding:10px;border:1px solid rgba(231,49,24,.45);border-radius:4px;background:rgba(60,12,8,.45)">
+              <div style="font:700 9px/1 var(--font-num);letter-spacing:.2em;color:#ff8b7a">SECOND PHASE INCOMING</div>
+              <div style="margin-top:8px;font:800 16px/1.2 var(--font-cjk);color:#fff">隐秘核心正在觉醒</div>
+              <div style="margin-top:6px;font-size:10.5px;color:#ffc9c0">词缀 · <b id="affix-warn">狂暴</b> · 核心生命 +50%</div>
+            </div>
+            <p class="olo-note"><b>护盾</b>与<b>反伤</b>需要 sim 侧新增 Boss 受击钩子，列为第二阶段；原型页先展示完整卡面。</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ④ 契约 -->
+      <section class="olo-view" data-view="contract" role="tabpanel">
+        <p class="olo-note" style="text-align:center;margin:0 0 4px">R35 → R40 Boss 轮前 · 选择一份风险契约；不选则按常规开战。</p>
+        <div class="olo-contract" id="contract-cards"></div>
+        <div class="olo-summary" id="contract-summary">
+          <span>当前契约：<b id="contract-name">未选择</b></span><span class="sep">|</span>
+          <span>Boss 血量 <b id="contract-hp">常规</b></span><span class="sep">|</span>
+          <span>结算奖励 <b id="contract-reward">无</b></span>
+          <button class="olo-btn" id="contract-reset">重置</button>
+        </div>
+      </section>
+    </div>
+  </main>
+  <p class="olo-note" style="margin-top:12px">原型页不连服务器、不写数据；批准视觉后再接入真实逻辑（档案 → 词条 → 词缀 → 契约）。</p>
+</div>
+
+<script src="/dev/overlimit-preview.js"></script>
+</body>
+</html>

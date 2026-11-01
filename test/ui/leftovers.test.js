@@ -74,10 +74,31 @@ describe('1. equip-replace dialog', () => {
     assert.equal(equipMerges(ctx, 3), false);
   });
 
-  test('a consume-on-equip item on a full operator opens the dialog too — all 24, 博士投影 included — except a 博士投影 on an elite (GitHub #263)', () => {
+  test('a consume-on-equip item on a full operator opens the dialog too — all of them, 博士投影 included — except a 博士投影 on an elite (GitHub #263)', () => {
     // PRTS 卫戍协议/帮助 "达到上限强行佩戴会改为替换装备": the pick is destroyed, then the item resolves (a free slot is left)
     const consumables = Object.values(DATA.items).filter((x) => x.itemType === 'EQUIP' && String(x.kind).startsWith('consume_on_equip'));
-    assert.equal(consumables.length, 24, '12 consume-on-equip items × normal / golden');
+    // The count comes from the data, not a literal: each consumable family (baseId) is a normal + 进阶 pair. The
+    // 炸惊-only 极速送达！ items (chess_item_jibian_jisusongda_*) ship one form each, so a family is either a pair or a
+    // single normal-only 炸惊 item.
+    const families = new Map();
+    for (const it of consumables) {
+      const fam = it.baseId || it.id;
+      if (!families.has(fam)) families.set(fam, []);
+      families.get(fam).push(it);
+    }
+    let paired = 0;
+    let singles = 0;
+    for (const [fam, forms] of families) {
+      if (forms.length === 1) {
+        assert.equal(forms[0].isGolden, false, `${fam}: a lone form is the normal one`);
+        assert.equal(forms[0].zjOnly, true, `${fam}: only a 炸惊-only item ships without a 进阶 copy`);
+        singles++;
+      } else {
+        assert.deepEqual(forms.map((f) => f.isGolden).sort(), [false, true], `${fam}: normal + 进阶`);
+        paired++;
+      }
+    }
+    assert.equal(consumables.length, paired * 2 + singles, 'one normal / 进阶 pair per family, single-form 炸惊 items alone');
     const holo = ['chess_item_5_06_e_a', 'chess_item_5_06_e_b'];
     for (const it of consumables) {
       const hand = [{ uid: 3, kind: 'item', id: it.id }, ...priv.hand.slice(1)];

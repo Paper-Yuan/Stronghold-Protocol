@@ -9,11 +9,18 @@ import { GAME_SPEED } from '../fields.js';
 const BASE = GAME_SPEED;
 import { GEO } from '../../../shared/constants.js';
 import { buildNormalWave, buildBossWave } from '../waves.js';
+import { scaleWaveCounts } from '../relics.js';
 import { isInfiniteBossRound, buildInfiniteNormalWave, buildInfiniteBossWave, capWaveKinds } from '../infiniteWaves.js';
+import { partyWaveCountMul } from '../../../shared/infiniteMode.js';
 import { wantsTraitDraft } from './traitDraft.js';
-import { pairPlayers } from '../finalAssault.js';
+import { wantsRelicDraft } from './relicDraft.js';
+import { pairPlayers, bossPairSalt } from '../finalAssault.js';
+import { weightedPick } from '../waves.js';
+import { jibianCard } from '../choices.js';
+import { matchJibianPlan, applyHiddenMatchCards } from '../../sim/content/ejibian.js';
 import { createRng, deriveSeed } from '../../sim/rng.js';
 import { botPickBand } from '../bot.js';
+import { trackHpMax } from '../teams.js';
 import { OK, fail, DELAYS, BAND_TURN_SECONDS } from './common.js';
 
 export class MatchPhases {
@@ -127,12 +134,38 @@ export class MatchPhases {
       if (this.phase !== PHASE.BAND_DRAFT || token !== this._turnToken) return;
       const ps = this.players.get(this.draftTurn());
       if (!ps || !ps.botControlled) return;
-      // a strategy a teammate already took is not selectable (队友已选): the bot re-draws, else the first free one
-      let id = botPickBand(this, ps);
-      for (let k = 0; k < 8 && this.bandTaken(id, ps.playerId); k++) id = botPickBand(this, ps);
-      if (this.bandTaken(id, ps.playerId)) id = this.gd.bandIds().find((b) => !this.bandTaken(b, ps.playerId)) || id;
-      this._applyBand(ps, id, { dedupe: true });
+      const fallback = () => {
+        if (this.phase !== PHASE.BAND_DRAFT || token !== this._turnToken) return;
+        this._applyBand(ps, this.autoBandFor(ps), { dedupe: true });
+      };
+      // 外部 AI (botStrategy 'external', server/match/externalAI.js): a bot seat's strategy turn must be offered to the
+      // controller as a `band` JOB — its legal actions are g.band / g.bandSkip / g.bandFocus (externalAI AI_ACTIONS.band),
+      // and external-knowledge / external-ai assert the first job of such a room IS that draft. Without this call the seat
+      // is assigned by the legacy heuristic and the controller never sees the draft at all. Built-in strategies have no
+      // `decide` (botStrategyContract) and take the fallback immediately, so their behaviour is unchanged.
+      if (this.bot.decide?.(this, ps, {
+        kind: 'band', key: 'band',
+        valid: () => this.phase === PHASE.BAND_DRAFT && token === this._turnToken
+          && ps.alive && ps.botControlled && !this.draft?.picks[ps.playerId],
+        complete: () => !!this.draft?.picks[ps.playerId],
+        fallback,
+      })) return;
+      fallback();
     });
+  }
+
+  /**
+   * The strategy an AI seat's band turn takes when no controller answers: the strategy's own `pickBand` (legacy unless a
+   * plugin strategy overrides it) with the 队友已选 retry, then the first strategy nobody else holds.
+   * @param {import('../PlayerState.js').PlayerState} ps
+   * @returns {string}
+   */
+  autoBandFor(ps) {
+    const pick = typeof this.bot?.pickBand === 'function' ? () => this.bot.pickBand(this, ps) : () => botPickBand(this, ps);
+    let id = pick();
+    for (let k = 0; k < 8 && this.bandTaken(id, ps.playerId); k++) id = pick();
+    if (this.bandTaken(id, ps.playerId)) id = this.gd.bandIds().find((b) => !this.bandTaken(b, ps.playerId)) || id;
+    return id;
   }
 
   /**
@@ -258,7 +291,41 @@ export class MatchPhases {
     this.markPublic();
   }
 
-  startRound(r) {
+  /**
+   * @param {number} r the round about to start
+   * @param {(() => void) | null} [done] runs once the round has REALLY begun — after its `battleCheck` window closed
+   *   (testCommands `g.test round`, which initializes the hidden round's team LP only then).
+   */
+  startRound(r, done = null) {
+    // 炸惊模拟 惊变「追忆」(jibian_zhuiji) — `onRoundWouldStart`: a handler may REWRITE the round that is about to start
+    // (its card turns R14 back into R10). Dispatched HERE, inside startRound, before `this.round` is written and before
+    // `ps.startRound(r)` — the round number downstream is read from `this.round` / `ps.round`, and startRound has several
+    // internal callers (bossRounds ×3, traitDraft, settle), so a dispatch at the call sites would miss some and would see
+    // an already-applied round. `ev.round` is mutable; no handler (every mode, and any round without the card) leaves it
+    // untouched and the match runs exactly as before.
+    let roundNo = r;
+    if (this.players && this.players.size) {
+      const rev = { round: r };
+      for (const ps of this.alivePlayers()) {
+        try { this.dispatch(ps, 'onRoundWouldStart', rev); } catch (e) { this.reportError('dispatch onRoundWouldStart', e); }
+      }
+      if (Number.isInteger(rev.round) && rev.round > 0) roundNo = rev.round;
+    }
+    r = roundNo;
+    // Plugin interaction windows (docs/PLUGINS.md §10b): every round — R1 through the boss rounds — opens its declared
+    // `battleCheck` window *before* the round begins, and the round waits for it. The previous round's windows expire
+    // here and a queued continuation is dropped, so a test-console round jump cannot resume the old step (offers.js
+    // `_closeOffer` / `offersDispose`). Restored from 0.3.1 (commit 9131e788): the merge-era phases.js kept in this file
+    // had lost the hook, so `battleCheck` windows never opened and a jump resumed stale continuations.
+    for (const w of this.offerWin) this._closeOffer(w);
+    this.offersDispose();
+    const step = () => { this._startRoundAfterOffers(r); if (typeof done === 'function') done(); };
+    if (this.openOfferWindow('battleCheck', r) !== 'open') { step(); return; }
+    this._offerResume = step;
+  }
+
+  /** The round itself, once its `battleCheck` window (if the content set declares one) has closed. */
+  _startRoundAfterOffers(r) {
     this.phase = PHASE.ROUND_START;
     this.round = r;
     // 业主 2026-10-19：「后续无限轮次的游戏速度改为 2 倍速并出现右上角倒计时处提示
@@ -275,9 +342,25 @@ export class MatchPhases {
     this.watchers.clear();
     this.unitePlan = null;
     this.uniteResultView = null;
+    // 多队（8 / 12 人房）: the round's three-stage 联防 state is per round (null in a 4-seat room, which never reads it)
+    this.uniteStage = null;
+    this.teamOutcomes = null;
+    this.uniteCharge = null;
+    this.crossPlan = null;
     this.sp = null;
     this.wave = null;
     this.bossWaves = null;
+    this.roundBossAffix = null; // 超限 Boss 词缀：每轮重置，startFinalAssault 固化本轮的那一个
+    // 炸惊模拟 规则14: the 敌方惊变 of this round (config enemyJibian.rounds: R1 / R6) is drawn BEFORE the wave, so the
+    // wave side may read it; it is a no-op (no rng draw, no field) for every mode that is not ZHAJING.
+    this.drawEnemyJibian(r);
+    // …and the 隐秘惊变 of the Hidden Core's own prep (R15): one guaranteed hidden-rarity card + one ordinary card.
+    this.drawHiddenJibian(r);
+    // …and its Match-side wave plan (sim/content/ejibian.js matchJibianPlan: count multiplier / everything at once /
+    // 入职测试 slime swap). null without drawn cards, so every official wave is built exactly as before.
+    this.jibianPlan = this.gd.zhajing && Array.isArray(this.enemyJibianCards) && this.enemyJibianCards.length
+      ? matchJibianPlan(this.rngWaves, r, this.enemyJibianCards)
+      : null;
     const alive = this.alivePlayers();
     // the round's enemies (shared composition, generated now so the prep preview is exact). Planned BEFORE the players'
     // round start: its recompute() checks the board on the field the player deploys on this round (deployFieldOf reads
@@ -292,12 +375,25 @@ export class MatchPhases {
       this._planBossWaves();
     } else if (this.isInfinite && r >= 16) {
       this.wave = buildInfiniteNormalWave(this.gd, this.rngWaves, r, this._infiniteRoutes(r));
+      // 超限·同盟：普通波次数量按人数放大（2 人 1.15×、3 人 1.3×、4 人 1.45×），单人不变
+      if (this.mode === 'coop') {
+        const mul = partyWaveCountMul(alive.length);
+        for (const s of this.wave.spawns || []) {
+          const n = Math.max(1, Number(s.count) || 1);
+          s.count = Math.max(1, Math.round(n * mul));
+        }
+      }
     } else {
-      this.wave = buildNormalWave(this.gd, this.rngWaves, this.factions, r);
+      this.wave = buildNormalWave(this.gd, this.rngWaves, this.factions, r, { plan: this.jibianPlan, jibian: this.enemyJibianCards });
+      // 湮灭模拟: 蚀流 3+ 的 14/15、24/25 是高压精英关 (+25 % enemy count) and 不赦 adds its own share — the relic-side
+      // scaler is a no-op for every official mode (no annihilation block, no relics owned).
+      if (this.gd.annihilation) scaleWaveCounts(this, this.wave);
       // 超限的前 15 回合收敛到 3 种怪（业主 2026-10-17）；R16 起走上面的无限波次，不设上限。
       if (this.isInfinite) this.wave = capWaveKinds(this.wave, 3, this.rngWaves);
     }
     for (const ps of alive) ps.startRound(r);
+    // 多队 (TWELVE_PLAYER_MODE §3): remember the ceiling each individual health bar's build reached this round
+    if (this.multiTeam) for (const ps of this.order) trackHpMax(ps);
     for (const ps of alive) this.dispatch(ps, 'onRoundStart', { round: r });
     // an eliminated player's pending 信标 gift still goes to its teammate (effects flagged afterElimination; GitHub #86)
     for (const ps of this.order) {
@@ -366,17 +462,32 @@ export class MatchPhases {
     return out;
   }
 
+  /**
+   * The boss rounds' pairing draw. The Final Assault keeps the salt `boss-pairs` (unchanged since 0.2.5); the Hidden Core
+   * draws pairs and sides anew from `boss-pairs:<round>`, so its own prep and field see a new pairing (GitHub #845,
+   * DESIGN §35.27, docs/META.md). The Hidden Core round clears the Final Assault's plan when it starts; a re-plan inside
+   * the round (a departure during the prep) still starts from the pairs already planned, so the departed player's pair
+   * stays whole and only the orphan is paired again (finalAssault.js pairPlayers `previous`).
+   */
+  _drawBossPairs() {
+    const round = this.round;
+    if (this.bossPairsRound !== round && round === this.gd.hiddenRound && round !== this.gd.bossRound) this.bossPairs = null;
+    const groups = pairPlayers(this.alivePlayers(), createRng(deriveSeed(this.seed, bossPairSalt(this.gd, round))), this.bossPairs);
+    this.bossPairs = groups.map((g) => g.map((p) => p.playerId));
+    this.bossPairsRound = round;
+    return groups;
+  }
+
   _planBossWaves() {
     const r = this.round;
     const bossId = r === this.gd.hiddenRound && r !== this.gd.bossRound ? this.hiddenBossId : this.bossId;
     // Pairing uses an independent seeded draw, consuming no shop, wave, draft or battle randomness.
-    const groups = pairPlayers(this.alivePlayers(), createRng(deriveSeed(this.seed, 'boss-pairs')), this.bossPairs);
-    this.bossPairs = groups.map(g => g.map(p => p.playerId));
+    const groups = this._drawBossPairs();
     this.bossWaves = groups.map((g) => ({
       players: g.map((p) => p.playerId),
       wave: (this.isInfinite && r >= 16)
         ? buildInfiniteBossWave(this.gd, this.rngWaves, r, this._infiniteRoutes(r, GEO.BOSS_RECT))
-        : buildBossWave(this.gd, this.rngWaves, this.factions, r, { bossId, solo: this.isSolo || g.length === 1 }),
+        : buildBossWave(this.gd, this.rngWaves, this.factions, r, { bossId, solo: this.isSolo || g.length === 1, plan: this.jibianPlan, jibian: this.enemyJibianCards }),
     }));
   }
 
@@ -396,13 +507,23 @@ export class MatchPhases {
     // 只在作战阶段立即生效（业主 2026-10-21）：「二倍速按钮按下就一直在之后的作战中生效，
     // 备战时保持原速」。休整期 / 选人 / 结算里点它只改偏好，不动当前 gameSpeed。
     const inBattle = this.phase === PHASE.COMBAT || this.phase === PHASE.UNITE || this.phase === PHASE.FINAL_ASSAULT;
-    if (inBattle) this.gameSpeed = BASE * pref;
+    if (inBattle) {
+      const old = this.gameSpeed || BASE;
+      this.gameSpeed = BASE * pref;
+      // 随切随变（业主 2026-10-26）：按已推进的游戏秒重算剩余倒计时
+      if (typeof this._reclockForSpeed === 'function') this._reclockForSpeed(old, this.gameSpeed);
+    }
     void ps;
     this.markPublic();
     return OK;
   }
 
   afterRoundStart() {
+    // 超限「词条」（业主 2026-10-31）：R3 / R8 的 LC 三选一，排在同一回合的机变之前 ——
+    // 选完由 finishRelicDraft 接回机变（R3 有机变；R8 没有，直接进整备）。
+    // 无限段的那一次不走这里（Boss 轮结束的时点在 bossRounds.afterSettle 里直接切入），
+    // 但 roundsDone 也挡住了重复触发，所以这条分支对无限段是幂等的。
+    if (wantsRelicDraft(this, this.round) && this.enterRelicDraft(this.round)) return;
     // 超限：通过 Boss 的下一回合先开词条抉择（业主 2026-10-18）；普通模式完全不走这里
     // 词条抉择已经在 afterSettle 里开过了（Boss 轮结束的时点），这里不再重复
     if (this._traitDoneRound !== this.round - 1 && wantsTraitDraft(this, this.round)) { this.enterTraitDraft(this.round); return; }
@@ -422,5 +543,103 @@ export class MatchPhases {
     const step = () => this.enterPrep();
     if (this.openOfferWindow('prep', this.round) !== 'open') { step(); return; }
     this._offerResume = step;
+  }
+
+  /**
+   * 炸惊模拟 规则14 — 敌方惊变. ONE card is drawn at the START of each configured round (config `enemyJibian.rounds`:
+   * 第 1 与第 6 回合), kept for the rest of the match and published through m.public as a reveal (`flickerMs` then
+   * `resultMs`, MatchViews). Every later battle spec carries the drawn ids in `flags.enemyJibian`, and
+   * sim/content/ejibian.js turns them into the actual enemy-side effects — the match never applies them itself.
+   * Gated on `gd.zhajing` + the mode's own `enemyJibian` block, so no other mode draws, consumes rng or publishes.
+   * @param {number} round
+   * @returns {{ id: string, name: string, desc: string, rarity: string|null } | null}
+   */
+  drawEnemyJibian(round) {
+    if (!this.gd.zhajing) return null;
+    const ej = this.gd.enemyJibian();
+    if (!ej || !ej.pool.length || !ej.rounds.includes(Number(round))) return null;
+    if (!(this.enemyJibianRoundsDone instanceof Set)) this.enemyJibianRoundsDone = new Set();
+    if (this.enemyJibianRoundsDone.has(Number(round))) return null;
+    this.enemyJibianRoundsDone.add(Number(round));
+    const rarity = weightedPick(this.rngWaves, ej.rarityWeights);
+    const ofRarity = ej.pool.filter((c) => c && c.rarity === rarity);
+    const list = ofRarity.length ? ofRarity : ej.pool;
+    const pick = list[Math.min(list.length - 1, Math.floor(this.rngWaves() * list.length))];
+    const id = pick && (pick.effectId || pick.id || pick.key);
+    if (!id) return null;
+    const card = { ...jibianCard(this.gd, pick, rarity), id };
+    if (!Array.isArray(this.enemyJibianCards)) this.enemyJibianCards = [];
+    this.enemyJibianCards.push(id);
+    // every card drawn this match, for the 已选惊变 panel's enemy page (two cards are in force at once: R1 and R6)
+    if (!Array.isArray(this.enemyJibianList)) this.enemyJibianList = [];
+    this.enemyJibianList.push({
+      round: Number(round), id, name: card.name, desc: card.desc, rarity: card.rarity ?? rarity ?? null,
+      ...(card.flavor ? { flavor: card.flavor } : null),
+    });
+    this.enemyJibian = { round: Number(round), rarity: card.rarity ?? rarity ?? null, card };
+    this.markPublic();
+    return card;
+  }
+
+  /**
+   * 炸惊模拟 · 隐秘惊变 (owner 2026-10-24): the extra draw at the Hidden Core's own prep (`round === gd.hiddenRound`,
+   * R15 for 炸惊). TWO cards land at once and both are in force for that fight:
+   *   ① ONE guaranteed card of the `hidden` rarity from `enemyJibian().hidden.pool` (the "保底隐秘卡" — e.g. 打个响指),
+   *   ② PLUS one ordinary card drawn with the normal pool / rarity weights.
+   * Both are appended to `enemyJibianCards` (so the battle spec's `flags.enemyJibian` carries them) and to
+   * `enemyJibianList` with `hidden: true`, so the 已选惊变 panel's enemy page can group them. The hidden card's MATCH-side
+   * effect is applied immediately by engine-cards' `applyHiddenMatchCards` (打响指 halves every bond's layers, 诛伏赐死
+   * zeroes one bond match-wide) — this method never touches layers itself.
+   * Gated on `gd.zhajing` and the mode's `enemyJibian.hidden.enabled`, so every other mode draws nothing, consumes no rng
+   * and publishes no field.
+   * @param {number} round
+   * @returns {{ hidden: any, ordinary: any } | null}
+   */
+  drawHiddenJibian(round) {
+    if (!this.gd.zhajing) return null;
+    const ej = this.gd.enemyJibian();
+    const hidden = ej && ej.hidden;
+    if (!hidden || hidden.enabled === false || !hidden.pool.length) return null;
+    const r = Number(round);
+    if (r !== this.gd.hiddenRound) return null;
+    if (!(this.enemyJibianRoundsDone instanceof Set)) this.enemyJibianRoundsDone = new Set();
+    const key = `hidden:${r}`;
+    if (this.enemyJibianRoundsDone.has(key)) return null;
+    this.enemyJibianRoundsDone.add(key);
+
+    /** Draw one entry of `pool` (a card of `rarity` when the pool has any, else the whole pool). */
+    const drawOne = (pool, rarity) => {
+      const ofRarity = rarity ? pool.filter((c) => c && c.rarity === rarity) : [];
+      const list = ofRarity.length ? ofRarity : pool;
+      const pick = list[Math.min(list.length - 1, Math.floor(this.rngWaves() * list.length))];
+      const id = pick && (pick.effectId || pick.id || pick.key);
+      return id ? { id, card: { ...jibianCard(this.gd, pick, rarity), id }, rarity: rarity ?? null } : null;
+    };
+
+    const guarantee = drawOne(hidden.pool, 'hidden');
+    if (!guarantee) return null;
+    const ordinaryRarity = weightedPick(this.rngWaves, ej.rarityWeights);
+    const ordinary = drawOne(ej.pool, ordinaryRarity);
+
+    if (!Array.isArray(this.enemyJibianCards)) this.enemyJibianCards = [];
+    if (!Array.isArray(this.enemyJibianList)) this.enemyJibianList = [];
+    const record = (entry, isHidden) => {
+      this.enemyJibianCards.push(entry.id);
+      this.enemyJibianList.push({
+        round: r, id: entry.id, name: entry.card.name, desc: entry.card.desc,
+        rarity: entry.card.rarity ?? entry.rarity ?? null, hidden: isHidden,
+        ...(entry.card.flavor ? { flavor: entry.card.flavor } : null),
+      });
+    };
+    record(guarantee, true);
+    if (ordinary) record(ordinary, false);
+    this.enemyJibian = {
+      round: r, rarity: guarantee.card.rarity ?? 'hidden', card: guarantee.card, hidden: true,
+      ...(ordinary ? { ordinaryCard: ordinary.card } : null),
+    };
+    // The hidden card acts on the MATCH the moment it is drawn (layers), not in the battle spec.
+    try { applyHiddenMatchCards(this, [guarantee.id]); } catch (e) { this.reportError('applyHiddenMatchCards', e); }
+    this.markPublic();
+    return { hidden: guarantee.card, ordinary: ordinary ? ordinary.card : null };
   }
 }

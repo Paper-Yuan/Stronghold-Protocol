@@ -8,14 +8,24 @@
 
 import { boardOrder, pieceDir } from '../board.js';
 import { computeBonds, bondSnapshot, activatedLayers, bondsWithGains } from '../bondsMeta.js';
+import { relicModsFor, relicRoundStart } from '../relics.js';
+import { negativeBattleList, overlimitBattleList, overlimitCarriedFunds, overlimitKeepsFunds } from '../relicsOverlimit.js';
+import { msg } from '../../../shared/i18n.js';
 
 export class PlayerRound {
   startRound(r) {
+    // 湮灭模拟 · 藏品: per-round relic upkeep (round LP, counters, 似曾相识棋盒) — annihilation only
+    if (this.gd.annihilation) relicRoundStart(this.m, this);
     this.round = { refreshes: 0, buys: 0, sells: 0, spent: 0, gainedChess: 0, arts: 0 };
     this.pendingLayerGains = null; // settled (or lapsed) at the last SETTLE
     if (r > 1) this.shop.upgradePrice = Math.max(0, this.shop.upgradePrice - 1);
     // onIncome handlers may rewrite ev.income / ev.pending (e.g. 老鲤 withholds R1–R2 income until R3)
     const ev = { round: r, income: this.gd.income(r), pending: this.pendingFunds };
+    // 炸惊模拟 惊变「惊天魔盗团」(ejibian_jingtianmodaotuan): 「本回合的收入不再计算利息」— the leftover funds of the last
+    // round are cleared BEFORE the income is granted, so this round pays the base income only. Gated on the drawn enemy
+    // cards (`m.enemyJibianCards`, empty in every mode without 敌方惊变), so no other mode ever zeroes funds.
+    const ejCards = this.gd.zhajing && Array.isArray(this.m && this.m.enemyJibianCards) ? this.m.enemyJibianCards : null;
+    if (ejCards && ejCards.includes('ejibian_jingtianmodaotuan') && this.funds > 0) this.funds = 0;
     this.pendingFunds = 0;
     this.m.dispatch(this, 'onIncome', ev);
     const nonNeg = (v) => (Number.isFinite(v) && v > 0 ? Math.trunc(v) : 0);
@@ -44,6 +54,101 @@ export class PlayerRound {
     this.shop.frozen = false;
     for (const s of this.shop.slots) if (s) s.frozen = false;
     this.recompute();
+    // 炸惊模拟 惊变「死亡回归」(jibian_siwanghuigui)：**只留一份**快照（回合开始、商店已刷新之后）。
+    // 持有该卡才抓（其它模式 / 没抽到的局：`null`，零开销）。存的东西刚好是回滚需要的最小集合：
+    //   round  —— 回到哪个回合的整备阶段
+    //   shop   —— 三个槽位的 kind/id/price（牌面还原）
+    //   uids   —— 此刻场上 / 手里 / 临时区的棋子 uid 集合
+    // 「本整备阶段获得的棋子」= 当前 uid **不在**这个集合里的那些（lead 2026-10-28 的简化口径，替代包内
+    // `gainedUids` + 第二份 endPrep 快照）。`funds` **刻意不存**：owner 口径是「退回的干员直接回卡池、钱不退」。
+    this.deathReturnSnapshot = this.gd.zhajing && typeof this.jibianHas === 'function' && this.jibianHas('jibian_siwanghuigui')
+      ? {
+        round: r,
+        shop: this.shop.slots.map((s) => (s ? { kind: s.kind, id: s.id, price: s.price } : null)),
+        uids: new Set([...this.allChess()].map((p) => p && p.uid).filter((u) => Number.isInteger(u))),
+      }
+      : null;
+  }
+
+  /**
+   * 炸惊模拟 惊变「死亡回归」—— 被淘汰的那一刻发动：**回到本回合的整备阶段**（不新增 PHASE）。
+   * 一局一次（计数器 `jibian:siwanghuigui:used`）；`funds` 不还原；用过的卡保留 ref 但改名改描述。
+   * 回合号回退只是**登记意图**（`m._jibianRewindRound`），由 Match 在 settle 推进时消费 —— 见 settle.js 的 afterSettle。
+   * @param {{ auto?: boolean }} [o] `auto: true` = 生命归零被动触发（false = 商店栏按钮主动发动）
+   * @returns {boolean} 真的发动了吗（true ⇒ 调用方不要淘汰这名玩家）
+   */
+  deathReturnTrigger({ auto = false } = {}) {
+    const key = 'jibian:siwanghuigui:used';
+    if (!this.gd.zhajing) return false;                          // 模式门：官方四档 / 湮灭房整条链 no-op
+    if (typeof this.jibianHas !== 'function' || !this.jibianHas('jibian_siwanghuigui')) return false;
+    if (this.counters && this.counters[key] > 0) return false;   // 一局一次
+    const snap = this.deathReturnSnapshot;
+    if (!snap) return false;
+    if (this.counters) this.counters[key] = 1;
+    const round = Number.isInteger(snap.round) ? snap.round : this.m.round;
+    const lpAtPress = Math.max(0, Math.trunc(Number(this.lp) || 0));
+    this.alive = true;
+    this.ready = false;
+    this.lp = Math.max(1, lpAtPress) + 3;
+    try { this.restoreDeathReturnSnapshot(snap); } catch (e) { this.m.reportError('deathReturn restore', e); }
+    this.invalidateDeathReturnCard();
+    this.dirty?.();
+    // 回合号回退：settle 推进时消费（不在淘汰判定里直接 startRound，避免与结算循环打架）
+    this.m._jibianRewindRound = round;
+    // 回退到的那一轮如果是**惊变阶段**回合：只让发动者再选一次（其他人直接进整备，不新增 PHASE）。
+    // 读与清空都在 spDraft.enterSpDraft（engine-core 已落）。这里**只在真的是惊变回合时**写标记 ——
+    // 否则标记会留到下一个 SP 回合，把别人的草稿也收窄成一个人。
+    try {
+      const spRounds = typeof this.gd.spRounds === 'function' ? this.gd.spRounds() : null;
+      const isJibianRound = Array.isArray(spRounds) && spRounds.includes(round)
+        && typeof this.gd.spPhaseKind === 'function' && this.gd.spPhaseKind(round) === 'jibian';
+      if (isJibianRound) this.m._jibianSoloPick = this.playerId;
+    } catch { /* 没有 SP 信息：不写标记（回退后照常全员草稿） */ }
+    void auto;
+    return true;
+  }
+
+  /**
+   * 回滚本整备阶段的动作：本整备获得的棋子（uid 不在快照里）退回卡池（**不退钱**）、清挂账、恢复商店三槽。
+   * @param {{ round: number, shop: any[], uids: Set<number> }} snap
+   */
+  restoreDeathReturnSnapshot(snap) {
+    const keep = snap && snap.uids instanceof Set ? snap.uids : new Set((snap && snap.uids) || []);
+    const gained = (p) => !!p && p.kind === 'chess' && !keep.has(p.uid);
+    for (const [uid, p] of [...this.board]) {
+      if (!gained(p)) continue;
+      try { this.removeTokensOf(uid); } catch { /* 召唤物清不掉不影响回滚 */ }
+      try { this.returnCopies(p); } catch { /* 卡池拒绝时不阻断 */ }
+      this.board.delete(uid);
+    }
+    for (let i = 0; i < this.hand.length; i++) {
+      const p = this.hand[i];
+      if (!gained(p)) continue;
+      try { this.returnCopies(p); } catch { /* ignore */ }
+      this.hand[i] = null;
+    }
+    for (let i = 0; i < this.temp.length; i++) {
+      const p = this.temp[i];
+      if (!gained(p)) continue;
+      try { this.returnCopies(p); } catch { /* ignore */ }
+      this.temp[i] = null;
+    }
+    this.pendingFunds = 0;
+    if (snap && Array.isArray(snap.shop)) {
+      this.shop.slots = snap.shop.map((s) => (s ? { kind: s.kind, id: s.id, price: s.price, frozen: false, sold: false } : null));
+    }
+    this.ready = false;
+    this.recompute();
+  }
+
+  /** 用过的「死亡回归」保留 ref 但失效（改文案；两条 i18n 字面量由 lead 批进四包）。 */
+  invalidateDeathReturnCard() {
+    const e = (this.effects || []).find((x) => x && x.key === 'jibian:jibian_siwanghuigui');
+    if (!e) return;
+    e.name = msg('死亡回归（已消耗）');
+    e.desc = msg('它不再保护你');
+    e.iconKind = 'choice';
+    e.iconId = null;
   }
 
   /**
@@ -56,7 +161,12 @@ export class PlayerRound {
     for (const uid of [...this._tempDue.keys()]) if (!this.temp.some((p) => p && p.uid === uid)) this._tempDue.delete(uid);
     // (queued reward offers stay: they last until picked, startRound)
     this.clearUnfrozenShop();
-    if (!this.gd.leftoverKeptBands.includes(this.bandId)) this.funds = 0;
+    // 超限词条 LC-EX1「凤·皇」（业主 2026-10-31）：经费跨回合保留，且保留量 = 上回合留下的 150%。只在超限局、
+    // 且这条生效时走这条分支；其它模式 / 没选它时逐字节等于改动前（清零，`leftoverKeptBands` 的坎诺特除外）。
+    if (!this.gd.leftoverKeptBands.includes(this.bandId)) {
+      if (overlimitKeepsFunds(this.m)) this.funds = overlimitCarriedFunds(this.funds);
+      else this.funds = 0;
+    }
     this.ready = true;
     this.dirty();
   }
@@ -132,7 +242,7 @@ export class PlayerRound {
    * in-battle gains of this round's finished normal battle (bondsMeta.bondsWithGains). The 联防 field fights with them too
    * (battleInput `reached`); no other rule reads them.
    */
-  bondsView() { return bondsWithGains(this.bonds, this.pendingLayerGains); }
+  bondsView() { return bondsWithGains(this.bonds, this.pendingLayerGains, this.gd.bondLayerCap); }
 
   /**
    * `reached`: the bonds carry the layers this round's own combat reached (bondsView: the pending in-battle gains, capped
@@ -184,6 +294,14 @@ export class PlayerRound {
         units.push(u);
       }
     }
+    // 湮灭模拟 · 藏品: the mode's battle modifiers (null for every other mode, so their battle input is unchanged)
+    const relicMods = this.gd.annihilation ? relicModsFor(this) : null;
+    // 超限模拟 · 词条（业主 2026-10-31）：本局生效的词条 id + 选走它的回合。**只在超限局**下发；其它模式连这个键都没有
+    // （`overlimitBattleList` 自己也按 `gd.overlimit` 收口）。词条是全队共享的，所以每名玩家拿到同一份。
+    const overlimitRelics = overlimitBattleList(this.m);
+    // 超限模拟 · 负面词条（业主 2026-10-31 第二批）：另开一个键 `relicsOverlimitNegative: [{ id, at, tier }]`，
+    // 与饰品那一份**互不混**（「每拥有一件饰品」这类条文只数饰品，见 relicsOverlimit.js negativeBattleList）。
+    const overlimitNegatives = negativeBattleList(this.m);
     return {
       playerId: this.playerId,
       seat: this.seat,
@@ -195,6 +313,12 @@ export class PlayerRound {
       playerEffects: this.effects.filter((e) => e.battle !== false).map((e) => ({
         id: e.id, key: e.key ?? null, source: e.iconKind ?? null, params: e.params ?? null, counter: e.counter ?? null, data: e.data ?? null,
       })),
+      // 湮灭模拟 · 藏品: the mode's battle modifiers (null when the player owns none) — the sim reads this in content/relics.js
+      ...(relicMods ? { relicMods } : {}),
+      // 超限模拟 · 词条: [{ id, at }] — 只在超限局且至少选走一条时出现（content/overlimitRelics.js 读它）
+      ...(overlimitRelics.length ? { relicsOverlimit: overlimitRelics } : {}),
+      // 超限模拟 · 负面词条: [{ id, at, tier }] — 只在超限局且至少选走一条时出现（content/overlimitNegative.js 读它）
+      ...(overlimitNegatives.length ? { relicsOverlimitNegative: overlimitNegatives } : {}),
       deviceOverrides: { ...this.deviceOverrides },
     };
   }

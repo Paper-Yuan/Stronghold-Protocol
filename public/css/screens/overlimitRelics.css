@@ -1,0 +1,97 @@
+/* public/css/screens/overlimitRelics.css — 超限「词条」三选一浮层的补充规则（业主 2026-10-31）。
+ *
+ * .zjov / .zjov__* / .zjcard / .zjcard__* 的版式、尺寸与 --zj-u 缩放全部来自 css/screens/jibian.css ——
+ * 词条三选一与惊变三选一是**同一套浮层**，这里只补三样它没有的东西：
+ *   1. 分组色条：--zj-r 按 data-group 覆写（.zjcard::before 直接读它）；
+ *   2. 卡面右上角那枚极小的「未实装」角标（第一批 36 条效果全是 pending 的桩）；
+ *   3. 眉题（OVERLIMIT // RELIC）的冷色调，与惊变的荧光绿区分开。
+ * 所有尺寸照旧写 calc(k * var(--zj-u))，字号 max(px, calc(k * var(--t)))，与惊变浮层一起随「文字大小」缩放。
+ */
+
+.zjov--relic .zjov__micro { color: #7fa8ff; }
+.zjov--relic .zjcard[data-group="lc"] { --zj-r: #f0b429; }
+.zjov--relic .zjcard[data-group="sp"],
+.zjov--relic .zjcard[data-group="fgoSP"] { --zj-r: #17d9a0; }
+.zjov--relic .zjcard[data-group="ex"],
+.zjov--relic .zjcard[data-group="fgoX"] { --zj-r: #d64bff; }
+.zjov--relic .zjcard[data-group="fgo"] { --zj-r: #7fa8ff; }
+.zjov--relic .zjcard[data-group="neg"] { --zj-r: #ff4d4d; }
+
+/* ---- 负面词条（业主 2026-10-31 第二批）：同一套浮层，警示色区分 ---------------------------------------------
+ * 三处区分，全部是**视觉**（没有一个字节的新文案）：
+ *   1. 眉题：OVERLIMIT // NEGATIVE（技术字，与 RELIC 同一个写法）+ 红色；
+ *   2. 卡框：.zjcard.is-neg 的描边 / 底色偏红，分组色条 --zj-r 走 data-group="neg" 的 #ff4d4d；
+ *   3. 档位：卡面编号旁的 .zjcard__tier（数据里的 Ⅰ/Ⅱ/Ⅲ），只有写了档位的条目才画。
+ * 尺寸照旧 calc(k * var(--zj-u)) / max(px, calc(k * var(--t)))，与惊变浮层一起随「文字大小」缩放。 */
+
+.zjov--neg .zjov__micro { color: #ff4d4d; }
+.zjov--neg .zjov__title { text-shadow: 0 0 calc(.18 * var(--zj-u)) rgba(255, 77, 77, .35); }
+
+.zjov--relic .zjcard.is-neg {
+  border-color: rgba(255, 77, 77, .55);
+  background-image: linear-gradient(180deg, rgba(255, 77, 77, .10), rgba(255, 77, 77, 0) 46%);
+}
+.zjov--relic .zjcard.is-neg .zjcard__rarity { color: #ff8a8a; }
+
+.zjov--relic .zjcard__tier {
+  flex: none;
+  margin-left: calc(.05 * var(--zj-u));
+  padding: 0 calc(.05 * var(--zj-u));
+  border: 1px solid rgba(255, 138, 138, .55);
+  border-radius: calc(.05 * var(--zj-u));
+  color: #ffb4b4;
+  font-size: max(9px, calc(.16 * var(--t)));
+  line-height: 1.5;
+}
+
+.zjov--relic .zjcard__pending {
+  flex: none;
+  margin-left: auto;
+  align-self: flex-start;
+  padding: calc(.02 * var(--zj-u)) calc(.08 * var(--zj-u));
+  border: 1px solid rgba(159, 182, 198, .4);
+  border-radius: calc(.06 * var(--zj-u));
+  background: rgba(6, 14, 13, .62);
+  color: var(--text-lo);
+  font-size: max(9px, calc(.16 * var(--t)));
+  letter-spacing: .08em;
+  line-height: 1.5;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+/* ---- 已选词条面板（左下角那颗「词条」独立键，业主 2026-10-31）---------------------------------------------
+ * 做法照抄炸惊的「已选惊变」：外壳 .zjpanel（.zjpanel__head / __body / __box）、列表 .zjpanel__grid、
+ * 行 .zjsel 全部来自 css/screens/jibian.css，尺寸与文字缩放一起继承 —— 本文件只补三样它没有的东西：
+ *   1. 分组色条：.zjsel::before 那根 3px 竖条读 --zj-r，这里按 data-group 覆写（与词条三选一的卡面同一套颜色）；
+ *   2. 矮屏限高（792×360 上正文自己滚，外壳留在视口里）；
+ *   3. ✕ 的 32px 触控地板（jibian.css 是 max(.44rem, 24px)，手机上低于本仓认可的可点下限）。
+ */
+
+/* 1. 分组色条（颜色表与上面 .zjcard[data-group] 那组逐字相同） */
+.zjpanel--relics .zjsel[data-group="lc"] { --zj-r: #f0b429; }
+.zjpanel--relics .zjsel[data-group="sp"],
+.zjpanel--relics .zjsel[data-group="fgoSP"] { --zj-r: #17d9a0; }
+.zjpanel--relics .zjsel[data-group="ex"],
+.zjpanel--relics .zjsel[data-group="fgoX"] { --zj-r: #d64bff; }
+.zjpanel--relics .zjsel[data-group="fgo"] { --zj-r: #7fa8ff; }
+/* 负面词条行（业主 2026-10-31 第二批）：同一块列表，警示红色条 + 名字偏红（档位小字在 .zjsel__tier） */
+.zjpanel--relics .zjsel[data-group="neg"] { --zj-r: #ff4d4d; }
+.zjpanel--relics .zjsel--neg .zjsel__name { color: #ffb4b4; }
+.zjpanel--relics .zjsel__tier {
+  flex: none;
+  margin-left: calc(.05 * var(--zj-u));
+  padding: 0 calc(.05 * var(--zj-u));
+  border: 1px solid rgba(255, 138, 138, .5);
+  border-radius: calc(.05 * var(--zj-u));
+  color: #ffb4b4;
+  font-size: max(9px, calc(.16 * var(--t)));
+  line-height: 1.5;
+}
+
+/* 2. 矮屏限高：.zjpanel__box 只有 max-height: 84%，内容撑高时百分比不生效（与局内惊变面板同一条问题的同一条解法，
+      见 css/screens/game.css 的 .gm .zjpanel[data-testid="jibian-panel"]），正文 .zjpanel__body 本来就是 overflow: auto。 */
+.gm .zjpanel--relics .zjpanel__box { max-height: calc(100dvh - .6rem); overflow: hidden; }
+
+/* 3. 触控地板：面板只有一个可点件（右上角 ✕），最小边按 32px 给；遮罩点击整片都是关闭。 */
+.zjpanel--relics .zjpanel__x { width: max(.44rem, 32px); height: max(.44rem, 32px); }

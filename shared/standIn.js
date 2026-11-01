@@ -30,6 +30,9 @@ export function statusKey(status) {
 export const IDENTITY_FIELDS = Object.freeze([
   'chessId', 'baseId', 'goldenId', 'isGolden', 'tier', 'identifier', 'isHidden', 'isDiy', 'visible', 'chessType', 'backup',
   'shopSortId', 'bonds', 'garrisonIds', 'price', 'sellPrice', 'upgradeNum', 'upgradeChessId', 'status', 'diyRequirement',
+  // 湮灭专属 mod's extra bond membership for this chess: the 补位 unit must count the same bonds as the record it replaces
+  // (docs/research/20-annihilation-mods.json → data/chess.json `annBonds`; read only by the ANNIHILATION view)
+  'annBonds',
 ]);
 
 /** The form of `charId` at a chess `status`, or null. */

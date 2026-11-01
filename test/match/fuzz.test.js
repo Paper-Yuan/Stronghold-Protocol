@@ -8,7 +8,14 @@ import { ERR, EMOTES } from '../../shared/constants.js';
 import { createRng } from '../../server/sim/rng.js';
 import { DATA, makeMatch, checkInvariants } from './harness.js';
 
-const GAME = Object.keys(C2S).filter((t) => t.startsWith('g.') && t !== 'g.leave');
+// `g.forgeTake` is left out on purpose (owner's ruling, 2026-10-28): it is 炸惊-only and its `optId` is an id out of
+// shared/forgeData.js — a closed, 9-entry list this generator cannot guess. Feeding it a random string fails the
+// validator's length/format bound, which reads as a fuzz failure although the message is fine (a real client sends a
+// table id, and `Match.forgeTake` still re-checks it against the roll the server dealt). Its contract — both fields,
+// the three rarities, the 24-character bound, membership, `RATE`/`BAD_TARGET` — is pinned by
+// test/match/zhajing-forge.test.js instead. Keeping the generic sweep here would only duplicate that with a generator
+// that knows nothing about forge.
+const GAME = Object.keys(C2S).filter((t) => t.startsWith('g.') && t !== 'g.leave' && t !== 'g.forgeTake');
 const BANDS = Object.keys(DATA.bands);
 const ONLY_SEED = process.env.MATCH_FUZZ_SEED === undefined ? null : Number(process.env.MATCH_FUZZ_SEED);
 assert.ok(ONLY_SEED === null || (Number.isInteger(ONLY_SEED) && ONLY_SEED >= 1 && ONLY_SEED <= 0xffffffff),
@@ -38,6 +45,18 @@ function randomIntent(rng, m, ps) {
     case 'g.unequip': return { t, itemUid: uid() };
     case 'g.art': return { t, itemUid: uid(), row: rng.int(19), col: rng.int(21) };
     case 'g.reward': case 'g.choice': return { t, idx: rng.int(6) };
+    // 炸惊模拟 规则5/6: `g.cardRefresh { idx }` redraws one 惊变 slot — idx is 0..6 (a 同盟 惊变 pool holds one card per
+    // participant, capped at 6). A vanilla match refuses it (BAD_TARGET), which is exactly what the fuzz run checks.
+    case 'g.cardRefresh': return { t, idx: rng.int(7) };
+    // 超限模拟's 词条抉择 lock and the contract pick: both need their own payload, else the generator emits an
+    // invalid message (`{t}` only) and this suite fails on its own input rather than on the engine.
+    case 'g.traitLock': return { t, idx: rng.int(6) };
+    case 'g.traitChoice': return { t, idx: rng.int(6) };
+    case 'g.contract': return { t, id: rng.pick(['c_market', 'constructor', 'x', 'a'.repeat(64)]) };
+    // 超限模拟's 1×/2× battle speed and the client's unit-stats request; the relics' reel start.
+    case 'g.combatSpeed': return { t, speed: rng.pick([1, 2]) };
+    case 'g.unitStats': return { t, seq: rng.int(1000) };
+    case 'g.relic': return { t, ...(rng() < 0.5 ? { idx: rng.int(6) } : { start: rng() < 0.5 }) };
     case 'g.ready': return { t, ready: rng() < 0.4 };
     case 'g.emote': return { t, id: rng.pick(EMOTES) };
     case 'g.watch': return { t, fieldId: rng.pick(['n:p_0', 'n:p_1', 'n:ai_0', 'u', 'b1', 'b2', 'zz', '']) };

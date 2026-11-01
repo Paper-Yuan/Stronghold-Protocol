@@ -695,6 +695,107 @@ test('the real version service: a room of 第一期上半 names its real cs and 
   lobby.shutdown();
 });
 
+// 超限房（solo_infinite / coop_infinite）的版本切换（业主 2026-10-26）：这是房间层对
+// test/match/infinite-versions.test.js（match 层四版本 × 超限可用）的对应回归。版本数据只声明 solo / coop，
+// 适用性判定把超限房按同方阵的普通模式算（shared/versions.js baseRoomMode）。
+// 断言要点：切过去后 room.mode 仍是超限模式（applyVersion 从不写它）、version / content / data 都是目标版本的、
+// difficulty 按既有 documented fallback 降级（第一期没有终极：ABYSS → HARD，切回不恢复），
+// 之后 contentReady → ready → start 走得通，且对局拿到的是目标版本的 version / data。
+test('超限房切版本：仍是超限模式、难度按既有 fallback 降级，页面与对局都拿到目标版本的数据，仍能准备与开局', () => {
+  const vanilla = computeVanillaContent({ simDir: path.join(ROOT, 'server', 'sim'), sharedDir: path.join(ROOT, 'shared'), dataDir: DATA_DIR, shim: DATA_SHIM_JS });
+  const versions = createVersionSets({ enabled: ['act2autochess', 'act1autochess'], vanilla, defaultData: getData(), log: quiet });
+  const cs1 = versions.csOf('act1autochess');
+  // the version service's own instance (the lobby reads dataFor → versions.data), loaded once per process
+  const data1 = versions.data('act1autochess');
+  const content1 = { cs: cs1, vanilla: true, version: 'act1autochess', plugins: [] };
+  assert.equal(data1.config.version.id, 'act1autochess');
+
+  // ① 单人超限：房里只有一个真人，提出即生效
+  {
+    const h = harness({ versions });
+    const p = h.player('A');
+    ok(h.lobby.create(p, { mode: 'solo_infinite', difficulty: 'ABYSS' }));
+    const room = h.lobby.getRoom(p.roomCode);
+    ok(h.lobby.proposeVersion(p, { version: 'act1autochess' }));
+    assert.equal(room.version, 'act1autochess');
+    assert.equal(room.mode, 'solo_infinite', '超限模式不被写成 solo');
+    assert.equal(room.difficulty, 'HARD', '第一期下半没有终极：按 documented fallback 降到绝境');
+    assert.deepEqual(room.content, content1);
+    assert.equal(h.lobby.dataFor(room), data1, '房间读的是目标版本的数据');
+    const st = h.last(p);
+    assert.equal(st.mode, 'solo_infinite', 'room.state 里房间仍是超限房');
+    assert.equal(st.version, 'act1autochess');
+    assert.equal(st.difficulty, 'HARD');
+    assert.deepEqual(st.content, content1, '页面要载入并校验的就是这个版本的 content set');
+    // 仍然能准备与开局，对局拿的是目标版本的 version / data
+    ok(h.lobby.contentReady(p, { cs: cs1 }));
+    ok(h.lobby.start(p));
+    assert.equal(Rec.last.mode, 'solo_infinite');
+    assert.equal(Rec.last.modeId, 'mode_single_hard', '超限沿用单人的 mode 表');
+    assert.equal(Rec.last.difficulty, 'HARD');
+    assert.equal(Rec.last.version, 'act1autochess');
+    assert.equal(Rec.last.data, data1);
+    h.lobby.shutdown();
+  }
+
+  // ② 同盟超限：两名真人投票，全员同意后切换
+  {
+    const h = harness({ versions });
+    const { people: [a, b], room } = coop(h, 2, { mode: 'coop_infinite', difficulty: 'ABYSS' });
+    assert.equal(room.mode, 'coop_infinite');
+    ok(h.lobby.proposeVersion(a, { version: 'act1autochess' }));
+    assert.equal(h.last(b).versionVote?.version, 'act1autochess', '服务端认这个房间模式，投票能开');
+    assert.equal(room.version, DEFAULT_VERSION, '投票前不变');
+    ok(h.lobby.versionVote(b, { voteId: 1, agree: true }));
+    assert.equal(room.version, 'act1autochess');
+    assert.equal(room.mode, 'coop_infinite', '超限模式不被写成 coop');
+    assert.equal(room.difficulty, 'HARD', '同盟也按同一条 fallback 规则');
+    assert.deepEqual(room.content, content1);
+    assert.equal(h.lobby.dataFor(room), data1);
+    assert.deepEqual(h.last(a).seats.filter(Boolean).map((s) => s.content), ['loading', 'loading'], '每一页都要重新载入目标版本');
+    ok(h.lobby.contentReady(a, { cs: cs1 }));
+    ok(h.lobby.contentReady(b, { cs: cs1 }));
+    ok(h.lobby.ready(b, { ready: true }));
+    ok(h.lobby.start(a));
+    assert.equal(Rec.last.mode, 'coop_infinite');
+    assert.equal(Rec.last.modeId, 'mode_multi_hard');
+    assert.equal(Rec.last.version, 'act1autochess');
+    assert.equal(Rec.last.data, data1);
+    h.lobby.shutdown();
+  }
+
+  // ③ 直接在非默认版本上建同盟超限房：HEAD 的 Lobby.offered 只归一 solo_infinite，coop_infinite 原样传给
+  // server/versions.js（契约只认 solo / coop）→ 这里会 VERSION_UNSUPPORTED；建房与提案必须同一处归一。
+  {
+    const h = harness({ versions });
+    const p = h.player('A');
+    ok(h.lobby.create(p, { mode: 'coop_infinite', difficulty: 'ABYSS', version: 'act1autochess' }));
+    const room = h.lobby.getRoom(p.roomCode);
+    assert.equal(room.mode, 'coop_infinite');
+    assert.equal(room.version, 'act1autochess');
+    assert.equal(room.difficulty, 'HARD');
+    assert.equal(h.last(p).version, 'act1autochess');
+    h.lobby.shutdown();
+  }
+
+  // ④ 难度是单向缩水的（注释里承诺的「切回不恢复」）：切到没有终极的版本再切回来，version 回来、难度停在 HARD。
+  // 这条不是为了保住某个功能，而是把既有规则钉死 —— 以后谁把 fallback 改成「跟着回来」都会在这里红。
+  {
+    const h = harness({ versions });
+    const p = h.player('A');
+    ok(h.lobby.create(p, { mode: 'solo_infinite', difficulty: 'ABYSS' }));
+    const room = h.lobby.getRoom(p.roomCode);
+    ok(h.lobby.proposeVersion(p, { version: 'act1autochess' }));
+    assert.equal(room.difficulty, 'HARD');
+    h.clock.t += 400; // versionProposeGapMs（300ms）之后才允许下一次提案
+    ok(h.lobby.proposeVersion(p, { version: DEFAULT_VERSION }));
+    assert.equal(room.version, DEFAULT_VERSION, '切回默认版本');
+    assert.equal(room.mode, 'solo_infinite', '模式始终是超限');
+    assert.equal(room.difficulty, 'HARD', '难度不会跟着回到 ABYSS：这是既有规则，不是本次改动');
+    h.lobby.shutdown();
+  }
+});
+
 test('server/plugins/roomSets.js resolve({ gameplay: false }): a content / script / trusted plugin in the closed list → VERSION_UNSUPPORTED, nothing built', () => {
   const built = [];
   const plugin = (id, cls, extra = {}) => ({ id, class: cls, status: 'loaded', content: cls !== 'cosmetic' ? {} : undefined, visual: cls === 'cosmetic' ? {} : undefined,

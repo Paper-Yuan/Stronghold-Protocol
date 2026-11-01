@@ -1,0 +1,5580 @@
+{
+  "generatedAt": "2026-10-31T14:48:37.394Z",
+  "method": "real server (startRealServer fast: timerScale 1, combatSpeed 2, startRound 3, idleBots, autoPlace, UNITE_HOST_KIT) + test/e2e/client.mjs Client (puppeteer-core, Chrome headless, DPF=1); same page/frame, setViewport only; overlap = max(0,min(r)-max(l)) × max(0,min(b)-max(t))",
+  "before": {
+    "room12": {
+      "code": "QESU",
+      "rem": 100,
+      "prep792": {
+        "vw": 792,
+        "vh": 360,
+        "boxes": {
+          ".gm-teams": {
+            "l": 8,
+            "t": 94.39,
+            "r": 96,
+            "b": 202.39,
+            "w": 88,
+            "h": 108
+          },
+          ".team": {
+            "l": 104,
+            "t": 94.39,
+            "r": 182.78,
+            "b": 539.92,
+            "w": 78.78,
+            "h": 445.53
+          },
+          ".gm__bonds": {
+            "l": 339.61,
+            "t": 54.39,
+            "r": 452.39,
+            "b": 94.31,
+            "w": 112.78,
+            "h": 39.92
+          },
+          ".gm__corner": {
+            "l": 9.59,
+            "t": 316.41,
+            "r": 157.59,
+            "b": 350.41,
+            "w": 148,
+            "h": 34
+          },
+          ".shopbar": {
+            "l": 379.52,
+            "t": 194.66,
+            "r": 781.61,
+            "b": 352,
+            "w": 402.09,
+            "h": 157.34
+          },
+          ".gm__effects": {
+            "l": 755.28,
+            "t": 96,
+            "r": 780,
+            "b": 124.47,
+            "w": 24.72,
+            "h": 28.47
+          },
+          ".gm-unite": null,
+          ".gtop": {
+            "l": 0,
+            "t": 0,
+            "r": 792,
+            "b": 58.19,
+            "w": 792,
+            "h": 58.19
+          }
+        },
+        "teams": [
+          {
+            "cls": "gm-team is-mine is-full",
+            "hidden": false,
+            "rect": {
+              "l": 8,
+              "t": 94.39,
+              "r": 96,
+              "b": 126.39,
+              "w": 88,
+              "h": 32
+            },
+            "head": {
+              "l": 8,
+              "t": 94.39,
+              "r": 96,
+              "b": 126.39,
+              "w": 88,
+              "h": 32
+            },
+            "rows": [],
+            "who": [],
+            "hp": [],
+            "tags": [],
+            "invite": [],
+            "title": "我方同盟",
+            "num": "4/4",
+            "expanded": "false"
+          },
+          {
+            "cls": "gm-team is-blue is-full",
+            "hidden": false,
+            "rect": {
+              "l": 8,
+              "t": 132.39,
+              "r": 96,
+              "b": 164.39,
+              "w": 88,
+              "h": 32
+            },
+            "head": {
+              "l": 8,
+              "t": 132.39,
+              "r": 96,
+              "b": 164.39,
+              "w": 88,
+              "h": 32
+            },
+            "rows": [],
+            "who": [],
+            "hp": [],
+            "tags": [],
+            "invite": [],
+            "title": "蓝方同盟",
+            "num": "4/4",
+            "expanded": "false"
+          },
+          {
+            "cls": "gm-team is-red is-full",
+            "hidden": false,
+            "rect": {
+              "l": 8,
+              "t": 170.39,
+              "r": 96,
+              "b": 202.39,
+              "w": 88,
+              "h": 32
+            },
+            "head": {
+              "l": 8,
+              "t": 170.39,
+              "r": 96,
+              "b": 202.39,
+              "w": 88,
+              "h": 32
+            },
+            "rows": [],
+            "who": [],
+            "hp": [],
+            "tags": [],
+            "invite": [],
+            "title": "红方同盟",
+            "num": "4/4",
+            "expanded": "false"
+          }
+        ],
+        "overlap": {
+          ".gm-teams × .team": 0,
+          ".gm-teams × .gm__bonds": 0,
+          ".gm-teams × .gm__corner": 0,
+          ".gm-teams × .shopbar": 0,
+          ".gm-teams × .gm__effects": 0,
+          ".gm-teams × .gm-unite": 0,
+          ".gm-teams × .gtop": 0,
+          ".gm-team[0] × .team": 0,
+          ".gm-team[0] × .gm__bonds": 0,
+          ".gm-team[0] × .gm__corner": 0,
+          ".gm-team[0] × .shopbar": 0,
+          ".gm-team[0] × .gm__effects": 0,
+          ".gm-team[0] × .gm-unite": 0,
+          ".gm-team[0] × .gtop": 0,
+          ".gm-team[1] × .team": 0,
+          ".gm-team[1] × .gm__bonds": 0,
+          ".gm-team[1] × .gm__corner": 0,
+          ".gm-team[1] × .shopbar": 0,
+          ".gm-team[1] × .gm__effects": 0,
+          ".gm-team[1] × .gm-unite": 0,
+          ".gm-team[1] × .gtop": 0,
+          ".gm-team[2] × .team": 0,
+          ".gm-team[2] × .gm__bonds": 0,
+          ".gm-team[2] × .gm__corner": 0,
+          ".gm-team[2] × .shopbar": 0,
+          ".gm-team[2] × .gm__effects": 0,
+          ".gm-team[2] × .gm-unite": 0,
+          ".gm-team[2] × .gtop": 0
+        },
+        "gmCounts": {
+          ".gm-teams": 1,
+          ".gm-team": 3,
+          ".gm-strip": 0,
+          ".gm-chips": 0,
+          ".gm-panel": 0,
+          ".gm-mates": 0,
+          ".gm-unite": 0,
+          ".team": 1
+        },
+        "hudChildren": [
+          "gtop",
+          "gm__bonds",
+          "team",
+          "gm-teams",
+          "gm__effects",
+          "shopbar",
+          "chat-panel  ",
+          "ui-slot gm__ui-slot",
+          "gm__corner"
+        ],
+        "gameClass": "screen gm gm--prep has-multi",
+        "phase": "PREP",
+        "round": 3,
+        "maxSeats": 12,
+        "styles": {
+          "teamsLeft": "8px",
+          "teamsTop": "94.4px",
+          "uniteLeft": null,
+          "teamLeft": "104px",
+          "teamW": "88px",
+          "teamH": "32px"
+        },
+        "rem": 40,
+        "teamsText": "我方同盟4/4蓝方同盟4/4红方同盟4/4"
+      },
+      "prep1920": {
+        "vw": 1920,
+        "vh": 1080,
+        "boxes": {
+          ".gm-teams": {
+            "l": 20,
+            "t": 236,
+            "r": 240,
+            "b": 506,
+            "w": 220,
+            "h": 270
+          },
+          ".team": {
+            "l": 260,
+            "t": 236,
+            "r": 456.97,
+            "b": 1350,
+            "w": 196.97,
+            "h": 1114
+          },
+          ".gm__bonds": {
+            "l": 819,
+            "t": 136,
+            "r": 1101,
+            "b": 232.84,
+            "w": 282,
+            "h": 96.84
+          },
+          ".gm__corner": {
+            "l": 24,
+            "t": 1000,
+            "r": 278,
+            "b": 1056,
+            "w": 254,
+            "h": 56
+          },
+          ".shopbar": {
+            "l": 893,
+            "t": 694,
+            "r": 1894,
+            "b": 1060,
+            "w": 1001,
+            "h": 366
+          },
+          ".gm__effects": {
+            "l": 1828.2,
+            "t": 240,
+            "r": 1890,
+            "b": 311.19,
+            "w": 61.8,
+            "h": 71.19
+          },
+          ".gm-unite": null,
+          ".gtop": {
+            "l": 0,
+            "t": 0,
+            "r": 1920,
+            "b": 116.5,
+            "w": 1920,
+            "h": 116.5
+          }
+        },
+        "teams": [
+          {
+            "cls": "gm-team is-mine is-full",
+            "hidden": false,
+            "rect": {
+              "l": 20,
+              "t": 236,
+              "r": 240,
+              "b": 316,
+              "w": 220,
+              "h": 80
+            },
+            "head": {
+              "l": 20,
+              "t": 236,
+              "r": 240,
+              "b": 316,
+              "w": 220,
+              "h": 80
+            },
+            "rows": [],
+            "who": [],
+            "hp": [],
+            "tags": [],
+            "invite": [],
+            "title": "我方同盟",
+            "num": "4/4",
+            "expanded": "false"
+          },
+          {
+            "cls": "gm-team is-blue is-full",
+            "hidden": false,
+            "rect": {
+              "l": 20,
+              "t": 331,
+              "r": 240,
+              "b": 411,
+              "w": 220,
+              "h": 80
+            },
+            "head": {
+              "l": 20,
+              "t": 331,
+              "r": 240,
+              "b": 411,
+              "w": 220,
+              "h": 80
+            },
+            "rows": [],
+            "who": [],
+            "hp": [],
+            "tags": [],
+            "invite": [],
+            "title": "蓝方同盟",
+            "num": "4/4",
+            "expanded": "false"
+          },
+          {
+            "cls": "gm-team is-red is-full",
+            "hidden": false,
+            "rect": {
+              "l": 20,
+              "t": 426,
+              "r": 240,
+              "b": 506,
+              "w": 220,
+              "h": 80
+            },
+            "head": {
+              "l": 20,
+              "t": 426,
+              "r": 240,
+              "b": 506,
+              "w": 220,
+              "h": 80
+            },
+            "rows": [],
+            "who": [],
+            "hp": [],
+            "tags": [],
+            "invite": [],
+            "title": "红方同盟",
+            "num": "4/4",
+            "expanded": "false"
+          }
+        ],
+        "overlap": {
+          ".gm-teams × .team": 0,
+          ".gm-teams × .gm__bonds": 0,
+          ".gm-teams × .gm__corner": 0,
+          ".gm-teams × .shopbar": 0,
+          ".gm-teams × .gm__effects": 0,
+          ".gm-teams × .gm-unite": 0,
+          ".gm-teams × .gtop": 0,
+          ".gm-team[0] × .team": 0,
+          ".gm-team[0] × .gm__bonds": 0,
+          ".gm-team[0] × .gm__corner": 0,
+          ".gm-team[0] × .shopbar": 0,
+          ".gm-team[0] × .gm__effects": 0,
+          ".gm-team[0] × .gm-unite": 0,
+          ".gm-team[0] × .gtop": 0,
+          ".gm-team[1] × .team": 0,
+          ".gm-team[1] × .gm__bonds": 0,
+          ".gm-team[1] × .gm__corner": 0,
+          ".gm-team[1] × .shopbar": 0,
+          ".gm-team[1] × .gm__effects": 0,
+          ".gm-team[1] × .gm-unite": 0,
+          ".gm-team[1] × .gtop": 0,
+          ".gm-team[2] × .team": 0,
+          ".gm-team[2] × .gm__bonds": 0,
+          ".gm-team[2] × .gm__corner": 0,
+          ".gm-team[2] × .shopbar": 0,
+          ".gm-team[2] × .gm__effects": 0,
+          ".gm-team[2] × .gm-unite": 0,
+          ".gm-team[2] × .gtop": 0
+        },
+        "gmCounts": {
+          ".gm-teams": 1,
+          ".gm-team": 3,
+          ".gm-strip": 0,
+          ".gm-chips": 0,
+          ".gm-panel": 0,
+          ".gm-mates": 0,
+          ".gm-unite": 0,
+          ".team": 1
+        },
+        "hudChildren": [
+          "gtop",
+          "gm__bonds",
+          "team",
+          "gm-teams",
+          "gm__effects",
+          "shopbar",
+          "chat-panel  ",
+          "ui-slot gm__ui-slot",
+          "gm__corner"
+        ],
+        "gameClass": "screen gm gm--prep has-multi",
+        "phase": "PREP",
+        "round": 3,
+        "maxSeats": 12,
+        "styles": {
+          "teamsLeft": "20px",
+          "teamsTop": "236px",
+          "uniteLeft": null,
+          "teamLeft": "260px",
+          "teamW": "220px",
+          "teamH": "80px"
+        },
+        "rem": 100,
+        "teamsText": "我方同盟4/4蓝方同盟4/4红方同盟4/4"
+      },
+      "roster792": {
+        "vw": 792,
+        "vh": 360,
+        "boxes": {
+          ".gm-teams": {
+            "l": 8,
+            "t": 94.39,
+            "r": 96,
+            "b": 262.39,
+            "w": 88,
+            "h": 168
+          },
+          ".team": {
+            "l": 104,
+            "t": 94.39,
+            "r": 182.78,
+            "b": 539.92,
+            "w": 78.78,
+            "h": 445.53
+          },
+          ".gm__bonds": {
+            "l": 339.61,
+            "t": 54.39,
+            "r": 452.39,
+            "b": 94.31,
+            "w": 112.78,
+            "h": 39.92
+          },
+          ".gm__corner": {
+            "l": 9.59,
+            "t": 316.41,
+            "r": 157.59,
+            "b": 350.41,
+            "w": 148,
+            "h": 34
+          },
+          ".shopbar": {
+            "l": 379.52,
+            "t": 194.66,
+            "r": 781.61,
+            "b": 352,
+            "w": 402.09,
+            "h": 157.34
+          },
+          ".gm__effects": {
+            "l": 755.28,
+            "t": 96,
+            "r": 780,
+            "b": 124.47,
+            "w": 24.72,
+            "h": 28.47
+          },
+          ".gm-unite": null,
+          ".gtop": {
+            "l": 0,
+            "t": 0,
+            "r": 792,
+            "b": 58.19,
+            "w": 792,
+            "h": 58.19
+          }
+        },
+        "teams": [
+          {
+            "cls": "gm-team is-mine is-full is-open",
+            "hidden": false,
+            "rect": {
+              "l": 8,
+              "t": 94.39,
+              "r": 96,
+              "b": 262.39,
+              "w": 88,
+              "h": 168
+            },
+            "head": {
+              "l": 8,
+              "t": 94.39,
+              "r": 96,
+              "b": 126.39,
+              "w": 88,
+              "h": 32
+            },
+            "rows": [
+              {
+                "l": 8,
+                "t": 126.39,
+                "r": 96,
+                "b": 160.39,
+                "w": 88,
+                "h": 34
+              },
+              {
+                "l": 8,
+                "t": 160.39,
+                "r": 96,
+                "b": 194.39,
+                "w": 88,
+                "h": 34
+              },
+              {
+                "l": 8,
+                "t": 194.39,
+                "r": 96,
+                "b": 228.39,
+                "w": 88,
+                "h": 34
+              },
+              {
+                "l": 8,
+                "t": 228.39,
+                "r": 96,
+                "b": 262.39,
+                "w": 88,
+                "h": 34
+              }
+            ],
+            "who": [
+              "T12",
+              "AI·华法琳",
+              "AI·阿米娅",
+              "AI·惊蛰"
+            ],
+            "hp": [
+              "29",
+              "29",
+              "24",
+              "26"
+            ],
+            "tags": [],
+            "invite": [],
+            "title": "我方同盟",
+            "num": "4/4",
+            "expanded": "true"
+          },
+          {
+            "cls": "gm-team is-blue is-full",
+            "hidden": true,
+            "rect": {
+              "l": 0,
+              "t": 0,
+              "r": 0,
+              "b": 0,
+              "w": 0,
+              "h": 0
+            },
+            "head": {
+              "l": 0,
+              "t": 0,
+              "r": 0,
+              "b": 0,
+              "w": 0,
+              "h": 0
+            },
+            "rows": [],
+            "who": [],
+            "hp": [],
+            "tags": [],
+            "invite": [],
+            "title": "蓝方同盟",
+            "num": "4/4",
+            "expanded": "false"
+          },
+          {
+            "cls": "gm-team is-red is-full",
+            "hidden": true,
+            "rect": {
+              "l": 0,
+              "t": 0,
+              "r": 0,
+              "b": 0,
+              "w": 0,
+              "h": 0
+            },
+            "head": {
+              "l": 0,
+              "t": 0,
+              "r": 0,
+              "b": 0,
+              "w": 0,
+              "h": 0
+            },
+            "rows": [],
+            "who": [],
+            "hp": [],
+            "tags": [],
+            "invite": [],
+            "title": "红方同盟",
+            "num": "4/4",
+            "expanded": "false"
+          }
+        ],
+        "overlap": {
+          ".gm-teams × .team": 0,
+          ".gm-teams × .gm__bonds": 0,
+          ".gm-teams × .gm__corner": 0,
+          ".gm-teams × .shopbar": 0,
+          ".gm-teams × .gm__effects": 0,
+          ".gm-teams × .gm-unite": 0,
+          ".gm-teams × .gtop": 0,
+          ".gm-team[0] × .team": 0,
+          ".gm-team[0] × .gm__bonds": 0,
+          ".gm-team[0] × .gm__corner": 0,
+          ".gm-team[0] × .shopbar": 0,
+          ".gm-team[0] × .gm__effects": 0,
+          ".gm-team[0] × .gm-unite": 0,
+          ".gm-team[0] × .gtop": 0
+        },
+        "gmCounts": {
+          ".gm-teams": 1,
+          ".gm-team": 3,
+          ".gm-strip": 0,
+          ".gm-chips": 0,
+          ".gm-panel": 0,
+          ".gm-mates": 0,
+          ".gm-unite": 0,
+          ".team": 1
+        },
+        "hudChildren": [
+          "gtop",
+          "gm__bonds",
+          "team",
+          "gm-teams",
+          "gm__effects",
+          "shopbar",
+          "chat-panel  ",
+          "ui-slot gm__ui-slot",
+          "gm__corner"
+        ],
+        "gameClass": "screen gm gm--prep has-multi",
+        "phase": "PREP",
+        "round": 3,
+        "maxSeats": 12,
+        "styles": {
+          "teamsLeft": "8px",
+          "teamsTop": "94.4px",
+          "uniteLeft": null,
+          "teamLeft": "104px",
+          "teamW": "88px",
+          "teamH": "168px"
+        },
+        "rem": 40,
+        "teamsText": "我方同盟4/4T1229AI·华法琳29AI·阿米娅24AI·惊蛰26蓝方同盟4/4红方同盟4/4"
+      },
+      "roster1920": {
+        "vw": 1920,
+        "vh": 1080,
+        "boxes": {
+          ".gm-teams": {
+            "l": 20,
+            "t": 236,
+            "r": 240,
+            "b": 656,
+            "w": 220,
+            "h": 420
+          },
+          ".team": {
+            "l": 260,
+            "t": 236,
+            "r": 456.97,
+            "b": 1350,
+            "w": 196.97,
+            "h": 1114
+          },
+          ".gm__bonds": {
+            "l": 819,
+            "t": 136,
+            "r": 1101,
+            "b": 232.84,
+            "w": 282,
+            "h": 96.84
+          },
+          ".gm__corner": {
+            "l": 24,
+            "t": 1000,
+            "r": 278,
+            "b": 1056,
+            "w": 254,
+            "h": 56
+          },
+          ".shopbar": {
+            "l": 893,
+            "t": 694,
+            "r": 1894,
+            "b": 1060,
+            "w": 1001,
+            "h": 366
+          },
+          ".gm__effects": {
+            "l": 1828.2,
+            "t": 240,
+            "r": 1890,
+            "b": 311.19,
+            "w": 61.8,
+            "h": 71.19
+          },
+          ".gm-unite": null,
+          ".gtop": {
+            "l": 0,
+            "t": 0,
+            "r": 1920,
+            "b": 116.5,
+            "w": 1920,
+            "h": 116.5
+          }
+        },
+        "teams": [
+          {
+            "cls": "gm-team is-mine is-full is-open",
+            "hidden": false,
+            "rect": {
+              "l": 20,
+              "t": 236,
+              "r": 240,
+              "b": 656,
+              "w": 220,
+              "h": 420
+            },
+            "head": {
+              "l": 20,
+              "t": 236,
+              "r": 240,
+              "b": 316,
+              "w": 220,
+              "h": 80
+            },
+            "rows": [
+              {
+                "l": 20,
+                "t": 316,
+                "r": 240,
+                "b": 401,
+                "w": 220,
+                "h": 85
+              },
+              {
+                "l": 20,
+                "t": 401,
+                "r": 240,
+                "b": 486,
+                "w": 220,
+                "h": 85
+              },
+              {
+                "l": 20,
+                "t": 486,
+                "r": 240,
+                "b": 571,
+                "w": 220,
+                "h": 85
+              },
+              {
+                "l": 20,
+                "t": 571,
+                "r": 240,
+                "b": 656,
+                "w": 220,
+                "h": 85
+              }
+            ],
+            "who": [
+              "T12",
+              "AI·华法琳",
+              "AI·阿米娅",
+              "AI·惊蛰"
+            ],
+            "hp": [
+              "29",
+              "29",
+              "24",
+              "26"
+            ],
+            "tags": [],
+            "invite": [],
+            "title": "我方同盟",
+            "num": "4/4",
+            "expanded": "true"
+          },
+          {
+            "cls": "gm-team is-blue is-full",
+            "hidden": true,
+            "rect": {
+              "l": 0,
+              "t": 0,
+              "r": 0,
+              "b": 0,
+              "w": 0,
+              "h": 0
+            },
+            "head": {
+              "l": 0,
+              "t": 0,
+              "r": 0,
+              "b": 0,
+              "w": 0,
+              "h": 0
+            },
+            "rows": [],
+            "who": [],
+            "hp": [],
+            "tags": [],
+            "invite": [],
+            "title": "蓝方同盟",
+            "num": "4/4",
+            "expanded": "false"
+          },
+          {
+            "cls": "gm-team is-red is-full",
+            "hidden": true,
+            "rect": {
+              "l": 0,
+              "t": 0,
+              "r": 0,
+              "b": 0,
+              "w": 0,
+              "h": 0
+            },
+            "head": {
+              "l": 0,
+              "t": 0,
+              "r": 0,
+              "b": 0,
+              "w": 0,
+              "h": 0
+            },
+            "rows": [],
+            "who": [],
+            "hp": [],
+            "tags": [],
+            "invite": [],
+            "title": "红方同盟",
+            "num": "4/4",
+            "expanded": "false"
+          }
+        ],
+        "overlap": {
+          ".gm-teams × .team": 0,
+          ".gm-teams × .gm__bonds": 0,
+          ".gm-teams × .gm__corner": 0,
+          ".gm-teams × .shopbar": 0,
+          ".gm-teams × .gm__effects": 0,
+          ".gm-teams × .gm-unite": 0,
+          ".gm-teams × .gtop": 0,
+          ".gm-team[0] × .team": 0,
+          ".gm-team[0] × .gm__bonds": 0,
+          ".gm-team[0] × .gm__corner": 0,
+          ".gm-team[0] × .shopbar": 0,
+          ".gm-team[0] × .gm__effects": 0,
+          ".gm-team[0] × .gm-unite": 0,
+          ".gm-team[0] × .gtop": 0
+        },
+        "gmCounts": {
+          ".gm-teams": 1,
+          ".gm-team": 3,
+          ".gm-strip": 0,
+          ".gm-chips": 0,
+          ".gm-panel": 0,
+          ".gm-mates": 0,
+          ".gm-unite": 0,
+          ".team": 1
+        },
+        "hudChildren": [
+          "gtop",
+          "gm__bonds",
+          "team",
+          "gm-teams",
+          "gm__effects",
+          "shopbar",
+          "chat-panel  ",
+          "ui-slot gm__ui-slot",
+          "gm__corner"
+        ],
+        "gameClass": "screen gm gm--prep has-multi",
+        "phase": "PREP",
+        "round": 3,
+        "maxSeats": 12,
+        "styles": {
+          "teamsLeft": "20px",
+          "teamsTop": "236px",
+          "uniteLeft": null,
+          "teamLeft": "260px",
+          "teamW": "220px",
+          "teamH": "420px"
+        },
+        "rem": 100,
+        "teamsText": "我方同盟4/4T1229AI·华法琳29AI·阿米娅24AI·惊蛰26蓝方同盟4/4红方同盟4/4"
+      },
+      "unite792": {
+        "vw": 792,
+        "vh": 360,
+        "boxes": {
+          ".gm-teams": {
+            "l": 8,
+            "t": 94.39,
+            "r": 96,
+            "b": 202.39,
+            "w": 88,
+            "h": 108
+          },
+          ".team": {
+            "l": 104,
+            "t": 94.39,
+            "r": 220.88,
+            "b": 539.92,
+            "w": 116.88,
+            "h": 445.53
+          },
+          ".gm__bonds": {
+            "l": 339.61,
+            "t": 54.39,
+            "r": 452.39,
+            "b": 94.31,
+            "w": 112.78,
+            "h": 39.92
+          },
+          ".gm__corner": {
+            "l": 9.59,
+            "t": 316.41,
+            "r": 157.59,
+            "b": 350.41,
+            "w": 148,
+            "h": 34
+          },
+          ".shopbar": null,
+          ".gm__effects": {
+            "l": 755.28,
+            "t": 96,
+            "r": 780,
+            "b": 124.47,
+            "w": 24.72,
+            "h": 28.47
+          },
+          ".gm-unite": {
+            "l": 232,
+            "t": 98.39,
+            "r": 744,
+            "b": 146.39,
+            "w": 512,
+            "h": 48
+          },
+          ".gtop": {
+            "l": 0,
+            "t": 0,
+            "r": 792,
+            "b": 42,
+            "w": 792,
+            "h": 42
+          }
+        },
+        "teams": [
+          {
+            "cls": "gm-team is-mine is-full",
+            "hidden": false,
+            "rect": {
+              "l": 8,
+              "t": 94.39,
+              "r": 96,
+              "b": 126.39,
+              "w": 88,
+              "h": 32
+            },
+            "head": {
+              "l": 8,
+              "t": 94.39,
+              "r": 96,
+              "b": 126.39,
+              "w": 88,
+              "h": 32
+            },
+            "rows": [],
+            "who": [],
+            "hp": [],
+            "tags": [],
+            "invite": [],
+            "title": "我方同盟",
+            "num": "4/4",
+            "expanded": "false"
+          },
+          {
+            "cls": "gm-team is-blue is-full",
+            "hidden": false,
+            "rect": {
+              "l": 8,
+              "t": 132.39,
+              "r": 96,
+              "b": 164.39,
+              "w": 88,
+              "h": 32
+            },
+            "head": {
+              "l": 8,
+              "t": 132.39,
+              "r": 96,
+              "b": 164.39,
+              "w": 88,
+              "h": 32
+            },
+            "rows": [],
+            "who": [],
+            "hp": [],
+            "tags": [],
+            "invite": [],
+            "title": "蓝方同盟",
+            "num": "4/4",
+            "expanded": "false"
+          },
+          {
+            "cls": "gm-team is-red is-full",
+            "hidden": false,
+            "rect": {
+              "l": 8,
+              "t": 170.39,
+              "r": 96,
+              "b": 202.39,
+              "w": 88,
+              "h": 32
+            },
+            "head": {
+              "l": 8,
+              "t": 170.39,
+              "r": 96,
+              "b": 202.39,
+              "w": 88,
+              "h": 32
+            },
+            "rows": [],
+            "who": [],
+            "hp": [],
+            "tags": [],
+            "invite": [],
+            "title": "红方同盟",
+            "num": "4/4",
+            "expanded": "false"
+          }
+        ],
+        "overlap": {
+          ".gm-teams × .team": 0,
+          ".gm-teams × .gm__bonds": 0,
+          ".gm-teams × .gm__corner": 0,
+          ".gm-teams × .shopbar": 0,
+          ".gm-teams × .gm__effects": 0,
+          ".gm-teams × .gm-unite": 0,
+          ".gm-teams × .gtop": 0,
+          ".gm-team[0] × .team": 0,
+          ".gm-team[0] × .gm__bonds": 0,
+          ".gm-team[0] × .gm__corner": 0,
+          ".gm-team[0] × .shopbar": 0,
+          ".gm-team[0] × .gm__effects": 0,
+          ".gm-team[0] × .gm-unite": 0,
+          ".gm-team[0] × .gtop": 0,
+          ".gm-team[1] × .team": 0,
+          ".gm-team[1] × .gm__bonds": 0,
+          ".gm-team[1] × .gm__corner": 0,
+          ".gm-team[1] × .shopbar": 0,
+          ".gm-team[1] × .gm__effects": 0,
+          ".gm-team[1] × .gm-unite": 0,
+          ".gm-team[1] × .gtop": 0,
+          ".gm-team[2] × .team": 0,
+          ".gm-team[2] × .gm__bonds": 0,
+          ".gm-team[2] × .gm__corner": 0,
+          ".gm-team[2] × .shopbar": 0,
+          ".gm-team[2] × .gm__effects": 0,
+          ".gm-team[2] × .gm-unite": 0,
+          ".gm-team[2] × .gtop": 0
+        },
+        "gmCounts": {
+          ".gm-teams": 1,
+          ".gm-team": 3,
+          ".gm-strip": 0,
+          ".gm-chips": 0,
+          ".gm-panel": 0,
+          ".gm-mates": 0,
+          ".gm-unite": 1,
+          ".team": 1
+        },
+        "hudChildren": [
+          "gtop",
+          "gm__bonds",
+          "team",
+          "gm-teams",
+          "gm-unite",
+          "gm__effects",
+          "chud",
+          "ticker",
+          "chat-panel  ",
+          "ui-slot gm__ui-slot",
+          "gm__corner"
+        ],
+        "gameClass": "screen gm gm--combat has-multi",
+        "phase": "UNITE",
+        "round": 3,
+        "maxSeats": 12,
+        "styles": {
+          "teamsLeft": "8px",
+          "teamsTop": "94.4px",
+          "uniteLeft": "232px",
+          "teamLeft": "104px",
+          "teamW": "88px",
+          "teamH": "32px"
+        },
+        "rem": 40,
+        "teamsText": "我方同盟4/4蓝方同盟4/4红方同盟4/4"
+      },
+      "unite1920": {
+        "vw": 1920,
+        "vh": 1080,
+        "boxes": {
+          ".gm-teams": {
+            "l": 20,
+            "t": 236,
+            "r": 240,
+            "b": 506,
+            "w": 220,
+            "h": 270
+          },
+          ".team": {
+            "l": 260,
+            "t": 236,
+            "r": 552.27,
+            "b": 1350,
+            "w": 292.27,
+            "h": 1114
+          },
+          ".gm__bonds": {
+            "l": 819,
+            "t": 136,
+            "r": 1101,
+            "b": 232.84,
+            "w": 282,
+            "h": 96.84
+          },
+          ".gm__corner": {
+            "l": 24,
+            "t": 1000,
+            "r": 278,
+            "b": 1056,
+            "w": 254,
+            "h": 56
+          },
+          ".shopbar": null,
+          ".gm__effects": {
+            "l": 1828.2,
+            "t": 240,
+            "r": 1890,
+            "b": 311.19,
+            "w": 61.8,
+            "h": 71.19
+          },
+          ".gm-unite": {
+            "l": 580,
+            "t": 246,
+            "r": 1800,
+            "b": 366,
+            "w": 1220,
+            "h": 120
+          },
+          ".gtop": {
+            "l": 0,
+            "t": 0,
+            "r": 1920,
+            "b": 104.8,
+            "w": 1920,
+            "h": 104.8
+          }
+        },
+        "teams": [
+          {
+            "cls": "gm-team is-mine is-full",
+            "hidden": false,
+            "rect": {
+              "l": 20,
+              "t": 236,
+              "r": 240,
+              "b": 316,
+              "w": 220,
+              "h": 80
+            },
+            "head": {
+              "l": 20,
+              "t": 236,
+              "r": 240,
+              "b": 316,
+              "w": 220,
+              "h": 80
+            },
+            "rows": [],
+            "who": [],
+            "hp": [],
+            "tags": [],
+            "invite": [],
+            "title": "我方同盟",
+            "num": "4/4",
+            "expanded": "false"
+          },
+          {
+            "cls": "gm-team is-blue is-full",
+            "hidden": false,
+            "rect": {
+              "l": 20,
+              "t": 331,
+              "r": 240,
+              "b": 411,
+              "w": 220,
+              "h": 80
+            },
+            "head": {
+              "l": 20,
+              "t": 331,
+              "r": 240,
+              "b": 411,
+              "w": 220,
+              "h": 80
+            },
+            "rows": [],
+            "who": [],
+            "hp": [],
+            "tags": [],
+            "invite": [],
+            "title": "蓝方同盟",
+            "num": "4/4",
+            "expanded": "false"
+          },
+          {
+            "cls": "gm-team is-red is-full",
+            "hidden": false,
+            "rect": {
+              "l": 20,
+              "t": 426,
+              "r": 240,
+              "b": 506,
+              "w": 220,
+              "h": 80
+            },
+            "head": {
+              "l": 20,
+              "t": 426,
+              "r": 240,
+              "b": 506,
+              "w": 220,
+              "h": 80
+            },
+            "rows": [],
+            "who": [],
+            "hp": [],
+            "tags": [],
+            "invite": [],
+            "title": "红方同盟",
+            "num": "4/4",
+            "expanded": "false"
+          }
+        ],
+        "overlap": {
+          ".gm-teams × .team": 0,
+          ".gm-teams × .gm__bonds": 0,
+          ".gm-teams × .gm__corner": 0,
+          ".gm-teams × .shopbar": 0,
+          ".gm-teams × .gm__effects": 0,
+          ".gm-teams × .gm-unite": 0,
+          ".gm-teams × .gtop": 0,
+          ".gm-team[0] × .team": 0,
+          ".gm-team[0] × .gm__bonds": 0,
+          ".gm-team[0] × .gm__corner": 0,
+          ".gm-team[0] × .shopbar": 0,
+          ".gm-team[0] × .gm__effects": 0,
+          ".gm-team[0] × .gm-unite": 0,
+          ".gm-team[0] × .gtop": 0,
+          ".gm-team[1] × .team": 0,
+          ".gm-team[1] × .gm__bonds": 0,
+          ".gm-team[1] × .gm__corner": 0,
+          ".gm-team[1] × .shopbar": 0,
+          ".gm-team[1] × .gm__effects": 0,
+          ".gm-team[1] × .gm-unite": 0,
+          ".gm-team[1] × .gtop": 0,
+          ".gm-team[2] × .team": 0,
+          ".gm-team[2] × .gm__bonds": 0,
+          ".gm-team[2] × .gm__corner": 0,
+          ".gm-team[2] × .shopbar": 0,
+          ".gm-team[2] × .gm__effects": 0,
+          ".gm-team[2] × .gm-unite": 0,
+          ".gm-team[2] × .gtop": 0
+        },
+        "gmCounts": {
+          ".gm-teams": 1,
+          ".gm-team": 3,
+          ".gm-strip": 0,
+          ".gm-chips": 0,
+          ".gm-panel": 0,
+          ".gm-mates": 0,
+          ".gm-unite": 1,
+          ".team": 1
+        },
+        "hudChildren": [
+          "gtop",
+          "gm__bonds",
+          "team",
+          "gm-teams",
+          "gm-unite",
+          "gm__effects",
+          "chud",
+          "ticker",
+          "chat-panel  ",
+          "ui-slot gm__ui-slot",
+          "gm__corner"
+        ],
+        "gameClass": "screen gm gm--combat has-multi",
+        "phase": "UNITE",
+        "round": 3,
+        "maxSeats": 12,
+        "styles": {
+          "teamsLeft": "20px",
+          "teamsTop": "236px",
+          "uniteLeft": "580px",
+          "teamLeft": "260px",
+          "teamW": "220px",
+          "teamH": "80px"
+        },
+        "rem": 100,
+        "teamsText": "我方同盟4/4蓝方同盟4/4红方同盟4/4"
+      },
+      "uniteRoster792": {
+        "vw": 792,
+        "vh": 360,
+        "boxes": {
+          ".gm-teams": {
+            "l": 8,
+            "t": 94.39,
+            "r": 96,
+            "b": 262.39,
+            "w": 88,
+            "h": 168
+          },
+          ".team": {
+            "l": 104,
+            "t": 94.39,
+            "r": 220.88,
+            "b": 539.92,
+            "w": 116.88,
+            "h": 445.53
+          },
+          ".gm__bonds": {
+            "l": 339.61,
+            "t": 54.39,
+            "r": 452.39,
+            "b": 94.31,
+            "w": 112.78,
+            "h": 39.92
+          },
+          ".gm__corner": {
+            "l": 9.59,
+            "t": 316.41,
+            "r": 157.59,
+            "b": 350.41,
+            "w": 148,
+            "h": 34
+          },
+          ".shopbar": null,
+          ".gm__effects": {
+            "l": 755.28,
+            "t": 96,
+            "r": 780,
+            "b": 124.47,
+            "w": 24.72,
+            "h": 28.47
+          },
+          ".gm-unite": {
+            "l": 232,
+            "t": 98.39,
+            "r": 744,
+            "b": 146.39,
+            "w": 512,
+            "h": 48
+          },
+          ".gtop": {
+            "l": 0,
+            "t": 0,
+            "r": 792,
+            "b": 42,
+            "w": 792,
+            "h": 42
+          }
+        },
+        "teams": [
+          {
+            "cls": "gm-team is-mine is-full is-open",
+            "hidden": false,
+            "rect": {
+              "l": 8,
+              "t": 94.39,
+              "r": 96,
+              "b": 262.39,
+              "w": 88,
+              "h": 168
+            },
+            "head": {
+              "l": 8,
+              "t": 94.39,
+              "r": 96,
+              "b": 126.39,
+              "w": 88,
+              "h": 32
+            },
+            "rows": [
+              {
+                "l": 8,
+                "t": 126.39,
+                "r": 96,
+                "b": 160.39,
+                "w": 88,
+                "h": 34
+              },
+              {
+                "l": 8,
+                "t": 160.39,
+                "r": 96,
+                "b": 194.39,
+                "w": 88,
+                "h": 34
+              },
+              {
+                "l": 8,
+                "t": 194.39,
+                "r": 96,
+                "b": 228.39,
+                "w": 88,
+                "h": 34
+              },
+              {
+                "l": 8,
+                "t": 228.39,
+                "r": 96,
+                "b": 262.39,
+                "w": 88,
+                "h": 34
+              }
+            ],
+            "who": [
+              "T12",
+              "AI·华法琳",
+              "AI·阿米娅",
+              "AI·惊蛰"
+            ],
+            "hp": [
+              "29",
+              "29",
+              "24",
+              "26"
+            ],
+            "tags": [],
+            "invite": [],
+            "title": "我方同盟",
+            "num": "4/4",
+            "expanded": "true"
+          },
+          {
+            "cls": "gm-team is-blue is-full",
+            "hidden": true,
+            "rect": {
+              "l": 0,
+              "t": 0,
+              "r": 0,
+              "b": 0,
+              "w": 0,
+              "h": 0
+            },
+            "head": {
+              "l": 0,
+              "t": 0,
+              "r": 0,
+              "b": 0,
+              "w": 0,
+              "h": 0
+            },
+            "rows": [],
+            "who": [],
+            "hp": [],
+            "tags": [],
+            "invite": [],
+            "title": "蓝方同盟",
+            "num": "4/4",
+            "expanded": "false"
+          },
+          {
+            "cls": "gm-team is-red is-full",
+            "hidden": true,
+            "rect": {
+              "l": 0,
+              "t": 0,
+              "r": 0,
+              "b": 0,
+              "w": 0,
+              "h": 0
+            },
+            "head": {
+              "l": 0,
+              "t": 0,
+              "r": 0,
+              "b": 0,
+              "w": 0,
+              "h": 0
+            },
+            "rows": [],
+            "who": [],
+            "hp": [],
+            "tags": [],
+            "invite": [],
+            "title": "红方同盟",
+            "num": "4/4",
+            "expanded": "false"
+          }
+        ],
+        "overlap": {
+          ".gm-teams × .team": 0,
+          ".gm-teams × .gm__bonds": 0,
+          ".gm-teams × .gm__corner": 0,
+          ".gm-teams × .shopbar": 0,
+          ".gm-teams × .gm__effects": 0,
+          ".gm-teams × .gm-unite": 0,
+          ".gm-teams × .gtop": 0,
+          ".gm-team[0] × .team": 0,
+          ".gm-team[0] × .gm__bonds": 0,
+          ".gm-team[0] × .gm__corner": 0,
+          ".gm-team[0] × .shopbar": 0,
+          ".gm-team[0] × .gm__effects": 0,
+          ".gm-team[0] × .gm-unite": 0,
+          ".gm-team[0] × .gtop": 0
+        },
+        "gmCounts": {
+          ".gm-teams": 1,
+          ".gm-team": 3,
+          ".gm-strip": 0,
+          ".gm-chips": 0,
+          ".gm-panel": 0,
+          ".gm-mates": 0,
+          ".gm-unite": 1,
+          ".team": 1
+        },
+        "hudChildren": [
+          "gtop",
+          "gm__bonds",
+          "team",
+          "gm-teams",
+          "gm-unite",
+          "gm__effects",
+          "chud",
+          "ticker",
+          "chat-panel  ",
+          "ui-slot gm__ui-slot",
+          "gm__corner"
+        ],
+        "gameClass": "screen gm gm--combat has-multi",
+        "phase": "UNITE",
+        "round": 3,
+        "maxSeats": 12,
+        "styles": {
+          "teamsLeft": "8px",
+          "teamsTop": "94.4px",
+          "uniteLeft": "232px",
+          "teamLeft": "104px",
+          "teamW": "88px",
+          "teamH": "168px"
+        },
+        "rem": 40,
+        "teamsText": "我方同盟4/4T1229AI·华法琳29AI·阿米娅24AI·惊蛰26蓝方同盟4/4红方同盟4/4"
+      },
+      "uniteRoster1920": {
+        "vw": 1920,
+        "vh": 1080,
+        "boxes": {
+          ".gm-teams": {
+            "l": 20,
+            "t": 236,
+            "r": 240,
+            "b": 656,
+            "w": 220,
+            "h": 420
+          },
+          ".team": {
+            "l": 260,
+            "t": 236,
+            "r": 552.27,
+            "b": 1350,
+            "w": 292.27,
+            "h": 1114
+          },
+          ".gm__bonds": {
+            "l": 819,
+            "t": 136,
+            "r": 1101,
+            "b": 232.84,
+            "w": 282,
+            "h": 96.84
+          },
+          ".gm__corner": {
+            "l": 24,
+            "t": 1000,
+            "r": 278,
+            "b": 1056,
+            "w": 254,
+            "h": 56
+          },
+          ".shopbar": null,
+          ".gm__effects": {
+            "l": 1828.2,
+            "t": 240,
+            "r": 1890,
+            "b": 311.19,
+            "w": 61.8,
+            "h": 71.19
+          },
+          ".gm-unite": {
+            "l": 580,
+            "t": 246,
+            "r": 1800,
+            "b": 366,
+            "w": 1220,
+            "h": 120
+          },
+          ".gtop": {
+            "l": 0,
+            "t": 0,
+            "r": 1920,
+            "b": 104.8,
+            "w": 1920,
+            "h": 104.8
+          }
+        },
+        "teams": [
+          {
+            "cls": "gm-team is-mine is-full is-open",
+            "hidden": false,
+            "rect": {
+              "l": 20,
+              "t": 236,
+              "r": 240,
+              "b": 656,
+              "w": 220,
+              "h": 420
+            },
+            "head": {
+              "l": 20,
+              "t": 236,
+              "r": 240,
+              "b": 316,
+              "w": 220,
+              "h": 80
+            },
+            "rows": [
+              {
+                "l": 20,
+                "t": 316,
+                "r": 240,
+                "b": 401,
+                "w": 220,
+                "h": 85
+              },
+              {
+                "l": 20,
+                "t": 401,
+                "r": 240,
+                "b": 486,
+                "w": 220,
+                "h": 85
+              },
+              {
+                "l": 20,
+                "t": 486,
+                "r": 240,
+                "b": 571,
+                "w": 220,
+                "h": 85
+              },
+              {
+                "l": 20,
+                "t": 571,
+                "r": 240,
+                "b": 656,
+                "w": 220,
+                "h": 85
+              }
+            ],
+            "who": [
+              "T12",
+              "AI·华法琳",
+              "AI·阿米娅",
+              "AI·惊蛰"
+            ],
+            "hp": [
+              "29",
+              "29",
+              "24",
+              "26"
+            ],
+            "tags": [],
+            "invite": [],
+            "title": "我方同盟",
+            "num": "4/4",
+            "expanded": "true"
+          },
+          {
+            "cls": "gm-team is-blue is-full",
+            "hidden": true,
+            "rect": {
+              "l": 0,
+              "t": 0,
+              "r": 0,
+              "b": 0,
+              "w": 0,
+              "h": 0
+            },
+            "head": {
+              "l": 0,
+              "t": 0,
+              "r": 0,
+              "b": 0,
+              "w": 0,
+              "h": 0
+            },
+            "rows": [],
+            "who": [],
+            "hp": [],
+            "tags": [],
+            "invite": [],
+            "title": "蓝方同盟",
+            "num": "4/4",
+            "expanded": "false"
+          },
+          {
+            "cls": "gm-team is-red is-full",
+            "hidden": true,
+            "rect": {
+              "l": 0,
+              "t": 0,
+              "r": 0,
+              "b": 0,
+              "w": 0,
+              "h": 0
+            },
+            "head": {
+              "l": 0,
+              "t": 0,
+              "r": 0,
+              "b": 0,
+              "w": 0,
+              "h": 0
+            },
+            "rows": [],
+            "who": [],
+            "hp": [],
+            "tags": [],
+            "invite": [],
+            "title": "红方同盟",
+            "num": "4/4",
+            "expanded": "false"
+          }
+        ],
+        "overlap": {
+          ".gm-teams × .team": 0,
+          ".gm-teams × .gm__bonds": 0,
+          ".gm-teams × .gm__corner": 0,
+          ".gm-teams × .shopbar": 0,
+          ".gm-teams × .gm__effects": 0,
+          ".gm-teams × .gm-unite": 0,
+          ".gm-teams × .gtop": 0,
+          ".gm-team[0] × .team": 0,
+          ".gm-team[0] × .gm__bonds": 0,
+          ".gm-team[0] × .gm__corner": 0,
+          ".gm-team[0] × .shopbar": 0,
+          ".gm-team[0] × .gm__effects": 0,
+          ".gm-team[0] × .gm-unite": 0,
+          ".gm-team[0] × .gtop": 0
+        },
+        "gmCounts": {
+          ".gm-teams": 1,
+          ".gm-team": 3,
+          ".gm-strip": 0,
+          ".gm-chips": 0,
+          ".gm-panel": 0,
+          ".gm-mates": 0,
+          ".gm-unite": 1,
+          ".team": 1
+        },
+        "hudChildren": [
+          "gtop",
+          "gm__bonds",
+          "team",
+          "gm-teams",
+          "gm-unite",
+          "gm__effects",
+          "chud",
+          "ticker",
+          "chat-panel  ",
+          "ui-slot gm__ui-slot",
+          "gm__corner"
+        ],
+        "gameClass": "screen gm gm--combat has-multi",
+        "phase": "UNITE",
+        "round": 3,
+        "maxSeats": 12,
+        "styles": {
+          "teamsLeft": "20px",
+          "teamsTop": "236px",
+          "uniteLeft": "580px",
+          "teamLeft": "260px",
+          "teamW": "220px",
+          "teamH": "420px"
+        },
+        "rem": 100,
+        "teamsText": "我方同盟4/4T1229AI·华法琳29AI·阿米娅24AI·惊蛰26蓝方同盟4/4红方同盟4/4"
+      }
+    },
+    "room8": {
+      "code": "BKTY",
+      "prep792": {
+        "vw": 792,
+        "vh": 360,
+        "boxes": {
+          ".gm-teams": {
+            "l": 8,
+            "t": 94.39,
+            "r": 96,
+            "b": 164.39,
+            "w": 88,
+            "h": 70
+          },
+          ".team": {
+            "l": 104,
+            "t": 94.39,
+            "r": 182.78,
+            "b": 389.55,
+            "w": 78.78,
+            "h": 295.16
+          },
+          ".gm__bonds": {
+            "l": 339.61,
+            "t": 54.39,
+            "r": 452.39,
+            "b": 94.31,
+            "w": 112.78,
+            "h": 39.92
+          },
+          ".gm__corner": {
+            "l": 9.59,
+            "t": 316.41,
+            "r": 157.59,
+            "b": 350.41,
+            "w": 148,
+            "h": 34
+          },
+          ".shopbar": {
+            "l": 379.52,
+            "t": 194.66,
+            "r": 781.61,
+            "b": 352,
+            "w": 402.09,
+            "h": 157.34
+          },
+          ".gm__effects": {
+            "l": 755.28,
+            "t": 96,
+            "r": 780,
+            "b": 124.47,
+            "w": 24.72,
+            "h": 28.47
+          },
+          ".gm-unite": null,
+          ".gtop": {
+            "l": 0,
+            "t": 0,
+            "r": 792,
+            "b": 58.19,
+            "w": 792,
+            "h": 58.19
+          }
+        },
+        "teams": [
+          {
+            "cls": "gm-team is-mine is-full",
+            "hidden": false,
+            "rect": {
+              "l": 8,
+              "t": 94.39,
+              "r": 96,
+              "b": 126.39,
+              "w": 88,
+              "h": 32
+            },
+            "head": {
+              "l": 8,
+              "t": 94.39,
+              "r": 96,
+              "b": 126.39,
+              "w": 88,
+              "h": 32
+            },
+            "rows": [],
+            "who": [],
+            "hp": [],
+            "tags": [],
+            "invite": [],
+            "title": "我方同盟",
+            "num": "4/4",
+            "expanded": "false"
+          },
+          {
+            "cls": "gm-team is-full",
+            "hidden": false,
+            "rect": {
+              "l": 8,
+              "t": 132.39,
+              "r": 96,
+              "b": 164.39,
+              "w": 88,
+              "h": 32
+            },
+            "head": {
+              "l": 8,
+              "t": 132.39,
+              "r": 96,
+              "b": 164.39,
+              "w": 88,
+              "h": 32
+            },
+            "rows": [],
+            "who": [],
+            "hp": [],
+            "tags": [],
+            "invite": [],
+            "title": "对方同盟",
+            "num": "4/4",
+            "expanded": "false"
+          }
+        ],
+        "overlap": {
+          ".gm-teams × .team": 0,
+          ".gm-teams × .gm__bonds": 0,
+          ".gm-teams × .gm__corner": 0,
+          ".gm-teams × .shopbar": 0,
+          ".gm-teams × .gm__effects": 0,
+          ".gm-teams × .gm-unite": 0,
+          ".gm-teams × .gtop": 0,
+          ".gm-team[0] × .team": 0,
+          ".gm-team[0] × .gm__bonds": 0,
+          ".gm-team[0] × .gm__corner": 0,
+          ".gm-team[0] × .shopbar": 0,
+          ".gm-team[0] × .gm__effects": 0,
+          ".gm-team[0] × .gm-unite": 0,
+          ".gm-team[0] × .gtop": 0,
+          ".gm-team[1] × .team": 0,
+          ".gm-team[1] × .gm__bonds": 0,
+          ".gm-team[1] × .gm__corner": 0,
+          ".gm-team[1] × .shopbar": 0,
+          ".gm-team[1] × .gm__effects": 0,
+          ".gm-team[1] × .gm-unite": 0,
+          ".gm-team[1] × .gtop": 0
+        },
+        "gmCounts": {
+          ".gm-teams": 1,
+          ".gm-team": 2,
+          ".gm-strip": 0,
+          ".gm-chips": 0,
+          ".gm-panel": 0,
+          ".gm-mates": 0,
+          ".gm-unite": 0,
+          ".team": 1
+        },
+        "hudChildren": [
+          "gtop",
+          "gm__bonds",
+          "team",
+          "gm-teams",
+          "gm__effects",
+          "shopbar",
+          "chat-panel  ",
+          "ui-slot gm__ui-slot",
+          "gm__corner"
+        ],
+        "gameClass": "screen gm gm--prep has-multi",
+        "phase": "PREP",
+        "round": 3,
+        "maxSeats": 8,
+        "styles": {
+          "teamsLeft": "8px",
+          "teamsTop": "94.4px",
+          "uniteLeft": null,
+          "teamLeft": "104px",
+          "teamW": "88px",
+          "teamH": "32px"
+        },
+        "rem": 40,
+        "teamsText": "我方同盟4/4对方同盟4/4"
+      },
+      "prep1920": {
+        "vw": 1920,
+        "vh": 1080,
+        "boxes": {
+          ".gm-teams": {
+            "l": 20,
+            "t": 236,
+            "r": 240,
+            "b": 411,
+            "w": 220,
+            "h": 175
+          },
+          ".team": {
+            "l": 260,
+            "t": 236,
+            "r": 456.97,
+            "b": 974,
+            "w": 196.97,
+            "h": 738
+          },
+          ".gm__bonds": {
+            "l": 819,
+            "t": 136,
+            "r": 1101,
+            "b": 232.84,
+            "w": 282,
+            "h": 96.84
+          },
+          ".gm__corner": {
+            "l": 24,
+            "t": 1000,
+            "r": 278,
+            "b": 1056,
+            "w": 254,
+            "h": 56
+          },
+          ".shopbar": {
+            "l": 893,
+            "t": 694,
+            "r": 1894,
+            "b": 1060,
+            "w": 1001,
+            "h": 366
+          },
+          ".gm__effects": {
+            "l": 1828.2,
+            "t": 240,
+            "r": 1890,
+            "b": 311.19,
+            "w": 61.8,
+            "h": 71.19
+          },
+          ".gm-unite": null,
+          ".gtop": {
+            "l": 0,
+            "t": 0,
+            "r": 1920,
+            "b": 116.5,
+            "w": 1920,
+            "h": 116.5
+          }
+        },
+        "teams": [
+          {
+            "cls": "gm-team is-mine is-full",
+            "hidden": false,
+            "rect": {
+              "l": 20,
+              "t": 236,
+              "r": 240,
+              "b": 316,
+              "w": 220,
+              "h": 80
+            },
+            "head": {
+              "l": 20,
+              "t": 236,
+              "r": 240,
+              "b": 316,
+              "w": 220,
+              "h": 80
+            },
+            "rows": [],
+            "who": [],
+            "hp": [],
+            "tags": [],
+            "invite": [],
+            "title": "我方同盟",
+            "num": "4/4",
+            "expanded": "false"
+          },
+          {
+            "cls": "gm-team is-full",
+            "hidden": false,
+            "rect": {
+              "l": 20,
+              "t": 331,
+              "r": 240,
+              "b": 411,
+              "w": 220,
+              "h": 80
+            },
+            "head": {
+              "l": 20,
+              "t": 331,
+              "r": 240,
+              "b": 411,
+              "w": 220,
+              "h": 80
+            },
+            "rows": [],
+            "who": [],
+            "hp": [],
+            "tags": [],
+            "invite": [],
+            "title": "对方同盟",
+            "num": "4/4",
+            "expanded": "false"
+          }
+        ],
+        "overlap": {
+          ".gm-teams × .team": 0,
+          ".gm-teams × .gm__bonds": 0,
+          ".gm-teams × .gm__corner": 0,
+          ".gm-teams × .shopbar": 0,
+          ".gm-teams × .gm__effects": 0,
+          ".gm-teams × .gm-unite": 0,
+          ".gm-teams × .gtop": 0,
+          ".gm-team[0] × .team": 0,
+          ".gm-team[0] × .gm__bonds": 0,
+          ".gm-team[0] × .gm__corner": 0,
+          ".gm-team[0] × .shopbar": 0,
+          ".gm-team[0] × .gm__effects": 0,
+          ".gm-team[0] × .gm-unite": 0,
+          ".gm-team[0] × .gtop": 0,
+          ".gm-team[1] × .team": 0,
+          ".gm-team[1] × .gm__bonds": 0,
+          ".gm-team[1] × .gm__corner": 0,
+          ".gm-team[1] × .shopbar": 0,
+          ".gm-team[1] × .gm__effects": 0,
+          ".gm-team[1] × .gm-unite": 0,
+          ".gm-team[1] × .gtop": 0
+        },
+        "gmCounts": {
+          ".gm-teams": 1,
+          ".gm-team": 2,
+          ".gm-strip": 0,
+          ".gm-chips": 0,
+          ".gm-panel": 0,
+          ".gm-mates": 0,
+          ".gm-unite": 0,
+          ".team": 1
+        },
+        "hudChildren": [
+          "gtop",
+          "gm__bonds",
+          "team",
+          "gm-teams",
+          "gm__effects",
+          "shopbar",
+          "chat-panel  ",
+          "ui-slot gm__ui-slot",
+          "gm__corner"
+        ],
+        "gameClass": "screen gm gm--prep has-multi",
+        "phase": "PREP",
+        "round": 3,
+        "maxSeats": 8,
+        "styles": {
+          "teamsLeft": "20px",
+          "teamsTop": "236px",
+          "uniteLeft": null,
+          "teamLeft": "260px",
+          "teamW": "220px",
+          "teamH": "80px"
+        },
+        "rem": 100,
+        "teamsText": "我方同盟4/4对方同盟4/4"
+      },
+      "roster792": {
+        "vw": 792,
+        "vh": 360,
+        "boxes": {
+          ".gm-teams": {
+            "l": 8,
+            "t": 94.39,
+            "r": 96,
+            "b": 262.39,
+            "w": 88,
+            "h": 168
+          },
+          ".team": {
+            "l": 104,
+            "t": 94.39,
+            "r": 182.78,
+            "b": 389.55,
+            "w": 78.78,
+            "h": 295.16
+          },
+          ".gm__bonds": {
+            "l": 339.61,
+            "t": 54.39,
+            "r": 452.39,
+            "b": 94.31,
+            "w": 112.78,
+            "h": 39.92
+          },
+          ".gm__corner": {
+            "l": 9.59,
+            "t": 316.41,
+            "r": 157.59,
+            "b": 350.41,
+            "w": 148,
+            "h": 34
+          },
+          ".shopbar": {
+            "l": 379.52,
+            "t": 194.66,
+            "r": 781.61,
+            "b": 352,
+            "w": 402.09,
+            "h": 157.34
+          },
+          ".gm__effects": {
+            "l": 755.28,
+            "t": 96,
+            "r": 780,
+            "b": 124.47,
+            "w": 24.72,
+            "h": 28.47
+          },
+          ".gm-unite": null,
+          ".gtop": {
+            "l": 0,
+            "t": 0,
+            "r": 792,
+            "b": 58.19,
+            "w": 792,
+            "h": 58.19
+          }
+        },
+        "teams": [
+          {
+            "cls": "gm-team is-mine is-full is-open",
+            "hidden": false,
+            "rect": {
+              "l": 8,
+              "t": 94.39,
+              "r": 96,
+              "b": 262.39,
+              "w": 88,
+              "h": 168
+            },
+            "head": {
+              "l": 8,
+              "t": 94.39,
+              "r": 96,
+              "b": 126.39,
+              "w": 88,
+              "h": 32
+            },
+            "rows": [
+              {
+                "l": 8,
+                "t": 126.39,
+                "r": 96,
+                "b": 160.39,
+                "w": 88,
+                "h": 34
+              },
+              {
+                "l": 8,
+                "t": 160.39,
+                "r": 96,
+                "b": 194.39,
+                "w": 88,
+                "h": 34
+              },
+              {
+                "l": 8,
+                "t": 194.39,
+                "r": 96,
+                "b": 228.39,
+                "w": 88,
+                "h": 34
+              },
+              {
+                "l": 8,
+                "t": 228.39,
+                "r": 96,
+                "b": 262.39,
+                "w": 88,
+                "h": 34
+              }
+            ],
+            "who": [
+              "T8",
+              "AI·华法琳",
+              "AI·阿米娅",
+              "AI·惊蛰"
+            ],
+            "hp": [
+              "29",
+              "27",
+              "28",
+              "27"
+            ],
+            "tags": [],
+            "invite": [],
+            "title": "我方同盟",
+            "num": "4/4",
+            "expanded": "true"
+          },
+          {
+            "cls": "gm-team is-full",
+            "hidden": true,
+            "rect": {
+              "l": 0,
+              "t": 0,
+              "r": 0,
+              "b": 0,
+              "w": 0,
+              "h": 0
+            },
+            "head": {
+              "l": 0,
+              "t": 0,
+              "r": 0,
+              "b": 0,
+              "w": 0,
+              "h": 0
+            },
+            "rows": [],
+            "who": [],
+            "hp": [],
+            "tags": [],
+            "invite": [],
+            "title": "对方同盟",
+            "num": "4/4",
+            "expanded": "false"
+          }
+        ],
+        "overlap": {
+          ".gm-teams × .team": 0,
+          ".gm-teams × .gm__bonds": 0,
+          ".gm-teams × .gm__corner": 0,
+          ".gm-teams × .shopbar": 0,
+          ".gm-teams × .gm__effects": 0,
+          ".gm-teams × .gm-unite": 0,
+          ".gm-teams × .gtop": 0,
+          ".gm-team[0] × .team": 0,
+          ".gm-team[0] × .gm__bonds": 0,
+          ".gm-team[0] × .gm__corner": 0,
+          ".gm-team[0] × .shopbar": 0,
+          ".gm-team[0] × .gm__effects": 0,
+          ".gm-team[0] × .gm-unite": 0,
+          ".gm-team[0] × .gtop": 0
+        },
+        "gmCounts": {
+          ".gm-teams": 1,
+          ".gm-team": 2,
+          ".gm-strip": 0,
+          ".gm-chips": 0,
+          ".gm-panel": 0,
+          ".gm-mates": 0,
+          ".gm-unite": 0,
+          ".team": 1
+        },
+        "hudChildren": [
+          "gtop",
+          "gm__bonds",
+          "team",
+          "gm-teams",
+          "gm__effects",
+          "shopbar",
+          "chat-panel  ",
+          "ui-slot gm__ui-slot",
+          "gm__corner"
+        ],
+        "gameClass": "screen gm gm--prep has-multi",
+        "phase": "PREP",
+        "round": 3,
+        "maxSeats": 8,
+        "styles": {
+          "teamsLeft": "8px",
+          "teamsTop": "94.4px",
+          "uniteLeft": null,
+          "teamLeft": "104px",
+          "teamW": "88px",
+          "teamH": "168px"
+        },
+        "rem": 40,
+        "teamsText": "我方同盟4/4T829AI·华法琳27AI·阿米娅28AI·惊蛰27对方同盟4/4"
+      },
+      "roster1920": {
+        "vw": 1920,
+        "vh": 1080,
+        "boxes": {
+          ".gm-teams": {
+            "l": 20,
+            "t": 236,
+            "r": 240,
+            "b": 656,
+            "w": 220,
+            "h": 420
+          },
+          ".team": {
+            "l": 260,
+            "t": 236,
+            "r": 456.97,
+            "b": 974,
+            "w": 196.97,
+            "h": 738
+          },
+          ".gm__bonds": {
+            "l": 819,
+            "t": 136,
+            "r": 1101,
+            "b": 232.84,
+            "w": 282,
+            "h": 96.84
+          },
+          ".gm__corner": {
+            "l": 24,
+            "t": 1000,
+            "r": 278,
+            "b": 1056,
+            "w": 254,
+            "h": 56
+          },
+          ".shopbar": {
+            "l": 893,
+            "t": 694,
+            "r": 1894,
+            "b": 1060,
+            "w": 1001,
+            "h": 366
+          },
+          ".gm__effects": {
+            "l": 1828.2,
+            "t": 240,
+            "r": 1890,
+            "b": 311.19,
+            "w": 61.8,
+            "h": 71.19
+          },
+          ".gm-unite": null,
+          ".gtop": {
+            "l": 0,
+            "t": 0,
+            "r": 1920,
+            "b": 116.5,
+            "w": 1920,
+            "h": 116.5
+          }
+        },
+        "teams": [
+          {
+            "cls": "gm-team is-mine is-full is-open",
+            "hidden": false,
+            "rect": {
+              "l": 20,
+              "t": 236,
+              "r": 240,
+              "b": 656,
+              "w": 220,
+              "h": 420
+            },
+            "head": {
+              "l": 20,
+              "t": 236,
+              "r": 240,
+              "b": 316,
+              "w": 220,
+              "h": 80
+            },
+            "rows": [
+              {
+                "l": 20,
+                "t": 316,
+                "r": 240,
+                "b": 401,
+                "w": 220,
+                "h": 85
+              },
+              {
+                "l": 20,
+                "t": 401,
+                "r": 240,
+                "b": 486,
+                "w": 220,
+                "h": 85
+              },
+              {
+                "l": 20,
+                "t": 486,
+                "r": 240,
+                "b": 571,
+                "w": 220,
+                "h": 85
+              },
+              {
+                "l": 20,
+                "t": 571,
+                "r": 240,
+                "b": 656,
+                "w": 220,
+                "h": 85
+              }
+            ],
+            "who": [
+              "T8",
+              "AI·华法琳",
+              "AI·阿米娅",
+              "AI·惊蛰"
+            ],
+            "hp": [
+              "29",
+              "27",
+              "28",
+              "27"
+            ],
+            "tags": [],
+            "invite": [],
+            "title": "我方同盟",
+            "num": "4/4",
+            "expanded": "true"
+          },
+          {
+            "cls": "gm-team is-full",
+            "hidden": true,
+            "rect": {
+              "l": 0,
+              "t": 0,
+              "r": 0,
+              "b": 0,
+              "w": 0,
+              "h": 0
+            },
+            "head": {
+              "l": 0,
+              "t": 0,
+              "r": 0,
+              "b": 0,
+              "w": 0,
+              "h": 0
+            },
+            "rows": [],
+            "who": [],
+            "hp": [],
+            "tags": [],
+            "invite": [],
+            "title": "对方同盟",
+            "num": "4/4",
+            "expanded": "false"
+          }
+        ],
+        "overlap": {
+          ".gm-teams × .team": 0,
+          ".gm-teams × .gm__bonds": 0,
+          ".gm-teams × .gm__corner": 0,
+          ".gm-teams × .shopbar": 0,
+          ".gm-teams × .gm__effects": 0,
+          ".gm-teams × .gm-unite": 0,
+          ".gm-teams × .gtop": 0,
+          ".gm-team[0] × .team": 0,
+          ".gm-team[0] × .gm__bonds": 0,
+          ".gm-team[0] × .gm__corner": 0,
+          ".gm-team[0] × .shopbar": 0,
+          ".gm-team[0] × .gm__effects": 0,
+          ".gm-team[0] × .gm-unite": 0,
+          ".gm-team[0] × .gtop": 0
+        },
+        "gmCounts": {
+          ".gm-teams": 1,
+          ".gm-team": 2,
+          ".gm-strip": 0,
+          ".gm-chips": 0,
+          ".gm-panel": 0,
+          ".gm-mates": 0,
+          ".gm-unite": 0,
+          ".team": 1
+        },
+        "hudChildren": [
+          "gtop",
+          "gm__bonds",
+          "team",
+          "gm-teams",
+          "gm__effects",
+          "shopbar",
+          "chat-panel  ",
+          "ui-slot gm__ui-slot",
+          "gm__corner"
+        ],
+        "gameClass": "screen gm gm--prep has-multi",
+        "phase": "PREP",
+        "round": 3,
+        "maxSeats": 8,
+        "styles": {
+          "teamsLeft": "20px",
+          "teamsTop": "236px",
+          "uniteLeft": null,
+          "teamLeft": "260px",
+          "teamW": "220px",
+          "teamH": "420px"
+        },
+        "rem": 100,
+        "teamsText": "我方同盟4/4T829AI·华法琳27AI·阿米娅28AI·惊蛰27对方同盟4/4"
+      }
+    },
+    "room4": {
+      "code": "LPBE",
+      "prep792": {
+        "vw": 792,
+        "vh": 360,
+        "boxes": {
+          ".gm-teams": null,
+          ".team": {
+            "l": 8.8,
+            "t": 94.39,
+            "r": 85.7,
+            "b": 239.17,
+            "w": 76.91,
+            "h": 144.78
+          },
+          ".gm__bonds": {
+            "l": 306.02,
+            "t": 54.39,
+            "r": 485.98,
+            "b": 94.31,
+            "w": 179.97,
+            "h": 39.92
+          },
+          ".gm__corner": {
+            "l": 9.59,
+            "t": 316.41,
+            "r": 157.59,
+            "b": 350.41,
+            "w": 148,
+            "h": 34
+          },
+          ".shopbar": {
+            "l": 379.52,
+            "t": 194.66,
+            "r": 781.61,
+            "b": 352,
+            "w": 402.09,
+            "h": 157.34
+          },
+          ".gm__effects": {
+            "l": 755.28,
+            "t": 96,
+            "r": 780,
+            "b": 124.47,
+            "w": 24.72,
+            "h": 28.47
+          },
+          ".gm-unite": null,
+          ".gtop": {
+            "l": 0,
+            "t": 0,
+            "r": 792,
+            "b": 58.19,
+            "w": 792,
+            "h": 58.19
+          }
+        },
+        "teams": [],
+        "overlap": {
+          ".gm-teams × .team": 0,
+          ".gm-teams × .gm__bonds": 0,
+          ".gm-teams × .gm__corner": 0,
+          ".gm-teams × .shopbar": 0,
+          ".gm-teams × .gm__effects": 0,
+          ".gm-teams × .gm-unite": 0,
+          ".gm-teams × .gtop": 0
+        },
+        "gmCounts": {
+          ".gm-teams": 0,
+          ".gm-team": 0,
+          ".gm-strip": 0,
+          ".gm-chips": 0,
+          ".gm-panel": 0,
+          ".gm-mates": 0,
+          ".gm-unite": 0,
+          ".team": 1
+        },
+        "hudChildren": [
+          "gtop",
+          "gm__bonds",
+          "team",
+          "gm__effects",
+          "shopbar",
+          "chat-panel  ",
+          "ui-slot gm__ui-slot",
+          "gm__corner"
+        ],
+        "gameClass": "screen gm gm--prep",
+        "phase": "PREP",
+        "round": 3,
+        "maxSeats": null,
+        "styles": {
+          "teamsLeft": null,
+          "teamsTop": null,
+          "uniteLeft": null,
+          "teamLeft": "8.8px",
+          "teamW": null,
+          "teamH": null
+        },
+        "rem": 40,
+        "teamsText": ""
+      },
+      "prep1920": {
+        "vw": 1920,
+        "vh": 1080,
+        "boxes": {
+          ".gm-teams": null,
+          ".team": {
+            "l": 22,
+            "t": 236,
+            "r": 214.3,
+            "b": 598,
+            "w": 192.3,
+            "h": 362
+          },
+          ".gm__bonds": {
+            "l": 735,
+            "t": 136,
+            "r": 1185,
+            "b": 232.84,
+            "w": 450,
+            "h": 96.84
+          },
+          ".gm__corner": {
+            "l": 24,
+            "t": 1000,
+            "r": 278,
+            "b": 1056,
+            "w": 254,
+            "h": 56
+          },
+          ".shopbar": {
+            "l": 893,
+            "t": 694,
+            "r": 1894,
+            "b": 1060,
+            "w": 1001,
+            "h": 366
+          },
+          ".gm__effects": {
+            "l": 1828.2,
+            "t": 240,
+            "r": 1890,
+            "b": 311.19,
+            "w": 61.8,
+            "h": 71.19
+          },
+          ".gm-unite": null,
+          ".gtop": {
+            "l": 0,
+            "t": 0,
+            "r": 1920,
+            "b": 116.5,
+            "w": 1920,
+            "h": 116.5
+          }
+        },
+        "teams": [],
+        "overlap": {
+          ".gm-teams × .team": 0,
+          ".gm-teams × .gm__bonds": 0,
+          ".gm-teams × .gm__corner": 0,
+          ".gm-teams × .shopbar": 0,
+          ".gm-teams × .gm__effects": 0,
+          ".gm-teams × .gm-unite": 0,
+          ".gm-teams × .gtop": 0
+        },
+        "gmCounts": {
+          ".gm-teams": 0,
+          ".gm-team": 0,
+          ".gm-strip": 0,
+          ".gm-chips": 0,
+          ".gm-panel": 0,
+          ".gm-mates": 0,
+          ".gm-unite": 0,
+          ".team": 1
+        },
+        "hudChildren": [
+          "gtop",
+          "gm__bonds",
+          "team",
+          "gm__effects",
+          "shopbar",
+          "chat-panel  ",
+          "ui-slot gm__ui-slot",
+          "gm__corner"
+        ],
+        "gameClass": "screen gm gm--prep",
+        "phase": "PREP",
+        "round": 3,
+        "maxSeats": null,
+        "styles": {
+          "teamsLeft": null,
+          "teamsTop": null,
+          "uniteLeft": null,
+          "teamLeft": "22px",
+          "teamW": null,
+          "teamH": null
+        },
+        "rem": 100,
+        "teamsText": ""
+      }
+    }
+  },
+  "after": {
+    "room12": {
+      "code": "EPXN",
+      "rem": 100,
+      "prep792": {
+        "vw": 792,
+        "vh": 360,
+        "boxes": {
+          ".gm-teams": {
+            "l": 8,
+            "t": 94.39,
+            "r": 96,
+            "b": 202.39,
+            "w": 88,
+            "h": 108
+          },
+          ".team": null,
+          ".gm__bonds": {
+            "l": 306.02,
+            "t": 54.39,
+            "r": 485.98,
+            "b": 94.31,
+            "w": 179.97,
+            "h": 39.92
+          },
+          ".gm__corner": {
+            "l": 9.59,
+            "t": 316.41,
+            "r": 157.59,
+            "b": 350.41,
+            "w": 148,
+            "h": 34
+          },
+          ".shopbar": {
+            "l": 379.52,
+            "t": 194.66,
+            "r": 781.61,
+            "b": 352,
+            "w": 402.09,
+            "h": 157.34
+          },
+          ".gm__effects": {
+            "l": 755.28,
+            "t": 96,
+            "r": 780,
+            "b": 124.47,
+            "w": 24.72,
+            "h": 28.47
+          },
+          ".gm-unite": null,
+          ".gtop": {
+            "l": 0,
+            "t": 0,
+            "r": 792,
+            "b": 58.19,
+            "w": 792,
+            "h": 58.19
+          }
+        },
+        "teams": [
+          {
+            "cls": "gm-team is-mine is-full",
+            "hidden": false,
+            "rect": {
+              "l": 8,
+              "t": 94.39,
+              "r": 96,
+              "b": 126.39,
+              "w": 88,
+              "h": 32
+            },
+            "head": {
+              "l": 8,
+              "t": 94.39,
+              "r": 96,
+              "b": 126.39,
+              "w": 88,
+              "h": 32
+            },
+            "rows": [],
+            "who": [],
+            "hp": [],
+            "tags": [],
+            "invite": [],
+            "title": "我方同盟",
+            "num": "4/4",
+            "expanded": "false"
+          },
+          {
+            "cls": "gm-team is-blue is-full",
+            "hidden": false,
+            "rect": {
+              "l": 8,
+              "t": 132.39,
+              "r": 96,
+              "b": 164.39,
+              "w": 88,
+              "h": 32
+            },
+            "head": {
+              "l": 8,
+              "t": 132.39,
+              "r": 96,
+              "b": 164.39,
+              "w": 88,
+              "h": 32
+            },
+            "rows": [],
+            "who": [],
+            "hp": [],
+            "tags": [],
+            "invite": [],
+            "title": "蓝方同盟",
+            "num": "4/4",
+            "expanded": "false"
+          },
+          {
+            "cls": "gm-team is-red is-full",
+            "hidden": false,
+            "rect": {
+              "l": 8,
+              "t": 170.39,
+              "r": 96,
+              "b": 202.39,
+              "w": 88,
+              "h": 32
+            },
+            "head": {
+              "l": 8,
+              "t": 170.39,
+              "r": 96,
+              "b": 202.39,
+              "w": 88,
+              "h": 32
+            },
+            "rows": [],
+            "who": [],
+            "hp": [],
+            "tags": [],
+            "invite": [],
+            "title": "红方同盟",
+            "num": "4/4",
+            "expanded": "false"
+          }
+        ],
+        "overlap": {
+          ".gm-teams × .team": 0,
+          ".gm-teams × .gm__bonds": 0,
+          ".gm-teams × .gm__corner": 0,
+          ".gm-teams × .shopbar": 0,
+          ".gm-teams × .gm__effects": 0,
+          ".gm-teams × .gm-unite": 0,
+          ".gm-teams × .gtop": 0,
+          ".gm-team[0] × .team": 0,
+          ".gm-team[0] × .gm__bonds": 0,
+          ".gm-team[0] × .gm__corner": 0,
+          ".gm-team[0] × .shopbar": 0,
+          ".gm-team[0] × .gm__effects": 0,
+          ".gm-team[0] × .gm-unite": 0,
+          ".gm-team[0] × .gtop": 0,
+          ".gm-team[1] × .team": 0,
+          ".gm-team[1] × .gm__bonds": 0,
+          ".gm-team[1] × .gm__corner": 0,
+          ".gm-team[1] × .shopbar": 0,
+          ".gm-team[1] × .gm__effects": 0,
+          ".gm-team[1] × .gm-unite": 0,
+          ".gm-team[1] × .gtop": 0,
+          ".gm-team[2] × .team": 0,
+          ".gm-team[2] × .gm__bonds": 0,
+          ".gm-team[2] × .gm__corner": 0,
+          ".gm-team[2] × .shopbar": 0,
+          ".gm-team[2] × .gm__effects": 0,
+          ".gm-team[2] × .gm-unite": 0,
+          ".gm-team[2] × .gtop": 0
+        },
+        "gmCounts": {
+          ".gm-teams": 1,
+          ".gm-team": 3,
+          ".gm-strip": 0,
+          ".gm-chips": 0,
+          ".gm-panel": 0,
+          ".gm-mates": 0,
+          ".gm-unite": 0,
+          ".team": 0
+        },
+        "hudChildren": [
+          "gtop",
+          "gm__bonds",
+          "gm-teams",
+          "gm__effects",
+          "shopbar",
+          "chat-panel  ",
+          "ui-slot gm__ui-slot",
+          "gm__corner"
+        ],
+        "gameClass": "screen gm gm--prep has-multi",
+        "phase": "PREP",
+        "round": 3,
+        "maxSeats": 12,
+        "styles": {
+          "teamsLeft": "8px",
+          "teamsTop": "94.4px",
+          "uniteLeft": null,
+          "teamLeft": null,
+          "teamW": "88px",
+          "teamH": "32px"
+        },
+        "rem": 40,
+        "teamsText": "我方同盟4/4蓝方同盟4/4红方同盟4/4"
+      },
+      "prep1920": {
+        "vw": 1920,
+        "vh": 1080,
+        "boxes": {
+          ".gm-teams": {
+            "l": 20,
+            "t": 236,
+            "r": 240,
+            "b": 506,
+            "w": 220,
+            "h": 270
+          },
+          ".team": null,
+          ".gm__bonds": {
+            "l": 735,
+            "t": 136,
+            "r": 1185,
+            "b": 232.84,
+            "w": 450,
+            "h": 96.84
+          },
+          ".gm__corner": {
+            "l": 24,
+            "t": 1000,
+            "r": 278,
+            "b": 1056,
+            "w": 254,
+            "h": 56
+          },
+          ".shopbar": {
+            "l": 893,
+            "t": 694,
+            "r": 1894,
+            "b": 1060,
+            "w": 1001,
+            "h": 366
+          },
+          ".gm__effects": {
+            "l": 1828.2,
+            "t": 240,
+            "r": 1890,
+            "b": 311.19,
+            "w": 61.8,
+            "h": 71.19
+          },
+          ".gm-unite": null,
+          ".gtop": {
+            "l": 0,
+            "t": 0,
+            "r": 1920,
+            "b": 116.5,
+            "w": 1920,
+            "h": 116.5
+          }
+        },
+        "teams": [
+          {
+            "cls": "gm-team is-mine is-full",
+            "hidden": false,
+            "rect": {
+              "l": 20,
+              "t": 236,
+              "r": 240,
+              "b": 316,
+              "w": 220,
+              "h": 80
+            },
+            "head": {
+              "l": 20,
+              "t": 236,
+              "r": 240,
+              "b": 316,
+              "w": 220,
+              "h": 80
+            },
+            "rows": [],
+            "who": [],
+            "hp": [],
+            "tags": [],
+            "invite": [],
+            "title": "我方同盟",
+            "num": "4/4",
+            "expanded": "false"
+          },
+          {
+            "cls": "gm-team is-blue is-full",
+            "hidden": false,
+            "rect": {
+              "l": 20,
+              "t": 331,
+              "r": 240,
+              "b": 411,
+              "w": 220,
+              "h": 80
+            },
+            "head": {
+              "l": 20,
+              "t": 331,
+              "r": 240,
+              "b": 411,
+              "w": 220,
+              "h": 80
+            },
+            "rows": [],
+            "who": [],
+            "hp": [],
+            "tags": [],
+            "invite": [],
+            "title": "蓝方同盟",
+            "num": "4/4",
+            "expanded": "false"
+          },
+          {
+            "cls": "gm-team is-red is-full",
+            "hidden": false,
+            "rect": {
+              "l": 20,
+              "t": 426,
+              "r": 240,
+              "b": 506,
+              "w": 220,
+              "h": 80
+            },
+            "head": {
+              "l": 20,
+              "t": 426,
+              "r": 240,
+              "b": 506,
+              "w": 220,
+              "h": 80
+            },
+            "rows": [],
+            "who": [],
+            "hp": [],
+            "tags": [],
+            "invite": [],
+            "title": "红方同盟",
+            "num": "4/4",
+            "expanded": "false"
+          }
+        ],
+        "overlap": {
+          ".gm-teams × .team": 0,
+          ".gm-teams × .gm__bonds": 0,
+          ".gm-teams × .gm__corner": 0,
+          ".gm-teams × .shopbar": 0,
+          ".gm-teams × .gm__effects": 0,
+          ".gm-teams × .gm-unite": 0,
+          ".gm-teams × .gtop": 0,
+          ".gm-team[0] × .team": 0,
+          ".gm-team[0] × .gm__bonds": 0,
+          ".gm-team[0] × .gm__corner": 0,
+          ".gm-team[0] × .shopbar": 0,
+          ".gm-team[0] × .gm__effects": 0,
+          ".gm-team[0] × .gm-unite": 0,
+          ".gm-team[0] × .gtop": 0,
+          ".gm-team[1] × .team": 0,
+          ".gm-team[1] × .gm__bonds": 0,
+          ".gm-team[1] × .gm__corner": 0,
+          ".gm-team[1] × .shopbar": 0,
+          ".gm-team[1] × .gm__effects": 0,
+          ".gm-team[1] × .gm-unite": 0,
+          ".gm-team[1] × .gtop": 0,
+          ".gm-team[2] × .team": 0,
+          ".gm-team[2] × .gm__bonds": 0,
+          ".gm-team[2] × .gm__corner": 0,
+          ".gm-team[2] × .shopbar": 0,
+          ".gm-team[2] × .gm__effects": 0,
+          ".gm-team[2] × .gm-unite": 0,
+          ".gm-team[2] × .gtop": 0
+        },
+        "gmCounts": {
+          ".gm-teams": 1,
+          ".gm-team": 3,
+          ".gm-strip": 0,
+          ".gm-chips": 0,
+          ".gm-panel": 0,
+          ".gm-mates": 0,
+          ".gm-unite": 0,
+          ".team": 0
+        },
+        "hudChildren": [
+          "gtop",
+          "gm__bonds",
+          "gm-teams",
+          "gm__effects",
+          "shopbar",
+          "chat-panel  ",
+          "ui-slot gm__ui-slot",
+          "gm__corner"
+        ],
+        "gameClass": "screen gm gm--prep has-multi",
+        "phase": "PREP",
+        "round": 3,
+        "maxSeats": 12,
+        "styles": {
+          "teamsLeft": "20px",
+          "teamsTop": "236px",
+          "uniteLeft": null,
+          "teamLeft": null,
+          "teamW": "220px",
+          "teamH": "80px"
+        },
+        "rem": 100,
+        "teamsText": "我方同盟4/4蓝方同盟4/4红方同盟4/4"
+      },
+      "roster792": {
+        "vw": 792,
+        "vh": 360,
+        "boxes": {
+          ".gm-teams": {
+            "l": 8,
+            "t": 94.39,
+            "r": 96,
+            "b": 262.39,
+            "w": 88,
+            "h": 168
+          },
+          ".team": null,
+          ".gm__bonds": {
+            "l": 306.02,
+            "t": 54.39,
+            "r": 485.98,
+            "b": 94.31,
+            "w": 179.97,
+            "h": 39.92
+          },
+          ".gm__corner": {
+            "l": 9.59,
+            "t": 316.41,
+            "r": 157.59,
+            "b": 350.41,
+            "w": 148,
+            "h": 34
+          },
+          ".shopbar": {
+            "l": 379.52,
+            "t": 194.66,
+            "r": 781.61,
+            "b": 352,
+            "w": 402.09,
+            "h": 157.34
+          },
+          ".gm__effects": {
+            "l": 755.28,
+            "t": 96,
+            "r": 780,
+            "b": 124.47,
+            "w": 24.72,
+            "h": 28.47
+          },
+          ".gm-unite": null,
+          ".gtop": {
+            "l": 0,
+            "t": 0,
+            "r": 792,
+            "b": 58.19,
+            "w": 792,
+            "h": 58.19
+          }
+        },
+        "teams": [
+          {
+            "cls": "gm-team is-mine is-full is-open",
+            "hidden": false,
+            "rect": {
+              "l": 8,
+              "t": 94.39,
+              "r": 96,
+              "b": 262.39,
+              "w": 88,
+              "h": 168
+            },
+            "head": {
+              "l": 8,
+              "t": 94.39,
+              "r": 96,
+              "b": 126.39,
+              "w": 88,
+              "h": 32
+            },
+            "rows": [
+              {
+                "l": 8,
+                "t": 126.39,
+                "r": 96,
+                "b": 160.39,
+                "w": 88,
+                "h": 34
+              },
+              {
+                "l": 8,
+                "t": 160.39,
+                "r": 96,
+                "b": 194.39,
+                "w": 88,
+                "h": 34
+              },
+              {
+                "l": 8,
+                "t": 194.39,
+                "r": 96,
+                "b": 228.39,
+                "w": 88,
+                "h": 34
+              },
+              {
+                "l": 8,
+                "t": 228.39,
+                "r": 96,
+                "b": 262.39,
+                "w": 88,
+                "h": 34
+              }
+            ],
+            "who": [
+              "T12",
+              "AI·华法琳",
+              "AI·阿米娅",
+              "AI·惊蛰"
+            ],
+            "hp": [
+              "29",
+              "28",
+              "28",
+              "23"
+            ],
+            "tags": [],
+            "invite": [],
+            "title": "我方同盟",
+            "num": "4/4",
+            "expanded": "true"
+          },
+          {
+            "cls": "gm-team is-blue is-full",
+            "hidden": true,
+            "rect": {
+              "l": 0,
+              "t": 0,
+              "r": 0,
+              "b": 0,
+              "w": 0,
+              "h": 0
+            },
+            "head": {
+              "l": 0,
+              "t": 0,
+              "r": 0,
+              "b": 0,
+              "w": 0,
+              "h": 0
+            },
+            "rows": [],
+            "who": [],
+            "hp": [],
+            "tags": [],
+            "invite": [],
+            "title": "蓝方同盟",
+            "num": "4/4",
+            "expanded": "false"
+          },
+          {
+            "cls": "gm-team is-red is-full",
+            "hidden": true,
+            "rect": {
+              "l": 0,
+              "t": 0,
+              "r": 0,
+              "b": 0,
+              "w": 0,
+              "h": 0
+            },
+            "head": {
+              "l": 0,
+              "t": 0,
+              "r": 0,
+              "b": 0,
+              "w": 0,
+              "h": 0
+            },
+            "rows": [],
+            "who": [],
+            "hp": [],
+            "tags": [],
+            "invite": [],
+            "title": "红方同盟",
+            "num": "4/4",
+            "expanded": "false"
+          }
+        ],
+        "overlap": {
+          ".gm-teams × .team": 0,
+          ".gm-teams × .gm__bonds": 0,
+          ".gm-teams × .gm__corner": 0,
+          ".gm-teams × .shopbar": 0,
+          ".gm-teams × .gm__effects": 0,
+          ".gm-teams × .gm-unite": 0,
+          ".gm-teams × .gtop": 0,
+          ".gm-team[0] × .team": 0,
+          ".gm-team[0] × .gm__bonds": 0,
+          ".gm-team[0] × .gm__corner": 0,
+          ".gm-team[0] × .shopbar": 0,
+          ".gm-team[0] × .gm__effects": 0,
+          ".gm-team[0] × .gm-unite": 0,
+          ".gm-team[0] × .gtop": 0
+        },
+        "gmCounts": {
+          ".gm-teams": 1,
+          ".gm-team": 3,
+          ".gm-strip": 0,
+          ".gm-chips": 0,
+          ".gm-panel": 0,
+          ".gm-mates": 0,
+          ".gm-unite": 0,
+          ".team": 0
+        },
+        "hudChildren": [
+          "gtop",
+          "gm__bonds",
+          "gm-teams",
+          "gm__effects",
+          "shopbar",
+          "chat-panel  ",
+          "ui-slot gm__ui-slot",
+          "gm__corner"
+        ],
+        "gameClass": "screen gm gm--prep has-multi",
+        "phase": "PREP",
+        "round": 3,
+        "maxSeats": 12,
+        "styles": {
+          "teamsLeft": "8px",
+          "teamsTop": "94.4px",
+          "uniteLeft": null,
+          "teamLeft": null,
+          "teamW": "88px",
+          "teamH": "168px"
+        },
+        "rem": 40,
+        "teamsText": "我方同盟4/4T1229AI·华法琳28AI·阿米娅28AI·惊蛰23蓝方同盟4/4红方同盟4/4"
+      },
+      "roster1920": {
+        "vw": 1920,
+        "vh": 1080,
+        "boxes": {
+          ".gm-teams": {
+            "l": 20,
+            "t": 236,
+            "r": 240,
+            "b": 656,
+            "w": 220,
+            "h": 420
+          },
+          ".team": null,
+          ".gm__bonds": {
+            "l": 735,
+            "t": 136,
+            "r": 1185,
+            "b": 232.84,
+            "w": 450,
+            "h": 96.84
+          },
+          ".gm__corner": {
+            "l": 24,
+            "t": 1000,
+            "r": 278,
+            "b": 1056,
+            "w": 254,
+            "h": 56
+          },
+          ".shopbar": {
+            "l": 893,
+            "t": 694,
+            "r": 1894,
+            "b": 1060,
+            "w": 1001,
+            "h": 366
+          },
+          ".gm__effects": {
+            "l": 1828.2,
+            "t": 240,
+            "r": 1890,
+            "b": 311.19,
+            "w": 61.8,
+            "h": 71.19
+          },
+          ".gm-unite": null,
+          ".gtop": {
+            "l": 0,
+            "t": 0,
+            "r": 1920,
+            "b": 116.5,
+            "w": 1920,
+            "h": 116.5
+          }
+        },
+        "teams": [
+          {
+            "cls": "gm-team is-mine is-full is-open",
+            "hidden": false,
+            "rect": {
+              "l": 20,
+              "t": 236,
+              "r": 240,
+              "b": 656,
+              "w": 220,
+              "h": 420
+            },
+            "head": {
+              "l": 20,
+              "t": 236,
+              "r": 240,
+              "b": 316,
+              "w": 220,
+              "h": 80
+            },
+            "rows": [
+              {
+                "l": 20,
+                "t": 316,
+                "r": 240,
+                "b": 401,
+                "w": 220,
+                "h": 85
+              },
+              {
+                "l": 20,
+                "t": 401,
+                "r": 240,
+                "b": 486,
+                "w": 220,
+                "h": 85
+              },
+              {
+                "l": 20,
+                "t": 486,
+                "r": 240,
+                "b": 571,
+                "w": 220,
+                "h": 85
+              },
+              {
+                "l": 20,
+                "t": 571,
+                "r": 240,
+                "b": 656,
+                "w": 220,
+                "h": 85
+              }
+            ],
+            "who": [
+              "T12",
+              "AI·华法琳",
+              "AI·阿米娅",
+              "AI·惊蛰"
+            ],
+            "hp": [
+              "29",
+              "28",
+              "28",
+              "23"
+            ],
+            "tags": [],
+            "invite": [],
+            "title": "我方同盟",
+            "num": "4/4",
+            "expanded": "true"
+          },
+          {
+            "cls": "gm-team is-blue is-full",
+            "hidden": true,
+            "rect": {
+              "l": 0,
+              "t": 0,
+              "r": 0,
+              "b": 0,
+              "w": 0,
+              "h": 0
+            },
+            "head": {
+              "l": 0,
+              "t": 0,
+              "r": 0,
+              "b": 0,
+              "w": 0,
+              "h": 0
+            },
+            "rows": [],
+            "who": [],
+            "hp": [],
+            "tags": [],
+            "invite": [],
+            "title": "蓝方同盟",
+            "num": "4/4",
+            "expanded": "false"
+          },
+          {
+            "cls": "gm-team is-red is-full",
+            "hidden": true,
+            "rect": {
+              "l": 0,
+              "t": 0,
+              "r": 0,
+              "b": 0,
+              "w": 0,
+              "h": 0
+            },
+            "head": {
+              "l": 0,
+              "t": 0,
+              "r": 0,
+              "b": 0,
+              "w": 0,
+              "h": 0
+            },
+            "rows": [],
+            "who": [],
+            "hp": [],
+            "tags": [],
+            "invite": [],
+            "title": "红方同盟",
+            "num": "4/4",
+            "expanded": "false"
+          }
+        ],
+        "overlap": {
+          ".gm-teams × .team": 0,
+          ".gm-teams × .gm__bonds": 0,
+          ".gm-teams × .gm__corner": 0,
+          ".gm-teams × .shopbar": 0,
+          ".gm-teams × .gm__effects": 0,
+          ".gm-teams × .gm-unite": 0,
+          ".gm-teams × .gtop": 0,
+          ".gm-team[0] × .team": 0,
+          ".gm-team[0] × .gm__bonds": 0,
+          ".gm-team[0] × .gm__corner": 0,
+          ".gm-team[0] × .shopbar": 0,
+          ".gm-team[0] × .gm__effects": 0,
+          ".gm-team[0] × .gm-unite": 0,
+          ".gm-team[0] × .gtop": 0
+        },
+        "gmCounts": {
+          ".gm-teams": 1,
+          ".gm-team": 3,
+          ".gm-strip": 0,
+          ".gm-chips": 0,
+          ".gm-panel": 0,
+          ".gm-mates": 0,
+          ".gm-unite": 0,
+          ".team": 0
+        },
+        "hudChildren": [
+          "gtop",
+          "gm__bonds",
+          "gm-teams",
+          "gm__effects",
+          "shopbar",
+          "chat-panel  ",
+          "ui-slot gm__ui-slot",
+          "gm__corner"
+        ],
+        "gameClass": "screen gm gm--prep has-multi",
+        "phase": "PREP",
+        "round": 3,
+        "maxSeats": 12,
+        "styles": {
+          "teamsLeft": "20px",
+          "teamsTop": "236px",
+          "uniteLeft": null,
+          "teamLeft": null,
+          "teamW": "220px",
+          "teamH": "420px"
+        },
+        "rem": 100,
+        "teamsText": "我方同盟4/4T1229AI·华法琳28AI·阿米娅28AI·惊蛰23蓝方同盟4/4红方同盟4/4"
+      },
+      "unite792": {
+        "vw": 792,
+        "vh": 360,
+        "boxes": {
+          ".gm-teams": {
+            "l": 8,
+            "t": 94.39,
+            "r": 96,
+            "b": 202.39,
+            "w": 88,
+            "h": 108
+          },
+          ".team": null,
+          ".gm__bonds": {
+            "l": 306.02,
+            "t": 54.39,
+            "r": 485.98,
+            "b": 94.31,
+            "w": 179.97,
+            "h": 39.92
+          },
+          ".gm__corner": {
+            "l": 9.59,
+            "t": 316.41,
+            "r": 157.59,
+            "b": 350.41,
+            "w": 148,
+            "h": 34
+          },
+          ".shopbar": null,
+          ".gm__effects": {
+            "l": 755.28,
+            "t": 96,
+            "r": 780,
+            "b": 124.47,
+            "w": 24.72,
+            "h": 28.47
+          },
+          ".gm-unite": {
+            "l": 144,
+            "t": 98.39,
+            "r": 744,
+            "b": 146.39,
+            "w": 600,
+            "h": 48
+          },
+          ".gtop": {
+            "l": 0,
+            "t": 0,
+            "r": 792,
+            "b": 42,
+            "w": 792,
+            "h": 42
+          }
+        },
+        "teams": [
+          {
+            "cls": "gm-team is-mine is-full",
+            "hidden": false,
+            "rect": {
+              "l": 8,
+              "t": 94.39,
+              "r": 96,
+              "b": 126.39,
+              "w": 88,
+              "h": 32
+            },
+            "head": {
+              "l": 8,
+              "t": 94.39,
+              "r": 96,
+              "b": 126.39,
+              "w": 88,
+              "h": 32
+            },
+            "rows": [],
+            "who": [],
+            "hp": [],
+            "tags": [],
+            "invite": [],
+            "title": "我方同盟",
+            "num": "4/4",
+            "expanded": "false"
+          },
+          {
+            "cls": "gm-team is-blue is-full",
+            "hidden": false,
+            "rect": {
+              "l": 8,
+              "t": 132.39,
+              "r": 96,
+              "b": 164.39,
+              "w": 88,
+              "h": 32
+            },
+            "head": {
+              "l": 8,
+              "t": 132.39,
+              "r": 96,
+              "b": 164.39,
+              "w": 88,
+              "h": 32
+            },
+            "rows": [],
+            "who": [],
+            "hp": [],
+            "tags": [],
+            "invite": [],
+            "title": "蓝方同盟",
+            "num": "4/4",
+            "expanded": "false"
+          },
+          {
+            "cls": "gm-team is-red is-full",
+            "hidden": false,
+            "rect": {
+              "l": 8,
+              "t": 170.39,
+              "r": 96,
+              "b": 202.39,
+              "w": 88,
+              "h": 32
+            },
+            "head": {
+              "l": 8,
+              "t": 170.39,
+              "r": 96,
+              "b": 202.39,
+              "w": 88,
+              "h": 32
+            },
+            "rows": [],
+            "who": [],
+            "hp": [],
+            "tags": [],
+            "invite": [],
+            "title": "红方同盟",
+            "num": "4/4",
+            "expanded": "false"
+          }
+        ],
+        "overlap": {
+          ".gm-teams × .team": 0,
+          ".gm-teams × .gm__bonds": 0,
+          ".gm-teams × .gm__corner": 0,
+          ".gm-teams × .shopbar": 0,
+          ".gm-teams × .gm__effects": 0,
+          ".gm-teams × .gm-unite": 0,
+          ".gm-teams × .gtop": 0,
+          ".gm-team[0] × .team": 0,
+          ".gm-team[0] × .gm__bonds": 0,
+          ".gm-team[0] × .gm__corner": 0,
+          ".gm-team[0] × .shopbar": 0,
+          ".gm-team[0] × .gm__effects": 0,
+          ".gm-team[0] × .gm-unite": 0,
+          ".gm-team[0] × .gtop": 0,
+          ".gm-team[1] × .team": 0,
+          ".gm-team[1] × .gm__bonds": 0,
+          ".gm-team[1] × .gm__corner": 0,
+          ".gm-team[1] × .shopbar": 0,
+          ".gm-team[1] × .gm__effects": 0,
+          ".gm-team[1] × .gm-unite": 0,
+          ".gm-team[1] × .gtop": 0,
+          ".gm-team[2] × .team": 0,
+          ".gm-team[2] × .gm__bonds": 0,
+          ".gm-team[2] × .gm__corner": 0,
+          ".gm-team[2] × .shopbar": 0,
+          ".gm-team[2] × .gm__effects": 0,
+          ".gm-team[2] × .gm-unite": 0,
+          ".gm-team[2] × .gtop": 0
+        },
+        "gmCounts": {
+          ".gm-teams": 1,
+          ".gm-team": 3,
+          ".gm-strip": 0,
+          ".gm-chips": 0,
+          ".gm-panel": 0,
+          ".gm-mates": 0,
+          ".gm-unite": 1,
+          ".team": 0
+        },
+        "hudChildren": [
+          "gtop",
+          "gm__bonds",
+          "gm-teams",
+          "gm-unite",
+          "gm__effects",
+          "chud",
+          "ticker",
+          "chat-panel  ",
+          "ui-slot gm__ui-slot",
+          "gm__corner"
+        ],
+        "gameClass": "screen gm gm--combat has-multi",
+        "phase": "UNITE",
+        "round": 3,
+        "maxSeats": 12,
+        "styles": {
+          "teamsLeft": "8px",
+          "teamsTop": "94.4px",
+          "uniteLeft": "144px",
+          "teamLeft": null,
+          "teamW": "88px",
+          "teamH": "32px"
+        },
+        "rem": 40,
+        "teamsText": "我方同盟4/4蓝方同盟4/4红方同盟4/4"
+      },
+      "unite1920": {
+        "vw": 1920,
+        "vh": 1080,
+        "boxes": {
+          ".gm-teams": {
+            "l": 20,
+            "t": 236,
+            "r": 240,
+            "b": 506,
+            "w": 220,
+            "h": 270
+          },
+          ".team": null,
+          ".gm__bonds": {
+            "l": 735,
+            "t": 136,
+            "r": 1185,
+            "b": 232.84,
+            "w": 450,
+            "h": 96.84
+          },
+          ".gm__corner": {
+            "l": 24,
+            "t": 1000,
+            "r": 278,
+            "b": 1056,
+            "w": 254,
+            "h": 56
+          },
+          ".shopbar": null,
+          ".gm__effects": {
+            "l": 1828.2,
+            "t": 240,
+            "r": 1890,
+            "b": 311.19,
+            "w": 61.8,
+            "h": 71.19
+          },
+          ".gm-unite": {
+            "l": 360,
+            "t": 246,
+            "r": 1800,
+            "b": 366,
+            "w": 1440,
+            "h": 120
+          },
+          ".gtop": {
+            "l": 0,
+            "t": 0,
+            "r": 1920,
+            "b": 104.8,
+            "w": 1920,
+            "h": 104.8
+          }
+        },
+        "teams": [
+          {
+            "cls": "gm-team is-mine is-full",
+            "hidden": false,
+            "rect": {
+              "l": 20,
+              "t": 236,
+              "r": 240,
+              "b": 316,
+              "w": 220,
+              "h": 80
+            },
+            "head": {
+              "l": 20,
+              "t": 236,
+              "r": 240,
+              "b": 316,
+              "w": 220,
+              "h": 80
+            },
+            "rows": [],
+            "who": [],
+            "hp": [],
+            "tags": [],
+            "invite": [],
+            "title": "我方同盟",
+            "num": "4/4",
+            "expanded": "false"
+          },
+          {
+            "cls": "gm-team is-blue is-full",
+            "hidden": false,
+            "rect": {
+              "l": 20,
+              "t": 331,
+              "r": 240,
+              "b": 411,
+              "w": 220,
+              "h": 80
+            },
+            "head": {
+              "l": 20,
+              "t": 331,
+              "r": 240,
+              "b": 411,
+              "w": 220,
+              "h": 80
+            },
+            "rows": [],
+            "who": [],
+            "hp": [],
+            "tags": [],
+            "invite": [],
+            "title": "蓝方同盟",
+            "num": "4/4",
+            "expanded": "false"
+          },
+          {
+            "cls": "gm-team is-red is-full",
+            "hidden": false,
+            "rect": {
+              "l": 20,
+              "t": 426,
+              "r": 240,
+              "b": 506,
+              "w": 220,
+              "h": 80
+            },
+            "head": {
+              "l": 20,
+              "t": 426,
+              "r": 240,
+              "b": 506,
+              "w": 220,
+              "h": 80
+            },
+            "rows": [],
+            "who": [],
+            "hp": [],
+            "tags": [],
+            "invite": [],
+            "title": "红方同盟",
+            "num": "4/4",
+            "expanded": "false"
+          }
+        ],
+        "overlap": {
+          ".gm-teams × .team": 0,
+          ".gm-teams × .gm__bonds": 0,
+          ".gm-teams × .gm__corner": 0,
+          ".gm-teams × .shopbar": 0,
+          ".gm-teams × .gm__effects": 0,
+          ".gm-teams × .gm-unite": 0,
+          ".gm-teams × .gtop": 0,
+          ".gm-team[0] × .team": 0,
+          ".gm-team[0] × .gm__bonds": 0,
+          ".gm-team[0] × .gm__corner": 0,
+          ".gm-team[0] × .shopbar": 0,
+          ".gm-team[0] × .gm__effects": 0,
+          ".gm-team[0] × .gm-unite": 0,
+          ".gm-team[0] × .gtop": 0,
+          ".gm-team[1] × .team": 0,
+          ".gm-team[1] × .gm__bonds": 0,
+          ".gm-team[1] × .gm__corner": 0,
+          ".gm-team[1] × .shopbar": 0,
+          ".gm-team[1] × .gm__effects": 0,
+          ".gm-team[1] × .gm-unite": 0,
+          ".gm-team[1] × .gtop": 0,
+          ".gm-team[2] × .team": 0,
+          ".gm-team[2] × .gm__bonds": 0,
+          ".gm-team[2] × .gm__corner": 0,
+          ".gm-team[2] × .shopbar": 0,
+          ".gm-team[2] × .gm__effects": 0,
+          ".gm-team[2] × .gm-unite": 0,
+          ".gm-team[2] × .gtop": 0
+        },
+        "gmCounts": {
+          ".gm-teams": 1,
+          ".gm-team": 3,
+          ".gm-strip": 0,
+          ".gm-chips": 0,
+          ".gm-panel": 0,
+          ".gm-mates": 0,
+          ".gm-unite": 1,
+          ".team": 0
+        },
+        "hudChildren": [
+          "gtop",
+          "gm__bonds",
+          "gm-teams",
+          "gm-unite",
+          "gm__effects",
+          "chud",
+          "ticker",
+          "chat-panel  ",
+          "ui-slot gm__ui-slot",
+          "gm__corner"
+        ],
+        "gameClass": "screen gm gm--combat has-multi",
+        "phase": "UNITE",
+        "round": 3,
+        "maxSeats": 12,
+        "styles": {
+          "teamsLeft": "20px",
+          "teamsTop": "236px",
+          "uniteLeft": "360px",
+          "teamLeft": null,
+          "teamW": "220px",
+          "teamH": "80px"
+        },
+        "rem": 100,
+        "teamsText": "我方同盟4/4蓝方同盟4/4红方同盟4/4"
+      },
+      "uniteRoster792": {
+        "vw": 792,
+        "vh": 360,
+        "boxes": {
+          ".gm-teams": {
+            "l": 8,
+            "t": 94.39,
+            "r": 96,
+            "b": 262.39,
+            "w": 88,
+            "h": 168
+          },
+          ".team": null,
+          ".gm__bonds": {
+            "l": 306.02,
+            "t": 54.39,
+            "r": 485.98,
+            "b": 94.31,
+            "w": 179.97,
+            "h": 39.92
+          },
+          ".gm__corner": {
+            "l": 9.59,
+            "t": 316.41,
+            "r": 157.59,
+            "b": 350.41,
+            "w": 148,
+            "h": 34
+          },
+          ".shopbar": null,
+          ".gm__effects": {
+            "l": 755.28,
+            "t": 96,
+            "r": 780,
+            "b": 124.47,
+            "w": 24.72,
+            "h": 28.47
+          },
+          ".gm-unite": {
+            "l": 144,
+            "t": 98.39,
+            "r": 744,
+            "b": 146.39,
+            "w": 600,
+            "h": 48
+          },
+          ".gtop": {
+            "l": 0,
+            "t": 0,
+            "r": 792,
+            "b": 42,
+            "w": 792,
+            "h": 42
+          }
+        },
+        "teams": [
+          {
+            "cls": "gm-team is-mine is-full is-open",
+            "hidden": false,
+            "rect": {
+              "l": 8,
+              "t": 94.39,
+              "r": 96,
+              "b": 262.39,
+              "w": 88,
+              "h": 168
+            },
+            "head": {
+              "l": 8,
+              "t": 94.39,
+              "r": 96,
+              "b": 126.39,
+              "w": 88,
+              "h": 32
+            },
+            "rows": [
+              {
+                "l": 8,
+                "t": 126.39,
+                "r": 96,
+                "b": 160.39,
+                "w": 88,
+                "h": 34
+              },
+              {
+                "l": 8,
+                "t": 160.39,
+                "r": 96,
+                "b": 194.39,
+                "w": 88,
+                "h": 34
+              },
+              {
+                "l": 8,
+                "t": 194.39,
+                "r": 96,
+                "b": 228.39,
+                "w": 88,
+                "h": 34
+              },
+              {
+                "l": 8,
+                "t": 228.39,
+                "r": 96,
+                "b": 262.39,
+                "w": 88,
+                "h": 34
+              }
+            ],
+            "who": [
+              "T12",
+              "AI·华法琳",
+              "AI·阿米娅",
+              "AI·惊蛰"
+            ],
+            "hp": [
+              "29",
+              "28",
+              "28",
+              "23"
+            ],
+            "tags": [],
+            "invite": [],
+            "title": "我方同盟",
+            "num": "4/4",
+            "expanded": "true"
+          },
+          {
+            "cls": "gm-team is-blue is-full",
+            "hidden": true,
+            "rect": {
+              "l": 0,
+              "t": 0,
+              "r": 0,
+              "b": 0,
+              "w": 0,
+              "h": 0
+            },
+            "head": {
+              "l": 0,
+              "t": 0,
+              "r": 0,
+              "b": 0,
+              "w": 0,
+              "h": 0
+            },
+            "rows": [],
+            "who": [],
+            "hp": [],
+            "tags": [],
+            "invite": [],
+            "title": "蓝方同盟",
+            "num": "4/4",
+            "expanded": "false"
+          },
+          {
+            "cls": "gm-team is-red is-full",
+            "hidden": true,
+            "rect": {
+              "l": 0,
+              "t": 0,
+              "r": 0,
+              "b": 0,
+              "w": 0,
+              "h": 0
+            },
+            "head": {
+              "l": 0,
+              "t": 0,
+              "r": 0,
+              "b": 0,
+              "w": 0,
+              "h": 0
+            },
+            "rows": [],
+            "who": [],
+            "hp": [],
+            "tags": [],
+            "invite": [],
+            "title": "红方同盟",
+            "num": "4/4",
+            "expanded": "false"
+          }
+        ],
+        "overlap": {
+          ".gm-teams × .team": 0,
+          ".gm-teams × .gm__bonds": 0,
+          ".gm-teams × .gm__corner": 0,
+          ".gm-teams × .shopbar": 0,
+          ".gm-teams × .gm__effects": 0,
+          ".gm-teams × .gm-unite": 0,
+          ".gm-teams × .gtop": 0,
+          ".gm-team[0] × .team": 0,
+          ".gm-team[0] × .gm__bonds": 0,
+          ".gm-team[0] × .gm__corner": 0,
+          ".gm-team[0] × .shopbar": 0,
+          ".gm-team[0] × .gm__effects": 0,
+          ".gm-team[0] × .gm-unite": 0,
+          ".gm-team[0] × .gtop": 0
+        },
+        "gmCounts": {
+          ".gm-teams": 1,
+          ".gm-team": 3,
+          ".gm-strip": 0,
+          ".gm-chips": 0,
+          ".gm-panel": 0,
+          ".gm-mates": 0,
+          ".gm-unite": 1,
+          ".team": 0
+        },
+        "hudChildren": [
+          "gtop",
+          "gm__bonds",
+          "gm-teams",
+          "gm-unite",
+          "gm__effects",
+          "chud",
+          "ticker",
+          "chat-panel  ",
+          "ui-slot gm__ui-slot",
+          "gm__corner"
+        ],
+        "gameClass": "screen gm gm--combat has-multi",
+        "phase": "UNITE",
+        "round": 3,
+        "maxSeats": 12,
+        "styles": {
+          "teamsLeft": "8px",
+          "teamsTop": "94.4px",
+          "uniteLeft": "144px",
+          "teamLeft": null,
+          "teamW": "88px",
+          "teamH": "168px"
+        },
+        "rem": 40,
+        "teamsText": "我方同盟4/4T1229AI·华法琳28AI·阿米娅28AI·惊蛰23蓝方同盟4/4红方同盟4/4"
+      },
+      "uniteRoster1920": {
+        "vw": 1920,
+        "vh": 1080,
+        "boxes": {
+          ".gm-teams": {
+            "l": 20,
+            "t": 236,
+            "r": 240,
+            "b": 656,
+            "w": 220,
+            "h": 420
+          },
+          ".team": null,
+          ".gm__bonds": {
+            "l": 735,
+            "t": 136,
+            "r": 1185,
+            "b": 232.84,
+            "w": 450,
+            "h": 96.84
+          },
+          ".gm__corner": {
+            "l": 24,
+            "t": 1000,
+            "r": 278,
+            "b": 1056,
+            "w": 254,
+            "h": 56
+          },
+          ".shopbar": null,
+          ".gm__effects": {
+            "l": 1828.2,
+            "t": 240,
+            "r": 1890,
+            "b": 311.19,
+            "w": 61.8,
+            "h": 71.19
+          },
+          ".gm-unite": {
+            "l": 360,
+            "t": 246,
+            "r": 1800,
+            "b": 366,
+            "w": 1440,
+            "h": 120
+          },
+          ".gtop": {
+            "l": 0,
+            "t": 0,
+            "r": 1920,
+            "b": 104.8,
+            "w": 1920,
+            "h": 104.8
+          }
+        },
+        "teams": [
+          {
+            "cls": "gm-team is-mine is-full is-open",
+            "hidden": false,
+            "rect": {
+              "l": 20,
+              "t": 236,
+              "r": 240,
+              "b": 656,
+              "w": 220,
+              "h": 420
+            },
+            "head": {
+              "l": 20,
+              "t": 236,
+              "r": 240,
+              "b": 316,
+              "w": 220,
+              "h": 80
+            },
+            "rows": [
+              {
+                "l": 20,
+                "t": 316,
+                "r": 240,
+                "b": 401,
+                "w": 220,
+                "h": 85
+              },
+              {
+                "l": 20,
+                "t": 401,
+                "r": 240,
+                "b": 486,
+                "w": 220,
+                "h": 85
+              },
+              {
+                "l": 20,
+                "t": 486,
+                "r": 240,
+                "b": 571,
+                "w": 220,
+                "h": 85
+              },
+              {
+                "l": 20,
+                "t": 571,
+                "r": 240,
+                "b": 656,
+                "w": 220,
+                "h": 85
+              }
+            ],
+            "who": [
+              "T12",
+              "AI·华法琳",
+              "AI·阿米娅",
+              "AI·惊蛰"
+            ],
+            "hp": [
+              "29",
+              "28",
+              "28",
+              "23"
+            ],
+            "tags": [],
+            "invite": [],
+            "title": "我方同盟",
+            "num": "4/4",
+            "expanded": "true"
+          },
+          {
+            "cls": "gm-team is-blue is-full",
+            "hidden": true,
+            "rect": {
+              "l": 0,
+              "t": 0,
+              "r": 0,
+              "b": 0,
+              "w": 0,
+              "h": 0
+            },
+            "head": {
+              "l": 0,
+              "t": 0,
+              "r": 0,
+              "b": 0,
+              "w": 0,
+              "h": 0
+            },
+            "rows": [],
+            "who": [],
+            "hp": [],
+            "tags": [],
+            "invite": [],
+            "title": "蓝方同盟",
+            "num": "4/4",
+            "expanded": "false"
+          },
+          {
+            "cls": "gm-team is-red is-full",
+            "hidden": true,
+            "rect": {
+              "l": 0,
+              "t": 0,
+              "r": 0,
+              "b": 0,
+              "w": 0,
+              "h": 0
+            },
+            "head": {
+              "l": 0,
+              "t": 0,
+              "r": 0,
+              "b": 0,
+              "w": 0,
+              "h": 0
+            },
+            "rows": [],
+            "who": [],
+            "hp": [],
+            "tags": [],
+            "invite": [],
+            "title": "红方同盟",
+            "num": "4/4",
+            "expanded": "false"
+          }
+        ],
+        "overlap": {
+          ".gm-teams × .team": 0,
+          ".gm-teams × .gm__bonds": 0,
+          ".gm-teams × .gm__corner": 0,
+          ".gm-teams × .shopbar": 0,
+          ".gm-teams × .gm__effects": 0,
+          ".gm-teams × .gm-unite": 0,
+          ".gm-teams × .gtop": 0,
+          ".gm-team[0] × .team": 0,
+          ".gm-team[0] × .gm__bonds": 0,
+          ".gm-team[0] × .gm__corner": 0,
+          ".gm-team[0] × .shopbar": 0,
+          ".gm-team[0] × .gm__effects": 0,
+          ".gm-team[0] × .gm-unite": 0,
+          ".gm-team[0] × .gtop": 0
+        },
+        "gmCounts": {
+          ".gm-teams": 1,
+          ".gm-team": 3,
+          ".gm-strip": 0,
+          ".gm-chips": 0,
+          ".gm-panel": 0,
+          ".gm-mates": 0,
+          ".gm-unite": 1,
+          ".team": 0
+        },
+        "hudChildren": [
+          "gtop",
+          "gm__bonds",
+          "gm-teams",
+          "gm-unite",
+          "gm__effects",
+          "chud",
+          "ticker",
+          "chat-panel  ",
+          "ui-slot gm__ui-slot",
+          "gm__corner"
+        ],
+        "gameClass": "screen gm gm--combat has-multi",
+        "phase": "UNITE",
+        "round": 3,
+        "maxSeats": 12,
+        "styles": {
+          "teamsLeft": "20px",
+          "teamsTop": "236px",
+          "uniteLeft": "360px",
+          "teamLeft": null,
+          "teamW": "220px",
+          "teamH": "420px"
+        },
+        "rem": 100,
+        "teamsText": "我方同盟4/4T1229AI·华法琳28AI·阿米娅28AI·惊蛰23蓝方同盟4/4红方同盟4/4"
+      }
+    },
+    "room8": {
+      "code": "HAAC",
+      "prep792": {
+        "vw": 792,
+        "vh": 360,
+        "boxes": {
+          ".gm-teams": {
+            "l": 8,
+            "t": 94.39,
+            "r": 96,
+            "b": 164.39,
+            "w": 88,
+            "h": 70
+          },
+          ".team": null,
+          ".gm__bonds": {
+            "l": 339.61,
+            "t": 54.39,
+            "r": 452.39,
+            "b": 94.31,
+            "w": 112.78,
+            "h": 39.92
+          },
+          ".gm__corner": {
+            "l": 9.59,
+            "t": 316.41,
+            "r": 157.59,
+            "b": 350.41,
+            "w": 148,
+            "h": 34
+          },
+          ".shopbar": {
+            "l": 379.52,
+            "t": 194.66,
+            "r": 781.61,
+            "b": 352,
+            "w": 402.09,
+            "h": 157.34
+          },
+          ".gm__effects": {
+            "l": 755.28,
+            "t": 96,
+            "r": 780,
+            "b": 124.47,
+            "w": 24.72,
+            "h": 28.47
+          },
+          ".gm-unite": null,
+          ".gtop": {
+            "l": 0,
+            "t": 0,
+            "r": 792,
+            "b": 58.19,
+            "w": 792,
+            "h": 58.19
+          }
+        },
+        "teams": [
+          {
+            "cls": "gm-team is-mine is-full",
+            "hidden": false,
+            "rect": {
+              "l": 8,
+              "t": 94.39,
+              "r": 96,
+              "b": 126.39,
+              "w": 88,
+              "h": 32
+            },
+            "head": {
+              "l": 8,
+              "t": 94.39,
+              "r": 96,
+              "b": 126.39,
+              "w": 88,
+              "h": 32
+            },
+            "rows": [],
+            "who": [],
+            "hp": [],
+            "tags": [],
+            "invite": [],
+            "title": "我方同盟",
+            "num": "4/4",
+            "expanded": "false"
+          },
+          {
+            "cls": "gm-team is-full",
+            "hidden": false,
+            "rect": {
+              "l": 8,
+              "t": 132.39,
+              "r": 96,
+              "b": 164.39,
+              "w": 88,
+              "h": 32
+            },
+            "head": {
+              "l": 8,
+              "t": 132.39,
+              "r": 96,
+              "b": 164.39,
+              "w": 88,
+              "h": 32
+            },
+            "rows": [],
+            "who": [],
+            "hp": [],
+            "tags": [],
+            "invite": [],
+            "title": "对方同盟",
+            "num": "4/4",
+            "expanded": "false"
+          }
+        ],
+        "overlap": {
+          ".gm-teams × .team": 0,
+          ".gm-teams × .gm__bonds": 0,
+          ".gm-teams × .gm__corner": 0,
+          ".gm-teams × .shopbar": 0,
+          ".gm-teams × .gm__effects": 0,
+          ".gm-teams × .gm-unite": 0,
+          ".gm-teams × .gtop": 0,
+          ".gm-team[0] × .team": 0,
+          ".gm-team[0] × .gm__bonds": 0,
+          ".gm-team[0] × .gm__corner": 0,
+          ".gm-team[0] × .shopbar": 0,
+          ".gm-team[0] × .gm__effects": 0,
+          ".gm-team[0] × .gm-unite": 0,
+          ".gm-team[0] × .gtop": 0,
+          ".gm-team[1] × .team": 0,
+          ".gm-team[1] × .gm__bonds": 0,
+          ".gm-team[1] × .gm__corner": 0,
+          ".gm-team[1] × .shopbar": 0,
+          ".gm-team[1] × .gm__effects": 0,
+          ".gm-team[1] × .gm-unite": 0,
+          ".gm-team[1] × .gtop": 0
+        },
+        "gmCounts": {
+          ".gm-teams": 1,
+          ".gm-team": 2,
+          ".gm-strip": 0,
+          ".gm-chips": 0,
+          ".gm-panel": 0,
+          ".gm-mates": 0,
+          ".gm-unite": 0,
+          ".team": 0
+        },
+        "hudChildren": [
+          "gtop",
+          "gm__bonds",
+          "gm-teams",
+          "gm__effects",
+          "shopbar",
+          "chat-panel  ",
+          "ui-slot gm__ui-slot",
+          "gm__corner"
+        ],
+        "gameClass": "screen gm gm--prep has-multi",
+        "phase": "PREP",
+        "round": 3,
+        "maxSeats": 8,
+        "styles": {
+          "teamsLeft": "8px",
+          "teamsTop": "94.4px",
+          "uniteLeft": null,
+          "teamLeft": null,
+          "teamW": "88px",
+          "teamH": "32px"
+        },
+        "rem": 40,
+        "teamsText": "我方同盟4/4对方同盟4/4"
+      },
+      "prep1920": {
+        "vw": 1920,
+        "vh": 1080,
+        "boxes": {
+          ".gm-teams": {
+            "l": 20,
+            "t": 236,
+            "r": 240,
+            "b": 411,
+            "w": 220,
+            "h": 175
+          },
+          ".team": null,
+          ".gm__bonds": {
+            "l": 819,
+            "t": 136,
+            "r": 1101,
+            "b": 232.84,
+            "w": 282,
+            "h": 96.84
+          },
+          ".gm__corner": {
+            "l": 24,
+            "t": 1000,
+            "r": 278,
+            "b": 1056,
+            "w": 254,
+            "h": 56
+          },
+          ".shopbar": {
+            "l": 893,
+            "t": 694,
+            "r": 1894,
+            "b": 1060,
+            "w": 1001,
+            "h": 366
+          },
+          ".gm__effects": {
+            "l": 1828.2,
+            "t": 240,
+            "r": 1890,
+            "b": 311.19,
+            "w": 61.8,
+            "h": 71.19
+          },
+          ".gm-unite": null,
+          ".gtop": {
+            "l": 0,
+            "t": 0,
+            "r": 1920,
+            "b": 116.5,
+            "w": 1920,
+            "h": 116.5
+          }
+        },
+        "teams": [
+          {
+            "cls": "gm-team is-mine is-full",
+            "hidden": false,
+            "rect": {
+              "l": 20,
+              "t": 236,
+              "r": 240,
+              "b": 316,
+              "w": 220,
+              "h": 80
+            },
+            "head": {
+              "l": 20,
+              "t": 236,
+              "r": 240,
+              "b": 316,
+              "w": 220,
+              "h": 80
+            },
+            "rows": [],
+            "who": [],
+            "hp": [],
+            "tags": [],
+            "invite": [],
+            "title": "我方同盟",
+            "num": "4/4",
+            "expanded": "false"
+          },
+          {
+            "cls": "gm-team is-full",
+            "hidden": false,
+            "rect": {
+              "l": 20,
+              "t": 331,
+              "r": 240,
+              "b": 411,
+              "w": 220,
+              "h": 80
+            },
+            "head": {
+              "l": 20,
+              "t": 331,
+              "r": 240,
+              "b": 411,
+              "w": 220,
+              "h": 80
+            },
+            "rows": [],
+            "who": [],
+            "hp": [],
+            "tags": [],
+            "invite": [],
+            "title": "对方同盟",
+            "num": "4/4",
+            "expanded": "false"
+          }
+        ],
+        "overlap": {
+          ".gm-teams × .team": 0,
+          ".gm-teams × .gm__bonds": 0,
+          ".gm-teams × .gm__corner": 0,
+          ".gm-teams × .shopbar": 0,
+          ".gm-teams × .gm__effects": 0,
+          ".gm-teams × .gm-unite": 0,
+          ".gm-teams × .gtop": 0,
+          ".gm-team[0] × .team": 0,
+          ".gm-team[0] × .gm__bonds": 0,
+          ".gm-team[0] × .gm__corner": 0,
+          ".gm-team[0] × .shopbar": 0,
+          ".gm-team[0] × .gm__effects": 0,
+          ".gm-team[0] × .gm-unite": 0,
+          ".gm-team[0] × .gtop": 0,
+          ".gm-team[1] × .team": 0,
+          ".gm-team[1] × .gm__bonds": 0,
+          ".gm-team[1] × .gm__corner": 0,
+          ".gm-team[1] × .shopbar": 0,
+          ".gm-team[1] × .gm__effects": 0,
+          ".gm-team[1] × .gm-unite": 0,
+          ".gm-team[1] × .gtop": 0
+        },
+        "gmCounts": {
+          ".gm-teams": 1,
+          ".gm-team": 2,
+          ".gm-strip": 0,
+          ".gm-chips": 0,
+          ".gm-panel": 0,
+          ".gm-mates": 0,
+          ".gm-unite": 0,
+          ".team": 0
+        },
+        "hudChildren": [
+          "gtop",
+          "gm__bonds",
+          "gm-teams",
+          "gm__effects",
+          "shopbar",
+          "chat-panel  ",
+          "ui-slot gm__ui-slot",
+          "gm__corner"
+        ],
+        "gameClass": "screen gm gm--prep has-multi",
+        "phase": "PREP",
+        "round": 3,
+        "maxSeats": 8,
+        "styles": {
+          "teamsLeft": "20px",
+          "teamsTop": "236px",
+          "uniteLeft": null,
+          "teamLeft": null,
+          "teamW": "220px",
+          "teamH": "80px"
+        },
+        "rem": 100,
+        "teamsText": "我方同盟4/4对方同盟4/4"
+      },
+      "roster792": {
+        "vw": 792,
+        "vh": 360,
+        "boxes": {
+          ".gm-teams": {
+            "l": 8,
+            "t": 94.39,
+            "r": 96,
+            "b": 262.39,
+            "w": 88,
+            "h": 168
+          },
+          ".team": null,
+          ".gm__bonds": {
+            "l": 339.61,
+            "t": 54.39,
+            "r": 452.39,
+            "b": 94.31,
+            "w": 112.78,
+            "h": 39.92
+          },
+          ".gm__corner": {
+            "l": 9.59,
+            "t": 316.41,
+            "r": 157.59,
+            "b": 350.41,
+            "w": 148,
+            "h": 34
+          },
+          ".shopbar": {
+            "l": 379.52,
+            "t": 194.66,
+            "r": 781.61,
+            "b": 352,
+            "w": 402.09,
+            "h": 157.34
+          },
+          ".gm__effects": {
+            "l": 755.28,
+            "t": 96,
+            "r": 780,
+            "b": 124.47,
+            "w": 24.72,
+            "h": 28.47
+          },
+          ".gm-unite": null,
+          ".gtop": {
+            "l": 0,
+            "t": 0,
+            "r": 792,
+            "b": 58.19,
+            "w": 792,
+            "h": 58.19
+          }
+        },
+        "teams": [
+          {
+            "cls": "gm-team is-mine is-full is-open",
+            "hidden": false,
+            "rect": {
+              "l": 8,
+              "t": 94.39,
+              "r": 96,
+              "b": 262.39,
+              "w": 88,
+              "h": 168
+            },
+            "head": {
+              "l": 8,
+              "t": 94.39,
+              "r": 96,
+              "b": 126.39,
+              "w": 88,
+              "h": 32
+            },
+            "rows": [
+              {
+                "l": 8,
+                "t": 126.39,
+                "r": 96,
+                "b": 160.39,
+                "w": 88,
+                "h": 34
+              },
+              {
+                "l": 8,
+                "t": 160.39,
+                "r": 96,
+                "b": 194.39,
+                "w": 88,
+                "h": 34
+              },
+              {
+                "l": 8,
+                "t": 194.39,
+                "r": 96,
+                "b": 228.39,
+                "w": 88,
+                "h": 34
+              },
+              {
+                "l": 8,
+                "t": 228.39,
+                "r": 96,
+                "b": 262.39,
+                "w": 88,
+                "h": 34
+              }
+            ],
+            "who": [
+              "T8",
+              "AI·华法琳",
+              "AI·阿米娅",
+              "AI·惊蛰"
+            ],
+            "hp": [
+              "29",
+              "26",
+              "29",
+              "27"
+            ],
+            "tags": [],
+            "invite": [],
+            "title": "我方同盟",
+            "num": "4/4",
+            "expanded": "true"
+          },
+          {
+            "cls": "gm-team is-full",
+            "hidden": true,
+            "rect": {
+              "l": 0,
+              "t": 0,
+              "r": 0,
+              "b": 0,
+              "w": 0,
+              "h": 0
+            },
+            "head": {
+              "l": 0,
+              "t": 0,
+              "r": 0,
+              "b": 0,
+              "w": 0,
+              "h": 0
+            },
+            "rows": [],
+            "who": [],
+            "hp": [],
+            "tags": [],
+            "invite": [],
+            "title": "对方同盟",
+            "num": "4/4",
+            "expanded": "false"
+          }
+        ],
+        "overlap": {
+          ".gm-teams × .team": 0,
+          ".gm-teams × .gm__bonds": 0,
+          ".gm-teams × .gm__corner": 0,
+          ".gm-teams × .shopbar": 0,
+          ".gm-teams × .gm__effects": 0,
+          ".gm-teams × .gm-unite": 0,
+          ".gm-teams × .gtop": 0,
+          ".gm-team[0] × .team": 0,
+          ".gm-team[0] × .gm__bonds": 0,
+          ".gm-team[0] × .gm__corner": 0,
+          ".gm-team[0] × .shopbar": 0,
+          ".gm-team[0] × .gm__effects": 0,
+          ".gm-team[0] × .gm-unite": 0,
+          ".gm-team[0] × .gtop": 0
+        },
+        "gmCounts": {
+          ".gm-teams": 1,
+          ".gm-team": 2,
+          ".gm-strip": 0,
+          ".gm-chips": 0,
+          ".gm-panel": 0,
+          ".gm-mates": 0,
+          ".gm-unite": 0,
+          ".team": 0
+        },
+        "hudChildren": [
+          "gtop",
+          "gm__bonds",
+          "gm-teams",
+          "gm__effects",
+          "shopbar",
+          "chat-panel  ",
+          "ui-slot gm__ui-slot",
+          "gm__corner"
+        ],
+        "gameClass": "screen gm gm--prep has-multi",
+        "phase": "PREP",
+        "round": 3,
+        "maxSeats": 8,
+        "styles": {
+          "teamsLeft": "8px",
+          "teamsTop": "94.4px",
+          "uniteLeft": null,
+          "teamLeft": null,
+          "teamW": "88px",
+          "teamH": "168px"
+        },
+        "rem": 40,
+        "teamsText": "我方同盟4/4T829AI·华法琳26AI·阿米娅29AI·惊蛰27对方同盟4/4"
+      },
+      "roster1920": {
+        "vw": 1920,
+        "vh": 1080,
+        "boxes": {
+          ".gm-teams": {
+            "l": 20,
+            "t": 236,
+            "r": 240,
+            "b": 656,
+            "w": 220,
+            "h": 420
+          },
+          ".team": null,
+          ".gm__bonds": {
+            "l": 819,
+            "t": 136,
+            "r": 1101,
+            "b": 232.84,
+            "w": 282,
+            "h": 96.84
+          },
+          ".gm__corner": {
+            "l": 24,
+            "t": 1000,
+            "r": 278,
+            "b": 1056,
+            "w": 254,
+            "h": 56
+          },
+          ".shopbar": {
+            "l": 893,
+            "t": 694,
+            "r": 1894,
+            "b": 1060,
+            "w": 1001,
+            "h": 366
+          },
+          ".gm__effects": {
+            "l": 1828.2,
+            "t": 240,
+            "r": 1890,
+            "b": 311.19,
+            "w": 61.8,
+            "h": 71.19
+          },
+          ".gm-unite": null,
+          ".gtop": {
+            "l": 0,
+            "t": 0,
+            "r": 1920,
+            "b": 116.5,
+            "w": 1920,
+            "h": 116.5
+          }
+        },
+        "teams": [
+          {
+            "cls": "gm-team is-mine is-full is-open",
+            "hidden": false,
+            "rect": {
+              "l": 20,
+              "t": 236,
+              "r": 240,
+              "b": 656,
+              "w": 220,
+              "h": 420
+            },
+            "head": {
+              "l": 20,
+              "t": 236,
+              "r": 240,
+              "b": 316,
+              "w": 220,
+              "h": 80
+            },
+            "rows": [
+              {
+                "l": 20,
+                "t": 316,
+                "r": 240,
+                "b": 401,
+                "w": 220,
+                "h": 85
+              },
+              {
+                "l": 20,
+                "t": 401,
+                "r": 240,
+                "b": 486,
+                "w": 220,
+                "h": 85
+              },
+              {
+                "l": 20,
+                "t": 486,
+                "r": 240,
+                "b": 571,
+                "w": 220,
+                "h": 85
+              },
+              {
+                "l": 20,
+                "t": 571,
+                "r": 240,
+                "b": 656,
+                "w": 220,
+                "h": 85
+              }
+            ],
+            "who": [
+              "T8",
+              "AI·华法琳",
+              "AI·阿米娅",
+              "AI·惊蛰"
+            ],
+            "hp": [
+              "29",
+              "26",
+              "29",
+              "27"
+            ],
+            "tags": [],
+            "invite": [],
+            "title": "我方同盟",
+            "num": "4/4",
+            "expanded": "true"
+          },
+          {
+            "cls": "gm-team is-full",
+            "hidden": true,
+            "rect": {
+              "l": 0,
+              "t": 0,
+              "r": 0,
+              "b": 0,
+              "w": 0,
+              "h": 0
+            },
+            "head": {
+              "l": 0,
+              "t": 0,
+              "r": 0,
+              "b": 0,
+              "w": 0,
+              "h": 0
+            },
+            "rows": [],
+            "who": [],
+            "hp": [],
+            "tags": [],
+            "invite": [],
+            "title": "对方同盟",
+            "num": "4/4",
+            "expanded": "false"
+          }
+        ],
+        "overlap": {
+          ".gm-teams × .team": 0,
+          ".gm-teams × .gm__bonds": 0,
+          ".gm-teams × .gm__corner": 0,
+          ".gm-teams × .shopbar": 0,
+          ".gm-teams × .gm__effects": 0,
+          ".gm-teams × .gm-unite": 0,
+          ".gm-teams × .gtop": 0,
+          ".gm-team[0] × .team": 0,
+          ".gm-team[0] × .gm__bonds": 0,
+          ".gm-team[0] × .gm__corner": 0,
+          ".gm-team[0] × .shopbar": 0,
+          ".gm-team[0] × .gm__effects": 0,
+          ".gm-team[0] × .gm-unite": 0,
+          ".gm-team[0] × .gtop": 0
+        },
+        "gmCounts": {
+          ".gm-teams": 1,
+          ".gm-team": 2,
+          ".gm-strip": 0,
+          ".gm-chips": 0,
+          ".gm-panel": 0,
+          ".gm-mates": 0,
+          ".gm-unite": 0,
+          ".team": 0
+        },
+        "hudChildren": [
+          "gtop",
+          "gm__bonds",
+          "gm-teams",
+          "gm__effects",
+          "shopbar",
+          "chat-panel  ",
+          "ui-slot gm__ui-slot",
+          "gm__corner"
+        ],
+        "gameClass": "screen gm gm--prep has-multi",
+        "phase": "PREP",
+        "round": 3,
+        "maxSeats": 8,
+        "styles": {
+          "teamsLeft": "20px",
+          "teamsTop": "236px",
+          "uniteLeft": null,
+          "teamLeft": null,
+          "teamW": "220px",
+          "teamH": "420px"
+        },
+        "rem": 100,
+        "teamsText": "我方同盟4/4T829AI·华法琳26AI·阿米娅29AI·惊蛰27对方同盟4/4"
+      }
+    },
+    "room4": {
+      "code": "LKZR",
+      "prep792": {
+        "vw": 792,
+        "vh": 360,
+        "boxes": {
+          ".gm-teams": null,
+          ".team": {
+            "l": 8.8,
+            "t": 94.39,
+            "r": 85.78,
+            "b": 239.17,
+            "w": 76.98,
+            "h": 144.78
+          },
+          ".gm__bonds": {
+            "l": 339.61,
+            "t": 54.39,
+            "r": 452.39,
+            "b": 94.31,
+            "w": 112.78,
+            "h": 39.92
+          },
+          ".gm__corner": {
+            "l": 9.59,
+            "t": 316.41,
+            "r": 157.59,
+            "b": 350.41,
+            "w": 148,
+            "h": 34
+          },
+          ".shopbar": {
+            "l": 379.52,
+            "t": 194.66,
+            "r": 781.61,
+            "b": 352,
+            "w": 402.09,
+            "h": 157.34
+          },
+          ".gm__effects": {
+            "l": 755.28,
+            "t": 96,
+            "r": 780,
+            "b": 124.47,
+            "w": 24.72,
+            "h": 28.47
+          },
+          ".gm-unite": null,
+          ".gtop": {
+            "l": 0,
+            "t": 0,
+            "r": 792,
+            "b": 58.19,
+            "w": 792,
+            "h": 58.19
+          }
+        },
+        "teams": [],
+        "overlap": {
+          ".gm-teams × .team": 0,
+          ".gm-teams × .gm__bonds": 0,
+          ".gm-teams × .gm__corner": 0,
+          ".gm-teams × .shopbar": 0,
+          ".gm-teams × .gm__effects": 0,
+          ".gm-teams × .gm-unite": 0,
+          ".gm-teams × .gtop": 0
+        },
+        "gmCounts": {
+          ".gm-teams": 0,
+          ".gm-team": 0,
+          ".gm-strip": 0,
+          ".gm-chips": 0,
+          ".gm-panel": 0,
+          ".gm-mates": 0,
+          ".gm-unite": 0,
+          ".team": 1
+        },
+        "hudChildren": [
+          "gtop",
+          "gm__bonds",
+          "team",
+          "gm__effects",
+          "shopbar",
+          "chat-panel  ",
+          "ui-slot gm__ui-slot",
+          "gm__corner"
+        ],
+        "gameClass": "screen gm gm--prep",
+        "phase": "PREP",
+        "round": 3,
+        "maxSeats": null,
+        "styles": {
+          "teamsLeft": null,
+          "teamsTop": null,
+          "uniteLeft": null,
+          "teamLeft": "8.8px",
+          "teamW": null,
+          "teamH": null
+        },
+        "rem": 40,
+        "teamsText": ""
+      },
+      "prep1920": {
+        "vw": 1920,
+        "vh": 1080,
+        "boxes": {
+          ".gm-teams": null,
+          ".team": {
+            "l": 22,
+            "t": 236,
+            "r": 214.48,
+            "b": 598,
+            "w": 192.48,
+            "h": 362
+          },
+          ".gm__bonds": {
+            "l": 819,
+            "t": 136,
+            "r": 1101,
+            "b": 232.84,
+            "w": 282,
+            "h": 96.84
+          },
+          ".gm__corner": {
+            "l": 24,
+            "t": 1000,
+            "r": 278,
+            "b": 1056,
+            "w": 254,
+            "h": 56
+          },
+          ".shopbar": {
+            "l": 893,
+            "t": 694,
+            "r": 1894,
+            "b": 1060,
+            "w": 1001,
+            "h": 366
+          },
+          ".gm__effects": {
+            "l": 1828.2,
+            "t": 240,
+            "r": 1890,
+            "b": 311.19,
+            "w": 61.8,
+            "h": 71.19
+          },
+          ".gm-unite": null,
+          ".gtop": {
+            "l": 0,
+            "t": 0,
+            "r": 1920,
+            "b": 116.5,
+            "w": 1920,
+            "h": 116.5
+          }
+        },
+        "teams": [],
+        "overlap": {
+          ".gm-teams × .team": 0,
+          ".gm-teams × .gm__bonds": 0,
+          ".gm-teams × .gm__corner": 0,
+          ".gm-teams × .shopbar": 0,
+          ".gm-teams × .gm__effects": 0,
+          ".gm-teams × .gm-unite": 0,
+          ".gm-teams × .gtop": 0
+        },
+        "gmCounts": {
+          ".gm-teams": 0,
+          ".gm-team": 0,
+          ".gm-strip": 0,
+          ".gm-chips": 0,
+          ".gm-panel": 0,
+          ".gm-mates": 0,
+          ".gm-unite": 0,
+          ".team": 1
+        },
+        "hudChildren": [
+          "gtop",
+          "gm__bonds",
+          "team",
+          "gm__effects",
+          "shopbar",
+          "chat-panel  ",
+          "ui-slot gm__ui-slot",
+          "gm__corner"
+        ],
+        "gameClass": "screen gm gm--prep",
+        "phase": "PREP",
+        "round": 3,
+        "maxSeats": null,
+        "styles": {
+          "teamsLeft": null,
+          "teamsTop": null,
+          "uniteLeft": null,
+          "teamLeft": "22px",
+          "teamW": null,
+          "teamH": null
+        },
+        "rem": 100,
+        "teamsText": ""
+      }
+    }
+  }
+}

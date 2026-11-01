@@ -108,40 +108,40 @@
 /* 「请选择策略」 (ui/turnBanner.js, the band draft when the pick becomes the player's; video 7:18–7:20): over a dimmed
    screen a light-grey band slides in from the left (the STRONGHOLD PROTOCOL mark, the contour map, the ship's outline),
    a teal fill wipes over it with 请选择策略 and the ring, the robot's square beside it; then it folds shut (1.7 s). */
-.tbanner {
+.tbanner--turn {
   --px: min(.01rem, calc(100vw / 1920), calc(100vh / 1080));
   --teal: #52d6b0;
   --ink: #0b1f1b;
   position: fixed; inset: 0; z-index: 70; pointer-events: none;
 }
-.tbanner__dim { position: absolute; inset: 0; background: rgba(0, 0, 0, .55); animation: tbanner-dim 1700ms linear both; }
-.tbanner__band { position: absolute; left: 0; right: 0; top: calc(50% - 110 * var(--px)); height: calc(220 * var(--px)); display: flex;
+.tbanner--turn .tbanner__dim { position: absolute; inset: 0; background: rgba(0, 0, 0, .55); animation: tbanner-dim 1700ms linear both; }
+.tbanner--turn .tbanner__band { position: absolute; left: 0; right: 0; top: calc(50% - 110 * var(--px)); height: calc(220 * var(--px)); display: flex;
   gap: calc(12 * var(--px)); padding-right: calc(15 * var(--px)); transform-origin: 50% 50%; animation: tbanner-band 1700ms cubic-bezier(.2, .7, .2, 1) both; }
-.tbanner__bar { position: relative; flex: 1; overflow: hidden; }
-.tbanner__grey, .tbanner__teal { position: absolute; inset: 0; overflow: hidden; }
-.tbanner__grey { background: #c6c7c9; color: #4a4c4f; }
-.tbanner__teal { background: var(--teal); color: var(--ink); clip-path: inset(0 100% 0 0); animation: tbanner-wipe 1700ms cubic-bezier(.5, 0, .2, 1) both; }
-.tbanner__topo, .tbanner__ship, .tbanner__logo, .tbanner__ring { position: absolute; display: block; background: currentColor;
+.tbanner--turn .tbanner__bar { position: relative; flex: 1; overflow: hidden; }
+.tbanner--turn .tbanner__grey, .tbanner--turn .tbanner__teal { position: absolute; inset: 0; overflow: hidden; }
+.tbanner--turn .tbanner__grey { background: #c6c7c9; color: #4a4c4f; }
+.tbanner--turn .tbanner__teal { background: var(--teal); color: var(--ink); clip-path: inset(0 100% 0 0); animation: tbanner-wipe 1700ms cubic-bezier(.5, 0, .2, 1) both; }
+.tbanner--turn .tbanner__topo, .tbanner--turn .tbanner__ship, .tbanner--turn .tbanner__logo, .tbanner--turn .tbanner__ring { position: absolute; display: block; background: currentColor;
   -webkit-mask: var(--src) center / 100% 100% no-repeat; mask: var(--src) center / 100% 100% no-repeat; }
-.tbanner__topo { left: 0; top: calc(-120 * var(--px)); width: calc(1190 * var(--px)); height: calc(916 * var(--px)); opacity: .22; }
-.tbanner__ship { right: calc(120 * var(--px)); top: calc(-260 * var(--px)); width: calc(290 * var(--px)); height: calc(487 * var(--px)); transform: rotate(53deg); opacity: .45; }
-.tbanner__logo { left: calc(40 * var(--px)); top: calc(-5 * var(--px)); width: calc(455 * var(--px)); height: calc(230 * var(--px)); color: #3c3e41; }
-.tbanner__ring { right: calc(120 * var(--px)); top: calc(-10 * var(--px)); width: calc(240 * var(--px)); height: calc(240 * var(--px)); opacity: .85; }
-.tbanner__text { position: absolute; right: calc(390 * var(--px)); top: calc(58 * var(--px)); font-size: calc(56 * var(--px)); font-weight: 900; letter-spacing: .04em;
+.tbanner--turn .tbanner__topo { left: 0; top: calc(-120 * var(--px)); width: calc(1190 * var(--px)); height: calc(916 * var(--px)); opacity: .22; }
+.tbanner--turn .tbanner__ship { right: calc(120 * var(--px)); top: calc(-260 * var(--px)); width: calc(290 * var(--px)); height: calc(487 * var(--px)); transform: rotate(53deg); opacity: .45; }
+.tbanner--turn .tbanner__logo { left: calc(40 * var(--px)); top: calc(-5 * var(--px)); width: calc(455 * var(--px)); height: calc(230 * var(--px)); color: #3c3e41; }
+.tbanner--turn .tbanner__ring { right: calc(120 * var(--px)); top: calc(-10 * var(--px)); width: calc(240 * var(--px)); height: calc(240 * var(--px)); opacity: .85; }
+.tbanner--turn .tbanner__text { position: absolute; right: calc(390 * var(--px)); top: calc(58 * var(--px)); font-size: calc(56 * var(--px)); font-weight: 900; letter-spacing: .04em;
   white-space: nowrap; animation: tbanner-text 1700ms ease-out both; }
-.tbanner__sub { position: absolute; right: calc(390 * var(--px)); top: calc(138 * var(--px)); width: calc(310 * var(--px)); height: calc(22 * var(--px));
+.tbanner--turn .tbanner__sub { position: absolute; right: calc(390 * var(--px)); top: calc(138 * var(--px)); width: calc(310 * var(--px)); height: calc(22 * var(--px));
   display: grid; place-items: center end; padding-right: calc(10 * var(--px)); background: var(--ink); color: var(--teal);
   font-family: var(--font-display); font-size: calc(14 * var(--px)); letter-spacing: .08em; animation: tbanner-text 1700ms ease-out 50ms both; }
-.tbanner__cross { position: absolute; width: calc(30 * var(--px)); height: calc(30 * var(--px)); opacity: .6;
+.tbanner--turn .tbanner__cross { position: absolute; width: calc(30 * var(--px)); height: calc(30 * var(--px)); opacity: .6;
   background: linear-gradient(currentColor, currentColor) center / 100% calc(2 * var(--px)) no-repeat,
     linear-gradient(currentColor, currentColor) center / calc(2 * var(--px)) 100% no-repeat; }
-.tbanner__cross--tl { left: calc(18 * var(--px)); top: calc(18 * var(--px)); }
-.tbanner__cross--bl { left: calc(18 * var(--px)); bottom: calc(18 * var(--px)); }
-.tbanner__cross--tr { right: calc(18 * var(--px)); top: calc(18 * var(--px)); }
-.tbanner__cross--br { right: calc(18 * var(--px)); bottom: calc(18 * var(--px)); }
-.tbanner__bot { flex: none; width: calc(250 * var(--px)); display: grid; place-items: center; background: #0f1f1d;
+.tbanner--turn .tbanner__cross--tl { left: calc(18 * var(--px)); top: calc(18 * var(--px)); }
+.tbanner--turn .tbanner__cross--bl { left: calc(18 * var(--px)); bottom: calc(18 * var(--px)); }
+.tbanner--turn .tbanner__cross--tr { right: calc(18 * var(--px)); top: calc(18 * var(--px)); }
+.tbanner--turn .tbanner__cross--br { right: calc(18 * var(--px)); bottom: calc(18 * var(--px)); }
+.tbanner--turn .tbanner__bot { flex: none; width: calc(250 * var(--px)); display: grid; place-items: center; background: #0f1f1d;
   box-shadow: inset 0 0 calc(30 * var(--px)) rgba(82, 214, 176, .25); }
-.tbanner__head { width: calc(120 * var(--px)); height: auto; image-rendering: pixelated; }
+.tbanner--turn .tbanner__head { width: calc(120 * var(--px)); height: auto; image-rendering: pixelated; }
 @keyframes tbanner-dim { 0% { opacity: 0; } 9% { opacity: 1; } 91% { opacity: 1; } 100% { opacity: 0; } }
 /* PR #643's motion: the band shoots in and keeps drifting right until it folds shut; the teal fill wipes over it
    with an ease in and out; the words slide in from the left and drift on with it; the ring turns as it comes up; the
@@ -156,8 +156,8 @@
   100% { opacity: 1; transform: translateX(calc(20 * var(--px))); } }
 @keyframes tbanner-ring { 0%, 40% { opacity: 0; transform: rotate(-150deg); } 70% { opacity: .85; } 100% { opacity: .85; transform: rotate(30deg); } }
 @keyframes tbanner-bot { 0%, 4% { opacity: 0; transform: scale(.4); } 12% { opacity: 1; transform: scale(1); } }
-.tbanner__teal .tbanner__ring { animation: tbanner-ring 1700ms ease-out both; }
-.tbanner__bot { animation: tbanner-bot 1700ms cubic-bezier(.3, 1.5, .5, 1) both; }
+.tbanner--turn .tbanner__teal .tbanner__ring { animation: tbanner-ring 1700ms ease-out both; }
+.tbanner--turn .tbanner__bot { animation: tbanner-bot 1700ms cubic-bezier(.3, 1.5, .5, 1) both; }
 @media (prefers-reduced-motion: reduce) {
-  .tbanner { display: none; }
+.tbanner--turn { display: none; }
 }

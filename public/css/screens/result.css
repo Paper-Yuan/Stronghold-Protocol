@@ -434,3 +434,58 @@
 
 /* official versions (DESIGN 搂35.23): the version's tag under the headline */
 .result__vertag { align-self: flex-start; margin-top: .06rem; }
+
+/* ---- 超限档案（业主 2026-10-26）：结算个人战报上的 ∞ 按钮与浮层 ------------------------ */
+.sself__olbtn{
+  display:inline-flex;align-items:center;gap:.04rem;height:max(.28rem,22px);padding:0 .1rem;margin-left:.08rem;
+  border:1px solid var(--inf-a35);background:var(--inf-a20);color:var(--inf-300);
+  font:700 calc(.13 * var(--t))/1 var(--font-num);letter-spacing:.06em;cursor:pointer;
+  clip-path:polygon(0 0,calc(100% - .06rem) 0,100% .06rem,100% 100%,0 100%);
+}
+.sself__olbtn:hover{border-color:var(--inf-400);background:rgba(168,85,247,.28)}
+.olarch{
+  position:absolute;inset:0;z-index:20;display:grid;place-items:center;
+  background:rgba(4,6,6,.82);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);
+  animation:olarch-in .22s ease both;
+}
+@keyframes olarch-in{from{opacity:0}to{opacity:1}}
+.olarch__card{
+  position:relative;width:min(7.6rem,92%);max-height:9rem;overflow:auto;
+  padding:.28rem .3rem .24rem;border:1px solid var(--inf-a35);border-radius:.06rem;
+  background:linear-gradient(180deg,rgba(18,14,26,.97),rgba(8,10,12,.98));
+  box-shadow:0 0 .5rem rgba(150,90,255,.25), inset 0 0 .4rem rgba(122,62,220,.08);
+  clip-path:polygon(0 0,calc(100% - .14rem) 0,100% .14rem,100% 100%,.14rem 100%,0 calc(100% - .14rem));
+}
+.olarch__head{display:flex;align-items:center;gap:.1rem;padding-bottom:.12rem;border-bottom:1px solid rgba(255,255,255,.1)}
+.olarch__micro{font:700 calc(.1 * var(--t))/1 var(--font-num);letter-spacing:.24em;color:var(--inf-400);opacity:.85}
+.olarch__head b{font-size:calc(.2 * var(--t));color:var(--text-hi);letter-spacing:.06em}
+.olarch__x{margin-left:auto;width:.26rem;height:.26rem;display:grid;place-items:center;border:1px solid rgba(255,255,255,.14);
+  background:rgba(8,12,11,.7);color:var(--text-md);cursor:pointer;font-size:calc(.14 * var(--t))}
+.olarch__x:hover{color:#fff;border-color:var(--inf-400)}
+.olarch__big{display:flex;align-items:baseline;gap:.1rem;margin-top:.14rem}
+.olarch__big b{font-family:var(--font-display);font-size:calc(.8 * var(--t));line-height:1;color:var(--inf-300);
+  text-shadow:0 0 .2rem var(--inf-glow);letter-spacing:.02em}
+.olarch__big span{font-size:calc(.16 * var(--t));color:var(--text-lo);letter-spacing:.08em}
+.olarch__new{margin-left:.1rem;padding:.03rem .08rem;border:1px solid rgba(255,198,0,.45);
+  background:linear-gradient(135deg,rgba(255,198,0,.18),rgba(255,120,40,.12));color:#ffd75e;
+  font:700 calc(.1 * var(--t))/1 var(--font-num);letter-spacing:.14em;font-style:normal}
+.olarch__stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.08rem;margin-top:.14rem}
+.olarch__stats span{display:flex;flex-direction:column;gap:.03rem;padding:.08rem .1rem;border:1px solid rgba(255,255,255,.1);
+  background:rgba(8,12,11,.6)}
+.olarch__stats i{font-style:normal;font-size:calc(.1 * var(--t));letter-spacing:.12em;color:var(--text-lo)}
+.olarch__stats b{font:700 calc(.26 * var(--t))/1 var(--font-num);color:var(--text-hi)}
+.olarch__stats em{font-style:normal;font-size:calc(.1 * var(--t));color:var(--text-lo);margin-left:.03rem}
+.olarch__kills{list-style:none;margin:.12rem 0 0;padding:0;display:flex;flex-direction:column;gap:.05rem}
+.olarch__kills li{display:flex;align-items:center;gap:.08rem;padding:.05rem .08rem;border:1px solid rgba(255,255,255,.1);background:rgba(8,12,11,.55)}
+.olarch__kills .r{font:700 calc(.11 * var(--t))/1 var(--font-num);color:var(--inf-300);min-width:.5rem;letter-spacing:.06em}
+.olarch__kills .n{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:calc(.13 * var(--t));color:var(--text-hi)}
+.olarch__kills .tag{font:700 calc(.08 * var(--t))/1 var(--font-num);letter-spacing:.1em;color:#ff8b7a;border:1px solid rgba(231,49,24,.45);padding:.02rem .05rem}
+.olarch__chips{display:flex;flex-wrap:wrap;gap:.05rem;margin-top:.12rem}
+.olarch__chip{padding:.03rem .07rem;border:1px solid rgba(78,216,175,.3);background:rgba(78,216,175,.08);
+  color:var(--mint-400);font-size:calc(.11 * var(--t))}
+.olarch__chip.is-neg{border-color:rgba(231,49,24,.35);background:rgba(231,49,24,.08);color:#ff9a86}
+.olarch__note{margin:.12rem 0 0;font-size:calc(.1 * var(--t));line-height:1.5;color:var(--text-lo)}
+@media (max-width: 767px){
+  .olarch__card{width:min(9.2rem,94vw);max-height:86vh;padding:.3rem}
+  .sself__olbtn{height:max(.36rem,30px);font-size:calc(.15 * var(--t))}
+}

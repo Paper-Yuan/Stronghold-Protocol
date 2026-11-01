@@ -1,0 +1,550 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>拓展模式 · 参考实机页 v2</title>
+<style>
+/* ============================================================================
+   拓展模式 · 参考实机页 v2
+   改动：① 二级菜单换成「左档案舞台 + 右等距选项列」的版式；
+         ② 选项文本压到一行，行高固定 88px（短屏 64px），gap 固定 —— 间距不再随文案长短变化；
+         ③ 玩法要点从列表移进左侧档案，列表只留一句简介。
+   ========================================================================== */
+:root{
+  --t:66.67px; --sp-ui:1;
+  --bg:#050807; --panel:#0b1113;
+  --line:rgba(255,255,255,.10); --line-2:rgba(255,255,255,.16);
+  --txt:#e9eceb; --txt-2:#9aa19e; --txt-3:#6f7876;
+  --mint:#5df0c6;
+  --ext-300:#a9dcf8; --ext-400:#7cc6f2; --ext-glow:rgba(124,198,242,.45);
+  --ann:#c2313d; --ann-2:#8d1622;
+  --mono:ui-monospace,"SFMono-Regular","Cascadia Mono",Consolas,monospace;
+  --ease:cubic-bezier(.16,.84,.3,1);
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{
+  margin:0;overflow:hidden;color:var(--txt);
+  font-family:system-ui,"Noto Sans SC","PingFang SC","Microsoft YaHei",sans-serif;
+  background:radial-gradient(70% 55% at 50% 46%,rgba(96,170,186,.10),transparent 72%),
+             linear-gradient(180deg,#08100f,#040606 82%);
+}
+body::before{
+  content:"";position:fixed;inset:0;pointer-events:none;opacity:.55;
+  background-image:linear-gradient(rgba(255,255,255,.028) 1px,transparent 1px),
+                   linear-gradient(90deg,rgba(255,255,255,.028) 1px,transparent 1px);
+  background-size:.6rem .6rem;
+  -webkit-mask-image:radial-gradient(70% 70% at 50% 50%,#000 30%,transparent 85%);
+  mask-image:radial-gradient(70% 70% at 50% 50%,#000 30%,transparent 85%);
+}
+
+/* ---------- 演示控制条（顶部细带，所有尺寸同一条）---------- */
+.demo-bar{
+  position:fixed;left:0;right:0;top:0;height:34px;z-index:90;
+  display:flex;align-items:center;justify-content:flex-end;gap:8px;padding:0 10px;
+  border-bottom:1px solid rgba(93,240,198,.22);
+  background:rgba(6,12,10,.9);backdrop-filter:blur(6px);font-size:12px;color:#9fb3ad;
+}
+.demo-bar b{color:var(--mint);font-weight:700;letter-spacing:.08em}
+.demo-bar button{
+  min-height:26px;padding:0 10px;font-size:12px;font:inherit;font-weight:700;color:#08221b;
+  background:linear-gradient(180deg,#4fe8c0,#2fcf9f);border:0;border-radius:8px;cursor:pointer;
+}
+.demo-bar button.ghost{background:rgba(255,255,255,.08);color:var(--txt);border:1px solid var(--line)}
+.demo-bar button[aria-pressed="true"]{outline:2px solid #fff;outline-offset:2px}
+.demo-bar #vp-hint{font-size:11px}
+
+/* ---------- 大厅 ---------- */
+.screen{position:absolute;inset:34px 0 0;display:flex;flex-direction:column}
+.topbar{display:flex;align-items:center;gap:14px;padding:14px 18px;background:linear-gradient(180deg,rgba(4,8,8,.85),transparent)}
+.icon-btn{display:grid;place-items:center;width:44px;height:44px;color:#d7dedb;background:rgba(255,255,255,.05);border:1px solid var(--line);border-radius:10px;cursor:pointer}
+.icon-btn:hover,.icon-btn:focus-visible{border-color:rgba(93,240,198,.6);outline:none}
+.ping{display:inline-flex;align-items:center;gap:6px;min-height:32px;padding:0 10px;border-radius:99px;border:1px solid var(--line);background:rgba(0,0,0,.4);font-size:12px;color:var(--txt-2)}
+.ping i{width:8px;height:8px;border-radius:50%;background:var(--mint);box-shadow:0 0 8px var(--mint)}
+.spacer{flex:1}
+.tag{display:inline-flex;align-items:center;gap:6px;min-height:32px;padding:0 12px;border-radius:8px;border:1px solid var(--line);background:rgba(0,0,0,.35);font-size:12.5px;color:var(--txt-2)}
+.stage{flex:1;position:relative;display:grid;place-items:center}
+.hub-title{text-align:center;transform:translateY(-12%)}
+.hub-title .en{font:700 11px/1 var(--mono);letter-spacing:.42em;color:rgba(150,220,230,.65)}
+.hub-title h1{margin:10px 0 6px;font-size:clamp(22px,3.4vw,40px);line-height:1.15;letter-spacing:.04em;text-shadow:0 2px 18px rgba(0,0,0,.8)}
+.hub-title .sub{color:var(--txt-3);font-size:12.5px;letter-spacing:.22em}
+
+/* 三张模式卡：说明行固定一行 → 三卡永远同高同基线 */
+.hub-entries{position:absolute;right:18px;bottom:18px;display:flex;align-items:flex-end;gap:9.3px}
+.hub-entry-wrap{display:flex;flex-direction:column;gap:6px;animation:tr-rise 440ms var(--ease) backwards}
+.hub-entry-wrap:nth-child(1){animation-delay:300ms}
+.hub-entry-wrap:nth-child(2){animation-delay:360ms}
+.hub-entry-wrap:nth-child(3){animation-delay:420ms}
+.hub-entry__group{
+  display:flex;align-items:center;gap:5px;height:14px;font-size:8.7px;color:var(--txt-3);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.hub-entry__group svg{width:12px;height:12px;flex:none;opacity:.8}
+.hub-entry__group .g-short{display:none}
+.hub-entry{
+  position:relative;display:flex;flex-direction:column;justify-content:flex-end;gap:2px;overflow:hidden;
+  width:clamp(128px,12vw,154px);min-height:clamp(64px,7vw,90px);padding:10px 12px;
+  text-align:left;font:inherit;color:var(--txt);cursor:pointer;
+  background:linear-gradient(180deg,#1b2422,#101615);
+  border:1px solid rgba(255,255,255,.14);border-radius:10px;
+  transition:transform .22s var(--ease),border-color .22s,box-shadow .22s;
+}
+.hub-entry:hover,.hub-entry:focus-visible{transform:translateY(-2px);border-color:rgba(93,240,198,.55);outline:none}
+.hub-entry__icon{position:absolute;left:12px;top:10px;color:rgba(93,240,198,.8)}
+.hub-entry__icon svg{width:26px;height:26px}
+.hub-entry__en{font:700 7.3px/1 var(--mono);letter-spacing:.22em;color:rgba(93,240,198,.75);margin-top:32px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hub-entry__name{font-size:19px;font-weight:900;letter-spacing:.04em;white-space:nowrap}
+.hub-entry__corner{position:absolute;right:0;top:0;width:14px;height:14px;background:linear-gradient(135deg,transparent 50%,rgba(255,255,255,.22) 50%)}
+.hub-entry--ext{background:linear-gradient(160deg,#12222e,#07121b);border-color:rgba(124,198,242,.42)}
+.hub-entry--ext .hub-entry__en{color:var(--ext-400)}
+.hub-entry--ext .hub-entry__icon{color:rgba(169,220,248,.85)}
+.hub-entry--ext .hub-entry__corner{background:linear-gradient(135deg,transparent 50%,var(--ext-400) 50%)}
+.hub-entry--ext:hover,.hub-entry--ext:focus-visible{border-color:var(--ext-400);box-shadow:0 8px 30px rgba(0,0,0,.55),0 0 20px var(--ext-glow)}
+.hub-entry--ext:focus-visible{outline:2px solid var(--ext-300);outline-offset:2px}
+
+/* ---------- 二级菜单：左档案舞台 + 右等距列表 ---------- */
+.veil{position:fixed;inset:34px 0 0;z-index:60;display:none;background:rgba(3,5,7,.74);backdrop-filter:blur(3px)}
+.veil.is-open{display:block;animation:veil-in .22s ease-out backwards}
+@keyframes veil-in{from{opacity:0}}
+.sheet{
+  position:absolute;inset:0;display:flex;flex-direction:column;
+  background:
+    radial-gradient(60% 40% at 18% 0%,rgba(194,49,61,.14),transparent 60%),
+    radial-gradient(70% 50% at 100% 0%,rgba(124,198,242,.10),transparent 62%),
+    linear-gradient(180deg,#08100f,#040606 82%);
+}
+.sheet__top{display:flex;align-items:center;gap:14px;padding:14px 18px;flex:none}
+.sheet__title{display:flex;flex-direction:column;gap:2px}
+.sheet__title h2{margin:0;font-size:clamp(18px,2vw,24px);letter-spacing:.06em}
+.sheet__mode{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--ext-400);letter-spacing:.12em}
+.sheet__mode svg{width:15px;height:15px}
+.sheet__mode i{font:600 10px var(--mono);font-style:normal;color:var(--txt-3);letter-spacing:.18em}
+
+.sheet__body{
+  flex:1;min-height:0;display:grid;gap:16px;padding:0 18px 18px;
+  grid-template-columns:minmax(0,400px) minmax(0,1fr);
+  grid-template-rows:minmax(0,1fr) auto;
+}
+
+/* 左：档案舞台 */
+.ext-stage{
+  position:relative;display:flex;flex-direction:column;gap:12px;min-height:0;overflow:hidden;
+  padding:18px;border:1px solid rgba(194,49,61,.34);border-radius:14px;
+  background:
+    radial-gradient(90% 70% at 50% 0%,rgba(194,49,61,.22),transparent 62%),
+    linear-gradient(180deg,rgba(20,14,16,.94),rgba(8,10,11,.98));
+  animation:tr-right 400ms var(--ease) 180ms backwards;
+}
+/* 舞台扫描线 + 角标，贴着游戏的官方活动页语言 */
+.ext-stage::before{
+  content:"";position:absolute;inset:0;pointer-events:none;opacity:.5;
+  background:repeating-linear-gradient(180deg,rgba(255,255,255,.035) 0 1px,transparent 1px 4px);
+  -webkit-mask-image:linear-gradient(180deg,#000,transparent 78%);
+  mask-image:linear-gradient(180deg,#000,transparent 78%);
+}
+.ext-stage__frame{position:absolute;inset:8px;pointer-events:none;border:1px solid rgba(194,49,61,.28);border-radius:10px}
+.ext-stage__frame::before,.ext-stage__frame::after{content:"";position:absolute;width:14px;height:14px;border:2px solid var(--ann)}
+.ext-stage__frame::before{left:-1px;top:-1px;border-right:0;border-bottom:0}
+.ext-stage__frame::after{right:-1px;bottom:-1px;border-left:0;border-top:0}
+
+.ext-hero{position:relative;display:flex;align-items:center;gap:14px}
+.ext-hero__art{
+  display:grid;place-items:center;width:64px;height:64px;flex:none;border-radius:12px;
+  color:#ffe9ec;background:radial-gradient(60% 60% at 50% 38%,rgba(194,49,61,.72),rgba(91,10,20,.5));
+  border:1px solid rgba(194,49,61,.6);box-shadow:0 0 22px rgba(194,49,61,.35),inset 0 0 18px rgba(0,0,0,.45);
+}
+.ext-hero__art svg{width:32px;height:32px}
+.ext-hero__meta{display:flex;flex-direction:column;gap:3px;min-width:0}
+.ext-hero__code{font:700 11px var(--mono);letter-spacing:.18em;color:var(--ext-300)}
+.ext-hero__name{margin:0;font-size:clamp(20px,2.2vw,26px);font-weight:900;letter-spacing:.04em;color:#fff;text-shadow:0 0 18px rgba(194,49,61,.5)}
+.ext-hero__en{font:600 9.5px var(--mono);letter-spacing:.2em;color:rgba(255,255,255,.45)}
+
+.ext-stats{position:relative;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.ext-stat{display:flex;flex-direction:column;gap:2px;padding:8px 10px;border-radius:8px;background:rgba(255,255,255,.04);border:1px solid var(--line)}
+.ext-stat b{font:800 15px/1.2 var(--mono);color:#fff}
+.ext-stat span{font-size:10.5px;color:var(--txt-3);letter-spacing:.04em}
+.ext-desc{position:relative;margin:0;font-size:13px;line-height:1.6;color:var(--txt-2)}
+.ext-feats{position:relative;display:flex;flex-direction:column;gap:5px;margin:0;padding:0;list-style:none;min-height:0;overflow:auto}
+.ext-feats li{position:relative;padding-left:12px;font-size:12.5px;line-height:1.5;color:#c9d0cd;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden}
+.ext-feats li::before{content:"";position:absolute;left:0;top:.62em;width:4px;height:4px;border-radius:1px;background:var(--ann);transform:rotate(45deg)}
+.ext-note{
+  position:relative;margin-top:auto;display:flex;align-items:flex-start;gap:7px;padding:9px 10px;border-radius:8px;
+  font-size:11.5px;line-height:1.5;color:#f0d9a8;background:rgba(251,191,36,.08);border:1px solid rgba(251,191,36,.26);
+}
+.ext-note svg{width:14px;height:14px;flex:none;margin-top:1px}
+.ext-note.is-ready{color:#c9ffe9;background:rgba(93,240,198,.08);border-color:rgba(93,240,198,.28)}
+
+/* 右：等距选项列 */
+.ext-pane{display:flex;flex-direction:column;min-height:0;gap:10px}
+.ext-pane__lead{margin:0;font-size:12.5px;line-height:1.6;color:var(--txt-3)}
+.ext-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px;min-height:0;overflow:auto}
+/* 固定行高 + 固定 gap：文案长短不会再改变选项间距 */
+.ext-row{
+  position:relative;display:grid;align-items:center;gap:12px;flex:none;width:100%;
+  grid-template-columns:34px minmax(0,1fr) auto;
+  height:88px;padding:0 14px;
+  text-align:left;font:inherit;color:var(--txt);cursor:pointer;
+  background:linear-gradient(90deg,rgba(255,255,255,.05),rgba(255,255,255,.02));
+  border:1px solid var(--line);border-radius:10px;
+  transition:border-color .2s,background .2s,transform .2s var(--ease);
+  animation:tr-right 400ms var(--ease) backwards;
+}
+.ext-row:nth-of-type(1){animation-delay:240ms}
+.ext-row:nth-of-type(2){animation-delay:300ms}
+.ext-row:nth-of-type(3){animation-delay:360ms}
+.ext-row:hover:not(.is-placeholder):not(:disabled){border-color:rgba(194,49,61,.6);background:linear-gradient(90deg,rgba(194,49,61,.14),rgba(255,255,255,.03))}
+.ext-row:focus-visible{outline:2px solid var(--ext-300);outline-offset:2px}
+.ext-row.is-selected{border-color:rgba(194,49,61,.85);background:linear-gradient(90deg,rgba(194,49,61,.2),rgba(255,255,255,.03))}
+.ext-row.is-selected::before{content:"";position:absolute;left:0;top:14px;bottom:14px;width:3px;border-radius:3px;background:linear-gradient(180deg,var(--ann),var(--ann-2))}
+.ext-row__idx{font:800 13px var(--mono);color:rgba(255,255,255,.35);letter-spacing:.08em}
+.ext-row.is-selected .ext-row__idx{color:var(--ann)}
+.ext-row__main{display:flex;flex-direction:column;gap:4px;min-width:0}
+.ext-row__head{display:flex;align-items:center;gap:8px;min-width:0}
+.ext-row__name{font-size:16.5px;font-weight:900;letter-spacing:.03em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ext-row__code{font:700 10.5px var(--mono);color:var(--ext-300);padding:1px 5px;border-radius:4px;background:rgba(124,198,242,.12);flex:none}
+/* 简介强制一行 —— 这是「文本别再撑开选项」的关键 */
+.ext-row__desc{margin:0;font-size:12px;line-height:1.4;color:var(--txt-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ext-row__tail{display:flex;align-items:center;gap:8px;flex:none}
+.chip{font-size:11px;font-weight:700;padding:2px 8px;border-radius:99px;white-space:nowrap}
+.chip--pending{color:#ffd9a8;background:rgba(251,191,36,.14);border:1px solid rgba(251,191,36,.35)}
+.chip--ready{color:#c9ffe9;background:rgba(93,240,198,.14);border:1px solid rgba(93,240,198,.4)}
+.chip--missing{color:#9aa19e;background:rgba(255,255,255,.06);border:1px solid var(--line)}
+.ext-row.is-placeholder{cursor:default;opacity:.62;background:none;border-style:dashed}
+.ext-row.is-placeholder .ext-row__name{color:var(--txt-2)}
+
+.ext-foot{display:flex;align-items:center;justify-content:space-between;gap:12px;flex:none;padding-top:10px;border-top:1px solid var(--line)}
+.ext-foot__pack{font:600 11px var(--mono);color:var(--txt-3)}
+.ext-foot__start{
+  min-width:132px;min-height:44px;padding:0 18px;font:900 15px/1 inherit;letter-spacing:.06em;
+  color:#04210f;cursor:pointer;border:0;border-radius:9px;
+  background:linear-gradient(180deg,#4fe8c0,#2fcf9f);transition:filter .18s,transform .18s;
+}
+.ext-foot__start:hover:not(:disabled){filter:brightness(1.06)}
+.ext-foot__start:active:not(:disabled){transform:translateY(1px)}
+.ext-foot__start:focus-visible{outline:2px solid #fff;outline-offset:2px}
+.ext-foot__start:disabled{cursor:not-allowed;color:#9aa19e;background:rgba(255,255,255,.07);border:1px solid var(--line)}
+
+.sheet__note{grid-column:1 / -1;display:flex;gap:8px;margin:0;font-size:11.5px;line-height:1.5;color:var(--txt-3)}
+.sheet__note svg{width:14px;height:14px;flex:none;margin-top:1px}
+.empty{display:grid;place-items:center;gap:8px;height:88px;padding:0 16px;text-align:center;border:1px dashed rgba(255,255,255,.18);border-radius:10px;color:var(--txt-3)}
+.empty svg{width:24px;height:24px;opacity:.5}
+.empty p{margin:0;font-size:12.5px;color:var(--txt-2)}
+.empty span{font-size:11.5px}
+
+@keyframes tr-right{from{opacity:0;transform:translateX(.36rem)}}
+@keyframes tr-rise{from{opacity:0;transform:translateY(.2rem)}}
+
+/* ---------- 手机端 / 短屏 ---------- */
+@media (max-width:900px){
+  /* 与电脑端同一套两列逻辑，只是数值等比缩小 */
+  .sheet__top{padding:10px 12px}
+  .sheet__body{grid-template-columns:minmax(0,40%) minmax(0,1fr);gap:10px;padding:0 12px 10px}
+  .ext-stage{padding:10px;gap:8px;border-radius:10px}
+  .ext-hero{gap:9px}
+  .ext-hero__art{width:44px;height:44px;border-radius:9px}
+  .ext-hero__art svg{width:22px;height:22px}
+  .ext-hero__name{font-size:17px}
+  .ext-hero__en{font-size:8px;letter-spacing:.14em}
+  .ext-stat{padding:5px 7px}
+  .ext-stat b{font-size:12.5px}
+  .ext-stat span{font-size:9.5px}
+  .ext-desc{font-size:11.5px;line-height:1.5}
+  .ext-feats li{font-size:11px;line-height:1.45}
+  .ext-note{font-size:10.5px;padding:7px 8px}
+  .ext-pane__lead{font-size:11.5px;line-height:1.45}
+  .ext-row{height:64px;grid-template-columns:22px minmax(0,1fr) auto;gap:8px;padding:0 9px}
+  .ext-row__idx{font-size:11px}
+  .ext-row__name{font-size:14px}
+  .ext-row__desc{font-size:10.5px}
+  .ext-row__code{display:none}
+  .ext-list{gap:8px}
+  .ext-foot{padding-top:6px}
+  .ext-foot__start{min-height:44px;min-width:104px;font-size:13px}
+  .ext-foot__pack{font-size:10px}
+  .sheet__note{font-size:10.5px}
+}
+@media (max-height:520px){
+  .hub-entries{right:12px;bottom:12px;gap:5.6px}
+  .hub-entry{width:128px;min-height:64px;padding:8px 10px}
+  .hub-entry__icon svg{width:18px;height:18px}
+  .hub-entry__en{font-size:6.4px;margin-top:23px}
+  .hub-entry__name{font-size:16.8px}
+  .hub-entry__group{font-size:7.6px;height:12px}
+  .hub-entry__group .g-long{display:none}
+  .hub-entry__group .g-short{display:inline}
+  .hub-title{transform:translateY(-6%)}
+  .hub-title h1{font-size:clamp(18px,4.2vw,26px)}
+  .sheet__top{padding:10px 12px}
+  .sheet__top{padding:6px 10px}
+  .sheet__title h2{font-size:16px}
+  .sheet__mode{font-size:10px}
+  .sheet__body{gap:8px;padding:0 10px 8px;grid-template-columns:minmax(0,38%) minmax(0,1fr)}
+  .ext-stage{padding:7px 8px;gap:6px}
+  .ext-hero__art{width:32px;height:32px;border-radius:8px}
+  .ext-hero__art svg{width:17px;height:17px}
+  .ext-hero__name{font-size:14px}
+  .ext-hero__en,.ext-hero__code{display:none}
+  .ext-stats{gap:5px}
+  .ext-stat{padding:3px 5px}
+  .ext-stat b{font-size:11px}
+  .ext-stat span{font-size:8.5px}
+  .ext-desc{font-size:10.5px;line-height:1.4}
+  .ext-feats{gap:2px}
+  .ext-feats li{font-size:9.5px;line-height:1.35;padding-left:9px}
+  .ext-note{display:none}
+  .ext-pane__lead{display:none}
+  .ext-row{height:56px;padding:0 8px}
+  .ext-row__name{font-size:13.5px}
+  .ext-row__desc{font-size:10px}
+  .ext-list{gap:6px}
+  .ext-foot__start{min-height:44px;min-width:96px;font-size:12.5px}
+  .sheet__note{display:none}
+  .ext-row__name{font-size:15px}
+  .ext-row__desc{font-size:11px}
+  .ext-row__code{display:none}
+  .ext-list{gap:8px}
+  .ext-foot{padding-top:8px}
+  .ext-foot__start{min-height:44px;min-width:110px;font-size:14px}
+  .sheet__note{font-size:11px}
+}
+@media (prefers-reduced-motion:reduce){
+  .hub-entry-wrap,.ext-row,.ext-stage,.veil.is-open{animation:none !important}
+  .hub-entry,.ext-row{transition:none}
+}
+</style>
+</head>
+<body>
+
+<div class="demo-bar" role="toolbar" aria-label="演示控制">
+  <b>演示</b>
+  <button type="button" id="btn-state" aria-pressed="false">状态：待接入</button>
+  <button type="button" class="ghost" id="btn-empty">切换空状态</button>
+  <span id="vp-hint" aria-hidden="true">视口 —</span>
+</div>
+
+<!-- ---------- 大厅 ---------- -->
+<div class="screen" id="lobby">
+  <div class="topbar">
+    <button class="icon-btn" type="button" title="返回标题" aria-label="返回标题">
+      <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M15 5l-7 7 7 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </button>
+    <span class="ping"><i></i>当前延迟 1 ms</span>
+    <span class="spacer"></span>
+    <span class="tag">原版</span>
+    <span class="tag">干员调配</span>
+  </div>
+
+  <div class="stage">
+    <div class="hub-title">
+      <div class="en">STRONGHOLD PROTOCOL</div>
+      <h1>卫戍协议：盟约</h1>
+      <div class="sub">选择模拟方式</div>
+    </div>
+
+    <section class="hub-entries" aria-label="模拟方式">
+      <div class="hub-entry-wrap">
+        <span class="hub-entry__group"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 12a4 4 0 100-8 4 4 0 000 8zm-7 8a7 7 0 0114 0" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg><span class="g-long">1 名博士 · 不限时</span><span class="g-short">1 名博士</span></span>
+        <button class="hub-entry" type="button" data-mode="solo">
+          <span class="hub-entry__icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 12a4 4 0 100-8 4 4 0 000 8zm-7 8a7 7 0 0114 0" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span>
+          <span class="hub-entry__en">SOLO SIMULATION</span>
+          <span class="hub-entry__name">独立模拟</span>
+          <span class="hub-entry__corner" aria-hidden="true"></span>
+        </button>
+      </div>
+      <div class="hub-entry-wrap">
+        <span class="hub-entry__group"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 11a3.5 3.5 0 100-7 3.5 3.5 0 000 7zm8 0a3 3 0 100-6 3 3 0 000 6zM2 20a6 6 0 0112 0m2 0a5 5 0 018 0" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg><span class="g-long">1–4 人 · 可加 AI</span><span class="g-short">1–4 人</span></span>
+        <button class="hub-entry" type="button" data-mode="coop">
+          <span class="hub-entry__icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M9 11a3.5 3.5 0 100-7 3.5 3.5 0 000 7zm8 0a3 3 0 100-6 3 3 0 000 6zM2 20a6 6 0 0112 0m2 0a5 5 0 018 0" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span>
+          <span class="hub-entry__en">ALLIANCE SIMULATION</span>
+          <span class="hub-entry__name">同盟模拟</span>
+          <span class="hub-entry__corner" aria-hidden="true"></span>
+        </button>
+      </div>
+      <div class="hub-entry-wrap">
+        <span class="hub-entry__group"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3h7v2H5v5H3zm11 0h7v7h-2V5h-5zM3 14h2v5h5v2H3zm16 0h2v7h-7v-2h5z" fill="currentColor"/></svg><span class="g-long">1 个玩法 · 更多筹备中</span><span class="g-short">1 个玩法</span></span>
+        <button class="hub-entry hub-entry--ext" type="button" data-mode="ext" id="open-ext" aria-haspopup="dialog">
+          <span class="hub-entry__icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M3 3h7v2H5v5H3zm11 0h7v7h-2V5h-5zM3 14h2v5h5v2H3zm16 0h2v7h-7v-2h5z" fill="currentColor"/></svg></span>
+          <span class="hub-entry__en">EXTENSION</span>
+          <span class="hub-entry__name">拓展模式</span>
+          <span class="hub-entry__corner" aria-hidden="true"></span>
+        </button>
+      </div>
+    </section>
+  </div>
+</div>
+
+<!-- ---------- 二级菜单 ---------- -->
+<div class="veil" id="veil">
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="ext-title">
+    <div class="sheet__top">
+      <button class="icon-btn" type="button" id="close-ext" title="返回大厅" aria-label="返回大厅">
+        <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M15 5l-7 7 7 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+      <div class="sheet__title">
+        <h2 id="ext-title">拓展模式</h2>
+        <span class="sheet__mode">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3h7v2H5v5H3zm11 0h7v7h-2V5h-5zM3 14h2v5h5v2H3zm16 0h2v7h-7v-2h5z" fill="currentColor"/></svg>
+          拓展玩法<i>EXTENSION MODES</i>
+        </span>
+      </div>
+    </div>
+
+    <div class="sheet__body">
+      <section class="ext-stage" id="ext-stage" aria-label="玩法档案">
+        <span class="ext-stage__frame" aria-hidden="true"></span>
+        <div class="ext-hero">
+          <span class="ext-hero__art" id="hero-art" aria-hidden="true"></span>
+          <div class="ext-hero__meta">
+            <span class="ext-hero__code" id="hero-code">AC-5</span>
+            <h3 class="ext-hero__name" id="hero-name">湮灭模拟</h3>
+            <span class="ext-hero__en" id="hero-en">ANNIHILATION SIMULATION</span>
+          </div>
+        </div>
+        <div class="ext-stats" id="hero-stats"></div>
+        <p class="ext-desc" id="hero-desc"></p>
+        <ul class="ext-feats" id="hero-feats"></ul>
+        <p class="ext-note" id="hero-note"></p>
+      </section>
+
+      <section class="ext-pane" aria-label="玩法列表">
+        <p class="ext-pane__lead">选择一个拓展玩法。它们不改动官方四档难度，玩法、难度与内容各自独立。</p>
+        <ul class="ext-list" id="ext-list" role="list"></ul>
+        <div class="ext-foot">
+          <span class="ext-foot__pack" id="foot-pack">—</span>
+          <button class="ext-foot__start" type="button" id="foot-start" disabled>待接入</button>
+        </div>
+      </section>
+
+      <p class="sheet__note">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 8v.01M11 12h1v5h1" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2"/></svg>
+        拓展玩法由外部作者制作，规则与数值由玩法包自己决定；联机对局需要双方装有同一玩法包。
+      </p>
+    </div>
+  </div>
+</div>
+
+<script>
+const ICONS = {
+  sword:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 4l6-2-2 6-7 7-4-4 7-7zM7 13l4 4-3 3H4v-4l3-3z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>',
+  flame:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3c3 4 5 6 5 9a5 5 0 11-10 0c0-2 1-4 3-6 .5 2 2 3 2 5 1-2 0-5 0-8z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>',
+  wave:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12c2 0 2-3 4-3s2 3 4 3 2-3 4-3 2 3 4 3M2 17c2 0 2-3 4-3s2 3 4 3 2-3 4-3 2 3 4 3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>',
+  info:'<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 8v.01M11 12h1v5h1" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>',
+};
+const MODES = [
+  {
+    id:'annihilation', name:'湮灭模拟', en:'ANNIHILATION SIMULATION', code:'AC-5', icon:'sword',
+    desc:'突破难度上限的无限推演：可选 1~6 级湮灭蚀流，逐级加码。',
+    stats:[{b:'1–6',s:'湮灭蚀流'},{b:'87',s:'藏品'},{b:'×5.7',s:'首领血点'}],
+    feats:[
+      '作战环境完全崩坏，所有地图机制升级为致命级',
+      '究极危险敌人，攻击模式完全无规律',
+      '蚀流 2 起加入藏品抽取；蚀流 6「无尽湮灭」回合无限',
+    ],
+    pack:'湮灭模拟 v3.1.0', status:'pending',
+    reason:'玩法包尚未接入本机：入口与数据已就位，引擎部分待移植',
+  },
+  { id:'endless-fire', name:'无尽火力', en:'ENDLESS FIRE', code:'AC-6', icon:'flame',
+    desc:'持续加压的火力演练：敌方波次不设上限，考验阵容续航。', stats:[{b:'—',s:'蚀流'},{b:'—',s:'藏品'},{b:'—',s:'首领血点'}],
+    feats:['占位条目：用于验证 1→N 列表的等距排布'], pack:'筹备中', status:'missing', reason:'尚未发布' },
+  { id:'deep-dive', name:'深潜协议', en:'DEEP DIVE', code:'AC-7', icon:'wave',
+    desc:'多人在深水地形上的协作推演，氧气与水压是第二血条。', stats:[{b:'—',s:'蚀流'},{b:'—',s:'藏品'},{b:'—',s:'首领血点'}],
+    feats:['占位条目：用于验证 1→N 列表的等距排布'], pack:'筹备中', status:'missing', reason:'尚未发布' },
+];
+const STATUS = { ready:{text:'可开局',cls:'chip--ready'}, pending:{text:'待接入',cls:'chip--pending'}, missing:{text:'筹备中',cls:'chip--missing'} };
+
+const veil=document.getElementById('veil'), listEl=document.getElementById('ext-list');
+const btnState=document.getElementById('btn-state'), btnEmpty=document.getElementById('btn-empty');
+const stageEl=document.getElementById('ext-stage'), startBtn=document.getElementById('foot-start'), packEl=document.getElementById('foot-pack');
+let status='pending', empty=false, selected=MODES[0].id;
+
+const modeStatus=(m)=> m.id===MODES[0].id ? status : m.status;   // 演示：只让第一个条目跟随状态开关
+
+function renderStage(){
+  const m=MODES.find(x=>x.id===selected)||MODES[0];
+  const st=modeStatus(m);
+  document.getElementById('hero-art').innerHTML=ICONS[m.icon]||ICONS.sword;
+  document.getElementById('hero-code').textContent=m.code;
+  document.getElementById('hero-name').textContent=m.name;
+  document.getElementById('hero-en').textContent=m.en;
+  document.getElementById('hero-stats').innerHTML=m.stats.map(s=>`<div class="ext-stat"><b>${s.b}</b><span>${s.s}</span></div>`).join('');
+  document.getElementById('hero-desc').textContent=m.desc;
+  document.getElementById('hero-feats').innerHTML=m.feats.map(f=>`<li>${f}</li>`).join('');
+  const note=document.getElementById('hero-note');
+  if(st==='ready'){ note.className='ext-note is-ready'; note.innerHTML=`${ICONS.info}<span>玩法包已就位，可以直接开局。</span>`; }
+  else { note.className='ext-note'; note.innerHTML=`${ICONS.info}<span>${m.reason||'玩法包尚未接入本机'}</span>`; }
+  packEl.textContent=m.pack;
+  startBtn.disabled = st!=='ready';
+  startBtn.textContent = st==='ready' ? '开始' : (st==='pending' ? '待接入' : '筹备中');
+  stageEl.dataset.mode=m.id;
+  stageEl.dataset.status=st;
+}
+
+function renderList(){
+  const modes = empty ? [] : MODES;
+  if(!modes.length){
+    listEl.innerHTML=`<li class="empty" data-testid="extension-empty">${ICONS.info}<p>还没有可玩的拓展玩法。</p><span>安装一个玩法包后，它会出现在这里。</span></li>`;
+    packEl.textContent='—';
+    startBtn.disabled=true; startBtn.textContent='待接入';
+    stageEl.style.visibility='hidden';
+    return;
+  }
+  stageEl.style.visibility='';
+  listEl.innerHTML = modes.map((m,i)=>{
+    const st=modeStatus(m), s=STATUS[st];
+    const placeholder = st==='missing';
+    return `<li>
+      <button class="ext-row${m.id===selected?' is-selected':''}${placeholder?' is-placeholder':''}"
+        type="button" data-ext="${m.id}" data-testid="extension-row-${m.id}"
+        aria-pressed="${m.id===selected}" ${placeholder?'disabled':''}>
+        <span class="ext-row__idx">${String(i+1).padStart(2,'0')}</span>
+        <span class="ext-row__main">
+          <span class="ext-row__head">
+            <span class="ext-row__name">${m.name}</span>
+            <span class="ext-row__code">${m.code}</span>
+          </span>
+          <span class="ext-row__desc">${m.desc}</span>
+        </span>
+        <span class="ext-row__tail"><span class="chip ${s.cls}">${s.text}</span></span>
+      </button>
+    </li>`;
+  }).join('');
+  renderStage();
+}
+
+function openHall(){
+  renderList();
+  veil.classList.add('is-open');
+  requestAnimationFrame(()=> (listEl.querySelector('.ext-row.is-selected:not([disabled])')||document.getElementById('close-ext')).focus());
+}
+function closeHall(){ veil.classList.remove('is-open'); document.getElementById('open-ext').focus(); }
+
+document.getElementById('open-ext').addEventListener('click', openHall);
+document.getElementById('close-ext').addEventListener('click', closeHall);
+veil.addEventListener('click',(e)=>{ if(e.target===veil) closeHall(); });
+document.addEventListener('keydown',(e)=>{ if(e.key==='Escape'&&veil.classList.contains('is-open')){e.preventDefault();closeHall();} });
+listEl.addEventListener('click',(e)=>{
+  const row=e.target.closest('.ext-row');
+  if(!row || row.disabled) return;
+  selected=row.dataset.ext;
+  listEl.querySelectorAll('.ext-row').forEach(r=>{ const on=r.dataset.ext===selected; r.classList.toggle('is-selected',on); r.setAttribute('aria-pressed',String(on)); });
+  renderStage();
+});
+btnState.addEventListener('click',()=>{
+  status = status==='pending' ? 'ready' : 'pending';
+  btnState.textContent=`状态：${status==='ready'?'可开局':'待接入'}`;
+  btnState.setAttribute('aria-pressed',String(status==='ready'));
+  renderList();
+});
+btnEmpty.addEventListener('click',()=>{ empty=!empty; btnEmpty.textContent=empty?'切换为有内容':'切换空状态'; renderList(); });
+
+function syncScale(){
+  const k=Math.max(.42,Math.min(1,Math.min(innerHeight/720,innerWidth/1280)));
+  document.documentElement.style.setProperty('--t',`${(66.67*k).toFixed(2)}px`);
+  document.getElementById('vp-hint').textContent=`视口 ${innerWidth}×${innerHeight}`;
+}
+addEventListener('resize',syncScale);
+syncScale();
+</script>
+</body>
+</html>

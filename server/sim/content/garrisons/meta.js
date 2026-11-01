@@ -272,6 +272,34 @@ H.SERVER_GAIN_EQUIP = {
   },
 };
 
+// 湮灭专属 mod 的 13 名干员（docs/research/20-annihilation-mods.json）：包内把三条整备特质写成 `effectType: CUSTOM` +
+// 自己的 effectKey，语义逐字来自包内 `desc` / `bb` / `bbStr`：
+//   custom_grant_item_on_acquire  <获得时>获得 N 件 item      （阿米娅 / Mon3tr）
+//   custom_grant_item_on_sell     <售出时>获得 N 件 item      （Mon3tr）
+//   custom_transform_on_sell      <售出时>变为 N 个 chess    （煌 → 烛煌，凯尔希 → Mon3tr）
+// 发放口径与 SERVER_GAIN_EQUIP 一致（requirePool:false、ignoreCap:true：它们是 mod 的奖励，不是商店货）；「变为」按
+// 「售出后获得 N 个目标干员」实现 —— 不占卡池副本（fromPool:false），因为那件棋子是换来的，不是抽来的。[ASSUMED]
+H.custom_grant_item_on_acquire = {
+  run(ctx) {
+    const { bb, bbStr } = ctx.source;
+    for (let i = 0; i < Math.min(10, num(bb.count, 1)); i++) ctx.grantItem(bbStr.item, { requirePool: false, ignoreCap: true });
+  },
+};
+
+H.custom_grant_item_on_sell = {
+  onSold(ctx) {
+    const { bb, bbStr } = ctx.source;
+    for (let i = 0; i < Math.min(10, num(bb.count, 1)); i++) ctx.grantItem(bbStr.item, { requirePool: false, ignoreCap: true });
+  },
+};
+
+H.custom_transform_on_sell = {
+  onSold(ctx) {
+    const { bb, bbStr } = ctx.source;
+    for (let i = 0; i < Math.min(10, num(bb.count, 1)); i++) ctx.grantChess(bbStr.chess, { requirePool: false, fromPool: false });
+  },
+};
+
 H.SERVER_GAIN_FREE_REFRESH_COUNT = {
   run(ctx) { ctx.grantFreeRefresh(num(ctx.source.bb.count, 1)); },
 };

@@ -974,7 +974,7 @@ function enemyAttack(b, e, prevCd) {
     return canTargetAlly(e, t, radius > 0);
   };
   targets = locked.filter(still);
-  if (targets.length > 1) sortAllyTargets(e, targets);
+  if (targets.length > 1) sortAllyTargets(e, targets, b);
   // `enemyAttackStart` { enemy, targets }: the enemy starts a normal attack, before 麻痹 may interrupt it (the client's
   // ON_BEFORE_ABILITY_SPELL_ON of an attack that 麻痹 can interrupt — 酒神 堕梦 "攻击范围内的敌人普通攻击时受到70点神经损伤",
   // PRTS 备注 "于敌人成功普通攻击前之前触发（意味着触发的元素爆发可打断当次普攻…）": a burst it causes interrupts this attack)

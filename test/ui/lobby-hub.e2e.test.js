@@ -1,8 +1,10 @@
 // Browser E2E of the hub lobby (PR #643 split 6) against the real server, headless Chrome (puppeteer-core + system
 // Chrome). Opt-in: SP_E2E=1 node --test test/ui/lobby-hub.e2e.test.js
 //
-// Desktop 1920×1080: the hub (title, 独立模拟 / 同盟模拟, the S.W.E.E.P. / 干员调配 plates, no top-bar 统计数据 chip) →
-// 独立模拟 opens 选择模拟协议 (a Modal with the focus inside; a difficulty is remembered and redraws the picture) → Esc
+// Desktop 1920×1080: the hub (title, 独立模拟 / 同盟模拟 / 拓展模式, the S.W.E.E.P. / 干员调配 plates, no top-bar 统计数据
+// chip) → 拓展模式 opens 选择拓展玩法 (the dossier's 40 % beside the list's 60 %, one 88 px row per play set, 开始 dark while
+// every play set is 待接入, Esc back to the third card) → 独立模拟 opens 选择模拟协议 (a Modal with the focus inside; a
+// difficulty is remembered and redraws the picture) → Esc
 // returns the focus to the entry → 同盟模拟 opens 选择同盟方式 with the key field focused (the project's TextField: a typed
 // key is normalised and written back, a 5th character or a dash is dropped, a pasted invite link longer than 64
 // characters still gives its key) → 创建同盟 creates the room at once at the remembered difficulty (the event's 联合模拟,
@@ -136,11 +138,62 @@ describe('hub lobby (real server, headless Chrome)', { skip: !ENABLED && 'set SP
       }));
       assert.equal(hub.title, '卫戍协议：盟约');
       assert.equal(await page.$('.lobby-screen .topbar .stats-entry'), null, 'no top-bar 统计数据 chip: the 成就统计 card is the entry');
-      assert.deepEqual(hub.entries, ['solo', 'coop']);
+      assert.deepEqual(hub.entries, ['solo', 'coop', 'ext']);
       assert.deepEqual(hub.plates, [true, true]);
       assert.equal(hub.dialogs, 0);
-      assert.deepEqual((await fit(page)).out, [], 'the hub fits 1920×1080');
+      assert.deepEqual((await fit(page)).out, [], 'the hub fits 1920×1080 with three entries');
       await page.screenshot({ path: path.join(OUT, 'lobby-hub-desktop.png') });
+
+      // 拓展模式 → 选择拓展玩法: the hall's rows (1 → N), the dossier's 40 % beside the list's 60 %, an even ladder of
+      // 88 px rows 10 px apart, 开始 dark while every play set is 待接入, Esc back to the third card
+      await press(page, '.mode-card[data-mode="ext"]');
+      await page.waitForSelector('.modal__box.ext', { visible: true });
+      await settle(page);
+      const ext = await page.evaluate(() => {
+        const box = document.querySelector('.modal__box.ext');
+        const rect = (el) => el.getBoundingClientRect();
+        const rows = [...box.querySelectorAll('.ext-row')];
+        const stage = box.querySelector('.ext-stage');
+        const list = box.querySelector('.ext-list');
+        const start = box.querySelector('.ext-foot__start');
+        const heights = rows.map((el) => Math.round(rect(el).height));
+        const gaps = rows.slice(1).map((el, i) => Math.round(rect(el).top - rect(rows[i]).bottom));
+        return {
+          title: box.querySelector('.modal__title')?.textContent,
+          rows: rows.map((el) => el.dataset.ext),
+          statuses: rows.map((el) => el.dataset.status),
+          chips: rows.map((el) => el.querySelector('.chip')?.textContent),
+          placeholders: rows.filter((el) => el.classList.contains('is-placeholder')).length,
+          locked: rows.filter((el) => el.disabled).length,
+          selected: box.querySelector('.ext-row.is-selected')?.dataset.ext,
+          hook: box.querySelector('.ext__body')?.dataset.extension,
+          code: box.querySelector('.ext-hero__code')?.textContent,
+          start: { text: start?.textContent.trim(), disabled: start?.disabled === true },
+          stage: Math.round(rect(stage).width), list: Math.round(rect(list).width),
+          heights, gaps,
+          inside: rows.every((el) => { const b = rect(el); const c = rect(box); return b.left >= c.left - 1 && b.right <= c.right + 1; }),
+        };
+      });
+      assert.equal(ext.title, '选择拓展玩法');
+      assert.deepEqual(ext.rows, ['annihilation', 'endless-fire', 'deep-dive'], 'the table is what the list shows');
+      assert.deepEqual(ext.statuses, ['pending', 'missing', 'missing']);
+      assert.deepEqual(ext.chips, ['待接入', '筹备中', '筹备中']);
+      assert.equal(ext.placeholders, 2, 'the 筹备中 rows are dashed');
+      assert.equal(ext.locked, 2, '…and not selectable');
+      assert.equal(ext.selected, 'annihilation', 'the dossier opens on the first listed play set');
+      assert.equal(ext.hook, 'annihilation', 'the data-extension hook');
+      assert.equal(ext.code, 'AC-5', 'the play set\'s own code');
+      assert.deepEqual(ext.start, { text: '待接入', disabled: true }, 'nothing can start yet, and the button says why');
+      assert.equal(new Set(ext.heights).size, 1, `the rows are one height: ${ext.heights}`);
+      assert.equal(ext.heights[0], 88, 'the 88 px row');
+      assert.deepEqual(ext.gaps, ext.gaps.map(() => 10), `the rows are one gap apart: ${ext.gaps}`);
+      assert.ok(Math.abs(ext.stage / (ext.stage + ext.list) - 0.4) < 0.02, `dossier 40 % / list 60 %: ${ext.stage}/${ext.list}`);
+      assert.ok(ext.inside, 'no row leaves the box');
+      assert.deepEqual((await fit(page)).out, [], 'the hall fits 1920×1080');
+      await page.screenshot({ path: path.join(OUT, 'lobby-hub-extension.png') });
+      await escape(page);
+      await page.waitForSelector('.modal', { hidden: true });
+      assert.equal(await page.evaluate(() => document.activeElement?.dataset?.mode), 'ext', 'the focus is back on the third card');
 
       // 独立模拟 → 选择模拟协议
       await press(page, '.mode-card[data-mode="solo"]');

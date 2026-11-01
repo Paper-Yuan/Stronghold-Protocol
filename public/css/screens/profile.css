@@ -1,0 +1,271 @@
+/* profile.css — 大厅个人条 + 个人资料面板（头像 / 名片两分区）+ 名片选择器。
+ *
+ * 业主 2026-10-28 B 项：把既有的「本机账号 / 名片」这套接回大厅（ui/accounts.js 的 AccountMeChip 之前没有任何调用点），
+ * 并把名片选择器换成 tools/import-namecards.py 生成的 34 张索引（data/namecards.json + public/assets/namecard/*.webp）。
+ *
+ * 由 ui/accounts.js 懒加载（与 ui/forge.js / ui/cardArt.js / ui/banPicker.js 同一个写法），不进 index.html。
+ * 地板口径同其它新面板：触摸 24px（关键键 40px）、字号 `max(<px>, calc(k * var(--t)))`、无 !important / :has()。 */
+
+/* ---- 大厅个人条（个人资料入口）---------------------------------------------------------------------------------- */
+.acct-tag { margin-left: .06em; font-size: max(9px, .8em); font-weight: 600; opacity: .62; letter-spacing: .02em; }
+.me-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: .08rem;
+  min-height: max(.6rem, 32px, calc(40px * var(--sp-ui, 1)));
+  max-width: min(3.4rem, 92vw);
+  padding: .04rem .1rem;
+  border: 1px solid var(--line-2);
+  background: rgba(0, 0, 0, .42);
+  color: var(--text-md);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color var(--t-fast), color var(--t-fast);
+}
+.me-chip:hover, .me-chip:focus-visible { border-color: var(--mint-500); color: var(--text-hi); }
+.me-chip__text { display: flex; flex-direction: column; min-width: 0; line-height: 1.2; }
+.me-chip__name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: max(12px, calc(.17 * var(--t)));
+  font-weight: 800;
+}
+.me-chip__stats { flex: none; width: max(14px, calc(.16 * var(--t))); height: max(14px, calc(.16 * var(--t))); opacity: .7; }
+.me-chip--btn .nc-layer { z-index: 0; }
+.me-chip > *:not(.nc-layer) { position: relative; z-index: 1; }
+
+/* ---- 个人资料面板：两分区 ---------------------------------------------------------------------------------------- */
+.lacct {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: .16rem;
+  min-width: min(5.6rem, 86vw);
+}
+.lacct__sec {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: .1rem;
+  padding: .1rem;
+  border: 1px solid var(--line);
+  background: rgba(0, 0, 0, .24);
+}
+.lacct__sec-head {
+  display: flex;
+  align-items: baseline;
+  gap: .08rem;
+}
+.lacct__sec-title {
+  margin: 0;
+  font-size: max(12px, calc(.19 * var(--t)));
+  font-weight: 800;
+  color: var(--text-hi);
+}
+.lacct__who { display: flex; align-items: center; gap: .16rem; }
+.lacct__pic {
+  width: max(32px, calc(40px * var(--sp-ui, 1)), calc(.9 * var(--t)));
+  height: max(32px, calc(40px * var(--sp-ui, 1)), calc(.9 * var(--t)));
+  flex: none;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  border: 2px solid var(--mint-700, #2b7);
+  background: #101614;
+  font-size: max(14px, calc(.4 * var(--t)));
+  font-weight: 900;
+}
+.lacct__pic img { width: 100%; height: 100%; object-fit: cover; }
+.lacct__name { font-size: max(13px, calc(.3 * var(--t))); font-weight: 900; }
+.lacct__note {
+  margin: 0;
+  font-size: max(11px, calc(.15 * var(--t)));
+  line-height: 1.55;
+  color: var(--text-lo);
+}
+.lacct__btns { display: flex; flex-wrap: wrap; gap: .1rem; }
+.lacct__btns button { min-height: 24px; }
+
+/* 名片预览（面板里的「当前名片」）：**与素材同比例**（entry 640×224 = 20:7）。
+ * 旧框是 600×186（3.23:1），配 object-fit: cover 会把卡面上下各裁掉一条 —— 业主反馈的「差分显示不完全」就是它。 */
+.lacct__cardview {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 20 / 7;
+  overflow: hidden;
+  border: 1px solid var(--line-2);
+  background: #141817;
+}
+.lacct__cardview--none { display: grid; place-items: center; color: var(--text-lo); font-size: max(11px, calc(.14 * var(--t))); }
+
+/* ---- 名片图层（大厅个人条 / 房间座位牌 / 结算卡共用）---------------------------------------------------------- */
+/* 座位牌上的名片只做**很淡**的底纹（业主 2026-10-29：偏暗）。
+ * 注意：这里**只抬 z-index，绝不改 position** —— `.rseat__plate` 是 grid，grid item 的 z-index 本来就生效；
+ * 早先写成 `position: relative` 会把 `.rseat__me`（设计上是 absolute 角标）掰成网格项，把头像与名字挤开一位
+ * （业主看到的「名字不在下侧居中、名片错位」就是这个）。 */
+/* 业主 2026-10-29（真机两轮）：座位牌上的名片还是太实 —— 再压到 .04，只当一层几乎看不见的底纹。 */
+.rseat__plate .nc-layer { opacity: .04; }
+.rseat__plate > *:not(.nc-layer) { z-index: 1; }
+.rseat__plate > .rseat__me { z-index: 2; }
+.nc-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+  border-radius: inherit;
+  background-size: cover;
+  background-position: center;
+}
+.nc-layer img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+/* 差分切换（业主 2026-10-29）：只在有多张差分时出现 */
+.nc-var { display: inline-flex; align-items: center; gap: .04rem; }
+.nc-var__btn {
+  min-width: 24px;
+  min-height: 24px;
+  padding: 0 .06rem;
+  border: 1px solid var(--line-2);
+  background: rgba(0, 0, 0, .3);
+  color: var(--text-lo);
+  font: inherit;
+  font-size: max(12px, calc(.18 * var(--t)));
+  font-weight: 800;
+  line-height: 1;
+  cursor: pointer;
+}
+.nc-var__btn:hover { border-color: var(--line-3); color: var(--text-hi); }
+.nc-var__pos { font-size: max(11px, calc(.15 * var(--t))); color: var(--text-md); }
+/* 差分的点阵（>2 张时出现）：一眼看出总共有几张、现在第几张 */
+.nc-var__dots { display: inline-flex; align-items: center; gap: 2px; margin-left: .04rem; }
+.nc-var__dots i {
+  width: 6px;
+  height: 6px;
+  border: 1px solid var(--line-3);
+  background: transparent;
+}
+.nc-var__dots i.is-on { background: var(--mint-400); border-color: var(--mint-400); }
+
+/* ---- 名片选择器 ------------------------------------------------------------------------------------------------- */
+.nc-pick {
+  position: fixed;
+  inset: 0;
+  z-index: 140;
+  display: grid;
+  place-items: center;
+  padding: 12px;
+  background: rgba(4, 8, 7, .78);
+}
+.nc-pick__panel {
+  display: flex;
+  flex-direction: column;
+  gap: .1rem;
+  width: min(11rem, 96vw);
+  max-height: min(6.6rem, 92vh);
+  padding: .12rem;
+  border: 1px solid var(--line-2);
+  background: #10160f;
+  box-shadow: 0 18px 48px rgba(0, 0, 0, .6);
+}
+.nc-pick__head { display: flex; flex-wrap: wrap; align-items: baseline; gap: .08rem; }
+.nc-pick__title { font-size: max(12px, calc(.17 * var(--t))); font-weight: 800; color: var(--text-hi); }
+.nc-pick__x {
+  margin-left: auto;
+  min-width: 32px;
+  min-height: 32px;
+  border: 1px solid var(--line-2);
+  background: transparent;
+  color: var(--text-lo);
+  font-size: max(16px, calc(.2 * var(--t)));
+  cursor: pointer;
+}
+.nc-pick__x:hover { color: var(--text-hi); border-color: var(--line-3); }
+.nc-pick__grid {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(max(3rem, 9em), 1fr));
+  font-size: max(11px, calc(.15 * var(--t)));
+  gap: .08rem;
+  padding: 2px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+.nc-pick__card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: .03rem;
+  padding: .03rem;
+  border: 1px solid var(--line);
+  background: rgba(0, 0, 0, .3);
+  color: var(--text-md);
+  font: inherit;
+  cursor: pointer;
+  transition: border-color var(--t-fast), color var(--t-fast);
+}
+.nc-pick__card:hover { border-color: var(--line-3); color: var(--text-hi); }
+.nc-pick__card.is-on { border-color: var(--mint-400); box-shadow: 0 0 0 1px var(--mint-400) inset; color: var(--text-hi); }
+.nc-pick__shot {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 20 / 7;   /* 与 entry 素材同比例：整张卡面不裁切 */
+  overflow: hidden;
+  background: #141817;
+}
+/* 有多张差分时在瓦片左上角标数量（业主 2026-10-29：选择器里要一眼看到哪些卡带差分） */
+.nc-pick__var {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  min-width: 16px;
+  padding: 0 .03rem;
+  background: rgba(6, 12, 10, .78);
+  border: 1px solid var(--line-2);
+  color: var(--mint-400);
+  font-size: max(9px, calc(.12 * var(--t)));
+  font-weight: 800;
+  text-align: center;
+}
+/* 选择器里的差分条：选中一张有多张差分的卡时出现，换完立即换图 */
+.nc-pick__varrow {
+  display: flex;
+  align-items: center;
+  gap: .08rem;
+  padding: .04rem .02rem 0;
+  border-top: 1px solid var(--line);
+}
+.nc-pick__varhint { font-size: max(10px, calc(.13 * var(--t))); color: var(--text-lo); }
+.nc-pick__name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: left;
+  font-size: max(11px, calc(.14 * var(--t)));
+  font-weight: 700;
+}
+.nc-pick__on {
+  position: absolute;
+  right: 2px;
+  bottom: 2px;
+  padding: 0 .04rem;
+  background: var(--mint-500);
+  color: var(--text-on-mint);
+  font-size: max(9px, calc(.11 * var(--t)));
+  font-weight: 800;
+}
+.nc-pick__foot { display: flex; align-items: center; gap: .1rem; }
+.nc-pick__foot small { flex: 1 1 auto; font-size: max(10px, calc(.13 * var(--t))); color: var(--text-lo); }
+
+/* 矮屏：面板整页高、瓦片两列起（名字读得全），选择器不留 padding */
+@media (max-height: 480px) {
+  .nc-pick { padding: 6px; }
+  .nc-pick__panel { max-height: 96vh; width: min(12rem, 98vw); }
+  .nc-pick__grid { grid-template-columns: repeat(auto-fill, minmax(max(2.6rem, 7.6em), 1fr)); gap: .05rem; }
+  .lacct { gap: .1rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .me-chip, .nc-pick__card { transition: none; }
+}

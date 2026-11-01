@@ -21,7 +21,7 @@
 
 import { render } from '../../vendor/preact.module.js';
 import { html, TierChip } from './components.js';
-import { GEO } from '../../../shared/constants.js';
+import { GEO, BENCH_PER_ROW, benchRows, benchSizeOf, benchTileOf, benchIndexAt, tempRowOf } from '../../../shared/constants.js';
 import { chessAvatarUrl, itemIconUrl, tokenAvatarUrl, enemyIconUrl } from './assetUrls.js';
 import { tileKey, hasFlag, UF, penPlacement, PEN, fieldTile, ownStandIn, ownDiyRecord } from './gameLogic.js';
 import { t } from '../../../shared/i18n.js';
@@ -125,10 +125,17 @@ export function createFallbackView(host, opts = {}) {
     const h = st.size.h || host.clientHeight || 1;
     const rem = parseFloat(getComputedStyle(document.documentElement).fontSize) || 100;
     const r = st.rect;
-    const cols = r.c1 - r.c0 + 1;
     const prep = st.mode === 'prep';
+    // 整备区 of this match (shared/constants.js benchSizeOf: 炸惊 20, every other mode 10): the slot strip below the
+    // board lays the bench out the way the board does — one slot per tile, row 0 of the strip = hand row 7, and a
+    // two-row bench (20 slots) puts slots 10..19 on a second strip row below it (`benchTileOf`), so the strip never
+    // grows past the board's own width (the official half's cols 0..10)
+    const bench = prep ? benchSizeOf(st.priv) : 0;
+    const benchRowCount = prep ? benchRows(bench) : 0;
+    const cols = Math.max(r.c1 - r.c0 + 1, Math.min(bench, BENCH_PER_ROW));
     const hasTemp = prep && Array.isArray(st.priv?.temp) && st.priv.temp.some(Boolean);
-    const rows = r.r1 - r.r0 + 1 + (prep ? 2.6 + (hasTemp ? 1.2 : 0) : 0); // + gap + hand (+ temp) rows
+    // + gap + bench rows (+ temp row)
+    const rows = r.r1 - r.r0 + 1 + (prep ? 2.6 + (benchRowCount - 1) * 1.0 + (hasTemp ? 1.2 : 0) : 0);
     // keep clear of the HUD: top bar + bond strip above, shop bar (prep) / switcher (combat) below
     const top0 = rem * 2.0;
     const bottom0 = h - rem * (prep ? 3.3 : 1.1);
@@ -143,8 +150,12 @@ export function createFallbackView(host, opts = {}) {
   }
 
   const tilePos = (L, row, col) => ({ x: (col - st.rect.c0) * L.tile, y: (st.rect.r1 - row) * L.tile });
-  const handPos = (L, idx) => ({ x: idx * L.tile, y: (L.rows + 0.6) * L.tile });
-  const tempPos = (L, idx) => ({ x: (GEO.TEMP_C0 + idx) * L.tile, y: (L.rows + 1.72) * L.tile });
+  /** Slot strip below the board: strip row 0 = hand row 7, strip row 1 = row 8 (the two-row 炸惊 bench, `benchTileOf`). */
+  const handPos = (L, idx, n = GEO.HAND_SIZE) => {
+    const t = benchTileOf(idx, n);
+    return { x: t.col * L.tile, y: (L.rows + 0.6 + Math.abs(t.row - GEO.HAND_ROW)) * L.tile };
+  };
+  const tempPos = (L, idx, n = GEO.HAND_SIZE) => ({ x: (GEO.TEMP_C0 + idx) * L.tile, y: (L.rows + 0.6 + (benchRows(n) - 1) + 1.12) * L.tile });
 
   // ---- pieces (prep) ---------------------------------------------------------------------------------------
   function pieceArt(p) {
@@ -377,8 +388,9 @@ export function createFallbackView(host, opts = {}) {
         const pos = heldPos(p) || tilePos(L, p.row, p.col);
         pieces.push(html`<${Piece} key=${p.uid} p=${p} x=${pos.x} y=${pos.y} L=${L} area="board" />`);
       }
-      for (let i = 0; i < GEO.HAND_SIZE; i++) {
-        const pos = handPos(L, i);
+      const benchN = benchSizeOf(st.priv);
+      for (let i = 0; i < benchN; i++) {
+        const pos = handPos(L, i, benchN);
         const hov = st.hoverTarget?.area === 'hand' && st.hoverTarget.idx === i ? dropState(st.hoverTarget) : null;
         hand.push(html`<div key=${`h${i}`} class=${cx('ff-slot', hov && `is-hover-${hov}`)} data-drop="hand" data-idx=${i}
           style=${`transform:translate(${pos.x}px,${pos.y}px);width:${L.tile}px;height:${L.tile}px`}><span class="num">${i + 1}</span></div>`);
@@ -388,7 +400,7 @@ export function createFallbackView(host, opts = {}) {
       const temp = Array.isArray(st.priv.temp) ? st.priv.temp : [];
       if (temp.some(Boolean)) {
         for (let i = 0; i < GEO.TEMP_SIZE; i++) {
-          const pos = tempPos(L, i);
+          const pos = tempPos(L, i, benchN);
           hand.push(html`<div key=${`t${i}`} class="ff-slot ff-slot--temp" style=${`transform:translate(${pos.x}px,${pos.y}px);width:${L.tile}px;height:${L.tile}px`}></div>`);
           const p = temp[i];
           if (p) { const hp = heldPos(p) || pos; pieces.push(html`<${Piece} key=${p.uid} p=${p} x=${hp.x} y=${hp.y} L=${L} area="temp" />`); }
@@ -544,8 +556,10 @@ export function createFallbackView(host, opts = {}) {
       const br = root.querySelector('.ff-board')?.getBoundingClientRect();
       if (!br) return null;
       let p = null;
-      if (row === GEO.HAND_ROW && col >= 0 && col < GEO.HAND_SIZE && st.mode === 'prep') p = handPos(L, col);
-      else if (row === GEO.TEMP_ROW && col >= GEO.TEMP_C0 && col < GEO.TEMP_C0 + GEO.TEMP_SIZE && st.mode === 'prep') p = tempPos(L, col - GEO.TEMP_C0);
+      const benchN = benchSizeOf(st.priv);
+      const benchIdx = benchIndexAt(row, col, benchN);
+      if (benchIdx != null && st.mode === 'prep') p = handPos(L, benchIdx, benchN);
+      else if (row === tempRowOf(st.stage?.id) && col >= GEO.TEMP_C0 && col < GEO.TEMP_C0 + GEO.TEMP_SIZE && st.mode === 'prep') p = tempPos(L, col - GEO.TEMP_C0, benchN);
       else if (row >= st.rect.r0 && row <= st.rect.r1 && col >= st.rect.c0 && col <= st.rect.c1) p = tilePos(L, row, col);
       if (!p) return null;
       const x0 = br.left + p.x, y0 = br.top + p.y, s = L.tile;

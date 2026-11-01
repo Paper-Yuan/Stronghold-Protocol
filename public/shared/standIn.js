@@ -30,6 +30,9 @@ export function statusKey(status) {
 export const IDENTITY_FIELDS = Object.freeze([
   'chessId', 'baseId', 'goldenId', 'isGolden', 'tier', 'identifier', 'isHidden', 'isDiy', 'visible', 'chessType', 'backup',
   'shopSortId', 'bonds', 'garrisonIds', 'price', 'sellPrice', 'upgradeNum', 'upgradeChessId', 'status', 'diyRequirement',
+  // 湮灭专属 mod's extra bond membership for this chess: the 补位 unit must count the same bonds as the record it replaces
+  // (docs/research/20-annihilation-mods.json → data/chess.json `annBonds`; read only by the ANNIHILATION view)
+  'annBonds',
 ]);
 
 /** The form of `charId` at a chess `status`, or null. */
@@ -82,6 +85,9 @@ export function composeUnitRecord(identity, unit, form, { skillIndex, moduleId =
     immunities: form.immunities, rangeId: form.rangeId, rangeGrid: form.rangeGrid,
     dmgType: form.dmgType, attackKind: form.attackKind, projectile: form.projectile, canHitFly: form.canHitFly,
     targetPriority: form.targetPriority,
+    // The Chinese branch trait as a boolean (build-data). A localized form keeps it after the trait text is
+    // translated, so a 自选 推击手 still stands on a 高台 (GitHub #676). Absent when the form has no flag.
+    ...(form.placeOnRanged === true ? { placeOnRanged: true } : {}),
     trait: (mod && mod.traitOverride) || form.trait,
     skill: skill ? { ...skill } : null,
     talents,
@@ -90,8 +96,10 @@ export function composeUnitRecord(identity, unit, form, { skillIndex, moduleId =
       ? { id: moduleId, name: info?.name ?? null, type: info?.typeName ?? null, level: equipLevel, active: equipLevel > 0 && !!mod }
       : (equipLevel > 0 ? { id: null, name: null, type: null, level: equipLevel, active: false } : null),
     assets: {
-      avatar: golden ? a.avatarGolden : a.avatar, portrait: golden ? a.portraitGolden : a.portrait, spine: a.spine,
-      skillIcon: skill?.iconId || null, subProfIcon: a.subProfIcon,
+      avatar: golden ? a.avatarGolden : a.avatar, portrait: golden ? a.portraitGolden : a.portrait, spine: golden ? a.spineGolden ?? a.spine : a.spine,
+      skillIcon: (golden ? a.skillIconGolden : null) ?? a.skillIcon ?? skill?.iconId ?? null,
+      subProfIcon: golden ? a.subProfIconGolden ?? a.subProfIcon : a.subProfIcon,
+      ...(a.voice || a.voiceGolden ? { voice: golden ? a.voiceGolden ?? a.voice : a.voice } : {}),
     },
     skills: skills.map((s) => ({ ...s, isDefault: s.index === skillIndex })),
   });
@@ -101,7 +109,7 @@ export function composeUnitRecord(identity, unit, form, { skillIndex, moduleId =
     out.talentsBase = stripPotential(form.talents);
     out.modules = (mods || []).map((m) => ({ ...stripPotential(m), isDefault: m.uniEquipId === moduleId }));
   }
-  for (const k of ['kitRef', 'skillSpec', 'talentMods', 'dsl', 'pluginId']) if (Object.hasOwn(form, k) || Object.hasOwn(unit, k)) out[k] = form[k] ?? unit[k];
+  for (const k of ['kitRef', 'skillSpec', 'talentMods', 'dsl', 'pluginId', 'origin']) if (Object.hasOwn(form, k) || Object.hasOwn(unit, k)) out[k] = form[k] ?? unit[k];
   if (standInFor) out.standInFor = standInFor;
   return out;
 }

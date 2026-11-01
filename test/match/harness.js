@@ -61,6 +61,12 @@ export function makeMatch(o = {}) {
   }
   h.m = new Match({
     roomCode: 'TEST', mode, difficulty, seats, spectators: o.spectators, seed: o.seed ?? 1, matchNo: o.matchNo, data: o.data ?? DATA, log,
+    // 房间人数 (room.setSeats, docs/TWELVE_PLAYER_MODE.md): the lobby hands `maxSeats` down only for a room above
+    // MAX_SEATS. Omitted unless a test passes one, so a harness match's opts keep exactly the keys they had.
+    ...(o.maxSeats !== undefined ? { maxSeats: o.maxSeats } : {}),
+    // 蚀流档位（湮灭模拟）：Match 会夹到 1..EROSION_MAX 再交给 GameData。以前这里没转发，测试传 `{ erosion: 3 }`
+    // 会被静默降级成 1 —— 那条分支（敌人 ×1.2、无尽场、禁选额度）在测试里永远跑不到。缺省 undefined ⇒ 仍是 1。
+    ...(o.erosion !== undefined ? { erosion: o.erosion } : {}),
     send: (id, msg) => {
       for (const fn of h.onSend) fn(id, msg);
       if (msg.t === 'b.snap' || msg.t === 'b.ev') { h.frames++; if (!captureFrames) return true; }
@@ -178,7 +184,14 @@ export function checkInvariants(m) {
 /** The original harness checks (kept alongside collectViolations; they must agree). */
 function legacyInvariants(m) {
   const pool = m.pool;
+  // 多队 (docs/TWELVE_PLAYER_MODE.md §2): one pool per team above MAX_SEATS; a 4-seat match keeps the single shared one
+  const pools = typeof m.allPools === 'function' ? m.allPools() : [pool];
   const held = new Map();
+  const heldOf = (p) => {
+    let t = held.get(p);
+    if (!t) { t = new Map(); held.set(p, t); }
+    return t;
+  };
   const uids = new Set();
   const note = (p) => {
     assert.ok(Number.isInteger(p.uid) && p.uid > 0, `bad uid ${p.uid}`);
@@ -188,7 +201,9 @@ function legacyInvariants(m) {
   for (const ps of m.players.values()) {
     assert.ok(Number.isInteger(ps.funds) && ps.funds >= 0, `${ps.playerId} funds ${ps.funds}`);
     assert.ok(Number.isInteger(ps.pendingFunds) && ps.pendingFunds >= 0, `${ps.playerId} pending ${ps.pendingFunds}`);
-    assert.equal(ps.hand.length, GEO.HAND_SIZE);
+    // the bench width is the MODE's (server/match/PlayerState.js `new Array(gd.benchSize)`: 炸惊 20, every other mode
+    // 10) — the same number server/match/invariants.js checks; GEO.HAND_SIZE is only that default, not the width
+    assert.equal(ps.hand.length, (ps.gd || m.gd).benchSize, `${ps.playerId} bench width`);
     assert.ok(ps.temp.length >= GEO.TEMP_SIZE, 'temp retains five visible slots and may have queued overflow');
     assert.ok(ps.shop.level >= 1 && ps.shop.level <= m.gd.maxShopLevel);
     assert.ok(ps.shop.upgradePrice >= 0);
@@ -227,7 +242,7 @@ function legacyInvariants(m) {
         assert.ok(Number.isInteger(p.poolCopies) && p.poolCopies >= 0);
         const base = m.gd.baseIdOf(p.id);
         // a 自选 piece's copies are its player's own stock (0.2.0, server/match/player/diy.js)
-        const tally = ps.diyStock && ps.diyStock.has(base) ? diyHeld : held;
+        const tally = ps.diyStock && ps.diyStock.has(base) ? diyHeld : heldOf(typeof m.poolFor === 'function' ? m.poolFor(ps) : pool);
         tally.set(base, (tally.get(base) || 0) + p.poolCopies);
       } else if (p.kind === 'item') {
         assert.ok(m.gd.item(p.id), `unknown item ${p.id}`);
@@ -247,12 +262,15 @@ function legacyInvariants(m) {
       assert.equal(e.left + (diyHeld.get(base) || 0), e.cap, `${ps.playerId} 自选 stock ${base}: left ${e.left} + held ${diyHeld.get(base) || 0} != cap ${e.cap}`);
     }
   }
-  for (const [base, e] of pool.entries) {
-    assert.ok(Number.isInteger(e.left) && e.left <= e.cap, `pool ${base} balance ${e.left} cap ${e.cap}`);
-    assert.equal(pool.left(base), Math.max(0, e.left), 'overdrawn ownership never becomes a negative shop supply');
-    assert.equal(e.left + (held.get(base) || 0), e.cap, `pool accounting ${base}: left ${e.left} + held ${held.get(base) || 0} != cap ${e.cap}`);
+  for (const p of pools) {
+    const tally = held.get(p) || new Map();
+    for (const [base, e] of p.entries) {
+      assert.ok(Number.isInteger(e.left) && e.left <= e.cap, `pool ${base} balance ${e.left} cap ${e.cap}`);
+      assert.equal(p.left(base), Math.max(0, e.left), 'overdrawn ownership never becomes a negative shop supply');
+      assert.equal(e.left + (tally.get(base) || 0), e.cap, `pool accounting ${base}: left ${e.left} + held ${tally.get(base) || 0} != cap ${e.cap}`);
+    }
+    for (const [base, n] of tally) if (!p.has(base)) assert.equal(n, 0, `non-pool chess ${base} holds copies`);
   }
-  for (const [base, n] of held) if (!pool.has(base)) assert.equal(n, 0, `non-pool chess ${base} holds copies`);
   return true;
 }
 
@@ -261,7 +279,7 @@ export function give(m, ps, chessId, where = 'hand', at = null) {
   const rec = m.gd.chess(chessId);
   assert.ok(rec, `unknown chess ${chessId}`);
   const base = m.gd.baseIdOf(chessId);
-  const taken = m.pool.take(base, rec.isGolden ? m.gd.goldenCopies : 1);
+  const taken = m.poolFor(ps).take(base, rec.isGolden ? m.gd.goldenCopies : 1);
   const piece = ps.newPiece('chess', chessId, { poolCopies: taken });
   if (where === 'board') {
     ps.board.set(tileKey(at[0], at[1]), piece);

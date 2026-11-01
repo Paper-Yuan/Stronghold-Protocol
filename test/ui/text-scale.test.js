@@ -156,9 +156,10 @@ describe('文字大小: the setting', () => {
       'four steps fit the row on a phone (1rem = 40 px)');
   });
 
-  test('画面质量 is listed 低 / 中 / 高, the same direction as 官方特效 关 / 精简 / 完整', () => {
+  test('画面质量 is listed 低 / 中 / 高 / 超清 / 极致, the same direction as 官方特效 关 / 精简 / 完整', () => {
     const src = read('public/js/ui/settings.js');
-    assert.match(src, /const QUALITY = \[\['low', N_\('低'\)\], \['medium', N_\('中'\)\], \['high', N_\('高'\)\]\];/);
+    // 业主 2026-10-29：加了两档（超清 / 极致），顺序仍是「由低到高」，默认值仍是 high。
+    assert.match(src, /const QUALITY = \[\['low', N_\('低'\)\], \['medium', N_\('中'\)\], \['high', N_\('高'\)\], \['ultra', N_\('超清'\)\], \['extreme', N_\('极致'\)\]\];/);
     const fx = src.indexOf('const OFFICIAL_FX');
     assert.ok(fx > src.indexOf('const QUALITY'));
     assert.match(src.slice(fx, fx + 120), /const OFFICIAL_FX = \[\['off', N_\('关'\)\], \['lite', N_\('精简'\)\], \['full', N_\('完整'\)\]\];/);

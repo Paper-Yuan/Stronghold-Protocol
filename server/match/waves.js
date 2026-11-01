@@ -36,6 +36,7 @@
 // largest owner group (client `_CalculateActionPredelayConsiderUid`, decoded).
 
 import { createRng, deriveSeed } from '../sim/rng.js';
+import { cardsOf, heavenTimeLimit } from '../sim/content/ejibian.js';
 import { PLUGIN_ACTION_UNITS } from '../../shared/plugins/limits.js';
 
 const ACLOON = 'enemy_9012_acloon';
@@ -70,7 +71,11 @@ export function roundHalfEven(x) {
   return Math.floor(x + 0.5);
 }
 
-const gen = (gd) => (gd.factions.generation && typeof gd.factions.generation === 'object' ? gd.factions.generation : {});
+// gd.generation = factions.generation with the mode's own overrides (GameData.generation; 湮灭模拟 raises the type count
+// to 4 and the round slots to 20), so every rule below reads one merged object. An official mode adds no override, so its
+// merged object is factions.generation itself.
+const gen = (gd) => (gd.generation && typeof gd.generation === 'object' ? gd.generation
+  : (gd.factions.generation && typeof gd.factions.generation === 'object' ? gd.factions.generation : {}));
 const intOr = (v, d) => (Number.isInteger(v) && v > 0 ? v : d);
 
 /** Official movement class of an enemy key (randomEnemyAttributeDict.isFlyEnemy, else its motion). */
@@ -224,7 +229,10 @@ export function setupMatchWaves(gd, rng) {
 export function roundPick(gd, rng, factionsOrSetup, round) {
   const src = factionsOrSetup;
   const picks = src && !Array.isArray(src) && Array.isArray(src.picks) ? src.picks : (src && src.schedule && Array.isArray(src.schedule.picks) ? src.schedule.picks : null);
-  if (picks) return picks[round] ?? null;
+  if (picks && picks[round] !== undefined) return picks[round];
+  // 无尽湮灭: the run goes past the materialised schedule — every later round draws its own type and entry (the same
+  // marginal distribution as a plain factions array), so the enemy composition stays random for as long as the run lasts
+  if (picks && !gd.endless) return null;
   const factions = Array.isArray(src) ? src : (src && Array.isArray(src.factions) ? src.factions : []);
   const g = gen(gd);
   const types = gd.factions.types && typeof gd.factions.types === 'object' ? gd.factions.types : {};
@@ -374,14 +382,18 @@ function entriesView(gd, pick) {
  * @returns {{ templateId: string|null, spawns: object[], routes: object[], extraRoutes: object[], timeLimit: number,
  *   overrides: object, pick: object|null, entries: { ground: object|null, fly: object|null }, actions: object[] }}
  */
-export function buildNormalWave(gd, rng, factions, round) {
+export function buildNormalWave(gd, rng, factions, round, { plan = null, jibian = null } = {}) {
   const rc = gd.roundCfg(round);
   const templateId = rc && typeof rc.template === 'string' ? rc.template : null;
   const tpl = templateId ? gd.wave(templateId) : null;
-  const timeLimit = gd.combatTimeLimit(round);
+  // 炸惊模拟 敌方惊变「天堂制造」(ejibian_tiantangzhizao): the field's time limit is cut (sim/content/ejibian.js
+  // heavenTimeLimit — 封顶到下限). `jibian` is null in every mode without drawn 敌方惊变, and then the limit is the
+  // mode's own combatTimeLimit, byte-identical to before.
+  const timeLimit = jibian && jibian.length ? heavenTimeLimit({ flags: { enemyJibian: jibian } }, gd.combatTimeLimit(round)) : gd.combatTimeLimit(round);
   if (!tpl) return { templateId, spawns: [], routes: [], extraRoutes: [], timeLimit, overrides: {}, pick: null, entries: { ground: null, fly: null }, actions: [] };
   const pick = roundPick(gd, rng, factions, round);
   const { spawns, actions } = templateSpawns(gd, tpl, round, pick);
+  applyJibianPlan(round, spawns, plan);
   return {
     templateId,
     spawns,
@@ -396,10 +408,97 @@ export function buildNormalWave(gd, rng, factions, round) {
 }
 
 /**
+ * 炸惊模拟 规则14 — the Match side of the 敌方惊变 (the plan itself is sim/content/ejibian.js `matchJibianPlan`, which
+ * Match computes once per round from the drawn cards): enemy count multiplier, everything entering at once, and the
+ * 「入职测试」 slime swap. `plan` is null in every mode that is not ZHAJING (and in a zhajing round without such a
+ * card), and then this function does not touch a single field — every official wave stays byte-identical.
+ * @param {number} round @param {any[]} spawns the template's spawn list (mutated in place) @param {any} plan
+ */
+function applyJibianPlan(round, spawns, plan) {
+  if (!plan || !Array.isArray(spawns) || !spawns.length) return;
+  const mul = Number(plan.countMul);
+  if (Number.isFinite(mul) && mul > 0 && mul !== 1) {
+    for (const s of spawns) {
+      if (!s || s.tag === 'boss' || s.tag === 'part') continue;   // 领袖 / 部位不乘
+      const n = Math.max(1, Math.round((Number(s.count) || 1) * mul));
+      s.count = Math.max(1, Math.min(200, n));
+    }
+  }
+  if (plan.sameTime === true) for (const s of spawns) if (s && s.tag !== 'boss') s.time = 0;
+  if (plan.slime === true) {
+    // 「入职测试」: the round's ordinary enemies become 源石虫; leaders / parts keep their own key.
+    for (const s of spawns) {
+      if (!s || s.tag === 'boss' || s.tag === 'part') continue;
+      if (typeof s.key === 'string') s.key = SLIME_ENEMY_KEY;
+      else if (typeof s.enemyKey === 'string') s.enemyKey = SLIME_ENEMY_KEY;
+    }
+  }
+  void round;
+}
+
+/** 源石虫 key of the 「入职测试」 card (sim/content/ejibian.js SLIME_KEY; kept here as the wave side's own literal). */
+const SLIME_ENEMY_KEY = 'enemy_1007_slime';
+
+/**
+ * 悬赏怪池：`choices.cards.bounty` 里**可抽到**的敌人 key（去重、数据顺序）。
+ * 供敌方惊变「全军出击」(ejibian_quanjunchuji) 把 boss 战的小怪整体换掉用。
+ * 排除 `draft === false` / `draftExcluded` 的条目（那些是「战术特训 / 完美作战」这种不算抽取池的悬赏），
+ * 并且要求 `gd.enemy(key)` 真的存在（数据里指向不存在记录的悬赏会静默空转）。
+ * @param {any} gd
+ * @returns {string[]}
+ */
+export function bountyEnemyKeys(gd) {
+  const cards = gd && gd.choices && gd.choices.cards && Array.isArray(gd.choices.cards.bounty) ? gd.choices.cards.bounty : [];
+  const out = [];
+  const seen = new Set();
+  for (const c of cards) {
+    if (!c || typeof c.enemyKey !== 'string' || seen.has(c.enemyKey)) continue;
+    if (c.draft === false || c.draftExcluded === true) continue;
+    if (!gd.enemy(c.enemyKey)) continue;
+    seen.add(c.enemyKey);
+    out.push(c.enemyKey);
+  }
+  return out;
+}
+
+/**
+ * 敌方惊变「全军出击」(ejibian_quanjunchuji，owner 2026-10-23)：**boss 战里生成的小怪全部换成随机悬赏怪**，
+ * 领袖与部位保留。门 = 这张卡在 `enemyJibianCards` 里（`jibian` 参数就是它；官方四档与湮灭房传 null，这里一行都不走）。
+ *
+ * 与 `matchJibianPlan` 的关系：**不叠加**——`plan.countMul` / `sameTime` 仍由 `applyJibianPlan` 决定，本函数只换
+ * 敌人 key（数量、时间、路线一律不动），所以「量变→质变」与这张卡同时在场时，数量只被乘一次。
+ * 数值口径与包内一致：换上去的悬赏怪吃本轮的敌人 scale（`roundMods(scaleFor(...))`，与普通悬赏怪同一套）+ 槽位类。
+ * @param {any} gd @param {number} round @param {any[]} spawns @param {any} jibian 抽到的敌方惊变卡 id 列表
+ * @param {() => number} rng 波次随机流（Match.rngWaves；同 seed 同结果） @param {string|null} bossId
+ */
+export function applyQuanjunchuji(gd, round, spawns, jibian, rng, bossId, routes) {
+  if (!Array.isArray(spawns) || !spawns.length || !jibian) return;
+  if (!cardsOf({ flags: { enemyJibian: jibian } }).has('ejibian_quanjunchuji')) return;
+  const keys = bountyEnemyKeys(gd);
+  if (!keys.length) return;
+  const scale = scaleFor(gd, round);
+  for (const sp of spawns) {
+    if (!sp) continue;
+    const key = typeof sp.enemyKey === 'string' ? sp.enemyKey : sp.key;
+    const e = typeof key === 'string' ? gd.enemy(key) : null;
+    // 领袖 / 部位 / 本体就是这场 boss 的那只：一律保留
+    if (sp.tag === 'boss' || sp.tag === 'part') continue;
+    if (sp.preview && sp.preview.boss) continue;
+    if (bossId && key === bossId) continue;
+    if (e && String(e.rank || '').toUpperCase() === 'BOSS') continue;
+    const pick = keys[Math.max(0, Math.min(keys.length - 1, Math.floor(rng() * keys.length)))];
+    if (typeof sp.enemyKey === 'string') sp.enemyKey = pick; else sp.key = pick;
+    sp.mods = { ...(sp.mods || {}), ...roundMods(scale), slot: classOf(gd, pick) };
+    const route = Array.isArray(routes) && Number.isInteger(sp.routeIndex) ? routes[sp.routeIndex] || null : null;
+    sp.preview = previewInfo(gd, pick, route, false);
+    sp.tag = 'bounty';
+  }
+}
+/**
  * Boss / hidden round template for one boss field; escorts follow the pick of the round's own slot.
  * @param {{ bossId: string, solo: boolean }} opts solo → `_s` template (lone player or solo mode)
  */
-export function buildBossWave(gd, rng, factions, round, { bossId, solo }) {
+export function buildBossWave(gd, rng, factions, round, { bossId, solo, plan = null, jibian = null }) {
   const rc = gd.roundCfg(round);
   const map = rc && rc.bossTemplates && typeof rc.bossTemplates === 'object' ? rc.bossTemplates : {};
   let templateId = typeof map[bossId] === 'string' ? map[bossId] : null;
@@ -413,6 +512,9 @@ export function buildBossWave(gd, rng, factions, round, { bossId, solo }) {
   if (!tpl) return { templateId, spawns: [], routes: [], extraRoutes: [], timeLimit: Infinity, overrides: {}, pick: null, entries: { ground: null, fly: null }, actions: [] };
   const pick = roundPick(gd, rng, factions, round);
   const { spawns, actions } = templateSpawns(gd, tpl, round, pick);
+  applyJibianPlan(round, spawns, plan);
+  // 敌方惊变「全军出击」：boss 战的小怪整体换成随机悬赏怪（领袖/部位保留；只换 key，不动数量/时间）
+  applyQuanjunchuji(gd, round, spawns, jibian, rng, bossId, Array.isArray(tpl.routes) ? tpl.routes : null);
   return {
     templateId,
     spawns,

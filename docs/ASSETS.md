@@ -94,6 +94,105 @@ npm run assets       # = node tools/vendor.mjs && node tools/fetch-assets.mjs
 | `--add-only` | For a checkout whose `public/assets/` and `public/fonts/` are shared with another one (a git worktree with symlinked asset folders): download only the files missing on disk and never re-download, rewrite or delete an existing file — atlases already on disk are left as they are, the fonts are not rebuilt (the manifest keeps its current `fonts`). Not with `--prune` / `--force`. |
 | `--local-spines` | Rewrite `tools/assets/local-enemy-spines.json` and `tools/assets/local-token-spines.json` (the metadata of the enemy and token models only the local client has, see "Enemy aliases" and "Token models from the local client") from the models `tools/local-extract/extract.py` extracted to `public/assets/local/spine/enemy/` and `public/assets/local/spine/token/`. Run it after a game update changed them; without it the committed files are used and a differing extraction only gets a warning. |
 
+### Bundled skins and full illustrations (owner decision 2026-10-25)
+
+`data/assets.json` may carry three fields the download plan does not produce: `chars[<charId>].skins` (one record per
+built-in outfit), `chars[<charId>].illust` (the operator's full illustration, 精二) and `chars[<charId>].illustE1` (its
+精一 `#1` counterpart, `/assets/char/illust/<charId>_1.png` — `.webp` once converted, see "WebP art" below). They are
+written by `tools/inject-skins-assets.mjs` from files under ignored `public/assets/`, never by a runtime request — there
+is still **no install channel** on the server (docs/SKINS.md).
+
+```bash
+node tools/fetch-assets.mjs            # the normal art/voice manifest (re-runs keep the bundled fields below)
+node tools/fetch-skin-avatars.mjs      # skin avatars            public/assets/char/skin_avatar/{stem}.png
+node tools/fetch-skin-portraits.mjs    # skin portraits (180×360) public/assets/char/portrait/{stem}.png
+node tools/fetch-skin-spines.mjs       # skin Spine Front/Back    public/assets/spine/op/{charId}/{stem}/…
+node tools/fetch-illusts.mjs           # full illustrations       public/assets/char/illust/{charId}.png,
+                                       #                          public/assets/char/illust/{charId}_1.png,
+                                       #                          public/assets/char/illust/skin/{stem}.png
+node tools/set-skins-installed.mjs     # write data/skins-installed.json (only skins whose avatar is on disk)
+node tools/build-skins.mjs             # rebuild data/skins.json (the client's catalogue)
+node tools/fetch-skin-voices.mjs       # skin battle voices for the installed skins → data/skin-voices.json
+node tools/inject-skins-assets.mjs     # inject skins/illust/illustE1 into data/assets.json
+```
+
+`fetch-illusts.mjs` reads `.cache/gamedata/excel/skin_table.json` (`charSkins[].portraitId`) and downloads the original
+`skin/{portraitId}b.png` (>=1024 px, ~1–2.5 MB each) — the highest-resolution official picture; nothing is upscaled.
+`data/skins-installed.json` is the gate: only those skin ids are injected. A skin record has `name`, `group`, `avatar`,
+`portrait`/`illust` (when the file exists) and `spine` (only when Front skel + atlas + PNG all exist). Every URL points at
+a file on this machine; a missing file is simply not written, so the picker's normal fallbacks apply.
+
+`chars[<charId>].illustE1` is the same rule at operator level: the injection writes it only when
+`public/assets/char/illust/<charId>_1.png` (or its `.webp` twin) is on disk (today 241 of the 242 planned operators;
+`char_4231_clemnt` has no `#1` default appearance upstream), and clears a stale value when the file is gone. The client
+does not need it to *draw* 精一 — `public/js/ui/cardArt.js artSrcOf` derives the `_1` path from `illust` — but the
+manifest is what `tools/package.mjs` (`listedArtFiles`) and `fetch-assets`' orphan report read, so an unlisted `_1.png`
+would be missing from a release and deleted by `--prune`.
+
+A third injected field, `relicsOverlimit` (owner decision 2026-10-31), is the same rule for the 超限「词条」 icons: one
+top-level map `{ "<relicId>": "/assets/relics/overlimit/<relicId>.png" }` over the 36 pictures extracted from the
+owner's 饰品效果表.xlsx (`docs/research/23-overlimit-relics.json`'s `icon`). The client keeps reading the icon from
+`data/relicsOverlimit.json`; this map exists **only** for packaging and cleanup, because the download plan lists neither
+the folder nor the files. `inject-skins-assets.mjs` writes it from the files on disk and drops it (as a whole) on a
+machine that never extracted them; the count is `stats.relicsOverlimit`.
+
+`tools/fetch-assets.mjs` carries the current manifest's `chars[].skins` / `chars[].illust` / `chars[].illustE1` over when
+their files are still on disk (`report.preservedBundled`), and likewise the skill-mode sound pools (`preservedSfxPools`),
+voice slots (`preservedVoice`, e.g. lines downloaded once with `--voice-all`) and the `relicsOverlimit` map
+(`preservedRelicIcons`), so re-running the asset pipeline does not drop them and the shrink guard stays quiet. An
+`illustE1` or a 词条 icon it preserves also joins the run's referenced-file set, so
+`orphanFiles` does not list it and `--prune` leaves it alone. The injected counts live in `stats.skins`,
+`stats.charsWithSkins`, `stats.illusts`, `stats.charsWithIllust`, `stats.charsWithIllustE1` and `stats.relicsOverlimit`;
+all six are written by `inject-skins-assets.mjs`, so run it again after a `fetch-assets` run (its entries survive, the
+counts are recomputed).
+A full illustration set is large (roughly 0.7–1 GB for the roster plus installed skins); `--ops-only` / `--skins-only` /
+`--max=N` download it in halves or batches (`--export=FILE` writes the pending tasks as JSON). `--ids=char_219_meteo,char_002_amiya`
+limits a run to those operator charIds, so a targeted fill plans only those leaves. Every run is idempotent.
+`--phases=1` fetches only the `#1` default appearance — the 精一 illustration `char/illust/<id>_1.png` (the pair the seat
+card's 精一/精二 switch shows; `--phases=both` fetches that plus the highest phase, the default `best` keeps one file per
+operator as before).
+
+### WebP art (owner decision 2026-10-31)
+
+The four picture directories that carry most of the art bytes are stored as **WebP**:
+
+| Directory | Converted | Stayed PNG |
+|---|---|---|
+| `public/assets/char/illust/` (精二 219 + 精一 `_1` twins 229) | 448 | 18 |
+| `public/assets/char/illust/skin/` (皮肤) | 259 | 18 (13 checks + 5 whitelist) |
+| `public/assets/char/illustration/` (精一 `_1` / `_2` / `_skin1`) | 7 | 8 (whitelist) |
+| `public/assets/char/portrait/` (半身像 180×360) | 559 | 193 |
+
+Parameters: **`quality=90`, `method=6`, `alpha_quality=100`, `exact=False`** (measured in
+[`handoff/asset-webp/MEASURE.md`](../handoff/asset-webp/MEASURE.md) and
+[`handoff/asset-webp/extended/EXTENDED-PLAN.md`](../handoff/asset-webp/extended/EXTENDED-PLAN.md)). WebP stores alpha as
+a **lossless** plane, so the transparent outline is pixel-identical to the PNG (alpha maxdiff 0 on every converted file);
+`exact=False` drops the RGB *under fully transparent pixels*, which is why the PNG originals are kept outside the
+repository (`handoff/asset-webp/BACKUP.md`).
+
+- **The PNG stays the download identity.** The upstreams serve PNG and `tools/assets/plan.mjs` keeps planning PNG rels;
+  `tools/assets/manifest.mjs` (`webpVariant`, `resolveTemplate`, `downloadLeaves`) serves the WebP twin when it is what is
+  on disk and treats it as present, so a later `fetch-assets` run does not re-download the PNGs.
+- **The manifest names the real file.** `tools/inject-skins-assets.mjs` (`artUrl`) writes `.webp` for these directories
+  and falls back to `.png`; `tools/patch-assets-local.mjs` and `tools/fetch-diy-assets.mjs` follow the same rule. A file
+  that is reverted to PNG (below) therefore needs no manifest edit: re-run `node tools/inject-skins-assets.mjs`.
+- **The client is unchanged.** `<img src>` takes a WebP as it takes a PNG. The one path that is derived rather than
+  looked up — `public/js/ui/cardArt.js artSrcOf`, 精一 from the 精二 URL — keeps the extension it was given.
+- **13 pictures stay PNG** (2376 px DPR3 PSNR 34.21–39.95 dB, `EXTENDED-PLAN.md` §6.4): the `_2` / `_skin1` set of
+  `char/illustration/` (`char_4182_oblvns_2`, `char_4183_mortis_2`, `char_4184_dolris_2`, `char_4185_amoris_2`,
+  `char_4186_tmoris_2`, `char_4183_mortis_skin1`, `char_4184_dolris_skin1`, `char_4185_amoris_skin1`) and five skins
+  (`char_4065_judge_epoque_33`, `char_1034_jesca2_cfa_1`, `char_4064_mlynar_iteration_3`, `char_1023_ghost2_boc_6`,
+  `char_4116_blkkgt_witch_5`).
+- **The conversion is checked per picture**: a picture shown at 792 px wide must reach PSNR ≥ 40 dB there; a picture
+  whose own width is below 792 (the 180×360 portraits) is judged at 1:1, where §6.4's failing line is < 34 dB — and
+  alpha maxdiff must be 0 everywhere. 236 pictures missed their line and are PNG again (the list, with every per-file
+  number, is in `handoff/asset-webp/CONVERT-REPORT.md` and `handoff/asset-webp/verify/reverted.tsv`). The same gate run
+  with the 40 dB line for *every* picture would revert 779 files / 178.8 MiB instead of 236 / 110.1 MiB.
+
+`node tools/fetch-assets.mjs --offline --add-only` → `node tools/inject-skins-assets.mjs` → `node tools/sync-static-web.mjs`
+is still the whole pipeline: none of it looks at the extension. To go back to PNG, restore the originals from
+`handoff/asset-webp/BACKUP.md` and run the same three commands.
+
 ### Source snapshot verification
 
 `node tools/fetch-assets.mjs --source-snapshot=/path/to/sources.json` enables content verification for upstream
@@ -368,8 +467,8 @@ one-facing models, the `enemy_9016_acstmr` icon and escaped-stage shared boards)
 as newly missing assets. Full illustrations and alternate outfits remain optional cosmetic-plugin art for every
 version; base/E2 avatars and half-body portraits are mandatory where the data selects them.
 
-- **Operators:** the pool, hidden chess, backups and DIY picks of all installed official versions, keyed by charId (`tools/assets/versions.mjs`). The current union has 229 operators (210 in today’s data and 19 earlier-only), all with Front models and 225 with Back models. Three bards and 安洁莉娜 use one facing. The plan supplies base/E2 avatars and half-body portraits, default battle Spine, every skill icon and skill sound, and sub-profession icons. Extra identities use the established `patternOperator` URL patterns.
-- **Tokens:** the union of each version’s `tokens.json` and backup/DIY summons. The manifest has 58 `token_*` entries; char/enemy-backed summons resolve through those identity tables. Pictures and available default models come from the normal plan, supplemented by the official local-client overlay ("Token models from the local client"). Five effect/marker tokens have no separate Spine and keep that documented presentation.
+- **Operators:** the pool, hidden chess, backups and DIY picks of all installed official versions, keyed by charId (`tools/assets/versions.mjs`); a chess record contributes its top-level `charId`, never `backup.charId`, which names the 补位 prototype (docs/DATA.md). The current union has 242 operators (223 in today’s data — including the 炸惊 play set’s nine exclusive operators (颂乐人偶五人 and 结城理 / 埃癸斯 / 岳羽由加莉 / 虎狼丸) and the four only the 湮灭 chess records select (陨星 / 霜叶 / 坚雷 / 阿米娅) — and 19 earlier-only), all with Front models and 237 with Back models. Three bards and 安洁莉娜 use one facing. The plan supplies base/E2 avatars and half-body portraits, default battle Spine, every skill icon and skill sound, and sub-profession icons. Extra identities use the established `patternOperator` URL patterns.
+- **Tokens:** the union of each version’s `tokens.json` and backup/DIY summons. The plan lists 60 idents and the manifest has 58 `token_*` entries (the two Persona summons have no picture in any dump yet, so their leaf is dropped and reported as a miss until the art is installed); char/enemy-backed summons resolve through those identity tables. Pictures and available default models come from the normal plan, supplemented by the official local-client overlay ("Token models from the local client"). Seven effect/marker tokens (`coverage.mjs EFFECT_TOKENS`, including 结城理's 俄耳甫斯 / 塔纳托斯) have no separate Spine and keep that documented presentation.
 - **Enemies:** 258 manifest identities: the existing 252 plus six earlier-only enemies. 心烛 remains without an entry. The set is the union of:
   - the 07 enemy list;
   - every enemy in the `act1autochess_*` wave, boss and 联防 levels that act2 modes use (from `05-maps.json`; the tutorial is excluded);
@@ -378,7 +477,7 @@ version; base/E2 avatars and half-body portraits are mandatory where the data se
   - every key of the installed versions’ `enemies.json` (built by `tools/build-data.mjs`, when present), which adds for example the enemies swapped in by 机变 effects;
   - the bosses' handbook/model ids, such as `enemy_1559_vtlionk`;
   - enemy units spawned by operator kits (research 03 skills/talents). For example, 隐德来希's default S3 summons 心烛 `enemy_5601_entlec` through the talent key `take_extra_enemy_key`. 心烛 has no icon and no Spine in any dump, so it has no manifest entry: it is reported as a miss, and the client must draw a glyph.
-- **Extra tokens:** any `token_*` key of an installed version’s `tokens.json` that research does not list gets the default avatar and Spine locations.
+- **Extra tokens:** any `token_*` key of an installed version’s `tokens.json` that research does not list gets the default avatar and Spine locations. The id may omit the official `<number>_` group (`token_makoto_orpheus`, `token_makoto_thanatos` — the 炸惊 Persona summons), which the plan accepts as well.
   - The non-token summons in that file (`enemy_9012_acloon` 炎佑, `char_605_cmedic`, `char_613_acmedc`) are found under `enemies` and `chars`.
 - **Skill icons:** every skill index of every planned operator (the default one first; DESIGN §16 loadouts, the 自选 picks' three skills): 557 icons across the four versions.
 - **UI:**
@@ -438,13 +537,17 @@ All paths are URL paths relative to the site root, for example `/assets/char/ava
            spineModels, bonds, items, bands, skills, modules, ui, sfxUnits, voiceChars, voiceJpChars,
            voiceEnChars, voiceKrChars, voiceNativeChars },
            // voiceEnChars / voiceKrChars / voiceNativeChars count the extra dubs; 0 until those trees are fetched
-  chars:   { [charId]: { avatar, avatarE2?, portrait, portraitE2?, illust?, spine: { front: Spine, back?: Spine },
+  chars:   { [charId]: { avatar, avatarE2?, portrait, portraitE2?, illust?, illustE1?,
+                         spine: { front: Spine, back?: Spine },
                          skins?: { [skinId]: { name, group?, avatar?, avatarE2?, portrait?, portraitE2?, illust?,
                                                spine?: { front: Spine, back?: Spine } } } } },
-                         // illust: the full illustration (立绘) a detail view shows; skins: one record per appearance,
-                         // keyed by the installation's own skin id (char_4058_pepe@sightseer#2; a cosmetic plugin writes
-                         // the same map, docs/PLUGINS.md §9). Neither is emitted today: the committed manifest has no
-                         // such picture and no per-skin art, so a plugin's write and not a build fills them
+                         // illust: the full illustration (立绘) a detail view shows; illustE1: the 精一 one, the `#1`
+                         // default appearance `/assets/char/illust/<charId>_1.png` — written only when that file exists
+                         // (char_4231_clemnt has no `#1` appearance upstream), so the seat card's 精一/精二 switch keeps a
+                         // picture inside a release; skins: one record per appearance, keyed by the installation's own skin
+                         // id (char_4058_pepe@sightseer#2; a cosmetic plugin writes the same map, docs/PLUGINS.md §9).
+                         // Both are build-injected by tools/inject-skins-assets.mjs from files under ignored
+                         // public/assets/, never downloaded by the manifest plan and never a runtime install channel
   enemies: { [enemyId]: { icon, spine?: Spine, spineAliasOf?: enemyId,
                           spineLocal?: { group, skel, atlas, textures, …Spine } } },
                           // spineLocal: an optional local-client model; file names in a data/local-assets.json group,
@@ -459,6 +562,10 @@ All paths are URL paths relative to the site root, for example `/assets/char/ava
   skillsById: { [skillId]: iconId },
   modules: { [typeIcon]: url },     // module type icon (uniequip typeIcon, e.g. 'sol-x'): public/js/screens/loadout.js
                                     // moduleIconOf after the local-client art
+  relicsOverlimit: { [relicId]: url },
+                                    // 超限「词条」icons (/assets/relics/overlimit/<relicId>.png, 36). Written by
+                                    // tools/inject-skins-assets.mjs from files on disk for packaging and cleanup only:
+                                    // the client reads the same path from data/relicsOverlimit.json's `icon`
   ui:      { ['group/key']: url },  // e.g. 'hudPanel/icon_hp', 'shopCard/frame_lv1', 'loading/loading_ac_core';
                                     // 'emoticon/basic/pic_happy_battle', 'guide/autochess_home_1': the data/local-assets.json
                                     // group + name of the same picture (the client takes the local one first)

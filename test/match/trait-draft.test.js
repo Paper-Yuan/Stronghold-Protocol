@@ -2,6 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createRng } from '../../server/sim/rng.js';
+import { validateC2S } from '../../shared/protocol.js';
 import {
   TRAITS, MONSTERS, SPECIALS, SPECIAL_MOBS, RANK_WEIGHT,
   drawTraitCards, traitFlags, TRAIT_SETTLE,
@@ -102,4 +103,21 @@ test('特化：三个都有自己的标题与概率 20%', () => {
     assert.equal(sp.chance, 0.2, id);
     assert.ok(sp.desc.length > 20, id + ' 的描述太短');
   }
+});
+
+test('超限客户端意图：词条抉择 / 战术撤退 / 战斗倍速的协议边界（业主 2026-10-25 接线）', () => {
+  // 词条抉择：0–5 的索引（一次三张卡，留出扩展余量）
+  assert.equal(validateC2S({ t: 'g.traitChoice', idx: 0 }), null);
+  assert.equal(validateC2S({ t: 'g.traitChoice', idx: 2 }), null);
+  assert.equal(validateC2S({ t: 'g.traitChoice', idx: 5 }), null);
+  assert.notEqual(validateC2S({ t: 'g.traitChoice', idx: 6 }), null);
+  assert.notEqual(validateC2S({ t: 'g.traitChoice', idx: -1 }), null);
+  assert.notEqual(validateC2S({ t: 'g.traitChoice' }), null);
+  // 战术撤退：没有字段
+  assert.equal(validateC2S({ t: 'g.retreat' }), null);
+  // 战斗倍速：只有 1 / 2
+  assert.equal(validateC2S({ t: 'g.combatSpeed', speed: 1 }), null);
+  assert.equal(validateC2S({ t: 'g.combatSpeed', speed: 2 }), null);
+  assert.notEqual(validateC2S({ t: 'g.combatSpeed', speed: 3 }), null);
+  assert.notEqual(validateC2S({ t: 'g.combatSpeed' }), null);
 });

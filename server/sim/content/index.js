@@ -51,9 +51,44 @@ async function safeImport(path) {
 }
 
 const KIT_REGISTRY = await safeImport('./kits/index.js');
-const DOMAIN_NAMES = ['tokens', 'devices', 'enemies', 'bosses', 'bonds', 'garrisons', 'items', 'bands', 'choices'];
+// 炸惊模拟 (拓展玩法模式 ZHAJING): `jibian` / `ejibian` install the 惊变 content domains, `jibianBonds` is the pure
+// helper module (惊变羁绊: activeBonds / ownedJibianIdsOf / bondHintsFor — no install of its own), and `forge` is the
+// 锻造器's battle side (shared/forgeData.js decides the numbers, this domain applies range / block / sp-cost and the
+// crit / lifesteal hooks — 惊变「黑闪」 sums its crit through the same hook). Missing a name here is a SILENT failure:
+// the domain's handlers never install and nothing throws (handoff/ZHAJING-SPLIT-PLAN §5.6). The files are the
+// engine-cards worker's; a file that is absent loads as {} through safeImport like any other.
+// `bonds/addon/annbonds` 是湮灭模拟两条专属盟约（罗德岛 / 卡兹戴尔）的战斗侧 + 整备侧（断角里程碑）。它放在
+// bonds/addon/ 里与 zjbonds 同类，所以这里的名字带路径（safeImport 拼成 './bonds/addon/annbonds.js'）；排在最后装，
+// 保证晚于 `bonds`（含 bonds/core 的官方钩子）。少一行 = 两条盟约的 20 个 bb 键全哑且不报错。
+// `overlimitRelics` 是超限模拟「词条」（饰品）的战斗侧 + 整备侧（server/sim/content/overlimitRelics.js）：只在
+// `flags.overlimit` 且 `battleInput.relicsOverlimit` 非空时才挂监听器，普通 / 湮灭 / 炸惊一帧不变。
+// `overlimitNegative` 是同一模式的「负面词条」（server/sim/content/overlimitNegative.js，业主 2026-10-31 第二批）：
+// 另一张表、另一个键（`battleInput.relicsOverlimitNegative`），同样只在 `flags.overlimit` 且选了负面词条时才挂监听器。
+const DOMAIN_NAMES = ['tokens', 'devices', 'enemies', 'bosses', 'bonds', 'garrisons', 'items', 'bands', 'choices', 'hazard', 'relics', 'overlimitRelics', 'overlimitNegative', 'jibian', 'ejibian', 'jibianBonds', 'forge', 'bonds/addon/annbonds'];
 const DOMAINS = await Promise.all(DOMAIN_NAMES.map((n) => safeImport(`./${n}.js`)));
 const tokens = DOMAINS[0];
+
+/**
+ * 惊变羁绊 helper module (server/sim/content/jibianBonds.js), guarded: `{}` while the file is absent, so every caller
+ * has to go through the wrappers below and nothing throws at load time.
+ */
+const JIBIAN_BONDS_MOD = DOMAINS[DOMAIN_NAMES.indexOf('jibianBonds')] ?? {};
+
+/**
+ * 惊变羁绊 queries for the match side (no sim import in the match: this module is reachable through content/index.js,
+ * which the match already loads for registerAllMeta). Every call is total: without the content file the answers are
+ * "no 羁绊 active" / "no hint", which is exactly what a mode without 惊变 needs.
+ */
+export const jibianBonds = Object.freeze({
+  /** The 惊变羁绊 the owned card ids complete: `[{ def, count, threshold }]`. */
+  activeBonds: (ids) => (typeof JIBIAN_BONDS_MOD.activeBonds === 'function' ? JIBIAN_BONDS_MOD.activeBonds(ids) : []),
+  /** Raw owned card ids of a player's effect refs (`key` = `jibian:<effectId>`). */
+  ownedJibianIdsOf: (ps) => (typeof JIBIAN_BONDS_MOD.ownedJibianIdsOf === 'function' ? JIBIAN_BONDS_MOD.ownedJibianIdsOf(ps) : []),
+  /** The 「羁绊名 已有/阈值」 line of one card (null when that card belongs to no 羁绊). */
+  bondHintsFor: (cardId, owned) => (typeof JIBIAN_BONDS_MOD.bondHintsFor === 'function' ? JIBIAN_BONDS_MOD.bondHintsFor(cardId, owned) : null),
+  /** Whether the content file loaded at all (tests / diagnostics). */
+  loaded: typeof JIBIAN_BONDS_MOD.activeBonds === 'function',
+});
 
 /**
  * Merged kit registry: baseChessId → (bb, chess, def) => Kit, then the 补位 stand-in kits: stand-in charId → builder
@@ -61,7 +96,7 @@ const tokens = DOMAINS[0];
  */
 export const KITS = KIT_REGISTRY.KITS ?? Object.freeze({});
 
-/** Domain modules in install order: tokens, devices, enemies, bosses, bonds, garrisons, items, bands, choices. */
+/** Domain modules in install order: tokens, devices, enemies, bosses, bonds, garrisons, items, bands, choices, hazard, relics, overlimitRelics, jibian, ejibian, jibianBonds, forge, bonds/addon/annbonds. */
 export const MODULES = Object.freeze(DOMAIN_NAMES.map((n, i) => [n, DOMAINS[i]]));
 
 /**

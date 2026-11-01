@@ -11,5 +11,10 @@ export default Object.freeze({
   research: null,                // docs/research/
   tables: 'default',             // stock / shopDraft / tacticDraft / bountyDrafts as measured on 下半
   config: Object.freeze({ hiddenCore: Object.freeze({ single: 350, multi: 1200 }) }), // no rules: no config.version
-  expect: Object.freeze({ bonds: 23, bands: 40, visibleNonDiy: 112, triggerDeviations: 'default' }),
+  // Measured counts of the files this version builds. bonds 23 → 30 and bands 40 → 42 are the two play sets: 炸惊模拟's 5
+  // bonds + its 2 `zjOnly` strategies (docs/research/18-zhaijing-content.json) and 湮灭专属 mod's 2 `annOnly` bonds
+  // (rhodesShip / kazdelShip, docs/research/20-annihilation-mods.json) — merged into the default build only.
+  // `visibleNonDiy` stays 112: every 炸惊 chess record is `visible: false`, so the official shop pools keep exactly the
+  // operators they had (test/match/zhajing-isolation.test.js asserts it).
+  expect: Object.freeze({ bonds: 30, bands: 42, visibleNonDiy: 112, triggerDeviations: 'default' }),
 });

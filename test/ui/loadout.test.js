@@ -528,3 +528,37 @@ test('entry badge (review fix): counts like the screen once chess.json is loaded
   assert.equal(badgeCount(entries, get), changedCount(entries, get));
   assert.equal(badgeCount({}, get), 0);
 });
+
+// 业主 2026-10-30：「湮灭的两个盟约 mod 对应干员看不到」。湮灭那两条盟约（罗德岛 / 卡兹戴尔）只把成员写在
+// `bonds[].members` 上，棋子的 `bonds` 里一条都没有（data/chess.json 对它们的引用数是 0），于是干员调配的
+// 「按盟约筛选」和干员卡上的盟约角标都读不到它们。`bondIdsOf` 把「盟约自己的 members」也算成这名干员的盟约，
+// 传入的 `tierBonds` 是**这一档能看见的盟约**（官方档没有 annOnly / zjOnly），所以官方档的行为逐字节不变。
+test('bond membership listed on the bond itself (罗德岛 / 卡兹戴尔) reaches the ann roster and its bond filter', async () => {
+  const { bondIdsOf, annihilationRosterOf } = await import('../../public/js/ui/loadoutModel.js');
+  const list = Object.values(BONDS);
+  const official = list.filter((b) => b.zjOnly !== true && b.annOnly !== true);
+  const annOnly = list.filter((b) => b.annOnly === true);
+  assert.ok(annOnly.length >= 2, 'the build has the two 湮灭 盟约 mods');
+  const one = annOnly.find((b) => Array.isArray(b.members) && b.members.length);
+  assert.ok(one, 'the bond lists its members');
+  const member = get(one.members[0]);
+  assert.ok(member, 'a member exists in chess.json');
+  assert.deepEqual(member.bonds.includes(one.bondId), false, 'fixture: the chess record does not carry it');
+  // 官方档：不补（annOnly 不在这一档）
+  assert.deepEqual(bondIdsOf(member, official), member.bonds);
+  // 湮灭档：补出来，且不重复
+  const withTier = bondIdsOf(member, list);
+  assert.equal(withTier.includes(one.bondId), true);
+  assert.equal(new Set(withTier).size, withTier.length, 'no duplicate ids');
+  // 按盟约筛选：湮灭档名册（官方 112 + mod 自带 13 个干员位）里正好剩下成员
+  const annRoster = annihilationRosterOf(Object.values(CHESS));
+  assert.equal(annRoster.length, 125, '湮灭档名册 = 官方名册 + mod 自带的 13 个干员位');
+  const annHits = filterRoster(annRoster, { bond: one.bondId }, {}, get, getBond, null, null, list).map((c) => c.chessId).sort();
+  assert.deepEqual(annHits, [...one.members].sort());
+  // 官方档（官方名册 + 官方盟约视图，annOnly 不在这一档）→ 这条盟约筛不出任何人
+  assert.equal(filterRoster(rosterOf(Object.values(CHESS)), { bond: one.bondId }, {}, get, getBond, null, null, official).length, 0);
+  // 不传 tierBonds（老调用点）时只看棋子自己的 bonds —— 新搬进来的干员**自己就带着**那条盟约（包内 chess.bonds），
+  // 所以这里按数据推导，而不是硬写 0
+  const ownBond = annRoster.filter((c) => Array.isArray(c.bonds) && c.bonds.includes(one.bondId)).map((c) => c.chessId).sort();
+  assert.deepEqual(filterRoster(annRoster, { bond: one.bondId }, {}, get, getBond).map((c) => c.chessId).sort(), ownBond);
+});

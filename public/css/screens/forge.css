@@ -1,0 +1,143 @@
+/* public/css/screens/forge.css — 炸惊模拟「锻造器」（loaded by ui/forge.js）
+   HUD 按钮（.forge）→ 悬浮窗（.forgeov / .fcard）→ 已锻造徽标与只读面板（.fged / .fgedov）→ 击杀计数器（.kills）。
+   尺寸走 rem + var(--t)，每个字号带像素地板；触摸目标 ≥24px（≤32px 的地板裸写 px，>32px 的带 32px 裸值 + --sp-ui 缩放）。
+   颜色照玩法包（业主 2026-10-28 验收 `game-panels.css`）：主色 var(--mint-500) / var(--text-hi)，**不硬编码**；
+   三档稀有度普通 #9fb0ab / 史诗 #b07dff / 传说 #ffc24b（与包里那三个值逐字节一致）。 */
+
+.forge { display: inline-flex; align-items: center; gap: .06rem; }
+/* HUD 的**左上**一列（业主 2026-10-28：包里 `.forge` 与 `.kills` 打怪进度同在左上区，我们原来错放在右上）。
+   竖排：锻造器按钮 / 击杀进度 /（锻造过后）已锻造徽标；与顶部居中的 .gm__bonds、左侧 .gm__erosion 都不重叠。
+   窄屏与那两颗角标一起从底部抬起，仍留在地图左侧。 */
+.gm__forgecol { position: absolute; left: 18px; top: calc(92px + 1.12rem + .14rem); z-index: 14;
+  display: flex; flex-direction: column; align-items: flex-start; gap: .06rem; }
+@media (max-width: 760px) { .gm__forgecol { top: auto; bottom: calc(210px + 1rem); left: 12px; } }
+.forge__btn {
+  position: relative; display: inline-flex; align-items: center; gap: .06rem; min-height: max(.44rem, 32px);
+  padding: .05rem .12rem; cursor: pointer; color: var(--mint-500);
+  background: rgba(10, 18, 16, .86); border: 1px solid rgba(78, 216, 175, .38); border-radius: 2px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, .45);
+  transition: border-color var(--t-fast), background var(--t-fast), transform var(--t-fast), filter var(--t-fast);
+}
+/* 包里的交互态：hover 提亮 + 上浮一点点，按下回弹 3%，图标 hover 转 12° 放大 1.1 */
+.forge__btn:hover { border-color: var(--mint-500); background: rgba(16, 30, 26, .92); transform: translateY(-.015rem); filter: brightness(1.06); }
+.forge__btn:active { transform: scale(.97); }
+.forge__btn:hover .forge__icon { transform: rotate(-12deg) scale(1.1); }
+.forge__btn .forge__icon { transition: transform var(--t-fast); }
+.forge__btn:focus-visible { outline: 2px solid var(--mint-500); outline-offset: 2px; }
+.forge__btn.is-ready { box-shadow: 0 0 0 1px rgba(78, 216, 175, .5), 0 4px 16px rgba(0, 0, 0, .5); }
+.forge__btn.is-on { background: rgba(78, 216, 175, .18); }
+.forge__btn[aria-disabled="true"] { opacity: .62; }
+.forge__btn .forge__icon { width: .26rem; height: .26rem; }
+.forge__n { min-width: .2rem; padding: 0 .04rem; font-size: max(12px, calc(.2 * var(--t))); color: var(--text-hi); text-align: center;
+  background: var(--mint-500); border-radius: .05rem; }
+
+/* 击杀计数器：剑 + 累计数 + 「本档/每档」+ 进度条（包里 .kills__bar > i{width:pct%}，见 ui/forge.js 的内联宽度） */
+.kills { position: relative; display: inline-flex; align-items: center; gap: .05rem; min-height: max(.32rem, 24px);
+  padding: .03rem .1rem; color: var(--text-md); background: rgba(8, 12, 11, .8); border: 1px solid var(--line-2); border-radius: 2px; }
+.kills .kills__icon { width: .18rem; height: .18rem; color: var(--mint-500); }
+.kills .kills__n { font-size: max(12px, calc(.2 * var(--t))); color: var(--text-hi); }
+.kills .kills__sub { font-size: max(10px, calc(.15 * var(--t))); color: var(--text-dim); }
+.kills .kills__bar { position: absolute; left: 0; right: 0; bottom: 0; height: 2px; background: rgba(255, 255, 255, .08); }
+.kills .kills__bar i { display: block; height: 100%; background: var(--mint-500); }
+
+/* 悬浮窗（照包里：fixed 铺满 + grid 居中 + z-index 40；遮罩 rgba(4,7,6,.72)） */
+.forgeov { position: fixed; inset: 0; z-index: 40; display: grid; place-items: center; padding: .3rem; }
+.forgeov__scrim { position: absolute; inset: 0; background: rgba(4, 7, 6, .72); }
+.forgeov__box { position: relative; display: flex; flex-direction: column; gap: .1rem; width: min(6.4rem, 92vw); max-height: 88%;
+  padding: .2rem .22rem .16rem; overflow: auto;
+  background: linear-gradient(160deg, rgba(15, 24, 22, .98), rgba(8, 12, 11, .99));
+  border: 1px solid rgba(23, 217, 160, .3); border-radius: 3px; box-shadow: 0 .2rem .6rem rgba(0, 0, 0, .6); }
+.forgeov__head { display: flex; align-items: center; gap: .12rem; padding-bottom: .08rem; border-bottom: 1px solid var(--line); }
+.forgeov__title { font-size: max(15px, calc(.24 * var(--t))); font-weight: 900; letter-spacing: .08em; color: var(--text-hi); }
+.forgeov__rarity { font-size: max(10px, calc(.13 * var(--t))); letter-spacing: .16em; padding: .02rem .08rem; color: #0b1412; background: #9fb0ab; }
+.forgeov__rarity.is-epic { background: #b07dff; }
+.forgeov__rarity.is-legend { background: #ffc24b; }
+.forgeov__left { margin-left: auto; font-size: max(11px, calc(.17 * var(--t))); color: var(--text-lo); }
+.forgeov__left b { margin-left: .04rem; color: var(--mint-500); }
+.forgeov__x { display: grid; place-items: center; width: max(.4rem, 24px); height: max(.4rem, 24px); color: var(--text-md);
+  background: none; border: 1px solid var(--line-2); border-radius: 2px; cursor: pointer; }
+.forgeov__x:hover { color: var(--text-hi); border-color: var(--mint-500); }
+.forgeov__x .icon { width: .2rem; height: .2rem; }
+.forgeov__tip { margin: 0; font-size: max(10px, calc(.15 * var(--t))); color: var(--text-dim); }
+.forgeov__grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .1rem; }
+.forgeov__grid[data-count="1"] { grid-template-columns: minmax(0, 1fr); }
+.forgeov__grid[data-count="2"] { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+
+/* 一张锻造卡 */
+.fcard { --fr: #9fb0ab; display: flex; flex-direction: column; gap: .06rem; padding: .12rem .1rem; text-align: left;
+  color: var(--text-md); cursor: pointer; background: linear-gradient(170deg, rgba(17, 26, 24, .97), rgba(9, 13, 12, .98));
+  border: 1px solid #2c3a36; border-radius: 2px; transition: transform var(--t-fast), border-color var(--t-fast); }
+.fcard--epic { --fr: #b07dff; }
+.fcard--legend { --fr: #ffc24b; }
+.fcard:hover { transform: translateY(-2px); border-color: var(--fr); }
+.fcard:focus-visible { outline: 2px solid var(--mint-500); outline-offset: 2px; }
+.fcard.is-picked { border-color: var(--fr); box-shadow: 0 0 0 1px var(--fr); background: rgba(23, 217, 160, .1); }
+.fcard__top { display: flex; align-items: baseline; gap: .06rem; min-width: 0; }
+.fcard__name { font-size: max(13px, calc(.22 * var(--t))); font-weight: 800; color: var(--text-hi); }
+.fcard__top .micro { margin-left: auto; opacity: .5; }
+.fcard__value { font-size: max(15px, calc(.26 * var(--t))); font-weight: 900; color: var(--fr); }
+.fcard__note { font-size: max(10px, calc(.15 * var(--t))); color: var(--text-dim); }
+.fcard__hint { font-size: max(10px, calc(.15 * var(--t))); line-height: 1.45; color: var(--text-lo); }
+
+/* 悬浮窗里的「已锻造」一排 */
+.forgeov__forged { display: flex; flex-wrap: wrap; align-items: center; gap: .06rem; padding-top: .08rem; border-top: 1px solid var(--line); }
+.forgeov__forgedhead { font-size: max(10px, calc(.15 * var(--t))); letter-spacing: .1em; color: var(--text-dim); }
+.fged__pill { display: inline-flex; align-items: center; gap: .04rem; padding: .02rem .06rem; font-size: max(10px, calc(.15 * var(--t)));
+  border: 1px solid rgba(23, 217, 160, .4); border-radius: .04rem; }
+.fged__pillname { color: var(--text-md); }
+.fged__pillval { color: var(--mint-500); }
+.fged__pillcnt { color: var(--text-dim); }
+.forgeov__foot { font-size: max(10px, calc(.14 * var(--t))); color: var(--text-dim); }
+
+/* 已锻造徽标 + 只读面板 */
+.fged { position: relative; display: inline-flex; }
+.fged__chip { display: inline-flex; align-items: center; gap: .05rem; min-height: max(.36rem, 24px); padding: .03rem .1rem;
+  font-size: max(11px, calc(.17 * var(--t))); color: var(--text-md); cursor: pointer;
+  background: rgba(8, 12, 11, .85); border: 1px solid var(--line-2); border-radius: 2px; }
+.fged__chip:hover, .fged__chip.is-on { color: var(--mint-500); border-color: rgba(78, 216, 175, .5); }
+.fged__chipicon { width: .2rem; height: .2rem; }
+.fged__chipn { color: var(--mint-500); }
+.fgedov { position: fixed; inset: 0; z-index: 46; display: grid; place-items: center; padding: .3rem; }
+.fgedov__scrim { position: absolute; inset: 0; background: rgba(4, 8, 7, .72); }
+.fgedov__box { position: relative; display: flex; flex-direction: column; gap: .08rem; width: min(5.2rem, 92vw); max-height: 80%;
+  padding: .18rem .2rem .14rem; overflow: auto; background: linear-gradient(160deg, rgba(15, 24, 22, .98), rgba(8, 12, 11, .99));
+  border: 1px solid rgba(23, 217, 160, .3); border-radius: 3px; box-shadow: 0 .2rem .6rem rgba(0, 0, 0, .6); }
+.fgedov__head { display: flex; align-items: baseline; gap: .1rem; padding-bottom: .06rem; border-bottom: 1px solid var(--line); }
+.fgedov__title { font-size: max(14px, calc(.28 * var(--t))); font-weight: 900; color: var(--text-hi); }
+.fgedov__sub { font-size: max(10px, calc(.15 * var(--t))); color: var(--text-dim); }
+.fgedov__x { margin-left: auto; display: grid; place-items: center; width: max(.4rem, 24px); height: max(.4rem, 24px);
+  color: var(--text-md); background: none; border: 1px solid var(--line-2); border-radius: 2px; cursor: pointer; }
+.fgedov__x .icon { width: .2rem; height: .2rem; }
+.fgedov__body { display: flex; flex-direction: column; gap: .04rem; }
+.fgedov__row { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: baseline; gap: .1rem;
+  font-size: max(11px, calc(.18 * var(--t))); }
+.fgedov__name { color: var(--text-md); }
+.fgedov__val { color: var(--mint-500); }
+.fgedov__cnt { color: var(--text-dim); }
+.fgedov__empty { margin: 0; font-size: max(11px, calc(.18 * var(--t))); color: var(--text-lo); }
+.fgedov__foot { font-size: max(10px, calc(.14 * var(--t))); color: var(--text-dim); }
+
+/* 矮屏：卡片竖排、窗口自己滚 */
+@media (max-height: 520px) {
+  .forgeov { padding: .12rem; }
+  .forgeov__box { width: min(8.6rem, 96vw); padding: .12rem .14rem .1rem; }
+  .forgeov__grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .fcard__hint { display: none; }
+  .fgedov__box { width: min(6.4rem, 96vw); }
+}
+@media (max-width: 760px) {
+  .forgeov__grid, .forgeov__grid[data-count="2"] { grid-template-columns: minmax(0, 1fr); }
+}
+/* 触控（业主 2026-10-29：792×360 上这两块面板的触摸目标 ≥32px）：粗指针设备把两个面板的 ✕ 提到 32px；
+   鼠标 / 桌面保留上面那条 24px 的紧凑样（test/ui/zhajing-forge.test.js 钉着那条基础规则）。
+   卡片本身是 .fcard（min-height 更高），三张卡在 792 宽仍是一行三列（.forgeov__grid 的竖排只在 ≤760 生效）。 */
+@media (pointer: coarse) {
+  .forgeov__x, .fgedov__x { width: max(.44rem, 32px); height: max(.44rem, 32px); }
+}
+
+/* 减动效：抬升与进度条动画归零（写在文件末尾） */
+@media (prefers-reduced-motion: reduce) {
+  .fcard, .fcard:hover { transform: none; transition: none; }
+  .forge__btn, .fged__chip { transition: none; }
+  .kills .kills__n.is-bump { animation: none; }
+}

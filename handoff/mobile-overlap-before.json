@@ -1,0 +1,1595 @@
+{
+ "792x360": {
+  "okLobby": true,
+  "hub": {
+   "overlaps": [],
+   "near": [
+    {
+     "a": "hub-plate.hub-plate--sweep \"S.W.E.E.P.报告\"",
+     "b": "btn.btn--secondary[loadout-open] \"干员调配\"",
+     "axis": "y",
+     "gap": 5,
+     "ra": [
+      482,
+      58,
+      778,
+      92
+     ],
+     "rb": [
+      482,
+      96,
+      778,
+      130
+     ]
+    },
+    {
+     "a": "mode-card.hub-entry \"SOLO SIMULATION 独立模拟\"",
+     "b": "mode-card.hub-entry \"ALLIANCE SIMULATION 同盟模拟\"",
+     "axis": "x",
+     "gap": 6,
+     "ra": [
+      382,
+      282,
+      510,
+      346
+     ],
+     "rb": [
+      516,
+      282,
+      644,
+      346
+     ]
+    },
+    {
+     "a": "mode-card.hub-entry \"ALLIANCE SIMULATION 同盟模拟\"",
+     "b": "mode-card.hub-entry \"EXTENSION MODE 拓展模式\"",
+     "axis": "x",
+     "gap": 6,
+     "ra": [
+      516,
+      282,
+      644,
+      346
+     ],
+     "rb": [
+      650,
+      282,
+      778,
+      346
+     ]
+    }
+   ],
+   "small": [],
+   "scroll": {
+    "x": 0,
+    "y": 0
+   }
+  },
+  "hubRects": {
+   ".hub-stage": [
+    0,
+    50,
+    792,
+    310
+   ],
+   ".hub-entries": [
+    142,
+    266,
+    635,
+    79
+   ],
+   ".mode-card": [
+    382,
+    282,
+    128,
+    64
+   ],
+   ".hub-right": [
+    382,
+    54,
+    395,
+    77
+   ],
+   ".hub-plate--loadout": [
+    482,
+    96,
+    296,
+    34
+   ],
+   ".lobby-sweep": [
+    482,
+    58,
+    296,
+    34
+   ],
+   ".hub-side": [
+    14,
+    54,
+    112,
+    292
+   ],
+   ".hub-tile": [
+    0,
+    0,
+    0,
+    0
+   ],
+   ".hub-entry-wrap": [
+    382,
+    266,
+    128,
+    79
+   ],
+   ".hub-entry__group": [
+    382,
+    266,
+    128,
+    13
+   ]
+  },
+  "hall": {
+   "overlaps": [],
+   "near": [
+    {
+     "a": "ext-row.is-selected[extension-row-annihilation] \"01 湮灭模拟 AC-5 敌方攻击强度突破设定上\"",
+     "b": "ext-row[extension-row-zhajing] \"02 炸惊模拟 AC-8 惊变随机的推演：我方每\"",
+     "axis": "y",
+     "gap": 6,
+     "ra": [
+      324,
+      55,
+      777,
+      111
+     ],
+     "rb": [
+      324,
+      117,
+      777,
+      173
+     ]
+    }
+   ],
+   "small": [],
+   "scroll": {
+    "x": 0,
+    "y": 0
+   }
+  },
+  "hallRects": {
+   ".modal__box.ext": [
+    0,
+    0,
+    792,
+    360
+   ],
+   ".ext-stage": [
+    9,
+    53,
+    304,
+    289
+   ],
+   ".ext-pane": [
+    322,
+    53,
+    456,
+    289
+   ],
+   ".ext-list": [
+    322,
+    53,
+    456,
+    198
+   ],
+   ".ext-row": [
+    324,
+    55,
+    453,
+    56
+   ],
+   ".ext-foot": [
+    322,
+    292,
+    456,
+    50
+   ],
+   ".ext-foot__start": [
+    668,
+    298,
+    110,
+    44
+   ],
+   ".ext-party": null,
+   ".ext-party__chip": null,
+   ".ext-tier": null,
+   ".ext-hero": [
+    15,
+    59,
+    292,
+    19
+   ],
+   ".ext-stats": [
+    15,
+    81,
+    292,
+    23
+   ]
+  },
+  "theme": {
+   "overlaps": [],
+   "near": [
+    {
+     "a": "ext-theme__slot[ext-sweep] \"S.W.E.E.P.报告\"",
+     "b": "ext-theme__loadout[ext-loadout] \"干员调配\"",
+     "axis": "y",
+     "gap": 2,
+     "ra": [
+      8,
+      240,
+      112,
+      270
+     ],
+     "rb": [
+      8,
+      272,
+      112,
+      304
+     ]
+    },
+    {
+     "a": "ext-party__chip.is-on \"单人\"",
+     "b": "ext-party__chip \"同盟\"",
+     "axis": "x",
+     "gap": 2,
+     "ra": [
+      235,
+      320,
+      267,
+      344
+     ],
+     "rb": [
+      269,
+      320,
+      301,
+      344
+     ]
+    },
+    {
+     "a": "ext-tier.num \"1\"",
+     "b": "ext-tier.num \"2\"",
+     "axis": "x",
+     "gap": 2,
+     "ra": [
+      498,
+      320,
+      522,
+      344
+     ],
+     "rb": [
+      524,
+      320,
+      548,
+      344
+     ]
+    },
+    {
+     "a": "ext-tier.num \"2\"",
+     "b": "ext-tier.num \"3\"",
+     "axis": "x",
+     "gap": 2,
+     "ra": [
+      524,
+      320,
+      548,
+      344
+     ],
+     "rb": [
+      550,
+      320,
+      574,
+      344
+     ]
+    },
+    {
+     "a": "ext-tier.num \"3\"",
+     "b": "ext-tier.num \"4\"",
+     "axis": "x",
+     "gap": 2,
+     "ra": [
+      550,
+      320,
+      574,
+      344
+     ],
+     "rb": [
+      576,
+      320,
+      600,
+      344
+     ]
+    },
+    {
+     "a": "ext-tier.num \"4\"",
+     "b": "ext-tier.num \"5\"",
+     "axis": "x",
+     "gap": 2,
+     "ra": [
+      576,
+      320,
+      600,
+      344
+     ],
+     "rb": [
+      602,
+      320,
+      626,
+      344
+     ]
+    },
+    {
+     "a": "ext-tier.num \"5\"",
+     "b": "ext-tier.num \"6\"",
+     "axis": "x",
+     "gap": 2,
+     "ra": [
+      602,
+      320,
+      626,
+      344
+     ],
+     "rb": [
+      628,
+      320,
+      652,
+      344
+     ]
+    },
+    {
+     "a": "ext-theme__guide[extension-guide] \"攻略说明 8\"",
+     "b": "ext-theme__guide.ext-theme__feat[extension-feature-settings] \"功能设置\"",
+     "axis": "x",
+     "gap": 4,
+     "ra": [
+      8,
+      57,
+      67,
+      87
+     ],
+     "rb": [
+      71,
+      57,
+      117,
+      87
+     ]
+    }
+   ],
+   "small": [
+    {
+     "el": "ext-theme__guide[extension-guide] \"攻略说明 8\"",
+     "w": 59,
+     "h": 30
+    },
+    {
+     "el": "ext-theme__guide.ext-theme__feat[extension-feature-settings] \"功能设置\"",
+     "w": 47,
+     "h": 30
+    },
+    {
+     "el": "ext-theme__slot[ext-sweep] \"S.W.E.E.P.报告\"",
+     "w": 104,
+     "h": 30
+    },
+    {
+     "el": "ext-party__chip.is-on \"单人\"",
+     "w": 32,
+     "h": 24
+    },
+    {
+     "el": "ext-party__chip \"同盟\"",
+     "w": 32,
+     "h": 24
+    },
+    {
+     "el": "ext-tier.num \"1\"",
+     "w": 24,
+     "h": 24
+    },
+    {
+     "el": "ext-tier.num \"2\"",
+     "w": 24,
+     "h": 24
+    },
+    {
+     "el": "ext-tier.num \"3\"",
+     "w": 24,
+     "h": 24
+    },
+    {
+     "el": "ext-tier.num \"4\"",
+     "w": 24,
+     "h": 24
+    },
+    {
+     "el": "ext-tier.num \"5\"",
+     "w": 24,
+     "h": 24
+    },
+    {
+     "el": "ext-tier.num \"6\"",
+     "w": 24,
+     "h": 24
+    }
+   ],
+   "scroll": {
+    "x": 0,
+    "y": 0
+   }
+  },
+  "themeRects": {
+   ".ext-theme": [
+    0,
+    0,
+    792,
+    360
+   ],
+   ".ext-theme__top": [
+    8,
+    6,
+    776,
+    46
+   ],
+   ".ext-theme__title": [
+    154,
+    6,
+    217,
+    46
+   ],
+   ".ext-theme__name": [
+    163,
+    23,
+    208,
+    20
+   ],
+   ".ext-theme__body": [
+    8,
+    57,
+    776,
+    30
+   ],
+   ".ext-theme__guide": [
+    8,
+    57,
+    59,
+    30
+   ],
+   ".ext-theme__foot": [
+    8,
+    305,
+    776,
+    49
+   ],
+   ".ext-theme__pack": [
+    8,
+    327,
+    45,
+    10
+   ],
+   ".ext-party": [
+    235,
+    320,
+    66,
+    24
+   ],
+   ".ext-party__chip": [
+    235,
+    320,
+    32,
+    24
+   ],
+   ".ext-tiers": [
+    482,
+    320,
+    170,
+    24
+   ],
+   ".ext-tier": [
+    498,
+    320,
+    24,
+    24
+   ],
+   ".ext-theme__start": [
+    662,
+    309,
+    122,
+    44
+   ],
+   ".ext-theme__corner": [
+    8,
+    240,
+    104,
+    64
+   ],
+   ".ext-theme__dock": [
+    8,
+    240,
+    104,
+    64
+   ],
+   ".ext-theme__slot": [
+    8,
+    240,
+    104,
+    30
+   ],
+   ".ext-theme__loadout": [
+    8,
+    272,
+    104,
+    32
+   ]
+  },
+  "errors": []
+ },
+ "667x375": {
+  "okLobby": true,
+  "hub": {
+   "overlaps": [],
+   "near": [
+    {
+     "a": "hub-plate.hub-plate--sweep \"S.W.E.E.P.报告\"",
+     "b": "btn.btn--secondary[loadout-open] \"干员调配\"",
+     "axis": "y",
+     "gap": 5,
+     "ra": [
+      357,
+      58,
+      653,
+      92
+     ],
+     "rb": [
+      357,
+      96,
+      653,
+      130
+     ]
+    },
+    {
+     "a": "mode-card.hub-entry \"SOLO SIMULATION 独立模拟\"",
+     "b": "mode-card.hub-entry \"ALLIANCE SIMULATION 同盟模拟\"",
+     "axis": "x",
+     "gap": 6,
+     "ra": [
+      257,
+      297,
+      385,
+      361
+     ],
+     "rb": [
+      391,
+      297,
+      519,
+      361
+     ]
+    },
+    {
+     "a": "mode-card.hub-entry \"ALLIANCE SIMULATION 同盟模拟\"",
+     "b": "mode-card.hub-entry \"EXTENSION MODE 拓展模式\"",
+     "axis": "x",
+     "gap": 6,
+     "ra": [
+      391,
+      297,
+      519,
+      361
+     ],
+     "rb": [
+      525,
+      297,
+      653,
+      361
+     ]
+    }
+   ],
+   "small": [],
+   "scroll": {
+    "x": 0,
+    "y": 0
+   }
+  },
+  "hubRects": {
+   ".hub-stage": [
+    0,
+    50,
+    667,
+    325
+   ],
+   ".hub-entries": [
+    142,
+    281,
+    510,
+    79
+   ],
+   ".mode-card": [
+    257,
+    297,
+    128,
+    64
+   ],
+   ".hub-right": [
+    257,
+    54,
+    395,
+    77
+   ],
+   ".hub-plate--loadout": [
+    357,
+    96,
+    296,
+    34
+   ],
+   ".lobby-sweep": [
+    357,
+    58,
+    296,
+    34
+   ],
+   ".hub-side": [
+    14,
+    54,
+    112,
+    307
+   ],
+   ".hub-tile": [
+    0,
+    0,
+    0,
+    0
+   ],
+   ".hub-entry-wrap": [
+    257,
+    281,
+    128,
+    79
+   ],
+   ".hub-entry__group": [
+    257,
+    281,
+    128,
+    13
+   ]
+  },
+  "hall": {
+   "overlaps": [],
+   "near": [
+    {
+     "a": "ext-row.is-selected[extension-row-annihilation] \"01 湮灭模拟 AC-5 敌方攻击强度突破设定上\"",
+     "b": "ext-row[extension-row-zhajing] \"02 炸惊模拟 AC-8 惊变随机的推演：我方每\"",
+     "axis": "y",
+     "gap": 6,
+     "ra": [
+      274,
+      55,
+      652,
+      111
+     ],
+     "rb": [
+      274,
+      117,
+      652,
+      173
+     ]
+    }
+   ],
+   "small": [],
+   "scroll": {
+    "x": 0,
+    "y": 0
+   }
+  },
+  "hallRects": {
+   ".modal__box.ext": [
+    0,
+    0,
+    667,
+    375
+   ],
+   ".ext-stage": [
+    9,
+    53,
+    254,
+    304
+   ],
+   ".ext-pane": [
+    272,
+    53,
+    381,
+    304
+   ],
+   ".ext-list": [
+    272,
+    53,
+    381,
+    213
+   ],
+   ".ext-row": [
+    274,
+    55,
+    378,
+    56
+   ],
+   ".ext-foot": [
+    272,
+    307,
+    381,
+    50
+   ],
+   ".ext-foot__start": [
+    543,
+    313,
+    110,
+    44
+   ],
+   ".ext-party": null,
+   ".ext-party__chip": null,
+   ".ext-tier": null,
+   ".ext-hero": [
+    15,
+    59,
+    242,
+    19
+   ],
+   ".ext-stats": [
+    15,
+    81,
+    242,
+    23
+   ]
+  },
+  "theme": {
+   "overlaps": [],
+   "near": [
+    {
+     "a": "ext-theme__slot[ext-sweep] \"S.W.E.E.P.报告\"",
+     "b": "ext-theme__loadout[ext-loadout] \"干员调配\"",
+     "axis": "y",
+     "gap": 2,
+     "ra": [
+      8,
+      255,
+      112,
+      285
+     ],
+     "rb": [
+      8,
+      287,
+      112,
+      319
+     ]
+    },
+    {
+     "a": "ext-party__chip.is-on \"单人\"",
+     "b": "ext-party__chip \"同盟\"",
+     "axis": "x",
+     "gap": 2,
+     "ra": [
+      172,
+      335,
+      204,
+      359
+     ],
+     "rb": [
+      206,
+      335,
+      238,
+      359
+     ]
+    },
+    {
+     "a": "ext-tier.num \"1\"",
+     "b": "ext-tier.num \"2\"",
+     "axis": "x",
+     "gap": 2,
+     "ra": [
+      373,
+      335,
+      397,
+      359
+     ],
+     "rb": [
+      399,
+      335,
+      423,
+      359
+     ]
+    },
+    {
+     "a": "ext-tier.num \"2\"",
+     "b": "ext-tier.num \"3\"",
+     "axis": "x",
+     "gap": 2,
+     "ra": [
+      399,
+      335,
+      423,
+      359
+     ],
+     "rb": [
+      425,
+      335,
+      449,
+      359
+     ]
+    },
+    {
+     "a": "ext-tier.num \"3\"",
+     "b": "ext-tier.num \"4\"",
+     "axis": "x",
+     "gap": 2,
+     "ra": [
+      425,
+      335,
+      449,
+      359
+     ],
+     "rb": [
+      451,
+      335,
+      475,
+      359
+     ]
+    },
+    {
+     "a": "ext-tier.num \"4\"",
+     "b": "ext-tier.num \"5\"",
+     "axis": "x",
+     "gap": 2,
+     "ra": [
+      451,
+      335,
+      475,
+      359
+     ],
+     "rb": [
+      477,
+      335,
+      501,
+      359
+     ]
+    },
+    {
+     "a": "ext-tier.num \"5\"",
+     "b": "ext-tier.num \"6\"",
+     "axis": "x",
+     "gap": 2,
+     "ra": [
+      477,
+      335,
+      501,
+      359
+     ],
+     "rb": [
+      503,
+      335,
+      527,
+      359
+     ]
+    },
+    {
+     "a": "ext-theme__guide[extension-guide] \"攻略说明 8\"",
+     "b": "ext-theme__guide.ext-theme__feat[extension-feature-settings] \"功能设置\"",
+     "axis": "x",
+     "gap": 4,
+     "ra": [
+      8,
+      57,
+      67,
+      87
+     ],
+     "rb": [
+      71,
+      57,
+      117,
+      87
+     ]
+    }
+   ],
+   "small": [
+    {
+     "el": "ext-theme__guide[extension-guide] \"攻略说明 8\"",
+     "w": 59,
+     "h": 30
+    },
+    {
+     "el": "ext-theme__guide.ext-theme__feat[extension-feature-settings] \"功能设置\"",
+     "w": 47,
+     "h": 30
+    },
+    {
+     "el": "ext-theme__slot[ext-sweep] \"S.W.E.E.P.报告\"",
+     "w": 104,
+     "h": 30
+    },
+    {
+     "el": "ext-party__chip.is-on \"单人\"",
+     "w": 32,
+     "h": 24
+    },
+    {
+     "el": "ext-party__chip \"同盟\"",
+     "w": 32,
+     "h": 24
+    },
+    {
+     "el": "ext-tier.num \"1\"",
+     "w": 24,
+     "h": 24
+    },
+    {
+     "el": "ext-tier.num \"2\"",
+     "w": 24,
+     "h": 24
+    },
+    {
+     "el": "ext-tier.num \"3\"",
+     "w": 24,
+     "h": 24
+    },
+    {
+     "el": "ext-tier.num \"4\"",
+     "w": 24,
+     "h": 24
+    },
+    {
+     "el": "ext-tier.num \"5\"",
+     "w": 24,
+     "h": 24
+    },
+    {
+     "el": "ext-tier.num \"6\"",
+     "w": 24,
+     "h": 24
+    }
+   ],
+   "scroll": {
+    "x": 0,
+    "y": 0
+   }
+  },
+  "themeRects": {
+   ".ext-theme": [
+    0,
+    0,
+    667,
+    375
+   ],
+   ".ext-theme__top": [
+    8,
+    6,
+    651,
+    46
+   ],
+   ".ext-theme__title": [
+    154,
+    6,
+    217,
+    46
+   ],
+   ".ext-theme__name": [
+    163,
+    23,
+    208,
+    20
+   ],
+   ".ext-theme__body": [
+    8,
+    57,
+    651,
+    30
+   ],
+   ".ext-theme__guide": [
+    8,
+    57,
+    59,
+    30
+   ],
+   ".ext-theme__foot": [
+    8,
+    320,
+    651,
+    49
+   ],
+   ".ext-theme__pack": [
+    8,
+    342,
+    45,
+    10
+   ],
+   ".ext-party": [
+    172,
+    335,
+    66,
+    24
+   ],
+   ".ext-party__chip": [
+    172,
+    335,
+    32,
+    24
+   ],
+   ".ext-tiers": [
+    357,
+    335,
+    170,
+    24
+   ],
+   ".ext-tier": [
+    373,
+    335,
+    24,
+    24
+   ],
+   ".ext-theme__start": [
+    537,
+    324,
+    122,
+    44
+   ],
+   ".ext-theme__corner": [
+    8,
+    255,
+    104,
+    64
+   ],
+   ".ext-theme__dock": [
+    8,
+    255,
+    104,
+    64
+   ],
+   ".ext-theme__slot": [
+    8,
+    255,
+    104,
+    30
+   ],
+   ".ext-theme__loadout": [
+    8,
+    287,
+    104,
+    32
+   ]
+  },
+  "errors": []
+ },
+ "844x390": {
+  "okLobby": true,
+  "hub": {
+   "overlaps": [],
+   "near": [
+    {
+     "a": "hub-plate.hub-plate--sweep \"S.W.E.E.P.报告\"",
+     "b": "btn.btn--secondary[loadout-open] \"干员调配\"",
+     "axis": "y",
+     "gap": 5,
+     "ra": [
+      534,
+      58,
+      830,
+      92
+     ],
+     "rb": [
+      534,
+      96,
+      830,
+      130
+     ]
+    },
+    {
+     "a": "mode-card.hub-entry \"SOLO SIMULATION 独立模拟\"",
+     "b": "mode-card.hub-entry \"ALLIANCE SIMULATION 同盟模拟\"",
+     "axis": "x",
+     "gap": 6,
+     "ra": [
+      434,
+      312,
+      562,
+      376
+     ],
+     "rb": [
+      568,
+      312,
+      696,
+      376
+     ]
+    },
+    {
+     "a": "mode-card.hub-entry \"ALLIANCE SIMULATION 同盟模拟\"",
+     "b": "mode-card.hub-entry \"EXTENSION MODE 拓展模式\"",
+     "axis": "x",
+     "gap": 6,
+     "ra": [
+      568,
+      312,
+      696,
+      376
+     ],
+     "rb": [
+      702,
+      312,
+      830,
+      376
+     ]
+    }
+   ],
+   "small": [],
+   "scroll": {
+    "x": 0,
+    "y": 0
+   }
+  },
+  "hubRects": {
+   ".hub-stage": [
+    0,
+    50,
+    844,
+    340
+   ],
+   ".hub-entries": [
+    142,
+    296,
+    687,
+    79
+   ],
+   ".mode-card": [
+    434,
+    312,
+    128,
+    64
+   ],
+   ".hub-right": [
+    434,
+    54,
+    395,
+    77
+   ],
+   ".hub-plate--loadout": [
+    534,
+    96,
+    296,
+    34
+   ],
+   ".lobby-sweep": [
+    534,
+    58,
+    296,
+    34
+   ],
+   ".hub-side": [
+    14,
+    54,
+    112,
+    322
+   ],
+   ".hub-tile": [
+    0,
+    0,
+    0,
+    0
+   ],
+   ".hub-entry-wrap": [
+    434,
+    296,
+    128,
+    79
+   ],
+   ".hub-entry__group": [
+    434,
+    296,
+    128,
+    13
+   ]
+  },
+  "hall": {
+   "overlaps": [],
+   "near": [
+    {
+     "a": "ext-row.is-selected[extension-row-annihilation] \"01 湮灭模拟 AC-5 敌方攻击强度突破设定上\"",
+     "b": "ext-row[extension-row-zhajing] \"02 炸惊模拟 AC-8 惊变随机的推演：我方每\"",
+     "axis": "y",
+     "gap": 6,
+     "ra": [
+      345,
+      55,
+      829,
+      111
+     ],
+     "rb": [
+      345,
+      117,
+      829,
+      173
+     ]
+    }
+   ],
+   "small": [],
+   "scroll": {
+    "x": 0,
+    "y": 0
+   }
+  },
+  "hallRects": {
+   ".modal__box.ext": [
+    0,
+    0,
+    844,
+    390
+   ],
+   ".ext-stage": [
+    9,
+    53,
+    325,
+    319
+   ],
+   ".ext-pane": [
+    343,
+    53,
+    487,
+    319
+   ],
+   ".ext-list": [
+    343,
+    53,
+    487,
+    228
+   ],
+   ".ext-row": [
+    345,
+    55,
+    484,
+    56
+   ],
+   ".ext-foot": [
+    343,
+    322,
+    487,
+    50
+   ],
+   ".ext-foot__start": [
+    720,
+    328,
+    110,
+    44
+   ],
+   ".ext-party": null,
+   ".ext-party__chip": null,
+   ".ext-tier": null,
+   ".ext-hero": [
+    15,
+    59,
+    313,
+    19
+   ],
+   ".ext-stats": [
+    15,
+    81,
+    313,
+    23
+   ]
+  },
+  "theme": {
+   "overlaps": [],
+   "near": [
+    {
+     "a": "ext-theme__slot[ext-sweep] \"S.W.E.E.P.报告\"",
+     "b": "ext-theme__loadout[ext-loadout] \"干员调配\"",
+     "axis": "y",
+     "gap": 2,
+     "ra": [
+      8,
+      270,
+      112,
+      300
+     ],
+     "rb": [
+      8,
+      302,
+      112,
+      334
+     ]
+    },
+    {
+     "a": "ext-party__chip.is-on \"单人\"",
+     "b": "ext-party__chip \"同盟\"",
+     "axis": "x",
+     "gap": 2,
+     "ra": [
+      261,
+      350,
+      293,
+      374
+     ],
+     "rb": [
+      295,
+      350,
+      327,
+      374
+     ]
+    },
+    {
+     "a": "ext-tier.num \"1\"",
+     "b": "ext-tier.num \"2\"",
+     "axis": "x",
+     "gap": 2,
+     "ra": [
+      550,
+      350,
+      574,
+      374
+     ],
+     "rb": [
+      576,
+      350,
+      600,
+      374
+     ]
+    },
+    {
+     "a": "ext-tier.num \"2\"",
+     "b": "ext-tier.num \"3\"",
+     "axis": "x",
+     "gap": 2,
+     "ra": [
+      576,
+      350,
+      600,
+      374
+     ],
+     "rb": [
+      602,
+      350,
+      626,
+      374
+     ]
+    },
+    {
+     "a": "ext-tier.num \"3\"",
+     "b": "ext-tier.num \"4\"",
+     "axis": "x",
+     "gap": 2,
+     "ra": [
+      602,
+      350,
+      626,
+      374
+     ],
+     "rb": [
+      628,
+      350,
+      652,
+      374
+     ]
+    },
+    {
+     "a": "ext-tier.num \"4\"",
+     "b": "ext-tier.num \"5\"",
+     "axis": "x",
+     "gap": 2,
+     "ra": [
+      628,
+      350,
+      652,
+      374
+     ],
+     "rb": [
+      654,
+      350,
+      678,
+      374
+     ]
+    },
+    {
+     "a": "ext-tier.num \"5\"",
+     "b": "ext-tier.num \"6\"",
+     "axis": "x",
+     "gap": 2,
+     "ra": [
+      654,
+      350,
+      678,
+      374
+     ],
+     "rb": [
+      680,
+      350,
+      704,
+      374
+     ]
+    },
+    {
+     "a": "ext-theme__guide[extension-guide] \"攻略说明 8\"",
+     "b": "ext-theme__guide.ext-theme__feat[extension-feature-settings] \"功能设置\"",
+     "axis": "x",
+     "gap": 4,
+     "ra": [
+      8,
+      57,
+      67,
+      87
+     ],
+     "rb": [
+      71,
+      57,
+      117,
+      87
+     ]
+    }
+   ],
+   "small": [
+    {
+     "el": "ext-theme__guide[extension-guide] \"攻略说明 8\"",
+     "w": 59,
+     "h": 30
+    },
+    {
+     "el": "ext-theme__guide.ext-theme__feat[extension-feature-settings] \"功能设置\"",
+     "w": 47,
+     "h": 30
+    },
+    {
+     "el": "ext-theme__slot[ext-sweep] \"S.W.E.E.P.报告\"",
+     "w": 104,
+     "h": 30
+    },
+    {
+     "el": "ext-party__chip.is-on \"单人\"",
+     "w": 32,
+     "h": 24
+    },
+    {
+     "el": "ext-party__chip \"同盟\"",
+     "w": 32,
+     "h": 24
+    },
+    {
+     "el": "ext-tier.num \"1\"",
+     "w": 24,
+     "h": 24
+    },
+    {
+     "el": "ext-tier.num \"2\"",
+     "w": 24,
+     "h": 24
+    },
+    {
+     "el": "ext-tier.num \"3\"",
+     "w": 24,
+     "h": 24
+    },
+    {
+     "el": "ext-tier.num \"4\"",
+     "w": 24,
+     "h": 24
+    },
+    {
+     "el": "ext-tier.num \"5\"",
+     "w": 24,
+     "h": 24
+    },
+    {
+     "el": "ext-tier.num \"6\"",
+     "w": 24,
+     "h": 24
+    }
+   ],
+   "scroll": {
+    "x": 0,
+    "y": 0
+   }
+  },
+  "themeRects": {
+   ".ext-theme": [
+    0,
+    0,
+    844,
+    390
+   ],
+   ".ext-theme__top": [
+    8,
+    6,
+    828,
+    46
+   ],
+   ".ext-theme__title": [
+    154,
+    6,
+    217,
+    46
+   ],
+   ".ext-theme__name": [
+    163,
+    23,
+    208,
+    20
+   ],
+   ".ext-theme__body": [
+    8,
+    57,
+    828,
+    30
+   ],
+   ".ext-theme__guide": [
+    8,
+    57,
+    59,
+    30
+   ],
+   ".ext-theme__foot": [
+    8,
+    335,
+    828,
+    49
+   ],
+   ".ext-theme__pack": [
+    8,
+    357,
+    45,
+    10
+   ],
+   ".ext-party": [
+    261,
+    350,
+    66,
+    24
+   ],
+   ".ext-party__chip": [
+    261,
+    350,
+    32,
+    24
+   ],
+   ".ext-tiers": [
+    534,
+    350,
+    170,
+    24
+   ],
+   ".ext-tier": [
+    550,
+    350,
+    24,
+    24
+   ],
+   ".ext-theme__start": [
+    714,
+    339,
+    122,
+    44
+   ],
+   ".ext-theme__corner": [
+    8,
+    270,
+    104,
+    64
+   ],
+   ".ext-theme__dock": [
+    8,
+    270,
+    104,
+    64
+   ],
+   ".ext-theme__slot": [
+    8,
+    270,
+    104,
+    30
+   ],
+   ".ext-theme__loadout": [
+    8,
+    302,
+    104,
+    32
+   ]
+  },
+  "errors": []
+ }
+}

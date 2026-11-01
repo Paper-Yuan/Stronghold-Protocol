@@ -26,6 +26,7 @@ import { SkinSection } from '../ui/skinPicker.js';
 import { LoadoutStats } from '../ui/loadoutStats.js';
 import { CultivationSelects, CultivationSection } from './cultivation.js';
 import { SkillIcon, ModuleGlyph, SkillSection, ModuleSection, ProfFilter, rowControlHit } from './loadoutSections.js';
+import { useMediaQuery } from '../ui/device.js';
 import { t } from '../../../shared/i18n.js';
 
 const cx = (...p) => p.flat().filter(Boolean).join(' ');
@@ -247,6 +248,10 @@ function DiyRow({ m, slot, opt, ch, takenTier, draft, selected, ops, onOps, onSe
 export function DiyPicker(props) {
   const [previewLevel, setPreviewLevel] = useState('elite');
   const [narrowDetail, setNarrowDetail] = useState(false); // phones: the detail slides over the list
+  // the phone layout the stylesheet switches to (loadout.css: the picker stacks at max-width 760px / max-height 520px).
+  // Read here so one tap can both select AND open the detail on a phone, while a desktop (detail always visible) keeps
+  // a tap meaning "select only".
+  const narrow = useMediaQuery('(max-width: 760px), (max-height: 520px)');
   const cur = props.picks[props.slot.slotId] || null;
   const [filter, setFilter] = useState('all');
   const [prof, setProf] = useState(null);
@@ -267,7 +272,7 @@ export function DiyPicker(props) {
     return () => window.removeEventListener('keydown', onKey, true);
   }, [props.onClose]);
   return DiyPickerView({ ...props, previewLevel, onPreviewLevel: setPreviewLevel, narrowDetail, onNarrowDetail: setNarrowDetail,
-    filter, prof, query, draft, onFilter: setFilter, onProf: setProf, onQuery: setQuery, onDraft: setDraft });
+    narrow, filter, prof, query, draft, onFilter: setFilter, onProf: setProf, onQuery: setQuery, onDraft: setDraft });
 }
 
 /**
@@ -277,7 +282,7 @@ export function DiyPicker(props) {
  */
 export function DiyPickerView({ m, slot, picks, kitted, onDone, onClose, filter, prof = null, query, draft, onFilter: setFilter,
   onProf = () => {}, onQuery: setQuery, onDraft: setDraft,
-  ops = {}, onOps = null, previewLevel = 'elite', onPreviewLevel = () => {}, narrowDetail = false, onNarrowDetail = () => {} }) {
+  ops = {}, onOps = null, previewLevel = 'elite', onPreviewLevel = () => {}, narrowDetail = false, onNarrowDetail = () => {}, narrow = false }) {
   const D = diyData();
   const cur = picks[slot.slotId] || null;
   const options = pickOptions(slot.slotId, picks, D, kitted);
@@ -287,12 +292,19 @@ export function DiyPickerView({ m, slot, picks, kitted, onDone, onClose, filter,
     && (!prof || o.unit?.profession === prof)
     && (!q || [o.unit?.name, o.unit?.appellation, o.unit?.subProfessionName, t(PROF_NAME[o.unit?.profession] || ''), ...o.bonds.map(bondName)].some((x) => typeof x === 'string' && x.toLowerCase().includes(q))));
   const ch = draft ? rowChoices(draft.charId, slot.slotId, D) : null;
-  // Selecting a row keeps the draft's edits when it is already the chosen operator (the picker's own rule, 0.2.0). On a
-  // phone the first tap only selects: the detail slides over on the next tap of the row that is already selected, so a
-  // tap that means "pick this operator" never replaces the list with a pane the player did not ask for.
-  const sel = (charId) => {
+  // Selecting a row keeps the draft's edits when it is already the chosen operator (the picker's own rule, 0.2.0).
+  //
+  // On a phone the detail (潜能与练度, 皮肤, 语音, 技能…) slides over the list, and the row that opens it is the way back to
+  // the list (干员列表). It used to take TWO taps — the first only selected, the second (on the already-selected row)
+  // slid the detail over — on the theory that a tap meaning "pick this operator" should not replace the list. In practice
+  // the things a phone player opens this screen FOR (choose a skin, pick a dub) live in that detail, so every one of them
+  // cost a double tap (the owner, 2026-10-28: 「要双击打开详情页才行，有点麻烦」). One tap now both selects and opens:
+  // `narrow` is the phone layout the caller already computes, so a desktop keeps its always-visible detail and a single
+  // tap only selects there.
+  const sel = (charId, useNarrow = narrow) => {
     if (draft?.charId !== charId) {
       setDraft(cur && cur.charId === charId ? { ...cur } : defaultPick(charId, slot.slotId, D));
+      if (useNarrow) onNarrowDetail(true);
       return;
     }
     onNarrowDetail(true);

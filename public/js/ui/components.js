@@ -61,6 +61,8 @@ export const ICONS = {
   snow: { d: 'M11 2h2v4.2l2.3-2.3 1.4 1.4-3.7 3.7v2h2l3.7-3.7 1.4 1.4-2.3 2.3H22v2h-4.2l2.3 2.3-1.4 1.4-3.7-3.7h-2v2l3.7 3.7-1.4 1.4-2.3-2.3V22h-2v-4.2l-2.3 2.3-1.4-1.4 3.7-3.7v-2H9l-3.7 3.7-1.4-1.4L6.2 13H2v-2h4.2L3.9 8.7l1.4-1.4L9 11h2V9L7.3 5.3l1.4-1.4L11 6.2z' },
   chevronRight: { d: 'M8.6 5 7.2 6.4 12.8 12l-5.6 5.6L8.6 19l7-7z' },
   chevronLeft: { d: 'M15.4 5l1.4 1.4-5.6 5.6 5.6 5.6-1.4 1.4-7-7z' },
+  chevronUp: { d: 'M5 15.4 6.4 16.8 12 11.2l5.6 5.6 1.4-1.4L12 8.4z' },
+  chevronDown: { d: 'M6.4 8.6 5 10l7 7 7-7-1.4-1.4L12 14.2z' },
   chevrons: { d: 'M5.6 5 4.2 6.4 9.8 12l-5.6 5.6L5.6 19l7-7zm7 0-1.4 1.4 5.6 5.6-5.6 5.6 1.4 1.4 7-7z' },
   hourglass: { d: 'M6 2h12v2h-1v3.5L13.5 12l3.5 4.5V20h1v2H6v-2h1v-3.5l3.5-4.5L7 7.5V4H6zm3 2v2.8l3 3.9 3-3.9V4zm0 16h6v-2.8l-3-3.9-3 3.9z', eo: true },
   dots: { d: 'M5 10.3a1.7 1.7 0 1 1 0 3.4 1.7 1.7 0 0 1 0-3.4zm7 0a1.7 1.7 0 1 1 0 3.4 1.7 1.7 0 0 1 0-3.4zm7 0a1.7 1.7 0 1 1 0 3.4 1.7 1.7 0 0 1 0-3.4z' },
@@ -72,6 +74,11 @@ export const ICONS = {
   mic: { d: 'M12 14a3 3 0 0 0 3-3V5a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.9V21H8v2h8v-2h-3v-3.1A7 7 0 0 0 19 11z' },
   edit: { d: 'M3 17.2V21h3.8l11-11-3.8-3.8zM20.7 7.1a1 1 0 0 0 0-1.4l-2.4-2.4a1 1 0 0 0-1.4 0l-1.8 1.8 3.8 3.8z' },
   sword: { d: 'M20 3h1v4L10.4 17.6l1.4 1.4-1.4 1.4-2.1-2.1-3.5 3.5-1.4-1.4 3.5-3.5L4.8 14.8l1.4-1.4 1.4 1.4L18 4z' },
+  // 湮灭模拟's own mark (the Annihilation mod's components.js: a rook struck through). `eo` matters: without evenodd the
+  // slash's own outline fills solid and reads as a bar laid across the rook instead of cutting it.
+  annihilation: { d: 'M5 3h3v2h2V3h4v2h2V3h3v5l-2 2v7l2 2v2H5v-2l2-2v-7L5 8zM3.4 2 2 3.4 20.6 22 22 20.6z', eo: true },
+  // 炸惊模拟's own mark (the play set's blast / 惊变 mark): an eight-point burst — a spike, not a difficulty glyph
+  blast: { d: 'M12 2 13.9 7.4 19.1 4.9 16.6 10.1 22 12 16.6 13.9 19.1 19.1 13.9 16.6 12 22 10.1 16.6 4.9 19.1 7.4 13.9 2 12 7.4 10.1 4.9 4.9 10.1 7.4Z' },
   shield: { d: 'M12 2 4 5v6c0 5 3.4 9.3 8 11 4.6-1.7 8-6 8-11V5z' },
   wifiOff: { d: 'M2 17h3v4H2zm6-4h3v8H8zm6-4h3v12h-3zm6-4h3v16h-3zM2.4 1 23 21.6 21.6 23 1 2.4z' },
   expand: { d: 'M3 3h7v2H5v5H3zm11 0h7v7h-2V5h-5zM3 14h2v5h5v2H3zm16 0h2v7h-7v-2h5z' },
@@ -82,6 +89,8 @@ export const ICONS = {
   book: { d: 'M2 4h7.5A3.5 3.5 0 0 1 12 5.1 3.5 3.5 0 0 1 14.5 4H22v16h-7.5a1.5 1.5 0 0 0-1.5 1.5h-2A1.5 1.5 0 0 0 9.5 20H2zm2 2v12h5.5c.5 0 1 .1 1.5.3V7.5A1.5 1.5 0 0 0 9.5 6zm10.5 0A1.5 1.5 0 0 0 13 7.5v10.8c.5-.2 1-.3 1.5-.3H20V6z', eo: true },
   // 观战 (spectator seats; the same eye as gameComponents.js GIcon 'eye')
   eye: { d: 'M12 5c5 0 9 4.5 10 7-1 2.5-5 7-10 7S3 14.5 2 12c1-2.5 5-7 10-7zm0 3a4 4 0 1 0 0 8 4 4 0 0 0 0-8zm0 2a2 2 0 1 1 0 4 2 2 0 0 1 0-4z', eo: true },
+  // 局内左下「对话唤出」(screens/game.js): a speech bubble with three dots punched out (`eo`), the same glyph in every mode
+  chat: { d: 'M4 3h16a3 3 0 0 1 3 3v9a3 3 0 0 1-3 3h-6.4L7 22v-4H4a3 3 0 0 1-3-3V6a3 3 0 0 1 3-3zm3 6.2a1.6 1.6 0 1 0 0 3.2 1.6 1.6 0 0 0 0-3.2zm5 0a1.6 1.6 0 1 0 0 3.2 1.6 1.6 0 0 0 0-3.2zm5 0a1.6 1.6 0 1 0 0 3.2 1.6 1.6 0 0 0 0-3.2z', eo: true },
   // 大厅背景与音乐 (ui/lobbyMedia.js): a framed picture (ridges and a sun) and a beamed pair of notes
   image: { d: 'M3 4h18v16H3zM5 6v9.6l4-4.6 3.5 4 2.5-3 4 4.4V6zM16 7.5a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3z', eo: true },
   music: { d: 'M18 3h2v13h-2zM8 5.4h2V18H8zM8 5.4 20 3v3L8 8.4zM14 16a3 3 0 1 1 6 0 3 3 0 1 1-6 0zM4 18a3 3 0 1 1 6 0 3 3 0 1 1-6 0z' },

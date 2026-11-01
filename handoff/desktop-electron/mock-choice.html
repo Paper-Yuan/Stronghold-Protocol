@@ -1,0 +1,712 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="color-scheme" content="dark" />
+<meta name="theme-color" content="#0c0f0e" />
+<title>卫戍协议：盟约 · 启动选择页（静态视觉稿）</title>
+<style>
+/* ============================================================================
+   handoff/desktop-electron/mock-choice.html — 桌面端启动选择页 · 静态视觉稿（左右两卡）
+   单文件：CSS 全内联，零外部字体/CSS/JS，唯一的“行为”是 :hover / :focus-within。
+   唯一的位图是一层 10% 的氛围底图（现成资源、只引用不复制，见「三改 · D」）。
+
+   设计语言逐项抄自仓库（不做通用 SaaS 风）：
+     根尺度 1rem = min(100vw/19.2, 100vh/10.8)，地板 40px …… public/css/theme.css:140-149
+     颜色 / 字体 / 动效 token …………………………… public/css/theme.css:13-131
+     .micro 小字标签、.num 数字字面 ………………… public/css/theme.css:219-232
+     .btn / .btn--primary / .btn--ghost / .btn--sm … public/css/components.css:10-175
+     .panel 底（纹理 + 边框 + 阴影）、.panel--glow … public/css/components.css:178-197
+     .field / .field__box / .field__input …………… public/css/components.css:890-927
+     四条 L 形角标 .brackets::after ……………………… public/css/theme.css:243-259
+     背景网格 / 辉光 / 暗角 .app-bg …………………… public/css/theme.css:285-316
+     .cross 十字准星 …………………………………………… public/css/theme.css:338-347
+
+   字号：仓库正文用 calc(.18 * var(--t))，--t 只是「文字大小」设置项的倍率（theme.css:165-168）。
+   静态稿不存在那个设置，所以这里直接写 rem，与 --t = 1rem 时逐像素等价。
+
+   二改（业主反馈）：
+     1. 卡高从 35.5% 视口提到 ≈54%：min-height: min(5.85rem, 54vh)，并加大卡内纵向 padding/间距，
+        四段（标题区 / 说明 / 字段区 / 按钮区）靠 justify-content: space-between 拉开，不塞空白 div；
+     2. 右卡预填自建中转 https://wei.jiangjiangze.icu/，输入框下一行极小灰字「备用：http://121.4.51.247/」；
+     3. 去掉「记住这个地址」勾选框（地址总是自动记住）；页脚只留 v0.3.3（去掉「桌面端」）；
+     4. 连接后不检测页面是否渲染成功，灰字只说「失败会回到本页」；
+     5. 新增「连接中」状态：把右卡 data-state 改成 "connecting"，或直接打开 mock-choice.html#remote-card。
+        仍是纯 CSS、零 JS（对应实现里的 button[disabled] + input[readonly]）。
+
+   三改（业主选「克制动效版」= A + C + D，不要插画、不要大图）：
+     A. 两卡顶部一行技术眉题（LOCAL // SERVER / REMOTE // RELAY，.micro 量级、--text-dim、字距 .28em）；
+        卡底 42% 一层极慢扫描线（repeating-linear-gradient + background-position 位移，22s 一圈，
+        layer opacity .045 ≤ .05，垫在文字层下面）；本机卡 mint 外发光 4s ease-in-out 呼吸（.18 → .28）。
+     C. 两卡左上 01 / 02 大数字（--text-dim + opacity .55，压在眉题左侧，不抢标题）；四条 L 形角标保留；
+        边框内侧一道 1px 顶部高光 inset 0 1px 0 rgba(255,255,255,.06)（呼吸帧里也带着，否则会被动画覆盖）。
+     D. 整页底一层**现成**位图（public/assets 里挑的战术地图背景，只引用路径、不复制文件）：
+        opacity .1 + --text-dim 混合，页面网格移到它上面一层，.app-bg::after 的暗角/扫描线仍在最上。
+     prefers-reduced-motion: reduce —— A 的三处动效（呼吸 / 扫描线 / 转圈）与 transition 全关。
+   ============================================================================ */
+
+:root {
+  color-scheme: dark;
+
+  --bg-0: #0c0f0e;
+  --bg-1: #141816;
+  --bg-2: #1e2421;
+  --bg-3: #252c29;
+  --line: #2f3a35;
+  --line-2: #3e4b45;
+  --line-3: #58675f;
+
+  --mint-400: #59f4ca;
+  --mint-500: #4ed8af;
+  --mint-600: #35d8b4;
+  --mint-700: #2a9e7f;
+  --mint-800: #145443;
+  --mint-glow: #17f9b7;
+  --mint-a10: rgba(78, 216, 175, .10);
+  --mint-a20: rgba(78, 216, 175, .20);
+
+  --text-hi: #f2f2f2;
+  --text-md: #c3cbc7;
+  --text-lo: #8a948f;
+  --text-dim: #5d6863;
+  --text-on-mint: #06110d;
+
+  --cjk-faces: 'Noto Sans SC', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Source Han Sans SC', 'Noto Sans CJK SC';
+  --font-cjk: var(--cjk-faces), sans-serif;
+  --font-num: 'Bender', 'Rajdhani', 'Oxanium', var(--cjk-faces), sans-serif;
+  --font-display: 'Novecento', 'Novecento Wide', 'Oxanium', 'Rajdhani', var(--cjk-faces), sans-serif;
+
+  --ease-out: cubic-bezier(.2, .8, .2, 1);
+  --t-fast: 150ms;
+  --t-med: 200ms;
+}
+
+html {
+  /* theme.css:141 —— 整页唯一的尺度来源 */
+  font-size: clamp(40px, min(calc(100vw / 19.2), calc(100vh / 10.8)), 240px);
+  height: 100%;
+  background: var(--bg-0);
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  background: var(--bg-0);
+  color: var(--text-hi);
+  font-family: var(--font-cjk);
+  font-size: .18rem;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  -webkit-user-select: none;
+  user-select: none;
+}
+h1, h2, p { margin: 0; }
+button { font: inherit; color: inherit; cursor: pointer; }
+input { font: inherit; color: inherit; }
+:focus { outline: none; }
+:focus-visible { outline: 2px solid var(--mint-400); outline-offset: 2px; }
+::selection { background: var(--mint-500); color: var(--text-on-mint); }
+input { -webkit-user-select: text; user-select: text; }
+
+/* ---- 小字标签 / 数字字面（theme.css:219-232） ------------------------------------------------ */
+.micro {
+  font-family: var(--font-display);
+  font-size: .11rem;
+  line-height: 1.2;
+  letter-spacing: .18em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  white-space: nowrap;
+}
+.micro--mint { color: var(--mint-700); }
+/* 三改 A：技术眉题（比 .micro 再放开一档字距，仍然是 .11rem 那一档字号） */
+.micro--eyebrow { letter-spacing: .28em; }
+.num { font-family: var(--font-num); font-variant-numeric: tabular-nums; letter-spacing: .02em; }
+
+/* ---- 页面底：底图 + 网格 + 辉光 + 暗角（theme.css:285-316 + title.css 的底部 glow） ----------- */
+.app-root { position: fixed; inset: 0; overflow: hidden; isolation: isolate; }
+.app-bg {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(120% 80% at 50% 110%, rgba(23, 249, 183, .13), transparent 55%),
+    radial-gradient(80% 60% at 50% 40%, rgba(40, 60, 52, .32), transparent 70%),
+    linear-gradient(180deg, #0b0e0d 0%, #0e1311 55%, #0a0d0c 100%);
+}
+/* 三改 D：整页唯一一张位图，现成资源、只引用不复制 ——
+   public/assets/local/map/autochess/TX_autochessi_BG.webp
+   （卫戍协议自己的地图底材质：混凝土/金属颗粒，本身不是插画也不是角色图；压到 10% 只当纸底颗粒）。
+   仓库里没有“大厅主图”位图 —— 启动页/大厅底本来就是纯 CSS（theme.css 的 .app-bg）；
+   ext-theme 那两张（crimson-knight / zhajing-key）都是插画，与本次「不要插画」冲突，故不选。
+   堆叠顺序：.app-bg 的渐变 → .app-photo（10%） → .app-grid（原 ::before 的网格，抬到图上） → ::after（扫描线 + 暗角）。 */
+.app-photo {
+  position: absolute;
+  inset: 0;
+  opacity: .10;
+  background: url('../../public/assets/local/map/autochess/TX_autochessi_BG.webp') center / cover no-repeat;
+}
+/* 原 .app-bg::before 的网格，原样搬成一层真实元素（二改的视觉不变，只是叠在底图上面） */
+.app-grid {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(rgba(78, 216, 175, .045) 1px, transparent 1px) 0 0 / .8rem .8rem,
+    linear-gradient(90deg, rgba(78, 216, 175, .045) 1px, transparent 1px) 0 0 / .8rem .8rem;
+  -webkit-mask-image: radial-gradient(90% 80% at 50% 50%, #000 30%, transparent 85%);
+  mask-image: radial-gradient(90% 80% at 50% 50%, #000 30%, transparent 85%);
+}
+.app-bg::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    repeating-linear-gradient(0deg, rgba(255, 255, 255, .02) 0 1px, transparent 1px 3px),
+    radial-gradient(130% 100% at 50% 50%, transparent 55%, rgba(0, 0, 0, .65) 100%);
+}
+
+.cross {
+  position: absolute;
+  width: .22rem;
+  height: .22rem;
+  pointer-events: none;
+  background:
+    linear-gradient(var(--mint-700), var(--mint-700)) center / 100% 1px no-repeat,
+    linear-gradient(var(--mint-700), var(--mint-700)) center / 1px 100% no-repeat;
+  opacity: .55;
+}
+
+.screen {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* ---- 顶栏：游戏名 / 版本 / 设置齿轮 ------------------------------------------------------------ */
+.start-top {
+  flex: none;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: .2rem;
+  padding: .26rem .44rem 0;
+}
+.brand { display: flex; flex-direction: column; gap: .05rem; min-width: 0; }
+.brand__row { display: flex; align-items: baseline; gap: .18rem; }
+.brand__title {
+  font-family: var(--font-display);
+  font-size: .3rem;
+  font-weight: 900;
+  letter-spacing: .05em;
+  line-height: 1.1;
+  color: var(--text-hi);
+  white-space: nowrap;
+}
+.brand__title em { font-style: normal; color: var(--mint-400); }
+.brand__colon { color: var(--text-lo); }
+.brand__ver { font-size: .15rem; color: var(--text-lo); letter-spacing: .06em; }
+
+/* 齿轮按钮：components.css 的 ghost / sm + gameComponents.js gearPath() 的原路径 */
+.btn {
+  --btn-bg: #1a201d;
+  --btn-bg-hover: #222a26;
+  --btn-fg: var(--text-hi);
+  --btn-bd: var(--line-2);
+  --btn-bd-hover: var(--mint-700);
+  --btn-glow: rgba(78, 216, 175, .25);
+  --bk-c: var(--mint-500);
+  --bk-l: .1rem;
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: .1rem;
+  height: .5rem;
+  min-width: .5rem;
+  padding: 0 .26rem;
+  border: 1px solid var(--btn-bd);
+  background: var(--btn-bg);
+  color: var(--btn-fg);
+  font-size: .18rem;
+  font-weight: 700;
+  letter-spacing: .06em;
+  line-height: 1;
+  white-space: nowrap;
+  transition: background-color var(--t-fast) var(--ease-out), border-color var(--t-fast) var(--ease-out),
+    color var(--t-fast) var(--ease-out), box-shadow var(--t-med) var(--ease-out);
+}
+.btn::after {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  pointer-events: none;
+  opacity: 0;
+  background:
+    linear-gradient(var(--bk-c), var(--bk-c)) top left / var(--bk-l) 2px no-repeat,
+    linear-gradient(var(--bk-c), var(--bk-c)) top left / 2px var(--bk-l) no-repeat,
+    linear-gradient(var(--bk-c), var(--bk-c)) top right / var(--bk-l) 2px no-repeat,
+    linear-gradient(var(--bk-c), var(--bk-c)) top right / 2px var(--bk-l) no-repeat,
+    linear-gradient(var(--bk-c), var(--bk-c)) bottom left / var(--bk-l) 2px no-repeat,
+    linear-gradient(var(--bk-c), var(--bk-c)) bottom left / 2px var(--bk-l) no-repeat,
+    linear-gradient(var(--bk-c), var(--bk-c)) bottom right / var(--bk-l) 2px no-repeat,
+    linear-gradient(var(--bk-c), var(--bk-c)) bottom right / 2px var(--bk-l) no-repeat;
+  transform: scale(1.04);
+  transition: opacity var(--t-fast) var(--ease-out), transform var(--t-med) var(--ease-out);
+}
+.btn:hover {
+  background-color: var(--btn-bg-hover);
+  border-color: var(--btn-bd-hover);
+  box-shadow: 0 0 .18rem var(--btn-glow);
+}
+.btn:hover::after { opacity: 1; transform: scale(1); }
+.btn:focus-visible { outline: none; }
+.btn:focus-visible::after { opacity: 1; transform: scale(1); }
+
+.btn--ghost {
+  --btn-bg: transparent;
+  --btn-bg-hover: rgba(78, 216, 175, .06);
+  --btn-fg: var(--text-lo);
+  --btn-bd: transparent;
+  --btn-bd-hover: transparent;
+  --btn-glow: transparent;
+}
+.btn--ghost:hover { color: var(--text-hi); }
+.btn--primary {
+  background-image:
+    repeating-linear-gradient(-55deg, rgba(0, 0, 0, .16) 0 2px, transparent 2px 6px),
+    linear-gradient(180deg, rgba(255, 255, 255, .18), rgba(255, 255, 255, 0) 45%);
+  background-size: .34rem 100%, 100% 100%;
+  background-position: right center, 0 0;
+  background-repeat: no-repeat;
+  --btn-bg: var(--mint-500);
+  --btn-bg-hover: var(--mint-400);
+  --btn-fg: var(--text-on-mint);
+  --btn-bd: #6fe8c4;
+  --btn-bd-hover: #9dffe2;
+  --btn-glow: rgba(23, 249, 183, .45);
+  --bk-c: var(--mint-400);
+}
+.btn--sm { height: .36rem; min-width: .36rem; padding: 0 .12rem; font-size: .15rem; }
+.btn--lg { height: .56rem; min-width: .56rem; padding: 0 .3rem; font-size: .22rem; letter-spacing: .12em; gap: .12rem; }
+.btn--block { display: flex; width: 100%; }
+.icon { fill: currentColor; flex: none; display: inline-block; vertical-align: middle; }
+.start-gear .icon { width: 1.15em; height: 1.15em; }
+
+/* ---- 主区：两卡居中 --------------------------------------------------------------------------- */
+.start-main {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: .26rem .44rem .2rem;
+}
+.start-cards {
+  display: flex;
+  align-items: stretch;
+  justify-content: center;
+  gap: .44rem;
+  width: 100%;
+}
+
+/* ---- 卡（面板底 = components.css:178-197） ---------------------------------------------------- */
+.card {
+  --bk-c: var(--line-3);
+  --bk-l: .14rem;
+  position: relative;
+  flex: 0 1 auto;
+  /* 每卡 = 视口宽 40%（1920/1280/792 三档都实测过；8rem 只挡超宽屏，别让卡被拉成一块横条） */
+  width: min(40vw, 8rem);
+  min-width: 0;
+  /* 二改：卡高 ≈ 视口 54%（1920×1080 = 585 / 1280×720 = 390 / 792×360 = 194）。
+     16:9 下 1rem 恰好 = vh/10.8，所以 5.85rem ≈ 54vh；792×360 触到 theme.css:141 的 40px 地板后
+     rem 不再跟 vh 走，用 min(…, 54vh) 把比例兜回来（否则 5.85rem = 232px 会撑到视口 64%）。 */
+  min-height: min(5.85rem, 54vh);
+  display: flex;
+  flex-direction: column;
+  /* 四段拉开：多出来的高度按 space-between 分给段与段之间，而不是在末尾堆一块空白 */
+  justify-content: space-between;
+  gap: .24rem;
+  padding: .5rem .38rem .42rem;
+  background:
+    repeating-linear-gradient(0deg, rgba(255, 255, 255, .016) 0 1px, transparent 1px 3px),
+    linear-gradient(180deg, rgba(30, 36, 33, .94), rgba(18, 22, 20, .94));
+  border: 1px solid var(--line);
+  /* 三改 C：边框内侧那道 1px 顶部高光，与投影同一条 box-shadow（面板底自带的那层不动） */
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .06), 0 .12rem .3rem rgba(0, 0, 0, .35);
+}
+/* 四条 L 形角标（theme.css:243-259） */
+.card::after {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  pointer-events: none;
+  background:
+    linear-gradient(var(--bk-c), var(--bk-c)) top left / var(--bk-l) 2px no-repeat,
+    linear-gradient(var(--bk-c), var(--bk-c)) top left / 2px var(--bk-l) no-repeat,
+    linear-gradient(var(--bk-c), var(--bk-c)) top right / var(--bk-l) 2px no-repeat,
+    linear-gradient(var(--bk-c), var(--bk-c)) top right / 2px var(--bk-l) no-repeat,
+    linear-gradient(var(--bk-c), var(--bk-c)) bottom left / var(--bk-l) 2px no-repeat,
+    linear-gradient(var(--bk-c), var(--bk-c)) bottom left / 2px var(--bk-l) no-repeat,
+    linear-gradient(var(--bk-c), var(--bk-c)) bottom right / var(--bk-l) 2px no-repeat,
+    linear-gradient(var(--bk-c), var(--bk-c)) bottom right / 2px var(--bk-l) no-repeat;
+}
+
+/* 三改 A：卡底 42% 一层极慢扫描线。垫在内容下面（内容层 z-index 1），最下沿被 mask 淡入，
+   不碰卡片上半部的标题/说明；opacity .045 ≤ 上限 .05，扫描线本身 alpha 1（层透明度才是那条线）。 */
+.card__tex {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 42%;
+  z-index: 0;
+  pointer-events: none;
+  opacity: .045;
+  background-image: repeating-linear-gradient(0deg, #fff 0 1px, transparent 1px .12rem);
+  background-position: 0 0;
+  -webkit-mask-image: linear-gradient(180deg, transparent, #000 62%);
+  mask-image: linear-gradient(180deg, transparent, #000 62%);
+  animation: card-scan 22s linear infinite;
+}
+/* 位移正好一个重复周期（.12rem），所以是**无缝**循环：22s 走完 1px 线间距，≈ 0.005rem/s */
+@keyframes card-scan { from { background-position: 0 0; } to { background-position: 0 .12rem; } }
+/* 内容层抬到扫描线之上（只抬定位层级，不改任何排版） */
+.card > :not(.card__tex) { position: relative; z-index: 1; }
+
+/* 主卡（本机，默认档）：薄荷描边 + 外发光 + 顶部高光条 */
+.card--local {
+  --bk-c: var(--mint-500);
+  border-color: rgba(78, 216, 175, .42);
+  background:
+    repeating-linear-gradient(0deg, rgba(255, 255, 255, .016) 0 1px, transparent 1px 3px),
+    radial-gradient(80% 62% at 50% 118%, rgba(23, 249, 183, .14), transparent 64%),
+    linear-gradient(180deg, rgba(32, 42, 37, .97), rgba(14, 24, 20, .97));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, .06),
+    0 0 0 1px rgba(78, 216, 175, .14),
+    0 0 .42rem rgba(23, 249, 183, .16),
+    0 .16rem .4rem rgba(0, 0, 0, .45);
+  /* 三改 A：mint 外发光呼吸 —— 4s、缓入缓出、只动那层 glow 的 alpha（.18 ↔ .28），幅度很小 */
+  animation: card-breathe 4s ease-in-out infinite;
+}
+/* 关键帧里必须把 inset 高光一起写上，否则动画一跑就把 .card 的 box-shadow 整条覆盖掉 */
+@keyframes card-breathe {
+  0%, 100% {
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, .06),
+      0 0 0 1px rgba(78, 216, 175, .14),
+      0 0 .42rem rgba(23, 249, 183, .18),
+      0 .16rem .4rem rgba(0, 0, 0, .45);
+  }
+  50% {
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, .06),
+      0 0 0 1px rgba(78, 216, 175, .18),
+      0 0 .52rem rgba(23, 249, 183, .28),
+      0 .16rem .4rem rgba(0, 0, 0, .45);
+  }
+}
+.card--local::before {
+  content: '';
+  position: absolute;
+  left: -1px;
+  right: -1px;
+  top: -1px;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--mint-400) 22%, var(--mint-400) 78%, transparent);
+  opacity: .85;
+  pointer-events: none;
+  z-index: 2;
+}
+
+/* 副卡（服务器）：普通描边，无发光 */
+.card--remote { --bk-c: var(--line-3); }
+
+.card__head { display: flex; flex-direction: column; gap: .1rem; min-width: 0; }
+/* 三改 C：编号 + 眉题同一行（编号压在眉题左侧），编号大但透明度低，不与下面的标题抢视线 */
+.card__top { display: flex; align-items: center; gap: .14rem; min-width: 0; }
+.card__idx {
+  flex: none;
+  font-family: var(--font-num);
+  font-size: .4rem;
+  font-weight: 800;
+  line-height: .8;
+  letter-spacing: .02em;
+  color: var(--text-dim);
+  opacity: .55;
+}
+.card__title {
+  font-family: var(--font-display);
+  font-size: .34rem;
+  font-weight: 900;
+  letter-spacing: .06em;
+  line-height: 1.15;
+  color: var(--text-hi);
+}
+.card__desc { font-size: .17rem; line-height: 1.6; color: var(--text-md); }
+.card__meta {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: nowrap;
+  gap: .08rem;
+  font-size: .15rem;
+  color: var(--text-lo);
+  white-space: nowrap;
+}
+.card__meta .num { font-size: .16rem; color: var(--text-md); }
+.card__meta-sep { color: var(--line-3); }
+/* 按钮 + 说明落在卡底：两卡同高（.start-cards 的 stretch），所以按钮天然在同一条水平线上，
+   共用一条 hairline 作为「动作区」分界。二改后不再需要 margin-top:auto —— 卡用 space-between
+   分配多出来的高度，把 auto 留着会把空白全堆在这一条线上。 */
+.card__foot {
+  display: flex;
+  flex-direction: column;
+  gap: .14rem;
+  padding-top: .26rem;
+  border-top: 1px solid var(--line);
+}
+.card__note { font-size: .13rem; line-height: 1.5; color: var(--text-dim); }
+/* 右卡的「字段区」：地址输入 + 底下那行「备用：…」，两者贴在一起，不与卡内其它段拉开 */
+.card__field { display: flex; flex-direction: column; gap: .1rem; min-width: 0; }
+.field__hint {
+  font-size: .12rem;
+  line-height: 1.4;
+  letter-spacing: .02em;
+  color: var(--text-dim);
+  white-space: nowrap;
+}
+.field__hint .num { font-size: .12rem; }
+
+/* ---- 地址输入（components.css:890-927） -------------------------------------------------------- */
+.field { display: flex; flex-direction: column; gap: .1rem; min-width: 0; }
+.field__label { font-size: .15rem; color: var(--text-lo); font-weight: 500; letter-spacing: .04em; }
+.field__box {
+  --bk-c: var(--line-3);
+  --bk-l: .1rem;
+  display: flex;
+  align-items: center;
+  gap: .1rem;
+  height: .58rem;
+  padding: 0 .18rem;
+  background: rgba(5, 7, 6, .78);
+  border: 1px solid var(--line);
+  transition: border-color var(--t-fast), box-shadow var(--t-med);
+}
+.field__box:hover { border-color: var(--line-2); }
+.field__box:focus-within {
+  border-color: var(--mint-700);
+  --bk-c: var(--mint-400);
+  box-shadow: 0 0 0 1px rgba(78, 216, 175, .15), 0 0 .18rem rgba(23, 249, 183, .15);
+}
+.field__input {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  background: none;
+  border: 0;
+  outline: none;
+  color: var(--text-hi);
+  font-family: var(--font-num);
+  font-size: .18rem;
+  letter-spacing: .02em;
+}
+.field__input::placeholder { font-family: var(--font-cjk); font-size: .16rem; color: var(--text-dim); font-weight: 400; letter-spacing: .04em; }
+
+/* ---- 连接中（第三张状态图）：纯 CSS 变体，零 JS ------------------------------------------------ */
+/* 触发方式二选一，都不需要 JavaScript：
+     a) 把右卡的 data-state 写成 "connecting"（业主说的那个变体）；
+     b) 打开 mock-choice.html#remote-card（:target 兜底，截图脚本与人工对照都用这条）。
+   语义：右卡按钮不可点、文案变「连接中…」；右卡输入框只读；左卡照常可用（不写任何规则）。
+   真实实现对应 <button disabled> + <input readonly>；这里只用属性选择器画出「看起来不可用」。 */
+.card--remote[data-state="connecting"] .card__action,
+.card--remote:target .card__action {
+  --btn-bg: rgba(78, 216, 175, .08);
+  --btn-bg-hover: rgba(78, 216, 175, .08);
+  --btn-fg: var(--text-lo);
+  --btn-bd: var(--line-2);
+  --btn-bd-hover: var(--line-2);
+  --btn-glow: transparent;
+  --bk-c: transparent;
+  background-image: none;
+  border-style: dashed;
+  box-shadow: none;
+  cursor: default;
+  pointer-events: none;
+}
+/* 文案切换：两份 label 都在 DOM 里，只显示其中一份 —— 这样仍是零 JS */
+.btn__idle { display: inline-flex; align-items: center; gap: .12rem; }
+.btn__busy { display: none; align-items: center; gap: .12rem; letter-spacing: .1em; }
+.card--remote[data-state="connecting"] .card__action .btn__idle,
+.card--remote:target .card__action .btn__idle { display: none; }
+.card--remote[data-state="connecting"] .card__action .btn__busy,
+.card--remote:target .card__action .btn__busy { display: inline-flex; }
+.spin {
+  flex: none;
+  width: .18rem;
+  height: .18rem;
+  border-radius: 50%;
+  border: 2px solid rgba(78, 216, 175, .22);
+  border-top-color: var(--mint-500);
+  animation: spin 900ms linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+/* 只读：底色压暗、描边回落到最弱一档、去掉聚焦光晕与文本光标 */
+.card--remote[data-state="connecting"] .field__box,
+.card--remote:target .field__box {
+  background: rgba(5, 7, 6, .55);
+  border-color: var(--line);
+  box-shadow: none;
+}
+.card--remote[data-state="connecting"] .field__input,
+.card--remote:target .field__input {
+  color: var(--text-md);
+  caret-color: transparent;
+  pointer-events: none;
+}
+.card--remote[data-state="connecting"] .field__label,
+.card--remote:target .field__label { color: var(--text-dim); }
+
+/* ---- 底栏 ------------------------------------------------------------------------------------- */
+.start-foot {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 .44rem .14rem;
+}
+.start-foot .micro { font-size: .12rem; text-transform: none; letter-spacing: .16em; color: var(--text-lo); }
+
+/* 极窄/极矮窗口：两卡仍并排，只收紧内边距与字号不会换行（1920×1080 / 1280×720 / 792×360 三种都验过） */
+@media (max-width: 820px) {
+  .start-top { padding: .18rem .3rem 0; }
+  .start-main { padding: .16rem .3rem .12rem; }
+  .start-cards { gap: .3rem; }
+  .card { padding: .26rem .26rem .22rem; gap: .14rem; }
+  .brand__title { font-size: .26rem; }
+}
+@media (max-height: 400px) {
+  /* 792×360：rem 已经触到 40px 地板，卡高改由 54vh 决定（min(5.85rem, 54vh) = 194.4）。
+     内容按这个高度重新配比，别让一张 194px 的卡里只剩一条细字。 */
+  .card { padding: .26rem .26rem .24rem; gap: .14rem; }
+  .card__idx { font-size: .34rem; }
+  .card__top { gap: .1rem; }
+  .card__title { font-size: .3rem; }
+  .card__desc { font-size: .17rem; }
+  .card__foot { padding-top: .18rem; gap: .1rem; }
+  .card__note { font-size: .14rem; }
+  .field__box { height: .6rem; }
+}
+
+/* 三改 A：减动效 —— 三处动画（本机卡呼吸 / 卡底扫描线 / 连接中转圈）与 transition 全关。
+   放文件末尾，同优先级下覆盖前面的 animation / transition 声明。 */
+@media (prefers-reduced-motion: reduce) {
+  .card--local,
+  .card__tex,
+  .spin { animation: none; }
+  .btn,
+  .btn::after,
+  .field__box { transition: none; }
+}
+</style>
+</head>
+<body>
+  <div class="app-root">
+    <div class="app-bg" aria-hidden="true">
+      <span class="app-photo"></span>
+      <span class="app-grid"></span>
+    </div>
+    <span class="cross" style="left:6%;top:20%" aria-hidden="true"></span>
+    <span class="cross" style="left:94%;top:34%" aria-hidden="true"></span>
+    <span class="cross" style="left:9%;top:74%" aria-hidden="true"></span>
+    <span class="cross" style="left:91%;top:68%" aria-hidden="true"></span>
+
+    <div class="screen start">
+      <header class="start-top">
+        <div class="brand">
+          <span class="micro micro--mint">RHODES ISLAND // SIMULATION SERVICE</span>
+          <div class="brand__row">
+            <h1 class="brand__title">卫戍协议<span class="brand__colon">：</span><em>盟约</em></h1>
+            <span class="brand__ver num">v0.3.3</span>
+          </div>
+        </div>
+        <button type="button" class="btn btn--ghost btn--sm start-gear" aria-label="设置" title="设置">
+          <svg class="icon" viewBox="0 0 24 24" width="1em" height="1em" aria-hidden="true" focusable="false"><path fill-rule="evenodd" d="M9.8 4.93L10.4 2.13A10 10 0 0 1 13.6 2.13L14.2 4.93A7.4 7.4 0 0 1 15.44 5.45L17.85 3.89A10 10 0 0 1 20.11 6.15L18.55 8.56A7.4 7.4 0 0 1 19.07 9.8L21.87 10.4A10 10 0 0 1 21.87 13.6L19.07 14.2A7.4 7.4 0 0 1 18.55 15.44L20.11 17.85A10 10 0 0 1 17.85 20.11L15.44 18.55A7.4 7.4 0 0 1 14.2 19.07L13.6 21.87A10 10 0 0 1 10.4 21.87L9.8 19.07A7.4 7.4 0 0 1 8.56 18.55L6.15 20.11A10 10 0 0 1 3.89 17.85L5.45 15.44A7.4 7.4 0 0 1 4.93 14.2L2.13 13.6A10 10 0 0 1 2.13 10.4L4.93 9.8A7.4 7.4 0 0 1 5.45 8.56L3.89 6.15A10 10 0 0 1 6.15 3.89L8.56 5.45A7.4 7.4 0 0 1 9.8 4.93ZM12 8.7A3.3 3.3 0 1 0 12 15.3A3.3 3.3 0 1 0 12 8.7Z" /></svg>
+        </button>
+      </header>
+
+      <main class="start-main" aria-label="这局怎么开始？">
+        <div class="start-cards">
+
+          <!-- 左卡 · 本机（默认档，主） -->
+          <section class="card card--local" aria-labelledby="card-local-title">
+            <div class="card__head">
+              <div class="card__top">
+                <span class="card__idx" aria-hidden="true">01</span>
+                <span class="micro micro--eyebrow">LOCAL // SERVER</span>
+              </div>
+              <h2 class="card__title" id="card-local-title">本机</h2>
+            </div>
+            <p class="card__desc">在本机启动服务端并直接进入游戏。</p>
+            <div class="card__meta">
+              <span>本机地址</span>
+              <span class="num">127.0.0.1</span>
+              <span class="card__meta-sep" aria-hidden="true">·</span>
+              <span>端口</span>
+              <span class="num">3000</span>
+            </div>
+            <div class="card__foot">
+              <button type="button" class="btn btn--primary btn--lg btn--block card__action">启动本机</button>
+              <p class="card__note">无需联网，本机运行独立 Node 引擎 · 进度完全保存在本地</p>
+            </div>
+            <span class="card__tex" aria-hidden="true"></span>
+          </section>
+
+          <!-- 右卡 · 服务器（副）。连接中变体：data-state="connecting" 或打开 #remote-card -->
+          <section class="card card--remote" id="remote-card" data-state="idle" aria-labelledby="card-remote-title">
+            <div class="card__head">
+              <div class="card__top">
+                <span class="card__idx" aria-hidden="true">02</span>
+                <span class="micro micro--eyebrow">REMOTE // RELAY</span>
+              </div>
+              <h2 class="card__title" id="card-remote-title">服务器</h2>
+            </div>
+            <div class="card__field">
+              <label class="field" for="remote-addr">
+                <span class="field__label">地址</span>
+                <span class="field__box">
+                  <input class="field__input" id="remote-addr" type="text" inputmode="url" spellcheck="false" autocomplete="off"
+                    value="https://wei.jiangjiangze.icu/" placeholder="例如: 192.168.1.100:3000" />
+                </span>
+              </label>
+              <p class="field__hint">备用：<span class="num">http://121.4.51.247/</span></p>
+            </div>
+            <div class="card__foot">
+              <button type="button" class="btn btn--lg btn--block card__action">
+                <span class="btn__idle">连接</span>
+                <span class="btn__busy"><span class="spin" aria-hidden="true"></span>连接中…</span>
+              </button>
+              <p class="card__note">连不上会回到这一页，地址会留着，改完再点「连接」。</p>
+            </div>
+            <span class="card__tex" aria-hidden="true"></span>
+          </section>
+
+        </div>
+      </main>
+
+      <footer class="start-foot">
+        <span class="micro">v0.3.3</span>
+      </footer>
+    </div>
+  </div>
+</body>
+</html>

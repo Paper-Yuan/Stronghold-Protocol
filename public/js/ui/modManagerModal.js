@@ -287,7 +287,7 @@ export function ModManagerModal({ open, onClose }) {
           </span>
           <span class="mod-mgr__divider">/</span>
           <span class="mod-mgr__stat-item">
-            ${t('已启用')} <strong class="num" style="color: #23e2b2">${enabledCount}</strong> ${t('个')}
+            ${t('已启用')} <strong class="num" style="color: #23e2b2">${enabledCount}</strong>
           </span>
         </div>
         <div class="mod-mgr__search">

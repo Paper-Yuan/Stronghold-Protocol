@@ -60,9 +60,12 @@ export default [
       'node_modules/**',
       // Scratch / build trees that live in the working copy but are not this repo's sources:
       // .sp-upstream-pr is an upstream PR checkout, dist / dist-i18n are built bundles (both in .git/info/exclude).
+      // modref/ is the 炸惊 play set's package unpacked for a port (handoff/ZHAJING-SPLIT-2026-10-28.md): third-party
+      // sources, never committed, never linted.
       '.sp-upstream-pr/**',
       'dist/**',
       'dist-i18n/**',
+      'modref/**',
       'public/vendor/**',
       'public/assets/**',
       'public/fonts/**',

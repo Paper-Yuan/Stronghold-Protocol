@@ -138,7 +138,7 @@
 // working. createFieldView stays here: it is one closure over the view's own state.
 
 import { attackRateEvents } from './attackRate.js';
-import { GEO, ANIM } from '../../../shared/constants.js';
+import { GEO, ANIM, benchSizeOf, benchTileOf, benchRows, tempRowOf } from '../../../shared/constants.js';
 import { fxForm } from '../../../shared/protocol.js';
 import { Camera, presetCamera, lerpCamera, easeInOutCubic, pickTile, normRect } from './projection.js';
 import { SnapshotBuffer, frameTime } from './interp.js';
@@ -158,6 +158,7 @@ import { ImpostorAtlas } from './impostor.js';
 import { stepClipBounds } from './spine.js';
 import { loadThree, loadBoardPack, loadScenePack, webgl2Available, boardArtListed } from './board3d/load.js';
 import { BoardScene } from './board3d/scene.js';
+import { benchDeckZ } from './board3d/benchDeck.js';
 import { layoutPen, penSignature } from './pen.js';
 import { IDENTITY, bossPrepField, tilesToDisp, leaderStand } from './prepfield.js';
 import { pickOnTile, pickBattle, hitTiles } from './pick.js';
@@ -169,13 +170,38 @@ import { pieceDirOf, pickUnitOf } from './app/pick.js';
 import { CAMERA_MS, BOARD3D_STABLE_MS, BOARD3D_RETRY_MS, PEN_CAMERA_MS, RANGE_GROUPS, LEADER_HIT_STYLE, DRAG_HOLD_TILES, CHAIN_KINDS, DROP_PENDING_MS, DEPLOY_REPLAY_MS } from './app/tune.js';
 import { boardPreference, switchableBox, bandFor, fieldRows, boardArea, viewKind, restView, flightView } from './app/view.js';
 import { renderInfo, FORCED_EXIT, showsDeathFx } from './app/info.js';
-import { resolveAssets, makeData, withTimeout, QUALITY_RES, BOARD_RES, releaseGl } from './app/host.js';
+import { resolveAssets, makeData, withTimeout, QUALITY_RES, BOARD_RES, releaseGl, QUALITY_IDS, tierPixelRatio, qualityAtLeast } from './app/host.js';
+import { detectDeviceTuning, resolveTuning } from '../ui/deviceTuning.js';
 import { t } from '../../../shared/i18n.js';
 
 export { ensurePixi } from './app/pixi.js';
 
+// ---- 「这块屏能不能画 3D 地图」的**记忆**（业主 2026-10-28 P0-2） ------------------------------------------
+// 进入对局那一帧不探测（探测要真的建一个 WebGL 上下文）。这里只读 / 写上一次的结论，让第一帧永远不花时间在体检上。
+const WEBGL2_MEMO_KEY = 'sp.render.webgl2';
+/** 上一次记下的 WebGL2 档位（'ok' | 'slow' | 'none'），没有记录返回 null。 */
+function memoWebgl2() {
+  try {
+    const v = globalThis.localStorage?.getItem(WEBGL2_MEMO_KEY);
+    return v === 'ok' || v === 'slow' || v === 'none' ? v : null;
+  } catch { return null; }
+}
+/** 记下这次的实际结果（3D 建起来了 = ok；失败路径探测到没有 WebGL2 = none）。 */
+function rememberWebgl2(v) {
+  if (v !== 'ok' && v !== 'slow' && v !== 'none') return;
+  try { globalThis.localStorage?.setItem(WEBGL2_MEMO_KEY, v); } catch { /* 隐私模式：不记就是了 */ }
+}
+/** 3D 地图建起来之后记一笔（下一次进房就不用再试错）。 */
+export const rememberBoard3dOk = () => rememberWebgl2('ok');
+
 /** fx.damage / fx.heal option: the official effect drew the hit (no procedural spark, slash or glow; numbers stay). */
 const NO_SPARK = Object.freeze({ noSpark: true });
+/**
+ * The last bench column the prep camera has to frame: the official half's own col 10. A 炸惊 20-slot bench is two
+ * rows of 10 (shared/constants.js `benchTileOf`) inside that column range, so the official prepare camera keeps
+ * framing cols 0..10 — the camera never pans out to col 19 (owner, 2026-10-30: 「不是一直向右，这样没法做了」).
+ */
+const BENCH_LAST_COL = 10;
 export { PEN_CAMERA_MS, LEADER_HIT_STYLE, DRAG_HOLD_TILES, DEPLOY_REPLAY_MS } from './app/tune.js';
 export { viewKind, boardArea, bandFor, fieldRows, penShown, showsPen, leaderShown, restView, flightView, boardPreference, switchableBox } from './app/view.js';
 export { FORCED_EXIT, showsDeathFx, renderInfo } from './app/info.js';
@@ -204,9 +230,19 @@ export async function createFieldView(host, options = {}) {
   // 设置「显示其他玩家的皮肤」 (docs/SKINS.md), on unless the caller said off: kept out of the literal above so the shape
   // the other settings the units read every frame are pinned by stays one line (test/ui/ammo-count.test.js)
   settings.otherSkins = settings.otherSkins !== false;
+  // 机型渲染策略（业主 2026-10-26）：荣耀/华为旧内核或 Mali、小米天玑等按机型降分辨率/关 MSAA/限帧，
+  // 用户可在设置「机型兼容」里用 smooth / hd 覆盖；只有探测不到 WebGL2 才真的回退 2D。
+  //
+  // 业主 2026-10-28 P0-2「单机不要在进入就检测是否正常绘制地图」：**进入这一帧不做 WebGL / GPU 探测**（探测会真的创建
+  // 一个上下文，单机也会被它拖一下，弱机上还可能误判成「画不出来」）。做法是先用上一次记下的结果
+  // （localStorage `sp.render.webgl2`），没有记录就**乐观地按「能画」**走；真的画不出来时由 3D 的失败路径
+  // （onBoard3dLost / initBoard3D 的 catch）在那一刻才探测并回退 2D，把结果记下来给下一次用。
+  // 想立刻重探：设置 → 机型兼容 换一次档位（settings.compatMode 变化会重建视图）。
+  const webgl2 = memoWebgl2() || 'ok';
+  const tuning = resolveTuning(detectDeviceTuning({ ua: globalThis.navigator?.userAgent, gpu: '', webgl2 }), settings.compatMode);
   // the 3D board (three.js + the official art) loads in parallel with everything else
   const boardPref = boardPreference(opts.board);
-  const want3d = boardPref !== '2d' && webgl2Available(boardPref === '3d');
+  const want3d = boardPref !== '2d' && !tuning.force2d && webgl2 !== 'none';
   // three.js (~2 MB) is fetched only when the local-art manifest lists the board atlas (in parallel with the art)
   const artListed = want3d ? boardArtListed(assets).catch(() => false) : Promise.resolve(false);
   const threePromise = artListed.then((ok) => (ok ? loadThree() : null)).catch(() => null);
@@ -221,8 +257,15 @@ export async function createFieldView(host, options = {}) {
   signal?.throwIfAborted();
 
   const size = () => ({ width: Math.max(1, host.clientWidth || 1), height: Math.max(1, host.clientHeight || 1) });
-  const dpr = () => Math.min(globalThis.devicePixelRatio || 1, QUALITY_RES[settings.quality] || 2);
-  const boardDpr = () => Math.min(globalThis.devicePixelRatio || 1, BOARD_RES[settings.quality] || 2);
+  // 机型渲染策略（业主 2026-10-26）：荣耀/华为旧内核或 Mali、小米天玑等按机型降分辨率/关 MSAA/限帧，
+  // 用户可在设置「机型兼容」里用 smooth / hd 覆盖；只有探测不到 WebGL2 才真的回退 2D。
+  // 画面质量 → 渲染分辨率（`app/host.js` 的档位表 + TIER_SS 超采样 + TIER_CAP_MUL 机型 cap 乘子 + GPU 上限夹）。
+  // **只往表里加档位不会有任何变化**：min 里的 devicePixelRatio 与 tuning.maxPixelRatio（机型兼容）是两道封顶，
+  // 真正的放开在 `tierPixelRatio`（业主 2026-10-29 加「超清」「极致」）。
+  let pixiGl = null; // the PIXI context once it exists: its MAX_RENDERBUFFER_SIZE caps the ratio
+  const ratioOf = (table) => tierPixelRatio(settings.quality, size().width, size().height, tuning.maxPixelRatio, table, pixiGl);
+  const dpr = () => ratioOf(QUALITY_RES);
+  const boardDpr = () => ratioOf(BOARD_RES);
   const s0 = size();
   // Construction is synchronous until the complete view can own cancellation. If setup throws,
   // dispose only the resources acquired by this attempt, never another view's host contents.
@@ -240,10 +283,11 @@ export async function createFieldView(host, options = {}) {
   const app = new P.Application({
     // MSAA only where it pays: dense (DPR ≥ 1.5) screens are sharp enough without it and it would cost 4× the fill
     // transparent: the 3D board canvas shows through (the 2D board paints an opaque backdrop itself)
-    width: s0.width, height: s0.height, antialias: opts.antialias ?? (settings.quality === 'high' && (globalThis.devicePixelRatio || 1) < 1.5), backgroundColor: 0x0a0e0d, backgroundAlpha: 0,
+    width: s0.width, height: s0.height, antialias: opts.antialias ?? (qualityAtLeast(settings.quality, 'high') && (globalThis.devicePixelRatio || 1) < 1.5 && tuning.antialias), backgroundColor: 0x0a0e0d, backgroundAlpha: 0,
     resolution: dpr(), autoDensity: true, powerPreference: 'high-performance',
   });
   const canvas = app.view;
+  pixiGl = app.renderer?.gl || null; // 精确的 MAX_RENDERBUFFER_SIZE 上限（拿不到就退回一次性探测）
   setupCleanup.push(() => {
     releaseGl(app.renderer);
     try { app.destroy(true, { children: true, texture: false, baseTexture: false }); }
@@ -257,6 +301,11 @@ export async function createFieldView(host, options = {}) {
   canvas.setAttribute('aria-label', t('战场'));
   canvas.style.position = 'relative';
   canvas.style.zIndex = '1';
+  // 荣耀/华为 WebView 偶尔不把 WebGL canvas 提升为合成层，首帧白屏或滚动撕裂：显式要求 GPU 合成
+  if (tuning.family === 'honor' || tuning.frameCap < 60) {
+    canvas.style.transform = 'translateZ(0)';
+    canvas.style.willChange = 'transform';
+  }
   host.appendChild(canvas);
 
   // ---- layers ---------------------------------------------------------------------------------------------
@@ -348,6 +397,8 @@ export async function createFieldView(host, options = {}) {
   // prep field (render/prepfield.js): identity on the own board, the boss-field half in the Final Assault prep
   let prepXf = IDENTITY;
   let lastPrep = null;        // { ps, o } of the last setPrep (re-applied when the prep field changes)
+  let handSize = GEO.HAND_SIZE; // 整备区 width of the match on screen (setHandSize ← benchSizeOf: 炸惊 20, else 10)
+  let tempRow = GEO.TEMP_ROW;  // the stage's 临时整备区 row (tempRowOf: row 6, row 9 on act2autochess_m01)
   const hlReq = new Map();    // highlight group → { tiles (board space), style } requested through highlightTiles
   // enemy preview pen (render/pen.js): figure key → UnitView (own map: never touched by the battle sync)
   const penViews = new Map();
@@ -478,13 +529,17 @@ export async function createFieldView(host, options = {}) {
       host.insertBefore(c3, canvas);
       board3dCanvas = c3;
       const b = new BoardScene(THREE, pack, {
-        canvas: c3, antialias: settings.quality !== 'low' && (globalThis.devicePixelRatio || 1) < 2, shadows: settings.quality !== 'low',
+        canvas: c3, antialias: settings.quality !== 'low' && (globalThis.devicePixelRatio || 1) < 2 && tuning.antialias, shadows: settings.quality !== 'low',
       });
       const sz = size();
       b.resize(sz.width, sz.height, boardDpr());
       board3d = b;
       tiles.setExternal(true);
       backdrop.visible = false;
+      // the match's 整备区 width (setHandSize) may already be known when the 3D board comes up later than the first prep
+      // (a fresh match enables it after its private state arrived): without this the scene built with the default 10,
+      // so a 20-slot bench (炸惊) drew one pad row and kept the row-6 wall for the whole match.
+      if (handSize !== b.benchSize) b.setBenchSize(handSize);
       b.setArea(boardArea(viewKind(camKind, camOpts)));
       if (stageRec) { b.setStage(stageRec); useOfficialScene(stageRec); }
       b.setFocus(camRect());
@@ -493,10 +548,14 @@ export async function createFieldView(host, options = {}) {
       recover.since = performance.now();
       for (const [g, r] of hlReq) drawHighlight(r.tiles, r.style, g);
       syncOfficialFx();
+      // 3D 地图真的建起来了 → 记下来，下一次进房不必再试错（P0-2「懒探测」的另一半）
+      rememberWebgl2('ok');
       return true;
     } catch (err) {
       board3dError = String(err?.message || err);
       console.warn('[render] 3D board unavailable, using the 2D board:', err);
+      // 到了失败这一刻才真的探测一次：确实是「没有 WebGL2」才记成 none（别的错误下次还会再试）
+      if (!webgl2Available(true)) rememberWebgl2('none');
       disable3d();
       return false;
     }
@@ -605,11 +664,16 @@ export async function createFieldView(host, options = {}) {
   function camRect() {
     const k = viewKind(camKind, camOpts);
     if (k === 'pen') return { r0: 14, r1: 18, c0: 7, c1: 13 };
-    // prep lights the bench (hand row 7 / temp row 8) with the field, like the official prep view
+    // prep frames the bench row and the field rows 8..12 — the official prepare camera's own rect (projection.js
+    // CAMERA_PRESETS.prep, rows 7..12). A 炸惊 20-slot bench takes its second row on row 8, INSIDE that frame
+    // (shared/constants.js benchTileOf), so the camera no longer reaches down to row 6; the bench's columns stay the
+    // official half's own 0..10 (the official camera `left_prepare_camera_param` frames to col 10), never col 19. The
+    // 临时整备区's row 6 (tempRowOf) sits in the bottom HUD margin under the bench.
     if (camOpts.rect) { const r = normRect(camOpts.rect); return k === 'prep' ? { ...r, r0: Math.min(r.r0, GEO.HAND_ROW) } : r; }
     // the boss round's prep lights the whole boss field: the pair partner's half is shown with its pieces (item 51)
     if (k === 'bossPrep') return { ...GEO.BOSS_RECT };
-    return k === 'boss' ? { ...GEO.BOSS_RECT } : k === 'unite' ? { ...GEO.UNITE_RECT } : k === 'prep' ? { r0: 7, r1: 12, c0: 0, c1: 10 } : { ...GEO.NORMAL_RECT };
+    return k === 'boss' ? { ...GEO.BOSS_RECT } : k === 'unite' ? { ...GEO.UNITE_RECT }
+      : k === 'prep' ? { r0: GEO.HAND_ROW, r1: 12, c0: 0, c1: Math.max(10, BENCH_LAST_COL) } : { ...GEO.NORMAL_RECT };
   }
 
   function targetCamera(kind, o) {
@@ -617,6 +681,9 @@ export async function createFieldView(host, options = {}) {
     const k = kind === 'hidden' ? 'boss' : (['prep', 'normal', 'unite', 'boss', 'bossPrep', 'pen'].includes(kind) ? kind : 'normal');
     let rect = o.rect ? normRect(o.rect) : null;
     if (k === 'prep') rect = rect ? { ...rect, r0: Math.min(rect.r0, GEO.HAND_ROW) } : null;
+    // a two-row bench (炸惊 20) needs no special framing: its second row is row 8, inside the official prepare camera's
+    // own rect (rows 7–12, cols 0..10), so the official framing — and the official HUD keep band (`CAMERA_PRESETS.prep`,
+    // near 6.5 = the bench's near edge) — is kept for every bench width (owner, 2026-10-30)
     // official configBlackBoard framing (render/projection.js presetCamera); the padding only matters for the
     // fitted fallback (custom rects, portrait viewports); a prep camera keeps the bench and the field clear of the HUD
     // — `shop: false` (the folded shop, public issue #5) = the official shop-collapsed camera, clear of the folded
@@ -743,6 +810,10 @@ export async function createFieldView(host, options = {}) {
   function setStage(st) {
     if (!st || typeof st !== 'object' || !Array.isArray(st.rows)) return false;
     stageRec = st;
+    // the 临时整备区 row is stage data (shared/constants.js tempRowOf): act2autochess_m01's row 6 is a wall with two
+    // blowers on it, so its five temp cells move to row 9. The drag controller judges drops on the same row.
+    tempRow = tempRowOf(st.id);
+    drag.setTempRow(tempRow);
     tiles.setStage(st);
     tiles.setBattleRect(mode === 'battle' && battleMeta ? battleMeta.rect : null);
     if (board3d) { board3d.setStage(st); board3d.setBattleRect(mode === 'battle' && battleMeta ? battleMeta.rect : null); useOfficialScene(st); }
@@ -808,10 +879,21 @@ export async function createFieldView(host, options = {}) {
 
   /** Board-space direction → the direction drawn (mirrored on the right half of the Final Assault prep). */
   function dispDir(d) { return d ? prepXf.dirToDisp(d) : d; }
+  /**
+   * Deck height a piece waits on at board row `row` (hand / temp): an official scene pack paints its own bench deck,
+   * higher than the procedural pads, so the piece stands on it instead of sinking in (board3d/benchDeck.js, measured per
+   * stage: row 7 = the bench deck, row 8 = the EQUIPMENTS band the 炸惊 overflow row sits on). Without that scene (the 2D
+   * board, a stage whose pack is not extracted) it is `TILE_H.bench` — the procedural pads' own height, unchanged.
+   */
+  function benchStandZ(row) {
+    const id = board3d && board3d.official ? board3d.official.stage || stageRec?.id : null;
+    const art = benchDeckZ(id, row);
+    return art == null ? TILE_H.bench : art;
+  }
   /** Board-space tile → world point of its top (the prep field transform applied). */
   function boardWorld(row, col, bench = false) {
     const d = prepXf.toDisp(row, col);
-    return { x: d.col, y: d.row, z: bench ? TILE_H.bench : heightAt(d.row, d.col) };
+    return { x: d.col, y: d.row, z: bench ? benchStandZ(row) : heightAt(d.row, d.col) };
   }
   /** The tile under a canvas point in BOARD space (null off-grid; an impossible tile off the player's half). */
   function pickBoardTile(x, y) {
@@ -824,9 +906,32 @@ export async function createFieldView(host, options = {}) {
   function slotWorld(p) {
     const h = held.get(p.uid);
     if (h) return h;
-    const t = pieceTile(p);
+    const t = pieceTile(p, handSize, GEO.HAND_ROW, tempRow);
     if (!t) return null;
     return boardWorld(t.row, t.col, p.area === 'hand' || p.area === 'temp');
+  }
+
+  /**
+   * Take the 整备区 width of the match now on screen (shared/constants.js `benchSizeOf(ps)` — the private view's own
+   * `hand` length, i.e. the server's `gd.benchSize`: 20 in 炸惊, 10 in every other mode). It is the one source of the
+   * client geometry that used to be `GEO.HAND_SIZE`: the legal-tile highlight (legalTiles), the drag controller's drop
+   * targets and hover (render/drag.js setHandSize), the 3D bench pad strip (scene.setBenchSize ← layout.js classifyStage)
+   * and the prep camera (camRect / targetCamera). 10 — the default, every official mode — changes nothing.
+   */
+  function setHandSize(n) {
+    const v = Number.isInteger(n) && n > 0 ? n : GEO.HAND_SIZE;
+    if (v === handSize) return false;
+    handSize = v;
+    drag.setHandSize(v);
+    tiles?.setBenchSize?.(v);
+    if (board3d) {
+      board3d.setBenchSize(v);
+      board3d.setArea(boardArea(viewKind(camKind, camOpts)));
+    }
+    // the prep camera frames the bench: re-frame it once the width is known (the first prep of a match is entered
+    // before its private state arrives — screens/game.js setCamera then setPrep)
+    if (mode === 'prep' && camKind) setCamera(camKind, { ...camOpts, instant: true });
+    return true;
   }
 
   function setPrep(ps, options) {
@@ -851,6 +956,7 @@ export async function createFieldView(host, options = {}) {
       });
     };
     const src = ps && typeof ps === 'object' ? ps : {};
+    setHandSize(benchSizeOf(src));
     standInList = Array.isArray(src.standIns) ? src.standIns.filter((x) => typeof x === 'string') : [];
     diyPicks = src.diy && typeof src.diy === 'object' ? src.diy : {};
     ownPen = Array.isArray(src.nextEnemies) ? src.nextEnemies : null;
@@ -1256,15 +1362,21 @@ export async function createFieldView(host, options = {}) {
     return group || (typeof style === 'object' && style ? style.group : null) || (typeof style === 'string' ? style : 'custom');
   }
   /**
-   * Draw a BOARD-space highlight group: range previews never light the bench / temp pads (rows 7–8: no battle
-   * happens there), the prep field transform maps the tiles onto the boss field in the Final Assault prep, and the 2D
-   * board stripes range previews under the units (the 3D board gets them from the direction wheel's layer).
+   * Draw a BOARD-space highlight group: range previews never light the bench / temp pads (rows 7–8 here, plus the
+   * stage's temp row: no battle happens there), the prep field transform maps the tiles onto the boss field in the
+   * Final Assault prep, and the 2D board stripes range previews under the units (the 3D board gets them from the
+   * direction wheel's layer).
    */
   function drawHighlight(list, style, group) {
     const key = hlKey(style, group);
     const range = RANGE_GROUPS.has(key) || style === 'range';
     let t = tilesToDisp(IDENTITY, list);
-    if (range) t = t.filter(([r]) => r !== GEO.HAND_ROW && r !== GEO.TEMP_ROW);
+    // range previews never light the bench rows (row 7 and, for a two-row bench, row 8) or the temp row: no battle
+    // happens there
+    if (range) {
+      const first = GEO.HAND_ROW, last = GEO.HAND_ROW + benchRows(handSize) - 1;
+      t = t.filter(([r]) => r !== tempRow && (r < first || r > last));
+    }
     if (mode === 'prep' && prepXf !== IDENTITY) t = tilesToDisp(prepXf, t);
     tiles.setHighlights(t, style, key, { stripes: range && key !== 'rangeStand' && !board3d });
   }
@@ -1282,8 +1394,9 @@ export async function createFieldView(host, options = {}) {
     for (let r = F.r0; r <= F.r1; r++) for (let c = F.c0; c <= F.c1; c++) {
       try { if (fn(piece, r, c, { area: 'board', row: r, col: c })) out.push([r, c]); } catch { /* illegal */ }
     }
-    for (let i = 0; i < GEO.HAND_SIZE; i++) {
-      try { if (fn(piece, GEO.HAND_ROW, i, { area: 'hand', idx: i })) out.push([GEO.HAND_ROW, i]); } catch { /* illegal */ }
+    for (let i = 0; i < handSize; i++) {
+      const t = benchTileOf(i, handSize);
+      try { if (fn(piece, t.row, t.col, { area: 'hand', idx: i })) out.push([t.row, t.col]); } catch { /* illegal */ }
     }
     return out;
   }
@@ -1295,7 +1408,7 @@ export async function createFieldView(host, options = {}) {
     dragState = { uid: p.uid, key, view: v, from: p.from, home: v._home || { x: v.x, y: v.y, z: v.z } };
     v.lift = 0.3;
     v._tween = null;
-    const t = pieceTile(p.piece);
+    const t = pieceTile(p.piece, handSize, GEO.HAND_ROW, tempRow);
     if (t) drawHighlight([[t.row, t.col]], 'hover', 'dragFrom');
     drawHighlight(legalTiles(p.piece), 'legal', 'legal');
   }
@@ -1331,9 +1444,8 @@ export async function createFieldView(host, options = {}) {
     }
     // the drop target (p.target, highlighted) is the tile under the pointer
     if (p.target && p.target.area !== 'temp') {
-      const r = p.target.area === 'board' ? p.target.row : GEO.HAND_ROW;
-      const c = p.target.area === 'board' ? p.target.col : p.target.idx;
-      drawHighlight([[r, c]], p.legal ? 'target' : 'illegal', 'dragTarget');
+      const t = p.target.area === 'board' ? { row: p.target.row, col: p.target.col } : benchTileOf(p.target.idx, handSize);
+      drawHighlight([[t.row, t.col]], p.legal ? 'target' : 'illegal', 'dragTarget');
     } else clearHl('dragTarget');
   }
 
@@ -1342,7 +1454,8 @@ export async function createFieldView(host, options = {}) {
     const v = dragState.view;
     const t = p.target;
     if (t && (t.area === 'board' || t.area === 'hand')) {
-      const row = t.area === 'board' ? t.row : GEO.HAND_ROW, col = t.area === 'board' ? t.col : t.idx;
+      const tile = t.area === 'board' ? { row: t.row, col: t.col } : benchTileOf(t.idx, handSize);
+      const row = tile.row, col = tile.col;
       const w = boardWorld(row, col, t.area === 'hand');
       v._tween = { fx: v.x, fy: v.y, fz: v.z, tx: w.x, ty: w.y, tz: w.z, t: 0 };
       pending.set(dragState.key, { t: performance.now(), view: v, board: t.area === 'board' ? { row, col } : null });
@@ -1962,7 +2075,7 @@ export async function createFieldView(host, options = {}) {
   function pickClipping() {
     let n = 0;
     for (const v of views.values()) if (v.actor && v.actor.clipped && v.alive !== false) n++;
-    return settings.quality === 'high' && n <= 1;
+    return qualityAtLeast(settings.quality, 'high') && n <= (settings.quality === 'extreme' ? 2 : 1);
   }
   function pickImpostorInterval() {
     let n = 0;
@@ -2062,6 +2175,11 @@ export async function createFieldView(host, options = {}) {
     } catch (err) {
       if (!frame.warned) { frame.warned = true; console.error('[render] frame failed', err); }
     }
+  }
+  // 机型限帧（业主 2026-10-26）：荣耀旧内核 / 小米天玑等降到 30 / 45 帧，减少发热与掉帧；
+  // Pixi 的 maxFPS 会均匀节流整个 ticker（逻辑与渲染一起），比在帧里跳帧更稳。
+  if (tuning.frameCap > 0 && tuning.frameCap < 60) {
+    try { app.ticker.maxFPS = tuning.frameCap; } catch { /* 老版本 Pixi 没有 maxFPS：忽略 */ }
   }
   app.ticker.add(frame);
   // render-cost probe (PIXI renders at UPDATE_PRIORITY.LOW = -25)
@@ -2259,7 +2377,9 @@ export async function createFieldView(host, options = {}) {
         settings.otherSkins = s.otherSkins;
         refreshSkins();
       }
-      if (s.quality === 'high' || s.quality === 'medium' || s.quality === 'low') settings.quality = s.quality;
+      // 五档（业主 2026-10-29 加「超清」「极致」）：白名单必须跟着 host.js 的 QUALITY_IDS 走，
+      // 否则新档「点了、存了、但不生效」（这是加档最容易漏的一步）。
+      if (QUALITY_IDS.includes(s.quality)) settings.quality = s.quality;
       if (typeof s.officialFx === 'string' && s.officialFx !== settings.officialFx) { settings.officialFx = s.officialFx; syncOfficialFx(); }
       if (q !== settings.quality) { board3d?.setQuality?.(settings.quality); resize(); }
     },

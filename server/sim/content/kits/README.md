@@ -9,11 +9,12 @@ operators, the self-select 6★ operators, contributions from GitHub issue #136 
 
 | path | what |
 |---|---|
-| `index.js` | the registry: `KIT_FILES` lists every kit file, grouped by tier, `STANDIN_KIT_FILES` the 补位 stand-in kits, `OPERATOR_KIT_FILES` the 自选 operator kits, `VERSION_KIT_FILES` the 第一期 charId kits and `DIY_BORROW_KIT_FILES` the borrowed 自选 kits (`ops/ver-diy.js`); `KITS` (base chess id → kit builder, then stand-in charId, then operator charId, then version charId, then borrowed 自选 charId), `TIER_KITS`, `STANDIN_KITS`, `OPERATOR_KITS`, `VERSION_KITS`, `DIY_BORROW_KITS` and `KITTED_CHARS` (who a 自选 slot may field) are built from them; `KIT_CHAR_IDS` names the charId each tier kit was written for (`TIER_KIT_KEYS_BY_CHAR` is its reverse). `PENDING_KIT_CHARS` and `PENDING_DIY_KIT_CHARS` are empty after DESIGN §35.22.9 |
+| `index.js` | the registry: `KIT_FILES` lists every kit file, grouped by tier, `STANDIN_KIT_FILES` the 补位 stand-in kits, `OPERATOR_KIT_FILES` the 自选 operator kits, `VERSION_KIT_FILES` the 第一期 charId kits, `DIY_BORROW_KIT_FILES` the borrowed 自选 kits (`ops/ver-diy.js`) and `ZHAJING_KIT_FILES` the 炸惊模拟 kits (`ops/chess_zj_<base>-<codename>.js`); `KITS` (base chess id → kit builder, then stand-in charId, then operator charId, then version charId, then borrowed 自选 charId, then 炸惊 chess id), `TIER_KITS`, `STANDIN_KITS`, `OPERATOR_KITS`, `VERSION_KITS`, `DIY_BORROW_KITS`, `ZHAJING_KITS` and `KITTED_CHARS` (who a 自选 slot may field) are built from them; `KIT_CHAR_IDS` names the charId each tier kit was written for (`TIER_KIT_KEYS_BY_CHAR` is its reverse). `PENDING_KIT_CHARS` and `PENDING_DIY_KIT_CHARS` are empty after DESIGN §35.22.9 |
 | `ops/<chessId>-<codename>.js` | one kit per file, with the helpers and constants only that kit uses |
 | `ops/standin-<codename>.js` | one 补位 stand-in kit per file (below: "Stand-in kits") |
 | `ops/op-<codename>.js` | one 自选 operator kit per file (below: "How to add an operator (自选)") |
 | `ops/ver-<codename>.js` | one 第一期 charId kit, or `ver-diy.js` for the borrowed 自选 kits (DESIGN §35.22.9) |
+| `ops/chess_zj_<base>-<codename>.js` | one 炸惊模拟 kit per file (below: "炸惊模拟 kits") |
 | `shared/tier1.js` | the general kit helpers (blackboard readers, unit predicates, hit hooks, area queries, buffs, zones, free tiles, skill records) and the notes of the tier-1 kits |
 | `shared/tier2.js` … `tier6.js` | helpers two or more kits of that tier use, and that tier's notes (conventions, simplifications, fx kinds) |
 | `shared/summoner.js` | the 召唤师 summon deck the 自选 kits of 麦哲伦 / 令 / 电弧 share (`summonDeck`: the holding, a placed piece's return, recalls, the summons leaving with their owner; `holdBuff`, `tokenStat`) |
@@ -122,6 +123,28 @@ export default {
    later gets a kit leaves whichever pending list still names it. `node --test test/versions-keying.test.js` checks both.
 4. `node --test test/content/kits_layout.test.js` checks the name, the registry entry and the imports;
    `node tools/kit-coverage.mjs --missing` lists selectable skills that still fall back to the generic spec.
+
+## 炸惊模拟 kits (ZHAJING)
+
+炸惊模拟 fields a **second chess library**: `data/chess.json` records `chess_zj_*` carrying `zhajing: true` and
+`visible: false` (generated from the roster in `docs/research/18-zhaijing-content.json`), which every other difficulty's
+`visibleChess` filter excludes. Their kits are ordinary kit files with their own list:
+
+1. `ops/chess_zj_<base>-<codename>.js` — `<base>` is the chess id without `_a` (`chess_zj_amoris`,
+   `chess_zj_60_3`), the code name the operator's charId without `char_<n>_` (`amoris`, `aigis`); the Chinese name in the
+   file's first line.
+2. The default export has exactly one key, that chess id with `_a` (`export default { chess_zj_amoris_a: (bb, chess) => Kit }`):
+   the `_a` record and its `_b` elite run the same kit, as for a tier kit.
+3. Append the file name to `ZHAJING_KIT_FILES` in `index.js` (never reorder the existing entries).
+
+**Never key a 炸惊 kit by charId** — not as an `op-*` file (whose charIds become legal 自选 picks: a 炸惊-only operator must
+never be selectable in the main modes, and `test/content/kits_layout.test.js` would also demand it be in
+`data/backups.json diy.ownedPool`), and not as a `ver-*` file either: those resolve only on another official version's
+build (`content/index.js` `officialKitKey` → `kitKeyForChar`), while on the default data a kit is found by **chess id
+only** (`[def.baseId, def.id, bare]`) — a charId-keyed file loads fine, registers fine, and is then never found, so the
+chess silently fights with the generic kit. That is why the nine 炸惊 kits of `handoff/ZHAJING-COVERAGE.md` table D
+must not follow the pack's `op-*` layout: read the resolution order in `content/index.js` before moving a file between
+lists. `test/content/zj-ops.test.js` is their test file (one numeric assertion per kit, plus the 炸惊外不可见 check).
 
 ## Stand-in kits (补位)
 

@@ -8,10 +8,22 @@ const capsOf = (op, byId) => {
 
 export function slimKnowledge(pack, { maxChars = Infinity } = {}) {
   const view = slimView(pack);
-  // [ASSUMED] Compact enemies stay while the example system text fits in 200000 characters.
-  // Translated catalogues (English funny) exceed that; the round's upcoming list still names those enemies.
-  if (view.enemies.length && JSON.stringify(view).length > maxChars) return { ...view, enemies: [] };
-  return view;
+  if (JSON.stringify(view).length <= maxChars) return view;
+  // [ASSUMED] Compact enemies stay while the example system text fits in 200000 characters; a translated catalogue
+  // (English funny) can still be over the cap once they are gone, so every stage is checked against the budget and
+  // the next one starts from the previous stage's result (2026-10-28: the unconditional drop used to return an
+  // over-long view and trip advisor-input).
+  let cur = view.enemies.length ? { ...view, enemies: [] } : view;
+  if (JSON.stringify(cur).length <= maxChars) return cur;
+  // The prose fields go next — boss notes and band insights are the longest text in the view, and the model keeps the
+  // ids, names, stats, bonds, items and the rules summary.
+  cur = { ...cur, bosses: (cur.bosses || []).map(({ notes, ...b }) => b),
+    bands: (cur.bands || []).map(({ insights, ...b }) => b) };
+  if (JSON.stringify(cur).length <= maxChars) return cur;
+  // Last resort: the per-operator skill list goes too (the default skill keeps its name and effect in
+  // `operators[].skill`), so the view stays a "slim view" instead of silently breaking the cap.
+  cur = { ...cur, operators: cur.operators.map(({ skills, ...o }) => o) };
+  return cur;
 }
 
 function slimView(pack) {

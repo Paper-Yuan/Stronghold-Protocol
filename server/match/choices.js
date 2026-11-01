@@ -64,7 +64,23 @@
 import { weightedPick } from './waves.js';
 import { PLUGIN_GAIN_COUNT_MAX } from '../../shared/plugins/limits.js';
 
-export const FAMILY_NAMES = { bounty: '悬赏决策', supply: '道具补给', shop: '机密商店', tactic: '战术决策' }; // i18n-ignore: = choices.json families (the client shows the localized record)
+export const FAMILY_NAMES = { bounty: '悬赏决策', supply: '道具补给', shop: '机密商店', tactic: '战术决策', express: '企鹅物流的快递', jibian: '惊变阶段' }; // i18n-ignore: = choices.json families (the client shows the localized record)
+
+/**
+ * 炸惊模拟: the 惊变 card ids a player already owns (`ps.effects` refs whose key is `jibian:<effectId>`, written by
+ * applyDefault below). Used to keep an offered 惊变 out of the next draft ("已拥有不重复") and to feed the 惊变羁绊
+ * progress. Total: a player without 惊变 has none.
+ * @param {any} ps
+ * @returns {Set<string>}
+ */
+export function ownedJibianIds(ps) {
+  const out = new Set();
+  for (const ref of (ps && (ps.playerEffects || ps.effects)) || []) {
+    const k = ref && ref.key;
+    if (typeof k === 'string' && k.startsWith('jibian:')) out.add(k.slice('jibian:'.length));
+  }
+  return out;
+}
 
 /**
  * Battles a multi-round bounty card lasts (data `rounds` 99, official text "之后 / 后续的<@ba.vdown>每场</>作战":
@@ -137,15 +153,32 @@ function itemCard(gd, id) {
  * Build the draft cards for an SP round.
  * @returns {{ family: string, name: string, desc: string, eventId: string|null, cards: object[] } | null}
  */
-export function generateDraft(gd, rng, round, { stageId = null, bondAvailable = null, itemAvailable = null, forceFamily = null } = {}) {
+export function generateDraft(gd, rng, round, { stageId = null, bondAvailable = null, itemAvailable = null, forceFamily = null, exclude = null, onlyHighRarity = false, minCards = 0 } = {}) {
   const sch = scheduleFor(gd, round);
-  const fams = Array.isArray(sch.families) && sch.families.length ? sch.families.map((f) => [f.family, f.weight]) : [['supply', 1]];
+  const schedCount = () => (Number.isInteger(sch.cards) && sch.cards > 0 ? Math.min(sch.cards, 6) : formatCount(gd));
+  // 炸惊模拟 规则5/6: a round with a phase kind of its own (GameData.spPhaseKind, mode.spPhaseKinds) ignores the weighted
+  // family draw AND the schedule's card count — 惊变阶段 offers `jibian.cards` 惊变 cards, 企鹅物流的快递 `expressCards`
+  // equips in place of 悬赏决策, 悬赏高阶段 is the bounty family. Every other mode gets null and the old path below.
+  const forced = typeof gd.spPhaseKind === 'function' ? gd.spPhaseKind(round) : null;
+  const jb = forced === 'jibian' && typeof gd.jibian === 'function' ? gd.jibian() : null;
+  let family;
+  let n;
   // 随机模式 (无限火力) 悬赏每回合选：forceFamily 强制该类卡片（不再跟其它类别加权竞争）
-  let family = (forceFamily && FAMILY_NAMES[forceFamily] ? forceFamily : null) || weightedPick(rng, fams) || 'supply';
-  const n = Number.isInteger(sch.cards) && sch.cards > 0 ? Math.min(sch.cards, 6) : formatCount(gd);
-  const opts = { stageId, bondAvailable, round, itemAvailable };
+  if (forceFamily && FAMILY_NAMES[forceFamily]) { family = forceFamily; n = schedCount(); }
+  else if (forced === 'bountyHigh') { family = 'bounty'; n = schedCount(); }
+  else if (forced === 'express') { family = 'express'; n = typeof gd.expressCards === 'function' ? gd.expressCards() : 6; }
+  else if (forced === 'jibian') { family = 'jibian'; n = jb ? jb.cards : 3; }
+  else {
+    const fams = Array.isArray(sch.families) && sch.families.length ? sch.families.map((f) => [f.family, f.weight]) : [['supply', 1]];
+    family = weightedPick(rng, fams) || 'supply';
+    n = schedCount();
+  }
+  // A draft pool must hold at least one card per participant (惊变阶段 offers `jibian.cards` = 3 while a 同盟 room may
+  // have more players). 0 — the default — leaves every mode's own count untouched.
+  if (Number.isInteger(minCards) && minCards > n) n = Math.min(6, minCards);
+  const opts = { stageId, bondAvailable, round, itemAvailable, exclude, onlyHighRarity };
   let cards = buildCards(gd, rng, family, n, sch, opts);
-  if (!cards.length && family !== 'supply') { family = 'supply'; cards = buildCards(gd, rng, family, n, sch, opts); }
+  if (!cards.length && family !== 'supply' && family !== 'jibian') { family = 'supply'; cards = buildCards(gd, rng, family, n, sch, opts); }
   if (!cards.length) return null;
   cards.forEach((c, i) => { c.idx = i; c.family = family; });
   const famInfo = gd.choices.families && gd.choices.families[family];
@@ -372,8 +405,17 @@ export function tacticDraftCards(gd, rng, n, { stageId = null, bondAvailable = n
     const bonds = cardTargetBonds(gd, c.effectId);
     return !bonds || bonds.some((b) => !!bondAvailable(b));
   };
+  // 湮灭模拟: a card marked `annOnly` (the two 盟誓 cards 罗德岛 / 卡兹戴尔) only ever exists in an annihilation match. The
+  // gate is explicit rather than relying on 「its bond has no members ⇒ bondLive false」, so a later change to the pool
+  // rule (Match.bondInPool now counts `chess[].annBonds`) can never leak these cards into an official or 炸惊 match. The
+  // EFFECT record carries the same flag, and either one is enough to keep the card out.
+  const annOk = (c) => {
+    if (gd.annihilation) return true;
+    const e = c && c.effectId ? gd.effect(c.effectId) : null;
+    return !(c && c.annOnly === true) && !(e && e.annOnly === true);
+  };
   const list = Array.isArray(gd.choices.cards && gd.choices.cards.tactic) ? gd.choices.cards.tactic : [];
-  const pool = list.filter((c) => c && (c.kind !== 'terrain' || (stageId && c.stageId === stageId)) && gd.effect(c.effectId) && bondOk(c));
+  const pool = list.filter((c) => c && annOk(c) && (c.kind !== 'terrain' || (stageId && c.stageId === stageId)) && gd.effect(c.effectId) && bondOk(c));
   const spec = gd.choices.tacticDraft && typeof gd.choices.tacticDraft === 'object' ? gd.choices.tacticDraft : null;
   const official = !!spec && (!Array.isArray(spec.rounds) || spec.rounds.includes(round));
   const kinds = official && Array.isArray(spec.kinds) && spec.kinds.length ? spec.kinds : null;
@@ -385,8 +427,126 @@ export function tacticDraftCards(gd, rng, n, { stageId = null, bondAvailable = n
   return out;
 }
 
-function buildCards(gd, rng, family, n, sch, { stageId = null, bondAvailable = null, round = 1, itemAvailable = null } = {}) {
+/**
+ * 炸惊模拟 规则6 — 企鹅物流的快递 (in place of 悬赏决策 on its rounds): `n` equips drawn WITH replacement from the
+ * mode's `expressPool` — the items carrying a `giveBondId`, i.e. the ones that turn a 变形同构体 wearer into a member of
+ * their bond (转职). Repeatable on purpose (one item may fill two of the six places); choices.json `shopDraft.itemWeights`
+ * gives the weights when it lists one, 1 otherwise. Null without a pool, so the round falls through to the prep.
+ */
+export function expressDraftCards(gd, rng, n) {
+  // 用户 2026-10-11：每格 5% 概率直接放【变形同构体】chess_item_6_09_e_a —— 它给被变形的干员授予一条随机盟约，
+  // 按纯权重抽太罕见。
+  const GUISE_ITEM = 'chess_item_6_09_e_a';
+  const pool = typeof gd.expressPool === 'function' ? gd.expressPool() : [];
+  if (!pool.length) return null;
+  const spec = gd.choices.shopDraft;
+  const w = spec && spec.itemWeights && typeof spec.itemWeights === 'object' ? spec.itemWeights : {};
+  const pairs = pool.map((id) => [id, Object.hasOwn(w, id) ? w[id] : 1]);
+  const groups = typeof gd.expressGroups === 'function' ? gd.expressGroups() : {};
+  const out = [];
+  for (let i = 0; i < n && pairs.length; i++) {
+    const picked = weightedPick(rng, pairs);
+    if (rng() < 0.05 && pool.includes(GUISE_ITEM)) {
+      out.push(GUISE_ITEM);
+      continue;
+    }
+    // 用户 2026-10-11：维多利亚战锤合并成一格 —— 抽中这一格之后再在几种战锤里随机一种投放到前台，于是「抽到战锤」的
+    // 总概率和其它单件装备完全一致。
+    const g = Array.isArray(groups[picked]) ? groups[picked] : null;
+    const id = g && g.length ? g[Math.min(g.length - 1, Math.floor(rng() * g.length))] : picked;
+    out.push(itemCard(gd, id));
+  }
+  return out;
+}
+
+/**
+ * The draft card of one 惊变 entry of `config.modes[*].jibian.pool`. The entry may carry its own `kind`; otherwise the
+ * id decides — an effectId (an effect the pick applies) or an item id (granted to the picker).
+ * The card's OWN `rarity` wins over the rolled one: the roll falls back to the whole pool when a rarity is exhausted, so
+ * a rolled rarity would otherwise label an epic/legend card "rare" (player report 2026-10-16).
+ * @param {any} gd
+ * @param {{ id?: string, effectId?: string, key?: string, name?: string, desc?: string, rarity?: string, tier?: number, kind?: string }} c
+ * @param {string|null} rarity the rarity rolled for this place
+ * @param {string[]|null} bonds 惊变羁绊 hints (「羁绊名 已有/阈值」 lines)
+ */
+export function jibianCard(gd, c, rarity = null, bonds = null) {
+  const id = c.id || c.effectId || c.key || null;
+  const eff = id ? gd.effect(id) : null;
+  const it = id ? gd.item(id) : null;
+  return {
+    kind: c.kind || (eff ? 'tactic' : it ? 'item' : 'jibian'),
+    id,
+    name: c.name || (eff && eff.name) || (it && it.name) || String(id || '惊变'),
+    desc: c.desc || (eff && eff.desc) || (it && it.desc) || '',
+    tier: Number.isInteger(c.tier) ? c.tier : (it && Number.isInteger(it.tier) ? it.tier : null),
+    rarity: (typeof c.rarity === 'string' && c.rarity) ? c.rarity : (rarity || null),
+    // the grey flavour line printed at the card's bottom (config pool `flavor`)
+    flavor: c.flavor || (eff && eff.flavor) || null,
+    // 盟约惊变: the card's icon uses that bond's portrait
+    bond: c.bond || null,
+    iconBond: c.iconBond || null,
+    bonds: Array.isArray(bonds) && bonds.length ? bonds : null,
+  };
+}
+
+/**
+ * 炸惊模拟 规则5 — 惊变阶段: `n` 惊变 cards. The rarity is rolled FIRST (mode.jibian.rarityWeights) and a card of that
+ * rarity is then drawn from the mode's own pool; a rarity the pool has nothing left of falls back to the pool as a
+ * whole (never an empty card). Every card the player already owns (`exclude`) is kept out, and the cards of one offer do
+ * not repeat. An empty pool returns null: the phase then falls through to the prep.
+ * @param {any} gd @param {any} rng @param {number} n
+ * @param {Iterable<string>|null} exclude 惊变 ids the player already owns
+ */
+export function jibianDraftCards(gd, rng, n, exclude = null, { onlyHighRarity = false, noCoreBond = false } = {}) {
+  const j = typeof gd.jibian === 'function' ? gd.jibian() : null;
+  if (!j || !j.pool.length) return null;
+  // 隐藏规则: a player with NO active core bond draws a 「带核心盟约的传说惊变」 at noCoreBondLegendWeight %; the legend
+  // share of the ordinary draw is narrowed by exactly those cards so the total stays at the target.
+  const boost = noCoreBond ? Math.max(0, Math.min(100, Number(j.noCoreBondLegendWeight) || 0)) : 0;
+  const isCoreLegend = (c) => {
+    if (!c || c.rarity !== 'legend' || typeof c.bond !== 'string') return false;
+    const rec = gd.bond(c.bond);
+    return !!(rec && rec.isCore === true);
+  };
+  const banned = exclude instanceof Set ? exclude : new Set(Array.isArray(exclude) ? exclude : []);
+  const keyOf = (c) => (c && (c.effectId || c.id || c.key)) || null;
+  let pool = j.pool.filter((c) => c && !banned.has(keyOf(c)));
+  // 「投资未来」: only epic / legend / hidden may be offered this phase — filter the POOL (a 0 weight still falls back
+  // to the whole pool) and narrow the weights with it so the label and the card agree.
+  if (onlyHighRarity) pool = pool.filter((c) => c && (c.rarity === 'epic' || c.rarity === 'legend' || c.rarity === 'hidden'));
+  const weights = onlyHighRarity ? j.rarityWeights.filter(([r]) => r === 'epic' || r === 'legend' || r === 'hidden') : j.rarityWeights;
+  const useWeights = weights.length ? weights : j.rarityWeights;
+  const out = [];
+  for (let i = 0; i < n && pool.length; i++) {
+    // ① the hidden rule's class first
+    if (boost > 0 && rng() * 100 < boost) {
+      const list = pool.filter(isCoreLegend);
+      if (list.length) {
+        const card = list[Math.min(list.length - 1, Math.floor(rng() * list.length))];
+        pool = pool.filter((c) => c !== card);
+        out.push(jibianCard(gd, card, 'legend'));
+        continue;
+      }
+    }
+    // ② the ordinary draw: rarity first, then a card of it
+    const rarity = weightedPick(rng, useWeights);
+    let ofRarity = pool.filter((c) => c && c.rarity === rarity);
+    if (boost > 0 && rarity === 'legend') {
+      const rest = ofRarity.filter((c) => !isCoreLegend(c));
+      if (rest.length) ofRarity = rest;
+    }
+    const list = ofRarity.length ? ofRarity : pool;
+    const card = list[Math.min(list.length - 1, Math.floor(rng() * list.length))];
+    pool = pool.filter((c) => c !== card);
+    out.push(jibianCard(gd, card, rarity));
+  }
+  return out.length ? out : null;
+}
+
+function buildCards(gd, rng, family, n, sch, { stageId = null, bondAvailable = null, round = 1, itemAvailable = null, exclude = null, onlyHighRarity = false, noCoreBond = false } = {}) {
   if (family === 'bounty') return bountyDraftCards(gd, rng, n, sch, round);
+  if (family === 'express') return expressDraftCards(gd, rng, n) || [];
+  if (family === 'jibian') return jibianDraftCards(gd, rng, n, exclude, { onlyHighRarity, noCoreBond }) || [];
   if (family === 'shop') {
     const cards = shopDraftCards(gd, rng, n, round, itemAvailable);
     if (cards) return cards;
@@ -413,6 +573,29 @@ export function cardView(c) {
   if (c.kind === 'bounty') Object.assign(v, { descRaw: c.descRaw ?? null, coin: c.coin, payout: c.payout, rounds: c.rounds, enemyKey: c.enemyKey, count: c.count });
   if (c.kind === 'item') v.price = 0;
   if (c.kind === 'tactic') Object.assign(v, { team: c.team, tacticKind: c.tacticKind });
+  // 炸惊模拟 惊变阶段: the rarity rolled for this place (or the card's own), the grey flavour line, the bond portrait
+  if (c.rarity) v.rarity = c.rarity;
+  if (c.flavor) v.flavor = c.flavor;
+  if (c.bond) v.bond = c.bond;
+  if (c.iconBond) v.iconBond = c.iconBond;
+  if (Array.isArray(c.bonds) && c.bonds.length) v.bonds = c.bonds;
+  // 超限模拟「词条」（server/match/relicsOverlimit.js relicCardView）: 分组、实装状态与特殊颜色随卡下发
+  // —— 客户端据此画分组色条与「未实装」角标；其它 family 的卡没有这三个键，m.public.sp 逐字节不变。
+  if (c.group) v.group = c.group;
+  if (c.impl) v.impl = c.impl;
+  if (c.effectColor) v.effectColor = c.effectColor;
+  // 超限模拟「负面词条」（server/match/relicsOverlimit.js negativeCardView）：与上面那三个键同一处分发。
+  // `negative` 让客户端换警示色 / 眉题；`tierLabel`/`tierIndex`/`tierValues` 是这张抽到的 Ⅰ/Ⅱ/Ⅲ 档位。
+  // 只有负面卡带这四个键，其它 family 的 m.public.sp 逐字节不变。
+  if (c.negative === true) {
+    v.negative = true;
+    v.tierLabel = c.tierLabel ?? null;
+    v.tierIndex = c.tierIndex ?? null;
+    v.tierValues = c.tierValues ?? null;
+  }
+  // 炸惊模拟 惊变 重抽 (owner 2026-10-19, 每张卡各能刷新一次): a card that is itself the product of a redraw carries the flag,
+  // so the client can close that card's 重抽 key instead of counting a per-draft budget. Absent on every other card.
+  if (c.rerolled === true) v.rerolled = true;
   return v;
 }
 
@@ -436,6 +619,23 @@ export function applyCard(m, ps, card) {
 
 function applyDefault(m, ps, card) {
   const gd = m.gd;
+  // 炸惊模拟 惊变阶段: a 惊变 card carries no effects.json record — it is its own mechanic. It lands in the player's
+  // effects column (so 已选惊变 and the battle side can both read it) under the `jibian:` key prefix, which
+  // server/sim/content/jibian.js resolves through the `jibian:<effectId>` prepare/settle handlers. Picking the same card
+  // twice stacks (each ref has its own uid).
+  if (card.kind === 'jibian') {
+    addRef(ps, card, null, `jibian:${card.id}`, {
+      battle: true,
+      extra: {
+        jibian: true,
+        rarity: card.rarity ?? null,
+        flavor: card.flavor ?? null,
+        ...(card.bond ? { bond: card.bond } : null),
+        ...(card.iconBond ? { iconBond: card.iconBond } : null),
+      },
+    });
+    return;
+  }
   if (card.kind === 'bounty') {
     const src = (gd.choices.cards && Array.isArray(gd.choices.cards.bounty) ? gd.choices.cards.bounty : []).find((c) => c.effectId === card.id) || card;
     m.addBounty(ps, src);
@@ -491,11 +691,16 @@ function applyDefault(m, ps, card) {
         // the player's 自选 stock joins the draw, its bonds read through the player's view (player/diy.js diyStockEntries)
         const pgd = ps.gd || gd;
         const hasBond = (cid) => { const c = pgd.chess(cid); return !!(c && Array.isArray(c.bonds) && c.bonds.includes(bs.bond)); };
+        // 炸惊模拟 · 卡池预选: this player's bans remove a chess whose bonds are all banned from the 按盟约 special refresh too
+        // (the shop's chess slots were the only filtered draw, audit rules §1). null when nothing is banned.
+        const ban = typeof ps.chessBanFilter === 'function' ? ps.chessBanFilter() : null;
+        const pickable = ban ? (cid) => hasBond(cid) && ban(cid) : hasBond;
         const gain = Math.min(PLUGIN_GAIN_COUNT_MAX, count);
         for (let i = 0; i < gain; i++) {
           const extra = typeof ps.diyStockEntries === 'function' ? ps.diyStockEntries() : null;
-          const id = m.pool.roll(m.rngMeta, { maxTier: Math.max(1, ps.shop.level), filter: hasBond, extra })
-            || m.pool.roll(m.rngMeta, { maxTier: 6, filter: hasBond, extra });
+          // 队内共用 / 队间独立 (TWELVE_PLAYER_MODE §2): the grant draws the player's TEAM pool above MAX_SEATS
+          const id = m.poolFor(ps).roll(m.rngMeta, { maxTier: Math.max(1, ps.shop.level), filter: pickable, extra })
+            || m.poolFor(ps).roll(m.rngMeta, { maxTier: 6, filter: pickable, extra });
           if (id) ps.acquireChess(id, { source: 'choice' });
         }
         handled = true;
@@ -516,11 +721,12 @@ function applyDefault(m, ps, card) {
   if (battle || !handled) addRef(ps, card, eff, `choice:${card.id}`, { battle: true });
 }
 
-function addRef(ps, card, eff, key, { counter = null, battle = true } = {}) {
+function addRef(ps, card, eff, key, { counter = null, battle = true, extra = null } = {}) {
   const id = `${card.id}#${ps.m.nextUid()}`;
   ps.effects.push({
     id, key, name: card.name, desc: card.desc, iconKind: card.team ? 'team' : 'choice', iconId: eff && eff.decoIconId ? eff.decoIconId : card.id,
     counter, battle, params: eff && eff.params ? { ...eff.params } : {}, data: { effectId: card.id, tacticKind: card.tacticKind ?? null },
+    ...(extra && typeof extra === 'object' ? extra : null),
   });
   ps.dirty();
 }

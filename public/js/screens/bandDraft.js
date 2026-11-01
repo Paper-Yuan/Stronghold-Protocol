@@ -55,6 +55,7 @@ import { settingsStore } from '../ui/settingsStore.js';
 import { chessPortraitUrl, uiUrl } from '../ui/assetUrls.js';
 import { aggregateStats, peekStatsRecords, strategyBadgeIds, trophyMedalOf } from '../ui/stats.js';
 import { modeOffBonds, bandOffBonds, bandOffLine } from '../ui/gameLogic.js';
+import { officialBonds, officialBands } from '../ui/zjView.js';
 import { t, tParts, tName } from '../../../shared/i18n.js';
 
 const cx = (...p) => p.flat().filter(Boolean).join(' ');
@@ -68,6 +69,17 @@ export function BandOffTag({ names = [] }) {
 export function BandOffNote({ names = [] }) {
   if (!names.length) return null;
   return html`<p class="draft-detail__off" role="note" aria-label=${bandOffLine(names)}><${Icon} name="info" /><span>${tParts('本局禁用{names}盟约，此策略效果可能无法发挥', { names: names.map((n, i) => html`<span key=${i}>${tParts('【{name}】', { name: html`<s class="draft-detail__offname">${n}</s>` })}</span>`) })}</span></p>`;
+}
+
+/**
+ * The strategies a draft screen may offer — **the one place** both the component and the tests go through:
+ * ① `officialBands(list, modeId)` 先按模式摘掉 `zjOnly` / `annOnly`（`gd.list('bands')` 是整表，绕过 GameData 的模式过滤）；
+ * ② `allowedBands(...)` 再按 `modeTypeList` 过滤（SINGLE / MULTI）。
+ * @param {any[]} list `data.list('bands')` @param {string|null} modeId `m.public.modeId`（或难度）
+ * @param {string|null} modeType 'SINGLE'|'MULTI'
+ */
+export function selectableBands(list, modeId, modeType) {
+  return allowedBands(officialBands(list, modeId ?? null), modeType);
 }
 
 /**
@@ -270,7 +282,11 @@ export function BandDraftScreen({ held = null } = {}) {
   const mode = gd.config?.modes?.[pub?.modeId];
   const offBonds = modeOffBonds(mode); // the bonds this mode never activates (标准: 10 of 23)
   const solo = roomSolo || mode?.type === 'SINGLE' || String(pub?.modeId || '').includes('single');
-  const bands = useMemo(() => allowedBands(gd.list('bands'), mode?.type || (solo ? 'SINGLE' : 'MULTI')), [gd.ready, mode?.type, solo, data.locale(), data.contentId()]);
+  // 2026-10-29：炸惊的 2 条 `zjOnly` 策略（山岸风花 / 祀）**只能在炸惊房**出现，而 `gd.list('bands')` 是整张表
+  // （`data.list` 绕过 GameData 的模式过滤）。统一走 `selectableBands`，组件与测试同一条路。
+  const bands = useMemo(() => selectableBands(
+    gd.list('bands'), pub?.modeId ?? pub?.difficulty ?? null, mode?.type || (solo ? 'SINGLE' : 'MULTI'),
+  ), [gd.ready, mode?.type, solo, pub?.modeId, data.locale(), data.contentId()]);
   const players = sortedPlayers(pub);
   const draft = normalizeDraft(pub?.draft, players);
   const myPick = draft.picks.get(myId) || priv?.bandId || null;
@@ -354,7 +370,7 @@ export function BandDraftScreen({ held = null } = {}) {
   const turnSecs = clock ? secondsLeft(clock.deadline) : null;
   const turnLen = Number(pub?.draft?.turnSeconds) > 0 ? Math.round(pub.draft.turnSeconds) : null;
   // 本局信息: the briefing's blocks (built only while the dialog is open) and the draft's state under it
-  const info = infoOpen ? matchInfoModel(pub, { bonds: gd.list('bonds'), chess: gd.chess, mode, priv, diyData: { chess: data.get('chess'), backups: data.get('backups') } }) : null;
+  const info = infoOpen ? matchInfoModel(pub, { bonds: officialBonds(gd.list('bonds'), pub?.modeId ?? pub?.difficulty), chess: gd.chess, mode, priv, diyData: { chess: data.get('chess'), backups: data.get('backups') } }) : null;
   const infoStatus = infoOpen ? draftInfoStatus({ myPick, pickName: myPick ? gd.band(myPick)?.name : null, myTurn, turnName, secs: turnSecs,
     waiting: !solo && !draft.done }) : null;
 

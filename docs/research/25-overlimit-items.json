@@ -1,0 +1,68 @@
+{
+  "version": "1.0",
+  "note": "超限模拟（solo_infinite / coop_infinite）「词条」发放的装备 —— 业主 2026-10-31 第四批：FGO-SP『快楽天・胎蔵曼荼羅』要「获得一个[万色悠滞之核]」，而这件装备在本仓数据里根本不存在（官方 act1/act2 的 trapChessDataDict 都没有，全仓 grep 0 命中）。做法与 docs/research/20-annihilation-mods.json 同一条范式：research 里手写一条 effect + 一条 item 记录，tools/build-data.mjs 在官方物品表**之后**做纯加法合并（`olOnly: true` + `shopExcluded`），生成 data/effects.json 与 data/items.json；官方四档 / 炸惊 / 湮灭读到的记录逐字节不变（生成期校验见 applyOverlimitItems）。\n\n[ASSUMED] 的点（表里没有现成来源，按同类装备取一套合理值）：\n  · 字段形状照抄 data/items.json 里同为「盟约资格类」的 变形同构体（chess_item_6_09_e_a）：itemType EQUIP / duration -1 / upgradeNum 100（永不合体）/ category BOND_GRANT / kind passive / buffs 空；\n  · 稀有度 tier 6（词条 FGO-SP 是 0.01% 的最稀有档，发出来的装备按最高稀有度）；price 0、hideInShop true、shopExcluded true —— **只能由词条 FGO-SP 发放，商店与装备池都不卖**（GameData.shopItemsByTier 走 simdata.isShopItem，shopExcluded 直接挡掉；与湮灭 mod 的盟约奖励装同一条口径）；\n  · 贴图：词条表的 spec.colorNote 只写「装备贴图从变形同构体改」，本仓没有那张改色图，所以**基于变形同构体的装备图标派生一张**（`[ASSUMED] derived icon`）：基底 public/assets/item/trap_1073_acarm073.png（96×160，mint 水晶 + 黑描边），Pillow 变换 = 色相整体旋到品红/紫（h' = 0.855 + (h − 0.5) × 1.7，模 1）+ 饱和度 ×1.35 + 明度 ×1.02 + mint #6EFFD2 轮廓光晕（alpha 膨胀 4px）+ 右上角 SP 圆牌；再等比缩到 160 高、居中放进 128×160 透明画布（与既有 item 图标「高 160、保比例」同口径），产物 public/assets/item/trap_ol_core.png，经 tools/patch-assets-local.mjs --slots items 登记进 assets manifest。**不凭空画新美术**：轮廓/明暗全部来自那张原图。trapId **仍是** trap_1073_acarm073（保持与变形同构体同源：工具 / 工作台按它反查记录，运行时 match / sim 根本不读 trapId），只有 iconId 覆盖成 trap_ol_core —— 不靠「改文件名对齐」作弊，所以 tools/build-data.mjs 的 trapId == iconId 校验已放宽为「允许显式 iconId 覆盖」；\n  · 数值落点：`buffs` 留空（与变形同构体一致），「视作拥有【调和】盟约 + 攻击力 +50%」由词条本体实现（server/sim/content/overlimitRelics.js 的 FGO_SP 分支：发放本装备、给携带者挂调和成员资格与 +50% 攻击力），装备记录只负责名字 / 描述 / 图标；\n  · flavor 是本仓自撰的一句话（原表没给）。",
+  "items": {
+    "effects": {
+      "eff_ol_core": {
+        "effectId": "eff_ol_core",
+        "effectType": "EQUIP",
+        "name": "万色悠滞之核",
+        "desc": "携带者视作拥有【调和】盟约，攻击力+50%\n只由超限词条 FGO-SP『快楽天・胎蔵曼荼羅』发放，只能由该词条获得",
+        "descRaw": "携带者视作拥有<@ba.vup>【调和】</>盟约，攻击力<@ba.vup>+50%</>\n<@ba.acrem>只由超限词条 FGO-SP『快楽天・胎蔵曼荼羅』发放，只能由该词条获得</>",
+        "counterType": "NONE",
+        "continuedRound": -1,
+        "decoIconId": null,
+        "enemyPrice": 0,
+        "buffs": [],
+        "params": {},
+        "olOnly": true
+      }
+    },
+    "records": {
+      "chess_item_ol_01_e_a": {
+        "id": "chess_item_ol_01_e_a",
+        "baseId": "chess_item_ol_01_e_a",
+        "goldenId": null,
+        "isGolden": false,
+        "trapId": "trap_1073_acarm073",
+        "iconId": "trap_ol_core",
+        "identifier": 900,
+        "name": "万色悠滞之核",
+        "itemType": "EQUIP",
+        "tier": 6,
+        "shopSortId": 900,
+        "price": 0,
+        "hideInShop": true,
+        "shopExcluded": true,
+        "shopExcludedBy": "超限词条 FGO-SP『快楽天・胎蔵曼荼羅』的发放（获得一个[万色悠滞之核]）—— 商店与装备池都不卖",
+        "mergeable": false,
+        "upgradeNum": 100,
+        "upgradeChessId": null,
+        "duration": -1,
+        "giveBondId": null,
+        "givePowerId": null,
+        "canGiveBond": false,
+        "requiresBondId": null,
+        "effectId": "eff_ol_core",
+        "effectName": "万色悠滞之核",
+        "desc": "携带者视作拥有【调和】盟约，攻击力+50%\n只由超限词条 FGO-SP『快楽天・胎蔵曼荼羅』发放，只能由该词条获得",
+        "descRaw": "携带者视作拥有<@ba.vup>【调和】</>盟约，攻击力<@ba.vup>+50%</>\n<@ba.acrem>只由超限词条 FGO-SP『快楽天・胎蔵曼荼羅』发放，只能由该词条获得</>",
+        "buffs": [],
+        "params": {},
+        "category": "BOND_GRANT",
+        "kind": "passive",
+        "family": null,
+        "implFormula": "Carrier counts as a 调和 (maniShip) member and gets ATK +50%: implemented by the overlimit relic FGO_SP in server/sim/content/overlimitRelics.js (the equipment engine reads no buffs from this record — `buffs` is empty, like 变形同构体). The item is granted by that relic only (shopExcluded: the shop slot, the 道具补给 / 机密商店 cards and every shop-eligible pool skip it). [ASSUMED] derived icon: `iconId` overrides the asset key to `trap_ol_core` — a recolour (hue 0.855 + (h − 0.5) × 1.7, sat ×1.35, value ×1.02) + mint outline + SP corner badge derived from `public/assets/item/trap_1073_acarm073.png` (变形同构体) with Pillow; `trapId` stays `trap_1073_acarm073` (keeps the record sourced to 变形同构体 — the studio / import tools look a record up by it, the match / sim never reads trapId).",
+        "note": null,
+        "rangeGrid": [
+          [
+            0,
+            0
+          ]
+        ],
+        "flavor": "「全都可以吸入。」\n从曼荼罗深处取出的核心，万色在其中缓缓流转，握住它的人听得见调和之声。",
+        "olOnly": true
+      }
+    }
+  }
+}

@@ -1,0 +1,793 @@
+{
+ "_doc": "明日方舟个人名片合集 的索引 —— 由 tools/import-namecards.py 生成（源包：明日方舟个人名片合集.zip）。id = ascii slug，name = 中文原名；side/entry/preview 是默认可用的三张，variants 是全部变体（webp）。",
+ "version": 1,
+ "count": 34,
+ "cards": [
+  {
+   "id": "card_00465a33",
+   "name": "☆超新星☆",
+   "side": "/assets/namecard/card_00465a33/side.webp",
+   "entry": "/assets/namecard/card_00465a33/entry.webp",
+   "preview": "/assets/namecard/card_00465a33/preview.webp",
+   "variants": {
+    "side": [
+     "/assets/namecard/card_00465a33/side.webp",
+     "/assets/namecard/card_00465a33/side_2.webp",
+     "/assets/namecard/card_00465a33/side_3.webp",
+     "/assets/namecard/card_00465a33/side_4.webp",
+     "/assets/namecard/card_00465a33/side_5.webp"
+    ],
+    "entry": [
+     "/assets/namecard/card_00465a33/entry.webp",
+     "/assets/namecard/card_00465a33/entry_2.webp",
+     "/assets/namecard/card_00465a33/entry_3.webp",
+     "/assets/namecard/card_00465a33/entry_4.webp",
+     "/assets/namecard/card_00465a33/entry_5.webp"
+    ],
+    "preview": [
+     "/assets/namecard/card_00465a33/preview.webp"
+    ]
+   }
+  },
+  {
+   "id": "card_3f6a6860",
+   "name": "一起去狩猎喵！",
+   "side": "/assets/namecard/card_3f6a6860/side.webp",
+   "entry": "/assets/namecard/card_3f6a6860/entry.webp",
+   "preview": "/assets/namecard/card_3f6a6860/preview.webp",
+   "variants": {
+    "side": [
+     "/assets/namecard/card_3f6a6860/side.webp",
+     "/assets/namecard/card_3f6a6860/side_10.webp",
+     "/assets/namecard/card_3f6a6860/side_11.webp",
+     "/assets/namecard/card_3f6a6860/side_12.webp",
+     "/assets/namecard/card_3f6a6860/side_13.webp",
+     "/assets/namecard/card_3f6a6860/side_14.webp",
+     "/assets/namecard/card_3f6a6860/side_2.webp",
+     "/assets/namecard/card_3f6a6860/side_3.webp",
+     "/assets/namecard/card_3f6a6860/side_4.webp",
+     "/assets/namecard/card_3f6a6860/side_5.webp",
+     "/assets/namecard/card_3f6a6860/side_6.webp",
+     "/assets/namecard/card_3f6a6860/side_7.webp",
+     "/assets/namecard/card_3f6a6860/side_8.webp",
+     "/assets/namecard/card_3f6a6860/side_9.webp"
+    ],
+    "entry": [
+     "/assets/namecard/card_3f6a6860/entry.webp",
+     "/assets/namecard/card_3f6a6860/entry_10.webp",
+     "/assets/namecard/card_3f6a6860/entry_11.webp",
+     "/assets/namecard/card_3f6a6860/entry_12.webp",
+     "/assets/namecard/card_3f6a6860/entry_13.webp",
+     "/assets/namecard/card_3f6a6860/entry_14.webp",
+     "/assets/namecard/card_3f6a6860/entry_2.webp",
+     "/assets/namecard/card_3f6a6860/entry_3.webp",
+     "/assets/namecard/card_3f6a6860/entry_4.webp",
+     "/assets/namecard/card_3f6a6860/entry_5.webp",
+     "/assets/namecard/card_3f6a6860/entry_6.webp",
+     "/assets/namecard/card_3f6a6860/entry_7.webp",
+     "/assets/namecard/card_3f6a6860/entry_8.webp",
+     "/assets/namecard/card_3f6a6860/entry_9.webp"
+    ],
+    "preview": [
+     "/assets/namecard/card_3f6a6860/preview.webp"
+    ]
+   }
+  },
+  {
+   "id": "card_062733be",
+   "name": "健将",
+   "side": "/assets/namecard/card_062733be/side.webp",
+   "entry": "/assets/namecard/card_062733be/entry.webp",
+   "preview": "/assets/namecard/card_062733be/preview.webp",
+   "variants": {
+    "side": [
+     "/assets/namecard/card_062733be/side.webp"
+    ],
+    "entry": [
+     "/assets/namecard/card_062733be/entry.webp"
+    ],
+    "preview": [
+     "/assets/namecard/card_062733be/preview.webp"
+    ]
+   }
+  },
+  {
+   "id": "card_3c9e8ac7",
+   "name": "冰纹玉釉",
+   "side": "/assets/namecard/card_3c9e8ac7/side.webp",
+   "entry": "/assets/namecard/card_3c9e8ac7/entry.webp",
+   "preview": "/assets/namecard/card_3c9e8ac7/preview.webp",
+   "variants": {
+    "side": [
+     "/assets/namecard/card_3c9e8ac7/side.webp",
+     "/assets/namecard/card_3c9e8ac7/side_2.webp",
+     "/assets/namecard/card_3c9e8ac7/side_3.webp",
+     "/assets/namecard/card_3c9e8ac7/side_4.webp",
+     "/assets/namecard/card_3c9e8ac7/side_5.webp"
+    ],
+    "entry": [
+     "/assets/namecard/card_3c9e8ac7/entry.webp",
+     "/assets/namecard/card_3c9e8ac7/entry_2.webp",
+     "/assets/namecard/card_3c9e8ac7/entry_3.webp",
+     "/assets/namecard/card_3c9e8ac7/entry_4.webp",
+     "/assets/namecard/card_3c9e8ac7/entry_5.webp"
+    ],
+    "preview": [
+     "/assets/namecard/card_3c9e8ac7/preview.webp"
+    ]
+   }
+  },
+  {
+   "id": "card_ccd12b50",
+   "name": "决意",
+   "side": "/assets/namecard/card_ccd12b50/side.webp",
+   "entry": "/assets/namecard/card_ccd12b50/entry.webp",
+   "preview": "/assets/namecard/card_ccd12b50/preview.webp",
+   "variants": {
+    "side": [
+     "/assets/namecard/card_ccd12b50/side.webp"
+    ],
+    "entry": [
+     "/assets/namecard/card_ccd12b50/entry.webp"
+    ],
+    "preview": [
+     "/assets/namecard/card_ccd12b50/preview.webp"
+    ]
+   }
+  },
+  {
+   "id": "card_72e30d6a",
+   "name": "剧幕",
+   "side": "/assets/namecard/card_72e30d6a/side.webp",
+   "entry": "/assets/namecard/card_72e30d6a/entry.webp",
+   "preview": "/assets/namecard/card_72e30d6a/preview.webp",
+   "variants": {
+    "side": [
+     "/assets/namecard/card_72e30d6a/side.webp"
+    ],
+    "entry": [
+     "/assets/namecard/card_72e30d6a/entry.webp"
+    ],
+    "preview": [
+     "/assets/namecard/card_72e30d6a/preview.webp"
+    ]
+   }
+  },
+  {
+   "id": "card_c5ad2d55",
+   "name": "合照",
+   "side": "/assets/namecard/card_c5ad2d55/side.webp",
+   "entry": "/assets/namecard/card_c5ad2d55/entry.webp",
+   "preview": "/assets/namecard/card_c5ad2d55/preview.webp",
+   "variants": {
+    "side": [
+     "/assets/namecard/card_c5ad2d55/side.webp",
+     "/assets/namecard/card_c5ad2d55/side_2.webp",
+     "/assets/namecard/card_c5ad2d55/side_3.webp"
+    ],
+    "entry": [
+     "/assets/namecard/card_c5ad2d55/entry.webp",
+     "/assets/namecard/card_c5ad2d55/entry_2.webp",
+     "/assets/namecard/card_c5ad2d55/entry_3.webp"
+    ],
+    "preview": [
+     "/assets/namecard/card_c5ad2d55/preview.webp"
+    ]
+   }
+  },
+  {
+   "id": "card_dd09899e",
+   "name": "回溯",
+   "side": "/assets/namecard/card_dd09899e/side.webp",
+   "entry": "/assets/namecard/card_dd09899e/entry.webp",
+   "preview": "/assets/namecard/card_dd09899e/preview.webp",
+   "variants": {
+    "side": [
+     "/assets/namecard/card_dd09899e/side.webp"
+    ],
+    "entry": [
+     "/assets/namecard/card_dd09899e/entry.webp"
+    ],
+    "preview": [
+     "/assets/namecard/card_dd09899e/preview.webp"
+    ]
+   }
+  },
+  {
+   "id": "card_9bf1b381",
+   "name": "圣境",
+   "side": "/assets/namecard/card_9bf1b381/side.webp",
+   "entry": "/assets/namecard/card_9bf1b381/entry.webp",
+   "preview": "/assets/namecard/card_9bf1b381/preview.webp",
+   "variants": {
+    "side": [
+     "/assets/namecard/card_9bf1b381/side.webp"
+    ],
+    "entry": [
+     "/assets/namecard/card_9bf1b381/entry.webp"
+    ],
+    "preview": [
+     "/assets/namecard/card_9bf1b381/preview.webp"
+    ]
+   }
+  },
+  {
+   "id": "card_e6d26fa1",
+   "name": "失语者",
+   "side": "/assets/namecard/card_e6d26fa1/side.webp",
+   "entry": "/assets/namecard/card_e6d26fa1/entry.webp",
+   "preview": "/assets/namecard/card_e6d26fa1/preview.webp",
+   "variants": {
+    "side": [
+     "/assets/namecard/card_e6d26fa1/side.webp",
+     "/assets/namecard/card_e6d26fa1/side_2.webp",
+     "/assets/namecard/card_e6d26fa1/side_3.webp",
+     "/assets/namecard/card_e6d26fa1/side_4.webp",
+     "/assets/namecard/card_e6d26fa1/side_5.webp"
+    ],
+    "entry": [
+     "/assets/namecard/card_e6d26fa1/entry.webp",
+     "/assets/namecard/card_e6d26fa1/entry_2.webp",
+     "/assets/namecard/card_e6d26fa1/entry_3.webp",
+     "/assets/namecard/card_e6d26fa1/entry_4.webp",
+     "/assets/namecard/card_e6d26fa1/entry_5.webp"
+    ],
+    "preview": [
+     "/assets/namecard/card_e6d26fa1/preview.webp"
+    ]
+   }
+  },
+  {
+   "id": "card_b76f0564",
+   "name": "山水",
+   "side": "/assets/namecard/card_b76f0564/side.webp",
+   "entry": "/assets/namecard/card_b76f0564/entry.webp",
+   "preview": "/assets/namecard/card_b76f0564/preview.webp",
+   "variants": {
+    "side": [
+     "/assets/namecard/card_b76f0564/side.webp"
+    ],
+    "entry": [
+     "/assets/namecard/card_b76f0564/entry.webp"
+    ],
+    "preview": [
+     "/assets/namecard/card_b76f0564/preview.webp"
+    ]
+   }
+  },
+  {
+   "id": "card_943a7276",
+   "name": "布道人",
+   "side": "/assets/namecard/card_943a7276/side.webp",
+   "entry": "/assets/namecard/card_943a7276/entry.webp",
+   "preview": "/assets/namecard/card_943a7276/preview.webp",
+   "variants": {
+    "side": [
+     "/assets/namecard/card_943a7276/side.webp",
+     "/assets/namecard/card_943a7276/side_2.webp",
+     "/assets/namecard/card_943a7276/side_3.webp",
+     "/assets/namecard/card_943a7276/side_4.webp",
+     "/assets/namecard/card_943a7276/side_5.webp"
+    ],
+    "entry": [
+     "/assets/namecard/card_943a7276/entry.webp",
+     "/assets/namecard/card_943a7276/entry_2.webp",
+     "/assets/namecard/card_943a7276/entry_3.webp",
+     "/assets/namecard/card_943a7276/entry_4.webp",
+     "/assets/namecard/card_943a7276/entry_5.webp"
+    ],
+    "preview": [
+     "/assets/namecard/card_943a7276/preview.webp"
+    ]
+   }
+  },
+  {
+   "id": "card_f76456ce",
+   "name": "弧光",
+   "side": "/assets/namecard/card_f76456ce/side.webp",
+   "entry": "/assets/namecard/card_f76456ce/entry.webp",
+   "preview": "/assets/namecard/card_f76456ce/preview.webp",
+   "variants": {
+    "side": [
+     "/assets/namecard/card_f76456ce/side.webp"
+    ],
+    "entry": [
+     "/assets/namecard/card_f76456ce/entry.webp"
+    ],
+    "preview": [
+     "/assets/namecard/card_f76456ce/preview.webp"
+    ]
+   }
+  },
+  {
+   "id": "card_4ab9753d",
+   "name": "戏中身",
+   "side": "/assets/namecard/card_4ab9753d/side.webp",
+   "entry": "/assets/namecard/card_4ab9753d/entry.webp",
+   "preview": "/assets/namecard/card_4ab9753d/preview.webp",
+   "variants": {
+    "side": [
+     "/assets/namecard/card_4ab9753d/side.webp",
+     "/assets/namecard/card_4ab9753d/side_2.webp",
+     "/assets/namecard/card_4ab9753d/side_3.webp",
+     "/assets/namecard/card_4ab9753d/side_4.webp",
+     "/assets/namecard/card_4ab9753d/side_5.webp"
+    ],
+    "entry": [
+     "/assets/namecard/card_4ab9753d/entry.webp",
+     "/assets/namecard/card_4ab9753d/entry_2.webp",
+     "/assets/namecard/card_4ab9753d/entry_3.webp",
+     "/assets/namecard/card_4ab9753d/entry_4.webp",
+     "/assets/namecard/card_4ab9753d/entry_5.webp"
+    ],
+    "preview": [
+     "/assets/namecard/card_4ab9753d/preview.webp"
+    ]
+   }
+  },
+  {
+   "id": "card_7fbe8cdc",
+   "name": "时序花圃",
+   "side": "/assets/namecard/card_7fbe8cdc/side.webp",
+   "entry": "/assets/namecard/card_7fbe8cdc/entry.webp",
+   "preview": "/assets/namecard/card_7fbe8cdc/preview.webp",
+   "variants": {
+    "side": [
+     "/assets/namecard/card_7fbe8cdc/side.webp",
+     "/assets/namecard/card_7fbe8cdc/side_2.webp",
+     "/assets/namecard/card_7fbe8cdc/side_3.webp",
+     "/assets/namecard/card_7fbe8cdc/side_4.webp",
+     "/assets/namecard/card_7fbe8cdc/side_5.webp"
+    ],
+    "entry": [
+     "/assets/namecard/card_7fbe8cdc/entry.webp",
+     "/assets/namecard/card_7fbe8cdc/entry_2.webp",
+     "/assets/namecard/card_7fbe8cdc/entry_3.webp",
+     "/assets/namecard/card_7fbe8cdc/entry_4.webp",
+     "/assets/namecard/card_7fbe8cdc/entry_5.webp"
+    ],
+    "preview": [
+     "/assets/namecard/card_7fbe8cdc/preview.webp"
+    ]
+   }
+  },
+  {
+   "id": "card_d81fb0f3",
+   "name": "暖意",
+   "side": "/assets/namecard/card_d81fb0f3/side.webp",
+   "entry": "/assets/namecard/card_d81fb0f3/entry.webp",
+   "preview": "/assets/namecard/card_d81fb0f3/preview.webp",
+   "variants": {
+    "side": [
+     "/assets/namecard/card_d81fb0f3/side.webp",
+     "/assets/namecard/card_d81fb0f3/side_2.webp",
+     "/assets/namecard/card_d81fb0f3/side_3.webp",
+     "/assets/namecard/card_d81fb0f3/side_4.webp",
+     "/assets/namecard/card_d81fb0f3/side_5.webp",
+     "/assets/namecard/card_d81fb0f3/side_6.webp"
+    ],
+    "entry": [
+     "/assets/namecard/card_d81fb0f3/entry.webp",
+     "/assets/namecard/card_d81fb0f3/entry_2.webp",
+     "/assets/namecard/card_d81fb0f3/entry_3.webp",
+     "/assets/namecard/card_d81fb0f3/entry_4.webp",
+     "/assets/namecard/card_d81fb0f3/entry_5.webp",
+     "/assets/namecard/card_d81fb0f3/entry_6.webp"
+    ],
+    "preview": [
+     "/assets/namecard/card_d81fb0f3/preview.webp"
+    ]
+   }
+  },
+  {
+   "id": "card_ca159429",
+   "name": "月落镜水",
+   "side": "/assets/namecard/card_ca159429/side.webp",
+   "entry": "/assets/namecard/card_ca159429/entry.webp",
+   "preview": "/assets/namecard/card_ca159429/preview.webp",
+   "variants": {
+    "side": [
+     "/assets/namecard/card_ca159429/side.webp",
+     "/assets/namecard/card_ca159429/side_2.webp",
+     "/assets/namecard/card_ca159429/side_3.webp",
+     "/assets/namecard/card_ca159429/side_4.webp"
+    ],
+    "entry": [
+     "/assets/namecard/card_ca159429/entry.webp",
+     "/assets/namecard/card_ca159429/entry_2.webp",
+     "/assets/namecard/card_ca159429/entry_3.webp",
+     "/assets/namecard/card_ca159429/entry_4.webp"
+    ],
+    "preview": [
+     "/assets/namecard/card_ca159429/preview.webp"
+    ]
+   }
+  },
+  {
+   "id": "card_7cae666f",
+   "name": "梦人",
+   "side": "/assets/namecard/card_7cae666f/side.webp",
+   "entry": "/assets/namecard/card_7cae666f/entry.webp",
+   "preview": "/assets/namecard/card_7cae666f/preview.webp",
+   "variants": {
+    "side": [
+     "/assets/namecard/card_7cae666f/side.webp",
+     "/assets/namecard/card_7cae666f/side_2.webp",
+     "/assets/namecard/card_7cae666f/side_3.webp",
+     "/assets/namecard/card_7cae666f/side_4.webp",
+     "/assets/namecard/card_7cae666f/side_5.webp"
+    ],
+    "entry": [
+     "/assets/namecard/card_7cae666f/entry.webp",
+     "/assets/namecard/card_7cae666f/entry_2.webp",
+     "/assets/namecard/card_7cae666f/entry_3.webp",
+     "/assets/namecard/card_7cae666f/entry_4.webp",
+     "/assets/namecard/card_7cae666f/entry_5.webp"
+    ],
+    "preview": [
+     "/assets/namecard/card_7cae666f/preview.webp"
+    ]
+   }
+  },
+  {
+   "id": "card_79df06b7",
+   "name": "永恒的演出",
+   "side": "/assets/namecard/card_79df06b7/side.webp",
+   "entry": "/assets/namecard/card_79df06b7/entry.webp",
+   "preview": "/assets/namecard/card_79df06b7/preview.webp",
+   "variants": {
+    "side": [
+     "/assets/namecard/card_79df06b7/side.webp",
+     "/assets/namecard/card_79df06b7/side_2.webp",
+     "/assets/namecard/card_79df06b7/side_3.webp",
+     "/assets/namecard/card_79df06b7/side_4.webp",
+     "/assets/namecard/card_79df06b7/side_5.webp"
+    ],
+    "entry": [
+     "/assets/namecard/card_79df06b7/entry.webp",
+     "/assets/namecard/card_79df06b7/entry_2.webp",
+     "/assets/namecard/card_79df06b7/entry_3.webp",
+     "/assets/namecard/card_79df06b7/entry_4.webp",
+     "/assets/namecard/card_79df06b7/entry_5.webp"
+    ],
+    "preview": [
+     "/assets/namecard/card_79df06b7/preview.webp"
+    ]
+   }
+  },
+  {
+   "id": "card_5e8ad09e",
+   "name": "渡星客",
+   "side": "/assets/namecard/card_5e8ad09e/side.webp",
+   "entry": "/assets/namecard/card_5e8ad09e/entry.webp",
+   "preview": "/assets/namecard/card_5e8ad09e/preview.webp",
+   "variants": {
+    "side": [
+     "/assets/namecard/card_5e8ad09e/side.webp",
+     "/assets/namecard/card_5e8ad09e/side_2.webp",
+     "/assets/namecard/card_5e8ad09e/side_3.webp",
+     "/assets/namecard/card_5e8ad09e/side_4.webp",
+     "/assets/namecard/card_5e8ad09e/side_5.webp"
+    ],
+    "entry": [
+     "/assets/namecard/card_5e8ad09e/entry.webp",
+     "/assets/namecard/card_5e8ad09e/entry_2.webp",
+     "/assets/namecard/card_5e8ad09e/entry_3.webp",
+     "/assets/namecard/card_5e8ad09e/entry_4.webp",
+     "/assets/namecard/card_5e8ad09e/entry_5.webp"
+    ],
+    "preview": [
+     "/assets/namecard/card_5e8ad09e/preview.webp"
+    ]
+   }
+  },
+  {
+   "id": "card_e4ecb764",
+   "name": "演算",
+   "side": "/assets/namecard/card_e4ecb764/side.webp",
+   "entry": "/assets/namecard/card_e4ecb764/entry.webp",
+   "preview": "/assets/namecard/card_e4ecb764/preview.webp",
+   "variants": {
+    "side": [
+     "/assets/namecard/card_e4ecb764/side.webp"
+    ],
+    "entry": [
+     "/assets/namecard/card_e4ecb764/entry.webp"
+    ],
+    "preview": [
+     "/assets/namecard/card_e4ecb764/preview.webp"
+    ]
+   }
+  },
+  {
+   "id": "card_9ae3318f",
+   "name": "熠曲丰碑",
+   "side": "/assets/namecard/card_9ae3318f/side.webp",
+   "entry": "/assets/namecard/card_9ae3318f/entry.webp",
+   "preview": "/assets/namecard/card_9ae3318f/preview.webp",
+   "variants": {
+    "side": [
+     "/assets/namecard/card_9ae3318f/side.webp",
+     "/assets/namecard/card_9ae3318f/side_2.webp",
+     "/assets/namecard/card_9ae3318f/side_3.webp",
+     "/assets/namecard/card_9ae3318f/side_4.webp",
+     "/assets/namecard/card_9ae3318f/side_5.webp"
+    ],
+    "entry": [
+     "/assets/namecard/card_9ae3318f/entry.webp",
+     "/assets/namecard/card_9ae3318f/entry_2.webp",
+     "/assets/namecard/card_9ae3318f/entry_3.webp",
+     "/assets/namecard/card_9ae3318f/entry_4.webp",
+     "/assets/namecard/card_9ae3318f/entry_5.webp"
+    ],
+    "preview": [
+     "/assets/namecard/card_9ae3318f/preview.webp"
+    ]
+   }
+  },
+  {
+   "id": "card_5b708d85",
+   "name": "甜意",
+   "side": "/assets/namecard/card_5b708d85/side.webp",
+   "entry": "/assets/namecard/card_5b708d85/entry.webp",
+   "preview": "/assets/namecard/card_5b708d85/preview.webp",
+   "variants": {
+    "side": [
+     "/assets/namecard/card_5b708d85/side.webp"
+    ],
+    "entry": [
+     "/assets/namecard/card_5b708d85/entry.webp"
+    ],
+    "preview": [
+     "/assets/namecard/card_5b708d85/preview.webp"
+    ]
+   }
+  },
+  {
+   "id": "card_3ee60937",
+   "name": "祝鼓祭",
+   "side": "/assets/namecard/card_3ee60937/side.webp",
+   "entry": "/assets/namecard/card_3ee60937/entry.webp",
+   "preview": "/assets/namecard/card_3ee60937/preview.webp",
+   "variants": {
+    "side": [
+     "/assets/namecard/card_3ee60937/side.webp",
+     "/assets/namecard/card_3ee60937/side_2.webp",
+     "/assets/namecard/card_3ee60937/side_3.webp",
+     "/assets/namecard/card_3ee60937/side_4.webp",
+     "/assets/namecard/card_3ee60937/side_5.webp"
+    ],
+    "entry": [
+     "/assets/namecard/card_3ee60937/entry.webp",
+     "/assets/namecard/card_3ee60937/entry_2.webp",
+     "/assets/namecard/card_3ee60937/entry_3.webp",
+     "/assets/namecard/card_3ee60937/entry_4.webp",
+     "/assets/namecard/card_3ee60937/entry_5.webp"
+    ],
+    "preview": [
+     "/assets/namecard/card_3ee60937/preview.webp"
+    ]
+   }
+  },
+  {
+   "id": "card_f0af1e5b",
+   "name": "移星桂冠",
+   "side": "/assets/namecard/card_f0af1e5b/side.webp",
+   "entry": "/assets/namecard/card_f0af1e5b/entry.webp",
+   "preview": "/assets/namecard/card_f0af1e5b/preview.webp",
+   "variants": {
+    "side": [
+     "/assets/namecard/card_f0af1e5b/side.webp",
+     "/assets/namecard/card_f0af1e5b/side_2.webp",
+     "/assets/namecard/card_f0af1e5b/side_3.webp",
+     "/assets/namecard/card_f0af1e5b/side_4.webp",
+     "/assets/namecard/card_f0af1e5b/side_5.webp"
+    ],
+    "entry": [
+     "/assets/namecard/card_f0af1e5b/entry.webp",
+     "/assets/namecard/card_f0af1e5b/entry_2.webp",
+     "/assets/namecard/card_f0af1e5b/entry_3.webp",
+     "/assets/namecard/card_f0af1e5b/entry_4.webp",
+     "/assets/namecard/card_f0af1e5b/entry_5.webp"
+    ],
+    "preview": [
+     "/assets/namecard/card_f0af1e5b/preview.webp"
+    ]
+   }
+  },
+  {
+   "id": "card_53cd43c9",
+   "name": "行者",
+   "side": "/assets/namecard/card_53cd43c9/side.webp",
+   "entry": "/assets/namecard/card_53cd43c9/entry.webp",
+   "preview": "/assets/namecard/card_53cd43c9/preview.webp",
+   "variants": {
+    "side": [
+     "/assets/namecard/card_53cd43c9/side.webp",
+     "/assets/namecard/card_53cd43c9/side_2.webp",
+     "/assets/namecard/card_53cd43c9/side_3.webp",
+     "/assets/namecard/card_53cd43c9/side_4.webp",
+     "/assets/namecard/card_53cd43c9/side_5.webp"
+    ],
+    "entry": [
+     "/assets/namecard/card_53cd43c9/entry.webp",
+     "/assets/namecard/card_53cd43c9/entry_2.webp",
+     "/assets/namecard/card_53cd43c9/entry_3.webp",
+     "/assets/namecard/card_53cd43c9/entry_4.webp",
+     "/assets/namecard/card_53cd43c9/entry_5.webp"
+    ],
+    "preview": [
+     "/assets/namecard/card_53cd43c9/preview.webp"
+    ]
+   }
+  },
+  {
+   "id": "card_5b700854",
+   "name": "遗君",
+   "side": "/assets/namecard/card_5b700854/side.webp",
+   "entry": "/assets/namecard/card_5b700854/entry.webp",
+   "preview": "/assets/namecard/card_5b700854/preview.webp",
+   "variants": {
+    "side": [
+     "/assets/namecard/card_5b700854/side.webp",
+     "/assets/namecard/card_5b700854/side_2.webp",
+     "/assets/namecard/card_5b700854/side_3.webp",
+     "/assets/namecard/card_5b700854/side_4.webp",
+     "/assets/namecard/card_5b700854/side_5.webp"
+    ],
+    "entry": [
+     "/assets/namecard/card_5b700854/entry.webp",
+     "/assets/namecard/card_5b700854/entry_2.webp",
+     "/assets/namecard/card_5b700854/entry_3.webp",
+     "/assets/namecard/card_5b700854/entry_4.webp",
+     "/assets/namecard/card_5b700854/entry_5.webp"
+    ],
+    "preview": [
+     "/assets/namecard/card_5b700854/preview.webp"
+    ]
+   }
+  },
+  {
+   "id": "card_a11577e7",
+   "name": "邀月",
+   "side": "/assets/namecard/card_a11577e7/side.webp",
+   "entry": "/assets/namecard/card_a11577e7/entry.webp",
+   "preview": "/assets/namecard/card_a11577e7/preview.webp",
+   "variants": {
+    "side": [
+     "/assets/namecard/card_a11577e7/side.webp",
+     "/assets/namecard/card_a11577e7/side_2.webp",
+     "/assets/namecard/card_a11577e7/side_3.webp",
+     "/assets/namecard/card_a11577e7/side_4.webp",
+     "/assets/namecard/card_a11577e7/side_5.webp"
+    ],
+    "entry": [
+     "/assets/namecard/card_a11577e7/entry.webp",
+     "/assets/namecard/card_a11577e7/entry_2.webp",
+     "/assets/namecard/card_a11577e7/entry_3.webp",
+     "/assets/namecard/card_a11577e7/entry_4.webp",
+     "/assets/namecard/card_a11577e7/entry_5.webp"
+    ],
+    "preview": [
+     "/assets/namecard/card_a11577e7/preview.webp"
+    ]
+   }
+  },
+  {
+   "id": "card_cca74be2",
+   "name": "险途",
+   "side": "/assets/namecard/card_cca74be2/side.webp",
+   "entry": "/assets/namecard/card_cca74be2/entry.webp",
+   "preview": "/assets/namecard/card_cca74be2/preview.webp",
+   "variants": {
+    "side": [
+     "/assets/namecard/card_cca74be2/side.webp"
+    ],
+    "entry": [
+     "/assets/namecard/card_cca74be2/entry.webp"
+    ],
+    "preview": [
+     "/assets/namecard/card_cca74be2/preview.webp"
+    ]
+   }
+  },
+  {
+   "id": "card_45b39d36",
+   "name": "集锦",
+   "side": "/assets/namecard/card_45b39d36/side.webp",
+   "entry": "/assets/namecard/card_45b39d36/entry.webp",
+   "preview": "/assets/namecard/card_45b39d36/preview.webp",
+   "variants": {
+    "side": [
+     "/assets/namecard/card_45b39d36/side.webp"
+    ],
+    "entry": [
+     "/assets/namecard/card_45b39d36/entry.webp"
+    ],
+    "preview": [
+     "/assets/namecard/card_45b39d36/preview.webp"
+    ]
+   }
+  },
+  {
+   "id": "card_6b69b992",
+   "name": "雾色秘访",
+   "side": "/assets/namecard/card_6b69b992/side.webp",
+   "entry": "/assets/namecard/card_6b69b992/entry.webp",
+   "preview": "/assets/namecard/card_6b69b992/preview.webp",
+   "variants": {
+    "side": [
+     "/assets/namecard/card_6b69b992/side.webp",
+     "/assets/namecard/card_6b69b992/side_2.webp",
+     "/assets/namecard/card_6b69b992/side_3.webp",
+     "/assets/namecard/card_6b69b992/side_4.webp",
+     "/assets/namecard/card_6b69b992/side_5.webp"
+    ],
+    "entry": [
+     "/assets/namecard/card_6b69b992/entry.webp",
+     "/assets/namecard/card_6b69b992/entry_2.webp",
+     "/assets/namecard/card_6b69b992/entry_3.webp",
+     "/assets/namecard/card_6b69b992/entry_4.webp",
+     "/assets/namecard/card_6b69b992/entry_5.webp"
+    ],
+    "preview": [
+     "/assets/namecard/card_6b69b992/preview.webp"
+    ]
+   }
+  },
+  {
+   "id": "card_e6639c56",
+   "name": "青漾",
+   "side": "/assets/namecard/card_e6639c56/side.webp",
+   "entry": "/assets/namecard/card_e6639c56/entry.webp",
+   "preview": "/assets/namecard/card_e6639c56/preview.webp",
+   "variants": {
+    "side": [
+     "/assets/namecard/card_e6639c56/side.webp"
+    ],
+    "entry": [
+     "/assets/namecard/card_e6639c56/entry.webp"
+    ],
+    "preview": [
+     "/assets/namecard/card_e6639c56/preview.webp"
+    ]
+   }
+  },
+  {
+   "id": "card_a6abb286",
+   "name": "飘游",
+   "side": "/assets/namecard/card_a6abb286/side.webp",
+   "entry": "/assets/namecard/card_a6abb286/entry.webp",
+   "preview": "/assets/namecard/card_a6abb286/preview.webp",
+   "variants": {
+    "side": [
+     "/assets/namecard/card_a6abb286/side.webp"
+    ],
+    "entry": [
+     "/assets/namecard/card_a6abb286/entry.webp"
+    ],
+    "preview": [
+     "/assets/namecard/card_a6abb286/preview.webp"
+    ]
+   }
+  },
+  {
+   "id": "card_c8d09cf9",
+   "name": "默认",
+   "side": "/assets/namecard/card_c8d09cf9/side.webp",
+   "entry": "/assets/namecard/card_c8d09cf9/entry.webp",
+   "preview": "/assets/namecard/card_c8d09cf9/preview.webp",
+   "variants": {
+    "side": [
+     "/assets/namecard/card_c8d09cf9/side.webp"
+    ],
+    "entry": [
+     "/assets/namecard/card_c8d09cf9/entry.webp"
+    ],
+    "preview": [
+     "/assets/namecard/card_c8d09cf9/preview.webp"
+    ]
+   }
+  }
+ ]
+}

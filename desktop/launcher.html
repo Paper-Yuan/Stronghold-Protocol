@@ -1,0 +1,821 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<!-- The only external request this page may make is its own ambient bitmap (img-src file:), so the remote page that
+     this same window loads later still inherits nothing else. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; img-src 'self' data: file:;" />
+<title>卫戍协议：盟约</title>
+<style>
+  /* ============================================================================
+     desktop/launcher.html — 桌面端启动选择页（Electron 生产页）。
+     视觉层逐项搬自已确认的设计稿 handoff/desktop-electron/mock-choice.html：
+       · 根尺度 1rem = min(100vw/19.2, 100vh/10.8)，地板 40px（与设计稿同一行）
+       · 双卡：本机（mint 描边 + 外发光呼吸 + 顶部高光条）为主，远程（普通描边）为次
+       · 四角 L 形角标、卡底 42% 慢速扫描线、01/02 大编号、技术眉题、十字准星、网格 + 10% 底图
+       · 面板底、按钮、输入框、focus/hover 态均取自设计稿（components.css / theme.css 的那套语言）
+     与设计稿的唯一有意差异（见报告）：窄/矮窗口（≤1120px 宽 或 ≤700px 高）切到「紧凑档」的
+     px 字号与点击高度，因为设计稿在 792×360 时 1rem=40px 会把正文压到 6.8px、按钮压到 22px，
+     低于「可点区域 ≥32」的验收线。除此之外两档的视觉语言完全一致。
+
+     文案：全部沿用页面既有的字符串（Android APK 的服务端对话框与旧版启动页）：
+       网络与服务器设置 / 单人单机模式 / 内置服务 / 远程联机模式 / 连接到指定服务器 /
+       例如: http://121.4.51.247/… / 确认切换 / 正在启动本地作战引擎…
+     设计稿新出现、仓库里没有对应 t() 的说明性文字，就地写中文并标 i18n-ignore（不新增 msgid）。
+
+     功能契约（desktop/main.mjs + desktop/preload.cjs + tmp/desktop-smoke.mjs）一个都不能丢：
+       #ver（版本）、#local-title、#local-addr（主进程注入的本机地址）、#btn-local、
+       #remote-title、#remote-url（预填主地址）、#btn-remote、#btn-backup（备用地址）、
+       #status（data-tone=busy|error）、本机卡的 .card--default 高亮类、
+       window.desktop.info() / startLocal() / connectRemote(url) 三个 IPC。
+
+      导航归属：本机卡成功后由本页 `location.href = url` 进大厅（IPC 的 start-local 只启动服务并回报 {ok, url}，
+      desktop/main.mjs 不导航）；远程卡由主进程的 connect-remote 自己 `await win.loadURL(url.href)`，本页**不**再跳
+      第二次（否则会把同一个地址加载两遍）。两条路径失败都留在本页：status data-tone="error" + 既有失败文案，
+      按钮恢复可用，地址保留。
+     ============================================================================ */
+
+  :root {
+    color-scheme: dark;
+
+    /* 设计稿 token（mock-choice.html 原值） */
+    --bg-0: #0c0f0e;
+    --bg-1: #141816;
+    --line: #2f3a35;
+    --line-2: #3e4b45;
+    --line-3: #58675f;
+
+    --mint-400: #59f4ca;
+    --mint-500: #4ed8af;
+    --mint-600: #35d8b4;
+    --mint-700: #2a9e7f;
+    --mint-glow: #17f9b7;
+    --mint-a20: rgba(78, 216, 175, .20);
+    /* 旧版启动页的强调色仍是契约的一部分（#status[data-tone="busy"] 用它）；设计稿的主色是上面的 mint。 */
+    --gold: #e8c15a;
+    --mint: var(--mint-500);
+
+    --text-hi: #f2f2f2;
+    --text-md: #c3cbc7;
+    --text-lo: #8a948f;
+    --text-dim: #5d6863;
+    --text-on-mint: #06110d;
+
+    --cjk-faces: 'Noto Sans SC', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Source Han Sans SC', 'Noto Sans CJK SC';
+    --font-cjk: var(--cjk-faces), sans-serif;
+    --font-num: 'Bender', 'Rajdhani', 'Oxanium', var(--cjk-faces), sans-serif;
+    --font-display: 'Novecento', 'Novecento Wide', 'Oxanium', 'Rajdhani', var(--cjk-faces), sans-serif;
+
+    --ease-out: cubic-bezier(.2, .8, .2, 1);
+    --t-fast: 150ms;
+    --t-med: 200ms;
+
+    /* 字号 / 尺寸档位：设计稿档（rem，随视口缩放）。窄窗口在文件末尾的紧凑档整组改写成 px。 */
+    --fs-micro: .11rem;
+    --fs-brand: .3rem;
+    --fs-ver: .15rem;
+    --fs-idx: .4rem;
+    --fs-title: .34rem;
+    --fs-desc: .17rem;
+    --fs-meta: .15rem;
+    --fs-meta-num: .16rem;
+    --fs-note: .13rem;
+    --fs-hint: .12rem;
+    --fs-field: .18rem;
+    --fs-field-ph: .16rem;
+    --fs-btn: .22rem;
+    --h-btn: .56rem;
+    --h-field: .58rem;
+    --h-target: 32px;        /* 可点区域下限：设计稿 22px 的按钮在 792×360 不达标，这里兜住 */
+    --gap-card: .24rem;
+    --pad-card: .5rem .38rem .42rem;
+    --pad-top: .26rem .44rem 0;
+    --pad-main: .26rem .44rem .2rem;
+    --gap-cards: .44rem;
+  }
+
+  html {
+    font-size: clamp(40px, min(calc(100vw / 19.2), calc(100vh / 10.8)), 240px);
+    height: 100%;
+    background: var(--bg-0);
+  }
+
+  *, *::before, *::after { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    height: 100%;
+    overflow: hidden;
+    background: var(--bg-0);
+    color: var(--text-hi);
+    font-family: var(--font-cjk);
+    font-size: .18rem;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+  h1, h2, p { margin: 0; }
+  button { font: inherit; color: inherit; cursor: pointer; }
+  input { font: inherit; color: inherit; -webkit-user-select: text; user-select: text; }
+  :focus { outline: none; }
+  :focus-visible { outline: 2px solid var(--mint-400); outline-offset: 2px; }
+  ::selection { background: var(--mint-500); color: var(--text-on-mint); }
+
+  /* ---- 小字标签 / 数字字面 ------------------------------------------------------------ */
+  .micro {
+    font-family: var(--font-display);
+    font-size: var(--fs-micro);
+    line-height: 1.2;
+    letter-spacing: .18em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    white-space: nowrap;
+  }
+  .micro--mint { color: var(--mint-700); }
+  .micro--eyebrow { letter-spacing: .28em; }
+  .num { font-family: var(--font-num); font-variant-numeric: tabular-nums; letter-spacing: .02em; }
+
+  /* ---- 页面底：底图 + 网格 + 辉光 + 暗角 -------------------------------------------------- */
+  .app-root { position: fixed; inset: 0; overflow: hidden; isolation: isolate; }
+  .app-bg {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    background:
+      radial-gradient(120% 80% at 50% 110%, rgba(23, 249, 183, .13), transparent 55%),
+      radial-gradient(80% 60% at 50% 40%, rgba(40, 60, 52, .32), transparent 70%),
+      linear-gradient(180deg, #0b0e0d 0%, #0e1311 55%, #0a0d0c 100%);
+  }
+  /* 整页唯一一张位图：卫戍协议自己的地图底材质（只引用、不复制），压到 10% 当纸底颗粒。 */
+  .app-photo {
+    position: absolute;
+    inset: 0;
+    opacity: .10;
+    background: url('../public/assets/local/map/autochess/TX_autochessi_BG.webp') center / cover no-repeat;
+  }
+  .app-grid {
+    position: absolute;
+    inset: 0;
+    background:
+      linear-gradient(rgba(78, 216, 175, .045) 1px, transparent 1px) 0 0 / .8rem .8rem,
+      linear-gradient(90deg, rgba(78, 216, 175, .045) 1px, transparent 1px) 0 0 / .8rem .8rem;
+    -webkit-mask-image: radial-gradient(90% 80% at 50% 50%, #000 30%, transparent 85%);
+    mask-image: radial-gradient(90% 80% at 50% 50%, #000 30%, transparent 85%);
+  }
+  .app-bg::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background:
+      repeating-linear-gradient(0deg, rgba(255, 255, 255, .02) 0 1px, transparent 1px 3px),
+      radial-gradient(130% 100% at 50% 50%, transparent 55%, rgba(0, 0, 0, .65) 100%);
+  }
+
+  .cross {
+    position: absolute;
+    width: .22rem;
+    height: .22rem;
+    pointer-events: none;
+    background:
+      linear-gradient(var(--mint-700), var(--mint-700)) center / 100% 1px no-repeat,
+      linear-gradient(var(--mint-700), var(--mint-700)) center / 1px 100% no-repeat;
+    opacity: .55;
+  }
+
+  .screen {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  /* ---- 顶栏：游戏名 / 版本 --------------------------------------------------------------- */
+  .start-top {
+    flex: none;
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: .2rem;
+    padding: var(--pad-top);
+  }
+  .brand { display: flex; flex-direction: column; gap: .05rem; min-width: 0; }
+  .brand__row { display: flex; align-items: baseline; gap: .18rem; min-width: 0; }
+  .brand__title {
+    font-family: var(--font-display);
+    font-size: var(--fs-brand);
+    font-weight: 900;
+    letter-spacing: .05em;
+    line-height: 1.1;
+    color: var(--text-hi);
+    white-space: nowrap;
+  }
+  .brand__title em { font-style: normal; color: var(--mint-400); }
+  .brand__colon { color: var(--text-lo); }
+  .brand__ver { font-size: var(--fs-ver); color: var(--text-lo); letter-spacing: .06em; white-space: nowrap; }
+
+  /* ---- 按钮（设计稿 .btn / .btn--primary / .btn--lg / .btn--block） ------------------------- */
+  .btn {
+    --btn-bg: #1a201d;
+    --btn-bg-hover: #222a26;
+    --btn-fg: var(--text-hi);
+    --btn-bd: var(--line-2);
+    --btn-bd-hover: var(--mint-700);
+    --btn-glow: rgba(78, 216, 175, .25);
+    --bk-c: var(--mint-500);
+    --bk-l: .1rem;
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: .1rem;
+    height: var(--h-btn);
+    min-height: var(--h-target);
+    min-width: var(--h-target);
+    padding: 0 .26rem;
+    border: 1px solid var(--btn-bd);
+    background: var(--btn-bg);
+    color: var(--btn-fg);
+    font-size: var(--fs-btn);
+    font-weight: 700;
+    letter-spacing: .06em;
+    line-height: 1;
+    white-space: nowrap;
+    transition: background-color var(--t-fast) var(--ease-out), border-color var(--t-fast) var(--ease-out),
+      color var(--t-fast) var(--ease-out), box-shadow var(--t-med) var(--ease-out);
+  }
+  /* 四角 L 形角标：悬停 / 键盘焦点时出现 */
+  .btn::after {
+    content: '';
+    position: absolute;
+    inset: -4px;
+    pointer-events: none;
+    opacity: 0;
+    background:
+      linear-gradient(var(--bk-c), var(--bk-c)) top left / var(--bk-l) 2px no-repeat,
+      linear-gradient(var(--bk-c), var(--bk-c)) top left / 2px var(--bk-l) no-repeat,
+      linear-gradient(var(--bk-c), var(--bk-c)) top right / var(--bk-l) 2px no-repeat,
+      linear-gradient(var(--bk-c), var(--bk-c)) top right / 2px var(--bk-l) no-repeat,
+      linear-gradient(var(--bk-c), var(--bk-c)) bottom left / var(--bk-l) 2px no-repeat,
+      linear-gradient(var(--bk-c), var(--bk-c)) bottom left / 2px var(--bk-l) no-repeat,
+      linear-gradient(var(--bk-c), var(--bk-c)) bottom right / var(--bk-l) 2px no-repeat,
+      linear-gradient(var(--bk-c), var(--bk-c)) bottom right / 2px var(--bk-l) no-repeat;
+    transform: scale(1.04);
+    transition: opacity var(--t-fast) var(--ease-out), transform var(--t-med) var(--ease-out);
+  }
+  .btn:hover {
+    background-color: var(--btn-bg-hover);
+    border-color: var(--btn-bd-hover);
+    box-shadow: 0 0 .18rem var(--btn-glow);
+  }
+  .btn:hover::after { opacity: 1; transform: scale(1); }
+  /* 页面打开时焦点就落在本机卡上，所以 :focus 也点亮角标（不只是 :focus-visible）。 */
+  .btn:focus-visible, .btn:focus { outline: none; }
+  .btn:focus-visible::after, .btn:focus::after { opacity: 1; transform: scale(1); }
+
+  .btn--primary {
+    background-image:
+      repeating-linear-gradient(-55deg, rgba(0, 0, 0, .16) 0 2px, transparent 2px 6px),
+      linear-gradient(180deg, rgba(255, 255, 255, .18), rgba(255, 255, 255, 0) 45%);
+    background-size: .34rem 100%, 100% 100%;
+    background-position: right center, 0 0;
+    background-repeat: no-repeat;
+    --btn-bg: var(--mint-500);
+    --btn-bg-hover: var(--mint-400);
+    --btn-fg: var(--text-on-mint);
+    --btn-bd: #6fe8c4;
+    --btn-bd-hover: #9dffe2;
+    --btn-glow: rgba(23, 249, 183, .45);
+    --bk-c: var(--mint-400);
+  }
+  .btn--lg { height: var(--h-btn); min-width: var(--h-btn); padding: 0 .3rem; font-size: var(--fs-btn); letter-spacing: .12em; gap: .12rem; }
+  .btn--block { display: flex; width: 100%; }
+  .btn[disabled] { opacity: .55; cursor: progress; }
+
+  /* ---- 主区：两卡居中（始终并排，不换行） -------------------------------------------------- */
+  .start-main {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: var(--pad-main);
+  }
+  .start-cards {
+    display: flex;
+    flex-wrap: nowrap;
+    align-items: stretch;
+    justify-content: center;
+    gap: var(--gap-cards);
+    width: 100%;
+    min-width: 0;
+  }
+
+  /* ---- 卡（面板底） --------------------------------------------------------------------- */
+  .card {
+    --bk-c: var(--line-3);
+    --bk-l: .14rem;
+    position: relative;
+    flex: 0 1 auto;
+    /* 每卡 = 视口宽 40%（8rem 只挡超宽屏，别让卡被拉成一条横条） */
+    width: min(40vw, 8rem);
+    min-width: 0;
+    min-height: min(5.85rem, 54vh);
+    display: flex;
+    flex-direction: column;
+    /* 四段（标题 / 说明 / 字段 / 动作）靠 space-between 拉开，多出来的高度落在段与段之间 */
+    justify-content: space-between;
+    gap: var(--gap-card);
+    padding: var(--pad-card);
+    background:
+      repeating-linear-gradient(0deg, rgba(255, 255, 255, .016) 0 1px, transparent 1px 3px),
+      linear-gradient(180deg, rgba(30, 36, 33, .94), rgba(18, 22, 20, .94));
+    border: 1px solid var(--line);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, .06), 0 .12rem .3rem rgba(0, 0, 0, .35);
+  }
+  /* 四条 L 形角标 */
+  .card::after {
+    content: '';
+    position: absolute;
+    inset: -1px;
+    pointer-events: none;
+    background:
+      linear-gradient(var(--bk-c), var(--bk-c)) top left / var(--bk-l) 2px no-repeat,
+      linear-gradient(var(--bk-c), var(--bk-c)) top left / 2px var(--bk-l) no-repeat,
+      linear-gradient(var(--bk-c), var(--bk-c)) top right / var(--bk-l) 2px no-repeat,
+      linear-gradient(var(--bk-c), var(--bk-c)) top right / 2px var(--bk-l) no-repeat,
+      linear-gradient(var(--bk-c), var(--bk-c)) bottom left / var(--bk-l) 2px no-repeat,
+      linear-gradient(var(--bk-c), var(--bk-c)) bottom left / 2px var(--bk-l) no-repeat,
+      linear-gradient(var(--bk-c), var(--bk-c)) bottom right / var(--bk-l) 2px no-repeat,
+      linear-gradient(var(--bk-c), var(--bk-c)) bottom right / 2px var(--bk-l) no-repeat;
+  }
+
+  /* 卡底 42% 的一层极慢扫描线，垫在内容下面 */
+  .card__tex {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 42%;
+    z-index: 0;
+    pointer-events: none;
+    opacity: .045;
+    background-image: repeating-linear-gradient(0deg, #fff 0 1px, transparent 1px .12rem);
+    background-position: 0 0;
+    -webkit-mask-image: linear-gradient(180deg, transparent, #000 62%);
+    mask-image: linear-gradient(180deg, transparent, #000 62%);
+    animation: card-scan 22s linear infinite;
+  }
+  /* 位移正好一个重复周期（.12rem），所以是无缝循环 */
+  @keyframes card-scan { from { background-position: 0 0; } to { background-position: 0 .12rem; } }
+  .card > :not(.card__tex) { position: relative; z-index: 1; }
+
+  /* 主卡（本机，默认档）：mint 描边 + 外发光 + 顶部高光条 */
+  .card--local {
+    --bk-c: var(--mint-500);
+    border-color: rgba(78, 216, 175, .42);
+    background:
+      repeating-linear-gradient(0deg, rgba(255, 255, 255, .016) 0 1px, transparent 1px 3px),
+      radial-gradient(80% 62% at 50% 118%, rgba(23, 249, 183, .14), transparent 64%),
+      linear-gradient(180deg, rgba(32, 42, 37, .97), rgba(14, 24, 20, .97));
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, .06),
+      0 0 0 1px rgba(78, 216, 175, .14),
+      0 0 .42rem rgba(23, 249, 183, .16),
+      0 .16rem .4rem rgba(0, 0, 0, .45);
+    animation: card-breathe 4s ease-in-out infinite;
+  }
+  /* 关键帧里必须把 inset 高光一起写上，否则动画一跑就把 .card 的整条 box-shadow 覆盖掉 */
+  @keyframes card-breathe {
+    0%, 100% {
+      box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, .06),
+        0 0 0 1px rgba(78, 216, 175, .14),
+        0 0 .42rem rgba(23, 249, 183, .18),
+        0 .16rem .4rem rgba(0, 0, 0, .45);
+    }
+    50% {
+      box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, .06),
+        0 0 0 1px rgba(78, 216, 175, .18),
+        0 0 .52rem rgba(23, 249, 183, .28),
+        0 .16rem .4rem rgba(0, 0, 0, .45);
+    }
+  }
+  .card--local::before {
+    content: '';
+    position: absolute;
+    left: -1px;
+    right: -1px;
+    top: -1px;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--mint-400) 22%, var(--mint-400) 78%, transparent);
+    opacity: .85;
+    pointer-events: none;
+    z-index: 2;
+  }
+  /* .card--default 是旧版启动页给「主档」卡的高亮类，冒烟脚本按它判定本机卡已高亮；外观由 .card--local 给出。 */
+  .card--default { outline: none; }
+
+  /* 副卡（远程）：普通描边，无发光 */
+  .card--remote { --bk-c: var(--line-3); }
+
+  .card__head { display: flex; flex-direction: column; gap: .1rem; min-width: 0; }
+  .card__top { display: flex; align-items: center; gap: .14rem; min-width: 0; }
+  .card__idx {
+    flex: none;
+    font-family: var(--font-num);
+    font-size: var(--fs-idx);
+    font-weight: 800;
+    line-height: .8;
+    letter-spacing: .02em;
+    color: var(--text-dim);
+    opacity: .55;
+  }
+  .card__title {
+    font-family: var(--font-display);
+    font-size: var(--fs-title);
+    font-weight: 900;
+    letter-spacing: .06em;
+    line-height: 1.15;
+    color: var(--text-hi);
+    white-space: nowrap;
+  }
+  .card__desc { font-size: var(--fs-desc); line-height: 1.6; color: var(--text-md); }
+  .card__meta {
+    display: flex;
+    align-items: baseline;
+    flex-wrap: nowrap;
+    gap: .08rem;
+    font-size: var(--fs-meta);
+    color: var(--text-lo);
+    white-space: nowrap;
+    min-width: 0;
+  }
+  .card__meta .num { font-size: var(--fs-meta-num); color: var(--text-md); }
+  .card__foot {
+    display: flex;
+    flex-direction: column;
+    gap: .14rem;
+    padding-top: .26rem;
+    border-top: 1px solid var(--line);
+  }
+  .card__note { font-size: var(--fs-note); line-height: 1.5; color: var(--text-dim); }
+  .card__field { display: flex; flex-direction: column; gap: .1rem; min-width: 0; }
+
+  /* ---- 地址输入 ------------------------------------------------------------------------- */
+  .field { display: flex; flex-direction: column; gap: .1rem; min-width: 0; }
+  .field__box {
+    --bk-c: var(--line-3);
+    --bk-l: .1rem;
+    display: flex;
+    align-items: center;
+    gap: .1rem;
+    height: var(--h-field);
+    min-height: var(--h-target);
+    padding: 0 .18rem;
+    background: rgba(5, 7, 6, .78);
+    border: 1px solid var(--line);
+    transition: border-color var(--t-fast), box-shadow var(--t-med);
+  }
+  .field__box:hover { border-color: var(--line-2); }
+  .field__box:focus-within {
+    border-color: var(--mint-700);
+    --bk-c: var(--mint-400);
+    box-shadow: 0 0 0 1px rgba(78, 216, 175, .15), 0 0 .18rem rgba(23, 249, 183, .15);
+  }
+  .field__input {
+    flex: 1;
+    min-width: 0;
+    height: 100%;
+    background: none;
+    border: 0;
+    outline: none;
+    color: var(--text-hi);
+    font-family: var(--font-num);
+    font-size: var(--fs-field);
+    letter-spacing: .02em;
+  }
+  .field__input::placeholder {
+    font-family: var(--font-cjk);
+    font-size: var(--fs-field-ph);
+    color: var(--text-dim);
+    font-weight: 400;
+    letter-spacing: .04em;
+  }
+  /* 「备用：<地址>」——设计稿里是纯文字，这里保留旧版 #btn-backup 的点击语义（点一下就用备用地址连接），
+     仍是一行小字，但给了 ≥32px 的点击高度。 */
+  .field__hint {
+    display: flex;
+    align-items: center;
+    gap: .04rem;
+    font-size: var(--fs-hint);
+    line-height: 1.4;
+    letter-spacing: .02em;
+    color: var(--text-dim);
+    white-space: nowrap;
+    min-width: 0;
+  }
+  .field__hint .num { font-size: var(--fs-hint); }
+  .field__link {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--h-target);
+    padding: 0 .06rem;
+    border: 0;
+    background: none;
+    color: var(--text-md);
+    font-family: var(--font-num);
+    font-size: var(--fs-hint);
+    letter-spacing: .02em;
+    text-decoration: underline;
+    text-decoration-color: rgba(139, 151, 171, .45);
+    text-underline-offset: 3px;
+    transition: color var(--t-fast) var(--ease-out), text-decoration-color var(--t-fast) var(--ease-out);
+  }
+  .field__link:hover { color: var(--mint-400); text-decoration-color: currentColor; }
+  .field__link:focus-visible { color: var(--mint-400); text-decoration-color: currentColor; }
+  .field__link:empty { display: none; }
+
+  /* ---- 连接中：右卡 data-state="connecting"（对应实现里的 button[disabled] + input[readonly]） ---- */
+  .card--remote[data-state="connecting"] .card__action {
+    --btn-bg: rgba(78, 216, 175, .08);
+    --btn-bg-hover: rgba(78, 216, 175, .08);
+    --btn-fg: var(--text-lo);
+    --btn-bd: var(--line-2);
+    --btn-bd-hover: var(--line-2);
+    --btn-glow: transparent;
+    --bk-c: transparent;
+    background-image: none;
+    border-style: dashed;
+    box-shadow: none;
+    cursor: default;
+    pointer-events: none;
+  }
+  .btn__idle { display: inline-flex; align-items: center; gap: .12rem; }
+  .btn__busy { display: none; align-items: center; gap: .12rem; letter-spacing: .1em; }
+  .card--remote[data-state="connecting"] .btn__idle { display: none; }
+  .card--remote[data-state="connecting"] .btn__busy { display: inline-flex; }
+  .spin {
+    flex: none;
+    width: .18rem;
+    height: .18rem;
+    border-radius: 50%;
+    border: 2px solid rgba(78, 216, 175, .22);
+    border-top-color: var(--mint-500);
+    animation: spin 900ms linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .card--remote[data-state="connecting"] .field__box {
+    background: rgba(5, 7, 6, .55);
+    border-color: var(--line);
+    box-shadow: none;
+  }
+  .card--remote[data-state="connecting"] .field__input {
+    color: var(--text-md);
+    caret-color: transparent;
+    pointer-events: none;
+  }
+
+  /* ---- 底栏：状态行 --------------------------------------------------------------------- */
+  .start-foot {
+    flex: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 .44rem .14rem;
+  }
+  .status {
+    min-height: 1.2em;
+    font-family: var(--font-cjk);
+    font-size: var(--fs-hint);
+    letter-spacing: .02em;
+    color: var(--text-dim);
+    text-align: center;
+    user-select: text;
+  }
+  .status[data-tone="busy"] { color: var(--gold); }
+  .status[data-tone="error"] { color: #ff8a80; }
+
+  /* ---- 紧凑档：窄 / 矮窗口（792×360、900×620 这类） --------------------------------------
+     设计稿的 rem 档在这个尺寸把正文压到 6.8px、按钮压到 22px；这里换成 px 字号与 ≥32px 的
+     点击高度，布局、配色、卡片、发光、焦点态一律不变，两卡仍并排。1280×720 及其以上不进这一档。 */
+  @media (max-width: 1120px), (max-height: 700px) {
+    :root {
+      --fs-micro: 10px;
+      --fs-brand: 16px;
+      --fs-ver: 11px;
+      --fs-idx: 18px;
+      --fs-title: 16px;
+      --fs-desc: 11.5px;
+      --fs-meta: 11px;
+      --fs-meta-num: 11.5px;
+      --fs-note: 10.5px;
+      --fs-hint: 10px;
+      --fs-field: 12px;
+      --fs-field-ph: 11.5px;
+      --fs-btn: 14px;
+      --h-btn: 34px;
+      --h-field: 32px;
+      --gap-card: 8px;
+      --pad-card: 12px 14px;
+      --pad-top: 8px 16px 0;
+      --pad-main: 8px 16px 6px;
+      --gap-cards: 12px;
+    }
+    body { font-size: 12px; }
+    .card__top { gap: 8px; }
+    .card__head { gap: 4px; }
+    .card__foot { padding-top: 10px; gap: 6px; }
+    .card__field, .field { gap: 2px; }
+    .field__box { padding: 0 10px; }
+    .brand { gap: 2px; }
+    .brand__row { gap: 8px; }
+    .start-foot { padding: 0 16px 6px; }
+    .btn--lg { padding: 0 14px; letter-spacing: .1em; }
+    .field__link { padding: 0 4px; }
+    .spin { width: 12px; height: 12px; }
+  }
+
+  /* 减动效：呼吸 / 扫描线 / 转圈与全部 transition 关掉 */
+  @media (prefers-reduced-motion: reduce) {
+    .card--local,
+    .card__tex,
+    .spin { animation: none; }
+    .btn,
+    .btn::after,
+    .field__box,
+    .field__link { transition: none; }
+  }
+</style>
+</head>
+<body>
+  <div class="app-root">
+    <div class="app-bg" aria-hidden="true">
+      <span class="app-photo"></span>
+      <span class="app-grid"></span>
+    </div>
+    <span class="cross" style="left:6%;top:20%" aria-hidden="true"></span>
+    <span class="cross" style="left:94%;top:34%" aria-hidden="true"></span>
+    <span class="cross" style="left:9%;top:74%" aria-hidden="true"></span>
+    <span class="cross" style="left:91%;top:68%" aria-hidden="true"></span>
+
+    <div class="screen start">
+      <header class="start-top">
+        <div class="brand">
+          <!-- i18n-ignore: 复用旧版页头的既有字符串，不是新文案 -->
+          <span class="micro micro--mint">网络与服务器设置</span>
+          <div class="brand__row">
+            <h1 class="brand__title">卫戍协议<span class="brand__colon">：</span><em>盟约</em></h1>
+            <span class="brand__ver num" id="ver"></span>
+          </div>
+        </div>
+      </header>
+
+      <main class="start-main">
+        <div class="start-cards">
+          <!-- 左卡 · 本机（主档；.card--default 由冒烟脚本判定高亮） -->
+          <section class="card card--local card--default" aria-labelledby="local-title">
+            <div class="card__head">
+              <div class="card__top">
+                <span class="card__idx" aria-hidden="true">01</span>
+                <!-- i18n-ignore: 技术眉题（设计稿 LOCAL // SERVER），纯装饰，不进翻译 -->
+                <span class="micro micro--eyebrow" aria-hidden="true">LOCAL // SERVER</span>
+              </div>
+              <h2 class="card__title" id="local-title">单人单机模式</h2>
+            </div>
+            <!-- i18n-ignore: 设计稿说明句，仓库无对应 t() -->
+            <p class="card__desc">在本机启动服务端并直接进入游戏。</p>
+            <div class="card__meta">
+              <span>内置服务</span>
+              <span class="num" id="local-addr">127.0.0.1:3000</span>
+            </div>
+            <div class="card__foot">
+              <button type="button" class="btn btn--primary btn--lg btn--block card__action" id="btn-local">确认切换</button>
+              <!-- i18n-ignore: 设计稿说明句，仓库无对应 t() -->
+              <p class="card__note">无需联网，本机运行独立 Node 引擎 · 进度完全保存在本地</p>
+            </div>
+            <span class="card__tex" aria-hidden="true"></span>
+          </section>
+
+          <!-- 右卡 · 远程（副） -->
+          <section class="card card--remote" id="remote-card" data-state="idle" aria-labelledby="remote-title">
+            <div class="card__head">
+              <div class="card__top">
+                <span class="card__idx" aria-hidden="true">02</span>
+                <!-- i18n-ignore: 技术眉题（设计稿 REMOTE // RELAY），纯装饰，不进翻译 -->
+                <span class="micro micro--eyebrow" aria-hidden="true">REMOTE // RELAY</span>
+              </div>
+              <h2 class="card__title" id="remote-title">远程联机模式</h2>
+            </div>
+            <p class="card__desc">连接到指定服务器</p>
+            <div class="card__field">
+              <label class="field" for="remote-url">
+                <span class="field__box">
+                  <input class="field__input" id="remote-url" type="text" inputmode="url" spellcheck="false" autocomplete="off"
+                         aria-label="远程服务器地址"
+                         placeholder="例如: http://121.4.51.247/、100.127.8.41:3000 或 192.168.1.100:3000" />
+                </span>
+              </label>
+              <p class="field__hint">
+                <!-- i18n-ignore: 设计稿的「备用：」前缀，仓库无对应 t() -->
+                <span>备用：</span><button class="field__link" id="btn-backup" type="button"></button>
+              </p>
+            </div>
+            <div class="card__foot">
+              <button type="button" class="btn btn--lg btn--block card__action" id="btn-remote">
+                <span class="btn__idle">确认切换</span>
+                <!-- i18n-ignore: 连接中态（设计稿），仓库无对应 t() -->
+                <span class="btn__busy"><span class="spin" aria-hidden="true"></span>连接中…</span>
+              </button>
+              <!-- i18n-ignore: 设计稿说明句（把「连接」改成页面上真实存在的按钮文案），仓库无对应 t() -->
+              <p class="card__note">连不上会回到这一页，地址会留着，改完再点「确认切换」。</p>
+            </div>
+            <span class="card__tex" aria-hidden="true"></span>
+          </section>
+        </div>
+      </main>
+
+      <footer class="start-foot">
+        <p class="status" id="status" role="status" aria-live="polite"></p>
+      </footer>
+    </div>
+  </div>
+
+<script>
+  const $ = (id) => document.getElementById(id);
+  const status = $('status');
+  const btnLocal = $('btn-local');
+  const btnRemote = $('btn-remote');
+  const urlInput = $('remote-url');
+  const backup = $('btn-backup');
+  const remoteCard = $('remote-card');
+
+  const say = (text, tone) => {
+    status.textContent = text || '';
+    if (tone) status.setAttribute('data-tone', tone); else status.removeAttribute('data-tone');
+  };
+
+  const remoteState = (state) => {
+    remoteCard.setAttribute('data-state', state);
+    urlInput.readOnly = state === 'connecting';
+  };
+
+  (async () => {
+    const info = await window.desktop.info();
+    $('ver').textContent = 'v' + info.version;
+    $('local-addr').textContent = info.local.replace(/^https?:\/\//, '').replace(/\/$/, '');
+    urlInput.value = info.remote;
+    backup.textContent = info.backup;
+    // 设计稿的默认档在本机卡：打开即聚焦主按钮（不是远程地址框）。
+    btnLocal.focus();
+  })();
+
+  btnLocal.addEventListener('click', async () => {
+    btnLocal.disabled = true;
+    say('正在启动本地作战引擎…', 'busy');
+    try {
+      const result = await window.desktop.startLocal();
+      // 成功：进大厅（主进程只启动服务并回报 url，跳转由本页做）。失败：留在本页、错误态、按钮恢复可用重试。
+      if (result && result.ok && result.url) { location.href = result.url; return; }
+      btnLocal.disabled = false;
+      say((result && result.error) || 'failed', 'error');
+    } catch (cause) {
+      btnLocal.disabled = false;
+      say(String((cause && cause.message) || cause || 'failed'), 'error');
+    }
+  });
+
+  // 远程：导航由主进程负责（main.mjs 的 connect-remote 自己 await win.loadURL(url.href)），这里不再跳第二次。
+  btnRemote.addEventListener('click', async () => {
+    btnRemote.disabled = true;
+    remoteState('connecting');
+    say('', '');
+    try {
+      const result = await window.desktop.connectRemote(urlInput.value);
+      if (result && result.ok) return;
+      btnRemote.disabled = false;
+      remoteState('idle');
+      say((result && result.error) || 'failed', 'error');
+    } catch (cause) {
+      btnRemote.disabled = false;
+      remoteState('idle');
+      say(String((cause && cause.message) || cause || 'failed'), 'error');
+    }
+  });
+
+  backup.addEventListener('click', async () => {
+    const info = await window.desktop.info();
+    urlInput.value = info.backup;
+    btnRemote.click();
+  });
+
+  urlInput.addEventListener('keydown', (event) => {
+    if (event.key === 'Enter') btnRemote.click();
+  });
+</script>
+</body>
+</html>

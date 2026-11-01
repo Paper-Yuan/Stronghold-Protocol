@@ -1,0 +1,611 @@
+{
+  "at": "2026-10-31T16:50:04.463Z",
+  "server": "http://127.0.0.1:54390",
+  "run792": {
+    "viewport": "792x360",
+    "frames": [],
+    "tried": 1,
+    "geometry": {
+      "vw": 792,
+      "vh": 360,
+      "dpr": 1,
+      "rem": 40,
+      "t": "1rem",
+      "bar": {
+        "l": 503.06,
+        "t": 98.39,
+        "r": 744,
+        "b": 122.39,
+        "w": 240.94,
+        "h": 24
+      },
+      "bonds": {
+        "l": 319.88,
+        "t": 54.39,
+        "r": 472.12,
+        "b": 85.58,
+        "w": 152.23,
+        "h": 31.19
+      },
+      "teamsBox": {
+        "l": 8,
+        "t": 94.39,
+        "r": 96,
+        "b": 202.39,
+        "w": 88,
+        "h": 108
+      },
+      "corner": {
+        "l": 9.59,
+        "t": 316.41,
+        "r": 119.59,
+        "b": 350.41,
+        "w": 110,
+        "h": 34
+      },
+      "effects": {
+        "l": 755.28,
+        "t": 96,
+        "r": 780,
+        "b": 124.47,
+        "w": 24.72,
+        "h": 28.47
+      },
+      "shopbar": null,
+      "gtop": {
+        "l": 0,
+        "t": 0,
+        "r": 792,
+        "b": 42,
+        "w": 792,
+        "h": 42
+      },
+      "teams": [
+        {
+          "l": 8,
+          "t": 94.39,
+          "r": 96,
+          "b": 126.39,
+          "w": 88,
+          "h": 32
+        },
+        {
+          "l": 8,
+          "t": 132.39,
+          "r": 96,
+          "b": 164.39,
+          "w": 88,
+          "h": 32
+        },
+        {
+          "l": 8,
+          "t": 170.39,
+          "r": 96,
+          "b": 202.39,
+          "w": 88,
+          "h": 32
+        }
+      ],
+      "parts": {
+        "phase": {
+          "l": 510.45,
+          "t": 103.19,
+          "r": 550.39,
+          "b": 117.58,
+          "w": 39.94,
+          "h": 14.39
+        },
+        "who": {
+          "l": 555.98,
+          "t": 102.39,
+          "r": 591.98,
+          "b": 118.39,
+          "w": 36,
+          "h": 16
+        },
+        "whoCount": 2,
+        "txt": {
+          "l": 597.58,
+          "t": 103.19,
+          "r": 635.98,
+          "b": 117.58,
+          "w": 38.41,
+          "h": 14.39
+        },
+        "count": {
+          "l": 641.58,
+          "t": 103.19,
+          "r": 687.83,
+          "b": 117.58,
+          "w": 46.25,
+          "h": 14.39
+        },
+        "state": {
+          "l": 693.42,
+          "t": 101.19,
+          "r": 736.61,
+          "b": 119.58,
+          "w": 43.19,
+          "h": 18.39
+        }
+      },
+      "texts": [
+        "联防阶段",
+        "",
+        "队内联防",
+        "剩余敌人 8",
+        "联防中"
+      ],
+      "style": {
+        "pointerEvents": "none",
+        "background": "rgba(8, 11, 10, 0.72)",
+        "border": "1px solid rgba(79, 232, 192, 0.42)",
+        "boxShadow": "rgb(79, 232, 192) 2px 0px 0px 0px inset",
+        "width": "240.938px",
+        "maxWidth": "360px",
+        "height": "24px",
+        "phaseFont": "9.6px",
+        "textFont": "9.6px",
+        "scrollW": 239,
+        "clientW": 239
+      },
+      "overlaps": {
+        "bonds": 0,
+        "teams": 0,
+        "corner": 0,
+        "effects": 0,
+        "shopbar": null,
+        "gtop": 0,
+        "team[0]": 0,
+        "team[1]": 0,
+        "team[2]": 0
+      },
+      "inside": true,
+      "margins": {
+        "left": 503.06,
+        "top": 98.39,
+        "right": 48,
+        "bottom": 237.61
+      },
+      "centerOverlap": 738.78
+    },
+    "ellipsis": {
+      "longName": "跨队联防·灰烬航线·第二夜·永夜观测站·第十二号要塞·北境联合防线",
+      "textOverflow": "ellipsis",
+      "whiteSpace": "nowrap",
+      "ellipsisActive": true,
+      "txtScrollW": 317,
+      "txtClientW": 157,
+      "barBefore": {
+        "l": 503.06,
+        "r": 744,
+        "w": 240.94,
+        "h": 24
+      },
+      "barAfter": {
+        "l": 384,
+        "r": 744,
+        "w": 360,
+        "h": 24
+      },
+      "barGrew": 119.06,
+      "barWithinCap": true,
+      "countRects": {
+        "before": {
+          "l": 641.58,
+          "r": 687.83,
+          "w": 46.25,
+          "h": 14.39
+        },
+        "after": {
+          "l": 641.58,
+          "r": 687.83,
+          "w": 46.25,
+          "h": 14.39
+        }
+      },
+      "countInsideBar": true,
+      "countShrink": 0,
+      "countClipped": false,
+      "countText": "剩余敌人 8",
+      "countFlex": "0 0 auto",
+      "countNowrap": "nowrap",
+      "txtMinWidth": "0px"
+    },
+    "frame": {
+      "phase": "UNITE",
+      "round": 1,
+      "stage": "team",
+      "maxSeats": 12,
+      "uniteEl": 1,
+      "screen": "game",
+      "roomStart": false,
+      "briefGo": false,
+      "bands": 0,
+      "draftConfirm": false,
+      "spDraft": false,
+      "spArmed": false,
+      "canReady": false,
+      "ready": true,
+      "readyBtn": null,
+      "modal": null
+    },
+    "pre": {
+      "phase": "UNITE",
+      "round": 1,
+      "stage": "team",
+      "maxSeats": 12,
+      "uniteEl": 1,
+      "screen": "game",
+      "roomStart": false,
+      "briefGo": false,
+      "bands": 0,
+      "draftConfirm": false,
+      "spDraft": false,
+      "spArmed": false,
+      "canReady": false,
+      "ready": true,
+      "readyBtn": null,
+      "modal": null
+    },
+    "post": {
+      "phase": "UNITE",
+      "round": 1,
+      "stage": "team",
+      "maxSeats": 12,
+      "uniteEl": 1,
+      "screen": "game",
+      "roomStart": false,
+      "briefGo": false,
+      "bands": 0,
+      "draftConfirm": false,
+      "spDraft": false,
+      "spArmed": false,
+      "canReady": false,
+      "ready": true,
+      "readyBtn": null,
+      "modal": null
+    },
+    "trail": [
+      {
+        "at": 12.1,
+        "phase": "INFO_CHECK",
+        "round": 0,
+        "act": ".brief-go"
+      },
+      {
+        "at": 12.4,
+        "phase": "BAND_DRAFT",
+        "round": 0,
+        "act": ".dband:not(.is-taken)"
+      },
+      {
+        "at": 12.6,
+        "phase": "BAND_DRAFT",
+        "round": 0,
+        "act": ".draft-confirm"
+      },
+      {
+        "at": 12.9,
+        "phase": "BATTLE_CHECK",
+        "round": 0,
+        "act": "wait"
+      },
+      {
+        "at": 13.3,
+        "phase": "BATTLE_CHECK",
+        "round": 0,
+        "act": "wait"
+      },
+      {
+        "at": 13.7,
+        "phase": "ROUND_START",
+        "round": 1,
+        "act": "wait"
+      },
+      {
+        "at": 14.1,
+        "phase": "ROUND_START",
+        "round": 1,
+        "act": "wait"
+      },
+      {
+        "at": 14.9,
+        "phase": "PREP",
+        "round": 1,
+        "act": ".readybtn → modal:准备就绪"
+      }
+    ]
+  },
+  "run1920": {
+    "viewport": "1920x1080",
+    "frames": [],
+    "tried": 1,
+    "geometry": {
+      "vw": 1920,
+      "vh": 1080,
+      "dpr": 1,
+      "rem": 100,
+      "t": "1rem",
+      "bar": {
+        "l": 1200.55,
+        "t": 246,
+        "r": 1800,
+        "b": 306,
+        "w": 599.45,
+        "h": 60
+      },
+      "bonds": {
+        "l": 812.52,
+        "t": 136,
+        "r": 1107.48,
+        "b": 214,
+        "w": 294.97,
+        "h": 78
+      },
+      "teamsBox": {
+        "l": 20,
+        "t": 236,
+        "r": 240,
+        "b": 506,
+        "w": 220,
+        "h": 270
+      },
+      "corner": {
+        "l": 24,
+        "t": 1000,
+        "r": 278,
+        "b": 1056,
+        "w": 254,
+        "h": 56
+      },
+      "effects": {
+        "l": 1828.2,
+        "t": 240,
+        "r": 1890,
+        "b": 311.19,
+        "w": 61.8,
+        "h": 71.19
+      },
+      "shopbar": null,
+      "gtop": {
+        "l": 0,
+        "t": 0,
+        "r": 1920,
+        "b": 104.8,
+        "w": 1920,
+        "h": 104.8
+      },
+      "teams": [
+        {
+          "l": 20,
+          "t": 236,
+          "r": 240,
+          "b": 316,
+          "w": 220,
+          "h": 80
+        },
+        {
+          "l": 20,
+          "t": 331,
+          "r": 240,
+          "b": 411,
+          "w": 220,
+          "h": 80
+        },
+        {
+          "l": 20,
+          "t": 426,
+          "r": 240,
+          "b": 506,
+          "w": 220,
+          "h": 80
+        }
+      ],
+      "parts": {
+        "phase": {
+          "l": 1217.55,
+          "t": 258,
+          "r": 1317.39,
+          "b": 294,
+          "w": 99.84,
+          "h": 36
+        },
+        "who": {
+          "l": 1331.39,
+          "t": 256,
+          "r": 1421.39,
+          "b": 296,
+          "w": 90,
+          "h": 40
+        },
+        "whoCount": 2,
+        "txt": {
+          "l": 1435.39,
+          "t": 258,
+          "r": 1531.39,
+          "b": 294,
+          "w": 96,
+          "h": 36
+        },
+        "count": {
+          "l": 1545.39,
+          "t": 258,
+          "r": 1661,
+          "b": 294,
+          "w": 115.61,
+          "h": 36
+        },
+        "state": {
+          "l": 1675,
+          "t": 253,
+          "r": 1783,
+          "b": 299,
+          "w": 108,
+          "h": 46
+        }
+      },
+      "texts": [
+        "联防阶段",
+        "",
+        "队内联防",
+        "剩余敌人 5",
+        "联防中"
+      ],
+      "style": {
+        "pointerEvents": "none",
+        "background": "rgba(8, 11, 10, 0.72)",
+        "border": "1px solid rgba(79, 232, 192, 0.42)",
+        "boxShadow": "rgb(79, 232, 192) 2px 0px 0px 0px inset",
+        "width": "599.453px",
+        "maxWidth": "900px",
+        "height": "60px",
+        "phaseFont": "24px",
+        "textFont": "24px",
+        "scrollW": 597,
+        "clientW": 597
+      },
+      "overlaps": {
+        "bonds": 0,
+        "teams": 0,
+        "corner": 0,
+        "effects": 0,
+        "shopbar": null,
+        "gtop": 0,
+        "team[0]": 0,
+        "team[1]": 0,
+        "team[2]": 0
+      },
+      "inside": true,
+      "margins": {
+        "left": 1200.55,
+        "top": 246,
+        "right": 120,
+        "bottom": 774
+      },
+      "centerOverlap": 0
+    },
+    "frame": {
+      "phase": "UNITE",
+      "round": 1,
+      "stage": "team",
+      "maxSeats": 12,
+      "uniteEl": 1,
+      "screen": "game",
+      "roomStart": false,
+      "briefGo": false,
+      "bands": 0,
+      "draftConfirm": false,
+      "spDraft": false,
+      "spArmed": false,
+      "canReady": false,
+      "ready": true,
+      "readyBtn": null,
+      "modal": null
+    },
+    "pre": {
+      "phase": "UNITE",
+      "round": 1,
+      "stage": "team",
+      "maxSeats": 12,
+      "uniteEl": 1,
+      "screen": "game",
+      "roomStart": false,
+      "briefGo": false,
+      "bands": 0,
+      "draftConfirm": false,
+      "spDraft": false,
+      "spArmed": false,
+      "canReady": false,
+      "ready": true,
+      "readyBtn": null,
+      "modal": null
+    },
+    "post": {
+      "phase": "UNITE",
+      "round": 1,
+      "stage": "team",
+      "maxSeats": 12,
+      "uniteEl": 1,
+      "screen": "game",
+      "roomStart": false,
+      "briefGo": false,
+      "bands": 0,
+      "draftConfirm": false,
+      "spDraft": false,
+      "spArmed": false,
+      "canReady": false,
+      "ready": true,
+      "readyBtn": null,
+      "modal": null
+    },
+    "trail": [
+      {
+        "at": 30.5,
+        "phase": "INFO_CHECK",
+        "round": 0,
+        "act": ".brief-go"
+      },
+      {
+        "at": 30.8,
+        "phase": "BAND_DRAFT",
+        "round": 0,
+        "act": ".dband:not(.is-taken)"
+      },
+      {
+        "at": 31.1,
+        "phase": "BAND_DRAFT",
+        "round": 0,
+        "act": ".draft-confirm"
+      },
+      {
+        "at": 31.4,
+        "phase": "BATTLE_CHECK",
+        "round": 0,
+        "act": "wait"
+      },
+      {
+        "at": 31.8,
+        "phase": "BATTLE_CHECK",
+        "round": 0,
+        "act": "wait"
+      },
+      {
+        "at": 32.2,
+        "phase": "ROUND_START",
+        "round": 1,
+        "act": "wait"
+      },
+      {
+        "at": 32.6,
+        "phase": "ROUND_START",
+        "round": 1,
+        "act": "wait"
+      },
+      {
+        "at": 33.4,
+        "phase": "PREP",
+        "round": 1,
+        "act": ".readybtn → modal:准备就绪"
+      }
+    ]
+  },
+  "shots": [
+    {
+      "file": "room12-unite-on-792x360.png",
+      "bytes": 453227,
+      "w": 792,
+      "h": 360,
+      "sha256": "c2e98aa6f279a4148315ecba6ef6612e2702b04f1fb5c01dae413179300ff59e"
+    },
+    {
+      "file": "room12-unite-on-1920x1080.png",
+      "bytes": 2561661,
+      "w": 1920,
+      "h": 1080,
+      "sha256": "b2244ce64c844a9b6864661c30dce6ea3d9055c837b7764e5a557fb21a3cb709"
+    }
+  ],
+  "errors": [],
+  "dialogs": []
+}

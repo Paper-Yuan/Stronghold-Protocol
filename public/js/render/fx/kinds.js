@@ -90,6 +90,30 @@ export const FX_KINDS = Object.freeze({
   // bonds / garrisons (support/index.js fxOn)
   bondMilestone: { a: 'buff', c: 0xffc600 }, bondProc: { a: 'buff', c: 0x4ed8af }, bondShare: { a: 'wave', c: 0x4ed8af },
   garrison: { a: 'buff', c: 0x4ed8af }, layer: { a: 'buff', c: 0xffe066 }, sp: { a: 'sp', c: 0x6fd3ff },
+  // 炸惊模拟 (ZHAJING) + 颂乐人偶 (2026-10-28, ported with the 惊变 content). Every kind below is emitted by the sim and had
+  // no entry: without one they fell through to the keyword guess (an orange blast) or the generic sparkle, i.e. a 惊变 that
+  // freezes a unit drew a bang. Line numbers are deliberately absent — those content files are still moving.
+  //   jibianBing  「冰冰冰」content/jibian.js（攻击附带减速）— the cold ring, like 寒潮
+  jibianBing: { a: 'chill', c: 0x9fe6ff },
+  //   heartsteel 「钢化你心」content/jibian.js（最大生命 → 攻击）— the HP carry-over plate
+  heartsteel: { a: 'shield', c: 0xffd45a },
+  //   greatseal 「伟大封印」content/jibian.js（处决血量最高的敌人）— a hard strike, not a blast
+  greatseal: { a: 'strike', c: 0xff3b30 },
+  //   goldenCopy 「斗蛐蛐」content/ejibian.js（复刻我方一个单位，画成金色）
+  goldenCopy: { a: 'summon', c: 0xffc600 },
+  //   adapt 「适应」content/ejibian.js（敌人长成新形态）
+  adapt: { a: 'buff', c: 0x9dff6a },
+  //   颂乐人偶 (Mujica), see the long note below: mujicaNote = 丰川祥子的音符 (kits/shared/mujicaNotes.js), a PERSISTENT entity
+  //   (`noteId` + state spawn / move / hit / end) — the entry here is the per-event stopgap, fxSpec narrows it by `state`;
+  //   mujicaFever = Fever 开启 (content/mujica.js, a wide magenta pulse; `vocal` = all five on stage);
+  //   mujicaSound = the pack's audio-bank trigger (kits/shared/mujica.js, deliberately unported — 0.3.3 has no sim-driven
+  //   sound kind) — that one draws nothing.
+  mujicaNote: { a: 'buff', c: 0xf07ac0, r: 0.6 },
+  mujicaFever: { a: 'wave', c: 0xff6ad0, r: 1.5 },
+  mujicaSound: { a: 'none', c: 0xffffff },
+  //   makotoSees 「S.E.E.S.」kits/ops/chess_zj_60_5-makoto.js（结城理；该 kit 刚随 content 落地）— its official prefab is bound in
+  //   render/vfx/skills.js, this is the fallback while the official art is off — never the orange blast the guess gave it
+  makotoSees: { a: 'wave', c: 0x5fe0ff, r: 1.5 },
 });
 
 /** Keyword guesses for kinds added later (checked in order), before the generic sparkle. */
@@ -111,6 +135,15 @@ const SILENT_PHASES = new Set(['bombed', 'warning']);
 export function fxSpec(kind, extra = {}) {
   const k = typeof kind === 'string' ? kind : '';
   if (k === 'phase' && SILENT_PHASES.has(extra && extra.kind)) return { a: 'none', c: 0xffffff };
+  // 丰川祥子的音符 (kits/shared/mujicaNotes.js) is a PERSISTENT entity: one `noteId` sends spawn, ~10 move events a second,
+  // then hit / end. There is no note renderer yet (a paired projectile keyed by `noteId` is the next round's work in
+  // render/fx), so this narrows the per-event stopgap by the state the sim sends: `move` = the dim mote that leaves the
+  // trail, `hit` = the spark, `end` = nothing (without this a disappearing note popped like a small blast).
+  if (k === 'mujicaNote') {
+    const st = extra && extra.state;
+    if (st === 'end') return { a: 'none', c: 0xffffff };
+    if (st === 'hit') return { a: 'crit', c: 0xf07ac0 };
+  }
   let spec = FX_KINDS[k];
   if (!spec) {
     const g = FX_GUESS.find(([re]) => re.test(k));

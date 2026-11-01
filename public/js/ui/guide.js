@@ -67,6 +67,11 @@ export function guidePages() {
  * @returns {{ kind: 'image', src: string } | { kind: 'tips' }}
  */
 export function guideStage(page, failed) {
+  // a caller's own page (a play set's 攻略说明) has a ready `url` and no manifest copies: one URL, and a failure is a
+  // failure (there is no mirror to fall back to)
+  if (page && typeof page.url === 'string' && !Array.isArray(page.urls)) {
+    return failed && failed.has(page.url) ? { kind: 'tips' } : { kind: 'image', src: page.url };
+  }
   const src = page ? nextArtUrl(page.urls, failed) : null;
   return src ? { kind: 'image', src } : { kind: 'tips' };
 }
@@ -84,17 +89,27 @@ export function guidePreloadUrl(pages, i, failed) {
   return nextArtUrl(pages[(((i + 1) % n) + n) % n]?.urls, failed);
 }
 
-/** Open/closed + current page. */
-export const guideStore = createStore({ open: false, page: 0 });
+/** Open/closed + current page. `pages` set = a caller's own page list (a play set's 攻略说明), null = the mode's own. */
+export const guideStore = createStore({ open: false, page: 0, pages: null });
 
-/** Open the viewer (optionally at a page index). */
-export function openGuide(page = 0) {
+/**
+ * Open the viewer (optionally at a page index).
+ * @param {number} [page] page index within the list shown
+ * @param {Array<{ key: string, title: string, url: string }>} [pages] another page list to show instead of the official
+ *   19 — a play set's own 攻略说明 (docs/EXTENSION_MODE.md). Its pages carry a ready `url`, so no manifest lookup runs.
+ */
+export function openGuide(page = 0, pages = null) {
+  if (Array.isArray(pages) && pages.length) {
+    guideStore.set({ open: true, page: Math.max(0, page | 0), pages });
+    return;
+  }
   data.load('local');
   data.load('assets');
   data.load('config');
-  guideStore.set({ open: true, page: Math.max(0, page | 0) });
+  guideStore.set({ open: true, page: Math.max(0, page | 0), pages: null });
 }
-export const closeGuide = () => guideStore.set({ open: false });
+/** Close the viewer and forget any caller's own page list, so the next 玩法说明 is the mode's own guide again. */
+export const closeGuide = () => guideStore.set({ open: false, pages: null });
 
 /** Standard 玩法说明 trigger button. */
 export function GuideButton({ class: cls, size = 'sm', variant = 'ghost', label = t('玩法说明'), square = false }) {
@@ -122,9 +137,11 @@ function TipsFallback() {
 
 /** The viewer (mounted once near the root). */
 export function GuideHost() {
-  const { open, page } = useStore((s) => s, Object.is, guideStore);
+  const { open, page, pages: ownPages } = useStore((s) => s, Object.is, guideStore);
   const ready = useData('local', 'assets', 'config');
-  const pages = useMemo(() => (ready ? guidePages() : []), [ready]);
+  // a caller's own list (a play set's 攻略说明) replaces the official 19 outright — it carries its own urls and titles,
+  // and it must not wait on the mode's art manifests
+  const pages = useMemo(() => (Array.isArray(ownPages) && ownPages.length ? ownPages : (ready ? guidePages() : [])), [ready, ownPages]);
   const [loaded, setLoaded] = useState(() => new Set());
   const [failed, setFailed] = useState(() => new Set());
   const boxRef = useRef(null);

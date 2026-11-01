@@ -11,7 +11,8 @@ export function roomStatus(room, serverNow) {
   // Read the last published frame: querying must not calculate a new match view or expose unbroadcast progress.
   const pub = inMatch && room.matchCtx?.lastPublic ? JSON.parse(room.matchCtx.lastPublic) : null;
   const players = new Map((pub?.players || []).map((p) => [p.playerId, p]));
-  const capacity = isSoloRoomMode(room.mode) ? 1 : MAX_SEATS;
+  // 房间人数 (room.setSeats): the room's own capacity; a room that never raised it reads MAX_SEATS
+  const capacity = isSoloRoomMode(room.mode) ? 1 : (Number.isInteger(room.maxSeats) ? room.maxSeats : MAX_SEATS);
   const seats = room.seats.slice(0, capacity).map((s) => {
     if (!s) return null;
     const p = players.get(s.playerId);
@@ -44,7 +45,7 @@ function botRoomSummary(room) {
   const host = room.seatOf(room.hostId);
   return {
     code: room.code, mode: room.mode, difficulty: room.difficulty,
-    playerCount: seats.length, maxPlayers: isSoloRoomMode(room.mode) ? 1 : MAX_SEATS,
+    playerCount: seats.length, maxPlayers: isSoloRoomMode(room.mode) ? 1 : (Number.isInteger(room.maxSeats) ? room.maxSeats : MAX_SEATS),
     status: room.match ? 'playing' : 'waiting',
     hostName: host && !host.left ? host.name : null,
     players: seats.map(seat => seat.name),

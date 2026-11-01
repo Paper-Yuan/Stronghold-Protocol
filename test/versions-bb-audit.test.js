@@ -17,6 +17,11 @@ import {
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const QUIET = Object.freeze({ warn() {}, error() {}, info() {} });
+/** The reviewed registry of every remaining historical audit entry (docs/research/versions/blackboard-review.json). */
+const REVIEW = JSON.parse(readFileSync(new URL('../docs/research/versions/blackboard-review.json', import.meta.url), 'utf8'));
+/** An audit entry without its prose / read evidence — the identity both this file and the review registry compare. */
+const reviewIdentity = ({ reads, refs, nonNeutral, reason, ...entry }) => entry;
+const registered = (rel, kind) => (REVIEW.reports.find((r) => r.dir === rel)?.[kind] ?? []).map(reviewIdentity);
 const VERSION_DIRS = (() => {
   const out = [];
   const vdir = path.join(ROOT, 'data', 'versions');
@@ -168,9 +173,14 @@ const VERSION_ONLY = Object.freeze({
   'data/versions/act1autochess': VERSION_ONLY_SHANG, 'data/versions/act1autochess-v1_1': VERSION_ONLY_SHANG, 'data/versions/act2autochess-v2_1': VERSION_ONLY_V21,
 });
 // 第二期上半 V2_1's code-named keys it lacks: 远见's V2_2 discount (above), the trait type SERVER_ADD_MULTIPLE_BOND (V2_2's new
-// traits) and 奥术法阵's 失能 (silence_attachment, added on 2026-03-27: V2_1's 奥术法阵 does not silence, as the data says)
+// traits) and 奥术法阵's 失能 (silence_attachment, added on 2026-03-27: V2_1's 奥术法阵 does not silence, as the data says);
+// plus the 炸惊 play set merged into the default data afterwards (2026-10-31): its collaboration garrisons 颂乐人偶
+// (MUJICA_AMORIS / MUJICA_TMORIS) and two play-set garrison traits, and the 上半 levitate trait V2_1 never had.
 const MISSING_KEYS = Object.freeze({
-  'data/versions/act2autochess-v2_1': ['bond_multi_layer_char_goods_price_bond_discount', 'SERVER_ADD_MULTIPLE_BOND', 'silence_attachment'],
+  'data/versions/act2autochess-v2_1': [
+    'act1autochess_gar_levitate_once', 'act2autochess_gar_event_self_status', 'bond_multi_layer_char_goods_price_bond_discount',
+    'MUJICA_AMORIS', 'MUJICA_TMORIS', 'SERVER_ADD_MULTIPLE_BOND', 'silence_attachment',
+  ],
 });
 
 for (const dir of VERSION_DIRS) {
@@ -180,7 +190,10 @@ for (const dir of VERSION_DIRS) {
     const rel = path.relative(ROOT, dir).split(path.sep).join('/');
     if (MISSING_KEYS[rel]) assert.deepEqual(missingBuffKeys.map((k) => k.key), MISSING_KEYS[rel], `${rel}: code-named keys it lacks`);
     if (data.config?.season !== 'act1autochess') {
-      assert.deepEqual(findings, [], `${rel}: same-season data, no field gap`);
+      // Same-season data has no field gap — unless the default data gained a play set's fields after the version was
+      // frozen. Those are registered with a reason in docs/research/versions/blackboard-review.json (the registry the
+      // last test checks), never silently dropped.
+      assert.deepEqual(findings.map(reviewIdentity), registered(rel, 'findings'), `${rel}: same-season field gaps (registered)`);
       return;
     }
     const has = (key, field) => findings.find((f) => f.table === 'bonds' && f.key === key && f.field === field);
@@ -217,8 +230,7 @@ test('all remaining historical audit entries are documented, without suppressing
   for (const report of review.reports) {
     const actual = audit(getData({ log: QUIET }), loadData(path.join(ROOT, report.dir), { log: QUIET }), { reads, keys, names: NAMES });
     for (const kind of Object.keys(actual)) {
-      const identity = ({ reads, refs, nonNeutral, reason, ...entry }) => entry;
-      assert.deepEqual(actual[kind].map(identity), report[kind].map(identity), `${report.dir} ${kind}`);
+      assert.deepEqual(actual[kind].map(reviewIdentity), report[kind].map(reviewIdentity), `${report.dir} ${kind}`);
       for (const entry of report[kind]) assert.ok(entry.reason?.length > 20, `${report.dir} ${kind}: missing reason`);
     }
   }

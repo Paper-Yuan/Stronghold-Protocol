@@ -1,8 +1,11 @@
 // shared/infiniteMode.js — 超限模拟（无限模式）独立规则与数值公式
 // 保持 100% 独立解耦，纯 ESM，双端共用。
 
-/** 无限模式专用房间模式标识 */
+/** 无限模式专用房间模式标识（单人） */
 export const SOLO_INFINITE = 'solo_infinite';
+
+/** 超限模拟 · 同盟（2–4 人，业主 2026-10-26）：与单人同一套无限规则，数值按人数放大 */
+export const COOP_INFINITE = 'coop_infinite';
 
 /**
  * 超限模拟单次伤害限额（业主 2026-10-20：99,999,999 → 9,999,999,999）。
@@ -41,7 +44,24 @@ export function isSoloRoomMode(mode) {
  * @returns {boolean}
  */
 export function isInfiniteMode(mode) {
-  return mode === SOLO_INFINITE;
+  return mode === SOLO_INFINITE || mode === COOP_INFINITE;
+}
+
+/**
+ * 超限·同盟的人数倍率（业主 2026-10-26）：Boss 血池按人数放大，2 人 1.6×、3 人 2.2×、4 人 2.8×。
+ * 单人恒为 1；只用于 coop_infinite，不影响普通同盟。
+ * @param {number} n alive players
+ */
+export function partyBossHpMul(n) {
+  return 1 + 0.6 * Math.max(0, (Number(n) || 1) - 1);
+}
+
+/**
+ * 超限·同盟的普通波次数量倍率：2 人 1.15×、3 人 1.3×、4 人 1.45×。
+ * @param {number} n alive players
+ */
+export function partyWaveCountMul(n) {
+  return 1 + 0.15 * Math.max(0, (Number(n) || 1) - 1);
 }
 
 /**
@@ -58,11 +78,17 @@ export function getInfiniteCcResist(round) {
 }
 
 /**
+ * 一档敌方属性倍率 —— 战斗侧的 `enemyScale` 就是这个形状。
+ * `enemyInfiniteScale` 两种入参都收：按回合取倍率的函数，或者旧代码直接给的倍率对象（见下面的「向后兼容」）。
+ * @typedef {{ hpMul?: number, atkMul?: number, speedMul?: number, defMul?: number, resMul?: number }} EnemyScale
+ */
+
+/**
  * 敌方属性指数膨胀公式（分段式）
  * R1-R15: 使用终极模式（ABYSS）的逐回合曲线
  * R16+: 在 R15 基础上使用更高的指数增长
  * @param {number} round
- * @param {(round: number) => { hpMul?: number, atkMul?: number, speedMul?: number, defMul?: number, resMul?: number }} enemyScaleFn 获取指定回合倍率的函数
+ * @param {((round: number) => EnemyScale) | EnemyScale | null | undefined} enemyScaleFn 获取指定回合倍率的函数
  * @returns {{ hpMul: number, atkMul: number, speedMul: number, defMul: number, resMul: number }}
  */
 export function enemyInfiniteScale(round, enemyScaleFn) {

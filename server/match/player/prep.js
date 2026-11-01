@@ -8,6 +8,7 @@ import { ERR, PHASE } from '../../../shared/constants.js';
 import { freeSlot } from '../board.js';
 import { OK, fail } from './common.js';
 import { isMutationCell } from '../../sim/content/support/index.js';
+import { relicDraft } from '../relics.js';
 
 export class PlayerPrep {
   _gate({ allowWhenReady = false } = {}) {
@@ -68,6 +69,7 @@ export class PlayerPrep {
     if (!this.alive) return fail(ERR.ELIMINATED);
     if (this.m.phase !== PHASE.PREP) return fail(ERR.WRONG_PHASE);
     if (on && this.personalChoice) return fail(ERR.BAD_TARGET, '请先完成教鞭选择'); // i18n-ignore: developer error detail
+    if (on && this.gd.annihilation && relicDraft(this)) return fail(ERR.BAD_TARGET, '请先完成藏品选择'); // i18n-ignore: developer error detail
     if (on && !this.tempEmpty) return fail(ERR.TEMP_NOT_EMPTY);
     if (this.ready === !!on) return OK;
     this.ready = !!on;

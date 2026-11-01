@@ -13,6 +13,7 @@ import { groupEnemies, factionTypes, briefingBondTip } from './gameLogic.js';
 import { matchInfoModel, DiyBannedLine } from './matchInfo.js';
 import { factionIconUrl } from './assetUrls.js';
 import { data } from '../data.js';
+import { officialBonds } from './zjView.js';
 import { t, tParts, N_ } from '../../../shared/i18n.js';
 
 const cx = (...p) => p.flat().filter(Boolean).join(' ');
@@ -31,6 +32,9 @@ function EnemiesTab({ pub, priv, onEnemy }) {
   const f = data.get('factions')?.types || {};
   const total = rows.reduce((s, r) => s + r.count, 0);
   const boss = pub?.bossId ? data.lookup('bosses', pub.bossId) : null;
+  // 无尽湮灭的最终攻势随章节推进（引擎逐回合给 m.public.bossRound）；数据里的 mode.bossRound 是定值 19，不能排在它前面，
+  // 否则 R26（下一章 R29）、R33 之后的章节仍写「第 19 回合」。没有该键的旧帧才依次回落到数据 / lastRound / 14。
+  const finalRound = pub?.bossRound ?? data.get('config')?.modes?.[pub?.modeId]?.bossRound ?? pub?.lastRound ?? 14;
   return html`<div class="edrawer__body">
     <div class="edrawer__sum">
       <span>${tParts('第 {r} 回合 · 即将迎击 {n} 名敌人', { r: html`<b class="num">${pub?.round ?? '-'}</b>`, n: html`<b class="num t-orange">${total}</b>`, count: total })}</span>
@@ -55,14 +59,14 @@ function EnemiesTab({ pub, priv, onEnemy }) {
     ${boss ? html`<div class="eboss">
       <${UnitThumb} kind="enemy" id=${boss.enemyKey} size="md" />
       <div><${MicroLabel} tone="gold">${t('ENEMY LEADER // 敌方领袖')}</${MicroLabel}><b>${boss.name}</b>
-        <span class="t-lo">${t('第 {r} 回合 · 最终攻势', { r: data.get('config')?.modes?.[pub.modeId]?.bossRound ?? pub.lastRound ?? 14 })}</span></div>
+        <span class="t-lo">${t('第 {r} 回合 · 最终攻势', { r: finalRound })}</span></div>
     </div>` : null}
   </div>`;
 }
 
 function InfoTab({ pub, priv, onChess, bandId = null, bandOwner = null }) {
   const model = matchInfoModel(pub, {
-    bonds: data.list('bonds'), chess: (id) => data.lookup('chess', id), mode: data.get('config')?.modes?.[pub?.modeId],
+    bonds: officialBonds(data.list('bonds'), pub?.modeId ?? pub?.difficulty), chess: (id) => data.lookup('chess', id), mode: data.get('config')?.modes?.[pub?.modeId],
     // the own 自选 pieces this match leaves out of the shop (m.private.diyBanned) — not while scouting a teammate
     priv: bandOwner ? null : priv, diyData: { chess: data.get('chess'), backups: data.get('backups') },
   });

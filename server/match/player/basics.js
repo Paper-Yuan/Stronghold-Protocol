@@ -11,6 +11,7 @@ import { PHASE } from '../../../shared/constants.js';
 import { msg, dn } from '../../../shared/i18n.js';
 import { checkLoadout, checkLoadoutOps, cultivationCharIds, checkNotOwned, resolveLoadout, charPotentialChanges, checkSkinSelection, operatorCharIds } from '../../../shared/protocol.js';
 import { cultivationOf } from '../../../shared/potential.js';
+import { zjRosterIds } from '../../../shared/zhajingBase.js';
 import { tileKey, boardOrder } from '../board.js';
 
 /** The charIds a player may set a potential / 练度 for, per game-data object (shared/protocol.js cultivationCharIds). */
@@ -118,6 +119,73 @@ export class PlayerBasics {
   }
 
   /**
+   * 炸惊模拟 · 卡池调整: replace this player's PLAY-SET loadout profile (`room.loadout { mode: 'zhajing' }`). A separate
+   * field from `this.loadout` — the two never overwrite each other — validated against the mode's own roster
+   * (shared/zhajingBase.js zjRosterIds: those records are `visible:false`, so the official check refuses them all) and only
+   * accepted inside a ZHAJING match. An entry equal to the defaults is dropped, exactly like the official loadout.
+   * @param {any} loadout `{ [chessId]: { skill?, module? } }`
+   * @returns {boolean} false when this is not a 炸惊 match or the profile does not fit the roster (nothing changes)
+   */
+  setZjLoadout(loadout) {
+    if (this.isBot || !this.gd || !this.gd.zhajing) return false;
+    const entries = {};
+    if (loadout && typeof loadout === 'object' && !Array.isArray(loadout)) {
+      for (const [id, e] of Object.entries(loadout)) {
+        if (!e || typeof e !== 'object') continue;
+        const x = {};
+        if (Number.isInteger(e.skill)) x.skill = e.skill;
+        if (typeof e.module === 'string') x.module = e.module;
+        if (Object.keys(x).length) entries[id] = x;
+      }
+    }
+    const res = checkLoadout(entries, (id) => this.gd.chess(id), { roster: zjRosterIds(this.gd.raw.chess) });
+    if (!res || !res.ok) {
+      this.m.log?.warn?.(`[match ${this.m.roomCode}] zhajing loadout of ${this.playerId} ignored: ${res && res.detail}`);
+      return false;
+    }
+    const out = {};
+    for (const [id, e] of Object.entries(res.loadout)) out[id] = Object.freeze({ skill: e.skill, module: e.module ?? null });
+    this.zjLoadout = Object.freeze(out);
+    // NOTE: no `this.dirty()` here — this runs from the constructor (the seat's profile) where the view bookkeeping does
+    // not exist yet; Match.setLoadout / the lobby mark the private view themselves.
+    return true;
+  }
+
+  /**
+   * 湮灭模拟 · 卡池调整: replace this player's ANNIHILATION loadout profile (`room.loadout { mode: 'annihilation' }`).
+   * A THIRD field — `ps.loadout` (official), `ps.zjLoadout` (炸惊) and `ps.annLoadout` never overwrite each other — because
+   * the three rosters are different id spaces (炸惊's records are `visible:false` zj records; annihilation plays the
+   * official ones). Validated against this match's own roster (`gd.visibleChess`), and an entry equal to the record's
+   * defaults is dropped, exactly like the official profile. Only accepted inside an annihilation match.
+   * @param {any} loadout `{ [chessId]: { skill?, module? } }`
+   * @returns {boolean} false when this is not an annihilation match or the profile does not fit the roster
+   */
+  setAnnLoadout(loadout) {
+    if (this.isBot || !this.gd || !this.gd.annihilation) return false;
+    const entries = {};
+    if (loadout && typeof loadout === 'object' && !Array.isArray(loadout)) {
+      for (const [id, e] of Object.entries(loadout)) {
+        if (!e || typeof e !== 'object') continue;
+        const x = {};
+        if (Number.isInteger(e.skill)) x.skill = e.skill;
+        if (typeof e.module === 'string') x.module = e.module;
+        if (Object.keys(x).length) entries[id] = x;
+      }
+    }
+    const res = checkLoadout(entries, (id) => this.gd.chess(id), { roster: new Set(this.gd.visibleChess) });
+    if (!res || !res.ok) {
+      this.m.log?.warn?.(`[match ${this.m.roomCode}] annihilation loadout of ${this.playerId} ignored: ${res && res.detail}`);
+      return false;
+    }
+    const out = {};
+    for (const [id, e] of Object.entries(res.loadout)) out[id] = Object.freeze({ skill: e.skill, module: e.module ?? null });
+    this.annLoadout = Object.freeze(out);
+    // NOTE: no `this.dirty()` here — this also runs from the constructor (the seat's profile), where the view bookkeeping
+    // does not exist yet; Match.setLoadout / the lobby mark the private view themselves.
+    return true;
+  }
+
+  /**
    * The asset key of a chess piece's appearance: the operator's charId, else null (docs/SKINS.md).
    *
    * A skin is keyed by OPERATOR, not by chess: `chars[charId].skins` is where a cosmetic plugin's overlay writes one and
@@ -197,7 +265,15 @@ export class PlayerBasics {
     const rec = chessRecord && chessRecord.isDiy && typeof chessRecord.chessId === 'string' ? this.gd.chess(chessRecord.chessId) || chessRecord : chessRecord;
     // 0.2.2: with the operator's potential / 练度 (null for a prototype 自选 pick) — the 自选 summons' hand count reads it
     const cv = this.cultivationFor(chessRecord);
-    return { ...resolveLoadout(this.loadout, rec, (id) => this.gd.chess(id)), potential: cv ? cv.potential : null, cultivate: cv ? cv.cultivate : null };
+    // 炸惊模拟 · 卡池调整: the play set's own profile wins for the ids it mentions (its roster ids are disjoint from the
+    // official ones, so this is a plain override). An empty profile leaves `this.loadout` exactly as it was — zero drift
+    // for every other mode, and for a 炸惊 player who never opened 卡池调整.
+    const profile = this.gd && this.gd.zhajing && this.zjLoadout && Object.keys(this.zjLoadout).length
+      ? { ...this.loadout, ...this.zjLoadout }
+      : this.gd && this.gd.annihilation && this.annLoadout && Object.keys(this.annLoadout).length
+        ? { ...this.loadout, ...this.annLoadout }
+        : this.loadout;
+    return { ...resolveLoadout(profile, rec, (id) => this.gd.chess(id)), potential: cv ? cv.potential : null, cultivate: cv ? cv.cultivate : null };
   }
 
   /**
@@ -213,7 +289,17 @@ export class PlayerBasics {
       this.m.log?.warn?.(`[match ${this.m.roomCode}] not-owned list of ${this.playerId} ignored: ${res && res.detail}`);
       return false;
     }
-    const ids = res.notOwned.filter((id) => !!this.gd.standIn(id));
+    // 内容 mod 的棋（`annihilation` / `zhajing` 标记）只属于各自的玩法：官方房（或另一套玩法）里它既不该当补位、
+    // 也不该占 `notOwned`。它们 `visible:false`，但 `isDroppableChess` 只看 chessType/backup，所以少这一步过滤就会让
+    // 13 名湮灭干员混进官方补位单（业主 2026-10-30 的数据并入后暴露）。判据与 gamedata 的池子函数同源。
+    const foreignModRecord = (id) => {
+      const c = this.gd.chess(id);
+      if (!c) return false;
+      if (c.annihilation === true && !this.gd.annihilation) return true;
+      if (c.zhajing === true && !this.gd.zhajing) return true;
+      return false;
+    };
+    const ids = res.notOwned.filter((id) => !!this.gd.standIn(id) && !foreignModRecord(id));
     this.standIns = Object.freeze(ids);
     this._standInSet = new Set(ids);
     return true;
@@ -300,4 +386,64 @@ export class PlayerBasics {
   }
 
   dirty() { this.m.markPrivate(this); }
+
+  // ---- 炸惊模拟 (ZHAJING) 惊变 ------------------------------------------------------------------------------------
+  //
+  // A picked 惊变 is an ordinary effect ref whose `key` is `jibian:<effectId>` (server/match/choices.js applyDefault), so
+  // the 已选惊变 panel, the battle side (content/support hasJibian) and these helpers all read one place. Every helper
+  // below is total and simply answers "none" in a mode without 惊变.
+
+  /** Whether this player owns 惊变 card `effectId` (`jibian_…`). */
+  jibianHas(effectId) {
+    if (!effectId) return false;
+    return this.effects.some((e) => e && e.key === `jibian:${effectId}`);
+  }
+
+  /** How many copies of 惊变 `effectId` this player holds (a re-picked card stacks; 0 = none). */
+  jibianCount(effectId) {
+    if (!effectId) return 0;
+    return this.effects.filter((e) => e && e.key === `jibian:${effectId}`).length;
+  }
+
+  /** The ids of every 惊变 card this player owns (no duplicates, in pick order). */
+  jibianOwnedIds() {
+    const out = [];
+    for (const e of this.effects) {
+      const k = e && e.key;
+      if (typeof k !== 'string' || !k.startsWith('jibian:')) continue;
+      const id = k.slice('jibian:'.length);
+      if (id && !out.includes(id)) out.push(id);
+    }
+    return out;
+  }
+
+  /**
+   * 惊变 重抽 left in the open 惊变 draft — **the cards of this hand that can still be redrawn** (each card once, owner
+   * 2026-10-19: Match.refreshSpCard keys its record by card id and marks a redrawn card `rerolled`). 0 outside such a
+   * draft and for a player whose hand is not the one on the table, so the client can hide the button on a plain 机变.
+   */
+  jibianRerollsLeft() {
+    const s = this.m && this.m.sp;
+    if (!s || !s.jibian || !Array.isArray(s.cards)) return 0;
+    if (s.dealtFor && s.dealtFor !== this.playerId) return 0;
+    const used = s.rerolledBy && s.rerolledBy[this.playerId];
+    const taken = s.handTaken || null;
+    return s.cards.filter((c, i) => c && c.rerolled !== true && !(used && used.has(c.id))
+      && !(taken ? taken.has(i) : false)).length;
+  }
+
+  /** The 惊变 block of m.private: the cards this player owns plus the 重抽 left ([] without 惊变). */
+  jibianView() {
+    const cards = [];
+    for (const e of this.effects) {
+      if (!e || !e.jibian) continue;
+      cards.push({
+        key: e.key,
+        id: (e.data && e.data.effectId) || (typeof e.key === 'string' ? e.key.slice('jibian:'.length) : null),
+        name: e.name || e.id, desc: e.desc || '', rarity: e.rarity ?? null, flavor: e.flavor ?? null,
+        ...(e.bond ? { bond: e.bond } : null), ...(e.iconBond ? { iconBond: e.iconBond } : null),
+      });
+    }
+    return { cards, owned: this.jibianOwnedIds(), rerollsLeft: this.jibianRerollsLeft() };
+  }
 }

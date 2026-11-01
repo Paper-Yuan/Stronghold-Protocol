@@ -111,11 +111,30 @@ test('the committed data/assets.json lists every 自选 operator\'s avatar, port
   assert.equal(m.stats.modules, Object.keys(m.modules).length);
 });
 
-test('an operator left out of 自选 (data/backups.json diy.excluded: the collab picks, 焰狐龙梓兰 MH05 among them) keeps no art in data/assets.json, so the full release zip (tools/package.mjs) never ships it', () => {
+test('an operator left out of 自选 (data/backups.json diy.excluded: the collab picks, 焰狐龙梓兰 MH05 among them) keeps no art in data/assets.json, so the full release zip (tools/package.mjs) never ships it — except an operator whose only chess records are invisible (visible: false)', () => {
   const m = load('assets');
   const text = JSON.stringify(m);
+  // 豁免判据：该干员至少被一条棋记录引用，且这些记录全部是 visible: false 的隐形记录（没有任何可见记录）。
+  // 原因：炸惊 / zhajing 把丰川祥子、真琴以隐形记录挂进棋盘（chess_zj_oblvns_a/b、chess_zj_60_5_a/b，
+  // visible: false），而资源管线（tools/assets/versions.mjs presentationUnion → 每条棋记录的 charId 都要有图）
+  // 与「自选排除名单不得有素材」互斥：数据不能删，图也不能缺。因此只对“隐形记录独占”的干员豁免这一条，
+  // 仍有可见记录（或根本没有任何记录）的排除干员照旧必须没有素材——豁免名单在末尾按 id 钉死。
+  const records = Object.values(CHESS);
+  const referencing = (id) => records.filter((c) => c.charId === id);
+  const invisibleOnly = (id) => {
+    const refs = referencing(id);
+    return refs.length > 0 && refs.every((c) => c.visible === false);
+  };
   assert.ok(BACKUPS.diy.excluded.includes('char_1048_orchd2'), '焰狐龙梓兰 is excluded');
+  const exempted = [];
   for (const id of BACKUPS.diy.excluded) {
+    if (invisibleOnly(id)) {
+      // 豁免的是「不得有素材」这一判定，不是放弃检查：素材必须真的在 manifest 里（隐形记录同样要图），
+      // 且 loop 的前提已保证它没有任何 visible !== false 的记录。
+      assert.ok(m.chars[id], `${id}: art kept for its invisible chess record`);
+      exempted.push(id);
+      continue;
+    }
     const code = id.split('_').slice(2).join('_');
     assert.equal(m.chars[id], undefined, `${id}: chars`);
     assert.equal(m.audio.sfx.units[id], undefined, `${id}: unit sfx`);
@@ -123,6 +142,7 @@ test('an operator left out of 自选 (data/backups.json diy.excluded: the collab
     assert.ok(!Object.keys(m.skills).some((k) => k.startsWith(`skchr_${code}_`)), `${id}: skill icons`);
     assert.ok(!text.includes(id), `${id}: no file of theirs`);
   }
+  assert.deepEqual(exempted.sort(), ['char_4182_oblvns', 'char_4217_makoto'], 'only the two 炸惊 invisible picks are exempt; any other excluded operator still needs no art');
   assert.equal(m.stats.chars, Object.keys(m.chars).length);
   assert.equal(m.stats.skills, Object.keys(m.skills).length);
 });

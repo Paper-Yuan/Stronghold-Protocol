@@ -1,0 +1,515 @@
+{
+  "run": "before",
+  "errors": [
+    "Failed to load resource: net::ERR_CONNECTION_CLOSED",
+    "Failed to load resource: net::ERR_CONNECTION_CLOSED"
+  ],
+  "desktop": {
+    "viewport": {
+      "w": 1920,
+      "h": 1080
+    },
+    "rootFontSize": "100px",
+    "docOverflowX": 0,
+    "media": {
+      "mq900": false,
+      "mqH520": false,
+      "coarse": false
+    },
+    "htmlClasses": "sp-touch sp-coarse sp-hover sp-fs sp-rotatable sp-in-match",
+    "overlay": {
+      "x": 280,
+      "y": 0,
+      "w": 1640,
+      "h": 1080,
+      "inView": true,
+      "inset": "0px 0px 0px 280px",
+      "padding": "34px 50px 50px 30px",
+      "rows": "142px 836px"
+    },
+    "head": {
+      "x": 310,
+      "y": 34,
+      "w": 1560,
+      "h": 142,
+      "inView": true
+    },
+    "title": {
+      "x": 310,
+      "y": 57,
+      "w": 1289.9,
+      "h": 84,
+      "inView": true,
+      "font": "56px",
+      "text": "惊变阶段"
+    },
+    "sub": {
+      "h": 33,
+      "lh": 33,
+      "lineCount": 1,
+      "clamp": "none",
+      "clipped": false,
+      "font": "22px",
+      "display": "block",
+      "ws": "normal",
+      "overflow": "visible",
+      "text": "选择一项（无时间限制） · 点击卡牌选中，再次点击确认"
+    },
+    "present": {
+      "sub": true,
+      "title": true,
+      "micro": true,
+      "head": true,
+      "grid": true,
+      "overlay": true
+    },
+    "micro": {
+      "x": 310,
+      "y": 34,
+      "w": 1289.9,
+      "h": 17,
+      "inView": true,
+      "font": "17px"
+    },
+    "confirm": null,
+    "state": {
+      "x": 1623.9,
+      "y": 76,
+      "w": 246.1,
+      "h": 58,
+      "inView": true,
+      "text": "当前轮到你决策"
+    },
+    "grid": {
+      "x": 310,
+      "y": 194,
+      "w": 1560,
+      "h": 836,
+      "inView": true,
+      "cols": "506.656px 506.672px 506.656px",
+      "colGap": "20px",
+      "overflowY": "auto",
+      "scrollH": 836,
+      "clientH": 836,
+      "scrolls": false
+    },
+    "cards": [
+      {
+        "idx": 0,
+        "rarity": "normal",
+        "testid": "jibian-card-0",
+        "card": {
+          "x": 310,
+          "y": 194,
+          "w": 506.7,
+          "h": 333,
+          "inView": true
+        },
+        "wrap": {
+          "x": 310,
+          "y": 194,
+          "w": 506.7,
+          "h": 383,
+          "inView": true
+        },
+        "pad": "18px 16px 18px 18px",
+        "gap": "12px",
+        "minH": "240px",
+        "order": [
+          "zjcard__top",
+          "zjcard__desc",
+          "zjcard__bondblocks",
+          "zjcard__flavor"
+        ],
+        "icon": {
+          "x": 329,
+          "y": 222,
+          "w": 62,
+          "h": 62,
+          "inView": true
+        },
+        "name": {
+          "x": 403,
+          "y": 213,
+          "w": 93.6,
+          "h": 45,
+          "inView": true,
+          "font": "30px",
+          "text": "大乱斗"
+        },
+        "rarityChip": {
+          "x": 403,
+          "y": 262,
+          "w": 57.8,
+          "h": 31,
+          "inView": true,
+          "font": "18px"
+        },
+        "desc": {
+          "h": 70.4,
+          "lh": 35.2,
+          "lineCount": 2,
+          "clamp": "none",
+          "clipped": false,
+          "font": "22px",
+          "display": "block",
+          "ws": "normal",
+          "overflow": "visible",
+          "text": "战斗阶段开始时，你的所有干员部署位置/方向将随机改变；但你的干员攻击力+100%。"
+        },
+        "bondblocks": {
+          "x": 329,
+          "y": 387.4,
+          "w": 470.7,
+          "h": 72.6,
+          "inView": true
+        },
+        "bondboxes": [
+          {
+            "rect": {
+              "x": 329,
+              "y": 387.4,
+              "w": 470.7,
+              "h": 72.6,
+              "inView": true
+            },
+            "name": "出老千",
+            "nameLines": 1,
+            "effect": {
+              "h": 24.6,
+              "lh": 24.7,
+              "lineCount": 1,
+              "clamp": "none",
+              "clipped": false,
+              "font": "17px",
+              "display": "block",
+              "ws": "normal",
+              "overflow": "visible",
+              "text": "你的部分惊变效果改变。"
+            }
+          }
+        ],
+        "flavor": {
+          "h": 36,
+          "lh": 27,
+          "lineCount": 1,
+          "clamp": "none",
+          "clipped": false,
+          "font": "18px",
+          "display": "block",
+          "ws": "normal",
+          "overflow": "visible",
+          "text": "“够乱的”"
+        },
+        "armedFooter": null,
+        "reroll": {
+          "x": 310,
+          "y": 533,
+          "w": 506.7,
+          "h": 44,
+          "inView": true,
+          "disabled": false
+        }
+      },
+      {
+        "idx": 1,
+        "rarity": "epic",
+        "testid": "jibian-card-1",
+        "card": {
+          "x": 836.7,
+          "y": 194,
+          "w": 506.7,
+          "h": 274.5,
+          "inView": true
+        },
+        "wrap": {
+          "x": 836.7,
+          "y": 194,
+          "w": 506.7,
+          "h": 324.5,
+          "inView": true
+        },
+        "pad": "18px 16px 18px 18px",
+        "gap": "12px",
+        "minH": "240px",
+        "order": [
+          "zjcard__top",
+          "zjcard__desc",
+          "zjcard__bondblocks"
+        ],
+        "icon": {
+          "x": 855.7,
+          "y": 222,
+          "w": 62,
+          "h": 62,
+          "inView": true
+        },
+        "name": {
+          "x": 929.7,
+          "y": 213,
+          "w": 62.4,
+          "h": 45,
+          "inView": true,
+          "font": "30px",
+          "text": "捐赠"
+        },
+        "rarityChip": {
+          "x": 929.7,
+          "y": 262,
+          "w": 57.8,
+          "h": 31,
+          "inView": true,
+          "font": "18px"
+        },
+        "desc": {
+          "h": 35.2,
+          "lh": 35.2,
+          "lineCount": 1,
+          "clamp": "none",
+          "clipped": false,
+          "font": "22px",
+          "display": "block",
+          "ws": "normal",
+          "overflow": "visible",
+          "text": "获得15资金"
+        },
+        "bondblocks": {
+          "x": 855.7,
+          "y": 352.2,
+          "w": 470.7,
+          "h": 97.3,
+          "inView": true
+        },
+        "bondboxes": [
+          {
+            "rect": {
+              "x": 855.7,
+              "y": 352.2,
+              "w": 470.7,
+              "h": 97.3,
+              "inView": true
+            },
+            "name": "真·投资人",
+            "nameLines": 1,
+            "effect": {
+              "h": 49.3,
+              "lh": 24.7,
+              "lineCount": 2,
+              "clamp": "none",
+              "clipped": false,
+              "font": "17px",
+              "display": "block",
+              "ws": "normal",
+              "overflow": "visible",
+              "text": "返还触发前消耗的所有资金，并使每个【获得时】效果翻倍。"
+            }
+          }
+        ],
+        "flavor": null,
+        "armedFooter": null,
+        "reroll": {
+          "x": 836.7,
+          "y": 474.5,
+          "w": 506.7,
+          "h": 44,
+          "inView": true,
+          "disabled": false
+        }
+      },
+      {
+        "idx": 2,
+        "rarity": "normal",
+        "testid": "jibian-card-2",
+        "card": {
+          "x": 1363.3,
+          "y": 194,
+          "w": 506.7,
+          "h": 333,
+          "inView": true
+        },
+        "wrap": {
+          "x": 1363.3,
+          "y": 194,
+          "w": 506.7,
+          "h": 383,
+          "inView": true
+        },
+        "pad": "18px 16px 18px 18px",
+        "gap": "12px",
+        "minH": "240px",
+        "order": [
+          "zjcard__top",
+          "zjcard__desc",
+          "zjcard__bondblocks",
+          "zjcard__flavor"
+        ],
+        "icon": {
+          "x": 1382.3,
+          "y": 222,
+          "w": 62,
+          "h": 62,
+          "inView": true
+        },
+        "name": {
+          "x": 1456.3,
+          "y": 213,
+          "w": 156,
+          "h": 45,
+          "inView": true,
+          "font": "30px",
+          "text": "极速送达！"
+        },
+        "rarityChip": {
+          "x": 1456.3,
+          "y": 262,
+          "w": 57.8,
+          "h": 31,
+          "inView": true,
+          "font": "18px"
+        },
+        "desc": {
+          "h": 70.4,
+          "lh": 35.2,
+          "lineCount": 2,
+          "clamp": "none",
+          "clipped": false,
+          "font": "22px",
+          "display": "block",
+          "ws": "normal",
+          "overflow": "visible",
+          "text": "你获得一个来自企鹅物流的包裹，把它装备到任意干员身上时会消耗并开启。"
+        },
+        "bondblocks": {
+          "x": 1382.3,
+          "y": 387.4,
+          "w": 470.7,
+          "h": 72.6,
+          "inView": true
+        },
+        "bondboxes": [
+          {
+            "rect": {
+              "x": 1382.3,
+              "y": 387.4,
+              "w": 470.7,
+              "h": 72.6,
+              "inView": true
+            },
+            "name": "包邮",
+            "nameLines": 1,
+            "effect": {
+              "h": 24.6,
+              "lh": 24.7,
+              "lineCount": 1,
+              "clamp": "none",
+              "clipped": false,
+              "font": "17px",
+              "display": "block",
+              "ws": "normal",
+              "overflow": "visible",
+              "text": "你在购买5阶干员时不再需要消耗资金。（二档增加6阶）"
+            }
+          }
+        ],
+        "flavor": {
+          "h": 36,
+          "lh": 27,
+          "lineCount": 1,
+          "clamp": "none",
+          "clipped": false,
+          "font": "18px",
+          "display": "block",
+          "ws": "normal",
+          "overflow": "visible",
+          "text": "你也不知道里面究竟是炸弹还是意大利面。"
+        },
+        "armedFooter": null,
+        "reroll": {
+          "x": 1363.3,
+          "y": 533,
+          "w": 506.7,
+          "h": 44,
+          "inView": true,
+          "disabled": false
+        }
+      }
+    ],
+    "textHasSubHint": true
+  },
+  "mobile": {
+    "viewport": {
+      "w": 792,
+      "h": 360
+    },
+    "rootFontSize": "40px",
+    "docOverflowX": 0,
+    "media": {
+      "mq900": true,
+      "mqH520": true,
+      "coarse": true
+    },
+    "htmlClasses": "sp-touch sp-coarse sp-no-hover sp-fs sp-rotatable",
+    "overlay": null,
+    "head": null,
+    "title": {
+      "font": null
+    },
+    "sub": null,
+    "present": {
+      "sub": false,
+      "title": false,
+      "micro": false,
+      "head": false,
+      "grid": false,
+      "overlay": false
+    },
+    "micro": {
+      "font": null
+    },
+    "confirm": null,
+    "state": null,
+    "grid": null,
+    "cards": [],
+    "textHasSubHint": false
+  },
+  "desktopAgain": {
+    "viewport": {
+      "w": 1920,
+      "h": 1080
+    },
+    "rootFontSize": "100px",
+    "docOverflowX": 0,
+    "media": {
+      "mq900": false,
+      "mqH520": false,
+      "coarse": false
+    },
+    "htmlClasses": "sp-touch sp-coarse sp-hover sp-fs sp-rotatable",
+    "overlay": null,
+    "head": null,
+    "title": {
+      "font": null
+    },
+    "sub": null,
+    "present": {
+      "sub": false,
+      "title": false,
+      "micro": false,
+      "head": false,
+      "grid": false,
+      "overlay": false
+    },
+    "micro": {
+      "font": null
+    },
+    "confirm": null,
+    "state": null,
+    "grid": null,
+    "cards": [],
+    "textHasSubHint": false
+  },
+  "shots": {
+    "desktop": "E:/Workbox/系统/handoff/shots/zjov-before-1920x1080.png",
+    "mobile": "E:/Workbox/系统/handoff/shots/zjov-before-792x360.png"
+  }
+}

@@ -559,6 +559,34 @@
 .rs-pill__diff .icon, .rs-pill__ver .icon { flex: none; width: 1.2em; height: 1.2em; }
 .rs-pill__code { font-size: calc(.13 * var(--t)); color: #9aa19e; }
 .rs-pill__diff:disabled { cursor: default; }
+/* 超限房间：难度胶囊改成紫色，别让一间 solo_infinite / coop_infinite 读成普通「终极模拟」房
+   （业主 2026-10-26；与大厅难度列表最下方的特殊项、超限 HUD 用同一套 --inf-* 色） */
+.rs-pill__diff.is-infinite { color: var(--inf-100, #f6efff); background: linear-gradient(180deg, rgba(122, 62, 220, .6), rgba(58, 28, 104, .66)); }
+.rs-pill__diff.is-infinite .rs-pill__code { color: var(--inf-300); }
+.rs-pill__inf {
+  flex: none; display: inline-grid; place-items: center; min-width: 1.2em;
+  font: 900 1.15em/1 var(--font-num); color: var(--inf-300); text-shadow: 0 0 .18rem var(--inf-glow);
+}
+/* 蚀流 1..6（湮灭模拟的玩法包档位，docs/EXTENSION_MODE.md §3.1）：房主开局前改档，6 档显示 ∞（无尽湮灭）。
+   与大厅的 .ext-tier 同一套说法：当前档亮起，别人（非房主）看得见但点不动。 */
+.rs-erosion-chips { display: flex; align-items: center; gap: .05rem; margin-left: .1rem; min-width: 0; }
+.rs-erosion__chip {
+  min-width: max(.26rem, 22px);
+  min-height: max(.26rem, 22px);
+  padding: 0 .05rem;
+  font-size: max(11px, calc(.16 * var(--t)));   /* 像素地板：--t 在矮屏只有 40px，纯比例会掉到 6.4px */
+  font-weight: 800;
+  color: var(--text-lo);
+  background: rgba(255, 255, 255, .05);
+  border: 1px solid rgba(255, 255, 255, .14);
+  border-radius: .06rem;
+  cursor: pointer;
+  transition: color var(--t-fast), border-color var(--t-fast), background var(--t-fast);
+}
+.rs-erosion__chip:hover:not(:disabled) { color: var(--ext-200); border-color: var(--ext-a35); }
+.rs-erosion__chip.is-on { color: #06202e; background: var(--ext-400); border-color: var(--ext-300); }
+.rs-erosion__chip:disabled { cursor: default; opacity: .55; }
+.rs-erosion__chip:focus-visible { outline: 2px solid var(--ext-300); outline-offset: 2px; }
 .rs-pill__diff:hover:not(:disabled), .rs-pill__diff:focus-visible { filter: brightness(1.2); }
 /* another doctor's pill: opens the read-only 选择模拟协议 (the host chooses) */
 .rs-pill__diff.is-ro { cursor: help; }
@@ -756,6 +784,14 @@
   .rs-go .proto-start__label { font-size: min(calc(.46 * var(--t)), calc(20px + var(--t-step))); }
   .rs .rs-loadout .btn__label { display: none; }
   .rs-tools, .rs-key__k { display: none; }
+  /* 炸惊模拟的「规则」是炸惊房唯一的阅读入口（玩法的数值、禁选、阶段表都在里面）。短屏（≤520px 高）里工具排
+     整体让位，但这一颗要留下 —— 与主题大厅「矮屏仍然保留攻略说明」同一条理由。容器用 display:contents 不占盒，
+     只留它一个子元素；其它工具（统计 / 设置 / 说明）照旧让位。 */
+  .rs-tools { display: contents; }
+  .rs-tools > :not([data-testid="zj-rules"]) { display: none; }
+  /* 设计系统的 sm 按钮在短屏上只有 14 px 高（icon + 一行字随 文字大小 缩）：它现在承担「打开规则」这一击，
+     给一个 24 px 的触摸地板（本仓小号触摸目标的地板，见 .ext-party__chip）。 */
+  .rs-tools > [data-testid="zj-rules"] { min-height: max(.44rem, 24px); }
 }
 
 /* A long name takes a second line on the phones at least 370 px tall, then ends in an ellipsis (§35.51: one line kept 3–5
@@ -817,4 +853,371 @@
   }
   .rs .vervote .vervote__text { flex: 0 1 auto; min-height: 0; overflow-y: auto; }
   .rs .vervote .vervote__actions { flex: none; }
+}
+
+/* ---- 炸惊模拟 · 规则速览 (ui/zhajingRules.js; 房内「规则」按钮翻开的那张表) ----
+   每一条的数字都由那个模块从 data/config.json 的炸惊 mode 现算（见它的头注释），这里只管排版。 */
+.zjrules__list { display: flex; flex-direction: column; gap: .1rem; margin: 0; padding: 0; list-style: none; }
+.zjrules__row { position: relative; padding: .06rem 0 .06rem .18rem; font-size: calc(.24 * var(--t)); line-height: 1.6;
+  color: var(--text-md); text-wrap: pretty; }
+.zjrules__row::before { content: ''; position: absolute; left: 0; top: .18rem; width: .07rem; height: .07rem;
+  background: #17d9a0; transform: rotate(45deg); }
+
+/* ---- 炸惊房锁定（业主 2026-10-28 晚）：版本胶囊写「炸惊一期」、难度胶囊不可改 ----
+   两颗都只是"说清这是什么"，不是入口：虚线边 + 降饱和 + help 光标，与可点的胶囊一眼分得开。 */
+.rs-pill__ver.is-playset, .rs-pill__diff.is-locked {
+  border-style: dashed; color: var(--text-lo); cursor: help;
+  background: rgba(23, 217, 160, .06); border-color: rgba(23, 217, 160, .34);
+  /* 与其它胶囊同高（业主裁定：抬到 32px）—— 手机上原来只有 30px */
+  min-height: max(.44rem, 32px);
+}
+.rs-pill__ver.is-playset:hover, .rs-pill__diff.is-locked:hover { filter: none; }
+.rs-pill__ver.is-playset .icon, .rs-pill__diff.is-locked .icon { color: #17d9a0; opacity: .8; }
+.rs-pill__ver.is-playset:disabled { opacity: 1; }
+
+/* ==========================================================================================
+   房间人数 (room.state.maxSeats, room.setSeats; the owner's decision 2026-10-31): the ⚙ 同盟设置 row + the 8 / 12-seat
+   main screens (handoff/room12/mock-room.html). A room with maxSeats = 4 keeps the tall-card `.rs-seats` path above
+   byte-for-byte; everything below is scoped to `.rs-seats--wide`, `.rs-seat8`, `.rs-seat12` and `.rs-opts__seats`.
+   ========================================================================================== */
+
+/* ---- ⚙ 同盟设置's 房间人数 row: three 36 px segments, the current one in mint; a disabled UNselected segment dims, the
+   selected one stays readable (the owner's 2026-10-31 rule) ------------------------------------------------ */
+.rs-opts__seats { display: flex; flex-direction: column; gap: .08rem; }
+.rs-opts__seats .rs-opts__k { font-size: max(11px, calc(.14 * var(--t))); }
+.rs-opts__seg { display: flex; flex: 1 1 auto; gap: .12rem; min-width: 0; }
+.rs-opts__segbtn {
+  flex: 1 1 0;
+  min-width: max(32px, calc(78px * var(--sp-ui, 1)));
+  height: max(32px, calc(36px * var(--sp-ui, 1)), .36rem);
+  padding: 0 .06rem;
+  font-family: var(--font-num);
+  font-size: max(14px, calc(.15 * var(--t)));
+  font-weight: 800;
+  letter-spacing: .02em;
+  color: var(--text-md);
+  background: rgba(0, 0, 0, .34);
+  border: 1px solid var(--line-2);
+  border-radius: 2px;
+  cursor: pointer;
+}
+.rs-opts__segbtn:hover:not(:disabled) { color: #fff; border-color: var(--mint-700, #2c8f74); }
+.rs-opts__segbtn.is-on {
+  font-weight: 900;
+  color: var(--text-on-mint);
+  background: var(--mint-500);
+  border-color: var(--mint-400);
+}
+.rs-opts__segbtn:disabled { cursor: default; }
+/* disabled: only the UNSELECTED segments dim; the selected one keeps full contrast */
+.rs-opts__segbtn:disabled:not(.is-on) { opacity: .42; }
+.rs-opts__segbtn.is-on:disabled { opacity: 1; color: var(--text-on-mint); }
+.rs-opts__note {
+  margin: 0;
+  font-size: max(11px, calc(.13 * var(--t)));
+  line-height: 1.3;
+  color: var(--text-lo);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ---- the wide main screen replaces the tall-card row (8 / 12 seats), keeping the top bar and footer as they are ---- */
+/* the seat count of a wide room's top bar (同盟模拟 8/12) — the 4-seat screen does not render it */
+.rs-count {
+  display: inline-flex;
+  align-items: center;
+  gap: 1px;
+  height: auto;
+  padding: 0 .06rem;
+  font-size: max(12px, calc(.15 * var(--t)));
+  font-weight: 900;
+  color: #4fe8c0;
+  white-space: nowrap;
+}
+.rs-count i { font-style: normal; opacity: .4; }
+/* the 12-seat expanded view's back button (top bar); the room's other top-bar buttons keep their sizes */
+.rs-back {
+  display: inline-flex;
+  align-items: center;
+  gap: .05rem;
+  height: max(.56rem, 32px, calc(34px * var(--sp-ui, 1)));
+  padding: 0 .12rem;
+  font: inherit;
+  font-size: max(12px, calc(.16 * var(--t)));
+  font-weight: 800;
+  color: #eafaf4;
+  background: rgba(28, 30, 30, .9);
+  border: 1px solid rgba(255, 255, 255, .22);
+  border-radius: .06rem;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.rs-back:hover, .rs-back:focus-visible { border-color: #4fe8c0; }
+.rs-back__chev { font-size: calc(.16 * var(--t)); line-height: 1; color: #4fe8c0; }
+
+.rs-seats--wide {
+  display: grid;
+  gap: 0;
+  padding: 0;
+  overflow: hidden;
+  align-items: stretch;
+}
+.rs-seats--8 { grid-template-columns: 54% 46%; }        /* 我方 54% / 对方 46% */
+.rs-seats--12 { grid-template-columns: 64% 36%; }       /* 我方 64% / 两队芯片 36% */
+.rs-seats--12.is-expanded { grid-template-columns: 40px minmax(0, 1fr); }  /* 40 px 头像条 + 接管整宽 */
+
+.rs-seat8 { display: grid; grid-template-columns: 54% 46%; grid-column: 1 / -1; height: 100%; min-height: 0; }
+.rs-seat12 { display: grid; grid-template-columns: 64% 36%; grid-column: 1 / -1; height: 100%; min-height: 0; }
+.rs-seat12.is-expanded { grid-template-columns: 40px minmax(0, 1fr); }
+
+/* one team column: head (30) + four 44 px 名片卡 rows */
+.rs-seat8__col, .rs-seat12__mine, .rs-seat12__team {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  overflow: hidden;
+  padding: .1rem .12rem;
+}
+.rs-seat8__col--mine, .rs-seat12__mine {
+  border-left: 2px solid #4fe8c0;
+  border-right: 1px solid #202423;
+  background: linear-gradient(180deg, rgba(22, 28, 26, .55), rgba(12, 15, 14, .30));
+}
+.rs-seat8__col--foe, .rs-seat12__team {
+  background: rgba(9, 12, 11, .42);
+  border-left: 1px solid #202423;
+}
+.rs-seat12__team--blue { --team: #58a6ff; }
+.rs-seat12__team--red { --team: #e2665c; }
+
+.rs-teamhead {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: .08rem;
+  height: 30px;
+  min-width: 0;
+}
+.rs-teamhead__name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: max(12px, calc(.13 * var(--t)));
+  font-weight: 900;
+  letter-spacing: .02em;
+  white-space: nowrap;
+  color: #eef2f0;
+}
+.rs-teamhead.is-mine .rs-teamhead__name { color: #4fe8c0; }
+.rs-teamhead__count { flex: none; font-size: max(11px, calc(.12 * var(--t))); font-weight: 700; color: #eef2f0; }
+.rs-seat12__team--blue .rs-teamhead__count { color: #58a6ff; }
+.rs-seat12__team--red .rs-teamhead__count { color: #e2665c; }
+.rs-teamhead__count i { font-style: normal; opacity: .4; }
+
+.rs-teamlist {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  overflow: hidden;
+}
+.rs-seat8 .rs-teamlist { gap: 6px; margin-top: 8px; }
+.rs-seat12 .rs-teamlist { gap: 6px; margin-top: 8px; }
+
+/* ---- the 44 px 名片卡 row: name-card art (own card; CSS fallback otherwise) + 65%→35% veil, 32 px avatar, name,
+   state; an empty slot is dashed with 邀请. Copied from handoff/room12/mock-room.html (§D.4 / §F.2). ------------------ */
+.rs-namecard {
+  --nc-lit: #4fe8c0;
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: .08rem;
+  flex: none;
+  height: 44px;
+  padding: 0 8px 0 6px;
+  overflow: hidden;
+  background:
+    repeating-linear-gradient(135deg, rgba(255, 255, 255, .05) 0 1px, transparent 1px 7px),
+    linear-gradient(100deg, #1c2422 0%, #16201d 48%, #101716 100%);
+  border: 1px solid rgba(255, 255, 255, .08);
+  border-radius: 3px;
+}
+.rs-namecard__art {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background:
+    repeating-linear-gradient(135deg, rgba(255, 255, 255, .05) 0 1px, transparent 1px 7px),
+    linear-gradient(100deg, #1c2422 0%, #16201d 48%, #101716 100%);
+  filter: saturate(.66) brightness(.72);
+}
+.rs-namecard .nc-layer { z-index: 0; }
+.rs-namecard .nc-layer img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 50% 38%;
+  filter: saturate(.66) brightness(.72);
+}
+.rs-namecard__veil {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background: linear-gradient(90deg, rgba(6, 9, 8, .65), rgba(6, 9, 8, .35));
+}
+.rs-avatar {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 32px;
+  height: 32px;
+  overflow: hidden;
+  background: #101413;
+  border: 1px solid rgba(255, 255, 255, .62);
+}
+.rs-avatar img { width: 100%; height: 100%; object-fit: cover; object-position: 50% 12%; }
+.rs-avatar__glyph { font-size: max(13px, calc(.15 * var(--t))); font-weight: 900; color: var(--text-md); }
+.rs-avatar__bot { width: 62%; height: 62%; color: #9fd3ff; }
+.rs-namecard__who {
+  position: relative;
+  z-index: 2;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: max(12px, calc(.12 * var(--t)));
+  font-weight: 800;
+  white-space: nowrap;
+  color: #f0f4f2;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, .85);
+}
+.rs-namecard__state {
+  position: relative;
+  z-index: 2;
+  flex: none;
+  margin-left: auto;
+  font-size: max(10px, calc(.1 * var(--t)));
+  font-weight: 700;
+  white-space: nowrap;
+  color: var(--text-lo);
+  text-shadow: 0 1px 3px rgba(0, 0, 0, .85);
+}
+.rs-namecard__state.is-ready { color: var(--nc-lit); }
+.rs-namecard__state.is-off { color: #ff7a8a; }
+.rs-namecard.is-off .rs-avatar img { filter: grayscale(.85) brightness(.62); }
+.rs-namecard--empty { justify-content: center; border-color: transparent; background: transparent; }
+.rs-namecard--empty::before {
+  content: '';
+  position: absolute;
+  inset: 3px;
+  z-index: 0;
+  border: 1px dashed #3d4642;
+}
+.rs-namecard__invite {
+  position: relative;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 .12rem;
+  font: inherit;
+  font-size: max(11px, calc(.11 * var(--t)));
+  font-weight: 800;
+  color: #4fe8c0;
+  background: rgba(79, 232, 192, .04);
+  border: 0;
+  cursor: pointer;
+}
+.rs-namecard__invite:hover { color: #fff; }
+.rs-plus { position: relative; flex: none; width: 11px; height: 11px; }
+.rs-plus::before, .rs-plus::after { content: ''; position: absolute; left: 50%; top: 50%; background: currentColor; }
+.rs-plus::before { width: 11px; height: 1px; transform: translate(-50%, -50%); }
+.rs-plus::after { width: 1px; height: 11px; transform: translate(-50%, -50%); }
+
+/* ---- 12 seats, collapsed: the right 36 % holds two chips (team colour dot + name + x/4) ------------------------- */
+.rs-seat12__others {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 12px;
+  min-width: 0;
+  padding: 8px 12px;
+  background: rgba(9, 12, 11, .42);
+  border-left: 1px solid #202423;
+}
+.rs-seat12__chip {
+  --team: #58a6ff;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;
+  padding: 10px;
+  font: inherit;
+  text-align: left;
+  color: inherit;
+  background: linear-gradient(180deg, rgba(28, 34, 32, .92), rgba(13, 17, 16, .92));
+  border: 1px solid rgba(255, 255, 255, .12);
+  border-left: 3px solid var(--team);
+  cursor: pointer;
+}
+.rs-seat12__chip--blue { --team: #58a6ff; }
+.rs-seat12__chip--red { --team: #e2665c; }
+.rs-seat12__chip:hover, .rs-seat12__chip:focus-visible { border-color: var(--team); }
+.rs-seat12__chip-top { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.rs-seat12__dot { flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--team); box-shadow: 0 0 7px var(--team); }
+.rs-seat12__chip-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; font-size: max(12px, calc(.12 * var(--t))); font-weight: 800; white-space: nowrap; color: #eef2f0; }
+.rs-seat12__chip-count { margin-left: auto; font-size: max(11px, calc(.11 * var(--t))); font-weight: 700; color: #eef2f0; }
+.rs-seat12__chip-count i { font-style: normal; opacity: .4; }
+
+/* 高屏（≥600px 高）的 12 人房：右栏两颗芯片原来 justify-content:center 落在页面中部，左栏 4 行名片卡却顶在栏顶
+   —— 1920×1080 的截图里两栏中部空出一大片（handoff/shots/MULTI-REAL-SHOTS.md §9.3）。高屏下两栏改成同一顶部
+   基线、内容等高：左栏 30（队头）+ 8 + 4×44 + 3×6 = 232px，右栏 2×110 + 12 = 232px（芯片内容垂直居中）。
+   792×360（以及任何 <600px 高的窗口）不命中这段，仍是原来的 40px 芯片 + 居中；4 人房与 8 人房没有这条规则。 */
+@media (min-height: 600px) {
+  .rs-seat12__others { justify-content: flex-start; padding-top: .1rem; }
+  .rs-seat12__chip { height: 110px; justify-content: center; }
+}
+
+/* ---- 12 seats, expanded: a 40 px strip of four 26 px avatars (mine), the opened team takes the rest ------------- */
+.rs-seat12__bar {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  width: 40px;
+  height: 100%;
+  padding: 0;
+  color: inherit;
+  background: linear-gradient(180deg, rgba(22, 28, 26, .55), rgba(12, 15, 14, .30));
+  border: 0;
+  border-left: 3px solid #4fe8c0;
+  border-right: 1px solid #202423;
+  cursor: pointer;
+}
+.rs-seat12__barav {
+  display: block;
+  flex: none;
+  width: 26px;
+  height: 26px;
+  overflow: hidden;
+  background: #101413;
+  border: 1px solid rgba(255, 255, 255, .34);
+  border-radius: 2px;
+}
+.rs-seat12__barav img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: 50% 12%; }
+.rs-seat12__barav.is-self { border-color: #4fe8c0; box-shadow: 0 0 0 1px rgba(79, 232, 192, .32), 0 0 8px rgba(79, 232, 192, .38); }
+.rs-seat12__barav.is-off img { filter: grayscale(.85) brightness(.52); }
+.rs-seat12__bar:hover { border-right-color: #4fe8c0; }
+
+@media (max-width: 560px) {
+  .rs-seat8__col, .rs-seat12__mine, .rs-seat12__team { padding: 8px; }
 }

@@ -16,9 +16,10 @@ export const WARN_MS = 2600;
 
 /**
  * 双 Boss 第二阶段的全屏预警。
- * @param {{ on?: boolean }} props `on` = pub.phase === PHASE.BOSS_PHASE2_WARN
+ * @param {{ on?: boolean, affix?: { name: string, text?: string }|null }} props `on` = pub.phase === PHASE.BOSS_PHASE2_WARN；
+ *   `affix` = 本轮的 Boss 词缀（超限，业主 2026-10-26），在副标题里重复一次
  */
-export function BossPhaseWarn({ on = false }) {
+export function BossPhaseWarn({ on = false, affix = null }) {
   const rootRef = useRef(null);
   const timerRef = useRef(null);
 
@@ -34,7 +35,7 @@ export function BossPhaseWarn({ on = false }) {
     el.classList.remove('is-on', 'is-out');
     void el.offsetWidth;
     el.classList.add('is-on');
-    const bar = el.querySelector('.bpwarn__timer');
+    const bar = el.querySelector('.warn__timer');
     if (bar) {
       bar.style.transition = 'none';
       bar.style.transform = 'scaleX(0)';
@@ -47,39 +48,45 @@ export function BossPhaseWarn({ on = false }) {
 
   if (!on) return null;
 
-  return html`<div ref=${rootRef} class="bpwarn" data-testid="boss-phase2-warn">
-    <div class="bpwarn__flush"></div>
-    <div class="bpwarn__pulse"></div>
-    <div class="bpwarn__edge bpwarn__edge--top"></div>
-    <div class="bpwarn__edge bpwarn__edge--bottom"></div>
-    <span class="bpwarn__corner bpwarn__corner--tl"></span>
-    <span class="bpwarn__corner bpwarn__corner--tr"></span>
-    <span class="bpwarn__corner bpwarn__corner--bl"></span>
-    <span class="bpwarn__corner bpwarn__corner--br"></span>
+  // 标题逐字动画：整句先过 t()，再拆成单个字符的 span（每个 span 是 CSS 动画的一段）。
+  const titleMain = [...t('隐秘核心')];
+  const titleSub = [...t('正在觉醒')];
 
-    <div class="bpwarn__body">
-      <div class="bpwarn__sweep"></div>
-      <div class="bpwarn__scanline"></div>
-      <div class="bpwarn__data bpwarn__data--top">
+  return html`<div ref=${rootRef} class="bpwarn" data-testid="boss-phase2-warn">
+    <div class="warn__flush"></div>
+    <div class="warn__pulse"></div>
+    <div class="warn__edge warn__edge--top"></div>
+    <div class="warn__edge warn__edge--bottom"></div>
+    <span class="warn__corner warn__corner--tl"></span>
+    <span class="warn__corner warn__corner--tr"></span>
+    <span class="warn__corner warn__corner--bl"></span>
+    <span class="warn__corner warn__corner--br"></span>
+
+    <div class="warn__body">
+      <div class="warn__sweep"></div>
+      <div class="warn__scanline"></div>
+      <div class="warn__data warn__data--top">
         <span>PHASE <b>01</b>/02</span>
         <span>CORE <b>ACTIVE</b></span>
         <span>THREAT <b>▮▮▮▮▮</b></span>
       </div>
-      <div class="bpwarn__micro">SECOND PHASE INCOMING</div>
-      <div class="bpwarn__title">
-        <span>隐</span><span>秘</span><span>核</span><span>心</span><span> </span><em><span>正</span><span>在</span><span>觉</span><span>醒</span></em>
+      <div class="warn__micro">SECOND PHASE INCOMING</div>
+      <div class="warn__title">
+        ${titleMain.map((ch, i) => html`<span key=${i}>${ch}</span>`)}<span> </span>
+        <em>${titleSub.map((ch, i) => html`<span key=${i}>${ch}</span>`)}</em>
       </div>
-      <div class="bpwarn__sub">
+      <div class="warn__sub">
         <span>${t('敌方领袖已失去战斗能力，但污染源仍在扩散')}</span>
         <span><b>${t('检测到更高强度的核心反应')}</b> —— ${t('重新建立接触')}</span>
+        ${affix ? html`<span><b>${t('词缀')} · ${affix.name}</b>${affix.text ? html` —— ${affix.text}` : null}</span>` : null}
       </div>
-      <div class="bpwarn__data bpwarn__data--bottom">
+      <div class="warn__data warn__data--bottom">
         <span>SEAL <b>BREACHED</b></span>
         <span>RE-ENTRY <b>2.6s</b></span>
       </div>
-      <div class="bpwarn__foot">
-        <span class="bpwarn__read">PHASE <b>1</b> → <b>2</b></span>
-        <div class="bpwarn__track"><div class="bpwarn__timer"></div></div>
+      <div class="warn__foot">
+        <span class="warn__read">PHASE <b>1</b> → <b>2</b></span>
+        <div class="warn__track"><div class="warn__timer"></div></div>
       </div>
     </div>
   </div>`;

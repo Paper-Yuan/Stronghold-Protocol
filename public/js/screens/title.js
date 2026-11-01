@@ -290,24 +290,31 @@ export function TitleScreen() {
     <${SettingsModal} open=${settingsOpen} onClose=${() => setSettingsOpen(false)} />
     ${Installed ? html`<${Installed} open=${true} onClose=${() => setInstalled(null)} />` : null}
 
+    ${/* 底栏 = 两行（业主口径 2026-10-29）：上一轮把感谢名单单独提到第三行，手机上压住了 --legal 里的插件按钮，
+         版本号也被挤到中间那一行的右侧而不是右下角。现在只有两行：
+           --legal  恢复对局 / PWA 安装 / 本服务器安装了 N 个插件 / 版权（靠上）
+           --thanks 感谢名单（行首，贴左下角滚动）+ .title-foot__meta（行尾，贴右下角）
+         .title-foot__meta 的顺序是「项目仓库 → 开发版标签 → 版本号」，版本号必须是最后一项 —— 它要贴在最右下角，
+         也是彩蛋入口（点 5 次进 /arg/）。title.css 的 .title-foot__row--thanks 用 space-between + nowrap 锁住这个
+         结构；test/ui/title-footer.test.js 是这套结构的静态守卫。 */ ''}
     <footer class="title-foot">
-      <div class="title-foot__row title-foot__row--meta">
-        <${ThanksMarquee} />
-        <span class="title-foot__meta">
-          <a class="title-repo" href="https://github.com/sganggs/Stronghold-Protocol" target="_blank" rel="noopener noreferrer">${t('项目仓库')}</a>
-          <span class="title-egg" role="button" tabIndex=0 title="" onClick=${eggClick}
-            onKeyDown=${(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); eggClick(); } }}>
-            <${MicroLabel}>v${APP_VERSION} · WEB SIMULATION<//>
-          </span>
-          ${DEV_BUILD ? html`<span class="title-dev" role="note">${t('开发版 · 不稳定，请勿用于公开服务器')}</span>` : null}
-        </span>
-      </div>
       <div class="title-foot__row title-foot__row--legal">
         <${ResumeMatchButton} />
         <${PwaInstallButton} />
         ${installed ? html`<button type="button" class="title-plugins" data-testid="title-plugins" onClick=${openPlugins}>
           <${Icon} name="info" />${t('本服务器安装了 {n} 个插件', { n: installed })}</button>` : null}
         <span>${t('非官方同人复刻 · 游戏素材版权归 上海鹰角网络 / Yostar 所有')}</span>
+      </div>
+      <div class="title-foot__row title-foot__row--thanks">
+        <${ThanksMarquee} />
+        <span class="title-foot__meta">
+          <a class="title-repo" href="https://github.com/sganggs/Stronghold-Protocol" target="_blank" rel="noopener noreferrer">${t('项目仓库')}</a>
+          ${DEV_BUILD ? html`<span class="title-dev" role="note">${t('开发版 · 不稳定，请勿用于公开服务器')}</span>` : null}
+          <span class="title-egg" role="button" tabIndex=0 title="" onClick=${eggClick}
+            onKeyDown=${(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); eggClick(); } }}>
+            <${MicroLabel}>v${APP_VERSION} · WEB SIMULATION<//>
+          </span>
+        </span>
       </div>
     </footer>
   </div>`;

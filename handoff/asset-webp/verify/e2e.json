@@ -1,0 +1,133 @@
+{
+  "base": "http://127.0.0.1:4173",
+  "boot": {
+    "title": "卫戍协议：盟约 · STRONGHOLD PROTOCOL",
+    "consoleErrorsDuringBoot": 0
+  },
+  "samples": [
+    {
+      "kind": "精二 illust（char/illust）",
+      "id": "char_003_kalts",
+      "url": "/assets/~509a83024d7b497f/char/illust/char_003_kalts.webp"
+    },
+    {
+      "kind": "皮肤立绘（char/illust/skin）",
+      "id": "char_003_kalts",
+      "url": "/assets/~be05669cd9b7aadb/char/illust/skin/char_003_kalts_sale_14.webp"
+    },
+    {
+      "kind": "半身像（char/portrait）",
+      "id": "char_003_kalts",
+      "url": "/assets/~821be49b85cc7c2f/char/portrait/char_003_kalts_1.webp"
+    },
+    {
+      "kind": "皮肤半身像（char/portrait）",
+      "id": "char_003_kalts",
+      "url": "/assets/~95a1f6bd67f97bc5/char/portrait/char_003_kalts_sale_14.webp"
+    },
+    {
+      "kind": "精一孪生（char/illust/<id>_1）",
+      "id": "char_003_kalts",
+      "url": "/assets/~a1c3e0e6ceaa52ee/char/illust/char_003_kalts_1.webp"
+    },
+    {
+      "kind": "精一目录（char/illustration）",
+      "id": "char_4182_oblvns_1.webp",
+      "url": "/assets/char/illustration/char_4182_oblvns_1.webp"
+    }
+  ],
+  "whitelist": [
+    "/assets/char/illustration/char_4186_tmoris_2.png",
+    "/assets/char/illust/skin/char_4116_blkkgt_witch_5.png"
+  ],
+  "status": [
+    {
+      "url": "/assets/char/illust/char_003_kalts.webp",
+      "served": "/assets/~509a83024d7b497f/char/illust/char_003_kalts.webp",
+      "http": 200,
+      "contentType": "image/webp",
+      "bytes": 594534,
+      "naturalWidth": 2381,
+      "naturalHeight": 2542,
+      "ms": 35
+    },
+    {
+      "url": "/assets/char/illust/skin/char_003_kalts_sale_14.webp",
+      "served": "/assets/~be05669cd9b7aadb/char/illust/skin/char_003_kalts_sale_14.webp",
+      "http": 200,
+      "contentType": "image/webp",
+      "bytes": 1340904,
+      "naturalWidth": 2560,
+      "naturalHeight": 2068,
+      "ms": 37
+    },
+    {
+      "url": "/assets/char/portrait/char_003_kalts_1.webp",
+      "served": "/assets/~821be49b85cc7c2f/char/portrait/char_003_kalts_1.webp",
+      "http": 200,
+      "contentType": "image/webp",
+      "bytes": 27242,
+      "naturalWidth": 180,
+      "naturalHeight": 360,
+      "ms": 34
+    },
+    {
+      "url": "/assets/char/portrait/char_003_kalts_sale_14.webp",
+      "served": "/assets/~95a1f6bd67f97bc5/char/portrait/char_003_kalts_sale_14.webp",
+      "http": 200,
+      "contentType": "image/webp",
+      "bytes": 27648,
+      "naturalWidth": 180,
+      "naturalHeight": 360,
+      "ms": 34
+    },
+    {
+      "url": "/assets/char/illust/char_003_kalts_1.webp",
+      "served": "/assets/~a1c3e0e6ceaa52ee/char/illust/char_003_kalts_1.webp",
+      "http": 200,
+      "contentType": "image/webp",
+      "bytes": 62848,
+      "naturalWidth": 1024,
+      "naturalHeight": 1024,
+      "ms": 35
+    },
+    {
+      "url": "/assets/char/illustration/char_4182_oblvns_1.webp",
+      "served": "/assets/char/illustration/char_4182_oblvns_1.webp",
+      "http": 200,
+      "contentType": "image/webp",
+      "bytes": 100132,
+      "naturalWidth": 1176,
+      "naturalHeight": 1176,
+      "ms": 79
+    },
+    {
+      "url": "/assets/char/illustration/char_4186_tmoris_2.png",
+      "served": "/assets/char/illustration/char_4186_tmoris_2.png",
+      "http": 200,
+      "contentType": "image/png",
+      "bytes": 8760866,
+      "naturalWidth": 2560,
+      "naturalHeight": 2560,
+      "ms": 103
+    },
+    {
+      "url": "/assets/char/illust/skin/char_4116_blkkgt_witch_5.png",
+      "served": "/assets/char/illust/skin/char_4116_blkkgt_witch_5.png",
+      "http": 200,
+      "contentType": "image/png",
+      "bytes": 8213302,
+      "naturalWidth": 2523,
+      "naturalHeight": 2379,
+      "ms": 103
+    }
+  ],
+  "derivedE1": {
+    "e2": "/assets/~509a83024d7b497f/char/illust/char_003_kalts.webp",
+    "e1": "/assets/~509a83024d7b497f/char/illust/char_003_kalts_1.webp",
+    "e1exists": 1024
+  },
+  "probeConsoleErrors": [],
+  "probePageErrors": [],
+  "probeRequestFailures": []
+}

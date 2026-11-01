@@ -1,0 +1,51 @@
+仓库 E:\Workbox\系统。业主选了方案 A：把湮灭 mod 自带的 13 名干员真正搬进湮灭名册，让 `rhodesShip` / `kazdelShip` 的阈值能真达。
+
+## 已核实的盘点（Lead 已量过，直接用，不要重测）
+**缺口**：`data/chess.json` 里这 14 个 id 一个都没有 → `data/bonds.json` 的 `rhodesShip.members` 只有 5、`kazdelShip.members` 只有 4，而阈值仍是 `[3,6]` / `[3,6,9]` ⇒ 罗德岛 6 名档、卡兹戴尔 6/9 名档不可达。
+
+**13 个可搬的干员**（每个都有 `_a` 基础 + `_b` 精英两条记录，`upgradeNum` 3/0）：
+
+| 干员 | id 基 | 包 | garrisonIds |
+|---|---|---|---|
+| 阿斯卡纶 | chess_char_9_09 | rhodes-ship | `garrison_c_ascln_a` / `_b` |
+| 霜叶 | chess_char_9_11 | rhodes-ship | `garrison_c_frostl_a` / `_b` |
+| 坚雷 | chess_char_9_13 | rhodes-ship | `garrison_c_durnar_a` / `_b` |
+| 阿米娅 | chess_char_9_14 | rhodes-ship | `garrison_c_amiya_a` / `_b` |
+| 煌 | chess_char_9_16 | rhodes-ship | `garrison_c_huang_a` / `_b` |
+| 凯尔希 | chess_char_9_18 | rhodes-ship | `garrison_c_kalts_a` / `_b` |
+| Mon3tr | chess_char_9_21 | rhodes-ship | `garrison_c_monstr_gain_a`+`garrison_c_monstr_sell_a` / `_b` 两条 |
+| 逻各斯 | chess_char_9_22 | rhodes-ship | `garrison_c_logos_a` / `_b` |
+| 红豆 | chess_char_9_01 | kazdel-ship | `garrison_04_a` / `_b` |
+| 陨星 | chess_char_9_02 | kazdel-ship | `garrison_c_meteo_a` / `_b` |
+| 闪灵 | chess_char_9_04 | kazdel-ship | `garrison_c_shining_a` / `_b` |
+| 赫德雷 | chess_char_9_06 | kazdel-ship | `garrison_c_hodrer_a` / `_b` |
+| 维什戴尔 | chess_char_9_10 | kazdel-ship | `garrison_c_wisdel_a` / `_b` |
+
+包内路径：`modref/mods/rhodes-ship/rhodes-ship-mod/payload/packs/rhodes-ship/chess.json`、`modref/mods/kazdel-ship/kazdel-ship-mod/payload/packs/kazdel-ship/chess.json`（每条 45/49 个字段，名字/稀有度/职业/价格都有）。**第 14 个 `chess_char_4_27_a` 两个包的 chess.json 里都没有记录** → 搬不了，只在报告里列为「无法修复的悬挂 id」。
+
+**现状机制（关键，别改成第二套）**
+- `server/match/gamedata.js:37` `isOfficialVisibleChess`（`visible===true && zhajing!==true && !isGolden && !isDiy && !isHidden && grantOnly!==true`）是官方池的判据；
+- `server/match/gamedata.js:61` `annihilationRoster(chess, bonds, annMods)` = 官方可见棋 − 「只由已关闭 mod 带来的」（`chess.annBonds` 指向 `annModBonds` 的边）；
+- 客户端 `public/js/ui/loadoutModel.js:554` `rosterOf` / `:567` `zhajingRosterOf`；`public/js/screens/loadout.js:691` 按房间档位选 roster（炸惊走 `zhajingRosterOf`）；
+- `data/chess.json` 现状：474 条，`visible:true && zhajing!==true` 224 条，`visibleChess`（build 报告）**112**，`zhajing===true` 199 条且**从不 visible**；`annBonds` 出现在 20 条上。
+
+## 要做的事
+1. **导入（数据侧）**：扩展 `tools/extract-annihilation-mods.mjs`（它已经产出 `docs/research/20-annihilation-mods.json`；棋的字段转换请复用 `tools/extract-zhajing-research.mjs` 对包内 chess 的处理方式与 `tools/research-normalize.mjs` 的归一化），把 26 条 chess（13×`_a`/`_b`）+ 它们引用的 garrison 记录（约 16 条，从包的 `garrisons.json` 取）落进 research；`tools/build-data.mjs` 照 `zhajingContent`（≈L3769）的合并套路，在 **IS_DEFAULT** 时并进 `chess` / `garrisons`。
+   - 标记：每条新 chess 打 `annihilation: true`、`visible: false`（与 `zhajing: true` 同构，官方池看不见）、`annBonds: ['rhodesShip'|'kazdelShip']`（按表；9_09/9_22 两条同时属两个盟约）、`goldenId` 指向同组的 `_b`、`upgradeChessId` 反向指回 `_a`。
+   - `data/bonds.json` 的 `rhodesShip.members` 要从 5 变成 13（5 + 8）、`kazdelShip.members` 从 4 变成 11（4 + 7）；`chess_char_4_27_a` 不进 members，写进 `_extract.notes.unmatchedBondMembers` 并在报告里说明。
+2. **服务端**：`annihilationRoster` 增加「`annihilation === true` 且其 `annBonds` 的 mod 开关是开的」这一类；`isOfficialVisibleChess` **一个字都不要改**（官方 112 条必须逐字节/逐项不变），`visibleChess` 仍是 112。
+3. **客户端**：`loadoutModel.js` 加 `annihilationRosterOf(list)`（口径与服务端一致：`annihilation === true` + 非 golden），`loadout.js` 在 `setTier === 'annihilation'` 时用它（与 691 行炸惊那条同形）；`ownershipModel.js` / `loadoutSync.js` 里所有 roster 调用点同步。
+4. **测试**：新增/更新断言——
+   - 两条盟约的 `members` 全部能在 `data/chess.json` 找到（除 `4_27` 白名单），且 `members.length >= max(thresholds)`（罗德岛 13 ≥ 6、卡兹戴尔 11 ≥ 9）= **阈值可达性守卫**；
+   - 官方 `visibleChess === 112`、`annihilationRoster(默认开关)` 现在包含这 13×2 条、关了 mod 就不含；
+   - 撞到硬编码 112/4/5 的测试（`test/ui/*`、`test/content/*`、`devtools/*` 里的 `roster: 112` 等）逐处改成本轮之后的值，并在报告里列出改了哪几处。
+5. **文档**：`docs/ANNIHILATION-MODS.md` 补一节「13 名干员已搬进湮灭名册（`annihilation: true`，官方池不可见）、`chess_char_4_27` 仍缺」，`docs/EXTENSION_MODE.md` §8 或 `docs/DATA.md` 里凡写「湮灭名册 = 官方 112」的地方同步。
+
+## 验收（逐条贴原文）
+- `npm run build-data`：exit 0、**0 error**、warning 数不变（163）、`visibleChess=112`、`chess` 计数 474→500（±2 以 `_a/_b` 实数为准，报告里写清真值）、`garrisons` 计数同步增长；`data/` 与 `public/data/` 差异只有新增/追加，既有 474 条逐字节不变（给哈希证据）。
+- `node --test test/data.test.js test/data-versions.test.js test/build-data-refresh.test.js test/sync-static-web.test.js test/annihilation-import.test.js` 全绿。
+- `node --test "test/ui/**/*.test.js"` 全绿；`node --test "test/content/**/*.test.js"` 里原本绿的仍绿。
+- `npm run golden` 或 `node --test test/golden*` 不动（如真有移动，停下报告，别自己改 golden）。
+- 真机：起 `PORT=3160 node server/index.js`，792×360 进湮灭房 → 干员调配，截图并读数：名册行数、盟约筛选里 **罗德岛 13 / 卡兹戴尔 11**、任选一条过滤后的名单；截图存 `handoff/shots/ann-loadout-full-125-792x360.png`、`ann-loadout-rhodes-13-792x360.png`、`ann-loadout-kazdel-11-792x360.png`。用完停服务器。
+
+纪律：可改 `tools/extract-annihilation-mods.mjs`、`tools/build-data.mjs`、`server/match/gamedata.js`、`public/js/ui/loadoutModel.js`、`public/js/screens/loadout.js`、`public/js/ui/{ownershipModel,loadoutSync}.js`、`test/**`、`docs/**`；**不许手改 `data/**`**（只能 `npm run build-data` 生成）；不许 git 写操作；不许新增 `t('…')`；改文件用 read/edit/write 或 node fs，别用 PowerShell 的 Get-Content/Set-Content；临时脚本/服务器用完清。**先写 `handoff/ann-chess-inventory.md`（字段来源、合并方式、撞到的硬编码清单），再动手改代码。**

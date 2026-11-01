@@ -10,6 +10,7 @@ import { SkillRuntime } from '../skills.js';
 import { resolveProfile } from '../professions.js';
 import { normalizeToken } from '../simdata.js';
 import { isPotential, isCultivate } from '../../../shared/potential.js';
+import { allyScaleOf } from '../../../shared/zhajingBase.js';
 import { setupUnitKit } from '../content/index.js';
 import { installTraitAttackSpeed } from '../content/traitMods.js';
 import { clone } from './util.js';
@@ -167,6 +168,20 @@ export class BattlePlayers {
     if (isCultivate(inp.cultivate) && !def.standInFor && !def.raw?.diyProto) {
       const mul = typeof this.data.cultivateMul === 'function' ? this.data.cultivateMul(inp.cultivate) : null;
       if (mul) { u.cultivate = inp.cultivate; u.cultMul = Object.freeze({ ...mul }); u.markDirty(); }
+    }
+    // 炸惊模拟 规则9 (0.3.x 口径): the mode's blanket ×ATK / ×DEF / ×max HP on EVERY operator the player fields
+    // (`flags.allyScale`, written by GameData.zhajingFlags) lands on the operator's 白值 — `base.atk` / `base.def` /
+    // `base.maxHp` — not on a final multiplier, so 干员调配 / 详情卡 and the battle show the same numbers and every
+    // percentage bonus (盟约 / 惊变 / 道具) starts from it (shared/zhajingBase.js, the client's chessLoadout reads the
+    // same function). Unlike 练度 this is not tied to owning the character, so a 补位 stand-in takes it too; tokens
+    // (summons) are not 干员 and are left alone. `allyScale` is only ever present in a ZHAJING room, so every other mode
+    // keeps the arm's length path.
+    const as = allyScaleOf(this.flags && this.flags.allyScale);
+    if (as) {
+      u.base.atk *= as.atk;
+      u.base.def *= as.def;
+      u.base.maxHp *= as.hp;
+      u.markDirty();
     }
     return u;
   }

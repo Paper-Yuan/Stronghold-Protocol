@@ -72,7 +72,7 @@ import {
   processModels, findLocalEnemyModels, findLocalTokenModels, localSpineMeta, loadLocalSpines, LOCAL_ENEMY_SPINES_FILE,
   LOCAL_TOKEN_SPINES_FILE, LOCAL_ENEMY_SPINE_DIR, LOCAL_TOKEN_SPINE_DIR,
 } from './assets/spine.mjs';
-import { collectLeaves, downloadLeaves, resolveTemplate, totalBytes, contentHash, droppedEntries, MANIFEST_VERSION } from './assets/manifest.mjs';
+import { collectLeaves, downloadLeaves, resolveTemplate, totalBytes, contentHash, droppedEntries, MANIFEST_VERSION, webpVariant } from './assets/manifest.mjs';
 import { fontJobs, buildFonts } from './assets/fonts.mjs';
 import { statsTemplateJobs } from './assets/stats-template.mjs';
 import { skelParserAvailable } from './assets/skel.mjs';
@@ -522,6 +522,129 @@ async function main() {
   let body = resolved.value;
   tidyManifest(body);
   tidyVoiceTrees(body);
+  // 内置皮肤与全幅立绘（tools/inject-skins-assets.mjs）不在下载计划里：把当前 manifest 中文件仍在磁盘上的
+  // `chars[].skins` / `chars[].illust` / `chars[].illustE1` 带进新 manifest，这样重复运行资源管线不会静默丢掉它们，
+  // 也不会触发 shrink guard。`illustE1` 还必须进 `resolved.files`：它只由清单引用、下载计划从不列出，
+  // 否则 orphanFiles 会把 241 张精一立绘当成未引用文件，`--prune` 下次就把它们删掉。
+  const preservedBundled = { skins: 0, illusts: 0, illustsE1: 0 };
+  if (current?.chars && body.chars) {
+    // 立绘/半身像已转 WebP（handoff/asset-webp/BACKUP.md）：清单里的 `.png` 可能已经不在盘上、只剩同名 `.webp`
+    // —— 那也算「文件仍在」，否则这一段会把它们全部丢掉、shrink guard 拦住 manifest。
+    const existsAsset = (u) => {
+      if (typeof u !== 'string' || !u.startsWith('/assets/')) return false;
+      const rel = u.slice('/assets/'.length);
+      return existsSync(join(ASSETS, rel)) || !!webpVariant(ASSETS, rel);
+    };
+    const addFile = (u) => { if (typeof u === 'string' && u.startsWith('/assets/')) resolved.files.add(u.slice('/assets/'.length)); };
+    for (const [id, rec] of Object.entries(body.chars)) {
+      const prev = current.chars[id];
+      if (!prev || !rec) continue;
+      if (existsAsset(prev.illust)) { rec.illust = prev.illust; addFile(prev.illust); preservedBundled.illusts += 1; }
+      if (existsAsset(prev.illustE1)) { rec.illustE1 = prev.illustE1; addFile(prev.illustE1); preservedBundled.illustsE1 += 1; }
+      if (prev.skins && typeof prev.skins === 'object') {
+        const skins = {};
+        for (const [key, skin] of Object.entries(prev.skins)) {
+          if (!skin || typeof skin !== 'object' || !existsAsset(skin.avatar)) continue;
+          const copy = { ...skin };
+          if (copy.portrait && !existsAsset(copy.portrait)) delete copy.portrait;
+          if (copy.illust && !existsAsset(copy.illust)) delete copy.illust;
+          if (copy.spine) {
+            const side = copy.spine.front;
+            const okFront = side && [side.skel, side.atlas, ...(side.textures || [])].every(existsAsset);
+            const back = copy.spine.back;
+            const okBack = !back || [back.skel, back.atlas, ...(back.textures || [])].every(existsAsset);
+            if (!okFront || !okBack) delete copy.spine;
+            else for (const u of [side.skel, side.atlas, ...(side.textures || []),
+              ...(back ? [back.skel, back.atlas, ...(back.textures || [])] : [])]) addFile(u);
+          }
+          for (const u of [copy.avatar, copy.portrait, copy.illust]) addFile(u);
+          skins[key] = copy;
+          preservedBundled.skins += 1;
+        }
+        if (Object.keys(skins).length) rec.skins = skins;
+      }
+    }
+  }
+  if (preservedBundled.skins || preservedBundled.illusts || preservedBundled.illustsE1) {
+    log(`[bundled] preserved ${preservedBundled.skins} skins / ${preservedBundled.illusts} illustrations / ` +
+      `${preservedBundled.illustsE1} E1 illustrations from the current manifest`);
+  }
+  // 超限「词条」的 36 张图标（顶层 `relicsOverlimit`，由 tools/inject-skins-assets.mjs 写）：与 illustE1 同一条规则 ——
+  // 它们只由清单引用、下载计划从不列出，所以必须原样带过来并进 `resolved.files`，否则 orphanFiles 把它们当孤儿
+  // （`--prune` 会删），tools/package.mjs 的 listedArtFiles 也不会把它们算进包。
+  const preservedRelicIcons = { icons: 0 };
+  if (current?.relicsOverlimit && typeof current.relicsOverlimit === 'object') {
+    const existsAsset = (u) => typeof u === 'string' && u.startsWith('/assets/')
+      && existsSync(join(ASSETS, u.slice('/assets/'.length)));
+    const kept = {};
+    for (const [id, u] of Object.entries(current.relicsOverlimit)) {
+      if (!existsAsset(u)) continue;
+      kept[id] = u;
+      resolved.files.add(u.slice('/assets/'.length));
+      preservedRelicIcons.icons += 1;
+    }
+    if (Object.keys(kept).length) body.relicsOverlimit = kept;
+  }
+  if (preservedRelicIcons.icons) log(`[relics] preserved ${preservedRelicIcons.icons} 词条 icons from the current manifest`);
+  // Skill-mode attack/hit pool references the current manifest has but this run's plan no longer derives (the local fx
+  // index does not list every earlier-version operator): keep them while every sound file of the pool is on disk, so a
+  // rebuild cannot silently lose them and the shrink guard stays quiet. Their sound files are part of the plan anyway.
+  const preservedSfxPools = { pools: 0, refs: 0 };
+  if (current?.audio?.sfx && body.audio?.sfx) {
+    const soundExists = (p) => existsSync(join(ASSETS, 'audio/sfx', p));
+    const newPools = body.audio.sfx.pools || (body.audio.sfx.pools = {});
+    for (const [id, params] of Object.entries(current.audio.sfx.pools || {})) {
+      if (newPools[id] || !params || typeof params !== 'object') continue;
+      const sounds = params.sounds || {};
+      const keys = Object.keys(sounds);
+      if (!keys.length || !keys.every(soundExists)) continue;
+      newPools[id] = params;
+      for (const p of keys) resolved.files.add(`audio/sfx/${p}`);
+      preservedSfxPools.pools += 1;
+    }
+    const newUnits = body.audio.sfx.units || {};
+    for (const [cid, u] of Object.entries(current.audio.sfx.units || {})) {
+      const nu = newUnits[cid];
+      if (!nu || !u) continue;
+      for (const key of ['pools', 'attackPools', 'hitPools']) {
+        for (const [k, id] of Object.entries(u[key] || {})) {
+          if (!newPools[id] || (nu[key] && nu[key][k] !== undefined)) continue;
+          (nu[key] || (nu[key] = {}))[k] = id;
+          preservedSfxPools.refs += 1;
+        }
+      }
+    }
+  }
+  if (preservedSfxPools.pools || preservedSfxPools.refs) {
+    log(`[sfx] preserved ${preservedSfxPools.pools} skill-mode sound pools / ${preservedSfxPools.refs} unit references`);
+  }
+  // 语音槽位同样按「文件仍在磁盘」保留：一次 --voice-all 下载过的报到 / 编入队伍 / 任命队长等槽位，不该在下一次默认
+  // 运行（只计划战斗槽位）时被静默丢掉，也不该让 shrink guard 拦下 manifest。
+  const preservedVoice = { slots: 0 };
+  if (current?.audio && body.audio) {
+    const existsAsset = (u) => typeof u === 'string' && u.startsWith('/assets/')
+      && existsSync(join(ASSETS, u.slice('/assets/'.length)));
+    const addFile = (u) => { if (typeof u === 'string' && u.startsWith('/assets/')) resolved.files.add(u.slice('/assets/'.length)); };
+    for (const tree of ['voice', 'voiceJp', 'voiceEn', 'voiceKr', 'voiceNative']) {
+      const cur = current.audio[tree];
+      if (!cur || typeof cur !== 'object') continue;
+      const next = body.audio[tree] || (body.audio[tree] = {});
+      for (const [cid, slots] of Object.entries(cur)) {
+        if (!slots || typeof slots !== 'object' || Array.isArray(slots)) continue;
+        const ns = next[cid] || (next[cid] = {});
+        for (const [slot, val] of Object.entries(slots)) {
+          if (ns[slot] !== undefined) continue;
+          const urls = (Array.isArray(val) ? val : [val]).filter((u) => typeof u === 'string');
+          if (!urls.length || !urls.every(existsAsset)) continue;
+          ns[slot] = val;
+          for (const u of urls) addFile(u);
+          preservedVoice.slots += 1;
+        }
+        if (!Object.keys(ns).length) delete next[cid];
+      }
+    }
+  }
+  if (preservedVoice.slots) log(`[voice] preserved ${preservedVoice.slots} voice slots from the current manifest`);
   const fontFaces = {};
   for (const [name, f] of Object.entries(fonts.files)) fontFaces[name] = f;
   body.fonts = opts.addOnly && current?.fonts ? current.fonts
@@ -536,6 +659,27 @@ async function main() {
     };
     files(body);
   }
+  // 立绘类目录已转 WebP（handoff/asset-webp/BACKUP.md）：清单里指向这些目录的 `.png` 若已经不在盘上、而同名
+  // `.webp` 在，就改成 `.webp` —— `--add-only` 保留的旧取值也走这一道（不然 `chars[].portrait` 会停在 `.png`
+  // 上成为 404）。PNG 还在盘上的保持 `.png`：13 张低 PSNR 白名单，以及校验失败后回退成 PNG 的那些。
+  const upgraded = { webp: 0 };
+  const upgrade = (v) => {
+    if (typeof v === 'string') {
+      const rel = v.startsWith('/assets/') ? v.slice('/assets/'.length) : null;
+      if (!rel || !/\.png$/i.test(rel) || existsSync(join(ASSETS, rel))) return v;
+      const webp = webpVariant(ASSETS, rel);
+      if (!webp) return v;
+      upgraded.webp += 1;
+      resolved.files.delete(rel);   // the PNG is archived: it is not a file of this manifest any more
+      resolved.files.add(webp);
+      return `/assets/${webp}`;
+    }
+    if (Array.isArray(v)) { for (let i = 0; i < v.length; i++) v[i] = upgrade(v[i]); return v; }
+    if (v && typeof v === 'object') for (const k of Object.keys(v)) v[k] = upgrade(v[k]);
+    return v;
+  };
+  upgrade(body);
+  if (upgraded.webp) log(`[webp] ${upgraded.webp} preserved URLs now point at their WebP file (PNG archived outside the repo)`);
   const bytes = totalBytes(ASSETS, resolved.files);
   const manifest = {
     version: MANIFEST_VERSION,
@@ -570,6 +714,10 @@ async function main() {
     orphans: opts.prune ? [] : orphans,
     pruned: opts.prune ? orphans : [],
     manifestWritten: guard.write,
+    preservedBundled,
+    preservedRelicIcons,
+    preservedSfxPools,
+    preservedVoice,
     droppedEntries: guard.dropped, // entries of the previous data/assets.json the rebuilt one lacks
     notes: plan.notes,
   };

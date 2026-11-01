@@ -33,6 +33,11 @@
 // reuses chess ids for other operators (上半's chess_char_1_02_a is 讯使, not 角峰), so content/index.js officialKitKey
 // checks a record's charId against it and otherwise finds the kit by charId (TIER_KIT_KEYS_BY_CHAR). A new tier kit
 // file adds its line here.
+//
+// 炸惊模拟 (拓展玩法模式 ZHAJING) kits: ZHAJING_KIT_FILES lists `ops/chess_zj_<base>-<codename>.js`, one 炸惊棋库 chess each,
+// keyed by the CHESS id (`chess_zj_amoris_a`) like a tier kit — the default data resolves a kit by chess id only, so a
+// charId-keyed file would silently fall back to the generic kit. They are shop chess of that mode, never 自选 picks:
+// not in OPERATOR_KITS, not in KITTED_CHARS. Merged into KITS last, so every existing key keeps its order.
 
 export const KIT_FILES = Object.freeze([
   // tier 1
@@ -347,6 +352,28 @@ export const VERSION_KIT_FILES = Object.freeze([
 export const DIY_BORROW_KIT_FILES = Object.freeze(['ver-diy.js']);
 
 /**
+ * 炸惊模拟 (拓展玩法模式 ZHAJING) kits: `ops/chess_zj_<base>-<codename>.js`, one file per 炸惊棋库 chess
+ * (data/chess.json `chess_zj_*`, `zhajing: true`, `visible: false`). The registry key is the chess id — `chess_zj_amoris_a`
+ * — exactly like a tier kit, because 0.3.3's content/index.js `officialKitKey` resolves the default data by chess id only
+ * (a charId-keyed `op-*` file would silently fall back to the generic kit: the pack's 0.3.1 `kitOf` had a `reg[def.charId]`
+ * tier that this repository does not). These are SHOP chess of that mode, never 自选 picks: they are not keys of
+ * OPERATOR_KITS and not in KITTED_CHARS, so no 自选 slot can field them. Only the ZHAJING mode's own roster names them
+ * (`data/chess.json` zhajing records; the main modes' `visibleChess` filter excludes `zhajing === true`).
+ * Appended to KITS last, so every existing key keeps its order.
+ */
+export const ZHAJING_KIT_FILES = Object.freeze([
+  'chess_zj_amoris-amoris.js', // 祐天寺若麦 char_4185_amoris, chess_zj_amoris_a
+  'chess_zj_dolris-dolris.js', // 三角初华 char_4184_dolris, chess_zj_dolris_a
+  'chess_zj_mortis-mortis.js', // 若叶睦 char_4183_mortis, chess_zj_mortis_a
+  'chess_zj_oblvns-oblvns.js', // 丰川祥子 char_4182_oblvns, chess_zj_oblvns_a
+  'chess_zj_tmoris-tmoris.js', // 八幡海铃 char_4186_tmoris, chess_zj_tmoris_a
+  'chess_zj_60_2-kormr.js', // 虎狼丸 char_4220_kormr, chess_zj_60_2_a
+  'chess_zj_60_3-aigis.js', // 埃癸斯 char_4218_aigis, chess_zj_60_3_a
+  'chess_zj_60_4-yukari.js', // 岳羽由加莉 char_4219_yukari, chess_zj_60_4_a
+  'chess_zj_60_5-makoto.js', // 结城理 char_4217_makoto, chess_zj_60_5_a
+]);
+
+/**
  * charIds `ver-diy.js` exports, in that order. The ones whose file loaded join KITTED_CHARS. A 自选 piece looks its kit
  * up by charId, so this is what lets 第一期 and V2_1 field them. Shop chess of the same operator still take the tier key.
  */
@@ -406,6 +433,7 @@ const STANDIN_MODULES = await Promise.all(STANDIN_KIT_FILES.map(loadKitFile));
 const OPERATOR_MODULES = await Promise.all(OPERATOR_KIT_FILES.map(loadKitFile));
 const VERSION_MODULES = await Promise.all(VERSION_KIT_FILES.map(loadKitFile));
 const DIY_MODULES = await Promise.all(DIY_BORROW_KIT_FILES.map(loadKitFile));
+const ZHAJING_MODULES = await Promise.all(ZHAJING_KIT_FILES.map(loadKitFile));
 const registryOf = (m) => (m && m.default && typeof m.default === 'object' ? m.default : {});
 
 /** The registry of each tier group (index 0 = tier 1): baseChessId → kit builder, in KIT_FILES order. */
@@ -437,11 +465,14 @@ export const VERSION_KITS = Object.freeze(Object.assign({}, ...VERSION_MODULES.m
 /** Borrowed 自选 kits (`ops/ver-diy.js`): charId → builder, in DIY_BORROW_CHARS order. */
 export const DIY_BORROW_KITS = Object.freeze(Object.assign({}, ...DIY_MODULES.map(registryOf)));
 
+/** 炸惊模拟 kits: chess id (`chess_zj_*_a`) → kit builder, in ZHAJING_KIT_FILES order. Never a charId, never a 自选 pick. */
+export const ZHAJING_KITS = Object.freeze(Object.assign({}, ...ZHAJING_MODULES.map(registryOf)));
+
 /**
  * The merged kit registry: baseChessId → (bb, chess, def) => Kit, tier 1 … tier 6, then the stand-ins' charIds, then
- * the 自选 operators' charIds, then the version charId kits, then the borrowed 自选 charIds.
+ * the 自选 operators' charIds, then the version charId kits, then the borrowed 自选 charIds, then the 炸惊棋库 chess ids.
  */
-export const KITS = Object.freeze(Object.assign({}, ...TIER_KITS, STANDIN_KITS, OPERATOR_KITS, VERSION_KITS, DIY_BORROW_KITS));
+export const KITS = Object.freeze(Object.assign({}, ...TIER_KITS, STANDIN_KITS, OPERATOR_KITS, VERSION_KITS, DIY_BORROW_KITS, ZHAJING_KITS));
 
 /**
  * Every character a 自选 pick may field with a faithful kit: the 预备干员 (GENERIC_KIT_CHARS), the stand-ins with a kit

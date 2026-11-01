@@ -9,6 +9,9 @@ import { html, AvatarFrame, MicroLabel, Icon, Modal, Button } from './components
 import { useEffect, useState } from '../../vendor/hooks.module.js';
 import { render } from '../../vendor/preact.module.js';
 import { store } from '../store.js';
+import { openNamecardPicker, NameCardLayer, NamecardVariantSwitch, namecardKnown } from './namecards.js';
+import { useData } from '../data.js';
+import { t } from '../../../shared/i18n.js';
 
 /** This module keeps the account in the browser (other modules may check it to word their notes). */
 export const LOCAL_ACCOUNT = true;
@@ -93,27 +96,30 @@ async function squareAvatar(file) {
 }
 
 // ---- the panel (opened from the hub's top-right chip) -------------------------------------------------------------------
-function ensureStyle() {
-  if (document.getElementById('local-acct-style')) return;
-  const st = document.createElement('style');
-  st.id = 'local-acct-style';
-  st.textContent = `.acct-tag{margin-left:.06em;font-size:.8em;font-weight:600;opacity:.62;letter-spacing:.02em}
-.lacct{display:flex;flex-direction:column;gap:.16rem;min-width:min(5.6rem,86vw)}
-.lacct__who{display:flex;align-items:center;gap:.16rem}
-.lacct__pic{width:.9rem;height:.9rem;flex:none;display:grid;place-items:center;overflow:hidden;border:2px solid var(--mint-700,#2b7);background:#101614;font-size:.4rem;font-weight:900}
-.lacct__pic img{width:100%;height:100%;object-fit:cover}
-.lacct__name{font-size:.3rem;font-weight:900}
-.lacct__note{margin:0;font-size:.17rem;line-height:1.5;opacity:.72}
-.lacct__btns{display:flex;flex-wrap:wrap;gap:.1rem}`;
-  document.head.appendChild(st);
+let cssLoaded = false;
+/** 个人条 / 个人资料面板 / 名片选择器的样式（ui/forge.js 同一个懒加载写法；不进 index.html）。 */
+export function ensureProfileCss() {
+  if (cssLoaded || typeof document === 'undefined') return;
+  cssLoaded = true;
+  if (document.querySelector('link[data-profile]')) return;
+  const link = document.createElement('link');
+  link.rel = 'stylesheet';
+  link.href = '/css/screens/profile.css';
+  link.dataset.profile = '1';
+  document.head.appendChild(link);
 }
-import { openNamecardPicker } from './namecards.js';
 
 let host = null;
 
 function AccountPanel({ onStats, onClose }) {
   const { me } = useCurrentAccount();
+  // 名片索引（data/namecards.json，34 张）：载入完成会自动重画，索引缺失时这一栏只留「选择名片」
+  useData('namecards');
+  // 选了名片但索引没生成过（或这张卡不在索引里）：不画 600×186 的空框，退回「选择名片」占位
+  const cardKnown = namecardKnown(me.card);
   const [busy, setBusy] = useState(false);
+  // 差分切换后强制重画预览（NameCardLayer 每次渲染都从本机 pref 读序号）
+  const [variantTick, setVariantTick] = useState(0);
   const pick = () => {
     const input = document.createElement('input');
     input.type = 'file'; input.accept = 'image/*';
@@ -127,25 +133,38 @@ function AccountPanel({ onStats, onClose }) {
     input.click();
   };
   const clear = () => { profile = { ...load(), avatar: null }; write(profile); emit(); };
-  return html`<${Modal} open=${true} title="本机账号" micro="LOCAL ACCOUNT" onClose=${onClose}>
-    <div class="lacct">
-      <div class="lacct__who">
-        <span class="lacct__pic">${me.avatar ? html`<img src=${me.avatar} alt="" />` : [...me.name][0]}</span>
-        <span><b class="lacct__name">${me.name}<span class="acct-tag">#${me.tag}</span></b><br /><${MicroLabel}>LOCAL · 本机<//></span>
-      </div>
-      <p class="lacct__note">头像、编号和战绩都保存在这台设备的浏览器里，不上传服务器；换设备或清除浏览器数据后不会保留。昵称跟随游戏里的名字。</p>
-      <div class="lacct__btns">
-        <${Button} size="sm" variant="secondary" icon="edit" loading=${busy} onClick=${pick}>更换头像<//>
-        ${me.avatar ? html`<${Button} size="sm" variant="ghost" onClick=${clear}>移除头像<//>` : null}
-        <${Button} size="sm" variant="secondary" icon="user" onClick=${() => openNamecardPicker()}>更换名片<//>
-        ${onStats ? html`<${Button} size="sm" variant="primary" icon="chart" onClick=${() => { onClose(); onStats(); }}>统计数据<//>` : null}
-      </div>
+  return html`<${Modal} open=${true} title=${t('个人资料')} micro="PROFILE" onClose=${onClose}>
+    <div class="lacct" data-testid="profile">
+      <section class="lacct__sec" data-testid="profile-avatar">
+        <header class="lacct__sec-head"><h3 class="lacct__sec-title">${t('个人资料')}</h3><${MicroLabel}>LOCAL ACCOUNT<//></header>
+        <div class="lacct__who">
+          <span class="lacct__pic">${me.avatar ? html`<img src=${me.avatar} alt="" />` : [...me.name][0]}</span>
+          <span><b class="lacct__name">${me.name}<span class="acct-tag">#${me.tag}</span></b><br /><${MicroLabel}>LOCAL · 本机<//></span>
+        </div>
+        <p class="lacct__note">头像、编号和战绩都保存在这台设备的浏览器里，不上传服务器；换设备或清除浏览器数据后不会保留。昵称跟随游戏里的名字。</p>
+        <div class="lacct__btns">
+          <${Button} size="sm" variant="secondary" icon="edit" loading=${busy} onClick=${pick}>更换头像<//>
+          ${me.avatar ? html`<${Button} size="sm" variant="ghost" onClick=${clear}>移除头像<//>` : null}
+          ${onStats ? html`<${Button} size="sm" variant="primary" icon="chart" onClick=${() => { onClose(); onStats(); }}>统计数据<//>` : null}
+        </div>
+      </section>
+      <section class="lacct__sec" data-testid="profile-card">
+        <header class="lacct__sec-head"><h3 class="lacct__sec-title">${t('名片')}</h3><${MicroLabel}>NAME CARD<//></header>
+        <div class=${`lacct__cardview${cardKnown ? '' : ' lacct__cardview--none'}`} data-testid="profile-card-preview"
+            data-variant-tick=${variantTick}>
+          ${cardKnown ? html`<${NameCardLayer} card=${me.card} />` : html`<span>${t('选择名片')}</span>`}
+        </div>
+        <div class="lacct__btns">
+          <${Button} size="sm" variant="secondary" icon="image" onClick=${() => openNamecardPicker()}>${t('选择名片')}<//>
+          <${NamecardVariantSwitch} card=${me.card} onChange=${() => setVariantTick((n) => n + 1)} />
+        </div>
+      </section>
     </div>
   <//>`;
 }
 /** Open the account panel ({ onStats } adds the 统计数据 button). */
 export function openAccountPanel(opts = {}) {
-  ensureStyle();
+  ensureProfileCss();
   if (!host) { host = document.createElement('div'); host.className = 'local-acct-host'; document.body.appendChild(host); }
   const close = () => render(null, host);
   render(html`<${AccountPanel} onStats=${opts.onStats} onClose=${close} />`, host);
@@ -154,9 +173,12 @@ export function openAccountPanel(opts = {}) {
 /** The hub's top-right chip: avatar + name #tag; a click opens the account panel (with 统计数据). */
 export function AccountMeChip({ player, onStats }) {
   const { me } = useCurrentAccount();
-  useEffect(ensureStyle, []);
+  useEffect(ensureProfileCss, []);
+  // 名片底图要用索引（载入完成后自动重画）
+  useData('namecards');
   const name = player?.name || me.name || '博士';
-  return html`<button type="button" class="me-chip me-chip--btn stats-entry" onClick=${() => openAccountPanel({ onStats })} title="本机账号 · 统计数据" aria-label="本机账号">
+  return html`<button type="button" class="me-chip me-chip--btn stats-entry" data-testid="profile-entry"
+      onClick=${() => openAccountPanel({ onStats })} title=${t('个人资料')} aria-label=${t('个人资料')}>
     <${AvatarFrame} size="sm" name=${name} seat=${0} self=${true} src=${me.avatar || undefined} />
     <span class="me-chip__text"><span class="me-chip__name">${name}<span class="acct-tag">#${me.tag}</span></span><${MicroLabel}>LOCAL · 本机账号<//></span>
     <${Icon} name="user" class="me-chip__stats" />

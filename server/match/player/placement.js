@@ -12,6 +12,25 @@ import { attackRangeGrid, loadoutRecord, resolveRecordLoadout } from '../../../s
 import { summonPlacementGrid } from '../../../shared/summonPlacement.js';
 import { OK, fail } from './common.js';
 
+/**
+ * 炸惊模拟 卫戍「部署后不占用可部署位置」: does `piece`'s chess carry a 特质 whose `bb.no_deploy_slot > 0`? Drives only
+ * the "is the board full for this piece" test (deployBoard); deployCount stays what it is. Gated on `gd.zhajing` — the
+ * 特质 belongs to the 炸惊 roster, so an official mode never relaxes its cap.
+ * @param {import('../gamedata.js').GameData} gd
+ * @param {{ kind: string, id: string } | null} piece
+ * @returns {boolean}
+ */
+export function noDeploySlot(gd, piece) {
+  if (!gd || !gd.zhajing || !piece || piece.kind !== 'chess') return false;
+  const rec = gd.chess(piece.id);
+  if (!rec || !Array.isArray(rec.garrisonIds)) return false;
+  for (const gid of rec.garrisonIds) {
+    const g = gd.garrison(gid);
+    if (g && g.bb && Number(g.bb.no_deploy_slot) > 0) return true;
+  }
+  return false;
+}
+
 export class PlayerPlacement {
   /**
    * g.move {uid, to, dir?}. Pieces: chess / token between board, hand and temp; items only within the hand. `dir`
@@ -183,7 +202,11 @@ export class PlayerPlacement {
     }
     // hand/temp → board: a chess swap reuses the source slot, even with a full bench (round53).
     if (!occ || occ.kind !== 'chess') {
-      if (this.deployCount >= this.deployCap) return fail(ERR.BOARD_FULL);
+      // 炸惊模拟 卫戍「部署后不占用可部署位置」(bb.no_deploy_slot, 虎狼丸 garrison_zj_60_2_c): such a piece does not
+      // count against deployCap. Only the "may I place it" test is relaxed — deployCount itself is untouched (the bots,
+      // the deployCap view and audit.js read it), and the helper is gated on `gd.zhajing`, so an official mode keeps the
+      // strict check even if some plugin ever puts that 特质 on a chess of its own.
+      if (this.deployCount >= this.deployCap && !noDeploySlot(this.gd, piece)) return fail(ERR.BOARD_FULL);
     }
     this._detach(loc);
     if (occ) {

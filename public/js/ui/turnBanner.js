@@ -46,7 +46,7 @@ export function TurnBanner({ onDone }) {
     return () => clearTimeout(id);
   }, []);
   const cross = (pos) => html`<i class=${`tbanner__cross tbanner__cross--${pos}`}></i>`;
-  return html`<div class="tbanner" role="status" aria-live="polite" data-testid="turn-banner">
+  return html`<div class="tbanner tbanner--turn" role="status" aria-live="polite" data-testid="turn-banner">
     <div class="tbanner__dim"></div>
     <div class="tbanner__band">
       <div class="tbanner__bar">
